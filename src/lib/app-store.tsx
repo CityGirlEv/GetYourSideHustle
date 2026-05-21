@@ -56,49 +56,7 @@ export interface CreditTxn {
 const ADVISOR_ID = "advisor-1";
 const ADMIN_ID = "admin-1";
 
-const seedClients = (): Client[] => [
-  {
-    id: "c-1",
-    advisor_id: ADVISOR_ID,
-    first_name: "Eleanor",
-    last_name: "Whitfield",
-    dob: "1958-03-12",
-    zip_code: "77002",
-    county: "Harris",
-    monthly_cost_concern: true,
-    meds: [
-      { id: "m1", medication_name: "Lisinopril", strength: "20mg", dosage_form: "Tablet", frequency: "Daily", resolved_diagnosis: "Hypertension", estimated_monthly_retail: 18 },
-      { id: "m2", medication_name: "Atorvastatin", strength: "40mg", dosage_form: "Tablet", frequency: "Daily", resolved_diagnosis: "Hyperlipidemia", estimated_monthly_retail: 22 },
-    ],
-  },
-  {
-    id: "c-2",
-    advisor_id: ADVISOR_ID,
-    first_name: "Marcus",
-    last_name: "Delaney",
-    dob: "1955-11-04",
-    zip_code: "90012",
-    county: "Los Angeles",
-    monthly_cost_concern: false,
-    meds: [
-      { id: "m3", medication_name: "Novolog", strength: "100 U/mL", dosage_form: "Pen", frequency: "With meals", resolved_diagnosis: "Type 1 Diabetes (Insulin)", estimated_monthly_retail: 320 },
-      { id: "m4", medication_name: "Dexcom G7", strength: "n/a", dosage_form: "CGM DME", frequency: "Continuous", resolved_diagnosis: "Type 1 Diabetes (CGM DME)", estimated_monthly_retail: 410 },
-    ],
-  },
-  {
-    id: "c-3",
-    advisor_id: ADVISOR_ID,
-    first_name: "Priya",
-    last_name: "Singh",
-    dob: "1960-07-22",
-    zip_code: "33130",
-    county: "Miami-Dade",
-    monthly_cost_concern: true,
-    meds: [
-      { id: "m5", medication_name: "Albuterol", strength: "90mcg", dosage_form: "Inhaler", frequency: "As needed", resolved_diagnosis: "COPD / Asthma", estimated_monthly_retail: 65 },
-    ],
-  },
-];
+const seedClients = (): Client[] => [];
 
 interface Ctx {
   user: User | null;
@@ -126,18 +84,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [year, setYear] = useState<Year>(2026);
   const [clients, setClients] = useState<Client[]>(seedClients);
-  const [soas, setSoas] = useState<SOA[]>([
-    { id: "s-1", client_id: "c-1", signed_signature_data: "Eleanor Whitfield", signature_hash: "a3f9c1", signed_at: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(), ip_address: "192.168.1.21", status: "active" },
-  ]);
-  const [credits, setCredits] = useState(12);
-  const [creditTxns, setCreditTxns] = useState<CreditTxn[]>([
-    { id: "t-1", advisor_id: ADVISOR_ID, amount: 10, description: "Initial allocation", created_at: new Date().toISOString() },
-    { id: "t-2", advisor_id: ADVISOR_ID, amount: 2, description: "Bonus credits", created_at: new Date().toISOString() },
-  ]);
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([
-    { id: "a-1", user_email: "advisor@demo.health", user_role: "advisor", action: "VIEW_CLIENT_PHI", ip_address: "192.168.1.21", details: { client: "c-1" }, timestamp: new Date(Date.now() - 86400000).toISOString() },
-    { id: "a-2", user_email: "advisor@demo.health", user_role: "advisor", action: "SIGN_SOA", ip_address: "192.168.1.21", details: { client: "c-1" }, timestamp: new Date(Date.now() - 70000000).toISOString() },
-  ]);
+  const [soas, setSoas] = useState<SOA[]>([]);
+  const [credits, setCredits] = useState(0);
+  const [creditTxns, setCreditTxns] = useState<CreditTxn[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [activeClientId, setActiveClientId] = useState<string | null>(null);
 
   const log = useCallback((action: string, details?: Record<string, unknown>) => {
