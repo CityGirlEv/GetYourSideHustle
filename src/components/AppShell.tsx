@@ -43,10 +43,10 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
       <main className="flex-1 px-4 md:px-8 py-8 max-w-7xl w-full mx-auto">
         <div className="mb-6 bg-white rounded-2xl p-5 shadow-sm border border-border">
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-emerald flex items-center gap-3">
-            <img src={muntieLogo} alt="Muntie's AI Agents" className="h-10 w-10 object-contain" />
-            {title}
+            <img src={muntieLogo} alt="Medicare Optimizer" className="h-10 w-10 object-contain" />
+            Medicare Optimizer
           </h1>
-          {subtitle && <p className="text-muted-foreground mt-2">{subtitle}</p>}
+          <p className="text-muted-foreground mt-2">Getting the Best Bang for your Medical Needs - You Deserve It!</p>
         </div>
         {children}
       </main>
