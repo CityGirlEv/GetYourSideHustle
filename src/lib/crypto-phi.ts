@@ -24,8 +24,9 @@ export async function deriveKey(passphrase: string, saltB64: string, iterations 
   const baseKey = await crypto.subtle.importKey(
     "raw", enc.encode(passphrase), "PBKDF2", false, ["deriveKey"],
   );
+  const salt = b64decode(saltB64);
   return crypto.subtle.deriveKey(
-    { name: "PBKDF2", salt: b64decode(saltB64), iterations, hash: "SHA-256" },
+    { name: "PBKDF2", salt: salt as BufferSource, iterations, hash: "SHA-256" },
     baseKey,
     { name: "AES-GCM", length: 256 },
     false,
@@ -35,13 +36,15 @@ export async function deriveKey(passphrase: string, saltB64: string, iterations 
 
 export async function encryptJSON(key: CryptoKey, data: unknown): Promise<{ iv: string; ciphertext: string }> {
   const iv = crypto.getRandomValues(new Uint8Array(12));
-  const buf = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, enc.encode(JSON.stringify(data)));
+  const buf = await crypto.subtle.encrypt({ name: "AES-GCM", iv: iv as BufferSource }, key, enc.encode(JSON.stringify(data)));
   return { iv: b64encode(iv), ciphertext: b64encode(buf) };
 }
 
 export async function decryptJSON<T = unknown>(key: CryptoKey, ivB64: string, ciphertextB64: string): Promise<T> {
+  const iv = b64decode(ivB64);
+  const ct = b64decode(ciphertextB64);
   const buf = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: b64decode(ivB64) }, key, b64decode(ciphertextB64),
+    { name: "AES-GCM", iv: iv as BufferSource }, key, ct as BufferSource,
   );
   return JSON.parse(dec.decode(buf)) as T;
 }
