@@ -9,17 +9,11 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as ClientRouteImport } from './routes/client'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdvisorRouteImport } from './routes/advisor'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 
-const ClientRoute = ClientRouteImport.update({
-  id: '/client',
-  path: '/client',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -46,14 +40,12 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/advisor': typeof AdvisorRoute
   '/auth': typeof AuthRoute
-  '/client': typeof ClientRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/advisor': typeof AdvisorRoute
   '/auth': typeof AuthRoute
-  '/client': typeof ClientRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -61,14 +53,13 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/advisor': typeof AdvisorRoute
   '/auth': typeof AuthRoute
-  '/client': typeof ClientRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/advisor' | '/auth' | '/client'
+  fullPaths: '/' | '/admin' | '/advisor' | '/auth'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/advisor' | '/auth' | '/client'
-  id: '__root__' | '/' | '/admin' | '/advisor' | '/auth' | '/client'
+  to: '/' | '/admin' | '/advisor' | '/auth'
+  id: '__root__' | '/' | '/admin' | '/advisor' | '/auth'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -76,18 +67,10 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   AdvisorRoute: typeof AdvisorRoute
   AuthRoute: typeof AuthRoute
-  ClientRoute: typeof ClientRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/client': {
-      id: '/client'
-      path: '/client'
-      fullPath: '/client'
-      preLoaderRoute: typeof ClientRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -124,8 +107,17 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   AdvisorRoute: AdvisorRoute,
   AuthRoute: AuthRoute,
-  ClientRoute: ClientRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
