@@ -43,11 +43,9 @@ function Index() {
       <SecurityBanner />
       <main className="flex-1 grid lg:grid-cols-2 items-center gap-10 px-6 lg:px-16 py-12 max-w-7xl mx-auto w-full">
         <div className="space-y-6">
-          <div className="flex items-center gap-2 font-display font-bold text-xl">
-            <img src={muntieLogo} alt="Muntie's AI Agents" className="h-16 w-16 object-contain" />
-          </div>
-          <h1 className="font-display text-4xl md:text-6xl font-extrabold tracking-tight leading-[1.05]">
-            The Medicare optimizer your <span className="text-emerald">CMS auditor</span> would design.
+          <h1 className="font-display text-5xl md:text-7xl font-extrabold tracking-tight leading-[1.05] text-emerald bg-white rounded-2xl p-6 shadow-sm border border-border flex items-center gap-5">
+            <img src={muntieLogo} alt="Muntie's AI Agents" className="h-20 w-20 object-contain" />
+            <span>The Medicare optimizer your <span className="text-emerald/80">CMS auditor</span> would design.</span>
           </h1>
           <p className="text-lg text-muted-foreground max-w-xl">
             Side-by-side Original Medicare + Medigap vs. Medicare Advantage modeling under live 2026 &amp; 2027 federal rules.

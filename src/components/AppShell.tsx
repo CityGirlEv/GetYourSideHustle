@@ -41,9 +41,12 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
         </div>
       </header>
       <main className="flex-1 px-4 md:px-8 py-8 max-w-7xl w-full mx-auto">
-        <div className="mb-6">
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">{title}</h1>
-          {subtitle && <p className="text-muted-foreground mt-1">{subtitle}</p>}
+        <div className="mb-6 bg-white rounded-2xl p-6 shadow-sm border border-border">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-emerald flex items-center gap-4">
+            <img src={muntieLogo} alt="Muntie's AI Agents" className="h-14 w-14 object-contain" />
+            {title}
+          </h1>
+          {subtitle && <p className="text-muted-foreground mt-2">{subtitle}</p>}
         </div>
         {children}
       </main>
