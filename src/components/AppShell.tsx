@@ -45,8 +45,8 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
               <span
-                className="text-[10px] font-medium tracking-[0.3em] uppercase text-muted-foreground leading-none"
-                style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
+                className="text-[8px] italic font-serif tracking-wider text-blue-600 leading-none"
+                style={{ writingMode: "vertical-rl" }}
               >
                 Built By
               </span>
