@@ -46,8 +46,8 @@ function Index() {
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-border flex items-center gap-4">
             <div className="flex items-center gap-2">
               <span
-                className="text-[10px] font-medium tracking-[0.3em] uppercase text-muted-foreground leading-none"
-                style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
+                className="text-[8px] italic font-serif tracking-wider text-blue-600 leading-none"
+                style={{ writingMode: "vertical-rl" }}
               >
                 Built By
               </span>
