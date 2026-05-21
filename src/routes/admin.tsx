@@ -20,7 +20,7 @@ function AdminPortal() {
   const [q, setQ] = useState("");
 
   useEffect(() => {
-    if (!user) router.navigate({ to: "/" });
+    if (!user) router.navigate({ to: "/auth" });
   }, [user, router]);
   if (!user) return null;
 
