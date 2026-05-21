@@ -9,6 +9,8 @@ import {
 } from "@tanstack/react-router";
 
 import appCss from "../styles.css?url";
+import { AppProvider } from "@/lib/app-store";
+import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
   return (
@@ -72,11 +74,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "MeridianCare · HIPAA-Secure Medicare Optimizer" },
+      { name: "description", content: "Premium Medicare plan optimizer & advisor platform with HIPAA-compliant workflows for 2026 and 2027 federal guidelines." },
+      { name: "author", content: "MeridianCare" },
+      { property: "og:title", content: "MeridianCare · HIPAA-Secure Medicare Optimizer" },
+      { property: "og:description", content: "Compare Original Medicare + Medigap vs Medicare Advantage under live 2026/2027 rules." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
@@ -113,7 +115,10 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Outlet />
+      <AppProvider>
+        <Outlet />
+        <Toaster position="top-right" richColors />
+      </AppProvider>
     </QueryClientProvider>
   );
 }
