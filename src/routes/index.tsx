@@ -44,8 +44,11 @@ function Index() {
       <main className="flex-1 grid lg:grid-cols-2 items-center gap-10 px-6 lg:px-16 py-12 max-w-7xl mx-auto w-full">
         <div className="space-y-6">
           <h1 className="font-display text-3xl md:text-4xl font-extrabold tracking-tight leading-snug text-emerald bg-white rounded-2xl p-5 shadow-sm border border-border flex items-center gap-4">
-            <img src={muntieLogo} alt="Medicare Optimizer" className="h-12 w-12 object-contain" />
-            <span>Medicare Optimizer</span>
+            <div className="flex flex-col items-center">
+              <span className="text-[10px] font-medium tracking-widest uppercase text-muted-foreground leading-none mb-1">Built By</span>
+              <img src={muntieLogo} alt="Medicare Optimizer" className="h-12 w-12 object-contain" />
+            </div>
+            <span>The Medicare Optimizer</span>
           </h1>
           <p className="text-lg text-emerald/90 font-medium">Getting the Best Bang for your Medical Needs - You Deserve It!</p>
           <p className="text-lg text-muted-foreground max-w-xl">
