@@ -14,16 +14,236 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      advisor_credits: {
+        Row: {
+          advisor_id: string
+          balance: number
+          updated_at: string
+        }
+        Insert: {
+          advisor_id: string
+          balance?: number
+          updated_at?: string
+        }
+        Update: {
+          advisor_id?: string
+          balance?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          ip_address: string | null
+          metadata: Json
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
+      clients_encrypted: {
+        Row: {
+          advisor_id: string
+          ciphertext: string
+          created_at: string
+          id: string
+          iv: string
+          updated_at: string
+        }
+        Insert: {
+          advisor_id: string
+          ciphertext: string
+          created_at?: string
+          id?: string
+          iv: string
+          updated_at?: string
+        }
+        Update: {
+          advisor_id?: string
+          ciphertext?: string
+          created_at?: string
+          id?: string
+          iv?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      credit_txns: {
+        Row: {
+          advisor_id: string
+          amount: number
+          created_at: string
+          description: string
+          id: string
+        }
+        Insert: {
+          advisor_id: string
+          amount: number
+          created_at?: string
+          description: string
+          id?: string
+        }
+        Update: {
+          advisor_id?: string
+          amount?: number
+          created_at?: string
+          description?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      encryption_keys: {
+        Row: {
+          created_at: string
+          iterations: number
+          salt: string
+          user_id: string
+          verifier_ciphertext: string
+          verifier_iv: string
+        }
+        Insert: {
+          created_at?: string
+          iterations?: number
+          salt: string
+          user_id: string
+          verifier_ciphertext: string
+          verifier_iv: string
+        }
+        Update: {
+          created_at?: string
+          iterations?: number
+          salt?: string
+          user_id?: string
+          verifier_ciphertext?: string
+          verifier_iv?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          full_name: string
+          hipaa_acknowledged_at: string | null
+          id: string
+          npn_number: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          full_name?: string
+          hipaa_acknowledged_at?: string | null
+          id: string
+          npn_number?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          full_name?: string
+          hipaa_acknowledged_at?: string | null
+          id?: string
+          npn_number?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      soas_encrypted: {
+        Row: {
+          advisor_id: string
+          ciphertext: string
+          client_id: string
+          id: string
+          iv: string
+          signed_at: string
+          status: string
+        }
+        Insert: {
+          advisor_id: string
+          ciphertext: string
+          client_id: string
+          id?: string
+          iv: string
+          signed_at?: string
+          status?: string
+        }
+        Update: {
+          advisor_id?: string
+          ciphertext?: string
+          client_id?: string
+          id?: string
+          iv?: string
+          signed_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "soas_encrypted_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients_encrypted"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          granted_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          granted_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          granted_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "client" | "advisor" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +370,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["client", "advisor", "admin"],
+    },
   },
 } as const
