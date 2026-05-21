@@ -42,11 +42,13 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
       </header>
       <main className="flex-1 px-4 md:px-8 py-8 max-w-7xl w-full mx-auto">
         <div className="relative mb-6 bg-white rounded-2xl p-6 shadow-sm border border-border">
-          <div className="absolute left-6 top-1/2 -translate-y-1/2 flex flex-col items-center gap-1">
-            <span className="italic font-serif tracking-wider text-blue-600 text-xs md:text-sm">
-              Built By
-            </span>
-            <img src={muntieLogo} alt="Medicare Optimizer" className="h-16 w-16 object-contain" />
+          <div className="absolute left-6 top-1/2 -translate-y-1/2">
+            <div className="relative">
+              <img src={muntieLogo} alt="Medicare Optimizer" className="h-16 w-16 object-contain" />
+              <span className="absolute bottom-0 right-1/2 translate-x-1/2 translate-y-1 italic font-serif tracking-wider text-blue-600 text-[10px] md:text-xs whitespace-nowrap">
+                Built By
+              </span>
+            </div>
           </div>
           <div className="text-center px-28">
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-emerald leading-tight">The Medicare Optimizer</h1>
