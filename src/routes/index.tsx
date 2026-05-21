@@ -43,19 +43,19 @@ function Index() {
       <SecurityBanner />
       <main className="flex-1 grid lg:grid-cols-2 items-center gap-10 px-6 lg:px-16 py-12 max-w-7xl mx-auto w-full">
         <div className="space-y-6">
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-border flex items-center justify-center gap-5">
-            <div className="flex items-center gap-2">
+          <div className="relative bg-white rounded-2xl p-6 shadow-sm border border-border">
+            <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center gap-2">
               <span
-                className="text-[9px] italic font-serif tracking-wider text-blue-600 leading-none"
+                className="italic font-serif tracking-wider text-blue-600 leading-none text-lg md:text-xl h-20 flex items-center"
                 style={{ writingMode: "vertical-rl" }}
               >
                 Built By
               </span>
               <img src={muntieLogo} alt="Medicare Optimizer" className="h-20 w-20 object-contain" />
             </div>
-            <div>
+            <div className="text-center">
               <h1 className="font-display text-4xl md:text-5xl font-extrabold tracking-tight leading-tight text-emerald">The Medicare Optimizer</h1>
-              <p className="text-base md:text-lg text-emerald/80 font-medium mt-1">Getting the Best Bang for your Medical Needs - You Deserve It!</p>
+              <p className="text-base md:text-lg text-emerald font-semibold mt-1">Getting the Best Bang For Your Medical Needs Because You Deserve It!</p>
             </div>
           </div>
           <p className="text-lg text-muted-foreground max-w-xl">
