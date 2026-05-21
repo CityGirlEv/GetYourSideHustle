@@ -19,16 +19,25 @@ function ClientPortal() {
   const [signed, setSigned] = useState(false);
 
   useEffect(() => {
-    if (!user) router.navigate({ to: "/" });
+    if (!user) router.navigate({ to: "/auth" });
   }, [user, router]);
 
   if (!user) return null;
-  // Demo: client portal shows the first client record
+  // Show the first decrypted client record (if any)
   const client = clients[0];
+  if (!client) {
+    return (
+      <AppShell title="Welcome" subtitle="No client record yet">
+        <Card className="glass p-6 text-center text-sm text-muted-foreground">
+          No client record is linked to your account yet. Ask your advisor to add you.
+        </Card>
+      </AppShell>
+    );
+  }
   const soa = soas.find((s) => s.client_id === client.id && s.status === "active");
 
   const onSign = (sig: string) => {
-    addSOA({
+    void addSOA({
       client_id: client.id,
       signed_signature_data: sig,
       signature_hash: btoa(sig).slice(0, 24),

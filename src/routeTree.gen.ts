@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ClientRouteImport } from './routes/client'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdvisorRouteImport } from './routes/advisor'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
@@ -17,6 +18,11 @@ import { Route as IndexRouteImport } from './routes/index'
 const ClientRoute = ClientRouteImport.update({
   id: '/client',
   path: '/client',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdvisorRoute = AdvisorRouteImport.update({
@@ -39,12 +45,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/advisor': typeof AdvisorRoute
+  '/auth': typeof AuthRoute
   '/client': typeof ClientRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/advisor': typeof AdvisorRoute
+  '/auth': typeof AuthRoute
   '/client': typeof ClientRoute
 }
 export interface FileRoutesById {
@@ -52,20 +60,22 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/advisor': typeof AdvisorRoute
+  '/auth': typeof AuthRoute
   '/client': typeof ClientRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/advisor' | '/client'
+  fullPaths: '/' | '/admin' | '/advisor' | '/auth' | '/client'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/advisor' | '/client'
-  id: '__root__' | '/' | '/admin' | '/advisor' | '/client'
+  to: '/' | '/admin' | '/advisor' | '/auth' | '/client'
+  id: '__root__' | '/' | '/admin' | '/advisor' | '/auth' | '/client'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   AdvisorRoute: typeof AdvisorRoute
+  AuthRoute: typeof AuthRoute
   ClientRoute: typeof ClientRoute
 }
 
@@ -76,6 +86,13 @@ declare module '@tanstack/react-router' {
       path: '/client'
       fullPath: '/client'
       preLoaderRoute: typeof ClientRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/advisor': {
@@ -106,6 +123,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   AdvisorRoute: AdvisorRoute,
+  AuthRoute: AuthRoute,
   ClientRoute: ClientRoute,
 }
 export const routeTree = rootRouteImport

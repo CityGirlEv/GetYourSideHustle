@@ -3,20 +3,20 @@ import { Link, useRouter } from "@tanstack/react-router";
 import { SecurityBanner } from "./SecurityBanner";
 import { CMSFooter } from "./CMSFooter";
 import { YearToggle } from "./YearToggle";
-import { LogOut } from "lucide-react";
+import { LogOut, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CreditPill } from "./CreditPill";
 import type { ReactNode } from "react";
 import muntieLogo from "@/assets/muntie-logo.png";
+import { HipaaAck } from "./HipaaAck";
 
 export function AppShell({ children, title, subtitle }: { children: ReactNode; title: string; subtitle?: string }) {
-  const { user, setUser, log } = useApp();
+  const { user, signOut, lock } = useApp();
   const router = useRouter();
 
-  const logout = () => {
-    log("LOGOUT");
-    setUser(null);
-    router.navigate({ to: "/" });
+  const logout = async () => {
+    await signOut();
+    router.navigate({ to: "/auth" });
   };
 
   return (
@@ -35,7 +35,8 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
                 <div className="font-medium">{user.full_name}</div>
                 <div className="text-xs text-muted-foreground capitalize">{user.role}{user.npn_number && ` · NPN ${user.npn_number}`}</div>
               </div>
-              <Button size="sm" variant="ghost" onClick={logout}><LogOut className="h-4 w-4" /></Button>
+              <Button size="sm" variant="ghost" onClick={lock} title="Lock vault"><Lock className="h-4 w-4" /></Button>
+              <Button size="sm" variant="ghost" onClick={logout} title="Sign out"><LogOut className="h-4 w-4" /></Button>
             </div>
           )}
         </div>
@@ -55,6 +56,7 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
         {children}
       </main>
       <CMSFooter />
+      <HipaaAck />
     </div>
   );
 }

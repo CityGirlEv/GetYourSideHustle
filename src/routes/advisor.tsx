@@ -21,14 +21,14 @@ function AdvisorPortal() {
   const [selected, setSelected] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user) router.navigate({ to: "/" });
+    if (!user) router.navigate({ to: "/auth" });
   }, [user, router]);
   if (!user) return null;
 
   const active = selected ? clients.find((c) => c.id === selected) : null;
 
-  const exportDossier = () => {
-    if (!deductCredit("Exported dossier PDF")) {
+  const exportDossier = async () => {
+    if (!(await deductCredit("Exported dossier PDF"))) {
       toast.error("Out of credits — top up to continue auditing.");
       return;
     }
