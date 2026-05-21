@@ -51,7 +51,7 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
             </span>
             <img src={muntieLogo} alt="Medicare Optimizer" className="h-16 w-16 object-contain" />
           </div>
-          <div className="text-center">
+          <div className="text-center px-28">
             <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-emerald leading-tight">The Medicare Optimizer</h1>
             <p className="text-base md:text-lg text-emerald font-semibold mt-1">Getting the Best Bang For Your Medical Needs Because You Deserve It!</p>
           </div>
