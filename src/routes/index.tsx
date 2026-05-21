@@ -53,7 +53,7 @@ function Index() {
               </span>
               <img src={muntieLogo} alt="Medicare Optimizer" className="h-20 w-20 object-contain" />
             </div>
-            <div className="text-center">
+            <div className="text-center px-32">
               <h1 className="font-display text-4xl md:text-5xl font-extrabold tracking-tight leading-tight text-emerald">The Medicare Optimizer</h1>
               <p className="text-base md:text-lg text-emerald font-semibold mt-1">Getting the Best Bang For Your Medical Needs Because You Deserve It!</p>
             </div>
