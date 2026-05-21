@@ -44,11 +44,13 @@ function Index() {
       <main className="flex-1 grid lg:grid-cols-2 items-center gap-10 px-6 lg:px-16 py-12 max-w-7xl mx-auto w-full">
         <div className="space-y-6">
           <div className="relative bg-white rounded-2xl p-6 shadow-sm border border-border">
-            <div className="absolute left-6 top-1/2 -translate-y-1/2 flex flex-col items-center gap-1">
-              <span className="italic font-serif tracking-wider text-blue-600 text-xs md:text-sm">
-                Built By
-              </span>
-              <img src={muntieLogo} alt="Medicare Optimizer" className="h-20 w-20 object-contain" />
+            <div className="absolute left-6 top-1/2 -translate-y-1/2">
+              <div className="relative">
+                <img src={muntieLogo} alt="Medicare Optimizer" className="h-20 w-20 object-contain" />
+                <span className="absolute bottom-0 right-1/2 translate-x-1/2 translate-y-1 italic font-serif tracking-wider text-blue-600 text-[10px] md:text-xs whitespace-nowrap">
+                  Built By
+                </span>
+              </div>
             </div>
             <div className="text-center px-32">
               <h1 className="font-display text-2xl md:text-3xl font-extrabold tracking-tight leading-tight text-emerald">The Medicare Optimizer</h1>
