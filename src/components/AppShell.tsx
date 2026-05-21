@@ -24,8 +24,7 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
       <SecurityBanner />
       <header className="glass border-b border-border/60 px-6 py-3 flex items-center justify-between gap-4 flex-wrap sticky top-0 z-30">
         <Link to="/" className="flex items-center gap-2 font-display font-bold text-lg">
-          <img src={muntieLogo} alt="Muntie's AI Agents" className="h-10 w-10 object-contain" />
-          Muntie<span className="text-emerald">'s</span>
+          <img src={muntieLogo} alt="Muntie's AI Agents" className="h-14 w-14 object-contain" />
         </Link>
         <div className="flex items-center gap-3 flex-wrap">
           <YearToggle />
