@@ -5,7 +5,7 @@ import { Label } from "./ui/label";
 import { Button } from "./ui/button";
 import { Switch } from "./ui/switch";
 import { Plus, Trash2, ChevronRight, ChevronLeft, Pill, ShieldAlert } from "lucide-react";
-import { resolveDiagnosis } from "@/lib/diagnosis-resolver";
+import { resolveDiagnosis, COMMON_MEDS_BY_CONDITION } from "@/lib/diagnosis-resolver";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Medication } from "@/lib/medicare-math";
@@ -152,6 +152,70 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
             <h3 className="font-display text-xl font-bold">Step 4 · Medications</h3>
             <Button size="sm" variant="outline" onClick={() => setMeds([...meds, blankMed()])}><Plus className="h-4 w-4 mr-1"/>Add</Button>
           </div>
+
+          <Card className="p-4 bg-muted/40 border-dashed">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Your scenario so far</div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-sm">
+              <div><span className="text-muted-foreground">Birth year:</span> {birthYear}</div>
+              <div><span className="text-muted-foreground">ZIP3:</span> {zip3 || "—"}</div>
+              <div><span className="text-muted-foreground">Gender:</span> {gender.replace(/_/g," ")}</div>
+              <div><span className="text-muted-foreground">Tobacco:</span> {tobacco ? "Yes" : "No"}</div>
+              <div className="col-span-2"><span className="text-muted-foreground">Income:</span> {incomeBand}</div>
+              <div className="col-span-2"><span className="text-muted-foreground">Priority:</span> {costPref === "minimize_monthly" ? "Minimize monthly cost" : "Predictability"}</div>
+              <div className="col-span-full">
+                <span className="text-muted-foreground">Conditions:</span>{" "}
+                {conditions.length ? conditions.join(", ") : "None selected"}
+              </div>
+            </div>
+          </Card>
+
+          {(() => {
+            const suggestions = conditions.flatMap((c) =>
+              (COMMON_MEDS_BY_CONDITION[c] ?? []).map((m) => ({ ...m, condition: c }))
+            );
+            if (!suggestions.length) return (
+              <p className="text-xs text-muted-foreground">
+                Tip: go back to Step 3 and pick your conditions to see a list of common medications you can add with one click.
+              </p>
+            );
+            return (
+              <Card className="p-4 bg-primary/5 border-primary/20">
+                <div className="text-sm font-semibold mb-2">Common medications for your conditions</div>
+                <p className="text-xs text-muted-foreground mb-3">Don't remember the exact drug? Click any to add it — you can edit details after.</p>
+                <div className="flex flex-wrap gap-2">
+                  {suggestions.map((s, i) => {
+                    const already = meds.some((m) => m.medication_name.trim().toLowerCase() === s.name.toLowerCase());
+                    return (
+                      <button
+                        key={`${s.name}-${i}`}
+                        type="button"
+                        disabled={already}
+                        onClick={() => setMeds((p) => {
+                          const next: Medication = {
+                            id: crypto.randomUUID(),
+                            medication_name: s.name,
+                            strength: s.strength ?? "",
+                            dosage_form: s.form ?? "Tablet",
+                            frequency: s.freq ?? "Daily",
+                            estimated_monthly_retail: s.retail ?? 25,
+                            resolved_diagnosis: resolveDiagnosis(s.name) ?? s.condition,
+                          };
+                          // If the only existing med is empty, replace it.
+                          if (p.length === 1 && !p[0].medication_name.trim()) return [next];
+                          return [...p, next];
+                        })}
+                        className={`text-xs border rounded-full px-3 py-1.5 transition ${already ? "bg-muted text-muted-foreground border-border cursor-not-allowed" : "bg-background border-primary/40 hover:bg-primary hover:text-primary-foreground"}`}
+                      >
+                        <Plus className="h-3 w-3 inline mr-1" />
+                        {s.name} {s.strength ? <span className="opacity-70">({s.strength})</span> : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              </Card>
+            );
+          })()}
+
           {meds.map((m) => (
             <Card key={m.id} className="p-4 space-y-2">
               <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
