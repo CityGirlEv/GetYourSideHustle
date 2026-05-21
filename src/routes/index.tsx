@@ -44,7 +44,7 @@ function Index() {
       <main className="flex-1 grid lg:grid-cols-2 items-center gap-10 px-6 lg:px-16 py-12 max-w-7xl mx-auto w-full">
         <div className="space-y-6">
           <div className="flex items-center gap-2 font-display font-bold text-xl">
-            <img src={muntieLogo} alt="Muntie's AI Agents" className="h-10 w-10 rounded-xl object-cover shadow" />
+            <img src={muntieLogo} alt="Muntie's AI Agents" className="h-12 w-12 object-contain" />
             Muntie<span className="text-emerald">'s</span>
           </div>
           <h1 className="font-display text-4xl md:text-6xl font-extrabold tracking-tight leading-[1.05]">
