@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ShieldCheck, Bot, User, UserCog, Crown, KeyRound, Lock } from "lucide-react";
+import { ShieldCheck, User, UserCog, Crown, KeyRound, Lock } from "lucide-react";
 import { SecurityBanner } from "@/components/SecurityBanner";
 import { CMSFooter } from "@/components/CMSFooter";
+import muntieLogo from "@/assets/muntie-logo.png";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -43,7 +44,7 @@ function Index() {
       <main className="flex-1 grid lg:grid-cols-2 items-center gap-10 px-6 lg:px-16 py-12 max-w-7xl mx-auto w-full">
         <div className="space-y-6">
           <div className="flex items-center gap-2 font-display font-bold text-xl">
-            <span className="h-10 w-10 rounded-xl grad-indigo flex items-center justify-center shadow"><Bot className="h-5 w-5 text-white"/></span>
+            <img src={muntieLogo} alt="Muntie's AI Agents" className="h-10 w-10 rounded-xl object-cover shadow" />
             Muntie<span className="text-emerald">'s</span>
           </div>
           <h1 className="font-display text-4xl md:text-6xl font-extrabold tracking-tight leading-[1.05]">
