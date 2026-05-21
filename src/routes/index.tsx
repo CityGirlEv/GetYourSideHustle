@@ -51,8 +51,8 @@ function Index() {
               <img src={muntieLogo} alt="Medicare Optimizer" className="h-20 w-20 object-contain" />
             </div>
             <div className="text-center px-32">
-              <h1 className="font-display text-4xl md:text-5xl font-extrabold tracking-tight leading-tight text-emerald">The Medicare Optimizer</h1>
-              <p className="text-base md:text-lg text-emerald font-semibold mt-1">Getting the Best Bang For Your Medical Needs Because You Deserve It!</p>
+              <h1 className="font-display text-2xl md:text-3xl font-extrabold tracking-tight leading-tight text-emerald">The Medicare Optimizer</h1>
+              <p className="text-sm md:text-base text-emerald font-semibold mt-1">Getting the Best Bang For Your Medical Needs Because You Deserve It!</p>
             </div>
           </div>
           <p className="text-lg text-muted-foreground max-w-xl">
