@@ -46,9 +46,6 @@ function Index() {
           <div className="relative bg-white rounded-2xl p-6 shadow-sm border border-border">
             <div className="absolute left-6 top-1/2 -translate-y-1/2">
               <div className="relative">
-                <span className="absolute top-0 right-1/2 translate-x-1/2 -translate-y-3 italic font-serif tracking-wider text-blue-600 text-[10px] md:text-xs whitespace-nowrap">
-                  Built By
-                </span>
                 <img src={muntieLogo} alt="Medicare Optimizer" className="h-20 w-20 object-contain" />
               </div>
             </div>
