@@ -3,7 +3,7 @@ import { Link, useRouter } from "@tanstack/react-router";
 import { SecurityBanner } from "./SecurityBanner";
 import { CMSFooter } from "./CMSFooter";
 import { YearToggle } from "./YearToggle";
-import { LogOut, Stethoscope } from "lucide-react";
+import { LogOut, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CreditPill } from "./CreditPill";
 import type { ReactNode } from "react";
@@ -24,9 +24,9 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
       <header className="glass border-b border-border/60 px-6 py-3 flex items-center justify-between gap-4 flex-wrap sticky top-0 z-30">
         <Link to="/" className="flex items-center gap-2 font-display font-bold text-lg">
           <span className="h-9 w-9 rounded-xl grad-indigo flex items-center justify-center shadow">
-            <Stethoscope className="h-5 w-5 text-white" />
+            <Bot className="h-5 w-5 text-white" />
           </span>
-          Meridian<span className="text-emerald">Care</span>
+          Muntie<span className="text-emerald">'s</span>
         </Link>
         <div className="flex items-center gap-3 flex-wrap">
           <YearToggle />
