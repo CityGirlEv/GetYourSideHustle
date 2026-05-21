@@ -31,17 +31,18 @@ export function IntakeWizard({ onDone }: { onDone?: () => void }) {
       return next;
     }));
 
-  const finish = () => {
-    if (user?.role === "advisor" && !deductCredit("Created client + dossier")) {
+  const finish = async () => {
+    if (user?.role === "advisor" && !(await deductCredit("Created client + dossier"))) {
       toast.error("Out of credits. Please top up to create a client.");
       return;
     }
-    const c = addClient({
+    const c = await addClient({
       first_name: profile.first_name, last_name: profile.last_name, dob: profile.dob,
       zip_code: profile.zip_code, county: profile.county, monthly_cost_concern: costConcern, meds,
       advisor_id: user?.role === "advisor" ? user.id : undefined,
     });
-    toast.success(`Client ${c.first_name} created`);
+    if (!c) { toast.error("Could not create client"); return; }
+    toast.success(`Client ${c.first_name} created (encrypted)`);
     onDone?.();
   };
 
