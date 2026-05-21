@@ -44,7 +44,7 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
         <div className="relative mb-6 bg-white rounded-2xl p-6 shadow-sm border border-border">
           <div className="absolute left-6 top-1/2 -translate-y-1/2">
             <div className="relative">
-              <span className="absolute top-0 right-1/2 translate-x-1/2 -translate-y-1 italic font-serif tracking-wider text-blue-600 text-[10px] md:text-xs whitespace-nowrap">
+              <span className="absolute top-0 right-1/2 translate-x-1/2 -translate-y-3 italic font-serif tracking-wider text-blue-600 text-[10px] md:text-xs whitespace-nowrap">
                 Built By
               </span>
               <img src={muntieLogo} alt="Medicare Optimizer" className="h-16 w-16 object-contain" />
@@ -52,7 +52,7 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
           </div>
           <div className="text-center px-28">
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-emerald leading-tight">The Medicare Optimizer</h1>
-            <p className="text-sm md:text-base text-emerald font-semibold mt-1">Getting the Best Bang For Your Medical Needs Because You Deserve It!</p>
+            <p className="text-xs md:text-sm italic text-emerald font-semibold mt-1">Getting the Best Bang For Your Medical Needs Because You Deserve It!</p>
           </div>
         </div>
         {children}

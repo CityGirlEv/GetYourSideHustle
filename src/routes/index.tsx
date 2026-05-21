@@ -46,7 +46,7 @@ function Index() {
           <div className="relative bg-white rounded-2xl p-6 shadow-sm border border-border">
             <div className="absolute left-6 top-1/2 -translate-y-1/2">
               <div className="relative">
-                <span className="absolute top-0 right-1/2 translate-x-1/2 -translate-y-1 italic font-serif tracking-wider text-blue-600 text-[10px] md:text-xs whitespace-nowrap">
+                <span className="absolute top-0 right-1/2 translate-x-1/2 -translate-y-3 italic font-serif tracking-wider text-blue-600 text-[10px] md:text-xs whitespace-nowrap">
                   Built By
                 </span>
                 <img src={muntieLogo} alt="Medicare Optimizer" className="h-20 w-20 object-contain" />
@@ -54,7 +54,7 @@ function Index() {
             </div>
             <div className="text-center px-32">
               <h1 className="font-display text-2xl md:text-3xl font-extrabold tracking-tight leading-tight text-emerald">The Medicare Optimizer</h1>
-              <p className="text-sm md:text-base text-emerald font-semibold mt-1">Getting the Best Bang For Your Medical Needs Because You Deserve It!</p>
+              <p className="text-xs md:text-sm italic text-emerald font-semibold mt-1">Getting the Best Bang For Your Medical Needs Because You Deserve It!</p>
             </div>
           </div>
           <p className="text-lg text-muted-foreground max-w-xl">
