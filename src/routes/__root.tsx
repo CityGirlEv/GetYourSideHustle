@@ -78,10 +78,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "description", content: "AI-powered Medicare plan optimizer & advisor platform with HIPAA-compliant workflows for 2026 and 2027 federal guidelines." },
       { name: "author", content: "Muntie's AI Agents" },
       { property: "og:title", content: "Muntie's AI Agents · HIPAA-Secure Medicare Optimizer" },
-      { property: "og:description", content: "Compare Original Medicare + Medigap vs Medicare Advantage under live 2026/2027 rules." },
+      { property: "og:description", content: "AI-powered Medicare plan optimizer & advisor platform with HIPAA-compliant workflows for 2026 and 2027 federal guidelines." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "Muntie's AI Agents · HIPAA-Secure Medicare Optimizer" },
+      { name: "twitter:description", content: "AI-powered Medicare plan optimizer & advisor platform with HIPAA-compliant workflows for 2026 and 2027 federal guidelines." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9760489b-c5dc-49c9-a55e-8d71d9a248c8/id-preview-0fae72f9--ddccd332-57e9-4c5b-956b-437effa2470c.lovable.app-1779404467518.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9760489b-c5dc-49c9-a55e-8d71d9a248c8/id-preview-0fae72f9--ddccd332-57e9-4c5b-956b-437effa2470c.lovable.app-1779404467518.png" },
     ],
     links: [
       {
