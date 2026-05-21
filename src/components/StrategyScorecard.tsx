@@ -1,15 +1,15 @@
 import { calcPathways, usd, GUIDELINES } from "@/lib/medicare-math";
-import { useApp, type Client } from "@/lib/app-store";
+import { useApp, type Scenario } from "@/lib/app-store";
 import { AlertTriangle, Check, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
 import { Card } from "./ui/card";
 
-export function StrategyScorecard({ client }: { client: Client }) {
+export function StrategyScorecard({ scenario }: { scenario: Scenario }) {
   const { year } = useApp();
   const g = GUIDELINES[year];
-  const hasDME = client.meds.some((m) => /CGM|Pump|CPAP|DME/i.test(m.resolved_diagnosis ?? m.dosage_form));
-  const { A, B } = calcPathways({ year, county: client.county, meds: client.meds, hasDME });
-
-  const recommend = client.monthly_cost_concern && B.totalAnnual < A.totalAnnual ? "B" : "A";
+  const hasDME = scenario.medications.some((m) => /CGM|Pump|CPAP|DME/i.test(m.resolved_diagnosis ?? m.dosage_form));
+  const { A, B } = calcPathways({ year, zip3: scenario.zip3, meds: scenario.medications, hasDME });
+  const minimize = scenario.cost_preference === "minimize_monthly";
+  const recommend = minimize && B.totalAnnual < A.totalAnnual ? "B" : "A";
   const winner = recommend === "A" ? A : B;
 
   return (
@@ -32,16 +32,14 @@ export function StrategyScorecard({ client }: { client: Client }) {
         </div>
       </Card>
 
-      {client.monthly_cost_concern && (
+      {minimize && (
         <Card className="glass p-4 border-warning/40 bg-warning/5">
           <div className="flex gap-3">
             <AlertTriangle className="h-5 w-5 text-warning shrink-0 mt-0.5"/>
             <div className="text-sm">
               <div className="font-semibold">MOOP surprise risk on Medicare Advantage</div>
               <div className="text-muted-foreground">
-                You've flagged monthly cost predictability as critical. Pathway B caps annual
-                medical out-of-pocket between {usd(g.moopLow)}–{usd(g.moopHigh)}. Pathway A
-                (Medigap Plan G) covers 100% of Part B coinsurance after the {usd(g.partBDeductible)} deductible — virtually no surprise hospital bills.
+                Monthly cost predictability is flagged as critical. Pathway B caps annual medical out-of-pocket between {usd(g.moopLow)}–{usd(g.moopHigh)}. Pathway A (Medigap Plan G) covers 100% of Part B coinsurance after the {usd(g.partBDeductible)} deductible.
               </div>
             </div>
           </div>

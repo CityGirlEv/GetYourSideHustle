@@ -3,15 +3,14 @@ import { Link, useRouter } from "@tanstack/react-router";
 import { SecurityBanner } from "./SecurityBanner";
 import { CMSFooter } from "./CMSFooter";
 import { YearToggle } from "./YearToggle";
-import { LogOut, Lock } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CreditPill } from "./CreditPill";
 import type { ReactNode } from "react";
 import muntieLogo from "@/assets/muntie-logo.png";
-import { HipaaAck } from "./HipaaAck";
 
 export function AppShell({ children, title, subtitle }: { children: ReactNode; title: string; subtitle?: string }) {
-  const { user, signOut, lock } = useApp();
+  const { user, signOut } = useApp();
   const router = useRouter();
 
   const logout = async () => {
@@ -24,7 +23,7 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
       <SecurityBanner />
       <header className="glass border-b border-border/60 px-6 py-3 flex items-center justify-between gap-4 flex-wrap sticky top-0 z-30">
         <Link to="/" className="flex items-center gap-2 font-display font-bold text-lg">
-          <img src={muntieLogo} alt="Muntie's AI Agents" className="h-14 w-14 object-contain" />
+          <img src={muntieLogo} alt="Medicare Optimizer" className="h-14 w-14 object-contain" />
         </Link>
         <div className="flex items-center gap-3 flex-wrap">
           <YearToggle />
@@ -35,7 +34,6 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
                 <div className="font-medium">{user.full_name}</div>
                 <div className="text-xs text-muted-foreground capitalize">{user.role}{user.npn_number && ` · NPN ${user.npn_number}`}</div>
               </div>
-              <Button size="sm" variant="ghost" onClick={lock} title="Lock vault"><Lock className="h-4 w-4" /></Button>
               <Button size="sm" variant="ghost" onClick={logout} title="Sign out"><LogOut className="h-4 w-4" /></Button>
             </div>
           )}
@@ -44,19 +42,16 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
       <main className="flex-1 px-4 md:px-8 py-8 max-w-7xl w-full mx-auto">
         <div className="relative mb-6 bg-white rounded-2xl p-6 shadow-sm border border-border">
           <div className="absolute left-6 top-1/2 -translate-y-1/2">
-            <div className="relative">
-              <img src={muntieLogo} alt="Medicare Optimizer" className="h-16 w-16 object-contain" />
-            </div>
+            <img src={muntieLogo} alt="Medicare Optimizer" className="h-16 w-16 object-contain" />
           </div>
           <div className="text-center px-28">
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-emerald leading-tight">The Medicare Optimizer</h1>
-            <p className="text-xs md:text-sm italic text-emerald font-semibold mt-1">Getting the Best Bang For Your Medical Needs Because You Deserve It!</p>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-emerald leading-tight">{title}</h1>
+            {subtitle && <p className="text-xs md:text-sm italic text-emerald font-semibold mt-1">{subtitle}</p>}
           </div>
         </div>
         {children}
       </main>
       <CMSFooter />
-      <HipaaAck />
     </div>
   );
 }

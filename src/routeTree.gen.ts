@@ -13,6 +13,9 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdvisorRouteImport } from './routes/advisor'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ScenarioNewRouteImport } from './routes/scenario.new'
+import { Route as ScenarioCreatedCodeRouteImport } from './routes/scenario.created.$code'
+import { Route as AdvisorScenarioCodeRouteImport } from './routes/advisor.scenario.$code'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -34,39 +37,87 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ScenarioNewRoute = ScenarioNewRouteImport.update({
+  id: '/scenario/new',
+  path: '/scenario/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScenarioCreatedCodeRoute = ScenarioCreatedCodeRouteImport.update({
+  id: '/scenario/created/$code',
+  path: '/scenario/created/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdvisorScenarioCodeRoute = AdvisorScenarioCodeRouteImport.update({
+  id: '/scenario/$code',
+  path: '/scenario/$code',
+  getParentRoute: () => AdvisorRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
-  '/advisor': typeof AdvisorRoute
+  '/advisor': typeof AdvisorRouteWithChildren
   '/auth': typeof AuthRoute
+  '/scenario/new': typeof ScenarioNewRoute
+  '/advisor/scenario/$code': typeof AdvisorScenarioCodeRoute
+  '/scenario/created/$code': typeof ScenarioCreatedCodeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
-  '/advisor': typeof AdvisorRoute
+  '/advisor': typeof AdvisorRouteWithChildren
   '/auth': typeof AuthRoute
+  '/scenario/new': typeof ScenarioNewRoute
+  '/advisor/scenario/$code': typeof AdvisorScenarioCodeRoute
+  '/scenario/created/$code': typeof ScenarioCreatedCodeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
-  '/advisor': typeof AdvisorRoute
+  '/advisor': typeof AdvisorRouteWithChildren
   '/auth': typeof AuthRoute
+  '/scenario/new': typeof ScenarioNewRoute
+  '/advisor/scenario/$code': typeof AdvisorScenarioCodeRoute
+  '/scenario/created/$code': typeof ScenarioCreatedCodeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/advisor' | '/auth'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/advisor'
+    | '/auth'
+    | '/scenario/new'
+    | '/advisor/scenario/$code'
+    | '/scenario/created/$code'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/advisor' | '/auth'
-  id: '__root__' | '/' | '/admin' | '/advisor' | '/auth'
+  to:
+    | '/'
+    | '/admin'
+    | '/advisor'
+    | '/auth'
+    | '/scenario/new'
+    | '/advisor/scenario/$code'
+    | '/scenario/created/$code'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/advisor'
+    | '/auth'
+    | '/scenario/new'
+    | '/advisor/scenario/$code'
+    | '/scenario/created/$code'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
-  AdvisorRoute: typeof AdvisorRoute
+  AdvisorRoute: typeof AdvisorRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ScenarioNewRoute: typeof ScenarioNewRoute
+  ScenarioCreatedCodeRoute: typeof ScenarioCreatedCodeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -99,14 +150,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/scenario/new': {
+      id: '/scenario/new'
+      path: '/scenario/new'
+      fullPath: '/scenario/new'
+      preLoaderRoute: typeof ScenarioNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scenario/created/$code': {
+      id: '/scenario/created/$code'
+      path: '/scenario/created/$code'
+      fullPath: '/scenario/created/$code'
+      preLoaderRoute: typeof ScenarioCreatedCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/advisor/scenario/$code': {
+      id: '/advisor/scenario/$code'
+      path: '/scenario/$code'
+      fullPath: '/advisor/scenario/$code'
+      preLoaderRoute: typeof AdvisorScenarioCodeRouteImport
+      parentRoute: typeof AdvisorRoute
+    }
   }
 }
+
+interface AdvisorRouteChildren {
+  AdvisorScenarioCodeRoute: typeof AdvisorScenarioCodeRoute
+}
+
+const AdvisorRouteChildren: AdvisorRouteChildren = {
+  AdvisorScenarioCodeRoute: AdvisorScenarioCodeRoute,
+}
+
+const AdvisorRouteWithChildren =
+  AdvisorRoute._addFileChildren(AdvisorRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
-  AdvisorRoute: AdvisorRoute,
+  AdvisorRoute: AdvisorRouteWithChildren,
   AuthRoute: AuthRoute,
+  ScenarioNewRoute: ScenarioNewRoute,
+  ScenarioCreatedCodeRoute: ScenarioCreatedCodeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
