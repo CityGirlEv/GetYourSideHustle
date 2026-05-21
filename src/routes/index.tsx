@@ -44,11 +44,8 @@ function Index() {
       <main className="flex-1 grid lg:grid-cols-2 items-center gap-10 px-6 lg:px-16 py-12 max-w-7xl mx-auto w-full">
         <div className="space-y-6">
           <div className="relative bg-white rounded-2xl p-6 shadow-sm border border-border">
-            <div className="absolute left-6 top-1/2 -translate-y-1/2 flex items-center gap-2">
-              <span
-                className="italic font-serif tracking-wider text-blue-600 leading-none text-lg md:text-xl h-20 flex items-center"
-                style={{ writingMode: "vertical-rl" }}
-              >
+            <div className="absolute left-6 top-1/2 -translate-y-1/2 flex flex-col items-center gap-1">
+              <span className="italic font-serif tracking-wider text-blue-600 text-xs md:text-sm">
                 Built By
               </span>
               <img src={muntieLogo} alt="Medicare Optimizer" className="h-20 w-20 object-contain" />
