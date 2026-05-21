@@ -1,10 +1,9 @@
-import { createContext, useContext, useEffect, useState, useCallback, useRef, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
-import { deriveKey, encryptJSON, decryptJSON, createVerifier, checkVerifier, newSaltB64 } from "./crypto-phi";
 import type { Year, Medication } from "./medicare-math";
 
-export type Role = "client" | "advisor" | "admin";
+export type Role = "advisor" | "admin";
 
 export interface User {
   id: string;
@@ -12,29 +11,32 @@ export interface User {
   full_name: string;
   role: Role;
   npn_number?: string;
-  hipaa_acknowledged_at: string | null;
 }
 
-export interface Client {
+export interface Scenario {
   id: string;
-  advisor_id?: string;
-  first_name: string;
-  last_name: string;
-  dob: string;
-  zip_code: string;
-  county: string;
-  monthly_cost_concern: boolean;
-  meds: Medication[];
+  scenario_code: string;
+  birth_year: number;
+  zip3: string;
+  gender: string | null;
+  tobacco: boolean;
+  income_band: string | null;
+  cost_preference: "minimize_monthly" | "predictability";
+  medications: Medication[];
+  conditions: string[];
+  preferences: Record<string, unknown>;
+  claimed_by: string | null;
+  claimed_at: string | null;
+  created_at: string;
+  expires_at: string;
 }
 
 export interface SOA {
   id: string;
-  client_id: string;
-  signed_signature_data: string;
-  signature_hash: string;
+  scenario_id: string;
+  plan_type: string | null;
+  status: string;
   signed_at: string;
-  ip_address: string;
-  status: "pending" | "active" | "archived";
 }
 
 export interface AuditLog {
@@ -55,91 +57,87 @@ export interface CreditTxn {
   created_at: string;
 }
 
-export type LockState = "loading" | "logged-out" | "needs-setup" | "locked" | "unlocked";
-
 interface Ctx {
   user: User | null;
-  lockState: LockState;
-  setupPassphrase: (passphrase: string) => Promise<void>;
-  unlock: (passphrase: string) => Promise<boolean>;
-  lock: () => void;
+  authLoading: boolean;
   signOut: () => Promise<void>;
-  acknowledgeHipaa: () => Promise<void>;
 
   year: Year;
   setYear: (y: Year) => void;
-  clients: Client[];
-  addClient: (c: Omit<Client, "id">) => Promise<Client | null>;
-  updateClient: (id: string, patch: Partial<Client>) => Promise<void>;
+
+  // Claimed scenarios for this advisor
+  scenarios: Scenario[];
+  refreshScenarios: () => Promise<void>;
+  lookupScenario: (code: string) => Promise<Scenario>;
+
   soas: SOA[];
-  addSOA: (s: Omit<SOA, "id">) => Promise<void>;
+  addSOA: (scenarioId: string, planType: string) => Promise<void>;
+
   credits: number;
   creditTxns: CreditTxn[];
   deductCredit: (description: string) => Promise<boolean>;
   addCredits: (amount: number, description: string) => Promise<void>;
+
   auditLogs: AuditLog[];
   log: (action: string, details?: Record<string, unknown>) => void;
-  activeClientId: string | null;
-  setActiveClientId: (id: string | null) => void;
 
-  // Legacy compatibility — no-op in real auth flow
-  setUser: (u: User | null) => void;
+  activeScenarioCode: string | null;
+  setActiveScenarioCode: (code: string | null) => void;
 }
 
 const AppCtx = createContext<Ctx | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
-  const [user, setUserState] = useState<User | null>(null);
-  const [lockState, setLockState] = useState<LockState>("loading");
-  const keyRef = useRef<CryptoKey | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
   const [year, setYear] = useState<Year>(2026);
-  const [clients, setClients] = useState<Client[]>([]);
+  const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [soas, setSoas] = useState<SOA[]>([]);
   const [credits, setCredits] = useState(0);
   const [creditTxns, setCreditTxns] = useState<CreditTxn[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [activeClientId, setActiveClientId] = useState<string | null>(null);
+  const [activeScenarioCode, setActiveScenarioCode] = useState<string | null>(null);
 
-  // ---- auth bootstrap ----
+  // Auth bootstrap
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
       setSession(s);
       if (!s) {
-        keyRef.current = null;
-        setUserState(null);
-        setClients([]); setSoas([]); setCredits(0); setCreditTxns([]); setAuditLogs([]);
-        setLockState("logged-out");
+        setUser(null);
+        setScenarios([]); setSoas([]); setCredits(0); setCreditTxns([]); setAuditLogs([]);
+        setAuthLoading(false);
       }
     });
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      if (!data.session) setAuthLoading(false);
+    });
     return () => subscription.unsubscribe();
   }, []);
 
-  // Hydrate profile + role + check encryption key existence
+  // Hydrate profile + role
   useEffect(() => {
     if (!session) return;
     let cancelled = false;
     (async () => {
       const uid = session.user.id;
-      const [{ data: profile }, { data: roles }, { data: keyRow }] = await Promise.all([
-        supabase.from("profiles").select("full_name, npn_number, hipaa_acknowledged_at").eq("id", uid).maybeSingle(),
+      const [{ data: profile }, { data: roles }] = await Promise.all([
+        supabase.from("profiles").select("full_name, npn_number").eq("id", uid).maybeSingle(),
         supabase.from("user_roles").select("role").eq("user_id", uid),
-        supabase.from("encryption_keys").select("user_id").eq("user_id", uid).maybeSingle(),
       ]);
       if (cancelled) return;
-      const roleList = (roles ?? []).map((r) => r.role as Role);
-      const role: Role = roleList.includes("admin") ? "admin" : roleList.includes("advisor") ? "advisor" : "client";
-      setUserState({
+      const roleList = (roles ?? []).map((r) => r.role as string);
+      const role: Role = roleList.includes("admin") ? "admin" : "advisor";
+      setUser({
         id: uid,
         email: session.user.email ?? "",
         full_name: profile?.full_name ?? "",
         npn_number: profile?.npn_number ?? undefined,
         role,
-        hipaa_acknowledged_at: profile?.hipaa_acknowledged_at ?? null,
       });
-      setLockState(keyRow ? "locked" : "needs-setup");
+      setAuthLoading(false);
     })();
     return () => { cancelled = true; };
   }, [session]);
@@ -156,7 +154,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       timestamp: new Date().toISOString(),
     };
     setAuditLogs((p) => [entry, ...p]);
-    // Fire-and-forget server insert (RLS scoped to own user_id)
     supabase.from("audit_logs").insert({
       user_id: user.id,
       action,
@@ -164,45 +161,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }).then(({ error }) => { if (error) console.warn("audit insert failed", error.message); });
   }, [user]);
 
-  // Load encrypted data once unlocked
+  const refreshScenarios = useCallback(async () => {
+    if (!user) return;
+    const { data, error } = await supabase.rpc("my_scenarios");
+    if (error) { console.error("my_scenarios", error); return; }
+    setScenarios((data ?? []) as unknown as Scenario[]);
+  }, [user]);
+
+  // Load advisor data once signed in
   useEffect(() => {
-    if (lockState !== "unlocked" || !user || !keyRef.current) return;
+    if (!user) return;
     let cancelled = false;
-    const key = keyRef.current;
     (async () => {
-      const [clientsRes, soasRes, creditsRes, txnRes, logsRes] = await Promise.all([
-        supabase.from("clients_encrypted").select("id, advisor_id, iv, ciphertext, created_at").order("created_at", { ascending: false }),
-        supabase.from("soas_encrypted").select("id, client_id, advisor_id, iv, ciphertext, status, signed_at").order("signed_at", { ascending: false }),
+      const [scenariosRes, soasRes, creditsRes, txnRes, logsRes] = await Promise.all([
+        supabase.rpc("my_scenarios"),
+        supabase.from("soas").select("id, scenario_id, plan_type, status, signed_at").order("signed_at", { ascending: false }),
         supabase.from("advisor_credits").select("balance").eq("advisor_id", user.id).maybeSingle(),
         supabase.from("credit_txns").select("id, advisor_id, amount, description, created_at").order("created_at", { ascending: false }).limit(50),
         supabase.from("audit_logs").select("id, action, metadata, created_at").order("created_at", { ascending: false }).limit(100),
       ]);
       if (cancelled) return;
-
-      const decryptedClients: Client[] = [];
-      for (const row of clientsRes.data ?? []) {
-        try {
-          const body = await decryptJSON<Omit<Client, "id" | "advisor_id">>(key, row.iv, row.ciphertext);
-          decryptedClients.push({ id: row.id, advisor_id: row.advisor_id, ...body });
-        } catch (e) { console.warn("client decrypt failed", row.id); }
-      }
-      setClients(decryptedClients);
-
-      const decryptedSoas: SOA[] = [];
-      for (const row of soasRes.data ?? []) {
-        try {
-          const body = await decryptJSON<Omit<SOA, "id" | "client_id" | "status" | "signed_at">>(key, row.iv, row.ciphertext);
-          decryptedSoas.push({
-            id: row.id,
-            client_id: row.client_id,
-            status: row.status as SOA["status"],
-            signed_at: row.signed_at,
-            ...body,
-          });
-        } catch { /* skip */ }
-      }
-      setSoas(decryptedSoas);
-
+      setScenarios((scenariosRes.data ?? []) as unknown as Scenario[]);
+      setSoas((soasRes.data ?? []) as SOA[]);
       setCredits(creditsRes.data?.balance ?? 0);
       setCreditTxns((txnRes.data ?? []) as CreditTxn[]);
       setAuditLogs((logsRes.data ?? []).map((r) => ({
@@ -216,96 +196,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
       })));
     })();
     return () => { cancelled = true; };
-  }, [lockState, user]);
-
-  // ---- passphrase setup / unlock ----
-  const setupPassphrase = async (passphrase: string) => {
-    if (!user) throw new Error("Not signed in");
-    if (passphrase.length < 12) throw new Error("Passphrase must be at least 12 characters");
-    const salt = newSaltB64();
-    const key = await deriveKey(passphrase, salt);
-    const verifier = await createVerifier(key);
-    const { error } = await supabase.from("encryption_keys").insert({
-      user_id: user.id, salt, verifier_iv: verifier.iv, verifier_ciphertext: verifier.ciphertext,
-    });
-    if (error) throw new Error(error.message);
-    keyRef.current = key;
-    setLockState("unlocked");
-    log("ENCRYPTION_KEY_INITIALIZED");
-  };
-
-  const unlock = async (passphrase: string) => {
-    if (!user) return false;
-    const { data, error } = await supabase.from("encryption_keys")
-      .select("salt, iterations, verifier_iv, verifier_ciphertext").eq("user_id", user.id).maybeSingle();
-    if (error || !data) return false;
-    const key = await deriveKey(passphrase, data.salt, data.iterations);
-    const ok = await checkVerifier(key, data.verifier_iv, data.verifier_ciphertext);
-    if (!ok) { log("UNLOCK_FAILED"); return false; }
-    keyRef.current = key;
-    setLockState("unlocked");
-    log("UNLOCK_SUCCESS");
-    return true;
-  };
-
-  const lock = useCallback(() => {
-    keyRef.current = null;
-    setClients([]); setSoas([]);
-    setLockState((s) => (s === "unlocked" ? "locked" : s));
-    log("VAULT_LOCKED");
-  }, [log]);
+  }, [user]);
 
   const signOut = async () => {
     log("LOGOUT");
-    keyRef.current = null;
     await supabase.auth.signOut();
   };
 
-  const acknowledgeHipaa = async () => {
+  const lookupScenario = async (code: string): Promise<Scenario> => {
+    const { data, error } = await supabase.rpc("lookup_scenario", { p_code: code.trim().toUpperCase() });
+    if (error) throw new Error(error.message);
+    const row = (Array.isArray(data) ? data[0] : data) as unknown as Scenario;
+    if (!row) throw new Error("Scenario not found");
+    setScenarios((p) => {
+      const without = p.filter((s) => s.id !== row.id);
+      return [row, ...without];
+    });
+    log("LOOKUP_SCENARIO", { code: row.scenario_code });
+    return row;
+  };
+
+  const addSOA: Ctx["addSOA"] = async (scenarioId, planType) => {
     if (!user) return;
-    const ts = new Date().toISOString();
-    await supabase.from("profiles").update({ hipaa_acknowledged_at: ts }).eq("id", user.id);
-    setUserState({ ...user, hipaa_acknowledged_at: ts });
-    log("HIPAA_ACKNOWLEDGED");
-  };
-
-  // ---- CRUD (encrypted) ----
-  const addClient: Ctx["addClient"] = async (c) => {
-    if (!user || !keyRef.current) return null;
-    const body = { first_name: c.first_name, last_name: c.last_name, dob: c.dob, zip_code: c.zip_code, county: c.county, monthly_cost_concern: c.monthly_cost_concern, meds: c.meds };
-    const { iv, ciphertext } = await encryptJSON(keyRef.current, body);
-    const { data, error } = await supabase.from("clients_encrypted")
-      .insert({ advisor_id: user.id, iv, ciphertext }).select("id, advisor_id").single();
-    if (error || !data) { console.error("addClient", error); return null; }
-    const created: Client = { id: data.id, advisor_id: data.advisor_id, ...body };
-    setClients((p) => [created, ...p]);
-    log("CREATE_CLIENT", { client: created.id });
-    return created;
-  };
-
-  const updateClient: Ctx["updateClient"] = async (id, patch) => {
-    if (!user || !keyRef.current) return;
-    const existing = clients.find((c) => c.id === id);
-    if (!existing) return;
-    const merged = { ...existing, ...patch };
-    const body = { first_name: merged.first_name, last_name: merged.last_name, dob: merged.dob, zip_code: merged.zip_code, county: merged.county, monthly_cost_concern: merged.monthly_cost_concern, meds: merged.meds };
-    const { iv, ciphertext } = await encryptJSON(keyRef.current, body);
-    const { error } = await supabase.from("clients_encrypted").update({ iv, ciphertext }).eq("id", id);
-    if (error) { console.error("updateClient", error); return; }
-    setClients((p) => p.map((c) => (c.id === id ? merged : c)));
-    log("EDIT_CLIENT", { client: id });
-  };
-
-  const addSOA: Ctx["addSOA"] = async (s) => {
-    if (!user || !keyRef.current) return;
-    const body = { signed_signature_data: s.signed_signature_data, signature_hash: s.signature_hash, ip_address: s.ip_address };
-    const { iv, ciphertext } = await encryptJSON(keyRef.current, body);
-    const { data, error } = await supabase.from("soas_encrypted")
-      .insert({ advisor_id: user.id, client_id: s.client_id, iv, ciphertext, status: s.status, signed_at: s.signed_at })
-      .select("id, signed_at, status").single();
+    const { data, error } = await supabase.from("soas")
+      .insert({ advisor_id: user.id, scenario_id: scenarioId, plan_type: planType, status: "active" })
+      .select("id, scenario_id, plan_type, status, signed_at").single();
     if (error || !data) { console.error("addSOA", error); return; }
-    setSoas((p) => [{ ...s, id: data.id, signed_at: data.signed_at, status: data.status as SOA["status"] }, ...p]);
-    log("SIGN_SOA", { client: s.client_id });
+    setSoas((p) => [data as SOA, ...p]);
+    log("SIGN_SOA", { scenario: scenarioId, plan_type: planType });
   };
 
   const deductCredit: Ctx["deductCredit"] = async (description) => {
@@ -328,30 +246,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setCreditTxns((p) => [{ id: crypto.randomUUID(), advisor_id: user.id, amount, description, created_at: new Date().toISOString() }, ...p]);
   };
 
-  // ---- 15-minute idle auto-lock ----
-  useEffect(() => {
-    if (lockState !== "unlocked") return;
-    let timer: ReturnType<typeof setTimeout>;
-    const reset = () => {
-      clearTimeout(timer);
-      timer = setTimeout(() => { log("AUTO_LOCK_IDLE"); lock(); }, 15 * 60 * 1000);
-    };
-    const events = ["mousemove", "keydown", "click", "touchstart"];
-    events.forEach((e) => window.addEventListener(e, reset));
-    reset();
-    return () => { clearTimeout(timer); events.forEach((e) => window.removeEventListener(e, reset)); };
-  }, [lockState, lock, log]);
-
   return (
     <AppCtx.Provider value={{
-      user, lockState, setupPassphrase, unlock, lock, signOut, acknowledgeHipaa,
+      user, authLoading, signOut,
       year, setYear,
-      clients, addClient, updateClient,
+      scenarios, refreshScenarios, lookupScenario,
       soas, addSOA,
       credits, creditTxns, deductCredit, addCredits,
       auditLogs, log,
-      activeClientId, setActiveClientId,
-      setUser: () => { /* deprecated */ },
+      activeScenarioCode, setActiveScenarioCode,
     }}>{children}</AppCtx.Provider>
   );
 }
@@ -361,7 +264,3 @@ export function useApp() {
   if (!ctx) throw new Error("useApp must be used within AppProvider");
   return ctx;
 }
-
-// Legacy constants — retained so old imports don't break.
-export const ADVISOR_ID = "advisor";
-export const ADMIN_ID = "admin";

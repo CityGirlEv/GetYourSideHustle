@@ -1,23 +1,22 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useEffect } from "react";
-import { useApp } from "@/lib/app-store";
 import { Button } from "@/components/ui/button";
-import { ShieldCheck, Lock, FileLock2 } from "lucide-react";
+import { ShieldCheck, EyeOff, KeyRound, FileText } from "lucide-react";
 import { SecurityBanner } from "@/components/SecurityBanner";
 import { CMSFooter } from "@/components/CMSFooter";
 import muntieLogo from "@/assets/muntie-logo.png";
 
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "The Medicare Optimizer — De-identified Plan Comparison" },
+      { name: "description", content: "Compare Medicare plans without giving up your personal information. We store only de-identified scenarios you control." },
+    ],
+  }),
   component: Index,
 });
 
 function Index() {
-  const { user, lockState } = useApp();
   const router = useRouter();
-
-  useEffect(() => {
-    if (lockState === "unlocked" && user) router.navigate({ to: `/${user.role}` });
-  }, [lockState, user, router]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -34,30 +33,35 @@ function Index() {
             </div>
           </div>
           <p className="text-lg text-muted-foreground max-w-xl">
-            Side-by-side Original Medicare + Medigap vs. Medicare Advantage modeling under live 2026 &amp; 2027 federal rules,
-            built on a zero-knowledge encrypted vault: client PHI is encrypted in your browser before it ever reaches our servers.
+            Side-by-side Original Medicare + Medigap vs. Medicare Advantage modeling under live 2026 &amp; 2027 federal rules — built on a <strong>zero-PII</strong> scenario model. We never collect your name, address, phone, email, Social Security number, Medicare ID, or full date of birth.
           </p>
           <div className="grid sm:grid-cols-3 gap-3 max-w-xl">
-            <div className="glass rounded-xl p-3 text-xs"><Lock className="h-4 w-4 text-primary mb-1" /><strong>AES-256-GCM</strong><br />in-browser encryption</div>
-            <div className="glass rounded-xl p-3 text-xs"><FileLock2 className="h-4 w-4 text-primary mb-1" /><strong>Append-only</strong><br />audit log of every access</div>
-            <div className="glass rounded-xl p-3 text-xs"><ShieldCheck className="h-4 w-4 text-primary mb-1" /><strong>15-min auto-lock</strong><br />on idle</div>
+            <div className="glass rounded-xl p-3 text-xs"><EyeOff className="h-4 w-4 text-primary mb-1" /><strong>No PII collected</strong><br />Year of birth + ZIP3 only</div>
+            <div className="glass rounded-xl p-3 text-xs"><KeyRound className="h-4 w-4 text-primary mb-1" /><strong>Scenario ID</strong><br />You decide who sees it</div>
+            <div className="glass rounded-xl p-3 text-xs"><ShieldCheck className="h-4 w-4 text-primary mb-1" /><strong>90-day auto-delete</strong><br />Nothing kept forever</div>
           </div>
         </div>
 
-        <div className="glass rounded-2xl p-8 text-center space-y-5">
-          <div className="inline-flex h-14 w-14 items-center justify-center rounded-xl grad-indigo">
-            <ShieldCheck className="h-7 w-7 text-white" />
+        <div className="space-y-4">
+          <div className="glass rounded-2xl p-8 text-center space-y-5">
+            <div className="inline-flex h-14 w-14 items-center justify-center rounded-xl grad-indigo">
+              <FileText className="h-7 w-7 text-white" />
+            </div>
+            <div>
+              <h2 className="font-display text-2xl font-bold">I'm comparing my Medicare options</h2>
+              <p className="text-sm text-muted-foreground mt-2">Build a de-identified scenario in 2 minutes. You'll get a Scenario ID to share with the agent of <em>your</em> choice. We will never contact you.</p>
+            </div>
+            <Button onClick={() => router.navigate({ to: "/scenario/new" })} className="grad-indigo w-full h-12 text-base">
+              Build a scenario →
+            </Button>
+            <p className="text-xs text-muted-foreground">No account. No login. No personal information.</p>
           </div>
-          <div>
-            <h2 className="font-display text-2xl font-bold">Advisor portal</h2>
-            <p className="text-sm text-muted-foreground mt-2">Create an account or sign in to access your encrypted client vault.</p>
+
+          <div className="text-center">
+            <Button variant="ghost" onClick={() => router.navigate({ to: "/auth" })} className="text-sm text-muted-foreground">
+              I'm a Medicare agent — sign in
+            </Button>
           </div>
-          <Button onClick={() => router.navigate({ to: "/auth" })} className="grad-indigo w-full h-12">
-            Sign in / Create account
-          </Button>
-          <p className="text-xs text-muted-foreground">
-            Strong technical safeguards in place. Full HIPAA compliance also requires BAAs and policies at your organization — do not enter real patient data until those are in place.
-          </p>
         </div>
       </main>
       <CMSFooter />

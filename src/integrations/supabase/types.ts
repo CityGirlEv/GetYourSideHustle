@@ -65,33 +65,6 @@ export type Database = {
         }
         Relationships: []
       }
-      clients_encrypted: {
-        Row: {
-          advisor_id: string
-          ciphertext: string
-          created_at: string
-          id: string
-          iv: string
-          updated_at: string
-        }
-        Insert: {
-          advisor_id: string
-          ciphertext: string
-          created_at?: string
-          id?: string
-          iv: string
-          updated_at?: string
-        }
-        Update: {
-          advisor_id?: string
-          ciphertext?: string
-          created_at?: string
-          id?: string
-          iv?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       credit_txns: {
         Row: {
           advisor_id: string
@@ -116,38 +89,10 @@ export type Database = {
         }
         Relationships: []
       }
-      encryption_keys: {
-        Row: {
-          created_at: string
-          iterations: number
-          salt: string
-          user_id: string
-          verifier_ciphertext: string
-          verifier_iv: string
-        }
-        Insert: {
-          created_at?: string
-          iterations?: number
-          salt: string
-          user_id: string
-          verifier_ciphertext: string
-          verifier_iv: string
-        }
-        Update: {
-          created_at?: string
-          iterations?: number
-          salt?: string
-          user_id?: string
-          verifier_ciphertext?: string
-          verifier_iv?: string
-        }
-        Relationships: []
-      }
       profiles: {
         Row: {
           created_at: string
           full_name: string
-          hipaa_acknowledged_at: string | null
           id: string
           npn_number: string | null
           updated_at: string
@@ -155,7 +100,6 @@ export type Database = {
         Insert: {
           created_at?: string
           full_name?: string
-          hipaa_acknowledged_at?: string | null
           id: string
           npn_number?: string | null
           updated_at?: string
@@ -163,47 +107,121 @@ export type Database = {
         Update: {
           created_at?: string
           full_name?: string
-          hipaa_acknowledged_at?: string | null
           id?: string
           npn_number?: string | null
           updated_at?: string
         }
         Relationships: []
       }
-      soas_encrypted: {
+      scenario_lookup_attempts: {
         Row: {
           advisor_id: string
-          ciphertext: string
-          client_id: string
+          code_attempted: string
+          created_at: string
           id: string
-          iv: string
+          succeeded: boolean
+        }
+        Insert: {
+          advisor_id: string
+          code_attempted: string
+          created_at?: string
+          id?: string
+          succeeded: boolean
+        }
+        Update: {
+          advisor_id?: string
+          code_attempted?: string
+          created_at?: string
+          id?: string
+          succeeded?: boolean
+        }
+        Relationships: []
+      }
+      scenarios: {
+        Row: {
+          birth_year: number
+          claimed_at: string | null
+          claimed_by: string | null
+          conditions: Json
+          cost_preference: string
+          created_at: string
+          expires_at: string
+          gender: string | null
+          id: string
+          income_band: string | null
+          medications: Json
+          preferences: Json
+          scenario_code: string
+          tobacco: boolean
+          zip3: string
+        }
+        Insert: {
+          birth_year: number
+          claimed_at?: string | null
+          claimed_by?: string | null
+          conditions?: Json
+          cost_preference?: string
+          created_at?: string
+          expires_at?: string
+          gender?: string | null
+          id?: string
+          income_band?: string | null
+          medications?: Json
+          preferences?: Json
+          scenario_code: string
+          tobacco?: boolean
+          zip3: string
+        }
+        Update: {
+          birth_year?: number
+          claimed_at?: string | null
+          claimed_by?: string | null
+          conditions?: Json
+          cost_preference?: string
+          created_at?: string
+          expires_at?: string
+          gender?: string | null
+          id?: string
+          income_band?: string | null
+          medications?: Json
+          preferences?: Json
+          scenario_code?: string
+          tobacco?: boolean
+          zip3?: string
+        }
+        Relationships: []
+      }
+      soas: {
+        Row: {
+          advisor_id: string
+          id: string
+          plan_type: string | null
+          scenario_id: string
           signed_at: string
           status: string
         }
         Insert: {
           advisor_id: string
-          ciphertext: string
-          client_id: string
           id?: string
-          iv: string
+          plan_type?: string | null
+          scenario_id: string
           signed_at?: string
           status?: string
         }
         Update: {
           advisor_id?: string
-          ciphertext?: string
-          client_id?: string
           id?: string
-          iv?: string
+          plan_type?: string | null
+          scenario_id?: string
           signed_at?: string
           status?: string
         }
         Relationships: [
           {
-            foreignKeyName: "soas_encrypted_client_id_fkey"
-            columns: ["client_id"]
+            foreignKeyName: "soas_scenario_id_fkey"
+            columns: ["scenario_id"]
             isOneToOne: false
-            referencedRelation: "clients_encrypted"
+            referencedRelation: "scenarios"
             referencedColumns: ["id"]
           },
         ]
@@ -234,12 +252,79 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_scenario: {
+        Args: {
+          p_birth_year: number
+          p_conditions: Json
+          p_cost_preference: string
+          p_gender: string
+          p_income_band: string
+          p_medications: Json
+          p_preferences: Json
+          p_tobacco: boolean
+          p_zip3: string
+        }
+        Returns: string
+      }
+      gen_scenario_code: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      lookup_scenario: {
+        Args: { p_code: string }
+        Returns: {
+          birth_year: number
+          claimed_at: string | null
+          claimed_by: string | null
+          conditions: Json
+          cost_preference: string
+          created_at: string
+          expires_at: string
+          gender: string | null
+          id: string
+          income_band: string | null
+          medications: Json
+          preferences: Json
+          scenario_code: string
+          tobacco: boolean
+          zip3: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "scenarios"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      my_scenarios: {
+        Args: never
+        Returns: {
+          birth_year: number
+          claimed_at: string | null
+          claimed_by: string | null
+          conditions: Json
+          cost_preference: string
+          created_at: string
+          expires_at: string
+          gender: string | null
+          id: string
+          income_band: string | null
+          medications: Json
+          preferences: Json
+          scenario_code: string
+          tobacco: boolean
+          zip3: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "scenarios"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
     }
     Enums: {
