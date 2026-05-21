@@ -43,14 +43,21 @@ function Index() {
       <SecurityBanner />
       <main className="flex-1 grid lg:grid-cols-2 items-center gap-10 px-6 lg:px-16 py-12 max-w-7xl mx-auto w-full">
         <div className="space-y-6">
-          <h1 className="font-display text-3xl md:text-4xl font-extrabold tracking-tight leading-snug text-emerald bg-white rounded-2xl p-5 shadow-sm border border-border flex items-center gap-4">
-            <div className="flex flex-col items-center">
-              <span className="text-[10px] font-medium tracking-widest uppercase text-muted-foreground leading-none mb-1">Built By</span>
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-border flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span
+                className="text-[10px] font-medium tracking-[0.3em] uppercase text-muted-foreground leading-none"
+                style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
+              >
+                Built By
+              </span>
               <img src={muntieLogo} alt="Medicare Optimizer" className="h-12 w-12 object-contain" />
             </div>
-            <span>The Medicare Optimizer</span>
-          </h1>
-          <p className="text-lg text-emerald/90 font-medium">Getting the Best Bang for your Medical Needs - You Deserve It!</p>
+            <div>
+              <h1 className="font-display text-3xl md:text-4xl font-extrabold tracking-tight leading-tight text-emerald">The Medicare Optimizer</h1>
+              <p className="text-sm md:text-base text-emerald/80 font-medium mt-1">Getting the Best Bang for your Medical Needs - You Deserve It!</p>
+            </div>
+          </div>
           <p className="text-lg text-muted-foreground max-w-xl">
             Side-by-side Original Medicare + Medigap vs. Medicare Advantage modeling under live 2026 &amp; 2027 federal rules.
             Built for HIPAA compliance from the first click — encrypted sessions, immutable audit, and 15-minute idle lockout.

@@ -42,14 +42,21 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
       </header>
       <main className="flex-1 px-4 md:px-8 py-8 max-w-7xl w-full mx-auto">
         <div className="mb-6 bg-white rounded-2xl p-5 shadow-sm border border-border">
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-emerald flex items-center gap-3">
-            <div className="flex flex-col items-center">
-              <span className="text-[10px] font-medium tracking-widest uppercase text-muted-foreground leading-none mb-1">Built By</span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span
+                className="text-[10px] font-medium tracking-[0.3em] uppercase text-muted-foreground leading-none"
+                style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
+              >
+                Built By
+              </span>
               <img src={muntieLogo} alt="Medicare Optimizer" className="h-10 w-10 object-contain" />
             </div>
-            <span>The Medicare Optimizer</span>
-          </h1>
-          <p className="text-muted-foreground mt-2">Getting the Best Bang for your Medical Needs - You Deserve It!</p>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-emerald leading-tight">The Medicare Optimizer</h1>
+              <p className="text-sm md:text-base text-emerald/80 font-medium mt-1">Getting the Best Bang for your Medical Needs - You Deserve It!</p>
+            </div>
+          </div>
         </div>
         {children}
       </main>
