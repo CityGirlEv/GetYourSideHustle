@@ -3,9 +3,11 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SecurityBanner } from "@/components/SecurityBanner";
 import { CMSFooter } from "@/components/CMSFooter";
-import { CheckCircle2, Copy, ShieldCheck, FileDown } from "lucide-react";
+import { CheckCircle2, Copy, ShieldCheck, FileDown, Phone } from "lucide-react";
 import { toast } from "sonner";
 import { downloadScenarioPdf, type ScenarioPdfInput } from "@/lib/scenario-pdf";
+import { useEffect, useState } from "react";
+import { ExpertOptInDialog } from "@/components/ExpertOptInDialog";
 
 export const Route = createFileRoute("/scenario/created/$code")({
   head: () => ({
@@ -19,6 +21,19 @@ export const Route = createFileRoute("/scenario/created/$code")({
 
 function ScenarioCreated() {
   const { code } = Route.useParams();
+  const [optInOpen, setOptInOpen] = useState(false);
+
+  useEffect(() => {
+    const seen = sessionStorage.getItem(`expert-optin-shown:${code}`);
+    if (!seen) {
+      const t = setTimeout(() => {
+        setOptInOpen(true);
+        sessionStorage.setItem(`expert-optin-shown:${code}`, "1");
+      }, 800);
+      return () => clearTimeout(t);
+    }
+  }, [code]);
+
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(code);
@@ -64,6 +79,10 @@ function ScenarioCreated() {
             <FileDown className="h-4 w-4 mr-2" /> Download plan comparison PDF
           </Button>
 
+          <Button onClick={() => setOptInOpen(true)} variant="outline" className="w-full">
+            <Phone className="h-4 w-4 mr-2" /> Have a licensed expert contact me
+          </Button>
+
           <div className="text-left bg-primary/5 border border-primary/20 rounded-lg p-4 space-y-2 text-sm">
             <div className="font-semibold flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /> What happens next</div>
             <ol className="list-decimal pl-5 space-y-1 text-muted-foreground">
@@ -78,6 +97,7 @@ function ScenarioCreated() {
         </Card>
       </main>
       <CMSFooter />
+      <ExpertOptInDialog open={optInOpen} onOpenChange={setOptInOpen} />
     </div>
   );
 }
