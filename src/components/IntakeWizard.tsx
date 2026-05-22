@@ -17,7 +17,7 @@ function blankMed(): Medication {
 const CURRENT_YEAR = new Date().getFullYear();
 const BIRTH_YEARS = Array.from({ length: 60 }, (_, i) => CURRENT_YEAR - 50 - i); // 50..109 years old
 const INCOME_BANDS = ["Under $25k", "$25k–$50k", "$50k–$100k", "$100k–$200k", "Over $200k", "Prefer not to say"];
-const CONDITIONS = ["Diabetes", "Hypertension", "Heart disease", "COPD", "Cancer history", "Chronic kidney disease", "Arthritis", "None of the above"];
+const CONDITIONS = ["Diabetes", "Hypertension", "Heart disease", "COPD", "Cancer history", "Chronic kidney disease", "Arthritis", "None of the above", "Other"];
 
 export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
   const [step, setStep] = useState(1);
