@@ -4,7 +4,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Button } from "./ui/button";
 import { Switch } from "./ui/switch";
-import { Plus, Trash2, ChevronRight, ChevronLeft, Pill, ShieldAlert, Search } from "lucide-react";
+import { Plus, Trash2, ChevronRight, ChevronLeft, Pill, ShieldAlert, Search, X } from "lucide-react";
 import { resolveDiagnosis, COMMON_MEDS_BY_CONDITION, searchMedCatalog, type MedCatalogEntry } from "@/lib/diagnosis-resolver";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
