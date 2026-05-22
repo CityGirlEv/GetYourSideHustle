@@ -25,6 +25,19 @@ export function medigapPremiumByZip3(zip3: string): number {
   return MEDIGAP_BY_ZIP3_DIGIT[zip3?.[0] ?? "5"] ?? 165;
 }
 
+// Standalone Part D (PDP) monthly premium estimate by ZIP3 first digit.
+// Based on 2026 CMS PDP region averages (national average ≈ $40/mo, range ~$28–$55).
+// 0=New England, 1=NY/NJ/PA, 2=Mid-Atlantic/Southeast, 3=Southeast/FL,
+// 4=Great Lakes, 5=Upper Midwest, 6=Plains/South Central, 7=South Central,
+// 8=Mountain, 9=West Coast/AK/HI.
+const PARTD_BY_ZIP3_DIGIT: Record<string, number> = {
+  "0": 48, "1": 52, "2": 42, "3": 45, "4": 38,
+  "5": 36, "6": 35, "7": 38, "8": 41, "9": 44,
+};
+export function partDPremiumByZip3(zip3: string): number {
+  return PARTD_BY_ZIP3_DIGIT[zip3?.[0] ?? "5"] ?? 40;
+}
+
 export interface Medication {
   id: string;
   medication_name: string;
@@ -61,9 +74,10 @@ export function calcPathways(opts: { year: Year; zip3: string; meds: Medication[
   const g = GUIDELINES[opts.year];
   const drug = annualDrugCostWithCap(opts.meds, g.partDOOPCap);
   const medigap = medigapPremiumByZip3(opts.zip3);
+  const partD = partDPremiumByZip3(opts.zip3);
   const dmeAnnualRetail = opts.hasDME ? 2400 : 0;
 
-  const aPremium = g.partBPremiumMonthly + medigap + 35;
+  const aPremium = g.partBPremiumMonthly + medigap + partD;
   const aTotal = aPremium * 12 + drug;
   const A: PathwayResult = {
     label: "Original Medicare + Medigap Plan G + Part D",
@@ -73,7 +87,7 @@ export function calcPathways(opts: { year: Year; zip3: string; meds: Medication[
     breakdown: [
       { label: "Part B premium", value: g.partBPremiumMonthly * 12 },
       { label: "Medigap Plan G premium", value: medigap * 12 },
-      { label: "Part D premium (est.)", value: 35 * 12 },
+      { label: "Part D premium (ZIP-based est.)", value: partD * 12 },
       { label: "Annual drug costs (capped)", value: drug },
       { label: "Medical out-of-pocket", value: 0 },
     ],
