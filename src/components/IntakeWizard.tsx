@@ -21,7 +21,7 @@ const CONDITIONS = ["Diabetes", "Hypertension", "Heart disease", "COPD", "Cancer
 
 export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
   const [step, setStep] = useState(1);
-  const [birthYear, setBirthYear] = useState<number>(CURRENT_YEAR - 67);
+  const [birthYear, setBirthYear] = useState<number | "">("");
   const [zip3, setZip3] = useState("");
   const [gender, setGender] = useState("prefer_not_to_say");
   const [tobacco, setTobacco] = useState(false);
@@ -84,13 +84,17 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
   };
 
   const finish = async () => {
+    if (!birthYear) {
+      toast.error("Please select your year of birth");
+      return;
+    }
     if (!/^\d{3}$/.test(zip3)) {
       toast.error("ZIP3 must be exactly 3 digits");
       return;
     }
     setBusy(true);
     const { data, error } = await supabase.rpc("create_scenario", {
-      p_birth_year: birthYear,
+      p_birth_year: birthYear as number,
       p_zip3: zip3,
       p_gender: gender,
       p_tobacco: tobacco,
@@ -136,8 +140,9 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
           <h3 className="font-display text-xl font-bold">Step 1 · Basics (no name, no birth date)</h3>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>Year of birth</Label>
-              <select className="w-full border border-input rounded-md px-3 h-9 bg-background" value={birthYear} onChange={(e)=>setBirthYear(Number(e.target.value))}>
+              <Label>Year of birth <span className="text-destructive">*</span></Label>
+              <select className="w-full border border-input rounded-md px-3 h-9 bg-background" value={birthYear} onChange={(e)=>setBirthYear(e.target.value ? Number(e.target.value) : "")} required>
+                <option value="">Select year…</option>
                 {BIRTH_YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
               </select>
             </div>
@@ -352,9 +357,9 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
         <Button variant="outline" disabled={step === 1} onClick={() => setStep(step - 1)}><ChevronLeft className="h-4 w-4"/>Back</Button>
         {step < 4 ? (
           <Button onClick={() => {
-            if (step === 1 && !/^\d{3}$/.test(zip3)) {
-              toast.error("Please enter the first 3 digits of your ZIP code before continuing.");
-              return;
+            if (step === 1) {
+              if (!birthYear) { toast.error("Please select your year of birth before continuing."); return; }
+              if (!/^\d{3}$/.test(zip3)) { toast.error("Please enter the first 3 digits of your ZIP code before continuing."); return; }
             }
             setStep(step + 1);
           }} className="grad-indigo">Next<ChevronRight className="h-4 w-4"/></Button>
