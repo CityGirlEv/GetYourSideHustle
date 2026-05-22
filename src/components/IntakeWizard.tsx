@@ -35,8 +35,29 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
   const [focusedMedId, setFocusedMedId] = useState<string | null>(null);
   const [medQuery, setMedQuery] = useState<Record<string, string>>({});
 
-  const toggleCondition = (c: string) =>
-    setConditions((p) => p.includes(c) ? p.filter((x) => x !== c) : [...p, c]);
+  const toggleCondition = (c: string) => {
+    setConditions((p) => {
+      if (p.includes(c)) {
+        if (c === "Other") setOtherConditions([]);
+        return p.filter((x) => x !== c);
+      }
+      return [...p, c];
+    });
+  };
+
+  const addOtherCondition = () => {
+    const text = otherInput.trim();
+    if (!text) return;
+    setOtherConditions((p) => (p.includes(text) ? p : [...p, text]));
+    setOtherInput("");
+  };
+
+  const removeOtherCondition = (c: string) =>
+    setOtherConditions((p) => p.filter((x) => x !== c));
+
+  const allConditions = conditions
+    .filter((c) => c !== "Other")
+    .concat(otherConditions);
 
   const updateMed = (id: string, patch: Partial<Medication>) =>
     setMeds((p) => p.map((m) => {
