@@ -84,6 +84,10 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
   };
 
   const finish = async () => {
+    if (!birthYear) {
+      toast.error("Please select your year of birth");
+      return;
+    }
     if (!/^\d{3}$/.test(zip3)) {
       toast.error("ZIP3 must be exactly 3 digits");
       return;
