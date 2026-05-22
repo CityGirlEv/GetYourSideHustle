@@ -109,7 +109,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
         year: new Date().getFullYear() < 2027 ? 2026 : 2027,
         birthYear, zip3, gender, tobacco,
         incomeBand, costPreference: costPref,
-        conditions, medications: meds,
+        conditions: allConditions, medications: meds,
       }));
     } catch { /* ignore quota */ }
     toast.success("Scenario created");
