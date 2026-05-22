@@ -79,8 +79,18 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
     });
     setBusy(false);
     if (error || !data) { toast.error(error?.message ?? "Could not create scenario"); return; }
+    const code = data as string;
+    try {
+      sessionStorage.setItem(`scenario:${code}`, JSON.stringify({
+        scenarioCode: code,
+        year: new Date().getFullYear() < 2027 ? 2026 : 2027,
+        birthYear, zip3, gender, tobacco,
+        incomeBand, costPreference: costPref,
+        conditions, medications: meds,
+      }));
+    } catch { /* ignore quota */ }
     toast.success("Scenario created");
-    onDone?.(data as string);
+    onDone?.(code);
   };
 
   return (
