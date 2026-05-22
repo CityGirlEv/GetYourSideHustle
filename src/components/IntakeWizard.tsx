@@ -221,10 +221,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
 
       {step === 4 && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-display text-xl font-bold">Step 4 · Medications</h3>
-            <Button size="sm" variant="outline" onClick={() => setMeds([...meds, blankMed()])}><Plus className="h-4 w-4 mr-1"/>Add</Button>
-          </div>
+          <h3 className="font-display text-xl font-bold">Step 4 · Medications</h3>
 
           <Card className="p-4 bg-muted/40 border-dashed">
             <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Your scenario so far</div>
@@ -253,7 +250,10 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
             );
             return (
               <Card className="p-4 bg-primary/5 border-primary/20">
-                <div className="text-sm font-semibold mb-2">Common medications for your conditions</div>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-sm font-semibold">Common medications for your conditions</div>
+                  <Button size="sm" variant="outline" onClick={() => setMeds([...meds, blankMed()])}><Plus className="h-4 w-4 mr-1"/>Add</Button>
+                </div>
                 <p className="text-xs text-muted-foreground mb-3">Don't remember the exact drug? Click any to add it — you can edit details after.</p>
                 <div className="flex flex-wrap gap-2">
                   {suggestions.map((s, i) => {
