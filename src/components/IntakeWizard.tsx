@@ -94,7 +94,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
     }
     setBusy(true);
     const { data, error } = await supabase.rpc("create_scenario", {
-      p_birth_year: birthYear,
+      p_birth_year: birthYear as number,
       p_zip3: zip3,
       p_gender: gender,
       p_tobacco: tobacco,
