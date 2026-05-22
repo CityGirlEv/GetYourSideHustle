@@ -140,8 +140,9 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
           <h3 className="font-display text-xl font-bold">Step 1 · Basics (no name, no birth date)</h3>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>Year of birth</Label>
-              <select className="w-full border border-input rounded-md px-3 h-9 bg-background" value={birthYear} onChange={(e)=>setBirthYear(Number(e.target.value))}>
+              <Label>Year of birth <span className="text-destructive">*</span></Label>
+              <select className="w-full border border-input rounded-md px-3 h-9 bg-background" value={birthYear} onChange={(e)=>setBirthYear(e.target.value ? Number(e.target.value) : "")} required>
+                <option value="">Select year…</option>
                 {BIRTH_YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
               </select>
             </div>
