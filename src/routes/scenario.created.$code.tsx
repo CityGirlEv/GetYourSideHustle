@@ -3,8 +3,9 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SecurityBanner } from "@/components/SecurityBanner";
 import { CMSFooter } from "@/components/CMSFooter";
-import { CheckCircle2, Copy, ShieldCheck } from "lucide-react";
+import { CheckCircle2, Copy, ShieldCheck, FileDown } from "lucide-react";
 import { toast } from "sonner";
+import { downloadScenarioPdf, type ScenarioPdfInput } from "@/lib/scenario-pdf";
 
 export const Route = createFileRoute("/scenario/created/$code")({
   head: () => ({
@@ -23,6 +24,19 @@ function ScenarioCreated() {
       await navigator.clipboard.writeText(code);
       toast.success("Scenario ID copied");
     } catch { toast.error("Copy failed — please write it down"); }
+  };
+
+  const downloadPdf = () => {
+    try {
+      const raw = sessionStorage.getItem(`scenario:${code}`);
+      if (!raw) { toast.error("PDF not available — re-open after creating the scenario."); return; }
+      const input = JSON.parse(raw) as ScenarioPdfInput;
+      downloadScenarioPdf(input);
+      toast.success("PDF downloaded");
+    } catch (e) {
+      toast.error("Could not generate PDF");
+      console.error(e);
+    }
   };
 
   return (
@@ -44,6 +58,10 @@ function ScenarioCreated() {
 
           <Button onClick={copy} variant="outline" className="w-full">
             <Copy className="h-4 w-4 mr-2" /> Copy Scenario ID
+          </Button>
+
+          <Button onClick={downloadPdf} className="w-full grad-indigo">
+            <FileDown className="h-4 w-4 mr-2" /> Download plan comparison PDF
           </Button>
 
           <div className="text-left bg-primary/5 border border-primary/20 rounded-lg p-4 space-y-2 text-sm">
