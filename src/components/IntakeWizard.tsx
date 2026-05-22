@@ -97,7 +97,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
       p_income_band: incomeBand,
       p_cost_preference: costPref,
       p_medications: meds as unknown as never,
-      p_conditions: conditions as unknown as never,
+      p_conditions: allConditions as unknown as never,
       p_preferences: {} as unknown as never,
     });
     setBusy(false);
