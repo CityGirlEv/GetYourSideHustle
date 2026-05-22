@@ -243,7 +243,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
           </Card>
 
           {(() => {
-            const suggestions = conditions.flatMap((c) =>
+            const suggestions = allConditions.flatMap((c) =>
               (COMMON_MEDS_BY_CONDITION[c] ?? []).map((m) => ({ ...m, condition: c }))
             );
             if (!suggestions.length) return (
