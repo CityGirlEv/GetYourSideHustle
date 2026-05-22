@@ -235,9 +235,9 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
               <div><span className="text-muted-foreground">Tobacco:</span> {tobacco ? "Yes" : "No"}</div>
               <div className="col-span-2"><span className="text-muted-foreground">Income:</span> {incomeBand}</div>
               <div className="col-span-2"><span className="text-muted-foreground">Priority:</span> {costPref === "minimize_monthly" ? "Minimize monthly cost" : "Predictability"}</div>
-              <div className="col-span-full">
+            <div className="col-span-full">
                 <span className="text-muted-foreground">Conditions:</span>{" "}
-                {conditions.length ? conditions.join(", ") : "None selected"}
+                {allConditions.length ? allConditions.join(", ") : "None selected"}
               </div>
             </div>
           </Card>
