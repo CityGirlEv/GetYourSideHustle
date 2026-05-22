@@ -89,6 +89,27 @@ export type Database = {
         }
         Relationships: []
       }
+      expert_contact_requests: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          phone: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          phone: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          phone?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
