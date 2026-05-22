@@ -142,8 +142,8 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
               </select>
             </div>
             <div>
-              <Label>First 3 digits of ZIP code</Label>
-              <Input value={zip3} onChange={(e)=>setZip3(e.target.value.replace(/\D/g,"").slice(0,3))} placeholder="e.g. 770" inputMode="numeric" maxLength={3}/>
+              <Label>First 3 digits of ZIP code <span className="text-destructive">*</span></Label>
+              <Input value={zip3} onChange={(e)=>setZip3(e.target.value.replace(/\D/g,"").slice(0,3))} placeholder="e.g. 770" inputMode="numeric" maxLength={3} required/>
             </div>
             <div>
               <Label>Gender</Label>
@@ -351,7 +351,13 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
       <div className="flex justify-between mt-6">
         <Button variant="outline" disabled={step === 1} onClick={() => setStep(step - 1)}><ChevronLeft className="h-4 w-4"/>Back</Button>
         {step < 4 ? (
-          <Button onClick={() => setStep(step + 1)} className="grad-indigo">Next<ChevronRight className="h-4 w-4"/></Button>
+          <Button onClick={() => {
+            if (step === 1 && !/^\d{3}$/.test(zip3)) {
+              toast.error("Please enter the first 3 digits of your ZIP code before continuing.");
+              return;
+            }
+            setStep(step + 1);
+          }} className="grad-indigo">Next<ChevronRight className="h-4 w-4"/></Button>
         ) : (
           <Button onClick={finish} disabled={busy} className="grad-indigo">{busy ? "Creating…" : "Create scenario"}</Button>
         )}
