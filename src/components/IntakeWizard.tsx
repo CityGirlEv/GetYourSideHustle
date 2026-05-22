@@ -21,7 +21,7 @@ const CONDITIONS = ["Diabetes", "Hypertension", "Heart disease", "COPD", "Cancer
 
 export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
   const [step, setStep] = useState(1);
-  const [birthYear, setBirthYear] = useState<number>(CURRENT_YEAR - 67);
+  const [birthYear, setBirthYear] = useState<number | "">("");
   const [zip3, setZip3] = useState("");
   const [gender, setGender] = useState("prefer_not_to_say");
   const [tobacco, setTobacco] = useState(false);
