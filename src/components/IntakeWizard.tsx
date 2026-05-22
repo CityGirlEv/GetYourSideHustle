@@ -4,7 +4,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Button } from "./ui/button";
 import { Switch } from "./ui/switch";
-import { Plus, Trash2, ChevronRight, ChevronLeft, Pill, ShieldAlert, Search } from "lucide-react";
+import { Plus, Trash2, ChevronRight, ChevronLeft, Pill, ShieldAlert, Search, X } from "lucide-react";
 import { resolveDiagnosis, COMMON_MEDS_BY_CONDITION, searchMedCatalog, type MedCatalogEntry } from "@/lib/diagnosis-resolver";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -17,7 +17,7 @@ function blankMed(): Medication {
 const CURRENT_YEAR = new Date().getFullYear();
 const BIRTH_YEARS = Array.from({ length: 60 }, (_, i) => CURRENT_YEAR - 50 - i); // 50..109 years old
 const INCOME_BANDS = ["Under $25k", "$25k–$50k", "$50k–$100k", "$100k–$200k", "Over $200k", "Prefer not to say"];
-const CONDITIONS = ["Diabetes", "Hypertension", "Heart disease", "COPD", "Cancer history", "Chronic kidney disease", "Arthritis", "None of the above"];
+const CONDITIONS = ["Diabetes", "Hypertension", "Heart disease", "COPD", "Cancer history", "Chronic kidney disease", "Arthritis", "None of the above", "Other"];
 
 export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
   const [step, setStep] = useState(1);
@@ -28,13 +28,36 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
   const [incomeBand, setIncomeBand] = useState(INCOME_BANDS[2]);
   const [costPref, setCostPref] = useState<"minimize_monthly" | "predictability">("minimize_monthly");
   const [conditions, setConditions] = useState<string[]>([]);
+  const [otherConditions, setOtherConditions] = useState<string[]>([]);
+  const [otherInput, setOtherInput] = useState("");
   const [meds, setMeds] = useState<Medication[]>([blankMed()]);
   const [busy, setBusy] = useState(false);
   const [focusedMedId, setFocusedMedId] = useState<string | null>(null);
   const [medQuery, setMedQuery] = useState<Record<string, string>>({});
 
-  const toggleCondition = (c: string) =>
-    setConditions((p) => p.includes(c) ? p.filter((x) => x !== c) : [...p, c]);
+  const toggleCondition = (c: string) => {
+    setConditions((p) => {
+      if (p.includes(c)) {
+        if (c === "Other") setOtherConditions([]);
+        return p.filter((x) => x !== c);
+      }
+      return [...p, c];
+    });
+  };
+
+  const addOtherCondition = () => {
+    const text = otherInput.trim();
+    if (!text) return;
+    setOtherConditions((p) => (p.includes(text) ? p : [...p, text]));
+    setOtherInput("");
+  };
+
+  const removeOtherCondition = (c: string) =>
+    setOtherConditions((p) => p.filter((x) => x !== c));
+
+  const allConditions = conditions
+    .filter((c) => c !== "Other")
+    .concat(otherConditions);
 
   const updateMed = (id: string, patch: Partial<Medication>) =>
     setMeds((p) => p.map((m) => {
@@ -74,7 +97,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
       p_income_band: incomeBand,
       p_cost_preference: costPref,
       p_medications: meds as unknown as never,
-      p_conditions: conditions as unknown as never,
+      p_conditions: allConditions as unknown as never,
       p_preferences: {} as unknown as never,
     });
     setBusy(false);
@@ -86,7 +109,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
         year: new Date().getFullYear() < 2027 ? 2026 : 2027,
         birthYear, zip3, gender, tobacco,
         incomeBand, costPreference: costPref,
-        conditions, medications: meds,
+        conditions: allConditions, medications: meds,
       }));
     } catch { /* ignore quota */ }
     toast.success("Scenario created");
@@ -169,6 +192,30 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
               </button>
             ))}
           </div>
+          {conditions.includes("Other") && (
+            <Card className="p-4 bg-primary/5 border-primary/20 space-y-3">
+              <Label>Add your condition(s)</Label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="e.g. Asthma, Glaucoma, Osteoporosis"
+                  value={otherInput}
+                  onChange={(e) => setOtherInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addOtherCondition(); } }}
+                />
+                <Button size="sm" onClick={addOtherCondition}><Plus className="h-4 w-4"/></Button>
+              </div>
+              {otherConditions.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {otherConditions.map((c) => (
+                    <span key={c} className="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary border border-primary/20 rounded-full px-2.5 py-1">
+                      {c}
+                      <button type="button" onClick={() => removeOtherCondition(c)} className="hover:text-destructive"><X className="h-3 w-3"/></button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </Card>
+          )}
         </div>
       )}
 
@@ -188,15 +235,15 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
               <div><span className="text-muted-foreground">Tobacco:</span> {tobacco ? "Yes" : "No"}</div>
               <div className="col-span-2"><span className="text-muted-foreground">Income:</span> {incomeBand}</div>
               <div className="col-span-2"><span className="text-muted-foreground">Priority:</span> {costPref === "minimize_monthly" ? "Minimize monthly cost" : "Predictability"}</div>
-              <div className="col-span-full">
+            <div className="col-span-full">
                 <span className="text-muted-foreground">Conditions:</span>{" "}
-                {conditions.length ? conditions.join(", ") : "None selected"}
+                {allConditions.length ? allConditions.join(", ") : "None selected"}
               </div>
             </div>
           </Card>
 
           {(() => {
-            const suggestions = conditions.flatMap((c) =>
+            const suggestions = allConditions.flatMap((c) =>
               (COMMON_MEDS_BY_CONDITION[c] ?? []).map((m) => ({ ...m, condition: c }))
             );
             if (!suggestions.length) return (
