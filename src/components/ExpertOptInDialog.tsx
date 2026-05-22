@@ -55,9 +55,9 @@ export function ExpertOptInDialog({ open, onOpenChange }: Props) {
           </div>
           <DialogTitle>Talk to a licensed expert</DialogTitle>
           <DialogDescription>
-            Opt in to be contacted by a licensed Medicare expert. We only share
-            your email and phone — <strong>none of your scenario details</strong> are
-            passed along.
+            Opt in to be contacted by a licensed Medicare expert. We never store
+            your information because we do not connect your email or phone number
+            to any scenario. The agent will need to request your scenario ID separately.
           </DialogDescription>
         </DialogHeader>
 
@@ -74,7 +74,8 @@ export function ExpertOptInDialog({ open, onOpenChange }: Props) {
           </div>
           <p className="text-xs text-muted-foreground">
             By submitting, you consent to be contacted about Medicare options. Your
-            scenario ID and health information remain private.
+            email and phone are not linked to any scenario — the agent will ask for
+            your scenario ID if needed.
           </p>
         </div>
 
