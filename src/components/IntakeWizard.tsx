@@ -357,9 +357,9 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
         <Button variant="outline" disabled={step === 1} onClick={() => setStep(step - 1)}><ChevronLeft className="h-4 w-4"/>Back</Button>
         {step < 4 ? (
           <Button onClick={() => {
-            if (step === 1 && !/^\d{3}$/.test(zip3)) {
-              toast.error("Please enter the first 3 digits of your ZIP code before continuing.");
-              return;
+            if (step === 1) {
+              if (!birthYear) { toast.error("Please select your year of birth before continuing."); return; }
+              if (!/^\d{3}$/.test(zip3)) { toast.error("Please enter the first 3 digits of your ZIP code before continuing."); return; }
             }
             setStep(step + 1);
           }} className="grad-indigo">Next<ChevronRight className="h-4 w-4"/></Button>
