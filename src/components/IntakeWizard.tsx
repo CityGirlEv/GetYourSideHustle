@@ -192,6 +192,30 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
               </button>
             ))}
           </div>
+          {conditions.includes("Other") && (
+            <Card className="p-4 bg-primary/5 border-primary/20 space-y-3">
+              <Label>Add your condition(s)</Label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="e.g. Asthma, Glaucoma, Osteoporosis"
+                  value={otherInput}
+                  onChange={(e) => setOtherInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addOtherCondition(); } }}
+                />
+                <Button size="sm" onClick={addOtherCondition}><Plus className="h-4 w-4"/></Button>
+              </div>
+              {otherConditions.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {otherConditions.map((c) => (
+                    <span key={c} className="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary border border-primary/20 rounded-full px-2.5 py-1">
+                      {c}
+                      <button type="button" onClick={() => removeOtherCondition(c)} className="hover:text-destructive"><X className="h-3 w-3"/></button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </Card>
+          )}
         </div>
       )}
 
