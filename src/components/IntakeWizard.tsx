@@ -142,8 +142,8 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
               </select>
             </div>
             <div>
-              <Label>First 3 digits of ZIP code</Label>
-              <Input value={zip3} onChange={(e)=>setZip3(e.target.value.replace(/\D/g,"").slice(0,3))} placeholder="e.g. 770" inputMode="numeric" maxLength={3}/>
+              <Label>First 3 digits of ZIP code <span className="text-destructive">*</span></Label>
+              <Input value={zip3} onChange={(e)=>setZip3(e.target.value.replace(/\D/g,"").slice(0,3))} placeholder="e.g. 770" inputMode="numeric" maxLength={3} required/>
             </div>
             <div>
               <Label>Gender</Label>
