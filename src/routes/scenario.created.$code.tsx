@@ -189,7 +189,24 @@ function ScenarioCreated() {
         </Card>
       </main>
       <CMSFooter />
-      <ExpertOptInDialog open={optInOpen} onOpenChange={setOptInOpen} />
+      <ExpertOptInDialog
+        open={optInOpen}
+        onOpenChange={setOptInOpen}
+        scenarioCode={code}
+        scenarioSnapshot={scenario ? {
+          year: scenario.year,
+          birthYear: scenario.birthYear,
+          zip3: scenario.zip3,
+          county: scenario.county,
+          gender: scenario.gender,
+          tobacco: scenario.tobacco,
+          incomeBand: scenario.incomeBand,
+          costPreference: scenario.costPreference,
+          conditions: scenario.conditions,
+          medications: scenario.medications,
+          recommendation: recommendation?.primary?.planName,
+        } : undefined}
+      />
     </div>
   );
 }
