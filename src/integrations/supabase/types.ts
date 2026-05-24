@@ -169,12 +169,15 @@ export type Database = {
       }
       scenarios: {
         Row: {
+          agent_notes: string | null
+          assigned_agent_id: string | null
           birth_year: number
           claimed_at: string | null
           claimed_by: string | null
           conditions: Json
           cost_preference: string
           created_at: string
+          created_by: string | null
           expires_at: string
           gender: string | null
           id: string
@@ -183,15 +186,19 @@ export type Database = {
           preferences: Json
           scenario_code: string
           tobacco: boolean
+          wants_contact: boolean
           zip3: string
         }
         Insert: {
+          agent_notes?: string | null
+          assigned_agent_id?: string | null
           birth_year: number
           claimed_at?: string | null
           claimed_by?: string | null
           conditions?: Json
           cost_preference?: string
           created_at?: string
+          created_by?: string | null
           expires_at?: string
           gender?: string | null
           id?: string
@@ -200,15 +207,19 @@ export type Database = {
           preferences?: Json
           scenario_code: string
           tobacco?: boolean
+          wants_contact?: boolean
           zip3: string
         }
         Update: {
+          agent_notes?: string | null
+          assigned_agent_id?: string | null
           birth_year?: number
           claimed_at?: string | null
           claimed_by?: string | null
           conditions?: Json
           cost_preference?: string
           created_at?: string
+          created_by?: string | null
           expires_at?: string
           gender?: string | null
           id?: string
@@ -217,6 +228,7 @@ export type Database = {
           preferences?: Json
           scenario_code?: string
           tobacco?: boolean
+          wants_contact?: boolean
           zip3?: string
         }
         Relationships: []
@@ -286,6 +298,21 @@ export type Database = {
         Args: { p_amount: number; p_description: string; p_target: string }
         Returns: number
       }
+      admin_assign_agent: {
+        Args: { p_agent: string; p_scenario: string }
+        Returns: undefined
+      }
+      admin_set_user_role: {
+        Args: {
+          p_role: Database["public"]["Enums"]["app_role"]
+          p_user: string
+        }
+        Returns: undefined
+      }
+      agent_update_notes: {
+        Args: { p_notes: string; p_scenario: string }
+        Returns: undefined
+      }
       create_scenario: {
         Args: {
           p_birth_year: number
@@ -316,12 +343,15 @@ export type Database = {
       lookup_scenario: {
         Args: { p_code: string }
         Returns: {
+          agent_notes: string | null
+          assigned_agent_id: string | null
           birth_year: number
           claimed_at: string | null
           claimed_by: string | null
           conditions: Json
           cost_preference: string
           created_at: string
+          created_by: string | null
           expires_at: string
           gender: string | null
           id: string
@@ -330,6 +360,7 @@ export type Database = {
           preferences: Json
           scenario_code: string
           tobacco: boolean
+          wants_contact: boolean
           zip3: string
         }
         SetofOptions: {
@@ -342,12 +373,15 @@ export type Database = {
       my_scenarios: {
         Args: never
         Returns: {
+          agent_notes: string | null
+          assigned_agent_id: string | null
           birth_year: number
           claimed_at: string | null
           claimed_by: string | null
           conditions: Json
           cost_preference: string
           created_at: string
+          created_by: string | null
           expires_at: string
           gender: string | null
           id: string
@@ -356,6 +390,7 @@ export type Database = {
           preferences: Json
           scenario_code: string
           tobacco: boolean
+          wants_contact: boolean
           zip3: string
         }[]
         SetofOptions: {
