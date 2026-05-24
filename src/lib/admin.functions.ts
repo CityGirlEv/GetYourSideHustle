@@ -164,7 +164,7 @@ export const assignAgent = createServerFn({ method: "POST" })
     await verifyAdmin(context.userId);
     const { error } = await supabaseAdmin.rpc("admin_assign_agent", {
       p_scenario: data.scenario_id,
-      p_agent: data.agent_id,
+      p_agent: data.agent_id as unknown as string,
     });
     if (error) throw new Error(error.message);
     return { ok: true };
