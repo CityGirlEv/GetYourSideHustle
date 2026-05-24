@@ -93,16 +93,30 @@ function ScenarioDetail() {
   return (
     <AppShell title={`Scenario ${scenario.scenario_code}`} subtitle="De-identified data — no personal information attached">
       <div className="space-y-4">
-        <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <Link to="/advisor"><Button variant="ghost" size="sm"><ArrowLeft className="h-4 w-4 mr-1"/>Back</Button></Link>
-          <div className="flex flex-wrap gap-2">
-            <Link to="/advisor/scenario/$code/edit" params={{ code: scenario.scenario_code }}>
-              <Button variant="outline" size="sm"><Pencil className="h-4 w-4 mr-2"/>Edit scenario</Button>
-            </Link>
-            <Button onClick={exportXlsx} variant="outline" size="sm"><FileSpreadsheet className="h-4 w-4 mr-2"/>Excel (1 credit)</Button>
-            <Button onClick={exportDossier} className="grad-indigo"><Download className="h-4 w-4 mr-2"/>PDF dossier (1 credit)</Button>
-          </div>
+          <Link to="/advisor/scenario/$code/edit" params={{ code: scenario.scenario_code }}>
+            <Button variant="outline" size="sm"><Pencil className="h-3.5 w-3.5 mr-1.5"/>Edit scenario</Button>
+          </Link>
         </div>
+
+        <Card className="glass p-5">
+          <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
+            <div>
+              <h2 className="font-display text-lg font-bold">Recommendation</h2>
+              <p className="text-xs text-muted-foreground">Strategy scorecard for scenario {scenario.scenario_code}</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={exportXlsx} variant="outline" size="sm" className="h-8 text-xs">
+                <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5"/>Excel · 1 cr
+              </Button>
+              <Button onClick={exportDossier} size="sm" className="grad-indigo h-8 text-xs">
+                <Download className="h-3.5 w-3.5 mr-1.5"/>PDF · 1 cr
+              </Button>
+            </div>
+          </div>
+          <StrategyScorecard scenario={scenario}/>
+        </Card>
 
         <Card className="glass p-5">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
@@ -118,8 +132,7 @@ function ScenarioDetail() {
           </div>
         </Card>
 
-        <div className="grid lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2"><StrategyScorecard scenario={scenario}/></div>
+        <div className="grid lg:grid-cols-2 gap-6">
           <div className="space-y-4">
             <Card className="glass p-5">
               <h3 className="font-display font-bold mb-3 flex items-center gap-2"><Pill className="h-4 w-4 text-primary"/>Medications ({scenario.medications.length})</h3>
@@ -133,7 +146,8 @@ function ScenarioDetail() {
                 {scenario.medications.length === 0 && <div className="py-2 text-xs text-muted-foreground">None listed</div>}
               </div>
             </Card>
-
+          </div>
+          <div className="space-y-4">
             <Card className="glass p-5">
               <h3 className="font-display font-bold mb-3 flex items-center gap-2"><FileSignature className="h-4 w-4 text-primary"/>Scope of Appointment</h3>
               {soa ? (
