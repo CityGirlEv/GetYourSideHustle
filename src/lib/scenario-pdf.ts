@@ -682,6 +682,7 @@ export function buildConsumerScenarioPdf(input: ScenarioPdfInput): jsPDF {
     ["Part D / Rx premium", ...top3.map((p) => `${usd(Math.round(p.premiumRx * 100) / 100)}/mo`)],
     ["Dental premium", ...top3.map((p) => p.premiumDental ? `${usd(Math.round(p.premiumDental * 100) / 100)}/mo` : "—")],
     ["Vision premium", ...top3.map((p) => p.premiumVision ? `${usd(Math.round(p.premiumVision * 100) / 100)}/mo` : "—")],
+    ["Extras premium", ...top3.map((p) => p.premiumExtras ? `${usd(Math.round(p.premiumExtras * 100) / 100)}/mo` : "Bundled")],
     ["TOTAL MONTHLY", ...top3.map((p) => `${usd(Math.round(p.monthly * 100) / 100)}/mo`)],
     ["EST. ANNUAL TOTAL", ...top3.map((p) => usd(p.annual))],
     ["Medical deductible", ...top3.map((p) => p.deductibleMed ? usd(p.deductibleMed) : "$0")],
