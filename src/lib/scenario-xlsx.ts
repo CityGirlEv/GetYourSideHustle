@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import {
   GUIDELINES,
   medigapPremiumByZip3,
