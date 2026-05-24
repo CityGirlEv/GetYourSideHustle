@@ -624,3 +624,177 @@ export function downloadScenarioPdf(input: ScenarioPdfInput) {
   const doc = buildScenarioPdf(input);
   doc.save(`medicare-scenario-${input.scenarioCode}.pdf`);
 }
+
+// ============ Beautifully formatted recommendation page ============
+function renderRecommendationPage(
+  doc: jsPDF,
+  input: ScenarioPdfInput,
+  rec: PlanDetail,
+  alt: PlanDetail | undefined,
+  pageW: number,
+  margin: number,
+) {
+  const fmtMo = (n: number) => `${usd(Math.round(n * 100) / 100)}/mo`;
+  const age = new Date().getFullYear() - input.birthYear;
+
+  // Hero header band
+  doc.setFillColor(16, 122, 87);
+  doc.rect(0, 0, pageW, 110, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.text("YOUR PERSONALIZED RECOMMENDATION", margin, 36);
+  doc.setFontSize(22);
+  doc.text(`#1 · ${rec.carrier}`, margin, 64);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(13);
+  doc.text(rec.plan, margin, 84);
+  doc.setFontSize(10);
+  doc.text(
+    `Best total annual value for Age ${age}, ZIP ${input.zip3}${input.county ? ` · ${input.county}` : ""} · Plan year ${input.year}`,
+    margin, 100,
+  );
+
+  // Three big stat tiles
+  doc.setTextColor(20, 20, 20);
+  const tileY = 128;
+  const tileH = 64;
+  const gap = 10;
+  const tileW = (pageW - margin * 2 - gap * 2) / 3;
+  const tiles: { label: string; value: string; sub: string }[] = [
+    { label: "TOTAL MONTHLY", value: fmtMo(rec.monthly), sub: "All-in: Part B + plan + Rx + dental + vision" },
+    { label: "EST. ANNUAL TOTAL", value: usd(rec.annual), sub: "Premiums + capped drug costs + expected OOP" },
+    { label: "STAR RATING", value: rec.stars, sub: `A.M. Best: ${rec.amBest}` },
+  ];
+  tiles.forEach((t, i) => {
+    const x = margin + i * (tileW + gap);
+    doc.setFillColor(245, 250, 247);
+    doc.setDrawColor(16, 122, 87);
+    doc.roundedRect(x, tileY, tileW, tileH, 6, 6, "FD");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(16, 122, 87);
+    doc.text(t.label, x + 10, tileY + 16);
+    doc.setFontSize(16);
+    doc.setTextColor(20, 20, 20);
+    doc.text(t.value, x + 10, tileY + 38);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(90, 90, 90);
+    doc.text(t.sub, x + 10, tileY + 54, { maxWidth: tileW - 20 });
+  });
+
+  let y = tileY + tileH + 18;
+
+  // Monthly premium breakdown
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.setTextColor(20, 20, 20);
+  doc.text("Monthly premium breakdown", margin, y);
+  autoTable(doc, {
+    startY: y + 6,
+    head: [["Component", "Monthly", "Annual"]],
+    body: [
+      ["Medicare Part B premium", fmtMo(rec.premiumPartB), usd(Math.round(rec.premiumPartB * 12))],
+      [`Plan premium (${rec.planType})`, fmtMo(rec.premiumPlan), usd(Math.round(rec.premiumPlan * 12))],
+      ["Part D / prescription drug premium", fmtMo(rec.premiumRx), usd(Math.round(rec.premiumRx * 12))],
+      ["Dental premium", rec.premiumDental ? fmtMo(rec.premiumDental) : "Included / standalone", rec.premiumDental ? usd(Math.round(rec.premiumDental * 12)) : "—"],
+      ["Vision premium", rec.premiumVision ? fmtMo(rec.premiumVision) : "Included / standalone", rec.premiumVision ? usd(Math.round(rec.premiumVision * 12)) : "—"],
+    ],
+    foot: [["TOTAL MONTHLY PAYMENT (all-in)", fmtMo(rec.monthly), usd(Math.round(rec.monthly * 12))]],
+    headStyles: { fillColor: [16, 122, 87], textColor: 255, fontSize: 9 },
+    footStyles: { fillColor: [232, 245, 238], textColor: [16, 122, 87], fontStyle: "bold" },
+    styles: { fontSize: 9, cellPadding: 5 },
+    columnStyles: { 1: { halign: "right" }, 2: { halign: "right" } },
+    margin: { left: margin, right: margin },
+  });
+  y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 14;
+
+  // Medical cost-sharing
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.text("Medical cost-sharing", margin, y);
+  autoTable(doc, {
+    startY: y + 6,
+    head: [["Service", "Member cost"]],
+    body: [
+      ["Medical deductible", rec.deductibleMed ? usd(rec.deductibleMed) : "$0"],
+      ["Primary care visit", rec.pcpCopay],
+      ["Specialist visit", rec.specCopay],
+      ["Inpatient hospital", rec.hospCopay],
+      ["Emergency room", rec.erCopay],
+      ["Out-of-pocket maximum", rec.moop],
+      ["Network rules", rec.network],
+    ],
+    headStyles: { fillColor: [16, 122, 87], textColor: 255, fontSize: 9 },
+    styles: { fontSize: 9, cellPadding: 5 },
+    columnStyles: { 0: { fontStyle: "bold", cellWidth: 200 } },
+    margin: { left: margin, right: margin },
+  });
+  y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 14;
+
+  if (y > 640) { doc.addPage(); y = 60; }
+
+  // Drug & ancillary side-by-side
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.text("Prescription drugs", margin, y);
+  doc.text("Bundled benefits", margin + (pageW - margin * 2) / 2 + 10, y);
+  const colW = (pageW - margin * 2 - 10) / 2;
+  autoTable(doc, {
+    startY: y + 6,
+    head: [["Tier / item", "Cost"]],
+    body: [
+      ["Rx deductible", rec.deductibleRx ? usd(rec.deductibleRx) : "$0"],
+      ["Tier 1 — Preferred generic", rec.rxTier1],
+      ["Tier 2 — Generic", rec.rxTier2],
+      ["Tier 3 — Preferred brand", rec.rxTier3],
+      ["Insulin (federal cap)", `${usd(rec.insulinCap)}/mo`],
+      ["Annual Rx OOP cap", usd(rec.rxOOPCap)],
+    ],
+    headStyles: { fillColor: [16, 122, 87], textColor: 255, fontSize: 9 },
+    styles: { fontSize: 8.5, cellPadding: 4 },
+    margin: { left: margin },
+    tableWidth: colW,
+  });
+  const leftEnd = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
+  autoTable(doc, {
+    startY: y + 6,
+    head: [["Benefit", "Coverage"]],
+    body: [
+      ["Dental", rec.dentalBenefit],
+      ["Vision", rec.visionBenefit],
+      ["Hearing", rec.hearingBenefit],
+      ["OTC / wellness", rec.otcBenefit],
+      ["Extras", rec.extras],
+    ],
+    headStyles: { fillColor: [16, 122, 87], textColor: 255, fontSize: 9 },
+    styles: { fontSize: 8.5, cellPadding: 4 },
+    margin: { left: margin + colW + 10 },
+    tableWidth: colW,
+  });
+  const rightEnd = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
+  y = Math.max(leftEnd, rightEnd) + 14;
+
+  // Alternate
+  if (alt) {
+    if (y > 660) { doc.addPage(); y = 60; }
+    doc.setFillColor(248, 248, 248);
+    doc.setDrawColor(180, 180, 180);
+    doc.roundedRect(margin, y, pageW - margin * 2, 56, 6, 6, "FD");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(80, 80, 80);
+    doc.text("RUNNER-UP — also worth a look", margin + 14, y + 18);
+    doc.setFontSize(12);
+    doc.setTextColor(20, 20, 20);
+    doc.text(`${alt.carrier} — ${alt.plan}`, margin + 14, y + 36);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(80, 80, 80);
+    doc.text(
+      `${fmtMo(alt.monthly)} all-in · ${usd(alt.annual)}/yr estimated · ${alt.stars}`,
+      margin + 14, y + 50,
+    );
+  }
+}
