@@ -404,6 +404,47 @@ export type Database = {
         Args: { p_amount: number; p_description: string }
         Returns: number
       }
+      update_scenario: {
+        Args: {
+          p_birth_year: number
+          p_conditions: Json
+          p_cost_preference: string
+          p_gender: string
+          p_income_band: string
+          p_medications: Json
+          p_preferences: Json
+          p_scenario_id: string
+          p_tobacco: boolean
+          p_zip3: string
+        }
+        Returns: {
+          agent_notes: string | null
+          assigned_agent_id: string | null
+          birth_year: number
+          claimed_at: string | null
+          claimed_by: string | null
+          conditions: Json
+          cost_preference: string
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          gender: string | null
+          id: string
+          income_band: string | null
+          medications: Json
+          preferences: Json
+          scenario_code: string
+          tobacco: boolean
+          wants_contact: boolean
+          zip3: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "scenarios"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
       app_role:

@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Search, Receipt, MapPin, Pill, Calendar } from "lucide-react";
+import { Users, Search, Receipt, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/advisor")({ component: AdvisorPortal });
@@ -39,11 +39,16 @@ function AdvisorPortal() {
   return (
     <AppShell title="Advisor command center" subtitle="Look up scenarios by ID — no personal information stored">
       <Tabs value={tab} onValueChange={setTab} className="space-y-6">
-        <TabsList className="glass">
-          <TabsTrigger value="lookup"><Search className="h-4 w-4 mr-1.5"/>Look up scenario</TabsTrigger>
-          <TabsTrigger value="roster"><Users className="h-4 w-4 mr-1.5"/>My scenarios ({scenarios.length})</TabsTrigger>
-          <TabsTrigger value="billing"><Receipt className="h-4 w-4 mr-1.5"/>Billing</TabsTrigger>
-        </TabsList>
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <TabsList className="glass">
+            <TabsTrigger value="lookup"><Search className="h-4 w-4 mr-1.5"/>Look up scenario</TabsTrigger>
+            <TabsTrigger value="roster"><Users className="h-4 w-4 mr-1.5"/>My scenarios ({scenarios.length})</TabsTrigger>
+            <TabsTrigger value="billing"><Receipt className="h-4 w-4 mr-1.5"/>Billing</TabsTrigger>
+          </TabsList>
+          <Link to="/scenario/new">
+            <Button size="sm" className="grad-indigo"><Plus className="h-4 w-4 mr-1.5"/>Create new scenario</Button>
+          </Link>
+        </div>
 
         <TabsContent value="lookup">
           <Card className="glass p-8 max-w-2xl mx-auto space-y-5">
