@@ -21,10 +21,10 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
   return (
     <div className="min-h-screen flex flex-col">
       <SecurityBanner />
-      <header className="glass border-b border-border/60 px-4 md:px-6 py-3 flex items-center sticky top-0 z-30 gap-4">
+      <header className="glass border-b border-border/60 px-3 md:px-6 py-2 md:py-3 flex items-center sticky top-0 z-30 gap-2 md:gap-4">
         <div className="flex items-center gap-2 flex-none">
           <Link to="/" className="flex items-center gap-3 font-display font-bold">
-            <img src={muntieLogo} alt="Medicare Optimizer" className="h-14 w-14 md:h-20 md:w-20 object-contain" />
+            <img src={muntieLogo} alt="Medicare Optimizer" className="h-9 w-9 sm:h-12 sm:w-12 md:h-20 md:w-20 object-contain flex-shrink-0" />
           </Link>
           <div className="hidden md:flex items-center gap-3 text-sm text-muted-foreground">
             {user?.role === "admin" && (
@@ -44,9 +44,9 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
             )}
           </div>
         </div>
-        <div className="flex-1 flex flex-col items-center min-w-0">
-          <h1 className="text-lg md:text-2xl lg:text-3xl font-display font-bold text-primary uppercase truncate">{title}</h1>
-          {subtitle && <p className="font-display text-xs md:text-sm lg:text-base font-bold text-blue-600 tracking-wide truncate">{subtitle}</p>}
+        <div className="flex-1 flex flex-col items-center min-w-0 px-2">
+          <h1 className="text-sm sm:text-base md:text-2xl lg:text-3xl font-display font-bold text-primary uppercase truncate">{title}</h1>
+          {subtitle && <p className="hidden sm:block font-display text-[10px] md:text-sm lg:text-base font-bold text-blue-600 tracking-wide truncate">{subtitle}</p>}
         </div>
         <div className="flex items-center gap-3 flex-none">
           <YearToggle />
