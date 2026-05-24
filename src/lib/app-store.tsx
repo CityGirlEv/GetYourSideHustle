@@ -154,10 +154,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       timestamp: new Date().toISOString(),
     };
     setAuditLogs((p) => [entry, ...p]);
-    supabase.from("audit_logs").insert({
-      user_id: user.id,
-      action,
-      metadata: (details ?? {}) as never,
+    supabase.rpc("log_audit_event", {
+      p_action: action,
+      p_metadata: (details ?? {}) as never,
     }).then(({ error }) => { if (error) console.warn("audit insert failed", error.message); });
   }, [user]);
 
@@ -228,21 +227,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const deductCredit: Ctx["deductCredit"] = async (description) => {
     if (!user || credits <= 0) return false;
-    const next = credits - 1;
-    const { error: ue } = await supabase.from("advisor_credits").upsert({ advisor_id: user.id, balance: next });
-    if (ue) return false;
-    await supabase.from("credit_txns").insert({ advisor_id: user.id, amount: -1, description });
-    setCredits(next);
+    const { data, error } = await supabase.rpc("deduct_credit", { p_description: description });
+    if (error || data === null) { console.warn("deduct_credit failed", error?.message); return false; }
+    setCredits(data as number);
     setCreditTxns((p) => [{ id: crypto.randomUUID(), advisor_id: user.id, amount: -1, description, created_at: new Date().toISOString() }, ...p]);
     return true;
   };
 
   const addCredits: Ctx["addCredits"] = async (amount, description) => {
     if (!user) return;
-    const next = credits + amount;
-    await supabase.from("advisor_credits").upsert({ advisor_id: user.id, balance: next });
-    await supabase.from("credit_txns").insert({ advisor_id: user.id, amount, description });
-    setCredits(next);
+    // Positive purchases go through purchase_credits; negative adjustments require admin RPC.
+    if (amount > 0) {
+      const { data, error } = await supabase.rpc("purchase_credits", { p_amount: amount, p_description: description });
+      if (error || data === null) { console.warn("purchase_credits failed", error?.message); return; }
+      setCredits(data as number);
+    } else if (amount < 0) {
+      const { data, error } = await supabase.rpc("admin_adjust_credits", { p_target: user.id, p_amount: amount, p_description: description });
+      if (error || data === null) { console.warn("admin_adjust_credits failed", error?.message); return; }
+      setCredits(data as number);
+    } else {
+      return;
+    }
     setCreditTxns((p) => [{ id: crypto.randomUUID(), advisor_id: user.id, amount, description, created_at: new Date().toISOString() }, ...p]);
   };
 

@@ -273,6 +273,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_adjust_credits: {
+        Args: { p_amount: number; p_description: string; p_target: string }
+        Returns: number
+      }
       create_scenario: {
         Args: {
           p_birth_year: number
@@ -287,6 +291,7 @@ export type Database = {
         }
         Returns: string
       }
+      deduct_credit: { Args: { p_description: string }; Returns: number }
       gen_scenario_code: { Args: never; Returns: string }
       has_role: {
         Args: {
@@ -294,6 +299,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      log_audit_event: {
+        Args: { p_action: string; p_metadata: Json }
+        Returns: undefined
       }
       lookup_scenario: {
         Args: { p_code: string }
@@ -346,6 +355,10 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      purchase_credits: {
+        Args: { p_amount: number; p_description: string }
+        Returns: number
       }
     }
     Enums: {
