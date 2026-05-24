@@ -889,7 +889,7 @@ function renderRecommendationPage(
   const gap = 10;
   const tileW = (pageW - margin * 2 - gap * 2) / 3;
   const tiles: { label: string; value: string; sub: string }[] = [
-    { label: "TOTAL MONTHLY", value: fmtMo(rec.monthly), sub: "All-in: Part B + plan + Rx + dental + vision" },
+    { label: "TOTAL MONTHLY", value: fmtMo(rec.monthly), sub: "All-in: Part B + plan + Rx + dental + vision + extras" },
     { label: "EST. ANNUAL TOTAL", value: usd(rec.annual), sub: "Premiums + capped drug costs + expected OOP" },
     { label: "STAR RATING", value: rec.stars, sub: `A.M. Best: ${rec.amBest}` },
   ];
