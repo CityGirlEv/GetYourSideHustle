@@ -99,7 +99,13 @@ function AuthPage() {
                 <form onSubmit={handleSignUp} className="space-y-3 mt-4">
                   <div><Label>Full name</Label><Input value={fullName} onChange={(e)=>setFullName(e.target.value)} required /></div>
                   <div><Label>Email</Label><Input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} required /></div>
-                  <div><Label>Password (min 12 chars)</Label><Input type="password" value={password} onChange={(e)=>setPassword(e.target.value)} required minLength={12} /></div>
+                  <div className="relative">
+                    <Label>Password (min 12 chars)</Label>
+                    <Input type={showPassword ? "text" : "password"} value={password} onChange={(e)=>setPassword(e.target.value)} required minLength={12} className="pr-10" />
+                    <button type="button" tabIndex={-1} onClick={()=>setShowPassword(v=>!v)} className="absolute right-3 top-[30px] text-muted-foreground hover:text-foreground">
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                   <Button type="submit" disabled={busy} className="w-full grad-indigo h-11">Create account</Button>
                 </form>
               </TabsContent>
