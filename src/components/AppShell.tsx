@@ -40,6 +40,7 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
                 <Settings className="h-3.5 w-3.5" /> Admin
               </Link>
             )}
+          <YearToggle />
           </div>
         </div>
         <div className="flex flex-col items-center">
@@ -47,7 +48,6 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
           {subtitle && <p className="font-display text-sm md:text-base font-bold text-blue-600 tracking-wide">{subtitle}</p>}
         </div>
         <div className="flex items-center gap-3 flex-1 justify-end">
-          <YearToggle />
           {user?.role === "advisor" && <CreditPill />}
           {user && (
             <div className="flex items-center gap-2 text-sm">
