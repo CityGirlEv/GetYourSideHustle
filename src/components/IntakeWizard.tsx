@@ -161,6 +161,17 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
               <Label>First 3 digits of ZIP code <span className="text-destructive">*</span></Label>
               <Input value={zip3} onChange={(e)=>setZip3(e.target.value.replace(/\D/g,"").slice(0,3))} placeholder="e.g. 770" inputMode="numeric" maxLength={3} required/>
             </div>
+            <div className="col-span-2">
+              <Label>County or parish <span className="text-destructive">*</span></Label>
+              <Input
+                value={county}
+                onChange={(e) => setCounty(e.target.value.slice(0, 80))}
+                placeholder="e.g. Harris County, Orleans Parish"
+                maxLength={80}
+                required
+              />
+              <p className="text-xs text-muted-foreground mt-1">Used only to refine plan availability — never tied to your identity.</p>
+            </div>
             <div>
               <Label>Gender</Label>
               <select className="w-full border border-input rounded-md px-3 h-9 bg-background" value={gender} onChange={(e)=>setGender(e.target.value)}>
@@ -244,6 +255,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-sm">
               <div><span className="text-muted-foreground">Birth year:</span> {birthYear}</div>
               <div><span className="text-muted-foreground">ZIP3:</span> {zip3 || "—"}</div>
+              <div className="col-span-2"><span className="text-muted-foreground">County/Parish:</span> {county || "—"}</div>
               <div><span className="text-muted-foreground">Gender:</span> {gender.replace(/_/g," ")}</div>
               <div><span className="text-muted-foreground">Tobacco:</span> {tobacco ? "Yes" : "No"}</div>
               <div className="col-span-2"><span className="text-muted-foreground">Income:</span> {incomeBand}</div>
@@ -375,6 +387,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
                 return;
               }
               if (!/^\d{3}$/.test(zip3)) { toast.error("Please enter the first 3 digits of your ZIP code before continuing."); return; }
+              if (county.trim().length < 2) { toast.error("Please enter your county or parish before continuing."); return; }
             }
             setStep(step + 1);
           }} className="grad-indigo">Next<ChevronRight className="h-4 w-4"/></Button>
