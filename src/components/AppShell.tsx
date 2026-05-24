@@ -44,7 +44,7 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
             )}
           </div>
         </div>
-        <div className="flex-1 flex flex-col items-center min-w-1 px-2">
+        <div className="flex-1 flex flex-col items-center min-w-0 px-2">
           <h1 className="text-sm sm:text-base md:text-2xl lg:text-3xl font-display font-bold text-primary uppercase truncate">{title}</h1>
           {subtitle && <p className="hidden sm:block font-display text-[10px] md:text-sm lg:text-base font-bold text-blue-600 tracking-wide truncate">{subtitle}</p>}
         </div>
