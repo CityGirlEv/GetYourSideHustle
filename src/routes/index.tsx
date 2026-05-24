@@ -64,6 +64,11 @@ function Index() {
           </div>
         </div>
       </main>
+      <div className="px-6 py-4 text-xs text-muted-foreground border-t border-border bg-secondary/30 text-center max-w-4xl mx-auto">
+        <p className="leading-relaxed">
+          Disclaimer: The Medicare Optimizer is an educational and comparison tool only. We do not sell insurance, act as a licensed agent, or provide personalized legal, tax, or medical advice. Plan names, premiums, and benefits shown are estimated based on publicly available CMS data and may differ from actual carrier offerings in your area. Always verify details with a licensed insurance agent or by visiting <a href="https://www.medicare.gov" className="underline" target="_blank" rel="noopener noreferrer">Medicare.gov</a> before enrolling.
+        </p>
+      </div>
       <CMSFooter />
     </div>
   );
