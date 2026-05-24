@@ -478,12 +478,14 @@ function AdminPortal() {
                     <th className="px-3 py-2">Role</th>
                     <th className="px-3 py-2">NPN</th>
                     <th className="px-3 py-2">Credits</th>
+                    <th className="px-3 py-2">Status</th>
+                    <th className="px-3 py-2">Last sign-in</th>
                     <th className="px-3 py-2">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {staff.map((s) => (
-                    <tr key={s.id} className="border-t border-border">
+                    <tr key={s.id} className={`border-t border-border ${s.disabled ? "opacity-60" : ""}`}>
                       <td className="px-3 py-2 font-medium">{s.full_name || "—"}</td>
                       <td className="px-3 py-2 text-muted-foreground">{s.email}</td>
                       <td className="px-3 py-2">
@@ -497,8 +499,16 @@ function AdminPortal() {
                       </td>
                       <td className="px-3 py-2 font-mono text-xs">{s.npn_number || "—"}</td>
                       <td className="px-3 py-2 tabular-nums font-bold">{s.credits}</td>
+                      <td className="px-3 py-2 text-xs">
+                        {s.disabled
+                          ? <span className="px-2 py-0.5 rounded-full bg-destructive/15 text-destructive">Disabled</span>
+                          : <span className="px-2 py-0.5 rounded-full bg-emerald/15 text-emerald">Active</span>}
+                      </td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground tabular-nums whitespace-nowrap">
+                        {s.last_sign_in_at ? new Date(s.last_sign_in_at).toLocaleString() : "—"}
+                      </td>
                       <td className="px-3 py-2">
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 flex-wrap">
                           <Button size="sm" variant="outline" onClick={async () => {
                             const { error } = await supabase.rpc("admin_adjust_credits", { p_target: s.id, p_amount: 5, p_description: "Admin top-up +5" });
                             if (error) { toast.error(error.message); return; }
@@ -513,12 +523,21 @@ function AdminPortal() {
                             const data = await fetchStaff();
                             setStaff(data as StaffMember[]);
                           }}><Minus className="h-3 w-3"/>1</Button>
+                          <Button size="sm" variant="outline" onClick={() => openEdit(s)} title="Edit">
+                            <Pencil className="h-3 w-3"/>
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => toggleDisabled(s)} title={s.disabled ? "Enable" : "Disable"}>
+                            {s.disabled ? <CheckCircle2 className="h-3 w-3"/> : <Ban className="h-3 w-3"/>}
+                          </Button>
+                          <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={() => setDeleteTarget(s)} title="Delete">
+                            <Trash2 className="h-3 w-3"/>
+                          </Button>
                         </div>
                       </td>
                     </tr>
                   ))}
                   {!staff.length && !staffLoading && (
-                    <tr><td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">No staff users yet.</td></tr>
+                    <tr><td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">No staff users yet.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -544,6 +563,50 @@ function AdminPortal() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit user</DialogTitle>
+            <DialogDescription>{editing?.email}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Full name</label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">NPN number</label>
+              <Input value={editNpn} onChange={(e) => setEditNpn(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Reset password (optional, min 8 chars)</label>
+              <Input type="password" value={editPassword} onChange={(e) => setEditPassword(e.target.value)} placeholder="Leave blank to keep current" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
+            <Button onClick={saveEdit} disabled={savingEdit || (!!editPassword && editPassword.length < 8)}>
+              {savingEdit && <Loader2 className="h-4 w-4 animate-spin mr-2"/>}Save changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete user?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes <span className="font-semibold">{deleteTarget?.email}</span> and their access. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppShell>
   );
 }
