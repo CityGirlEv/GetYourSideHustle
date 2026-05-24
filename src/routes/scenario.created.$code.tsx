@@ -6,6 +6,7 @@ import { CMSFooter } from "@/components/CMSFooter";
 import { CheckCircle2, Copy, ShieldCheck, FileDown, Phone, Sparkles, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { downloadScenarioPdf, type ScenarioPdfInput } from "@/lib/scenario-pdf";
+import { downloadScenarioXlsx } from "@/lib/scenario-xlsx";
 import { useEffect, useMemo, useState } from "react";
 import { ExpertOptInDialog } from "@/components/ExpertOptInDialog";
 import { recommendPlans, usd, type PersonalizedRecommendation } from "@/lib/medicare-math";
@@ -73,6 +74,17 @@ function ScenarioCreated() {
     }
   };
 
+  const downloadXlsx = () => {
+    try {
+      if (!scenario) { toast.error("Workbook not available — re-open after creating the scenario."); return; }
+      downloadScenarioXlsx({ ...scenario, county: scenario.county });
+      toast.success("Excel workbook downloaded");
+    } catch (e) {
+      toast.error("Could not generate workbook");
+      console.error(e);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <SecurityBanner />
@@ -96,6 +108,10 @@ function ScenarioCreated() {
 
           <Button onClick={downloadPdf} className="w-full grad-indigo">
             <FileDown className="h-4 w-4 mr-2" /> Download plan comparison PDF
+          </Button>
+
+          <Button onClick={downloadXlsx} variant="outline" className="w-full">
+            <FileDown className="h-4 w-4 mr-2" /> Download personalized Excel workbook (3 tabs)
           </Button>
 
           <Button onClick={() => setOptInOpen(true)} variant="outline" className="w-full">
