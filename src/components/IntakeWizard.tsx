@@ -278,10 +278,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
             );
             return (
               <Card className="p-4 bg-primary/5 border-primary/20">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="text-sm font-semibold">Common medications for your conditions</div>
-                  <Button size="sm" variant="outline" onClick={() => setMeds([...meds, blankMed()])}><Plus className="h-4 w-4 mr-1"/>Add</Button>
-                </div>
+                <div className="text-sm font-semibold mb-2">Common medications for your conditions</div>
                 <p className="text-xs text-muted-foreground mb-3">Don't remember the exact drug? Click any to add it — you can edit details after.</p>
                 <div className="flex flex-wrap gap-2">
                   {suggestions.map((s, i) => {
@@ -373,6 +370,10 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
               </div>
             </Card>
           ))}
+
+          <div className="flex justify-center">
+            <Button size="sm" variant="outline" onClick={() => setMeds([...meds, blankMed()])}><Plus className="h-4 w-4 mr-1"/>Add drug</Button>
+          </div>
         </div>
       )}
 
