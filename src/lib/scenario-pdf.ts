@@ -609,7 +609,7 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
     doc.setFontSize(7);
     doc.setTextColor(120, 120, 120);
     doc.text(
-      "This site does not offer every plan available in your area. Any information provided is limited to Medigap Plan G, Medicare Advantage HMO/PPO, and Standalone Part D plans. Contact Medicare.gov or 1-800-MEDICARE for all of your options.",
+      "This tool compares sample Medicare plan scenarios for educational purposes only. It is not a complete listing of plans available in your area. For a complete listing, contact Medicare.gov or 1-800-MEDICARE.",
       margin,
       doc.internal.pageSize.getHeight() - 24,
       { maxWidth: pageW - margin * 2 },
