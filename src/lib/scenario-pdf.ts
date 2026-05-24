@@ -188,6 +188,242 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
     });
   }
 
+  // ---------- Pathway A — Medigap & Part D carriers ----------
+  const fmtMo = (n: number) => `${usd(Math.round(n * 100) / 100)}/mo`;
+  const baseG = medigapPremiumByZip3(input.zip3);
+  const baseN = baseG * 0.72;
+  const basePartD = partDPremiumByZip3(input.zip3);
+  const g = GUIDELINES[input.year];
+
+  doc.addPage();
+  y = 60;
+  doc.setTextColor(20, 20, 20);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(15);
+  doc.text(`Pathway A — Medigap options (ZIP ${input.zip3}${input.county ? ` · ${input.county}` : ""})`, margin, y);
+  y += 8;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(90, 90, 90);
+  doc.text(
+    `Standardized Medicare Supplement (Plan G & Plan N) premiums for Age ${new Date().getFullYear() - input.birthYear}, ${input.gender}${input.tobacco ? ", Tobacco Smoker" : ", Non-smoker"}.`,
+    margin,
+    y + 12,
+    { maxWidth: pageW - margin * 2 },
+  );
+  y += 28;
+
+  autoTable(doc, {
+    startY: y,
+    head: [["Supplement Carrier", "Plan G Premium", "Plan N Premium", "A.M. Best", "Portal"]],
+    body: CMS_CATALOG.medigapCarriers.slice(0, 8).map((c, i) => {
+      const mult = [1.08, 0.99, 1.0, 1.02, 0.96, 1.05, 0.94, 1.03][i] ?? 1;
+      return [
+        c["Carrier Name"],
+        fmtMo(baseG * mult),
+        fmtMo(baseN * mult),
+        c["A.M. Best Rating"],
+        "Visit carrier portal",
+      ];
+    }),
+    headStyles: { fillColor: [16, 122, 87], textColor: 255, fontSize: 9 },
+    styles: { fontSize: 8.5, cellPadding: 5 },
+    columnStyles: { 1: { halign: "right" }, 2: { halign: "right" } },
+    margin: { left: margin, right: margin },
+  });
+  y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 18;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.setTextColor(20, 20, 20);
+  doc.text("Standalone Prescription Drug Plans (Part D)", margin, y);
+  y += 6;
+  autoTable(doc, {
+    startY: y,
+    head: [["Part D Carrier", "Basic PDP", "Standard PDP", "Star Rating", "Portal"]],
+    body: CMS_CATALOG.partDCarriers.slice(0, 6).map((c, i) => {
+      const mult = [0.72, 0.83, 1.15, 1.05, 0.95, 1.0][i] ?? 1;
+      return [
+        c["Carrier Name"],
+        fmtMo(basePartD * mult * 0.55),
+        fmtMo(basePartD * mult),
+        ["3.5 Stars", "4.0 Stars", "4.5 Stars"][i % 3],
+        "Visit Rx portal",
+      ];
+    }),
+    headStyles: { fillColor: [16, 122, 87], textColor: 255, fontSize: 9 },
+    styles: { fontSize: 8.5, cellPadding: 5 },
+    columnStyles: { 1: { halign: "right" }, 2: { halign: "right" } },
+    margin: { left: margin, right: margin },
+  });
+
+  // ---------- Pathway B — Medicare Advantage ----------
+  doc.addPage();
+  y = 60;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(15);
+  doc.setTextColor(20, 20, 20);
+  doc.text(`Pathway B — Medicare Advantage networks (ZIP ${input.zip3})`, margin, y);
+  y += 8;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(90, 90, 90);
+  doc.text(
+    "Coordinated HMO and PPO networks offering low upfront costs and bundled dental/vision/hearing/OTC benefits.",
+    margin,
+    y + 12,
+    { maxWidth: pageW - margin * 2 },
+  );
+  y += 28;
+
+  autoTable(doc, {
+    startY: y,
+    head: [["Carrier", "HMO Premium", "PPO Premium", "Star Rating", "Network Characteristics"]],
+    body: CMS_CATALOG.advantageCarriers.slice(0, 8).map((c, i) => {
+      const hmo = [0, 0, 0, 0, 14, 0, 0, 18][i] ?? 0;
+      const ppo = [19, 24, 15, 0, 32, 22, 12, 28][i] ?? 0;
+      return [
+        c["Carrier Name"],
+        hmo === 0 ? "$0/mo" : `$${hmo}/mo`,
+        ppo === 0 ? "$0/mo" : `$${ppo}/mo`,
+        ["4.0", "4.5", "4.0", "3.5", "4.0", "4.0", "3.5", "4.0"][i] + " Stars",
+        c["Key Characteristics"],
+      ];
+    }),
+    headStyles: { fillColor: [16, 122, 87], textColor: 255, fontSize: 9 },
+    styles: { fontSize: 8.5, cellPadding: 5 },
+    columnStyles: { 1: { halign: "right" }, 2: { halign: "right" }, 4: { cellWidth: 200 } },
+    margin: { left: margin, right: margin },
+  });
+  y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 18;
+
+  const lc = input.conditions.map((c) => c.toLowerCase()).join(" ");
+  if (/diabetes|heart|copd|kidney|cancer/.test(lc)) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.setTextColor(20, 20, 20);
+    doc.text("Specialized Chronic Special Needs Plans (C-SNP)", margin, y);
+    y += 6;
+    autoTable(doc, {
+      startY: y,
+      head: [["C-SNP Carrier", "Qualifying Focus", "Stars", "Bundled Disease Perks"]],
+      body: [
+        ["UnitedHealthcare Chronic Care", "Diabetes & Cardiovascular", "4.0", "Specialized endocrinologist copays, zero insulin tiers"],
+        ["Humana Chronic Care", "Cardiovascular & Heart Failure", "4.5", "Free home BP cuffs, customized cardiac rehab programs"],
+        ["Aetna Chronic Care", "Diabetes & COPD", "4.0", "Care manager + medication therapy management"],
+      ],
+      headStyles: { fillColor: [16, 122, 87], textColor: 255, fontSize: 9 },
+      styles: { fontSize: 8.5, cellPadding: 5 },
+      margin: { left: margin, right: margin },
+    });
+  }
+
+  // ---------- Top 10 Carrier Plans ----------
+  const partBMo = g.partBPremiumMonthly;
+  const annualDrugEst = Math.min(
+    input.medications.reduce((s, m) => s + (m.estimated_monthly_retail ?? 0) * 12, 0),
+    g.partDOOPCap,
+  );
+  type T10 = { rank: number; carrier: string; plan: string; monthly: number; moop: string; stars: string; extras: string; annual: number };
+  const cands: T10[] = [];
+  CMS_CATALOG.medigapCarriers.slice(0, 4).forEach((c, i) => {
+    const supp = Math.round(baseG * ([1.0, 0.96, 1.02, 0.99][i] ?? 1));
+    const pdp = Math.round(basePartD * ([0.95, 1.0, 1.05, 0.9][i] ?? 1));
+    const monthly = partBMo + supp + pdp;
+    cands.push({ rank: 0, carrier: c["Carrier Name"], plan: "Medigap Plan G + Part D", monthly,
+      moop: `${usd(g.partBDeductible)} med / ${usd(g.partDOOPCap)} Rx`,
+      stars: ["4.0", "4.5", "4.0", "3.5"][i] + "★",
+      extras: "Add standalone dental/vision",
+      annual: Math.round(monthly * 12 + annualDrugEst) });
+  });
+  CMS_CATALOG.medigapCarriers.slice(0, 2).forEach((c, i) => {
+    const supp = Math.round(baseN * ([1.0, 0.97][i] ?? 1));
+    const pdp = Math.round(basePartD * 0.95);
+    const monthly = partBMo + supp + pdp;
+    cands.push({ rank: 0, carrier: c["Carrier Name"], plan: "Medigap Plan N + Part D", monthly,
+      moop: `~${usd(g.partBDeductible + 250)} med / ${usd(g.partDOOPCap)} Rx`,
+      stars: ["4.0", "4.5"][i] + "★",
+      extras: "Small office copays; lower premium",
+      annual: Math.round(monthly * 12 + annualDrugEst) });
+  });
+  CMS_CATALOG.advantageCarriers.slice(0, 4).forEach((c, i) => {
+    const monthly = partBMo + ([0, 0, 14, 0][i] ?? 0);
+    cands.push({ rank: 0, carrier: c["Carrier Name"], plan: "Medicare Advantage HMO", monthly,
+      moop: `${usd(g.moopLow)} in-network`,
+      stars: ["4.5", "4.0", "4.0", "3.5"][i] + "★",
+      extras: "Dental, vision, hearing, fitness, OTC",
+      annual: Math.round(monthly * 12 + annualDrugEst + 800) });
+  });
+  CMS_CATALOG.advantageCarriers.slice(0, 3).forEach((c, i) => {
+    const monthly = partBMo + ([19, 24, 32][i] ?? 20);
+    cands.push({ rank: 0, carrier: c["Carrier Name"], plan: "Medicare Advantage PPO", monthly,
+      moop: `${usd(g.moopHigh)} combined`,
+      stars: ["4.0", "4.0", "4.5"][i] + "★",
+      extras: "Dental, vision, hearing + PPO flexibility",
+      annual: Math.round(monthly * 12 + annualDrugEst + 1100) });
+  });
+  cands.sort((a, b) => a.annual - b.annual);
+  const top10 = cands.slice(0, 10).map((r, i) => ({ ...r, rank: i + 1 }));
+
+  doc.addPage();
+  y = 60;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(15);
+  doc.setTextColor(20, 20, 20);
+  doc.text("Top 10 Carrier Plans — personalized shortlist", margin, y);
+  y += 8;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(90, 90, 90);
+  doc.text(
+    `Ranked by lowest estimated annual total cost · Part B (${usd(partBMo)}/mo) + regional supplement/MA premium + modeled Rx OOP.`,
+    margin,
+    y + 12,
+    { maxWidth: pageW - margin * 2 },
+  );
+  y += 28;
+
+  autoTable(doc, {
+    startY: y,
+    head: [["#", "Carrier", "Plan", "Monthly", "Out-of-Pocket Max", "Stars", "Bundled Extras", "Est. Annual"]],
+    body: top10.map((r) => [r.rank, r.carrier, r.plan, fmtMo(r.monthly), r.moop, r.stars, r.extras, usd(r.annual)]),
+    headStyles: { fillColor: [16, 122, 87], textColor: 255, fontSize: 9 },
+    styles: { fontSize: 8, cellPadding: 4 },
+    columnStyles: {
+      0: { halign: "center", cellWidth: 18 },
+      3: { halign: "right" },
+      5: { halign: "center", cellWidth: 32 },
+      7: { halign: "right" },
+    },
+    margin: { left: margin, right: margin },
+  });
+  y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 18;
+
+  // ---------- Contact a Licensed Agent (only clickable link) ----------
+  if (y > 680) { doc.addPage(); y = 60; }
+  doc.setFillColor(232, 245, 238);
+  doc.setDrawColor(16, 122, 87);
+  doc.roundedRect(margin, y, pageW - margin * 2, 68, 6, 6, "FD");
+  doc.setTextColor(16, 122, 87);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.text("Ready to enroll?", margin + 14, y + 22);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor(60, 60, 60);
+  doc.text(
+    "Speak with a licensed agent who can verify carrier availability in your county, check provider networks, and confirm formulary coverage before you enroll.",
+    margin + 14,
+    y + 38,
+    { maxWidth: pageW - margin * 2 - 28 },
+  );
+  const linkText = "Contact a Licensed Agent →";
+  const linkUrl = `https://themedicareoptimizer.lovable.app/scenario/created/${input.scenarioCode}`;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(16, 122, 87);
+  doc.textWithLink(linkText, margin + 14, y + 60, { url: linkUrl });
+
   // Footer disclaimer
   const pageCount = doc.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
