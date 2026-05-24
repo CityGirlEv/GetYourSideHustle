@@ -10,7 +10,6 @@ import {
 } from "./medicare-math";
 import { CMS_CATALOG } from "@/data/cms-catalog";
 import { rankedPlanDetails, type PlanDetail } from "./plan-details";
-import { INSULIN_CAP_MONTHLY } from "./medicare-math";
 
 export interface ScenarioXlsxInput {
   scenarioCode: string;
