@@ -1,9 +1,7 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { ShieldCheck, EyeOff, KeyRound, FileText } from "lucide-react";
-import { CMSFooter } from "@/components/CMSFooter";
 import { AppShell } from "@/components/AppShell";
-import muntieLogo from "@/assets/muntie-logo.png";
 
 export const Route = createFileRoute("/")({
   head: () => ({
