@@ -5,8 +5,10 @@ import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StrategyScorecard } from "@/components/StrategyScorecard";
-import { ArrowLeft, MapPin, Pill, Download, FileSignature, ShieldCheck } from "lucide-react";
+import { ArrowLeft, MapPin, Pill, Download, FileSignature, ShieldCheck, FileSpreadsheet, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import { buildScenarioPdf } from "@/lib/scenario-pdf";
+import { buildScenarioXlsx } from "@/lib/scenario-xlsx";
 
 export const Route = createFileRoute("/advisor/scenario/$code")({ component: ScenarioDetail });
 
@@ -39,8 +41,35 @@ function ScenarioDetail() {
     if (!(await deductCredit("Exported dossier PDF"))) {
       toast.error("Out of credits — top up to continue."); return;
     }
-    log("EXPORT_DOSSIER", { scenario: scenario.id });
-    toast.success("Dossier exported");
+    try {
+      const doc = buildScenarioPdf(buildExportInput(scenario, year));
+      doc.save(`${scenario.scenario_code}-dossier.pdf`);
+      log("EXPORT_DOSSIER", { scenario: scenario.id, format: "pdf" });
+      toast.success("Dossier PDF downloaded");
+    } catch (e) {
+      console.error(e);
+      toast.error("Could not generate PDF");
+    }
+  };
+
+  const exportXlsx = async () => {
+    if (!(await deductCredit("Exported dossier XLSX"))) {
+      toast.error("Out of credits — top up to continue."); return;
+    }
+    try {
+      const wb = await buildScenarioXlsx(buildExportInput(scenario, year));
+      const buf = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `${scenario.scenario_code}-dossier.xlsx`;
+      a.click(); URL.revokeObjectURL(url);
+      log("EXPORT_DOSSIER", { scenario: scenario.id, format: "xlsx" });
+      toast.success("Dossier spreadsheet downloaded");
+    } catch (e) {
+      console.error(e);
+      toast.error("Could not generate spreadsheet");
+    }
   };
 
   const signSOA = async () => {
@@ -53,7 +82,13 @@ function ScenarioDetail() {
       <div className="space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <Link to="/advisor"><Button variant="ghost" size="sm"><ArrowLeft className="h-4 w-4 mr-1"/>Back</Button></Link>
-          <Button onClick={exportDossier} className="grad-indigo"><Download className="h-4 w-4 mr-2"/>Export dossier (1 credit)</Button>
+          <div className="flex flex-wrap gap-2">
+            <Link to="/advisor/scenario/$code/edit" params={{ code: scenario.scenario_code }}>
+              <Button variant="outline" size="sm"><Pencil className="h-4 w-4 mr-2"/>Edit scenario</Button>
+            </Link>
+            <Button onClick={exportXlsx} variant="outline" size="sm"><FileSpreadsheet className="h-4 w-4 mr-2"/>Excel (1 credit)</Button>
+            <Button onClick={exportDossier} className="grad-indigo"><Download className="h-4 w-4 mr-2"/>PDF dossier (1 credit)</Button>
+          </div>
         </div>
 
         <Card className="glass p-5">
