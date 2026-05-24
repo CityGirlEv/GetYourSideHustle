@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ShieldCheck, Lock } from "lucide-react";
+import { ShieldCheck, Lock, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { SecurityBanner } from "@/components/SecurityBanner";
 
