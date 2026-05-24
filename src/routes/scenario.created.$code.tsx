@@ -5,7 +5,7 @@ import { SecurityBanner } from "@/components/SecurityBanner";
 import { CMSFooter } from "@/components/CMSFooter";
 import { CheckCircle2, Copy, ShieldCheck, FileDown, Phone, Sparkles, Building2 } from "lucide-react";
 import { toast } from "sonner";
-import { downloadScenarioPdf, type ScenarioPdfInput } from "@/lib/scenario-pdf";
+import { downloadScenarioPdf, downloadConsumerScenarioPdf, type ScenarioPdfInput } from "@/lib/scenario-pdf";
 import { downloadScenarioXlsx } from "@/lib/scenario-xlsx";
 import { useEffect, useMemo, useState } from "react";
 import { ExpertOptInDialog } from "@/components/ExpertOptInDialog";
@@ -69,7 +69,11 @@ function ScenarioCreated() {
   const downloadPdf = () => {
     try {
       if (!scenario) { toast.error("PDF not available — re-open after creating the scenario."); return; }
-      downloadScenarioPdf(scenario);
+      if (isAgent) {
+        downloadScenarioPdf(scenario);
+      } else {
+        downloadConsumerScenarioPdf(scenario);
+      }
       toast.success("PDF downloaded");
     } catch (e) {
       toast.error("Could not generate PDF");
@@ -110,7 +114,10 @@ function ScenarioCreated() {
           </Button>
 
           <Button onClick={downloadPdf} className="w-full grad-indigo">
-            <FileDown className="h-4 w-4 mr-2" /> Download recommendation PDF (side-by-side comparison & reasoning)
+            <FileDown className="h-4 w-4 mr-2" />
+            {isAgent
+              ? "Download complete plan comparison PDF"
+              : "Download recommendation PDF (top 3 side-by-side)"}
           </Button>
           {isAgent ? (
             <Button onClick={downloadXlsx} variant="outline" className="w-full">

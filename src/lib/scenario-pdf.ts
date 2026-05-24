@@ -625,6 +625,230 @@ export function downloadScenarioPdf(input: ScenarioPdfInput) {
   doc.save(`medicare-scenario-${input.scenarioCode}.pdf`);
 }
 
+// ============================================================
+// Consumer (non-logged-in) PDF — recommendation only
+// Page 1: Recommended plan full detail (premium + medical + Rx + bundled)
+// Page 2: Top 3 side-by-side comparison incl. prescription costs
+// Page 3: Landscape full plan-detail spread for the recommended plan
+// ============================================================
+export function buildConsumerScenarioPdf(input: ScenarioPdfInput): jsPDF {
+  const doc = new jsPDF({ unit: "pt", format: "letter" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const margin = 40;
+
+  const ranked = rankedPlanDetails({ year: input.year, zip3: input.zip3, medications: input.medications });
+  const top3 = ranked.slice(0, 3);
+  const rec = top3[0];
+  const alt = top3[1];
+
+  if (!rec) {
+    doc.setFontSize(14);
+    doc.text("No plan recommendation available for this scenario.", margin, 80);
+    return doc;
+  }
+
+  // ---------- Page 1: Recommendation detail ----------
+  renderRecommendationPage(doc, input, rec, alt, pageW, margin);
+
+  // ---------- Page 2: Top 3 side-by-side ----------
+  doc.addPage();
+  let y = 60;
+  doc.setFillColor(16, 122, 87);
+  doc.rect(0, 0, pageW, 50, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.text("Top 3 plans — side-by-side", margin, 32);
+  doc.setTextColor(20, 20, 20);
+  y = 70;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(90, 90, 90);
+  doc.text(
+    `Including prescription drug coverage and bundled benefits. Total monthly is all-in: Part B + plan + Part D + dental + vision.`,
+    margin, y, { maxWidth: pageW - margin * 2 },
+  );
+  y += 18;
+
+  const colHeads = ["Detail", ...top3.map((p, i) => `#${i + 1} ${p.carrier}\n${p.plan}${i === 0 ? "  ★" : ""}`)];
+  const rows: (string | number)[][] = [
+    ["Plan type", ...top3.map((p) => p.planType)],
+    ["Network", ...top3.map((p) => p.network)],
+    ["Star rating", ...top3.map((p) => p.stars)],
+    ["A.M. Best", ...top3.map((p) => p.amBest)],
+    ["Part B premium", ...top3.map((p) => `${usd(Math.round(p.premiumPartB * 100) / 100)}/mo`)],
+    ["Plan premium", ...top3.map((p) => `${usd(Math.round(p.premiumPlan * 100) / 100)}/mo`)],
+    ["Part D / Rx premium", ...top3.map((p) => `${usd(Math.round(p.premiumRx * 100) / 100)}/mo`)],
+    ["Dental premium", ...top3.map((p) => p.premiumDental ? `${usd(Math.round(p.premiumDental * 100) / 100)}/mo` : "—")],
+    ["Vision premium", ...top3.map((p) => p.premiumVision ? `${usd(Math.round(p.premiumVision * 100) / 100)}/mo` : "—")],
+    ["TOTAL MONTHLY", ...top3.map((p) => `${usd(Math.round(p.monthly * 100) / 100)}/mo`)],
+    ["EST. ANNUAL TOTAL", ...top3.map((p) => usd(p.annual))],
+    ["Medical deductible", ...top3.map((p) => p.deductibleMed ? usd(p.deductibleMed) : "$0")],
+    ["Primary care", ...top3.map((p) => p.pcpCopay)],
+    ["Specialist", ...top3.map((p) => p.specCopay)],
+    ["Hospital", ...top3.map((p) => p.hospCopay)],
+    ["Emergency room", ...top3.map((p) => p.erCopay)],
+    ["Medical OOP max", ...top3.map((p) => p.moop)],
+    ["Rx deductible", ...top3.map((p) => p.deductibleRx ? usd(p.deductibleRx) : "$0")],
+    ["Tier 1 generic", ...top3.map((p) => p.rxTier1)],
+    ["Tier 2 generic", ...top3.map((p) => p.rxTier2)],
+    ["Tier 3 brand", ...top3.map((p) => p.rxTier3)],
+    ["Insulin cap", ...top3.map((p) => `${usd(p.insulinCap)}/mo`)],
+    ["Rx OOP cap", ...top3.map((p) => usd(p.rxOOPCap))],
+    ["Dental", ...top3.map((p) => p.dentalBenefit)],
+    ["Vision", ...top3.map((p) => p.visionBenefit)],
+    ["Hearing", ...top3.map((p) => p.hearingBenefit)],
+    ["OTC / wellness", ...top3.map((p) => p.otcBenefit)],
+    ["Extras", ...top3.map((p) => p.extras)],
+  ];
+
+  autoTable(doc, {
+    startY: y,
+    head: [colHeads],
+    body: rows,
+    headStyles: { fillColor: [16, 122, 87], textColor: 255, fontSize: 9, valign: "middle" },
+    styles: { fontSize: 8, cellPadding: 4, valign: "top" },
+    columnStyles: {
+      0: { fontStyle: "bold", cellWidth: 110, textColor: [60, 60, 60] },
+    },
+    didParseCell: (data) => {
+      // Highlight the TOTAL MONTHLY and EST. ANNUAL TOTAL rows
+      const label = (data.row.raw as (string | number)[])[0];
+      if (label === "TOTAL MONTHLY" || label === "EST. ANNUAL TOTAL") {
+        data.cell.styles.fillColor = [232, 245, 238];
+        data.cell.styles.fontStyle = "bold";
+        data.cell.styles.textColor = [16, 122, 87];
+      }
+    },
+    margin: { left: margin, right: margin },
+  });
+
+  // ---------- Page 3: Landscape — full plan details of recommended plan ----------
+  doc.addPage("letter", "landscape");
+  const lsW = doc.internal.pageSize.getWidth();
+  const lsMargin = 28;
+
+  doc.setFillColor(16, 122, 87);
+  doc.rect(0, 0, lsW, 64, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.text(`Recommended plan — full detail: ${rec.carrier} · ${rec.plan}`, lsMargin, 30);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text(
+    `Plan year ${input.year} · ZIP ${input.zip3}${input.county ? ` · ${input.county}` : ""} · ${rec.planType} · ${rec.stars}`,
+    lsMargin, 50,
+  );
+
+  doc.setTextColor(20, 20, 20);
+  let lsY = 84;
+
+  const fmtMo = (n: number) => `${usd(Math.round(n * 100) / 100)}/mo`;
+
+  // Premium + medical | Rx + bundled, two big columns
+  const lsColW = (lsW - lsMargin * 2 - 16) / 2;
+
+  autoTable(doc, {
+    startY: lsY,
+    head: [["Premium component", "Monthly", "Annual"]],
+    body: [
+      ["Medicare Part B", fmtMo(rec.premiumPartB), usd(Math.round(rec.premiumPartB * 12))],
+      [`Plan premium (${rec.planType})`, fmtMo(rec.premiumPlan), usd(Math.round(rec.premiumPlan * 12))],
+      ["Part D / Rx", fmtMo(rec.premiumRx), usd(Math.round(rec.premiumRx * 12))],
+      ["Dental", rec.premiumDental ? fmtMo(rec.premiumDental) : "Included", rec.premiumDental ? usd(Math.round(rec.premiumDental * 12)) : "—"],
+      ["Vision", rec.premiumVision ? fmtMo(rec.premiumVision) : "Included", rec.premiumVision ? usd(Math.round(rec.premiumVision * 12)) : "—"],
+    ],
+    foot: [["TOTAL (all-in)", fmtMo(rec.monthly), usd(Math.round(rec.monthly * 12))]],
+    headStyles: { fillColor: [16, 122, 87], textColor: 255, fontSize: 9 },
+    footStyles: { fillColor: [232, 245, 238], textColor: [16, 122, 87], fontStyle: "bold" },
+    styles: { fontSize: 9, cellPadding: 4 },
+    columnStyles: { 1: { halign: "right" }, 2: { halign: "right" } },
+    margin: { left: lsMargin },
+    tableWidth: lsColW,
+  });
+  const leftA = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
+
+  autoTable(doc, {
+    startY: lsY,
+    head: [["Prescription drug detail", "Member cost"]],
+    body: [
+      ["Rx deductible", rec.deductibleRx ? usd(rec.deductibleRx) : "$0"],
+      ["Tier 1 — Preferred generic", rec.rxTier1],
+      ["Tier 2 — Generic", rec.rxTier2],
+      ["Tier 3 — Preferred brand", rec.rxTier3],
+      ["Insulin (federal cap)", `${usd(rec.insulinCap)}/mo`],
+      ["Annual Rx OOP cap", usd(rec.rxOOPCap)],
+    ],
+    headStyles: { fillColor: [16, 122, 87], textColor: 255, fontSize: 9 },
+    styles: { fontSize: 9, cellPadding: 4 },
+    columnStyles: { 0: { fontStyle: "bold" }, 1: { halign: "right" } },
+    margin: { left: lsMargin + lsColW + 16 },
+    tableWidth: lsColW,
+  });
+  const rightA = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
+  lsY = Math.max(leftA, rightA) + 14;
+
+  autoTable(doc, {
+    startY: lsY,
+    head: [["Medical cost-sharing", "Member cost"]],
+    body: [
+      ["Medical deductible", rec.deductibleMed ? usd(rec.deductibleMed) : "$0"],
+      ["Primary care visit", rec.pcpCopay],
+      ["Specialist visit", rec.specCopay],
+      ["Inpatient hospital", rec.hospCopay],
+      ["Emergency room", rec.erCopay],
+      ["Out-of-pocket maximum", rec.moop],
+      ["Network rules", rec.network],
+    ],
+    headStyles: { fillColor: [16, 122, 87], textColor: 255, fontSize: 9 },
+    styles: { fontSize: 9, cellPadding: 4 },
+    columnStyles: { 0: { fontStyle: "bold" } },
+    margin: { left: lsMargin },
+    tableWidth: lsColW,
+  });
+  const leftB = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
+
+  autoTable(doc, {
+    startY: lsY,
+    head: [["Bundled benefit", "Coverage"]],
+    body: [
+      ["Dental", rec.dentalBenefit],
+      ["Vision", rec.visionBenefit],
+      ["Hearing", rec.hearingBenefit],
+      ["OTC / wellness", rec.otcBenefit],
+      ["Extras", rec.extras],
+    ],
+    headStyles: { fillColor: [16, 122, 87], textColor: 255, fontSize: 9 },
+    styles: { fontSize: 9, cellPadding: 4 },
+    columnStyles: { 0: { fontStyle: "bold" } },
+    margin: { left: lsMargin + lsColW + 16 },
+    tableWidth: lsColW,
+  });
+
+  // Footer disclaimer
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(7);
+    doc.setTextColor(120, 120, 120);
+    const w = doc.internal.pageSize.getWidth();
+    const h = doc.internal.pageSize.getHeight();
+    doc.text(
+      "Educational comparison only — not a complete listing of plans available in your area. Contact Medicare.gov or 1-800-MEDICARE for all options.",
+      28, h - 22, { maxWidth: w - 56 },
+    );
+    doc.text(`Page ${i} of ${pageCount}`, w - 28, h - 10, { align: "right" });
+  }
+
+  return doc;
+}
+
+export function downloadConsumerScenarioPdf(input: ScenarioPdfInput) {
+  const doc = buildConsumerScenarioPdf(input);
+  doc.save(`medicare-recommendation-${input.scenarioCode}.pdf`);
+}
+
 // ============ Beautifully formatted recommendation page ============
 function renderRecommendationPage(
   doc: jsPDF,
