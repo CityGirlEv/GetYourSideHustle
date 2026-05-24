@@ -5,14 +5,16 @@ import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollText, Users, Settings2, Search, Plus, Minus, Inbox, Phone, Mail, UserPlus, Loader2, Eye, EyeOff } from "lucide-react";
+import { ScrollText, Users, Settings2, Search, Plus, Minus, Inbox, Phone, Mail, UserPlus, Loader2, Eye, EyeOff, Pencil, Trash2, Ban, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { GUIDELINES } from "@/lib/medicare-math";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
-import { createAdvisor, listStaff, setUserRole, listAgents, assignAgent } from "@/lib/admin.functions";
+import { createAdvisor, listStaff, setUserRole, listAgents, assignAgent, updateUser, setUserDisabled, deleteUser } from "@/lib/admin.functions";
 
 interface AdminScenarioRow {
   id: string;
@@ -54,6 +56,8 @@ interface StaffMember {
   npn_number: string;
   role: string;
   credits: number;
+  disabled?: boolean;
+  last_sign_in_at?: string | null;
 }
 
 const ASSIGNABLE_ROLES = ["viewer", "editor", "qa", "agent", "admin"] as const;
@@ -84,6 +88,71 @@ function AdminPortal() {
   const doSetUserRole = useServerFn(setUserRole);
   const fetchAgents = useServerFn(listAgents);
   const doAssignAgent = useServerFn(assignAgent);
+  const doUpdateUser = useServerFn(updateUser);
+  const doSetDisabled = useServerFn(setUserDisabled);
+  const doDeleteUser = useServerFn(deleteUser);
+
+  const [editing, setEditing] = useState<StaffMember | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editNpn, setEditNpn] = useState("");
+  const [editPassword, setEditPassword] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<StaffMember | null>(null);
+
+  const reloadStaff = async () => {
+    const [s, a] = await Promise.all([fetchStaff(), fetchAgents()]);
+    setStaff(s as StaffMember[]);
+    setAgents(a as AgentOption[]);
+  };
+
+  const openEdit = (s: StaffMember) => {
+    setEditing(s);
+    setEditName(s.full_name);
+    setEditNpn(s.npn_number);
+    setEditPassword("");
+  };
+
+  const saveEdit = async () => {
+    if (!editing) return;
+    setSavingEdit(true);
+    try {
+      await doUpdateUser({ data: {
+        user_id: editing.id,
+        full_name: editName,
+        npn_number: editNpn || null,
+        ...(editPassword ? { password: editPassword } : {}),
+      }});
+      toast.success("User updated");
+      setEditing(null);
+      await reloadStaff();
+    } catch (e: unknown) {
+      toast.error((e as Error)?.message ?? "Failed to update user");
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const toggleDisabled = async (s: StaffMember) => {
+    try {
+      await doSetDisabled({ data: { user_id: s.id, disabled: !s.disabled } });
+      toast.success(s.disabled ? "User enabled" : "User disabled");
+      await reloadStaff();
+    } catch (e: unknown) {
+      toast.error((e as Error)?.message ?? "Failed");
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      await doDeleteUser({ data: { user_id: deleteTarget.id } });
+      toast.success(`Deleted ${deleteTarget.email}`);
+      setDeleteTarget(null);
+      await reloadStaff();
+    } catch (e: unknown) {
+      toast.error((e as Error)?.message ?? "Failed to delete user");
+    }
+  };
 
   useEffect(() => {
     if (!user) router.navigate({ to: "/auth" });
