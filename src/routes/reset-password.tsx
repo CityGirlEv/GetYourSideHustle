@@ -21,9 +21,18 @@ function ResetPasswordPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    // Supabase places the recovery session in the URL hash and signs the user in.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") setReady(true);
+    // If the recovery tokens are in the URL hash, allow the form immediately —
+    // Supabase will exchange them for a session in the background.
+    if (typeof window !== "undefined") {
+      const hash = window.location.hash || "";
+      if (hash.includes("access_token=") || hash.includes("type=recovery") || hash.includes("code=")) {
+        setReady(true);
+      }
+    }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN" || event === "INITIAL_SESSION") {
+        if (session) setReady(true);
+      }
     });
     supabase.auth.getSession().then(({ data }) => { if (data.session) setReady(true); });
     return () => subscription.unsubscribe();
