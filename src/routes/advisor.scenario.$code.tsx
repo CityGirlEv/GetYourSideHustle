@@ -7,14 +7,33 @@ import { Button } from "@/components/ui/button";
 import { StrategyScorecard } from "@/components/StrategyScorecard";
 import { ArrowLeft, MapPin, Pill, Download, FileSignature, ShieldCheck, FileSpreadsheet, Pencil } from "lucide-react";
 import { toast } from "sonner";
-import { buildScenarioPdf } from "@/lib/scenario-pdf";
-import { buildScenarioXlsx } from "@/lib/scenario-xlsx";
+import { buildScenarioPdf, type ScenarioPdfInput } from "@/lib/scenario-pdf";
+import { downloadScenarioXlsx } from "@/lib/scenario-xlsx";
+import type { Scenario } from "@/lib/app-store";
+import type { Year } from "@/lib/medicare-math";
+
+function buildExportInput(s: Scenario, year: Year): ScenarioPdfInput {
+  const prefs = (s.preferences ?? {}) as { county?: string };
+  return {
+    scenarioCode: s.scenario_code,
+    year,
+    birthYear: s.birth_year,
+    zip3: s.zip3,
+    county: prefs.county,
+    gender: s.gender ?? "prefer_not_to_say",
+    tobacco: s.tobacco,
+    incomeBand: s.income_band ?? "—",
+    costPreference: s.cost_preference,
+    conditions: s.conditions ?? [],
+    medications: s.medications ?? [],
+  };
+}
 
 export const Route = createFileRoute("/advisor/scenario/$code")({ component: ScenarioDetail });
 
 function ScenarioDetail() {
   const { code } = Route.useParams();
-  const { user, authLoading, scenarios, lookupScenario, soas, addSOA, deductCredit, log } = useApp();
+  const { user, authLoading, scenarios, lookupScenario, soas, addSOA, deductCredit, log, year } = useApp();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
 
@@ -57,13 +76,7 @@ function ScenarioDetail() {
       toast.error("Out of credits — top up to continue."); return;
     }
     try {
-      const wb = await buildScenarioXlsx(buildExportInput(scenario, year));
-      const buf = await wb.xlsx.writeBuffer();
-      const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = `${scenario.scenario_code}-dossier.xlsx`;
-      a.click(); URL.revokeObjectURL(url);
+      await downloadScenarioXlsx(buildExportInput(scenario, year));
       log("EXPORT_DOSSIER", { scenario: scenario.id, format: "xlsx" });
       toast.success("Dossier spreadsheet downloaded");
     } catch (e) {
