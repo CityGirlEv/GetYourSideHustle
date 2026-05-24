@@ -5,11 +5,13 @@ import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollText, Users, Settings2, Search, Plus, Minus, Inbox, Phone, Mail } from "lucide-react";
+import { ScrollText, Users, Settings2, Search, Plus, Minus, Inbox, Phone, Mail, UserPlus, Loader2, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GUIDELINES } from "@/lib/medicare-math";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useServerFn } from "@tanstack/react-start";
+import { createAdvisor, listStaff } from "@/lib/admin.functions";
 
 interface AdminScenarioRow {
   id: string;
