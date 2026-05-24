@@ -927,6 +927,7 @@ function renderRecommendationPage(
       ["Part D / prescription drug premium", fmtMo(rec.premiumRx), usd(Math.round(rec.premiumRx * 12))],
       ["Dental premium", rec.premiumDental ? fmtMo(rec.premiumDental) : "Included / standalone", rec.premiumDental ? usd(Math.round(rec.premiumDental * 12)) : "—"],
       ["Vision premium", rec.premiumVision ? fmtMo(rec.premiumVision) : "Included / standalone", rec.premiumVision ? usd(Math.round(rec.premiumVision * 12)) : "—"],
+      ["Extras (hearing / OTC / wellness)", rec.premiumExtras ? fmtMo(rec.premiumExtras) : "Bundled / included", rec.premiumExtras ? usd(Math.round(rec.premiumExtras * 12)) : "—"],
     ],
     foot: [["TOTAL MONTHLY PAYMENT (all-in)", fmtMo(rec.monthly), usd(Math.round(rec.monthly * 12))]],
     headStyles: { fillColor: [16, 122, 87], textColor: 255, fontSize: 9 },
