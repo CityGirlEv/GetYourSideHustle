@@ -10,10 +10,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Medication } from "@/lib/medicare-math";
 import {
-  lookupCountiesForZip,
-  countyMatchesList,
-  type CountyMatch,
-} from "@/lib/zip-county-lookup";
+  countiesForZip3,
+  countyMatchesZip3,
+  type Zip3County,
+} from "@/lib/zip3-county-lookup";
 
 function blankMed(): Medication {
   return { id: crypto.randomUUID(), medication_name: "", strength: "", dosage_form: "Tablet", frequency: "Daily", estimated_monthly_retail: 25 };
@@ -29,11 +29,8 @@ const CONDITIONS = ["Diabetes", "Hypertension", "Heart disease", "COPD", "Cancer
 export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
   const [step, setStep] = useState(1);
   const [birthYear, setBirthYear] = useState<number | "">("");
-  const [zip, setZip] = useState(""); // 5-digit ZIP
+  const [zip, setZip] = useState(""); // 3-digit ZIP prefix (de-identified)
   const [county, setCounty] = useState("");
-  const [countyOptions, setCountyOptions] = useState<CountyMatch[]>([]);
-  const [countyLoading, setCountyLoading] = useState(false);
-  const [countyLookupError, setCountyLookupError] = useState<string | null>(null);
   const [gender, setGender] = useState("prefer_not_to_say");
   const [tobacco, setTobacco] = useState(false);
   const [incomeBand, setIncomeBand] = useState(INCOME_BANDS[2]);
@@ -46,43 +43,16 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
   const [focusedMedId, setFocusedMedId] = useState<string | null>(null);
   const [medQuery, setMedQuery] = useState<Record<string, string>>({});
 
-  const zip3 = zip.slice(0, 3);
+  const zip3 = zip;
+  const countyOptions: Zip3County[] = /^\d{3}$/.test(zip3) ? countiesForZip3(zip3) : [];
+  const zip3Unknown = /^\d{3}$/.test(zip3) && countyOptions.length === 0;
 
-  // Lookup counties whenever a full 5-digit ZIP is entered.
+  // Reset county when ZIP3 changes and the previous selection no longer matches.
   useEffect(() => {
-    if (!/^\d{5}$/.test(zip)) {
-      setCountyOptions([]);
-      setCountyLookupError(null);
-      return;
-    }
-    let cancelled = false;
-    setCountyLoading(true);
-    setCountyLookupError(null);
-    lookupCountiesForZip(zip)
-      .then((opts) => {
-        if (cancelled) return;
-        setCountyOptions(opts);
-        if (opts.length === 0) {
-          setCountyLookupError("We couldn't find any counties for that ZIP. Please double-check the ZIP code.");
-        } else if (opts.length === 1) {
-          setCounty(opts[0].county);
-        } else if (county && !countyMatchesList(county, opts)) {
-          setCounty("");
-        }
-      })
-      .catch((e: unknown) => {
-        if (cancelled) return;
-        setCountyOptions([]);
-        setCountyLookupError(e instanceof Error ? e.message : "ZIP lookup failed.");
-      })
-      .finally(() => {
-        if (!cancelled) setCountyLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
+    if (!/^\d{3}$/.test(zip3)) return;
+    if (county && !countyMatchesZip3(county, zip3)) setCounty("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [zip]);
+  }, [zip3]);
 
   const toggleCondition = (c: string) => {
     setConditions((p) => {
@@ -141,17 +111,17 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
       toast.error(`Year of birth must be between ${MIN_BIRTH_YEAR} and ${MAX_BIRTH_YEAR} (ages 18–120).`);
       return;
     }
-    if (!/^\d{5}$/.test(zip)) {
-      toast.error("Please enter a valid 5-digit ZIP code");
+    if (!/^\d{3}$/.test(zip)) {
+      toast.error("Please enter the first 3 digits of your ZIP code");
       return;
     }
     if (county.trim().length < 2) {
       toast.error("Please select your county or parish");
       return;
     }
-    if (countyOptions.length > 0 && !countyMatchesList(county, countyOptions)) {
+    if (countyOptions.length > 0 && !countyMatchesZip3(county, zip3)) {
       toast.error(
-        `"${county}" is not within ZIP ${zip}. Valid options: ${countyOptions
+        `"${county}" is not within ZIP ${zip}xx. Valid options: ${countyOptions
           .map((c) => c.county)
           .join(", ")}.`
       );
@@ -212,22 +182,23 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
               </select>
             </div>
             <div>
-              <Label>ZIP code <span className="text-destructive">*</span></Label>
+              <Label>ZIP code (first 3 digits) <span className="text-destructive">*</span></Label>
               <Input
                 value={zip}
-                onChange={(e) => setZip(e.target.value.replace(/\D/g, "").slice(0, 5))}
-                placeholder="e.g. 77001"
+                onChange={(e) => setZip(e.target.value.replace(/\D/g, "").slice(0, 3))}
+                placeholder="e.g. 770"
                 inputMode="numeric"
-                maxLength={5}
+                maxLength={3}
                 required
               />
+              <p className="text-xs text-muted-foreground mt-1">We only store the first 3 digits — never your full ZIP.</p>
             </div>
             <div className="col-span-2">
               <Label>County or parish <span className="text-destructive">*</span></Label>
               {countyOptions.length > 0 ? (
                 <select
                   className="w-full border border-input rounded-md px-3 h-9 bg-background"
-                  value={countyMatchesList(county, countyOptions)?.county ?? ""}
+                  value={countyMatchesZip3(county, zip3)?.county ?? ""}
                   onChange={(e) => setCounty(e.target.value)}
                   required
                 >
@@ -243,31 +214,28 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
                   value={county}
                   onChange={(e) => setCounty(e.target.value.slice(0, 80))}
                   placeholder={
-                    zip.length === 5
-                      ? countyLoading
-                        ? "Looking up counties…"
-                        : "e.g. Harris County, Orleans Parish"
-                      : "Enter your 5-digit ZIP above first"
+                    zip.length === 3
+                      ? "e.g. Harris County, Orleans Parish"
+                      : "Enter the first 3 digits of your ZIP above first"
                   }
                   maxLength={80}
-                  disabled={zip.length !== 5 || countyLoading}
+                  disabled={zip.length !== 3}
                   required
                 />
               )}
-              {countyLoading && (
-                <p className="text-xs text-muted-foreground mt-1">Looking up counties for ZIP {zip}…</p>
-              )}
-              {countyLookupError && !countyLoading && (
-                <p className="text-xs text-destructive mt-1">{countyLookupError}</p>
-              )}
-              {!countyLoading && !countyLookupError && countyOptions.length > 1 && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  ZIP {zip} spans multiple counties — pick yours from the list.
+              {zip3Unknown && (
+                <p className="text-xs text-destructive mt-1">
+                  We don't recognize ZIP prefix {zip}. Double-check the first 3 digits of your ZIP.
                 </p>
               )}
-              {!countyLoading && !countyLookupError && countyOptions.length === 1 && (
+              {countyOptions.length > 1 && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  Auto-selected the only county for ZIP {zip}.
+                  ZIP prefix {zip} covers multiple counties — pick yours from the list.
+                </p>
+              )}
+              {countyOptions.length === 1 && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Only one county for ZIP prefix {zip}.
                 </p>
               )}
             </div>
