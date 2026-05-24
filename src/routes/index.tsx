@@ -36,7 +36,7 @@ function Index() {
               <FileText className="h-7 w-7 text-white" />
             </div>
             <div>
-              <h2 className="font-display text-2xl font-bold">Give me the best Medicare Plan based upon my scenario</h2>
+              <h2 className="font-display text-2xl font-bold uppercase animate-pulse">Give me the best Medicare Plan based upon my scenario</h2>
               <p className="text-sm text-muted-foreground mt-2">Build a de-identified scenario in 2 minutes. You'll get a Scenario ID to share with the agent of <em>your</em> choice. We will never contact you.</p>
             </div>
             <Button onClick={() => router.navigate({ to: "/scenario/new" })} className="grad-indigo w-full h-12 text-base">
