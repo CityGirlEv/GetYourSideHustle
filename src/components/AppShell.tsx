@@ -28,7 +28,7 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
           </Link>
         </div>
         <div className="flex flex-col items-center">
-          <h1 className="text-xl md:text-2xl font-display font-bold text-primary">{title}</h1>
+          <h1 className="text-2xl md:text-3xl font-display font-bold text-primary uppercase">{title}</h1>
           {subtitle && <p className="font-display text-sm md:text-base font-bold text-blue-600 tracking-wide">{subtitle}</p>}
         </div>
         <div className="flex items-center gap-3 flex-1 justify-end">
