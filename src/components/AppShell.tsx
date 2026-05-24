@@ -21,11 +21,15 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
   return (
     <div className="min-h-screen flex flex-col">
       <SecurityBanner />
-      <header className="glass border-b border-border/60 px-6 py-3 flex items-center justify-between gap-4 flex-wrap sticky top-0 z-30">
-        <Link to="/" className="flex items-center gap-2 font-display font-bold text-lg">
+      <header className="glass border-b border-border/60 px-6 py-3 flex items-center gap-4 flex-wrap sticky top-0 z-30">
+        <Link to="/" className="flex items-center gap-2 font-display font-bold text-lg shrink-0">
           <img src={muntieLogo} alt="Medicare Optimizer" className="h-14 w-14 object-contain" />
         </Link>
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex-1 text-center min-w-0 px-2">
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-emerald leading-tight truncate">{title}</h1>
+          {subtitle && <p className="text-[11px] md:text-xs italic text-emerald font-semibold">{subtitle}</p>}
+        </div>
+        <div className="flex items-center gap-3 flex-wrap shrink-0">
           <YearToggle />
           {user?.role === "advisor" && <CreditPill />}
           {user && (
@@ -40,15 +44,6 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
         </div>
       </header>
       <main className="flex-1 px-4 md:px-8 py-8 max-w-7xl w-full mx-auto">
-        <div className="relative mb-6 bg-white rounded-2xl p-6 shadow-sm border border-border">
-          <div className="absolute left-6 top-1/2 -translate-y-1/2">
-            <img src={muntieLogo} alt="Medicare Optimizer" className="h-16 w-16 object-contain" />
-          </div>
-          <div className="text-center px-28">
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-emerald leading-tight">{title}</h1>
-            {subtitle && <p className="text-xs md:text-sm italic text-emerald font-semibold mt-1">{subtitle}</p>}
-          </div>
-        </div>
         {children}
       </main>
       <CMSFooter />
