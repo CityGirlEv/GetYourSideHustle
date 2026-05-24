@@ -913,6 +913,71 @@ function renderRecommendationPage(
 
   let y = tileY + tileH + 18;
 
+  // ---------- Scenario snapshot strip ----------
+  const condCount = (input.conditions ?? []).length;
+  const medCount = (input.medications ?? []).length;
+  const snapH = 56;
+  doc.setFillColor(248, 251, 249);
+  doc.setDrawColor(210, 225, 218);
+  doc.roundedRect(margin, y, pageW - margin * 2, snapH, 6, 6, "FD");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(16, 122, 87);
+  doc.text("YOUR SCENARIO AT A GLANCE", margin + 12, y + 14);
+  const cells: { label: string; value: string }[] = [
+    { label: "Age", value: String(age) },
+    { label: "ZIP region", value: `${input.zip3}xx` },
+    { label: "Tobacco", value: input.tobacco ? "Yes" : "No" },
+    { label: "Income band", value: input.incomeBand || "—" },
+    { label: "Conditions", value: condCount ? String(condCount) : "None" },
+    { label: "Medications", value: medCount ? String(medCount) : "None" },
+    { label: "Priority", value: input.costPreference === "minimize_monthly" ? "Low monthly" : "Predictability" },
+  ];
+  const cellW = (pageW - margin * 2 - 24) / cells.length;
+  cells.forEach((c, i) => {
+    const cx = margin + 12 + i * cellW;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.setTextColor(120, 120, 120);
+    doc.text(c.label.toUpperCase(), cx, y + 28);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9.5);
+    doc.setTextColor(20, 20, 20);
+    doc.text(c.value, cx, y + 44, { maxWidth: cellW - 4 });
+  });
+  y += snapH + 14;
+
+  // ---------- Why this plan ----------
+  const reasons: string[] = [];
+  if (rec.planType.toLowerCase().includes("medigap") || /plan [a-n]/i.test(rec.plan)) {
+    reasons.push("Predictable monthly cost — Medigap covers most Part B coinsurance after the small annual deductible, so doctor and hospital bills don't surprise you.");
+    reasons.push("Use any provider nationwide that accepts Medicare — no networks, no referrals.");
+  } else if (rec.planType.toLowerCase().includes("advantage") || rec.planType.toLowerCase().includes("ma")) {
+    reasons.push("Low or $0 plan premium with bundled medical + Part D drug coverage in a single plan.");
+    reasons.push(`Caps your annual medical out-of-pocket at ${rec.moop}, protecting you from worst-case bills.`);
+  } else {
+    reasons.push("Best balance of monthly premium, drug coverage, and out-of-pocket risk for the medications and conditions you reported.");
+  }
+  if (medCount > 0) reasons.push(`Formulary fit checked against your ${medCount} medication${medCount === 1 ? "" : "s"} — Tier 1 generics at ${rec.rxTier1}, insulin capped at ${usd(rec.insulinCap)}/mo.`);
+  reasons.push(`Carrier financial strength: A.M. Best ${rec.amBest} · CMS Star Rating ${rec.stars}.`);
+
+  doc.setFillColor(255, 251, 235);
+  doc.setDrawColor(230, 200, 110);
+  const whyH = 18 + reasons.length * 13 + 12;
+  doc.roundedRect(margin, y, pageW - margin * 2, whyH, 6, 6, "FD");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(140, 100, 20);
+  doc.text("WHY THIS PLAN IS YOUR #1", margin + 12, y + 16);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.setTextColor(60, 60, 60);
+  reasons.forEach((r, i) => {
+    doc.text(`•`, margin + 14, y + 30 + i * 13);
+    doc.text(r, margin + 22, y + 30 + i * 13, { maxWidth: pageW - margin * 2 - 36 });
+  });
+  y += whyH + 14;
+
   // Monthly premium breakdown
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);

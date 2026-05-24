@@ -97,11 +97,12 @@ function ScenarioCreated() {
       <SecurityBanner />
       <main className="flex-1 flex items-center justify-center px-4 py-12">
         <Card className="glass p-8 max-w-xl w-full space-y-6 text-center">
+          <h1 className="font-display text-3xl font-bold tracking-tight">View My Scenario</h1>
           <div className="inline-flex h-14 w-14 items-center justify-center rounded-xl bg-emerald mx-auto">
             <CheckCircle2 className="h-7 w-7 text-emerald-foreground" />
           </div>
           <div className="space-y-2">
-            <h1 className="font-display text-2xl font-bold">Your Scenario ID</h1>
+            <h2 className="font-display text-2xl font-bold">Your Scenario ID</h2>
             <p className="text-sm text-muted-foreground">Write this down or copy it. <strong>Without it, even we cannot find your scenario.</strong></p>
           </div>
 
@@ -113,30 +114,26 @@ function ScenarioCreated() {
             <Copy className="h-4 w-4 mr-2" /> Copy Scenario ID
           </Button>
 
-          <Button onClick={downloadPdf} className="w-full grad-indigo">
-            <FileDown className="h-4 w-4 mr-2" />
-            {isAgent
-              ? "Download complete plan comparison PDF"
-              : "Download recommendation PDF (top 3 side-by-side)"}
-          </Button>
-          {isAgent ? (
-            <Button onClick={downloadXlsx} variant="outline" className="w-full">
-              <FileDown className="h-4 w-4 mr-2" /> Download personalized Excel workbook (3 tabs)
-            </Button>
-          ) : (
-            <div className="text-xs text-muted-foreground bg-muted/40 border border-border rounded-lg p-3 text-left">
-              The Excel workbook with full carrier breakdowns is available to licensed agents only. Share your Scenario ID with your agent — they can log in and download it for you.
-            </div>
-          )}
-
           <Button onClick={() => setOptInOpen(true)} variant="outline" className="w-full">
             <Phone className="h-4 w-4 mr-2" /> Have a licensed expert contact me
           </Button>
 
           {recommendation && (
             <div className="text-left bg-emerald/5 border border-emerald/30 rounded-lg p-4 space-y-3 text-sm">
-              <div className="font-semibold flex items-center gap-2 text-emerald">
-                <Sparkles className="h-4 w-4" /> Personalized recommendation
+              <div className="flex items-start justify-between gap-2">
+                <div className="font-semibold flex items-center gap-2 text-emerald">
+                  <Sparkles className="h-4 w-4" /> Personalized recommendation
+                </div>
+                <div className="flex flex-col gap-1 shrink-0">
+                  <Button onClick={downloadPdf} size="sm" variant="outline" className="h-7 px-2 text-[11px]">
+                    <FileDown className="h-3 w-3 mr-1" /> PDF
+                  </Button>
+                  {isAgent && (
+                    <Button onClick={downloadXlsx} size="sm" variant="outline" className="h-7 px-2 text-[11px]">
+                      <FileDown className="h-3 w-3 mr-1" /> Excel
+                    </Button>
+                  )}
+                </div>
               </div>
               <div>
                 <div className="text-xs uppercase tracking-wide text-muted-foreground">Best fit for your priorities</div>
@@ -172,6 +169,11 @@ function ScenarioCreated() {
               <p className="text-[10px] text-muted-foreground pt-2 border-t border-emerald/20">
                 Source: {recommendation.primary.source}. Reviewed against all open standardized Medigap letters, all CMS-approved MA plan types, and all PDP tiers in the catalog. Premium figures are regional estimates — not a binding rate quote.
               </p>
+            </div>
+          )}
+          {!isAgent && (
+            <div className="text-xs text-muted-foreground bg-muted/40 border border-border rounded-lg p-3 text-left">
+              The Excel workbook with full carrier breakdowns is available to licensed agents only. Share your Scenario ID with your agent — they can log in and download it for you.
             </div>
           )}
 
