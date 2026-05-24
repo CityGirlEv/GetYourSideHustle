@@ -13,7 +13,7 @@ export function YearToggle() {
         <button
           key={y}
           onClick={() => setYear(y as 2026 | 2027)}
-          className={`px-4 py-1.5 rounded-full text-sm font-semibold transition ${
+          className={`px-2 py-0.5 rounded-full text-xs font-semibold transition ${
             year === y ? "grad-indigo shadow" : "text-muted-foreground hover:text-foreground"
           }`}
         >
