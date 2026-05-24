@@ -28,10 +28,6 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
             <span className="text-lg md:text-xl tracking-tight">Medicare Optimizer</span>
           </Link>
         </div>
-        <div className="flex-1 text-center min-w-0 px-2">
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-emerald leading-tight truncate">{title}</h1>
-          {subtitle && <p className="text-[11px] md:text-xs italic text-emerald font-semibold truncate">{subtitle}</p>}
-        </div>
         <div className="flex items-center gap-3 flex-1 justify-end">
           <YearToggle />
           {user?.role === "advisor" && <CreditPill />}
