@@ -24,7 +24,7 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
       <header className="glass border-b border-border/60 px-3 md:px-6 py-2 md:py-3 flex items-center sticky top-0 z-30 gap-2 md:gap-4">
         <div className="flex items-center gap-2 flex-none">
           <Link to="/" className="flex items-center gap-3 font-display font-bold">
-            <img src={muntieLogo} alt="Medicare Optimizer" className="h-14 w-14 md:h-20 md:w-20 object-contain" />
+            <img src={muntieLogo} alt="Medicare Optimizer" className="h-9 w-9 sm:h-12 sm:w-12 md:h-20 md:w-20 object-contain flex-shrink-0" />
           </Link>
           <div className="hidden md:flex items-center gap-3 text-sm text-muted-foreground">
             {user?.role === "admin" && (
