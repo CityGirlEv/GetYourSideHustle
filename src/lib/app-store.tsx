@@ -1,15 +1,11 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useServerFn } from "@tanstack/react-start";
 import type { Session } from "@supabase/supabase-js";
+import { getCurrentUserProfile } from "./current-user.functions";
 import type { Year, Medication } from "./medicare-math";
 
 export type Role = "admin" | "qa" | "agent" | "editor" | "viewer" | "advisor";
-
-const ROLE_PRIORITY: Role[] = ["admin", "qa", "agent", "editor", "viewer", "advisor"];
-function pickRole(roles: string[]): Role {
-  for (const r of ROLE_PRIORITY) if (roles.includes(r)) return r;
-  return "viewer";
-}
 
 export interface User {
   id: string;
@@ -94,6 +90,7 @@ interface Ctx {
 const AppCtx = createContext<Ctx | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
+  const fetchCurrentUserProfile = useServerFn(getCurrentUserProfile);
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -128,25 +125,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!session) return;
     let cancelled = false;
     (async () => {
-      const uid = session.user.id;
-      const [{ data: profile }, { data: roles }] = await Promise.all([
-        supabase.from("profiles").select("full_name, npn_number").eq("id", uid).maybeSingle(),
-        supabase.from("user_roles").select("role").eq("user_id", uid),
-      ]);
+      setAuthLoading(true);
+      const profile = await fetchCurrentUserProfile();
       if (cancelled) return;
-      const roleList = (roles ?? []).map((r) => r.role as string);
-      const role: Role = pickRole(roleList);
-      setUser({
-        id: uid,
-        email: session.user.email ?? "",
-        full_name: profile?.full_name ?? "",
-        npn_number: profile?.npn_number ?? undefined,
-        role,
-      });
+      setUser(profile as User);
       setAuthLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [session]);
+  }, [session, fetchCurrentUserProfile]);
 
   const log = useCallback((action: string, details?: Record<string, unknown>) => {
     if (!user) return;
