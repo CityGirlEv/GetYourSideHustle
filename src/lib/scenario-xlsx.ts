@@ -222,6 +222,10 @@ function buildPathwayBSheet(input: ScenarioXlsxInput): XLSX.WorkSheet {
 }
 
 export function buildScenarioWorkbook(input: ScenarioXlsxInput): XLSX.WorkBook {
+  return buildScenarioWorkbookInternal(input);
+}
+
+function buildScenarioWorkbookInternal(input: ScenarioXlsxInput): XLSX.WorkBook {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, buildPersonalSheet(input), "Personal Recommendation");
   XLSX.utils.book_append_sheet(wb, buildPathwayASheet(input), "Pathway A - Medigap");
