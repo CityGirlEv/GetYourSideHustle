@@ -3,7 +3,7 @@ import { Link, useRouter } from "@tanstack/react-router";
 import { SecurityBanner } from "./SecurityBanner";
 import { CMSFooter } from "./CMSFooter";
 import { YearToggle } from "./YearToggle";
-import { LogOut } from "lucide-react";
+import { LogOut, Home, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CreditPill } from "./CreditPill";
 import type { ReactNode } from "react";
@@ -26,6 +26,16 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
           <Link to="/" className="flex items-center gap-3 font-display font-bold">
             <img src={muntieLogo} alt="Medicare Optimizer" className="h-20 w-20 object-contain" />
           </Link>
+          <div className="hidden md:flex items-center gap-3 text-sm text-muted-foreground ml-4">
+            <Link to="/" className="flex items-center gap-1 hover:text-foreground transition-colors">
+              <Home className="h-3.5 w-3.5" /> Home
+            </Link>
+            {!user && (
+              <Link to="/auth" className="flex items-center gap-1 hover:text-foreground transition-colors">
+                <LogIn className="h-3.5 w-3.5" /> Agent login
+              </Link>
+            )}
+          </div>
         </div>
         <div className="flex flex-col items-center">
           <h1 className="text-2xl md:text-3xl font-display font-bold text-primary uppercase">{title}</h1>
