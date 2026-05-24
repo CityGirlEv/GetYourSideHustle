@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "./ui/card";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -9,6 +9,11 @@ import { resolveDiagnosis, COMMON_MEDS_BY_CONDITION, searchMedCatalog, type MedC
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Medication } from "@/lib/medicare-math";
+import {
+  lookupCountiesForZip,
+  countyMatchesList,
+  type CountyMatch,
+} from "@/lib/zip-county-lookup";
 
 function blankMed(): Medication {
   return { id: crypto.randomUUID(), medication_name: "", strength: "", dosage_form: "Tablet", frequency: "Daily", estimated_monthly_retail: 25 };
@@ -24,8 +29,11 @@ const CONDITIONS = ["Diabetes", "Hypertension", "Heart disease", "COPD", "Cancer
 export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
   const [step, setStep] = useState(1);
   const [birthYear, setBirthYear] = useState<number | "">("");
-  const [zip3, setZip3] = useState("");
+  const [zip, setZip] = useState(""); // 5-digit ZIP
   const [county, setCounty] = useState("");
+  const [countyOptions, setCountyOptions] = useState<CountyMatch[]>([]);
+  const [countyLoading, setCountyLoading] = useState(false);
+  const [countyLookupError, setCountyLookupError] = useState<string | null>(null);
   const [gender, setGender] = useState("prefer_not_to_say");
   const [tobacco, setTobacco] = useState(false);
   const [incomeBand, setIncomeBand] = useState(INCOME_BANDS[2]);
@@ -37,6 +45,44 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
   const [busy, setBusy] = useState(false);
   const [focusedMedId, setFocusedMedId] = useState<string | null>(null);
   const [medQuery, setMedQuery] = useState<Record<string, string>>({});
+
+  const zip3 = zip.slice(0, 3);
+
+  // Lookup counties whenever a full 5-digit ZIP is entered.
+  useEffect(() => {
+    if (!/^\d{5}$/.test(zip)) {
+      setCountyOptions([]);
+      setCountyLookupError(null);
+      return;
+    }
+    let cancelled = false;
+    setCountyLoading(true);
+    setCountyLookupError(null);
+    lookupCountiesForZip(zip)
+      .then((opts) => {
+        if (cancelled) return;
+        setCountyOptions(opts);
+        if (opts.length === 0) {
+          setCountyLookupError("We couldn't find any counties for that ZIP. Please double-check the ZIP code.");
+        } else if (opts.length === 1) {
+          setCounty(opts[0].county);
+        } else if (county && !countyMatchesList(county, opts)) {
+          setCounty("");
+        }
+      })
+      .catch((e: unknown) => {
+        if (cancelled) return;
+        setCountyOptions([]);
+        setCountyLookupError(e instanceof Error ? e.message : "ZIP lookup failed.");
+      })
+      .finally(() => {
+        if (!cancelled) setCountyLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zip]);
 
   const toggleCondition = (c: string) => {
     setConditions((p) => {
@@ -95,12 +141,20 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
       toast.error(`Year of birth must be between ${MIN_BIRTH_YEAR} and ${MAX_BIRTH_YEAR} (ages 18–120).`);
       return;
     }
-    if (!/^\d{3}$/.test(zip3)) {
-      toast.error("ZIP3 must be exactly 3 digits");
+    if (!/^\d{5}$/.test(zip)) {
+      toast.error("Please enter a valid 5-digit ZIP code");
       return;
     }
     if (county.trim().length < 2) {
-      toast.error("Please enter your county or parish");
+      toast.error("Please select your county or parish");
+      return;
+    }
+    if (countyOptions.length > 0 && !countyMatchesList(county, countyOptions)) {
+      toast.error(
+        `"${county}" is not within ZIP ${zip}. Valid options: ${countyOptions
+          .map((c) => c.county)
+          .join(", ")}.`
+      );
       return;
     }
     setBusy(true);
