@@ -7,12 +7,6 @@ import type { Year, Medication } from "./medicare-math";
 
 export type Role = "admin" | "qa" | "agent" | "editor" | "viewer" | "advisor";
 
-const ROLE_PRIORITY: Role[] = ["admin", "qa", "agent", "editor", "viewer", "advisor"];
-function pickRole(roles: string[]): Role {
-  for (const r of ROLE_PRIORITY) if (roles.includes(r)) return r;
-  return "viewer";
-}
-
 export interface User {
   id: string;
   email: string;
