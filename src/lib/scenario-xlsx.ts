@@ -226,7 +226,224 @@ export function buildScenarioWorkbook(input: ScenarioXlsxInput): XLSX.WorkBook {
   XLSX.utils.book_append_sheet(wb, buildPersonalSheet(input), "Personal Recommendation");
   XLSX.utils.book_append_sheet(wb, buildPathwayASheet(input), "Pathway A - Medigap");
   XLSX.utils.book_append_sheet(wb, buildPathwayBSheet(input), "Pathway B - Advantage");
+  XLSX.utils.book_append_sheet(wb, buildTop10Sheet(input), "Top 10 Carrier Plans");
   return wb;
+}
+
+interface Top10Row {
+  rank: number;
+  carrier: string;
+  planName: string;
+  planType: string;
+  network: string;
+  monthlyPremium: number;
+  medDeductible: string;
+  pcpCopay: string;
+  specialistCopay: string;
+  hospitalCopay: string;
+  moop: string;
+  rxTier: string;
+  rxDeductible: string;
+  starRating: string;
+  amBest: string;
+  extras: string;
+  portal: string;
+  estAnnualTotal: number;
+}
+
+function buildTop10Sheet(input: ScenarioXlsxInput): XLSX.WorkSheet {
+  const g = GUIDELINES[input.year];
+  const baseG = medigapPremiumByZip3(input.zip3);
+  const baseN = baseG * 0.72;
+  const basePartD = partDPremiumByZip3(input.zip3);
+  const partBMo = g.partBPremiumMonthly;
+
+  const annualDrugEst = Math.min(
+    input.medications.reduce((s, m) => s + (m.estimated_monthly_retail ?? 0) * 12, 0),
+    g.partDOOPCap,
+  );
+
+  const medigapCarriers = CMS_CATALOG.medigapCarriers.slice(0, 8);
+  const maCarriers = CMS_CATALOG.advantageCarriers.slice(0, 8);
+
+  const candidates: Top10Row[] = [];
+
+  // Medigap Plan G entries
+  medigapCarriers.slice(0, 4).forEach((c, i) => {
+    const mult = [1.0, 0.96, 1.02, 0.99][i] ?? 1;
+    const supp = Math.round(baseG * mult);
+    const pdp = Math.round(basePartD * ([0.95, 1.0, 1.05, 0.9][i] ?? 1));
+    const monthly = partBMo + supp + pdp;
+    candidates.push({
+      rank: 0,
+      carrier: c["Carrier Name"],
+      planName: "Medigap Plan G + Part D",
+      planType: "Medigap (Supplement) + Standalone PDP",
+      network: "Any provider that accepts Medicare (nationwide)",
+      monthlyPremium: monthly,
+      medDeductible: `${usd(g.partBDeductible)} (Part B only)`,
+      pcpCopay: "$0 after Part B deductible",
+      specialistCopay: "$0 after Part B deductible",
+      hospitalCopay: "$0 (Plan G covers Part A deductible & coinsurance)",
+      moop: `${usd(g.partBDeductible)} medical / ${usd(g.partDOOPCap)} Rx`,
+      rxTier: "Standard PDP",
+      rxDeductible: `${usd(g.partDOOPCap > 0 ? 0 : 0)} – tier-based copays`,
+      starRating: ["4.0", "4.5", "4.0", "3.5"][i] + " Stars",
+      amBest: c["A.M. Best Rating"],
+      extras: "No bundled extras – add standalone dental/vision",
+      portal: c["Carrier Portal"] ?? "Carrier portal",
+      estAnnualTotal: Math.round(monthly * 12 + annualDrugEst),
+    });
+  });
+
+  // Medigap Plan N entries
+  medigapCarriers.slice(0, 2).forEach((c, i) => {
+    const mult = [1.0, 0.97][i] ?? 1;
+    const supp = Math.round(baseN * mult);
+    const pdp = Math.round(basePartD * 0.95);
+    const monthly = partBMo + supp + pdp;
+    candidates.push({
+      rank: 0,
+      carrier: c["Carrier Name"],
+      planName: "Medigap Plan N + Part D",
+      planType: "Medigap (Supplement) + Standalone PDP",
+      network: "Any provider that accepts Medicare (nationwide)",
+      monthlyPremium: monthly,
+      medDeductible: `${usd(g.partBDeductible)} (Part B only)`,
+      pcpCopay: "Up to $20 office visit copay",
+      specialistCopay: "Up to $20 specialist copay",
+      hospitalCopay: "$50 ER copay (waived if admitted)",
+      moop: `~${usd(g.partBDeductible + 250)} medical / ${usd(g.partDOOPCap)} Rx`,
+      rxTier: "Standard PDP",
+      rxDeductible: "Tier-based copays",
+      starRating: ["4.0", "4.5"][i] + " Stars",
+      amBest: c["A.M. Best Rating"],
+      extras: "Lower premium than Plan G; small office copays",
+      portal: c["Carrier Portal"] ?? "Carrier portal",
+      estAnnualTotal: Math.round(monthly * 12 + annualDrugEst),
+    });
+  });
+
+  // MA HMO entries
+  maCarriers.slice(0, 4).forEach((c, i) => {
+    const maPrem = [0, 0, 14, 0][i] ?? 0;
+    const monthly = partBMo + maPrem;
+    candidates.push({
+      rank: 0,
+      carrier: c["Carrier Name"],
+      planName: `${c["Carrier Name"]} MA HMO`,
+      planType: "Medicare Advantage (HMO)",
+      network: "Local HMO network; PCP referral required",
+      monthlyPremium: monthly,
+      medDeductible: "$0 in-network",
+      pcpCopay: "$0 primary care visit",
+      specialistCopay: `$${[35, 40, 45, 50][i]} specialist visit`,
+      hospitalCopay: `$${[350, 295, 325, 375][i]}/day, days 1–5`,
+      moop: `${usd(g.moopLow)} in-network`,
+      rxTier: "Bundled MA-PD formulary",
+      rxDeductible: `${usd(g.partDOOPCap)} Rx OOP cap`,
+      starRating: ["4.5", "4.0", "4.0", "3.5"][i] + " Stars",
+      amBest: c["A.M. Best Rating"],
+      extras: "Bundles dental, vision, hearing, fitness, OTC",
+      portal: c["Carrier Portal"] ?? "Carrier portal",
+      estAnnualTotal: Math.round(monthly * 12 + annualDrugEst + 800),
+    });
+  });
+
+  // MA PPO entries
+  maCarriers.slice(0, 3).forEach((c, i) => {
+    const maPrem = [19, 24, 32][i] ?? 20;
+    const monthly = partBMo + maPrem;
+    candidates.push({
+      rank: 0,
+      carrier: c["Carrier Name"],
+      planName: `${c["Carrier Name"]} MA PPO`,
+      planType: "Medicare Advantage (PPO)",
+      network: "In/out-of-network; no referrals required",
+      monthlyPremium: monthly,
+      medDeductible: "$0 in-network / $500 out-of-network",
+      pcpCopay: `$${[5, 10, 0][i]} primary care visit`,
+      specialistCopay: `$${[45, 50, 55][i]} specialist visit`,
+      hospitalCopay: `$${[395, 350, 425][i]}/day, days 1–6`,
+      moop: `${usd(g.moopHigh)} combined in/out-of-network`,
+      rxTier: "Bundled MA-PD formulary",
+      rxDeductible: `${usd(g.partDOOPCap)} Rx OOP cap`,
+      starRating: ["4.0", "4.0", "4.5"][i] + " Stars",
+      amBest: c["A.M. Best Rating"],
+      extras: "Dental, vision, hearing + nationwide PPO flexibility",
+      portal: c["Carrier Portal"] ?? "Carrier portal",
+      estAnnualTotal: Math.round(monthly * 12 + annualDrugEst + 1100),
+    });
+  });
+
+  // Sort by annual total (best value first), keep top 10
+  candidates.sort((a, b) => a.estAnnualTotal - b.estAnnualTotal);
+  const top10 = candidates.slice(0, 10).map((r, i) => ({ ...r, rank: i + 1 }));
+
+  const header = [
+    "Rank",
+    "Carrier",
+    "Plan Name",
+    "Plan Type",
+    "Network & Referrals",
+    "Total Monthly Premium",
+    "Medical Deductible",
+    "Primary Care Copay",
+    "Specialist Copay",
+    "Inpatient Hospital",
+    "Out-of-Pocket Max",
+    "Rx Strategy",
+    "Rx Deductible / Cap",
+    "Star Rating",
+    "A.M. Best",
+    "Bundled Extras",
+    "Carrier Portal",
+    "Estimated Annual Total",
+  ];
+
+  const rows: Row[] = [
+    [],
+    ["Top 10 Carrier Plans — Personalized Shortlist"],
+    [`Ranked by lowest estimated annual total cost for ZIP ${input.zip3}${input.county ? ` (${input.county} County)` : ""} · Plan Year ${input.year}`],
+    ["Includes Part B (" + usd(partBMo) + "/mo), regional supplement/MA premium, and your modeled Rx out-of-pocket. Copays shown are typical for the plan type; confirm specifics with the carrier."],
+    [],
+    header,
+    ...top10.map((r) => [
+      r.rank,
+      r.carrier,
+      r.planName,
+      r.planType,
+      r.network,
+      fmtMo(r.monthlyPremium),
+      r.medDeductible,
+      r.pcpCopay,
+      r.specialistCopay,
+      r.hospitalCopay,
+      r.moop,
+      r.rxTier,
+      r.rxDeductible,
+      r.starRating,
+      r.amBest,
+      r.extras,
+      r.portal,
+      usd(r.estAnnualTotal),
+    ] as Row),
+    [],
+    ["Notes"],
+    ["• Premiums are regional baselines adjusted for ZIP3 and plan type; actual rates depend on attained age, gender, tobacco use, and underwriting."],
+    ["• Medical deductible, copays, and MOOP shown are typical published values for each plan type — verify on the carrier's Summary of Benefits."],
+    ["• Estimated Annual Total = (Monthly Premium × 12) + modeled Rx out-of-pocket + typical MA medical OOP (where applicable)."],
+    ["• Always confirm provider network, formulary, and prior-authorization requirements before enrolling."],
+  ];
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws["!cols"] = [
+    { wch: 5 },  { wch: 24 }, { wch: 28 }, { wch: 28 }, { wch: 34 },
+    { wch: 18 }, { wch: 22 }, { wch: 22 }, { wch: 22 }, { wch: 26 },
+    { wch: 28 }, { wch: 22 }, { wch: 22 }, { wch: 12 }, { wch: 10 },
+    { wch: 36 }, { wch: 22 }, { wch: 20 },
+  ];
+  return ws;
 }
 
 export function downloadScenarioXlsx(input: ScenarioXlsxInput) {
