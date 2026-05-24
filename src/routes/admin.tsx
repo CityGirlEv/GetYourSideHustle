@@ -7,11 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollText, Users, Settings2, Search, Plus, Minus, Inbox, Phone, Mail, UserPlus, Loader2, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { GUIDELINES } from "@/lib/medicare-math";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
-import { createAdvisor, listStaff } from "@/lib/admin.functions";
+import { createAdvisor, listStaff, setUserRole, listAgents, assignAgent } from "@/lib/admin.functions";
 
 interface AdminScenarioRow {
   id: string;
@@ -28,6 +29,9 @@ interface AdminScenarioRow {
   claimed_at: string | null;
   created_at: string;
   expires_at: string;
+  wants_contact?: boolean;
+  assigned_agent_id?: string | null;
+  agent_notes?: string | null;
 }
 
 interface AdminContactRow {
@@ -52,6 +56,11 @@ interface StaffMember {
   credits: number;
 }
 
+const ASSIGNABLE_ROLES = ["viewer", "editor", "qa", "agent", "admin"] as const;
+type AssignableRole = (typeof ASSIGNABLE_ROLES)[number];
+
+interface AgentOption { id: string; full_name: string; email: string; }
+
 function AdminPortal() {
   const { user, auditLogs, addCredits, credits, year } = useApp();
   const router = useRouter();
@@ -65,11 +74,16 @@ function AdminPortal() {
   const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [newFullName, setNewFullName] = useState("");
+  const [newRole, setNewRole] = useState<AssignableRole>("viewer");
   const [creating, setCreating] = useState(false);
   const [showPw, setShowPw] = useState(false);
+  const [agents, setAgents] = useState<AgentOption[]>([]);
 
   const fetchStaff = useServerFn(listStaff);
   const doCreateAdvisor = useServerFn(createAdvisor);
+  const doSetUserRole = useServerFn(setUserRole);
+  const fetchAgents = useServerFn(listAgents);
+  const doAssignAgent = useServerFn(assignAgent);
 
   useEffect(() => {
     if (!user) router.navigate({ to: "/auth" });
@@ -100,8 +114,11 @@ function AdminPortal() {
     setStaffLoading(true);
     (async () => {
       try {
-        const data = await fetchStaff();
-        if (!cancelled) setStaff(data as StaffMember[]);
+        const [staffData, agentData] = await Promise.all([fetchStaff(), fetchAgents()]);
+        if (!cancelled) {
+          setStaff(staffData as StaffMember[]);
+          setAgents(agentData as AgentOption[]);
+        }
       } catch (e) {
         console.error("load staff", e);
         toast.error("Failed to load staff list");
@@ -110,7 +127,7 @@ function AdminPortal() {
       }
     })();
     return () => { cancelled = true; };
-  }, [user, fetchStaff]);
+  }, [user, fetchStaff, fetchAgents]);
 
   const handleCreateUser = async () => {
     if (!newEmail || !newPassword || newPassword.length < 8) {
@@ -119,15 +136,39 @@ function AdminPortal() {
     }
     setCreating(true);
     try {
-      await doCreateAdvisor({ data: { email: newEmail, password: newPassword, full_name: newFullName || undefined } });
-      toast.success("Advisor created successfully");
-      setNewEmail(""); setNewPassword(""); setNewFullName("");
-      const data = await fetchStaff();
-      setStaff(data as StaffMember[]);
+      await doCreateAdvisor({ data: { email: newEmail, password: newPassword, full_name: newFullName || undefined, role: newRole } });
+      toast.success(`User created with role: ${newRole}`);
+      setNewEmail(""); setNewPassword(""); setNewFullName(""); setNewRole("viewer");
+      const [s, a] = await Promise.all([fetchStaff(), fetchAgents()]);
+      setStaff(s as StaffMember[]);
+      setAgents(a as AgentOption[]);
     } catch (e: unknown) {
       toast.error((e as Error)?.message ?? "Failed to create user");
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleChangeRole = async (userId: string, role: AssignableRole) => {
+    try {
+      await doSetUserRole({ data: { user_id: userId, role } });
+      toast.success(`Role updated to ${role}`);
+      const [s, a] = await Promise.all([fetchStaff(), fetchAgents()]);
+      setStaff(s as StaffMember[]);
+      setAgents(a as AgentOption[]);
+    } catch (e: unknown) {
+      toast.error((e as Error)?.message ?? "Failed to update role");
+    }
+  };
+
+  const handleAssignAgent = async (scenarioId: string, agentId: string) => {
+    try {
+      await doAssignAgent({ data: { scenario_id: scenarioId, agent_id: agentId === "__none" ? null : agentId } });
+      toast.success("Agent assignment updated");
+      const sRes = await supabase.from("scenarios").select("*").order("created_at", { ascending: false }).limit(500);
+      setScenarios((sRes.data ?? []) as AdminScenarioRow[]);
+    } catch (e: unknown) {
+      toast.error((e as Error)?.message ?? "Failed to assign agent");
     }
   };
 
