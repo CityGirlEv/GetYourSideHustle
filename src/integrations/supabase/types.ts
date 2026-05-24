@@ -95,18 +95,27 @@ export type Database = {
           email: string
           id: string
           phone: string
+          scenario_code: string | null
+          scenario_id: string | null
+          scenario_snapshot: Json | null
         }
         Insert: {
           created_at?: string
           email: string
           id?: string
           phone: string
+          scenario_code?: string | null
+          scenario_id?: string | null
+          scenario_snapshot?: Json | null
         }
         Update: {
           created_at?: string
           email?: string
           id?: string
           phone?: string
+          scenario_code?: string | null
+          scenario_id?: string | null
+          scenario_snapshot?: Json | null
         }
         Relationships: []
       }
