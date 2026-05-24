@@ -11,6 +11,7 @@ import {
   type Medication,
 } from "./medicare-math";
 import { CMS_CATALOG } from "@/data/cms-catalog";
+import { rankedPlanDetails, type PlanDetail } from "./plan-details";
 
 export interface ScenarioPdfInput {
   scenarioCode: string;
