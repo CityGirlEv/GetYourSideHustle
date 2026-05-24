@@ -25,6 +25,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
   const [step, setStep] = useState(1);
   const [birthYear, setBirthYear] = useState<number | "">("");
   const [zip3, setZip3] = useState("");
+  const [county, setCounty] = useState("");
   const [gender, setGender] = useState("prefer_not_to_say");
   const [tobacco, setTobacco] = useState(false);
   const [incomeBand, setIncomeBand] = useState(INCOME_BANDS[2]);
@@ -98,6 +99,10 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
       toast.error("ZIP3 must be exactly 3 digits");
       return;
     }
+    if (county.trim().length < 2) {
+      toast.error("Please enter your county or parish");
+      return;
+    }
     setBusy(true);
     const { data, error } = await supabase.rpc("create_scenario", {
       p_birth_year: birthYear as number,
@@ -108,7 +113,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
       p_cost_preference: costPref,
       p_medications: meds as unknown as never,
       p_conditions: allConditions as unknown as never,
-      p_preferences: {} as unknown as never,
+      p_preferences: { county: county.trim() } as unknown as never,
     });
     setBusy(false);
     if (error || !data) { toast.error(error?.message ?? "Could not create scenario"); return; }
@@ -117,7 +122,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
       sessionStorage.setItem(`scenario:${code}`, JSON.stringify({
         scenarioCode: code,
         year: new Date().getFullYear() < 2027 ? 2026 : 2027,
-        birthYear, zip3, gender, tobacco,
+        birthYear, zip3, county: county.trim(), gender, tobacco,
         incomeBand, costPreference: costPref,
         conditions: allConditions, medications: meds,
       }));
@@ -155,6 +160,17 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
             <div>
               <Label>First 3 digits of ZIP code <span className="text-destructive">*</span></Label>
               <Input value={zip3} onChange={(e)=>setZip3(e.target.value.replace(/\D/g,"").slice(0,3))} placeholder="e.g. 770" inputMode="numeric" maxLength={3} required/>
+            </div>
+            <div className="col-span-2">
+              <Label>County or parish <span className="text-destructive">*</span></Label>
+              <Input
+                value={county}
+                onChange={(e) => setCounty(e.target.value.slice(0, 80))}
+                placeholder="e.g. Harris County, Orleans Parish"
+                maxLength={80}
+                required
+              />
+              <p className="text-xs text-muted-foreground mt-1">Used only to refine plan availability — never tied to your identity.</p>
             </div>
             <div>
               <Label>Gender</Label>
@@ -239,6 +255,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-sm">
               <div><span className="text-muted-foreground">Birth year:</span> {birthYear}</div>
               <div><span className="text-muted-foreground">ZIP3:</span> {zip3 || "—"}</div>
+              <div className="col-span-2"><span className="text-muted-foreground">County/Parish:</span> {county || "—"}</div>
               <div><span className="text-muted-foreground">Gender:</span> {gender.replace(/_/g," ")}</div>
               <div><span className="text-muted-foreground">Tobacco:</span> {tobacco ? "Yes" : "No"}</div>
               <div className="col-span-2"><span className="text-muted-foreground">Income:</span> {incomeBand}</div>
@@ -370,6 +387,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
                 return;
               }
               if (!/^\d{3}$/.test(zip3)) { toast.error("Please enter the first 3 digits of your ZIP code before continuing."); return; }
+              if (county.trim().length < 2) { toast.error("Please enter your county or parish before continuing."); return; }
             }
             setStep(step + 1);
           }} className="grad-indigo">Next<ChevronRight className="h-4 w-4"/></Button>
