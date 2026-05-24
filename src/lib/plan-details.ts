@@ -19,6 +19,7 @@ export interface PlanDetail {
   premiumRx: number;
   premiumDental: number;
   premiumVision: number;
+  premiumExtras: number;
   monthly: number;
   annual: number;
   deductibleMed: number;
@@ -65,13 +66,14 @@ export function rankedPlanDetails(input: PlanDetailInput): PlanDetail[] {
     const supp = Math.round(baseG * ([1.0, 0.96, 1.02, 0.99][i] ?? 1));
     const pdp = Math.round(basePartD * ([0.95, 1.0, 1.05, 0.9][i] ?? 1));
     const dental = 38, vision = 14;
-    const monthly = partBMo + supp + pdp + dental + vision;
+    const extras = 18; // standalone hearing/OTC/wellness add-ons
+    const monthly = partBMo + supp + pdp + dental + vision + extras;
     list.push({
       rank: 0, carrier: c["Carrier Name"], plan: "Medigap Plan G + Part D",
       planType: "Medigap (Supplement) + Standalone PDP",
       network: "Any provider that accepts Medicare (nationwide)",
       premiumPartB: partBMo, premiumPlan: supp, premiumRx: pdp,
-      premiumDental: dental, premiumVision: vision, monthly,
+      premiumDental: dental, premiumVision: vision, premiumExtras: extras, monthly,
       annual: Math.round(monthly * 12 + annualDrugEst),
       deductibleMed: g.partBDeductible, deductibleRx: 0,
       pcpCopay: "$0", specCopay: "$0", hospCopay: "$0 after Part A", erCopay: "$0",
@@ -92,13 +94,14 @@ export function rankedPlanDetails(input: PlanDetailInput): PlanDetail[] {
     const supp = Math.round(baseN * ([1.0, 0.97][i] ?? 1));
     const pdp = Math.round(basePartD * 0.95);
     const dental = 35, vision = 12;
-    const monthly = partBMo + supp + pdp + dental + vision;
+    const extras = 15;
+    const monthly = partBMo + supp + pdp + dental + vision + extras;
     list.push({
       rank: 0, carrier: c["Carrier Name"], plan: "Medigap Plan N + Part D",
       planType: "Medigap (Supplement) + Standalone PDP",
       network: "Any provider that accepts Medicare (nationwide)",
       premiumPartB: partBMo, premiumPlan: supp, premiumRx: pdp,
-      premiumDental: dental, premiumVision: vision, monthly,
+      premiumDental: dental, premiumVision: vision, premiumExtras: extras, monthly,
       annual: Math.round(monthly * 12 + annualDrugEst),
       deductibleMed: g.partBDeductible, deductibleRx: 0,
       pcpCopay: "$20", specCopay: "$50", hospCopay: "$0 after Part A",
@@ -118,13 +121,13 @@ export function rankedPlanDetails(input: PlanDetailInput): PlanDetail[] {
 
   CMS_CATALOG.advantageCarriers.slice(0, 4).forEach((c, i) => {
     const planPrem = [0, 0, 14, 0][i] ?? 0;
-    const monthly = partBMo + planPrem;
+    const monthly = partBMo + planPrem; // dental/vision/extras bundled
     list.push({
       rank: 0, carrier: c["Carrier Name"], plan: "Medicare Advantage HMO",
       planType: "Medicare Advantage (HMO)",
       network: "HMO — referral required for specialists",
       premiumPartB: partBMo, premiumPlan: planPrem, premiumRx: 0,
-      premiumDental: 0, premiumVision: 0, monthly,
+      premiumDental: 0, premiumVision: 0, premiumExtras: 0, monthly,
       annual: Math.round(monthly * 12 + annualDrugEst + 800),
       deductibleMed: 0, deductibleRx: 0,
       pcpCopay: "$0", specCopay: "$35", hospCopay: "$295/day days 1–5",
@@ -144,13 +147,13 @@ export function rankedPlanDetails(input: PlanDetailInput): PlanDetail[] {
 
   CMS_CATALOG.advantageCarriers.slice(0, 3).forEach((c, i) => {
     const planPrem = [19, 24, 32][i] ?? 20;
-    const monthly = partBMo + planPrem;
+    const monthly = partBMo + planPrem; // dental/vision/extras bundled
     list.push({
       rank: 0, carrier: c["Carrier Name"], plan: "Medicare Advantage PPO",
       planType: "Medicare Advantage (PPO)",
       network: "PPO — in/out-of-network without referral",
       premiumPartB: partBMo, premiumPlan: planPrem, premiumRx: 0,
-      premiumDental: 0, premiumVision: 0, monthly,
+      premiumDental: 0, premiumVision: 0, premiumExtras: 0, monthly,
       annual: Math.round(monthly * 12 + annualDrugEst + 1100),
       deductibleMed: 0, deductibleRx: 150,
       pcpCopay: "$5", specCopay: "$45", hospCopay: "$350/day days 1–6",
