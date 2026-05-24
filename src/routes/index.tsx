@@ -32,7 +32,7 @@ function Index() {
               <p className="text-xs md:text-sm italic text-emerald font-semibold mt-1">Getting the Best Bang For Your Medical Needs Because You Deserve It!</p>
             </div>
           </div>
-          <p className="text-lg text-muted-foreground max-w-xl">
+          <p className="text-sm text-muted-foreground max-w-none">
             Side-by-side Original Medicare + Medigap vs. Medicare Advantage modeling under live 2026 &amp; 2027 federal rules — built on a <strong>zero-PII</strong> scenario model. We never collect your name, address, phone, email, Social Security number, Medicare ID, or full date of birth.
           </p>
           <div className="grid sm:grid-cols-3 gap-3 max-w-xl">
