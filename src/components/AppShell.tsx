@@ -35,6 +35,11 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
                 <LogIn className="h-3.5 w-3.5" /> Agent login
               </Link>
             )}
+            {user?.role === "admin" && (
+              <Link to="/admin" className="flex items-center gap-1 hover:text-foreground transition-colors">
+                <Settings className="h-3.5 w-3.5" /> Admin
+              </Link>
+            )}
           </div>
         </div>
         <div className="flex flex-col items-center">
