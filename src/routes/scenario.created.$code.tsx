@@ -3,11 +3,12 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SecurityBanner } from "@/components/SecurityBanner";
 import { CMSFooter } from "@/components/CMSFooter";
-import { CheckCircle2, Copy, ShieldCheck, FileDown, Phone } from "lucide-react";
+import { CheckCircle2, Copy, ShieldCheck, FileDown, Phone, Sparkles, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { downloadScenarioPdf, type ScenarioPdfInput } from "@/lib/scenario-pdf";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ExpertOptInDialog } from "@/components/ExpertOptInDialog";
+import { recommendPlans, usd, type PersonalizedRecommendation } from "@/lib/medicare-math";
 
 export const Route = createFileRoute("/scenario/created/$code")({
   head: () => ({
@@ -22,6 +23,26 @@ export const Route = createFileRoute("/scenario/created/$code")({
 function ScenarioCreated() {
   const { code } = Route.useParams();
   const [optInOpen, setOptInOpen] = useState(false);
+  const [scenario, setScenario] = useState<ScenarioPdfInput & { county?: string } | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(`scenario:${code}`);
+      if (raw) setScenario(JSON.parse(raw));
+    } catch { /* ignore */ }
+  }, [code]);
+
+  const recommendation: PersonalizedRecommendation | null = useMemo(() => {
+    if (!scenario) return null;
+    return recommendPlans({
+      year: scenario.year,
+      zip3: scenario.zip3,
+      county: scenario.county,
+      meds: scenario.medications,
+      conditions: scenario.conditions,
+      costPreference: scenario.costPreference,
+    });
+  }, [scenario]);
 
   useEffect(() => {
     const seen = sessionStorage.getItem(`expert-optin-shown:${code}`);
@@ -43,10 +64,8 @@ function ScenarioCreated() {
 
   const downloadPdf = () => {
     try {
-      const raw = sessionStorage.getItem(`scenario:${code}`);
-      if (!raw) { toast.error("PDF not available — re-open after creating the scenario."); return; }
-      const input = JSON.parse(raw) as ScenarioPdfInput;
-      downloadScenarioPdf(input);
+      if (!scenario) { toast.error("PDF not available — re-open after creating the scenario."); return; }
+      downloadScenarioPdf(scenario);
       toast.success("PDF downloaded");
     } catch (e) {
       toast.error("Could not generate PDF");
@@ -82,6 +101,48 @@ function ScenarioCreated() {
           <Button onClick={() => setOptInOpen(true)} variant="outline" className="w-full">
             <Phone className="h-4 w-4 mr-2" /> Have a licensed expert contact me
           </Button>
+
+          {recommendation && (
+            <div className="text-left bg-emerald/5 border border-emerald/30 rounded-lg p-4 space-y-3 text-sm">
+              <div className="font-semibold flex items-center gap-2 text-emerald">
+                <Sparkles className="h-4 w-4" /> Personalized recommendation
+              </div>
+              <div>
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">Best fit for your priorities</div>
+                <div className="font-bold text-base">{recommendation.primary.planName}</div>
+                <div className="text-xs text-muted-foreground">{recommendation.primary.pathwayLabel}</div>
+                <p className="text-xs mt-1">{recommendation.primary.planDescription}</p>
+                <p className="text-xs mt-1 italic">{recommendation.primary.rationale}</p>
+                <div className="grid grid-cols-3 gap-2 mt-2 text-xs">
+                  <div><span className="text-muted-foreground">Est. monthly:</span> <strong>{usd(recommendation.primary.estMonthlyPremium)}</strong></div>
+                  <div><span className="text-muted-foreground">Est. annual:</span> <strong>{usd(recommendation.primary.estAnnualTotal)}</strong></div>
+                  <div><span className="text-muted-foreground">Worst-case:</span> <strong>{usd(recommendation.primary.estWorstCase)}</strong></div>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-emerald/20">
+                <div className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1"><Building2 className="h-3 w-3" /> Carriers offering this in your area</div>
+                <ul className="mt-1 space-y-1">
+                  {recommendation.primary.carriers.slice(0, 6).map((c) => (
+                    <li key={c["Carrier Name"]} className="text-xs">
+                      <strong>{c["Carrier Name"]}</strong>
+                      <span className="text-muted-foreground"> — {c["A.M. Best Rating"]}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="pt-2 border-t border-emerald/20">
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">Also consider</div>
+                <div className="text-sm font-semibold">{recommendation.alternate.planName}</div>
+                <div className="text-xs text-muted-foreground">{recommendation.alternate.pathwayLabel} · est. {usd(recommendation.alternate.estAnnualTotal)} / yr</div>
+              </div>
+
+              <p className="text-[10px] text-muted-foreground pt-2 border-t border-emerald/20">
+                Source: {recommendation.primary.source}. Reviewed against all open standardized Medigap letters, all CMS-approved MA plan types, and all PDP tiers in the catalog. Premium figures are regional estimates — not a binding rate quote.
+              </p>
+            </div>
+          )}
 
           <div className="text-left bg-primary/5 border border-primary/20 rounded-lg p-4 space-y-2 text-sm">
             <div className="font-semibold flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /> What happens next</div>
