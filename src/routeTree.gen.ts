@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdvisorRouteImport } from './routes/advisor'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -17,6 +18,11 @@ import { Route as ScenarioNewRouteImport } from './routes/scenario.new'
 import { Route as ScenarioCreatedCodeRouteImport } from './routes/scenario.created.$code'
 import { Route as AdvisorScenarioCodeRouteImport } from './routes/advisor.scenario.$code'
 
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -58,6 +64,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/advisor': typeof AdvisorRouteWithChildren
   '/auth': typeof AuthRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/scenario/new': typeof ScenarioNewRoute
   '/advisor/scenario/$code': typeof AdvisorScenarioCodeRoute
   '/scenario/created/$code': typeof ScenarioCreatedCodeRoute
@@ -67,6 +74,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/advisor': typeof AdvisorRouteWithChildren
   '/auth': typeof AuthRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/scenario/new': typeof ScenarioNewRoute
   '/advisor/scenario/$code': typeof AdvisorScenarioCodeRoute
   '/scenario/created/$code': typeof ScenarioCreatedCodeRoute
@@ -77,6 +85,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/advisor': typeof AdvisorRouteWithChildren
   '/auth': typeof AuthRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/scenario/new': typeof ScenarioNewRoute
   '/advisor/scenario/$code': typeof AdvisorScenarioCodeRoute
   '/scenario/created/$code': typeof ScenarioCreatedCodeRoute
@@ -88,6 +97,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/advisor'
     | '/auth'
+    | '/reset-password'
     | '/scenario/new'
     | '/advisor/scenario/$code'
     | '/scenario/created/$code'
@@ -97,6 +107,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/advisor'
     | '/auth'
+    | '/reset-password'
     | '/scenario/new'
     | '/advisor/scenario/$code'
     | '/scenario/created/$code'
@@ -106,6 +117,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/advisor'
     | '/auth'
+    | '/reset-password'
     | '/scenario/new'
     | '/advisor/scenario/$code'
     | '/scenario/created/$code'
@@ -116,12 +128,20 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   AdvisorRoute: typeof AdvisorRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   ScenarioNewRoute: typeof ScenarioNewRoute
   ScenarioCreatedCodeRoute: typeof ScenarioCreatedCodeRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -190,6 +210,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   AdvisorRoute: AdvisorRouteWithChildren,
   AuthRoute: AuthRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   ScenarioNewRoute: ScenarioNewRoute,
   ScenarioCreatedCodeRoute: ScenarioCreatedCodeRoute,
 }
