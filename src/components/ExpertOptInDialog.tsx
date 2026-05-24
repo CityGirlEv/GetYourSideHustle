@@ -16,9 +16,11 @@ const schema = z.object({
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  scenarioCode?: string;
+  scenarioSnapshot?: Record<string, unknown>;
 }
 
-export function ExpertOptInDialog({ open, onOpenChange }: Props) {
+export function ExpertOptInDialog({ open, onOpenChange, scenarioCode, scenarioSnapshot }: Props) {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -34,6 +36,8 @@ export function ExpertOptInDialog({ open, onOpenChange }: Props) {
     const { error } = await supabase.from("expert_contact_requests").insert({
       email: parsed.data.email,
       phone: parsed.data.phone,
+      scenario_code: scenarioCode ?? null,
+      scenario_snapshot: scenarioSnapshot ? (scenarioSnapshot as never) : null,
     });
     setSubmitting(false);
     if (error) {
@@ -55,9 +59,8 @@ export function ExpertOptInDialog({ open, onOpenChange }: Props) {
           </div>
           <DialogTitle>Talk to a licensed expert</DialogTitle>
           <DialogDescription>
-            Opt in to be contacted by a licensed Medicare expert. We never store
-            your information because we do not connect your email or phone number
-            to any scenario. The agent will need to request your scenario ID separately.
+            Opt in to be contacted by a licensed Medicare expert. Your contact
+            information{scenarioCode ? " will be linked to this scenario so the expert can review what you entered before reaching out." : " will be shared with a licensed expert."}
           </DialogDescription>
         </DialogHeader>
 
@@ -73,9 +76,8 @@ export function ExpertOptInDialog({ open, onOpenChange }: Props) {
               value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={32} />
           </div>
           <p className="text-xs text-muted-foreground">
-            By submitting, you consent to be contacted about Medicare options. Your
-            email and phone are not linked to any scenario — the agent will ask for
-            your scenario ID if needed.
+            By submitting, you consent to be contacted about Medicare options.
+            {scenarioCode ? ` Scenario ${scenarioCode} will be shared with the expert.` : ""}
           </p>
         </div>
 
