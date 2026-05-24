@@ -1,8 +1,8 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { ShieldCheck, EyeOff, KeyRound, FileText } from "lucide-react";
-import { SecurityBanner } from "@/components/SecurityBanner";
 import { CMSFooter } from "@/components/CMSFooter";
+import { AppShell } from "@/components/AppShell";
 import muntieLogo from "@/assets/muntie-logo.png";
 
 export const Route = createFileRoute("/")({
@@ -19,19 +19,9 @@ function Index() {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <SecurityBanner />
-      <main className="flex-1 grid lg:grid-cols-2 items-start gap-10 px-6 lg:px-16 py-12 max-w-7xl mx-auto w-full">
+    <AppShell title="The Medicare Optimizer" subtitle="Getting the Best Bang For Your Medical Needs Because You Deserve It!">
+      <div className="grid lg:grid-cols-2 items-start gap-10">
         <div className="space-y-6">
-          <div className="relative bg-white rounded-2xl p-6 shadow-sm border border-border">
-            <div className="absolute left-6 top-1/2 -translate-y-1/2">
-              <img src={muntieLogo} alt="Medicare Optimizer" className="h-20 w-20 object-contain" />
-            </div>
-            <div className="text-center px-32">
-              <h1 className="font-display text-2xl md:text-3xl font-extrabold tracking-tight leading-tight text-emerald">The Medicare Optimizer</h1>
-              <p className="text-xs md:text-sm italic text-emerald font-semibold mt-1">Getting the Best Bang For Your Medical Needs Because You Deserve It!</p>
-            </div>
-          </div>
           <p className="text-sm text-muted-foreground max-w-none">
             Side-by-side Original Medicare + Medigap vs. Medicare Advantage modeling under live 2026 &amp; 2027 federal rules — built on a <strong>zero-PII</strong> scenario model. We never collect your name, address, phone, email, Social Security number, Medicare ID, or full date of birth.
           </p>
@@ -63,13 +53,12 @@ function Index() {
             </Button>
           </div>
         </div>
-      </main>
-      <div className="px-6 py-4 text-xs text-muted-foreground border-t border-border bg-secondary/30 text-center max-w-4xl mx-auto">
+      </div>
+      <div className="mt-10 px-6 py-4 text-xs text-muted-foreground border-t border-border bg-secondary/30 text-center max-w-4xl mx-auto">
         <p className="leading-relaxed">
           Disclaimer: The Medicare Optimizer is an educational and comparison tool only. We do not sell insurance, act as a licensed agent, or provide personalized legal, tax, or medical advice. Plan names, premiums, and benefits shown are estimated based on publicly available CMS data and may differ from actual carrier offerings in your area. Always verify details with a licensed insurance agent or by visiting <a href="https://www.medicare.gov" className="underline" target="_blank" rel="noopener noreferrer">Medicare.gov</a> before enrolling.
         </p>
       </div>
-      <CMSFooter />
-    </div>
+    </AppShell>
   );
 }
