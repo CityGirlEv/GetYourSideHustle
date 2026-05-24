@@ -21,15 +21,15 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
   return (
     <div className="min-h-screen flex flex-col">
       <SecurityBanner />
-      <header className="glass border-b border-border/60 px-6 py-3 flex items-center gap-4 flex-wrap sticky top-0 z-30">
-        <Link to="/" className="flex items-center gap-2 font-display font-bold text-lg shrink-0">
-          <img src={muntieLogo} alt="Medicare Optimizer" className="h-14 w-14 object-contain" />
+      <header className="glass border-b border-border/60 px-6 py-3 flex items-center gap-4 sticky top-0 z-30">
+        <Link to="/" className="flex items-center gap-2 font-display font-bold text-lg shrink-1">
+          <img src={muntieLogo} alt="Medicare Optimizer" className="h-16 w-16 object-contain" />
         </Link>
-        <div className="flex-1 text-center min-w-0 px-2">
+        <div className="flex-1 text-center min-w-1">
           <h1 className="text-xl md:text-2xl font-bold tracking-tight text-emerald leading-tight truncate">{title}</h1>
-          {subtitle && <p className="text-[11px] md:text-xs italic text-emerald font-semibold">{subtitle}</p>}
+          {subtitle && <p className="text-[11px] md:text-xs italic text-emerald font-semibold truncate">{subtitle}</p>}
         </div>
-        <div className="flex items-center gap-3 flex-wrap shrink-0">
+        <div className="flex items-center gap-3 shrink-0">
           <YearToggle />
           {user?.role === "advisor" && <CreditPill />}
           {user && (
