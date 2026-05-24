@@ -488,7 +488,8 @@ interface Top10Row {
   estAnnualTotal: number;
 }
 
-function buildTop10Sheet(input: ScenarioXlsxInput): XLSX.WorkSheet {
+function buildTop10Sheet(wb: ExcelJS.Workbook, input: ScenarioXlsxInput) {
+  const ws = wb.addWorksheet("Top 10 Carrier Plans", { views: [{ showGridLines: false, state: "frozen", ySplit: 6 }] });
   const g = GUIDELINES[input.year];
   const baseG = medigapPremiumByZip3(input.zip3);
   const baseN = baseG * 0.72;
@@ -617,7 +618,7 @@ function buildTop10Sheet(input: ScenarioXlsxInput): XLSX.WorkSheet {
   candidates.sort((a, b) => a.estAnnualTotal - b.estAnnualTotal);
   const top10 = candidates.slice(0, 10).map((r, i) => ({ ...r, rank: i + 1 }));
 
-  const header = [
+  const header: string[] = [
     "Rank",
     "Carrier",
     "Plan Name",
@@ -638,52 +639,64 @@ function buildTop10Sheet(input: ScenarioXlsxInput): XLSX.WorkSheet {
     "Estimated Annual Total",
   ];
 
-  const rows: Row[] = [
-    [],
-    ["Top 10 Carrier Plans — Personalized Shortlist"],
-    [`Ranked by lowest estimated annual total cost for ZIP ${input.zip3}${input.county ? ` (${input.county} County)` : ""} · Plan Year ${input.year}`],
-    ["Includes Part B (" + usd(partBMo) + "/mo), regional supplement/MA premium, and your modeled Rx out-of-pocket. Copays shown are typical for the plan type; confirm specifics with the carrier."],
-    [],
-    header,
-    ...top10.map((r) => [
-      r.rank,
-      r.carrier,
-      r.planName,
-      r.planType,
-      r.network,
-      fmtMo(r.monthlyPremium),
-      r.medDeductible,
-      r.pcpCopay,
-      r.specialistCopay,
-      r.hospitalCopay,
-      r.moop,
-      r.rxTier,
-      r.rxDeductible,
-      r.starRating,
-      r.amBest,
-      r.extras,
-      r.portal,
-      usd(r.estAnnualTotal),
-    ] as Row),
-    [],
-    ["Notes"],
-    ["• Premiums are regional baselines adjusted for ZIP3 and plan type; actual rates depend on attained age, gender, tobacco use, and underwriting."],
-    ["• Medical deductible, copays, and MOOP shown are typical published values for each plan type — verify on the carrier's Summary of Benefits."],
-    ["• Estimated Annual Total = (Monthly Premium × 12) + modeled Rx out-of-pocket + typical MA medical OOP (where applicable)."],
-    ["• Always confirm provider network, formulary, and prior-authorization requirements before enrolling."],
+  const span = header.length;
+  const rows: StyledRow[] = [
+    { kind: "title", text: "Top 10 Carrier Plans — Personalized Shortlist", span },
+    {
+      kind: "subtitle",
+      span,
+      text: `Ranked by lowest estimated annual total cost for ZIP ${input.zip3}${input.county ? ` · ${input.county}` : ""} · Plan Year ${input.year}. Includes Part B (${usd(partBMo)}/mo), regional supplement/MA premium, and modeled Rx OOP.`,
+    },
+    { kind: "blank" },
+    { kind: "tableHeader", cells: header },
+    ...top10.map((r, i): StyledRow => ({
+      kind: "tableRow",
+      alt: i % 2 === 1,
+      linkCol: 17,
+      cells: [
+        r.rank,
+        r.carrier,
+        r.planName,
+        r.planType,
+        r.network,
+        fmtMo(r.monthlyPremium),
+        r.medDeductible,
+        r.pcpCopay,
+        r.specialistCopay,
+        r.hospitalCopay,
+        r.moop,
+        r.rxTier,
+        r.rxDeductible,
+        r.starRating,
+        r.amBest,
+        r.extras,
+        r.portal,
+        usd(r.estAnnualTotal),
+      ],
+    })),
+    { kind: "blank" },
+    { kind: "section", text: "Notes", span },
+    { kind: "note", span, text: "• Premiums are regional baselines adjusted for ZIP3 and plan type; actual rates depend on attained age, gender, tobacco use, and underwriting." },
+    { kind: "note", span, text: "• Medical deductible, copays, and MOOP shown are typical published values for each plan type — verify on the carrier's Summary of Benefits." },
+    { kind: "note", span, text: "• Estimated Annual Total = (Monthly Premium × 12) + modeled Rx out-of-pocket + typical MA medical OOP (where applicable)." },
+    { kind: "note", span, text: "• Always confirm provider network, formulary, and prior-authorization requirements before enrolling." },
   ];
 
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  ws["!cols"] = [
-    { wch: 5 },  { wch: 24 }, { wch: 28 }, { wch: 28 }, { wch: 34 },
-    { wch: 18 }, { wch: 22 }, { wch: 22 }, { wch: 22 }, { wch: 26 },
-    { wch: 28 }, { wch: 22 }, { wch: 22 }, { wch: 12 }, { wch: 10 },
-    { wch: 36 }, { wch: 22 }, { wch: 20 },
-  ];
-  return ws;
+  renderSheet(ws, rows, [6, 24, 28, 30, 34, 18, 22, 22, 22, 26, 28, 22, 22, 12, 10, 36, 22, 20]);
 }
 
-export function downloadScenarioXlsx(input: ScenarioXlsxInput) {
+export async function downloadScenarioXlsx(input: ScenarioXlsxInput) {
   const wb = buildScenarioWorkbook(input);
-  XLSX.writeFile(wb, `medicare-optimizer-${input.scenarioCode}.xlsx`);
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `medicare-optimizer-${input.scenarioCode}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
