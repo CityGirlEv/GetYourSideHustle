@@ -47,6 +47,18 @@ function AuthPage() {
     if (error) return toast.error(error.message);
   };
 
+  const handleForgot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) return toast.error("Enter your email above first.");
+    setBusy(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + "/reset-password",
+    });
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    toast.success("If that email exists, a reset link is on its way.");
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <SecurityBanner />
@@ -71,6 +83,9 @@ function AuthPage() {
                   <div><Label>Email</Label><Input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} required /></div>
                   <div><Label>Password</Label><Input type="password" value={password} onChange={(e)=>setPassword(e.target.value)} required /></div>
                   <Button type="submit" disabled={busy} className="w-full grad-indigo h-11"><Lock className="h-4 w-4 mr-2" />Sign in</Button>
+                  <button type="button" onClick={handleForgot} disabled={busy} className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 w-full text-center">
+                    Forgot password?
+                  </button>
                 </form>
               </TabsContent>
               <TabsContent value="signup">
