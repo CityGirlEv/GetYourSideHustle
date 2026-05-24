@@ -94,6 +94,43 @@ function AdminPortal() {
     return () => { cancelled = true; };
   }, [user]);
 
+  useEffect(() => {
+    if (!user || user.role !== "admin") return;
+    let cancelled = false;
+    setStaffLoading(true);
+    (async () => {
+      try {
+        const data = await fetchStaff({ data: {} });
+        if (!cancelled) setStaff(data as StaffMember[]);
+      } catch (e) {
+        console.error("load staff", e);
+        toast.error("Failed to load staff list");
+      } finally {
+        if (!cancelled) setStaffLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user, fetchStaff]);
+
+  const handleCreateUser = async () => {
+    if (!newEmail || !newPassword || newPassword.length < 8) {
+      toast.error("Email is required and password must be at least 8 characters");
+      return;
+    }
+    setCreating(true);
+    try {
+      await doCreateAdvisor({ data: { email: newEmail, password: newPassword, full_name: newFullName || undefined } });
+      toast.success("Advisor created successfully");
+      setNewEmail(""); setNewPassword(""); setNewFullName("");
+      const data = await fetchStaff({ data: {} });
+      setStaff(data as StaffMember[]);
+    } catch (e: unknown) {
+      toast.error((e as Error)?.message ?? "Failed to create user");
+    } finally {
+      setCreating(false);
+    }
+  };
+
   if (!user) return null;
 
   const filtered = useMemo(() => auditLogs.filter((l) =>
