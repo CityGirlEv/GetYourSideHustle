@@ -15,7 +15,9 @@ function blankMed(): Medication {
 }
 
 const CURRENT_YEAR = new Date().getFullYear();
-const BIRTH_YEARS = Array.from({ length: 60 }, (_, i) => CURRENT_YEAR - 50 - i); // 50..109 years old
+const MIN_BIRTH_YEAR = CURRENT_YEAR - 120;
+const MAX_BIRTH_YEAR = CURRENT_YEAR - 18;
+const BIRTH_YEARS = Array.from({ length: MAX_BIRTH_YEAR - MIN_BIRTH_YEAR + 1 }, (_, i) => MAX_BIRTH_YEAR - i); // 18..120 years old
 const INCOME_BANDS = ["Under $25k", "$25k–$50k", "$50k–$100k", "$100k–$200k", "Over $200k", "Prefer not to say"];
 const CONDITIONS = ["Diabetes", "Hypertension", "Heart disease", "COPD", "Cancer history", "Chronic kidney disease", "Arthritis", "None of the above", "Other"];
 
