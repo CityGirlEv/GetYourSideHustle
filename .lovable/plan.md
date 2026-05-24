@@ -1,96 +1,46 @@
-## Goal
+## Roles, assignment, and agent notes
 
-Pivot from "HIPAA vault with client-side encryption" to a simpler **de-identified scenario** model. The system stores only Safe-Harbor-compliant scenario data and never collects PII. Consumers get a Scenario ID they share with their agent out-of-band.
+### Roles
+Add enum values: `viewer`, `editor`, `qa`, `agent` (keep `admin`; legacy `advisor` stays for back-compat).
+- **admin** — all access; only role that can create users and assign agents
+- **editor** — can create scenarios from the wizard; can view scenarios they created
+- **agent** — can view scenarios an admin assigned to them; can add/edit `agent_notes`
+- **qa** — read-only access to all scenarios
+- **viewer** — read-only access to scenarios they created (default for newly-created users)
 
-## What gets removed
+### Database (migration)
+1. `ALTER TYPE app_role ADD VALUE` for the four new roles.
+2. `scenarios` table:
+   - `created_by uuid` (nullable — public form still allows anon)
+   - `assigned_agent_id uuid`
+   - `agent_notes text`
+   - `wants_contact boolean DEFAULT false`
+3. RLS rewrite on `scenarios`:
+   - admins: all
+   - qa: select all
+   - editor/viewer: select where `created_by = auth.uid()`
+   - agent: select where `assigned_agent_id = auth.uid()`
+   - agent: update only `agent_notes` on assigned scenarios (via RPC)
+4. New RPCs (`SECURITY DEFINER`):
+   - `admin_set_user_role(p_user uuid, p_role app_role)` — admin only
+   - `admin_assign_agent(p_scenario uuid, p_agent uuid)` — admin only; validates target has `agent` role
+   - `agent_update_notes(p_scenario uuid, p_notes text)` — caller must be the assigned agent
+5. Update `create_scenario` to set `created_by = auth.uid()` when authenticated.
+6. When an `expert_contact_request` is inserted with a `scenario_code`, set `scenarios.wants_contact = true` (trigger).
+7. `handle_new_user` default role → `viewer` (admin-created users get explicit role).
 
-- `src/lib/crypto-phi.ts` (AES-GCM/PBKDF2 vault)
-- `src/routes/auth.tsx` passphrase setup + vault unlock UI (keep email/password auth)
-- `src/components/HipaaAck.tsx` (no longer needed — no PHI)
-- `encryption_keys` table
-- `clients_encrypted` and `soas_encrypted` tables (replaced)
-- All "unlock vault" / "15-minute auto-lock" logic in `app-store.tsx`
-- The HIPAA-specific copy and warnings
+### Server functions (`src/lib/admin.functions.ts`)
+- `createAdvisor` → `createUser({ email, password, full_name, role })`; admin assigns chosen role
+- `setUserRole({ user_id, role })`
+- `listAgents()` — for the assign dropdown
 
-## What stays
+### UI
+- **Admin > Staff**: role selector on create form; role dropdown on each row (calls `setUserRole`).
+- **Admin > Scenarios**: for rows where `wants_contact = true`, show an "Assign agent" select populated from `listAgents()`; shows assigned agent + notes preview.
+- **New `/agent` route**: lists scenarios assigned to the current agent; opens `/agent/scenario/$code` with a notes textarea and Save button.
+- **`AppShell` nav**: add Agent link when `user.role === "agent"`; keep Admin link for `admin`.
+- **Wizard** (`/scenario/new`) is unchanged for anon; if a logged-in editor uses it, `created_by` is captured server-side.
 
-- Supabase auth for **agents/admins only** (consumers never log in)
-- `user_roles`, `profiles`, `audit_logs`, `advisor_credits`, `credit_txns`
-- The intake wizard UI structure (re-wired to the new model)
-- Admin/advisor portals
-
-## New data model
-
-Drop encrypted tables, add:
-
-```text
-scenarios
-  id                  uuid pk
-  scenario_code       text unique  -- "SCN-2026-A7K9-3M2P" (lookup token)
-  birth_year          int
-  zip3                text(3)
-  gender              text
-  tobacco             bool
-  income_band         text
-  cost_preference     text
-  medications         jsonb  -- [{name, dosage, frequency}]
-  conditions          jsonb  -- ["diabetes", "hypertension"]
-  preferences         jsonb  -- plan type, network prefs, etc.
-  claimed_by          uuid nullable  -- advisor_id on first lookup
-  claimed_at          timestamptz nullable
-  created_at          timestamptz
-  expires_at          timestamptz   -- created_at + 90 days
-
-scenario_lookup_attempts
-  id, advisor_id, code_attempted, succeeded, created_at
-  -- used for rate-limiting (max 10 failed/min/advisor)
-
-soas  -- de-identified scope-of-appointment, tied to scenario not person
-  id, advisor_id, scenario_id, plan_type, status, signed_at
-```
-
-**RLS:**
-- `scenarios` INSERT: anyone (anon role) — public scenario creation
-- `scenarios` SELECT: only by exact `scenario_code` match via a SECURITY DEFINER function `claim_scenario(code text)` that also enforces claim-lock and rate limit
-- No SELECT by `id` directly, no list/browse policy
-- `scenario_lookup_attempts`: insert + own-read only
-
-## New routes
-
-- `/` — landing (already exists, update copy)
-- `/scenario/new` — **public** consumer wizard (no login)
-- `/scenario/created/:code` — **public** confirmation page with the code + "how to contact your agent" instructions
-- `/auth` — agent login (simplified, no passphrase)
-- `/advisor` — agent dashboard, with "Look up scenario by ID" as the primary action
-- `/advisor/scenario/:code` — view fetched scenario, run comparison, generate SOA
-- `/admin` — unchanged
-
-## Behavior rules
-
-- Consumer entry: structured fields only (no free-text "notes"). Year-only DOB. ZIP-3 only. No name/email/phone fields exist in the schema.
-- Banner on `/scenario/new`: "We do not collect or store your name, address, phone, email, or any way to identify you. After you finish, you'll get a Scenario ID — share it with your agent yourself."
-- Scenario code: `SCN-{YYYY}-XXXX-XXXX` from alphabet `23456789ABCDEFGHJKMNPQRSTUVWXYZ` (no 0/O/1/I/L) — easy to read aloud, ~10^24 entropy.
-- Agent lookup: must be authenticated, calls `claim_scenario(code)` server fn. First successful lookup sets `claimed_by`; subsequent lookups by different advisors return "already claimed."
-- Rate limit: 10 failed lookups per advisor per minute → 429.
-- TTL: pg_cron job (or on-read check) deletes scenarios past `expires_at`.
-- Audit log: every successful and failed lookup written to `audit_logs`.
-
-## Implementation steps
-
-1. **DB migration** — drop encrypted tables; create `scenarios`, `scenario_lookup_attempts`, new `soas`; create `claim_scenario` SECURITY DEFINER function; RLS.
-2. **Remove HIPAA/vault code** — delete `crypto-phi.ts`, `HipaaAck.tsx`; strip vault logic from `app-store.tsx`; simplify `auth.tsx` to plain email/password.
-3. **Public scenario wizard** — refactor `IntakeWizard.tsx` for de-identified fields; mount at `/scenario/new`. Add `/scenario/created/$code.tsx` confirmation page.
-4. **Advisor lookup** — rewrite `advisor.tsx` with "Enter Scenario ID" as the primary CTA; add `/advisor/scenario/$code.tsx` detail page wired to `claim_scenario` server fn.
-5. **Copy + landing page** — update `/` to explain the model; "This system does not store any personally identifiable information. It stores de-identified scenarios only."
-6. **Cleanup** — remove dead imports, update routeTree, verify build.
-
-## Copy for the landing/footer banner
-
-> This tool stores only de-identified Medicare scenarios — never your name, address, phone, email, Social Security number, Medicare ID, or date of birth. After entering your scenario you'll receive a Scenario ID. Share it with your licensed agent yourself; we will never contact you.
-
-## What you'll need to do outside the app
-
-Even without PHI, sound practice:
-- Disclaimer / Terms of Use page reviewed by counsel
-- Privacy policy reflecting the de-identified model
-- Make sure agents are trained not to paste names back into the scenario notes (there won't be a notes field, but worth a policy line)
+### Out of scope (unchanged)
+- Credits, billing, advisor portal (kept as-is for the legacy `advisor` role).
+- Email notifications when an agent is assigned.

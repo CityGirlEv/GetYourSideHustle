@@ -3,7 +3,13 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
 import type { Year, Medication } from "./medicare-math";
 
-export type Role = "advisor" | "admin";
+export type Role = "admin" | "qa" | "agent" | "editor" | "viewer" | "advisor";
+
+const ROLE_PRIORITY: Role[] = ["admin", "qa", "agent", "editor", "viewer", "advisor"];
+function pickRole(roles: string[]): Role {
+  for (const r of ROLE_PRIORITY) if (roles.includes(r)) return r;
+  return "viewer";
+}
 
 export interface User {
   id: string;
@@ -129,7 +135,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ]);
       if (cancelled) return;
       const roleList = (roles ?? []).map((r) => r.role as string);
-      const role: Role = roleList.includes("admin") ? "admin" : "advisor";
+      const role: Role = pickRole(roleList);
       setUser({
         id: uid,
         email: session.user.email ?? "",
