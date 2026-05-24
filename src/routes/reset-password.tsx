@@ -60,8 +60,20 @@ function ResetPasswordPage() {
               </p>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-3">
-                <div><Label>New password</Label><Input type="password" value={password} onChange={(e)=>setPassword(e.target.value)} required minLength={12} /></div>
-                <div><Label>Confirm password</Label><Input type="password" value={confirm} onChange={(e)=>setConfirm(e.target.value)} required minLength={12} /></div>
+                <div className="relative">
+                  <Label>New password</Label>
+                  <Input type={showPassword ? "text" : "password"} value={password} onChange={(e)=>setPassword(e.target.value)} required minLength={12} className="pr-10" />
+                  <button type="button" tabIndex={-1} onClick={()=>setShowPassword(v=>!v)} className="absolute right-3 top-[30px] text-muted-foreground hover:text-foreground">
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                <div className="relative">
+                  <Label>Confirm password</Label>
+                  <Input type={showConfirm ? "text" : "password"} value={confirm} onChange={(e)=>setConfirm(e.target.value)} required minLength={12} className="pr-10" />
+                  <button type="button" tabIndex={-1} onClick={()=>setShowConfirm(v=>!v)} className="absolute right-3 top-[30px] text-muted-foreground hover:text-foreground">
+                    {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
                 <Button type="submit" disabled={busy} className="w-full grad-indigo h-11">Update password</Button>
               </form>
             )}
