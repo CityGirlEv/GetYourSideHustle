@@ -25,7 +25,7 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
         <Link to="/" className="flex items-center gap-2 font-display font-bold text-lg shrink-0">
           <img src={muntieLogo} alt="Medicare Optimizer" className="h-16 w-16 object-contain" />
         </Link>
-        <div className="flex-1 text-center min-w-1">
+        <div className="flex-1 text-center min-w-0 px-2">
           <h1 className="text-xl md:text-2xl font-bold tracking-tight text-emerald leading-tight truncate">{title}</h1>
           {subtitle && <p className="text-[11px] md:text-xs italic text-emerald font-semibold truncate">{subtitle}</p>}
         </div>
