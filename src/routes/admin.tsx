@@ -229,6 +229,8 @@ function AdminPortal() {
                     <th className="px-3 py-2">Conditions</th>
                     <th className="px-3 py-2">Claimed</th>
                     <th className="px-3 py-2">Opt-in contact</th>
+                    <th className="px-3 py-2">Assigned agent</th>
+                    <th className="px-3 py-2">Agent notes</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -264,11 +266,36 @@ function AdminPortal() {
                             </div>
                           )}
                         </td>
+                        <td className="px-3 py-2 text-xs">
+                          {(s.wants_contact || reqs.length > 0) ? (
+                            <Select
+                              value={s.assigned_agent_id ?? "__none"}
+                              onValueChange={(v) => handleAssignAgent(s.id, v)}
+                            >
+                              <SelectTrigger className="h-8 text-xs min-w-[160px]"><SelectValue placeholder="Unassigned" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="__none">— Unassigned —</SelectItem>
+                                {agents.map((a) => (
+                                  <SelectItem key={a.id} value={a.id}>{a.full_name || a.email}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <span className="text-muted-foreground">No opt-in</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-xs max-w-xs">
+                          {s.agent_notes ? (
+                            <span className="text-muted-foreground line-clamp-3 whitespace-pre-wrap">{s.agent_notes}</span>
+                          ) : (
+                            <span className="text-muted-foreground italic">—</span>
+                          )}
+                        </td>
                       </tr>
                     );
                   })}
                   {!scenarios.length && !loadingData && (
-                    <tr><td colSpan={12} className="px-3 py-6 text-center text-muted-foreground">No scenarios yet.</td></tr>
+                    <tr><td colSpan={14} className="px-3 py-6 text-center text-muted-foreground">No scenarios yet.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -327,8 +354,8 @@ function AdminPortal() {
 
         <TabsContent value="staff" className="space-y-6">
           <Card className="glass p-5 space-y-4">
-            <h3 className="font-display font-bold flex items-center gap-2"><UserPlus className="h-5 w-5"/>Create advisor account</h3>
-            <div className="grid md:grid-cols-4 gap-3">
+            <h3 className="font-display font-bold flex items-center gap-2"><UserPlus className="h-5 w-5"/>Create user account</h3>
+            <div className="grid md:grid-cols-5 gap-3">
               <div className="space-y-1">
                 <label className="text-xs text-muted-foreground">Email</label>
                 <Input type="email" placeholder="advisor@example.com" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
@@ -336,6 +363,15 @@ function AdminPortal() {
               <div className="space-y-1">
                 <label className="text-xs text-muted-foreground">Full name</label>
                 <Input placeholder="Jane Smith" value={newFullName} onChange={(e) => setNewFullName(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Role</label>
+                <Select value={newRole} onValueChange={(v) => setNewRole(v as AssignableRole)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {ASSIGNABLE_ROLES.map((r) => <SelectItem key={r} value={r} className="capitalize">{r}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1">
                 <label className="text-xs text-muted-foreground">Password</label>
@@ -353,6 +389,7 @@ function AdminPortal() {
                 </Button>
               </div>
             </div>
+            <p className="text-xs text-muted-foreground">Only admins can create users. Newly-created users default to <span className="font-semibold">viewer</span> if no role is selected.</p>
           </Card>
 
           <Card className="glass p-4 space-y-3">
@@ -380,7 +417,15 @@ function AdminPortal() {
                     <tr key={s.id} className="border-t border-border">
                       <td className="px-3 py-2 font-medium">{s.full_name || "—"}</td>
                       <td className="px-3 py-2 text-muted-foreground">{s.email}</td>
-                      <td className="px-3 py-2"><span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary capitalize">{s.role}</span></td>
+                      <td className="px-3 py-2">
+                        <Select value={s.role} onValueChange={(v) => handleChangeRole(s.id, v as AssignableRole)}>
+                          <SelectTrigger className="h-8 text-xs min-w-[120px] capitalize"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {ASSIGNABLE_ROLES.map((r) => <SelectItem key={r} value={r} className="capitalize">{r}</SelectItem>)}
+                            {s.role === "advisor" && <SelectItem value="advisor" className="capitalize">advisor (legacy)</SelectItem>}
+                          </SelectContent>
+                        </Select>
+                      </td>
                       <td className="px-3 py-2 font-mono text-xs">{s.npn_number || "—"}</td>
                       <td className="px-3 py-2 tabular-nums font-bold">{s.credits}</td>
                       <td className="px-3 py-2">
