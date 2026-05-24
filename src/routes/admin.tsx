@@ -43,6 +43,15 @@ export const Route = createFileRoute("/admin")({
   component: AdminPortal,
 });
 
+interface StaffMember {
+  id: string;
+  email: string;
+  full_name: string;
+  npn_number: string;
+  role: string;
+  credits: number;
+}
+
 function AdminPortal() {
   const { user, auditLogs, addCredits, credits, year } = useApp();
   const router = useRouter();
@@ -50,6 +59,17 @@ function AdminPortal() {
   const [scenarios, setScenarios] = useState<AdminScenarioRow[]>([]);
   const [contacts, setContacts] = useState<AdminContactRow[]>([]);
   const [loadingData, setLoadingData] = useState(false);
+
+  const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [staffLoading, setStaffLoading] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newFullName, setNewFullName] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [showPw, setShowPw] = useState(false);
+
+  const fetchStaff = useServerFn(listStaff);
+  const doCreateAdvisor = useServerFn(createAdvisor);
 
   useEffect(() => {
     if (!user) router.navigate({ to: "/auth" });
