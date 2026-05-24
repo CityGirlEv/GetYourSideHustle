@@ -109,18 +109,16 @@ function ScenarioCreated() {
             <Copy className="h-4 w-4 mr-2" /> Copy Scenario ID
           </Button>
 
+          <Button onClick={downloadPdf} className="w-full grad-indigo">
+            <FileDown className="h-4 w-4 mr-2" /> Download recommendation PDF (side-by-side comparison & reasoning)
+          </Button>
           {isAgent ? (
-            <>
-              <Button onClick={downloadPdf} className="w-full grad-indigo">
-                <FileDown className="h-4 w-4 mr-2" /> Download complete plan comparison PDF
-              </Button>
-              <Button onClick={downloadXlsx} variant="outline" className="w-full">
-                <FileDown className="h-4 w-4 mr-2" /> Download personalized Excel workbook (3 tabs)
-              </Button>
-            </>
+            <Button onClick={downloadXlsx} variant="outline" className="w-full">
+              <FileDown className="h-4 w-4 mr-2" /> Download personalized Excel workbook (3 tabs)
+            </Button>
           ) : (
             <div className="text-xs text-muted-foreground bg-muted/40 border border-border rounded-lg p-3 text-left">
-              The full PDF dossier and Excel workbook are available to licensed agents only. Share your Scenario ID with your agent — they can log in and download the complete comparison for you.
+              The Excel workbook with full carrier breakdowns is available to licensed agents only. Share your Scenario ID with your agent — they can log in and download it for you.
             </div>
           )}
 
