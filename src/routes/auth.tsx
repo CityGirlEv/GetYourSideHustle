@@ -82,7 +82,13 @@ function AuthPage() {
               <TabsContent value="signin">
                 <form onSubmit={handleSignIn} className="space-y-3 mt-4">
                   <div><Label>Email</Label><Input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} required /></div>
-                  <div><Label>Password</Label><Input type="password" value={password} onChange={(e)=>setPassword(e.target.value)} required /></div>
+                  <div className="relative">
+                    <Label>Password</Label>
+                    <Input type={showPassword ? "text" : "password"} value={password} onChange={(e)=>setPassword(e.target.value)} required className="pr-10" />
+                    <button type="button" tabIndex={-1} onClick={()=>setShowPassword(v=>!v)} className="absolute right-3 top-[30px] text-muted-foreground hover:text-foreground">
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                   <Button type="submit" disabled={busy} className="w-full grad-indigo h-11"><Lock className="h-4 w-4 mr-2" />Sign in</Button>
                   <button type="button" onClick={handleForgot} disabled={busy} className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 w-full text-center">
                     Forgot password?
