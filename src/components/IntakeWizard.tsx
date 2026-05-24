@@ -212,19 +212,64 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
               </select>
             </div>
             <div>
-              <Label>First 3 digits of ZIP code <span className="text-destructive">*</span></Label>
-              <Input value={zip3} onChange={(e)=>setZip3(e.target.value.replace(/\D/g,"").slice(0,3))} placeholder="e.g. 770" inputMode="numeric" maxLength={3} required/>
+              <Label>ZIP code <span className="text-destructive">*</span></Label>
+              <Input
+                value={zip}
+                onChange={(e) => setZip(e.target.value.replace(/\D/g, "").slice(0, 5))}
+                placeholder="e.g. 77001"
+                inputMode="numeric"
+                maxLength={5}
+                required
+              />
             </div>
             <div className="col-span-2">
               <Label>County or parish <span className="text-destructive">*</span></Label>
-              <Input
-                value={county}
-                onChange={(e) => setCounty(e.target.value.slice(0, 80))}
-                placeholder="e.g. Harris County, Orleans Parish"
-                maxLength={80}
-                required
-              />
-              <p className="text-xs text-muted-foreground mt-1">Used only to refine plan availability — never tied to your identity.</p>
+              {countyOptions.length > 0 ? (
+                <select
+                  className="w-full border border-input rounded-md px-3 h-9 bg-background"
+                  value={countyMatchesList(county, countyOptions)?.county ?? ""}
+                  onChange={(e) => setCounty(e.target.value)}
+                  required
+                >
+                  <option value="">Select your county…</option>
+                  {countyOptions.map((c) => (
+                    <option key={`${c.county}-${c.stateCode}`} value={c.county}>
+                      {c.county}, {c.stateCode}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <Input
+                  value={county}
+                  onChange={(e) => setCounty(e.target.value.slice(0, 80))}
+                  placeholder={
+                    zip.length === 5
+                      ? countyLoading
+                        ? "Looking up counties…"
+                        : "e.g. Harris County, Orleans Parish"
+                      : "Enter your 5-digit ZIP above first"
+                  }
+                  maxLength={80}
+                  disabled={zip.length !== 5 || countyLoading}
+                  required
+                />
+              )}
+              {countyLoading && (
+                <p className="text-xs text-muted-foreground mt-1">Looking up counties for ZIP {zip}…</p>
+              )}
+              {countyLookupError && !countyLoading && (
+                <p className="text-xs text-destructive mt-1">{countyLookupError}</p>
+              )}
+              {!countyLoading && !countyLookupError && countyOptions.length > 1 && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  ZIP {zip} spans multiple counties — pick yours from the list.
+                </p>
+              )}
+              {!countyLoading && !countyLookupError && countyOptions.length === 1 && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Auto-selected the only county for ZIP {zip}.
+                </p>
+              )}
             </div>
             <div>
               <Label>Gender</Label>
