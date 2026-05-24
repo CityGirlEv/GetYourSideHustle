@@ -3,6 +3,47 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { z } from "zod";
 
+async function verifyAdmin(userId: string) {
+  const { data: callerRoles } = await supabaseAdmin
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId);
+  const isAdmin = (callerRoles ?? []).some((r) => r.role === "admin");
+  if (!isAdmin) throw new Error("Admin access required");
+}
+
+export const listStaff = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await verifyAdmin(context.userId);
+
+    const { data: authUsers, error: authErr } = await supabaseAdmin.auth.admin.listUsers();
+    if (authErr) throw new Error(authErr.message);
+
+    const users = authUsers?.users ?? [];
+    const userIds = users.map((u) => u.id);
+    if (userIds.length === 0) return [];
+
+    const [profilesRes, rolesRes, creditsRes] = await Promise.all([
+      supabaseAdmin.from("profiles").select("id, full_name, npn_number").in("id", userIds),
+      supabaseAdmin.from("user_roles").select("user_id, role").in("user_id", userIds),
+      supabaseAdmin.from("advisor_credits").select("advisor_id, balance").in("advisor_id", userIds),
+    ]);
+
+    const profileMap = new Map((profilesRes.data ?? []).map((p) => [p.id, p]));
+    const roleMap = new Map((rolesRes.data ?? []).map((r) => [r.user_id, r.role]));
+    const creditMap = new Map((creditsRes.data ?? []).map((c) => [c.advisor_id, c.balance]));
+
+    return users.map((u) => ({
+      id: u.id,
+      email: u.email ?? "",
+      full_name: profileMap.get(u.id)?.full_name ?? "",
+      npn_number: profileMap.get(u.id)?.npn_number ?? "",
+      role: roleMap.get(u.id) ?? "advisor",
+      credits: creditMap.get(u.id) ?? 0,
+    }));
+  });
+
 export const createAdvisor = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
@@ -13,17 +54,7 @@ export const createAdvisor = createServerFn({ method: "POST" })
     }).parse(input)
   )
   .handler(async ({ data, context }) => {
-    const { userId } = context;
-
-    // Verify caller is admin
-    const { data: callerRoles } = await supabaseAdmin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId);
-    const isAdmin = (callerRoles ?? []).some((r) => r.role === "admin");
-    if (!isAdmin) {
-      throw new Error("Admin access required");
-    }
+    await verifyAdmin(context.userId);
 
     // Check if user already exists
     const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
