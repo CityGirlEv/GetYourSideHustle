@@ -385,7 +385,7 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
   doc.setFontSize(8.5);
   doc.setTextColor(90, 90, 90);
   doc.text(
-    `Side-by-side line-item view of every premium, deductible, copay, drug tier, and bundled benefit. Total monthly = Part B + plan + Part D + dental + vision (where applicable).`,
+    `Side-by-side line-item view of every premium, deductible, copay, drug tier, and bundled benefit. Total monthly = Part B + plan + Part D + dental + vision + extras (hearing / OTC / wellness) where applicable.`,
     lsMargin, 66, { maxWidth: lsW - lsMargin * 2 },
   );
 
