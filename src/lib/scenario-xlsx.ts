@@ -471,6 +471,8 @@ function buildScenarioWorkbook(input: ScenarioXlsxInput): ExcelJS.Workbook {
   buildPathwayASheet(wb, input);
   buildPathwayBSheet(wb, input);
   buildTop10Sheet(wb, input);
+  buildTop10FullDetailSheet(wb, input);
+  buildAnnualScenarioSheet(wb, input);
   return wb;
 }
 
