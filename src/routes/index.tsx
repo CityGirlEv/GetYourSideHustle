@@ -27,8 +27,8 @@ function Index() {
             <div className="absolute left-6 top-1/2 -translate-y-1/2">
               <img src={muntieLogo} alt="Medicare Optimizer" className="h-20 w-20 object-contain" />
             </div>
-            <div className="text-center pl-28 pr-4">
-              <h1 className="font-display text-2xl md:text-3xl font-extrabold tracking-tight leading-tight text-emerald whitespace-nowrap">The Medicare Optimizer</h1>
+            <div className="text-center px-32">
+              <h1 className="font-display text-2xl md:text-3xl font-extrabold tracking-tight leading-tight text-emerald">The Medicare Optimizer</h1>
               <p className="text-xs md:text-sm italic text-emerald font-semibold mt-1">Getting the Best Bang For Your Medical Needs Because You Deserve It!</p>
             </div>
           </div>
