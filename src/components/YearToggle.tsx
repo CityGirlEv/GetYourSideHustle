@@ -12,7 +12,7 @@ export function YearToggle() {
   const { year, setYear } = useApp();
   const [open, setOpen] = useState(false);
   return (
-    <div className="glass rounded-full p-1 flex items-center gap-1 shadow-sm">
+    <div className="glass rounded-xl p-1 flex flex-col items-center gap-1 shadow-sm">
       {[2026, 2027].map((y) => (
         <button
           key={y}
@@ -34,8 +34,8 @@ export function YearToggle() {
       ))}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <button className="ml-1 p-1.5 rounded-full hover:bg-secondary" aria-label="Compare years">
-            <Sparkles className="h-4 w-4 text-primary" />
+          <button className="p-1 rounded-full hover:bg-secondary" aria-label="Compare years">
+            <Sparkles className="h-3.5 w-3.5 text-primary" />
           </button>
         </DialogTrigger>
         <DialogContent className="max-w-2xl">
