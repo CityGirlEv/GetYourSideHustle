@@ -24,7 +24,12 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (user) router.navigate({ to: `/${user.role}` });
+    if (!user) return;
+    const dest =
+      user.role === "admin" ? "/admin" :
+      user.role === "agent" ? "/agent" :
+      "/advisor"; // advisor, editor, qa, viewer all land on the advisor workbench
+    router.navigate({ to: dest });
   }, [user, router]);
 
   const handleSignUp = async (e: React.FormEvent) => {
