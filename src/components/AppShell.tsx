@@ -25,8 +25,11 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
         <div className="flex items-center gap-2 flex-1">
           <Link to="/" className="flex items-center gap-3 font-display font-bold">
             <img src={muntieLogo} alt="Medicare Optimizer" className="h-20 w-20 object-contain" />
-            <span className="text-lg md:text-xl tracking-tight">Medicare Optimizer</span>
           </Link>
+        </div>
+        <div className="flex flex-col items-center">
+          <h1 className="text-xl md:text-2xl font-display font-bold text-blue-600">{title}</h1>
+          {subtitle && <p className="text-sm text-blue-500">{subtitle}</p>}
         </div>
         <div className="flex items-center gap-3 flex-1 justify-end">
           <YearToggle />
