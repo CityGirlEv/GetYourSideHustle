@@ -160,7 +160,6 @@ function renderSheet(ws: ExcelJS.Worksheet, rows: StyledRow[], widths: number[])
 function buildPersonalSheet(wb: ExcelJS.Workbook, input: ScenarioXlsxInput) {
   const ws = wb.addWorksheet("Personal Recommendation", { views: [{ showGridLines: false }] });
   const age = new Date().getFullYear() - input.birthYear;
-  const region = `${input.zip3} (Regional Average)`;
   const rec = recommendPlans({
     year: input.year,
     zip3: input.zip3,
@@ -181,6 +180,11 @@ function buildPersonalSheet(wb: ExcelJS.Workbook, input: ScenarioXlsxInput) {
     g.partBDeductible;
   const totalB = g.partBPremiumMonthly * 12 + 800;
   const savings = Math.max(0, totalA - totalB);
+
+  const ranked = rankedPlanDetails({ year: input.year, zip3: input.zip3, medications: input.medications });
+  const top = ranked[0];
+  const runnerUp = ranked[1];
+  const recDetailRows: StyledRow[] = top ? buildRecommendationDetailRows(top, runnerUp) : [];
 
   const rows: StyledRow[] = [
     { kind: "title", text: "Medicare Optimization & Plan Comparison Summary", span: 3 },
@@ -208,6 +212,7 @@ function buildPersonalSheet(wb: ExcelJS.Workbook, input: ScenarioXlsxInput) {
       height: 110,
       text: `RECOMMENDED PATHWAY: ${rec.primary.pathwayLabel} — ${rec.primary.planName}\n\nBased on birth year ${input.birthYear} (Age ${age}), ${input.gender}, ${input.tobacco ? "Smoker" : "Non-smoker"}, and a "${priorityLabel}" preference, ${rec.primary.planName} ranked best. ${rec.primary.rationale}\n\nEstimated Monthly Premium: ${fmtMo(rec.primary.estMonthlyPremium)}    ·    Estimated Annual Total: ${usd(rec.primary.estAnnualTotal)}    ·    Worst-Case Annual: ${usd(rec.primary.estWorstCase)}\nAlternate to consider: ${rec.alternate.planName} — est. ${usd(rec.alternate.estAnnualTotal)} / yr`,
     },
+    ...recDetailRows,
     { kind: "blank" },
     { kind: "section", text: "PATHWAY A VS. PATHWAY B SIDE-BY-SIDE", span: 3 },
     {
