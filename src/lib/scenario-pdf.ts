@@ -392,12 +392,13 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
   // Monthly premium breakdown table
   autoTable(doc, {
     startY: 82,
-    head: [["#", "Carrier", "Plan", "Part B", "Plan", "Part D", "Dental", "Vision", "Total /mo", "Annual Premium"]],
+    head: [["#", "Carrier", "Plan", "Part B", "Plan", "Part D", "Dental", "Vision", "Extras", "Total /mo", "Annual Premium"]],
     body: top10Detail.map((d) => [
       d.rank, d.carrier, d.plan,
       fmtMo(d.premiumPartB), fmtMo(d.premiumPlan), fmtMo(d.premiumRx),
       d.premiumDental ? fmtMo(d.premiumDental) : "—",
       d.premiumVision ? fmtMo(d.premiumVision) : "—",
+      d.premiumExtras ? fmtMo(d.premiumExtras) : "—",
       fmtMo(d.monthly),
       usd(Math.round(d.monthly * 12)),
     ]),
@@ -406,8 +407,8 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
     columnStyles: {
       0: { halign: "center", cellWidth: 16 },
       3: { halign: "right" }, 4: { halign: "right" }, 5: { halign: "right" },
-      6: { halign: "right" }, 7: { halign: "right" },
-      8: { halign: "right", fontStyle: "bold" }, 9: { halign: "right" },
+      6: { halign: "right" }, 7: { halign: "right" }, 8: { halign: "right" },
+      9: { halign: "right", fontStyle: "bold" }, 10: { halign: "right" },
     },
     margin: { left: lsMargin, right: lsMargin },
   });
