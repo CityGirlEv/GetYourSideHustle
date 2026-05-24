@@ -1,4 +1,4 @@
-import { ShieldCheck, EyeOff, KeyRound, Home, LogIn } from "lucide-react";
+import { ShieldCheck, EyeOff, KeyRound, Home, LogIn, Settings } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 
 export function SecurityBanner() {
