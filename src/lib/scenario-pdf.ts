@@ -760,6 +760,7 @@ export function buildConsumerScenarioPdf(input: ScenarioPdfInput): jsPDF {
       ["Part D / Rx", fmtMo(rec.premiumRx), usd(Math.round(rec.premiumRx * 12))],
       ["Dental", rec.premiumDental ? fmtMo(rec.premiumDental) : "Included", rec.premiumDental ? usd(Math.round(rec.premiumDental * 12)) : "—"],
       ["Vision", rec.premiumVision ? fmtMo(rec.premiumVision) : "Included", rec.premiumVision ? usd(Math.round(rec.premiumVision * 12)) : "—"],
+      ["Extras (hearing / OTC / wellness)", rec.premiumExtras ? fmtMo(rec.premiumExtras) : "Bundled", rec.premiumExtras ? usd(Math.round(rec.premiumExtras * 12)) : "—"],
     ],
     foot: [["TOTAL (all-in)", fmtMo(rec.monthly), usd(Math.round(rec.monthly * 12))]],
     headStyles: { fillColor: [16, 122, 87], textColor: 255, fontSize: 9 },
