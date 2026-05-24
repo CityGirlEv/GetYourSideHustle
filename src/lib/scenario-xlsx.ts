@@ -5,10 +5,12 @@ import {
   partDPremiumByZip3,
   recommendPlans,
   usd,
+  INSULIN_CAP_MONTHLY,
   type Year,
   type Medication,
 } from "./medicare-math";
 import { CMS_CATALOG } from "@/data/cms-catalog";
+import { rankedPlanDetails, type PlanDetail } from "./plan-details";
 
 export interface ScenarioXlsxInput {
   scenarioCode: string;
@@ -158,7 +160,6 @@ function renderSheet(ws: ExcelJS.Worksheet, rows: StyledRow[], widths: number[])
 function buildPersonalSheet(wb: ExcelJS.Workbook, input: ScenarioXlsxInput) {
   const ws = wb.addWorksheet("Personal Recommendation", { views: [{ showGridLines: false }] });
   const age = new Date().getFullYear() - input.birthYear;
-  const region = `${input.zip3} (Regional Average)`;
   const rec = recommendPlans({
     year: input.year,
     zip3: input.zip3,
@@ -179,6 +180,11 @@ function buildPersonalSheet(wb: ExcelJS.Workbook, input: ScenarioXlsxInput) {
     g.partBDeductible;
   const totalB = g.partBPremiumMonthly * 12 + 800;
   const savings = Math.max(0, totalA - totalB);
+
+  const ranked = rankedPlanDetails({ year: input.year, zip3: input.zip3, medications: input.medications });
+  const top = ranked[0];
+  const runnerUp = ranked[1];
+  const recDetailRows: StyledRow[] = top ? buildRecommendationDetailRows(top, runnerUp) : [];
 
   const rows: StyledRow[] = [
     { kind: "title", text: "Medicare Optimization & Plan Comparison Summary", span: 3 },
@@ -206,6 +212,7 @@ function buildPersonalSheet(wb: ExcelJS.Workbook, input: ScenarioXlsxInput) {
       height: 110,
       text: `RECOMMENDED PATHWAY: ${rec.primary.pathwayLabel} — ${rec.primary.planName}\n\nBased on birth year ${input.birthYear} (Age ${age}), ${input.gender}, ${input.tobacco ? "Smoker" : "Non-smoker"}, and a "${priorityLabel}" preference, ${rec.primary.planName} ranked best. ${rec.primary.rationale}\n\nEstimated Monthly Premium: ${fmtMo(rec.primary.estMonthlyPremium)}    ·    Estimated Annual Total: ${usd(rec.primary.estAnnualTotal)}    ·    Worst-Case Annual: ${usd(rec.primary.estWorstCase)}\nAlternate to consider: ${rec.alternate.planName} — est. ${usd(rec.alternate.estAnnualTotal)} / yr`,
     },
+    ...recDetailRows,
     { kind: "blank" },
     { kind: "section", text: "PATHWAY A VS. PATHWAY B SIDE-BY-SIDE", span: 3 },
     {
@@ -464,6 +471,8 @@ function buildScenarioWorkbook(input: ScenarioXlsxInput): ExcelJS.Workbook {
   buildPathwayASheet(wb, input);
   buildPathwayBSheet(wb, input);
   buildTop10Sheet(wb, input);
+  buildTop10FullDetailSheet(wb, input);
+  buildAnnualScenarioSheet(wb, input);
   return wb;
 }
 
@@ -699,4 +708,194 @@ export async function downloadScenarioXlsx(input: ScenarioXlsxInput) {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// ============ Recommended-plan detail rows (used in Personal sheet) ============
+function buildRecommendationDetailRows(rec: PlanDetail, alt?: PlanDetail): StyledRow[] {
+  const fm = (n: number) => `${usd(Math.round(n * 100) / 100)}/month`;
+  const yr = (n: number) => usd(Math.round(n * 12));
+  const rows: StyledRow[] = [
+    { kind: "blank" },
+    { kind: "section", text: `#1 RECOMMENDATION — ${rec.carrier} · ${rec.plan}`, span: 3 },
+    { kind: "subtitle", span: 3, text: `${rec.planType} · ${rec.stars} · A.M. Best ${rec.amBest} · ${rec.network}` },
+    { kind: "blank" },
+    { kind: "tableHeader", cells: ["Monthly Premium Breakdown", "Monthly", "Annual"] },
+    { kind: "tableRow", cells: ["Medicare Part B premium", fm(rec.premiumPartB), yr(rec.premiumPartB)] },
+    { kind: "tableRow", alt: true, cells: [`Plan premium (${rec.planType})`, fm(rec.premiumPlan), yr(rec.premiumPlan)] },
+    { kind: "tableRow", cells: ["Part D / prescription drug premium", fm(rec.premiumRx), yr(rec.premiumRx)] },
+    { kind: "tableRow", alt: true, cells: ["Dental premium", rec.premiumDental ? fm(rec.premiumDental) : "Included / standalone", rec.premiumDental ? yr(rec.premiumDental) : "—"] },
+    { kind: "tableRow", cells: ["Vision premium", rec.premiumVision ? fm(rec.premiumVision) : "Included / standalone", rec.premiumVision ? yr(rec.premiumVision) : "—"] },
+    { kind: "totalRow", cells: ["TOTAL MONTHLY PAYMENT (all-in)", fm(rec.monthly), yr(rec.monthly)] },
+    { kind: "blank" },
+    { kind: "tableHeader", cells: ["Medical Cost-Sharing", "Member Cost", ""] },
+    { kind: "tableRow", cells: ["Medical deductible", rec.deductibleMed ? usd(rec.deductibleMed) : "$0", ""] },
+    { kind: "tableRow", alt: true, cells: ["Primary care visit", rec.pcpCopay, ""] },
+    { kind: "tableRow", cells: ["Specialist visit", rec.specCopay, ""] },
+    { kind: "tableRow", alt: true, cells: ["Inpatient hospital", rec.hospCopay, ""] },
+    { kind: "tableRow", cells: ["Emergency room", rec.erCopay, ""] },
+    { kind: "tableRow", alt: true, cells: ["Out-of-pocket maximum", rec.moop, ""] },
+    { kind: "blank" },
+    { kind: "tableHeader", cells: ["Prescription Drug Detail", "Cost", ""] },
+    { kind: "tableRow", cells: ["Rx deductible", rec.deductibleRx ? usd(rec.deductibleRx) : "$0", ""] },
+    { kind: "tableRow", alt: true, cells: ["Tier 1 — Preferred generic", rec.rxTier1, ""] },
+    { kind: "tableRow", cells: ["Tier 2 — Generic", rec.rxTier2, ""] },
+    { kind: "tableRow", alt: true, cells: ["Tier 3 — Preferred brand", rec.rxTier3, ""] },
+    { kind: "tableRow", cells: ["Insulin (federal cap)", `${usd(rec.insulinCap)}/mo`, ""] },
+    { kind: "tableRow", alt: true, cells: ["Annual Rx OOP cap", usd(rec.rxOOPCap), ""] },
+    { kind: "blank" },
+    { kind: "tableHeader", cells: ["Bundled Benefits", "Coverage", ""] },
+    { kind: "tableRow", cells: ["Dental", rec.dentalBenefit, ""] },
+    { kind: "tableRow", alt: true, cells: ["Vision", rec.visionBenefit, ""] },
+    { kind: "tableRow", cells: ["Hearing", rec.hearingBenefit, ""] },
+    { kind: "tableRow", alt: true, cells: ["OTC / wellness", rec.otcBenefit, ""] },
+  ];
+  if (alt) {
+    rows.push(
+      { kind: "blank" },
+      { kind: "section", text: `RUNNER-UP — ${alt.carrier} · ${alt.plan}`, span: 3 },
+      { kind: "kv", key: "Total monthly:", value: `${fm(alt.monthly)} all-in` },
+      { kind: "kv", key: "Estimated annual:", value: usd(alt.annual) },
+      { kind: "kv", key: "Network:", value: alt.network },
+      { kind: "kv", key: "Stars / A.M. Best:", value: `${alt.stars} · ${alt.amBest}` },
+    );
+  }
+  return rows;
+}
+
+// ============ Top 10 Full Detail sheet (mirrors landscape PDF spread) ============
+function buildTop10FullDetailSheet(wb: ExcelJS.Workbook, input: ScenarioXlsxInput) {
+  const ws = wb.addWorksheet("Top 10 Full Detail", {
+    views: [{ showGridLines: false, state: "frozen", xSplit: 3, ySplit: 5 }],
+    pageSetup: { orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0 },
+  });
+  const ranked = rankedPlanDetails({ year: input.year, zip3: input.zip3, medications: input.medications });
+  const fm = (n: number) => `${usd(Math.round(n * 100) / 100)}/mo`;
+  const header = [
+    "Rank", "Carrier", "Plan",
+    "Part B /mo", "Plan /mo", "Part D /mo", "Dental /mo", "Vision /mo",
+    "TOTAL /mo", "Annual premium",
+    "Med deductible", "PCP", "Specialist", "Hospital", "ER", "MOOP", "Network",
+    "Rx deductible", "Tier 1", "Tier 2", "Tier 3", "Insulin cap", "Rx OOP cap",
+    "Dental benefit", "Vision benefit", "Hearing benefit", "OTC / wellness",
+    "Stars", "A.M. Best", "Est. Annual Total",
+  ];
+  const span = header.length;
+  const rows: StyledRow[] = [
+    { kind: "title", text: "Top 10 Carrier Plans — Full Benefit & Cost Detail", span },
+    { kind: "subtitle", span, text: `Every premium line item, deductible, copay, drug tier, and bundled benefit side-by-side. TOTAL /mo = Part B + plan + Part D + dental + vision. ZIP ${input.zip3}${input.county ? ` · ${input.county}` : ""} · Plan Year ${input.year}.` },
+    { kind: "blank" },
+    { kind: "tableHeader", cells: header },
+    ...ranked.map((r, i): StyledRow => ({
+      kind: "tableRow", alt: i % 2 === 1,
+      cells: [
+        r.rank, r.carrier, r.plan,
+        fm(r.premiumPartB), fm(r.premiumPlan), fm(r.premiumRx),
+        r.premiumDental ? fm(r.premiumDental) : "—",
+        r.premiumVision ? fm(r.premiumVision) : "—",
+        fm(r.monthly), usd(Math.round(r.monthly * 12)),
+        r.deductibleMed ? usd(r.deductibleMed) : "$0",
+        r.pcpCopay, r.specCopay, r.hospCopay, r.erCopay, r.moop, r.network,
+        r.deductibleRx ? usd(r.deductibleRx) : "$0",
+        r.rxTier1, r.rxTier2, r.rxTier3,
+        `${usd(r.insulinCap)}/mo`, usd(r.rxOOPCap),
+        r.dentalBenefit, r.visionBenefit, r.hearingBenefit, r.otcBenefit,
+        r.stars, r.amBest, usd(r.annual),
+      ],
+    })),
+    { kind: "blank" },
+    { kind: "note", span, text: "• TOTAL /mo includes Part B, plan premium, Part D, dental, and vision (where applicable)." },
+    { kind: "note", span, text: "• Cost-sharing values are typical published amounts for each plan type — verify on the carrier's Summary of Benefits." },
+    { kind: "note", span, text: "• Est. Annual Total = Monthly × 12 + modeled Rx OOP + typical MA medical OOP (where applicable)." },
+  ];
+  const widths = [
+    5, 22, 26,
+    11, 11, 11, 11, 11,
+    12, 14,
+    14, 8, 10, 18, 18, 24, 32,
+    11, 9, 9, 9, 11, 12,
+    32, 28, 26, 22,
+    7, 10, 14,
+  ];
+  renderSheet(ws, rows, widths);
+}
+
+// ============ Annual Cost Scenario sheet ============
+function buildAnnualScenarioSheet(wb: ExcelJS.Workbook, input: ScenarioXlsxInput) {
+  const ws = wb.addWorksheet("Annual Cost Scenario", { views: [{ showGridLines: false }] });
+  const g = GUIDELINES[input.year];
+  const cond = input.conditions.map((c) => c.toLowerCase()).join(" ");
+  type Line = { category: string; item: string; freq: string; unit: number; annual: number };
+  const util: Line[] = [];
+  util.push({ category: "Preventive", item: "Annual Wellness Visit", freq: "1 / yr", unit: 0, annual: 0 });
+  util.push({ category: "Preventive", item: "Routine labs (CBC, CMP, lipid)", freq: "1–2 / yr", unit: 35, annual: 70 });
+  util.push({ category: "Primary care", item: "PCP office visit", freq: "4 / yr", unit: 120, annual: 480 });
+  if (/diabetes/.test(cond)) {
+    util.push({ category: "Diabetes", item: "Endocrinologist visit", freq: "2 / yr", unit: 220, annual: 440 });
+    util.push({ category: "Diabetes", item: "A1C + diabetic panel", freq: "4 / yr", unit: 55, annual: 220 });
+    util.push({ category: "Diabetes", item: "Diabetic eye exam", freq: "1 / yr", unit: 145, annual: 145 });
+    util.push({ category: "Diabetes", item: "CGM sensors / supplies (DME)", freq: "monthly", unit: 320, annual: 3840 });
+    util.push({ category: "Diabetes", item: "Insulin (capped at $35/mo)", freq: "monthly", unit: INSULIN_CAP_MONTHLY, annual: INSULIN_CAP_MONTHLY * 12 });
+  }
+  if (/heart|cardio|chf|hypertension|blood pressure/.test(cond)) {
+    util.push({ category: "Cardiac", item: "Cardiologist visit", freq: "2 / yr", unit: 240, annual: 480 });
+    util.push({ category: "Cardiac", item: "EKG + echocardiogram", freq: "1 / yr", unit: 410, annual: 410 });
+    util.push({ category: "Cardiac", item: "Cardiac rehab sessions", freq: "12 / yr", unit: 75, annual: 900 });
+  }
+  if (/copd|asthma|pulmonary/.test(cond)) {
+    util.push({ category: "Pulmonary", item: "Pulmonologist visit", freq: "3 / yr", unit: 215, annual: 645 });
+    util.push({ category: "Pulmonary", item: "Spirometry / PFT", freq: "1 / yr", unit: 180, annual: 180 });
+    util.push({ category: "Pulmonary", item: "Nebulizer + oxygen (DME 20%)", freq: "monthly", unit: 95, annual: 1140 });
+  }
+  if (/kidney|renal|ckd/.test(cond)) {
+    util.push({ category: "Renal", item: "Nephrologist visit", freq: "4 / yr", unit: 235, annual: 940 });
+    util.push({ category: "Renal", item: "Renal panel + GFR", freq: "4 / yr", unit: 65, annual: 260 });
+  }
+  if (/cancer|oncology|chemo/.test(cond)) {
+    util.push({ category: "Oncology", item: "Oncologist visit", freq: "6 / yr", unit: 285, annual: 1710 });
+    util.push({ category: "Oncology", item: "Imaging (CT/MRI surveillance)", freq: "2 / yr", unit: 850, annual: 1700 });
+    util.push({ category: "Oncology", item: "Infusion therapy", freq: "varies", unit: 0, annual: 4500 });
+  }
+  if (/arthritis|joint|orthop/.test(cond)) {
+    util.push({ category: "Ortho", item: "Orthopedic visit + injection", freq: "2 / yr", unit: 310, annual: 620 });
+    util.push({ category: "Ortho", item: "Physical therapy sessions", freq: "12 / yr", unit: 110, annual: 1320 });
+  }
+  if (/mental|depression|anxiety/.test(cond)) {
+    util.push({ category: "Behavioral", item: "Therapy / counseling sessions", freq: "24 / yr", unit: 130, annual: 3120 });
+  }
+  const rxAnnualRetail = input.medications.reduce((s, m) => s + (m.estimated_monthly_retail ?? 0) * 12, 0);
+  util.push({ category: "Pharmacy", item: "All prescriptions (retail)", freq: `${input.medications.length} meds`, unit: 0, annual: Math.round(rxAnnualRetail) });
+  util.push({ category: "Pharmacy", item: "Capped Part D OOP", freq: "annual cap", unit: 0, annual: g.partDOOPCap });
+  const totalRetail = util.reduce((s, r) => s + r.annual, 0);
+  const medicalRetail = totalRetail - rxAnnualRetail - g.partDOOPCap;
+
+  // Pathway costs
+  const baseG = medigapPremiumByZip3(input.zip3);
+  const basePartD = partDPremiumByZip3(input.zip3);
+  const aPremiumYr = (g.partBPremiumMonthly + baseG + basePartD) * 12;
+  const bPremiumYr = g.partBPremiumMonthly * 12;
+  const drugCost = Math.min(rxAnnualRetail, g.partDOOPCap);
+  const aOOP = g.partBDeductible;
+  const bOOP = Math.min(medicalRetail * 0.2 + 400, g.moopHigh);
+
+  const rows: StyledRow[] = [
+    { kind: "title", text: "Annual Cost Scenario — Based on Your Reported Health Profile", span: 5 },
+    { kind: "subtitle", span: 5, text: `Projected utilization for a Medicare beneficiary with: ${input.conditions.join(", ") || "no chronic conditions reported"}. Estimates assume typical care patterns at CMS national average reimbursement rates.` },
+    { kind: "blank" },
+    { kind: "tableHeader", cells: ["Category", "Service / item", "Frequency", "Unit cost", "Annual retail"] },
+    ...util.map((r, i): StyledRow => ({
+      kind: "tableRow", alt: i % 2 === 1,
+      cells: [r.category, r.item, r.freq, r.unit ? usd(r.unit) : "—", usd(r.annual)],
+    })),
+    { kind: "totalRow", cells: ["", "", "", "Total annual retail exposure", usd(totalRetail)] },
+    { kind: "blank" },
+    { kind: "section", text: "What this scenario costs you on each pathway", span: 5 },
+    { kind: "tableHeader", cells: ["Pathway", "Plan premiums /yr", "Drug costs /yr", "Medical OOP /yr", "Est. total /yr"] },
+    { kind: "tableRow", cells: ["Original Medicare + Medigap Plan G + Part D", usd(aPremiumYr), usd(drugCost), usd(aOOP), usd(aPremiumYr + drugCost + aOOP)] },
+    { kind: "tableRow", alt: true, cells: ["Medicare Advantage (Part C)", usd(bPremiumYr), usd(drugCost), usd(Math.round(bOOP)), usd(Math.round(bPremiumYr + drugCost + bOOP))] },
+    { kind: "blank" },
+    { kind: "note", span: 5, text: "• Unit costs reflect CMS national-average allowed amounts; actual member cost depends on the chosen plan's deductible, copays, and MOOP." },
+    { kind: "note", span: 5, text: "• Drug costs are capped at the federal Part D out-of-pocket maximum for the plan year." },
+    { kind: "note", span: 5, text: "• Medical OOP under Medicare Advantage is modeled as 20% coinsurance on DME-heavy services + typical copays, capped at the plan MOOP." },
+  ];
+  renderSheet(ws, rows, [18, 38, 16, 14, 18]);
 }
