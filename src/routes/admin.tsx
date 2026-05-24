@@ -284,18 +284,89 @@ function AdminPortal() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="staff">
+        <TabsContent value="staff" className="space-y-6">
           <Card className="glass p-5 space-y-4">
-            <div className="flex items-center justify-between flex-wrap gap-3">
+            <h3 className="font-display font-bold flex items-center gap-2"><UserPlus className="h-5 w-5"/>Create advisor account</h3>
+            <div className="grid md:grid-cols-4 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Email</label>
+                <Input type="email" placeholder="advisor@example.com" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Full name</label>
+                <Input placeholder="Jane Smith" value={newFullName} onChange={(e) => setNewFullName(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Password</label>
+                <div className="relative">
+                  <Input type={showPw ? "text" : "password"} placeholder="Min 8 characters" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+                  <button type="button" onClick={() => setShowPw((v) => !v)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                    {showPw ? <EyeOff className="h-4 w-4"/> : <Eye className="h-4 w-4"/>}
+                  </button>
+                </div>
+              </div>
+              <div className="flex items-end">
+                <Button onClick={handleCreateUser} disabled={creating || !newEmail || newPassword.length < 8} className="w-full">
+                  {creating ? <Loader2 className="h-4 w-4 animate-spin mr-2"/> : <UserPlus className="h-4 w-4 mr-2"/>}
+                  Create user
+                </Button>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="glass p-4 space-y-3">
+            <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-display font-bold">Jordan Mercer · Advisor</h3>
-                <p className="text-xs text-muted-foreground">NPN 9241077 · advisor@demo.health</p>
+                <h3 className="font-display font-bold">All staff</h3>
+                <p className="text-xs text-muted-foreground">{staff.length} users · click a row to adjust credits</p>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="text-sm">Balance: <span className="font-bold tabular-nums">{credits}</span></div>
-                <Button size="sm" variant="outline" onClick={() => { addCredits(5, "Admin top-up +5"); toast.success("Added 5 credits"); }}><Plus className="h-4 w-4"/>5</Button>
-                <Button size="sm" variant="outline" onClick={() => { addCredits(-1, "Admin deduction -1"); }}><Minus className="h-4 w-4"/>1</Button>
-              </div>
+              {staffLoading && <span className="text-xs text-muted-foreground">Loading…</span>}
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-secondary/60 text-left text-xs uppercase tracking-wider text-muted-foreground">
+                  <tr>
+                    <th className="px-3 py-2">Name</th>
+                    <th className="px-3 py-2">Email</th>
+                    <th className="px-3 py-2">Role</th>
+                    <th className="px-3 py-2">NPN</th>
+                    <th className="px-3 py-2">Credits</th>
+                    <th className="px-3 py-2">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {staff.map((s) => (
+                    <tr key={s.id} className="border-t border-border">
+                      <td className="px-3 py-2 font-medium">{s.full_name || "—"}</td>
+                      <td className="px-3 py-2 text-muted-foreground">{s.email}</td>
+                      <td className="px-3 py-2"><span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary capitalize">{s.role}</span></td>
+                      <td className="px-3 py-2 font-mono text-xs">{s.npn_number || "—"}</td>
+                      <td className="px-3 py-2 tabular-nums font-bold">{s.credits}</td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-1">
+                          <Button size="sm" variant="outline" onClick={async () => {
+                            const { error } = await supabase.rpc("admin_adjust_credits", { p_target: s.id, p_amount: 5, p_description: "Admin top-up +5" });
+                            if (error) { toast.error(error.message); return; }
+                            toast.success(`Added 5 credits to ${s.email}`);
+                            const data = await fetchStaff();
+                            setStaff(data as StaffMember[]);
+                          }}><Plus className="h-3 w-3"/>5</Button>
+                          <Button size="sm" variant="outline" onClick={async () => {
+                            const { error } = await supabase.rpc("admin_adjust_credits", { p_target: s.id, p_amount: -1, p_description: "Admin deduction -1" });
+                            if (error) { toast.error(error.message); return; }
+                            toast.success(`Deducted 1 credit from ${s.email}`);
+                            const data = await fetchStaff();
+                            setStaff(data as StaffMember[]);
+                          }}><Minus className="h-3 w-3"/>1</Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {!staff.length && !staffLoading && (
+                    <tr><td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">No staff users yet.</td></tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </Card>
         </TabsContent>
