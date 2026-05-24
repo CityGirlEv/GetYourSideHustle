@@ -25,6 +25,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
   const [step, setStep] = useState(1);
   const [birthYear, setBirthYear] = useState<number | "">("");
   const [zip3, setZip3] = useState("");
+  const [county, setCounty] = useState("");
   const [gender, setGender] = useState("prefer_not_to_say");
   const [tobacco, setTobacco] = useState(false);
   const [incomeBand, setIncomeBand] = useState(INCOME_BANDS[2]);
@@ -98,6 +99,10 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
       toast.error("ZIP3 must be exactly 3 digits");
       return;
     }
+    if (county.trim().length < 2) {
+      toast.error("Please enter your county or parish");
+      return;
+    }
     setBusy(true);
     const { data, error } = await supabase.rpc("create_scenario", {
       p_birth_year: birthYear as number,
@@ -108,7 +113,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
       p_cost_preference: costPref,
       p_medications: meds as unknown as never,
       p_conditions: allConditions as unknown as never,
-      p_preferences: {} as unknown as never,
+      p_preferences: { county: county.trim() } as unknown as never,
     });
     setBusy(false);
     if (error || !data) { toast.error(error?.message ?? "Could not create scenario"); return; }
@@ -117,7 +122,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
       sessionStorage.setItem(`scenario:${code}`, JSON.stringify({
         scenarioCode: code,
         year: new Date().getFullYear() < 2027 ? 2026 : 2027,
-        birthYear, zip3, gender, tobacco,
+        birthYear, zip3, county: county.trim(), gender, tobacco,
         incomeBand, costPreference: costPref,
         conditions: allConditions, medications: meds,
       }));
