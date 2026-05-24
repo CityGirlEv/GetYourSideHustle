@@ -3,7 +3,7 @@ import { Link, useRouter } from "@tanstack/react-router";
 import { SecurityBanner } from "./SecurityBanner";
 import { CMSFooter } from "./CMSFooter";
 import { YearToggle } from "./YearToggle";
-import { LogOut, Home, LogIn } from "lucide-react";
+import { LogOut, Home, LogIn, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CreditPill } from "./CreditPill";
 import type { ReactNode } from "react";
@@ -33,6 +33,11 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
             {!user && (
               <Link to="/auth" className="flex items-center gap-1 hover:text-foreground transition-colors">
                 <LogIn className="h-3.5 w-3.5" /> Agent login
+              </Link>
+            )}
+            {user?.role === "admin" && (
+              <Link to="/admin" className="flex items-center gap-1 hover:text-foreground transition-colors">
+                <Settings className="h-3.5 w-3.5" /> Admin
               </Link>
             )}
           </div>

@@ -1,4 +1,4 @@
-import { ShieldCheck, EyeOff, KeyRound, Home, LogIn } from "lucide-react";
+import { ShieldCheck, EyeOff, KeyRound, Home, LogIn, Settings } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 
 export function SecurityBanner() {
@@ -16,6 +16,9 @@ export function SecurityBanner() {
           </Link>
           <Link to="/auth" className="flex items-center gap-1 hover:text-white transition-colors">
             <LogIn className="h-3.5 w-3.5" /> Agent login
+          </Link>
+          <Link to="/admin" className="flex items-center gap-1 hover:text-white transition-colors">
+            <Settings className="h-3.5 w-3.5" /> Admin
           </Link>
         </div>
       </div>
