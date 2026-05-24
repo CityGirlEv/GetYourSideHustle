@@ -32,10 +32,10 @@ function Index() {
               <p className="text-xs md:text-sm italic text-emerald font-semibold mt-1">Getting the Best Bang For Your Medical Needs Because You Deserve It!</p>
             </div>
           </div>
-          <p className="text-lg text-muted-foreground max-w-xl">
+          <p className="text-sm text-muted-foreground max-w-none">
             Side-by-side Original Medicare + Medigap vs. Medicare Advantage modeling under live 2026 &amp; 2027 federal rules — built on a <strong>zero-PII</strong> scenario model. We never collect your name, address, phone, email, Social Security number, Medicare ID, or full date of birth.
           </p>
-          <div className="grid sm:grid-cols-3 gap-3 max-w-xl">
+          <div className="grid sm:grid-cols-3 gap-3 max-w-none">
             <div className="glass rounded-xl p-3 text-xs"><EyeOff className="h-4 w-4 text-primary mb-1" /><strong>No PII collected</strong><br />Year of birth + ZIP3 only</div>
             <div className="glass rounded-xl p-3 text-xs"><KeyRound className="h-4 w-4 text-primary mb-1" /><strong>Scenario ID</strong><br />You decide who sees it</div>
             <div className="glass rounded-xl p-3 text-xs"><ShieldCheck className="h-4 w-4 text-primary mb-1" /><strong>90-day auto-delete</strong><br />Nothing kept forever</div>
@@ -64,6 +64,11 @@ function Index() {
           </div>
         </div>
       </main>
+      <div className="px-6 py-4 text-xs text-muted-foreground border-t border-border bg-secondary/30 text-center max-w-4xl mx-auto">
+        <p className="leading-relaxed">
+          Disclaimer: The Medicare Optimizer is an educational and comparison tool only. We do not sell insurance, act as a licensed agent, or provide personalized legal, tax, or medical advice. Plan names, premiums, and benefits shown are estimated based on publicly available CMS data and may differ from actual carrier offerings in your area. Always verify details with a licensed insurance agent or by visiting <a href="https://www.medicare.gov" className="underline" target="_blank" rel="noopener noreferrer">Medicare.gov</a> before enrolling.
+        </p>
+      </div>
       <CMSFooter />
     </div>
   );
