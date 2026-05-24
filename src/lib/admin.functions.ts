@@ -44,7 +44,71 @@ export const listStaff = createServerFn({ method: "POST" })
       npn_number: profileMap.get(u.id)?.npn_number ?? "",
       role: roleMap.get(u.id) ?? "advisor",
       credits: creditMap.get(u.id) ?? 0,
+      disabled: !!(u as unknown as { banned_until?: string | null }).banned_until,
+      created_at: u.created_at,
+      last_sign_in_at: u.last_sign_in_at ?? null,
     }));
+  });
+
+export const updateUser = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({
+      user_id: z.string().uuid(),
+      full_name: z.string().max(255).optional(),
+      npn_number: z.string().max(64).optional().nullable(),
+      email: z.string().email().optional(),
+      password: z.string().min(8).max(128).optional(),
+    }).parse(input)
+  )
+  .handler(async ({ data, context }) => {
+    await verifyAdmin(context.userId);
+    if (data.email || data.password) {
+      const updates: { email?: string; password?: string } = {};
+      if (data.email) updates.email = data.email;
+      if (data.password) updates.password = data.password;
+      const { error } = await supabaseAdmin.auth.admin.updateUserById(data.user_id, updates);
+      if (error) throw new Error(error.message);
+    }
+    if (data.full_name !== undefined || data.npn_number !== undefined) {
+      const patch: Record<string, unknown> = { id: data.user_id };
+      if (data.full_name !== undefined) patch.full_name = data.full_name;
+      if (data.npn_number !== undefined) patch.npn_number = data.npn_number;
+      const { error } = await supabaseAdmin.from("profiles").upsert(patch);
+      if (error) throw new Error(error.message);
+    }
+    return { ok: true };
+  });
+
+export const setUserDisabled = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({
+      user_id: z.string().uuid(),
+      disabled: z.boolean(),
+    }).parse(input)
+  )
+  .handler(async ({ data, context }) => {
+    await verifyAdmin(context.userId);
+    if (data.user_id === context.userId) throw new Error("You cannot disable your own account");
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(data.user_id, {
+      ban_duration: data.disabled ? "876000h" : "none",
+    } as unknown as { ban_duration: string });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const deleteUser = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({ user_id: z.string().uuid() }).parse(input)
+  )
+  .handler(async ({ data, context }) => {
+    await verifyAdmin(context.userId);
+    if (data.user_id === context.userId) throw new Error("You cannot delete your own account");
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(data.user_id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
 
 export const createAdvisor = createServerFn({ method: "POST" })
