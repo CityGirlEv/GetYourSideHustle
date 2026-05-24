@@ -486,8 +486,13 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
                 toast.error(`Year of birth must be between ${MIN_BIRTH_YEAR} and ${MAX_BIRTH_YEAR} (ages 18–120).`);
                 return;
               }
-              if (!/^\d{3}$/.test(zip3)) { toast.error("Please enter the first 3 digits of your ZIP code before continuing."); return; }
-              if (county.trim().length < 2) { toast.error("Please enter your county or parish before continuing."); return; }
+              if (!/^\d{5}$/.test(zip)) { toast.error("Please enter your 5-digit ZIP code before continuing."); return; }
+              if (countyLoading) { toast.error("Still looking up counties for that ZIP — one sec."); return; }
+              if (county.trim().length < 2) { toast.error("Please select your county or parish before continuing."); return; }
+              if (countyOptions.length > 0 && !countyMatchesList(county, countyOptions)) {
+                toast.error(`"${county}" is not within ZIP ${zip}. Valid options: ${countyOptions.map((c) => c.county).join(", ")}.`);
+                return;
+              }
             }
             setStep(step + 1);
           }} className="grad-indigo">Next<ChevronRight className="h-4 w-4"/></Button>
