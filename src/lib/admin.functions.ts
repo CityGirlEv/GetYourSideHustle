@@ -3,6 +3,9 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { z } from "zod";
 
+const ROLE_VALUES = ["admin", "qa", "agent", "editor", "viewer", "advisor"] as const;
+const roleSchema = z.enum(ROLE_VALUES);
+
 async function verifyAdmin(userId: string) {
   const { data: callerRoles } = await supabaseAdmin
     .from("user_roles")
@@ -51,6 +54,7 @@ export const createAdvisor = createServerFn({ method: "POST" })
       email: z.string().email(),
       password: z.string().min(8).max(128),
       full_name: z.string().min(1).max(255).optional(),
+      role: roleSchema.optional(),
     }).parse(input)
   )
   .handler(async ({ data, context }) => {
@@ -85,19 +89,83 @@ export const createAdvisor = createServerFn({ method: "POST" })
       full_name: data.full_name ?? "",
     });
 
-    await supabaseAdmin.from("user_roles").upsert({
+    const assignedRole = data.role ?? "viewer";
+    // Replace any role rows the trigger inserted with the admin's choice
+    await supabaseAdmin.from("user_roles").delete().eq("user_id", newUserId);
+    await supabaseAdmin.from("user_roles").insert({
       user_id: newUserId,
-      role: "advisor",
+      role: assignedRole,
     });
 
     await supabaseAdmin.from("advisor_credits").upsert({
       advisor_id: newUserId,
-      balance: 10,
+      balance: assignedRole === "advisor" ? 10 : 0,
     });
 
     return {
       id: newUserId,
       email: data.email,
       full_name: data.full_name ?? "",
+      role: assignedRole,
     };
+  });
+
+export const setUserRole = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({
+      user_id: z.string().uuid(),
+      role: roleSchema,
+    }).parse(input)
+  )
+  .handler(async ({ data, context }) => {
+    await verifyAdmin(context.userId);
+    const { error } = await supabaseAdmin.rpc("admin_set_user_role", {
+      p_user: data.user_id,
+      p_role: data.role,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const listAgents = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await verifyAdmin(context.userId);
+    const { data: agentRoles, error } = await supabaseAdmin
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "agent");
+    if (error) throw new Error(error.message);
+    const ids = (agentRoles ?? []).map((r) => r.user_id);
+    if (ids.length === 0) return [];
+    const [profilesRes, authRes] = await Promise.all([
+      supabaseAdmin.from("profiles").select("id, full_name").in("id", ids),
+      supabaseAdmin.auth.admin.listUsers(),
+    ]);
+    const profileMap = new Map((profilesRes.data ?? []).map((p) => [p.id, p]));
+    const emailMap = new Map((authRes.data?.users ?? []).map((u) => [u.id, u.email ?? ""]));
+    return ids.map((id) => ({
+      id,
+      full_name: profileMap.get(id)?.full_name ?? "",
+      email: emailMap.get(id) ?? "",
+    }));
+  });
+
+export const assignAgent = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({
+      scenario_id: z.string().uuid(),
+      agent_id: z.string().uuid().nullable(),
+    }).parse(input)
+  )
+  .handler(async ({ data, context }) => {
+    await verifyAdmin(context.userId);
+    const { error } = await supabaseAdmin.rpc("admin_assign_agent", {
+      p_scenario: data.scenario_id,
+      p_agent: data.agent_id,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
