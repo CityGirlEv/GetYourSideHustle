@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as UsersRouteImport } from './routes/users'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AgentRouteImport } from './routes/agent'
@@ -20,6 +21,11 @@ import { Route as ScenarioCreatedCodeRouteImport } from './routes/scenario.creat
 import { Route as AgentScenarioCodeRouteImport } from './routes/agent.scenario.$code'
 import { Route as AdvisorScenarioCodeRouteImport } from './routes/advisor.scenario.$code'
 
+const UsersRoute = UsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
@@ -78,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/agent': typeof AgentRouteWithChildren
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/users': typeof UsersRoute
   '/scenario/new': typeof ScenarioNewRoute
   '/advisor/scenario/$code': typeof AdvisorScenarioCodeRoute
   '/agent/scenario/$code': typeof AgentScenarioCodeRoute
@@ -90,6 +97,7 @@ export interface FileRoutesByTo {
   '/agent': typeof AgentRouteWithChildren
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/users': typeof UsersRoute
   '/scenario/new': typeof ScenarioNewRoute
   '/advisor/scenario/$code': typeof AdvisorScenarioCodeRoute
   '/agent/scenario/$code': typeof AgentScenarioCodeRoute
@@ -103,6 +111,7 @@ export interface FileRoutesById {
   '/agent': typeof AgentRouteWithChildren
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/users': typeof UsersRoute
   '/scenario/new': typeof ScenarioNewRoute
   '/advisor/scenario/$code': typeof AdvisorScenarioCodeRoute
   '/agent/scenario/$code': typeof AgentScenarioCodeRoute
@@ -117,6 +126,7 @@ export interface FileRouteTypes {
     | '/agent'
     | '/auth'
     | '/reset-password'
+    | '/users'
     | '/scenario/new'
     | '/advisor/scenario/$code'
     | '/agent/scenario/$code'
@@ -129,6 +139,7 @@ export interface FileRouteTypes {
     | '/agent'
     | '/auth'
     | '/reset-password'
+    | '/users'
     | '/scenario/new'
     | '/advisor/scenario/$code'
     | '/agent/scenario/$code'
@@ -141,6 +152,7 @@ export interface FileRouteTypes {
     | '/agent'
     | '/auth'
     | '/reset-password'
+    | '/users'
     | '/scenario/new'
     | '/advisor/scenario/$code'
     | '/agent/scenario/$code'
@@ -154,12 +166,20 @@ export interface RootRouteChildren {
   AgentRoute: typeof AgentRouteWithChildren
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  UsersRoute: typeof UsersRoute
   ScenarioNewRoute: typeof ScenarioNewRoute
   ScenarioCreatedCodeRoute: typeof ScenarioCreatedCodeRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/users': {
+      id: '/users'
+      path: '/users'
+      fullPath: '/users'
+      preLoaderRoute: typeof UsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reset-password': {
       id: '/reset-password'
       path: '/reset-password'
@@ -261,9 +281,20 @@ const rootRouteChildren: RootRouteChildren = {
   AgentRoute: AgentRouteWithChildren,
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  UsersRoute: UsersRoute,
   ScenarioNewRoute: ScenarioNewRoute,
   ScenarioCreatedCodeRoute: ScenarioCreatedCodeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
