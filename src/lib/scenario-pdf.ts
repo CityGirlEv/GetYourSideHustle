@@ -1,12 +1,22 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { calcPathways, usd, type Year, type Medication } from "./medicare-math";
+import {
+  GUIDELINES,
+  calcPathways,
+  medigapPremiumByZip3,
+  partDPremiumByZip3,
+  usd,
+  type Year,
+  type Medication,
+} from "./medicare-math";
+import { CMS_CATALOG } from "@/data/cms-catalog";
 
 export interface ScenarioPdfInput {
   scenarioCode: string;
   year: Year;
   birthYear: number;
   zip3: string;
+  county?: string;
   gender: string;
   tobacco: boolean;
   incomeBand: string;
