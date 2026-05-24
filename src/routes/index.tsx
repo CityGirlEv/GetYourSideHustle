@@ -40,7 +40,7 @@ function Index() {
               <p className="text-sm text-muted-foreground mt-2">Build a de-identified scenario in 2 minutes. You'll get a Scenario ID to share with the agent of <em>your</em> choice. We will never contact you without your explicit permission.</p>
             </div>
             <Button onClick={() => router.navigate({ to: "/scenario/new" })} className="grad-indigo w-full h-12 text-base animate-pulse">
-              Build a scenario →
+              BUILD A SCENARIO →
             </Button>
             <p className="text-xs text-muted-foreground">No account. No login. No personal information.</p>
           </div>
