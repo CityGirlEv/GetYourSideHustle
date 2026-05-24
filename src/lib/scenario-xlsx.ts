@@ -725,6 +725,7 @@ function buildRecommendationDetailRows(rec: PlanDetail, alt?: PlanDetail): Style
     { kind: "tableRow", cells: ["Part D / prescription drug premium", fm(rec.premiumRx), yr(rec.premiumRx)] },
     { kind: "tableRow", alt: true, cells: ["Dental premium", rec.premiumDental ? fm(rec.premiumDental) : "Included / standalone", rec.premiumDental ? yr(rec.premiumDental) : "—"] },
     { kind: "tableRow", cells: ["Vision premium", rec.premiumVision ? fm(rec.premiumVision) : "Included / standalone", rec.premiumVision ? yr(rec.premiumVision) : "—"] },
+    { kind: "tableRow", alt: true, cells: ["Extras (hearing / OTC / wellness)", rec.premiumExtras ? fm(rec.premiumExtras) : "Included / bundled", rec.premiumExtras ? yr(rec.premiumExtras) : "—"] },
     { kind: "totalRow", cells: ["TOTAL MONTHLY PAYMENT (all-in)", fm(rec.monthly), yr(rec.monthly)] },
     { kind: "blank" },
     { kind: "tableHeader", cells: ["Medical Cost-Sharing", "Member Cost", ""] },
