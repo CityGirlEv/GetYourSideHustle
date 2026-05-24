@@ -3,6 +3,10 @@ import { Sparkles } from "lucide-react";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { GUIDELINES } from "@/lib/medicare-math";
+import { toast } from "sonner";
+
+// Flip to true once official 2027 CMS figures are published.
+const CMS_2027_PUBLISHED = false;
 
 export function YearToggle() {
   const { year, setYear } = useApp();
@@ -12,7 +16,15 @@ export function YearToggle() {
       {[2026, 2027].map((y) => (
         <button
           key={y}
-          onClick={() => setYear(y as 2026 | 2027)}
+          onClick={() => {
+            if (y === 2027 && !CMS_2027_PUBLISHED) {
+              toast.error("2027 rules are not published", {
+                description: "CMS has not yet released the 2027 figures. Calculations will continue to use 2026 rules.",
+              });
+              return;
+            }
+            setYear(y as 2026 | 2027);
+          }}
           className={`px-2 py-0.5 rounded-full text-xs font-semibold transition ${
             year === y ? "grad-indigo shadow" : "text-muted-foreground hover:text-foreground"
           }`}
