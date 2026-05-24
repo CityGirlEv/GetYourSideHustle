@@ -100,7 +100,7 @@ function AdminPortal() {
     setStaffLoading(true);
     (async () => {
       try {
-        const data = await fetchStaff({ data: {} });
+        const data = await fetchStaff();
         if (!cancelled) setStaff(data as StaffMember[]);
       } catch (e) {
         console.error("load staff", e);
@@ -122,7 +122,7 @@ function AdminPortal() {
       await doCreateAdvisor({ data: { email: newEmail, password: newPassword, full_name: newFullName || undefined } });
       toast.success("Advisor created successfully");
       setNewEmail(""); setNewPassword(""); setNewFullName("");
-      const data = await fetchStaff({ data: {} });
+      const data = await fetchStaff();
       setStaff(data as StaffMember[]);
     } catch (e: unknown) {
       toast.error((e as Error)?.message ?? "Failed to create user");
