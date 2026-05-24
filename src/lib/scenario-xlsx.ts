@@ -773,7 +773,7 @@ function buildTop10FullDetailSheet(wb: ExcelJS.Workbook, input: ScenarioXlsxInpu
   const fm = (n: number) => `${usd(Math.round(n * 100) / 100)}/mo`;
   const header = [
     "Rank", "Carrier", "Plan",
-    "Part B /mo", "Plan /mo", "Part D /mo", "Dental /mo", "Vision /mo",
+    "Part B /mo", "Plan /mo", "Part D /mo", "Dental /mo", "Vision /mo", "Extras /mo",
     "TOTAL /mo", "Annual premium",
     "Med deductible", "PCP", "Specialist", "Hospital", "ER", "MOOP", "Network",
     "Rx deductible", "Tier 1", "Tier 2", "Tier 3", "Insulin cap", "Rx OOP cap",
@@ -783,7 +783,7 @@ function buildTop10FullDetailSheet(wb: ExcelJS.Workbook, input: ScenarioXlsxInpu
   const span = header.length;
   const rows: StyledRow[] = [
     { kind: "title", text: "Top 10 Carrier Plans — Full Benefit & Cost Detail", span },
-    { kind: "subtitle", span, text: `Every premium line item, deductible, copay, drug tier, and bundled benefit side-by-side. TOTAL /mo = Part B + plan + Part D + dental + vision. ZIP ${input.zip3}${input.county ? ` · ${input.county}` : ""} · Plan Year ${input.year}.` },
+    { kind: "subtitle", span, text: `Every premium line item, deductible, copay, drug tier, and bundled benefit side-by-side. TOTAL /mo = Part B + plan + Part D + dental + vision + extras (hearing / OTC / wellness). ZIP ${input.zip3}${input.county ? ` · ${input.county}` : ""} · Plan Year ${input.year}.` },
     { kind: "blank" },
     { kind: "tableHeader", cells: header },
     ...ranked.map((r, i): StyledRow => ({
@@ -793,6 +793,7 @@ function buildTop10FullDetailSheet(wb: ExcelJS.Workbook, input: ScenarioXlsxInpu
         fm(r.premiumPartB), fm(r.premiumPlan), fm(r.premiumRx),
         r.premiumDental ? fm(r.premiumDental) : "—",
         r.premiumVision ? fm(r.premiumVision) : "—",
+        r.premiumExtras ? fm(r.premiumExtras) : "—",
         fm(r.monthly), usd(Math.round(r.monthly * 12)),
         r.deductibleMed ? usd(r.deductibleMed) : "$0",
         r.pcpCopay, r.specCopay, r.hospCopay, r.erCopay, r.moop, r.network,
@@ -804,13 +805,13 @@ function buildTop10FullDetailSheet(wb: ExcelJS.Workbook, input: ScenarioXlsxInpu
       ],
     })),
     { kind: "blank" },
-    { kind: "note", span, text: "• TOTAL /mo includes Part B, plan premium, Part D, dental, and vision (where applicable)." },
+    { kind: "note", span, text: "• TOTAL /mo includes Part B, plan premium, Part D, dental, vision, and extras (hearing / OTC / wellness) where applicable. MA plans bundle dental/vision/extras at $0." },
     { kind: "note", span, text: "• Cost-sharing values are typical published amounts for each plan type — verify on the carrier's Summary of Benefits." },
     { kind: "note", span, text: "• Est. Annual Total = Monthly × 12 + modeled Rx OOP + typical MA medical OOP (where applicable)." },
   ];
   const widths = [
     5, 22, 26,
-    11, 11, 11, 11, 11,
+    11, 11, 11, 11, 11, 11,
     12, 14,
     14, 8, 10, 18, 18, 24, 32,
     11, 9, 9, 9, 11, 12,
