@@ -102,7 +102,7 @@ function ScenarioCreated() {
             <CheckCircle2 className="h-7 w-7 text-emerald-foreground" />
           </div>
           <div className="space-y-2">
-            <h1 className="font-display text-2xl font-bold">Your Scenario ID</h1>
+            <h2 className="font-display text-2xl font-bold">Your Scenario ID</h2>
             <p className="text-sm text-muted-foreground">Write this down or copy it. <strong>Without it, even we cannot find your scenario.</strong></p>
           </div>
 
