@@ -103,6 +103,15 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
 
   y += 76;
 
+  // ============ RECOMMENDED PLAN — full benefit & cost detail page ============
+  const ranked = rankedPlanDetails({ year: input.year, zip3: input.zip3, medications: input.medications });
+  const top = ranked[0];
+  const second = ranked[1];
+  if (top) {
+    doc.addPage();
+    renderRecommendationPage(doc, input, top, second, pageW, margin);
+  }
+
   // Side-by-side comparison
   doc.setTextColor(20, 20, 20);
   doc.setFont("helvetica", "bold");
