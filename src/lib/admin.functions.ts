@@ -71,7 +71,7 @@ export const updateUser = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
     }
     if (data.full_name !== undefined || data.npn_number !== undefined) {
-      const patch: Record<string, unknown> = { id: data.user_id };
+      const patch: { id: string; full_name?: string; npn_number?: string | null } = { id: data.user_id };
       if (data.full_name !== undefined) patch.full_name = data.full_name;
       if (data.npn_number !== undefined) patch.npn_number = data.npn_number;
       const { error } = await supabaseAdmin.from("profiles").upsert(patch);
