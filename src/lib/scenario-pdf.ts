@@ -385,19 +385,20 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
   doc.setFontSize(8.5);
   doc.setTextColor(90, 90, 90);
   doc.text(
-    `Side-by-side line-item view of every premium, deductible, copay, drug tier, and bundled benefit. Total monthly = Part B + plan + Part D + dental + vision (where applicable).`,
+    `Side-by-side line-item view of every premium, deductible, copay, drug tier, and bundled benefit. Total monthly = Part B + plan + Part D + dental + vision + extras (hearing / OTC / wellness) where applicable.`,
     lsMargin, 66, { maxWidth: lsW - lsMargin * 2 },
   );
 
   // Monthly premium breakdown table
   autoTable(doc, {
     startY: 82,
-    head: [["#", "Carrier", "Plan", "Part B", "Plan", "Part D", "Dental", "Vision", "Total /mo", "Annual Premium"]],
+    head: [["#", "Carrier", "Plan", "Part B", "Plan", "Part D", "Dental", "Vision", "Extras", "Total /mo", "Annual Premium"]],
     body: top10Detail.map((d) => [
       d.rank, d.carrier, d.plan,
       fmtMo(d.premiumPartB), fmtMo(d.premiumPlan), fmtMo(d.premiumRx),
       d.premiumDental ? fmtMo(d.premiumDental) : "—",
       d.premiumVision ? fmtMo(d.premiumVision) : "—",
+      d.premiumExtras ? fmtMo(d.premiumExtras) : "—",
       fmtMo(d.monthly),
       usd(Math.round(d.monthly * 12)),
     ]),
@@ -406,8 +407,8 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
     columnStyles: {
       0: { halign: "center", cellWidth: 16 },
       3: { halign: "right" }, 4: { halign: "right" }, 5: { halign: "right" },
-      6: { halign: "right" }, 7: { halign: "right" },
-      8: { halign: "right", fontStyle: "bold" }, 9: { halign: "right" },
+      6: { halign: "right" }, 7: { halign: "right" }, 8: { halign: "right" },
+      9: { halign: "right", fontStyle: "bold" }, 10: { halign: "right" },
     },
     margin: { left: lsMargin, right: lsMargin },
   });
@@ -681,6 +682,7 @@ export function buildConsumerScenarioPdf(input: ScenarioPdfInput): jsPDF {
     ["Part D / Rx premium", ...top3.map((p) => `${usd(Math.round(p.premiumRx * 100) / 100)}/mo`)],
     ["Dental premium", ...top3.map((p) => p.premiumDental ? `${usd(Math.round(p.premiumDental * 100) / 100)}/mo` : "—")],
     ["Vision premium", ...top3.map((p) => p.premiumVision ? `${usd(Math.round(p.premiumVision * 100) / 100)}/mo` : "—")],
+    ["Extras premium", ...top3.map((p) => p.premiumExtras ? `${usd(Math.round(p.premiumExtras * 100) / 100)}/mo` : "Bundled")],
     ["TOTAL MONTHLY", ...top3.map((p) => `${usd(Math.round(p.monthly * 100) / 100)}/mo`)],
     ["EST. ANNUAL TOTAL", ...top3.map((p) => usd(p.annual))],
     ["Medical deductible", ...top3.map((p) => p.deductibleMed ? usd(p.deductibleMed) : "$0")],
@@ -758,6 +760,7 @@ export function buildConsumerScenarioPdf(input: ScenarioPdfInput): jsPDF {
       ["Part D / Rx", fmtMo(rec.premiumRx), usd(Math.round(rec.premiumRx * 12))],
       ["Dental", rec.premiumDental ? fmtMo(rec.premiumDental) : "Included", rec.premiumDental ? usd(Math.round(rec.premiumDental * 12)) : "—"],
       ["Vision", rec.premiumVision ? fmtMo(rec.premiumVision) : "Included", rec.premiumVision ? usd(Math.round(rec.premiumVision * 12)) : "—"],
+      ["Extras (hearing / OTC / wellness)", rec.premiumExtras ? fmtMo(rec.premiumExtras) : "Bundled", rec.premiumExtras ? usd(Math.round(rec.premiumExtras * 12)) : "—"],
     ],
     foot: [["TOTAL (all-in)", fmtMo(rec.monthly), usd(Math.round(rec.monthly * 12))]],
     headStyles: { fillColor: [16, 122, 87], textColor: 255, fontSize: 9 },
@@ -886,7 +889,7 @@ function renderRecommendationPage(
   const gap = 10;
   const tileW = (pageW - margin * 2 - gap * 2) / 3;
   const tiles: { label: string; value: string; sub: string }[] = [
-    { label: "TOTAL MONTHLY", value: fmtMo(rec.monthly), sub: "All-in: Part B + plan + Rx + dental + vision" },
+    { label: "TOTAL MONTHLY", value: fmtMo(rec.monthly), sub: "All-in: Part B + plan + Rx + dental + vision + extras" },
     { label: "EST. ANNUAL TOTAL", value: usd(rec.annual), sub: "Premiums + capped drug costs + expected OOP" },
     { label: "STAR RATING", value: rec.stars, sub: `A.M. Best: ${rec.amBest}` },
   ];
@@ -924,6 +927,7 @@ function renderRecommendationPage(
       ["Part D / prescription drug premium", fmtMo(rec.premiumRx), usd(Math.round(rec.premiumRx * 12))],
       ["Dental premium", rec.premiumDental ? fmtMo(rec.premiumDental) : "Included / standalone", rec.premiumDental ? usd(Math.round(rec.premiumDental * 12)) : "—"],
       ["Vision premium", rec.premiumVision ? fmtMo(rec.premiumVision) : "Included / standalone", rec.premiumVision ? usd(Math.round(rec.premiumVision * 12)) : "—"],
+      ["Extras (hearing / OTC / wellness)", rec.premiumExtras ? fmtMo(rec.premiumExtras) : "Bundled / included", rec.premiumExtras ? usd(Math.round(rec.premiumExtras * 12)) : "—"],
     ],
     foot: [["TOTAL MONTHLY PAYMENT (all-in)", fmtMo(rec.monthly), usd(Math.round(rec.monthly * 12))]],
     headStyles: { fillColor: [16, 122, 87], textColor: 255, fontSize: 9 },
