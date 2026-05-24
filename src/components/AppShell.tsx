@@ -3,7 +3,7 @@ import { Link, useRouter } from "@tanstack/react-router";
 import { SecurityBanner } from "./SecurityBanner";
 import { CMSFooter } from "./CMSFooter";
 import { YearToggle } from "./YearToggle";
-import { LogOut, Settings, Briefcase } from "lucide-react";
+import { LogOut, Settings, Briefcase, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CreditPill } from "./CreditPill";
 import type { ReactNode } from "react";
@@ -28,9 +28,14 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
           </Link>
           <div className="hidden md:flex items-center gap-3 text-sm text-muted-foreground">
             {user?.role === "admin" && (
-              <Link to="/admin" className="flex items-center gap-1 hover:text-foreground transition-colors">
-                <Settings className="h-3.5 w-3.5" /> Admin
-              </Link>
+              <>
+                <Link to="/admin" className="flex items-center gap-1 hover:text-foreground transition-colors">
+                  <Settings className="h-3.5 w-3.5" /> Admin
+                </Link>
+                <Link to="/users" className="flex items-center gap-1 hover:text-foreground transition-colors">
+                  <Users className="h-3.5 w-3.5" /> Users
+                </Link>
+              </>
             )}
             {user?.role === "agent" && (
               <Link to="/agent" className="flex items-center gap-1 hover:text-foreground transition-colors">
