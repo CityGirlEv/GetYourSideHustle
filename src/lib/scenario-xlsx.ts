@@ -226,6 +226,7 @@ export function buildScenarioWorkbook(input: ScenarioXlsxInput): XLSX.WorkBook {
   XLSX.utils.book_append_sheet(wb, buildPersonalSheet(input), "Personal Recommendation");
   XLSX.utils.book_append_sheet(wb, buildPathwayASheet(input), "Pathway A - Medigap");
   XLSX.utils.book_append_sheet(wb, buildPathwayBSheet(input), "Pathway B - Advantage");
+  XLSX.utils.book_append_sheet(wb, buildTop10Sheet(input), "Top 10 Carrier Plans");
   return wb;
 }
 
