@@ -22,7 +22,7 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
     <div className="min-h-screen flex flex-col">
       <SecurityBanner />
       <header className="glass border-b border-border/60 px-6 py-3 flex items-center gap-4 sticky top-0 z-30">
-        <Link to="/" className="flex items-center gap-2 font-display font-bold text-lg shrink-1">
+        <Link to="/" className="flex items-center gap-2 font-display font-bold text-lg shrink-0">
           <img src={muntieLogo} alt="Medicare Optimizer" className="h-16 w-16 object-contain" />
         </Link>
         <div className="flex-1 text-center min-w-1">
