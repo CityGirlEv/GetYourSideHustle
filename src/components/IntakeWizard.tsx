@@ -9,6 +9,7 @@ import { resolveDiagnosis, COMMON_MEDS_BY_CONDITION, searchMedCatalog, type MedC
 import { searchRxNorm, getGenericFor, type RxNormSuggestion } from "@/lib/rxnorm";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { VoiceButton, matchSpokenOption } from "./VoiceButton";
 import type { Medication } from "@/lib/medicare-math";
 import {
   countiesForZip3,
