@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { Mic, MicOff, Volume2, RotateCcw, SkipForward, Keyboard, Check, Loader2, Info } from "lucide-react";
+import { Mic, MicOff, Volume2, RotateCcw, SkipForward, Keyboard, Check, Loader2, Info, ListChecks } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { COMMON_MEDS_BY_CONDITION, resolveDiagnosis, searchMedCatalog, MED_CATALOG } from "@/lib/diagnosis-resolver";
@@ -202,6 +202,17 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
   const pendingRef = useRef<{ apply: () => void; next: StepKey; from: StepKey } | null>(null);
   const cancelMedLoopRef = useRef(false);
 
+  // ---- Sequential "press any key when I say the correct option" picker ----
+  const pickingRef = useRef<{
+    active: boolean;
+    options: string[];
+    index: number;
+    onPick: (idx: number) => void;
+    onExhausted: () => void;
+  } | null>(null);
+  const [pickOptions, setPickOptions] = useState<string[]>([]);
+  const [pickIndex, setPickIndex] = useState(-1);
+
   const medMatches = useMemo(() => {
     const q = medQuery.trim();
     if (q.length < 2) return [];
@@ -302,6 +313,73 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
   });
 
   const stopListening = () => { try { recRef.current?.abort(); } catch { /* noop */ } setListening(false); };
+
+  // Stop any in-flight key-pick session
+  const stopKeyPick = () => {
+    if (pickingRef.current) pickingRef.current.active = false;
+    pickingRef.current = null;
+    setPickOptions([]);
+    setPickIndex(-1);
+    try { window.speechSynthesis?.cancel(); } catch { /* noop */ }
+  };
+
+  // Speak each option in turn. Resolves the user's choice when they press any
+  // key (or click an option). Also acts as a list-aware fallback.
+  const startKeyPick = async (
+    intro: string,
+    options: string[],
+    onPick: (idx: number) => void,
+    onExhausted: () => void,
+  ) => {
+    stopListening();
+    stopKeyPick();
+    pickingRef.current = { active: true, options, index: -1, onPick, onExhausted };
+    setPickOptions(options);
+    setPickIndex(-1);
+    setTranscript((p) => [...p, { q: `${intro} Press any key when I say the correct one.`, speaker: "assistant" }]);
+    await speak(`${intro} Press any key when I say the correct one.`);
+    for (let i = 0; i < options.length; i += 1) {
+      const cur = pickingRef.current;
+      if (!cur || !cur.active) return;
+      cur.index = i;
+      setPickIndex(i);
+      await speak(`Option ${i + 1}: ${options[i]}.`);
+      // Brief pause so a key press registers against this option
+      await new Promise((r) => setTimeout(r, 700));
+      if (!pickingRef.current || !pickingRef.current.active) return;
+    }
+    const cur = pickingRef.current;
+    if (cur && cur.active) {
+      cur.active = false;
+      pickingRef.current = null;
+      setPickOptions([]);
+      setPickIndex(-1);
+      onExhausted();
+    }
+  };
+
+  // Global key listener: any key (except modifier-only or typing in a field)
+  // selects the option currently being spoken.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const p = pickingRef.current;
+      if (!p || !p.active) return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || (target as HTMLElement | null)?.isContentEditable) return;
+      if (e.key === "Shift" || e.key === "Control" || e.key === "Alt" || e.key === "Meta") return;
+      e.preventDefault();
+      const idx = p.index >= 0 ? p.index : 0;
+      p.active = false;
+      pickingRef.current = null;
+      setPickOptions([]);
+      setPickIndex(-1);
+      try { window.speechSynthesis?.cancel(); } catch { /* noop */ }
+      p.onPick(idx);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   // Short audible cue so the user knows the mic is now open
   const playBeep = () => {
@@ -584,14 +662,54 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
       case "zip": return void ask("What are the first three digits of your ZIP code?", "zip");
       case "county": {
         const opts = countyOptions.length ? countyOptions : countiesForZip3(zip3);
-        return void ask(`Which county? Your options are: ${opts.map((o) => o.county).join(", ")}.`, "county");
+        if (opts.length === 0) {
+          return void ask("I don't have counties for that ZIP. Please say your county name.", "county");
+        }
+        return void startKeyPick(
+          "Which county?",
+          opts.map((o) => o.county),
+          (idx) => {
+            const picked = opts[idx];
+            if (!picked) { void ask("Sorry, I lost track. Let's try again.", "county"); return; }
+            verify(`county ${picked.county}`, () => setCounty(picked.county), "gender", "county");
+          },
+          () => {
+            // Cycled through every option without a key press — fall back to voice
+            void ask(`I didn't catch a key press. Please say one of: ${opts.map((o) => o.county).join(", ")}.`, "county");
+          },
+        );
       }
       case "gender": return void ask("What is your gender? Female, male, non-binary, or prefer not to say?", "gender");
       case "tobacco": return void ask("Do you use tobacco? Yes or no?", "tobacco");
       case "income": return void ask("Which income band fits you best? Under twenty-five thousand, twenty-five to fifty, fifty to one hundred, one hundred to two hundred, over two hundred, or prefer not to say?", "income");
       case "costPref": return void ask("What matters more — minimizing your monthly cost, or predictability with no surprise bills?", "costPref");
       case "conditionsAsk": return void ask("Do you have any chronic health conditions? Yes or no?", "conditionsAsk");
-      case "conditionsAdd": return void ask("Please tell me one condition. For example: diabetes, hypertension, or COPD.", "conditionsAdd");
+      case "conditionsAdd": {
+        const remaining = (CONDITIONS as readonly string[]).filter((c) => !conditions.includes(c));
+        if (remaining.length === 0) {
+          return void ask("You've covered the common ones. Say another condition, or say 'done'.", "conditionsAdd");
+        }
+        return void startKeyPick(
+          "Which condition? Or press a key on the 'none of these' option to type one in.",
+          [...remaining, "None of these / I'll say my own"],
+          (idx) => {
+            if (idx === remaining.length) {
+              void ask("Okay — please say the condition. Or say 'done' to finish.", "conditionsAdd");
+              return;
+            }
+            const value = remaining[idx];
+            verify(
+              `condition ${value}`,
+              () => setConditions((p) => p.includes(value) ? p : [...p, value]),
+              "conditionsAdd",
+              "conditionsAdd",
+            );
+          },
+          () => {
+            void ask("I didn't catch a key press. Say a condition, or say 'done' to finish.", "conditionsAdd");
+          },
+        );
+      }
       case "medsAsk": return void ask("Do you take any prescription medications? Yes or no?", "medsAsk");
       case "medsName": return void startMedSearch();
       case "medsStrength": return void ask(`What strength of ${pendingMedName}? For example, ten milligrams. Or say "skip" if you're not sure.`, "medsStrength");
@@ -644,6 +762,15 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
         return;
       }
       if (/\b(clear|start over|reset)\b/.test(t)) { setMedQuery(""); continue; }
+      // "read options" / "list options" / "read them" → speak each match and let any key pick
+      if (/\b(read (options|them|matches|the list)|list (options|matches)|read aloud|read em|read 'em)\b/.test(t)) {
+        const q = medQuery.trim();
+        const matches = q ? searchMedCatalog(q, 6) : [];
+        if (matches.length === 0) { void speak("No matches yet. Say or spell more of the name."); continue; }
+        cancelMedLoopRef.current = true;
+        void readMedOptions(matches.map((m) => m.name));
+        return;
+      }
       if (/\b(keep going|continue|more|refine|next letter)\b/.test(t)) { continue; }
       // "add <name>" / "pick <name>" / "select <name>"
       const addMatch = t.match(/^(?:add|pick|choose|select)\s+(.+)$/);
@@ -664,10 +791,30 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
     }
   };
 
+  // Read medication match names one at a time; any key picks the current one.
+  const readMedOptions = async (names: string[]) => {
+    if (!names.length) return;
+    // Blur the search input so global key handler isn't swallowed by typing
+    try { (document.activeElement as HTMLElement | null)?.blur(); } catch { /* noop */ }
+    await startKeyPick(
+      "Here are the closest matches.",
+      names,
+      (idx) => { pickMed(names[idx]); },
+      () => {
+        // None picked — return to active search loop
+        cancelMedLoopRef.current = false;
+        void medListenLoop();
+      },
+    );
+  };
+
   // Cancel the med-search loop whenever we leave the medsName step
   useEffect(() => {
     if (step !== "medsName") cancelMedLoopRef.current = true;
   }, [step]);
+
+  // Cancel any in-flight key-pick when the step changes
+  useEffect(() => { stopKeyPick(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [step]);
 
   const submit = async () => {
     setStep("submitting"); setSubmitting(true);
@@ -799,6 +946,48 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
         </div>
       )}
 
+      {/* Key-pick panel: shown while we're reading list options aloud */}
+      {pickOptions.length > 0 && (
+        <div className="rounded-lg border-2 border-primary bg-primary/5 p-3 space-y-2">
+          <div className="flex items-center gap-2 text-primary font-bold text-sm">
+            <ListChecks className="h-4 w-4" />
+            <span>Press any key when I say the right option</span>
+          </div>
+          <ol className="space-y-1">
+            {pickOptions.map((opt, i) => {
+              const active = i === pickIndex;
+              const done = i < pickIndex;
+              return (
+                <li
+                  key={`${opt}-${i}`}
+                  onClick={() => {
+                    const p = pickingRef.current;
+                    if (!p || !p.active) return;
+                    p.active = false;
+                    pickingRef.current = null;
+                    setPickOptions([]);
+                    setPickIndex(-1);
+                    try { window.speechSynthesis?.cancel(); } catch { /* noop */ }
+                    p.onPick(i);
+                  }}
+                  className={`cursor-pointer rounded-md px-2.5 py-1.5 text-sm border transition flex items-center gap-2 ${
+                    active
+                      ? "border-primary bg-primary text-primary-foreground font-semibold animate-pulse"
+                      : done
+                        ? "border-border bg-muted text-muted-foreground line-through"
+                        : "border-border bg-background hover:bg-muted"
+                  }`}
+                >
+                  <span className="text-[10px] font-mono opacity-70">{i + 1}.</span>
+                  <span className="truncate">{opt}</span>
+                </li>
+              );
+            })}
+          </ol>
+          <p className="text-[11px] text-muted-foreground">Tip: you can also click an option.</p>
+        </div>
+      )}
+
       {/* Conversation transcript */}
       <div className="bg-muted/40 border border-border rounded-lg p-3 h-64 overflow-y-auto text-sm space-y-2">
         {transcript.length === 0 && (
@@ -834,6 +1023,20 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
             <Button variant="outline" size="sm" onClick={() => setMedQuery("")} disabled={!medQuery}>Clear</Button>
             <Button variant="ghost" size="sm" onClick={cancelMedSearch}>Cancel</Button>
           </div>
+          {medMatches.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={() => {
+                cancelMedLoopRef.current = true;
+                stopListening();
+                void readMedOptions(medMatches.map((m) => m.name));
+              }}
+            >
+              <Volume2 className="h-3.5 w-3.5 mr-1" />Read these aloud (press any key to pick)
+            </Button>
+          )}
           {medMatches.length > 0 ? (
             <div className="space-y-1.5">
               {medMatches.map((m) => (
@@ -858,7 +1061,7 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
             </p>
           )}
           <p className="text-[11px] text-muted-foreground">
-            Voice commands: <strong>add</strong> (top match), <strong>add &lt;name&gt;</strong>, <strong>keep going</strong>, <strong>clear</strong>, <strong>cancel</strong>.
+            Voice commands: <strong>add</strong> (top match), <strong>add &lt;name&gt;</strong>, <strong>read options</strong>, <strong>keep going</strong>, <strong>clear</strong>, <strong>cancel</strong>.
           </p>
         </div>
       )}
