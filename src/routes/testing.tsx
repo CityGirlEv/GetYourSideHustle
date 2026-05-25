@@ -19,6 +19,38 @@ import {
 } from "@/lib/test-plan";
 import { AppShell } from "@/components/AppShell";
 
+// Derive a link target for a test case: explicit `path` wins, otherwise scan
+// preconditions + steps for the first "/route" token (e.g. "Open /advisor").
+function deriveTestPath(t: TestCase): string | null {
+  if (t.path) return t.path;
+  const haystack = [t.preconditions ?? "", ...t.steps].join(" ");
+  const m = haystack.match(/(?:^|\s)(\/[a-zA-Z0-9._\-/$:]+)/);
+  return m ? m[1] : null;
+}
+
+function TestTargetLink({ test }: { test: TestCase }) {
+  const path = deriveTestPath(test);
+  if (!path) return null;
+  const isExternal = /^https?:\/\//.test(path);
+  const label = path.length > 28 ? path.slice(0, 27) + "…" : path;
+  const className =
+    "inline-flex items-center gap-1 text-[11px] font-mono rounded-full border border-primary/40 bg-primary/5 px-2 py-0.5 text-primary hover:bg-primary/10 transition-colors";
+  if (isExternal) {
+    return (
+      <a href={path} target="_blank" rel="noreferrer" className={className} title={`Open ${path}`}>
+        <ExternalLink className="h-3 w-3" />
+        {label}
+      </a>
+    );
+  }
+  return (
+    <Link to={path} target="_blank" className={className} title={`Open ${path}`}>
+      <ExternalLink className="h-3 w-3" />
+      {label}
+    </Link>
+  );
+}
+
 export const Route = createFileRoute("/testing")({
   head: () => ({
     meta: [
