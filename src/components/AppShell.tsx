@@ -1,6 +1,7 @@
 import { useApp } from "@/lib/app-store";
 import { Link, useRouter } from "@tanstack/react-router";
 import { SecurityBanner } from "./SecurityBanner";
+import { TrustBanner } from "./TrustBanner";
 import { CMSFooter } from "./CMSFooter";
 import { LogOut, FlaskConical, ChevronDown, LayoutDashboard, ListChecks, Briefcase, Shield, Users, FileSignature, BookOpen, ClipboardList, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
