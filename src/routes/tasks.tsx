@@ -409,7 +409,14 @@ function TaskSheetPage() {
                         </Select>
                       </TableCell>
                       <TableCell>
-                        <Input value={r.assignedTo} onChange={(e) => inlineUpdate(r.id, "assignedTo", e.target.value)} className="h-7 w-[110px] text-xs" />
+                        <Select value={r.assignedTo} onValueChange={(v) => inlineUpdate(r.id, "assignedTo", v)}>
+                          <SelectTrigger className="h-7 w-[110px] text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {owners.filter((o) => o !== "All").map((o) => (
+                              <SelectItem key={o} value={o}>{o}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                       <TableCell>
                         <Input value={r.assignBy} onChange={(e) => inlineUpdate(r.id, "assignBy", e.target.value)} className="h-7 w-[80px] text-xs" />
@@ -492,7 +499,14 @@ function TaskSheetPage() {
               </div>
               <div>
                 <Label>Assigned to</Label>
-                <Input value={editing.assignedTo} onChange={(e) => setEditing({ ...editing, assignedTo: e.target.value })} />
+                <Select value={editing.assignedTo} onValueChange={(v) => setEditing({ ...editing, assignedTo: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {owners.filter((o) => o !== "All").map((o) => (
+                      <SelectItem key={o} value={o}>{o}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label>Assigned by</Label>
