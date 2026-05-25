@@ -1,4 +1,4 @@
-import { ShieldCheck, EyeOff, KeyRound, Home, LogIn, Settings, Users, Briefcase } from "lucide-react";
+import { ShieldCheck, EyeOff, KeyRound, Home, LogIn, Settings, Users, Briefcase, ListChecks } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { YearToggle } from "./YearToggle";
 import { useApp } from "@/lib/app-store";
