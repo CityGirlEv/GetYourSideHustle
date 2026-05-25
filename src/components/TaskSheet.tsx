@@ -444,14 +444,6 @@ export function TaskSheetContent() {
               {PRIORITIES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Select value={bulkCategory} onValueChange={(v) => setBulkCategory(v as TaskRowCategory)}>
-            <SelectTrigger className="h-9 w-[150px]"><SelectValue placeholder="Set category…" /></SelectTrigger>
-            <SelectContent>
-              {TASK_CATEGORY_VALUES.map((c) => (
-                <SelectItem key={c} value={c}>{TASK_CATEGORY_LABELS[c]}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
           <div className="flex items-center gap-1 w-full">
             <Textarea
               value={bulkNotes}
@@ -475,7 +467,7 @@ export function TaskSheetContent() {
             <Input value={bulkDateCompleted} onChange={(e) => setBulkDateCompleted(e.target.value)} placeholder="Completed MM/DD/YY" className="h-9 w-[170px]" />
             <Input type="number" value={bulkCost} onChange={(e) => setBulkCost(e.target.value)} placeholder="Set cost ($)" className="h-9 w-[130px]" />
           </div>
-          <Button size="sm" onClick={applyBulk} disabled={!bulkStatus && !bulkSprint && !bulkAssignee.trim() && !bulkPriority && !bulkCategory && !bulkNotes.trim() && !bulkAssignBy.trim() && !bulkDateAssigned.trim() && !bulkDueDate.trim() && !bulkDateCompleted.trim() && bulkCost.trim() === ""}>
+          <Button size="sm" onClick={applyBulk} disabled={!bulkStatus && !bulkSprint && !bulkAssignee.trim() && !bulkPriority && !bulkNotes.trim() && !bulkAssignBy.trim() && !bulkDateAssigned.trim() && !bulkDueDate.trim() && !bulkDateCompleted.trim() && bulkCost.trim() === ""}>
             Apply to selected
           </Button>
           <Button size="sm" variant="outline" onClick={() => setSelected(new Set())}>Clear</Button>
