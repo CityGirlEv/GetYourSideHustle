@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
   CheckCircle2, XCircle, MinusCircle, AlertOctagon, Search, RotateCcw,
-  FlaskConical, CalendarDays, ListChecks, GitBranch, Sparkles,
+  FlaskConical, CalendarDays, ListChecks, GitBranch, Sparkles, ExternalLink,
 } from "lucide-react";
 import {
   TEST_CASES, IMPLEMENTATION_PLAN, SPRINTS, TASKS,
@@ -18,6 +18,38 @@ import {
   getTestCreditReward, totalCreditBudget, creditBudgetByOwner, REPRO_FAIL_BONUS,
 } from "@/lib/test-plan";
 import { AppShell } from "@/components/AppShell";
+
+// Derive a link target for a test case: explicit `path` wins, otherwise scan
+// preconditions + steps for the first "/route" token (e.g. "Open /advisor").
+function deriveTestPath(t: TestCase): string | null {
+  if (t.path) return t.path;
+  const haystack = [t.preconditions ?? "", ...t.steps].join(" ");
+  const m = haystack.match(/(?:^|\s)(\/[a-zA-Z0-9._\-/$:]+)/);
+  return m ? m[1] : null;
+}
+
+function TestTargetLink({ test }: { test: TestCase }) {
+  const path = deriveTestPath(test);
+  if (!path) return null;
+  const isExternal = /^https?:\/\//.test(path);
+  const label = path.length > 28 ? path.slice(0, 27) + "…" : path;
+  const className =
+    "inline-flex items-center gap-1 text-[11px] font-mono rounded-full border border-primary/40 bg-primary/5 px-2 py-0.5 text-primary hover:bg-primary/10 transition-colors";
+  if (isExternal) {
+    return (
+      <a href={path} target="_blank" rel="noreferrer" className={className} title={`Open ${path}`}>
+        <ExternalLink className="h-3 w-3" />
+        {label}
+      </a>
+    );
+  }
+  return (
+    <Link to={path as never} target="_blank" className={className} title={`Open ${path}`}>
+      <ExternalLink className="h-3 w-3" />
+      {label}
+    </Link>
+  );
+}
 
 export const Route = createFileRoute("/testing")({
   head: () => ({
@@ -195,6 +227,7 @@ function TestCaseCard({ t, status, onChange }: { t: TestCase; status: TestStatus
         <Badge variant="outline" className="text-[11px]">Sprint {getTestSprintId(t).replace("S-2026-0", "")}</Badge>
         <Badge variant="outline" className="text-[11px] border-primary/40 text-primary">Owner: {getTestAssignee(t)}</Badge>
         <Badge variant="outline" className="text-[11px] border-emerald-500/40 text-emerald-700 bg-emerald-500/5">+{getTestCreditReward(t)} cr</Badge>
+        <TestTargetLink test={t} />
         <h3 className="flex-1 font-semibold text-sm md:text-base">{t.title}</h3>
         <StatusButtons status={status} onChange={onChange} />
       </div>
