@@ -14,6 +14,7 @@ import {
   TEST_CASES, IMPLEMENTATION_PLAN, SPRINTS, TASKS,
   loadAllStatuses, saveStatus,
   type TestStatus, type TestCase, type Priority,
+  getTestAssignee, getTestSprintId, testAssignmentCounts, ACTIVE_SPRINT_ID,
 } from "@/lib/test-plan";
 import { SecurityBanner } from "@/components/SecurityBanner";
 import { CMSFooter } from "@/components/CMSFooter";
@@ -71,6 +72,7 @@ export function TestPlanTab() {
   const [query, setQuery] = useState("");
   const [areaFilter, setAreaFilter] = useState<string>("All");
   const [statusFilter, setStatusFilter] = useState<"all" | TestStatus>("all");
+  const [ownerFilter, setOwnerFilter] = useState<string>("All");
 
   const setStatus = (id: string, s: TestStatus) => {
     saveStatus(id, s);
@@ -82,15 +84,18 @@ export function TestPlanTab() {
   };
 
   const areas = useMemo(() => ["All", ...Array.from(new Set(TEST_CASES.map((t) => t.area)))], []);
+  const owners = useMemo(() => ["All", ...Object.keys(testAssignmentCounts())], []);
+  const ownerCounts = useMemo(() => testAssignmentCounts(), []);
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim();
     return TEST_CASES.filter((t) => {
       if (areaFilter !== "All" && t.area !== areaFilter) return false;
       if (statusFilter !== "all" && statuses[t.id] !== statusFilter) return false;
+      if (ownerFilter !== "All" && getTestAssignee(t) !== ownerFilter) return false;
       if (!q) return true;
       return [t.id, t.title, t.area, ...t.steps, t.expected].some((f) => f.toLowerCase().includes(q));
     });
-  }, [query, areaFilter, statusFilter, statuses]);
+  }, [query, areaFilter, statusFilter, ownerFilter, statuses]);
 
   const counts = useMemo(() => {
     const c = { total: TEST_CASES.length, pass: 0, fail: 0, blocked: 0, not_run: 0 };
@@ -101,6 +106,24 @@ export function TestPlanTab() {
 
   return (
     <div className="space-y-4">
+      {/* Sprint + ownership banner */}
+      <Card className="p-4 bg-primary/5 border-primary/30">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="text-xs uppercase tracking-wide text-muted-foreground">Active sprint</div>
+            <div className="font-bold text-base">Sprint 1 · Beta go-live ({ACTIVE_SPRINT_ID})</div>
+            <div className="text-xs text-muted-foreground">5/25 → 5/31 · all {TEST_CASES.length} test cases aligned to this sprint</div>
+          </div>
+          <div className="flex flex-wrap gap-2 text-xs">
+            {Object.entries(ownerCounts).map(([owner, n]) => (
+              <span key={owner} className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 font-semibold bg-background">
+                {owner} <span className="font-normal opacity-70">· {n} ({Math.round((n / TEST_CASES.length) * 100)}%)</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      </Card>
+
       {/* Summary */}
       <Card className="p-4">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
@@ -129,6 +152,10 @@ export function TestPlanTab() {
         <select className="h-9 border border-input rounded-md bg-background px-2 text-sm"
           value={areaFilter} onChange={(e) => setAreaFilter(e.target.value)}>
           {areas.map((a) => <option key={a}>{a}</option>)}
+        </select>
+        <select className="h-9 border border-input rounded-md bg-background px-2 text-sm"
+          value={ownerFilter} onChange={(e) => setOwnerFilter(e.target.value)}>
+          {owners.map((o) => <option key={o}>{o === "All" ? "All owners" : o}</option>)}
         </select>
         <select className="h-9 border border-input rounded-md bg-background px-2 text-sm"
           value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as "all" | TestStatus)}>
