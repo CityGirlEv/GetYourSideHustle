@@ -15,6 +15,7 @@ import {
   loadAllStatuses, saveStatus,
   type TestStatus, type TestCase, type Priority,
   getTestAssignee, getTestSprintId, testAssignmentCounts, ACTIVE_SPRINT_ID,
+  getTestCreditReward, totalCreditBudget, creditBudgetByOwner, REPRO_FAIL_BONUS,
 } from "@/lib/test-plan";
 import { SecurityBanner } from "@/components/SecurityBanner";
 import { CMSFooter } from "@/components/CMSFooter";
