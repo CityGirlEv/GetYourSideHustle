@@ -20,10 +20,11 @@ import { Plus, RotateCcw, Trash2, Pencil, Search, Download, ExternalLink, Save }
 import { toast } from "sonner";
 import {
   loadTaskRows, saveTaskRows, resetTaskRows, nextTaskId, todayMMDDYY,
-  TASK_STATUS_VALUES, TASK_STATUS_LABELS, TASK_CATEGORY_VALUES, TASK_CATEGORY_LABELS,
+  TASK_STATUS_VALUES, TASK_STATUS_LABELS,
   type TaskRow, type TaskRowStatus, type TaskRowCategory,
 } from "@/lib/tasks-sheet";
 import { SPRINTS, ACTIVE_SPRINT_ID, type Priority } from "@/lib/test-plan";
+import { MultiSelect, multiSelectMatches } from "@/components/ui/multi-select";
 
 const PRIORITIES: Priority[] = ["P0", "P1", "P2", "P3"];
 
@@ -102,9 +103,9 @@ export function TaskSheetContent() {
   const [rows, setRows] = useState<TaskRow[]>(() => loadTaskRows());
   const [saveOpen, setSaveOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | TaskRowStatus>("all");
-  const [sprintFilter, setSprintFilter] = useState<string>("all");
-  const [ownerFilter, setOwnerFilter] = useState<string>("All");
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [sprintFilter, setSprintFilter] = useState<string[]>([]);
+  const [ownerFilter, setOwnerFilter] = useState<string[]>([]);
   const [editing, setEditing] = useState<TaskRow | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -112,7 +113,6 @@ export function TaskSheetContent() {
   const [bulkSprint, setBulkSprint] = useState<string>("");
   const [bulkAssignee, setBulkAssignee] = useState<string>("");
   const [bulkPriority, setBulkPriority] = useState<Priority | "">("");
-  const [bulkCategory, setBulkCategory] = useState<TaskRowCategory | "">("");
   const [bulkNotesMode, setBulkNotesMode] = useState<"append" | "replace">("append");
   const [bulkNotes, setBulkNotes] = useState<string>("");
   const [bulkAssignBy, setBulkAssignBy] = useState<string>("");
@@ -128,15 +128,15 @@ export function TaskSheetContent() {
 
   const owners = useMemo(() => {
     const set = new Set<string>(rows.map((r) => r.assignedTo).filter(Boolean));
-    return ["All", ...Array.from(set)];
+    return Array.from(set);
   }, [rows]);
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim();
     return rows.filter((r) => {
-      if (statusFilter !== "all" && r.status !== statusFilter) return false;
-      if (sprintFilter !== "all" && r.sprintId !== sprintFilter) return false;
-      if (ownerFilter !== "All" && r.assignedTo !== ownerFilter) return false;
+      if (!multiSelectMatches(statusFilter, r.status)) return false;
+      if (!multiSelectMatches(sprintFilter, r.sprintId)) return false;
+      if (!multiSelectMatches(ownerFilter, r.assignedTo)) return false;
       if (!q) return true;
       return [r.id, r.description, r.assignedTo, r.assignBy, r.notes]
         .some((f) => (f || "").toLowerCase().includes(q));
@@ -197,7 +197,6 @@ export function TaskSheetContent() {
       if (bulkSprint) u.sprintId = bulkSprint;
       if (bulkAssignee.trim()) u.assignedTo = bulkAssignee.trim();
       if (bulkPriority) u.priority = bulkPriority;
-      if (bulkCategory) u.category = bulkCategory;
       if (bulkNotes.trim()) {
         const stamp = todayMMDDYY();
         const line = `[${stamp}] ${bulkNotes.trim()}`;
@@ -215,7 +214,7 @@ export function TaskSheetContent() {
     });
     persist(next);
     setBulkStatus(""); setBulkSprint(""); setBulkAssignee("");
-    setBulkPriority(""); setBulkCategory(""); setBulkNotes("");
+    setBulkPriority(""); setBulkNotes("");
     setBulkAssignBy(""); setBulkDateAssigned(""); setBulkDueDate(""); setBulkDateCompleted(""); setBulkCost("");
     setSelected(new Set());
   };
