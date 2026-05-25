@@ -69,11 +69,13 @@ interface Props {
 }
 
 export function VoiceButton({ onTranscript, replace = true, allowSpell = true, className, label = "Voice input", size = "sm" }: Props) {
+  const [mounted, setMounted] = useState(false);
   const [listening, setListening] = useState(false);
   const [spell, setSpell] = useState(false);
   const recRef = useRef<SR | null>(null);
-  const supported = !!getRecognitionCtor();
+  const supported = mounted && !!getRecognitionCtor();
 
+  useEffect(() => { setMounted(true); }, []);
   useEffect(() => () => { try { recRef.current?.abort(); } catch { /* noop */ } }, []);
 
   const start = () => {
@@ -83,11 +85,16 @@ export function VoiceButton({ onTranscript, replace = true, allowSpell = true, c
       const rec = new Ctor();
       rec.lang = "en-US";
       rec.continuous = false;
-      rec.interimResults = false;
-      rec.maxAlternatives = 1;
+      rec.interimResults = true;
+      rec.maxAlternatives = 3;
       rec.onresult = (e) => {
-        const raw = e.results?.[0]?.[0]?.transcript ?? "";
-        if (!raw.trim()) return;
+        const result = e.results?.[e.results.length - 1];
+        if (!result) return;
+        const raw = Array.from(result)
+          .map((alt) => alt.transcript?.trim() ?? "")
+          .filter(Boolean)
+          .sort((a, b) => b.length - a.length)[0] ?? "";
+        if (!raw) return;
         const text = spell ? transcriptToSpelled(raw) : raw.trim();
         onTranscript(text);
       };
@@ -95,7 +102,7 @@ export function VoiceButton({ onTranscript, replace = true, allowSpell = true, c
         if (e.error === "not-allowed" || e.error === "service-not-allowed") {
           toast.error("Microphone permission denied. Enable it in your browser settings.");
         } else if (e.error === "no-speech") {
-          toast.message("Didn't hear anything — try again.");
+          toast.message("Didn't hear anything — try again a little slower and closer to the mic.");
         } else if (e.error !== "aborted") {
           toast.error(`Voice error: ${e.error}`);
         }

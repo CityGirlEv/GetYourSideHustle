@@ -5,7 +5,7 @@ import { Input } from "./ui/input";
 import { Mic, MicOff, Volume2, RotateCcw, SkipForward, Keyboard, Check, Loader2, Info } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { COMMON_MEDS_BY_CONDITION, resolveDiagnosis, searchMedCatalog } from "@/lib/diagnosis-resolver";
+import { COMMON_MEDS_BY_CONDITION, resolveDiagnosis, searchMedCatalog, MED_CATALOG } from "@/lib/diagnosis-resolver";
 import { countiesForZip3 } from "@/lib/zip3-county-lookup";
 import type { Medication } from "@/lib/medicare-math";
 
@@ -67,6 +67,49 @@ function matchOption<T extends string>(text: string, options: readonly T[]): T |
     if (score > 0 && (!best || score > best.score)) best = { o, score };
   }
   return best?.o ?? null;
+}
+
+function normalizeSpeech(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\b(milligrams?|milligram)\b/g, "mg")
+    .replace(/\b(micrograms?|microgram)\b/g, "mcg")
+    .replace(/\b(units?|unit)\b/g, "u")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function similarityScore(a: string, b: string): number {
+  const aTokens = new Set(normalizeSpeech(a).split(" ").filter(Boolean));
+  const bTokens = new Set(normalizeSpeech(b).split(" ").filter(Boolean));
+  if (!aTokens.size || !bTokens.size) return 0;
+  let overlap = 0;
+  for (const token of aTokens) {
+    if (bTokens.has(token)) overlap += 1;
+  }
+  return overlap / Math.max(aTokens.size, bTokens.size);
+}
+
+function bestMedicationMatch(text: string) {
+  const normalized = normalizeSpeech(text);
+  if (!normalized) return null;
+
+  const direct = searchMedCatalog(text, 1)[0];
+  if (direct) return direct;
+
+  let best: { entry: typeof MED_CATALOG[number]; score: number } | null = null;
+  for (const entry of MED_CATALOG) {
+    const labels = [entry.name, ...(entry.aliases ?? [])];
+    for (const label of labels) {
+      const score = similarityScore(normalized, label);
+      if (score >= 0.5 && (!best || score > best.score)) {
+        best = { entry, score };
+      }
+    }
+  }
+  return best?.entry ?? null;
 }
 
 // ------------------- Config -------------------
@@ -151,25 +194,40 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
   });
 
   // ------------------- STT -------------------
-  const listen = (timeoutMs = 12000): Promise<string> => new Promise((resolve) => {
+  const listen = (timeoutMs = 16000): Promise<string> => new Promise((resolve) => {
     const Ctor = getRecognitionCtor();
     if (!Ctor) { resolve(""); return; }
     let settled = false;
-    const finish = (t: string) => { if (settled) return; settled = true; setListening(false); resolve(t); };
+    let bestTranscript = "";
+    const finish = (t?: string) => {
+      if (settled) return;
+      settled = true;
+      const finalText = (t ?? bestTranscript).trim();
+      setListening(false);
+      resolve(finalText);
+    };
     try {
       const rec = new Ctor();
-      rec.lang = "en-US"; rec.continuous = false; rec.interimResults = false; rec.maxAlternatives = 1;
+      rec.lang = "en-US"; rec.continuous = false; rec.interimResults = true; rec.maxAlternatives = 3;
       rec.onresult = (e) => {
-        const raw = e.results?.[0]?.[0]?.transcript ?? "";
-        setLastHeard(raw); finish(raw.trim());
+        const result = e.results?.[e.results.length - 1];
+        if (!result) return;
+        const choices = Array.from(result).map((alt) => alt.transcript?.trim() ?? "").filter(Boolean);
+        const picked = choices.sort((a, b) => b.length - a.length)[0] ?? "";
+        if (!picked) return;
+        bestTranscript = picked;
+        setLastHeard(picked);
+        if ((result as { isFinal?: boolean }).isFinal) finish(picked);
       };
       rec.onerror = (e) => {
         if (e.error === "not-allowed" || e.error === "service-not-allowed") {
           toast.error("Microphone permission denied. Please enable it in your browser settings.");
+        } else if (e.error === "no-speech") {
+          toast.message("I didn't catch that — try speaking a little slower and closer to the mic.");
         }
         finish("");
       };
-      rec.onend = () => finish("");
+      rec.onend = () => finish();
       recRef.current = rec;
       setListening(true);
       playBeep();
@@ -235,7 +293,7 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
       case "zip": {
         const digits = parseDigits(text, 3);
         if (!/^\d{3}$/.test(digits)) {
-          reAsk("Please say the first three digits of your ZIP code, one at a time. For example: seven, seven, zero.", "zip");
+          reAsk("Please say the first three digits of your ZIP code slowly, one at a time. For example: seven, seven, zero.", "zip");
           return;
         }
         setZip3(digits);
@@ -327,15 +385,20 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
       case "medsName": {
         const name = text.trim().replace(/^(it'?s|the drug is|i take|i'?m on)\s+/i, "");
         if (!name) { reAsk("I didn't catch the name. Please say the drug name, or spell it letter by letter.", "medsName"); return; }
-        setPendingMedName(name);
-        nextStep("medsStrength", name);
+        const matched = bestMedicationMatch(name);
+        const capturedName = matched?.name ?? name;
+        setPendingMedName(capturedName);
+        if (matched) {
+          setTranscript((p) => [...p, { q: `Matched medication: ${matched.name}.`, speaker: "assistant" }]);
+        }
+        nextStep("medsStrength", capturedName);
         return;
       }
       case "medsStrength": {
         const t = text.trim();
         const skip = /skip|don'?t know|not sure|none/i.test(t);
         const strength = skip ? "" : t.replace(/milligrams?/gi, "mg").replace(/micrograms?/gi, "mcg").replace(/units?/gi, "u");
-        const local = searchMedCatalog(pendingMedName, 1)[0];
+        const local = bestMedicationMatch(pendingMedName);
         const m = blankMed(pendingMedName, strength || local?.strength || "");
         if (local) {
           m.dosage_form = local.form ?? m.dosage_form;
