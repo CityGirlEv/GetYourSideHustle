@@ -475,7 +475,10 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
                   <option value="">Frequency…</option>
                   {FREQUENCIES.map((f) => <option key={f} value={f}>{f}</option>)}
                 </select>
-                <Input type="number" placeholder="$/mo retail" title="Estimated monthly retail cost in dollars" value={m.estimated_monthly_retail} onChange={(e) => updateMed(m.id, { estimated_monthly_retail: Number(e.target.value) })}/>
+                <div className="flex flex-col gap-0.5">
+                  <label className="text-[10px] uppercase tracking-wide text-muted-foreground">Monthly retail cost ($)</label>
+                  <Input type="number" placeholder="$/mo retail" title="Estimated monthly retail cost in dollars (auto-filled from catalog; edit to match your pharmacy's cash price)" value={m.estimated_monthly_retail} onChange={(e) => updateMed(m.id, { estimated_monthly_retail: Number(e.target.value) })}/>
+                </div>
               </div>
               <div className="flex items-center justify-between text-xs gap-2">
                 <div className="text-muted-foreground flex items-center gap-1 flex-1"><Pill className="h-3 w-3"/>
