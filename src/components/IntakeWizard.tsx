@@ -9,6 +9,7 @@ import { resolveDiagnosis, COMMON_MEDS_BY_CONDITION, searchMedCatalog, type MedC
 import { searchRxNorm, getGenericFor, type RxNormSuggestion } from "@/lib/rxnorm";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { VoiceButton, matchSpokenOption } from "./VoiceButton";
 import type { Medication } from "@/lib/medicare-math";
 import {
   countiesForZip3,
@@ -276,6 +277,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
             <div className="col-span-2">
               <Label>County or parish <span className="text-destructive">*</span></Label>
               {countyOptions.length > 0 ? (
+                <div className="flex gap-2 items-center">
                 <select
                   className="w-full border border-input rounded-md px-3 h-9 bg-background"
                   value={countyMatchesZip3(county, zip3)?.county ?? ""}
@@ -289,7 +291,18 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
                     </option>
                   ))}
                 </select>
+                <VoiceButton
+                  label="Speak county name"
+                  onTranscript={(t) => {
+                    const names = countyOptions.map((c) => c.county);
+                    const m = matchSpokenOption(t, names);
+                    if (m) setCounty(m);
+                    else toast.error(`"${t}" didn't match a county for ZIP ${zip}.`);
+                  }}
+                />
+                </div>
               ) : (
+                <div className="flex gap-2 items-center">
                 <Input
                   value={county}
                   onChange={(e) => setCounty(e.target.value.slice(0, 80))}
@@ -302,6 +315,8 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
                   disabled={zip.length !== 3}
                   required
                 />
+                <VoiceButton label="Speak county name" onTranscript={(t) => setCounty(t.slice(0, 80))} />
+                </div>
               )}
               {zip3Unknown && (
                 <p className="text-xs text-destructive mt-1">
@@ -375,6 +390,10 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
                   value={otherInput}
                   onChange={(e) => setOtherInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addOtherCondition(); } }}
+                />
+                <VoiceButton
+                  label="Speak condition name"
+                  onTranscript={(t) => setOtherInput(t)}
                 />
                 <Button size="sm" onClick={addOtherCondition}><Plus className="h-4 w-4"/></Button>
               </div>
@@ -468,7 +487,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
                   <div className="relative">
                     <Search className="h-3.5 w-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                     <Input
-                      className="pl-7"
+                      className="pl-7 pr-16"
                       placeholder="Search drug or DME…"
                       value={m.medication_name}
                       onFocus={() => setFocusedMedId(m.id)}
@@ -476,6 +495,15 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
                       onChange={(e) => {
                         updateMed(m.id, { medication_name: e.target.value });
                         setMedQuery((q) => ({ ...q, [m.id]: e.target.value }));
+                        setFocusedMedId(m.id);
+                      }}
+                    />
+                    <VoiceButton
+                      className="absolute right-1 top-1/2 -translate-y-1/2"
+                      label="Speak or spell drug name"
+                      onTranscript={(t) => {
+                        updateMed(m.id, { medication_name: t });
+                        setMedQuery((q) => ({ ...q, [m.id]: t }));
                         setFocusedMedId(m.id);
                       }}
                     />
@@ -528,7 +556,15 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
                     );
                   })()}
                 </div>
-                <Input placeholder="Strength" value={m.strength} onChange={(e) => updateMed(m.id, { strength: e.target.value })}/>
+                <div className="relative">
+                  <Input className="pr-16" placeholder="Strength" value={m.strength} onChange={(e) => updateMed(m.id, { strength: e.target.value })}/>
+                  <VoiceButton
+                    className="absolute right-1 top-1/2 -translate-y-1/2"
+                    label="Speak strength (e.g. 10 milligrams)"
+                    onTranscript={(t) => updateMed(m.id, { strength: t })}
+                  />
+                </div>
+                <div className="flex gap-1 items-center">
                 <select
                   className="w-full border border-input rounded-md px-3 h-9 bg-background text-sm"
                   value={DOSAGE_FORMS.includes(m.dosage_form) ? m.dosage_form : (m.dosage_form ? "Other" : "")}
@@ -537,6 +573,17 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
                   <option value="">Form…</option>
                   {DOSAGE_FORMS.map((f) => <option key={f} value={f}>{f}</option>)}
                 </select>
+                <VoiceButton
+                  allowSpell={false}
+                  label="Speak dosage form"
+                  onTranscript={(t) => {
+                    const match = matchSpokenOption(t, DOSAGE_FORMS);
+                    if (match) updateMed(m.id, { dosage_form: match });
+                    else toast.error(`"${t}" didn't match a form.`);
+                  }}
+                />
+                </div>
+                <div className="flex gap-1 items-center">
                 <select
                   className="w-full border border-input rounded-md px-3 h-9 bg-background text-sm"
                   value={FREQUENCIES.includes(m.frequency) ? m.frequency : (m.frequency === "Daily" ? "Once daily" : "")}
@@ -545,6 +592,16 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
                   <option value="">Frequency…</option>
                   {FREQUENCIES.map((f) => <option key={f} value={f}>{f}</option>)}
                 </select>
+                <VoiceButton
+                  allowSpell={false}
+                  label="Speak frequency"
+                  onTranscript={(t) => {
+                    const match = matchSpokenOption(t, FREQUENCIES);
+                    if (match) updateMed(m.id, { frequency: match });
+                    else toast.error(`"${t}" didn't match a frequency.`);
+                  }}
+                />
+                </div>
                 <div className="flex flex-col gap-0.5">
                   <label className="text-[10px] uppercase tracking-wide text-muted-foreground">Monthly retail cost ($)</label>
                   <Input type="number" placeholder="$/mo retail" title="Estimated monthly retail cost in dollars (auto-filled from catalog; edit to match your pharmacy's cash price)" value={m.estimated_monthly_retail} onChange={(e) => updateMed(m.id, { estimated_monthly_retail: Number(e.target.value) })}/>
@@ -553,6 +610,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
               <div className="flex items-center justify-between text-xs gap-2">
                 <div className="text-muted-foreground flex items-center gap-1 flex-1"><Pill className="h-3 w-3"/>
                   Auto-resolved condition: <Input className="h-7 flex-1" value={m.resolved_diagnosis ?? ""} placeholder="auto" onChange={(e) => updateMed(m.id, { resolved_diagnosis: e.target.value })}/>
+                  <VoiceButton label="Speak condition" onTranscript={(t) => updateMed(m.id, { resolved_diagnosis: t })} />
                 </div>
                 <Button size="sm" variant="ghost" onClick={() => setMeds(meds.filter(x => x.id !== m.id))}><Trash2 className="h-4 w-4"/></Button>
               </div>
