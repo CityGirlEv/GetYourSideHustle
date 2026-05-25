@@ -101,6 +101,10 @@ export function TaskSheetContent() {
   const [bulkStatus, setBulkStatus] = useState<TaskRowStatus | "">("");
   const [bulkSprint, setBulkSprint] = useState<string>("");
   const [bulkAssignee, setBulkAssignee] = useState<string>("");
+  const [bulkPriority, setBulkPriority] = useState<Priority | "">("");
+  const [bulkCategory, setBulkCategory] = useState<TaskRowCategory | "">("");
+  const [bulkNotesMode, setBulkNotesMode] = useState<"append" | "replace">("append");
+  const [bulkNotes, setBulkNotes] = useState<string>("");
 
   const persist = (next: TaskRow[]) => {
     setRows(next);
@@ -177,10 +181,18 @@ export function TaskSheetContent() {
       }
       if (bulkSprint) u.sprintId = bulkSprint;
       if (bulkAssignee.trim()) u.assignedTo = bulkAssignee.trim();
+      if (bulkPriority) u.priority = bulkPriority;
+      if (bulkCategory) u.category = bulkCategory;
+      if (bulkNotes.trim()) {
+        const stamp = todayMMDDYY();
+        const line = `[${stamp}] ${bulkNotes.trim()}`;
+        u.notes = bulkNotesMode === "replace" || !u.notes ? line : `${u.notes}\n${line}`;
+      }
       return u;
     });
     persist(next);
     setBulkStatus(""); setBulkSprint(""); setBulkAssignee("");
+    setBulkPriority(""); setBulkCategory(""); setBulkNotes("");
     setSelected(new Set());
   };
   const bulkDelete = () => {
@@ -293,7 +305,37 @@ export function TaskSheetContent() {
               ))}
             </SelectContent>
           </Select>
-          <Button size="sm" onClick={applyBulk} disabled={!bulkStatus && !bulkSprint && !bulkAssignee.trim()}>
+          <Select value={bulkPriority} onValueChange={(v) => setBulkPriority(v as Priority)}>
+            <SelectTrigger className="h-9 w-[130px]"><SelectValue placeholder="Set priority…" /></SelectTrigger>
+            <SelectContent>
+              {PRIORITIES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={bulkCategory} onValueChange={(v) => setBulkCategory(v as TaskRowCategory)}>
+            <SelectTrigger className="h-9 w-[150px]"><SelectValue placeholder="Set category…" /></SelectTrigger>
+            <SelectContent>
+              {TASK_CATEGORY_VALUES.map((c) => (
+                <SelectItem key={c} value={c}>{TASK_CATEGORY_LABELS[c]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="flex items-center gap-1 w-full">
+            <Textarea
+              value={bulkNotes}
+              onChange={(e) => setBulkNotes(e.target.value)}
+              placeholder="Notes to apply to selected (timestamped)…"
+              rows={2}
+              className="flex-1 min-w-[260px]"
+            />
+            <Select value={bulkNotesMode} onValueChange={(v) => setBulkNotesMode(v as "append" | "replace")}>
+              <SelectTrigger className="h-9 w-[120px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="append">Append</SelectItem>
+                <SelectItem value="replace">Replace</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button size="sm" onClick={applyBulk} disabled={!bulkStatus && !bulkSprint && !bulkAssignee.trim() && !bulkPriority && !bulkCategory && !bulkNotes.trim()}>
             Apply to selected
           </Button>
           <Button size="sm" variant="outline" onClick={() => setSelected(new Set())}>Clear</Button>
@@ -301,6 +343,12 @@ export function TaskSheetContent() {
             <Trash2 className="h-4 w-4 mr-1" />Delete selected
           </Button>
         </Card>
+      )}
+
+      {selected.size === 0 && (
+        <p className="text-xs text-muted-foreground px-1">
+          Tip: click <strong>New task</strong> to add · use the inline dropdowns in each row to re-assign sprint, status, priority, category, or person · click the pencil to edit notes & all fields · tick the row checkboxes to bulk-edit or delete.
+        </p>
       )}
 
       {/* Sheet */}
@@ -328,13 +376,14 @@ export function TaskSheetContent() {
                 <TableHead>Due</TableHead>
                 <TableHead>Completed</TableHead>
                 <TableHead className="text-right">Cost</TableHead>
+                <TableHead className="min-w-[200px]">Notes</TableHead>
                 <TableHead className="w-[80px] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={14} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={15} className="text-center text-muted-foreground py-8">
                     No tasks match your filters.
                   </TableCell>
                 </TableRow>
@@ -426,6 +475,15 @@ export function TaskSheetContent() {
                         value={r.cost}
                         onChange={(e) => inlineUpdate(r.id, "cost", Number(e.target.value) || 0)}
                         className="h-7 w-[80px] text-xs text-right ml-auto"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Textarea
+                        value={r.notes}
+                        onChange={(e) => inlineUpdate(r.id, "notes", e.target.value)}
+                        placeholder="Add notes…"
+                        rows={2}
+                        className="text-xs min-h-[40px] w-[220px]"
                       />
                     </TableCell>
                     <TableCell className="text-right">
