@@ -498,6 +498,7 @@ export const SPRINTS: Sprint[] = [
       { id: "S1-3", title: "Test case ownership split 70/30 (Catria / Me)", type: "test", status: "in_progress" },
       { id: "S1-4", title: "Beta smoke pass against production preview", type: "test", status: "todo" },
       { id: "S1-5", title: "Triage + fix P0/P1 beta defects", type: "bug", status: "todo" },
+      { id: "S1-6", title: "Catria recruits 10 agents (hand-picked) — NDA + Agent Agreement signed before access", type: "feature", status: "todo", owner: "Catria" },
     ],
   },
   {
