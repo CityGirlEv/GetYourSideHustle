@@ -30,9 +30,8 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
   return (
     <div className="min-h-screen flex flex-col">
       <SecurityBanner />
-      <header className="glass border-b border-border/60 px-3 md:px-6 py-2 md:py-3 flex items-center sticky top-0 z-30 gap-2 md:gap-4 relative">
-        <div className="flex-1" />
-        <div className="flex items-center gap-3 flex-none shrink-0 ml-auto z-10">
+      <header className="pointer-events-none absolute right-3 top-12 z-30 md:right-6 md:top-14">
+        <div className="pointer-events-auto flex items-center gap-3 flex-none shrink-0 ml-auto z-10">
           <FontSizeToggle />
           {user?.role === "advisor" && <CreditPill />}
           {user?.role === "admin" && (
@@ -172,7 +171,7 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
         </div>
         <TrustBanner />
         {(title || subtitle) && (
-          <div className="mb-3 mt-2">
+          <div className="mb-2 mt-0.5">
             {title && <h2 className="font-display font-bold text-2xl md:text-3xl text-primary">{title}</h2>}
             {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
           </div>
