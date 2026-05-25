@@ -219,7 +219,7 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
       settled = true;
       if (stopTimer) clearTimeout(stopTimer);
       if (silenceTimer) clearTimeout(silenceTimer);
-      const finalText = (t ?? finalTranscript || bestTranscript).trim();
+      const finalText = (t ?? (finalTranscript || bestTranscript)).trim();
       setListening(false);
       resolve(finalText);
     };
