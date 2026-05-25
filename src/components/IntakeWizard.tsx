@@ -391,6 +391,10 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
                   onChange={(e) => setOtherInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addOtherCondition(); } }}
                 />
+                <VoiceButton
+                  label="Speak condition name"
+                  onTranscript={(t) => setOtherInput(t)}
+                />
                 <Button size="sm" onClick={addOtherCondition}><Plus className="h-4 w-4"/></Button>
               </div>
               {otherConditions.length > 0 && (
