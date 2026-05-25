@@ -370,13 +370,13 @@ export function TestPlanTab() {
             <div className="text-2xl font-bold">{passRate}%</div>
           </div>
           <div className="flex flex-wrap gap-2 text-xs">
-            <StatBadge n={counts.pass}     label="Pass"    color="bg-emerald-500/10 text-emerald-700 border-emerald-500/30" />
-            <StatBadge n={counts.fail}     label="Fail"    color="bg-destructive/10 text-destructive border-destructive/30" />
-            <StatBadge n={counts.fixed_retest}  label="Fixed/Retest"   color="bg-sky-500/10 text-sky-700 border-sky-500/30" />
-            <StatBadge n={counts.failed_retest} label="Failed/Retest"  color="bg-fuchsia-500/10 text-fuchsia-700 border-fuchsia-500/30" />
-            <StatBadge n={counts.blocked}  label="Blocked" color="bg-amber-500/10 text-amber-700 border-amber-500/30" />
-            <StatBadge n={counts.not_run}  label="Not run" color="bg-muted text-muted-foreground border-border" />
-            <StatBadge n={counts.total}    label="Total"   color="bg-primary/10 text-primary border-primary/30" />
+            <StatBadge n={counts.pass}     label="Pass"    color="bg-emerald-500/10 text-emerald-700 border-emerald-500/30" active={statusFilter.length === 1 && statusFilter[0] === "pass"} onClick={() => setStatusFilter(statusFilter.length === 1 && statusFilter[0] === "pass" ? [] : ["pass"])} />
+            <StatBadge n={counts.fail}     label="Fail"    color="bg-destructive/10 text-destructive border-destructive/30" active={statusFilter.length === 1 && statusFilter[0] === "fail"} onClick={() => setStatusFilter(statusFilter.length === 1 && statusFilter[0] === "fail" ? [] : ["fail"])} />
+            <StatBadge n={counts.fixed_retest}  label="Fixed/Retest"   color="bg-sky-500/10 text-sky-700 border-sky-500/30" active={statusFilter.length === 1 && statusFilter[0] === "fixed_retest"} onClick={() => setStatusFilter(statusFilter.length === 1 && statusFilter[0] === "fixed_retest" ? [] : ["fixed_retest"])} />
+            <StatBadge n={counts.failed_retest} label="Failed/Retest"  color="bg-fuchsia-500/10 text-fuchsia-700 border-fuchsia-500/30" active={statusFilter.length === 1 && statusFilter[0] === "failed_retest"} onClick={() => setStatusFilter(statusFilter.length === 1 && statusFilter[0] === "failed_retest" ? [] : ["failed_retest"])} />
+            <StatBadge n={counts.blocked}  label="Blocked" color="bg-amber-500/10 text-amber-700 border-amber-500/30" active={statusFilter.length === 1 && statusFilter[0] === "blocked"} onClick={() => setStatusFilter(statusFilter.length === 1 && statusFilter[0] === "blocked" ? [] : ["blocked"])} />
+            <StatBadge n={counts.not_run}  label="Not run" color="bg-muted text-muted-foreground border-border" active={statusFilter.length === 1 && statusFilter[0] === "not_run"} onClick={() => setStatusFilter(statusFilter.length === 1 && statusFilter[0] === "not_run" ? [] : ["not_run"])} />
+            <StatBadge n={counts.total}    label="Total"   color="bg-primary/10 text-primary border-primary/30" active={statusFilter.length === 0} onClick={() => setStatusFilter([])} />
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -613,8 +613,16 @@ function BulkEditBar({
   );
 }
 
-function StatBadge({ n, label, color }: { n: number; label: string; color: string }) {
-  return <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 font-semibold ${color}`}>{n} <span className="font-normal opacity-80">{label}</span></span>;
+function StatBadge({ n, label, color, active, onClick }: { n: number; label: string; color: string; active?: boolean; onClick?: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 font-semibold ${color} ${onClick ? "cursor-pointer hover:opacity-80 transition-opacity" : ""} ${active ? "ring-2 ring-offset-1 ring-primary" : ""}`}
+    >
+      {n} <span className="font-normal opacity-80">{label}</span>
+    </button>
+  );
 }
 
 function priorityVariant(p: Priority): string {
