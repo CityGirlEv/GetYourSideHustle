@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UsersRouteImport } from './routes/users'
+import { Route as TestingRouteImport } from './routes/testing'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AgentRouteImport } from './routes/agent'
@@ -25,6 +26,11 @@ import { Route as AdvisorScenarioCodeEditRouteImport } from './routes/advisor.sc
 const UsersRoute = UsersRouteImport.update({
   id: '/users',
   path: '/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TestingRoute = TestingRouteImport.update({
+  id: '/testing',
+  path: '/testing',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -90,6 +96,7 @@ export interface FileRoutesByFullPath {
   '/agent': typeof AgentRouteWithChildren
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/testing': typeof TestingRoute
   '/users': typeof UsersRoute
   '/scenario/new': typeof ScenarioNewRoute
   '/advisor/scenario/$code': typeof AdvisorScenarioCodeRouteWithChildren
@@ -104,6 +111,7 @@ export interface FileRoutesByTo {
   '/agent': typeof AgentRouteWithChildren
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/testing': typeof TestingRoute
   '/users': typeof UsersRoute
   '/scenario/new': typeof ScenarioNewRoute
   '/advisor/scenario/$code': typeof AdvisorScenarioCodeRouteWithChildren
@@ -119,6 +127,7 @@ export interface FileRoutesById {
   '/agent': typeof AgentRouteWithChildren
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/testing': typeof TestingRoute
   '/users': typeof UsersRoute
   '/scenario/new': typeof ScenarioNewRoute
   '/advisor/scenario/$code': typeof AdvisorScenarioCodeRouteWithChildren
@@ -135,6 +144,7 @@ export interface FileRouteTypes {
     | '/agent'
     | '/auth'
     | '/reset-password'
+    | '/testing'
     | '/users'
     | '/scenario/new'
     | '/advisor/scenario/$code'
@@ -149,6 +159,7 @@ export interface FileRouteTypes {
     | '/agent'
     | '/auth'
     | '/reset-password'
+    | '/testing'
     | '/users'
     | '/scenario/new'
     | '/advisor/scenario/$code'
@@ -163,6 +174,7 @@ export interface FileRouteTypes {
     | '/agent'
     | '/auth'
     | '/reset-password'
+    | '/testing'
     | '/users'
     | '/scenario/new'
     | '/advisor/scenario/$code'
@@ -178,6 +190,7 @@ export interface RootRouteChildren {
   AgentRoute: typeof AgentRouteWithChildren
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  TestingRoute: typeof TestingRoute
   UsersRoute: typeof UsersRoute
   ScenarioNewRoute: typeof ScenarioNewRoute
   ScenarioCreatedCodeRoute: typeof ScenarioCreatedCodeRoute
@@ -190,6 +203,13 @@ declare module '@tanstack/react-router' {
       path: '/users'
       fullPath: '/users'
       preLoaderRoute: typeof UsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/testing': {
+      id: '/testing'
+      path: '/testing'
+      fullPath: '/testing'
+      preLoaderRoute: typeof TestingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -311,6 +331,7 @@ const rootRouteChildren: RootRouteChildren = {
   AgentRoute: AgentRouteWithChildren,
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  TestingRoute: TestingRoute,
   UsersRoute: UsersRoute,
   ScenarioNewRoute: ScenarioNewRoute,
   ScenarioCreatedCodeRoute: ScenarioCreatedCodeRoute,
