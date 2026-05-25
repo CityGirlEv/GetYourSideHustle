@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useApp } from "@/lib/app-store";
 import { supabase } from "@/integrations/supabase/client";
 import { Briefcase, FileText } from "lucide-react";
+import { NdaStatusCard } from "@/components/NdaStatusCard";
 
 interface AssignedScenario {
   id: string;
@@ -59,6 +60,7 @@ function AgentPortal() {
 
   return (
     <AppShell title="My assignments" subtitle="Scenarios assigned to you by an administrator">
+      <div className="mb-4"><NdaStatusCard /></div>
       <Card className="glass p-4">
         <div className="flex items-center gap-2 mb-3">
           <Briefcase className="h-4 w-4" />
