@@ -813,6 +813,9 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
     if (step !== "medsName") cancelMedLoopRef.current = true;
   }, [step]);
 
+  // Cancel any in-flight key-pick when the step changes
+  useEffect(() => { stopKeyPick(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [step]);
+
   const submit = async () => {
     setStep("submitting"); setSubmitting(true);
     await speak("Creating your scenario now.");
