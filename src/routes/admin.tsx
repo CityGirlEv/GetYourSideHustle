@@ -274,8 +274,12 @@ function AdminPortal() {
           <TabsTrigger value="staff"><Users className="h-4 w-4 mr-1.5"/>Staff &amp; credits</TabsTrigger>
           <TabsTrigger value="catalog"><Layers className="h-4 w-4 mr-1.5"/>Plan catalog</TabsTrigger>
           <TabsTrigger value="rules"><Settings2 className="h-4 w-4 mr-1.5"/>Rule adjuster</TabsTrigger>
-          <TabsTrigger value="impl"><GitBranch className="h-4 w-4 mr-1.5"/>Implementation Plan</TabsTrigger>
-          <TabsTrigger value="rollout"><CalendarDays className="h-4 w-4 mr-1.5"/>Rollout Schedule</TabsTrigger>
+          {user?.role === "admin" && (
+            <>
+              <TabsTrigger value="impl"><GitBranch className="h-4 w-4 mr-1.5"/>Implementation Plan</TabsTrigger>
+              <TabsTrigger value="rollout"><CalendarDays className="h-4 w-4 mr-1.5"/>Rollout Schedule</TabsTrigger>
+            </>
+          )}
         </TabsList>
 
         <TabsContent value="scenarios" className="space-y-6">
