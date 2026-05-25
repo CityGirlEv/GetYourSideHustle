@@ -26,6 +26,40 @@ const BIRTH_YEARS = Array.from({ length: MAX_BIRTH_YEAR - MIN_BIRTH_YEAR + 1 }, 
 const INCOME_BANDS = ["Under $25k", "$25k–$50k", "$50k–$100k", "$100k–$200k", "Over $200k", "Prefer not to say"];
 const CONDITIONS = ["Diabetes", "Hypertension", "Heart disease", "COPD", "Cancer history", "Chronic kidney disease", "Arthritis", "None of the above", "Other"];
 
+const DOSAGE_FORMS = [
+  "Tablet",
+  "Capsule",
+  "Vial",
+  "Pen",
+  "Injection",
+  "Inhaler",
+  "Nasal spray",
+  "Cream",
+  "Ointment",
+  "Patch",
+  "Drops",
+  "Solution",
+  "Suspension",
+  "Powder",
+  "Suppository",
+  "Other",
+];
+
+const FREQUENCIES = [
+  "Once daily",
+  "Twice daily",
+  "Three times daily",
+  "Four times daily",
+  "Every other day",
+  "Weekly",
+  "Every 2 weeks",
+  "Monthly",
+  "Every 3 months",
+  "With meals",
+  "At bedtime",
+  "As needed",
+];
+
 export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
   const [step, setStep] = useState(1);
   const [birthYear, setBirthYear] = useState<number | "">("");
@@ -425,9 +459,23 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
                   })()}
                 </div>
                 <Input placeholder="Strength" value={m.strength} onChange={(e) => updateMed(m.id, { strength: e.target.value })}/>
-                <Input placeholder="Form" value={m.dosage_form} onChange={(e) => updateMed(m.id, { dosage_form: e.target.value })}/>
-                <Input placeholder="Frequency" value={m.frequency} onChange={(e) => updateMed(m.id, { frequency: e.target.value })}/>
-                <Input type="number" placeholder="$/mo retail" value={m.estimated_monthly_retail} onChange={(e) => updateMed(m.id, { estimated_monthly_retail: Number(e.target.value) })}/>
+                <select
+                  className="w-full border border-input rounded-md px-3 h-9 bg-background text-sm"
+                  value={DOSAGE_FORMS.includes(m.dosage_form) ? m.dosage_form : (m.dosage_form ? "Other" : "")}
+                  onChange={(e) => updateMed(m.id, { dosage_form: e.target.value })}
+                >
+                  <option value="">Form…</option>
+                  {DOSAGE_FORMS.map((f) => <option key={f} value={f}>{f}</option>)}
+                </select>
+                <select
+                  className="w-full border border-input rounded-md px-3 h-9 bg-background text-sm"
+                  value={FREQUENCIES.includes(m.frequency) ? m.frequency : (m.frequency === "Daily" ? "Once daily" : "")}
+                  onChange={(e) => updateMed(m.id, { frequency: e.target.value })}
+                >
+                  <option value="">Frequency…</option>
+                  {FREQUENCIES.map((f) => <option key={f} value={f}>{f}</option>)}
+                </select>
+                <Input type="number" placeholder="$/mo retail" title="Estimated monthly retail cost in dollars" value={m.estimated_monthly_retail} onChange={(e) => updateMed(m.id, { estimated_monthly_retail: Number(e.target.value) })}/>
               </div>
               <div className="flex items-center justify-between text-xs gap-2">
                 <div className="text-muted-foreground flex items-center gap-1 flex-1"><Pill className="h-3 w-3"/>
