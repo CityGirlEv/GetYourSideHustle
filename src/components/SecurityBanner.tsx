@@ -1,4 +1,4 @@
-import { ShieldCheck, EyeOff, KeyRound, Home, LogIn, Settings, Briefcase, ListChecks, ChevronDown, GitBranch, CalendarDays, DollarSign, LogOut, FlaskConical, LayoutDashboard, ClipboardList, FileSignature } from "lucide-react";
+import { ShieldCheck, EyeOff, KeyRound, Home, LogIn, ListChecks, ChevronDown, LogOut, FlaskConical, LayoutDashboard, FileSignature } from "lucide-react";
 import { Link, useRouter } from "@tanstack/react-router";
 import { YearToggle } from "./YearToggle";
 import { useApp } from "@/lib/app-store";
