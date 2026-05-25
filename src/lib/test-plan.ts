@@ -19,6 +19,8 @@ export interface TestCase {
   steps: string[];
   expected: string;
   notes?: string;
+  assignee?: string;    // Optional explicit override; otherwise derived (see getTestAssignee)
+  sprintId?: string;    // Optional explicit override; otherwise active sprint (see getTestSprintId)
 }
 
 export interface PhaseItem {
