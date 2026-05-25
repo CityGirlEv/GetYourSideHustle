@@ -16,13 +16,13 @@ export function SecurityBanner() {
             <Link to="/" className="flex items-center gap-1 hover:text-white transition-colors">
               <Home className="h-3.5 w-3.5" /> Home
             </Link>
-            {user?.role === "admin" && (
+            {(user?.role === "admin" || user?.role === "qa") && (
               <>
                 <Link to="/admin" className="flex items-center gap-1 hover:text-white transition-colors">
                   <Settings className="h-3.5 w-3.5" /> Admin
                 </Link>
-                <Link to="/users" className="flex items-center gap-1 hover:text-white transition-colors">
-                  <Users className="h-3.5 w-3.5" /> Users
+                <Link to="/qa" className="flex items-center gap-1 hover:text-white transition-colors">
+                  <ListChecks className="h-3.5 w-3.5" /> QA
                 </Link>
               </>
             )}
