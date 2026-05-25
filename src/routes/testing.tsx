@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
   CheckCircle2, XCircle, MinusCircle, AlertOctagon, Search, RotateCcw,
-  FlaskConical, CalendarDays, ListChecks, GitBranch, Sparkles,
+  FlaskConical, CalendarDays, ListChecks, GitBranch, Sparkles, ExternalLink,
 } from "lucide-react";
 import {
   TEST_CASES, IMPLEMENTATION_PLAN, SPRINTS, TASKS,
@@ -195,6 +195,7 @@ function TestCaseCard({ t, status, onChange }: { t: TestCase; status: TestStatus
         <Badge variant="outline" className="text-[11px]">Sprint {getTestSprintId(t).replace("S-2026-0", "")}</Badge>
         <Badge variant="outline" className="text-[11px] border-primary/40 text-primary">Owner: {getTestAssignee(t)}</Badge>
         <Badge variant="outline" className="text-[11px] border-emerald-500/40 text-emerald-700 bg-emerald-500/5">+{getTestCreditReward(t)} cr</Badge>
+        <TestTargetLink test={t} />
         <h3 className="flex-1 font-semibold text-sm md:text-base">{t.title}</h3>
         <StatusButtons status={status} onChange={onChange} />
       </div>

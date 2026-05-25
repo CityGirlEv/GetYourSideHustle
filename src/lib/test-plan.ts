@@ -21,6 +21,7 @@ export interface TestCase {
   notes?: string;
   assignee?: string;    // Optional explicit override; otherwise derived (see getTestAssignee)
   sprintId?: string;    // Optional explicit override; otherwise active sprint (see getTestSprintId)
+  path?: string;        // Optional explicit link target (route or URL). Auto-derived from steps if omitted.
 }
 
 export interface PhaseItem {
