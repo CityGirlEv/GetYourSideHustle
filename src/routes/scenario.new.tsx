@@ -2,10 +2,8 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { IntakeWizard } from "@/components/IntakeWizard";
 import { VoiceIntakeWizard } from "@/components/VoiceIntakeWizard";
-import { SecurityBanner } from "@/components/SecurityBanner";
-import { CMSFooter } from "@/components/CMSFooter";
+import { AppShell } from "@/components/AppShell";
 import { Mic, Keyboard } from "lucide-react";
-import muntieLogo from "@/assets/muntie-logo.png";
 
 export const Route = createFileRoute("/scenario/new")({
   head: () => ({
