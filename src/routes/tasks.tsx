@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { TaskSheetContent } from "@/components/TaskSheet";
+import { useApp } from "@/lib/app-store";
 
 export const Route = createFileRoute("/tasks")({
   head: () => ({
@@ -14,6 +15,14 @@ export const Route = createFileRoute("/tasks")({
 });
 
 function TaskSheetPage() {
+  const { user } = useApp();
+  if (user?.role !== "admin") {
+    return (
+      <AppShell title="Task Sheet" subtitle="Admin only.">
+        <p className="text-sm text-muted-foreground">You don't have access to the task sheet. Please contact an administrator.</p>
+      </AppShell>
+    );
+  }
   return (
     <AppShell title="Task Sheet" subtitle="Spreadsheet-style task tracker — inline edits autosave to this browser.">
       <TaskSheetContent />

@@ -64,11 +64,13 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
                     <FlaskConical className="h-4 w-4" />Testing Portal
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/tasks" className="flex items-center gap-2 cursor-pointer">
-                    <ListChecks className="h-4 w-4" />Task Sheet
-                  </Link>
-                </DropdownMenuItem>
+                {user?.role === "admin" && (
+                  <DropdownMenuItem asChild>
+                    <Link to="/tasks" className="flex items-center gap-2 cursor-pointer">
+                      <ListChecks className="h-4 w-4" />Task Sheet
+                    </Link>
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           )}
