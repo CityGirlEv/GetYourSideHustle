@@ -357,6 +357,7 @@ function TaskSheetPage() {
                       <TableCell className="font-mono text-xs">{r.id}</TableCell>
                       <TableCell>
                         <div className="font-medium text-sm leading-snug">{r.description}</div>
+                        {r.path && <div className="mt-1"><TaskTargetLink path={r.path} /></div>}
                         {r.notes && <div className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{r.notes}</div>}
                       </TableCell>
                       <TableCell>
@@ -516,6 +517,17 @@ function TaskSheetPage() {
               <div className="md:col-span-2">
                 <Label>Notes</Label>
                 <Textarea value={editing.notes} onChange={(e) => setEditing({ ...editing, notes: e.target.value })} rows={3} />
+              </div>
+              <div className="md:col-span-2">
+                <Label>Related page / link (optional)</Label>
+                <Input
+                  value={editing.path ?? ""}
+                  onChange={(e) => setEditing({ ...editing, path: e.target.value })}
+                  placeholder="/admin or https://example.com"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Route path (starts with /) or full URL. Shown as a clickable chip in the task row.
+                </p>
               </div>
             </div>
           )}
