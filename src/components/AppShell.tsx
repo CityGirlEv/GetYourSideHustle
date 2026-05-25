@@ -172,7 +172,7 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
         </div>
         <TrustBanner />
         {(title || subtitle) && (
-          <div className="mb-3 mt-2">
+          <div className="mb-2 mt-0.5">
             {title && <h2 className="font-display font-bold text-2xl md:text-3xl text-primary">{title}</h2>}
             {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
           </div>
