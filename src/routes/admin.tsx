@@ -549,7 +549,6 @@ function AdminPortal() {
 
         <TabsContent value="rules">
           <Card className="glass p-5">
-
             <h3 className="font-display font-bold mb-3">Active {year} configuration</h3>
             <div className="grid md:grid-cols-2 gap-3 text-sm">
               {Object.entries(g).map(([k, v]) => (
