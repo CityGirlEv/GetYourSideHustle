@@ -108,6 +108,7 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
           <Link to="/" className="flex items-center gap-2 md:gap-3 font-display font-bold">
             <img src={muntieLogo} alt="The Medicare Optimizer" className="h-9 w-9 sm:h-12 sm:w-12 md:h-20 md:w-20 object-contain flex-shrink-0" />
           </Link>
+          <TeamNav />
         </div>
         <div className="hidden lg:flex pointer-events-none absolute inset-0 flex-col items-center justify-center px-2">
           <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-display font-bold text-primary uppercase text-center">The Medicare Optimizer</h1>
@@ -119,6 +120,7 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
         </div>
         <div className="flex items-center gap-3 flex-none shrink-0 ml-auto z-10">
           <FontSizeToggle />
+          <MobileNav />
           {user?.role === "advisor" && <CreditPill />}
           {user && (
             <div className="hidden md:flex items-center gap-2 text-sm">
