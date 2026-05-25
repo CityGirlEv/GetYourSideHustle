@@ -820,6 +820,49 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
         <p className="text-xs text-muted-foreground">Last heard: <em>"{lastHeard}"</em></p>
       )}
 
+      {/* Interactive medication picker */}
+      {step === "medsName" && (
+        <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-3">
+          <div className="flex items-center gap-2">
+            <Input
+              autoFocus
+              value={medQuery}
+              onChange={(e) => setMedQuery(e.target.value)}
+              placeholder="Say or spell the med name, or type here…"
+              className="flex-1"
+            />
+            <Button variant="outline" size="sm" onClick={() => setMedQuery("")} disabled={!medQuery}>Clear</Button>
+            <Button variant="ghost" size="sm" onClick={cancelMedSearch}>Cancel</Button>
+          </div>
+          {medMatches.length > 0 ? (
+            <div className="space-y-1.5">
+              {medMatches.map((m) => (
+                <div key={m.name} className="flex items-center justify-between gap-2 rounded-md border border-border bg-background px-2.5 py-1.5">
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold truncate">{m.name}</div>
+                    <div className="text-[11px] text-muted-foreground truncate">
+                      {m.strength} · {m.form} · {m.category}
+                    </div>
+                  </div>
+                  <Button size="sm" onClick={() => pickMed(m.name)}>
+                    <Check className="h-3.5 w-3.5 mr-1" />Add
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              {medQuery.trim().length < 2
+                ? "Start speaking, spelling, or typing — matches will appear here."
+                : `No matches for "${medQuery}". Say "keep going" to add more letters, or "clear" to start over.`}
+            </p>
+          )}
+          <p className="text-[11px] text-muted-foreground">
+            Voice commands: <strong>add</strong> (top match), <strong>add &lt;name&gt;</strong>, <strong>keep going</strong>, <strong>clear</strong>, <strong>cancel</strong>.
+          </p>
+        </div>
+      )}
+
       {/* Controls */}
       {step === "intro" ? (
         <Button className="w-full grad-indigo" onClick={begin}><Mic className="h-4 w-4 mr-2" />Start voice intake</Button>
