@@ -477,6 +477,15 @@ export function TaskSheetContent() {
                         className="h-7 w-[80px] text-xs text-right ml-auto"
                       />
                     </TableCell>
+                    <TableCell>
+                      <Textarea
+                        value={r.notes}
+                        onChange={(e) => inlineUpdate(r.id, "notes", e.target.value)}
+                        placeholder="Add notes…"
+                        rows={2}
+                        className="text-xs min-h-[40px] w-[220px]"
+                      />
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <Button size="icon" variant="ghost" onClick={() => openEdit(r)} aria-label="Edit"><Pencil className="h-3.5 w-3.5" /></Button>
