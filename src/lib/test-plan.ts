@@ -620,6 +620,32 @@ export function loadAllDevNotes(): Record<string, string> {
 }
 
 // ----------------------------------------------------------------------------
+// Test failure severity — required when QA marks a test as fail / failed_retest
+// ----------------------------------------------------------------------------
+export type FailSeverity = "high" | "medium" | "low";
+export const FAIL_SEVERITY_LABELS: Record<FailSeverity, string> = {
+  high: "High — Show stopper",
+  medium: "Medium — Fix soon",
+  low: "Low — Can wait",
+};
+export const TEST_SEVERITY_KEY = (id: string) => `test-severity:${id}`;
+
+export function loadSeverity(id: string): FailSeverity | "" {
+  if (typeof window === "undefined") return "";
+  return (localStorage.getItem(TEST_SEVERITY_KEY(id)) as FailSeverity) || "";
+}
+export function saveSeverity(id: string, s: FailSeverity | "") {
+  if (typeof window === "undefined") return;
+  if (s) localStorage.setItem(TEST_SEVERITY_KEY(id), s);
+  else localStorage.removeItem(TEST_SEVERITY_KEY(id));
+}
+export function loadAllSeverities(): Record<string, FailSeverity | ""> {
+  const out: Record<string, FailSeverity | ""> = {};
+  for (const t of TEST_CASES) out[t.id] = loadSeverity(t.id);
+  return out;
+}
+
+// ----------------------------------------------------------------------------
 // TEST OWNERSHIP — 70/30 split, Catria lead. All tests are aligned to the
 // active sprint (Sprint 1 · beta go-live) unless a TestCase overrides it.
 // ----------------------------------------------------------------------------
