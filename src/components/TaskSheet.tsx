@@ -101,6 +101,10 @@ export function TaskSheetContent() {
   const [bulkStatus, setBulkStatus] = useState<TaskRowStatus | "">("");
   const [bulkSprint, setBulkSprint] = useState<string>("");
   const [bulkAssignee, setBulkAssignee] = useState<string>("");
+  const [bulkPriority, setBulkPriority] = useState<Priority | "">("");
+  const [bulkCategory, setBulkCategory] = useState<TaskRowCategory | "">("");
+  const [bulkNotesMode, setBulkNotesMode] = useState<"append" | "replace">("append");
+  const [bulkNotes, setBulkNotes] = useState<string>("");
 
   const persist = (next: TaskRow[]) => {
     setRows(next);
@@ -177,10 +181,18 @@ export function TaskSheetContent() {
       }
       if (bulkSprint) u.sprintId = bulkSprint;
       if (bulkAssignee.trim()) u.assignedTo = bulkAssignee.trim();
+      if (bulkPriority) u.priority = bulkPriority;
+      if (bulkCategory) u.category = bulkCategory;
+      if (bulkNotes.trim()) {
+        const stamp = todayMMDDYY();
+        const line = `[${stamp}] ${bulkNotes.trim()}`;
+        u.notes = bulkNotesMode === "replace" || !u.notes ? line : `${u.notes}\n${line}`;
+      }
       return u;
     });
     persist(next);
     setBulkStatus(""); setBulkSprint(""); setBulkAssignee("");
+    setBulkPriority(""); setBulkCategory(""); setBulkNotes("");
     setSelected(new Set());
   };
   const bulkDelete = () => {
