@@ -1,8 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { SecurityBanner } from "@/components/SecurityBanner";
-import { CMSFooter } from "@/components/CMSFooter";
+import { AppShell } from "@/components/AppShell";
 import { CheckCircle2, Copy, ShieldCheck, FileDown, Phone, Sparkles, Building2, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { downloadScenarioPdf, downloadConsumerScenarioPdf, type ScenarioPdfInput } from "@/lib/scenario-pdf";
