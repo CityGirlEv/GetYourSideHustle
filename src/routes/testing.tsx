@@ -61,6 +61,25 @@ function TestTargetLink({ test }: { test: TestCase }) {
   );
 }
 
+function TestTitleLink({ test, children }: { test: TestCase; children: React.ReactNode }) {
+  const path = deriveTestPath(test);
+  if (!path) return <>{children}</>;
+  const isExternal = /^https?:\/\//.test(path);
+  const className = "hover:underline hover:text-primary transition-colors";
+  if (isExternal) {
+    return (
+      <a href={path} target="_blank" rel="noreferrer" className={className} title={`Open ${path}`}>
+        {children}
+      </a>
+    );
+  }
+  return (
+    <Link to={path as never} target="_blank" className={className} title={`Open ${path}`}>
+      {children}
+    </Link>
+  );
+}
+
 export const Route = createFileRoute("/testing")({
   head: () => ({
     meta: [
@@ -318,7 +337,9 @@ function TestCaseCard({
           </select>
         </label>
         <Badge variant="outline" className="text-[11px] border-emerald-500/40 text-emerald-700 bg-emerald-500/5">+{getTestCreditReward(t)} cr</Badge>
-        <h3 className="flex-1 font-semibold text-sm md:text-base">{t.title}</h3>
+        <h3 className="flex-1 font-semibold text-sm md:text-base">
+          <TestTitleLink test={t}>{t.title}</TestTitleLink>
+        </h3>
         <StatusButtons status={status} onChange={onChange} />
       </div>
       <div className="mb-2 -mt-1">
