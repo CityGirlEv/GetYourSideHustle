@@ -291,7 +291,7 @@ export function recommendPlans(input: RecommendInput): PersonalizedRecommendatio
     estAnnualTotal: bestMedigap.annual,
     estWorstCase: bestMedigap.worst,
     carriers: CMS_CATALOG.medigapCarriers,
-    source: "CMS-approved 2026 standardized Medigap policies",
+    source: "CMS-approved 2026 standardized Medigap policies (https://www.cms.gov/medicare/health-plans/medigap)",
   };
 
   const bRec: PlanRecommendation = {
@@ -304,7 +304,7 @@ export function recommendPlans(input: RecommendInput): PersonalizedRecommendatio
     estAnnualTotal: maAnnual,
     estWorstCase: maWorst,
     carriers: CMS_CATALOG.advantageCarriers,
-    source: "CMS-approved 2026 Part C plan types",
+    source: "CMS-approved 2026 Part C plan types (https://www.medicare.gov/plan-compare)",
   };
 
   const aScore = prefersPredictability ? aRec.estWorstCase : aRec.estAnnualTotal;
