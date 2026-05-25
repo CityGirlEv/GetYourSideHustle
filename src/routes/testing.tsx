@@ -119,6 +119,8 @@ export function TestPlanTab() {
   const [devNotes, setDevNotes] = useState<Record<string, string>>(() => loadAllDevNotes());
   const [severities, setSeverities] = useState<Record<string, FailSeverity | "">>(() => loadAllSeverities());
   const [assigneeOverrides, setAssigneeOverrides] = useState<Record<string, string>>(() => loadAllAssigneeOverrides());
+  const [sprintOverrides, setSprintOverrides] = useState<Record<string, string>>(() => loadAllSprintOverrides());
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [query, setQuery] = useState("");
   const [areaFilter, setAreaFilter] = useState<string>("All");
   const [statusFilter, setStatusFilter] = useState<"all" | TestStatus>("all");
@@ -149,6 +151,17 @@ export function TestPlanTab() {
     saveAssigneeOverride(id, owner);
     setAssigneeOverrides((p) => ({ ...p, [id]: owner }));
   };
+  const setSprintFor = (id: string, sprintId: string) => {
+    saveSprintOverride(id, sprintId);
+    setSprintOverrides((p) => ({ ...p, [id]: sprintId }));
+  };
+  const toggleSelect = (id: string) => {
+    setSelected((p) => {
+      const next = new Set(p);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
   const resetAll = () => {
     TEST_CASES.forEach((t) => saveStatus(t.id, "not_run"));
     setStatuses(loadAllStatuses());
@@ -173,7 +186,22 @@ export function TestPlanTab() {
       if (!q) return true;
       return [t.id, t.title, t.area, ...t.steps, t.expected].some((f) => f.toLowerCase().includes(q));
     });
-  }, [query, areaFilter, statusFilter, ownerFilter, statuses, assigneeOverrides]);
+  }, [query, areaFilter, statusFilter, ownerFilter, statuses, assigneeOverrides, sprintOverrides]);
+
+  const filteredIds = useMemo(() => filtered.map((t) => t.id), [filtered]);
+  const allFilteredSelected = filteredIds.length > 0 && filteredIds.every((id) => selected.has(id));
+  const toggleSelectAll = () => {
+    setSelected((p) => {
+      const next = new Set(p);
+      if (allFilteredSelected) filteredIds.forEach((id) => next.delete(id));
+      else filteredIds.forEach((id) => next.add(id));
+      return next;
+    });
+  };
+
+  const applyBulk = (fn: (id: string) => void) => {
+    selected.forEach((id) => fn(id));
+  };
 
   const counts = useMemo(() => {
     const c: Record<TestStatus | "total", number> = {
@@ -259,6 +287,19 @@ export function TestPlanTab() {
 
       {/* Cases */}
       <div className="space-y-3">
+        <BulkEditBar
+          selectedCount={selected.size}
+          totalFiltered={filteredIds.length}
+          allSelected={allFilteredSelected}
+          onToggleAll={toggleSelectAll}
+          onClear={() => setSelected(new Set())}
+          onSetStatus={(s) => applyBulk((id) => setStatus(id, s))}
+          onSetAssignee={(o) => applyBulk((id) => setAssigneeFor(id, o))}
+          onSetSprint={(s) => applyBulk((id) => setSprintFor(id, s))}
+          onSetSeverity={(s) => applyBulk((id) => setSeverityFor(id, s))}
+          onSetQaNote={(n) => applyBulk((id) => setQaNote(id, n))}
+          onSetDevNote={(n) => applyBulk((id) => setDevNote(id, n))}
+        />
         {filtered.length === 0 && (
           <Card className="p-8 text-center text-sm text-muted-foreground">No test cases match your filters.</Card>
         )}
@@ -270,15 +311,131 @@ export function TestPlanTab() {
             qaNote={qaNotes[t.id] ?? ""}
             devNote={devNotes[t.id] ?? ""}
             severity={severities[t.id] ?? ""}
+            selected={selected.has(t.id)}
+            onSelectChange={() => toggleSelect(t.id)}
             onChange={(s) => setStatus(t.id, s)}
             onQaNoteChange={(n) => setQaNote(t.id, n)}
             onDevNoteChange={(n) => setDevNote(t.id, n)}
             onSeverityChange={(s) => setSeverityFor(t.id, s)}
             onAssigneeChange={(o) => setAssigneeFor(t.id, o)}
+            onSprintChange={(s) => setSprintFor(t.id, s)}
           />
         ))}
       </div>
     </div>
+  );
+}
+
+/* ============================== BULK EDIT BAR ============================== */
+function BulkEditBar({
+  selectedCount, totalFiltered, allSelected, onToggleAll, onClear,
+  onSetStatus, onSetAssignee, onSetSprint, onSetSeverity, onSetQaNote, onSetDevNote,
+}: {
+  selectedCount: number;
+  totalFiltered: number;
+  allSelected: boolean;
+  onToggleAll: () => void;
+  onClear: () => void;
+  onSetStatus: (s: TestStatus) => void;
+  onSetAssignee: (o: string) => void;
+  onSetSprint: (s: string) => void;
+  onSetSeverity: (s: FailSeverity | "") => void;
+  onSetQaNote: (n: string) => void;
+  onSetDevNote: (n: string) => void;
+}) {
+  const [qaDraft, setQaDraft] = useState("");
+  const [devDraft, setDevDraft] = useState("");
+  const disabled = selectedCount === 0;
+  return (
+    <Card className="p-3 sticky top-[64px] z-20 bg-background/95 backdrop-blur border-primary/30">
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <label className="inline-flex items-center gap-2 font-semibold">
+          <input type="checkbox" checked={allSelected} onChange={onToggleAll} className="h-4 w-4" />
+          {allSelected ? "Deselect all" : "Select all"} <span className="opacity-60">({totalFiltered} filtered)</span>
+        </label>
+        <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
+          {selectedCount} selected
+        </span>
+        {selectedCount > 0 && (
+          <Button size="sm" variant="ghost" onClick={onClear} className="h-7 px-2 text-xs">Clear</Button>
+        )}
+        <div className="flex-1" />
+        <select
+          disabled={disabled}
+          className="h-8 border border-input rounded-md bg-background px-2 text-xs disabled:opacity-50"
+          defaultValue=""
+          onChange={(e) => { if (e.target.value) { onSetStatus(e.target.value as TestStatus); e.target.value = ""; } }}
+          title="Set status for selected"
+        >
+          <option value="">Set status…</option>
+          <option value="not_run">Not run</option>
+          <option value="pass">Pass</option>
+          <option value="fail">Fail</option>
+          <option value="fixed_retest">Fixed / Retest</option>
+          <option value="failed_retest">Failed / Retest</option>
+          <option value="blocked">Blocked</option>
+        </select>
+        <select
+          disabled={disabled}
+          className="h-8 border border-input rounded-md bg-background px-2 text-xs disabled:opacity-50"
+          defaultValue=""
+          onChange={(e) => { if (e.target.value) { onSetAssignee(e.target.value); e.target.value = ""; } }}
+          title="Set owner for selected"
+        >
+          <option value="">Set owner…</option>
+          {TEST_OWNERS.map((o) => <option key={o} value={o}>{o}</option>)}
+        </select>
+        <select
+          disabled={disabled}
+          className="h-8 border border-input rounded-md bg-background px-2 text-xs disabled:opacity-50"
+          defaultValue=""
+          onChange={(e) => { if (e.target.value) { onSetSprint(e.target.value); e.target.value = ""; } }}
+          title="Set sprint for selected"
+        >
+          <option value="">Set sprint…</option>
+          {SPRINTS.map((s) => <option key={s.id} value={s.id}>Sprint {s.number} · {s.name}</option>)}
+        </select>
+        <select
+          disabled={disabled}
+          className="h-8 border border-input rounded-md bg-background px-2 text-xs disabled:opacity-50"
+          defaultValue=""
+          onChange={(e) => { if (e.target.value !== "__noop") { onSetSeverity(e.target.value as FailSeverity | ""); e.target.value = "__noop"; } }}
+          title="Set severity for selected"
+        >
+          <option value="__noop">Set severity…</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+          <option value="">Clear severity</option>
+        </select>
+      </div>
+      <div className="grid md:grid-cols-2 gap-2 mt-2">
+        <div className="flex gap-1">
+          <textarea
+            value={qaDraft}
+            onChange={(e) => setQaDraft(e.target.value)}
+            placeholder="Bulk QA note…"
+            rows={1}
+            disabled={disabled}
+            className="flex-1 text-xs rounded-md border border-destructive/40 bg-destructive/5 px-2 py-1 disabled:opacity-50"
+          />
+          <Button size="sm" variant="outline" disabled={disabled || !qaDraft}
+            onClick={() => { onSetQaNote(qaDraft); setQaDraft(""); }}>Apply</Button>
+        </div>
+        <div className="flex gap-1">
+          <textarea
+            value={devDraft}
+            onChange={(e) => setDevDraft(e.target.value)}
+            placeholder="Bulk dev note…"
+            rows={1}
+            disabled={disabled}
+            className="flex-1 text-xs rounded-md border border-sky-500/40 bg-sky-500/5 px-2 py-1 disabled:opacity-50"
+          />
+          <Button size="sm" variant="outline" disabled={disabled || !devDraft}
+            onClick={() => { onSetDevNote(devDraft); setDevDraft(""); }}>Apply</Button>
+        </div>
+      </div>
+    </Card>
   );
 }
 
