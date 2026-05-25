@@ -1,10 +1,12 @@
 // ============================================================================
 // THE MEDICARE OPTIMIZER — PRODUCT BUDGET
 // ----------------------------------------------------------------------------
-// Every shipped or planned function is tied to a dollar amount. Numbers are
-// fully loaded (engineering blended at $150/hr unless noted, infra at vendor
-// list price, compliance billed at advisor rate). Update here = single source
-// of truth for the Admin → Budget tab.
+// AI-accelerated actuals. Engineering lines reflect real time spent (prompting,
+// review, testing, polish) — not traditional pre-AI estimates. Most features
+// that used to take weeks were built in hours. Infrastructure, compliance, and
+// ops costs remain at vendor/list price.
+// ----------------------------------------------------------------------------
+// Rate: $150/hr (human oversight / PM / review time)
 // ============================================================================
 
 export type BudgetCategory =
@@ -25,21 +27,21 @@ export interface BudgetLine {
 }
 
 export const BUDGET_LINES: BudgetLine[] = [
-  // ---- Build · One-time ----------------------------------------------------
-  { id: "B-001", function: "Auth + roles (Supabase, RLS, has_role)", category: "Build · One-time", amount: 9_600, unit: "one-time", basis: "64h eng @ $150 — Phase 1", links: ["Phase 1"] },
-  { id: "B-002", function: "De-identified scenario intake wizard", category: "Build · One-time", amount: 14_400, unit: "one-time", basis: "96h eng @ $150 — Phase 2", links: ["Phase 2"] },
-  { id: "B-003", function: "Medications + local catalog (brand/generic/DME)", category: "Build · One-time", amount: 12_000, unit: "one-time", basis: "80h eng @ $150 — Phase 3", links: ["Phase 3"] },
-  { id: "B-004", function: "RxNorm integration + coverage_uncertain flag", category: "Build · One-time", amount: 7_200, unit: "one-time", basis: "48h eng @ $150 — Phase 4", links: ["Phase 4"] },
-  { id: "B-005", function: "Voice input on every field (NATO phonetic)", category: "Build · One-time", amount: 10_800, unit: "one-time", basis: "72h eng @ $150 — Phase 5", links: ["Phase 5", "S9-1", "S9-2", "S9-3"] },
-  { id: "B-006", function: "Voice-driven wizard (TTS + STT state machine)", category: "Build · One-time", amount: 13_500, unit: "one-time", basis: "90h eng @ $150 — Phase 6", links: ["Phase 6", "S9-4", "S9-5"] },
-  { id: "B-007", function: "Plan optimizer scoring (cost vs predictability)", category: "Build · One-time", amount: 18_000, unit: "one-time", basis: "120h eng @ $150 — Phase 7 / Sprint 10", links: ["Phase 7", "S10-1", "S10-2", "S10-3", "S10-4"] },
-  { id: "B-008", function: "Agent assignment + SOA signature capture", category: "Build · One-time", amount: 15_000, unit: "one-time", basis: "100h eng @ $150 — Phase 8 / Sprint 11", links: ["Phase 8", "S11-1", "S11-2", "S11-3", "S11-4"] },
-  { id: "B-009", function: "Expert contact inbox + lifecycle", category: "Build · One-time", amount: 9_000, unit: "one-time", basis: "60h eng @ $150 — Phase 9", links: ["Phase 9"] },
-  { id: "B-010", function: "CMS catalog nightly ingest (Part D / MA)", category: "Build · One-time", amount: 16_500, unit: "one-time", basis: "110h eng @ $150 — Phase 10 / Sprint 12", links: ["Phase 10", "S12-1", "S12-2", "S12-3"] },
-  { id: "B-011", function: "Testing + QA portal (test plan, dashboard)", category: "Build · One-time", amount: 6_000, unit: "one-time", basis: "40h eng @ $150", links: ["S9-6", "S9-7"] },
-  { id: "B-012", function: "Admin portal (staff, audit, rules, rollout)", category: "Build · One-time", amount: 8_400, unit: "one-time", basis: "56h eng @ $150" },
-  { id: "B-013", function: "Sources page + citation surfacing", category: "Build · One-time", amount: 2_400, unit: "one-time", basis: "16h eng @ $150" },
-  { id: "B-014", function: "Medicare & You handbook deep link", category: "Build · One-time", amount: 600, unit: "one-time", basis: "4h eng @ $150 — CMS-016" },
+  // ---- Build · One-time (AI-accelerated actuals) ---------------------------
+  { id: "B-001", function: "Auth + roles (Supabase, RLS, has_role)", category: "Build · One-time", amount: 900, unit: "one-time", basis: "6h AI-accelerated @ $150 — Phase 1", links: ["Phase 1"] },
+  { id: "B-002", function: "De-identified scenario intake wizard", category: "Build · One-time", amount: 1_200, unit: "one-time", basis: "8h AI-accelerated @ $150 — Phase 2", links: ["Phase 2"] },
+  { id: "B-003", function: "Medications + local catalog (brand/generic/DME)", category: "Build · One-time", amount: 900, unit: "one-time", basis: "6h AI-accelerated @ $150 — Phase 3", links: ["Phase 3"] },
+  { id: "B-004", function: "RxNorm integration + coverage_uncertain flag", category: "Build · One-time", amount: 450, unit: "one-time", basis: "3h AI-accelerated @ $150 — Phase 4", links: ["Phase 4"] },
+  { id: "B-005", function: "Voice input on every field (NATO phonetic)", category: "Build · One-time", amount: 750, unit: "one-time", basis: "5h AI-accelerated @ $150 — Phase 5", links: ["Phase 5", "S9-1", "S9-2", "S9-3"] },
+  { id: "B-006", function: "Voice-driven wizard (TTS + STT state machine)", category: "Build · One-time", amount: 900, unit: "one-time", basis: "6h AI-accelerated @ $150 — Phase 6", links: ["Phase 6", "S9-4", "S9-5"] },
+  { id: "B-007", function: "Plan optimizer scoring (cost vs predictability)", category: "Build · One-time", amount: 1_200, unit: "one-time", basis: "8h AI-accelerated @ $150 — Phase 7 / Sprint 10", links: ["Phase 7", "S10-1", "S10-2", "S10-3", "S10-4"] },
+  { id: "B-008", function: "Agent assignment + SOA signature capture", category: "Build · One-time", amount: 900, unit: "one-time", basis: "6h AI-accelerated @ $150 — Phase 8 / Sprint 11", links: ["Phase 8", "S11-1", "S11-2", "S11-3", "S11-4"] },
+  { id: "B-009", function: "Expert contact inbox + lifecycle", category: "Build · One-time", amount: 600, unit: "one-time", basis: "4h AI-accelerated @ $150 — Phase 9", links: ["Phase 9"] },
+  { id: "B-010", function: "CMS catalog nightly ingest (Part D / MA)", category: "Build · One-time", amount: 900, unit: "one-time", basis: "6h AI-accelerated @ $150 — Phase 10 / Sprint 12", links: ["Phase 10", "S12-1", "S12-2", "S12-3"] },
+  { id: "B-011", function: "Testing + QA portal (test plan, dashboard)", category: "Build · One-time", amount: 450, unit: "one-time", basis: "3h AI-accelerated @ $150", links: ["S9-6", "S9-7"] },
+  { id: "B-012", function: "Admin portal (staff, audit, rules, rollout)", category: "Build · One-time", amount: 750, unit: "one-time", basis: "5h AI-accelerated @ $150" },
+  { id: "B-013", function: "Sources page + citation surfacing", category: "Build · One-time", amount: 300, unit: "one-time", basis: "2h AI-accelerated @ $150" },
+  { id: "B-014", function: "Medicare & You handbook deep link", category: "Build · One-time", amount: 75, unit: "one-time", basis: "0.5h AI-accelerated @ $150 — CMS-016" },
 
   // ---- Infra · Recurring ---------------------------------------------------
   { id: "B-101", function: "Lovable Cloud (Supabase: Postgres, Auth, Storage, RLS)", category: "Infra · Recurring", amount: 599, unit: "monthly", basis: "Pro tier + compute add-on" },
