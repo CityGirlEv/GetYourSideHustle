@@ -613,8 +613,16 @@ function BulkEditBar({
   );
 }
 
-function StatBadge({ n, label, color }: { n: number; label: string; color: string }) {
-  return <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 font-semibold ${color}`}>{n} <span className="font-normal opacity-80">{label}</span></span>;
+function StatBadge({ n, label, color, active, onClick }: { n: number; label: string; color: string; active?: boolean; onClick?: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 font-semibold ${color} ${onClick ? "cursor-pointer hover:opacity-80 transition-opacity" : ""} ${active ? "ring-2 ring-offset-1 ring-primary" : ""}`}
+    >
+      {n} <span className="font-normal opacity-80">{label}</span>
+    </button>
+  );
 }
 
 function priorityVariant(p: Priority): string {
