@@ -39,7 +39,7 @@ export const Route = createFileRoute("/agent/scenario/$code")({
 
 function AgentScenario() {
   const { code } = Route.useParams();
-  const { user } = useApp();
+  const { user, authLoading } = useApp();
   const router = useRouter();
   const [s, setS] = useState<ScenarioRow | null>(null);
   const [contacts, setContacts] = useState<ContactRow[]>([]);
@@ -48,6 +48,7 @@ function AgentScenario() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (authLoading) return;
     if (!user) { router.navigate({ to: "/auth" }); return; }
     let cancelled = false;
     (async () => {

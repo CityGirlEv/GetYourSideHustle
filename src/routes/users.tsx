@@ -31,7 +31,7 @@ interface StaffMember {
 }
 
 function UsersPage() {
-  const { user } = useApp();
+  const { user, authLoading } = useApp();
   const router = useRouter();
 
   const [staff, setStaff] = useState<StaffMember[]>([]);
@@ -60,9 +60,10 @@ function UsersPage() {
   const doDelete = useServerFn(deleteUser);
 
   useEffect(() => {
+    if (authLoading) return;
     if (!user) { router.navigate({ to: "/auth" }); return; }
     if (user.role !== "admin") { router.navigate({ to: "/" }); return; }
-  }, [user, router]);
+  }, [user, authLoading, router]);
 
   const reload = async () => {
     setLoading(true);
