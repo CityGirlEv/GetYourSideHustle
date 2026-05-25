@@ -21,7 +21,7 @@ import { toast } from "sonner";
 import {
   loadTaskRows, saveTaskRows, resetTaskRows, nextTaskId, todayMMDDYY,
   TASK_STATUS_VALUES, TASK_STATUS_LABELS,
-  type TaskRow, type TaskRowStatus, type TaskRowCategory,
+  type TaskRow, type TaskRowStatus,
 } from "@/lib/tasks-sheet";
 import { SPRINTS, ACTIVE_SPRINT_ID, type Priority } from "@/lib/test-plan";
 import { MultiSelect, multiSelectMatches } from "@/components/ui/multi-select";
@@ -479,7 +479,7 @@ export function TaskSheetContent() {
 
       {selected.size === 0 && (
         <p className="text-xs text-muted-foreground px-1">
-          Tip: click <strong>New task</strong> to add · use the inline dropdowns in each row to re-assign sprint, status, priority, category, or person · click the pencil to edit notes & all fields · tick the row checkboxes to bulk-edit or delete.
+          Tip: click <strong>New task</strong> to add · use the inline dropdowns in each row to re-assign sprint, status, priority, or person · click the pencil to edit notes & all fields · tick the row checkboxes to bulk-edit or delete.
         </p>
       )}
 
