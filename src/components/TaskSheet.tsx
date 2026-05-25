@@ -20,10 +20,11 @@ import { Plus, RotateCcw, Trash2, Pencil, Search, Download, ExternalLink, Save }
 import { toast } from "sonner";
 import {
   loadTaskRows, saveTaskRows, resetTaskRows, nextTaskId, todayMMDDYY,
-  TASK_STATUS_VALUES, TASK_STATUS_LABELS, TASK_CATEGORY_VALUES, TASK_CATEGORY_LABELS,
-  type TaskRow, type TaskRowStatus, type TaskRowCategory,
+  TASK_STATUS_VALUES, TASK_STATUS_LABELS,
+  type TaskRow, type TaskRowStatus,
 } from "@/lib/tasks-sheet";
 import { SPRINTS, ACTIVE_SPRINT_ID, type Priority } from "@/lib/test-plan";
+import { MultiSelect, multiSelectMatches } from "@/components/ui/multi-select";
 
 const PRIORITIES: Priority[] = ["P0", "P1", "P2", "P3"];
 
@@ -102,9 +103,9 @@ export function TaskSheetContent() {
   const [rows, setRows] = useState<TaskRow[]>(() => loadTaskRows());
   const [saveOpen, setSaveOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | TaskRowStatus>("all");
-  const [sprintFilter, setSprintFilter] = useState<string>("all");
-  const [ownerFilter, setOwnerFilter] = useState<string>("All");
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [sprintFilter, setSprintFilter] = useState<string[]>([]);
+  const [ownerFilter, setOwnerFilter] = useState<string[]>([]);
   const [editing, setEditing] = useState<TaskRow | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -112,7 +113,6 @@ export function TaskSheetContent() {
   const [bulkSprint, setBulkSprint] = useState<string>("");
   const [bulkAssignee, setBulkAssignee] = useState<string>("");
   const [bulkPriority, setBulkPriority] = useState<Priority | "">("");
-  const [bulkCategory, setBulkCategory] = useState<TaskRowCategory | "">("");
   const [bulkNotesMode, setBulkNotesMode] = useState<"append" | "replace">("append");
   const [bulkNotes, setBulkNotes] = useState<string>("");
   const [bulkAssignBy, setBulkAssignBy] = useState<string>("");
@@ -128,15 +128,15 @@ export function TaskSheetContent() {
 
   const owners = useMemo(() => {
     const set = new Set<string>(rows.map((r) => r.assignedTo).filter(Boolean));
-    return ["All", ...Array.from(set)];
+    return Array.from(set);
   }, [rows]);
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim();
     return rows.filter((r) => {
-      if (statusFilter !== "all" && r.status !== statusFilter) return false;
-      if (sprintFilter !== "all" && r.sprintId !== sprintFilter) return false;
-      if (ownerFilter !== "All" && r.assignedTo !== ownerFilter) return false;
+      if (!multiSelectMatches(statusFilter, r.status)) return false;
+      if (!multiSelectMatches(sprintFilter, r.sprintId)) return false;
+      if (!multiSelectMatches(ownerFilter, r.assignedTo)) return false;
       if (!q) return true;
       return [r.id, r.description, r.assignedTo, r.assignBy, r.notes]
         .some((f) => (f || "").toLowerCase().includes(q));
@@ -197,7 +197,6 @@ export function TaskSheetContent() {
       if (bulkSprint) u.sprintId = bulkSprint;
       if (bulkAssignee.trim()) u.assignedTo = bulkAssignee.trim();
       if (bulkPriority) u.priority = bulkPriority;
-      if (bulkCategory) u.category = bulkCategory;
       if (bulkNotes.trim()) {
         const stamp = todayMMDDYY();
         const line = `[${stamp}] ${bulkNotes.trim()}`;
@@ -215,7 +214,7 @@ export function TaskSheetContent() {
     });
     persist(next);
     setBulkStatus(""); setBulkSprint(""); setBulkAssignee("");
-    setBulkPriority(""); setBulkCategory(""); setBulkNotes("");
+    setBulkPriority(""); setBulkNotes("");
     setBulkAssignBy(""); setBulkDateAssigned(""); setBulkDueDate(""); setBulkDateCompleted(""); setBulkCost("");
     setSelected(new Set());
   };
@@ -367,30 +366,27 @@ export function TaskSheetContent() {
             className="pl-8 h-9"
           />
         </div>
-        <Select value={sprintFilter} onValueChange={setSprintFilter}>
-          <SelectTrigger className="h-9 w-[180px]"><SelectValue placeholder="Sprint" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All sprints</SelectItem>
-            {SPRINTS.map((s) => (
-              <SelectItem key={s.id} value={s.id}>Sprint {s.number} · {s.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
-          <SelectTrigger className="h-9 w-[160px]"><SelectValue placeholder="Status" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            {TASK_STATUS_VALUES.map((s) => (
-              <SelectItem key={s} value={s}>{TASK_STATUS_LABELS[s]}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={ownerFilter} onValueChange={setOwnerFilter}>
-          <SelectTrigger className="h-9 w-[160px]"><SelectValue placeholder="Owner" /></SelectTrigger>
-          <SelectContent>
-            {owners.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <MultiSelect
+          placeholder="Sprint"
+          triggerClassName="w-[200px]"
+          options={SPRINTS.map((s) => ({ value: s.id, label: `Sprint ${s.number} · ${s.name}` }))}
+          value={sprintFilter}
+          onChange={setSprintFilter}
+        />
+        <MultiSelect
+          placeholder="Status"
+          triggerClassName="w-[180px]"
+          options={TASK_STATUS_VALUES.map((s) => ({ value: s, label: TASK_STATUS_LABELS[s] }))}
+          value={statusFilter}
+          onChange={setStatusFilter}
+        />
+        <MultiSelect
+          placeholder="Owner"
+          triggerClassName="w-[180px]"
+          options={owners.map((o) => ({ value: o, label: o }))}
+          value={ownerFilter}
+          onChange={setOwnerFilter}
+        />
         <div className="flex gap-2 ml-auto">
           <Button
             size="sm"
@@ -448,14 +444,6 @@ export function TaskSheetContent() {
               {PRIORITIES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Select value={bulkCategory} onValueChange={(v) => setBulkCategory(v as TaskRowCategory)}>
-            <SelectTrigger className="h-9 w-[150px]"><SelectValue placeholder="Set category…" /></SelectTrigger>
-            <SelectContent>
-              {TASK_CATEGORY_VALUES.map((c) => (
-                <SelectItem key={c} value={c}>{TASK_CATEGORY_LABELS[c]}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
           <div className="flex items-center gap-1 w-full">
             <Textarea
               value={bulkNotes}
@@ -479,7 +467,7 @@ export function TaskSheetContent() {
             <Input value={bulkDateCompleted} onChange={(e) => setBulkDateCompleted(e.target.value)} placeholder="Completed MM/DD/YY" className="h-9 w-[170px]" />
             <Input type="number" value={bulkCost} onChange={(e) => setBulkCost(e.target.value)} placeholder="Set cost ($)" className="h-9 w-[130px]" />
           </div>
-          <Button size="sm" onClick={applyBulk} disabled={!bulkStatus && !bulkSprint && !bulkAssignee.trim() && !bulkPriority && !bulkCategory && !bulkNotes.trim() && !bulkAssignBy.trim() && !bulkDateAssigned.trim() && !bulkDueDate.trim() && !bulkDateCompleted.trim() && bulkCost.trim() === ""}>
+          <Button size="sm" onClick={applyBulk} disabled={!bulkStatus && !bulkSprint && !bulkAssignee.trim() && !bulkPriority && !bulkNotes.trim() && !bulkAssignBy.trim() && !bulkDateAssigned.trim() && !bulkDueDate.trim() && !bulkDateCompleted.trim() && bulkCost.trim() === ""}>
             Apply to selected
           </Button>
           <Button size="sm" variant="outline" onClick={() => setSelected(new Set())}>Clear</Button>
@@ -491,7 +479,7 @@ export function TaskSheetContent() {
 
       {selected.size === 0 && (
         <p className="text-xs text-muted-foreground px-1">
-          Tip: click <strong>New task</strong> to add · use the inline dropdowns in each row to re-assign sprint, status, priority, category, or person · click the pencil to edit notes & all fields · tick the row checkboxes to bulk-edit or delete.
+          Tip: click <strong>New task</strong> to add · use the inline dropdowns in each row to re-assign sprint, status, priority, or person · click the pencil to edit notes & all fields · tick the row checkboxes to bulk-edit or delete.
         </p>
       )}
 
@@ -511,7 +499,6 @@ export function TaskSheetContent() {
                 <TableHead className="w-[70px]">ID</TableHead>
                 <TableHead className="min-w-[260px]">Description</TableHead>
                 <TableHead>Sprint</TableHead>
-                <TableHead>Category</TableHead>
                 <TableHead>Priority</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Assigned to</TableHead>
@@ -527,7 +514,7 @@ export function TaskSheetContent() {
             <TableBody>
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={15} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={14} className="text-center text-muted-foreground py-8">
                     No tasks match your filters.
                   </TableCell>
                 </TableRow>
@@ -562,16 +549,6 @@ export function TaskSheetContent() {
                         <SelectContent>
                           {SPRINTS.map((s) => (
                             <SelectItem key={s.id} value={s.id}>Sprint {s.number} · {s.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell>
-                      <Select value={r.category} onValueChange={(v) => inlineUpdate(r.id, "category", v as TaskRowCategory)}>
-                        <SelectTrigger className="h-7 w-[120px] text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {TASK_CATEGORY_VALUES.map((c) => (
-                            <SelectItem key={c} value={c}>{TASK_CATEGORY_LABELS[c]}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -669,15 +646,6 @@ export function TaskSheetContent() {
                     {SPRINTS.map((s) => (
                       <SelectItem key={s.id} value={s.id}>Sprint {s.number} · {s.name}</SelectItem>
                     ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Category</Label>
-                <Select value={editing.category} onValueChange={(v) => setEditing({ ...editing, category: v as TaskRowCategory })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {TASK_CATEGORY_VALUES.map((c) => <SelectItem key={c} value={c}>{TASK_CATEGORY_LABELS[c]}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>

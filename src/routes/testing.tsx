@@ -32,6 +32,7 @@ import {
   type EvidenceFile,
 } from "@/lib/test-evidence";
 import { toast } from "sonner";
+import { MultiSelect, multiSelectMatches } from "@/components/ui/multi-select";
 
 // Derive a link target for a test case: explicit `path` wins, otherwise scan
 // preconditions + steps for the first "/route" token (e.g. "Open /advisor").
@@ -136,9 +137,10 @@ export function TestPlanTab() {
   const [saveOpen, setSaveOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [query, setQuery] = useState("");
-  const [areaFilter, setAreaFilter] = useState<string>("All");
-  const [statusFilter, setStatusFilter] = useState<"all" | TestStatus>("all");
-  const [ownerFilter, setOwnerFilter] = useState<string>("All");
+  const [areaFilter, setAreaFilter] = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [ownerFilter, setOwnerFilter] = useState<string[]>([]);
+  const [sprintFilter, setSprintFilter] = useState<string[]>([]);
 
   // Effective (saved + draft) views used for rendering and filtering
   const statuses = useMemo(() => ({ ...savedStatuses, ...dStatuses }), [savedStatuses, dStatuses]);
@@ -281,7 +283,7 @@ export function TestPlanTab() {
     toast.success(`Saved ${selectedKeys.size} change${selectedKeys.size === 1 ? "" : "s"}.`);
   };
 
-  const areas = useMemo(() => ["All", ...Array.from(new Set(TEST_CASES.map((t) => t.area)))], []);
+  const areas = useMemo(() => Array.from(new Set(TEST_CASES.map((t) => t.area))), []);
   // Effective assignee/sprint that respects unsaved drafts (the lib helpers read storage)
   const effAssignee = (t: TestCase): string => {
     const ov = assigneeOverrides[t.id];
@@ -297,17 +299,18 @@ export function TestPlanTab() {
     }
     return counts;
   }, [statuses, assigneeOverrides]);
-  const owners = useMemo(() => ["All", ...Object.keys(ownerCounts)], [ownerCounts]);
+  const owners = useMemo(() => Object.keys(ownerCounts), [ownerCounts]);
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim();
     return TEST_CASES.filter((t) => {
-      if (areaFilter !== "All" && t.area !== areaFilter) return false;
-      if (statusFilter !== "all" && statuses[t.id] !== statusFilter) return false;
-      if (ownerFilter !== "All" && effAssignee(t) !== ownerFilter) return false;
+      if (!multiSelectMatches(areaFilter, t.area)) return false;
+      if (!multiSelectMatches(statusFilter, statuses[t.id] ?? "not_run")) return false;
+      if (!multiSelectMatches(ownerFilter, effAssignee(t))) return false;
+      if (!multiSelectMatches(sprintFilter, effSprint(t))) return false;
       if (!q) return true;
       return [t.id, t.title, t.area, ...t.steps, t.expected].some((f) => f.toLowerCase().includes(q));
     });
-  }, [query, areaFilter, statusFilter, ownerFilter, statuses, assigneeOverrides, sprintOverrides]);
+  }, [query, areaFilter, statusFilter, ownerFilter, sprintFilter, statuses, assigneeOverrides, sprintOverrides]);
 
   const filteredIds = useMemo(() => filtered.map((t) => t.id), [filtered]);
   const allFilteredSelected = filteredIds.length > 0 && filteredIds.every((id) => selected.has(id));
@@ -406,24 +409,33 @@ export function TestPlanTab() {
           <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input className="pl-8" placeholder="Search by id, title, area, step…" value={query} onChange={(e) => setQuery(e.target.value)} />
         </div>
-        <select className="h-9 border border-input rounded-md bg-background px-2 text-sm"
-          value={areaFilter} onChange={(e) => setAreaFilter(e.target.value)}>
-          {areas.map((a) => <option key={a}>{a}</option>)}
-        </select>
-        <select className="h-9 border border-input rounded-md bg-background px-2 text-sm"
-          value={ownerFilter} onChange={(e) => setOwnerFilter(e.target.value)}>
-          {owners.map((o) => <option key={o}>{o === "All" ? "All owners" : o}</option>)}
-        </select>
-        <select className="h-9 border border-input rounded-md bg-background px-2 text-sm"
-          value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as "all" | TestStatus)}>
-          <option value="all">All statuses</option>
-          <option value="not_run">Not run</option>
-          <option value="pass">Pass</option>
-          <option value="fail">Fail</option>
-          <option value="fixed_retest">Fixed / Retest</option>
-          <option value="failed_retest">Failed / Retest</option>
-          <option value="blocked">Blocked</option>
-        </select>
+        <MultiSelect
+          placeholder="Area" triggerClassName="w-[180px]"
+          options={areas.map((a) => ({ value: a, label: a }))}
+          value={areaFilter} onChange={setAreaFilter}
+        />
+        <MultiSelect
+          placeholder="Owner" triggerClassName="w-[180px]"
+          options={owners.map((o) => ({ value: o, label: o }))}
+          value={ownerFilter} onChange={setOwnerFilter}
+        />
+        <MultiSelect
+          placeholder="Sprint" triggerClassName="w-[200px]"
+          options={SPRINTS.map((s) => ({ value: s.id, label: `Sprint ${s.number} · ${s.name}` }))}
+          value={sprintFilter} onChange={setSprintFilter}
+        />
+        <MultiSelect
+          placeholder="Status" triggerClassName="w-[180px]"
+          options={[
+            { value: "not_run", label: "Not run" },
+            { value: "pass", label: "Pass" },
+            { value: "fail", label: "Fail" },
+            { value: "fixed_retest", label: "Fixed / Retest" },
+            { value: "failed_retest", label: "Failed / Retest" },
+            { value: "blocked", label: "Blocked" },
+          ]}
+          value={statusFilter} onChange={setStatusFilter}
+        />
       </div>
 
       {/* Cases */}
