@@ -487,7 +487,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
                   <div className="relative">
                     <Search className="h-3.5 w-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                     <Input
-                      className="pl-7"
+                      className="pl-7 pr-16"
                       placeholder="Search drug or DME…"
                       value={m.medication_name}
                       onFocus={() => setFocusedMedId(m.id)}
@@ -495,6 +495,15 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
                       onChange={(e) => {
                         updateMed(m.id, { medication_name: e.target.value });
                         setMedQuery((q) => ({ ...q, [m.id]: e.target.value }));
+                        setFocusedMedId(m.id);
+                      }}
+                    />
+                    <VoiceButton
+                      className="absolute right-1 top-1/2 -translate-y-1/2"
+                      label="Speak or spell drug name"
+                      onTranscript={(t) => {
+                        updateMed(m.id, { medication_name: t });
+                        setMedQuery((q) => ({ ...q, [m.id]: t }));
                         setFocusedMedId(m.id);
                       }}
                     />
