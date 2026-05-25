@@ -615,7 +615,7 @@ function priorityVariant(p: Priority): string {
 }
 
 function TestCaseCard({
-  t, status, qaNote, devNote, severity, selected, onSelectChange,
+  t, status, qaNote, devNote, severity, assignee, sprintId, selected, onSelectChange,
   onChange, onQaNoteChange, onDevNoteChange, onSeverityChange, onAssigneeChange, onSprintChange,
 }: {
   t: TestCase;
@@ -623,6 +623,8 @@ function TestCaseCard({
   qaNote: string;
   devNote: string;
   severity: FailSeverity | "";
+  assignee: string;
+  sprintId: string;
   selected: boolean;
   onSelectChange: () => void;
   onChange: (s: TestStatus) => void;
@@ -632,16 +634,18 @@ function TestCaseCard({
   onAssigneeChange: (owner: string) => void;
   onSprintChange: (sprintId: string) => void;
 }) {
-  const ring =
-    status === "pass"    ? "ring-2 ring-emerald-500/40" :
-    status === "fail"    ? "ring-2 ring-destructive/50" :
-    status === "blocked" ? "ring-2 ring-amber-500/50"  :
-    status === "fixed_retest"  ? "ring-2 ring-sky-500/50" :
-    status === "failed_retest" ? "ring-2 ring-fuchsia-500/50" : "";
+  // Shade the whole row based on status (background + subtle border)
+  const shade =
+    status === "pass"          ? "bg-emerald-500/10 border-emerald-500/40" :
+    status === "fail"          ? "bg-destructive/10 border-destructive/40" :
+    status === "blocked"       ? "bg-amber-500/10 border-amber-500/40"     :
+    status === "fixed_retest"  ? "bg-sky-500/10 border-sky-500/40"         :
+    status === "failed_retest" ? "bg-fuchsia-500/10 border-fuchsia-500/40" :
+                                 "bg-background";
   const showQaNote = status === "fail" || status === "failed_retest";
   const showDevNote = status === "fixed_retest" || status === "failed_retest";
   return (
-    <Card className={`p-4 ${ring} ${selected ? "ring-2 ring-primary/60" : ""}`}>
+    <Card className={`p-4 ${shade} ${selected ? "ring-2 ring-primary/60" : ""}`}>
       <div className="flex flex-wrap items-start gap-2 mb-2">
         <input
           type="checkbox"
@@ -657,7 +661,7 @@ function TestCaseCard({
           <span className="font-semibold">Sprint:</span>
           <select
             className="bg-transparent text-[11px] font-semibold focus:outline-none cursor-pointer"
-            value={getTestSprintId(t)}
+            value={sprintId}
             onChange={(e) => onSprintChange(e.target.value)}
             title="Re-assign sprint"
           >
@@ -670,7 +674,7 @@ function TestCaseCard({
           <span className="font-semibold">Owner:</span>
           <select
             className="bg-transparent text-[11px] font-semibold text-primary focus:outline-none cursor-pointer"
-            value={getTestAssignee(t, status)}
+            value={assignee}
             onChange={(e) => onAssigneeChange(e.target.value)}
             title="Re-assign this test"
           >
