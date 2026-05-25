@@ -1,15 +1,8 @@
-import { ShieldCheck, EyeOff, KeyRound, Home, LogIn, Settings } from "lucide-react";
-import { Link, useRouter } from "@tanstack/react-router";
-import { supabase } from "@/integrations/supabase/client";
+import { ShieldCheck, EyeOff, KeyRound, Home, LogIn } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { YearToggle } from "./YearToggle";
 
 export function SecurityBanner() {
-  const router = useRouter();
-  const handleAdminClick = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    await supabase.auth.signOut();
-    router.navigate({ to: "/auth" });
-  };
   return (
     <div className="grad-indigo px-4 py-2 text-xs font-medium">
       <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-y-1">
@@ -26,9 +19,6 @@ export function SecurityBanner() {
           <Link to="/auth" className="flex items-center gap-1 hover:text-white transition-colors">
             <LogIn className="h-3.5 w-3.5" /> Agent login
           </Link>
-          <button onClick={handleAdminClick} className="flex items-center gap-1 hover:text-white transition-colors">
-            <Settings className="h-3.5 w-3.5" /> Admin
-          </button>
         </div>
       </div>
     </div>
