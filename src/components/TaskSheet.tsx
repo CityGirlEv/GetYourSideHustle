@@ -376,13 +376,14 @@ export function TaskSheetContent() {
                 <TableHead>Due</TableHead>
                 <TableHead>Completed</TableHead>
                 <TableHead className="text-right">Cost</TableHead>
+                <TableHead className="min-w-[200px]">Notes</TableHead>
                 <TableHead className="w-[80px] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={14} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={15} className="text-center text-muted-foreground py-8">
                     No tasks match your filters.
                   </TableCell>
                 </TableRow>
