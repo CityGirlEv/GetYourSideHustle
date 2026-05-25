@@ -4,8 +4,9 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Button } from "./ui/button";
 import { Switch } from "./ui/switch";
-import { Plus, Trash2, ChevronRight, ChevronLeft, Pill, ShieldAlert, Search, X } from "lucide-react";
+import { Plus, Trash2, ChevronRight, ChevronLeft, Pill, ShieldAlert, Search, X, AlertTriangle } from "lucide-react";
 import { resolveDiagnosis, COMMON_MEDS_BY_CONDITION, searchMedCatalog, type MedCatalogEntry } from "@/lib/diagnosis-resolver";
+import { searchRxNorm, getGenericFor, type RxNormSuggestion } from "@/lib/rxnorm";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Medication } from "@/lib/medicare-math";
@@ -76,6 +77,27 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
   const [busy, setBusy] = useState(false);
   const [focusedMedId, setFocusedMedId] = useState<string | null>(null);
   const [medQuery, setMedQuery] = useState<Record<string, string>>({});
+  const [rxnormResults, setRxnormResults] = useState<Record<string, RxNormSuggestion[]>>({});
+  const [rxnormLoading, setRxnormLoading] = useState<Record<string, boolean>>({});
+
+  // Debounced RxNorm lookup for the focused medication input.
+  useEffect(() => {
+    if (!focusedMedId) return;
+    const id = focusedMedId;
+    const q = (medQuery[id] ?? "").trim();
+    if (q.length < 3) {
+      setRxnormResults((r) => ({ ...r, [id]: [] }));
+      return;
+    }
+    const ctrl = new AbortController();
+    setRxnormLoading((r) => ({ ...r, [id]: true }));
+    const t = setTimeout(async () => {
+      const results = await searchRxNorm(q, 8, ctrl.signal);
+      setRxnormResults((r) => ({ ...r, [id]: results }));
+      setRxnormLoading((r) => ({ ...r, [id]: false }));
+    }, 250);
+    return () => { clearTimeout(t); ctrl.abort(); };
+  }, [focusedMedId, medQuery]);
 
   const zip3 = zip;
   const countyOptions: Zip3County[] = /^\d{3}$/.test(zip3) ? countiesForZip3(zip3) : [];
@@ -131,9 +153,33 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
       frequency: entry.freq ?? m.frequency,
       estimated_monthly_retail: entry.retail ?? m.estimated_monthly_retail,
       resolved_diagnosis: resolveDiagnosis(entry.name) ?? entry.category ?? m.resolved_diagnosis,
+      coverage_uncertain: false,
+      generic_alternative: undefined,
+      no_generic_available: undefined,
     } : m));
     setMedQuery((q) => ({ ...q, [id]: "" }));
     setFocusedMedId(null);
+  };
+
+  const applyRxNormEntry = async (id: string, entry: RxNormSuggestion) => {
+    // Strip dose/form annotations from the RxNorm display name so the input
+    // shows just the drug name (e.g. "Lipitor" not "Lipitor 10 MG Oral Tablet").
+    const cleanName = entry.name.replace(/\s*\d.*$/, "").replace(/\s*\[.*$/, "").trim() || entry.name;
+    setMeds((p) => p.map((m) => m.id === id ? {
+      ...m,
+      medication_name: cleanName,
+      coverage_uncertain: true,
+      resolved_diagnosis: resolveDiagnosis(cleanName) ?? m.resolved_diagnosis,
+    } : m));
+    setMedQuery((q) => ({ ...q, [id]: "" }));
+    setFocusedMedId(null);
+    // Fetch generic equivalent in the background.
+    const info = await getGenericFor(entry.rxcui);
+    setMeds((p) => p.map((m) => m.id === id ? {
+      ...m,
+      generic_alternative: info.generic && info.generic.toLowerCase() !== cleanName.toLowerCase() ? info.generic : undefined,
+      no_generic_available: info.noGenericAvailable,
+    } : m));
   };
 
   const finish = async () => {
@@ -436,11 +482,19 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
                   </div>
                   {focusedMedId === m.id && (() => {
                     const q = medQuery[m.id] ?? m.medication_name;
-                    const results = searchMedCatalog(q, 8);
-                    if (!results.length) return null;
+                    const local = searchMedCatalog(q, 8);
+                    const localNames = new Set(local.map((r) => r.name.toLowerCase()));
+                    const rx = (rxnormResults[m.id] ?? []).filter(
+                      (r) => !localNames.has(r.name.toLowerCase()),
+                    );
+                    const loading = rxnormLoading[m.id];
+                    if (!local.length && !rx.length && !loading) return null;
                     return (
                       <div className="absolute z-20 left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-lg max-h-72 overflow-auto">
-                        {results.map((r) => (
+                        {local.length > 0 && (
+                          <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wide text-muted-foreground bg-muted/40">In our pricing catalog</div>
+                        )}
+                        {local.map((r) => (
                           <button
                             key={r.name}
                             type="button"
@@ -452,6 +506,22 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
                               {r.form ?? "—"} · {r.category ?? "—"}
                               {r.aliases?.length ? <span className="opacity-70"> · aka {r.aliases.join(", ")}</span> : null}
                             </div>
+                          </button>
+                        ))}
+                        {(rx.length > 0 || loading) && (
+                          <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wide text-muted-foreground bg-muted/40 border-t border-border">
+                            FDA-approved drugs (RxNorm) {loading ? "· searching…" : ""}
+                          </div>
+                        )}
+                        {rx.map((r) => (
+                          <button
+                            key={r.rxcui}
+                            type="button"
+                            onMouseDown={(e) => { e.preventDefault(); applyRxNormEntry(m.id, r); }}
+                            className="w-full text-left px-3 py-2 hover:bg-muted text-sm border-b border-border last:border-b-0"
+                          >
+                            <div className="font-medium">{r.name}</div>
+                            <div className="text-xs text-muted-foreground">RxNorm · pricing not in catalog — will be flagged</div>
                           </button>
                         ))}
                       </div>
@@ -486,6 +556,25 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
                 </div>
                 <Button size="sm" variant="ghost" onClick={() => setMeds(meds.filter(x => x.id !== m.id))}><Trash2 className="h-4 w-4"/></Button>
               </div>
+              {m.coverage_uncertain && (
+                <div className="flex items-start gap-2 text-xs bg-warning/10 border border-warning/30 rounded-md p-2">
+                  <AlertTriangle className="h-3.5 w-3.5 text-warning flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <div className="font-semibold text-warning">Not in our pricing catalog — coverage will be flagged</div>
+                    <div className="text-muted-foreground mt-0.5">
+                      This drug is FDA-recognized (RxNorm) but its Part D tier and cost vary by plan. We'll still include it in the determination using the monthly retail you enter.
+                    </div>
+                    {m.generic_alternative && (
+                      <div className="mt-1 text-foreground">
+                        Generic equivalent available: <span className="font-semibold">{m.generic_alternative}</span> — usually much cheaper.
+                      </div>
+                    )}
+                    {!m.generic_alternative && m.no_generic_available && (
+                      <div className="mt-1 text-foreground">No generic equivalent available — this is a brand-only drug.</div>
+                    )}
+                  </div>
+                </div>
+              )}
             </Card>
           ))}
 
