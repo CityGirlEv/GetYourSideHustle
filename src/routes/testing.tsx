@@ -9,6 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   CheckCircle2, XCircle, MinusCircle, AlertOctagon, Search, RotateCcw,
   FlaskConical, CalendarDays, ListChecks, GitBranch, Sparkles, ExternalLink,
+  Wrench, RefreshCw,
 } from "lucide-react";
 import {
   TEST_CASES, IMPLEMENTATION_PLAN, SPRINTS, TASKS,
@@ -241,11 +242,25 @@ function priorityVariant(p: Priority): string {
   }
 }
 
-function TestCaseCard({ t, status, onChange }: { t: TestCase; status: TestStatus; onChange: (s: TestStatus) => void }) {
+function TestCaseCard({
+  t, status, qaNote, devNote, onChange, onQaNoteChange, onDevNoteChange,
+}: {
+  t: TestCase;
+  status: TestStatus;
+  qaNote: string;
+  devNote: string;
+  onChange: (s: TestStatus) => void;
+  onQaNoteChange: (n: string) => void;
+  onDevNoteChange: (n: string) => void;
+}) {
   const ring =
     status === "pass"    ? "ring-2 ring-emerald-500/40" :
     status === "fail"    ? "ring-2 ring-destructive/50" :
-    status === "blocked" ? "ring-2 ring-amber-500/50"  : "";
+    status === "blocked" ? "ring-2 ring-amber-500/50"  :
+    status === "fixed_retest"  ? "ring-2 ring-sky-500/50" :
+    status === "failed_retest" ? "ring-2 ring-fuchsia-500/50" : "";
+  const showQaNote = status === "fail" || status === "failed_retest";
+  const showDevNote = status === "fixed_retest" || status === "failed_retest";
   return (
     <Card className={`p-4 ${ring}`}>
       <div className="flex flex-wrap items-start gap-2 mb-2">
@@ -275,6 +290,38 @@ function TestCaseCard({ t, status, onChange }: { t: TestCase; status: TestStatus
           {t.notes && <p className="text-muted-foreground mt-2 italic">Note: {t.notes}</p>}
         </div>
       </div>
+      {(showQaNote || showDevNote || qaNote || devNote) && (
+        <div className="mt-3 space-y-2">
+          {(showQaNote || qaNote) && (
+            <div>
+              <label className="block text-[11px] font-semibold text-destructive mb-1">
+                QA failure reason {showQaNote && <span className="opacity-70">(required when failing)</span>}
+              </label>
+              <textarea
+                value={qaNote}
+                onChange={(e) => onQaNoteChange(e.target.value)}
+                placeholder="Describe what went wrong, browser/device, reproduction steps, screenshot link…"
+                rows={2}
+                className="w-full text-xs rounded-md border border-destructive/40 bg-destructive/5 px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-destructive/30"
+              />
+            </div>
+          )}
+          {(showDevNote || devNote) && (
+            <div>
+              <label className="block text-[11px] font-semibold text-sky-700 mb-1">
+                Dev retest note
+              </label>
+              <textarea
+                value={devNote}
+                onChange={(e) => onDevNoteChange(e.target.value)}
+                placeholder="What was changed, what to retest, commit / PR reference…"
+                rows={2}
+                className="w-full text-xs rounded-md border border-sky-500/40 bg-sky-500/5 px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+              />
+            </div>
+          )}
+        </div>
+      )}
     </Card>
   );
 }
@@ -294,6 +341,8 @@ function StatusButtons({ status, onChange }: { status: TestStatus; onChange: (s:
     <div className="flex flex-wrap gap-1">
       {btn("pass",    "Pass",    CheckCircle2, "bg-emerald-500/15 border-emerald-500/50 text-emerald-700")}
       {btn("fail",    "Fail",    XCircle,      "bg-destructive/15 border-destructive/50 text-destructive")}
+      {btn("fixed_retest",  "Fixed/Retest",  Wrench,    "bg-sky-500/15 border-sky-500/50 text-sky-700")}
+      {btn("failed_retest", "Failed/Retest", RefreshCw, "bg-fuchsia-500/15 border-fuchsia-500/50 text-fuchsia-700")}
       {btn("blocked", "Blocked", AlertOctagon, "bg-amber-500/15 border-amber-500/50 text-amber-700")}
       {btn("not_run", "Reset",   MinusCircle,  "bg-muted border-border text-foreground")}
     </div>
