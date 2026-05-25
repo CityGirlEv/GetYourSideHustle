@@ -264,7 +264,7 @@ function AdminPortal() {
   const g = GUIDELINES[year];
 
   return (
-    <AppShell title="System administration" subtitle="Immutable audit trail · staff management · global Medicare config">
+    <AppShell title="Admin" subtitle="Immutable audit trail · staff management · global Medicare config">
       <Tabs defaultValue="scenarios" className="space-y-6">
         <TabsList className="glass">
           <TabsTrigger value="scenarios"><Inbox className="h-4 w-4 mr-1.5"/>Scenarios &amp; contacts</TabsTrigger>
