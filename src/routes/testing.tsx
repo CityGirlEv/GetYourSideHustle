@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   CheckCircle2, XCircle, MinusCircle, AlertOctagon, Search, RotateCcw,
   FlaskConical, CalendarDays, ListChecks, GitBranch, Sparkles, ExternalLink,
-  Wrench, RefreshCw, Paperclip, Upload, Trash2, FileText, Loader2,
+  Wrench, RefreshCw, Paperclip, Upload, Trash2, FileText, Loader2, Save,
 } from "lucide-react";
 import {
   TEST_CASES, IMPLEMENTATION_PLAN, SPRINTS, TASKS,
@@ -24,6 +24,9 @@ import {
 } from "@/lib/test-plan";
 import { AppShell } from "@/components/AppShell";
 import { useApp } from "@/lib/app-store";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
 import {
   listTestEvidence, uploadTestEvidence, deleteTestEvidence, getTestEvidenceUrl,
   type EvidenceFile,
@@ -116,47 +119,69 @@ function TestingPortal() {
 
 /* ============================== TEST PLAN TAB ============================== */
 export function TestPlanTab() {
-  const [statuses, setStatuses] = useState<Record<string, TestStatus>>(() => loadAllStatuses());
-  const [qaNotes, setQaNotes] = useState<Record<string, string>>(() => loadAllQaNotes());
-  const [devNotes, setDevNotes] = useState<Record<string, string>>(() => loadAllDevNotes());
-  const [severities, setSeverities] = useState<Record<string, FailSeverity | "">>(() => loadAllSeverities());
-  const [assigneeOverrides, setAssigneeOverrides] = useState<Record<string, string>>(() => loadAllAssigneeOverrides());
-  const [sprintOverrides, setSprintOverrides] = useState<Record<string, string>>(() => loadAllSprintOverrides());
+  // Persisted/saved state, hydrated from local storage
+  const [savedStatuses, setSavedStatuses] = useState<Record<string, TestStatus>>(() => loadAllStatuses());
+  const [savedQaNotes, setSavedQaNotes] = useState<Record<string, string>>(() => loadAllQaNotes());
+  const [savedDevNotes, setSavedDevNotes] = useState<Record<string, string>>(() => loadAllDevNotes());
+  const [savedSeverities, setSavedSeverities] = useState<Record<string, FailSeverity | "">>(() => loadAllSeverities());
+  const [savedAssignees, setSavedAssignees] = useState<Record<string, string>>(() => loadAllAssigneeOverrides());
+  const [savedSprints, setSavedSprints] = useState<Record<string, string>>(() => loadAllSprintOverrides());
+  // Draft (unsaved) overlays — only changed entries
+  const [dStatuses, setDStatuses] = useState<Record<string, TestStatus>>({});
+  const [dQaNotes, setDQaNotes] = useState<Record<string, string>>({});
+  const [dDevNotes, setDDevNotes] = useState<Record<string, string>>({});
+  const [dSeverities, setDSeverities] = useState<Record<string, FailSeverity | "">>({});
+  const [dAssignees, setDAssignees] = useState<Record<string, string>>({});
+  const [dSprints, setDSprints] = useState<Record<string, string>>({});
+  const [saveOpen, setSaveOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [query, setQuery] = useState("");
   const [areaFilter, setAreaFilter] = useState<string>("All");
   const [statusFilter, setStatusFilter] = useState<"all" | TestStatus>("all");
   const [ownerFilter, setOwnerFilter] = useState<string>("All");
 
+  // Effective (saved + draft) views used for rendering and filtering
+  const statuses = useMemo(() => ({ ...savedStatuses, ...dStatuses }), [savedStatuses, dStatuses]);
+  const qaNotes = useMemo(() => ({ ...savedQaNotes, ...dQaNotes }), [savedQaNotes, dQaNotes]);
+  const devNotes = useMemo(() => ({ ...savedDevNotes, ...dDevNotes }), [savedDevNotes, dDevNotes]);
+  const severities = useMemo(() => ({ ...savedSeverities, ...dSeverities }), [savedSeverities, dSeverities]);
+  const assigneeOverrides = useMemo(() => ({ ...savedAssignees, ...dAssignees }), [savedAssignees, dAssignees]);
+  const sprintOverrides = useMemo(() => ({ ...savedSprints, ...dSprints }), [savedSprints, dSprints]);
+
+  // Helper: write to draft, removing the entry if it equals the saved value
+  function updateDraft<T>(
+    setter: React.Dispatch<React.SetStateAction<Record<string, T>>>,
+    saved: Record<string, T>,
+    id: string,
+    value: T,
+    defaultSaved: T,
+  ) {
+    setter((p) => {
+      const next = { ...p };
+      const baseline = saved[id] ?? defaultSaved;
+      if (Object.is(value, baseline)) delete next[id];
+      else next[id] = value;
+      return next;
+    });
+  }
+
   const setStatus = (id: string, s: TestStatus) => {
-    saveStatus(id, s);
-    setStatuses((p) => ({ ...p, [id]: s }));
-    // Clear severity when leaving a failing state
+    updateDraft(setDStatuses, savedStatuses, id, s, "not_run" as TestStatus);
     if (s !== "fail" && s !== "failed_retest") {
-      saveSeverity(id, "");
-      setSeverities((p) => ({ ...p, [id]: "" }));
+      updateDraft(setDSeverities, savedSeverities, id, "" as FailSeverity | "", "" as FailSeverity | "");
     }
   };
-  const setQaNote = (id: string, note: string) => {
-    saveQaNote(id, note);
-    setQaNotes((p) => ({ ...p, [id]: note }));
-  };
-  const setDevNote = (id: string, note: string) => {
-    saveDevNote(id, note);
-    setDevNotes((p) => ({ ...p, [id]: note }));
-  };
-  const setSeverityFor = (id: string, s: FailSeverity | "") => {
-    saveSeverity(id, s);
-    setSeverities((p) => ({ ...p, [id]: s }));
-  };
-  const setAssigneeFor = (id: string, owner: string) => {
-    saveAssigneeOverride(id, owner);
-    setAssigneeOverrides((p) => ({ ...p, [id]: owner }));
-  };
-  const setSprintFor = (id: string, sprintId: string) => {
-    saveSprintOverride(id, sprintId);
-    setSprintOverrides((p) => ({ ...p, [id]: sprintId }));
-  };
+  const setQaNote = (id: string, note: string) =>
+    updateDraft(setDQaNotes, savedQaNotes, id, note, "");
+  const setDevNote = (id: string, note: string) =>
+    updateDraft(setDDevNotes, savedDevNotes, id, note, "");
+  const setSeverityFor = (id: string, s: FailSeverity | "") =>
+    updateDraft(setDSeverities, savedSeverities, id, s, "");
+  const setAssigneeFor = (id: string, owner: string) =>
+    updateDraft(setDAssignees, savedAssignees, id, owner, "");
+  const setSprintFor = (id: string, sprintId: string) =>
+    updateDraft(setDSprints, savedSprints, id, sprintId, "");
+
   const toggleSelect = (id: string) => {
     setSelected((p) => {
       const next = new Set(p);
@@ -165,15 +190,109 @@ export function TestPlanTab() {
     });
   };
   const resetAll = () => {
+    if (!confirm("Reset all test statuses to Not run? This saves immediately.")) return;
     TEST_CASES.forEach((t) => saveStatus(t.id, "not_run"));
-    setStatuses(loadAllStatuses());
+    setSavedStatuses(loadAllStatuses());
+    setDStatuses({});
+  };
+
+  // Build a list of pending changes for the save dialog
+  type Change = {
+    key: string; // unique id "<testId>:<field>"
+    testId: string;
+    field: "status" | "qaNote" | "devNote" | "severity" | "assignee" | "sprint";
+    label: string;
+    before: string;
+    after: string;
+  };
+  const pendingChanges = useMemo<Change[]>(() => {
+    const list: Change[] = [];
+    const fmt = (v: unknown) => (v === "" || v == null ? "—" : String(v));
+    for (const [id, v] of Object.entries(dStatuses))
+      list.push({ key: `${id}:status`, testId: id, field: "status", label: "Status",
+        before: fmt(savedStatuses[id] ?? "not_run"), after: fmt(v) });
+    for (const [id, v] of Object.entries(dQaNotes))
+      list.push({ key: `${id}:qaNote`, testId: id, field: "qaNote", label: "QA note",
+        before: fmt(savedQaNotes[id] ?? ""), after: fmt(v) });
+    for (const [id, v] of Object.entries(dDevNotes))
+      list.push({ key: `${id}:devNote`, testId: id, field: "devNote", label: "Dev note",
+        before: fmt(savedDevNotes[id] ?? ""), after: fmt(v) });
+    for (const [id, v] of Object.entries(dSeverities))
+      list.push({ key: `${id}:severity`, testId: id, field: "severity", label: "Severity",
+        before: fmt(savedSeverities[id] ?? ""), after: fmt(v) });
+    for (const [id, v] of Object.entries(dAssignees))
+      list.push({ key: `${id}:assignee`, testId: id, field: "assignee", label: "Owner",
+        before: fmt(savedAssignees[id] ?? ""), after: fmt(v) });
+    for (const [id, v] of Object.entries(dSprints))
+      list.push({ key: `${id}:sprint`, testId: id, field: "sprint", label: "Sprint",
+        before: fmt(savedSprints[id] ?? ""), after: fmt(v) });
+    return list.sort((a, b) => a.testId.localeCompare(b.testId));
+  }, [dStatuses, dQaNotes, dDevNotes, dSeverities, dAssignees, dSprints,
+      savedStatuses, savedQaNotes, savedDevNotes, savedSeverities, savedAssignees, savedSprints]);
+
+  const pendingCount = pendingChanges.length;
+
+  const discardAllDrafts = () => {
+    if (pendingCount === 0) return;
+    if (!confirm(`Discard all ${pendingCount} unsaved change(s)?`)) return;
+    setDStatuses({}); setDQaNotes({}); setDDevNotes({});
+    setDSeverities({}); setDAssignees({}); setDSprints({});
+  };
+
+  // Persist a subset of pending changes; remaining ones stay in draft.
+  const commitChanges = (selectedKeys: Set<string>) => {
+    const stillDraft = {
+      status: { ...dStatuses }, qaNote: { ...dQaNotes }, devNote: { ...dDevNotes },
+      severity: { ...dSeverities }, assignee: { ...dAssignees }, sprint: { ...dSprints },
+    };
+    const newSaved = {
+      status: { ...savedStatuses }, qaNote: { ...savedQaNotes }, devNote: { ...savedDevNotes },
+      severity: { ...savedSeverities }, assignee: { ...savedAssignees }, sprint: { ...savedSprints },
+    };
+    for (const c of pendingChanges) {
+      if (!selectedKeys.has(c.key)) continue;
+      const id = c.testId;
+      switch (c.field) {
+        case "status": {
+          const v = dStatuses[id]!; saveStatus(id, v); newSaved.status[id] = v; delete stillDraft.status[id]; break;
+        }
+        case "qaNote": {
+          const v = dQaNotes[id]!; saveQaNote(id, v); newSaved.qaNote[id] = v; delete stillDraft.qaNote[id]; break;
+        }
+        case "devNote": {
+          const v = dDevNotes[id]!; saveDevNote(id, v); newSaved.devNote[id] = v; delete stillDraft.devNote[id]; break;
+        }
+        case "severity": {
+          const v = dSeverities[id]!; saveSeverity(id, v); newSaved.severity[id] = v; delete stillDraft.severity[id]; break;
+        }
+        case "assignee": {
+          const v = dAssignees[id]!; saveAssigneeOverride(id, v); newSaved.assignee[id] = v; delete stillDraft.assignee[id]; break;
+        }
+        case "sprint": {
+          const v = dSprints[id]!; saveSprintOverride(id, v); newSaved.sprint[id] = v; delete stillDraft.sprint[id]; break;
+        }
+      }
+    }
+    setSavedStatuses(newSaved.status); setSavedQaNotes(newSaved.qaNote); setSavedDevNotes(newSaved.devNote);
+    setSavedSeverities(newSaved.severity); setSavedAssignees(newSaved.assignee); setSavedSprints(newSaved.sprint);
+    setDStatuses(stillDraft.status); setDQaNotes(stillDraft.qaNote); setDDevNotes(stillDraft.devNote);
+    setDSeverities(stillDraft.severity); setDAssignees(stillDraft.assignee); setDSprints(stillDraft.sprint);
+    setSaveOpen(false);
+    toast.success(`Saved ${selectedKeys.size} change${selectedKeys.size === 1 ? "" : "s"}.`);
   };
 
   const areas = useMemo(() => ["All", ...Array.from(new Set(TEST_CASES.map((t) => t.area)))], []);
+  // Effective assignee/sprint that respects unsaved drafts (the lib helpers read storage)
+  const effAssignee = (t: TestCase): string => {
+    const ov = assigneeOverrides[t.id];
+    if (ov) return ov;
+    return getTestAssignee(t, statuses[t.id]);
+  };
+  const effSprint = (t: TestCase): string => sprintOverrides[t.id] || getTestSprintId(t);
   const ownerCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const t of TEST_CASES) {
-      const a = getTestAssignee(t, statuses[t.id]);
+      const a = effAssignee(t);
       counts[a] = (counts[a] || 0) + 1;
     }
     return counts;
@@ -184,7 +303,7 @@ export function TestPlanTab() {
     return TEST_CASES.filter((t) => {
       if (areaFilter !== "All" && t.area !== areaFilter) return false;
       if (statusFilter !== "all" && statuses[t.id] !== statusFilter) return false;
-      if (ownerFilter !== "All" && getTestAssignee(t, statuses[t.id]) !== ownerFilter) return false;
+      if (ownerFilter !== "All" && effAssignee(t) !== ownerFilter) return false;
       if (!q) return true;
       return [t.id, t.title, t.area, ...t.steps, t.expected].some((f) => f.toLowerCase().includes(q));
     });
@@ -256,7 +375,27 @@ export function TestPlanTab() {
             <StatBadge n={counts.not_run}  label="Not run" color="bg-muted text-muted-foreground border-border" />
             <StatBadge n={counts.total}    label="Total"   color="bg-primary/10 text-primary border-primary/30" />
           </div>
-          <Button size="sm" variant="outline" onClick={resetAll}><RotateCcw className="h-3.5 w-3.5 mr-1.5"/>Reset all</Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="default"
+              onClick={() => setSaveOpen(true)}
+              disabled={pendingCount === 0}
+              className="relative"
+            >
+              <Save className="h-3.5 w-3.5 mr-1.5" />
+              Save changes
+              {pendingCount > 0 && (
+                <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-background text-foreground text-[10px] font-bold px-1.5 py-0.5">
+                  {pendingCount}
+                </span>
+              )}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={discardAllDrafts} disabled={pendingCount === 0}>
+              Discard
+            </Button>
+            <Button size="sm" variant="outline" onClick={resetAll}><RotateCcw className="h-3.5 w-3.5 mr-1.5"/>Reset all</Button>
+          </div>
         </div>
         <Progress value={passRate} className="h-2" />
       </Card>
@@ -313,6 +452,8 @@ export function TestPlanTab() {
             qaNote={qaNotes[t.id] ?? ""}
             devNote={devNotes[t.id] ?? ""}
             severity={severities[t.id] ?? ""}
+            assignee={effAssignee(t)}
+            sprintId={effSprint(t)}
             selected={selected.has(t.id)}
             onSelectChange={() => toggleSelect(t.id)}
             onChange={(s) => setStatus(t.id, s)}
@@ -324,6 +465,12 @@ export function TestPlanTab() {
           />
         ))}
       </div>
+      <SaveChangesDialog
+        open={saveOpen}
+        onOpenChange={setSaveOpen}
+        changes={pendingChanges}
+        onConfirm={commitChanges}
+      />
     </div>
   );
 }
@@ -468,7 +615,7 @@ function priorityVariant(p: Priority): string {
 }
 
 function TestCaseCard({
-  t, status, qaNote, devNote, severity, selected, onSelectChange,
+  t, status, qaNote, devNote, severity, assignee, sprintId, selected, onSelectChange,
   onChange, onQaNoteChange, onDevNoteChange, onSeverityChange, onAssigneeChange, onSprintChange,
 }: {
   t: TestCase;
@@ -476,6 +623,8 @@ function TestCaseCard({
   qaNote: string;
   devNote: string;
   severity: FailSeverity | "";
+  assignee: string;
+  sprintId: string;
   selected: boolean;
   onSelectChange: () => void;
   onChange: (s: TestStatus) => void;
@@ -485,16 +634,18 @@ function TestCaseCard({
   onAssigneeChange: (owner: string) => void;
   onSprintChange: (sprintId: string) => void;
 }) {
-  const ring =
-    status === "pass"    ? "ring-2 ring-emerald-500/40" :
-    status === "fail"    ? "ring-2 ring-destructive/50" :
-    status === "blocked" ? "ring-2 ring-amber-500/50"  :
-    status === "fixed_retest"  ? "ring-2 ring-sky-500/50" :
-    status === "failed_retest" ? "ring-2 ring-fuchsia-500/50" : "";
+  // Shade the whole row based on status (background + subtle border)
+  const shade =
+    status === "pass"          ? "bg-emerald-500/10 border-emerald-500/40" :
+    status === "fail"          ? "bg-destructive/10 border-destructive/40" :
+    status === "blocked"       ? "bg-amber-500/10 border-amber-500/40"     :
+    status === "fixed_retest"  ? "bg-sky-500/10 border-sky-500/40"         :
+    status === "failed_retest" ? "bg-fuchsia-500/10 border-fuchsia-500/40" :
+                                 "bg-background";
   const showQaNote = status === "fail" || status === "failed_retest";
   const showDevNote = status === "fixed_retest" || status === "failed_retest";
   return (
-    <Card className={`p-4 ${ring} ${selected ? "ring-2 ring-primary/60" : ""}`}>
+    <Card className={`p-4 ${shade} ${selected ? "ring-2 ring-primary/60" : ""}`}>
       <div className="flex flex-wrap items-start gap-2 mb-2">
         <input
           type="checkbox"
@@ -510,7 +661,7 @@ function TestCaseCard({
           <span className="font-semibold">Sprint:</span>
           <select
             className="bg-transparent text-[11px] font-semibold focus:outline-none cursor-pointer"
-            value={getTestSprintId(t)}
+            value={sprintId}
             onChange={(e) => onSprintChange(e.target.value)}
             title="Re-assign sprint"
           >
@@ -523,7 +674,7 @@ function TestCaseCard({
           <span className="font-semibold">Owner:</span>
           <select
             className="bg-transparent text-[11px] font-semibold text-primary focus:outline-none cursor-pointer"
-            value={getTestAssignee(t, status)}
+            value={assignee}
             onChange={(e) => onAssigneeChange(e.target.value)}
             title="Re-assign this test"
           >
@@ -766,6 +917,123 @@ function StatusButtons({ status, onChange }: { status: TestStatus; onChange: (s:
       {btn("blocked", "Blocked", AlertOctagon, "bg-amber-500/15 border-amber-500/50 text-amber-700")}
       {btn("not_run", "Reset",   MinusCircle,  "bg-muted border-border text-foreground")}
     </div>
+  );
+}
+
+/* ============================ SAVE CHANGES DIALOG ========================== */
+type PendingChange = {
+  key: string;
+  testId: string;
+  field: "status" | "qaNote" | "devNote" | "severity" | "assignee" | "sprint";
+  label: string;
+  before: string;
+  after: string;
+};
+
+function SaveChangesDialog({
+  open, onOpenChange, changes, onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  changes: PendingChange[];
+  onConfirm: (selectedKeys: Set<string>) => void;
+}) {
+  // Default: every pending change is selected. Users can deselect any row.
+  const [picked, setPicked] = useState<Set<string>>(() => new Set(changes.map((c) => c.key)));
+
+  // Reset selection whenever the dialog opens with a new change set.
+  useEffect(() => {
+    if (open) setPicked(new Set(changes.map((c) => c.key)));
+  }, [open, changes]);
+
+  const toggle = (k: string) =>
+    setPicked((p) => {
+      const n = new Set(p);
+      if (n.has(k)) n.delete(k); else n.add(k);
+      return n;
+    });
+
+  // Group changes by test id for a tidy diff view
+  const grouped = useMemo(() => {
+    const g: Record<string, PendingChange[]> = {};
+    for (const c of changes) (g[c.testId] ||= []).push(c);
+    return Object.entries(g);
+  }, [changes]);
+
+  const allSelected = changes.length > 0 && picked.size === changes.length;
+  const toggleAll = () =>
+    setPicked(allSelected ? new Set() : new Set(changes.map((c) => c.key)));
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Review changes before saving</DialogTitle>
+          <DialogDescription>
+            {changes.length} pending change{changes.length === 1 ? "" : "s"} across {grouped.length} test
+            {grouped.length === 1 ? "" : "s"}. Uncheck any row you don't want to save — only the checked
+            changes will be written. Unchecked changes stay in your draft.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="flex items-center gap-2 text-xs border-b border-border pb-2">
+          <label className="inline-flex items-center gap-2 font-semibold cursor-pointer">
+            <input type="checkbox" checked={allSelected} onChange={toggleAll} className="h-4 w-4" />
+            {allSelected ? "Deselect all" : "Select all"}
+          </label>
+          <span className="text-muted-foreground">
+            {picked.size} of {changes.length} will be saved
+          </span>
+        </div>
+
+        <div className="flex-1 overflow-y-auto -mx-6 px-6 space-y-3">
+          {grouped.map(([testId, list]) => (
+            <div key={testId} className="rounded-md border border-border">
+              <div className="px-3 py-1.5 bg-muted/50 text-xs font-mono font-bold border-b border-border">
+                {testId}
+              </div>
+              <ul className="divide-y divide-border">
+                {list.map((c) => {
+                  const checked = picked.has(c.key);
+                  return (
+                    <li key={c.key} className="px-3 py-2 flex items-start gap-3 text-xs">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggle(c.key)}
+                        className="h-4 w-4 mt-0.5"
+                      />
+                      <div className="w-20 shrink-0 font-semibold text-foreground">{c.label}</div>
+                      <div className="flex-1 grid grid-cols-2 gap-2">
+                        <div className="rounded border border-border bg-muted/30 px-2 py-1">
+                          <div className="text-[10px] uppercase text-muted-foreground mb-0.5">Before</div>
+                          <div className="whitespace-pre-wrap break-words text-muted-foreground">{c.before}</div>
+                        </div>
+                        <div className="rounded border border-primary/30 bg-primary/5 px-2 py-1">
+                          <div className="text-[10px] uppercase text-primary mb-0.5">After</div>
+                          <div className="whitespace-pre-wrap break-words text-foreground">{c.after}</div>
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+          {changes.length === 0 && (
+            <div className="text-center text-sm text-muted-foreground py-8">No pending changes.</div>
+          )}
+        </div>
+
+        <DialogFooter className="border-t border-border pt-3">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={() => onConfirm(picked)} disabled={picked.size === 0}>
+            <Save className="h-3.5 w-3.5 mr-1.5" />
+            Save {picked.size} change{picked.size === 1 ? "" : "s"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
