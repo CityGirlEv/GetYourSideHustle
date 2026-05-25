@@ -593,7 +593,7 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
       case "conditionsAsk": return void ask("Do you have any chronic health conditions? Yes or no?", "conditionsAsk");
       case "conditionsAdd": return void ask("Please tell me one condition. For example: diabetes, hypertension, or COPD.", "conditionsAdd");
       case "medsAsk": return void ask("Do you take any prescription medications? Yes or no?", "medsAsk");
-      case "medsName": return void ask("What's the name of the medication? You can say the drug name normally, or spell it letter by letter.", "medsName");
+      case "medsName": return void startMedSearch();
       case "medsStrength": return void ask(`What strength of ${pendingMedName}? For example, ten milligrams. Or say "skip" if you're not sure.`, "medsStrength");
       case "medsMore": return void ask("Any other medications? Yes or no?", "medsMore");
       case "confirm": {
@@ -603,6 +603,71 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
       default: return;
     }
   };
+
+  // ---- Interactive medication picker ----
+  const pickMed = (name: string) => {
+    cancelMedLoopRef.current = true;
+    stopListening();
+    setPendingMedName(name);
+    setMedQuery("");
+    nextStep("medsStrength");
+  };
+
+  const cancelMedSearch = () => {
+    cancelMedLoopRef.current = true;
+    stopListening();
+    setMedQuery("");
+    nextStep(meds.length ? "medsMore" : "medsAsk");
+  };
+
+  const startMedSearch = async () => {
+    setMedQuery("");
+    cancelMedLoopRef.current = false;
+    await ask(
+      "Say the medication name, or spell it letter by letter. I'll show matches as you go. Click Add when you see the right one, say keep going to refine, or type to narrow it down.",
+      "medsName",
+      { skipListen: true },
+    );
+    void medListenLoop();
+  };
+
+  const medListenLoop = async () => {
+    while (!cancelMedLoopRef.current && stepRef.current === "medsName") {
+      const heard = await listen(20000, { minListenMs: 900, silenceMs: 2200 });
+      if (cancelMedLoopRef.current || stepRef.current !== "medsName") return;
+      if (!heard) continue;
+      setTranscript((p) => [...p, { q: heard, speaker: "you" }]);
+      const t = heard.toLowerCase().trim();
+      if (/\b(go back|previous question|back up)\b/.test(t)) { cancelMedLoopRef.current = true; goBack(); return; }
+      if (/\b(cancel|never mind|stop searching|no more meds|i'?m done|that's all|nothing else)\b/.test(t)) {
+        cancelMedSearch();
+        return;
+      }
+      if (/\b(clear|start over|reset)\b/.test(t)) { setMedQuery(""); continue; }
+      if (/\b(keep going|continue|more|refine|next letter)\b/.test(t)) { continue; }
+      // "add <name>" / "pick <name>" / "select <name>"
+      const addMatch = t.match(/^(?:add|pick|choose|select)\s+(.+)$/);
+      if (addMatch) {
+        const m = bestMedicationMatch(addMatch[1]) ?? searchMedCatalog(addMatch[1], 1)[0];
+        if (m) { pickMed(m.name); return; }
+      }
+      // Just "add" / "add it" / "add that" -> pick top match
+      if (/^add( it| that| this)?\.?$/.test(t)) {
+        const q = medQuery.trim();
+        const top = q ? searchMedCatalog(q, 1)[0] : null;
+        if (top) { pickMed(top.name); return; }
+      }
+      // Otherwise treat as additional search text
+      const parsed = parseSpelledOrSpoken(heard).replace(/^(it'?s|the drug is|i take|i'?m on)\s+/i, "");
+      if (!parsed) continue;
+      setMedQuery((p) => (p ? `${p} ${parsed}` : parsed).slice(0, 80));
+    }
+  };
+
+  // Cancel the med-search loop whenever we leave the medsName step
+  useEffect(() => {
+    if (step !== "medsName") cancelMedLoopRef.current = true;
+  }, [step]);
 
   const submit = async () => {
     setStep("submitting"); setSubmitting(true);
