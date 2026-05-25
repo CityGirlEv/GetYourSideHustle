@@ -701,7 +701,29 @@ export function loadAllAssigneeOverrides(): Record<string, string> {
 }
 
 export function getTestSprintId(t: TestCase): string {
+  const override = loadSprintOverride(t.id);
+  if (override) return override;
   return t.sprintId || ACTIVE_SPRINT_ID;
+}
+
+// ----------------------------------------------------------------------------
+// Sprint override — let QA re-assign a test to a different sprint from the UI.
+// ----------------------------------------------------------------------------
+export const TEST_SPRINT_KEY = (id: string) => `test-sprint:${id}`;
+
+export function loadSprintOverride(id: string): string {
+  if (typeof window === "undefined") return "";
+  return localStorage.getItem(TEST_SPRINT_KEY(id)) || "";
+}
+export function saveSprintOverride(id: string, sprintId: string) {
+  if (typeof window === "undefined") return;
+  if (sprintId) localStorage.setItem(TEST_SPRINT_KEY(id), sprintId);
+  else localStorage.removeItem(TEST_SPRINT_KEY(id));
+}
+export function loadAllSprintOverrides(): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const t of TEST_CASES) out[t.id] = loadSprintOverride(t.id);
+  return out;
 }
 
 export function testAssignmentCounts(): Record<string, number> {
