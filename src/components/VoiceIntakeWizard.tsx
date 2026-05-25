@@ -193,6 +193,8 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
 
   const handleAnswer = (forStep: StepKey, text: string) => {
     setTranscript((p) => [...p, { q: text, speaker: "you" }]);
+    // Echo back what we heard so the user can confirm it was captured correctly
+    void speak(`I heard: ${text}`);
     switch (forStep) {
       case "birthYear": {
         const y = parseYear(text);
