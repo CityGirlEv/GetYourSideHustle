@@ -11,7 +11,7 @@ export function TrustBanner() {
   const track = [...items, ...items, ...items];
 
   return (
-    <div className="w-full overflow-hidden bg-primary/5 border-y border-primary/10 py-2 my-4 rounded-md">
+    <div className="w-full overflow-hidden bg-primary/5 border-y border-primary/10 py-1.5 mt-1 mb-2 rounded-md">
       <div className="relative w-full overflow-hidden">
         <div className="flex animate-marquee whitespace-nowrap">
           {track.map((item, i) => (
