@@ -49,6 +49,9 @@ interface AdminContactRow {
 }
 
 export const Route = createFileRoute("/admin")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    tab: typeof search.tab === "string" ? (search.tab as string) : undefined,
+  }),
   component: AdminPortal,
 });
 
@@ -176,6 +179,8 @@ interface AgentOption { id: string; full_name: string; email: string; }
 function AdminPortal() {
   const { user, auditLogs, addCredits, credits, year } = useApp();
   const router = useRouter();
+  const search = Route.useSearch();
+  const initialTab = search.tab || "scenarios";
   const [q, setQ] = useState("");
   const [scenarios, setScenarios] = useState<AdminScenarioRow[]>([]);
   const [contacts, setContacts] = useState<AdminContactRow[]>([]);
@@ -373,7 +378,7 @@ function AdminPortal() {
 
   return (
     <AppShell title="Admin" subtitle="Immutable audit trail · staff management · global Medicare config">
-      <Tabs defaultValue="scenarios" className="space-y-6">
+      <Tabs defaultValue={initialTab} className="space-y-6">
         <TabsList className="glass">
           <TabsTrigger value="scenarios"><Inbox className="h-4 w-4 mr-1.5"/>Scenarios &amp; contacts</TabsTrigger>
           <TabsTrigger value="audit"><ScrollText className="h-4 w-4 mr-1.5"/>Audit logs</TabsTrigger>
