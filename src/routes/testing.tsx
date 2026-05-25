@@ -15,6 +15,7 @@ import {
   loadAllStatuses, saveStatus,
   type TestStatus, type TestCase, type Priority,
   getTestAssignee, getTestSprintId, testAssignmentCounts, ACTIVE_SPRINT_ID,
+  getTestCreditReward, totalCreditBudget, creditBudgetByOwner, REPRO_FAIL_BONUS,
 } from "@/lib/test-plan";
 import { SecurityBanner } from "@/components/SecurityBanner";
 import { CMSFooter } from "@/components/CMSFooter";
@@ -113,11 +114,15 @@ export function TestPlanTab() {
             <div className="text-xs uppercase tracking-wide text-muted-foreground">Active sprint</div>
             <div className="font-bold text-base">Sprint 1 · Beta go-live ({ACTIVE_SPRINT_ID})</div>
             <div className="text-xs text-muted-foreground">5/25 → 5/31 · all {TEST_CASES.length} test cases aligned to this sprint</div>
+            <div className="text-xs text-muted-foreground mt-1">
+              Beta tester reward pool: <span className="font-semibold text-foreground">{totalCreditBudget()} credit tokens</span>
+              {" "}· P0=15 · P1=10 · P2=5 · P3=3 · +{REPRO_FAIL_BONUS} bonus per first repro-fail
+            </div>
           </div>
           <div className="flex flex-wrap gap-2 text-xs">
             {Object.entries(ownerCounts).map(([owner, n]) => (
               <span key={owner} className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 font-semibold bg-background">
-                {owner} <span className="font-normal opacity-70">· {n} ({Math.round((n / TEST_CASES.length) * 100)}%)</span>
+                {owner} <span className="font-normal opacity-70">· {n} tests · {creditBudgetByOwner()[owner] ?? 0} cr</span>
               </span>
             ))}
           </div>
@@ -206,6 +211,7 @@ function TestCaseCard({ t, status, onChange }: { t: TestCase; status: TestStatus
         <Badge variant="secondary" className="text-[11px]">{t.area}</Badge>
         <Badge variant="outline" className="text-[11px]">Sprint {getTestSprintId(t).replace("S-2026-0", "")}</Badge>
         <Badge variant="outline" className="text-[11px] border-primary/40 text-primary">Owner: {getTestAssignee(t)}</Badge>
+        <Badge variant="outline" className="text-[11px] border-emerald-500/40 text-emerald-700 bg-emerald-500/5">+{getTestCreditReward(t)} cr</Badge>
         <h3 className="flex-1 font-semibold text-sm md:text-base">{t.title}</h3>
         <StatusButtons status={status} onChange={onChange} />
       </div>
