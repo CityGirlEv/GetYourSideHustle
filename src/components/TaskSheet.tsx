@@ -349,7 +349,14 @@ export function TaskSheetContent() {
               </SelectContent>
             </Select>
           </div>
-          <Button size="sm" onClick={applyBulk} disabled={!bulkStatus && !bulkSprint && !bulkAssignee.trim() && !bulkPriority && !bulkCategory && !bulkNotes.trim()}>
+          <div className="flex flex-wrap items-center gap-2 w-full">
+            <Input value={bulkAssignBy} onChange={(e) => setBulkAssignBy(e.target.value)} placeholder="Set assigned by…" className="h-9 w-[150px]" />
+            <Input value={bulkDateAssigned} onChange={(e) => setBulkDateAssigned(e.target.value)} placeholder="Assigned MM/DD/YY" className="h-9 w-[150px]" />
+            <Input value={bulkDueDate} onChange={(e) => setBulkDueDate(e.target.value)} placeholder="Due MM/DD/YY" className="h-9 w-[150px]" />
+            <Input value={bulkDateCompleted} onChange={(e) => setBulkDateCompleted(e.target.value)} placeholder="Completed MM/DD/YY" className="h-9 w-[170px]" />
+            <Input type="number" value={bulkCost} onChange={(e) => setBulkCost(e.target.value)} placeholder="Set cost ($)" className="h-9 w-[130px]" />
+          </div>
+          <Button size="sm" onClick={applyBulk} disabled={!bulkStatus && !bulkSprint && !bulkAssignee.trim() && !bulkPriority && !bulkCategory && !bulkNotes.trim() && !bulkAssignBy.trim() && !bulkDateAssigned.trim() && !bulkDueDate.trim() && !bulkDateCompleted.trim() && bulkCost.trim() === ""}>
             Apply to selected
           </Button>
           <Button size="sm" variant="outline" onClick={() => setSelected(new Set())}>Clear</Button>
