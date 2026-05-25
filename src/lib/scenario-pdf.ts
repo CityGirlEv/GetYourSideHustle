@@ -234,13 +234,23 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
         fmtMo(baseG * mult),
         fmtMo(baseN * mult),
         c["A.M. Best Rating"],
-        "Visit carrier portal",
+        c["Carrier Portal"] ?? "Visit carrier portal",
       ];
     }),
     headStyles: { fillColor: [16, 122, 87], textColor: 255, fontSize: 9 },
     styles: { fontSize: 8.5, cellPadding: 5 },
     columnStyles: { 1: { halign: "right" }, 2: { halign: "right" } },
     margin: { left: margin, right: margin },
+    didDrawCell: (data) => {
+      if (data.section !== "body" || data.column.index !== 4) return;
+      const url = String(data.cell.raw ?? "");
+      if (!/^https?:\/\//i.test(url)) return;
+      const { x, y, width, height } = data.cell;
+      doc.setTextColor(16, 122, 87);
+      doc.setFontSize(8.5);
+      doc.textWithLink("Visit Portal ↗", x + 5, y + height / 2 + 2, { url });
+      data.cell.text = [""]; // suppress default raw URL render
+    },
   });
   y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 18;
 
@@ -259,13 +269,23 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
         fmtMo(basePartD * mult * 0.55),
         fmtMo(basePartD * mult),
         ["3.5 Stars", "4.0 Stars", "4.5 Stars"][i % 3],
-        "Visit Rx portal",
+        c["Carrier Portal"] ?? "Visit Rx portal",
       ];
     }),
     headStyles: { fillColor: [16, 122, 87], textColor: 255, fontSize: 9 },
     styles: { fontSize: 8.5, cellPadding: 5 },
     columnStyles: { 1: { halign: "right" }, 2: { halign: "right" } },
     margin: { left: margin, right: margin },
+    didDrawCell: (data) => {
+      if (data.section !== "body" || data.column.index !== 4) return;
+      const url = String(data.cell.raw ?? "");
+      if (!/^https?:\/\//i.test(url)) return;
+      const { x, y, height } = data.cell;
+      doc.setTextColor(16, 122, 87);
+      doc.setFontSize(8.5);
+      doc.textWithLink("Visit Rx Portal ↗", x + 5, y + height / 2 + 2, { url });
+      data.cell.text = [""];
+    },
   });
 
   // ---------- Pathway B — Medicare Advantage ----------
@@ -289,7 +309,7 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
 
   autoTable(doc, {
     startY: y,
-    head: [["Carrier", "HMO Premium", "PPO Premium", "Star Rating", "Network Characteristics"]],
+    head: [["Carrier", "HMO Premium", "PPO Premium", "Star Rating", "Network Characteristics", "Portal"]],
     body: CMS_CATALOG.advantageCarriers.slice(0, 8).map((c, i) => {
       const hmo = [0, 0, 0, 0, 14, 0, 0, 18][i] ?? 0;
       const ppo = [19, 24, 15, 0, 32, 22, 12, 28][i] ?? 0;
@@ -299,12 +319,23 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
         ppo === 0 ? "$0/mo" : `$${ppo}/mo`,
         ["4.0", "4.5", "4.0", "3.5", "4.0", "4.0", "3.5", "4.0"][i] + " Stars",
         c["Key Characteristics"],
+        c["Carrier Portal"] ?? "Visit Advantage Portal",
       ];
     }),
     headStyles: { fillColor: [16, 122, 87], textColor: 255, fontSize: 9 },
     styles: { fontSize: 8.5, cellPadding: 5 },
-    columnStyles: { 1: { halign: "right" }, 2: { halign: "right" }, 4: { cellWidth: 200 } },
+    columnStyles: { 1: { halign: "right" }, 2: { halign: "right" }, 4: { cellWidth: 170 }, 5: { cellWidth: 70 } },
     margin: { left: margin, right: margin },
+    didDrawCell: (data) => {
+      if (data.section !== "body" || data.column.index !== 5) return;
+      const url = String(data.cell.raw ?? "");
+      if (!/^https?:\/\//i.test(url)) return;
+      const { x, y, height } = data.cell;
+      doc.setTextColor(16, 122, 87);
+      doc.setFontSize(8.5);
+      doc.textWithLink("Visit Portal ↗", x + 5, y + height / 2 + 2, { url });
+      data.cell.text = [""];
+    },
   });
   y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 18;
 
