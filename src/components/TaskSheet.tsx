@@ -374,8 +374,8 @@ export function TaskSheetContent() {
 
       {/* Sheet */}
       <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <Table>
+        <div className="overflow-x-auto max-w-full">
+          <Table className="min-w-max">
             <TableHeader className="bg-muted/40 sticky top-0">
               <TableRow>
                 <TableHead className="w-[36px]">
