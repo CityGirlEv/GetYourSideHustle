@@ -499,7 +499,6 @@ export function TaskSheetContent() {
                 <TableHead className="w-[70px]">ID</TableHead>
                 <TableHead className="min-w-[260px]">Description</TableHead>
                 <TableHead>Sprint</TableHead>
-                <TableHead>Category</TableHead>
                 <TableHead>Priority</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Assigned to</TableHead>
@@ -515,7 +514,7 @@ export function TaskSheetContent() {
             <TableBody>
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={15} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={14} className="text-center text-muted-foreground py-8">
                     No tasks match your filters.
                   </TableCell>
                 </TableRow>
@@ -550,16 +549,6 @@ export function TaskSheetContent() {
                         <SelectContent>
                           {SPRINTS.map((s) => (
                             <SelectItem key={s.id} value={s.id}>Sprint {s.number} · {s.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell>
-                      <Select value={r.category} onValueChange={(v) => inlineUpdate(r.id, "category", v as TaskRowCategory)}>
-                        <SelectTrigger className="h-7 w-[120px] text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {TASK_CATEGORY_VALUES.map((c) => (
-                            <SelectItem key={c} value={c}>{TASK_CATEGORY_LABELS[c]}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
