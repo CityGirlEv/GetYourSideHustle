@@ -575,3 +575,35 @@ export function loadAllStatuses(): Record<string, TestStatus> {
   for (const t of TEST_CASES) out[t.id] = loadStatus(t.id);
   return out;
 }
+
+// ----------------------------------------------------------------------------
+// TEST OWNERSHIP — 70/30 split, Catria lead. All tests are aligned to the
+// active sprint (Sprint 1 · beta go-live) unless a TestCase overrides it.
+// ----------------------------------------------------------------------------
+export const TEST_OWNERS = ["Catria", "Me"] as const;
+export type TestOwner = (typeof TEST_OWNERS)[number];
+
+/**
+ * Deterministic 70/30 split across the TEST_CASES list. The first 7 of every
+ * 10 (by source order) go to Catria, the remaining 3 to "Me". A TestCase can
+ * override by setting `assignee` explicitly.
+ */
+export function getTestAssignee(t: TestCase): TestOwner | string {
+  if (t.assignee) return t.assignee;
+  const idx = TEST_CASES.findIndex((x) => x.id === t.id);
+  if (idx < 0) return "Catria";
+  return idx % 10 < 7 ? "Catria" : "Me";
+}
+
+export function getTestSprintId(t: TestCase): string {
+  return t.sprintId || ACTIVE_SPRINT_ID;
+}
+
+export function testAssignmentCounts(): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const t of TEST_CASES) {
+    const a = getTestAssignee(t);
+    counts[a] = (counts[a] || 0) + 1;
+  }
+  return counts;
+}
