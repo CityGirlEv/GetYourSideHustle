@@ -38,6 +38,9 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
         <div className="flex items-center gap-3 flex-none shrink-0 ml-auto z-10">
           <FontSizeToggle />
           {user?.role === "advisor" && <CreditPill />}
+          {(user?.role === "qa" || user?.role === "admin") && (
+            <Link to="/qa" className="hidden md:inline-flex text-xs px-2 py-1 rounded border border-border hover:bg-secondary/60">QA</Link>
+          )}
           {user && (
             <div className="hidden md:flex items-center gap-2 text-sm">
               <div className="text-right">
