@@ -11,13 +11,13 @@ export function TrustBanner() {
   const track = [...items, ...items, ...items];
 
   return (
-    <div className="w-full overflow-hidden bg-muted/50 border-y border-border/60 py-2 my-4">
+    <div className="w-full overflow-hidden bg-primary/5 border-y border-primary/10 py-2 my-4 rounded-md">
       <div className="relative w-full overflow-hidden">
         <div className="flex animate-marquee whitespace-nowrap">
           {track.map((item, i) => (
             <span
               key={i}
-              className="flex items-center gap-1.5 text-xs text-muted-foreground mx-6 shrink-1"
+              className="flex items-center gap-1.5 text-xs text-foreground/80 mx-6 shrink-0"
             >
               <item.icon className="h-3.5 w-3.5 text-emerald shrink-0" />
               {item.text}
