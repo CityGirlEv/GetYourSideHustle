@@ -129,8 +129,15 @@ export function TestPlanTab() {
   };
 
   const areas = useMemo(() => ["All", ...Array.from(new Set(TEST_CASES.map((t) => t.area)))], []);
-  const owners = useMemo(() => ["All", ...Object.keys(testAssignmentCounts())], []);
-  const ownerCounts = useMemo(() => testAssignmentCounts(), []);
+  const ownerCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const t of TEST_CASES) {
+      const a = getTestAssignee(t, statuses[t.id]);
+      counts[a] = (counts[a] || 0) + 1;
+    }
+    return counts;
+  }, [statuses]);
+  const owners = useMemo(() => ["All", ...Object.keys(ownerCounts)], [ownerCounts]);
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim();
     return TEST_CASES.filter((t) => {
