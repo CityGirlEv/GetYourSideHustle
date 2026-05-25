@@ -314,6 +314,73 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
 
   const stopListening = () => { try { recRef.current?.abort(); } catch { /* noop */ } setListening(false); };
 
+  // Stop any in-flight key-pick session
+  const stopKeyPick = () => {
+    if (pickingRef.current) pickingRef.current.active = false;
+    pickingRef.current = null;
+    setPickOptions([]);
+    setPickIndex(-1);
+    try { window.speechSynthesis?.cancel(); } catch { /* noop */ }
+  };
+
+  // Speak each option in turn. Resolves the user's choice when they press any
+  // key (or click an option). Also acts as a list-aware fallback.
+  const startKeyPick = async (
+    intro: string,
+    options: string[],
+    onPick: (idx: number) => void,
+    onExhausted: () => void,
+  ) => {
+    stopListening();
+    stopKeyPick();
+    pickingRef.current = { active: true, options, index: -1, onPick, onExhausted };
+    setPickOptions(options);
+    setPickIndex(-1);
+    setTranscript((p) => [...p, { q: `${intro} Press any key when I say the correct one.`, speaker: "assistant" }]);
+    await speak(`${intro} Press any key when I say the correct one.`);
+    for (let i = 0; i < options.length; i += 1) {
+      const cur = pickingRef.current;
+      if (!cur || !cur.active) return;
+      cur.index = i;
+      setPickIndex(i);
+      await speak(`Option ${i + 1}: ${options[i]}.`);
+      // Brief pause so a key press registers against this option
+      await new Promise((r) => setTimeout(r, 700));
+      if (!pickingRef.current || !pickingRef.current.active) return;
+    }
+    const cur = pickingRef.current;
+    if (cur && cur.active) {
+      cur.active = false;
+      pickingRef.current = null;
+      setPickOptions([]);
+      setPickIndex(-1);
+      onExhausted();
+    }
+  };
+
+  // Global key listener: any key (except modifier-only or typing in a field)
+  // selects the option currently being spoken.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const p = pickingRef.current;
+      if (!p || !p.active) return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || (target as HTMLElement | null)?.isContentEditable) return;
+      if (e.key === "Shift" || e.key === "Control" || e.key === "Alt" || e.key === "Meta") return;
+      e.preventDefault();
+      const idx = p.index >= 0 ? p.index : 0;
+      p.active = false;
+      pickingRef.current = null;
+      setPickOptions([]);
+      setPickIndex(-1);
+      try { window.speechSynthesis?.cancel(); } catch { /* noop */ }
+      p.onPick(idx);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   // Short audible cue so the user knows the mic is now open
   const playBeep = () => {
     try {
