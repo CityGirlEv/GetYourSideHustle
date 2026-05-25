@@ -499,7 +499,14 @@ function TaskSheetPage() {
               </div>
               <div>
                 <Label>Assigned to</Label>
-                <Input value={editing.assignedTo} onChange={(e) => setEditing({ ...editing, assignedTo: e.target.value })} />
+                <Select value={editing.assignedTo} onValueChange={(v) => setEditing({ ...editing, assignedTo: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {owners.filter((o) => o !== "All").map((o) => (
+                      <SelectItem key={o} value={o}>{o}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label>Assigned by</Label>
