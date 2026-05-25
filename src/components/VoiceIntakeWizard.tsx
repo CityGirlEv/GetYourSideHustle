@@ -202,6 +202,17 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
   const pendingRef = useRef<{ apply: () => void; next: StepKey; from: StepKey } | null>(null);
   const cancelMedLoopRef = useRef(false);
 
+  // ---- Sequential "press any key when I say the correct option" picker ----
+  const pickingRef = useRef<{
+    active: boolean;
+    options: string[];
+    index: number;
+    onPick: (idx: number) => void;
+    onExhausted: () => void;
+  } | null>(null);
+  const [pickOptions, setPickOptions] = useState<string[]>([]);
+  const [pickIndex, setPickIndex] = useState(-1);
+
   const medMatches = useMemo(() => {
     const q = medQuery.trim();
     if (q.length < 2) return [];
