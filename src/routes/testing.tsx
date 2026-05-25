@@ -920,6 +920,123 @@ function StatusButtons({ status, onChange }: { status: TestStatus; onChange: (s:
   );
 }
 
+/* ============================ SAVE CHANGES DIALOG ========================== */
+type PendingChange = {
+  key: string;
+  testId: string;
+  field: "status" | "qaNote" | "devNote" | "severity" | "assignee" | "sprint";
+  label: string;
+  before: string;
+  after: string;
+};
+
+function SaveChangesDialog({
+  open, onOpenChange, changes, onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  changes: PendingChange[];
+  onConfirm: (selectedKeys: Set<string>) => void;
+}) {
+  // Default: every pending change is selected. Users can deselect any row.
+  const [picked, setPicked] = useState<Set<string>>(() => new Set(changes.map((c) => c.key)));
+
+  // Reset selection whenever the dialog opens with a new change set.
+  useEffect(() => {
+    if (open) setPicked(new Set(changes.map((c) => c.key)));
+  }, [open, changes]);
+
+  const toggle = (k: string) =>
+    setPicked((p) => {
+      const n = new Set(p);
+      if (n.has(k)) n.delete(k); else n.add(k);
+      return n;
+    });
+
+  // Group changes by test id for a tidy diff view
+  const grouped = useMemo(() => {
+    const g: Record<string, PendingChange[]> = {};
+    for (const c of changes) (g[c.testId] ||= []).push(c);
+    return Object.entries(g);
+  }, [changes]);
+
+  const allSelected = changes.length > 0 && picked.size === changes.length;
+  const toggleAll = () =>
+    setPicked(allSelected ? new Set() : new Set(changes.map((c) => c.key)));
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Review changes before saving</DialogTitle>
+          <DialogDescription>
+            {changes.length} pending change{changes.length === 1 ? "" : "s"} across {grouped.length} test
+            {grouped.length === 1 ? "" : "s"}. Uncheck any row you don't want to save — only the checked
+            changes will be written. Unchecked changes stay in your draft.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="flex items-center gap-2 text-xs border-b border-border pb-2">
+          <label className="inline-flex items-center gap-2 font-semibold cursor-pointer">
+            <input type="checkbox" checked={allSelected} onChange={toggleAll} className="h-4 w-4" />
+            {allSelected ? "Deselect all" : "Select all"}
+          </label>
+          <span className="text-muted-foreground">
+            {picked.size} of {changes.length} will be saved
+          </span>
+        </div>
+
+        <div className="flex-1 overflow-y-auto -mx-6 px-6 space-y-3">
+          {grouped.map(([testId, list]) => (
+            <div key={testId} className="rounded-md border border-border">
+              <div className="px-3 py-1.5 bg-muted/50 text-xs font-mono font-bold border-b border-border">
+                {testId}
+              </div>
+              <ul className="divide-y divide-border">
+                {list.map((c) => {
+                  const checked = picked.has(c.key);
+                  return (
+                    <li key={c.key} className="px-3 py-2 flex items-start gap-3 text-xs">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggle(c.key)}
+                        className="h-4 w-4 mt-0.5"
+                      />
+                      <div className="w-20 shrink-0 font-semibold text-foreground">{c.label}</div>
+                      <div className="flex-1 grid grid-cols-2 gap-2">
+                        <div className="rounded border border-border bg-muted/30 px-2 py-1">
+                          <div className="text-[10px] uppercase text-muted-foreground mb-0.5">Before</div>
+                          <div className="whitespace-pre-wrap break-words text-muted-foreground">{c.before}</div>
+                        </div>
+                        <div className="rounded border border-primary/30 bg-primary/5 px-2 py-1">
+                          <div className="text-[10px] uppercase text-primary mb-0.5">After</div>
+                          <div className="whitespace-pre-wrap break-words text-foreground">{c.after}</div>
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+          {changes.length === 0 && (
+            <div className="text-center text-sm text-muted-foreground py-8">No pending changes.</div>
+          )}
+        </div>
+
+        <DialogFooter className="border-t border-border pt-3">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={() => onConfirm(picked)} disabled={picked.size === 0}>
+            <Save className="h-3.5 w-3.5 mr-1.5" />
+            Save {picked.size} change{picked.size === 1 ? "" : "s"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 /* ============================ IMPLEMENTATION TAB =========================== */
 export function ImplementationTab() {
   return (
