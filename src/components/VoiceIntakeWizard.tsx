@@ -287,7 +287,19 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
     setSpeaking(false);
     await new Promise((r) => setTimeout(r, 250));
     const heard = await listen();
-    if (heard) await handleAnswer(expect, heard);
+    if (heard) {
+      await handleAnswer(expect, heard);
+    } else {
+      // Mic returned nothing (timeout / no-speech). Re-prompt so we don't hang —
+      // especially important on the verify step where the user is just saying yes/no.
+      const prompt =
+        expect === "verify"
+          ? "I didn't hear you. Was that right? Please say yes or no."
+          : expect === "confirm"
+            ? "I didn't hear you. Should I create the scenario? Please say yes or no."
+            : "I didn't catch that. Could you say it again?";
+      setTimeout(() => void ask(prompt, expect), 200);
+    }
   };
 
   const reAsk = (q: string, step: StepKey) => { void ask(q, step); };
