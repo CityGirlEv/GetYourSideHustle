@@ -556,6 +556,25 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
                 </div>
                 <Button size="sm" variant="ghost" onClick={() => setMeds(meds.filter(x => x.id !== m.id))}><Trash2 className="h-4 w-4"/></Button>
               </div>
+              {m.coverage_uncertain && (
+                <div className="flex items-start gap-2 text-xs bg-warning/10 border border-warning/30 rounded-md p-2">
+                  <AlertTriangle className="h-3.5 w-3.5 text-warning flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <div className="font-semibold text-warning">Not in our pricing catalog — coverage will be flagged</div>
+                    <div className="text-muted-foreground mt-0.5">
+                      This drug is FDA-recognized (RxNorm) but its Part D tier and cost vary by plan. We'll still include it in the determination using the monthly retail you enter.
+                    </div>
+                    {m.generic_alternative && (
+                      <div className="mt-1 text-foreground">
+                        Generic equivalent available: <span className="font-semibold">{m.generic_alternative}</span> — usually much cheaper.
+                      </div>
+                    )}
+                    {!m.generic_alternative && m.no_generic_available && (
+                      <div className="mt-1 text-foreground">No generic equivalent available — this is a brand-only drug.</div>
+                    )}
+                  </div>
+                </div>
+              )}
             </Card>
           ))}
 
