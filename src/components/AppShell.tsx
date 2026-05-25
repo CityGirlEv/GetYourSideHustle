@@ -2,7 +2,7 @@ import { useApp } from "@/lib/app-store";
 import { Link, useRouter } from "@tanstack/react-router";
 import { SecurityBanner } from "./SecurityBanner";
 import { CMSFooter } from "./CMSFooter";
-import { LogOut, Menu, Users, LogIn, FlaskConical, X } from "lucide-react";
+import { LogOut, Menu, Users, LogIn, FlaskConical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CreditPill } from "./CreditPill";
 import { FontSizeToggle } from "./FontSizeToggle";
