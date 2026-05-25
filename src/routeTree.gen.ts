@@ -14,6 +14,7 @@ import { Route as TestingRouteImport } from './routes/testing'
 import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as QaRouteImport } from './routes/qa'
+import { Route as NdaRouteImport } from './routes/nda'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AgentRouteImport } from './routes/agent'
 import { Route as AdvisorRouteImport } from './routes/advisor'
@@ -48,6 +49,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
 const QaRoute = QaRouteImport.update({
   id: '/qa',
   path: '/qa',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NdaRoute = NdaRouteImport.update({
+  id: '/nda',
+  path: '/nda',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -107,6 +113,7 @@ export interface FileRoutesByFullPath {
   '/advisor': typeof AdvisorRouteWithChildren
   '/agent': typeof AgentRouteWithChildren
   '/auth': typeof AuthRoute
+  '/nda': typeof NdaRoute
   '/qa': typeof QaRoute
   '/reset-password': typeof ResetPasswordRoute
   '/tasks': typeof TasksRoute
@@ -124,6 +131,7 @@ export interface FileRoutesByTo {
   '/advisor': typeof AdvisorRouteWithChildren
   '/agent': typeof AgentRouteWithChildren
   '/auth': typeof AuthRoute
+  '/nda': typeof NdaRoute
   '/qa': typeof QaRoute
   '/reset-password': typeof ResetPasswordRoute
   '/tasks': typeof TasksRoute
@@ -142,6 +150,7 @@ export interface FileRoutesById {
   '/advisor': typeof AdvisorRouteWithChildren
   '/agent': typeof AgentRouteWithChildren
   '/auth': typeof AuthRoute
+  '/nda': typeof NdaRoute
   '/qa': typeof QaRoute
   '/reset-password': typeof ResetPasswordRoute
   '/tasks': typeof TasksRoute
@@ -161,6 +170,7 @@ export interface FileRouteTypes {
     | '/advisor'
     | '/agent'
     | '/auth'
+    | '/nda'
     | '/qa'
     | '/reset-password'
     | '/tasks'
@@ -178,6 +188,7 @@ export interface FileRouteTypes {
     | '/advisor'
     | '/agent'
     | '/auth'
+    | '/nda'
     | '/qa'
     | '/reset-password'
     | '/tasks'
@@ -195,6 +206,7 @@ export interface FileRouteTypes {
     | '/advisor'
     | '/agent'
     | '/auth'
+    | '/nda'
     | '/qa'
     | '/reset-password'
     | '/tasks'
@@ -213,6 +225,7 @@ export interface RootRouteChildren {
   AdvisorRoute: typeof AdvisorRouteWithChildren
   AgentRoute: typeof AgentRouteWithChildren
   AuthRoute: typeof AuthRoute
+  NdaRoute: typeof NdaRoute
   QaRoute: typeof QaRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   TasksRoute: typeof TasksRoute
@@ -257,6 +270,13 @@ declare module '@tanstack/react-router' {
       path: '/qa'
       fullPath: '/qa'
       preLoaderRoute: typeof QaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/nda': {
+      id: '/nda'
+      path: '/nda'
+      fullPath: '/nda'
+      preLoaderRoute: typeof NdaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -370,6 +390,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdvisorRoute: AdvisorRouteWithChildren,
   AgentRoute: AgentRouteWithChildren,
   AuthRoute: AuthRoute,
+  NdaRoute: NdaRoute,
   QaRoute: QaRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   TasksRoute: TasksRoute,

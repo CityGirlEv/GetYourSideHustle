@@ -1,4 +1,4 @@
-import { ShieldCheck, EyeOff, KeyRound, Home, LogIn, Settings, Briefcase, ListChecks, ChevronDown, GitBranch, CalendarDays, DollarSign, LogOut, FlaskConical, LayoutDashboard, ClipboardList } from "lucide-react";
+import { ShieldCheck, EyeOff, KeyRound, Home, LogIn, Settings, Briefcase, ListChecks, ChevronDown, GitBranch, CalendarDays, DollarSign, LogOut, FlaskConical, LayoutDashboard, ClipboardList, FileSignature } from "lucide-react";
 import { Link, useRouter } from "@tanstack/react-router";
 import { YearToggle } from "./YearToggle";
 import { useApp } from "@/lib/app-store";
@@ -46,6 +46,10 @@ export function SecurityBanner() {
                   </DropdownMenuItem>
                   <DropdownMenuItem onSelect={() => router.navigate({ to: "/qa" })}>
                     <LayoutDashboard className="h-3.5 w-3.5 mr-2" /> QA Dashboard
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={() => router.navigate({ to: "/nda" })}>
+                    <FileSignature className="h-3.5 w-3.5 mr-2" /> Sign / View NDA
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -124,6 +128,9 @@ export function SecurityBanner() {
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => router.navigate({ to: "/qa" })}>
                       <LayoutDashboard className="h-3.5 w-3.5 mr-2" /> QA Dashboard
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => router.navigate({ to: "/nda" })}>
+                      <FileSignature className="h-3.5 w-3.5 mr-2" /> NDA Signatures
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onSelect={handleSignOut}>

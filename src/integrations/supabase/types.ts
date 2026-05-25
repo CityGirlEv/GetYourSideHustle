@@ -119,6 +119,42 @@ export type Database = {
         }
         Relationships: []
       }
+      nda_signatures: {
+        Row: {
+          agreement_version: string
+          email: string
+          full_name: string
+          id: string
+          ip_address: string | null
+          pdf_path: string
+          signed_at: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          agreement_version?: string
+          email: string
+          full_name: string
+          id?: string
+          ip_address?: string | null
+          pdf_path: string
+          signed_at?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          agreement_version?: string
+          email?: string
+          full_name?: string
+          id?: string
+          ip_address?: string | null
+          pdf_path?: string
+          signed_at?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string

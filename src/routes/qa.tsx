@@ -7,8 +7,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useApp } from "@/lib/app-store";
 import { supabase } from "@/integrations/supabase/client";
 import { TEST_CASES, type TestStatus } from "@/lib/test-plan";
-import { ClipboardCheck, FlaskConical, ListChecks, Mail, FileText, LayoutDashboard } from "lucide-react";
+import { ClipboardCheck, FlaskConical, ListChecks, Mail, FileText, LayoutDashboard, FileSignature, Download } from "lucide-react";
 import { TestPlanTab } from "@/routes/testing";
+import { NdaStatusCard } from "@/components/NdaStatusCard";
 
 export const Route = createFileRoute("/qa")({
   component: QADashboard,
@@ -33,6 +34,16 @@ interface ContactRow {
   created_at: string;
 }
 
+interface NdaRow {
+  id: string;
+  user_id: string;
+  full_name: string;
+  email: string;
+  signed_at: string;
+  pdf_path: string;
+  agreement_version: string;
+}
+
 function readStatus(id: string): TestStatus {
   if (typeof window === "undefined") return "not_run";
   return (localStorage.getItem(`test-status:${id}`) as TestStatus) || "not_run";
@@ -43,6 +54,7 @@ function QADashboard() {
   const router = useRouter();
   const [scenarios, setScenarios] = useState<ScenarioRow[]>([]);
   const [contacts, setContacts] = useState<ContactRow[]>([]);
+  const [ndas, setNdas] = useState<NdaRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -50,7 +62,7 @@ function QADashboard() {
     if (user.role !== "qa" && user.role !== "admin") return;
     let cancelled = false;
     (async () => {
-      const [s, c] = await Promise.all([
+      const [s, c, n] = await Promise.all([
         supabase
           .from("scenarios")
           .select("id, scenario_code, birth_year, zip3, created_at, wants_contact, claimed_by, assigned_agent_id")
@@ -61,12 +73,18 @@ function QADashboard() {
           .select("id, email, phone, scenario_code, created_at")
           .order("created_at", { ascending: false })
           .limit(20),
+        supabase
+          .from("nda_signatures")
+          .select("id, user_id, full_name, email, signed_at, pdf_path, agreement_version")
+          .order("signed_at", { ascending: false }),
       ]);
       if (cancelled) return;
       if (s.error) console.error(s.error);
       if (c.error) console.error(c.error);
+      if (n.error) console.error(n.error);
       setScenarios((s.data ?? []) as ScenarioRow[]);
       setContacts((c.data ?? []) as ContactRow[]);
+      setNdas((n.data ?? []) as NdaRow[]);
       setLoading(false);
     })();
     return () => { cancelled = true; };
@@ -108,6 +126,7 @@ function QADashboard() {
 
   return (
     <AppShell title="QA dashboard" subtitle="Quality assurance: test coverage, scenarios, and contact requests">
+      <div className="mb-4"><NdaStatusCard /></div>
       <Tabs defaultValue="dashboard" className="space-y-4">
         <TabsList className="glass">
           <TabsTrigger value="dashboard"><LayoutDashboard className="h-4 w-4 mr-1.5" />QA Dashboard</TabsTrigger>
@@ -137,6 +156,35 @@ function QADashboard() {
           <div className="text-xs text-muted-foreground">Most recent 20</div>
         </Card>
       </div>
+
+      <Card className="glass p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <FileSignature className="h-4 w-4" />
+          <h3 className="font-display font-bold">Signed NDAs</h3>
+          <span className="text-xs text-muted-foreground">{ndas.length} on file</span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-secondary/60 text-left text-xs uppercase tracking-wider text-muted-foreground">
+              <tr>
+                <th className="px-3 py-2">Signed</th>
+                <th className="px-3 py-2">Name</th>
+                <th className="px-3 py-2">Email</th>
+                <th className="px-3 py-2">Version</th>
+                <th className="px-3 py-2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {ndas.map((n) => (
+                <NdaTableRow key={n.id} row={n} />
+              ))}
+              {!ndas.length && !loading && (
+                <tr><td colSpan={5} className="px-3 py-6 text-center text-muted-foreground">No NDAs signed yet.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
 
       <Card className="glass p-4">
         <div className="flex items-center justify-between mb-3">
@@ -233,5 +281,25 @@ function QADashboard() {
         </TabsContent>
       </Tabs>
     </AppShell>
+  );
+}
+
+function NdaTableRow({ row }: { row: NdaRow }) {
+  const [url, setUrl] = useState<string | null>(null);
+  async function getUrl() {
+    if (url) { window.open(url, "_blank"); return; }
+    const { data } = await supabase.storage
+      .from("nda-signatures")
+      .createSignedUrl(row.pdf_path, 60 * 10);
+    if (data?.signedUrl) { setUrl(data.signedUrl); window.open(data.signedUrl, "_blank"); }
+  }
+  return (
+    <tr className="border-t border-border">
+      <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap">{new Date(row.signed_at).toLocaleString()}</td>
+      <td className="px-3 py-2">{row.full_name}</td>
+      <td className="px-3 py-2 text-xs">{row.email}</td>
+      <td className="px-3 py-2 text-xs font-mono">{row.agreement_version}</td>
+      <td className="px-3 py-2"><Button size="sm" variant="outline" onClick={getUrl}><Download className="h-3 w-3 mr-1" />PDF</Button></td>
+    </tr>
   );
 }
