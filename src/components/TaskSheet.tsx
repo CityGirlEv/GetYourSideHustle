@@ -534,8 +534,10 @@ export function TaskSheetContent() {
               )}
               {filtered.map((r) => {
                 const sprint = SPRINTS.find((s) => s.id === r.sprintId);
+                const savedRow = savedRows.find((s) => s.id === r.id);
+                const isDirty = !savedRow || JSON.stringify(savedRow) !== JSON.stringify(r);
                 return (
-                  <TableRow key={r.id}>
+                  <TableRow key={r.id} className={`${ROW_STATUS_BG[r.status]} ${isDirty ? "outline outline-1 outline-amber-500/60" : ""}`}>
                     <TableCell>
                       <Checkbox
                         checked={selected.has(r.id)}
@@ -543,7 +545,10 @@ export function TaskSheetContent() {
                         aria-label={`Select ${r.id}`}
                       />
                     </TableCell>
-                    <TableCell className="font-mono text-xs">{r.id}</TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {r.id}
+                      {isDirty && <span className="ml-1 text-amber-600" title="Unsaved changes">●</span>}
+                    </TableCell>
                     <TableCell>
                       <div className="font-medium text-sm leading-snug">{r.description}</div>
                       {r.path && <div className="mt-1"><TaskTargetLink path={r.path} /></div>}
