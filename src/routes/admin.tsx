@@ -550,9 +550,9 @@ function AdminPortal() {
             <h3 className="font-display font-bold mb-3">Active {year} configuration</h3>
             <div className="grid md:grid-cols-2 gap-3 text-sm">
               {Object.entries(g).map(([k, v]) => (
-                <div key={k} className="flex justify-between border border-border rounded-lg px-3 py-2">
-                  <span className="text-muted-foreground">{k}</span>
-                  <span className="font-semibold tabular-nums">{typeof v === "number" ? `$${v.toLocaleString()}` : v}</span>
+                <div key={k} className="flex justify-between border border-border rounded-lg px-3 py-2 gap-2 min-w-0">
+                  <span className="text-muted-foreground truncate min-w-1">{k}</span>
+                  <span className="font-semibold tabular-nums shrink-0">{typeof v === "number" ? `$${v.toLocaleString()}` : v}</span>
                 </div>
               ))}
             </div>
