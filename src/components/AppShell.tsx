@@ -2,7 +2,7 @@ import { useApp } from "@/lib/app-store";
 import { Link, useRouter } from "@tanstack/react-router";
 import { SecurityBanner } from "./SecurityBanner";
 import { CMSFooter } from "./CMSFooter";
-import { LogOut, FlaskConical, ChevronDown, LayoutDashboard, ListChecks, Briefcase } from "lucide-react";
+import { LogOut, FlaskConical, ChevronDown, LayoutDashboard, ListChecks, Briefcase, Shield, Users, FileSignature, BookOpen, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CreditPill } from "./CreditPill";
 import { FontSizeToggle } from "./FontSizeToggle";
@@ -12,6 +12,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -44,16 +46,39 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
         <div className="flex items-center gap-3 flex-none shrink-0 ml-auto z-10">
           <FontSizeToggle />
           {user?.role === "advisor" && <CreditPill />}
-          {(user?.role === "admin" || user?.role === "qa") && (
+          {user?.role === "admin" && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button size="sm" variant="outline" className="gap-1">
-                  <FlaskConical className="h-4 w-4" />
-                  <span className="hidden sm:inline">QA</span>
+                <Button size="sm" variant="default" className="gap-1">
+                  <Shield className="h-4 w-4" />
+                  <span className="hidden sm:inline">Admin</span>
                   <ChevronDown className="h-3 w-3" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Administration</DropdownMenuLabel>
+                <DropdownMenuItem asChild>
+                  <Link to="/admin" className="flex items-center gap-2 cursor-pointer">
+                    <LayoutDashboard className="h-4 w-4" />Admin Dashboard
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/users" className="flex items-center gap-2 cursor-pointer">
+                    <Users className="h-4 w-4" />Users & Staff
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/tasks" className="flex items-center gap-2 cursor-pointer">
+                    <ListChecks className="h-4 w-4" />Task Sheet
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/sources" className="flex items-center gap-2 cursor-pointer">
+                    <BookOpen className="h-4 w-4" />Sources
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>QA</DropdownMenuLabel>
                 <DropdownMenuItem asChild>
                   <Link to="/qa" className="flex items-center gap-2 cursor-pointer">
                     <LayoutDashboard className="h-4 w-4" />QA Dashboard
@@ -64,13 +89,46 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
                     <FlaskConical className="h-4 w-4" />Testing Portal
                   </Link>
                 </DropdownMenuItem>
-                {user?.role === "admin" && (
-                  <DropdownMenuItem asChild>
-                    <Link to="/tasks" className="flex items-center gap-2 cursor-pointer">
-                      <ListChecks className="h-4 w-4" />Task Sheet
-                    </Link>
-                  </DropdownMenuItem>
-                )}
+                <DropdownMenuItem asChild>
+                  <Link to="/testing" hash="ip" className="flex items-center gap-2 cursor-pointer">
+                    <ClipboardList className="h-4 w-4" />Test Plan / IP
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>Compliance</DropdownMenuLabel>
+                <DropdownMenuItem asChild>
+                  <Link to="/nda" className="flex items-center gap-2 cursor-pointer">
+                    <FileSignature className="h-4 w-4" />NDA
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          {user?.role === "qa" && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="outline" className="gap-1">
+                  <FlaskConical className="h-4 w-4" />
+                  <span className="hidden sm:inline">QA</span>
+                  <ChevronDown className="h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuItem asChild>
+                  <Link to="/qa" className="flex items-center gap-2 cursor-pointer">
+                    <LayoutDashboard className="h-4 w-4" />QA Dashboard
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/testing" className="flex items-center gap-2 cursor-pointer">
+                    <FlaskConical className="h-4 w-4" />Testing Portal
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/nda" className="flex items-center gap-2 cursor-pointer">
+                    <FileSignature className="h-4 w-4" />NDA
+                  </Link>
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           )}
