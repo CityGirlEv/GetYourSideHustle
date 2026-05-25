@@ -51,9 +51,8 @@ function ResetPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <SecurityBanner />
-      <main className="flex-1 flex items-center justify-center px-4 py-12">
+    <AppShell title="" subtitle="">
+      <div className="flex-1 flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-md space-y-5">
           <div className="text-center space-y-2">
             <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl grad-indigo">
@@ -88,7 +87,7 @@ function ResetPasswordPage() {
             )}
           </Card>
         </div>
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }
