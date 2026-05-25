@@ -5,6 +5,13 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Site-wide base font size + user-adjustable scaling.
+   Tailwind's rem-based sizing inherits from html, so changing the
+   root font-size scales typography across the entire app. */
+html {
+  font-size: 18px;
+}
+
 /*
  * Design system definition.
  *

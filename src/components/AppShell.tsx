@@ -6,6 +6,7 @@ import { YearToggle } from "./YearToggle";
 import { LogOut, Settings, Briefcase, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CreditPill } from "./CreditPill";
+import { FontSizeToggle } from "./FontSizeToggle";
 import type { ReactNode } from "react";
 import muntieLogo from "@/assets/muntie-logo.png";
 
@@ -51,6 +52,7 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
         </div>
         <div className="flex items-center gap-3 flex-none shrink-0">
           <YearToggle />
+          <FontSizeToggle />
           {user?.role === "advisor" && <CreditPill />}
           {user && (
             <div className="hidden md:flex items-center gap-2 text-sm">
