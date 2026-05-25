@@ -10,7 +10,9 @@ export interface Guidelines {
 }
 
 export const GUIDELINES: Record<Year, Guidelines> = {
+  // 2026 values from CMS fact sheet: https://www.cms.gov/newsroom/fact-sheets/2026-medicare-parts-b-premiums-deductibles
   2026: { year: 2026, partBPremiumMonthly: 202.9, partBDeductible: 283, partDOOPCap: 2100, moopLow: 6500, moopHigh: 9250 },
+  // 2027 values are preliminary estimates pending CMS announcement (typically Oct/Nov prior year)
   2027: { year: 2027, partBPremiumMonthly: 212.5, partBDeductible: 295, partDOOPCap: 2400, moopLow: 6900, moopHigh: 9500 },
 };
 
