@@ -171,12 +171,36 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
       };
       rec.onend = () => finish("");
       recRef.current = rec;
-      setListening(true); rec.start();
+      setListening(true);
+      playBeep();
+      toast.info("🎤 Your turn — speak now", { duration: 2500, id: "voice-listen" });
+      rec.start();
       setTimeout(() => { try { rec.stop(); } catch { /* noop */ } }, timeoutMs);
     } catch { finish(""); }
   });
 
   const stopListening = () => { try { recRef.current?.abort(); } catch { /* noop */ } setListening(false); };
+
+  // Short audible cue so the user knows the mic is now open
+  const playBeep = () => {
+    try {
+      const w = window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext };
+      const Ctx = w.AudioContext ?? w.webkitAudioContext;
+      if (!Ctx) return;
+      const ctx = new Ctx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.frequency.value = 880;
+      osc.type = "sine";
+      gain.gain.value = 0.0001;
+      gain.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.18);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.2);
+      setTimeout(() => { try { ctx.close(); } catch { /* noop */ } }, 400);
+    } catch { /* noop */ }
+  };
 
   // ------------------- Conversation runner -------------------
   // Speaks the question, then listens once and routes the response.
@@ -184,6 +208,8 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
     setTranscript((p) => [...p, { q: question, speaker: "assistant" }]);
     await speak(question);
     if (opts.skipListen) return;
+    // Small gap so TTS audio fully releases before we open the mic
+    await new Promise((r) => setTimeout(r, 350));
     const heard = await listen();
     if (heard) await handleAnswer(expect, heard);
   };
@@ -452,6 +478,14 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
   // ------------------- Start -------------------
   const begin = async () => {
     setTranscript([]);
+    // Pre-warm mic permission so the first Listening window actually captures audio
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach((t) => t.stop());
+    } catch {
+      toast.error("Microphone access is required for voice intake. Please allow it and try again.");
+      return;
+    }
     await speak("Hi — I'll ask you a few questions to build your Medicare scenario. You can repeat any question, retry your answer, or type instead. Let's start.");
     nextStep("birthYear");
   };
@@ -484,7 +518,15 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
       {step !== "intro" && step !== "done" && step !== "submitting" && (
         <div className="flex items-center gap-1.5 rounded-md bg-primary/5 border border-primary/10 px-2.5 py-1.5 text-[11px] text-primary">
           <Info className="h-3 w-3 shrink-0" />
-          <span>Wait until the <strong>Listening</strong> indicator is active before you speak.</span>
+          <span>Wait for the beep and the <strong>"Speak now"</strong> banner before answering.</span>
+        </div>
+      )}
+
+      {/* Big "Speak now" banner while the mic is open */}
+      {listening && (
+        <div className="flex items-center justify-center gap-2 rounded-lg border-2 border-destructive bg-destructive/10 px-4 py-3 text-destructive font-bold animate-pulse">
+          <Mic className="h-5 w-5" />
+          <span>Speak now — I'm listening</span>
         </div>
       )}
 
