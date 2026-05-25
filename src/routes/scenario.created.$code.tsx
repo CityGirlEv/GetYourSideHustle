@@ -10,6 +10,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ExpertOptInDialog } from "@/components/ExpertOptInDialog";
 import { recommendPlans, usd, type PersonalizedRecommendation } from "@/lib/medicare-math";
 import { useApp } from "@/lib/app-store";
+import { DrugReport } from "@/components/DrugReport";
 
 export const Route = createFileRoute("/scenario/created/$code")({
   head: () => ({
@@ -186,6 +187,10 @@ function ScenarioCreated() {
               The Excel workbook with full carrier breakdowns is available to licensed agents only. Share your Scenario ID with your agent — they can log in and download it for you.
             </div>
           )}
+
+          {scenario?.medications?.length ? (
+            <DrugReport medications={scenario.medications} />
+          ) : null}
 
           <div className="text-left bg-primary/5 border border-primary/20 rounded-lg p-4 space-y-2 text-sm">
             <div className="font-semibold flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary" /> What happens next</div>
