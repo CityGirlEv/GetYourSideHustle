@@ -610,6 +610,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
               <div className="flex items-center justify-between text-xs gap-2">
                 <div className="text-muted-foreground flex items-center gap-1 flex-1"><Pill className="h-3 w-3"/>
                   Auto-resolved condition: <Input className="h-7 flex-1" value={m.resolved_diagnosis ?? ""} placeholder="auto" onChange={(e) => updateMed(m.id, { resolved_diagnosis: e.target.value })}/>
+                  <VoiceButton label="Speak condition" onTranscript={(t) => updateMed(m.id, { resolved_diagnosis: t })} />
                 </div>
                 <Button size="sm" variant="ghost" onClick={() => setMeds(meds.filter(x => x.id !== m.id))}><Trash2 className="h-4 w-4"/></Button>
               </div>
