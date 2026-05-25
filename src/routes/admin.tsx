@@ -5,7 +5,7 @@ import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollText, Users, Settings2, Search, Plus, Minus, Inbox, Phone, Mail, UserPlus, Loader2, Eye, EyeOff, Pencil, Trash2, Ban, CheckCircle2, Layers, GitBranch, CalendarDays } from "lucide-react";
+import { ScrollText, Users, Settings2, Search, Plus, Minus, Inbox, Phone, Mail, UserPlus, Loader2, Eye, EyeOff, Pencil, Trash2, Ban, CheckCircle2, Layers, GitBranch, CalendarDays, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -17,6 +17,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { createAdvisor, listStaff, setUserRole, listAgents, assignAgent, updateUser, setUserDisabled, deleteUser } from "@/lib/admin.functions";
 import { CatalogExplorer } from "@/components/CatalogExplorer";
 import { ImplementationTab, SprintsTab } from "@/routes/testing";
+import { BUDGET_LINES, computeBudgetTotals, totalsByCategory, fmtUSD, type BudgetCategory } from "@/lib/budget";
 
 interface AdminScenarioRow {
   id: string;
@@ -50,6 +51,111 @@ interface AdminContactRow {
 export const Route = createFileRoute("/admin")({
   component: AdminPortal,
 });
+
+function BudgetTab() {
+  const totals = computeBudgetTotals();
+  const byCat = totalsByCategory();
+  const categories: BudgetCategory[] = [
+    "Build · One-time",
+    "Infra · Recurring",
+    "Data & APIs · Recurring",
+    "Compliance & Legal",
+    "Ops & Support",
+  ];
+  return (
+    <Card className="glass p-4 space-y-4">
+      <div>
+        <h3 className="font-display font-bold">Product Budget</h3>
+        <p className="text-xs text-muted-foreground">Every shipped or planned function tied to a dollar amount. Source: <span className="font-mono">src/lib/budget.ts</span>.</p>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="rounded-md border bg-secondary/40 p-3">
+          <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Build (one-time)</div>
+          <div className="font-display font-bold text-xl">{fmtUSD(totals.oneTime)}</div>
+        </div>
+        <div className="rounded-md border bg-secondary/40 p-3">
+          <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Recurring / month</div>
+          <div className="font-display font-bold text-xl">{fmtUSD(totals.monthly)}</div>
+        </div>
+        <div className="rounded-md border bg-secondary/40 p-3">
+          <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Annual run-rate</div>
+          <div className="font-display font-bold text-xl">{fmtUSD(totals.annual)}</div>
+        </div>
+        <div className="rounded-md border bg-primary/10 p-3">
+          <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Year 1 total</div>
+          <div className="font-display font-bold text-xl">{fmtUSD(totals.year1)}</div>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-secondary/60 text-left text-xs uppercase tracking-wider text-muted-foreground">
+            <tr>
+              <th className="px-3 py-2">Category</th>
+              <th className="px-3 py-2 text-right">One-time</th>
+              <th className="px-3 py-2 text-right">Monthly</th>
+              <th className="px-3 py-2 text-right">Annual</th>
+              <th className="px-3 py-2 text-right">Year 1</th>
+            </tr>
+          </thead>
+          <tbody>
+            {categories.map((c) => {
+              const t = byCat.get(c) ?? { oneTime: 0, monthly: 0, annual: 0, year1: 0 };
+              return (
+                <tr key={c} className="border-t">
+                  <td className="px-3 py-2 font-medium">{c}</td>
+                  <td className="px-3 py-2 text-right">{fmtUSD(t.oneTime)}</td>
+                  <td className="px-3 py-2 text-right">{fmtUSD(t.monthly)}</td>
+                  <td className="px-3 py-2 text-right">{fmtUSD(t.annual)}</td>
+                  <td className="px-3 py-2 text-right font-semibold">{fmtUSD(t.year1)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {categories.map((c) => {
+        const rows = BUDGET_LINES.filter((l) => l.category === c);
+        if (!rows.length) return null;
+        return (
+          <div key={c} className="space-y-2">
+            <h4 className="font-semibold text-sm mt-2">{c}</h4>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-secondary/40 text-left text-xs uppercase tracking-wider text-muted-foreground">
+                  <tr>
+                    <th className="px-3 py-2 w-20">ID</th>
+                    <th className="px-3 py-2">Function</th>
+                    <th className="px-3 py-2">Basis</th>
+                    <th className="px-3 py-2 text-right">Amount</th>
+                    <th className="px-3 py-2">Unit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((l) => (
+                    <tr key={l.id} className="border-t align-top">
+                      <td className="px-3 py-2 font-mono text-xs">{l.id}</td>
+                      <td className="px-3 py-2">{l.function}</td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground">{l.basis}{l.links?.length ? ` · ${l.links.join(", ")}` : ""}</td>
+                      <td className="px-3 py-2 text-right font-semibold">{fmtUSD(l.amount)}</td>
+                      <td className="px-3 py-2 text-xs">{l.unit}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })}
+
+      <p className="text-[11px] text-muted-foreground">
+        Engineering blended at $150/hr unless noted. Infra at vendor list price.
+        Annual = (Monthly × 12) + Annual-only lines. Year 1 = One-time + Annual.
+      </p>
+    </Card>
+  );
+}
 
 interface StaffMember {
   id: string;
@@ -278,6 +384,7 @@ function AdminPortal() {
             <>
               <TabsTrigger value="impl"><GitBranch className="h-4 w-4 mr-1.5"/>Implementation Plan</TabsTrigger>
               <TabsTrigger value="rollout"><CalendarDays className="h-4 w-4 mr-1.5"/>Rollout Schedule</TabsTrigger>
+              <TabsTrigger value="budget"><DollarSign className="h-4 w-4 mr-1.5"/>Budget</TabsTrigger>
             </>
           )}
         </TabsList>
@@ -592,6 +699,10 @@ function AdminPortal() {
                 <p className="text-xs text-muted-foreground mb-4">Sprint-by-sprint rollout with goals and item-level status.</p>
                 <SprintsTab />
               </Card>
+            </TabsContent>
+
+            <TabsContent value="budget" className="space-y-3">
+              <BudgetTab />
             </TabsContent>
           </>
         )}
