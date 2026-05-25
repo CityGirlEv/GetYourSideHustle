@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ShieldCheck, Lock, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
-import { SecurityBanner } from "@/components/SecurityBanner";
+import { AppShell } from "@/components/AppShell";
 
 export const Route = createFileRoute("/auth")({ component: AuthPage });
 
@@ -66,9 +66,8 @@ function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <SecurityBanner />
-      <main className="flex-1 flex items-center justify-center px-4 py-12">
+    <AppShell title="" subtitle="">
+      <div className="flex-1 flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-md space-y-5">
           <div className="text-center space-y-2">
             <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl grad-indigo">
@@ -117,7 +116,7 @@ function AuthPage() {
             </Tabs>
           </Card>
         </div>
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }

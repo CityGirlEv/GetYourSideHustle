@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { AppShell } from "@/components/AppShell";
 import { ExternalLink, BookOpen, Pill, Building2, FileText } from "lucide-react";
 
 interface SourceEntry {
@@ -129,16 +130,7 @@ const SECTIONS: SourceSection[] = [
 
 export default function SourcesPage() {
   return (
-    <div className="max-w-4xl mx-auto px-4 md:px-8 py-8 space-y-8">
-      <div>
-        <h1 className="font-display text-3xl font-bold text-primary">Data Sources & Citations</h1>
-        <p className="text-muted-foreground mt-2 max-w-2xl">
-          Every figure, rate, and catalog entry in the Medicare Optimizer is traceable to an official
-          CMS publication, a manufacturer source, or an established third-party price index. This page
-          lists the primary references behind the numbers you see in scenario results.
-        </p>
-      </div>
-
+    <AppShell title="Data Sources & Citations" subtitle="Every figure, rate, and catalog entry in the Medicare Optimizer is traceable to an official CMS publication, a manufacturer source, or an established third-party price index.">
       <div className="grid gap-6 md:grid-cols-2">
         {SECTIONS.map((section) => (
           <Card key={section.title}>
@@ -212,6 +204,6 @@ export default function SourcesPage() {
           Back to home
         </Link>
       </div>
-    </div>
+    </AppShell>
   );
 }

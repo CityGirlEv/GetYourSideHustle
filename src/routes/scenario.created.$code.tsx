@@ -1,8 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { SecurityBanner } from "@/components/SecurityBanner";
-import { CMSFooter } from "@/components/CMSFooter";
+import { AppShell } from "@/components/AppShell";
 import { CheckCircle2, Copy, ShieldCheck, FileDown, Phone, Sparkles, Building2, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { downloadScenarioPdf, downloadConsumerScenarioPdf, type ScenarioPdfInput } from "@/lib/scenario-pdf";
@@ -93,9 +92,8 @@ function ScenarioCreated() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <SecurityBanner />
-      <main className="flex-1 flex items-center justify-center px-4 py-12">
+    <AppShell title="" subtitle="">
+      <div className="flex-1 flex items-center justify-center px-4 py-12">
         <Card className="glass p-8 max-w-xl w-full space-y-6 text-center">
           <h1 className="font-display text-3xl font-bold tracking-tight">View My Scenario</h1>
           <div className="inline-flex h-14 w-14 items-center justify-center rounded-xl bg-emerald mx-auto">
@@ -201,8 +199,7 @@ function ScenarioCreated() {
 
           <Link to="/" className="block"><Button variant="ghost" className="w-full">Done</Button></Link>
         </Card>
-      </main>
-      <CMSFooter />
+      </div>
       <ExpertOptInDialog
         open={optInOpen}
         onOpenChange={setOptInOpen}
@@ -221,6 +218,6 @@ function ScenarioCreated() {
           recommendation: recommendation?.primary?.planName,
         } : undefined}
       />
-    </div>
+    </AppShell>
   );
 }
