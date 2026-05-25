@@ -326,6 +326,102 @@ export const TEST_CASES: TestCase[] = [
   },
 
   // ===== Testing portal (meta) =====
+  // ===== CMS Compliance & Disclaimers =====
+  {
+    id: "CMS-001", area: "CMS Compliance", priority: "P0",
+    title: "Not-affiliated-with-CMS disclaimer in footer",
+    steps: ["Open any public page", "Scroll to footer"],
+    expected: "Footer contains 'Not affiliated with or endorsed by Medicare, CMS, or any government agency.' visible on every route.",
+    notes: "CMS Marketing Guidelines require third-party marketing org disclaimers (42 CFR §422.2267).",
+  },
+  {
+    id: "CMS-002", area: "CMS Compliance", priority: "P0",
+    title: "Multi-Plan Disclaimer (MPD) on plan-comparison output",
+    steps: ["Generate scenario recommendations", "Inspect the plan list header"],
+    expected: "Displays 'We do not offer every plan available in your area. Any information we provide is limited to those plans we do offer in your area. Please contact Medicare.gov or 1-800-MEDICARE to get information on all of your options.'",
+    notes: "Required MPD language per CMS Communications & Marketing Guidelines.",
+  },
+  {
+    id: "CMS-003", area: "CMS Compliance", priority: "P0",
+    title: "Pricing-estimate disclaimer on cost projections",
+    steps: ["View any annual cost / Part D total in scenario output or PDF/XLSX export"],
+    expected: "An adjacent note states figures are estimates based on CMS 2026 parameters and retail/WAC pricing, not a quote, and actual costs depend on the plan and pharmacy chosen. Source links to CMS resolve.",
+  },
+  {
+    id: "CMS-004", area: "CMS Compliance", priority: "P0",
+    title: "Drug-price sourcing visible on every med line",
+    steps: ["Open /sources", "Hover the monthly retail cost tooltip on a med card"],
+    expected: "/sources lists CMS Drug Spending Dashboard, GoodRx, manufacturer WAC links; tooltip cites the source used for that drug.",
+  },
+  {
+    id: "CMS-005", area: "CMS Compliance", priority: "P1",
+    title: "No prohibited superlatives ('best', '#1', 'free')",
+    steps: ["Grep rendered marketing copy on /, /scenario/new, plan results"],
+    expected: "No unqualified use of 'best Medicare plan', 'free', '#1 plan', or 'all plans'. Hero copy 'You Deserve The Best Medicare Plan' is framed as user aspiration, not a plan claim — verify wording stays compliant.",
+    notes: "CMS prohibits absolute/superlative marketing claims about plans.",
+  },
+  {
+    id: "CMS-006", area: "CMS Compliance", priority: "P0",
+    title: "TPMO (Third-Party Marketing Org) disclaimer on lead capture",
+    steps: ["Open expert opt-in dialog", "Open any 'Talk to a licensed agent' CTA"],
+    expected: "TPMO disclaimer text and SOA (Scope of Appointment) reference shown before submission; consent checkbox required.",
+  },
+  {
+    id: "CMS-007", area: "CMS Compliance", priority: "P0",
+    title: "Scope of Appointment captured before agent contact",
+    steps: ["As admin, assign agent", "As agent, attempt to record a sales discussion"],
+    expected: "System blocks the discussion until an SOA with product types (MA/PDP/Medigap) and timestamp is on file; audit row inserted.",
+  },
+  {
+    id: "CMS-008", area: "CMS Compliance", priority: "P1",
+    title: "Call recording / consent notice (if voice wizard transmits audio)",
+    steps: ["Start voice wizard"],
+    expected: "Intro TTS or visible notice states audio is processed locally in the browser via Web Speech API and not stored, OR a recording-consent prompt is shown before listening starts.",
+  },
+  {
+    id: "CMS-009", area: "CMS Compliance", priority: "P0",
+    title: "Non-discrimination + language assistance notice",
+    steps: ["Open footer / sources page"],
+    expected: "Section 1557 non-discrimination notice and taglines for top 15 languages OR a link to a page containing them is reachable from every page.",
+  },
+  {
+    id: "CMS-010", area: "CMS Compliance", priority: "P1",
+    title: "Star Ratings shown with year and source",
+    steps: ["Open admin Plan catalog → expand any MA / PDP carrier"],
+    expected: "Star rating cites the contract year (e.g. '2026 Star Rating') and links to medicare.gov/plan-compare or CMS Star Ratings page.",
+  },
+  {
+    id: "CMS-011", area: "CMS Compliance", priority: "P1",
+    title: "Part D 2026 redesign assumptions disclosed",
+    steps: ["Open /sources", "Open any Part D cost output"],
+    expected: "Notes that $2,000 OOP cap, elimination of coverage gap, and $35 insulin cap reflect IRA / CMS 2026 Part D redesign with link to CMS fact sheet.",
+  },
+  {
+    id: "CMS-012", area: "CMS Compliance", priority: "P1",
+    title: "PHI / de-identification — no name, DOB, full ZIP, full address stored",
+    steps: ["Inspect scenario insert payload + DB row"],
+    expected: "Only birth year, ZIP3, county, gender, tobacco, income band, conditions, meds stored; no PII fields present. Verified against schema.",
+  },
+  {
+    id: "CMS-013", area: "CMS Compliance", priority: "P2",
+    title: "Material accessibility — font scale + contrast",
+    steps: ["Use font-size + toggle", "Run Lighthouse accessibility audit on key pages"],
+    expected: "Contrast ≥ 4.5:1 on body text in both font sizes; no a11y errors on /, /scenario/new, /auth.",
+  },
+  {
+    id: "CMS-014", area: "CMS Compliance", priority: "P1",
+    title: "Disclaimers appear in exported PDF and XLSX",
+    steps: ["Download scenario PDF", "Download scenario XLSX"],
+    expected: "Both contain the not-affiliated-with-CMS line, MPD language, and pricing-estimate disclaimer on the first page / first sheet.",
+  },
+  {
+    id: "CMS-015", area: "CMS Compliance", priority: "P2",
+    title: "Last-updated stamp on CMS parameter set",
+    steps: ["Open /sources or footer"],
+    expected: "Shows 'CMS 2026 parameters last reviewed <date>' so users know currency of $202.90 Part B premium, $2,000 Part D OOP, etc.",
+  },
+
+  // ===== Testing portal (meta) =====
   {
     id: "TEST-001", area: "Testing portal", priority: "P2",
     title: "Test run status persists across reloads",
