@@ -268,8 +268,9 @@ function AdminPortal() {
   };
 
   useEffect(() => {
+    if (authLoading) return;
     if (!user) router.navigate({ to: "/auth" });
-  }, [user, router]);
+  }, [user, authLoading, router]);
 
   useEffect(() => {
     if (!user || user.role !== "admin") return;
