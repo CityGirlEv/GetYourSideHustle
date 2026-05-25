@@ -12,16 +12,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export function SecurityBanner() {
-  const { user, signOut, authLoading } = useApp();
+  const { user, authLoading } = useApp();
   const router = useRouter();
-  const isAgentLike = user?.role === "agent" || user?.role === "qa";
-  const isAdmin = user?.role === "admin";
   const isQA = user?.role === "qa";
-
-  const handleSignOut = async () => {
-    await signOut();
-    router.navigate({ to: "/auth" });
-  };
 
   return (
     <div className="grad-indigo px-4 py-2 text-xs font-medium">
