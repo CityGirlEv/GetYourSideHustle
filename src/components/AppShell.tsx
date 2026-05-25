@@ -22,6 +22,75 @@ import {
   SheetClose,
 } from "@/components/ui/sheet";
 
+function TeamNav({ mobile = false }: { mobile?: boolean }) {
+  const { user } = useApp();
+  const baseClass = mobile
+    ? "flex flex-col gap-1"
+    : "hidden md:flex items-center gap-1";
+
+  const linkClass = mobile
+    ? "flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium text-foreground hover:bg-accent transition-colors"
+    : "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-foreground hover:bg-accent/60 transition-colors";
+
+  return (
+    <nav className={baseClass}>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button className={mobile ? linkClass : `${linkClass} data-[state=open]:bg-accent/60`}>
+            <Users className="h-4 w-4" />
+            <span>Team</span>
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-48">
+          <DropdownMenuItem asChild>
+            <Link to="/auth" className="cursor-pointer flex items-center gap-2">
+              <LogIn className="h-4 w-4" />
+              Team Login
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem asChild>
+            <Link to="/qa" className="cursor-pointer flex items-center gap-2">
+              <FlaskConical className="h-4 w-4" />
+              QA Testing Portal
+            </Link>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </nav>
+  );
+}
+
+function MobileNav() {
+  const [open, setOpen] = useState(false);
+  const { user } = useApp();
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <Button variant="ghost" size="sm" className="md:hidden px-2">
+          <Menu className="h-5 w-5" />
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="right" className="w-[260px] sm:w-[300px]">
+        <div className="flex flex-col gap-2 mt-4">
+          <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-3">Team</div>
+          <SheetClose asChild>
+            <Link to="/auth" className="flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium text-foreground hover:bg-accent transition-colors">
+              <LogIn className="h-4 w-4" />Team Login
+            </Link>
+          </SheetClose>
+          <SheetClose asChild>
+            <Link to="/qa" className="flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium text-foreground hover:bg-accent transition-colors">
+              <FlaskConical className="h-4 w-4" />QA Testing Portal
+            </Link>
+          </SheetClose>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 export function AppShell({ children, title, subtitle }: { children: ReactNode; title: string; subtitle?: string }) {
   const { user, signOut } = useApp();
   const router = useRouter();
