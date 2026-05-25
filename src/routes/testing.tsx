@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   CheckCircle2, XCircle, MinusCircle, AlertOctagon, Search, RotateCcw,
   FlaskConical, CalendarDays, ListChecks, GitBranch, Sparkles, ExternalLink,
-  Wrench, RefreshCw,
+  Wrench, RefreshCw, Paperclip, Upload, Trash2, FileText, Loader2,
 } from "lucide-react";
 import {
   TEST_CASES, IMPLEMENTATION_PLAN, SPRINTS, TASKS,
@@ -20,6 +20,12 @@ import {
   loadAllQaNotes, loadAllDevNotes, saveQaNote, saveDevNote,
 } from "@/lib/test-plan";
 import { AppShell } from "@/components/AppShell";
+import { useApp } from "@/lib/app-store";
+import {
+  listTestEvidence, uploadTestEvidence, deleteTestEvidence, getTestEvidenceUrl,
+  type EvidenceFile,
+} from "@/lib/test-evidence";
+import { toast } from "sonner";
 
 // Derive a link target for a test case: explicit `path` wins, otherwise scan
 // preconditions + steps for the first "/route" token (e.g. "Open /advisor").
@@ -322,7 +328,117 @@ function TestCaseCard({
           )}
         </div>
       )}
+      <TestEvidence testId={t.id} />
     </Card>
+  );
+}
+
+function TestEvidence({ testId }: { testId: string }) {
+  const { user } = useApp();
+  const [files, setFiles] = useState<EvidenceFile[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    setLoading(true);
+    listTestEvidence(user.id, testId)
+      .then((list) => { if (!cancelled) setFiles(list); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [user, testId]);
+
+  if (!user) return null;
+
+  const onPick = () => fileRef.current?.click();
+
+  const onUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error("File too large — 20 MB max.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const uploaded = await uploadTestEvidence(user.id, testId, file);
+      setFiles((p) => [uploaded, ...p]);
+      toast.success(`Uploaded ${uploaded.name}`);
+    } catch (err) {
+      toast.error(`Upload failed: ${(err as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onOpen = async (f: EvidenceFile) => {
+    const url = await getTestEvidenceUrl(f.path);
+    if (!url) { toast.error("Could not open file"); return; }
+    window.open(url, "_blank", "noopener");
+  };
+
+  const onDelete = async (f: EvidenceFile) => {
+    if (!confirm(`Delete ${f.name}?`)) return;
+    try {
+      await deleteTestEvidence(f.path);
+      setFiles((p) => p.filter((x) => x.path !== f.path));
+    } catch (err) {
+      toast.error(`Delete failed: ${(err as Error).message}`);
+    }
+  };
+
+  return (
+    <div className="mt-3 border-t border-border pt-3">
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-[11px] font-semibold text-foreground flex items-center gap-1">
+          <Paperclip className="h-3 w-3" />
+          Evidence
+          {files.length > 0 && <span className="text-muted-foreground font-normal">· {files.length}</span>}
+        </div>
+        <input ref={fileRef} type="file" className="hidden" onChange={onUpload} />
+        <Button size="sm" variant="outline" className="h-7 text-xs" disabled={busy} onClick={onPick}>
+          {busy ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Upload className="h-3 w-3 mr-1" />}
+          Upload
+        </Button>
+      </div>
+      {loading ? (
+        <div className="text-[11px] text-muted-foreground">Loading attachments…</div>
+      ) : files.length === 0 ? (
+        <div className="text-[11px] text-muted-foreground italic">
+          No attachments yet. Add screenshots, logs, or recordings to support this test run.
+        </div>
+      ) : (
+        <ul className="space-y-1">
+          {files.map((f) => (
+            <li key={f.path} className="flex items-center gap-2 text-[11px] rounded-md border border-border bg-muted/30 px-2 py-1">
+              <FileText className="h-3 w-3 text-muted-foreground shrink-0" />
+              <button
+                type="button"
+                onClick={() => onOpen(f)}
+                className="flex-1 text-left truncate text-primary hover:underline"
+                title={f.name}
+              >
+                {f.name.replace(/^\d+-/, "")}
+              </button>
+              <span className="text-muted-foreground tabular-nums">
+                {f.size > 0 ? `${(f.size / 1024).toFixed(0)} KB` : ""}
+              </span>
+              <button
+                type="button"
+                onClick={() => onDelete(f)}
+                className="text-muted-foreground hover:text-destructive"
+                title="Delete"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 
