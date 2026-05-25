@@ -28,8 +28,8 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
           </Link>
         </div>
         <div className="flex-1 flex flex-col items-center min-w-0 px-2 overflow-hidden">
-          <h1 className="text-sm sm:text-base md:text-2xl lg:text-3xl font-display font-bold text-primary uppercase truncate">The Medicare Optimizer</h1>
-          <p className="hidden xl:block font-display text-sm font-bold text-blue-600 tracking-wide truncate max-w-full">Getting the Best Bang For Your Medical Needs Because You Deserve It!</p>
+          <h1 className="text-base sm:text-xl md:text-2xl lg:text-3xl font-display font-bold text-primary uppercase truncate text-center">The Medicare Optimizer</h1>
+          <p className="font-display text-xs sm:text-sm font-bold text-blue-600 tracking-wide truncate max-w-full text-center">Getting the Best Bang For Your Medical Needs Because You Deserve It!</p>
         </div>
         <div className="flex items-center gap-3 flex-none shrink-0">
           <FontSizeToggle />
