@@ -30,7 +30,6 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
   return (
     <div className="min-h-screen flex flex-col">
       <SecurityBanner />
-      <SecurityBanner />
       <header className="glass border-b border-border/60 px-3 md:px-6 py-2 md:py-3 flex items-center sticky top-0 z-30 gap-2 md:gap-4 relative">
         <div className="flex-1" />
         <div className="flex items-center gap-3 flex-none shrink-0 ml-auto z-10">
