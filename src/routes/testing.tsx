@@ -318,9 +318,11 @@ function TestCaseCard({
           </select>
         </label>
         <Badge variant="outline" className="text-[11px] border-emerald-500/40 text-emerald-700 bg-emerald-500/5">+{getTestCreditReward(t)} cr</Badge>
-        <TestTargetLink test={t} />
         <h3 className="flex-1 font-semibold text-sm md:text-base">{t.title}</h3>
         <StatusButtons status={status} onChange={onChange} />
+      </div>
+      <div className="mb-2 -mt-1">
+        <TestTargetLink test={t} />
       </div>
       {t.preconditions && (
         <p className="text-xs text-muted-foreground mb-1.5"><span className="font-semibold">Preconditions:</span> {t.preconditions}</p>
