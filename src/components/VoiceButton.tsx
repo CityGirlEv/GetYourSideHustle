@@ -69,11 +69,13 @@ interface Props {
 }
 
 export function VoiceButton({ onTranscript, replace = true, allowSpell = true, className, label = "Voice input", size = "sm" }: Props) {
+  const [mounted, setMounted] = useState(false);
   const [listening, setListening] = useState(false);
   const [spell, setSpell] = useState(false);
   const recRef = useRef<SR | null>(null);
-  const supported = !!getRecognitionCtor();
+  const supported = mounted && !!getRecognitionCtor();
 
+  useEffect(() => { setMounted(true); }, []);
   useEffect(() => () => { try { recRef.current?.abort(); } catch { /* noop */ } }, []);
 
   const start = () => {
