@@ -116,12 +116,11 @@ function QADashboard() {
   }, [loading]);
 
   if (!user) return null;
-  if (user.role !== "qa" && user.role !== "admin") {
+  if (user.role !== "admin") {
     return (
       <AppShell title="QA dashboard">
         <Card className="glass p-6">
-          This area is for users with the QA role. Ask an administrator to grant you the
-          <span className="font-mono px-1">qa</span> role from the Users portal.
+          This area is restricted to administrators.
         </Card>
       </AppShell>
     );
