@@ -1,4 +1,4 @@
-import { ShieldCheck, EyeOff, KeyRound, Home, LogIn, Settings, Briefcase, ListChecks, ChevronDown, GitBranch, CalendarDays, DollarSign, LogOut } from "lucide-react";
+import { ShieldCheck, EyeOff, KeyRound, Home, LogIn, Settings, Briefcase, ListChecks, ChevronDown, GitBranch, CalendarDays, DollarSign, LogOut, FlaskConical, LayoutDashboard } from "lucide-react";
 import { Link, useRouter } from "@tanstack/react-router";
 import { YearToggle } from "./YearToggle";
 import { useApp } from "@/lib/app-store";
@@ -16,6 +16,7 @@ export function SecurityBanner() {
   const router = useRouter();
   const isAgentLike = user?.role === "agent" || user?.role === "qa";
   const isAdmin = user?.role === "admin";
+  const isQA = user?.role === "qa";
 
   const handleSignOut = async () => {
     await signOut();
@@ -33,6 +34,22 @@ export function SecurityBanner() {
             <Link to="/" className="flex items-center gap-1 hover:text-white transition-colors">
               <Home className="h-3.5 w-3.5" /> Home
             </Link>
+
+            {isQA && (
+              <DropdownMenu>
+                <DropdownMenuTrigger className="flex items-center gap-1 hover:text-white transition-colors outline-none">
+                  <FlaskConical className="h-3.5 w-3.5" /> QA <ChevronDown className="h-3 w-3" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="text-xs">
+                  <DropdownMenuItem onSelect={() => router.navigate({ to: "/testing" })}>
+                    <ListChecks className="h-3.5 w-3.5 mr-2" /> Test Plan
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => router.navigate({ to: "/qa" })}>
+                    <LayoutDashboard className="h-3.5 w-3.5 mr-2" /> QA Dashboard
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
 
             {/* Agent menu */}
             <DropdownMenu>
@@ -94,6 +111,16 @@ export function SecurityBanner() {
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => router.navigate({ to: "/admin", search: { tab: "budget" } })}>
                       <DollarSign className="h-3.5 w-3.5 mr-2" /> Budget
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                      QA
+                    </DropdownMenuLabel>
+                    <DropdownMenuItem onSelect={() => router.navigate({ to: "/testing" })}>
+                      <ListChecks className="h-3.5 w-3.5 mr-2" /> Test Plan
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => router.navigate({ to: "/qa" })}>
+                      <LayoutDashboard className="h-3.5 w-3.5 mr-2" /> QA Dashboard
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onSelect={handleSignOut}>
