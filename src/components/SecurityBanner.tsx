@@ -44,7 +44,7 @@ export function SecurityBanner() {
                   <Settings className="h-3.5 w-3.5 mr-2" /> Admin Portal
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={() => router.navigate({ to: "/qa" })}>
+                <DropdownMenuItem onSelect={() => router.navigate({ to: "/testing" })}>
                   <FlaskConical className="h-3.5 w-3.5 mr-2" /> QA Testing Portal
                 </DropdownMenuItem>
               </DropdownMenuContent>
