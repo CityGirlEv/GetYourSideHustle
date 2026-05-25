@@ -98,6 +98,7 @@ export function TestPlanTab() {
   const [qaNotes, setQaNotes] = useState<Record<string, string>>(() => loadAllQaNotes());
   const [devNotes, setDevNotes] = useState<Record<string, string>>(() => loadAllDevNotes());
   const [severities, setSeverities] = useState<Record<string, FailSeverity | "">>(() => loadAllSeverities());
+  const [assigneeOverrides, setAssigneeOverrides] = useState<Record<string, string>>(() => loadAllAssigneeOverrides());
   const [query, setQuery] = useState("");
   const [areaFilter, setAreaFilter] = useState<string>("All");
   const [statusFilter, setStatusFilter] = useState<"all" | TestStatus>("all");
@@ -124,6 +125,10 @@ export function TestPlanTab() {
     saveSeverity(id, s);
     setSeverities((p) => ({ ...p, [id]: s }));
   };
+  const setAssigneeFor = (id: string, owner: string) => {
+    saveAssigneeOverride(id, owner);
+    setAssigneeOverrides((p) => ({ ...p, [id]: owner }));
+  };
   const resetAll = () => {
     TEST_CASES.forEach((t) => saveStatus(t.id, "not_run"));
     setStatuses(loadAllStatuses());
@@ -137,7 +142,7 @@ export function TestPlanTab() {
       counts[a] = (counts[a] || 0) + 1;
     }
     return counts;
-  }, [statuses]);
+  }, [statuses, assigneeOverrides]);
   const owners = useMemo(() => ["All", ...Object.keys(ownerCounts)], [ownerCounts]);
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim();
@@ -148,7 +153,7 @@ export function TestPlanTab() {
       if (!q) return true;
       return [t.id, t.title, t.area, ...t.steps, t.expected].some((f) => f.toLowerCase().includes(q));
     });
-  }, [query, areaFilter, statusFilter, ownerFilter, statuses]);
+  }, [query, areaFilter, statusFilter, ownerFilter, statuses, assigneeOverrides]);
 
   const counts = useMemo(() => {
     const c: Record<TestStatus | "total", number> = {
@@ -249,6 +254,7 @@ export function TestPlanTab() {
             onQaNoteChange={(n) => setQaNote(t.id, n)}
             onDevNoteChange={(n) => setDevNote(t.id, n)}
             onSeverityChange={(s) => setSeverityFor(t.id, s)}
+            onAssigneeChange={(o) => setAssigneeFor(t.id, o)}
           />
         ))}
       </div>
