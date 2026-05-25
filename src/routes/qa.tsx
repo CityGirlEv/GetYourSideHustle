@@ -92,7 +92,10 @@ function QADashboard() {
   }, [user, router]);
 
   const testStats = useMemo(() => {
-    const counts = { pass: 0, fail: 0, blocked: 0, not_run: 0 };
+    const counts: Record<TestStatus, number> = {
+      pass: 0, fail: 0, blocked: 0, not_run: 0,
+      fixed_retest: 0, failed_retest: 0,
+    };
     for (const t of TEST_CASES) counts[readStatus(t.id)]++;
     return counts;
   }, [loading]);
