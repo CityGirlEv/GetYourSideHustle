@@ -50,7 +50,7 @@ function readStatus(id: string): TestStatus {
 }
 
 function QADashboard() {
-  const { user } = useApp();
+  const { user, authLoading } = useApp();
   const router = useRouter();
   const [scenarios, setScenarios] = useState<ScenarioRow[]>([]);
   const [contacts, setContacts] = useState<ContactRow[]>([]);
@@ -58,6 +58,7 @@ function QADashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (authLoading) return;
     if (!user) { router.navigate({ to: "/auth" }); return; }
     if (user.role !== "qa" && user.role !== "admin") return;
     let cancelled = false;

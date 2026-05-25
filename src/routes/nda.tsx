@@ -24,7 +24,7 @@ interface SignedRow {
 }
 
 function NdaPage() {
-  const { user } = useApp();
+  const { user, authLoading } = useApp();
   const router = useRouter();
   const [existing, setExisting] = useState<SignedRow | null>(null);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
@@ -34,6 +34,7 @@ function NdaPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    if (authLoading) return;
     if (!user) { router.navigate({ to: "/auth" }); return; }
     setFullName(user.full_name || "");
     let cancelled = false;

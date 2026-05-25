@@ -26,12 +26,13 @@ export const Route = createFileRoute("/agent")({
 });
 
 function AgentPortal() {
-  const { user } = useApp();
+  const { user, authLoading } = useApp();
   const router = useRouter();
   const [rows, setRows] = useState<AssignedScenario[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (authLoading) return;
     if (!user) { router.navigate({ to: "/auth" }); return; }
     if (user.role !== "agent" && user.role !== "admin") return;
     let cancelled = false;
