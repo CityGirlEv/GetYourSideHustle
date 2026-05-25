@@ -712,6 +712,10 @@ function AdminPortal() {
             <TabsContent value="budget" className="space-y-3">
               <BudgetTab />
             </TabsContent>
+
+            <TabsContent value="tasks">
+              <TaskSheetContent />
+            </TabsContent>
           </>
         )}
       </Tabs>
