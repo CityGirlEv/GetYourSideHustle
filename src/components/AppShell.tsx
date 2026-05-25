@@ -29,8 +29,8 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
 
   return (
     <div className="min-h-screen flex flex-col">
-      <SecurityBanner />
       <TrustBanner />
+      <SecurityBanner />
       <header className="pointer-events-none absolute right-3 top-12 z-30 md:right-6 md:top-14">
         <div className="pointer-events-auto flex items-center gap-3 flex-none shrink-0 ml-auto z-10">
           <FontSizeToggle />
