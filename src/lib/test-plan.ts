@@ -608,3 +608,44 @@ export function testAssignmentCounts(): Record<string, number> {
   }
   return counts;
 }
+
+// ----------------------------------------------------------------------------
+// BETA TESTER CREDIT REWARDS
+// ----------------------------------------------------------------------------
+// Beta testers (Sprint 1 cohort hand-picked by Catria) earn credit tokens for
+// every test case they execute and submit with evidence. Token amount scales
+// with complexity, proxied by Priority:
+//   P0 = 15 (critical / high-complexity flows: auth, intake, wizard, CMS)
+//   P1 = 10 (core feature paths)
+//   P2 = 5  (secondary paths, exports, edge UI)
+//   P3 = 3  (nice-to-have / polish)
+// Tokens redeem 1:1 against `advisor_credits` and can be spent on scenario
+// lookups inside the product. A test must reach status "pass" or a
+// reproducible "fail" with notes to be eligible; "blocked" and "not_run"
+// award 0. Bonus: +5 tokens for the first reproducible "fail" filed on a
+// given test id (paid manually by admin during sprint retro).
+// ----------------------------------------------------------------------------
+export const CREDIT_REWARDS: Record<Priority, number> = {
+  P0: 15,
+  P1: 10,
+  P2: 5,
+  P3: 3,
+};
+export const REPRO_FAIL_BONUS = 5;
+
+export function getTestCreditReward(t: TestCase): number {
+  return CREDIT_REWARDS[t.priority] ?? 0;
+}
+
+export function totalCreditBudget(): number {
+  return TEST_CASES.reduce((sum, t) => sum + getTestCreditReward(t), 0);
+}
+
+export function creditBudgetByOwner(): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const t of TEST_CASES) {
+    const a = getTestAssignee(t);
+    out[a] = (out[a] || 0) + getTestCreditReward(t);
+  }
+  return out;
+}
