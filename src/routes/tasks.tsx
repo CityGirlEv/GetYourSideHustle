@@ -409,7 +409,14 @@ function TaskSheetPage() {
                         </Select>
                       </TableCell>
                       <TableCell>
-                        <Input value={r.assignedTo} onChange={(e) => inlineUpdate(r.id, "assignedTo", e.target.value)} className="h-7 w-[110px] text-xs" />
+                        <Select value={r.assignedTo} onValueChange={(v) => inlineUpdate(r.id, "assignedTo", v)}>
+                          <SelectTrigger className="h-7 w-[110px] text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {owners.filter((o) => o !== "All").map((o) => (
+                              <SelectItem key={o} value={o}>{o}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                       <TableCell>
                         <Input value={r.assignBy} onChange={(e) => inlineUpdate(r.id, "assignBy", e.target.value)} className="h-7 w-[80px] text-xs" />
