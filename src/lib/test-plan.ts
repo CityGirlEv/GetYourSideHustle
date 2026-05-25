@@ -665,12 +665,35 @@ export const DEV_OWNER: TestOwner = "Dev";
  * override by setting `assignee` explicitly.
  */
 export function getTestAssignee(t: TestCase, status?: TestStatus): TestOwner | string {
+  // Manual override (set via the test plan UI) wins over derived logic.
+  const override = loadAssigneeOverride(t.id);
+  if (override) return override;
   // Failed tests are automatically reassigned to the Dev user.
   if (status === "fail" || status === "failed_retest") return DEV_OWNER;
   if (t.assignee) return t.assignee;
   const idx = TEST_CASES.findIndex((x) => x.id === t.id);
   if (idx < 0) return "Catria";
   return idx % 10 < 7 ? "Catria" : "Me";
+}
+
+// ----------------------------------------------------------------------------
+// Assignee override — let QA re-assign a test inline from the test plan UI.
+// ----------------------------------------------------------------------------
+export const TEST_ASSIGNEE_KEY = (id: string) => `test-assignee:${id}`;
+
+export function loadAssigneeOverride(id: string): string {
+  if (typeof window === "undefined") return "";
+  return localStorage.getItem(TEST_ASSIGNEE_KEY(id)) || "";
+}
+export function saveAssigneeOverride(id: string, owner: string) {
+  if (typeof window === "undefined") return;
+  if (owner) localStorage.setItem(TEST_ASSIGNEE_KEY(id), owner);
+  else localStorage.removeItem(TEST_ASSIGNEE_KEY(id));
+}
+export function loadAllAssigneeOverrides(): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const t of TEST_CASES) out[t.id] = loadAssigneeOverride(t.id);
+  return out;
 }
 
 export function getTestSprintId(t: TestCase): string {

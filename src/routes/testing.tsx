@@ -19,6 +19,7 @@ import {
   getTestCreditReward, totalCreditBudget, creditBudgetByOwner, REPRO_FAIL_BONUS,
   loadAllQaNotes, loadAllDevNotes, saveQaNote, saveDevNote,
   loadAllSeverities, saveSeverity, FAIL_SEVERITY_LABELS, type FailSeverity,
+  TEST_OWNERS, loadAllAssigneeOverrides, saveAssigneeOverride,
 } from "@/lib/test-plan";
 import { AppShell } from "@/components/AppShell";
 import { useApp } from "@/lib/app-store";
@@ -97,6 +98,7 @@ export function TestPlanTab() {
   const [qaNotes, setQaNotes] = useState<Record<string, string>>(() => loadAllQaNotes());
   const [devNotes, setDevNotes] = useState<Record<string, string>>(() => loadAllDevNotes());
   const [severities, setSeverities] = useState<Record<string, FailSeverity | "">>(() => loadAllSeverities());
+  const [assigneeOverrides, setAssigneeOverrides] = useState<Record<string, string>>(() => loadAllAssigneeOverrides());
   const [query, setQuery] = useState("");
   const [areaFilter, setAreaFilter] = useState<string>("All");
   const [statusFilter, setStatusFilter] = useState<"all" | TestStatus>("all");
@@ -123,6 +125,10 @@ export function TestPlanTab() {
     saveSeverity(id, s);
     setSeverities((p) => ({ ...p, [id]: s }));
   };
+  const setAssigneeFor = (id: string, owner: string) => {
+    saveAssigneeOverride(id, owner);
+    setAssigneeOverrides((p) => ({ ...p, [id]: owner }));
+  };
   const resetAll = () => {
     TEST_CASES.forEach((t) => saveStatus(t.id, "not_run"));
     setStatuses(loadAllStatuses());
@@ -136,7 +142,7 @@ export function TestPlanTab() {
       counts[a] = (counts[a] || 0) + 1;
     }
     return counts;
-  }, [statuses]);
+  }, [statuses, assigneeOverrides]);
   const owners = useMemo(() => ["All", ...Object.keys(ownerCounts)], [ownerCounts]);
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim();
@@ -147,7 +153,7 @@ export function TestPlanTab() {
       if (!q) return true;
       return [t.id, t.title, t.area, ...t.steps, t.expected].some((f) => f.toLowerCase().includes(q));
     });
-  }, [query, areaFilter, statusFilter, ownerFilter, statuses]);
+  }, [query, areaFilter, statusFilter, ownerFilter, statuses, assigneeOverrides]);
 
   const counts = useMemo(() => {
     const c: Record<TestStatus | "total", number> = {
@@ -248,6 +254,7 @@ export function TestPlanTab() {
             onQaNoteChange={(n) => setQaNote(t.id, n)}
             onDevNoteChange={(n) => setDevNote(t.id, n)}
             onSeverityChange={(s) => setSeverityFor(t.id, s)}
+            onAssigneeChange={(o) => setAssigneeFor(t.id, o)}
           />
         ))}
       </div>
@@ -269,7 +276,7 @@ function priorityVariant(p: Priority): string {
 }
 
 function TestCaseCard({
-  t, status, qaNote, devNote, severity, onChange, onQaNoteChange, onDevNoteChange, onSeverityChange,
+  t, status, qaNote, devNote, severity, onChange, onQaNoteChange, onDevNoteChange, onSeverityChange, onAssigneeChange,
 }: {
   t: TestCase;
   status: TestStatus;
@@ -280,6 +287,7 @@ function TestCaseCard({
   onQaNoteChange: (n: string) => void;
   onDevNoteChange: (n: string) => void;
   onSeverityChange: (s: FailSeverity | "") => void;
+  onAssigneeChange: (owner: string) => void;
 }) {
   const ring =
     status === "pass"    ? "ring-2 ring-emerald-500/40" :
@@ -296,7 +304,19 @@ function TestCaseCard({
         <span className={`text-[11px] font-semibold rounded-full border px-2 py-0.5 ${priorityVariant(t.priority)}`}>{t.priority}</span>
         <Badge variant="secondary" className="text-[11px]">{t.area}</Badge>
         <Badge variant="outline" className="text-[11px]">Sprint {getTestSprintId(t).replace("S-2026-0", "")}</Badge>
-        <Badge variant="outline" className="text-[11px] border-primary/40 text-primary">Owner: {getTestAssignee(t, status)}</Badge>
+        <label className="inline-flex items-center gap-1 text-[11px] rounded-full border border-primary/40 text-primary px-2 py-0.5 bg-background">
+          <span className="font-semibold">Owner:</span>
+          <select
+            className="bg-transparent text-[11px] font-semibold text-primary focus:outline-none cursor-pointer"
+            value={getTestAssignee(t, status)}
+            onChange={(e) => onAssigneeChange(e.target.value)}
+            title="Re-assign this test"
+          >
+            {TEST_OWNERS.map((o) => (
+              <option key={o} value={o}>{o}</option>
+            ))}
+          </select>
+        </label>
         <Badge variant="outline" className="text-[11px] border-emerald-500/40 text-emerald-700 bg-emerald-500/5">+{getTestCreditReward(t)} cr</Badge>
         <TestTargetLink test={t} />
         <h3 className="flex-1 font-semibold text-sm md:text-base">{t.title}</h3>
