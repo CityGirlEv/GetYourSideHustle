@@ -282,10 +282,17 @@ export function TestPlanTab() {
   };
 
   const areas = useMemo(() => ["All", ...Array.from(new Set(TEST_CASES.map((t) => t.area)))], []);
+  // Effective assignee/sprint that respects unsaved drafts (the lib helpers read storage)
+  const effAssignee = (t: TestCase): string => {
+    const ov = assigneeOverrides[t.id];
+    if (ov) return ov;
+    return getTestAssignee(t, statuses[t.id]);
+  };
+  const effSprint = (t: TestCase): string => sprintOverrides[t.id] || getTestSprintId(t);
   const ownerCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const t of TEST_CASES) {
-      const a = getTestAssignee(t, statuses[t.id]);
+      const a = effAssignee(t);
       counts[a] = (counts[a] || 0) + 1;
     }
     return counts;
@@ -296,7 +303,7 @@ export function TestPlanTab() {
     return TEST_CASES.filter((t) => {
       if (areaFilter !== "All" && t.area !== areaFilter) return false;
       if (statusFilter !== "all" && statuses[t.id] !== statusFilter) return false;
-      if (ownerFilter !== "All" && getTestAssignee(t, statuses[t.id]) !== ownerFilter) return false;
+      if (ownerFilter !== "All" && effAssignee(t) !== ownerFilter) return false;
       if (!q) return true;
       return [t.id, t.title, t.area, ...t.steps, t.expected].some((f) => f.toLowerCase().includes(q));
     });
