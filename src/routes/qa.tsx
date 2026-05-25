@@ -283,3 +283,23 @@ function QADashboard() {
     </AppShell>
   );
 }
+
+function NdaTableRow({ row }: { row: NdaRow }) {
+  const [url, setUrl] = useState<string | null>(null);
+  async function getUrl() {
+    if (url) { window.open(url, "_blank"); return; }
+    const { data } = await supabase.storage
+      .from("nda-signatures")
+      .createSignedUrl(row.pdf_path, 60 * 10);
+    if (data?.signedUrl) { setUrl(data.signedUrl); window.open(data.signedUrl, "_blank"); }
+  }
+  return (
+    <tr className="border-t border-border">
+      <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap">{new Date(row.signed_at).toLocaleString()}</td>
+      <td className="px-3 py-2">{row.full_name}</td>
+      <td className="px-3 py-2 text-xs">{row.email}</td>
+      <td className="px-3 py-2 text-xs font-mono">{row.agreement_version}</td>
+      <td className="px-3 py-2"><Button size="sm" variant="outline" onClick={getUrl}><Download className="h-3 w-3 mr-1" />PDF</Button></td>
+    </tr>
+  );
+}
