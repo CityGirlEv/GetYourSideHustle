@@ -18,6 +18,7 @@ import {
   getTestAssignee, getTestSprintId, testAssignmentCounts, ACTIVE_SPRINT_ID,
   getTestCreditReward, totalCreditBudget, creditBudgetByOwner, REPRO_FAIL_BONUS,
   loadAllQaNotes, loadAllDevNotes, saveQaNote, saveDevNote,
+  loadAllSeverities, saveSeverity, FAIL_SEVERITY_LABELS, type FailSeverity,
 } from "@/lib/test-plan";
 import { AppShell } from "@/components/AppShell";
 import { useApp } from "@/lib/app-store";
@@ -95,6 +96,7 @@ export function TestPlanTab() {
   const [statuses, setStatuses] = useState<Record<string, TestStatus>>(() => loadAllStatuses());
   const [qaNotes, setQaNotes] = useState<Record<string, string>>(() => loadAllQaNotes());
   const [devNotes, setDevNotes] = useState<Record<string, string>>(() => loadAllDevNotes());
+  const [severities, setSeverities] = useState<Record<string, FailSeverity | "">>(() => loadAllSeverities());
   const [query, setQuery] = useState("");
   const [areaFilter, setAreaFilter] = useState<string>("All");
   const [statusFilter, setStatusFilter] = useState<"all" | TestStatus>("all");
@@ -103,6 +105,11 @@ export function TestPlanTab() {
   const setStatus = (id: string, s: TestStatus) => {
     saveStatus(id, s);
     setStatuses((p) => ({ ...p, [id]: s }));
+    // Clear severity when leaving a failing state
+    if (s !== "fail" && s !== "failed_retest") {
+      saveSeverity(id, "");
+      setSeverities((p) => ({ ...p, [id]: "" }));
+    }
   };
   const setQaNote = (id: string, note: string) => {
     saveQaNote(id, note);
@@ -111,6 +118,10 @@ export function TestPlanTab() {
   const setDevNote = (id: string, note: string) => {
     saveDevNote(id, note);
     setDevNotes((p) => ({ ...p, [id]: note }));
+  };
+  const setSeverityFor = (id: string, s: FailSeverity | "") => {
+    saveSeverity(id, s);
+    setSeverities((p) => ({ ...p, [id]: s }));
   };
   const resetAll = () => {
     TEST_CASES.forEach((t) => saveStatus(t.id, "not_run"));
@@ -225,9 +236,11 @@ export function TestPlanTab() {
             status={statuses[t.id] ?? "not_run"}
             qaNote={qaNotes[t.id] ?? ""}
             devNote={devNotes[t.id] ?? ""}
+            severity={severities[t.id] ?? ""}
             onChange={(s) => setStatus(t.id, s)}
             onQaNoteChange={(n) => setQaNote(t.id, n)}
             onDevNoteChange={(n) => setDevNote(t.id, n)}
+            onSeverityChange={(s) => setSeverityFor(t.id, s)}
           />
         ))}
       </div>
