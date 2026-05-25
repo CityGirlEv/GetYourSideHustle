@@ -305,7 +305,37 @@ export function TaskSheetContent() {
               ))}
             </SelectContent>
           </Select>
-          <Button size="sm" onClick={applyBulk} disabled={!bulkStatus && !bulkSprint && !bulkAssignee.trim()}>
+          <Select value={bulkPriority} onValueChange={(v) => setBulkPriority(v as Priority)}>
+            <SelectTrigger className="h-9 w-[130px]"><SelectValue placeholder="Set priority…" /></SelectTrigger>
+            <SelectContent>
+              {PRIORITIES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={bulkCategory} onValueChange={(v) => setBulkCategory(v as TaskRowCategory)}>
+            <SelectTrigger className="h-9 w-[150px]"><SelectValue placeholder="Set category…" /></SelectTrigger>
+            <SelectContent>
+              {TASK_CATEGORY_VALUES.map((c) => (
+                <SelectItem key={c} value={c}>{TASK_CATEGORY_LABELS[c]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="flex items-center gap-1 w-full">
+            <Textarea
+              value={bulkNotes}
+              onChange={(e) => setBulkNotes(e.target.value)}
+              placeholder="Notes to apply to selected (timestamped)…"
+              rows={2}
+              className="flex-1 min-w-[260px]"
+            />
+            <Select value={bulkNotesMode} onValueChange={(v) => setBulkNotesMode(v as "append" | "replace")}>
+              <SelectTrigger className="h-9 w-[120px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="append">Append</SelectItem>
+                <SelectItem value="replace">Replace</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button size="sm" onClick={applyBulk} disabled={!bulkStatus && !bulkSprint && !bulkAssignee.trim() && !bulkPriority && !bulkCategory && !bulkNotes.trim()}>
             Apply to selected
           </Button>
           <Button size="sm" variant="outline" onClick={() => setSelected(new Set())}>Clear</Button>
@@ -313,6 +343,12 @@ export function TaskSheetContent() {
             <Trash2 className="h-4 w-4 mr-1" />Delete selected
           </Button>
         </Card>
+      )}
+
+      {selected.size === 0 && (
+        <p className="text-xs text-muted-foreground px-1">
+          Tip: click <strong>New task</strong> to add · use the inline dropdowns in each row to re-assign sprint, status, priority, category, or person · click the pencil to edit notes & all fields · tick the row checkboxes to bulk-edit or delete.
+        </p>
       )}
 
       {/* Sheet */}
