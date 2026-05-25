@@ -453,18 +453,22 @@ function priorityVariant(p: Priority): string {
 }
 
 function TestCaseCard({
-  t, status, qaNote, devNote, severity, onChange, onQaNoteChange, onDevNoteChange, onSeverityChange, onAssigneeChange,
+  t, status, qaNote, devNote, severity, selected, onSelectChange,
+  onChange, onQaNoteChange, onDevNoteChange, onSeverityChange, onAssigneeChange, onSprintChange,
 }: {
   t: TestCase;
   status: TestStatus;
   qaNote: string;
   devNote: string;
   severity: FailSeverity | "";
+  selected: boolean;
+  onSelectChange: () => void;
   onChange: (s: TestStatus) => void;
   onQaNoteChange: (n: string) => void;
   onDevNoteChange: (n: string) => void;
   onSeverityChange: (s: FailSeverity | "") => void;
   onAssigneeChange: (owner: string) => void;
+  onSprintChange: (sprintId: string) => void;
 }) {
   const ring =
     status === "pass"    ? "ring-2 ring-emerald-500/40" :
@@ -475,12 +479,31 @@ function TestCaseCard({
   const showQaNote = status === "fail" || status === "failed_retest";
   const showDevNote = status === "fixed_retest" || status === "failed_retest";
   return (
-    <Card className={`p-4 ${ring}`}>
+    <Card className={`p-4 ${ring} ${selected ? "ring-2 ring-primary/60" : ""}`}>
       <div className="flex flex-wrap items-start gap-2 mb-2">
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={onSelectChange}
+          className="h-4 w-4 mt-0.5"
+          title="Select for bulk edit"
+        />
         <span className="text-[11px] font-mono font-bold bg-muted px-2 py-0.5 rounded">{t.id}</span>
         <span className={`text-[11px] font-semibold rounded-full border px-2 py-0.5 ${priorityVariant(t.priority)}`}>{t.priority}</span>
         <Badge variant="secondary" className="text-[11px]">{t.area}</Badge>
-        <Badge variant="outline" className="text-[11px]">Sprint {getTestSprintId(t).replace("S-2026-0", "")}</Badge>
+        <label className="inline-flex items-center gap-1 text-[11px] rounded-full border border-border px-2 py-0.5 bg-background">
+          <span className="font-semibold">Sprint:</span>
+          <select
+            className="bg-transparent text-[11px] font-semibold focus:outline-none cursor-pointer"
+            value={getTestSprintId(t)}
+            onChange={(e) => onSprintChange(e.target.value)}
+            title="Re-assign sprint"
+          >
+            {SPRINTS.map((s) => (
+              <option key={s.id} value={s.id}>S{s.number}</option>
+            ))}
+          </select>
+        </label>
         <label className="inline-flex items-center gap-1 text-[11px] rounded-full border border-primary/40 text-primary px-2 py-0.5 bg-background">
           <span className="font-semibold">Owner:</span>
           <select
