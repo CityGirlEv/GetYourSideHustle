@@ -375,7 +375,27 @@ export function TestPlanTab() {
             <StatBadge n={counts.not_run}  label="Not run" color="bg-muted text-muted-foreground border-border" />
             <StatBadge n={counts.total}    label="Total"   color="bg-primary/10 text-primary border-primary/30" />
           </div>
-          <Button size="sm" variant="outline" onClick={resetAll}><RotateCcw className="h-3.5 w-3.5 mr-1.5"/>Reset all</Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="default"
+              onClick={() => setSaveOpen(true)}
+              disabled={pendingCount === 0}
+              className="relative"
+            >
+              <Save className="h-3.5 w-3.5 mr-1.5" />
+              Save changes
+              {pendingCount > 0 && (
+                <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-background text-foreground text-[10px] font-bold px-1.5 py-0.5">
+                  {pendingCount}
+                </span>
+              )}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={discardAllDrafts} disabled={pendingCount === 0}>
+              Discard
+            </Button>
+            <Button size="sm" variant="outline" onClick={resetAll}><RotateCcw className="h-3.5 w-3.5 mr-1.5"/>Reset all</Button>
+          </div>
         </div>
         <Progress value={passRate} className="h-2" />
       </Card>
@@ -432,6 +452,8 @@ export function TestPlanTab() {
             qaNote={qaNotes[t.id] ?? ""}
             devNote={devNotes[t.id] ?? ""}
             severity={severities[t.id] ?? ""}
+            assignee={effAssignee(t)}
+            sprintId={effSprint(t)}
             selected={selected.has(t.id)}
             onSelectChange={() => toggleSelect(t.id)}
             onChange={(s) => setStatus(t.id, s)}
@@ -443,6 +465,12 @@ export function TestPlanTab() {
           />
         ))}
       </div>
+      <SaveChangesDialog
+        open={saveOpen}
+        onOpenChange={setSaveOpen}
+        changes={pendingChanges}
+        onConfirm={commitChanges}
+      />
     </div>
   );
 }
