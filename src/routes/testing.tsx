@@ -15,7 +15,7 @@ import {
   TEST_CASES, IMPLEMENTATION_PLAN, SPRINTS, TASKS,
   loadAllStatuses, saveStatus,
   type TestStatus, type TestCase, type Priority,
-  getTestAssignee, getTestSprintId, testAssignmentCounts, ACTIVE_SPRINT_ID,
+  getTestAssignee, getTestSprintId, ACTIVE_SPRINT_ID,
   getTestCreditReward, totalCreditBudget, creditBudgetByOwner, REPRO_FAIL_BONUS,
   loadAllQaNotes, loadAllDevNotes, saveQaNote, saveDevNote,
   loadAllSeverities, saveSeverity, FAIL_SEVERITY_LABELS, type FailSeverity,
