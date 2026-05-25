@@ -946,6 +946,48 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
         </div>
       )}
 
+      {/* Key-pick panel: shown while we're reading list options aloud */}
+      {pickOptions.length > 0 && (
+        <div className="rounded-lg border-2 border-primary bg-primary/5 p-3 space-y-2">
+          <div className="flex items-center gap-2 text-primary font-bold text-sm">
+            <ListChecks className="h-4 w-4" />
+            <span>Press any key when I say the right option</span>
+          </div>
+          <ol className="space-y-1">
+            {pickOptions.map((opt, i) => {
+              const active = i === pickIndex;
+              const done = i < pickIndex;
+              return (
+                <li
+                  key={`${opt}-${i}`}
+                  onClick={() => {
+                    const p = pickingRef.current;
+                    if (!p || !p.active) return;
+                    p.active = false;
+                    pickingRef.current = null;
+                    setPickOptions([]);
+                    setPickIndex(-1);
+                    try { window.speechSynthesis?.cancel(); } catch { /* noop */ }
+                    p.onPick(i);
+                  }}
+                  className={`cursor-pointer rounded-md px-2.5 py-1.5 text-sm border transition flex items-center gap-2 ${
+                    active
+                      ? "border-primary bg-primary text-primary-foreground font-semibold animate-pulse"
+                      : done
+                        ? "border-border bg-muted text-muted-foreground line-through"
+                        : "border-border bg-background hover:bg-muted"
+                  }`}
+                >
+                  <span className="text-[10px] font-mono opacity-70">{i + 1}.</span>
+                  <span className="truncate">{opt}</span>
+                </li>
+              );
+            })}
+          </ol>
+          <p className="text-[11px] text-muted-foreground">Tip: you can also click an option.</p>
+        </div>
+      )}
+
       {/* Conversation transcript */}
       <div className="bg-muted/40 border border-border rounded-lg p-3 h-64 overflow-y-auto text-sm space-y-2">
         {transcript.length === 0 && (
