@@ -1,8 +1,22 @@
-import { Link } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AppShell } from "@/components/AppShell";
-import { ExternalLink, BookOpen, Pill, Building2, FileText } from "lucide-react";
+import { ExternalLink, Pill, Building2, FileText } from "lucide-react";
+
+export const Route = createFileRoute("/sources")({
+  component: SourcesPage,
+  head: () => ({
+    meta: [
+      { title: "Scenario Data Sources | Medicare Optimizer" },
+      {
+        name: "description",
+        content:
+          "Citations for every figure used to build a Medicare Optimizer scenario result — CMS cost parameters, plan catalogs, and drug pricing inputs.",
+      },
+    ],
+  }),
+});
 
 interface SourceEntry {
   label: string;
@@ -19,110 +33,68 @@ interface SourceSection {
 
 const SECTIONS: SourceSection[] = [
   {
-    icon: <Pill className="h-5 w-5" />,
-    title: "Drug Pricing Data",
-    sources: [
-      {
-        label: "CMS Medicare Part D Spending by Drug",
-        url: "https://data.cms.gov/summary-statistics-on-use-and-payments/medicare-medicaid-spending-by-drug/medicare-part-d-spending-by-drug",
-        description: "CMS-reported average total spending, unit cost, and claim counts per drug — used to anchor retail estimates to real program data.",
-        badge: "CMS",
-      },
-      {
-        label: "CMS Drug Spending Main",
-        url: "https://www.cms.gov/Research-Statistics-Data-and-Systems/Statistics-Trends-and-Reports/Information-on-Prescription-Drugs",
-        description: "Portal to all CMS drug-spending transparency products (Part B, Part D, and Medicaid).",
-        badge: "CMS",
-      },
-      {
-        label: "GoodRx National Averages",
-        url: "https://www.goodrx.com",
-        description: "Cash-discount pharmacy prices used to validate uninsured retail costs, especially for generics.",
-        badge: "Third-party",
-      },
-      {
-        label: "Manufacturer WAC / List Prices",
-        url: "https://www.medicare.gov/drug-coverage-comparison",
-        description: "Brand-name WAC (Wholesale Acquisition Cost) and list prices are sourced from manufacturer-published pricing and cross-checked against Medicare Plan Finder drug files.",
-        badge: "Industry",
-      },
-    ],
-  },
-  {
     icon: <FileText className="h-5 w-5" />,
-    title: "Medicare Guidelines & Cost Parameters",
+    title: "Cost Parameters Used in Scenario Math",
     sources: [
       {
         label: "2026 Medicare Parts A & B Premiums and Deductibles",
         url: "https://www.cms.gov/newsroom/fact-sheets/2026-medicare-parts-b-premiums-deductibles",
-        description: "Official CMS fact sheet (Nov 2025) — sets the 2026 Part B premium ($202.90/mo) and deductible ($283).",
-        badge: "CMS",
-      },
-      {
-        label: "2026 Medicare Part D Bid & Premium Info",
-        url: "https://www.cms.gov/newsroom/fact-sheets/2026-medicare-part-d-bid-information-and-part-d-premium-stabilization-demonstration-parameters",
-        description: "CMS preliminary Part D bid parameters and premium stabilization demo for CY 2026.",
+        description: "Sets the Part B premium ($202.90/mo) and deductible ($283) used in every scenario result.",
         badge: "CMS",
       },
       {
         label: "CY 2026 Part D Redesign Program Instructions",
         url: "https://www.cms.gov/files/document/final-cy-2026-part-d-redesign-program-instruction.pdf",
-        description: "Final IRA implementation guidance for 2026 — defines the $2,100 Part D out-of-pocket cap and deductible rules.",
+        description: "Defines the $2,100 Part D out-of-pocket cap and deductible rules applied to drug-cost projections.",
+        badge: "CMS",
+      },
+      {
+        label: "2026 Medicare Part D Bid & Premium Info",
+        url: "https://www.cms.gov/newsroom/fact-sheets/2026-medicare-part-d-bid-information-and-part-d-premium-stabilization-demonstration-parameters",
+        description: "Baseline Part D bid parameters used to derive plan-level monthly premiums shown in result plans.",
         badge: "CMS",
       },
       {
         label: "Inflation Reduction Act & Medicare",
         url: "https://www.cms.gov/inflation-reduction-act-and-medicare",
-        description: "CMS hub for IRA provisions including the $35/month insulin cap and vaccine cost-sharing limits.",
+        description: "IRA provisions enforced in scenario math — $35/mo insulin cap and $0 vaccine cost-sharing.",
         badge: "CMS",
-      },
-      {
-        label: "Medicare Cost Basics",
-        url: "https://www.medicare.gov/basics/costs/medicare-costs",
-        description: "Consumer-facing summary of Part A, B, and D cost structures used to sanity-check scenario outputs.",
-        badge: "Medicare.gov",
       },
     ],
   },
   {
     icon: <Building2 className="h-5 w-5" />,
-    title: "Plan Catalogs & Carrier Data",
+    title: "Plan Catalogs Behind Result Plans",
     sources: [
-      {
-        label: "CMS Medicare Plan Finder",
-        url: "https://www.medicare.gov/plan-compare",
-        description: "Official CMS tool for comparing Medigap, Advantage, and Part D plans by ZIP code.",
-        badge: "CMS",
-      },
       {
         label: "CMS Medigap Policies",
         url: "https://www.cms.gov/medicare/health-plans/medigap",
-        description: "Standardized Medigap plan benefits (A, B, D, G, HDG, K, L, M, N) as approved by CMS for 2026.",
+        description: "Standardized 2026 Medigap plan letters (A, B, D, G, HDG, K, L, M, N) and benefit tables that drive Medigap result rows.",
         badge: "CMS",
       },
       {
-        label: "CY 2026 Announcement (MA Capitation Rates)",
-        url: "https://www.cms.gov/files/document/2026-announcement.pdf",
-        description: "CMS ratebook PDF — establishes MA payment benchmarks and regional factors used in plan availability logic.",
+        label: "CMS Medicare Plan Finder",
+        url: "https://www.medicare.gov/plan-compare",
+        description: "Source-of-truth catalog for Medicare Advantage and Part D plan types referenced by scenario results.",
         badge: "CMS",
       },
     ],
   },
   {
-    icon: <BookOpen className="h-5 w-5" />,
-    title: "Drug Vocabulary & Formularies",
+    icon: <Pill className="h-5 w-5" />,
+    title: "Drug Pricing Inputs to Scenario Results",
     sources: [
       {
-        label: "RxNorm API (NLM)",
-        url: "https://rxnav.nlm.nih.gov",
-        description: "NIH/NLM REST API used for medication name suggestions and generic-equivalent lookups. Free, no auth, CORS-enabled.",
-        badge: "NIH",
+        label: "CMS Medicare Part D Spending by Drug",
+        url: "https://data.cms.gov/summary-statistics-on-use-and-payments/medicare-medicaid-spending-by-drug/medicare-part-d-spending-by-drug",
+        description: "Average total spending, unit cost, and claim counts per drug — anchors the retail estimates used in scenario drug-cost lines.",
+        badge: "CMS",
       },
       {
-        label: "FDA Orange Book",
-        url: "https://www.accessdata.fda.gov/scripts/cder/ob/index.cfm",
-        description: "Reference for generic-versus-brand status and therapeutic equivalence codes.",
-        badge: "FDA",
+        label: "Manufacturer WAC / List Prices",
+        url: "https://www.medicare.gov/drug-coverage-comparison",
+        description: "Brand-name WAC pricing cross-checked against Medicare Plan Finder drug files for scenario brand-drug estimates.",
+        badge: "Industry",
       },
     ],
   },
