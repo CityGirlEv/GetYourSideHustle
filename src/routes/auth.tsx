@@ -73,8 +73,8 @@ function AuthPage() {
             <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl grad-indigo">
               <ShieldCheck className="h-6 w-6 text-white" />
             </div>
-            <h1 className="font-display text-2xl font-bold">Agent sign in</h1>
-            <p className="text-sm text-muted-foreground">Consumers do not sign in. This portal is for licensed Medicare agents.</p>
+            <h1 className="font-display text-2xl font-bold">Sign In</h1>
+            <p className="text-sm text-muted-foreground">If you don't have an account, click Register Below</p>
           </div>
 
           <Card className="glass p-6">
