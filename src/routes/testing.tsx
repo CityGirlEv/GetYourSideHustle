@@ -93,20 +93,22 @@ export const Route = createFileRoute("/testing")({
 });
 
 function TestingPortal() {
+  const { user } = useApp();
+  const isAdmin = user?.role === "admin";
   return (
     <AppShell title="Testing Portal" subtitle="Use-case tests, implementation phases, sprint schedule, and the cross-sprint task backlog.">
       <Tabs defaultValue="tests" className="space-y-4">
-        <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full md:w-auto">
+        <TabsList className={`grid w-full md:w-auto ${isAdmin ? "grid-cols-2 md:grid-cols-4" : "grid-cols-2"}`}>
           <TabsTrigger value="tests"><ListChecks className="h-3.5 w-3.5 mr-1.5" />Test Plan</TabsTrigger>
-          <TabsTrigger value="impl"><GitBranch className="h-3.5 w-3.5 mr-1.5" />Implementation</TabsTrigger>
+          {isAdmin && <TabsTrigger value="impl"><GitBranch className="h-3.5 w-3.5 mr-1.5" />Implementation</TabsTrigger>}
           <TabsTrigger value="sprints"><CalendarDays className="h-3.5 w-3.5 mr-1.5" />Sprints</TabsTrigger>
-          <TabsTrigger value="tasks"><Sparkles className="h-3.5 w-3.5 mr-1.5" />Tasks</TabsTrigger>
+          {isAdmin && <TabsTrigger value="tasks"><Sparkles className="h-3.5 w-3.5 mr-1.5" />Tasks</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="tests"><TestPlanTab /></TabsContent>
-        <TabsContent value="impl"><ImplementationTab /></TabsContent>
+        {isAdmin && <TabsContent value="impl"><ImplementationTab /></TabsContent>}
         <TabsContent value="sprints"><SprintsTab /></TabsContent>
-        <TabsContent value="tasks"><TasksTab /></TabsContent>
+        {isAdmin && <TabsContent value="tasks"><TasksTab /></TabsContent>}
       </Tabs>
     </AppShell>
   );
