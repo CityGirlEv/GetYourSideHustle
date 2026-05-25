@@ -574,7 +574,7 @@ function AdminPortal() {
                 </div>
               </div>
               <div className="flex items-end">
-                <Button onClick={handleCreateUser} disabled={creating || !newEmail || newPassword.length < 8} className="w-full">
+                <Button onClick={handleCreateUser} disabled={creating || !newEmail || newPassword.length < 12} className="w-full">
                   {creating ? <Loader2 className="h-4 w-4 animate-spin mr-2"/> : <UserPlus className="h-4 w-4 mr-2"/>}
                   Create user
                 </Button>
