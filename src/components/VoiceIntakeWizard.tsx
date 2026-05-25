@@ -518,7 +518,15 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
       {step !== "intro" && step !== "done" && step !== "submitting" && (
         <div className="flex items-center gap-1.5 rounded-md bg-primary/5 border border-primary/10 px-2.5 py-1.5 text-[11px] text-primary">
           <Info className="h-3 w-3 shrink-0" />
-          <span>Wait until the <strong>Listening</strong> indicator is active before you speak.</span>
+          <span>Wait for the beep and the <strong>"Speak now"</strong> banner before answering.</span>
+        </div>
+      )}
+
+      {/* Big "Speak now" banner while the mic is open */}
+      {listening && (
+        <div className="flex items-center justify-center gap-2 rounded-lg border-2 border-destructive bg-destructive/10 px-4 py-3 text-destructive font-bold animate-pulse">
+          <Mic className="h-5 w-5" />
+          <span>Speak now — I'm listening</span>
         </div>
       )}
 
