@@ -266,12 +266,14 @@ function TaskSheetPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Input
-              placeholder="Set assignee…"
-              value={bulkAssignee}
-              onChange={(e) => setBulkAssignee(e.target.value)}
-              className="h-9 w-[160px]"
-            />
+            <Select value={bulkAssignee} onValueChange={setBulkAssignee}>
+              <SelectTrigger className="h-9 w-[160px]"><SelectValue placeholder="Set assignee…" /></SelectTrigger>
+              <SelectContent>
+                {owners.filter((o) => o !== "All").map((o) => (
+                  <SelectItem key={o} value={o}>{o}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Button size="sm" onClick={applyBulk} disabled={!bulkStatus && !bulkSprint && !bulkAssignee.trim()}>
               Apply to selected
             </Button>
