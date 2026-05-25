@@ -2,7 +2,7 @@ import { useApp } from "@/lib/app-store";
 import { Link, useRouter } from "@tanstack/react-router";
 import { SecurityBanner } from "./SecurityBanner";
 import { CMSFooter } from "./CMSFooter";
-import { LogOut, FlaskConical, ChevronDown, LayoutDashboard, ListChecks } from "lucide-react";
+import { LogOut, FlaskConical, ChevronDown, LayoutDashboard, ListChecks, Briefcase } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CreditPill } from "./CreditPill";
 import { FontSizeToggle } from "./FontSizeToggle";
@@ -71,6 +71,14 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+          )}
+          {user?.role === "agent" && (
+            <Button size="sm" variant="outline" className="gap-1" asChild>
+              <Link to="/agent">
+                <Briefcase className="h-4 w-4" />
+                <span className="hidden sm:inline">Agent</span>
+              </Link>
+            </Button>
           )}
           {user && (
             <div className="hidden md:flex items-center gap-2 text-sm">
