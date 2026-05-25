@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export function SecurityBanner() {
-  const { user, signOut } = useApp();
+  const { user, signOut, authLoading } = useApp();
   const router = useRouter();
   const isAgentLike = user?.role === "agent" || user?.role === "qa";
   const isAdmin = user?.role === "admin";
