@@ -177,7 +177,7 @@ type AssignableRole = (typeof ASSIGNABLE_ROLES)[number];
 interface AgentOption { id: string; full_name: string; email: string; }
 
 function AdminPortal() {
-  const { user, auditLogs, addCredits, credits, year } = useApp();
+  const { user, authLoading, auditLogs, addCredits, credits, year } = useApp();
   const router = useRouter();
   const search = Route.useSearch();
   const initialTab = search.tab || "scenarios";
