@@ -105,6 +105,11 @@ export function TaskSheetContent() {
   const [bulkCategory, setBulkCategory] = useState<TaskRowCategory | "">("");
   const [bulkNotesMode, setBulkNotesMode] = useState<"append" | "replace">("append");
   const [bulkNotes, setBulkNotes] = useState<string>("");
+  const [bulkAssignBy, setBulkAssignBy] = useState<string>("");
+  const [bulkDateAssigned, setBulkDateAssigned] = useState<string>("");
+  const [bulkDueDate, setBulkDueDate] = useState<string>("");
+  const [bulkDateCompleted, setBulkDateCompleted] = useState<string>("");
+  const [bulkCost, setBulkCost] = useState<string>("");
 
   const persist = (next: TaskRow[]) => {
     setRows(next);
@@ -188,11 +193,20 @@ export function TaskSheetContent() {
         const line = `[${stamp}] ${bulkNotes.trim()}`;
         u.notes = bulkNotesMode === "replace" || !u.notes ? line : `${u.notes}\n${line}`;
       }
+      if (bulkAssignBy.trim()) u.assignBy = bulkAssignBy.trim();
+      if (bulkDateAssigned.trim()) u.dateAssigned = bulkDateAssigned.trim();
+      if (bulkDueDate.trim()) u.dueDate = bulkDueDate.trim();
+      if (bulkDateCompleted.trim()) u.dateCompleted = bulkDateCompleted.trim();
+      if (bulkCost.trim() !== "") {
+        const n = Number(bulkCost);
+        if (!Number.isNaN(n)) u.cost = n;
+      }
       return u;
     });
     persist(next);
     setBulkStatus(""); setBulkSprint(""); setBulkAssignee("");
     setBulkPriority(""); setBulkCategory(""); setBulkNotes("");
+    setBulkAssignBy(""); setBulkDateAssigned(""); setBulkDueDate(""); setBulkDateCompleted(""); setBulkCost("");
     setSelected(new Set());
   };
   const bulkDelete = () => {
