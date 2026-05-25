@@ -66,7 +66,7 @@ function TestingPortal() {
 }
 
 /* ============================== TEST PLAN TAB ============================== */
-function TestPlanTab() {
+export function TestPlanTab() {
   const [statuses, setStatuses] = useState<Record<string, TestStatus>>(() => loadAllStatuses());
   const [query, setQuery] = useState("");
   const [areaFilter, setAreaFilter] = useState<string>("All");
@@ -222,7 +222,7 @@ function StatusButtons({ status, onChange }: { status: TestStatus; onChange: (s:
 }
 
 /* ============================ IMPLEMENTATION TAB =========================== */
-function ImplementationTab() {
+export function ImplementationTab() {
   return (
     <div className="space-y-3">
       {IMPLEMENTATION_PLAN.map((p, i) => {
@@ -253,7 +253,7 @@ function ImplementationTab() {
 }
 
 /* ================================ SPRINTS TAB ============================== */
-function SprintsTab() {
+export function SprintsTab() {
   return (
     <div className="space-y-4">
       {SPRINTS.map((s) => {

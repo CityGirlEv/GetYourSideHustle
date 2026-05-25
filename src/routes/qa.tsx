@@ -3,10 +3,12 @@ import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useApp } from "@/lib/app-store";
 import { supabase } from "@/integrations/supabase/client";
 import { TEST_CASES, type TestStatus } from "@/lib/test-plan";
-import { ClipboardCheck, FlaskConical, ListChecks, Mail, FileText } from "lucide-react";
+import { ClipboardCheck, FlaskConical, ListChecks, Mail, FileText, LayoutDashboard } from "lucide-react";
+import { TestPlanTab } from "@/routes/testing";
 
 export const Route = createFileRoute("/qa")({
   component: QADashboard,
@@ -106,7 +108,14 @@ function QADashboard() {
 
   return (
     <AppShell title="QA dashboard" subtitle="Quality assurance: test coverage, scenarios, and contact requests">
-      <div className="grid gap-4 md:grid-cols-4 mb-4">
+      <Tabs defaultValue="dashboard" className="space-y-4">
+        <TabsList className="glass">
+          <TabsTrigger value="dashboard"><LayoutDashboard className="h-4 w-4 mr-1.5" />QA Dashboard</TabsTrigger>
+          <TabsTrigger value="tests"><ListChecks className="h-4 w-4 mr-1.5" />Test Cases</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="dashboard" className="space-y-4">
+      <div className="grid gap-4 md:grid-cols-4">
         <Card className="glass p-4">
           <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground"><ClipboardCheck className="h-3 w-3" />Test coverage</div>
           <div className="font-display text-3xl mt-1 tabular-nums">{coverage}%</div>
@@ -129,13 +138,13 @@ function QADashboard() {
         </Card>
       </div>
 
-      <Card className="glass p-4 mb-4">
+      <Card className="glass p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <ListChecks className="h-4 w-4" />
             <h3 className="font-display font-bold">Coverage by area</h3>
           </div>
-          <Link to="/testing"><Button size="sm" variant="outline">Open test portal</Button></Link>
+          <Link to="/testing"><Button size="sm" variant="outline">Open full test portal</Button></Link>
         </div>
         <div className="grid gap-2 md:grid-cols-2">
           {byArea.map(([area, s]) => {
@@ -217,6 +226,12 @@ function QADashboard() {
           </div>
         </Card>
       </div>
+        </TabsContent>
+
+        <TabsContent value="tests">
+          <TestPlanTab />
+        </TabsContent>
+      </Tabs>
     </AppShell>
   );
 }

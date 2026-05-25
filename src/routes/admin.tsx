@@ -5,7 +5,7 @@ import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollText, Users, Settings2, Search, Plus, Minus, Inbox, Phone, Mail, UserPlus, Loader2, Eye, EyeOff, Pencil, Trash2, Ban, CheckCircle2, Layers } from "lucide-react";
+import { ScrollText, Users, Settings2, Search, Plus, Minus, Inbox, Phone, Mail, UserPlus, Loader2, Eye, EyeOff, Pencil, Trash2, Ban, CheckCircle2, Layers, GitBranch, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { createAdvisor, listStaff, setUserRole, listAgents, assignAgent, updateUser, setUserDisabled, deleteUser } from "@/lib/admin.functions";
 import { CatalogExplorer } from "@/components/CatalogExplorer";
+import { ImplementationTab, SprintsTab } from "@/routes/testing";
 
 interface AdminScenarioRow {
   id: string;
@@ -273,6 +274,8 @@ function AdminPortal() {
           <TabsTrigger value="staff"><Users className="h-4 w-4 mr-1.5"/>Staff &amp; credits</TabsTrigger>
           <TabsTrigger value="catalog"><Layers className="h-4 w-4 mr-1.5"/>Plan catalog</TabsTrigger>
           <TabsTrigger value="rules"><Settings2 className="h-4 w-4 mr-1.5"/>Rule adjuster</TabsTrigger>
+          <TabsTrigger value="impl"><GitBranch className="h-4 w-4 mr-1.5"/>Implementation Plan</TabsTrigger>
+          <TabsTrigger value="rollout"><CalendarDays className="h-4 w-4 mr-1.5"/>Rollout Schedule</TabsTrigger>
         </TabsList>
 
         <TabsContent value="scenarios" className="space-y-6">
@@ -566,6 +569,22 @@ function AdminPortal() {
               These values drive the side-by-side comparison engine across every client dossier.
               Toggle the year using the chip in the header to switch the entire app's calculations.
             </p>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="impl" className="space-y-3">
+          <Card className="glass p-4">
+            <h3 className="font-display font-bold mb-1">Implementation Plan</h3>
+            <p className="text-xs text-muted-foreground mb-4">Phased delivery roadmap. Source of truth: <span className="font-mono">src/lib/test-plan.ts</span>.</p>
+            <ImplementationTab />
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="rollout" className="space-y-3">
+          <Card className="glass p-4">
+            <h3 className="font-display font-bold mb-1">Rollout Sprint Schedule</h3>
+            <p className="text-xs text-muted-foreground mb-4">Sprint-by-sprint rollout with goals and item-level status.</p>
+            <SprintsTab />
           </Card>
         </TabsContent>
       </Tabs>
