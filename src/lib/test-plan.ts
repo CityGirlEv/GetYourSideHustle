@@ -7,7 +7,13 @@
 // localStorage keyed by the test id, so this file stays purely declarative.
 // ============================================================================
 
-export type TestStatus = "not_run" | "pass" | "fail" | "blocked";
+export type TestStatus =
+  | "not_run"
+  | "pass"
+  | "fail"
+  | "blocked"
+  | "fixed_retest"   // Dev marked fixed, awaiting QA retest
+  | "failed_retest"; // Dev attempted fix, QA retest still failing
 export type Priority = "P0" | "P1" | "P2" | "P3";
 
 export interface TestCase {
@@ -575,6 +581,41 @@ export function saveStatus(id: string, s: TestStatus) {
 export function loadAllStatuses(): Record<string, TestStatus> {
   const out: Record<string, TestStatus> = {};
   for (const t of TEST_CASES) out[t.id] = loadStatus(t.id);
+  return out;
+}
+
+// ----------------------------------------------------------------------------
+// Test notes — QA failure reasons + Dev retest notes, persisted per test id.
+// ----------------------------------------------------------------------------
+export const TEST_QA_NOTE_KEY = (id: string) => `test-qa-note:${id}`;
+export const TEST_DEV_NOTE_KEY = (id: string) => `test-dev-note:${id}`;
+
+export function loadQaNote(id: string): string {
+  if (typeof window === "undefined") return "";
+  return localStorage.getItem(TEST_QA_NOTE_KEY(id)) || "";
+}
+export function saveQaNote(id: string, note: string) {
+  if (typeof window === "undefined") return;
+  if (note) localStorage.setItem(TEST_QA_NOTE_KEY(id), note);
+  else localStorage.removeItem(TEST_QA_NOTE_KEY(id));
+}
+export function loadDevNote(id: string): string {
+  if (typeof window === "undefined") return "";
+  return localStorage.getItem(TEST_DEV_NOTE_KEY(id)) || "";
+}
+export function saveDevNote(id: string, note: string) {
+  if (typeof window === "undefined") return;
+  if (note) localStorage.setItem(TEST_DEV_NOTE_KEY(id), note);
+  else localStorage.removeItem(TEST_DEV_NOTE_KEY(id));
+}
+export function loadAllQaNotes(): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const t of TEST_CASES) out[t.id] = loadQaNote(t.id);
+  return out;
+}
+export function loadAllDevNotes(): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const t of TEST_CASES) out[t.id] = loadDevNote(t.id);
   return out;
 }
 
