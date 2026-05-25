@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { Mic, MicOff, Volume2, RotateCcw, SkipForward, Keyboard, Check, Loader2, Info } from "lucide-react";
+import { Mic, MicOff, Volume2, RotateCcw, SkipForward, Keyboard, Check, Loader2, Info, ListChecks } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { COMMON_MEDS_BY_CONDITION, resolveDiagnosis, searchMedCatalog, MED_CATALOG } from "@/lib/diagnosis-resolver";
