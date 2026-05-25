@@ -17,8 +17,7 @@ import {
   getTestAssignee, getTestSprintId, testAssignmentCounts, ACTIVE_SPRINT_ID,
   getTestCreditReward, totalCreditBudget, creditBudgetByOwner, REPRO_FAIL_BONUS,
 } from "@/lib/test-plan";
-import { SecurityBanner } from "@/components/SecurityBanner";
-import { CMSFooter } from "@/components/CMSFooter";
+import { AppShell } from "@/components/AppShell";
 
 export const Route = createFileRoute("/testing")({
   head: () => ({
