@@ -56,16 +56,13 @@ export function SecurityBanner() {
                   <FlaskConical className="h-3.5 w-3.5" /> QA <ChevronDown className="h-3 w-3" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="text-xs">
-                  <DropdownMenuItem onSelect={() => router.navigate({ to: "/testing" })}>
-                    <ListChecks className="h-3.5 w-3.5 mr-2" /> Test Plan
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => router.navigate({ to: "/qa" })}>
-                    <LayoutDashboard className="h-3.5 w-3.5 mr-2" /> QA Dashboard
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onSelect={() => router.navigate({ to: "/nda" })}>
-                    <FileSignature className="h-3.5 w-3.5 mr-2" /> Sign / View NDA
-                  </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => router.navigate({ to: "/testing" })}>
+                  <ListChecks className="h-3.5 w-3.5 mr-2" /> Test Plan
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => router.navigate({ to: "/nda" })}>
+                  <FileSignature className="h-3.5 w-3.5 mr-2" /> Sign / View NDA
+                </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             )}

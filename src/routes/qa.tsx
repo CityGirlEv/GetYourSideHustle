@@ -60,7 +60,9 @@ function QADashboard() {
   useEffect(() => {
     if (authLoading) return;
     if (!user) { router.navigate({ to: "/auth" }); return; }
-    if (user.role !== "qa" && user.role !== "admin") return;
+    // QA users go to the testing portal; only admins see the QA dashboard
+    if (user.role === "qa") { router.navigate({ to: "/testing" }); return; }
+    if (user.role !== "admin") return;
     let cancelled = false;
     (async () => {
       const [s, c, n] = await Promise.all([
