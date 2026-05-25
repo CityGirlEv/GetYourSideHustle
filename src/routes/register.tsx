@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ShieldCheck, FileSignature, CheckCircle2 } from "lucide-react";
+import { ShieldCheck, FileSignature, CheckCircle2, FlaskConical, Headset } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { NDA_BODY, NDA_TITLE, NDA_VERSION } from "@/lib/nda";
@@ -31,6 +31,7 @@ function RegisterPage() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [requestedRole, setRequestedRole] = useState<"qa" | "agent" | "">("");
   const [ndaOpen, setNdaOpen] = useState(false);
   const [done, setDone] = useState(false);
   const [signatureName, setSignatureName] = useState("");
@@ -43,6 +44,7 @@ function RegisterPage() {
     if (lastName.trim().length < 1) return toast.error("Enter your last name.");
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return toast.error("Enter a valid email.");
     if (phone.replace(/\D/g, "").length < 7) return toast.error("Enter a valid phone number.");
+    if (requestedRole !== "qa" && requestedRole !== "agent") return toast.error("Pick the role you're registering for.");
     setSignatureName(`${firstName.trim()} ${lastName.trim()}`);
     setAccept(false);
     setNdaOpen(true);
@@ -61,6 +63,7 @@ function RegisterPage() {
           phone: phone.trim(),
           signature_name: signatureName.trim(),
           accept_nda: true,
+          requested_role: requestedRole as "qa" | "agent",
           user_agent: typeof navigator !== "undefined" ? navigator.userAgent : null,
         },
       });
@@ -96,6 +99,34 @@ function RegisterPage() {
                 </div>
                 <div><Label>Email</Label><Input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} required autoComplete="email" /></div>
                 <div><Label>Phone</Label><Input type="tel" value={phone} onChange={(e)=>setPhone(e.target.value)} required autoComplete="tel" placeholder="(555) 555-1234" /></div>
+                <div className="space-y-2">
+                  <Label>I'm registering as</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setRequestedRole("agent")}
+                      className={`flex items-center gap-2 rounded-md border p-3 text-sm transition ${requestedRole === "agent" ? "border-primary bg-primary/10 ring-1 ring-primary" : "border-border hover:bg-muted/40"}`}
+                    >
+                      <Headset className="h-4 w-4" />
+                      <div className="text-left">
+                        <div className="font-medium">Agent</div>
+                        <div className="text-[11px] text-muted-foreground">Licensed insurance agent</div>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRequestedRole("qa")}
+                      className={`flex items-center gap-2 rounded-md border p-3 text-sm transition ${requestedRole === "qa" ? "border-primary bg-primary/10 ring-1 ring-primary" : "border-border hover:bg-muted/40"}`}
+                    >
+                      <FlaskConical className="h-4 w-4" />
+                      <div className="text-left">
+                        <div className="font-medium">QA Tester</div>
+                        <div className="text-[11px] text-muted-foreground">Beta testing & feedback</div>
+                      </div>
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">An administrator will review and enable your account.</p>
+                </div>
                 <Button type="submit" className="w-full grad-indigo h-11">Submit</Button>
                 <p className="text-xs text-center text-muted-foreground">
                   Already have an account? <Link to="/auth" className="underline">Sign in</Link>
