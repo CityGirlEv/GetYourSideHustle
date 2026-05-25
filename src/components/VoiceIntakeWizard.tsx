@@ -184,12 +184,22 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
     if (typeof window === "undefined" || !("speechSynthesis" in window)) { resolve(); return; }
     try {
       window.speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.rate = 1; u.pitch = 1; u.lang = "en-US";
-      u.onstart = () => setSpeaking(true);
-      u.onend = () => { setSpeaking(false); resolve(); };
-      u.onerror = () => { setSpeaking(false); resolve(); };
-      window.speechSynthesis.speak(u);
+      // Small delay after cancel() — Chrome drops the next utterance otherwise
+      setTimeout(() => {
+        try {
+          const u = new SpeechSynthesisUtterance(text);
+          u.rate = 1; u.pitch = 1; u.lang = "en-US";
+          let done = false;
+          const finish = () => { if (done) return; done = true; setSpeaking(false); resolve(); };
+          u.onstart = () => setSpeaking(true);
+          u.onend = finish;
+          u.onerror = finish;
+          // Safety: if onend never fires (Chrome bug), resolve after a reasonable cap
+          const cap = Math.max(3000, Math.min(20000, text.length * 80));
+          setTimeout(finish, cap);
+          window.speechSynthesis.speak(u);
+        } catch { setSpeaking(false); resolve(); }
+      }, 80);
     } catch { resolve(); }
   });
 
@@ -277,8 +287,6 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
 
   const handleAnswer = async (forStep: StepKey, text: string) => {
     setTranscript((p) => [...p, { q: text, speaker: "you" }]);
-    // Echo back what we heard so the user can confirm it was captured correctly
-    await speak(`I heard: ${text}`);
     switch (forStep) {
       case "birthYear": {
         const y = parseYear(text);
