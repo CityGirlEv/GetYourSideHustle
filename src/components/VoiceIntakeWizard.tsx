@@ -1023,6 +1023,20 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
             <Button variant="outline" size="sm" onClick={() => setMedQuery("")} disabled={!medQuery}>Clear</Button>
             <Button variant="ghost" size="sm" onClick={cancelMedSearch}>Cancel</Button>
           </div>
+          {medMatches.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={() => {
+                cancelMedLoopRef.current = true;
+                stopListening();
+                void readMedOptions(medMatches.map((m) => m.name));
+              }}
+            >
+              <Volume2 className="h-3.5 w-3.5 mr-1" />Read these aloud (press any key to pick)
+            </Button>
+          )}
           {medMatches.length > 0 ? (
             <div className="space-y-1.5">
               {medMatches.map((m) => (
@@ -1047,7 +1061,7 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
             </p>
           )}
           <p className="text-[11px] text-muted-foreground">
-            Voice commands: <strong>add</strong> (top match), <strong>add &lt;name&gt;</strong>, <strong>keep going</strong>, <strong>clear</strong>, <strong>cancel</strong>.
+            Voice commands: <strong>add</strong> (top match), <strong>add &lt;name&gt;</strong>, <strong>read options</strong>, <strong>keep going</strong>, <strong>clear</strong>, <strong>cancel</strong>.
           </p>
         </div>
       )}
