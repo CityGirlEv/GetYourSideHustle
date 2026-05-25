@@ -22,7 +22,7 @@ function ScenarioNew() {
       <main className="flex-1 px-4 md:px-8 py-8 max-w-5xl w-full mx-auto">
         <div className="relative mb-6 bg-white rounded-2xl p-6 shadow-sm border border-border">
           <div className="absolute left-6 top-1/2 -translate-y-1/2">
-            <img src={muntieLogo} alt="Medicare Optimizer" className="h-16 w-16 object-contain" />
+            <img src={muntieLogo} alt="The Medicare Optimizer" className="h-16 w-16 object-contain" />
           </div>
           <div className="text-center px-28">
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-emerald leading-tight">Build your scenario</h1>
