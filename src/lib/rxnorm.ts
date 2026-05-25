@@ -1,9 +1,10 @@
-// Lightweight client for the NLM RxNorm API (https://rxnav.nlm.nih.gov).
+// Lightweight client for the NLM RxNorm API — https://rxnav.nlm.nih.gov
 // RxNorm is the standard vocabulary CMS uses to identify Medicare-approved
 // prescription drugs, so a hit here means the drug is FDA-recognized and
 // eligible to appear on a Medicare Part D formulary (individual plan
 // formularies still vary). The API is free, requires no auth, and is
 // CORS-enabled — safe to call directly from the browser.
+// Docs: https://lhncbc.nlm.nih.gov/RxNav/APIs/RxNormAPIs.html
 
 export interface RxNormSuggestion {
   rxcui: string;

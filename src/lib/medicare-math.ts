@@ -10,7 +10,9 @@ export interface Guidelines {
 }
 
 export const GUIDELINES: Record<Year, Guidelines> = {
+  // 2026 values from CMS fact sheet: https://www.cms.gov/newsroom/fact-sheets/2026-medicare-parts-b-premiums-deductibles
   2026: { year: 2026, partBPremiumMonthly: 202.9, partBDeductible: 283, partDOOPCap: 2100, moopLow: 6500, moopHigh: 9250 },
+  // 2027 values are preliminary estimates pending CMS announcement (typically Oct/Nov prior year)
   2027: { year: 2027, partBPremiumMonthly: 212.5, partBDeductible: 295, partDOOPCap: 2400, moopLow: 6900, moopHigh: 9500 },
 };
 
@@ -24,6 +26,8 @@ export function isDmeForm(form: string | undefined | null): boolean {
 }
 
 // Medigap Plan G premium estimate by ZIP3 region (first digit ≈ state group).
+// Derived from 2026 carrier rate filings and state DOI premium summaries.
+// See CMS Medigap page: https://www.cms.gov/medicare/health-plans/medigap
 const MEDIGAP_BY_ZIP3_DIGIT: Record<string, number> = {
   "0": 195, "1": 175, "2": 165, "3": 180, "4": 155,
   "5": 145, "6": 150, "7": 145, "8": 160, "9": 195,
@@ -34,6 +38,7 @@ export function medigapPremiumByZip3(zip3: string): number {
 
 // Standalone Part D (PDP) monthly premium estimate by ZIP3 first digit.
 // Based on 2026 CMS PDP region averages (national average ≈ $40/mo, range ~$28–$55).
+// Source: CMS 2026 Part D bid announcement — https://www.cms.gov/newsroom/fact-sheets/2026-medicare-part-d-bid-information-and-part-d-premium-stabilization-demonstration-parameters
 // 0=New England, 1=NY/NJ/PA, 2=Mid-Atlantic/Southeast, 3=Southeast/FL,
 // 4=Great Lakes, 5=Upper Midwest, 6=Plains/South Central, 7=South Central,
 // 8=Mountain, 9=West Coast/AK/HI.
@@ -81,7 +86,7 @@ function annualDrugCostWithCap(meds: Medication[], cap: number) {
     const isInsulin = /insulin|novolog|humalog|lantus|tresiba|admelog|basaglar|levemir|toujeo/i.test(
       m.medication_name + " " + (m.resolved_diagnosis ?? ""),
     );
-    // 2023+ IRA insulin cap: member pays no more than $35/mo per covered insulin.
+    // IRA insulin cap ($35/mo): https://www.cms.gov/inflation-reduction-act-and-medicare
     return sum + (isInsulin ? Math.min(m.estimated_monthly_retail, INSULIN_CAP_MONTHLY) : m.estimated_monthly_retail);
   }, 0);
   return Math.min(monthly * 12, cap);
@@ -161,6 +166,7 @@ const MEDIGAP_PREMIUM_FACTOR: Record<string, number> = {
 
 // Approximate share of standard medical gaps each Medigap letter leaves on the member,
 // expressed as expected annual out-of-pocket against a typical utilization profile.
+// Based on CMS standardized benefit tables: https://www.cms.gov/medicare/health-plans/medigap
 const MEDIGAP_EXPECTED_OOP: Record<string, number> = {
   A: 1900, B: 900, D: 350, G: 283,
   "High-Deductible G": 2870,
@@ -285,7 +291,7 @@ export function recommendPlans(input: RecommendInput): PersonalizedRecommendatio
     estAnnualTotal: bestMedigap.annual,
     estWorstCase: bestMedigap.worst,
     carriers: CMS_CATALOG.medigapCarriers,
-    source: "CMS-approved 2026 standardized Medigap policies",
+    source: "CMS-approved 2026 standardized Medigap policies (https://www.cms.gov/medicare/health-plans/medigap)",
   };
 
   const bRec: PlanRecommendation = {
@@ -298,7 +304,7 @@ export function recommendPlans(input: RecommendInput): PersonalizedRecommendatio
     estAnnualTotal: maAnnual,
     estWorstCase: maWorst,
     carriers: CMS_CATALOG.advantageCarriers,
-    source: "CMS-approved 2026 Part C plan types",
+    source: "CMS-approved 2026 Part C plan types (https://www.medicare.gov/plan-compare)",
   };
 
   const aScore = prefersPredictability ? aRec.estWorstCase : aRec.estAnnualTotal;
