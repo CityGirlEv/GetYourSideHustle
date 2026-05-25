@@ -115,6 +115,24 @@ function bestMedicationMatch(text: string) {
   return best?.entry ?? null;
 }
 
+// Join runs of single-letter tokens ("p r e d" -> "pred") so the user can
+// spell out a drug name letter by letter and have it search the catalog.
+function parseSpelledOrSpoken(text: string): string {
+  const tokens = text.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(Boolean);
+  const out: string[] = [];
+  let buf = "";
+  for (const t of tokens) {
+    if (t.length === 1 && /[a-z]/.test(t)) {
+      buf += t;
+    } else {
+      if (buf) { out.push(buf); buf = ""; }
+      out.push(t);
+    }
+  }
+  if (buf) out.push(buf);
+  return out.join(" ").trim();
+}
+
 // ------------------- Config -------------------
 const CURRENT_YEAR = new Date().getFullYear();
 const MIN_BIRTH_YEAR = CURRENT_YEAR - 110;
@@ -166,6 +184,7 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
   const [conditions, setConditions] = useState<string[]>([]);
   const [meds, setMeds] = useState<Medication[]>([]);
   const [pendingMedName, setPendingMedName] = useState("");
+  const [medQuery, setMedQuery] = useState("");
 
   // Conversation state
   const [step, setStep] = useState<StepKey>("intro");
@@ -181,6 +200,13 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
   const stepRef = useRef(step); useEffect(() => { stepRef.current = step; }, [step]);
   const historyRef = useRef<StepKey[]>([]);
   const pendingRef = useRef<{ apply: () => void; next: StepKey; from: StepKey } | null>(null);
+  const cancelMedLoopRef = useRef(false);
+
+  const medMatches = useMemo(() => {
+    const q = medQuery.trim();
+    if (q.length < 2) return [];
+    return searchMedCatalog(q, 6);
+  }, [medQuery]);
 
   const countyOptions = useMemo(() => /^\d{3}$/.test(zip3) ? countiesForZip3(zip3) : [], [zip3]);
 
@@ -453,16 +479,8 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
         return;
       }
       case "medsName": {
-        const name = text.trim().replace(/^(it'?s|the drug is|i take|i'?m on)\s+/i, "");
-        if (!name) { reAsk("I didn't catch the name. Please say the drug name, or spell it letter by letter.", "medsName"); return; }
-        const matched = bestMedicationMatch(name);
-        const capturedName = matched?.name ?? name;
-        verify(
-          matched ? `medication ${matched.name} (matched from "${name}")` : `medication ${capturedName}`,
-          () => setPendingMedName(capturedName),
-          "medsStrength",
-          "medsName",
-        );
+        // The med search step has its own interactive loop (startMedSearch).
+        // handleAnswer is not used for it.
         return;
       }
       case "medsStrength": {
