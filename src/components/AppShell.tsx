@@ -2,7 +2,7 @@ import { useApp } from "@/lib/app-store";
 import { Link, useRouter } from "@tanstack/react-router";
 import { SecurityBanner } from "./SecurityBanner";
 import { CMSFooter } from "./CMSFooter";
-import { LogOut, Menu, Users, LogIn, FlaskConical } from "lucide-react";
+import { LogOut, Menu, Users, LogIn, FlaskConical, Briefcase, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CreditPill } from "./CreditPill";
 import { FontSizeToggle } from "./FontSizeToggle";
@@ -41,6 +41,19 @@ function TeamNav() {
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
+            <Link to="/agent" className="cursor-pointer flex items-center gap-2">
+              <Briefcase className="h-4 w-4" />
+              Agent Portal
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link to="/admin" className="cursor-pointer flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Admin Portal
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem asChild>
             <Link to="/qa" className="cursor-pointer flex items-center gap-2">
               <FlaskConical className="h-4 w-4" />
               QA Testing Portal
@@ -68,6 +81,16 @@ function MobileNav() {
           <SheetClose asChild>
             <Link to="/auth" className="flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium text-foreground hover:bg-accent transition-colors">
               <LogIn className="h-4 w-4" />Team Login
+            </Link>
+          </SheetClose>
+          <SheetClose asChild>
+            <Link to="/agent" className="flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium text-foreground hover:bg-accent transition-colors">
+              <Briefcase className="h-4 w-4" />Agent Portal
+            </Link>
+          </SheetClose>
+          <SheetClose asChild>
+            <Link to="/admin" className="flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium text-foreground hover:bg-accent transition-colors">
+              <Settings className="h-4 w-4" />Admin Portal
             </Link>
           </SheetClose>
           <SheetClose asChild>
