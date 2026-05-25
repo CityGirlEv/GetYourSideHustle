@@ -133,12 +133,32 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
             </DropdownMenu>
           )}
           {user?.role === "agent" && (
-            <Button size="sm" variant="outline" className="gap-1" asChild>
-              <Link to="/agent">
-                <Briefcase className="h-4 w-4" />
-                <span className="hidden sm:inline">Agent</span>
-              </Link>
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="outline" className="gap-1">
+                  <Briefcase className="h-4 w-4" />
+                  <span className="hidden sm:inline">Agent</span>
+                  <ChevronDown className="h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuItem asChild>
+                  <Link to="/agent" className="flex items-center gap-2 cursor-pointer">
+                    <LayoutDashboard className="h-4 w-4" />Agent Portal
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/agent" className="flex items-center gap-2 cursor-pointer">
+                    <FileText className="h-4 w-4" />My Scenarios
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/nda" className="flex items-center gap-2 cursor-pointer">
+                    <FileSignature className="h-4 w-4" />Agent NDA
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
           {user && (
             <div className="hidden md:flex items-center gap-2 text-sm">
