@@ -478,6 +478,14 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
   // ------------------- Start -------------------
   const begin = async () => {
     setTranscript([]);
+    // Pre-warm mic permission so the first Listening window actually captures audio
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach((t) => t.stop());
+    } catch {
+      toast.error("Microphone access is required for voice intake. Please allow it and try again.");
+      return;
+    }
     await speak("Hi — I'll ask you a few questions to build your Medicare scenario. You can repeat any question, retry your answer, or type instead. Let's start.");
     nextStep("birthYear");
   };
