@@ -171,12 +171,36 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
       };
       rec.onend = () => finish("");
       recRef.current = rec;
-      setListening(true); rec.start();
+      setListening(true);
+      playBeep();
+      toast.info("🎤 Your turn — speak now", { duration: 2500, id: "voice-listen" });
+      rec.start();
       setTimeout(() => { try { rec.stop(); } catch { /* noop */ } }, timeoutMs);
     } catch { finish(""); }
   });
 
   const stopListening = () => { try { recRef.current?.abort(); } catch { /* noop */ } setListening(false); };
+
+  // Short audible cue so the user knows the mic is now open
+  const playBeep = () => {
+    try {
+      const w = window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext };
+      const Ctx = w.AudioContext ?? w.webkitAudioContext;
+      if (!Ctx) return;
+      const ctx = new Ctx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.frequency.value = 880;
+      osc.type = "sine";
+      gain.gain.value = 0.0001;
+      gain.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.18);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.2);
+      setTimeout(() => { try { ctx.close(); } catch { /* noop */ } }, 400);
+    } catch { /* noop */ }
+  };
 
   // ------------------- Conversation runner -------------------
   // Speaks the question, then listens once and routes the response.
