@@ -228,7 +228,9 @@ export function TaskSheetContent() {
 
   const onReset = () => {
     if (!confirm("Reset task sheet to the seeded defaults? Your local edits will be lost.")) return;
-    setRows(resetTaskRows());
+    const fresh = resetTaskRows();
+    setSavedRows(fresh);
+    setRows(fresh);
   };
 
   const exportCsv = () => {
@@ -246,6 +248,101 @@ export function TaskSheetContent() {
     const a = document.createElement("a");
     a.href = url; a.download = "task-sheet.csv"; a.click();
     URL.revokeObjectURL(url);
+  };
+
+  // ------------------------------------------------------------------
+  // Pending-change diff between savedRows (last persisted) and rows (draft)
+  // ------------------------------------------------------------------
+  type FieldKey = Exclude<keyof TaskRow, "id">;
+  type Change =
+    | { kind: "add"; key: string; id: string; row: TaskRow }
+    | { kind: "delete"; key: string; id: string; row: TaskRow }
+    | { kind: "update"; key: string; id: string; field: FieldKey; before: unknown; after: unknown };
+
+  const FIELD_LABELS: Record<FieldKey, string> = {
+    description: "Description", sprintId: "Sprint", category: "Category",
+    priority: "Priority", status: "Status", assignBy: "Assigned by",
+    assignedTo: "Assigned to", dateAssigned: "Date assigned", dueDate: "Due date",
+    dateCompleted: "Date completed", cost: "Cost", notes: "Notes", path: "Link",
+  };
+
+  const pendingChanges = useMemo<Change[]>(() => {
+    const out: Change[] = [];
+    const savedById = new Map(savedRows.map((r) => [r.id, r]));
+    const draftById = new Map(rows.map((r) => [r.id, r]));
+    for (const r of rows) {
+      const s = savedById.get(r.id);
+      if (!s) { out.push({ kind: "add", key: `${r.id}:__add`, id: r.id, row: r }); continue; }
+      for (const k of Object.keys(FIELD_LABELS) as FieldKey[]) {
+        const a = s[k]; const b = r[k];
+        if (JSON.stringify(a ?? "") !== JSON.stringify(b ?? "")) {
+          out.push({ kind: "update", key: `${r.id}:${k}`, id: r.id, field: k, before: a, after: b });
+        }
+      }
+    }
+    for (const s of savedRows) {
+      if (!draftById.has(s.id)) out.push({ kind: "delete", key: `${s.id}:__delete`, id: s.id, row: s });
+    }
+    return out.sort((a, b) => a.id.localeCompare(b.id));
+  }, [rows, savedRows]);
+
+  const pendingCount = pendingChanges.length;
+
+  const discardAllDrafts = () => {
+    if (pendingCount === 0) return;
+    if (!confirm(`Discard all ${pendingCount} unsaved change(s)?`)) return;
+    setRows(savedRows);
+  };
+
+  // Apply selected changes. Unselected changes stay in working draft.
+  const commitChanges = (selectedKeys: Set<string>) => {
+    const savedById = new Map(savedRows.map((r) => [r.id, { ...r }]));
+    const draftById = new Map(rows.map((r) => [r.id, { ...r }]));
+    const nextSavedMap = new Map(savedById);
+    const nextDraftMap = new Map(draftById);
+
+    for (const c of pendingChanges) {
+      const isSel = selectedKeys.has(c.key);
+      if (c.kind === "add") {
+        if (isSel) nextSavedMap.set(c.id, { ...c.row });
+        else nextDraftMap.delete(c.id); // discard the unsaved new row
+      } else if (c.kind === "delete") {
+        if (isSel) nextSavedMap.delete(c.id);
+        else nextDraftMap.set(c.id, { ...c.row }); // restore — keep both in sync
+      } else {
+        // update
+        if (isSel) {
+          const cur = nextSavedMap.get(c.id) ?? { ...(savedById.get(c.id) as TaskRow) };
+          (cur as Record<string, unknown>)[c.field] = c.after;
+          nextSavedMap.set(c.id, cur);
+        } else {
+          // leave draft as-is so the field stays pending
+        }
+      }
+    }
+
+    // Preserve insertion order: prefer current draft order, then any leftover saved-only rows.
+    const orderedDraft: TaskRow[] = [];
+    const seen = new Set<string>();
+    for (const r of rows) {
+      const v = nextDraftMap.get(r.id);
+      if (v) { orderedDraft.push(v); seen.add(r.id); }
+    }
+    for (const [id, v] of nextDraftMap) if (!seen.has(id)) orderedDraft.push(v);
+
+    const orderedSaved: TaskRow[] = [];
+    const seenSaved = new Set<string>();
+    for (const r of savedRows) {
+      const v = nextSavedMap.get(r.id);
+      if (v) { orderedSaved.push(v); seenSaved.add(r.id); }
+    }
+    for (const [id, v] of nextSavedMap) if (!seenSaved.has(id)) orderedSaved.push(v);
+
+    setSavedRows(orderedSaved);
+    setRows(orderedDraft);
+    saveTaskRows(orderedSaved);
+    setSaveOpen(false);
+    toast.success(`Saved ${selectedKeys.size} change${selectedKeys.size === 1 ? "" : "s"}.`);
   };
 
   return (
