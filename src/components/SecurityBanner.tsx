@@ -83,7 +83,7 @@ export function SecurityBanner() {
                     <DropdownMenuLabel className="text-[10px] uppercase tracking-wide text-muted-foreground">
                       Admin tools
                     </DropdownMenuLabel>
-                    <DropdownMenuItem onSelect={() => router.navigate({ to: "/admin" })}>
+                    <DropdownMenuItem onSelect={() => router.navigate({ to: "/admin", search: {} })}>
                       <Settings className="h-3.5 w-3.5 mr-2" /> Admin home
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => router.navigate({ to: "/admin", search: { tab: "rollout" } })}>
