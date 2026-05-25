@@ -13,7 +13,7 @@ import type { Medication } from "@/lib/medicare-math";
 type SR = {
   start: () => void; stop: () => void; abort: () => void;
   lang: string; continuous: boolean; interimResults: boolean; maxAlternatives: number;
-  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+  onresult: ((e: { resultIndex?: number; results: ArrayLike<ArrayLike<{ transcript: string; confidence?: number }> & { isFinal?: boolean }> }) => void) | null;
   onerror: ((e: { error: string }) => void) | null;
   onend: (() => void) | null;
 };
@@ -47,9 +47,9 @@ function parseYear(text: string): number | null {
   return null;
 }
 function parseYesNo(text: string): boolean | null {
-  const t = text.toLowerCase();
-  if (/\b(yes|yeah|yep|yup|correct|right|true|sure|of course|affirmative|i (do|am)|smoke|smoker)\b/.test(t)) return true;
-  if (/\b(no|nope|nah|negative|never|not|don't|do not)\b/.test(t)) return false;
+  const t = normalizeSpeech(text);
+  if (/\b(no|nope|nah|negative|never|not|dont|do not|incorrect|wrong|not right|not correct)\b/.test(t)) return false;
+  if (/\b(yes|yeah|yep|yup|ya|correct|right|true|sure|ok|okay|affirmative|that is right|thats right|sounds right|i do|i am|smoke|smoker)\b/.test(t)) return true;
   return null;
 }
 function matchOption<T extends string>(text: string, options: readonly T[]): T | null {
