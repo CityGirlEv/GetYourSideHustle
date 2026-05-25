@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ShieldCheck, Lock, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
-import { SecurityBanner } from "@/components/SecurityBanner";
+import { AppShell } from "@/components/AppShell";
 
 export const Route = createFileRoute("/auth")({ component: AuthPage });
 
