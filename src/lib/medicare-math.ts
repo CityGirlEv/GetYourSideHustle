@@ -83,7 +83,7 @@ function annualDrugCostWithCap(meds: Medication[], cap: number) {
     const isInsulin = /insulin|novolog|humalog|lantus|tresiba|admelog|basaglar|levemir|toujeo/i.test(
       m.medication_name + " " + (m.resolved_diagnosis ?? ""),
     );
-    // 2023+ IRA insulin cap: member pays no more than $35/mo per covered insulin.
+    // IRA insulin cap ($35/mo): https://www.cms.gov/inflation-reduction-act-and-medicare
     return sum + (isInsulin ? Math.min(m.estimated_monthly_retail, INSULIN_CAP_MONTHLY) : m.estimated_monthly_retail);
   }, 0);
   return Math.min(monthly * 12, cap);
