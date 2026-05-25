@@ -188,7 +188,7 @@
       "Market Share Tier": "Dominant (Market Leader)",
       "A.M. Best Rating": "A (Excellent) by A.M. Best",
       "Key Characteristics": "Co-branded with AARP. Offers stable pricing, household discounts in most states, and a highly recognized national network.",
-      "Carrier Portal": "Visit Portal"
+      "Carrier Portal": "https://www.aarpmedicareplans.com/"
     },
     {
       "Carrier Name": "Mutual of Omaha",
@@ -196,7 +196,7 @@
       "Market Share Tier": "High",
       "A.M. Best Rating": "A+ (Superior) by A.M. Best",
       "Key Characteristics": "Renowned for competitive rates, excellent senior customer service, and solid household premium discounts.",
-      "Carrier Portal": "Visit Portal"
+      "Carrier Portal": "https://www.mutualofomaha.com/medicare-supplement-insurance"
     },
     {
       "Carrier Name": "Blue Cross Blue Shield (Regional Affiliates)",
@@ -204,7 +204,7 @@
       "Market Share Tier": "High",
       "A.M. Best Rating": "Varies by regional entity (Generally A/A+)",
       "Key Characteristics": "Highly trusted local brand recognition. Plan options and pricing models are managed independently by state affiliates.",
-      "Carrier Portal": "Visit Portal"
+      "Carrier Portal": "https://www.bcbs.com/medicare"
     },
     {
       "Carrier Name": "Aetna (CVS Health)",
@@ -212,7 +212,7 @@
       "Market Share Tier": "Medium-High",
       "A.M. Best Rating": "A (Excellent) by A.M. Best",
       "Key Characteristics": "Offers strong financial stability and competitive rates in many markets, with extra member wellness discounts.",
-      "Carrier Portal": "Visit Portal"
+      "Carrier Portal": "https://www.aetnamedicare.com/"
     },
     {
       "Carrier Name": "Cigna Healthcare",
@@ -220,7 +220,7 @@
       "Market Share Tier": "Medium",
       "A.M. Best Rating": "A (Excellent) by A.M. Best",
       "Key Characteristics": "Provides highly competitive premiums in several states, 24/7 health information lines, and digital customer support tools.",
-      "Carrier Portal": "Visit Portal"
+      "Carrier Portal": "https://www.cigna.com/medicare/"
     },
     {
       "Carrier Name": "Humana",
@@ -228,7 +228,7 @@
       "Market Share Tier": "Medium",
       "A.M. Best Rating": "A- (Excellent) by A.M. Best",
       "Key Characteristics": "Strong customer service orientation, very competitive rates in southern states, and additional value-add programs.",
-      "Carrier Portal": "Visit Portal"
+      "Carrier Portal": "https://www.humana.com/medicare"
     },
     {
       "Carrier Name": "Allstate Health Solutions",
@@ -236,7 +236,7 @@
       "Market Share Tier": "Growing",
       "A.M. Best Rating": "A+ (Superior) by A.M. Best",
       "Key Characteristics": "Fastest-growing Medigap portfolio. Offers multi-policy discounts and flexible underwriting options.",
-      "Carrier Portal": "Visit Portal"
+      "Carrier Portal": "https://www.allstatehealth.com/medicare-supplement-insurance"
     }
   ],
   "Advantage Plan Types": [
@@ -311,7 +311,7 @@
       "Network Strength": "Very High (Massive national HMO and PPO networks)",
       "Average Star Rating": "Typically 4.0 - 4.5 Stars",
       "Key Characteristics": "Industry leader. Integrates broad clinical partnerships, OTC allowances, and comprehensive renew rewards programs.",
-      "Carrier Portal": "Visit Portal"
+      "Carrier Portal": "https://www.uhc.com/medicare"
     },
     {
       "Carrier Name": "Humana",
@@ -319,7 +319,7 @@
       "Network Strength": "High (Highly focused on senior networks and primary care centers)",
       "Average Star Rating": "Typically 4.5 Stars",
       "Key Characteristics": "Consistently rated highest in customer satisfaction. Strong regional HMO options and specialized care programs.",
-      "Carrier Portal": "Visit Portal"
+      "Carrier Portal": "https://www.humana.com/medicare"
     },
     {
       "Carrier Name": "Aetna (CVS Health)",
@@ -327,7 +327,7 @@
       "Network Strength": "High (Integrates CVS Pharmacy, MinuteClinic, and medical providers)",
       "Average Star Rating": "Typically 4.0 Stars",
       "Key Characteristics": "Leverages CVS locations for convenient member health screenings and benefits integration, offering competitive zero-dollar premiums.",
-      "Carrier Portal": "Visit Portal"
+      "Carrier Portal": "https://www.aetnamedicare.com/"
     },
     {
       "Carrier Name": "Elevance Health (Anthem / BCBS)",
@@ -335,7 +335,7 @@
       "Network Strength": "Strong (Uses local Blue Cross Blue Shield provider networks)",
       "Average Star Rating": "Typically 4.0 Stars",
       "Key Characteristics": "Offers trusted Blue Cross branding with excellent regional coverage and solid dental and vision supplementary benefits.",
-      "Carrier Portal": "Visit Portal"
+      "Carrier Portal": "https://www.anthem.com/medicare"
     },
     {
       "Carrier Name": "Centene (Wellcare)",
@@ -343,7 +343,7 @@
       "Network Strength": "Moderate (Very focused on low-cost options and Special Needs Plans)",
       "Average Star Rating": "Typically 3.0 - 3.5 Stars",
       "Key Characteristics": "Known for highly competitive Part B premium give-back plans and extensive D-SNP Medicaid coordination options.",
-      "Carrier Portal": "Visit Portal"
+      "Carrier Portal": "https://www.wellcare.com/"
     },
     {
       "Carrier Name": "Kaiser Permanente",
@@ -351,7 +351,7 @@
       "Network Strength": "Excellent (Fully closed staff-model integrated system)",
       "Average Star Rating": "Typically 4.5 - 5.0 Stars (Highest average ratings)",
       "Key Characteristics": "Operates as a highly coordinated one-stop-shop. Exceptional care coordination, but members are locked exclusively to Kaiser facilities.",
-      "Carrier Portal": "Visit Portal"
+      "Carrier Portal": "https://healthy.kaiserpermanente.org/pages/medicare"
     },
     {
       "Carrier Name": "Cigna Healthcare",
@@ -359,7 +359,7 @@
       "Network Strength": "Moderate (Good urban PPO and HMO networks)",
       "Average Star Rating": "Typically 3.5 - 4.0 Stars",
       "Key Characteristics": "Offers a strong suite of customer incentives and solid dental coverage add-ons in key metropolitan areas.",
-      "Carrier Portal": "Visit Portal"
+      "Carrier Portal": "https://www.cigna.com/medicare/"
     },
     {
       "Carrier Name": "Devoted Health",
@@ -367,7 +367,7 @@
       "Network Strength": "Moderate-High (Rapidly expanding footprint)",
       "Average Star Rating": "Typically 4.0 - 4.5 Stars",
       "Key Characteristics": "A highly modern, tech-enabled startup-style carrier. Excellent customer loyalty ratings and individualized member care guides.",
-      "Carrier Portal": "Visit Portal"
+      "Carrier Portal": "https://www.devoted.com/"
     },
     {
       "Carrier Name": "Molina Healthcare",
@@ -375,7 +375,7 @@
       "Network Strength": "Moderate (Highly coordinated Medicaid/Medicare networks)",
       "Average Star Rating": "Typically 3.0 - 3.5 Stars",
       "Key Characteristics": "Specializes deeply in dual-eligible (D-SNP) populations, aligning state Medicaid benefits with federal Medicare benefits.",
-      "Carrier Portal": "Visit Portal"
+      "Carrier Portal": "https://www.molinahealthcare.com/members/common/en-US/mem/medicare/medicare.aspx"
     }
   ],
   "Part D Rx Plans": [
@@ -406,37 +406,37 @@
       "Carrier Name": "Aetna (CVS Health)",
       "Market Share / Coverage Tier": "Dominant (Well known for 'SilverScript' PDP plans)",
       "Key Characteristics & Strengths": "Often offers the lowest base premiums in the nation. Excellent integration with CVS mail-order and retail pharmacies.",
-      "Carrier Portal": "Visit Portal"
+      "Carrier Portal": "https://www.aetnamedicare.com/"
     },
     {
       "Carrier Name": "Wellcare (Centene)",
       "Market Share / Coverage Tier": "Dominant (Co-branded with Value Script and Classic plans)",
       "Key Characteristics & Strengths": "Highly competitive low-cost plans. Popular option for seniors who only take generic medications and want a near-$0 premium.",
-      "Carrier Portal": "Visit Portal"
+      "Carrier Portal": "https://www.wellcare.com/Medicare"
     },
     {
       "Carrier Name": "UnitedHealthcare (AARP)",
       "Market Share / Coverage Tier": "High",
       "Key Characteristics & Strengths": "Outstanding pharmacy network. Offers extremely reliable formulary updates and highly predictable co-pay structures.",
-      "Carrier Portal": "Visit Portal"
+      "Carrier Portal": "https://www.aarpmedicareplans.com/"
     },
     {
       "Carrier Name": "Mutual of Omaha Rx",
       "Market Share / Coverage Tier": "Medium",
       "Key Characteristics & Strengths": "Straightforward plan options with highly responsive customer service and easy enrollment processes.",
-      "Carrier Portal": "Visit Portal"
+      "Carrier Portal": "https://www.mutualofomahaRx.com/"
     },
     {
       "Carrier Name": "Humana",
       "Market Share / Coverage Tier": "High (Partners with Walmart Rx plans in many states)",
       "Key Characteristics & Strengths": "Very popular budget option due to strong retail partnerships, offering discounted copays at Walmart and Humana mail-order pharmacies.",
-      "Carrier Portal": "Visit Portal"
+      "Carrier Portal": "https://www.humana.com/medicare"
     },
     {
       "Carrier Name": "Cigna Healthcare Rx",
       "Market Share / Coverage Tier": "Medium",
       "Key Characteristics & Strengths": "Well-balanced plan selections featuring high-tier coverage options suitable for brand-name drug requirements.",
-      "Carrier Portal": "Visit Portal"
+      "Carrier Portal": "https://www.cigna.com/medicare/part-d-prescription-drug-plans"
     }
   ]
 }
