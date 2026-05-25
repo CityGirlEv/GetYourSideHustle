@@ -19,6 +19,8 @@ export interface TestCase {
   steps: string[];
   expected: string;
   notes?: string;
+  assignee?: string;    // Optional explicit override; otherwise derived (see getTestAssignee)
+  sprintId?: string;    // Optional explicit override; otherwise active sprint (see getTestSprintId)
 }
 
 export interface PhaseItem {
@@ -470,52 +472,64 @@ export const IMPLEMENTATION_PLAN: PhaseItem[] = [
 // ----------------------------------------------------------------------------
 // SPRINT SCHEDULE
 // ----------------------------------------------------------------------------
+// 4 × one-week sprints. Sprint 0 (alpha) closed Sunday 5/24/2026.
+// Sprint 1 is the active sprint and starts today, 5/25/2026 — beta go-live.
+export const ACTIVE_SPRINT_ID = "S-2026-01";
+
 export const SPRINTS: Sprint[] = [
   {
-    id: "S-2026-09", number: 9, name: "Voice everywhere",
-    start: "2026-05-18", end: "2026-05-29",
-    goal: "Ship voice input on every intake field and a full voice-driven wizard.",
+    id: "S-2026-00", number: 0, name: "Alpha — requirements & framing",
+    start: "2026-05-18", end: "2026-05-24",
+    goal: "Draft initial requirements and ship an alpha release used to refine scope and surface gaps before the beta.",
     items: [
-      { id: "S9-1", title: "VoiceButton component + Web Speech API hook", type: "feature", status: "done" },
-      { id: "S9-2", title: "NATO phonetic spell mode", type: "feature", status: "done" },
-      { id: "S9-3", title: "Voice-select for Form / Frequency dropdowns", type: "feature", status: "done" },
-      { id: "S9-4", title: "Voice intake wizard (TTS + STT state machine)", type: "feature", status: "done" },
-      { id: "S9-5", title: "Manual / Voice mode toggle on /scenario/new", type: "feature", status: "done" },
-      { id: "S9-6", title: "Testing portal at /testing", type: "test", status: "done" },
-      { id: "S9-7", title: "Test cases for all voice flows", type: "test", status: "done" },
+      { id: "S0-1", title: "Initial product + scenario requirements drafted", type: "design", status: "done" },
+      { id: "S0-2", title: "Alpha release deployed for internal walkthrough", type: "feature", status: "done" },
+      { id: "S0-3", title: "Requirements refined from alpha feedback", type: "design", status: "done" },
+      { id: "S0-4", title: "Voice intake + scenario flow validated end-to-end", type: "feature", status: "done" },
     ],
   },
   {
-    id: "S-2026-10", number: 10, name: "Optimizer math",
-    start: "2026-06-01", end: "2026-06-12",
-    goal: "Turn the scenario into a ranked list of plans with explainable scoring.",
+    id: "S-2026-01", number: 1, name: "Beta go-live",
+    start: "2026-05-25", end: "2026-05-31",
+    goal: "Cut the beta release live and execute the full test plan against it. Catria leads QA (70%); owner runs the remaining 30%.",
     items: [
-      { id: "S10-1", title: "Score model: monthly cost vs predictability", type: "feature", status: "in_progress" },
-      { id: "S10-2", title: "Tier lookup for catalog drugs (Preferred / Non-preferred / Specialty)", type: "feature", status: "todo" },
-      { id: "S10-3", title: "Coverage flag from RxNorm flows into score", type: "feature", status: "todo" },
-      { id: "S10-4", title: "StrategyScorecard UI — per-plan breakdown", type: "design", status: "todo" },
-      { id: "S10-5", title: "Test cases for optimizer scoring edge cases", type: "test", status: "todo" },
+      { id: "S1-1", title: "Beta release live (5/25)", type: "feature", status: "in_progress" },
+      { id: "S1-2", title: "All test cases aligned to Sprint 1", type: "test", status: "in_progress" },
+      { id: "S1-3", title: "Test case ownership split 70/30 (Catria / Me)", type: "test", status: "in_progress" },
+      { id: "S1-4", title: "Beta smoke pass against production preview", type: "test", status: "todo" },
+      { id: "S1-5", title: "Triage + fix P0/P1 beta defects", type: "bug", status: "todo" },
     ],
   },
   {
-    id: "S-2026-11", number: 11, name: "Agent + SOA flow",
-    start: "2026-06-15", end: "2026-06-26",
-    goal: "Close the loop from scenario → assigned agent → signed SOA.",
+    id: "S-2026-02", number: 2, name: "Optimizer math hardening",
+    start: "2026-06-01", end: "2026-06-07",
+    goal: "Land the explainable scoring model and per-plan StrategyScorecard so plan rankings are defensible.",
     items: [
-      { id: "S11-1", title: "Admin assign-agent UI polish", type: "feature", status: "todo" },
-      { id: "S11-2", title: "Agent inbox with status filters", type: "feature", status: "todo" },
-      { id: "S11-3", title: "Signature capture (draw + type modes)", type: "feature", status: "in_progress" },
-      { id: "S11-4", title: "SOA PDF generation", type: "feature", status: "todo" },
+      { id: "S2-1", title: "Score model: monthly cost vs predictability", type: "feature", status: "todo" },
+      { id: "S2-2", title: "Tier lookup for catalog drugs", type: "feature", status: "todo" },
+      { id: "S2-3", title: "StrategyScorecard UI — per-plan breakdown", type: "design", status: "todo" },
+      { id: "S2-4", title: "Optimizer scoring test cases", type: "test", status: "todo" },
     ],
   },
   {
-    id: "S-2026-12", number: 12, name: "CMS catalog ingest",
-    start: "2026-06-29", end: "2026-07-10",
-    goal: "Replace estimates with real CMS 2026/2027 plan + formulary data.",
+    id: "S-2026-03", number: 3, name: "Agent + SOA flow",
+    start: "2026-06-08", end: "2026-06-14",
+    goal: "Close the loop scenario → assigned agent → signed SOA, with a clean agent inbox.",
     items: [
-      { id: "S12-1", title: "Nightly cron via /api/public/cms-ingest", type: "infra", status: "todo" },
-      { id: "S12-2", title: "Schema for plan_year + formulary_drug", type: "infra", status: "todo" },
-      { id: "S12-3", title: "Backfill existing scenarios with new prices", type: "infra", status: "todo" },
+      { id: "S3-1", title: "Admin assign-agent UI polish", type: "feature", status: "todo" },
+      { id: "S3-2", title: "Agent inbox with status filters", type: "feature", status: "todo" },
+      { id: "S3-3", title: "Signature capture (draw + type modes)", type: "feature", status: "todo" },
+      { id: "S3-4", title: "SOA PDF generation", type: "feature", status: "todo" },
+    ],
+  },
+  {
+    id: "S-2026-04", number: 4, name: "CMS catalog ingest",
+    start: "2026-06-15", end: "2026-06-21",
+    goal: "Replace estimates with real CMS 2026/2027 plan + formulary data via a nightly ingest.",
+    items: [
+      { id: "S4-1", title: "Nightly cron via /api/public/cms-ingest", type: "infra", status: "todo" },
+      { id: "S4-2", title: "Schema for plan_year + formulary_drug", type: "infra", status: "todo" },
+      { id: "S4-3", title: "Backfill existing scenarios with new prices", type: "infra", status: "todo" },
     ],
   },
 ];
@@ -560,4 +574,36 @@ export function loadAllStatuses(): Record<string, TestStatus> {
   const out: Record<string, TestStatus> = {};
   for (const t of TEST_CASES) out[t.id] = loadStatus(t.id);
   return out;
+}
+
+// ----------------------------------------------------------------------------
+// TEST OWNERSHIP — 70/30 split, Catria lead. All tests are aligned to the
+// active sprint (Sprint 1 · beta go-live) unless a TestCase overrides it.
+// ----------------------------------------------------------------------------
+export const TEST_OWNERS = ["Catria", "Me"] as const;
+export type TestOwner = (typeof TEST_OWNERS)[number];
+
+/**
+ * Deterministic 70/30 split across the TEST_CASES list. The first 7 of every
+ * 10 (by source order) go to Catria, the remaining 3 to "Me". A TestCase can
+ * override by setting `assignee` explicitly.
+ */
+export function getTestAssignee(t: TestCase): TestOwner | string {
+  if (t.assignee) return t.assignee;
+  const idx = TEST_CASES.findIndex((x) => x.id === t.id);
+  if (idx < 0) return "Catria";
+  return idx % 10 < 7 ? "Catria" : "Me";
+}
+
+export function getTestSprintId(t: TestCase): string {
+  return t.sprintId || ACTIVE_SPRINT_ID;
+}
+
+export function testAssignmentCounts(): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const t of TEST_CASES) {
+    const a = getTestAssignee(t);
+    counts[a] = (counts[a] || 0) + 1;
+  }
+  return counts;
 }
