@@ -30,19 +30,7 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
   return (
     <div className="min-h-screen flex flex-col">
       <SecurityBanner />
-      <div className="px-4 md:px-8 pt-6 pb-1 max-w-7xl w-full mx-auto">
-        <div className="flex flex-col items-center text-center">
-          <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-display font-bold text-primary uppercase">The Medicare Optimizer</h1>
-          <p className="text-xs sm:text-sm md:text-base text-primary/80 font-medium italic">You Deserve The Best Medicare Plan Because You Earned It!</p>
-        </div>
-        <TrustBanner />
-      </div>
       <header className="glass border-b border-border/60 px-3 md:px-6 py-2 md:py-3 flex items-center sticky top-0 z-30 gap-2 md:gap-4 relative">
-        <div className="flex items-center gap-2 min-w-0 shrink z-10">
-          <Link to="/" className="flex items-center gap-2 md:gap-3 font-display font-bold">
-            <img src={muntieLogo} alt="The Medicare Optimizer" className="h-9 w-9 sm:h-12 sm:w-12 md:h-20 md:w-20 object-contain flex-shrink-0" />
-          </Link>
-        </div>
         <div className="flex-1" />
         <div className="flex items-center gap-3 flex-none shrink-0 ml-auto z-10">
           <FontSizeToggle />
@@ -173,8 +161,18 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
         </div>
       </header>
       <main className="flex-1 px-4 md:px-8 py-6 max-w-7xl w-full mx-auto">
+        <div className="flex flex-col items-center text-center mb-2">
+          <Link to="/" className="flex items-center gap-3 font-display font-bold">
+            <img src={muntieLogo} alt="The Medicare Optimizer" className="h-10 w-10 sm:h-14 sm:w-14 md:h-20 md:w-20 object-contain shrink-0" />
+            <div className="text-left">
+              <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl text-primary uppercase leading-tight">The Medicare Optimizer</h1>
+              <p className="text-xs sm:text-sm md:text-base text-primary/80 font-medium italic">You Deserve The Best Medicare Plan Because You Earned It!</p>
+            </div>
+          </Link>
+        </div>
+        <TrustBanner />
         {(title || subtitle) && (
-          <div className="mb-6">
+          <div className="mb-6 mt-4">
             {title && <h2 className="font-display font-bold text-2xl md:text-3xl text-primary">{title}</h2>}
             {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
           </div>
