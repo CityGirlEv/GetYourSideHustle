@@ -72,3 +72,6 @@ export function openAdvantageTypes(): AdvantageTypeRow[] {
 }
 
 export const CMS_DATA_REVISION = "CMS-approved reference catalog, plan year 2026";
+// Plan benefit data sourced from CMS standardized Medigap policies
+// (https://www.cms.gov/medicare/health-plans/medigap) and Medicare Plan Finder
+// landscape files (https://www.medicare.gov/plan-compare).
