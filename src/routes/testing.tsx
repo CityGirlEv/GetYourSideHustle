@@ -262,15 +262,17 @@ function priorityVariant(p: Priority): string {
 }
 
 function TestCaseCard({
-  t, status, qaNote, devNote, onChange, onQaNoteChange, onDevNoteChange,
+  t, status, qaNote, devNote, severity, onChange, onQaNoteChange, onDevNoteChange, onSeverityChange,
 }: {
   t: TestCase;
   status: TestStatus;
   qaNote: string;
   devNote: string;
+  severity: FailSeverity | "";
   onChange: (s: TestStatus) => void;
   onQaNoteChange: (n: string) => void;
   onDevNoteChange: (n: string) => void;
+  onSeverityChange: (s: FailSeverity | "") => void;
 }) {
   const ring =
     status === "pass"    ? "ring-2 ring-emerald-500/40" :
@@ -313,9 +315,37 @@ function TestCaseCard({
         <div className="mt-3 space-y-2">
           {(showQaNote || qaNote) && (
             <div>
-              <label className="block text-[11px] font-semibold text-destructive mb-1">
-                QA failure reason {showQaNote && <span className="opacity-70">(required when failing)</span>}
-              </label>
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                <label className="text-[11px] font-semibold text-destructive">
+                  QA failure reason {showQaNote && <span className="opacity-70">(required when failing)</span>}
+                </label>
+                {showQaNote && (
+                  <div className="flex items-center gap-1 ml-auto">
+                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Severity</span>
+                    {(Object.keys(FAIL_SEVERITY_LABELS) as FailSeverity[]).map((s) => {
+                      const active = severity === s;
+                      const tone =
+                        s === "high"   ? (active ? "bg-destructive text-destructive-foreground border-destructive" : "border-destructive/40 text-destructive hover:bg-destructive/10") :
+                        s === "medium" ? (active ? "bg-amber-500 text-white border-amber-500"           : "border-amber-500/40 text-amber-700 hover:bg-amber-500/10") :
+                                         (active ? "bg-sky-500 text-white border-sky-500"               : "border-sky-500/40 text-sky-700 hover:bg-sky-500/10");
+                      return (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => onSeverityChange(active ? "" : s)}
+                          className={`text-[10px] font-semibold rounded-full border px-2 py-0.5 transition ${tone}`}
+                          title={FAIL_SEVERITY_LABELS[s]}
+                        >
+                          {FAIL_SEVERITY_LABELS[s]}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+              {showQaNote && !severity && (
+                <p className="text-[10px] text-destructive mb-1">Pick a severity before saving this failure.</p>
+              )}
               <textarea
                 value={qaNote}
                 onChange={(e) => onQaNoteChange(e.target.value)}
