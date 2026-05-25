@@ -185,16 +185,16 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
     await speak(question);
     if (opts.skipListen) return;
     const heard = await listen();
-    if (heard) handleAnswer(expect, heard);
+    if (heard) await handleAnswer(expect, heard);
   };
 
   const reAsk = (q: string, step: StepKey) => { void ask(q, step); };
   const lastQuestion = transcript[transcript.length - 1]?.q ?? "";
 
-  const handleAnswer = (forStep: StepKey, text: string) => {
+  const handleAnswer = async (forStep: StepKey, text: string) => {
     setTranscript((p) => [...p, { q: text, speaker: "you" }]);
     // Echo back what we heard so the user can confirm it was captured correctly
-    void speak(`I heard: ${text}`);
+    await speak(`I heard: ${text}`);
     switch (forStep) {
       case "birthYear": {
         const y = parseYear(text);
