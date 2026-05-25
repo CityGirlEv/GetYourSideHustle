@@ -343,6 +343,8 @@ function BulkEditBar({
   onSetQaNote: (n: string) => void;
   onSetDevNote: (n: string) => void;
 }) {
+  const { user } = useApp();
+  const isQA = user?.role === "qa";
   const [qaDraft, setQaDraft] = useState("");
   const [devDraft, setDevDraft] = useState("");
   const disabled = selectedCount === 0;
@@ -368,12 +370,23 @@ function BulkEditBar({
           title="Set status for selected"
         >
           <option value="">Set status…</option>
-          <option value="not_run">Not run</option>
-          <option value="pass">Pass</option>
-          <option value="fail">Fail</option>
-          <option value="fixed_retest">Fixed / Retest</option>
-          <option value="failed_retest">Failed / Retest</option>
-          <option value="blocked">Blocked</option>
+          {isQA ? (
+            <>
+              <option value="not_run">Not started</option>
+              <option value="pass">Pass</option>
+              <option value="fail">Fail</option>
+              <option value="blocked">In progress</option>
+            </>
+          ) : (
+            <>
+              <option value="not_run">Not run</option>
+              <option value="pass">Pass</option>
+              <option value="fail">Fail</option>
+              <option value="fixed_retest">Fixed / Retest</option>
+              <option value="failed_retest">Failed / Retest</option>
+              <option value="blocked">Blocked</option>
+            </>
+          )}
         </select>
         <select
           disabled={disabled}
