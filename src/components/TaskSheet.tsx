@@ -97,7 +97,10 @@ function StatCard({ label, value, tone }: { label: string; value: number; tone?:
 }
 
 export function TaskSheetContent() {
+  // savedRows = last persisted snapshot; rows = working draft (unsaved edits)
+  const [savedRows, setSavedRows] = useState<TaskRow[]>(() => loadTaskRows());
   const [rows, setRows] = useState<TaskRow[]>(() => loadTaskRows());
+  const [saveOpen, setSaveOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | TaskRowStatus>("all");
   const [sprintFilter, setSprintFilter] = useState<string>("all");
@@ -118,9 +121,9 @@ export function TaskSheetContent() {
   const [bulkDateCompleted, setBulkDateCompleted] = useState<string>("");
   const [bulkCost, setBulkCost] = useState<string>("");
 
+  // Working state only — do NOT write to storage here. Call commitChanges() to persist.
   const persist = (next: TaskRow[]) => {
     setRows(next);
-    saveTaskRows(next);
   };
 
   const owners = useMemo(() => {
