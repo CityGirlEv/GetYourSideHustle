@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -76,6 +77,10 @@ function TaskSheetPage() {
   const [ownerFilter, setOwnerFilter] = useState<string>("All");
   const [editing, setEditing] = useState<TaskRow | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkStatus, setBulkStatus] = useState<TaskRowStatus | "">("");
+  const [bulkSprint, setBulkSprint] = useState<string>("");
+  const [bulkAssignee, setBulkAssignee] = useState<string>("");
 
   const persist = (next: TaskRow[]) => {
     setRows(next);
@@ -126,6 +131,43 @@ function TaskSheetPage() {
 
   const inlineUpdate = <K extends keyof TaskRow>(id: string, key: K, value: TaskRow[K]) => {
     persist(rows.map((r) => (r.id === id ? { ...r, [key]: value } : r)));
+  };
+
+  const toggleSelected = (id: string, checked: boolean) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id); else next.delete(id);
+      return next;
+    });
+  };
+  const toggleSelectAll = (checked: boolean) => {
+    if (checked) setSelected(new Set(filtered.map((r) => r.id)));
+    else setSelected(new Set());
+  };
+  const allSelected = filtered.length > 0 && filtered.every((r) => selected.has(r.id));
+
+  const applyBulk = () => {
+    if (selected.size === 0) return;
+    const next = rows.map((r) => {
+      if (!selected.has(r.id)) return r;
+      const u = { ...r };
+      if (bulkStatus) {
+        u.status = bulkStatus;
+        if (bulkStatus === "done" && !u.dateCompleted) u.dateCompleted = todayMMDDYY();
+      }
+      if (bulkSprint) u.sprintId = bulkSprint;
+      if (bulkAssignee.trim()) u.assignedTo = bulkAssignee.trim();
+      return u;
+    });
+    persist(next);
+    setBulkStatus(""); setBulkSprint(""); setBulkAssignee("");
+    setSelected(new Set());
+  };
+  const bulkDelete = () => {
+    if (selected.size === 0) return;
+    if (!confirm(`Delete ${selected.size} selected task(s)?`)) return;
+    persist(rows.filter((r) => !selected.has(r.id)));
+    setSelected(new Set());
   };
 
   const onReset = () => {
@@ -204,12 +246,55 @@ function TaskSheetPage() {
           </div>
         </Card>
 
+        {/* Bulk-edit bar */}
+        {selected.size > 0 && (
+          <Card className="p-3 flex flex-wrap items-center gap-2 border-primary/40">
+            <span className="text-sm font-medium mr-2">{selected.size} selected</span>
+            <Select value={bulkStatus} onValueChange={(v) => setBulkStatus(v as TaskRowStatus)}>
+              <SelectTrigger className="h-9 w-[150px]"><SelectValue placeholder="Set status…" /></SelectTrigger>
+              <SelectContent>
+                {TASK_STATUS_VALUES.map((s) => (
+                  <SelectItem key={s} value={s}>{TASK_STATUS_LABELS[s]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={bulkSprint} onValueChange={setBulkSprint}>
+              <SelectTrigger className="h-9 w-[180px]"><SelectValue placeholder="Set sprint…" /></SelectTrigger>
+              <SelectContent>
+                {SPRINTS.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>Sprint {s.number} · {s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Input
+              placeholder="Set assignee…"
+              value={bulkAssignee}
+              onChange={(e) => setBulkAssignee(e.target.value)}
+              className="h-9 w-[160px]"
+            />
+            <Button size="sm" onClick={applyBulk} disabled={!bulkStatus && !bulkSprint && !bulkAssignee.trim()}>
+              Apply to selected
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setSelected(new Set())}>Clear</Button>
+            <Button size="sm" variant="outline" className="ml-auto text-destructive" onClick={bulkDelete}>
+              <Trash2 className="h-4 w-4 mr-1" />Delete selected
+            </Button>
+          </Card>
+        )}
+
         {/* Sheet */}
         <Card className="overflow-hidden">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader className="bg-muted/40 sticky top-0">
                 <TableRow>
+                  <TableHead className="w-[36px]">
+                    <Checkbox
+                      checked={allSelected}
+                      onCheckedChange={(c) => toggleSelectAll(Boolean(c))}
+                      aria-label="Select all"
+                    />
+                  </TableHead>
                   <TableHead className="w-[70px]">ID</TableHead>
                   <TableHead className="min-w-[260px]">Description</TableHead>
                   <TableHead>Sprint</TableHead>
@@ -228,7 +313,7 @@ function TaskSheetPage() {
               <TableBody>
                 {filtered.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={13} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={14} className="text-center text-muted-foreground py-8">
                       No tasks match your filters.
                     </TableCell>
                   </TableRow>
@@ -237,12 +322,30 @@ function TaskSheetPage() {
                   const sprint = SPRINTS.find((s) => s.id === r.sprintId);
                   return (
                     <TableRow key={r.id}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selected.has(r.id)}
+                          onCheckedChange={(c) => toggleSelected(r.id, Boolean(c))}
+                          aria-label={`Select ${r.id}`}
+                        />
+                      </TableCell>
                       <TableCell className="font-mono text-xs">{r.id}</TableCell>
                       <TableCell>
                         <div className="font-medium text-sm leading-snug">{r.description}</div>
                         {r.notes && <div className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{r.notes}</div>}
                       </TableCell>
-                      <TableCell className="text-xs whitespace-nowrap">{sprint ? `S${sprint.number}` : r.sprintId}</TableCell>
+                      <TableCell>
+                        <Select value={r.sprintId} onValueChange={(v) => inlineUpdate(r.id, "sprintId", v)}>
+                          <SelectTrigger className="h-7 w-[110px] text-xs">
+                            <span>{sprint ? `S${sprint.number}` : r.sprintId}</span>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {SPRINTS.map((s) => (
+                              <SelectItem key={s.id} value={s.id}>Sprint {s.number} · {s.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
                       <TableCell>
                         <Select value={r.category} onValueChange={(v) => inlineUpdate(r.id, "category", v as TaskRowCategory)}>
                           <SelectTrigger className="h-7 w-[120px] text-xs"><SelectValue /></SelectTrigger>
