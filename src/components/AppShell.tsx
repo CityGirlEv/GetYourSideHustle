@@ -22,21 +22,12 @@ import {
   SheetClose,
 } from "@/components/ui/sheet";
 
-function TeamNav({ mobile = false }: { mobile?: boolean }) {
-  const { user } = useApp();
-  const baseClass = mobile
-    ? "flex flex-col gap-1"
-    : "hidden md:flex items-center gap-1";
-
-  const linkClass = mobile
-    ? "flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium text-foreground hover:bg-accent transition-colors"
-    : "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-foreground hover:bg-accent/60 transition-colors";
-
+function TeamNav() {
   return (
-    <nav className={baseClass}>
+    <nav className="hidden md:flex items-center gap-1">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button className={mobile ? linkClass : `${linkClass} data-[state=open]:bg-accent/60`}>
+          <button className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-foreground hover:bg-accent/60 transition-colors data-[state=open]:bg-accent/60">
             <Users className="h-4 w-4" />
             <span>Team</span>
           </button>
