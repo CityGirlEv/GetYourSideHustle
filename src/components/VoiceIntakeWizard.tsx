@@ -762,6 +762,15 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
         return;
       }
       if (/\b(clear|start over|reset)\b/.test(t)) { setMedQuery(""); continue; }
+      // "read options" / "list options" / "read them" → speak each match and let any key pick
+      if (/\b(read (options|them|matches|the list)|list (options|matches)|read aloud|read em|read 'em)\b/.test(t)) {
+        const q = medQuery.trim();
+        const matches = q ? searchMedCatalog(q, 6) : [];
+        if (matches.length === 0) { void speak("No matches yet. Say or spell more of the name."); continue; }
+        cancelMedLoopRef.current = true;
+        void readMedOptions(matches.map((m) => m.name));
+        return;
+      }
       if (/\b(keep going|continue|more|refine|next letter)\b/.test(t)) { continue; }
       // "add <name>" / "pick <name>" / "select <name>"
       const addMatch = t.match(/^(?:add|pick|choose|select)\s+(.+)$/);
@@ -780,6 +789,23 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
       if (!parsed) continue;
       setMedQuery((p) => (p ? `${p} ${parsed}` : parsed).slice(0, 80));
     }
+  };
+
+  // Read medication match names one at a time; any key picks the current one.
+  const readMedOptions = async (names: string[]) => {
+    if (!names.length) return;
+    // Blur the search input so global key handler isn't swallowed by typing
+    try { (document.activeElement as HTMLElement | null)?.blur(); } catch { /* noop */ }
+    await startKeyPick(
+      "Here are the closest matches.",
+      names,
+      (idx) => { pickMed(names[idx]); },
+      () => {
+        // None picked — return to active search loop
+        cancelMedLoopRef.current = false;
+        void medListenLoop();
+      },
+    );
   };
 
   // Cancel the med-search loop whenever we leave the medsName step
