@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,8 @@ import {
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, RotateCcw, Trash2, Pencil, Search, Download, ExternalLink } from "lucide-react";
+import { Plus, RotateCcw, Trash2, Pencil, Search, Download, ExternalLink, Save } from "lucide-react";
+import { toast } from "sonner";
 import {
   loadTaskRows, saveTaskRows, resetTaskRows, nextTaskId, todayMMDDYY,
   TASK_STATUS_VALUES, TASK_STATUS_LABELS, TASK_CATEGORY_VALUES, TASK_CATEGORY_LABELS,
@@ -31,6 +32,12 @@ const STATUS_TONE: Record<TaskRowStatus, string> = {
   in_progress: "border-blue-500/40 text-blue-500",
   blocked: "border-destructive/50 text-destructive",
   done: "border-emerald-500/40 text-emerald-600",
+};
+const ROW_STATUS_BG: Record<TaskRowStatus, string> = {
+  not_started: "",
+  in_progress: "bg-blue-500/5 hover:bg-blue-500/10",
+  blocked: "bg-destructive/10 hover:bg-destructive/15",
+  done: "bg-emerald-500/10 hover:bg-emerald-500/15",
 };
 const PRIORITY_TONE: Record<Priority, string> = {
   P0: "border-destructive/60 text-destructive",
@@ -90,7 +97,10 @@ function StatCard({ label, value, tone }: { label: string; value: number; tone?:
 }
 
 export function TaskSheetContent() {
+  // savedRows = last persisted snapshot; rows = working draft (unsaved edits)
+  const [savedRows, setSavedRows] = useState<TaskRow[]>(() => loadTaskRows());
   const [rows, setRows] = useState<TaskRow[]>(() => loadTaskRows());
+  const [saveOpen, setSaveOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | TaskRowStatus>("all");
   const [sprintFilter, setSprintFilter] = useState<string>("all");
@@ -111,9 +121,9 @@ export function TaskSheetContent() {
   const [bulkDateCompleted, setBulkDateCompleted] = useState<string>("");
   const [bulkCost, setBulkCost] = useState<string>("");
 
+  // Working state only — do NOT write to storage here. Call commitChanges() to persist.
   const persist = (next: TaskRow[]) => {
     setRows(next);
-    saveTaskRows(next);
   };
 
   const owners = useMemo(() => {
@@ -218,7 +228,9 @@ export function TaskSheetContent() {
 
   const onReset = () => {
     if (!confirm("Reset task sheet to the seeded defaults? Your local edits will be lost.")) return;
-    setRows(resetTaskRows());
+    const fresh = resetTaskRows();
+    setSavedRows(fresh);
+    setRows(fresh);
   };
 
   const exportCsv = () => {
@@ -236,6 +248,101 @@ export function TaskSheetContent() {
     const a = document.createElement("a");
     a.href = url; a.download = "task-sheet.csv"; a.click();
     URL.revokeObjectURL(url);
+  };
+
+  // ------------------------------------------------------------------
+  // Pending-change diff between savedRows (last persisted) and rows (draft)
+  // ------------------------------------------------------------------
+  type FieldKey = Exclude<keyof TaskRow, "id">;
+  type Change =
+    | { kind: "add"; key: string; id: string; row: TaskRow }
+    | { kind: "delete"; key: string; id: string; row: TaskRow }
+    | { kind: "update"; key: string; id: string; field: FieldKey; before: unknown; after: unknown };
+
+  const FIELD_LABELS: Record<FieldKey, string> = {
+    description: "Description", sprintId: "Sprint", category: "Category",
+    priority: "Priority", status: "Status", assignBy: "Assigned by",
+    assignedTo: "Assigned to", dateAssigned: "Date assigned", dueDate: "Due date",
+    dateCompleted: "Date completed", cost: "Cost", notes: "Notes", path: "Link",
+  };
+
+  const pendingChanges = useMemo<Change[]>(() => {
+    const out: Change[] = [];
+    const savedById = new Map(savedRows.map((r) => [r.id, r]));
+    const draftById = new Map(rows.map((r) => [r.id, r]));
+    for (const r of rows) {
+      const s = savedById.get(r.id);
+      if (!s) { out.push({ kind: "add", key: `${r.id}:__add`, id: r.id, row: r }); continue; }
+      for (const k of Object.keys(FIELD_LABELS) as FieldKey[]) {
+        const a = s[k]; const b = r[k];
+        if (JSON.stringify(a ?? "") !== JSON.stringify(b ?? "")) {
+          out.push({ kind: "update", key: `${r.id}:${k}`, id: r.id, field: k, before: a, after: b });
+        }
+      }
+    }
+    for (const s of savedRows) {
+      if (!draftById.has(s.id)) out.push({ kind: "delete", key: `${s.id}:__delete`, id: s.id, row: s });
+    }
+    return out.sort((a, b) => a.id.localeCompare(b.id));
+  }, [rows, savedRows]);
+
+  const pendingCount = pendingChanges.length;
+
+  const discardAllDrafts = () => {
+    if (pendingCount === 0) return;
+    if (!confirm(`Discard all ${pendingCount} unsaved change(s)?`)) return;
+    setRows(savedRows);
+  };
+
+  // Apply selected changes. Unselected changes stay in working draft.
+  const commitChanges = (selectedKeys: Set<string>) => {
+    const savedById = new Map(savedRows.map((r) => [r.id, { ...r }]));
+    const draftById = new Map(rows.map((r) => [r.id, { ...r }]));
+    const nextSavedMap = new Map(savedById);
+    const nextDraftMap = new Map(draftById);
+
+    for (const c of pendingChanges) {
+      const isSel = selectedKeys.has(c.key);
+      if (c.kind === "add") {
+        if (isSel) nextSavedMap.set(c.id, { ...c.row });
+        else nextDraftMap.delete(c.id); // discard the unsaved new row
+      } else if (c.kind === "delete") {
+        if (isSel) nextSavedMap.delete(c.id);
+        else nextDraftMap.set(c.id, { ...c.row }); // restore — keep both in sync
+      } else {
+        // update
+        if (isSel) {
+          const cur = nextSavedMap.get(c.id) ?? { ...(savedById.get(c.id) as TaskRow) };
+          (cur as Record<string, unknown>)[c.field] = c.after;
+          nextSavedMap.set(c.id, cur);
+        } else {
+          // leave draft as-is so the field stays pending
+        }
+      }
+    }
+
+    // Preserve insertion order: prefer current draft order, then any leftover saved-only rows.
+    const orderedDraft: TaskRow[] = [];
+    const seen = new Set<string>();
+    for (const r of rows) {
+      const v = nextDraftMap.get(r.id);
+      if (v) { orderedDraft.push(v); seen.add(r.id); }
+    }
+    for (const [id, v] of nextDraftMap) if (!seen.has(id)) orderedDraft.push(v);
+
+    const orderedSaved: TaskRow[] = [];
+    const seenSaved = new Set<string>();
+    for (const r of savedRows) {
+      const v = nextSavedMap.get(r.id);
+      if (v) { orderedSaved.push(v); seenSaved.add(r.id); }
+    }
+    for (const [id, v] of nextSavedMap) if (!seenSaved.has(id)) orderedSaved.push(v);
+
+    setSavedRows(orderedSaved);
+    setRows(orderedDraft);
+    saveTaskRows(orderedSaved);
+    setSaveOpen(false);
+    toast.success(`Saved ${selectedKeys.size} change${selectedKeys.size === 1 ? "" : "s"}.`);
   };
 
   return (
@@ -285,6 +392,22 @@ export function TaskSheetContent() {
           </SelectContent>
         </Select>
         <div className="flex gap-2 ml-auto">
+          <Button
+            size="sm"
+            onClick={() => setSaveOpen(true)}
+            disabled={pendingCount === 0}
+          >
+            <Save className="h-4 w-4 mr-1" />
+            Save changes
+            {pendingCount > 0 && (
+              <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-background text-foreground text-[10px] font-bold px-1.5 py-0.5">
+                {pendingCount}
+              </span>
+            )}
+          </Button>
+          <Button size="sm" variant="ghost" onClick={discardAllDrafts} disabled={pendingCount === 0}>
+            Discard
+          </Button>
           <Button variant="outline" size="sm" onClick={exportCsv}><Download className="h-4 w-4 mr-1" />CSV</Button>
           <Button variant="outline" size="sm" onClick={onReset}><RotateCcw className="h-4 w-4 mr-1" />Reset</Button>
           <Button size="sm" onClick={openNew}><Plus className="h-4 w-4 mr-1" />New task</Button>
@@ -411,8 +534,10 @@ export function TaskSheetContent() {
               )}
               {filtered.map((r) => {
                 const sprint = SPRINTS.find((s) => s.id === r.sprintId);
+                const savedRow = savedRows.find((s) => s.id === r.id);
+                const isDirty = !savedRow || JSON.stringify(savedRow) !== JSON.stringify(r);
                 return (
-                  <TableRow key={r.id}>
+                  <TableRow key={r.id} className={`${ROW_STATUS_BG[r.status]} ${isDirty ? "outline outline-1 outline-amber-500/60" : ""}`}>
                     <TableCell>
                       <Checkbox
                         checked={selected.has(r.id)}
@@ -420,7 +545,10 @@ export function TaskSheetContent() {
                         aria-label={`Select ${r.id}`}
                       />
                     </TableCell>
-                    <TableCell className="font-mono text-xs">{r.id}</TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {r.id}
+                      {isDirty && <span className="ml-1 text-amber-600" title="Unsaved changes">●</span>}
+                    </TableCell>
                     <TableCell>
                       <div className="font-medium text-sm leading-snug">{r.description}</div>
                       {r.path && <div className="mt-1"><TaskTargetLink path={r.path} /></div>}
@@ -625,6 +753,153 @@ export function TaskSheetContent() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <TaskSaveChangesDialog
+        open={saveOpen}
+        onOpenChange={setSaveOpen}
+        changes={pendingChanges}
+        fieldLabels={FIELD_LABELS}
+        onConfirm={commitChanges}
+      />
     </div>
+  );
+}
+
+/* ============================ SAVE CHANGES DIALOG ========================== */
+function fmtVal(v: unknown): string {
+  if (v === null || v === undefined || v === "") return "—";
+  if (typeof v === "number") return String(v);
+  return String(v);
+}
+
+type TaskChange =
+  | { kind: "add"; key: string; id: string; row: TaskRow }
+  | { kind: "delete"; key: string; id: string; row: TaskRow }
+  | { kind: "update"; key: string; id: string; field: keyof TaskRow; before: unknown; after: unknown };
+
+function TaskSaveChangesDialog({
+  open, onOpenChange, changes, fieldLabels, onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  changes: TaskChange[];
+  fieldLabels: Record<string, string>;
+  onConfirm: (selectedKeys: Set<string>) => void;
+}) {
+  const [picked, setPicked] = useState<Set<string>>(() => new Set(changes.map((c) => c.key)));
+
+  useEffect(() => {
+    if (open) setPicked(new Set(changes.map((c) => c.key)));
+  }, [open, changes]);
+
+  const toggle = (k: string) =>
+    setPicked((p) => {
+      const n = new Set(p);
+      if (n.has(k)) n.delete(k); else n.add(k);
+      return n;
+    });
+
+  const grouped = useMemo(() => {
+    const g: Record<string, TaskChange[]> = {};
+    for (const c of changes) (g[c.id] ||= []).push(c);
+    return Object.entries(g);
+  }, [changes]);
+
+  const allSelected = changes.length > 0 && picked.size === changes.length;
+  const toggleAll = () =>
+    setPicked(allSelected ? new Set() : new Set(changes.map((c) => c.key)));
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Review changes before saving</DialogTitle>
+        </DialogHeader>
+        <p className="text-xs text-muted-foreground">
+          {changes.length} pending change{changes.length === 1 ? "" : "s"} across {grouped.length} task
+          {grouped.length === 1 ? "" : "s"}. Uncheck any row you don't want to save — only the checked
+          changes will be written. Unchecked changes stay in your draft.
+        </p>
+
+        <div className="flex items-center gap-2 text-xs border-b border-border pb-2">
+          <label className="inline-flex items-center gap-2 font-semibold cursor-pointer">
+            <input type="checkbox" checked={allSelected} onChange={toggleAll} className="h-4 w-4" />
+            {allSelected ? "Deselect all" : "Select all"}
+          </label>
+          <span className="text-muted-foreground">
+            {picked.size} of {changes.length} will be saved
+          </span>
+        </div>
+
+        <div className="flex-1 overflow-y-auto -mx-6 px-6 space-y-3">
+          {grouped.map(([taskId, list]) => (
+            <div key={taskId} className="rounded-md border border-border">
+              <div className="px-3 py-1.5 bg-muted/50 text-xs font-mono font-bold border-b border-border">
+                {taskId}
+              </div>
+              <ul className="divide-y divide-border">
+                {list.map((c) => {
+                  const checked = picked.has(c.key);
+                  if (c.kind === "add") {
+                    return (
+                      <li key={c.key} className="px-3 py-2 flex items-start gap-3 text-xs">
+                        <input type="checkbox" checked={checked} onChange={() => toggle(c.key)} className="h-4 w-4 mt-0.5" />
+                        <span className="text-emerald-700 font-semibold w-20 shrink-0">New task</span>
+                        <div className="flex-1 rounded border border-emerald-500/40 bg-emerald-500/10 px-2 py-1">
+                          <div className="font-semibold">{c.row.description || "(no description)"}</div>
+                          <div className="text-muted-foreground">
+                            {c.row.status} · {c.row.priority} · {c.row.assignedTo}
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  }
+                  if (c.kind === "delete") {
+                    return (
+                      <li key={c.key} className="px-3 py-2 flex items-start gap-3 text-xs">
+                        <input type="checkbox" checked={checked} onChange={() => toggle(c.key)} className="h-4 w-4 mt-0.5" />
+                        <span className="text-destructive font-semibold w-20 shrink-0">Delete</span>
+                        <div className="flex-1 rounded border border-destructive/40 bg-destructive/10 px-2 py-1 line-through">
+                          {c.row.description || "(no description)"}
+                        </div>
+                      </li>
+                    );
+                  }
+                  return (
+                    <li key={c.key} className="px-3 py-2 flex items-start gap-3 text-xs">
+                      <input type="checkbox" checked={checked} onChange={() => toggle(c.key)} className="h-4 w-4 mt-0.5" />
+                      <div className="w-20 shrink-0 font-semibold text-foreground">
+                        {fieldLabels[c.field as string] ?? String(c.field)}
+                      </div>
+                      <div className="flex-1 grid grid-cols-2 gap-2">
+                        <div className="rounded border border-border bg-muted/30 px-2 py-1">
+                          <div className="text-[10px] uppercase text-muted-foreground mb-0.5">Before</div>
+                          <div className="whitespace-pre-wrap break-words text-muted-foreground">{fmtVal(c.before)}</div>
+                        </div>
+                        <div className="rounded border border-primary/30 bg-primary/5 px-2 py-1">
+                          <div className="text-[10px] uppercase text-primary mb-0.5">After</div>
+                          <div className="whitespace-pre-wrap break-words text-foreground">{fmtVal(c.after)}</div>
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+          {changes.length === 0 && (
+            <div className="text-center text-sm text-muted-foreground py-8">No pending changes.</div>
+          )}
+        </div>
+
+        <DialogFooter className="border-t border-border pt-3">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={() => onConfirm(picked)} disabled={picked.size === 0}>
+            <Save className="h-3.5 w-3.5 mr-1.5" />
+            Save {picked.size} change{picked.size === 1 ? "" : "s"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
