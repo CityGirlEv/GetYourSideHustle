@@ -1,4 +1,4 @@
-import { ShieldCheck, EyeOff, KeyRound, Home, LogIn, ListChecks, ChevronDown, LogOut, FlaskConical, LayoutDashboard, FileSignature } from "lucide-react";
+import { ShieldCheck, EyeOff, KeyRound, Home, LogIn, ListChecks, ChevronDown, FlaskConical, LayoutDashboard, FileSignature, Users, Briefcase, Settings } from "lucide-react";
 import { Link, useRouter } from "@tanstack/react-router";
 import { YearToggle } from "./YearToggle";
 import { useApp } from "@/lib/app-store";
@@ -27,6 +27,28 @@ export function SecurityBanner() {
             <Link to="/" className="flex items-center gap-1 hover:text-white transition-colors">
               <Home className="h-3.5 w-3.5" /> Home
             </Link>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger className="flex items-center gap-1 hover:text-white transition-colors outline-none">
+                <Users className="h-3.5 w-3.5" /> Team <ChevronDown className="h-3 w-3" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="text-xs">
+                <DropdownMenuItem onSelect={() => router.navigate({ to: "/auth" })}>
+                  <LogIn className="h-3.5 w-3.5 mr-2" /> Team Login
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => router.navigate({ to: "/agent" })}>
+                  <Briefcase className="h-3.5 w-3.5 mr-2" /> Agent Portal
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => router.navigate({ to: "/admin" })}>
+                  <Settings className="h-3.5 w-3.5 mr-2" /> Admin Portal
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => router.navigate({ to: "/qa" })}>
+                  <FlaskConical className="h-3.5 w-3.5 mr-2" /> QA Testing Portal
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             {!authLoading && isQA && (
               <DropdownMenu>
