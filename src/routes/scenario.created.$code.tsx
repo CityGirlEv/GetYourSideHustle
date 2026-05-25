@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { SecurityBanner } from "@/components/SecurityBanner";
 import { CMSFooter } from "@/components/CMSFooter";
-import { CheckCircle2, Copy, ShieldCheck, FileDown, Phone, Sparkles, Building2 } from "lucide-react";
+import { CheckCircle2, Copy, ShieldCheck, FileDown, Phone, Sparkles, Building2, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { downloadScenarioPdf, downloadConsumerScenarioPdf, type ScenarioPdfInput } from "@/lib/scenario-pdf";
 import { downloadScenarioXlsx } from "@/lib/scenario-xlsx";
@@ -117,6 +117,18 @@ function ScenarioCreated() {
           <Button onClick={() => setOptInOpen(true)} variant="outline" className="w-full">
             <Phone className="h-4 w-4 mr-2" /> Have a licensed expert contact me
           </Button>
+
+          <a
+            href="https://www.medicare.gov/Pubs/pdf/10050-Medicare-and-You.pdf"
+            target="_blank"
+            rel="noopener noreferrer"
+            download="Medicare-and-You.pdf"
+            className="block"
+          >
+            <Button variant="outline" className="w-full">
+              <BookOpen className="h-4 w-4 mr-2" /> Download "Medicare &amp; You" Handbook (PDF)
+            </Button>
+          </a>
 
           {recommendation && (
             <div className="text-left bg-emerald/5 border border-emerald/30 rounded-lg p-4 space-y-3 text-sm">
