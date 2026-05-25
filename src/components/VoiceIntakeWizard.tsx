@@ -478,11 +478,20 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
         </div>
       </div>
 
+      {/* Mic readiness tip */}
+      {step !== "intro" && step !== "done" && step !== "submitting" && (
+        <div className="flex items-center gap-1.5 rounded-md bg-primary/5 border border-primary/10 px-2.5 py-1.5 text-[11px] text-primary">
+          <Info className="h-3 w-3 shrink-0" />
+          <span>Wait until the <strong>Listening</strong> indicator is active before you speak.</span>
+        </div>
+      )}
+
       {/* Conversation transcript */}
       <div className="bg-muted/40 border border-border rounded-lg p-3 h-64 overflow-y-auto text-sm space-y-2">
         {transcript.length === 0 && (
-          <div className="text-muted-foreground text-center py-12">
-            Press <strong>Start voice intake</strong> below — I'll ask the first question.
+          <div className="text-muted-foreground text-center py-12 space-y-2">
+            <p>Press <strong>Start voice intake</strong> below — I'll ask the first question.</p>
+            <p className="text-[11px]">Tip: wait until the Listening indicator turns on before answering.</p>
           </div>
         )}
         {transcript.map((t, i) => (
