@@ -2,7 +2,6 @@ import { useApp } from "@/lib/app-store";
 import { Link, useRouter } from "@tanstack/react-router";
 import { SecurityBanner } from "./SecurityBanner";
 import { CMSFooter } from "./CMSFooter";
-import { YearToggle } from "./YearToggle";
 import { LogOut, Settings, Briefcase, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CreditPill } from "./CreditPill";
@@ -51,7 +50,6 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
           {subtitle && <p className="hidden xl:block font-display text-sm font-bold text-blue-600 tracking-wide truncate max-w-full">{subtitle}</p>}
         </div>
         <div className="flex items-center gap-3 flex-none shrink-0">
-          <YearToggle />
           <FontSizeToggle />
           {user?.role === "advisor" && <CreditPill />}
           {user && (

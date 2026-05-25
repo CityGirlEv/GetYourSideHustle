@@ -12,7 +12,7 @@ export function YearToggle() {
   const { year, setYear } = useApp();
   const [open, setOpen] = useState(false);
   return (
-    <div className="glass rounded-xl p-1 flex flex-col items-center gap-1 shadow-sm min-w-0">
+    <div className="rounded-full bg-white/10 p-0.5 flex items-center gap-1 min-w-0">
       {[2026, 2027].map((y) => (
         <button
           key={y}
@@ -26,7 +26,7 @@ export function YearToggle() {
             setYear(y as 2026 | 2027);
           }}
           className={`px-2 py-0.5 rounded-full text-xs font-semibold transition whitespace-nowrap ${
-            year === y ? "grad-indigo shadow" : "text-muted-foreground hover:text-foreground"
+            year === y ? "bg-white text-primary shadow" : "text-white/80 hover:text-white"
           }`}
         >
           {y} <span className="hidden sm:inline">rules</span>
@@ -34,8 +34,8 @@ export function YearToggle() {
       ))}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <button className="p-1 rounded-full hover:bg-secondary" aria-label="Compare years">
-            <Sparkles className="h-3.5 w-3.5 text-primary" />
+          <button className="p-1 rounded-full hover:bg-white/15" aria-label="Compare years">
+            <Sparkles className="h-3.5 w-3.5 text-white" />
           </button>
         </DialogTrigger>
         <DialogContent className="max-w-2xl">

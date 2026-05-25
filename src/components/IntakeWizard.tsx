@@ -20,9 +20,9 @@ function blankMed(): Medication {
 }
 
 const CURRENT_YEAR = new Date().getFullYear();
-const MIN_BIRTH_YEAR = CURRENT_YEAR - 120;
-const MAX_BIRTH_YEAR = CURRENT_YEAR - 18;
-const BIRTH_YEARS = Array.from({ length: MAX_BIRTH_YEAR - MIN_BIRTH_YEAR + 1 }, (_, i) => MAX_BIRTH_YEAR - i); // 18..120 years old
+const MIN_BIRTH_YEAR = CURRENT_YEAR - 110;
+const MAX_BIRTH_YEAR = CURRENT_YEAR;
+const BIRTH_YEARS = Array.from({ length: MAX_BIRTH_YEAR - MIN_BIRTH_YEAR + 1 }, (_, i) => MAX_BIRTH_YEAR - i); // today back to 110 years old
 const INCOME_BANDS = ["Under $25k", "$25k–$50k", "$50k–$100k", "$100k–$200k", "Over $200k", "Prefer not to say"];
 const CONDITIONS = ["Diabetes", "Hypertension", "Heart disease", "COPD", "Cancer history", "Chronic kidney disease", "Arthritis", "None of the above", "Other"];
 
@@ -108,7 +108,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
       return;
     }
     if (birthYear < MIN_BIRTH_YEAR || birthYear > MAX_BIRTH_YEAR) {
-      toast.error(`Year of birth must be between ${MIN_BIRTH_YEAR} and ${MAX_BIRTH_YEAR} (ages 18–120).`);
+      toast.error(`Year of birth must be between ${MIN_BIRTH_YEAR} and ${MAX_BIRTH_YEAR}.`);
       return;
     }
     if (!/^\d{3}$/.test(zip)) {
@@ -451,7 +451,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
             if (step === 1) {
               if (!birthYear) { toast.error("Please select your year of birth before continuing."); return; }
               if (birthYear < MIN_BIRTH_YEAR || birthYear > MAX_BIRTH_YEAR) {
-                toast.error(`Year of birth must be between ${MIN_BIRTH_YEAR} and ${MAX_BIRTH_YEAR} (ages 18–120).`);
+                toast.error(`Year of birth must be between ${MIN_BIRTH_YEAR} and ${MAX_BIRTH_YEAR}.`);
                 return;
               }
               if (!/^\d{3}$/.test(zip)) { toast.error("Please enter the first 3 digits of your ZIP code before continuing."); return; }

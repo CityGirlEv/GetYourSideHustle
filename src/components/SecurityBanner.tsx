@@ -1,6 +1,7 @@
 import { ShieldCheck, EyeOff, KeyRound, Home, LogIn, Settings } from "lucide-react";
 import { Link, useRouter } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
+import { YearToggle } from "./YearToggle";
 
 export function SecurityBanner() {
   const router = useRouter();
@@ -18,6 +19,7 @@ export function SecurityBanner() {
           <span className="flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-emerald" /> Your scenario is anonymous unless opted in</span>
         </div>
         <div className="flex items-center gap-4 text-white/90">
+          <YearToggle />
           <Link to="/" className="flex items-center gap-1 hover:text-white transition-colors">
             <Home className="h-3.5 w-3.5" /> Home
           </Link>
