@@ -119,47 +119,69 @@ function TestingPortal() {
 
 /* ============================== TEST PLAN TAB ============================== */
 export function TestPlanTab() {
-  const [statuses, setStatuses] = useState<Record<string, TestStatus>>(() => loadAllStatuses());
-  const [qaNotes, setQaNotes] = useState<Record<string, string>>(() => loadAllQaNotes());
-  const [devNotes, setDevNotes] = useState<Record<string, string>>(() => loadAllDevNotes());
-  const [severities, setSeverities] = useState<Record<string, FailSeverity | "">>(() => loadAllSeverities());
-  const [assigneeOverrides, setAssigneeOverrides] = useState<Record<string, string>>(() => loadAllAssigneeOverrides());
-  const [sprintOverrides, setSprintOverrides] = useState<Record<string, string>>(() => loadAllSprintOverrides());
+  // Persisted/saved state, hydrated from local storage
+  const [savedStatuses, setSavedStatuses] = useState<Record<string, TestStatus>>(() => loadAllStatuses());
+  const [savedQaNotes, setSavedQaNotes] = useState<Record<string, string>>(() => loadAllQaNotes());
+  const [savedDevNotes, setSavedDevNotes] = useState<Record<string, string>>(() => loadAllDevNotes());
+  const [savedSeverities, setSavedSeverities] = useState<Record<string, FailSeverity | "">>(() => loadAllSeverities());
+  const [savedAssignees, setSavedAssignees] = useState<Record<string, string>>(() => loadAllAssigneeOverrides());
+  const [savedSprints, setSavedSprints] = useState<Record<string, string>>(() => loadAllSprintOverrides());
+  // Draft (unsaved) overlays — only changed entries
+  const [dStatuses, setDStatuses] = useState<Record<string, TestStatus>>({});
+  const [dQaNotes, setDQaNotes] = useState<Record<string, string>>({});
+  const [dDevNotes, setDDevNotes] = useState<Record<string, string>>({});
+  const [dSeverities, setDSeverities] = useState<Record<string, FailSeverity | "">>({});
+  const [dAssignees, setDAssignees] = useState<Record<string, string>>({});
+  const [dSprints, setDSprints] = useState<Record<string, string>>({});
+  const [saveOpen, setSaveOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [query, setQuery] = useState("");
   const [areaFilter, setAreaFilter] = useState<string>("All");
   const [statusFilter, setStatusFilter] = useState<"all" | TestStatus>("all");
   const [ownerFilter, setOwnerFilter] = useState<string>("All");
 
+  // Effective (saved + draft) views used for rendering and filtering
+  const statuses = useMemo(() => ({ ...savedStatuses, ...dStatuses }), [savedStatuses, dStatuses]);
+  const qaNotes = useMemo(() => ({ ...savedQaNotes, ...dQaNotes }), [savedQaNotes, dQaNotes]);
+  const devNotes = useMemo(() => ({ ...savedDevNotes, ...dDevNotes }), [savedDevNotes, dDevNotes]);
+  const severities = useMemo(() => ({ ...savedSeverities, ...dSeverities }), [savedSeverities, dSeverities]);
+  const assigneeOverrides = useMemo(() => ({ ...savedAssignees, ...dAssignees }), [savedAssignees, dAssignees]);
+  const sprintOverrides = useMemo(() => ({ ...savedSprints, ...dSprints }), [savedSprints, dSprints]);
+
+  // Helper: write to draft, removing the entry if it equals the saved value
+  function updateDraft<T>(
+    setter: React.Dispatch<React.SetStateAction<Record<string, T>>>,
+    saved: Record<string, T>,
+    id: string,
+    value: T,
+    defaultSaved: T,
+  ) {
+    setter((p) => {
+      const next = { ...p };
+      const baseline = saved[id] ?? defaultSaved;
+      if (Object.is(value, baseline)) delete next[id];
+      else next[id] = value;
+      return next;
+    });
+  }
+
   const setStatus = (id: string, s: TestStatus) => {
-    saveStatus(id, s);
-    setStatuses((p) => ({ ...p, [id]: s }));
-    // Clear severity when leaving a failing state
+    updateDraft(setDStatuses, savedStatuses, id, s, "not_run" as TestStatus);
     if (s !== "fail" && s !== "failed_retest") {
-      saveSeverity(id, "");
-      setSeverities((p) => ({ ...p, [id]: "" }));
+      updateDraft(setDSeverities, savedSeverities, id, "" as FailSeverity | "", "" as FailSeverity | "");
     }
   };
-  const setQaNote = (id: string, note: string) => {
-    saveQaNote(id, note);
-    setQaNotes((p) => ({ ...p, [id]: note }));
-  };
-  const setDevNote = (id: string, note: string) => {
-    saveDevNote(id, note);
-    setDevNotes((p) => ({ ...p, [id]: note }));
-  };
-  const setSeverityFor = (id: string, s: FailSeverity | "") => {
-    saveSeverity(id, s);
-    setSeverities((p) => ({ ...p, [id]: s }));
-  };
-  const setAssigneeFor = (id: string, owner: string) => {
-    saveAssigneeOverride(id, owner);
-    setAssigneeOverrides((p) => ({ ...p, [id]: owner }));
-  };
-  const setSprintFor = (id: string, sprintId: string) => {
-    saveSprintOverride(id, sprintId);
-    setSprintOverrides((p) => ({ ...p, [id]: sprintId }));
-  };
+  const setQaNote = (id: string, note: string) =>
+    updateDraft(setDQaNotes, savedQaNotes, id, note, "");
+  const setDevNote = (id: string, note: string) =>
+    updateDraft(setDDevNotes, savedDevNotes, id, note, "");
+  const setSeverityFor = (id: string, s: FailSeverity | "") =>
+    updateDraft(setDSeverities, savedSeverities, id, s, "");
+  const setAssigneeFor = (id: string, owner: string) =>
+    updateDraft(setDAssignees, savedAssignees, id, owner, "");
+  const setSprintFor = (id: string, sprintId: string) =>
+    updateDraft(setDSprints, savedSprints, id, sprintId, "");
+
   const toggleSelect = (id: string) => {
     setSelected((p) => {
       const next = new Set(p);
@@ -168,8 +190,95 @@ export function TestPlanTab() {
     });
   };
   const resetAll = () => {
+    if (!confirm("Reset all test statuses to Not run? This saves immediately.")) return;
     TEST_CASES.forEach((t) => saveStatus(t.id, "not_run"));
-    setStatuses(loadAllStatuses());
+    setSavedStatuses(loadAllStatuses());
+    setDStatuses({});
+  };
+
+  // Build a list of pending changes for the save dialog
+  type Change = {
+    key: string; // unique id "<testId>:<field>"
+    testId: string;
+    field: "status" | "qaNote" | "devNote" | "severity" | "assignee" | "sprint";
+    label: string;
+    before: string;
+    after: string;
+  };
+  const pendingChanges = useMemo<Change[]>(() => {
+    const list: Change[] = [];
+    const fmt = (v: unknown) => (v === "" || v == null ? "—" : String(v));
+    for (const [id, v] of Object.entries(dStatuses))
+      list.push({ key: `${id}:status`, testId: id, field: "status", label: "Status",
+        before: fmt(savedStatuses[id] ?? "not_run"), after: fmt(v) });
+    for (const [id, v] of Object.entries(dQaNotes))
+      list.push({ key: `${id}:qaNote`, testId: id, field: "qaNote", label: "QA note",
+        before: fmt(savedQaNotes[id] ?? ""), after: fmt(v) });
+    for (const [id, v] of Object.entries(dDevNotes))
+      list.push({ key: `${id}:devNote`, testId: id, field: "devNote", label: "Dev note",
+        before: fmt(savedDevNotes[id] ?? ""), after: fmt(v) });
+    for (const [id, v] of Object.entries(dSeverities))
+      list.push({ key: `${id}:severity`, testId: id, field: "severity", label: "Severity",
+        before: fmt(savedSeverities[id] ?? ""), after: fmt(v) });
+    for (const [id, v] of Object.entries(dAssignees))
+      list.push({ key: `${id}:assignee`, testId: id, field: "assignee", label: "Owner",
+        before: fmt(savedAssignees[id] ?? ""), after: fmt(v) });
+    for (const [id, v] of Object.entries(dSprints))
+      list.push({ key: `${id}:sprint`, testId: id, field: "sprint", label: "Sprint",
+        before: fmt(savedSprints[id] ?? ""), after: fmt(v) });
+    return list.sort((a, b) => a.testId.localeCompare(b.testId));
+  }, [dStatuses, dQaNotes, dDevNotes, dSeverities, dAssignees, dSprints,
+      savedStatuses, savedQaNotes, savedDevNotes, savedSeverities, savedAssignees, savedSprints]);
+
+  const pendingCount = pendingChanges.length;
+
+  const discardAllDrafts = () => {
+    if (pendingCount === 0) return;
+    if (!confirm(`Discard all ${pendingCount} unsaved change(s)?`)) return;
+    setDStatuses({}); setDQaNotes({}); setDDevNotes({});
+    setDSeverities({}); setDAssignees({}); setDSprints({});
+  };
+
+  // Persist a subset of pending changes; remaining ones stay in draft.
+  const commitChanges = (selectedKeys: Set<string>) => {
+    const stillDraft = {
+      status: { ...dStatuses }, qaNote: { ...dQaNotes }, devNote: { ...dDevNotes },
+      severity: { ...dSeverities }, assignee: { ...dAssignees }, sprint: { ...dSprints },
+    };
+    const newSaved = {
+      status: { ...savedStatuses }, qaNote: { ...savedQaNotes }, devNote: { ...savedDevNotes },
+      severity: { ...savedSeverities }, assignee: { ...savedAssignees }, sprint: { ...savedSprints },
+    };
+    for (const c of pendingChanges) {
+      if (!selectedKeys.has(c.key)) continue;
+      const id = c.testId;
+      switch (c.field) {
+        case "status": {
+          const v = dStatuses[id]!; saveStatus(id, v); newSaved.status[id] = v; delete stillDraft.status[id]; break;
+        }
+        case "qaNote": {
+          const v = dQaNotes[id]!; saveQaNote(id, v); newSaved.qaNote[id] = v; delete stillDraft.qaNote[id]; break;
+        }
+        case "devNote": {
+          const v = dDevNotes[id]!; saveDevNote(id, v); newSaved.devNote[id] = v; delete stillDraft.devNote[id]; break;
+        }
+        case "severity": {
+          const v = dSeverities[id]!; saveSeverity(id, v); newSaved.severity[id] = v; delete stillDraft.severity[id]; break;
+        }
+        case "assignee": {
+          const v = dAssignees[id]!; saveAssigneeOverride(id, v); newSaved.assignee[id] = v; delete stillDraft.assignee[id]; break;
+        }
+        case "sprint": {
+          const v = dSprints[id]!; saveSprintOverride(id, v); newSaved.sprint[id] = v; delete stillDraft.sprint[id]; break;
+        }
+      }
+    }
+    setSavedStatuses(newSaved.status); setSavedQaNotes(newSaved.qaNote); setSavedDevNotes(newSaved.devNote);
+    setSavedSeverities(newSaved.severity); setSavedAssignees(newSaved.assignee); setSavedSprints(newSaved.sprint);
+    setDStatuses(stillDraft.status); setDQaNotes(stillDraft.qaNote); setDDevNotes(stillDraft.devNote);
+    setDSeverities(stillDraft.severity); setDAssignees(stillDraft.assignee); setDSprints(stillDraft.sprint);
+    setSaveOpen(false);
+    toast.success(`Saved ${selectedKeys.size} change${selectedKeys.size === 1 ? "" : "s"}.`);
   };
 
   const areas = useMemo(() => ["All", ...Array.from(new Set(TEST_CASES.map((t) => t.area)))], []);
