@@ -576,21 +576,25 @@ function AdminPortal() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="impl" className="space-y-3">
-          <Card className="glass p-4">
-            <h3 className="font-display font-bold mb-1">Implementation Plan</h3>
-            <p className="text-xs text-muted-foreground mb-4">Phased delivery roadmap. Source of truth: <span className="font-mono">src/lib/test-plan.ts</span>.</p>
-            <ImplementationTab />
-          </Card>
-        </TabsContent>
+        {user?.role === "admin" && (
+          <>
+            <TabsContent value="impl" className="space-y-3">
+              <Card className="glass p-4">
+                <h3 className="font-display font-bold mb-1">Implementation Plan</h3>
+                <p className="text-xs text-muted-foreground mb-4">Phased delivery roadmap. Source of truth: <span className="font-mono">src/lib/test-plan.ts</span>.</p>
+                <ImplementationTab />
+              </Card>
+            </TabsContent>
 
-        <TabsContent value="rollout" className="space-y-3">
-          <Card className="glass p-4">
-            <h3 className="font-display font-bold mb-1">Rollout Sprint Schedule</h3>
-            <p className="text-xs text-muted-foreground mb-4">Sprint-by-sprint rollout with goals and item-level status.</p>
-            <SprintsTab />
-          </Card>
-        </TabsContent>
+            <TabsContent value="rollout" className="space-y-3">
+              <Card className="glass p-4">
+                <h3 className="font-display font-bold mb-1">Rollout Sprint Schedule</h3>
+                <p className="text-xs text-muted-foreground mb-4">Sprint-by-sprint rollout with goals and item-level status.</p>
+                <SprintsTab />
+              </Card>
+            </TabsContent>
+          </>
+        )}
       </Tabs>
 
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
