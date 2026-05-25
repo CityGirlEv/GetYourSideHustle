@@ -121,6 +121,13 @@ function renderSheet(ws: ExcelJS.Worksheet, rows: StyledRow[], widths: number[])
         c.font = { name: FONT, size: 9, color: col === r.linkCol ? { argb: COLOR_LINK } : undefined };
         c.alignment = { wrapText: true, vertical: "top" };
         if (r.alt) c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: FILL_ALT } };
+        if (col === r.linkCol) {
+          const raw = String(c.value ?? "").trim();
+          if (/^https?:\/\//i.test(raw)) {
+            c.value = { text: "Visit Portal ↗", hyperlink: raw, tooltip: raw } as ExcelJS.CellHyperlinkValue;
+            c.font = { ...c.font, underline: true };
+          }
+        }
       });
       return;
     }
