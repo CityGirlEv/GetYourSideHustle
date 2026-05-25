@@ -343,6 +343,8 @@ function BulkEditBar({
   onSetQaNote: (n: string) => void;
   onSetDevNote: (n: string) => void;
 }) {
+  const { user } = useApp();
+  const isQA = user?.role === "qa";
   const [qaDraft, setQaDraft] = useState("");
   const [devDraft, setDevDraft] = useState("");
   const disabled = selectedCount === 0;
@@ -368,12 +370,23 @@ function BulkEditBar({
           title="Set status for selected"
         >
           <option value="">Set status…</option>
-          <option value="not_run">Not run</option>
-          <option value="pass">Pass</option>
-          <option value="fail">Fail</option>
-          <option value="fixed_retest">Fixed / Retest</option>
-          <option value="failed_retest">Failed / Retest</option>
-          <option value="blocked">Blocked</option>
+          {isQA ? (
+            <>
+              <option value="not_run">Not started</option>
+              <option value="pass">Pass</option>
+              <option value="fail">Fail</option>
+              <option value="blocked">In progress</option>
+            </>
+          ) : (
+            <>
+              <option value="not_run">Not run</option>
+              <option value="pass">Pass</option>
+              <option value="fail">Fail</option>
+              <option value="fixed_retest">Fixed / Retest</option>
+              <option value="failed_retest">Failed / Retest</option>
+              <option value="blocked">Blocked</option>
+            </>
+          )}
         </select>
         <select
           disabled={disabled}
@@ -717,6 +730,9 @@ function TestEvidence({ testId }: { testId: string }) {
 }
 
 function StatusButtons({ status, onChange }: { status: TestStatus; onChange: (s: TestStatus) => void }) {
+  const { user } = useApp();
+  const isQA = user?.role === "qa";
+
   const btn = (s: TestStatus, label: string, Icon: React.ElementType, on: string) =>
     <button
       key={s}
@@ -727,6 +743,18 @@ function StatusButtons({ status, onChange }: { status: TestStatus; onChange: (s:
     >
       <Icon className="h-3.5 w-3.5" /> {label}
     </button>;
+
+  if (isQA) {
+    return (
+      <div className="flex flex-wrap gap-1">
+        {btn("pass",    "Pass",         CheckCircle2, "bg-emerald-500/15 border-emerald-500/50 text-emerald-700")}
+        {btn("fail",    "Fail",         XCircle,      "bg-destructive/15 border-destructive/50 text-destructive")}
+        {btn("blocked", "In progress",  AlertOctagon, "bg-amber-500/15 border-amber-500/50 text-amber-700")}
+        {btn("not_run", "Not started",  MinusCircle,  "bg-muted border-border text-foreground")}
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-wrap gap-1">
       {btn("pass",    "Pass",    CheckCircle2, "bg-emerald-500/15 border-emerald-500/50 text-emerald-700")}
