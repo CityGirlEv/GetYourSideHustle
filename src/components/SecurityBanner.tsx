@@ -1,4 +1,4 @@
-import { ShieldCheck, EyeOff, KeyRound, Home, LogIn, ListChecks, ChevronDown, FlaskConical, FileSignature, UserPlus } from "lucide-react";
+import { Home, LogIn, ListChecks, ChevronDown, FlaskConical, FileSignature, UserPlus } from "lucide-react";
 import { Link, useRouter } from "@tanstack/react-router";
 import { YearToggle } from "./YearToggle";
 import { useApp } from "@/lib/app-store";
@@ -18,7 +18,7 @@ export function SecurityBanner() {
 
   return (
     <div className="grad-indigo px-4 py-2 text-xs font-medium">
-      <div className="max-w-7xl mx-auto space-y-1">
+      <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between gap-x-4 flex-wrap">
           <div className="flex items-center gap-3 flex-shrink-0">
             <YearToggle />
@@ -52,11 +52,6 @@ export function SecurityBanner() {
             )}
 
           </div>
-        </div>
-        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-1 text-white/95">
-          <span className="flex items-center gap-1.5"><EyeOff className="h-3.5 w-3.5 text-emerald" /> No personal information collected</span>
-          <span className="flex items-center gap-1.5"><KeyRound className="h-3.5 w-3.5 text-emerald" /> De-identified scenarios only</span>
-          <span className="flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-emerald" /> Your scenario is anonymous unless you opt in</span>
         </div>
       </div>
     </div>
