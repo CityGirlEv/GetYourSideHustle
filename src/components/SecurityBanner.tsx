@@ -1,4 +1,4 @@
-import { ShieldCheck, EyeOff, KeyRound, Home, LogIn, Settings, Briefcase, ListChecks, ChevronDown, GitBranch, CalendarDays, DollarSign, LogOut, FlaskConical, LayoutDashboard } from "lucide-react";
+import { ShieldCheck, EyeOff, KeyRound, Home, LogIn, Settings, Briefcase, ListChecks, ChevronDown, GitBranch, CalendarDays, DollarSign, LogOut, FlaskConical, LayoutDashboard, ClipboardList } from "lucide-react";
 import { Link, useRouter } from "@tanstack/react-router";
 import { YearToggle } from "./YearToggle";
 import { useApp } from "@/lib/app-store";
@@ -111,6 +111,9 @@ export function SecurityBanner() {
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => router.navigate({ to: "/admin", search: { tab: "budget" } })}>
                       <DollarSign className="h-3.5 w-3.5 mr-2" /> Budget
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => router.navigate({ to: "/tasks" })}>
+                      <ClipboardList className="h-3.5 w-3.5 mr-2" /> Task Sheet
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuLabel className="text-[10px] uppercase tracking-wide text-muted-foreground">

@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UsersRouteImport } from './routes/users'
 import { Route as TestingRouteImport } from './routes/testing'
+import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as QaRouteImport } from './routes/qa'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -32,6 +33,11 @@ const UsersRoute = UsersRouteImport.update({
 const TestingRoute = TestingRouteImport.update({
   id: '/testing',
   path: '/testing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TasksRoute = TasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -103,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/qa': typeof QaRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/tasks': typeof TasksRoute
   '/testing': typeof TestingRoute
   '/users': typeof UsersRoute
   '/scenario/new': typeof ScenarioNewRoute
@@ -119,6 +126,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/qa': typeof QaRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/tasks': typeof TasksRoute
   '/testing': typeof TestingRoute
   '/users': typeof UsersRoute
   '/scenario/new': typeof ScenarioNewRoute
@@ -136,6 +144,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/qa': typeof QaRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/tasks': typeof TasksRoute
   '/testing': typeof TestingRoute
   '/users': typeof UsersRoute
   '/scenario/new': typeof ScenarioNewRoute
@@ -154,6 +163,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/qa'
     | '/reset-password'
+    | '/tasks'
     | '/testing'
     | '/users'
     | '/scenario/new'
@@ -170,6 +180,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/qa'
     | '/reset-password'
+    | '/tasks'
     | '/testing'
     | '/users'
     | '/scenario/new'
@@ -186,6 +197,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/qa'
     | '/reset-password'
+    | '/tasks'
     | '/testing'
     | '/users'
     | '/scenario/new'
@@ -203,6 +215,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   QaRoute: typeof QaRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  TasksRoute: typeof TasksRoute
   TestingRoute: typeof TestingRoute
   UsersRoute: typeof UsersRoute
   ScenarioNewRoute: typeof ScenarioNewRoute
@@ -223,6 +236,13 @@ declare module '@tanstack/react-router' {
       path: '/testing'
       fullPath: '/testing'
       preLoaderRoute: typeof TestingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tasks': {
+      id: '/tasks'
+      path: '/tasks'
+      fullPath: '/tasks'
+      preLoaderRoute: typeof TasksRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -352,6 +372,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   QaRoute: QaRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  TasksRoute: TasksRoute,
   TestingRoute: TestingRoute,
   UsersRoute: UsersRoute,
   ScenarioNewRoute: ScenarioNewRoute,
