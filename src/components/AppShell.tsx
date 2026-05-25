@@ -44,6 +44,34 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
         <div className="flex items-center gap-3 flex-none shrink-0 ml-auto z-10">
           <FontSizeToggle />
           {user?.role === "advisor" && <CreditPill />}
+          {(user?.role === "admin" || user?.role === "qa") && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="outline" className="gap-1">
+                  <FlaskConical className="h-4 w-4" />
+                  <span className="hidden sm:inline">QA</span>
+                  <ChevronDown className="h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem asChild>
+                  <Link to="/qa" className="flex items-center gap-2 cursor-pointer">
+                    <LayoutDashboard className="h-4 w-4" />QA Dashboard
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/testing" className="flex items-center gap-2 cursor-pointer">
+                    <FlaskConical className="h-4 w-4" />Testing Portal
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/tasks" className="flex items-center gap-2 cursor-pointer">
+                    <ListChecks className="h-4 w-4" />Task Sheet
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           {user && (
             <div className="hidden md:flex items-center gap-2 text-sm">
               <div className="text-right">
