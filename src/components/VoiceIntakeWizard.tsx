@@ -48,8 +48,11 @@ function parseYear(text: string): number | null {
 }
 function parseYesNo(text: string): boolean | null {
   const t = normalizeSpeech(text);
-  if (/\b(no|nope|nah|negative|never|not|dont|do not|incorrect|wrong|not right|not correct)\b/.test(t)) return false;
-  if (/\b(yes|yeah|yep|yup|ya|correct|right|true|sure|ok|okay|affirmative|that is right|thats right|sounds right|i do|i am|smoke|smoker)\b/.test(t)) return true;
+  if (!t || /\b(yes or no|no or yes)\b/.test(t)) return null;
+  const hasExplicitNo = /\b(no|nope|nah|negative|never|incorrect|wrong)\b|\b(do not|dont|not right|not correct|not true|not it)\b/.test(t);
+  if (hasExplicitNo) return false;
+  const hasExplicitYes = /\b(yes|yeah|yep|yup|ya|correct|right|true|sure|ok|okay|affirmative)\b|\b(that is right|thats right|sounds right|i do|i am|smoke|smoker)\b/.test(t);
+  if (hasExplicitYes) return true;
   return null;
 }
 function matchOption<T extends string>(text: string, options: readonly T[]): T | null {
@@ -206,12 +209,15 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
   });
 
   // ------------------- STT -------------------
-  const listen = (timeoutMs = 22000): Promise<string> => new Promise((resolve) => {
+  const listen = (timeoutMs = 22000, opts: { minListenMs?: number; silenceMs?: number } = {}): Promise<string> => new Promise((resolve) => {
     const Ctor = getRecognitionCtor();
     if (!Ctor) { resolve(""); return; }
     let settled = false;
     let bestTranscript = "";
     let finalTranscript = "";
+    const startedAt = Date.now();
+    const minListenMs = opts.minListenMs ?? 700;
+    const silenceMs = opts.silenceMs ?? 1800;
     let stopTimer: ReturnType<typeof setTimeout> | null = null;
     let silenceTimer: ReturnType<typeof setTimeout> | null = null;
     const finish = (t?: string) => {
@@ -231,8 +237,10 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
         for (let i = start; i < e.results.length; i += 1) {
           const result = e.results[i];
           if (!result) continue;
-          const choices = Array.from(result).map((alt) => alt.transcript?.trim() ?? "").filter(Boolean);
-          const picked = choices.sort((a, b) => b.length - a.length)[0] ?? "";
+          const choices = Array.from(result)
+            .map((alt) => ({ text: alt.transcript?.trim() ?? "", confidence: alt.confidence ?? 0 }))
+            .filter((alt) => alt.text);
+          const picked = choices.sort((a, b) => (b.confidence - a.confidence) || (b.text.length - a.text.length))[0]?.text ?? "";
           if (!picked) continue;
           bestTranscript = picked;
           if (result.isFinal) finalTranscript = `${finalTranscript} ${picked}`.trim();
@@ -242,8 +250,12 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
         setLastHeard(heard);
         if (silenceTimer) clearTimeout(silenceTimer);
         silenceTimer = setTimeout(() => {
+          if (Date.now() - startedAt < minListenMs) {
+            silenceTimer = setTimeout(() => { try { rec.stop(); } catch { finish(heard); } }, minListenMs - (Date.now() - startedAt));
+            return;
+          }
           try { rec.stop(); } catch { finish(heard); }
-        }, 1800);
+        }, silenceMs);
       };
       rec.onerror = (e) => {
         if (e.error === "not-allowed" || e.error === "service-not-allowed") {
