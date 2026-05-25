@@ -13,7 +13,7 @@ import type { Medication } from "@/lib/medicare-math";
 type SR = {
   start: () => void; stop: () => void; abort: () => void;
   lang: string; continuous: boolean; interimResults: boolean; maxAlternatives: number;
-  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+  onresult: ((e: { resultIndex?: number; results: ArrayLike<ArrayLike<{ transcript: string; confidence?: number }> & { isFinal?: boolean }> }) => void) | null;
   onerror: ((e: { error: string }) => void) | null;
   onend: (() => void) | null;
 };
@@ -47,9 +47,9 @@ function parseYear(text: string): number | null {
   return null;
 }
 function parseYesNo(text: string): boolean | null {
-  const t = text.toLowerCase();
-  if (/\b(yes|yeah|yep|yup|correct|right|true|sure|of course|affirmative|i (do|am)|smoke|smoker)\b/.test(t)) return true;
-  if (/\b(no|nope|nah|negative|never|not|don't|do not)\b/.test(t)) return false;
+  const t = normalizeSpeech(text);
+  if (/\b(no|nope|nah|negative|never|not|dont|do not|incorrect|wrong|not right|not correct)\b/.test(t)) return false;
+  if (/\b(yes|yeah|yep|yup|ya|correct|right|true|sure|ok|okay|affirmative|that is right|thats right|sounds right|i do|i am|smoke|smoker)\b/.test(t)) return true;
   return null;
 }
 function matchOption<T extends string>(text: string, options: readonly T[]): T | null {
@@ -206,30 +206,44 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
   });
 
   // ------------------- STT -------------------
-  const listen = (timeoutMs = 16000): Promise<string> => new Promise((resolve) => {
+  const listen = (timeoutMs = 22000): Promise<string> => new Promise((resolve) => {
     const Ctor = getRecognitionCtor();
     if (!Ctor) { resolve(""); return; }
     let settled = false;
     let bestTranscript = "";
+    let finalTranscript = "";
+    let stopTimer: ReturnType<typeof setTimeout> | null = null;
+    let silenceTimer: ReturnType<typeof setTimeout> | null = null;
     const finish = (t?: string) => {
       if (settled) return;
       settled = true;
-      const finalText = (t ?? bestTranscript).trim();
+      if (stopTimer) clearTimeout(stopTimer);
+      if (silenceTimer) clearTimeout(silenceTimer);
+      const finalText = (t ?? (finalTranscript || bestTranscript)).trim();
       setListening(false);
       resolve(finalText);
     };
     try {
       const rec = new Ctor();
-      rec.lang = "en-US"; rec.continuous = false; rec.interimResults = true; rec.maxAlternatives = 3;
+      rec.lang = "en-US"; rec.continuous = true; rec.interimResults = true; rec.maxAlternatives = 5;
       rec.onresult = (e) => {
-        const result = e.results?.[e.results.length - 1];
-        if (!result) return;
-        const choices = Array.from(result).map((alt) => alt.transcript?.trim() ?? "").filter(Boolean);
-        const picked = choices.sort((a, b) => b.length - a.length)[0] ?? "";
-        if (!picked) return;
-        bestTranscript = picked;
-        setLastHeard(picked);
-        if ((result as { isFinal?: boolean }).isFinal) finish(picked);
+        const start = e.resultIndex ?? 0;
+        for (let i = start; i < e.results.length; i += 1) {
+          const result = e.results[i];
+          if (!result) continue;
+          const choices = Array.from(result).map((alt) => alt.transcript?.trim() ?? "").filter(Boolean);
+          const picked = choices.sort((a, b) => b.length - a.length)[0] ?? "";
+          if (!picked) continue;
+          bestTranscript = picked;
+          if (result.isFinal) finalTranscript = `${finalTranscript} ${picked}`.trim();
+        }
+        const heard = (finalTranscript || bestTranscript).trim();
+        if (!heard) return;
+        setLastHeard(heard);
+        if (silenceTimer) clearTimeout(silenceTimer);
+        silenceTimer = setTimeout(() => {
+          try { rec.stop(); } catch { finish(heard); }
+        }, 1800);
       };
       rec.onerror = (e) => {
         if (e.error === "not-allowed" || e.error === "service-not-allowed") {
@@ -245,7 +259,7 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
       playBeep();
       toast.info("🎤 Your turn — speak now", { duration: 2500, id: "voice-listen" });
       rec.start();
-      setTimeout(() => { try { rec.stop(); } catch { /* noop */ } }, timeoutMs);
+      stopTimer = setTimeout(() => { try { rec.stop(); } catch { /* noop */ } }, timeoutMs);
     } catch { finish(""); }
   });
 
