@@ -717,6 +717,9 @@ function TestEvidence({ testId }: { testId: string }) {
 }
 
 function StatusButtons({ status, onChange }: { status: TestStatus; onChange: (s: TestStatus) => void }) {
+  const { user } = useApp();
+  const isQA = user?.role === "qa";
+
   const btn = (s: TestStatus, label: string, Icon: React.ElementType, on: string) =>
     <button
       key={s}
@@ -727,6 +730,18 @@ function StatusButtons({ status, onChange }: { status: TestStatus; onChange: (s:
     >
       <Icon className="h-3.5 w-3.5" /> {label}
     </button>;
+
+  if (isQA) {
+    return (
+      <div className="flex flex-wrap gap-1">
+        {btn("pass",    "Pass",         CheckCircle2, "bg-emerald-500/15 border-emerald-500/50 text-emerald-700")}
+        {btn("fail",    "Fail",         XCircle,      "bg-destructive/15 border-destructive/50 text-destructive")}
+        {btn("blocked", "In progress",  AlertOctagon, "bg-amber-500/15 border-amber-500/50 text-amber-700")}
+        {btn("not_run", "Not started",  MinusCircle,  "bg-muted border-border text-foreground")}
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-wrap gap-1">
       {btn("pass",    "Pass",    CheckCircle2, "bg-emerald-500/15 border-emerald-500/50 text-emerald-700")}
