@@ -684,7 +684,32 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
       case "income": return void ask("Which income band fits you best? Under twenty-five thousand, twenty-five to fifty, fifty to one hundred, one hundred to two hundred, over two hundred, or prefer not to say?", "income");
       case "costPref": return void ask("What matters more — minimizing your monthly cost, or predictability with no surprise bills?", "costPref");
       case "conditionsAsk": return void ask("Do you have any chronic health conditions? Yes or no?", "conditionsAsk");
-      case "conditionsAdd": return void ask("Please tell me one condition. For example: diabetes, hypertension, or COPD.", "conditionsAdd");
+      case "conditionsAdd": {
+        const remaining = (CONDITIONS as readonly string[]).filter((c) => !conditions.includes(c));
+        if (remaining.length === 0) {
+          return void ask("You've covered the common ones. Say another condition, or say 'done'.", "conditionsAdd");
+        }
+        return void startKeyPick(
+          "Which condition? Or press a key on the 'none of these' option to type one in.",
+          [...remaining, "None of these / I'll say my own"],
+          (idx) => {
+            if (idx === remaining.length) {
+              void ask("Okay — please say the condition. Or say 'done' to finish.", "conditionsAdd");
+              return;
+            }
+            const value = remaining[idx];
+            verify(
+              `condition ${value}`,
+              () => setConditions((p) => p.includes(value) ? p : [...p, value]),
+              "conditionsAdd",
+              "conditionsAdd",
+            );
+          },
+          () => {
+            void ask("I didn't catch a key press. Say a condition, or say 'done' to finish.", "conditionsAdd");
+          },
+        );
+      }
       case "medsAsk": return void ask("Do you take any prescription medications? Yes or no?", "medsAsk");
       case "medsName": return void startMedSearch();
       case "medsStrength": return void ask(`What strength of ${pendingMedName}? For example, ten milligrams. Or say "skip" if you're not sure.`, "medsStrength");
