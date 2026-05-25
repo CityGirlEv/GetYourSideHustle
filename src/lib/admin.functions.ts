@@ -116,7 +116,7 @@ export const createAdvisor = createServerFn({ method: "POST" })
   .inputValidator((input) =>
     z.object({
       email: z.string().email(),
-      password: z.string().min(8).max(128),
+      password: z.string().min(12).max(128),
       full_name: z.string().min(1).max(255).optional(),
       role: roleSchema.optional(),
     }).parse(input)

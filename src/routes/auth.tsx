@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useApp } from "@/lib/app-store";
@@ -97,6 +97,9 @@ function AuthPage() {
                   <button type="button" onClick={handleForgot} disabled={busy} className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 w-full text-center">
                     Forgot password?
                   </button>
+                  <div className="text-xs text-center text-muted-foreground pt-1">
+                    No account? <Link to="/register" className="underline underline-offset-2 hover:text-foreground">Request beta access</Link>
+                  </div>
                 </form>
               </TabsContent>
               <TabsContent value="signup">

@@ -313,8 +313,8 @@ function AdminPortal() {
   }, [user, fetchStaff, fetchAgents]);
 
   const handleCreateUser = async () => {
-    if (!newEmail || !newPassword || newPassword.length < 8) {
-      toast.error("Email is required and password must be at least 8 characters");
+    if (!newEmail || !newPassword || newPassword.length < 12) {
+      toast.error("Email is required and password must be at least 12 characters");
       return;
     }
     setCreating(true);
@@ -567,14 +567,14 @@ function AdminPortal() {
               <div className="space-y-1">
                 <label className="text-xs text-muted-foreground">Password</label>
                 <div className="relative">
-                  <Input type={showPw ? "text" : "password"} placeholder="Min 8 characters" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+                  <Input type={showPw ? "text" : "password"} placeholder="Min 12 characters" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
                   <button type="button" onClick={() => setShowPw((v) => !v)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                     {showPw ? <EyeOff className="h-4 w-4"/> : <Eye className="h-4 w-4"/>}
                   </button>
                 </div>
               </div>
               <div className="flex items-end">
-                <Button onClick={handleCreateUser} disabled={creating || !newEmail || newPassword.length < 8} className="w-full">
+                <Button onClick={handleCreateUser} disabled={creating || !newEmail || newPassword.length < 12} className="w-full">
                   {creating ? <Loader2 className="h-4 w-4 animate-spin mr-2"/> : <UserPlus className="h-4 w-4 mr-2"/>}
                   Create user
                 </Button>
