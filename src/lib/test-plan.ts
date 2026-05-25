@@ -451,36 +451,48 @@ export const TEST_CASES: TestCase[] = [
 ];
 
 // ----------------------------------------------------------------------------
-// IMPLEMENTATION PLAN — phases in order
+// IMPLEMENTATION PLAN — phases. We are currently executing PHASE 1, a 4-week
+// effort delivered as four 1-week sprints (Sprint 0 → Sprint 3). Final
+// production go-live lands at the end of Sprint 3 (Sunday 6/14). Beta with
+// public registration opens mid-Sprint 1 on Wednesday 5/27 (alpha closes
+// Tuesday 5/26 at midnight). Later phases pick up after Phase 1 ships.
 // ----------------------------------------------------------------------------
 export const IMPLEMENTATION_PLAN: PhaseItem[] = [
-  { name: "Phase 1 · Auth + roles", status: "done", shippedOn: "2025-09-15",
-    description: "Supabase auth, profiles, user_roles (admin/agent/advisor/qa/viewer), has_role() definer fn, RLS across all tables." },
-  { name: "Phase 2 · De-identified scenario intake", status: "done", shippedOn: "2025-10-02",
-    description: "Manual 4-step wizard, ZIP3 lookup, county selector, create_scenario RPC, scenario_code generator." },
-  { name: "Phase 3 · Medications + catalog", status: "done", shippedOn: "2025-10-20",
-    description: "Local MED_CATALOG with brand/generic/DME, auto-resolved diagnosis, form/frequency dropdowns, monthly retail cost." },
-  { name: "Phase 4 · RxNorm integration", status: "done", shippedOn: "2026-05-15",
-    description: "Search rxnav.nlm.nih.gov approximateTerm, flag coverage_uncertain, show generic equivalent via TTY=IN lookup." },
-  { name: "Phase 5 · Voice input on each field", status: "done", shippedOn: "2026-05-22",
-    description: "Reusable VoiceButton with NATO phonetic spell mode; voice-select on Form/Frequency dropdowns." },
-  { name: "Phase 6 · Voice-driven wizard", status: "done", shippedOn: "2026-05-25",
-    description: "Full TTS + STT flow with retry/repeat/type/skip; submits via same create_scenario RPC." },
-  { name: "Phase 7 · Plan optimizer scoring", status: "in_progress",
-    description: "Score Part D + MA plans against the scenario; rank by cost preference; surface predictability tradeoffs." },
-  { name: "Phase 8 · Agent assignment + SOAs", status: "in_progress",
-    description: "Admin assigns agents, agents review notes, SOA signature capture, audit trail." },
-  { name: "Phase 9 · Expert contact ops", status: "planned",
-    description: "Inbox for licensed experts, lifecycle states (new/contacted/closed), reminders." },
-  { name: "Phase 10 · CMS catalog ingest", status: "planned",
-    description: "Nightly ingest of CMS 2026/2027 formularies; replace estimates with actual Part D tiers." },
+  {
+    name: "Phase 1 · Beta → GA (Sprints 0–3, 5/18–6/14)",
+    status: "in_progress",
+    description:
+      "4-week effort: alpha (S0) → beta go-live Wed 5/27 with registration (S1) → optimizer math hardening (S2) → final production go-live end of S3 (Sun 6/14). Sprint detail in SPRINTS below.",
+  },
+  {
+    name: "Phase 2 · Agent + SOA flow",
+    status: "planned",
+    description:
+      "Admin assigns agents, agent inbox with status filters, signature capture (draw + type), SOA PDF generation and audit trail.",
+  },
+  {
+    name: "Phase 3 · CMS catalog ingest",
+    status: "planned",
+    description:
+      "Nightly ingest of CMS 2026/2027 plan + formulary data; backfill scenarios with real Part D tiers instead of estimates.",
+  },
+  {
+    name: "Phase 4 · Expert contact ops",
+    status: "planned",
+    description:
+      "Inbox for licensed experts with lifecycle states (new / contacted / closed), reminders and SLAs.",
+  },
 ];
 
 // ----------------------------------------------------------------------------
 // SPRINT SCHEDULE
 // ----------------------------------------------------------------------------
-// 4 × one-week sprints. Sprint 0 (alpha) closed Sunday 5/24/2026.
-// Sprint 1 is the active sprint and starts today, 5/25/2026 — beta go-live.
+// PHASE 1 sprint schedule — four 1-week sprints, Mon → Sun.
+//   S0 (5/18–5/24) Alpha — closed.
+//   S1 (5/25–5/31) ACTIVE. Alpha continues through Tue 5/26 midnight; Beta
+//                  goes live Wed 5/27 with public registration.
+//   S2 (6/01–6/07) Optimizer math hardening on the beta.
+//   S3 (6/08–6/14) Final production go-live Sun 6/14 (end of Phase 1).
 export const ACTIVE_SPRINT_ID = "S-2026-01";
 
 export const SPRINTS: Sprint[] = [
@@ -498,20 +510,21 @@ export const SPRINTS: Sprint[] = [
   {
     id: "S-2026-01", number: 1, name: "Beta go-live",
     start: "2026-05-25", end: "2026-05-31",
-    goal: "Cut the beta release live and execute the full test plan against it. Catria leads QA (70%); owner runs the remaining 30%.",
+    goal: "Close alpha Tue 5/26 midnight; cut Beta live Wed 5/27 with public registration. Execute the full test plan against the beta. Catria leads QA (70%); owner runs the remaining 30%.",
     items: [
-      { id: "S1-1", title: "Beta release live (5/25)", type: "feature", status: "in_progress" },
-      { id: "S1-2", title: "All test cases aligned to Sprint 1", type: "test", status: "in_progress" },
-      { id: "S1-3", title: "Test case ownership split 70/30 (Catria / Me)", type: "test", status: "in_progress" },
-      { id: "S1-4", title: "Beta smoke pass against production preview", type: "test", status: "todo" },
-      { id: "S1-5", title: "Triage + fix P0/P1 beta defects", type: "bug", status: "todo" },
-      { id: "S1-6", title: "Catria recruits 10 agents (hand-picked) — NDA + Agent Agreement signed before access", type: "feature", status: "todo", owner: "Catria" },
+      { id: "S1-1", title: "Alpha testing closes Tue 5/26 midnight", type: "test", status: "in_progress" },
+      { id: "S1-2", title: "Beta release live Wed 5/27 with public registration", type: "feature", status: "todo" },
+      { id: "S1-3", title: "All test cases aligned to Sprint 1", type: "test", status: "in_progress" },
+      { id: "S1-4", title: "Test case ownership split 70/30 (Catria / Me)", type: "test", status: "in_progress" },
+      { id: "S1-5", title: "Beta smoke pass against production preview (Thu 5/28)", type: "test", status: "todo" },
+      { id: "S1-6", title: "Triage + fix P0/P1 beta defects", type: "bug", status: "todo" },
+      { id: "S1-7", title: "Catria recruits 10 agents (hand-picked) — NDA + Agent Agreement signed before access", type: "feature", status: "todo", owner: "Catria" },
     ],
   },
   {
     id: "S-2026-02", number: 2, name: "Optimizer math hardening",
     start: "2026-06-01", end: "2026-06-07",
-    goal: "Land the explainable scoring model and per-plan StrategyScorecard so plan rankings are defensible.",
+    goal: "On the live beta, land the explainable scoring model and per-plan StrategyScorecard so plan rankings are defensible before GA.",
     items: [
       { id: "S2-1", title: "Score model: monthly cost vs predictability", type: "feature", status: "todo" },
       { id: "S2-2", title: "Tier lookup for catalog drugs", type: "feature", status: "todo" },
@@ -520,24 +533,15 @@ export const SPRINTS: Sprint[] = [
     ],
   },
   {
-    id: "S-2026-03", number: 3, name: "Agent + SOA flow",
+    id: "S-2026-03", number: 3, name: "GA hardening + final go-live",
     start: "2026-06-08", end: "2026-06-14",
-    goal: "Close the loop scenario → assigned agent → signed SOA, with a clean agent inbox.",
+    goal: "Close out Phase 1: full regression on beta, fix any remaining P0/P1s, and cut the final production go-live by end of day Sun 6/14.",
     items: [
-      { id: "S3-1", title: "Admin assign-agent UI polish", type: "feature", status: "todo" },
-      { id: "S3-2", title: "Agent inbox with status filters", type: "feature", status: "todo" },
-      { id: "S3-3", title: "Signature capture (draw + type modes)", type: "feature", status: "todo" },
-      { id: "S3-4", title: "SOA PDF generation", type: "feature", status: "todo" },
-    ],
-  },
-  {
-    id: "S-2026-04", number: 4, name: "CMS catalog ingest",
-    start: "2026-06-15", end: "2026-06-21",
-    goal: "Replace estimates with real CMS 2026/2027 plan + formulary data via a nightly ingest.",
-    items: [
-      { id: "S4-1", title: "Nightly cron via /api/public/cms-ingest", type: "infra", status: "todo" },
-      { id: "S4-2", title: "Schema for plan_year + formulary_drug", type: "infra", status: "todo" },
-      { id: "S4-3", title: "Backfill existing scenarios with new prices", type: "infra", status: "todo" },
+      { id: "S3-1", title: "Full regression pass across all areas", type: "test", status: "todo" },
+      { id: "S3-2", title: "P0/P1 defect burndown to zero", type: "bug", status: "todo" },
+      { id: "S3-3", title: "Production cutover checklist + DNS / cache warm", type: "infra", status: "todo" },
+      { id: "S3-4", title: "Final production go-live (Sun 6/14, end of Phase 1)", type: "feature", status: "todo" },
+      { id: "S3-5", title: "Phase 1 retro + Phase 2 kickoff brief", type: "design", status: "todo" },
     ],
   },
 ];
