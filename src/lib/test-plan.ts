@@ -326,6 +326,17 @@ export const TEST_CASES: TestCase[] = [
   },
 
   // ===== Testing portal (meta) =====
+  {
+    id: "CMS-016", area: "CMS Compliance", priority: "P1",
+    title: "Medicare & You Handbook deep link on scenario page",
+    steps: [
+      "Create a scenario and land on /scenario/created/<code>",
+      "Click 'Download Medicare & You Handbook (PDF)'",
+    ],
+    expected: "Opens https://www.medicare.gov/Pubs/pdf/10050-Medicare-and-You.pdf in a new tab and the PDF downloads.",
+    notes: "Official CMS publication 10050 — direct deep link, no intermediate page.",
+  },
+
   // ===== CMS Compliance & Disclaimers =====
   {
     id: "CMS-001", area: "CMS Compliance", priority: "P0",
