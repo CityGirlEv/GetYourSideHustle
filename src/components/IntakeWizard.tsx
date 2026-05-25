@@ -108,7 +108,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
       return;
     }
     if (birthYear < MIN_BIRTH_YEAR || birthYear > MAX_BIRTH_YEAR) {
-      toast.error(`Year of birth must be between ${MIN_BIRTH_YEAR} and ${MAX_BIRTH_YEAR} (ages 18–120).`);
+      toast.error(`Year of birth must be between ${MIN_BIRTH_YEAR} and ${MAX_BIRTH_YEAR}.`);
       return;
     }
     if (!/^\d{3}$/.test(zip)) {
@@ -451,7 +451,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
             if (step === 1) {
               if (!birthYear) { toast.error("Please select your year of birth before continuing."); return; }
               if (birthYear < MIN_BIRTH_YEAR || birthYear > MAX_BIRTH_YEAR) {
-                toast.error(`Year of birth must be between ${MIN_BIRTH_YEAR} and ${MAX_BIRTH_YEAR} (ages 18–120).`);
+                toast.error(`Year of birth must be between ${MIN_BIRTH_YEAR} and ${MAX_BIRTH_YEAR}.`);
                 return;
               }
               if (!/^\d{3}$/.test(zip)) { toast.error("Please enter the first 3 digits of your ZIP code before continuing."); return; }
