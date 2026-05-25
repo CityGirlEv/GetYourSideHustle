@@ -662,7 +662,22 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
       case "zip": return void ask("What are the first three digits of your ZIP code?", "zip");
       case "county": {
         const opts = countyOptions.length ? countyOptions : countiesForZip3(zip3);
-        return void ask(`Which county? Your options are: ${opts.map((o) => o.county).join(", ")}.`, "county");
+        if (opts.length === 0) {
+          return void ask("I don't have counties for that ZIP. Please say your county name.", "county");
+        }
+        return void startKeyPick(
+          "Which county?",
+          opts.map((o) => o.county),
+          (idx) => {
+            const picked = opts[idx];
+            if (!picked) { void ask("Sorry, I lost track. Let's try again.", "county"); return; }
+            verify(`county ${picked.county}`, () => setCounty(picked.county), "gender", "county");
+          },
+          () => {
+            // Cycled through every option without a key press — fall back to voice
+            void ask(`I didn't catch a key press. Please say one of: ${opts.map((o) => o.county).join(", ")}.`, "county");
+          },
+        );
       }
       case "gender": return void ask("What is your gender? Female, male, non-binary, or prefer not to say?", "gender");
       case "tobacco": return void ask("Do you use tobacco? Yes or no?", "tobacco");
