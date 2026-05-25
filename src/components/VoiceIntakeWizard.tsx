@@ -312,7 +312,10 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
     try { window.speechSynthesis?.cancel(); } catch { /* noop */ }
     setSpeaking(false);
     await new Promise((r) => setTimeout(r, 250));
-    const heard = await listen();
+    const heard = await listen(
+      expect === "verify" || expect === "confirm" ? 30000 : 22000,
+      expect === "verify" || expect === "confirm" ? { minListenMs: 1400, silenceMs: 2600 } : undefined,
+    );
     if (heard) {
       await handleAnswer(expect, heard);
     } else {
