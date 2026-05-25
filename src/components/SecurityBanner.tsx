@@ -26,11 +26,11 @@ export function SecurityBanner() {
   return (
     <div className="grad-indigo px-4 py-2 text-xs font-medium">
       <div className="max-w-7xl mx-auto space-y-1">
-        <div className="flex items-center justify-between gap-x-4">
+        <div className="flex items-center justify-between gap-x-4 flex-wrap">
           <div className="flex items-center gap-3 flex-shrink-0">
             <YearToggle />
           </div>
-          <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 text-white/90">
+          <div className="flex flex-wrap items-center justify-end gap-x-3 md:gap-x-4 gap-y-1 text-white/90 min-w-0">
             <Link to="/" className="flex items-center gap-1 hover:text-white transition-colors">
               <Home className="h-3.5 w-3.5" /> Home
             </Link>
