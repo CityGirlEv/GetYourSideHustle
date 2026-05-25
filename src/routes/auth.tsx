@@ -98,7 +98,7 @@ function AuthPage() {
                     Forgot password?
                   </button>
                   <div className="text-xs text-center text-muted-foreground pt-1">
-                    No account? <Link to="/register" className="underline underline-offset-2 hover:text-foreground">Request beta access</Link>
+                    No account? <Link to="/register" className="underline underline-offset-2 hover:text-foreground">Request Beta Access</Link>
                   </div>
                 </form>
               </TabsContent>
