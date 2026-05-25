@@ -30,20 +30,20 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
   return (
     <div className="min-h-screen flex flex-col">
       <SecurityBanner />
+      <div className="px-4 md:px-8 pt-6 pb-1 max-w-7xl w-full mx-auto">
+        <div className="flex flex-col items-center text-center">
+          <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-display font-bold text-primary uppercase">The Medicare Optimizer</h1>
+          <p className="text-xs sm:text-sm md:text-base text-primary/80 font-medium italic">You Deserve The Best Medicare Plan Because You Earned It!</p>
+        </div>
+        <TrustBanner />
+      </div>
       <header className="glass border-b border-border/60 px-3 md:px-6 py-2 md:py-3 flex items-center sticky top-0 z-30 gap-2 md:gap-4 relative">
         <div className="flex items-center gap-2 min-w-0 shrink z-10">
           <Link to="/" className="flex items-center gap-2 md:gap-3 font-display font-bold">
             <img src={muntieLogo} alt="The Medicare Optimizer" className="h-9 w-9 sm:h-12 sm:w-12 md:h-20 md:w-20 object-contain flex-shrink-0" />
           </Link>
         </div>
-        <div className="hidden lg:flex pointer-events-none absolute inset-0 flex-col items-center justify-center px-2">
-          <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-display font-bold text-primary uppercase text-center">The Medicare Optimizer</h1>
-          <p className="text-xs sm:text-sm md:text-base text-primary/80 font-medium italic text-center whitespace-nowrap">You Deserve The Best Medicare Plan Because You Earned It!</p>
-        </div>
-        <div className="flex lg:hidden flex-1 flex-col items-center justify-center min-w-0 px-2 overflow-hidden">
-          <h1 className="text-lg sm:text-xl md:text-2xl font-display font-bold text-primary uppercase truncate text-center">The Medicare Optimizer</h1>
-          <p className="text-xs sm:text-sm text-primary/80 font-medium italic text-center truncate max-w-full">You Deserve The Best Medicare Plan Because You Earned It!</p>
-        </div>
+        <div className="flex-1" />
         <div className="flex items-center gap-3 flex-none shrink-0 ml-auto z-10">
           <FontSizeToggle />
           {user?.role === "advisor" && <CreditPill />}
@@ -172,14 +172,13 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
           )}
         </div>
       </header>
-      <main className="flex-1 px-4 md:px-8 py-8 max-w-7xl w-full mx-auto">
+      <main className="flex-1 px-4 md:px-8 py-6 max-w-7xl w-full mx-auto">
         {(title || subtitle) && (
           <div className="mb-6">
             {title && <h2 className="font-display font-bold text-2xl md:text-3xl text-primary">{title}</h2>}
             {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
           </div>
         )}
-        <TrustBanner />
         {children}
       </main>
       <CMSFooter />
