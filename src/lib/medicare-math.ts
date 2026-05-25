@@ -16,6 +16,13 @@ export const GUIDELINES: Record<Year, Guidelines> = {
 
 export const INSULIN_CAP_MONTHLY = 35;
 
+/** CGMs, insulin pumps, CPAP/BiPAP and similar are billed under Medicare
+ * Part B as Durable Medical Equipment — they do NOT count toward Part D
+ * drug spending or the Part D out-of-pocket cap. */
+export function isDmeForm(form: string | undefined | null): boolean {
+  return !!form && /\(DME\)|CGM|CPAP|BiPAP|Pump/i.test(form);
+}
+
 // Medigap Plan G premium estimate by ZIP3 region (first digit ≈ state group).
 const MEDIGAP_BY_ZIP3_DIGIT: Record<string, number> = {
   "0": 195, "1": 175, "2": 165, "3": 180, "4": 155,
@@ -68,9 +75,13 @@ export interface PathwayResult {
 
 function annualDrugCostWithCap(meds: Medication[], cap: number) {
   const monthly = meds.reduce((sum, m) => {
-    const isInsulin = /insulin|novolog|humalog|lantus|tresiba|admelog/i.test(
+    // DME (CGM, insulin pump, CPAP) is Part B, not Part D — exclude from
+    // Part D drug spend and the Part D OOP cap.
+    if (isDmeForm(m.dosage_form)) return sum;
+    const isInsulin = /insulin|novolog|humalog|lantus|tresiba|admelog|basaglar|levemir|toujeo/i.test(
       m.medication_name + " " + (m.resolved_diagnosis ?? ""),
     );
+    // 2023+ IRA insulin cap: member pays no more than $35/mo per covered insulin.
     return sum + (isInsulin ? Math.min(m.estimated_monthly_retail, INSULIN_CAP_MONTHLY) : m.estimated_monthly_retail);
   }, 0);
   return Math.min(monthly * 12, cap);
