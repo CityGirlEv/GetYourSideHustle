@@ -60,7 +60,9 @@ function QADashboard() {
   useEffect(() => {
     if (authLoading) return;
     if (!user) { router.navigate({ to: "/auth" }); return; }
-    if (user.role !== "qa" && user.role !== "admin") return;
+    // QA users go to the testing portal; only admins see the QA dashboard
+    if (user.role === "qa") { router.navigate({ to: "/testing" }); return; }
+    if (user.role !== "admin") return;
     let cancelled = false;
     (async () => {
       const [s, c, n] = await Promise.all([
@@ -114,12 +116,11 @@ function QADashboard() {
   }, [loading]);
 
   if (!user) return null;
-  if (user.role !== "qa" && user.role !== "admin") {
+  if (user.role !== "admin") {
     return (
       <AppShell title="QA dashboard">
         <Card className="glass p-6">
-          This area is for users with the QA role. Ask an administrator to grant you the
-          <span className="font-mono px-1">qa</span> role from the Users portal.
+          This area is restricted to administrators.
         </Card>
       </AppShell>
     );
