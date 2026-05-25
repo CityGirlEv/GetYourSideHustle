@@ -277,6 +277,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
             <div className="col-span-2">
               <Label>County or parish <span className="text-destructive">*</span></Label>
               {countyOptions.length > 0 ? (
+                <div className="flex gap-2 items-center">
                 <select
                   className="w-full border border-input rounded-md px-3 h-9 bg-background"
                   value={countyMatchesZip3(county, zip3)?.county ?? ""}
@@ -290,7 +291,18 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
                     </option>
                   ))}
                 </select>
+                <VoiceButton
+                  label="Speak county name"
+                  onTranscript={(t) => {
+                    const names = countyOptions.map((c) => c.county);
+                    const m = matchSpokenOption(t, names);
+                    if (m) setCounty(m);
+                    else toast.error(`"${t}" didn't match a county for ZIP ${zip}.`);
+                  }}
+                />
+                </div>
               ) : (
+                <div className="flex gap-2 items-center">
                 <Input
                   value={county}
                   onChange={(e) => setCounty(e.target.value.slice(0, 80))}
@@ -303,6 +315,8 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
                   disabled={zip.length !== 3}
                   required
                 />
+                <VoiceButton label="Speak county name" onTranscript={(t) => setCounty(t.slice(0, 80))} />
+                </div>
               )}
               {zip3Unknown && (
                 <p className="text-xs text-destructive mt-1">
