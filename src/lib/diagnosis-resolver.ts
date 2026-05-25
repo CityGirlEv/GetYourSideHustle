@@ -33,11 +33,13 @@ export type MedCatalogEntry = {
 };
 
 // Estimated monthly retail (30-day supply) cash prices.
-// Sources (verified Q4 2025): manufacturer list / WAC published prices,
-// GoodRx national average cash, and CMS Drug Spending Dashboard 2024 unit
-// cost. Generic prices reflect typical $4–$15 pharmacy programs (Costco,
-// Walmart, GoodRx). Brand prices reflect WAC list — what an uninsured
-// member would pay at retail before any plan discount.
+// Sources (verified Q4 2025):
+//   - Manufacturer WAC / list: https://www.medicare.gov/drug-coverage-comparison
+//   - GoodRx national cash avg: https://www.goodrx.com
+//   - CMS Part D spending by drug: https://data.cms.gov/summary-statistics-on-use-and-payments/medicare-medicaid-spending-by-drug/medicare-part-d-spending-by-drug
+//   - CMS Drug Spending portal: https://www.cms.gov/Research-Statistics-Data-and-Systems/Statistics-Trends-and-Reports/Information-on-Prescription-Drugs
+// Generic prices reflect typical $4–$15 pharmacy programs (Costco, Walmart, GoodRx).
+// Brand prices reflect WAC list — what an uninsured member would pay at retail before any plan discount.
 // Anything Medicare classifies as Part B DME (CGMs, insulin pumps, CPAP)
 // is excluded from Part D drug-cost math by `isDmeForm()` in
 // medicare-math.ts — those items still appear here for the intake list.
