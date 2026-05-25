@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
@@ -17,7 +17,7 @@ import {
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, RotateCcw, Trash2, Pencil, Search, Download } from "lucide-react";
+import { Plus, RotateCcw, Trash2, Pencil, Search, Download, ExternalLink } from "lucide-react";
 import {
   loadTaskRows, saveTaskRows, resetTaskRows, nextTaskId, todayMMDDYY,
   TASK_STATUS_VALUES, TASK_STATUS_LABELS, TASK_CATEGORY_VALUES, TASK_CATEGORY_LABELS,
@@ -66,7 +66,30 @@ function emptyDraft(): TaskRow {
     dateCompleted: "",
     cost: 0,
     notes: "",
+    path: "",
   };
+}
+
+function TaskTargetLink({ path }: { path?: string }) {
+  if (!path) return null;
+  const isExternal = /^https?:\/\//.test(path);
+  const label = path.length > 28 ? path.slice(0, 27) + "…" : path;
+  const className =
+    "inline-flex items-center gap-1 text-[11px] font-mono rounded-full border border-primary/40 bg-primary/5 px-2 py-0.5 text-primary hover:bg-primary/10 transition-colors";
+  if (isExternal) {
+    return (
+      <a href={path} target="_blank" rel="noreferrer" className={className} title={`Open ${path}`} onClick={(e) => e.stopPropagation()}>
+        <ExternalLink className="h-3 w-3" />
+        {label}
+      </a>
+    );
+  }
+  return (
+    <Link to={path as never} target="_blank" className={className} title={`Open ${path}`} onClick={(e) => e.stopPropagation()}>
+      <ExternalLink className="h-3 w-3" />
+      {label}
+    </Link>
+  );
 }
 
 function TaskSheetPage() {
@@ -178,7 +201,7 @@ function TaskSheetPage() {
   const exportCsv = () => {
     const headers = [
       "id", "description", "sprintId", "category", "priority", "status",
-      "assignBy", "assignedTo", "dateAssigned", "dueDate", "dateCompleted", "cost", "notes",
+      "assignBy", "assignedTo", "dateAssigned", "dueDate", "dateCompleted", "cost", "notes", "path",
     ];
     const esc = (v: unknown) => {
       const s = String(v ?? "");
