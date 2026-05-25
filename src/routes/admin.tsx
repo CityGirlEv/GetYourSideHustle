@@ -5,7 +5,7 @@ import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollText, Users, Settings2, Search, Plus, Minus, Inbox, Phone, Mail, UserPlus, Loader2, Eye, EyeOff, Pencil, Trash2, Ban, CheckCircle2, Layers, GitBranch, CalendarDays } from "lucide-react";
+import { ScrollText, Users, Settings2, Search, Plus, Minus, Inbox, Phone, Mail, UserPlus, Loader2, Eye, EyeOff, Pencil, Trash2, Ban, CheckCircle2, Layers, GitBranch, CalendarDays, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -17,6 +17,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { createAdvisor, listStaff, setUserRole, listAgents, assignAgent, updateUser, setUserDisabled, deleteUser } from "@/lib/admin.functions";
 import { CatalogExplorer } from "@/components/CatalogExplorer";
 import { ImplementationTab, SprintsTab } from "@/routes/testing";
+import { BUDGET_LINES, computeBudgetTotals, totalsByCategory, fmtUSD, type BudgetCategory } from "@/lib/budget";
 
 interface AdminScenarioRow {
   id: string;
@@ -278,6 +279,7 @@ function AdminPortal() {
             <>
               <TabsTrigger value="impl"><GitBranch className="h-4 w-4 mr-1.5"/>Implementation Plan</TabsTrigger>
               <TabsTrigger value="rollout"><CalendarDays className="h-4 w-4 mr-1.5"/>Rollout Schedule</TabsTrigger>
+              <TabsTrigger value="budget"><DollarSign className="h-4 w-4 mr-1.5"/>Budget</TabsTrigger>
             </>
           )}
         </TabsList>
@@ -592,6 +594,10 @@ function AdminPortal() {
                 <p className="text-xs text-muted-foreground mb-4">Sprint-by-sprint rollout with goals and item-level status.</p>
                 <SprintsTab />
               </Card>
+            </TabsContent>
+
+            <TabsContent value="budget" className="space-y-3">
+              <BudgetTab />
             </TabsContent>
           </>
         )}
