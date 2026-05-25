@@ -1,4 +1,4 @@
-import { ShieldCheck, EyeOff, KeyRound, Home, LogIn, Settings } from "lucide-react";
+import { ShieldCheck, EyeOff, KeyRound, Home, LogIn } from "lucide-react";
 import { Link, useRouter } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { YearToggle } from "./YearToggle";
