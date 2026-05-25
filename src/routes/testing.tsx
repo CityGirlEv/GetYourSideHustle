@@ -15,7 +15,7 @@ import {
   TEST_CASES, IMPLEMENTATION_PLAN, SPRINTS, TASKS,
   loadAllStatuses, saveStatus,
   type TestStatus, type TestCase, type Priority,
-  getTestAssignee, getTestSprintId, testAssignmentCounts, ACTIVE_SPRINT_ID,
+  getTestAssignee, getTestSprintId, ACTIVE_SPRINT_ID,
   getTestCreditReward, totalCreditBudget, creditBudgetByOwner, REPRO_FAIL_BONUS,
   loadAllQaNotes, loadAllDevNotes, saveQaNote, saveDevNote,
   loadAllSeverities, saveSeverity, FAIL_SEVERITY_LABELS, type FailSeverity,
@@ -129,14 +129,21 @@ export function TestPlanTab() {
   };
 
   const areas = useMemo(() => ["All", ...Array.from(new Set(TEST_CASES.map((t) => t.area)))], []);
-  const owners = useMemo(() => ["All", ...Object.keys(testAssignmentCounts())], []);
-  const ownerCounts = useMemo(() => testAssignmentCounts(), []);
+  const ownerCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const t of TEST_CASES) {
+      const a = getTestAssignee(t, statuses[t.id]);
+      counts[a] = (counts[a] || 0) + 1;
+    }
+    return counts;
+  }, [statuses]);
+  const owners = useMemo(() => ["All", ...Object.keys(ownerCounts)], [ownerCounts]);
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim();
     return TEST_CASES.filter((t) => {
       if (areaFilter !== "All" && t.area !== areaFilter) return false;
       if (statusFilter !== "all" && statuses[t.id] !== statusFilter) return false;
-      if (ownerFilter !== "All" && getTestAssignee(t) !== ownerFilter) return false;
+      if (ownerFilter !== "All" && getTestAssignee(t, statuses[t.id]) !== ownerFilter) return false;
       if (!q) return true;
       return [t.id, t.title, t.area, ...t.steps, t.expected].some((f) => f.toLowerCase().includes(q));
     });
@@ -289,7 +296,7 @@ function TestCaseCard({
         <span className={`text-[11px] font-semibold rounded-full border px-2 py-0.5 ${priorityVariant(t.priority)}`}>{t.priority}</span>
         <Badge variant="secondary" className="text-[11px]">{t.area}</Badge>
         <Badge variant="outline" className="text-[11px]">Sprint {getTestSprintId(t).replace("S-2026-0", "")}</Badge>
-        <Badge variant="outline" className="text-[11px] border-primary/40 text-primary">Owner: {getTestAssignee(t)}</Badge>
+        <Badge variant="outline" className="text-[11px] border-primary/40 text-primary">Owner: {getTestAssignee(t, status)}</Badge>
         <Badge variant="outline" className="text-[11px] border-emerald-500/40 text-emerald-700 bg-emerald-500/5">+{getTestCreditReward(t)} cr</Badge>
         <TestTargetLink test={t} />
         <h3 className="flex-1 font-semibold text-sm md:text-base">{t.title}</h3>

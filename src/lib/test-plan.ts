@@ -649,15 +649,24 @@ export function loadAllSeverities(): Record<string, FailSeverity | ""> {
 // TEST OWNERSHIP — 70/30 split, Catria lead. All tests are aligned to the
 // active sprint (Sprint 1 · beta go-live) unless a TestCase overrides it.
 // ----------------------------------------------------------------------------
-export const TEST_OWNERS = ["Catria", "Me"] as const;
+export const TEST_OWNERS = ["Catria", "Me", "Dev"] as const;
 export type TestOwner = (typeof TEST_OWNERS)[number];
+
+/**
+ * "Dev" is the merged engineering + design user. Any test that QA marks as
+ * failing (fail / failed_retest) is auto-routed to Dev for triage + fix,
+ * regardless of the original QA owner.
+ */
+export const DEV_OWNER: TestOwner = "Dev";
 
 /**
  * Deterministic 70/30 split across the TEST_CASES list. The first 7 of every
  * 10 (by source order) go to Catria, the remaining 3 to "Me". A TestCase can
  * override by setting `assignee` explicitly.
  */
-export function getTestAssignee(t: TestCase): TestOwner | string {
+export function getTestAssignee(t: TestCase, status?: TestStatus): TestOwner | string {
+  // Failed tests are automatically reassigned to the Dev user (merged Eng + Design).
+  if (status === "fail" || status === "failed_retest") return DEV_OWNER;
   if (t.assignee) return t.assignee;
   const idx = TEST_CASES.findIndex((x) => x.id === t.id);
   if (idx < 0) return "Catria";

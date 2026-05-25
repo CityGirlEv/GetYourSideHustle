@@ -76,7 +76,8 @@ function categoryFromArea(area: string): TaskRowCategory {
 }
 
 // Seed: bring in every TASK from test-plan, augmented with sprint, owner, cost.
-const OWNERS = ["Catria", "Me", "Eng", "Design", "Catria"]; // Catria-heavy
+// "Dev" replaces the former "Eng" + "Design" owners (merged into a single dev user).
+const OWNERS = ["Catria", "Me", "Dev", "Dev", "Catria"]; // Catria-heavy
 export const SEED_TASK_ROWS: TaskRow[] = TASKS.map((t, i) => ({
   id: t.id,
   description: t.title,
