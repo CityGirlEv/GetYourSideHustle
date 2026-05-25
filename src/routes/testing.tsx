@@ -16,6 +16,7 @@ import {
   type TestStatus, type TestCase, type Priority,
   getTestAssignee, getTestSprintId, testAssignmentCounts, ACTIVE_SPRINT_ID,
   getTestCreditReward, totalCreditBudget, creditBudgetByOwner, REPRO_FAIL_BONUS,
+  loadAllQaNotes, loadAllDevNotes, saveQaNote, saveDevNote,
 } from "@/lib/test-plan";
 import { AppShell } from "@/components/AppShell";
 
@@ -85,6 +86,8 @@ function TestingPortal() {
 /* ============================== TEST PLAN TAB ============================== */
 export function TestPlanTab() {
   const [statuses, setStatuses] = useState<Record<string, TestStatus>>(() => loadAllStatuses());
+  const [qaNotes, setQaNotes] = useState<Record<string, string>>(() => loadAllQaNotes());
+  const [devNotes, setDevNotes] = useState<Record<string, string>>(() => loadAllDevNotes());
   const [query, setQuery] = useState("");
   const [areaFilter, setAreaFilter] = useState<string>("All");
   const [statusFilter, setStatusFilter] = useState<"all" | TestStatus>("all");
@@ -93,6 +96,14 @@ export function TestPlanTab() {
   const setStatus = (id: string, s: TestStatus) => {
     saveStatus(id, s);
     setStatuses((p) => ({ ...p, [id]: s }));
+  };
+  const setQaNote = (id: string, note: string) => {
+    saveQaNote(id, note);
+    setQaNotes((p) => ({ ...p, [id]: note }));
+  };
+  const setDevNote = (id: string, note: string) => {
+    saveDevNote(id, note);
+    setDevNotes((p) => ({ ...p, [id]: note }));
   };
   const resetAll = () => {
     TEST_CASES.forEach((t) => saveStatus(t.id, "not_run"));
@@ -114,7 +125,11 @@ export function TestPlanTab() {
   }, [query, areaFilter, statusFilter, ownerFilter, statuses]);
 
   const counts = useMemo(() => {
-    const c = { total: TEST_CASES.length, pass: 0, fail: 0, blocked: 0, not_run: 0 };
+    const c: Record<TestStatus | "total", number> = {
+      total: TEST_CASES.length,
+      pass: 0, fail: 0, blocked: 0, not_run: 0,
+      fixed_retest: 0, failed_retest: 0,
+    };
     for (const t of TEST_CASES) c[statuses[t.id] ?? "not_run"]++;
     return c;
   }, [statuses]);
@@ -154,6 +169,8 @@ export function TestPlanTab() {
           <div className="flex flex-wrap gap-2 text-xs">
             <StatBadge n={counts.pass}     label="Pass"    color="bg-emerald-500/10 text-emerald-700 border-emerald-500/30" />
             <StatBadge n={counts.fail}     label="Fail"    color="bg-destructive/10 text-destructive border-destructive/30" />
+            <StatBadge n={counts.fixed_retest}  label="Fixed/Retest"   color="bg-sky-500/10 text-sky-700 border-sky-500/30" />
+            <StatBadge n={counts.failed_retest} label="Failed/Retest"  color="bg-fuchsia-500/10 text-fuchsia-700 border-fuchsia-500/30" />
             <StatBadge n={counts.blocked}  label="Blocked" color="bg-amber-500/10 text-amber-700 border-amber-500/30" />
             <StatBadge n={counts.not_run}  label="Not run" color="bg-muted text-muted-foreground border-border" />
             <StatBadge n={counts.total}    label="Total"   color="bg-primary/10 text-primary border-primary/30" />
@@ -183,6 +200,8 @@ export function TestPlanTab() {
           <option value="not_run">Not run</option>
           <option value="pass">Pass</option>
           <option value="fail">Fail</option>
+          <option value="fixed_retest">Fixed / Retest</option>
+          <option value="failed_retest">Failed / Retest</option>
           <option value="blocked">Blocked</option>
         </select>
       </div>
@@ -193,7 +212,16 @@ export function TestPlanTab() {
           <Card className="p-8 text-center text-sm text-muted-foreground">No test cases match your filters.</Card>
         )}
         {filtered.map((t) => (
-          <TestCaseCard key={t.id} t={t} status={statuses[t.id] ?? "not_run"} onChange={(s) => setStatus(t.id, s)} />
+          <TestCaseCard
+            key={t.id}
+            t={t}
+            status={statuses[t.id] ?? "not_run"}
+            qaNote={qaNotes[t.id] ?? ""}
+            devNote={devNotes[t.id] ?? ""}
+            onChange={(s) => setStatus(t.id, s)}
+            onQaNoteChange={(n) => setQaNote(t.id, n)}
+            onDevNoteChange={(n) => setDevNote(t.id, n)}
+          />
         ))}
       </div>
     </div>
