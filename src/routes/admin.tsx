@@ -389,6 +389,7 @@ function AdminPortal() {
           <TabsTrigger value="rules"><Settings2 className="h-4 w-4 mr-1.5"/>Rule adjuster</TabsTrigger>
           {user?.role === "admin" && (
             <>
+              <TabsTrigger value="tasks"><ListChecks className="h-4 w-4 mr-1.5"/>Task Sheet</TabsTrigger>
               <TabsTrigger value="impl"><GitBranch className="h-4 w-4 mr-1.5"/>Implementation Plan</TabsTrigger>
               <TabsTrigger value="rollout"><CalendarDays className="h-4 w-4 mr-1.5"/>Rollout Schedule</TabsTrigger>
               <TabsTrigger value="budget"><DollarSign className="h-4 w-4 mr-1.5"/>Budget</TabsTrigger>
