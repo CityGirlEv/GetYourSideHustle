@@ -2,12 +2,18 @@ import { useApp } from "@/lib/app-store";
 import { Link, useRouter } from "@tanstack/react-router";
 import { SecurityBanner } from "./SecurityBanner";
 import { CMSFooter } from "./CMSFooter";
-import { LogOut } from "lucide-react";
+import { LogOut, FlaskConical, ChevronDown, LayoutDashboard, ListChecks } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CreditPill } from "./CreditPill";
 import { FontSizeToggle } from "./FontSizeToggle";
 import { type ReactNode } from "react";
 import muntieLogo from "@/assets/muntie-logo.png";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export function AppShell({ children, title, subtitle }: { children: ReactNode; title: string; subtitle?: string }) {
   const { user, signOut } = useApp();
