@@ -6,7 +6,7 @@ import { LogOut, Menu, Users, LogIn, FlaskConical, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CreditPill } from "./CreditPill";
 import { FontSizeToggle } from "./FontSizeToggle";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import muntieLogo from "@/assets/muntie-logo.png";
 import {
   DropdownMenu,
