@@ -179,6 +179,7 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
             {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
           </div>
         )}
+        <TrustBanner />
         {children}
       </main>
       <CMSFooter />
