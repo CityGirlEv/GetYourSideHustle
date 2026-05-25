@@ -276,10 +276,16 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
   // Speaks the question, then listens once and routes the response.
   const ask = async (question: string, expect: StepKey, opts: { skipListen?: boolean } = {}) => {
     setTranscript((p) => [...p, { q: question, speaker: "assistant" }]);
-    await speak(question);
+    // Hard cap on TTS so listening always opens even if speech engine hangs
+    await Promise.race([
+      speak(question),
+      new Promise<void>((r) => setTimeout(r, Math.max(2500, Math.min(15000, question.length * 75)))),
+    ]);
     if (opts.skipListen) return;
-    // Small gap so TTS audio fully releases before we open the mic
-    await new Promise((r) => setTimeout(r, 350));
+    // Make absolutely sure speech is finished before opening mic
+    try { window.speechSynthesis?.cancel(); } catch { /* noop */ }
+    setSpeaking(false);
+    await new Promise((r) => setTimeout(r, 250));
     const heard = await listen();
     if (heard) await handleAnswer(expect, heard);
   };
