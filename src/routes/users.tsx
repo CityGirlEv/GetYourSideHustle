@@ -174,10 +174,10 @@ function UsersPage() {
 
   return (
     <AppShell title="User management" subtitle="Create, edit, disable, and remove staff accounts">
-      <div className="space-y-6">
-        <Card className="glass p-5 space-y-4">
+      <div className="grid lg:grid-cols-[360px_1fr] gap-6 items-start">
+        <Card className="glass p-5 space-y-4 lg:sticky lg:top-24">
           <h3 className="font-display font-bold flex items-center gap-2"><UserPlus className="h-5 w-5"/>Create user account</h3>
-          <div className="grid md:grid-cols-5 gap-3">
+          <div className="space-y-3">
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground">Email</label>
               <Input type="email" placeholder="user@example.com" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
@@ -204,16 +204,14 @@ function UsersPage() {
                 </button>
               </div>
             </div>
-            <div className="flex items-end">
-              <Button onClick={handleCreate} disabled={creating || !newEmail || newPassword.length < 8} className="w-full">
-                {creating ? <Loader2 className="h-4 w-4 animate-spin mr-2"/> : <UserPlus className="h-4 w-4 mr-2"/>}
-                Create user
-              </Button>
-            </div>
+            <Button onClick={handleCreate} disabled={creating || !newEmail || newPassword.length < 8} className="w-full">
+              {creating ? <Loader2 className="h-4 w-4 animate-spin mr-2"/> : <UserPlus className="h-4 w-4 mr-2"/>}
+              Create user
+            </Button>
           </div>
         </Card>
 
-        <Card className="glass p-4 space-y-3">
+        <Card className="glass p-4 space-y-3 min-w-0">
           <div className="flex items-center justify-between gap-3">
             <div>
               <h3 className="font-display font-bold">All users</h3>
