@@ -15,7 +15,7 @@ function randomPassword(len = 24) {
 }
 
 async function sendRegistrationNotification(opts: {
-  firstName: string; lastName: string; email: string; phone: string;
+  firstName: string; lastName: string; email: string; phone: string; requestedRole: string;
 }) {
   const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
   const RESEND_API_KEY = process.env.RESEND_API_KEY;
@@ -32,6 +32,7 @@ async function sendRegistrationNotification(opts: {
         <tr><td><b>Name</b></td><td>${opts.firstName} ${opts.lastName}</td></tr>
         <tr><td><b>Email</b></td><td>${opts.email}</td></tr>
         <tr><td><b>Phone</b></td><td>${opts.phone}</td></tr>
+        <tr><td><b>Requested role</b></td><td>${opts.requestedRole}</td></tr>
       </table>
       <p>Sign in to the Admin Portal to review and enable the account.</p>
     </div>`;
@@ -67,6 +68,7 @@ export const registerWithNda = createServerFn({ method: "POST" })
       phone: z.string().trim().min(7).max(40),
       signature_name: z.string().trim().min(3).max(255),
       accept_nda: z.literal(true),
+      requested_role: z.enum(["qa", "agent"]),
       user_agent: z.string().max(1024).optional().nullable(),
     }).parse(input)
   )
@@ -97,7 +99,7 @@ export const registerWithNda = createServerFn({ method: "POST" })
       // Ensure profile + role (trigger should fire, but make sure)
       await supabaseAdmin.from("profiles").upsert({ id: userId, full_name: fullName, phone: data.phone });
       await supabaseAdmin.from("user_roles").delete().eq("user_id", userId);
-      await supabaseAdmin.from("user_roles").insert({ user_id: userId, role: "viewer" });
+      await supabaseAdmin.from("user_roles").insert({ user_id: userId, role: data.requested_role });
 
       // Generate + store NDA PDF
       const signedAt = new Date();
@@ -137,6 +139,7 @@ export const registerWithNda = createServerFn({ method: "POST" })
       lastName: data.last_name,
       email: data.email,
       phone: data.phone,
+      requestedRole: data.requested_role,
     });
 
     return { ok: true };
