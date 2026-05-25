@@ -184,6 +184,8 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
     setTranscript((p) => [...p, { q: question, speaker: "assistant" }]);
     await speak(question);
     if (opts.skipListen) return;
+    // Small gap so TTS audio fully releases before we open the mic
+    await new Promise((r) => setTimeout(r, 350));
     const heard = await listen();
     if (heard) await handleAnswer(expect, heard);
   };
