@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,8 @@ import {
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, RotateCcw, Trash2, Pencil, Search, Download, ExternalLink } from "lucide-react";
+import { Plus, RotateCcw, Trash2, Pencil, Search, Download, ExternalLink, Save } from "lucide-react";
+import { toast } from "sonner";
 import {
   loadTaskRows, saveTaskRows, resetTaskRows, nextTaskId, todayMMDDYY,
   TASK_STATUS_VALUES, TASK_STATUS_LABELS, TASK_CATEGORY_VALUES, TASK_CATEGORY_LABELS,
@@ -31,6 +32,12 @@ const STATUS_TONE: Record<TaskRowStatus, string> = {
   in_progress: "border-blue-500/40 text-blue-500",
   blocked: "border-destructive/50 text-destructive",
   done: "border-emerald-500/40 text-emerald-600",
+};
+const ROW_STATUS_BG: Record<TaskRowStatus, string> = {
+  not_started: "",
+  in_progress: "bg-blue-500/5 hover:bg-blue-500/10",
+  blocked: "bg-destructive/10 hover:bg-destructive/15",
+  done: "bg-emerald-500/10 hover:bg-emerald-500/15",
 };
 const PRIORITY_TONE: Record<Priority, string> = {
   P0: "border-destructive/60 text-destructive",
