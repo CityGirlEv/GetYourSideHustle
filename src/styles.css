@@ -206,3 +206,16 @@ html {
     font-family: var(--font-script);
   }
 }
+
+@keyframes marquee {
+  2% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 16s linear infinite;
+}
