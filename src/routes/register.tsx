@@ -17,7 +17,7 @@ export const Route = createFileRoute("/register")({
   head: () => ({
     meta: [
       { title: "Register — The Medicare Optimizer" },
-      { name: "description", content: "Request beta access. Sign the NDA and we'll review your account." },
+      { name: "description", content: "Request Beta Access. Sign the NDA and we'll review your account." },
     ],
   }),
   component: RegisterPage,
@@ -81,7 +81,7 @@ function RegisterPage() {
             <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl grad-indigo">
               <ShieldCheck className="h-6 w-6 text-white" />
             </div>
-            <h1 className="font-display text-2xl font-bold">Request beta access</h1>
+            <h1 className="font-display text-2xl font-bold">Request Beta Access</h1>
             <p className="text-sm text-muted-foreground">
               Tell us who you are. After you sign the NDA, an administrator will review and enable your account.
             </p>
