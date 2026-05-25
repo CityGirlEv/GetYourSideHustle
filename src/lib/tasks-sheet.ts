@@ -43,6 +43,8 @@ export interface TaskRow {
   dateCompleted: string;  // MM/DD/YY or ""
   cost: number;
   notes: string;
+  /** Optional link target for the page/item this task relates to. Route ("/admin") or external URL. */
+  path?: string;
 }
 
 // Sprint 1 (active) bookends used to seed dates.
@@ -89,6 +91,7 @@ export const SEED_TASK_ROWS: TaskRow[] = TASKS.map((t, i) => ({
   dateCompleted: t.status === "done" ? START : "",
   cost: 0,
   notes: t.notes ?? "",
+  path: "",
 }));
 
 // Sprint 1 beta-go-live recruiting + onboarding tasks (richer than TASKS).
@@ -107,6 +110,7 @@ SEED_TASK_ROWS.push(
     dateCompleted: "",
     cost: 0,
     notes: "Each agent must sign NDA + contract before being granted /agent access. Tracks in admin → users.",
+    path: "/admin",
   },
   {
     id: "T-101",
@@ -122,6 +126,7 @@ SEED_TASK_ROWS.push(
     dateCompleted: "",
     cost: 0,
     notes: "Status persisted on /testing — mirror Pass/Fail/Blocked here in notes for the daily standup.",
+    path: "/testing",
   },
   {
     id: "T-102",
@@ -137,6 +142,7 @@ SEED_TASK_ROWS.push(
     dateCompleted: "",
     cost: 0,
     notes: "",
+    path: "/testing",
   },
 );
 
