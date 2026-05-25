@@ -204,6 +204,8 @@ function TestCaseCard({ t, status, onChange }: { t: TestCase; status: TestStatus
         <span className="text-[11px] font-mono font-bold bg-muted px-2 py-0.5 rounded">{t.id}</span>
         <span className={`text-[11px] font-semibold rounded-full border px-2 py-0.5 ${priorityVariant(t.priority)}`}>{t.priority}</span>
         <Badge variant="secondary" className="text-[11px]">{t.area}</Badge>
+        <Badge variant="outline" className="text-[11px]">Sprint {getTestSprintId(t).replace("S-2026-0", "")}</Badge>
+        <Badge variant="outline" className="text-[11px] border-primary/40 text-primary">Owner: {getTestAssignee(t)}</Badge>
         <h3 className="flex-1 font-semibold text-sm md:text-base">{t.title}</h3>
         <StatusButtons status={status} onChange={onChange} />
       </div>
