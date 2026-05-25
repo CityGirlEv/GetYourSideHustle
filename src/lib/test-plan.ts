@@ -665,7 +665,7 @@ export const DEV_OWNER: TestOwner = "Dev";
  * override by setting `assignee` explicitly.
  */
 export function getTestAssignee(t: TestCase, status?: TestStatus): TestOwner | string {
-  // Failed tests are automatically reassigned to the Dev user (merged Eng + Design).
+  // Failed tests are automatically reassigned to the Dev user.
   if (status === "fail" || status === "failed_retest") return DEV_OWNER;
   if (t.assignee) return t.assignee;
   const idx = TEST_CASES.findIndex((x) => x.id === t.id);
