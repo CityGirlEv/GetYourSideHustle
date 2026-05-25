@@ -72,6 +72,14 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
               </DropdownMenuContent>
             </DropdownMenu>
           )}
+          {user?.role === "agent" && (
+            <Button size="sm" variant="outline" className="gap-1" asChild>
+              <Link to="/agent">
+                <Briefcase className="h-4 w-4" />
+                <span className="hidden sm:inline">Agent</span>
+              </Link>
+            </Button>
+          )}
           {user && (
             <div className="hidden md:flex items-center gap-2 text-sm">
               <div className="text-right">
