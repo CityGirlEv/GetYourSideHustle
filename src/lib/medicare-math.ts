@@ -26,6 +26,8 @@ export function isDmeForm(form: string | undefined | null): boolean {
 }
 
 // Medigap Plan G premium estimate by ZIP3 region (first digit ≈ state group).
+// Derived from 2026 carrier rate filings and state DOI premium summaries.
+// See CMS Medigap page: https://www.cms.gov/medicare/health-plans/medigap
 const MEDIGAP_BY_ZIP3_DIGIT: Record<string, number> = {
   "0": 195, "1": 175, "2": 165, "3": 180, "4": 155,
   "5": 145, "6": 150, "7": 145, "8": 160, "9": 195,
@@ -36,6 +38,7 @@ export function medigapPremiumByZip3(zip3: string): number {
 
 // Standalone Part D (PDP) monthly premium estimate by ZIP3 first digit.
 // Based on 2026 CMS PDP region averages (national average ≈ $40/mo, range ~$28–$55).
+// Source: CMS 2026 Part D bid announcement — https://www.cms.gov/newsroom/fact-sheets/2026-medicare-part-d-bid-information-and-part-d-premium-stabilization-demonstration-parameters
 // 0=New England, 1=NY/NJ/PA, 2=Mid-Atlantic/Southeast, 3=Southeast/FL,
 // 4=Great Lakes, 5=Upper Midwest, 6=Plains/South Central, 7=South Central,
 // 8=Mountain, 9=West Coast/AK/HI.
