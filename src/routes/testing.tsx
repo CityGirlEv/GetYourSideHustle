@@ -136,7 +136,7 @@ export function TestPlanTab() {
     return TEST_CASES.filter((t) => {
       if (areaFilter !== "All" && t.area !== areaFilter) return false;
       if (statusFilter !== "all" && statuses[t.id] !== statusFilter) return false;
-      if (ownerFilter !== "All" && getTestAssignee(t) !== ownerFilter) return false;
+      if (ownerFilter !== "All" && getTestAssignee(t, statuses[t.id]) !== ownerFilter) return false;
       if (!q) return true;
       return [t.id, t.title, t.area, ...t.steps, t.expected].some((f) => f.toLowerCase().includes(q));
     });
