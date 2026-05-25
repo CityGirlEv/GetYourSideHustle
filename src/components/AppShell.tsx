@@ -159,7 +159,7 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
           )}
         </div>
       </header>
-      <main className="flex-1 px-4 md:px-8 pt-0 pb-6 max-w-7xl w-full mx-auto">
+      <div className="w-full max-w-7xl mx-auto px-4 md:px-8">
         <div className="relative flex items-center mb-0 mt-0">
           <Link to="/" aria-label="The Medicare Optimizer" className="absolute left-0 top-1/2 -translate-y-1/2 shrink-0">
             <img src={muntieLogo} alt="The Medicare Optimizer" className="h-9 w-9 sm:h-11 sm:w-11 md:h-14 md:w-14 object-contain" />
@@ -169,7 +169,9 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
             <p className="text-xs sm:text-sm md:text-base text-primary/80 font-medium italic leading-tight mt-0.5">You Deserve The Best Medicare Plan Because You Earned It!</p>
           </div>
         </div>
-        <TrustBanner />
+      </div>
+      <TrustBanner />
+      <main className="flex-1 px-4 md:px-8 pt-0 pb-6 max-w-7xl w-full mx-auto">
         {(title || subtitle) && (
           <div className="mb-2 mt-0.5">
             {title && <h2 className="font-display font-bold text-2xl md:text-3xl text-primary">{title}</h2>}
