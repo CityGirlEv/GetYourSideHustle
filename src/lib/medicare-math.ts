@@ -46,6 +46,13 @@ export interface Medication {
   frequency: string;
   resolved_diagnosis?: string;
   estimated_monthly_retail: number;
+  /** Drug was selected from RxNorm (FDA-approved) but is not in our local
+   * pricing catalog, so Medicare Part D coverage and cost are an estimate. */
+  coverage_uncertain?: boolean;
+  /** Generic active ingredient if the selected drug is a brand (from RxNorm). */
+  generic_alternative?: string;
+  /** True when RxNorm found no generic equivalent (brand-only drug). */
+  no_generic_available?: boolean;
 }
 
 export interface PathwayResult {
