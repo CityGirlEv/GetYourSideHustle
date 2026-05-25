@@ -27,9 +27,8 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
             <img src={muntieLogo} alt="The Medicare Optimizer" className="h-9 w-9 sm:h-12 sm:w-12 md:h-20 md:w-20 object-contain flex-shrink-0" />
           </Link>
         </div>
-        <div className="flex-1 flex flex-col items-center min-w-0 px-2 overflow-hidden">
-          <h1 className="text-base sm:text-xl md:text-2xl lg:text-3xl font-display font-bold text-primary uppercase truncate text-center">The Medicare Optimizer</h1>
-          <p className="font-display text-xs sm:text-sm font-bold text-blue-600 tracking-wide truncate max-w-full text-center">Getting the Best Bang For Your Medical Needs Because You Deserve It!</p>
+        <div className="flex-1 flex items-center justify-center min-w-0 px-2 overflow-hidden">
+          <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-display font-bold text-primary uppercase truncate text-center">The Medicare Optimizer</h1>
         </div>
         <div className="flex items-center gap-3 flex-none shrink-0">
           <FontSizeToggle />
