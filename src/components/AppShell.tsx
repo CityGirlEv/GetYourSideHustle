@@ -25,12 +25,11 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
         <div className="flex items-center gap-2 min-w-0 shrink">
           <Link to="/" className="flex items-center gap-2 md:gap-3 font-display font-bold">
             <img src={muntieLogo} alt="The Medicare Optimizer" className="h-9 w-9 sm:h-12 sm:w-12 md:h-20 md:w-20 object-contain flex-shrink-0" />
-            <span className="hidden lg:inline font-display font-bold text-primary uppercase text-base xl:text-lg truncate">The Medicare Optimizer</span>
           </Link>
         </div>
         <div className="flex-1 flex flex-col items-center min-w-0 px-2 overflow-hidden">
-          <h1 className="text-sm sm:text-base md:text-2xl lg:text-3xl font-display font-bold text-primary uppercase truncate">{title}</h1>
-          {subtitle && <p className="hidden xl:block font-display text-sm font-bold text-blue-600 tracking-wide truncate max-w-full">{subtitle}</p>}
+          <h1 className="text-sm sm:text-base md:text-2xl lg:text-3xl font-display font-bold text-primary uppercase truncate">The Medicare Optimizer</h1>
+          <p className="hidden xl:block font-display text-sm font-bold text-blue-600 tracking-wide truncate max-w-full">Getting the Best Bang For Your Medical Needs Because You Deserve It!</p>
         </div>
         <div className="flex items-center gap-3 flex-none shrink-0">
           <FontSizeToggle />
@@ -47,6 +46,12 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
         </div>
       </header>
       <main className="flex-1 px-4 md:px-8 py-8 max-w-7xl w-full mx-auto">
+        {(title || subtitle) && (
+          <div className="mb-6">
+            {title && <h2 className="font-display font-bold text-2xl md:text-3xl text-primary">{title}</h2>}
+            {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
+          </div>
+        )}
         {children}
       </main>
       <CMSFooter />

@@ -17,7 +17,7 @@ function Index() {
   const router = useRouter();
 
   return (
-    <AppShell title="The Medicare Optimizer" subtitle="Getting the Best Bang For Your Medical Needs Because You Deserve It!">
+    <AppShell title="">
       <div className="grid lg:grid-cols-2 items-start gap-10">
         <div className="space-y-6">
           <p className="text-sm text-muted-foreground max-w-none">
