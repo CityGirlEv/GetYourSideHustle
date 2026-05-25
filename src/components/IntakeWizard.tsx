@@ -556,7 +556,15 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
                     );
                   })()}
                 </div>
-                <Input placeholder="Strength" value={m.strength} onChange={(e) => updateMed(m.id, { strength: e.target.value })}/>
+                <div className="relative">
+                  <Input className="pr-16" placeholder="Strength" value={m.strength} onChange={(e) => updateMed(m.id, { strength: e.target.value })}/>
+                  <VoiceButton
+                    className="absolute right-1 top-1/2 -translate-y-1/2"
+                    label="Speak strength (e.g. 10 milligrams)"
+                    onTranscript={(t) => updateMed(m.id, { strength: t })}
+                  />
+                </div>
+                <div className="flex gap-1 items-center">
                 <select
                   className="w-full border border-input rounded-md px-3 h-9 bg-background text-sm"
                   value={DOSAGE_FORMS.includes(m.dosage_form) ? m.dosage_form : (m.dosage_form ? "Other" : "")}
@@ -565,6 +573,17 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
                   <option value="">Form…</option>
                   {DOSAGE_FORMS.map((f) => <option key={f} value={f}>{f}</option>)}
                 </select>
+                <VoiceButton
+                  allowSpell={false}
+                  label="Speak dosage form"
+                  onTranscript={(t) => {
+                    const match = matchSpokenOption(t, DOSAGE_FORMS);
+                    if (match) updateMed(m.id, { dosage_form: match });
+                    else toast.error(`"${t}" didn't match a form.`);
+                  }}
+                />
+                </div>
+                <div className="flex gap-1 items-center">
                 <select
                   className="w-full border border-input rounded-md px-3 h-9 bg-background text-sm"
                   value={FREQUENCIES.includes(m.frequency) ? m.frequency : (m.frequency === "Daily" ? "Once daily" : "")}
@@ -573,6 +592,16 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
                   <option value="">Frequency…</option>
                   {FREQUENCIES.map((f) => <option key={f} value={f}>{f}</option>)}
                 </select>
+                <VoiceButton
+                  allowSpell={false}
+                  label="Speak frequency"
+                  onTranscript={(t) => {
+                    const match = matchSpokenOption(t, FREQUENCIES);
+                    if (match) updateMed(m.id, { frequency: match });
+                    else toast.error(`"${t}" didn't match a frequency.`);
+                  }}
+                />
+                </div>
                 <div className="flex flex-col gap-0.5">
                   <label className="text-[10px] uppercase tracking-wide text-muted-foreground">Monthly retail cost ($)</label>
                   <Input type="number" placeholder="$/mo retail" title="Estimated monthly retail cost in dollars (auto-filled from catalog; edit to match your pharmacy's cash price)" value={m.estimated_monthly_retail} onChange={(e) => updateMed(m.id, { estimated_monthly_retail: Number(e.target.value) })}/>
