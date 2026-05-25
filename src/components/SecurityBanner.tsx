@@ -35,7 +35,7 @@ export function SecurityBanner() {
               <Home className="h-3.5 w-3.5" /> Home
             </Link>
 
-            {isQA && (
+            {!authLoading && isQA && (
               <DropdownMenu>
                 <DropdownMenuTrigger className="flex items-center gap-1 hover:text-white transition-colors outline-none">
                   <FlaskConical className="h-3.5 w-3.5" /> QA <ChevronDown className="h-3 w-3" />
@@ -61,12 +61,15 @@ export function SecurityBanner() {
                 <Briefcase className="h-3.5 w-3.5" /> Agent <ChevronDown className="h-3 w-3" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="text-xs">
-                {!isAgentLike && (
+                {authLoading && (
+                  <DropdownMenuItem disabled>Loading…</DropdownMenuItem>
+                )}
+                {!authLoading && !isAgentLike && (
                   <DropdownMenuItem onSelect={() => router.navigate({ to: "/auth" })}>
                     <LogIn className="h-3.5 w-3.5 mr-2" /> Agent login
                   </DropdownMenuItem>
                 )}
-                {isAgentLike && (
+                {!authLoading && isAgentLike && (
                   <>
                     <DropdownMenuLabel className="text-[10px] uppercase tracking-wide text-muted-foreground">
                       Signed in · {user?.role}
@@ -94,12 +97,15 @@ export function SecurityBanner() {
                 <Settings className="h-3.5 w-3.5" /> Admin <ChevronDown className="h-3 w-3" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="text-xs">
-                {!isAdmin && (
+                {authLoading && (
+                  <DropdownMenuItem disabled>Loading…</DropdownMenuItem>
+                )}
+                {!authLoading && !isAdmin && (
                   <DropdownMenuItem onSelect={() => router.navigate({ to: "/auth" })}>
                     <LogIn className="h-3.5 w-3.5 mr-2" /> Admin login
                   </DropdownMenuItem>
                 )}
-                {isAdmin && (
+                {!authLoading && isAdmin && (
                   <>
                     <DropdownMenuLabel className="text-[10px] uppercase tracking-wide text-muted-foreground">
                       Admin tools
