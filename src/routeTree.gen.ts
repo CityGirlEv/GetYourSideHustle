@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as UsersRouteImport } from './routes/users'
 import { Route as TestingRouteImport } from './routes/testing'
 import { Route as TasksRouteImport } from './routes/tasks'
+import { Route as SourcesRouteImport } from './routes/sources'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as QaRouteImport } from './routes/qa'
@@ -40,6 +41,11 @@ const TestingRoute = TestingRouteImport.update({
 const TasksRoute = TasksRouteImport.update({
   id: '/tasks',
   path: '/tasks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SourcesRoute = SourcesRouteImport.update({
+  id: '/sources',
+  path: '/sources',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -123,6 +129,7 @@ export interface FileRoutesByFullPath {
   '/qa': typeof QaRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sources': typeof SourcesRoute
   '/tasks': typeof TasksRoute
   '/testing': typeof TestingRoute
   '/users': typeof UsersRoute
@@ -142,6 +149,7 @@ export interface FileRoutesByTo {
   '/qa': typeof QaRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sources': typeof SourcesRoute
   '/tasks': typeof TasksRoute
   '/testing': typeof TestingRoute
   '/users': typeof UsersRoute
@@ -162,6 +170,7 @@ export interface FileRoutesById {
   '/qa': typeof QaRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sources': typeof SourcesRoute
   '/tasks': typeof TasksRoute
   '/testing': typeof TestingRoute
   '/users': typeof UsersRoute
@@ -183,6 +192,7 @@ export interface FileRouteTypes {
     | '/qa'
     | '/register'
     | '/reset-password'
+    | '/sources'
     | '/tasks'
     | '/testing'
     | '/users'
@@ -202,6 +212,7 @@ export interface FileRouteTypes {
     | '/qa'
     | '/register'
     | '/reset-password'
+    | '/sources'
     | '/tasks'
     | '/testing'
     | '/users'
@@ -221,6 +232,7 @@ export interface FileRouteTypes {
     | '/qa'
     | '/register'
     | '/reset-password'
+    | '/sources'
     | '/tasks'
     | '/testing'
     | '/users'
@@ -241,6 +253,7 @@ export interface RootRouteChildren {
   QaRoute: typeof QaRoute
   RegisterRoute: typeof RegisterRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  SourcesRoute: typeof SourcesRoute
   TasksRoute: typeof TasksRoute
   TestingRoute: typeof TestingRoute
   UsersRoute: typeof UsersRoute
@@ -269,6 +282,13 @@ declare module '@tanstack/react-router' {
       path: '/tasks'
       fullPath: '/tasks'
       preLoaderRoute: typeof TasksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sources': {
+      id: '/sources'
+      path: '/sources'
+      fullPath: '/sources'
+      preLoaderRoute: typeof SourcesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -414,6 +434,7 @@ const rootRouteChildren: RootRouteChildren = {
   QaRoute: QaRoute,
   RegisterRoute: RegisterRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  SourcesRoute: SourcesRoute,
   TasksRoute: TasksRoute,
   TestingRoute: TestingRoute,
   UsersRoute: UsersRoute,
