@@ -32,37 +32,21 @@ export const Route = createFileRoute("/testing")({
 
 function TestingPortal() {
   return (
-    <div className="min-h-screen flex flex-col bg-muted/30">
-      <SecurityBanner />
-      <main className="flex-1 px-4 md:px-8 py-6 max-w-7xl w-full mx-auto space-y-6">
-        <header className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-2">
-              <FlaskConical className="h-6 w-6 text-primary" /> Testing Portal
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Use-case tests, implementation phases, sprint schedule, and the cross-sprint task backlog.
-            </p>
-          </div>
-          <Link to="/" className="text-xs text-muted-foreground underline hover:text-foreground">← Back to app</Link>
-        </header>
+    <AppShell title="Testing Portal" subtitle="Use-case tests, implementation phases, sprint schedule, and the cross-sprint task backlog.">
+      <Tabs defaultValue="tests" className="space-y-4">
+        <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full md:w-auto">
+          <TabsTrigger value="tests"><ListChecks className="h-3.5 w-3.5 mr-1.5" />Test Plan</TabsTrigger>
+          <TabsTrigger value="impl"><GitBranch className="h-3.5 w-3.5 mr-1.5" />Implementation</TabsTrigger>
+          <TabsTrigger value="sprints"><CalendarDays className="h-3.5 w-3.5 mr-1.5" />Sprints</TabsTrigger>
+          <TabsTrigger value="tasks"><Sparkles className="h-3.5 w-3.5 mr-1.5" />Tasks</TabsTrigger>
+        </TabsList>
 
-        <Tabs defaultValue="tests" className="space-y-4">
-          <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full md:w-auto">
-            <TabsTrigger value="tests"><ListChecks className="h-3.5 w-3.5 mr-1.5" />Test Plan</TabsTrigger>
-            <TabsTrigger value="impl"><GitBranch className="h-3.5 w-3.5 mr-1.5" />Implementation</TabsTrigger>
-            <TabsTrigger value="sprints"><CalendarDays className="h-3.5 w-3.5 mr-1.5" />Sprints</TabsTrigger>
-            <TabsTrigger value="tasks"><Sparkles className="h-3.5 w-3.5 mr-1.5" />Tasks</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="tests"><TestPlanTab /></TabsContent>
-          <TabsContent value="impl"><ImplementationTab /></TabsContent>
-          <TabsContent value="sprints"><SprintsTab /></TabsContent>
-          <TabsContent value="tasks"><TasksTab /></TabsContent>
-        </Tabs>
-      </main>
-      <CMSFooter />
-    </div>
+        <TabsContent value="tests"><TestPlanTab /></TabsContent>
+        <TabsContent value="impl"><ImplementationTab /></TabsContent>
+        <TabsContent value="sprints"><SprintsTab /></TabsContent>
+        <TabsContent value="tasks"><TasksTab /></TabsContent>
+      </Tabs>
+    </AppShell>
   );
 }
 
