@@ -366,30 +366,27 @@ export function TaskSheetContent() {
             className="pl-8 h-9"
           />
         </div>
-        <Select value={sprintFilter} onValueChange={setSprintFilter}>
-          <SelectTrigger className="h-9 w-[180px]"><SelectValue placeholder="Sprint" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All sprints</SelectItem>
-            {SPRINTS.map((s) => (
-              <SelectItem key={s.id} value={s.id}>Sprint {s.number} · {s.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
-          <SelectTrigger className="h-9 w-[160px]"><SelectValue placeholder="Status" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            {TASK_STATUS_VALUES.map((s) => (
-              <SelectItem key={s} value={s}>{TASK_STATUS_LABELS[s]}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={ownerFilter} onValueChange={setOwnerFilter}>
-          <SelectTrigger className="h-9 w-[160px]"><SelectValue placeholder="Owner" /></SelectTrigger>
-          <SelectContent>
-            {owners.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <MultiSelect
+          placeholder="Sprint"
+          triggerClassName="w-[200px]"
+          options={SPRINTS.map((s) => ({ value: s.id, label: `Sprint ${s.number} · ${s.name}` }))}
+          value={sprintFilter}
+          onChange={setSprintFilter}
+        />
+        <MultiSelect
+          placeholder="Status"
+          triggerClassName="w-[180px]"
+          options={TASK_STATUS_VALUES.map((s) => ({ value: s, label: TASK_STATUS_LABELS[s] }))}
+          value={statusFilter}
+          onChange={setStatusFilter}
+        />
+        <MultiSelect
+          placeholder="Owner"
+          triggerClassName="w-[180px]"
+          options={owners.map((o) => ({ value: o, label: o }))}
+          value={ownerFilter}
+          onChange={setOwnerFilter}
+        />
         <div className="flex gap-2 ml-auto">
           <Button
             size="sm"
