@@ -392,6 +392,22 @@ export function TaskSheetContent() {
           </SelectContent>
         </Select>
         <div className="flex gap-2 ml-auto">
+          <Button
+            size="sm"
+            onClick={() => setSaveOpen(true)}
+            disabled={pendingCount === 0}
+          >
+            <Save className="h-4 w-4 mr-1" />
+            Save changes
+            {pendingCount > 0 && (
+              <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-background text-foreground text-[10px] font-bold px-1.5 py-0.5">
+                {pendingCount}
+              </span>
+            )}
+          </Button>
+          <Button size="sm" variant="ghost" onClick={discardAllDrafts} disabled={pendingCount === 0}>
+            Discard
+          </Button>
           <Button variant="outline" size="sm" onClick={exportCsv}><Download className="h-4 w-4 mr-1" />CSV</Button>
           <Button variant="outline" size="sm" onClick={onReset}><RotateCcw className="h-4 w-4 mr-1" />Reset</Button>
           <Button size="sm" onClick={openNew}><Plus className="h-4 w-4 mr-1" />New task</Button>
