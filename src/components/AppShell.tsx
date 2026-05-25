@@ -2,7 +2,7 @@ import { useApp } from "@/lib/app-store";
 import { Link, useRouter } from "@tanstack/react-router";
 import { SecurityBanner } from "./SecurityBanner";
 import { CMSFooter } from "./CMSFooter";
-import { LogOut, ShieldCheck, ListChecks } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CreditPill } from "./CreditPill";
 import { FontSizeToggle } from "./FontSizeToggle";
@@ -38,16 +38,6 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
         <div className="flex items-center gap-3 flex-none shrink-0 ml-auto z-10">
           <FontSizeToggle />
           {user?.role === "advisor" && <CreditPill />}
-          {(user?.role === "qa" || user?.role === "admin") && (
-            <>
-              <Link to="/admin" className="hidden md:inline-flex items-center gap-1 text-xs px-2 py-1 rounded border border-border hover:bg-secondary/60">
-                <ShieldCheck className="h-3 w-3" />Admin
-              </Link>
-              <Link to="/qa" className="hidden md:inline-flex items-center gap-1 text-xs px-2 py-1 rounded border border-border hover:bg-secondary/60">
-                <ListChecks className="h-3 w-3" />QA
-              </Link>
-            </>
-          )}
           {user && (
             <div className="hidden md:flex items-center gap-2 text-sm">
               <div className="text-right">
