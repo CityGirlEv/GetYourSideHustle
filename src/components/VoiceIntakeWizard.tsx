@@ -144,7 +144,7 @@ type StepKey =
   | "intro" | "birthYear" | "zip" | "county" | "gender" | "tobacco"
   | "income" | "costPref" | "conditionsAsk" | "conditionsAdd"
   | "medsAsk" | "medsName" | "medsStrength" | "medsMore"
-  | "confirm" | "submitting" | "done";
+  | "confirm" | "verify" | "submitting" | "done";
 
 interface Transcript { q: string; a?: string; speaker?: "assistant" | "you" }
 
@@ -176,6 +176,8 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
 
   const recRef = useRef<SR | null>(null);
   const stepRef = useRef(step); useEffect(() => { stepRef.current = step; }, [step]);
+  const historyRef = useRef<StepKey[]>([]);
+  const pendingRef = useRef<{ apply: () => void; next: StepKey; from: StepKey } | null>(null);
 
   const countyOptions = useMemo(() => /^\d{3}$/.test(zip3) ? countiesForZip3(zip3) : [], [zip3]);
 
@@ -287,6 +289,11 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
 
   const handleAnswer = async (forStep: StepKey, text: string) => {
     setTranscript((p) => [...p, { q: text, speaker: "you" }]);
+    // Universal: let the user navigate back at any step
+    if (/\b(go back|take me back|previous question|back up|last question|undo)\b/i.test(text)) {
+      goBack();
+      return;
+    }
     switch (forStep) {
       case "birthYear": {
         const y = parseYear(text);
@@ -294,8 +301,7 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
           reAsk(`I didn't catch a valid year. Please say a year between ${MIN_BIRTH_YEAR} and ${CURRENT_YEAR}, like "nineteen fifty".`, "birthYear");
           return;
         }
-        setBirthYear(y);
-        nextStep("zip", y);
+        verify(`birth year ${y}`, () => setBirthYear(y), "zip", "birthYear");
         return;
       }
       case "zip": {
@@ -304,19 +310,22 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
           reAsk("Please say the first three digits of your ZIP code slowly, one at a time. For example: seven, seven, zero.", "zip");
           return;
         }
-        setZip3(digits);
         const opts = countiesForZip3(digits);
         if (opts.length === 0) {
           reAsk(`I don't recognize ZIP prefix ${digits.split("").join(" ")}. Please say the first three digits again.`, "zip");
           return;
         }
         if (opts.length === 1) {
-          setCounty(opts[0].county);
-          setTranscript((p) => [...p, { q: `Got it — ${opts[0].county}, ${opts[0].stateCode}.`, speaker: "assistant" }]);
-          nextStep("gender");
+          const only = opts[0];
+          verify(
+            `ZIP ${digits.split("").join(" ")}, ${only.county}, ${only.stateCode}`,
+            () => { setZip3(digits); setCounty(only.county); },
+            "gender",
+            "zip",
+          );
           return;
         }
-        nextStep("county", digits);
+        verify(`ZIP ${digits.split("").join(" ")}`, () => setZip3(digits), "county", "zip");
         return;
       }
       case "county": {
@@ -326,8 +335,7 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
           reAsk(`I didn't catch that. Please say one of: ${opts.map((o) => o.county).join(", ")}.`, "county");
           return;
         }
-        setCounty(match);
-        nextStep("gender");
+        verify(`county ${match}`, () => setCounty(match), "gender", "county");
         return;
       }
       case "gender": {
@@ -337,15 +345,13 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
         else if (/\bmale\b|\bman\b|\bhe\b/.test(t)) g = "male";
         else if (/non[\s-]?binary|enby|they/.test(t)) g = "nonbinary";
         else if (/prefer not|skip|rather not|none/.test(t)) g = "prefer_not_to_say";
-        setGender(g);
-        nextStep("tobacco");
+        verify(`gender ${g.replace(/_/g, " ")}`, () => setGender(g), "tobacco", "gender");
         return;
       }
       case "tobacco": {
         const v = parseYesNo(text);
         if (v === null) { reAsk("I didn't catch that — please say yes or no.", "tobacco"); return; }
-        setTobacco(v);
-        nextStep("income");
+        verify(v ? "tobacco user, yes" : "non-tobacco, no", () => setTobacco(v), "income", "tobacco");
         return;
       }
       case "income": {
@@ -355,14 +361,19 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
           reAsk("Please pick one: under 25 thousand, 25 to 50, 50 to 100, 100 to 200, over 200, or prefer not to say.", "income");
           return;
         }
-        setIncome(found.band);
-        nextStep("costPref");
+        verify(`income ${found.band}`, () => setIncome(found.band), "costPref", "income");
         return;
       }
       case "costPref": {
         const t = text.toLowerCase();
-        if (/predict|surprise|stable|fixed/.test(t)) { setCostPref("predictability"); nextStep("conditionsAsk"); return; }
-        if (/minim|low(est)?|cheap|save|monthly/.test(t)) { setCostPref("minimize_monthly"); nextStep("conditionsAsk"); return; }
+        if (/predict|surprise|stable|fixed/.test(t)) {
+          verify("priority: predictability", () => setCostPref("predictability"), "conditionsAsk", "costPref");
+          return;
+        }
+        if (/minim|low(est)?|cheap|save|monthly/.test(t)) {
+          verify("priority: minimize monthly cost", () => setCostPref("minimize_monthly"), "conditionsAsk", "costPref");
+          return;
+        }
         reAsk("Please say either 'minimize monthly cost' or 'predictability'.", "costPref");
         return;
       }
@@ -379,8 +390,12 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
         // Try to match known conditions, otherwise accept free text
         const match = matchOption(text, CONDITIONS as unknown as string[]);
         const value = match ?? text.trim();
-        setConditions((p) => p.includes(value) ? p : [...p, value]);
-        void ask(`Added ${value}. Any other conditions? Say one, or say "no more" to continue.`, "conditionsAdd");
+        verify(
+          `condition ${value}`,
+          () => setConditions((p) => p.includes(value) ? p : [...p, value]),
+          "conditionsAdd",
+          "conditionsAdd",
+        );
         return;
       }
       case "medsAsk": {
@@ -395,28 +410,35 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
         if (!name) { reAsk("I didn't catch the name. Please say the drug name, or spell it letter by letter.", "medsName"); return; }
         const matched = bestMedicationMatch(name);
         const capturedName = matched?.name ?? name;
-        setPendingMedName(capturedName);
-        if (matched) {
-          setTranscript((p) => [...p, { q: `Matched medication: ${matched.name}.`, speaker: "assistant" }]);
-        }
-        nextStep("medsStrength", capturedName);
+        verify(
+          matched ? `medication ${matched.name} (matched from "${name}")` : `medication ${capturedName}`,
+          () => setPendingMedName(capturedName),
+          "medsStrength",
+          "medsName",
+        );
         return;
       }
       case "medsStrength": {
         const t = text.trim();
         const skip = /skip|don'?t know|not sure|none/i.test(t);
         const strength = skip ? "" : t.replace(/milligrams?/gi, "mg").replace(/micrograms?/gi, "mcg").replace(/units?/gi, "u");
-        const local = bestMedicationMatch(pendingMedName);
-        const m = blankMed(pendingMedName, strength || local?.strength || "");
-        if (local) {
-          m.dosage_form = local.form ?? m.dosage_form;
-          m.frequency = local.freq ?? m.frequency;
-          m.estimated_monthly_retail = local.retail ?? m.estimated_monthly_retail;
-          m.resolved_diagnosis = resolveDiagnosis(local.name) ?? local.category ?? m.resolved_diagnosis;
-        }
-        setMeds((p) => [...p, m]);
-        setPendingMedName("");
-        nextStep("medsMore");
+        verify(
+          strength ? `strength ${strength}` : "no strength (skipped)",
+          () => {
+            const local = bestMedicationMatch(pendingMedName);
+            const m = blankMed(pendingMedName, strength || local?.strength || "");
+            if (local) {
+              m.dosage_form = local.form ?? m.dosage_form;
+              m.frequency = local.freq ?? m.frequency;
+              m.estimated_monthly_retail = local.retail ?? m.estimated_monthly_retail;
+              m.resolved_diagnosis = resolveDiagnosis(local.name) ?? local.category ?? m.resolved_diagnosis;
+            }
+            setMeds((p) => [...p, m]);
+            setPendingMedName("");
+          },
+          "medsMore",
+          "medsStrength",
+        );
         return;
       }
       case "medsMore": {
@@ -424,6 +446,25 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
         if (v === true) { nextStep("medsName"); return; }
         if (v === false) { nextStep("confirm"); return; }
         reAsk("Please say yes or no.", "medsMore");
+        return;
+      }
+      case "verify": {
+        const v = parseYesNo(text);
+        if (v === true) {
+          const p = pendingRef.current; pendingRef.current = null;
+          if (p) { p.apply(); nextStep(p.next); }
+          return;
+        }
+        if (v === false) {
+          const p = pendingRef.current; pendingRef.current = null;
+          if (p) {
+            // Re-ask the original question for this step
+            setStep(p.from);
+            setTimeout(() => askForStep(p.from), 250);
+          }
+          return;
+        }
+        reAsk("Was that right? Please say yes or no.", "verify");
         return;
       }
       case "confirm": {
@@ -441,8 +482,35 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
   // values that were just set — pass `extra` for those (avoids stale closure).
   const nextStep = (s: StepKey, _extra?: unknown) => {
     void _extra;
+    // Track step history for "go back" (skip transient verify state)
+    if (stepRef.current !== "verify" && stepRef.current !== s) {
+      historyRef.current.push(stepRef.current);
+    }
     setStep(s);
     setTimeout(() => askForStep(s), 250);
+  };
+
+  // Speak a short echo of what we parsed and confirm before applying.
+  const verify = (summary: string, apply: () => void, next: StepKey, from: StepKey) => {
+    pendingRef.current = { apply, next, from };
+    setStep("verify");
+    setTimeout(() => void ask(`I heard ${summary}. Is that correct? Yes or no.`, "verify"), 250);
+  };
+
+  const goBack = () => {
+    // Discard any pending verification
+    pendingRef.current = null;
+    let prev = historyRef.current.pop();
+    // Skip over verify frames if any slipped in
+    while (prev === "verify") prev = historyRef.current.pop();
+    if (!prev || prev === "intro") {
+      void speak("There's no previous question.");
+      // Restore the current step so the user can keep going
+      setTimeout(() => askForStep(stepRef.current === "verify" ? (pendingRef.current?.from ?? "birthYear") : stepRef.current), 250);
+      return;
+    }
+    setStep(prev);
+    setTimeout(() => askForStep(prev), 250);
   };
 
   const askForStep = (s: StepKey) => {
