@@ -166,6 +166,7 @@ const MEDIGAP_PREMIUM_FACTOR: Record<string, number> = {
 
 // Approximate share of standard medical gaps each Medigap letter leaves on the member,
 // expressed as expected annual out-of-pocket against a typical utilization profile.
+// Based on CMS standardized benefit tables: https://www.cms.gov/medicare/health-plans/medigap
 const MEDIGAP_EXPECTED_OOP: Record<string, number> = {
   A: 1900, B: 900, D: 350, G: 283,
   "High-Deductible G": 2870,
