@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { ShieldCheck, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
-import { SecurityBanner } from "@/components/SecurityBanner";
+import { AppShell } from "@/components/AppShell";
 
 export const Route = createFileRoute("/reset-password")({ component: ResetPasswordPage });
 
