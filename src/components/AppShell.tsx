@@ -54,7 +54,6 @@ function TeamNav() {
 
 function MobileNav() {
   const [open, setOpen] = useState(false);
-  const { user } = useApp();
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
