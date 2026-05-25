@@ -44,7 +44,7 @@ function TestTargetLink({ test }: { test: TestCase }) {
     );
   }
   return (
-    <Link to={path} target="_blank" className={className} title={`Open ${path}`}>
+    <Link to={path as never} target="_blank" className={className} title={`Open ${path}`}>
       <ExternalLink className="h-3 w-3" />
       {label}
     </Link>
