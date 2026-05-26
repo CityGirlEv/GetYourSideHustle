@@ -23,7 +23,7 @@ import {
   TASK_STATUS_VALUES, TASK_STATUS_LABELS,
   type TaskRow, type TaskRowStatus,
 } from "@/lib/tasks-sheet";
-import { SPRINTS, ACTIVE_SPRINT_ID, type Priority } from "@/lib/test-plan";
+import { SPRINTS, ACTIVE_SPRINT_ID, PRIORITY_LABELS, PRIORITY_SHORT, type Priority } from "@/lib/test-plan";
 import { MultiSelect, multiSelectMatches } from "@/components/ui/multi-select";
 
 const PRIORITIES: Priority[] = ["P0", "P1", "P2", "P3"];
@@ -469,7 +469,7 @@ export function TaskSheetContent() {
           <Select value={bulkPriority} onValueChange={(v) => setBulkPriority(v as Priority)}>
             <SelectTrigger className="h-9 w-[130px]"><SelectValue placeholder="Set priority…" /></SelectTrigger>
             <SelectContent>
-              {PRIORITIES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+              {PRIORITIES.map((p) => <SelectItem key={p} value={p}>{PRIORITY_LABELS[p]}</SelectItem>)}
             </SelectContent>
           </Select>
           <div className="flex items-center gap-1 w-full">
@@ -608,10 +608,10 @@ export function TaskSheetContent() {
                     <TableCell>
                       <Select value={r.priority} onValueChange={(v) => inlineUpdate(r.id, "priority", v as Priority)}>
                         <SelectTrigger className="h-7 w-[70px] text-xs">
-                          <Badge variant="outline" className={PRIORITY_TONE[r.priority]}>{r.priority}</Badge>
+                          <Badge variant="outline" className={PRIORITY_TONE[r.priority]} title={PRIORITY_LABELS[r.priority]}>{PRIORITY_SHORT[r.priority]}</Badge>
                         </SelectTrigger>
                         <SelectContent>
-                          {PRIORITIES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                          {PRIORITIES.map((p) => <SelectItem key={p} value={p}>{PRIORITY_LABELS[p]}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </TableCell>
@@ -709,7 +709,7 @@ export function TaskSheetContent() {
                 <Select value={editing.priority} onValueChange={(v) => setEditing({ ...editing, priority: v as Priority })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {PRIORITIES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                    {PRIORITIES.map((p) => <SelectItem key={p} value={p}>{PRIORITY_LABELS[p]}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
