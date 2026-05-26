@@ -495,27 +495,67 @@ export function TestPlanTab() {
         {filtered.length === 0 && (
           <Card className="p-8 text-center text-sm text-muted-foreground">No test cases match your filters.</Card>
         )}
-        <TestsGroupedBySprint
-          filtered={filtered}
-          statuses={statuses}
-          qaNotes={qaNotes}
-          devNotes={devNotes}
-          severities={severities}
-          effAssignee={effAssignee}
-          effSprint={effSprint}
-          selected={selected}
-          toggleSelect={toggleSelect}
-          setStatus={setStatus}
-          setQaNote={setQaNote}
-          setDevNote={setDevNote}
-          setSeverityFor={setSeverityFor}
-          setAssigneeFor={setAssigneeFor}
-          setSprintFor={setSprintFor}
-          isAdmin={isAdmin}
-          setEditingId={setEditingId}
-          hasTestChanges={hasTestChanges}
-          saveSingleTest={saveSingleTest}
-        />
+        {(() => {
+          const groups = new Map<string, TestCase[]>();
+          for (const t of filtered) {
+            const k = effSprint(t) || "_none";
+            if (!groups.has(k)) groups.set(k, []);
+            groups.get(k)!.push(t);
+          }
+          const ordered: { sprintId: string; tests: TestCase[] }[] = [];
+          if (groups.has(ACTIVE_SPRINT_ID)) ordered.push({ sprintId: ACTIVE_SPRINT_ID, tests: groups.get(ACTIVE_SPRINT_ID)! });
+          for (const s of SPRINTS) {
+            if (s.id !== ACTIVE_SPRINT_ID && groups.has(s.id)) ordered.push({ sprintId: s.id, tests: groups.get(s.id)! });
+          }
+          if (groups.has("_none")) ordered.push({ sprintId: "_none", tests: groups.get("_none")! });
+          return ordered.map(({ sprintId, tests }) => {
+            const sprintMeta = SPRINTS.find((s) => s.id === sprintId);
+            const isCollapsed = collapsedSprints.has(sprintId);
+            const label = sprintMeta ? `Sprint ${sprintMeta.number} · ${sprintMeta.name}` : "Unassigned";
+            const isActive = sprintId === ACTIVE_SPRINT_ID;
+            return (
+              <Fragment key={sprintId}>
+                <Card
+                  className="p-3 bg-muted/60 hover:bg-muted/70 cursor-pointer border-2"
+                  onClick={() => toggleCollapsedSprint(sprintId)}
+                >
+                  <div className="flex items-center gap-2 font-semibold text-sm">
+                    <ChevronRight className={`h-4 w-4 transition-transform ${!isCollapsed ? "rotate-90" : ""}`} />
+                    <span>{label}</span>
+                    {isActive && <Badge variant="outline" className="border-primary/60 text-primary">Current</Badge>}
+                    <span className="text-xs font-normal text-muted-foreground ml-1">
+                      {tests.length} test{tests.length === 1 ? "" : "s"}
+                    </span>
+                  </div>
+                </Card>
+                {!isCollapsed && tests.map((t) => (
+                  <TestCaseCard
+                    key={t.id}
+                    t={t}
+                    status={statuses[t.id] ?? "not_run"}
+                    qaNote={qaNotes[t.id] ?? ""}
+                    devNote={devNotes[t.id] ?? ""}
+                    severity={severities[t.id] ?? ""}
+                    assignee={effAssignee(t)}
+                    sprintId={effSprint(t)}
+                    selected={selected.has(t.id)}
+                    onSelectChange={() => toggleSelect(t.id)}
+                    onChange={(s) => setStatus(t.id, s)}
+                    onQaNoteChange={(n) => setQaNote(t.id, n)}
+                    onDevNoteChange={(n) => setDevNote(t.id, n)}
+                    onSeverityChange={(s) => setSeverityFor(t.id, s)}
+                    onAssigneeChange={(o) => setAssigneeFor(t.id, o)}
+                    onSprintChange={(s) => setSprintFor(t.id, s)}
+                    isAdmin={isAdmin}
+                    onEdit={() => setEditingId(t.id)}
+                    hasChanges={hasTestChanges(t.id)}
+                    onSave={() => saveSingleTest(t.id)}
+                  />
+                ))}
+              </Fragment>
+            );
+          });
+        })()}
       </div>
       <SaveChangesDialog
         open={saveOpen}
