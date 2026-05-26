@@ -634,6 +634,9 @@ export const TASKS: Task[] = [
   { id: "T-013", title: "CMS 2026 ingest job (pg_cron + /api/public)", area: "CMS Ingest", status: "todo", priority: "P0" },
   { id: "T-014", title: "RxNorm cache to cut latency on repeat lookups", area: "RxNorm", status: "todo", priority: "P3" },
   { id: "T-015", title: "QA: cross-browser voice matrix (Chrome / Edge / Safari)", area: "QA", status: "todo", priority: "P1" },
+  { id: "T-016", title: "Admin notifications table + bell UI (realtime, mark-read, delete)", area: "Admin", status: "done", priority: "P1" },
+  { id: "T-017", title: "Wire new-registration event to admin_notifications + Resend sandbox email", area: "Admin", status: "done", priority: "P1" },
+  { id: "T-018", title: "Verify getpartb.com domain (add NS records) so non-owner admins receive registration email", area: "Ops", status: "todo", priority: "P2", notes: "Blocked: no DNS access today. Add notify.getpartb.com NS ns3/ns4.lovable.cloud when registrar access is available." },
 ];
 
 // ----------------------------------------------------------------------------
