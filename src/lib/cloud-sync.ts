@@ -118,7 +118,7 @@ export async function hydrateTasksToLocal(): Promise<number> {
     .select("data, sort_order")
     .order("sort_order", { ascending: true });
   if (error || !data || data.length === 0) return 0;
-  const rows = data.map((r) => r.data as TaskRow);
+  const rows = data.map((r) => r.data as unknown as TaskRow);
   localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(rows));
   return rows.length;
 }
