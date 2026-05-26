@@ -115,8 +115,12 @@ export function DrugReport({ medications }: { medications: Medication[] }) {
             {rows.map((r, i) => (
               <tr key={i} className="border-b border-border/50 align-top">
                 <td className="py-2 pr-3">
-                  <div className="font-semibold">{r.name}</div>
+                  <div className="font-semibold">{r.name || "Unnamed medication"}</div>
                   <div className="text-[11px] text-muted-foreground">{[r.strength, r.form, r.frequency].filter(Boolean).join(" · ")}</div>
+                  {r.resolvedDiagnosis ? (
+                    <div className="text-[10px] text-muted-foreground mt-0.5">Condition: {r.resolvedDiagnosis}</div>
+                  ) : null}
+                  <div className="text-[10px] text-muted-foreground mt-0.5">Retail: {usd(r.retailMonthly)}/mo</div>
                   {r.notes.map((n, j) => (
                     <div key={j} className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
                       <AlertCircle className="h-2.5 w-2.5 shrink-0" /> {n}
