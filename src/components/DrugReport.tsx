@@ -95,8 +95,7 @@ export function DrugReport({ medications }: { medications: Medication[] }) {
         <h3 className="font-display text-lg font-bold">Prescription Drug Report</h3>
       </div>
       <p className="text-xs text-muted-foreground">
-        Estimated CMS Part D formulary tier and member cost for each medication you entered. Actual tier and copay vary by plan formulary — confirm at{" "}
-        <a href="https://www.medicare.gov/plan-compare" target="_blank" rel="noopener noreferrer" className="underline">Medicare Plan Finder</a>.
+        Estimated CMS Part D formulary tier and member cost for each medication you entered. Actual tier and copay vary by plan formulary.
       </p>
 
       <div className="overflow-x-auto -mx-5 px-5">
