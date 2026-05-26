@@ -495,30 +495,27 @@ export function TestPlanTab() {
         {filtered.length === 0 && (
           <Card className="p-8 text-center text-sm text-muted-foreground">No test cases match your filters.</Card>
         )}
-        {filtered.map((t) => (
-          <TestCaseCard
-            key={t.id}
-            t={t}
-            status={statuses[t.id] ?? "not_run"}
-            qaNote={qaNotes[t.id] ?? ""}
-            devNote={devNotes[t.id] ?? ""}
-            severity={severities[t.id] ?? ""}
-            assignee={effAssignee(t)}
-            sprintId={effSprint(t)}
-            selected={selected.has(t.id)}
-            onSelectChange={() => toggleSelect(t.id)}
-            onChange={(s) => setStatus(t.id, s)}
-            onQaNoteChange={(n) => setQaNote(t.id, n)}
-            onDevNoteChange={(n) => setDevNote(t.id, n)}
-            onSeverityChange={(s) => setSeverityFor(t.id, s)}
-            onAssigneeChange={(o) => setAssigneeFor(t.id, o)}
-            onSprintChange={(s) => setSprintFor(t.id, s)}
-            isAdmin={isAdmin}
-            onEdit={() => setEditingId(t.id)}
-            hasChanges={hasTestChanges(t.id)}
-            onSave={() => saveSingleTest(t.id)}
-          />
-        ))}
+        <TestsGroupedBySprint
+          filtered={filtered}
+          statuses={statuses}
+          qaNotes={qaNotes}
+          devNotes={devNotes}
+          severities={severities}
+          effAssignee={effAssignee}
+          effSprint={effSprint}
+          selected={selected}
+          toggleSelect={toggleSelect}
+          setStatus={setStatus}
+          setQaNote={setQaNote}
+          setDevNote={setDevNote}
+          setSeverityFor={setSeverityFor}
+          setAssigneeFor={setAssigneeFor}
+          setSprintFor={setSprintFor}
+          isAdmin={isAdmin}
+          setEditingId={setEditingId}
+          hasTestChanges={hasTestChanges}
+          saveSingleTest={saveSingleTest}
+        />
       </div>
       <SaveChangesDialog
         open={saveOpen}
