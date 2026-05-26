@@ -164,7 +164,7 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
         </div>
       </header>
       <div className="w-full max-w-7xl mx-auto px-4 md:px-8">
-        <div className="relative flex items-center mb-0 mt-0">
+        <div className="relative flex items-center mb-0 mt-2">
           <Link to="/" aria-label="The Medicare Optimizer" className="absolute left-0 top-1/2 -translate-y-1/2 shrink-0">
             <img src={muntieLogo} alt="The Medicare Optimizer" className="h-9 w-9 sm:h-11 sm:w-11 md:h-14 md:w-14 object-contain" />
           </Link>
