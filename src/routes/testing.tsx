@@ -25,6 +25,7 @@ import {
   clearDescriptionOverride, type TestDescriptionOverride,
 } from "@/lib/test-plan";
 import { AppShell } from "@/components/AppShell";
+import { SyncBrowserToCloud } from "@/components/SyncBrowserToCloud";
 import { useApp } from "@/lib/app-store";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
