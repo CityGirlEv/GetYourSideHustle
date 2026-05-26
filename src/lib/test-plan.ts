@@ -726,6 +726,66 @@ export function loadAllSprintOverrides(): Record<string, string> {
   return out;
 }
 
+// ----------------------------------------------------------------------------
+// Test description override — admins can edit title / preconditions / steps /
+// expected / notes for any test case. Overrides persist in localStorage and
+// are merged on top of the static TEST_CASES via applyDescriptionOverride().
+// ----------------------------------------------------------------------------
+export interface TestDescriptionOverride {
+  title?: string;
+  preconditions?: string;
+  steps?: string[];
+  expected?: string;
+  notes?: string;
+}
+export const TEST_DESC_KEY = (id: string) => `test-desc:${id}`;
+
+export function loadDescriptionOverride(id: string): TestDescriptionOverride {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(TEST_DESC_KEY(id));
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as TestDescriptionOverride;
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+export function saveDescriptionOverride(id: string, ov: TestDescriptionOverride) {
+  if (typeof window === "undefined") return;
+  // Drop empty fields so we don't shadow defaults with blanks unintentionally.
+  const cleaned: TestDescriptionOverride = {};
+  if (ov.title && ov.title.trim()) cleaned.title = ov.title.trim();
+  if (ov.preconditions && ov.preconditions.trim()) cleaned.preconditions = ov.preconditions.trim();
+  if (ov.steps && ov.steps.length) {
+    const steps = ov.steps.map((s) => s.trim()).filter(Boolean);
+    if (steps.length) cleaned.steps = steps;
+  }
+  if (ov.expected && ov.expected.trim()) cleaned.expected = ov.expected.trim();
+  if (ov.notes && ov.notes.trim()) cleaned.notes = ov.notes.trim();
+  if (Object.keys(cleaned).length === 0) {
+    localStorage.removeItem(TEST_DESC_KEY(id));
+  } else {
+    localStorage.setItem(TEST_DESC_KEY(id), JSON.stringify(cleaned));
+  }
+}
+export function clearDescriptionOverride(id: string) {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(TEST_DESC_KEY(id));
+}
+export function applyDescriptionOverride(t: TestCase): TestCase {
+  const ov = loadDescriptionOverride(t.id);
+  if (!ov || Object.keys(ov).length === 0) return t;
+  return {
+    ...t,
+    title: ov.title ?? t.title,
+    preconditions: ov.preconditions ?? t.preconditions,
+    steps: ov.steps ?? t.steps,
+    expected: ov.expected ?? t.expected,
+    notes: ov.notes ?? t.notes,
+  };
+}
+
 export function testAssignmentCounts(): Record<string, number> {
   const counts: Record<string, number> = {};
   for (const t of TEST_CASES) {

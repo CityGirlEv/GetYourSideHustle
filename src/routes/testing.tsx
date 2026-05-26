@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   CheckCircle2, XCircle, MinusCircle, AlertOctagon, Search, RotateCcw,
   FlaskConical, CalendarDays, ListChecks, GitBranch, Sparkles, ExternalLink,
-  Wrench, RefreshCw, Paperclip, Upload, Trash2, FileText, Loader2, Save,
+  Wrench, RefreshCw, Paperclip, Upload, Trash2, FileText, Loader2, Save, Pencil,
 } from "lucide-react";
 import {
   TEST_CASES, IMPLEMENTATION_PLAN, SPRINTS, TASKS,
@@ -21,6 +21,8 @@ import {
   loadAllSeverities, saveSeverity, FAIL_SEVERITY_LABELS, type FailSeverity,
   TEST_OWNERS, loadAllAssigneeOverrides, saveAssigneeOverride,
   loadAllSprintOverrides, saveSprintOverride,
+  applyDescriptionOverride, loadDescriptionOverride, saveDescriptionOverride,
+  clearDescriptionOverride, type TestDescriptionOverride,
 } from "@/lib/test-plan";
 import { AppShell } from "@/components/AppShell";
 import { useApp } from "@/lib/app-store";
@@ -120,6 +122,8 @@ function TestingPortal() {
 
 /* ============================== TEST PLAN TAB ============================== */
 export function TestPlanTab() {
+  const { user } = useApp();
+  const isAdmin = user?.role === "admin";
   // Persisted/saved state, hydrated from local storage
   const [savedStatuses, setSavedStatuses] = useState<Record<string, TestStatus>>(() => loadAllStatuses());
   const [savedQaNotes, setSavedQaNotes] = useState<Record<string, string>>(() => loadAllQaNotes());
@@ -127,6 +131,20 @@ export function TestPlanTab() {
   const [savedSeverities, setSavedSeverities] = useState<Record<string, FailSeverity | "">>(() => loadAllSeverities());
   const [savedAssignees, setSavedAssignees] = useState<Record<string, string>>(() => loadAllAssigneeOverrides());
   const [savedSprints, setSavedSprints] = useState<Record<string, string>>(() => loadAllSprintOverrides());
+  // Bump this to re-read description overrides from storage after edits.
+  const [descVersion, setDescVersion] = useState(0);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  // Effective test cases with description overrides applied (admin edits).
+  const effectiveCases = useMemo(
+    () => TEST_CASES.map((t) => applyDescriptionOverride(t)),
+    [descVersion],
+  );
+  const effectiveById = useMemo(() => {
+    const m = new Map<string, TestCase>();
+    for (const t of effectiveCases) m.set(t.id, t);
+    return m;
+  }, [effectiveCases]);
   // Draft (unsaved) overlays — only changed entries
   const [dStatuses, setDStatuses] = useState<Record<string, TestStatus>>({});
   const [dQaNotes, setDQaNotes] = useState<Record<string, string>>({});
@@ -283,7 +301,7 @@ export function TestPlanTab() {
     toast.success(`Saved ${selectedKeys.size} change${selectedKeys.size === 1 ? "" : "s"}.`);
   };
 
-  const areas = useMemo(() => Array.from(new Set(TEST_CASES.map((t) => t.area))), []);
+  const areas = useMemo(() => Array.from(new Set(effectiveCases.map((t) => t.area))), [effectiveCases]);
   // Effective assignee/sprint that respects unsaved drafts (the lib helpers read storage)
   const effAssignee = (t: TestCase): string => {
     const ov = assigneeOverrides[t.id];
@@ -293,16 +311,16 @@ export function TestPlanTab() {
   const effSprint = (t: TestCase): string => sprintOverrides[t.id] || getTestSprintId(t);
   const ownerCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    for (const t of TEST_CASES) {
+    for (const t of effectiveCases) {
       const a = effAssignee(t);
       counts[a] = (counts[a] || 0) + 1;
     }
     return counts;
-  }, [statuses, assigneeOverrides]);
+  }, [statuses, assigneeOverrides, effectiveCases]);
   const owners = useMemo(() => Object.keys(ownerCounts), [ownerCounts]);
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim();
-    return TEST_CASES.filter((t) => {
+    return effectiveCases.filter((t) => {
       if (!multiSelectMatches(areaFilter, t.area)) return false;
       if (!multiSelectMatches(statusFilter, statuses[t.id] ?? "not_run")) return false;
       if (!multiSelectMatches(ownerFilter, effAssignee(t))) return false;
@@ -310,7 +328,7 @@ export function TestPlanTab() {
       if (!q) return true;
       return [t.id, t.title, t.area, ...t.steps, t.expected].some((f) => f.toLowerCase().includes(q));
     });
-  }, [query, areaFilter, statusFilter, ownerFilter, sprintFilter, statuses, assigneeOverrides, sprintOverrides]);
+  }, [query, areaFilter, statusFilter, ownerFilter, sprintFilter, statuses, assigneeOverrides, sprintOverrides, effectiveCases]);
 
   const filteredIds = useMemo(() => filtered.map((t) => t.id), [filtered]);
   const allFilteredSelected = filteredIds.length > 0 && filteredIds.every((id) => selected.has(id));
@@ -474,6 +492,8 @@ export function TestPlanTab() {
             onSeverityChange={(s) => setSeverityFor(t.id, s)}
             onAssigneeChange={(o) => setAssigneeFor(t.id, o)}
             onSprintChange={(s) => setSprintFor(t.id, s)}
+            isAdmin={isAdmin}
+            onEdit={() => setEditingId(t.id)}
           />
         ))}
       </div>
@@ -482,6 +502,12 @@ export function TestPlanTab() {
         onOpenChange={setSaveOpen}
         changes={pendingChanges}
         onConfirm={commitChanges}
+      />
+      <EditDescriptionDialog
+        test={editingId ? effectiveById.get(editingId) ?? null : null}
+        open={!!editingId}
+        onOpenChange={(v: boolean) => { if (!v) setEditingId(null); }}
+        onSaved={() => { setDescVersion((v) => v + 1); setEditingId(null); }}
       />
     </div>
   );
@@ -637,6 +663,7 @@ function priorityVariant(p: Priority): string {
 function TestCaseCard({
   t, status, qaNote, devNote, severity, assignee, sprintId, selected, onSelectChange,
   onChange, onQaNoteChange, onDevNoteChange, onSeverityChange, onAssigneeChange, onSprintChange,
+  isAdmin, onEdit,
 }: {
   t: TestCase;
   status: TestStatus;
@@ -653,6 +680,8 @@ function TestCaseCard({
   onSeverityChange: (s: FailSeverity | "") => void;
   onAssigneeChange: (owner: string) => void;
   onSprintChange: (sprintId: string) => void;
+  isAdmin?: boolean;
+  onEdit?: () => void;
 }) {
   // Shade the whole row based on status (background + subtle border)
   const shade =
@@ -707,6 +736,17 @@ function TestCaseCard({
         <h3 className="flex-1 font-semibold text-sm md:text-base">
           <TestTitleLink test={t}>{t.title}</TestTitleLink>
         </h3>
+        {isAdmin && onEdit && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 px-2 text-xs"
+            onClick={onEdit}
+            title="Edit test description"
+          >
+            <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
+          </Button>
+        )}
         <StatusButtons status={status} onChange={onChange} />
       </div>
       <div className="mb-2 -mt-1">
@@ -1136,6 +1176,122 @@ function StatusPill({ status }: { status: "done" | "in_progress" | "todo" | "blo
   };
   const v = map[status];
   return <span className={`text-[10px] font-semibold rounded-full border px-2 py-0.5 w-16 text-center ${v.c}`}>{v.l}</span>;
+}
+
+/* ========================= EDIT DESCRIPTION DIALOG ========================= */
+function EditDescriptionDialog({
+  test, open, onOpenChange, onSaved,
+}: {
+  test: TestCase | null;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onSaved: () => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [preconditions, setPreconditions] = useState("");
+  const [stepsText, setStepsText] = useState("");
+  const [expected, setExpected] = useState("");
+  const [notes, setNotes] = useState("");
+
+  useEffect(() => {
+    if (open && test) {
+      setTitle(test.title);
+      setPreconditions(test.preconditions ?? "");
+      setStepsText((test.steps ?? []).join("\n"));
+      setExpected(test.expected);
+      setNotes(test.notes ?? "");
+    }
+  }, [open, test]);
+
+  if (!test) return null;
+
+  const onSave = () => {
+    const ov: TestDescriptionOverride = {
+      title,
+      preconditions,
+      steps: stepsText.split("\n").map((s) => s.trim()).filter(Boolean),
+      expected,
+      notes,
+    };
+    saveDescriptionOverride(test.id, ov);
+    toast.success("Test description saved.");
+    onSaved();
+  };
+
+  const onResetToDefault = () => {
+    if (!confirm("Clear all admin edits for this test and restore defaults?")) return;
+    clearDescriptionOverride(test.id);
+    toast.success("Restored default description.");
+    onSaved();
+  };
+
+  const hasOverride = Object.keys(loadDescriptionOverride(test.id)).length > 0;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Edit test description · <span className="font-mono text-sm">{test.id}</span></DialogTitle>
+          <DialogDescription>
+            Admin-only. Edits are saved locally and override the static test plan for everyone using this browser.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex-1 overflow-y-auto space-y-3 text-sm">
+          <div>
+            <label className="text-xs font-semibold">Title</label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+          </div>
+          <div>
+            <label className="text-xs font-semibold">Preconditions</label>
+            <textarea
+              value={preconditions}
+              onChange={(e) => setPreconditions(e.target.value)}
+              rows={2}
+              className="w-full text-sm rounded-md border border-input bg-background px-2 py-1"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-semibold">Steps (one per line)</label>
+            <textarea
+              value={stepsText}
+              onChange={(e) => setStepsText(e.target.value)}
+              rows={6}
+              className="w-full text-sm rounded-md border border-input bg-background px-2 py-1 font-mono"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-semibold">Expected result</label>
+            <textarea
+              value={expected}
+              onChange={(e) => setExpected(e.target.value)}
+              rows={3}
+              className="w-full text-sm rounded-md border border-input bg-background px-2 py-1"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-semibold">Notes</label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              className="w-full text-sm rounded-md border border-input bg-background px-2 py-1"
+            />
+          </div>
+        </div>
+        <DialogFooter className="border-t border-border pt-3 flex-wrap gap-2">
+          {hasOverride && (
+            <Button variant="outline" onClick={onResetToDefault} className="mr-auto">
+              <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Reset to default
+            </Button>
+          )}
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={onSave}>
+            <Save className="h-3.5 w-3.5 mr-1.5" /> Save changes
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 /* ================================= TASKS TAB =============================== */
