@@ -11,7 +11,22 @@ import { ShieldCheck, Lock, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 
-export const Route = createFileRoute("/auth")({ component: AuthPage });
+export const Route = createFileRoute("/auth")({
+  head: () => ({
+    meta: [
+      { title: "Sign In — The Medicare Optimizer" },
+      { name: "description", content: "Sign in to the Medicare Optimizer staff portal for advisors, agents, QA, and admins." },
+      { property: "og:title", content: "Sign In — The Medicare Optimizer" },
+      { property: "og:description", content: "Sign in to the Medicare Optimizer staff portal." },
+      { property: "og:url", content: "https://themedicareoptimizer.lovable.app/auth" },
+      { name: "robots", content: "noindex" },
+    ],
+    links: [
+      { rel: "canonical", href: "https://themedicareoptimizer.lovable.app/auth" },
+    ],
+  }),
+  component: AuthPage,
+});
 
 function AuthPage() {
   const { user } = useApp();
