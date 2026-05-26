@@ -846,6 +846,7 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
         conditions, medications: meds,
       }));
     } catch { /* ignore quota */ }
+    try { (await import("@/lib/scenario-history")).rememberScenario(code); } catch { /* ignore */ }
     await speak(`Done. Your scenario ID is ${code.split("").join(" ")}.`);
     setStep("done");
     onDone?.(code);
