@@ -42,7 +42,7 @@ export function cloudPushTest(test_id: string, patch: Partial<{
     for (const [k, v] of Object.entries(patch)) {
       normalized[k] = v === "" ? null : v;
     }
-    const { error } = await supabase.from("test_results").upsert(normalized, { onConflict: "test_id" });
+    const { error } = await supabase.from("test_results").upsert(normalized as never, { onConflict: "test_id" });
     if (error) console.warn("[cloud-sync] cloudPushTest", error.message);
   })();
 }
@@ -56,11 +56,12 @@ export function cloudAppendNote(test_id: string, kind: NoteKind, text: string) {
     const col = kind === "qa" ? "qa_notes" : "dev_notes";
     const { data: existing } = await supabase
       .from("test_results")
-      .select(`${col}`)
+      .select(col)
       .eq("test_id", test_id)
       .maybeSingle();
-    const arr: NoteEntry[] = Array.isArray((existing as Record<string, unknown> | null)?.[col])
-      ? ((existing as Record<string, NoteEntry[]>)[col])
+    const existingRec = existing as Record<string, unknown> | null;
+    const arr: NoteEntry[] = Array.isArray(existingRec?.[col])
+      ? (existingRec![col] as unknown as NoteEntry[])
       : [];
     // De-dup if last entry by this author matches text
     const lastFromAuthor = [...arr].reverse().find((e) => e.author_id === u.id);
@@ -68,7 +69,7 @@ export function cloudAppendNote(test_id: string, kind: NoteKind, text: string) {
     const next: NoteEntry[] = [...arr, { author_id: u.id, author_name: u.name, text, at: new Date().toISOString() }];
     const { error } = await supabase
       .from("test_results")
-      .upsert({ test_id, [col]: next, updated_by: u.id }, { onConflict: "test_id" });
+      .upsert({ test_id, [col]: next, updated_by: u.id } as never, { onConflict: "test_id" });
     if (error) console.warn("[cloud-sync] cloudAppendNote", error.message);
   })();
 }
@@ -79,8 +80,8 @@ export function cloudPushAllTasks(rows: TaskRow[]) {
   (async () => {
     const u = await uid();
     if (!u) return;
-    const payload = rows.map((r, i) => ({ id: r.id, data: r, sort_order: i, updated_by: u.id }));
-    const { error } = await supabase.from("task_rows").upsert(payload, { onConflict: "id" });
+    const payload = rows.map((r, i) => ({ id: r.id, data: r as unknown, sort_order: i, updated_by: u.id }));
+    const { error } = await supabase.from("task_rows").upsert(payload as never, { onConflict: "id" });
     if (error) console.warn("[cloud-sync] cloudPushAllTasks", error.message);
   })();
 }
@@ -101,8 +102,8 @@ export async function hydrateTestResultsToLocal(): Promise<number> {
     if (row.description_override) {
       localStorage.setItem(TEST_DESC_KEY(id), JSON.stringify(row.description_override));
     }
-    const qa = Array.isArray(row.qa_notes) ? (row.qa_notes as NoteEntry[]) : [];
-    const dev = Array.isArray(row.dev_notes) ? (row.dev_notes as NoteEntry[]) : [];
+    const qa = Array.isArray(row.qa_notes) ? (row.qa_notes as unknown as NoteEntry[]) : [];
+    const dev = Array.isArray(row.dev_notes) ? (row.dev_notes as unknown as NoteEntry[]) : [];
     if (qa.length) localStorage.setItem(TEST_QA_NOTE_KEY(id), qa[qa.length - 1].text);
     if (dev.length) localStorage.setItem(TEST_DEV_NOTE_KEY(id), dev[dev.length - 1].text);
   }
@@ -148,8 +149,8 @@ export async function syncLocalToCloud(): Promise<{ tests: number; notes: number
       .select("qa_notes, dev_notes")
       .eq("test_id", id)
       .maybeSingle();
-    const qaArr: NoteEntry[] = Array.isArray(existing?.qa_notes) ? (existing!.qa_notes as NoteEntry[]) : [];
-    const devArr: NoteEntry[] = Array.isArray(existing?.dev_notes) ? (existing!.dev_notes as NoteEntry[]) : [];
+    const qaArr: NoteEntry[] = Array.isArray(existing?.qa_notes) ? (existing!.qa_notes as unknown as NoteEntry[]) : [];
+    const devArr: NoteEntry[] = Array.isArray(existing?.dev_notes) ? (existing!.dev_notes as unknown as NoteEntry[]) : [];
 
     const newQa = [...qaArr];
     if (qaText && qaText.trim()) {
@@ -178,7 +179,7 @@ export async function syncLocalToCloud(): Promise<{ tests: number; notes: number
     });
   }
   if (testPayload.length) {
-    const { error } = await supabase.from("test_results").upsert(testPayload, { onConflict: "test_id" });
+    const { error } = await supabase.from("test_results").upsert(testPayload as never, { onConflict: "test_id" });
     if (error) throw new Error("test_results sync failed: " + error.message);
   }
 
@@ -189,8 +190,8 @@ export async function syncLocalToCloud(): Promise<{ tests: number; notes: number
     try {
       const rows = JSON.parse(raw) as TaskRow[];
       if (Array.isArray(rows) && rows.length) {
-        const payload = rows.map((r, i) => ({ id: r.id, data: r, sort_order: i, updated_by: u.id }));
-        const { error } = await supabase.from("task_rows").upsert(payload, { onConflict: "id" });
+        const payload = rows.map((r, i) => ({ id: r.id, data: r as unknown, sort_order: i, updated_by: u.id }));
+        const { error } = await supabase.from("task_rows").upsert(payload as never, { onConflict: "id" });
         if (error) throw new Error("task_rows sync failed: " + error.message);
         taskCount = rows.length;
       }
