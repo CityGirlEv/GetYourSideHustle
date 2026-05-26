@@ -153,15 +153,15 @@ function QAManualPage() {
                   {/* Pass? No -> Fail */}
                   <line x1="290" y1="250" x2="204" y2="250" />
                   {/* Fail -> Dev fixes */}
-                  <path d="M 115 273 L 115 336" />
+                  <line x1="115" y1="273" x2="115" y2="336" />
                   {/* Dev fixes -> QA re-tests */}
-                  <path d="M 250 380 L 276 396" />
-                  {/* QA re-tests Yes -> PASSED (up & right) */}
-                  <path d="M 480 400 C 580 400, 645 330, 645 277" />
+                  <line x1="250" y1="380" x2="276" y2="396" />
+                  {/* QA re-tests Yes -> PASSED (right, then up) */}
+                  <polyline points="480,400 645,400 645,273" />
                   {/* QA re-tests No -> Failed/Re-Test */}
                   <line x1="480" y1="400" x2="536" y2="400" />
-                  {/* Failed/Re-Test -> Dev fixes (loop back) */}
-                  <path d="M 540 398 C 400 470, 200 470, 140 400" />
+                  {/* Failed/Re-Test -> Dev fixes (loop back: down, left, up) */}
+                  <polyline points="540,398 540,480 140,480 140,396" />
                 </g>
 
                 {/* Labels on decision branches */}
