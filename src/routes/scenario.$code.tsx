@@ -26,26 +26,30 @@ function ScenarioSummary() {
   const { code } = Route.useParams();
   const [scenario, setScenario] = useState<(ScenarioPdfInput & { county?: string }) | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const fetchByCode = useServerFn(getScenarioByCode);
 
   useEffect(() => {
     let cancelled = false;
-    try {
-      const raw = sessionStorage.getItem(`scenario:${code}`);
-      if (raw) {
-        setScenario(JSON.parse(raw));
-        setLoading(false);
-        return;
-      }
-    } catch { /* ignore */ }
-    // Fallback: fetch from DB (requires staff role)
+    setLoading(true);
+    setError(null);
+    // Always fetch fresh from DB so links work across devices/sessions.
     fetchByCode({ data: { code } })
       .then((s) => {
         if (cancelled) return;
         setScenario(s as ScenarioPdfInput & { county?: string });
         try { sessionStorage.setItem(`scenario:${code}`, JSON.stringify(s)); } catch { /* ignore */ }
       })
-      .catch(() => { /* leave scenario null; UI shows fallback message */ })
+      .catch((e: unknown) => {
+        if (cancelled) return;
+        // Fallback to any cached copy in sessionStorage
+        try {
+          const raw = sessionStorage.getItem(`scenario:${code}`);
+          if (raw) { setScenario(JSON.parse(raw)); return; }
+        } catch { /* ignore */ }
+        const msg = e instanceof Error ? e.message : "Could not load scenario";
+        setError(msg);
+      })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [code, fetchByCode]);
@@ -77,7 +81,8 @@ function ScenarioSummary() {
           <Card className="glass p-6 text-sm text-muted-foreground">Loading scenario…</Card>
         ) : !scenario ? (
           <Card className="glass p-6 text-sm text-muted-foreground">
-            We couldn't find this scenario in your browser session. Open the link from the device where you created it, or ask your agent to pull it up by Scenario ID.
+            We couldn't load this scenario. {error ? <span className="block mt-1 text-xs">({error})</span> : null}
+            <div className="mt-2 text-xs">Sign in with a staff account (admin, agent, advisor, qa, editor, or viewer) to view any scenario by ID.</div>
           </Card>
         ) : (
           <>
