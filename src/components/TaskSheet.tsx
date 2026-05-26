@@ -102,6 +102,24 @@ export function TaskSheetContent() {
   // savedRows = last persisted snapshot; rows = working draft (unsaved edits)
   const [savedRows, setSavedRows] = useState<TaskRow[]>(() => loadTaskRows());
   const [rows, setRows] = useState<TaskRow[]>(() => loadTaskRows());
+  // Pull task_rows from the cloud on mount so this browser shows whatever was
+  // last saved by anyone (restores data wiped from local storage).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { hydrateTasksToLocal } = await import("@/lib/cloud-sync");
+        const n = await hydrateTasksToLocal();
+        if (cancelled || !n) return;
+        const fresh = loadTaskRows();
+        setSavedRows(fresh);
+        setRows(fresh);
+      } catch (e) {
+        console.warn("[tasks] hydrate failed", e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
   const [saveOpen, setSaveOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
