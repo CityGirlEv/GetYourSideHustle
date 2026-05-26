@@ -307,6 +307,99 @@ export type Database = {
           },
         ]
       }
+      task_rows: {
+        Row: {
+          data: Json
+          id: string
+          sort_order: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          data: Json
+          id: string
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          data?: Json
+          id?: string
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      test_evidence_index: {
+        Row: {
+          file_name: string
+          id: string
+          size: number
+          storage_path: string
+          test_id: string
+          uploaded_at: string
+          uploaded_by: string
+        }
+        Insert: {
+          file_name: string
+          id?: string
+          size?: number
+          storage_path: string
+          test_id: string
+          uploaded_at?: string
+          uploaded_by: string
+        }
+        Update: {
+          file_name?: string
+          id?: string
+          size?: number
+          storage_path?: string
+          test_id?: string
+          uploaded_at?: string
+          uploaded_by?: string
+        }
+        Relationships: []
+      }
+      test_results: {
+        Row: {
+          assignee: string | null
+          description_override: Json | null
+          dev_notes: Json
+          qa_notes: Json
+          severity: string | null
+          sprint_id: string | null
+          status: string | null
+          test_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          assignee?: string | null
+          description_override?: Json | null
+          dev_notes?: Json
+          qa_notes?: Json
+          severity?: string | null
+          sprint_id?: string | null
+          status?: string | null
+          test_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          assignee?: string | null
+          description_override?: Json | null
+          dev_notes?: Json
+          qa_notes?: Json
+          severity?: string | null
+          sprint_id?: string | null
+          status?: string | null
+          test_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           granted_at: string

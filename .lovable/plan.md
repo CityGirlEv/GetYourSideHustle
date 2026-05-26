@@ -1,46 +1,74 @@
-## Roles, assignment, and agent notes
+## Goal
 
-### Roles
-Add enum values: `viewer`, `editor`, `qa`, `agent` (keep `admin`; legacy `advisor` stays for back-compat).
-- **admin** — all access; only role that can create users and assign agents
-- **editor** — can create scenarios from the wizard; can view scenarios they created
-- **agent** — can view scenarios an admin assigned to them; can add/edit `agent_notes`
-- **qa** — read-only access to all scenarios
-- **viewer** — read-only access to scenarios they created (default for newly-created users)
+Move Test Plan + Task Sheet from browser localStorage to Lovable Cloud so every admin/QA sees the same data. Add a one-time "Sync this browser to cloud" button. Never override notes on conflict — always merge as an append-only history.
 
-### Database (migration)
-1. `ALTER TYPE app_role ADD VALUE` for the four new roles.
-2. `scenarios` table:
-   - `created_by uuid` (nullable — public form still allows anon)
-   - `assigned_agent_id uuid`
-   - `agent_notes text`
-   - `wants_contact boolean DEFAULT false`
-3. RLS rewrite on `scenarios`:
-   - admins: all
-   - qa: select all
-   - editor/viewer: select where `created_by = auth.uid()`
-   - agent: select where `assigned_agent_id = auth.uid()`
-   - agent: update only `agent_notes` on assigned scenarios (via RPC)
-4. New RPCs (`SECURITY DEFINER`):
-   - `admin_set_user_role(p_user uuid, p_role app_role)` — admin only
-   - `admin_assign_agent(p_scenario uuid, p_agent uuid)` — admin only; validates target has `agent` role
-   - `agent_update_notes(p_scenario uuid, p_notes text)` — caller must be the assigned agent
-5. Update `create_scenario` to set `created_by = auth.uid()` when authenticated.
-6. When an `expert_contact_request` is inserted with a `scenario_code`, set `scenarios.wants_contact = true` (trigger).
-7. `handle_new_user` default role → `viewer` (admin-created users get explicit role).
+## Database (one migration)
 
-### Server functions (`src/lib/admin.functions.ts`)
-- `createAdvisor` → `createUser({ email, password, full_name, role })`; admin assigns chosen role
-- `setUserRole({ user_id, role })`
-- `listAgents()` — for the assign dropdown
+**`test_results`** — one row per test case id
+- `test_id` (text, PK), `status`, `severity`, `assignee`, `sprint_id`
+- `description_override` (jsonb, nullable) — `{title, steps, expected, notes}`
+- `qa_notes` (jsonb, default `[]`) — `[{author_id, author_name, text, at}]` append-only
+- `dev_notes` (jsonb, default `[]`) — same shape
+- `updated_at`, `updated_by`
+- RLS: admin/qa read+write all; agent reads rows where assignee = them.
 
-### UI
-- **Admin > Staff**: role selector on create form; role dropdown on each row (calls `setUserRole`).
-- **Admin > Scenarios**: for rows where `wants_contact = true`, show an "Assign agent" select populated from `listAgents()`; shows assigned agent + notes preview.
-- **New `/agent` route**: lists scenarios assigned to the current agent; opens `/agent/scenario/$code` with a notes textarea and Save button.
-- **`AppShell` nav**: add Agent link when `user.role === "agent"`; keep Admin link for `admin`.
-- **Wizard** (`/scenario/new`) is unchanged for anon; if a logged-in editor uses it, `created_by` is captured server-side.
+**`task_rows`** — replaces `SEED_TASK_ROWS`
+- `id` (text, PK e.g. T-101), `description`, `category`, `priority`, `status`,
+  `assign_by`, `assigned_to`, `notes`, `path`, `sort_order`, `updated_at`, `updated_by`
+- RLS: admin read+write all.
 
-### Out of scope (unchanged)
-- Credits, billing, advisor portal (kept as-is for the legacy `advisor` role).
-- Email notifications when an agent is assigned.
+**`test_evidence_index`** — DB pointer to files already in the `test-evidence` bucket
+- `id` (uuid), `test_id`, `storage_path`, `file_name`, `size`, `uploaded_by`, `uploaded_at`
+- RLS: admin/qa read all; uploader read+delete own; agent reads files for tests assigned to them.
+
+Trigger auto-stamps `updated_at` / `updated_by` from `auth.uid()`.
+
+## Notes merge rule
+
+QA and Dev notes become append-only JSONB arrays. Each save pushes a new entry `{author_id, author_name, text, at}`. UI shows the most recent entry inline and a "history" expander. The Sync button imports each local note as a single entry stamped with the current user — nothing is ever overwritten.
+
+## Code changes
+
+**`src/lib/test-results.functions.ts`** (new, server fns)
+- `listTestResults()` — returns all rows (admin/qa) or assigned rows (agent)
+- `upsertTestField({test_id, field, value})` — status/severity/assignee/sprint/description_override
+- `appendTestNote({test_id, kind: 'qa'|'dev', text})` — pushes entry, never overwrites
+
+**`src/lib/tasks.functions.ts`** (new)
+- `listTaskRows()`, `upsertTaskRow(row)`, `deleteTaskRow(id)`, `reorderTasks(ids)`
+
+**`src/lib/evidence.functions.ts`** (new)
+- `registerEvidence({test_id, storage_path, file_name, size})` — called after upload
+- `listEvidence(test_id)`
+
+**`src/lib/test-plan.ts`** — replace localStorage getters/setters with a React Query–backed cache reading from the server fns. Keep the existing `TEST_*_KEY` helpers exported as `legacy*` for the sync button to read once. New writes hit the DB only.
+
+**`src/lib/tasks-sheet.ts`** — same treatment. `SEED_TASK_ROWS` becomes a server-side fallback used only when the table is empty (first-run seed).
+
+**`src/components/SyncBrowserToCloud.tsx`** (new) — a single button that:
+1. Reads every `test-status:*`, `test-qa-note:*`, `test-dev-note:*`, `test-severity:*`, `test-assignee:*`, `test-sprint:*`, `test-desc:*` key from localStorage.
+2. Reads the saved Task Sheet rows.
+3. Sends them in one batch to a `syncLocalToCloud` server fn.
+4. Marks `localStorage.setItem('cloud-synced-at', isoString)` so the button disables itself after a successful sync (still re-runnable from a small "Re-sync" link in case Catria adds more later).
+5. Toast with counts: "Imported 47 statuses, 12 notes, 3 tasks." Notes are appended — duplicates with identical text + author are deduped.
+
+Place the button:
+- `/testing` (top of test plan tab) — visible to admin + qa
+- `/tasks` — visible to admin
+
+## Migration order
+
+1. Run the SQL migration (you approve).
+2. I update the code: server fns, hook rewrites, sync button, evidence registration in `test-evidence.ts`.
+3. You click "Sync this browser to cloud" once on `/testing` and once on `/tasks`.
+4. Catria logs in on her browser and clicks the same button — her notes are appended to yours, not overwritten.
+
+## What stays the same
+
+- The `test-evidence` storage bucket and existing files — only a DB index row is added per file going forward (and on sync for the files you've already uploaded, if any).
+- Test case definitions in `test-plan.ts` (titles, steps, expected) remain the source of truth; only per-test mutable state moves to the DB.
+
+## Out of scope
+
+- Real-time updates between browsers (next step if you want it; currently a refresh shows new data).
+- Backfilling NDA/scenario/audit data (already in DB).
