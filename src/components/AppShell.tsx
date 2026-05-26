@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { CreditPill } from "./CreditPill";
 import { FontSizeToggle } from "./FontSizeToggle";
 import { AdminNotificationsBell } from "./AdminNotificationsBell";
+import { LoginAlertDialog } from "./LoginAlertDialog";
 import { type ReactNode } from "react";
 import muntieLogo from "@/assets/muntie-logo.png";
 import {
@@ -31,6 +32,7 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
   return (
     <div className="min-h-screen flex flex-col">
       <SecurityBanner />
+      <LoginAlertDialog />
       <header className="pointer-events-none absolute right-3 top-12 z-30 md:right-6 md:top-14">
         <div className="pointer-events-auto flex items-center gap-3 flex-none shrink-0 ml-auto z-10">
           <FontSizeToggle />
