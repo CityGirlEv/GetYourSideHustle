@@ -322,6 +322,15 @@ export function TestPlanTab() {
     return getTestAssignee(t, statuses[t.id]);
   };
   const effSprint = (t: TestCase): string => sprintOverrides[t.id] || getTestSprintId(t);
+  const [collapsedSprints, setCollapsedSprints] = useState<Set<string>>(
+    () => new Set(SPRINTS.filter((s) => s.id !== ACTIVE_SPRINT_ID).map((s) => s.id))
+  );
+  const toggleCollapsedSprint = (id: string) =>
+    setCollapsedSprints((p) => {
+      const n = new Set(p);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
   const ownerCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const t of effectiveCases) {
