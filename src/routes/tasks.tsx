@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { TaskSheetContent } from "@/components/TaskSheet";
+import { SyncBrowserToCloud } from "@/components/SyncBrowserToCloud";
 import { useApp } from "@/lib/app-store";
 
 export const Route = createFileRoute("/tasks")({
@@ -25,6 +26,9 @@ function TaskSheetPage() {
   }
   return (
     <AppShell title="Task Sheet" subtitle="Spreadsheet-style task tracker — inline edits autosave to this browser.">
+      <div className="flex justify-end mb-3">
+        <SyncBrowserToCloud />
+      </div>
       <TaskSheetContent />
     </AppShell>
   );

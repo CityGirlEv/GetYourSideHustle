@@ -105,12 +105,15 @@ function TestingPortal() {
   return (
     <AppShell title="Testing Portal" subtitle="Use-case tests, implementation phases, sprint schedule, and the cross-sprint task backlog.">
       <Tabs defaultValue="tests" className="space-y-4">
-        <TabsList className={`grid w-full md:w-auto ${isAdmin ? "grid-cols-2 md:grid-cols-4" : "grid-cols-2"}`}>
-          <TabsTrigger value="tests"><ListChecks className="h-3.5 w-3.5 mr-1.5" />Test Plan</TabsTrigger>
-          {isAdmin && <TabsTrigger value="impl"><GitBranch className="h-3.5 w-3.5 mr-1.5" />Implementation</TabsTrigger>}
-          <TabsTrigger value="sprints"><CalendarDays className="h-3.5 w-3.5 mr-1.5" />Sprints</TabsTrigger>
-          {isAdmin && <TabsTrigger value="tasks"><Sparkles className="h-3.5 w-3.5 mr-1.5" />Tasks</TabsTrigger>}
-        </TabsList>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <TabsList className={`grid w-full md:w-auto ${isAdmin ? "grid-cols-2 md:grid-cols-4" : "grid-cols-2"}`}>
+            <TabsTrigger value="tests"><ListChecks className="h-3.5 w-3.5 mr-1.5" />Test Plan</TabsTrigger>
+            {isAdmin && <TabsTrigger value="impl"><GitBranch className="h-3.5 w-3.5 mr-1.5" />Implementation</TabsTrigger>}
+            <TabsTrigger value="sprints"><CalendarDays className="h-3.5 w-3.5 mr-1.5" />Sprints</TabsTrigger>
+            {isAdmin && <TabsTrigger value="tasks"><Sparkles className="h-3.5 w-3.5 mr-1.5" />Tasks</TabsTrigger>}
+          </TabsList>
+          <SyncBrowserToCloud />
+        </div>
 
         <TabsContent value="tests"><TestPlanTab /></TabsContent>
         {isAdmin && <TabsContent value="impl"><ImplementationTab /></TabsContent>}
