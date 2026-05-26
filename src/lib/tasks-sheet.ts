@@ -76,15 +76,20 @@ function categoryFromArea(area: string): TaskRowCategory {
 }
 
 // Seed: bring in every TASK from test-plan, augmented with sprint, owner, cost.
-const OWNERS = ["Catria", "Me", "Dev", "Dev", "Catria"]; // Catria-heavy
-export const SEED_TASK_ROWS: TaskRow[] = TASKS.map((t, i) => ({
+// NOTE: New functionality should be added as a TEST CASE in src/lib/test-plan.ts
+// (TEST_CASES / SPRINTS items, type "test"), NOT as a task here. The Task Sheet
+// is reserved for non-test operational work (ops, design, compliance, etc.).
+// QA / test items are filtered out below so they live only on /testing.
+const OWNERS = ["Catria", "Evelyn", "Dev", "Dev", "Catria"]; // Catria-heavy
+export const SEED_TASK_ROWS: TaskRow[] = TASKS
+  .map((t, i) => ({
   id: t.id,
   description: t.title,
   sprintId: ACTIVE_SPRINT_ID,
   category: categoryFromArea(t.area),
   priority: t.priority,
   status: statusFromTask(t.status),
-  assignBy: "Me",
+  assignBy: "Evelyn",
   assignedTo: OWNERS[i % OWNERS.length],
   dateAssigned: START,
   dueDate: END,
@@ -92,7 +97,9 @@ export const SEED_TASK_ROWS: TaskRow[] = TASKS.map((t, i) => ({
   cost: 0,
   notes: t.notes ?? "",
   path: "",
-}));
+}))
+  // Test / QA work belongs on /testing — keep the Task Sheet for ops/design/etc.
+  .filter((r) => r.category !== "qa");
 
 // Sprint 1 beta-go-live recruiting + onboarding tasks (richer than TASKS).
 SEED_TASK_ROWS.push(
@@ -103,7 +110,7 @@ SEED_TASK_ROWS.push(
     category: "ops",
     priority: "P0",
     status: "in_progress",
-    assignBy: "Me",
+    assignBy: "Evelyn",
     assignedTo: "Catria",
     dateAssigned: START,
     dueDate: END,
@@ -119,7 +126,7 @@ SEED_TASK_ROWS.push(
     category: "qa",
     priority: "P0",
     status: "in_progress",
-    assignBy: "Me",
+    assignBy: "Evelyn",
     assignedTo: "Catria",
     dateAssigned: START,
     dueDate: END,
@@ -136,7 +143,7 @@ SEED_TASK_ROWS.push(
     priority: "P1",
     status: "not_started",
     assignBy: "Catria",
-    assignedTo: "Me",
+    assignedTo: "Evelyn",
     dateAssigned: START,
     dueDate: END,
     dateCompleted: "",
