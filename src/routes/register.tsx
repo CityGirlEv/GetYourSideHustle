@@ -141,22 +141,44 @@ function RegisterPage() {
             </Card>
           )}
 
-          {done && (
-            <Card className="glass p-6 space-y-3 text-center">
-              <div className="inline-flex h-12 w-12 mx-auto items-center justify-center rounded-full bg-emerald/15 text-emerald">
-                <CheckCircle2 className="h-6 w-6" />
-              </div>
-              <h2 className="font-display text-lg font-bold">Registration submitted</h2>
-              <p className="text-sm text-muted-foreground">
-                Your NDA has been signed and your account has been created. An administrator will review and enable your account shortly. You'll be able to sign in once it's approved.
-              </p>
-              <div className="flex justify-center">
-                <Button variant="outline" onClick={() => router.navigate({ to: "/" })}>Return home</Button>
-              </div>
-            </Card>
-          )}
+          {/* Form stays mounted; the success popup is the confirmation. */}
         </div>
       </div>
+
+      <Dialog open={done} onOpenChange={(o) => { if (!o) router.navigate({ to: "/" }); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-emerald" />
+              Registration submitted — next steps
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <p>Thanks, <b>{firstName}</b>! Your NDA is signed and your account has been created.</p>
+            <div className="rounded-md border border-amber/40 bg-amber/10 p-3">
+              <p className="font-semibold mb-1">Your account is under review.</p>
+              <p className="text-muted-foreground">
+                It is <b>disabled</b> until an administrator approves it. You will <b>not</b> be able to sign in yet.
+              </p>
+            </div>
+            <div>
+              <p className="font-semibold mb-1">What happens next</p>
+              <ol className="list-decimal ml-5 space-y-1 text-muted-foreground">
+                <li>An admin reviews your request (typically within 1 business day).</li>
+                <li>Once approved, you'll receive an <b>email at {email}</b> letting you know your account is active.</li>
+                <li>Return to the sign-in page and log in with the email and password you just used.</li>
+                {requestedRole === "qa" && (
+                  <li>After logging in, you'll land on the Testing Portal. Open the <b>QA Manual</b> link at the top — it covers filters, statuses, bulk edits, and the bug pipeline.</li>
+                )}
+              </ol>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => router.navigate({ to: "/" })}>Return home</Button>
+            <Button onClick={() => router.navigate({ to: "/auth" })} className="grad-indigo">Go to sign-in</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={ndaOpen} onOpenChange={(o) => !busy && setNdaOpen(o)}>
         <DialogContent className="max-w-2xl">

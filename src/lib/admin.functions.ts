@@ -6,6 +6,49 @@ import { z } from "zod";
 const ROLE_VALUES = ["admin", "qa", "agent", "editor", "viewer", "advisor"] as const;
 const roleSchema = z.enum(ROLE_VALUES);
 
+const NOTIFY_FROM = "The Medicare Optimizer <onboarding@resend.dev>";
+const APP_URL = "https://themedicareoptimizer.lovable.app";
+
+async function sendAccountApprovedEmail(toEmail: string, fullName: string, role: string) {
+  const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
+  const RESEND_API_KEY = process.env.RESEND_API_KEY;
+  if (!LOVABLE_API_KEY || !RESEND_API_KEY || !toEmail) {
+    console.warn("[admin] approval email skipped — missing keys or recipient");
+    return;
+  }
+  const isQa = role === "qa";
+  const html = `
+    <div style="font-family:Arial,sans-serif;line-height:1.5;max-width:560px">
+      <h2 style="margin:0 0 8px">Your Medicare Optimizer account is active</h2>
+      <p>Hi ${fullName || "there"},</p>
+      <p>Good news — an administrator just approved your beta account. You can now sign in.</p>
+      <p style="margin:18px 0">
+        <a href="${APP_URL}/auth" style="background:#4f46e5;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:600">Sign in</a>
+      </p>
+      ${isQa ? `<p>Once you're in, head to the <b>Testing Portal</b> and open the <a href="${APP_URL}/qa-manual">QA Manual</a> — it covers filters, statuses, bulk edits, and the bug pipeline.</p>` : ""}
+      <p style="color:#666;font-size:12px;margin-top:24px">If you didn't request this account, please ignore this email.</p>
+    </div>`;
+  try {
+    const res = await fetch("https://connector-gateway.lovable.dev/resend/emails", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+        "X-Connection-Api-Key": RESEND_API_KEY,
+      },
+      body: JSON.stringify({
+        from: NOTIFY_FROM,
+        to: [toEmail],
+        subject: "Your Medicare Optimizer account is approved",
+        html,
+      }),
+    });
+    if (!res.ok) console.error("[admin] approval email failed", res.status, await res.text());
+  } catch (e) {
+    console.error("[admin] approval email threw", e);
+  }
+}
+
 async function verifyAdmin(userId: string) {
   const { data: callerRoles } = await supabaseAdmin
     .from("user_roles")
@@ -91,10 +134,27 @@ export const setUserDisabled = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await verifyAdmin(context.userId);
     if (data.user_id === context.userId) throw new Error("You cannot disable your own account");
+    // Detect transition from disabled -> enabled so we only email on approval.
+    let wasDisabled = false;
+    let recipientEmail = "";
+    let recipientName = "";
+    let recipientRole = "viewer";
+    if (!data.disabled) {
+      const { data: existing } = await supabaseAdmin.auth.admin.getUserById(data.user_id);
+      wasDisabled = !!(existing?.user as unknown as { banned_until?: string | null } | undefined)?.banned_until;
+      recipientEmail = existing?.user?.email ?? "";
+      const { data: prof } = await supabaseAdmin.from("profiles").select("full_name").eq("id", data.user_id).maybeSingle();
+      recipientName = prof?.full_name ?? "";
+      const { data: roleRow } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", data.user_id).maybeSingle();
+      recipientRole = roleRow?.role ?? "viewer";
+    }
     const { error } = await supabaseAdmin.auth.admin.updateUserById(data.user_id, {
       ban_duration: data.disabled ? "876000h" : "none",
     } as unknown as { ban_duration: string });
     if (error) throw new Error(error.message);
+    if (!data.disabled && wasDisabled && recipientEmail) {
+      await sendAccountApprovedEmail(recipientEmail, recipientName, recipientRole);
+    }
     return { ok: true };
   });
 
