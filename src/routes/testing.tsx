@@ -15,6 +15,7 @@ import {
   TEST_CASES, IMPLEMENTATION_PLAN, SPRINTS, TASKS,
   loadAllStatuses, saveStatus,
   type TestStatus, type TestCase, type Priority,
+  PRIORITY_LABELS, PRIORITY_SHORT,
   getTestAssignee, getTestSprintId, ACTIVE_SPRINT_ID,
   getTestCreditReward, totalCreditBudget, creditBudgetByOwner, REPRO_FAIL_BONUS,
   loadAllQaNotes, loadAllDevNotes, saveQaNote, saveDevNote,
@@ -389,7 +390,7 @@ export function TestPlanTab() {
             <div className="text-xs text-muted-foreground">5/25 → 5/31 · all {TEST_CASES.length} test cases aligned to this sprint</div>
             <div className="text-xs text-muted-foreground mt-1">
               Beta tester reward pool: <span className="font-semibold text-foreground">{totalCreditBudget()} credit tokens</span>
-              {" "}· P0=15 · P1=10 · P2=5 · P3=3 · +{REPRO_FAIL_BONUS} bonus per first repro-fail
+              {" "}· Severe=15 · High=10 · Medium=5 · Low=3 · +{REPRO_FAIL_BONUS} bonus per first repro-fail
             </div>
           </div>
           <div className="flex flex-wrap gap-2 text-xs">
@@ -775,7 +776,7 @@ function TestCaseCard({
           title="Select for bulk edit"
         />
         <span className="text-[11px] font-mono font-bold bg-muted px-2 py-0.5 rounded">{t.id}</span>
-        <span className={`text-[11px] font-semibold rounded-full border px-2 py-0.5 ${priorityVariant(t.priority)}`}>{t.priority}</span>
+        <span className={`text-[11px] font-semibold rounded-full border px-2 py-0.5 ${priorityVariant(t.priority)}`} title={PRIORITY_LABELS[t.priority]}>{PRIORITY_SHORT[t.priority]}</span>
         <Badge variant="secondary" className="text-[11px]">{t.area}</Badge>
         <label className="inline-flex items-center gap-1 text-[11px] rounded-full border border-border px-2 py-0.5 bg-background">
           <span className="font-semibold">Sprint:</span>
@@ -1430,7 +1431,7 @@ function TasksTab() {
             <li key={t.id} className="flex items-center gap-3 p-3 text-sm">
               <StatusPill status={t.status} />
               <span className="text-[10px] font-mono text-muted-foreground w-14">{t.id}</span>
-              <span className={`text-[11px] font-semibold rounded-full border px-2 py-0.5 ${priorityVariant(t.priority)}`}>{t.priority}</span>
+              <span className={`text-[11px] font-semibold rounded-full border px-2 py-0.5 ${priorityVariant(t.priority)}`} title={PRIORITY_LABELS[t.priority]}>{PRIORITY_SHORT[t.priority]}</span>
               <Badge variant="secondary" className="text-[10px]">{t.area}</Badge>
               <span className="flex-1">{t.title}</span>
               {t.notes && <span className="text-xs text-muted-foreground italic">{t.notes}</span>}
