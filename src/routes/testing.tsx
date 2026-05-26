@@ -492,6 +492,8 @@ export function TestPlanTab() {
             onSeverityChange={(s) => setSeverityFor(t.id, s)}
             onAssigneeChange={(o) => setAssigneeFor(t.id, o)}
             onSprintChange={(s) => setSprintFor(t.id, s)}
+            isAdmin={isAdmin}
+            onEdit={() => setEditingId(t.id)}
           />
         ))}
       </div>
@@ -500,6 +502,12 @@ export function TestPlanTab() {
         onOpenChange={setSaveOpen}
         changes={pendingChanges}
         onConfirm={commitChanges}
+      />
+      <EditDescriptionDialog
+        test={editingId ? effectiveById.get(editingId) ?? null : null}
+        open={!!editingId}
+        onOpenChange={(v) => { if (!v) setEditingId(null); }}
+        onSaved={() => { setDescVersion((v) => v + 1); setEditingId(null); }}
       />
     </div>
   );
