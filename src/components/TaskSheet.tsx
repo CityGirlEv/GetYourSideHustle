@@ -25,6 +25,7 @@ import {
 } from "@/lib/tasks-sheet";
 import { SPRINTS, ACTIVE_SPRINT_ID, PRIORITY_LABELS, PRIORITY_SHORT, type Priority } from "@/lib/test-plan";
 import { MultiSelect, multiSelectMatches } from "@/components/ui/multi-select";
+import { DateField } from "@/components/DateField";
 
 const PRIORITIES: Priority[] = ["P0", "P1", "P2", "P3"];
 
@@ -490,9 +491,9 @@ export function TaskSheetContent() {
           </div>
           <div className="flex flex-wrap items-center gap-2 w-full">
             <Input value={bulkAssignBy} onChange={(e) => setBulkAssignBy(e.target.value)} placeholder="Set assigned by…" className="h-9 w-[150px]" />
-            <Input value={bulkDateAssigned} onChange={(e) => setBulkDateAssigned(e.target.value)} placeholder="Assigned MM/DD/YY" className="h-9 w-[150px]" />
-            <Input value={bulkDueDate} onChange={(e) => setBulkDueDate(e.target.value)} placeholder="Due MM/DD/YY" className="h-9 w-[150px]" />
-            <Input value={bulkDateCompleted} onChange={(e) => setBulkDateCompleted(e.target.value)} placeholder="Completed MM/DD/YY" className="h-9 w-[170px]" />
+            <DateField value={bulkDateAssigned} onChange={setBulkDateAssigned} placeholder="Assigned…" buttonClassName="h-9 w-[150px]" />
+            <DateField value={bulkDueDate} onChange={setBulkDueDate} placeholder="Due…" buttonClassName="h-9 w-[150px]" />
+            <DateField value={bulkDateCompleted} onChange={setBulkDateCompleted} placeholder="Completed…" buttonClassName="h-9 w-[170px]" />
             <Input type="number" value={bulkCost} onChange={(e) => setBulkCost(e.target.value)} placeholder="Set cost ($)" className="h-9 w-[130px]" />
           </div>
           <Button size="sm" onClick={applyBulk} disabled={!bulkStatus && !bulkSprint && !bulkAssignee.trim() && !bulkPriority && !bulkNotes.trim() && !bulkAssignBy.trim() && !bulkDateAssigned.trim() && !bulkDueDate.trim() && !bulkDateCompleted.trim() && bulkCost.trim() === ""}>
@@ -644,9 +645,9 @@ export function TaskSheetContent() {
                     <TableCell>
                       <Input value={r.assignBy} onChange={(e) => inlineUpdate(r.id, "assignBy", e.target.value)} className="h-7 w-[80px] text-xs" />
                     </TableCell>
-                    <TableCell><Input value={r.dateAssigned} onChange={(e) => inlineUpdate(r.id, "dateAssigned", e.target.value)} placeholder="MM/DD/YY" className="h-7 w-[90px] text-xs" /></TableCell>
-                    <TableCell><Input value={r.dueDate} onChange={(e) => inlineUpdate(r.id, "dueDate", e.target.value)} placeholder="MM/DD/YY" className="h-7 w-[90px] text-xs" /></TableCell>
-                    <TableCell><Input value={r.dateCompleted} onChange={(e) => inlineUpdate(r.id, "dateCompleted", e.target.value)} placeholder="MM/DD/YY" className="h-7 w-[90px] text-xs" /></TableCell>
+                    <TableCell><DateField value={r.dateAssigned} onChange={(v) => inlineUpdate(r.id, "dateAssigned", v)} placeholder="—" buttonClassName="h-7 w-[110px] text-xs" /></TableCell>
+                    <TableCell><DateField value={r.dueDate} onChange={(v) => inlineUpdate(r.id, "dueDate", v)} placeholder="—" buttonClassName="h-7 w-[110px] text-xs" /></TableCell>
+                    <TableCell><DateField value={r.dateCompleted} onChange={(v) => inlineUpdate(r.id, "dateCompleted", v)} placeholder="—" buttonClassName="h-7 w-[110px] text-xs" /></TableCell>
                     <TableCell className="text-right">
                       <Input
                         type="number"
@@ -738,16 +739,16 @@ export function TaskSheetContent() {
                 <Input value={editing.assignBy} onChange={(e) => setEditing({ ...editing, assignBy: e.target.value })} />
               </div>
               <div>
-                <Label>Date assigned (MM/DD/YY)</Label>
-                <Input value={editing.dateAssigned} onChange={(e) => setEditing({ ...editing, dateAssigned: e.target.value })} />
+                <Label>Date assigned</Label>
+                <DateField value={editing.dateAssigned} onChange={(v) => setEditing({ ...editing, dateAssigned: v })} buttonClassName="w-full" />
               </div>
               <div>
-                <Label>Due date (MM/DD/YY)</Label>
-                <Input value={editing.dueDate} onChange={(e) => setEditing({ ...editing, dueDate: e.target.value })} />
+                <Label>Due date</Label>
+                <DateField value={editing.dueDate} onChange={(v) => setEditing({ ...editing, dueDate: v })} buttonClassName="w-full" />
               </div>
               <div>
-                <Label>Date completed (MM/DD/YY)</Label>
-                <Input value={editing.dateCompleted} onChange={(e) => setEditing({ ...editing, dateCompleted: e.target.value })} />
+                <Label>Date completed</Label>
+                <DateField value={editing.dateCompleted} onChange={(v) => setEditing({ ...editing, dateCompleted: v })} buttonClassName="w-full" />
               </div>
               <div>
                 <Label>Cost ($)</Label>
