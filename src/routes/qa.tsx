@@ -12,6 +12,19 @@ import { TestPlanTab } from "@/routes/testing";
 import { NdaStatusCard } from "@/components/NdaStatusCard";
 
 export const Route = createFileRoute("/qa")({
+  head: () => ({
+    meta: [
+      { title: "QA Dashboard — The Medicare Optimizer" },
+      { name: "description", content: "Quality assurance dashboard for Medicare Optimizer test plans, scenarios, and NDAs." },
+      { property: "og:title", content: "QA Dashboard — The Medicare Optimizer" },
+      { property: "og:description", content: "Internal QA dashboard for The Medicare Optimizer." },
+      { property: "og:url", content: "https://themedicareoptimizer.lovable.app/qa" },
+      { name: "robots", content: "noindex,nofollow" },
+    ],
+    links: [
+      { rel: "canonical", href: "https://themedicareoptimizer.lovable.app/qa" },
+    ],
+  }),
   component: QADashboard,
 });
 
