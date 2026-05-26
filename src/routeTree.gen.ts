@@ -23,6 +23,7 @@ import { Route as AdvisorRouteImport } from './routes/advisor'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ScenarioNewRouteImport } from './routes/scenario.new'
+import { Route as ScenarioCodeRouteImport } from './routes/scenario.$code'
 import { Route as ScenarioCreatedCodeRouteImport } from './routes/scenario.created.$code'
 import { Route as AgentScenarioCodeRouteImport } from './routes/agent.scenario.$code'
 import { Route as AdvisorScenarioCodeRouteImport } from './routes/advisor.scenario.$code'
@@ -98,6 +99,11 @@ const ScenarioNewRoute = ScenarioNewRouteImport.update({
   path: '/scenario/new',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ScenarioCodeRoute = ScenarioCodeRouteImport.update({
+  id: '/scenario/$code',
+  path: '/scenario/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ScenarioCreatedCodeRoute = ScenarioCreatedCodeRouteImport.update({
   id: '/scenario/created/$code',
   path: '/scenario/created/$code',
@@ -133,6 +139,7 @@ export interface FileRoutesByFullPath {
   '/tasks': typeof TasksRoute
   '/testing': typeof TestingRoute
   '/users': typeof UsersRoute
+  '/scenario/$code': typeof ScenarioCodeRoute
   '/scenario/new': typeof ScenarioNewRoute
   '/advisor/scenario/$code': typeof AdvisorScenarioCodeRouteWithChildren
   '/agent/scenario/$code': typeof AgentScenarioCodeRoute
@@ -153,6 +160,7 @@ export interface FileRoutesByTo {
   '/tasks': typeof TasksRoute
   '/testing': typeof TestingRoute
   '/users': typeof UsersRoute
+  '/scenario/$code': typeof ScenarioCodeRoute
   '/scenario/new': typeof ScenarioNewRoute
   '/advisor/scenario/$code': typeof AdvisorScenarioCodeRouteWithChildren
   '/agent/scenario/$code': typeof AgentScenarioCodeRoute
@@ -174,6 +182,7 @@ export interface FileRoutesById {
   '/tasks': typeof TasksRoute
   '/testing': typeof TestingRoute
   '/users': typeof UsersRoute
+  '/scenario/$code': typeof ScenarioCodeRoute
   '/scenario/new': typeof ScenarioNewRoute
   '/advisor/scenario/$code': typeof AdvisorScenarioCodeRouteWithChildren
   '/agent/scenario/$code': typeof AgentScenarioCodeRoute
@@ -196,6 +205,7 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/testing'
     | '/users'
+    | '/scenario/$code'
     | '/scenario/new'
     | '/advisor/scenario/$code'
     | '/agent/scenario/$code'
@@ -216,6 +226,7 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/testing'
     | '/users'
+    | '/scenario/$code'
     | '/scenario/new'
     | '/advisor/scenario/$code'
     | '/agent/scenario/$code'
@@ -236,6 +247,7 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/testing'
     | '/users'
+    | '/scenario/$code'
     | '/scenario/new'
     | '/advisor/scenario/$code'
     | '/agent/scenario/$code'
@@ -257,6 +269,7 @@ export interface RootRouteChildren {
   TasksRoute: typeof TasksRoute
   TestingRoute: typeof TestingRoute
   UsersRoute: typeof UsersRoute
+  ScenarioCodeRoute: typeof ScenarioCodeRoute
   ScenarioNewRoute: typeof ScenarioNewRoute
   ScenarioCreatedCodeRoute: typeof ScenarioCreatedCodeRoute
 }
@@ -361,6 +374,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ScenarioNewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/scenario/$code': {
+      id: '/scenario/$code'
+      path: '/scenario/$code'
+      fullPath: '/scenario/$code'
+      preLoaderRoute: typeof ScenarioCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/scenario/created/$code': {
       id: '/scenario/created/$code'
       path: '/scenario/created/$code'
@@ -438,19 +458,10 @@ const rootRouteChildren: RootRouteChildren = {
   TasksRoute: TasksRoute,
   TestingRoute: TestingRoute,
   UsersRoute: UsersRoute,
+  ScenarioCodeRoute: ScenarioCodeRoute,
   ScenarioNewRoute: ScenarioNewRoute,
   ScenarioCreatedCodeRoute: ScenarioCreatedCodeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

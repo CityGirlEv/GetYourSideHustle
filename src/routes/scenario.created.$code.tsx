@@ -113,6 +113,12 @@ function ScenarioCreated() {
             <Copy className="h-4 w-4 mr-2" /> Copy Scenario ID
           </Button>
 
+          <Link to="/scenario/$code" params={{ code }} className="block">
+            <Button variant="default" className="w-full">
+              View scenario summary
+            </Button>
+          </Link>
+
           <Button onClick={() => setOptInOpen(true)} variant="outline" className="w-full">
             <Phone className="h-4 w-4 mr-2" /> Have a licensed expert contact me
           </Button>
