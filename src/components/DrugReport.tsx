@@ -7,9 +7,10 @@ export interface DrugReportRow {
   strength: string;
   form: string;
   frequency: string;
+  resolvedDiagnosis?: string;
+  retailMonthly: number;
   tier: string;
   tierRationale: string;
-  retailMonthly: number;
   estPlanMonthly: number;
   estPlanAnnual: number;
   notes: string[];
