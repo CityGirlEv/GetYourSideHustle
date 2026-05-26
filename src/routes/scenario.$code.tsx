@@ -206,9 +206,6 @@ function Disclaimer() {
   );
 }
 
-function RecommendationPanel({ scenario }: { scenario: ScenarioPdfInput & { county?: string } }) {
-}
-
 function ContactRequestsPanel({ requests }: { requests: Array<{ email: string; phone: string; createdAt: string }> }) {
   return (
     <Card className="glass p-6 space-y-3 border-primary/30">
@@ -233,6 +230,14 @@ function ContactRequestsPanel({ requests }: { requests: Array<{ email: string; p
 }
 
 function RecommendationPanelImpl({ scenario }: { scenario: ScenarioPdfInput & { county?: string } }) {
+  return RecommendationPanelBody({ scenario });
+}
+
+function RecommendationPanel({ scenario }: { scenario: ScenarioPdfInput & { county?: string } }) {
+  return RecommendationPanelBody({ scenario });
+}
+
+function RecommendationPanelBody({ scenario }: { scenario: ScenarioPdfInput & { county?: string } }) {
   const plans = rankedPlanDetails({
     year: scenario.year,
     zip3: scenario.zip3,
