@@ -67,7 +67,7 @@ function ScenarioSummary() {
                   {scenario.medications.map((m, i) => (
                     <li key={i} className="py-2 flex justify-between gap-3">
                       <span className="font-medium">{m.medication_name}</span>
-                      <span className="text-muted-foreground">{[m.dose, m.frequency].filter(Boolean).join(" · ") || "—"}</span>
+                      <span className="text-muted-foreground">{[m.strength, m.dosage_form, m.frequency].filter(Boolean).join(" · ") || "—"}</span>
                     </li>
                   ))}
                 </ul>
