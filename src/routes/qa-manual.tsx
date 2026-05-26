@@ -97,7 +97,7 @@ function QAManualPage() {
           <h2 className="font-display text-lg font-bold">5. The bug pipeline</h2>
           <p className="text-sm text-muted-foreground">How a test moves through QA and Dev until it ends at <b>Passed</b>.</p>
           <div className="overflow-x-auto">
-            <svg viewBox="0 0 760 540" className="w-full h-auto text-foreground" role="img" aria-label="QA bug pipeline flow chart">
+            <svg viewBox="0 0 820 640" className="w-full h-auto text-foreground" role="img" aria-label="QA bug pipeline flow chart">
               <defs>
                 <marker id="qa-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
                   <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor" />
@@ -105,70 +105,70 @@ function QAManualPage() {
               </defs>
               <g fontFamily="ui-sans-serif, system-ui" fontSize="13" textAnchor="middle" fill="currentColor">
                 {/* Start: Not Run */}
-                <rect x="300" y="20" width="160" height="46" rx="10" fill="var(--muted)" stroke="var(--border)" strokeWidth="1.5" />
-                <text x="380" y="48" fontWeight="600">Not Run</text>
+                <rect x="310" y="20" width="180" height="46" rx="10" fill="var(--muted)" stroke="var(--border)" strokeWidth="1.5" />
+                <text x="400" y="48" fontWeight="600">Not Run</text>
 
                 {/* QA executes */}
-                <rect x="300" y="110" width="160" height="46" rx="10" fill="var(--primary)" fillOpacity="0.18" stroke="var(--primary)" strokeWidth="1.5" />
-                <text x="380" y="138" fontWeight="600">QA executes test</text>
+                <rect x="310" y="110" width="180" height="46" rx="10" fill="var(--primary)" fillOpacity="0.18" stroke="var(--primary)" strokeWidth="1.5" />
+                <text x="400" y="138" fontWeight="600">QA executes test</text>
 
                 {/* Decision diamond: Pass? */}
-                <polygon points="380,190 470,250 380,310 290,250" fill="oklch(0.85 0.12 90 / 0.18)" stroke="oklch(0.7 0.15 75)" strokeWidth="1.5" />
-                <text x="380" y="246" fontWeight="700">Pass?</text>
-                <text x="380" y="266" fontSize="11" opacity="0.8">QA decides</text>
+                <polygon points="400,190 490,250 400,310 310,250" fill="oklch(0.85 0.12 90 / 0.18)" stroke="oklch(0.7 0.15 75)" strokeWidth="1.5" />
+                <text x="400" y="246" fontWeight="700">Pass?</text>
+                <text x="400" y="266" fontSize="11" opacity="0.8">QA decides</text>
 
                 {/* PASSED terminal (right) */}
-                <rect x="560" y="227" width="170" height="46" rx="10" fill="oklch(0.7 0.18 145 / 0.22)" stroke="oklch(0.55 0.18 145)" strokeWidth="2" />
-                <text x="645" y="248" fontWeight="800">PASSED</text>
-                <text x="645" y="264" fontSize="11" opacity="0.85">end of pipeline</text>
+                <rect x="580" y="357" width="180" height="46" rx="10" fill="oklch(0.7 0.18 145 / 0.22)" stroke="oklch(0.55 0.18 145)" strokeWidth="2" />
+                <text x="670" y="378" fontWeight="800">PASSED</text>
+                <text x="670" y="394" fontSize="11" opacity="0.85">end of pipeline</text>
 
                 {/* Fail box (left) */}
-                <rect x="30" y="227" width="170" height="46" rx="10" fill="oklch(0.6 0.2 25 / 0.18)" stroke="oklch(0.55 0.22 25)" strokeWidth="1.5" />
-                <text x="115" y="248" fontWeight="700">Fail</text>
-                <text x="115" y="264" fontSize="11" opacity="0.85">QA note required</text>
+                <rect x="40" y="227" width="180" height="46" rx="10" fill="oklch(0.6 0.2 25 / 0.18)" stroke="oklch(0.55 0.22 25)" strokeWidth="1.5" />
+                <text x="130" y="248" fontWeight="700">Fail</text>
+                <text x="130" y="264" fontSize="11" opacity="0.85">QA note required</text>
 
                 {/* Dev fixes */}
-                <rect x="30" y="340" width="220" height="56" rx="10" fill="var(--primary)" fillOpacity="0.12" stroke="var(--primary)" strokeWidth="1.5" />
-                <text x="140" y="365" fontWeight="700">Dev → Fixed / Re-Test</text>
-                <text x="140" y="383" fontSize="11" opacity="0.85">Dev note ALWAYS required</text>
+                <rect x="310" y="350" width="180" height="60" rx="10" fill="var(--primary)" fillOpacity="0.12" stroke="var(--primary)" strokeWidth="1.5" />
+                <text x="400" y="375" fontWeight="700">Dev → Fixed / Re-Test</text>
+                <text x="400" y="395" fontSize="11" opacity="0.85">Dev note ALWAYS required</text>
 
                 {/* QA re-tests decision */}
-                <polygon points="380,340 480,400 380,460 280,400" fill="oklch(0.85 0.12 90 / 0.18)" stroke="oklch(0.7 0.15 75)" strokeWidth="1.5" />
-                <text x="380" y="396" fontWeight="700">QA re-tests</text>
-                <text x="380" y="416" fontSize="11" opacity="0.85">Pass on retry?</text>
+                <polygon points="400,450 490,510 400,570 310,510" fill="oklch(0.85 0.12 90 / 0.18)" stroke="oklch(0.7 0.15 75)" strokeWidth="1.5" />
+                <text x="400" y="506" fontWeight="700">QA re-tests</text>
+                <text x="400" y="526" fontSize="11" opacity="0.85">Pass on retry?</text>
 
                 {/* Failed / Re-Test loop-back */}
-                <rect x="540" y="370" width="200" height="56" rx="10" fill="oklch(0.6 0.2 25 / 0.18)" stroke="oklch(0.55 0.22 25)" strokeWidth="1.5" />
-                <text x="640" y="395" fontWeight="700">Failed / Re-Test</text>
-                <text x="640" y="413" fontSize="11" opacity="0.85">QA note required</text>
+                <rect x="40" y="487" width="200" height="46" rx="10" fill="oklch(0.6 0.2 25 / 0.18)" stroke="oklch(0.55 0.22 25)" strokeWidth="1.5" />
+                <text x="140" y="508" fontWeight="700">Failed / Re-Test</text>
+                <text x="140" y="524" fontSize="11" opacity="0.85">QA note required</text>
 
                 {/* Arrows */}
                 <g stroke="currentColor" fill="none" strokeWidth="1.6" markerEnd="url(#qa-arrow)">
                   {/* Not Run -> QA executes */}
-                  <line x1="380" y1="66" x2="380" y2="106" />
+                  <line x1="400" y1="66" x2="400" y2="108" />
                   {/* QA executes -> Pass? */}
-                  <line x1="380" y1="156" x2="380" y2="186" />
-                  {/* Pass? Yes -> PASSED */}
-                  <line x1="470" y1="250" x2="556" y2="250" />
+                  <line x1="400" y1="156" x2="400" y2="188" />
                   {/* Pass? No -> Fail */}
-                  <line x1="290" y1="250" x2="204" y2="250" />
-                  {/* Fail -> Dev fixes */}
-                  <line x1="115" y1="273" x2="115" y2="336" />
-                  {/* Dev fixes -> QA re-tests */}
-                  <line x1="250" y1="380" x2="276" y2="396" />
-                  {/* QA re-tests Yes -> PASSED (right, then up) */}
-                  <polyline points="480,400 645,400 645,273" />
-                  {/* QA re-tests No -> Failed/Re-Test */}
-                  <line x1="480" y1="400" x2="536" y2="400" />
-                  {/* Failed/Re-Test -> Dev fixes (loop back: down, left, up) */}
-                  <polyline points="540,398 540,480 140,480 140,396" />
+                  <line x1="310" y1="250" x2="222" y2="250" />
+                  {/* Pass? Yes -> PASSED (right, then down) */}
+                  <polyline points="490,250 670,250 670,355" />
+                  {/* Fail -> Dev (down, then right) */}
+                  <polyline points="130,273 130,380 308,380" />
+                  {/* Dev -> QA re-tests */}
+                  <line x1="400" y1="410" x2="400" y2="448" />
+                  {/* Re-test No -> Failed/Re-Test */}
+                  <line x1="310" y1="510" x2="242" y2="510" />
+                  {/* Re-test Yes -> PASSED (right, then up) */}
+                  <polyline points="490,510 670,510 670,405" />
+                  {/* Failed/Re-Test -> Dev (down, right, up, left into Dev right side) */}
+                  <polyline points="140,533 140,615 790,615 790,330 490,330 490,380" />
                 </g>
 
                 {/* Labels on decision branches */}
-                <text x="510" y="242" fontSize="11" fontWeight="700" fill="oklch(0.5 0.18 145)">Yes</text>
-                <text x="248" y="242" fontSize="11" fontWeight="700" fill="oklch(0.55 0.22 25)">No</text>
-                <text x="508" y="392" fontSize="11" fontWeight="700" fill="oklch(0.55 0.22 25)">No</text>
-                <text x="555" y="345" fontSize="11" fontWeight="700" fill="oklch(0.5 0.18 145)">Yes</text>
+                <text x="530" y="242" fontSize="11" fontWeight="700" fill="oklch(0.5 0.18 145)">Yes</text>
+                <text x="270" y="242" fontSize="11" fontWeight="700" fill="oklch(0.55 0.22 25)">No</text>
+                <text x="530" y="502" fontSize="11" fontWeight="700" fill="oklch(0.5 0.18 145)">Yes</text>
+                <text x="270" y="502" fontSize="11" fontWeight="700" fill="oklch(0.55 0.22 25)">No</text>
               </g>
             </svg>
           </div>
