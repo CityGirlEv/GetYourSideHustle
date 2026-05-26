@@ -506,7 +506,7 @@ export function TestPlanTab() {
       <EditDescriptionDialog
         test={editingId ? effectiveById.get(editingId) ?? null : null}
         open={!!editingId}
-        onOpenChange={(v) => { if (!v) setEditingId(null); }}
+        onOpenChange={(v: boolean) => { if (!v) setEditingId(null); }}
         onSaved={() => { setDescVersion((v) => v + 1); setEditingId(null); }}
       />
     </div>
