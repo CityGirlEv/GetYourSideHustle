@@ -13,6 +13,8 @@ import { Route as UsersRouteImport } from './routes/users'
 import { Route as TestingRouteImport } from './routes/testing'
 import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as SourcesRouteImport } from './routes/sources'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as SitemapInternalDotxmlRouteImport } from './routes/sitemap-internal[.]xml'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as QaRouteImport } from './routes/qa'
@@ -47,6 +49,16 @@ const TasksRoute = TasksRouteImport.update({
 const SourcesRoute = SourcesRouteImport.update({
   id: '/sources',
   path: '/sources',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapInternalDotxmlRoute = SitemapInternalDotxmlRouteImport.update({
+  id: '/sitemap-internal.xml',
+  path: '/sitemap-internal.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -135,6 +147,8 @@ export interface FileRoutesByFullPath {
   '/qa': typeof QaRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sitemap-internal.xml': typeof SitemapInternalDotxmlRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sources': typeof SourcesRoute
   '/tasks': typeof TasksRoute
   '/testing': typeof TestingRoute
@@ -156,6 +170,8 @@ export interface FileRoutesByTo {
   '/qa': typeof QaRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sitemap-internal.xml': typeof SitemapInternalDotxmlRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sources': typeof SourcesRoute
   '/tasks': typeof TasksRoute
   '/testing': typeof TestingRoute
@@ -178,6 +194,8 @@ export interface FileRoutesById {
   '/qa': typeof QaRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sitemap-internal.xml': typeof SitemapInternalDotxmlRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sources': typeof SourcesRoute
   '/tasks': typeof TasksRoute
   '/testing': typeof TestingRoute
@@ -201,6 +219,8 @@ export interface FileRouteTypes {
     | '/qa'
     | '/register'
     | '/reset-password'
+    | '/sitemap-internal.xml'
+    | '/sitemap.xml'
     | '/sources'
     | '/tasks'
     | '/testing'
@@ -222,6 +242,8 @@ export interface FileRouteTypes {
     | '/qa'
     | '/register'
     | '/reset-password'
+    | '/sitemap-internal.xml'
+    | '/sitemap.xml'
     | '/sources'
     | '/tasks'
     | '/testing'
@@ -243,6 +265,8 @@ export interface FileRouteTypes {
     | '/qa'
     | '/register'
     | '/reset-password'
+    | '/sitemap-internal.xml'
+    | '/sitemap.xml'
     | '/sources'
     | '/tasks'
     | '/testing'
@@ -265,6 +289,8 @@ export interface RootRouteChildren {
   QaRoute: typeof QaRoute
   RegisterRoute: typeof RegisterRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  SitemapInternalDotxmlRoute: typeof SitemapInternalDotxmlRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   SourcesRoute: typeof SourcesRoute
   TasksRoute: typeof TasksRoute
   TestingRoute: typeof TestingRoute
@@ -302,6 +328,20 @@ declare module '@tanstack/react-router' {
       path: '/sources'
       fullPath: '/sources'
       preLoaderRoute: typeof SourcesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap-internal.xml': {
+      id: '/sitemap-internal.xml'
+      path: '/sitemap-internal.xml'
+      fullPath: '/sitemap-internal.xml'
+      preLoaderRoute: typeof SitemapInternalDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -454,6 +494,8 @@ const rootRouteChildren: RootRouteChildren = {
   QaRoute: QaRoute,
   RegisterRoute: RegisterRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  SitemapInternalDotxmlRoute: SitemapInternalDotxmlRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   SourcesRoute: SourcesRoute,
   TasksRoute: TasksRoute,
   TestingRoute: TestingRoute,
