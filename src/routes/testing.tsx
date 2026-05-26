@@ -1192,18 +1192,34 @@ function EditDescriptionDialog({
   const [stepsText, setStepsText] = useState("");
   const [expected, setExpected] = useState("");
   const [notes, setNotes] = useState("");
+  const [initial, setInitial] = useState({ title: "", preconditions: "", stepsText: "", expected: "", notes: "" });
 
   useEffect(() => {
     if (open && test) {
-      setTitle(test.title);
-      setPreconditions(test.preconditions ?? "");
-      setStepsText((test.steps ?? []).join("\n"));
-      setExpected(test.expected);
-      setNotes(test.notes ?? "");
+      const init = {
+        title: test.title,
+        preconditions: test.preconditions ?? "",
+        stepsText: (test.steps ?? []).join("\n"),
+        expected: test.expected,
+        notes: test.notes ?? "",
+      };
+      setTitle(init.title);
+      setPreconditions(init.preconditions);
+      setStepsText(init.stepsText);
+      setExpected(init.expected);
+      setNotes(init.notes);
+      setInitial(init);
     }
   }, [open, test]);
 
   if (!test) return null;
+
+  const isDirty =
+    title !== initial.title ||
+    preconditions !== initial.preconditions ||
+    stepsText !== initial.stepsText ||
+    expected !== initial.expected ||
+    notes !== initial.notes;
 
   const onSave = () => {
     const ov: TestDescriptionOverride = {
@@ -1227,11 +1243,25 @@ function EditDescriptionDialog({
 
   const hasOverride = Object.keys(loadDescriptionOverride(test.id)).length > 0;
 
+  const handleOpenChange = (v: boolean) => {
+    if (!v && isDirty) {
+      if (!confirm("You have unsaved changes. Discard them?")) return;
+    }
+    onOpenChange(v);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Edit test description · <span className="font-mono text-sm">{test.id}</span></DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            Edit test description · <span className="font-mono text-sm">{test.id}</span>
+            {isDirty && (
+              <span className="text-[10px] font-semibold rounded-full border border-amber-500/40 bg-amber-500/10 text-amber-700 px-2 py-0.5">
+                Unsaved changes
+              </span>
+            )}
+          </DialogTitle>
           <DialogDescription>
             Admin-only. Edits are saved locally and override the static test plan for everyone using this browser.
           </DialogDescription>
@@ -1284,9 +1314,14 @@ function EditDescriptionDialog({
               <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Reset to default
             </Button>
           )}
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={onSave}>
-            <Save className="h-3.5 w-3.5 mr-1.5" /> Save changes
+          <Button variant="outline" onClick={() => handleOpenChange(false)}>Cancel</Button>
+          <Button
+            onClick={onSave}
+            disabled={!isDirty}
+            className={isDirty ? "ring-2 ring-primary/40 animate-pulse" : ""}
+          >
+            <Save className="h-3.5 w-3.5 mr-1.5" />
+            {isDirty ? "Save changes" : "No changes"}
           </Button>
         </DialogFooter>
       </DialogContent>
