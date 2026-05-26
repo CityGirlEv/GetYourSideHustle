@@ -16,6 +16,21 @@ export type TestStatus =
   | "failed_retest"; // Dev attempted fix, QA retest still failing
 export type Priority = "P0" | "P1" | "P2" | "P3";
 
+// Human-readable labels for priority codes. Underlying codes (P0..P3) stay
+// stable so localStorage / CSV exports are unaffected; only the UI changes.
+export const PRIORITY_LABELS: Record<Priority, string> = {
+  P0: "Severe (Show Stopper)",
+  P1: "High (w/i 24h)",
+  P2: "Medium (Can wait)",
+  P3: "Low (Non-Priority)",
+};
+export const PRIORITY_SHORT: Record<Priority, string> = {
+  P0: "Severe",
+  P1: "High",
+  P2: "Medium",
+  P3: "Low",
+};
+
 export interface TestCase {
   id: string;           // stable ID, also the localStorage key
   area: string;         // grouping (Auth, Intake, Voice, …)
