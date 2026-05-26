@@ -663,6 +663,7 @@ function priorityVariant(p: Priority): string {
 function TestCaseCard({
   t, status, qaNote, devNote, severity, assignee, sprintId, selected, onSelectChange,
   onChange, onQaNoteChange, onDevNoteChange, onSeverityChange, onAssigneeChange, onSprintChange,
+  isAdmin, onEdit,
 }: {
   t: TestCase;
   status: TestStatus;
@@ -679,6 +680,8 @@ function TestCaseCard({
   onSeverityChange: (s: FailSeverity | "") => void;
   onAssigneeChange: (owner: string) => void;
   onSprintChange: (sprintId: string) => void;
+  isAdmin?: boolean;
+  onEdit?: () => void;
 }) {
   // Shade the whole row based on status (background + subtle border)
   const shade =
