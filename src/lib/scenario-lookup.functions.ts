@@ -37,7 +37,7 @@ export const getScenarioByCode = createServerFn({ method: "POST" })
       tobacco: row.tobacco,
       incomeBand: row.income_band ?? undefined,
       costPreference: (row.cost_preference as "minimize_monthly" | "predictability") ?? "minimize_monthly",
-      conditions: (row.conditions as string[]) ?? [],
-      medications: (row.medications as Medication[]) ?? [],
+      conditions: (row.conditions as unknown as string[]) ?? [],
+      medications: (row.medications as unknown as Medication[]) ?? [],
     };
   });
