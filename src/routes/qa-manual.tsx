@@ -160,8 +160,8 @@ function QAManualPage() {
                   <line x1="310" y1="510" x2="242" y2="510" />
                   {/* Re-test Yes -> PASSED (right, then up) */}
                   <polyline points="490,510 670,510 670,405" />
-                  {/* Failed/Re-Test -> Dev (down, right, up, left into Dev right side) */}
-                  <polyline points="140,533 140,615 790,615 790,330 490,330 490,380" />
+                  {/* Failed/Re-Test -> Dev (right, then up into Dev left side) */}
+                  <polyline points="240,510 275,510 275,380 308,380" />
                 </g>
 
                 {/* Labels on decision branches */}
