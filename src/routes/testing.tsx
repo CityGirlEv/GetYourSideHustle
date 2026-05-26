@@ -776,7 +776,7 @@ function TestCaseCard({
           title="Select for bulk edit"
         />
         <span className="text-[11px] font-mono font-bold bg-muted px-2 py-0.5 rounded">{t.id}</span>
-        <span className={`text-[11px] font-semibold rounded-full border px-2 py-0.5 ${priorityVariant(t.priority)}`}>{t.priority}</span>
+        <span className={`text-[11px] font-semibold rounded-full border px-2 py-0.5 ${priorityVariant(t.priority)}`} title={PRIORITY_LABELS[t.priority]}>{PRIORITY_SHORT[t.priority]}</span>
         <Badge variant="secondary" className="text-[11px]">{t.area}</Badge>
         <label className="inline-flex items-center gap-1 text-[11px] rounded-full border border-border px-2 py-0.5 bg-background">
           <span className="font-semibold">Sprint:</span>
@@ -1431,7 +1431,7 @@ function TasksTab() {
             <li key={t.id} className="flex items-center gap-3 p-3 text-sm">
               <StatusPill status={t.status} />
               <span className="text-[10px] font-mono text-muted-foreground w-14">{t.id}</span>
-              <span className={`text-[11px] font-semibold rounded-full border px-2 py-0.5 ${priorityVariant(t.priority)}`}>{t.priority}</span>
+              <span className={`text-[11px] font-semibold rounded-full border px-2 py-0.5 ${priorityVariant(t.priority)}`} title={PRIORITY_LABELS[t.priority]}>{PRIORITY_SHORT[t.priority]}</span>
               <Badge variant="secondary" className="text-[10px]">{t.area}</Badge>
               <span className="flex-1">{t.title}</span>
               {t.notes && <span className="text-xs text-muted-foreground italic">{t.notes}</span>}
