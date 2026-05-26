@@ -1178,6 +1178,122 @@ function StatusPill({ status }: { status: "done" | "in_progress" | "todo" | "blo
   return <span className={`text-[10px] font-semibold rounded-full border px-2 py-0.5 w-16 text-center ${v.c}`}>{v.l}</span>;
 }
 
+/* ========================= EDIT DESCRIPTION DIALOG ========================= */
+function EditDescriptionDialog({
+  test, open, onOpenChange, onSaved,
+}: {
+  test: TestCase | null;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onSaved: () => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [preconditions, setPreconditions] = useState("");
+  const [stepsText, setStepsText] = useState("");
+  const [expected, setExpected] = useState("");
+  const [notes, setNotes] = useState("");
+
+  useEffect(() => {
+    if (open && test) {
+      setTitle(test.title);
+      setPreconditions(test.preconditions ?? "");
+      setStepsText((test.steps ?? []).join("\n"));
+      setExpected(test.expected);
+      setNotes(test.notes ?? "");
+    }
+  }, [open, test]);
+
+  if (!test) return null;
+
+  const onSave = () => {
+    const ov: TestDescriptionOverride = {
+      title,
+      preconditions,
+      steps: stepsText.split("\n").map((s) => s.trim()).filter(Boolean),
+      expected,
+      notes,
+    };
+    saveDescriptionOverride(test.id, ov);
+    toast.success("Test description saved.");
+    onSaved();
+  };
+
+  const onResetToDefault = () => {
+    if (!confirm("Clear all admin edits for this test and restore defaults?")) return;
+    clearDescriptionOverride(test.id);
+    toast.success("Restored default description.");
+    onSaved();
+  };
+
+  const hasOverride = Object.keys(loadDescriptionOverride(test.id)).length > 0;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Edit test description · <span className="font-mono text-sm">{test.id}</span></DialogTitle>
+          <DialogDescription>
+            Admin-only. Edits are saved locally and override the static test plan for everyone using this browser.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex-1 overflow-y-auto space-y-3 text-sm">
+          <div>
+            <label className="text-xs font-semibold">Title</label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+          </div>
+          <div>
+            <label className="text-xs font-semibold">Preconditions</label>
+            <textarea
+              value={preconditions}
+              onChange={(e) => setPreconditions(e.target.value)}
+              rows={2}
+              className="w-full text-sm rounded-md border border-input bg-background px-2 py-1"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-semibold">Steps (one per line)</label>
+            <textarea
+              value={stepsText}
+              onChange={(e) => setStepsText(e.target.value)}
+              rows={6}
+              className="w-full text-sm rounded-md border border-input bg-background px-2 py-1 font-mono"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-semibold">Expected result</label>
+            <textarea
+              value={expected}
+              onChange={(e) => setExpected(e.target.value)}
+              rows={3}
+              className="w-full text-sm rounded-md border border-input bg-background px-2 py-1"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-semibold">Notes</label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              className="w-full text-sm rounded-md border border-input bg-background px-2 py-1"
+            />
+          </div>
+        </div>
+        <DialogFooter className="border-t border-border pt-3 flex-wrap gap-2">
+          {hasOverride && (
+            <Button variant="outline" onClick={onResetToDefault} className="mr-auto">
+              <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Reset to default
+            </Button>
+          )}
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={onSave}>
+            <Save className="h-3.5 w-3.5 mr-1.5" /> Save changes
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 /* ================================= TASKS TAB =============================== */
 function TasksTab() {
   const [statusFilter, setStatusFilter] = useState<"all" | "done" | "in_progress" | "todo" | "blocked">("all");
