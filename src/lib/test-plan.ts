@@ -587,6 +587,7 @@ export const SPRINTS: Sprint[] = [
       { id: "S1-5", title: "Beta smoke pass against production preview (Thu 5/28)", type: "test", status: "todo" },
       { id: "S1-6", title: "Triage + fix P0/P1 beta defects", type: "bug", status: "todo" },
       { id: "S1-7", title: "Catria recruits 10 agents (hand-picked) — NDA + Agent Agreement signed before access", type: "feature", status: "todo", owner: "Catria" },
+      { id: "S1-8", title: "Admin notifications bell + new-registration alerts wired (in-app + Resend sandbox)", type: "feature", status: "done" },
     ],
   },
   {
