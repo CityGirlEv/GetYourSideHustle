@@ -9,7 +9,22 @@ import { ShieldCheck, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 
-export const Route = createFileRoute("/reset-password")({ component: ResetPasswordPage });
+export const Route = createFileRoute("/reset-password")({
+  head: () => ({
+    meta: [
+      { title: "Reset Password — The Medicare Optimizer" },
+      { name: "description", content: "Reset the password for your Medicare Optimizer staff account." },
+      { property: "og:title", content: "Reset Password — The Medicare Optimizer" },
+      { property: "og:description", content: "Reset your Medicare Optimizer staff account password." },
+      { property: "og:url", content: "https://themedicareoptimizer.lovable.app/reset-password" },
+      { name: "robots", content: "noindex" },
+    ],
+    links: [
+      { rel: "canonical", href: "https://themedicareoptimizer.lovable.app/reset-password" },
+    ],
+  }),
+  component: ResetPasswordPage,
+});
 
 function ResetPasswordPage() {
   const router = useRouter();
