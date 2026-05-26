@@ -94,6 +94,15 @@ function ScenarioSummary() {
             </Card>
 
             {scenario.medications.length > 0 && <DrugReport medications={scenario.medications} />}
+
+            <div className="flex gap-3">
+              <Button onClick={downloadPdf} variant="outline" className="flex-1">
+                <FileText className="h-4 w-4 mr-2" /> PDF
+              </Button>
+              <Button onClick={downloadWord} variant="outline" className="flex-1">
+                <FileDown className="h-4 w-4 mr-2" /> Word
+              </Button>
+            </div>
           </>
         )}
       </div>
