@@ -22,6 +22,19 @@ interface AssignedScenario {
 }
 
 export const Route = createFileRoute("/agent")({
+  head: () => ({
+    meta: [
+      { title: "Agent Portal — The Medicare Optimizer" },
+      { name: "description", content: "Licensed agents review assigned Medicare scenarios and outreach requests." },
+      { property: "og:title", content: "Agent Portal — The Medicare Optimizer" },
+      { property: "og:description", content: "Assigned Medicare scenarios for licensed agents." },
+      { property: "og:url", content: "https://themedicareoptimizer.lovable.app/agent" },
+      { name: "robots", content: "noindex,nofollow" },
+    ],
+    links: [
+      { rel: "canonical", href: "https://themedicareoptimizer.lovable.app/agent" },
+    ],
+  }),
   component: AgentPortal,
 });
 
