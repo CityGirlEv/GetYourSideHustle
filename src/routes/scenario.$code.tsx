@@ -31,6 +31,22 @@ function ScenarioSummary() {
     } catch { /* ignore */ }
   }, [code]);
 
+  const downloadPdf = () => {
+    try {
+      if (!scenario) { toast.error("PDF not available"); return; }
+      downloadConsumerScenarioPdf(scenario);
+      toast.success("PDF downloaded");
+    } catch (e) { toast.error("Could not generate PDF"); console.error(e); }
+  };
+
+  const downloadWord = () => {
+    try {
+      if (!scenario) { toast.error("Workbook not available"); return; }
+      downloadScenarioXlsx({ ...scenario, county: scenario.county });
+      toast.success("Excel workbook downloaded");
+    } catch (e) { toast.error("Could not generate workbook"); console.error(e); }
+  };
+
   return (
     <AppShell title="Scenario summary" subtitle={`ID ${code}`}>
       <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
