@@ -390,7 +390,7 @@ export function TestPlanTab() {
             <div className="text-xs text-muted-foreground">5/25 → 5/31 · all {TEST_CASES.length} test cases aligned to this sprint</div>
             <div className="text-xs text-muted-foreground mt-1">
               Beta tester reward pool: <span className="font-semibold text-foreground">{totalCreditBudget()} credit tokens</span>
-              {" "}· P0=15 · P1=10 · P2=5 · P3=3 · +{REPRO_FAIL_BONUS} bonus per first repro-fail
+              {" "}· Severe=15 · High=10 · Medium=5 · Low=3 · +{REPRO_FAIL_BONUS} bonus per first repro-fail
             </div>
           </div>
           <div className="flex flex-wrap gap-2 text-xs">
