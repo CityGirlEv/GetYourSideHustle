@@ -503,6 +503,8 @@ export function TestPlanTab() {
             onSprintChange={(s) => setSprintFor(t.id, s)}
             isAdmin={isAdmin}
             onEdit={() => setEditingId(t.id)}
+            hasChanges={hasTestChanges(t.id)}
+            onSave={() => saveSingleTest(t.id)}
           />
         ))}
       </div>
