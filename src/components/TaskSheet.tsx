@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ import {
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, RotateCcw, Trash2, Pencil, Search, Download, ExternalLink, Save } from "lucide-react";
+import { Plus, RotateCcw, Trash2, Pencil, Search, Download, ExternalLink, Save, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import {
   loadTaskRows, saveTaskRows, resetTaskRows, nextTaskId, todayMMDDYY,
@@ -148,6 +148,34 @@ export function TaskSheetContent() {
     for (const r of rows) by[r.status]++;
     return by;
   }, [rows]);
+
+  // Group filtered rows by sprint. Current sprint first, then by SPRINTS order, then unassigned.
+  const groupedBySprint = useMemo(() => {
+    const map = new Map<string, TaskRow[]>();
+    for (const r of filtered) {
+      const k = r.sprintId || "_none";
+      if (!map.has(k)) map.set(k, []);
+      map.get(k)!.push(r);
+    }
+    const ordered: { sprintId: string; rows: TaskRow[] }[] = [];
+    if (map.has(ACTIVE_SPRINT_ID)) ordered.push({ sprintId: ACTIVE_SPRINT_ID, rows: map.get(ACTIVE_SPRINT_ID)! });
+    for (const s of SPRINTS) {
+      if (s.id !== ACTIVE_SPRINT_ID && map.has(s.id)) ordered.push({ sprintId: s.id, rows: map.get(s.id)! });
+    }
+    if (map.has("_none")) ordered.push({ sprintId: "_none", rows: map.get("_none")! });
+    return ordered;
+  }, [filtered]);
+
+  // Collapse every non-active sprint by default.
+  const [collapsedSprints, setCollapsedSprints] = useState<Set<string>>(
+    () => new Set(SPRINTS.filter((s) => s.id !== ACTIVE_SPRINT_ID).map((s) => s.id))
+  );
+  const toggleSprint = (id: string) =>
+    setCollapsedSprints((p) => {
+      const n = new Set(p);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
 
   const openNew = () => { setEditing(emptyDraft()); setDialogOpen(true); };
   const openEdit = (r: TaskRow) => { setEditing({ ...r }); setDialogOpen(true); };
@@ -519,11 +547,35 @@ export function TaskSheetContent() {
                   </TableCell>
                 </TableRow>
               )}
-              {filtered.map((r) => {
-                const sprint = SPRINTS.find((s) => s.id === r.sprintId);
-                const savedRow = savedRows.find((s) => s.id === r.id);
-                const isDirty = !savedRow || JSON.stringify(savedRow) !== JSON.stringify(r);
+              {groupedBySprint.map(({ sprintId, rows: grows }) => {
+                const sprintMeta = SPRINTS.find((s) => s.id === sprintId);
+                const isCollapsed = collapsedSprints.has(sprintId);
+                const label = sprintMeta ? `Sprint ${sprintMeta.number} · ${sprintMeta.name}` : "Unassigned";
+                const isActive = sprintId === ACTIVE_SPRINT_ID;
                 return (
+                  <Fragment key={sprintId}>
+                    <TableRow
+                      className="bg-muted/60 hover:bg-muted/70 cursor-pointer border-t-2 border-border"
+                      onClick={() => toggleSprint(sprintId)}
+                    >
+                      <TableCell colSpan={14} className="py-2">
+                        <div className="flex items-center gap-2 font-semibold text-sm">
+                          <ChevronRight className={`h-4 w-4 transition-transform ${!isCollapsed ? "rotate-90" : ""}`} />
+                          <span>{label}</span>
+                          {isActive && (
+                            <Badge variant="outline" className="border-primary/60 text-primary">Current</Badge>
+                          )}
+                          <span className="text-xs font-normal text-muted-foreground ml-1">
+                            {grows.length} task{grows.length === 1 ? "" : "s"}
+                          </span>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                    {!isCollapsed && grows.map((r) => {
+                      const sprint = SPRINTS.find((s) => s.id === r.sprintId);
+                      const savedRow = savedRows.find((s) => s.id === r.id);
+                      const isDirty = !savedRow || JSON.stringify(savedRow) !== JSON.stringify(r);
+                      return (
                   <TableRow key={r.id} className={`${ROW_STATUS_BG[r.status]} ${isDirty ? "outline outline-1 outline-amber-500/60" : ""}`}>
                     <TableCell>
                       <Checkbox
@@ -619,6 +671,9 @@ export function TaskSheetContent() {
                       </div>
                     </TableCell>
                   </TableRow>
+                      );
+                    })}
+                  </Fragment>
                 );
               })}
             </TableBody>
