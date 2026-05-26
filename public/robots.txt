@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /advisor
+Disallow: /agent
+Disallow: /qa
+Disallow: /testing
+Disallow: /sources
+Disallow: /tasks
+Disallow: /users
+Disallow: /sitemap-internal.xml
+
+Sitemap: https://themedicareoptimizer.lovable.app/sitemap.xml
