@@ -66,12 +66,11 @@ interface AdminContactRow {
   created_at: string;
 }
 
-export const Route = createFileRoute("/admin")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    tab: typeof search.tab === "string" ? (search.tab as string) : undefined,
-  }),
-  component: AdminPortal,
+const adminRouteSearch = (search: Record<string, unknown>) => ({
+  tab: typeof search.tab === "string" ? (search.tab as string) : undefined,
 });
+// Attach validateSearch to the route declared above.
+Route.update({ validateSearch: adminRouteSearch });
 
 function BudgetTab() {
   const totals = computeBudgetTotals();
