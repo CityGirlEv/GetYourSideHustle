@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   CheckCircle2, XCircle, MinusCircle, AlertOctagon, Search, RotateCcw,
   FlaskConical, CalendarDays, ListChecks, GitBranch, Sparkles, ExternalLink,
-  Wrench, RefreshCw, Paperclip, Upload, Trash2, FileText, Loader2, Save, Pencil,
+  Wrench, RefreshCw, Paperclip, Upload, Trash2, FileText, Loader2, Save, Pencil, ChevronRight,
 } from "lucide-react";
 import {
   TEST_CASES, IMPLEMENTATION_PLAN, SPRINTS, TASKS,
