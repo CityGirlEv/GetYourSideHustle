@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { z } from "zod";
+import type { Medication } from "@/lib/medicare-math";
 
 export const getScenarioByCode = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -37,6 +38,6 @@ export const getScenarioByCode = createServerFn({ method: "POST" })
       incomeBand: row.income_band ?? undefined,
       costPreference: (row.cost_preference as "minimize_monthly" | "predictability") ?? "minimize_monthly",
       conditions: (row.conditions as string[]) ?? [],
-      medications: (row.medications as unknown[]) ?? [],
+      medications: (row.medications as Medication[]) ?? [],
     };
   });
