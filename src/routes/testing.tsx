@@ -259,6 +259,15 @@ export function TestPlanTab() {
     setDSeverities({}); setDAssignees({}); setDSprints({});
   };
 
+  const hasTestChanges = (id: string) =>
+    id in dStatuses || id in dQaNotes || id in dDevNotes || id in dSeverities || id in dAssignees || id in dSprints;
+
+  const saveSingleTest = (id: string) => {
+    const keys = new Set(pendingChanges.filter((c) => c.testId === id).map((c) => c.key));
+    if (keys.size === 0) return;
+    commitChanges(keys);
+  };
+
   // Persist a subset of pending changes; remaining ones stay in draft.
   const commitChanges = (selectedKeys: Set<string>) => {
     const stillDraft = {
