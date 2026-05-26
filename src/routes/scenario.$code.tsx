@@ -3,11 +3,13 @@ import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Pill, MapPin, User, Calendar, DollarSign, FileDown, FileText } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ArrowLeft, Pill, MapPin, User, Calendar, DollarSign, FileDown, FileText, Sparkles, CheckCircle2 } from "lucide-react";
 import type { ScenarioPdfInput } from "@/lib/scenario-pdf";
 import { downloadConsumerScenarioPdf } from "@/lib/scenario-pdf";
 import { downloadScenarioXlsx } from "@/lib/scenario-xlsx";
 import { DrugReport } from "@/components/DrugReport";
+import { rankedPlanDetails } from "@/lib/plan-details";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { getScenarioByCode } from "@/lib/scenario-lookup.functions";
@@ -103,23 +105,43 @@ function ScenarioSummary() {
               </div>
             </Card>
 
-            <Card className="glass p-6 space-y-3">
-              <h2 className="font-display text-xl font-bold flex items-center gap-2"><Pill className="h-4 w-4 text-primary"/>Medications ({scenario.medications.length})</h2>
-              {scenario.medications.length === 0 ? (
-                <div className="text-sm text-muted-foreground">None listed.</div>
-              ) : (
-                <ul className="divide-y divide-border text-sm">
-                  {scenario.medications.map((m, i) => (
-                    <li key={i} className="py-2 flex justify-between gap-3">
-                      <span className="font-medium">{m.medication_name}</span>
-                      <span className="text-muted-foreground">{[m.strength, m.dosage_form, m.frequency].filter(Boolean).join(" · ") || "—"}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Card>
+            <Tabs defaultValue="recommendation" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="recommendation">
+                  <Sparkles className="h-3.5 w-3.5 mr-1.5"/>1. Recommendation
+                </TabsTrigger>
+                <TabsTrigger value="drugs">
+                  <Pill className="h-3.5 w-3.5 mr-1.5"/>2. Drug tier costs
+                </TabsTrigger>
+              </TabsList>
 
-            {scenario.medications.length > 0 && <DrugReport medications={scenario.medications} />}
+              <TabsContent value="recommendation" className="mt-4 space-y-4">
+                <RecommendationPanel scenario={scenario} />
+                <Card className="glass p-6 space-y-3">
+                  <h2 className="font-display text-lg font-bold flex items-center gap-2"><Pill className="h-4 w-4 text-primary"/>Medications ({scenario.medications.length})</h2>
+                  {scenario.medications.length === 0 ? (
+                    <div className="text-sm text-muted-foreground">None listed.</div>
+                  ) : (
+                    <ul className="divide-y divide-border text-sm">
+                      {scenario.medications.map((m, i) => (
+                        <li key={i} className="py-2 flex justify-between gap-3">
+                          <span className="font-medium">{m.medication_name}</span>
+                          <span className="text-muted-foreground">{[m.strength, m.dosage_form, m.frequency].filter(Boolean).join(" · ") || "—"}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="drugs" className="mt-4">
+                {scenario.medications.length > 0 ? (
+                  <DrugReport medications={scenario.medications} />
+                ) : (
+                  <Card className="glass p-6 text-sm text-muted-foreground">No medications were entered for this scenario.</Card>
+                )}
+              </TabsContent>
+            </Tabs>
 
             <div className="flex gap-3">
               <Button onClick={downloadPdf} variant="outline" className="flex-1">
@@ -133,6 +155,94 @@ function ScenarioSummary() {
         )}
       </div>
     </AppShell>
+  );
+}
+
+function RecommendationPanel({ scenario }: { scenario: ScenarioPdfInput & { county?: string } }) {
+  const plans = rankedPlanDetails({
+    year: scenario.year,
+    zip3: scenario.zip3,
+    medications: scenario.medications,
+  });
+  const top = plans[0];
+  const runnersUp = plans.slice(1, 3);
+  const usd = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+  const why: string[] = [];
+  if (scenario.costPreference === "minimize_monthly") why.push("You prefer to minimize monthly premium — this plan has the lowest projected annual total cost in your area.");
+  else why.push("You prefer cost predictability — this plan offers stable copays and a known out-of-pocket maximum.");
+  if (scenario.medications.length > 0) why.push(`Drug coverage modeled against your ${scenario.medications.length} medication${scenario.medications.length === 1 ? "" : "s"} using CMS Part D tier guidance.`);
+  if (scenario.conditions.length > 0) why.push(`Network and benefits considered for your reported conditions: ${scenario.conditions.slice(0, 3).join(", ")}.`);
+  if (!top) {
+    return <Card className="glass p-6 text-sm text-muted-foreground">No recommendation available.</Card>;
+  }
+  return (
+    <Card className="glass p-6 space-y-4">
+      <div className="flex items-center gap-2">
+        <Sparkles className="h-5 w-5 text-primary" />
+        <h2 className="font-display text-xl font-bold">Personalized recommendation</h2>
+      </div>
+      <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <div>
+            <div className="text-xs uppercase tracking-wide text-muted-foreground">Best match for {scenario.year}</div>
+            <div className="font-display text-lg font-bold">{top.carrier} — {top.plan}</div>
+            <div className="text-xs text-muted-foreground">{top.planType} · {top.network}</div>
+          </div>
+          <div className="text-right">
+            <div className="text-xs uppercase tracking-wide text-muted-foreground">Est. monthly</div>
+            <div className="font-display text-2xl font-bold tabular-nums">{usd(top.monthly)}</div>
+            <div className="text-[11px] text-muted-foreground">~{usd(top.annual)} / yr incl. drugs</div>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+          <Stat label="PCP / Specialist" value={`${top.pcpCopay} / ${top.specCopay}`} />
+          <Stat label="ER" value={top.erCopay} />
+          <Stat label="Med MOOP" value={top.moop} />
+          <Stat label="Stars / AM Best" value={`${top.stars} · ${top.amBest}`} />
+        </div>
+        <div className="text-xs text-muted-foreground border-t border-border pt-2">{top.extras}</div>
+      </div>
+
+      <div>
+        <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Why this plan</div>
+        <ul className="space-y-1.5 text-sm">
+          {why.map((w, i) => (
+            <li key={i} className="flex items-start gap-2">
+              <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5"/>
+              <span>{w}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {runnersUp.length > 0 && (
+        <div>
+          <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Also consider</div>
+          <div className="grid sm:grid-cols-2 gap-2">
+            {runnersUp.map((p) => (
+              <div key={p.rank} className="rounded-md border border-border p-3 text-xs">
+                <div className="font-semibold">{p.carrier}</div>
+                <div className="text-muted-foreground">{p.plan}</div>
+                <div className="mt-1 tabular-nums">{usd(p.monthly)}/mo · {usd(p.annual)}/yr</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <p className="text-[10px] text-muted-foreground border-t border-border pt-2">
+        Estimates based on CMS 2026 reference data for ZIP {scenario.zip3}xx. Actual premiums and benefits vary by plan and effective date.
+      </p>
+    </Card>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md bg-background/50 border border-border p-2">
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="font-semibold">{value}</div>
+    </div>
   );
 }
 
