@@ -7,9 +7,10 @@ export interface DrugReportRow {
   strength: string;
   form: string;
   frequency: string;
+  resolvedDiagnosis?: string;
+  retailMonthly: number;
   tier: string;
   tierRationale: string;
-  retailMonthly: number;
   estPlanMonthly: number;
   estPlanAnnual: number;
   notes: string[];
@@ -68,13 +69,14 @@ export function buildDrugReport(meds: Medication[]): DrugReportRow[] {
     if (m.no_generic_available) notes.push("No generic equivalent (brand-only)");
     if (m.coverage_uncertain) notes.push("Coverage estimate — verify against plan formulary");
     return {
-      name: m.medication_name,
+      name: m.medication_name || "Unnamed medication",
       strength: m.strength,
       form: m.dosage_form,
       frequency: m.frequency,
+      resolvedDiagnosis: m.resolved_diagnosis,
+      retailMonthly: m.estimated_monthly_retail ?? 0,
       tier,
       tierRationale: rationale,
-      retailMonthly: m.estimated_monthly_retail ?? 0,
       estPlanMonthly,
       estPlanAnnual: estPlanMonthly * 12,
       notes,
@@ -113,8 +115,12 @@ export function DrugReport({ medications }: { medications: Medication[] }) {
             {rows.map((r, i) => (
               <tr key={i} className="border-b border-border/50 align-top">
                 <td className="py-2 pr-3">
-                  <div className="font-semibold">{r.name}</div>
+                  <div className="font-semibold">{r.name || "Unnamed medication"}</div>
                   <div className="text-[11px] text-muted-foreground">{[r.strength, r.form, r.frequency].filter(Boolean).join(" · ")}</div>
+                  {r.resolvedDiagnosis ? (
+                    <div className="text-[10px] text-muted-foreground mt-0.5">Condition: {r.resolvedDiagnosis}</div>
+                  ) : null}
+                  <div className="text-[10px] text-muted-foreground mt-0.5">Retail: {usd(r.retailMonthly)}/mo</div>
                   {r.notes.map((n, j) => (
                     <div key={j} className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
                       <AlertCircle className="h-2.5 w-2.5 shrink-0" /> {n}
