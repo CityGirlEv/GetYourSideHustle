@@ -103,8 +103,19 @@ export const Route = createFileRoute("/testing")({
 function TestingPortal() {
   const { user } = useApp();
   const isAdmin = user?.role === "admin";
+  const isQa = user?.role === "qa";
   return (
     <AppShell title="Testing Portal" subtitle="Use-case tests, implementation phases, sprint schedule, and the cross-sprint task backlog.">
+      {(isQa || isAdmin) && (
+        <div className="mb-3 flex items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+          <div>
+            <b>New here?</b> Read the QA Manual — filters, statuses, bulk edits, and the bug pipeline in one short page.
+          </div>
+          <a href="/qa-manual" className="inline-flex items-center rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90">
+            Open QA Manual →
+          </a>
+        </div>
+      )}
       <Tabs defaultValue="tests" className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <TabsList className={`grid w-full md:w-auto ${isAdmin ? "grid-cols-2 md:grid-cols-4" : "grid-cols-2"}`}>
