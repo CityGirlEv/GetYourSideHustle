@@ -207,6 +207,32 @@ function Disclaimer() {
 }
 
 function RecommendationPanel({ scenario }: { scenario: ScenarioPdfInput & { county?: string } }) {
+}
+
+function ContactRequestsPanel({ requests }: { requests: Array<{ email: string; phone: string; createdAt: string }> }) {
+  return (
+    <Card className="glass p-6 space-y-3 border-primary/30">
+      <div className="flex items-center gap-2">
+        <Phone className="h-5 w-5 text-primary" />
+        <h2 className="font-display text-lg font-bold">Consumer contact info (admin only)</h2>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        This person opted in to be contacted by a licensed Medicare expert. Reach out using the details below.
+      </p>
+      <div className="space-y-2">
+        {requests.map((r, i) => (
+          <div key={i} className="rounded-md border border-border bg-card/40 p-3 text-sm space-y-1">
+            <div className="flex items-center gap-2"><Mail className="h-3.5 w-3.5 text-muted-foreground"/><a href={`mailto:${r.email}`} className="text-primary underline underline-offset-2">{r.email}</a></div>
+            <div className="flex items-center gap-2"><Phone className="h-3.5 w-3.5 text-muted-foreground"/><a href={`tel:${r.phone}`} className="text-primary underline underline-offset-2">{r.phone}</a></div>
+            <div className="text-[11px] text-muted-foreground">Submitted {new Date(r.createdAt).toLocaleString()}</div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+function RecommendationPanelImpl({ scenario }: { scenario: ScenarioPdfInput & { county?: string } }) {
   const plans = rankedPlanDetails({
     year: scenario.year,
     zip3: scenario.zip3,
