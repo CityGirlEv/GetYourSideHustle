@@ -736,6 +736,17 @@ function TestCaseCard({
         <h3 className="flex-1 font-semibold text-sm md:text-base">
           <TestTitleLink test={t}>{t.title}</TestTitleLink>
         </h3>
+        {isAdmin && onEdit && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 px-2 text-xs"
+            onClick={onEdit}
+            title="Edit test description"
+          >
+            <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
+          </Button>
+        )}
         <StatusButtons status={status} onChange={onChange} />
       </div>
       <div className="mb-2 -mt-1">
