@@ -653,7 +653,7 @@ export function loadAllSeverities(): Record<string, FailSeverity | ""> {
 // TEST OWNERSHIP — 70/30 split, Catria lead. All tests are aligned to the
 // active sprint (Sprint 1 · beta go-live) unless a TestCase overrides it.
 // ----------------------------------------------------------------------------
-export const TEST_OWNERS = ["Catria", "Me", "Dev"] as const;
+export const TEST_OWNERS = ["Catria", "Evelyn", "Dev"] as const;
 export type TestOwner = (typeof TEST_OWNERS)[number];
 
 /**
@@ -665,7 +665,7 @@ export const DEV_OWNER: TestOwner = "Dev";
 
 /**
  * Deterministic 70/30 split across the TEST_CASES list. The first 7 of every
- * 10 (by source order) go to Catria, the remaining 3 to "Me". A TestCase can
+ * 10 (by source order) go to Catria, the remaining 3 to "Evelyn". A TestCase can
  * override by setting `assignee` explicitly.
  */
 export function getTestAssignee(t: TestCase, status?: TestStatus): TestOwner | string {
@@ -677,7 +677,7 @@ export function getTestAssignee(t: TestCase, status?: TestStatus): TestOwner | s
   if (t.assignee) return t.assignee;
   const idx = TEST_CASES.findIndex((x) => x.id === t.id);
   if (idx < 0) return "Catria";
-  return idx % 10 < 7 ? "Catria" : "Me";
+  return idx % 10 < 7 ? "Catria" : "Evelyn";
 }
 
 // ----------------------------------------------------------------------------
