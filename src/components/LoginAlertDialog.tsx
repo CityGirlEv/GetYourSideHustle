@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
 import { parse, isValid, startOfDay } from "date-fns";
 import {
   Dialog,
@@ -131,23 +130,22 @@ export function LoginAlertDialog() {
             );
             return (
               <li key={row.id}>
-                {isExternal ? (
-                  <a href={to} target="_blank" rel="noreferrer" onClick={() => setOpen(false)}>
-                    {content}
-                  </a>
-                ) : (
-                  <Link to={to} onClick={() => setOpen(false)}>
-                    {content}
-                  </Link>
-                )}
+                <a
+                  href={to}
+                  target={isExternal ? "_blank" : undefined}
+                  rel={isExternal ? "noreferrer" : undefined}
+                  onClick={() => setOpen(false)}
+                >
+                  {content}
+                </a>
               </li>
             );
           })}
         </ul>
 
         <DialogFooter className="gap-2 sm:gap-2">
-          <Button asChild variant="outline" onClick={() => setOpen(false)}>
-            <Link to="/tasks">Open task sheet</Link>
+          <Button asChild variant="outline">
+            <a href="/tasks" onClick={() => setOpen(false)}>Open task sheet</a>
           </Button>
           <Button onClick={() => setOpen(false)}>Dismiss</Button>
         </DialogFooter>
