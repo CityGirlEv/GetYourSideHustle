@@ -3,9 +3,12 @@ import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Pill, MapPin, User, Calendar, DollarSign } from "lucide-react";
+import { ArrowLeft, Pill, MapPin, User, Calendar, DollarSign, FileDown, FileText } from "lucide-react";
 import type { ScenarioPdfInput } from "@/lib/scenario-pdf";
+import { downloadConsumerScenarioPdf } from "@/lib/scenario-pdf";
+import { downloadScenarioXlsx } from "@/lib/scenario-xlsx";
 import { DrugReport } from "@/components/DrugReport";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/scenario/$code")({
   head: () => ({
@@ -27,6 +30,22 @@ function ScenarioSummary() {
       if (raw) setScenario(JSON.parse(raw));
     } catch { /* ignore */ }
   }, [code]);
+
+  const downloadPdf = () => {
+    try {
+      if (!scenario) { toast.error("PDF not available"); return; }
+      downloadConsumerScenarioPdf(scenario);
+      toast.success("PDF downloaded");
+    } catch (e) { toast.error("Could not generate PDF"); console.error(e); }
+  };
+
+  const downloadWord = () => {
+    try {
+      if (!scenario) { toast.error("Workbook not available"); return; }
+      downloadScenarioXlsx({ ...scenario, county: scenario.county });
+      toast.success("Excel workbook downloaded");
+    } catch (e) { toast.error("Could not generate workbook"); console.error(e); }
+  };
 
   return (
     <AppShell title="Scenario summary" subtitle={`ID ${code}`}>
@@ -75,6 +94,15 @@ function ScenarioSummary() {
             </Card>
 
             {scenario.medications.length > 0 && <DrugReport medications={scenario.medications} />}
+
+            <div className="flex gap-3">
+              <Button onClick={downloadPdf} variant="outline" className="flex-1">
+                <FileText className="h-4 w-4 mr-2" /> PDF
+              </Button>
+              <Button onClick={downloadWord} variant="outline" className="flex-1">
+                <FileDown className="h-4 w-4 mr-2" /> Word
+              </Button>
+            </div>
           </>
         )}
       </div>
