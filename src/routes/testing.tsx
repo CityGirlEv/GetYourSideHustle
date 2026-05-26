@@ -739,12 +739,12 @@ function TestCaseCard({
         {isAdmin && onEdit && (
           <Button
             size="sm"
-            variant="ghost"
-            className="h-7 px-2 text-xs"
+            variant="outline"
+            className="h-7 px-2 text-xs border-primary/60 text-primary hover:bg-primary/10"
             onClick={onEdit}
             title="Edit test description"
           >
-            <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
+            <Pencil className="h-3.5 w-3.5 mr-1" /> Edit test
           </Button>
         )}
         <StatusButtons status={status} onChange={onChange} />
