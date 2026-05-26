@@ -28,6 +28,7 @@ import {
 import { AppShell } from "@/components/AppShell";
 import { SyncBrowserToCloud } from "@/components/SyncBrowserToCloud";
 import { useApp } from "@/lib/app-store";
+import { hydrateTestResultsToLocal } from "@/lib/cloud-sync";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
@@ -147,6 +148,27 @@ export function TestPlanTab() {
   const [savedSeverities, setSavedSeverities] = useState<Record<string, FailSeverity | "">>(() => loadAllSeverities());
   const [savedAssignees, setSavedAssignees] = useState<Record<string, string>>(() => loadAllAssigneeOverrides());
   const [savedSprints, setSavedSprints] = useState<Record<string, string>>(() => loadAllSprintOverrides());
+  // On mount, pull the authoritative test_results from the cloud into
+  // localStorage so this browser shows whatever was last saved to the DB
+  // (covers the case where local state was cleared and needs to be restored).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const n = await hydrateTestResultsToLocal();
+        if (cancelled || !n) return;
+        setSavedStatuses(loadAllStatuses());
+        setSavedQaNotes(loadAllQaNotes());
+        setSavedDevNotes(loadAllDevNotes());
+        setSavedSeverities(loadAllSeverities());
+        setSavedAssignees(loadAllAssigneeOverrides());
+        setSavedSprints(loadAllSprintOverrides());
+      } catch (e) {
+        console.warn("[testing] hydrate failed", e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
   // Bump this to re-read description overrides from storage after edits.
   const [descVersion, setDescVersion] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -225,13 +247,6 @@ export function TestPlanTab() {
       return next;
     });
   };
-  const resetAll = () => {
-    if (!confirm("Reset all test statuses to Not run? This saves immediately.")) return;
-    TEST_CASES.forEach((t) => saveStatus(t.id, "not_run"));
-    setSavedStatuses(loadAllStatuses());
-    setDStatuses({});
-  };
-
   // Build a list of pending changes for the save dialog
   type Change = {
     key: string; // unique id "<testId>:<field>"
@@ -457,7 +472,6 @@ export function TestPlanTab() {
             <Button size="sm" variant="ghost" onClick={discardAllDrafts} disabled={pendingCount === 0}>
               Discard
             </Button>
-            <Button size="sm" variant="outline" onClick={resetAll}><RotateCcw className="h-3.5 w-3.5 mr-1.5"/>Reset all</Button>
           </div>
         </div>
         <Progress value={passRate} className="h-2" />
