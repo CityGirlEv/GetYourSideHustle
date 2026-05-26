@@ -27,6 +27,24 @@ export const getScenarioByCode = createServerFn({ method: "POST" })
 
     const prefs = (row.preferences ?? {}) as { county?: string };
     const year = new Date(row.created_at).getFullYear() < 2027 ? 2026 : 2027;
+
+    // If the viewer is an admin, include any opt-in contact requests linked
+    // to this scenario code so they can reach the consumer.
+    const isAdmin = (roles ?? []).some((r) => r.role === "admin");
+    let contactRequests: Array<{ email: string; phone: string; createdAt: string }> = [];
+    if (isAdmin) {
+      const { data: reqs } = await supabaseAdmin
+        .from("expert_contact_requests")
+        .select("email, phone, created_at")
+        .eq("scenario_code", row.scenario_code)
+        .order("created_at", { ascending: false });
+      contactRequests = (reqs ?? []).map((r) => ({
+        email: r.email,
+        phone: r.phone,
+        createdAt: r.created_at,
+      }));
+    }
+
     return {
       scenarioCode: row.scenario_code,
       year,
@@ -39,5 +57,6 @@ export const getScenarioByCode = createServerFn({ method: "POST" })
       costPreference: (row.cost_preference as "minimize_monthly" | "predictability") ?? "minimize_monthly",
       conditions: (row.conditions as unknown as string[]) ?? [],
       medications: (row.medications as unknown as Medication[]) ?? [],
+      contactRequests,
     };
   });

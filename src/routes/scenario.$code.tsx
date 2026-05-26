@@ -4,7 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ArrowLeft, Pill, MapPin, User, Calendar, DollarSign, FileText, Sparkles, CheckCircle2, ExternalLink, AlertCircle } from "lucide-react";
+import { ArrowLeft, Pill, MapPin, User, Calendar, DollarSign, FileText, Sparkles, CheckCircle2, ExternalLink, AlertCircle, Phone, Mail } from "lucide-react";
 import type { ScenarioPdfInput } from "@/lib/scenario-pdf";
 import { downloadConsumerScenarioPdf } from "@/lib/scenario-pdf";
 import { DrugReport, buildDrugReport } from "@/components/DrugReport";
@@ -25,7 +25,7 @@ export const Route = createFileRoute("/scenario/$code")({
 
 function ScenarioSummary() {
   const { code } = Route.useParams();
-  const [scenario, setScenario] = useState<(ScenarioPdfInput & { county?: string }) | null>(null);
+  const [scenario, setScenario] = useState<(ScenarioPdfInput & { county?: string; contactRequests?: Array<{ email: string; phone: string; createdAt: string }> }) | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const fetchByCode = useServerFn(getScenarioByCode);
@@ -38,7 +38,7 @@ function ScenarioSummary() {
     fetchByCode({ data: { code } })
       .then((s) => {
         if (cancelled) return;
-        setScenario(s as ScenarioPdfInput & { county?: string });
+        setScenario(s as ScenarioPdfInput & { county?: string; contactRequests?: Array<{ email: string; phone: string; createdAt: string }> });
         try { sessionStorage.setItem(`scenario:${code}`, JSON.stringify(s)); } catch { /* ignore */ }
       })
       .catch((e: unknown) => {
@@ -108,6 +108,9 @@ function ScenarioSummary() {
 
               <TabsContent value="recommendation" className="mt-4 space-y-4">
                 <RecommendationPanel scenario={scenario} />
+                {scenario.contactRequests && scenario.contactRequests.length > 0 && (
+                  <ContactRequestsPanel requests={scenario.contactRequests} />
+                )}
                 <Card className="glass p-6 space-y-3">
                   <h2 className="font-display text-lg font-bold flex items-center gap-2"><Pill className="h-4 w-4 text-primary"/>Medications ({scenario.medications.length})</h2>
                   {scenario.medications.length === 0 ? (
@@ -199,6 +202,29 @@ function Disclaimer() {
         </a>{" "}
         published by CMS.
       </p>
+    </Card>
+  );
+}
+
+function ContactRequestsPanel({ requests }: { requests: Array<{ email: string; phone: string; createdAt: string }> }) {
+  return (
+    <Card className="glass p-6 space-y-3 border-primary/30">
+      <div className="flex items-center gap-2">
+        <Phone className="h-5 w-5 text-primary" />
+        <h2 className="font-display text-lg font-bold">Consumer contact info (admin only)</h2>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        This person opted in to be contacted by a licensed Medicare expert. Reach out using the details below.
+      </p>
+      <div className="space-y-2">
+        {requests.map((r, i) => (
+          <div key={i} className="rounded-md border border-border bg-card/40 p-3 text-sm space-y-1">
+            <div className="flex items-center gap-2"><Mail className="h-3.5 w-3.5 text-muted-foreground"/><a href={`mailto:${r.email}`} className="text-primary underline underline-offset-2">{r.email}</a></div>
+            <div className="flex items-center gap-2"><Phone className="h-3.5 w-3.5 text-muted-foreground"/><a href={`tel:${r.phone}`} className="text-primary underline underline-offset-2">{r.phone}</a></div>
+            <div className="text-[11px] text-muted-foreground">Submitted {new Date(r.createdAt).toLocaleString()}</div>
+          </div>
+        ))}
+      </div>
     </Card>
   );
 }
