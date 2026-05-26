@@ -229,15 +229,7 @@ function ContactRequestsPanel({ requests }: { requests: Array<{ email: string; p
   );
 }
 
-function RecommendationPanelImpl({ scenario }: { scenario: ScenarioPdfInput & { county?: string } }) {
-  return RecommendationPanelBody({ scenario });
-}
-
 function RecommendationPanel({ scenario }: { scenario: ScenarioPdfInput & { county?: string } }) {
-  return RecommendationPanelBody({ scenario });
-}
-
-function RecommendationPanelBody({ scenario }: { scenario: ScenarioPdfInput & { county?: string } }) {
   const plans = rankedPlanDetails({
     year: scenario.year,
     zip3: scenario.zip3,
