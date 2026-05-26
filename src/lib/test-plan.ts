@@ -463,6 +463,59 @@ export const TEST_CASES: TestCase[] = [
     steps: ["Open /testing", "Mark a case as Pass", "Reload"],
     expected: "Status remains Pass (localStorage key test-status:<id>).",
   },
+
+  // ===== Admin notifications + registration email =====
+  {
+    id: "NOTIF-001", area: "Admin · Notifications", priority: "P1",
+    title: "New registration creates an in-app admin notification",
+    steps: [
+      "Open an incognito window",
+      "Register a new user at /register (sign NDA, pick a role)",
+      "Sign in as an admin",
+      "Click the bell icon in the top-right of the app shell",
+    ],
+    expected: "A notification appears at the top with title 'New beta registration — <First Last>', body shows email · phone · requested role, unread badge increments on the bell.",
+  },
+  {
+    id: "NOTIF-002", area: "Admin · Notifications", priority: "P2",
+    title: "Admin can mark notifications read and delete them",
+    steps: [
+      "Open the bell dropdown as admin with ≥1 unread notification",
+      "Click the check icon on a notification",
+      "Click 'Mark all read' on another",
+      "Click the trash icon on a third",
+    ],
+    expected: "Single notification loses its unread highlight and the badge count drops; 'Mark all read' zeroes the badge; deleted row disappears from the list and survives reload.",
+  },
+  {
+    id: "NOTIF-003", area: "Admin · Notifications", priority: "P2",
+    title: "Bell updates in realtime without reload",
+    steps: [
+      "Sign in as admin and open the bell",
+      "In a second window, register a new user",
+      "Watch the admin bell without reloading",
+    ],
+    expected: "New notification appears within ~5s (Supabase realtime) and unread badge increments automatically.",
+  },
+  {
+    id: "NOTIF-004", area: "Admin · Notifications", priority: "P2",
+    title: "Non-admins cannot see admin notifications",
+    steps: [
+      "Sign in as an agent or qa user",
+      "Inspect the top-right header",
+      "Attempt to query admin_notifications from the browser console",
+    ],
+    expected: "Bell icon is not rendered for non-admins; direct table queries return zero rows due to RLS.",
+  },
+  {
+    id: "EMAIL-001", area: "Registration · Email", priority: "P2",
+    title: "Registration triggers Resend notification attempt (sandbox)",
+    steps: [
+      "Register a new user at /register",
+      "Check the server logs for the registerWithNda function",
+    ],
+    expected: "Resend POST to /resend/emails fires; in sandbox mode delivery only succeeds to the Resend account owner address — non-owner sends are logged but may fail. Registration still completes and the in-app admin notification is created either way.",
+  },
 ];
 
 // ----------------------------------------------------------------------------
@@ -534,6 +587,7 @@ export const SPRINTS: Sprint[] = [
       { id: "S1-5", title: "Beta smoke pass against production preview (Thu 5/28)", type: "test", status: "todo" },
       { id: "S1-6", title: "Triage + fix P0/P1 beta defects", type: "bug", status: "todo" },
       { id: "S1-7", title: "Catria recruits 10 agents (hand-picked) — NDA + Agent Agreement signed before access", type: "feature", status: "todo", owner: "Catria" },
+      { id: "S1-8", title: "Admin notifications bell + new-registration alerts wired (in-app + Resend sandbox)", type: "feature", status: "done" },
     ],
   },
   {
@@ -580,6 +634,9 @@ export const TASKS: Task[] = [
   { id: "T-013", title: "CMS 2026 ingest job (pg_cron + /api/public)", area: "CMS Ingest", status: "todo", priority: "P0" },
   { id: "T-014", title: "RxNorm cache to cut latency on repeat lookups", area: "RxNorm", status: "todo", priority: "P3" },
   { id: "T-015", title: "QA: cross-browser voice matrix (Chrome / Edge / Safari)", area: "QA", status: "todo", priority: "P1" },
+  { id: "T-016", title: "Admin notifications table + bell UI (realtime, mark-read, delete)", area: "Admin", status: "done", priority: "P1" },
+  { id: "T-017", title: "Wire new-registration event to admin_notifications + Resend sandbox email", area: "Admin", status: "done", priority: "P1" },
+  { id: "T-018", title: "Verify getpartb.com domain (add NS records) so non-owner admins receive registration email", area: "Ops", status: "todo", priority: "P2", notes: "Blocked: no DNS access today. Add notify.getpartb.com NS ns3/ns4.lovable.cloud when registrar access is available." },
 ];
 
 // ----------------------------------------------------------------------------
