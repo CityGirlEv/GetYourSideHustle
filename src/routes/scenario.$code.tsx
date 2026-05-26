@@ -9,6 +9,8 @@ import { downloadConsumerScenarioPdf } from "@/lib/scenario-pdf";
 import { downloadScenarioXlsx } from "@/lib/scenario-xlsx";
 import { DrugReport } from "@/components/DrugReport";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
+import { getScenarioByCode } from "@/lib/scenario-lookup.functions";
 
 export const Route = createFileRoute("/scenario/$code")({
   head: () => ({
@@ -23,13 +25,30 @@ export const Route = createFileRoute("/scenario/$code")({
 function ScenarioSummary() {
   const { code } = Route.useParams();
   const [scenario, setScenario] = useState<(ScenarioPdfInput & { county?: string }) | null>(null);
+  const [loading, setLoading] = useState(true);
+  const fetchByCode = useServerFn(getScenarioByCode);
 
   useEffect(() => {
+    let cancelled = false;
     try {
       const raw = sessionStorage.getItem(`scenario:${code}`);
-      if (raw) setScenario(JSON.parse(raw));
+      if (raw) {
+        setScenario(JSON.parse(raw));
+        setLoading(false);
+        return;
+      }
     } catch { /* ignore */ }
-  }, [code]);
+    // Fallback: fetch from DB (requires staff role)
+    fetchByCode({ data: { code } })
+      .then((s) => {
+        if (cancelled) return;
+        setScenario(s as ScenarioPdfInput & { county?: string });
+        try { sessionStorage.setItem(`scenario:${code}`, JSON.stringify(s)); } catch { /* ignore */ }
+      })
+      .catch(() => { /* leave scenario null; UI shows fallback message */ })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [code, fetchByCode]);
 
   const downloadPdf = () => {
     try {
@@ -54,7 +73,9 @@ function ScenarioSummary() {
           <Button variant="ghost" size="sm"><ArrowLeft className="h-4 w-4 mr-1.5"/>Back</Button>
         </Link>
 
-        {!scenario ? (
+        {loading ? (
+          <Card className="glass p-6 text-sm text-muted-foreground">Loading scenario…</Card>
+        ) : !scenario ? (
           <Card className="glass p-6 text-sm text-muted-foreground">
             We couldn't find this scenario in your browser session. Open the link from the device where you created it, or ask your agent to pull it up by Scenario ID.
           </Card>
