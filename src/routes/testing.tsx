@@ -259,6 +259,15 @@ export function TestPlanTab() {
     setDSeverities({}); setDAssignees({}); setDSprints({});
   };
 
+  const hasTestChanges = (id: string) =>
+    id in dStatuses || id in dQaNotes || id in dDevNotes || id in dSeverities || id in dAssignees || id in dSprints;
+
+  const saveSingleTest = (id: string) => {
+    const keys = new Set(pendingChanges.filter((c) => c.testId === id).map((c) => c.key));
+    if (keys.size === 0) return;
+    commitChanges(keys);
+  };
+
   // Persist a subset of pending changes; remaining ones stay in draft.
   const commitChanges = (selectedKeys: Set<string>) => {
     const stillDraft = {
@@ -494,6 +503,8 @@ export function TestPlanTab() {
             onSprintChange={(s) => setSprintFor(t.id, s)}
             isAdmin={isAdmin}
             onEdit={() => setEditingId(t.id)}
+            hasChanges={hasTestChanges(t.id)}
+            onSave={() => saveSingleTest(t.id)}
           />
         ))}
       </div>
@@ -663,7 +674,7 @@ function priorityVariant(p: Priority): string {
 function TestCaseCard({
   t, status, qaNote, devNote, severity, assignee, sprintId, selected, onSelectChange,
   onChange, onQaNoteChange, onDevNoteChange, onSeverityChange, onAssigneeChange, onSprintChange,
-  isAdmin, onEdit,
+  isAdmin, onEdit, hasChanges, onSave,
 }: {
   t: TestCase;
   status: TestStatus;
@@ -682,6 +693,8 @@ function TestCaseCard({
   onSprintChange: (sprintId: string) => void;
   isAdmin?: boolean;
   onEdit?: () => void;
+  hasChanges?: boolean;
+  onSave?: () => void;
 }) {
   // Shade the whole row based on status (background + subtle border)
   const shade =
@@ -745,6 +758,17 @@ function TestCaseCard({
             title="Edit test description"
           >
             <Pencil className="h-3.5 w-3.5 mr-1" /> Edit test
+          </Button>
+        )}
+        {hasChanges && onSave && (
+          <Button
+            size="sm"
+            variant="default"
+            className="h-7 px-2 text-xs animate-pulse"
+            onClick={onSave}
+            title="Save changes for this test"
+          >
+            <Save className="h-3.5 w-3.5 mr-1" /> Save
           </Button>
         )}
         <StatusButtons status={status} onChange={onChange} />
