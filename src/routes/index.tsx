@@ -8,6 +8,34 @@ export const Route = createFileRoute("/")({
     meta: [
       { title: "The Medicare Optimizer — De-identified Plan Comparison" },
       { name: "description", content: "Compare Medicare plans without giving up your personal information. We store only de-identified scenarios you control." },
+      { property: "og:title", content: "The Medicare Optimizer — De-identified Plan Comparison" },
+      { property: "og:description", content: "Compare Medicare plans without giving up your personal information. We store only de-identified scenarios you control." },
+      { property: "og:url", content: "https://themedicareoptimizer.lovable.app/" },
+    ],
+    links: [
+      { rel: "canonical", href: "https://themedicareoptimizer.lovable.app/" },
+    ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          name: "The Medicare Optimizer",
+          url: "https://themedicareoptimizer.lovable.app/",
+          description: "De-identified Medicare plan comparison for 2026 and 2027.",
+        }),
+      },
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          name: "The Medicare Optimizer",
+          url: "https://themedicareoptimizer.lovable.app/",
+          description: "AI-powered Medicare plan optimizer using zero-PII scenarios under live federal rules.",
+        }),
+      },
     ],
   }),
   component: Index,

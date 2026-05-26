@@ -9,7 +9,22 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Users, Search, Receipt, Plus } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/advisor")({ component: AdvisorPortal });
+export const Route = createFileRoute("/advisor")({
+  head: () => ({
+    meta: [
+      { title: "Advisor Workbench — The Medicare Optimizer" },
+      { name: "description", content: "Look up Medicare scenarios by ID and manage your advisor caseload. No PII stored." },
+      { property: "og:title", content: "Advisor Workbench — The Medicare Optimizer" },
+      { property: "og:description", content: "Advisor caseload and scenario lookup." },
+      { property: "og:url", content: "https://themedicareoptimizer.lovable.app/advisor" },
+      { name: "robots", content: "noindex,nofollow" },
+    ],
+    links: [
+      { rel: "canonical", href: "https://themedicareoptimizer.lovable.app/advisor" },
+    ],
+  }),
+  component: AdvisorPortal,
+});
 
 function AdvisorPortal() {
   const { user, authLoading, scenarios, creditTxns, lookupScenario } = useApp();

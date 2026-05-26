@@ -20,6 +20,26 @@ import { CatalogExplorer } from "@/components/CatalogExplorer";
 import { ImplementationTab, SprintsTab } from "@/routes/testing";
 import { BUDGET_LINES, computeBudgetTotals, totalsByCategory, fmtUSD, type BudgetCategory } from "@/lib/budget";
 
+export const Route = createFileRoute("/admin")({
+  head: () => ({
+    meta: [
+      { title: "Admin Console — The Medicare Optimizer" },
+      { name: "description", content: "Admin tools for managing scenarios, users, agents, and operations." },
+      { property: "og:title", content: "Admin Console — The Medicare Optimizer" },
+      { property: "og:description", content: "Internal admin tools for The Medicare Optimizer." },
+      { property: "og:url", content: "https://themedicareoptimizer.lovable.app/admin" },
+      { name: "robots", content: "noindex,nofollow" },
+    ],
+    links: [
+      { rel: "canonical", href: "https://themedicareoptimizer.lovable.app/admin" },
+    ],
+  }),
+  validateSearch: (search: Record<string, unknown>) => ({
+    tab: typeof search.tab === "string" ? (search.tab as string) : undefined,
+  }),
+  component: AdminPortal,
+});
+
 interface AdminScenarioRow {
   id: string;
   scenario_code: string;
@@ -49,12 +69,6 @@ interface AdminContactRow {
   created_at: string;
 }
 
-export const Route = createFileRoute("/admin")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    tab: typeof search.tab === "string" ? (search.tab as string) : undefined,
-  }),
-  component: AdminPortal,
-});
 
 function BudgetTab() {
   const totals = computeBudgetTotals();

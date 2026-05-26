@@ -12,6 +12,18 @@ import { toast } from "sonner";
 import { FileSignature, FileCheck2, Download, ShieldCheck } from "lucide-react";
 
 export const Route = createFileRoute("/nda")({
+  head: () => ({
+    meta: [
+      { title: "Beta NDA — The Medicare Optimizer" },
+      { name: "description", content: "Review and sign the non-disclosure agreement required for Medicare Optimizer beta access." },
+      { property: "og:title", content: "Beta NDA — The Medicare Optimizer" },
+      { property: "og:description", content: "Review and sign the Medicare Optimizer beta NDA." },
+      { property: "og:url", content: "https://themedicareoptimizer.lovable.app/nda" },
+    ],
+    links: [
+      { rel: "canonical", href: "https://themedicareoptimizer.lovable.app/nda" },
+    ],
+  }),
   component: NdaPage,
 });
 

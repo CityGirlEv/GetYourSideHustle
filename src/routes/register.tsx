@@ -18,6 +18,12 @@ export const Route = createFileRoute("/register")({
     meta: [
       { title: "Register — The Medicare Optimizer" },
       { name: "description", content: "Request Beta Access. Sign the NDA and we'll review your account." },
+      { property: "og:title", content: "Register for Beta — The Medicare Optimizer" },
+      { property: "og:description", content: "Sign the NDA and request beta access to the Medicare Optimizer staff portal." },
+      { property: "og:url", content: "https://themedicareoptimizer.lovable.app/register" },
+    ],
+    links: [
+      { rel: "canonical", href: "https://themedicareoptimizer.lovable.app/register" },
     ],
   }),
   component: RegisterPage,
