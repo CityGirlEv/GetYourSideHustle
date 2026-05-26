@@ -3,9 +3,12 @@ import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Pill, MapPin, User, Calendar, DollarSign } from "lucide-react";
+import { ArrowLeft, Pill, MapPin, User, Calendar, DollarSign, FileDown, FileText } from "lucide-react";
 import type { ScenarioPdfInput } from "@/lib/scenario-pdf";
+import { downloadConsumerScenarioPdf } from "@/lib/scenario-pdf";
+import { downloadScenarioXlsx } from "@/lib/scenario-xlsx";
 import { DrugReport } from "@/components/DrugReport";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/scenario/$code")({
   head: () => ({
