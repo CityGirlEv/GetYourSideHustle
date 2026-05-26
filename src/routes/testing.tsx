@@ -380,11 +380,19 @@ export function TestPlanTab() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2 text-xs">
-            {Object.entries(ownerCounts).map(([owner, n]) => (
-              <span key={owner} className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 font-semibold bg-background">
-                {owner} <span className="font-normal opacity-70">· {n} tests · {creditBudgetByOwner()[owner] ?? 0} cr</span>
-              </span>
-            ))}
+            {Object.entries(ownerCounts).map(([owner, n]) => {
+              const active = ownerFilter.length === 1 && ownerFilter[0] === owner;
+              return (
+                <button
+                  key={owner}
+                  type="button"
+                  onClick={() => setOwnerFilter(active ? [] : [owner])}
+                  className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 font-semibold bg-background cursor-pointer hover:bg-accent transition-colors ${active ? "ring-2 ring-offset-1 ring-primary" : ""}`}
+                >
+                  {owner} <span className="font-normal opacity-70">· {n} tests · {creditBudgetByOwner()[owner] ?? 0} cr</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </Card>
