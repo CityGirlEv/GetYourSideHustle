@@ -69,13 +69,14 @@ export function buildDrugReport(meds: Medication[]): DrugReportRow[] {
     if (m.no_generic_available) notes.push("No generic equivalent (brand-only)");
     if (m.coverage_uncertain) notes.push("Coverage estimate — verify against plan formulary");
     return {
-      name: m.medication_name,
+      name: m.medication_name || "Unnamed medication",
       strength: m.strength,
       form: m.dosage_form,
       frequency: m.frequency,
+      resolvedDiagnosis: m.resolved_diagnosis,
+      retailMonthly: m.estimated_monthly_retail ?? 0,
       tier,
       tierRationale: rationale,
-      retailMonthly: m.estimated_monthly_retail ?? 0,
       estPlanMonthly,
       estPlanAnnual: estPlanMonthly * 12,
       notes,
