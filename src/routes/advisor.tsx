@@ -92,7 +92,11 @@ function AdvisorPortal() {
                 <tbody>
                   {scenarios.map((s) => (
                     <tr key={s.id} className="border-t border-border hover:bg-secondary/30 transition">
-                      <td className="px-4 py-3 font-mono text-xs">{s.scenario_code}</td>
+                      <td className="px-4 py-3 font-mono text-xs">
+                        <Link to="/advisor/scenario/$code" params={{ code: s.scenario_code }} className="hover:underline text-primary">
+                          {s.scenario_code}
+                        </Link>
+                      </td>
                       <td className="px-4 py-3 text-muted-foreground">
                         b. {s.birth_year} · ZIP {s.zip3}xx · {s.gender ?? "—"}
                       </td>
@@ -102,7 +106,7 @@ function AdvisorPortal() {
                       </td>
                       <td className="px-4 py-3 text-right">
                         <Link to="/advisor/scenario/$code" params={{ code: s.scenario_code }}>
-                          <Button size="sm" variant="ghost">Open →</Button>
+                          <Button size="sm" variant="ghost">View summary →</Button>
                         </Link>
                       </td>
                     </tr>
