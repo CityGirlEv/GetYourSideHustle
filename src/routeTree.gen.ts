@@ -29,7 +29,6 @@ import { Route as ScenarioCodeRouteImport } from './routes/scenario.$code'
 import { Route as ScenarioCreatedCodeRouteImport } from './routes/scenario.created.$code'
 import { Route as AgentScenarioCodeRouteImport } from './routes/agent.scenario.$code'
 import { Route as AdvisorScenarioCodeRouteImport } from './routes/advisor.scenario.$code'
-import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as AdvisorScenarioCodeEditRouteImport } from './routes/advisor.scenario.$code.edit'
 
 const UsersRoute = UsersRouteImport.update({
@@ -132,12 +131,6 @@ const AdvisorScenarioCodeRoute = AdvisorScenarioCodeRouteImport.update({
   path: '/scenario/$code',
   getParentRoute: () => AdvisorRoute,
 } as any)
-const LovableEmailQueueProcessRoute =
-  LovableEmailQueueProcessRouteImport.update({
-    id: '/lovable/email/queue/process',
-    path: '/lovable/email/queue/process',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const AdvisorScenarioCodeEditRoute = AdvisorScenarioCodeEditRouteImport.update({
   id: '/edit',
   path: '/edit',
@@ -166,7 +159,6 @@ export interface FileRoutesByFullPath {
   '/agent/scenario/$code': typeof AgentScenarioCodeRoute
   '/scenario/created/$code': typeof ScenarioCreatedCodeRoute
   '/advisor/scenario/$code/edit': typeof AdvisorScenarioCodeEditRoute
-  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -190,7 +182,6 @@ export interface FileRoutesByTo {
   '/agent/scenario/$code': typeof AgentScenarioCodeRoute
   '/scenario/created/$code': typeof ScenarioCreatedCodeRoute
   '/advisor/scenario/$code/edit': typeof AdvisorScenarioCodeEditRoute
-  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -215,7 +206,6 @@ export interface FileRoutesById {
   '/agent/scenario/$code': typeof AgentScenarioCodeRoute
   '/scenario/created/$code': typeof ScenarioCreatedCodeRoute
   '/advisor/scenario/$code/edit': typeof AdvisorScenarioCodeEditRoute
-  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -241,7 +231,6 @@ export interface FileRouteTypes {
     | '/agent/scenario/$code'
     | '/scenario/created/$code'
     | '/advisor/scenario/$code/edit'
-    | '/lovable/email/queue/process'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -265,7 +254,6 @@ export interface FileRouteTypes {
     | '/agent/scenario/$code'
     | '/scenario/created/$code'
     | '/advisor/scenario/$code/edit'
-    | '/lovable/email/queue/process'
   id:
     | '__root__'
     | '/'
@@ -289,7 +277,6 @@ export interface FileRouteTypes {
     | '/agent/scenario/$code'
     | '/scenario/created/$code'
     | '/advisor/scenario/$code/edit'
-    | '/lovable/email/queue/process'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -311,7 +298,6 @@ export interface RootRouteChildren {
   ScenarioCodeRoute: typeof ScenarioCodeRoute
   ScenarioNewRoute: typeof ScenarioNewRoute
   ScenarioCreatedCodeRoute: typeof ScenarioCreatedCodeRoute
-  LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -456,13 +442,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdvisorScenarioCodeRouteImport
       parentRoute: typeof AdvisorRoute
     }
-    '/lovable/email/queue/process': {
-      id: '/lovable/email/queue/process'
-      path: '/lovable/email/queue/process'
-      fullPath: '/lovable/email/queue/process'
-      preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/advisor/scenario/$code/edit': {
       id: '/advisor/scenario/$code/edit'
       path: '/edit'
@@ -524,7 +503,6 @@ const rootRouteChildren: RootRouteChildren = {
   ScenarioCodeRoute: ScenarioCodeRoute,
   ScenarioNewRoute: ScenarioNewRoute,
   ScenarioCreatedCodeRoute: ScenarioCreatedCodeRoute,
-  LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
