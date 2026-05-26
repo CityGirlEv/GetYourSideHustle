@@ -12,6 +12,9 @@ import {
 } from "./medicare-math";
 import { CMS_CATALOG } from "@/data/cms-catalog";
 import { rankedPlanDetails, type PlanDetail } from "./plan-details";
+import { buildDrugReport } from "@/components/DrugReport";
+
+const MEDICARE_HANDBOOK_URL = "https://www.medicare.gov/Pubs/pdf/10050-Medicare-and-You.pdf";
 
 export interface ScenarioPdfInput {
   scenarioCode: string;
@@ -860,6 +863,74 @@ export function buildConsumerScenarioPdf(input: ScenarioPdfInput): jsPDF {
     tableWidth: lsColW,
   });
 
+  // ---------- Page 4: Medications — tier + estimated member cost ----------
+  if (input.medications.length) {
+    doc.addPage();
+    let my = 60;
+    doc.setTextColor(20, 20, 20);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(15);
+    doc.text("Your medications — estimated plan tier & cost", margin, my);
+    my += 8;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(90, 90, 90);
+    doc.text(
+      "Each medication classified using CMS Part D tier guidance. Actual tier and copay vary by plan formulary.",
+      margin, my + 12, { maxWidth: pageW - margin * 2 },
+    );
+    my += 28;
+
+    const drugRows = buildDrugReport(input.medications);
+    const totalMo = drugRows.reduce((s, r) => s + r.estPlanMonthly, 0);
+    autoTable(doc, {
+      startY: my,
+      head: [["Medication", "Tier", "Retail /mo", "Est. plan /mo", "Est. plan /yr"]],
+      body: drugRows.map((r) => [
+        `${r.name}\n${[r.strength, r.form, r.frequency].filter(Boolean).join(" · ")}`,
+        `${r.tier}\n${r.tierRationale}`,
+        usd(r.retailMonthly),
+        usd(r.estPlanMonthly),
+        usd(r.estPlanAnnual),
+      ]),
+      foot: [["Totals (before Part D OOP cap)", "", usd(drugRows.reduce((s, r) => s + r.retailMonthly, 0)), usd(totalMo), usd(totalMo * 12)]],
+      headStyles: { fillColor: [16, 122, 87], textColor: 255, fontSize: 9 },
+      footStyles: { fillColor: [232, 245, 238], textColor: [16, 122, 87], fontStyle: "bold" },
+      styles: { fontSize: 8.5, cellPadding: 5, valign: "top" },
+      columnStyles: { 2: { halign: "right" }, 3: { halign: "right" }, 4: { halign: "right" } },
+      margin: { left: margin, right: margin },
+    });
+  }
+
+  // ---------- Disclaimer + Medicare handbook link page ----------
+  doc.addPage();
+  let dy = 60;
+  doc.setTextColor(20, 20, 20);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(15);
+  doc.text("Important disclaimer", margin, dy);
+  dy += 18;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor(60, 60, 60);
+  const disclaimer = [
+    "This summary is provided for educational purposes only and is not a complete listing of plans available in your area.",
+    "Estimated drug tiers, copays, premiums, and out-of-pocket costs are illustrative. Actual benefits and pricing vary by plan formulary, effective date, county, age, and personal eligibility.",
+    "Nothing in this document constitutes insurance, medical, tax, or legal advice. Please verify benefits and coverage with the carrier or a licensed insurance agent before enrolling.",
+    "For the official Medicare program details, please refer to the latest Medicare & You handbook published by the Centers for Medicare & Medicaid Services (CMS).",
+  ];
+  disclaimer.forEach((line) => {
+    const lines = doc.splitTextToSize(line, pageW - margin * 2);
+    doc.text(lines, margin, dy);
+    dy += lines.length * 13 + 6;
+  });
+
+  dy += 8;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(16, 122, 87);
+  doc.textWithLink("Open the latest Medicare & You handbook (PDF) \u2197", margin, dy, { url: MEDICARE_HANDBOOK_URL });
+
   // Footer disclaimer
   const pageCount = doc.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
@@ -869,7 +940,7 @@ export function buildConsumerScenarioPdf(input: ScenarioPdfInput): jsPDF {
     const w = doc.internal.pageSize.getWidth();
     const h = doc.internal.pageSize.getHeight();
     doc.text(
-      "Educational comparison only — not a complete listing of plans available in your area. Contact Medicare.gov or 1-800-MEDICARE for all options.",
+      "Educational comparison only — not a complete listing of plans, not insurance, medical, tax, or legal advice. Verify benefits with the carrier or a licensed agent. See the Medicare & You handbook for official details.",
       28, h - 22, { maxWidth: w - 56 },
     );
     doc.text(`Page ${i} of ${pageCount}`, w - 28, h - 10, { align: "right" });

@@ -4,11 +4,10 @@ import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ArrowLeft, Pill, MapPin, User, Calendar, DollarSign, FileDown, FileText, Sparkles, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Pill, MapPin, User, Calendar, DollarSign, FileText, Sparkles, CheckCircle2, ExternalLink, AlertCircle } from "lucide-react";
 import type { ScenarioPdfInput } from "@/lib/scenario-pdf";
 import { downloadConsumerScenarioPdf } from "@/lib/scenario-pdf";
-import { downloadScenarioXlsx } from "@/lib/scenario-xlsx";
-import { DrugReport } from "@/components/DrugReport";
+import { DrugReport, buildDrugReport } from "@/components/DrugReport";
 import { rankedPlanDetails } from "@/lib/plan-details";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
@@ -64,14 +63,6 @@ function ScenarioSummary() {
     } catch (e) { toast.error("Could not generate PDF"); console.error(e); }
   };
 
-  const downloadWord = () => {
-    try {
-      if (!scenario) { toast.error("Workbook not available"); return; }
-      downloadScenarioXlsx({ ...scenario, county: scenario.county });
-      toast.success("Excel workbook downloaded");
-    } catch (e) { toast.error("Could not generate workbook"); console.error(e); }
-  };
-
   return (
     <AppShell title="Scenario summary" subtitle={`ID ${code}`}>
       <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
@@ -122,14 +113,7 @@ function ScenarioSummary() {
                   {scenario.medications.length === 0 ? (
                     <div className="text-sm text-muted-foreground">None listed.</div>
                   ) : (
-                    <ul className="divide-y divide-border text-sm">
-                      {scenario.medications.map((m, i) => (
-                        <li key={i} className="py-2 flex justify-between gap-3">
-                          <span className="font-medium">{m.medication_name}</span>
-                          <span className="text-muted-foreground">{[m.strength, m.dosage_form, m.frequency].filter(Boolean).join(" · ") || "—"}</span>
-                        </li>
-                      ))}
-                    </ul>
+                    <MedicationsWithTiers medications={scenario.medications} />
                   )}
                 </Card>
               </TabsContent>
@@ -143,18 +127,79 @@ function ScenarioSummary() {
               </TabsContent>
             </Tabs>
 
-            <div className="flex gap-3">
-              <Button onClick={downloadPdf} variant="outline" className="flex-1">
-                <FileText className="h-4 w-4 mr-2" /> PDF
-              </Button>
-              <Button onClick={downloadWord} variant="outline" className="flex-1">
-                <FileDown className="h-4 w-4 mr-2" /> Word
-              </Button>
-            </div>
+            <Button onClick={downloadPdf} variant="outline" className="w-full">
+              <FileText className="h-4 w-4 mr-2" /> Download PDF
+            </Button>
+
+            <Disclaimer />
           </>
         )}
       </div>
     </AppShell>
+  );
+}
+
+function MedicationsWithTiers({ medications }: { medications: ScenarioPdfInput["medications"] }) {
+  const rows = buildDrugReport(medications);
+  const usd = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+  return (
+    <div className="overflow-x-auto -mx-2">
+      <table className="w-full text-xs border-collapse min-w-[520px]">
+        <thead>
+          <tr className="border-b border-border text-left">
+            <th className="py-2 px-2 font-semibold">Medication</th>
+            <th className="py-2 px-2 font-semibold">Tier</th>
+            <th className="py-2 px-2 font-semibold text-right">Est. /mo</th>
+            <th className="py-2 px-2 font-semibold text-right">Est. /yr</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i} className="border-b border-border/50 align-top">
+              <td className="py-2 px-2">
+                <div className="font-semibold">{r.name}</div>
+                <div className="text-[11px] text-muted-foreground">{[r.strength, r.form, r.frequency].filter(Boolean).join(" · ")}</div>
+              </td>
+              <td className="py-2 px-2">
+                <div className="font-semibold">{r.tier}</div>
+                <div className="text-[10px] text-muted-foreground">{r.tierRationale}</div>
+              </td>
+              <td className="py-2 px-2 text-right tabular-nums font-semibold">{usd(r.estPlanMonthly)}</td>
+              <td className="py-2 px-2 text-right tabular-nums">{usd(r.estPlanAnnual)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function Disclaimer() {
+  return (
+    <Card className="glass p-4 text-xs text-muted-foreground space-y-2">
+      <div className="flex items-center gap-2 text-foreground font-semibold">
+        <AlertCircle className="h-4 w-4 text-primary" />
+        Important disclaimer
+      </div>
+      <p>
+        This summary is provided for educational purposes only and is not a complete listing of plans available in
+        your area. Estimated drug tiers, copays, and premiums are illustrative and vary by plan formulary,
+        effective date, and personal eligibility. Nothing here constitutes insurance, medical, tax, or legal advice.
+        Please verify benefits and coverage with the carrier or a licensed agent before enrolling.
+      </p>
+      <p>
+        For the official program details, refer to the latest{" "}
+        <a
+          href="https://www.medicare.gov/Pubs/pdf/10050-Medicare-and-You.pdf"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-primary underline underline-offset-2 font-medium"
+        >
+          Medicare &amp; You handbook <ExternalLink className="h-3 w-3" />
+        </a>{" "}
+        published by CMS.
+      </p>
+    </Card>
   );
 }
 
