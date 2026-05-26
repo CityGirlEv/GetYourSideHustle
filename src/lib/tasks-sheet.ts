@@ -151,6 +151,22 @@ SEED_TASK_ROWS.push(
     notes: "",
     path: "/testing",
   },
+  {
+    id: "T-103",
+    description: "Set up Google Search Console",
+    sprintId: ACTIVE_SPRINT_ID,
+    category: "ops",
+    priority: "P1",
+    status: "in_progress",
+    assignBy: "Evelyn",
+    assignedTo: "Evelyn",
+    dateAssigned: START,
+    dueDate: END,
+    dateCompleted: "",
+    cost: 0,
+    notes: "Verify site ownership via META tag, submit sitemap.xml and sitemap-internal.xml, and monitor indexing coverage.",
+    path: "",
+  },
 );
 
 export const TASKS_STORAGE_KEY = "tasks-sheet:v1";
