@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   CheckCircle2, XCircle, MinusCircle, AlertOctagon, Search, RotateCcw,
   FlaskConical, CalendarDays, ListChecks, GitBranch, Sparkles, ExternalLink,
-  Wrench, RefreshCw, Paperclip, Upload, Trash2, FileText, Loader2, Save,
+  Wrench, RefreshCw, Paperclip, Upload, Trash2, FileText, Loader2, Save, Pencil,
 } from "lucide-react";
 import {
   TEST_CASES, IMPLEMENTATION_PLAN, SPRINTS, TASKS,
@@ -21,6 +21,8 @@ import {
   loadAllSeverities, saveSeverity, FAIL_SEVERITY_LABELS, type FailSeverity,
   TEST_OWNERS, loadAllAssigneeOverrides, saveAssigneeOverride,
   loadAllSprintOverrides, saveSprintOverride,
+  applyDescriptionOverride, loadDescriptionOverride, saveDescriptionOverride,
+  clearDescriptionOverride, type TestDescriptionOverride,
 } from "@/lib/test-plan";
 import { AppShell } from "@/components/AppShell";
 import { useApp } from "@/lib/app-store";
