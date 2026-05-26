@@ -760,6 +760,7 @@ function TestCaseCard({
             <Pencil className="h-3.5 w-3.5 mr-1" /> Edit test
           </Button>
         )}
+        <StatusButtons status={status} onChange={onChange} />
         {hasChanges && onSave && (
           <Button
             size="sm"
@@ -771,7 +772,6 @@ function TestCaseCard({
             <Save className="h-3.5 w-3.5 mr-1" /> Save
           </Button>
         )}
-        <StatusButtons status={status} onChange={onChange} />
       </div>
       <div className="mb-2 -mt-1">
         <TestTargetLink test={t} />
