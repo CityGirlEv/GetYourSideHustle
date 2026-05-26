@@ -122,6 +122,8 @@ function TestingPortal() {
 
 /* ============================== TEST PLAN TAB ============================== */
 export function TestPlanTab() {
+  const { user } = useApp();
+  const isAdmin = user?.role === "admin";
   // Persisted/saved state, hydrated from local storage
   const [savedStatuses, setSavedStatuses] = useState<Record<string, TestStatus>>(() => loadAllStatuses());
   const [savedQaNotes, setSavedQaNotes] = useState<Record<string, string>>(() => loadAllQaNotes());
@@ -129,6 +131,20 @@ export function TestPlanTab() {
   const [savedSeverities, setSavedSeverities] = useState<Record<string, FailSeverity | "">>(() => loadAllSeverities());
   const [savedAssignees, setSavedAssignees] = useState<Record<string, string>>(() => loadAllAssigneeOverrides());
   const [savedSprints, setSavedSprints] = useState<Record<string, string>>(() => loadAllSprintOverrides());
+  // Bump this to re-read description overrides from storage after edits.
+  const [descVersion, setDescVersion] = useState(0);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  // Effective test cases with description overrides applied (admin edits).
+  const effectiveCases = useMemo(
+    () => TEST_CASES.map((t) => applyDescriptionOverride(t)),
+    [descVersion],
+  );
+  const effectiveById = useMemo(() => {
+    const m = new Map<string, TestCase>();
+    for (const t of effectiveCases) m.set(t.id, t);
+    return m;
+  }, [effectiveCases]);
   // Draft (unsaved) overlays — only changed entries
   const [dStatuses, setDStatuses] = useState<Record<string, TestStatus>>({});
   const [dQaNotes, setDQaNotes] = useState<Record<string, string>>({});
@@ -285,7 +301,7 @@ export function TestPlanTab() {
     toast.success(`Saved ${selectedKeys.size} change${selectedKeys.size === 1 ? "" : "s"}.`);
   };
 
-  const areas = useMemo(() => Array.from(new Set(TEST_CASES.map((t) => t.area))), []);
+  const areas = useMemo(() => Array.from(new Set(effectiveCases.map((t) => t.area))), [effectiveCases]);
   // Effective assignee/sprint that respects unsaved drafts (the lib helpers read storage)
   const effAssignee = (t: TestCase): string => {
     const ov = assigneeOverrides[t.id];
@@ -295,16 +311,16 @@ export function TestPlanTab() {
   const effSprint = (t: TestCase): string => sprintOverrides[t.id] || getTestSprintId(t);
   const ownerCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    for (const t of TEST_CASES) {
+    for (const t of effectiveCases) {
       const a = effAssignee(t);
       counts[a] = (counts[a] || 0) + 1;
     }
     return counts;
-  }, [statuses, assigneeOverrides]);
+  }, [statuses, assigneeOverrides, effectiveCases]);
   const owners = useMemo(() => Object.keys(ownerCounts), [ownerCounts]);
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim();
-    return TEST_CASES.filter((t) => {
+    return effectiveCases.filter((t) => {
       if (!multiSelectMatches(areaFilter, t.area)) return false;
       if (!multiSelectMatches(statusFilter, statuses[t.id] ?? "not_run")) return false;
       if (!multiSelectMatches(ownerFilter, effAssignee(t))) return false;
@@ -312,7 +328,7 @@ export function TestPlanTab() {
       if (!q) return true;
       return [t.id, t.title, t.area, ...t.steps, t.expected].some((f) => f.toLowerCase().includes(q));
     });
-  }, [query, areaFilter, statusFilter, ownerFilter, sprintFilter, statuses, assigneeOverrides, sprintOverrides]);
+  }, [query, areaFilter, statusFilter, ownerFilter, sprintFilter, statuses, assigneeOverrides, sprintOverrides, effectiveCases]);
 
   const filteredIds = useMemo(() => filtered.map((t) => t.id), [filtered]);
   const allFilteredSelected = filteredIds.length > 0 && filteredIds.every((id) => selected.has(id));
