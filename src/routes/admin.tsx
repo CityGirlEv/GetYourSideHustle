@@ -34,6 +34,9 @@ export const Route = createFileRoute("/admin")({
       { rel: "canonical", href: "https://themedicareoptimizer.lovable.app/admin" },
     ],
   }),
+  validateSearch: (search: Record<string, unknown>) => ({
+    tab: typeof search.tab === "string" ? (search.tab as string) : undefined,
+  }),
   component: AdminPortal,
 });
 
@@ -66,11 +69,6 @@ interface AdminContactRow {
   created_at: string;
 }
 
-const adminRouteSearch = (search: Record<string, unknown>) => ({
-  tab: typeof search.tab === "string" ? (search.tab as string) : undefined,
-});
-// Attach validateSearch to the route declared above.
-Route.update({ validateSearch: adminRouteSearch });
 
 function BudgetTab() {
   const totals = computeBudgetTotals();
