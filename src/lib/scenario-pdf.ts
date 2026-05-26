@@ -12,6 +12,9 @@ import {
 } from "./medicare-math";
 import { CMS_CATALOG } from "@/data/cms-catalog";
 import { rankedPlanDetails, type PlanDetail } from "./plan-details";
+import { buildDrugReport } from "@/components/DrugReport";
+
+const MEDICARE_HANDBOOK_URL = "https://www.medicare.gov/Pubs/pdf/10050-Medicare-and-You.pdf";
 
 export interface ScenarioPdfInput {
   scenarioCode: string;
