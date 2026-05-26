@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   CheckCircle2, XCircle, MinusCircle, AlertOctagon, Search, RotateCcw,
   FlaskConical, CalendarDays, ListChecks, GitBranch, Sparkles, ExternalLink,
-  Wrench, RefreshCw, Paperclip, Upload, Trash2, FileText, Loader2, Save, Pencil,
+  Wrench, RefreshCw, Paperclip, Upload, Trash2, FileText, Loader2, Save, Pencil, ChevronRight,
 } from "lucide-react";
 import {
   TEST_CASES, IMPLEMENTATION_PLAN, SPRINTS, TASKS,
@@ -322,6 +322,15 @@ export function TestPlanTab() {
     return getTestAssignee(t, statuses[t.id]);
   };
   const effSprint = (t: TestCase): string => sprintOverrides[t.id] || getTestSprintId(t);
+  const [collapsedSprints, setCollapsedSprints] = useState<Set<string>>(
+    () => new Set(SPRINTS.filter((s) => s.id !== ACTIVE_SPRINT_ID).map((s) => s.id))
+  );
+  const toggleCollapsedSprint = (id: string) =>
+    setCollapsedSprints((p) => {
+      const n = new Set(p);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
   const ownerCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const t of effectiveCases) {
@@ -495,30 +504,67 @@ export function TestPlanTab() {
         {filtered.length === 0 && (
           <Card className="p-8 text-center text-sm text-muted-foreground">No test cases match your filters.</Card>
         )}
-        {filtered.map((t) => (
-          <TestCaseCard
-            key={t.id}
-            t={t}
-            status={statuses[t.id] ?? "not_run"}
-            qaNote={qaNotes[t.id] ?? ""}
-            devNote={devNotes[t.id] ?? ""}
-            severity={severities[t.id] ?? ""}
-            assignee={effAssignee(t)}
-            sprintId={effSprint(t)}
-            selected={selected.has(t.id)}
-            onSelectChange={() => toggleSelect(t.id)}
-            onChange={(s) => setStatus(t.id, s)}
-            onQaNoteChange={(n) => setQaNote(t.id, n)}
-            onDevNoteChange={(n) => setDevNote(t.id, n)}
-            onSeverityChange={(s) => setSeverityFor(t.id, s)}
-            onAssigneeChange={(o) => setAssigneeFor(t.id, o)}
-            onSprintChange={(s) => setSprintFor(t.id, s)}
-            isAdmin={isAdmin}
-            onEdit={() => setEditingId(t.id)}
-            hasChanges={hasTestChanges(t.id)}
-            onSave={() => saveSingleTest(t.id)}
-          />
-        ))}
+        {(() => {
+          const groups = new Map<string, TestCase[]>();
+          for (const t of filtered) {
+            const k = effSprint(t) || "_none";
+            if (!groups.has(k)) groups.set(k, []);
+            groups.get(k)!.push(t);
+          }
+          const ordered: { sprintId: string; tests: TestCase[] }[] = [];
+          if (groups.has(ACTIVE_SPRINT_ID)) ordered.push({ sprintId: ACTIVE_SPRINT_ID, tests: groups.get(ACTIVE_SPRINT_ID)! });
+          for (const s of SPRINTS) {
+            if (s.id !== ACTIVE_SPRINT_ID && groups.has(s.id)) ordered.push({ sprintId: s.id, tests: groups.get(s.id)! });
+          }
+          if (groups.has("_none")) ordered.push({ sprintId: "_none", tests: groups.get("_none")! });
+          return ordered.map(({ sprintId, tests }) => {
+            const sprintMeta = SPRINTS.find((s) => s.id === sprintId);
+            const isCollapsed = collapsedSprints.has(sprintId);
+            const label = sprintMeta ? `Sprint ${sprintMeta.number} · ${sprintMeta.name}` : "Unassigned";
+            const isActive = sprintId === ACTIVE_SPRINT_ID;
+            return (
+              <Fragment key={sprintId}>
+                <Card
+                  className="p-3 bg-muted/60 hover:bg-muted/70 cursor-pointer border-2"
+                  onClick={() => toggleCollapsedSprint(sprintId)}
+                >
+                  <div className="flex items-center gap-2 font-semibold text-sm">
+                    <ChevronRight className={`h-4 w-4 transition-transform ${!isCollapsed ? "rotate-90" : ""}`} />
+                    <span>{label}</span>
+                    {isActive && <Badge variant="outline" className="border-primary/60 text-primary">Current</Badge>}
+                    <span className="text-xs font-normal text-muted-foreground ml-1">
+                      {tests.length} test{tests.length === 1 ? "" : "s"}
+                    </span>
+                  </div>
+                </Card>
+                {!isCollapsed && tests.map((t) => (
+                  <TestCaseCard
+                    key={t.id}
+                    t={t}
+                    status={statuses[t.id] ?? "not_run"}
+                    qaNote={qaNotes[t.id] ?? ""}
+                    devNote={devNotes[t.id] ?? ""}
+                    severity={severities[t.id] ?? ""}
+                    assignee={effAssignee(t)}
+                    sprintId={effSprint(t)}
+                    selected={selected.has(t.id)}
+                    onSelectChange={() => toggleSelect(t.id)}
+                    onChange={(s) => setStatus(t.id, s)}
+                    onQaNoteChange={(n) => setQaNote(t.id, n)}
+                    onDevNoteChange={(n) => setDevNote(t.id, n)}
+                    onSeverityChange={(s) => setSeverityFor(t.id, s)}
+                    onAssigneeChange={(o) => setAssigneeFor(t.id, o)}
+                    onSprintChange={(s) => setSprintFor(t.id, s)}
+                    isAdmin={isAdmin}
+                    onEdit={() => setEditingId(t.id)}
+                    hasChanges={hasTestChanges(t.id)}
+                    onSave={() => saveSingleTest(t.id)}
+                  />
+                ))}
+              </Fragment>
+            );
+          });
+        })()}
       </div>
       <SaveChangesDialog
         open={saveOpen}
