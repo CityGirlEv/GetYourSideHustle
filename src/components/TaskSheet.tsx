@@ -55,7 +55,7 @@ function emptyDraft(): TaskRow {
     category: "general",
     priority: "P2",
     status: "not_started",
-    assignBy: "Me",
+    assignBy: "Evelyn",
     assignedTo: "Catria",
     dateAssigned: todayMMDDYY(),
     dueDate: "",
