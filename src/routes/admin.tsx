@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter, Link } from "@tanstack/react-router";
 import { useApp } from "@/lib/app-store";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
@@ -434,7 +434,11 @@ function AdminPortal() {
                     return (
                       <tr key={s.id} className="border-t border-border align-top">
                         <td className="px-3 py-2 text-muted-foreground tabular-nums whitespace-nowrap">{new Date(s.created_at).toLocaleString()}</td>
-                        <td className="px-3 py-2 font-mono text-xs">{s.scenario_code}</td>
+                        <td className="px-3 py-2 font-mono text-xs">
+                          <Link to="/scenario/$code" params={{ code: s.scenario_code }} className="text-primary hover:underline">
+                            {s.scenario_code}
+                          </Link>
+                        </td>
                         <td className="px-3 py-2">{s.zip3}xx</td>
                         <td className="px-3 py-2 tabular-nums">{s.birth_year}</td>
                         <td className="px-3 py-2 capitalize">{(s.gender ?? "—").replace(/_/g, " ")}</td>
