@@ -232,6 +232,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
         conditions: allConditions, medications: meds,
       }));
     } catch { /* ignore quota */ }
+    try { (await import("@/lib/scenario-history")).rememberScenario(code); } catch { /* ignore */ }
     toast.success("Scenario created");
     onDone?.(code);
   };
