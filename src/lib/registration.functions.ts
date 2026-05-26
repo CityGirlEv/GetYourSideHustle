@@ -142,5 +142,23 @@ export const registerWithNda = createServerFn({ method: "POST" })
       requestedRole: data.requested_role,
     });
 
+    // In-app admin notification (always works, no email required)
+    try {
+      await supabaseAdmin.from("admin_notifications").insert({
+        kind: "new_registration",
+        title: `New beta registration — ${data.first_name} ${data.last_name}`,
+        body: `${data.email} · ${data.phone} · requested role: ${data.requested_role}. Account is disabled until you approve it in the Admin → Staff tab.`,
+        metadata: {
+          user_id: userId,
+          email: data.email,
+          phone: data.phone,
+          requested_role: data.requested_role,
+          full_name: fullName,
+        },
+      });
+    } catch (e) {
+      console.error("[registration] admin notification insert failed", e);
+    }
+
     return { ok: true };
   });

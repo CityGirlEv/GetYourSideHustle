@@ -7,6 +7,7 @@ import { LogOut, FlaskConical, ChevronDown, LayoutDashboard, ListChecks, Briefca
 import { Button } from "@/components/ui/button";
 import { CreditPill } from "./CreditPill";
 import { FontSizeToggle } from "./FontSizeToggle";
+import { AdminNotificationsBell } from "./AdminNotificationsBell";
 import { type ReactNode } from "react";
 import muntieLogo from "@/assets/muntie-logo.png";
 import {
@@ -34,6 +35,7 @@ export function AppShell({ children, title, subtitle }: { children: ReactNode; t
         <div className="pointer-events-auto flex items-center gap-3 flex-none shrink-0 ml-auto z-10">
           <FontSizeToggle />
           {user?.role === "advisor" && <CreditPill />}
+          {user?.role === "admin" && <AdminNotificationsBell />}
           {user?.role === "admin" && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

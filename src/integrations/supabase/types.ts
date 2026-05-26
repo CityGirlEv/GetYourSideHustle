@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: string
+          kind: string
+          metadata: Json
+          read_at: string | null
+          title: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          kind: string
+          metadata?: Json
+          read_at?: string | null
+          title: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          metadata?: Json
+          read_at?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
       advisor_credits: {
         Row: {
           advisor_id: string
