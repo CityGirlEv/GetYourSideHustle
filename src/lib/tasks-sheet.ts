@@ -23,7 +23,7 @@ export type TaskRowCategory = (typeof TASK_CATEGORY_VALUES)[number];
 export const TASK_CATEGORY_LABELS: Record<TaskRowCategory, string> = {
   general: "General",
   qa: "QA",
-  engineering: "Engineering & Design",
+  engineering: "Dev",
   ops: "Ops",
   compliance: "Compliance",
 };
