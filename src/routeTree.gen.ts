@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UsersRouteImport } from './routes/users'
+import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as TestingRouteImport } from './routes/testing'
 import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as SourcesRouteImport } from './routes/sources'
@@ -42,6 +43,11 @@ import { Route as AdvisorScenarioCodeEditRouteImport } from './routes/advisor.sc
 const UsersRoute = UsersRouteImport.update({
   id: '/users',
   path: '/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UnsubscribeRoute = UnsubscribeRouteImport.update({
+  id: '/unsubscribe',
+  path: '/unsubscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TestingRoute = TestingRouteImport.update({
@@ -204,6 +210,7 @@ export interface FileRoutesByFullPath {
   '/sources': typeof SourcesRoute
   '/tasks': typeof TasksRoute
   '/testing': typeof TestingRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/users': typeof UsersRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/scenario/$code': typeof ScenarioCodeRoute
@@ -235,6 +242,7 @@ export interface FileRoutesByTo {
   '/sources': typeof SourcesRoute
   '/tasks': typeof TasksRoute
   '/testing': typeof TestingRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/users': typeof UsersRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/scenario/$code': typeof ScenarioCodeRoute
@@ -267,6 +275,7 @@ export interface FileRoutesById {
   '/sources': typeof SourcesRoute
   '/tasks': typeof TasksRoute
   '/testing': typeof TestingRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/users': typeof UsersRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/scenario/$code': typeof ScenarioCodeRoute
@@ -300,6 +309,7 @@ export interface FileRouteTypes {
     | '/sources'
     | '/tasks'
     | '/testing'
+    | '/unsubscribe'
     | '/users'
     | '/email/unsubscribe'
     | '/scenario/$code'
@@ -331,6 +341,7 @@ export interface FileRouteTypes {
     | '/sources'
     | '/tasks'
     | '/testing'
+    | '/unsubscribe'
     | '/users'
     | '/email/unsubscribe'
     | '/scenario/$code'
@@ -362,6 +373,7 @@ export interface FileRouteTypes {
     | '/sources'
     | '/tasks'
     | '/testing'
+    | '/unsubscribe'
     | '/users'
     | '/email/unsubscribe'
     | '/scenario/$code'
@@ -394,6 +406,7 @@ export interface RootRouteChildren {
   SourcesRoute: typeof SourcesRoute
   TasksRoute: typeof TasksRoute
   TestingRoute: typeof TestingRoute
+  UnsubscribeRoute: typeof UnsubscribeRoute
   UsersRoute: typeof UsersRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   ScenarioCodeRoute: typeof ScenarioCodeRoute
@@ -414,6 +427,13 @@ declare module '@tanstack/react-router' {
       path: '/users'
       fullPath: '/users'
       preLoaderRoute: typeof UsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/unsubscribe': {
+      id: '/unsubscribe'
+      path: '/unsubscribe'
+      fullPath: '/unsubscribe'
+      preLoaderRoute: typeof UnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/testing': {
@@ -663,6 +683,7 @@ const rootRouteChildren: RootRouteChildren = {
   SourcesRoute: SourcesRoute,
   TasksRoute: TasksRoute,
   TestingRoute: TestingRoute,
+  UnsubscribeRoute: UnsubscribeRoute,
   UsersRoute: UsersRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   ScenarioCodeRoute: ScenarioCodeRoute,
