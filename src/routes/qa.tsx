@@ -7,6 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useApp } from "@/lib/app-store";
 import { supabase } from "@/integrations/supabase/client";
 import { TEST_CASES, type TestStatus } from "@/lib/test-plan";
+import { getTestAssignee } from "@/lib/test-plan";
+import { loadTaskRows, type TaskRow } from "@/lib/tasks-sheet";
 import { ClipboardCheck, FlaskConical, ListChecks, Mail, FileText, LayoutDashboard, FileSignature, Download } from "lucide-react";
 import { TestPlanTab } from "@/routes/testing";
 import { NdaStatusCard } from "@/components/NdaStatusCard";
@@ -128,6 +130,36 @@ function QADashboard() {
     return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   }, [loading]);
 
+  const tasksByAssignee = useMemo(() => {
+    const rows = typeof window === "undefined" ? [] : loadTaskRows();
+    const map = new Map<string, { total: number; done: number; in_progress: number; blocked: number; not_started: number }>();
+    for (const r of rows) {
+      const who = r.assignedTo?.trim() || "Unassigned";
+      const s = map.get(who) ?? { total: 0, done: 0, in_progress: 0, blocked: 0, not_started: 0 };
+      s.total++;
+      s[r.status]++;
+      map.set(who, s);
+    }
+    return Array.from(map.entries()).sort((a, b) => b[1].total - a[1].total);
+  }, [loading]);
+
+  const testsByAssignee = useMemo(() => {
+    const map = new Map<string, { total: number; pass: number; fail: number; blocked: number; not_run: number; retest: number }>();
+    for (const t of TEST_CASES) {
+      const st = readStatus(t.id);
+      const who = (getTestAssignee(t, st) as string) || "Unassigned";
+      const s = map.get(who) ?? { total: 0, pass: 0, fail: 0, blocked: 0, not_run: 0, retest: 0 };
+      s.total++;
+      if (st === "pass") s.pass++;
+      else if (st === "fail" || st === "failed_retest") s.fail++;
+      else if (st === "blocked") s.blocked++;
+      else if (st === "fixed_retest") s.retest++;
+      else s.not_run++;
+      map.set(who, s);
+    }
+    return Array.from(map.entries()).sort((a, b) => b[1].total - a[1].total);
+  }, [loading]);
+
   if (!user) return null;
   if (user.role !== "admin") {
     return (
@@ -229,6 +261,84 @@ function QADashboard() {
           })}
         </div>
       </Card>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="glass p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <ListChecks className="h-4 w-4" />
+            <h3 className="font-display font-bold">Tasks by assignee</h3>
+            <Link to="/tasks" className="ml-auto"><Button size="sm" variant="outline">Open task sheet</Button></Link>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-secondary/60 text-left text-xs uppercase tracking-wider text-muted-foreground">
+                <tr>
+                  <th className="px-3 py-2">Assignee</th>
+                  <th className="px-3 py-2 text-right">Total</th>
+                  <th className="px-3 py-2 text-right">Done</th>
+                  <th className="px-3 py-2 text-right">In progress</th>
+                  <th className="px-3 py-2 text-right">Blocked</th>
+                  <th className="px-3 py-2 text-right">Not started</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tasksByAssignee.map(([who, s]) => (
+                  <tr key={who} className="border-t border-border">
+                    <td className="px-3 py-2">{who}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{s.total}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{s.done}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{s.in_progress}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{s.blocked > 0 ? <span className="text-destructive">{s.blocked}</span> : s.blocked}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{s.not_started}</td>
+                  </tr>
+                ))}
+                {!tasksByAssignee.length && (
+                  <tr><td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">No tasks yet.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+
+        <Card className="glass p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <ClipboardCheck className="h-4 w-4" />
+            <h3 className="font-display font-bold">Tests by assignee</h3>
+            <Link to="/testing" className="ml-auto"><Button size="sm" variant="outline">Open test portal</Button></Link>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-secondary/60 text-left text-xs uppercase tracking-wider text-muted-foreground">
+                <tr>
+                  <th className="px-3 py-2">Assignee</th>
+                  <th className="px-3 py-2 text-right">Total</th>
+                  <th className="px-3 py-2 text-right">Pass</th>
+                  <th className="px-3 py-2 text-right">Fail</th>
+                  <th className="px-3 py-2 text-right">Retest</th>
+                  <th className="px-3 py-2 text-right">Blocked</th>
+                  <th className="px-3 py-2 text-right">Not run</th>
+                </tr>
+              </thead>
+              <tbody>
+                {testsByAssignee.map(([who, s]) => (
+                  <tr key={who} className="border-t border-border">
+                    <td className="px-3 py-2">{who}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{s.total}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{s.pass}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{s.fail > 0 ? <span className="text-destructive">{s.fail}</span> : s.fail}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{s.retest}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{s.blocked}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{s.not_run}</td>
+                  </tr>
+                ))}
+                {!testsByAssignee.length && (
+                  <tr><td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">No tests defined.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="glass p-4">
