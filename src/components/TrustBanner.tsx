@@ -7,8 +7,8 @@ const items = [
 ];
 
 export function TrustBanner() {
-  // Duplicate items so the marquee loops seamlessly
-  const track = [...items, ...items, ...items];
+  // Duplicate items once so the marquee loops seamlessly (animation translates -50%)
+  const track = [...items, ...items];
 
   return (
     <div className="w-full overflow-hidden bg-primary/5 border-y border-primary/10 py-1.5">
