@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VisitsRouteImport } from './routes/visits'
 import { Route as UsersRouteImport } from './routes/users'
 import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as TestingRouteImport } from './routes/testing'
@@ -41,6 +42,11 @@ import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/em
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as AdvisorScenarioCodeEditRouteImport } from './routes/advisor.scenario.$code.edit'
 
+const VisitsRoute = VisitsRouteImport.update({
+  id: '/visits',
+  path: '/visits',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const UsersRoute = UsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -218,6 +224,7 @@ export interface FileRoutesByFullPath {
   '/testing': typeof TestingRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/users': typeof UsersRoute
+  '/visits': typeof VisitsRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/scenario/$code': typeof ScenarioCodeRoute
   '/scenario/new': typeof ScenarioNewRoute
@@ -251,6 +258,7 @@ export interface FileRoutesByTo {
   '/testing': typeof TestingRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/users': typeof UsersRoute
+  '/visits': typeof VisitsRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/scenario/$code': typeof ScenarioCodeRoute
   '/scenario/new': typeof ScenarioNewRoute
@@ -285,6 +293,7 @@ export interface FileRoutesById {
   '/testing': typeof TestingRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/users': typeof UsersRoute
+  '/visits': typeof VisitsRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/scenario/$code': typeof ScenarioCodeRoute
   '/scenario/new': typeof ScenarioNewRoute
@@ -320,6 +329,7 @@ export interface FileRouteTypes {
     | '/testing'
     | '/unsubscribe'
     | '/users'
+    | '/visits'
     | '/email/unsubscribe'
     | '/scenario/$code'
     | '/scenario/new'
@@ -353,6 +363,7 @@ export interface FileRouteTypes {
     | '/testing'
     | '/unsubscribe'
     | '/users'
+    | '/visits'
     | '/email/unsubscribe'
     | '/scenario/$code'
     | '/scenario/new'
@@ -386,6 +397,7 @@ export interface FileRouteTypes {
     | '/testing'
     | '/unsubscribe'
     | '/users'
+    | '/visits'
     | '/email/unsubscribe'
     | '/scenario/$code'
     | '/scenario/new'
@@ -420,6 +432,7 @@ export interface RootRouteChildren {
   TestingRoute: typeof TestingRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
   UsersRoute: typeof UsersRoute
+  VisitsRoute: typeof VisitsRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   ScenarioCodeRoute: typeof ScenarioCodeRoute
   ScenarioNewRoute: typeof ScenarioNewRoute
@@ -435,6 +448,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/visits': {
+      id: '/visits'
+      path: '/visits'
+      fullPath: '/visits'
+      preLoaderRoute: typeof VisitsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/users': {
       id: '/users'
       path: '/users'
@@ -705,6 +725,7 @@ const rootRouteChildren: RootRouteChildren = {
   TestingRoute: TestingRoute,
   UnsubscribeRoute: UnsubscribeRoute,
   UsersRoute: UsersRoute,
+  VisitsRoute: VisitsRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   ScenarioCodeRoute: ScenarioCodeRoute,
   ScenarioNewRoute: ScenarioNewRoute,
