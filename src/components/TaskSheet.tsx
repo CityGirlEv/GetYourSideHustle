@@ -166,6 +166,7 @@ export function TaskSheetContent() {
 
   const owners = useMemo(() => {
     const set = new Set<string>(rows.map((r) => r.assignedTo).filter(Boolean));
+    set.add("Unassigned");
     return Array.from(set);
   }, [rows]);
 
