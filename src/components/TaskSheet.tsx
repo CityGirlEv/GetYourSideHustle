@@ -21,7 +21,7 @@ import { Plus, RotateCcw, Trash2, Pencil, Search, Download, ExternalLink, Save, 
 import { toast } from "sonner";
 import {
   loadTaskRows, saveTaskRows, resetTaskRows, nextTaskId, todayMMDDYY,
-  TASK_STATUS_VALUES, TASK_STATUS_LABELS,
+  TASK_STATUS_VALUES, TASK_STATUS_LABELS, TASK_CATEGORY_VALUES, TASK_CATEGORY_LABELS,
   type TaskRow, type TaskRowStatus,
 } from "@/lib/tasks-sheet";
 import { SPRINTS, ACTIVE_SPRINT_ID, PRIORITY_LABELS, PRIORITY_SHORT, type Priority } from "@/lib/test-plan";
