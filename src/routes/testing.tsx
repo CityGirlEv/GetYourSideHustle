@@ -1665,3 +1665,110 @@ function TasksTab() {
     </div>
   );
 }
+/* ============================== NEW TEST DIALOG ============================== */
+function NewTestDialog({
+  open, onOpenChange, existingIds, onCreated,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  existingIds: string[];
+  onCreated: (row: CustomTestRow) => void;
+}) {
+  const [area, setArea] = useState("");
+  const [title, setTitle] = useState("");
+  const [priority, setPriority] = useState<Priority>("P2");
+  const [preconditions, setPreconditions] = useState("");
+  const [stepsText, setStepsText] = useState("");
+  const [expected, setExpected] = useState("");
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const reset = () => {
+    setArea(""); setTitle(""); setPriority("P2");
+    setPreconditions(""); setStepsText(""); setExpected(""); setNotes("");
+  };
+
+  const submit = async () => {
+    if (!title.trim() || !expected.trim()) {
+      toast.error("Title and expected result are required");
+      return;
+    }
+    const steps = stepsText.split("\n").map((s) => s.trim()).filter(Boolean);
+    if (steps.length === 0) {
+      toast.error("Add at least one step");
+      return;
+    }
+    setSaving(true);
+    try {
+      const row = await createCustomTest(
+        { area, title, priority, preconditions, steps, expected, notes },
+        existingIds,
+      );
+      onCreated(row);
+      reset();
+      onOpenChange(false);
+    } catch (e) {
+      console.error(e);
+      toast.error(e instanceof Error ? e.message : "Failed to create test");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-xl">
+        <DialogHeader>
+          <DialogTitle>New test case</DialogTitle>
+          <DialogDescription>
+            New tests start as <b>Unassigned</b> until an admin assigns an owner and sprint.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label>Area</Label>
+              <Input value={area} onChange={(e) => setArea(e.target.value)} placeholder="Auth, Intake, Voice…" />
+            </div>
+            <div className="space-y-1">
+              <Label>Priority</Label>
+              <Select value={priority} onValueChange={(v) => setPriority(v as Priority)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="P0">P0 — Severe</SelectItem>
+                  <SelectItem value="P1">P1 — High</SelectItem>
+                  <SelectItem value="P2">P2 — Medium</SelectItem>
+                  <SelectItem value="P3">P3 — Low</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label>Title *</Label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What is being tested?" />
+          </div>
+          <div className="space-y-1">
+            <Label>Preconditions</Label>
+            <Textarea rows={2} value={preconditions} onChange={(e) => setPreconditions(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label>Steps * (one per line)</Label>
+            <Textarea rows={4} value={stepsText} onChange={(e) => setStepsText(e.target.value)} placeholder={"Open /auth\nClick Sign in\n…"} />
+          </div>
+          <div className="space-y-1">
+            <Label>Expected result *</Label>
+            <Textarea rows={2} value={expected} onChange={(e) => setExpected(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label>Notes</Label>
+            <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button>
+          <Button onClick={submit} disabled={saving}>{saving ? "Creating…" : "Create test"}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
