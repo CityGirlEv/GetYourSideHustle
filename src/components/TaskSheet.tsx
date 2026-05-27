@@ -24,7 +24,8 @@ import {
   TASK_STATUS_VALUES, TASK_STATUS_LABELS, TASK_CATEGORY_VALUES, TASK_CATEGORY_LABELS,
   type TaskRow, type TaskRowStatus,
 } from "@/lib/tasks-sheet";
-import { SPRINTS, ACTIVE_SPRINT_ID, PRIORITY_LABELS, PRIORITY_SHORT, TEST_OWNERS, type Priority } from "@/lib/test-plan";
+import { SPRINTS, ACTIVE_SPRINT_ID, PRIORITY_LABELS, PRIORITY_SHORT, type Priority } from "@/lib/test-plan";
+import { useAssigneeOptions } from "@/lib/use-assignee-options";
 import { MultiSelect, multiSelectMatches } from "@/components/ui/multi-select";
 import { DateField } from "@/components/DateField";
 
@@ -113,6 +114,7 @@ export function TaskSheetContent() {
   // savedRows = last persisted snapshot; rows = working draft (unsaved edits)
   const [savedRows, setSavedRows] = useState<TaskRow[]>(() => loadTaskRows());
   const [rows, setRows] = useState<TaskRow[]>(() => loadTaskRows());
+  const assigneeOptions = useAssigneeOptions();
   // Pull task_rows from the cloud on mount so this browser shows whatever was
   // last saved by anyone (restores data wiped from local storage).
   useEffect(() => {
@@ -662,7 +664,7 @@ export function TaskSheetContent() {
           <Select value={bulkAssignee} onValueChange={setBulkAssignee}>
             <SelectTrigger className="h-9 w-[160px]"><SelectValue placeholder="Set assignee…" /></SelectTrigger>
             <SelectContent>
-              {TEST_OWNERS.map((o) => (
+              {assigneeOptions.map((o) => (
                 <SelectItem key={o} value={o}>{o}</SelectItem>
               ))}
             </SelectContent>
@@ -693,7 +695,7 @@ export function TaskSheetContent() {
             <Select value={bulkAssignBy} onValueChange={setBulkAssignBy}>
               <SelectTrigger className="h-9 w-[150px]"><SelectValue placeholder="Set assigned by…" /></SelectTrigger>
               <SelectContent>
-                {TEST_OWNERS.map((o) => (
+                {assigneeOptions.map((o) => (
                   <SelectItem key={o} value={o}>{o}</SelectItem>
                 ))}
               </SelectContent>
@@ -843,7 +845,7 @@ export function TaskSheetContent() {
                       <Select value={r.assignedTo} onValueChange={(v) => inlineUpdate(r.id, "assignedTo", v)}>
                         <SelectTrigger className="h-7 w-[110px] text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          {TEST_OWNERS.map((o) => (
+                          {assigneeOptions.map((o) => (
                             <SelectItem key={o} value={o}>{o}</SelectItem>
                           ))}
                         </SelectContent>
@@ -853,7 +855,7 @@ export function TaskSheetContent() {
                       <Select value={r.assignBy} onValueChange={(v) => inlineUpdate(r.id, "assignBy", v)}>
                         <SelectTrigger className="h-7 w-[80px] text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          {TEST_OWNERS.map((o) => (
+                          {assigneeOptions.map((o) => (
                             <SelectItem key={o} value={o}>{o}</SelectItem>
                           ))}
                         </SelectContent>
@@ -951,7 +953,7 @@ export function TaskSheetContent() {
                 <Select value={editing.assignedTo} onValueChange={(v) => setEditing({ ...editing, assignedTo: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {TEST_OWNERS.map((o) => (
+                    {assigneeOptions.map((o) => (
                       <SelectItem key={o} value={o}>{o}</SelectItem>
                     ))}
                   </SelectContent>
@@ -962,7 +964,7 @@ export function TaskSheetContent() {
                 <Select value={editing.assignBy} onValueChange={(v) => setEditing({ ...editing, assignBy: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {TEST_OWNERS.map((o) => (
+                    {assigneeOptions.map((o) => (
                       <SelectItem key={o} value={o}>{o}</SelectItem>
                     ))}
                   </SelectContent>

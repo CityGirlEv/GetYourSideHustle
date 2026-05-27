@@ -20,7 +20,7 @@ import {
   getTestCreditReward, totalCreditBudget, creditBudgetByOwner, REPRO_FAIL_BONUS,
   loadAllQaNotes, loadAllDevNotes, saveQaNote, saveDevNote,
   loadAllSeverities, saveSeverity, FAIL_SEVERITY_LABELS, type FailSeverity,
-  TEST_OWNERS, loadAllAssigneeOverrides, saveAssigneeOverride,
+  loadAllAssigneeOverrides, saveAssigneeOverride,
   loadAllSprintOverrides, saveSprintOverride,
   applyDescriptionOverride, loadDescriptionOverride, saveDescriptionOverride,
   clearDescriptionOverride, type TestDescriptionOverride,
@@ -28,6 +28,7 @@ import {
 import { AppShell } from "@/components/AppShell";
 import { SyncBrowserToCloud } from "@/components/SyncBrowserToCloud";
 import { useApp } from "@/lib/app-store";
+import { useAssigneeOptions } from "@/lib/use-assignee-options";
 import { hydrateTestResultsToLocal } from "@/lib/cloud-sync";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -766,6 +767,7 @@ function BulkEditBar({
   const [qaDraft, setQaDraft] = useState("");
   const [devDraft, setDevDraft] = useState("");
   const disabled = selectedCount === 0;
+  const assigneeOptions = useAssigneeOptions();
   return (
     <Card className="p-3 sticky top-[64px] z-20 bg-background/95 backdrop-blur border-primary/30">
       <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -814,7 +816,7 @@ function BulkEditBar({
           title="Set owner for selected"
         >
           <option value="">Set owner…</option>
-          {TEST_OWNERS.map((o) => <option key={o} value={o}>{o}</option>)}
+          {assigneeOptions.map((o: string) => <option key={o} value={o}>{o}</option>)}
         </select>
         <select
           disabled={disabled}
@@ -926,6 +928,7 @@ function TestCaseCard({
                                  "bg-background";
   const showQaNote = status === "fail" || status === "failed_retest";
   const showDevNote = status === "fixed_retest" || status === "failed_retest";
+  const assigneeOptions = useAssigneeOptions();
   return (
     <Card className={`p-4 ${shade} ${selected ? "ring-2 ring-primary/60" : ""}`}>
       <div className="flex flex-wrap items-start gap-2 mb-2">
@@ -960,7 +963,7 @@ function TestCaseCard({
             onChange={(e) => onAssigneeChange(e.target.value)}
             title="Re-assign this test"
           >
-            {TEST_OWNERS.map((o) => (
+            {assigneeOptions.map((o: string) => (
               <option key={o} value={o}>{o}</option>
             ))}
           </select>
