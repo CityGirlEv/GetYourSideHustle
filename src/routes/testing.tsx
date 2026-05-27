@@ -28,6 +28,7 @@ import {
 import { AppShell } from "@/components/AppShell";
 import { SyncBrowserToCloud } from "@/components/SyncBrowserToCloud";
 import { useApp } from "@/lib/app-store";
+import { useAssigneeOptions } from "@/lib/use-assignee-options";
 import { hydrateTestResultsToLocal } from "@/lib/cloud-sync";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
