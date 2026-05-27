@@ -47,7 +47,18 @@ export const Route = createFileRoute("/api/public/track-visit")({
           const body = await request.json().catch(() => ({} as any));
           const path = typeof body?.path === "string" ? body.path.slice(0, 1024) : null;
           const referrer = typeof body?.referrer === "string" ? body.referrer.slice(0, 1024) : null;
-          const userId = typeof body?.userId === "string" ? body.userId : null;
+          // Do not trust caller-supplied userId. Derive from Authorization header if present.
+          let userId: string | null = null;
+          const authHeader = request.headers.get("authorization");
+          if (authHeader?.startsWith("Bearer ")) {
+            try {
+              const token = authHeader.slice(7).trim();
+              const { data } = await supabaseAdmin.auth.getUser(token);
+              userId = data.user?.id ?? null;
+            } catch {
+              userId = null;
+            }
+          }
           const ip = getClientIp(request);
           const userAgent = request.headers.get("user-agent")?.slice(0, 1024) ?? null;
 
