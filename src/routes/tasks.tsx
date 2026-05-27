@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { TaskSheetContent } from "@/components/TaskSheet";
-import { SyncBrowserToCloud } from "@/components/SyncBrowserToCloud";
+
 import { useApp } from "@/lib/app-store";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ListChecks, FlaskConical } from "lucide-react";
@@ -57,7 +57,7 @@ function TaskSheetPage() {
               <FlaskConical className="h-3.5 w-3.5" />
               Testing Portal →
             </Link>
-            <SyncBrowserToCloud />
+            
           </div>
         </div>
         <TabsContent value="tasks">
