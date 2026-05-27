@@ -389,6 +389,63 @@ export type Database = {
         }
         Relationships: []
       }
+      site_visits: {
+        Row: {
+          city: string | null
+          country: string | null
+          country_code: string | null
+          created_at: string
+          id: string
+          ip_address: string | null
+          isp: string | null
+          latitude: number | null
+          longitude: number | null
+          path: string | null
+          postal: string | null
+          referrer: string | null
+          region: string | null
+          timezone: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          city?: string | null
+          country?: string | null
+          country_code?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          isp?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          path?: string | null
+          postal?: string | null
+          referrer?: string | null
+          region?: string | null
+          timezone?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          city?: string | null
+          country?: string | null
+          country_code?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          isp?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          path?: string | null
+          postal?: string | null
+          referrer?: string | null
+          region?: string | null
+          timezone?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       soas: {
         Row: {
           advisor_id: string
