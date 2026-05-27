@@ -178,7 +178,7 @@ export function AppShell({ children, title, subtitle, titleClassName }: { childr
       <main className="flex-1 px-4 md:px-8 pt-0 pb-6 max-w-7xl w-full mx-auto">
         {(title || subtitle) && (
           <div className="mb-2 mt-0.5">
-            {title && <h2 className="font-display font-bold text-2xl md:text-3xl text-primary">{title}</h2>}
+            {title && <h2 className={`font-display font-bold text-2xl md:text-3xl ${titleClassName ?? "text-primary"}`}>{title}</h2>}
             {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
           </div>
         )}
