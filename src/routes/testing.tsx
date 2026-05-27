@@ -682,7 +682,22 @@ export function TestPlanTab() {
           ]}
           value={statusFilter} onChange={setStatusFilter}
         />
+        {(isAdmin || user?.role === "qa") && (
+          <Button size="sm" onClick={() => setNewTestOpen(true)} className="ml-auto">
+            + New Test
+          </Button>
+        )}
       </div>
+
+      <NewTestDialog
+        open={newTestOpen}
+        onOpenChange={setNewTestOpen}
+        existingIds={effectiveCases.map((t) => t.id)}
+        onCreated={(row) => {
+          setCustomTests((prev) => [row, ...prev]);
+          toast.success(`Created ${row.id}`);
+        }}
+      />
 
       {/* Cases */}
       <div className="space-y-3">
