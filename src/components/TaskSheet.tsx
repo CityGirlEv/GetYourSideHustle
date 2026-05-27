@@ -664,7 +664,7 @@ export function TaskSheetContent() {
           <Select value={bulkAssignee} onValueChange={setBulkAssignee}>
             <SelectTrigger className="h-9 w-[160px]"><SelectValue placeholder="Set assignee…" /></SelectTrigger>
             <SelectContent>
-              {TEST_OWNERS.map((o) => (
+              {assigneeOptions.map((o) => (
                 <SelectItem key={o} value={o}>{o}</SelectItem>
               ))}
             </SelectContent>
@@ -695,7 +695,7 @@ export function TaskSheetContent() {
             <Select value={bulkAssignBy} onValueChange={setBulkAssignBy}>
               <SelectTrigger className="h-9 w-[150px]"><SelectValue placeholder="Set assigned by…" /></SelectTrigger>
               <SelectContent>
-                {TEST_OWNERS.map((o) => (
+                {assigneeOptions.map((o) => (
                   <SelectItem key={o} value={o}>{o}</SelectItem>
                 ))}
               </SelectContent>
@@ -845,7 +845,7 @@ export function TaskSheetContent() {
                       <Select value={r.assignedTo} onValueChange={(v) => inlineUpdate(r.id, "assignedTo", v)}>
                         <SelectTrigger className="h-7 w-[110px] text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          {TEST_OWNERS.map((o) => (
+                          {assigneeOptions.map((o) => (
                             <SelectItem key={o} value={o}>{o}</SelectItem>
                           ))}
                         </SelectContent>
@@ -855,7 +855,7 @@ export function TaskSheetContent() {
                       <Select value={r.assignBy} onValueChange={(v) => inlineUpdate(r.id, "assignBy", v)}>
                         <SelectTrigger className="h-7 w-[80px] text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          {TEST_OWNERS.map((o) => (
+                          {assigneeOptions.map((o) => (
                             <SelectItem key={o} value={o}>{o}</SelectItem>
                           ))}
                         </SelectContent>
@@ -953,7 +953,7 @@ export function TaskSheetContent() {
                 <Select value={editing.assignedTo} onValueChange={(v) => setEditing({ ...editing, assignedTo: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {TEST_OWNERS.map((o) => (
+                    {assigneeOptions.map((o) => (
                       <SelectItem key={o} value={o}>{o}</SelectItem>
                     ))}
                   </SelectContent>
@@ -964,7 +964,7 @@ export function TaskSheetContent() {
                 <Select value={editing.assignBy} onValueChange={(v) => setEditing({ ...editing, assignBy: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {TEST_OWNERS.map((o) => (
+                    {assigneeOptions.map((o) => (
                       <SelectItem key={o} value={o}>{o}</SelectItem>
                     ))}
                   </SelectContent>
