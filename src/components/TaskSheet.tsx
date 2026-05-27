@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Progress } from "@/components/ui/progress";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -89,14 +90,24 @@ function TaskTargetLink({ path }: { path?: string }) {
   );
 }
 
-function StatCard({ label, value, tone }: { label: string; value: number; tone?: string }) {
+function StatBadge({ n, label, color, active, onClick }: { n: number; label: string; color: string; active?: boolean; onClick?: () => void }) {
   return (
-    <Card className={`p-3 ${tone ?? ""}`}>
-      <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className="text-2xl font-semibold mt-1">{value}</div>
-    </Card>
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 font-semibold ${color} ${onClick ? "cursor-pointer hover:opacity-80 transition-opacity" : ""} ${active ? "ring-2 ring-offset-1 ring-emerald-500" : ""}`}
+    >
+      {n} <span className="font-normal opacity-80">{label}</span>
+    </button>
   );
 }
+
+const TASK_STATUS_STYLES: Record<TaskRowStatus, string> = {
+  not_started: "bg-muted text-muted-foreground border-border",
+  in_progress: "bg-blue-500/10 text-blue-700 border-blue-500/30",
+  blocked: "bg-destructive/10 text-destructive border-destructive/30",
+  done: "bg-emerald-500/10 text-emerald-700 border-emerald-500/30",
+};
 
 export function TaskSheetContent() {
   // savedRows = last persisted snapshot; rows = working draft (unsaved edits)
@@ -166,6 +177,30 @@ export function TaskSheetContent() {
     const by = { not_started: 0, in_progress: 0, blocked: 0, done: 0 } as Record<TaskRowStatus, number>;
     for (const r of rows) by[r.status]++;
     return by;
+  }, [rows]);
+
+  const doneRate = rows.length ? Math.round((stats.done / rows.length) * 100) : 0;
+
+  // Owner counts across all rows (for the sprint banner pills).
+  const ownerCounts = useMemo(() => {
+    const out: Record<string, number> = {};
+    for (const r of rows) {
+      const a = r.assignedTo || "Unassigned";
+      out[a] = (out[a] || 0) + 1;
+    }
+    return out;
+  }, [rows]);
+
+  // Per-owner status breakdown (only owners with at least one task).
+  const ownerStatusCounts = useMemo(() => {
+    const out: Record<string, Record<TaskRowStatus | "total", number>> = {};
+    for (const r of rows) {
+      const owner = r.assignedTo || "Unassigned";
+      if (!out[owner]) out[owner] = { total: 0, not_started: 0, in_progress: 0, blocked: 0, done: 0 };
+      out[owner].total++;
+      out[owner][r.status]++;
+    }
+    return out;
   }, [rows]);
 
   // Group filtered rows by sprint. Current sprint first, then by SPRINTS order, then unassigned.
@@ -393,14 +428,114 @@ export function TaskSheetContent() {
 
   return (
     <div className="space-y-4">
+      {/* Sprint + ownership banner */}
+      <Card className="p-4 bg-emerald-500/5 border-emerald-500/30">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="text-xs uppercase tracking-wide text-muted-foreground">Active sprint</div>
+            <div className="font-bold text-base">Sprint 1 · Beta go-live ({ACTIVE_SPRINT_ID})</div>
+            <div className="text-xs text-muted-foreground">5/25 → 5/31 · {rows.length} task{rows.length === 1 ? "" : "s"} on the board</div>
+          </div>
+          <div className="flex flex-wrap gap-2 text-xs">
+            {Object.entries(ownerCounts).map(([owner, n]) => {
+              const active = ownerFilter.length === 1 && ownerFilter[0] === owner;
+              return (
+                <button
+                  key={owner}
+                  type="button"
+                  onClick={() => setOwnerFilter(active ? [] : [owner])}
+                  className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 font-semibold bg-background cursor-pointer hover:bg-accent transition-colors ${active ? "ring-2 ring-offset-1 ring-emerald-500" : ""}`}
+                >
+                  {owner} <span className="font-normal opacity-70">· {n} task{n === 1 ? "" : "s"}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </Card>
+
       {/* Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-        <StatCard label="Total" value={rows.length} />
-        <StatCard label="Not started" value={stats.not_started} />
-        <StatCard label="In progress" value={stats.in_progress} />
-        <StatCard label="Blocked" value={stats.blocked} tone="border-destructive/40" />
-        <StatCard label="Done" value={stats.done} tone="border-emerald-500/40" />
-      </div>
+      <Card className="p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <div>
+            <div className="text-xs uppercase tracking-wide text-muted-foreground">Completion</div>
+            <div className="text-2xl font-bold">{doneRate}%</div>
+          </div>
+          <div className="flex flex-wrap gap-2 text-xs">
+            <StatBadge n={stats.done} label="Done" color={TASK_STATUS_STYLES.done}
+              active={statusFilter.length === 1 && statusFilter[0] === "done"}
+              onClick={() => setStatusFilter(statusFilter.length === 1 && statusFilter[0] === "done" ? [] : ["done"]) } />
+            <StatBadge n={stats.in_progress} label="In progress" color={TASK_STATUS_STYLES.in_progress}
+              active={statusFilter.length === 1 && statusFilter[0] === "in_progress"}
+              onClick={() => setStatusFilter(statusFilter.length === 1 && statusFilter[0] === "in_progress" ? [] : ["in_progress"]) } />
+            <StatBadge n={stats.blocked} label="Blocked" color={TASK_STATUS_STYLES.blocked}
+              active={statusFilter.length === 1 && statusFilter[0] === "blocked"}
+              onClick={() => setStatusFilter(statusFilter.length === 1 && statusFilter[0] === "blocked" ? [] : ["blocked"]) } />
+            <StatBadge n={stats.not_started} label="Not started" color={TASK_STATUS_STYLES.not_started}
+              active={statusFilter.length === 1 && statusFilter[0] === "not_started"}
+              onClick={() => setStatusFilter(statusFilter.length === 1 && statusFilter[0] === "not_started" ? [] : ["not_started"]) } />
+            <StatBadge n={rows.length} label="Total" color="bg-emerald-500/10 text-emerald-700 border-emerald-500/30"
+              active={statusFilter.length === 0}
+              onClick={() => setStatusFilter([])} />
+          </div>
+        </div>
+        <Progress value={doneRate} className="h-2" />
+        {Object.keys(ownerStatusCounts).length > 0 && (
+          <div className="mt-4 pt-3 border-t border-border/60 space-y-2">
+            <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
+              By owner
+            </div>
+            <div className="space-y-1.5">
+              {Object.entries(ownerStatusCounts)
+                .sort((a, b) => b[1].total - a[1].total)
+                .map(([owner, c]) => {
+                  const ownerActive = ownerFilter.length === 1 && ownerFilter[0] === owner;
+                  const toggleOwnerStatus = (s: TaskRowStatus) => {
+                    setOwnerFilter([owner]);
+                    setStatusFilter(
+                      statusFilter.length === 1 && statusFilter[0] === s && ownerActive ? [] : [s],
+                    );
+                  };
+                  const clearOwner = () => {
+                    setOwnerFilter(ownerActive && statusFilter.length === 0 ? [] : [owner]);
+                    if (!(ownerActive && statusFilter.length === 0)) setStatusFilter([]);
+                  };
+                  const ownerDone = c.total ? Math.round((c.done / c.total) * 100) : 0;
+                  const cell = (n: number, label: string, klass: string, s: TaskRowStatus) => {
+                    const isActive = ownerActive && statusFilter.length === 1 && statusFilter[0] === s;
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => toggleOwnerStatus(s)}
+                        className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold transition-colors hover:opacity-80 ${klass} ${isActive ? "ring-2 ring-offset-1 ring-emerald-500" : ""}`}
+                        title={`Filter to ${owner} · ${label}`}
+                      >
+                        {n} <span className="font-normal opacity-70">{label}</span>
+                      </button>
+                    );
+                  };
+                  return (
+                    <div key={owner} className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={clearOwner}
+                        className={`min-w-[88px] text-left text-xs font-semibold hover:underline ${ownerActive ? "text-emerald-600" : ""}`}
+                        title={`Filter all tasks for ${owner}`}
+                      >
+                        {owner} <span className="text-muted-foreground font-normal">· {ownerDone}%</span>
+                      </button>
+                      {cell(c.done, "Done", TASK_STATUS_STYLES.done, "done")}
+                      {cell(c.in_progress, "In progress", TASK_STATUS_STYLES.in_progress, "in_progress")}
+                      {cell(c.blocked, "Blocked", TASK_STATUS_STYLES.blocked, "blocked")}
+                      {cell(c.not_started, "Not started", TASK_STATUS_STYLES.not_started, "not_started")}
+                      <span className="text-[11px] text-muted-foreground">· {c.total} total</span>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        )}
+      </Card>
 
       {/* Toolbar */}
       <Card className="p-3 flex flex-wrap items-center gap-2">
