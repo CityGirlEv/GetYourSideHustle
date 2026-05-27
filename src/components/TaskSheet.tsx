@@ -647,7 +647,7 @@ export function TaskSheetContent() {
           <Select value={bulkAssignee} onValueChange={setBulkAssignee}>
             <SelectTrigger className="h-9 w-[160px]"><SelectValue placeholder="Set assignee…" /></SelectTrigger>
             <SelectContent>
-              {owners.filter((o) => o !== "All").map((o) => (
+              {TEST_OWNERS.map((o) => (
                 <SelectItem key={o} value={o}>{o}</SelectItem>
               ))}
             </SelectContent>
@@ -675,7 +675,14 @@ export function TaskSheetContent() {
             </Select>
           </div>
           <div className="flex flex-wrap items-center gap-2 w-full">
-            <Input value={bulkAssignBy} onChange={(e) => setBulkAssignBy(e.target.value)} placeholder="Set assigned by…" className="h-9 w-[150px]" />
+            <Select value={bulkAssignBy} onValueChange={setBulkAssignBy}>
+              <SelectTrigger className="h-9 w-[150px]"><SelectValue placeholder="Set assigned by…" /></SelectTrigger>
+              <SelectContent>
+                {TEST_OWNERS.map((o) => (
+                  <SelectItem key={o} value={o}>{o}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <DateField value={bulkDateAssigned} onChange={setBulkDateAssigned} placeholder="Assigned…" buttonClassName="h-9 w-[150px]" />
             <DateField value={bulkDueDate} onChange={setBulkDueDate} placeholder="Due…" buttonClassName="h-9 w-[150px]" />
             <DateField value={bulkDateCompleted} onChange={setBulkDateCompleted} placeholder="Completed…" buttonClassName="h-9 w-[170px]" />
