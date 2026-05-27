@@ -150,6 +150,7 @@ export function TaskSheetContent() {
   const [bulkDueDate, setBulkDueDate] = useState<string>("");
   const [bulkDateCompleted, setBulkDateCompleted] = useState<string>("");
   const [bulkCost, setBulkCost] = useState<string>("");
+  const [summaryCollapsed, setSummaryCollapsed] = useState(false);
 
   // Working state only — do NOT write to storage here. Call commitChanges() to persist.
   const persist = (next: TaskRow[]) => {
