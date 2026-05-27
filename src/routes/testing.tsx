@@ -710,11 +710,13 @@ export function TestPlanTab() {
             groups.get(k)!.push(t);
           }
           const ordered: { sprintId: string; tests: TestCase[] }[] = [];
+          // Surface user-created / unassigned tests at the very top so admins
+          // see fresh work that still needs an owner before anything else.
+          if (groups.has("_none")) ordered.push({ sprintId: "_none", tests: groups.get("_none")! });
           if (groups.has(ACTIVE_SPRINT_ID)) ordered.push({ sprintId: ACTIVE_SPRINT_ID, tests: groups.get(ACTIVE_SPRINT_ID)! });
           for (const s of SPRINTS) {
             if (s.id !== ACTIVE_SPRINT_ID && groups.has(s.id)) ordered.push({ sprintId: s.id, tests: groups.get(s.id)! });
           }
-          if (groups.has("_none")) ordered.push({ sprintId: "_none", tests: groups.get("_none")! });
           return ordered.map(({ sprintId, tests }) => {
             const sprintMeta = SPRINTS.find((s) => s.id === sprintId);
             const isCollapsed = collapsedSprints.has(sprintId);
