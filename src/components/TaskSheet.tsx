@@ -179,6 +179,30 @@ export function TaskSheetContent() {
     return by;
   }, [rows]);
 
+  const doneRate = rows.length ? Math.round((stats.done / rows.length) * 100) : 0;
+
+  // Owner counts across all rows (for the sprint banner pills).
+  const ownerCounts = useMemo(() => {
+    const out: Record<string, number> = {};
+    for (const r of rows) {
+      const a = r.assignedTo || "Unassigned";
+      out[a] = (out[a] || 0) + 1;
+    }
+    return out;
+  }, [rows]);
+
+  // Per-owner status breakdown (only owners with at least one task).
+  const ownerStatusCounts = useMemo(() => {
+    const out: Record<string, Record<TaskRowStatus | "total", number>> = {};
+    for (const r of rows) {
+      const owner = r.assignedTo || "Unassigned";
+      if (!out[owner]) out[owner] = { total: 0, not_started: 0, in_progress: 0, blocked: 0, done: 0 };
+      out[owner].total++;
+      out[owner][r.status]++;
+    }
+    return out;
+  }, [rows]);
+
   // Group filtered rows by sprint. Current sprint first, then by SPRINTS order, then unassigned.
   const groupedBySprint = useMemo(() => {
     const map = new Map<string, TaskRow[]>();
