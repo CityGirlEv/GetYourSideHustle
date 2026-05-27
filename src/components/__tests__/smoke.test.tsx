@@ -27,14 +27,14 @@ describe("component smoke renders", () => {
 
   it("SignaturePad", () => {
     const { container } = render(
-      <SignaturePad value="" onChange={() => {}} />,
+      <SignaturePad onSign={() => {}} />,
     );
     expect(container.firstChild).toBeTruthy();
   });
 
   it("DateField", () => {
     const { container } = render(
-      <DateField value={undefined} onChange={() => {}} />,
+      <DateField value="" onChange={() => {}} />,
     );
     expect(container.firstChild).toBeTruthy();
   });
