@@ -174,7 +174,7 @@ export function TaskSheetContent() {
     return rows.filter((r) => {
       if (!multiSelectMatches(statusFilter, r.status)) return false;
       if (!multiSelectMatches(sprintFilter, r.sprintId)) return false;
-      if (!multiSelectMatches(ownerFilter, r.assignedTo)) return false;
+      if (!multiSelectMatches(ownerFilter, r.assignedTo || "Unassigned")) return false;
       if (!q) return true;
       return [r.id, r.description, r.assignedTo, r.assignBy, r.notes]
         .some((f) => (f || "").toLowerCase().includes(q));
