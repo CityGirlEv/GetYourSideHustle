@@ -821,14 +821,21 @@ export function TaskSheetContent() {
                       <Select value={r.assignedTo} onValueChange={(v) => inlineUpdate(r.id, "assignedTo", v)}>
                         <SelectTrigger className="h-7 w-[110px] text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          {owners.filter((o) => o !== "All").map((o) => (
+                          {TEST_OWNERS.map((o) => (
                             <SelectItem key={o} value={o}>{o}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </TableCell>
                     <TableCell>
-                      <Input value={r.assignBy} onChange={(e) => inlineUpdate(r.id, "assignBy", e.target.value)} className="h-7 w-[80px] text-xs" />
+                      <Select value={r.assignBy} onValueChange={(v) => inlineUpdate(r.id, "assignBy", v)}>
+                        <SelectTrigger className="h-7 w-[80px] text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {TEST_OWNERS.map((o) => (
+                            <SelectItem key={o} value={o}>{o}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </TableCell>
                     <TableCell><DateField value={r.dateAssigned} onChange={(v) => inlineUpdate(r.id, "dateAssigned", v)} placeholder="—" buttonClassName="h-7 w-[110px] text-xs" /></TableCell>
                     <TableCell><DateField value={r.dueDate} onChange={(v) => inlineUpdate(r.id, "dueDate", v)} placeholder="—" buttonClassName="h-7 w-[110px] text-xs" /></TableCell>
