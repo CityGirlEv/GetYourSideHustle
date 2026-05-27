@@ -354,8 +354,8 @@ export function TestPlanTab() {
   // Effective assignee/sprint that respects unsaved drafts (the lib helpers read storage)
   const effAssignee = (t: TestCase): string => {
     const ov = assigneeOverrides[t.id];
-    if (ov) return ov;
-    return getTestAssignee(t, statuses[t.id]);
+    const raw = ov || getTestAssignee(t, statuses[t.id]);
+    return raw === "Me" ? "Evelyn" : raw;
   };
   const effSprint = (t: TestCase): string => sprintOverrides[t.id] || getTestSprintId(t);
   const [collapsedSprints, setCollapsedSprints] = useState<Set<string>>(
