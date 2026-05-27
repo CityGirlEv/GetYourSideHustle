@@ -5,6 +5,7 @@
 // history on the DB side (latest entry by any author is shown locally).
 // ============================================================================
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import {
   TEST_CASES,
   TEST_STATUS_KEY, TEST_SEVERITY_KEY, TEST_ASSIGNEE_KEY, TEST_SPRINT_KEY,
@@ -25,6 +26,15 @@ async function uid(): Promise<{ id: string; name: string } | null> {
   return { id: data.user.id, name };
 }
 
+let warnedNotSignedIn = false;
+function warnNotSignedIn(label: string) {
+  if (warnedNotSignedIn) return;
+  warnedNotSignedIn = true;
+  setTimeout(() => { warnedNotSignedIn = false; }, 10_000);
+  console.warn(`[cloud-sync] ${label} skipped — not signed in. Changes will NOT persist across refresh.`);
+  try { toast.error("Not signed in — your changes won't sync to the cloud", { description: "Sign in to save changes permanently." }); } catch { /* noop */ }
+}
+
 /** Fire-and-forget upsert of a single test_results column. */
 export function cloudPushTest(test_id: string, patch: Partial<{
   status: TestStatus | null;
@@ -36,7 +46,7 @@ export function cloudPushTest(test_id: string, patch: Partial<{
   if (typeof window === "undefined") return;
   (async () => {
     const u = await uid();
-    if (!u) return;
+    if (!u) { warnNotSignedIn("cloudPushTest"); return; }
     // Treat empty-string severity / assignee / sprint as null
     const normalized: Record<string, unknown> = { test_id, updated_by: u.id };
     for (const [k, v] of Object.entries(patch)) {
@@ -52,7 +62,7 @@ export function cloudAppendNote(test_id: string, kind: NoteKind, text: string) {
   if (typeof window === "undefined" || !text.trim()) return;
   (async () => {
     const u = await uid();
-    if (!u) return;
+    if (!u) { warnNotSignedIn("cloudAppendNote"); return; }
     const col = kind === "qa" ? "qa_notes" : "dev_notes";
     const { data: existing } = await supabase
       .from("test_results")
@@ -79,7 +89,7 @@ export function cloudPushAllTasks(rows: TaskRow[]) {
   if (typeof window === "undefined") return;
   (async () => {
     const u = await uid();
-    if (!u) return;
+    if (!u) { warnNotSignedIn("cloudPushAllTasks"); return; }
     const payload = rows.map((r, i) => ({ id: r.id, data: r as unknown, sort_order: i, updated_by: u.id }));
     const { error } = await supabase.from("task_rows").upsert(payload as never, { onConflict: "id" });
     if (error) console.warn("[cloud-sync] cloudPushAllTasks", error.message);
