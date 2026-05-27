@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 
 vi.mock("@/components/DrugReport", () => ({
-  buildDrugReport: () => ({ rows: [], summary: { total: 0 } }),
+  buildDrugReport: () => [],
 }));
 
 import { buildScenarioPdf, buildConsumerScenarioPdf } from "../scenario-pdf";
