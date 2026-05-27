@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ShieldCheck, Lock, Eye, EyeOff, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
+import { roleDestination } from "@/lib/role-destination";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -37,12 +38,7 @@ function AuthPage() {
 
   useEffect(() => {
     if (!user) return;
-    const dest =
-      user.role === "admin" ? "/admin" :
-      user.role === "agent" ? "/agent" :
-      user.role === "qa" ? "/testing" :
-      "/advisor"; // advisor, editor, qa, viewer all land on the advisor workbench
-    router.navigate({ to: dest });
+    router.navigate({ to: roleDestination(user.role) as "/admin" | "/agent" | "/testing" | "/advisor" });
   }, [user, router]);
 
   const handleSignIn = async (e: React.FormEvent) => {
