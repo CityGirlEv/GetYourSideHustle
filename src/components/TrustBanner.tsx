@@ -1,9 +1,12 @@
-import { ShieldCheck, EyeOff, KeyRound } from "lucide-react";
+import { ShieldCheck, EyeOff, KeyRound, Sparkles, ClipboardCheck, Search } from "lucide-react";
 
 const items = [
   { icon: EyeOff, text: "No personal information collected" },
   { icon: KeyRound, text: "De-identified scenarios only" },
   { icon: ShieldCheck, text: "Your scenario is anonymous unless you opt in" },
+  { icon: Search, text: "Find the best plan for your unique situation" },
+  { icon: Sparkles, text: "Compare Original Medicare + Medigap vs. Medicare Advantage" },
+  { icon: ClipboardCheck, text: "Live 2026 & 2027 CMS rules applied automatically" },
 ];
 
 export function TrustBanner() {
