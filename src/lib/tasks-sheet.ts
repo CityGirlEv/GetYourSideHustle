@@ -18,14 +18,10 @@ export const TASK_STATUS_LABELS: Record<TaskRowStatus, string> = {
   done: "Done",
 };
 
-export const TASK_CATEGORY_VALUES = ["general", "qa", "engineering", "ops", "compliance"] as const;
+export const TASK_CATEGORY_VALUES = ["engineering"] as const;
 export type TaskRowCategory = (typeof TASK_CATEGORY_VALUES)[number];
 export const TASK_CATEGORY_LABELS: Record<TaskRowCategory, string> = {
-  general: "General",
-  qa: "QA",
   engineering: "Dev",
-  ops: "Ops",
-  compliance: "Compliance",
 };
 
 export interface TaskRow {
