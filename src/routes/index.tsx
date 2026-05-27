@@ -52,9 +52,18 @@ function Index() {
             Side-by-side Original Medicare + Medigap vs. Medicare Advantage modeling under live 2026 &amp; 2027 federal rules — built on a <strong>zero-PII</strong> scenario model. We never collect your name, address, phone, email, Social Security number, Medicare ID, or full date of birth.
           </p>
           <div className="grid sm:grid-cols-3 gap-3 max-w-none">
-            <div className="glass rounded-xl p-3 text-xs"><EyeOff className="h-4 w-4 text-primary mb-1" /><strong>No PII collected</strong><br />Year of birth + ZIP3 only</div>
-            <div className="glass rounded-xl p-3 text-xs"><KeyRound className="h-4 w-4 text-primary mb-1" /><strong>Scenario ID</strong><br />You decide who sees it</div>
-            <div className="glass rounded-xl p-3 text-xs"><ShieldCheck className="h-4 w-4 text-primary mb-1" /><strong>90-day auto-delete</strong><br />Nothing kept forever</div>
+            <div className="glass rounded-xl px-3 py-2 text-xs">
+              <div className="flex items-center gap-2"><EyeOff className="h-4 w-4 text-primary shrink-0" /><strong>No PII collected</strong></div>
+              <div className="text-muted-foreground mt-0.5">Year of birth + ZIP3 only</div>
+            </div>
+            <div className="glass rounded-xl px-3 py-2 text-xs">
+              <div className="flex items-center gap-2"><KeyRound className="h-4 w-4 text-primary shrink-0" /><strong>Scenario ID</strong></div>
+              <div className="text-muted-foreground mt-0.5">You decide who sees it</div>
+            </div>
+            <div className="glass rounded-xl px-3 py-2 text-xs">
+              <div className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-primary shrink-0" /><strong>90-day auto-delete</strong></div>
+              <div className="text-muted-foreground mt-0.5">Nothing kept forever</div>
+            </div>
           </div>
         </div>
 
