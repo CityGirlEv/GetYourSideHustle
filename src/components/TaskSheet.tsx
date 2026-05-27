@@ -38,10 +38,10 @@ const STATUS_TONE: Record<TaskRowStatus, string> = {
   done: "border-emerald-500/40 text-emerald-600",
 };
 const ROW_STATUS_BG: Record<TaskRowStatus, string> = {
-  not_started: "",
-  in_progress: "bg-blue-500/5 hover:bg-blue-500/10",
-  blocked: "bg-destructive/10 hover:bg-destructive/15",
-  done: "bg-emerald-500/10 hover:bg-emerald-500/15",
+  not_started: "border-l-4 border-l-muted-foreground/30",
+  in_progress: "border-l-4 border-l-blue-500 bg-blue-500/10 hover:bg-blue-500/15",
+  blocked: "border-l-4 border-l-destructive bg-destructive/15 hover:bg-destructive/20",
+  done: "border-l-4 border-l-emerald-500 bg-emerald-500/15 hover:bg-emerald-500/20",
 };
 const PRIORITY_TONE: Record<Priority, string> = {
   P0: "border-destructive/60 text-destructive",
