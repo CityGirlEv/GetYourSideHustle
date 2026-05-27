@@ -26,6 +26,10 @@ import {
 } from "@/lib/tasks-sheet";
 import { SPRINTS, ACTIVE_SPRINT_ID, PRIORITY_LABELS, PRIORITY_SHORT, type Priority } from "@/lib/test-plan";
 import { useAssigneeOptions } from "@/lib/use-assignee-options";
+import {
+  applyBulkEdit, bulkDelete as bulkDeleteRows,
+  toggleInSet, toggleAllInSet, isAllSelected,
+} from "@/lib/task-bulk";
 import { MultiSelect, multiSelectMatches } from "@/components/ui/multi-select";
 import { DateField } from "@/components/DateField";
 
