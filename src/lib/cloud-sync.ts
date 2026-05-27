@@ -106,6 +106,46 @@ export function cloudPushAllTasks(rows: TaskRow[]) {
   })();
 }
 
+/**
+ * Full task-sheet sync: upserts every row in `rows` AND deletes any rows in
+ * the cloud that are no longer present locally. Use this from "Save changes"
+ * so deletions persist too. Returns { upserted, deleted } on success.
+ */
+export async function cloudSyncAllTasks(
+  rows: TaskRow[],
+): Promise<{ upserted: number; deleted: number } | null> {
+  if (typeof window === "undefined") return null;
+  const u = await uid();
+  if (!u) { warnNotSignedIn("cloudSyncAllTasks"); return null; }
+  const keepIds = new Set(rows.map((r) => r.id));
+  const payload = rows.map((r, i) => ({ id: r.id, data: r as unknown, sort_order: i, updated_by: u.id }));
+
+  if (payload.length) {
+    const { error } = await supabase.from("task_rows").upsert(payload as never, { onConflict: "id" });
+    if (error) {
+      console.warn("[cloud-sync] cloudSyncAllTasks upsert", error.message);
+      try { toast.error("Couldn't save tasks to cloud", { description: error.message }); } catch { /* noop */ }
+      return null;
+    }
+  }
+
+  const { data: existing, error: selErr } = await supabase.from("task_rows").select("id");
+  if (selErr) {
+    console.warn("[cloud-sync] cloudSyncAllTasks list", selErr.message);
+    return { upserted: payload.length, deleted: 0 };
+  }
+  const stale = (existing ?? []).map((r) => r.id as string).filter((id) => !keepIds.has(id));
+  if (stale.length) {
+    const { error: delErr } = await supabase.from("task_rows").delete().in("id", stale);
+    if (delErr) {
+      console.warn("[cloud-sync] cloudSyncAllTasks delete", delErr.message);
+      try { toast.error("Couldn't remove deleted tasks from cloud", { description: delErr.message }); } catch { /* noop */ }
+      return { upserted: payload.length, deleted: 0 };
+    }
+  }
+  return { upserted: payload.length, deleted: stale.length };
+}
+
 /** Hydrate localStorage from test_results so the existing load*() readers see DB data. */
 export async function hydrateTestResultsToLocal(): Promise<number> {
   if (typeof window === "undefined") return 0;
