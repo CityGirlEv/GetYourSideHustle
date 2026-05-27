@@ -40,6 +40,7 @@ function AuthPage() {
     const dest =
       user.role === "admin" ? "/admin" :
       user.role === "agent" ? "/agent" :
+      user.role === "qa" ? "/testing" :
       "/advisor"; // advisor, editor, qa, viewer all land on the advisor workbench
     router.navigate({ to: dest });
   }, [user, router]);
