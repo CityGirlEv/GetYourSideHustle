@@ -59,7 +59,7 @@ function Index() {
         </div>
 
         <div className="space-y-4">
-          <div className="glass rounded-2xl p-8 text-center space-y-5">
+          <div className="glass rounded-2xl p-8 text-center space-y-5 px-[10px]">
             <div className="inline-flex h-14 w-14 items-center justify-center rounded-xl grad-indigo">
               <FileText className="h-7 w-7 text-white" />
             </div>
