@@ -4,7 +4,7 @@ const items = [
   { icon: EyeOff, text: "No personal information collected" },
   { icon: KeyRound, text: "De-identified scenarios only" },
   { icon: ShieldCheck, text: "Your scenario is anonymous unless you opt in" },
-  { icon: Search, text: "Find the best plan for your unique situation" },
+  { icon: Search, text: "Find the optimal plan for your unique situation" },
   { icon: Sparkles, text: "Compare Original Medicare + Medigap vs. Medicare Advantage" },
   { icon: ClipboardCheck, text: "Live 2026 & 2027 CMS rules applied automatically" },
 ];
