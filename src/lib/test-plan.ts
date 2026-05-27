@@ -516,6 +516,39 @@ export const TEST_CASES: TestCase[] = [
     ],
     expected: "Resend POST to /resend/emails fires; in sandbox mode delivery only succeeds to the Resend account owner address — non-owner sends are logged but may fail. Registration still completes and the in-app admin notification is created either way.",
   },
+
+  // ===== Sprint 0 · Alpha (retrospective) =====
+  // These cases captured the alpha walkthrough that closed out Sprint 0
+  // (5/18–5/24). They are kept on /testing so the audit trail of what was
+  // validated before beta go-live is visible alongside live Sprint 1 work.
+  {
+    id: "S0-ALPHA-001", area: "Alpha · Requirements", priority: "P1",
+    title: "Initial product + scenario requirements drafted",
+    sprintId: "S-2026-00",
+    steps: ["Review requirements doc shared at alpha kickoff", "Confirm scenario data model covers birth year, ZIP3, conditions, meds, cost pref"],
+    expected: "Requirements doc exists and the scenario schema matches every required input field.",
+  },
+  {
+    id: "S0-ALPHA-002", area: "Alpha · Walkthrough", priority: "P0",
+    title: "Alpha release deployed for internal walkthrough",
+    sprintId: "S-2026-00",
+    steps: ["Open the alpha preview URL", "Sign in as an internal user", "Run a happy-path scenario end-to-end"],
+    expected: "Alpha build is reachable, internal sign-in works, and a scenario can be created without errors.",
+  },
+  {
+    id: "S0-ALPHA-003", area: "Alpha · Voice", priority: "P1",
+    title: "Voice intake + scenario flow validated end-to-end",
+    sprintId: "S-2026-00",
+    steps: ["Start a new scenario", "Use VoiceButton for each step (birth year → meds)", "Submit"],
+    expected: "Each voice step transcribes into the correct field; final scenario submits and returns a code.",
+  },
+  {
+    id: "S0-ALPHA-004", area: "Alpha · Feedback", priority: "P2",
+    title: "Requirements refined from alpha feedback",
+    sprintId: "S-2026-00",
+    steps: ["Review alpha feedback notes", "Confirm refinements landed in Sprint 1 scope"],
+    expected: "Feedback items either shipped in S0 or appear on the Sprint 1 backlog.",
+  },
 ];
 
 // ----------------------------------------------------------------------------

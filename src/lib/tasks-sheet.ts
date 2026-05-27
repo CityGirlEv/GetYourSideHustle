@@ -54,6 +54,11 @@ const fmt = (iso: string) => {
 const START = fmt(ACTIVE.start);
 const END = fmt(ACTIVE.end);
 
+// Sprint 0 (alpha, closed 5/18–5/24) bookends for the retrospective rows below.
+const SPRINT_0 = SPRINTS.find((s) => s.id === "S-2026-00");
+const S0_START = SPRINT_0 ? fmt(SPRINT_0.start) : START;
+const S0_END = SPRINT_0 ? fmt(SPRINT_0.end) : END;
+
 function statusFromTask(s: string): TaskRowStatus {
   if (s === "done") return "done";
   if (s === "in_progress") return "in_progress";
@@ -153,6 +158,76 @@ SEED_TASK_ROWS.push(
     dateCompleted: "",
     cost: 0,
     notes: "Verify site ownership via META tag, submit sitemap.xml and sitemap-internal.xml, and monitor indexing coverage.",
+    path: "",
+  },
+);
+
+// Sprint 0 retrospective tasks — alpha scoping + walkthrough that closed
+// out the week of 5/18–5/24. Kept on the sheet so the audit trail of what
+// shipped in Sprint 0 lives alongside the active Sprint 1 backlog.
+SEED_TASK_ROWS.push(
+  {
+    id: "T-S0-1",
+    description: "Draft initial product + scenario requirements",
+    sprintId: "S-2026-00",
+    category: "engineering",
+    priority: "P0",
+    status: "done",
+    assignBy: "Evelyn",
+    assignedTo: "Evelyn",
+    dateAssigned: S0_START,
+    dueDate: S0_END,
+    dateCompleted: S0_END,
+    cost: 0,
+    notes: "Source of truth for the scenario data model going into the alpha.",
+    path: "",
+  },
+  {
+    id: "T-S0-2",
+    description: "Deploy alpha release for internal walkthrough",
+    sprintId: "S-2026-00",
+    category: "engineering",
+    priority: "P0",
+    status: "done",
+    assignBy: "Evelyn",
+    assignedTo: "Eng",
+    dateAssigned: S0_START,
+    dueDate: S0_END,
+    dateCompleted: S0_END,
+    cost: 0,
+    notes: "Alpha build cut and shared internally for end-to-end walkthrough.",
+    path: "",
+  },
+  {
+    id: "T-S0-3",
+    description: "Validate voice intake + scenario flow end-to-end",
+    sprintId: "S-2026-00",
+    category: "engineering",
+    priority: "P1",
+    status: "done",
+    assignBy: "Evelyn",
+    assignedTo: "Catria",
+    dateAssigned: S0_START,
+    dueDate: S0_END,
+    dateCompleted: S0_END,
+    cost: 0,
+    notes: "Confirmed each VoiceButton step writes the correct field and a scenario can be created.",
+    path: "/scenario/new",
+  },
+  {
+    id: "T-S0-4",
+    description: "Refine requirements from alpha feedback into Sprint 1 scope",
+    sprintId: "S-2026-00",
+    category: "engineering",
+    priority: "P1",
+    status: "done",
+    assignBy: "Evelyn",
+    assignedTo: "Evelyn",
+    dateAssigned: S0_START,
+    dueDate: S0_END,
+    dateCompleted: S0_END,
+    cost: 0,
+    notes: "Feedback items either shipped in S0 or moved onto the Sprint 1 backlog.",
     path: "",
   },
 );
