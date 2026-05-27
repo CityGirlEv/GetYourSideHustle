@@ -223,62 +223,46 @@ function UsersPage() {
               {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground"/>}
             </div>
           </div>
-          <div className="overflow-auto max-h-[60vh]">
-            <table className="w-full text-sm">
-              <thead className="bg-secondary/60 text-left text-xs uppercase tracking-wider text-muted-foreground sticky top-0 z-10">
-                <tr>
-                  <th className="px-3 py-2">Name</th>
-                  <th className="px-3 py-2">Email</th>
-                  <th className="px-3 py-2">Role</th>
-                  <th className="px-3 py-2">NPN</th>
-                  <th className="px-3 py-2">Credits</th>
-                  <th className="px-3 py-2">Status</th>
-                  <th className="px-3 py-2">Last sign-in</th>
-                  <th className="px-3 py-2">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((s) => (
-                  <tr key={s.id} className={`border-t border-border ${s.disabled ? "opacity-60" : ""}`}>
-                    <td className="px-3 py-2 font-medium">{s.full_name || "—"}</td>
-                    <td className="px-3 py-2 text-muted-foreground">{s.email}</td>
-                    <td className="px-3 py-2">
-                      <Select value={s.role} onValueChange={(v) => handleRole(s.id, v as AssignableRole)}>
-                        <SelectTrigger className="h-8 text-xs min-w-[120px] capitalize"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {ASSIGNABLE_ROLES.map((r) => <SelectItem key={r} value={r} className="capitalize">{r}</SelectItem>)}
-                          {s.role === "advisor" && <SelectItem value="advisor" className="capitalize">advisor (legacy)</SelectItem>}
-                        </SelectContent>
-                      </Select>
-                    </td>
-                    <td className="px-3 py-2 font-mono text-xs">{s.npn_number || "—"}</td>
-                    <td className="px-3 py-2 tabular-nums font-bold">{s.credits}</td>
-                    <td className="px-3 py-2 text-xs">
-                      {s.disabled
-                        ? <span className="px-2 py-0.5 rounded-full bg-destructive/15 text-destructive">Disabled</span>
-                        : <span className="px-2 py-0.5 rounded-full bg-emerald/15 text-emerald">Active</span>}
-                    </td>
-                    <td className="px-3 py-2 text-xs text-muted-foreground tabular-nums whitespace-nowrap">
-                      {s.last_sign_in_at ? new Date(s.last_sign_in_at).toLocaleString() : "—"}
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="flex items-center gap-1 flex-wrap">
-                        <Button size="sm" variant="outline" onClick={() => adjustCredits(s, 5)} title="Add 5 credits"><Plus className="h-3 w-3"/>5</Button>
-                        <Button size="sm" variant="outline" onClick={() => adjustCredits(s, -1)} title="Deduct 1 credit"><Minus className="h-3 w-3"/>1</Button>
-                        <Button size="sm" variant="outline" onClick={() => openEdit(s)} title="Edit"><Pencil className="h-3 w-3"/></Button>
-                        <Button size="sm" variant="outline" onClick={() => toggleDisabled(s)} title={s.disabled ? "Enable" : "Disable"}>
-                          {s.disabled ? <CheckCircle2 className="h-3 w-3"/> : <Ban className="h-3 w-3"/>}
-                        </Button>
-                        <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={() => setDeleteTarget(s)} title="Delete"><Trash2 className="h-3 w-3"/></Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {!filtered.length && !loading && (
-                  <tr><td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">No users found.</td></tr>
-                )}
-              </tbody>
-            </table>
+          <div className="overflow-auto max-h-[60vh] space-y-3">
+            {filtered.map((s) => (
+              <div key={s.id} className={`rounded-lg border border-border bg-secondary/30 p-3 space-y-2 ${s.disabled ? "opacity-60" : ""}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">{s.full_name || "—"}</div>
+                    <div className="text-xs text-muted-foreground truncate">{s.email}</div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Select value={s.role} onValueChange={(v) => handleRole(s.id, v as AssignableRole)}>
+                      <SelectTrigger className="h-7 text-xs min-w-[100px] capitalize"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {ASSIGNABLE_ROLES.map((r) => <SelectItem key={r} value={r} className="capitalize">{r}</SelectItem>)}
+                        {s.role === "advisor" && <SelectItem value="advisor" className="capitalize">advisor (legacy)</SelectItem>}
+                      </SelectContent>
+                    </Select>
+                    {s.disabled
+                      ? <span className="px-2 py-0.5 rounded-full bg-destructive/15 text-destructive text-xs">Disabled</span>
+                      : <span className="px-2 py-0.5 rounded-full bg-emerald/15 text-emerald text-xs">Active</span>}
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <span className="font-mono">NPN: {s.npn_number || "—"}</span>
+                  <span className="tabular-nums font-bold text-foreground">Credits: {s.credits}</span>
+                  <span className="tabular-nums whitespace-nowrap">{s.last_sign_in_at ? new Date(s.last_sign_in_at).toLocaleString() : "—"}</span>
+                </div>
+                <div className="flex items-center gap-1 flex-wrap">
+                  <Button size="sm" variant="outline" onClick={() => adjustCredits(s, 5)} title="Add 5 credits"><Plus className="h-3 w-3"/>5</Button>
+                  <Button size="sm" variant="outline" onClick={() => adjustCredits(s, -1)} title="Deduct 1 credit"><Minus className="h-3 w-3"/>1</Button>
+                  <Button size="sm" variant="outline" onClick={() => openEdit(s)} title="Edit"><Pencil className="h-3 w-3"/></Button>
+                  <Button size="sm" variant="outline" onClick={() => toggleDisabled(s)} title={s.disabled ? "Enable" : "Disable"}>
+                    {s.disabled ? <CheckCircle2 className="h-3 w-3"/> : <Ban className="h-3 w-3"/>}
+                  </Button>
+                  <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={() => setDeleteTarget(s)} title="Delete"><Trash2 className="h-3 w-3"/></Button>
+                </div>
+              </div>
+            ))}
+            {!filtered.length && !loading && (
+              <div className="px-3 py-6 text-center text-muted-foreground text-sm">No users found.</div>
+            )}
           </div>
         </Card>
       </div>
