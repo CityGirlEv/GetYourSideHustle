@@ -159,16 +159,31 @@ SEED_TASK_ROWS.push(
 
 export const TASKS_STORAGE_KEY = "tasks-sheet:v1";
 
+// Normalize legacy/duplicate owner names: Me→Evelyn, Design/Dev→Eng.
+function normalizeOwner(name: string): string {
+  if (!name) return name;
+  if (name === "Me") return "Evelyn";
+  if (name === "Design" || name === "Dev") return "Eng";
+  return name;
+}
+function normalizeRows(rows: TaskRow[]): TaskRow[] {
+  return rows.map((r) => ({
+    ...r,
+    assignedTo: normalizeOwner(r.assignedTo),
+    assignBy: normalizeOwner(r.assignBy),
+  }));
+}
+
 export function loadTaskRows(): TaskRow[] {
   if (typeof window === "undefined") return SEED_TASK_ROWS;
   try {
     const raw = localStorage.getItem(TASKS_STORAGE_KEY);
-    if (!raw) return SEED_TASK_ROWS;
+    if (!raw) return normalizeRows(SEED_TASK_ROWS);
     const parsed = JSON.parse(raw) as TaskRow[];
-    if (!Array.isArray(parsed)) return SEED_TASK_ROWS;
-    return parsed;
+    if (!Array.isArray(parsed)) return normalizeRows(SEED_TASK_ROWS);
+    return normalizeRows(parsed);
   } catch {
-    return SEED_TASK_ROWS;
+    return normalizeRows(SEED_TASK_ROWS);
   }
 }
 
