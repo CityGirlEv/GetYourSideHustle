@@ -24,7 +24,7 @@ import {
   TASK_STATUS_VALUES, TASK_STATUS_LABELS, TASK_CATEGORY_VALUES, TASK_CATEGORY_LABELS,
   type TaskRow, type TaskRowStatus,
 } from "@/lib/tasks-sheet";
-import { SPRINTS, ACTIVE_SPRINT_ID, PRIORITY_LABELS, PRIORITY_SHORT, type Priority } from "@/lib/test-plan";
+import { SPRINTS, ACTIVE_SPRINT_ID, PRIORITY_LABELS, PRIORITY_SHORT, TEST_OWNERS, type Priority } from "@/lib/test-plan";
 import { MultiSelect, multiSelectMatches } from "@/components/ui/multi-select";
 import { DateField } from "@/components/DateField";
 
@@ -647,7 +647,7 @@ export function TaskSheetContent() {
           <Select value={bulkAssignee} onValueChange={setBulkAssignee}>
             <SelectTrigger className="h-9 w-[160px]"><SelectValue placeholder="Set assignee…" /></SelectTrigger>
             <SelectContent>
-              {owners.filter((o) => o !== "All").map((o) => (
+              {TEST_OWNERS.map((o) => (
                 <SelectItem key={o} value={o}>{o}</SelectItem>
               ))}
             </SelectContent>
@@ -675,7 +675,14 @@ export function TaskSheetContent() {
             </Select>
           </div>
           <div className="flex flex-wrap items-center gap-2 w-full">
-            <Input value={bulkAssignBy} onChange={(e) => setBulkAssignBy(e.target.value)} placeholder="Set assigned by…" className="h-9 w-[150px]" />
+            <Select value={bulkAssignBy} onValueChange={setBulkAssignBy}>
+              <SelectTrigger className="h-9 w-[150px]"><SelectValue placeholder="Set assigned by…" /></SelectTrigger>
+              <SelectContent>
+                {TEST_OWNERS.map((o) => (
+                  <SelectItem key={o} value={o}>{o}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <DateField value={bulkDateAssigned} onChange={setBulkDateAssigned} placeholder="Assigned…" buttonClassName="h-9 w-[150px]" />
             <DateField value={bulkDueDate} onChange={setBulkDueDate} placeholder="Due…" buttonClassName="h-9 w-[150px]" />
             <DateField value={bulkDateCompleted} onChange={setBulkDateCompleted} placeholder="Completed…" buttonClassName="h-9 w-[170px]" />
@@ -821,14 +828,21 @@ export function TaskSheetContent() {
                       <Select value={r.assignedTo} onValueChange={(v) => inlineUpdate(r.id, "assignedTo", v)}>
                         <SelectTrigger className="h-7 w-[110px] text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          {owners.filter((o) => o !== "All").map((o) => (
+                          {TEST_OWNERS.map((o) => (
                             <SelectItem key={o} value={o}>{o}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </TableCell>
                     <TableCell>
-                      <Input value={r.assignBy} onChange={(e) => inlineUpdate(r.id, "assignBy", e.target.value)} className="h-7 w-[80px] text-xs" />
+                      <Select value={r.assignBy} onValueChange={(v) => inlineUpdate(r.id, "assignBy", v)}>
+                        <SelectTrigger className="h-7 w-[80px] text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {TEST_OWNERS.map((o) => (
+                            <SelectItem key={o} value={o}>{o}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </TableCell>
                     <TableCell><DateField value={r.dateAssigned} onChange={(v) => inlineUpdate(r.id, "dateAssigned", v)} placeholder="—" buttonClassName="h-7 w-[110px] text-xs" /></TableCell>
                     <TableCell><DateField value={r.dueDate} onChange={(v) => inlineUpdate(r.id, "dueDate", v)} placeholder="—" buttonClassName="h-7 w-[110px] text-xs" /></TableCell>
@@ -922,7 +936,7 @@ export function TaskSheetContent() {
                 <Select value={editing.assignedTo} onValueChange={(v) => setEditing({ ...editing, assignedTo: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {owners.filter((o) => o !== "All").map((o) => (
+                    {TEST_OWNERS.map((o) => (
                       <SelectItem key={o} value={o}>{o}</SelectItem>
                     ))}
                   </SelectContent>
@@ -930,7 +944,14 @@ export function TaskSheetContent() {
               </div>
               <div>
                 <Label>Assigned by</Label>
-                <Input value={editing.assignBy} onChange={(e) => setEditing({ ...editing, assignBy: e.target.value })} />
+                <Select value={editing.assignBy} onValueChange={(v) => setEditing({ ...editing, assignBy: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {TEST_OWNERS.map((o) => (
+                      <SelectItem key={o} value={o}>{o}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label>Date assigned</Label>
