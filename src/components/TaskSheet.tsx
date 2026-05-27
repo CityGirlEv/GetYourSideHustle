@@ -859,6 +859,15 @@ export function TaskSheetContent() {
                 </Select>
               </div>
               <div>
+                <Label>Category</Label>
+                <Select value={editing.category} onValueChange={(v) => setEditing({ ...editing, category: v as typeof TASK_CATEGORY_VALUES[number] })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {TASK_CATEGORY_VALUES.map((c) => <SelectItem key={c} value={c}>{TASK_CATEGORY_LABELS[c]}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
                 <Label>Priority</Label>
                 <Select value={editing.priority} onValueChange={(v) => setEditing({ ...editing, priority: v as Priority })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
