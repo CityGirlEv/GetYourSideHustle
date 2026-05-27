@@ -4,13 +4,16 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
+import { useEffect, useRef } from "react";
 
 import appCss from "../styles.css?url";
 import { AppProvider } from "@/lib/app-store";
 import { Toaster } from "@/components/ui/sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 function NotFoundComponent() {
   return (
@@ -116,6 +119,33 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const lastTrackedRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (lastTrackedRef.current === pathname) return;
+    lastTrackedRef.current = pathname;
+    (async () => {
+      let userId: string | null = null;
+      try {
+        const { data } = await supabase.auth.getSession();
+        userId = data.session?.user?.id ?? null;
+      } catch {}
+      try {
+        await fetch("/api/public/track-visit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            path: pathname,
+            referrer: document.referrer || null,
+            userId,
+          }),
+          keepalive: true,
+        });
+      } catch {}
+    })();
+  }, [pathname]);
 
   return (
     <QueryClientProvider client={queryClient}>
