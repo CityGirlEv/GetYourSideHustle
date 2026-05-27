@@ -42,12 +42,11 @@ export function cloudPushTest(test_id: string, patch: Partial<{
   assignee: string | null;
   sprint_id: string | null;
   description_override: TestDescriptionOverride | null;
-}>) {
-  if (typeof window === "undefined") return;
-  (async () => {
+}>): Promise<boolean> {
+  if (typeof window === "undefined") return Promise.resolve(false);
+  return (async () => {
     const u = await uid();
-    if (!u) { warnNotSignedIn("cloudPushTest"); return; }
-    // Treat empty-string severity / assignee / sprint as null
+    if (!u) { warnNotSignedIn("cloudPushTest"); return false; }
     const normalized: Record<string, unknown> = { test_id, updated_by: u.id };
     for (const [k, v] of Object.entries(patch)) {
       normalized[k] = v === "" ? null : v;
@@ -55,8 +54,10 @@ export function cloudPushTest(test_id: string, patch: Partial<{
     const { error } = await supabase.from("test_results").upsert(normalized as never, { onConflict: "test_id" });
     if (error) {
       console.warn("[cloud-sync] cloudPushTest", error.message, normalized);
-      try { toast.error("Couldn't save to cloud", { description: error.message }); } catch { /* noop */ }
+      try { toast.error(`Couldn't save ${test_id} to cloud`, { description: error.message }); } catch { /* noop */ }
+      return false;
     }
+    return true;
   })();
 }
 
