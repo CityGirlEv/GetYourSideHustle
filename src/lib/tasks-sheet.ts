@@ -87,9 +87,7 @@ export const SEED_TASK_ROWS: TaskRow[] = TASKS
   cost: 0,
   notes: t.notes ?? "",
   path: "",
-}))
-  // Test / QA work belongs on /testing — keep the Task Sheet for ops/design/etc.
-  .filter((r) => r.category !== "qa");
+}));
 
 // Sprint 1 beta-go-live recruiting + onboarding tasks (richer than TASKS).
 SEED_TASK_ROWS.push(
