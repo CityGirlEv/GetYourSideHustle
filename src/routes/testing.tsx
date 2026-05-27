@@ -928,6 +928,7 @@ function TestCaseCard({
                                  "bg-background";
   const showQaNote = status === "fail" || status === "failed_retest";
   const showDevNote = status === "fixed_retest" || status === "failed_retest";
+  const assigneeOptions = useAssigneeOptions();
   return (
     <Card className={`p-4 ${shade} ${selected ? "ring-2 ring-primary/60" : ""}`}>
       <div className="flex flex-wrap items-start gap-2 mb-2">
