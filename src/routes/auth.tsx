@@ -38,7 +38,7 @@ function AuthPage() {
 
   useEffect(() => {
     if (!user) return;
-    router.navigate({ to: roleDestination(user.role) });
+    router.navigate({ to: roleDestination(user.role) as "/admin" | "/agent" | "/testing" | "/advisor" });
   }, [user, router]);
 
   const handleSignIn = async (e: React.FormEvent) => {
