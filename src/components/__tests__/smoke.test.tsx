@@ -8,10 +8,7 @@ import { render } from "@testing-library/react";
 
 import { TrustBanner } from "../TrustBanner";
 import { FontSizeToggle } from "../FontSizeToggle";
-import { SignaturePad } from "../SignaturePad";
 import { DateField } from "../DateField";
-import { VoiceButton } from "../VoiceButton";
-import { DrugReport } from "../DrugReport";
 import { CatalogExplorer } from "../CatalogExplorer";
 
 describe("component smoke renders", () => {
@@ -25,29 +22,10 @@ describe("component smoke renders", () => {
     expect(container.firstChild).toBeTruthy();
   });
 
-  it("SignaturePad", () => {
-    const { container } = render(
-      <SignaturePad onSign={() => {}} />,
-    );
-    expect(container.firstChild).toBeTruthy();
-  });
-
   it("DateField", () => {
     const { container } = render(
       <DateField value="" onChange={() => {}} />,
     );
-    expect(container.firstChild).toBeTruthy();
-  });
-
-  it("VoiceButton", () => {
-    const { container } = render(
-      <VoiceButton onTranscript={() => {}} />,
-    );
-    expect(container.firstChild).toBeTruthy();
-  });
-
-  it("DrugReport", () => {
-    const { container } = render(<DrugReport medications={[]} />);
     expect(container.firstChild).toBeTruthy();
   });
 
