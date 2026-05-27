@@ -497,6 +497,63 @@ export function TestPlanTab() {
           </div>
         </div>
         <Progress value={passRate} className="h-2" />
+        {Object.keys(ownerStatusCounts).length > 0 && (
+          <div className="mt-4 pt-3 border-t border-border/60 space-y-2">
+            <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
+              By QA owner
+            </div>
+            <div className="space-y-1.5">
+              {Object.entries(ownerStatusCounts)
+                .sort((a, b) => b[1].total - a[1].total)
+                .map(([owner, c]) => {
+                  const ownerActive = ownerFilter.length === 1 && ownerFilter[0] === owner;
+                  const toggleOwnerStatus = (s: TestStatus) => {
+                    setOwnerFilter([owner]);
+                    setStatusFilter(
+                      statusFilter.length === 1 && statusFilter[0] === s && ownerActive ? [] : [s],
+                    );
+                  };
+                  const clearOwner = () => {
+                    setOwnerFilter(ownerActive && statusFilter.length === 0 ? [] : [owner]);
+                    if (!(ownerActive && statusFilter.length === 0)) setStatusFilter([]);
+                  };
+                  const ownerPass = c.total ? Math.round((c.pass / c.total) * 100) : 0;
+                  const cell = (n: number, label: string, klass: string, s: TestStatus) => {
+                    const isActive = ownerActive && statusFilter.length === 1 && statusFilter[0] === s;
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => toggleOwnerStatus(s)}
+                        className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold transition-colors hover:opacity-80 ${klass} ${isActive ? "ring-2 ring-offset-1 ring-primary" : ""}`}
+                        title={`Filter to ${owner} · ${label}`}
+                      >
+                        {n} <span className="font-normal opacity-70">{label}</span>
+                      </button>
+                    );
+                  };
+                  return (
+                    <div key={owner} className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={clearOwner}
+                        className={`min-w-[88px] text-left text-xs font-semibold hover:underline ${ownerActive ? "text-primary" : ""}`}
+                        title={`Filter all tests for ${owner}`}
+                      >
+                        {owner} <span className="text-muted-foreground font-normal">· {ownerPass}%</span>
+                      </button>
+                      {cell(c.pass, "Pass", "bg-emerald-500/10 text-emerald-700 border-emerald-500/30", "pass")}
+                      {cell(c.fail, "Fail", "bg-destructive/10 text-destructive border-destructive/30", "fail")}
+                      {cell(c.fixed_retest, "Fixed/Retest", "bg-sky-500/10 text-sky-700 border-sky-500/30", "fixed_retest")}
+                      {cell(c.failed_retest, "Failed/Retest", "bg-fuchsia-500/10 text-fuchsia-700 border-fuchsia-500/30", "failed_retest")}
+                      {cell(c.blocked, "Blocked", "bg-amber-500/10 text-amber-700 border-amber-500/30", "blocked")}
+                      {cell(c.not_run, "Not run", "bg-muted text-muted-foreground border-border", "not_run")}
+                      <span className="text-[11px] text-muted-foreground">· {c.total} total</span>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        )}
       </Card>
 
       {/* Filters */}
