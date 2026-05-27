@@ -223,9 +223,9 @@ function UsersPage() {
               {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground"/>}
             </div>
           </div>
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[60vh]">
             <table className="w-full text-sm">
-              <thead className="bg-secondary/60 text-left text-xs uppercase tracking-wider text-muted-foreground">
+              <thead className="bg-secondary/60 text-left text-xs uppercase tracking-wider text-muted-foreground sticky top-0 z-10">
                 <tr>
                   <th className="px-3 py-2">Name</th>
                   <th className="px-3 py-2">Email</th>
