@@ -18,13 +18,12 @@ export const TASK_STATUS_LABELS: Record<TaskRowStatus, string> = {
   done: "Done",
 };
 
-export const TASK_CATEGORY_VALUES = ["general", "qa", "engineering", "design", "ops", "compliance"] as const;
+export const TASK_CATEGORY_VALUES = ["general", "qa", "engineering", "ops", "compliance"] as const;
 export type TaskRowCategory = (typeof TASK_CATEGORY_VALUES)[number];
 export const TASK_CATEGORY_LABELS: Record<TaskRowCategory, string> = {
   general: "General",
   qa: "QA",
-  engineering: "Engineering",
-  design: "Design",
+  engineering: "Engineering & Design",
   ops: "Ops",
   compliance: "Compliance",
 };
@@ -71,7 +70,7 @@ function categoryFromArea(area: string): TaskRowCategory {
   if (a.includes("qa") || a.includes("test")) return "qa";
   if (a.includes("cms") || a.includes("compliance")) return "compliance";
   if (a.includes("agent") || a.includes("soa") || a.includes("admin")) return "ops";
-  if (a.includes("scorecard") || a.includes("design")) return "design";
+  if (a.includes("scorecard") || a.includes("design")) return "engineering";
   return "engineering";
 }
 
