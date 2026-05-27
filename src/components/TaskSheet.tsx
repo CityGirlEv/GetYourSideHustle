@@ -90,14 +90,24 @@ function TaskTargetLink({ path }: { path?: string }) {
   );
 }
 
-function StatCard({ label, value, tone }: { label: string; value: number; tone?: string }) {
+function StatBadge({ n, label, color, active, onClick }: { n: number; label: string; color: string; active?: boolean; onClick?: () => void }) {
   return (
-    <Card className={`p-3 ${tone ?? ""}`}>
-      <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className="text-2xl font-semibold mt-1">{value}</div>
-    </Card>
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 font-semibold ${color} ${onClick ? "cursor-pointer hover:opacity-80 transition-opacity" : ""} ${active ? "ring-2 ring-offset-1 ring-emerald-500" : ""}`}
+    >
+      {n} <span className="font-normal opacity-80">{label}</span>
+    </button>
   );
 }
+
+const TASK_STATUS_STYLES: Record<TaskRowStatus, string> = {
+  not_started: "bg-muted text-muted-foreground border-border",
+  in_progress: "bg-blue-500/10 text-blue-700 border-blue-500/30",
+  blocked: "bg-destructive/10 text-destructive border-destructive/30",
+  done: "bg-emerald-500/10 text-emerald-700 border-emerald-500/30",
+};
 
 export function TaskSheetContent() {
   // savedRows = last persisted snapshot; rows = working draft (unsaved edits)
