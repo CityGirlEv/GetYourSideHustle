@@ -114,7 +114,7 @@ export const TEST_CASES: TestCase[] = [
     id: "HOME-001", area: "Landing", priority: "P1",
     title: "Landing page renders hero + CTA",
     steps: ["Open /"],
-    expected: "Hero headline visible, sub-heading 'You Deserve The Best Medicare Plan…' shown centered, CTA to build a scenario is clickable.",
+    expected: "Hero headline visible, sub-heading 'Let The Optimizer Find The Medicare Plan You Deserve!' shown centered, CTA to build a scenario is clickable.",
   },
   {
     id: "HOME-002", area: "Landing", priority: "P2",
@@ -392,7 +392,7 @@ export const TEST_CASES: TestCase[] = [
     id: "CMS-005", area: "CMS Compliance", priority: "P1",
     title: "No prohibited superlatives ('best', '#1', 'free')",
     steps: ["Grep rendered marketing copy on /, /scenario/new, plan results"],
-    expected: "No unqualified use of 'best Medicare plan', 'free', '#1 plan', or 'all plans'. Hero copy 'You Deserve The Best Medicare Plan' is framed as user aspiration, not a plan claim — verify wording stays compliant.",
+    expected: "No unqualified use of 'best Medicare plan', 'free', '#1 plan', 'guaranteed', or 'all plans' in rendered copy. Tagline frames the Optimizer as the searcher, not the plan, to stay CMS-compliant.",
     notes: "CMS prohibits absolute/superlative marketing claims about plans.",
   },
   {
