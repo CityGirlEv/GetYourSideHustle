@@ -130,6 +130,33 @@ function AuthPage() {
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
+                  <div className="space-y-2 pt-1">
+                    <Label>Account Type</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setAccountType("agent")}
+                        className={`flex items-center gap-2 rounded-md border p-3 text-sm transition ${accountType === "agent" ? "border-primary bg-primary/10 ring-1 ring-primary" : "border-border hover:bg-muted/40"}`}
+                      >
+                        <Headset className="h-4 w-4" />
+                        <div className="text-left">
+                          <div className="font-medium">Agent</div>
+                          <div className="text-[11px] text-muted-foreground">Licensed insurance agent</div>
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAccountType("qa")}
+                        className={`flex items-center gap-2 rounded-md border p-3 text-sm transition ${accountType === "qa" ? "border-primary bg-primary/10 ring-1 ring-primary" : "border-border hover:bg-muted/40"}`}
+                      >
+                        <FlaskConical className="h-4 w-4" />
+                        <div className="text-left">
+                          <div className="font-medium">QA Account Registration</div>
+                          <div className="text-[11px] text-muted-foreground">Beta testing &amp; feedback</div>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
                   <Button type="submit" disabled={busy} className="w-full grad-indigo h-11">Create account</Button>
                 </form>
               </TabsContent>
