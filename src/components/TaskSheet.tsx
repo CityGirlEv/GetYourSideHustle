@@ -25,6 +25,7 @@ import {
   type TaskRow, type TaskRowStatus,
 } from "@/lib/tasks-sheet";
 import { SPRINTS, ACTIVE_SPRINT_ID, PRIORITY_LABELS, PRIORITY_SHORT, TEST_OWNERS, type Priority } from "@/lib/test-plan";
+import { useAssigneeOptions } from "@/lib/use-assignee-options";
 import { MultiSelect, multiSelectMatches } from "@/components/ui/multi-select";
 import { DateField } from "@/components/DateField";
 
