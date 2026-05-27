@@ -6,8 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ShieldCheck, Lock, Eye, EyeOff, Headset, FlaskConical } from "lucide-react";
+import { ShieldCheck, Lock, Eye, EyeOff, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 
@@ -31,12 +30,9 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const { user } = useApp();
   const router = useRouter();
-  const [tab, setTab] = useState("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [fullName, setFullName] = useState("");
-  const [accountType, setAccountType] = useState<"agent" | "qa" | "">("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -47,20 +43,6 @@ function AuthPage() {
       "/advisor"; // advisor, editor, qa, viewer all land on the advisor workbench
     router.navigate({ to: dest });
   }, [user, router]);
-
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!accountType) return toast.error("Select an account type.");
-    setBusy(true);
-    const { error } = await supabase.auth.signUp({
-      email, password,
-      options: { data: { full_name: fullName, requested_role: accountType }, emailRedirectTo: window.location.origin + "/auth" },
-    });
-    setBusy(false);
-    if (error) return toast.error(error.message);
-    toast.success("Account created. Check your email to verify, then sign in.");
-    setTab("signin");
-  };
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
