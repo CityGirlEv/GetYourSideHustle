@@ -816,7 +816,7 @@ function BulkEditBar({
           title="Set owner for selected"
         >
           <option value="">Set owner…</option>
-          {TEST_OWNERS.map((o) => <option key={o} value={o}>{o}</option>)}
+          {assigneeOptions.map((o: string) => <option key={o} value={o}>{o}</option>)}
         </select>
         <select
           disabled={disabled}
@@ -963,7 +963,7 @@ function TestCaseCard({
             onChange={(e) => onAssigneeChange(e.target.value)}
             title="Re-assign this test"
           >
-            {TEST_OWNERS.map((o) => (
+            {assigneeOptions.map((o: string) => (
               <option key={o} value={o}>{o}</option>
             ))}
           </select>
