@@ -20,7 +20,7 @@ import {
   getTestCreditReward, totalCreditBudget, creditBudgetByOwner, REPRO_FAIL_BONUS,
   loadAllQaNotes, loadAllDevNotes, saveQaNote, saveDevNote,
   loadAllSeverities, saveSeverity, FAIL_SEVERITY_LABELS, type FailSeverity,
-  TEST_OWNERS, loadAllAssigneeOverrides, saveAssigneeOverride,
+  loadAllAssigneeOverrides, saveAssigneeOverride,
   loadAllSprintOverrides, saveSprintOverride,
   applyDescriptionOverride, loadDescriptionOverride, saveDescriptionOverride,
   clearDescriptionOverride, type TestDescriptionOverride,
