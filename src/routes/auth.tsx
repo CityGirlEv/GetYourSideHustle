@@ -36,6 +36,7 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [fullName, setFullName] = useState("");
+  const [accountType, setAccountType] = useState<"agent" | "qa" | "">("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
