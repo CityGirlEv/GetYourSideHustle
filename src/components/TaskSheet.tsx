@@ -181,6 +181,21 @@ export function TaskSheetContent() {
 
   const doneRate = rows.length ? Math.round((stats.done / rows.length) * 100) : 0;
 
+  // When a single status filter is active, the progress bars reflect THAT status.
+  // Otherwise we default to "done" (completion behaviour).
+  const focusStatus: TaskRowStatus =
+    statusFilter.length === 1 ? (statusFilter[0] as TaskRowStatus) : "done";
+  const focusStatusLabel: Record<TaskRowStatus, string> = {
+    done: "Done",
+    in_progress: "In progress",
+    blocked: "Blocked",
+    not_started: "Not started",
+  };
+  const overallFocusCount = stats[focusStatus];
+  const overallFocusPct = rows.length
+    ? Math.round((overallFocusCount / rows.length) * 100)
+    : 0;
+
   // Owner counts across all rows (for the sprint banner pills).
   const ownerCounts = useMemo(() => {
     const out: Record<string, number> = {};
@@ -458,8 +473,13 @@ export function TaskSheetContent() {
       <Card className="p-4">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
           <div>
-            <div className="text-xs uppercase tracking-wide text-muted-foreground">Completion</div>
-            <div className="text-2xl font-bold">{doneRate}%</div>
+            <div className="text-xs uppercase tracking-wide text-muted-foreground">
+              {focusStatusLabel[focusStatus]} rate
+            </div>
+            <div className="text-2xl font-bold">{overallFocusPct}%</div>
+            <div className="text-[11px] text-muted-foreground">
+              {overallFocusCount}/{rows.length}
+            </div>
           </div>
           <div className="flex flex-wrap gap-2 text-xs">
             <StatBadge n={stats.done} label="Done" color={TASK_STATUS_STYLES.done}
@@ -479,7 +499,7 @@ export function TaskSheetContent() {
               onClick={() => setStatusFilter([])} />
           </div>
         </div>
-        <Progress value={doneRate} className="h-2" />
+        <Progress value={overallFocusPct} className="h-2" />
         {Object.keys(ownerStatusCounts).length > 0 && (
           <div className="mt-4 pt-3 border-t border-border/60 space-y-2">
             <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
@@ -500,7 +520,10 @@ export function TaskSheetContent() {
                     setOwnerFilter(ownerActive && statusFilter.length === 0 ? [] : [owner]);
                     if (!(ownerActive && statusFilter.length === 0)) setStatusFilter([]);
                   };
-                  const ownerDone = c.total ? Math.round((c.done / c.total) * 100) : 0;
+                  const ownerFocusCount = c[focusStatus];
+                  const ownerFocusPct = c.total
+                    ? Math.round((ownerFocusCount / c.total) * 100)
+                    : 0;
                   const cell = (n: number, label: string, klass: string, s: TaskRowStatus) => {
                     const isActive = ownerActive && statusFilter.length === 1 && statusFilter[0] === s;
                     return (
@@ -515,20 +538,29 @@ export function TaskSheetContent() {
                     );
                   };
                   return (
-                    <div key={owner} className="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={clearOwner}
-                        className={`min-w-[88px] text-left text-xs font-semibold hover:underline ${ownerActive ? "text-emerald-600" : ""}`}
-                        title={`Filter all tasks for ${owner}`}
-                      >
-                        {owner} <span className="text-muted-foreground font-normal">· {ownerDone}%</span>
-                      </button>
-                      {cell(c.done, "Done", TASK_STATUS_STYLES.done, "done")}
-                      {cell(c.in_progress, "In progress", TASK_STATUS_STYLES.in_progress, "in_progress")}
-                      {cell(c.blocked, "Blocked", TASK_STATUS_STYLES.blocked, "blocked")}
-                      {cell(c.not_started, "Not started", TASK_STATUS_STYLES.not_started, "not_started")}
-                      <span className="text-[11px] text-muted-foreground">· {c.total} total</span>
+                    <div key={owner} className="space-y-1 py-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={clearOwner}
+                          className={`min-w-[88px] text-left text-xs font-semibold hover:underline ${ownerActive ? "text-emerald-600" : ""}`}
+                          title={`Filter all tasks for ${owner}`}
+                        >
+                          {owner}
+                        </button>
+                        <span className="text-[11px] text-muted-foreground">
+                          {ownerFocusCount}/{c.total} · {ownerFocusPct}%{" "}
+                          {focusStatusLabel[focusStatus]}
+                        </span>
+                      </div>
+                      <Progress value={ownerFocusPct} className="h-1.5" />
+                      <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                        {cell(c.done, "Done", TASK_STATUS_STYLES.done, "done")}
+                        {cell(c.in_progress, "In progress", TASK_STATUS_STYLES.in_progress, "in_progress")}
+                        {cell(c.blocked, "Blocked", TASK_STATUS_STYLES.blocked, "blocked")}
+                        {cell(c.not_started, "Not started", TASK_STATUS_STYLES.not_started, "not_started")}
+                        <span className="text-[11px] text-muted-foreground">· {c.total} total</span>
+                      </div>
                     </div>
                   );
                 })}
