@@ -104,5 +104,8 @@
     "typescript-eslint": "^8.56.1",
     "vite": "^7.3.1",
     "vitest": "^4.1.7"
+  },
+  "overrides": {
+    "htmlparser2": "^10.0.0"
   }
 }
