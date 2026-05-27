@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UsersRouteImport } from './routes/users'
+import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as TestingRouteImport } from './routes/testing'
 import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as SourcesRouteImport } from './routes/sources'
@@ -27,9 +28,13 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ScenarioNewRouteImport } from './routes/scenario.new'
 import { Route as ScenarioCodeRouteImport } from './routes/scenario.$code'
+import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as ScenarioCreatedCodeRouteImport } from './routes/scenario.created.$code'
+import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as AgentScenarioCodeRouteImport } from './routes/agent.scenario.$code'
 import { Route as AdvisorScenarioCodeRouteImport } from './routes/advisor.scenario.$code'
+import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
+import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
@@ -38,6 +43,11 @@ import { Route as AdvisorScenarioCodeEditRouteImport } from './routes/advisor.sc
 const UsersRoute = UsersRouteImport.update({
   id: '/users',
   path: '/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UnsubscribeRoute = UnsubscribeRouteImport.update({
+  id: '/unsubscribe',
+  path: '/unsubscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TestingRoute = TestingRouteImport.update({
@@ -125,9 +135,19 @@ const ScenarioCodeRoute = ScenarioCodeRouteImport.update({
   path: '/scenario/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
+  id: '/email/unsubscribe',
+  path: '/email/unsubscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ScenarioCreatedCodeRoute = ScenarioCreatedCodeRouteImport.update({
   id: '/scenario/created/$code',
   path: '/scenario/created/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
+  id: '/lovable/email/suppression',
+  path: '/lovable/email/suppression',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AgentScenarioCodeRoute = AgentScenarioCodeRouteImport.update({
@@ -140,6 +160,18 @@ const AdvisorScenarioCodeRoute = AdvisorScenarioCodeRouteImport.update({
   path: '/scenario/$code',
   getParentRoute: () => AdvisorRoute,
 } as any)
+const LovableEmailTransactionalSendRoute =
+  LovableEmailTransactionalSendRouteImport.update({
+    id: '/lovable/email/transactional/send',
+    path: '/lovable/email/transactional/send',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const LovableEmailTransactionalPreviewRoute =
+  LovableEmailTransactionalPreviewRouteImport.update({
+    id: '/lovable/email/transactional/preview',
+    path: '/lovable/email/transactional/preview',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const LovableEmailQueueProcessRoute =
   LovableEmailQueueProcessRouteImport.update({
     id: '/lovable/email/queue/process',
@@ -178,16 +210,21 @@ export interface FileRoutesByFullPath {
   '/sources': typeof SourcesRoute
   '/tasks': typeof TasksRoute
   '/testing': typeof TestingRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/users': typeof UsersRoute
+  '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/scenario/$code': typeof ScenarioCodeRoute
   '/scenario/new': typeof ScenarioNewRoute
   '/advisor/scenario/$code': typeof AdvisorScenarioCodeRouteWithChildren
   '/agent/scenario/$code': typeof AgentScenarioCodeRoute
+  '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/scenario/created/$code': typeof ScenarioCreatedCodeRoute
   '/advisor/scenario/$code/edit': typeof AdvisorScenarioCodeEditRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
+  '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
+  '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -205,16 +242,21 @@ export interface FileRoutesByTo {
   '/sources': typeof SourcesRoute
   '/tasks': typeof TasksRoute
   '/testing': typeof TestingRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/users': typeof UsersRoute
+  '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/scenario/$code': typeof ScenarioCodeRoute
   '/scenario/new': typeof ScenarioNewRoute
   '/advisor/scenario/$code': typeof AdvisorScenarioCodeRouteWithChildren
   '/agent/scenario/$code': typeof AgentScenarioCodeRoute
+  '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/scenario/created/$code': typeof ScenarioCreatedCodeRoute
   '/advisor/scenario/$code/edit': typeof AdvisorScenarioCodeEditRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
+  '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
+  '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -233,16 +275,21 @@ export interface FileRoutesById {
   '/sources': typeof SourcesRoute
   '/tasks': typeof TasksRoute
   '/testing': typeof TestingRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/users': typeof UsersRoute
+  '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/scenario/$code': typeof ScenarioCodeRoute
   '/scenario/new': typeof ScenarioNewRoute
   '/advisor/scenario/$code': typeof AdvisorScenarioCodeRouteWithChildren
   '/agent/scenario/$code': typeof AgentScenarioCodeRoute
+  '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/scenario/created/$code': typeof ScenarioCreatedCodeRoute
   '/advisor/scenario/$code/edit': typeof AdvisorScenarioCodeEditRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
+  '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
+  '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -262,16 +309,21 @@ export interface FileRouteTypes {
     | '/sources'
     | '/tasks'
     | '/testing'
+    | '/unsubscribe'
     | '/users'
+    | '/email/unsubscribe'
     | '/scenario/$code'
     | '/scenario/new'
     | '/advisor/scenario/$code'
     | '/agent/scenario/$code'
+    | '/lovable/email/suppression'
     | '/scenario/created/$code'
     | '/advisor/scenario/$code/edit'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/queue/process'
+    | '/lovable/email/transactional/preview'
+    | '/lovable/email/transactional/send'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -289,16 +341,21 @@ export interface FileRouteTypes {
     | '/sources'
     | '/tasks'
     | '/testing'
+    | '/unsubscribe'
     | '/users'
+    | '/email/unsubscribe'
     | '/scenario/$code'
     | '/scenario/new'
     | '/advisor/scenario/$code'
     | '/agent/scenario/$code'
+    | '/lovable/email/suppression'
     | '/scenario/created/$code'
     | '/advisor/scenario/$code/edit'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/queue/process'
+    | '/lovable/email/transactional/preview'
+    | '/lovable/email/transactional/send'
   id:
     | '__root__'
     | '/'
@@ -316,16 +373,21 @@ export interface FileRouteTypes {
     | '/sources'
     | '/tasks'
     | '/testing'
+    | '/unsubscribe'
     | '/users'
+    | '/email/unsubscribe'
     | '/scenario/$code'
     | '/scenario/new'
     | '/advisor/scenario/$code'
     | '/agent/scenario/$code'
+    | '/lovable/email/suppression'
     | '/scenario/created/$code'
     | '/advisor/scenario/$code/edit'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/queue/process'
+    | '/lovable/email/transactional/preview'
+    | '/lovable/email/transactional/send'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -344,13 +406,18 @@ export interface RootRouteChildren {
   SourcesRoute: typeof SourcesRoute
   TasksRoute: typeof TasksRoute
   TestingRoute: typeof TestingRoute
+  UnsubscribeRoute: typeof UnsubscribeRoute
   UsersRoute: typeof UsersRoute
+  EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   ScenarioCodeRoute: typeof ScenarioCodeRoute
   ScenarioNewRoute: typeof ScenarioNewRoute
+  LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   ScenarioCreatedCodeRoute: typeof ScenarioCreatedCodeRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
+  LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
+  LovableEmailTransactionalSendRoute: typeof LovableEmailTransactionalSendRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -360,6 +427,13 @@ declare module '@tanstack/react-router' {
       path: '/users'
       fullPath: '/users'
       preLoaderRoute: typeof UsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/unsubscribe': {
+      id: '/unsubscribe'
+      path: '/unsubscribe'
+      fullPath: '/unsubscribe'
+      preLoaderRoute: typeof UnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/testing': {
@@ -481,11 +555,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ScenarioCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/email/unsubscribe': {
+      id: '/email/unsubscribe'
+      path: '/email/unsubscribe'
+      fullPath: '/email/unsubscribe'
+      preLoaderRoute: typeof EmailUnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/scenario/created/$code': {
       id: '/scenario/created/$code'
       path: '/scenario/created/$code'
       fullPath: '/scenario/created/$code'
       preLoaderRoute: typeof ScenarioCreatedCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/suppression': {
+      id: '/lovable/email/suppression'
+      path: '/lovable/email/suppression'
+      fullPath: '/lovable/email/suppression'
+      preLoaderRoute: typeof LovableEmailSuppressionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/agent/scenario/$code': {
@@ -501,6 +589,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/advisor/scenario/$code'
       preLoaderRoute: typeof AdvisorScenarioCodeRouteImport
       parentRoute: typeof AdvisorRoute
+    }
+    '/lovable/email/transactional/send': {
+      id: '/lovable/email/transactional/send'
+      path: '/lovable/email/transactional/send'
+      fullPath: '/lovable/email/transactional/send'
+      preLoaderRoute: typeof LovableEmailTransactionalSendRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/transactional/preview': {
+      id: '/lovable/email/transactional/preview'
+      path: '/lovable/email/transactional/preview'
+      fullPath: '/lovable/email/transactional/preview'
+      preLoaderRoute: typeof LovableEmailTransactionalPreviewRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/lovable/email/queue/process': {
       id: '/lovable/email/queue/process'
@@ -581,13 +683,18 @@ const rootRouteChildren: RootRouteChildren = {
   SourcesRoute: SourcesRoute,
   TasksRoute: TasksRoute,
   TestingRoute: TestingRoute,
+  UnsubscribeRoute: UnsubscribeRoute,
   UsersRoute: UsersRoute,
+  EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   ScenarioCodeRoute: ScenarioCodeRoute,
   ScenarioNewRoute: ScenarioNewRoute,
+  LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   ScenarioCreatedCodeRoute: ScenarioCreatedCodeRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
+  LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,
+  LovableEmailTransactionalSendRoute: LovableEmailTransactionalSendRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
