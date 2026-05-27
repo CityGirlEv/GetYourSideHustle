@@ -21,7 +21,7 @@ export const TASK_STATUS_LABELS: Record<TaskRowStatus, string> = {
 export const TASK_CATEGORY_VALUES = ["engineering"] as const;
 export type TaskRowCategory = (typeof TASK_CATEGORY_VALUES)[number];
 export const TASK_CATEGORY_LABELS: Record<TaskRowCategory, string> = {
-  engineering: "Dev",
+  engineering: "Eng",
 };
 
 export interface TaskRow {
@@ -70,7 +70,7 @@ function categoryFromArea(_area: string): TaskRowCategory {
 // (TEST_CASES / SPRINTS items, type "test"), NOT as a task here. The Task Sheet
 // is reserved for non-test operational work (ops, design, compliance, etc.).
 // QA / test items are filtered out below so they live only on /testing.
-const OWNERS = ["Catria", "Evelyn", "Dev", "Dev", "Catria"]; // Catria-heavy
+const OWNERS = ["Catria", "Evelyn", "Eng", "Eng", "Catria"]; // Catria-heavy
 export const SEED_TASK_ROWS: TaskRow[] = TASKS
   .map((t, i) => ({
   id: t.id,
@@ -159,16 +159,31 @@ SEED_TASK_ROWS.push(
 
 export const TASKS_STORAGE_KEY = "tasks-sheet:v1";
 
+// Normalize legacy/duplicate owner names: Me→Evelyn, Design/Dev→Eng.
+function normalizeOwner(name: string): string {
+  if (!name) return name;
+  if (name === "Me") return "Evelyn";
+  if (name === "Design" || name === "Dev") return "Eng";
+  return name;
+}
+function normalizeRows(rows: TaskRow[]): TaskRow[] {
+  return rows.map((r) => ({
+    ...r,
+    assignedTo: normalizeOwner(r.assignedTo),
+    assignBy: normalizeOwner(r.assignBy),
+  }));
+}
+
 export function loadTaskRows(): TaskRow[] {
   if (typeof window === "undefined") return SEED_TASK_ROWS;
   try {
     const raw = localStorage.getItem(TASKS_STORAGE_KEY);
-    if (!raw) return SEED_TASK_ROWS;
+    if (!raw) return normalizeRows(SEED_TASK_ROWS);
     const parsed = JSON.parse(raw) as TaskRow[];
-    if (!Array.isArray(parsed)) return SEED_TASK_ROWS;
-    return parsed;
+    if (!Array.isArray(parsed)) return normalizeRows(SEED_TASK_ROWS);
+    return normalizeRows(parsed);
   } catch {
-    return SEED_TASK_ROWS;
+    return normalizeRows(SEED_TASK_ROWS);
   }
 }
 
