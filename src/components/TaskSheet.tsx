@@ -54,7 +54,7 @@ function emptyDraft(): TaskRow {
     id: "",
     description: "",
     sprintId: ACTIVE_SPRINT_ID,
-    category: "general",
+    category: "engineering",
     priority: "P2",
     status: "not_started",
     assignBy: "Evelyn",
