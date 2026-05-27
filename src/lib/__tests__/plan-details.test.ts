@@ -1,13 +1,23 @@
 import { describe, it, expect } from "vitest";
 import { rankedPlanDetails } from "../plan-details";
+import type { Medication } from "../medicare-math";
+
+const med = (over: Partial<Medication>): Medication => ({
+  id: over.id ?? "m1",
+  medication_name: over.medication_name ?? "atorvastatin",
+  strength: "10mg",
+  dosage_form: "tablet",
+  frequency: "daily",
+  estimated_monthly_retail: over.estimated_monthly_retail ?? 10,
+});
 
 describe("rankedPlanDetails", () => {
   const input = {
     year: 2026 as const,
     zip3: "331",
     medications: [
-      { medication_name: "atorvastatin", estimated_monthly_retail: 12 },
-      { medication_name: "metformin", estimated_monthly_retail: 8 },
+      med({ id: "1", medication_name: "atorvastatin", estimated_monthly_retail: 12 }),
+      med({ id: "2", medication_name: "metformin", estimated_monthly_retail: 8 }),
     ],
   };
 
