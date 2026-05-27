@@ -278,44 +278,28 @@ export function TaskSheetContent() {
   };
 
   const toggleSelected = (id: string, checked: boolean) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (checked) next.add(id); else next.delete(id);
-      return next;
-    });
+    setSelected((prev) => toggleInSet(prev, id, checked));
   };
   const toggleSelectAll = (checked: boolean) => {
-    if (checked) setSelected(new Set(filtered.map((r) => r.id)));
-    else setSelected(new Set());
+    setSelected(toggleAllInSet(filtered.map((r) => r.id), checked));
   };
-  const allSelected = filtered.length > 0 && filtered.every((r) => selected.has(r.id));
+  const allSelected = isAllSelected(filtered.map((r) => r.id), selected);
 
   const applyBulk = () => {
     if (selected.size === 0) return;
-    const next = rows.map((r) => {
-      if (!selected.has(r.id)) return r;
-      const u = { ...r };
-      if (bulkStatus) {
-        u.status = bulkStatus;
-        if (bulkStatus === "done" && !u.dateCompleted) u.dateCompleted = todayMMDDYY();
-      }
-      if (bulkSprint) u.sprintId = bulkSprint;
-      if (bulkAssignee.trim()) u.assignedTo = bulkAssignee.trim();
-      if (bulkPriority) u.priority = bulkPriority;
-      if (bulkNotes.trim()) {
-        const stamp = todayMMDDYY();
-        const line = `[${stamp}] ${bulkNotes.trim()}`;
-        u.notes = bulkNotesMode === "replace" || !u.notes ? line : `${u.notes}\n${line}`;
-      }
-      if (bulkAssignBy.trim()) u.assignBy = bulkAssignBy.trim();
-      if (bulkDateAssigned.trim()) u.dateAssigned = bulkDateAssigned.trim();
-      if (bulkDueDate.trim()) u.dueDate = bulkDueDate.trim();
-      if (bulkDateCompleted.trim()) u.dateCompleted = bulkDateCompleted.trim();
-      if (bulkCost.trim() !== "") {
-        const n = Number(bulkCost);
-        if (!Number.isNaN(n)) u.cost = n;
-      }
-      return u;
+    const next = applyBulkEdit(rows, selected, {
+      status: bulkStatus,
+      sprintId: bulkSprint,
+      assignedTo: bulkAssignee,
+      priority: bulkPriority,
+      notes: bulkNotes,
+      notesMode: bulkNotesMode,
+      assignBy: bulkAssignBy,
+      dateAssigned: bulkDateAssigned,
+      dueDate: bulkDueDate,
+      dateCompleted: bulkDateCompleted,
+      cost: bulkCost,
+      today: todayMMDDYY(),
     });
     persist(next);
     setBulkStatus(""); setBulkSprint(""); setBulkAssignee("");
@@ -326,7 +310,7 @@ export function TaskSheetContent() {
   const bulkDelete = () => {
     if (selected.size === 0) return;
     if (!confirm(`Delete ${selected.size} selected task(s)?`)) return;
-    persist(rows.filter((r) => !selected.has(r.id)));
+    persist(bulkDeleteRows(rows, selected));
     setSelected(new Set());
   };
 
