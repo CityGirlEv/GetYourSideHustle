@@ -203,6 +203,7 @@ export function TestPlanTab() {
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [ownerFilter, setOwnerFilter] = useState<string[]>([]);
   const [sprintFilter, setSprintFilter] = useState<string[]>([]);
+  const [summaryCollapsed, setSummaryCollapsed] = useState(false);
 
   // Effective (saved + draft) views used for rendering and filtering
   const statuses = useMemo(() => ({ ...savedStatuses, ...dStatuses }), [savedStatuses, dStatuses]);
