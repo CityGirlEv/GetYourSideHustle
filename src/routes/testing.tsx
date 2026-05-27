@@ -1558,12 +1558,18 @@ function TasksTab() {
   const filtered = TASKS.filter((t) => statusFilter === "all" || t.status === statusFilter);
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap gap-2 items-center">
-        {(["all", "todo", "in_progress", "done", "blocked"] as const).map((s) => (
-          <Button key={s} size="sm" variant={statusFilter === s ? "default" : "outline"} onClick={() => setStatusFilter(s)} className="capitalize">
-            {s.replace("_", " ")}
-          </Button>
-        ))}
+      <div className="flex flex-wrap gap-2 items-center justify-between">
+        <div className="flex flex-wrap gap-2 items-center">
+          {(["all", "todo", "in_progress", "done", "blocked"] as const).map((s) => (
+            <Button key={s} size="sm" variant={statusFilter === s ? "default" : "outline"} onClick={() => setStatusFilter(s)} className="capitalize">
+              {s.replace("_", " ")}
+            </Button>
+          ))}
+        </div>
+        <Link to="/tasks" className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/10 transition-colors">
+          <ListChecks className="h-3.5 w-3.5" />
+          Open Task Sheet →
+        </Link>
       </div>
       <Card className="overflow-hidden">
         <ul className="divide-y divide-border">
