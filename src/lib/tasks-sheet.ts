@@ -18,14 +18,10 @@ export const TASK_STATUS_LABELS: Record<TaskRowStatus, string> = {
   done: "Done",
 };
 
-export const TASK_CATEGORY_VALUES = ["general", "qa", "engineering", "ops", "compliance"] as const;
+export const TASK_CATEGORY_VALUES = ["engineering"] as const;
 export type TaskRowCategory = (typeof TASK_CATEGORY_VALUES)[number];
 export const TASK_CATEGORY_LABELS: Record<TaskRowCategory, string> = {
-  general: "General",
-  qa: "QA",
   engineering: "Dev",
-  ops: "Ops",
-  compliance: "Compliance",
 };
 
 export interface TaskRow {
@@ -65,12 +61,7 @@ function statusFromTask(s: string): TaskRowStatus {
   return "not_started";
 }
 
-function categoryFromArea(area: string): TaskRowCategory {
-  const a = area.toLowerCase();
-  if (a.includes("qa") || a.includes("test")) return "qa";
-  if (a.includes("cms") || a.includes("compliance")) return "compliance";
-  if (a.includes("agent") || a.includes("soa") || a.includes("admin")) return "ops";
-  if (a.includes("scorecard") || a.includes("design")) return "engineering";
+function categoryFromArea(_area: string): TaskRowCategory {
   return "engineering";
 }
 
@@ -96,9 +87,7 @@ export const SEED_TASK_ROWS: TaskRow[] = TASKS
   cost: 0,
   notes: t.notes ?? "",
   path: "",
-}))
-  // Test / QA work belongs on /testing — keep the Task Sheet for ops/design/etc.
-  .filter((r) => r.category !== "qa");
+}));
 
 // Sprint 1 beta-go-live recruiting + onboarding tasks (richer than TASKS).
 SEED_TASK_ROWS.push(
@@ -106,7 +95,7 @@ SEED_TASK_ROWS.push(
     id: "T-100",
     description: "Catria recruits 10 beta agents (hand-picked) and collects NDA + Agent Agreement signatures",
     sprintId: ACTIVE_SPRINT_ID,
-    category: "ops",
+    category: "engineering",
     priority: "P0",
     status: "in_progress",
     assignBy: "Evelyn",
@@ -122,7 +111,7 @@ SEED_TASK_ROWS.push(
     id: "T-101",
     description: "Execute Sprint 1 test plan — Catria 70%, Me 30%",
     sprintId: ACTIVE_SPRINT_ID,
-    category: "qa",
+    category: "engineering",
     priority: "P0",
     status: "in_progress",
     assignBy: "Evelyn",
@@ -154,7 +143,7 @@ SEED_TASK_ROWS.push(
     id: "T-103",
     description: "Set up Google Search Console",
     sprintId: ACTIVE_SPRINT_ID,
-    category: "ops",
+    category: "engineering",
     priority: "P1",
     status: "in_progress",
     assignBy: "Evelyn",

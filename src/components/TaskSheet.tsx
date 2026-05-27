@@ -21,7 +21,7 @@ import { Plus, RotateCcw, Trash2, Pencil, Search, Download, ExternalLink, Save, 
 import { toast } from "sonner";
 import {
   loadTaskRows, saveTaskRows, resetTaskRows, nextTaskId, todayMMDDYY,
-  TASK_STATUS_VALUES, TASK_STATUS_LABELS,
+  TASK_STATUS_VALUES, TASK_STATUS_LABELS, TASK_CATEGORY_VALUES, TASK_CATEGORY_LABELS,
   type TaskRow, type TaskRowStatus,
 } from "@/lib/tasks-sheet";
 import { SPRINTS, ACTIVE_SPRINT_ID, PRIORITY_LABELS, PRIORITY_SHORT, type Priority } from "@/lib/test-plan";
@@ -54,7 +54,7 @@ function emptyDraft(): TaskRow {
     id: "",
     description: "",
     sprintId: ACTIVE_SPRINT_ID,
-    category: "general",
+    category: "engineering",
     priority: "P2",
     status: "not_started",
     assignBy: "Evelyn",
@@ -855,6 +855,15 @@ export function TaskSheetContent() {
                     {SPRINTS.map((s) => (
                       <SelectItem key={s.id} value={s.id}>Sprint {s.number} · {s.name}</SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Category</Label>
+                <Select value={editing.category} onValueChange={(v) => setEditing({ ...editing, category: v as typeof TASK_CATEGORY_VALUES[number] })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {TASK_CATEGORY_VALUES.map((c) => <SelectItem key={c} value={c}>{TASK_CATEGORY_LABELS[c]}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
