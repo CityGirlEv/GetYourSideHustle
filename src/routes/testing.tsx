@@ -458,27 +458,15 @@ export function TestPlanTab() {
   return (
     <div className="space-y-4">
       {/* Sprint + ownership banner */}
-      <Card className={`bg-primary/5 border-primary/30 ${bannerCollapsed ? "p-2" : "p-4"}`}>
-        <button
-          type="button"
-          onClick={() => setBannerCollapsed((p) => !p)}
-          className="w-full flex flex-wrap items-center justify-between gap-3 cursor-pointer"
-          title={bannerCollapsed ? "Expand" : "Collapse"}
-        >
-          <div className="flex items-center gap-2">
-            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${bannerCollapsed ? "-rotate-90" : ""}`} />
-            <div>
-              <div className="text-xs uppercase tracking-wide text-muted-foreground">Active sprint</div>
-              <div className="font-bold text-base">Sprint 1 · Beta go-live ({ACTIVE_SPRINT_ID})</div>
-            </div>
+      <Card className="bg-primary/5 border-primary/30 p-4">
+        <div className="w-full flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="text-xs uppercase tracking-wide text-muted-foreground">Active sprint</div>
+            <div className="font-bold text-base">Sprint 1 · Beta go-live ({ACTIVE_SPRINT_ID})</div>
           </div>
-          {!bannerCollapsed && (
-            <div className="text-xs text-muted-foreground">5/25 → 5/31 · {TEST_CASES.filter((t) => (t.sprintId ?? ACTIVE_SPRINT_ID) === ACTIVE_SPRINT_ID).length} of {TEST_CASES.length} test cases on this sprint (older sprints listed below)</div>
-          )}
-        </button>
-        {!bannerCollapsed && (
-          <>
-            <div className="text-xs text-muted-foreground mt-2">
+          <div className="text-xs text-muted-foreground">5/25 → 5/31 · {TEST_CASES.filter((t) => (t.sprintId ?? ACTIVE_SPRINT_ID) === ACTIVE_SPRINT_ID).length} of {TEST_CASES.length} test cases on this sprint (older sprints listed below)</div>
+        </div>
+        <div className="text-xs text-muted-foreground mt-2">
               Beta tester reward pool: <span className="font-semibold text-foreground">{totalCreditBudget()} credit tokens</span>
               {" "}· Severe=15 · High=10 · Medium=5 · Low=3 · +{REPRO_FAIL_BONUS} bonus per first repro-fail
             </div>
@@ -497,8 +485,6 @@ export function TestPlanTab() {
                 );
               })}
             </div>
-          </>
-        )}
       </Card>
 
       {/* Summary */}
@@ -509,14 +495,6 @@ export function TestPlanTab() {
               <div className="text-xs uppercase tracking-wide text-muted-foreground">
                 {focusStatusLabel[focusStatus]} rate
               </div>
-              <button
-                type="button"
-                onClick={() => setSummaryCollapsed((p) => !p)}
-                className="p-0.5 rounded hover:bg-accent transition-colors"
-                title={summaryCollapsed ? "Expand" : "Collapse"}
-              >
-                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${summaryCollapsed ? "-rotate-90" : ""}`} />
-              </button>
             </div>
             <div className="text-2xl font-bold">{overallFocusPct}%</div>
             <div className="text-[11px] text-muted-foreground">
