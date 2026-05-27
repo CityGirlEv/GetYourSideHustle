@@ -448,26 +448,15 @@ export function TaskSheetContent() {
   return (
     <div className="space-y-4">
       {/* Sprint + ownership banner */}
-      <Card className={`bg-emerald-500/5 border-emerald-500/30 ${bannerCollapsed ? "p-2" : "p-4"}`}>
-        <button
-          type="button"
-          onClick={() => setBannerCollapsed((p) => !p)}
-          className="w-full flex flex-wrap items-center justify-between gap-3 cursor-pointer"
-          title={bannerCollapsed ? "Expand" : "Collapse"}
-        >
-          <div className="flex items-center gap-2">
-            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${bannerCollapsed ? "-rotate-90" : ""}`} />
-            <div>
-              <div className="text-xs uppercase tracking-wide text-muted-foreground">Active sprint</div>
-              <div className="font-bold text-base">Sprint 1 · Beta go-live ({ACTIVE_SPRINT_ID})</div>
-            </div>
+      <Card className="bg-emerald-500/5 border-emerald-500/30 p-4">
+        <div className="w-full flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="text-xs uppercase tracking-wide text-muted-foreground">Active sprint</div>
+            <div className="font-bold text-base">Sprint 1 · Beta go-live ({ACTIVE_SPRINT_ID})</div>
           </div>
-          {!bannerCollapsed && (
-            <div className="text-xs text-muted-foreground">5/25 → 5/31 · {rows.length} task{rows.length === 1 ? "" : "s"} on the board</div>
-          )}
-        </button>
-        {!bannerCollapsed && (
-          <div className="flex flex-wrap gap-2 text-xs mt-3">
+          <div className="text-xs text-muted-foreground">5/25 → 5/31 · {rows.length} task{rows.length === 1 ? "" : "s"} on the board</div>
+        </div>
+        <div className="flex flex-wrap gap-2 text-xs mt-3">
             {Object.entries(ownerCounts).map(([owner, n]) => {
               const active = ownerFilter.length === 1 && ownerFilter[0] === owner;
               return (
@@ -482,7 +471,6 @@ export function TaskSheetContent() {
               );
             })}
           </div>
-        )}
       </Card>
 
       {/* Summary */}
@@ -493,14 +481,6 @@ export function TaskSheetContent() {
               <div className="text-xs uppercase tracking-wide text-muted-foreground">
                 {focusStatusLabel[focusStatus]} rate
               </div>
-              <button
-                type="button"
-                onClick={() => setSummaryCollapsed((p) => !p)}
-                className="p-0.5 rounded hover:bg-accent transition-colors"
-                title={summaryCollapsed ? "Expand" : "Collapse"}
-              >
-                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${summaryCollapsed ? "-rotate-90" : ""}`} />
-              </button>
             </div>
             <div className="text-2xl font-bold">{overallFocusPct}%</div>
             <div className="text-[11px] text-muted-foreground">
@@ -525,8 +505,7 @@ export function TaskSheetContent() {
               onClick={() => setStatusFilter([])} />
           </div>
         </div>
-        {!summaryCollapsed && (
-          <>
+        <>
             <Progress value={overallFocusPct} className="h-2" />
             {Object.keys(ownerStatusCounts).length > 0 && (
               <div className="mt-4 pt-3 border-t border-border/60 space-y-2">
@@ -596,7 +575,6 @@ export function TaskSheetContent() {
               </div>
             )}
           </>
-        )}
       </Card>
 
       {/* Toolbar */}
