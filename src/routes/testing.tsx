@@ -396,12 +396,23 @@ export function TestPlanTab() {
   // Effective assignee/sprint that respects unsaved drafts (the lib helpers read storage)
   const effAssignee = (t: TestCase): string => {
     const ov = assigneeOverrides[t.id];
-    const raw = ov || getTestAssignee(t, statuses[t.id]);
+    let raw: string;
+    if (customIds.has(t.id)) {
+      raw = ov || (t.assignee && t.assignee !== "Unassigned" ? t.assignee : "Unassigned");
+    } else {
+      raw = ov || getTestAssignee(t, statuses[t.id]);
+    }
     if (raw === "Me") return "Evelyn";
     if (raw === "Design" || raw === "Dev") return "Eng";
     return raw;
   };
-  const effSprint = (t: TestCase): string => sprintOverrides[t.id] || getTestSprintId(t);
+  const effSprint = (t: TestCase): string => {
+    const ov = sprintOverrides[t.id];
+    if (ov) return ov;
+    // Custom tests with no explicit sprint live in the "Unassigned" group.
+    if (customIds.has(t.id)) return t.sprintId || "";
+    return getTestSprintId(t);
+  };
   const [collapsedSprints, setCollapsedSprints] = useState<Set<string>>(
     () => new Set(SPRINTS.filter((s) => s.id !== ACTIVE_SPRINT_ID).map((s) => s.id))
   );
