@@ -50,10 +50,11 @@ function AuthPage() {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!accountType) return toast.error("Select an account type.");
     setBusy(true);
     const { error } = await supabase.auth.signUp({
       email, password,
-      options: { data: { full_name: fullName }, emailRedirectTo: window.location.origin + "/auth" },
+      options: { data: { full_name: fullName, requested_role: accountType }, emailRedirectTo: window.location.origin + "/auth" },
     });
     setBusy(false);
     if (error) return toast.error(error.message);
