@@ -693,7 +693,7 @@ export function TestPlanTab() {
         open={newTestOpen}
         onOpenChange={setNewTestOpen}
         existingIds={effectiveCases.map((t) => t.id)}
-        onCreated={(row) => {
+        onCreated={(row: CustomTestRow) => {
           setCustomTests((prev) => [row, ...prev]);
           toast.success(`Created ${row.id}`);
         }}
