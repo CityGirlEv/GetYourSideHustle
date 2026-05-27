@@ -395,7 +395,7 @@ export function TaskSheetContent() {
   };
 
   // Apply selected changes. Unselected changes stay in working draft.
-  const commitChanges = (selectedKeys: Set<string>) => {
+  const commitChanges = async (selectedKeys: Set<string>) => {
     const savedById = new Map(savedRows.map((r) => [r.id, { ...r }]));
     const draftById = new Map(rows.map((r) => [r.id, { ...r }]));
     const nextSavedMap = new Map(savedById);
@@ -443,6 +443,16 @@ export function TaskSheetContent() {
     saveTaskRows(orderedSaved);
     setSaveOpen(false);
     toast.success(`Saved ${selectedKeys.size} change${selectedKeys.size === 1 ? "" : "s"}.`);
+
+    // Push the saved snapshot to the cloud so deletions and edits persist
+    // across browsers / refreshes. Fire-and-forget — local save already succeeded.
+    try {
+      const { cloudSyncAllTasks } = await import("@/lib/cloud-sync");
+      const r = await cloudSyncAllTasks(orderedSaved);
+      if (r) toast.success(`Synced to cloud — ${r.upserted} task${r.upserted === 1 ? "" : "s"}${r.deleted ? `, ${r.deleted} removed` : ""}.`);
+    } catch (e) {
+      console.warn("[tasks] cloud sync failed", e);
+    }
   };
 
   return (
