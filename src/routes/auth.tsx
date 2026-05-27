@@ -6,8 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ShieldCheck, Lock, Eye, EyeOff, Headset, FlaskConical } from "lucide-react";
+import { ShieldCheck, Lock, Eye, EyeOff, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 
@@ -31,12 +30,9 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const { user } = useApp();
   const router = useRouter();
-  const [tab, setTab] = useState("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [fullName, setFullName] = useState("");
-  const [accountType, setAccountType] = useState<"agent" | "qa" | "">("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -47,20 +43,6 @@ function AuthPage() {
       "/advisor"; // advisor, editor, qa, viewer all land on the advisor workbench
     router.navigate({ to: dest });
   }, [user, router]);
-
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!accountType) return toast.error("Select an account type.");
-    setBusy(true);
-    const { error } = await supabase.auth.signUp({
-      email, password,
-      options: { data: { full_name: fullName, requested_role: accountType }, emailRedirectTo: window.location.origin + "/auth" },
-    });
-    setBusy(false);
-    if (error) return toast.error(error.message);
-    toast.success("Account created. Check your email to verify, then sign in.");
-    setTab("signin");
-  };
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,13 +77,7 @@ function AuthPage() {
           </div>
 
           <Card className="glass p-6">
-            <Tabs value={tab} onValueChange={setTab}>
-              <TabsList className="grid grid-cols-2 w-full">
-                <TabsTrigger value="signin">Sign in</TabsTrigger>
-                <TabsTrigger value="signup">Create account</TabsTrigger>
-              </TabsList>
-              <TabsContent value="signin">
-                <form onSubmit={handleSignIn} className="space-y-3 mt-4">
+            <form onSubmit={handleSignIn} className="space-y-3">
                   <div><Label>Email</Label><Input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} required /></div>
                   <div className="relative">
                     <Label>Password</Label>
@@ -114,53 +90,14 @@ function AuthPage() {
                   <button type="button" onClick={handleForgot} disabled={busy} className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 w-full text-center">
                     Forgot password?
                   </button>
-                  <div className="text-xs text-center text-muted-foreground pt-1">
-                    <Link to="/register" className="underline underline-offset-2 hover:text-foreground">Register Below</Link>
-                  </div>
-                </form>
-              </TabsContent>
-              <TabsContent value="signup">
-                <form onSubmit={handleSignUp} className="space-y-3 mt-4">
-                  <div><Label>Full name</Label><Input value={fullName} onChange={(e)=>setFullName(e.target.value)} required /></div>
-                  <div><Label>Email</Label><Input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} required /></div>
-                  <div className="relative">
-                    <Label>Password (min 12 chars)</Label>
-                    <Input type={showPassword ? "text" : "password"} value={password} onChange={(e)=>setPassword(e.target.value)} required minLength={12} className="pr-10" />
-                    <button type="button" tabIndex={-1} onClick={()=>setShowPassword(v=>!v)} className="absolute right-3 top-[30px] text-muted-foreground hover:text-foreground">
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                  <div className="space-y-2 pt-1">
-                    <Label>Account Type</Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setAccountType("agent")}
-                        className={`flex items-center gap-2 rounded-md border p-3 text-sm transition ${accountType === "agent" ? "border-primary bg-primary/10 ring-1 ring-primary" : "border-border hover:bg-muted/40"}`}
-                      >
-                        <Headset className="h-4 w-4" />
-                        <div className="text-left">
-                          <div className="font-medium">Agent</div>
-                          <div className="text-[11px] text-muted-foreground">Licensed insurance agent</div>
-                        </div>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setAccountType("qa")}
-                        className={`flex items-center gap-2 rounded-md border p-3 text-sm transition ${accountType === "qa" ? "border-primary bg-primary/10 ring-1 ring-primary" : "border-border hover:bg-muted/40"}`}
-                      >
-                        <FlaskConical className="h-4 w-4" />
-                        <div className="text-left">
-                          <div className="font-medium">QA Account Registration</div>
-                          <div className="text-[11px] text-muted-foreground">Beta testing &amp; feedback</div>
-                        </div>
-                      </button>
-                    </div>
-                  </div>
-                  <Button type="submit" disabled={busy} className="w-full grad-indigo h-11">Create account</Button>
-                </form>
-              </TabsContent>
-            </Tabs>
+            </form>
+            <div className="mt-4 pt-4 border-t text-center text-sm text-muted-foreground">
+              Need an account?{" "}
+              <Link to="/register" className="inline-flex items-center gap-1 font-medium text-primary underline underline-offset-2 hover:text-primary/80">
+                <UserPlus className="h-3.5 w-3.5" /> Register here
+              </Link>
+              <p className="text-[11px] mt-1">Agent and QA accounts require NDA &amp; admin approval.</p>
+            </div>
           </Card>
         </div>
       </div>
