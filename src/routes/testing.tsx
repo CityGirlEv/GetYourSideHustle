@@ -41,6 +41,7 @@ import {
 import {
   listCustomTests, createCustomTest, customRowToTestCase, type CustomTestRow,
 } from "@/lib/custom-tests";
+import { AUTOMATED_TEST_CASES } from "@/lib/automated-tests";
 import {
   listTestEvidence, uploadTestEvidence, deleteTestEvidence, getTestEvidenceUrl,
   type EvidenceFile,
@@ -209,7 +210,7 @@ export function TestPlanTab() {
     () => {
       const base = TEST_CASES.map((t) => applyDescriptionOverride(t));
       const custom = customTests.map(customRowToTestCase);
-      return [...base, ...custom];
+      return [...base, ...AUTOMATED_TEST_CASES, ...custom];
     },
     [descVersion, customTests],
   );
