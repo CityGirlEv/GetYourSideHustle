@@ -123,7 +123,14 @@ function TestingPortal() {
             <TabsTrigger value="tests"><ListChecks className="h-3.5 w-3.5 mr-1.5" />Test Plan</TabsTrigger>
             {isAdmin && <TabsTrigger value="impl"><GitBranch className="h-3.5 w-3.5 mr-1.5" />Implementation</TabsTrigger>}
             <TabsTrigger value="sprints"><CalendarDays className="h-3.5 w-3.5 mr-1.5" />Sprints</TabsTrigger>
-            {isAdmin && <TabsTrigger value="tasks"><Sparkles className="h-3.5 w-3.5 mr-1.5" />Tasks</TabsTrigger>}
+            {isAdmin && (
+              <Link
+                to="/tasks"
+                className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Sparkles className="h-3.5 w-3.5 mr-1.5" />Tasks
+              </Link>
+            )}
           </TabsList>
           <SyncBrowserToCloud />
         </div>
@@ -131,7 +138,6 @@ function TestingPortal() {
         <TabsContent value="tests"><TestPlanTab /></TabsContent>
         {isAdmin && <TabsContent value="impl"><ImplementationTab /></TabsContent>}
         <TabsContent value="sprints"><SprintsTab /></TabsContent>
-        {isAdmin && <TabsContent value="tasks"><TasksTab /></TabsContent>}
       </Tabs>
     </AppShell>
   );
