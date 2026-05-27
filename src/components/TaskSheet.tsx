@@ -929,7 +929,7 @@ export function TaskSheetContent() {
                 <Select value={editing.assignedTo} onValueChange={(v) => setEditing({ ...editing, assignedTo: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {owners.filter((o) => o !== "All").map((o) => (
+                    {TEST_OWNERS.map((o) => (
                       <SelectItem key={o} value={o}>{o}</SelectItem>
                     ))}
                   </SelectContent>
@@ -937,7 +937,14 @@ export function TaskSheetContent() {
               </div>
               <div>
                 <Label>Assigned by</Label>
-                <Input value={editing.assignBy} onChange={(e) => setEditing({ ...editing, assignBy: e.target.value })} />
+                <Select value={editing.assignBy} onValueChange={(v) => setEditing({ ...editing, assignBy: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {TEST_OWNERS.map((o) => (
+                      <SelectItem key={o} value={o}>{o}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label>Date assigned</Label>
