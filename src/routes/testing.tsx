@@ -300,7 +300,7 @@ export function TestPlanTab() {
   };
 
   // Persist a subset of pending changes; remaining ones stay in draft.
-  const commitChanges = (selectedKeys: Set<string>) => {
+  const commitChanges = async (selectedKeys: Set<string>) => {
     const stillDraft = {
       status: { ...dStatuses }, qaNote: { ...dQaNotes }, devNote: { ...dDevNotes },
       severity: { ...dSeverities }, assignee: { ...dAssignees }, sprint: { ...dSprints },
@@ -309,27 +309,29 @@ export function TestPlanTab() {
       status: { ...savedStatuses }, qaNote: { ...savedQaNotes }, devNote: { ...savedDevNotes },
       severity: { ...savedSeverities }, assignee: { ...savedAssignees }, sprint: { ...savedSprints },
     };
+    const cloudPromises: Promise<boolean>[] = [];
+    const { cloudPushTest, cloudAppendNote } = await import("@/lib/cloud-sync");
     for (const c of pendingChanges) {
       if (!selectedKeys.has(c.key)) continue;
       const id = c.testId;
       switch (c.field) {
         case "status": {
-          const v = dStatuses[id]!; saveStatus(id, v); newSaved.status[id] = v; delete stillDraft.status[id]; break;
+          const v = dStatuses[id]!; saveStatus(id, v); cloudPromises.push(cloudPushTest(id, { status: v })); newSaved.status[id] = v; delete stillDraft.status[id]; break;
         }
         case "qaNote": {
-          const v = dQaNotes[id]!; saveQaNote(id, v); newSaved.qaNote[id] = v; delete stillDraft.qaNote[id]; break;
+          const v = dQaNotes[id]!; saveQaNote(id, v); if (v.trim()) cloudPromises.push((async () => { cloudAppendNote(id, "qa", v); return true; })()); newSaved.qaNote[id] = v; delete stillDraft.qaNote[id]; break;
         }
         case "devNote": {
-          const v = dDevNotes[id]!; saveDevNote(id, v); newSaved.devNote[id] = v; delete stillDraft.devNote[id]; break;
+          const v = dDevNotes[id]!; saveDevNote(id, v); if (v.trim()) cloudPromises.push((async () => { cloudAppendNote(id, "dev", v); return true; })()); newSaved.devNote[id] = v; delete stillDraft.devNote[id]; break;
         }
         case "severity": {
-          const v = dSeverities[id]!; saveSeverity(id, v); newSaved.severity[id] = v; delete stillDraft.severity[id]; break;
+          const v = dSeverities[id]!; saveSeverity(id, v); cloudPromises.push(cloudPushTest(id, { severity: v || null })); newSaved.severity[id] = v; delete stillDraft.severity[id]; break;
         }
         case "assignee": {
-          const v = dAssignees[id]!; saveAssigneeOverride(id, v); newSaved.assignee[id] = v; delete stillDraft.assignee[id]; break;
+          const v = dAssignees[id]!; saveAssigneeOverride(id, v); cloudPromises.push(cloudPushTest(id, { assignee: v || null })); newSaved.assignee[id] = v; delete stillDraft.assignee[id]; break;
         }
         case "sprint": {
-          const v = dSprints[id]!; saveSprintOverride(id, v); newSaved.sprint[id] = v; delete stillDraft.sprint[id]; break;
+          const v = dSprints[id]!; saveSprintOverride(id, v); cloudPromises.push(cloudPushTest(id, { sprint_id: v || null })); newSaved.sprint[id] = v; delete stillDraft.sprint[id]; break;
         }
       }
     }
@@ -338,7 +340,14 @@ export function TestPlanTab() {
     setDStatuses(stillDraft.status); setDQaNotes(stillDraft.qaNote); setDDevNotes(stillDraft.devNote);
     setDSeverities(stillDraft.severity); setDAssignees(stillDraft.assignee); setDSprints(stillDraft.sprint);
     setSaveOpen(false);
-    toast.success(`Saved ${selectedKeys.size} change${selectedKeys.size === 1 ? "" : "s"}.`);
+    const results = await Promise.all(cloudPromises);
+    const okCount = results.filter(Boolean).length;
+    const failCount = results.length - okCount;
+    if (failCount === 0) {
+      toast.success(`Saved ${selectedKeys.size} change${selectedKeys.size === 1 ? "" : "s"} to cloud.`);
+    } else {
+      toast.error(`Saved locally, but ${failCount} of ${results.length} cloud write${results.length === 1 ? "" : "s"} failed — see console.`);
+    }
   };
 
   const areas = useMemo(() => Array.from(new Set(effectiveCases.map((t) => t.area))), [effectiveCases]);
