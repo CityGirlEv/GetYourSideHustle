@@ -170,7 +170,7 @@ export function AppShell({ children, title, subtitle, titleClassName }: { childr
           </Link>
           <div className="mx-auto text-center font-display font-bold px-12 sm:px-16 md:px-20">
             <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl text-primary uppercase leading-none">The Medicare Optimizer</h1>
-            <p className="text-xs sm:text-sm md:text-base text-primary/80 font-medium italic leading-tight mt-0.5">You Deserve The Best Medicare Plan Because You Earned It!</p>
+            <p className="text-xs sm:text-sm md:text-base text-primary/80 font-medium italic leading-tight mt-0.5">Let The Optimizer Find The Medicare Plan You Deserve!</p>
           </div>
         </div>
       </div>
