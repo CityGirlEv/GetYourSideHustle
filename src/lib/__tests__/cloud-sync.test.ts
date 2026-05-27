@@ -9,7 +9,7 @@ vi.mock("@/integrations/supabase/client", () => ({
 }));
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
-import { cloudPushTest, lastSyncedAt, syncLocalToCloud } from "../cloud-sync";
+import { cloudPushTest, cloudSyncAllTasks, lastSyncedAt, syncLocalToCloud } from "../cloud-sync";
 
 beforeEach(() => {
   localStorage.clear();
@@ -29,5 +29,10 @@ describe("cloud-sync", () => {
 
   it("syncLocalToCloud throws when not signed in", async () => {
     await expect(syncLocalToCloud()).rejects.toThrow("Not signed in");
+  });
+
+  it("cloudSyncAllTasks returns null when not signed in", async () => {
+    const r = await cloudSyncAllTasks([]);
+    expect(r).toBeNull();
   });
 });
