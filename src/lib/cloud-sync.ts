@@ -53,7 +53,10 @@ export function cloudPushTest(test_id: string, patch: Partial<{
       normalized[k] = v === "" ? null : v;
     }
     const { error } = await supabase.from("test_results").upsert(normalized as never, { onConflict: "test_id" });
-    if (error) console.warn("[cloud-sync] cloudPushTest", error.message);
+    if (error) {
+      console.warn("[cloud-sync] cloudPushTest", error.message, normalized);
+      try { toast.error("Couldn't save to cloud", { description: error.message }); } catch { /* noop */ }
+    }
   })();
 }
 
@@ -80,7 +83,10 @@ export function cloudAppendNote(test_id: string, kind: NoteKind, text: string) {
     const { error } = await supabase
       .from("test_results")
       .upsert({ test_id, [col]: next, updated_by: u.id } as never, { onConflict: "test_id" });
-    if (error) console.warn("[cloud-sync] cloudAppendNote", error.message);
+    if (error) {
+      console.warn("[cloud-sync] cloudAppendNote", error.message);
+      try { toast.error("Couldn't save note to cloud", { description: error.message }); } catch { /* noop */ }
+    }
   })();
 }
 
@@ -92,7 +98,10 @@ export function cloudPushAllTasks(rows: TaskRow[]) {
     if (!u) { warnNotSignedIn("cloudPushAllTasks"); return; }
     const payload = rows.map((r, i) => ({ id: r.id, data: r as unknown, sort_order: i, updated_by: u.id }));
     const { error } = await supabase.from("task_rows").upsert(payload as never, { onConflict: "id" });
-    if (error) console.warn("[cloud-sync] cloudPushAllTasks", error.message);
+    if (error) {
+      console.warn("[cloud-sync] cloudPushAllTasks", error.message);
+      try { toast.error("Couldn't save tasks to cloud", { description: error.message }); } catch { /* noop */ }
+    }
   })();
 }
 
