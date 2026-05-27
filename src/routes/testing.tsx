@@ -33,6 +33,14 @@ import { hydrateTestResultsToLocal } from "@/lib/cloud-sync";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  listCustomTests, createCustomTest, customRowToTestCase, type CustomTestRow,
+} from "@/lib/custom-tests";
 import {
   listTestEvidence, uploadTestEvidence, deleteTestEvidence, getTestEvidenceUrl,
   type EvidenceFile,
@@ -179,11 +187,36 @@ export function TestPlanTab() {
   // Bump this to re-read description overrides from storage after edits.
   const [descVersion, setDescVersion] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
+  // User-created custom tests (loaded from custom_tests table). These merge
+  // into the standard TEST_CASES list and default to Unassigned.
+  const [customTests, setCustomTests] = useState<CustomTestRow[]>([]);
+  const [newTestOpen, setNewTestOpen] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const rows = await listCustomTests();
+        if (!cancelled) setCustomTests(rows);
+      } catch (e) {
+        console.warn("[testing] load custom tests failed", e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // Effective test cases with description overrides applied (admin edits).
   const effectiveCases = useMemo(
-    () => TEST_CASES.map((t) => applyDescriptionOverride(t)),
-    [descVersion],
+    () => {
+      const base = TEST_CASES.map((t) => applyDescriptionOverride(t));
+      const custom = customTests.map(customRowToTestCase);
+      return [...base, ...custom];
+    },
+    [descVersion, customTests],
+  );
+  // Set of test ids that are user-created (no auto-derived assignee/sprint).
+  const customIds = useMemo(
+    () => new Set(customTests.map((c) => c.id)),
+    [customTests],
   );
   const effectiveById = useMemo(() => {
     const m = new Map<string, TestCase>();
@@ -363,12 +396,23 @@ export function TestPlanTab() {
   // Effective assignee/sprint that respects unsaved drafts (the lib helpers read storage)
   const effAssignee = (t: TestCase): string => {
     const ov = assigneeOverrides[t.id];
-    const raw = ov || getTestAssignee(t, statuses[t.id]);
+    let raw: string;
+    if (customIds.has(t.id)) {
+      raw = ov || (t.assignee && t.assignee !== "Unassigned" ? t.assignee : "Unassigned");
+    } else {
+      raw = ov || getTestAssignee(t, statuses[t.id]);
+    }
     if (raw === "Me") return "Evelyn";
     if (raw === "Design" || raw === "Dev") return "Eng";
     return raw;
   };
-  const effSprint = (t: TestCase): string => sprintOverrides[t.id] || getTestSprintId(t);
+  const effSprint = (t: TestCase): string => {
+    const ov = sprintOverrides[t.id];
+    if (ov) return ov;
+    // Custom tests with no explicit sprint live in the "Unassigned" group.
+    if (customIds.has(t.id)) return t.sprintId || "";
+    return getTestSprintId(t);
+  };
   const [collapsedSprints, setCollapsedSprints] = useState<Set<string>>(
     () => new Set(SPRINTS.filter((s) => s.id !== ACTIVE_SPRINT_ID).map((s) => s.id))
   );
@@ -638,7 +682,22 @@ export function TestPlanTab() {
           ]}
           value={statusFilter} onChange={setStatusFilter}
         />
+        {(isAdmin || user?.role === "qa") && (
+          <Button size="sm" onClick={() => setNewTestOpen(true)} className="ml-auto">
+            + New Test
+          </Button>
+        )}
       </div>
+
+      <NewTestDialog
+        open={newTestOpen}
+        onOpenChange={setNewTestOpen}
+        existingIds={effectiveCases.map((t) => t.id)}
+        onCreated={(row: CustomTestRow) => {
+          setCustomTests((prev) => [row, ...prev]);
+          toast.success(`Created ${row.id}`);
+        }}
+      />
 
       {/* Cases */}
       <div className="space-y-3">
@@ -666,11 +725,13 @@ export function TestPlanTab() {
             groups.get(k)!.push(t);
           }
           const ordered: { sprintId: string; tests: TestCase[] }[] = [];
+          // Surface user-created / unassigned tests at the very top so admins
+          // see fresh work that still needs an owner before anything else.
+          if (groups.has("_none")) ordered.push({ sprintId: "_none", tests: groups.get("_none")! });
           if (groups.has(ACTIVE_SPRINT_ID)) ordered.push({ sprintId: ACTIVE_SPRINT_ID, tests: groups.get(ACTIVE_SPRINT_ID)! });
           for (const s of SPRINTS) {
             if (s.id !== ACTIVE_SPRINT_ID && groups.has(s.id)) ordered.push({ sprintId: s.id, tests: groups.get(s.id)! });
           }
-          if (groups.has("_none")) ordered.push({ sprintId: "_none", tests: groups.get("_none")! });
           return ordered.map(({ sprintId, tests }) => {
             const sprintMeta = SPRINTS.find((s) => s.id === sprintId);
             const isCollapsed = collapsedSprints.has(sprintId);
@@ -1602,5 +1663,112 @@ function TasksTab() {
         </ul>
       </Card>
     </div>
+  );
+}
+/* ============================== NEW TEST DIALOG ============================== */
+function NewTestDialog({
+  open, onOpenChange, existingIds, onCreated,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  existingIds: string[];
+  onCreated: (row: CustomTestRow) => void;
+}) {
+  const [area, setArea] = useState("");
+  const [title, setTitle] = useState("");
+  const [priority, setPriority] = useState<Priority>("P2");
+  const [preconditions, setPreconditions] = useState("");
+  const [stepsText, setStepsText] = useState("");
+  const [expected, setExpected] = useState("");
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const reset = () => {
+    setArea(""); setTitle(""); setPriority("P2");
+    setPreconditions(""); setStepsText(""); setExpected(""); setNotes("");
+  };
+
+  const submit = async () => {
+    if (!title.trim() || !expected.trim()) {
+      toast.error("Title and expected result are required");
+      return;
+    }
+    const steps = stepsText.split("\n").map((s) => s.trim()).filter(Boolean);
+    if (steps.length === 0) {
+      toast.error("Add at least one step");
+      return;
+    }
+    setSaving(true);
+    try {
+      const row = await createCustomTest(
+        { area, title, priority, preconditions, steps, expected, notes },
+        existingIds,
+      );
+      onCreated(row);
+      reset();
+      onOpenChange(false);
+    } catch (e) {
+      console.error(e);
+      toast.error(e instanceof Error ? e.message : "Failed to create test");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-xl">
+        <DialogHeader>
+          <DialogTitle>New test case</DialogTitle>
+          <DialogDescription>
+            New tests start as <b>Unassigned</b> until an admin assigns an owner and sprint.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label>Area</Label>
+              <Input value={area} onChange={(e) => setArea(e.target.value)} placeholder="Auth, Intake, Voice…" />
+            </div>
+            <div className="space-y-1">
+              <Label>Priority</Label>
+              <Select value={priority} onValueChange={(v) => setPriority(v as Priority)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="P0">P0 — Severe</SelectItem>
+                  <SelectItem value="P1">P1 — High</SelectItem>
+                  <SelectItem value="P2">P2 — Medium</SelectItem>
+                  <SelectItem value="P3">P3 — Low</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label>Title *</Label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What is being tested?" />
+          </div>
+          <div className="space-y-1">
+            <Label>Preconditions</Label>
+            <Textarea rows={2} value={preconditions} onChange={(e) => setPreconditions(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label>Steps * (one per line)</Label>
+            <Textarea rows={4} value={stepsText} onChange={(e) => setStepsText(e.target.value)} placeholder={"Open /auth\nClick Sign in\n…"} />
+          </div>
+          <div className="space-y-1">
+            <Label>Expected result *</Label>
+            <Textarea rows={2} value={expected} onChange={(e) => setExpected(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <Label>Notes</Label>
+            <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button>
+          <Button onClick={submit} disabled={saving}>{saving ? "Creating…" : "Create test"}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

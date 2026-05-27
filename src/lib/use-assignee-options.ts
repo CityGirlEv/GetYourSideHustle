@@ -16,13 +16,13 @@ function fetchOnce(): Promise<string[]> {
   if (inflight) return inflight;
   inflight = listQaAssignees()
     .then((qa) => {
-      const merged = Array.from(new Set([...(TEST_OWNERS as readonly string[]), ...qa]));
+      const merged = Array.from(new Set(["Unassigned", ...(TEST_OWNERS as readonly string[]), ...qa]));
       publish(merged);
       return merged;
     })
     .catch((e) => {
       console.warn("[assignees] failed to load QA list", e);
-      const merged = [...(TEST_OWNERS as readonly string[])];
+      const merged = ["Unassigned", ...(TEST_OWNERS as readonly string[])];
       publish(merged);
       return merged;
     })
@@ -37,7 +37,7 @@ function fetchOnce(): Promise<string[]> {
  * enabled QA user. Refreshes on mount but de-dupes requests app-wide.
  */
 export function useAssigneeOptions(): string[] {
-  const [list, setList] = useState<string[]>(cache ?? [...(TEST_OWNERS as readonly string[])]);
+  const [list, setList] = useState<string[]>(cache ?? ["Unassigned", ...(TEST_OWNERS as readonly string[])]);
   useEffect(() => {
     subscribers.add(setList);
     fetchOnce().then((v) => setList(v));

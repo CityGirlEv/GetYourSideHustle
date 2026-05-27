@@ -119,6 +119,54 @@ export type Database = {
         }
         Relationships: []
       }
+      custom_tests: {
+        Row: {
+          area: string
+          assignee: string | null
+          created_at: string
+          created_by: string
+          expected: string
+          id: string
+          notes: string | null
+          preconditions: string | null
+          priority: string
+          sprint_id: string | null
+          steps: Json
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          area: string
+          assignee?: string | null
+          created_at?: string
+          created_by: string
+          expected?: string
+          id: string
+          notes?: string | null
+          preconditions?: string | null
+          priority?: string
+          sprint_id?: string | null
+          steps?: Json
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          area?: string
+          assignee?: string | null
+          created_at?: string
+          created_by?: string
+          expected?: string
+          id?: string
+          notes?: string | null
+          preconditions?: string | null
+          priority?: string
+          sprint_id?: string | null
+          steps?: Json
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       email_send_log: {
         Row: {
           created_at: string
