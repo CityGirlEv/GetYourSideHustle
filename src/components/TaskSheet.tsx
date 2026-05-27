@@ -24,7 +24,7 @@ import {
   TASK_STATUS_VALUES, TASK_STATUS_LABELS, TASK_CATEGORY_VALUES, TASK_CATEGORY_LABELS,
   type TaskRow, type TaskRowStatus,
 } from "@/lib/tasks-sheet";
-import { SPRINTS, ACTIVE_SPRINT_ID, PRIORITY_LABELS, PRIORITY_SHORT, type Priority } from "@/lib/test-plan";
+import { SPRINTS, ACTIVE_SPRINT_ID, PRIORITY_LABELS, PRIORITY_SHORT, TEST_OWNERS, type Priority } from "@/lib/test-plan";
 import { MultiSelect, multiSelectMatches } from "@/components/ui/multi-select";
 import { DateField } from "@/components/DateField";
 
