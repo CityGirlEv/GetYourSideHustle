@@ -1,10 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { TaskSheetContent } from "@/components/TaskSheet";
 import { SyncBrowserToCloud } from "@/components/SyncBrowserToCloud";
 import { useApp } from "@/lib/app-store";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ListChecks } from "lucide-react";
+import { ListChecks, FlaskConical } from "lucide-react";
 
 export const Route = createFileRoute("/tasks")({
   head: () => ({
