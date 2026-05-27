@@ -187,11 +187,36 @@ export function TestPlanTab() {
   // Bump this to re-read description overrides from storage after edits.
   const [descVersion, setDescVersion] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
+  // User-created custom tests (loaded from custom_tests table). These merge
+  // into the standard TEST_CASES list and default to Unassigned.
+  const [customTests, setCustomTests] = useState<CustomTestRow[]>([]);
+  const [newTestOpen, setNewTestOpen] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const rows = await listCustomTests();
+        if (!cancelled) setCustomTests(rows);
+      } catch (e) {
+        console.warn("[testing] load custom tests failed", e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // Effective test cases with description overrides applied (admin edits).
   const effectiveCases = useMemo(
-    () => TEST_CASES.map((t) => applyDescriptionOverride(t)),
-    [descVersion],
+    () => {
+      const base = TEST_CASES.map((t) => applyDescriptionOverride(t));
+      const custom = customTests.map(customRowToTestCase);
+      return [...base, ...custom];
+    },
+    [descVersion, customTests],
+  );
+  // Set of test ids that are user-created (no auto-derived assignee/sprint).
+  const customIds = useMemo(
+    () => new Set(customTests.map((c) => c.id)),
+    [customTests],
   );
   const effectiveById = useMemo(() => {
     const m = new Map<string, TestCase>();
