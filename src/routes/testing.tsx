@@ -414,6 +414,23 @@ export function TestPlanTab() {
   }, [statuses]);
   const passRate = counts.total ? Math.round((counts.pass / counts.total) * 100) : 0;
 
+  // When a single status filter is active, the progress bars reflect THAT status.
+  // Otherwise we default to "pass" (pass-rate behaviour).
+  const focusStatus: TestStatus =
+    statusFilter.length === 1 ? (statusFilter[0] as TestStatus) : "pass";
+  const focusStatusLabel: Record<TestStatus, string> = {
+    pass: "Pass",
+    fail: "Fail",
+    fixed_retest: "Fixed/Retest",
+    failed_retest: "Failed/Retest",
+    blocked: "Blocked",
+    not_run: "Not run",
+  };
+  const overallFocusCount = counts[focusStatus];
+  const overallFocusPct = counts.total
+    ? Math.round((overallFocusCount / counts.total) * 100)
+    : 0;
+
   // Per-QA-person status breakdown. Only owners with at least one test appear.
   const ownerStatusCounts = useMemo(() => {
     const out: Record<string, Record<TestStatus | "total", number>> = {};
@@ -463,8 +480,13 @@ export function TestPlanTab() {
       <Card className="p-4">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
           <div>
-            <div className="text-xs uppercase tracking-wide text-muted-foreground">Pass rate</div>
-            <div className="text-2xl font-bold">{passRate}%</div>
+            <div className="text-xs uppercase tracking-wide text-muted-foreground">
+              {focusStatusLabel[focusStatus]} rate
+            </div>
+            <div className="text-2xl font-bold">{overallFocusPct}%</div>
+            <div className="text-[11px] text-muted-foreground">
+              {overallFocusCount}/{counts.total}
+            </div>
           </div>
           <div className="flex flex-wrap gap-2 text-xs">
             <StatBadge n={counts.pass}     label="Pass"    color="bg-emerald-500/10 text-emerald-700 border-emerald-500/30" active={statusFilter.length === 1 && statusFilter[0] === "pass"} onClick={() => setStatusFilter(statusFilter.length === 1 && statusFilter[0] === "pass" ? [] : ["pass"])} />
@@ -496,7 +518,7 @@ export function TestPlanTab() {
             </Button>
           </div>
         </div>
-        <Progress value={passRate} className="h-2" />
+        <Progress value={overallFocusPct} className="h-2" />
         {Object.keys(ownerStatusCounts).length > 0 && (
           <div className="mt-4 pt-3 border-t border-border/60 space-y-2">
             <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
@@ -517,7 +539,10 @@ export function TestPlanTab() {
                     setOwnerFilter(ownerActive && statusFilter.length === 0 ? [] : [owner]);
                     if (!(ownerActive && statusFilter.length === 0)) setStatusFilter([]);
                   };
-                  const ownerPass = c.total ? Math.round((c.pass / c.total) * 100) : 0;
+                  const ownerFocusCount = c[focusStatus];
+                  const ownerFocusPct = c.total
+                    ? Math.round((ownerFocusCount / c.total) * 100)
+                    : 0;
                   const cell = (n: number, label: string, klass: string, s: TestStatus) => {
                     const isActive = ownerActive && statusFilter.length === 1 && statusFilter[0] === s;
                     return (
@@ -532,22 +557,31 @@ export function TestPlanTab() {
                     );
                   };
                   return (
-                    <div key={owner} className="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={clearOwner}
-                        className={`min-w-[88px] text-left text-xs font-semibold hover:underline ${ownerActive ? "text-primary" : ""}`}
-                        title={`Filter all tests for ${owner}`}
-                      >
-                        {owner} <span className="text-muted-foreground font-normal">· {ownerPass}%</span>
-                      </button>
-                      {cell(c.pass, "Pass", "bg-emerald-500/10 text-emerald-700 border-emerald-500/30", "pass")}
-                      {cell(c.fail, "Fail", "bg-destructive/10 text-destructive border-destructive/30", "fail")}
-                      {cell(c.fixed_retest, "Fixed/Retest", "bg-sky-500/10 text-sky-700 border-sky-500/30", "fixed_retest")}
-                      {cell(c.failed_retest, "Failed/Retest", "bg-fuchsia-500/10 text-fuchsia-700 border-fuchsia-500/30", "failed_retest")}
-                      {cell(c.blocked, "Blocked", "bg-amber-500/10 text-amber-700 border-amber-500/30", "blocked")}
-                      {cell(c.not_run, "Not run", "bg-muted text-muted-foreground border-border", "not_run")}
-                      <span className="text-[11px] text-muted-foreground">· {c.total} total</span>
+                    <div key={owner} className="space-y-1 py-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={clearOwner}
+                          className={`min-w-[88px] text-left text-xs font-semibold hover:underline ${ownerActive ? "text-primary" : ""}`}
+                          title={`Filter all tests for ${owner}`}
+                        >
+                          {owner}
+                        </button>
+                        <span className="text-[11px] text-muted-foreground">
+                          {ownerFocusCount}/{c.total} · {ownerFocusPct}%{" "}
+                          {focusStatusLabel[focusStatus]}
+                        </span>
+                      </div>
+                      <Progress value={ownerFocusPct} className="h-1.5" />
+                      <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                        {cell(c.pass, "Pass", "bg-emerald-500/10 text-emerald-700 border-emerald-500/30", "pass")}
+                        {cell(c.fail, "Fail", "bg-destructive/10 text-destructive border-destructive/30", "fail")}
+                        {cell(c.fixed_retest, "Fixed/Retest", "bg-sky-500/10 text-sky-700 border-sky-500/30", "fixed_retest")}
+                        {cell(c.failed_retest, "Failed/Retest", "bg-fuchsia-500/10 text-fuchsia-700 border-fuchsia-500/30", "failed_retest")}
+                        {cell(c.blocked, "Blocked", "bg-amber-500/10 text-amber-700 border-amber-500/30", "blocked")}
+                        {cell(c.not_run, "Not run", "bg-muted text-muted-foreground border-border", "not_run")}
+                        <span className="text-[11px] text-muted-foreground">· {c.total} total</span>
+                      </div>
                     </div>
                   );
                 })}
