@@ -210,7 +210,7 @@ export function TestPlanTab() {
     () => {
       const base = TEST_CASES.map((t) => applyDescriptionOverride(t));
       const custom = customTests.map(customRowToTestCase);
-      return [...base, ...custom];
+      return [...base, ...AUTOMATED_TEST_CASES, ...custom];
     },
     [descVersion, customTests],
   );
