@@ -61,12 +61,7 @@ function statusFromTask(s: string): TaskRowStatus {
   return "not_started";
 }
 
-function categoryFromArea(area: string): TaskRowCategory {
-  const a = area.toLowerCase();
-  if (a.includes("qa") || a.includes("test")) return "qa";
-  if (a.includes("cms") || a.includes("compliance")) return "compliance";
-  if (a.includes("agent") || a.includes("soa") || a.includes("admin")) return "ops";
-  if (a.includes("scorecard") || a.includes("design")) return "engineering";
+function categoryFromArea(_area: string): TaskRowCategory {
   return "engineering";
 }
 
