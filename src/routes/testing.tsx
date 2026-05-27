@@ -41,6 +41,7 @@ import {
 import {
   listCustomTests, createCustomTest, customRowToTestCase, type CustomTestRow,
 } from "@/lib/custom-tests";
+import { AUTOMATED_TEST_CASES } from "@/lib/automated-tests";
 import {
   listTestEvidence, uploadTestEvidence, deleteTestEvidence, getTestEvidenceUrl,
   type EvidenceFile,
