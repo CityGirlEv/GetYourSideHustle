@@ -652,6 +652,8 @@ export function loadStatus(id: string): TestStatus {
 export function saveStatus(id: string, s: TestStatus) {
   if (typeof window === "undefined") return;
   localStorage.setItem(TEST_STATUS_KEY(id), s);
+  // Dual-write to cloud so refresh + cross-device works. Dynamic import to avoid circular dep.
+  import("@/lib/cloud-sync").then((m) => m.cloudPushTest(id, { status: s }));
 }
 
 export function loadAllStatuses(): Record<string, TestStatus> {
@@ -674,6 +676,7 @@ export function saveQaNote(id: string, note: string) {
   if (typeof window === "undefined") return;
   if (note) localStorage.setItem(TEST_QA_NOTE_KEY(id), note);
   else localStorage.removeItem(TEST_QA_NOTE_KEY(id));
+  if (note) import("@/lib/cloud-sync").then((m) => m.cloudAppendNote(id, "qa", note));
 }
 export function loadDevNote(id: string): string {
   if (typeof window === "undefined") return "";
@@ -683,6 +686,7 @@ export function saveDevNote(id: string, note: string) {
   if (typeof window === "undefined") return;
   if (note) localStorage.setItem(TEST_DEV_NOTE_KEY(id), note);
   else localStorage.removeItem(TEST_DEV_NOTE_KEY(id));
+  if (note) import("@/lib/cloud-sync").then((m) => m.cloudAppendNote(id, "dev", note));
 }
 export function loadAllQaNotes(): Record<string, string> {
   const out: Record<string, string> = {};
@@ -714,6 +718,7 @@ export function saveSeverity(id: string, s: FailSeverity | "") {
   if (typeof window === "undefined") return;
   if (s) localStorage.setItem(TEST_SEVERITY_KEY(id), s);
   else localStorage.removeItem(TEST_SEVERITY_KEY(id));
+  import("@/lib/cloud-sync").then((m) => m.cloudPushTest(id, { severity: s || null }));
 }
 export function loadAllSeverities(): Record<string, FailSeverity | ""> {
   const out: Record<string, FailSeverity | ""> = {};
@@ -765,6 +770,7 @@ export function saveAssigneeOverride(id: string, owner: string) {
   if (typeof window === "undefined") return;
   if (owner) localStorage.setItem(TEST_ASSIGNEE_KEY(id), owner);
   else localStorage.removeItem(TEST_ASSIGNEE_KEY(id));
+  import("@/lib/cloud-sync").then((m) => m.cloudPushTest(id, { assignee: owner || null }));
 }
 export function loadAllAssigneeOverrides(): Record<string, string> {
   const out: Record<string, string> = {};
@@ -791,6 +797,7 @@ export function saveSprintOverride(id: string, sprintId: string) {
   if (typeof window === "undefined") return;
   if (sprintId) localStorage.setItem(TEST_SPRINT_KEY(id), sprintId);
   else localStorage.removeItem(TEST_SPRINT_KEY(id));
+  import("@/lib/cloud-sync").then((m) => m.cloudPushTest(id, { sprint_id: sprintId || null }));
 }
 export function loadAllSprintOverrides(): Record<string, string> {
   const out: Record<string, string> = {};
@@ -837,8 +844,10 @@ export function saveDescriptionOverride(id: string, ov: TestDescriptionOverride)
   if (ov.notes && ov.notes.trim()) cleaned.notes = ov.notes.trim();
   if (Object.keys(cleaned).length === 0) {
     localStorage.removeItem(TEST_DESC_KEY(id));
+    import("@/lib/cloud-sync").then((m) => m.cloudPushTest(id, { description_override: null }));
   } else {
     localStorage.setItem(TEST_DESC_KEY(id), JSON.stringify(cleaned));
+    import("@/lib/cloud-sync").then((m) => m.cloudPushTest(id, { description_override: cleaned }));
   }
 }
 export function clearDescriptionOverride(id: string) {

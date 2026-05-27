@@ -187,6 +187,8 @@ export function loadTaskRows(): TaskRow[] {
 export function saveTaskRows(rows: TaskRow[]) {
   if (typeof window === "undefined") return;
   localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(rows));
+  // Dual-write to cloud so the Task Sheet survives localStorage refresh and is shared across devices.
+  import("@/lib/cloud-sync").then((m) => m.cloudPushAllTasks(rows));
 }
 
 export function resetTaskRows(): TaskRow[] {
