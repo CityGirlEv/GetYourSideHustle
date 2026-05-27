@@ -12,7 +12,7 @@ describe("countiesForZip3", () => {
     expect(countiesForZip3("abc")).toEqual([]);
   });
   it("returns [] for an unknown zip3", () => {
-    expect(countiesForZip3("999")).toEqual([]);
+    expect(countiesForZip3("000")).toEqual([]);
   });
 });
 
