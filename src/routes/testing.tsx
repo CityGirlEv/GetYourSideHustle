@@ -603,7 +603,6 @@ export function TestPlanTab() {
               </div>
             )}
           </>
-        )}
       </Card>
 
       {/* Filters */}
