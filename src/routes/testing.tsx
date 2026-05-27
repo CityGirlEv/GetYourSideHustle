@@ -933,14 +933,14 @@ function TestCaseCard({
   hasChanges?: boolean;
   onSave?: () => void;
 }) {
-  // Shade the whole row based on status (background + subtle border)
+  // Shade the whole row based on status (background + left border accent)
   const shade =
-    status === "pass"          ? "bg-emerald-500/10 border-emerald-500/40" :
-    status === "fail"          ? "bg-destructive/10 border-destructive/40" :
-    status === "blocked"       ? "bg-amber-500/10 border-amber-500/40"     :
-    status === "fixed_retest"  ? "bg-sky-500/10 border-sky-500/40"         :
-    status === "failed_retest" ? "bg-fuchsia-500/10 border-fuchsia-500/40" :
-                                 "bg-background";
+    status === "pass"          ? "border-l-4 border-l-emerald-500 bg-emerald-500/15" :
+    status === "fail"          ? "border-l-4 border-l-destructive bg-destructive/15" :
+    status === "blocked"       ? "border-l-4 border-l-amber-500 bg-amber-500/15"     :
+    status === "fixed_retest"  ? "border-l-4 border-l-sky-500 bg-sky-500/15"         :
+    status === "failed_retest" ? "border-l-4 border-l-fuchsia-500 bg-fuchsia-500/15" :
+                                 "border-l-4 border-l-muted-foreground/30 bg-background";
   const showQaNote = status === "fail" || status === "failed_retest";
   const showDevNote = status === "fixed_retest" || status === "failed_retest";
   const assigneeOptions = useAssigneeOptions();
