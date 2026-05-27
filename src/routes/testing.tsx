@@ -414,6 +414,19 @@ export function TestPlanTab() {
   }, [statuses]);
   const passRate = counts.total ? Math.round((counts.pass / counts.total) * 100) : 0;
 
+  // Per-QA-person status breakdown. Only owners with at least one test appear.
+  const ownerStatusCounts = useMemo(() => {
+    const out: Record<string, Record<TestStatus | "total", number>> = {};
+    for (const t of effectiveCases) {
+      const owner = effAssignee(t);
+      if (!out[owner]) out[owner] = { total: 0, pass: 0, fail: 0, blocked: 0, not_run: 0, fixed_retest: 0, failed_retest: 0 };
+      const s = (statuses[t.id] ?? "not_run") as TestStatus;
+      out[owner].total++;
+      out[owner][s]++;
+    }
+    return out;
+  }, [statuses, assigneeOverrides, effectiveCases]);
+
   return (
     <div className="space-y-4">
       {/* Sprint + ownership banner */}
