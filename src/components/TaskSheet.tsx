@@ -505,8 +505,7 @@ export function TaskSheetContent() {
               onClick={() => setStatusFilter([])} />
           </div>
         </div>
-        {!summaryCollapsed && (
-          <>
+        <>
             <Progress value={overallFocusPct} className="h-2" />
             {Object.keys(ownerStatusCounts).length > 0 && (
               <div className="mt-4 pt-3 border-t border-border/60 space-y-2">
@@ -576,7 +575,6 @@ export function TaskSheetContent() {
               </div>
             )}
           </>
-        )}
       </Card>
 
       {/* Toolbar */}
