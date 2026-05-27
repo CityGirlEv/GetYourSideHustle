@@ -21,7 +21,7 @@ export const TASK_STATUS_LABELS: Record<TaskRowStatus, string> = {
 export const TASK_CATEGORY_VALUES = ["engineering"] as const;
 export type TaskRowCategory = (typeof TASK_CATEGORY_VALUES)[number];
 export const TASK_CATEGORY_LABELS: Record<TaskRowCategory, string> = {
-  engineering: "Dev",
+  engineering: "Eng",
 };
 
 export interface TaskRow {
@@ -70,7 +70,7 @@ function categoryFromArea(_area: string): TaskRowCategory {
 // (TEST_CASES / SPRINTS items, type "test"), NOT as a task here. The Task Sheet
 // is reserved for non-test operational work (ops, design, compliance, etc.).
 // QA / test items are filtered out below so they live only on /testing.
-const OWNERS = ["Catria", "Evelyn", "Dev", "Dev", "Catria"]; // Catria-heavy
+const OWNERS = ["Catria", "Evelyn", "Eng", "Eng", "Catria"]; // Catria-heavy
 export const SEED_TASK_ROWS: TaskRow[] = TASKS
   .map((t, i) => ({
   id: t.id,

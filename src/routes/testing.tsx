@@ -355,7 +355,9 @@ export function TestPlanTab() {
   const effAssignee = (t: TestCase): string => {
     const ov = assigneeOverrides[t.id];
     const raw = ov || getTestAssignee(t, statuses[t.id]);
-    return raw === "Me" ? "Evelyn" : raw;
+    if (raw === "Me") return "Evelyn";
+    if (raw === "Design" || raw === "Dev") return "Eng";
+    return raw;
   };
   const effSprint = (t: TestCase): string => sprintOverrides[t.id] || getTestSprintId(t);
   const [collapsedSprints, setCollapsedSprints] = useState<Set<string>>(

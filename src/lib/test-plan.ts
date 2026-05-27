@@ -730,15 +730,15 @@ export function loadAllSeverities(): Record<string, FailSeverity | ""> {
 // TEST OWNERSHIP — 70/30 split, Catria lead. All tests are aligned to the
 // active sprint (Sprint 1 · beta go-live) unless a TestCase overrides it.
 // ----------------------------------------------------------------------------
-export const TEST_OWNERS = ["Catria", "Evelyn", "Dev"] as const;
+export const TEST_OWNERS = ["Catria", "Evelyn", "Eng"] as const;
 export type TestOwner = (typeof TEST_OWNERS)[number];
 
 /**
- * "Dev" is the merged engineering + design user. Any test that QA marks as
- * failing (fail / failed_retest) is auto-routed to Dev for triage + fix,
+ * "Eng" is the merged engineering + design user. Any test that QA marks as
+ * failing (fail / failed_retest) is auto-routed to Eng for triage + fix,
  * regardless of the original QA owner.
  */
-export const DEV_OWNER: TestOwner = "Dev";
+export const DEV_OWNER: TestOwner = "Eng";
 
 /**
  * Deterministic 70/30 split across the TEST_CASES list. The first 7 of every
