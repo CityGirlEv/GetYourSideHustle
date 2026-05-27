@@ -474,8 +474,18 @@ export function TaskSheetContent() {
       <Card className="p-4">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
           <div>
-            <div className="text-xs uppercase tracking-wide text-muted-foreground">
-              {focusStatusLabel[focusStatus]} rate
+            <div className="flex items-center gap-2">
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                {focusStatusLabel[focusStatus]} rate
+              </div>
+              <button
+                type="button"
+                onClick={() => setSummaryCollapsed((p) => !p)}
+                className="p-0.5 rounded hover:bg-accent transition-colors"
+                title={summaryCollapsed ? "Expand" : "Collapse"}
+              >
+                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${summaryCollapsed ? "-rotate-90" : ""}`} />
+              </button>
             </div>
             <div className="text-2xl font-bold">{overallFocusPct}%</div>
             <div className="text-[11px] text-muted-foreground">
@@ -500,73 +510,77 @@ export function TaskSheetContent() {
               onClick={() => setStatusFilter([])} />
           </div>
         </div>
-        <Progress value={overallFocusPct} className="h-2" />
-        {Object.keys(ownerStatusCounts).length > 0 && (
-          <div className="mt-4 pt-3 border-t border-border/60 space-y-2">
-            <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
-              By owner
-            </div>
-            <div className="space-y-1.5">
-              {Object.entries(ownerStatusCounts)
-                .sort((a, b) => b[1].total - a[1].total)
-                .map(([owner, c]) => {
-                  const ownerActive = ownerFilter.length === 1 && ownerFilter[0] === owner;
-                  const toggleOwnerStatus = (s: TaskRowStatus) => {
-                    setOwnerFilter([owner]);
-                    setStatusFilter(
-                      statusFilter.length === 1 && statusFilter[0] === s && ownerActive ? [] : [s],
-                    );
-                  };
-                  const clearOwner = () => {
-                    setOwnerFilter(ownerActive && statusFilter.length === 0 ? [] : [owner]);
-                    if (!(ownerActive && statusFilter.length === 0)) setStatusFilter([]);
-                  };
-                  const ownerFocusCount = c[focusStatus];
-                  const ownerFocusPct = c.total
-                    ? Math.round((ownerFocusCount / c.total) * 100)
-                    : 0;
-                  const cell = (n: number, label: string, klass: string, s: TaskRowStatus) => {
-                    const isActive = ownerActive && statusFilter.length === 1 && statusFilter[0] === s;
-                    return (
-                      <button
-                        type="button"
-                        onClick={() => toggleOwnerStatus(s)}
-                        className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold transition-colors hover:opacity-80 ${klass} ${isActive ? "ring-2 ring-offset-1 ring-emerald-500" : ""}`}
-                        title={`Filter to ${owner} · ${label}`}
-                      >
-                        {n} <span className="font-normal opacity-70">{label}</span>
-                      </button>
-                    );
-                  };
-                  return (
-                    <div key={owner} className="space-y-1 py-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={clearOwner}
-                          className={`min-w-[88px] text-left text-xs font-semibold hover:underline ${ownerActive ? "text-emerald-600" : ""}`}
-                          title={`Filter all tasks for ${owner}`}
-                        >
-                          {owner}
-                        </button>
-                        <span className="text-[11px] text-muted-foreground">
-                          {ownerFocusCount}/{c.total} · {ownerFocusPct}%{" "}
-                          {focusStatusLabel[focusStatus]}
-                        </span>
-                      </div>
-                      <Progress value={ownerFocusPct} className="h-1.5" />
-                      <div className="flex flex-wrap items-center gap-2 pt-0.5">
-                        {cell(c.done, "Done", TASK_STATUS_STYLES.done, "done")}
-                        {cell(c.in_progress, "In progress", TASK_STATUS_STYLES.in_progress, "in_progress")}
-                        {cell(c.blocked, "Blocked", TASK_STATUS_STYLES.blocked, "blocked")}
-                        {cell(c.not_started, "Not started", TASK_STATUS_STYLES.not_started, "not_started")}
-                        <span className="text-[11px] text-muted-foreground">· {c.total} total</span>
-                      </div>
-                    </div>
-                  );
-                })}
-            </div>
-          </div>
+        {!summaryCollapsed && (
+          <>
+            <Progress value={overallFocusPct} className="h-2" />
+            {Object.keys(ownerStatusCounts).length > 0 && (
+              <div className="mt-4 pt-3 border-t border-border/60 space-y-2">
+                <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
+                  By owner
+                </div>
+                <div className="space-y-1.5">
+                  {Object.entries(ownerStatusCounts)
+                    .sort((a, b) => b[1].total - a[1].total)
+                    .map(([owner, c]) => {
+                      const ownerActive = ownerFilter.length === 1 && ownerFilter[0] === owner;
+                      const toggleOwnerStatus = (s: TaskRowStatus) => {
+                        setOwnerFilter([owner]);
+                        setStatusFilter(
+                          statusFilter.length === 1 && statusFilter[0] === s && ownerActive ? [] : [s],
+                        );
+                      };
+                      const clearOwner = () => {
+                        setOwnerFilter(ownerActive && statusFilter.length === 0 ? [] : [owner]);
+                        if (!(ownerActive && statusFilter.length === 0)) setStatusFilter([]);
+                      };
+                      const ownerFocusCount = c[focusStatus];
+                      const ownerFocusPct = c.total
+                        ? Math.round((ownerFocusCount / c.total) * 100)
+                        : 0;
+                      const cell = (n: number, label: string, klass: string, s: TaskRowStatus) => {
+                        const isActive = ownerActive && statusFilter.length === 1 && statusFilter[0] === s;
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => toggleOwnerStatus(s)}
+                            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold transition-colors hover:opacity-80 ${klass} ${isActive ? "ring-2 ring-offset-1 ring-emerald-500" : ""}`}
+                            title={`Filter to ${owner} · ${label}`}
+                          >
+                            {n} <span className="font-normal opacity-70">{label}</span>
+                          </button>
+                        );
+                      };
+                      return (
+                        <div key={owner} className="space-y-1 py-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={clearOwner}
+                              className={`min-w-[88px] text-left text-xs font-semibold hover:underline ${ownerActive ? "text-emerald-600" : ""}`}
+                              title={`Filter all tasks for ${owner}`}
+                            >
+                              {owner}
+                            </button>
+                            <span className="text-[11px] text-muted-foreground">
+                              {ownerFocusCount}/{c.total} · {ownerFocusPct}%{" "}
+                              {focusStatusLabel[focusStatus]}
+                            </span>
+                          </div>
+                          <Progress value={ownerFocusPct} className="h-1.5" />
+                          <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                            {cell(c.done, "Done", TASK_STATUS_STYLES.done, "done")}
+                            {cell(c.in_progress, "In progress", TASK_STATUS_STYLES.in_progress, "in_progress")}
+                            {cell(c.blocked, "Blocked", TASK_STATUS_STYLES.blocked, "blocked")}
+                            {cell(c.not_started, "Not started", TASK_STATUS_STYLES.not_started, "not_started")}
+                            <span className="text-[11px] text-muted-foreground">· {c.total} total</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </Card>
 
