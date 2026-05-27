@@ -767,6 +767,7 @@ function BulkEditBar({
   const [qaDraft, setQaDraft] = useState("");
   const [devDraft, setDevDraft] = useState("");
   const disabled = selectedCount === 0;
+  const assigneeOptions = useAssigneeOptions();
   return (
     <Card className="p-3 sticky top-[64px] z-20 bg-background/95 backdrop-blur border-primary/30">
       <div className="flex flex-wrap items-center gap-2 text-xs">
