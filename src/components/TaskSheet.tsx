@@ -114,6 +114,7 @@ export function TaskSheetContent() {
   // savedRows = last persisted snapshot; rows = working draft (unsaved edits)
   const [savedRows, setSavedRows] = useState<TaskRow[]>(() => loadTaskRows());
   const [rows, setRows] = useState<TaskRow[]>(() => loadTaskRows());
+  const assigneeOptions = useAssigneeOptions();
   // Pull task_rows from the cloud on mount so this browser shows whatever was
   // last saved by anyone (restores data wiped from local storage).
   useEffect(() => {
