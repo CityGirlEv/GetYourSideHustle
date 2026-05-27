@@ -20,7 +20,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-export function AppShell({ children, title, subtitle }: { children: ReactNode; title: string; subtitle?: string }) {
+export function AppShell({ children, title, subtitle, titleClassName }: { children: ReactNode; title: string; subtitle?: string; titleClassName?: string }) {
   const { user, signOut } = useApp();
   const router = useRouter();
 
