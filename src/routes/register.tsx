@@ -181,17 +181,17 @@ function RegisterPage() {
       </Dialog>
 
       <Dialog open={ndaOpen} onOpenChange={(o) => !busy && setNdaOpen(o)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ShieldCheck className="h-5 w-5 text-primary" /> {NDA_TITLE}
             </DialogTitle>
           </DialogHeader>
-          <div className="max-h-[50vh] overflow-y-auto border rounded-md p-4 bg-background/40 text-sm leading-relaxed space-y-2">
+          <div className="max-h-[40vh] overflow-y-auto border rounded-md p-4 bg-background/40 text-sm leading-relaxed space-y-2">
             {NDA_BODY.map((p, i) => p === "" ? <div key={i} className="h-2" /> : <p key={i}>{p}</p>)}
           </div>
           <p className="text-[11px] text-muted-foreground">Agreement version: {NDA_VERSION}</p>
-          <div className="space-y-3 pt-2">
+          <div className="space-y-3 pt-2 sticky bottom-0 bg-background pb-1">
             <div>
               <Label>Type your full legal name to sign</Label>
               <Input value={signatureName} onChange={(e)=>setSignatureName(e.target.value)} placeholder="Jane A. Doe" />
@@ -200,7 +200,7 @@ function RegisterPage() {
               <Checkbox checked={accept} onCheckedChange={(v) => setAccept(!!v)} />
               <span>I have read the NDA above and agree to its terms. I understand that typing my name and clicking "Sign &amp; submit" constitutes my legal electronic signature under the U.S. E-SIGN Act.</span>
             </label>
-            <div className="flex justify-end gap-2">
+            <div className="flex flex-wrap justify-end gap-2 pt-1">
               <Button variant="outline" onClick={() => setNdaOpen(false)} disabled={busy}>Cancel</Button>
               <Button onClick={submit} disabled={busy}>
                 <FileSignature className="h-4 w-4 mr-1.5" />
