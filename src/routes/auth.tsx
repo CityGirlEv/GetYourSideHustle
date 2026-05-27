@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ShieldCheck, Lock, Eye, EyeOff } from "lucide-react";
+import { ShieldCheck, Lock, Eye, EyeOff, Headset, FlaskConical } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 
@@ -36,6 +36,7 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [fullName, setFullName] = useState("");
+  const [accountType, setAccountType] = useState<"agent" | "qa" | "">("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -49,10 +50,11 @@ function AuthPage() {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!accountType) return toast.error("Select an account type.");
     setBusy(true);
     const { error } = await supabase.auth.signUp({
       email, password,
-      options: { data: { full_name: fullName }, emailRedirectTo: window.location.origin + "/auth" },
+      options: { data: { full_name: fullName, requested_role: accountType }, emailRedirectTo: window.location.origin + "/auth" },
     });
     setBusy(false);
     if (error) return toast.error(error.message);
@@ -127,6 +129,33 @@ function AuthPage() {
                     <button type="button" tabIndex={-1} onClick={()=>setShowPassword(v=>!v)} className="absolute right-3 top-[30px] text-muted-foreground hover:text-foreground">
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
+                  </div>
+                  <div className="space-y-2 pt-1">
+                    <Label>Account Type</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setAccountType("agent")}
+                        className={`flex items-center gap-2 rounded-md border p-3 text-sm transition ${accountType === "agent" ? "border-primary bg-primary/10 ring-1 ring-primary" : "border-border hover:bg-muted/40"}`}
+                      >
+                        <Headset className="h-4 w-4" />
+                        <div className="text-left">
+                          <div className="font-medium">Agent</div>
+                          <div className="text-[11px] text-muted-foreground">Licensed insurance agent</div>
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAccountType("qa")}
+                        className={`flex items-center gap-2 rounded-md border p-3 text-sm transition ${accountType === "qa" ? "border-primary bg-primary/10 ring-1 ring-primary" : "border-border hover:bg-muted/40"}`}
+                      >
+                        <FlaskConical className="h-4 w-4" />
+                        <div className="text-left">
+                          <div className="font-medium">QA Account Registration</div>
+                          <div className="text-[11px] text-muted-foreground">Beta testing &amp; feedback</div>
+                        </div>
+                      </button>
+                    </div>
                   </div>
                   <Button type="submit" disabled={busy} className="w-full grad-indigo h-11">Create account</Button>
                 </form>
