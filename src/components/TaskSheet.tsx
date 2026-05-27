@@ -17,7 +17,7 @@ import {
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, RotateCcw, Trash2, Pencil, Search, Download, ExternalLink, Save, ChevronRight } from "lucide-react";
+import { Plus, RotateCcw, Trash2, Pencil, Search, Download, ExternalLink, Save, ChevronRight, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import {
   loadTaskRows, saveTaskRows, resetTaskRows, nextTaskId, todayMMDDYY,
