@@ -473,7 +473,7 @@ export function TestPlanTab() {
             </div>
           </div>
           {!bannerCollapsed && (
-            <div className="text-xs text-muted-foreground">5/25 → 5/31 · all {TEST_CASES.length} test cases aligned to this sprint</div>
+            <div className="text-xs text-muted-foreground">5/25 → 5/31 · {TEST_CASES.filter((t) => (t.sprintId ?? ACTIVE_SPRINT_ID) === ACTIVE_SPRINT_ID).length} of {TEST_CASES.length} test cases on this sprint (older sprints listed below)</div>
           )}
         </button>
         {!bannerCollapsed && (
