@@ -14,17 +14,36 @@ export type ScopingUser = {
   email?: string | null;
 } | null | undefined;
 
+function toDisplayFirstName(value: string): string {
+  const first = value.trim().split(/\s+/)[0] || "";
+  if (!first) return "";
+  return first.charAt(0).toUpperCase() + first.slice(1);
+}
+
 /** First name used to match a QA user against a test's assignee label. */
 export function getQaFirstName(user: ScopingUser): string {
   if (!user || user.role !== "qa") return "";
-  const source = (user.full_name || user.email || "").trim();
-  if (!source) return "";
-  return source.split(/\s+/)[0] || "";
+  const fullName = (user.full_name || "").trim();
+  if (fullName) return toDisplayFirstName(fullName);
+  const emailLocal = (user.email || "").trim().split("@")[0] || "";
+  const nameish = emailLocal.split(/[._-]+/)[0] || emailLocal;
+  return toDisplayFirstName(nameish);
 }
 
 /** True when the current user must only see their own rows. */
 export function shouldRestrictToSelf(user: ScopingUser): boolean {
   return !!user && user.role === "qa";
+}
+
+/** Owners a non-admin QA can see or assign: themselves plus Unassigned. */
+export function getQaVisibleOwners(user: ScopingUser): string[] {
+  if (!shouldRestrictToSelf(user)) return [];
+  return Array.from(new Set([getQaFirstName(user), "Unassigned"].filter(Boolean)));
+}
+
+export function canQaSeeOwner(user: ScopingUser, owner: string): boolean {
+  if (!shouldRestrictToSelf(user)) return true;
+  return getQaVisibleOwners(user).includes(owner);
 }
 
 /**
@@ -38,7 +57,5 @@ export function filterToOwnAssignments<T>(
   getAssignee: (item: T) => string,
 ): T[] {
   if (!shouldRestrictToSelf(user)) return [...items];
-  const me = getQaFirstName(user);
-  if (!me) return [];
-  return items.filter((it) => getAssignee(it) === me);
+  return items.filter((it) => canQaSeeOwner(user, getAssignee(it)));
 }
