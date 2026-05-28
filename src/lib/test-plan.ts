@@ -842,6 +842,16 @@ export const TASKS: Task[] = [
 // ----------------------------------------------------------------------------
 export const TEST_STATUS_KEY = (id: string) => `test-status:${id}`;
 
+function loadStorageByPrefix(prefix: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (typeof window === "undefined") return out;
+  for (let i = 0; i < window.localStorage.length; i++) {
+    const key = window.localStorage.key(i) || "";
+    if (key.startsWith(prefix)) out[key.slice(prefix.length)] = window.localStorage.getItem(key) || "";
+  }
+  return out;
+}
+
 export function loadStatus(id: string): TestStatus {
   if (typeof window === "undefined") return "not_run";
   return (localStorage.getItem(TEST_STATUS_KEY(id)) as TestStatus) || "not_run";
@@ -861,6 +871,9 @@ export function saveStatus(id: string, s: TestStatus, opts: { syncCloud?: boolea
 export function loadAllStatuses(): Record<string, TestStatus> {
   const out: Record<string, TestStatus> = {};
   for (const t of TEST_CASES) out[t.id] = loadStatus(t.id);
+  for (const [id, value] of Object.entries(loadStorageByPrefix("test-status:"))) {
+    out[id] = value as TestStatus;
+  }
   return out;
 }
 
@@ -897,11 +910,13 @@ export function saveDevNote(id: string, note: string, opts: { syncCloud?: boolea
 export function loadAllQaNotes(): Record<string, string> {
   const out: Record<string, string> = {};
   for (const t of TEST_CASES) out[t.id] = loadQaNote(t.id);
+  Object.assign(out, loadStorageByPrefix("test-qa-note:"));
   return out;
 }
 export function loadAllDevNotes(): Record<string, string> {
   const out: Record<string, string> = {};
   for (const t of TEST_CASES) out[t.id] = loadDevNote(t.id);
+  Object.assign(out, loadStorageByPrefix("test-dev-note:"));
   return out;
 }
 
@@ -932,6 +947,9 @@ export function saveSeverity(id: string, s: FailSeverity | "", opts: { syncCloud
 export function loadAllSeverities(): Record<string, FailSeverity | ""> {
   const out: Record<string, FailSeverity | ""> = {};
   for (const t of TEST_CASES) out[t.id] = loadSeverity(t.id);
+  for (const [id, value] of Object.entries(loadStorageByPrefix("test-severity:"))) {
+    out[id] = value as FailSeverity;
+  }
   return out;
 }
 
@@ -1028,6 +1046,7 @@ export function saveSprintOverride(id: string, sprintId: string, opts: { syncClo
 export function loadAllSprintOverrides(): Record<string, string> {
   const out: Record<string, string> = {};
   for (const t of TEST_CASES) out[t.id] = loadSprintOverride(t.id);
+  Object.assign(out, loadStorageByPrefix("test-sprint:"));
   return out;
 }
 
