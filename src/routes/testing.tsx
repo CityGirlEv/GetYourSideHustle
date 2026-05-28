@@ -463,6 +463,7 @@ export function TestPlanTab() {
       toast.error("Cannot save test result", { description: blockReason });
       return;
     }
+    setSaveBusy("Checking evidence…");
     // ----- Mandatory-evidence gate ------------------------------------------
     // Any status flip to "fail" / "failed_retest" requires at least one
     // attached screenshot/log. Block those rows up-front so QA can't claim a
@@ -485,10 +486,11 @@ export function TestPlanTab() {
               ? `Attach a screenshot before failing ${missing[0].id}.`
               : `Attach a screenshot before failing: ${missing.map((m) => m.id).join(", ")}.`,
           );
-          if (selectedKeys.size === 0) { setSaveOpen(false); return; }
+          if (selectedKeys.size === 0) { setSaveOpen(false); setSaveBusy(null); return; }
         }
       }
     }
+    setSaveBusy("Writing locally…");
     const stillDraft = {
       status: { ...dStatuses }, qaNote: { ...dQaNotes }, devNote: { ...dDevNotes },
       severity: { ...dSeverities }, assignee: { ...dAssignees }, sprint: { ...dSprints },
@@ -530,8 +532,9 @@ export function TestPlanTab() {
       selectedKeys,
       draftSnapshot,
     );
-    if (ops.length === 0) return;
+    if (ops.length === 0) { setSaveBusy(null); return; }
     const selectedCount = selectedKeys.size;
+    setSaveBusy(null);
     const { cloudPushTestsBulk, cloudAppendNotesBulk } = await import("@/lib/cloud-sync");
     // Collapse N round-trips into at most 2: one bulk upsert for field
     // patches, one merged SELECT+UPSERT for notes.
