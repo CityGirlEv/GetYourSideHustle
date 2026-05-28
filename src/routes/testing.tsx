@@ -311,7 +311,7 @@ export function TestPlanTab() {
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [ownerFilter, setOwnerFilter] = useState<string[]>([]);
   const [sprintFilter, setSprintFilter] = useState<string[]>([]);
-  const [passRateExpanded, setPassRateExpanded] = useState(() => user?.role !== "qa");
+  const [passRateExpanded, setPassRateExpanded] = useState(() => user?.role === "qa");
   // Full assignee roster (TEST_OWNERS + every enabled QA user). Admins see
   // a bubble for each one even if they have no tests currently assigned.
   const allAssignees = useAssigneeOptions();
