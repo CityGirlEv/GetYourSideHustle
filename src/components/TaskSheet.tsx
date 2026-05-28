@@ -24,7 +24,7 @@ import {
   TASK_STATUS_VALUES, TASK_STATUS_LABELS, TASK_CATEGORY_VALUES, TASK_CATEGORY_LABELS,
   type TaskRow, type TaskRowStatus,
 } from "@/lib/tasks-sheet";
-import { SPRINTS, ACTIVE_SPRINT_ID, PRIORITY_LABELS, PRIORITY_SHORT, type Priority } from "@/lib/test-plan";
+import { SPRINTS, ACTIVE_SPRINT_ID, PRIORITY_LABELS, PRIORITY_SHORT, FAIL_SEVERITY_LABELS, type Priority, type FailSeverity } from "@/lib/test-plan";
 import { useAssigneeOptions } from "@/lib/use-assignee-options";
 import {
   applyBulkEdit, bulkDelete as bulkDeleteRows,
