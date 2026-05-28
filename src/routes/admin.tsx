@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollText, Users, Settings2, Search, Plus, Minus, Inbox, Phone, Mail, UserPlus, Loader2, Eye, EyeOff, Pencil, Trash2, Ban, CheckCircle2, Layers, GitBranch, CalendarDays, DollarSign, ListChecks, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
