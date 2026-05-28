@@ -287,3 +287,83 @@ export async function cloudDeleteEvidence(storage_path: string) {
   const { error } = await supabase.from("test_evidence_index").delete().eq("storage_path", storage_path);
   if (error) console.warn("[cloud-sync] deleteEvidence", error.message);
 }
+
+/**
+ * BULK push — collapses many cloudPushTest calls into ONE upsert round-trip.
+ * `patches` is a list of {test_id, patch} where patch holds any subset of
+ * status / severity / assignee / sprint_id / description_override.
+ * Returns the number of rows the server accepted (0 on error / not signed in).
+ */
+export async function cloudPushTestsBulk(
+  patches: Array<{ test_id: string; patch: Partial<{
+    status: TestStatus | null;
+    severity: FailSeverity | "" | null;
+    assignee: string | null;
+    sprint_id: string | null;
+    description_override: TestDescriptionOverride | null;
+  }> }>,
+): Promise<number> {
+  if (typeof window === "undefined" || patches.length === 0) return 0;
+  const u = await uid();
+  if (!u) { warnNotSignedIn("cloudPushTestsBulk"); return 0; }
+  const rows = patches.map(({ test_id, patch }) => {
+    const r: Record<string, unknown> = { test_id, updated_by: u.id };
+    for (const [k, v] of Object.entries(patch)) r[k] = v === "" ? null : v;
+    return r;
+  });
+  const { error } = await supabase.from("test_results").upsert(rows as never, { onConflict: "test_id" });
+  if (error) {
+    console.warn("[cloud-sync] cloudPushTestsBulk", error.message);
+    try { toast.error("Couldn't save changes to cloud", { description: error.message }); } catch { /* noop */ }
+    return 0;
+  }
+  return rows.length;
+}
+
+/**
+ * BULK note append — one SELECT to fetch existing qa/dev notes for all touched
+ * ids, one UPSERT to write the merged arrays back. Replaces N×(SELECT+UPSERT)
+ * with 1×SELECT + 1×UPSERT.
+ */
+export async function cloudAppendNotesBulk(
+  entries: Array<{ test_id: string; kind: NoteKind; text: string }>,
+): Promise<number> {
+  if (typeof window === "undefined" || entries.length === 0) return 0;
+  const u = await uid();
+  if (!u) { warnNotSignedIn("cloudAppendNotesBulk"); return 0; }
+  const ids = Array.from(new Set(entries.map((e) => e.test_id)));
+  const { data: existing } = await supabase
+    .from("test_results")
+    .select("test_id, qa_notes, dev_notes")
+    .in("test_id", ids);
+  const byId = new Map<string, { qa: NoteEntry[]; dev: NoteEntry[] }>();
+  for (const id of ids) byId.set(id, { qa: [], dev: [] });
+  for (const row of existing ?? []) {
+    const r = row as { test_id: string; qa_notes: unknown; dev_notes: unknown };
+    byId.set(r.test_id, {
+      qa:  Array.isArray(r.qa_notes)  ? (r.qa_notes  as unknown as NoteEntry[]) : [],
+      dev: Array.isArray(r.dev_notes) ? (r.dev_notes as unknown as NoteEntry[]) : [],
+    });
+  }
+  const now = new Date().toISOString();
+  for (const e of entries) {
+    const t = e.text.trim();
+    if (!t) continue;
+    const bucket = byId.get(e.test_id)!;
+    const arr = e.kind === "qa" ? bucket.qa : bucket.dev;
+    const lastFromAuthor = [...arr].reverse().find((x) => x.author_id === u.id);
+    if (lastFromAuthor && lastFromAuthor.text === t) continue;
+    arr.push({ author_id: u.id, author_name: u.name, text: t, at: now });
+  }
+  const rows = ids.map((id) => {
+    const b = byId.get(id)!;
+    return { test_id: id, qa_notes: b.qa, dev_notes: b.dev, updated_by: u.id };
+  });
+  const { error } = await supabase.from("test_results").upsert(rows as never, { onConflict: "test_id" });
+  if (error) {
+    console.warn("[cloud-sync] cloudAppendNotesBulk", error.message);
+    try { toast.error("Couldn't save notes to cloud", { description: error.message }); } catch { /* noop */ }
+    return 0;
+  }
+  return rows.length;
+}
