@@ -1414,7 +1414,12 @@ function TestCaseCard({
                   />
                   <span className={isChecked ? "line-through opacity-70" : ""}>
                     <span className="font-mono text-[10px] mr-1 opacity-70">{i + 1}.</span>
-                    <StepWithSublist step={s} />
+                    <StepWithSublist
+                      step={s}
+                      stepIndex={i}
+                      checkedSubsteps={checkedSubsteps}
+                      onToggleSubstep={toggleSubstep}
+                    />
                   </span>
                 </li>
               );
