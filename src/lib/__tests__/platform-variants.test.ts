@@ -23,7 +23,7 @@ describe("platform variant fan-out for Scenario tests", () => {
     }
   });
 
-  it("Desktop scenario variants preserve the source test's owner", () => {
+  it("Computer scenario variants preserve the source test's owner", () => {
     const evelynSource = scenarioSources.find((t) => t.assignee === "Evelyn");
     expect(evelynSource).toBeTruthy();
     const variants = expandTestWithPlatforms(evelynSource as TestCase);
@@ -43,8 +43,8 @@ describe("platform variant fan-out for Scenario tests", () => {
         }
       }
     }
-    // 20 scenarios × 3 non-desktop platforms = 60 variants
-    expect(catria + unassigned).toBe(scenarioSources.length * 3);
+    // 20 scenarios × 2 non-desktop platforms (Phone + iPad) = 40 variants
+    expect(catria + unassigned).toBe(scenarioSources.length * 2);
     // Roughly balanced (within 25% of perfect 50/50)
     expect(Math.abs(catria - unassigned)).toBeLessThan(scenarioSources.length);
   });
