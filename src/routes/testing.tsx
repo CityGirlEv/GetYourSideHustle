@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   CheckCircle2, XCircle, MinusCircle, AlertOctagon, Search, RotateCcw,
   FlaskConical, CalendarDays, ListChecks, GitBranch, Sparkles, ExternalLink,
-  Wrench, RefreshCw, Paperclip, Upload, Trash2, FileText, Loader2, Save, Pencil, ChevronRight, ChevronDown, Copy,
+  Wrench, RefreshCw, Paperclip, Upload, Trash2, FileText, Loader2, Save, Pencil, ChevronRight, ChevronDown, Copy, Play,
 } from "lucide-react";
 import {
   TEST_CASES, IMPLEMENTATION_PLAN, SPRINTS, TASKS,
@@ -97,6 +97,47 @@ function TestTitleLink({ test, children }: { test: TestCase; children: React.Rea
     <Link to={path as never} target="_blank" className={className} title={`Open ${path}`}>
       {children}
     </Link>
+  );
+}
+
+/**
+ * Copy a test-runner command to the clipboard. Tests can't actually execute
+ * from the deployed app (Workers runtime can't spawn vitest / playwright), so
+ * the Run buttons hand admins the exact command to paste into a terminal.
+ */
+async function copyRunCommand(cmd: string, label: string) {
+  try {
+    await navigator.clipboard.writeText(cmd);
+    toast.success(`Copied: ${label}`, {
+      description: cmd,
+      duration: 6000,
+    });
+  } catch {
+    toast.error("Could not copy to clipboard", { description: cmd });
+  }
+}
+
+/** Extract the shell command stored in an automated test's first step
+ *  ("Run: bunx vitest run …" → "bunx vitest run …"). */
+function commandForAutomatedTest(t: TestCase): string | null {
+  const step = t.steps[0] ?? "";
+  const m = step.match(/^Run:\s*(.+)$/);
+  return m ? m[1].trim() : null;
+}
+
+function RunAutomatedButton({ t }: { t: TestCase }) {
+  const cmd = commandForAutomatedTest(t);
+  if (!cmd) return null;
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      className="h-7 px-2 text-xs border-emerald-500/60 text-emerald-700 hover:bg-emerald-500/10"
+      onClick={() => copyRunCommand(cmd, `Run ${t.id}`)}
+      title={`Copy command: ${cmd}`}
+    >
+      <Play className="h-3.5 w-3.5 mr-1" /> Run
+    </Button>
   );
 }
 
@@ -569,6 +610,30 @@ export function TestPlanTab() {
             <StatBadge n={counts.total}    label="Total"   color="bg-primary/10 text-primary border-primary/30" active={statusFilter.length === 0} onClick={() => setStatusFilter([])} />
           </div>
           <div className="flex items-center gap-2">
+            {isAdmin && (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-emerald-500/60 text-emerald-700 hover:bg-emerald-500/10"
+                  onClick={() => copyRunCommand("bun run test", "Run all Vitest tests")}
+                  title="Copy: bun run test (runs the full Vitest suite locally)"
+                >
+                  <Play className="h-3.5 w-3.5 mr-1.5" />
+                  Run Vitest
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-sky-500/60 text-sky-700 hover:bg-sky-500/10"
+                  onClick={() => copyRunCommand("bun run e2e", "Run all Playwright tests")}
+                  title="Copy: bun run e2e (runs the full Playwright suite locally)"
+                >
+                  <Play className="h-3.5 w-3.5 mr-1.5" />
+                  Run Playwright
+                </Button>
+              </>
+            )}
             <Button
               size="sm"
               variant="default"
@@ -1068,6 +1133,7 @@ function TestCaseCard({
             <Pencil className="h-3.5 w-3.5 mr-1" /> Edit test
           </Button>
         )}
+        {isAdmin && assigneeLocked && <RunAutomatedButton t={t} />}
         {onDuplicate && (
           <Button
             size="sm"
