@@ -1317,12 +1317,10 @@ function TestCaseCard({
                     className="h-3.5 w-3.5 mt-0.5 shrink-0 cursor-pointer accent-emerald-600"
                     title="Check when this step is complete"
                   />
-                  <StepWithSublist
-                    step={s}
-                    className={isChecked ? "line-through opacity-70" : ""}
-                  >
+                  <span className={isChecked ? "line-through opacity-70" : ""}>
                     <span className="font-mono text-[10px] mr-1 opacity-70">{i + 1}.</span>
-                  </StepWithSublist>
+                    <StepWithSublist step={s} />
+                  </span>
                 </li>
               );
             })}
