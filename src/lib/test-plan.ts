@@ -751,6 +751,9 @@ export const IMPLEMENTATION_PLAN: PhaseItem[] = [
 //   S2 (6/01–6/07) Optimizer math hardening on the beta.
 //   S3 (6/08–6/14) Final production go-live Sun 6/14 (end of Phase 1).
 export const ACTIVE_SPRINT_ID = "S-2026-01";
+// Catch-all bucket for tests that don't yet have an owner (or sprint).
+// Rendered as its own group in the test plan UI under the "Backlog" heading.
+export const BACKLOG_SPRINT_ID = "S-BACKLOG";
 
 export const SPRINTS: Sprint[] = [
   {
