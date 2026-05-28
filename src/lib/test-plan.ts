@@ -230,7 +230,7 @@ export const TEST_CASES: TestCase[] = [
     id: "VWIZ-001", area: "Voice · Wizard", priority: "P0",
     title: "Mode toggle switches Manual ↔ Voice on /scenario/new",
     steps: ["Open /scenario/new", "Click 'Voice wizard' pill"],
-    expected: "Voice intake card renders; clicking 'Manual form' returns to the original wizard without state loss.",
+    expected: "Voice intake card renders; clicking 'Start Manual Wizard' returns to the original wizard without state loss.",
   },
   {
     id: "VWIZ-002", area: "Voice · Wizard", priority: "P0",
