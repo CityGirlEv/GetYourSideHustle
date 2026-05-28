@@ -4,7 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/lib/app-store";
-import { BookOpen, ArrowLeft, Filter, LayoutDashboard, CheckSquare, MessageSquareWarning, ListChecks, Coins } from "lucide-react";
+import { BookOpen, ArrowLeft, Filter, LayoutDashboard, CheckSquare, MessageSquareWarning, ListChecks, Coins, Play } from "lucide-react";
 
 export const Route = createFileRoute("/qa-manual")({
   head: () => ({
@@ -49,9 +49,90 @@ function QAManualPage() {
           <p className="text-xs text-muted-foreground italic">↳ Tabs are at the top of the page, just under the title.</p>
         </Card>
 
-        {/* 2. Filtering */}
+        {/* 2. Execute a test — step by step */}
         <Card className="glass p-5 space-y-3">
-          <h2 className="font-display text-lg font-bold flex items-center gap-2"><Filter className="h-4 w-4 text-primary" />2. Filtering</h2>
+          <h2 className="font-display text-lg font-bold flex items-center gap-2"><Play className="h-4 w-4 text-primary" />2. Execute a test — step by step</h2>
+          <p className="text-sm text-muted-foreground">High-level flow for running one scenario test from the Test Plan tab. The numbered bubbles in the diagram map to the steps below.</p>
+          <ol className="text-sm space-y-1.5 ml-4 list-decimal">
+            <li><b>Pick a test row.</b> Use the filters to narrow to your queue, then click the row title to expand it and read the scenario steps.</li>
+            <li><b>Run the scenario</b> in the app (or in the linked external link) and observe the actual result vs. the expected result.</li>
+            <li><b>Attach evidence</b> in the Evidence panel — Capture screen, Take photo, or Upload. Required for any <b>Fail</b> or <b>Failed/Retest</b>.</li>
+            <li><b>Write a note.</b> QA note for a Fail (what broke, steps, expected vs actual). Dev note when handing back from Dev.</li>
+            <li><b>Set the Status</b> from the dropdown — Pass, Fail, Blocked, etc.</li>
+            <li><b>Click Save</b> on the row, review the confirmation dialog, then confirm to commit your changes.</li>
+          </ol>
+          <div className="overflow-x-auto">
+            <svg viewBox="0 0 900 360" className="w-full h-auto" role="img" aria-label="Numbered test row diagram showing where each execution step happens">
+              <defs>
+                <marker id="qm-bubble-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="#6b7280" />
+                </marker>
+              </defs>
+              {/* Mock test row */}
+              <g fontFamily="ui-sans-serif, system-ui" fontSize="12" fill="#374151">
+                {/* Row background */}
+                <rect x="40" y="120" width="820" height="120" rx="10" fill="#f9fafb" stroke="#d1d5db" strokeWidth="1.5" />
+                {/* Title cell */}
+                <rect x="60" y="140" width="280" height="80" rx="6" fill="#ffffff" stroke="#e5e7eb" />
+                <text x="76" y="166" fontWeight="700" fontSize="13" fill="#111827">SCEN-014 · Drug interaction</text>
+                <text x="76" y="186" fontSize="11" fill="#6b7280">Expected: warning banner appears</text>
+                <text x="76" y="204" fontSize="11" fill="#6b7280">Steps: 1) open plan 2) add drug…</text>
+                {/* Evidence cell */}
+                <rect x="355" y="155" width="140" height="50" rx="6" fill="#ffffff" stroke="#e5e7eb" />
+                <text x="425" y="178" textAnchor="middle" fontWeight="700" fill="#111827">Evidence</text>
+                <text x="425" y="194" textAnchor="middle" fontSize="11" fill="#6b7280">Capture · Upload</text>
+                {/* Note cell */}
+                <rect x="510" y="155" width="140" height="50" rx="6" fill="#ffffff" stroke="#e5e7eb" />
+                <text x="580" y="178" textAnchor="middle" fontWeight="700" fill="#111827">QA note</text>
+                <text x="580" y="194" textAnchor="middle" fontSize="11" fill="#6b7280">what broke…</text>
+                {/* Status cell */}
+                <rect x="665" y="155" width="100" height="50" rx="6" fill="#ffffff" stroke="#e5e7eb" />
+                <text x="715" y="178" textAnchor="middle" fontWeight="700" fill="#111827">Status ▾</text>
+                <text x="715" y="194" textAnchor="middle" fontSize="11" fill="#6b7280">Pass / Fail</text>
+                {/* Save button */}
+                <rect x="775" y="160" width="70" height="40" rx="8" fill="#4f46e5" />
+                <text x="810" y="184" textAnchor="middle" fontWeight="800" fill="#ffffff">Save</text>
+
+                {/* Bubbles */}
+                <g fontWeight="800" fontSize="14" fill="#ffffff" textAnchor="middle">
+                  {/* 1 — Pick test (title) */}
+                  <circle cx="76" cy="140" r="16" fill="#4f46e5" stroke="#ffffff" strokeWidth="2" />
+                  <text x="76" y="145">1</text>
+                  {/* 2 — Run scenario (steps text) */}
+                  <circle cx="200" cy="220" r="16" fill="#4f46e5" stroke="#ffffff" strokeWidth="2" />
+                  <text x="200" y="225">2</text>
+                  {/* 3 — Evidence */}
+                  <circle cx="425" cy="150" r="16" fill="#4f46e5" stroke="#ffffff" strokeWidth="2" />
+                  <text x="425" y="155">3</text>
+                  {/* 4 — Note */}
+                  <circle cx="580" cy="150" r="16" fill="#4f46e5" stroke="#ffffff" strokeWidth="2" />
+                  <text x="580" y="155">4</text>
+                  {/* 5 — Status */}
+                  <circle cx="715" cy="150" r="16" fill="#4f46e5" stroke="#ffffff" strokeWidth="2" />
+                  <text x="715" y="155">5</text>
+                  {/* 6 — Save */}
+                  <circle cx="810" cy="150" r="16" fill="#10b981" stroke="#ffffff" strokeWidth="2" />
+                  <text x="810" y="155">6</text>
+                </g>
+
+                {/* Callouts */}
+                <g fontSize="11" fontWeight="700" fill="#374151" textAnchor="middle">
+                  <text x="76" y="105">Pick test</text>
+                  <text x="200" y="270">Run scenario</text>
+                  <text x="425" y="105">Attach evidence</text>
+                  <text x="580" y="105">Write note</text>
+                  <text x="715" y="105">Set status</text>
+                  <text x="810" y="105">Save</text>
+                </g>
+              </g>
+            </svg>
+          </div>
+          <p className="text-xs text-muted-foreground italic">↳ Bubbles 3 and 4 are only required when you're marking a row <b>Fail</b> or <b>Failed/Retest</b> — Pass needs only steps 1, 2, 5, 6.</p>
+        </Card>
+
+        {/* 3. Filtering */}
+        <Card className="glass p-5 space-y-3">
+          <h2 className="font-display text-lg font-bold flex items-center gap-2"><Filter className="h-4 w-4 text-primary" />3. Filtering</h2>
           <p className="text-sm">Use the filter bar at the top of <b>Test Plan</b> to narrow what you see:</p>
           <ul className="text-sm space-y-1.5 ml-1">
             <li><b>Search</b> — text match on test ID or title.</li>
@@ -63,9 +144,9 @@ function QAManualPage() {
           <p className="text-xs text-muted-foreground italic">↳ Filters live in the toolbar directly above the test table.</p>
         </Card>
 
-        {/* 3. Bulk edit */}
+        {/* 4. Bulk edit */}
         <Card className="glass p-5 space-y-3">
-          <h2 className="font-display text-lg font-bold flex items-center gap-2"><CheckSquare className="h-4 w-4 text-primary" />3. Bulk edits</h2>
+          <h2 className="font-display text-lg font-bold flex items-center gap-2"><CheckSquare className="h-4 w-4 text-primary" />4. Bulk edits</h2>
           <ol className="text-sm space-y-1.5 ml-4 list-decimal">
             <li>Tick the checkbox on each row you want to edit (or the header checkbox to select all visible).</li>
             <li>The <b>bulk-edit bar</b> appears at the top — pick a new <b>Status</b>, <b>Severity</b>, <b>Sprint</b>, or <b>Assignee</b>.</li>
@@ -79,9 +160,9 @@ function QAManualPage() {
           </div>
         </Card>
 
-        {/* 4. Test statuses */}
+        {/* 5. Test statuses */}
         <Card className="glass p-5 space-y-3">
-          <h2 className="font-display text-lg font-bold flex items-center gap-2"><ListChecks className="h-4 w-4 text-primary" />4. Test status options</h2>
+          <h2 className="font-display text-lg font-bold flex items-center gap-2"><ListChecks className="h-4 w-4 text-primary" />5. Test status options</h2>
           <p className="text-sm">Set status from the <b>Status</b> dropdown on any row (or via bulk edit).</p>
           <ul className="text-sm space-y-1.5 ml-1">
             <li><b>Not Run</b> — default; not yet executed.</li>
@@ -103,9 +184,9 @@ function QAManualPage() {
           </div>
         </Card>
 
-        {/* 5. Pipeline diagram */}
+        {/* 6. Pipeline diagram */}
         <Card className="glass p-5 space-y-3">
-          <h2 className="font-display text-lg font-bold">5. The bug pipeline</h2>
+          <h2 className="font-display text-lg font-bold">6. The bug pipeline</h2>
           <p className="text-sm text-muted-foreground">How a test moves between QA and Dev until QA passes it. A passed test is <b>closed</b>, but the status and every field stay editable.</p>
           <div className="overflow-x-auto">
             <svg viewBox="0 0 900 640" className="w-full h-auto" role="img" aria-label="QA bug pipeline flow chart">
@@ -180,9 +261,9 @@ function QAManualPage() {
           </ul>
         </Card>
 
-        {/* 6. Credits */}
+        {/* 7. Credits */}
         <Card className="glass p-5 space-y-3">
-          <h2 className="font-display text-lg font-bold flex items-center gap-2"><Coins className="h-4 w-4 text-primary" />6. Credits</h2>
+          <h2 className="font-display text-lg font-bold flex items-center gap-2"><Coins className="h-4 w-4 text-primary" />7. Credits</h2>
           <p className="text-sm text-muted-foreground">You earn credit tokens for every test you execute and submit with evidence.</p>
           <ul className="text-sm space-y-1.5 ml-1">
             <li><b>Pass</b> — earn tokens based on test priority (P0 = 15, P1 = 10, P2 = 5, P3 = 3).</li>
