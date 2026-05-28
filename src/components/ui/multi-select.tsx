@@ -33,11 +33,11 @@ export function MultiSelect({
   const isAll = value.length === 0 || value.length === options.length;
 
   const toggle = (v: string, checked: boolean) => {
-    // When nothing is selected ("All"), treat the first click as
-    // "filter to just this one" rather than "remove this from the
-    // implicit all-set" (which is what the user sees but never wants).
+    // "All" state ([]): checking is a no-op (already included);
+    // unchecking should narrow to every value EXCEPT this one.
     if (value.length === 0) {
-      onChange(checked ? [v] : []);
+      if (checked) return;
+      onChange(allValues.filter((x) => x !== v));
       return;
     }
     // Sentinel "none" state — first click starts a fresh single selection.
@@ -99,7 +99,8 @@ export function MultiSelect({
             // When "All" is active, render every box as UNCHECKED so the
             // user can click one to start filtering. The label "All" on the
             // trigger button already communicates that nothing is filtered.
-            const checked = isAll ? false : value.includes(o.value);
+            // In "All" state every item is implicitly selected — render checked.
+            const checked = isAll ? true : value.includes(o.value);
             return (
               <label
                 key={o.value}
