@@ -51,7 +51,7 @@ import {
 import { toast } from "sonner";
 import { MultiSelect, multiSelectMatches } from "@/components/ui/multi-select";
 import { useConfirm } from "@/components/ConfirmDialog";
-import { buildCloudOps, runWithProgress, type DraftValues } from "@/lib/save-batch";
+import { buildCloudOps, type DraftValues } from "@/lib/save-batch";
 
 // Derive a link target for a test case: explicit `path` wins, otherwise scan
 // preconditions + steps for the first "/route" token (e.g. "Open /advisor").
@@ -507,24 +507,33 @@ export function TestPlanTab() {
     );
     if (ops.length === 0) return;
     const selectedCount = selectedKeys.size;
-    const { cloudPushTest, cloudAppendNote } = await import("@/lib/cloud-sync");
-    setSaveProgress({ done: 0, total: ops.length });
-    const tasks = ops.map((op) => async () => {
-      if (op.kind === "push") {
-        // PushTestPatch uses string fields for portability; cast to the
-        // strict cloudPushTest patch shape (the values come from our own
-        // typed drafts, so the runtime types match).
-        return await cloudPushTest(op.testId, (op.patch ?? {}) as Parameters<typeof cloudPushTest>[1]);
-      }
-      await cloudAppendNote(op.testId, op.note!.kind, op.note!.text);
-      return true;
-    });
-    const { ok } = await runWithProgress(tasks, {
-      concurrency: 6,
-      onProgress: (done, total) => setSaveProgress({ done, total }),
-    });
+    const { cloudPushTestsBulk, cloudAppendNotesBulk } = await import("@/lib/cloud-sync");
+    // Collapse N round-trips into at most 2: one bulk upsert for field
+    // patches, one merged SELECT+UPSERT for notes.
+    const pushPatches = ops
+      .filter((o) => o.kind === "push")
+      .map((o) => ({
+        test_id: o.testId,
+        patch: (o.patch ?? {}) as Parameters<typeof cloudPushTestsBulk>[0][number]["patch"],
+      }));
+    const noteEntries = ops
+      .filter((o) => o.kind === "note")
+      .map((o) => ({ test_id: o.testId, kind: o.note!.kind, text: o.note!.text }));
+    const totalBatches = (pushPatches.length ? 1 : 0) + (noteEntries.length ? 1 : 0);
+    setSaveProgress({ done: 0, total: totalBatches });
+    let okBatches = 0;
+    let failCount = 0;
+    if (pushPatches.length) {
+      const n = await cloudPushTestsBulk(pushPatches);
+      if (n > 0) okBatches++; else failCount += pushPatches.length;
+      setSaveProgress({ done: okBatches, total: totalBatches });
+    }
+    if (noteEntries.length) {
+      const n = await cloudAppendNotesBulk(noteEntries);
+      if (n > 0) okBatches++; else failCount += noteEntries.length;
+      setSaveProgress({ done: okBatches, total: totalBatches });
+    }
     setSaveProgress(null);
-    const failCount = ops.length - ok;
     if (failCount === 0) {
       toast.success(`Saved ${selectedCount} change${selectedCount === 1 ? "" : "s"} to cloud.`);
     } else {
