@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   CheckCircle2, XCircle, MinusCircle, AlertOctagon, Search, RotateCcw,
   FlaskConical, CalendarDays, ListChecks, GitBranch, Sparkles, ExternalLink,
-  Wrench, RefreshCw, Paperclip, Upload, Trash2, FileText, Loader2, Save, Pencil, ChevronRight, ChevronDown,
+  Wrench, RefreshCw, Paperclip, Upload, Trash2, FileText, Loader2, Save, Pencil, ChevronRight, ChevronDown, Copy,
 } from "lucide-react";
 import {
   TEST_CASES, IMPLEMENTATION_PLAN, SPRINTS, TASKS,
@@ -39,7 +39,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  listCustomTests, createCustomTest, customRowToTestCase, type CustomTestRow,
+  listCustomTests, createCustomTest, duplicateCustomTest, customRowToTestCase, type CustomTestRow,
 } from "@/lib/custom-tests";
 import { AUTOMATED_TEST_CASES } from "@/lib/automated-tests";
 import {
@@ -773,6 +773,18 @@ export function TestPlanTab() {
                     onSprintChange={(s) => setSprintFor(t.id, s)}
                     isAdmin={isAdmin}
                     onEdit={() => setEditingId(t.id)}
+                    onDuplicate={async () => {
+                      try {
+                        const row = await duplicateCustomTest(
+                          t,
+                          effectiveCases.map((x) => x.id),
+                        );
+                        setCustomTests((prev) => [row, ...prev]);
+                        toast.success(`Duplicated ${t.id} → ${row.id}`);
+                      } catch (e) {
+                        toast.error(`Could not duplicate: ${(e as Error).message}`);
+                      }
+                    }}
                     hasChanges={hasTestChanges(t.id)}
                     onSave={() => saveSingleTest(t.id)}
                   />
@@ -950,6 +962,7 @@ function TestCaseCard({
   t, status, qaNote, devNote, severity, assignee, sprintId, selected, onSelectChange,
   onChange, onQaNoteChange, onDevNoteChange, onSeverityChange, onAssigneeChange, onSprintChange,
   isAdmin, onEdit, hasChanges, onSave,
+  onDuplicate,
 }: {
   t: TestCase;
   status: TestStatus;
@@ -968,6 +981,7 @@ function TestCaseCard({
   onSprintChange: (sprintId: string) => void;
   isAdmin?: boolean;
   onEdit?: () => void;
+  onDuplicate?: () => void;
   hasChanges?: boolean;
   onSave?: () => void;
 }) {
@@ -1034,6 +1048,17 @@ function TestCaseCard({
             title="Edit test description"
           >
             <Pencil className="h-3.5 w-3.5 mr-1" /> Edit test
+          </Button>
+        )}
+        {onDuplicate && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 px-2 text-xs"
+            onClick={onDuplicate}
+            title="Duplicate this test for additional coverage"
+          >
+            <Copy className="h-3.5 w-3.5 mr-1" /> Duplicate
           </Button>
         )}
         <StatusButtons status={status} onChange={onChange} />
