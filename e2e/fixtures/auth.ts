@@ -15,9 +15,9 @@ export async function signIn(page: Page, creds: AuthCreds) {
   await page.waitForURL((url) => !url.pathname.includes("/auth"), { timeout: 10_000 });
 }
 
-/** Log out via UI if a sign-out button exists, otherwise call supabase signOut. */
+/** Log out via UI if a sign-out button exists, otherwise navigate to /auth. */
 export async function signOut(page: Page) {
-  const outBtn = page.getByRole("button", { name: /sign out|log out/i });
+  const outBtn = page.getByTitle("Sign out");
   if (await outBtn.isVisible().catch(() => false)) {
     await outBtn.click();
     await page.waitForURL("/auth", { timeout: 10_000 });
