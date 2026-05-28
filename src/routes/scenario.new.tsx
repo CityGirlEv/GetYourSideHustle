@@ -6,6 +6,7 @@ import { VoiceIntakeWizard } from "@/components/VoiceIntakeWizard";
 import { AppShell } from "@/components/AppShell";
 import { Mic, Keyboard, Clock } from "lucide-react";
 import { listScenarioHistory, type ScenarioHistoryEntry } from "@/lib/scenario-history";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/scenario/new")({
   head: () => ({
@@ -27,7 +28,26 @@ function ScenarioNew() {
   const router = useRouter();
   const [mode, setMode] = useState<"manual" | "voice">("manual");
   const [history, setHistory] = useState<ScenarioHistoryEntry[]>([]);
+  const [popupOpen, setPopupOpen] = useState(false);
   useEffect(() => { setHistory(listScenarioHistory()); }, []);
+  useEffect(() => {
+    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("popup") === "1") {
+      setPopupOpen(true);
+    }
+  }, []);
+
+  const openManualPopup = () => {
+    if (typeof window === "undefined") return;
+    const w = 900;
+    const h = 800;
+    const left = window.screenX + Math.max(0, (window.outerWidth - w) / 2);
+    const top = window.screenY + Math.max(0, (window.outerHeight - h) / 2);
+    window.open(
+      "/scenario/new?popup=1",
+      "manual-wizard",
+      `width=${w},height=${h},left=${left},top=${top},menubar=no,toolbar=no,location=no,status=no`,
+    );
+  };
   return (
     <AppShell title="Build your scenario" subtitle="You'll get a Scenario ID at the end — share it with the agent of your choice.">
       {history.length > 0 && (
@@ -57,17 +77,23 @@ function ScenarioNew() {
         <div className="inline-flex rounded-full border border-border bg-white p-1 shadow-sm">
           <button
             type="button"
-            onClick={() => setMode("manual")}
+            onClick={() => {
+              if (mode === "voice") {
+                setMode("manual");
+              } else {
+                openManualPopup();
+              }
+            }}
             className={`inline-flex items-center gap-1.5 px-4 py-1.5 text-sm font-semibold rounded-full transition ${mode === "manual" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
-            <Keyboard className="h-3.5 w-3.5" /> Start Manual Wizard
+            <Keyboard className="h-3.5 w-3.5" /> {mode === "voice" ? "Go back to Manual Wizard" : "Manual Wizard"}
           </button>
           <button
             type="button"
             onClick={() => setMode("voice")}
             className={`inline-flex items-center gap-1.5 px-4 py-1.5 text-sm font-semibold rounded-full transition ${mode === "voice" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
-            <Mic className="h-3.5 w-3.5" /> Start Voice Wizard
+            <Mic className="h-3.5 w-3.5" /> Voice
           </button>
         </div>
       </div>
@@ -80,6 +106,20 @@ function ScenarioNew() {
           onSwitchToManual={() => setMode("manual")}
         />
       )}
+
+      <Dialog open={popupOpen} onOpenChange={setPopupOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Enter Scenario Information</DialogTitle>
+          </DialogHeader>
+          <IntakeWizard
+            onDone={(code) => {
+              setPopupOpen(false);
+              router.navigate({ to: "/scenario/created/$code", params: { code } });
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }
