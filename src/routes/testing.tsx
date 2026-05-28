@@ -42,7 +42,7 @@ import {
   listCustomTests, createCustomTest, duplicateCustomTest, customRowToTestCase, type CustomTestRow,
 } from "@/lib/custom-tests";
 import { AUTOMATED_TEST_CASES, AUTOMATED_TEST_IDS, AUTOMATED_TEST_RESULTS } from "@/lib/automated-tests";
-import { expandAllWithPlatforms } from "@/lib/platform-variants";
+import { expandAllWithPlatforms, TEST_PLATFORMS } from "@/lib/platform-variants";
 import {
   listTestEvidence, uploadTestEvidence, deleteTestEvidence, getTestEvidenceUrl,
   type EvidenceFile,
@@ -287,9 +287,7 @@ export function TestPlanTab() {
     const s = new Set<string>();
     for (const c of customTests) {
       s.add(c.id);
-      for (const p of (await import("@/lib/platform-variants")).TEST_PLATFORMS ?? []) {
-        s.add(`${c.id}-${p.suffix}`);
-      }
+      for (const p of TEST_PLATFORMS) s.add(`${c.id}-${p.suffix}`);
     }
     return s;
   }, [customTests]);
