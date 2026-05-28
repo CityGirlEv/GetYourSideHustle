@@ -1267,6 +1267,21 @@ function TestCaseCard({
     if (next.has(i)) next.delete(i); else next.add(i);
     persistSteps(next);
   };
+  // Per-substep execution checkboxes (e.g. "2a", "2b"). Stored as `${stepIdx}-${subIdx}` keys.
+  const substepsKey = `qa-substep-checks:${t.id}`;
+  const [checkedSubsteps, setCheckedSubsteps] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const raw = window.localStorage.getItem(substepsKey);
+      return raw ? new Set<string>(JSON.parse(raw)) : new Set();
+    } catch { return new Set(); }
+  });
+  const toggleSubstep = (key: string) => {
+    const next = new Set(checkedSubsteps);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    setCheckedSubsteps(next);
+    try { window.localStorage.setItem(substepsKey, JSON.stringify(Array.from(next))); } catch { /* ignore */ }
+  };
   const allStepsChecked = t.steps.length === 0 || t.steps.every((_, i) => checkedSteps.has(i));
   // Which step failed — required whenever the tester records a Fail.
   const failedStepKey = `qa-failed-step:${t.id}`;
