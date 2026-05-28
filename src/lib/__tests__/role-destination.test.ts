@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { roleDestination } from "../role-destination";
+import { safeSignInRedirect } from "../auth-redirect";
 
 describe("roleDestination", () => {
   it("sends admins to /admin", () => {
@@ -18,5 +19,17 @@ describe("roleDestination", () => {
     expect(roleDestination("something-else")).toBe("/advisor");
     expect(roleDestination(null)).toBe("/advisor");
     expect(roleDestination(undefined)).toBe("/advisor");
+  });
+});
+
+describe("safeSignInRedirect", () => {
+  it("allows app-local redirects such as the task sheet", () => {
+    expect(safeSignInRedirect("/tasks")).toBe("/tasks");
+  });
+
+  it("rejects external or malformed redirect values", () => {
+    expect(safeSignInRedirect("https://example.com", "/admin")).toBe("/admin");
+    expect(safeSignInRedirect("//example.com", "/admin")).toBe("/admin");
+    expect(safeSignInRedirect(null, "/admin")).toBe("/admin");
   });
 });
