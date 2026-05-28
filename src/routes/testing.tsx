@@ -1731,6 +1731,7 @@ function EditDescriptionDialog({
   const [expected, setExpected] = useState("");
   const [notes, setNotes] = useState("");
   const [initial, setInitial] = useState({ title: "", preconditions: "", stepsText: "", expected: "", notes: "" });
+  const confirm = useConfirm();
 
   useEffect(() => {
     if (open && test) {
@@ -1772,8 +1773,13 @@ function EditDescriptionDialog({
     onSaved();
   };
 
-  const onResetToDefault = () => {
-    if (!confirm("Clear all admin edits for this test and restore defaults?")) return;
+  const onResetToDefault = async () => {
+    if (!(await confirm({
+      title: "Restore defaults?",
+      description: "Clear all admin edits for this test and restore defaults?",
+      confirmLabel: "Restore",
+      destructive: true,
+    }))) return;
     clearDescriptionOverride(test.id);
     toast.success("Restored default description.");
     onSaved();
@@ -1781,9 +1787,14 @@ function EditDescriptionDialog({
 
   const hasOverride = Object.keys(loadDescriptionOverride(test.id)).length > 0;
 
-  const handleOpenChange = (v: boolean) => {
+  const handleOpenChange = async (v: boolean) => {
     if (!v && isDirty) {
-      if (!confirm("You have unsaved changes. Discard them?")) return;
+      if (!(await confirm({
+        title: "Discard changes?",
+        description: "You have unsaved changes. Discard them?",
+        confirmLabel: "Discard",
+        destructive: true,
+      }))) return;
     }
     onOpenChange(v);
   };
