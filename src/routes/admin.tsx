@@ -4,8 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollText, Users, Settings2, Search, Plus, Minus, Inbox, Phone, Mail, UserPlus, Loader2, Eye, EyeOff, Pencil, Trash2, Ban, CheckCircle2, Layers, GitBranch, CalendarDays, DollarSign, ListChecks } from "lucide-react";
+import { ScrollText, Users, Settings2, Search, Plus, Minus, Inbox, Phone, Mail, UserPlus, Loader2, Eye, EyeOff, Pencil, Trash2, Ban, CheckCircle2, Layers, GitBranch, CalendarDays, DollarSign, ListChecks, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -227,6 +228,11 @@ function AdminPortal() {
   const [savingEdit, setSavingEdit] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<StaffMember | null>(null);
 
+  const [testTemplate, setTestTemplate] = useState("welcome");
+  const [testRecipient, setTestRecipient] = useState("");
+  const [testData, setTestData] = useState("{}");
+  const [sendingTest, setSendingTest] = useState(false);
+
   const reloadStaff = async () => {
     const [s, a] = await Promise.all([fetchStaff(), fetchAgents()]);
     setStaff(s as StaffMember[]);
@@ -370,6 +376,51 @@ function AdminPortal() {
     }
   };
 
+  const sendTestEmail = async () => {
+    if (!testRecipient) {
+      toast.error("Recipient email is required");
+      return;
+    }
+    let parsedData: Record<string, any> = {};
+    try {
+      parsedData = JSON.parse(testData || "{}");
+    } catch {
+      toast.error("Invalid JSON in template data");
+      return;
+    }
+    setSendingTest(true);
+    try {
+      const session = await supabase.auth.getSession();
+      const accessToken = session.data.session?.access_token;
+      if (!accessToken) {
+        toast.error("Not authenticated");
+        return;
+      }
+      const res = await fetch("/lovable/email/transactional/send", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          templateName: testTemplate,
+          recipientEmail: testRecipient,
+          templateData: parsedData,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        toast.error(json.error || "Failed to send test email");
+      } else {
+        toast.success("Test email queued successfully");
+      }
+    } catch (e: unknown) {
+      toast.error((e as Error)?.message || "Failed to send test email");
+    } finally {
+      setSendingTest(false);
+    }
+  };
+
   if (!user) return null;
 
   const filtered = useMemo(() => auditLogs.filter((l) =>
@@ -407,6 +458,7 @@ function AdminPortal() {
               <TabsTrigger value="impl"><GitBranch className="h-4 w-4 mr-1.5"/>Implementation Plan</TabsTrigger>
               <TabsTrigger value="rollout"><CalendarDays className="h-4 w-4 mr-1.5"/>Rollout Schedule</TabsTrigger>
               <TabsTrigger value="budget"><DollarSign className="h-4 w-4 mr-1.5"/>Budget</TabsTrigger>
+              <TabsTrigger value="email"><Send className="h-4 w-4 mr-1.5"/>Email test</TabsTrigger>
             </>
           )}
         </TabsList>
@@ -733,6 +785,39 @@ function AdminPortal() {
 
             <TabsContent value="tasks">
               <TaskSheetContent />
+            </TabsContent>
+
+            <TabsContent value="email" className="space-y-3">
+              <Card className="glass p-4">
+                <h3 className="font-display font-bold mb-1">Send test email</h3>
+                <p className="text-xs text-muted-foreground mb-4">Send a test transactional email to verify deliverability.</p>
+                <div className="space-y-3 max-w-md">
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Template</label>
+                    <Select value={testTemplate} onValueChange={setTestTemplate}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="welcome">Welcome</SelectItem>
+                        <SelectItem value="contact-request">Contact request received</SelectItem>
+                        <SelectItem value="agent-assignment">Agent assignment</SelectItem>
+                        <SelectItem value="scenario-claimed">Scenario claimed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Recipient email</label>
+                    <Input type="email" value={testRecipient} onChange={(e) => setTestRecipient(e.target.value)} placeholder="you@example.com" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Template data (JSON)</label>
+                    <Textarea value={testData} onChange={(e) => setTestData(e.target.value)} rows={4} placeholder='{"recipientName":"Test User"}' />
+                  </div>
+                  <Button onClick={sendTestEmail} disabled={sendingTest || !testRecipient}>
+                    {sendingTest && <Loader2 className="h-4 w-4 animate-spin mr-2"/>}
+                    Send test email
+                  </Button>
+                </div>
+              </Card>
             </TabsContent>
           </>
         )}
