@@ -5,6 +5,15 @@ import { buildNdaPdf, NDA_VERSION } from "./nda";
 
 const NOTIFY_EMAILS = ["sharpebanker@yahoo.com", "evelyn3@cox.net"];
 
+function escHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function randomPassword(len = 24) {
   const alpha = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%^&*";
   let out = "";
@@ -24,15 +33,20 @@ async function sendRegistrationNotification(opts: {
     return;
   }
   const subject = `New beta registration — ${opts.firstName} ${opts.lastName}`;
+  const fn = escHtml(opts.firstName);
+  const ln = escHtml(opts.lastName);
+  const em = escHtml(opts.email);
+  const ph = escHtml(opts.phone);
+  const rr = escHtml(opts.requestedRole);
   const html = `
     <div style="font-family:Arial,sans-serif;line-height:1.5">
       <h2>New beta access request</h2>
       <p>A new user has signed the NDA and registered. The account is created but <b>disabled</b> until you approve it.</p>
       <table cellpadding="6" style="border-collapse:collapse;font-size:14px">
-        <tr><td><b>Name</b></td><td>${opts.firstName} ${opts.lastName}</td></tr>
-        <tr><td><b>Email</b></td><td>${opts.email}</td></tr>
-        <tr><td><b>Phone</b></td><td>${opts.phone}</td></tr>
-        <tr><td><b>Requested role</b></td><td>${opts.requestedRole}</td></tr>
+        <tr><td><b>Name</b></td><td>${fn} ${ln}</td></tr>
+        <tr><td><b>Email</b></td><td>${em}</td></tr>
+        <tr><td><b>Phone</b></td><td>${ph}</td></tr>
+        <tr><td><b>Requested role</b></td><td>${rr}</td></tr>
       </table>
       <p>Sign in to the Admin Portal to review and enable the account.</p>
     </div>`;
