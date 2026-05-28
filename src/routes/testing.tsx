@@ -1041,6 +1041,7 @@ function BulkEditBar({
   const [devDraft, setDevDraft] = useState("");
   const disabled = selectedCount === 0;
   const assigneeOptions = useAssigneeOptions();
+  const bulkAssigneeOptions = isQA ? getQaVisibleOwners(user) : assigneeOptions;
   return (
     <Card className="p-3 sticky top-[64px] z-20 bg-background/95 backdrop-blur border-primary/30">
       <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -1089,7 +1090,7 @@ function BulkEditBar({
           title="Set owner for selected"
         >
           <option value="">Set owner…</option>
-          {assigneeOptions.map((o: string) => <option key={o} value={o}>{o}</option>)}
+          {bulkAssigneeOptions.map((o: string) => <option key={o} value={o}>{o}</option>)}
         </select>
         <select
           disabled={disabled}
