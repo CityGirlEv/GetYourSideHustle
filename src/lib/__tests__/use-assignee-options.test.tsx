@@ -31,8 +31,8 @@ describe("useAssigneeOptions", () => {
 
     const { result } = renderHook(() => useAssigneeOptions());
 
-    // First synchronous render: just the built-in owners.
-    expect(result.current).toEqual([...TEST_OWNERS]);
+    // First synchronous render: Unassigned plus the built-in owners.
+    expect(result.current).toEqual(["Unassigned", ...TEST_OWNERS]);
 
     await waitFor(() => {
       expect(result.current).toEqual(
@@ -67,7 +67,7 @@ describe("useAssigneeOptions", () => {
     await act(async () => {
       await new Promise((r) => setTimeout(r, 0));
     });
-    expect(result.current).toEqual([...TEST_OWNERS]);
+    expect(result.current).toEqual(["Unassigned", ...TEST_OWNERS]);
   });
 
   it("only calls the server fn once across multiple hook consumers", async () => {
