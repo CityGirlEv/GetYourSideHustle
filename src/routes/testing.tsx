@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   CheckCircle2, XCircle, MinusCircle, AlertOctagon, Search, RotateCcw,
   FlaskConical, CalendarDays, ListChecks, GitBranch, Sparkles, ExternalLink,
-  Wrench, RefreshCw, Paperclip, Upload, Trash2, FileText, Loader2, Save, Pencil, ChevronRight, ChevronDown, Copy, Play,
+  Wrench, RefreshCw, Paperclip, Upload, Trash2, FileText, Loader2, Save, Pencil, ChevronRight, ChevronDown, Copy, Play, Hourglass,
 } from "lucide-react";
 import {
   TEST_CASES, IMPLEMENTATION_PLAN, SPRINTS, TASKS,
@@ -313,6 +313,10 @@ export function TestPlanTab() {
   const [saveScopeId, setSaveScopeId] = useState<string | null>(null);
   // Live save progress for the floating progress bar. null = no save in flight.
   const [saveProgress, setSaveProgress] = useState<{ done: number; total: number } | null>(null);
+  // Indeterminate "busy" indicator shown while the user is waiting on
+  // something that doesn't have a discrete progress count (e.g. preparing
+  // the confirmation dialog or checking evidence before the bulk write).
+  const [saveBusy, setSaveBusy] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [query, setQuery] = useState("");
   const [areaFilter, setAreaFilter] = useState<string[]>([]);
@@ -447,7 +451,9 @@ export function TestPlanTab() {
     // Always route through the confirmation popup so the user can review
     // before/after and uncheck anything they don't want saved.
     setSaveScopeId(id);
-    setSaveOpen(true);
+    setSaveBusy("Preparing review…");
+    // Defer dialog open so the hourglass paints before the (heavier) dialog mount.
+    requestAnimationFrame(() => setSaveOpen(true));
   };
 
   // Persist a subset of pending changes; remaining ones stay in draft.
@@ -457,6 +463,7 @@ export function TestPlanTab() {
       toast.error("Cannot save test result", { description: blockReason });
       return;
     }
+    setSaveBusy("Checking evidence…");
     // ----- Mandatory-evidence gate ------------------------------------------
     // Any status flip to "fail" / "failed_retest" requires at least one
     // attached screenshot/log. Block those rows up-front so QA can't claim a
@@ -479,10 +486,11 @@ export function TestPlanTab() {
               ? `Attach a screenshot before failing ${missing[0].id}.`
               : `Attach a screenshot before failing: ${missing.map((m) => m.id).join(", ")}.`,
           );
-          if (selectedKeys.size === 0) { setSaveOpen(false); return; }
+          if (selectedKeys.size === 0) { setSaveOpen(false); setSaveBusy(null); return; }
         }
       }
     }
+    setSaveBusy("Writing locally…");
     const stillDraft = {
       status: { ...dStatuses }, qaNote: { ...dQaNotes }, devNote: { ...dDevNotes },
       severity: { ...dSeverities }, assignee: { ...dAssignees }, sprint: { ...dSprints },
@@ -524,8 +532,9 @@ export function TestPlanTab() {
       selectedKeys,
       draftSnapshot,
     );
-    if (ops.length === 0) return;
+    if (ops.length === 0) { setSaveBusy(null); return; }
     const selectedCount = selectedKeys.size;
+    setSaveBusy(null);
     const { cloudPushTestsBulk, cloudAppendNotesBulk } = await import("@/lib/cloud-sync");
     // Collapse N round-trips into at most 2: one bulk upsert for field
     // patches, one merged SELECT+UPSERT for notes.
@@ -830,7 +839,8 @@ export function TestPlanTab() {
                   toast.error("Cannot save test result", { description: blockReason });
                   return;
                 }
-                setSaveOpen(true);
+                setSaveBusy("Preparing review…");
+                requestAnimationFrame(() => setSaveOpen(true));
               }}
               disabled={pendingCount === 0 || !canSaveToCloud}
               className="relative"
@@ -1126,11 +1136,16 @@ export function TestPlanTab() {
       </div>
       <SaveChangesDialog
         open={saveOpen}
-        onOpenChange={(v: boolean) => { setSaveOpen(v); if (!v) setSaveScopeId(null); }}
+        onOpenChange={(v: boolean) => {
+          setSaveOpen(v);
+          // Dialog is mounted/dismissed — preparing phase is over.
+          setSaveBusy(null);
+          if (!v) setSaveScopeId(null);
+        }}
         changes={saveScopeId ? pendingChanges.filter((c) => c.testId === saveScopeId) : pendingChanges}
         onConfirm={commitChanges}
       />
-      <SaveProgressBar progress={saveProgress} />
+      <SaveProgressBar progress={saveProgress} busyLabel={saveBusy} />
       <EditDescriptionDialog
         test={editingId ? effectiveById.get(editingId) ?? null : null}
         open={!!editingId}
@@ -2089,7 +2104,33 @@ function SaveChangesDialog({
 }
 
 /* ============================ SAVE PROGRESS BAR ============================ */
-function SaveProgressBar({ progress }: { progress: { done: number; total: number } | null }) {
+function SaveProgressBar({
+  progress,
+  busyLabel,
+}: {
+  progress: { done: number; total: number } | null;
+  busyLabel?: string | null;
+}) {
+  // Indeterminate "hourglass" mode — shown while the user is waiting on the
+  // confirmation dialog to open or on the pre-write evidence check.
+  if (!progress && busyLabel) {
+    return (
+      <div className="fixed bottom-4 right-4 z-50 w-72 rounded-lg border border-border bg-background shadow-lg p-3">
+        <div className="flex items-center justify-between text-xs font-semibold mb-2">
+          <span className="flex items-center gap-1.5">
+            <Hourglass className="h-3.5 w-3.5 text-primary animate-pulse" />
+            {busyLabel}
+          </span>
+          <span className="font-mono text-muted-foreground">…</span>
+        </div>
+        {/* Indeterminate shimmer bar */}
+        <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+          <div className="h-full w-1/3 rounded-full bg-primary animate-[slide-in-right_1.2s_ease-in-out_infinite]" />
+        </div>
+        <div className="text-[10px] text-muted-foreground mt-1 text-right">Please wait…</div>
+      </div>
+    );
+  }
   if (!progress) return null;
   const pct = progress.total === 0 ? 100 : Math.round((progress.done / progress.total) * 100);
   const finishing = progress.done >= progress.total;
