@@ -472,7 +472,7 @@ export const TEST_CASES: TestCase[] = [
   {
     id: "SCEN-QA-017", area: "Scenario", priority: "P2", assignee: "Catria",
     title: "Search scenarios by exact code from /advisor",
-    preconditions: "Logged in as QA. Have a known Scenario ID from one of SCEN-QA-001..15 above.",
+    preconditions: "Logged in as QA. Have a known Scenario ID from one of SCEN-QA-001, SCEN-QA-003..SCEN-QA-016 above.",
     steps: ["Log in as a QA user (you should land on /testing)","Navigate to /advisor","In the 'Look up a scenario by code' field paste the SCN-YYYY-XXXX-XXXX code captured in an earlier creation test","Click Look up","Verify the scenario detail page loads within 2 seconds","Verify the demographics, conditions, and medications match exactly what was entered when the scenario was created"],
     expected: "Lookup succeeds, the scenario page renders, and every field matches the originally-entered values. No 'not found' or rate-limit error appears.",
     path: "/advisor",
@@ -496,7 +496,7 @@ export const TEST_CASES: TestCase[] = [
   {
     id: "SCEN-QA-020", area: "Scenario", priority: "P2", assignee: "Catria",
     title: "Admin can assign a scenario to an agent",
-    preconditions: "Logged in as admin. At least one user with role 'agent' exists. At least one scenario created by SCEN-QA-001..15 exists.",
+    preconditions: "Logged in as admin. At least one user with role 'agent' exists. At least one scenario created by SCEN-QA-001, SCEN-QA-003..SCEN-QA-016 exists.",
     steps: ["Log in as an admin user and open /admin","Locate the scenarios table and pick one of the SCEN-QA created scenarios","Open the 'Assigned agent' dropdown for that row and pick an agent","Refresh the page","Log out and log back in as that agent and open /agent","Verify the assigned scenario appears in the agent's queue"],
     expected: "Assignment is persisted, an AUDIT 'ASSIGN_AGENT' row is recorded, and the chosen agent sees the scenario on their /agent dashboard. Admin can re-assign or clear the assignment.",
     path: "/admin",
