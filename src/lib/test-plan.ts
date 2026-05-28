@@ -967,7 +967,13 @@ export function saveAssigneeOverride(id: string, owner: string) {
 }
 export function loadAllAssigneeOverrides(): Record<string, string> {
   const out: Record<string, string> = {};
-  for (const t of TEST_CASES) out[t.id] = loadAssigneeOverride(t.id);
+  if (typeof window === "undefined") return out;
+  for (let i = 0; i < window.localStorage.length; i++) {
+    const key = window.localStorage.key(i) || "";
+    if (key.startsWith("test-assignee:")) {
+      out[key.slice("test-assignee:".length)] = window.localStorage.getItem(key) || "";
+    }
+  }
   return out;
 }
 
