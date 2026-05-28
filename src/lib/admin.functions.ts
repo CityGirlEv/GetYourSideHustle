@@ -6,6 +6,27 @@ import { z } from "zod";
 const ROLE_VALUES = ["admin", "qa", "agent", "editor", "viewer", "advisor"] as const;
 const roleSchema = z.enum(ROLE_VALUES);
 
+/**
+ * Append an audit_logs row. Best-effort: a failure to log must never block
+ * the underlying admin action, but the error is surfaced to server logs so
+ * we notice if the trail goes silent.
+ */
+async function logAdminAudit(
+  actorId: string,
+  action: string,
+  targetUserId: string,
+  metadata: Record<string, unknown> = {},
+) {
+  const { error } = await supabaseAdmin.from("audit_logs").insert({
+    user_id: actorId,
+    action,
+    entity_type: "user",
+    entity_id: targetUserId,
+    metadata,
+  });
+  if (error) console.error("[admin] audit log insert failed", action, error.message);
+}
+
 const NOTIFY_FROM = "The Medicare Optimizer <onboarding@resend.dev>";
 const APP_URL = "https://themedicareoptimizer.lovable.app";
 
