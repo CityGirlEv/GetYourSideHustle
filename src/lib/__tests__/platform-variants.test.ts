@@ -52,7 +52,8 @@ describe("platform variant fan-out", () => {
     for (const t of multiSources) {
       for (const v of expandTestWithPlatforms(t)) {
         if (v.area.endsWith("Mobile") || v.area.endsWith("Tablet")) {
-          if (v.assignee in counts) counts[v.assignee]++;
+          const a = v.assignee;
+          if (a && a in counts) counts[a]++;
         }
       }
     }
