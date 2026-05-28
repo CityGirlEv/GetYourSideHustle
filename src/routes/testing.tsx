@@ -1306,9 +1306,9 @@ function TestCaseCard({
   /** When true, the Owner select is rendered read-only (used for
    *  auto-discovered Vitest / Playwright tests owned by their runner). */
   assigneeLocked?: boolean;
-  /** When set, the Owner select is locked to this single name (used for
-   *  non-admin QA users so they can only ever see their own name). */
-  restrictAssigneeTo?: string;
+  /** When set, restricts the Owner select to this list of names (used for
+   *  non-admin QA users so they can only claim/release tests for themselves). */
+  restrictAssigneeTo?: string[];
 }) {
   // Shade the whole row based on status (background + left border accent)
   const shade =
@@ -1417,10 +1417,10 @@ function TestCaseCard({
             className="bg-transparent text-[11px] font-semibold text-primary focus:outline-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-90"
             value={assignee}
             onChange={(e) => onAssigneeChange(e.target.value)}
-            disabled={assigneeLocked || !!restrictAssigneeTo}
-            title={assigneeLocked ? "Owned by the automated test runner" : restrictAssigneeTo ? "QA users can only see their own assignments" : "Re-assign this test"}
+            disabled={assigneeLocked || (restrictAssigneeTo && restrictAssigneeTo.length <= 1)}
+            title={assigneeLocked ? "Owned by the automated test runner" : restrictAssigneeTo ? "QA users can only claim tests for themselves or release them as Unassigned" : "Re-assign this test"}
           >
-            {(assigneeLocked ? [assignee] : restrictAssigneeTo ? [restrictAssigneeTo] : assigneeOptions).map((o: string) => (
+            {(assigneeLocked ? [assignee] : restrictAssigneeTo ?? assigneeOptions).map((o: string) => (
               <option key={o} value={o}>{o}</option>
             ))}
           </select>
