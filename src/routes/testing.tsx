@@ -310,6 +310,9 @@ export function TestPlanTab() {
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [ownerFilter, setOwnerFilter] = useState<string[]>([]);
   const [sprintFilter, setSprintFilter] = useState<string[]>([]);
+  // Full assignee roster (TEST_OWNERS + every enabled QA user). Admins see
+  // a bubble for each one even if they have no tests currently assigned.
+  const allAssignees = useAssigneeOptions();
   // For QA users, default the owner filter to themselves on first load so
   // they only see the tests assigned to them. Admins see everything.
   const ownerFilterInitialized = useRef(false);
