@@ -1113,6 +1113,7 @@ function TestCaseCard({
   // Per-step execution checkboxes — persisted locally so the tester can
   // resume where they left off. Marking "Pass" requires every step checked.
   const stepsKey = `qa-step-checks:${t.id}`;
+  const confirm = useConfirm();
   const [checkedSteps, setCheckedSteps] = useState<Set<number>>(() => {
     if (typeof window === "undefined") return new Set();
     try {
@@ -1143,16 +1144,17 @@ function TestCaseCard({
       else window.localStorage.removeItem(failedStepKey);
     } catch { /* ignore */ }
   };
-  const handleStatusChange = (s: TestStatus) => {
+  const handleStatusChange = async (s: TestStatus) => {
     if (s === "pass" && !allStepsChecked) {
       const missing = t.steps.length - checkedSteps.size;
-      const proceed = window.confirm(
-        `You have not checked off all steps for ${t.id}.\n\n` +
-        `${missing} step(s) remain unchecked. A passing result should only be recorded once every step has been executed.\n\n` +
-        `Click Cancel to go back and finish the steps. (Pass is blocked until every step is checked.)`,
-      );
-      // Always block — warning is informational; the action is not allowed.
-      void proceed;
+      await confirm({
+        title: `Steps not complete for ${t.id}`,
+        description:
+          `${missing} step(s) remain unchecked. A passing result should only be recorded once every step has been executed.\n\n` +
+          `Pass is blocked until every step is checked.`,
+        confirmLabel: "OK",
+        cancelLabel: "Back",
+      });
       return;
     }
     onChange(s);
