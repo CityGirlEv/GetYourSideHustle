@@ -1306,10 +1306,30 @@ function TestCaseCard({
               {showQaNote && !severity && (
                 <p className="text-[10px] text-destructive mb-1">Pick a severity before saving this failure.</p>
               )}
+              {showQaNote && (
+                <div className="flex items-center gap-2 mb-1.5">
+                  <label className="text-[10px] font-semibold text-destructive shrink-0">
+                    Which step failed?
+                  </label>
+                  <select
+                    value={failedStep}
+                    onChange={(e) => persistFailedStep(e.target.value)}
+                    className="text-[11px] rounded-md border border-destructive/40 bg-destructive/5 px-2 py-0.5 focus:outline-none focus:ring-2 focus:ring-destructive/30"
+                  >
+                    <option value="">Select step…</option>
+                    {t.steps.map((_, i) => (
+                      <option key={i} value={String(i + 1)}>Step {i + 1}</option>
+                    ))}
+                  </select>
+                  {!failedStep && (
+                    <span className="text-[10px] text-destructive">Required — indicate the step that failed.</span>
+                  )}
+                </div>
+              )}
               <textarea
                 value={qaNote}
                 onChange={(e) => onQaNoteChange(e.target.value)}
-                placeholder="Describe what went wrong, browser/device, reproduction steps, screenshot link…"
+                placeholder="Describe what went wrong at the selected step — browser/device, what you saw vs. expected, screenshot link…"
                 rows={2}
                 className="w-full text-xs rounded-md border border-destructive/40 bg-destructive/5 px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-destructive/30"
               />
