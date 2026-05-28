@@ -317,7 +317,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
       <div className="flex gap-2 bg-warning/10 border border-warning/30 rounded-md p-3 mb-5 text-xs">
         <ShieldAlert className="h-4 w-4 text-warning flex-shrink-0 mt-0.5" />
         <div>
-          <strong>We do not collect any personally identifiable information.</strong> Do NOT enter your name, address, phone, email, Social Security number, Medicare ID, or full date of birth — there are no fields for these. You will receive a Scenario ID to share with your agent yourself.
+          <strong>We do not collect any personally identifiable information.</strong> Do NOT enter your name, address, phone, email, Social Security number, Medicare ID, or date of birth — there are no fields for these. You will receive a Scenario ID to share with your agent yourself.
         </div>
       </div>
 
