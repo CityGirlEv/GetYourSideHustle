@@ -52,6 +52,7 @@ import { toast } from "sonner";
 import { MultiSelect, multiSelectMatches } from "@/components/ui/multi-select";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { buildCloudOps, type DraftValues } from "@/lib/save-batch";
+import { canSaveTestResults, getTestResultSaveBlockReason } from "@/lib/qa-save-permissions";
 
 // Derive a link target for a test case: explicit `path` wins, otherwise scan
 // preconditions + steps for the first "/route" token (e.g. "Open /advisor").
@@ -207,6 +208,7 @@ function TestingPortal() {
 export function TestPlanTab() {
   const { user } = useApp();
   const isAdmin = user?.role === "admin";
+  const canSaveToCloud = canSaveTestResults(user);
   const confirm = useConfirm();
   // Persisted/saved state, hydrated from local storage
   // Seed local statuses with the last recorded vitest/playwright run so
@@ -435,6 +437,11 @@ export function TestPlanTab() {
     id in dStatuses || id in dQaNotes || id in dDevNotes || id in dSeverities || id in dAssignees || id in dSprints;
 
   const saveSingleTest = (id: string) => {
+    const blockReason = getTestResultSaveBlockReason(user);
+    if (blockReason) {
+      toast.error("Cannot save test result", { description: blockReason });
+      return;
+    }
     const keys = pendingChanges.filter((c) => c.testId === id);
     if (keys.length === 0) return;
     // Always route through the confirmation popup so the user can review
@@ -445,6 +452,11 @@ export function TestPlanTab() {
 
   // Persist a subset of pending changes; remaining ones stay in draft.
   const commitChanges = async (selectedKeys: Set<string>) => {
+    const blockReason = getTestResultSaveBlockReason(user);
+    if (blockReason) {
+      toast.error("Cannot save test result", { description: blockReason });
+      return;
+    }
     // ----- Mandatory-evidence gate ------------------------------------------
     // Any status flip to "fail" / "failed_retest" requires at least one
     // attached screenshot/log. Block those rows up-front so QA can't claim a
@@ -812,9 +824,17 @@ export function TestPlanTab() {
             <Button
               size="sm"
               variant="default"
-              onClick={() => setSaveOpen(true)}
-              disabled={pendingCount === 0}
+              onClick={() => {
+                const blockReason = getTestResultSaveBlockReason(user);
+                if (blockReason) {
+                  toast.error("Cannot save test result", { description: blockReason });
+                  return;
+                }
+                setSaveOpen(true);
+              }}
+              disabled={pendingCount === 0 || !canSaveToCloud}
               className="relative"
+              title={!canSaveToCloud ? getTestResultSaveBlockReason(user) ?? undefined : undefined}
             >
               <Save className="h-3.5 w-3.5 mr-1.5" />
               Save changes
