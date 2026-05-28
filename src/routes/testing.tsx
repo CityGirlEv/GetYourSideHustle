@@ -1125,6 +1125,22 @@ function StepWithSublist({ step, className }: { step: string; className?: string
       </span>
     );
   }
+  // "Enter the remaining for the Scenario Information: gender..., tobacco..., ..." → heading + sublist
+  const remainingMatch = step.match(/^(Enter the remaining for the Scenario Information:)\s*(.+)$/);
+  if (remainingMatch) {
+    const items = remainingMatch[2].split(", ");
+    return (
+      <span className={className}>
+        {remainingMatch[1]}
+        <ul className="ml-5 mt-0.5 space-y-0.5 list-disc list-outside">
+          {items.map((item, i) => (
+            <li key={i}>{item}</li>
+          ))}
+        </ul>
+      </span>
+    );
+  }
+
   // Legacy: "Enter birth year..., ZIP3=..., gender..." → split by comma after the intro
   if (step.startsWith("Enter ") && step.includes(", ZIP3=")) {
     const parts = step.split(", ");
