@@ -267,6 +267,23 @@ export function TaskSheetContent() {
       return n;
     });
 
+  // Auto-expand sprint sections when filters are active so filtered results remain visible.
+  const taskFilterKey = JSON.stringify([query, statusFilter, sprintFilter, ownerFilter]);
+  useEffect(() => {
+    const hasFilters = query.trim() !== "" || statusFilter.length > 0 || sprintFilter.length > 0 || ownerFilter.length > 0;
+    if (!hasFilters) return;
+    const toExpand = new Set<string>();
+    for (const r of filtered) {
+      toExpand.add(r.sprintId || "_none");
+    }
+    setCollapsedSprints((prev) => {
+      const next = new Set(prev);
+      for (const id of toExpand) next.delete(id);
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [taskFilterKey]);
+
   const openNew = () => { setEditing(emptyDraft()); setDialogOpen(true); };
   const openEdit = (r: TaskRow) => { setEditing({ ...r }); setDialogOpen(true); };
 
