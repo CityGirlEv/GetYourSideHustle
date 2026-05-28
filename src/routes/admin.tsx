@@ -228,6 +228,11 @@ function AdminPortal() {
   const [savingEdit, setSavingEdit] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<StaffMember | null>(null);
 
+  const [testTemplate, setTestTemplate] = useState("welcome");
+  const [testRecipient, setTestRecipient] = useState("");
+  const [testData, setTestData] = useState("{}");
+  const [sendingTest, setSendingTest] = useState(false);
+
   const reloadStaff = async () => {
     const [s, a] = await Promise.all([fetchStaff(), fetchAgents()]);
     setStaff(s as StaffMember[]);
