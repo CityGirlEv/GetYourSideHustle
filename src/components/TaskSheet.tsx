@@ -803,7 +803,7 @@ export function TaskSheetContent() {
                       className="bg-muted/60 hover:bg-muted/70 cursor-pointer border-t-2 border-border"
                       onClick={() => toggleSprint(sprintId)}
                     >
-                      <TableCell colSpan={14} className="py-2">
+                      <TableCell colSpan={15} className="py-2">
                         <div className="flex items-center gap-2 font-semibold text-sm">
                           <ChevronRight className={`h-4 w-4 transition-transform ${!isCollapsed ? "rotate-90" : ""}`} />
                           <span>{label}</span>
