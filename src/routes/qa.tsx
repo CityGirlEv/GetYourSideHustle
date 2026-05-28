@@ -110,7 +110,7 @@ function QADashboard() {
 
   const testStats = useMemo(() => {
     const counts: Record<TestStatus, number> = {
-      pass: 0, fail: 0, blocked: 0, not_run: 0,
+      pass: 0, fail: 0, blocked: 0, not_run: 0, in_progress: 0,
       fixed_retest: 0, failed_retest: 0,
     };
     for (const t of TEST_CASES) counts[readStatus(t.id)]++;
