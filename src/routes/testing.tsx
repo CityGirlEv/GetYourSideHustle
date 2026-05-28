@@ -1105,8 +1105,8 @@ export function TestPlanTab() {
       </div>
       <SaveChangesDialog
         open={saveOpen}
-        onOpenChange={setSaveOpen}
-        changes={pendingChanges}
+        onOpenChange={(v: boolean) => { setSaveOpen(v); if (!v) setSaveScopeId(null); }}
+        changes={saveScopeId ? pendingChanges.filter((c) => c.testId === saveScopeId) : pendingChanges}
         onConfirm={commitChanges}
       />
       <SaveProgressBar progress={saveProgress} />
