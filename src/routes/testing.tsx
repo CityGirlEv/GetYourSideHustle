@@ -510,7 +510,13 @@ export function TestPlanTab() {
     }
   };
 
-  const areas = useMemo(() => Array.from(new Set(effectiveCases.map((t) => t.area))), [effectiveCases]);
+  const areas = useMemo(
+    () =>
+      Array.from(new Set(effectiveCases.map((t) => t.area))).sort((a, b) =>
+        a.localeCompare(b, undefined, { sensitivity: "base" }),
+      ),
+    [effectiveCases],
+  );
   // Effective assignee/sprint that respects unsaved drafts (the lib helpers read storage)
   const effAssignee = (t: TestCase): string => {
     const platformSuffix = TEST_PLATFORMS.find((p) => t.id.endsWith(`-${p.suffix}`))?.suffix;
@@ -857,6 +863,7 @@ export function TestPlanTab() {
           placeholder="Area" triggerClassName="w-[180px]"
           options={areas.map((a) => ({ value: a, label: a }))}
           value={areaFilter} onChange={setAreaFilter}
+          searchable searchPlaceholder="Search areas…"
         />
         {isAdmin && (
           <MultiSelect
