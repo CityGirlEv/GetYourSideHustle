@@ -1012,9 +1012,10 @@ function BulkEditBar({
           title="Set severity for selected"
         >
           <option value="__noop">Set severity…</option>
-          <option value="high">High</option>
-          <option value="medium">Medium</option>
-          <option value="low">Low</option>
+          <option value="severe">Severe (Show Stopper)</option>
+          <option value="high">High (Must Haves)</option>
+          <option value="medium">Medium (Nice Haves)</option>
+          <option value="low">Low (Can Wait)</option>
           <option value="">Clear severity</option>
         </select>
       </div>
