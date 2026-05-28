@@ -43,6 +43,7 @@ import {
 } from "@/lib/custom-tests";
 import { AUTOMATED_TEST_CASES, AUTOMATED_TEST_IDS, AUTOMATED_TEST_RESULTS } from "@/lib/automated-tests";
 import { expandAllWithPlatforms, TEST_PLATFORMS } from "@/lib/platform-variants";
+import { getQaFirstName, getQaVisibleOwners } from "@/lib/role-scoping";
 import {
   listTestEvidence, uploadTestEvidence, deleteTestEvidence, getTestEvidenceUrl,
   EVIDENCE_ACCEPT_ATTR, type EvidenceFile,
@@ -524,15 +525,16 @@ export function TestPlanTab() {
     const ov = assigneeOverrides[t.id];
     let raw: string;
     if (customIds.has(t.id)) {
-      raw = ov || (t.assignee && t.assignee !== "Unassigned" ? t.assignee : "Unassigned");
+      raw = ov || t.assignee || "Unassigned";
     } else if (AUTOMATED_TEST_IDS.has(t.id)) {
       // Automated tests stay owned by their runner — they're not human-
       // assignable, so the fail-→Dev rule in getTestAssignee doesn't apply.
       raw = t.assignee || "Unassigned";
     } else if (t.assignee) {
-      // Canonical hardcoded assignee on the test case wins over stale local
-      // overrides (older builds auto-saved owners via a 70/30 split that
-      // pre-dated explicit ownership). Failed tests still route to Dev.
+      // Canonical hardcoded assignee on the test case wins over overrides for
+      // the source manual cases. Platform variants keep their suffixed IDs, so
+      // their DB/local overrides are respected below. Failed tests still route
+      // to Dev.
       const status = statuses[t.id];
       raw = (status === "fail" || status === "failed_retest") ? "Dev" : t.assignee;
     } else {
@@ -542,6 +544,7 @@ export function TestPlanTab() {
     if (raw === "Design" || raw === "Dev") return "Eng";
     return raw;
   };
+  const qaVisibleOwners = useMemo(() => getQaVisibleOwners(user), [user]);
   const effSprint = (t: TestCase): string => {
     const ov = sprintOverrides[t.id];
     if (ov) return ov;
@@ -562,10 +565,7 @@ export function TestPlanTab() {
   // breakdowns only ever reflect their own tests. Admins see everything.
   const scopedCases = useMemo(
     () => restrictToSelf
-      ? effectiveCases.filter((t) => {
-          const a = effAssignee(t);
-          return a === qaFirstName || a === "Unassigned";
-        })
+      ? effectiveCases.filter((t) => qaVisibleOwners.includes(effAssignee(t)))
       : effectiveCases,
     [effectiveCases, restrictToSelf, qaFirstName, statuses, assigneeOverrides, customIds],
   );
@@ -575,7 +575,7 @@ export function TestPlanTab() {
     // currently assigned) so their bubble + per-owner row still render with 0.
     if (isAdmin) {
       for (const o of allAssignees) {
-        if (o && o !== "Unassigned") counts[o] = 0;
+        if (o) counts[o] = 0;
       }
     }
     for (const t of scopedCases) {
