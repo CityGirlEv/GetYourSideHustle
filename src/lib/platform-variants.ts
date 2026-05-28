@@ -8,7 +8,7 @@
 // test's owner in the current sprint.
 // ============================================================================
 import type { TestCase } from "@/lib/test-plan";
-import { ACTIVE_SPRINT_ID } from "@/lib/test-plan";
+import { ACTIVE_SPRINT_ID, getTestAssignee } from "@/lib/test-plan";
 
 export type PlatformCategory = "Mobile" | "Tablet" | "Desktop";
 
@@ -44,7 +44,7 @@ export function expandTestWithPlatforms(t: TestCase): TestCase[] {
     id: `${t.id}-${p.suffix}`,
     title: `${t.title} — ${p.label}`,
     area: `${t.area} · ${p.category}`,
-    assignee: t.assignee,
+    assignee: t.assignee || getTestAssignee(t),
     sprintId: t.sprintId || ACTIVE_SPRINT_ID,
     notes: t.notes
       ? `${t.notes}\n\nPlatform: ${p.label} (from ${t.id})`
