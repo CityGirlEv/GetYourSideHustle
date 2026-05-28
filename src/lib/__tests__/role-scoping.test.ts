@@ -77,13 +77,13 @@ describe("role-scoping", () => {
       expect(out.map((c) => c.id)).toEqual(["1", "3", "5"]);
     });
 
-    it("returns empty array for QA user with no resolvable name", () => {
+    it("still returns Unassigned for QA user with no resolvable name", () => {
       const out = filterToOwnAssignments(
         cases,
         { role: "qa", full_name: "", email: "" },
         getOwner,
       );
-      expect(out).toEqual([]);
+      expect(out.map((c) => c.id)).toEqual(["5"]);
     });
 
     it("still returns Unassigned when QA user has no owner matches", () => {
