@@ -624,13 +624,13 @@ export function TestPlanTab() {
 
   const counts = useMemo(() => {
     const c: Record<TestStatus | "total", number> = {
-      total: TEST_CASES.length,
+      total: scopedCases.length,
       pass: 0, fail: 0, blocked: 0, not_run: 0, in_progress: 0,
       fixed_retest: 0, failed_retest: 0,
     };
-    for (const t of TEST_CASES) c[statuses[t.id] ?? "not_run"]++;
+    for (const t of scopedCases) c[statuses[t.id] ?? "not_run"]++;
     return c;
-  }, [statuses]);
+  }, [statuses, scopedCases]);
   const passRate = counts.total ? Math.round((counts.pass / counts.total) * 100) : 0;
 
   // When a single status filter is active, the progress bars reflect THAT status.
