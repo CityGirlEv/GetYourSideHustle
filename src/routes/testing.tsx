@@ -100,6 +100,47 @@ function TestTitleLink({ test, children }: { test: TestCase; children: React.Rea
   );
 }
 
+/**
+ * Copy a test-runner command to the clipboard. Tests can't actually execute
+ * from the deployed app (Workers runtime can't spawn vitest / playwright), so
+ * the Run buttons hand admins the exact command to paste into a terminal.
+ */
+async function copyRunCommand(cmd: string, label: string) {
+  try {
+    await navigator.clipboard.writeText(cmd);
+    toast.success(`Copied: ${label}`, {
+      description: cmd,
+      duration: 6000,
+    });
+  } catch {
+    toast.error("Could not copy to clipboard", { description: cmd });
+  }
+}
+
+/** Extract the shell command stored in an automated test's first step
+ *  ("Run: bunx vitest run …" → "bunx vitest run …"). */
+function commandForAutomatedTest(t: TestCase): string | null {
+  const step = t.steps[0] ?? "";
+  const m = step.match(/^Run:\s*(.+)$/);
+  return m ? m[1].trim() : null;
+}
+
+function RunAutomatedButton({ t }: { t: TestCase }) {
+  const cmd = commandForAutomatedTest(t);
+  if (!cmd) return null;
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      className="h-7 px-2 text-xs border-emerald-500/60 text-emerald-700 hover:bg-emerald-500/10"
+      onClick={() => copyRunCommand(cmd, `Run ${t.id}`)}
+      title={`Copy command: ${cmd}`}
+    >
+      <Play className="h-3.5 w-3.5 mr-1" /> Run
+    </Button>
+  );
+}
+
 export const Route = createFileRoute("/testing")({
   head: () => ({
     meta: [
