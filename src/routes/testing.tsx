@@ -767,7 +767,7 @@ export function TestPlanTab() {
         </div>
         <>
             <Progress value={overallFocusPct} className="h-2" />
-            {Object.keys(ownerStatusCounts).length > 0 && (
+            {isAdmin && Object.keys(ownerStatusCounts).length > 0 && (
               <div className="mt-4 pt-3 border-t border-border/60 space-y-2">
                 <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
                   By QA owner
