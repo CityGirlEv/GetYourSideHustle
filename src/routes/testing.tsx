@@ -43,7 +43,7 @@ import {
 } from "@/lib/custom-tests";
 import { AUTOMATED_TEST_CASES, AUTOMATED_TEST_IDS, AUTOMATED_TEST_RESULTS } from "@/lib/automated-tests";
 import { expandAllWithPlatforms, TEST_PLATFORMS } from "@/lib/platform-variants";
-import { getQaVisibleOwners } from "@/lib/role-scoping";
+import { getQaVisibleOwners, getQaFirstName } from "@/lib/role-scoping";
 import {
   listTestEvidence, uploadTestEvidence, deleteTestEvidence, getTestEvidenceUrl,
   EVIDENCE_ACCEPT_ATTR, type EvidenceFile,
@@ -311,6 +311,7 @@ export function TestPlanTab() {
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [ownerFilter, setOwnerFilter] = useState<string[]>([]);
   const [sprintFilter, setSprintFilter] = useState<string[]>([]);
+  const [passRateExpanded, setPassRateExpanded] = useState(() => user?.role === "qa");
   // Full assignee roster (TEST_OWNERS + every enabled QA user). Admins see
   // a bubble for each one even if they have no tests currently assigned.
   const allAssignees = useAssigneeOptions();
@@ -712,18 +713,28 @@ export function TestPlanTab() {
             </div>
       </Card>
 
-      {/* Summary */}
+      {/* Summary / Pass Rate */}
       <Card className="p-4">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-          <div>
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            {user?.role !== "qa" && (
+              <button
+                type="button"
+                onClick={() => setPassRateExpanded((v) => !v)}
+                className="inline-flex items-center justify-center rounded-md p-1 hover:bg-accent transition-colors"
+                title={passRateExpanded ? "Collapse pass rate" : "Expand pass rate"}
+              >
+                {passRateExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              </button>
+            )}
+            <div>
               <div className="text-xs uppercase tracking-wide text-muted-foreground">
                 {focusStatusLabel[focusStatus]} rate
               </div>
-            </div>
-            <div className="text-2xl font-bold">{overallFocusPct}%</div>
-            <div className="text-[11px] text-muted-foreground">
-              {overallFocusCount}/{counts.total}
+              <div className="text-2xl font-bold">{overallFocusPct}%</div>
+              <div className="text-[11px] text-muted-foreground">
+                {overallFocusCount}/{counts.total}
+              </div>
             </div>
           </div>
           <div className="flex flex-wrap gap-2 text-xs">
@@ -781,8 +792,44 @@ export function TestPlanTab() {
             </Button>
           </div>
         </div>
-        <>
+        {passRateExpanded && (
+          <>
             <Progress value={overallFocusPct} className="h-2" />
+            {user?.role === "qa" && (
+              (() => {
+                const qaName = getQaFirstName(user);
+                const c = ownerStatusCounts[qaName];
+                if (!c) return null;
+                const ownerFocusCount = c[focusStatus];
+                const ownerFocusPct = c.total ? Math.round((ownerFocusCount / c.total) * 100) : 0;
+                return (
+                  <div className="mt-4 pt-3 border-t border-border/60 space-y-2">
+                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
+                      Your numbers
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="min-w-[88px] text-left text-xs font-semibold">{qaName}</span>
+                        <span className="text-[11px] text-muted-foreground">
+                          {ownerFocusCount}/{c.total} · {ownerFocusPct}% {focusStatusLabel[focusStatus]}
+                        </span>
+                      </div>
+                      <Progress value={ownerFocusPct} className="h-1.5" />
+                      <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                        <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold bg-emerald-500/10 text-emerald-700 border-emerald-500/30">{c.pass} <span className="font-normal opacity-70">Pass</span></span>
+                        <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold bg-destructive/10 text-destructive border-destructive/30">{c.fail} <span className="font-normal opacity-70">Fail</span></span>
+                        <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold bg-sky-500/10 text-sky-700 border-sky-500/30">{c.fixed_retest} <span className="font-normal opacity-70">Fixed/Retest</span></span>
+                        <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold bg-fuchsia-500/10 text-fuchsia-700 border-fuchsia-500/30">{c.failed_retest} <span className="font-normal opacity-70">Failed/Retest</span></span>
+                        <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold bg-amber-500/10 text-amber-700 border-amber-500/30">{c.in_progress} <span className="font-normal opacity-70">In progress</span></span>
+                        <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold bg-amber-500/10 text-amber-700 border-amber-500/30">{c.blocked} <span className="font-normal opacity-70">Blocked</span></span>
+                        <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold bg-muted text-muted-foreground border-border">{c.not_run} <span className="font-normal opacity-70">Not run</span></span>
+                        <span className="text-[11px] text-muted-foreground">· {c.total} total</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()
+            )}
             {isAdmin && Object.keys(ownerStatusCounts).length > 0 && (
               <div className="mt-4 pt-3 border-t border-border/60 space-y-2">
                 <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
@@ -854,6 +901,7 @@ export function TestPlanTab() {
               </div>
             )}
           </>
+        )}
       </Card>
 
       {/* Filters */}
