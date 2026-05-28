@@ -93,7 +93,7 @@ export const listStaff = createServerFn({ method: "POST" })
     if (userIds.length === 0) return [];
 
     const [profilesRes, rolesRes, creditsRes] = await Promise.all([
-      supabaseAdmin.from("profiles").select("id, full_name, npn_number").in("id", userIds),
+      supabaseAdmin.from("profiles").select("id, full_name, npn_number, qa_devices").in("id", userIds),
       supabaseAdmin.from("user_roles").select("user_id, role").in("user_id", userIds),
       supabaseAdmin.from("advisor_credits").select("advisor_id, balance").in("advisor_id", userIds),
     ]);
@@ -112,6 +112,7 @@ export const listStaff = createServerFn({ method: "POST" })
       email: u.email ?? "",
       full_name: profileMap.get(u.id)?.full_name ?? "",
       npn_number: profileMap.get(u.id)?.npn_number ?? "",
+      qa_devices: (profileMap.get(u.id)?.qa_devices ?? []) as string[],
       role: (rolesMap.get(u.id) ?? ["advisor"])[0],
       roles: rolesMap.get(u.id) ?? ["advisor"],
       credits: creditMap.get(u.id) ?? 0,
@@ -130,6 +131,7 @@ export const updateUser = createServerFn({ method: "POST" })
       npn_number: z.string().max(64).optional().nullable(),
       email: z.string().email().optional(),
       password: z.string().min(8).max(128).optional(),
+      qa_devices: z.array(z.string().trim().min(1).max(80)).max(20).optional().nullable(),
     }).parse(input)
   )
   .handler(async ({ data, context }) => {
@@ -141,10 +143,11 @@ export const updateUser = createServerFn({ method: "POST" })
       const { error } = await supabaseAdmin.auth.admin.updateUserById(data.user_id, updates);
       if (error) throw new Error(error.message);
     }
-    if (data.full_name !== undefined || data.npn_number !== undefined) {
-      const patch: { id: string; full_name?: string; npn_number?: string | null } = { id: data.user_id };
+    if (data.full_name !== undefined || data.npn_number !== undefined || data.qa_devices !== undefined) {
+      const patch: { id: string; full_name?: string; npn_number?: string | null; qa_devices?: string[] | null } = { id: data.user_id };
       if (data.full_name !== undefined) patch.full_name = data.full_name;
       if (data.npn_number !== undefined) patch.npn_number = data.npn_number;
+      if (data.qa_devices !== undefined) patch.qa_devices = data.qa_devices;
       const { error } = await supabaseAdmin.from("profiles").upsert(patch);
       if (error) throw new Error(error.message);
     }
