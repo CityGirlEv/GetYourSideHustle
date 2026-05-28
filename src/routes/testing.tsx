@@ -48,6 +48,7 @@ import {
 } from "@/lib/test-evidence";
 import { toast } from "sonner";
 import { MultiSelect, multiSelectMatches } from "@/components/ui/multi-select";
+import { useConfirm } from "@/components/ConfirmDialog";
 
 // Derive a link target for a test case: explicit `path` wins, otherwise scan
 // preconditions + steps for the first "/route" token (e.g. "Open /advisor").
@@ -203,6 +204,7 @@ function TestingPortal() {
 export function TestPlanTab() {
   const { user } = useApp();
   const isAdmin = user?.role === "admin";
+  const confirm = useConfirm();
   // Persisted/saved state, hydrated from local storage
   // Seed local statuses with the last recorded vitest/playwright run so
   // automated tests show pass/fail without requiring the user to mark them.
@@ -393,9 +395,14 @@ export function TestPlanTab() {
 
   const pendingCount = pendingChanges.length;
 
-  const discardAllDrafts = () => {
+  const discardAllDrafts = async () => {
     if (pendingCount === 0) return;
-    if (!confirm(`Discard all ${pendingCount} unsaved change(s)?`)) return;
+    if (!(await confirm({
+      title: "Discard changes?",
+      description: `Discard all ${pendingCount} unsaved change(s)?`,
+      confirmLabel: "Discard",
+      destructive: true,
+    }))) return;
     setDStatuses({}); setDQaNotes({}); setDDevNotes({});
     setDSeverities({}); setDAssignees({}); setDSprints({});
   };
@@ -1106,6 +1113,7 @@ function TestCaseCard({
   // Per-step execution checkboxes — persisted locally so the tester can
   // resume where they left off. Marking "Pass" requires every step checked.
   const stepsKey = `qa-step-checks:${t.id}`;
+  const confirm = useConfirm();
   const [checkedSteps, setCheckedSteps] = useState<Set<number>>(() => {
     if (typeof window === "undefined") return new Set();
     try {
@@ -1136,16 +1144,17 @@ function TestCaseCard({
       else window.localStorage.removeItem(failedStepKey);
     } catch { /* ignore */ }
   };
-  const handleStatusChange = (s: TestStatus) => {
+  const handleStatusChange = async (s: TestStatus) => {
     if (s === "pass" && !allStepsChecked) {
       const missing = t.steps.length - checkedSteps.size;
-      const proceed = window.confirm(
-        `You have not checked off all steps for ${t.id}.\n\n` +
-        `${missing} step(s) remain unchecked. A passing result should only be recorded once every step has been executed.\n\n` +
-        `Click Cancel to go back and finish the steps. (Pass is blocked until every step is checked.)`,
-      );
-      // Always block — warning is informational; the action is not allowed.
-      void proceed;
+      await confirm({
+        title: `Steps not complete for ${t.id}`,
+        description:
+          `${missing} step(s) remain unchecked. A passing result should only be recorded once every step has been executed.\n\n` +
+          `Pass is blocked until every step is checked.`,
+        confirmLabel: "OK",
+        cancelLabel: "Back",
+      });
       return;
     }
     onChange(s);
@@ -1358,6 +1367,7 @@ function TestCaseCard({
 
 function TestEvidence({ testId }: { testId: string }) {
   const { user } = useApp();
+  const confirm = useConfirm();
   const [files, setFiles] = useState<EvidenceFile[]>([]);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -1404,7 +1414,12 @@ function TestEvidence({ testId }: { testId: string }) {
   };
 
   const onDelete = async (f: EvidenceFile) => {
-    if (!confirm(`Delete ${f.name}?`)) return;
+    if (!(await confirm({
+      title: "Delete file?",
+      description: `Delete ${f.name}?`,
+      confirmLabel: "Delete",
+      destructive: true,
+    }))) return;
     try {
       await deleteTestEvidence(f.path);
       setFiles((p) => p.filter((x) => x.path !== f.path));
@@ -1716,6 +1731,7 @@ function EditDescriptionDialog({
   const [expected, setExpected] = useState("");
   const [notes, setNotes] = useState("");
   const [initial, setInitial] = useState({ title: "", preconditions: "", stepsText: "", expected: "", notes: "" });
+  const confirm = useConfirm();
 
   useEffect(() => {
     if (open && test) {
@@ -1757,8 +1773,13 @@ function EditDescriptionDialog({
     onSaved();
   };
 
-  const onResetToDefault = () => {
-    if (!confirm("Clear all admin edits for this test and restore defaults?")) return;
+  const onResetToDefault = async () => {
+    if (!(await confirm({
+      title: "Restore defaults?",
+      description: "Clear all admin edits for this test and restore defaults?",
+      confirmLabel: "Restore",
+      destructive: true,
+    }))) return;
     clearDescriptionOverride(test.id);
     toast.success("Restored default description.");
     onSaved();
@@ -1766,9 +1787,14 @@ function EditDescriptionDialog({
 
   const hasOverride = Object.keys(loadDescriptionOverride(test.id)).length > 0;
 
-  const handleOpenChange = (v: boolean) => {
+  const handleOpenChange = async (v: boolean) => {
     if (!v && isDirty) {
-      if (!confirm("You have unsaved changes. Discard them?")) return;
+      if (!(await confirm({
+        title: "Discard changes?",
+        description: "You have unsaved changes. Discard them?",
+        confirmLabel: "Discard",
+        destructive: true,
+      }))) return;
     }
     onOpenChange(v);
   };

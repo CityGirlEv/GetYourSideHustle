@@ -32,6 +32,7 @@ import {
 } from "@/lib/task-bulk";
 import { MultiSelect, multiSelectMatches } from "@/components/ui/multi-select";
 import { DateField } from "@/components/DateField";
+import { useConfirm } from "@/components/ConfirmDialog";
 
 const PRIORITIES: Priority[] = ["P0", "P1", "P2", "P3"];
 
@@ -115,6 +116,7 @@ const TASK_STATUS_STYLES: Record<TaskRowStatus, string> = {
 };
 
 export function TaskSheetContent() {
+  const confirm = useConfirm();
   // savedRows = last persisted snapshot; rows = working draft (unsaved edits)
   const [savedRows, setSavedRows] = useState<TaskRow[]>(() => loadTaskRows());
   const [rows, setRows] = useState<TaskRow[]>(() => loadTaskRows());
@@ -327,15 +329,25 @@ export function TaskSheetContent() {
     setBulkAssignBy(""); setBulkDateAssigned(""); setBulkDueDate(""); setBulkDateCompleted(""); setBulkCost("");
     setSelected(new Set());
   };
-  const bulkDelete = () => {
+  const bulkDelete = async () => {
     if (selected.size === 0) return;
-    if (!confirm(`Delete ${selected.size} selected task(s)?`)) return;
+    if (!(await confirm({
+      title: "Delete tasks?",
+      description: `Delete ${selected.size} selected task(s)?`,
+      confirmLabel: "Delete",
+      destructive: true,
+    }))) return;
     persist(bulkDeleteRows(rows, selected));
     setSelected(new Set());
   };
 
-  const onReset = () => {
-    if (!confirm("Reset task sheet to the seeded defaults? Your local edits will be lost.")) return;
+  const onReset = async () => {
+    if (!(await confirm({
+      title: "Reset task sheet?",
+      description: "Reset task sheet to the seeded defaults? Your local edits will be lost.",
+      confirmLabel: "Reset",
+      destructive: true,
+    }))) return;
     const fresh = resetTaskRows();
     setSavedRows(fresh);
     setRows(fresh);
@@ -396,9 +408,14 @@ export function TaskSheetContent() {
 
   const pendingCount = pendingChanges.length;
 
-  const discardAllDrafts = () => {
+  const discardAllDrafts = async () => {
     if (pendingCount === 0) return;
-    if (!confirm(`Discard all ${pendingCount} unsaved change(s)?`)) return;
+    if (!(await confirm({
+      title: "Discard changes?",
+      description: `Discard all ${pendingCount} unsaved change(s)?`,
+      confirmLabel: "Discard",
+      destructive: true,
+    }))) return;
     setRows(savedRows);
   };
 

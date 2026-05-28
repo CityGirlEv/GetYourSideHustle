@@ -13,6 +13,7 @@ import { useEffect, useRef } from "react";
 import appCss from "../styles.css?url";
 import { AppProvider } from "@/lib/app-store";
 import { Toaster } from "@/components/ui/sonner";
+import { ConfirmProvider } from "@/components/ConfirmDialog";
 import { supabase } from "@/integrations/supabase/client";
 
 function NotFoundComponent() {
@@ -150,8 +151,10 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AppProvider>
-        <Outlet />
-        <Toaster position="top-right" richColors />
+        <ConfirmProvider>
+          <Outlet />
+          <Toaster position="top-right" richColors />
+        </ConfirmProvider>
       </AppProvider>
     </QueryClientProvider>
   );
