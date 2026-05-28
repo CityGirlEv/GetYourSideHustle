@@ -1123,6 +1123,19 @@ function TestCaseCard({
     persistSteps(next);
   };
   const allStepsChecked = t.steps.length === 0 || t.steps.every((_, i) => checkedSteps.has(i));
+  // Which step failed — required whenever the tester records a Fail.
+  const failedStepKey = `qa-failed-step:${t.id}`;
+  const [failedStep, setFailedStep] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    try { return window.localStorage.getItem(failedStepKey) ?? ""; } catch { return ""; }
+  });
+  const persistFailedStep = (v: string) => {
+    setFailedStep(v);
+    try {
+      if (v) window.localStorage.setItem(failedStepKey, v);
+      else window.localStorage.removeItem(failedStepKey);
+    } catch { /* ignore */ }
+  };
   const handleStatusChange = (s: TestStatus) => {
     if (s === "pass" && !allStepsChecked) {
       const missing = t.steps.length - checkedSteps.size;
