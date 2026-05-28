@@ -518,7 +518,9 @@ export function TestPlanTab() {
   const areas = useMemo(() => Array.from(new Set(effectiveCases.map((t) => t.area))), [effectiveCases]);
   // Effective assignee/sprint that respects unsaved drafts (the lib helpers read storage)
   const effAssignee = (t: TestCase): string => {
-    const ov = assigneeOverrides[t.id];
+    const platformSuffix = TEST_PLATFORMS.find((p) => t.id.endsWith(`-${p.suffix}`))?.suffix;
+    const sourceId = platformSuffix ? t.id.slice(0, -platformSuffix.length - 1) : t.id;
+    const ov = assigneeOverrides[t.id] || assigneeOverrides[sourceId];
     let raw: string;
     if (customIds.has(t.id)) {
       raw = ov || t.assignee || "Unassigned";
@@ -527,12 +529,8 @@ export function TestPlanTab() {
       // assignable, so the fail-→Dev rule in getTestAssignee doesn't apply.
       raw = t.assignee || "Unassigned";
     } else if (t.assignee) {
-      // Canonical hardcoded assignee on the test case wins over overrides for
-      // the source manual cases. Platform variants keep their suffixed IDs, so
-      // their DB/local overrides are respected below. Failed tests still route
-      // to Dev.
       const status = statuses[t.id];
-      raw = (status === "fail" || status === "failed_retest") ? "Dev" : t.assignee;
+      raw = (status === "fail" || status === "failed_retest") ? "Dev" : (ov || t.assignee);
     } else {
       raw = ov || getTestAssignee(t, statuses[t.id]);
     }
