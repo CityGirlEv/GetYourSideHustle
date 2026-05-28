@@ -473,30 +473,20 @@ export function TestPlanTab() {
       status: { ...savedStatuses }, qaNote: { ...savedQaNotes }, devNote: { ...savedDevNotes },
       severity: { ...savedSeverities }, assignee: { ...savedAssignees }, sprint: { ...savedSprints },
     };
-    const cloudPromises: Promise<boolean>[] = [];
-    const { cloudPushTest, cloudAppendNote } = await import("@/lib/cloud-sync");
+    // ----- Local writes (synchronous, no implicit cloud push) ---------------
+    // We pass syncCloud:false so the test-plan helpers DON'T each fire their
+    // own cloudPushTest. We then coalesce everything into one merged push per
+    // test id and run those through a concurrency-limited pool below.
     for (const c of pendingChanges) {
       if (!selectedKeys.has(c.key)) continue;
       const id = c.testId;
       switch (c.field) {
-        case "status": {
-          const v = dStatuses[id]!; saveStatus(id, v); cloudPromises.push(cloudPushTest(id, { status: v })); newSaved.status[id] = v; delete stillDraft.status[id]; break;
-        }
-        case "qaNote": {
-          const v = dQaNotes[id]!; saveQaNote(id, v); if (v.trim()) cloudPromises.push((async () => { cloudAppendNote(id, "qa", v); return true; })()); newSaved.qaNote[id] = v; delete stillDraft.qaNote[id]; break;
-        }
-        case "devNote": {
-          const v = dDevNotes[id]!; saveDevNote(id, v); if (v.trim()) cloudPromises.push((async () => { cloudAppendNote(id, "dev", v); return true; })()); newSaved.devNote[id] = v; delete stillDraft.devNote[id]; break;
-        }
-        case "severity": {
-          const v = dSeverities[id]!; saveSeverity(id, v); cloudPromises.push(cloudPushTest(id, { severity: v || null })); newSaved.severity[id] = v; delete stillDraft.severity[id]; break;
-        }
-        case "assignee": {
-          const v = dAssignees[id]!; saveAssigneeOverride(id, v); cloudPromises.push(cloudPushTest(id, { assignee: v || null })); newSaved.assignee[id] = v; delete stillDraft.assignee[id]; break;
-        }
-        case "sprint": {
-          const v = dSprints[id]!; saveSprintOverride(id, v); cloudPromises.push(cloudPushTest(id, { sprint_id: v || null })); newSaved.sprint[id] = v; delete stillDraft.sprint[id]; break;
-        }
+        case "status":   { const v = dStatuses[id]!;   saveStatus(id, v, { syncCloud: false });           newSaved.status[id]   = v; delete stillDraft.status[id];   break; }
+        case "qaNote":   { const v = dQaNotes[id]!;    saveQaNote(id, v, { syncCloud: false });           newSaved.qaNote[id]   = v; delete stillDraft.qaNote[id];   break; }
+        case "devNote":  { const v = dDevNotes[id]!;   saveDevNote(id, v, { syncCloud: false });          newSaved.devNote[id]  = v; delete stillDraft.devNote[id];  break; }
+        case "severity": { const v = dSeverities[id]!; saveSeverity(id, v, { syncCloud: false });         newSaved.severity[id] = v; delete stillDraft.severity[id]; break; }
+        case "assignee": { const v = dAssignees[id]!;  saveAssigneeOverride(id, v, { syncCloud: false }); newSaved.assignee[id] = v; delete stillDraft.assignee[id]; break; }
+        case "sprint":   { const v = dSprints[id]!;    saveSprintOverride(id, v, { syncCloud: false });   newSaved.sprint[id]   = v; delete stillDraft.sprint[id];   break; }
       }
     }
     setSavedStatuses(newSaved.status); setSavedQaNotes(newSaved.qaNote); setSavedDevNotes(newSaved.devNote);
@@ -504,13 +494,38 @@ export function TestPlanTab() {
     setDStatuses(stillDraft.status); setDQaNotes(stillDraft.qaNote); setDDevNotes(stillDraft.devNote);
     setDSeverities(stillDraft.severity); setDAssignees(stillDraft.assignee); setDSprints(stillDraft.sprint);
     setSaveOpen(false);
-    const results = await Promise.all(cloudPromises);
-    const okCount = results.filter(Boolean).length;
-    const failCount = results.length - okCount;
+
+    // ----- Coalesced cloud writes with progress bar -------------------------
+    const draftSnapshot: DraftValues = {
+      status: dStatuses, qaNote: dQaNotes, devNote: dDevNotes,
+      severity: dSeverities, assignee: dAssignees, sprint: dSprints,
+    };
+    const ops = buildCloudOps(
+      pendingChanges.map((c) => ({ key: c.key, testId: c.testId, field: c.field })),
+      selectedKeys,
+      draftSnapshot,
+    );
+    if (ops.length === 0) return;
+    const selectedCount = selectedKeys.size;
+    const { cloudPushTest, cloudAppendNote } = await import("@/lib/cloud-sync");
+    setSaveProgress({ done: 0, total: ops.length });
+    const tasks = ops.map((op) => async () => {
+      if (op.kind === "push") {
+        return await cloudPushTest(op.testId, op.patch ?? {});
+      }
+      await cloudAppendNote(op.testId, op.note!.kind, op.note!.text);
+      return true;
+    });
+    const { ok } = await runWithProgress(tasks, {
+      concurrency: 6,
+      onProgress: (done, total) => setSaveProgress({ done, total }),
+    });
+    setSaveProgress(null);
+    const failCount = ops.length - ok;
     if (failCount === 0) {
-      toast.success(`Saved ${selectedKeys.size} change${selectedKeys.size === 1 ? "" : "s"} to cloud.`);
+      toast.success(`Saved ${selectedCount} change${selectedCount === 1 ? "" : "s"} to cloud.`);
     } else {
-      toast.error(`Saved locally, but ${failCount} of ${results.length} cloud write${results.length === 1 ? "" : "s"} failed — see console.`);
+      toast.error(`Saved locally, but ${failCount} of ${ops.length} cloud write${ops.length === 1 ? "" : "s"} failed — see console.`);
     }
   };
 
