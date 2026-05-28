@@ -1136,11 +1136,16 @@ export function TestPlanTab() {
       </div>
       <SaveChangesDialog
         open={saveOpen}
-        onOpenChange={(v: boolean) => { setSaveOpen(v); if (!v) setSaveScopeId(null); }}
+        onOpenChange={(v: boolean) => {
+          setSaveOpen(v);
+          // Dialog is mounted/dismissed — preparing phase is over.
+          setSaveBusy(null);
+          if (!v) setSaveScopeId(null);
+        }}
         changes={saveScopeId ? pendingChanges.filter((c) => c.testId === saveScopeId) : pendingChanges}
         onConfirm={commitChanges}
       />
-      <SaveProgressBar progress={saveProgress} />
+      <SaveProgressBar progress={saveProgress} busyLabel={saveBusy} />
       <EditDescriptionDialog
         test={editingId ? effectiveById.get(editingId) ?? null : null}
         open={!!editingId}
