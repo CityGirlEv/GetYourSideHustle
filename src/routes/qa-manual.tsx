@@ -72,6 +72,11 @@ function QAManualPage() {
             <li>Click <b>Apply</b>. Changes save immediately.</li>
           </ol>
           <p className="text-xs text-muted-foreground italic">↳ The bar only appears once at least one row is selected.</p>
+          <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
+            <b>Bulk-failing?</b> Every row you flip to <b>Fail</b> or <b>Failed/Retest</b> must already have a screenshot attached.
+            Rows missing evidence are skipped automatically and listed in a toast — open them individually, attach a screenshot,
+            then re-apply.
+          </div>
         </Card>
 
         {/* 4. Test statuses */}
@@ -81,14 +86,20 @@ function QAManualPage() {
           <ul className="text-sm space-y-1.5 ml-1">
             <li><b>Not Run</b> — default; not yet executed.</li>
             <li><b>Pass</b> — the test met all acceptance criteria. The test is <b>closed</b>, but status and every field stay editable.</li>
-            <li><b>Fail</b> — bug found. <span className="text-destructive font-semibold">A QA note is required</span> describing what broke, exact steps, and expected vs actual.</li>
+            <li><b>Fail</b> — bug found. <span className="text-destructive font-semibold">A QA note <u>and</u> a screenshot are required</span> — describe what broke (steps, expected vs actual) and attach a screenshot/PDF/log of the result in the Evidence panel before saving.</li>
             <li><b>Fixed / Re-Test</b> — <b>Dev-only</b>. Dev believes the bug is fixed and hands it back to QA for verification. <span className="text-destructive font-semibold">Dev note required.</span></li>
-            <li><b>Failed / Re-Test</b> — <b>Dev-only</b>. Dev couldn't reproduce or test needs clarification / needs QA to re-evaluate and re-test. <span className="text-destructive font-semibold">Dev note required.</span></li>
+            <li><b>Failed / Re-Test</b> — <b>Dev-only</b>. Dev couldn't reproduce or test needs clarification / needs QA to re-evaluate and re-test. <span className="text-destructive font-semibold">Dev note <u>and</u> screenshot required</span> (attach the repro evidence Dev relied on).</li>
             <li><b>Blocked</b> — cannot run (e.g. environment down, depends on another test).</li>
           </ul>
           <div className="rounded-md border border-amber/40 bg-amber/10 p-3 text-sm flex gap-2">
             <MessageSquareWarning className="h-4 w-4 text-amber shrink-0 mt-0.5" />
             <span><b>Loop:</b> QA fails it → Dev triages and assigns <b>Fixed/Retest</b> or <b>Failed/Retest</b> (Dev-only, with a Dev note) → QA re-runs and either Passes or Fails again. Repeat until QA marks <b>Pass</b> — at which point the test is closed but every field stays editable.</span>
+          </div>
+          <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
+            <b>Screenshot gate (every Fail step).</b> Save is blocked — single-row or bulk — until at least one screenshot/PDF/log is
+            attached for any row moving to <b>Fail</b> or <b>Failed/Retest</b>. This applies to the first fail, every re-fail in the
+            loop, and Dev's <b>Failed/Retest</b> hand-off. Use <b>Capture screen</b> (desktop), <b>Take photo</b> (mobile camera), or
+            <b>Upload</b> in the Evidence panel.
           </div>
         </Card>
 
@@ -161,7 +172,7 @@ function QAManualPage() {
           </div>
           <ul className="text-xs text-muted-foreground space-y-1 ml-4 list-disc">
             <li>Only <b>Dev</b> can set <b>Fixed/Retest</b> or <b>Failed/Retest</b>. QA can only set Pass, Fail, In Progress, or Not Started.</li>
-            <li>Every failed test must include a <b>QA note</b>. Every Dev hand-off (Fixed/Retest or Failed/Retest) must include a <b>Dev note</b>.</li>
+            <li>Every failed test must include a <b>QA note</b> <i>and a screenshot</i>. Every Dev hand-off (Fixed/Retest or Failed/Retest) must include a <b>Dev note</b>; <b>Failed/Retest</b> also requires a screenshot.</li>
             <li><b>Screenshot is mandatory for every Fail / Failed-Retest.</b> Attach at least one screenshot (or PDF/log) of the result in the Evidence section before saving — the Save will be blocked otherwise. On iPhone, capture with <b>Side + Volume Up</b>; on Android, <b>Power + Volume Down</b>. The image lands in Photos, then tap <b>Take photo → Photo Library</b> to upload. Allowed: PNG, JPG, HEIC, GIF, WEBP, PDF, .log, .txt (20&nbsp;MB max). Executables, HTML, SVG, scripts, and archives are blocked for safety.</li>
             <li>The loop continues until QA marks <b>Pass</b>. The test is then <b>closed</b> — but status and every field remain editable.</li>
           </ul>
@@ -173,7 +184,7 @@ function QAManualPage() {
           <p className="text-sm text-muted-foreground">You earn credit tokens for every test you execute and submit with evidence.</p>
           <ul className="text-sm space-y-1.5 ml-1">
             <li><b>Pass</b> — earn tokens based on test priority (P0 = 15, P1 = 10, P2 = 5, P3 = 3).</li>
-            <li><b>Fail</b> — earn the same base tokens if you leave reproducible QA notes.</li>
+            <li><b>Fail</b> — earn the same base tokens if you leave reproducible QA notes <b>and</b> attach a screenshot. No screenshot = no credit (the save is blocked anyway).</li>
             <li><b>First-fail bonus</b> — +5 bonus for the first reproducible fail filed on a given test id.</li>
             <li><b>Blocked / Not Run</b> — 0 tokens.</li>
           </ul>
