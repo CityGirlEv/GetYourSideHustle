@@ -62,6 +62,10 @@ describe("status persistence", () => {
     const m = loadAllStatuses();
     expect(Object.keys(m).length).toBe(TEST_CASES.length);
   });
+  it("loadAllStatuses includes platform variant ids restored from cloud/localStorage", () => {
+    saveStatus("AUTH-001-COMP", "pass", { syncCloud: false });
+    expect(loadAllStatuses()["AUTH-001-COMP"]).toBe("pass");
+  });
 });
 
 describe("QA + dev notes", () => {
@@ -76,6 +80,12 @@ describe("QA + dev notes", () => {
     saveDevNote("Z-1", "retested");
     expect(loadDevNote("Z-1")).toBe("retested");
   });
+  it("bulk note loaders include platform variant ids restored from cloud/localStorage", () => {
+    saveQaNote("VOICE-001-IPAD", "mic issue", { syncCloud: false });
+    saveDevNote("VOICE-001-IPAD", "patched", { syncCloud: false });
+    expect(loadAllQaNotes()["VOICE-001-IPAD"]).toBe("mic issue");
+    expect(loadAllDevNotes()["VOICE-001-IPAD"]).toBe("patched");
+  });
 });
 
 describe("severity", () => {
@@ -84,6 +94,10 @@ describe("severity", () => {
     expect(loadSeverity("Z-1")).toBe("high");
     saveSeverity("Z-1", "");
     expect(loadSeverity("Z-1")).toBe("");
+  });
+  it("loadAllSeverities includes platform variant ids restored from cloud/localStorage", () => {
+    saveSeverity("INTAKE-001-IOS", "medium", { syncCloud: false });
+    expect(loadAllSeverities()["INTAKE-001-IOS"]).toBe("medium");
   });
 });
 
