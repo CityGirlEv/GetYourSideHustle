@@ -117,7 +117,13 @@ function RegisterPage() {
                   <div><Label>Last name</Label><Input value={lastName} onChange={(e)=>setLastName(e.target.value)} required autoComplete="family-name" /></div>
                 </div>
                 <div><Label>Email</Label><Input type="email" value={email} onChange={(e)=>setEmail(e.target.value)} required autoComplete="email" /></div>
-                <div><Label>Phone</Label><Input type="tel" value={phone} onChange={(e)=>setPhone(e.target.value)} required autoComplete="tel" placeholder="(555) 555-1234" /></div>
+                <div>
+                  <Label>Phone</Label>
+                  <Input type="tel" value={phone} onChange={(e)=>setPhone(e.target.value)} required autoComplete="tel" placeholder="(555) 555-1234" />
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Message and data rates may apply depending on your carrier.
+                  </p>
+                </div>
                 <div className="space-y-2">
                   <Label>I'm registering as</Label>
                   <div className="grid grid-cols-2 gap-2">
