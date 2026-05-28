@@ -59,13 +59,21 @@ export function expandTestWithPlatforms(t: TestCase): TestCase[] {
       isScenario && p.category !== "Desktop"
         ? scenarioNonDesktopOwner(t.id, p.suffix)
         : baseAssignee;
+    // Unassigned variants must fall into the Backlog (handled by
+    // getTestSprintId when sprintId is undefined). Only pin a sprint when
+    // the source already had one or the variant has a real owner.
+    const sprintId = t.sprintId
+      ? t.sprintId
+      : assignee === "Unassigned"
+        ? undefined
+        : ACTIVE_SPRINT_ID;
     return {
       ...t,
       id: `${t.id}-${p.suffix}`,
       title: `${t.title} — ${p.label}`,
       area: `${t.area} · ${p.category}`,
       assignee,
-      sprintId: t.sprintId || ACTIVE_SPRINT_ID,
+      sprintId,
       notes: t.notes
         ? `${t.notes}\n\nPlatform: ${p.label} (from ${t.id})`
         : `Platform: ${p.label} (from ${t.id})`,
