@@ -543,6 +543,29 @@ export function TestPlanTab() {
     });
   }, [query, areaFilter, statusFilter, ownerFilter, sprintFilter, statuses, assigneeOverrides, sprintOverrides, effectiveCases]);
 
+  // Auto-expand sprint sections when filters are active so filtered results remain visible.
+  const testFilterKey = JSON.stringify([query, areaFilter, statusFilter, ownerFilter, sprintFilter]);
+  useEffect(() => {
+    const hasFilters = query.trim() !== "" || areaFilter.length > 0 || statusFilter.length > 0 || ownerFilter.length > 0 || sprintFilter.length > 0;
+    if (!hasFilters) return;
+    const toExpand = new Set<string>();
+    for (const t of filtered) {
+      const sid = (() => {
+        const ov = sprintOverrides[t.id];
+        if (ov) return ov;
+        if (customIds.has(t.id)) return t.sprintId || "";
+        return getTestSprintId(t);
+      })();
+      toExpand.add(sid || "_none");
+    }
+    setCollapsedSprints((prev) => {
+      const next = new Set(prev);
+      for (const id of toExpand) next.delete(id);
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [testFilterKey]);
+
   const filteredIds = useMemo(() => filtered.map((t) => t.id), [filtered]);
   const allFilteredSelected = filteredIds.length > 0 && filteredIds.every((id) => selected.has(id));
   const toggleSelectAll = () => {
