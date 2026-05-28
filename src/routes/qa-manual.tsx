@@ -165,8 +165,10 @@ function QAManualPage() {
 
                 {/* Branch labels */}
                 <text x="615" y="390" fontSize="13" fontWeight="700" fill="#1f2937">Pass</text>
-                <text x="285" y="390" fontSize="13" fontWeight="700" fill="#1f2937">Fail</text>
-                <text x="360" y="544" fontSize="13" fontWeight="700" fill="#1f2937">Retest</text>
+                <text x="285" y="384" fontSize="13" fontWeight="700" fill="#1f2937">Fail</text>
+                <text x="285" y="402" fontSize="11" fontWeight="700" fill="#b32a26">+ screenshot</text>
+                <text x="360" y="538" fontSize="13" fontWeight="700" fill="#1f2937">Retest</text>
+                <text x="360" y="556" fontSize="11" fontWeight="700" fill="#b32a26">+ screenshot if Failed/Retest</text>
               </g>
             </svg>
           </div>
