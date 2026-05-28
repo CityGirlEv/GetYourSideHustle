@@ -32,6 +32,7 @@ import {
 } from "@/lib/task-bulk";
 import { MultiSelect, multiSelectMatches } from "@/components/ui/multi-select";
 import { DateField } from "@/components/DateField";
+import { useConfirm } from "@/components/ConfirmDialog";
 
 const PRIORITIES: Priority[] = ["P0", "P1", "P2", "P3"];
 
