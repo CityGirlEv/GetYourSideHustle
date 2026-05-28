@@ -1273,6 +1273,7 @@ function TestCaseCard({
   t, status, qaNote, devNote, severity, assignee, sprintId, selected, onSelectChange,
   onChange, onQaNoteChange, onDevNoteChange, onSeverityChange, onAssigneeChange, onSprintChange,
   isAdmin, onEdit, hasChanges, onSave, assigneeLocked,
+  restrictAssigneeTo,
   onDuplicate,
 }: {
   t: TestCase;
