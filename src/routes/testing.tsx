@@ -290,7 +290,7 @@ export function TestPlanTab() {
   const [sprintFilter, setSprintFilter] = useState<string[]>([]);
   // For QA users, default the owner filter to themselves on first load so
   // they only see the tests assigned to them. Admins see everything.
-  const ownerFilterInitialized = React.useRef(false);
+  const ownerFilterInitialized = useRef(false);
   useEffect(() => {
     if (ownerFilterInitialized.current) return;
     if (!user) return;
