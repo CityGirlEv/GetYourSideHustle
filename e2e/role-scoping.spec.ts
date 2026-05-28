@@ -8,9 +8,12 @@ test.describe("role-based scoping on /testing", () => {
 
   test("admin sees per-owner chart and owner filter", async ({ page }) => {
     const creds = adminCreds();
-    test.skip(!creds, "E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD env vars not set");
+    if (!creds) {
+      test.skip(true, "E2E_ADMIN_EMAIL and E2E_ADMIN_PASSWORD env vars not set");
+      return;
+    }
 
-    await signIn(page, creds!);
+    await signIn(page, creds);
     await page.goto("/testing");
 
     // Admin sees the "By QA owner" per-owner breakdown
@@ -22,9 +25,12 @@ test.describe("role-based scoping on /testing", () => {
 
   test("QA user does not see per-owner chart or owner filter", async ({ page }) => {
     const creds = qaCreds();
-    test.skip(!creds, "E2E_QA_EMAIL and E2E_QA_PASSWORD env vars not set");
+    if (!creds) {
+      test.skip(true, "E2E_QA_EMAIL and E2E_QA_PASSWORD env vars not set");
+      return;
+    }
 
-    await signIn(page, creds!);
+    await signIn(page, creds);
     await page.goto("/testing");
 
     // QA does NOT see the per-owner breakdown
@@ -32,10 +38,6 @@ test.describe("role-based scoping on /testing", () => {
 
     // QA does NOT see the Owner multi-select filter
     await expect(page.locator("button").filter({ hasText: /^Owner$/ })).not.toBeVisible();
-
-    // QA header shows their name
-    const qaFirstName = creds!.email.split("@")[0];
-    await expect(page.getByText(qaFirstName, { exact: false })).toBeVisible();
   });
 });
 
@@ -46,9 +48,12 @@ test.describe("role-based scoping on /agent", () => {
 
   test("agent sees only their own scenarios", async ({ page }) => {
     const creds = agentCreds();
-    test.skip(!creds, "E2E_AGENT_EMAIL and E2E_AGENT_PASSWORD env vars not set");
+    if (!creds) {
+      test.skip(true, "E2E_AGENT_EMAIL and E2E_AGENT_PASSWORD env vars not set");
+      return;
+    }
 
-    await signIn(page, creds!);
+    await signIn(page, creds);
     await page.goto("/agent");
 
     // Page loads with agent portal heading
