@@ -805,6 +805,12 @@ export const SPRINTS: Sprint[] = [
       { id: "S3-5", title: "Phase 1 retro + Phase 2 kickoff brief", type: "design", status: "todo" },
     ],
   },
+  {
+    id: BACKLOG_SPRINT_ID, number: 99, name: "Backlog",
+    start: "", end: "",
+    goal: "Unassigned test cases waiting to be slotted into a sprint and given an owner. New functionality lands here by default.",
+    items: [],
+  },
 ];
 
 // ----------------------------------------------------------------------------
