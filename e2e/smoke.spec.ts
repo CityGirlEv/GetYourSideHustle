@@ -28,6 +28,11 @@ test.describe("public smoke", () => {
     await expect(page).toHaveURL(/\/(auth|login|$)/);
   });
 
+  test("task sheet keeps its destination through sign-in", async ({ page }) => {
+    await page.goto("/tasks");
+    await expect(page).toHaveURL(/\/auth\?redirect=%2Ftasks/);
+  });
+
   test("QA manual is gated behind auth (anonymous → /auth)", async ({ page }) => {
     await page.goto("/qa-manual");
     await expect(page).toHaveURL(/\/(auth|login|$)/);

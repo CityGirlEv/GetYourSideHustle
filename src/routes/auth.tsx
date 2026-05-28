@@ -10,8 +10,12 @@ import { ShieldCheck, Lock, Eye, EyeOff, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { roleDestination } from "@/lib/role-destination";
+import { safeSignInRedirect } from "@/lib/auth-redirect";
 
 export const Route = createFileRoute("/auth")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    redirect: safeSignInRedirect(search.redirect, undefined),
+  }),
   head: () => ({
     meta: [
       { title: "Sign In — The Medicare Optimizer" },
@@ -31,6 +35,7 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const { user } = useApp();
   const router = useRouter();
+  const search = Route.useSearch();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -38,8 +43,9 @@ function AuthPage() {
 
   useEffect(() => {
     if (!user) return;
-    router.navigate({ to: roleDestination(user.role) as "/admin" | "/agent" | "/testing" | "/advisor" });
-  }, [user, router]);
+    const destination = search.redirect ?? roleDestination(user.role);
+    router.navigate({ to: destination as "/admin" | "/agent" | "/testing" | "/advisor" | "/tasks" });
+  }, [user, router, search.redirect]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
