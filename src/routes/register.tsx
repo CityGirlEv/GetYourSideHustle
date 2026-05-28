@@ -146,6 +146,52 @@ function RegisterPage() {
                   </div>
                   <p className="text-[11px] text-muted-foreground">An administrator will review and enable your account.</p>
                 </div>
+                {requestedRole === "qa" && (
+                  <div className="space-y-2 rounded-md border border-border p-3 bg-muted/20">
+                    <Label>Which devices can you test on?</Label>
+                    <p className="text-[11px] text-muted-foreground">Select all that apply — we use this to assign scenarios that match your hardware.</p>
+                    <div className="space-y-3 pt-1">
+                      <div>
+                        <div className="text-xs font-semibold mb-1.5 text-muted-foreground uppercase tracking-wide">Computer</div>
+                        <div className="grid grid-cols-2 gap-2">
+                          {["MacBook", "iMac", "Windows desktop", "Windows laptop", "Linux"].map((d) => {
+                            const active = qaDevices.includes(d);
+                            return (
+                              <label key={d} className={`flex items-center gap-2 rounded-md border p-2 text-sm cursor-pointer transition ${active ? "border-primary bg-primary/10" : "border-border hover:bg-muted/40"}`}>
+                                <Checkbox
+                                  checked={active}
+                                  onCheckedChange={(v) => setQaDevices((prev) => v ? Array.from(new Set([...prev, d])) : prev.filter((x) => x !== d))}
+                                />
+                                <span>{d}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold mb-1.5 text-muted-foreground uppercase tracking-wide">Mobile device</div>
+                        <div className="grid grid-cols-2 gap-2">
+                          {["iPhone", "iPad", "Android phone", "Android tablet"].map((d) => {
+                            const active = qaDevices.includes(d);
+                            return (
+                              <label key={d} className={`flex items-center gap-2 rounded-md border p-2 text-sm cursor-pointer transition ${active ? "border-primary bg-primary/10" : "border-border hover:bg-muted/40"}`}>
+                                <Checkbox
+                                  checked={active}
+                                  onCheckedChange={(v) => setQaDevices((prev) => v ? Array.from(new Set([...prev, d])) : prev.filter((x) => x !== d))}
+                                />
+                                <span>{d}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Other (comma-separated)</Label>
+                        <Input value={qaDeviceOther} onChange={(e) => setQaDeviceOther(e.target.value)} placeholder="e.g. Chromebook, Kindle Fire" />
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <Button type="submit" className="w-full grad-indigo h-11">Submit</Button>
                 <p className="text-xs text-center text-muted-foreground">
                   Already have an account? <Link to="/auth" className="underline">Sign in</Link>
