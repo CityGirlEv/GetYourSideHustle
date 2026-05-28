@@ -32,6 +32,19 @@ export const TEST_PLATFORMS: TestPlatform[] = [
 export const PLATFORM_VARIANT_OWNER = "Catria";
 
 /**
+ * For Scenario-area tests on non-Desktop platforms (Phone + iPad) the owner
+ * is forced to alternate between Catria and Unassigned, regardless of who
+ * owns the source (Desktop) test. Desktop variants keep the source owner.
+ * Split is deterministic from the source id + platform suffix so the same
+ * test always lands on the same owner across renders.
+ */
+function scenarioNonDesktopOwner(sourceId: string, suffix: string): "Catria" | "Unassigned" {
+  const n = parseInt((sourceId.match(/(\d+)/)?.[1] ?? "0"), 10);
+  const platformIdx = ["IOS", "AND", "IPAD"].indexOf(suffix);
+  return (n + platformIdx) % 2 === 0 ? "Catria" : "Unassigned";
+}
+
+/**
  * Fan out a single TestCase into one variant per supported platform. Each
  * variant gets a deterministic id (`<sourceId>-<suffix>`), the platform name
  * appended to the title and area, and keeps the source test's owner. The
@@ -39,17 +52,25 @@ export const PLATFORM_VARIANT_OWNER = "Catria";
  * fanned-out list.
  */
 export function expandTestWithPlatforms(t: TestCase): TestCase[] {
-  return TEST_PLATFORMS.map((p) => ({
-    ...t,
-    id: `${t.id}-${p.suffix}`,
-    title: `${t.title} — ${p.label}`,
-    area: `${t.area} · ${p.category}`,
-    assignee: t.assignee || getTestAssignee(t),
-    sprintId: t.sprintId || ACTIVE_SPRINT_ID,
-    notes: t.notes
-      ? `${t.notes}\n\nPlatform: ${p.label} (from ${t.id})`
-      : `Platform: ${p.label} (from ${t.id})`,
-  }));
+  const isScenario = t.area === "Scenario" || t.area.startsWith("Scenario");
+  return TEST_PLATFORMS.map((p) => {
+    const baseAssignee = t.assignee || getTestAssignee(t);
+    const assignee =
+      isScenario && p.category !== "Desktop"
+        ? scenarioNonDesktopOwner(t.id, p.suffix)
+        : baseAssignee;
+    return {
+      ...t,
+      id: `${t.id}-${p.suffix}`,
+      title: `${t.title} — ${p.label}`,
+      area: `${t.area} · ${p.category}`,
+      assignee,
+      sprintId: t.sprintId || ACTIVE_SPRINT_ID,
+      notes: t.notes
+        ? `${t.notes}\n\nPlatform: ${p.label} (from ${t.id})`
+        : `Platform: ${p.label} (from ${t.id})`,
+    };
+  });
 }
 
 /** Convenience: expand a whole list of tests. */
