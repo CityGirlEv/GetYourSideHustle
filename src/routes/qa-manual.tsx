@@ -83,7 +83,7 @@ function QAManualPage() {
             <li><b>Pass</b> — the test met all acceptance criteria. The test is <b>closed</b>, but status and every field stay editable.</li>
             <li><b>Fail</b> — bug found. <span className="text-destructive font-semibold">A QA note is required</span> describing what broke, exact steps, and expected vs actual.</li>
             <li><b>Fixed / Re-Test</b> — <b>Dev-only</b>. Dev believes the bug is fixed and hands it back to QA for verification. <span className="text-destructive font-semibold">Dev note required.</span></li>
-            <li><b>Failed / Re-Test</b> — <b>Dev-only</b>. Dev couldn't reproduce / needs QA to re-run as-is. <span className="text-destructive font-semibold">Dev note required.</span></li>
+            <li><b>Failed / Re-Test</b> — <b>Dev-only</b>. Dev couldn't reproduce or test needs clarification / needs QA to re-evaluate and re-test. <span className="text-destructive font-semibold">Dev note required.</span></li>
             <li><b>Blocked</b> — cannot run (e.g. environment down, depends on another test).</li>
           </ul>
           <div className="rounded-md border border-amber/40 bg-amber/10 p-3 text-sm flex gap-2">
