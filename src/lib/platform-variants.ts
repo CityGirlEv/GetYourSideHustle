@@ -1,11 +1,11 @@
 // ============================================================================
 // PLATFORM VARIANTS
 // ----------------------------------------------------------------------------
-// Every test scenario is fanned out into one test per supported platform so QA
-// covers iPhone, Android, iPad, macOS and Windows. Variants are derived from
-// the source TestCase at read time — adding a new TEST_CASE (or custom test)
-// automatically generates the 5 platform sub-tests while preserving the source
-// test's owner in the current sprint.
+// ONLY Scenario-area tests are fanned out into platform sub-tests. We support
+// 3 platforms: Computer (desktop/laptop), Phone, and iPad. The Computer
+// variant keeps the source test's owner; Phone + iPad variants are split
+// deterministically between Catria and Unassigned so Catria can reassign as
+// needed. Non-Scenario tests pass through unchanged.
 // ============================================================================
 import type { TestCase } from "@/lib/test-plan";
 import { ACTIVE_SPRINT_ID, getTestAssignee } from "@/lib/test-plan";
@@ -13,19 +13,17 @@ import { ACTIVE_SPRINT_ID, getTestAssignee } from "@/lib/test-plan";
 export type PlatformCategory = "Mobile" | "Tablet" | "Desktop";
 
 export interface TestPlatform {
-  /** id suffix appended to the source test id, e.g. "IOS" → "AUTH-001-IOS" */
+  /** id suffix appended to the source test id, e.g. "PHONE" → "SCEN-001-PHONE" */
   suffix: string;
-  /** Human label shown after the title, e.g. "iPhone (iOS)" */
+  /** Human label shown after the title, e.g. "Phone" */
   label: string;
   category: PlatformCategory;
 }
 
 export const TEST_PLATFORMS: TestPlatform[] = [
-  { suffix: "IOS",   label: "iPhone (iOS)",          category: "Mobile" },
-  { suffix: "AND",   label: "Android Phone",         category: "Mobile" },
-  { suffix: "IPAD",  label: "iPad",                  category: "Tablet" },
-  { suffix: "MAC",   label: "Desktop · macOS",       category: "Desktop" },
-  { suffix: "WIN",   label: "Desktop · Windows",     category: "Desktop" },
+  { suffix: "COMP",  label: "Computer",  category: "Desktop" },
+  { suffix: "PHONE", label: "Phone",     category: "Mobile" },
+  { suffix: "IPAD",  label: "iPad",      category: "Tablet" },
 ];
 
 /** Legacy fallback owner when a source test has no owner and cannot be derived. */
@@ -34,29 +32,30 @@ export const PLATFORM_VARIANT_OWNER = "Catria";
 /**
  * For Scenario-area tests on non-Desktop platforms (Phone + iPad) the owner
  * is forced to alternate between Catria and Unassigned, regardless of who
- * owns the source (Desktop) test. Desktop variants keep the source owner.
+ * owns the source (Computer) test. Computer variants keep the source owner.
  * Split is deterministic from the source id + platform suffix so the same
  * test always lands on the same owner across renders.
  */
 function scenarioNonDesktopOwner(sourceId: string, suffix: string): "Catria" | "Unassigned" {
   const n = parseInt((sourceId.match(/(\d+)/)?.[1] ?? "0"), 10);
-  const platformIdx = ["IOS", "AND", "IPAD"].indexOf(suffix);
+  const platformIdx = ["PHONE", "IPAD"].indexOf(suffix);
   return (n + platformIdx) % 2 === 0 ? "Catria" : "Unassigned";
 }
 
 /**
- * Fan out a single TestCase into one variant per supported platform. Each
- * variant gets a deterministic id (`<sourceId>-<suffix>`), the platform name
- * appended to the title and area, and keeps the source test's owner. The
- * original (un-suffixed) test is NOT returned — callers should always use the
- * fanned-out list.
+ * Fan out a Scenario-area TestCase into one variant per supported platform.
+ * Non-Scenario tests are returned as-is (no platform sub-tests). Each
+ * Scenario variant gets a deterministic id (`<sourceId>-<suffix>`), the
+ * platform name appended to the title and area, and a per-platform owner
+ * (Computer keeps the source owner; Phone/iPad alternate Catria/Unassigned).
  */
 export function expandTestWithPlatforms(t: TestCase): TestCase[] {
   const isScenario = t.area === "Scenario" || t.area.startsWith("Scenario");
+  if (!isScenario) return [t];
   return TEST_PLATFORMS.map((p) => {
     const baseAssignee = t.assignee || getTestAssignee(t);
     const assignee =
-      isScenario && p.category !== "Desktop"
+      p.category !== "Desktop"
         ? scenarioNonDesktopOwner(t.id, p.suffix)
         : baseAssignee;
     // Unassigned variants must fall into the Backlog (handled by
