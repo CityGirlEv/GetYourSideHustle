@@ -70,6 +70,7 @@ function emptyDraft(): TaskRow {
     dateCompleted: "",
     cost: 0,
     notes: "",
+    severity: "",
     path: "",
   };
 }
