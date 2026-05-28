@@ -327,6 +327,17 @@ function UsersPage() {
               <label className="text-xs text-muted-foreground">Reset password (optional, min 8 chars)</label>
               <Input type="password" value={editPassword} onChange={(e) => setEditPassword(e.target.value)} placeholder="Leave blank to keep current" />
             </div>
+            {editing && (editing.roles ?? [editing.role]).includes("qa") && (
+              <div className="space-y-1 rounded-md border border-border p-3 bg-muted/20">
+                <label className="text-xs text-muted-foreground">Available testing devices (QA)</label>
+                <QADevicePicker
+                  selected={editDevices}
+                  onSelectedChange={setEditDevices}
+                  other={editDeviceOther}
+                  onOtherChange={setEditDeviceOther}
+                />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
