@@ -280,10 +280,19 @@ export function TestPlanTab() {
     [descVersion, customTests],
   );
   // Set of test ids that are user-created (no auto-derived assignee/sprint).
-  const customIds = useMemo(
-    () => new Set(customTests.map((c) => c.id)),
-    [customTests],
-  );
+  // Includes both the source CUS-### id and every platform-variant id
+  // (CUS-###-IOS, …-AND, …) so the custom-test branches still apply after
+  // expandAllWithPlatforms() fans each row out.
+  const customIds = useMemo(() => {
+    const s = new Set<string>();
+    for (const c of customTests) {
+      s.add(c.id);
+      for (const p of (await import("@/lib/platform-variants")).TEST_PLATFORMS ?? []) {
+        s.add(`${c.id}-${p.suffix}`);
+      }
+    }
+    return s;
+  }, [customTests]);
   const effectiveById = useMemo(() => {
     const m = new Map<string, TestCase>();
     for (const t of effectiveCases) m.set(t.id, t);
