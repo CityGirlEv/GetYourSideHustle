@@ -51,7 +51,7 @@ import {
 import { toast } from "sonner";
 import { MultiSelect, multiSelectMatches } from "@/components/ui/multi-select";
 import { useConfirm } from "@/components/ConfirmDialog";
-import { buildCloudOps, runWithProgress, type DraftValues } from "@/lib/save-batch";
+import { buildCloudOps, type DraftValues } from "@/lib/save-batch";
 
 // Derive a link target for a test case: explicit `path` wins, otherwise scan
 // preconditions + steps for the first "/route" token (e.g. "Open /advisor").
