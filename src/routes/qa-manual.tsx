@@ -162,6 +162,7 @@ function QAManualPage() {
           <ul className="text-xs text-muted-foreground space-y-1 ml-4 list-disc">
             <li>Only <b>Dev</b> can set <b>Fixed/Retest</b> or <b>Failed/Retest</b>. QA can only set Pass, Fail, In Progress, or Not Started.</li>
             <li>Every failed test must include a <b>QA note</b>. Every Dev hand-off (Fixed/Retest or Failed/Retest) must include a <b>Dev note</b>.</li>
+            <li><b>Screenshot is mandatory for every Fail / Failed-Retest.</b> Attach at least one screenshot (or PDF/log) of the result in the Evidence section before saving — the Save will be blocked otherwise. On iPhone, capture with <b>Side + Volume Up</b>; on Android, <b>Power + Volume Down</b>. The image lands in Photos, then tap <b>Take photo → Photo Library</b> to upload. Allowed: PNG, JPG, HEIC, GIF, WEBP, PDF, .log, .txt (20&nbsp;MB max). Executables, HTML, SVG, scripts, and archives are blocked for safety.</li>
             <li>The loop continues until QA marks <b>Pass</b>. The test is then <b>closed</b> — but status and every field remain editable.</li>
           </ul>
         </Card>
