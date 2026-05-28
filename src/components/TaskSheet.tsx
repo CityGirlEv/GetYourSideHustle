@@ -787,7 +787,7 @@ export function TaskSheetContent() {
             <TableBody>
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={14} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={15} className="text-center text-muted-foreground py-8">
                     No tasks match your filters.
                   </TableCell>
                 </TableRow>
