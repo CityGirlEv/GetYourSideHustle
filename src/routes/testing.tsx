@@ -511,7 +511,10 @@ export function TestPlanTab() {
     setSaveProgress({ done: 0, total: ops.length });
     const tasks = ops.map((op) => async () => {
       if (op.kind === "push") {
-        return await cloudPushTest(op.testId, op.patch ?? {});
+        // PushTestPatch uses string fields for portability; cast to the
+        // strict cloudPushTest patch shape (the values come from our own
+        // typed drafts, so the runtime types match).
+        return await cloudPushTest(op.testId, (op.patch ?? {}) as Parameters<typeof cloudPushTest>[1]);
       }
       await cloudAppendNote(op.testId, op.note!.kind, op.note!.text);
       return true;
