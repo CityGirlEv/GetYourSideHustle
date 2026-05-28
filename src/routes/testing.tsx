@@ -562,7 +562,10 @@ export function TestPlanTab() {
   // breakdowns only ever reflect their own tests. Admins see everything.
   const scopedCases = useMemo(
     () => restrictToSelf
-      ? effectiveCases.filter((t) => effAssignee(t) === qaFirstName)
+      ? effectiveCases.filter((t) => {
+          const a = effAssignee(t);
+          return a === qaFirstName || a === "Unassigned";
+        })
       : effectiveCases,
     [effectiveCases, restrictToSelf, qaFirstName, statuses, assigneeOverrides, customIds],
   );
