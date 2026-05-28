@@ -16,7 +16,7 @@ import {
   loadAllStatuses, saveStatus,
   type TestStatus, type TestCase, type Priority,
   PRIORITY_LABELS, PRIORITY_SHORT,
-  getTestAssignee, getTestSprintId, ACTIVE_SPRINT_ID,
+  getTestAssignee, getTestSprintId, ACTIVE_SPRINT_ID, BACKLOG_SPRINT_ID,
   getTestCreditReward, totalCreditBudget, creditBudgetByOwner, REPRO_FAIL_BONUS,
   loadAllQaNotes, loadAllDevNotes, saveQaNote, saveDevNote,
   loadAllSeverities, saveSeverity, FAIL_SEVERITY_LABELS, type FailSeverity,
