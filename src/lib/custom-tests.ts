@@ -96,6 +96,30 @@ export async function createCustomTest(input: CreateCustomTestInput, existingIds
   return data as CustomTestRow;
 }
 
+/**
+ * Duplicate any test (manual TEST_CASES entry, auto-discovered Vitest/Playwright
+ * entry, or another custom test) into a new custom_tests row. Use this to add
+ * additional coverage for the same scenario — the copy gets a fresh CUS-### id
+ * and lands in "Unassigned" until an admin re-assigns it.
+ */
+export async function duplicateCustomTest(
+  source: TestCase,
+  existingIds: string[],
+): Promise<CustomTestRow> {
+  return createCustomTest(
+    {
+      area: source.area,
+      title: `${source.title} (copy)`,
+      priority: source.priority,
+      preconditions: source.preconditions ?? "",
+      steps: source.steps,
+      expected: source.expected,
+      notes: source.notes ?? `Duplicated from ${source.id}`,
+    },
+    existingIds,
+  );
+}
+
 export async function deleteCustomTest(id: string): Promise<void> {
   const { error } = await supabase.from("custom_tests").delete().eq("id", id);
   if (error) throw error;
