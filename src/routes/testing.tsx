@@ -42,6 +42,7 @@ import {
   listCustomTests, createCustomTest, duplicateCustomTest, customRowToTestCase, type CustomTestRow,
 } from "@/lib/custom-tests";
 import { AUTOMATED_TEST_CASES, AUTOMATED_TEST_IDS, AUTOMATED_TEST_RESULTS } from "@/lib/automated-tests";
+import { expandAllWithPlatforms, TEST_PLATFORMS } from "@/lib/platform-variants";
 import {
   listTestEvidence, uploadTestEvidence, deleteTestEvidence, getTestEvidenceUrl,
   type EvidenceFile,
@@ -267,15 +268,29 @@ export function TestPlanTab() {
     () => {
       const base = TEST_CASES.map((t) => applyDescriptionOverride(t));
       const custom = customTests.map(customRowToTestCase);
-      return [...base, ...AUTOMATED_TEST_CASES, ...custom];
+      // Fan every manual scenario + custom test out into one variant per
+      // supported platform (iPhone / Android / iPad / macOS / Windows). The
+      // original un-suffixed entries are dropped — only the platform variants
+      // are surfaced so QA always tests on every device. Automated test runs
+      // map 1:1 to source files and stay un-expanded.
+      const baseExpanded = expandAllWithPlatforms(base);
+      const customExpanded = expandAllWithPlatforms(custom);
+      return [...baseExpanded, ...AUTOMATED_TEST_CASES, ...customExpanded];
     },
     [descVersion, customTests],
   );
   // Set of test ids that are user-created (no auto-derived assignee/sprint).
-  const customIds = useMemo(
-    () => new Set(customTests.map((c) => c.id)),
-    [customTests],
-  );
+  // Includes both the source CUS-### id and every platform-variant id
+  // (CUS-###-IOS, …-AND, …) so the custom-test branches still apply after
+  // expandAllWithPlatforms() fans each row out.
+  const customIds = useMemo(() => {
+    const s = new Set<string>();
+    for (const c of customTests) {
+      s.add(c.id);
+      for (const p of TEST_PLATFORMS) s.add(`${c.id}-${p.suffix}`);
+    }
+    return s;
+  }, [customTests]);
   const effectiveById = useMemo(() => {
     const m = new Map<string, TestCase>();
     for (const t of effectiveCases) m.set(t.id, t);
