@@ -227,7 +227,9 @@ export function TaskSheetContent() {
     return out;
   }, [rows]);
 
-  // Group filtered rows by sprint. Current sprint first, then by SPRINTS order, then unassigned.
+  // Group filtered rows by sprint. Always surface every sprint header (even
+  // empty ones) so admins can see and bulk-assign across the full schedule.
+  // Current sprint first, then by SPRINTS order, then unassigned.
   const groupedBySprint = useMemo(() => {
     const map = new Map<string, TaskRow[]>();
     for (const r of filtered) {
@@ -236,9 +238,9 @@ export function TaskSheetContent() {
       map.get(k)!.push(r);
     }
     const ordered: { sprintId: string; rows: TaskRow[] }[] = [];
-    if (map.has(ACTIVE_SPRINT_ID)) ordered.push({ sprintId: ACTIVE_SPRINT_ID, rows: map.get(ACTIVE_SPRINT_ID)! });
+    ordered.push({ sprintId: ACTIVE_SPRINT_ID, rows: map.get(ACTIVE_SPRINT_ID) ?? [] });
     for (const s of SPRINTS) {
-      if (s.id !== ACTIVE_SPRINT_ID && map.has(s.id)) ordered.push({ sprintId: s.id, rows: map.get(s.id)! });
+      if (s.id !== ACTIVE_SPRINT_ID) ordered.push({ sprintId: s.id, rows: map.get(s.id) ?? [] });
     }
     if (map.has("_none")) ordered.push({ sprintId: "_none", rows: map.get("_none")! });
     return ordered;
