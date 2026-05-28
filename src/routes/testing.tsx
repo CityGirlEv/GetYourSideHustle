@@ -43,7 +43,7 @@ import {
 } from "@/lib/custom-tests";
 import { AUTOMATED_TEST_CASES, AUTOMATED_TEST_IDS, AUTOMATED_TEST_RESULTS } from "@/lib/automated-tests";
 import { expandAllWithPlatforms, TEST_PLATFORMS } from "@/lib/platform-variants";
-import { getQaVisibleOwners } from "@/lib/role-scoping";
+import { getQaVisibleOwners, getQaFirstName } from "@/lib/role-scoping";
 import {
   listTestEvidence, uploadTestEvidence, deleteTestEvidence, getTestEvidenceUrl,
   EVIDENCE_ACCEPT_ATTR, type EvidenceFile,
