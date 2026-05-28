@@ -43,6 +43,7 @@ import {
 } from "@/lib/custom-tests";
 import { AUTOMATED_TEST_CASES, AUTOMATED_TEST_IDS, AUTOMATED_TEST_RESULTS } from "@/lib/automated-tests";
 import { expandAllWithPlatforms, TEST_PLATFORMS } from "@/lib/platform-variants";
+import { getQaVisibleOwners } from "@/lib/role-scoping";
 import {
   listTestEvidence, uploadTestEvidence, deleteTestEvidence, getTestEvidenceUrl,
   EVIDENCE_ACCEPT_ATTR, type EvidenceFile,
@@ -313,27 +314,18 @@ export function TestPlanTab() {
   // Full assignee roster (TEST_OWNERS + every enabled QA user). Admins see
   // a bubble for each one even if they have no tests currently assigned.
   const allAssignees = useAssigneeOptions();
-  // For QA users, default the owner filter to themselves on first load so
-  // they only see the tests assigned to them. Admins see everything.
+  // For QA users, role scoping below already limits data to themselves plus
+  // Unassigned. Keep the owner filter open so Unassigned stays visible.
   const ownerFilterInitialized = useRef(false);
   useEffect(() => {
     if (ownerFilterInitialized.current) return;
     if (!user) return;
     ownerFilterInitialized.current = true;
-    if (user.role === "qa") {
-      const first = (user.full_name || user.email || "").trim().split(/\s+/)[0];
-      if (first) setOwnerFilter([first]);
-    }
+    if (user.role === "qa") setOwnerFilter([]);
   }, [user]);
   // QA users are scoped to their own data only — they cannot widen the
   // owner filter, see other QAs' progress, or pick assignees for others.
-  const qaFirstName = useMemo(() => {
-    if (!user || user.role !== "qa") return "";
-    return (user.full_name || user.email || "").trim().split(/\s+/)[0] || "";
-  }, [user]);
   const restrictToSelf = !!user && user.role === "qa";
-  const [bannerCollapsed, setBannerCollapsed] = useState(true);
-  const [summaryCollapsed, setSummaryCollapsed] = useState(true);
 
   // Effective (saved + draft) views used for rendering and filtering
   const statuses = useMemo(() => ({ ...savedStatuses, ...dStatuses }), [savedStatuses, dStatuses]);
@@ -521,20 +513,19 @@ export function TestPlanTab() {
   const areas = useMemo(() => Array.from(new Set(effectiveCases.map((t) => t.area))), [effectiveCases]);
   // Effective assignee/sprint that respects unsaved drafts (the lib helpers read storage)
   const effAssignee = (t: TestCase): string => {
-    const ov = assigneeOverrides[t.id];
+    const platformSuffix = TEST_PLATFORMS.find((p) => t.id.endsWith(`-${p.suffix}`))?.suffix;
+    const sourceId = platformSuffix ? t.id.slice(0, -platformSuffix.length - 1) : t.id;
+    const ov = assigneeOverrides[t.id] || assigneeOverrides[sourceId];
     let raw: string;
     if (customIds.has(t.id)) {
-      raw = ov || (t.assignee && t.assignee !== "Unassigned" ? t.assignee : "Unassigned");
+      raw = ov || t.assignee || "Unassigned";
     } else if (AUTOMATED_TEST_IDS.has(t.id)) {
       // Automated tests stay owned by their runner — they're not human-
       // assignable, so the fail-→Dev rule in getTestAssignee doesn't apply.
       raw = t.assignee || "Unassigned";
     } else if (t.assignee) {
-      // Canonical hardcoded assignee on the test case wins over stale local
-      // overrides (older builds auto-saved owners via a 70/30 split that
-      // pre-dated explicit ownership). Failed tests still route to Dev.
       const status = statuses[t.id];
-      raw = (status === "fail" || status === "failed_retest") ? "Dev" : t.assignee;
+      raw = (status === "fail" || status === "failed_retest") ? "Dev" : (ov || t.assignee);
     } else {
       raw = ov || getTestAssignee(t, statuses[t.id]);
     }
@@ -542,6 +533,7 @@ export function TestPlanTab() {
     if (raw === "Design" || raw === "Dev") return "Eng";
     return raw;
   };
+  const qaVisibleOwners = useMemo(() => getQaVisibleOwners(user), [user]);
   const effSprint = (t: TestCase): string => {
     const ov = sprintOverrides[t.id];
     if (ov) return ov;
@@ -562,12 +554,9 @@ export function TestPlanTab() {
   // breakdowns only ever reflect their own tests. Admins see everything.
   const scopedCases = useMemo(
     () => restrictToSelf
-      ? effectiveCases.filter((t) => {
-          const a = effAssignee(t);
-          return a === qaFirstName || a === "Unassigned";
-        })
+      ? effectiveCases.filter((t) => qaVisibleOwners.includes(effAssignee(t)))
       : effectiveCases,
-    [effectiveCases, restrictToSelf, qaFirstName, statuses, assigneeOverrides, customIds],
+    [effectiveCases, restrictToSelf, qaVisibleOwners, statuses, assigneeOverrides, customIds],
   );
   const ownerCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -575,7 +564,7 @@ export function TestPlanTab() {
     // currently assigned) so their bubble + per-owner row still render with 0.
     if (isAdmin) {
       for (const o of allAssignees) {
-        if (o && o !== "Unassigned") counts[o] = 0;
+        if (o) counts[o] = 0;
       }
     }
     for (const t of scopedCases) {
@@ -987,8 +976,8 @@ export function TestPlanTab() {
                     isAdmin={isAdmin}
                     assigneeLocked={AUTOMATED_TEST_IDS.has(t.id)}
                      restrictAssigneeTo={
-                       !isAdmin && user?.role === "qa"
-                         ? Array.from(new Set([qaFirstName || effAssignee(t), "Unassigned"]))
+                        !isAdmin && user?.role === "qa"
+                          ? qaVisibleOwners
                          : undefined
                      }
                     onEdit={() => setEditingId(t.id)}
@@ -1052,6 +1041,7 @@ function BulkEditBar({
   const [devDraft, setDevDraft] = useState("");
   const disabled = selectedCount === 0;
   const assigneeOptions = useAssigneeOptions();
+  const bulkAssigneeOptions = isQA ? getQaVisibleOwners(user) : assigneeOptions;
   return (
     <Card className="p-3 sticky top-[64px] z-20 bg-background/95 backdrop-blur border-primary/30">
       <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -1100,7 +1090,7 @@ function BulkEditBar({
           title="Set owner for selected"
         >
           <option value="">Set owner…</option>
-          {assigneeOptions.map((o: string) => <option key={o} value={o}>{o}</option>)}
+          {bulkAssigneeOptions.map((o: string) => <option key={o} value={o}>{o}</option>)}
         </select>
         <select
           disabled={disabled}

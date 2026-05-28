@@ -4,11 +4,11 @@
 // Every test scenario is fanned out into one test per supported platform so QA
 // covers iPhone, Android, iPad, macOS and Windows. Variants are derived from
 // the source TestCase at read time — adding a new TEST_CASE (or custom test)
-// automatically generates the 5 platform sub-tests, all assigned to Catria in
-// the current sprint.
+// automatically generates the 5 platform sub-tests while preserving the source
+// test's owner in the current sprint.
 // ============================================================================
 import type { TestCase } from "@/lib/test-plan";
-import { ACTIVE_SPRINT_ID } from "@/lib/test-plan";
+import { ACTIVE_SPRINT_ID, getTestAssignee } from "@/lib/test-plan";
 
 export type PlatformCategory = "Mobile" | "Tablet" | "Desktop";
 
@@ -28,15 +28,15 @@ export const TEST_PLATFORMS: TestPlatform[] = [
   { suffix: "WIN",   label: "Desktop · Windows",     category: "Desktop" },
 ];
 
-/** Default owner for every auto-generated platform variant. */
+/** Legacy fallback owner when a source test has no owner and cannot be derived. */
 export const PLATFORM_VARIANT_OWNER = "Catria";
 
 /**
  * Fan out a single TestCase into one variant per supported platform. Each
  * variant gets a deterministic id (`<sourceId>-<suffix>`), the platform name
- * appended to the title and area, and is assigned to Catria in the active
- * sprint. The original (un-suffixed) test is NOT returned — callers should
- * always use the fanned-out list.
+ * appended to the title and area, and keeps the source test's owner. The
+ * original (un-suffixed) test is NOT returned — callers should always use the
+ * fanned-out list.
  */
 export function expandTestWithPlatforms(t: TestCase): TestCase[] {
   return TEST_PLATFORMS.map((p) => ({
@@ -44,7 +44,7 @@ export function expandTestWithPlatforms(t: TestCase): TestCase[] {
     id: `${t.id}-${p.suffix}`,
     title: `${t.title} — ${p.label}`,
     area: `${t.area} · ${p.category}`,
-    assignee: PLATFORM_VARIANT_OWNER,
+    assignee: t.assignee || getTestAssignee(t),
     sprintId: t.sprintId || ACTIVE_SPRINT_ID,
     notes: t.notes
       ? `${t.notes}\n\nPlatform: ${p.label} (from ${t.id})`
