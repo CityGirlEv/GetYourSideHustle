@@ -18,9 +18,16 @@ export const Route = createFileRoute("/tasks")({
 });
 
 function TaskSheetPage() {
-  const { user } = useApp();
+  const { user, authLoading } = useApp();
   const isAdmin = user?.role === "admin";
   const isQa = user?.role === "qa";
+  if (authLoading || !user) {
+    return (
+      <AppShell title="Task Sheet" subtitle="Loading…" titleClassName="bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-500 [-webkit-background-clip:text] [-webkit-text-fill-color:transparent]">
+        <p className="text-sm text-muted-foreground">Loading your task sheet…</p>
+      </AppShell>
+    );
+  }
   if (!isAdmin) {
     return (
       <AppShell title="Task Sheet" subtitle="Admin only." titleClassName="text-accent-foreground bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-500 [-webkit-background-clip:text] [-webkit-text-fill-color:transparent]">
