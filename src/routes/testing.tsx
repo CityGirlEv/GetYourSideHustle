@@ -1204,7 +1204,7 @@ function TestCaseCard({
             <Copy className="h-3.5 w-3.5 mr-1" /> Duplicate
           </Button>
         )}
-        <StatusButtons status={status} onChange={onChange} />
+        <StatusButtons status={status} onChange={handleStatusChange} />
         {hasChanges && onSave && (
           <Button
             size="sm"
@@ -1226,9 +1226,31 @@ function TestCaseCard({
       <div className="grid md:grid-cols-2 gap-3 text-xs">
         <div>
           <div className="font-semibold text-foreground mb-1">Steps</div>
-          <ol className="list-decimal list-inside space-y-0.5 text-muted-foreground">
-            {t.steps.map((s, i) => <li key={i}>{s}</li>)}
+          <ol className="space-y-1 text-muted-foreground">
+            {t.steps.map((s, i) => {
+              const isChecked = checkedSteps.has(i);
+              return (
+                <li key={i} className="flex items-start gap-2">
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    onChange={() => toggleStep(i)}
+                    className="h-3.5 w-3.5 mt-0.5 shrink-0 cursor-pointer accent-emerald-600"
+                    title="Check when this step is complete"
+                  />
+                  <span className={isChecked ? "line-through opacity-70" : ""}>
+                    <span className="font-mono text-[10px] mr-1 opacity-70">{i + 1}.</span>{s}
+                  </span>
+                </li>
+              );
+            })}
           </ol>
+          {t.steps.length > 0 && (
+            <p className={`mt-1.5 text-[10px] font-semibold ${allStepsChecked ? "text-emerald-700" : "text-amber-700"}`}>
+              {checkedSteps.size}/{t.steps.length} steps checked
+              {!allStepsChecked && " — required before Pass"}
+            </p>
+          )}
         </div>
         <div>
           <div className="font-semibold text-foreground mb-1">Expected result</div>
