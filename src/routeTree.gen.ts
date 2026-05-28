@@ -33,6 +33,7 @@ import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe
 import { Route as ScenarioCreatedCodeRouteImport } from './routes/scenario.created.$code'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as ApiPublicTrackVisitRouteImport } from './routes/api/public/track-visit'
+import { Route as ApiPublicSendTestEmailRouteImport } from './routes/api/public/send-test-email'
 import { Route as AgentScenarioCodeRouteImport } from './routes/agent.scenario.$code'
 import { Route as AdvisorScenarioCodeRouteImport } from './routes/advisor.scenario.$code'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
@@ -162,6 +163,11 @@ const ApiPublicTrackVisitRoute = ApiPublicTrackVisitRouteImport.update({
   path: '/api/public/track-visit',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicSendTestEmailRoute = ApiPublicSendTestEmailRouteImport.update({
+  id: '/api/public/send-test-email',
+  path: '/api/public/send-test-email',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AgentScenarioCodeRoute = AgentScenarioCodeRouteImport.update({
   id: '/scenario/$code',
   path: '/scenario/$code',
@@ -230,6 +236,7 @@ export interface FileRoutesByFullPath {
   '/scenario/new': typeof ScenarioNewRoute
   '/advisor/scenario/$code': typeof AdvisorScenarioCodeRouteWithChildren
   '/agent/scenario/$code': typeof AgentScenarioCodeRoute
+  '/api/public/send-test-email': typeof ApiPublicSendTestEmailRoute
   '/api/public/track-visit': typeof ApiPublicTrackVisitRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/scenario/created/$code': typeof ScenarioCreatedCodeRoute
@@ -264,6 +271,7 @@ export interface FileRoutesByTo {
   '/scenario/new': typeof ScenarioNewRoute
   '/advisor/scenario/$code': typeof AdvisorScenarioCodeRouteWithChildren
   '/agent/scenario/$code': typeof AgentScenarioCodeRoute
+  '/api/public/send-test-email': typeof ApiPublicSendTestEmailRoute
   '/api/public/track-visit': typeof ApiPublicTrackVisitRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/scenario/created/$code': typeof ScenarioCreatedCodeRoute
@@ -299,6 +307,7 @@ export interface FileRoutesById {
   '/scenario/new': typeof ScenarioNewRoute
   '/advisor/scenario/$code': typeof AdvisorScenarioCodeRouteWithChildren
   '/agent/scenario/$code': typeof AgentScenarioCodeRoute
+  '/api/public/send-test-email': typeof ApiPublicSendTestEmailRoute
   '/api/public/track-visit': typeof ApiPublicTrackVisitRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/scenario/created/$code': typeof ScenarioCreatedCodeRoute
@@ -335,6 +344,7 @@ export interface FileRouteTypes {
     | '/scenario/new'
     | '/advisor/scenario/$code'
     | '/agent/scenario/$code'
+    | '/api/public/send-test-email'
     | '/api/public/track-visit'
     | '/lovable/email/suppression'
     | '/scenario/created/$code'
@@ -369,6 +379,7 @@ export interface FileRouteTypes {
     | '/scenario/new'
     | '/advisor/scenario/$code'
     | '/agent/scenario/$code'
+    | '/api/public/send-test-email'
     | '/api/public/track-visit'
     | '/lovable/email/suppression'
     | '/scenario/created/$code'
@@ -403,6 +414,7 @@ export interface FileRouteTypes {
     | '/scenario/new'
     | '/advisor/scenario/$code'
     | '/agent/scenario/$code'
+    | '/api/public/send-test-email'
     | '/api/public/track-visit'
     | '/lovable/email/suppression'
     | '/scenario/created/$code'
@@ -436,6 +448,7 @@ export interface RootRouteChildren {
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   ScenarioCodeRoute: typeof ScenarioCodeRoute
   ScenarioNewRoute: typeof ScenarioNewRoute
+  ApiPublicSendTestEmailRoute: typeof ApiPublicSendTestEmailRoute
   ApiPublicTrackVisitRoute: typeof ApiPublicTrackVisitRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   ScenarioCreatedCodeRoute: typeof ScenarioCreatedCodeRoute
@@ -616,6 +629,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicTrackVisitRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/send-test-email': {
+      id: '/api/public/send-test-email'
+      path: '/api/public/send-test-email'
+      fullPath: '/api/public/send-test-email'
+      preLoaderRoute: typeof ApiPublicSendTestEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/agent/scenario/$code': {
       id: '/agent/scenario/$code'
       path: '/scenario/$code'
@@ -729,6 +749,7 @@ const rootRouteChildren: RootRouteChildren = {
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   ScenarioCodeRoute: ScenarioCodeRoute,
   ScenarioNewRoute: ScenarioNewRoute,
+  ApiPublicSendTestEmailRoute: ApiPublicSendTestEmailRoute,
   ApiPublicTrackVisitRoute: ApiPublicTrackVisitRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   ScenarioCreatedCodeRoute: ScenarioCreatedCodeRoute,
