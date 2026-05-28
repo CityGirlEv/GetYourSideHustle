@@ -27,4 +27,14 @@ test.describe("public smoke", () => {
     // App-store gate: signed-out users see the sign-in page or an auth prompt.
     await expect(page).toHaveURL(/\/(auth|login|$)/);
   });
+
+  test("QA manual is gated behind auth (anonymous → /auth)", async ({ page }) => {
+    await page.goto("/qa-manual");
+    await expect(page).toHaveURL(/\/(auth|login|$)/);
+  });
+
+  test("scenario builder is gated behind auth (anonymous → /auth)", async ({ page }) => {
+    await page.goto("/scenario/new");
+    await expect(page).toHaveURL(/\/(auth|login|$)/);
+  });
 });
