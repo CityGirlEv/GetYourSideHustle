@@ -288,6 +288,18 @@ export function TestPlanTab() {
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [ownerFilter, setOwnerFilter] = useState<string[]>([]);
   const [sprintFilter, setSprintFilter] = useState<string[]>([]);
+  // For QA users, default the owner filter to themselves on first load so
+  // they only see the tests assigned to them. Admins see everything.
+  const ownerFilterInitialized = React.useRef(false);
+  useEffect(() => {
+    if (ownerFilterInitialized.current) return;
+    if (!user) return;
+    ownerFilterInitialized.current = true;
+    if (user.role === "qa") {
+      const first = (user.full_name || user.email || "").trim().split(/\s+/)[0];
+      if (first) setOwnerFilter([first]);
+    }
+  }, [user]);
   const [bannerCollapsed, setBannerCollapsed] = useState(true);
   const [summaryCollapsed, setSummaryCollapsed] = useState(true);
 
