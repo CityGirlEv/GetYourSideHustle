@@ -392,7 +392,7 @@ export const TEST_CASES: TestCase[] = [
     path: "/scenario/new",
   },
   {
-    id: "SCEN-QA-007", area: "Scenario", priority: "P2",
+    id: "SCEN-QA-007", area: "Scenario", priority: "P2", assignee: "Evelyn",
     title: "QA creates \"Chronic Kidney Disease Stage 3\" scenario · $7/mo audit",
     preconditions: "Logged in as QA. /scenario/new is reachable and Lovable Cloud is healthy.",
     steps: ["Start from home page where the user clicks Create My Scenario","Enter the following for the Scenario Information: birth year = 1958 (age 68 in 2026), ZIP3 = 606","From the county dropdown that auto-populates for ZIP3=606, select Cook, IL — this scopes the carrier/plan check to only plans available in that county","Enter the remaining for the Scenario Information: gender = male, tobacco use = NO, income band = $50k–$75k, cost preference = 'minimize monthly'","Add these conditions exactly: Chronic Kidney Disease Stage 3","Add these medications exactly: Losartan 50 mg tablet (daily) = $7/mo","Submit the wizard and capture the generated Scenario ID (SCN-YYYY-XXXX-XXXX) — write it in QA notes","On the confirmation page, click \"Copy scenario link\" — verify the link uses the form /scenario/<SCN code>. Paste it into a new browser tab and confirm the scenario detail page loads with the SCN ID, summary card, share button, and expert opt-in trigger all present","On the confirmation page, verify the header echoes back every demographic, condition, and medication you entered character-for-character","Click 'Download PDF' and 'Download Excel' to generate the system output reports","Open each report and locate the Medication Cost summary. The total MUST equal $7/mo and $84/yr exactly","Cross-check that the conditions, demographics, and ZIP3 printed in the PDF and XLSX match what you entered in steps 2–5"],
@@ -400,7 +400,7 @@ export const TEST_CASES: TestCase[] = [
     path: "/scenario/new",
   },
   {
-    id: "SCEN-QA-008", area: "Scenario", priority: "P2",
+    id: "SCEN-QA-008", area: "Scenario", priority: "P2", assignee: "Evelyn",
     title: "QA creates \"Depression\" scenario · $23/mo audit",
     preconditions: "Logged in as QA. /scenario/new is reachable and Lovable Cloud is healthy.",
     steps: ["Start from home page where the user clicks Create My Scenario","Enter the following for the Scenario Information: birth year = 1957 (age 69 in 2026), ZIP3 = 750","From the county dropdown that auto-populates for ZIP3=750, select Collin, TX — this scopes the carrier/plan check to only plans available in that county","Enter the remaining for the Scenario Information: gender = female, tobacco use = NO, income band = <$25k, cost preference = 'minimize monthly'","Add these conditions exactly: Depression, Anxiety","Add these medications exactly: Sertraline 100 mg tablet (daily) = $9/mo; Buspirone 10 mg tablet (twice daily) = $14/mo","Submit the wizard and capture the generated Scenario ID (SCN-YYYY-XXXX-XXXX) — write it in QA notes","On the confirmation page, click \"Copy scenario link\" — verify the link uses the form /scenario/<SCN code>. Paste it into a new browser tab and confirm the scenario detail page loads with the SCN ID, summary card, share button, and expert opt-in trigger all present","On the confirmation page, verify the header echoes back every demographic, condition, and medication you entered character-for-character","Click 'Download PDF' and 'Download Excel' to generate the system output reports","Open each report and locate the Medication Cost summary. The total MUST equal $23/mo and $276/yr exactly","Cross-check that the conditions, demographics, and ZIP3 printed in the PDF and XLSX match what you entered in steps 2–5"],
@@ -408,7 +408,7 @@ export const TEST_CASES: TestCase[] = [
     path: "/scenario/new",
   },
   {
-    id: "SCEN-QA-009", area: "Scenario", priority: "P2",
+    id: "SCEN-QA-009", area: "Scenario", priority: "P2", assignee: "Evelyn",
     title: "QA creates \"Osteoporosis\" scenario · $18/mo audit",
     preconditions: "Logged in as QA. /scenario/new is reachable and Lovable Cloud is healthy.",
     steps: ["Start from home page where the user clicks Create My Scenario","Enter the following for the Scenario Information: birth year = 1959 (age 67 in 2026), ZIP3 = 802","From the county dropdown that auto-populates for ZIP3=802, select Adams, CO — this scopes the carrier/plan check to only plans available in that county","Enter the remaining for the Scenario Information: gender = male, tobacco use = NO, income band = $75k–$100k, cost preference = 'minimize monthly'","Add these conditions exactly: Osteoporosis","Add these medications exactly: Alendronate 70 mg tablet (weekly) = $18/mo","Submit the wizard and capture the generated Scenario ID (SCN-YYYY-XXXX-XXXX) — write it in QA notes","On the confirmation page, click \"Copy scenario link\" — verify the link uses the form /scenario/<SCN code>. Paste it into a new browser tab and confirm the scenario detail page loads with the SCN ID, summary card, share button, and expert opt-in trigger all present","On the confirmation page, verify the header echoes back every demographic, condition, and medication you entered character-for-character","Click 'Download PDF' and 'Download Excel' to generate the system output reports","Open each report and locate the Medication Cost summary. The total MUST equal $18/mo and $216/yr exactly","Cross-check that the conditions, demographics, and ZIP3 printed in the PDF and XLSX match what you entered in steps 2–5"],
@@ -472,7 +472,7 @@ export const TEST_CASES: TestCase[] = [
     path: "/advisor",
   },
   {
-    id: "SCEN-QA-017", area: "Scenario", priority: "P2",
+    id: "SCEN-QA-017", area: "Scenario", priority: "P2", assignee: "Evelyn",
     title: "Search scenarios — invalid code returns clear error",
     preconditions: "Logged in as QA.",
     steps: ["Log in as a QA user","Navigate to /advisor","Enter a clearly bogus code such as SCN-2026-ZZZZ-ZZZZ and submit","Repeat with an empty string and with a 3-character string"],
@@ -480,7 +480,7 @@ export const TEST_CASES: TestCase[] = [
     path: "/advisor",
   },
   {
-    id: "SCEN-QA-018", area: "Scenario", priority: "P2",
+    id: "SCEN-QA-018", area: "Scenario", priority: "P2", assignee: "Evelyn",
     title: "Search scenarios — rate limit kicks in after 10 bad attempts/min",
     preconditions: "Logged in as QA.",
     steps: ["Log in as a QA user","Navigate to /advisor","Submit 11 invalid scenario codes (e.g. SCN-2026-AAAA-000N where N increments) within 60 seconds"],
@@ -488,7 +488,7 @@ export const TEST_CASES: TestCase[] = [
     path: "/advisor",
   },
   {
-    id: "SCEN-QA-019", area: "Scenario", priority: "P2",
+    id: "SCEN-QA-019", area: "Scenario", priority: "P2", assignee: "Evelyn",
     title: "Admin can assign a scenario to an agent",
     preconditions: "Logged in as admin. At least one user with role 'agent' exists. At least one scenario created by SCEN-QA-001..SCEN-QA-015 exists.",
     steps: ["Log in as an admin user and open /admin","Locate the scenarios table and pick one of the SCEN-QA created scenarios","Open the 'Assigned agent' dropdown for that row and pick an agent","Refresh the page","Log out and log back in as that agent and open /agent","Verify the assigned scenario appears in the agent's queue"],
