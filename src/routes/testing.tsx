@@ -313,6 +313,10 @@ export function TestPlanTab() {
   const [saveScopeId, setSaveScopeId] = useState<string | null>(null);
   // Live save progress for the floating progress bar. null = no save in flight.
   const [saveProgress, setSaveProgress] = useState<{ done: number; total: number } | null>(null);
+  // Indeterminate "busy" indicator shown while the user is waiting on
+  // something that doesn't have a discrete progress count (e.g. preparing
+  // the confirmation dialog or checking evidence before the bulk write).
+  const [saveBusy, setSaveBusy] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [query, setQuery] = useState("");
   const [areaFilter, setAreaFilter] = useState<string[]>([]);
