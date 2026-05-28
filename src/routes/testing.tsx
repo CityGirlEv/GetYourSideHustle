@@ -306,6 +306,9 @@ export function TestPlanTab() {
   const [dAssignees, setDAssignees] = useState<Record<string, string>>({});
   const [dSprints, setDSprints] = useState<Record<string, string>>({});
   const [saveOpen, setSaveOpen] = useState(false);
+  // When set, the SaveChangesDialog is scoped to a single test id (clicked
+  // from the per-row "Save" button). null = bulk Save bar, shows all.
+  const [saveScopeId, setSaveScopeId] = useState<string | null>(null);
   // Live save progress for the floating progress bar. null = no save in flight.
   const [saveProgress, setSaveProgress] = useState<{ done: number; total: number } | null>(null);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
@@ -432,9 +435,12 @@ export function TestPlanTab() {
     id in dStatuses || id in dQaNotes || id in dDevNotes || id in dSeverities || id in dAssignees || id in dSprints;
 
   const saveSingleTest = (id: string) => {
-    const keys = new Set(pendingChanges.filter((c) => c.testId === id).map((c) => c.key));
-    if (keys.size === 0) return;
-    commitChanges(keys);
+    const keys = pendingChanges.filter((c) => c.testId === id);
+    if (keys.length === 0) return;
+    // Always route through the confirmation popup so the user can review
+    // before/after and uncheck anything they don't want saved.
+    setSaveScopeId(id);
+    setSaveOpen(true);
   };
 
   // Persist a subset of pending changes; remaining ones stay in draft.
@@ -494,6 +500,7 @@ export function TestPlanTab() {
     setDStatuses(stillDraft.status); setDQaNotes(stillDraft.qaNote); setDDevNotes(stillDraft.devNote);
     setDSeverities(stillDraft.severity); setDAssignees(stillDraft.assignee); setDSprints(stillDraft.sprint);
     setSaveOpen(false);
+    setSaveScopeId(null);
 
     // ----- Coalesced cloud writes with progress bar -------------------------
     const draftSnapshot: DraftValues = {
@@ -1099,8 +1106,8 @@ export function TestPlanTab() {
       </div>
       <SaveChangesDialog
         open={saveOpen}
-        onOpenChange={setSaveOpen}
-        changes={pendingChanges}
+        onOpenChange={(v: boolean) => { setSaveOpen(v); if (!v) setSaveScopeId(null); }}
+        changes={saveScopeId ? pendingChanges.filter((c) => c.testId === saveScopeId) : pendingChanges}
         onConfirm={commitChanges}
       />
       <SaveProgressBar progress={saveProgress} />

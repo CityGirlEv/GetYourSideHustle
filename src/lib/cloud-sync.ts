@@ -155,17 +155,25 @@ export async function hydrateTestResultsToLocal(): Promise<number> {
   if (error || !data) return 0;
   for (const row of data) {
     const id = row.test_id as string;
-    if (row.status) localStorage.setItem(TEST_STATUS_KEY(id), row.status as string);
-    if (row.severity) localStorage.setItem(TEST_SEVERITY_KEY(id), row.severity as string);
-    if (row.assignee) localStorage.setItem(TEST_ASSIGNEE_KEY(id), row.assignee as string);
-    if (row.sprint_id) localStorage.setItem(TEST_SPRINT_KEY(id), row.sprint_id as string);
+    // Local-first: never overwrite a value that already exists in this
+    // browser's localStorage. The user's most recent action wins; cloud
+    // values only fill in gaps (e.g. first load on a fresh browser). This
+    // prevents stale or in-flight DB rows from clobbering changes the user
+    // just saved locally before the cloud round-trip completed.
+    const setIfMissing = (k: string, v: string) => {
+      if (localStorage.getItem(k) == null) localStorage.setItem(k, v);
+    };
+    if (row.status)    setIfMissing(TEST_STATUS_KEY(id), row.status as string);
+    if (row.severity)  setIfMissing(TEST_SEVERITY_KEY(id), row.severity as string);
+    if (row.assignee)  setIfMissing(TEST_ASSIGNEE_KEY(id), row.assignee as string);
+    if (row.sprint_id) setIfMissing(TEST_SPRINT_KEY(id), row.sprint_id as string);
     if (row.description_override) {
-      localStorage.setItem(TEST_DESC_KEY(id), JSON.stringify(row.description_override));
+      setIfMissing(TEST_DESC_KEY(id), JSON.stringify(row.description_override));
     }
     const qa = Array.isArray(row.qa_notes) ? (row.qa_notes as unknown as NoteEntry[]) : [];
     const dev = Array.isArray(row.dev_notes) ? (row.dev_notes as unknown as NoteEntry[]) : [];
-    if (qa.length) localStorage.setItem(TEST_QA_NOTE_KEY(id), qa[qa.length - 1].text);
-    if (dev.length) localStorage.setItem(TEST_DEV_NOTE_KEY(id), dev[dev.length - 1].text);
+    if (qa.length)  setIfMissing(TEST_QA_NOTE_KEY(id),  qa[qa.length - 1].text);
+    if (dev.length) setIfMissing(TEST_DEV_NOTE_KEY(id), dev[dev.length - 1].text);
   }
   return data.length;
 }
