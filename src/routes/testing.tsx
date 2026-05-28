@@ -204,6 +204,7 @@ function TestingPortal() {
 export function TestPlanTab() {
   const { user } = useApp();
   const isAdmin = user?.role === "admin";
+  const confirm = useConfirm();
   // Persisted/saved state, hydrated from local storage
   // Seed local statuses with the last recorded vitest/playwright run so
   // automated tests show pass/fail without requiring the user to mark them.
