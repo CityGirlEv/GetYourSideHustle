@@ -773,6 +773,18 @@ export function TestPlanTab() {
                     onSprintChange={(s) => setSprintFor(t.id, s)}
                     isAdmin={isAdmin}
                     onEdit={() => setEditingId(t.id)}
+                    onDuplicate={async () => {
+                      try {
+                        const row = await duplicateCustomTest(
+                          t,
+                          effectiveCases.map((x) => x.id),
+                        );
+                        setCustomTests((prev) => [row, ...prev]);
+                        toast.success(`Duplicated ${t.id} → ${row.id}`);
+                      } catch (e) {
+                        toast.error(`Could not duplicate: ${(e as Error).message}`);
+                      }
+                    }}
                     hasChanges={hasTestChanges(t.id)}
                     onSave={() => saveSingleTest(t.id)}
                   />
