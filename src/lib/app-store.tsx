@@ -13,6 +13,8 @@ export interface User {
   full_name: string;
   role: Role;
   npn_number?: string;
+  qa_devices?: string[];
+  roles?: string[];
 }
 
 export interface Scenario {
