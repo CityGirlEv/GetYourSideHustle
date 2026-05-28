@@ -21,6 +21,8 @@ import {
   saveDevNote,
   loadSeverity,
   saveSeverity,
+  loadAllAssigneeOverrides,
+  saveAssigneeOverride,
   PRIORITY_LABELS,
   PRIORITY_SHORT,
   FAIL_SEVERITY_LABELS,
@@ -77,6 +79,13 @@ describe("severity", () => {
     expect(loadSeverity("Z-1")).toBe("high");
     saveSeverity("Z-1", "");
     expect(loadSeverity("Z-1")).toBe("");
+  });
+});
+
+describe("assignee overrides", () => {
+  it("loads platform-variant assignee overrides from localStorage", () => {
+    saveAssigneeOverride("AUTH-004-IOS", "Evelyn");
+    expect(loadAllAssigneeOverrides()["AUTH-004-IOS"]).toBe("Evelyn");
   });
 });
 
