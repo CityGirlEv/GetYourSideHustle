@@ -409,6 +409,10 @@ export function TestPlanTab() {
     let raw: string;
     if (customIds.has(t.id)) {
       raw = ov || (t.assignee && t.assignee !== "Unassigned" ? t.assignee : "Unassigned");
+    } else if (AUTOMATED_TEST_IDS.has(t.id)) {
+      // Automated tests stay owned by their runner — they're not human-
+      // assignable, so the fail-→Dev rule in getTestAssignee doesn't apply.
+      raw = t.assignee || "Unassigned";
     } else {
       raw = ov || getTestAssignee(t, statuses[t.id]);
     }
