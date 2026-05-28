@@ -772,6 +772,7 @@ export function TaskSheetContent() {
                 <TableHead className="min-w-[260px]">Description</TableHead>
                 <TableHead>Sprint</TableHead>
                 <TableHead>Priority</TableHead>
+                <TableHead>Severity</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Assigned to</TableHead>
                 <TableHead>By</TableHead>
