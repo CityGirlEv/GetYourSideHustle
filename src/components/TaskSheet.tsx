@@ -381,7 +381,7 @@ export function TaskSheetContent() {
 
   const FIELD_LABELS: Record<FieldKey, string> = {
     description: "Description", sprintId: "Sprint", category: "Category",
-    priority: "Priority", status: "Status", assignBy: "Assigned by",
+    priority: "Priority", status: "Status", severity: "Severity", assignBy: "Assigned by",
     assignedTo: "Assigned to", dateAssigned: "Date assigned", dueDate: "Due date",
     dateCompleted: "Date completed", cost: "Cost", notes: "Notes", path: "Link",
   };
