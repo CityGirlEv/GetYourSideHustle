@@ -116,6 +116,7 @@ const TASK_STATUS_STYLES: Record<TaskRowStatus, string> = {
 };
 
 export function TaskSheetContent() {
+  const confirm = useConfirm();
   // savedRows = last persisted snapshot; rows = working draft (unsaved edits)
   const [savedRows, setSavedRows] = useState<TaskRow[]>(() => loadTaskRows());
   const [rows, setRows] = useState<TaskRow[]>(() => loadTaskRows());
