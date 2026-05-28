@@ -9,7 +9,14 @@ vi.mock("@/integrations/supabase/client", () => ({
 }));
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
-import { cloudPushTest, cloudSyncAllTasks, lastSyncedAt, syncLocalToCloud } from "../cloud-sync";
+import {
+  cloudPushTest,
+  cloudPushTestsBulk,
+  cloudAppendNotesBulk,
+  cloudSyncAllTasks,
+  lastSyncedAt,
+  syncLocalToCloud,
+} from "../cloud-sync";
 
 beforeEach(() => {
   localStorage.clear();
@@ -34,5 +41,21 @@ describe("cloud-sync", () => {
   it("cloudSyncAllTasks returns null when not signed in", async () => {
     const r = await cloudSyncAllTasks([]);
     expect(r).toBeNull();
+  });
+
+  it("cloudPushTestsBulk short-circuits on empty input (no network)", async () => {
+    expect(await cloudPushTestsBulk([])).toBe(0);
+  });
+
+  it("cloudPushTestsBulk returns 0 when not signed in", async () => {
+    expect(await cloudPushTestsBulk([{ test_id: "T1", patch: { status: "pass" } }])).toBe(0);
+  });
+
+  it("cloudAppendNotesBulk short-circuits on empty input (no network)", async () => {
+    expect(await cloudAppendNotesBulk([])).toBe(0);
+  });
+
+  it("cloudAppendNotesBulk returns 0 when not signed in", async () => {
+    expect(await cloudAppendNotesBulk([{ test_id: "T1", kind: "qa", text: "x" }])).toBe(0);
   });
 });
