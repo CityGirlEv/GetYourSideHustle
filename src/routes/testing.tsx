@@ -877,7 +877,10 @@ export function TestPlanTab() {
         )}
         <MultiSelect
           placeholder="Sprint" triggerClassName="w-[200px]"
-          options={SPRINTS.map((s) => ({ value: s.id, label: `Sprint ${s.number} · ${s.name}` }))}
+          options={SPRINTS.map((s) => ({
+            value: s.id,
+            label: s.id === BACKLOG_SPRINT_ID ? "Backlog" : `Sprint ${s.number} · ${s.name}`,
+          }))}
           value={sprintFilter} onChange={setSprintFilter}
         />
         <MultiSelect
@@ -948,7 +951,11 @@ export function TestPlanTab() {
           return ordered.map(({ sprintId, tests }) => {
             const sprintMeta = SPRINTS.find((s) => s.id === sprintId);
             const isCollapsed = collapsedSprints.has(sprintId);
-            const label = sprintMeta ? `Sprint ${sprintMeta.number} · ${sprintMeta.name}` : "Unassigned";
+            const label = sprintMeta
+              ? sprintMeta.id === BACKLOG_SPRINT_ID
+                ? "Backlog"
+                : `Sprint ${sprintMeta.number} · ${sprintMeta.name}`
+              : "Unassigned";
             const isActive = sprintId === ACTIVE_SPRINT_ID;
             return (
               <Fragment key={sprintId}>
@@ -1110,7 +1117,11 @@ function BulkEditBar({
           title="Set sprint for selected"
         >
           <option value="">Set sprint…</option>
-          {SPRINTS.map((s) => <option key={s.id} value={s.id}>Sprint {s.number} · {s.name}</option>)}
+          {SPRINTS.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.id === BACKLOG_SPRINT_ID ? "Backlog" : `Sprint ${s.number} · ${s.name}`}
+            </option>
+          ))}
         </select>
         <select
           disabled={disabled}
