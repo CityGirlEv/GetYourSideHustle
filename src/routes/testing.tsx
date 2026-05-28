@@ -610,6 +610,30 @@ export function TestPlanTab() {
             <StatBadge n={counts.total}    label="Total"   color="bg-primary/10 text-primary border-primary/30" active={statusFilter.length === 0} onClick={() => setStatusFilter([])} />
           </div>
           <div className="flex items-center gap-2">
+            {isAdmin && (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-emerald-500/60 text-emerald-700 hover:bg-emerald-500/10"
+                  onClick={() => copyRunCommand("bun run test", "Run all Vitest tests")}
+                  title="Copy: bun run test (runs the full Vitest suite locally)"
+                >
+                  <Play className="h-3.5 w-3.5 mr-1.5" />
+                  Run Vitest
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-sky-500/60 text-sky-700 hover:bg-sky-500/10"
+                  onClick={() => copyRunCommand("bun run e2e", "Run all Playwright tests")}
+                  title="Copy: bun run e2e (runs the full Playwright suite locally)"
+                >
+                  <Play className="h-3.5 w-3.5 mr-1.5" />
+                  Run Playwright
+                </Button>
+              </>
+            )}
             <Button
               size="sm"
               variant="default"
