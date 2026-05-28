@@ -60,14 +60,14 @@ function ScenarioNew() {
             onClick={() => setMode("manual")}
             className={`inline-flex items-center gap-1.5 px-4 py-1.5 text-sm font-semibold rounded-full transition ${mode === "manual" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
-            <Keyboard className="h-3.5 w-3.5" /> Manual form
+            <Keyboard className="h-3.5 w-3.5" /> Start Manual Wizard
           </button>
           <button
             type="button"
             onClick={() => setMode("voice")}
             className={`inline-flex items-center gap-1.5 px-4 py-1.5 text-sm font-semibold rounded-full transition ${mode === "voice" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
-            <Mic className="h-3.5 w-3.5" /> Voice wizard
+            <Mic className="h-3.5 w-3.5" /> Start Voice Wizard
           </button>
         </div>
       </div>
