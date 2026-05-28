@@ -26,6 +26,11 @@ import {
   PRIORITY_LABELS,
   PRIORITY_SHORT,
   FAIL_SEVERITY_LABELS,
+  getTestSprintId,
+  BACKLOG_SPRINT_ID,
+  ACTIVE_SPRINT_ID,
+  SPRINTS,
+  saveSprintOverride,
 } from "../test-plan";
 
 beforeEach(() => {
@@ -107,5 +112,36 @@ describe("constants", () => {
   it("TEST_CASES have unique ids", () => {
     const ids = TEST_CASES.map((t) => t.id);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+});
+
+describe("sprint routing", () => {
+  it("SPRINTS includes a Backlog entry", () => {
+    expect(SPRINTS.some((s) => s.id === BACKLOG_SPRINT_ID)).toBe(true);
+  });
+  it("Unassigned tests with no explicit sprint default to Backlog", () => {
+    const t = { id: "X-1", area: "X", title: "x", priority: "P2", steps: [], expected: "", assignee: "Unassigned" } as any;
+    expect(getTestSprintId(t)).toBe(BACKLOG_SPRINT_ID);
+  });
+  it("owned tests default to the active sprint", () => {
+    const t = { id: "X-2", area: "X", title: "x", priority: "P2", steps: [], expected: "", assignee: "Catria" } as any;
+    expect(getTestSprintId(t)).toBe(ACTIVE_SPRINT_ID);
+  });
+  it("explicit sprintId wins over the unassigned->backlog fallback", () => {
+    const t = { id: "X-3", area: "X", title: "x", priority: "P2", steps: [], expected: "", assignee: "Unassigned", sprintId: ACTIVE_SPRINT_ID } as any;
+    expect(getTestSprintId(t)).toBe(ACTIVE_SPRINT_ID);
+  });
+  it("user override wins over everything", () => {
+    const t = { id: "X-4", area: "X", title: "x", priority: "P2", steps: [], expected: "", assignee: "Unassigned" } as any;
+    saveSprintOverride("X-4", ACTIVE_SPRINT_ID);
+    expect(getTestSprintId(t)).toBe(ACTIVE_SPRINT_ID);
+  });
+  it("real unassigned test cases (NOTIF-*, EMAIL-001) route to Backlog", () => {
+    const ids = ["NOTIF-001", "NOTIF-002", "NOTIF-003", "NOTIF-004", "EMAIL-001"];
+    for (const id of ids) {
+      const t = TEST_CASES.find((x) => x.id === id)!;
+      expect(t).toBeTruthy();
+      expect(getTestSprintId(t)).toBe(BACKLOG_SPRINT_ID);
+    }
   });
 });
