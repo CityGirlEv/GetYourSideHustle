@@ -230,9 +230,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     // Positive purchases go through purchase_credits; negative adjustments require admin RPC.
     if (amount > 0) {
-      const { data, error } = await supabase.rpc("purchase_credits", { p_amount: amount, p_description: description });
-      if (error || data === null) { console.warn("purchase_credits failed", error?.message); return; }
-      setCredits(data as number);
+      try {
+        const { purchaseCreditsServer } = await import("./credits.functions");
+        const res = await purchaseCreditsServer({ data: { amount, description } });
+        setCredits(res.balance);
+      } catch (e) {
+        console.warn("purchaseCreditsServer failed", (e as Error)?.message);
+        return;
+      }
     } else if (amount < 0) {
       const { data, error } = await supabase.rpc("admin_adjust_credits", { p_target: user.id, p_amount: amount, p_description: description });
       if (error || data === null) { console.warn("admin_adjust_credits failed", error?.message); return; }
