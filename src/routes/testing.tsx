@@ -962,6 +962,7 @@ function TestCaseCard({
   t, status, qaNote, devNote, severity, assignee, sprintId, selected, onSelectChange,
   onChange, onQaNoteChange, onDevNoteChange, onSeverityChange, onAssigneeChange, onSprintChange,
   isAdmin, onEdit, hasChanges, onSave,
+  onDuplicate,
 }: {
   t: TestCase;
   status: TestStatus;
@@ -980,6 +981,7 @@ function TestCaseCard({
   onSprintChange: (sprintId: string) => void;
   isAdmin?: boolean;
   onEdit?: () => void;
+  onDuplicate?: () => void;
   hasChanges?: boolean;
   onSave?: () => void;
 }) {
@@ -1046,6 +1048,17 @@ function TestCaseCard({
             title="Edit test description"
           >
             <Pencil className="h-3.5 w-3.5 mr-1" /> Edit test
+          </Button>
+        )}
+        {onDuplicate && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 px-2 text-xs"
+            onClick={onDuplicate}
+            title="Duplicate this test for additional coverage"
+          >
+            <Copy className="h-3.5 w-3.5 mr-1" /> Duplicate
           </Button>
         )}
         <StatusButtons status={status} onChange={onChange} />
