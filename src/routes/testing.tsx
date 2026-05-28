@@ -510,7 +510,13 @@ export function TestPlanTab() {
     }
   };
 
-  const areas = useMemo(() => Array.from(new Set(effectiveCases.map((t) => t.area))), [effectiveCases]);
+  const areas = useMemo(
+    () =>
+      Array.from(new Set(effectiveCases.map((t) => t.area))).sort((a, b) =>
+        a.localeCompare(b, undefined, { sensitivity: "base" }),
+      ),
+    [effectiveCases],
+  );
   // Effective assignee/sprint that respects unsaved drafts (the lib helpers read storage)
   const effAssignee = (t: TestCase): string => {
     const platformSuffix = TEST_PLATFORMS.find((p) => t.id.endsWith(`-${p.suffix}`))?.suffix;
@@ -567,6 +573,9 @@ export function TestPlanTab() {
         if (o) counts[o] = 0;
       }
     }
+    // Always surface an Unassigned bubble so users can spot newly created
+    // tests that have not been routed to an owner yet.
+    counts["Unassigned"] = counts["Unassigned"] ?? 0;
     for (const t of scopedCases) {
       const a = effAssignee(t);
       counts[a] = (counts[a] || 0) + 1;
@@ -687,7 +696,7 @@ export function TestPlanTab() {
               {" "}· Severe=15 · High=10 · Medium=5 · Low=3 · +{REPRO_FAIL_BONUS} bonus per first repro-fail
             </div>
             <div className="flex flex-wrap gap-2 text-xs mt-3">
-              {isAdmin && Object.entries(ownerCounts).map(([owner, n]) => {
+              {Object.entries(ownerCounts).map(([owner, n]) => {
                 const active = ownerFilter.length === 1 && ownerFilter[0] === owner;
                 return (
                   <button
@@ -857,6 +866,7 @@ export function TestPlanTab() {
           placeholder="Area" triggerClassName="w-[180px]"
           options={areas.map((a) => ({ value: a, label: a }))}
           value={areaFilter} onChange={setAreaFilter}
+          searchable searchPlaceholder="Search areas…"
         />
         {isAdmin && (
           <MultiSelect
