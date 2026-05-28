@@ -971,7 +971,7 @@ function priorityVariant(p: Priority): string {
 function TestCaseCard({
   t, status, qaNote, devNote, severity, assignee, sprintId, selected, onSelectChange,
   onChange, onQaNoteChange, onDevNoteChange, onSeverityChange, onAssigneeChange, onSprintChange,
-  isAdmin, onEdit, hasChanges, onSave,
+  isAdmin, onEdit, hasChanges, onSave, assigneeLocked,
   onDuplicate,
 }: {
   t: TestCase;
@@ -994,6 +994,9 @@ function TestCaseCard({
   onDuplicate?: () => void;
   hasChanges?: boolean;
   onSave?: () => void;
+  /** When true, the Owner select is rendered read-only (used for
+   *  auto-discovered Vitest / Playwright tests owned by their runner). */
+  assigneeLocked?: boolean;
 }) {
   // Shade the whole row based on status (background + left border accent)
   const shade =
