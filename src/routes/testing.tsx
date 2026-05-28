@@ -557,16 +557,16 @@ export function TestPlanTab() {
     });
   const ownerCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    for (const t of effectiveCases) {
+    for (const t of scopedCases) {
       const a = effAssignee(t);
       counts[a] = (counts[a] || 0) + 1;
     }
     return counts;
-  }, [statuses, assigneeOverrides, effectiveCases]);
+  }, [statuses, assigneeOverrides, scopedCases]);
   const owners = useMemo(() => Object.keys(ownerCounts), [ownerCounts]);
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim();
-    return effectiveCases.filter((t) => {
+    return scopedCases.filter((t) => {
       if (!multiSelectMatches(areaFilter, t.area)) return false;
       if (!multiSelectMatches(statusFilter, statuses[t.id] ?? "not_run")) return false;
       if (!multiSelectMatches(ownerFilter, effAssignee(t))) return false;
@@ -574,7 +574,7 @@ export function TestPlanTab() {
       if (!q) return true;
       return [t.id, t.title, t.area, ...t.steps, t.expected].some((f) => f.toLowerCase().includes(q));
     });
-  }, [query, areaFilter, statusFilter, ownerFilter, sprintFilter, statuses, assigneeOverrides, sprintOverrides, effectiveCases]);
+  }, [query, areaFilter, statusFilter, ownerFilter, sprintFilter, statuses, assigneeOverrides, sprintOverrides, scopedCases]);
 
   // Auto-expand sprint sections when filters are active so filtered results remain visible.
   const testFilterKey = JSON.stringify([query, areaFilter, statusFilter, ownerFilter, sprintFilter]);
