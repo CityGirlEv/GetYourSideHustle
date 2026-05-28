@@ -327,6 +327,7 @@ export type Database = {
           id: string
           npn_number: string | null
           phone: string | null
+          qa_devices: string[] | null
           updated_at: string
         }
         Insert: {
@@ -335,6 +336,7 @@ export type Database = {
           id: string
           npn_number?: string | null
           phone?: string | null
+          qa_devices?: string[] | null
           updated_at?: string
         }
         Update: {
@@ -343,6 +345,7 @@ export type Database = {
           id?: string
           npn_number?: string | null
           phone?: string | null
+          qa_devices?: string[] | null
           updated_at?: string
         }
         Relationships: []

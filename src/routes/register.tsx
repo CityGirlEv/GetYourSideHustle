@@ -38,6 +38,8 @@ function RegisterPage() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [requestedRole, setRequestedRole] = useState<"qa" | "agent" | "">("");
+  const [qaDevices, setQaDevices] = useState<string[]>([]);
+  const [qaDeviceOther, setQaDeviceOther] = useState("");
   const [ndaOpen, setNdaOpen] = useState(false);
   const [done, setDone] = useState(false);
   const [signatureName, setSignatureName] = useState("");
@@ -51,6 +53,12 @@ function RegisterPage() {
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return toast.error("Enter a valid email.");
     if (phone.replace(/\D/g, "").length < 7) return toast.error("Enter a valid phone number.");
     if (requestedRole !== "qa" && requestedRole !== "agent") return toast.error("Pick the role you're registering for.");
+    if (requestedRole === "qa") {
+      const extras = qaDeviceOther.split(",").map((s) => s.trim()).filter(Boolean);
+      if (qaDevices.length === 0 && extras.length === 0) {
+        return toast.error("Select at least one device you can test on.");
+      }
+    }
     setSignatureName(`${firstName.trim()} ${lastName.trim()}`);
     setAccept(false);
     setNdaOpen(true);
@@ -61,6 +69,10 @@ function RegisterPage() {
     if (!accept) return toast.error("Check the box to agree to the NDA.");
     setBusy(true);
     try {
+      const extras = qaDeviceOther.split(",").map((s) => s.trim()).filter(Boolean);
+      const devices = requestedRole === "qa"
+        ? Array.from(new Set([...qaDevices, ...extras]))
+        : undefined;
       await doRegister({
         data: {
           first_name: firstName.trim(),
@@ -71,6 +83,7 @@ function RegisterPage() {
           accept_nda: true,
           requested_role: requestedRole as "qa" | "agent",
           user_agent: typeof navigator !== "undefined" ? navigator.userAgent : null,
+          qa_devices: devices,
         },
       });
       setNdaOpen(false);
@@ -133,6 +146,52 @@ function RegisterPage() {
                   </div>
                   <p className="text-[11px] text-muted-foreground">An administrator will review and enable your account.</p>
                 </div>
+                {requestedRole === "qa" && (
+                  <div className="space-y-2 rounded-md border border-border p-3 bg-muted/20">
+                    <Label>Which devices can you test on?</Label>
+                    <p className="text-[11px] text-muted-foreground">Select all that apply — we use this to assign scenarios that match your hardware.</p>
+                    <div className="space-y-3 pt-1">
+                      <div>
+                        <div className="text-xs font-semibold mb-1.5 text-muted-foreground uppercase tracking-wide">Computer</div>
+                        <div className="grid grid-cols-2 gap-2">
+                          {["MacBook", "iMac", "Windows desktop", "Windows laptop", "Linux"].map((d) => {
+                            const active = qaDevices.includes(d);
+                            return (
+                              <label key={d} className={`flex items-center gap-2 rounded-md border p-2 text-sm cursor-pointer transition ${active ? "border-primary bg-primary/10" : "border-border hover:bg-muted/40"}`}>
+                                <Checkbox
+                                  checked={active}
+                                  onCheckedChange={(v) => setQaDevices((prev) => v ? Array.from(new Set([...prev, d])) : prev.filter((x) => x !== d))}
+                                />
+                                <span>{d}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold mb-1.5 text-muted-foreground uppercase tracking-wide">Mobile device</div>
+                        <div className="grid grid-cols-2 gap-2">
+                          {["iPhone", "iPad", "Android phone", "Android tablet"].map((d) => {
+                            const active = qaDevices.includes(d);
+                            return (
+                              <label key={d} className={`flex items-center gap-2 rounded-md border p-2 text-sm cursor-pointer transition ${active ? "border-primary bg-primary/10" : "border-border hover:bg-muted/40"}`}>
+                                <Checkbox
+                                  checked={active}
+                                  onCheckedChange={(v) => setQaDevices((prev) => v ? Array.from(new Set([...prev, d])) : prev.filter((x) => x !== d))}
+                                />
+                                <span>{d}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Other (comma-separated)</Label>
+                        <Input value={qaDeviceOther} onChange={(e) => setQaDeviceOther(e.target.value)} placeholder="e.g. Chromebook, Kindle Fire" />
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <Button type="submit" className="w-full grad-indigo h-11">Submit</Button>
                 <p className="text-xs text-center text-muted-foreground">
                   Already have an account? <Link to="/auth" className="underline">Sign in</Link>
