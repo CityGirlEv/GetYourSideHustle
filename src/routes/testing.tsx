@@ -555,6 +555,14 @@ export function TestPlanTab() {
       if (n.has(id)) n.delete(id); else n.add(id);
       return n;
     });
+  // For QA: pre-scope the dataset so all counts, charts, and per-owner
+  // breakdowns only ever reflect their own tests. Admins see everything.
+  const scopedCases = useMemo(
+    () => restrictToSelf
+      ? effectiveCases.filter((t) => effAssignee(t) === qaFirstName)
+      : effectiveCases,
+    [effectiveCases, restrictToSelf, qaFirstName, statuses, assigneeOverrides, customIds],
+  );
   const ownerCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const t of scopedCases) {
