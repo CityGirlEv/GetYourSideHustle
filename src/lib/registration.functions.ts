@@ -24,7 +24,7 @@ function randomPassword(len = 24) {
 }
 
 async function sendRegistrationNotification(opts: {
-  firstName: string; lastName: string; email: string; phone: string; requestedRole: string;
+  firstName: string; lastName: string; email: string; phone: string; requestedRole: string; qaDevices?: string[];
 }) {
   const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
   const RESEND_API_KEY = process.env.RESEND_API_KEY;
@@ -38,6 +38,9 @@ async function sendRegistrationNotification(opts: {
   const em = escHtml(opts.email);
   const ph = escHtml(opts.phone);
   const rr = escHtml(opts.requestedRole);
+  const devicesRow = opts.requestedRole === "qa"
+    ? `<tr><td><b>QA devices</b></td><td>${(opts.qaDevices ?? []).map(escHtml).join(", ") || "<i>None specified</i>"}</td></tr>`
+    : "";
   const html = `
     <div style="font-family:Arial,sans-serif;line-height:1.5">
       <h2>New beta access request</h2>
@@ -47,6 +50,7 @@ async function sendRegistrationNotification(opts: {
         <tr><td><b>Email</b></td><td>${em}</td></tr>
         <tr><td><b>Phone</b></td><td>${ph}</td></tr>
         <tr><td><b>Requested role</b></td><td>${rr}</td></tr>
+        ${devicesRow}
       </table>
       <p>Sign in to the Admin Portal to review and enable the account.</p>
     </div>`;
