@@ -159,13 +159,18 @@ function TestingPortal() {
   return (
     <AppShell title="Testing Portal" subtitle="Use-case tests, implementation phases, sprint schedule, and the cross-sprint task backlog.">
       {(isQa || isAdmin) && (
-        <div className="mb-3 flex items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+        <div className="mb-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
           <div>
             <b>New here?</b> Read the QA Manual — filters, statuses, bulk edits, and the bug pipeline in one short page.
           </div>
-          <a href="/qa-manual" className="inline-flex items-center rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90">
-            Open QA Manual →
-          </a>
+          <div className="flex items-center gap-2 shrink-0">
+            <a href="/qa-credits" className="inline-flex items-center rounded-md bg-emerald/80 px-3 py-1.5 text-xs font-medium text-white hover:opacity-90">
+              Credits →
+            </a>
+            <a href="/qa-manual" className="inline-flex items-center rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90">
+              QA Manual →
+            </a>
+          </div>
         </div>
       )}
       <Tabs defaultValue="tests" className="space-y-4">

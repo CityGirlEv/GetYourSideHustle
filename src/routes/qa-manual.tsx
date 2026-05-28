@@ -4,7 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/lib/app-store";
-import { BookOpen, ArrowLeft, Filter, LayoutDashboard, CheckSquare, MessageSquareWarning, ListChecks } from "lucide-react";
+import { BookOpen, ArrowLeft, Filter, LayoutDashboard, CheckSquare, MessageSquareWarning, ListChecks, Coins } from "lucide-react";
 
 export const Route = createFileRoute("/qa-manual")({
   head: () => ({
@@ -162,6 +162,19 @@ function QAManualPage() {
             <li>Every failed test must include a <b>QA note</b>. Every Dev hand-off (Fixed/Retest or Failed/Retest) must include a <b>Dev note</b>.</li>
             <li>The loop continues until QA marks <b>Pass</b>. The test is then <b>closed</b> — but status and every field remain editable.</li>
           </ul>
+        </Card>
+
+        {/* 6. Credits */}
+        <Card className="glass p-5 space-y-3">
+          <h2 className="font-display text-lg font-bold flex items-center gap-2"><Coins className="h-4 w-4 text-primary" />6. Credits</h2>
+          <p className="text-sm text-muted-foreground">You earn credit tokens for every test you execute and submit with evidence.</p>
+          <ul className="text-sm space-y-1.5 ml-1">
+            <li><b>Pass</b> — earn tokens based on test priority (P0 = 15, P1 = 10, P2 = 5, P3 = 3).</li>
+            <li><b>Fail</b> — earn the same base tokens if you leave reproducible QA notes.</li>
+            <li><b>First-fail bonus</b> — +5 bonus for the first reproducible fail filed on a given test id.</li>
+            <li><b>Blocked / Not Run</b> — 0 tokens.</li>
+          </ul>
+          <div className="pt-1"><Link to="/qa-credits"><Button size="sm" variant="outline">Open full credit guide →</Button></Link></div>
         </Card>
 
         <Card className="glass p-5 space-y-2">
