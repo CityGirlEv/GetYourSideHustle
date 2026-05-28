@@ -20,6 +20,7 @@ import { Route as SitemapInternalDotxmlRouteImport } from './routes/sitemap-inte
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as QaManualRouteImport } from './routes/qa-manual'
+import { Route as QaCreditsRouteImport } from './routes/qa-credits'
 import { Route as QaRouteImport } from './routes/qa'
 import { Route as NdaRouteImport } from './routes/nda'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -96,6 +97,11 @@ const RegisterRoute = RegisterRouteImport.update({
 const QaManualRoute = QaManualRouteImport.update({
   id: '/qa-manual',
   path: '/qa-manual',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QaCreditsRoute = QaCreditsRouteImport.update({
+  id: '/qa-credits',
+  path: '/qa-credits',
   getParentRoute: () => rootRouteImport,
 } as any)
 const QaRoute = QaRouteImport.update({
@@ -220,6 +226,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/nda': typeof NdaRoute
   '/qa': typeof QaRoute
+  '/qa-credits': typeof QaCreditsRoute
   '/qa-manual': typeof QaManualRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -255,6 +262,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/nda': typeof NdaRoute
   '/qa': typeof QaRoute
+  '/qa-credits': typeof QaCreditsRoute
   '/qa-manual': typeof QaManualRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -291,6 +299,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/nda': typeof NdaRoute
   '/qa': typeof QaRoute
+  '/qa-credits': typeof QaCreditsRoute
   '/qa-manual': typeof QaManualRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -328,6 +337,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/nda'
     | '/qa'
+    | '/qa-credits'
     | '/qa-manual'
     | '/register'
     | '/reset-password'
@@ -363,6 +373,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/nda'
     | '/qa'
+    | '/qa-credits'
     | '/qa-manual'
     | '/register'
     | '/reset-password'
@@ -398,6 +409,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/nda'
     | '/qa'
+    | '/qa-credits'
     | '/qa-manual'
     | '/register'
     | '/reset-password'
@@ -434,6 +446,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   NdaRoute: typeof NdaRoute
   QaRoute: typeof QaRoute
+  QaCreditsRoute: typeof QaCreditsRoute
   QaManualRoute: typeof QaManualRoute
   RegisterRoute: typeof RegisterRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -536,6 +549,13 @@ declare module '@tanstack/react-router' {
       path: '/qa-manual'
       fullPath: '/qa-manual'
       preLoaderRoute: typeof QaManualRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/qa-credits': {
+      id: '/qa-credits'
+      path: '/qa-credits'
+      fullPath: '/qa-credits'
+      preLoaderRoute: typeof QaCreditsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/qa': {
@@ -735,6 +755,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   NdaRoute: NdaRoute,
   QaRoute: QaRoute,
+  QaCreditsRoute: QaCreditsRoute,
   QaManualRoute: QaManualRoute,
   RegisterRoute: RegisterRoute,
   ResetPasswordRoute: ResetPasswordRoute,

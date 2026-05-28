@@ -36,7 +36,7 @@ export function AppShell({ children, title, subtitle, titleClassName }: { childr
       <header className="pointer-events-none absolute right-3 top-12 z-30 md:right-6 md:top-14">
         <div className="pointer-events-auto flex items-center gap-3 flex-none shrink-0 ml-auto z-10">
           <FontSizeToggle />
-          {user?.role === "advisor" && <CreditPill />}
+          {(user?.role === "advisor" || user?.role === "qa") && <CreditPill />}
           {user?.role === "admin" && <AdminNotificationsBell />}
           {user?.role === "admin" && (
             <DropdownMenu>
