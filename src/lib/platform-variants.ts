@@ -1,11 +1,13 @@
 // ============================================================================
 // PLATFORM VARIANTS
 // ----------------------------------------------------------------------------
-// ONLY Scenario-area tests are fanned out into platform sub-tests. We support
-// 3 platforms: Computer (desktop/laptop), Phone, and iPad. The Computer
-// variant keeps the source test's owner; Phone + iPad variants are split
-// deterministically between Catria and Unassigned so Catria can reassign as
-// needed. Non-Scenario tests pass through unchanged.
+// Tests that an anonymous / QA / Auditor user would exercise on multiple
+// devices are fanned out into platform sub-tests. We support 3 platforms:
+// Computer (desktop/laptop), Phone, and iPad. The Computer variant keeps the
+// source test's owner; Phone + iPad variants are split deterministically
+// across Catria, Unassigned, and Evelyn so the work can be reassigned as
+// needed. Areas that are admin- or back-office-only (Admin Notifications,
+// Testing portal, Alpha planning, etc.) pass through unchanged.
 // ============================================================================
 import type { TestCase } from "@/lib/test-plan";
 import { ACTIVE_SPRINT_ID, getTestAssignee } from "@/lib/test-plan";
@@ -30,33 +32,65 @@ export const TEST_PLATFORMS: TestPlatform[] = [
 export const PLATFORM_VARIANT_OWNER = "Catria";
 
 /**
- * For Scenario-area tests on non-Desktop platforms (Phone + iPad) the owner
- * is forced to alternate between Catria and Unassigned, regardless of who
- * owns the source (Computer) test. Computer variants keep the source owner.
- * Split is deterministic from the source id + platform suffix so the same
- * test always lands on the same owner across renders.
+ * Area prefixes that get fanned out across Computer / Phone / iPad. These
+ * are the surfaces an anonymous, QA, or Auditor user would actually touch
+ * on mobile and tablet (sign-in, build a scenario via manual or voice
+ * intake, read CMS-compliant marketing pages, etc.).
  */
-function scenarioNonDesktopOwner(sourceId: string, suffix: string): "Catria" | "Unassigned" {
+const MULTI_PLATFORM_AREA_PREFIXES = [
+  "Scenario",
+  "Voice",            // Voice · Inputs, Voice · Wizard
+  "Intake",           // Intake · Manual, Intake · Meds
+  "Auth",             // login / signup / reset
+  "Registration",     // Registration · Email
+  "Landing",
+  "Expert opt-in",
+  "Exports",
+  "CMS Compliance",
+];
+
+function isMultiPlatformArea(area: string): boolean {
+  return MULTI_PLATFORM_AREA_PREFIXES.some(
+    (p) => area === p || area.startsWith(`${p} `) || area.startsWith(`${p}·`),
+  );
+}
+
+const NON_DESKTOP_OWNERS = ["Catria", "Unassigned", "Evelyn"] as const;
+type NonDesktopOwner = (typeof NON_DESKTOP_OWNERS)[number];
+
+/**
+ * For multi-platform tests on non-Desktop platforms (Phone + iPad) the owner
+ * is forced to rotate across Catria, Unassigned, and Evelyn, regardless of
+ * who owns the source (Computer) test. Computer variants keep the source
+ * owner. Split is deterministic from the source id + platform suffix so the
+ * same test always lands on the same owner across renders.
+ */
+function nonDesktopOwner(sourceId: string, suffix: string): NonDesktopOwner {
   const n = parseInt((sourceId.match(/(\d+)/)?.[1] ?? "0"), 10);
   const platformIdx = ["PHONE", "IPAD"].indexOf(suffix);
-  return (n + platformIdx) % 2 === 0 ? "Catria" : "Unassigned";
+  // Hash the source id alpha portion in too so different areas don't all
+  // land on the same owner for the same numeric suffix.
+  const alphaSeed = (sourceId.match(/[A-Z]/g) ?? []).reduce(
+    (acc, c) => acc + c.charCodeAt(0),
+    0,
+  );
+  return NON_DESKTOP_OWNERS[(n + platformIdx + alphaSeed) % NON_DESKTOP_OWNERS.length];
 }
 
 /**
- * Fan out a Scenario-area TestCase into one variant per supported platform.
- * Non-Scenario tests are returned as-is (no platform sub-tests). Each
- * Scenario variant gets a deterministic id (`<sourceId>-<suffix>`), the
- * platform name appended to the title and area, and a per-platform owner
- * (Computer keeps the source owner; Phone/iPad alternate Catria/Unassigned).
+ * Fan out a multi-platform TestCase into one variant per supported platform.
+ * Tests for admin / back-office areas are returned as-is. Each variant gets
+ * a deterministic id (`<sourceId>-<suffix>`), the platform name appended to
+ * the title and area, and a per-platform owner (Computer keeps the source
+ * owner; Phone/iPad rotate Catria / Unassigned / Evelyn).
  */
 export function expandTestWithPlatforms(t: TestCase): TestCase[] {
-  const isScenario = t.area === "Scenario" || t.area.startsWith("Scenario");
-  if (!isScenario) return [t];
+  if (!isMultiPlatformArea(t.area)) return [t];
   return TEST_PLATFORMS.map((p) => {
     const baseAssignee = t.assignee || getTestAssignee(t);
     const assignee =
       p.category !== "Desktop"
-        ? scenarioNonDesktopOwner(t.id, p.suffix)
+        ? nonDesktopOwner(t.id, p.suffix)
         : baseAssignee;
     // Unassigned variants must fall into the Backlog (handled by
     // getTestSprintId when sprintId is undefined). Only pin a sprint when
