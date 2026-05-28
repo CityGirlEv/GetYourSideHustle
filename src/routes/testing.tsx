@@ -451,7 +451,9 @@ export function TestPlanTab() {
     // Always route through the confirmation popup so the user can review
     // before/after and uncheck anything they don't want saved.
     setSaveScopeId(id);
-    setSaveOpen(true);
+    setSaveBusy("Preparing review…");
+    // Defer dialog open so the hourglass paints before the (heavier) dialog mount.
+    requestAnimationFrame(() => setSaveOpen(true));
   };
 
   // Persist a subset of pending changes; remaining ones stay in draft.
