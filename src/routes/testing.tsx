@@ -573,6 +573,9 @@ export function TestPlanTab() {
         if (o) counts[o] = 0;
       }
     }
+    // Always surface an Unassigned bubble so users can spot newly created
+    // tests that have not been routed to an owner yet.
+    counts["Unassigned"] = counts["Unassigned"] ?? 0;
     for (const t of scopedCases) {
       const a = effAssignee(t);
       counts[a] = (counts[a] || 0) + 1;
