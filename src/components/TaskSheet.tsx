@@ -861,6 +861,19 @@ export function TaskSheetContent() {
                       </Select>
                     </TableCell>
                     <TableCell>
+                      <Select value={r.severity || ""} onValueChange={(v) => inlineUpdate(r.id, "severity", v as FailSeverity | "")}>
+                        <SelectTrigger className="h-7 w-[90px] text-xs">
+                          <Badge variant="outline" className={SEVERITY_TONE[r.severity || ""]}>{r.severity ? FAIL_SEVERITY_LABELS[r.severity as FailSeverity] : "—"}</Badge>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">—</SelectItem>
+                          {Object.entries(FAIL_SEVERITY_LABELS).map(([k, label]) => (
+                            <SelectItem key={k} value={k}>{label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
                       <Select value={r.status} onValueChange={(v) => {
                         const next = v as TaskRowStatus;
                         inlineUpdate(r.id, "status", next);
