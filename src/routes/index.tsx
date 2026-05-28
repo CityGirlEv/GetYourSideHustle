@@ -49,7 +49,7 @@ function Index() {
       <div className="grid lg:grid-cols-2 items-start gap-10">
         <div className="space-y-6">
           <p className="text-sm text-muted-foreground max-w-none">
-            Side-by-side Original Medicare + Medigap vs. Medicare Advantage modeling under live 2026 &amp; 2027 federal rules — built on a <strong>zero-PII</strong> scenario model. We never collect your name, address, phone, email, Social Security number, Medicare ID, or full date of birth.
+            Side-by-side Original Medicare + Medigap vs. Medicare Advantage modeling under live 2026 &amp; 2027 federal rules — built on a <strong>zero-PII</strong> scenario model. We never collect your name, address, phone, email, Social Security number, Medicare ID, or date of birth.
           </p>
           <div className="grid sm:grid-cols-3 gap-3 max-w-none">
             <div className="glass rounded-xl px-3 py-2 text-xs">

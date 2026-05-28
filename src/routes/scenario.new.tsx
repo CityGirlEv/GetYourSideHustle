@@ -13,7 +13,7 @@ export const Route = createFileRoute("/scenario/new")({
   head: () => ({
     meta: [
       { title: "Build a Medicare Scenario — No Personal Info Required" },
-      { name: "description", content: "Build a de-identified Medicare scenario. We never collect your name, address, phone, or full date of birth." },
+      { name: "description", content: "Build a de-identified Medicare scenario. We never collect your name, address, phone, or date of birth." },
       { property: "og:title", content: "Build a Medicare Scenario — No Personal Info Required" },
       { property: "og:description", content: "Create a zero-PII Medicare scenario in 2 minutes and get a shareable Scenario ID." },
       { property: "og:url", content: "https://themedicareoptimizer.lovable.app/scenario/new" },
