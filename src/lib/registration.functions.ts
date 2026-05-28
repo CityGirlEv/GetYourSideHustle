@@ -84,6 +84,7 @@ export const registerWithNda = createServerFn({ method: "POST" })
       accept_nda: z.literal(true),
       requested_role: z.enum(["qa", "agent"]),
       user_agent: z.string().max(1024).optional().nullable(),
+      qa_devices: z.array(z.string().trim().min(1).max(80)).max(20).optional().nullable(),
     }).parse(input)
   )
   .handler(async ({ data }) => {
@@ -111,7 +112,13 @@ export const registerWithNda = createServerFn({ method: "POST" })
 
     try {
       // Ensure profile + role (trigger should fire, but make sure)
-      await supabaseAdmin.from("profiles").upsert({ id: userId, full_name: fullName, phone: data.phone });
+      const qaDevices = data.requested_role === "qa" ? (data.qa_devices ?? []) : null;
+      await supabaseAdmin.from("profiles").upsert({
+        id: userId,
+        full_name: fullName,
+        phone: data.phone,
+        qa_devices: qaDevices,
+      });
       await supabaseAdmin.from("user_roles").delete().eq("user_id", userId);
       await supabaseAdmin.from("user_roles").insert({ user_id: userId, role: data.requested_role });
 
@@ -154,6 +161,7 @@ export const registerWithNda = createServerFn({ method: "POST" })
       email: data.email,
       phone: data.phone,
       requestedRole: data.requested_role,
+      qaDevices: data.requested_role === "qa" ? (data.qa_devices ?? []) : [],
     });
 
     // In-app admin notification (always works, no email required)
@@ -168,6 +176,7 @@ export const registerWithNda = createServerFn({ method: "POST" })
           phone: data.phone,
           requested_role: data.requested_role,
           full_name: fullName,
+          qa_devices: data.requested_role === "qa" ? (data.qa_devices ?? []) : [],
         },
       });
     } catch (e) {
