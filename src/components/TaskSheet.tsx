@@ -61,6 +61,7 @@ const SEVERITY_TONE: Record<string, string> = {
   low: "border-sky-500/50 text-sky-600",
   "": "border-muted-foreground/30 text-muted-foreground",
 };
+const NO_SEVERITY_VALUE = "__none";
 
 function emptyDraft(): TaskRow {
   return {
@@ -878,12 +879,12 @@ export function TaskSheetContent() {
                       </Select>
                     </TableCell>
                     <TableCell>
-                      <Select value={r.severity || ""} onValueChange={(v) => inlineUpdate(r.id, "severity", v as FailSeverity | "")}>
+                      <Select value={r.severity || NO_SEVERITY_VALUE} onValueChange={(v) => inlineUpdate(r.id, "severity", v === NO_SEVERITY_VALUE ? "" : v as FailSeverity)}>
                         <SelectTrigger className="h-7 w-[90px] text-xs">
                           <Badge variant="outline" className={SEVERITY_TONE[r.severity || ""]}>{r.severity ? FAIL_SEVERITY_LABELS[r.severity as FailSeverity] : "—"}</Badge>
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">—</SelectItem>
+                          <SelectItem value={NO_SEVERITY_VALUE}>—</SelectItem>
                           {Object.entries(FAIL_SEVERITY_LABELS).map(([k, label]) => (
                             <SelectItem key={k} value={k}>{label}</SelectItem>
                           ))}
@@ -1007,10 +1008,10 @@ export function TaskSheetContent() {
               </div>
               <div>
                 <Label>Severity</Label>
-                <Select value={editing.severity || ""} onValueChange={(v) => setEditing({ ...editing, severity: v as FailSeverity | "" })}>
+                <Select value={editing.severity || NO_SEVERITY_VALUE} onValueChange={(v) => setEditing({ ...editing, severity: v === NO_SEVERITY_VALUE ? "" : v as FailSeverity })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">—</SelectItem>
+                    <SelectItem value={NO_SEVERITY_VALUE}>—</SelectItem>
                     {Object.entries(FAIL_SEVERITY_LABELS).map(([k, label]) => (
                       <SelectItem key={k} value={k}>{label}</SelectItem>
                     ))}
