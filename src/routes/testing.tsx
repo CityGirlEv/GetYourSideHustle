@@ -326,8 +326,6 @@ export function TestPlanTab() {
   // QA users are scoped to their own data only — they cannot widen the
   // owner filter, see other QAs' progress, or pick assignees for others.
   const restrictToSelf = !!user && user.role === "qa";
-  const [bannerCollapsed, setBannerCollapsed] = useState(true);
-  const [summaryCollapsed, setSummaryCollapsed] = useState(true);
 
   // Effective (saved + draft) views used for rendering and filtering
   const statuses = useMemo(() => ({ ...savedStatuses, ...dStatuses }), [savedStatuses, dStatuses]);
