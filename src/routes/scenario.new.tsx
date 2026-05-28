@@ -7,6 +7,7 @@ import { AppShell } from "@/components/AppShell";
 import { Mic, Keyboard, Clock } from "lucide-react";
 import { listScenarioHistory, type ScenarioHistoryEntry } from "@/lib/scenario-history";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useApp } from "@/lib/app-store";
 
 export const Route = createFileRoute("/scenario/new")({
   head: () => ({
