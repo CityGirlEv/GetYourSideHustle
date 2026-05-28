@@ -41,7 +41,7 @@ import {
 import {
   listCustomTests, createCustomTest, duplicateCustomTest, customRowToTestCase, type CustomTestRow,
 } from "@/lib/custom-tests";
-import { AUTOMATED_TEST_CASES } from "@/lib/automated-tests";
+import { AUTOMATED_TEST_CASES, AUTOMATED_TEST_IDS, AUTOMATED_TEST_RESULTS } from "@/lib/automated-tests";
 import {
   listTestEvidence, uploadTestEvidence, deleteTestEvidence, getTestEvidenceUrl,
   type EvidenceFile,
@@ -158,7 +158,16 @@ export function TestPlanTab() {
   const { user } = useApp();
   const isAdmin = user?.role === "admin";
   // Persisted/saved state, hydrated from local storage
-  const [savedStatuses, setSavedStatuses] = useState<Record<string, TestStatus>>(() => loadAllStatuses());
+  // Seed local statuses with the last recorded vitest/playwright run so
+  // automated tests show pass/fail without requiring the user to mark them.
+  // A user-set status (anything other than the default "not_run") still wins.
+  const [savedStatuses, setSavedStatuses] = useState<Record<string, TestStatus>>(() => {
+    const local = loadAllStatuses();
+    for (const [id, st] of Object.entries(AUTOMATED_TEST_RESULTS)) {
+      if (!local[id] || local[id] === "not_run") local[id] = st;
+    }
+    return local;
+  });
   const [savedQaNotes, setSavedQaNotes] = useState<Record<string, string>>(() => loadAllQaNotes());
   const [savedDevNotes, setSavedDevNotes] = useState<Record<string, string>>(() => loadAllDevNotes());
   const [savedSeverities, setSavedSeverities] = useState<Record<string, FailSeverity | "">>(() => loadAllSeverities());
@@ -772,6 +781,7 @@ export function TestPlanTab() {
                     onAssigneeChange={(o) => setAssigneeFor(t.id, o)}
                     onSprintChange={(s) => setSprintFor(t.id, s)}
                     isAdmin={isAdmin}
+                    assigneeLocked={AUTOMATED_TEST_IDS.has(t.id)}
                     onEdit={() => setEditingId(t.id)}
                     onDuplicate={async () => {
                       try {
