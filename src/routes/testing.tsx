@@ -1085,6 +1085,47 @@ function priorityVariant(p: Priority): string {
   }
 }
 
+/** Renders scenario data steps (demographics, conditions, meds) as a sub-list. */
+function StepWithSublist({ step, className }: { step: string; className?: string }) {
+  // "Enter birth year..., ZIP3=..., gender..." → split by comma after the intro
+  if (step.startsWith("Enter ") && step.includes(", ZIP3=")) {
+    const parts = step.split(", ");
+    return (
+      <span className={className}>
+        {parts[0]},
+        <ul className="ml-5 mt-0.5 space-y-0.5 list-disc list-outside">
+          {parts.slice(1).map((item, i) => (
+            <li key={i}>{item}</li>
+          ))}
+        </ul>
+      </span>
+    );
+  }
+
+  // "Add these X exactly: A, B" or "Add these X exactly: A; B"
+  const exactlyMatch = step.match(/^(Add these .+? exactly:\s*)(.+)$/);
+  if (exactlyMatch) {
+    const prefix = exactlyMatch[1];
+    const rest = exactlyMatch[2];
+    const separator = rest.includes("; ") ? "; " : ", ";
+    const items = rest.split(separator).map((s) => s.trim()).filter(Boolean);
+    if (items.length >= 2) {
+      return (
+        <span className={className}>
+          {prefix}
+          <ul className="ml-5 mt-0.5 space-y-0.5 list-disc list-outside">
+            {items.map((item, i) => (
+              <li key={i}>{item}</li>
+            ))}
+          </ul>
+        </span>
+      );
+    }
+  }
+
+  return <span className={className}>{step}</span>;
+}
+
 function TestCaseCard({
   t, status, qaNote, devNote, severity, assignee, sprintId, selected, onSelectChange,
   onChange, onQaNoteChange, onDevNoteChange, onSeverityChange, onAssigneeChange, onSprintChange,
@@ -1277,7 +1318,8 @@ function TestCaseCard({
                     title="Check when this step is complete"
                   />
                   <span className={isChecked ? "line-through opacity-70" : ""}>
-                    <span className="font-mono text-[10px] mr-1 opacity-70">{i + 1}.</span>{s}
+                    <span className="font-mono text-[10px] mr-1 opacity-70">{i + 1}.</span>
+                    <StepWithSublist step={s} />
                   </span>
                 </li>
               );
