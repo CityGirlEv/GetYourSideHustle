@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { TaskSheetContent } from "@/components/TaskSheet";
 import { useServerFn } from "@tanstack/react-start";
 import { createAdvisor, listStaff, setUserRole, listAgents, assignAgent, updateUser, setUserDisabled, deleteUser } from "@/lib/admin.functions";
+import { refreshAssigneeOptions } from "@/lib/use-assignee-options";
 import { CatalogExplorer } from "@/components/CatalogExplorer";
 import { ImplementationTab, SprintsTab } from "@/routes/testing";
 import { BUDGET_LINES, computeBudgetTotals, totalsByCategory, fmtUSD, type BudgetCategory } from "@/lib/budget";
@@ -237,6 +238,9 @@ function AdminPortal() {
     const [s, a] = await Promise.all([fetchStaff(), fetchAgents()]);
     setStaff(s as StaffMember[]);
     setAgents(a as AgentOption[]);
+    // A staff change may have added or removed a QA user — refresh the
+    // assignee dropdowns app-wide.
+    refreshAssigneeOptions();
   };
 
   const openEdit = (s: StaffMember) => {

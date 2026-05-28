@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { createAdvisor, listStaff, updateUser, setUserDisabled, deleteUser, addUserRole, removeUserRole } from "@/lib/admin.functions";
+import { refreshAssigneeOptions } from "@/lib/use-assignee-options";
 
 export const Route = createFileRoute("/users")({ component: UsersPage });
 
@@ -72,6 +73,9 @@ function UsersPage() {
     try {
       const data = await fetchStaff();
       setStaff(data as StaffMember[]);
+      // A staff change (enable/disable, role grant) may have added or
+      // removed a QA user — refresh the assignee dropdowns app-wide.
+      refreshAssigneeOptions();
     } catch (e: unknown) {
       toast.error((e as Error)?.message ?? "Failed to load users");
     } finally {

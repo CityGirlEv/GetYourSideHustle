@@ -12,8 +12,9 @@ function publish(list: string[]) {
   subscribers.forEach((cb) => cb(list));
 }
 
-function fetchOnce(): Promise<string[]> {
+function fetchOnce(force = false): Promise<string[]> {
   if (inflight) return inflight;
+  if (!force && cache) return Promise.resolve(cache);
   inflight = listQaAssignees()
     .then((qa) => {
       const merged = Array.from(new Set(["Unassigned", ...(TEST_OWNERS as readonly string[]), ...qa]));
@@ -33,6 +34,16 @@ function fetchOnce(): Promise<string[]> {
 }
 
 /**
+ * Bust the in-memory cache and refetch the assignee list, pushing the new
+ * value to every mounted subscriber. Call this after admin actions that
+ * change which accounts are enabled or which users have the QA role.
+ */
+export function refreshAssigneeOptions(): Promise<string[]> {
+  cache = null;
+  return fetchOnce(true);
+}
+
+/**
  * Hook returning the merged assignee list: built-in TEST_OWNERS plus every
  * enabled QA user. Refreshes on mount but de-dupes requests app-wide.
  */
@@ -41,8 +52,13 @@ export function useAssigneeOptions(): string[] {
   useEffect(() => {
     subscribers.add(setList);
     fetchOnce().then((v) => setList(v));
+    // Refetch when the tab regains focus so admin changes made in another
+    // tab (or just now in this one) propagate without a full reload.
+    const onFocus = () => { fetchOnce(true); };
+    if (typeof window !== "undefined") window.addEventListener("focus", onFocus);
     return () => {
       subscribers.delete(setList);
+      if (typeof window !== "undefined") window.removeEventListener("focus", onFocus);
     };
   }, []);
   return list;
