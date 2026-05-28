@@ -322,6 +322,13 @@ export function TestPlanTab() {
       if (first) setOwnerFilter([first]);
     }
   }, [user]);
+  // QA users are scoped to their own data only — they cannot widen the
+  // owner filter, see other QAs' progress, or pick assignees for others.
+  const qaFirstName = useMemo(() => {
+    if (!user || user.role !== "qa") return "";
+    return (user.full_name || user.email || "").trim().split(/\s+/)[0] || "";
+  }, [user]);
+  const restrictToSelf = !!user && user.role === "qa";
   const [bannerCollapsed, setBannerCollapsed] = useState(true);
   const [summaryCollapsed, setSummaryCollapsed] = useState(true);
 
