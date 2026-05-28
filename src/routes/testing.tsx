@@ -1560,6 +1560,9 @@ function TestEvidence({ testId }: { testId: string }) {
   const cameraRef = useRef<HTMLInputElement>(null);
   const isMobile = typeof navigator !== "undefined"
     && /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+  const canCaptureScreen = typeof navigator !== "undefined"
+    && !!navigator.mediaDevices
+    && typeof navigator.mediaDevices.getDisplayMedia === "function";
 
   useEffect(() => {
     if (!user) return;
@@ -1584,6 +1587,73 @@ function TestEvidence({ testId }: { testId: string }) {
       toast.info("Use Side + Volume Up to screenshot, then pick it from Photos.", { duration: 6000 });
     }
     cameraRef.current?.click();
+  };
+
+  /**
+   * Browser-native screen capture. Uses the Screen Capture API
+   * (getDisplayMedia) — the browser shows the OS picker for "Entire Screen /
+   * Window / Tab", we grab a single frame, encode to PNG, and upload it as
+   * evidence. Desktop Chrome/Edge/Safari/Firefox support this; iOS Safari
+   * does not (we fall back to the screenshot instructions in onTakePhoto).
+   */
+  const onCaptureScreen = async () => {
+    if (!user) return;
+    if (!canCaptureScreen) {
+      toast.error("Your browser can't capture the screen. Use the Take photo or Upload button instead.");
+      return;
+    }
+    setBusy(true);
+    let stream: MediaStream | null = null;
+    try {
+      stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { frameRate: 1 },
+        audio: false,
+      });
+      const track = stream.getVideoTracks()[0];
+      // Prefer ImageCapture when available — single frame, no <video> dance.
+      let blob: Blob | null = null;
+      const ImageCaptureCtor = (window as unknown as { ImageCapture?: new (t: MediaStreamTrack) => { grabFrame: () => Promise<ImageBitmap> } }).ImageCapture;
+      if (ImageCaptureCtor) {
+        const bitmap = await new ImageCaptureCtor(track).grabFrame();
+        const canvas = document.createElement("canvas");
+        canvas.width = bitmap.width;
+        canvas.height = bitmap.height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("Canvas unavailable");
+        ctx.drawImage(bitmap, 0, 0);
+        blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/png"));
+      } else {
+        // Fallback for Firefox/Safari: pipe the track into a hidden <video>,
+        // wait one frame, then paint it onto a canvas.
+        const video = document.createElement("video");
+        video.srcObject = stream;
+        video.muted = true;
+        await video.play();
+        await new Promise((r) => requestAnimationFrame(r));
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("Canvas unavailable");
+        ctx.drawImage(video, 0, 0);
+        blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/png"));
+      }
+      if (!blob) throw new Error("Could not encode screenshot");
+      const file = new File([blob], `screenshot-${Date.now()}.png`, { type: "image/png" });
+      const uploaded = await uploadTestEvidence(user.id, testId, file);
+      setFiles((p) => [uploaded, ...p]);
+      toast.success("Screenshot captured & uploaded.");
+    } catch (err) {
+      const msg = (err as Error).message || String(err);
+      if (/Permission denied|NotAllowed/i.test(msg)) {
+        toast.error("Screen capture was cancelled.");
+      } else {
+        toast.error(`Capture failed: ${msg}`);
+      }
+    } finally {
+      stream?.getTracks().forEach((t) => t.stop());
+      setBusy(false);
+    }
   };
 
   const onUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1634,6 +1704,12 @@ function TestEvidence({ testId }: { testId: string }) {
         <input ref={fileRef} type="file" className="hidden" accept={EVIDENCE_ACCEPT_ATTR} onChange={onUpload} />
         <input ref={cameraRef} type="file" className="hidden" accept="image/*" capture="environment" onChange={onUpload} />
         <div className="flex gap-1">
+          {canCaptureScreen && !isMobile && (
+            <Button size="sm" variant="outline" className="h-7 text-xs" disabled={busy} onClick={onCaptureScreen}>
+              {busy ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Paperclip className="h-3 w-3 mr-1" />}
+              Capture screen
+            </Button>
+          )}
           {isMobile && (
             <Button size="sm" variant="outline" className="h-7 text-xs" disabled={busy} onClick={onTakePhoto}>
               <Upload className="h-3 w-3 mr-1" />
