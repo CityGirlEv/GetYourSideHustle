@@ -5,7 +5,24 @@ import { cn } from "@/lib/utils";
 
 const Popover = PopoverPrimitive.Root;
 
-const PopoverTrigger = PopoverPrimitive.Trigger;
+const PopoverTrigger = React.forwardRef<
+  React.ElementRef<typeof PopoverPrimitive.Trigger>,
+  React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Trigger>
+>(({ onPointerDown, ...props }, ref) => (
+  <PopoverPrimitive.Trigger
+    ref={ref}
+    onPointerDown={(e) => {
+      // iOS/iPad fix: open on first tap instead of requiring a second.
+      if (e.pointerType === "touch") {
+        e.preventDefault();
+        (e.currentTarget as HTMLElement).click();
+      }
+      onPointerDown?.(e);
+    }}
+    {...props}
+  />
+));
+PopoverTrigger.displayName = PopoverPrimitive.Trigger.displayName;
 
 const PopoverAnchor = PopoverPrimitive.Anchor;
 
