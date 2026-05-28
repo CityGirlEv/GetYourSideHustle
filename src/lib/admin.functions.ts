@@ -6,6 +6,28 @@ import { z } from "zod";
 const ROLE_VALUES = ["admin", "qa", "agent", "editor", "viewer", "advisor"] as const;
 const roleSchema = z.enum(ROLE_VALUES);
 
+/**
+ * Append an audit_logs row. Best-effort: a failure to log must never block
+ * the underlying admin action, but the error is surfaced to server logs so
+ * we notice if the trail goes silent.
+ */
+async function logAdminAudit(
+  actorId: string,
+  action: string,
+  targetUserId: string,
+  metadata: Record<string, unknown> = {},
+) {
+  const { error } = await supabaseAdmin.from("audit_logs").insert({
+    user_id: actorId,
+    action,
+    entity_type: "user",
+    entity_id: targetUserId,
+    // Cast to satisfy Supabase's generated Json type (Record<string, unknown> is structurally compatible).
+    metadata: metadata as never,
+  });
+  if (error) console.error("[admin] audit log insert failed", action, error.message);
+}
+
 const NOTIFY_FROM = "The Medicare Optimizer <onboarding@resend.dev>";
 const APP_URL = "https://themedicareoptimizer.lovable.app";
 
@@ -174,6 +196,7 @@ export const deleteUser = createServerFn({ method: "POST" })
     if (data.user_id === context.userId) throw new Error("You cannot delete your own account");
     const { error } = await supabaseAdmin.auth.admin.deleteUser(data.user_id);
     if (error) throw new Error(error.message);
+    await logAdminAudit(context.userId, "ADMIN_DELETE_USER", data.user_id);
     return { ok: true };
   });
 
@@ -232,6 +255,15 @@ export const createAdvisor = createServerFn({ method: "POST" })
       balance: assignedRole === "advisor" ? 10 : 0,
     });
 
+    await logAdminAudit(context.userId, "ADMIN_CREATE_USER", newUserId, {
+      email: data.email,
+      role: assignedRole,
+    });
+    await logAdminAudit(context.userId, "ADD_USER_ROLE", newUserId, {
+      role: assignedRole,
+      source: "admin_create_user",
+    });
+
     return {
       id: newUserId,
       email: data.email,
@@ -272,6 +304,9 @@ export const addUserRole = createServerFn({ method: "POST" })
       .from("user_roles")
       .upsert({ user_id: data.user_id, role: data.role }, { onConflict: "user_id,role" });
     if (error) throw new Error(error.message);
+    await logAdminAudit(context.userId, "ADD_USER_ROLE", data.user_id, {
+      role: data.role,
+    });
     return { ok: true };
   });
 
@@ -294,6 +329,9 @@ export const removeUserRole = createServerFn({ method: "POST" })
       .eq("user_id", data.user_id)
       .eq("role", data.role);
     if (error) throw new Error(error.message);
+    await logAdminAudit(context.userId, "REMOVE_USER_ROLE", data.user_id, {
+      role: data.role,
+    });
     return { ok: true };
   });
 
