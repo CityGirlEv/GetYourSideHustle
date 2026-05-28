@@ -565,12 +565,19 @@ export function TestPlanTab() {
   );
   const ownerCounts = useMemo(() => {
     const counts: Record<string, number> = {};
+    // For admins, seed every known QA assignee (incl. those without any test
+    // currently assigned) so their bubble + per-owner row still render with 0.
+    if (isAdmin) {
+      for (const o of allAssignees) {
+        if (o && o !== "Unassigned") counts[o] = 0;
+      }
+    }
     for (const t of scopedCases) {
       const a = effAssignee(t);
       counts[a] = (counts[a] || 0) + 1;
     }
     return counts;
-  }, [statuses, assigneeOverrides, scopedCases]);
+  }, [statuses, assigneeOverrides, scopedCases, isAdmin, allAssignees]);
   const owners = useMemo(() => Object.keys(ownerCounts), [ownerCounts]);
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim();
@@ -654,6 +661,11 @@ export function TestPlanTab() {
   // Per-QA-person status breakdown. Only owners with at least one test appear.
   const ownerStatusCounts = useMemo(() => {
     const out: Record<string, Record<TestStatus | "total", number>> = {};
+    if (isAdmin) {
+      for (const o of allAssignees) {
+        if (o && o !== "Unassigned") out[o] = { total: 0, pass: 0, fail: 0, blocked: 0, not_run: 0, in_progress: 0, fixed_retest: 0, failed_retest: 0 };
+      }
+    }
     for (const t of scopedCases) {
       const owner = effAssignee(t);
       if (!out[owner]) out[owner] = { total: 0, pass: 0, fail: 0, blocked: 0, not_run: 0, in_progress: 0, fixed_retest: 0, failed_retest: 0 };
@@ -662,7 +674,7 @@ export function TestPlanTab() {
       out[owner][s]++;
     }
     return out;
-  }, [statuses, assigneeOverrides, scopedCases]);
+  }, [statuses, assigneeOverrides, scopedCases, isAdmin, allAssignees]);
 
   return (
     <div className="space-y-4">
