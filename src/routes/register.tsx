@@ -38,6 +38,8 @@ function RegisterPage() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [requestedRole, setRequestedRole] = useState<"qa" | "agent" | "">("");
+  const [qaDevices, setQaDevices] = useState<string[]>([]);
+  const [qaDeviceOther, setQaDeviceOther] = useState("");
   const [ndaOpen, setNdaOpen] = useState(false);
   const [done, setDone] = useState(false);
   const [signatureName, setSignatureName] = useState("");
@@ -51,6 +53,12 @@ function RegisterPage() {
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return toast.error("Enter a valid email.");
     if (phone.replace(/\D/g, "").length < 7) return toast.error("Enter a valid phone number.");
     if (requestedRole !== "qa" && requestedRole !== "agent") return toast.error("Pick the role you're registering for.");
+    if (requestedRole === "qa") {
+      const extras = qaDeviceOther.split(",").map((s) => s.trim()).filter(Boolean);
+      if (qaDevices.length === 0 && extras.length === 0) {
+        return toast.error("Select at least one device you can test on.");
+      }
+    }
     setSignatureName(`${firstName.trim()} ${lastName.trim()}`);
     setAccept(false);
     setNdaOpen(true);
@@ -61,6 +69,10 @@ function RegisterPage() {
     if (!accept) return toast.error("Check the box to agree to the NDA.");
     setBusy(true);
     try {
+      const extras = qaDeviceOther.split(",").map((s) => s.trim()).filter(Boolean);
+      const devices = requestedRole === "qa"
+        ? Array.from(new Set([...qaDevices, ...extras]))
+        : undefined;
       await doRegister({
         data: {
           first_name: firstName.trim(),
@@ -71,6 +83,7 @@ function RegisterPage() {
           accept_nda: true,
           requested_role: requestedRole as "qa" | "agent",
           user_agent: typeof navigator !== "undefined" ? navigator.userAgent : null,
+          qa_devices: devices,
         },
       });
       setNdaOpen(false);
