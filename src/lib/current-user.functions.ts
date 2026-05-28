@@ -17,7 +17,7 @@ export const getCurrentUserProfile = createServerFn({ method: "POST" })
     const [{ data: profile }, { data: roles }, { data: authUser }] = await Promise.all([
       supabaseAdmin
         .from("profiles")
-        .select("full_name, npn_number")
+        .select("full_name, npn_number, qa_devices")
         .eq("id", context.userId)
         .maybeSingle(),
       supabaseAdmin
@@ -34,6 +34,8 @@ export const getCurrentUserProfile = createServerFn({ method: "POST" })
       email: authUser.user?.email ?? "",
       full_name: profile?.full_name ?? "",
       npn_number: profile?.npn_number ?? undefined,
+      qa_devices: (profile?.qa_devices ?? []) as string[],
+      roles: (roles ?? []).map((r) => r.role) as string[],
       role,
     };
   });
