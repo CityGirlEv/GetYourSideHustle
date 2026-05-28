@@ -1418,7 +1418,9 @@ function TestCaseCard({
             title="Re-assign sprint"
           >
             {SPRINTS.map((s) => (
-              <option key={s.id} value={s.id}>S{s.number}</option>
+              <option key={s.id} value={s.id}>
+                {s.id === BACKLOG_SPRINT_ID ? "Backlog" : `S${s.number}`}
+              </option>
             ))}
           </select>
         </label>
