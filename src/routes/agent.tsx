@@ -53,7 +53,7 @@ function AgentPortal() {
       const { data, error } = await supabase
         .from("scenarios")
         .select("id, scenario_code, birth_year, zip3, gender, tobacco, income_band, agent_notes, created_at, wants_contact")
-        .eq("assigned_agent_id", user.id)
+        .or(`assigned_agent_id.eq.${user.id},created_by.eq.${user.id}`)
         .order("created_at", { ascending: false });
       if (cancelled) return;
       if (error) console.error(error);
