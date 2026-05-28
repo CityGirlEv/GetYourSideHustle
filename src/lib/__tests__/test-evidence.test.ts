@@ -21,6 +21,8 @@ import {
   deleteTestEvidence,
   getTestEvidenceUrl,
   TEST_EVIDENCE_BUCKET,
+  validateEvidenceFile,
+  EVIDENCE_MAX_BYTES,
 } from "../test-evidence";
 
 beforeEach(() => {
@@ -83,5 +85,54 @@ describe("test-evidence", () => {
   it("returns null when signed url fails", async () => {
     storage.createSignedUrl.mockResolvedValue({ data: null, error: { message: "x" } });
     expect(await getTestEvidenceUrl("p")).toBeNull();
+  });
+});
+
+describe("validateEvidenceFile (security gate)", () => {
+  const make = (bytes: number[], name: string, type = "") =>
+    new File([new Uint8Array(bytes)], name, { type });
+
+  it("accepts a real PNG", async () => {
+    await expect(validateEvidenceFile(pngFile("ok.png"))).resolves.toBeUndefined();
+  });
+
+  it("rejects empty files", async () => {
+    await expect(validateEvidenceFile(new File([], "x.png", { type: "image/png" })))
+      .rejects.toThrow(/empty/i);
+  });
+
+  it("rejects files over 20 MB", async () => {
+    const big = new File([new Uint8Array(EVIDENCE_MAX_BYTES + 1)], "big.png", { type: "image/png" });
+    await expect(validateEvidenceFile(big)).rejects.toThrow(/20 MB/);
+  });
+
+  it("rejects disallowed extensions (.exe, .html, .svg, .zip, .js)", async () => {
+    for (const ext of ["exe", "html", "svg", "zip", "js"]) {
+      await expect(validateEvidenceFile(make([0x89, 0x50, 0x4e, 0x47], `bad.${ext}`)))
+        .rejects.toThrow();
+    }
+  });
+
+  it("rejects PNG extension with non-PNG magic bytes (spoofed)", async () => {
+    // ".png" extension but payload is HTML — magic-byte sniff must catch it.
+    const html = make([0x3c, 0x68, 0x74, 0x6d, 0x6c, 0x3e], "fake.png", "image/png");
+    await expect(validateEvidenceFile(html)).rejects.toThrow(/do not match/i);
+  });
+
+  it("rejects disallowed MIME even with allowed extension", async () => {
+    const file = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "x.png", {
+      type: "application/x-msdownload",
+    });
+    await expect(validateEvidenceFile(file)).rejects.toThrow(/MIME/);
+  });
+
+  it("accepts a PDF by magic bytes", async () => {
+    const pdf = make([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34], "r.pdf", "application/pdf");
+    await expect(validateEvidenceFile(pdf)).resolves.toBeUndefined();
+  });
+
+  it("accepts a plain-text log", async () => {
+    const log = new File(["hello log\n"], "out.log", { type: "text/plain" });
+    await expect(validateEvidenceFile(log)).resolves.toBeUndefined();
   });
 });
