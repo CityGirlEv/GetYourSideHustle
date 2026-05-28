@@ -1038,12 +1038,13 @@ function TestCaseCard({
         <label className="inline-flex items-center gap-1 text-[11px] rounded-full border border-primary/40 text-primary px-2 py-0.5 bg-background">
           <span className="font-semibold">Owner:</span>
           <select
-            className="bg-transparent text-[11px] font-semibold text-primary focus:outline-none cursor-pointer"
+            className="bg-transparent text-[11px] font-semibold text-primary focus:outline-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-90"
             value={assignee}
             onChange={(e) => onAssigneeChange(e.target.value)}
-            title="Re-assign this test"
+            disabled={assigneeLocked}
+            title={assigneeLocked ? "Owned by the automated test runner" : "Re-assign this test"}
           >
-            {assigneeOptions.map((o: string) => (
+            {(assigneeLocked ? [assignee] : assigneeOptions).map((o: string) => (
               <option key={o} value={o}>{o}</option>
             ))}
           </select>
