@@ -989,6 +989,18 @@ export function TaskSheetContent() {
                 </Select>
               </div>
               <div>
+                <Label>Severity</Label>
+                <Select value={editing.severity || ""} onValueChange={(v) => setEditing({ ...editing, severity: v as FailSeverity | "" })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">—</SelectItem>
+                    {Object.entries(FAIL_SEVERITY_LABELS).map(([k, label]) => (
+                      <SelectItem key={k} value={k}>{label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
                 <Label>Status</Label>
                 <Select value={editing.status} onValueChange={(v) => setEditing({ ...editing, status: v as TaskRowStatus })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
