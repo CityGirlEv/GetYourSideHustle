@@ -329,8 +329,7 @@ export function TestPlanTab() {
   // QA users are scoped to their own data only — they cannot widen the
   // owner filter, see other QAs' progress, or pick assignees for others.
   const qaFirstName = useMemo(() => {
-    if (!user || user.role !== "qa") return "";
-    return (user.full_name || user.email || "").trim().split(/\s+/)[0] || "";
+    return getQaFirstName(user);
   }, [user]);
   const restrictToSelf = !!user && user.role === "qa";
   const [bannerCollapsed, setBannerCollapsed] = useState(true);
@@ -567,7 +566,7 @@ export function TestPlanTab() {
     () => restrictToSelf
       ? effectiveCases.filter((t) => qaVisibleOwners.includes(effAssignee(t)))
       : effectiveCases,
-    [effectiveCases, restrictToSelf, qaFirstName, statuses, assigneeOverrides, customIds],
+    [effectiveCases, restrictToSelf, qaVisibleOwners, statuses, assigneeOverrides, customIds],
   );
   const ownerCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -987,8 +986,8 @@ export function TestPlanTab() {
                     isAdmin={isAdmin}
                     assigneeLocked={AUTOMATED_TEST_IDS.has(t.id)}
                      restrictAssigneeTo={
-                       !isAdmin && user?.role === "qa"
-                         ? Array.from(new Set([qaFirstName || effAssignee(t), "Unassigned"]))
+                        !isAdmin && user?.role === "qa"
+                          ? qaVisibleOwners
                          : undefined
                      }
                     onEdit={() => setEditingId(t.id)}
