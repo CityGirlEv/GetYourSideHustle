@@ -986,7 +986,11 @@ export function TestPlanTab() {
                     onSprintChange={(s) => setSprintFor(t.id, s)}
                     isAdmin={isAdmin}
                     assigneeLocked={AUTOMATED_TEST_IDS.has(t.id)}
-                    restrictAssigneeTo={!isAdmin && user?.role === "qa" ? (qaFirstName || effAssignee(t)) : undefined}
+                     restrictAssigneeTo={
+                       !isAdmin && user?.role === "qa"
+                         ? Array.from(new Set([qaFirstName || effAssignee(t), "Unassigned"]))
+                         : undefined
+                     }
                     onEdit={() => setEditingId(t.id)}
                     onDuplicate={async () => {
                       try {
