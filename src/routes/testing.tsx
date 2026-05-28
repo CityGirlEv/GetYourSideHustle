@@ -654,7 +654,7 @@ export function TestPlanTab() {
   // Per-QA-person status breakdown. Only owners with at least one test appear.
   const ownerStatusCounts = useMemo(() => {
     const out: Record<string, Record<TestStatus | "total", number>> = {};
-    for (const t of effectiveCases) {
+    for (const t of scopedCases) {
       const owner = effAssignee(t);
       if (!out[owner]) out[owner] = { total: 0, pass: 0, fail: 0, blocked: 0, not_run: 0, in_progress: 0, fixed_retest: 0, failed_retest: 0 };
       const s = (statuses[t.id] ?? "not_run") as TestStatus;
@@ -662,7 +662,7 @@ export function TestPlanTab() {
       out[owner][s]++;
     }
     return out;
-  }, [statuses, assigneeOverrides, effectiveCases]);
+  }, [statuses, assigneeOverrides, scopedCases]);
 
   return (
     <div className="space-y-4">
@@ -680,7 +680,7 @@ export function TestPlanTab() {
               {" "}· Severe=15 · High=10 · Medium=5 · Low=3 · +{REPRO_FAIL_BONUS} bonus per first repro-fail
             </div>
             <div className="flex flex-wrap gap-2 text-xs mt-3">
-              {Object.entries(ownerCounts).map(([owner, n]) => {
+              {isAdmin && Object.entries(ownerCounts).map(([owner, n]) => {
                 const active = ownerFilter.length === 1 && ownerFilter[0] === owner;
                 return (
                   <button
@@ -851,11 +851,13 @@ export function TestPlanTab() {
           options={areas.map((a) => ({ value: a, label: a }))}
           value={areaFilter} onChange={setAreaFilter}
         />
-        <MultiSelect
-          placeholder="Owner" triggerClassName="w-[180px]"
-          options={owners.map((o) => ({ value: o, label: o }))}
-          value={ownerFilter} onChange={setOwnerFilter}
-        />
+        {isAdmin && (
+          <MultiSelect
+            placeholder="Owner" triggerClassName="w-[180px]"
+            options={owners.map((o) => ({ value: o, label: o }))}
+            value={ownerFilter} onChange={setOwnerFilter}
+          />
+        )}
         <MultiSelect
           placeholder="Sprint" triggerClassName="w-[200px]"
           options={SPRINTS.map((s) => ({ value: s.id, label: `Sprint ${s.number} · ${s.name}` }))}
