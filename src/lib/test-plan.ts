@@ -344,7 +344,7 @@ export const TEST_CASES: TestCase[] = [
   },
   // ===== QA Scenarios — QA creates the scenario in the wizard, then audits the system output =====
   {
-    id: "SCEN-QA-001", area: "Scenario", priority: "P2", assignee: "Catria",
+    id: "SCEN-QA-001", area: "Scenario", priority: "P2",
     title: "QA creates \"Hypertension\" scenario · $13/mo audit",
     preconditions: "Logged in as QA. /scenario/new is reachable and Lovable Cloud is healthy.",
     steps: ["Start from home page where the user clicks Create My Scenario","Enter the following for the Scenario Information: birth year = 1945 (age 81 in 2026), ZIP3 = 021","From the county dropdown that auto-populates for ZIP3=021, select Middlesex, MA — this scopes the carrier/plan check to only plans available in that county","Enter the remaining for the Scenario Information: gender = female, tobacco use = NO, income band = <$25k, cost preference = 'minimize monthly'","Add these conditions exactly: Hypertension, Type 2 Diabetes","Add these medications exactly: Metformin 500 mg tablet (twice daily) = $8/mo; Lisinopril 10 mg tablet (daily) = $5/mo","Submit the wizard and capture the generated Scenario ID (SCN-YYYY-XXXX-XXXX) — write it in QA notes","On the confirmation page, click \"Copy scenario link\" — verify the link uses the form /scenario/<SCN code>. Paste it into a new browser tab and confirm the scenario detail page loads with the SCN ID, summary card, share button, and expert opt-in trigger all present","On the confirmation page, verify the header echoes back every demographic, condition, and medication you entered character-for-character","Click 'Download PDF' and 'Download Excel' to generate the system output reports","Open each report and locate the Medication Cost summary. The total MUST equal $13/mo and $156/yr exactly","Cross-check that the conditions, demographics, and ZIP3 printed in the PDF and XLSX match what you entered in steps 2–5"],
@@ -352,7 +352,7 @@ export const TEST_CASES: TestCase[] = [
     path: "/scenario/new",
   },
   {
-    id: "SCEN-QA-002", area: "Scenario", priority: "P2", assignee: "Catria",
+    id: "SCEN-QA-002", area: "Scenario", priority: "P2",
     title: "QA creates \"COPD\" scenario · $380/mo audit",
     preconditions: "Logged in as QA. /scenario/new is reachable and Lovable Cloud is healthy.",
     steps: ["Start from home page where the user clicks Create My Scenario","Enter the following for the Scenario Information: birth year = 1957 (age 69 in 2026), ZIP3 = 100","From the county dropdown that auto-populates for ZIP3=100, select Hudson, NJ — this scopes the carrier/plan check to only plans available in that county","Enter the remaining for the Scenario Information: gender = male, tobacco use = YES, income band = $25k–$50k, cost preference = 'predictability'","Add these conditions exactly: COPD","Add these medications exactly: Tiotropium (Spiriva) 18 mcg inhaler (daily) = $380/mo","Submit the wizard and capture the generated Scenario ID (SCN-YYYY-XXXX-XXXX) — write it in QA notes","On the confirmation page, click \"Copy scenario link\" — verify the link uses the form /scenario/<SCN code>. Paste it into a new browser tab and confirm the scenario detail page loads with the SCN ID, summary card, share button, and expert opt-in trigger all present","On the confirmation page, verify the header echoes back every demographic, condition, and medication you entered character-for-character","Click 'Download PDF' and 'Download Excel' to generate the system output reports","Open each report and locate the Medication Cost summary. The total MUST equal $380/mo and $4,560/yr exactly","Cross-check that the conditions, demographics, and ZIP3 printed in the PDF and XLSX match what you entered in steps 2–5"],
@@ -360,7 +360,7 @@ export const TEST_CASES: TestCase[] = [
     path: "/scenario/new",
   },
   {
-    id: "SCEN-QA-003", area: "Scenario", priority: "P2", assignee: "Catria",
+    id: "SCEN-QA-003", area: "Scenario", priority: "P2",
     title: "QA creates \"Atrial Fibrillation\" scenario · $562/mo audit",
     preconditions: "Logged in as QA. /scenario/new is reachable and Lovable Cloud is healthy.",
     steps: ["Start from home page where the user clicks Create My Scenario","Enter the following for the Scenario Information: birth year = 1950 (age 76 in 2026), ZIP3 = 190","From the county dropdown that auto-populates for ZIP3=190, select Bucks, PA — this scopes the carrier/plan check to only plans available in that county","Enter the remaining for the Scenario Information: gender = female, tobacco use = NO, income band = $50k–$75k, cost preference = 'minimize monthly'","Add these conditions exactly: Atrial Fibrillation, Hyperlipidemia","Add these medications exactly: Eliquis 5 mg tablet (twice daily) = $550/mo; Atorvastatin 40 mg tablet (daily) = $12/mo","Submit the wizard and capture the generated Scenario ID (SCN-YYYY-XXXX-XXXX) — write it in QA notes","On the confirmation page, click \"Copy scenario link\" — verify the link uses the form /scenario/<SCN code>. Paste it into a new browser tab and confirm the scenario detail page loads with the SCN ID, summary card, share button, and expert opt-in trigger all present","On the confirmation page, verify the header echoes back every demographic, condition, and medication you entered character-for-character","Click 'Download PDF' and 'Download Excel' to generate the system output reports","Open each report and locate the Medication Cost summary. The total MUST equal $562/mo and $6,744/yr exactly","Cross-check that the conditions, demographics, and ZIP3 printed in the PDF and XLSX match what you entered in steps 2–5"],
@@ -368,7 +368,7 @@ export const TEST_CASES: TestCase[] = [
     path: "/scenario/new",
   },
   {
-    id: "SCEN-QA-004", area: "Scenario", priority: "P2", assignee: "Catria",
+    id: "SCEN-QA-004", area: "Scenario", priority: "P2",
     title: "QA creates \"Rheumatoid Arthritis\" scenario · $6,900/mo audit",
     preconditions: "Logged in as QA. /scenario/new is reachable and Lovable Cloud is healthy.",
     steps: ["Start from home page where the user clicks Create My Scenario","Enter the following for the Scenario Information: birth year = 1941 (age 85 in 2026), ZIP3 = 303","From the county dropdown that auto-populates for ZIP3=303, select Cobb, GA — this scopes the carrier/plan check to only plans available in that county","Enter the remaining for the Scenario Information: gender = male, tobacco use = NO, income band = $75k–$100k, cost preference = 'predictability'","Add these conditions exactly: Rheumatoid Arthritis","Add these medications exactly: Humira 40 mg/0.4 mL injection (every 2 weeks) = $6,900/mo","Submit the wizard and capture the generated Scenario ID (SCN-YYYY-XXXX-XXXX) — write it in QA notes","On the confirmation page, click \"Copy scenario link\" — verify the link uses the form /scenario/<SCN code>. Paste it into a new browser tab and confirm the scenario detail page loads with the SCN ID, summary card, share button, and expert opt-in trigger all present","On the confirmation page, verify the header echoes back every demographic, condition, and medication you entered character-for-character","Click 'Download PDF' and 'Download Excel' to generate the system output reports","Open each report and locate the Medication Cost summary. The total MUST equal $6,900/mo and $82,800/yr exactly","Cross-check that the conditions, demographics, and ZIP3 printed in the PDF and XLSX match what you entered in steps 2–5"],
@@ -376,7 +376,7 @@ export const TEST_CASES: TestCase[] = [
     path: "/scenario/new",
   },
   {
-    id: "SCEN-QA-005", area: "Scenario", priority: "P2", assignee: "Catria",
+    id: "SCEN-QA-005", area: "Scenario", priority: "P2",
     title: "QA creates \"Congestive Heart Failure\" scenario · $626/mo audit",
     preconditions: "Logged in as QA. /scenario/new is reachable and Lovable Cloud is healthy.",
     steps: ["Start from home page where the user clicks Create My Scenario","Enter the following for the Scenario Information: birth year = 1953 (age 73 in 2026), ZIP3 = 331","From the county dropdown that auto-populates for ZIP3=331, select Miami-Dade, FL — this scopes the carrier/plan check to only plans available in that county","Enter the remaining for the Scenario Information: gender = nonbinary, tobacco use = NO, income band = $100k–$150k, cost preference = 'predictability'","Add these conditions exactly: Congestive Heart Failure, Hypertension","Add these medications exactly: Entresto 97/103 mg tablet (twice daily) = $620/mo; Furosemide 40 mg tablet (daily) = $6/mo","Submit the wizard and capture the generated Scenario ID (SCN-YYYY-XXXX-XXXX) — write it in QA notes","On the confirmation page, click \"Copy scenario link\" — verify the link uses the form /scenario/<SCN code>. Paste it into a new browser tab and confirm the scenario detail page loads with the SCN ID, summary card, share button, and expert opt-in trigger all present","On the confirmation page, verify the header echoes back every demographic, condition, and medication you entered character-for-character","Click 'Download PDF' and 'Download Excel' to generate the system output reports","Open each report and locate the Medication Cost summary. The total MUST equal $626/mo and $7,512/yr exactly","Cross-check that the conditions, demographics, and ZIP3 printed in the PDF and XLSX match what you entered in steps 2–5"],
@@ -384,7 +384,7 @@ export const TEST_CASES: TestCase[] = [
     path: "/scenario/new",
   },
   {
-    id: "SCEN-QA-006", area: "Scenario", priority: "P2", assignee: "Catria",
+    id: "SCEN-QA-006", area: "Scenario", priority: "P2",
     title: "QA creates \"Asthma\" scenario · $65/mo audit",
     preconditions: "Logged in as QA. /scenario/new is reachable and Lovable Cloud is healthy.",
     steps: ["Start from home page where the user clicks Create My Scenario","Enter the following for the Scenario Information: birth year = 1942 (age 84 in 2026), ZIP3 = 441","From the county dropdown that auto-populates for ZIP3=441, select Cuyahoga, OH — this scopes the carrier/plan check to only plans available in that county","Enter the remaining for the Scenario Information: gender = female, tobacco use = YES, income band = $25k–$50k, cost preference = 'minimize monthly'","Add these conditions exactly: Asthma, GERD","Add these medications exactly: Albuterol 90 mcg inhaler (PRN) = $55/mo; Omeprazole 20 mg capsule (daily) = $10/mo","Submit the wizard and capture the generated Scenario ID (SCN-YYYY-XXXX-XXXX) — write it in QA notes","On the confirmation page, click \"Copy scenario link\" — verify the link uses the form /scenario/<SCN code>. Paste it into a new browser tab and confirm the scenario detail page loads with the SCN ID, summary card, share button, and expert opt-in trigger all present","On the confirmation page, verify the header echoes back every demographic, condition, and medication you entered character-for-character","Click 'Download PDF' and 'Download Excel' to generate the system output reports","Open each report and locate the Medication Cost summary. The total MUST equal $65/mo and $780/yr exactly","Cross-check that the conditions, demographics, and ZIP3 printed in the PDF and XLSX match what you entered in steps 2–5"],
@@ -392,7 +392,7 @@ export const TEST_CASES: TestCase[] = [
     path: "/scenario/new",
   },
   {
-    id: "SCEN-QA-007", area: "Scenario", priority: "P2", assignee: "Catria",
+    id: "SCEN-QA-007", area: "Scenario", priority: "P2",
     title: "QA creates \"Chronic Kidney Disease Stage 3\" scenario · $7/mo audit",
     preconditions: "Logged in as QA. /scenario/new is reachable and Lovable Cloud is healthy.",
     steps: ["Start from home page where the user clicks Create My Scenario","Enter the following for the Scenario Information: birth year = 1958 (age 68 in 2026), ZIP3 = 606","From the county dropdown that auto-populates for ZIP3=606, select Cook, IL — this scopes the carrier/plan check to only plans available in that county","Enter the remaining for the Scenario Information: gender = male, tobacco use = NO, income band = $50k–$75k, cost preference = 'minimize monthly'","Add these conditions exactly: Chronic Kidney Disease Stage 3","Add these medications exactly: Losartan 50 mg tablet (daily) = $7/mo","Submit the wizard and capture the generated Scenario ID (SCN-YYYY-XXXX-XXXX) — write it in QA notes","On the confirmation page, click \"Copy scenario link\" — verify the link uses the form /scenario/<SCN code>. Paste it into a new browser tab and confirm the scenario detail page loads with the SCN ID, summary card, share button, and expert opt-in trigger all present","On the confirmation page, verify the header echoes back every demographic, condition, and medication you entered character-for-character","Click 'Download PDF' and 'Download Excel' to generate the system output reports","Open each report and locate the Medication Cost summary. The total MUST equal $7/mo and $84/yr exactly","Cross-check that the conditions, demographics, and ZIP3 printed in the PDF and XLSX match what you entered in steps 2–5"],
@@ -400,7 +400,7 @@ export const TEST_CASES: TestCase[] = [
     path: "/scenario/new",
   },
   {
-    id: "SCEN-QA-008", area: "Scenario", priority: "P2", assignee: "Catria",
+    id: "SCEN-QA-008", area: "Scenario", priority: "P2",
     title: "QA creates \"Depression\" scenario · $23/mo audit",
     preconditions: "Logged in as QA. /scenario/new is reachable and Lovable Cloud is healthy.",
     steps: ["Start from home page where the user clicks Create My Scenario","Enter the following for the Scenario Information: birth year = 1957 (age 69 in 2026), ZIP3 = 750","From the county dropdown that auto-populates for ZIP3=750, select Collin, TX — this scopes the carrier/plan check to only plans available in that county","Enter the remaining for the Scenario Information: gender = female, tobacco use = NO, income band = <$25k, cost preference = 'minimize monthly'","Add these conditions exactly: Depression, Anxiety","Add these medications exactly: Sertraline 100 mg tablet (daily) = $9/mo; Buspirone 10 mg tablet (twice daily) = $14/mo","Submit the wizard and capture the generated Scenario ID (SCN-YYYY-XXXX-XXXX) — write it in QA notes","On the confirmation page, click \"Copy scenario link\" — verify the link uses the form /scenario/<SCN code>. Paste it into a new browser tab and confirm the scenario detail page loads with the SCN ID, summary card, share button, and expert opt-in trigger all present","On the confirmation page, verify the header echoes back every demographic, condition, and medication you entered character-for-character","Click 'Download PDF' and 'Download Excel' to generate the system output reports","Open each report and locate the Medication Cost summary. The total MUST equal $23/mo and $276/yr exactly","Cross-check that the conditions, demographics, and ZIP3 printed in the PDF and XLSX match what you entered in steps 2–5"],
@@ -408,7 +408,7 @@ export const TEST_CASES: TestCase[] = [
     path: "/scenario/new",
   },
   {
-    id: "SCEN-QA-009", area: "Scenario", priority: "P2", assignee: "Catria",
+    id: "SCEN-QA-009", area: "Scenario", priority: "P2",
     title: "QA creates \"Osteoporosis\" scenario · $18/mo audit",
     preconditions: "Logged in as QA. /scenario/new is reachable and Lovable Cloud is healthy.",
     steps: ["Start from home page where the user clicks Create My Scenario","Enter the following for the Scenario Information: birth year = 1959 (age 67 in 2026), ZIP3 = 802","From the county dropdown that auto-populates for ZIP3=802, select Adams, CO — this scopes the carrier/plan check to only plans available in that county","Enter the remaining for the Scenario Information: gender = male, tobacco use = NO, income band = $75k–$100k, cost preference = 'minimize monthly'","Add these conditions exactly: Osteoporosis","Add these medications exactly: Alendronate 70 mg tablet (weekly) = $18/mo","Submit the wizard and capture the generated Scenario ID (SCN-YYYY-XXXX-XXXX) — write it in QA notes","On the confirmation page, click \"Copy scenario link\" — verify the link uses the form /scenario/<SCN code>. Paste it into a new browser tab and confirm the scenario detail page loads with the SCN ID, summary card, share button, and expert opt-in trigger all present","On the confirmation page, verify the header echoes back every demographic, condition, and medication you entered character-for-character","Click 'Download PDF' and 'Download Excel' to generate the system output reports","Open each report and locate the Medication Cost summary. The total MUST equal $18/mo and $216/yr exactly","Cross-check that the conditions, demographics, and ZIP3 printed in the PDF and XLSX match what you entered in steps 2–5"],
@@ -416,7 +416,7 @@ export const TEST_CASES: TestCase[] = [
     path: "/scenario/new",
   },
   {
-    id: "SCEN-QA-010", area: "Scenario", priority: "P2", assignee: "Catria",
+    id: "SCEN-QA-010", area: "Scenario", priority: "P2",
     title: "QA creates \"Multiple Sclerosis\" scenario · $34,000/mo audit",
     preconditions: "Logged in as QA. /scenario/new is reachable and Lovable Cloud is healthy.",
     steps: ["Start from home page where the user clicks Create My Scenario","Enter the following for the Scenario Information: birth year = 1949 (age 77 in 2026), ZIP3 = 891","From the county dropdown that auto-populates for ZIP3=891, select Clark, NV — this scopes the carrier/plan check to only plans available in that county","Enter the remaining for the Scenario Information: gender = female, tobacco use = NO, income band = $25k–$50k, cost preference = 'predictability'","Add these conditions exactly: Multiple Sclerosis","Add these medications exactly: Ocrevus 300 mg/10 mL infusion (every 6 months amortized) = $34,000/mo","Submit the wizard and capture the generated Scenario ID (SCN-YYYY-XXXX-XXXX) — write it in QA notes","On the confirmation page, click \"Copy scenario link\" — verify the link uses the form /scenario/<SCN code>. Paste it into a new browser tab and confirm the scenario detail page loads with the SCN ID, summary card, share button, and expert opt-in trigger all present","On the confirmation page, verify the header echoes back every demographic, condition, and medication you entered character-for-character","Click 'Download PDF' and 'Download Excel' to generate the system output reports","Open each report and locate the Medication Cost summary. The total MUST equal $34,000/mo and $408,000/yr exactly","Cross-check that the conditions, demographics, and ZIP3 printed in the PDF and XLSX match what you entered in steps 2–5"],
@@ -424,7 +424,7 @@ export const TEST_CASES: TestCase[] = [
     path: "/scenario/new",
   },
   {
-    id: "SCEN-QA-011", area: "Scenario", priority: "P2", assignee: "Catria",
+    id: "SCEN-QA-011", area: "Scenario", priority: "P2",
     title: "QA creates \"Parkinson's Disease\" scenario · $22/mo audit",
     preconditions: "Logged in as QA. /scenario/new is reachable and Lovable Cloud is healthy.",
     steps: ["Start from home page where the user clicks Create My Scenario","Enter the following for the Scenario Information: birth year = 1940 (age 86 in 2026), ZIP3 = 787","From the county dropdown that auto-populates for ZIP3=787, select Hays, TX — this scopes the carrier/plan check to only plans available in that county","Enter the remaining for the Scenario Information: gender = male, tobacco use = YES, income band = <$25k, cost preference = 'minimize monthly'","Add these conditions exactly: Parkinson's Disease","Add these medications exactly: Carbidopa-Levodopa 25-100 mg tablet (TID) = $22/mo","Submit the wizard and capture the generated Scenario ID (SCN-YYYY-XXXX-XXXX) — write it in QA notes","On the confirmation page, click \"Copy scenario link\" — verify the link uses the form /scenario/<SCN code>. Paste it into a new browser tab and confirm the scenario detail page loads with the SCN ID, summary card, share button, and expert opt-in trigger all present","On the confirmation page, verify the header echoes back every demographic, condition, and medication you entered character-for-character","Click 'Download PDF' and 'Download Excel' to generate the system output reports","Open each report and locate the Medication Cost summary. The total MUST equal $22/mo and $264/yr exactly","Cross-check that the conditions, demographics, and ZIP3 printed in the PDF and XLSX match what you entered in steps 2–5"],
@@ -432,7 +432,7 @@ export const TEST_CASES: TestCase[] = [
     path: "/scenario/new",
   },
   {
-    id: "SCEN-QA-012", area: "Scenario", priority: "P2", assignee: "Catria",
+    id: "SCEN-QA-012", area: "Scenario", priority: "P2",
     title: "QA creates \"Hypothyroidism\" scenario · $20/mo audit",
     preconditions: "Logged in as QA. /scenario/new is reachable and Lovable Cloud is healthy.",
     steps: ["Start from home page where the user clicks Create My Scenario","Enter the following for the Scenario Information: birth year = 1942 (age 84 in 2026), ZIP3 = 981","From the county dropdown that auto-populates for ZIP3=981, select King, WA — this scopes the carrier/plan check to only plans available in that county","Enter the remaining for the Scenario Information: gender = female, tobacco use = NO, income band = $50k–$75k, cost preference = 'minimize monthly'","Add these conditions exactly: Hypothyroidism, Hyperlipidemia","Add these medications exactly: Levothyroxine 75 mcg tablet (daily) = $6/mo; Rosuvastatin 20 mg tablet (daily) = $14/mo","Submit the wizard and capture the generated Scenario ID (SCN-YYYY-XXXX-XXXX) — write it in QA notes","On the confirmation page, click \"Copy scenario link\" — verify the link uses the form /scenario/<SCN code>. Paste it into a new browser tab and confirm the scenario detail page loads with the SCN ID, summary card, share button, and expert opt-in trigger all present","On the confirmation page, verify the header echoes back every demographic, condition, and medication you entered character-for-character","Click 'Download PDF' and 'Download Excel' to generate the system output reports","Open each report and locate the Medication Cost summary. The total MUST equal $20/mo and $240/yr exactly","Cross-check that the conditions, demographics, and ZIP3 printed in the PDF and XLSX match what you entered in steps 2–5"],
@@ -440,7 +440,7 @@ export const TEST_CASES: TestCase[] = [
     path: "/scenario/new",
   },
   {
-    id: "SCEN-QA-013", area: "Scenario", priority: "P2", assignee: "Catria",
+    id: "SCEN-QA-013", area: "Scenario", priority: "P2",
     title: "QA creates \"Type 1 Diabetes\" scenario · $1,040/mo audit",
     preconditions: "Logged in as QA. /scenario/new is reachable and Lovable Cloud is healthy.",
     steps: ["Start from home page where the user clicks Create My Scenario","Enter the following for the Scenario Information: birth year = 1957 (age 69 in 2026), ZIP3 = 550","From the county dropdown that auto-populates for ZIP3=550, select Anoka, MN — this scopes the carrier/plan check to only plans available in that county","Enter the remaining for the Scenario Information: gender = male, tobacco use = NO, income band = $75k–$100k, cost preference = 'predictability'","Add these conditions exactly: Type 1 Diabetes","Add these medications exactly: Insulin Lispro (Humalog) 100 U/mL vial (as directed) = $330/mo; Insulin Glargine (Lantus) 100 U/mL vial (daily) = $290/mo; Dexcom G7 CGM (DME) (continuous) = $420/mo","Submit the wizard and capture the generated Scenario ID (SCN-YYYY-XXXX-XXXX) — write it in QA notes","On the confirmation page, click \"Copy scenario link\" — verify the link uses the form /scenario/<SCN code>. Paste it into a new browser tab and confirm the scenario detail page loads with the SCN ID, summary card, share button, and expert opt-in trigger all present","On the confirmation page, verify the header echoes back every demographic, condition, and medication you entered character-for-character","Click 'Download PDF' and 'Download Excel' to generate the system output reports","Open each report and locate the Medication Cost summary. The total MUST equal $1,040/mo and $12,480/yr exactly","Cross-check that the conditions, demographics, and ZIP3 printed in the PDF and XLSX match what you entered in steps 2–5"],
@@ -448,7 +448,7 @@ export const TEST_CASES: TestCase[] = [
     path: "/scenario/new",
   },
   {
-    id: "SCEN-QA-014", area: "Scenario", priority: "P2", assignee: "Catria",
+    id: "SCEN-QA-014", area: "Scenario", priority: "P2",
     title: "QA creates \"Coronary Artery Disease\" scenario · $14/mo audit",
     preconditions: "Logged in as QA. /scenario/new is reachable and Lovable Cloud is healthy.",
     steps: ["Start from home page where the user clicks Create My Scenario","Enter the following for the Scenario Information: birth year = 1948 (age 78 in 2026), ZIP3 = 602","From the county dropdown that auto-populates for ZIP3=602, select Cook, IL — this scopes the carrier/plan check to only plans available in that county","Enter the remaining for the Scenario Information: gender = male, tobacco use = NO, income band = $25k–$50k, cost preference = 'minimize monthly'","Add these conditions exactly: Coronary Artery Disease, Hyperlipidemia","Add these medications exactly: Clopidogrel 75 mg tablet (daily) = $9/mo; Simvastatin 20 mg tablet (daily) = $5/mo","Submit the wizard and capture the generated Scenario ID (SCN-YYYY-XXXX-XXXX) — write it in QA notes","On the confirmation page, click \"Copy scenario link\" — verify the link uses the form /scenario/<SCN code>. Paste it into a new browser tab and confirm the scenario detail page loads with the SCN ID, summary card, share button, and expert opt-in trigger all present","On the confirmation page, verify the header echoes back every demographic, condition, and medication you entered character-for-character","Click 'Download PDF' and 'Download Excel' to generate the system output reports","Open each report and locate the Medication Cost summary. The total MUST equal $14/mo and $168/yr exactly","Cross-check that the conditions, demographics, and ZIP3 printed in the PDF and XLSX match what you entered in steps 2–5"],
@@ -456,7 +456,7 @@ export const TEST_CASES: TestCase[] = [
     path: "/scenario/new",
   },
   {
-    id: "SCEN-QA-015", area: "Scenario", priority: "P2", assignee: "Catria",
+    id: "SCEN-QA-015", area: "Scenario", priority: "P2",
     title: "QA creates \"Alzheimer's Disease (early)\" scenario · $15/mo audit",
     preconditions: "Logged in as QA. /scenario/new is reachable and Lovable Cloud is healthy.",
     steps: ["Start from home page where the user clicks Create My Scenario","Enter the following for the Scenario Information: birth year = 1952 (age 74 in 2026), ZIP3 = 148","From the county dropdown that auto-populates for ZIP3=148, select Allegany, NY — this scopes the carrier/plan check to only plans available in that county","Enter the remaining for the Scenario Information: gender = male, tobacco use = NO, income band = $25k–$50k, cost preference = 'predictability'","Add these conditions exactly: Alzheimer's Disease (early)","Add these medications exactly: Donepezil 10 mg tablet (daily) = $15/mo","Submit the wizard and capture the generated Scenario ID (SCN-YYYY-XXXX-XXXX) — write it in QA notes","On the confirmation page, click \"Copy scenario link\" — verify the link uses the form /scenario/<SCN code>. Paste it into a new browser tab and confirm the scenario detail page loads with the SCN ID, summary card, share button, and expert opt-in trigger all present","On the confirmation page, verify the header echoes back every demographic, condition, and medication you entered character-for-character","Click 'Download PDF' and 'Download Excel' to generate the system output reports","Open each report and locate the Medication Cost summary. The total MUST equal $15/mo and $180/yr exactly","Cross-check that the conditions, demographics, and ZIP3 printed in the PDF and XLSX match what you entered in steps 2–5"],
@@ -464,7 +464,7 @@ export const TEST_CASES: TestCase[] = [
     path: "/scenario/new",
   },
   {
-    id: "SCEN-QA-016", area: "Scenario", priority: "P2", assignee: "Catria",
+    id: "SCEN-QA-016", area: "Scenario", priority: "P2",
     title: "Search scenarios by exact code from /advisor",
     preconditions: "Logged in as QA. Have a known Scenario ID from one of SCEN-QA-001..SCEN-QA-015 above.",
     steps: ["Log in as a QA user (you should land on /testing)","Navigate to /advisor","In the 'Look up a scenario by code' field paste the SCN-YYYY-XXXX-XXXX code captured in an earlier creation test","Click Look up","Verify the scenario detail page loads within 2 seconds","Verify the demographics, conditions, and medications match exactly what was entered when the scenario was created"],
@@ -472,7 +472,7 @@ export const TEST_CASES: TestCase[] = [
     path: "/advisor",
   },
   {
-    id: "SCEN-QA-017", area: "Scenario", priority: "P2", assignee: "Catria",
+    id: "SCEN-QA-017", area: "Scenario", priority: "P2",
     title: "Search scenarios — invalid code returns clear error",
     preconditions: "Logged in as QA.",
     steps: ["Log in as a QA user","Navigate to /advisor","Enter a clearly bogus code such as SCN-2026-ZZZZ-ZZZZ and submit","Repeat with an empty string and with a 3-character string"],
@@ -480,7 +480,7 @@ export const TEST_CASES: TestCase[] = [
     path: "/advisor",
   },
   {
-    id: "SCEN-QA-018", area: "Scenario", priority: "P2", assignee: "Catria",
+    id: "SCEN-QA-018", area: "Scenario", priority: "P2",
     title: "Search scenarios — rate limit kicks in after 10 bad attempts/min",
     preconditions: "Logged in as QA.",
     steps: ["Log in as a QA user","Navigate to /advisor","Submit 11 invalid scenario codes (e.g. SCN-2026-AAAA-000N where N increments) within 60 seconds"],
@@ -488,7 +488,7 @@ export const TEST_CASES: TestCase[] = [
     path: "/advisor",
   },
   {
-    id: "SCEN-QA-019", area: "Scenario", priority: "P2", assignee: "Catria",
+    id: "SCEN-QA-019", area: "Scenario", priority: "P2",
     title: "Admin can assign a scenario to an agent",
     preconditions: "Logged in as admin. At least one user with role 'agent' exists. At least one scenario created by SCEN-QA-001..SCEN-QA-015 exists.",
     steps: ["Log in as an admin user and open /admin","Locate the scenarios table and pick one of the SCEN-QA created scenarios","Open the 'Assigned agent' dropdown for that row and pick an agent","Refresh the page","Log out and log back in as that agent and open /agent","Verify the assigned scenario appears in the agent's queue"],
@@ -496,7 +496,7 @@ export const TEST_CASES: TestCase[] = [
     path: "/admin",
   },
   {
-    id: "SCEN-QA-020", area: "Scenario", priority: "P2", assignee: "Catria",
+    id: "SCEN-QA-020", area: "Scenario", priority: "P2",
     title: "QA cannot assign scenarios — UI is read-only for QA",
     preconditions: "Logged in as QA (NOT admin).",
     steps: ["Log in as a QA user (you should land on /testing)","Navigate to /advisor and look up an existing scenario by code","Confirm there is NO 'Assign agent' control visible to QA on the scenario detail page","Manually navigate to /admin","Attempt to call the admin_assign_agent endpoint from the browser console as the QA user"],
