@@ -45,7 +45,7 @@ import { AUTOMATED_TEST_CASES, AUTOMATED_TEST_IDS, AUTOMATED_TEST_RESULTS } from
 import { expandAllWithPlatforms, TEST_PLATFORMS } from "@/lib/platform-variants";
 import {
   listTestEvidence, uploadTestEvidence, deleteTestEvidence, getTestEvidenceUrl,
-  type EvidenceFile,
+  EVIDENCE_ACCEPT_ATTR, type EvidenceFile,
 } from "@/lib/test-evidence";
 import { toast } from "sonner";
 import { MultiSelect, multiSelectMatches } from "@/components/ui/multi-select";
