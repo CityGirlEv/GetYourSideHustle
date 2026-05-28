@@ -401,6 +401,40 @@ export function TestPlanTab() {
   const pendingChanges = useMemo<Change[]>(() => {
     const list: Change[] = [];
     const fmt = (v: unknown) => (v === "" || v == null ? "—" : String(v));
+    // "Before" should reflect what the user currently sees on the row — i.e.
+    // the effective saved value (test-case default + any previously saved
+    // override), NOT just the raw override map (which is "" for rows the user
+    // has never touched). Without this, the confirm dialog shows "—" for
+    // owner/sprint even when the row visibly reads "Catria" / "Sprint 3".
+    const savedAssigneeFor = (id: string): string => {
+      const t = effectiveById.get(id);
+      if (!t) return savedAssignees[id] ?? "";
+      const platformSuffix = TEST_PLATFORMS.find((p) => id.endsWith(`-${p.suffix}`))?.suffix;
+      const sourceId = platformSuffix ? id.slice(0, -platformSuffix.length - 1) : id;
+      const ov = savedAssignees[id] || savedAssignees[sourceId];
+      let raw: string;
+      if (customIds.has(id)) {
+        raw = ov || t.assignee || "Unassigned";
+      } else if (AUTOMATED_TEST_IDS.has(id)) {
+        raw = t.assignee || "Unassigned";
+      } else if (t.assignee) {
+        const status = savedStatuses[id];
+        raw = (status === "fail" || status === "failed_retest") ? "Dev" : (ov || t.assignee);
+      } else {
+        raw = ov || getTestAssignee(t, savedStatuses[id]);
+      }
+      if (raw === "Me") return "Evelyn";
+      if (raw === "Design" || raw === "Dev") return "Eng";
+      return raw;
+    };
+    const savedSprintFor = (id: string): string => {
+      const ov = savedSprints[id];
+      if (ov) return ov;
+      const t = effectiveById.get(id);
+      if (!t) return "";
+      if (customIds.has(id)) return t.sprintId || "";
+      return getTestSprintId(t);
+    };
     for (const [id, v] of Object.entries(dStatuses))
       list.push({ key: `${id}:status`, testId: id, field: "status", label: "Status",
         before: fmt(savedStatuses[id] ?? "not_run"), after: fmt(v) });
@@ -415,13 +449,14 @@ export function TestPlanTab() {
         before: fmt(savedSeverities[id] ?? ""), after: fmt(v) });
     for (const [id, v] of Object.entries(dAssignees))
       list.push({ key: `${id}:assignee`, testId: id, field: "assignee", label: "Owner",
-        before: fmt(savedAssignees[id] ?? ""), after: fmt(v) });
+        before: fmt(savedAssigneeFor(id)), after: fmt(v) });
     for (const [id, v] of Object.entries(dSprints))
       list.push({ key: `${id}:sprint`, testId: id, field: "sprint", label: "Sprint",
-        before: fmt(savedSprints[id] ?? ""), after: fmt(v) });
+        before: fmt(savedSprintFor(id)), after: fmt(v) });
     return list.sort((a, b) => a.testId.localeCompare(b.testId));
   }, [dStatuses, dQaNotes, dDevNotes, dSeverities, dAssignees, dSprints,
-      savedStatuses, savedQaNotes, savedDevNotes, savedSeverities, savedAssignees, savedSprints]);
+      savedStatuses, savedQaNotes, savedDevNotes, savedSeverities, savedAssignees, savedSprints,
+      effectiveById, customIds]);
 
   const pendingCount = pendingChanges.length;
 
