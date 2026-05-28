@@ -1103,6 +1103,40 @@ function TestCaseCard({
   const showQaNote = status === "fail" || status === "failed_retest";
   const showDevNote = status === "fixed_retest" || status === "failed_retest";
   const assigneeOptions = useAssigneeOptions();
+  // Per-step execution checkboxes — persisted locally so the tester can
+  // resume where they left off. Marking "Pass" requires every step checked.
+  const stepsKey = `qa-step-checks:${t.id}`;
+  const [checkedSteps, setCheckedSteps] = useState<Set<number>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const raw = window.localStorage.getItem(stepsKey);
+      return raw ? new Set<number>(JSON.parse(raw)) : new Set();
+    } catch { return new Set(); }
+  });
+  const persistSteps = (next: Set<number>) => {
+    setCheckedSteps(next);
+    try { window.localStorage.setItem(stepsKey, JSON.stringify(Array.from(next))); } catch { /* ignore */ }
+  };
+  const toggleStep = (i: number) => {
+    const next = new Set(checkedSteps);
+    if (next.has(i)) next.delete(i); else next.add(i);
+    persistSteps(next);
+  };
+  const allStepsChecked = t.steps.length === 0 || t.steps.every((_, i) => checkedSteps.has(i));
+  const handleStatusChange = (s: TestStatus) => {
+    if (s === "pass" && !allStepsChecked) {
+      const missing = t.steps.length - checkedSteps.size;
+      const proceed = window.confirm(
+        `You have not checked off all steps for ${t.id}.\n\n` +
+        `${missing} step(s) remain unchecked. A passing result should only be recorded once every step has been executed.\n\n` +
+        `Click Cancel to go back and finish the steps. (Pass is blocked until every step is checked.)`,
+      );
+      // Always block — warning is informational; the action is not allowed.
+      void proceed;
+      return;
+    }
+    onChange(s);
+  };
   return (
     <Card className={`p-4 ${shade} ${selected ? "ring-2 ring-primary/60" : ""}`}>
       <div className="flex flex-wrap items-start gap-2 mb-2">
