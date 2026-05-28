@@ -24,7 +24,7 @@ import {
   TASK_STATUS_VALUES, TASK_STATUS_LABELS, TASK_CATEGORY_VALUES, TASK_CATEGORY_LABELS,
   type TaskRow, type TaskRowStatus,
 } from "@/lib/tasks-sheet";
-import { SPRINTS, ACTIVE_SPRINT_ID, PRIORITY_LABELS, PRIORITY_SHORT, type Priority } from "@/lib/test-plan";
+import { SPRINTS, ACTIVE_SPRINT_ID, PRIORITY_LABELS, PRIORITY_SHORT, FAIL_SEVERITY_LABELS, type Priority, type FailSeverity } from "@/lib/test-plan";
 import { useAssigneeOptions } from "@/lib/use-assignee-options";
 import {
   applyBulkEdit, bulkDelete as bulkDeleteRows,
@@ -54,6 +54,13 @@ const PRIORITY_TONE: Record<Priority, string> = {
   P2: "border-blue-500/40 text-blue-500",
   P3: "border-muted-foreground/40 text-muted-foreground",
 };
+const SEVERITY_TONE: Record<string, string> = {
+  severe: "border-red-800/60 text-red-800",
+  high: "border-destructive/60 text-destructive",
+  medium: "border-amber-500/50 text-amber-600",
+  low: "border-sky-500/50 text-sky-600",
+  "": "border-muted-foreground/30 text-muted-foreground",
+};
 
 function emptyDraft(): TaskRow {
   return {
@@ -70,6 +77,7 @@ function emptyDraft(): TaskRow {
     dateCompleted: "",
     cost: 0,
     notes: "",
+    severity: "",
     path: "",
   };
 }
@@ -381,7 +389,7 @@ export function TaskSheetContent() {
 
   const FIELD_LABELS: Record<FieldKey, string> = {
     description: "Description", sprintId: "Sprint", category: "Category",
-    priority: "Priority", status: "Status", assignBy: "Assigned by",
+    priority: "Priority", status: "Status", severity: "Severity", assignBy: "Assigned by",
     assignedTo: "Assigned to", dateAssigned: "Date assigned", dueDate: "Due date",
     dateCompleted: "Date completed", cost: "Cost", notes: "Notes", path: "Link",
   };
@@ -764,6 +772,7 @@ export function TaskSheetContent() {
                 <TableHead className="min-w-[260px]">Description</TableHead>
                 <TableHead>Sprint</TableHead>
                 <TableHead>Priority</TableHead>
+                <TableHead>Severity</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Assigned to</TableHead>
                 <TableHead>By</TableHead>
@@ -778,7 +787,7 @@ export function TaskSheetContent() {
             <TableBody>
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={14} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={15} className="text-center text-muted-foreground py-8">
                     No tasks match your filters.
                   </TableCell>
                 </TableRow>
@@ -794,7 +803,7 @@ export function TaskSheetContent() {
                       className="bg-muted/60 hover:bg-muted/70 cursor-pointer border-t-2 border-border"
                       onClick={() => toggleSprint(sprintId)}
                     >
-                      <TableCell colSpan={14} className="py-2">
+                      <TableCell colSpan={15} className="py-2">
                         <div className="flex items-center gap-2 font-semibold text-sm">
                           <ChevronRight className={`h-4 w-4 transition-transform ${!isCollapsed ? "rotate-90" : ""}`} />
                           <span>{label}</span>
@@ -848,6 +857,19 @@ export function TaskSheetContent() {
                         </SelectTrigger>
                         <SelectContent>
                           {PRIORITIES.map((p) => <SelectItem key={p} value={p}>{PRIORITY_LABELS[p]}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
+                      <Select value={r.severity || ""} onValueChange={(v) => inlineUpdate(r.id, "severity", v as FailSeverity | "")}>
+                        <SelectTrigger className="h-7 w-[90px] text-xs">
+                          <Badge variant="outline" className={SEVERITY_TONE[r.severity || ""]}>{r.severity ? FAIL_SEVERITY_LABELS[r.severity as FailSeverity] : "—"}</Badge>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">—</SelectItem>
+                          {Object.entries(FAIL_SEVERITY_LABELS).map(([k, label]) => (
+                            <SelectItem key={k} value={k}>{label}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </TableCell>
@@ -963,6 +985,18 @@ export function TaskSheetContent() {
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {PRIORITIES.map((p) => <SelectItem key={p} value={p}>{PRIORITY_LABELS[p]}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Severity</Label>
+                <Select value={editing.severity || ""} onValueChange={(v) => setEditing({ ...editing, severity: v as FailSeverity | "" })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">—</SelectItem>
+                    {Object.entries(FAIL_SEVERITY_LABELS).map(([k, label]) => (
+                      <SelectItem key={k} value={k}>{label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

@@ -38,6 +38,8 @@ export interface TaskRow {
   dateCompleted: string;  // MM/DD/YY or ""
   cost: number;
   notes: string;
+  /** Optional severity for task triage (same scale as test failures). */
+  severity?: "severe" | "high" | "medium" | "low" | "";
   /** Optional link target for the page/item this task relates to. Route ("/admin") or external URL. */
   path?: string;
 }

@@ -1012,9 +1012,10 @@ function BulkEditBar({
           title="Set severity for selected"
         >
           <option value="__noop">Set severity…</option>
-          <option value="high">High</option>
-          <option value="medium">Medium</option>
-          <option value="low">Low</option>
+          <option value="severe">Severe (Show Stopper)</option>
+          <option value="high">High (Must Haves)</option>
+          <option value="medium">Medium (Nice Haves)</option>
+          <option value="low">Low (Can Wait)</option>
           <option value="">Clear severity</option>
         </select>
       </div>
@@ -1294,6 +1295,7 @@ function TestCaseCard({
                     {(Object.keys(FAIL_SEVERITY_LABELS) as FailSeverity[]).map((s) => {
                       const active = severity === s;
                       const tone =
+                        s === "severe" ? (active ? "bg-red-950 text-white border-red-950" : "border-red-700/60 text-red-800 hover:bg-red-950/10") :
                         s === "high"   ? (active ? "bg-destructive text-destructive-foreground border-destructive" : "border-destructive/40 text-destructive hover:bg-destructive/10") :
                         s === "medium" ? (active ? "bg-amber-500 text-white border-amber-500"           : "border-amber-500/40 text-amber-700 hover:bg-amber-500/10") :
                                          (active ? "bg-sky-500 text-white border-sky-500"               : "border-sky-500/40 text-sky-700 hover:bg-sky-500/10");

@@ -890,11 +890,12 @@ export function loadAllDevNotes(): Record<string, string> {
 // ----------------------------------------------------------------------------
 // Test failure severity — required when QA marks a test as fail / failed_retest
 // ----------------------------------------------------------------------------
-export type FailSeverity = "high" | "medium" | "low";
+export type FailSeverity = "severe" | "high" | "medium" | "low";
 export const FAIL_SEVERITY_LABELS: Record<FailSeverity, string> = {
-  high: "High — Show stopper",
-  medium: "Medium — Fix soon",
-  low: "Low — Can wait",
+  severe: "Severe (Show Stopper)",
+  high: "High (Must Haves)",
+  medium: "Medium (Nice Haves)",
+  low: "Low (Can Wait)",
 };
 export const TEST_SEVERITY_KEY = (id: string) => `test-severity:${id}`;
 
