@@ -1299,6 +1299,9 @@ function TestCaseCard({
   /** When true, the Owner select is rendered read-only (used for
    *  auto-discovered Vitest / Playwright tests owned by their runner). */
   assigneeLocked?: boolean;
+  /** When set, the Owner select is locked to this single name (used for
+   *  non-admin QA users so they can only ever see their own name). */
+  restrictAssigneeTo?: string;
 }) {
   // Shade the whole row based on status (background + left border accent)
   const shade =
