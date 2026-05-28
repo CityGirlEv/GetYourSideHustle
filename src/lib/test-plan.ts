@@ -989,7 +989,11 @@ export function loadAllAssigneeOverrides(): Record<string, string> {
 export function getTestSprintId(t: TestCase): string {
   const override = loadSprintOverride(t.id);
   if (override) return override;
-  return t.sprintId || ACTIVE_SPRINT_ID;
+  if (t.sprintId) return t.sprintId;
+  // Tests with no explicit owner (e.g. brand-new functionality) land in the
+  // Backlog sprint until an admin assigns them to a real sprint.
+  if (t.assignee === "Unassigned") return BACKLOG_SPRINT_ID;
+  return ACTIVE_SPRINT_ID;
 }
 
 // ----------------------------------------------------------------------------
