@@ -839,7 +839,8 @@ export function TestPlanTab() {
                   toast.error("Cannot save test result", { description: blockReason });
                   return;
                 }
-                setSaveOpen(true);
+                setSaveBusy("Preparing review…");
+                requestAnimationFrame(() => setSaveOpen(true));
               }}
               disabled={pendingCount === 0 || !canSaveToCloud}
               className="relative"
