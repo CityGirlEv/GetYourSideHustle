@@ -254,6 +254,15 @@ export const createAdvisor = createServerFn({ method: "POST" })
       balance: assignedRole === "advisor" ? 10 : 0,
     });
 
+    await logAdminAudit(context.userId, "ADMIN_CREATE_USER", newUserId, {
+      email: data.email,
+      role: assignedRole,
+    });
+    await logAdminAudit(context.userId, "ADD_USER_ROLE", newUserId, {
+      role: assignedRole,
+      source: "admin_create_user",
+    });
+
     return {
       id: newUserId,
       email: data.email,
@@ -294,6 +303,9 @@ export const addUserRole = createServerFn({ method: "POST" })
       .from("user_roles")
       .upsert({ user_id: data.user_id, role: data.role }, { onConflict: "user_id,role" });
     if (error) throw new Error(error.message);
+    await logAdminAudit(context.userId, "ADD_USER_ROLE", data.user_id, {
+      role: data.role,
+    });
     return { ok: true };
   });
 
@@ -316,6 +328,9 @@ export const removeUserRole = createServerFn({ method: "POST" })
       .eq("user_id", data.user_id)
       .eq("role", data.role);
     if (error) throw new Error(error.message);
+    await logAdminAudit(context.userId, "REMOVE_USER_ROLE", data.user_id, {
+      role: data.role,
+    });
     return { ok: true };
   });
 
