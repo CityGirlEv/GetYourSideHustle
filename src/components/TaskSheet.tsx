@@ -408,9 +408,14 @@ export function TaskSheetContent() {
 
   const pendingCount = pendingChanges.length;
 
-  const discardAllDrafts = () => {
+  const discardAllDrafts = async () => {
     if (pendingCount === 0) return;
-    if (!confirm(`Discard all ${pendingCount} unsaved change(s)?`)) return;
+    if (!(await confirm({
+      title: "Discard changes?",
+      description: `Discard all ${pendingCount} unsaved change(s)?`,
+      confirmLabel: "Discard",
+      destructive: true,
+    }))) return;
     setRows(savedRows);
   };
 
