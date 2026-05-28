@@ -1367,6 +1367,7 @@ function TestCaseCard({
 
 function TestEvidence({ testId }: { testId: string }) {
   const { user } = useApp();
+  const confirm = useConfirm();
   const [files, setFiles] = useState<EvidenceFile[]>([]);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -1413,7 +1414,12 @@ function TestEvidence({ testId }: { testId: string }) {
   };
 
   const onDelete = async (f: EvidenceFile) => {
-    if (!confirm(`Delete ${f.name}?`)) return;
+    if (!(await confirm({
+      title: "Delete file?",
+      description: `Delete ${f.name}?`,
+      confirmLabel: "Delete",
+      destructive: true,
+    }))) return;
     try {
       await deleteTestEvidence(f.path);
       setFiles((p) => p.filter((x) => x.path !== f.path));
