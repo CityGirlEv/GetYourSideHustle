@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { createAdvisor, listStaff, updateUser, setUserDisabled, deleteUser, addUserRole, removeUserRole } from "@/lib/admin.functions";
 import { refreshAssigneeOptions } from "@/lib/use-assignee-options";
+import { QADevicePicker, splitDevices, mergeDevices } from "@/components/QADevicePicker";
 
 export const Route = createFileRoute("/users")({ component: UsersPage });
 
@@ -30,6 +31,7 @@ interface StaffMember {
   credits: number;
   disabled?: boolean;
   last_sign_in_at?: string | null;
+  qa_devices?: string[];
 }
 
 function UsersPage() {
@@ -51,6 +53,8 @@ function UsersPage() {
   const [editName, setEditName] = useState("");
   const [editNpn, setEditNpn] = useState("");
   const [editPassword, setEditPassword] = useState("");
+  const [editDevices, setEditDevices] = useState<string[]>([]);
+  const [editDeviceOther, setEditDeviceOther] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<StaffMember | null>(null);
 
@@ -134,17 +138,22 @@ function UsersPage() {
 
   const openEdit = (s: StaffMember) => {
     setEditing(s); setEditName(s.full_name); setEditNpn(s.npn_number); setEditPassword("");
+    const parts = splitDevices(s.qa_devices ?? []);
+    setEditDevices(parts.selected);
+    setEditDeviceOther(parts.other);
   };
 
   const saveEdit = async () => {
     if (!editing) return;
     setSavingEdit(true);
     try {
+      const isQA = (editing.roles ?? [editing.role]).includes("qa");
       await doUpdate({ data: {
         user_id: editing.id,
         full_name: editName,
         npn_number: editNpn || null,
         ...(editPassword ? { password: editPassword } : {}),
+        ...(isQA ? { qa_devices: mergeDevices(editDevices, editDeviceOther) } : {}),
       }});
       toast.success("User updated");
       setEditing(null);
@@ -318,6 +327,17 @@ function UsersPage() {
               <label className="text-xs text-muted-foreground">Reset password (optional, min 8 chars)</label>
               <Input type="password" value={editPassword} onChange={(e) => setEditPassword(e.target.value)} placeholder="Leave blank to keep current" />
             </div>
+            {editing && (editing.roles ?? [editing.role]).includes("qa") && (
+              <div className="space-y-1 rounded-md border border-border p-3 bg-muted/20">
+                <label className="text-xs text-muted-foreground">Available testing devices (QA)</label>
+                <QADevicePicker
+                  selected={editDevices}
+                  onSelectedChange={setEditDevices}
+                  other={editDeviceOther}
+                  onOtherChange={setEditDeviceOther}
+                />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>

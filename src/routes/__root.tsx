@@ -14,6 +14,7 @@ import appCss from "../styles.css?url";
 import { AppProvider } from "@/lib/app-store";
 import { Toaster } from "@/components/ui/sonner";
 import { ConfirmProvider } from "@/components/ConfirmDialog";
+import { QAOnboardingGate } from "@/components/QAOnboardingDialog";
 import { supabase } from "@/integrations/supabase/client";
 
 function NotFoundComponent() {
@@ -153,6 +154,7 @@ function RootComponent() {
       <AppProvider>
         <ConfirmProvider>
           <Outlet />
+          <QAOnboardingGate />
           <Toaster position="top-right" richColors />
         </ConfirmProvider>
       </AppProvider>
