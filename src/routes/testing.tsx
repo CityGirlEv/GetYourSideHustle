@@ -693,7 +693,7 @@ export function TestPlanTab() {
               {" "}· Severe=15 · High=10 · Medium=5 · Low=3 · +{REPRO_FAIL_BONUS} bonus per first repro-fail
             </div>
             <div className="flex flex-wrap gap-2 text-xs mt-3">
-              {isAdmin && Object.entries(ownerCounts).map(([owner, n]) => {
+              {Object.entries(ownerCounts).map(([owner, n]) => {
                 const active = ownerFilter.length === 1 && ownerFilter[0] === owner;
                 return (
                   <button
