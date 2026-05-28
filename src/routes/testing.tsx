@@ -2052,6 +2052,28 @@ function SaveChangesDialog({
   );
 }
 
+/* ============================ SAVE PROGRESS BAR ============================ */
+function SaveProgressBar({ progress }: { progress: { done: number; total: number } | null }) {
+  if (!progress) return null;
+  const pct = progress.total === 0 ? 100 : Math.round((progress.done / progress.total) * 100);
+  const finishing = progress.done >= progress.total;
+  return (
+    <div className="fixed bottom-4 right-4 z-50 w-72 rounded-lg border border-border bg-background shadow-lg p-3">
+      <div className="flex items-center justify-between text-xs font-semibold mb-2">
+        <span className="flex items-center gap-1.5">
+          {finishing
+            ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+            : <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />}
+          {finishing ? "Finishing up…" : "Saving to cloud…"}
+        </span>
+        <span className="font-mono">{progress.done} / {progress.total}</span>
+      </div>
+      <Progress value={pct} className="h-2" />
+      <div className="text-[10px] text-muted-foreground mt-1 text-right">{pct}%</div>
+    </div>
+  );
+}
+
 /* ============================ IMPLEMENTATION TAB =========================== */
 export function ImplementationTab() {
   return (
