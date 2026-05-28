@@ -314,17 +314,14 @@ export function TestPlanTab() {
   // Full assignee roster (TEST_OWNERS + every enabled QA user). Admins see
   // a bubble for each one even if they have no tests currently assigned.
   const allAssignees = useAssigneeOptions();
-  // For QA users, default the owner filter to themselves on first load so
-  // they only see the tests assigned to them. Admins see everything.
+  // For QA users, role scoping below already limits data to themselves plus
+  // Unassigned. Keep the owner filter open so Unassigned stays visible.
   const ownerFilterInitialized = useRef(false);
   useEffect(() => {
     if (ownerFilterInitialized.current) return;
     if (!user) return;
     ownerFilterInitialized.current = true;
-    if (user.role === "qa") {
-      const first = getQaFirstName(user);
-      if (first) setOwnerFilter([first]);
-    }
+    if (user.role === "qa") setOwnerFilter([]);
   }, [user]);
   // QA users are scoped to their own data only — they cannot widen the
   // owner filter, see other QAs' progress, or pick assignees for others.
