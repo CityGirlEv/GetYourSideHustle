@@ -376,6 +376,51 @@ function AdminPortal() {
     }
   };
 
+  const sendTestEmail = async () => {
+    if (!testRecipient) {
+      toast.error("Recipient email is required");
+      return;
+    }
+    let parsedData: Record<string, any> = {};
+    try {
+      parsedData = JSON.parse(testData || "{}");
+    } catch {
+      toast.error("Invalid JSON in template data");
+      return;
+    }
+    setSendingTest(true);
+    try {
+      const session = await supabase.auth.getSession();
+      const accessToken = session.data.session?.access_token;
+      if (!accessToken) {
+        toast.error("Not authenticated");
+        return;
+      }
+      const res = await fetch("/lovable/email/transactional/send", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          templateName: testTemplate,
+          recipientEmail: testRecipient,
+          templateData: parsedData,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        toast.error(json.error || "Failed to send test email");
+      } else {
+        toast.success("Test email queued successfully");
+      }
+    } catch (e: unknown) {
+      toast.error((e as Error)?.message || "Failed to send test email");
+    } finally {
+      setSendingTest(false);
+    }
+  };
+
   if (!user) return null;
 
   const filtered = useMemo(() => auditLogs.filter((l) =>
