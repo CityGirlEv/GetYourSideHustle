@@ -22,7 +22,8 @@ async function logAdminAudit(
     action,
     entity_type: "user",
     entity_id: targetUserId,
-    metadata,
+    // Cast to satisfy Supabase's generated Json type (Record<string, unknown> is structurally compatible).
+    metadata: metadata as never,
   });
   if (error) console.error("[admin] audit log insert failed", action, error.message);
 }
