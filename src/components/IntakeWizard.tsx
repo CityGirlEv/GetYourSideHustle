@@ -82,6 +82,80 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
   const [rxnormLoading, setRxnormLoading] = useState<Record<string, boolean>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  /**
+   * Parse an uploaded medication list (CSV or JSON). Only the medication
+   * fields used by the wizard (name, strength, form, frequency, monthly
+   * retail) are captured — every other column is discarded. The file is
+   * read in-browser only; nothing is uploaded or persisted.
+   */
+  const handleMedFile = async (file: File) => {
+    if (file.size > 256 * 1024) { toast.error("File too large (max 256 KB)."); return; }
+    const text = await file.text();
+    let rows: Record<string, string>[] = [];
+    try {
+      if (file.name.toLowerCase().endsWith(".json")) {
+        const j = JSON.parse(text);
+        rows = Array.isArray(j) ? j : Array.isArray(j?.medications) ? j.medications : [];
+      } else {
+        // CSV
+        const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+        if (lines.length < 2) { toast.error("CSV needs a header row + at least one medication."); return; }
+        const split = (l: string) => l.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map((c) => c.replace(/^"|"$/g, "").trim());
+        const headers = split(lines[0]).map((h) => h.toLowerCase());
+        rows = lines.slice(1).map((l) => {
+          const cells = split(l);
+          const obj: Record<string, string> = {};
+          headers.forEach((h, i) => { obj[h] = cells[i] ?? ""; });
+          return obj;
+        });
+      }
+    } catch {
+      toast.error("Could not read that file. Use CSV or JSON.");
+      return;
+    }
+
+    const pick = (r: Record<string, unknown>, keys: string[]): string => {
+      for (const k of keys) {
+        const v = r[k] ?? r[k.toLowerCase()];
+        if (v != null && String(v).trim() !== "") return String(v).trim();
+      }
+      return "";
+    };
+    const matchEnum = (val: string, list: string[], fallback: string) => {
+      const v = val.toLowerCase();
+      return list.find((o) => o.toLowerCase() === v) ?? fallback;
+    };
+
+    const parsed: Medication[] = rows
+      .map((r) => {
+        const name = pick(r, ["medication", "medication_name", "name", "drug", "drug_name"]);
+        if (!name) return null;
+        const strength = pick(r, ["strength", "dose", "dosage"]);
+        const formRaw = pick(r, ["form", "dosage_form"]);
+        const freqRaw = pick(r, ["frequency", "freq", "how_often"]);
+        const costRaw = pick(r, ["monthly_cost", "estimated_monthly_retail", "retail", "cost", "monthly"]);
+        const cost = Number(String(costRaw).replace(/[^0-9.]/g, ""));
+        return {
+          id: crypto.randomUUID(),
+          medication_name: name.slice(0, 120),
+          strength: strength.slice(0, 60),
+          dosage_form: matchEnum(formRaw, DOSAGE_FORMS, "Tablet"),
+          frequency: matchEnum(freqRaw, FREQUENCIES, "Once daily"),
+          estimated_monthly_retail: Number.isFinite(cost) && cost > 0 ? Math.min(cost, 50000) : 25,
+        } as Medication;
+      })
+      .filter((m): m is Medication => m !== null)
+      .slice(0, 40);
+
+    if (!parsed.length) { toast.error("No medications found in that file."); return; }
+
+    setMeds((prev) => {
+      const base = prev.length === 1 && !prev[0].medication_name.trim() ? [] : prev;
+      return [...base, ...parsed];
+    });
+    toast.success(`Imported ${parsed.length} medication${parsed.length === 1 ? "" : "s"}. No personal info was captured or stored.`);
+  };
+
   // Debounced RxNorm lookup for the focused medication input.
   useEffect(() => {
     if (!focusedMedId) return;
