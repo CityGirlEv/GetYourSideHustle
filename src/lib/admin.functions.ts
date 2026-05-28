@@ -77,7 +77,12 @@ export const listStaff = createServerFn({ method: "POST" })
     ]);
 
     const profileMap = new Map((profilesRes.data ?? []).map((p) => [p.id, p]));
-    const roleMap = new Map((rolesRes.data ?? []).map((r) => [r.user_id, r.role]));
+    const rolesMap = new Map<string, string[]>();
+    for (const r of rolesRes.data ?? []) {
+      const arr = rolesMap.get(r.user_id) ?? [];
+      arr.push(r.role);
+      rolesMap.set(r.user_id, arr);
+    }
     const creditMap = new Map((creditsRes.data ?? []).map((c) => [c.advisor_id, c.balance]));
 
     return users.map((u) => ({
@@ -85,7 +90,8 @@ export const listStaff = createServerFn({ method: "POST" })
       email: u.email ?? "",
       full_name: profileMap.get(u.id)?.full_name ?? "",
       npn_number: profileMap.get(u.id)?.npn_number ?? "",
-      role: roleMap.get(u.id) ?? "advisor",
+      role: (rolesMap.get(u.id) ?? ["advisor"])[0],
+      roles: rolesMap.get(u.id) ?? ["advisor"],
       credits: creditMap.get(u.id) ?? 0,
       disabled: !!(u as unknown as { banned_until?: string | null }).banned_until,
       created_at: u.created_at,
@@ -248,6 +254,45 @@ export const setUserRole = createServerFn({ method: "POST" })
       p_user: data.user_id,
       p_role: data.role,
     });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const addUserRole = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({
+      user_id: z.string().uuid(),
+      role: roleSchema,
+    }).parse(input)
+  )
+  .handler(async ({ data, context }) => {
+    await verifyAdmin(context.userId);
+    const { error } = await supabaseAdmin
+      .from("user_roles")
+      .upsert({ user_id: data.user_id, role: data.role }, { onConflict: "user_id,role" });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const removeUserRole = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({
+      user_id: z.string().uuid(),
+      role: roleSchema,
+    }).parse(input)
+  )
+  .handler(async ({ data, context }) => {
+    await verifyAdmin(context.userId);
+    if (data.user_id === context.userId && data.role === "admin") {
+      throw new Error("You cannot remove your own admin role");
+    }
+    const { error } = await supabaseAdmin
+      .from("user_roles")
+      .delete()
+      .eq("user_id", data.user_id)
+      .eq("role", data.role);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
