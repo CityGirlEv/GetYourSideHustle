@@ -7,6 +7,7 @@
 // These are read-only entries — users can still re-assign / annotate them
 // from the UI, just like manual or custom tests.
 import type { TestCase } from "./test-plan";
+import type { TestStatus } from "./test-plan";
 
 // Vitest unit tests live in src/**/__tests__/*.test.ts(x)
 const unitFiles = import.meta.glob("/src/**/*.test.{ts,tsx}", {
@@ -21,6 +22,18 @@ const e2eFiles = import.meta.glob("/e2e/**/*.spec.{ts,tsx}", {
   import: "default",
   eager: true,
 }) as Record<string, string>;
+
+// Optional results file produced by `bun run test:record`. Maps the auto-
+// generated test id ("UNIT-…" / "E2E-…") to the recorded TestStatus from
+// the last vitest / playwright run. When missing or empty, automated tests
+// just show "not run" until someone records a run.
+const resultsFiles = import.meta.glob("/src/lib/automated-test-results.json", {
+  eager: true,
+}) as Record<string, { default?: Record<string, TestStatus> }>;
+const recordedResults: Record<string, TestStatus> = (() => {
+  const first = Object.values(resultsFiles)[0];
+  return (first?.default ?? {}) as Record<string, TestStatus>;
+})();
 
 type Parsed = { describes: string[]; tests: string[] };
 
@@ -54,6 +67,7 @@ function buildCases(
   idPrefix: string,
 ): TestCase[] {
   const out: TestCase[] = [];
+  const owner = idPrefix === "UNIT" ? "Vitest" : "Playwright";
   for (const [path, src] of Object.entries(files)) {
     const file = shortFile(path);
     const { describes, tests } = parseTestFile(src);
@@ -72,7 +86,8 @@ function buildCases(
             : `Run: bunx playwright test ${path.replace(/^\//, "")}`,
         ],
         expected: "Test passes in CI",
-        assignee: "Unassigned",
+        // Automated tests are owned by their runner and not user-assignable.
+        assignee: owner,
       });
     });
   }
@@ -84,3 +99,12 @@ function buildCases(
 export const UNIT_TEST_CASES: TestCase[] = buildCases(unitFiles, "Unit (Vitest)", "UNIT");
 export const E2E_TEST_CASES: TestCase[] = buildCases(e2eFiles, "E2E (Playwright)", "E2E");
 export const AUTOMATED_TEST_CASES: TestCase[] = [...UNIT_TEST_CASES, ...E2E_TEST_CASES];
+
+/** Set of all auto-discovered test ids — used by the UI to lock the owner
+ * dropdown so users can't reassign Vitest/Playwright tests to humans. */
+export const AUTOMATED_TEST_IDS: Set<string> = new Set(AUTOMATED_TEST_CASES.map((t) => t.id));
+
+/** Last-recorded pass/fail status per automated test id, sourced from
+ * `src/lib/automated-test-results.json` (produced by `bun run test:record`).
+ * Empty when the file is missing or hasn't been generated yet. */
+export const AUTOMATED_TEST_RESULTS: Record<string, TestStatus> = recordedResults;

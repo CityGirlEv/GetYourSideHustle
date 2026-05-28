@@ -41,7 +41,7 @@ import {
 import {
   listCustomTests, createCustomTest, duplicateCustomTest, customRowToTestCase, type CustomTestRow,
 } from "@/lib/custom-tests";
-import { AUTOMATED_TEST_CASES } from "@/lib/automated-tests";
+import { AUTOMATED_TEST_CASES, AUTOMATED_TEST_IDS, AUTOMATED_TEST_RESULTS } from "@/lib/automated-tests";
 import {
   listTestEvidence, uploadTestEvidence, deleteTestEvidence, getTestEvidenceUrl,
   type EvidenceFile,
@@ -158,7 +158,16 @@ export function TestPlanTab() {
   const { user } = useApp();
   const isAdmin = user?.role === "admin";
   // Persisted/saved state, hydrated from local storage
-  const [savedStatuses, setSavedStatuses] = useState<Record<string, TestStatus>>(() => loadAllStatuses());
+  // Seed local statuses with the last recorded vitest/playwright run so
+  // automated tests show pass/fail without requiring the user to mark them.
+  // A user-set status (anything other than the default "not_run") still wins.
+  const [savedStatuses, setSavedStatuses] = useState<Record<string, TestStatus>>(() => {
+    const local = loadAllStatuses();
+    for (const [id, st] of Object.entries(AUTOMATED_TEST_RESULTS)) {
+      if (!local[id] || local[id] === "not_run") local[id] = st;
+    }
+    return local;
+  });
   const [savedQaNotes, setSavedQaNotes] = useState<Record<string, string>>(() => loadAllQaNotes());
   const [savedDevNotes, setSavedDevNotes] = useState<Record<string, string>>(() => loadAllDevNotes());
   const [savedSeverities, setSavedSeverities] = useState<Record<string, FailSeverity | "">>(() => loadAllSeverities());
@@ -400,6 +409,10 @@ export function TestPlanTab() {
     let raw: string;
     if (customIds.has(t.id)) {
       raw = ov || (t.assignee && t.assignee !== "Unassigned" ? t.assignee : "Unassigned");
+    } else if (AUTOMATED_TEST_IDS.has(t.id)) {
+      // Automated tests stay owned by their runner — they're not human-
+      // assignable, so the fail-→Dev rule in getTestAssignee doesn't apply.
+      raw = t.assignee || "Unassigned";
     } else {
       raw = ov || getTestAssignee(t, statuses[t.id]);
     }
@@ -772,6 +785,7 @@ export function TestPlanTab() {
                     onAssigneeChange={(o) => setAssigneeFor(t.id, o)}
                     onSprintChange={(s) => setSprintFor(t.id, s)}
                     isAdmin={isAdmin}
+                    assigneeLocked={AUTOMATED_TEST_IDS.has(t.id)}
                     onEdit={() => setEditingId(t.id)}
                     onDuplicate={async () => {
                       try {
@@ -961,7 +975,7 @@ function priorityVariant(p: Priority): string {
 function TestCaseCard({
   t, status, qaNote, devNote, severity, assignee, sprintId, selected, onSelectChange,
   onChange, onQaNoteChange, onDevNoteChange, onSeverityChange, onAssigneeChange, onSprintChange,
-  isAdmin, onEdit, hasChanges, onSave,
+  isAdmin, onEdit, hasChanges, onSave, assigneeLocked,
   onDuplicate,
 }: {
   t: TestCase;
@@ -984,6 +998,9 @@ function TestCaseCard({
   onDuplicate?: () => void;
   hasChanges?: boolean;
   onSave?: () => void;
+  /** When true, the Owner select is rendered read-only (used for
+   *  auto-discovered Vitest / Playwright tests owned by their runner). */
+  assigneeLocked?: boolean;
 }) {
   // Shade the whole row based on status (background + left border accent)
   const shade =
@@ -1025,12 +1042,13 @@ function TestCaseCard({
         <label className="inline-flex items-center gap-1 text-[11px] rounded-full border border-primary/40 text-primary px-2 py-0.5 bg-background">
           <span className="font-semibold">Owner:</span>
           <select
-            className="bg-transparent text-[11px] font-semibold text-primary focus:outline-none cursor-pointer"
+            className="bg-transparent text-[11px] font-semibold text-primary focus:outline-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-90"
             value={assignee}
             onChange={(e) => onAssigneeChange(e.target.value)}
-            title="Re-assign this test"
+            disabled={assigneeLocked}
+            title={assigneeLocked ? "Owned by the automated test runner" : "Re-assign this test"}
           >
-            {assigneeOptions.map((o: string) => (
+            {(assigneeLocked ? [assignee] : assigneeOptions).map((o: string) => (
               <option key={o} value={o}>{o}</option>
             ))}
           </select>
