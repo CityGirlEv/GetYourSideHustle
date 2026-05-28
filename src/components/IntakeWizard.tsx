@@ -712,8 +712,34 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
             </Card>
           ))}
 
-          <div className="flex justify-center">
-            <Button size="sm" variant="outline" onClick={() => setMeds([...meds, blankMed()])}><Plus className="h-4 w-4 mr-1"/>Add drug</Button>
+          <div className="flex flex-col items-center gap-2">
+            <div className="flex justify-center gap-2 flex-wrap">
+              <Button size="sm" variant="outline" onClick={() => setMeds([...meds, blankMed()])}><Plus className="h-4 w-4 mr-1"/>Add drug</Button>
+              <Button
+                size="sm"
+                variant="outline"
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="h-4 w-4 mr-1" />
+                Upload list
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,.json,text/csv,application/json"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleMedFile(f);
+                  // reset so the same file can be re-uploaded if needed
+                  e.target.value = "";
+                }}
+              />
+            </div>
+            <p className="text-[11px] text-muted-foreground text-center max-w-md">
+              CSV or JSON. Only medication, strength, form, frequency, and monthly cost are read — any name, DOB, or other personal info in the file is ignored. The file is processed in your browser and never uploaded or stored.
+            </p>
           </div>
         </div>
       )}
