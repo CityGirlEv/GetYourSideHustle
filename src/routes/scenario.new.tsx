@@ -7,6 +7,7 @@ import { AppShell } from "@/components/AppShell";
 import { Mic, Keyboard, Clock } from "lucide-react";
 import { listScenarioHistory, type ScenarioHistoryEntry } from "@/lib/scenario-history";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useApp } from "@/lib/app-store";
 
 export const Route = createFileRoute("/scenario/new")({
   head: () => ({
@@ -26,15 +27,17 @@ export const Route = createFileRoute("/scenario/new")({
 
 function ScenarioNew() {
   const router = useRouter();
+  const { user } = useApp();
+  const isQaOrAdmin = user?.role === "admin" || user?.role === "qa";
   const [mode, setMode] = useState<"manual" | "voice">("manual");
   const [history, setHistory] = useState<ScenarioHistoryEntry[]>([]);
   const [popupOpen, setPopupOpen] = useState(false);
   useEffect(() => { setHistory(listScenarioHistory()); }, []);
   useEffect(() => {
-    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("popup") === "1") {
+    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("popup") === "1" && isQaOrAdmin) {
       setPopupOpen(true);
     }
-  }, []);
+  }, [isQaOrAdmin]);
 
   const openManualPopup = () => {
     if (typeof window === "undefined") return;
@@ -80,7 +83,7 @@ function ScenarioNew() {
             onClick={() => {
               if (mode === "voice") {
                 setMode("manual");
-              } else {
+              } else if (isQaOrAdmin) {
                 openManualPopup();
               }
             }}
