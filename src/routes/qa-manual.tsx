@@ -95,9 +95,9 @@ function QAManualPage() {
         {/* 5. Pipeline diagram */}
         <Card className="glass p-5 space-y-3">
           <h2 className="font-display text-lg font-bold">5. The bug pipeline</h2>
-          <p className="text-sm text-muted-foreground">How a test moves through QA and Dev until it ends at <b>Passed</b>.</p>
+          <p className="text-sm text-muted-foreground">How a test moves between QA and Dev until QA passes it. A passed test is <b>closed</b>, but the status and every field stay editable.</p>
           <div className="overflow-x-auto">
-            <svg viewBox="0 0 820 640" className="w-full h-auto text-foreground" role="img" aria-label="QA bug pipeline flow chart">
+            <svg viewBox="0 0 860 720" className="w-full h-auto text-foreground" role="img" aria-label="QA bug pipeline flow chart">
               <defs>
                 <marker id="qa-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
                   <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor" />
@@ -105,74 +105,83 @@ function QAManualPage() {
               </defs>
               <g fontFamily="ui-sans-serif, system-ui" fontSize="13" textAnchor="middle" fill="currentColor">
                 {/* Start: Not Run */}
-                <rect x="310" y="20" width="180" height="46" rx="10" fill="var(--muted)" stroke="var(--border)" strokeWidth="1.5" />
-                <text x="400" y="48" fontWeight="600">Not Run</text>
+                <rect x="330" y="20" width="200" height="46" rx="10" fill="var(--muted)" stroke="var(--border)" strokeWidth="1.5" />
+                <text x="430" y="48" fontWeight="600">Not Run</text>
 
                 {/* QA executes */}
-                <rect x="310" y="110" width="180" height="46" rx="10" fill="var(--primary)" fillOpacity="0.18" stroke="var(--primary)" strokeWidth="1.5" />
-                <text x="400" y="138" fontWeight="600">QA executes test</text>
+                <rect x="330" y="110" width="200" height="46" rx="10" fill="var(--primary)" fillOpacity="0.18" stroke="var(--primary)" strokeWidth="1.5" />
+                <text x="430" y="138" fontWeight="600">QA executes / re-tests</text>
 
                 {/* Decision diamond: Pass? */}
-                <polygon points="400,190 490,250 400,310 310,250" fill="oklch(0.85 0.12 90 / 0.18)" stroke="oklch(0.7 0.15 75)" strokeWidth="1.5" />
-                <text x="400" y="246" fontWeight="700">Pass?</text>
-                <text x="400" y="266" fontSize="11" opacity="0.8">QA decides</text>
+                <polygon points="430,190 530,250 430,310 330,250" fill="oklch(0.85 0.12 90 / 0.18)" stroke="oklch(0.7 0.15 75)" strokeWidth="1.5" />
+                <text x="430" y="246" fontWeight="700">Pass?</text>
+                <text x="430" y="266" fontSize="11" opacity="0.8">QA decides</text>
 
                 {/* PASSED terminal (right) */}
-                <rect x="580" y="357" width="180" height="46" rx="10" fill="oklch(0.7 0.18 145 / 0.22)" stroke="oklch(0.55 0.18 145)" strokeWidth="2" />
-                <text x="670" y="378" fontWeight="800">PASSED</text>
-                <text x="670" y="394" fontSize="11" opacity="0.85">end of pipeline</text>
+                <rect x="620" y="227" width="200" height="60" rx="10" fill="oklch(0.7 0.18 145 / 0.22)" stroke="oklch(0.55 0.18 145)" strokeWidth="2" />
+                <text x="720" y="252" fontWeight="800">PASSED — CLOSED</text>
+                <text x="720" y="270" fontSize="11" opacity="0.85">status + fields still editable</text>
 
-                {/* Fail box (left) */}
-                <rect x="40" y="227" width="180" height="46" rx="10" fill="oklch(0.6 0.2 25 / 0.18)" stroke="oklch(0.55 0.22 25)" strokeWidth="1.5" />
-                <text x="130" y="248" fontWeight="700">Fail</text>
-                <text x="130" y="264" fontSize="11" opacity="0.85">QA note required</text>
+                {/* Fail box (left) — QA must add a note */}
+                <rect x="30" y="227" width="200" height="60" rx="10" fill="oklch(0.6 0.2 25 / 0.18)" stroke="oklch(0.55 0.22 25)" strokeWidth="1.5" />
+                <text x="130" y="252" fontWeight="700">Fail</text>
+                <text x="130" y="270" fontSize="11" opacity="0.85">QA note REQUIRED</text>
 
-                {/* Dev fixes */}
-                <rect x="310" y="350" width="180" height="60" rx="10" fill="var(--primary)" fillOpacity="0.12" stroke="var(--primary)" strokeWidth="1.5" />
-                <text x="400" y="375" fontWeight="700">Dev → Fixed / Re-Test</text>
-                <text x="400" y="395" fontSize="11" opacity="0.85">Dev note ALWAYS required</text>
+                {/* Dev triage */}
+                <rect x="330" y="360" width="200" height="60" rx="10" fill="var(--primary)" fillOpacity="0.12" stroke="var(--primary)" strokeWidth="1.5" />
+                <text x="430" y="385" fontWeight="700">Dev triages</text>
+                <text x="430" y="405" fontSize="11" opacity="0.85">picks ONE status + adds note</text>
 
-                {/* QA re-tests decision */}
-                <polygon points="400,450 490,510 400,570 310,510" fill="oklch(0.85 0.12 90 / 0.18)" stroke="oklch(0.7 0.15 75)" strokeWidth="1.5" />
-                <text x="400" y="506" fontWeight="700">QA re-tests</text>
-                <text x="400" y="526" fontSize="11" opacity="0.85">Pass on retry?</text>
+                {/* Dev branch 1: Fixed / Retest */}
+                <rect x="40" y="470" width="220" height="60" rx="10" fill="oklch(0.7 0.16 230 / 0.18)" stroke="oklch(0.55 0.16 230)" strokeWidth="1.5" />
+                <text x="150" y="495" fontWeight="700">Fixed / Retest</text>
+                <text x="150" y="513" fontSize="11" opacity="0.85">Dev believes it's fixed</text>
 
-                {/* Failed / Re-Test loop-back */}
-                <rect x="40" y="487" width="200" height="46" rx="10" fill="oklch(0.6 0.2 25 / 0.18)" stroke="oklch(0.55 0.22 25)" strokeWidth="1.5" />
-                <text x="140" y="508" fontWeight="700">Failed / Re-Test</text>
-                <text x="140" y="524" fontSize="11" opacity="0.85">QA note required</text>
+                {/* Dev branch 2: Failed / Retest */}
+                <rect x="600" y="470" width="220" height="60" rx="10" fill="oklch(0.65 0.2 330 / 0.18)" stroke="oklch(0.55 0.2 330)" strokeWidth="1.5" />
+                <text x="710" y="495" fontWeight="700">Failed / Retest</text>
+                <text x="710" y="513" fontSize="11" opacity="0.85">Dev couldn't reproduce / needs QA re-run</text>
+
+                {/* Loop legend */}
+                <rect x="320" y="600" width="220" height="50" rx="10" fill="var(--muted)" stroke="var(--border)" strokeWidth="1.5" strokeDasharray="4 3" />
+                <text x="430" y="623" fontWeight="700">Loop until QA marks Pass</text>
+                <text x="430" y="641" fontSize="11" opacity="0.8">every hand-off carries a note</text>
 
                 {/* Arrows */}
                 <g stroke="currentColor" fill="none" strokeWidth="1.6" markerEnd="url(#qa-arrow)">
                   {/* Not Run -> QA executes */}
-                  <line x1="400" y1="66" x2="400" y2="108" />
+                  <line x1="430" y1="66" x2="430" y2="108" />
                   {/* QA executes -> Pass? */}
-                  <line x1="400" y1="156" x2="400" y2="188" />
-                  {/* Pass? No -> Fail */}
-                  <line x1="310" y1="250" x2="222" y2="250" />
-                  {/* Pass? Yes -> PASSED (right, then down) */}
-                  <polyline points="490,250 670,250 670,355" />
-                  {/* Fail -> Dev (down, then right) */}
-                  <polyline points="130,273 130,380 308,380" />
-                  {/* Dev -> QA re-tests */}
-                  <line x1="400" y1="410" x2="400" y2="448" />
-                  {/* Re-test No -> Failed/Re-Test */}
-                  <line x1="310" y1="510" x2="242" y2="510" />
-                  {/* Re-test Yes -> PASSED (right, then up) */}
-                  <polyline points="490,510 670,510 670,405" />
-                  {/* Failed/Re-Test -> Dev (right, then up into Dev left side) */}
-                  <polyline points="240,510 275,510 275,380 308,380" />
+                  <line x1="430" y1="156" x2="430" y2="188" />
+                  {/* Pass? Yes -> PASSED (right) */}
+                  <line x1="530" y1="250" x2="618" y2="250" />
+                  {/* Pass? No -> Fail (left) */}
+                  <line x1="330" y1="250" x2="232" y2="250" />
+                  {/* Fail -> Dev triage (down then right) */}
+                  <polyline points="130,287 130,390 328,390" />
+                  {/* Dev -> Fixed/Retest (down-left) */}
+                  <polyline points="380,420 380,468" />
+                  {/* Dev -> Failed/Retest (down-right) */}
+                  <polyline points="480,420 480,468" />
+                  {/* Fixed/Retest -> back up to QA executes */}
+                  <polyline points="150,470 150,180 328,180" />
+                  {/* Failed/Retest -> back up to QA executes */}
+                  <polyline points="710,470 710,180 532,180" />
                 </g>
 
                 {/* Labels on decision branches */}
-                <text x="530" y="242" fontSize="11" fontWeight="700" fill="oklch(0.5 0.18 145)">Yes</text>
-                <text x="270" y="242" fontSize="11" fontWeight="700" fill="oklch(0.55 0.22 25)">No</text>
-                <text x="530" y="502" fontSize="11" fontWeight="700" fill="oklch(0.5 0.18 145)">Yes</text>
-                <text x="270" y="502" fontSize="11" fontWeight="700" fill="oklch(0.55 0.22 25)">No</text>
+                <text x="570" y="242" fontSize="11" fontWeight="700" fill="oklch(0.5 0.18 145)">Yes</text>
+                <text x="290" y="242" fontSize="11" fontWeight="700" fill="oklch(0.55 0.22 25)">No</text>
+                <text x="345" y="448" fontSize="11" opacity="0.85">Dev-only</text>
+                <text x="515" y="448" fontSize="11" opacity="0.85">Dev-only</text>
               </g>
             </svg>
           </div>
-          <p className="text-xs text-muted-foreground">A test only leaves the pipeline when it lands on <b>PASSED</b>. Every hand-off (QA→Dev or Dev→QA) carries a note.</p>
+          <ul className="text-xs text-muted-foreground space-y-1 ml-4 list-disc">
+            <li>Only <b>Dev</b> can set <b>Fixed/Retest</b> or <b>Failed/Retest</b>. QA can only set Pass, Fail, In Progress, or Not Started.</li>
+            <li>Every failed test must include a <b>QA note</b>. Every Dev hand-off (Fixed/Retest or Failed/Retest) must include a <b>Dev note</b>.</li>
+            <li>The loop continues until QA marks <b>Pass</b>. The test is then <b>closed</b> — but status and every field remain editable.</li>
+          </ul>
         </Card>
 
         <Card className="glass p-5 space-y-2">
