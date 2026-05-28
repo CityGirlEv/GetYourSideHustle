@@ -500,6 +500,7 @@ export function TestPlanTab() {
     setDStatuses(stillDraft.status); setDQaNotes(stillDraft.qaNote); setDDevNotes(stillDraft.devNote);
     setDSeverities(stillDraft.severity); setDAssignees(stillDraft.assignee); setDSprints(stillDraft.sprint);
     setSaveOpen(false);
+    setSaveScopeId(null);
 
     // ----- Coalesced cloud writes with progress bar -------------------------
     const draftSnapshot: DraftValues = {
