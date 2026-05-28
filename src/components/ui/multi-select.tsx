@@ -3,6 +3,7 @@ import { Check, ChevronDown, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 export interface MultiSelectOption {
@@ -20,6 +21,10 @@ interface MultiSelectProps {
   triggerClassName?: string;
   /** Label used when all/none selected. Default: "All". */
   allLabel?: string;
+  /** Show a search box above the option list. Useful for long lists. */
+  searchable?: boolean;
+  /** Placeholder for the search input. */
+  searchPlaceholder?: string;
 }
 
 export function MultiSelect({
@@ -27,10 +32,18 @@ export function MultiSelect({
   placeholder = "Select…",
   className, triggerClassName,
   allLabel = "All",
+  searchable = false,
+  searchPlaceholder = "Search…",
 }: MultiSelectProps) {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
   const allValues = useMemo(() => options.map((o) => o.value), [options]);
   const isAll = value.length === 0 || value.length === options.length;
+  const visibleOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options;
+    const q = search.toLowerCase().trim();
+    return options.filter((o) => o.label.toLowerCase().includes(q));
+  }, [options, search, searchable]);
 
   const toggle = (v: string, checked: boolean) => {
     // "All" state ([]): checking is a no-op (already included);
@@ -94,8 +107,16 @@ export function MultiSelect({
             <X className="h-3 w-3 mr-1" /> Clear
           </Button>
         </div>
+        {searchable && (
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={searchPlaceholder}
+            className="h-8 mb-2 text-sm"
+          />
+        )}
         <div className="max-h-[260px] overflow-y-auto space-y-1">
-          {options.map((o) => {
+          {visibleOptions.map((o) => {
             // When "All" is active, render every box as UNCHECKED so the
             // user can click one to start filtering. The label "All" on the
             // trigger button already communicates that nothing is filtered.
@@ -114,7 +135,7 @@ export function MultiSelect({
               </label>
             );
           })}
-          {options.length === 0 && (
+          {visibleOptions.length === 0 && (
             <p className="text-xs text-muted-foreground px-1.5 py-2">No options.</p>
           )}
         </div>
