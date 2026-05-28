@@ -54,6 +54,13 @@ const PRIORITY_TONE: Record<Priority, string> = {
   P2: "border-blue-500/40 text-blue-500",
   P3: "border-muted-foreground/40 text-muted-foreground",
 };
+const SEVERITY_TONE: Record<string, string> = {
+  severe: "border-red-800/60 text-red-800",
+  high: "border-destructive/60 text-destructive",
+  medium: "border-amber-500/50 text-amber-600",
+  low: "border-sky-500/50 text-sky-600",
+  "": "border-muted-foreground/30 text-muted-foreground",
+};
 
 function emptyDraft(): TaskRow {
   return {
