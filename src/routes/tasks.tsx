@@ -1,4 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { AppShell } from "@/components/AppShell";
 import { TaskSheetContent } from "@/components/TaskSheet";
 
@@ -19,8 +20,15 @@ export const Route = createFileRoute("/tasks")({
 
 function TaskSheetPage() {
   const { user, authLoading } = useApp();
+  const router = useRouter();
   const isAdmin = user?.role === "admin";
   const isQa = user?.role === "qa";
+
+  useEffect(() => {
+    if (authLoading || user) return;
+    router.navigate({ to: "/auth", search: { redirect: "/tasks" } });
+  }, [authLoading, user, router]);
+
   if (authLoading || !user) {
     return (
       <AppShell title="Task Sheet" subtitle="Loading…" titleClassName="bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-500 [-webkit-background-clip:text] [-webkit-text-fill-color:transparent]">
