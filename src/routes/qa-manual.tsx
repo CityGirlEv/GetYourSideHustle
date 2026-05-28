@@ -97,7 +97,7 @@ function QAManualPage() {
           <h2 className="font-display text-lg font-bold">5. The bug pipeline</h2>
           <p className="text-sm text-muted-foreground">How a test moves between QA and Dev until QA passes it. A passed test is <b>closed</b>, but the status and every field stay editable.</p>
           <div className="overflow-x-auto">
-            <svg viewBox="0 0 900 720" className="w-full h-auto" role="img" aria-label="QA bug pipeline flow chart">
+            <svg viewBox="0 0 900 640" className="w-full h-auto" role="img" aria-label="QA bug pipeline flow chart">
               <defs>
                 <marker id="qa-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
                   <path d="M 0 0 L 10 5 L 0 10 z" fill="#374151" />
@@ -109,19 +109,19 @@ function QAManualPage() {
                 <text x="450" y="66" fontWeight="800" fontSize="18">START</text>
 
                 {/* QA EXECUTES TEST */}
-                <rect x="370" y="170" width="160" height="70" rx="10" fill="#F1A892" stroke="#d98a73" strokeWidth="1.5" />
-                <text x="450" y="200" fontWeight="800">QA EXECUTES</text>
-                <text x="450" y="222" fontWeight="800">TEST</text>
+                <rect x="370" y="160" width="160" height="70" rx="10" fill="#F1A892" stroke="#d98a73" strokeWidth="1.5" />
+                <text x="450" y="190" fontWeight="800">QA EXECUTES</text>
+                <text x="450" y="212" fontWeight="800">TEST</text>
 
                 {/* PASS/FAIL diamond (center) */}
-                <polygon points="450,320 580,400 450,480 320,400" fill="#FFEB3B" stroke="#e6c200" strokeWidth="1.5" />
+                <polygon points="450,300 580,400 450,500 320,400" fill="#FFEB3B" stroke="#e6c200" strokeWidth="1.5" />
                 <text x="450" y="394" fontWeight="800" fill="#1f2937">PASS/</text>
                 <text x="450" y="416" fontWeight="800" fill="#1f2937">FAIL?</text>
 
                 {/* TEST CLOSED END (right) */}
-                <rect x="700" y="365" width="170" height="70" rx="10" fill="#3FA34D" stroke="#2f7d3a" strokeWidth="1.5" />
-                <text x="785" y="395" fontWeight="800">TEST CLOSED</text>
-                <text x="785" y="417" fontWeight="800">END</text>
+                <rect x="650" y="365" width="170" height="70" rx="10" fill="#3FA34D" stroke="#2f7d3a" strokeWidth="1.5" />
+                <text x="735" y="395" fontWeight="800">TEST CLOSED</text>
+                <text x="735" y="417" fontWeight="800">END</text>
 
                 {/* TEST FAILED (left) */}
                 <rect x="30" y="365" width="220" height="70" rx="10" fill="#E53935" stroke="#b32a26" strokeWidth="1.5" />
@@ -129,31 +129,33 @@ function QAManualPage() {
                 <text x="140" y="417" fontSize="12" fontWeight="700">(NOW IN DEV'S QUEUE)</text>
 
                 {/* DEV (bottom left) */}
-                <rect x="30" y="560" width="220" height="90" rx="10" fill="#4FC3F7" stroke="#2196f3" strokeWidth="1.5" />
-                <text x="140" y="590" fontWeight="800">DEV</text>
-                <text x="140" y="612" fontSize="12" fontWeight="700">(sets status to</text>
-                <text x="140" y="628" fontSize="12" fontWeight="700">FIXED/RETEST OR</text>
-                <text x="140" y="644" fontSize="12" fontWeight="700">FAILED/RETEST)</text>
+                <rect x="30" y="505" width="220" height="90" rx="10" fill="#4FC3F7" stroke="#2196f3" strokeWidth="1.5" />
+                <text x="140" y="535" fontWeight="800">DEV</text>
+                <text x="140" y="557" fontSize="12" fontWeight="700">(sets status to</text>
+                <text x="140" y="573" fontSize="12" fontWeight="700">FIXED/RETEST OR</text>
+                <text x="140" y="589" fontSize="12" fontWeight="700">FAILED/RETEST)</text>
 
                 {/* Arrows */}
                 <g stroke="#374151" fill="none" strokeWidth="2" markerEnd="url(#qa-arrow)">
-                  {/* START -> QA EXECUTES */}
-                  <line x1="450" y1="90" x2="450" y2="168" />
-                  {/* QA EXECUTES -> Diamond */}
-                  <line x1="450" y1="240" x2="450" y2="318" />
-                  {/* Diamond Pass -> TEST CLOSED (right) */}
-                  <line x1="580" y1="400" x2="698" y2="400" />
-                  {/* Diamond Fail -> TEST FAILED (left) */}
-                  <line x1="320" y1="400" x2="252" y2="400" />
-                  {/* TEST FAILED -> DEV (down) */}
-                  <line x1="140" y1="435" x2="140" y2="558" />
-                  {/* DEV -> back up to Diamond (right then up) */}
-                  <polyline points="250,605 450,605 450,482" />
+                  {/* All five primary connectors are exactly 70 units long. */}
+                  {/* START -> QA EXECUTES (vertical, 70) */}
+                  <line x1="450" y1="90" x2="450" y2="160" />
+                  {/* QA EXECUTES -> Diamond (vertical, 70) */}
+                  <line x1="450" y1="230" x2="450" y2="300" />
+                  {/* Diamond Pass -> TEST CLOSED (horizontal, 70) */}
+                  <line x1="580" y1="400" x2="650" y2="400" />
+                  {/* Diamond Fail -> TEST FAILED (horizontal, 70) */}
+                  <line x1="320" y1="400" x2="250" y2="400" />
+                  {/* TEST FAILED -> DEV (vertical, 70) */}
+                  <line x1="140" y1="435" x2="140" y2="505" />
+                  {/* DEV -> back up to Diamond (mirrors Fail+QA pair, 70+70) */}
+                  <polyline points="250,550 320,550 320,500 450,500" />
                 </g>
 
                 {/* Branch labels */}
-                <text x="640" y="390" fontSize="13" fontWeight="700" fill="#1f2937">Pass</text>
+                <text x="615" y="390" fontSize="13" fontWeight="700" fill="#1f2937">Pass</text>
                 <text x="285" y="390" fontSize="13" fontWeight="700" fill="#1f2937">Fail</text>
+                <text x="360" y="544" fontSize="13" fontWeight="700" fill="#1f2937">Retest</text>
               </g>
             </svg>
           </div>
