@@ -8,11 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { UserPlus, Loader2, Eye, EyeOff, Pencil, Trash2, Ban, CheckCircle2, Plus, Minus } from "lucide-react";
+import { UserPlus, Loader2, Eye, EyeOff, Pencil, Trash2, Ban, CheckCircle2, Plus, Minus, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
-import { createAdvisor, listStaff, setUserRole, updateUser, setUserDisabled, deleteUser } from "@/lib/admin.functions";
+import { createAdvisor, listStaff, updateUser, setUserDisabled, deleteUser, addUserRole, removeUserRole } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/users")({ component: UsersPage });
 
@@ -25,6 +25,7 @@ interface StaffMember {
   full_name: string;
   npn_number: string;
   role: string;
+  roles: string[];
   credits: number;
   disabled?: boolean;
   last_sign_in_at?: string | null;
@@ -54,7 +55,8 @@ function UsersPage() {
 
   const fetchStaff = useServerFn(listStaff);
   const doCreate = useServerFn(createAdvisor);
-  const doSetRole = useServerFn(setUserRole);
+  const doAddRole = useServerFn(addUserRole);
+  const doRemoveRole = useServerFn(removeUserRole);
   const doUpdate = useServerFn(updateUser);
   const doSetDisabled = useServerFn(setUserDisabled);
   const doDelete = useServerFn(deleteUser);
@@ -106,10 +108,20 @@ function UsersPage() {
     }
   };
 
-  const handleRole = async (id: string, role: AssignableRole) => {
+  const handleAddRole = async (id: string, role: AssignableRole) => {
     try {
-      await doSetRole({ data: { user_id: id, role } });
-      toast.success(`Role updated to ${role}`);
+      await doAddRole({ data: { user_id: id, role } });
+      toast.success(`Added role: ${role}`);
+      await reload();
+    } catch (e: unknown) {
+      toast.error((e as Error)?.message ?? "Failed");
+    }
+  };
+
+  const handleRemoveRole = async (id: string, role: string) => {
+    try {
+      await doRemoveRole({ data: { user_id: id, role: role as AssignableRole } });
+      toast.success(`Removed role: ${role}`);
       await reload();
     } catch (e: unknown) {
       toast.error((e as Error)?.message ?? "Failed");
@@ -231,14 +243,30 @@ function UsersPage() {
                     <div className="font-medium truncate">{s.full_name || "—"}</div>
                     <div className="text-xs text-muted-foreground truncate">{s.email}</div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Select value={s.role} onValueChange={(v) => handleRole(s.id, v as AssignableRole)}>
-                      <SelectTrigger className="h-7 text-xs min-w-[100px] capitalize"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {ASSIGNABLE_ROLES.map((r) => <SelectItem key={r} value={r} className="capitalize">{r}</SelectItem>)}
-                        {s.role === "advisor" && <SelectItem value="advisor" className="capitalize">advisor (legacy)</SelectItem>}
-                      </SelectContent>
-                    </Select>
+                  <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                    <div className="flex items-center gap-1 flex-wrap justify-end">
+                      {(s.roles ?? [s.role]).map((r) => (
+                        <span key={r} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary text-xs capitalize border border-border">
+                          {r}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveRole(s.id, r)}
+                            className="text-muted-foreground hover:text-destructive"
+                            title={`Remove ${r}`}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                      <Select value="" onValueChange={(v) => handleAddRole(s.id, v as AssignableRole)}>
+                        <SelectTrigger className="h-6 px-2 text-xs w-auto gap-1"><Plus className="h-3 w-3" /></SelectTrigger>
+                        <SelectContent>
+                          {ASSIGNABLE_ROLES.filter((r) => !(s.roles ?? [s.role]).includes(r)).map((r) => (
+                            <SelectItem key={r} value={r} className="capitalize">{r}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                     {s.disabled
                       ? <span className="px-2 py-0.5 rounded-full bg-destructive/15 text-destructive text-xs">Disabled</span>
                       : <span className="px-2 py-0.5 rounded-full bg-emerald/15 text-emerald text-xs">Active</span>}
