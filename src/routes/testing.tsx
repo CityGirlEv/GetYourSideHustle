@@ -1133,6 +1133,7 @@ function TestCaseCard({
             <Pencil className="h-3.5 w-3.5 mr-1" /> Edit test
           </Button>
         )}
+        {isAdmin && assigneeLocked && <RunAutomatedButton t={t} />}
         {onDuplicate && (
           <Button
             size="sm"
