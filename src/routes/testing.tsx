@@ -1094,6 +1094,7 @@ export function TestPlanTab() {
         changes={pendingChanges}
         onConfirm={commitChanges}
       />
+      <SaveProgressBar progress={saveProgress} />
       <EditDescriptionDialog
         test={editingId ? effectiveById.get(editingId) ?? null : null}
         open={!!editingId}
