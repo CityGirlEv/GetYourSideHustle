@@ -80,15 +80,15 @@ function QAManualPage() {
           <p className="text-sm">Set status from the <b>Status</b> dropdown on any row (or via bulk edit).</p>
           <ul className="text-sm space-y-1.5 ml-1">
             <li><b>Not Run</b> — default; not yet executed.</li>
-            <li><b>Pass</b> — the test met all acceptance criteria.</li>
+            <li><b>Pass</b> — the test met all acceptance criteria. The test is <b>closed</b>, but status and every field stay editable.</li>
             <li><b>Fail</b> — bug found. <span className="text-destructive font-semibold">A QA note is required</span> describing what broke, exact steps, and expected vs actual.</li>
-            <li><b>Failed / Re-Test</b> — Dev sent a fix back; you re-ran it and it still fails. Note required.</li>
-            <li><b>Fixed / Re-Test</b> — Dev marked it fixed and assigned back to QA for verification.</li>
+            <li><b>Fixed / Re-Test</b> — <b>Dev-only</b>. Dev believes the bug is fixed and hands it back to QA for verification. <span className="text-destructive font-semibold">Dev note required.</span></li>
+            <li><b>Failed / Re-Test</b> — <b>Dev-only</b>. Dev couldn't reproduce / needs QA to re-run as-is. <span className="text-destructive font-semibold">Dev note required.</span></li>
             <li><b>Blocked</b> — cannot run (e.g. environment down, depends on another test).</li>
           </ul>
           <div className="rounded-md border border-amber/40 bg-amber/10 p-3 text-sm flex gap-2">
             <MessageSquareWarning className="h-4 w-4 text-amber shrink-0 mt-0.5" />
-            <span><b>Rule:</b> any <b>Fail</b> or <b>Failed/Re-Test</b> must include a QA note. Dev will <b>always</b> leave a note when they mark a test <b>Fixed/Re-Test</b> or send it back as <b>Failed/Re-Test</b> — read it before you re-run.</span>
+            <span><b>Loop:</b> QA fails it → Dev triages and assigns <b>Fixed/Retest</b> or <b>Failed/Retest</b> (Dev-only, with a Dev note) → QA re-runs and either Passes or Fails again. Repeat until QA marks <b>Pass</b> — at which point the test is closed but every field stays editable.</span>
           </div>
         </Card>
 
