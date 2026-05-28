@@ -306,6 +306,8 @@ export function TestPlanTab() {
   const [dAssignees, setDAssignees] = useState<Record<string, string>>({});
   const [dSprints, setDSprints] = useState<Record<string, string>>({});
   const [saveOpen, setSaveOpen] = useState(false);
+  // Live save progress for the floating progress bar. null = no save in flight.
+  const [saveProgress, setSaveProgress] = useState<{ done: number; total: number } | null>(null);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [query, setQuery] = useState("");
   const [areaFilter, setAreaFilter] = useState<string[]>([]);
