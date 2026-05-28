@@ -471,6 +471,12 @@ export function TestPlanTab() {
       // Automated tests stay owned by their runner — they're not human-
       // assignable, so the fail-→Dev rule in getTestAssignee doesn't apply.
       raw = t.assignee || "Unassigned";
+    } else if (t.assignee) {
+      // Canonical hardcoded assignee on the test case wins over stale local
+      // overrides (older builds auto-saved owners via a 70/30 split that
+      // pre-dated explicit ownership). Failed tests still route to Dev.
+      const status = statuses[t.id];
+      raw = (status === "fail" || status === "failed_retest") ? "Dev" : t.assignee;
     } else {
       raw = ov || getTestAssignee(t, statuses[t.id]);
     }

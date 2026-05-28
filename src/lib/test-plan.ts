@@ -940,12 +940,15 @@ export const DEV_OWNER: TestOwner = "Eng";
  * override by setting `assignee` explicitly.
  */
 export function getTestAssignee(t: TestCase, status?: TestStatus): TestOwner | string {
-  // Manual override (set via the test plan UI) wins over derived logic.
-  const override = loadAssigneeOverride(t.id);
-  if (override) return override;
   // Failed tests are automatically reassigned to the Dev user.
   if (status === "fail" || status === "failed_retest") return DEV_OWNER;
+  // Canonical hardcoded assignee on the test case wins over stale local
+  // overrides (older builds auto-persisted owners via a 70/30 split).
   if (t.assignee) return t.assignee;
+  // Manual override (set via the test plan UI) for tests without an explicit
+  // canonical owner.
+  const override = loadAssigneeOverride(t.id);
+  if (override) return override;
   const idx = TEST_CASES.findIndex((x) => x.id === t.id);
   if (idx < 0) return "Catria";
   return idx % 10 < 7 ? "Catria" : "Evelyn";
