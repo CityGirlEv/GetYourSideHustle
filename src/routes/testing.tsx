@@ -1410,10 +1410,10 @@ function TestCaseCard({
             className="bg-transparent text-[11px] font-semibold text-primary focus:outline-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-90"
             value={assignee}
             onChange={(e) => onAssigneeChange(e.target.value)}
-            disabled={assigneeLocked}
-            title={assigneeLocked ? "Owned by the automated test runner" : "Re-assign this test"}
+            disabled={assigneeLocked || !!restrictAssigneeTo}
+            title={assigneeLocked ? "Owned by the automated test runner" : restrictAssigneeTo ? "QA users can only see their own assignments" : "Re-assign this test"}
           >
-            {(assigneeLocked ? [assignee] : assigneeOptions).map((o: string) => (
+            {(assigneeLocked ? [assignee] : restrictAssigneeTo ? [restrictAssigneeTo] : assigneeOptions).map((o: string) => (
               <option key={o} value={o}>{o}</option>
             ))}
           </select>
