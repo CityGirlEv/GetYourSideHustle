@@ -322,7 +322,7 @@ export function TestPlanTab() {
     if (!user) return;
     ownerFilterInitialized.current = true;
     if (user.role === "qa") {
-      const first = (user.full_name || user.email || "").trim().split(/\s+/)[0];
+      const first = getQaFirstName(user);
       if (first) setOwnerFilter([first]);
     }
   }, [user]);
