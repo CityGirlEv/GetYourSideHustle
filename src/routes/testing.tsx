@@ -322,6 +322,13 @@ export function TestPlanTab() {
       if (first) setOwnerFilter([first]);
     }
   }, [user]);
+  // QA users are scoped to their own data only — they cannot widen the
+  // owner filter, see other QAs' progress, or pick assignees for others.
+  const qaFirstName = useMemo(() => {
+    if (!user || user.role !== "qa") return "";
+    return (user.full_name || user.email || "").trim().split(/\s+/)[0] || "";
+  }, [user]);
+  const restrictToSelf = !!user && user.role === "qa";
   const [bannerCollapsed, setBannerCollapsed] = useState(true);
   const [summaryCollapsed, setSummaryCollapsed] = useState(true);
 
@@ -548,18 +555,26 @@ export function TestPlanTab() {
       if (n.has(id)) n.delete(id); else n.add(id);
       return n;
     });
+  // For QA: pre-scope the dataset so all counts, charts, and per-owner
+  // breakdowns only ever reflect their own tests. Admins see everything.
+  const scopedCases = useMemo(
+    () => restrictToSelf
+      ? effectiveCases.filter((t) => effAssignee(t) === qaFirstName)
+      : effectiveCases,
+    [effectiveCases, restrictToSelf, qaFirstName, statuses, assigneeOverrides, customIds],
+  );
   const ownerCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    for (const t of effectiveCases) {
+    for (const t of scopedCases) {
       const a = effAssignee(t);
       counts[a] = (counts[a] || 0) + 1;
     }
     return counts;
-  }, [statuses, assigneeOverrides, effectiveCases]);
+  }, [statuses, assigneeOverrides, scopedCases]);
   const owners = useMemo(() => Object.keys(ownerCounts), [ownerCounts]);
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim();
-    return effectiveCases.filter((t) => {
+    return scopedCases.filter((t) => {
       if (!multiSelectMatches(areaFilter, t.area)) return false;
       if (!multiSelectMatches(statusFilter, statuses[t.id] ?? "not_run")) return false;
       if (!multiSelectMatches(ownerFilter, effAssignee(t))) return false;
@@ -567,7 +582,7 @@ export function TestPlanTab() {
       if (!q) return true;
       return [t.id, t.title, t.area, ...t.steps, t.expected].some((f) => f.toLowerCase().includes(q));
     });
-  }, [query, areaFilter, statusFilter, ownerFilter, sprintFilter, statuses, assigneeOverrides, sprintOverrides, effectiveCases]);
+  }, [query, areaFilter, statusFilter, ownerFilter, sprintFilter, statuses, assigneeOverrides, sprintOverrides, scopedCases]);
 
   // Auto-expand sprint sections when filters are active so filtered results remain visible.
   const testFilterKey = JSON.stringify([query, areaFilter, statusFilter, ownerFilter, sprintFilter]);
@@ -609,13 +624,13 @@ export function TestPlanTab() {
 
   const counts = useMemo(() => {
     const c: Record<TestStatus | "total", number> = {
-      total: TEST_CASES.length,
+      total: scopedCases.length,
       pass: 0, fail: 0, blocked: 0, not_run: 0, in_progress: 0,
       fixed_retest: 0, failed_retest: 0,
     };
-    for (const t of TEST_CASES) c[statuses[t.id] ?? "not_run"]++;
+    for (const t of scopedCases) c[statuses[t.id] ?? "not_run"]++;
     return c;
-  }, [statuses]);
+  }, [statuses, scopedCases]);
   const passRate = counts.total ? Math.round((counts.pass / counts.total) * 100) : 0;
 
   // When a single status filter is active, the progress bars reflect THAT status.
@@ -639,7 +654,7 @@ export function TestPlanTab() {
   // Per-QA-person status breakdown. Only owners with at least one test appear.
   const ownerStatusCounts = useMemo(() => {
     const out: Record<string, Record<TestStatus | "total", number>> = {};
-    for (const t of effectiveCases) {
+    for (const t of scopedCases) {
       const owner = effAssignee(t);
       if (!out[owner]) out[owner] = { total: 0, pass: 0, fail: 0, blocked: 0, not_run: 0, in_progress: 0, fixed_retest: 0, failed_retest: 0 };
       const s = (statuses[t.id] ?? "not_run") as TestStatus;
@@ -647,7 +662,7 @@ export function TestPlanTab() {
       out[owner][s]++;
     }
     return out;
-  }, [statuses, assigneeOverrides, effectiveCases]);
+  }, [statuses, assigneeOverrides, scopedCases]);
 
   return (
     <div className="space-y-4">
@@ -665,7 +680,7 @@ export function TestPlanTab() {
               {" "}· Severe=15 · High=10 · Medium=5 · Low=3 · +{REPRO_FAIL_BONUS} bonus per first repro-fail
             </div>
             <div className="flex flex-wrap gap-2 text-xs mt-3">
-              {Object.entries(ownerCounts).map(([owner, n]) => {
+              {isAdmin && Object.entries(ownerCounts).map(([owner, n]) => {
                 const active = ownerFilter.length === 1 && ownerFilter[0] === owner;
                 return (
                   <button
@@ -752,7 +767,7 @@ export function TestPlanTab() {
         </div>
         <>
             <Progress value={overallFocusPct} className="h-2" />
-            {Object.keys(ownerStatusCounts).length > 0 && (
+            {isAdmin && Object.keys(ownerStatusCounts).length > 0 && (
               <div className="mt-4 pt-3 border-t border-border/60 space-y-2">
                 <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
                   By QA owner
@@ -836,11 +851,13 @@ export function TestPlanTab() {
           options={areas.map((a) => ({ value: a, label: a }))}
           value={areaFilter} onChange={setAreaFilter}
         />
-        <MultiSelect
-          placeholder="Owner" triggerClassName="w-[180px]"
-          options={owners.map((o) => ({ value: o, label: o }))}
-          value={ownerFilter} onChange={setOwnerFilter}
-        />
+        {isAdmin && (
+          <MultiSelect
+            placeholder="Owner" triggerClassName="w-[180px]"
+            options={owners.map((o) => ({ value: o, label: o }))}
+            value={ownerFilter} onChange={setOwnerFilter}
+          />
+        )}
         <MultiSelect
           placeholder="Sprint" triggerClassName="w-[200px]"
           options={SPRINTS.map((s) => ({ value: s.id, label: `Sprint ${s.number} · ${s.name}` }))}
