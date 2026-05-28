@@ -413,6 +413,7 @@ function AdminPortal() {
               <TabsTrigger value="impl"><GitBranch className="h-4 w-4 mr-1.5"/>Implementation Plan</TabsTrigger>
               <TabsTrigger value="rollout"><CalendarDays className="h-4 w-4 mr-1.5"/>Rollout Schedule</TabsTrigger>
               <TabsTrigger value="budget"><DollarSign className="h-4 w-4 mr-1.5"/>Budget</TabsTrigger>
+              <TabsTrigger value="email"><Send className="h-4 w-4 mr-1.5"/>Email test</TabsTrigger>
             </>
           )}
         </TabsList>
