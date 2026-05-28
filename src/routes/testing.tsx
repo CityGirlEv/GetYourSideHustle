@@ -45,7 +45,7 @@ import { AUTOMATED_TEST_CASES, AUTOMATED_TEST_IDS, AUTOMATED_TEST_RESULTS } from
 import { expandAllWithPlatforms, TEST_PLATFORMS } from "@/lib/platform-variants";
 import {
   listTestEvidence, uploadTestEvidence, deleteTestEvidence, getTestEvidenceUrl,
-  type EvidenceFile,
+  EVIDENCE_ACCEPT_ATTR, type EvidenceFile,
 } from "@/lib/test-evidence";
 import { toast } from "sonner";
 import { MultiSelect, multiSelectMatches } from "@/components/ui/multi-select";
@@ -433,6 +433,32 @@ export function TestPlanTab() {
 
   // Persist a subset of pending changes; remaining ones stay in draft.
   const commitChanges = async (selectedKeys: Set<string>) => {
+    // ----- Mandatory-evidence gate ------------------------------------------
+    // Any status flip to "fail" / "failed_retest" requires at least one
+    // attached screenshot/log. Block those rows up-front so QA can't claim a
+    // bug without proof. Other field changes for the same test still go
+    // through.
+    if (user) {
+      const failIds = pendingChanges
+        .filter((c) => selectedKeys.has(c.key) && c.field === "status")
+        .map((c) => ({ key: c.key, id: c.testId, v: dStatuses[c.testId] }))
+        .filter((x) => x.v === "fail" || x.v === "failed_retest");
+      if (failIds.length > 0) {
+        const counts = await Promise.all(
+          failIds.map((x) => listTestEvidence(user.id, x.id).then((l) => l.length).catch(() => 0)),
+        );
+        const missing = failIds.filter((_, i) => counts[i] === 0);
+        if (missing.length > 0) {
+          for (const m of missing) selectedKeys.delete(m.key);
+          toast.error(
+            missing.length === 1
+              ? `Attach a screenshot before failing ${missing[0].id}.`
+              : `Attach a screenshot before failing: ${missing.map((m) => m.id).join(", ")}.`,
+          );
+          if (selectedKeys.size === 0) { setSaveOpen(false); return; }
+        }
+      }
+    }
     const stillDraft = {
       status: { ...dStatuses }, qaNote: { ...dQaNotes }, devNote: { ...dDevNotes },
       severity: { ...dSeverities }, assignee: { ...dAssignees }, sprint: { ...dSprints },
@@ -1531,6 +1557,9 @@ function TestEvidence({ testId }: { testId: string }) {
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const isMobile = typeof navigator !== "undefined"
+    && /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
 
   useEffect(() => {
     if (!user) return;
@@ -1545,15 +1574,22 @@ function TestEvidence({ testId }: { testId: string }) {
   if (!user) return null;
 
   const onPick = () => fileRef.current?.click();
+  const onTakePhoto = () => {
+    // iOS Safari can't trigger a system screenshot from a web page (the OS
+    // gesture is Side + Volume Up). Prompt QA to capture it, then offer the
+    // photo library via the camera input (which on iOS surfaces "Photo
+    // Library" alongside "Take Photo").
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (isIOS) {
+      toast.info("Use Side + Volume Up to screenshot, then pick it from Photos.", { duration: 6000 });
+    }
+    cameraRef.current?.click();
+  };
 
   const onUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    if (file.size > 20 * 1024 * 1024) {
-      toast.error("File too large — 20 MB max.");
-      return;
-    }
     setBusy(true);
     try {
       const uploaded = await uploadTestEvidence(user.id, testId, file);
@@ -1595,11 +1631,24 @@ function TestEvidence({ testId }: { testId: string }) {
           Evidence
           {files.length > 0 && <span className="text-muted-foreground font-normal">· {files.length}</span>}
         </div>
-        <input ref={fileRef} type="file" className="hidden" onChange={onUpload} />
-        <Button size="sm" variant="outline" className="h-7 text-xs" disabled={busy} onClick={onPick}>
-          {busy ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Upload className="h-3 w-3 mr-1" />}
-          Upload
-        </Button>
+        <input ref={fileRef} type="file" className="hidden" accept={EVIDENCE_ACCEPT_ATTR} onChange={onUpload} />
+        <input ref={cameraRef} type="file" className="hidden" accept="image/*" capture="environment" onChange={onUpload} />
+        <div className="flex gap-1">
+          {isMobile && (
+            <Button size="sm" variant="outline" className="h-7 text-xs" disabled={busy} onClick={onTakePhoto}>
+              <Upload className="h-3 w-3 mr-1" />
+              Take photo
+            </Button>
+          )}
+          <Button size="sm" variant="outline" className="h-7 text-xs" disabled={busy} onClick={onPick}>
+            {busy ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Upload className="h-3 w-3 mr-1" />}
+            Upload
+          </Button>
+        </div>
+      </div>
+      <div className="text-[10px] text-muted-foreground mb-2 leading-snug">
+        Required for Fail / Failed-Retest. Allowed: PNG, JPG, HEIC, GIF, WEBP, PDF, .log, .txt (20&nbsp;MB max).
+        Executables, HTML, SVG, scripts, and archives are blocked.
       </div>
       {loading ? (
         <div className="text-[11px] text-muted-foreground">Loading attachments…</div>

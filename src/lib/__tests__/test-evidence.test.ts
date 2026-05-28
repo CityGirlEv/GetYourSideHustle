@@ -1,3 +1,7 @@
+const PNG_HEAD = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0, 0, 0, 0, 0]);
+function pngFile(name: string) {
+  return new File([PNG_HEAD], name, { type: "image/png" });
+}
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const storage = {
@@ -48,7 +52,7 @@ describe("test-evidence", () => {
 
   it("uploads with sanitized name", async () => {
     storage.upload.mockResolvedValue({ error: null });
-    const file = new File(["hi"], "weird name!.png", { type: "image/png" });
+    const file = pngFile("weird name!.png");
     const r = await uploadTestEvidence("u", "t", file);
     expect(storage.upload).toHaveBeenCalled();
     expect(r.name).toBe("weird_name_.png");
@@ -57,7 +61,7 @@ describe("test-evidence", () => {
 
   it("throws on upload error", async () => {
     storage.upload.mockResolvedValue({ error: { message: "bad" } });
-    await expect(uploadTestEvidence("u", "t", new File(["x"], "x.png"))).rejects.toThrow("bad");
+    await expect(uploadTestEvidence("u", "t", pngFile("x.png"))).rejects.toThrow("bad");
   });
 
   it("deletes a file", async () => {
