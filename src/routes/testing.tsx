@@ -2104,7 +2104,33 @@ function SaveChangesDialog({
 }
 
 /* ============================ SAVE PROGRESS BAR ============================ */
-function SaveProgressBar({ progress }: { progress: { done: number; total: number } | null }) {
+function SaveProgressBar({
+  progress,
+  busyLabel,
+}: {
+  progress: { done: number; total: number } | null;
+  busyLabel?: string | null;
+}) {
+  // Indeterminate "hourglass" mode — shown while the user is waiting on the
+  // confirmation dialog to open or on the pre-write evidence check.
+  if (!progress && busyLabel) {
+    return (
+      <div className="fixed bottom-4 right-4 z-50 w-72 rounded-lg border border-border bg-background shadow-lg p-3">
+        <div className="flex items-center justify-between text-xs font-semibold mb-2">
+          <span className="flex items-center gap-1.5">
+            <Hourglass className="h-3.5 w-3.5 text-primary animate-pulse" />
+            {busyLabel}
+          </span>
+          <span className="font-mono text-muted-foreground">…</span>
+        </div>
+        {/* Indeterminate shimmer bar */}
+        <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+          <div className="h-full w-1/3 rounded-full bg-primary animate-[slide-in-right_1.2s_ease-in-out_infinite]" />
+        </div>
+        <div className="text-[10px] text-muted-foreground mt-1 text-right">Please wait…</div>
+      </div>
+    );
+  }
   if (!progress) return null;
   const pct = progress.total === 0 ? 100 : Math.round((progress.done / progress.total) * 100);
   const finishing = progress.done >= progress.total;
