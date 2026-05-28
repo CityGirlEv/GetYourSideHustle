@@ -741,6 +741,39 @@ function AdminPortal() {
             <TabsContent value="tasks">
               <TaskSheetContent />
             </TabsContent>
+
+            <TabsContent value="email" className="space-y-3">
+              <Card className="glass p-4">
+                <h3 className="font-display font-bold mb-1">Send test email</h3>
+                <p className="text-xs text-muted-foreground mb-4">Send a test transactional email to verify deliverability.</p>
+                <div className="space-y-3 max-w-md">
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Template</label>
+                    <Select value={testTemplate} onValueChange={setTestTemplate}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="welcome">Welcome</SelectItem>
+                        <SelectItem value="contact-request">Contact request received</SelectItem>
+                        <SelectItem value="agent-assignment">Agent assignment</SelectItem>
+                        <SelectItem value="scenario-claimed">Scenario claimed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Recipient email</label>
+                    <Input type="email" value={testRecipient} onChange={(e) => setTestRecipient(e.target.value)} placeholder="you@example.com" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Template data (JSON)</label>
+                    <Textarea value={testData} onChange={(e) => setTestData(e.target.value)} rows={4} placeholder='{"recipientName":"Test User"}' />
+                  </div>
+                  <Button onClick={sendTestEmail} disabled={sendingTest || !testRecipient}>
+                    {sendingTest && <Loader2 className="h-4 w-4 animate-spin mr-2"/>}
+                    Send test email
+                  </Button>
+                </div>
+              </Card>
+            </TabsContent>
           </>
         )}
       </Tabs>
