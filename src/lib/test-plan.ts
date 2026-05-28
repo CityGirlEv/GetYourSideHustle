@@ -847,11 +847,15 @@ export function loadStatus(id: string): TestStatus {
   return (localStorage.getItem(TEST_STATUS_KEY(id)) as TestStatus) || "not_run";
 }
 
-export function saveStatus(id: string, s: TestStatus) {
+export function saveStatus(id: string, s: TestStatus, opts: { syncCloud?: boolean } = {}) {
   if (typeof window === "undefined") return;
   localStorage.setItem(TEST_STATUS_KEY(id), s);
   // Dual-write to cloud so refresh + cross-device works. Dynamic import to avoid circular dep.
-  import("@/lib/cloud-sync").then((m) => m.cloudPushTest(id, { status: s }));
+  // Callers doing their own batched cloud push (e.g. /testing bulk save) pass syncCloud:false
+  // so we don't double-fire one HTTP write per change.
+  if (opts.syncCloud !== false) {
+    import("@/lib/cloud-sync").then((m) => m.cloudPushTest(id, { status: s }));
+  }
 }
 
 export function loadAllStatuses(): Record<string, TestStatus> {
@@ -870,21 +874,25 @@ export function loadQaNote(id: string): string {
   if (typeof window === "undefined") return "";
   return localStorage.getItem(TEST_QA_NOTE_KEY(id)) || "";
 }
-export function saveQaNote(id: string, note: string) {
+export function saveQaNote(id: string, note: string, opts: { syncCloud?: boolean } = {}) {
   if (typeof window === "undefined") return;
   if (note) localStorage.setItem(TEST_QA_NOTE_KEY(id), note);
   else localStorage.removeItem(TEST_QA_NOTE_KEY(id));
-  if (note) import("@/lib/cloud-sync").then((m) => m.cloudAppendNote(id, "qa", note));
+  if (note && opts.syncCloud !== false) {
+    import("@/lib/cloud-sync").then((m) => m.cloudAppendNote(id, "qa", note));
+  }
 }
 export function loadDevNote(id: string): string {
   if (typeof window === "undefined") return "";
   return localStorage.getItem(TEST_DEV_NOTE_KEY(id)) || "";
 }
-export function saveDevNote(id: string, note: string) {
+export function saveDevNote(id: string, note: string, opts: { syncCloud?: boolean } = {}) {
   if (typeof window === "undefined") return;
   if (note) localStorage.setItem(TEST_DEV_NOTE_KEY(id), note);
   else localStorage.removeItem(TEST_DEV_NOTE_KEY(id));
-  if (note) import("@/lib/cloud-sync").then((m) => m.cloudAppendNote(id, "dev", note));
+  if (note && opts.syncCloud !== false) {
+    import("@/lib/cloud-sync").then((m) => m.cloudAppendNote(id, "dev", note));
+  }
 }
 export function loadAllQaNotes(): Record<string, string> {
   const out: Record<string, string> = {};
@@ -913,11 +921,13 @@ export function loadSeverity(id: string): FailSeverity | "" {
   if (typeof window === "undefined") return "";
   return (localStorage.getItem(TEST_SEVERITY_KEY(id)) as FailSeverity) || "";
 }
-export function saveSeverity(id: string, s: FailSeverity | "") {
+export function saveSeverity(id: string, s: FailSeverity | "", opts: { syncCloud?: boolean } = {}) {
   if (typeof window === "undefined") return;
   if (s) localStorage.setItem(TEST_SEVERITY_KEY(id), s);
   else localStorage.removeItem(TEST_SEVERITY_KEY(id));
-  import("@/lib/cloud-sync").then((m) => m.cloudPushTest(id, { severity: s || null }));
+  if (opts.syncCloud !== false) {
+    import("@/lib/cloud-sync").then((m) => m.cloudPushTest(id, { severity: s || null }));
+  }
 }
 export function loadAllSeverities(): Record<string, FailSeverity | ""> {
   const out: Record<string, FailSeverity | ""> = {};
@@ -968,11 +978,13 @@ export function loadAssigneeOverride(id: string): string {
   if (typeof window === "undefined") return "";
   return localStorage.getItem(TEST_ASSIGNEE_KEY(id)) || "";
 }
-export function saveAssigneeOverride(id: string, owner: string) {
+export function saveAssigneeOverride(id: string, owner: string, opts: { syncCloud?: boolean } = {}) {
   if (typeof window === "undefined") return;
   if (owner) localStorage.setItem(TEST_ASSIGNEE_KEY(id), owner);
   else localStorage.removeItem(TEST_ASSIGNEE_KEY(id));
-  import("@/lib/cloud-sync").then((m) => m.cloudPushTest(id, { assignee: owner || null }));
+  if (opts.syncCloud !== false) {
+    import("@/lib/cloud-sync").then((m) => m.cloudPushTest(id, { assignee: owner || null }));
+  }
 }
 export function loadAllAssigneeOverrides(): Record<string, string> {
   const out: Record<string, string> = {};
@@ -1005,11 +1017,13 @@ export function loadSprintOverride(id: string): string {
   if (typeof window === "undefined") return "";
   return localStorage.getItem(TEST_SPRINT_KEY(id)) || "";
 }
-export function saveSprintOverride(id: string, sprintId: string) {
+export function saveSprintOverride(id: string, sprintId: string, opts: { syncCloud?: boolean } = {}) {
   if (typeof window === "undefined") return;
   if (sprintId) localStorage.setItem(TEST_SPRINT_KEY(id), sprintId);
   else localStorage.removeItem(TEST_SPRINT_KEY(id));
-  import("@/lib/cloud-sync").then((m) => m.cloudPushTest(id, { sprint_id: sprintId || null }));
+  if (opts.syncCloud !== false) {
+    import("@/lib/cloud-sync").then((m) => m.cloudPushTest(id, { sprint_id: sprintId || null }));
+  }
 }
 export function loadAllSprintOverrides(): Record<string, string> {
   const out: Record<string, string> = {};
