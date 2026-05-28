@@ -700,6 +700,7 @@ export function TestPlanTab() {
             <StatBadge n={counts.fail}     label="Fail"    color="bg-destructive/10 text-destructive border-destructive/30" active={statusFilter.length === 1 && statusFilter[0] === "fail"} onClick={() => setStatusFilter(statusFilter.length === 1 && statusFilter[0] === "fail" ? [] : ["fail"])} />
             <StatBadge n={counts.fixed_retest}  label="Fixed/Retest"   color="bg-sky-500/10 text-sky-700 border-sky-500/30" active={statusFilter.length === 1 && statusFilter[0] === "fixed_retest"} onClick={() => setStatusFilter(statusFilter.length === 1 && statusFilter[0] === "fixed_retest" ? [] : ["fixed_retest"])} />
             <StatBadge n={counts.failed_retest} label="Failed/Retest"  color="bg-fuchsia-500/10 text-fuchsia-700 border-fuchsia-500/30" active={statusFilter.length === 1 && statusFilter[0] === "failed_retest"} onClick={() => setStatusFilter(statusFilter.length === 1 && statusFilter[0] === "failed_retest" ? [] : ["failed_retest"])} />
+            <StatBadge n={counts.in_progress} label="In progress" color="bg-amber-500/10 text-amber-700 border-amber-500/30" active={statusFilter.length === 1 && statusFilter[0] === "in_progress"} onClick={() => setStatusFilter(statusFilter.length === 1 && statusFilter[0] === "in_progress" ? [] : ["in_progress"])} />
             <StatBadge n={counts.blocked}  label="Blocked" color="bg-amber-500/10 text-amber-700 border-amber-500/30" active={statusFilter.length === 1 && statusFilter[0] === "blocked"} onClick={() => setStatusFilter(statusFilter.length === 1 && statusFilter[0] === "blocked" ? [] : ["blocked"])} />
             <StatBadge n={counts.not_run}  label="Not run" color="bg-muted text-muted-foreground border-border" active={statusFilter.length === 1 && statusFilter[0] === "not_run"} onClick={() => setStatusFilter(statusFilter.length === 1 && statusFilter[0] === "not_run" ? [] : ["not_run"])} />
             <StatBadge n={counts.total}    label="Total"   color="bg-primary/10 text-primary border-primary/30" active={statusFilter.length === 0} onClick={() => setStatusFilter([])} />
@@ -810,6 +811,7 @@ export function TestPlanTab() {
                             {cell(c.fail, "Fail", "bg-destructive/10 text-destructive border-destructive/30", "fail")}
                             {cell(c.fixed_retest, "Fixed/Retest", "bg-sky-500/10 text-sky-700 border-sky-500/30", "fixed_retest")}
                             {cell(c.failed_retest, "Failed/Retest", "bg-fuchsia-500/10 text-fuchsia-700 border-fuchsia-500/30", "failed_retest")}
+                            {cell(c.in_progress, "In progress", "bg-amber-500/10 text-amber-700 border-amber-500/30", "in_progress")}
                             {cell(c.blocked, "Blocked", "bg-amber-500/10 text-amber-700 border-amber-500/30", "blocked")}
                             {cell(c.not_run, "Not run", "bg-muted text-muted-foreground border-border", "not_run")}
                             <span className="text-[11px] text-muted-foreground">· {c.total} total</span>
@@ -848,6 +850,7 @@ export function TestPlanTab() {
           placeholder="Status" triggerClassName="w-[180px]"
           options={[
             { value: "not_run", label: "Not run" },
+            { value: "in_progress", label: "In progress" },
             { value: "pass", label: "Pass" },
             { value: "fail", label: "Fail" },
             { value: "fixed_retest", label: "Fixed / Retest" },
@@ -1785,7 +1788,8 @@ function StatusButtons({ status, onChange }: { status: TestStatus; onChange: (s:
       <div className="flex flex-wrap gap-1">
         {btn("pass",    "Pass",         CheckCircle2, "bg-emerald-500/15 border-emerald-500/50 text-emerald-700")}
         {btn("fail",    "Fail",         XCircle,      "bg-destructive/15 border-destructive/50 text-destructive")}
-        {btn("blocked", "In progress",  AlertOctagon, "bg-amber-500/15 border-amber-500/50 text-amber-700")}
+        {btn("in_progress", "In progress", AlertOctagon, "bg-amber-500/15 border-amber-500/50 text-amber-700")}
+        {btn("blocked", "Blocked",       AlertOctagon, "bg-amber-500/15 border-amber-500/50 text-amber-700")}
         {btn("not_run", "Not started",  MinusCircle,  "bg-muted border-border text-foreground")}
       </div>
     );
@@ -1797,6 +1801,7 @@ function StatusButtons({ status, onChange }: { status: TestStatus; onChange: (s:
       {btn("fail",    "Fail",    XCircle,      "bg-destructive/15 border-destructive/50 text-destructive")}
       {btn("fixed_retest",  "Fixed/Retest",  Wrench,    "bg-sky-500/15 border-sky-500/50 text-sky-700")}
       {btn("failed_retest", "Failed/Retest", RefreshCw, "bg-fuchsia-500/15 border-fuchsia-500/50 text-fuchsia-700")}
+      {btn("in_progress", "In progress", AlertOctagon, "bg-amber-500/15 border-amber-500/50 text-amber-700")}
       {btn("blocked", "Blocked", AlertOctagon, "bg-amber-500/15 border-amber-500/50 text-amber-700")}
       {btn("not_run", "Reset",   MinusCircle,  "bg-muted border-border text-foreground")}
     </div>
