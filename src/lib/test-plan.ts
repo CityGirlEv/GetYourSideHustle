@@ -751,6 +751,9 @@ export const IMPLEMENTATION_PLAN: PhaseItem[] = [
 //   S2 (6/01–6/07) Optimizer math hardening on the beta.
 //   S3 (6/08–6/14) Final production go-live Sun 6/14 (end of Phase 1).
 export const ACTIVE_SPRINT_ID = "S-2026-01";
+// Catch-all bucket for tests that don't yet have an owner (or sprint).
+// Rendered as its own group in the test plan UI under the "Backlog" heading.
+export const BACKLOG_SPRINT_ID = "S-BACKLOG";
 
 export const SPRINTS: Sprint[] = [
   {
@@ -801,6 +804,12 @@ export const SPRINTS: Sprint[] = [
       { id: "S3-4", title: "Final production go-live (Sun 6/14, end of Phase 1)", type: "feature", status: "todo" },
       { id: "S3-5", title: "Phase 1 retro + Phase 2 kickoff brief", type: "design", status: "todo" },
     ],
+  },
+  {
+    id: BACKLOG_SPRINT_ID, number: 99, name: "Backlog",
+    start: "", end: "",
+    goal: "Unassigned test cases waiting to be slotted into a sprint and given an owner. New functionality lands here by default.",
+    items: [],
   },
 ];
 
@@ -980,7 +989,11 @@ export function loadAllAssigneeOverrides(): Record<string, string> {
 export function getTestSprintId(t: TestCase): string {
   const override = loadSprintOverride(t.id);
   if (override) return override;
-  return t.sprintId || ACTIVE_SPRINT_ID;
+  if (t.sprintId) return t.sprintId;
+  // Tests with no explicit owner (e.g. brand-new functionality) land in the
+  // Backlog sprint until an admin assigns them to a real sprint.
+  if (t.assignee === "Unassigned") return BACKLOG_SPRINT_ID;
+  return ACTIVE_SPRINT_ID;
 }
 
 // ----------------------------------------------------------------------------

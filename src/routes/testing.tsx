@@ -16,7 +16,7 @@ import {
   loadAllStatuses, saveStatus,
   type TestStatus, type TestCase, type Priority,
   PRIORITY_LABELS, PRIORITY_SHORT,
-  getTestAssignee, getTestSprintId, ACTIVE_SPRINT_ID,
+  getTestAssignee, getTestSprintId, ACTIVE_SPRINT_ID, BACKLOG_SPRINT_ID,
   getTestCreditReward, totalCreditBudget, creditBudgetByOwner, REPRO_FAIL_BONUS,
   loadAllQaNotes, loadAllDevNotes, saveQaNote, saveDevNote,
   loadAllSeverities, saveSeverity, FAIL_SEVERITY_LABELS, type FailSeverity,
@@ -877,7 +877,10 @@ export function TestPlanTab() {
         )}
         <MultiSelect
           placeholder="Sprint" triggerClassName="w-[200px]"
-          options={SPRINTS.map((s) => ({ value: s.id, label: `Sprint ${s.number} · ${s.name}` }))}
+          options={SPRINTS.map((s) => ({
+            value: s.id,
+            label: s.id === BACKLOG_SPRINT_ID ? "Backlog" : `Sprint ${s.number} · ${s.name}`,
+          }))}
           value={sprintFilter} onChange={setSprintFilter}
         />
         <MultiSelect
@@ -948,7 +951,11 @@ export function TestPlanTab() {
           return ordered.map(({ sprintId, tests }) => {
             const sprintMeta = SPRINTS.find((s) => s.id === sprintId);
             const isCollapsed = collapsedSprints.has(sprintId);
-            const label = sprintMeta ? `Sprint ${sprintMeta.number} · ${sprintMeta.name}` : "Unassigned";
+            const label = sprintMeta
+              ? sprintMeta.id === BACKLOG_SPRINT_ID
+                ? "Backlog"
+                : `Sprint ${sprintMeta.number} · ${sprintMeta.name}`
+              : "Unassigned";
             const isActive = sprintId === ACTIVE_SPRINT_ID;
             return (
               <Fragment key={sprintId}>
@@ -1110,7 +1117,11 @@ function BulkEditBar({
           title="Set sprint for selected"
         >
           <option value="">Set sprint…</option>
-          {SPRINTS.map((s) => <option key={s.id} value={s.id}>Sprint {s.number} · {s.name}</option>)}
+          {SPRINTS.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.id === BACKLOG_SPRINT_ID ? "Backlog" : `Sprint ${s.number} · ${s.name}`}
+            </option>
+          ))}
         </select>
         <select
           disabled={disabled}
@@ -1407,7 +1418,9 @@ function TestCaseCard({
             title="Re-assign sprint"
           >
             {SPRINTS.map((s) => (
-              <option key={s.id} value={s.id}>S{s.number}</option>
+              <option key={s.id} value={s.id}>
+                {s.id === BACKLOG_SPRINT_ID ? "Backlog" : `S${s.number}`}
+              </option>
             ))}
           </select>
         </label>
@@ -2007,21 +2020,45 @@ export function SprintsTab() {
       {SPRINTS.map((s) => {
         const done = s.items.filter((i) => i.status === "done").length;
         const pct = s.items.length ? Math.round((done / s.items.length) * 100) : 0;
+        const isBacklog = s.id === BACKLOG_SPRINT_ID;
+        const backlogTests = isBacklog
+          ? TEST_CASES.filter((t) => getTestSprintId(t) === BACKLOG_SPRINT_ID)
+          : [];
         return (
           <Card key={s.id} className="p-4">
             <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
               <div>
-                <div className="text-xs font-mono text-muted-foreground">SPRINT {s.number} · {s.id}</div>
+                <div className="text-xs font-mono text-muted-foreground">
+                  {isBacklog ? `BACKLOG · ${s.id}` : `SPRINT ${s.number} · ${s.id}`}
+                </div>
                 <h3 className="font-semibold text-lg">{s.name}</h3>
-                <p className="text-xs text-muted-foreground">{s.start} → {s.end}</p>
+                {!isBacklog && (
+                  <p className="text-xs text-muted-foreground">{s.start} → {s.end}</p>
+                )}
               </div>
               <div className="text-right">
-                <div className="text-xs text-muted-foreground">Progress</div>
-                <div className="font-bold">{done}/{s.items.length} ({pct}%)</div>
+                <div className="text-xs text-muted-foreground">{isBacklog ? "Unassigned tests" : "Progress"}</div>
+                <div className="font-bold">
+                  {isBacklog ? backlogTests.length : `${done}/${s.items.length} (${pct}%)`}
+                </div>
               </div>
             </div>
-            <Progress value={pct} className="h-1.5 mb-3" />
+            {!isBacklog && <Progress value={pct} className="h-1.5 mb-3" />}
             <p className="text-sm italic mb-3 text-muted-foreground">Goal: {s.goal}</p>
+            {isBacklog ? (
+              <ul className="divide-y divide-border border border-border rounded-md">
+                {backlogTests.map((t) => (
+                  <li key={t.id} className="flex items-center gap-2 p-2 text-sm">
+                    <span className="text-[10px] font-mono text-muted-foreground w-20">{t.id}</span>
+                    <Badge variant="secondary" className="text-[10px]">{t.area}</Badge>
+                    <span className="flex-1">{t.title}</span>
+                  </li>
+                ))}
+                {backlogTests.length === 0 && (
+                  <li className="p-2 text-xs text-muted-foreground italic">Backlog is empty.</li>
+                )}
+              </ul>
+            ) : (
             <ul className="divide-y divide-border border border-border rounded-md">
               {s.items.map((i) => (
                 <li key={i.id} className="flex items-center gap-2 p-2 text-sm">
@@ -2032,6 +2069,7 @@ export function SprintsTab() {
                 </li>
               ))}
             </ul>
+            )}
           </Card>
         );
       })}
