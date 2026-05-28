@@ -433,6 +433,32 @@ export function TestPlanTab() {
 
   // Persist a subset of pending changes; remaining ones stay in draft.
   const commitChanges = async (selectedKeys: Set<string>) => {
+    // ----- Mandatory-evidence gate ------------------------------------------
+    // Any status flip to "fail" / "failed_retest" requires at least one
+    // attached screenshot/log. Block those rows up-front so QA can't claim a
+    // bug without proof. Other field changes for the same test still go
+    // through.
+    if (user) {
+      const failIds = pendingChanges
+        .filter((c) => selectedKeys.has(c.key) && c.field === "status")
+        .map((c) => ({ key: c.key, id: c.testId, v: dStatuses[c.testId] }))
+        .filter((x) => x.v === "fail" || x.v === "failed_retest");
+      if (failIds.length > 0) {
+        const counts = await Promise.all(
+          failIds.map((x) => listTestEvidence(user.id, x.id).then((l) => l.length).catch(() => 0)),
+        );
+        const missing = failIds.filter((_, i) => counts[i] === 0);
+        if (missing.length > 0) {
+          for (const m of missing) selectedKeys.delete(m.key);
+          toast.error(
+            missing.length === 1
+              ? `Attach a screenshot before failing ${missing[0].id}.`
+              : `Attach a screenshot before failing: ${missing.map((m) => m.id).join(", ")}.`,
+          );
+          if (selectedKeys.size === 0) { setSaveOpen(false); return; }
+        }
+      }
+    }
     const stillDraft = {
       status: { ...dStatuses }, qaNote: { ...dQaNotes }, devNote: { ...dDevNotes },
       severity: { ...dSeverities }, assignee: { ...dAssignees }, sprint: { ...dSprints },
