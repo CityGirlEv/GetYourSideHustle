@@ -66,6 +66,14 @@ function ScenarioCreated() {
     } catch { toast.error("Copy failed — please write it down"); }
   };
 
+  const copyLink = async () => {
+    try {
+      const url = `${window.location.origin}/scenario/${code}`;
+      await navigator.clipboard.writeText(url);
+      toast.success("Scenario link copied");
+    } catch { toast.error("Copy failed — please write the link down"); }
+  };
+
   const downloadPdf = () => {
     try {
       if (!scenario) { toast.error("PDF not available — re-open after creating the scenario."); return; }
@@ -111,6 +119,10 @@ function ScenarioCreated() {
 
           <Button onClick={copy} variant="outline" className="w-full">
             <Copy className="h-4 w-4 mr-2" /> Copy Scenario ID
+          </Button>
+
+          <Button onClick={copyLink} variant="outline" className="w-full">
+            <Copy className="h-4 w-4 mr-2" /> Copy scenario link
           </Button>
 
           <Link to="/scenario/$code" params={{ code }} className="block">
