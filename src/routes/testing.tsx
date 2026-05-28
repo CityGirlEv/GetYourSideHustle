@@ -48,6 +48,7 @@ import {
 } from "@/lib/test-evidence";
 import { toast } from "sonner";
 import { MultiSelect, multiSelectMatches } from "@/components/ui/multi-select";
+import { useConfirm } from "@/components/ConfirmDialog";
 
 // Derive a link target for a test case: explicit `path` wins, otherwise scan
 // preconditions + steps for the first "/route" token (e.g. "Open /advisor").
