@@ -562,7 +562,10 @@ export function TestPlanTab() {
   // breakdowns only ever reflect their own tests. Admins see everything.
   const scopedCases = useMemo(
     () => restrictToSelf
-      ? effectiveCases.filter((t) => effAssignee(t) === qaFirstName)
+      ? effectiveCases.filter((t) => {
+          const a = effAssignee(t);
+          return a === qaFirstName || a === "Unassigned";
+        })
       : effectiveCases,
     [effectiveCases, restrictToSelf, qaFirstName, statuses, assigneeOverrides, customIds],
   );
@@ -983,7 +986,11 @@ export function TestPlanTab() {
                     onSprintChange={(s) => setSprintFor(t.id, s)}
                     isAdmin={isAdmin}
                     assigneeLocked={AUTOMATED_TEST_IDS.has(t.id)}
-                    restrictAssigneeTo={!isAdmin && user?.role === "qa" ? (qaFirstName || effAssignee(t)) : undefined}
+                     restrictAssigneeTo={
+                       !isAdmin && user?.role === "qa"
+                         ? Array.from(new Set([qaFirstName || effAssignee(t), "Unassigned"]))
+                         : undefined
+                     }
                     onEdit={() => setEditingId(t.id)}
                     onDuplicate={async () => {
                       try {
@@ -1299,9 +1306,9 @@ function TestCaseCard({
   /** When true, the Owner select is rendered read-only (used for
    *  auto-discovered Vitest / Playwright tests owned by their runner). */
   assigneeLocked?: boolean;
-  /** When set, the Owner select is locked to this single name (used for
-   *  non-admin QA users so they can only ever see their own name). */
-  restrictAssigneeTo?: string;
+  /** When set, restricts the Owner select to this list of names (used for
+   *  non-admin QA users so they can only claim/release tests for themselves). */
+  restrictAssigneeTo?: string[];
 }) {
   // Shade the whole row based on status (background + left border accent)
   const shade =
@@ -1410,10 +1417,10 @@ function TestCaseCard({
             className="bg-transparent text-[11px] font-semibold text-primary focus:outline-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-90"
             value={assignee}
             onChange={(e) => onAssigneeChange(e.target.value)}
-            disabled={assigneeLocked || !!restrictAssigneeTo}
-            title={assigneeLocked ? "Owned by the automated test runner" : restrictAssigneeTo ? "QA users can only see their own assignments" : "Re-assign this test"}
+            disabled={assigneeLocked || (restrictAssigneeTo && restrictAssigneeTo.length <= 1)}
+            title={assigneeLocked ? "Owned by the automated test runner" : restrictAssigneeTo ? "QA users can only claim tests for themselves or release them as Unassigned" : "Re-assign this test"}
           >
-            {(assigneeLocked ? [assignee] : restrictAssigneeTo ? [restrictAssigneeTo] : assigneeOptions).map((o: string) => (
+            {(assigneeLocked ? [assignee] : restrictAssigneeTo ?? assigneeOptions).map((o: string) => (
               <option key={o} value={o}>{o}</option>
             ))}
           </select>
