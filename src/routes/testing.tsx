@@ -1109,7 +1109,49 @@ function priorityVariant(p: Priority): string {
 }
 
 /** Renders scenario data steps (demographics, conditions, meds) as a sub-list. */
-function StepWithSublist({ step, className }: { step: string; className?: string }) {
+function StepWithSublist({
+  step,
+  className,
+  stepIndex,
+  checkedSubsteps,
+  onToggleSubstep,
+}: {
+  step: string;
+  className?: string;
+  stepIndex?: number;
+  checkedSubsteps?: Set<string>;
+  onToggleSubstep?: (key: string) => void;
+}) {
+  const letter = (i: number) => String.fromCharCode(97 + i); // 0 -> 'a'
+  const renderSublist = (items: string[]) => (
+    <ul className="ml-5 mt-0.5 space-y-0.5 list-none">
+      {items.map((item, i) => {
+        const key = stepIndex != null ? `${stepIndex}-${i}` : "";
+        const checked = key ? !!checkedSubsteps?.has(key) : false;
+        const interactive = stepIndex != null && !!onToggleSubstep;
+        return (
+          <li key={i} className="flex items-start gap-2">
+            {interactive && (
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={() => onToggleSubstep!(key)}
+                className="h-3.5 w-3.5 mt-0.5 shrink-0 cursor-pointer accent-emerald-600"
+                title={`Check when sub-step ${(stepIndex ?? 0) + 1}${letter(i)} is complete`}
+              />
+            )}
+            <span className={checked ? "line-through opacity-70" : ""}>
+              <span className="font-mono text-[10px] mr-1 opacity-70">
+                {(stepIndex ?? 0) + 1}{letter(i)}.
+              </span>
+              {item}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+
   // "Enter the following for the Scenario Information: birth year..., ZIP3=..., ..." → heading + sublist
   const introMatch = step.match(/^(Enter the following for the Scenario Information:)\s*(.+)$/);
   if (introMatch && introMatch[2].includes("ZIP3=")) {
@@ -1117,11 +1159,7 @@ function StepWithSublist({ step, className }: { step: string; className?: string
     return (
       <span className={className}>
         {introMatch[1]}
-        <ul className="ml-5 mt-0.5 space-y-0.5 list-disc list-outside">
-          {items.map((item, i) => (
-            <li key={i}>{item}</li>
-          ))}
-        </ul>
+        {renderSublist(items)}
       </span>
     );
   }
@@ -1132,11 +1170,7 @@ function StepWithSublist({ step, className }: { step: string; className?: string
     return (
       <span className={className}>
         {remainingMatch[1]}
-        <ul className="ml-5 mt-0.5 space-y-0.5 list-disc list-outside">
-          {items.map((item, i) => (
-            <li key={i}>{item}</li>
-          ))}
-        </ul>
+        {renderSublist(items)}
       </span>
     );
   }
@@ -1147,11 +1181,7 @@ function StepWithSublist({ step, className }: { step: string; className?: string
     return (
       <span className={className}>
         {parts[0]},
-        <ul className="ml-5 mt-0.5 space-y-0.5 list-disc list-outside">
-          {parts.slice(1).map((item, i) => (
-            <li key={i}>{item}</li>
-          ))}
-        </ul>
+        {renderSublist(parts.slice(1))}
       </span>
     );
   }
@@ -1167,11 +1197,7 @@ function StepWithSublist({ step, className }: { step: string; className?: string
       return (
         <span className={className}>
           {prefix}
-          <ul className="ml-5 mt-0.5 space-y-0.5 list-disc list-outside">
-            {items.map((item, i) => (
-              <li key={i}>{item}</li>
-            ))}
-          </ul>
+          {renderSublist(items)}
         </span>
       );
     }
