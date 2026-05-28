@@ -1087,7 +1087,22 @@ function priorityVariant(p: Priority): string {
 
 /** Renders scenario data steps (demographics, conditions, meds) as a sub-list. */
 function StepWithSublist({ step, className }: { step: string; className?: string }) {
-  // "Enter birth year..., ZIP3=..., gender..." → split by comma after the intro
+  // "Enter the following for the Scenario Information: birth year..., ZIP3=..., ..." → heading + sublist
+  const introMatch = step.match(/^(Enter the following for the Scenario Information:)\s*(.+)$/);
+  if (introMatch && introMatch[2].includes("ZIP3=")) {
+    const items = introMatch[2].split(", ");
+    return (
+      <span className={className}>
+        {introMatch[1]}
+        <ul className="ml-5 mt-0.5 space-y-0.5 list-disc list-outside">
+          {items.map((item, i) => (
+            <li key={i}>{item}</li>
+          ))}
+        </ul>
+      </span>
+    );
+  }
+  // Legacy: "Enter birth year..., ZIP3=..., gender..." → split by comma after the intro
   if (step.startsWith("Enter ") && step.includes(", ZIP3=")) {
     const parts = step.split(", ");
     return (
