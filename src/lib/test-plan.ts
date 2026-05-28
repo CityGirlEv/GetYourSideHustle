@@ -9,6 +9,7 @@
 
 export type TestStatus =
   | "not_run"
+  | "in_progress"
   | "pass"
   | "fail"
   | "blocked"

@@ -47,6 +47,10 @@ describe("status persistence", () => {
     saveStatus("Z-1", "pass");
     expect(loadStatus("Z-1")).toBe("pass");
   });
+  it("supports the in_progress status", () => {
+    saveStatus("Z-2", "in_progress");
+    expect(loadStatus("Z-2")).toBe("in_progress");
+  });
   it("loadAllStatuses returns an entry per TEST_CASES id", () => {
     const m = loadAllStatuses();
     expect(Object.keys(m).length).toBe(TEST_CASES.length);

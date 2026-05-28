@@ -110,7 +110,7 @@ function QADashboard() {
 
   const testStats = useMemo(() => {
     const counts: Record<TestStatus, number> = {
-      pass: 0, fail: 0, blocked: 0, not_run: 0,
+      pass: 0, fail: 0, blocked: 0, not_run: 0, in_progress: 0,
       fixed_retest: 0, failed_retest: 0,
     };
     for (const t of TEST_CASES) counts[readStatus(t.id)]++;
@@ -144,14 +144,15 @@ function QADashboard() {
   }, [loading]);
 
   const testsByAssignee = useMemo(() => {
-    const map = new Map<string, { total: number; pass: number; fail: number; blocked: number; not_run: number; retest: number }>();
+    const map = new Map<string, { total: number; pass: number; fail: number; in_progress: number; blocked: number; not_run: number; retest: number }>();
     for (const t of TEST_CASES) {
       const st = readStatus(t.id);
       const who = (getTestAssignee(t, st) as string) || "Unassigned";
-      const s = map.get(who) ?? { total: 0, pass: 0, fail: 0, blocked: 0, not_run: 0, retest: 0 };
+      const s = map.get(who) ?? { total: 0, pass: 0, fail: 0, in_progress: 0, blocked: 0, not_run: 0, retest: 0 };
       s.total++;
       if (st === "pass") s.pass++;
       else if (st === "fail" || st === "failed_retest") s.fail++;
+      else if (st === "in_progress") s.in_progress++;
       else if (st === "blocked") s.blocked++;
       else if (st === "fixed_retest") s.retest++;
       else s.not_run++;
@@ -315,6 +316,7 @@ function QADashboard() {
                   <th className="px-3 py-2 text-right">Pass</th>
                   <th className="px-3 py-2 text-right">Fail</th>
                   <th className="px-3 py-2 text-right">Retest</th>
+                  <th className="px-3 py-2 text-right">In progress</th>
                   <th className="px-3 py-2 text-right">Blocked</th>
                   <th className="px-3 py-2 text-right">Not run</th>
                 </tr>
@@ -327,12 +329,13 @@ function QADashboard() {
                     <td className="px-3 py-2 text-right tabular-nums">{s.pass}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{s.fail > 0 ? <span className="text-destructive">{s.fail}</span> : s.fail}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{s.retest}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{s.in_progress}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{s.blocked}</td>
                     <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{s.not_run}</td>
                   </tr>
                 ))}
                 {!testsByAssignee.length && (
-                  <tr><td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">No tests defined.</td></tr>
+                  <tr><td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">No tests defined.</td></tr>
                 )}
               </tbody>
             </table>
