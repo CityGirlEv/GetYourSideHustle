@@ -17,7 +17,7 @@ import {
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, RotateCcw, Trash2, Pencil, Search, Download, ExternalLink, Save, ChevronRight, ChevronDown } from "lucide-react";
+import { Plus, RotateCcw, Trash2, Pencil, Search, Download, ExternalLink, Save, ChevronRight, ChevronDown, Copy } from "lucide-react";
 import { toast } from "sonner";
 import {
   loadTaskRows, saveTaskRows, resetTaskRows, nextTaskId, todayMMDDYY,
@@ -273,6 +273,23 @@ export function TaskSheetContent() {
   };
 
   const deleteRow = (id: string) => persist(rows.filter((r) => r.id !== id));
+
+  // Duplicate a task — clones every field except id and inserts the copy
+  // immediately after the source row so it's easy to spot. The copy keeps
+  // status/dates intact; tweak via inline edits afterwards.
+  const duplicateRow = (id: string) => {
+    const src = rows.find((r) => r.id === id);
+    if (!src) return;
+    const copy: TaskRow = {
+      ...src,
+      id: nextTaskId(rows),
+      description: `${src.description} (copy)`,
+    };
+    const idx = rows.findIndex((r) => r.id === id);
+    const next = [...rows];
+    next.splice(idx + 1, 0, copy);
+    persist(next);
+  };
 
   const inlineUpdate = <K extends keyof TaskRow>(id: string, key: K, value: TaskRow[K]) => {
     persist(rows.map((r) => (r.id === id ? { ...r, [key]: value } : r)));
@@ -874,6 +891,7 @@ export function TaskSheetContent() {
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <Button size="icon" variant="ghost" onClick={() => openEdit(r)} aria-label="Edit"><Pencil className="h-3.5 w-3.5" /></Button>
+                        <Button size="icon" variant="ghost" onClick={() => duplicateRow(r.id)} aria-label="Duplicate" title="Duplicate task"><Copy className="h-3.5 w-3.5" /></Button>
                         <Button size="icon" variant="ghost" onClick={() => deleteRow(r.id)} aria-label="Delete"><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
                       </div>
                     </TableCell>
