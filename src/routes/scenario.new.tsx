@@ -83,7 +83,7 @@ function ScenarioNew() {
             onClick={() => {
               if (mode === "voice") {
                 setMode("manual");
-              } else {
+              } else if (isQaOrAdmin) {
                 openManualPopup();
               }
             }}
