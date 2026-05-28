@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   CheckCircle2, XCircle, MinusCircle, AlertOctagon, Search, RotateCcw,
   FlaskConical, CalendarDays, ListChecks, GitBranch, Sparkles, ExternalLink,
-  Wrench, RefreshCw, Paperclip, Upload, Trash2, FileText, Loader2, Save, Pencil, ChevronRight, ChevronDown, Copy,
+  Wrench, RefreshCw, Paperclip, Upload, Trash2, FileText, Loader2, Save, Pencil, ChevronRight, ChevronDown, Copy, Play,
 } from "lucide-react";
 import {
   TEST_CASES, IMPLEMENTATION_PLAN, SPRINTS, TASKS,
