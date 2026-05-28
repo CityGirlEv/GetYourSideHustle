@@ -329,15 +329,25 @@ export function TaskSheetContent() {
     setBulkAssignBy(""); setBulkDateAssigned(""); setBulkDueDate(""); setBulkDateCompleted(""); setBulkCost("");
     setSelected(new Set());
   };
-  const bulkDelete = () => {
+  const bulkDelete = async () => {
     if (selected.size === 0) return;
-    if (!confirm(`Delete ${selected.size} selected task(s)?`)) return;
+    if (!(await confirm({
+      title: "Delete tasks?",
+      description: `Delete ${selected.size} selected task(s)?`,
+      confirmLabel: "Delete",
+      destructive: true,
+    }))) return;
     persist(bulkDeleteRows(rows, selected));
     setSelected(new Set());
   };
 
-  const onReset = () => {
-    if (!confirm("Reset task sheet to the seeded defaults? Your local edits will be lost.")) return;
+  const onReset = async () => {
+    if (!(await confirm({
+      title: "Reset task sheet?",
+      description: "Reset task sheet to the seeded defaults? Your local edits will be lost.",
+      confirmLabel: "Reset",
+      destructive: true,
+    }))) return;
     const fresh = resetTaskRows();
     setSavedRows(fresh);
     setRows(fresh);
