@@ -4,7 +4,8 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Button } from "./ui/button";
 import { Switch } from "./ui/switch";
-import { Plus, Trash2, ChevronRight, ChevronLeft, Pill, ShieldAlert, Search, X, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, ChevronRight, ChevronLeft, Pill, ShieldAlert, Search, X, AlertTriangle, Upload } from "lucide-react";
+import { useRef } from "react";
 import { resolveDiagnosis, COMMON_MEDS_BY_CONDITION, searchMedCatalog, type MedCatalogEntry } from "@/lib/diagnosis-resolver";
 import { searchRxNorm, getGenericFor, type RxNormSuggestion } from "@/lib/rxnorm";
 import { supabase } from "@/integrations/supabase/client";
@@ -80,6 +81,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
   const [medQuery, setMedQuery] = useState<Record<string, string>>({});
   const [rxnormResults, setRxnormResults] = useState<Record<string, RxNormSuggestion[]>>({});
   const [rxnormLoading, setRxnormLoading] = useState<Record<string, boolean>>({});
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Debounced RxNorm lookup for the focused medication input.
   useEffect(() => {
