@@ -2,11 +2,12 @@
 // CUSTOM TESTS
 // ----------------------------------------------------------------------------
 // User-created tests (admin/qa). Persisted in the custom_tests Supabase table.
-// New tests default to assignee="Unassigned" and sprint="" so they appear in
-// the "Unassigned" group on the testing portal until an admin assigns them.
+// New tests default to assignee="Unassigned" and sprint_id=ACTIVE_SPRINT_ID
+// so they land in the current sprint, unassigned, until an admin picks them up.
 // ============================================================================
 import { supabase } from "@/integrations/supabase/client";
 import type { TestCase, Priority } from "@/lib/test-plan";
+import { ACTIVE_SPRINT_ID } from "@/lib/test-plan";
 
 export interface CustomTestRow {
   id: string;
@@ -83,7 +84,7 @@ export async function createCustomTest(input: CreateCustomTestInput, existingIds
     expected: input.expected.trim(),
     notes: input.notes?.trim() || null,
     assignee: null,      // → renders as "Unassigned"
-    sprint_id: null,     // → renders in the "Unassigned" sprint group
+    sprint_id: ACTIVE_SPRINT_ID, // → lands in the current sprint
     created_by: uid,
   };
 
