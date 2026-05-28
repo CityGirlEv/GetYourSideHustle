@@ -42,6 +42,7 @@ import {
   listCustomTests, createCustomTest, duplicateCustomTest, customRowToTestCase, type CustomTestRow,
 } from "@/lib/custom-tests";
 import { AUTOMATED_TEST_CASES, AUTOMATED_TEST_IDS, AUTOMATED_TEST_RESULTS } from "@/lib/automated-tests";
+import { expandAllWithPlatforms } from "@/lib/platform-variants";
 import {
   listTestEvidence, uploadTestEvidence, deleteTestEvidence, getTestEvidenceUrl,
   type EvidenceFile,
@@ -267,7 +268,14 @@ export function TestPlanTab() {
     () => {
       const base = TEST_CASES.map((t) => applyDescriptionOverride(t));
       const custom = customTests.map(customRowToTestCase);
-      return [...base, ...AUTOMATED_TEST_CASES, ...custom];
+      // Fan every manual scenario + custom test out into one variant per
+      // supported platform (iPhone / Android / iPad / macOS / Windows). The
+      // original un-suffixed entries are dropped — only the platform variants
+      // are surfaced so QA always tests on every device. Automated test runs
+      // map 1:1 to source files and stay un-expanded.
+      const baseExpanded = expandAllWithPlatforms(base);
+      const customExpanded = expandAllWithPlatforms(custom);
+      return [...baseExpanded, ...AUTOMATED_TEST_CASES, ...customExpanded];
     },
     [descVersion, customTests],
   );
