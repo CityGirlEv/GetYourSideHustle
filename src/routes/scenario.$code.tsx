@@ -190,6 +190,12 @@ function ScenarioSummary() {
           </>
         )}
       </div>
+      <ExpertOptInDialog
+        open={optInOpen}
+        onOpenChange={setOptInOpen}
+        scenarioCode={code}
+        scenarioSnapshot={scenarioSnapshot}
+      />
     </AppShell>
   );
 }
