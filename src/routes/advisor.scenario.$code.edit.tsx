@@ -94,7 +94,7 @@ function EditScenario() {
     log("UPDATE_SCENARIO", { scenario: scenario.id });
     await refreshScenarios();
     toast.success("Scenario saved");
-    router.navigate({ to: "/advisor/scenario/$code", params: { code: scenario.scenario_code } });
+    router.history.back();
   };
 
   return (
