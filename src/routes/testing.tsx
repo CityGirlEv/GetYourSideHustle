@@ -44,6 +44,7 @@ import {
 import { AUTOMATED_TEST_CASES, AUTOMATED_TEST_IDS, AUTOMATED_TEST_RESULTS } from "@/lib/automated-tests";
 import { expandAllWithPlatforms, TEST_PLATFORMS } from "@/lib/platform-variants";
 import { getQaVisibleOwners, getQaFirstName } from "@/lib/role-scoping";
+import { computeTestOwners } from "@/lib/test-owners";
 import {
   listTestEvidence, uploadTestEvidence, deleteTestEvidence, getTestEvidenceUrl,
   EVIDENCE_ACCEPT_ATTR, type EvidenceFile,
@@ -648,18 +649,11 @@ export function TestPlanTab() {
   // original QA AND Eng so they show up in both owners' bubbles, filters,
   // and scoped views.
   const effOwners = (t: TestCase): string[] => {
-    const primary = effAssignee(t);
-    const status = statuses[t.id];
-    const failed = status === "fail" || status === "failed_retest";
-    if (
-      failed &&
-      !AUTOMATED_TEST_IDS.has(t.id) &&
-      primary !== "Eng" &&
-      primary !== "Unassigned"
-    ) {
-      return [primary, "Eng"];
-    }
-    return [primary];
+    return computeTestOwners({
+      primary: effAssignee(t),
+      status: statuses[t.id],
+      isAutomated: AUTOMATED_TEST_IDS.has(t.id),
+    });
   };
   const qaVisibleOwners = useMemo(() => getQaVisibleOwners(user), [user]);
   // Original assignee BEFORE the fail-→Dev reroute. QA scoping uses this so
