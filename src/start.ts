@@ -3,8 +3,12 @@ import { attachSupabaseAuth } from "@/integrations/supabase/auth-attacher";
 
 import { renderErrorPage } from "./lib/error-page";
 
-const errorMiddleware = createMiddleware().server(async ({ next }) => {
+const errorMiddleware = createMiddleware().server(async ({ request, next }) => {
   try {
+    const url = new URL(request.url);
+    if (url.pathname.startsWith("/lovable/") || url.pathname === "/email/unsubscribe") {
+      return await next();
+    }
     return await next();
   } catch (error) {
     if (error != null && typeof error === "object" && "statusCode" in error) {
