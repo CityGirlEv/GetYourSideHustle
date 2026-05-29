@@ -66,6 +66,35 @@ function ScenarioSummary() {
     } catch (e) { toast.error("Could not generate PDF"); console.error(e); }
   };
 
+  const sharePage = async () => {
+    const url = `${window.location.origin}/scenario/${code}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: "My Medicare Scenario", url });
+        return;
+      } catch { /* fallback */ }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Link copied to clipboard");
+    } catch {
+      toast.error("Could not copy link");
+    }
+  };
+
+  const scenarioSnapshot = scenario ? {
+    year: scenario.year,
+    birthYear: scenario.birthYear,
+    zip3: scenario.zip3,
+    county: scenario.county,
+    gender: scenario.gender,
+    tobacco: scenario.tobacco,
+    incomeBand: scenario.incomeBand,
+    costPreference: scenario.costPreference,
+    conditions: scenario.conditions,
+    medications: scenario.medications,
+  } : undefined;
+
   return (
     <AppShell title="Scenario summary" subtitle={`ID ${code}`}>
       <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
