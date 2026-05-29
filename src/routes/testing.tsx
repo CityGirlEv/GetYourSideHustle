@@ -1659,6 +1659,18 @@ function TestCaseCard({
             ))}
           </select>
         </label>
+        {(status === "fail" || status === "failed_retest") &&
+          !assigneeLocked &&
+          assignee !== "Eng" &&
+          assignee !== "Unassigned" && (
+          <Badge
+            variant="outline"
+            className="text-[11px] border-destructive/50 text-destructive bg-destructive/5"
+            title="Failing tests are co-owned by Eng for the fix"
+          >
+            + Eng
+          </Badge>
+        )}
         <Badge variant="outline" className="text-[11px] border-emerald-500/40 text-emerald-700 bg-emerald-500/5">+{getTestCreditReward(t)} cr</Badge>
         <h3 className="flex-1 font-semibold text-sm md:text-base">
           <TestTitleLink test={t}>{t.title}</TestTitleLink>
