@@ -802,6 +802,10 @@ export function TestPlanTab() {
             <div className="flex flex-wrap gap-2 text-xs mt-3">
               {Object.entries(ownerCounts).map(([owner, n]) => {
                 const active = ownerFilter.length === 1 && ownerFilter[0] === owner;
+                const oc = ownerStatusCounts[owner];
+                const done = oc ? (oc.pass + oc.fail + oc.fixed_retest + oc.failed_retest + oc.blocked) : 0;
+                const total = oc?.total ?? n;
+                const pct = total ? Math.round((done / total) * 100) : 0;
                 return (
                   <button
                     key={owner}
@@ -809,7 +813,10 @@ export function TestPlanTab() {
                     onClick={() => setOwnerFilter(active ? [] : [owner])}
                     className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 font-semibold bg-background cursor-pointer hover:bg-accent transition-colors ${active ? "ring-2 ring-offset-1 ring-primary" : ""}`}
                   >
-                    {owner} <span className="font-normal opacity-70">· {n} tests · {creditBudgetByOwner()[owner] ?? 0} cr</span>
+                    {owner}{" "}
+                    <span className="font-normal opacity-70">
+                      · {done}/{total} · {pct}% · {creditBudgetByOwner()[owner] ?? 0} cr
+                    </span>
                   </button>
                 );
               })}
