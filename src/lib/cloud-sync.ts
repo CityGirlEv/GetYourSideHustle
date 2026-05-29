@@ -155,25 +155,27 @@ export async function hydrateTestResultsToLocal(): Promise<number> {
   if (error || !data) return 0;
   for (const row of data) {
     const id = row.test_id as string;
-    // Local-first: never overwrite a value that already exists in this
-    // browser's localStorage. The user's most recent action wins; cloud
-    // values only fill in gaps (e.g. first load on a fresh browser). This
-    // prevents stale or in-flight DB rows from clobbering changes the user
-    // just saved locally before the cloud round-trip completed.
-    const setIfMissing = (k: string, v: string) => {
-      if (localStorage.getItem(k) == null) localStorage.setItem(k, v);
+    // Cloud is the source of truth across browsers/users. Overwrite local
+    // values so updates made by other users (e.g. QA flipping status) are
+    // reflected on every device after hydrate, not just the device that
+    // made the change. Local writes always dual-push to cloud first, so by
+    // the time hydrate runs the cloud row matches the most recent action.
+    const setOrClear = (k: string, v: string | null) => {
+      if (v == null || v === "") localStorage.removeItem(k);
+      else localStorage.setItem(k, v);
     };
-    if (row.status)    setIfMissing(TEST_STATUS_KEY(id), row.status as string);
-    if (row.severity)  setIfMissing(TEST_SEVERITY_KEY(id), row.severity as string);
-    if (row.assignee)  setIfMissing(TEST_ASSIGNEE_KEY(id), row.assignee as string);
-    if (row.sprint_id) setIfMissing(TEST_SPRINT_KEY(id), row.sprint_id as string);
-    if (row.description_override) {
-      setIfMissing(TEST_DESC_KEY(id), JSON.stringify(row.description_override));
-    }
+    setOrClear(TEST_STATUS_KEY(id),   (row.status as string | null) ?? null);
+    setOrClear(TEST_SEVERITY_KEY(id), (row.severity as string | null) ?? null);
+    setOrClear(TEST_ASSIGNEE_KEY(id), (row.assignee as string | null) ?? null);
+    setOrClear(TEST_SPRINT_KEY(id),   (row.sprint_id as string | null) ?? null);
+    setOrClear(
+      TEST_DESC_KEY(id),
+      row.description_override ? JSON.stringify(row.description_override) : null,
+    );
     const qa = Array.isArray(row.qa_notes) ? (row.qa_notes as unknown as NoteEntry[]) : [];
     const dev = Array.isArray(row.dev_notes) ? (row.dev_notes as unknown as NoteEntry[]) : [];
-    if (qa.length)  setIfMissing(TEST_QA_NOTE_KEY(id),  qa[qa.length - 1].text);
-    if (dev.length) setIfMissing(TEST_DEV_NOTE_KEY(id), dev[dev.length - 1].text);
+    setOrClear(TEST_QA_NOTE_KEY(id),  qa.length  ? qa[qa.length - 1].text  : null);
+    setOrClear(TEST_DEV_NOTE_KEY(id), dev.length ? dev[dev.length - 1].text : null);
   }
   return data.length;
 }

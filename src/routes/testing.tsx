@@ -30,6 +30,7 @@ import { AppShell } from "@/components/AppShell";
 import { useApp } from "@/lib/app-store";
 import { useAssigneeOptions } from "@/lib/use-assignee-options";
 import { hydrateTestResultsToLocal } from "@/lib/cloud-sync";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
@@ -248,6 +249,45 @@ export function TestPlanTab() {
       }
     })();
     return () => { cancelled = true; };
+  }, []);
+  // Live sync — when any user changes a test_results row (status, notes,
+  // assignee...), re-hydrate so every other open Testing tab updates
+  // without a manual refresh. Without this, a tester who already loaded
+  // the page keeps seeing the old value (e.g. "fail") even after another
+  // tester flips it to "in progress".
+  useEffect(() => {
+    let cancelled = false;
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+    const refresh = () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(async () => {
+        try {
+          await hydrateTestResultsToLocal();
+          if (cancelled) return;
+          setSavedStatuses(loadAllStatuses());
+          setSavedQaNotes(loadAllQaNotes());
+          setSavedDevNotes(loadAllDevNotes());
+          setSavedSeverities(loadAllSeverities());
+          setSavedAssignees(loadAllAssigneeOverrides());
+          setSavedSprints(loadAllSprintOverrides());
+        } catch (e) {
+          console.warn("[testing] realtime refresh failed", e);
+        }
+      }, 250);
+    };
+    const channel = supabase
+      .channel("test_results-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "test_results" },
+        () => refresh(),
+      )
+      .subscribe();
+    return () => {
+      cancelled = true;
+      if (refreshTimer) clearTimeout(refreshTimer);
+      supabase.removeChannel(channel);
+    };
   }, []);
   // Bump this to re-read description overrides from storage after edits.
   const [descVersion, setDescVersion] = useState(0);
