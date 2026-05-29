@@ -66,6 +66,38 @@ function deriveTestPath(t: TestCase): string | null {
   return m ? m[1] : null;
 }
 
+/**
+ * Open a test target. Desktop & phones get a separate popup window so the
+ * Testing Portal stays visible alongside the app under test. iPads can't
+ * meaningfully manage multiple browser windows, so they open in a new tab.
+ */
+function isIpad(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent || "";
+  if (/iPad/.test(ua)) return true;
+  // iPadOS 13+ reports as MacIntel with touch support
+  return navigator.platform === "MacIntel" && (navigator.maxTouchPoints ?? 0) > 1;
+}
+
+function openTestTarget(path: string) {
+  if (typeof window === "undefined") return;
+  if (isIpad()) {
+    window.open(path, "_blank", "noopener");
+    return;
+  }
+  const w = Math.min(1100, Math.round(window.screen.availWidth * 0.8));
+  const h = Math.min(900, Math.round(window.screen.availHeight * 0.85));
+  const left = window.screenX + Math.max(0, (window.outerWidth - w) / 2);
+  const top = window.screenY + Math.max(0, (window.outerHeight - h) / 2);
+  const features = `popup=yes,width=${w},height=${h},left=${left},top=${top},menubar=no,toolbar=no,location=no,status=no,noopener`;
+  const win = window.open(path, "test-target", features);
+  // Some mobile browsers ignore popup features and fall back to a new tab — that's acceptable.
+  if (!win) {
+    // Popup blocked — fall back to a new tab so the tester still gets there.
+    window.open(path, "_blank", "noopener");
+  }
+}
+
 function TestTargetLink({ test }: { test: TestCase }) {
   const path = deriveTestPath(test);
   if (!path) return null;
