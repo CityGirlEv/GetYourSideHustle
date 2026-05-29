@@ -330,6 +330,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
       {step === 1 && (
         <div className="space-y-4">
           <h3 className="font-display text-xl font-bold">Step 1 · Basics (no name, no birth date)</h3>
+          <p className="text-xs text-muted-foreground">Next: Cost preference →</p>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>Year of birth <span className="text-destructive">*</span></Label>
