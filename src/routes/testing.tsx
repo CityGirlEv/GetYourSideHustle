@@ -1656,15 +1656,6 @@ function TestCaseCard({
       return raw ? new Set<number>(JSON.parse(raw)) : new Set();
     } catch { return new Set(); }
   });
-  const persistSteps = (next: Set<number>) => {
-    setCheckedSteps(next);
-    try { window.localStorage.setItem(stepsKey, JSON.stringify(Array.from(next))); } catch { /* ignore */ }
-  };
-  const toggleStep = (i: number) => {
-    const next = new Set(checkedSteps);
-    if (next.has(i)) next.delete(i); else next.add(i);
-    persistSteps(next);
-  };
   // Per-substep execution checkboxes (e.g. "2a", "2b"). Stored as `${stepIdx}-${subIdx}` keys.
   const substepsKey = `qa-substep-checks:${t.id}`;
   const [checkedSubsteps, setCheckedSubsteps] = useState<Set<string>>(() => {
@@ -1674,11 +1665,43 @@ function TestCaseCard({
       return raw ? new Set<string>(JSON.parse(raw)) : new Set();
     } catch { return new Set(); }
   });
+  // Hydrate checked-step state from the cloud so every viewer sees what QA ticked.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const remote = await cloudFetchCheckedSteps(t.id);
+      if (cancelled || !remote) return;
+      const steps = new Set<number>(remote.steps);
+      const subs = new Set<string>(remote.substeps);
+      setCheckedSteps(steps);
+      setCheckedSubsteps(subs);
+      try {
+        window.localStorage.setItem(stepsKey, JSON.stringify(Array.from(steps)));
+        window.localStorage.setItem(substepsKey, JSON.stringify(Array.from(subs)));
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [t.id]);
+  const pushChecks = (steps: Set<number>, subs: Set<string>) => {
+    void cloudPushCheckedSteps(t.id, { steps: Array.from(steps), substeps: Array.from(subs) });
+  };
+  const persistSteps = (next: Set<number>) => {
+    setCheckedSteps(next);
+    try { window.localStorage.setItem(stepsKey, JSON.stringify(Array.from(next))); } catch { /* ignore */ }
+    pushChecks(next, checkedSubsteps);
+  };
+  const toggleStep = (i: number) => {
+    const next = new Set(checkedSteps);
+    if (next.has(i)) next.delete(i); else next.add(i);
+    persistSteps(next);
+  };
   const toggleSubstep = (key: string) => {
     const next = new Set(checkedSubsteps);
     if (next.has(key)) next.delete(key); else next.add(key);
     setCheckedSubsteps(next);
     try { window.localStorage.setItem(substepsKey, JSON.stringify(Array.from(next))); } catch { /* ignore */ }
+    pushChecks(checkedSteps, next);
   };
   const allStepsChecked = t.steps.length === 0 || t.steps.every((_, i) => checkedSteps.has(i));
   // Which step failed — required whenever the tester records a Fail.
