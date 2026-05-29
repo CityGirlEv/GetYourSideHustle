@@ -3,17 +3,6 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { z } from "zod";
 import { buildNdaPdf, NDA_VERSION } from "./nda";
 
-const NOTIFY_EMAILS = ["sharpebanker@yahoo.com", "evelyn3@cox.net"];
-
-function escHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
 function randomPassword(len = 24) {
   const alpha = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%^&*";
   let out = "";
@@ -23,58 +12,92 @@ function randomPassword(len = 24) {
   return out;
 }
 
+async function listAdminEmails(): Promise<string[]> {
+  // Get all admin user_ids
+  const { data: roles, error: rolesErr } = await supabaseAdmin
+    .from("user_roles")
+    .select("user_id")
+    .eq("role", "admin");
+  if (rolesErr || !roles?.length) {
+    if (rolesErr) console.error("[registration] failed to load admin roles", rolesErr);
+    return [];
+  }
+  const adminIds = new Set(roles.map((r) => r.user_id));
+  // Resolve their emails via auth admin API (paged)
+  const emails: string[] = [];
+  let page = 1;
+  // 1000 users per page is the auth admin default cap
+  for (;;) {
+    const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error) {
+      console.error("[registration] failed to list users", error);
+      break;
+    }
+    for (const u of data?.users ?? []) {
+      if (u.email && adminIds.has(u.id)) emails.push(u.email);
+    }
+    if (!data?.users?.length || data.users.length < 1000) break;
+    page += 1;
+  }
+  return emails;
+}
+
+function originFromRequest(): string {
+  // Prefer the published Lovable URL; fall back to a sane default.
+  return process.env.SITE_ORIGIN
+    || process.env.PUBLIC_SITE_URL
+    || "https://mypartb.lovable.app";
+}
+
 async function sendRegistrationNotification(opts: {
-  firstName: string; lastName: string; email: string; phone: string; requestedRole: string; qaDevices?: string[];
+  userId: string;
+  firstName: string; lastName: string; email: string; phone: string;
+  requestedRole: string; qaDevices?: string[];
 }) {
-  const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
-  const RESEND_API_KEY = process.env.RESEND_API_KEY;
-  if (!LOVABLE_API_KEY || !RESEND_API_KEY) {
-    console.warn("[registration] email notification skipped — missing keys");
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceKey) {
+    console.warn("[registration] notification skipped — missing service role key");
     return;
   }
-  const subject = `New beta registration — ${opts.firstName} ${opts.lastName}`;
-  const fn = escHtml(opts.firstName);
-  const ln = escHtml(opts.lastName);
-  const em = escHtml(opts.email);
-  const ph = escHtml(opts.phone);
-  const rr = escHtml(opts.requestedRole);
-  const devicesRow = opts.requestedRole === "qa"
-    ? `<tr><td><b>QA devices</b></td><td>${(opts.qaDevices ?? []).map(escHtml).join(", ") || "<i>None specified</i>"}</td></tr>`
-    : "";
-  const html = `
-    <div style="font-family:Arial,sans-serif;line-height:1.5">
-      <h2>New beta access request</h2>
-      <p>A new user has signed the NDA and registered. The account is created but <b>disabled</b> until you approve it.</p>
-      <table cellpadding="6" style="border-collapse:collapse;font-size:14px">
-        <tr><td><b>Name</b></td><td>${fn} ${ln}</td></tr>
-        <tr><td><b>Email</b></td><td>${em}</td></tr>
-        <tr><td><b>Phone</b></td><td>${ph}</td></tr>
-        <tr><td><b>Requested role</b></td><td>${rr}</td></tr>
-        ${devicesRow}
-      </table>
-      <p>Sign in to the Admin Portal to review and enable the account.</p>
-    </div>`;
-  try {
-    const res = await fetch("https://connector-gateway.lovable.dev/resend/emails", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-        "X-Connection-Api-Key": RESEND_API_KEY,
-      },
-      body: JSON.stringify({
-        from: "The Medicare Optimizer <onboarding@resend.dev>",
-        to: NOTIFY_EMAILS,
-        subject,
-        html,
-      }),
-    });
-    if (!res.ok) {
-      console.error("[registration] resend send failed", res.status, await res.text());
-    }
-  } catch (e) {
-    console.error("[registration] resend send threw", e);
+  const admins = await listAdminEmails();
+  if (!admins.length) {
+    console.warn("[registration] no admin users found to notify");
+    return;
   }
+  const origin = originFromRequest();
+  const templateData = {
+    firstName: opts.firstName,
+    lastName: opts.lastName,
+    email: opts.email,
+    phone: opts.phone,
+    requestedRole: opts.requestedRole,
+    qaDevices: opts.qaDevices ?? [],
+  };
+  // One email per admin — each admin is a unique recipient expecting this notification.
+  await Promise.all(
+    admins.map(async (recipient) => {
+      try {
+        const res = await fetch(`${origin}/lovable/email/transactional/send`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${serviceKey}`,
+          },
+          body: JSON.stringify({
+            templateName: "new-registration-admin",
+            recipientEmail: recipient,
+            idempotencyKey: `new-registration-${opts.userId}-${recipient.toLowerCase()}`,
+            templateData,
+          }),
+        });
+        if (!res.ok) {
+          console.error("[registration] send failed", res.status, await res.text());
+        }
+      } catch (e) {
+        console.error("[registration] send threw", e);
+      }
+    }),
+  );
 }
 
 export const registerWithNda = createServerFn({ method: "POST" })
@@ -160,6 +183,7 @@ export const registerWithNda = createServerFn({ method: "POST" })
 
     // Notify approvers (don't fail registration if email delivery fails)
     await sendRegistrationNotification({
+      userId,
       firstName: data.first_name,
       lastName: data.last_name,
       email: data.email,
