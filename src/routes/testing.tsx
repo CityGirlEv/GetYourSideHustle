@@ -2019,13 +2019,13 @@ function FailDetailsDialog({
   // Reset / hydrate every time the dialog opens for a new failure.
   useEffect(() => {
     if (!open) return;
-    setNote("");
+    setNote(initialNote ?? "");
     const parsed = parseInt(initialStep, 10);
     setStepIndex(Number.isFinite(parsed) && parsed > 0 ? parsed - 1 : null);
     setFile(null);
     setNoScreenshot(false);
     setBusy(false);
-  }, [open, initialStep]);
+  }, [open, initialStep, initialNote]);
 
   const error = validateFailDetails({
     note,
