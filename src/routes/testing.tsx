@@ -73,19 +73,23 @@ function TestTargetLink({ test }: { test: TestCase }) {
   const label = path.length > 28 ? path.slice(0, 27) + "…" : path;
   const className =
     "inline-flex items-center gap-1 text-[11px] font-mono rounded-full border border-primary/40 bg-primary/5 px-2 py-0.5 text-primary hover:bg-primary/10 transition-colors";
+  const onClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    openTestTarget(path);
+  };
   if (isExternal) {
     return (
-      <a href={path} target="_blank" rel="noreferrer" className={className} title={`Open ${path}`}>
+      <a href={path} target="_blank" rel="noreferrer" onClick={onClick} className={className} title={`Open ${path}`}>
         <ExternalLink className="h-3 w-3" />
         {label}
       </a>
     );
   }
   return (
-    <Link to={path as never} target="_blank" className={className} title={`Open ${path}`}>
+    <a href={path} target="_blank" rel="noreferrer" onClick={onClick} className={className} title={`Open ${path}`}>
       <ExternalLink className="h-3 w-3" />
       {label}
-    </Link>
+    </a>
   );
 }
 
@@ -94,17 +98,14 @@ function TestTitleLink({ test, children }: { test: TestCase; children: React.Rea
   if (!path) return <>{children}</>;
   const isExternal = /^https?:\/\//.test(path);
   const className = "hover:underline hover:text-primary transition-colors";
-  if (isExternal) {
-    return (
-      <a href={path} target="_blank" rel="noreferrer" className={className} title={`Open ${path}`}>
-        {children}
-      </a>
-    );
-  }
+  const onClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    openTestTarget(path);
+  };
   return (
-    <Link to={path as never} target="_blank" className={className} title={`Open ${path}`}>
+    <a href={path} target="_blank" rel="noreferrer" onClick={onClick} className={className} title={`Open ${path}`}>
       {children}
-    </Link>
+    </a>
   );
 }
 
