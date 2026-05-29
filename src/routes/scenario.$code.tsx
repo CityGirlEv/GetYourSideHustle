@@ -30,6 +30,7 @@ function ScenarioSummary() {
   const [scenario, setScenario] = useState<(ScenarioPdfInput & { county?: string; contactRequests?: Array<{ email: string; phone: string; createdAt: string }> }) | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [optInOpen, setOptInOpen] = useState(false);
   const fetchByCode = useServerFn(getScenarioByCode);
 
   useEffect(() => {
