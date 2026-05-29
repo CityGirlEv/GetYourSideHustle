@@ -218,7 +218,7 @@ function QAManualPage() {
                 {/* TEST FAILED (left) */}
                 <rect x="30" y="365" width="220" height="70" rx="10" fill="#E53935" stroke="#b32a26" strokeWidth="1.5" />
                 <text x="140" y="395" fontWeight="800">TEST FAILED</text>
-                <text x="140" y="417" fontSize="12" fontWeight="700">(NOW IN DEV'S QUEUE)</text>
+                <text x="140" y="417" fontSize="12" fontWeight="700">(NOW IN DEV'S QUE)</text>
 
                 {/* DEV (bottom left) */}
                 <rect x="30" y="505" width="220" height="90" rx="10" fill="#4FC3F7" stroke="#2196f3" strokeWidth="1.5" />
@@ -227,29 +227,25 @@ function QAManualPage() {
                 <text x="140" y="573" fontSize="12" fontWeight="700">FIXED/RETEST OR</text>
                 <text x="140" y="589" fontSize="12" fontWeight="700">FAILED/RETEST)</text>
 
-                {/* Arrows */}
+                {/* Arrows — all perfectly orthogonal, no overlaps */}
                 <g stroke="#374151" fill="none" strokeWidth="2" markerEnd="url(#qa-arrow)">
-                  {/* All five primary connectors are exactly 70 units long. */}
-                  {/* START -> QA EXECUTES (vertical, 70) */}
+                  {/* START -> QA EXECUTES (vertical) */}
                   <line x1="450" y1="90" x2="450" y2="160" />
-                  {/* QA EXECUTES -> Diamond (vertical, 70) */}
+                  {/* QA EXECUTES -> Diamond (vertical) */}
                   <line x1="450" y1="230" x2="450" y2="300" />
-                  {/* Diamond Pass -> TEST CLOSED (horizontal, 70) */}
+                  {/* Diamond Pass -> TEST CLOSED (horizontal) */}
                   <line x1="580" y1="400" x2="650" y2="400" />
-                  {/* Diamond Fail -> TEST FAILED (horizontal, 70) */}
+                  {/* Diamond Fail -> TEST FAILED (horizontal) */}
                   <line x1="320" y1="400" x2="250" y2="400" />
-                  {/* TEST FAILED -> DEV (vertical, 70) */}
+                  {/* TEST FAILED -> DEV (vertical) */}
                   <line x1="140" y1="435" x2="140" y2="505" />
-                  {/* DEV -> back up to Diamond (straight orthogonal, overlaps Fail line) */}
-                  <polyline points="250,505 250,400 320,400" />
+                  {/* DEV -> back up to Diamond bottom (right, then up — clean L) */}
+                  <polyline points="250,550 450,550 450,500" />
                 </g>
 
                 {/* Branch labels */}
-                <text x="615" y="390" fontSize="13" fontWeight="700" fill="#1f2937">Pass</text>
-                <text x="285" y="384" fontSize="13" fontWeight="700" fill="#1f2937">Fail</text>
-                <text x="285" y="402" fontSize="11" fontWeight="700" fill="#b32a26">+ screenshot</text>
-                <text x="260" y="470" fontSize="13" fontWeight="700" fill="#1f2937" textAnchor="start">Retest</text>
-                <text x="260" y="486" fontSize="11" fontWeight="700" fill="#b32a26" textAnchor="start">+ screenshot if Failed/Retest</text>
+                <text x="615" y="392" fontSize="13" fontWeight="700" fill="#1f2937">Pass</text>
+                <text x="285" y="392" fontSize="13" fontWeight="700" fill="#1f2937">Fail</text>
               </g>
             </svg>
           </div>
