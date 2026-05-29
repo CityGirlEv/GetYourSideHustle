@@ -49,6 +49,7 @@ import {
   listTestEvidence, uploadTestEvidence, deleteTestEvidence, getTestEvidenceUrl,
   EVIDENCE_ACCEPT_ATTR, type EvidenceFile,
 } from "@/lib/test-evidence";
+import { validateFailDetails, formatFailNote } from "@/lib/fail-details";
 import { toast } from "sonner";
 import { MultiSelect, multiSelectMatches } from "@/components/ui/multi-select";
 import { useConfirm } from "@/components/ConfirmDialog";
