@@ -1222,11 +1222,14 @@ export function TestPlanTab() {
             return (
               <Fragment key={sprintId}>
                 <Card
-                  className="p-3 bg-muted/60 hover:bg-muted/70 cursor-pointer border-2"
+                  className="p-4 sm:p-3 bg-muted/60 hover:bg-muted/70 cursor-pointer border-2 select-none touch-manipulation active:scale-[0.98] transition-transform min-h-[48px]"
                   onClick={() => toggleCollapsedSprint(sprintId)}
+                  role="button"
+                  aria-expanded={!isCollapsed}
+                  aria-label={`${label} — ${tests.length} test${tests.length === 1 ? "" : "s"}`}
                 >
-                  <div className="flex items-center gap-2 font-semibold text-sm">
-                    <ChevronRight className={`h-4 w-4 transition-transform ${!isCollapsed ? "rotate-90" : ""}`} />
+                  <div className="flex items-center gap-3 font-semibold text-sm">
+                    <ChevronRight className={`h-5 w-5 sm:h-4 sm:w-4 transition-transform ${!isCollapsed ? "rotate-90" : ""}`} />
                     <span>{label}</span>
                     {isActive && <Badge variant="outline" className="border-primary/60 text-primary">Current</Badge>}
                     <span className="text-xs font-normal text-muted-foreground ml-1">
