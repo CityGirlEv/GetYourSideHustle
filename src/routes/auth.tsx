@@ -43,7 +43,10 @@ function AuthPage() {
 
   useEffect(() => {
     if (!user) return;
-    const destination = search.redirect ?? roleDestination(user.role);
+    // If the user holds the QA role (even alongside others), always land them
+    // on the Testing Portal — that's their primary workspace.
+    const qaOverride = user.roles?.includes("qa") ? "/testing" : null;
+    const destination = search.redirect ?? qaOverride ?? roleDestination(user.role);
     router.navigate({ to: destination as "/admin" | "/agent" | "/testing" | "/advisor" | "/tasks" });
   }, [user, router, search.redirect]);
 
