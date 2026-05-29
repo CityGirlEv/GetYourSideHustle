@@ -1597,6 +1597,12 @@ function TestCaseCard({
       else window.localStorage.removeItem(failedStepKey);
     } catch { /* ignore */ }
   };
+  // When the tester picks Fail / Failed-Retest we pop a modal that forces
+  // a note + which step failed + a screenshot (or an explicit "no
+  // screenshot available" acknowledgement). The status flip is only
+  // applied after the modal is satisfied.
+  const { user: cardUser } = useApp();
+  const [pendingFail, setPendingFail] = useState<TestStatus | null>(null);
   const handleStatusChange = async (s: TestStatus) => {
     if (s === "pass" && !allStepsChecked) {
       const missing = t.steps.length - checkedSteps.size;
@@ -1608,6 +1614,10 @@ function TestCaseCard({
         confirmLabel: "OK",
         cancelLabel: "Back",
       });
+      return;
+    }
+    if ((s === "fail" || s === "failed_retest") && s !== status) {
+      setPendingFail(s);
       return;
     }
     onChange(s);
