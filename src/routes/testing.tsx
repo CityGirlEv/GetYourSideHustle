@@ -1648,9 +1648,20 @@ function TestCaseCard({
             disabled={assigneeLocked || (restrictAssigneeTo && restrictAssigneeTo.length <= 1)}
             title={assigneeLocked ? "Owned by the automated test runner" : restrictAssigneeTo ? "QA users can only claim tests for themselves or release them as Unassigned" : "Re-assign this test"}
           >
-            {(assigneeLocked ? [assignee] : restrictAssigneeTo ?? assigneeOptions).map((o: string) => (
-              <option key={o} value={o}>{o}</option>
-            ))}
+            {(() => {
+              const base = assigneeLocked
+                ? [assignee]
+                : restrictAssigneeTo ?? assigneeOptions;
+              // Always include the currently-selected owner. Without this, a
+              // controlled <select value="Catria"> with options ["Lyriq",
+              // "Unassigned"] silently shows "Lyriq" as selected in the DOM,
+              // so picking "Lyriq" fires no change event and the owner looks
+              // stuck. Prepending `assignee` makes the displayed value real.
+              const opts = assignee && !base.includes(assignee) ? [assignee, ...base] : base;
+              return opts.map((o: string) => (
+                <option key={o} value={o}>{o}</option>
+              ));
+            })()}
           </select>
         </label>
         {(status === "fail" || status === "failed_retest") &&
