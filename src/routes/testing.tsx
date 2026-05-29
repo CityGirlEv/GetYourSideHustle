@@ -1670,7 +1670,21 @@ function TestCaseCard({
     let cancelled = false;
     (async () => {
       const remote = await cloudFetchCheckedSteps(t.id);
-      if (cancelled || !remote) return;
+      if (cancelled) return;
+      // If the cloud has nothing saved yet (new column default is empty
+      // arrays), DO NOT wipe the tester's existing local checks. Instead
+      // push the local state up so other viewers see them.
+      const remoteEmpty =
+        !remote || (remote.steps.length === 0 && remote.substeps.length === 0);
+      if (remoteEmpty) {
+        if (checkedSteps.size > 0 || checkedSubsteps.size > 0) {
+          void cloudPushCheckedSteps(t.id, {
+            steps: Array.from(checkedSteps),
+            substeps: Array.from(checkedSubsteps),
+          });
+        }
+        return;
+      }
       const steps = new Set<number>(remote.steps);
       const subs = new Set<string>(remote.substeps);
       setCheckedSteps(steps);
