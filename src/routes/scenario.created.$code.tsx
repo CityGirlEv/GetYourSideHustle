@@ -131,9 +131,14 @@ function ScenarioCreated() {
             </Button>
           </Link>
 
-          <Button onClick={() => setOptInOpen(true)} variant="outline" className="w-full">
-            <Phone className="h-4 w-4 mr-2" /> Have a licensed expert contact me
-          </Button>
+          <div className="space-y-1">
+            <Button onClick={() => setOptInOpen(true)} variant="outline" className="w-full">
+              <Phone className="h-4 w-4 mr-2" /> Have a licensed expert contact me
+            </Button>
+            <p className="text-[11px] text-muted-foreground px-1 text-left">
+              Opens a short form to share just your email and phone so a licensed Medicare expert can reach out about this scenario. Entirely optional — we never contact you unless you opt in here.
+            </p>
+          </div>
 
           <a
             href="https://www.medicare.gov/Pubs/pdf/10050-Medicare-and-You.pdf"
