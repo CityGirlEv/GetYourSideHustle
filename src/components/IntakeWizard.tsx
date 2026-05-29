@@ -437,6 +437,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
       {step === 2 && (
         <div className="space-y-4">
           <h3 className="font-display text-xl font-bold">Step 2 · Cost preference</h3>
+          <p className="text-xs text-muted-foreground">Next: Conditions →</p>
           <Card className="p-4 bg-primary/5 border-primary/20">
             <p className="font-medium mb-3">Is minimizing your monthly out-of-pocket cost a top priority, or do you prefer total predictability (no surprise medical bills)?</p>
             <div className="flex items-center gap-3">
