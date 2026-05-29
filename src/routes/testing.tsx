@@ -49,6 +49,7 @@ import {
   listTestEvidence, uploadTestEvidence, deleteTestEvidence, getTestEvidenceUrl,
   EVIDENCE_ACCEPT_ATTR, type EvidenceFile,
 } from "@/lib/test-evidence";
+import { validateFailDetails, formatFailNote } from "@/lib/fail-details";
 import { toast } from "sonner";
 import { MultiSelect, multiSelectMatches } from "@/components/ui/multi-select";
 import { useConfirm } from "@/components/ConfirmDialog";
@@ -1596,6 +1597,12 @@ function TestCaseCard({
       else window.localStorage.removeItem(failedStepKey);
     } catch { /* ignore */ }
   };
+  // When the tester picks Fail / Failed-Retest we pop a modal that forces
+  // a note + which step failed + a screenshot (or an explicit "no
+  // screenshot available" acknowledgement). The status flip is only
+  // applied after the modal is satisfied.
+  const { user: cardUser } = useApp();
+  const [pendingFail, setPendingFail] = useState<TestStatus | null>(null);
   const handleStatusChange = async (s: TestStatus) => {
     if (s === "pass" && !allStepsChecked) {
       const missing = t.steps.length - checkedSteps.size;
@@ -1607,6 +1614,10 @@ function TestCaseCard({
         confirmLabel: "OK",
         cancelLabel: "Back",
       });
+      return;
+    }
+    if ((s === "fail" || s === "failed_retest") && s !== status) {
+      setPendingFail(s);
       return;
     }
     onChange(s);
@@ -1845,7 +1856,183 @@ function TestCaseCard({
         </div>
       )}
       <TestEvidence testId={t.id} />
+      <FailDetailsDialog
+        open={pendingFail != null}
+        onOpenChange={(v) => { if (!v) setPendingFail(null); }}
+        test={t}
+        initialNote={qaNote}
+        initialStep={failedStep}
+        userId={cardUser?.id ?? null}
+        onConfirm={async ({ note, stepLabel, stepIndex, file, noScreenshot }) => {
+          const s = pendingFail;
+          if (!s) return;
+          if (file && cardUser) {
+            try {
+              await uploadTestEvidence(cardUser.id, t.id, file);
+            } catch (e) {
+              toast.error(`Screenshot upload failed: ${(e as Error).message}`);
+              return;
+            }
+          }
+          persistFailedStep(String(stepIndex + 1));
+          onQaNoteChange(formatFailNote(qaNote, { note, stepLabel, noScreenshot }));
+          onChange(s);
+          setPendingFail(null);
+        }}
+      />
     </Card>
+  );
+}
+
+/* =========================== FAIL DETAILS DIALOG =========================== */
+/**
+ * Forces three pieces of context when a tester records a Fail:
+ *   1. A note explaining what went wrong.
+ *   2. The 1-based step where the failure was observed.
+ *   3. A screenshot upload OR the explicit "no screenshot available" box.
+ */
+function FailDetailsDialog({
+  open, onOpenChange, test, initialNote, initialStep, userId, onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  test: TestCase;
+  initialNote: string;
+  initialStep: string;
+  userId: string | null;
+  onConfirm: (payload: {
+    note: string;
+    stepLabel: string;
+    stepIndex: number;
+    file: File | null;
+    noScreenshot: boolean;
+  }) => void | Promise<void>;
+}) {
+  const [note, setNote] = useState("");
+  const [stepIndex, setStepIndex] = useState<number | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [noScreenshot, setNoScreenshot] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  // Reset / hydrate every time the dialog opens for a new failure.
+  useEffect(() => {
+    if (!open) return;
+    setNote("");
+    const parsed = parseInt(initialStep, 10);
+    setStepIndex(Number.isFinite(parsed) && parsed > 0 ? parsed - 1 : null);
+    setFile(null);
+    setNoScreenshot(false);
+    setBusy(false);
+  }, [open, initialStep]);
+
+  const error = validateFailDetails({
+    note,
+    stepIndex,
+    hasEvidence: !!file,
+    noScreenshot,
+  });
+
+  const submit = async () => {
+    if (error || stepIndex == null) return;
+    setBusy(true);
+    try {
+      await onConfirm({
+        note,
+        stepLabel: String(stepIndex + 1),
+        stepIndex,
+        file,
+        noScreenshot,
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!busy) onOpenChange(v); }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Record failure for {test.id}</DialogTitle>
+          <DialogDescription>
+            Capture what broke before flipping this test to Fail. All three fields are required.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3 text-sm">
+          <div>
+            <Label className="text-xs font-semibold text-destructive">Failure note (required)</Label>
+            <Textarea
+              autoFocus
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              rows={3}
+              placeholder="What did you see? What did you expect? Browser/device, error text…"
+              className="mt-1 text-xs"
+            />
+          </div>
+          <div>
+            <Label className="text-xs font-semibold text-destructive">Which step failed?</Label>
+            <select
+              value={stepIndex == null ? "" : String(stepIndex)}
+              onChange={(e) => setStepIndex(e.target.value === "" ? null : Number(e.target.value))}
+              className="mt-1 w-full text-xs rounded-md border border-destructive/40 bg-destructive/5 px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-destructive/30"
+            >
+              <option value="">Select step…</option>
+              {test.steps.map((s, i) => (
+                <option key={i} value={String(i)}>
+                  Step {i + 1} — {s.length > 60 ? s.slice(0, 57) + "…" : s}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold text-destructive">Screenshot</Label>
+            <input
+              type="file"
+              accept={EVIDENCE_ACCEPT_ATTR}
+              disabled={noScreenshot || !userId}
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              className="block w-full text-xs file:mr-2 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-1 file:text-primary-foreground"
+            />
+            {file && (
+              <p className="text-[11px] text-muted-foreground">
+                Will upload: <span className="font-mono">{file.name}</span>
+              </p>
+            )}
+            <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={noScreenshot}
+                onChange={(e) => {
+                  setNoScreenshot(e.target.checked);
+                  if (e.target.checked) setFile(null);
+                }}
+                className="h-3.5 w-3.5 accent-destructive"
+              />
+              No screenshot available
+            </label>
+            {!userId && (
+              <p className="text-[11px] text-amber-700">Sign in to attach a screenshot.</p>
+            )}
+          </div>
+          {error && (
+            <p className="text-[11px] text-destructive">{error}</p>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={submit}
+            disabled={!!error || busy}
+          >
+            {busy ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <XCircle className="h-4 w-4 mr-1" />}
+            Record failure
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
