@@ -13,6 +13,7 @@ import { rankedPlanDetails } from "@/lib/plan-details";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { getScenarioByCode } from "@/lib/scenario-lookup.functions";
+import { ExpertOptInDialog } from "@/components/ExpertOptInDialog";
 
 export const Route = createFileRoute("/scenario/$code")({
   head: () => ({
