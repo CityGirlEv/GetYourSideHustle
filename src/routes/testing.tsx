@@ -1856,6 +1856,30 @@ function TestCaseCard({
         </div>
       )}
       <TestEvidence testId={t.id} />
+      <FailDetailsDialog
+        open={pendingFail != null}
+        onOpenChange={(v) => { if (!v) setPendingFail(null); }}
+        test={t}
+        initialNote={qaNote}
+        initialStep={failedStep}
+        userId={cardUser?.id ?? null}
+        onConfirm={async ({ note, stepLabel, stepIndex, file, noScreenshot }) => {
+          const s = pendingFail;
+          if (!s) return;
+          if (file && cardUser) {
+            try {
+              await uploadTestEvidence(cardUser.id, t.id, file);
+            } catch (e) {
+              toast.error(`Screenshot upload failed: ${(e as Error).message}`);
+              return;
+            }
+          }
+          persistFailedStep(String(stepIndex + 1));
+          onQaNoteChange(formatFailNote(qaNote, { note, stepLabel, noScreenshot }));
+          onChange(s);
+          setPendingFail(null);
+        }}
+      />
     </Card>
   );
 }
