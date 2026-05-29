@@ -644,6 +644,22 @@ export function TestPlanTab() {
     return raw;
   };
   const qaVisibleOwners = useMemo(() => getQaVisibleOwners(user), [user]);
+  // Original assignee BEFORE the fail-→Dev reroute. QA scoping uses this so
+  // a QA still sees their own tests even after they mark them failed (the
+  // displayed owner becomes "Eng", but the test stays in their list).
+  const ownerForQaScope = (t: TestCase): string => {
+    const platformSuffix = TEST_PLATFORMS.find((p) => t.id.endsWith(`-${p.suffix}`))?.suffix;
+    const sourceId = platformSuffix ? t.id.slice(0, -platformSuffix.length - 1) : t.id;
+    const ov = assigneeOverrides[t.id] || assigneeOverrides[sourceId];
+    let raw: string;
+    if (customIds.has(t.id)) raw = ov || t.assignee || "Unassigned";
+    else if (AUTOMATED_TEST_IDS.has(t.id)) raw = t.assignee || "Unassigned";
+    else if (t.assignee) raw = ov || t.assignee;
+    else raw = ov || getTestAssignee(t, "not_run");
+    if (raw === "Me") return "Evelyn";
+    if (raw === "Design" || raw === "Dev") return "Eng";
+    return raw;
+  };
   const effSprint = (t: TestCase): string => {
     const ov = sprintOverrides[t.id];
     if (ov) return ov;
@@ -664,7 +680,10 @@ export function TestPlanTab() {
   // breakdowns only ever reflect their own tests. Admins see everything.
   const scopedCases = useMemo(
     () => restrictToSelf
-      ? effectiveCases.filter((t) => qaVisibleOwners.includes(effAssignee(t)))
+      ? effectiveCases.filter((t) =>
+          qaVisibleOwners.includes(effAssignee(t)) ||
+          qaVisibleOwners.includes(ownerForQaScope(t)),
+        )
       : effectiveCases,
     [effectiveCases, restrictToSelf, qaVisibleOwners, statuses, assigneeOverrides, customIds],
   );
