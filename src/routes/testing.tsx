@@ -66,6 +66,38 @@ function deriveTestPath(t: TestCase): string | null {
   return m ? m[1] : null;
 }
 
+/**
+ * Open a test target. Desktop & phones get a separate popup window so the
+ * Testing Portal stays visible alongside the app under test. iPads can't
+ * meaningfully manage multiple browser windows, so they open in a new tab.
+ */
+function isIpad(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent || "";
+  if (/iPad/.test(ua)) return true;
+  // iPadOS 13+ reports as MacIntel with touch support
+  return navigator.platform === "MacIntel" && (navigator.maxTouchPoints ?? 0) > 1;
+}
+
+function openTestTarget(path: string) {
+  if (typeof window === "undefined") return;
+  if (isIpad()) {
+    window.open(path, "_blank", "noopener");
+    return;
+  }
+  const w = Math.min(1100, Math.round(window.screen.availWidth * 0.8));
+  const h = Math.min(900, Math.round(window.screen.availHeight * 0.85));
+  const left = window.screenX + Math.max(0, (window.outerWidth - w) / 2);
+  const top = window.screenY + Math.max(0, (window.outerHeight - h) / 2);
+  const features = `popup=yes,width=${w},height=${h},left=${left},top=${top},menubar=no,toolbar=no,location=no,status=no,noopener`;
+  const win = window.open(path, "test-target", features);
+  // Some mobile browsers ignore popup features and fall back to a new tab — that's acceptable.
+  if (!win) {
+    // Popup blocked — fall back to a new tab so the tester still gets there.
+    window.open(path, "_blank", "noopener");
+  }
+}
+
 function TestTargetLink({ test }: { test: TestCase }) {
   const path = deriveTestPath(test);
   if (!path) return null;
@@ -73,19 +105,23 @@ function TestTargetLink({ test }: { test: TestCase }) {
   const label = path.length > 28 ? path.slice(0, 27) + "…" : path;
   const className =
     "inline-flex items-center gap-1 text-[11px] font-mono rounded-full border border-primary/40 bg-primary/5 px-2 py-0.5 text-primary hover:bg-primary/10 transition-colors";
+  const onClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    openTestTarget(path);
+  };
   if (isExternal) {
     return (
-      <a href={path} target="_blank" rel="noreferrer" className={className} title={`Open ${path}`}>
+      <a href={path} target="_blank" rel="noreferrer" onClick={onClick} className={className} title={`Open ${path}`}>
         <ExternalLink className="h-3 w-3" />
         {label}
       </a>
     );
   }
   return (
-    <Link to={path as never} target="_blank" className={className} title={`Open ${path}`}>
+    <a href={path} target="_blank" rel="noreferrer" onClick={onClick} className={className} title={`Open ${path}`}>
       <ExternalLink className="h-3 w-3" />
       {label}
-    </Link>
+    </a>
   );
 }
 
@@ -94,17 +130,14 @@ function TestTitleLink({ test, children }: { test: TestCase; children: React.Rea
   if (!path) return <>{children}</>;
   const isExternal = /^https?:\/\//.test(path);
   const className = "hover:underline hover:text-primary transition-colors";
-  if (isExternal) {
-    return (
-      <a href={path} target="_blank" rel="noreferrer" className={className} title={`Open ${path}`}>
-        {children}
-      </a>
-    );
-  }
+  const onClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    openTestTarget(path);
+  };
   return (
-    <Link to={path as never} target="_blank" className={className} title={`Open ${path}`}>
+    <a href={path} target="_blank" rel="noreferrer" onClick={onClick} className={className} title={`Open ${path}`}>
       {children}
-    </Link>
+    </a>
   );
 }
 
@@ -1800,6 +1833,11 @@ function TestCaseCard({
       <div className="grid md:grid-cols-2 gap-3 text-xs">
         <div>
           <div className="font-semibold text-foreground mb-1">Steps</div>
+          {deriveTestPath(t) && (
+            <p className="text-[11px] text-primary mb-1.5">
+              <span className="font-semibold">Step 1:</span> Click the link above to open the test page (opens in a separate window on desktop &amp; phone, or a new tab on iPad).
+            </p>
+          )}
           <ol className="space-y-1 text-muted-foreground">
             {t.steps.map((s, i) => {
               const isChecked = checkedSteps.has(i);
