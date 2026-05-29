@@ -163,6 +163,15 @@ function ScenarioSummary() {
             </Tabs>
 
             <div className="grid grid-cols-2 gap-3">
+              <Button onClick={() => setOptInOpen(true)} variant="default" className="w-full">
+                <Phone className="h-4 w-4 mr-2" /> Contact an agent
+              </Button>
+              <Button onClick={sharePage} variant="outline" className="w-full">
+                <Share2 className="h-4 w-4 mr-2" /> Share
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
               <Button onClick={downloadPdf} variant="outline" className="w-full">
                 <FileText className="h-4 w-4 mr-2" /> Download PDF
               </Button>
