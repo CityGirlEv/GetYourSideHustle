@@ -1185,6 +1185,15 @@ export function TestPlanTab() {
           setSaveOpen(v);
           // Dialog is mounted/dismissed — preparing phase is over.
           setSaveBusy(null);
+          if (!v && saveScopeId) {
+            requestAnimationFrame(() => {
+              const el = document.getElementById(`test-row-${saveScopeId}`);
+              if (el) {
+                el.scrollIntoView({ behavior: "smooth", block: "center" });
+                el.focus({ preventScroll: true });
+              }
+            });
+          }
           if (!v) setSaveScopeId(null);
         }}
         changes={saveScopeId ? pendingChanges.filter((c) => c.testId === saveScopeId) : pendingChanges}
