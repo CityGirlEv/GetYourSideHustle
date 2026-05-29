@@ -4,7 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ArrowLeft, Pill, MapPin, User, Calendar, DollarSign, FileText, FileDown, Sparkles, CheckCircle2, ExternalLink, AlertCircle, Phone, Mail } from "lucide-react";
+import { ArrowLeft, Pill, MapPin, User, Calendar, DollarSign, FileText, FileDown, Sparkles, CheckCircle2, ExternalLink, AlertCircle, Phone, Mail, Share2, Copy } from "lucide-react";
 import type { ScenarioPdfInput } from "@/lib/scenario-pdf";
 import { downloadConsumerScenarioPdf } from "@/lib/scenario-pdf";
 import { downloadScenarioXlsx } from "@/lib/scenario-xlsx";
