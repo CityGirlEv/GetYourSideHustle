@@ -602,6 +602,16 @@ export function TestPlanTab() {
     } else {
       toast.error(`Saved locally, but ${failCount} of ${ops.length} cloud write${ops.length === 1 ? "" : "s"} failed — see console.`);
     }
+    // Return focus / scroll to the test that was just saved (single-test scope)
+    if (saveScopeId) {
+      requestAnimationFrame(() => {
+        const el = document.getElementById(`test-row-${saveScopeId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.focus({ preventScroll: true });
+        }
+      });
+    }
   };
 
   const areas = useMemo(
