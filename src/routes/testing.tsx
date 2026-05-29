@@ -1553,7 +1553,7 @@ function TestCaseCard({
     onChange(s);
   };
   return (
-    <Card className={`p-4 ${shade} ${selected ? "ring-2 ring-primary/60" : ""}`}>
+    <Card id={`test-row-${t.id}`} tabIndex={-1} className={`p-4 ${shade} ${selected ? "ring-2 ring-primary/60" : ""}`}>
       <div className="flex flex-wrap items-start gap-2 mb-2">
         <input
           type="checkbox"
