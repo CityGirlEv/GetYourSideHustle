@@ -613,6 +613,7 @@ export type Database = {
       test_results: {
         Row: {
           assignee: string | null
+          checked_steps: Json
           description_override: Json | null
           dev_notes: Json
           qa_notes: Json
@@ -625,6 +626,7 @@ export type Database = {
         }
         Insert: {
           assignee?: string | null
+          checked_steps?: Json
           description_override?: Json | null
           dev_notes?: Json
           qa_notes?: Json
@@ -637,6 +639,7 @@ export type Database = {
         }
         Update: {
           assignee?: string | null
+          checked_steps?: Json
           description_override?: Json | null
           dev_notes?: Json
           qa_notes?: Json
