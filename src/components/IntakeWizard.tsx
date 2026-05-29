@@ -330,6 +330,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
       {step === 1 && (
         <div className="space-y-4">
           <h3 className="font-display text-xl font-bold">Step 1 · Basics (no name, no birth date)</h3>
+          <p className="text-xs text-muted-foreground">Next: Cost preference →</p>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>Year of birth <span className="text-destructive">*</span></Label>
@@ -436,6 +437,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
       {step === 2 && (
         <div className="space-y-4">
           <h3 className="font-display text-xl font-bold">Step 2 · Cost preference</h3>
+          <p className="text-xs text-muted-foreground">Next: Conditions →</p>
           <Card className="p-4 bg-primary/5 border-primary/20">
             <p className="font-medium mb-3">Is minimizing your monthly out-of-pocket cost a top priority, or do you prefer total predictability (no surprise medical bills)?</p>
             <div className="flex items-center gap-3">
@@ -449,6 +451,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
       {step === 3 && (
         <div className="space-y-4">
           <h3 className="font-display text-xl font-bold">Step 3 · Conditions (optional)</h3>
+          <p className="text-xs text-muted-foreground">Next: Medications →</p>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
             {CONDITIONS.map((c) => (
               <button key={c} type="button" onClick={()=>toggleCondition(c)}

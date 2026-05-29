@@ -38,8 +38,8 @@ test.describe("public smoke", () => {
     await expect(page).toHaveURL(/\/(auth|login|$)/);
   });
 
-  test("email-unsubscribe page renders for invalid token", async ({ page }) => {
-    await page.goto("/email-unsubscribe");
+  test("unsubscribe page renders for invalid token", async ({ page }) => {
+    await page.goto("/unsubscribe");
     await expect(page.getByRole("heading", { name: /email preferences/i })).toBeVisible();
   });
 
