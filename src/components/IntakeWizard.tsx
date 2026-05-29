@@ -579,8 +579,8 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
 
           {meds.map((m) => (
             <Card key={m.id} className="p-4 space-y-2">
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <div className="relative col-span-2 md:col-span-1">
+              <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
+                <div className="relative col-span-2 md:col-span-2">
                   <div className="relative">
                     <Search className="h-3.5 w-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                     <Input
