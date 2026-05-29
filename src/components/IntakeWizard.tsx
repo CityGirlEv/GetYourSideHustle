@@ -322,7 +322,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
       </div>
 
       <div className="flex items-center gap-2 mb-6">
-        {[1, 2, 3, 4].map((s) => (
+        {[1, 2, 3].map((s) => (
           <div key={s} className={`flex-1 h-1.5 rounded-full ${step >= s ? "bg-primary" : "bg-border"}`} />
         ))}
       </div>
@@ -436,30 +436,47 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
 
       {step === 2 && (
         <div className="space-y-4">
-          <h3 className="font-display text-xl font-bold">Step 2 · Cost preference</h3>
-          <p className="text-xs text-muted-foreground">Next: Conditions →</p>
-          <Card className="p-4 bg-primary/5 border-primary/20">
-            <p className="font-medium mb-3">Is minimizing your monthly out-of-pocket cost a top priority, or do you prefer total predictability (no surprise medical bills)?</p>
-            <div className="flex items-center gap-3">
-              <Switch checked={costPref === "minimize_monthly"} onCheckedChange={(v)=>setCostPref(v ? "minimize_monthly" : "predictability")}/>
-              <span className="font-semibold">{costPref === "minimize_monthly" ? "Minimize monthly cost" : "Predictability matters more"}</span>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {step === 3 && (
-        <div className="space-y-4">
-          <h3 className="font-display text-xl font-bold">Step 3 · Conditions (optional)</h3>
+          <h3 className="font-display text-xl font-bold">Step 2 · Preferences &amp; Conditions</h3>
           <p className="text-xs text-muted-foreground">Next: Medications →</p>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-            {CONDITIONS.map((c) => (
-              <button key={c} type="button" onClick={()=>toggleCondition(c)}
-                className={`text-sm border rounded-md px-3 py-2 text-left transition ${conditions.includes(c) ? "bg-primary text-primary-foreground border-primary" : "bg-background border-input"}`}>
-                {c}
-              </button>
-            ))}
-          </div>
+
+          <Card className="p-4 bg-primary/5 border-primary/20 space-y-3">
+            <div className="text-sm font-semibold">a. Cost preference</div>
+            <p className="text-xs text-muted-foreground">Pick one — what matters most to you?</p>
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                className="mt-1 h-4 w-4 accent-primary"
+                checked={costPref === "minimize_monthly"}
+                onChange={() => setCostPref("minimize_monthly")}
+              />
+              <span className="text-sm"><strong>Minimize monthly cost</strong> — lowest premium each month.</span>
+            </label>
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                className="mt-1 h-4 w-4 accent-primary"
+                checked={costPref === "predictability"}
+                onChange={() => setCostPref("predictability")}
+              />
+              <span className="text-sm"><strong>Predictability matters more</strong> — no surprise medical bills.</span>
+            </label>
+          </Card>
+
+          <Card className="p-4 bg-primary/5 border-primary/20 space-y-3">
+            <div className="text-sm font-semibold">b. Conditions <span className="text-xs font-normal text-muted-foreground">(optional — check all that apply)</span></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {CONDITIONS.map((c) => (
+                <label key={c} className="flex items-center gap-2 text-sm cursor-pointer border border-input rounded-md px-3 py-2 bg-background hover:bg-muted/40">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 accent-primary"
+                    checked={conditions.includes(c)}
+                    onChange={() => toggleCondition(c)}
+                  />
+                  <span>{c}</span>
+                </label>
+              ))}
+            </div>
           {conditions.includes("Other") && (
             <Card className="p-4 bg-primary/5 border-primary/20 space-y-3">
               <Label>Add your condition(s)</Label>
@@ -488,12 +505,13 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
               )}
             </Card>
           )}
+          </Card>
         </div>
       )}
 
-      {step === 4 && (
+      {step === 3 && (
         <div className="space-y-4">
-          <h3 className="font-display text-xl font-bold">Step 4 · Medications</h3>
+          <h3 className="font-display text-xl font-bold">Step 3 · Medications</h3>
 
           <Card className="p-4 bg-muted/40 border-dashed">
             <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Your scenario so far</div>
@@ -518,7 +536,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
             );
             if (!suggestions.length) return (
               <p className="text-xs text-muted-foreground">
-                Tip: go back to Step 3 and pick your conditions to see a list of common medications you can add with one click.
+                Tip: go back to Step 2 and pick your conditions to see a list of common medications you can add with one click.
               </p>
             );
             return (
@@ -749,7 +767,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
 
       <div className="flex justify-between mt-6">
         <Button variant="outline" disabled={step === 1} onClick={() => setStep(step - 1)}><ChevronLeft className="h-4 w-4"/>Back</Button>
-        {step < 4 ? (
+        {step < 3 ? (
           <Button onClick={() => {
             if (step === 1) {
               if (!birthYear) { toast.error("Please select your year of birth before continuing."); return; }
