@@ -602,6 +602,16 @@ export function TestPlanTab() {
     } else {
       toast.error(`Saved locally, but ${failCount} of ${ops.length} cloud write${ops.length === 1 ? "" : "s"} failed — see console.`);
     }
+    // Return focus / scroll to the test that was just saved (single-test scope)
+    if (saveScopeId) {
+      requestAnimationFrame(() => {
+        const el = document.getElementById(`test-row-${saveScopeId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.focus({ preventScroll: true });
+        }
+      });
+    }
   };
 
   const areas = useMemo(
@@ -1175,6 +1185,15 @@ export function TestPlanTab() {
           setSaveOpen(v);
           // Dialog is mounted/dismissed — preparing phase is over.
           setSaveBusy(null);
+          if (!v && saveScopeId) {
+            requestAnimationFrame(() => {
+              const el = document.getElementById(`test-row-${saveScopeId}`);
+              if (el) {
+                el.scrollIntoView({ behavior: "smooth", block: "center" });
+                el.focus({ preventScroll: true });
+              }
+            });
+          }
           if (!v) setSaveScopeId(null);
         }}
         changes={saveScopeId ? pendingChanges.filter((c) => c.testId === saveScopeId) : pendingChanges}
@@ -1553,7 +1572,7 @@ function TestCaseCard({
     onChange(s);
   };
   return (
-    <Card className={`p-4 ${shade} ${selected ? "ring-2 ring-primary/60" : ""}`}>
+    <Card id={`test-row-${t.id}`} tabIndex={-1} className={`p-4 ${shade} ${selected ? "ring-2 ring-primary/60" : ""}`}>
       <div className="flex flex-wrap items-start gap-2 mb-2">
         <input
           type="checkbox"
