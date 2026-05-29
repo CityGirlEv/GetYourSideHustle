@@ -418,8 +418,7 @@ export function TestPlanTab() {
       } else if (AUTOMATED_TEST_IDS.has(id)) {
         raw = t.assignee || "Unassigned";
       } else if (t.assignee) {
-        const status = savedStatuses[id];
-        raw = (status === "fail" || status === "failed_retest") ? "Dev" : (ov || t.assignee);
+        raw = ov || t.assignee;
       } else {
         raw = ov || getTestAssignee(t, savedStatuses[id]);
       }
