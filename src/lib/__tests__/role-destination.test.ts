@@ -33,3 +33,19 @@ describe("safeSignInRedirect", () => {
     expect(safeSignInRedirect(null, "/admin")).toBe("/admin");
   });
 });
+
+describe("qa routing override", () => {
+  it("routes QA users to /testing even when their primary role is something else", () => {
+    const userWithQaRole = { roles: ["qa", "advisor"], role: "advisor" };
+    const qaOverride = userWithQaRole.roles.includes("qa") ? "/testing" : null;
+    const destination = qaOverride ?? roleDestination(userWithQaRole.role);
+    expect(destination).toBe("/testing");
+  });
+
+  it("does not override when the user has no qa role", () => {
+    const userWithoutQa = { roles: ["advisor"], role: "advisor" };
+    const qaOverride = userWithoutQa.roles.includes("qa") ? "/testing" : null;
+    const destination = qaOverride ?? roleDestination(userWithoutQa.role);
+    expect(destination).toBe("/advisor");
+  });
+});
