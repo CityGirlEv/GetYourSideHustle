@@ -4,7 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ArrowLeft, Pill, MapPin, User, Calendar, DollarSign, FileText, FileDown, Sparkles, CheckCircle2, ExternalLink, AlertCircle, Phone, Mail } from "lucide-react";
+import { ArrowLeft, Pill, MapPin, User, Calendar, DollarSign, FileText, FileDown, Sparkles, CheckCircle2, ExternalLink, AlertCircle, Phone, Mail, Share2, Copy } from "lucide-react";
 import type { ScenarioPdfInput } from "@/lib/scenario-pdf";
 import { downloadConsumerScenarioPdf } from "@/lib/scenario-pdf";
 import { downloadScenarioXlsx } from "@/lib/scenario-xlsx";
@@ -13,6 +13,7 @@ import { rankedPlanDetails } from "@/lib/plan-details";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { getScenarioByCode } from "@/lib/scenario-lookup.functions";
+import { ExpertOptInDialog } from "@/components/ExpertOptInDialog";
 
 export const Route = createFileRoute("/scenario/$code")({
   head: () => ({
@@ -29,6 +30,7 @@ function ScenarioSummary() {
   const [scenario, setScenario] = useState<(ScenarioPdfInput & { county?: string; contactRequests?: Array<{ email: string; phone: string; createdAt: string }> }) | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [optInOpen, setOptInOpen] = useState(false);
   const fetchByCode = useServerFn(getScenarioByCode);
 
   useEffect(() => {
@@ -63,6 +65,35 @@ function ScenarioSummary() {
       toast.success("PDF downloaded");
     } catch (e) { toast.error("Could not generate PDF"); console.error(e); }
   };
+
+  const sharePage = async () => {
+    const url = `${window.location.origin}/scenario/${code}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: "My Medicare Scenario", url });
+        return;
+      } catch { /* fallback */ }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Link copied to clipboard");
+    } catch {
+      toast.error("Could not copy link");
+    }
+  };
+
+  const scenarioSnapshot = scenario ? {
+    year: scenario.year,
+    birthYear: scenario.birthYear,
+    zip3: scenario.zip3,
+    county: scenario.county,
+    gender: scenario.gender,
+    tobacco: scenario.tobacco,
+    incomeBand: scenario.incomeBand,
+    costPreference: scenario.costPreference,
+    conditions: scenario.conditions,
+    medications: scenario.medications,
+  } : undefined;
 
   return (
     <AppShell title="Scenario summary" subtitle={`ID ${code}`}>
@@ -132,6 +163,15 @@ function ScenarioSummary() {
             </Tabs>
 
             <div className="grid grid-cols-2 gap-3">
+              <Button onClick={() => setOptInOpen(true)} variant="default" className="w-full">
+                <Phone className="h-4 w-4 mr-2" /> Contact an agent
+              </Button>
+              <Button onClick={sharePage} variant="outline" className="w-full">
+                <Share2 className="h-4 w-4 mr-2" /> Share
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
               <Button onClick={downloadPdf} variant="outline" className="w-full">
                 <FileText className="h-4 w-4 mr-2" /> Download PDF
               </Button>
@@ -150,6 +190,12 @@ function ScenarioSummary() {
           </>
         )}
       </div>
+      <ExpertOptInDialog
+        open={optInOpen}
+        onOpenChange={setOptInOpen}
+        scenarioCode={code}
+        scenarioSnapshot={scenarioSnapshot}
+      />
     </AppShell>
   );
 }
