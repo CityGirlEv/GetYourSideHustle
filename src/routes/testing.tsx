@@ -1833,6 +1833,11 @@ function TestCaseCard({
       <div className="grid md:grid-cols-2 gap-3 text-xs">
         <div>
           <div className="font-semibold text-foreground mb-1">Steps</div>
+          {deriveTestPath(t) && (
+            <p className="text-[11px] text-primary mb-1.5">
+              <span className="font-semibold">Step 1:</span> Click the link above to open the test page (opens in a separate window on desktop &amp; phone, or a new tab on iPad).
+            </p>
+          )}
           <ol className="space-y-1 text-muted-foreground">
             {t.steps.map((s, i) => {
               const isChecked = checkedSteps.has(i);
