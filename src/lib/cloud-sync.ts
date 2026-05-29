@@ -17,6 +17,42 @@ import { TASKS_STORAGE_KEY, type TaskRow } from "@/lib/tasks-sheet";
 export interface NoteEntry { author_id: string; author_name: string; text: string; at: string }
 export type NoteKind = "qa" | "dev";
 
+export interface CheckedSteps { steps: number[]; substeps: string[] }
+
+/** Upsert the checked-step state for a test. Shared across all viewers. */
+export async function cloudPushCheckedSteps(test_id: string, checked: CheckedSteps): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  const u = await uid();
+  if (!u) { warnNotSignedIn("cloudPushCheckedSteps"); return false; }
+  const { error } = await supabase
+    .from("test_results")
+    .upsert({ test_id, checked_steps: checked, updated_by: u.id } as never, { onConflict: "test_id" });
+  if (error) {
+    console.warn("[cloud-sync] cloudPushCheckedSteps", error.message);
+    try { toast.error("Couldn't save step checks to cloud", { description: error.message }); } catch { /* noop */ }
+    return false;
+  }
+  return true;
+}
+
+/** Fetch the saved checked-step state for a test (null if none saved). */
+export async function cloudFetchCheckedSteps(test_id: string): Promise<CheckedSteps | null> {
+  if (typeof window === "undefined") return null;
+  const { data, error } = await supabase
+    .from("test_results")
+    .select("checked_steps")
+    .eq("test_id", test_id)
+    .maybeSingle();
+  if (error || !data) return null;
+  const raw = (data as { checked_steps?: unknown }).checked_steps;
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as { steps?: unknown; substeps?: unknown };
+  return {
+    steps: Array.isArray(r.steps) ? r.steps.filter((n): n is number => typeof n === "number") : [],
+    substeps: Array.isArray(r.substeps) ? r.substeps.filter((s): s is string => typeof s === "string") : [],
+  };
+}
+
 async function uid(): Promise<{ id: string; name: string } | null> {
   const { data } = await supabase.auth.getUser();
   if (!data.user) return null;
