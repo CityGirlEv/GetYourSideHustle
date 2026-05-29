@@ -451,6 +451,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
       {step === 3 && (
         <div className="space-y-4">
           <h3 className="font-display text-xl font-bold">Step 3 · Conditions (optional)</h3>
+          <p className="text-xs text-muted-foreground">Next: Medications →</p>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
             {CONDITIONS.map((c) => (
               <button key={c} type="button" onClick={()=>toggleCondition(c)}
