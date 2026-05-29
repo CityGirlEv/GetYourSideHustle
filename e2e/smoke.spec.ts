@@ -38,6 +38,11 @@ test.describe("public smoke", () => {
     await expect(page).toHaveURL(/\/(auth|login|$)/);
   });
 
+  test("email-unsubscribe page renders for invalid token", async ({ page }) => {
+    await page.goto("/email-unsubscribe");
+    await expect(page.getByRole("heading", { name: /email preferences/i })).toBeVisible();
+  });
+
   test("scenario builder is gated behind auth (anonymous → /auth)", async ({ page }) => {
     await page.goto("/scenario/new");
     await expect(page).toHaveURL(/\/(auth|login|$)/);

@@ -23,6 +23,7 @@ import { Route as QaManualRouteImport } from './routes/qa-manual'
 import { Route as QaCreditsRouteImport } from './routes/qa-credits'
 import { Route as QaRouteImport } from './routes/qa'
 import { Route as NdaRouteImport } from './routes/nda'
+import { Route as EmailUnsubscribeRouteImport } from './routes/email-unsubscribe'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AgentRouteImport } from './routes/agent'
 import { Route as AdvisorRouteImport } from './routes/advisor'
@@ -112,6 +113,11 @@ const QaRoute = QaRouteImport.update({
 const NdaRoute = NdaRouteImport.update({
   id: '/nda',
   path: '/nda',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
+  id: '/email-unsubscribe',
+  path: '/email-unsubscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -224,6 +230,7 @@ export interface FileRoutesByFullPath {
   '/advisor': typeof AdvisorRouteWithChildren
   '/agent': typeof AgentRouteWithChildren
   '/auth': typeof AuthRoute
+  '/email-unsubscribe': typeof EmailUnsubscribeRoute
   '/nda': typeof NdaRoute
   '/qa': typeof QaRoute
   '/qa-credits': typeof QaCreditsRoute
@@ -260,6 +267,7 @@ export interface FileRoutesByTo {
   '/advisor': typeof AdvisorRouteWithChildren
   '/agent': typeof AgentRouteWithChildren
   '/auth': typeof AuthRoute
+  '/email-unsubscribe': typeof EmailUnsubscribeRoute
   '/nda': typeof NdaRoute
   '/qa': typeof QaRoute
   '/qa-credits': typeof QaCreditsRoute
@@ -297,6 +305,7 @@ export interface FileRoutesById {
   '/advisor': typeof AdvisorRouteWithChildren
   '/agent': typeof AgentRouteWithChildren
   '/auth': typeof AuthRoute
+  '/email-unsubscribe': typeof EmailUnsubscribeRoute
   '/nda': typeof NdaRoute
   '/qa': typeof QaRoute
   '/qa-credits': typeof QaCreditsRoute
@@ -335,6 +344,7 @@ export interface FileRouteTypes {
     | '/advisor'
     | '/agent'
     | '/auth'
+    | '/email-unsubscribe'
     | '/nda'
     | '/qa'
     | '/qa-credits'
@@ -371,6 +381,7 @@ export interface FileRouteTypes {
     | '/advisor'
     | '/agent'
     | '/auth'
+    | '/email-unsubscribe'
     | '/nda'
     | '/qa'
     | '/qa-credits'
@@ -407,6 +418,7 @@ export interface FileRouteTypes {
     | '/advisor'
     | '/agent'
     | '/auth'
+    | '/email-unsubscribe'
     | '/nda'
     | '/qa'
     | '/qa-credits'
@@ -444,6 +456,7 @@ export interface RootRouteChildren {
   AdvisorRoute: typeof AdvisorRouteWithChildren
   AgentRoute: typeof AgentRouteWithChildren
   AuthRoute: typeof AuthRoute
+  EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   NdaRoute: typeof NdaRoute
   QaRoute: typeof QaRoute
   QaCreditsRoute: typeof QaCreditsRoute
@@ -570,6 +583,13 @@ declare module '@tanstack/react-router' {
       path: '/nda'
       fullPath: '/nda'
       preLoaderRoute: typeof NdaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/email-unsubscribe': {
+      id: '/email-unsubscribe'
+      path: '/email-unsubscribe'
+      fullPath: '/email-unsubscribe'
+      preLoaderRoute: typeof EmailUnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -753,6 +773,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdvisorRoute: AdvisorRouteWithChildren,
   AgentRoute: AgentRouteWithChildren,
   AuthRoute: AuthRoute,
+  EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   NdaRoute: NdaRoute,
   QaRoute: QaRoute,
   QaCreditsRoute: QaCreditsRoute,
