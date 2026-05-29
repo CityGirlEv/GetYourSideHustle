@@ -634,14 +634,33 @@ export function TestPlanTab() {
       // assignable, so the fail-→Dev rule in getTestAssignee doesn't apply.
       raw = t.assignee || "Unassigned";
     } else if (t.assignee) {
-      const status = statuses[t.id];
-      raw = (status === "fail" || status === "failed_retest") ? "Dev" : (ov || t.assignee);
+      // Tests can have multiple owners. When a test fails the QA owner is
+      // retained (see effOwners) and Eng is added as a co-owner — we no
+      // longer overwrite the primary QA owner on fail.
+      raw = ov || t.assignee;
     } else {
       raw = ov || getTestAssignee(t, statuses[t.id]);
     }
     if (raw === "Me") return "Evelyn";
     if (raw === "Design" || raw === "Dev") return "Eng";
     return raw;
+  };
+  // A test's full owner set. Failing/failed-retest tests are co-owned by the
+  // original QA AND Eng so they show up in both owners' bubbles, filters,
+  // and scoped views.
+  const effOwners = (t: TestCase): string[] => {
+    const primary = effAssignee(t);
+    const status = statuses[t.id];
+    const failed = status === "fail" || status === "failed_retest";
+    if (
+      failed &&
+      !AUTOMATED_TEST_IDS.has(t.id) &&
+      primary !== "Eng" &&
+      primary !== "Unassigned"
+    ) {
+      return [primary, "Eng"];
+    }
+    return [primary];
   };
   const qaVisibleOwners = useMemo(() => getQaVisibleOwners(user), [user]);
   // Original assignee BEFORE the fail-→Dev reroute. QA scoping uses this so
@@ -681,7 +700,7 @@ export function TestPlanTab() {
   const scopedCases = useMemo(
     () => restrictToSelf
       ? effectiveCases.filter((t) =>
-          qaVisibleOwners.includes(effAssignee(t)) ||
+          effOwners(t).some((o) => qaVisibleOwners.includes(o)) ||
           qaVisibleOwners.includes(ownerForQaScope(t)),
         )
       : effectiveCases,
@@ -700,8 +719,9 @@ export function TestPlanTab() {
     // tests that have not been routed to an owner yet.
     counts["Unassigned"] = counts["Unassigned"] ?? 0;
     for (const t of scopedCases) {
-      const a = effAssignee(t);
-      counts[a] = (counts[a] || 0) + 1;
+      for (const a of effOwners(t)) {
+        counts[a] = (counts[a] || 0) + 1;
+      }
     }
     return counts;
   }, [statuses, assigneeOverrides, scopedCases, isAdmin, allAssignees]);
@@ -711,7 +731,7 @@ export function TestPlanTab() {
     return scopedCases.filter((t) => {
       if (!multiSelectMatches(areaFilter, t.area)) return false;
       if (!multiSelectMatches(statusFilter, statuses[t.id] ?? "not_run")) return false;
-      if (!multiSelectMatches(ownerFilter, effAssignee(t))) return false;
+      if (ownerFilter.length > 0 && !effOwners(t).some((o) => multiSelectMatches(ownerFilter, o))) return false;
       if (!multiSelectMatches(sprintFilter, effSprint(t))) return false;
       if (!q) return true;
       return [t.id, t.title, t.area, ...t.steps, t.expected].some((f) => f.toLowerCase().includes(q));
@@ -794,11 +814,12 @@ export function TestPlanTab() {
       }
     }
     for (const t of scopedCases) {
-      const owner = effAssignee(t);
-      if (!out[owner]) out[owner] = { total: 0, pass: 0, fail: 0, blocked: 0, not_run: 0, in_progress: 0, fixed_retest: 0, failed_retest: 0 };
       const s = (statuses[t.id] ?? "not_run") as TestStatus;
-      out[owner].total++;
-      out[owner][s]++;
+      for (const owner of effOwners(t)) {
+        if (!out[owner]) out[owner] = { total: 0, pass: 0, fail: 0, blocked: 0, not_run: 0, in_progress: 0, fixed_retest: 0, failed_retest: 0 };
+        out[owner].total++;
+        out[owner][s]++;
+      }
     }
     return out;
   }, [statuses, assigneeOverrides, scopedCases, isAdmin, allAssignees]);
