@@ -131,9 +131,20 @@ function ScenarioSummary() {
               </TabsContent>
             </Tabs>
 
-            <Button onClick={downloadPdf} variant="outline" className="w-full">
-              <FileText className="h-4 w-4 mr-2" /> Download PDF
-            </Button>
+            <div className="grid grid-cols-2 gap-3">
+              <Button onClick={downloadPdf} variant="outline" className="w-full">
+                <FileText className="h-4 w-4 mr-2" /> Download PDF
+              </Button>
+              <Button onClick={() => {
+                if (!scenario) { toast.error("Excel not available"); return; }
+                try {
+                  downloadScenarioXlsx({ ...scenario, scenarioCode: code });
+                  toast.success("Excel workbook downloaded");
+                } catch (e) { toast.error("Could not generate workbook"); console.error(e); }
+              }} variant="outline" className="w-full">
+                <FileDown className="h-4 w-4 mr-2" /> Download Excel
+              </Button>
+            </div>
 
             <Disclaimer />
           </>
