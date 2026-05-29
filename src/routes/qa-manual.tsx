@@ -240,16 +240,16 @@ function QAManualPage() {
                   <line x1="320" y1="400" x2="250" y2="400" />
                   {/* TEST FAILED -> DEV (vertical, 70) */}
                   <line x1="140" y1="435" x2="140" y2="505" />
-                  {/* DEV -> back up to Diamond (mirrors Fail+QA pair, 70+70) */}
-                  <polyline points="250,550 320,550 320,500 450,500" />
+                  {/* DEV -> back up to Diamond (straight orthogonal, overlaps Fail line) */}
+                  <polyline points="250,505 250,400 320,400" />
                 </g>
 
                 {/* Branch labels */}
                 <text x="615" y="390" fontSize="13" fontWeight="700" fill="#1f2937">Pass</text>
                 <text x="285" y="384" fontSize="13" fontWeight="700" fill="#1f2937">Fail</text>
                 <text x="285" y="402" fontSize="11" fontWeight="700" fill="#b32a26">+ screenshot</text>
-                <text x="360" y="538" fontSize="13" fontWeight="700" fill="#1f2937">Retest</text>
-                <text x="360" y="556" fontSize="11" fontWeight="700" fill="#b32a26">+ screenshot if Failed/Retest</text>
+                <text x="260" y="470" fontSize="13" fontWeight="700" fill="#1f2937" textAnchor="start">Retest</text>
+                <text x="260" y="486" fontSize="11" fontWeight="700" fill="#b32a26" textAnchor="start">+ screenshot if Failed/Retest</text>
               </g>
             </svg>
           </div>
