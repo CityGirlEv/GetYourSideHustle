@@ -1630,6 +1630,7 @@ function TestCaseCard({
   selected: boolean;
   onSelectChange: () => void;
   onChange: (s: TestStatus) => void;
+  onAutoStart?: () => void;
   onQaNoteChange: (n: string) => void;
   onDevNoteChange: (n: string) => void;
   onSeverityChange: (s: FailSeverity | "") => void;
