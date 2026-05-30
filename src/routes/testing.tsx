@@ -1642,7 +1642,8 @@ function TestCaseCard({
     status === "fixed_retest"  ? "border-l-4 border-l-sky-500 bg-sky-500/15"         :
     status === "failed_retest" ? "border-l-4 border-l-fuchsia-500 bg-fuchsia-500/15" :
                                  "border-l-4 border-l-muted-foreground/30 bg-background";
-  const showQaNote = status === "fail" || status === "failed_retest";
+  const showQaNote = status === "fail" || status === "failed_retest" || status === "pass";
+  const isFailStatus = status === "fail" || status === "failed_retest";
   const showDevNote = status === "fixed_retest" || status === "failed_retest";
   const assigneeOptions = useAssigneeOptions();
   // Per-step execution checkboxes — persisted locally so the tester can
