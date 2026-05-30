@@ -1615,7 +1615,7 @@ function StepWithSublist({
 
 function TestCaseCard({
   t, status, qaNote, devNote, severity, assignee, sprintId, selected, onSelectChange,
-  onChange, onQaNoteChange, onDevNoteChange, onSeverityChange, onAssigneeChange, onSprintChange,
+  onChange, onAutoStart, onQaNoteChange, onDevNoteChange, onSeverityChange, onAssigneeChange, onSprintChange,
   isAdmin, onEdit, hasChanges, onSave, assigneeLocked,
   restrictAssigneeTo,
   onDuplicate,
@@ -1727,7 +1727,7 @@ function TestCaseCard({
     // Auto-advance status to "In progress" when the tester checks their
     // first step on a test that hasn't been started yet.
     if (isChecking && (status === "not_run" || !status)) {
-      onChange("in_progress");
+      if (onAutoStart) onAutoStart(); else onChange("in_progress");
     }
     persistSteps(next);
   };
@@ -1736,7 +1736,7 @@ function TestCaseCard({
     const isChecking = !next.has(key);
     if (isChecking) next.add(key); else next.delete(key);
     if (isChecking && (status === "not_run" || !status)) {
-      onChange("in_progress");
+      if (onAutoStart) onAutoStart(); else onChange("in_progress");
     }
     setCheckedSubsteps(next);
     try { window.localStorage.setItem(substepsKey, JSON.stringify(Array.from(next))); } catch { /* ignore */ }
