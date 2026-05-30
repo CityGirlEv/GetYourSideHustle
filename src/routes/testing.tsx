@@ -1919,10 +1919,10 @@ function TestCaseCard({
           {(showQaNote || qaNote) && (
             <div>
               <div className="flex flex-wrap items-center gap-2 mb-1">
-                <label className="text-[11px] font-semibold text-destructive">
-                  QA failure reason {showQaNote && <span className="opacity-70">(required when failing)</span>}
+                <label className={`text-[11px] font-semibold ${isFailStatus ? "text-destructive" : "text-foreground"}`}>
+                  {isFailStatus ? "QA failure reason" : "QA note"} {isFailStatus && <span className="opacity-70">(required when failing)</span>}
                 </label>
-                {showQaNote && (
+                {isFailStatus && (
                   <div className="flex items-center gap-1 ml-auto">
                     <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Severity</span>
                     {(Object.keys(FAIL_SEVERITY_LABELS) as FailSeverity[]).map((s) => {
@@ -1947,10 +1947,10 @@ function TestCaseCard({
                   </div>
                 )}
               </div>
-              {showQaNote && !severity && (
+              {isFailStatus && !severity && (
                 <p className="text-[10px] text-destructive mb-1">Pick a severity before saving this failure.</p>
               )}
-              {showQaNote && (
+              {isFailStatus && (
                 <div className="flex items-center gap-2 mb-1.5">
                   <label className="text-[10px] font-semibold text-destructive shrink-0">
                     Which step failed?
@@ -1973,9 +1973,9 @@ function TestCaseCard({
               <textarea
                 value={qaNote}
                 onChange={(e) => onQaNoteChange(e.target.value)}
-                placeholder="Describe what went wrong at the selected step — browser/device, what you saw vs. expected, screenshot link…"
+                placeholder={isFailStatus ? "Describe what went wrong at the selected step — browser/device, what you saw vs. expected, screenshot link…" : "Add a note about this test pass — observations, caveats, device/browser used…"}
                 rows={2}
-                className="w-full text-xs rounded-md border border-destructive/40 bg-destructive/5 px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-destructive/30"
+                className={`w-full text-xs rounded-md border px-2 py-1.5 focus:outline-none focus:ring-2 ${isFailStatus ? "border-destructive/40 bg-destructive/5 focus:ring-destructive/30" : "border-border bg-muted/30 focus:ring-primary/20"}`}
               />
             </div>
           )}
