@@ -1708,12 +1708,22 @@ function TestCaseCard({
   };
   const toggleStep = (i: number) => {
     const next = new Set(checkedSteps);
-    if (next.has(i)) next.delete(i); else next.add(i);
+    const isChecking = !next.has(i);
+    if (isChecking) next.add(i); else next.delete(i);
+    // Auto-advance status to "In progress" when the tester checks their
+    // first step on a test that hasn't been started yet.
+    if (isChecking && (status === "not_run" || !status)) {
+      onChange("in_progress");
+    }
     persistSteps(next);
   };
   const toggleSubstep = (key: string) => {
     const next = new Set(checkedSubsteps);
-    if (next.has(key)) next.delete(key); else next.add(key);
+    const isChecking = !next.has(key);
+    if (isChecking) next.add(key); else next.delete(key);
+    if (isChecking && (status === "not_run" || !status)) {
+      onChange("in_progress");
+    }
     setCheckedSubsteps(next);
     try { window.localStorage.setItem(substepsKey, JSON.stringify(Array.from(next))); } catch { /* ignore */ }
     pushChecks(checkedSteps, next);
