@@ -1373,7 +1373,7 @@ function BulkEditBar({
   const assigneeOptions = useAssigneeOptions();
   const bulkAssigneeOptions = isQA ? getQaVisibleOwners(user) : assigneeOptions;
   return (
-    <Card className="p-3 sticky top-[64px] z-20 bg-background/95 backdrop-blur border-primary/30">
+    <Card className="p-3 bg-background/95 backdrop-blur border-primary/30">
       <div className="flex flex-wrap items-center gap-2 text-xs">
         <label className="inline-flex items-center gap-2 font-semibold">
           <input type="checkbox" checked={allSelected} onChange={onToggleAll} className="h-4 w-4" />
