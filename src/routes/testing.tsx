@@ -1642,7 +1642,7 @@ function TestCaseCard({
     status === "fixed_retest"  ? "border-l-4 border-l-sky-500 bg-sky-500/15"         :
     status === "failed_retest" ? "border-l-4 border-l-fuchsia-500 bg-fuchsia-500/15" :
                                  "border-l-4 border-l-muted-foreground/30 bg-background";
-  const showQaNote = status === "fail" || status === "failed_retest" || status === "pass";
+  const showQaNote = status === "fail" || status === "failed_retest";
   const isFailStatus = status === "fail" || status === "failed_retest";
   const showDevNote = status === "fixed_retest" || status === "failed_retest";
   const assigneeOptions = useAssigneeOptions();
@@ -1738,6 +1738,7 @@ function TestCaseCard({
   // applied after the modal is satisfied.
   const { user: cardUser } = useApp();
   const [pendingFail, setPendingFail] = useState<TestStatus | null>(null);
+  const [pendingPass, setPendingPass] = useState(false);
   const handleStatusChange = async (s: TestStatus) => {
     if (s === "pass" && !allStepsChecked) {
       const missing = t.steps.length - checkedSteps.size;
@@ -1753,6 +1754,10 @@ function TestCaseCard({
     }
     if ((s === "fail" || s === "failed_retest") && s !== status) {
       setPendingFail(s);
+      return;
+    }
+    if (s === "pass" && s !== status) {
+      setPendingPass(true);
       return;
     }
     onChange(s);
@@ -2018,6 +2023,17 @@ function TestCaseCard({
           onQaNoteChange(formatFailNote(qaNote, { note, stepLabel, noScreenshot }));
           onChange(s);
           setPendingFail(null);
+        }}
+      />
+      <PassNoteDialog
+        open={pendingPass}
+        onOpenChange={(v) => { if (!v) setPendingPass(false); }}
+        testId={t.id}
+        initialNote={qaNote}
+        onConfirm={(note) => {
+          onQaNoteChange(note);
+          onChange("pass");
+          setPendingPass(false);
         }}
       />
     </Card>
