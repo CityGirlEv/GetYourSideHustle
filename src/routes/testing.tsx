@@ -1283,6 +1283,19 @@ export function TestPlanTab() {
                     selected={selected.has(t.id)}
                     onSelectChange={() => toggleSelect(t.id)}
                     onChange={(s) => setStatus(t.id, s)}
+                    onAutoStart={() => {
+                      // Persist "In progress" immediately (local + cloud) and
+                      // promote it into the saved baseline so it survives a
+                      // refresh without sitting in the unsaved-changes drawer.
+                      saveStatus(t.id, "in_progress");
+                      setSavedStatuses((p) => ({ ...p, [t.id]: "in_progress" }));
+                      setDStatuses((p) => {
+                        if (!(t.id in p)) return p;
+                        const next = { ...p };
+                        delete next[t.id];
+                        return next;
+                      });
+                    }}
                     onQaNoteChange={(n) => setQaNote(t.id, n)}
                     onDevNoteChange={(n) => setDevNote(t.id, n)}
                     onSeverityChange={(s) => setSeverityFor(t.id, s)}
@@ -1602,7 +1615,7 @@ function StepWithSublist({
 
 function TestCaseCard({
   t, status, qaNote, devNote, severity, assignee, sprintId, selected, onSelectChange,
-  onChange, onQaNoteChange, onDevNoteChange, onSeverityChange, onAssigneeChange, onSprintChange,
+  onChange, onAutoStart, onQaNoteChange, onDevNoteChange, onSeverityChange, onAssigneeChange, onSprintChange,
   isAdmin, onEdit, hasChanges, onSave, assigneeLocked,
   restrictAssigneeTo,
   onDuplicate,
@@ -1617,6 +1630,7 @@ function TestCaseCard({
   selected: boolean;
   onSelectChange: () => void;
   onChange: (s: TestStatus) => void;
+  onAutoStart?: () => void;
   onQaNoteChange: (n: string) => void;
   onDevNoteChange: (n: string) => void;
   onSeverityChange: (s: FailSeverity | "") => void;
@@ -1713,7 +1727,7 @@ function TestCaseCard({
     // Auto-advance status to "In progress" when the tester checks their
     // first step on a test that hasn't been started yet.
     if (isChecking && (status === "not_run" || !status)) {
-      onChange("in_progress");
+      if (onAutoStart) onAutoStart(); else onChange("in_progress");
     }
     persistSteps(next);
   };
@@ -1722,7 +1736,7 @@ function TestCaseCard({
     const isChecking = !next.has(key);
     if (isChecking) next.add(key); else next.delete(key);
     if (isChecking && (status === "not_run" || !status)) {
-      onChange("in_progress");
+      if (onAutoStart) onAutoStart(); else onChange("in_progress");
     }
     setCheckedSubsteps(next);
     try { window.localStorage.setItem(substepsKey, JSON.stringify(Array.from(next))); } catch { /* ignore */ }
