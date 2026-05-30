@@ -1283,6 +1283,19 @@ export function TestPlanTab() {
                     selected={selected.has(t.id)}
                     onSelectChange={() => toggleSelect(t.id)}
                     onChange={(s) => setStatus(t.id, s)}
+                    onAutoStart={() => {
+                      // Persist "In progress" immediately (local + cloud) and
+                      // promote it into the saved baseline so it survives a
+                      // refresh without sitting in the unsaved-changes drawer.
+                      saveStatus(t.id, "in_progress");
+                      setSavedStatuses((p) => ({ ...p, [t.id]: "in_progress" }));
+                      setDStatuses((p) => {
+                        if (!(t.id in p)) return p;
+                        const next = { ...p };
+                        delete next[t.id];
+                        return next;
+                      });
+                    }}
                     onQaNoteChange={(n) => setQaNote(t.id, n)}
                     onDevNoteChange={(n) => setDevNote(t.id, n)}
                     onSeverityChange={(s) => setSeverityFor(t.id, s)}
