@@ -1642,7 +1642,7 @@ function TestCaseCard({
     status === "fixed_retest"  ? "border-l-4 border-l-sky-500 bg-sky-500/15"         :
     status === "failed_retest" ? "border-l-4 border-l-fuchsia-500 bg-fuchsia-500/15" :
                                  "border-l-4 border-l-muted-foreground/30 bg-background";
-  const showQaNote = status === "fail" || status === "failed_retest" || status === "pass";
+  const showQaNote = status === "fail" || status === "failed_retest";
   const isFailStatus = status === "fail" || status === "failed_retest";
   const showDevNote = status === "fixed_retest" || status === "failed_retest";
   const assigneeOptions = useAssigneeOptions();
@@ -1738,6 +1738,7 @@ function TestCaseCard({
   // applied after the modal is satisfied.
   const { user: cardUser } = useApp();
   const [pendingFail, setPendingFail] = useState<TestStatus | null>(null);
+  const [pendingPass, setPendingPass] = useState(false);
   const handleStatusChange = async (s: TestStatus) => {
     if (s === "pass" && !allStepsChecked) {
       const missing = t.steps.length - checkedSteps.size;
@@ -1753,6 +1754,10 @@ function TestCaseCard({
     }
     if ((s === "fail" || s === "failed_retest") && s !== status) {
       setPendingFail(s);
+      return;
+    }
+    if (s === "pass" && s !== status) {
+      setPendingPass(true);
       return;
     }
     onChange(s);
@@ -2020,6 +2025,17 @@ function TestCaseCard({
           setPendingFail(null);
         }}
       />
+      <PassNoteDialog
+        open={pendingPass}
+        onOpenChange={(v) => { if (!v) setPendingPass(false); }}
+        testId={t.id}
+        initialNote={qaNote}
+        onConfirm={(note) => {
+          onQaNoteChange(note);
+          onChange("pass");
+          setPendingPass(false);
+        }}
+      />
     </Card>
   );
 }
@@ -2169,6 +2185,66 @@ function FailDetailsDialog({
           >
             {busy ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <XCircle className="h-4 w-4 mr-1" />}
             Record failure
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/* =========================== PASS NOTE DIALOG =========================== */
+/**
+ * Optional QA note when marking a test as Pass. The confirm button label
+ * adapts to whether the tester actually typed a note.
+ */
+function PassNoteDialog({
+  open, onOpenChange, testId, initialNote, onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  testId: string;
+  initialNote: string;
+  onConfirm: (note: string) => void;
+}) {
+  const [note, setNote] = useState("");
+  useEffect(() => {
+    if (!open) return;
+    setNote(initialNote ?? "");
+  }, [open, initialNote]);
+  const hasNote = note.trim().length > 0;
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Pass {testId}</DialogTitle>
+          <DialogDescription>
+            Add an optional note about this pass — observations, caveats, device/browser used. Leave blank if there's nothing to record.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3 text-sm">
+          <div>
+            <Label className="text-xs font-semibold text-foreground">QA note (optional)</Label>
+            <Textarea
+              autoFocus
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              rows={4}
+              placeholder="e.g. Tested on iPhone 15 Safari — passed. Minor visual spacing nit noted but not a fail."
+              className="mt-1 text-xs"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant="default"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            onClick={() => onConfirm(note)}
+          >
+            <CheckCircle2 className="h-4 w-4 mr-1" />
+            {hasNote ? "Save Note" : "No Note for this Test - Just Save It"}
           </Button>
         </DialogFooter>
       </DialogContent>
