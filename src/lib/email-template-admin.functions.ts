@@ -228,6 +228,8 @@ export const sendEmailTemplateTest = createServerFn({ method: 'POST' })
     const subject = `[TEST] ${data.subject}`
     const text = htmlToPlainText(data.html)
 
+    const unsubscribeToken = await getOrCreateUnsubscribeToken(data.recipient)
+
     await supabaseAdmin.from('email_send_log').insert({
       message_id: messageId,
       template_name: `${data.name} (test)`,
@@ -248,6 +250,7 @@ export const sendEmailTemplateTest = createServerFn({ method: 'POST' })
         purpose: 'transactional',
         label: `${data.name}-test`,
         idempotency_key: messageId,
+        unsubscribe_token: unsubscribeToken,
         queued_at: new Date().toISOString(),
       },
     })
