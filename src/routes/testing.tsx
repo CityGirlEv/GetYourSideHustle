@@ -1885,6 +1885,15 @@ function TestCaseCard({
           </Button>
         )}
         <StatusButtons status={status} onChange={handleStatusChange} />
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-7 px-2 text-xs"
+          onClick={() => openNotes("qa")}
+          title="View / add notes for this test"
+        >
+          <MessageSquare className="h-3.5 w-3.5 mr-1" /> Notes
+        </Button>
         {hasChanges && onSave && (
           <Button
             size="sm"
