@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/integrations/supabase/client.server'
 import * as React from 'react'
 import { render } from '@react-email/components'
 import { TEMPLATES } from '@/lib/email-templates/registry'
+import { getEmailTemplateOverride } from '@/lib/email-templates/overrides.server'
 
 /**
  * Public endpoint for sending a test email.
@@ -50,11 +51,18 @@ export const Route = createFileRoute('/api/public/send-test-email')({
 
         const messageId = crypto.randomUUID()
         const element = React.createElement(template.component, template.previewData || {})
-        const html = await render(element)
-        const plainText = await render(element, { plainText: true })
-        const subject = typeof template.subject === 'function'
+        let html = await render(element)
+        let plainText = await render(element, { plainText: true })
+        let subject = typeof template.subject === 'function'
           ? template.subject(template.previewData || {})
           : template.subject
+
+        const override = await getEmailTemplateOverride(templateName)
+        if (override) {
+          html = override.html
+          plainText = override.text
+          subject = override.subject
+        }
 
         // Log pending
         await supabaseAdmin.from('email_send_log').insert({
