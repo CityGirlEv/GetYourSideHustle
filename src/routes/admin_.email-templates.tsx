@@ -641,3 +641,84 @@ function EmailSendLogPanel() {
     </Card>
   )
 }
+
+function EmailTemplateChangesPanel() {
+  const listChanges = useServerFn(listEmailTemplateChanges)
+  const { data, isLoading, isFetching, refetch } = useQuery({
+    queryKey: ['admin', 'email-template-changes'],
+    queryFn: () => listChanges({ data: { limit: 50 } }),
+    refetchInterval: 30_000,
+  })
+
+  return (
+    <Card className="p-4 space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <Inbox className="h-4 w-4" /> Template change log
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => refetch()}
+          disabled={isFetching}
+        >
+          {isFetching ? (
+            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+          ) : (
+            <RefreshCw className="h-4 w-4 mr-1" />
+          )}
+          Refresh
+        </Button>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Saves and resets to email templates. Each entry records who changed
+        which template and when.
+      </p>
+      {isLoading ? (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Loader2 className="h-3 w-3 animate-spin" /> Loading…
+        </div>
+      ) : !data || data.length === 0 ? (
+        <div className="text-xs text-muted-foreground">No template changes yet.</div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs uppercase text-muted-foreground border-b border-border">
+                <th className="py-2 pr-3 font-medium">When</th>
+                <th className="py-2 pr-3 font-medium">Template</th>
+                <th className="py-2 pr-3 font-medium">Action</th>
+                <th className="py-2 font-medium">User</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((row) => (
+                <tr key={row.id} className="border-b border-border/60 align-top">
+                  <td className="py-2 pr-3 whitespace-nowrap text-xs text-muted-foreground">
+                    {new Date(row.created_at).toLocaleString()}
+                  </td>
+                  <td className="py-2 pr-3 break-all">{row.entity_id ?? ''}</td>
+                  <td className="py-2 pr-3">
+                    <Badge
+                      variant={
+                        row.action === 'DELETE_EMAIL_TEMPLATE_OVERRIDE'
+                          ? 'destructive'
+                          : 'default'
+                      }
+                    >
+                      {row.action === 'SAVE_EMAIL_TEMPLATE_OVERRIDE' ? 'Saved' : 'Reset'}
+                    </Badge>
+                  </td>
+                  <td className="py-2 text-xs break-all text-muted-foreground">
+                    {row.user_id ?? ''}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Card>
+  )
+}
