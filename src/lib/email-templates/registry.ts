@@ -19,8 +19,16 @@ export interface TemplateEntry {
  */
 import { template as newRegistrationAdminTemplate } from './new-registration-admin'
 import { template as accountEnabledAdminTemplate } from './account-enabled-admin'
+import { template as welcomeTemplate } from './welcome'
+import { template as agentAssignmentTemplate } from './agent-assignment'
+import { template as contactRequestTemplate } from './contact-request'
+import { template as scenarioClaimedTemplate } from './scenario-claimed'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'new-registration-admin': newRegistrationAdminTemplate,
   'account-enabled-admin': accountEnabledAdminTemplate,
+  'welcome': welcomeTemplate,
+  'agent-assignment': agentAssignmentTemplate,
+  'contact-request': contactRequestTemplate,
+  'scenario-claimed': scenarioClaimedTemplate,
 }
