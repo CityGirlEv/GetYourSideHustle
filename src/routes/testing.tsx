@@ -658,8 +658,6 @@ export function TestPlanTab() {
       for (const id of Object.keys(newSaved.qaNote)) saveQaNoteAuthor(id, user.id);
       for (const id of Object.keys(newSaved.devNote)) saveDevNoteAuthor(id, user.id);
     }
-      }
-    }
     setSavedStatuses(newSaved.status); setSavedQaNotes(newSaved.qaNote); setSavedDevNotes(newSaved.devNote);
     setSavedSeverities(newSaved.severity); setSavedAssignees(newSaved.assignee); setSavedSprints(newSaved.sprint);
     setDStatuses(stillDraft.status); setDQaNotes(stillDraft.qaNote); setDDevNotes(stillDraft.devNote);
