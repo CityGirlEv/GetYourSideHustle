@@ -293,6 +293,8 @@ export async function hydrateTestResultsToLocal(): Promise<number> {
     const dev = Array.isArray(row.dev_notes) ? (row.dev_notes as unknown as NoteEntry[]) : [];
     setOrClear(TEST_QA_NOTE_KEY(id),  qa.length  ? qa[qa.length - 1].text  : null);
     setOrClear(TEST_DEV_NOTE_KEY(id), dev.length ? dev[dev.length - 1].text : null);
+    setOrClear(TEST_QA_NOTE_AUTHOR_KEY(id),  qa.length  ? qa[qa.length - 1].author_id  : null);
+    setOrClear(TEST_DEV_NOTE_AUTHOR_KEY(id), dev.length ? dev[dev.length - 1].author_id : null);
   }
   return data.length;
 }
