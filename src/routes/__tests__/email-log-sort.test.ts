@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { sortEmailLog, type EmailLogRow } from '../admin_.email-templates'
+import { sortEmailLog, type EmailLogRow } from '@/lib/email-log-sort'
 
 function row(p: Partial<EmailLogRow>): EmailLogRow {
   return {
