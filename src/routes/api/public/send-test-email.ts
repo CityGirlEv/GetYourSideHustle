@@ -89,8 +89,8 @@ export const Route = createFileRoute('/api/public/send-test-email')({
           payload: {
             message_id: messageId,
             to: recipient,
-            from: `The Medicare Optimizer <noreply@notify.getpartb.com>`,
-            sender_domain: 'notify.getpartb.com',
+            from: `The Medicare Optimizer <noreply@notify.mypartb.com>`,
+            sender_domain: 'notify.mypartb.com',
             subject,
             html,
             text: plainText,
@@ -133,8 +133,8 @@ export const Route = createFileRoute('/api/public/send-test-email')({
                 payload: {
                   message_id: bccMessageId,
                   to: adminEmail,
-                  from: `The Medicare Optimizer <noreply@notify.getpartb.com>`,
-                  sender_domain: 'notify.getpartb.com',
+                  from: `The Medicare Optimizer <noreply@notify.mypartb.com>`,
+                  sender_domain: 'notify.mypartb.com',
                   subject: `[BCC] ${subject}`,
                   html,
                   text: plainText,

@@ -240,8 +240,8 @@ export const sendEmailTemplateTest = createServerFn({ method: 'POST' })
       payload: {
         message_id: messageId,
         to: data.recipient,
-        from: `The Medicare Optimizer <noreply@notify.getpartb.com>`,
-        sender_domain: 'notify.getpartb.com',
+        from: `The Medicare Optimizer <noreply@notify.mypartb.com>`,
+        sender_domain: 'notify.mypartb.com',
         subject,
         html: data.html,
         text,
