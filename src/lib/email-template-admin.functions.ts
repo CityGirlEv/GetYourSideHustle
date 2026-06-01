@@ -7,6 +7,7 @@ import {
   findTemplate,
   renderDefaultHtml,
 } from '@/lib/email-templates/all-templates.server'
+import { htmlToPlainText } from '@/lib/email-templates/overrides.server'
 
 async function verifyAdmin(userId: string) {
   const { data } = await supabaseAdmin
