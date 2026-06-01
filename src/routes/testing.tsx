@@ -1797,6 +1797,7 @@ function TestCaseCard({
   const { user: cardUser } = useApp();
   const [pendingFail, setPendingFail] = useState<TestStatus | null>(null);
   const [pendingPass, setPendingPass] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<TestStatus | null>(null);
   const [notesOpen, setNotesOpen] = useState(false);
   const [notesInitialKind, setNotesInitialKind] = useState<NoteKind>("qa");
   const openNotes = (k: NoteKind = "qa") => { setNotesInitialKind(k); setNotesOpen(true); };
@@ -1819,6 +1820,10 @@ function TestCaseCard({
     }
     if (s === "pass" && s !== status) {
       setPendingPass(true);
+      return;
+    }
+    if (s !== status) {
+      setPendingStatus(s);
       return;
     }
     onChange(s);
