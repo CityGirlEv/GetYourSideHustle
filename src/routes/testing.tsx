@@ -1966,6 +1966,14 @@ function TestCaseCard({
                 <label className={`text-[11px] font-semibold ${isFailStatus ? "text-destructive" : "text-foreground"}`}>
                   {isFailStatus ? "QA failure reason" : "QA note"} {isFailStatus && <span className="opacity-70">(required when failing)</span>}
                 </label>
+                <button
+                  type="button"
+                  onClick={() => openNotes("qa")}
+                  className="text-[10px] underline text-primary hover:text-primary/80"
+                  title="View full note history (with author + timestamp)"
+                >
+                  View full history
+                </button>
                 {isFailStatus && (
                   <div className="flex items-center gap-1 ml-auto">
                     <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Severity</span>
@@ -2025,9 +2033,19 @@ function TestCaseCard({
           )}
           {(showDevNote || devNote) && (
             <div>
-              <label className="block text-[11px] font-semibold text-sky-700 mb-1">
-                Dev retest note
-              </label>
+              <div className="flex items-center gap-2 mb-1">
+                <label className="block text-[11px] font-semibold text-sky-700">
+                  Dev retest note
+                </label>
+                <button
+                  type="button"
+                  onClick={() => openNotes("dev")}
+                  className="text-[10px] underline text-primary hover:text-primary/80"
+                  title="View full note history (with author + timestamp)"
+                >
+                  View full history
+                </button>
+              </div>
               <textarea
                 value={devNote}
                 onChange={(e) => onDevNoteChange(e.target.value)}
