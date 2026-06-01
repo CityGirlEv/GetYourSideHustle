@@ -16,8 +16,16 @@ export const Route = createFileRoute('/api/public/send-test-email')({
         const secret = url.searchParams.get('secret')
         const expectedSecret = process.env.TEST_EMAIL_SECRET
 
-        // If secret is configured, require it
-        if (expectedSecret && secret !== expectedSecret) {
+        // Hard requirement: the endpoint is disabled unless TEST_EMAIL_SECRET
+        // is configured. Without this the endpoint was an open relay for
+        // anyone to send emails through the verified sending domain.
+        if (!expectedSecret) {
+          return Response.json(
+            { error: 'Endpoint disabled: TEST_EMAIL_SECRET is not configured' },
+            { status: 503 },
+          )
+        }
+        if (secret !== expectedSecret) {
           return Response.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
