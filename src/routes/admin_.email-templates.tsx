@@ -8,7 +8,25 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { ArrowLeft, Loader2, Mail, RotateCcw, Save, History } from 'lucide-react'
+import {
+  ArrowLeft,
+  Loader2,
+  Mail,
+  RotateCcw,
+  Save,
+  History,
+  Bold,
+  Italic,
+  Underline,
+  Link2,
+  Heading1,
+  Heading2,
+  Pilcrow,
+  List,
+  ListOrdered,
+  Undo2,
+  Redo2,
+} from 'lucide-react'
 import {
   listEmailTemplates,
   getEmailTemplate,
@@ -173,23 +191,52 @@ function TemplateEditor({ name }: { name: string }) {
   const editableSrcDoc = useMemo(() => {
     const baseHtml = data?.override?.html ?? data?.defaultHtml ?? ''
     const injected = `
-<style>html,body{margin:0;padding:0;}body{outline:none;}[contenteditable=true]:focus{outline:2px solid #6366f1;outline-offset:-2px;border-radius:2px;}</style>
+<style>
+  html,body{margin:0;padding:0;}
+  body{outline:none;min-height:100%;cursor:text;}
+  body:focus{outline:none;}
+  ::selection{background:#c7d2fe;}
+</style>
 <script>
 (function(){
-  function ready(){
-    document.body.setAttribute('contenteditable','true');
-    document.body.setAttribute('spellcheck','true');
-    var post = function(){
+  var TPL = ${JSON.stringify(name)};
+  function post(){
+    try {
       var html = '<!doctype html>' + document.documentElement.outerHTML;
-      parent.postMessage({type:'tpl-edit', name: ${JSON.stringify(name)}, html: html}, '*');
-    };
+      parent.postMessage({type:'tpl-edit', name: TPL, html: html}, '*');
+    } catch (e) {}
+  }
+  function ready(){
+    // designMode makes the WHOLE document editable (more reliable than
+    // contenteditable on body for email HTML that sets its own body attrs).
+    try { document.designMode = 'on'; } catch (e) {}
+    document.body.setAttribute('spellcheck','true');
     document.addEventListener('input', post, true);
+    document.addEventListener('keyup', post, true);
     document.addEventListener('blur', post, true);
-    // Prevent navigation when admin clicks a link inside the editor.
+    // Stop link navigation inside the editor.
     document.addEventListener('click', function(e){
       var a = e.target && e.target.closest && e.target.closest('a');
       if (a) { e.preventDefault(); }
     }, true);
+    // Toolbar commands from parent.
+    window.addEventListener('message', function(ev){
+      var d = ev.data;
+      if (!d || d.type !== 'tpl-cmd') return;
+      try {
+        document.body.focus();
+        if (d.command === 'createLink') {
+          var url = d.value;
+          if (url) document.execCommand('createLink', false, url);
+        } else if (d.command === 'formatBlock') {
+          document.execCommand('formatBlock', false, d.value);
+        } else {
+          document.execCommand(d.command, false, d.value || null);
+        }
+        post();
+      } catch (e) {}
+    });
+    post();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ready);
   else ready();
@@ -203,6 +250,12 @@ function TemplateEditor({ name }: { name: string }) {
     // Only rebuild when the underlying template changes — NOT on every keystroke,
     // so the iframe is not constantly re-rendered while the admin is typing.
   }, [data?.override?.html, data?.defaultHtml, name, reloadKey])
+
+  function sendCommand(command: string, value?: string) {
+    const win = iframeRef.current?.contentWindow
+    if (!win) return
+    win.postMessage({ type: 'tpl-cmd', command, value }, '*')
+  }
 
   if (isLoading || !data) {
     return (
@@ -247,13 +300,14 @@ function TemplateEditor({ name }: { name: string }) {
             Click anywhere in the preview to edit text directly. Formatting and
             links are preserved.
           </p>
+          <EditorToolbar onCommand={sendCommand} />
           <iframe
             key={reloadKey}
             ref={iframeRef}
             title="Email editor"
             srcDoc={editableSrcDoc}
-            sandbox="allow-scripts"
-            className="w-full h-[560px] rounded border border-border bg-white"
+            sandbox="allow-scripts allow-same-origin"
+            className="w-full h-[560px] rounded-b border border-border bg-white"
           />
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2">
