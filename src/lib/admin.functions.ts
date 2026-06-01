@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { z } from "zod";
+import { DEFAULT_ADMIN_NOTIFICATION_EMAILS } from "@/lib/registration.functions";
 
 const ROLE_VALUES = ["admin", "qa", "agent", "editor", "viewer", "advisor"] as const;
 const roleSchema = z.enum(ROLE_VALUES);
@@ -30,6 +31,68 @@ async function logAdminAudit(
 
 const NOTIFY_FROM = "The Medicare Optimizer <onboarding@resend.dev>";
 const APP_URL = "https://themedicareoptimizer.lovable.app";
+
+function adminNotificationRecipients(): string[] {
+  const raw = process.env.ADMIN_NOTIFICATION_EMAILS;
+  const configured = raw
+    ? raw.split(",").map((s) => s.trim()).filter(Boolean)
+    : DEFAULT_ADMIN_NOTIFICATION_EMAILS;
+  return Array.from(new Set(configured));
+}
+
+function siteOrigin(): string {
+  return (
+    process.env.SITE_ORIGIN ||
+    process.env.PUBLIC_SITE_URL ||
+    "https://mypartb.lovable.app"
+  );
+}
+
+async function notifyAdminsAccountEnabled(opts: {
+  userId: string;
+  fullName: string;
+  email: string;
+  role: string;
+  enabledBy: string;
+}) {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceKey) {
+    console.warn("[admin] account-enabled notification skipped — missing service role key");
+    return;
+  }
+  const admins = adminNotificationRecipients();
+  if (!admins.length) return;
+  const origin = siteOrigin();
+  await Promise.all(
+    admins.map(async (recipient) => {
+      try {
+        const res = await fetch(`${origin}/lovable/email/transactional/send`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${serviceKey}`,
+          },
+          body: JSON.stringify({
+            templateName: "account-enabled-admin",
+            recipientEmail: recipient,
+            idempotencyKey: `account-enabled-${opts.userId}-${recipient.toLowerCase()}`,
+            templateData: {
+              fullName: opts.fullName,
+              email: opts.email,
+              role: opts.role,
+              enabledBy: opts.enabledBy,
+            },
+          }),
+        });
+        if (!res.ok) {
+          console.error("[admin] account-enabled send failed", res.status, await res.text());
+        }
+      } catch (e) {
+        console.error("[admin] account-enabled send threw", e);
+      }
+    }),
+  );
+}
 
 async function sendAccountApprovedEmail(toEmail: string, fullName: string, role: string) {
   const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
