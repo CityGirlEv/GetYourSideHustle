@@ -308,6 +308,8 @@ export function TestPlanTab() {
           setSavedStatuses(loadAllStatuses());
           setSavedQaNotes(loadAllQaNotes());
           setSavedDevNotes(loadAllDevNotes());
+          setSavedQaAuthors(loadAllQaNoteAuthors());
+          setSavedDevAuthors(loadAllDevNoteAuthors());
           setSavedSeverities(loadAllSeverities());
           setSavedAssignees(loadAllAssigneeOverrides());
           setSavedSprints(loadAllSprintOverrides());
