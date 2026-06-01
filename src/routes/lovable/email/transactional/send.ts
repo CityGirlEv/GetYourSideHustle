@@ -60,6 +60,23 @@ export const Route = createFileRoute("/lovable/email/transactional/send")({
           if (authError || !user) {
             return Response.json({ error: 'Unauthorized' }, { status: 401 })
           }
+          // Role gate: only privileged staff may dispatch templates. This
+          // prevents lower-privileged users (advisor/viewer) from
+          // weaponizing the verified sending domain to email arbitrary
+          // recipients. Service-role callers (server-to-server) skip this.
+          const { data: roles, error: roleError } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', user.id)
+          if (roleError) {
+            console.error('Role lookup failed for transactional send', { error: roleError })
+            return Response.json({ error: 'Authorization check failed' }, { status: 500 })
+          }
+          const allowed = new Set(['admin', 'qa', 'agent'])
+          const hasRole = (roles ?? []).some((r) => allowed.has(r.role as string))
+          if (!hasRole) {
+            return Response.json({ error: 'Forbidden' }, { status: 403 })
+          }
         }
 
         // Parse request body
