@@ -12,34 +12,18 @@ function randomPassword(len = 24) {
   return out;
 }
 
+// Where admin notification emails go. Single mailbox by default so the
+// business owner gets all alerts in one place; override with the
+// ADMIN_NOTIFICATION_EMAILS env var (comma-separated) if multiple inboxes
+// are needed later.
+export const DEFAULT_ADMIN_NOTIFICATION_EMAILS = ["getpartb@gmail.com"];
+
 async function listAdminEmails(): Promise<string[]> {
-  // Get all admin user_ids
-  const { data: roles, error: rolesErr } = await supabaseAdmin
-    .from("user_roles")
-    .select("user_id")
-    .eq("role", "admin");
-  if (rolesErr || !roles?.length) {
-    if (rolesErr) console.error("[registration] failed to load admin roles", rolesErr);
-    return [];
-  }
-  const adminIds = new Set(roles.map((r) => r.user_id));
-  // Resolve their emails via auth admin API (paged)
-  const emails: string[] = [];
-  let page = 1;
-  // 1000 users per page is the auth admin default cap
-  for (;;) {
-    const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 1000 });
-    if (error) {
-      console.error("[registration] failed to list users", error);
-      break;
-    }
-    for (const u of data?.users ?? []) {
-      if (u.email && adminIds.has(u.id)) emails.push(u.email);
-    }
-    if (!data?.users?.length || data.users.length < 1000) break;
-    page += 1;
-  }
-  return emails;
+  const raw = process.env.ADMIN_NOTIFICATION_EMAILS;
+  const configured = raw
+    ? raw.split(",").map((s) => s.trim()).filter(Boolean)
+    : DEFAULT_ADMIN_NOTIFICATION_EMAILS;
+  return Array.from(new Set(configured));
 }
 
 function originFromRequest(): string {
