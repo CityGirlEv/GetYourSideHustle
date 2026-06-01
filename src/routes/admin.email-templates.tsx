@@ -40,7 +40,7 @@ function EmailTemplatesAdminPage() {
   }, [data, selected])
 
   return (
-    <AppShell>
+    <AppShell title="Email templates" subtitle="Edit any system email">
       <div className="container mx-auto max-w-6xl py-6 space-y-4">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" asChild>
