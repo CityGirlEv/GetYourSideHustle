@@ -24,6 +24,7 @@ import {
   loadAllSprintOverrides, saveSprintOverride,
   applyDescriptionOverride, loadDescriptionOverride, saveDescriptionOverride,
   clearDescriptionOverride, type TestDescriptionOverride,
+  loadAllQaNoteAuthors, loadAllDevNoteAuthors, saveQaNoteAuthor, saveDevNoteAuthor,
 } from "@/lib/test-plan";
 import { AppShell } from "@/components/AppShell";
 
