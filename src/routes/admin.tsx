@@ -449,6 +449,13 @@ function AdminPortal() {
 
   return (
     <AppShell title="Admin" subtitle="Immutable audit trail · staff management · global Medicare config">
+      {user?.role === "admin" && (
+        <div className="mb-4 flex justify-end">
+          <Button asChild variant="outline" size="sm">
+            <Link to="/admin/email-templates"><Mail className="h-4 w-4 mr-1.5"/>Email templates</Link>
+          </Button>
+        </div>
+      )}
       <Tabs defaultValue={initialTab} className="space-y-6">
         <TabsList className="glass">
           <TabsTrigger value="scenarios"><Inbox className="h-4 w-4 mr-1.5"/>Scenarios &amp; contacts</TabsTrigger>
