@@ -27,6 +27,8 @@ import {
   Undo2,
   Redo2,
   Send,
+  Inbox,
+  RefreshCw,
 } from 'lucide-react'
 import {
   listEmailTemplates,
@@ -36,6 +38,7 @@ import {
   listEmailTemplateVersions,
   getEmailTemplateVersion,
   sendEmailTemplateTest,
+  listEmailSendLog,
 } from '@/lib/email-template-admin.functions'
 
 export const Route = createFileRoute('/admin_/email-templates')({
@@ -116,6 +119,8 @@ function EmailTemplatesAdminPage() {
             <div>{selected ? <TemplateEditor name={selected} /> : null}</div>
           </div>
         )}
+
+        <EmailSendLogPanel />
       </div>
     </AppShell>
   )
