@@ -11,6 +11,8 @@ import {
   TEST_STATUS_KEY,
   TEST_QA_NOTE_KEY,
   TEST_DEV_NOTE_KEY,
+  TEST_QA_NOTE_AUTHOR_KEY,
+  TEST_DEV_NOTE_AUTHOR_KEY,
   TEST_SEVERITY_KEY,
   loadStatus,
   saveStatus,
@@ -34,6 +36,12 @@ import {
   ACTIVE_SPRINT_ID,
   SPRINTS,
   saveSprintOverride,
+  loadQaNoteAuthor,
+  saveQaNoteAuthor,
+  loadDevNoteAuthor,
+  saveDevNoteAuthor,
+  loadAllQaNoteAuthors,
+  loadAllDevNoteAuthors,
 } from "../test-plan";
 
 beforeEach(() => {
