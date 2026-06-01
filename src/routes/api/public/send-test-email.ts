@@ -5,6 +5,38 @@ import { render } from '@react-email/components'
 import { TEMPLATES } from '@/lib/email-templates/registry'
 import { getEmailTemplateOverride } from '@/lib/email-templates/overrides.server'
 
+function generateUnsubscribeToken(): string {
+  const bytes = new Uint8Array(32)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+}
+
+async function getOrCreateUnsubscribeToken(email: string): Promise<string> {
+  const normalized = email.toLowerCase()
+  const { data: existing } = await supabaseAdmin
+    .from('email_unsubscribe_tokens')
+    .select('token, used_at')
+    .eq('email', normalized)
+    .maybeSingle()
+  if (existing?.token && !existing.used_at) return existing.token
+  const token = generateUnsubscribeToken()
+  await supabaseAdmin
+    .from('email_unsubscribe_tokens')
+    .upsert(
+      { token, email: normalized },
+      { onConflict: 'email', ignoreDuplicates: true },
+    )
+  const { data: stored } = await supabaseAdmin
+    .from('email_unsubscribe_tokens')
+    .select('token')
+    .eq('email', normalized)
+    .maybeSingle()
+  if (!stored?.token) throw new Error('Failed to create unsubscribe token')
+  return stored.token
+}
+
 // Admin BCC list — mirror the transactional sender so test emails also
 // produce an admin paper trail. Override via ADMIN_NOTIFICATION_EMAILS.
 const DEFAULT_ADMIN_BCC = ["getpartb@gmail.com"]
@@ -75,6 +107,8 @@ export const Route = createFileRoute('/api/public/send-test-email')({
           subject = override.subject
         }
 
+        const unsubscribeToken = await getOrCreateUnsubscribeToken(recipient)
+
         // Log pending
         await supabaseAdmin.from('email_send_log').insert({
           message_id: messageId,
@@ -97,6 +131,7 @@ export const Route = createFileRoute('/api/public/send-test-email')({
             purpose: 'transactional',
             label: templateName,
             idempotency_key: messageId,
+            unsubscribe_token: unsubscribeToken,
             queued_at: new Date().toISOString(),
           },
         })
@@ -121,6 +156,7 @@ export const Route = createFileRoute('/api/public/send-test-email')({
           if (!isAdminTemplate) {
             for (const adminEmail of admins) {
               if (!adminEmail || adminEmail === normalizedRecipient) continue
+              const adminToken = await getOrCreateUnsubscribeToken(adminEmail)
               const bccMessageId = crypto.randomUUID()
               await supabaseAdmin.from('email_send_log').insert({
                 message_id: bccMessageId,
@@ -141,6 +177,7 @@ export const Route = createFileRoute('/api/public/send-test-email')({
                   purpose: 'transactional',
                   label: `${templateName}-bcc`,
                   idempotency_key: `${messageId}-bcc-${adminEmail}`,
+                  unsubscribe_token: adminToken,
                   queued_at: new Date().toISOString(),
                 },
               })

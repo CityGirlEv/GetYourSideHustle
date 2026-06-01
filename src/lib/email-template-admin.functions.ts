@@ -18,6 +18,38 @@ async function verifyAdmin(userId: string) {
   if (!isAdmin) throw new Error('Admin access required')
 }
 
+function generateUnsubscribeToken(): string {
+  const bytes = new Uint8Array(32)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+}
+
+async function getOrCreateUnsubscribeToken(email: string): Promise<string> {
+  const normalized = email.toLowerCase()
+  const { data: existing } = await supabaseAdmin
+    .from('email_unsubscribe_tokens')
+    .select('token, used_at')
+    .eq('email', normalized)
+    .maybeSingle()
+  if (existing?.token && !existing.used_at) return existing.token
+  const token = generateUnsubscribeToken()
+  await supabaseAdmin
+    .from('email_unsubscribe_tokens')
+    .upsert(
+      { token, email: normalized },
+      { onConflict: 'email', ignoreDuplicates: true },
+    )
+  const { data: stored } = await supabaseAdmin
+    .from('email_unsubscribe_tokens')
+    .select('token')
+    .eq('email', normalized)
+    .maybeSingle()
+  if (!stored?.token) throw new Error('Failed to create unsubscribe token')
+  return stored.token
+}
+
 export const listEmailTemplates = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -228,6 +260,8 @@ export const sendEmailTemplateTest = createServerFn({ method: 'POST' })
     const subject = `[TEST] ${data.subject}`
     const text = htmlToPlainText(data.html)
 
+    const unsubscribeToken = await getOrCreateUnsubscribeToken(data.recipient)
+
     await supabaseAdmin.from('email_send_log').insert({
       message_id: messageId,
       template_name: `${data.name} (test)`,
@@ -248,6 +282,7 @@ export const sendEmailTemplateTest = createServerFn({ method: 'POST' })
         purpose: 'transactional',
         label: `${data.name}-test`,
         idempotency_key: messageId,
+        unsubscribe_token: unsubscribeToken,
         queued_at: new Date().toISOString(),
       },
     })
