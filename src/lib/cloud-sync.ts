@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import {
   TEST_CASES,
   TEST_STATUS_KEY, TEST_SEVERITY_KEY, TEST_ASSIGNEE_KEY, TEST_SPRINT_KEY,
-  TEST_QA_NOTE_KEY, TEST_DEV_NOTE_KEY, TEST_DESC_KEY,
+  TEST_QA_NOTE_KEY, TEST_DEV_NOTE_KEY, TEST_QA_NOTE_AUTHOR_KEY, TEST_DEV_NOTE_AUTHOR_KEY, TEST_DESC_KEY,
   type TestStatus, type FailSeverity, type TestDescriptionOverride,
 } from "@/lib/test-plan";
 import { TASKS_STORAGE_KEY, type TaskRow } from "@/lib/tasks-sheet";
