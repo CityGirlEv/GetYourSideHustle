@@ -24,6 +24,7 @@ import {
   loadAllSprintOverrides, saveSprintOverride,
   applyDescriptionOverride, loadDescriptionOverride, saveDescriptionOverride,
   clearDescriptionOverride, type TestDescriptionOverride,
+  loadAllQaNoteAuthors, loadAllDevNoteAuthors, saveQaNoteAuthor, saveDevNoteAuthor,
 } from "@/lib/test-plan";
 import { AppShell } from "@/components/AppShell";
 
@@ -262,6 +263,8 @@ export function TestPlanTab() {
   });
   const [savedQaNotes, setSavedQaNotes] = useState<Record<string, string>>(() => loadAllQaNotes());
   const [savedDevNotes, setSavedDevNotes] = useState<Record<string, string>>(() => loadAllDevNotes());
+  const [savedQaAuthors, setSavedQaAuthors] = useState<Record<string, string>>(() => loadAllQaNoteAuthors());
+  const [savedDevAuthors, setSavedDevAuthors] = useState<Record<string, string>>(() => loadAllDevNoteAuthors());
   const [savedSeverities, setSavedSeverities] = useState<Record<string, FailSeverity | "">>(() => loadAllSeverities());
   const [savedAssignees, setSavedAssignees] = useState<Record<string, string>>(() => loadAllAssigneeOverrides());
   const [savedSprints, setSavedSprints] = useState<Record<string, string>>(() => loadAllSprintOverrides());
@@ -277,6 +280,8 @@ export function TestPlanTab() {
         setSavedStatuses(loadAllStatuses());
         setSavedQaNotes(loadAllQaNotes());
         setSavedDevNotes(loadAllDevNotes());
+        setSavedQaAuthors(loadAllQaNoteAuthors());
+        setSavedDevAuthors(loadAllDevNoteAuthors());
         setSavedSeverities(loadAllSeverities());
         setSavedAssignees(loadAllAssigneeOverrides());
         setSavedSprints(loadAllSprintOverrides());
@@ -303,6 +308,8 @@ export function TestPlanTab() {
           setSavedStatuses(loadAllStatuses());
           setSavedQaNotes(loadAllQaNotes());
           setSavedDevNotes(loadAllDevNotes());
+          setSavedQaAuthors(loadAllQaNoteAuthors());
+          setSavedDevAuthors(loadAllDevNoteAuthors());
           setSavedSeverities(loadAllSeverities());
           setSavedAssignees(loadAllAssigneeOverrides());
           setSavedSprints(loadAllSprintOverrides());
@@ -418,10 +425,28 @@ export function TestPlanTab() {
   // owner filter, see other QAs' progress, or pick assignees for others.
   const restrictToSelf = !!user && user.role === "qa";
 
-  // Effective (saved + draft) views used for rendering and filtering
+  // Effective (saved + draft) views used for rendering and filtering.
+  // Notes pre-fill only when the last saved author is the current user;
+  // otherwise a blank draft is shown so a different user enters a new note.
   const statuses = useMemo(() => ({ ...savedStatuses, ...dStatuses }), [savedStatuses, dStatuses]);
-  const qaNotes = useMemo(() => ({ ...savedQaNotes, ...dQaNotes }), [savedQaNotes, dQaNotes]);
-  const devNotes = useMemo(() => ({ ...savedDevNotes, ...dDevNotes }), [savedDevNotes, dDevNotes]);
+  const qaNotes = useMemo(() => {
+    const out: Record<string, string> = {};
+    for (const [id, note] of Object.entries(savedQaNotes)) {
+      const author = savedQaAuthors[id];
+      if (!author || author === user?.id) out[id] = note;
+    }
+    for (const [id, note] of Object.entries(dQaNotes)) out[id] = note;
+    return out;
+  }, [savedQaNotes, savedQaAuthors, dQaNotes, user?.id]);
+  const devNotes = useMemo(() => {
+    const out: Record<string, string> = {};
+    for (const [id, note] of Object.entries(savedDevNotes)) {
+      const author = savedDevAuthors[id];
+      if (!author || author === user?.id) out[id] = note;
+    }
+    for (const [id, note] of Object.entries(dDevNotes)) out[id] = note;
+    return out;
+  }, [savedDevNotes, savedDevAuthors, dDevNotes, user?.id]);
   const severities = useMemo(() => ({ ...savedSeverities, ...dSeverities }), [savedSeverities, dSeverities]);
   const assigneeOverrides = useMemo(() => ({ ...savedAssignees, ...dAssignees }), [savedAssignees, dAssignees]);
   const sprintOverrides = useMemo(() => ({ ...savedSprints, ...dSprints }), [savedSprints, dSprints]);
@@ -626,6 +651,12 @@ export function TestPlanTab() {
         case "assignee": { const v = dAssignees[id]!;  saveAssigneeOverride(id, v, { syncCloud: false }); newSaved.assignee[id] = v; delete stillDraft.assignee[id]; break; }
         case "sprint":   { const v = dSprints[id]!;    saveSprintOverride(id, v, { syncCloud: false });   newSaved.sprint[id]   = v; delete stillDraft.sprint[id];   break; }
       }
+    }
+    // Record the current user as the author of locally-saved notes so the
+    // inline textarea pre-fill logic knows this note belongs to them.
+    if (user?.id) {
+      for (const id of Object.keys(newSaved.qaNote)) saveQaNoteAuthor(id, user.id);
+      for (const id of Object.keys(newSaved.devNote)) saveDevNoteAuthor(id, user.id);
     }
     setSavedStatuses(newSaved.status); setSavedQaNotes(newSaved.qaNote); setSavedDevNotes(newSaved.devNote);
     setSavedSeverities(newSaved.severity); setSavedAssignees(newSaved.assignee); setSavedSprints(newSaved.sprint);

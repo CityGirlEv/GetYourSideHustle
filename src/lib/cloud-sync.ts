@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import {
   TEST_CASES,
   TEST_STATUS_KEY, TEST_SEVERITY_KEY, TEST_ASSIGNEE_KEY, TEST_SPRINT_KEY,
-  TEST_QA_NOTE_KEY, TEST_DEV_NOTE_KEY, TEST_DESC_KEY,
+  TEST_QA_NOTE_KEY, TEST_DEV_NOTE_KEY, TEST_QA_NOTE_AUTHOR_KEY, TEST_DEV_NOTE_AUTHOR_KEY, TEST_DESC_KEY,
   type TestStatus, type FailSeverity, type TestDescriptionOverride,
 } from "@/lib/test-plan";
 import { TASKS_STORAGE_KEY, type TaskRow } from "@/lib/tasks-sheet";
@@ -293,6 +293,8 @@ export async function hydrateTestResultsToLocal(): Promise<number> {
     const dev = Array.isArray(row.dev_notes) ? (row.dev_notes as unknown as NoteEntry[]) : [];
     setOrClear(TEST_QA_NOTE_KEY(id),  qa.length  ? qa[qa.length - 1].text  : null);
     setOrClear(TEST_DEV_NOTE_KEY(id), dev.length ? dev[dev.length - 1].text : null);
+    setOrClear(TEST_QA_NOTE_AUTHOR_KEY(id),  qa.length  ? qa[qa.length - 1].author_id  : null);
+    setOrClear(TEST_DEV_NOTE_AUTHOR_KEY(id), dev.length ? dev[dev.length - 1].author_id : null);
   }
   return data.length;
 }

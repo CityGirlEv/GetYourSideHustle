@@ -11,6 +11,8 @@ import {
   TEST_STATUS_KEY,
   TEST_QA_NOTE_KEY,
   TEST_DEV_NOTE_KEY,
+  TEST_QA_NOTE_AUTHOR_KEY,
+  TEST_DEV_NOTE_AUTHOR_KEY,
   TEST_SEVERITY_KEY,
   loadStatus,
   saveStatus,
@@ -34,6 +36,12 @@ import {
   ACTIVE_SPRINT_ID,
   SPRINTS,
   saveSprintOverride,
+  loadQaNoteAuthor,
+  saveQaNoteAuthor,
+  loadDevNoteAuthor,
+  saveDevNoteAuthor,
+  loadAllQaNoteAuthors,
+  loadAllDevNoteAuthors,
 } from "../test-plan";
 
 beforeEach(() => {
@@ -88,6 +96,31 @@ describe("QA + dev notes", () => {
     saveDevNote("VOICE-001-IPAD", "patched", { syncCloud: false });
     expect(loadAllQaNotes()["VOICE-001-IPAD"]).toBe("mic issue");
     expect(loadAllDevNotes()["VOICE-001-IPAD"]).toBe("patched");
+  });
+  it("author keys are formatted predictably", () => {
+    expect(TEST_QA_NOTE_AUTHOR_KEY("T-1")).toBe("test-qa-note-author:T-1");
+    expect(TEST_DEV_NOTE_AUTHOR_KEY("T-1")).toBe("test-dev-note-author:T-1");
+  });
+});
+
+describe("note author tracking", () => {
+  it("round-trips QA note author", () => {
+    saveQaNoteAuthor("Z-1", "user-a");
+    expect(loadQaNoteAuthor("Z-1")).toBe("user-a");
+    saveQaNoteAuthor("Z-1", null);
+    expect(loadQaNoteAuthor("Z-1")).toBeNull();
+  });
+  it("round-trips dev note author", () => {
+    saveDevNoteAuthor("Z-1", "user-b");
+    expect(loadDevNoteAuthor("Z-1")).toBe("user-b");
+    saveDevNoteAuthor("Z-1", null);
+    expect(loadDevNoteAuthor("Z-1")).toBeNull();
+  });
+  it("bulk author loaders include platform variants", () => {
+    saveQaNoteAuthor("VOICE-001-IPAD", "qa-1");
+    saveDevNoteAuthor("VOICE-001-IPAD", "dev-1");
+    expect(loadAllQaNoteAuthors()["VOICE-001-IPAD"]).toBe("qa-1");
+    expect(loadAllDevNoteAuthors()["VOICE-001-IPAD"]).toBe("dev-1");
   });
 });
 
