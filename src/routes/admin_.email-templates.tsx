@@ -17,7 +17,7 @@ import {
   deleteEmailTemplateOverride,
 } from '@/lib/email-template-admin.functions'
 
-export const Route = createFileRoute('/admin/email-templates')({
+export const Route = createFileRoute('/admin_/email-templates')({
   head: () => ({
     meta: [
       { title: 'Email Templates — Admin' },
