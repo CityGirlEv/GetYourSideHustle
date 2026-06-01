@@ -16,6 +16,8 @@ import {
   cloudSyncAllTasks,
   lastSyncedAt,
   syncLocalToCloud,
+  cloudAddNoteEntry,
+  cloudUpdateNoteEntry,
 } from "../cloud-sync";
 
 beforeEach(() => {
@@ -57,5 +59,17 @@ describe("cloud-sync", () => {
 
   it("cloudAppendNotesBulk returns 0 when not signed in", async () => {
     expect(await cloudAppendNotesBulk([{ test_id: "T1", kind: "qa", text: "x" }])).toBe(0);
+  });
+
+  it("cloudAddNoteEntry returns null on empty text", async () => {
+    expect(await cloudAddNoteEntry("T1", "qa", "   ")).toBeNull();
+  });
+
+  it("cloudAddNoteEntry returns null when not signed in", async () => {
+    expect(await cloudAddNoteEntry("T1", "qa", "hello")).toBeNull();
+  });
+
+  it("cloudUpdateNoteEntry returns null when not signed in", async () => {
+    expect(await cloudUpdateNoteEntry("T1", "qa", "2026-01-01T00:00:00Z", "x")).toBeNull();
   });
 });
