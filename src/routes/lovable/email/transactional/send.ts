@@ -14,6 +14,18 @@ const SENDER_DOMAIN = "notify.mypartb.com"
 // Can be the root domain when display_from_root is enabled — this is cosmetic only.
 const FROM_DOMAIN = "mypartb.com"
 
+// Admin BCC list — every outgoing transactional email also enqueues a blind
+// copy to these addresses so admins have a paper trail. Override via the
+// ADMIN_NOTIFICATION_EMAILS env var (comma-separated).
+const DEFAULT_ADMIN_BCC = ["getpartb@gmail.com"]
+function adminBccRecipients(): string[] {
+  const raw = process.env.ADMIN_NOTIFICATION_EMAILS
+  const configured = raw
+    ? raw.split(",").map((s) => s.trim()).filter(Boolean)
+    : DEFAULT_ADMIN_BCC
+  return Array.from(new Set(configured.map((e) => e.toLowerCase())))
+}
+
 function redactEmail(email: string | null | undefined): string {
   if (!email) return '***'
   const [localPart, domain] = email.split('@')
@@ -345,6 +357,92 @@ export const Route = createFileRoute("/lovable/email/transactional/send")({
           templateName,
           recipient_redacted: redactEmail(effectiveRecipient),
         })
+
+        // Fire-and-forget: enqueue a blind copy to each admin BCC recipient.
+        // Skipped if the primary recipient is already an admin (no self-BCC)
+        // and if this send is itself an admin notification (already addressed
+        // to an admin via the regular flow).
+        try {
+          const admins = adminBccRecipients()
+          const isAdminTemplate = templateName.endsWith('-admin')
+          for (const adminEmail of admins) {
+            if (!adminEmail) continue
+            if (adminEmail === normalizedEmail) continue
+            if (isAdminTemplate) continue
+
+            // Resolve / create an unsubscribe token for the admin address so
+            // the dispatcher payload validates the same way as a normal send.
+            const { data: existingAdminToken } = await supabase
+              .from('email_unsubscribe_tokens')
+              .select('token, used_at')
+              .eq('email', adminEmail)
+              .maybeSingle()
+            let adminToken: string
+            if (existingAdminToken?.token && !existingAdminToken.used_at) {
+              adminToken = existingAdminToken.token
+            } else if (!existingAdminToken) {
+              const newToken = generateToken()
+              await supabase
+                .from('email_unsubscribe_tokens')
+                .upsert(
+                  { token: newToken, email: adminEmail },
+                  { onConflict: 'email', ignoreDuplicates: true }
+                )
+              const { data: stored } = await supabase
+                .from('email_unsubscribe_tokens')
+                .select('token')
+                .eq('email', adminEmail)
+                .maybeSingle()
+              if (!stored?.token) continue
+              adminToken = stored.token
+            } else {
+              // Admin previously unsubscribed — honor it, don't BCC them.
+              continue
+            }
+
+            // Suppression check — admins who unsubscribed shouldn't get copies.
+            const { data: adminSuppressed } = await supabase
+              .from('suppressed_emails')
+              .select('id')
+              .eq('email', adminEmail)
+              .maybeSingle()
+            if (adminSuppressed) continue
+
+            const bccMessageId = crypto.randomUUID()
+            await supabase.from('email_send_log').insert({
+              message_id: bccMessageId,
+              template_name: `${templateName} (bcc)`,
+              recipient_email: adminEmail,
+              status: 'pending',
+            })
+            const { error: bccEnqueueError } = await supabase.rpc('enqueue_email', {
+              queue_name: 'transactional_emails',
+              payload: {
+                message_id: bccMessageId,
+                to: adminEmail,
+                from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
+                sender_domain: SENDER_DOMAIN,
+                subject: `[BCC] ${resolvedSubject}`,
+                html,
+                text: plainText,
+                purpose: 'transactional',
+                label: `${templateName}-bcc`,
+                idempotency_key: `${idempotencyKey}-bcc-${adminEmail}`,
+                unsubscribe_token: adminToken,
+                queued_at: new Date().toISOString(),
+              },
+            })
+            if (bccEnqueueError) {
+              console.error('Failed to enqueue admin BCC copy', {
+                error: bccEnqueueError,
+                admin_redacted: redactEmail(adminEmail),
+                templateName,
+              })
+            }
+          }
+        } catch (bccErr) {
+          console.error('Admin BCC enqueue threw', bccErr)
+        }
 
         return Response.json({ success: true, queued: true })
       },
