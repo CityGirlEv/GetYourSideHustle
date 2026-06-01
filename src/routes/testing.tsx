@@ -52,6 +52,9 @@ import {
 } from "@/lib/test-evidence";
 import { validateFailDetails, formatFailNote } from "@/lib/fail-details";
 import { toast } from "sonner";
+import { NoteThreadDialog } from "@/components/NoteThreadDialog";
+import type { NoteKind } from "@/lib/cloud-sync";
+import { MessageSquare } from "lucide-react";
 import { MultiSelect, multiSelectMatches } from "@/components/ui/multi-select";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { buildCloudOps, type DraftValues } from "@/lib/save-batch";
@@ -1763,6 +1766,9 @@ function TestCaseCard({
   const { user: cardUser } = useApp();
   const [pendingFail, setPendingFail] = useState<TestStatus | null>(null);
   const [pendingPass, setPendingPass] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
+  const [notesInitialKind, setNotesInitialKind] = useState<NoteKind>("qa");
+  const openNotes = (k: NoteKind = "qa") => { setNotesInitialKind(k); setNotesOpen(true); };
   const handleStatusChange = async (s: TestStatus) => {
     if (s === "pass" && !allStepsChecked) {
       const missing = t.steps.length - checkedSteps.size;
