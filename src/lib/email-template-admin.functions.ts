@@ -7,6 +7,7 @@ import {
   findTemplate,
   renderDefaultHtml,
 } from '@/lib/email-templates/all-templates.server'
+import { htmlToPlainText } from '@/lib/email-templates/overrides.server'
 
 async function verifyAdmin(userId: string) {
   const { data } = await supabaseAdmin
@@ -205,4 +206,69 @@ export const getEmailTemplateVersion = createServerFn({ method: 'POST' })
     if (error) throw new Error(error.message)
     if (!row) throw new Error('Version not found')
     return row
+  })
+
+export const sendEmailTemplateTest = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        name: z.string().min(1).max(120),
+        recipient: z.string().email().max(320),
+        subject: z.string().min(1).max(500),
+        html: z.string().min(1).max(200_000),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    await verifyAdmin(context.userId)
+    if (!findTemplate(data.name)) throw new Error(`Unknown template: ${data.name}`)
+
+    const messageId = crypto.randomUUID()
+    const subject = `[TEST] ${data.subject}`
+    const text = htmlToPlainText(data.html)
+
+    await supabaseAdmin.from('email_send_log').insert({
+      message_id: messageId,
+      template_name: `${data.name} (test)`,
+      recipient_email: data.recipient,
+      status: 'pending',
+    })
+
+    const { error } = await supabaseAdmin.rpc('enqueue_email', {
+      queue_name: 'transactional_emails',
+      payload: {
+        message_id: messageId,
+        to: data.recipient,
+        from: `The Medicare Optimizer <noreply@notify.getpartb.com>`,
+        sender_domain: 'notify.getpartb.com',
+        subject,
+        html: data.html,
+        text,
+        purpose: 'transactional',
+        label: `${data.name}-test`,
+        idempotency_key: messageId,
+        queued_at: new Date().toISOString(),
+      },
+    })
+    if (error) {
+      await supabaseAdmin.from('email_send_log').insert({
+        message_id: messageId,
+        template_name: `${data.name} (test)`,
+        recipient_email: data.recipient,
+        status: 'failed',
+        error_message: `Enqueue failed: ${error.message}`,
+      })
+      throw new Error(`Failed to enqueue test email: ${error.message}`)
+    }
+
+    await supabaseAdmin.from('audit_logs').insert({
+      user_id: context.userId,
+      action: 'SEND_EMAIL_TEMPLATE_TEST',
+      entity_type: 'email_template',
+      entity_id: data.name,
+      metadata: { recipient: data.recipient } as never,
+    })
+
+    return { ok: true, messageId }
   })
