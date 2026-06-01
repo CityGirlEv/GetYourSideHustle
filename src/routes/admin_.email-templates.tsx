@@ -439,3 +439,64 @@ function VersionHistory({
     </Card>
   )
 }
+
+function EditorToolbar({
+  onCommand,
+}: {
+  onCommand: (command: string, value?: string) => void
+}) {
+  const btn =
+    'inline-flex items-center justify-center h-8 w-8 rounded hover:bg-muted text-foreground/80 hover:text-foreground transition-colors'
+  return (
+    <div className="flex flex-wrap items-center gap-1 rounded-t border border-b-0 border-border bg-muted/30 px-2 py-1">
+      <button type="button" className={btn} title="Bold" onClick={() => onCommand('bold')}>
+        <Bold className="h-4 w-4" />
+      </button>
+      <button type="button" className={btn} title="Italic" onClick={() => onCommand('italic')}>
+        <Italic className="h-4 w-4" />
+      </button>
+      <button type="button" className={btn} title="Underline" onClick={() => onCommand('underline')}>
+        <Underline className="h-4 w-4" />
+      </button>
+      <span className="mx-1 h-5 w-px bg-border" />
+      <button type="button" className={btn} title="Heading 1" onClick={() => onCommand('formatBlock', 'H1')}>
+        <Heading1 className="h-4 w-4" />
+      </button>
+      <button type="button" className={btn} title="Heading 2" onClick={() => onCommand('formatBlock', 'H2')}>
+        <Heading2 className="h-4 w-4" />
+      </button>
+      <button type="button" className={btn} title="Paragraph" onClick={() => onCommand('formatBlock', 'P')}>
+        <Pilcrow className="h-4 w-4" />
+      </button>
+      <span className="mx-1 h-5 w-px bg-border" />
+      <button type="button" className={btn} title="Bulleted list" onClick={() => onCommand('insertUnorderedList')}>
+        <List className="h-4 w-4" />
+      </button>
+      <button type="button" className={btn} title="Numbered list" onClick={() => onCommand('insertOrderedList')}>
+        <ListOrdered className="h-4 w-4" />
+      </button>
+      <span className="mx-1 h-5 w-px bg-border" />
+      <button
+        type="button"
+        className={btn}
+        title="Insert link"
+        onClick={() => {
+          const url = window.prompt('Link URL', 'https://')
+          if (url) onCommand('createLink', url)
+        }}
+      >
+        <Link2 className="h-4 w-4" />
+      </button>
+      <button type="button" className={btn} title="Remove link" onClick={() => onCommand('unlink')}>
+        <Link2 className="h-4 w-4 opacity-50" />
+      </button>
+      <span className="mx-1 h-5 w-px bg-border" />
+      <button type="button" className={btn} title="Undo" onClick={() => onCommand('undo')}>
+        <Undo2 className="h-4 w-4" />
+      </button>
+      <button type="button" className={btn} title="Redo" onClick={() => onCommand('redo')}>
+        <Redo2 className="h-4 w-4" />
+      </button>
+    </div>
+  )
+}
