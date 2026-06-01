@@ -30,7 +30,7 @@ export function GlobalBusyIndicator() {
       aria-label="Processing"
       className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none"
     >
-      <div className="flex items-center gap-3 rounded-2xl border border-border bg-background/95 px-5 py-4 shadow-2xl backdrop-blur">
+      <div className="pointer-events-none flex items-center gap-3 rounded-2xl border border-border bg-background/95 px-5 py-4 shadow-2xl backdrop-blur">
         <Hourglass className="h-6 w-6 text-primary animate-spin [animation-duration:1.6s]" />
         <span className="text-sm font-semibold text-foreground">Processing…</span>
       </div>
