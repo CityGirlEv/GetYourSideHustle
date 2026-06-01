@@ -263,6 +263,8 @@ export function TestPlanTab() {
   });
   const [savedQaNotes, setSavedQaNotes] = useState<Record<string, string>>(() => loadAllQaNotes());
   const [savedDevNotes, setSavedDevNotes] = useState<Record<string, string>>(() => loadAllDevNotes());
+  const [savedQaAuthors, setSavedQaAuthors] = useState<Record<string, string>>(() => loadAllQaNoteAuthors());
+  const [savedDevAuthors, setSavedDevAuthors] = useState<Record<string, string>>(() => loadAllDevNoteAuthors());
   const [savedSeverities, setSavedSeverities] = useState<Record<string, FailSeverity | "">>(() => loadAllSeverities());
   const [savedAssignees, setSavedAssignees] = useState<Record<string, string>>(() => loadAllAssigneeOverrides());
   const [savedSprints, setSavedSprints] = useState<Record<string, string>>(() => loadAllSprintOverrides());
