@@ -139,6 +139,7 @@ function TemplateEditor({ name }: { name: string }) {
       toast.success('Template saved. New sends will use this version.')
       qc.invalidateQueries({ queryKey: ['admin', 'email-templates'] })
       qc.invalidateQueries({ queryKey: ['admin', 'email-template', name] })
+      qc.invalidateQueries({ queryKey: ['admin', 'email-template-versions', name] })
     },
     onError: (e: any) => toast.error(e?.message ?? 'Save failed'),
   })
