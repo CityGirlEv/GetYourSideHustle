@@ -18,7 +18,9 @@ export interface TemplateEntry {
  *   // then add to TEMPLATES: 'welcome': welcomeTemplate
  */
 import { template as newRegistrationAdminTemplate } from './new-registration-admin'
+import { template as accountEnabledAdminTemplate } from './account-enabled-admin'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'new-registration-admin': newRegistrationAdminTemplate,
+  'account-enabled-admin': accountEnabledAdminTemplate,
 }
