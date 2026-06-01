@@ -91,6 +91,21 @@ function Index() {
             <p className="text-xs text-muted-foreground">No account. No login. No personal information.</p>
           </div>
 
+          <form onSubmit={goToScenario} className="glass rounded-2xl p-4 space-y-3">
+            <div className="text-sm font-medium text-center">Already have a Scenario ID?</div>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Enter scenario code"
+                value={lookupCode}
+                onChange={(e) => setLookupCode(e.target.value)}
+                className="flex-1"
+              />
+              <Button type="submit" variant="outline" disabled={!lookupCode.trim()}>
+                <Search className="h-4 w-4 mr-1" /> Find
+              </Button>
+            </div>
+          </form>
+
           <div className="text-center">
             <Button variant="ghost" onClick={() => router.navigate({ to: "/auth" })} className="text-sm text-muted-foreground">
               I'm a Medicare agent — sign in
