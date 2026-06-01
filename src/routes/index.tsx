@@ -1,7 +1,9 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
-import { ShieldCheck, EyeOff, KeyRound, FileText } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ShieldCheck, EyeOff, KeyRound, FileText, Search } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { useState } from "react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -43,6 +45,13 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const router = useRouter();
+  const [lookupCode, setLookupCode] = useState("");
+
+  const goToScenario = (e: React.FormEvent) => {
+    e.preventDefault();
+    const code = lookupCode.trim();
+    if (code) router.navigate({ to: "/scenario/$code", params: { code } });
+  };
 
   return (
     <AppShell title="">
@@ -81,6 +90,21 @@ function Index() {
             </Button>
             <p className="text-xs text-muted-foreground">No account. No login. No personal information.</p>
           </div>
+
+          <form onSubmit={goToScenario} className="glass rounded-2xl p-4 space-y-3">
+            <div className="text-sm font-medium text-center">Already have a Scenario ID?</div>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Enter scenario code"
+                value={lookupCode}
+                onChange={(e) => setLookupCode(e.target.value)}
+                className="flex-1"
+              />
+              <Button type="submit" variant="outline" disabled={!lookupCode.trim()}>
+                <Search className="h-4 w-4 mr-1" /> Find
+              </Button>
+            </div>
+          </form>
 
           <div className="text-center">
             <Button variant="ghost" onClick={() => router.navigate({ to: "/auth" })} className="text-sm text-muted-foreground">
