@@ -87,6 +87,32 @@ export const saveEmailTemplateOverride = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }) => {
     await verifyAdmin(context.userId)
     if (!findTemplate(data.name)) throw new Error(`Unknown template: ${data.name}`)
+    // Snapshot the currently-active version (override if any, else built-in default)
+    // into version history BEFORE writing the new override.
+    const { data: prev } = await supabaseAdmin
+      .from('email_template_overrides')
+      .select('subject, html, updated_by')
+      .eq('template_name', data.name)
+      .maybeSingle()
+    if (prev) {
+      await supabaseAdmin.from('email_template_versions').insert({
+        template_name: data.name,
+        subject: prev.subject,
+        html: prev.html,
+        source: 'override',
+        created_by: prev.updated_by ?? context.userId,
+      })
+    } else {
+      const tpl = findTemplate(data.name)!
+      const defaultHtml = await renderDefaultHtml(tpl.name)
+      await supabaseAdmin.from('email_template_versions').insert({
+        template_name: data.name,
+        subject: tpl.defaultSubject,
+        html: defaultHtml,
+        source: 'builtin',
+        created_by: context.userId,
+      })
+    }
     const { error } = await supabaseAdmin
       .from('email_template_overrides')
       .upsert(
@@ -117,6 +143,21 @@ export const deleteEmailTemplateOverride = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data, context }) => {
     await verifyAdmin(context.userId)
+    // Snapshot current override into history before deleting it.
+    const { data: prev } = await supabaseAdmin
+      .from('email_template_overrides')
+      .select('subject, html, updated_by')
+      .eq('template_name', data.name)
+      .maybeSingle()
+    if (prev) {
+      await supabaseAdmin.from('email_template_versions').insert({
+        template_name: data.name,
+        subject: prev.subject,
+        html: prev.html,
+        source: 'override',
+        created_by: prev.updated_by ?? context.userId,
+      })
+    }
     const { error } = await supabaseAdmin
       .from('email_template_overrides')
       .delete()
@@ -130,4 +171,38 @@ export const deleteEmailTemplateOverride = createServerFn({ method: 'POST' })
       metadata: {} as never,
     })
     return { ok: true }
+  })
+
+export const listEmailTemplateVersions = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({ name: z.string().min(1).max(120) }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    await verifyAdmin(context.userId)
+    const { data: rows, error } = await supabaseAdmin
+      .from('email_template_versions')
+      .select('id, subject, source, created_at, created_by')
+      .eq('template_name', data.name)
+      .order('created_at', { ascending: false })
+      .limit(50)
+    if (error) throw new Error(error.message)
+    return rows ?? []
+  })
+
+export const getEmailTemplateVersion = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({ id: z.string().uuid() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    await verifyAdmin(context.userId)
+    const { data: row, error } = await supabaseAdmin
+      .from('email_template_versions')
+      .select('id, template_name, subject, html, source, created_at, created_by')
+      .eq('id', data.id)
+      .maybeSingle()
+    if (error) throw new Error(error.message)
+    if (!row) throw new Error('Version not found')
+    return row
   })

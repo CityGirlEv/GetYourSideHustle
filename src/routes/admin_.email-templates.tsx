@@ -1,20 +1,21 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { AppShell } from '@/components/AppShell'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { ArrowLeft, Loader2, Mail, RotateCcw, Save, Eye } from 'lucide-react'
+import { ArrowLeft, Loader2, Mail, RotateCcw, Save, History } from 'lucide-react'
 import {
   listEmailTemplates,
   getEmailTemplate,
   saveEmailTemplateOverride,
   deleteEmailTemplateOverride,
+  listEmailTemplateVersions,
+  getEmailTemplateVersion,
 } from '@/lib/email-template-admin.functions'
 
 export const Route = createFileRoute('/admin_/email-templates')({
@@ -113,12 +114,16 @@ function TemplateEditor({ name }: { name: string }) {
 
   const [subject, setSubject] = useState('')
   const [html, setHtml] = useState('')
-  const [previewOpen, setPreviewOpen] = useState(true)
+  const iframeRef = useRef<HTMLIFrameElement | null>(null)
+  // Reload key forces the iframe to re-mount with fresh srcDoc when we want
+  // to discard in-place edits (e.g. after Reset or Restore from history).
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     if (!data) return
     setSubject(data.override?.subject ?? data.defaultSubject)
     setHtml(data.override?.html ?? data.defaultHtml)
+    setReloadKey((k) => k + 1)
   }, [data])
 
   const isDirty = useMemo(() => {
@@ -134,6 +139,7 @@ function TemplateEditor({ name }: { name: string }) {
       toast.success('Template saved. New sends will use this version.')
       qc.invalidateQueries({ queryKey: ['admin', 'email-templates'] })
       qc.invalidateQueries({ queryKey: ['admin', 'email-template', name] })
+      qc.invalidateQueries({ queryKey: ['admin', 'email-template-versions', name] })
     },
     onError: (e: any) => toast.error(e?.message ?? 'Save failed'),
   })
@@ -144,9 +150,59 @@ function TemplateEditor({ name }: { name: string }) {
       toast.success('Reverted to the built-in template.')
       qc.invalidateQueries({ queryKey: ['admin', 'email-templates'] })
       qc.invalidateQueries({ queryKey: ['admin', 'email-template', name] })
+      qc.invalidateQueries({ queryKey: ['admin', 'email-template-versions', name] })
     },
     onError: (e: any) => toast.error(e?.message ?? 'Reset failed'),
   })
+
+  // Receive HTML edits posted from the iframe's editable document.
+  useEffect(() => {
+    function onMessage(ev: MessageEvent) {
+      const d = ev.data
+      if (!d || typeof d !== 'object') return
+      if (d.type === 'tpl-edit' && d.name === name && typeof d.html === 'string') {
+        setHtml(d.html)
+      }
+    }
+    window.addEventListener('message', onMessage)
+    return () => window.removeEventListener('message', onMessage)
+  }, [name])
+
+  // Build the document we hand to the iframe: original HTML + injected script
+  // that makes the body contentEditable and posts changes back to us.
+  const editableSrcDoc = useMemo(() => {
+    const baseHtml = data?.override?.html ?? data?.defaultHtml ?? ''
+    const injected = `
+<style>html,body{margin:0;padding:0;}body{outline:none;}[contenteditable=true]:focus{outline:2px solid #6366f1;outline-offset:-2px;border-radius:2px;}</style>
+<script>
+(function(){
+  function ready(){
+    document.body.setAttribute('contenteditable','true');
+    document.body.setAttribute('spellcheck','true');
+    var post = function(){
+      var html = '<!doctype html>' + document.documentElement.outerHTML;
+      parent.postMessage({type:'tpl-edit', name: ${JSON.stringify(name)}, html: html}, '*');
+    };
+    document.addEventListener('input', post, true);
+    document.addEventListener('blur', post, true);
+    // Prevent navigation when admin clicks a link inside the editor.
+    document.addEventListener('click', function(e){
+      var a = e.target && e.target.closest && e.target.closest('a');
+      if (a) { e.preventDefault(); }
+    }, true);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ready);
+  else ready();
+})();
+</script>`
+    // Inject before </body> if present, otherwise append.
+    if (/<\/body>/i.test(baseHtml)) {
+      return baseHtml.replace(/<\/body>/i, injected + '</body>')
+    }
+    return baseHtml + injected
+    // Only rebuild when the underlying template changes — NOT on every keystroke,
+    // so the iframe is not constantly re-rendered while the admin is typing.
+  }, [data?.override?.html, data?.defaultHtml, name, reloadKey])
 
   if (isLoading || !data) {
     return (
@@ -186,23 +242,18 @@ function TemplateEditor({ name }: { name: string }) {
           <Input value={subject} onChange={(e) => setSubject(e.target.value)} maxLength={500} />
         </div>
         <div className="space-y-1">
-          <div className="flex items-center justify-between">
-            <label className="text-sm font-medium">HTML body</label>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setPreviewOpen((v) => !v)}
-            >
-              <Eye className="h-4 w-4 mr-1" />
-              {previewOpen ? 'Hide preview' : 'Show preview'}
-            </Button>
-          </div>
-          <Textarea
-            value={html}
-            onChange={(e) => setHtml(e.target.value)}
-            rows={18}
-            className="font-mono text-xs"
+          <label className="text-sm font-medium">Email body</label>
+          <p className="text-xs text-muted-foreground">
+            Click anywhere in the preview to edit text directly. Formatting and
+            links are preserved.
+          </p>
+          <iframe
+            key={reloadKey}
+            ref={iframeRef}
+            title="Email editor"
+            srcDoc={editableSrcDoc}
+            sandbox="allow-scripts"
+            className="w-full h-[560px] rounded border border-border bg-white"
           />
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -239,20 +290,98 @@ function TemplateEditor({ name }: { name: string }) {
         </div>
       </Card>
 
-      {previewOpen && (
-        <Card className="p-4 space-y-2">
-          <div className="text-sm font-medium">Preview</div>
-          <div className="text-xs text-muted-foreground">
-            Rendered with sample data — actual sends substitute real recipient values.
-          </div>
-          <iframe
-            title="Email preview"
-            srcDoc={html}
-            sandbox=""
-            className="w-full h-[480px] rounded border border-border bg-white"
-          />
-        </Card>
-      )}
+      <VersionHistory
+        name={name}
+        onRestore={(restoredSubject, restoredHtml) => {
+          setSubject(restoredSubject)
+          setHtml(restoredHtml)
+          // Re-mount iframe so the editor reflects the restored HTML.
+          // We mutate the cached template to drive the editable srcDoc memo.
+          qc.setQueryData(['admin', 'email-template', name], (prev: any) =>
+            prev
+              ? {
+                  ...prev,
+                  override: {
+                    ...(prev.override ?? {}),
+                    subject: restoredSubject,
+                    html: restoredHtml,
+                    updatedAt: prev.override?.updatedAt ?? new Date().toISOString(),
+                  },
+                }
+              : prev,
+          )
+          setReloadKey((k) => k + 1)
+          toast.info('Loaded version into editor. Click "Save changes" to publish.')
+        }}
+      />
     </div>
+  )
+}
+
+function VersionHistory({
+  name,
+  onRestore,
+}: {
+  name: string
+  onRestore: (subject: string, html: string) => void
+}) {
+  const listFn = useServerFn(listEmailTemplateVersions)
+  const getFn = useServerFn(getEmailTemplateVersion)
+  const { data, isLoading } = useQuery({
+    queryKey: ['admin', 'email-template-versions', name],
+    queryFn: () => listFn({ data: { name } }),
+  })
+
+  const restore = useMutation({
+    mutationFn: async (id: string) => getFn({ data: { id } }),
+    onSuccess: (v) => onRestore(v.subject, v.html),
+    onError: (e: any) => toast.error(e?.message ?? 'Could not load version'),
+  })
+
+  return (
+    <Card className="p-4 space-y-2">
+      <div className="flex items-center gap-2 text-sm font-medium">
+        <History className="h-4 w-4" /> Version history
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Every save snapshots the previous version. Restore any earlier version
+        into the editor, then save to publish it.
+      </p>
+      {isLoading ? (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Loader2 className="h-3 w-3 animate-spin" /> Loading versions…
+        </div>
+      ) : !data || data.length === 0 ? (
+        <div className="text-xs text-muted-foreground">No previous versions yet.</div>
+      ) : (
+        <ul className="divide-y divide-border">
+          {data.map((v) => (
+            <li key={v.id} className="py-2 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <div className="text-sm truncate">{v.subject}</div>
+                <div className="text-[11px] text-muted-foreground">
+                  {new Date(v.created_at).toLocaleString()} ·{' '}
+                  <span className="uppercase">{v.source}</span>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => restore.mutate(v.id)}
+                disabled={restore.isPending}
+              >
+                {restore.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                ) : (
+                  <RotateCcw className="h-4 w-4 mr-1" />
+                )}
+                Restore
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
   )
 }
