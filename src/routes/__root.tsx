@@ -15,6 +15,7 @@ import { AppProvider } from "@/lib/app-store";
 import { Toaster } from "@/components/ui/sonner";
 import { ConfirmProvider } from "@/components/ConfirmDialog";
 import { QAOnboardingGate } from "@/components/QAOnboardingDialog";
+import { GlobalBusyIndicator } from "@/components/GlobalBusyIndicator";
 import { supabase } from "@/integrations/supabase/client";
 
 function NotFoundComponent() {
@@ -155,6 +156,7 @@ function RootComponent() {
         <ConfirmProvider>
           <Outlet />
           <QAOnboardingGate />
+          <GlobalBusyIndicator />
           <Toaster position="top-right" richColors />
         </ConfirmProvider>
       </AppProvider>
