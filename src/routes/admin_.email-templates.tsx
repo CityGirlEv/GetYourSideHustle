@@ -27,6 +27,8 @@ import {
   Undo2,
   Redo2,
   Send,
+  Inbox,
+  RefreshCw,
 } from 'lucide-react'
 import {
   listEmailTemplates,
@@ -36,6 +38,7 @@ import {
   listEmailTemplateVersions,
   getEmailTemplateVersion,
   sendEmailTemplateTest,
+  listEmailSendLog,
 } from '@/lib/email-template-admin.functions'
 
 export const Route = createFileRoute('/admin_/email-templates')({
@@ -116,6 +119,8 @@ function EmailTemplatesAdminPage() {
             <div>{selected ? <TemplateEditor name={selected} /> : null}</div>
           </div>
         )}
+
+        <EmailSendLogPanel />
       </div>
     </AppShell>
   )
@@ -539,5 +544,98 @@ function EditorToolbar({
         <Redo2 className="h-4 w-4" />
       </button>
     </div>
+  )
+}
+
+function statusBadgeVariant(status: string): 'default' | 'secondary' | 'destructive' | 'outline' {
+  switch (status) {
+    case 'sent':
+      return 'default'
+    case 'failed':
+    case 'dlq':
+    case 'bounced':
+    case 'complained':
+      return 'destructive'
+    case 'suppressed':
+      return 'outline'
+    default:
+      return 'secondary'
+  }
+}
+
+function EmailSendLogPanel() {
+  const listLog = useServerFn(listEmailSendLog)
+  const { data, isLoading, isFetching, refetch } = useQuery({
+    queryKey: ['admin', 'email-send-log'],
+    queryFn: () => listLog({ data: { limit: 50 } }),
+    refetchInterval: 15_000,
+  })
+
+  return (
+    <Card className="p-4 space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <Inbox className="h-4 w-4" /> Recent email sends
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => refetch()}
+          disabled={isFetching}
+        >
+          {isFetching ? (
+            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+          ) : (
+            <RefreshCw className="h-4 w-4 mr-1" />
+          )}
+          Refresh
+        </Button>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Latest 50 emails the system has tried to send. Each row shows the most
+        recent status for that message (auto-refreshes every 15 seconds).
+      </p>
+      {isLoading ? (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Loader2 className="h-3 w-3 animate-spin" /> Loading…
+        </div>
+      ) : !data || data.length === 0 ? (
+        <div className="text-xs text-muted-foreground">No emails sent yet.</div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs uppercase text-muted-foreground border-b border-border">
+                <th className="py-2 pr-3 font-medium">When</th>
+                <th className="py-2 pr-3 font-medium">Template</th>
+                <th className="py-2 pr-3 font-medium">Recipient</th>
+                <th className="py-2 pr-3 font-medium">Status</th>
+                <th className="py-2 font-medium">Error</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((row) => (
+                <tr key={row.id} className="border-b border-border/60 align-top">
+                  <td className="py-2 pr-3 whitespace-nowrap text-xs text-muted-foreground">
+                    {new Date(row.created_at).toLocaleString()}
+                  </td>
+                  <td className="py-2 pr-3">{row.template_name}</td>
+                  <td className="py-2 pr-3 break-all">{row.recipient_email}</td>
+                  <td className="py-2 pr-3">
+                    <Badge variant={statusBadgeVariant(row.status)} className="capitalize">
+                      {row.status}
+                    </Badge>
+                  </td>
+                  <td className="py-2 text-xs text-destructive break-all">
+                    {row.error_message ?? ''}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Card>
   )
 }

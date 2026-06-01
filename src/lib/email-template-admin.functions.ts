@@ -272,3 +272,35 @@ export const sendEmailTemplateTest = createServerFn({ method: 'POST' })
 
     return { ok: true, messageId }
   })
+
+export const listEmailSendLog = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        limit: z.number().int().min(1).max(200).optional(),
+      })
+      .parse(input ?? {}),
+  )
+  .handler(async ({ data, context }) => {
+    await verifyAdmin(context.userId)
+    const limit = data.limit ?? 50
+    // Pull more rows than the limit so we can deduplicate by message_id
+    // (each email has pending + sent/failed/dlq rows that share a message_id).
+    const { data: rows, error } = await supabaseAdmin
+      .from('email_send_log')
+      .select('id, message_id, template_name, recipient_email, status, error_message, created_at')
+      .order('created_at', { ascending: false })
+      .limit(limit * 4)
+    if (error) throw new Error(error.message)
+    const seen = new Set<string>()
+    const deduped: typeof rows = [] as never
+    for (const r of rows ?? []) {
+      const key = r.message_id ?? `__no_id__${r.id}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      deduped.push(r)
+      if (deduped.length >= limit) break
+    }
+    return deduped
+  })
