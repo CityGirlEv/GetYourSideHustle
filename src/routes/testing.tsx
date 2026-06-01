@@ -52,6 +52,9 @@ import {
 } from "@/lib/test-evidence";
 import { validateFailDetails, formatFailNote } from "@/lib/fail-details";
 import { toast } from "sonner";
+import { NoteThreadDialog } from "@/components/NoteThreadDialog";
+import type { NoteKind } from "@/lib/cloud-sync";
+import { MessageSquare } from "lucide-react";
 import { MultiSelect, multiSelectMatches } from "@/components/ui/multi-select";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { buildCloudOps, type DraftValues } from "@/lib/save-batch";
@@ -1763,6 +1766,9 @@ function TestCaseCard({
   const { user: cardUser } = useApp();
   const [pendingFail, setPendingFail] = useState<TestStatus | null>(null);
   const [pendingPass, setPendingPass] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
+  const [notesInitialKind, setNotesInitialKind] = useState<NoteKind>("qa");
+  const openNotes = (k: NoteKind = "qa") => { setNotesInitialKind(k); setNotesOpen(true); };
   const handleStatusChange = async (s: TestStatus) => {
     if (s === "pass" && !allStepsChecked) {
       const missing = t.steps.length - checkedSteps.size;
@@ -1879,6 +1885,15 @@ function TestCaseCard({
           </Button>
         )}
         <StatusButtons status={status} onChange={handleStatusChange} />
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-7 px-2 text-xs"
+          onClick={() => openNotes("qa")}
+          title="View / add notes for this test"
+        >
+          <MessageSquare className="h-3.5 w-3.5 mr-1" /> Notes
+        </Button>
         {hasChanges && onSave && (
           <Button
             size="sm"
@@ -1951,6 +1966,14 @@ function TestCaseCard({
                 <label className={`text-[11px] font-semibold ${isFailStatus ? "text-destructive" : "text-foreground"}`}>
                   {isFailStatus ? "QA failure reason" : "QA note"} {isFailStatus && <span className="opacity-70">(required when failing)</span>}
                 </label>
+                <button
+                  type="button"
+                  onClick={() => openNotes("qa")}
+                  className="text-[10px] underline text-primary hover:text-primary/80"
+                  title="View full note history (with author + timestamp)"
+                >
+                  View full history
+                </button>
                 {isFailStatus && (
                   <div className="flex items-center gap-1 ml-auto">
                     <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Severity</span>
@@ -2010,9 +2033,19 @@ function TestCaseCard({
           )}
           {(showDevNote || devNote) && (
             <div>
-              <label className="block text-[11px] font-semibold text-sky-700 mb-1">
-                Dev retest note
-              </label>
+              <div className="flex items-center gap-2 mb-1">
+                <label className="block text-[11px] font-semibold text-sky-700">
+                  Dev retest note
+                </label>
+                <button
+                  type="button"
+                  onClick={() => openNotes("dev")}
+                  className="text-[10px] underline text-primary hover:text-primary/80"
+                  title="View full note history (with author + timestamp)"
+                >
+                  View full history
+                </button>
+              </div>
               <textarea
                 value={devNote}
                 onChange={(e) => onDevNoteChange(e.target.value)}
@@ -2059,6 +2092,14 @@ function TestCaseCard({
           onChange("pass");
           setPendingPass(false);
         }}
+      />
+      <NoteThreadDialog
+        open={notesOpen}
+        onOpenChange={setNotesOpen}
+        testId={t.id}
+        testTitle={t.title}
+        currentUserId={cardUser?.id ?? null}
+        initialKind={notesInitialKind}
       />
     </Card>
   );
