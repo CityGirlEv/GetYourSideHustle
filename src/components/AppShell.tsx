@@ -69,6 +69,11 @@ export function AppShell({ children, title, subtitle, titleClassName }: { childr
                     <BookOpen className="h-4 w-4" />Sources
                   </Link>
                 </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/admin/email-templates" className="flex items-center gap-2 cursor-pointer">
+                    <Mail className="h-4 w-4" />Email Templates
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuLabel>QA</DropdownMenuLabel>
                 <DropdownMenuItem asChild>
