@@ -10,6 +10,8 @@ import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import {
   ArrowLeft,
+  ArrowUp,
+  ArrowDown,
   Loader2,
   Mail,
   RotateCcw,
@@ -41,6 +43,12 @@ import {
   listEmailSendLog,
   listEmailTemplateChanges,
 } from '@/lib/email-template-admin.functions'
+import {
+  sortEmailLog,
+  type EmailLogSortKey,
+  type SortDir,
+  type EmailLogRow,
+} from '@/lib/email-log-sort'
 
 export const Route = createFileRoute('/admin_/email-templates')({
   head: () => ({
@@ -565,6 +573,38 @@ function statusBadgeVariant(status: string): 'default' | 'secondary' | 'destruct
   }
 }
 
+
+function SortHeader({
+  label,
+  sortKey,
+  currentKey,
+  currentDir,
+  onClick,
+}: {
+  label: string
+  sortKey: EmailLogSortKey
+  currentKey: EmailLogSortKey
+  currentDir: SortDir
+  onClick: (key: EmailLogSortKey) => void
+}) {
+  const active = currentKey === sortKey
+  return (
+    <th
+      className="py-2 pr-3 font-medium cursor-pointer select-none hover:text-foreground transition-colors"
+      onClick={() => onClick(sortKey)}
+    >
+      <span className="inline-flex items-center gap-1">
+        {label}
+        {active && (
+          currentDir === 'asc'
+            ? <ArrowUp className="h-3 w-3" />
+            : <ArrowDown className="h-3 w-3" />
+        )}
+      </span>
+    </th>
+  )
+}
+
 function EmailSendLogPanel() {
   const listLog = useServerFn(listEmailSendLog)
   const { data, isLoading, isFetching, refetch } = useQuery({
@@ -572,6 +612,22 @@ function EmailSendLogPanel() {
     queryFn: () => listLog({ data: { limit: 50 } }),
     refetchInterval: 15_000,
   })
+  const [sortKey, setSortKey] = useState<EmailLogSortKey>('created_at')
+  const [sortDir, setSortDir] = useState<SortDir>('desc')
+
+  const sortedData = useMemo(() => {
+    if (!data) return []
+    return sortEmailLog(data as EmailLogRow[], sortKey, sortDir)
+  }, [data, sortKey, sortDir])
+
+  function toggleSort(key: EmailLogSortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortKey(key)
+      setSortDir('asc')
+    }
+  }
 
   return (
     <Card className="p-4 space-y-3">
@@ -602,22 +658,22 @@ function EmailSendLogPanel() {
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Loader2 className="h-3 w-3 animate-spin" /> Loading…
         </div>
-      ) : !data || data.length === 0 ? (
+      ) : !sortedData || sortedData.length === 0 ? (
         <div className="text-xs text-muted-foreground">No emails sent yet.</div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs uppercase text-muted-foreground border-b border-border">
-                <th className="py-2 pr-3 font-medium">When</th>
-                <th className="py-2 pr-3 font-medium">Template</th>
-                <th className="py-2 pr-3 font-medium">Recipient</th>
-                <th className="py-2 pr-3 font-medium">Status</th>
-                <th className="py-2 font-medium">Error</th>
+                <SortHeader label="When" sortKey="created_at" currentKey={sortKey} currentDir={sortDir} onClick={toggleSort} />
+                <SortHeader label="Template" sortKey="template_name" currentKey={sortKey} currentDir={sortDir} onClick={toggleSort} />
+                <SortHeader label="Recipient" sortKey="recipient_email" currentKey={sortKey} currentDir={sortDir} onClick={toggleSort} />
+                <SortHeader label="Status" sortKey="status" currentKey={sortKey} currentDir={sortDir} onClick={toggleSort} />
+                <SortHeader label="Error" sortKey="error_message" currentKey={sortKey} currentDir={sortDir} onClick={toggleSort} />
               </tr>
             </thead>
             <tbody>
-              {data.map((row) => (
+              {sortedData.map((row) => (
                 <tr key={row.id} className="border-b border-border/60 align-top">
                   <td className="py-2 pr-3 whitespace-nowrap text-xs text-muted-foreground">
                     {new Date(row.created_at).toLocaleString()}
