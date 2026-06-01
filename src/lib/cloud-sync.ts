@@ -17,6 +17,87 @@ import { TASKS_STORAGE_KEY, type TaskRow } from "@/lib/tasks-sheet";
 export interface NoteEntry { author_id: string; author_name: string; text: string; at: string }
 export type NoteKind = "qa" | "dev";
 
+/** Fetch the full note thread (qa or dev) for a test in chronological order. */
+export async function cloudFetchNotes(test_id: string, kind: NoteKind): Promise<NoteEntry[]> {
+  if (typeof window === "undefined") return [];
+  const col = kind === "qa" ? "qa_notes" : "dev_notes";
+  const { data, error } = await supabase
+    .from("test_results")
+    .select(col)
+    .eq("test_id", test_id)
+    .maybeSingle();
+  if (error || !data) return [];
+  const raw = (data as Record<string, unknown>)[col];
+  return Array.isArray(raw) ? (raw as unknown as NoteEntry[]) : [];
+}
+
+/** Append a brand-new note entry (no de-dup). Returns the updated thread. */
+export async function cloudAddNoteEntry(
+  test_id: string,
+  kind: NoteKind,
+  text: string,
+): Promise<NoteEntry[] | null> {
+  if (typeof window === "undefined" || !text.trim()) return null;
+  const u = await uid();
+  if (!u) { warnNotSignedIn("cloudAddNoteEntry"); return null; }
+  const col = kind === "qa" ? "qa_notes" : "dev_notes";
+  const existing = await cloudFetchNotes(test_id, kind);
+  const next: NoteEntry[] = [
+    ...existing,
+    { author_id: u.id, author_name: u.name, text: text.trim(), at: new Date().toISOString() },
+  ];
+  const { error } = await supabase
+    .from("test_results")
+    .upsert({ test_id, [col]: next, updated_by: u.id } as never, { onConflict: "test_id" });
+  if (error) {
+    console.warn("[cloud-sync] cloudAddNoteEntry", error.message);
+    try { toast.error("Couldn't save note to cloud", { description: error.message }); } catch { /* noop */ }
+    return null;
+  }
+  return next;
+}
+
+/** Update the text of a single note entry. Only the author can edit. */
+export async function cloudUpdateNoteEntry(
+  test_id: string,
+  kind: NoteKind,
+  entryAt: string,
+  newText: string,
+): Promise<NoteEntry[] | null> {
+  if (typeof window === "undefined") return null;
+  const u = await uid();
+  if (!u) { warnNotSignedIn("cloudUpdateNoteEntry"); return null; }
+  const col = kind === "qa" ? "qa_notes" : "dev_notes";
+  const existing = await cloudFetchNotes(test_id, kind);
+  let touched = false;
+  const next = existing.map((e) => {
+    if (e.at === entryAt && e.author_id === u.id) {
+      touched = true;
+      return { ...e, text: newText.trim() };
+    }
+    return e;
+  });
+  if (!touched) {
+    try { toast.error("You can only edit notes you authored."); } catch { /* noop */ }
+    return null;
+  }
+  const { error } = await supabase
+    .from("test_results")
+    .upsert({ test_id, [col]: next, updated_by: u.id } as never, { onConflict: "test_id" });
+  if (error) {
+    console.warn("[cloud-sync] cloudUpdateNoteEntry", error.message);
+    try { toast.error("Couldn't update note", { description: error.message }); } catch { /* noop */ }
+    return null;
+  }
+  return next;
+}
+
+/** Resolve the current signed-in user's id (or null). */
+export async function cloudCurrentUserId(): Promise<string | null> {
+  const u = await uid();
+  return u?.id ?? null;
+}
+
 export interface CheckedSteps { steps: number[]; substeps: string[] }
 
 /** Upsert the checked-step state for a test. Shared across all viewers. */
