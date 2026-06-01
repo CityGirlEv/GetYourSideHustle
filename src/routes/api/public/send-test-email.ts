@@ -5,6 +5,17 @@ import { render } from '@react-email/components'
 import { TEMPLATES } from '@/lib/email-templates/registry'
 import { getEmailTemplateOverride } from '@/lib/email-templates/overrides.server'
 
+// Admin BCC list — mirror the transactional sender so test emails also
+// produce an admin paper trail. Override via ADMIN_NOTIFICATION_EMAILS.
+const DEFAULT_ADMIN_BCC = ["getpartb@gmail.com"]
+function adminBccRecipients(): string[] {
+  const raw = process.env.ADMIN_NOTIFICATION_EMAILS
+  const configured = raw
+    ? raw.split(",").map((s) => s.trim()).filter(Boolean)
+    : DEFAULT_ADMIN_BCC
+  return Array.from(new Set(configured.map((e) => e.toLowerCase())))
+}
+
 /**
  * Public endpoint for sending a test email.
  * Protected by a simple secret query param for abuse prevention.
@@ -99,6 +110,50 @@ export const Route = createFileRoute('/api/public/send-test-email')({
             error_message: `Enqueue failed: ${enqueueError.message}`,
           })
           return Response.json({ error: 'Failed to enqueue email' }, { status: 500 })
+        }
+
+        // Fire-and-forget admin BCC copies (skip for admin-targeted templates
+        // and skip if the primary recipient is already an admin).
+        try {
+          const admins = adminBccRecipients()
+          const isAdminTemplate = templateName.endsWith('-admin')
+          const normalizedRecipient = recipient.toLowerCase()
+          if (!isAdminTemplate) {
+            for (const adminEmail of admins) {
+              if (!adminEmail || adminEmail === normalizedRecipient) continue
+              const bccMessageId = crypto.randomUUID()
+              await supabaseAdmin.from('email_send_log').insert({
+                message_id: bccMessageId,
+                template_name: `${templateName} (bcc)`,
+                recipient_email: adminEmail,
+                status: 'pending',
+              })
+              const { error: bccErr } = await supabaseAdmin.rpc('enqueue_email', {
+                queue_name: 'transactional_emails',
+                payload: {
+                  message_id: bccMessageId,
+                  to: adminEmail,
+                  from: `The Medicare Optimizer <noreply@notify.getpartb.com>`,
+                  sender_domain: 'notify.getpartb.com',
+                  subject: `[BCC] ${subject}`,
+                  html,
+                  text: plainText,
+                  purpose: 'transactional',
+                  label: `${templateName}-bcc`,
+                  idempotency_key: `${messageId}-bcc-${adminEmail}`,
+                  queued_at: new Date().toISOString(),
+                },
+              })
+              if (bccErr) {
+                console.error('Failed to enqueue test-email admin BCC', {
+                  error: bccErr,
+                  templateName,
+                })
+              }
+            }
+          }
+        } catch (bccErr) {
+          console.error('Test email admin BCC threw', bccErr)
         }
 
         return Response.json({
