@@ -2129,6 +2129,20 @@ function TestCaseCard({
           setPendingPass(false);
         }}
       />
+      <StatusNoteDialog
+        open={pendingStatus != null}
+        onOpenChange={(v) => { if (!v) setPendingStatus(null); }}
+        testId={t.id}
+        status={pendingStatus ?? "not_run"}
+        initialNote={qaNote}
+        onConfirm={(note) => {
+          const s = pendingStatus;
+          if (!s) return;
+          if (note && note !== qaNote) onQaNoteChange(note);
+          onChange(s);
+          setPendingStatus(null);
+        }}
+      />
       <NoteThreadDialog
         open={notesOpen}
         onOpenChange={setNotesOpen}
