@@ -248,6 +248,18 @@ export const setUserDisabled = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     if (!data.disabled && wasDisabled && recipientEmail) {
       await sendAccountApprovedEmail(recipientEmail, recipientName, recipientRole);
+      try {
+        const { data: actor } = await supabaseAdmin.auth.admin.getUserById(context.userId);
+        await notifyAdminsAccountEnabled({
+          userId: data.user_id,
+          fullName: recipientName,
+          email: recipientEmail,
+          role: recipientRole,
+          enabledBy: actor?.user?.email ?? context.userId,
+        });
+      } catch (e) {
+        console.error("[admin] notifyAdminsAccountEnabled failed", e);
+      }
     }
     return { ok: true };
   });
