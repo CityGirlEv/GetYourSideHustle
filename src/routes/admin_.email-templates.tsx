@@ -573,12 +573,6 @@ function statusBadgeVariant(status: string): 'default' | 'secondary' | 'destruct
   }
 }
 
-import {
-  sortEmailLog,
-  type EmailLogSortKey,
-  type SortDir,
-  type EmailLogRow,
-} from '@/lib/email-log-sort'
 
 function SortHeader({
   label,
