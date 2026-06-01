@@ -897,6 +897,8 @@ export function loadAllStatuses(): Record<string, TestStatus> {
 // ----------------------------------------------------------------------------
 export const TEST_QA_NOTE_KEY = (id: string) => `test-qa-note:${id}`;
 export const TEST_DEV_NOTE_KEY = (id: string) => `test-dev-note:${id}`;
+export const TEST_QA_NOTE_AUTHOR_KEY = (id: string) => `test-qa-note-author:${id}`;
+export const TEST_DEV_NOTE_AUTHOR_KEY = (id: string) => `test-dev-note-author:${id}`;
 
 export function loadQaNote(id: string): string {
   if (typeof window === "undefined") return "";
@@ -932,6 +934,44 @@ export function loadAllDevNotes(): Record<string, string> {
   const out: Record<string, string> = {};
   for (const t of TEST_CASES) out[t.id] = loadDevNote(t.id);
   Object.assign(out, loadStorageByPrefix("test-dev-note:"));
+  return out;
+}
+
+// ---- last-note author tracking (so inline textareas only pre-fill your own notes) ----
+export function loadQaNoteAuthor(id: string): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(TEST_QA_NOTE_AUTHOR_KEY(id));
+}
+export function saveQaNoteAuthor(id: string, authorId: string | null) {
+  if (typeof window === "undefined") return;
+  if (authorId) localStorage.setItem(TEST_QA_NOTE_AUTHOR_KEY(id), authorId);
+  else localStorage.removeItem(TEST_QA_NOTE_AUTHOR_KEY(id));
+}
+export function loadDevNoteAuthor(id: string): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(TEST_DEV_NOTE_AUTHOR_KEY(id));
+}
+export function saveDevNoteAuthor(id: string, authorId: string | null) {
+  if (typeof window === "undefined") return;
+  if (authorId) localStorage.setItem(TEST_DEV_NOTE_AUTHOR_KEY(id), authorId);
+  else localStorage.removeItem(TEST_DEV_NOTE_AUTHOR_KEY(id));
+}
+export function loadAllQaNoteAuthors(): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const t of TEST_CASES) {
+    const a = loadQaNoteAuthor(t.id);
+    if (a) out[t.id] = a;
+  }
+  Object.assign(out, loadStorageByPrefix("test-qa-note-author:"));
+  return out;
+}
+export function loadAllDevNoteAuthors(): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const t of TEST_CASES) {
+    const a = loadDevNoteAuthor(t.id);
+    if (a) out[t.id] = a;
+  }
+  Object.assign(out, loadStorageByPrefix("test-dev-note-author:"));
   return out;
 }
 
