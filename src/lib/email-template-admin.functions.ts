@@ -304,3 +304,25 @@ export const listEmailSendLog = createServerFn({ method: 'POST' })
     }
     return deduped
   })
+
+export const listEmailTemplateChanges = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        limit: z.number().int().min(1).max(200).optional(),
+      })
+      .parse(input ?? {}),
+  )
+  .handler(async ({ context, data }) => {
+    await verifyAdmin(context.userId)
+    const limit = data.limit ?? 50
+    const { data: rows, error } = await supabaseAdmin
+      .from('audit_logs')
+      .select('id, user_id, action, entity_id, metadata, created_at')
+      .in('action', ['SAVE_EMAIL_TEMPLATE_OVERRIDE', 'DELETE_EMAIL_TEMPLATE_OVERRIDE'])
+      .order('created_at', { ascending: false })
+      .limit(limit)
+    if (error) throw new Error(error.message)
+    return rows ?? []
+  })
