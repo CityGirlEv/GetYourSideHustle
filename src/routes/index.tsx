@@ -45,6 +45,13 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const router = useRouter();
+  const [lookupCode, setLookupCode] = useState("");
+
+  const goToScenario = (e: React.FormEvent) => {
+    e.preventDefault();
+    const code = lookupCode.trim();
+    if (code) router.navigate({ to: "/scenario/$code", params: { code } });
+  };
 
   return (
     <AppShell title="">
