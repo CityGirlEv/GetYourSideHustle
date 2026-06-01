@@ -1797,6 +1797,7 @@ function TestCaseCard({
   const { user: cardUser } = useApp();
   const [pendingFail, setPendingFail] = useState<TestStatus | null>(null);
   const [pendingPass, setPendingPass] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<TestStatus | null>(null);
   const [notesOpen, setNotesOpen] = useState(false);
   const [notesInitialKind, setNotesInitialKind] = useState<NoteKind>("qa");
   const openNotes = (k: NoteKind = "qa") => { setNotesInitialKind(k); setNotesOpen(true); };
@@ -1819,6 +1820,10 @@ function TestCaseCard({
     }
     if (s === "pass" && s !== status) {
       setPendingPass(true);
+      return;
+    }
+    if (s !== status) {
+      setPendingStatus(s);
       return;
     }
     onChange(s);
@@ -2124,6 +2129,20 @@ function TestCaseCard({
           setPendingPass(false);
         }}
       />
+      <StatusNoteDialog
+        open={pendingStatus != null}
+        onOpenChange={(v) => { if (!v) setPendingStatus(null); }}
+        testId={t.id}
+        status={pendingStatus ?? "not_run"}
+        initialNote={qaNote}
+        onConfirm={(note) => {
+          const s = pendingStatus;
+          if (!s) return;
+          if (note && note !== qaNote) onQaNoteChange(note);
+          onChange(s);
+          setPendingStatus(null);
+        }}
+      />
       <NoteThreadDialog
         open={notesOpen}
         onOpenChange={setNotesOpen}
@@ -2341,6 +2360,85 @@ function PassNoteDialog({
           >
             <CheckCircle2 className="h-4 w-4 mr-1" />
             {hasNote ? "Save Note" : "No Note for this Test - Just Save It"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+const STATUS_LABEL: Record<TestStatus, string> = {
+  not_run: "Not run",
+  in_progress: "In progress",
+  pass: "Pass",
+  fail: "Fail",
+  blocked: "Blocked",
+  fixed_retest: "Fixed / Retest",
+  failed_retest: "Failed / Retest",
+};
+
+function StatusNoteDialog({
+  open, onOpenChange, testId, status, initialNote, onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  testId: string;
+  status: TestStatus;
+  initialNote: string;
+  onConfirm: (note: string) => void;
+}) {
+  const [note, setNote] = useState("");
+  const [working, setWorking] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    setNote(initialNote ?? "");
+    setWorking(false);
+  }, [open, initialNote]);
+  const label = STATUS_LABEL[status] ?? status;
+  const hasNote = note.trim().length > 0;
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Mark {testId} as {label}</DialogTitle>
+          <DialogDescription>
+            Add a quick comment about this status change, or confirm the test is working as expected.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3 text-sm">
+          <label className="flex items-start gap-2 rounded-md border border-emerald-500/40 bg-emerald-500/5 p-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={working}
+              onChange={(e) => setWorking(e.target.checked)}
+              className="mt-0.5 h-4 w-4"
+            />
+            <span className="text-xs font-semibold text-foreground">
+              Working as expected — no note needed
+            </span>
+          </label>
+          <div>
+            <Label className="text-xs font-semibold text-foreground">Comment (optional)</Label>
+            <Textarea
+              autoFocus
+              value={note}
+              onChange={(e) => { setNote(e.target.value); if (e.target.value.trim()) setWorking(false); }}
+              rows={4}
+              placeholder="What did you observe? Device / browser, repro notes, anything to flag."
+              className="mt-1 text-xs"
+              disabled={working}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant="default"
+            onClick={() => onConfirm(working ? "Working as expected." : note)}
+          >
+            {working ? "Save — Working as expected" : hasNote ? "Save Comment" : "Save without comment"}
           </Button>
         </DialogFooter>
       </DialogContent>
