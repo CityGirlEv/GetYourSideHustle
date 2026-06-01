@@ -10,6 +10,8 @@ import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import {
   ArrowLeft,
+  ArrowUp,
+  ArrowDown,
   Loader2,
   Mail,
   RotateCcw,
