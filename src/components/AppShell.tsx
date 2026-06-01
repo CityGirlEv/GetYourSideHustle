@@ -3,7 +3,7 @@ import { Link, useRouter } from "@tanstack/react-router";
 import { SecurityBanner } from "./SecurityBanner";
 import { TrustBanner } from "./TrustBanner";
 import { CMSFooter } from "./CMSFooter";
-import { LogOut, FlaskConical, ChevronDown, LayoutDashboard, ListChecks, Briefcase, Shield, Users, FileSignature, BookOpen, ClipboardList, FileText } from "lucide-react";
+import { LogOut, FlaskConical, ChevronDown, LayoutDashboard, ListChecks, Briefcase, Shield, Users, FileSignature, BookOpen, ClipboardList, FileText, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CreditPill } from "./CreditPill";
 import { FontSizeToggle } from "./FontSizeToggle";
@@ -67,6 +67,11 @@ export function AppShell({ children, title, subtitle, titleClassName }: { childr
                 <DropdownMenuItem asChild>
                   <Link to="/sources" className="flex items-center gap-2 cursor-pointer">
                     <BookOpen className="h-4 w-4" />Sources
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/admin/email-templates" className="flex items-center gap-2 cursor-pointer">
+                    <Mail className="h-4 w-4" />Email Templates
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
