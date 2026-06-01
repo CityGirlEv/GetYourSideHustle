@@ -28,10 +28,12 @@ export function GlobalBusyIndicator() {
       role="status"
       aria-live="polite"
       aria-label="Processing"
-      className="fixed bottom-4 right-4 z-[100] flex items-center gap-2 rounded-full border border-border bg-background/95 px-3 py-2 shadow-lg backdrop-blur pointer-events-none"
+      className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-none"
     >
-      <Hourglass className="h-4 w-4 text-primary animate-spin [animation-duration:1.6s]" />
-      <span className="text-xs font-medium text-foreground">Processing…</span>
+      <div className="flex items-center gap-3 rounded-2xl border border-border bg-background/95 px-5 py-4 shadow-2xl backdrop-blur">
+        <Hourglass className="h-6 w-6 text-primary animate-spin [animation-duration:1.6s]" />
+        <span className="text-sm font-semibold text-foreground">Processing…</span>
+      </div>
     </div>
   );
 }
