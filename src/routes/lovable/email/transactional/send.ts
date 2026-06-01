@@ -3,6 +3,7 @@ import { render } from '@react-email/components'
 import { createClient } from '@supabase/supabase-js'
 import { createFileRoute } from '@tanstack/react-router'
 import { TEMPLATES } from '@/lib/email-templates/registry'
+import { getEmailTemplateOverride } from '@/lib/email-templates/overrides.server'
 
 // Configuration baked in at scaffold time
 const SITE_NAME = "mypartb"
@@ -273,14 +274,22 @@ export const Route = createFileRoute("/lovable/email/transactional/send")({
 
         // 4. Render React Email template to HTML and plain text
         const element = React.createElement(template.component, templateData)
-        const html = await render(element)
-        const plainText = await render(element, { plainText: true })
+        let html = await render(element)
+        let plainText = await render(element, { plainText: true })
 
         // Resolve subject — supports static string or dynamic function
-        const resolvedSubject =
+        let resolvedSubject =
           typeof template.subject === 'function'
             ? template.subject(templateData)
             : template.subject
+
+        // Admin override (if any) takes precedence over the built-in template.
+        const override = await getEmailTemplateOverride(templateName)
+        if (override) {
+          html = override.html
+          plainText = override.text
+          resolvedSubject = override.subject
+        }
 
         // 5. Enqueue the pre-rendered email for async processing by the dispatcher.
         // The dispatcher (process-email-queue) handles sending, retries, and rate-limit backoff.

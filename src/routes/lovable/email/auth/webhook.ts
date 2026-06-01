@@ -10,6 +10,7 @@ import { MagicLinkEmail } from '@/lib/email-templates/magic-link'
 import { RecoveryEmail } from '@/lib/email-templates/recovery'
 import { EmailChangeEmail } from '@/lib/email-templates/email-change'
 import { ReauthenticationEmail } from '@/lib/email-templates/reauthentication'
+import { getEmailTemplateOverride } from '@/lib/email-templates/overrides.server'
 
 const EMAIL_SUBJECTS: Record<string, string> = {
   signup: 'Confirm your email',
@@ -145,8 +146,20 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
 
         // Render React Email to HTML and plain text
         const element = React.createElement(EmailTemplate, templateProps)
-        const html = await render(element)
-        const text = await render(element, { plainText: true })
+        let html = await render(element)
+        let text = await render(element, { plainText: true })
+        let subject = EMAIL_SUBJECTS[emailType] || 'Notification'
+
+        // Admin override takes precedence. Note: auth templates contain dynamic
+        // tokens/URLs that an admin cannot inject from the editor — so an
+        // override of an auth template should be limited to wording around
+        // those tokens. Admins are warned about this in the editor UI.
+        const override = await getEmailTemplateOverride(emailType)
+        if (override) {
+          html = override.html
+          text = override.text
+          subject = override.subject
+        }
 
         // Enqueue email for async processing by the dispatcher (process-email-queue).
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
@@ -179,7 +192,7 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
             to: payload.data.email,
             from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
             sender_domain: SENDER_DOMAIN,
-            subject: EMAIL_SUBJECTS[emailType] || 'Notification',
+            subject,
             html,
             text,
             purpose: 'transactional',

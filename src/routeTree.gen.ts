@@ -31,6 +31,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ScenarioNewRouteImport } from './routes/scenario.new'
 import { Route as ScenarioCodeRouteImport } from './routes/scenario.$code'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
+import { Route as AdminEmailTemplatesRouteImport } from './routes/admin.email-templates'
 import { Route as ScenarioCreatedCodeRouteImport } from './routes/scenario.created.$code'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as ApiPublicTrackVisitRouteImport } from './routes/api/public/track-visit'
@@ -154,6 +155,11 @@ const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
   path: '/email/unsubscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminEmailTemplatesRoute = AdminEmailTemplatesRouteImport.update({
+  id: '/email-templates',
+  path: '/email-templates',
+  getParentRoute: () => AdminRoute,
+} as any)
 const ScenarioCreatedCodeRoute = ScenarioCreatedCodeRouteImport.update({
   id: '/scenario/created/$code',
   path: '/scenario/created/$code',
@@ -220,7 +226,7 @@ const AdvisorScenarioCodeEditRoute = AdvisorScenarioCodeEditRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/advisor': typeof AdvisorRouteWithChildren
   '/agent': typeof AgentRouteWithChildren
   '/auth': typeof AuthRoute
@@ -238,6 +244,7 @@ export interface FileRoutesByFullPath {
   '/unsubscribe': typeof UnsubscribeRoute
   '/users': typeof UsersRoute
   '/visits': typeof VisitsRoute
+  '/admin/email-templates': typeof AdminEmailTemplatesRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/scenario/$code': typeof ScenarioCodeRoute
   '/scenario/new': typeof ScenarioNewRoute
@@ -256,7 +263,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/advisor': typeof AdvisorRouteWithChildren
   '/agent': typeof AgentRouteWithChildren
   '/auth': typeof AuthRoute
@@ -274,6 +281,7 @@ export interface FileRoutesByTo {
   '/unsubscribe': typeof UnsubscribeRoute
   '/users': typeof UsersRoute
   '/visits': typeof VisitsRoute
+  '/admin/email-templates': typeof AdminEmailTemplatesRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/scenario/$code': typeof ScenarioCodeRoute
   '/scenario/new': typeof ScenarioNewRoute
@@ -293,7 +301,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/advisor': typeof AdvisorRouteWithChildren
   '/agent': typeof AgentRouteWithChildren
   '/auth': typeof AuthRoute
@@ -311,6 +319,7 @@ export interface FileRoutesById {
   '/unsubscribe': typeof UnsubscribeRoute
   '/users': typeof UsersRoute
   '/visits': typeof VisitsRoute
+  '/admin/email-templates': typeof AdminEmailTemplatesRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/scenario/$code': typeof ScenarioCodeRoute
   '/scenario/new': typeof ScenarioNewRoute
@@ -349,6 +358,7 @@ export interface FileRouteTypes {
     | '/unsubscribe'
     | '/users'
     | '/visits'
+    | '/admin/email-templates'
     | '/email/unsubscribe'
     | '/scenario/$code'
     | '/scenario/new'
@@ -385,6 +395,7 @@ export interface FileRouteTypes {
     | '/unsubscribe'
     | '/users'
     | '/visits'
+    | '/admin/email-templates'
     | '/email/unsubscribe'
     | '/scenario/$code'
     | '/scenario/new'
@@ -421,6 +432,7 @@ export interface FileRouteTypes {
     | '/unsubscribe'
     | '/users'
     | '/visits'
+    | '/admin/email-templates'
     | '/email/unsubscribe'
     | '/scenario/$code'
     | '/scenario/new'
@@ -440,7 +452,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRoute
+  AdminRoute: typeof AdminRouteWithChildren
   AdvisorRoute: typeof AdvisorRouteWithChildren
   AgentRoute: typeof AgentRouteWithChildren
   AuthRoute: typeof AuthRoute
@@ -628,6 +640,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EmailUnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/email-templates': {
+      id: '/admin/email-templates'
+      path: '/email-templates'
+      fullPath: '/admin/email-templates'
+      preLoaderRoute: typeof AdminEmailTemplatesRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/scenario/created/$code': {
       id: '/scenario/created/$code'
       path: '/scenario/created/$code'
@@ -715,6 +734,16 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AdminRouteChildren {
+  AdminEmailTemplatesRoute: typeof AdminEmailTemplatesRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminEmailTemplatesRoute: AdminEmailTemplatesRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 interface AdvisorScenarioCodeRouteChildren {
   AdvisorScenarioCodeEditRoute: typeof AdvisorScenarioCodeEditRoute
 }
@@ -749,7 +778,7 @@ const AgentRouteWithChildren = AgentRoute._addFileChildren(AgentRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRoute,
+  AdminRoute: AdminRouteWithChildren,
   AdvisorRoute: AdvisorRouteWithChildren,
   AgentRoute: AgentRouteWithChildren,
   AuthRoute: AuthRoute,

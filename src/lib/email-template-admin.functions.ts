@@ -1,0 +1,133 @@
+import { createServerFn } from '@tanstack/react-start'
+import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware'
+import { supabaseAdmin } from '@/integrations/supabase/client.server'
+import { z } from 'zod'
+import {
+  ALL_TEMPLATES,
+  findTemplate,
+  renderDefaultHtml,
+} from '@/lib/email-templates/all-templates.server'
+
+async function verifyAdmin(userId: string) {
+  const { data } = await supabaseAdmin
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', userId)
+  const isAdmin = (data ?? []).some((r) => r.role === 'admin')
+  if (!isAdmin) throw new Error('Admin access required')
+}
+
+export const listEmailTemplates = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await verifyAdmin(context.userId)
+    const { data: overrides } = await supabaseAdmin
+      .from('email_template_overrides')
+      .select('template_name, updated_at, updated_by')
+    const overrideMap = new Map(
+      (overrides ?? []).map((o) => [o.template_name, o]),
+    )
+    return ALL_TEMPLATES.map((t) => ({
+      name: t.name,
+      kind: t.kind,
+      displayName: t.displayName,
+      description: t.description,
+      trigger: t.trigger,
+      defaultSubject: t.defaultSubject,
+      overridden: overrideMap.has(t.name),
+      overrideUpdatedAt: overrideMap.get(t.name)?.updated_at ?? null,
+    }))
+  })
+
+export const getEmailTemplate = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({ name: z.string().min(1).max(120) }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    await verifyAdmin(context.userId)
+    const tpl = findTemplate(data.name)
+    if (!tpl) throw new Error(`Unknown template: ${data.name}`)
+    const defaultHtml = await renderDefaultHtml(tpl.name)
+    const { data: override } = await supabaseAdmin
+      .from('email_template_overrides')
+      .select('subject, html, updated_at, updated_by')
+      .eq('template_name', tpl.name)
+      .maybeSingle()
+    return {
+      name: tpl.name,
+      kind: tpl.kind,
+      displayName: tpl.displayName,
+      description: tpl.description,
+      trigger: tpl.trigger,
+      defaultSubject: tpl.defaultSubject,
+      defaultHtml,
+      override: override
+        ? {
+            subject: override.subject,
+            html: override.html,
+            updatedAt: override.updated_at,
+            updatedBy: override.updated_by,
+          }
+        : null,
+    }
+  })
+
+export const saveEmailTemplateOverride = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        name: z.string().min(1).max(120),
+        subject: z.string().min(1).max(500),
+        html: z.string().min(1).max(200_000),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    await verifyAdmin(context.userId)
+    if (!findTemplate(data.name)) throw new Error(`Unknown template: ${data.name}`)
+    const { error } = await supabaseAdmin
+      .from('email_template_overrides')
+      .upsert(
+        {
+          template_name: data.name,
+          subject: data.subject,
+          html: data.html,
+          updated_by: context.userId,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'template_name' },
+      )
+    if (error) throw new Error(error.message)
+    await supabaseAdmin.from('audit_logs').insert({
+      user_id: context.userId,
+      action: 'SAVE_EMAIL_TEMPLATE_OVERRIDE',
+      entity_type: 'email_template',
+      entity_id: data.name,
+      metadata: { subject_length: data.subject.length, html_length: data.html.length } as never,
+    })
+    return { ok: true }
+  })
+
+export const deleteEmailTemplateOverride = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z.object({ name: z.string().min(1).max(120) }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    await verifyAdmin(context.userId)
+    const { error } = await supabaseAdmin
+      .from('email_template_overrides')
+      .delete()
+      .eq('template_name', data.name)
+    if (error) throw new Error(error.message)
+    await supabaseAdmin.from('audit_logs').insert({
+      user_id: context.userId,
+      action: 'DELETE_EMAIL_TEMPLATE_OVERRIDE',
+      entity_type: 'email_template',
+      entity_id: data.name,
+      metadata: {} as never,
+    })
+    return { ok: true }
+  })
