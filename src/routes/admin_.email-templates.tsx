@@ -43,6 +43,12 @@ import {
   listEmailSendLog,
   listEmailTemplateChanges,
 } from '@/lib/email-template-admin.functions'
+import {
+  sortEmailLog,
+  type EmailLogSortKey,
+  type SortDir,
+  type EmailLogRow,
+} from '@/lib/email-log-sort'
 
 export const Route = createFileRoute('/admin_/email-templates')({
   head: () => ({
