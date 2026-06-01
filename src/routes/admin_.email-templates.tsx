@@ -1,20 +1,21 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { AppShell } from '@/components/AppShell'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { ArrowLeft, Loader2, Mail, RotateCcw, Save, Eye } from 'lucide-react'
+import { ArrowLeft, Loader2, Mail, RotateCcw, Save, History } from 'lucide-react'
 import {
   listEmailTemplates,
   getEmailTemplate,
   saveEmailTemplateOverride,
   deleteEmailTemplateOverride,
+  listEmailTemplateVersions,
+  getEmailTemplateVersion,
 } from '@/lib/email-template-admin.functions'
 
 export const Route = createFileRoute('/admin_/email-templates')({
