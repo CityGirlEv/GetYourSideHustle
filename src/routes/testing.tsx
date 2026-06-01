@@ -2075,6 +2075,14 @@ function TestCaseCard({
           setPendingPass(false);
         }}
       />
+      <NoteThreadDialog
+        open={notesOpen}
+        onOpenChange={setNotesOpen}
+        testId={t.id}
+        testTitle={t.title}
+        currentUserId={cardUser?.id ?? null}
+        initialKind={notesInitialKind}
+      />
     </Card>
   );
 }
