@@ -26,6 +26,7 @@ import {
   ListOrdered,
   Undo2,
   Redo2,
+  Send,
 } from 'lucide-react'
 import {
   listEmailTemplates,
@@ -34,6 +35,7 @@ import {
   deleteEmailTemplateOverride,
   listEmailTemplateVersions,
   getEmailTemplateVersion,
+  sendEmailTemplateTest,
 } from '@/lib/email-template-admin.functions'
 
 export const Route = createFileRoute('/admin_/email-templates')({
@@ -124,6 +126,7 @@ function TemplateEditor({ name }: { name: string }) {
   const fetchTpl = useServerFn(getEmailTemplate)
   const saveTpl = useServerFn(saveEmailTemplateOverride)
   const deleteTpl = useServerFn(deleteEmailTemplateOverride)
+  const sendTest = useServerFn(sendEmailTemplateTest)
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin', 'email-template', name],
@@ -171,6 +174,14 @@ function TemplateEditor({ name }: { name: string }) {
       qc.invalidateQueries({ queryKey: ['admin', 'email-template-versions', name] })
     },
     onError: (e: any) => toast.error(e?.message ?? 'Reset failed'),
+  })
+
+  const [testRecipient, setTestRecipient] = useState('')
+  const test = useMutation({
+    mutationFn: () =>
+      sendTest({ data: { name, recipient: testRecipient, subject, html } }),
+    onSuccess: () => toast.success(`Test email queued to ${testRecipient}.`),
+    onError: (e: any) => toast.error(e?.message ?? 'Could not send test'),
   })
 
   // Receive HTML edits posted from the iframe's editable document.
@@ -339,6 +350,36 @@ function TemplateEditor({ name }: { name: string }) {
             >
               {save.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}
               Save changes
+            </Button>
+          </div>
+        </div>
+        <div className="border-t border-border pt-3 space-y-1">
+          <label className="text-sm font-medium">Send test email</label>
+          <p className="text-xs text-muted-foreground">
+            Sends the current editor content (no need to save first) to the
+            address below. Subject is prefixed with <code>[TEST]</code>.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Input
+              type="email"
+              placeholder="you@example.com"
+              value={testRecipient}
+              onChange={(e) => setTestRecipient(e.target.value)}
+              className="flex-1 min-w-[220px]"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => test.mutate()}
+              disabled={!testRecipient.includes('@') || test.isPending}
+            >
+              {test.isPending ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4 mr-1" />
+              )}
+              Send test
             </Button>
           </div>
         </div>
