@@ -425,10 +425,28 @@ export function TestPlanTab() {
   // owner filter, see other QAs' progress, or pick assignees for others.
   const restrictToSelf = !!user && user.role === "qa";
 
-  // Effective (saved + draft) views used for rendering and filtering
+  // Effective (saved + draft) views used for rendering and filtering.
+  // Notes pre-fill only when the last saved author is the current user;
+  // otherwise a blank draft is shown so a different user enters a new note.
   const statuses = useMemo(() => ({ ...savedStatuses, ...dStatuses }), [savedStatuses, dStatuses]);
-  const qaNotes = useMemo(() => ({ ...savedQaNotes, ...dQaNotes }), [savedQaNotes, dQaNotes]);
-  const devNotes = useMemo(() => ({ ...savedDevNotes, ...dDevNotes }), [savedDevNotes, dDevNotes]);
+  const qaNotes = useMemo(() => {
+    const out: Record<string, string> = {};
+    for (const [id, note] of Object.entries(savedQaNotes)) {
+      const author = savedQaAuthors[id];
+      if (!author || author === user?.id) out[id] = note;
+    }
+    for (const [id, note] of Object.entries(dQaNotes)) out[id] = note;
+    return out;
+  }, [savedQaNotes, savedQaAuthors, dQaNotes, user?.id]);
+  const devNotes = useMemo(() => {
+    const out: Record<string, string> = {};
+    for (const [id, note] of Object.entries(savedDevNotes)) {
+      const author = savedDevAuthors[id];
+      if (!author || author === user?.id) out[id] = note;
+    }
+    for (const [id, note] of Object.entries(dDevNotes)) out[id] = note;
+    return out;
+  }, [savedDevNotes, savedDevAuthors, dDevNotes, user?.id]);
   const severities = useMemo(() => ({ ...savedSeverities, ...dSeverities }), [savedSeverities, dSeverities]);
   const assigneeOverrides = useMemo(() => ({ ...savedAssignees, ...dAssignees }), [savedAssignees, dAssignees]);
   const sprintOverrides = useMemo(() => ({ ...savedSprints, ...dSprints }), [savedSprints, dSprints]);
