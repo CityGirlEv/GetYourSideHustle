@@ -39,6 +39,7 @@ import {
   getEmailTemplateVersion,
   sendEmailTemplateTest,
   listEmailSendLog,
+  listEmailTemplateChanges,
 } from '@/lib/email-template-admin.functions'
 
 export const Route = createFileRoute('/admin_/email-templates')({
@@ -121,6 +122,7 @@ function EmailTemplatesAdminPage() {
         )}
 
         <EmailSendLogPanel />
+        <EmailTemplateChangesPanel />
       </div>
     </AppShell>
   )
