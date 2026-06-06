@@ -1,4 +1,4 @@
-import { Home, LogIn, ListChecks, ChevronDown, FlaskConical, FileSignature, UserPlus } from "lucide-react";
+import { Home, LogIn, LogOut, ListChecks, ChevronDown, FlaskConical, FileSignature, UserPlus } from "lucide-react";
 import { Link, useRouter } from "@tanstack/react-router";
 import { YearToggle } from "./YearToggle";
 import { useApp } from "@/lib/app-store";
@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export function SecurityBanner() {
-  const { user, authLoading } = useApp();
+  const { user, authLoading, signOut } = useApp();
   const router = useRouter();
   const isQA = user?.role === "qa";
 
@@ -27,9 +27,15 @@ export function SecurityBanner() {
             <Link to="/" className="flex items-center gap-1 hover:text-white transition-colors">
               <Home className="h-3.5 w-3.5" /> Home
             </Link>
-            <Link to="/auth" className="flex items-center gap-1 hover:text-white transition-colors">
-              <LogIn className="h-3.5 w-3.5" /> Log in
-            </Link>
+            {user ? (
+              <button onClick={() => { signOut(); router.navigate({ to: "/auth" }); }} className="flex items-center gap-1 hover:text-white transition-colors">
+                <LogOut className="h-3.5 w-3.5" /> Log out
+              </button>
+            ) : (
+              <Link to="/auth" className="flex items-center gap-1 hover:text-white transition-colors">
+                <LogIn className="h-3.5 w-3.5" /> Log in
+              </Link>
+            )}
             <Link to="/register" className="flex items-center gap-1 hover:text-white transition-colors">
               <UserPlus className="h-3.5 w-3.5" /> Register
             </Link>
