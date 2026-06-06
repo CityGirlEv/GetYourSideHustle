@@ -1,4 +1,4 @@
-import { Home, LogIn, ListChecks, ChevronDown, FlaskConical, FileSignature, UserPlus } from "lucide-react";
+import { Home, LogIn, LogOut, ListChecks, ChevronDown, FlaskConical, FileSignature, UserPlus } from "lucide-react";
 import { Link, useRouter } from "@tanstack/react-router";
 import { YearToggle } from "./YearToggle";
 import { useApp } from "@/lib/app-store";
