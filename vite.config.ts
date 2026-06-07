@@ -13,10 +13,13 @@ export default defineConfig({
     viteTsConfigPaths(),
     tailwindcss(),
     tanstackStart({
-      spa: {
-        enabled: true,
-      },
-    }),
+  spa: {
+    enabled: true,
+  },
+  prerender: {
+    enabled: false,
+  },
+}),
     react(),
     cloudflare(),
   ],
