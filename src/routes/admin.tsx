@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter, Link } from "@tanstack/react-router";
+import { createFileRoute, useRouter, Link, useLocation } from "@tanstack/react-router";
 import { useApp } from "@/lib/app-store";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
