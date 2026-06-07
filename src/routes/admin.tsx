@@ -474,7 +474,7 @@ function AdminPortal() {
         </Card>
       )}
       {user?.role === "admin" && (
-        <Card className="glass mb-4 p-3 flex items-center justify-between gap-3">
+        <Card id="backend-card" className="glass mb-4 p-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Database className="h-4 w-4 text-primary" />
             <div>
