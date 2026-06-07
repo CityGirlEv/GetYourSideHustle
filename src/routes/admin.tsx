@@ -1,4 +1,5 @@
 import { createFileRoute, useRouter, Link } from "@tanstack/react-router";
+import { ExternalLink } from "lucide-react";
 import { useApp } from "@/lib/app-store";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
