@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { z } from "zod";
+import { createClient } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
 import { buildNdaPdf, NDA_VERSION } from "./nda";
 
 function randomPassword(len = 24) {
@@ -31,6 +32,29 @@ function originFromRequest(): string {
   return process.env.SITE_ORIGIN
     || process.env.PUBLIC_SITE_URL
     || "https://mypartb.lovable.app";
+}
+
+/**
+ * Returns the admin (service-role) client when SUPABASE_SERVICE_ROLE_KEY is
+ * available (Lovable Cloud deployment). Returns null on environments where
+ * only the publishable key is exposed (e.g. external Cloudflare Workers),
+ * letting the caller fall back to the public auth.signUp flow.
+ */
+async function getAdminClient() {
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return null;
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  return supabaseAdmin;
+}
+
+function getPublicClient() {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY;
+  if (!url || !key) {
+    throw new Error("Supabase URL / publishable key not configured on the server.");
+  }
+  return createClient<Database>(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false, storage: undefined },
+  });
 }
 
 async function sendRegistrationNotification(opts: {
