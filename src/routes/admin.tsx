@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollText, Users, Settings2, Search, Plus, Minus, Inbox, Phone, Mail, UserPlus, Loader2, Eye, EyeOff, Pencil, Trash2, Ban, CheckCircle2, Layers, GitBranch, CalendarDays, DollarSign, ListChecks, Send, Database, ExternalLink } from "lucide-react";
+import { ScrollText, Users, Settings2, Search, Plus, Minus, Inbox, Phone, Mail, UserPlus, Loader2, Eye, EyeOff, Pencil, Trash2, Ban, CheckCircle2, Layers, GitBranch, CalendarDays, DollarSign, ListChecks, Send, Database, ExternalLink, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -472,11 +472,22 @@ function AdminPortal() {
               <div className="text-xs text-muted-foreground">Open the underlying Supabase project to manage API keys, database, and auth.</div>
             </div>
           </div>
-          <Button asChild>
-            <a href="https://supabase.com/dashboard/project/vulmxndmfjmoovxwurio/settings/api-keys" target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="h-4 w-4 mr-1.5"/>Open API Keys
-            </a>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                navigator.clipboard.writeText("wrangler secret put SUPABASE_SERVICE_ROLE_KEY");
+                toast.success("Command copied to clipboard");
+              }}
+            >
+              <Copy className="h-4 w-4 mr-1.5"/>Copy wrangler cmd
+            </Button>
+            <Button asChild>
+              <a href="https://supabase.com/dashboard/project/vulmxndmfjmoovxwurio/settings/api-keys" target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-4 w-4 mr-1.5"/>Open API Keys
+              </a>
+            </Button>
+          </div>
         </Card>
       )}
       <Tabs defaultValue={initialTab} className="space-y-6">
