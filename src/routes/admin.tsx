@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollText, Users, Settings2, Search, Plus, Minus, Inbox, Phone, Mail, UserPlus, Loader2, Eye, EyeOff, Pencil, Trash2, Ban, CheckCircle2, Layers, GitBranch, CalendarDays, DollarSign, ListChecks, Send } from "lucide-react";
+import { ScrollText, Users, Settings2, Search, Plus, Minus, Inbox, Phone, Mail, UserPlus, Loader2, Eye, EyeOff, Pencil, Trash2, Ban, CheckCircle2, Layers, GitBranch, CalendarDays, DollarSign, ListChecks, Send, Database, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -460,6 +460,22 @@ function AdminPortal() {
           </div>
           <Button asChild>
             <Link to="/admin/email-templates"><Mail className="h-4 w-4 mr-1.5"/>Manage templates</Link>
+          </Button>
+        </Card>
+      )}
+      {user?.role === "admin" && (
+        <Card className="glass mb-4 p-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Database className="h-4 w-4 text-primary" />
+            <div>
+              <div className="text-sm font-semibold">Backend (Supabase)</div>
+              <div className="text-xs text-muted-foreground">Open the underlying Supabase project to manage API keys, database, and auth.</div>
+            </div>
+          </div>
+          <Button asChild>
+            <a href="https://supabase.com/dashboard/project/vulmxndmfjmoovxwurio/settings/api-keys" target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="h-4 w-4 mr-1.5"/>Open API Keys
+            </a>
           </Button>
         </Card>
       )}
