@@ -1,13 +1,23 @@
-import { defineConfig } from "@lovable.dev/vite-tanstack-config";
-import { loadEnv } from "vite";
+import { defineConfig, loadEnv } from "vite";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
+import viteTsConfigPaths from "vite-tsconfig-paths";
+import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import { cloudflare } from "@cloudflare/vite-plugin";
 
-const serverEnv = loadEnv(process.env.NODE_VERSION || "development", process.cwd(), "");
+const serverEnv = loadEnv(process.env.NODE_ENV || "development", process.cwd(), "");
 Object.assign(process.env, serverEnv);
 
 export default defineConfig({
-  tanstackStart: {
-    spa: {
-      enabled: true,
-    },
-  },
+  plugins: [
+    viteTsConfigPaths(),
+    tailwindcss(),
+    tanstackStart({
+      spa: {
+        enabled: true,
+      },
+    }),
+    react(),
+    cloudflare(),
+  ],
 });
