@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter, Link } from "@tanstack/react-router";
+import { createFileRoute, useRouter, Link, useLocation } from "@tanstack/react-router";
 import { useApp } from "@/lib/app-store";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
@@ -337,6 +337,16 @@ function AdminPortal() {
     return () => { cancelled = true; };
   }, [user, fetchStaff, fetchAgents]);
 
+  const location = useLocation();
+  useEffect(() => {
+    if (location.hash === "backend-card") {
+      const t = setTimeout(() => {
+        document.getElementById("backend-card")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 150);
+      return () => clearTimeout(t);
+    }
+  }, [location.hash]);
+
   const handleCreateUser = async () => {
     if (!newEmail || !newPassword || newPassword.length < 12) {
       toast.error("Email is required and password must be at least 12 characters");
@@ -464,7 +474,7 @@ function AdminPortal() {
         </Card>
       )}
       {user?.role === "admin" && (
-        <Card className="glass mb-4 p-3 flex items-center justify-between gap-3">
+        <Card id="backend-card" className="glass mb-4 p-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Database className="h-4 w-4 text-primary" />
             <div>
@@ -911,6 +921,17 @@ function AdminPortal() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {user?.role === "admin" && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="fixed bottom-6 right-6 z-40 shadow-md bg-background/90 backdrop-blur-sm gap-1.5"
+          onClick={() => document.getElementById("backend-card")?.scrollIntoView({ behavior: "smooth", block: "center" })}
+        >
+          <Database className="h-4 w-4" />
+          Backend (Supabase)
+        </Button>
+      )}
     </AppShell>
   );
 }
