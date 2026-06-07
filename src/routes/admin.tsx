@@ -463,6 +463,22 @@ function AdminPortal() {
           </Button>
         </Card>
       )}
+      {user?.role === "admin" && (
+        <Card className="glass mb-4 p-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Database className="h-4 w-4 text-primary" />
+            <div>
+              <div className="text-sm font-semibold">Backend (Supabase)</div>
+              <div className="text-xs text-muted-foreground">Open the underlying Supabase project to manage API keys, database, and auth.</div>
+            </div>
+          </div>
+          <Button asChild>
+            <a href="https://supabase.com/dashboard/project/vulmxndmfjmoovxwurio/settings/api-keys" target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="h-4 w-4 mr-1.5"/>Open API Keys
+            </a>
+          </Button>
+        </Card>
+      )}
       <Tabs defaultValue={initialTab} className="space-y-6">
         <TabsList className="glass">
           <TabsTrigger value="scenarios"><Inbox className="h-4 w-4 mr-1.5"/>Scenarios &amp; contacts</TabsTrigger>
