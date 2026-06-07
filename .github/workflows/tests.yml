@@ -2,48 +2,50 @@ name: Tests
 
 on:
   push:
-    branches: [main]
-  pull_request:
-  workflow_dispatch:
-    inputs:
-      suite:
-        description: Which suite to run
-        type: choice
-        options: [all, vitest, playwright]
-        default: all
-      grep:
-        description: "Playwright -g filter (optional, e.g. 'home')"
-        type: string
-        required: false
+      branches: [main]
+        pull_request:
+          workflow_dispatch:
+              inputs:
+                    suite:
+                            description: Which suite to run
+                                    type: choice
+                                            options: [all, vitest, playwright]
+                                                    default: all
+                                                          grep:
+                                                                  description: "Playwright -g filter (optional, e.g. 'home')"
+                                                                          type: string
+                                                                                  required: false
 
-jobs:
-  vitest:
-    if: ${{ github.event_name != 'workflow_dispatch' || inputs.suite == 'all' || inputs.suite == 'vitest' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install --frozen-lockfile
-      - run: bun run test
-
-  playwright:
-    if: ${{ github.event_name != 'workflow_dispatch' || inputs.suite == 'all' || inputs.suite == 'playwright' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install --frozen-lockfile
-      - run: bunx playwright install --with-deps chromium
-      - name: Run Playwright
-        run: |
-          if [ -n "${{ inputs.grep }}" ]; then
-            bunx playwright test -g "${{ inputs.grep }}"
-          else
-            bun run e2e
-          fi
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: playwright-report
-          path: playwright-report/
-          retention-days: 14
+                                                                                  jobs:
+                                                                                    vitest:
+                                                                                        if: ${{ github.event_name != 'workflow_dispatch' || inputs.suite == 'all' || inputs.suite == 'vitest' }}
+                                                                                            runs-on: ubuntu-latest
+                                                                                                steps:
+                                                                                                      - uses: actions/checkout@v4
+                                                                                                            - uses: oven-sh/setup-bun@v2
+                                                                                                                  - run: bun install --frozen-lockfile
+                                                                                                                        - run: bun run test
+                                                                                                                        
+                                                                                                                          playwright:
+                                                                                                                              if: ${{ github.event_name != 'workflow_dispatch' || inputs.suite == 'all' || inputs.suite == 'playwright' }}
+                                                                                                                                  runs-on: ubuntu-latest
+                                                                                                                                      steps:
+                                                                                                                                            - uses: actions/checkout@v4
+                                                                                                                                                  - uses: oven-sh/setup-bun@v2
+                                                                                                                                                        - run: bun install --frozen-lockfile
+                                                                                                                                                              - run: bun run build
+                                                                                                                                                                    - run: bunx playwright install --with-deps chromium
+                                                                                                                                                                          - name: Run Playwright
+                                                                                                                                                                                  run: |
+                                                                                                                                                                                            if [ -n "${{ inputs.grep }}" ]; then
+                                                                                                                                                                                                        bunx playwright test -g "${{ inputs.grep }}"
+                                                                                                                                                                                                                  else
+                                                                                                                                                                                                                              bun run e2e
+                                                                                                                                                                                                                                        fi
+                                                                                                                                                                                                                                              - uses: actions/upload-artifact@v4
+                                                                                                                                                                                                                                                      if: always()
+                                                                                                                                                                                                                                                              with:
+                                                                                                                                                                                                                                                                        name: playwright-report
+                                                                                                                                                                                                                                                                                  path: playwright-report/
+                                                                                                                                                                                                                                                                                            retention-days: 14
+                                                                                                                                                                                                                                                                                            
