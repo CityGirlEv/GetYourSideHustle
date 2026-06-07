@@ -921,6 +921,17 @@ function AdminPortal() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {user?.role === "admin" && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="fixed bottom-6 right-6 z-40 shadow-md bg-background/90 backdrop-blur-sm gap-1.5"
+          onClick={() => document.getElementById("backend-card")?.scrollIntoView({ behavior: "smooth", block: "center" })}
+        >
+          <Database className="h-4 w-4" />
+          Backend (Supabase)
+        </Button>
+      )}
     </AppShell>
   );
 }
