@@ -337,6 +337,16 @@ function AdminPortal() {
     return () => { cancelled = true; };
   }, [user, fetchStaff, fetchAgents]);
 
+  const location = useLocation();
+  useEffect(() => {
+    if (location.hash === "backend-card") {
+      const t = setTimeout(() => {
+        document.getElementById("backend-card")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 150);
+      return () => clearTimeout(t);
+    }
+  }, [location.hash]);
+
   const handleCreateUser = async () => {
     if (!newEmail || !newPassword || newPassword.length < 12) {
       toast.error("Email is required and password must be at least 12 characters");
