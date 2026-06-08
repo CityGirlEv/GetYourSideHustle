@@ -37,6 +37,8 @@ function RegisterPage() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [requestedRole, setRequestedRole] = useState<"qa" | "agent" | "">("");
   const [qaDevices, setQaDevices] = useState<string[]>([]);
   const [qaDeviceOther, setQaDeviceOther] = useState("");
@@ -52,6 +54,8 @@ function RegisterPage() {
     if (lastName.trim().length < 1) return toast.error("Enter your last name.");
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return toast.error("Enter a valid email.");
     if (phone.replace(/\D/g, "").length < 7) return toast.error("Enter a valid phone number.");
+    if (password.length < 8) return toast.error("Password must be at least 8 characters.");
+    if (password !== confirmPassword) return toast.error("Passwords don't match.");
     if (requestedRole !== "qa" && requestedRole !== "agent") return toast.error("Pick the role you're registering for.");
     if (requestedRole === "qa") {
       const extras = qaDeviceOther.split(",").map((s) => s.trim()).filter(Boolean);
@@ -79,6 +83,7 @@ function RegisterPage() {
           last_name: lastName.trim(),
           email: email.trim(),
           phone: phone.trim(),
+          password,
           signature_name: signatureName.trim(),
           accept_nda: true,
           requested_role: requestedRole as "qa" | "agent",
@@ -124,6 +129,17 @@ function RegisterPage() {
                     Message and data rates may apply depending on your carrier.
                   </p>
                 </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Password</Label>
+                    <Input type="password" value={password} onChange={(e)=>setPassword(e.target.value)} required autoComplete="new-password" minLength={8} />
+                  </div>
+                  <div>
+                    <Label>Confirm password</Label>
+                    <Input type="password" value={confirmPassword} onChange={(e)=>setConfirmPassword(e.target.value)} required autoComplete="new-password" minLength={8} />
+                  </div>
+                </div>
+                <p className="text-[11px] text-muted-foreground -mt-2">At least 8 characters. You'll use this to sign in once approved.</p>
                 <div className="space-y-2">
                   <Label>I'm registering as</Label>
                   <div className="grid grid-cols-2 gap-2">
