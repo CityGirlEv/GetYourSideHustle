@@ -158,6 +158,7 @@ export const registerWithNda = createServerFn({ method: "POST" })
       last_name: z.string().trim().min(1).max(100),
       email: z.string().trim().email().max(255),
       phone: z.string().trim().min(7).max(40),
+      password: z.string().min(8).max(200),
       signature_name: z.string().trim().min(3).max(255),
       accept_nda: z.literal(true),
       requested_role: z.enum(["qa", "agent"]),
@@ -167,7 +168,7 @@ export const registerWithNda = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const fullName = `${data.first_name} ${data.last_name}`.trim();
-    const password = randomPassword(24);
+    const password = data.password;
     const admin = await getAdminClient();
 
     // ---------------------------------------------------------------------
