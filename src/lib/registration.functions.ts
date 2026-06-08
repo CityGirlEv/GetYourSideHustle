@@ -66,6 +66,28 @@ function readEnv(name: string): string | undefined {
 }
 
 function getPublicClient() {
+  const processEnv =
+    typeof process !== "undefined" && process.env ? process.env : undefined;
+  const globalEnv = globalThis as Record<string, unknown>;
+  let viteEnv: Record<string, string | undefined> | undefined;
+  try {
+    viteEnv = (import.meta as unknown as { env?: Record<string, string | undefined> }).env;
+  } catch {
+    // ignore
+  }
+
+  console.info("[registration:getPublicClient] env presence", {
+    "process.env.SUPABASE_URL": Boolean(processEnv?.SUPABASE_URL),
+    "process.env.SUPABASE_PUBLISHABLE_KEY": Boolean(processEnv?.SUPABASE_PUBLISHABLE_KEY),
+    "process.env.SUPABASE_ANON_KEY": Boolean(processEnv?.SUPABASE_ANON_KEY),
+    "globalThis.SUPABASE_URL": Boolean(globalEnv.SUPABASE_URL),
+    "globalThis.SUPABASE_PUBLISHABLE_KEY": Boolean(globalEnv.SUPABASE_PUBLISHABLE_KEY),
+    "globalThis.SUPABASE_ANON_KEY": Boolean(globalEnv.SUPABASE_ANON_KEY),
+    "import.meta.env.VITE_SUPABASE_URL": Boolean(viteEnv?.VITE_SUPABASE_URL),
+    "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": Boolean(viteEnv?.VITE_SUPABASE_PUBLISHABLE_KEY),
+    "import.meta.env.VITE_SUPABASE_ANON_KEY": Boolean(viteEnv?.VITE_SUPABASE_ANON_KEY),
+  });
+
   const url = readEnv("SUPABASE_URL");
   const key =
     readEnv("SUPABASE_PUBLISHABLE_KEY") ||
