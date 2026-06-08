@@ -129,6 +129,17 @@ function RegisterPage() {
                     Message and data rates may apply depending on your carrier.
                   </p>
                 </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Password</Label>
+                    <Input type="password" value={password} onChange={(e)=>setPassword(e.target.value)} required autoComplete="new-password" minLength={8} />
+                  </div>
+                  <div>
+                    <Label>Confirm password</Label>
+                    <Input type="password" value={confirmPassword} onChange={(e)=>setConfirmPassword(e.target.value)} required autoComplete="new-password" minLength={8} />
+                  </div>
+                </div>
+                <p className="text-[11px] text-muted-foreground -mt-2">At least 8 characters. You'll use this to sign in once approved.</p>
                 <div className="space-y-2">
                   <Label>I'm registering as</Label>
                   <div className="grid grid-cols-2 gap-2">
