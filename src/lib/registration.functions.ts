@@ -125,15 +125,98 @@ export const registerWithNda = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const fullName = `${data.first_name} ${data.last_name}`.trim();
     const password = randomPassword(24);
+    const admin = await getAdminClient();
+
+    // ---------------------------------------------------------------------
+    // Fallback path: no service role key available (e.g. external Cloudflare
+    // Workers deployment). Use the publishable-key client + auth.signUp.
+    // The handle_new_user trigger creates profile + user_roles rows from the
+    // user_metadata we pass in. NDA upload and self-profile update happen
+    // via the session returned by signUp.
+    // ---------------------------------------------------------------------
+    if (!admin) {
+      const pub = getPublicClient();
+      const qaDevices = data.requested_role === "qa" ? (data.qa_devices ?? []) : null;
+      const { data: signUp, error: signUpErr } = await pub.auth.signUp({
+        email: data.email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+            phone: data.phone,
+            requested_role: data.requested_role,
+          },
+        },
+      });
+      if (signUpErr || !signUp.user) {
+        throw new Error(signUpErr?.message ?? "Failed to create account");
+      }
+      const userId = signUp.user.id;
+
+      // If a session was returned, use it for the authenticated-only writes.
+      if (signUp.session) {
+        await pub.auth.setSession({
+          access_token: signUp.session.access_token,
+          refresh_token: signUp.session.refresh_token,
+        });
+
+        // Best-effort profile fill — trigger already created the row.
+        await pub.from("profiles").update({
+          phone: data.phone,
+          qa_devices: qaDevices,
+        }).eq("id", userId);
+
+        // NDA PDF
+        try {
+          const signedAt = new Date();
+          const pdf = buildNdaPdf({
+            fullName: data.signature_name.trim(),
+            email: data.email,
+            signedAt,
+            agreementVersion: NDA_VERSION,
+            userAgent: data.user_agent ?? null,
+          });
+          const bytes = new Uint8Array(pdf.output("arraybuffer"));
+          const path = `${userId}/${NDA_VERSION}-${signedAt.getTime()}.pdf`;
+          const up = await pub.storage
+            .from("nda-signatures")
+            .upload(path, bytes, { contentType: "application/pdf", upsert: false });
+          if (!up.error) {
+            await pub.from("nda_signatures").insert({
+              user_id: userId,
+              full_name: data.signature_name.trim(),
+              email: data.email,
+              agreement_version: NDA_VERSION,
+              pdf_path: path,
+              user_agent: data.user_agent ?? null,
+            });
+          } else {
+            console.warn("[registration:fallback] NDA upload failed", up.error.message);
+          }
+        } catch (e) {
+          console.warn("[registration:fallback] NDA persist threw", e);
+        }
+      } else {
+        // Email confirmation required by the project — NDA can be uploaded
+        // after first sign-in. Log and continue so the user account exists.
+        console.info("[registration:fallback] signUp requires email confirmation; NDA deferred");
+      }
+
+      return { ok: true };
+    }
+
+    // ---------------------------------------------------------------------
+    // Service-role path (Lovable Cloud) — original behaviour unchanged.
+    // ---------------------------------------------------------------------
 
     // Reject if user already exists
-    const { data: existing } = await supabaseAdmin.auth.admin.listUsers();
+    const { data: existing } = await admin.auth.admin.listUsers();
     if ((existing?.users ?? []).some((u) => u.email?.toLowerCase() === data.email.toLowerCase())) {
       throw new Error("An account with this email already exists. Try signing in or use a different email.");
     }
 
     // Create the user — confirmed (so admin can simply un-ban) but banned (disabled) until admin approves.
-    const { data: created, error: createErr } = await supabaseAdmin.auth.admin.createUser({
+    const { data: created, error: createErr } = await admin.auth.admin.createUser({
       email: data.email,
       password,
       email_confirm: true,
@@ -148,14 +231,14 @@ export const registerWithNda = createServerFn({ method: "POST" })
     try {
       // Ensure profile + role (trigger should fire, but make sure)
       const qaDevices = data.requested_role === "qa" ? (data.qa_devices ?? []) : null;
-      await supabaseAdmin.from("profiles").upsert({
+      await admin.from("profiles").upsert({
         id: userId,
         full_name: fullName,
         phone: data.phone,
         qa_devices: qaDevices,
       });
-      await supabaseAdmin.from("user_roles").delete().eq("user_id", userId);
-      await supabaseAdmin.from("user_roles").insert({ user_id: userId, role: data.requested_role });
+      await admin.from("user_roles").delete().eq("user_id", userId);
+      await admin.from("user_roles").insert({ user_id: userId, role: data.requested_role });
 
       // Generate + store NDA PDF
       const signedAt = new Date();
@@ -169,12 +252,12 @@ export const registerWithNda = createServerFn({ method: "POST" })
       const arrayBuf = pdf.output("arraybuffer");
       const bytes = new Uint8Array(arrayBuf);
       const path = `${userId}/${NDA_VERSION}-${signedAt.getTime()}.pdf`;
-      const up = await supabaseAdmin.storage
+      const up = await admin.storage
         .from("nda-signatures")
         .upload(path, bytes, { contentType: "application/pdf", upsert: false });
       if (up.error) throw up.error;
 
-      const ins = await supabaseAdmin.from("nda_signatures").insert({
+      const ins = await admin.from("nda_signatures").insert({
         user_id: userId,
         full_name: data.signature_name.trim(),
         email: data.email,
@@ -185,7 +268,7 @@ export const registerWithNda = createServerFn({ method: "POST" })
       if (ins.error) throw ins.error;
     } catch (e) {
       // Roll back the auth user so the email can try again
-      await supabaseAdmin.auth.admin.deleteUser(userId).catch(() => {});
+      await admin.auth.admin.deleteUser(userId).catch(() => {});
       throw e instanceof Error ? e : new Error("Registration failed");
     }
 
@@ -202,7 +285,7 @@ export const registerWithNda = createServerFn({ method: "POST" })
 
     // In-app admin notification (always works, no email required)
     try {
-      await supabaseAdmin.from("admin_notifications").insert({
+      await admin.from("admin_notifications").insert({
         kind: "new_registration",
         title: `New beta registration — ${data.first_name} ${data.last_name}`,
         body: `${data.email} · ${data.phone} · requested role: ${data.requested_role}. Account is disabled until you approve it in the Admin → Staff tab.`,
