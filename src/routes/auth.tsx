@@ -13,9 +13,10 @@ import { roleDestination } from "@/lib/role-destination";
 import { safeSignInRedirect } from "@/lib/auth-redirect";
 
 export const Route = createFileRoute("/auth")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    redirect: safeSignInRedirect(search.redirect, undefined),
-  }),
+  validateSearch: (search: Record<string, unknown>): { redirect?: string } => {
+    const r = safeSignInRedirect(search.redirect, undefined);
+    return r ? { redirect: r } : {};
+  },
   head: () => ({
     meta: [
       { title: "Sign In — The Medicare Optimizer" },
