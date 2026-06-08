@@ -3,9 +3,14 @@ import { attachSupabaseAuth } from "@/integrations/supabase/auth-attacher";
 
 import { renderErrorPage } from "./lib/error-page";
 
-const errorMiddleware = createMiddleware().server(async ({ next }) => {
-  const { request } = arguments[0] ?? {};
-  // no-op placeholder — real guard below
+const errorMiddleware = createMiddleware().server(async ({ next, request }) => {
+  // Bypass error wrapping for /lovable/* routes (webhooks, cron, previews)
+  if (request) {
+    const url = new URL(request.url);
+    if (url.pathname.startsWith("/lovable/")) {
+      return next();
+    }
+  }
   try {
     return await next();
   } catch (error) {
