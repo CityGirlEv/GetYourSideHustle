@@ -46,9 +46,30 @@ async function getAdminClient() {
   return supabaseAdmin;
 }
 
+function readEnv(name: string): string | undefined {
+  // Try process.env first (Node/most runtimes)
+  const fromProcess =
+    typeof process !== "undefined" && process.env ? process.env[name] : undefined;
+  if (fromProcess) return fromProcess;
+  // Cloudflare Workers may expose bindings on globalThis
+  const fromGlobal = (globalThis as Record<string, unknown>)[name];
+  if (typeof fromGlobal === "string" && fromGlobal) return fromGlobal;
+  // Vite-injected public values as a last resort
+  try {
+    const viteEnv = (import.meta as unknown as { env?: Record<string, string | undefined> }).env;
+    const fromVite = viteEnv?.[name] ?? viteEnv?.[`VITE_${name}`];
+    if (fromVite) return fromVite;
+  } catch {
+    // ignore
+  }
+  return undefined;
+}
+
 function getPublicClient() {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_PUBLISHABLE_KEY;
+  const url = readEnv("SUPABASE_URL");
+  const key =
+    readEnv("SUPABASE_PUBLISHABLE_KEY") ||
+    readEnv("SUPABASE_ANON_KEY");
   if (!url || !key) {
     throw new Error("Supabase URL / publishable key not configured on the server.");
   }
