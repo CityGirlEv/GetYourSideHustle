@@ -4,6 +4,8 @@ import { attachSupabaseAuth } from "@/integrations/supabase/auth-attacher";
 import { renderErrorPage } from "./lib/error-page";
 
 const errorMiddleware = createMiddleware().server(async ({ next }) => {
+  const { request } = arguments[0] ?? {};
+  // no-op placeholder — real guard below
   try {
     return await next();
   } catch (error) {
