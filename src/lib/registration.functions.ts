@@ -85,6 +85,31 @@ async function sendRegistrationNotification(opts: {
   );
 }
 
+async function ensureBucketExists(bucketName: string, isPublic = false) {
+  try {
+    const { data: buckets, error: listError } = await supabaseAdmin.storage.listBuckets();
+    if (listError) {
+      console.error(`[Storage] Failed to list buckets: ${listError.message}`);
+      return;
+    }
+    const exists = buckets.some((b) => b.id === bucketName);
+    if (!exists) {
+      console.log(`[Storage] Creating bucket "${bucketName}"...`);
+      const { error: createError } = await supabaseAdmin.storage.createBucket(bucketName, {
+        public: isPublic,
+        allowedMimeTypes: bucketName === "nda-signatures" ? ["application/pdf"] : undefined,
+      });
+      if (createError) {
+        console.error(`[Storage] Failed to create bucket "${bucketName}": ${createError.message}`);
+      } else {
+        console.log(`[Storage] Bucket "${bucketName}" created successfully.`);
+      }
+    }
+  } catch (err) {
+    console.error(`[Storage] Error ensuring bucket "${bucketName}" exists:`, err);
+  }
+}
+
 export const registerWithNda = createServerFn({ method: "POST" })
   .inputValidator((input) =>
     z.object({
@@ -146,6 +171,11 @@ export const registerWithNda = createServerFn({ method: "POST" })
       const arrayBuf = pdf.output("arraybuffer");
       const bytes = new Uint8Array(arrayBuf);
       const path = `${userId}/${NDA_VERSION}-${signedAt.getTime()}.pdf`;
+      
+      // Auto-provision storage buckets if they are missing in the Supabase project
+      await ensureBucketExists("nda-signatures", false);
+      await ensureBucketExists("test-evidence", false);
+
       const up = await supabaseAdmin.storage
         .from("nda-signatures")
         .upload(path, bytes, { contentType: "application/pdf", upsert: false });
