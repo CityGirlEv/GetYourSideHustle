@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { getEnvVariable } from "@/lib/env";
 import { z } from "zod";
 import { DEFAULT_ADMIN_NOTIFICATION_EMAILS } from "@/lib/registration.functions";
 
@@ -33,7 +34,7 @@ const NOTIFY_FROM = "The Medicare Optimizer <onboarding@resend.dev>";
 const APP_URL = "https://themedicareoptimizer.lovable.app";
 
 function adminNotificationRecipients(): string[] {
-  const raw = process.env.ADMIN_NOTIFICATION_EMAILS;
+  const raw = getEnvVariable('ADMIN_NOTIFICATION_EMAILS');
   const configured = raw
     ? raw.split(",").map((s) => s.trim()).filter(Boolean)
     : DEFAULT_ADMIN_NOTIFICATION_EMAILS;
@@ -42,8 +43,8 @@ function adminNotificationRecipients(): string[] {
 
 function siteOrigin(): string {
   return (
-    process.env.SITE_ORIGIN ||
-    process.env.PUBLIC_SITE_URL ||
+    getEnvVariable('SITE_ORIGIN') ||
+    getEnvVariable('PUBLIC_SITE_URL') ||
     "https://mypartb.lovable.app"
   );
 }
@@ -55,7 +56,7 @@ async function notifyAdminsAccountEnabled(opts: {
   role: string;
   enabledBy: string;
 }) {
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const serviceKey = getEnvVariable('SUPABASE_SERVICE_ROLE_KEY');
   if (!serviceKey) {
     console.warn("[admin] account-enabled notification skipped — missing service role key");
     return;
@@ -95,8 +96,8 @@ async function notifyAdminsAccountEnabled(opts: {
 }
 
 async function sendAccountApprovedEmail(toEmail: string, fullName: string, role: string) {
-  const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
-  const RESEND_API_KEY = process.env.RESEND_API_KEY;
+  const LOVABLE_API_KEY = getEnvVariable('LOVABLE_API_KEY');
+  const RESEND_API_KEY = getEnvVariable('RESEND_API_KEY');
   if (!LOVABLE_API_KEY || !RESEND_API_KEY || !toEmail) {
     console.warn("[admin] approval email skipped — missing keys or recipient");
     return;

@@ -4,29 +4,11 @@
 // For user-authenticated queries (with RLS), use the auth middleware instead.
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
+import { getEnvVariable } from '@/lib/env';
 
 function createSupabaseAdminClient() {
-  let url = typeof process !== "undefined" ? process.env.SUPABASE_URL : undefined;
-  let serviceKey = typeof process !== "undefined" ? process.env.SUPABASE_SERVICE_ROLE_KEY : undefined;
-
-  try {
-    const storageKey = Symbol.for("tanstack-start:event-storage");
-    const storage = (globalThis as Record<symbol, any>)[storageKey];
-    const store = storage?.getStore();
-    const event = store?.h3Event;
-    const env = (event?.context as { cloudflare?: { env?: Record<string, unknown> } })?.cloudflare?.env;
-    if (env) {
-      if (typeof env.SUPABASE_URL === "string") {
-        url = url || env.SUPABASE_URL;
-      }
-      if (typeof env.SUPABASE_SERVICE_ROLE_KEY === "string") {
-        serviceKey = serviceKey || env.SUPABASE_SERVICE_ROLE_KEY;
-      }
-    }
-  } catch {}
-
-  const SUPABASE_URL = url;
-  const SUPABASE_SERVICE_ROLE_KEY = serviceKey;
+  const SUPABASE_URL = getEnvVariable('SUPABASE_URL');
+  const SUPABASE_SERVICE_ROLE_KEY = getEnvVariable('SUPABASE_SERVICE_ROLE_KEY');
 
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     const missing = [

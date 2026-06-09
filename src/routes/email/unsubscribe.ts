@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { createFileRoute } from '@tanstack/react-router'
+import { getEnvVariable } from '@/lib/env'
 
 function redactEmail(email: string | null | undefined): string {
   if (!email) return '***'
@@ -12,8 +13,8 @@ export const Route = createFileRoute("/email/unsubscribe")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-        const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+        const supabaseUrl = getEnvVariable('SUPABASE_URL')
+        const supabaseServiceKey = getEnvVariable('SUPABASE_SERVICE_ROLE_KEY')
 
         if (!supabaseUrl || !supabaseServiceKey) {
           return Response.json({ error: 'Server configuration error' }, { status: 500 })
@@ -48,8 +49,8 @@ export const Route = createFileRoute("/email/unsubscribe")({
       },
 
       POST: async ({ request }) => {
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-        const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+        const supabaseUrl = getEnvVariable('SUPABASE_URL')
+        const supabaseServiceKey = getEnvVariable('SUPABASE_SERVICE_ROLE_KEY')
 
         if (!supabaseUrl || !supabaseServiceKey) {
           return Response.json({ error: 'Server configuration error' }, { status: 500 })

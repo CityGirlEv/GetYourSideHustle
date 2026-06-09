@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { getEnvVariable } from "@/lib/env";
 import { z } from "zod";
 import { buildNdaPdf, NDA_VERSION } from "./nda";
 
@@ -19,7 +20,7 @@ function randomPassword(len = 24) {
 export const DEFAULT_ADMIN_NOTIFICATION_EMAILS = ["getpartb@gmail.com"];
 
 async function listAdminEmails(): Promise<string[]> {
-  const raw = process.env.ADMIN_NOTIFICATION_EMAILS;
+  const raw = getEnvVariable('ADMIN_NOTIFICATION_EMAILS');
   const configured = raw
     ? raw.split(",").map((s) => s.trim()).filter(Boolean)
     : DEFAULT_ADMIN_NOTIFICATION_EMAILS;
@@ -28,8 +29,8 @@ async function listAdminEmails(): Promise<string[]> {
 
 function originFromRequest(): string {
   // Prefer the published Lovable URL; fall back to a sane default.
-  return process.env.SITE_ORIGIN
-    || process.env.PUBLIC_SITE_URL
+  return getEnvVariable('SITE_ORIGIN')
+    || getEnvVariable('PUBLIC_SITE_URL')
     || "https://mypartb.lovable.app";
 }
 
@@ -38,7 +39,7 @@ async function sendRegistrationNotification(opts: {
   firstName: string; lastName: string; email: string; phone: string;
   requestedRole: string; qaDevices?: string[];
 }) {
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const serviceKey = getEnvVariable('SUPABASE_SERVICE_ROLE_KEY');
   if (!serviceKey) {
     console.warn("[registration] notification skipped — missing service role key");
     return;

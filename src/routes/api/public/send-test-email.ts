@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { supabaseAdmin } from '@/integrations/supabase/client.server'
+import { getEnvVariable } from '@/lib/env'
 import * as React from 'react'
 import { render } from '@react-email/components'
 import { TEMPLATES } from '@/lib/email-templates/registry'
@@ -41,7 +42,7 @@ async function getOrCreateUnsubscribeToken(email: string): Promise<string> {
 // produce an admin paper trail. Override via ADMIN_NOTIFICATION_EMAILS.
 const DEFAULT_ADMIN_BCC = ["getpartb@gmail.com"]
 function adminBccRecipients(): string[] {
-  const raw = process.env.ADMIN_NOTIFICATION_EMAILS
+  const raw = getEnvVariable('ADMIN_NOTIFICATION_EMAILS')
   const configured = raw
     ? raw.split(",").map((s) => s.trim()).filter(Boolean)
     : DEFAULT_ADMIN_BCC
@@ -58,7 +59,7 @@ export const Route = createFileRoute('/api/public/send-test-email')({
       POST: async ({ request }) => {
         const url = new URL(request.url)
         const secret = url.searchParams.get('secret')
-        const expectedSecret = process.env.TEST_EMAIL_SECRET
+        const expectedSecret = getEnvVariable('TEST_EMAIL_SECRET')
 
         // Hard requirement: the endpoint is disabled unless TEST_EMAIL_SECRET
         // is configured. Without this the endpoint was an open relay for

@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { render } from '@react-email/components'
 import { createFileRoute } from '@tanstack/react-router'
+import { getEnvVariable } from '@/lib/env'
 import { TEMPLATES } from '@/lib/email-templates/registry'
 
 // Renders all registered templates with their previewData.
@@ -10,7 +11,7 @@ export const Route = createFileRoute("/lovable/email/transactional/preview")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const apiKey = process.env.LOVABLE_API_KEY
+        const apiKey = getEnvVariable('LOVABLE_API_KEY')
         if (!apiKey) {
           return Response.json(
             { error: 'Server configuration error' },

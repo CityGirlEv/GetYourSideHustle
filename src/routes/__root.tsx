@@ -17,6 +17,7 @@ import { ConfirmProvider } from "@/components/ConfirmDialog";
 import { QAOnboardingGate } from "@/components/QAOnboardingDialog";
 import { GlobalBusyIndicator } from "@/components/GlobalBusyIndicator";
 import { supabase } from "@/integrations/supabase/client";
+import { getEnvVariable } from "@/lib/env";
 
 function NotFoundComponent() {
   return (
@@ -120,10 +121,23 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function RootShell({ children }: { children: React.ReactNode }) {
+  const env: Record<string, string> = {};
+  const publicVars = ["SUPABASE_URL", "SUPABASE_PUBLISHABLE_KEY"];
+  for (const name of publicVars) {
+    const val = getEnvVariable(name);
+    if (val) {
+      env[name] = val;
+      env[`VITE_${name}`] = val;
+    }
+  }
+
+  const envScript = `if (!window.__ENV__) { window.__ENV__ = ${JSON.stringify(env)}; }`;
+
   return (
     <html lang="en">
       <head>
         <HeadContent />
+        <script dangerouslySetInnerHTML={{ __html: envScript }} />
       </head>
       <body>
         {children}

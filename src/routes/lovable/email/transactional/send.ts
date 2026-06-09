@@ -2,6 +2,7 @@ import * as React from 'react'
 import { render } from '@react-email/components'
 import { createClient } from '@supabase/supabase-js'
 import { createFileRoute } from '@tanstack/react-router'
+import { getEnvVariable } from '@/lib/env'
 import { TEMPLATES } from '@/lib/email-templates/registry'
 import { getEmailTemplateOverride } from '@/lib/email-templates/overrides.server'
 
@@ -19,7 +20,7 @@ const FROM_DOMAIN = "mypartb.com"
 // ADMIN_NOTIFICATION_EMAILS env var (comma-separated).
 const DEFAULT_ADMIN_BCC = ["getpartb@gmail.com"]
 function adminBccRecipients(): string[] {
-  const raw = process.env.ADMIN_NOTIFICATION_EMAILS
+  const raw = getEnvVariable('ADMIN_NOTIFICATION_EMAILS')
   const configured = raw
     ? raw.split(",").map((s) => s.trim()).filter(Boolean)
     : DEFAULT_ADMIN_BCC
@@ -46,8 +47,8 @@ export const Route = createFileRoute("/lovable/email/transactional/send")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-        const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+        const supabaseUrl = getEnvVariable('SUPABASE_URL')
+        const supabaseServiceKey = getEnvVariable('SUPABASE_SERVICE_ROLE_KEY')
 
         if (!supabaseUrl || !supabaseServiceKey) {
           console.error('Missing required environment variables')
