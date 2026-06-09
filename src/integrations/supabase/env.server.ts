@@ -1,12 +1,13 @@
-import { getEvent } from "vinxi/http";
-
 export function getSupabaseEnv() {
   let url = typeof process !== "undefined" ? process.env.SUPABASE_URL : undefined;
   let key = typeof process !== "undefined" ? process.env.SUPABASE_PUBLISHABLE_KEY : undefined;
   let serviceKey = typeof process !== "undefined" ? process.env.SUPABASE_SERVICE_ROLE_KEY : undefined;
 
   try {
-    const event = getEvent();
+    const storageKey = Symbol.for("tanstack-start:event-storage");
+    const storage = (globalThis as Record<symbol, any>)[storageKey];
+    const store = storage?.getStore();
+    const event = store?.h3Event;
     const env = (event?.context as { cloudflare?: { env?: Record<string, unknown> } })?.cloudflare?.env;
     if (env) {
       if (typeof env.SUPABASE_URL === "string") {
