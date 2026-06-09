@@ -22,6 +22,15 @@ export default defineConfig({
     server: { entry: "server" },
   },
   nitro: {
-    preset: "cloudflare-pages",
+    preset: "cloudflare-module",
+    output: {
+      dir: "dist",
+      serverDir: "dist/_worker.js",
+      publicDir: "dist",
+    },
+    cloudflare: {
+      deployConfig: true,
+      nodeCompat: true,
+    },
   },
 });
