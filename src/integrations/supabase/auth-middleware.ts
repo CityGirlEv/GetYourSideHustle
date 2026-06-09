@@ -6,9 +6,27 @@ import type { Database } from './types'
 
 export const requireSupabaseAuth = createMiddleware({ type: 'function' }).server(
   async ({ next }) => {
-    
-    const SUPABASE_URL = process.env.SUPABASE_URL;
-    const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
+    let url = typeof process !== "undefined" ? process.env.SUPABASE_URL : undefined;
+    let key = typeof process !== "undefined" ? process.env.SUPABASE_PUBLISHABLE_KEY : undefined;
+
+    try {
+      const storageKey = Symbol.for("tanstack-start:event-storage");
+      const storage = (globalThis as Record<symbol, any>)[storageKey];
+      const store = storage?.getStore();
+      const event = store?.h3Event;
+      const env = (event?.context as { cloudflare?: { env?: Record<string, unknown> } })?.cloudflare?.env;
+      if (env) {
+        if (typeof env.SUPABASE_URL === "string") {
+          url = url || env.SUPABASE_URL;
+        }
+        if (typeof env.SUPABASE_PUBLISHABLE_KEY === "string") {
+          key = key || env.SUPABASE_PUBLISHABLE_KEY;
+        }
+      }
+    } catch {}
+
+    const SUPABASE_URL = url;
+    const SUPABASE_PUBLISHABLE_KEY = key;
 
     if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
       const missing = [

@@ -6,8 +6,27 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
 function createSupabaseAdminClient() {
-  const SUPABASE_URL = process.env.SUPABASE_URL;
-  const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  let url = typeof process !== "undefined" ? process.env.SUPABASE_URL : undefined;
+  let serviceKey = typeof process !== "undefined" ? process.env.SUPABASE_SERVICE_ROLE_KEY : undefined;
+
+  try {
+    const storageKey = Symbol.for("tanstack-start:event-storage");
+    const storage = (globalThis as Record<symbol, any>)[storageKey];
+    const store = storage?.getStore();
+    const event = store?.h3Event;
+    const env = (event?.context as { cloudflare?: { env?: Record<string, unknown> } })?.cloudflare?.env;
+    if (env) {
+      if (typeof env.SUPABASE_URL === "string") {
+        url = url || env.SUPABASE_URL;
+      }
+      if (typeof env.SUPABASE_SERVICE_ROLE_KEY === "string") {
+        serviceKey = serviceKey || env.SUPABASE_SERVICE_ROLE_KEY;
+      }
+    }
+  } catch {}
+
+  const SUPABASE_URL = url;
+  const SUPABASE_SERVICE_ROLE_KEY = serviceKey;
 
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     const missing = [
