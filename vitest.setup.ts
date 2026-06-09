@@ -1,6 +1,12 @@
 import "@testing-library/jest-dom/vitest";
 import { vi } from "vitest";
 
+// Set mock environment variables for tests
+process.env.VITE_SUPABASE_URL = "https://mock-project.supabase.co";
+process.env.SUPABASE_URL = "https://mock-project.supabase.co";
+process.env.SUPABASE_SERVICE_ROLE_KEY = "mock-service-role-key-for-testing-only";
+process.env.TEST_EMAIL_SECRET = "mock-test-email-secret";
+
 // ---------------------------------------------------------------------------
 // Global test mocks — most components/hooks/server-fns transitively pull in
 // Supabase, TanStack Start, and our shared toast helper. We stub them with

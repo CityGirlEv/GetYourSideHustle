@@ -23,11 +23,12 @@ describe("useAssigneeOptions", () => {
   });
 
   it("returns TEST_OWNERS immediately, then merges in QA names", async () => {
-    (listQaAssignees as unknown as ReturnType<typeof vi.fn>).mockResolvedValue([
+    const useAssigneeOptions = await freshHook();
+    const { listQaAssignees: mockList } = await import("@/lib/qa-assignees.functions");
+    (mockList as any).mockResolvedValue([
       "Alex",
       "Jamie",
     ]);
-    const useAssigneeOptions = await freshHook();
 
     const { result } = renderHook(() => useAssigneeOptions());
 
@@ -44,11 +45,12 @@ describe("useAssigneeOptions", () => {
   });
 
   it("de-dupes QA names that collide with TEST_OWNERS", async () => {
-    (listQaAssignees as unknown as ReturnType<typeof vi.fn>).mockResolvedValue([
+    const useAssigneeOptions = await freshHook();
+    const { listQaAssignees: mockList } = await import("@/lib/qa-assignees.functions");
+    (mockList as any).mockResolvedValue([
       TEST_OWNERS[0], // duplicate
       "Alex",
     ]);
-    const useAssigneeOptions = await freshHook();
 
     const { result } = renderHook(() => useAssigneeOptions());
     await waitFor(() => expect(result.current).toContain("Alex"));
@@ -58,10 +60,11 @@ describe("useAssigneeOptions", () => {
   });
 
   it("falls back to TEST_OWNERS when the server fn rejects", async () => {
-    (listQaAssignees as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(
+    const useAssigneeOptions = await freshHook();
+    const { listQaAssignees: mockList } = await import("@/lib/qa-assignees.functions");
+    (mockList as any).mockRejectedValue(
       new Error("nope"),
     );
-    const useAssigneeOptions = await freshHook();
 
     const { result } = renderHook(() => useAssigneeOptions());
     await act(async () => {
@@ -71,10 +74,11 @@ describe("useAssigneeOptions", () => {
   });
 
   it("only calls the server fn once across multiple hook consumers", async () => {
-    (listQaAssignees as unknown as ReturnType<typeof vi.fn>).mockResolvedValue([
+    const useAssigneeOptions = await freshHook();
+    const { listQaAssignees: mockList } = await import("@/lib/qa-assignees.functions");
+    (mockList as any).mockResolvedValue([
       "Alex",
     ]);
-    const useAssigneeOptions = await freshHook();
 
     renderHook(() => useAssigneeOptions());
     renderHook(() => useAssigneeOptions());
@@ -82,11 +86,11 @@ describe("useAssigneeOptions", () => {
 
     await waitFor(() =>
       expect(
-        (listQaAssignees as unknown as ReturnType<typeof vi.fn>).mock.calls.length,
+        (mockList as any).mock.calls.length,
       ).toBeGreaterThan(0),
     );
     expect(
-      (listQaAssignees as unknown as ReturnType<typeof vi.fn>).mock.calls.length,
+      (mockList as any).mock.calls.length,
     ).toBe(1);
   });
 });

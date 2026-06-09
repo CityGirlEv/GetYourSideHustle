@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { z } from "zod";
+import { z as zNamed } from "zod";
+import * as zodNamespace from "zod";
+const z = zNamed || (zodNamespace as any).z || (zodNamespace as any).default;
 import { roleDestination, type UserRole } from "@/lib/role-destination";
 
 /**
