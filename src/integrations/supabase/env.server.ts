@@ -1,4 +1,4 @@
-import { getEvent } from "@tanstack/react-start/server";
+import { getEvent } from "vinxi/http";
 
 export function getSupabaseEnv() {
   let url = typeof process !== "undefined" ? process.env.SUPABASE_URL : undefined;

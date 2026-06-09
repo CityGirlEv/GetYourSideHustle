@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 const ROLE_PRIORITY = ["admin", "qa", "agent", "editor", "viewer", "advisor"] as const;
 
@@ -14,6 +13,7 @@ function pickRole(roles: string[]) {
 export const getCurrentUserProfile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const [{ data: profile }, { data: roles }, { data: authUser }] = await Promise.all([
       supabaseAdmin
         .from("profiles")
