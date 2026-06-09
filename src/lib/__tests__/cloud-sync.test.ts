@@ -1,0 +1,75 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
+vi.mock("@/integrations/supabase/client", () => ({
+  supabase: {
+    auth: { getUser: vi.fn(async () => ({ data: { user: null } })) },
+    from: vi.fn(),
+    storage: { from: vi.fn() },
+  },
+}));
+vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
+
+import {
+  cloudPushTest,
+  cloudPushTestsBulk,
+  cloudAppendNotesBulk,
+  cloudSyncAllTasks,
+  lastSyncedAt,
+  syncLocalToCloud,
+  cloudAddNoteEntry,
+  cloudUpdateNoteEntry,
+} from "../cloud-sync";
+
+beforeEach(() => {
+  localStorage.clear();
+});
+
+describe("cloud-sync", () => {
+  it("lastSyncedAt reads localStorage", () => {
+    expect(lastSyncedAt()).toBeNull();
+    localStorage.setItem("cloud-synced-at", "2026-01-01");
+    expect(lastSyncedAt()).toBe("2026-01-01");
+  });
+
+  it("cloudPushTest returns false when not signed in", async () => {
+    const ok = await cloudPushTest("T1", { status: "pass" });
+    expect(ok).toBe(false);
+  });
+
+  it("syncLocalToCloud throws when not signed in", async () => {
+    await expect(syncLocalToCloud()).rejects.toThrow("Not signed in");
+  });
+
+  it("cloudSyncAllTasks returns null when not signed in", async () => {
+    const r = await cloudSyncAllTasks([]);
+    expect(r).toBeNull();
+  });
+
+  it("cloudPushTestsBulk short-circuits on empty input (no network)", async () => {
+    expect(await cloudPushTestsBulk([])).toBe(0);
+  });
+
+  it("cloudPushTestsBulk returns 0 when not signed in", async () => {
+    expect(await cloudPushTestsBulk([{ test_id: "T1", patch: { status: "pass" } }])).toBe(0);
+  });
+
+  it("cloudAppendNotesBulk short-circuits on empty input (no network)", async () => {
+    expect(await cloudAppendNotesBulk([])).toBe(0);
+  });
+
+  it("cloudAppendNotesBulk returns 0 when not signed in", async () => {
+    expect(await cloudAppendNotesBulk([{ test_id: "T1", kind: "qa", text: "x" }])).toBe(0);
+  });
+
+  it("cloudAddNoteEntry returns null on empty text", async () => {
+    expect(await cloudAddNoteEntry("T1", "qa", "   ")).toBeNull();
+  });
+
+  it("cloudAddNoteEntry returns null when not signed in", async () => {
+    expect(await cloudAddNoteEntry("T1", "qa", "hello")).toBeNull();
+  });
+
+  it("cloudUpdateNoteEntry returns null when not signed in", async () => {
+    expect(await cloudUpdateNoteEntry("T1", "qa", "2026-01-01T00:00:00Z", "x")).toBeNull();
+  });
+});

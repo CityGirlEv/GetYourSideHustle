@@ -1,0 +1,9 @@
+{
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/((?!assets/|robots.txt|llms.txt|_redirects|.*\\.).*)",
+      "destination": "/index.html"
+    }
+  ]
+}

@@ -1,0 +1,442 @@
+{
+  "Medigap Plans": [
+    {
+      "Plan Letter": "Plan A",
+      "Enrollment Status": "Open to All",
+      "General Summary": "Basic core benefits covering key hospital and medical coinsurance, but leaves deductibles to the member.",
+      "Part A Coinsurance": "100% Covered",
+      "Part B Coinsurance": "100% Covered",
+      "Blood (First 3 Pints)": "100% Covered",
+      "Part A Hospice Coinsurance": "100% Covered",
+      "Skilled Nursing Coinsurance": "0% Covered (Not Covered)",
+      "Part A Deductible": "0% Covered (Not Covered)",
+      "Part B Deductible": "0% Covered (Not Covered)",
+      "Part B Excess Charges": "0% Covered (Not Covered)",
+      "Foreign Travel Emergency": "0% Covered (Not Covered)",
+      "Benefit Highlights": "Download Guide"
+    },
+    {
+      "Plan Letter": "Plan B",
+      "Enrollment Status": "Open to All",
+      "General Summary": "Covers Plan A's core benefits plus the Medicare Part A hospital deductible.",
+      "Part A Coinsurance": "100% Covered",
+      "Part B Coinsurance": "100% Covered",
+      "Blood (First 3 Pints)": "100% Covered",
+      "Part A Hospice Coinsurance": "100% Covered",
+      "Skilled Nursing Coinsurance": "0% Covered (Not Covered)",
+      "Part A Deductible": "100% Covered",
+      "Part B Deductible": "0% Covered (Not Covered)",
+      "Part B Excess Charges": "0% Covered (Not Covered)",
+      "Foreign Travel Emergency": "0% Covered (Not Covered)",
+      "Benefit Highlights": "Download Guide"
+    },
+    {
+      "Plan Letter": "Plan C",
+      "Enrollment Status": "Closed to New Members",
+      "General Summary": "Near-complete coverage that includes both the Part A and Part B deductibles, leaving almost no out-of-pocket costs except Part B excess charges.",
+      "Part A Coinsurance": "100% Covered",
+      "Part B Coinsurance": "100% Covered",
+      "Blood (First 3 Pints)": "100% Covered",
+      "Part A Hospice Coinsurance": "100% Covered",
+      "Skilled Nursing Coinsurance": "100% Covered",
+      "Part A Deductible": "100% Covered",
+      "Part B Deductible": "100% Covered",
+      "Part B Excess Charges": "0% Covered (Not Covered)",
+      "Foreign Travel Emergency": "80% Covered (up to lifetime limits)",
+      "Benefit Highlights": "Download Guide"
+    },
+    {
+      "Plan Letter": "Plan D",
+      "Enrollment Status": "Open to All",
+      "General Summary": "Excellent comprehensive coverage similar to Plan G, but does not cover Part B excess charges or the Part B deductible.",
+      "Part A Coinsurance": "100% Covered",
+      "Part B Coinsurance": "100% Covered",
+      "Blood (First 3 Pints)": "100% Covered",
+      "Part A Hospice Coinsurance": "100% Covered",
+      "Skilled Nursing Coinsurance": "100% Covered",
+      "Part A Deductible": "100% Covered",
+      "Part B Deductible": "0% Covered (Not Covered)",
+      "Part B Excess Charges": "0% Covered (Not Covered)",
+      "Foreign Travel Emergency": "80% Covered (up to lifetime limits)",
+      "Benefit Highlights": "Download Guide"
+    },
+    {
+      "Plan Letter": "Plan F",
+      "Enrollment Status": "Closed to New Members",
+      "General Summary": "Historically the most popular 'first-dollar' plan. Covers 100% of all gaps, deductibles, and excess charges, leaving the member with $0 out-of-pocket costs.",
+      "Part A Coinsurance": "100% Covered",
+      "Part B Coinsurance": "100% Covered",
+      "Blood (First 3 Pints)": "100% Covered",
+      "Part A Hospice Coinsurance": "100% Covered",
+      "Skilled Nursing Coinsurance": "100% Covered",
+      "Part A Deductible": "100% Covered",
+      "Part B Deductible": "100% Covered",
+      "Part B Excess Charges": "100% Covered",
+      "Foreign Travel Emergency": "80% Covered (up to lifetime limits)",
+      "Benefit Highlights": "Download Guide"
+    },
+    {
+      "Plan Letter": "High-Deductible Plan F",
+      "Enrollment Status": "Closed to New Members",
+      "General Summary": "Offers the exact same 100% coverage as standard Plan F, but only after the member meets a high annual deductible ($2,870 in 2026). Features very low premiums.",
+      "Part A Coinsurance": "100% Covered (After Deductible)",
+      "Part B Coinsurance": "100% Covered (After Deductible)",
+      "Blood (First 3 Pints)": "100% Covered (After Deductible)",
+      "Part A Hospice Coinsurance": "100% Covered (After Deductible)",
+      "Skilled Nursing Coinsurance": "100% Covered (After Deductible)",
+      "Part A Deductible": "100% Covered (After Deductible)",
+      "Part B Deductible": "100% Covered (After Deductible)",
+      "Part B Excess Charges": "100% Covered (After Deductible)",
+      "Foreign Travel Emergency": "80% Covered (After Deductible, up to lifetime limits)",
+      "Benefit Highlights": "Download Guide"
+    },
+    {
+      "Plan Letter": "Plan G",
+      "Enrollment Status": "Open to All",
+      "General Summary": "The gold standard for newly eligible enrollees. Covers 100% of all medical gaps, including Part B excess charges, with the single exception of the Part B annual deductible.",
+      "Part A Coinsurance": "100% Covered",
+      "Part B Coinsurance": "100% Covered",
+      "Blood (First 3 Pints)": "100% Covered",
+      "Part A Hospice Coinsurance": "100% Covered",
+      "Skilled Nursing Coinsurance": "100% Covered",
+      "Part A Deductible": "100% Covered",
+      "Part B Deductible": "0% Covered (Not Covered - Member pays $283 in 2026)",
+      "Part B Excess Charges": "100% Covered",
+      "Foreign Travel Emergency": "80% Covered (up to lifetime limits)",
+      "Benefit Highlights": "Download Guide"
+    },
+    {
+      "Plan Letter": "High-Deductible Plan G",
+      "Enrollment Status": "Open to All",
+      "General Summary": "Offers the exact same robust coverage as standard Plan G, but only after the member meets a high annual deductible ($2,870 in 2026). Excellent option for very low monthly premiums.",
+      "Part A Coinsurance": "100% Covered (After Deductible)",
+      "Part B Coinsurance": "100% Covered (After Deductible)",
+      "Blood (First 3 Pints)": "100% Covered (After Deductible)",
+      "Part A Hospice Coinsurance": "100% Covered (After Deductible)",
+      "Skilled Nursing Coinsurance": "100% Covered (After Deductible)",
+      "Part A Deductible": "100% Covered (After Deductible)",
+      "Part B Deductible": "0% Covered (Not Covered - Member pays Part B deductible)",
+      "Part B Excess Charges": "100% Covered (After Deductible)",
+      "Foreign Travel Emergency": "80% Covered (After Deductible, up to lifetime limits)",
+      "Benefit Highlights": "Download Guide"
+    },
+    {
+      "Plan Letter": "Plan K",
+      "Enrollment Status": "Open to All",
+      "General Summary": "Cost-sharing plan that covers 50% of most standard Medicare gaps up to an annual out-of-pocket limit ($7,220 in 2026). Once the limit is met, the plan pays 100% of covered services.",
+      "Part A Coinsurance": "100% Covered",
+      "Part B Coinsurance": "50% Covered",
+      "Blood (First 3 Pints)": "50% Covered",
+      "Part A Hospice Coinsurance": "50% Covered",
+      "Skilled Nursing Coinsurance": "50% Covered",
+      "Part A Deductible": "50% Covered",
+      "Part B Deductible": "0% Covered (Not Covered)",
+      "Part B Excess Charges": "0% Covered (Not Covered)",
+      "Foreign Travel Emergency": "0% Covered (Not Covered)",
+      "Benefit Highlights": "Download Guide"
+    },
+    {
+      "Plan Letter": "Plan L",
+      "Enrollment Status": "Open to All",
+      "General Summary": "Cost-sharing plan that covers 75% of most standard Medicare gaps up to an annual out-of-pocket limit ($3,610 in 2026). Provides a lower risk cap than Plan K.",
+      "Part A Coinsurance": "100% Covered",
+      "Part B Coinsurance": "75% Covered",
+      "Blood (First 3 Pints)": "75% Covered",
+      "Part A Hospice Coinsurance": "75% Covered",
+      "Skilled Nursing Coinsurance": "75% Covered",
+      "Part A Deductible": "75% Covered",
+      "Part B Deductible": "0% Covered (Not Covered)",
+      "Part B Excess Charges": "0% Covered (Not Covered)",
+      "Foreign Travel Emergency": "0% Covered (Not Covered)",
+      "Benefit Highlights": "Download Guide"
+    },
+    {
+      "Plan Letter": "Plan M",
+      "Enrollment Status": "Open to All",
+      "General Summary": "Covers 50% of the Part A deductible and 100% of other core gaps, but excludes the Part B deductible and Part B excess charges.",
+      "Part A Coinsurance": "100% Covered",
+      "Part B Coinsurance": "100% Covered",
+      "Blood (First 3 Pints)": "100% Covered",
+      "Part A Hospice Coinsurance": "100% Covered",
+      "Skilled Nursing Coinsurance": "100% Covered",
+      "Part A Deductible": "50% Covered",
+      "Part B Deductible": "0% Covered (Not Covered)",
+      "Part B Excess Charges": "0% Covered (Not Covered)",
+      "Foreign Travel Emergency": "80% Covered (up to lifetime limits)",
+      "Benefit Highlights": "Download Guide"
+    },
+    {
+      "Plan Letter": "Plan N",
+      "Enrollment Status": "Open to All",
+      "General Summary": "Highly popular, budget-friendly plan. Covers nearly everything covered by Plan G, but requires small copays (up to $20 for office visits, up to $50 for emergency room visits) and does not cover Part B excess charges.",
+      "Part A Coinsurance": "100% Covered",
+      "Part B Coinsurance": "100% Covered (Except copays up to $20/office visit and $50/ER visit)",
+      "Blood (First 3 Pints)": "100% Covered",
+      "Part A Hospice Coinsurance": "100% Covered",
+      "Skilled Nursing Coinsurance": "100% Covered",
+      "Part A Deductible": "100% Covered",
+      "Part B Deductible": "0% Covered (Not Covered)",
+      "Part B Excess Charges": "0% Covered (Not Covered - Medical providers can bill up to 15% above Medicare rate)",
+      "Foreign Travel Emergency": "80% Covered (up to lifetime limits)",
+      "Benefit Highlights": "Download Guide"
+    }
+  ],
+  "Medigap Carriers": [
+    {
+      "Carrier Name": "UnitedHealthcare (AARP)",
+      "National Footprint": "Yes (All 50 states and D.C.)",
+      "Market Share Tier": "Dominant (Market Leader)",
+      "A.M. Best Rating": "A (Excellent) by A.M. Best",
+      "Key Characteristics": "Co-branded with AARP. Offers stable pricing, household discounts in most states, and a highly recognized national network.",
+      "Carrier Portal": "https://www.aarpmedicareplans.com/"
+    },
+    {
+      "Carrier Name": "Mutual of Omaha",
+      "National Footprint": "Yes (Widespread)",
+      "Market Share Tier": "High",
+      "A.M. Best Rating": "A+ (Superior) by A.M. Best",
+      "Key Characteristics": "Renowned for competitive rates, excellent senior customer service, and solid household premium discounts.",
+      "Carrier Portal": "https://www.mutualofomaha.com/medicare-supplement-insurance"
+    },
+    {
+      "Carrier Name": "Blue Cross Blue Shield (Regional Affiliates)",
+      "National Footprint": "Yes (Varies by independent state company)",
+      "Market Share Tier": "High",
+      "A.M. Best Rating": "Varies by regional entity (Generally A/A+)",
+      "Key Characteristics": "Highly trusted local brand recognition. Plan options and pricing models are managed independently by state affiliates.",
+      "Carrier Portal": "https://www.bcbs.com/medicare"
+    },
+    {
+      "Carrier Name": "Aetna (CVS Health)",
+      "National Footprint": "Yes (Widespread)",
+      "Market Share Tier": "Medium-High",
+      "A.M. Best Rating": "A (Excellent) by A.M. Best",
+      "Key Characteristics": "Offers strong financial stability and competitive rates in many markets, with extra member wellness discounts.",
+      "Carrier Portal": "https://www.aetnamedicare.com/"
+    },
+    {
+      "Carrier Name": "Cigna Healthcare",
+      "National Footprint": "Yes (Widespread)",
+      "Market Share Tier": "Medium",
+      "A.M. Best Rating": "A (Excellent) by A.M. Best",
+      "Key Characteristics": "Provides highly competitive premiums in several states, 24/7 health information lines, and digital customer support tools.",
+      "Carrier Portal": "https://www.cigna.com/medicare/"
+    },
+    {
+      "Carrier Name": "Humana",
+      "National Footprint": "Yes (Widespread)",
+      "Market Share Tier": "Medium",
+      "A.M. Best Rating": "A- (Excellent) by A.M. Best",
+      "Key Characteristics": "Strong customer service orientation, very competitive rates in southern states, and additional value-add programs.",
+      "Carrier Portal": "https://www.humana.com/medicare"
+    },
+    {
+      "Carrier Name": "Allstate Health Solutions",
+      "National Footprint": "Yes",
+      "Market Share Tier": "Growing",
+      "A.M. Best Rating": "A+ (Superior) by A.M. Best",
+      "Key Characteristics": "Fastest-growing Medigap portfolio. Offers multi-policy discounts and flexible underwriting options.",
+      "Carrier Portal": "https://www.allstatehealth.com/medicare-supplement-insurance"
+    }
+  ],
+  "Advantage Plan Types": [
+    {
+      "Plan Type": "HMO",
+      "Full Name": "Health Maintenance Organization",
+      "Enrollment Status": "Open to All",
+      "Description": "Standard managed care network. Requires choosing a Primary Care Physician (PCP) and obtaining official referrals to see specialists. Out-of-network care is not covered except in emergencies.",
+      "Pros / Advantages": "Lowest monthly premiums (often $0), low copays, frequently bundles robust extra benefits (dental, vision, gym).",
+      "Cons / Trade-offs": "Strict provider lock-in, referral administration friction, high prior authorization frequency.",
+      "Benefit Highlights": "Download Guide"
+    },
+    {
+      "Plan Type": "PPO",
+      "Full Name": "Preferred Provider Organization",
+      "Enrollment Status": "Open to All",
+      "Description": "Provides more network flexibility. Members can see out-of-network providers (at a higher copay/coinsurance rate) and do not need a PCP referral to see specialists.",
+      "Pros / Advantages": "Freedom to see specialists without referrals, out-of-network emergency and non-emergency coverage.",
+      "Cons / Trade-offs": "Slightly higher monthly premiums than HMOs, higher out-of-pocket costs for out-of-network care, still subject to prior authorizations.",
+      "Benefit Highlights": "Download Guide"
+    },
+    {
+      "Plan Type": "HMO-POS",
+      "Full Name": "HMO Point-of-Service Plan",
+      "Enrollment Status": "Open to All",
+      "Description": "An HMO plan hybrid that permits members to use certain out-of-network medical services for a higher out-of-pocket cost.",
+      "Pros / Advantages": "Keeps the low cost of an HMO while adding a safety valve for specific out-of-network specialists.",
+      "Cons / Trade-offs": "POS benefits may be capped, and prior authorizations are still tightly enforced.",
+      "Benefit Highlights": "Download Guide"
+    },
+    {
+      "Plan Type": "PFFS",
+      "Full Name": "Private Fee-for-Service Plan",
+      "Enrollment Status": "Open to All",
+      "Description": "A plan that determines how much it will pay providers and how much the member pays. Providers must agree to accept the plan's terms of payment on a patient-by-patient basis.",
+      "Pros / Advantages": "Extremely flexible network *if* the physician accepts the plan's terms.",
+      "Cons / Trade-offs": "Very few providers accept PFFS terms anymore; high risk of being turned away at the doctor's office.",
+      "Benefit Highlights": "Download Guide"
+    },
+    {
+      "Plan Type": "D-SNP",
+      "Full Name": "Dual-Eligible Special Needs Plan",
+      "Enrollment Status": "Restricted Eligibility",
+      "Description": "A highly specialized plan designed to coordinate benefits, copays, and care for individuals who are low-income or disabled and qualify for both government systems.",
+      "Pros / Advantages": "$0 premiums, $0 medical copays, massive OTC pharmacy allowances, comprehensive care coordinators.",
+      "Cons / Trade-offs": "Restricted network and strict eligibility verification.",
+      "Benefit Highlights": "Download Guide"
+    },
+    {
+      "Plan Type": "C-SNP",
+      "Full Name": "Chronic Condition Special Needs Plan",
+      "Enrollment Status": "Restricted Eligibility",
+      "Description": "Tailors plan benefits, provider networks, and drug formularies specifically to help members manage their long-term chronic medical conditions.",
+      "Pros / Advantages": "Networks include dedicated disease specialists, highly optimized drug formularies for specialized medications, targeted care management.",
+      "Cons / Trade-offs": "Requires recurring medical verification; narrow provider network outside of the specialized disease area.",
+      "Benefit Highlights": "Download Guide"
+    },
+    {
+      "Plan Type": "MSA",
+      "Full Name": "Medical Savings Account",
+      "Enrollment Status": "Open to All",
+      "Description": "Combines a high-deductible health plan with a bank savings account. Medicare deposits funds directly into the account for the member to spend on healthcare.",
+      "Pros / Advantages": "Total freedom of provider choice (any doctor who accepts Medicare), no network locking, funds roll over year-to-year.",
+      "Cons / Trade-offs": "Does not cover prescription drugs (member must buy a standalone Part D plan); high out-of-pocket deductible risk if severe health events occur.",
+      "Benefit Highlights": "Download Guide"
+    }
+  ],
+  "Advantage Carriers": [
+    {
+      "Carrier Name": "UnitedHealthcare",
+      "Market Share Tier": "Dominant (No. 1 National Carrier)",
+      "Network Strength": "Very High (Massive national HMO and PPO networks)",
+      "Average Star Rating": "Typically 4.0 - 4.5 Stars",
+      "Key Characteristics": "Industry leader. Integrates broad clinical partnerships, OTC allowances, and comprehensive renew rewards programs.",
+      "Carrier Portal": "https://www.uhc.com/medicare"
+    },
+    {
+      "Carrier Name": "Humana",
+      "Market Share Tier": "Dominant (No. 2 National Carrier)",
+      "Network Strength": "High (Highly focused on senior networks and primary care centers)",
+      "Average Star Rating": "Typically 4.5 Stars",
+      "Key Characteristics": "Consistently rated highest in customer satisfaction. Strong regional HMO options and specialized care programs.",
+      "Carrier Portal": "https://www.humana.com/medicare"
+    },
+    {
+      "Carrier Name": "Aetna (CVS Health)",
+      "Market Share Tier": "High (No. 3)",
+      "Network Strength": "High (Integrates CVS Pharmacy, MinuteClinic, and medical providers)",
+      "Average Star Rating": "Typically 4.0 Stars",
+      "Key Characteristics": "Leverages CVS locations for convenient member health screenings and benefits integration, offering competitive zero-dollar premiums.",
+      "Carrier Portal": "https://www.aetnamedicare.com/"
+    },
+    {
+      "Carrier Name": "Elevance Health (Anthem / BCBS)",
+      "Market Share Tier": "High",
+      "Network Strength": "Strong (Uses local Blue Cross Blue Shield provider networks)",
+      "Average Star Rating": "Typically 4.0 Stars",
+      "Key Characteristics": "Offers trusted Blue Cross branding with excellent regional coverage and solid dental and vision supplementary benefits.",
+      "Carrier Portal": "https://www.anthem.com/medicare"
+    },
+    {
+      "Carrier Name": "Centene (Wellcare)",
+      "Market Share Tier": "Medium-High",
+      "Network Strength": "Moderate (Very focused on low-cost options and Special Needs Plans)",
+      "Average Star Rating": "Typically 3.0 - 3.5 Stars",
+      "Key Characteristics": "Known for highly competitive Part B premium give-back plans and extensive D-SNP Medicaid coordination options.",
+      "Carrier Portal": "https://www.wellcare.com/"
+    },
+    {
+      "Carrier Name": "Kaiser Permanente",
+      "Market Share Tier": "Medium (Highly concentrated regionally)",
+      "Network Strength": "Excellent (Fully closed staff-model integrated system)",
+      "Average Star Rating": "Typically 4.5 - 5.0 Stars (Highest average ratings)",
+      "Key Characteristics": "Operates as a highly coordinated one-stop-shop. Exceptional care coordination, but members are locked exclusively to Kaiser facilities.",
+      "Carrier Portal": "https://healthy.kaiserpermanente.org/pages/medicare"
+    },
+    {
+      "Carrier Name": "Cigna Healthcare",
+      "Market Share Tier": "Medium",
+      "Network Strength": "Moderate (Good urban PPO and HMO networks)",
+      "Average Star Rating": "Typically 3.5 - 4.0 Stars",
+      "Key Characteristics": "Offers a strong suite of customer incentives and solid dental coverage add-ons in key metropolitan areas.",
+      "Carrier Portal": "https://www.cigna.com/medicare/"
+    },
+    {
+      "Carrier Name": "Devoted Health",
+      "Market Share Tier": "Fastest-Growing Challenger",
+      "Network Strength": "Moderate-High (Rapidly expanding footprint)",
+      "Average Star Rating": "Typically 4.0 - 4.5 Stars",
+      "Key Characteristics": "A highly modern, tech-enabled startup-style carrier. Excellent customer loyalty ratings and individualized member care guides.",
+      "Carrier Portal": "https://www.devoted.com/"
+    },
+    {
+      "Carrier Name": "Molina Healthcare",
+      "Market Share Tier": "Regional / Specialized",
+      "Network Strength": "Moderate (Highly coordinated Medicaid/Medicare networks)",
+      "Average Star Rating": "Typically 3.0 - 3.5 Stars",
+      "Key Characteristics": "Specializes deeply in dual-eligible (D-SNP) populations, aligning state Medicaid benefits with federal Medicare benefits.",
+      "Carrier Portal": "https://www.molinahealthcare.com/members/common/en-US/mem/medicare/medicare.aspx"
+    }
+  ],
+  "Part D Rx Plans": [
+    {
+      "Plan Tier Level": "Basic / Saver Plan",
+      "Typical Premium Range": "Low ($0 - $15/month)",
+      "Best Suited For": "Seniors taking no regular medications, or taking only common, low-cost generic drugs.",
+      "Key Features & Benefits": "Low premiums, standard deductible, very low tier-1 copays at preferred pharmacies.",
+      "Benefit Highlights": "Download Guide"
+    },
+    {
+      "Plan Tier Level": "Standard / Value Plan",
+      "Typical Premium Range": "Medium ($20 - $55/month)",
+      "Best Suited For": "Seniors taking a mix of generic maintenance medications and one or two brand-name prescriptions.",
+      "Key Features & Benefits": "Balanced formulary coverage, moderate deductible, broad network of preferred retail pharmacies.",
+      "Benefit Highlights": "Download Guide"
+    },
+    {
+      "Plan Tier Level": "Premier / Choice Plan",
+      "Typical Premium Range": "High ($60 - $100+/month)",
+      "Best Suited For": "Seniors with complex medication regimens requiring specialized, high-tier brand-name drugs.",
+      "Key Features & Benefits": "Often features $0 deductibles on Tier 1 and Tier 2 drugs, comprehensive formulary coverages, and reduced coinsurance rates on specialty drugs.",
+      "Benefit Highlights": "Download Guide"
+    }
+  ],
+  "Part D Carriers": [
+    {
+      "Carrier Name": "Aetna (CVS Health)",
+      "Market Share / Coverage Tier": "Dominant (Well known for 'SilverScript' PDP plans)",
+      "Key Characteristics & Strengths": "Often offers the lowest base premiums in the nation. Excellent integration with CVS mail-order and retail pharmacies.",
+      "Carrier Portal": "https://www.aetnamedicare.com/"
+    },
+    {
+      "Carrier Name": "Wellcare (Centene)",
+      "Market Share / Coverage Tier": "Dominant (Co-branded with Value Script and Classic plans)",
+      "Key Characteristics & Strengths": "Highly competitive low-cost plans. Popular option for seniors who only take generic medications and want a near-$0 premium.",
+      "Carrier Portal": "https://www.wellcare.com/Medicare"
+    },
+    {
+      "Carrier Name": "UnitedHealthcare (AARP)",
+      "Market Share / Coverage Tier": "High",
+      "Key Characteristics & Strengths": "Outstanding pharmacy network. Offers extremely reliable formulary updates and highly predictable co-pay structures.",
+      "Carrier Portal": "https://www.aarpmedicareplans.com/"
+    },
+    {
+      "Carrier Name": "Mutual of Omaha Rx",
+      "Market Share / Coverage Tier": "Medium",
+      "Key Characteristics & Strengths": "Straightforward plan options with highly responsive customer service and easy enrollment processes.",
+      "Carrier Portal": "https://www.mutualofomahaRx.com/"
+    },
+    {
+      "Carrier Name": "Humana",
+      "Market Share / Coverage Tier": "High (Partners with Walmart Rx plans in many states)",
+      "Key Characteristics & Strengths": "Very popular budget option due to strong retail partnerships, offering discounted copays at Walmart and Humana mail-order pharmacies.",
+      "Carrier Portal": "https://www.humana.com/medicare"
+    },
+    {
+      "Carrier Name": "Cigna Healthcare Rx",
+      "Market Share / Coverage Tier": "Medium",
+      "Key Characteristics & Strengths": "Well-balanced plan selections featuring high-tier coverage options suitable for brand-name drug requirements.",
+      "Carrier Portal": "https://www.cigna.com/medicare/part-d-prescription-drug-plans"
+    }
+  ]
+}

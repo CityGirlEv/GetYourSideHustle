@@ -1,0 +1,79 @@
+import { useApp } from "@/lib/app-store";
+import { Sparkles } from "lucide-react";
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { GUIDELINES } from "@/lib/medicare-math";
+import { toast } from "sonner";
+
+// Flip to true once official 2027 CMS figures are published.
+const CMS_2027_PUBLISHED = false;
+
+export function YearToggle() {
+  const { year, setYear } = useApp();
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-full bg-white/10 p-0.5 flex items-center gap-1 min-w-0">
+      {[2026, 2027].map((y) => (
+        <button
+          key={y}
+          onClick={() => {
+            if (y === 2027 && !CMS_2027_PUBLISHED) {
+              toast.error("2027 rules are not published", {
+                description: "CMS has not yet released the 2027 figures. Calculations will continue to use 2026 rules.",
+              });
+              return;
+            }
+            setYear(y as 2026 | 2027);
+          }}
+          className={`px-2 py-0.5 rounded-full text-xs font-semibold transition whitespace-nowrap ${
+            year === y ? "bg-white text-primary shadow" : "text-white/80 hover:text-white"
+          }`}
+        >
+          {y} <span className="hidden sm:inline">rules</span>
+        </button>
+      ))}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          <button className="p-1 rounded-full hover:bg-white/15" aria-label="Compare years">
+            <Sparkles className="h-3.5 w-3.5 text-white" />
+          </button>
+        </DialogTrigger>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>2026 vs 2027 Regulatory Shifts</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-3 gap-2 text-sm">
+            <div className="font-semibold text-muted-foreground">Metric</div>
+            <div className="font-semibold">2026</div>
+            <div className="font-semibold">2027</div>
+            {([
+              ["Part B premium / mo", "partBPremiumMonthly"],
+              ["Part B deductible", "partBDeductible"],
+              ["Part D OOP cap", "partDOOPCap"],
+              ["MA MOOP (low)", "moopLow"],
+              ["MA MOOP (high)", "moopHigh"],
+            ] as const).map(([label, key]) => (
+              <ContextRow key={key} label={label} k={key} />
+            ))}
+            <div className="col-span-3 mt-2 text-muted-foreground">
+              Insulin remains capped at $35/mo. Plan G continues to cover Part B coinsurance after
+              the annual deductible. MA introduces a 20% DME co-insurance not covered by Medigap.
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function ContextRow({ label, k }: { label: string; k: keyof typeof GUIDELINES[2026] }) {
+  const a = GUIDELINES[2026][k];
+  const b = GUIDELINES[2027][k];
+  return (
+    <>
+      <div className="text-muted-foreground">{label}</div>
+      <div>{typeof a === "number" ? `$${a.toLocaleString()}` : a}</div>
+      <div className="text-emerald font-medium">{typeof b === "number" ? `$${b.toLocaleString()}` : b}</div>
+    </>
+  );
+}

@@ -1,0 +1,1 @@
+CREATE POLICY "admins read all soas" ON public.soas FOR SELECT TO authenticated USING (has_role(auth.uid(), 'admin'::app_role));
