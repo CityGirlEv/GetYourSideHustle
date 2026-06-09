@@ -4,7 +4,7 @@
 // For user-authenticated queries (with RLS), use the auth middleware instead.
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
-import { getSupabaseEnv } from './env';
+import { getSupabaseEnv } from './env.server';
 
 function createSupabaseAdminClient() {
   const env = getSupabaseEnv();
