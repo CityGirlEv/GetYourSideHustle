@@ -10,7 +10,7 @@ export function AppShell({ children, title, subtitle, titleClassName }: { childr
       <LoginAlertDialog />
       <section className="relative z-20 w-full border-b border-primary/10">
         <TrustBanner />
-        <div className="bg-background/95 backdrop-blur-sm pt-1.5 sm:pt-2">
+        <div className="bg-background/95 backdrop-blur-sm pt-1 sm:pt-1.5">
           <SecurityBanner />
         </div>
       </section>

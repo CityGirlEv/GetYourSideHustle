@@ -43,7 +43,7 @@ export function SecurityBanner() {
   return (
     <nav
       aria-label="Site navigation"
-      className="relative z-10 border-b-0 bg-transparent px-4 pt-1 pb-1.5 sm:pb-2 text-sm"
+      className="relative z-10 border-b-0 bg-transparent px-4 pt-0.5 pb-1.5 sm:pb-2 text-sm"
     >
       <div className="max-w-7xl mx-auto">
         <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-x-3 sm:gap-x-6">
@@ -70,7 +70,7 @@ export function SecurityBanner() {
             )}
           </div>
 
-          <div className="flex flex-col items-center self-start mt-0.5 sm:mt-1 shrink-0">
+          <div className="flex flex-col items-center self-start -mt-0.5 shrink-0">
             <Link
               to="/"
               aria-label="The Medicare Optimizer"
