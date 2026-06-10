@@ -83,6 +83,8 @@ describe('auth email headers', () => {
       expect(html).not.toContain(`${GETPARTB}/email-logo.png`)
       expect(html).toContain('email-brand-logo')
       expect(html).toContain('alt="The Medicare Optimizer"')
+      expect(html).toContain('email-header-copyright')
+      expect(html).toMatch(/© \d{4} The Medicare Optimizer\. All rights reserved\./)
     },
   )
 })

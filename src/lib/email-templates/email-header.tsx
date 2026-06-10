@@ -1,10 +1,15 @@
 import * as React from 'react'
-import { Img, Link, Section } from '@react-email/components'
+import { Img, Link, Section, Text } from '@react-email/components'
 import { getEnvVariable } from '../env'
 
 export const EMAIL_LOGO_PATH = '/email-logo.png'
 export const EMAIL_FOOTER_LOGO_PATH = '/email-footer-logo.png'
 export const DEFAULT_EMAIL_SITE_URL = 'https://mypartb.pages.dev'
+export const EMAIL_BRAND_NAME = 'The Medicare Optimizer'
+
+export function formatEmailCopyright(year = new Date().getFullYear()): string {
+  return `© ${year} ${EMAIL_BRAND_NAME}. All rights reserved.`
+}
 
 /** Source asset is 914×253 (full horizontal logo). */
 export const EMAIL_LOGO_ASPECT = 253 / 914
@@ -71,13 +76,16 @@ export function EmailHeader({ siteUrl, href }: EmailHeaderProps) {
       <Link href={linkHref} style={logoLink}>
         <Img
           src={logoUrl}
-          alt="The Medicare Optimizer"
+          alt={EMAIL_BRAND_NAME}
           width={mobileWidth}
           height={mobileHeight}
           className="email-brand-logo"
           style={logoImg}
         />
       </Link>
+      <Text style={copyrightText} className="email-header-copyright">
+        {formatEmailCopyright()}
+      </Text>
     </Section>
   )
 }
@@ -104,4 +112,12 @@ const logoImg = {
   width: '100%',
   maxWidth: `${EMAIL_HEADER_LOGO_WIDTH_DESKTOP}px`,
   height: 'auto',
+}
+
+const copyrightText = {
+  fontSize: '11px',
+  lineHeight: '1.4',
+  color: '#94a3b8',
+  margin: '10px 0 0',
+  textAlign: 'center' as const,
 }

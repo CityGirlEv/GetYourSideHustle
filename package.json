@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "node --use-system-ca ./node_modules/vite/bin/vite.js dev",
     "build": "vite build",
+    "build:pages": "vite build && node scripts/prepare-email-logo.mjs && node scripts/fix-pages-wrangler.mjs",
+    "deploy:pages": "npm run build:pages && npx wrangler pages deploy dist --project-name=mypartb --branch=main --commit-dirty=true",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",

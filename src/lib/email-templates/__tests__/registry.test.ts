@@ -29,6 +29,8 @@ describe("email template registry", () => {
     expect(html).toContain(EMAIL_LOGO_PATH);
     expect(html).toContain('alt="The Medicare Optimizer"');
     expect(html).toContain('email-brand-logo');
+    expect(html).toContain('email-header-copyright');
+    expect(html).toMatch(/© \d{4} The Medicare Optimizer\. All rights reserved\./);
   });
 
   it("renders the Medicare footer disclaimers in welcome emails", async () => {
