@@ -7,7 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useApp } from "@/lib/app-store";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, Save, Mail, Phone } from "lucide-react";
+import { ArrowLeft, Save, Mail, Phone, MessageSquare } from "lucide-react";
+import { ScenarioConversationDialog } from "@/components/ScenarioConversationDialog";
 
 interface ScenarioRow {
   id: string;
@@ -46,6 +47,7 @@ function AgentScenario() {
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [notesDialogOpen, setNotesDialogOpen] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -130,7 +132,18 @@ function AgentScenario() {
           )}
 
           <Card className="glass p-4 space-y-3">
-            <h3 className="font-display font-bold">Agent notes</h3>
+            <div className="flex justify-between items-center">
+              <h3 className="font-display font-bold">Agent notes</h3>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setNotesDialogOpen(true)}
+                className="cursor-pointer"
+              >
+                <MessageSquare className="h-3.5 w-3.5 mr-1 text-primary" />
+                View thread
+              </Button>
+            </div>
             <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -145,6 +158,16 @@ function AgentScenario() {
             </div>
           </Card>
         </div>
+      )}
+      {s && (
+        <ScenarioConversationDialog
+          open={notesDialogOpen}
+          onOpenChange={setNotesDialogOpen}
+          scenarioId={s.id}
+          scenarioCode={s.scenario_code}
+          currentUserId={user?.id ?? null}
+          canAddNotes={user?.role === "admin" || s.assigned_agent_id === user?.id}
+        />
       )}
     </AppShell>
   );

@@ -7,6 +7,13 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion'
 import { toast } from 'sonner'
 import {
   ArrowLeft,
@@ -42,6 +49,7 @@ import {
   sendEmailTemplateTest,
   listEmailSendLog,
   listEmailTemplateChanges,
+  getEmailDeliveryStatus,
 } from '@/lib/email-template-admin.functions'
 import {
   sortEmailLog,
@@ -129,7 +137,9 @@ function EmailTemplatesAdminPage() {
           </div>
         )}
 
-        <EmailSendLogPanel />
+        <EmailDeliveryBanner />
+
+        <EmailSendLogPanel templateName={selected} />
         <EmailTemplateChangesPanel />
       </div>
     </AppShell>
@@ -195,7 +205,10 @@ function TemplateEditor({ name }: { name: string }) {
   const test = useMutation({
     mutationFn: () =>
       sendTest({ data: { name, recipient: testRecipient, subject, html } }),
-    onSuccess: () => toast.success(`Test email queued to ${testRecipient}.`),
+    onSuccess: () => {
+      toast.success(`Test email queued to ${testRecipient}.`)
+      qc.invalidateQueries({ queryKey: ['admin', 'email-send-log'] })
+    },
     onError: (e: any) => toast.error(e?.message ?? 'Could not send test'),
   })
 
@@ -449,49 +462,62 @@ function VersionHistory({
   })
 
   return (
-    <Card className="p-4 space-y-2">
-      <div className="flex items-center gap-2 text-sm font-medium">
-        <History className="h-4 w-4" /> Version history
-      </div>
-      <p className="text-xs text-muted-foreground">
-        Every save snapshots the previous version. Restore any earlier version
-        into the editor, then save to publish it.
-      </p>
-      {isLoading ? (
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Loader2 className="h-3 w-3 animate-spin" /> Loading versions…
-        </div>
-      ) : !data || data.length === 0 ? (
-        <div className="text-xs text-muted-foreground">No previous versions yet.</div>
-      ) : (
-        <ul className="divide-y divide-border">
-          {data.map((v) => (
-            <li key={v.id} className="py-2 flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <div className="text-sm truncate">{v.subject}</div>
-                <div className="text-[11px] text-muted-foreground">
-                  {new Date(v.created_at).toLocaleString()} ·{' '}
-                  <span className="uppercase">{v.source}</span>
-                </div>
+    <Card className="p-4">
+      <Accordion type="single" collapsible>
+        <AccordionItem value="versions" className="border-b-0">
+          <AccordionTrigger className="py-0 hover:no-underline">
+            <span className="flex items-center gap-2">
+              <History className="h-4 w-4" /> Version history
+              {!isLoading && data && data.length > 0 ? (
+                <Badge variant="secondary" className="font-normal">
+                  {data.length}
+                </Badge>
+              ) : null}
+            </span>
+          </AccordionTrigger>
+          <AccordionContent className="space-y-2 pt-2">
+            <p className="text-xs text-muted-foreground">
+              Every save snapshots the previous version. Restore any earlier version
+              into the editor, then save to publish it.
+            </p>
+            {isLoading ? (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" /> Loading versions…
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => restore.mutate(v.id)}
-                disabled={restore.isPending}
-              >
-                {restore.isPending ? (
-                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                ) : (
-                  <RotateCcw className="h-4 w-4 mr-1" />
-                )}
-                Restore
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
+            ) : !data || data.length === 0 ? (
+              <div className="text-xs text-muted-foreground">No previous versions yet.</div>
+            ) : (
+              <ul className="divide-y divide-border">
+                {data.map((v) => (
+                  <li key={v.id} className="py-2 flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="text-sm truncate">{v.subject}</div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {new Date(v.created_at).toLocaleString()} ·{' '}
+                        <span className="uppercase">{v.source}</span>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => restore.mutate(v.id)}
+                      disabled={restore.isPending}
+                    >
+                      {restore.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      ) : (
+                        <RotateCcw className="h-4 w-4 mr-1" />
+                      )}
+                      Restore
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
     </Card>
   )
 }
@@ -605,12 +631,60 @@ function SortHeader({
   )
 }
 
-function EmailSendLogPanel() {
+function EmailDeliveryBanner() {
+  const fetchStatus = useServerFn(getEmailDeliveryStatus)
+  const { data } = useQuery({
+    queryKey: ['admin', 'email-delivery-status'],
+    queryFn: () => fetchStatus(),
+    staleTime: 60_000,
+  })
+
+  if (!data || data.ready) return null
+
+  const keyMissing =
+    data.message.includes('not configured') || data.message.includes('invalid')
+
+  return (
+    <Card className="p-4 border-amber-500/40 bg-amber-500/5 space-y-1">
+      <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+        {keyMissing
+          ? 'Email delivery unavailable — Resend API key'
+          : 'Email delivery limited — domain not verified'}
+      </p>
+      <p className="text-sm text-muted-foreground">{data.message}</p>
+      <p className="text-xs text-muted-foreground">
+        From address: <span className="font-mono">{data.fromAddress}</span>
+        {' · '}
+        Resend status: <span className="font-mono">{data.domainStatus}</span>
+      </p>
+      <p className="text-xs text-muted-foreground">
+        Run <span className="font-mono">node scripts/show-resend-dns-setup.mjs</span> for DNS
+        records, add them in Cloudflare, then verify at{' '}
+        <a href="https://resend.com/domains" className="underline" target="_blank" rel="noreferrer">
+          resend.com/domains
+        </a>
+        .
+      </p>
+    </Card>
+  )
+}
+
+function EmailSendLogPanel({ templateName }: { templateName: string | null }) {
   const listLog = useServerFn(listEmailSendLog)
+  const [showAll, setShowAll] = useState(false)
+  const filterTemplate = showAll ? undefined : templateName ?? undefined
+
   const { data, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ['admin', 'email-send-log'],
-    queryFn: () => listLog({ data: { limit: 50 } }),
+    queryKey: ['admin', 'email-send-log', showAll ? 'all' : templateName ?? 'none'],
+    queryFn: () =>
+      listLog({
+        data: {
+          limit: 50,
+          ...(filterTemplate ? { templateName: filterTemplate } : {}),
+        },
+      }),
     refetchInterval: 15_000,
+    enabled: showAll || Boolean(templateName),
   })
   const [sortKey, setSortKey] = useState<EmailLogSortKey>('created_at')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
@@ -631,42 +705,66 @@ function EmailSendLogPanel() {
 
   return (
     <Card className="p-4 space-y-3">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-sm font-medium">
           <Inbox className="h-4 w-4" /> Recent email sends
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => refetch()}
-          disabled={isFetching}
-        >
-          {isFetching ? (
-            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-          ) : (
-            <RefreshCw className="h-4 w-4 mr-1" />
-          )}
-          Refresh
-        </Button>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="show-all-email-log"
+              checked={showAll}
+              onCheckedChange={(checked) => setShowAll(checked === true)}
+            />
+            <label
+              htmlFor="show-all-email-log"
+              className="text-xs text-muted-foreground cursor-pointer select-none"
+            >
+              Show all templates
+            </label>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            disabled={isFetching}
+          >
+            {isFetching ? (
+              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-1" />
+            )}
+            Refresh
+          </Button>
+        </div>
       </div>
       <p className="text-xs text-muted-foreground">
-        Latest 50 emails the system has tried to send. Each row shows the most
-        recent status for that message (auto-refreshes every 15 seconds).
+        {showAll
+          ? 'Latest 50 emails across all templates (auto-refreshes every 15 seconds).'
+          : templateName
+            ? `Emails sent for the "${templateName}" template only. Check "Show all templates" to view every send.`
+            : 'Select a template to view its send log.'}
       </p>
-      {isLoading ? (
+      {!showAll && !templateName ? (
+        <div className="text-xs text-muted-foreground">Select a template above.</div>
+      ) : isLoading ? (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Loader2 className="h-3 w-3 animate-spin" /> Loading…
         </div>
       ) : !sortedData || sortedData.length === 0 ? (
-        <div className="text-xs text-muted-foreground">No emails sent yet.</div>
+        <div className="text-xs text-muted-foreground">
+          {showAll ? 'No emails sent yet.' : 'No sends recorded for this template yet.'}
+        </div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs uppercase text-muted-foreground border-b border-border">
                 <SortHeader label="When" sortKey="created_at" currentKey={sortKey} currentDir={sortDir} onClick={toggleSort} />
-                <SortHeader label="Template" sortKey="template_name" currentKey={sortKey} currentDir={sortDir} onClick={toggleSort} />
+                {showAll ? (
+                  <SortHeader label="Template" sortKey="template_name" currentKey={sortKey} currentDir={sortDir} onClick={toggleSort} />
+                ) : null}
                 <SortHeader label="Recipient" sortKey="recipient_email" currentKey={sortKey} currentDir={sortDir} onClick={toggleSort} />
                 <SortHeader label="Status" sortKey="status" currentKey={sortKey} currentDir={sortDir} onClick={toggleSort} />
                 <SortHeader label="Error" sortKey="error_message" currentKey={sortKey} currentDir={sortDir} onClick={toggleSort} />
@@ -678,7 +776,7 @@ function EmailSendLogPanel() {
                   <td className="py-2 pr-3 whitespace-nowrap text-xs text-muted-foreground">
                     {new Date(row.created_at).toLocaleString()}
                   </td>
-                  <td className="py-2 pr-3">{row.template_name}</td>
+                  {showAll ? <td className="py-2 pr-3">{row.template_name}</td> : null}
                   <td className="py-2 pr-3 break-all">{row.recipient_email}</td>
                   <td className="py-2 pr-3">
                     <Badge variant={statusBadgeVariant(row.status)} className="capitalize">

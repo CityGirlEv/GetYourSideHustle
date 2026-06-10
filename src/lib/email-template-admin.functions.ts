@@ -1,4 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
+import { getRequest } from '@tanstack/react-start/server'
 import { requireSupabaseAuth } from '@/integrations/supabase/auth-middleware'
 import { supabaseAdmin } from '@/integrations/supabase/client.server'
 import { z } from 'zod'
@@ -8,6 +9,11 @@ import {
   renderDefaultHtml,
 } from '@/lib/email-templates/all-templates.server'
 import { htmlToPlainText } from '@/lib/email-templates/overrides.server'
+import { ensureEmailBranding } from '@/lib/email-templates/email-branding.server'
+import { emailLogMatchesTemplate, dedupeEmailLogRows } from '@/lib/email-log-sort'
+import { getTransactionalFromAddress, getTransactionalSenderDomain } from '@/lib/send-transactional-email'
+import { getEnvVariable, getRuntimeSecret } from '@/lib/env'
+import { triggerEmailQueueProcess } from '@/lib/trigger-email-queue-process'
 
 async function verifyAdmin(userId: string) {
   const { data } = await supabaseAdmin
@@ -258,9 +264,9 @@ export const sendEmailTemplateTest = createServerFn({ method: 'POST' })
 
     const messageId = crypto.randomUUID()
     const subject = `[TEST] ${data.subject}`
-    const text = htmlToPlainText(data.html)
-
     const unsubscribeToken = await getOrCreateUnsubscribeToken(data.recipient)
+    const brandedHtml = await ensureEmailBranding(data.html, { unsubscribeToken })
+    const text = htmlToPlainText(brandedHtml)
 
     await supabaseAdmin.from('email_send_log').insert({
       message_id: messageId,
@@ -274,10 +280,10 @@ export const sendEmailTemplateTest = createServerFn({ method: 'POST' })
       payload: {
         message_id: messageId,
         to: data.recipient,
-        from: `The Medicare Optimizer <noreply@notify.mypartb.com>`,
-        sender_domain: 'notify.mypartb.com',
+        from: getTransactionalFromAddress(),
+        sender_domain: getTransactionalSenderDomain(),
         subject,
-        html: data.html,
+        html: brandedHtml,
         text,
         purpose: 'transactional',
         label: `${data.name}-test`,
@@ -297,6 +303,8 @@ export const sendEmailTemplateTest = createServerFn({ method: 'POST' })
       throw new Error(`Failed to enqueue test email: ${error.message}`)
     }
 
+    await triggerEmailQueueProcess(getRequest()?.url)
+
     await supabaseAdmin.from('audit_logs').insert({
       user_id: context.userId,
       action: 'SEND_EMAIL_TEMPLATE_TEST',
@@ -314,30 +322,28 @@ export const listEmailSendLog = createServerFn({ method: 'POST' })
     z
       .object({
         limit: z.number().int().min(1).max(200).optional(),
+        templateName: z.string().min(1).max(120).optional(),
       })
       .parse(input ?? {}),
   )
   .handler(async ({ data, context }) => {
     await verifyAdmin(context.userId)
     const limit = data.limit ?? 50
-    // Pull more rows than the limit so we can deduplicate by message_id
-    // (each email has pending + sent/failed/dlq rows that share a message_id).
+    const templateName = data.templateName
+    // Pull extra rows when filtering so dedupe still yields enough matches.
+    const fetchLimit = templateName ? limit * 20 : limit * 4
     const { data: rows, error } = await supabaseAdmin
       .from('email_send_log')
       .select('id, message_id, template_name, recipient_email, status, error_message, created_at')
       .order('created_at', { ascending: false })
-      .limit(limit * 4)
+      .limit(fetchLimit)
     if (error) throw new Error(error.message)
-    const seen = new Set<string>()
-    const deduped: typeof rows = [] as never
-    for (const r of rows ?? []) {
-      const key = r.message_id ?? `__no_id__${r.id}`
-      if (seen.has(key)) continue
-      seen.add(key)
-      deduped.push(r)
-      if (deduped.length >= limit) break
-    }
-    return deduped
+
+    const filtered = templateName
+      ? (rows ?? []).filter((r) => emailLogMatchesTemplate(r.template_name, templateName))
+      : (rows ?? [])
+
+    return dedupeEmailLogRows(filtered).slice(0, limit)
   })
 
 export const listEmailTemplateChanges = createServerFn({ method: 'POST' })
@@ -360,4 +366,66 @@ export const listEmailTemplateChanges = createServerFn({ method: 'POST' })
       .limit(limit)
     if (error) throw new Error(error.message)
     return rows ?? []
+  })
+
+export const getEmailDeliveryStatus = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await verifyAdmin(context.userId)
+
+    const fromAddress = getTransactionalFromAddress()
+    const resendKey = getRuntimeSecret('RESEND_API_KEY')
+    if (!resendKey) {
+      const rawKey = getEnvVariable('RESEND_API_KEY')
+      return {
+        ready: false,
+        fromAddress,
+        domain: getTransactionalSenderDomain(),
+        domainStatus: 'unknown' as const,
+        keyConfigured: Boolean(rawKey),
+        message: rawKey
+          ? 'RESEND_API_KEY is set but invalid. Re-upload with: node scripts/upload-resend-secret.mjs'
+          : 'RESEND_API_KEY is not configured in this environment. On Cloudflare Pages, add it as a production secret and redeploy.',
+      }
+    }
+
+    const res = await fetch('https://api.resend.com/domains', {
+      headers: { Authorization: `Bearer ${resendKey.trim()}` },
+    })
+    if (!res.ok) {
+      return {
+        ready: false,
+        fromAddress,
+        domain: getTransactionalSenderDomain(),
+        domainStatus: 'unknown' as const,
+        message: `Could not check Resend domains (${res.status}).`,
+      }
+    }
+
+    const body = await res.text()
+    let json: { data?: Array<{ name: string; status: string }> }
+    try {
+      json = JSON.parse(body) as { data?: Array<{ name: string; status: string }> }
+    } catch {
+      return {
+        ready: false,
+        fromAddress,
+        domain: getTransactionalSenderDomain(),
+        domainStatus: 'unknown' as const,
+        message: 'Could not parse Resend domains response.',
+      }
+    }
+    const domain = getTransactionalSenderDomain()
+    const match = json.data?.find((d) => d.name === domain)
+    const verified = match?.status === 'verified'
+
+    return {
+      ready: verified,
+      fromAddress,
+      domain,
+      domainStatus: (match?.status ?? 'not_added') as string,
+      message: verified
+        ? `Sending from ${fromAddress} — test emails can go to any address.`
+        : `Domain ${domain} is "${match?.status ?? 'not added'}" in Resend. Add DNS records in Cloudflare, then verify at resend.com/domains. Until verified, Resend only delivers test mail to the account owner.`,
+    }
   })

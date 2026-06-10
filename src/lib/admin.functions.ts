@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getEnvVariable } from "@/lib/env";
+import { getTransactionalFromAddress } from "@/lib/send-transactional-email";
 import { z } from "zod";
 import { DEFAULT_ADMIN_NOTIFICATION_EMAILS } from "@/lib/registration.functions";
 
@@ -30,7 +31,6 @@ async function logAdminAudit(
   if (error) console.error("[admin] audit log insert failed", action, error.message);
 }
 
-const NOTIFY_FROM = "The Medicare Optimizer <onboarding@resend.dev>";
 const APP_URL = "https://themedicareoptimizer.lovable.app";
 
 function adminNotificationRecipients(): string[] {
@@ -123,7 +123,7 @@ async function sendAccountApprovedEmail(toEmail: string, fullName: string, role:
         "X-Connection-Api-Key": RESEND_API_KEY,
       },
       body: JSON.stringify({
-        from: NOTIFY_FROM,
+        from: getTransactionalFromAddress(),
         to: [toEmail],
         subject: "Your Medicare Optimizer account is approved",
         html,

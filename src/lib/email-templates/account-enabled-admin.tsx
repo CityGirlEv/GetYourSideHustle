@@ -2,6 +2,8 @@ import {
   Body, Container, Head, Heading, Hr, Html, Preview, Section, Text,
 } from '@react-email/components'
 import type { TemplateEntry } from './registry'
+import { EmailHeader } from './email-header'
+import { EmailFooter } from './email-footer'
 
 const SITE_NAME = 'The Medicare Optimizer'
 
@@ -25,6 +27,7 @@ const AccountEnabledAdminEmail = ({
       <Preview>Account enabled — {who}</Preview>
       <Body style={main}>
         <Container style={container}>
+          <EmailHeader />
           <Heading style={h1}>An account was enabled</Heading>
           <Text style={text}>
             An administrator just enabled a {SITE_NAME} account. They can now sign in.
@@ -37,6 +40,7 @@ const AccountEnabledAdminEmail = ({
           </Section>
           <Hr style={hr} />
           <Text style={footer}>This is an automated notification for administrators.</Text>
+          <EmailFooter />
         </Container>
       </Body>
     </Html>

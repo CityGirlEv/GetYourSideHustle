@@ -11,9 +11,12 @@ import {
   Preview,
   Text,
 } from '@react-email/components'
+import { EmailHeader } from './email-header'
+import { EmailFooter } from './email-footer'
 
 interface EmailChangeEmailProps {
   siteName: string
+  siteUrl?: string
   // oldEmail is the user's current address (HookData.OldEmail). For the
   // NEW-recipient half of a secure email_change fanout, `email` equals the
   // recipient (NEW), so the "from" line must render oldEmail to read
@@ -26,6 +29,7 @@ interface EmailChangeEmailProps {
 
 export const EmailChangeEmail = ({
   siteName,
+  siteUrl,
   oldEmail,
   newEmail,
   confirmationUrl,
@@ -35,6 +39,7 @@ export const EmailChangeEmail = ({
     <Preview>Confirm your email change for {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
+        <EmailHeader siteUrl={siteUrl} />
         <Heading style={h1}>Confirm your email change</Heading>
         <Text style={text}>
           You requested to change your email address for {siteName} from{' '}
@@ -57,6 +62,7 @@ export const EmailChangeEmail = ({
           If you didn't request this change, please secure your account
           immediately.
         </Text>
+        <EmailFooter siteUrl={siteUrl} />
       </Container>
     </Body>
   </Html>

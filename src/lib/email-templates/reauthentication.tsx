@@ -9,17 +9,21 @@ import {
   Preview,
   Text,
 } from '@react-email/components'
+import { EmailHeader } from './email-header'
+import { EmailFooter } from './email-footer'
 
 interface ReauthenticationEmailProps {
   token: string
+  siteUrl?: string
 }
 
-export const ReauthenticationEmail = ({ token }: ReauthenticationEmailProps) => (
+export const ReauthenticationEmail = ({ token, siteUrl }: ReauthenticationEmailProps) => (
   <Html lang="en" dir="ltr">
     <Head />
     <Preview>Your verification code</Preview>
     <Body style={main}>
       <Container style={container}>
+        <EmailHeader siteUrl={siteUrl} />
         <Heading style={h1}>Confirm reauthentication</Heading>
         <Text style={text}>Use the code below to confirm your identity:</Text>
         <Text style={codeStyle}>{token}</Text>
@@ -27,6 +31,7 @@ export const ReauthenticationEmail = ({ token }: ReauthenticationEmailProps) => 
           This code will expire shortly. If you didn't request this, you can
           safely ignore this email.
         </Text>
+        <EmailFooter siteUrl={siteUrl} />
       </Container>
     </Body>
   </Html>

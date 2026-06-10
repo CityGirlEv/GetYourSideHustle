@@ -5,6 +5,9 @@ import { createFileRoute } from '@tanstack/react-router'
 import { getEnvVariable } from '@/lib/env'
 import { TEMPLATES } from '@/lib/email-templates/registry'
 import { getEmailTemplateOverride } from '@/lib/email-templates/overrides.server'
+import { ensureEmailBranding } from '@/lib/email-templates/email-branding.server'
+import { getTransactionalFromAddress } from '@/lib/send-transactional-email'
+import { triggerEmailQueueProcess } from '@/lib/trigger-email-queue-process'
 
 // Configuration baked in at scaffold time
 const SITE_NAME = "mypartb"
@@ -18,7 +21,7 @@ const FROM_DOMAIN = "mypartb.com"
 // Admin BCC list — every outgoing transactional email also enqueues a blind
 // copy to these addresses so admins have a paper trail. Override via the
 // ADMIN_NOTIFICATION_EMAILS env var (comma-separated).
-const DEFAULT_ADMIN_BCC = ["getpartb@gmail.com"]
+const DEFAULT_ADMIN_BCC = ["info@MyPartB.com"]
 function adminBccRecipients(): string[] {
   const raw = getEnvVariable('ADMIN_NOTIFICATION_EMAILS')
   const configured = raw
@@ -304,6 +307,11 @@ export const Route = createFileRoute("/lovable/email/transactional/send")({
           resolvedSubject = override.subject
         }
 
+        html = await ensureEmailBranding(html, {
+          siteUrl: getEnvVariable('PUBLIC_SITE_URL') ?? 'https://mypartb.pages.dev',
+          unsubscribeToken,
+        })
+
         // 5. Enqueue the pre-rendered email for async processing by the dispatcher.
         // The dispatcher (process-email-queue) handles sending, retries, and rate-limit backoff.
 
@@ -320,7 +328,7 @@ export const Route = createFileRoute("/lovable/email/transactional/send")({
           payload: {
             message_id: messageId,
             to: effectiveRecipient,
-            from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
+            from: getTransactionalFromAddress(),
             sender_domain: SENDER_DOMAIN,
             subject: resolvedSubject,
             html,
@@ -421,7 +429,7 @@ export const Route = createFileRoute("/lovable/email/transactional/send")({
               payload: {
                 message_id: bccMessageId,
                 to: adminEmail,
-                from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
+                from: getTransactionalFromAddress(),
                 sender_domain: SENDER_DOMAIN,
                 subject: `[BCC] ${resolvedSubject}`,
                 html,
@@ -444,6 +452,8 @@ export const Route = createFileRoute("/lovable/email/transactional/send")({
         } catch (bccErr) {
           console.error('Admin BCC enqueue threw', bccErr)
         }
+
+        await triggerEmailQueueProcess(request.url)
 
         return Response.json({ success: true, queued: true })
       },

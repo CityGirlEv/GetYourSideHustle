@@ -10,14 +10,18 @@ import {
   Preview,
   Text,
 } from '@react-email/components'
+import { EmailHeader } from './email-header'
+import { EmailFooter } from './email-footer'
 
 interface RecoveryEmailProps {
   siteName: string
+  siteUrl?: string
   confirmationUrl: string
 }
 
 export const RecoveryEmail = ({
   siteName,
+  siteUrl,
   confirmationUrl,
 }: RecoveryEmailProps) => (
   <Html lang="en" dir="ltr">
@@ -25,6 +29,7 @@ export const RecoveryEmail = ({
     <Preview>Reset your password for {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
+        <EmailHeader siteUrl={siteUrl} />
         <Heading style={h1}>Reset your password</Heading>
         <Text style={text}>
           We received a request to reset your password for {siteName}. Click
@@ -37,6 +42,7 @@ export const RecoveryEmail = ({
           If you didn't request a password reset, you can safely ignore this
           email. Your password will not be changed.
         </Text>
+        <EmailFooter siteUrl={siteUrl} />
       </Container>
     </Body>
   </Html>

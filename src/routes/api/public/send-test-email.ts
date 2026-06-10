@@ -5,6 +5,9 @@ import * as React from 'react'
 import { render } from '@react-email/components'
 import { TEMPLATES } from '@/lib/email-templates/registry'
 import { getEmailTemplateOverride } from '@/lib/email-templates/overrides.server'
+import { ensureEmailBranding } from '@/lib/email-templates/email-branding.server'
+import { getTransactionalFromAddress, getTransactionalSenderDomain } from '@/lib/send-transactional-email'
+import { triggerEmailQueueProcess } from '@/lib/trigger-email-queue-process'
 
 function generateUnsubscribeToken(): string {
   const bytes = new Uint8Array(32)
@@ -40,7 +43,7 @@ async function getOrCreateUnsubscribeToken(email: string): Promise<string> {
 
 // Admin BCC list — mirror the transactional sender so test emails also
 // produce an admin paper trail. Override via ADMIN_NOTIFICATION_EMAILS.
-const DEFAULT_ADMIN_BCC = ["getpartb@gmail.com"]
+const DEFAULT_ADMIN_BCC = ["info@MyPartB.com"]
 function adminBccRecipients(): string[] {
   const raw = getEnvVariable('ADMIN_NOTIFICATION_EMAILS')
   const configured = raw
@@ -109,6 +112,11 @@ export const Route = createFileRoute('/api/public/send-test-email')({
         }
 
         const unsubscribeToken = await getOrCreateUnsubscribeToken(recipient)
+        const siteUrl =
+          (template.previewData as { siteUrl?: string } | undefined)?.siteUrl ??
+          getEnvVariable('PUBLIC_SITE_URL') ??
+          'https://mypartb.pages.dev'
+        html = await ensureEmailBranding(html, { siteUrl, unsubscribeToken })
 
         // Log pending
         await supabaseAdmin.from('email_send_log').insert({
@@ -124,8 +132,8 @@ export const Route = createFileRoute('/api/public/send-test-email')({
           payload: {
             message_id: messageId,
             to: recipient,
-            from: `The Medicare Optimizer <noreply@notify.mypartb.com>`,
-            sender_domain: 'notify.mypartb.com',
+            from: getTransactionalFromAddress(),
+            sender_domain: getTransactionalSenderDomain(),
             subject,
             html,
             text: plainText,
@@ -170,8 +178,8 @@ export const Route = createFileRoute('/api/public/send-test-email')({
                 payload: {
                   message_id: bccMessageId,
                   to: adminEmail,
-                  from: `The Medicare Optimizer <noreply@notify.mypartb.com>`,
-                  sender_domain: 'notify.mypartb.com',
+                  from: getTransactionalFromAddress(),
+                  sender_domain: getTransactionalSenderDomain(),
                   subject: `[BCC] ${subject}`,
                   html,
                   text: plainText,
@@ -193,6 +201,8 @@ export const Route = createFileRoute('/api/public/send-test-email')({
         } catch (bccErr) {
           console.error('Test email admin BCC threw', bccErr)
         }
+
+        await triggerEmailQueueProcess(request.url)
 
         return Response.json({
           success: true,

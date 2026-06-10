@@ -31,7 +31,7 @@ export interface TemplateDescriptor {
 }
 
 const SITE_NAME = 'The Medicare Optimizer'
-const SITE_URL = 'https://themedicareoptimizer.com'
+const SITE_URL = 'https://mypartb.pages.dev'
 
 const authSampleProps = {
   siteName: SITE_NAME,

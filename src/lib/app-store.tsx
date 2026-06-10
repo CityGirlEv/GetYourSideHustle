@@ -136,11 +136,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         console.error("Failed to hydrate user profile:", err);
         if (!cancelled) {
           const errMsg = err instanceof Error ? err.message : String(err);
-          // Don't show toast for abort/network issues or expected guest states
-          if (!errMsg.includes("Unauthorized")) {
-            const { toast } = await import("sonner");
-            toast.error("Failed to load user profile: " + errMsg);
-          }
+          const { toast } = await import("sonner");
+          toast.error("Failed to load user profile: " + errMsg);
         }
       } finally {
         if (!cancelled) {

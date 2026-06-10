@@ -2,8 +2,11 @@ import {
   Body, Container, Head, Heading, Hr, Html, Preview, Section, Text,
 } from '@react-email/components'
 import type { TemplateEntry } from './registry'
+import { EmailHeader } from './email-header'
+import { EmailFooter } from './email-footer'
 
 const SITE_NAME = 'The Medicare Optimizer'
+const SITE_URL = 'https://mypartb.pages.dev'
 
 export interface NewRegistrationAdminProps {
   firstName?: string
@@ -30,6 +33,7 @@ const NewRegistrationAdminEmail = ({
       <Preview>New beta registration — {fullName}</Preview>
       <Body style={main}>
         <Container style={container}>
+          <EmailHeader siteUrl={SITE_URL} />
           <Heading style={h1}>New beta access request</Heading>
           <Text style={text}>
             <b>{fullName}</b> just signed the NDA and registered for {SITE_NAME}. The
@@ -47,6 +51,7 @@ const NewRegistrationAdminEmail = ({
           <Text style={footer}>
             Sign in to the Admin Portal → Staff tab to review and enable the account.
           </Text>
+          <EmailFooter />
         </Container>
       </Body>
     </Html>

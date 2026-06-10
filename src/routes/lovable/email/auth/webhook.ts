@@ -11,6 +11,9 @@ import { RecoveryEmail } from '@/lib/email-templates/recovery'
 import { EmailChangeEmail } from '@/lib/email-templates/email-change'
 import { ReauthenticationEmail } from '@/lib/email-templates/reauthentication'
 import { getEmailTemplateOverride } from '@/lib/email-templates/overrides.server'
+import { ensureEmailBranding } from '@/lib/email-templates/email-branding.server'
+import { getTransactionalFromAddress } from '@/lib/send-transactional-email'
+import { triggerEmailQueueProcess } from '@/lib/trigger-email-queue-process'
 
 const EMAIL_SUBJECTS: Record<string, string> = {
   signup: 'Confirm your email',
@@ -161,7 +164,7 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
           subject = override.subject
         }
 
-        // Enqueue email for async processing by the dispatcher (process-email-queue).
+        html = await ensureEmailBranding(html, { siteUrl: templateProps.siteUrl })
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
         const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
@@ -190,7 +193,7 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
             run_id,
             message_id: messageId,
             to: payload.data.email,
-            from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
+            from: getTransactionalFromAddress(),
             sender_domain: SENDER_DOMAIN,
             subject,
             html,
@@ -221,6 +224,8 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
           email_redacted: redactEmail(payload.data.email),
           run_id,
         })
+
+        await triggerEmailQueueProcess(request.url)
 
         return Response.json({ success: true, queued: true })
       },

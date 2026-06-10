@@ -1,0 +1,92 @@
+# Cursor Rules for The Medicare Optimizer (mypartb)
+
+You are an expert AI assistant configured to work on **The Medicare Optimizer** (project: `mypartb`), a high-performance web application built with **React 19**, **TanStack Start**, **Vite**, **Tailwind CSS v4**, and **Supabase**.
+
+Always adhere to the following architectural, design, styling, and testing rules.
+
+---
+
+## 1. Project Overview & Domain Constraints
+- **Purpose**: Medicare plan evaluation and agent management console. Side-by-side comparison of Original Medicare + Medigap vs. Medicare Advantage modeling.
+- **Zero-PII Model**: The application is built strictly around a de-identified scenario model. 
+  - **NEVER** collect, store, or solicit Personally Identifiable Information (PII) such as full name, full address, full date of birth, phone number, email (unless agent login), Social Security Number, or Medicare ID.
+  - scenarios must only require a **year of birth** and a **3-digit ZIP code (ZIP3)**.
+  - Scenarios are accessed via a generated/temporary **Scenario ID**.
+  - All data decays/auto-deletes after 90 days.
+
+---
+
+## 2. Tech Stack & Directory Layout
+- **Frontend/SSR**: React 19, Vite, TanStack Start compiling on the Nitro engine.
+- **Routing**: TanStack Router (`@tanstack/react-router`) with file-based routing.
+- **Styling**: Tailwind CSS v4 + Radix UI primitives.
+- **Database/Auth**: Supabase client integration.
+- **Runtime & Scripts**: Bun (`bun run dev`, `bun run test`, `bun run e2e`).
+
+### Directory Structure
+- `src/routes/`: Route declarations. Every route file uses `createFileRoute("/path")` and includes SEO metadata in its `head` definition.
+- `src/components/`: Shared React components.
+- `src/components/ui/`: Presentation/UI primitives (shadcn-style, Radix).
+- `src/lib/`: Business logic, medicare calculations (`medicare-math.ts`), export formats (PDF/Excel), and API functions.
+- `src/integrations/supabase/`: Client and server connections to Supabase.
+- `e2e/`: Playwright E2E test suites.
+- `src/**/__tests__/`: Vitest unit/integration tests co-located with their code.
+
+---
+
+## 3. Code & Styling Standards
+
+### Tailwind CSS v4 (CSS-First Configuration)
+- The project uses **Tailwind CSS v4**. Do not look for `tailwind.config.js`. 
+- Custom styles, color tokens, and animation definitions are declared in `src/styles.css` using the `@theme inline` directive.
+- All colors must use `oklch()` format (e.g. `oklch(0.27 0.11 280)`).
+- Respect light/dark modes using `:root` and `.dark` variables in `src/styles.css`.
+- Use the `.glass` class for glassmorphism styling, `.grad-indigo` for main brand gradients, and `.script` for script font.
+
+### Supabase Queries
+- **Client Side**: Import the default client using:
+  ```typescript
+  import { supabase } from "@/integrations/supabase/client";
+  ```
+- **Server Side / Server Functions**: Use the admin client to bypass Row Level Security (RLS) for server-side trusted processes only:
+  ```typescript
+  import { supabaseAdmin } from "@/integrations/supabase/client.server";
+  ```
+- Ensure all tables queried map to types in `src/integrations/supabase/types.ts`.
+
+### Routing (TanStack Start/Router)
+- When adding a route, define it under `src/routes/`.
+- Always set the page title and meta description in the route's `head` function to follow SEO best practices:
+  ```typescript
+  export const Route = createFileRoute('/my-path')({
+    head: () => ({
+      meta: [
+        { title: "Page Title — The Medicare Optimizer" },
+        { name: "description", content: "Compelling description..." }
+      ],
+    }),
+    component: MyComponent
+  });
+  ```
+
+---
+
+## 4. Testing Policy (Strict & Mandatory)
+Every change or new feature **MUST** ship with automated tests in the same PR.
+
+### Decision Matrix for Tests
+| Kind of change | Required coverage |
+| :--- | :--- |
+| Pure logic / utility / validator / formula | Vitest unit test under `src/**/__tests__/*.test.ts(x)` |
+| Reducer, hook, store, permission gate, data transform | Vitest unit test (mock IO with `vi.mock`) |
+| Security gate (uploads, role checks, signature verification) | Vitest test for the happy path **and** each reject path |
+| New public route (auth gating, redirect, title) | Add a case to `e2e/smoke.spec.ts` |
+| New user-facing flow (form submit, multi-step wizard, modal) | Playwright spec under `e2e/*.spec.ts` |
+| Server function (`createServerFn`) | Vitest test for the handler + auth/validation paths |
+| Pre-existing edge function change | `supabase--test_edge_functions` Deno test |
+| Pure UI restyle with no behavior change | No new test required |
+
+### Test Commands
+- **Unit Tests**: Run `bun run test` (Vitest).
+- **E2E Tests**: Run `bun run e2e` (Playwright).
+- Do **not** weaken tests to make them pass — fix the code or update the assertions properly.

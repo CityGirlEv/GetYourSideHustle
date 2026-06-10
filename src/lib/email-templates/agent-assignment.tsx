@@ -10,6 +10,8 @@ import {
   Text,
 } from '@react-email/components'
 import type { TemplateEntry } from './registry'
+import { EmailHeader } from './email-header'
+import { EmailFooter } from './email-footer'
 
 const SITE_NAME = 'The Medicare Optimizer'
 
@@ -31,6 +33,7 @@ const AgentAssignmentEmail = ({
     <Preview>A new scenario has been assigned to you</Preview>
     <Body style={main}>
       <Container style={container}>
+        <EmailHeader />
         <Heading style={h1}>
           {agentName ? `Hi ${agentName},` : 'New assignment'}
         </Heading>
@@ -45,6 +48,7 @@ const AgentAssignmentEmail = ({
           </Button>
         ) : null}
         <Text style={footer}>{SITE_NAME}</Text>
+        <EmailFooter />
       </Container>
     </Body>
   </Html>

@@ -428,6 +428,44 @@ export type Database = {
         }
         Relationships: []
       }
+      scenario_conversation_notes: {
+        Row: {
+          author_id: string
+          author_name: string
+          body: string
+          created_at: string
+          id: string
+          scenario_id: string
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          author_name?: string
+          body: string
+          created_at?: string
+          id?: string
+          scenario_id: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          author_name?: string
+          body?: string
+          created_at?: string
+          id?: string
+          scenario_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scenario_conversation_notes_scenario_id_fkey"
+            columns: ["scenario_id"]
+            isOneToOne: false
+            referencedRelation: "scenarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scenarios: {
         Row: {
           agent_notes: string | null
@@ -751,6 +789,10 @@ export type Database = {
         Args: { p_notes: string; p_scenario: string }
         Returns: undefined
       }
+      add_scenario_conversation_note: {
+        Args: { p_body: string; p_scenario: string }
+        Returns: string
+      }
       create_scenario: {
         Args: {
           p_birth_year: number
@@ -785,6 +827,18 @@ export type Database = {
       log_audit_event: {
         Args: { p_action: string; p_metadata: Json }
         Returns: undefined
+      }
+      list_scenario_conversation_notes: {
+        Args: { p_scenario: string }
+        Returns: {
+          author_id: string
+          author_name: string
+          body: string
+          created_at: string
+          id: string
+          scenario_id: string
+          updated_at: string
+        }[]
       }
       lookup_scenario: {
         Args: { p_code: string }

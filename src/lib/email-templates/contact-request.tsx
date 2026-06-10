@@ -9,6 +9,8 @@ import {
   Text,
 } from '@react-email/components'
 import type { TemplateEntry } from './registry'
+import { EmailHeader } from './email-header'
+import { EmailFooter } from './email-footer'
 
 const SITE_NAME = 'The Medicare Optimizer'
 
@@ -23,6 +25,7 @@ const ContactRequestEmail = ({ recipientName, scenarioCode }: Props) => (
     <Preview>We received your request to be contacted</Preview>
     <Body style={main}>
       <Container style={container}>
+        <EmailHeader />
         <Heading style={h1}>
           {recipientName ? `Thanks, ${recipientName}!` : 'Thanks for reaching out!'}
         </Heading>
@@ -35,6 +38,7 @@ const ContactRequestEmail = ({ recipientName, scenarioCode }: Props) => (
           If you need immediate help, just reply to this email.
         </Text>
         <Text style={footer}>The {SITE_NAME} team</Text>
+        <EmailFooter />
       </Container>
     </Body>
   </Html>

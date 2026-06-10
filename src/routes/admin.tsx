@@ -6,8 +6,9 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollText, Users, Settings2, Search, Plus, Minus, Inbox, Phone, Mail, UserPlus, Loader2, Eye, EyeOff, Pencil, Trash2, Ban, CheckCircle2, Layers, GitBranch, CalendarDays, DollarSign, ListChecks, Send } from "lucide-react";
+import { ScrollText, Users, Settings2, Search, Plus, Minus, Inbox, Phone, Mail, UserPlus, Loader2, Eye, EyeOff, Pencil, Trash2, Ban, CheckCircle2, Layers, GitBranch, CalendarDays, DollarSign, ListChecks, Send, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ScenarioConversationDialog } from "@/components/ScenarioConversationDialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -202,6 +203,7 @@ function AdminPortal() {
   const [scenarios, setScenarios] = useState<AdminScenarioRow[]>([]);
   const [contacts, setContacts] = useState<AdminContactRow[]>([]);
   const [loadingData, setLoadingData] = useState(false);
+  const [selectedScenarioForNotes, setSelectedScenarioForNotes] = useState<AdminScenarioRow | null>(null);
 
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [staffLoading, setStaffLoading] = useState(false);
@@ -566,11 +568,22 @@ function AdminPortal() {
                           )}
                         </td>
                         <td className="px-3 py-2 text-xs max-w-xs">
-                          {s.agent_notes ? (
-                            <span className="text-muted-foreground line-clamp-3 whitespace-pre-wrap">{s.agent_notes}</span>
-                          ) : (
-                            <span className="text-muted-foreground italic">—</span>
-                          )}
+                          <div className="flex flex-col gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-xs justify-start w-fit cursor-pointer"
+                              onClick={() => setSelectedScenarioForNotes(s)}
+                            >
+                              <MessageSquare className="h-3.5 w-3.5 mr-1 text-primary" />
+                              Manage notes
+                            </Button>
+                            {s.agent_notes && (
+                              <span className="text-muted-foreground line-clamp-2 whitespace-pre-wrap text-[11px] pl-2 border-l border-border">
+                                {s.agent_notes}
+                              </span>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -884,6 +897,17 @@ function AdminPortal() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {selectedScenarioForNotes && (
+        <ScenarioConversationDialog
+          open={!!selectedScenarioForNotes}
+          onOpenChange={(open) => !open && setSelectedScenarioForNotes(null)}
+          scenarioId={selectedScenarioForNotes.id}
+          scenarioCode={selectedScenarioForNotes.scenario_code}
+          currentUserId={user?.id ?? null}
+          canAddNotes={user?.role === "admin"}
+        />
+      )}
     </AppShell>
   );
 }

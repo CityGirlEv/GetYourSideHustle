@@ -68,9 +68,12 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
 
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
-    // Copy Cloudflare env bindings to process.env so libraries expecting Node.js-style process.env can access them
-    if (env && typeof env === "object") {
-      for (const [key, value] of Object.entries(env)) {
+    const envBag =
+      env && typeof env === "object" ? (env as Record<string, unknown>) : {};
+    (globalThis as Record<string, unknown>).__env__ = envBag;
+
+    if (typeof process !== "undefined" && process.env) {
+      for (const [key, value] of Object.entries(envBag)) {
         if (typeof value === "string") {
           process.env[key] = value;
         }

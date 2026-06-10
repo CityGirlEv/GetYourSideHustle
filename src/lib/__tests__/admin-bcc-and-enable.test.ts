@@ -8,8 +8,8 @@ describe("admin notifications", () => {
     expect(typeof TEMPLATES["account-enabled-admin"].component).toBe("function");
   });
 
-  it("uses getpartb@gmail.com as the default admin recipient", () => {
-    expect(DEFAULT_ADMIN_NOTIFICATION_EMAILS).toContain("getpartb@gmail.com");
+  it("uses info@MyPartB.com as the default admin recipient", () => {
+    expect(DEFAULT_ADMIN_NOTIFICATION_EMAILS).toContain("info@MyPartB.com");
   });
 
   it("skips BCC for admin-targeted templates", () => {

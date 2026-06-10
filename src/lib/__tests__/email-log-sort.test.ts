@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { sortEmailLog, type EmailLogRow } from '@/lib/email-log-sort'
+import { sortEmailLog, emailLogMatchesTemplate, dedupeEmailLogRows, type EmailLogRow } from '@/lib/email-log-sort'
 
 function row(p: Partial<EmailLogRow>): EmailLogRow {
   return {
@@ -102,5 +102,40 @@ describe('sortEmailLog', () => {
     const copy = [...rows]
     sortEmailLog(rows, 'template_name', 'asc')
     expect(rows).toEqual(copy)
+  })
+})
+
+describe('dedupeEmailLogRows', () => {
+  it('prefers sent over stale pending for the same message_id', () => {
+    const deduped = dedupeEmailLogRows([
+      row({
+        id: 'pending-id',
+        message_id: 'msg-1',
+        status: 'pending',
+        created_at: '2026-06-01T08:35:12.000Z',
+      }),
+      row({
+        id: 'sent-id',
+        message_id: 'msg-1',
+        status: 'sent',
+        created_at: '2026-06-01T08:35:15.000Z',
+      }),
+    ])
+    expect(deduped).toHaveLength(1)
+    expect(deduped[0]?.status).toBe('sent')
+  })
+})
+
+describe('emailLogMatchesTemplate', () => {
+  it('matches exact template names and test/BCC variants', () => {
+    expect(emailLogMatchesTemplate('welcome', 'welcome')).toBe(true)
+    expect(emailLogMatchesTemplate('welcome (test)', 'welcome')).toBe(true)
+    expect(emailLogMatchesTemplate('welcome-test', 'welcome')).toBe(true)
+    expect(emailLogMatchesTemplate('welcome (bcc)', 'welcome')).toBe(true)
+  })
+
+  it('does not match other templates with similar prefixes', () => {
+    expect(emailLogMatchesTemplate('welcome-back', 'welcome')).toBe(false)
+    expect(emailLogMatchesTemplate('recovery', 'welcome')).toBe(false)
   })
 })

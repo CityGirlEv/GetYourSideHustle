@@ -10,14 +10,18 @@ import {
   Preview,
   Text,
 } from '@react-email/components'
+import { EmailHeader } from './email-header'
+import { EmailFooter } from './email-footer'
 
 interface MagicLinkEmailProps {
   siteName: string
+  siteUrl?: string
   confirmationUrl: string
 }
 
 export const MagicLinkEmail = ({
   siteName,
+  siteUrl,
   confirmationUrl,
 }: MagicLinkEmailProps) => (
   <Html lang="en" dir="ltr">
@@ -25,6 +29,7 @@ export const MagicLinkEmail = ({
     <Preview>Your login link for {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
+        <EmailHeader siteUrl={siteUrl} />
         <Heading style={h1}>Your login link</Heading>
         <Text style={text}>
           Click the button below to log in to {siteName}. This link will expire
@@ -36,6 +41,7 @@ export const MagicLinkEmail = ({
         <Text style={footer}>
           If you didn't request this link, you can safely ignore this email.
         </Text>
+        <EmailFooter siteUrl={siteUrl} />
       </Container>
     </Body>
   </Html>

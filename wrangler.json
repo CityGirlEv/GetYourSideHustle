@@ -1,11 +1,8 @@
 {
-  "name": "citygirlev-mypartb",
+  "name": "mypartb",
   "compatibility_date": "2026-06-05",
   "compatibility_flags": [
     "nodejs_compat"
   ],
-  "main": "dist/_worker.js/index.js",
-  "assets": {
-    "directory": "./dist"
-  }
+  "pages_build_output_dir": "dist"
 }

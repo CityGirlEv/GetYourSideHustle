@@ -10,9 +10,11 @@ import {
   Text,
 } from '@react-email/components'
 import type { TemplateEntry } from './registry'
+import { EmailHeader } from './email-header'
+import { EmailFooter } from './email-footer'
 
 const SITE_NAME = 'The Medicare Optimizer'
-const SITE_URL = 'https://themedicareoptimizer.com'
+const SITE_URL = 'https://mypartb.pages.dev'
 
 interface Props {
   recipientName?: string
@@ -24,6 +26,7 @@ const WelcomeEmail = ({ recipientName }: Props) => (
     <Preview>Welcome to {SITE_NAME}</Preview>
     <Body style={main}>
       <Container style={container}>
+        <EmailHeader siteUrl={SITE_URL} />
         <Heading style={h1}>
           {recipientName ? `Welcome, ${recipientName}!` : `Welcome to ${SITE_NAME}!`}
         </Heading>
@@ -35,6 +38,7 @@ const WelcomeEmail = ({ recipientName }: Props) => (
           Get started
         </Button>
         <Text style={footer}>The {SITE_NAME} team</Text>
+        <EmailFooter siteUrl={SITE_URL} />
       </Container>
     </Body>
   </Html>
