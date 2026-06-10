@@ -234,7 +234,7 @@ function TemplateEditor({ name }: { name: string }) {
   html,body{margin:0;padding:0;}
   body{outline:none;min-height:100%;cursor:text;}
   body:focus{outline:none;}
-  ::selection{background:#c7d2fe;}
+  ::selection{background:#b3cce8;}
 </style>
 <script>
 (function(){

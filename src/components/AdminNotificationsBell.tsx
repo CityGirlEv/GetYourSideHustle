@@ -19,7 +19,7 @@ type Notif = {
   created_at: string;
 };
 
-export function AdminNotificationsBell() {
+export function AdminNotificationsBell({ tone = "light" }: { tone?: "light" | "dark" }) {
   const [items, setItems] = useState<Notif[]>([]);
   const [open, setOpen] = useState(false);
 
@@ -73,10 +73,21 @@ export function AdminNotificationsBell() {
     load();
   };
 
+  const onDark = tone === "dark";
+
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
-        <Button size="sm" variant="outline" className="relative gap-1" aria-label="Notifications">
+        <Button
+          size="sm"
+          variant={onDark ? "ghost" : "outline"}
+          className={
+            onDark
+              ? "relative h-7 gap-1 px-1.5 text-white/90 hover:text-white hover:bg-white/10"
+              : "relative gap-1"
+          }
+          aria-label="Notifications"
+        >
           <Bell className="h-4 w-4" />
           {unread > 0 && (
             <span className="absolute -top-1 -right-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">

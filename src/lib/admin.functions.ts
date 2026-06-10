@@ -109,7 +109,7 @@ async function sendAccountApprovedEmail(toEmail: string, fullName: string, role:
       <p>Hi ${fullName || "there"},</p>
       <p>Good news — an administrator just approved your beta account. You can now sign in.</p>
       <p style="margin:18px 0">
-        <a href="${APP_URL}/auth" style="background:#4f46e5;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:600">Sign in</a>
+        <a href="${APP_URL}/auth" style="background:#002870;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:600">Sign in</a>
       </p>
       ${isQa ? `<p>Once you're in, head to the <b>Testing Portal</b> and open the <a href="${APP_URL}/qa-manual">QA Manual</a> — it covers filters, statuses, bulk edits, and the bug pipeline.</p>` : ""}
       <p style="color:#666;font-size:12px;margin-top:24px">If you didn't request this account, please ignore this email.</p>

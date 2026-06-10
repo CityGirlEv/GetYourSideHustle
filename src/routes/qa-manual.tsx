@@ -90,25 +90,25 @@ function QAManualPage() {
                 <text x="715" y="178" textAnchor="middle" fontWeight="700" fill="#111827">Status ▾</text>
                 <text x="715" y="194" textAnchor="middle" fontSize="11" fill="#6b7280">Pass / Fail</text>
                 {/* Save button */}
-                <rect x="775" y="160" width="70" height="40" rx="8" fill="#4f46e5" />
+                <rect x="775" y="160" width="70" height="40" rx="8" fill="#002870" />
                 <text x="810" y="184" textAnchor="middle" fontWeight="800" fill="#ffffff">Save</text>
 
                 {/* Bubbles */}
                 <g fontWeight="800" fontSize="14" fill="#ffffff" textAnchor="middle">
                   {/* 1 — Pick test (title) */}
-                  <circle cx="76" cy="140" r="16" fill="#4f46e5" stroke="#ffffff" strokeWidth="2" />
+                  <circle cx="76" cy="140" r="16" fill="#002870" stroke="#ffffff" strokeWidth="2" />
                   <text x="76" y="145">1</text>
                   {/* 2 — Run scenario (steps text) */}
-                  <circle cx="200" cy="220" r="16" fill="#4f46e5" stroke="#ffffff" strokeWidth="2" />
+                  <circle cx="200" cy="220" r="16" fill="#002870" stroke="#ffffff" strokeWidth="2" />
                   <text x="200" y="225">2</text>
                   {/* 3 — Evidence */}
-                  <circle cx="425" cy="150" r="16" fill="#4f46e5" stroke="#ffffff" strokeWidth="2" />
+                  <circle cx="425" cy="150" r="16" fill="#002870" stroke="#ffffff" strokeWidth="2" />
                   <text x="425" y="155">3</text>
                   {/* 4 — Note */}
-                  <circle cx="580" cy="150" r="16" fill="#4f46e5" stroke="#ffffff" strokeWidth="2" />
+                  <circle cx="580" cy="150" r="16" fill="#002870" stroke="#ffffff" strokeWidth="2" />
                   <text x="580" y="155">4</text>
                   {/* 5 — Status */}
-                  <circle cx="715" cy="150" r="16" fill="#4f46e5" stroke="#ffffff" strokeWidth="2" />
+                  <circle cx="715" cy="150" r="16" fill="#002870" stroke="#ffffff" strokeWidth="2" />
                   <text x="715" y="155">5</text>
                   {/* 6 — Save */}
                   <circle cx="810" cy="150" r="16" fill="#10b981" stroke="#ffffff" strokeWidth="2" />

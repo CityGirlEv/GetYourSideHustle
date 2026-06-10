@@ -159,6 +159,6 @@ const unsubscribeLine = {
 }
 
 const link = {
-  color: '#2563eb',
+  color: '#003888',
   textDecoration: 'underline',
 }

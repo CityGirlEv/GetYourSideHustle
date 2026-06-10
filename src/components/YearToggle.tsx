@@ -8,11 +8,16 @@ import { toast } from "sonner";
 // Flip to true once official 2027 CMS figures are published.
 const CMS_2027_PUBLISHED = false;
 
-export function YearToggle() {
+export function YearToggle({ tone = "light" }: { tone?: "dark" | "light" }) {
   const { year, setYear } = useApp();
   const [open, setOpen] = useState(false);
+  const onDark = tone === "dark";
   return (
-    <div className="rounded-full bg-white/10 p-0.5 flex items-center gap-1 min-w-0">
+    <div
+      className={`rounded-full p-0.5 flex items-center gap-1 min-w-0 ${
+        onDark ? "bg-white/10" : "bg-primary/10 border border-primary/15"
+      }`}
+    >
       {[2026, 2027].map((y) => (
         <button
           key={y}
@@ -26,7 +31,13 @@ export function YearToggle() {
             setYear(y as 2026 | 2027);
           }}
           className={`px-2 py-0.5 rounded-full text-xs font-semibold transition whitespace-nowrap ${
-            year === y ? "bg-white text-primary shadow" : "text-white/80 hover:text-white"
+            year === y
+              ? onDark
+                ? "bg-white text-primary shadow"
+                : "bg-primary text-primary-foreground shadow"
+              : onDark
+                ? "text-white/80 hover:text-white"
+                : "text-primary/75 hover:text-primary"
           }`}
         >
           {y} <span className="hidden sm:inline">rules</span>
@@ -34,8 +45,11 @@ export function YearToggle() {
       ))}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <button className="p-1 rounded-full hover:bg-white/15" aria-label="Compare years">
-            <Sparkles className="h-3.5 w-3.5 text-white" />
+          <button
+            className={`p-1 rounded-full ${onDark ? "hover:bg-white/15" : "hover:bg-primary/10"}`}
+            aria-label="Compare years"
+          >
+            <Sparkles className={`h-3.5 w-3.5 ${onDark ? "text-white" : "text-primary"}`} />
           </button>
         </DialogTrigger>
         <DialogContent className="max-w-2xl">

@@ -22,7 +22,7 @@ export function SignaturePad({ onSign }: { onSign: (data: string) => void }) {
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.lineWidth = 2.5;
-    ctx.strokeStyle = "#1E1B4B";
+    ctx.strokeStyle = "#002870";
   }, [mode]);
 
   const start = (x: number, y: number) => {
