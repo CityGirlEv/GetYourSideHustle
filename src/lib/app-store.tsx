@@ -138,6 +138,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
           const errMsg = err instanceof Error ? err.message : String(err);
           const { toast } = await import("sonner");
           toast.error("Failed to load user profile: " + errMsg);
+          
+          if (errMsg.includes("Unauthorized") || errMsg.includes("Invalid token") || errMsg.includes("invalid claim")) {
+            console.warn("Invalid session token detected, clearing session...");
+            supabase.auth.signOut().then(() => {
+              setUser(null);
+              setSession(null);
+            });
+          }
         }
       } finally {
         if (!cancelled) {
