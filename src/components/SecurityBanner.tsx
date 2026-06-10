@@ -43,7 +43,7 @@ export function SecurityBanner() {
   return (
     <nav
       aria-label="Site navigation"
-      className="relative z-10 border-b-0 bg-transparent px-4 pt-2 pb-0 text-sm"
+      className="relative z-10 border-b-0 bg-transparent px-4 pt-1 pb-1.5 sm:pb-2 text-sm"
     >
       <div className="max-w-7xl mx-auto">
         <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-x-3 sm:gap-x-6">
@@ -59,18 +59,46 @@ export function SecurityBanner() {
                 </>
               )}
             </div>
-            <YearToggle tone="light" />
+            {user && (
+              <div className="max-w-[11rem] text-xs leading-tight">
+                <div className="truncate font-medium text-foreground">{user.full_name}</div>
+                <div className="truncate capitalize text-muted-foreground">
+                  {user.role}
+                  {user.npn_number && ` · NPN ${user.npn_number}`}
+                </div>
+              </div>
+            )}
           </div>
 
-          <Link
-            to="/"
-            aria-label="The Medicare Optimizer"
-            className="self-center shrink-0 drop-shadow-[0_2px_4px_rgba(0,40,112,0.1)]"
-          >
-            <BrandLogo className="w-32 sm:w-44 md:w-56 lg:w-64 h-auto max-w-[min(42vw,16rem)] sm:max-w-none" />
-          </Link>
+          <div className="flex flex-col items-center self-start mt-0.5 sm:mt-1 shrink-0">
+            <Link
+              to="/"
+              aria-label="The Medicare Optimizer"
+              className="block drop-shadow-[0_2px_4px_rgba(0,40,112,0.1)]"
+            >
+              <BrandLogo className="w-32 sm:w-44 md:w-56 lg:w-64 h-auto max-w-[min(42vw,16rem)] sm:max-w-none" />
+            </Link>
+            <p className="mt-0.5 max-w-[13rem] sm:max-w-xs md:max-w-sm text-center font-display text-[10px] sm:text-xs md:text-sm text-primary font-medium italic leading-tight px-2">
+              Let The Optimizer Find The Medicare Plan You Deserve!
+            </p>
+          </div>
 
           <div className="flex flex-col items-end gap-1.5 min-w-0">
+            <div className="flex flex-wrap items-center justify-end gap-x-3 sm:gap-x-4 gap-y-1">
+              {user ? (
+                <button onClick={logout} className={navLink}>
+                  <LogOut className="h-4 w-4 shrink-0" /> Log out
+                </button>
+              ) : (
+                <Link to="/auth" className={navLink}>
+                  <LogIn className="h-4 w-4 shrink-0" /> Log in
+                </Link>
+              )}
+              <Link to="/register" className={navLink}>
+                <UserPlus className="h-4 w-4 shrink-0" /> Register
+              </Link>
+            </div>
+            <YearToggle tone="light" />
             <div className="flex flex-wrap items-center justify-end gap-x-3 sm:gap-x-4 gap-y-1">
               <FontSizeToggle />
               {(user?.role === "advisor" || user?.role === "qa") && <CreditPill />}
@@ -130,29 +158,6 @@ export function SecurityBanner() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
-              {user ? (
-                <>
-                  <div className="hidden lg:flex items-center gap-2 text-sm">
-                    <div className="text-right">
-                      <div className="font-medium">{user.full_name}</div>
-                      <div className="text-xs text-muted-foreground capitalize">
-                        {user.role}
-                        {user.npn_number && ` · NPN ${user.npn_number}`}
-                      </div>
-                    </div>
-                  </div>
-                  <button onClick={logout} className={navLink}>
-                    <LogOut className="h-4 w-4 shrink-0" /> Log out
-                  </button>
-                </>
-              ) : (
-                <Link to="/auth" className={navLink}>
-                  <LogIn className="h-4 w-4 shrink-0" /> Log in
-                </Link>
-              )}
-              <Link to="/register" className={navLink}>
-                <UserPlus className="h-4 w-4 shrink-0" /> Register
-              </Link>
             </div>
           </div>
         </div>

@@ -21,7 +21,7 @@ export function TrustBanner({ className }: TrustBannerProps) {
   return (
     <div
       className={cn(
-        "w-full overflow-hidden border-t border-white/15 bg-[var(--brand-navy-mid)] py-1.5",
+        "w-full overflow-hidden border-b border-white/15 bg-[var(--brand-navy-mid)] py-1.5",
         className,
       )}
     >
