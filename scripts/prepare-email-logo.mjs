@@ -51,11 +51,15 @@ async function makeBlackTransparent(inputPath, outputPath) {
 }
 
 async function prepareLogo(source, outName) {
+  const outPath = path.join(root, "public", outName);
   if (!fs.existsSync(source)) {
+    if (fs.existsSync(outPath)) {
+      console.warn(`Source logo not found for ${outName}, but output already exists in public/. Skipping regeneration.`);
+      return;
+    }
     console.error("Source logo not found:", source);
     process.exit(1);
   }
-  const outPath = path.join(root, "public", outName);
   const { width, height } = await makeBlackTransparent(source, outPath);
   console.log(`Wrote ${outPath} (${width}x${height}, transparent background)`);
 }
