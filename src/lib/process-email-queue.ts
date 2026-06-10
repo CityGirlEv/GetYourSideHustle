@@ -272,9 +272,12 @@ export async function processEmailQueue(
           return { processed: totalProcessed, stopped: 'rate_limited' }
         }
 
-        if (isForbidden(error) && !isResendSandboxRestriction(errorMsg)) {
+        if (isForbidden(error)) {
           await moveToDlq(supabase, queue, msg, errorMsg.slice(0, 1000))
-          return { processed: totalProcessed, stopped: 'forbidden' }
+          if (!isResendSandboxRestriction(errorMsg)) {
+            return { processed: totalProcessed, stopped: 'forbidden' }
+          }
+          continue
         }
 
         await markEmailSendLog(

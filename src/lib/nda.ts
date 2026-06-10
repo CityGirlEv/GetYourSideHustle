@@ -1,4 +1,4 @@
-import jsPDF from "jspdf";
+import { jsPDF } from "jspdf";
 
 export const NDA_VERSION = "v1";
 export const NDA_TITLE = "The Medicare Optimizer — Beta Tester Non-Disclosure Agreement";

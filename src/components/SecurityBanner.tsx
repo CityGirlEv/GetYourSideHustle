@@ -92,11 +92,11 @@ export function SecurityBanner() {
                   <LogOut className="h-4 w-4 shrink-0" /> Log out
                 </button>
               ) : (
-                <Link to="/auth" className={navLink}>
+                <Link to="/auth" search={{ tab: "sign-in" }} className={navLink}>
                   <LogIn className="h-4 w-4 shrink-0" /> Log in
                 </Link>
               )}
-              <Link to="/register" className={navLink}>
+              <Link to="/auth" search={{ tab: "register" }} className={navLink}>
                 <UserPlus className="h-4 w-4 shrink-0" /> Register
               </Link>
             </div>

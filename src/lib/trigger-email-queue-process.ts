@@ -1,10 +1,16 @@
 import { processEmailQueue } from '@/lib/process-email-queue'
 import { getEnvVariable, getRuntimeSecret } from '@/lib/env'
 
+const MAX_INLINE_QUEUE_ROUNDS = 50
+
 /** Process the email queue inline in the current worker (preferred). */
 export async function triggerEmailQueueProcess(requestUrl?: string): Promise<void> {
   try {
-    await processEmailQueue()
+    for (let round = 0; round < MAX_INLINE_QUEUE_ROUNDS; round++) {
+      const result = await processEmailQueue()
+      if (result.skipped && result.reason === 'rate_limited') break
+      if ((result.processed ?? 0) === 0) break
+    }
   } catch (err) {
     console.error('[email-queue] inline process failed', err)
     await triggerEmailQueueProcessHttp(requestUrl)

@@ -65,7 +65,7 @@ export const template = {
     fullName: 'Jane Doe',
     email: 'jane@example.com',
     role: 'qa',
-    enabledBy: 'admin@example.com',
+    enabledBy: 'evelyn3@cox.net',
   },
 } satisfies TemplateEntry
 

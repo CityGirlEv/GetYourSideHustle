@@ -4,11 +4,12 @@ import { getEnvVariable } from '@/lib/env'
 import * as React from 'react'
 import { render } from '@react-email/components'
 import { TEMPLATES } from '@/lib/email-templates/registry'
+import { ALL_TEMPLATES, findTemplate } from '@/lib/email-templates/all-templates.server'
 import { getEmailTemplateOverride } from '@/lib/email-templates/overrides.server'
 import { ensureEmailBranding } from '@/lib/email-templates/email-branding.server'
 import { getTransactionalFromAddress, getTransactionalSenderDomain } from '@/lib/send-transactional-email'
 import { triggerEmailQueueProcess } from '@/lib/trigger-email-queue-process'
-import { DEFAULT_ADMIN_NOTIFICATION_EMAILS } from '@/lib/registration.functions'
+import { getAdminNotificationEmails } from '@/lib/admin-notification-emails'
 
 function generateUnsubscribeToken(): string {
   const bytes = new Uint8Array(32)
@@ -42,14 +43,163 @@ async function getOrCreateUnsubscribeToken(email: string): Promise<string> {
   return stored.token
 }
 
-// Admin BCC list — mirror the transactional sender so test emails also
-// produce an admin paper trail. Override via ADMIN_NOTIFICATION_EMAILS.
 function adminBccRecipients(): string[] {
-  const raw = getEnvVariable('ADMIN_NOTIFICATION_EMAILS')
-  const configured = raw
-    ? raw.split(",").map((s) => s.trim()).filter(Boolean)
-    : DEFAULT_ADMIN_NOTIFICATION_EMAILS
-  return Array.from(new Set(configured.map((e) => e.toLowerCase())))
+  return getAdminNotificationEmails()
+}
+
+export function allTestTemplateNames(): string[] {
+  const names = new Set(ALL_TEMPLATES.map((t) => t.name))
+  for (const name of Object.keys(TEMPLATES)) {
+    names.add(name)
+  }
+  return Array.from(names).sort()
+}
+
+type ResolvedTemplate = {
+  templateName: string
+  component: React.ComponentType<any>
+  previewData: Record<string, unknown>
+  resolveSubject: (data: Record<string, unknown>) => string
+}
+
+function resolveTestTemplate(templateName: string): ResolvedTemplate | null {
+  const registryEntry = TEMPLATES[templateName]
+  const descriptor = findTemplate(templateName)
+  if (!registryEntry && !descriptor) return null
+
+  const component = registryEntry?.component ?? descriptor!.component
+  const previewData = (registryEntry?.previewData ?? descriptor?.sampleProps ?? {}) as Record<
+    string,
+    unknown
+  >
+
+  const resolveSubject = (data: Record<string, unknown>) => {
+    if (registryEntry?.subject) {
+      return typeof registryEntry.subject === 'function'
+        ? registryEntry.subject(data)
+        : registryEntry.subject
+    }
+    return descriptor?.defaultSubject ?? `[TEST] ${templateName}`
+  }
+
+  return { templateName, component, previewData, resolveSubject }
+}
+
+export type SendOneTestEmailResult =
+  | { ok: true; messageId: string; templateName: string; recipient: string }
+  | { ok: false; templateName: string; error: string }
+
+export async function sendOneTestEmail(
+  templateName: string,
+  recipient: string,
+  opts?: { skipAdminBcc?: boolean },
+): Promise<SendOneTestEmailResult> {
+  const resolved = resolveTestTemplate(templateName)
+  if (!resolved) {
+    return { ok: false, templateName, error: `Template '${templateName}' not found` }
+  }
+
+  const messageId = crypto.randomUUID()
+  const element = React.createElement(resolved.component, resolved.previewData)
+  let html = await render(element)
+  let plainText = await render(element, { plainText: true })
+  let subject = resolved.resolveSubject(resolved.previewData)
+
+  const override = await getEmailTemplateOverride(templateName)
+  if (override) {
+    html = override.html
+    plainText = override.text
+    subject = override.subject
+  }
+
+  const unsubscribeToken = await getOrCreateUnsubscribeToken(recipient)
+  const siteUrl =
+    (resolved.previewData.siteUrl as string | undefined) ??
+    getEnvVariable('PUBLIC_SITE_URL') ??
+    'https://mypartb.pages.dev'
+  html = await ensureEmailBranding(html, { siteUrl, unsubscribeToken })
+
+  await supabaseAdmin.from('email_send_log').insert({
+    message_id: messageId,
+    template_name: templateName,
+    recipient_email: recipient,
+    status: 'pending',
+  })
+
+  const { error: enqueueError } = await supabaseAdmin.rpc('enqueue_email', {
+    queue_name: 'transactional_emails',
+    payload: {
+      message_id: messageId,
+      to: recipient,
+      from: getTransactionalFromAddress(),
+      sender_domain: getTransactionalSenderDomain(),
+      subject,
+      html,
+      text: plainText,
+      purpose: 'transactional',
+      label: templateName,
+      idempotency_key: messageId,
+      unsubscribe_token: unsubscribeToken,
+      queued_at: new Date().toISOString(),
+    },
+  })
+
+  if (enqueueError) {
+    await supabaseAdmin.from('email_send_log').insert({
+      message_id: messageId,
+      template_name: templateName,
+      recipient_email: recipient,
+      status: 'failed',
+      error_message: `Enqueue failed: ${enqueueError.message}`,
+    })
+    return { ok: false, templateName, error: `Failed to enqueue email: ${enqueueError.message}` }
+  }
+
+  try {
+    const admins = adminBccRecipients()
+    const isAdminTemplate = templateName.endsWith('-admin')
+    const normalizedRecipient = recipient.toLowerCase()
+    if (!opts?.skipAdminBcc && !isAdminTemplate) {
+      for (const adminEmail of admins) {
+        if (!adminEmail || adminEmail === normalizedRecipient) continue
+        const adminToken = await getOrCreateUnsubscribeToken(adminEmail)
+        const bccMessageId = crypto.randomUUID()
+        await supabaseAdmin.from('email_send_log').insert({
+          message_id: bccMessageId,
+          template_name: `${templateName} (bcc)`,
+          recipient_email: adminEmail,
+          status: 'pending',
+        })
+        const { error: bccErr } = await supabaseAdmin.rpc('enqueue_email', {
+          queue_name: 'transactional_emails',
+          payload: {
+            message_id: bccMessageId,
+            to: adminEmail,
+            from: getTransactionalFromAddress(),
+            sender_domain: getTransactionalSenderDomain(),
+            subject: `[BCC] ${subject}`,
+            html,
+            text: plainText,
+            purpose: 'transactional',
+            label: `${templateName}-bcc`,
+            idempotency_key: `${messageId}-bcc-${adminEmail}`,
+            unsubscribe_token: adminToken,
+            queued_at: new Date().toISOString(),
+          },
+        })
+        if (bccErr) {
+          console.error('Failed to enqueue test-email admin BCC', {
+            error: bccErr,
+            templateName,
+          })
+        }
+      }
+    }
+  } catch (bccErr) {
+    console.error('Test email admin BCC threw', bccErr)
+  }
+
+  return { ok: true, messageId, templateName, recipient }
 }
 
 /**
@@ -64,9 +214,6 @@ export const Route = createFileRoute('/api/public/send-test-email')({
         const secret = url.searchParams.get('secret')
         const expectedSecret = getEnvVariable('TEST_EMAIL_SECRET')
 
-        // Hard requirement: the endpoint is disabled unless TEST_EMAIL_SECRET
-        // is configured. Without this the endpoint was an open relay for
-        // anyone to send emails through the verified sending domain.
         if (!expectedSecret) {
           return Response.json(
             { error: 'Endpoint disabled: TEST_EMAIL_SECRET is not configured' },
@@ -78,11 +225,13 @@ export const Route = createFileRoute('/api/public/send-test-email')({
         }
 
         let recipient: string
-        let templateName: string
+        let templateName: string | undefined
+        let sendAll = false
         try {
           const body = await request.json()
           recipient = body.recipient
-          templateName = body.template || 'welcome'
+          templateName = body.template
+          sendAll = body.all === true
         } catch {
           return Response.json({ error: 'Invalid JSON' }, { status: 400 })
         }
@@ -91,124 +240,39 @@ export const Route = createFileRoute('/api/public/send-test-email')({
           return Response.json({ error: 'Valid recipient email required' }, { status: 400 })
         }
 
-        const template = TEMPLATES[templateName]
-        if (!template) {
-          return Response.json({ error: `Template '${templateName}' not found` }, { status: 404 })
-        }
-
-        const messageId = crypto.randomUUID()
-        const element = React.createElement(template.component, template.previewData || {})
-        let html = await render(element)
-        let plainText = await render(element, { plainText: true })
-        let subject = typeof template.subject === 'function'
-          ? template.subject(template.previewData || {})
-          : template.subject
-
-        const override = await getEmailTemplateOverride(templateName)
-        if (override) {
-          html = override.html
-          plainText = override.text
-          subject = override.subject
-        }
-
-        const unsubscribeToken = await getOrCreateUnsubscribeToken(recipient)
-        const siteUrl =
-          (template.previewData as { siteUrl?: string } | undefined)?.siteUrl ??
-          getEnvVariable('PUBLIC_SITE_URL') ??
-          'https://mypartb.pages.dev'
-        html = await ensureEmailBranding(html, { siteUrl, unsubscribeToken })
-
-        // Log pending
-        await supabaseAdmin.from('email_send_log').insert({
-          message_id: messageId,
-          template_name: templateName,
-          recipient_email: recipient,
-          status: 'pending',
-        })
-
-        // Enqueue
-        const { error: enqueueError } = await supabaseAdmin.rpc('enqueue_email', {
-          queue_name: 'transactional_emails',
-          payload: {
-            message_id: messageId,
-            to: recipient,
-            from: getTransactionalFromAddress(),
-            sender_domain: getTransactionalSenderDomain(),
-            subject,
-            html,
-            text: plainText,
-            purpose: 'transactional',
-            label: templateName,
-            idempotency_key: messageId,
-            unsubscribe_token: unsubscribeToken,
-            queued_at: new Date().toISOString(),
-          },
-        })
-
-        if (enqueueError) {
-          await supabaseAdmin.from('email_send_log').insert({
-            message_id: messageId,
-            template_name: templateName,
-            recipient_email: recipient,
-            status: 'failed',
-            error_message: `Enqueue failed: ${enqueueError.message}`,
-          })
-          return Response.json({ error: 'Failed to enqueue email' }, { status: 500 })
-        }
-
-        // Fire-and-forget admin BCC copies (skip for admin-targeted templates
-        // and skip if the primary recipient is already an admin).
-        try {
-          const admins = adminBccRecipients()
-          const isAdminTemplate = templateName.endsWith('-admin')
-          const normalizedRecipient = recipient.toLowerCase()
-          if (!isAdminTemplate) {
-            for (const adminEmail of admins) {
-              if (!adminEmail || adminEmail === normalizedRecipient) continue
-              const adminToken = await getOrCreateUnsubscribeToken(adminEmail)
-              const bccMessageId = crypto.randomUUID()
-              await supabaseAdmin.from('email_send_log').insert({
-                message_id: bccMessageId,
-                template_name: `${templateName} (bcc)`,
-                recipient_email: adminEmail,
-                status: 'pending',
-              })
-              const { error: bccErr } = await supabaseAdmin.rpc('enqueue_email', {
-                queue_name: 'transactional_emails',
-                payload: {
-                  message_id: bccMessageId,
-                  to: adminEmail,
-                  from: getTransactionalFromAddress(),
-                  sender_domain: getTransactionalSenderDomain(),
-                  subject: `[BCC] ${subject}`,
-                  html,
-                  text: plainText,
-                  purpose: 'transactional',
-                  label: `${templateName}-bcc`,
-                  idempotency_key: `${messageId}-bcc-${adminEmail}`,
-                  unsubscribe_token: adminToken,
-                  queued_at: new Date().toISOString(),
-                },
-              })
-              if (bccErr) {
-                console.error('Failed to enqueue test-email admin BCC', {
-                  error: bccErr,
-                  templateName,
-                })
-              }
-            }
+        if (sendAll) {
+          const names = allTestTemplateNames()
+          const results: SendOneTestEmailResult[] = []
+          for (const name of names) {
+            results.push(await sendOneTestEmail(name, recipient, { skipAdminBcc: true }))
+            await new Promise((r) => setTimeout(r, 250))
           }
-        } catch (bccErr) {
-          console.error('Test email admin BCC threw', bccErr)
+          await triggerEmailQueueProcess(request.url)
+          const sent = results.filter((r) => r.ok)
+          const failed = results.filter((r) => !r.ok)
+          return Response.json({
+            success: failed.length === 0,
+            sent: sent.length,
+            failed: failed.length,
+            templates: names,
+            results,
+            recipient,
+            note: 'Emails queued. Delivery depends on domain verification.',
+          })
+        }
+
+        const result = await sendOneTestEmail(templateName || 'welcome', recipient)
+        if (!result.ok) {
+          return Response.json({ error: result.error }, { status: 404 })
         }
 
         await triggerEmailQueueProcess(request.url)
 
         return Response.json({
           success: true,
-          messageId,
-          template: templateName,
-          recipient,
+          messageId: result.messageId,
+          template: result.templateName,
+          recipient: result.recipient,
           note: 'Email queued. Delivery depends on domain verification.',
         })
       },

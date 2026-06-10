@@ -1,10 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { getEnvVariable } from "@/lib/env";
-import { getTransactionalFromAddress } from "@/lib/send-transactional-email";
 import { z } from "zod";
-import { DEFAULT_ADMIN_NOTIFICATION_EMAILS } from "@/lib/registration.functions";
+import {
+  notifyAdminInboxes,
+  publicSiteUrl,
+  sendTransactionalTemplates,
+} from "@/lib/send-transactional-template.server";
 
 const ROLE_VALUES = ["admin", "qa", "agent", "editor", "viewer", "advisor"] as const;
 const roleSchema = z.enum(ROLE_VALUES);
@@ -31,23 +33,7 @@ async function logAdminAudit(
   if (error) console.error("[admin] audit log insert failed", action, error.message);
 }
 
-const APP_URL = "https://themedicareoptimizer.lovable.app";
-
-function adminNotificationRecipients(): string[] {
-  const raw = getEnvVariable('ADMIN_NOTIFICATION_EMAILS');
-  const configured = raw
-    ? raw.split(",").map((s) => s.trim()).filter(Boolean)
-    : DEFAULT_ADMIN_NOTIFICATION_EMAILS;
-  return Array.from(new Set(configured));
-}
-
-function siteOrigin(): string {
-  return (
-    getEnvVariable('SITE_ORIGIN') ||
-    getEnvVariable('PUBLIC_SITE_URL') ||
-    "https://mypartb.lovable.app"
-  );
-}
+const APP_URL = publicSiteUrl().replace(/\/$/, "");
 
 async function notifyAdminsAccountEnabled(opts: {
   userId: string;
@@ -56,83 +42,29 @@ async function notifyAdminsAccountEnabled(opts: {
   role: string;
   enabledBy: string;
 }) {
-  const serviceKey = getEnvVariable('SUPABASE_SERVICE_ROLE_KEY');
-  if (!serviceKey) {
-    console.warn("[admin] account-enabled notification skipped — missing service role key");
-    return;
-  }
-  const admins = adminNotificationRecipients();
-  if (!admins.length) return;
-  const origin = siteOrigin();
-  await Promise.all(
-    admins.map(async (recipient) => {
-      try {
-        const res = await fetch(`${origin}/lovable/email/transactional/send`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${serviceKey}`,
-          },
-          body: JSON.stringify({
-            templateName: "account-enabled-admin",
-            recipientEmail: recipient,
-            idempotencyKey: `account-enabled-${opts.userId}-${recipient.toLowerCase()}`,
-            templateData: {
-              fullName: opts.fullName,
-              email: opts.email,
-              role: opts.role,
-              enabledBy: opts.enabledBy,
-            },
-          }),
-        });
-        if (!res.ok) {
-          console.error("[admin] account-enabled send failed", res.status, await res.text());
-        }
-      } catch (e) {
-        console.error("[admin] account-enabled send threw", e);
-      }
-    }),
-  );
+  await notifyAdminInboxes({
+    templateName: "account-enabled-admin",
+    idempotencyPrefix: `account-enabled-${opts.userId}`,
+    templateData: {
+      fullName: opts.fullName,
+      email: opts.email,
+      role: opts.role,
+      enabledBy: opts.enabledBy,
+    },
+  });
 }
 
-async function sendAccountApprovedEmail(toEmail: string, fullName: string, role: string) {
-  const LOVABLE_API_KEY = getEnvVariable('LOVABLE_API_KEY');
-  const RESEND_API_KEY = getEnvVariable('RESEND_API_KEY');
-  if (!LOVABLE_API_KEY || !RESEND_API_KEY || !toEmail) {
-    console.warn("[admin] approval email skipped — missing keys or recipient");
+async function sendAccountApprovedEmail(userId: string, toEmail: string, fullName: string) {
+  if (!toEmail) {
+    console.warn("[admin] approval email skipped — missing recipient");
     return;
   }
-  const isQa = role === "qa";
-  const html = `
-    <div style="font-family:Arial,sans-serif;line-height:1.5;max-width:560px">
-      <h2 style="margin:0 0 8px">Your Medicare Optimizer account is active</h2>
-      <p>Hi ${fullName || "there"},</p>
-      <p>Good news — an administrator just approved your beta account. You can now sign in.</p>
-      <p style="margin:18px 0">
-        <a href="${APP_URL}/auth" style="background:#002870;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:600">Sign in</a>
-      </p>
-      ${isQa ? `<p>Once you're in, head to the <b>Testing Portal</b> and open the <a href="${APP_URL}/qa-manual">QA Manual</a> — it covers filters, statuses, bulk edits, and the bug pipeline.</p>` : ""}
-      <p style="color:#666;font-size:12px;margin-top:24px">If you didn't request this account, please ignore this email.</p>
-    </div>`;
-  try {
-    const res = await fetch("https://connector-gateway.lovable.dev/resend/emails", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-        "X-Connection-Api-Key": RESEND_API_KEY,
-      },
-      body: JSON.stringify({
-        from: getTransactionalFromAddress(),
-        to: [toEmail],
-        subject: "Your Medicare Optimizer account is approved",
-        html,
-      }),
-    });
-    if (!res.ok) console.error("[admin] approval email failed", res.status, await res.text());
-  } catch (e) {
-    console.error("[admin] approval email threw", e);
-  }
+  await sendTransactionalTemplates({
+    templateName: "welcome",
+    recipientEmail: toEmail,
+    templateData: { recipientName: fullName || undefined },
+    idempotencyKey: `welcome-${userId}`,
+  });
 }
 
 async function verifyAdmin(userId: string) {
@@ -248,7 +180,7 @@ export const setUserDisabled = createServerFn({ method: "POST" })
     } as unknown as { ban_duration: string });
     if (error) throw new Error(error.message);
     if (!data.disabled && wasDisabled && recipientEmail) {
-      await sendAccountApprovedEmail(recipientEmail, recipientName, recipientRole);
+      await sendAccountApprovedEmail(data.user_id, recipientEmail, recipientName);
       try {
         const { data: actor } = await supabaseAdmin.auth.admin.getUserById(context.userId);
         await notifyAdminsAccountEnabled({
@@ -448,10 +380,44 @@ export const assignAgent = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await verifyAdmin(context.userId);
+    const { data: before } = await supabaseAdmin
+      .from("scenarios")
+      .select("scenario_code, assigned_agent_id")
+      .eq("id", data.scenario_id)
+      .maybeSingle();
+
     const { error } = await supabaseAdmin.rpc("admin_assign_agent", {
       p_scenario: data.scenario_id,
       p_agent: data.agent_id as unknown as string,
     });
     if (error) throw new Error(error.message);
+
+    if (data.agent_id && before?.scenario_code) {
+      try {
+        const { data: agentAuth } = await supabaseAdmin.auth.admin.getUserById(data.agent_id);
+        const agentEmail = agentAuth?.user?.email;
+        if (agentEmail) {
+          const { data: profile } = await supabaseAdmin
+            .from("profiles")
+            .select("full_name")
+            .eq("id", data.agent_id)
+            .maybeSingle();
+          const siteUrl = APP_URL;
+          await sendTransactionalTemplates({
+            templateName: "agent-assignment",
+            recipientEmail: agentEmail,
+            templateData: {
+              agentName: profile?.full_name || agentEmail,
+              scenarioCode: before.scenario_code,
+              scenarioUrl: `${siteUrl}/agent/scenario/${encodeURIComponent(before.scenario_code)}`,
+            },
+            idempotencyKey: `agent-assignment-${data.scenario_id}-${data.agent_id}`,
+          });
+        }
+      } catch (e) {
+        console.error("[admin] agent-assignment email failed", e);
+      }
+    }
+
     return { ok: true };
   });

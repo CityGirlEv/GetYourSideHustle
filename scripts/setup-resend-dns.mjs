@@ -1,23 +1,20 @@
+/**
+ * Sync Resend DNS records in Cloudflare and verify mypartb.com.
+ * Requires CLOUDFLARE_API_TOKEN in .env with Zone DNS Edit for mypartb.com.
+ */
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ZONE_ID = "bc51ba8f291107c7c8bc930ffc3a0ef2";
 const DOMAIN = "mypartb.com";
 
-const configPath = path.join(
-  process.env.APPDATA ?? "",
-  "xdg.config",
-  ".wrangler",
-  "config",
-  "default.toml",
-);
-
 function loadEnv() {
   const env = {};
-  for (const line of fs.readFileSync(".env", "utf8").split(/\r?\n/)) {
+  for (const line of fs.readFileSync(path.join(__dirname, "..", ".env"), "utf8").split(/\r?\n/)) {
     if (!line || line.startsWith("#") || !line.includes("=")) continue;
     const i = line.indexOf("=");
-    const key = line.slice(0, i);
     let val = line.slice(i + 1).trim();
     if (
       (val.startsWith('"') && val.endsWith('"')) ||
@@ -25,26 +22,31 @@ function loadEnv() {
     ) {
       val = val.slice(1, -1);
     }
-    env[key] = val;
+    env[line.slice(0, i)] = val;
   }
   return env;
 }
 
-function readToken() {
-  const config = fs.readFileSync(configPath, "utf8");
-  const match = config.match(/oauth_token = "([^"]+)"/);
-  if (!match) throw new Error("Run: npx wrangler login");
-  return match[1];
+const env = loadEnv();
+const cfToken =
+  process.env.CLOUDFLARE_API_TOKEN?.trim() || env.CLOUDFLARE_API_TOKEN?.trim();
+const resendKey = env.RESEND_API_KEY?.trim();
+
+if (!cfToken) {
+  console.error(
+    "CLOUDFLARE_API_TOKEN missing. Create a token at https://dash.cloudflare.com/profile/api-tokens\n" +
+      "with Zone → DNS → Edit for mypartb.com, add to .env, then re-run:\n" +
+      "  node scripts/setup-resend-dns.mjs",
+  );
+  process.exit(1);
+}
+if (!resendKey) {
+  console.error("RESEND_API_KEY missing in .env");
+  process.exit(1);
 }
 
-const cfToken = readToken();
-const resendKey = loadEnv().RESEND_API_KEY?.trim();
-if (!resendKey) throw new Error("RESEND_API_KEY missing in .env");
-
-const cfHeaders = {
-  Authorization: `Bearer ${cfToken}`,
-  "Content-Type": "application/json",
-};
+const cfHeaders = { Authorization: `Bearer ${cfToken}`, "Content-Type": "application/json" };
+const resendHeaders = { Authorization: `Bearer ${resendKey}` };
 
 async function listDns() {
   const res = await fetch(
@@ -68,35 +70,27 @@ async function upsertDns(record) {
     proxied: false,
     ...(record.priority != null ? { priority: record.priority } : {}),
   };
-  if (existing) {
-    const res = await fetch(
-      `https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records/${existing.id}`,
-      { method: "PUT", headers: cfHeaders, body: JSON.stringify(body) },
-    );
-    const json = await res.json();
-    console.log("updated", record.type, record.name, json.success ? "ok" : json.errors);
-    return json;
-  }
-  const res = await fetch(
-    `https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records`,
-    { method: "POST", headers: cfHeaders, body: JSON.stringify(body) },
-  );
+  const url = existing
+    ? `https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records/${existing.id}`
+    : `https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records`;
+  const res = await fetch(url, {
+    method: existing ? "PUT" : "POST",
+    headers: cfHeaders,
+    body: JSON.stringify(body),
+  });
   const json = await res.json();
-  console.log("created", record.type, record.name, json.success ? "ok" : json.errors);
-  return json;
+  console.log(existing ? "updated" : "created", record.type, record.name, json.success ? "ok" : json.errors);
+  if (!json.success) throw new Error(JSON.stringify(json.errors));
 }
 
-const resendHeaders = { Authorization: `Bearer ${resendKey}` };
 const domainsRes = await fetch("https://api.resend.com/domains", { headers: resendHeaders });
 const domains = await domainsRes.json();
 const domain = domains.data?.find((d) => d.name === DOMAIN);
 if (!domain) throw new Error(`Resend domain ${DOMAIN} not found`);
 
-const detailRes = await fetch(`https://api.resend.com/domains/${domain.id}`, {
-  headers: resendHeaders,
-});
+const detailRes = await fetch(`https://api.resend.com/domains/${domain.id}`, { headers: resendHeaders });
 const detail = await detailRes.json();
-console.log("Resend domain status before:", detail.status);
+console.log("Resend status before:", detail.status);
 
 for (const rec of detail.records ?? []) {
   const fqdn =
@@ -115,17 +109,23 @@ for (const rec of detail.records ?? []) {
   }
 }
 
-const verifyRes = await fetch(`https://api.resend.com/domains/${domain.id}/verify`, {
+await fetch(`https://api.resend.com/domains/${domain.id}/verify`, {
   method: "POST",
   headers: resendHeaders,
 });
-console.log("verify:", verifyRes.status, await verifyRes.text());
 
-await new Promise((r) => setTimeout(r, 5000));
+for (let i = 0; i < 12; i++) {
+  await new Promise((r) => setTimeout(r, 5000));
+  const afterRes = await fetch(`https://api.resend.com/domains/${domain.id}`, { headers: resendHeaders });
+  const after = await afterRes.json();
+  const dkim = after.records?.find((r) => r.record === "DKIM")?.status;
+  console.log(`verify ${i + 1}: domain=${after.status} dkim=${dkim}`);
+  if (after.status === "verified") {
+    console.log("Domain verified — emails can go to any address.");
+    process.exit(0);
+  }
+}
 
-const afterRes = await fetch(`https://api.resend.com/domains/${domain.id}`, {
-  headers: resendHeaders,
-});
-const after = await afterRes.json();
-console.log("Resend domain status after:", after.status);
-console.log("records:", JSON.stringify(after.records?.map((r) => ({ record: r.record, name: r.name, status: r.status })), null, 2));
+console.error("Domain still not verified. Check Cloudflare DNS propagation, then run:");
+console.error("  node scripts/poll-resend-verify.mjs");
+process.exit(1);

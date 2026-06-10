@@ -217,7 +217,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const lookupScenario = async (code: string): Promise<Scenario> => {
-    const { data, error } = await supabase.rpc("lookup_scenario", { p_code: code.trim().toUpperCase() });
+    const normalized = code.trim().toUpperCase();
+    const { data, error } = await supabase.rpc("lookup_scenario", { p_code: normalized });
     if (error) throw new Error(error.message);
     const row = (Array.isArray(data) ? data[0] : data) as unknown as Scenario;
     if (!row) throw new Error("Scenario not found");
@@ -226,6 +227,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return [row, ...without];
     });
     log("LOOKUP_SCENARIO", { code: row.scenario_code });
+
+    try {
+      const { notifyScenarioClaimed } = await import("@/lib/email-triggers.functions");
+      await notifyScenarioClaimed({ data: { scenario_code: row.scenario_code } });
+    } catch (e) {
+      console.warn("scenario-claimed email notification failed", e);
+    }
+
     return row;
   };
 

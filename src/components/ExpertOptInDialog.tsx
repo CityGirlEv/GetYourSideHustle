@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Phone } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
-import { supabase } from "@/integrations/supabase/client";
+import { useServerFn } from "@tanstack/react-start";
+import { submitExpertContactRequest } from "@/lib/email-triggers.functions";
 
 const schema = z.object({
   email: z.string().trim().email("Enter a valid email").max(255),
@@ -24,6 +25,7 @@ export function ExpertOptInDialog({ open, onOpenChange, scenarioCode, scenarioSn
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const submitContact = useServerFn(submitExpertContactRequest);
 
   const submit = async () => {
     const parsed = schema.safeParse({ email, phone });
@@ -32,22 +34,24 @@ export function ExpertOptInDialog({ open, onOpenChange, scenarioCode, scenarioSn
       return;
     }
     setSubmitting(true);
-    // Intentionally NOT linked to any scenario or health data — contact info only.
-    const { error } = await supabase.from("expert_contact_requests").insert({
-      email: parsed.data.email,
-      phone: parsed.data.phone,
-      scenario_code: scenarioCode ?? null,
-      scenario_snapshot: scenarioSnapshot ? (scenarioSnapshot as never) : null,
-    });
-    setSubmitting(false);
-    if (error) {
+    try {
+      await submitContact({
+        data: {
+          email: parsed.data.email,
+          phone: parsed.data.phone,
+          scenario_code: scenarioCode ?? null,
+          scenario_snapshot: scenarioSnapshot ?? null,
+        },
+      });
+      toast.success("Thanks — a licensed expert will reach out shortly. Check your email for confirmation.");
+      setEmail("");
+      setPhone("");
+      onOpenChange(false);
+    } catch {
       toast.error("Could not submit. Please try again.");
-      return;
+    } finally {
+      setSubmitting(false);
     }
-    toast.success("Thanks — a licensed expert will reach out shortly.");
-    setEmail("");
-    setPhone("");
-    onOpenChange(false);
   };
 
   return (
