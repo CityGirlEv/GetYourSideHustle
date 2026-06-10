@@ -13,11 +13,12 @@ function randomPassword(len = 24) {
   return out;
 }
 
-// Where admin notification emails go. Single mailbox by default so the
-// business owner gets all alerts in one place; override with the
-// ADMIN_NOTIFICATION_EMAILS env var (comma-separated) if multiple inboxes
-// are needed later.
-export const DEFAULT_ADMIN_NOTIFICATION_EMAILS = ["info@MyPartB.com"];
+// Where admin notification emails go. Override with the
+// ADMIN_NOTIFICATION_EMAILS env var (comma-separated).
+export const DEFAULT_ADMIN_NOTIFICATION_EMAILS = [
+  "evelyn3@cox.net",
+  "sharpebanker@yahoo.com",
+];
 
 async function listAdminEmails(): Promise<string[]> {
   const raw = getEnvVariable('ADMIN_NOTIFICATION_EMAILS');

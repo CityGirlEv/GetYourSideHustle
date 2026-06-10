@@ -59,7 +59,9 @@ export function SecurityBanner() {
                 </>
               )}
             </div>
-            {user && (
+            {!user ? (
+              <YearToggle tone="light" />
+            ) : (
               <div className="max-w-[11rem] text-xs leading-tight">
                 <div className="truncate font-medium text-foreground">{user.full_name}</div>
                 <div className="truncate capitalize text-muted-foreground">
@@ -98,7 +100,7 @@ export function SecurityBanner() {
                 <UserPlus className="h-4 w-4 shrink-0" /> Register
               </Link>
             </div>
-            <YearToggle tone="light" />
+            {user && <YearToggle tone="light" />}
             <div className="flex flex-wrap items-center justify-end gap-x-3 sm:gap-x-4 gap-y-1">
               <FontSizeToggle />
               {(user?.role === "advisor" || user?.role === "qa") && <CreditPill />}

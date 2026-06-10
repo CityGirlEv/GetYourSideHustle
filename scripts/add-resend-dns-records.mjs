@@ -12,7 +12,7 @@ const records = [
     type: "TXT",
     name: "resend._domainkey.mypartb.com",
     content:
-      "p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDPLUYC9N1GvwfzvQgkFt0zT7LwPVfFBDrVKlrv+8hDrqIe5rx+pa6IejCJkd+7InuMAbfMtyoYC/OARzoCg1aHaeHfxaI52CHI2UPJmCHzSue3kNTNKZ8V9j5u9K4rOyi9sdCJLgrBOaB/WL7lDtuSAZo6HlPOVa7dx1fyo5221QIDAQAB",
+      "p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDOjY4YgWZ7QVU0tko17cZ2ZliGR/A4GN3FoWm7ahqYVApDpvmpqt4qWKJKTO8D9YwMxN1PMlSEhKUnXe702xBFmr3HAe7ZRxNmDUxtHC1e8ejIioL1Q1SRiVJc4vmoIPb+N7kIRpbSXpSF/IuAgUNjvsEk89CK8+PQ9zhwpfmI9QIDAQAB",
   },
   {
     type: "MX",

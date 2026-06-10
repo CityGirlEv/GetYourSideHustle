@@ -8,6 +8,7 @@ import { getEmailTemplateOverride } from '@/lib/email-templates/overrides.server
 import { ensureEmailBranding } from '@/lib/email-templates/email-branding.server'
 import { getTransactionalFromAddress } from '@/lib/send-transactional-email'
 import { triggerEmailQueueProcess } from '@/lib/trigger-email-queue-process'
+import { DEFAULT_ADMIN_NOTIFICATION_EMAILS } from '@/lib/registration.functions'
 
 // Configuration baked in at scaffold time
 const SITE_NAME = "mypartb"
@@ -21,12 +22,11 @@ const FROM_DOMAIN = "mypartb.com"
 // Admin BCC list — every outgoing transactional email also enqueues a blind
 // copy to these addresses so admins have a paper trail. Override via the
 // ADMIN_NOTIFICATION_EMAILS env var (comma-separated).
-const DEFAULT_ADMIN_BCC = ["info@MyPartB.com"]
 function adminBccRecipients(): string[] {
   const raw = getEnvVariable('ADMIN_NOTIFICATION_EMAILS')
   const configured = raw
     ? raw.split(",").map((s) => s.trim()).filter(Boolean)
-    : DEFAULT_ADMIN_BCC
+    : DEFAULT_ADMIN_NOTIFICATION_EMAILS
   return Array.from(new Set(configured.map((e) => e.toLowerCase())))
 }
 

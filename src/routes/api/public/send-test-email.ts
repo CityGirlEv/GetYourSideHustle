@@ -8,6 +8,7 @@ import { getEmailTemplateOverride } from '@/lib/email-templates/overrides.server
 import { ensureEmailBranding } from '@/lib/email-templates/email-branding.server'
 import { getTransactionalFromAddress, getTransactionalSenderDomain } from '@/lib/send-transactional-email'
 import { triggerEmailQueueProcess } from '@/lib/trigger-email-queue-process'
+import { DEFAULT_ADMIN_NOTIFICATION_EMAILS } from '@/lib/registration.functions'
 
 function generateUnsubscribeToken(): string {
   const bytes = new Uint8Array(32)
@@ -43,12 +44,11 @@ async function getOrCreateUnsubscribeToken(email: string): Promise<string> {
 
 // Admin BCC list — mirror the transactional sender so test emails also
 // produce an admin paper trail. Override via ADMIN_NOTIFICATION_EMAILS.
-const DEFAULT_ADMIN_BCC = ["info@MyPartB.com"]
 function adminBccRecipients(): string[] {
   const raw = getEnvVariable('ADMIN_NOTIFICATION_EMAILS')
   const configured = raw
     ? raw.split(",").map((s) => s.trim()).filter(Boolean)
-    : DEFAULT_ADMIN_BCC
+    : DEFAULT_ADMIN_NOTIFICATION_EMAILS
   return Array.from(new Set(configured.map((e) => e.toLowerCase())))
 }
 
