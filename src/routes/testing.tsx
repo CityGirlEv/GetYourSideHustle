@@ -1712,6 +1712,20 @@ function StepWithSublist({
     </ul>
   );
 
+  // "Step 1 — Basics: ..." with pipe-delimited substeps (2a birth, 2b ZIP3, 2c demographics, 2d county, THEN CLICK NEXT)
+  const basicsPipeMatch = step.match(
+    /^(Step 1 — Basics: Enter the following for the Scenario Information\.)\s*(.+)$/,
+  );
+  if (basicsPipeMatch && basicsPipeMatch[2].includes(" | ")) {
+    const items = basicsPipeMatch[2].split(" | ").map((s) => s.trim()).filter(Boolean);
+    return (
+      <span className={className}>
+        {basicsPipeMatch[1]}
+        {renderSublist(items)}
+      </span>
+    );
+  }
+
   // "Step 1 — Basics: ... birth year..., ZIP3 = ... THEN CLICK NEXT." → heading + checkbox sublist
   const basicsMatch = step.match(
     /^(Step 1 — Basics: Enter the following for the Scenario Information\.)\s*(.+?)\.\s*THEN CLICK NEXT\.$/,
@@ -1726,7 +1740,43 @@ function StepWithSublist({
     );
   }
 
-  // County + remaining demographics on the same wizard page
+  // Step 2 · Preferences & Conditions — cost preference first, then conditions
+  if (step.startsWith("Step 2 — Preferences & Conditions:") && step.includes(" ||| ")) {
+    const [intro, body] = step.split(" ||| ", 2);
+    const items = body.split(" | ").map((s) => s.trim()).filter(Boolean);
+    return (
+      <span className={className}>
+        {intro}
+        {renderSublist(items)}
+      </span>
+    );
+  }
+
+  const step2PipeMatch = step.match(
+    /^(Step 2 — Preferences & Conditions: On the Part 2 page, complete the following\.)\s*(.+)$/,
+  );
+  if (step2PipeMatch && step2PipeMatch[2].includes(" | ")) {
+    const items = step2PipeMatch[2].split(" | ").map((s) => s.trim()).filter(Boolean);
+    return (
+      <span className={className}>
+        {step2PipeMatch[1]}
+        {renderSublist(items)}
+      </span>
+    );
+  }
+
+  // Cost preference on Step 2 · Preferences & Conditions (legacy standalone step)
+  const costPrefMatch = step.match(/^(Cost preference:)\s*(.+?)\.\s*THEN CLICK NEXT\.$/);
+  if (costPrefMatch) {
+    return (
+      <span className={className}>
+        {costPrefMatch[1]}
+        {renderSublist([costPrefMatch[2].trim(), "THEN CLICK NEXT."])}
+      </span>
+    );
+  }
+
+  // County + remaining demographics on the same wizard page (legacy)
   const countyDemoMatch = step.match(
     /^(From the county dropdown.+?county\.)\s*(Enter the remaining for the Scenario Information:)\s*(.+?)\.\s*THEN CLICK NEXT\.$/,
   );
@@ -1754,18 +1804,146 @@ function StepWithSublist({
     );
   }
 
-  // Medications step with per-drug checkboxes + create action
+  // Registration email confirmation (step 6 — checklist only, no intro line)
+  if (step.startsWith("||| ")) {
+    const items = step.slice(4).split(" | ").map((s) => s.trim()).filter(Boolean);
+    return (
+      <span className={className}>
+        {renderSublist(items)}
+      </span>
+    );
+  }
+
+  // Legacy email confirmation step
+  if (step === "Verify that an email was sent to the address you provided in the previous step.") {
+    return (
+      <span className={className}>
+        {renderSublist([
+          "You should receive a confirmation email at the email you entered. Verify that you received the email.",
+        ])}
+      </span>
+    );
+  }
+
+  // Expert opt-in pop-up after Create Scenario
+  if (step.startsWith("A pop-up screen will appear allowing the user to Opt In.") && step.includes(" ||| ")) {
+    const [intro, body] = step.split(" ||| ", 2);
+    const items = body.split(" | ").map((s) => s.trim()).filter(Boolean);
+    return (
+      <span className={className}>
+        {intro}
+        {renderSublist(items)}
+      </span>
+    );
+  }
+
+  // Legacy opt-in step (single line)
+  const optInLegacyMatch = step.match(
+    /^A pop-up screen will appear allowing the user to Opt In\. Enter your email and phone number and click the "Contact Me" button\.$/,
+  );
+  if (optInLegacyMatch) {
+    return (
+      <span className={className}>
+        A pop-up screen will appear allowing the user to Opt In.
+        {renderSublist([
+          "Enter your email and phone number.",
+          'Click the "Contact Me" button.',
+        ])}
+      </span>
+    );
+  }
+
+  // Confirmation page header echo check — one checkbox per demographic, condition, and medication
+  if (
+    step.startsWith(
+      "On the confirmation page, verify the header echoes back each item character-for-character:",
+    ) &&
+    step.includes(" ||| ")
+  ) {
+    const [intro, body] = step.split(" ||| ", 2);
+    const items = body.split(" | ").map((s) => s.trim()).filter(Boolean);
+    return (
+      <span className={className}>
+        {intro}
+        {renderSublist(items)}
+      </span>
+    );
+  }
+
+  // Legacy header echo step (single line)
+  if (
+    step ===
+    "On the confirmation page, verify the header echoes back every demographic, condition, and medication you entered character-for-character"
+  ) {
+    return (
+      <span className={className}>
+        On the confirmation page, verify the header echoes back each item character-for-character:
+        {renderSublist([
+          "Verify every demographic you entered.",
+          "Verify every condition you entered.",
+          "Verify every medication you entered.",
+        ])}
+      </span>
+    );
+  }
+
+  // Copy scenario link on confirmation page
+  if (step.startsWith("On the confirmation page :") && step.includes(" ||| ")) {
+    const [intro, body] = step.split(" ||| ", 2);
+    const items = body.split(" | ").map((s) => s.trim()).filter(Boolean);
+    return (
+      <span className={className}>
+        {intro}
+        {renderSublist(items)}
+      </span>
+    );
+  }
+
+  // Legacy copy scenario link step (single line)
+  if (
+    step.startsWith('On the confirmation page, click "Copy scenario link"') &&
+    step.includes("/scenario/<SCN code>")
+  ) {
+    return (
+      <span className={className}>
+        On the confirmation page :
+        {renderSublist([
+          'Click "Copy scenario link".',
+          "Verify the link uses the form /scenario/<SCN code>.",
+          "Paste it into a new browser tab.",
+          "Confirm the scenario detail page loads with the SCN ID, summary card, share button, and expert opt-in trigger all present.",
+        ])}
+      </span>
+    );
+  }
+
+  // Step 3 · Medications — add-meds line(s) + create action as checkboxes
+  if (step.startsWith("Step 3 — Medications:") && step.includes(" ||| ")) {
+    const [intro, body] = step.split(" ||| ", 2);
+    const items = body.split(" | ").map((s) => s.trim()).filter(Boolean);
+    return (
+      <span className={className}>
+        {intro}
+        {renderSublist(items)}
+      </span>
+    );
+  }
+
+  // Medications step with per-drug checkboxes + create action (legacy inline format)
+  const medsIntro =
+    "Under Common medications for your conditions: Select the medication (if present). Those medications will be added to the list below. Click the plus sign to add additional medications. Add these medications:";
   const medsMatch = step.match(
-    /^Under Common medications for your conditions: Select the medication \(if present\)\. Those medications will be added to the list below\. Click the plus sign to add additional medications\. Add these medications:\s*(.+?)\.\s*THEN CLICK CREATE SCENARIO\.$/,
+    /^(?:Step 3 — Medications: )?Under Common medications for your conditions: Select the medication \(if present\)\. Those medications will be added to the list below\. Click the plus sign to add additional medications\. Add these medications:\s*(.+?)\.\s*THEN CLICK CREATE SCENARIO\.$/,
   );
   if (medsMatch) {
     const items = medsMatch[1].split("; ").map((s) => s.trim()).filter(Boolean);
+    const legacyItems = items.map((med, i) =>
+      i === 0 ? `Add these medications: ${med}.` : `${med}.`,
+    );
     return (
       <span className={className}>
-        Under Common medications for your conditions: Select the medication (if present). Those
-        medications will be added to the list below. Click the plus sign to add additional
-        medications. Add these medications:
-        {renderSublist([...items, "THEN CLICK CREATE SCENARIO."])}
+        Step 3 — Medications: {medsIntro}
+        {renderSublist([...legacyItems, "THEN CLICK CREATE SCENARIO."])}
       </span>
     );
   }
@@ -1833,6 +2011,100 @@ function StepWithSublist({
         </span>
       );
     }
+  }
+
+  // Medication Cost summary review
+  if (
+    step.startsWith("Review the Medication Cost summary in each report:") &&
+    step.includes(" ||| ")
+  ) {
+    const [intro, body] = step.split(" ||| ", 2);
+    const items = body.split(" | ").map((s) => s.trim()).filter(Boolean);
+    return (
+      <span className={className}>
+        {intro}
+        {renderSublist(items)}
+      </span>
+    );
+  }
+
+  if (step.startsWith("Open each report and locate the Medication Cost summary.")) {
+    return (
+      <span className={className}>
+        Review the Medication Cost summary in each report:
+        {renderSublist([
+          "Open each report and locate the Medication Cost summary.",
+          "If it does not, do not fail the test. Just add a note in the test putting the amounts you see vs. the test.",
+        ])}
+      </span>
+    );
+  }
+
+  // Download PDF + Excel on confirmation page
+  if (
+    step.startsWith(
+      "On the confirmation page (or View scenario summary), download files:",
+    ) &&
+    step.includes(" ||| ")
+  ) {
+    const [intro, body] = step.split(" ||| ", 2);
+    const items = body.split(" | ").map((s) => s.trim()).filter(Boolean);
+    return (
+      <span className={className}>
+        {intro}
+        {renderSublist(items)}
+      </span>
+    );
+  }
+
+  if (
+    step.startsWith(
+      "On the confirmation page (or View scenario summary), click 'Download PDF'",
+    ) ||
+    step.startsWith(
+      "On the confirmation page (or View scenario summary), click 'Download Excel'",
+    )
+  ) {
+    return (
+      <span className={className}>
+        On the confirmation page (or View scenario summary), download files:
+        {renderSublist([
+          "Click 'Download PDF' to generate the system output report.",
+          "Click 'Download Excel' to generate the system output report.",
+        ])}
+      </span>
+    );
+  }
+
+  // PDF/XLSX cross-check — conditions, demographics, ZIP3
+  if (
+    step.startsWith("Cross-check that what you entered in steps 2–4 matches the PDF and XLSX:") &&
+    step.includes(" ||| ")
+  ) {
+    const [intro, body] = step.split(" ||| ", 2);
+    const items = body.split(" | ").map((s) => s.trim()).filter(Boolean);
+    return (
+      <span className={className}>
+        {intro}
+        {renderSublist(items)}
+      </span>
+    );
+  }
+
+  if (
+    step ===
+    "Cross-check that the conditions, demographics, and ZIP3 printed in the PDF and XLSX match what you entered in steps 2–4"
+  ) {
+    return (
+      <span className={className}>
+        Cross-check that what you entered in steps 2–4 matches the PDF and XLSX:
+        {renderSublist([
+          "Conditions printed in the PDF and XLSX match what you entered.",
+          "Demographics printed in the PDF and XLSX match what you entered.",
+          "ZIP3 printed in the PDF and XLSX matches what you entered.",
+        ])}
+      </span>
+    );
   }
 
   return <span className={className}>{step}</span>;

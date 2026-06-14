@@ -458,7 +458,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
                 checked={costPref === "predictability"}
                 onChange={() => setCostPref("predictability")}
               />
-              <span className="text-sm"><strong>Predictability matters more</strong> — no surprise medical bills.</span>
+              <span className="text-sm"><strong>Predictability matters more</strong> — no surprise medical bills (lean toward PPO vs. HMO).</span>
             </label>
           </Card>
 
