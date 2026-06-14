@@ -1683,26 +1683,27 @@ function StepWithSublist({
   onToggleSubstep?: (key: string) => void;
 }) {
   const letter = (i: number) => String.fromCharCode(97 + i); // 0 -> 'a'
-  const renderSublist = (items: string[]) => (
+  const renderSublist = (items: string[], startAt = 0) => (
     <ul className="ml-5 mt-0.5 space-y-0.5 list-none">
       {items.map((item, i) => {
-        const key = stepIndex != null ? `${stepIndex}-${i}` : "";
+        const subIndex = startAt + i;
+        const key = stepIndex != null ? `${stepIndex}-${subIndex}` : "";
         const checked = key ? !!checkedSubsteps?.has(key) : false;
         const interactive = stepIndex != null && !!onToggleSubstep;
         return (
-          <li key={i} className="flex items-start gap-2">
+          <li key={subIndex} className="flex items-start gap-2">
             {interactive && (
               <input
                 type="checkbox"
                 checked={checked}
                 onChange={() => onToggleSubstep!(key)}
                 className="h-3.5 w-3.5 mt-0.5 shrink-0 cursor-pointer accent-emerald-600"
-                title={`Check when sub-step ${(stepIndex ?? 0) + 1}${letter(i)} is complete`}
+                title={`Check when sub-step ${(stepIndex ?? 0) + 1}${letter(subIndex)} is complete`}
               />
             )}
             <span className={checked ? "line-through opacity-70" : ""}>
               <span className="font-mono text-[10px] mr-1 opacity-70">
-                {(stepIndex ?? 0) + 1}{letter(i)}.
+                {(stepIndex ?? 0) + 1}{letter(subIndex)}.
               </span>
               {item}
             </span>
@@ -1712,7 +1713,28 @@ function StepWithSublist({
     </ul>
   );
 
-  // "Step 1 — Basics: ..." with pipe-delimited substeps (2a birth, 2b ZIP3, 2c demographics, 2d county, THEN CLICK NEXT)
+  // Step 1 · Basics — birth/ZIP3/county (2a–2c), then remaining demographics (2d–2f)
+  const basicsSectionsMatch = step.match(
+    /^(Step 1 — Basics: Enter the following for the Scenario Information\.)\s*\|\|\|\s*(.+)$/,
+  );
+  if (basicsSectionsMatch) {
+    const sections = basicsSectionsMatch[2].split(" ||| ").map((s) => s.trim()).filter(Boolean);
+    if (sections.length >= 3) {
+      const basicsItems = sections[0].split(" | ").map((s) => s.trim()).filter(Boolean);
+      const remainingIntro = sections[1];
+      const remainingItems = sections[2].split(" | ").map((s) => s.trim()).filter(Boolean);
+      return (
+        <span className={className}>
+          {basicsSectionsMatch[1]}
+          {renderSublist(basicsItems, 0)}
+          <span className="block mt-1">{remainingIntro}</span>
+          {renderSublist(remainingItems, basicsItems.length)}
+        </span>
+      );
+    }
+  }
+
+  // "Step 1 — Basics: ..." with pipe-delimited substeps (legacy single-block)
   const basicsPipeMatch = step.match(
     /^(Step 1 — Basics: Enter the following for the Scenario Information\.)\s*(.+)$/,
   );
@@ -1721,6 +1743,21 @@ function StepWithSublist({
     return (
       <span className={className}>
         {basicsPipeMatch[1]}
+        {renderSublist(items)}
+      </span>
+    );
+  }
+
+  // Remaining demographics on Step 1 · Basics (legacy separate audit step)
+  if (
+    step.startsWith("Enter the remaining for the Scenario Information:") &&
+    step.includes(" ||| ")
+  ) {
+    const [intro, body] = step.split(" ||| ", 2);
+    const items = body.split(" | ").map((s) => s.trim()).filter(Boolean);
+    return (
+      <span className={className}>
+        {intro}
         {renderSublist(items)}
       </span>
     );
@@ -1740,8 +1777,12 @@ function StepWithSublist({
     );
   }
 
-  // Step 2 · Preferences & Conditions — cost preference first, then conditions
-  if (step.startsWith("Step 2 — Preferences & Conditions:") && step.includes(" ||| ")) {
+  // Step 2 · Cost Preference & Conditions — cost preference first, then conditions
+  if (
+    (step.startsWith("Step 2 — Cost Preference & Conditions:") ||
+      step.startsWith("Step 2 — Preferences & Conditions:")) &&
+    step.includes(" ||| ")
+  ) {
     const [intro, body] = step.split(" ||| ", 2);
     const items = body.split(" | ").map((s) => s.trim()).filter(Boolean);
     return (
@@ -1753,7 +1794,7 @@ function StepWithSublist({
   }
 
   const step2PipeMatch = step.match(
-    /^(Step 2 — Preferences & Conditions: On the Part 2 page, complete the following\.)\s*(.+)$/,
+    /^(Step 2 — (?:Cost Preference|Preferences) & Conditions: On the Part 2 page, complete the following\.)\s*(.+)$/,
   );
   if (step2PipeMatch && step2PipeMatch[2].includes(" | ")) {
     const items = step2PipeMatch[2].split(" | ").map((s) => s.trim()).filter(Boolean);
@@ -1765,7 +1806,7 @@ function StepWithSublist({
     );
   }
 
-  // Cost preference on Step 2 · Preferences & Conditions (legacy standalone step)
+  // Cost preference on Step 2 · Cost Preference & Conditions (legacy standalone step)
   const costPrefMatch = step.match(/^(Cost preference:)\s*(.+?)\.\s*THEN CLICK NEXT\.$/);
   if (costPrefMatch) {
     return (

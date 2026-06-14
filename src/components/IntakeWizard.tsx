@@ -436,7 +436,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
 
       {step === 2 && (
         <div className="space-y-4">
-          <h3 className="font-display text-xl font-bold">Step 2 · Preferences &amp; Conditions</h3>
+          <h3 className="font-display text-xl font-bold">Step 2 · Cost Preference &amp; Conditions</h3>
           <p className="text-xs text-muted-foreground">Next: Medications →</p>
 
           <Card className="p-4 bg-primary/5 border-primary/20 space-y-3">

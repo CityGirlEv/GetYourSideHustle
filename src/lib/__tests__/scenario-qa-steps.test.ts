@@ -7,6 +7,23 @@ import {
   parseCostTotal,
 } from '../scenario-qa-steps'
 
+function parseStep1Sections(step: string): {
+  basics: string[]
+  remainingIntro: string
+  remaining: string[]
+} {
+  const body = step.replace(
+    /^Step 1 — Basics: Enter the following for the Scenario Information\. \|\|\| /,
+    '',
+  )
+  const sections = body.split(' ||| ').map((s) => s.trim())
+  return {
+    basics: sections[0]!.split(' | ').map((s) => s.trim()),
+    remainingIntro: sections[1]!,
+    remaining: sections[2]!.split(' | ').map((s) => s.trim()),
+  }
+}
+
 describe('countyLabelFromLine', () => {
   it('extracts county and state from dropdown instruction', () => {
     expect(
@@ -71,24 +88,54 @@ describe('buildScenarioQaAuditSteps', () => {
     expect(steps[1]).toContain('Step 1 — Basics')
     expect(steps[1]).toContain('birth year = 1958 (age 68 in 2026)')
     expect(steps[1]).toContain('ZIP3 = 606')
-    expect(steps[1]).toContain('gender = male')
     expect(steps[1]).toContain('From the county dropdown')
+    expect(steps[1]).toContain('Enter the remaining for the Scenario Information')
+    expect(steps[1]).toContain('gender = male')
     expect(steps[1]).toContain('THEN CLICK NEXT.')
-    const basicsBody = steps[1].replace(
-      /^Step 1 — Basics: Enter the following for the Scenario Information\. /,
-      '',
-    );
-    expect(basicsBody.split(' | ').map((s) => s.trim())).toEqual([
+
+    const step1 = parseStep1Sections(steps[1])
+    expect(step1.basics).toEqual([
       'birth year = 1958 (age 68 in 2026)',
       'ZIP3 = 606',
+      'From the county dropdown that auto-populates for ZIP3=606, select Cook, IL — this scopes the carrier/plan check to only plans available in that county.',
+    ])
+    expect(step1.remainingIntro).toBe('Enter the remaining for the Scenario Information:')
+    expect(step1.remaining).toEqual([
       'gender = male',
       'tobacco use = NO',
       'income band = $50k–$75k',
-      'From the county dropdown that auto-populates for ZIP3=606, select Cook, IL — this scopes the carrier/plan check to only plans available in that county.',
       'THEN CLICK NEXT.',
     ])
-    expect(steps[2]).toContain('Step 2 — Preferences & Conditions')
+    expect(steps[2]).toContain('Step 2 — Cost Preference & Conditions')
     expect(steps[2]).toContain('Part 2 page')
+    expect(steps[3]).toContain('Step 3 — Medications')
+  })
+
+  it('puts county in basics (2c) and gender/tobacco/income in remaining (2d–2f)', () => {
+    const steps = buildScenarioQaAuditSteps({
+      birthYear: 'birth year = 1942 (age 84 in 2026)',
+      zip3: '441',
+      countyLine:
+        'From the county dropdown that auto-populates for ZIP3=441, select Cuyahoga, OH — this scopes the carrier/plan check to only plans available in that county.',
+      demographics:
+        "gender = female, tobacco use = YES, income band = $25k–$50k, cost preference = 'minimize monthly'",
+      conditions: 'Asthma, GERD',
+      medications: 'Albuterol 90 mcg inhaler (PRN) = $55/mo; Omeprazole 20 mg capsule (daily) = $10/mo',
+      costTotal: '$65/mo and $780/yr',
+    })
+
+    const step1 = parseStep1Sections(steps[1])
+    expect(step1.basics).toEqual([
+      'birth year = 1942 (age 84 in 2026)',
+      'ZIP3 = 441',
+      'From the county dropdown that auto-populates for ZIP3=441, select Cuyahoga, OH — this scopes the carrier/plan check to only plans available in that county.',
+    ])
+    expect(step1.remaining).toEqual([
+      'gender = female',
+      'tobacco use = YES',
+      'income band = $25k–$50k',
+      'THEN CLICK NEXT.',
+    ])
   })
 
   it('annotates predictability with PPO vs HMO on Step 2', () => {
@@ -125,6 +172,7 @@ describe('buildScenarioQaAuditSteps', () => {
       costTotal: '$13/mo and $156/yr',
     })
 
+    expect(steps[3]).toContain('Step 3 — Medications')
     const step3Body = steps[3].split(' ||| ', 2)[1] ?? '';
     expect(step3Body.split(' | ').map((s) => s.trim())).toEqual([
       'Add these medications: Metformin 500 mg tablet (twice daily) = $8/mo.',
@@ -148,25 +196,15 @@ describe('buildScenarioQaAuditSteps', () => {
 
     expect(steps[0]).toContain('Build My Scenario')
     expect(steps[1]).toContain('Step 1 — Basics')
-    expect(steps[1]).toContain('birth year = 1958 (age 68 in 2026)')
-    expect(steps[1]).toContain('ZIP3 = 606')
-    expect(steps[1]).toContain('gender = male')
-    expect(steps[1]).toContain('From the county dropdown')
-    expect(steps[1]).toContain('THEN CLICK NEXT.')
-    const basicsBody = steps[1].replace(
-      /^Step 1 — Basics: Enter the following for the Scenario Information\. /,
-      '',
-    );
-    expect(basicsBody.split(' | ').map((s) => s.trim())).toEqual([
-      'birth year = 1958 (age 68 in 2026)',
-      'ZIP3 = 606',
+    const step1 = parseStep1Sections(steps[1])
+    expect(step1.basics[0]).toContain('birth year = 1958')
+    expect(step1.remaining).toEqual([
       'gender = male',
       'tobacco use = NO',
       'income band = $50k–$75k',
-      'From the county dropdown that auto-populates for ZIP3=606, select Cook, IL — this scopes the carrier/plan check to only plans available in that county.',
       'THEN CLICK NEXT.',
     ])
-    expect(steps[2]).toContain('Step 2 — Preferences & Conditions')
+    expect(steps[2]).toContain('Step 2 — Cost Preference & Conditions')
     expect(steps[2]).toContain("cost preference = 'minimize monthly'")
     expect(steps[2]).not.toContain('PPO')
     const step2Body = steps[2].split(' ||| ', 2)[1] ?? '';
@@ -181,7 +219,6 @@ describe('buildScenarioQaAuditSteps', () => {
       'Add these medications: Losartan 50 mg tablet (daily) = $7/mo.',
       'THEN CLICK CREATE SCENARIO.',
     ])
-    expect(steps[3]).toContain('THEN CLICK CREATE SCENARIO')
     expect(steps[4]).toContain('pop-up screen')
     expect(steps[4]).toContain('Opt In')
     const step5Body = steps[4].split(' ||| ', 2)[1] ?? '';
@@ -271,7 +308,7 @@ describe('buildScenarioQaAuditSteps', () => {
       costTotal: '$7/mo and $84/yr',
     })
 
-    expect(steps[10]).toContain('Cross-check that what you entered in steps 2–4')
+    expect(steps[10]).toContain('Cross-check that what you entered in steps 2–5')
     const crossCheckBody = steps[10].split(' ||| ', 2)[1] ?? '';
     expect(crossCheckBody.split(' | ').map((s) => s.trim())).toEqual([
       'Conditions printed in the PDF and XLSX match what you entered.',
