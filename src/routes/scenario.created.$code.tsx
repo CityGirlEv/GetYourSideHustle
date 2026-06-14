@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AppShell } from "@/components/AppShell";
-import { CheckCircle2, Copy, ShieldCheck, FileDown, Phone, Sparkles, Building2, BookOpen } from "lucide-react";
+import { CheckCircle2, Copy, ShieldCheck, FileDown, FileText, Phone, Sparkles, Building2, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { downloadScenarioPdf, downloadConsumerScenarioPdf, type ScenarioPdfInput } from "@/lib/scenario-pdf";
 import { downloadScenarioXlsx } from "@/lib/scenario-xlsx";
@@ -25,7 +25,7 @@ export const Route = createFileRoute("/scenario/created/$code")({
 function ScenarioCreated() {
   const { code } = Route.useParams();
   const { user } = useApp();
-  const isAgent = !!user;
+  const isSignedIn = !!user;
   const [optInOpen, setOptInOpen] = useState(false);
   const [scenario, setScenario] = useState<ScenarioPdfInput & { county?: string } | null>(null);
 
@@ -77,7 +77,7 @@ function ScenarioCreated() {
   const downloadPdf = () => {
     try {
       if (!scenario) { toast.error("PDF not available — re-open after creating the scenario."); return; }
-      if (isAgent) {
+      if (isSignedIn) {
         downloadScenarioPdf(scenario);
       } else {
         downloadConsumerScenarioPdf(scenario);
@@ -131,6 +131,17 @@ function ScenarioCreated() {
             </Button>
           </Link>
 
+          {scenario && (
+            <div className="grid grid-cols-2 gap-3">
+              <Button onClick={downloadPdf} variant="outline" className="w-full">
+                <FileText className="h-4 w-4 mr-2" /> Download PDF
+              </Button>
+              <Button onClick={downloadXlsx} variant="outline" className="w-full">
+                <FileDown className="h-4 w-4 mr-2" /> Download Excel
+              </Button>
+            </div>
+          )}
+
           <div className="space-y-1">
             <Button onClick={() => setOptInOpen(true)} variant="outline" className="w-full">
               <Phone className="h-4 w-4 mr-2" /> Have a licensed expert contact me
@@ -162,11 +173,9 @@ function ScenarioCreated() {
                   <Button onClick={downloadPdf} size="sm" variant="outline" className="h-7 px-2 text-[11px]">
                     <FileDown className="h-3 w-3 mr-1" /> PDF
                   </Button>
-                  {isAgent && (
-                    <Button onClick={downloadXlsx} size="sm" variant="outline" className="h-7 px-2 text-[11px]">
-                      <FileDown className="h-3 w-3 mr-1" /> Excel
-                    </Button>
-                  )}
+                  <Button onClick={downloadXlsx} size="sm" variant="outline" className="h-7 px-2 text-[11px]">
+                    <FileDown className="h-3 w-3 mr-1" /> Excel
+                  </Button>
                 </div>
               </div>
               <div>
@@ -205,12 +214,6 @@ function ScenarioCreated() {
               </p>
             </div>
           )}
-          {!isAgent && (
-            <div className="text-xs text-muted-foreground bg-muted/40 border border-border rounded-lg p-3 text-left">
-              The Excel workbook with full carrier breakdowns is available to licensed agents only. Share your Scenario ID with your agent — they can log in and download it for you.
-            </div>
-          )}
-
           {scenario?.medications?.length ? (
             <DrugReport medications={scenario.medications} />
           ) : null}

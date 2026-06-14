@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   CheckCircle2, XCircle, MinusCircle, AlertOctagon, Search, RotateCcw,
   FlaskConical, CalendarDays, ListChecks, GitBranch, Sparkles, ExternalLink,
-  Wrench, RefreshCw, Paperclip, Upload, Trash2, FileText, Loader2, Save, Pencil, ChevronRight, ChevronDown, Copy, Play, Hourglass,
+  Wrench, RefreshCw, Paperclip, Upload, Trash2, FileText, Loader2, Save, Pencil, ChevronRight, ChevronDown, Copy, Play, Hourglass, Smartphone,
 } from "lucide-react";
 import {
   TEST_CASES, IMPLEMENTATION_PLAN, SPRINTS, TASKS,
@@ -30,6 +30,8 @@ import { AppShell } from "@/components/AppShell";
 
 import { useApp } from "@/lib/app-store";
 import { useAssigneeOptions } from "@/lib/use-assignee-options";
+import { useQaTesters } from "@/lib/use-qa-testers";
+import { buildDeviceFilterOptions, testerMatchesDevices } from "@/lib/qa-device-match";
 import { hydrateTestResultsToLocal, cloudPushCheckedSteps, cloudFetchCheckedSteps } from "@/lib/cloud-sync";
 import { resolveTestStatus } from "@/lib/test-result-resolve";
 import { supabase } from "@/integrations/supabase/client";
@@ -410,11 +412,21 @@ export function TestPlanTab() {
   const [areaFilter, setAreaFilter] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [ownerFilter, setOwnerFilter] = useState<string[]>([]);
+  const [deviceFilter, setDeviceFilter] = useState<string[]>([]);
   const [sprintFilter, setSprintFilter] = useState<string[]>([]);
   const [passRateExpanded, setPassRateExpanded] = useState(() => user?.role === "qa");
   // Full assignee roster (TEST_OWNERS + every enabled QA user). Admins see
   // a bubble for each one even if they have no tests currently assigned.
   const allAssignees = useAssigneeOptions();
+  const qaTesters = useQaTesters(isAdmin);
+  const deviceFilterOptions = useMemo(
+    () => buildDeviceFilterOptions(qaTesters.flatMap((t) => t.qa_devices)),
+    [qaTesters],
+  );
+  const matchingTesters = useMemo(() => {
+    if (!isAdmin || deviceFilter.length === 0) return [];
+    return qaTesters.filter((t) => testerMatchesDevices(t.qa_devices, deviceFilter));
+  }, [isAdmin, qaTesters, deviceFilter]);
   // For QA users, role scoping below already limits data to themselves plus
   // Unassigned. Keep the owner filter open so Unassigned stays visible.
   const ownerFilterInitialized = useRef(false);
@@ -1228,11 +1240,21 @@ export function TestPlanTab() {
           searchable searchPlaceholder="Search areas…"
         />
         {isAdmin && (
-          <MultiSelect
-            placeholder="Owner" triggerClassName="w-[180px]"
-            options={owners.map((o) => ({ value: o, label: o }))}
-            value={ownerFilter} onChange={setOwnerFilter}
-          />
+          <>
+            <MultiSelect
+              placeholder="Device" triggerClassName="w-[200px]"
+              options={deviceFilterOptions.map((d) => ({ value: d, label: d }))}
+              value={deviceFilter}
+              onChange={setDeviceFilter}
+              searchable
+              searchPlaceholder="Search devices…"
+            />
+            <MultiSelect
+              placeholder="Owner" triggerClassName="w-[180px]"
+              options={owners.map((o) => ({ value: o, label: o }))}
+              value={ownerFilter} onChange={setOwnerFilter}
+            />
+          </>
         )}
         <MultiSelect
           placeholder="Sprint" triggerClassName="w-[200px]"
@@ -1261,6 +1283,73 @@ export function TestPlanTab() {
           </Button>
         )}
       </div>
+
+      {isAdmin && deviceFilter.length > 0 && (
+        <Card className="p-3 space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <Smartphone className="h-3.5 w-3.5" />
+              Testers with selected device{deviceFilter.length === 1 ? "" : "s"}
+              <span className="font-normal normal-case">({matchingTesters.length})</span>
+            </div>
+            {matchingTesters.length > 0 && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs"
+                onClick={() =>
+                  setOwnerFilter(Array.from(new Set(matchingTesters.map((t) => t.firstName))))
+                }
+              >
+                Filter all matching tests
+              </Button>
+            )}
+          </div>
+          {matchingTesters.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No QA testers registered those devices. Check{" "}
+              <Link to="/users" className="text-primary underline underline-offset-2">
+                Users
+              </Link>{" "}
+              to review or update tester hardware.
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {matchingTesters.map((t) => {
+                const active =
+                  ownerFilter.length === 1 && ownerFilter[0] === t.firstName;
+                const matchedDevices = t.qa_devices.filter((d) =>
+                  deviceFilter.some(
+                    (sel) => sel.trim().toLowerCase() === d.trim().toLowerCase(),
+                  ),
+                );
+                return (
+                  <button
+                    key={t.userId}
+                    type="button"
+                    onClick={() => setOwnerFilter(active ? [] : [t.firstName])}
+                    className={`inline-flex flex-col items-start gap-1 rounded-lg border px-3 py-2 text-left text-sm bg-background hover:bg-accent transition-colors ${active ? "ring-2 ring-offset-1 ring-primary border-primary/40" : "border-border"}`}
+                    title={t.email ? `${t.fullName} · ${t.email}` : t.fullName}
+                  >
+                    <span className="font-semibold">{t.firstName}</span>
+                    <span className="flex flex-wrap gap-1">
+                      {(matchedDevices.length > 0 ? matchedDevices : t.qa_devices).map((d) => (
+                        <Badge
+                          key={d}
+                          variant="secondary"
+                          className="text-[10px] font-normal px-1.5 py-0"
+                        >
+                          {d}
+                        </Badge>
+                      ))}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </Card>
+      )}
 
       <NewTestDialog
         open={newTestOpen}
@@ -1622,6 +1711,78 @@ function StepWithSublist({
       })}
     </ul>
   );
+
+  // "Step 1 — Basics: ... birth year..., ZIP3 = ... THEN CLICK NEXT." → heading + checkbox sublist
+  const basicsMatch = step.match(
+    /^(Step 1 — Basics: Enter the following for the Scenario Information\.)\s*(.+?)\.\s*THEN CLICK NEXT\.$/,
+  );
+  if (basicsMatch && basicsMatch[2].includes("ZIP3 =")) {
+    const items = basicsMatch[2].split(", ").map((s) => s.trim());
+    return (
+      <span className={className}>
+        {basicsMatch[1]}
+        {renderSublist([...items, "THEN CLICK NEXT."])}
+      </span>
+    );
+  }
+
+  // County + remaining demographics on the same wizard page
+  const countyDemoMatch = step.match(
+    /^(From the county dropdown.+?county\.)\s*(Enter the remaining for the Scenario Information:)\s*(.+?)\.\s*THEN CLICK NEXT\.$/,
+  );
+  if (countyDemoMatch) {
+    const demoItems = countyDemoMatch[3].split(", ").map((s) => s.trim());
+    return (
+      <span className={className}>
+        {countyDemoMatch[1]} {countyDemoMatch[2]}
+        {renderSublist([...demoItems, "THEN CLICK NEXT."])}
+      </span>
+    );
+  }
+
+  // "Step 2 — Conditions: ... Hypertension, Type 2 Diabetes. THEN CLICK NEXT."
+  const conditionsMatch = step.match(
+    /^(Step 2 — Conditions: Add these medical conditions\. If the exact condition isn't listed, click the "Other" box and type in the condition\.)\s*(.+?)\.\s*THEN CLICK NEXT\.$/,
+  );
+  if (conditionsMatch) {
+    const items = conditionsMatch[2].split(", ").map((s) => s.trim());
+    return (
+      <span className={className}>
+        {conditionsMatch[1]}
+        {renderSublist([...items, "THEN CLICK NEXT."])}
+      </span>
+    );
+  }
+
+  // Medications step with per-drug checkboxes + create action
+  const medsMatch = step.match(
+    /^Under Common medications for your conditions: Select the medication \(if present\)\. Those medications will be added to the list below\. Click the plus sign to add additional medications\. Add these medications:\s*(.+?)\.\s*THEN CLICK CREATE SCENARIO\.$/,
+  );
+  if (medsMatch) {
+    const items = medsMatch[1].split("; ").map((s) => s.trim()).filter(Boolean);
+    return (
+      <span className={className}>
+        Under Common medications for your conditions: Select the medication (if present). Those
+        medications will be added to the list below. Click the plus sign to add additional
+        medications. Add these medications:
+        {renderSublist([...items, "THEN CLICK CREATE SCENARIO."])}
+      </span>
+    );
+  }
+
+  // Legacy basics heading (THEN CLICK embedded in intro sentence)
+  const basicsLegacyMatch = step.match(
+    /^(Step 1 — Basics: Enter the following for the Scenario Information THEN CLICK NEXT\.)\s*(.+)$/,
+  );
+  if (basicsLegacyMatch && basicsLegacyMatch[2].includes("ZIP3 =")) {
+    const items = basicsLegacyMatch[2].split(", ").map((s) => s.trim());
+    return (
+      <span className={className}>
+        Step 1 — Basics: Enter the following for the Scenario Information.
+        {renderSublist([...items, "THEN CLICK NEXT."])}
+      </span>
+    );
+  }
 
   // "Enter the following for the Scenario Information: birth year..., ZIP3=..., ..." → heading + sublist
   const introMatch = step.match(/^(Enter the following for the Scenario Information:)\s*(.+)$/);
