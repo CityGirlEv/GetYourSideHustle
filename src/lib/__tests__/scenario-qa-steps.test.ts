@@ -13,7 +13,7 @@ function parseStep1Sections(step: string): {
   remaining: string[]
 } {
   const body = step.replace(
-    /^Step 1 — Basics: Enter the following for the Scenario Information\. \|\|\| /,
+    /^Step 1 — Demographics: Enter the following for the Scenario Information\. \|\|\| /,
     '',
   )
   const sections = body.split(' ||| ').map((s) => s.trim())
@@ -85,7 +85,7 @@ describe('buildScenarioQaAuditSteps', () => {
     })
 
     expect(steps[0]).toContain('Build My Scenario')
-    expect(steps[1]).toContain('Step 1 — Basics')
+    expect(steps[1]).toContain('Step 1 — Demographics')
     expect(steps[1]).toContain('birth year = 1958 (age 68 in 2026)')
     expect(steps[1]).toContain('ZIP3 = 606')
     expect(steps[1]).toContain('From the county dropdown')
@@ -106,7 +106,7 @@ describe('buildScenarioQaAuditSteps', () => {
       'income band = $50k–$75k',
       'THEN CLICK NEXT.',
     ])
-    expect(steps[2]).toContain('Step 2 — Cost Preference & Conditions')
+    expect(steps[2]).toContain('Step 2 — Preferences & Conditions')
     expect(steps[2]).toContain('Part 2 page')
     expect(steps[3]).toContain('Step 3 — Medications')
   })
@@ -195,7 +195,7 @@ describe('buildScenarioQaAuditSteps', () => {
     })
 
     expect(steps[0]).toContain('Build My Scenario')
-    expect(steps[1]).toContain('Step 1 — Basics')
+    expect(steps[1]).toContain('Step 1 — Demographics')
     const step1 = parseStep1Sections(steps[1])
     expect(step1.basics[0]).toContain('birth year = 1958')
     expect(step1.remaining).toEqual([
@@ -204,7 +204,7 @@ describe('buildScenarioQaAuditSteps', () => {
       'income band = $50k–$75k',
       'THEN CLICK NEXT.',
     ])
-    expect(steps[2]).toContain('Step 2 — Cost Preference & Conditions')
+    expect(steps[2]).toContain('Step 2 — Preferences & Conditions')
     expect(steps[2]).toContain("cost preference = 'minimize monthly'")
     expect(steps[2]).not.toContain('PPO')
     const step2Body = steps[2].split(' ||| ', 2)[1] ?? '';
@@ -308,7 +308,7 @@ describe('buildScenarioQaAuditSteps', () => {
       costTotal: '$7/mo and $84/yr',
     })
 
-    expect(steps[10]).toContain('Cross-check that what you entered in steps 2–5')
+    expect(steps[10]).toContain('Cross-check that what you entered in steps 1–3')
     const crossCheckBody = steps[10].split(' ||| ', 2)[1] ?? '';
     expect(crossCheckBody.split(' | ').map((s) => s.trim())).toEqual([
       'Conditions printed in the PDF and XLSX match what you entered.',

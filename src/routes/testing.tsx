@@ -1713,9 +1713,9 @@ function StepWithSublist({
     </ul>
   );
 
-  // Step 1 · Basics — birth/ZIP3/county (2a–2c), then remaining demographics (2d–2f)
+  // Step 1 · Demographics — birth/ZIP3/county (2a–2c), then remaining fields (2d–2f)
   const basicsSectionsMatch = step.match(
-    /^(Step 1 — Basics: Enter the following for the Scenario Information\.)\s*\|\|\|\s*(.+)$/,
+    /^(Step 1 — (?:Demographics|Basics): Enter the following for the Scenario Information\.)\s*\|\|\|\s*(.+)$/,
   );
   if (basicsSectionsMatch) {
     const sections = basicsSectionsMatch[2].split(" ||| ").map((s) => s.trim()).filter(Boolean);
@@ -1734,9 +1734,9 @@ function StepWithSublist({
     }
   }
 
-  // "Step 1 — Basics: ..." with pipe-delimited substeps (legacy single-block)
+  // "Step 1 — Demographics: ..." with pipe-delimited substeps (legacy single-block)
   const basicsPipeMatch = step.match(
-    /^(Step 1 — Basics: Enter the following for the Scenario Information\.)\s*(.+)$/,
+    /^(Step 1 — (?:Demographics|Basics): Enter the following for the Scenario Information\.)\s*(.+)$/,
   );
   if (basicsPipeMatch && basicsPipeMatch[2].includes(" | ")) {
     const items = basicsPipeMatch[2].split(" | ").map((s) => s.trim()).filter(Boolean);
@@ -1748,7 +1748,7 @@ function StepWithSublist({
     );
   }
 
-  // Remaining demographics on Step 1 · Basics (legacy separate audit step)
+  // Remaining demographics on Step 1 (legacy separate audit step)
   if (
     step.startsWith("Enter the remaining for the Scenario Information:") &&
     step.includes(" ||| ")
@@ -1763,9 +1763,9 @@ function StepWithSublist({
     );
   }
 
-  // "Step 1 — Basics: ... birth year..., ZIP3 = ... THEN CLICK NEXT." → heading + checkbox sublist
+  // "Step 1 — Demographics: ... birth year..., ZIP3 = ... THEN CLICK NEXT." (legacy)
   const basicsMatch = step.match(
-    /^(Step 1 — Basics: Enter the following for the Scenario Information\.)\s*(.+?)\.\s*THEN CLICK NEXT\.$/,
+    /^(Step 1 — (?:Demographics|Basics): Enter the following for the Scenario Information\.)\s*(.+?)\.\s*THEN CLICK NEXT\.$/,
   );
   if (basicsMatch && basicsMatch[2].includes("ZIP3 =")) {
     const items = basicsMatch[2].split(", ").map((s) => s.trim());
@@ -1777,7 +1777,7 @@ function StepWithSublist({
     );
   }
 
-  // Step 2 · Cost Preference & Conditions — cost preference first, then conditions
+  // Step 2 · Preferences & Conditions — cost preference first, then conditions
   if (
     (step.startsWith("Step 2 — Cost Preference & Conditions:") ||
       step.startsWith("Step 2 — Preferences & Conditions:")) &&
@@ -1806,7 +1806,7 @@ function StepWithSublist({
     );
   }
 
-  // Cost preference on Step 2 · Cost Preference & Conditions (legacy standalone step)
+  // Cost preference on Step 2 (legacy standalone step)
   const costPrefMatch = step.match(/^(Cost preference:)\s*(.+?)\.\s*THEN CLICK NEXT\.$/);
   if (costPrefMatch) {
     return (
@@ -1991,13 +1991,13 @@ function StepWithSublist({
 
   // Legacy basics heading (THEN CLICK embedded in intro sentence)
   const basicsLegacyMatch = step.match(
-    /^(Step 1 — Basics: Enter the following for the Scenario Information THEN CLICK NEXT\.)\s*(.+)$/,
+    /^(Step 1 — (?:Demographics|Basics): Enter the following for the Scenario Information THEN CLICK NEXT\.)\s*(.+)$/,
   );
   if (basicsLegacyMatch && basicsLegacyMatch[2].includes("ZIP3 =")) {
     const items = basicsLegacyMatch[2].split(", ").map((s) => s.trim());
     return (
       <span className={className}>
-        Step 1 — Basics: Enter the following for the Scenario Information.
+        Step 1 — Demographics: Enter the following for the Scenario Information.
         {renderSublist([...items, "THEN CLICK NEXT."])}
       </span>
     );

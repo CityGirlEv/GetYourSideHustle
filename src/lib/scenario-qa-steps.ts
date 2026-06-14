@@ -65,7 +65,7 @@ export function buildScenarioQaAuditSteps(parts: {
   const remainingDemoIntro = "Enter the remaining for the Scenario Information:";
   const remainingDemoSubsteps = [...demoParts, "THEN CLICK NEXT."];
   const step1Intro =
-    "Step 1 — Basics: Enter the following for the Scenario Information.";
+    "Step 1 — Demographics: Enter the following for the Scenario Information.";
   const step1Body = [
     basicsSubsteps.join(" | "),
     remainingDemoIntro,
@@ -78,7 +78,7 @@ export function buildScenarioQaAuditSteps(parts: {
     "THEN CLICK NEXT.",
   ];
   const step2Intro =
-    'Step 2 — Cost Preference & Conditions: On the Part 2 page, cost preference is first (section a), then conditions (section b). If a condition isn\'t listed, use Other.';
+    'Step 2 — Preferences & Conditions: On the Part 2 page, cost preference is first (section a), then conditions (section b). If a condition isn\'t listed, use Other.';
   const medParts = medications.split("; ").map((s) => s.trim()).filter(Boolean);
   const medSubsteps = medParts.map((med, i) =>
     i === 0 ? `Add these medications: ${med}.` : `${med}.`,
@@ -112,7 +112,7 @@ export function buildScenarioQaAuditSteps(parts: {
     ...medParts.map((m) => `Medication: ${m}`),
   ];
   const crossCheckIntro =
-    "Cross-check that what you entered in steps 2–5 matches the PDF and XLSX:";
+    "Cross-check that what you entered in steps 1–3 matches the PDF and XLSX:";
   const crossCheckSubsteps = [
     "Conditions printed in the PDF and XLSX match what you entered.",
     "Demographics printed in the PDF and XLSX match what you entered.",
