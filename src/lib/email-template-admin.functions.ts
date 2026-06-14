@@ -7,13 +7,33 @@ import {
   ALL_TEMPLATES,
   findTemplate,
   renderDefaultHtml,
+  renderDefaultHtmlWithMergeFields,
+  getTemplateDefaultSubjectForEditor,
 } from '@/lib/email-templates/all-templates.server'
 import { htmlToPlainText } from '@/lib/email-templates/overrides.server'
-import { ensureEmailBranding } from '@/lib/email-templates/email-branding.server'
+import { ensureEmailBranding, stripEmailEditorArtifacts } from '@/lib/email-templates/email-branding.server'
+import {
+  resolveTemplateContent,
+  listTemplateMergeFields,
+  normalizeTemplateOverrideContent,
+} from '@/lib/email-templates/template-merge.server'
+import {
+  AUTH_TEMPLATE_NAMES,
+  getAuthTemplateTestData,
+  getTemplateSampleProps,
+} from '@/lib/email-templates/template-sample-props.server'
+import { TEMPLATES } from '@/lib/email-templates/registry'
+import * as React from 'react'
+import { render } from '@react-email/components'
 import { emailLogMatchesTemplate, dedupeEmailLogRows } from '@/lib/email-log-sort'
 import { getTransactionalFromAddress, getTransactionalSenderDomain } from '@/lib/send-transactional-email'
 import { getEnvVariable, getRuntimeSecret } from '@/lib/env'
 import { triggerEmailQueueProcess } from '@/lib/trigger-email-queue-process'
+import { publicSiteUrl } from '@/lib/send-transactional-template.server'
+
+async function brandedHtmlForEditor(html: string): Promise<string> {
+  return ensureEmailBranding(html, { siteUrl: publicSiteUrl() })
+}
 
 async function verifyAdmin(userId: string) {
   const { data } = await supabaseAdmin
@@ -75,7 +95,10 @@ export const listEmailTemplates = createServerFn({ method: 'POST' })
       defaultSubject: t.defaultSubject,
       overridden: overrideMap.has(t.name),
       overrideUpdatedAt: overrideMap.get(t.name)?.updated_at ?? null,
-    }))
+    })).sort((a, b) => {
+      if (a.kind !== b.kind) return a.kind === 'transactional' ? -1 : 1
+      return a.displayName.localeCompare(b.displayName)
+    })
   })
 
 export const getEmailTemplate = createServerFn({ method: 'POST' })
@@ -87,28 +110,41 @@ export const getEmailTemplate = createServerFn({ method: 'POST' })
     await verifyAdmin(context.userId)
     const tpl = findTemplate(data.name)
     if (!tpl) throw new Error(`Unknown template: ${data.name}`)
-    const defaultHtml = await renderDefaultHtml(tpl.name)
+    const defaultHtml = await brandedHtmlForEditor(
+      await renderDefaultHtmlWithMergeFields(tpl.name),
+    )
+    const defaultSubject = getTemplateDefaultSubjectForEditor(tpl.name)
     const { data: override } = await supabaseAdmin
       .from('email_template_overrides')
       .select('subject, html, updated_at, updated_by')
       .eq('template_name', tpl.name)
       .maybeSingle()
+    const normalizedOverride = override
+      ? normalizeTemplateOverrideContent(tpl.name, {
+          subject: override.subject,
+          html: stripEmailEditorArtifacts(override.html),
+        })
+      : null
+    const overrideHtml = normalizedOverride
+      ? await brandedHtmlForEditor(normalizedOverride.html)
+      : null
     return {
       name: tpl.name,
       kind: tpl.kind,
       displayName: tpl.displayName,
       description: tpl.description,
       trigger: tpl.trigger,
-      defaultSubject: tpl.defaultSubject,
+      defaultSubject,
       defaultHtml,
-      override: override
+      override: normalizedOverride
         ? {
-            subject: override.subject,
-            html: override.html,
-            updatedAt: override.updated_at,
-            updatedBy: override.updated_by,
+            subject: normalizedOverride.subject,
+            html: overrideHtml!,
+            updatedAt: override!.updated_at,
+            updatedBy: override!.updated_by,
           }
         : null,
+      mergeFields: listTemplateMergeFields(tpl.name),
     }
   })
 
@@ -126,6 +162,12 @@ export const saveEmailTemplateOverride = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }) => {
     await verifyAdmin(context.userId)
     if (!findTemplate(data.name)) throw new Error(`Unknown template: ${data.name}`)
+    const cleanHtml = stripEmailEditorArtifacts(data.html)
+    const normalized = normalizeTemplateOverrideContent(data.name, {
+      subject: data.subject,
+      html: cleanHtml,
+    })
+    const brandedHtml = await brandedHtmlForEditor(normalized.html)
     // Snapshot the currently-active version (override if any, else built-in default)
     // into version history BEFORE writing the new override.
     const { data: prev } = await supabaseAdmin
@@ -143,10 +185,10 @@ export const saveEmailTemplateOverride = createServerFn({ method: 'POST' })
       })
     } else {
       const tpl = findTemplate(data.name)!
-      const defaultHtml = await renderDefaultHtml(tpl.name)
+      const defaultHtml = await renderDefaultHtmlWithMergeFields(tpl.name)
       await supabaseAdmin.from('email_template_versions').insert({
         template_name: data.name,
-        subject: tpl.defaultSubject,
+        subject: getTemplateDefaultSubjectForEditor(tpl.name),
         html: defaultHtml,
         source: 'builtin',
         created_by: context.userId,
@@ -157,8 +199,8 @@ export const saveEmailTemplateOverride = createServerFn({ method: 'POST' })
       .upsert(
         {
           template_name: data.name,
-          subject: data.subject,
-          html: data.html,
+          subject: normalized.subject,
+          html: brandedHtml,
           updated_by: context.userId,
           updated_at: new Date().toISOString(),
         },
@@ -263,10 +305,40 @@ export const sendEmailTemplateTest = createServerFn({ method: 'POST' })
     if (!findTemplate(data.name)) throw new Error(`Unknown template: ${data.name}`)
 
     const messageId = crypto.randomUUID()
-    const subject = `[TEST] ${data.subject}`
     const unsubscribeToken = await getOrCreateUnsubscribeToken(data.recipient)
-    const brandedHtml = await ensureEmailBranding(data.html, { unsubscribeToken })
-    const text = htmlToPlainText(brandedHtml)
+    const registry = TEMPLATES[data.name]
+    const tpl = findTemplate(data.name)!
+    const templateData = (AUTH_TEMPLATE_NAMES.has(data.name)
+      ? getAuthTemplateTestData(data.name, data.recipient)
+      : ((registry?.previewData ?? tpl.sampleProps ?? getTemplateSampleProps(data.name)) as Record<
+          string,
+          unknown
+        >)) as Record<string, unknown>
+    const cleanHtml = stripEmailEditorArtifacts(data.html)
+    const renderedHtml = registry
+      ? await render(React.createElement(registry.component, templateData))
+      : await render(React.createElement(tpl.component, templateData))
+    const renderedText = registry
+      ? await render(React.createElement(registry.component, templateData), { plainText: true })
+      : await render(React.createElement(tpl.component, templateData), { plainText: true })
+    const renderedSubject =
+      registry && typeof registry.subject === 'function'
+        ? registry.subject(templateData)
+        : data.subject
+    const merged = resolveTemplateContent({
+      templateName: data.name,
+      templateData,
+      renderedHtml,
+      renderedText,
+      renderedSubject,
+      override: {
+        subject: data.subject,
+        html: cleanHtml,
+        text: htmlToPlainText(cleanHtml),
+      },
+    })
+    const brandedHtml = await ensureEmailBranding(merged.html, { unsubscribeToken })
+    const text = merged.text
 
     await supabaseAdmin.from('email_send_log').insert({
       message_id: messageId,
@@ -282,7 +354,7 @@ export const sendEmailTemplateTest = createServerFn({ method: 'POST' })
         to: data.recipient,
         from: getTransactionalFromAddress(),
         sender_domain: getTransactionalSenderDomain(),
-        subject,
+        subject: `[TEST] ${merged.subject}`,
         html: brandedHtml,
         text,
         purpose: 'transactional',

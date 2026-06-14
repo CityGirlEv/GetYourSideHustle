@@ -13,23 +13,47 @@ export function getTransactionalFromAddress(): string {
   return getEnvVariable('EMAIL_FROM') ?? DEFAULT_TRANSACTIONAL_FROM
 }
 
-/** True when Resend rejects delivery because the account/domain is still sandboxed. */
+/** Prefix on formatted domain-verification errors (used for retry / DLQ handling). */
+export const RESEND_DOMAIN_NOT_VERIFIED_PREFIX = '[resend-domain-not-verified]'
+
+/** True when Resend rejects delivery because the domain is not verified for this API key. */
 export function isResendSandboxRestriction(message: string): boolean {
+  if (message.includes(RESEND_DOMAIN_NOT_VERIFIED_PREFIX)) return true
   const lower = message.toLowerCase()
   return (
     lower.includes('testing emails') ||
     lower.includes('verify a domain') ||
     lower.includes('domain is not verified') ||
-    lower.includes('resend sandbox') ||
     (lower.includes('not verified') && lower.includes('domain'))
   )
 }
 
 export function formatResendDeliveryError(status: number, body: string): string {
   if (status === 403 && isResendSandboxRestriction(body)) {
+    const from = getTransactionalFromAddress()
+    let detail = body.trim()
+    let accountHint = ''
+    try {
+      const parsed = JSON.parse(body) as { message?: string }
+      if (parsed.message) {
+        detail = parsed.message
+        const ownerMatch = parsed.message.match(
+          /your own email address \(([^)]+)\)/i,
+        )
+        if (ownerMatch?.[1]) {
+          accountHint =
+            ` RESEND_API_KEY belongs to Resend account ${ownerMatch[1]} — ` +
+            'replace it with the API key from the account where mypartb.com is verified (evelyn3@cox.net).'
+        }
+      }
+    } catch {
+      // keep raw body
+    }
     return (
-      'Resend sandbox: verify mypartb.com in Resend and add DNS records (run node scripts/show-resend-dns-setup.mjs). ' +
-      'Until then, only the Resend account owner email can receive test sends.'
+      `${RESEND_DOMAIN_NOT_VERIFIED_PREFIX} Resend rejected send from ${from}.` +
+      accountHint +
+      ' Upload the correct key: node scripts/upload-resend-secret.mjs.' +
+      ` Resend: ${detail}`
     )
   }
   return `Resend error: ${status} ${body}`
@@ -111,6 +135,12 @@ async function sendViaResend(payload: QueueEmailPayload, apiKey: string): Promis
       preferredFrom !== RESEND_SANDBOX_FROM
 
     if (canUseSandboxFrom) {
+      console.warn(
+        '[email] Retrying with Resend test sender (onboarding@resend.dev); ' +
+          'only the Resend account owner can receive these. ' +
+          'Update RESEND_API_KEY if mypartb.com is already verified.',
+        { to: payload.to, label: payload.label },
+      )
       await sendViaResendRequest(payload, apiKey, RESEND_SANDBOX_FROM)
       return
     }

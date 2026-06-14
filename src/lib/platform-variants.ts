@@ -10,7 +10,7 @@
 // Testing portal, Alpha planning, etc.) pass through unchanged.
 // ============================================================================
 import type { TestCase } from "@/lib/test-plan";
-import { ACTIVE_SPRINT_ID, getTestAssignee } from "@/lib/test-plan";
+import { ACTIVE_SPRINT_ID, getTestAssignee, TEST_CASES } from "@/lib/test-plan";
 
 export type PlatformCategory = "Mobile" | "Tablet" | "Desktop";
 
@@ -119,4 +119,33 @@ export function expandAllWithPlatforms(tests: TestCase[]): TestCase[] {
   const out: TestCase[] = [];
   for (const t of tests) out.push(...expandTestWithPlatforms(t));
   return out;
+}
+
+/** Split a platform variant id (e.g. AUTH-001-PHONE) into source + suffix. */
+export function parsePlatformVariantId(id: string): {
+  sourceId: string;
+  platformSuffix: string | null;
+} {
+  for (const p of TEST_PLATFORMS) {
+    const tail = `-${p.suffix}`;
+    if (id.endsWith(tail) && id.length > tail.length) {
+      return { sourceId: id.slice(0, -tail.length), platformSuffix: p.suffix };
+    }
+  }
+  return { sourceId: id, platformSuffix: null };
+}
+
+/**
+ * localStorage keys that should receive a test_results row on hydrate.
+ * Base ids for multi-platform tests fan out to COMP/PHONE/IPAD variants.
+ */
+export function localStorageKeysForTestResultId(testId: string): string[] {
+  const { sourceId, platformSuffix } = parsePlatformVariantId(testId);
+  if (platformSuffix) return [testId];
+
+  const baseCase = TEST_CASES.find((t) => t.id === sourceId);
+  if (baseCase && isMultiPlatformArea(baseCase.area)) {
+    return TEST_PLATFORMS.map((p) => `${sourceId}-${p.suffix}`);
+  }
+  return [testId];
 }

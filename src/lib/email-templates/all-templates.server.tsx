@@ -4,10 +4,15 @@ import type { ComponentType } from 'react'
 
 // Transactional (registry-style)
 import { template as newRegistrationAdmin } from './new-registration-admin'
+import { template as accountEnabledAdmin } from './account-enabled-admin'
 import { template as welcome } from './welcome'
 import { template as agentAssignment } from './agent-assignment'
 import { template as contactRequest } from './contact-request'
 import { template as scenarioClaimed } from './scenario-claimed'
+import { template as betaTestAssignment } from './beta-test-assignment'
+import { template as qaDailySummaryAdmin } from './qa-daily-summary-admin'
+import { template as qaRegistrationConfirmation } from './qa-registration-confirmation'
+import { template as agentRegistrationConfirmation } from './agent-registration-confirmation'
 
 // Auth (component default exports)
 import { SignupEmail } from './signup'
@@ -16,6 +21,11 @@ import { MagicLinkEmail } from './magic-link'
 import { RecoveryEmail } from './recovery'
 import { EmailChangeEmail } from './email-change'
 import { ReauthenticationEmail } from './reauthentication'
+import { AUTH_SAMPLE_PROPS } from './template-sample-props.server'
+import {
+  getDefaultSubjectWithMergeFields,
+  upgradeOverrideLiteralsToMergeFields,
+} from './template-merge-fields.server'
 
 export type TemplateKind = 'transactional' | 'auth'
 
@@ -31,18 +41,6 @@ export interface TemplateDescriptor {
 }
 
 const SITE_NAME = 'The Medicare Optimizer'
-const SITE_URL = 'https://mypartb.pages.dev'
-
-const authSampleProps = {
-  siteName: SITE_NAME,
-  siteUrl: SITE_URL,
-  recipient: 'jane@example.com',
-  confirmationUrl: 'https://example.com/confirm?token=sample',
-  token: '123456',
-  email: 'jane@example.com',
-  oldEmail: 'jane.old@example.com',
-  newEmail: 'jane.new@example.com',
-}
 
 function subjectOf(entry: { subject: string | ((d: any) => string) }, sample: Record<string, any>) {
   return typeof entry.subject === 'function' ? entry.subject(sample) : entry.subject
@@ -58,6 +56,16 @@ export const ALL_TEMPLATES: TemplateDescriptor[] = [
     defaultSubject: subjectOf(newRegistrationAdmin, newRegistrationAdmin.previewData ?? {}),
     component: newRegistrationAdmin.component,
     sampleProps: newRegistrationAdmin.previewData ?? {},
+  },
+  {
+    name: 'account-enabled-admin',
+    kind: 'transactional',
+    displayName: accountEnabledAdmin.displayName ?? 'Account enabled (admin)',
+    description: 'Internal alert to admins when an account is enabled.',
+    trigger: 'Admin enables a previously disabled account.',
+    defaultSubject: subjectOf(accountEnabledAdmin, accountEnabledAdmin.previewData ?? {}),
+    component: accountEnabledAdmin.component,
+    sampleProps: accountEnabledAdmin.previewData ?? {},
   },
   {
     name: 'welcome',
@@ -100,6 +108,55 @@ export const ALL_TEMPLATES: TemplateDescriptor[] = [
     sampleProps: scenarioClaimed.previewData ?? {},
   },
   {
+    name: 'beta-test-assignment',
+    kind: 'transactional',
+    displayName: betaTestAssignment.displayName ?? 'Beta test assignment',
+    description: 'Notifies a beta tester when one or more QA tests are assigned to them.',
+    trigger: 'Admin or lead assigns tests on the Testing Portal.',
+    defaultSubject: subjectOf(betaTestAssignment, betaTestAssignment.previewData ?? {}),
+    component: betaTestAssignment.component,
+    sampleProps: betaTestAssignment.previewData ?? {},
+  },
+  {
+    name: 'qa-daily-summary-admin',
+    kind: 'transactional',
+    displayName: qaDailySummaryAdmin.displayName ?? 'QA daily summary (admin)',
+    description:
+      'End-of-day digest to admins listing tests QA marked complete in the Testing Portal.',
+    trigger: 'Scheduled job at end of day (or manual admin send).',
+    defaultSubject: subjectOf(qaDailySummaryAdmin, qaDailySummaryAdmin.previewData ?? {}),
+    component: qaDailySummaryAdmin.component,
+    sampleProps: qaDailySummaryAdmin.previewData ?? {},
+  },
+  {
+    name: 'qa-registration-confirmation',
+    kind: 'transactional',
+    displayName: qaRegistrationConfirmation.displayName ?? 'QA registration confirmation',
+    description:
+      'Confirmation letter sent to a new QA tester after they sign the NDA and submit registration.',
+    trigger: 'User registers as a QA tester on the sign-up form.',
+    defaultSubject:
+      typeof qaRegistrationConfirmation.subject === 'string'
+        ? qaRegistrationConfirmation.subject
+        : 'Your QA registration is submitted — next steps',
+    component: qaRegistrationConfirmation.component,
+    sampleProps: qaRegistrationConfirmation.previewData ?? {},
+  },
+  {
+    name: 'agent-registration-confirmation',
+    kind: 'transactional',
+    displayName: agentRegistrationConfirmation.displayName ?? 'Agent registration confirmation',
+    description:
+      'Confirmation letter sent to a new licensed agent after they sign the NDA and submit registration.',
+    trigger: 'User registers as an agent on the sign-up form.',
+    defaultSubject:
+      typeof agentRegistrationConfirmation.subject === 'string'
+        ? agentRegistrationConfirmation.subject
+        : 'Your agent registration is submitted — next steps',
+    component: agentRegistrationConfirmation.component,
+    sampleProps: agentRegistrationConfirmation.previewData ?? {},
+  },
+  {
     name: 'signup',
     kind: 'auth',
     displayName: 'Signup confirmation',
@@ -107,7 +164,7 @@ export const ALL_TEMPLATES: TemplateDescriptor[] = [
     trigger: 'User signs up with email and password.',
     defaultSubject: 'Confirm your email',
     component: SignupEmail,
-    sampleProps: authSampleProps,
+    sampleProps: AUTH_SAMPLE_PROPS,
   },
   {
     name: 'invite',
@@ -117,7 +174,7 @@ export const ALL_TEMPLATES: TemplateDescriptor[] = [
     trigger: 'Admin invites a user from the auth dashboard.',
     defaultSubject: "You've been invited",
     component: InviteEmail,
-    sampleProps: authSampleProps,
+    sampleProps: AUTH_SAMPLE_PROPS,
   },
   {
     name: 'magiclink',
@@ -127,7 +184,7 @@ export const ALL_TEMPLATES: TemplateDescriptor[] = [
     trigger: 'User requests a magic-link login.',
     defaultSubject: 'Your login link',
     component: MagicLinkEmail,
-    sampleProps: authSampleProps,
+    sampleProps: AUTH_SAMPLE_PROPS,
   },
   {
     name: 'recovery',
@@ -137,7 +194,7 @@ export const ALL_TEMPLATES: TemplateDescriptor[] = [
     trigger: 'User requests "forgot password".',
     defaultSubject: 'Reset your password',
     component: RecoveryEmail,
-    sampleProps: authSampleProps,
+    sampleProps: AUTH_SAMPLE_PROPS,
   },
   {
     name: 'email_change',
@@ -147,7 +204,7 @@ export const ALL_TEMPLATES: TemplateDescriptor[] = [
     trigger: 'User updates their email address.',
     defaultSubject: 'Confirm your new email',
     component: EmailChangeEmail,
-    sampleProps: authSampleProps,
+    sampleProps: AUTH_SAMPLE_PROPS,
   },
   {
     name: 'reauthentication',
@@ -157,7 +214,7 @@ export const ALL_TEMPLATES: TemplateDescriptor[] = [
     trigger: 'User performs an action that requires re-authentication.',
     defaultSubject: 'Your verification code',
     component: ReauthenticationEmail,
-    sampleProps: authSampleProps,
+    sampleProps: AUTH_SAMPLE_PROPS,
   },
 ]
 
@@ -171,4 +228,17 @@ export async function renderDefaultHtml(name: string): Promise<string> {
   if (!tpl) throw new Error(`Unknown template: ${name}`)
   const element = React.createElement(tpl.component, tpl.sampleProps)
   return await render(element)
+}
+
+/** Default HTML with Jane Doe / sample literals replaced by {{mergeField}} tokens. */
+export async function renderDefaultHtmlWithMergeFields(name: string): Promise<string> {
+  const html = await renderDefaultHtml(name)
+  return upgradeOverrideLiteralsToMergeFields(html, name)
+}
+
+/** Subject line for the admin editor — uses {{mergeField}} tokens where applicable. */
+export function getTemplateDefaultSubjectForEditor(name: string): string {
+  const tpl = findTemplate(name)
+  if (!tpl) throw new Error(`Unknown template: ${name}`)
+  return getDefaultSubjectWithMergeFields(name, tpl.defaultSubject)
 }

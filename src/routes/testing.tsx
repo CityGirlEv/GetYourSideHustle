@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,7 @@ import { AppShell } from "@/components/AppShell";
 import { useApp } from "@/lib/app-store";
 import { useAssigneeOptions } from "@/lib/use-assignee-options";
 import { hydrateTestResultsToLocal, cloudPushCheckedSteps, cloudFetchCheckedSteps } from "@/lib/cloud-sync";
+import { resolveTestStatus } from "@/lib/test-result-resolve";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -53,6 +54,8 @@ import {
 } from "@/lib/test-evidence";
 import { validateFailDetails, formatFailNote } from "@/lib/fail-details";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
+import { notifyBetaTestAssignments } from "@/lib/qa-test-assignment.functions";
 import { NoteThreadDialog } from "@/components/NoteThreadDialog";
 import type { NoteKind } from "@/lib/cloud-sync";
 import { MessageSquare } from "lucide-react";
@@ -246,7 +249,8 @@ function TestingPortal() {
 
 /* ============================== TEST PLAN TAB ============================== */
 export function TestPlanTab() {
-  const { user } = useApp();
+  const { user, authLoading } = useApp();
+  const notifyAssignees = useServerFn(notifyBetaTestAssignments);
   const isAdmin = user?.role === "admin";
   const canSaveToCloud = canSaveTestResults(user);
   const confirm = useConfirm();
@@ -268,29 +272,35 @@ export function TestPlanTab() {
   const [savedSeverities, setSavedSeverities] = useState<Record<string, FailSeverity | "">>(() => loadAllSeverities());
   const [savedAssignees, setSavedAssignees] = useState<Record<string, string>>(() => loadAllAssigneeOverrides());
   const [savedSprints, setSavedSprints] = useState<Record<string, string>>(() => loadAllSprintOverrides());
-  // On mount, pull the authoritative test_results from the cloud into
-  // localStorage so this browser shows whatever was last saved to the DB
-  // (covers the case where local state was cleared and needs to be restored).
+
+  const reloadSavedFromLocal = useCallback(() => {
+    setSavedStatuses(loadAllStatuses());
+    setSavedQaNotes(loadAllQaNotes());
+    setSavedDevNotes(loadAllDevNotes());
+    setSavedQaAuthors(loadAllQaNoteAuthors());
+    setSavedDevAuthors(loadAllDevNoteAuthors());
+    setSavedSeverities(loadAllSeverities());
+    setSavedAssignees(loadAllAssigneeOverrides());
+    setSavedSprints(loadAllSprintOverrides());
+  }, []);
+
+  // After auth is ready, pull authoritative test_results from the cloud into
+  // localStorage so this browser shows whatever was last saved to the DB.
   useEffect(() => {
+    if (authLoading || !user) return;
     let cancelled = false;
     (async () => {
       try {
-        const n = await hydrateTestResultsToLocal();
-        if (cancelled || !n) return;
-        setSavedStatuses(loadAllStatuses());
-        setSavedQaNotes(loadAllQaNotes());
-        setSavedDevNotes(loadAllDevNotes());
-        setSavedQaAuthors(loadAllQaNoteAuthors());
-        setSavedDevAuthors(loadAllDevNoteAuthors());
-        setSavedSeverities(loadAllSeverities());
-        setSavedAssignees(loadAllAssigneeOverrides());
-        setSavedSprints(loadAllSprintOverrides());
+        await hydrateTestResultsToLocal();
+        if (cancelled) return;
+        reloadSavedFromLocal();
       } catch (e) {
         console.warn("[testing] hydrate failed", e);
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [authLoading, user?.id, reloadSavedFromLocal]);
+
   // Live sync — when any user changes a test_results row (status, notes,
   // assignee...), re-hydrate so every other open Testing tab updates
   // without a manual refresh. Without this, a tester who already loaded
@@ -305,14 +315,7 @@ export function TestPlanTab() {
         try {
           await hydrateTestResultsToLocal();
           if (cancelled) return;
-          setSavedStatuses(loadAllStatuses());
-          setSavedQaNotes(loadAllQaNotes());
-          setSavedDevNotes(loadAllDevNotes());
-          setSavedQaAuthors(loadAllQaNoteAuthors());
-          setSavedDevAuthors(loadAllDevNoteAuthors());
-          setSavedSeverities(loadAllSeverities());
-          setSavedAssignees(loadAllAssigneeOverrides());
-          setSavedSprints(loadAllSprintOverrides());
+          reloadSavedFromLocal();
         } catch (e) {
           console.warn("[testing] realtime refresh failed", e);
         }
@@ -331,7 +334,7 @@ export function TestPlanTab() {
       if (refreshTimer) clearTimeout(refreshTimer);
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [reloadSavedFromLocal]);
   // Bump this to re-read description overrides from storage after edits.
   const [descVersion, setDescVersion] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -429,6 +432,10 @@ export function TestPlanTab() {
   // Notes pre-fill only when the last saved author is the current user;
   // otherwise a blank draft is shown so a different user enters a new note.
   const statuses = useMemo(() => ({ ...savedStatuses, ...dStatuses }), [savedStatuses, dStatuses]);
+  const getStatus = useCallback(
+    (id: string) => resolveTestStatus(statuses, id),
+    [statuses],
+  );
   const qaNotes = useMemo(() => {
     const out: Record<string, string> = {};
     for (const [id, note] of Object.entries(savedQaNotes)) {
@@ -707,6 +714,29 @@ export function TestPlanTab() {
     setSaveProgress(null);
     if (failCount === 0) {
       toast.success(`Saved ${selectedCount} change${selectedCount === 1 ? "" : "s"} to cloud.`);
+      const assigneeNotifications = ops
+        .filter(
+          (o) =>
+            o.kind === "push" &&
+            typeof o.patch?.assignee === "string" &&
+            o.patch.assignee.trim() &&
+            o.patch.assignee !== "Unassigned",
+        )
+        .map((o) => ({
+          testId: o.testId,
+          assignee: o.patch!.assignee as string,
+        }));
+      if (assigneeNotifications.length) {
+        notifyAssignees({ data: { assignments: assigneeNotifications } })
+          .then((result) => {
+            if (result.sent > 0) {
+              toast.message(
+                `Assignment email sent to ${result.sent} beta tester${result.sent === 1 ? "" : "s"}.`,
+              );
+            }
+          })
+          .catch((err) => console.warn("[testing] beta assignment email failed", err));
+      }
     } else {
       toast.error(`Saved locally, but ${failCount} of ${ops.length} cloud write${ops.length === 1 ? "" : "s"} failed — see console.`);
     }
@@ -747,7 +777,7 @@ export function TestPlanTab() {
       // longer overwrite the primary QA owner on fail.
       raw = ov || t.assignee;
     } else {
-      raw = ov || getTestAssignee(t, statuses[t.id]);
+      raw = ov || getTestAssignee(t, getStatus(t.id));
     }
     if (raw === "Me") return "Evelyn";
     if (raw === "Design" || raw === "Dev") return "Eng";
@@ -759,7 +789,7 @@ export function TestPlanTab() {
   const effOwners = (t: TestCase): string[] => {
     return computeTestOwners({
       primary: effAssignee(t),
-      status: statuses[t.id],
+      status: getStatus(t.id),
       isAutomated: AUTOMATED_TEST_IDS.has(t.id),
     });
   };
@@ -831,7 +861,7 @@ export function TestPlanTab() {
     const q = query.toLowerCase().trim();
     return scopedCases.filter((t) => {
       if (!multiSelectMatches(areaFilter, t.area)) return false;
-      if (!multiSelectMatches(statusFilter, statuses[t.id] ?? "not_run")) return false;
+      if (!multiSelectMatches(statusFilter, getStatus(t.id))) return false;
       if (ownerFilter.length > 0 && !effOwners(t).some((o) => multiSelectMatches(ownerFilter, o))) return false;
       if (!multiSelectMatches(sprintFilter, effSprint(t))) return false;
       if (!q) return true;
@@ -904,7 +934,7 @@ export function TestPlanTab() {
       pass: 0, fail: 0, blocked: 0, not_run: 0, in_progress: 0,
       fixed_retest: 0, failed_retest: 0,
     };
-    for (const t of scopedCases) c[statuses[t.id] ?? "not_run"]++;
+    for (const t of scopedCases) c[getStatus(t.id)]++;
     return c;
   }, [statuses, scopedCases]);
   const passRate = counts.total ? Math.round((counts.pass / counts.total) * 100) : 0;
@@ -936,7 +966,7 @@ export function TestPlanTab() {
       }
     }
     for (const t of scopedCases) {
-      const s = (statuses[t.id] ?? "not_run") as TestStatus;
+      const s = getStatus(t.id) as TestStatus;
       for (const owner of effOwners(t)) {
         if (!out[owner]) out[owner] = { total: 0, pass: 0, fail: 0, blocked: 0, not_run: 0, in_progress: 0, fixed_retest: 0, failed_retest: 0 };
         out[owner].total++;
@@ -1308,7 +1338,7 @@ export function TestPlanTab() {
                   <TestCaseCard
                     key={t.id}
                     t={t}
-                    status={statuses[t.id] ?? "not_run"}
+                    status={getStatus(t.id)}
                     qaNote={qaNotes[t.id] ?? ""}
                     devNote={devNotes[t.id] ?? ""}
                     severity={severities[t.id] ?? ""}

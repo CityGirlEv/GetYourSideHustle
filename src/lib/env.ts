@@ -109,11 +109,24 @@ function hydrateRuntimeEnvFromBindings() {
   }
 }
 
+function isLocalDev(): boolean {
+  if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'production') return false
+  if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) return true
+  if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') return true
+  return false
+}
+
 /** Read a secret from runtime bindings, including Cloudflare `env` bags. */
 export function getRuntimeSecret(name: string): string | undefined {
   hydrateRuntimeEnvFromBindings()
 
   const candidates: string[] = []
+
+  // Local dev: .env should win over stale Cloudflare remote bindings in vite dev.
+  if (isLocalDev() && typeof process !== 'undefined' && process.env) {
+    const fromProcess = trimEnvValue(process.env[name])
+    if (fromProcess) candidates.push(fromProcess)
+  }
 
   if (typeof globalThis !== 'undefined') {
     for (const bag of [(globalThis as any).__env__, (globalThis as any).__ENV__]) {

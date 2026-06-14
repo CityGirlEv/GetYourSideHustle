@@ -6,6 +6,7 @@ import { getAdminNotificationEmails } from '@/lib/admin-notification-emails'
 import { TEMPLATES } from '@/lib/email-templates/registry'
 import { getEmailTemplateOverride } from '@/lib/email-templates/overrides.server'
 import { ensureEmailBranding } from '@/lib/email-templates/email-branding.server'
+import { resolveTemplateContent } from '@/lib/email-templates/template-merge.server'
 import { getTransactionalFromAddress } from '@/lib/send-transactional-email'
 
 export const TRANSACTIONAL_SENDER_DOMAIN = 'notify.mypartb.com'
@@ -295,20 +296,26 @@ export async function dispatchTransactionalTemplate(
   }
 
   const element = React.createElement(template.component, templateData)
-  let html = await render(element)
-  let plainText = await render(element, { plainText: true })
+  const renderedHtml = await render(element)
+  const renderedText = await render(element, { plainText: true })
 
-  let resolvedSubject =
+  const renderedSubject =
     typeof template.subject === 'function'
       ? template.subject(templateData)
       : template.subject
 
   const override = await getEmailTemplateOverride(templateName)
-  if (override) {
-    html = override.html
-    plainText = override.text
-    resolvedSubject = override.subject
-  }
+  const resolved = resolveTemplateContent({
+    templateName,
+    templateData,
+    renderedHtml,
+    renderedText,
+    renderedSubject,
+    override,
+  })
+  let html = resolved.html
+  let plainText = resolved.text
+  let resolvedSubject = resolved.subject
 
   html = await ensureEmailBranding(html, {
     siteUrl: getEnvVariable('PUBLIC_SITE_URL') ?? 'https://mypartb.pages.dev',

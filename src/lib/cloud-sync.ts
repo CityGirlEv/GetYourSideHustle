@@ -5,6 +5,7 @@
 // history on the DB side (latest entry by any author is shown locally).
 // ============================================================================
 import { supabase } from "@/integrations/supabase/client";
+import { localStorageKeysForTestResultId } from "@/lib/platform-variants";
 import { toast } from "sonner";
 import {
   TEST_CASES,
@@ -269,18 +270,17 @@ export async function hydrateTestResultsToLocal(): Promise<number> {
   const { data, error } = await supabase
     .from("test_results")
     .select("test_id, status, severity, assignee, sprint_id, description_override, qa_notes, dev_notes");
-  if (error || !data) return 0;
-  for (const row of data) {
-    const id = row.test_id as string;
-    // Cloud is the source of truth across browsers/users. Overwrite local
-    // values so updates made by other users (e.g. QA flipping status) are
-    // reflected on every device after hydrate, not just the device that
-    // made the change. Local writes always dual-push to cloud first, so by
-    // the time hydrate runs the cloud row matches the most recent action.
-    const setOrClear = (k: string, v: string | null) => {
-      if (v == null || v === "") localStorage.removeItem(k);
-      else localStorage.setItem(k, v);
-    };
+  if (error) {
+    console.warn("[cloud-sync] hydrateTestResultsToLocal failed:", error.message);
+    return 0;
+  }
+  if (!data) return 0;
+
+  const applyRowToKey = (
+    id: string,
+    row: (typeof data)[number],
+    setOrClear: (k: string, v: string | null) => void,
+  ) => {
     setOrClear(TEST_STATUS_KEY(id),   (row.status as string | null) ?? null);
     setOrClear(TEST_SEVERITY_KEY(id), (row.severity as string | null) ?? null);
     setOrClear(TEST_ASSIGNEE_KEY(id), (row.assignee as string | null) ?? null);
@@ -295,6 +295,17 @@ export async function hydrateTestResultsToLocal(): Promise<number> {
     setOrClear(TEST_DEV_NOTE_KEY(id), dev.length ? dev[dev.length - 1].text : null);
     setOrClear(TEST_QA_NOTE_AUTHOR_KEY(id),  qa.length  ? qa[qa.length - 1].author_id  : null);
     setOrClear(TEST_DEV_NOTE_AUTHOR_KEY(id), dev.length ? dev[dev.length - 1].author_id : null);
+  };
+
+  for (const row of data) {
+    const id = row.test_id as string;
+    const setOrClear = (k: string, v: string | null) => {
+      if (v == null || v === "") localStorage.removeItem(k);
+      else localStorage.setItem(k, v);
+    };
+    for (const storageId of localStorageKeysForTestResultId(id)) {
+      applyRowToKey(storageId, row, setOrClear);
+    }
   }
   return data.length;
 }

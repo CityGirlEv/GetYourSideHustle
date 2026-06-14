@@ -18,7 +18,7 @@ describe('sendEmailTemplateTest server function', () => {
 
   it('enqueues into the transactional queue with a [TEST] subject prefix', () => {
     expect(SRC).toMatch(/queue_name: 'transactional_emails'/)
-    expect(SRC).toMatch(/\[TEST\] \$\{data\.subject\}/)
+    expect(SRC).toMatch(/\[TEST\] \$\{merged\.subject\}/)
   })
 
   it('validates recipient as an email and caps payload sizes', () => {

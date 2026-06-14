@@ -15,6 +15,8 @@ export interface NewRegistrationAdminProps {
   phone?: string
   requestedRole?: string
   qaDevices?: string[]
+  additionalRole?: boolean
+  existingRoles?: string[]
 }
 
 const NewRegistrationAdminEmail = ({
@@ -24,27 +26,36 @@ const NewRegistrationAdminEmail = ({
   phone = '',
   requestedRole = '',
   qaDevices = [],
+  additionalRole = false,
+  existingRoles = [],
 }: NewRegistrationAdminProps) => {
   const fullName = `${firstName} ${lastName}`.trim() || 'A new user'
   const devicesLabel = qaDevices.length ? qaDevices.join(', ') : 'None specified'
+  const existingRolesLabel = existingRoles.length ? existingRoles.join(', ') : 'None'
   return (
     <Html lang="en" dir="ltr">
       <Head />
-      <Preview>New beta registration — {fullName}</Preview>
+      <Preview>
+        {additionalRole ? 'Additional beta role request' : 'New beta registration'} — {fullName}
+      </Preview>
       <Body style={main}>
         <Container style={container}>
           <EmailHeader siteUrl={SITE_URL} />
-          <Heading style={h1}>New beta access request</Heading>
+          <Heading style={h1}>
+            {additionalRole ? 'Additional beta role request' : 'New beta access request'}
+          </Heading>
           <Text style={text}>
-            <b>{fullName}</b> just signed the NDA and registered for {SITE_NAME}. The
-            account has been created but is <b>disabled</b> until an administrator
-            approves it.
+            <b>{fullName}</b>{' '}
+            {additionalRole
+              ? `signed the NDA again and requested an additional ${requestedRole || 'role'} on their existing ${SITE_NAME} account.`
+              : `just signed the NDA and registered for ${SITE_NAME}. The account has been created but is disabled until an administrator approves it.`}
           </Text>
           <Section style={card}>
             <Row label="Name" value={fullName} />
             <Row label="Email" value={email} />
             <Row label="Phone" value={phone} />
-            <Row label="Requested role" value={requestedRole} />
+            {additionalRole ? <Row label="Existing roles" value={existingRolesLabel} /> : null}
+            <Row label={additionalRole ? 'New role requested' : 'Requested role'} value={requestedRole} />
             {requestedRole === 'qa' && <Row label="QA devices" value={devicesLabel} />}
           </Section>
           <Hr style={hr} />

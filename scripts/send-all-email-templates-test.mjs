@@ -78,4 +78,6 @@ for (const r of json.results ?? []) {
   if (r.ok) console.log(`  ✓ ${r.templateName} → ${r.messageId}`);
 }
 
-console.log("\nDone. Check inbox (Resend sandbox may only deliver to the account owner until mypartb.com is verified).");
+console.log(
+  "\nDone. Check inbox — sends use noreply@mypartb.com (RESEND_API_KEY must match the verified Resend account).",
+);

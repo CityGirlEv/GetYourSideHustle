@@ -23,6 +23,10 @@ import { template as welcomeTemplate } from './welcome'
 import { template as agentAssignmentTemplate } from './agent-assignment'
 import { template as contactRequestTemplate } from './contact-request'
 import { template as scenarioClaimedTemplate } from './scenario-claimed'
+import { template as betaTestAssignmentTemplate } from './beta-test-assignment'
+import { template as qaDailySummaryAdminTemplate } from './qa-daily-summary-admin'
+import { template as qaRegistrationConfirmationTemplate } from './qa-registration-confirmation'
+import { template as agentRegistrationConfirmationTemplate } from './agent-registration-confirmation'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'new-registration-admin': newRegistrationAdminTemplate,
@@ -31,4 +35,8 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'agent-assignment': agentAssignmentTemplate,
   'contact-request': contactRequestTemplate,
   'scenario-claimed': scenarioClaimedTemplate,
+  'beta-test-assignment': betaTestAssignmentTemplate,
+  'qa-daily-summary-admin': qaDailySummaryAdminTemplate,
+  'qa-registration-confirmation': qaRegistrationConfirmationTemplate,
+  'agent-registration-confirmation': agentRegistrationConfirmationTemplate,
 }

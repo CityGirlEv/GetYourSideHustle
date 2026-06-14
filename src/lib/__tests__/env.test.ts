@@ -90,10 +90,32 @@ describe("getRuntimeSecret helper", () => {
     delete (globalThis as any).__ENV__;
   });
 
-  it("prefers live worker bindings over process.env", () => {
+  it("prefers live worker bindings over process.env in production", () => {
+    const prevDev = (import.meta as { env?: { DEV?: boolean } }).env?.DEV;
+    if ((import.meta as { env?: { DEV?: boolean } }).env) {
+      (import.meta as { env: { DEV?: boolean } }).env.DEV = false;
+    }
+    process.env.NODE_ENV = "production";
     process.env.RESEND_API_KEY = "re_from_process_env_key";
     (globalThis as any).__env__ = { RESEND_API_KEY: "re_from_worker_binding_key" };
     expect(getRuntimeSecret("RESEND_API_KEY")).toBe("re_from_worker_binding_key");
+    process.env.NODE_ENV = "test";
+    if ((import.meta as { env?: { DEV?: boolean } }).env) {
+      (import.meta as { env: { DEV?: boolean } }).env.DEV = prevDev;
+    }
+  });
+
+  it("prefers process.env over worker bindings in local dev", () => {
+    if ((import.meta as { env?: { DEV?: boolean } }).env) {
+      (import.meta as { env: { DEV?: boolean } }).env.DEV = true;
+    }
+    process.env.RESEND_API_KEY = "re_local_dev_key_abc";
+    (globalThis as any).__env__ = { RESEND_API_KEY: "re_from_worker_binding_key" };
+    expect(getRuntimeSecret("RESEND_API_KEY")).toBe("re_local_dev_key_abc");
+    delete (globalThis as any).__env__;
+    if ((import.meta as { env?: { DEV?: boolean } }).env) {
+      (import.meta as { env: { DEV?: boolean } }).env.DEV = false;
+    }
   });
 
   it("trims secret values from worker bindings", () => {
@@ -101,15 +123,26 @@ describe("getRuntimeSecret helper", () => {
     expect(getRuntimeSecret("RESEND_API_KEY")).toBe("re_valid_resend_key");
   });
 
-  it("falls back to process.env in local dev", () => {
+  it("falls back to process.env in local dev when bindings are absent", () => {
+    if ((import.meta as { env?: { DEV?: boolean } }).env) {
+      (import.meta as { env: { DEV?: boolean } }).env.DEV = true;
+    }
     process.env.RESEND_API_KEY = "re_local_dev_key_abc";
     expect(getRuntimeSecret("RESEND_API_KEY")).toBe("re_local_dev_key_abc");
+    if ((import.meta as { env?: { DEV?: boolean } }).env) {
+      (import.meta as { env: { DEV?: boolean } }).env.DEV = false;
+    }
   });
 
   it("skips placeholder worker bindings for Resend keys", () => {
+    if ((import.meta as { env?: { DEV?: boolean } }).env) {
+      (import.meta as { env: { DEV?: boolean } }).env.DEV = false;
+    }
+    process.env.NODE_ENV = "production";
     (globalThis as any).__env__ = { RESEND_API_KEY: "re_your_resend_api_key" };
     process.env.RESEND_API_KEY = "re_cKCwKPD9_N4kLX3pEwjWGJF3e1aJ36fpW";
     expect(getRuntimeSecret("RESEND_API_KEY")).toBe("re_cKCwKPD9_N4kLX3pEwjWGJF3e1aJ36fpW");
+    process.env.NODE_ENV = "test";
   });
 
   it("skips placeholder Lovable keys", () => {

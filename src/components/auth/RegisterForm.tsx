@@ -29,6 +29,8 @@ export function RegisterForm({ embedded, onSignInClick }: RegisterFormProps) {
   const [qaDeviceOther, setQaDeviceOther] = useState("");
   const [ndaOpen, setNdaOpen] = useState(false);
   const [done, setDone] = useState(false);
+  const [roleAdded, setRoleAdded] = useState(false);
+  const [accountDisabled, setAccountDisabled] = useState(true);
   const [signatureName, setSignatureName] = useState("");
   const [accept, setAccept] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -60,7 +62,7 @@ export function RegisterForm({ embedded, onSignInClick }: RegisterFormProps) {
       const devices = requestedRole === "qa"
         ? Array.from(new Set([...qaDevices, ...extras]))
         : undefined;
-      await doRegister({
+      const result = await doRegister({
         data: {
           first_name: firstName.trim(),
           last_name: lastName.trim(),
@@ -73,6 +75,8 @@ export function RegisterForm({ embedded, onSignInClick }: RegisterFormProps) {
           qa_devices: devices,
         },
       });
+      setRoleAdded(!!result?.role_added);
+      setAccountDisabled(result?.account_disabled ?? true);
       setNdaOpen(false);
       setDone(true);
     } catch (e) {
@@ -99,21 +103,44 @@ export function RegisterForm({ embedded, onSignInClick }: RegisterFormProps) {
           </DialogHeader>
           <div className="space-y-3 text-sm">
             <p>
-              Thanks, <b>{firstName}</b>! Your NDA is signed and your account has been created.
+              Thanks, <b>{firstName}</b>!
+              {roleAdded ? (
+                <>
+                  {" "}
+                  Your NDA is signed and the <b>{requestedRole === "qa" ? "QA tester" : "agent"}</b> role
+                  has been added to your account.
+                </>
+              ) : (
+                <> Your NDA is signed and your account has been created.</>
+              )}
             </p>
-            <div className="rounded-md border border-amber/40 bg-amber/10 p-3">
-              <p className="font-semibold mb-1">Your account is under review.</p>
-              <p className="text-muted-foreground">
-                It is <b>disabled</b> until an administrator approves it. You will <b>not</b> be able to sign in yet.
-              </p>
-            </div>
+            {accountDisabled ? (
+              <div className="rounded-md border border-amber/40 bg-amber/10 p-3">
+                <p className="font-semibold mb-1">Your account is under review.</p>
+                <p className="text-muted-foreground">
+                  It is <b>disabled</b> until an administrator approves it. You will <b>not</b> be able to sign in yet.
+                </p>
+              </div>
+            ) : (
+              <div className="rounded-md border border-emerald/40 bg-emerald/10 p-3">
+                <p className="font-semibold mb-1">Your account is active.</p>
+                <p className="text-muted-foreground">
+                  Sign in with your existing email and password to use your new{" "}
+                  {requestedRole === "qa" ? "QA tester" : "agent"} access.
+                </p>
+              </div>
+            )}
             <div>
               <p className="font-semibold mb-1">What happens next</p>
               <ol className="list-decimal ml-5 space-y-1 text-muted-foreground">
-                <li>An admin reviews your request (typically within 1 business day).</li>
-                <li>
-                  Once approved, you&apos;ll receive an <b>email at {email}</b> letting you know your account is active.
-                </li>
+                {accountDisabled ? (
+                  <>
+                    <li>An admin reviews your request (typically within 1 business day).</li>
+                    <li>
+                      Once approved, you&apos;ll receive an <b>email at {email}</b> letting you know your account is active.
+                    </li>
+                  </>
+                ) : null}
                 <li>Return to the sign-in tab and log in with your email and password.</li>
                 {requestedRole === "qa" && (
                   <li>
@@ -193,7 +220,10 @@ export function RegisterForm({ embedded, onSignInClick }: RegisterFormProps) {
               </div>
             </button>
           </div>
-          <p className="text-[11px] text-muted-foreground">An administrator will review and enable your account.</p>
+          <p className="text-[11px] text-muted-foreground">
+            An administrator will review and enable your account. Already registered as QA or Agent?
+            Use the same email here to add another role to your profile.
+          </p>
         </div>
         {requestedRole === "qa" && (
           <div className="space-y-2 rounded-md border border-border p-3 bg-muted/20">

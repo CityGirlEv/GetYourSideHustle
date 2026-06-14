@@ -12,6 +12,7 @@ import { EmailChangeEmail } from '@/lib/email-templates/email-change'
 import { ReauthenticationEmail } from '@/lib/email-templates/reauthentication'
 import { getEmailTemplateOverride } from '@/lib/email-templates/overrides.server'
 import { ensureEmailBranding } from '@/lib/email-templates/email-branding.server'
+import { resolveTemplateContent } from '@/lib/email-templates/template-merge.server'
 import { getTransactionalFromAddress } from '@/lib/send-transactional-email'
 import { triggerEmailQueueProcess } from '@/lib/trigger-email-queue-process'
 
@@ -151,18 +152,20 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
         const element = React.createElement(EmailTemplate, templateProps)
         let html = await render(element)
         let text = await render(element, { plainText: true })
-        let subject = EMAIL_SUBJECTS[emailType] || 'Notification'
+        const renderedSubject = EMAIL_SUBJECTS[emailType] || 'Notification'
 
-        // Admin override takes precedence. Note: auth templates contain dynamic
-        // tokens/URLs that an admin cannot inject from the editor — so an
-        // override of an auth template should be limited to wording around
-        // those tokens. Admins are warned about this in the editor UI.
         const override = await getEmailTemplateOverride(emailType)
-        if (override) {
-          html = override.html
-          text = override.text
-          subject = override.subject
-        }
+        const merged = resolveTemplateContent({
+          templateName: emailType,
+          templateData: templateProps,
+          renderedHtml: html,
+          renderedText: text,
+          renderedSubject,
+          override,
+        })
+        html = merged.html
+        text = merged.text
+        let subject = merged.subject
 
         html = await ensureEmailBranding(html, { siteUrl: templateProps.siteUrl })
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL

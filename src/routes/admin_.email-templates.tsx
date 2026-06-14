@@ -75,10 +75,28 @@ function EmailTemplatesAdminPage() {
     queryFn: () => list(),
   })
   const [selected, setSelected] = useState<string | null>(null)
+  const [kindFilter, setKindFilter] = useState<'all' | 'transactional' | 'auth'>('all')
+
+  const transactional = useMemo(
+    () => (data ?? []).filter((t) => t.kind === 'transactional'),
+    [data],
+  )
+  const auth = useMemo(() => (data ?? []).filter((t) => t.kind === 'auth'), [data])
+  const filtered = useMemo(() => {
+    if (kindFilter === 'transactional') return transactional
+    if (kindFilter === 'auth') return auth
+    return data ?? []
+  }, [data, kindFilter, transactional, auth])
 
   useEffect(() => {
-    if (!selected && data && data.length) setSelected(data[0].name)
-  }, [data, selected])
+    if (!selected && filtered.length) setSelected(filtered[0].name)
+  }, [filtered, selected])
+
+  useEffect(() => {
+    if (selected && filtered.length && !filtered.some((t) => t.name === selected)) {
+      setSelected(filtered[0]?.name ?? null)
+    }
+  }, [filtered, selected])
 
   return (
     <AppShell title="Email templates" subtitle="Edit any system email">
@@ -92,9 +110,11 @@ function EmailTemplatesAdminPage() {
           </h1>
         </div>
         <p className="text-sm text-muted-foreground">
-          Edit the subject line and HTML body for any email the system sends. Saved
-          overrides are used immediately for new sends. Reset an override to fall
-          back to the built-in template.
+          Edit the subject line and HTML body for any email the system sends — including{' '}
+          <strong>auth emails</strong> (signup, password reset, magic link, etc.) and{' '}
+          <strong>transactional emails</strong> (welcome, registration alerts, beta test
+          assignments). Every template includes the Medicare Optimizer header logo. Saved
+          overrides are used immediately for new sends.
         </p>
 
         {isLoading ? (
@@ -104,33 +124,48 @@ function EmailTemplatesAdminPage() {
         ) : (
           <div className="grid md:grid-cols-[320px_1fr] gap-4">
             <Card className="p-2 max-h-[70vh] overflow-y-auto">
-              <div className="space-y-1">
-                {(data ?? []).map((t) => (
-                  <button
-                    key={t.name}
-                    onClick={() => setSelected(t.name)}
-                    className={`w-full text-left rounded-md px-3 py-2 text-sm transition-colors ${
-                      selected === t.name
-                        ? 'bg-primary/10 text-primary'
-                        : 'hover:bg-muted'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-medium truncate">{t.displayName}</span>
-                      {t.overridden && (
-                        <Badge variant="secondary" className="text-[10px]">
-                          Custom
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="text-[11px] text-muted-foreground flex items-center gap-1">
-                      <span className="uppercase">{t.kind}</span>
-                      <span>·</span>
-                      <span className="truncate">{t.name}</span>
-                    </div>
-                  </button>
-                ))}
+              <div className="px-2 pt-1 pb-2 space-y-2 border-b border-border mb-2">
+                <div className="text-xs text-muted-foreground">
+                  {transactional.length} transactional · {auth.length} auth
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {(
+                    [
+                      ['all', `All (${(data ?? []).length})`],
+                      ['transactional', `Transactional (${transactional.length})`],
+                      ['auth', `Auth (${auth.length})`],
+                    ] as const
+                  ).map(([value, label]) => (
+                    <Button
+                      key={value}
+                      type="button"
+                      size="sm"
+                      variant={kindFilter === value ? 'default' : 'outline'}
+                      className="h-7 text-xs"
+                      onClick={() => setKindFilter(value)}
+                    >
+                      {label}
+                    </Button>
+                  ))}
+                </div>
               </div>
+              <TemplateSidebarSection
+                title="Transactional"
+                templates={kindFilter === 'auth' ? [] : transactional}
+                selected={selected}
+                onSelect={setSelected}
+                hidden={kindFilter === 'auth'}
+              />
+              <TemplateSidebarSection
+                title="Auth"
+                templates={kindFilter === 'transactional' ? [] : auth}
+                selected={selected}
+                onSelect={setSelected}
+                hidden={kindFilter === 'transactional'}
+              />
+              {kindFilter === 'all' && filtered.length === 0 && (
+                <p className="px-3 py-2 text-sm text-muted-foreground">No templates found.</p>
+              )}
             </Card>
 
             <div>{selected ? <TemplateEditor name={selected} /> : null}</div>
@@ -143,6 +178,58 @@ function EmailTemplatesAdminPage() {
         <EmailTemplateChangesPanel />
       </div>
     </AppShell>
+  )
+}
+
+type TemplateListItem = {
+  name: string
+  kind: string
+  displayName: string
+  overridden?: boolean
+}
+
+function TemplateSidebarSection({
+  title,
+  templates,
+  selected,
+  onSelect,
+  hidden,
+}: {
+  title: string
+  templates: TemplateListItem[]
+  selected: string | null
+  onSelect: (name: string) => void
+  hidden?: boolean
+}) {
+  if (hidden || templates.length === 0) return null
+  return (
+    <div className="mb-3">
+      <div className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        {title}
+      </div>
+      <div className="space-y-1">
+        {templates.map((t) => (
+          <button
+            key={t.name}
+            type="button"
+            onClick={() => onSelect(t.name)}
+            className={`w-full text-left rounded-md px-3 py-2 text-sm transition-colors ${
+              selected === t.name ? 'bg-primary/10 text-primary' : 'hover:bg-muted'
+            }`}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-medium truncate">{t.displayName}</span>
+              {t.overridden && (
+                <Badge variant="secondary" className="text-[10px]">
+                  Custom
+                </Badge>
+              )}
+            </div>
+            <div className="text-[11px] text-muted-foreground truncate">{t.name}</div>
+          </button>
+        ))}
+      </div>
+    </div>
   )
 }
 
@@ -321,9 +408,26 @@ function TemplateEditor({ name }: { name: string }) {
         </div>
         {data.kind === 'auth' && (
           <p className="text-xs text-amber-600 mt-2">
-            Auth emails carry dynamic links and codes (confirmation URL, token,
-            email). Keep the original placeholders in the HTML — they are
-            populated at send time and cannot be hard-coded.
+            Auth emails use merge fields such as{' '}
+            <code className="rounded bg-muted px-1">{'{{confirmationUrl}}'}</code>,{' '}
+            <code className="rounded bg-muted px-1">{'{{token}}'}</code>, and{' '}
+            <code className="rounded bg-muted px-1">{'{{email}}'}</code>. They do not use name
+            greetings like &quot;Hi Jane&quot; — use the built-in headings (Confirm your email,
+            Reset your password, etc.).
+          </p>
+        )}
+        <p className="text-xs text-muted-foreground mt-2">
+          The header logo is included automatically on every template (built-in and saved
+          overrides). Do not remove the logo image at the top — it will be re-added on save if
+          missing.
+        </p>
+        {data.mergeFields?.length > 0 && (
+          <p className="text-xs text-muted-foreground mt-2">
+            Merge fields (use in subject or body):{' '}
+            {data.mergeFields.map((field) => (
+              <code key={field} className="mx-0.5 rounded bg-muted px-1">{`{{${field}}}`}</code>
+            ))}
+            . Sample preview values like Jane Doe are replaced automatically on send.
           </p>
         )}
       </Card>

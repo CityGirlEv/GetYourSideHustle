@@ -7,6 +7,11 @@ import { TEMPLATES } from '@/lib/email-templates/registry'
 import { ALL_TEMPLATES, findTemplate } from '@/lib/email-templates/all-templates.server'
 import { getEmailTemplateOverride } from '@/lib/email-templates/overrides.server'
 import { ensureEmailBranding } from '@/lib/email-templates/email-branding.server'
+import { resolveTemplateContent } from '@/lib/email-templates/template-merge.server'
+import {
+  AUTH_TEMPLATE_NAMES,
+  getAuthTemplateTestData,
+} from '@/lib/email-templates/template-sample-props.server'
 import { getTransactionalFromAddress, getTransactionalSenderDomain } from '@/lib/send-transactional-email'
 import { triggerEmailQueueProcess } from '@/lib/trigger-email-queue-process'
 import { getAdminNotificationEmails } from '@/lib/admin-notification-emails'
@@ -100,17 +105,26 @@ export async function sendOneTestEmail(
   }
 
   const messageId = crypto.randomUUID()
-  const element = React.createElement(resolved.component, resolved.previewData)
-  let html = await render(element)
-  let plainText = await render(element, { plainText: true })
-  let subject = resolved.resolveSubject(resolved.previewData)
+  const templateData = AUTH_TEMPLATE_NAMES.has(templateName)
+    ? getAuthTemplateTestData(templateName, recipient)
+    : resolved.previewData
+  const element = React.createElement(resolved.component, templateData)
+  const renderedHtml = await render(element)
+  const renderedText = await render(element, { plainText: true })
+  const renderedSubject = resolved.resolveSubject(templateData)
 
   const override = await getEmailTemplateOverride(templateName)
-  if (override) {
-    html = override.html
-    plainText = override.text
-    subject = override.subject
-  }
+  const merged = resolveTemplateContent({
+    templateName,
+    templateData,
+    renderedHtml,
+    renderedText,
+    renderedSubject,
+    override,
+  })
+  let html = merged.html
+  let plainText = merged.text
+  let subject = merged.subject
 
   const unsubscribeToken = await getOrCreateUnsubscribeToken(recipient)
   const siteUrl =
@@ -257,7 +271,7 @@ export const Route = createFileRoute('/api/public/send-test-email')({
             templates: names,
             results,
             recipient,
-            note: 'Emails queued. Delivery depends on domain verification.',
+            note: 'Emails queued from noreply@mypartb.com. Requires RESEND_API_KEY for the verified Resend account.',
           })
         }
 
@@ -273,7 +287,7 @@ export const Route = createFileRoute('/api/public/send-test-email')({
           messageId: result.messageId,
           template: result.templateName,
           recipient: result.recipient,
-          note: 'Email queued. Delivery depends on domain verification.',
+          note: 'Email queued from noreply@mypartb.com. Requires RESEND_API_KEY for the verified Resend account.',
         })
       },
     },

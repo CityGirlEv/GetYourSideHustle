@@ -36,6 +36,7 @@ import { Route as ScenarioCreatedCodeRouteImport } from './routes/scenario.creat
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as ApiPublicTrackVisitRouteImport } from './routes/api/public/track-visit'
 import { Route as ApiPublicSendTestEmailRouteImport } from './routes/api/public/send-test-email'
+import { Route as ApiCronQaDailySummaryRouteImport } from './routes/api/cron/qa-daily-summary'
 import { Route as AgentScenarioCodeRouteImport } from './routes/agent.scenario.$code'
 import { Route as AdvisorScenarioCodeRouteImport } from './routes/advisor.scenario.$code'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
@@ -180,6 +181,11 @@ const ApiPublicSendTestEmailRoute = ApiPublicSendTestEmailRouteImport.update({
   path: '/api/public/send-test-email',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCronQaDailySummaryRoute = ApiCronQaDailySummaryRouteImport.update({
+  id: '/api/cron/qa-daily-summary',
+  path: '/api/cron/qa-daily-summary',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AgentScenarioCodeRoute = AgentScenarioCodeRouteImport.update({
   id: '/scenario/$code',
   path: '/scenario/$code',
@@ -250,6 +256,7 @@ export interface FileRoutesByFullPath {
   '/scenario/new': typeof ScenarioNewRoute
   '/advisor/scenario/$code': typeof AdvisorScenarioCodeRouteWithChildren
   '/agent/scenario/$code': typeof AgentScenarioCodeRoute
+  '/api/cron/qa-daily-summary': typeof ApiCronQaDailySummaryRoute
   '/api/public/send-test-email': typeof ApiPublicSendTestEmailRoute
   '/api/public/track-visit': typeof ApiPublicTrackVisitRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -287,6 +294,7 @@ export interface FileRoutesByTo {
   '/scenario/new': typeof ScenarioNewRoute
   '/advisor/scenario/$code': typeof AdvisorScenarioCodeRouteWithChildren
   '/agent/scenario/$code': typeof AgentScenarioCodeRoute
+  '/api/cron/qa-daily-summary': typeof ApiCronQaDailySummaryRoute
   '/api/public/send-test-email': typeof ApiPublicSendTestEmailRoute
   '/api/public/track-visit': typeof ApiPublicTrackVisitRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -325,6 +333,7 @@ export interface FileRoutesById {
   '/scenario/new': typeof ScenarioNewRoute
   '/advisor/scenario/$code': typeof AdvisorScenarioCodeRouteWithChildren
   '/agent/scenario/$code': typeof AgentScenarioCodeRoute
+  '/api/cron/qa-daily-summary': typeof ApiCronQaDailySummaryRoute
   '/api/public/send-test-email': typeof ApiPublicSendTestEmailRoute
   '/api/public/track-visit': typeof ApiPublicTrackVisitRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
@@ -364,6 +373,7 @@ export interface FileRouteTypes {
     | '/scenario/new'
     | '/advisor/scenario/$code'
     | '/agent/scenario/$code'
+    | '/api/cron/qa-daily-summary'
     | '/api/public/send-test-email'
     | '/api/public/track-visit'
     | '/lovable/email/suppression'
@@ -401,6 +411,7 @@ export interface FileRouteTypes {
     | '/scenario/new'
     | '/advisor/scenario/$code'
     | '/agent/scenario/$code'
+    | '/api/cron/qa-daily-summary'
     | '/api/public/send-test-email'
     | '/api/public/track-visit'
     | '/lovable/email/suppression'
@@ -438,6 +449,7 @@ export interface FileRouteTypes {
     | '/scenario/new'
     | '/advisor/scenario/$code'
     | '/agent/scenario/$code'
+    | '/api/cron/qa-daily-summary'
     | '/api/public/send-test-email'
     | '/api/public/track-visit'
     | '/lovable/email/suppression'
@@ -474,6 +486,7 @@ export interface RootRouteChildren {
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   ScenarioCodeRoute: typeof ScenarioCodeRoute
   ScenarioNewRoute: typeof ScenarioNewRoute
+  ApiCronQaDailySummaryRoute: typeof ApiCronQaDailySummaryRoute
   ApiPublicSendTestEmailRoute: typeof ApiPublicSendTestEmailRoute
   ApiPublicTrackVisitRoute: typeof ApiPublicTrackVisitRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
@@ -676,6 +689,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicSendTestEmailRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/cron/qa-daily-summary': {
+      id: '/api/cron/qa-daily-summary'
+      path: '/api/cron/qa-daily-summary'
+      fullPath: '/api/cron/qa-daily-summary'
+      preLoaderRoute: typeof ApiCronQaDailySummaryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/agent/scenario/$code': {
       id: '/agent/scenario/$code'
       path: '/scenario/$code'
@@ -791,6 +811,7 @@ const rootRouteChildren: RootRouteChildren = {
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   ScenarioCodeRoute: ScenarioCodeRoute,
   ScenarioNewRoute: ScenarioNewRoute,
+  ApiCronQaDailySummaryRoute: ApiCronQaDailySummaryRoute,
   ApiPublicSendTestEmailRoute: ApiPublicSendTestEmailRoute,
   ApiPublicTrackVisitRoute: ApiPublicTrackVisitRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
