@@ -80,6 +80,43 @@ describe('template merge fields', () => {
     expect(result.html).not.toContain('Jane Doe')
   })
 
+  it('derives recipientName from email when opt-in has no name', () => {
+    const html = '<p>Hello {{recipientName}}, thanks for opting in.</p>'
+    const out = applyTemplateMergeFields(html, { email: 'jane.doe@example.com' })
+    expect(out).toBe('<p>Hello Jane Doe, thanks for opting in.</p>')
+  })
+
+  it('uses firstName merge field from email local-part', () => {
+    const html = '<p>Hello {{firstName}},</p>'
+    const out = applyTemplateMergeFields(html, { email: 'evelyn3@cox.net' })
+    expect(out).toBe('<p>Hello Evelyn3,</p>')
+  })
+
+  it('falls back to there when email local-part is empty', () => {
+    const html = '<p>Hello {{recipientName}},</p>'
+    const out = applyTemplateMergeFields(html, { email: '@invalid' })
+    expect(out).toBe('<p>Hello there,</p>')
+  })
+
+  it('merges contact-request override greeting for expert opt-in', () => {
+    const result = resolveTemplateContent({
+      templateName: 'contact-request',
+      templateData: { email: 'maria.garcia@example.com', scenarioCode: 'SCN-2026-0001' },
+      renderedHtml: '<p>Thanks for reaching out!</p>',
+      renderedText: 'Thanks for reaching out!',
+      renderedSubject: 'We received your request',
+      override: {
+        subject: 'We received your request',
+        html: '<p>Hello {{recipientName}}, we received your request for scenario {{scenarioCode}}.</p>',
+        text: 'Hello {{recipientName}}',
+      },
+    })
+
+    expect(result.html).toContain('Hello Maria Garcia')
+    expect(result.html).toContain('SCN-2026-0001')
+    expect(result.html).not.toContain('{{recipientName}}')
+  })
+
   it('lists merge fields for auth templates', () => {
     const fields = listTemplateMergeFields('signup')
     expect(fields).toContain('confirmationUrl')

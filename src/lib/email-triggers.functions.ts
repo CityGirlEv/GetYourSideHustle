@@ -38,6 +38,7 @@ export const submitExpertContactRequest = createServerFn({ method: 'POST' })
       templateName: 'contact-request',
       recipientEmail: data.email,
       templateData: {
+        email: data.email,
         scenarioCode: data.scenario_code ?? undefined,
       },
       idempotencyKey: `contact-request-${row.id}`,

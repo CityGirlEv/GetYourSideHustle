@@ -32,7 +32,7 @@ import { useApp } from "@/lib/app-store";
 import { useAssigneeOptions } from "@/lib/use-assignee-options";
 import { useQaTesters } from "@/lib/use-qa-testers";
 import { buildDeviceFilterOptions, testerMatchesDevices } from "@/lib/qa-device-match";
-import { hydrateTestResultsToLocal, cloudPushCheckedSteps, cloudFetchCheckedSteps } from "@/lib/cloud-sync";
+import { hydrateTestResultsToLocal, cloudPushCheckedSteps, cloudFetchCheckedSteps, type CheckedSteps } from "@/lib/cloud-sync";
 import { resolveTestStatus } from "@/lib/test-result-resolve";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -107,7 +107,7 @@ function openTestTarget(path: string) {
   }
 }
 
-function TestTargetLink({ test }: { test: TestCase }) {
+function TestTargetLink({ test, onOpen }: { test: TestCase; onOpen?: () => void }) {
   const path = deriveTestPath(test);
   if (!path) return null;
   const isExternal = /^https?:\/\//.test(path);
@@ -116,6 +116,7 @@ function TestTargetLink({ test }: { test: TestCase }) {
     "inline-flex items-center gap-1 text-[11px] font-mono rounded-full border border-primary/40 bg-primary/5 px-2 py-0.5 text-primary hover:bg-primary/10 transition-colors";
   const onClick = (e: React.MouseEvent) => {
     e.preventDefault();
+    onOpen?.();
     openTestTarget(path);
   };
   if (isExternal) {
@@ -397,6 +398,8 @@ export function TestPlanTab() {
   const [dSeverities, setDSeverities] = useState<Record<string, FailSeverity | "">>({});
   const [dAssignees, setDAssignees] = useState<Record<string, string>>({});
   const [dSprints, setDSprints] = useState<Record<string, string>>({});
+  const [savedCheckedSteps, setSavedCheckedSteps] = useState<Record<string, CheckedSteps>>({});
+  const [dCheckedSteps, setDCheckedSteps] = useState<Record<string, CheckedSteps>>({});
   const [saveOpen, setSaveOpen] = useState(false);
   // When set, the SaveChangesDialog is scoped to a single test id (clicked
   // from the per-row "Save" button). null = bulk Save bar, shows all.
@@ -504,6 +507,48 @@ export function TestPlanTab() {
   const setSprintFor = (id: string, sprintId: string) =>
     updateDraft(setDSprints, savedSprints, id, sprintId, "");
 
+  const checksEqual = (a: CheckedSteps, b: CheckedSteps) =>
+    JSON.stringify([...a.steps].sort((x, y) => x - y)) === JSON.stringify([...b.steps].sort((x, y) => x - y))
+    && JSON.stringify([...a.substeps].sort()) === JSON.stringify([...b.substeps].sort());
+
+  const fmtChecks = (c: CheckedSteps | undefined) => {
+    if (!c || (c.steps.length === 0 && c.substeps.length === 0)) return "—";
+    return `${c.steps.length} step(s), ${c.substeps.length} sub-step(s) checked`;
+  };
+
+  const setChecksBaseline = useCallback((id: string, checked: CheckedSteps) => {
+    setSavedCheckedSteps((p) => ({ ...p, [id]: checked }));
+    setDCheckedSteps((p) => {
+      if (!(id in p)) return p;
+      if (checksEqual(p[id]!, checked)) {
+        const next = { ...p };
+        delete next[id];
+        return next;
+      }
+      return p;
+    });
+  }, []);
+
+  const setStepChecksDraft = useCallback((id: string, checked: CheckedSteps) => {
+    setDCheckedSteps((p) => {
+      const saved = savedCheckedSteps[id] ?? { steps: [], substeps: [] };
+      if (checksEqual(checked, saved)) {
+        if (!(id in p)) return p;
+        const next = { ...p };
+        delete next[id];
+        return next;
+      }
+      return { ...p, [id]: checked };
+    });
+  }, [savedCheckedSteps]);
+
+  const markTestStarted = useCallback((id: string) => {
+    const current = savedStatuses[id] ?? "not_run";
+    if (current === "not_run" && !(id in dStatuses)) {
+      setStatus(id, "in_progress");
+    }
+  }, [savedStatuses, dStatuses]);
+
   const toggleSelect = (id: string) => {
     setSelected((p) => {
       const next = new Set(p);
@@ -515,7 +560,7 @@ export function TestPlanTab() {
   type Change = {
     key: string; // unique id "<testId>:<field>"
     testId: string;
-    field: "status" | "qaNote" | "devNote" | "severity" | "assignee" | "sprint";
+    field: "status" | "qaNote" | "devNote" | "severity" | "assignee" | "sprint" | "checkedSteps";
     label: string;
     before: string;
     after: string;
@@ -574,9 +619,13 @@ export function TestPlanTab() {
     for (const [id, v] of Object.entries(dSprints))
       list.push({ key: `${id}:sprint`, testId: id, field: "sprint", label: "Sprint",
         before: fmt(savedSprintFor(id)), after: fmt(v) });
+    for (const [id, v] of Object.entries(dCheckedSteps))
+      list.push({ key: `${id}:checkedSteps`, testId: id, field: "checkedSteps", label: "Step checks",
+        before: fmtChecks(savedCheckedSteps[id]), after: fmtChecks(v) });
     return list.sort((a, b) => a.testId.localeCompare(b.testId));
-  }, [dStatuses, dQaNotes, dDevNotes, dSeverities, dAssignees, dSprints,
+  }, [dStatuses, dQaNotes, dDevNotes, dSeverities, dAssignees, dSprints, dCheckedSteps,
       savedStatuses, savedQaNotes, savedDevNotes, savedSeverities, savedAssignees, savedSprints,
+      savedCheckedSteps,
       effectiveById, customIds]);
 
   const pendingCount = pendingChanges.length;
@@ -591,10 +640,11 @@ export function TestPlanTab() {
     }))) return;
     setDStatuses({}); setDQaNotes({}); setDDevNotes({});
     setDSeverities({}); setDAssignees({}); setDSprints({});
+    setDCheckedSteps({});
   };
 
   const hasTestChanges = (id: string) =>
-    id in dStatuses || id in dQaNotes || id in dDevNotes || id in dSeverities || id in dAssignees || id in dSprints;
+    id in dStatuses || id in dQaNotes || id in dDevNotes || id in dSeverities || id in dAssignees || id in dSprints || id in dCheckedSteps;
 
   const saveSingleTest = (id: string) => {
     const blockReason = getTestResultSaveBlockReason(user);
@@ -681,6 +731,24 @@ export function TestPlanTab() {
     setSavedSeverities(newSaved.severity); setSavedAssignees(newSaved.assignee); setSavedSprints(newSaved.sprint);
     setDStatuses(stillDraft.status); setDQaNotes(stillDraft.qaNote); setDDevNotes(stillDraft.devNote);
     setDSeverities(stillDraft.severity); setDAssignees(stillDraft.assignee); setDSprints(stillDraft.sprint);
+
+    const checkedIds = pendingChanges
+      .filter((c) => selectedKeys.has(c.key) && c.field === "checkedSteps")
+      .map((c) => c.testId);
+    const newSavedChecks = { ...savedCheckedSteps };
+    const stillCheckedDraft = { ...dCheckedSteps };
+    for (const id of checkedIds) {
+      const v = dCheckedSteps[id];
+      if (!v) continue;
+      const ok = await cloudPushCheckedSteps(id, v);
+      if (ok) {
+        newSavedChecks[id] = v;
+        delete stillCheckedDraft[id];
+      }
+    }
+    setSavedCheckedSteps(newSavedChecks);
+    setDCheckedSteps(stillCheckedDraft);
+
     setSaveOpen(false);
     setSaveScopeId(null);
 
@@ -1436,19 +1504,9 @@ export function TestPlanTab() {
                     selected={selected.has(t.id)}
                     onSelectChange={() => toggleSelect(t.id)}
                     onChange={(s) => setStatus(t.id, s)}
-                    onAutoStart={() => {
-                      // Persist "In progress" immediately (local + cloud) and
-                      // promote it into the saved baseline so it survives a
-                      // refresh without sitting in the unsaved-changes drawer.
-                      saveStatus(t.id, "in_progress");
-                      setSavedStatuses((p) => ({ ...p, [t.id]: "in_progress" }));
-                      setDStatuses((p) => {
-                        if (!(t.id in p)) return p;
-                        const next = { ...p };
-                        delete next[t.id];
-                        return next;
-                      });
-                    }}
+                    onInteraction={() => markTestStarted(t.id)}
+                    onChecksBaseline={(checked) => setChecksBaseline(t.id, checked)}
+                    onStepChecksChange={(checked) => setStepChecksDraft(t.id, checked)}
                     onQaNoteChange={(n) => setQaNote(t.id, n)}
                     onDevNoteChange={(n) => setDevNote(t.id, n)}
                     onSeverityChange={(s) => setSeverityFor(t.id, s)}
@@ -1713,7 +1771,7 @@ function StepWithSublist({
     </ul>
   );
 
-  // Step 1 · Demographics — birth/ZIP3/county (2a–2c), then remaining fields (2d–2f)
+  // Step 1 · Demographics — birth (2a), ZIP3 (2b), county (2c), then gender/tobacco/income
   const basicsSectionsMatch = step.match(
     /^(Step 1 — (?:Demographics|Basics): Enter the following for the Scenario Information\.)\s*\|\|\|\s*(.+)$/,
   );
@@ -1738,7 +1796,7 @@ function StepWithSublist({
   const basicsPipeMatch = step.match(
     /^(Step 1 — (?:Demographics|Basics): Enter the following for the Scenario Information\.)\s*(.+)$/,
   );
-  if (basicsPipeMatch && basicsPipeMatch[2].includes(" | ")) {
+  if (basicsPipeMatch && basicsPipeMatch[2].includes(" | ") && !basicsPipeMatch[2].includes(" ||| ")) {
     const items = basicsPipeMatch[2].split(" | ").map((s) => s.trim()).filter(Boolean);
     return (
       <span className={className}>
@@ -1978,9 +2036,10 @@ function StepWithSublist({
   );
   if (medsMatch) {
     const items = medsMatch[1].split("; ").map((s) => s.trim()).filter(Boolean);
-    const legacyItems = items.map((med, i) =>
-      i === 0 ? `Add these medications: ${med}.` : `${med}.`,
-    );
+    const legacyItems = [
+      "Add these medications.",
+      ...items.map((med) => `${med}.`),
+    ];
     return (
       <span className={className}>
         Step 3 — Medications: {medsIntro}
@@ -2153,7 +2212,8 @@ function StepWithSublist({
 
 function TestCaseCard({
   t, status, qaNote, devNote, severity, assignee, sprintId, selected, onSelectChange,
-  onChange, onAutoStart, onQaNoteChange, onDevNoteChange, onSeverityChange, onAssigneeChange, onSprintChange,
+  onChange, onInteraction, onChecksBaseline, onStepChecksChange,
+  onQaNoteChange, onDevNoteChange, onSeverityChange, onAssigneeChange, onSprintChange,
   isAdmin, onEdit, hasChanges, onSave, assigneeLocked,
   restrictAssigneeTo,
   onDuplicate,
@@ -2168,7 +2228,9 @@ function TestCaseCard({
   selected: boolean;
   onSelectChange: () => void;
   onChange: (s: TestStatus) => void;
-  onAutoStart?: () => void;
+  onInteraction?: () => void;
+  onChecksBaseline?: (checked: CheckedSteps) => void;
+  onStepChecksChange?: (checked: CheckedSteps) => void;
   onQaNoteChange: (n: string) => void;
   onDevNoteChange: (n: string) => void;
   onSeverityChange: (s: FailSeverity | "") => void;

@@ -7,21 +7,12 @@ import {
   parseCostTotal,
 } from '../scenario-qa-steps'
 
-function parseStep1Sections(step: string): {
-  basics: string[]
-  remainingIntro: string
-  remaining: string[]
-} {
+function parseStep1Substeps(step: string): string[] {
   const body = step.replace(
-    /^Step 1 — Demographics: Enter the following for the Scenario Information\. \|\|\| /,
+    /^Step 1 — Demographics: Enter the following for the Scenario Information\. /,
     '',
   )
-  const sections = body.split(' ||| ').map((s) => s.trim())
-  return {
-    basics: sections[0]!.split(' | ').map((s) => s.trim()),
-    remainingIntro: sections[1]!,
-    remaining: sections[2]!.split(' | ').map((s) => s.trim()),
-  }
+  return body.split(' | ').map((s) => s.trim())
 }
 
 describe('countyLabelFromLine', () => {
@@ -88,30 +79,27 @@ describe('buildScenarioQaAuditSteps', () => {
     expect(steps[1]).toContain('Step 1 — Demographics')
     expect(steps[1]).toContain('birth year = 1958 (age 68 in 2026)')
     expect(steps[1]).toContain('ZIP3 = 606')
-    expect(steps[1]).toContain('From the county dropdown')
-    expect(steps[1]).toContain('Enter the remaining for the Scenario Information')
+    expect(steps[1]).toContain('County or parish')
     expect(steps[1]).toContain('gender = male')
     expect(steps[1]).toContain('THEN CLICK NEXT.')
 
-    const step1 = parseStep1Sections(steps[1])
-    expect(step1.basics).toEqual([
+    const step1 = parseStep1Substeps(steps[1])
+    expect(step1).toEqual([
       'birth year = 1958 (age 68 in 2026)',
       'ZIP3 = 606',
-      'From the county dropdown that auto-populates for ZIP3=606, select Cook, IL — this scopes the carrier/plan check to only plans available in that county.',
-    ])
-    expect(step1.remainingIntro).toBe('Enter the remaining for the Scenario Information:')
-    expect(step1.remaining).toEqual([
+      'County or parish — From the county dropdown that auto-populates for ZIP3=606, select Cook, IL — this scopes the carrier/plan check to only plans available in that county.',
       'gender = male',
       'tobacco use = NO',
       'income band = $50k–$75k',
       'THEN CLICK NEXT.',
     ])
+    expect(step1[2]).toContain('County or parish')
     expect(steps[2]).toContain('Step 2 — Preferences & Conditions')
     expect(steps[2]).toContain('Part 2 page')
     expect(steps[3]).toContain('Step 3 — Medications')
   })
 
-  it('puts county in basics (2c) and gender/tobacco/income in remaining (2d–2f)', () => {
+  it('puts county or parish at 2c before gender', () => {
     const steps = buildScenarioQaAuditSteps({
       birthYear: 'birth year = 1942 (age 84 in 2026)',
       zip3: '441',
@@ -124,18 +112,12 @@ describe('buildScenarioQaAuditSteps', () => {
       costTotal: '$65/mo and $780/yr',
     })
 
-    const step1 = parseStep1Sections(steps[1])
-    expect(step1.basics).toEqual([
-      'birth year = 1942 (age 84 in 2026)',
-      'ZIP3 = 441',
-      'From the county dropdown that auto-populates for ZIP3=441, select Cuyahoga, OH — this scopes the carrier/plan check to only plans available in that county.',
-    ])
-    expect(step1.remaining).toEqual([
-      'gender = female',
-      'tobacco use = YES',
-      'income band = $25k–$50k',
-      'THEN CLICK NEXT.',
-    ])
+    const step1 = parseStep1Substeps(steps[1])
+    expect(step1[0]).toContain('birth year = 1942')
+    expect(step1[1]).toBe('ZIP3 = 441')
+    expect(step1[2]).toContain('County or parish')
+    expect(step1[2]).toContain('Cuyahoga, OH')
+    expect(step1[3]).toBe('gender = female')
   })
 
   it('annotates predictability with PPO vs HMO on Step 2', () => {
@@ -175,7 +157,8 @@ describe('buildScenarioQaAuditSteps', () => {
     expect(steps[3]).toContain('Step 3 — Medications')
     const step3Body = steps[3].split(' ||| ', 2)[1] ?? '';
     expect(step3Body.split(' | ').map((s) => s.trim())).toEqual([
-      'Add these medications: Metformin 500 mg tablet (twice daily) = $8/mo.',
+      'Add these medications.',
+      'Metformin 500 mg tablet (twice daily) = $8/mo.',
       'Lisinopril 10 mg tablet (daily) = $5/mo.',
       'THEN CLICK CREATE SCENARIO.',
     ])
@@ -196,14 +179,10 @@ describe('buildScenarioQaAuditSteps', () => {
 
     expect(steps[0]).toContain('Build My Scenario')
     expect(steps[1]).toContain('Step 1 — Demographics')
-    const step1 = parseStep1Sections(steps[1])
-    expect(step1.basics[0]).toContain('birth year = 1958')
-    expect(step1.remaining).toEqual([
-      'gender = male',
-      'tobacco use = NO',
-      'income band = $50k–$75k',
-      'THEN CLICK NEXT.',
-    ])
+    const step1 = parseStep1Substeps(steps[1])
+    expect(step1[0]).toContain('birth year = 1958')
+    expect(step1[2]).toContain('County or parish')
+    expect(step1[3]).toBe('gender = male')
     expect(steps[2]).toContain('Step 2 — Preferences & Conditions')
     expect(steps[2]).toContain("cost preference = 'minimize monthly'")
     expect(steps[2]).not.toContain('PPO')
@@ -216,7 +195,8 @@ describe('buildScenarioQaAuditSteps', () => {
     expect(steps[3]).toContain('Step 3 — Medications')
     const step3Body = steps[3].split(' ||| ', 2)[1] ?? '';
     expect(step3Body.split(' | ').map((s) => s.trim())).toEqual([
-      'Add these medications: Losartan 50 mg tablet (daily) = $7/mo.',
+      'Add these medications.',
+      'Losartan 50 mg tablet (daily) = $7/mo.',
       'THEN CLICK CREATE SCENARIO.',
     ])
     expect(steps[4]).toContain('pop-up screen')

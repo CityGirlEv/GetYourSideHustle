@@ -6,7 +6,7 @@ import { getAdminNotificationEmails } from '@/lib/admin-notification-emails'
 import { TEMPLATES } from '@/lib/email-templates/registry'
 import { getEmailTemplateOverride } from '@/lib/email-templates/overrides.server'
 import { ensureEmailBranding } from '@/lib/email-templates/email-branding.server'
-import { resolveTemplateContent } from '@/lib/email-templates/template-merge.server'
+import { resolveTemplateContent, buildMergeContext } from '@/lib/email-templates/template-merge.server'
 import { getTransactionalFromAddress } from '@/lib/send-transactional-email'
 
 export const TRANSACTIONAL_SENDER_DOMAIN = 'notify.mypartb.com'
@@ -223,6 +223,24 @@ async function enqueueAdminBccCopies(
   }
 }
 
+function enrichTemplateDataForSend(
+  data: Record<string, unknown>,
+  recipientEmail: string,
+): Record<string, unknown> {
+  const merged = {
+    ...data,
+    email: data.email ?? recipientEmail,
+    recipient: data.recipient ?? recipientEmail,
+  }
+  const ctx = buildMergeContext(merged)
+  return {
+    ...merged,
+    recipientName: merged.recipientName ?? ctx.recipientName,
+    firstName: merged.firstName ?? ctx.firstName,
+    fullName: merged.fullName ?? ctx.fullName,
+  }
+}
+
 /** Render a template, enqueue it, and optionally enqueue admin BCC copies. */
 export async function dispatchTransactionalTemplate(
   supabase: SupabaseClient<any, any>,
@@ -231,7 +249,6 @@ export async function dispatchTransactionalTemplate(
   const templateName = input.templateName
   const messageId = input.messageId ?? crypto.randomUUID()
   const idempotencyKey = input.idempotencyKey ?? messageId
-  const templateData = input.templateData ?? {}
 
   const template = TEMPLATES[templateName]
   if (!template) {
@@ -251,6 +268,8 @@ export async function dispatchTransactionalTemplate(
       status: 400,
     }
   }
+
+  const templateData = enrichTemplateDataForSend(input.templateData ?? {}, effectiveRecipient)
 
   const { data: suppressed, error: suppressionError } = await supabase
     .from('suppressed_emails')

@@ -25,6 +25,17 @@ const AUTH_SINGLE_BRACE_FIELDS = [
 
 const MERGE_FIELD_PATTERN = /\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}/g
 
+/** Friendly display name from an email local-part (e.g. john.doe@x.com → John Doe). */
+export function deriveRecipientNameFromEmail(email: string): string {
+  const local = email.trim().split('@')[0]?.trim() ?? ''
+  if (!local) return 'there'
+  const parts = local.split(/[._+-]+/).filter(Boolean)
+  if (!parts.length) return 'there'
+  return parts
+    .map((p) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
+    .join(' ')
+}
+
 export function hasTemplateMergeFields(content: string): boolean {
   return /\{\{\s*[a-zA-Z0-9_.]+\s*\}\}/.test(content)
 }
@@ -61,6 +72,20 @@ export function buildMergeContext(data: Record<string, unknown>): Record<string,
   }
   if (!out.recipientName && out.fullName) {
     out.recipientName = out.fullName
+  }
+  if (!out.recipientName && out.firstName) {
+    out.recipientName = out.firstName
+  }
+  if (!out.recipientName && out.email) {
+    out.recipientName = deriveRecipientNameFromEmail(out.email)
+  }
+  if (!out.firstName) {
+    if (out.recipientName && out.recipientName !== 'there') {
+      out.firstName = out.recipientName.split(/\s+/)[0] ?? 'there'
+    } else if (out.email) {
+      const derived = deriveRecipientNameFromEmail(out.email)
+      out.firstName = derived === 'there' ? 'there' : derived.split(/\s+/)[0] ?? 'there'
+    }
   }
   if (data.qaDevices && Array.isArray(data.qaDevices)) {
     out.qaDevicesLabel = data.qaDevices.length

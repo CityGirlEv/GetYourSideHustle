@@ -20,6 +20,11 @@ export function formatCostPreferenceForQaStep(costPreference: string): string {
   return costPreference;
 }
 
+/** QA step label for county dropdown — matches wizard field order (before gender). */
+export function formatCountyForQaStep(countyLine: string): string {
+  return `County or parish — ${countyLine}`;
+}
+
 /** Extract "Cook, IL" style label from county dropdown instruction line. */
 export function countyLabelFromLine(countyLine: string): string {
   const m = countyLine.match(/select (.+?) —/);
@@ -61,16 +66,15 @@ export function buildScenarioQaAuditSteps(parts: {
     parts;
   const { basics, costPreference } = splitScenarioDemographics(demographics);
   const demoParts = basics.split(", ").map((s) => s.trim()).filter(Boolean);
-  const basicsSubsteps = [birthYear, `ZIP3 = ${zip3}`, countyLine];
-  const remainingDemoIntro = "Enter the remaining for the Scenario Information:";
-  const remainingDemoSubsteps = [...demoParts, "THEN CLICK NEXT."];
   const step1Intro =
     "Step 1 — Demographics: Enter the following for the Scenario Information.";
-  const step1Body = [
-    basicsSubsteps.join(" | "),
-    remainingDemoIntro,
-    remainingDemoSubsteps.join(" | "),
-  ].join(" ||| ");
+  const step1Substeps = [
+    birthYear,
+    `ZIP3 = ${zip3}`,
+    formatCountyForQaStep(countyLine),
+    ...demoParts,
+    "THEN CLICK NEXT.",
+  ];
   const conditionParts = conditions.split(", ").map((s) => s.trim()).filter(Boolean);
   const step2Substeps = [
     formatCostPreferenceForQaStep(costPreference),
@@ -80,10 +84,11 @@ export function buildScenarioQaAuditSteps(parts: {
   const step2Intro =
     'Step 2 — Preferences & Conditions: On the Part 2 page, cost preference is first (section a), then conditions (section b). If a condition isn\'t listed, use Other.';
   const medParts = medications.split("; ").map((s) => s.trim()).filter(Boolean);
-  const medSubsteps = medParts.map((med, i) =>
-    i === 0 ? `Add these medications: ${med}.` : `${med}.`,
-  );
-  medSubsteps.push("THEN CLICK CREATE SCENARIO.");
+  const medSubsteps = [
+    "Add these medications.",
+    ...medParts.map((med) => `${med}.`),
+    "THEN CLICK CREATE SCENARIO.",
+  ];
   const step3Intro =
     "Step 3 — Medications: Under Common medications for your conditions: Select the medication (if present). Those medications will be added to the list below. Click the plus sign to add additional medications.";
   const step5Intro =
@@ -128,7 +133,7 @@ export function buildScenarioQaAuditSteps(parts: {
 
   return [
     "Start from home page where the user clicks Build My Scenario",
-    `${step1Intro} ||| ${step1Body}`,
+    `${step1Intro} ${step1Substeps.join(" | ")}`,
     `${step2Intro} ||| ${step2Substeps.join(" | ")}`,
     `${step3Intro} ||| ${medSubsteps.join(" | ")}`,
     `${step5Intro} ||| ${step5Substeps.join(" | ")}`,
