@@ -85,7 +85,7 @@ export function SecurityBanner() {
             >
               <BrandLogo size="nav" />
             </Link>
-            <p className="mt-0.5 max-w-[15rem] sm:max-w-[18rem] px-1 text-[10px] sm:text-[11px] font-display font-medium italic leading-snug text-primary">
+            <p className="mt-1 max-w-[16rem] sm:max-w-[22rem] px-1 text-xs sm:text-sm font-display font-semibold italic leading-snug text-primary">
               {SITE_TAGLINE}
             </p>
           </div>

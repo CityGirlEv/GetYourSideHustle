@@ -4,7 +4,6 @@ import { Input } from "@/components/ui/input";
 import { ShieldCheck, EyeOff, KeyRound, Search } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useState } from "react";
-import { BrandLogo } from "@/components/BrandLogo";
 import homeCoverHero from "@/assets/home-cover-hero.png";
 import { canonicalUrl } from "@/lib/site-url";
 
@@ -106,8 +105,7 @@ function Index() {
               <span className="block">No account. No login. No personal information.</span>
               <span className="block mt-0.5">*** COMPLETELY ANONYMOUS ***</span>
             </div>
-            <BrandLogo size="icon" className="my-1" />
-            <div className="-mt-2">
+            <div>
               <h2 className="font-display text-2xl sm:text-3xl font-bold leading-tight uppercase">
                 <span className="block">Find the Medicare Plan</span>
                 <span className="block">That Fits A Scenario</span>
