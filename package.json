@@ -8,6 +8,7 @@
     "build": "vite build && node scripts/prepare-email-logo.mjs && node scripts/fix-pages-wrangler.mjs",
     "build:pages": "bun install && bun run build",
     "deploy:worker": "node --use-system-ca ./node_modules/wrangler/bin/wrangler.js deploy --config dist/_worker.js/wrangler.json --keep-vars",
+    "fix:workers-builds": "node --use-system-ca scripts/fix-workers-builds.mjs",
     "deploy": "npm run build:pages && node scripts/stamp-deploy-version.mjs && node --use-system-ca ./node_modules/wrangler/bin/wrangler.js pages deploy dist --project-name=mypartb --branch=main --commit-dirty=true --no-bundle && npm run deploy:worker",
     "deploy:pages": "npm run deploy",
     "build:dev": "vite build --mode development",
