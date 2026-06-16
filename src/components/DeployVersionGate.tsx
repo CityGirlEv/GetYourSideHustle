@@ -42,12 +42,32 @@ export function DeployVersionGate() {
   const loadedBuildId = useRef(getLoadedBuildId());
   const triggeredRef = useRef(false);
   const loggingOutRef = useRef(false);
+  const saveCompletedRef = useRef(false);
 
   const [open, setOpen] = useState(false);
   const [paused, setPaused] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveCompleted, setSaveCompleted] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(LOGOUT_COUNTDOWN_SECONDS);
   const gateActive = isDeployGateActive();
+
+  const resetDeployGateState = useCallback(() => {
+    triggeredRef.current = false;
+    loggingOutRef.current = false;
+    saveCompletedRef.current = false;
+    setOpen(false);
+    setPaused(false);
+    setSaving(false);
+    setSaveCompleted(false);
+    setSecondsLeft(LOGOUT_COUNTDOWN_SECONDS);
+  }, []);
+
+  const dismissDeployGateUi = useCallback(() => {
+    setOpen(false);
+    setPaused(false);
+    setSaving(false);
+    setSaveCompleted(false);
+  }, []);
 
   const beginForcedLogout = useCallback((remoteBuildId: string) => {
     if (triggeredRef.current) return;
@@ -113,11 +133,17 @@ export function DeployVersionGate() {
     return () => window.removeEventListener("storage", onStorage);
   }, [authLoading, beginForcedLogout, gateActive, pathname, user]);
 
+  useEffect(() => {
+    if (!gateActive) return;
+    if (!user || isAuthRoute(pathname)) {
+      resetDeployGateState();
+    }
+  }, [gateActive, pathname, resetDeployGateState, user]);
+
   const logoutNow = useCallback(async () => {
     if (loggingOutRef.current) return;
     loggingOutRef.current = true;
-    setPaused(true);
-    setOpen(false);
+    dismissDeployGateUi();
 
     const redirect = stashDeployResume(getCurrentAppPath()) ?? getCurrentAppPath();
 
@@ -127,11 +153,13 @@ export function DeployVersionGate() {
       /* proceed to login even if sign-out fails */
     }
 
+    resetDeployGateState();
+
     await router.navigate({
       to: "/auth",
       search: { redirect },
     });
-  }, [router, signOut]);
+  }, [dismissDeployGateUi, resetDeployGateState, router, signOut]);
 
   useEffect(() => {
     if (!open || paused || saving) return;
@@ -161,19 +189,32 @@ export function DeployVersionGate() {
     setSaving(false);
 
     if (failed > 0) {
+      setPaused(true);
       toast.error("Some work could not be saved automatically.", {
         description: "Review any open save dialogs, then log out when ready.",
       });
     } else if (ran > 0) {
+      saveCompletedRef.current = true;
+      setSaveCompleted(true);
+      setPaused(true);
       toast.success("Your work was saved.", {
         description: "Log out when you're ready to reload the new version.",
       });
     } else {
+      saveCompletedRef.current = true;
+      setSaveCompleted(true);
+      setPaused(true);
       toast.message("Nothing new to save", {
         description: "Your in-progress work is stored locally where applicable.",
       });
     }
   };
+
+  const showPausedBanner =
+    triggeredRef.current &&
+    (paused || saving) &&
+    !!user &&
+    !isAuthRoute(pathname);
 
   if (!gateActive) return null;
 
@@ -240,7 +281,7 @@ export function DeployVersionGate() {
     );
   }
 
-  if (triggeredRef.current && (paused || saving)) {
+  if (showPausedBanner) {
     return (
       <div className="fixed bottom-4 left-1/2 z-[120] w-[min(100%,28rem)] -translate-x-1/2 px-4">
         <div className="rounded-xl border-2 border-amber-500 bg-background/95 p-4 shadow-2xl backdrop-blur space-y-3">
@@ -248,10 +289,12 @@ export function DeployVersionGate() {
           <p className="text-xs text-muted-foreground">
             {saving
               ? "Saving your work…"
-              : "Countdown paused. When you're ready, log out and sign back in to load the new version."}
+              : saveCompleted
+                ? "Your work is saved. Log out and sign back in to load the new version."
+                : "Countdown paused. When you're ready, log out and sign back in to load the new version."}
           </p>
           <div className="flex flex-wrap justify-center gap-2">
-            {!saving && (
+            {!saving && !saveCompleted && (
               <Button type="button" size="sm" className="gap-1.5" onClick={() => void handleSaveWork()}>
                 <Save className="h-4 w-4" />
                 Save again
