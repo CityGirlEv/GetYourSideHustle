@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -6,31 +6,20 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
-import { Loader2, MessageSquarePlus, Pencil, Save, X } from 'lucide-react'
-import { toast } from 'sonner'
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Loader2, MessageSquarePlus, Pencil, Save, X } from "lucide-react";
+import { toast } from "sonner";
 import {
   addScenarioConversationNote,
   fetchScenarioConversationNotes,
   updateScenarioConversationNote,
   type ScenarioConversationNote,
-} from '@/lib/scenario-conversation-notes'
+} from "@/lib/scenario-conversation-notes";
 
-function fmt(at: string): string {
-  try {
-    return new Date(at).toLocaleString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-    })
-  } catch {
-    return at
-  }
-}
+import { formatNoteTimestamp } from "@/lib/note-format";
+import { NoteEntryMeta } from "@/components/NoteEntryMeta";
 
 export function ScenarioConversationDialog({
   open,
@@ -40,74 +29,74 @@ export function ScenarioConversationDialog({
   currentUserId,
   canAddNotes,
 }: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  scenarioId: string
-  scenarioCode: string
-  currentUserId: string | null
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  scenarioId: string;
+  scenarioCode: string;
+  currentUserId: string | null;
   /** Admin and assigned agents can add notes; others read-only. */
-  canAddNotes: boolean
+  canAddNotes: boolean;
 }) {
-  const [notes, setNotes] = useState<ScenarioConversationNote[]>([])
-  const [loading, setLoading] = useState(false)
-  const [draft, setDraft] = useState('')
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editingText, setEditingText] = useState('')
-  const [busy, setBusy] = useState(false)
+  const [notes, setNotes] = useState<ScenarioConversationNote[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState("");
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!open || !scenarioId) return
-    let cancelled = false
-    setLoading(true)
-    ;(async () => {
-      const rows = await fetchScenarioConversationNotes(scenarioId)
+    if (!open || !scenarioId) return;
+    let cancelled = false;
+    setLoading(true);
+    (async () => {
+      const rows = await fetchScenarioConversationNotes(scenarioId);
       if (!cancelled) {
-        setNotes(rows)
-        setLoading(false)
+        setNotes(rows);
+        setLoading(false);
       }
-    })()
+    })();
     return () => {
-      cancelled = true
-    }
-  }, [open, scenarioId])
+      cancelled = true;
+    };
+  }, [open, scenarioId]);
 
   async function reloadNotes() {
-    const rows = await fetchScenarioConversationNotes(scenarioId)
-    setNotes(rows)
+    const rows = await fetchScenarioConversationNotes(scenarioId);
+    setNotes(rows);
   }
 
   async function addNote() {
-    if (!draft.trim() || busy || !canAddNotes) return
-    setBusy(true)
-    const created = await addScenarioConversationNote(scenarioId, draft)
-    setBusy(false)
+    if (!draft.trim() || busy || !canAddNotes) return;
+    setBusy(true);
+    const created = await addScenarioConversationNote(scenarioId, draft);
+    setBusy(false);
     if (created) {
-      await reloadNotes()
-      setDraft('')
-      toast.success('Note added')
+      await reloadNotes();
+      setDraft("");
+      toast.success("Note added");
     }
   }
 
   async function saveEdit(noteId: string) {
-    if (!editingText.trim() || busy) return
-    setBusy(true)
-    const ok = await updateScenarioConversationNote(scenarioId, noteId, editingText)
-    setBusy(false)
+    if (!editingText.trim() || busy) return;
+    setBusy(true);
+    const ok = await updateScenarioConversationNote(scenarioId, noteId, editingText);
+    setBusy(false);
     if (ok) {
-      await reloadNotes()
-      setEditingId(null)
-      setEditingText('')
-      toast.success('Note updated')
+      await reloadNotes();
+      setEditingId(null);
+      setEditingText("");
+      toast.success("Note updated");
     }
   }
 
   function closeDialog(next: boolean) {
     if (!next) {
-      setEditingId(null)
-      setEditingText('')
-      setDraft('')
+      setEditingId(null);
+      setEditingText("");
+      setDraft("");
     }
-    onOpenChange(next)
+    onOpenChange(next);
   }
 
   return (
@@ -116,9 +105,9 @@ export function ScenarioConversationDialog({
         <DialogHeader>
           <DialogTitle>Agent conversation — {scenarioCode}</DialogTitle>
           <DialogDescription>
-            Internal notes about outreach and conversations with the person who created
-            this scenario. Visible to administrators and assigned agents only. You can
-            only edit notes you wrote.
+            Internal notes about outreach and conversations with the person who created this
+            scenario. Visible to administrators and assigned agents only. You can only edit notes
+            you wrote.
           </DialogDescription>
         </DialogHeader>
 
@@ -131,39 +120,36 @@ export function ScenarioConversationDialog({
           {!loading && notes.length === 0 && (
             <p className="text-sm text-muted-foreground italic">
               No conversation notes yet.
-              {canAddNotes ? ' Add the first note below.' : ''}
+              {canAddNotes ? " Add the first note below." : ""}
             </p>
           )}
           {!loading &&
             notes.map((note) => {
-              const mine = currentUserId != null && note.author_id === currentUserId
-              const isEditing = editingId === note.id
-              const edited = note.updated_at !== note.created_at
+              const mine = currentUserId != null && note.author_id === currentUserId;
+              const isEditing = editingId === note.id;
+              const edited = note.updated_at !== note.created_at;
               return (
-                <div
-                  key={note.id}
-                  className="rounded-md border border-border bg-muted/30 p-2.5"
-                >
-                  <div className="flex items-center justify-between gap-2 mb-1 text-[11px] text-muted-foreground">
-                    <span>
-                      <span className="font-semibold text-foreground">
-                        {note.author_name || 'Staff'}
+                <div key={note.id} className="rounded-md border border-border bg-muted/30 p-2.5">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <NoteEntryMeta
+                      authorName={note.author_name}
+                      authorId={note.author_id}
+                      at={note.created_at}
+                      isYou={mine}
+                    />
+                    {edited && (
+                      <span className="text-[11px] text-muted-foreground shrink-0">
+                        edited {formatNoteTimestamp(note.updated_at)}
                       </span>
-                      {' · '}
-                      <span>{fmt(note.created_at)}</span>
-                      {edited && (
-                        <span className="ml-1">(edited {fmt(note.updated_at)})</span>
-                      )}
-                      {mine && <span className="ml-1 text-emerald-600">(you)</span>}
-                    </span>
+                    )}
                     {mine && !isEditing && (
                       <Button
                         size="sm"
                         variant="ghost"
                         className="h-6 px-1.5 text-[11px]"
                         onClick={() => {
-                          setEditingId(note.id)
-                          setEditingText(note.body)
+                          setEditingId(note.id);
+                          setEditingText(note.body);
                         }}
                       >
                         <Pencil className="h-3 w-3 mr-1" /> Edit
@@ -183,8 +169,8 @@ export function ScenarioConversationDialog({
                           size="sm"
                           variant="outline"
                           onClick={() => {
-                            setEditingId(null)
-                            setEditingText('')
+                            setEditingId(null);
+                            setEditingText("");
                           }}
                         >
                           <X className="h-3.5 w-3.5 mr-1" /> Cancel
@@ -202,7 +188,7 @@ export function ScenarioConversationDialog({
                     <p className="text-sm whitespace-pre-wrap">{note.body}</p>
                   )}
                 </div>
-              )
+              );
             })}
         </div>
 
@@ -236,5 +222,5 @@ export function ScenarioConversationDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

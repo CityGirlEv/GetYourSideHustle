@@ -87,10 +87,14 @@ vi.mock("sonner", () => ({
 
 // crypto.randomUUID polyfill for environments that don't ship it
 if (!globalThis.crypto?.randomUUID) {
-  Object.defineProperty(globalThis.crypto ?? (globalThis as { crypto?: Crypto }).crypto ?? {}, "randomUUID", {
-    value: () => "00000000-0000-0000-0000-000000000000",
-    configurable: true,
-  });
+  Object.defineProperty(
+    globalThis.crypto ?? (globalThis as { crypto?: Crypto }).crypto ?? {},
+    "randomUUID",
+    {
+      value: () => "00000000-0000-0000-0000-000000000000",
+      configurable: true,
+    },
+  );
 }
 
 // Stub matchMedia + ResizeObserver for components using shadcn ui primitives

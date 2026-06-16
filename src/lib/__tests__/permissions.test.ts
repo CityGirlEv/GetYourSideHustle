@@ -10,7 +10,7 @@ import { roleDestination, type UserRole } from "@/lib/role-destination";
  * Testing the shapes here gives us deterministic, fast coverage of every
  * "what can callers send?" rule without spinning up a real server.
  */
-const ROLE_VALUES = ["admin", "qa", "agent", "editor", "viewer", "advisor"] as const;
+const ROLE_VALUES = ["admin", "qa", "agent", "editor", "client", "viewer", "advisor"] as const;
 const roleSchema = z.enum(ROLE_VALUES);
 
 const setUserDisabledSchema = z.object({
@@ -42,6 +42,8 @@ const registerSchema = z.object({
   accept_nda: z.literal(true),
   requested_role: z.enum(["qa", "agent"]),
   user_agent: z.string().max(1024).optional().nullable(),
+  password: z.string().min(12).max(128),
+  password_confirm: z.string().min(12).max(128),
 });
 
 const UUID = "11111111-1111-1111-1111-111111111111";
@@ -51,24 +53,26 @@ describe("post-login routing (roleDestination)", () => {
     ["admin", "/admin"],
     ["agent", "/agent"],
     ["qa", "/testing"],
-    ["advisor", "/advisor"],
-    ["editor", "/advisor"],
-    ["viewer", "/advisor"],
+    ["client", "/"],
+    ["advisor", "/agent"],
+    ["editor", "/agent"],
+    ["viewer", "/agent"],
   ] as const)("%s → %s", (role, dest) => {
     expect(roleDestination(role as UserRole)).toBe(dest);
   });
 
-  it("unknown / null / undefined fall back to /advisor", () => {
-    expect(roleDestination(null)).toBe("/advisor");
-    expect(roleDestination(undefined)).toBe("/advisor");
-    expect(roleDestination("nobody")).toBe("/advisor");
+  it("unknown / null / undefined fall back to /agent", () => {
+    expect(roleDestination(null)).toBe("/agent");
+    expect(roleDestination(undefined)).toBe("/agent");
+    expect(roleDestination("nobody")).toBe("/agent");
   });
 });
 
 describe("admin: setUserDisabled validation (enable/disable account)", () => {
   it("accepts a valid enable payload", () => {
     expect(setUserDisabledSchema.parse({ user_id: UUID, disabled: false })).toEqual({
-      user_id: UUID, disabled: false,
+      user_id: UUID,
+      disabled: false,
     });
   });
   it("accepts a valid disable payload", () => {
@@ -84,9 +88,7 @@ describe("admin: setUserDisabled validation (enable/disable account)", () => {
 
 describe("admin: createAdvisor validation", () => {
   it("accepts a minimal valid payload", () => {
-    expect(
-      createAdvisorSchema.parse({ email: "a@b.com", password: "abcdefghijkl" }),
-    ).toBeTruthy();
+    expect(createAdvisorSchema.parse({ email: "a@b.com", password: "abcdefghijkl" })).toBeTruthy();
   });
   it.each(ROLE_VALUES)("accepts role=%s", (role) => {
     expect(
@@ -104,7 +106,9 @@ describe("admin: createAdvisor validation", () => {
   it("rejects an unknown role", () => {
     expect(() =>
       createAdvisorSchema.parse({
-        email: "a@b.com", password: "abcdefghijkl", role: "superuser",
+        email: "a@b.com",
+        password: "abcdefghijkl",
+        role: "superuser",
       }),
     ).toThrow();
   });
@@ -132,6 +136,8 @@ describe("registration: NDA-signed beta sign-up validation", () => {
     accept_nda: true as const,
     requested_role: "qa" as const,
     user_agent: "vitest",
+    password: "validpassword12",
+    password_confirm: "validpassword12",
   };
 
   it("accepts a valid registration", () => {
@@ -157,5 +163,27 @@ describe("registration: NDA-signed beta sign-up validation", () => {
     const parsed = registerSchema.parse({ ...valid, first_name: "  Jamie  ", email: "  j@x.com " });
     expect(parsed.first_name).toBe("Jamie");
     expect(parsed.email).toBe("j@x.com");
+  });
+  it("accepts registration with matching password fields", () => {
+    expect(
+      registerSchema.parse({
+        ...valid,
+        password: "validpassword12",
+        password_confirm: "validpassword12",
+      }),
+    ).toBeTruthy();
+  });
+  it("rejects passwords shorter than 12 characters", () => {
+    expect(() =>
+      registerSchema.parse({ ...valid, password: "short", password_confirm: "short" }),
+    ).toThrow();
+  });
+  it("rejects registration without password", () => {
+    const { password, ...withoutPassword } = valid;
+    expect(() => registerSchema.parse(withoutPassword)).toThrow();
+  });
+  it("rejects registration without password_confirm", () => {
+    const { password_confirm, ...withoutConfirm } = valid;
+    expect(() => registerSchema.parse(withoutConfirm)).toThrow();
   });
 });

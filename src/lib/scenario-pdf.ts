@@ -34,10 +34,17 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
   const hasDME = input.medications.some((m) =>
     /dexcom|libre|omnipod|cpap|bipap|nebulizer|wheelchair|walker|oxygen/i.test(m.medication_name),
   );
-  const { A, B } = calcPathways({ year: input.year, zip3: input.zip3, meds: input.medications, hasDME });
+  const { A, B } = calcPathways({
+    year: input.year,
+    zip3: input.zip3,
+    meds: input.medications,
+    hasDME,
+  });
 
   const preferPredictability = input.costPreference === "predictability";
-  const aWins = preferPredictability ? A.worstCaseAnnual <= B.worstCaseAnnual : A.totalAnnual <= B.totalAnnual;
+  const aWins = preferPredictability
+    ? A.worstCaseAnnual <= B.worstCaseAnnual
+    : A.totalAnnual <= B.totalAnnual;
   const best = aWins ? A : B;
   const other = aWins ? B : A;
 
@@ -51,7 +58,7 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
-  doc.text("The Medicare Optimizer", margin, 30);
+  doc.text("Get Part B Optimizer", margin, 30);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
   doc.text(`Scenario ${input.scenarioCode} · Plan year ${input.year}`, margin, 50);
@@ -71,8 +78,18 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
     body: [
       ["Year of birth", String(input.birthYear), "ZIP region", `${input.zip3}xx`],
       ["Gender", input.gender.replace(/_/g, " "), "Tobacco user", input.tobacco ? "Yes" : "No"],
-      ["Income band", input.incomeBand, "Cost priority", preferPredictability ? "Predictability" : "Minimize monthly"],
-      ["Conditions", input.conditions.join(", ") || "None reported", "Medications", String(input.medications.length)],
+      [
+        "Income band",
+        input.incomeBand,
+        "Cost priority",
+        preferPredictability ? "Predictability" : "Minimize monthly",
+      ],
+      [
+        "Conditions",
+        input.conditions.join(", ") || "None reported",
+        "Medications",
+        String(input.medications.length),
+      ],
     ],
     columnStyles: {
       0: { fontStyle: "bold", textColor: [90, 90, 90] },
@@ -107,7 +124,11 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
   y += 76;
 
   // ============ RECOMMENDED PLAN — full benefit & cost detail page ============
-  const ranked = rankedPlanDetails({ year: input.year, zip3: input.zip3, medications: input.medications });
+  const ranked = rankedPlanDetails({
+    year: input.year,
+    zip3: input.zip3,
+    medications: input.medications,
+  });
   const top = ranked[0];
   const second = ranked[1];
   if (top) {
@@ -122,13 +143,36 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
   doc.text("Side-by-side benefit comparison", margin, y);
   y += 10;
 
-  const labelCol = ["Monthly premium", "Annual premium", "Annual drug cost (capped)", "Expected medical out-of-pocket", "Expected total annual cost", "Worst-case annual cost"];
-  const aVals = [usd(A.monthlyPremium), usd(A.annualPremium), usd(A.annualDrugCost), usd(A.annualMedicalOOP), usd(A.totalAnnual), usd(A.worstCaseAnnual)];
-  const bVals = [usd(B.monthlyPremium), usd(B.annualPremium), usd(B.annualDrugCost), usd(B.annualMedicalOOP), usd(B.totalAnnual), usd(B.worstCaseAnnual)];
+  const labelCol = [
+    "Monthly premium",
+    "Annual premium",
+    "Annual drug cost (capped)",
+    "Expected medical out-of-pocket",
+    "Expected total annual cost",
+    "Worst-case annual cost",
+  ];
+  const aVals = [
+    usd(A.monthlyPremium),
+    usd(A.annualPremium),
+    usd(A.annualDrugCost),
+    usd(A.annualMedicalOOP),
+    usd(A.totalAnnual),
+    usd(A.worstCaseAnnual),
+  ];
+  const bVals = [
+    usd(B.monthlyPremium),
+    usd(B.annualPremium),
+    usd(B.annualDrugCost),
+    usd(B.annualMedicalOOP),
+    usd(B.totalAnnual),
+    usd(B.worstCaseAnnual),
+  ];
 
   autoTable(doc, {
     startY: y,
-    head: [["Benefit / cost", `${A.label}${aWins ? "  ★" : ""}`, `${B.label}${!aWins ? "  ★" : ""}`]],
+    head: [
+      ["Benefit / cost", `${A.label}${aWins ? "  ★" : ""}`, `${B.label}${!aWins ? "  ★" : ""}`],
+    ],
     body: labelCol.map((l, i) => [l, aVals[i], bVals[i]]),
     headStyles: { fillColor: [16, 122, 87], textColor: 255, fontSize: 10 },
     styles: { fontSize: 9, cellPadding: 6 },
@@ -179,7 +223,10 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
 
   // Medications
   if (input.medications.length) {
-    if (y > 680) { doc.addPage(); y = 60; }
+    if (y > 680) {
+      doc.addPage();
+      y = 60;
+    }
     doc.setFont("helvetica", "bold");
     doc.setFontSize(13);
     doc.text("Medications on file", margin, y);
@@ -214,7 +261,11 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
   doc.setTextColor(20, 20, 20);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(15);
-  doc.text(`Pathway A — Medigap options (ZIP ${input.zip3}${input.county ? ` · ${input.county}` : ""})`, margin, y);
+  doc.text(
+    `Pathway A — Medigap options (ZIP ${input.zip3}${input.county ? ` · ${input.county}` : ""})`,
+    margin,
+    y,
+  );
   y += 8;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
@@ -312,7 +363,9 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
 
   autoTable(doc, {
     startY: y,
-    head: [["Carrier", "HMO Premium", "PPO Premium", "Star Rating", "Network Characteristics", "Portal"]],
+    head: [
+      ["Carrier", "HMO Premium", "PPO Premium", "Star Rating", "Network Characteristics", "Portal"],
+    ],
     body: CMS_CATALOG.advantageCarriers.slice(0, 8).map((c, i) => {
       const hmo = [0, 0, 0, 0, 14, 0, 0, 18][i] ?? 0;
       const ppo = [19, 24, 15, 0, 32, 22, 12, 28][i] ?? 0;
@@ -327,7 +380,12 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
     }),
     headStyles: { fillColor: [16, 122, 87], textColor: 255, fontSize: 9 },
     styles: { fontSize: 8.5, cellPadding: 5 },
-    columnStyles: { 1: { halign: "right" }, 2: { halign: "right" }, 4: { cellWidth: 170 }, 5: { cellWidth: 70 } },
+    columnStyles: {
+      1: { halign: "right" },
+      2: { halign: "right" },
+      4: { cellWidth: 170 },
+      5: { cellWidth: 70 },
+    },
     margin: { left: margin, right: margin },
     didDrawCell: (data) => {
       if (data.section !== "body" || data.column.index !== 5) return;
@@ -353,9 +411,24 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
       startY: y,
       head: [["C-SNP Carrier", "Qualifying Focus", "Stars", "Bundled Disease Perks"]],
       body: [
-        ["UnitedHealthcare Chronic Care", "Diabetes & Cardiovascular", "4.0", "Specialized endocrinologist copays, zero insulin tiers"],
-        ["Humana Chronic Care", "Cardiovascular & Heart Failure", "4.5", "Free home BP cuffs, customized cardiac rehab programs"],
-        ["Aetna Chronic Care", "Diabetes & COPD", "4.0", "Care manager + medication therapy management"],
+        [
+          "UnitedHealthcare Chronic Care",
+          "Diabetes & Cardiovascular",
+          "4.0",
+          "Specialized endocrinologist copays, zero insulin tiers",
+        ],
+        [
+          "Humana Chronic Care",
+          "Cardiovascular & Heart Failure",
+          "4.5",
+          "Free home BP cuffs, customized cardiac rehab programs",
+        ],
+        [
+          "Aetna Chronic Care",
+          "Diabetes & COPD",
+          "4.0",
+          "Care manager + medication therapy management",
+        ],
       ],
       headStyles: { fillColor: [16, 122, 87], textColor: 255, fontSize: 9 },
       styles: { fontSize: 8.5, cellPadding: 5 },
@@ -392,8 +465,28 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
 
   autoTable(doc, {
     startY: y,
-    head: [["#", "Carrier", "Plan", "Total Monthly*", "Out-of-Pocket Max", "Stars", "Bundled Extras", "Est. Annual"]],
-    body: top10.map((r) => [r.rank, r.carrier, r.plan, fmtMo(r.monthly), r.moop, r.stars, r.extras, usd(r.annual)]),
+    head: [
+      [
+        "#",
+        "Carrier",
+        "Plan",
+        "Total Monthly*",
+        "Out-of-Pocket Max",
+        "Stars",
+        "Bundled Extras",
+        "Est. Annual",
+      ],
+    ],
+    body: top10.map((r) => [
+      r.rank,
+      r.carrier,
+      r.plan,
+      fmtMo(r.monthly),
+      r.moop,
+      r.stars,
+      r.extras,
+      usd(r.annual),
+    ]),
     headStyles: { fillColor: [16, 122, 87], textColor: 255, fontSize: 9 },
     styles: { fontSize: 8, cellPadding: 4 },
     columnStyles: {
@@ -420,16 +513,36 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
   doc.setTextColor(90, 90, 90);
   doc.text(
     `Side-by-side line-item view of every premium, deductible, copay, drug tier, and bundled benefit. Total monthly = Part B + plan + Part D + dental + vision + extras (hearing / OTC / wellness) where applicable.`,
-    lsMargin, 66, { maxWidth: lsW - lsMargin * 2 },
+    lsMargin,
+    66,
+    { maxWidth: lsW - lsMargin * 2 },
   );
 
   // Monthly premium breakdown table
   autoTable(doc, {
     startY: 82,
-    head: [["#", "Carrier", "Plan", "Part B", "Plan", "Part D", "Dental", "Vision", "Extras", "Total /mo", "Annual Premium"]],
+    head: [
+      [
+        "#",
+        "Carrier",
+        "Plan",
+        "Part B",
+        "Plan",
+        "Part D",
+        "Dental",
+        "Vision",
+        "Extras",
+        "Total /mo",
+        "Annual Premium",
+      ],
+    ],
     body: top10Detail.map((d) => [
-      d.rank, d.carrier, d.plan,
-      fmtMo(d.premiumPartB), fmtMo(d.premiumPlan), fmtMo(d.premiumRx),
+      d.rank,
+      d.carrier,
+      d.plan,
+      fmtMo(d.premiumPartB),
+      fmtMo(d.premiumPlan),
+      fmtMo(d.premiumRx),
       d.premiumDental ? fmtMo(d.premiumDental) : "—",
       d.premiumVision ? fmtMo(d.premiumVision) : "—",
       d.premiumExtras ? fmtMo(d.premiumExtras) : "—",
@@ -440,9 +553,14 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
     styles: { fontSize: 7.8, cellPadding: 3 },
     columnStyles: {
       0: { halign: "center", cellWidth: 16 },
-      3: { halign: "right" }, 4: { halign: "right" }, 5: { halign: "right" },
-      6: { halign: "right" }, 7: { halign: "right" }, 8: { halign: "right" },
-      9: { halign: "right", fontStyle: "bold" }, 10: { halign: "right" },
+      3: { halign: "right" },
+      4: { halign: "right" },
+      5: { halign: "right" },
+      6: { halign: "right" },
+      7: { halign: "right" },
+      8: { halign: "right" },
+      9: { halign: "right", fontStyle: "bold" },
+      10: { halign: "right" },
     },
     margin: { left: lsMargin, right: lsMargin },
   });
@@ -455,11 +573,29 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
   lsY += 4;
   autoTable(doc, {
     startY: lsY,
-    head: [["#", "Carrier", "Med Deductible", "PCP", "Specialist", "Hospital", "ER", "MOOP", "Network rules"]],
+    head: [
+      [
+        "#",
+        "Carrier",
+        "Med Deductible",
+        "PCP",
+        "Specialist",
+        "Hospital",
+        "ER",
+        "MOOP",
+        "Network rules",
+      ],
+    ],
     body: top10Detail.map((d) => [
-      d.rank, d.carrier,
+      d.rank,
+      d.carrier,
       d.deductibleMed ? usd(d.deductibleMed) : "$0",
-      d.pcpCopay, d.specCopay, d.hospCopay, d.erCopay, d.moop, d.network,
+      d.pcpCopay,
+      d.specCopay,
+      d.hospCopay,
+      d.erCopay,
+      d.moop,
+      d.network,
     ]),
     headStyles: { fillColor: [16, 122, 87], textColor: 255, fontSize: 8.5 },
     styles: { fontSize: 7.8, cellPadding: 3 },
@@ -474,11 +610,25 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
   lsY += 4;
   autoTable(doc, {
     startY: lsY,
-    head: [["#", "Carrier", "Rx Deductible", "Tier 1 (Pref. Generic)", "Tier 2 (Generic)", "Tier 3 (Pref. Brand)", "Insulin cap", "Rx OOP cap"]],
+    head: [
+      [
+        "#",
+        "Carrier",
+        "Rx Deductible",
+        "Tier 1 (Pref. Generic)",
+        "Tier 2 (Generic)",
+        "Tier 3 (Pref. Brand)",
+        "Insulin cap",
+        "Rx OOP cap",
+      ],
+    ],
     body: top10Detail.map((d) => [
-      d.rank, d.carrier,
+      d.rank,
+      d.carrier,
       d.deductibleRx ? usd(d.deductibleRx) : "$0",
-      d.rxTier1, d.rxTier2, d.rxTier3,
+      d.rxTier1,
+      d.rxTier2,
+      d.rxTier3,
       `${usd(INSULIN_CAP_MONTHLY)}/mo`,
       usd(d.rxOOPCap),
     ]),
@@ -502,7 +652,12 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
     startY: lsY,
     head: [["#", "Carrier", "Dental", "Vision", "Hearing", "OTC / wellness"]],
     body: top10Detail.map((d) => [
-      d.rank, d.carrier, d.dentalBenefit, d.visionBenefit, d.hearingBenefit, d.otcBenefit,
+      d.rank,
+      d.carrier,
+      d.dentalBenefit,
+      d.visionBenefit,
+      d.hearingBenefit,
+      d.otcBenefit,
     ]),
     headStyles: { fillColor: [16, 122, 87], textColor: 255, fontSize: 8.5 },
     styles: { fontSize: 7.8, cellPadding: 3 },
@@ -523,55 +678,204 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
   doc.setTextColor(90, 90, 90);
   doc.text(
     `Projected utilization for a Medicare beneficiary with: ${input.conditions.join(", ") || "no chronic conditions reported"}. Estimates assume typical care patterns at CMS national average reimbursement rates.`,
-    margin, y + 12, { maxWidth: pageW - margin * 2 },
+    margin,
+    y + 12,
+    { maxWidth: pageW - margin * 2 },
   );
   y += 36;
 
   // Build expected utilization line items from conditions
   const cond = input.conditions.map((c) => c.toLowerCase()).join(" ");
   const util: { category: string; item: string; freq: string; unit: number; annual: number }[] = [];
-  util.push({ category: "Preventive", item: "Annual Wellness Visit", freq: "1 / yr", unit: 0, annual: 0 });
-  util.push({ category: "Preventive", item: "Routine labs (CBC, CMP, lipid)", freq: "1–2 / yr", unit: 35, annual: 70 });
-  util.push({ category: "Primary care", item: "PCP office visit", freq: "4 / yr", unit: 120, annual: 480 });
+  util.push({
+    category: "Preventive",
+    item: "Annual Wellness Visit",
+    freq: "1 / yr",
+    unit: 0,
+    annual: 0,
+  });
+  util.push({
+    category: "Preventive",
+    item: "Routine labs (CBC, CMP, lipid)",
+    freq: "1–2 / yr",
+    unit: 35,
+    annual: 70,
+  });
+  util.push({
+    category: "Primary care",
+    item: "PCP office visit",
+    freq: "4 / yr",
+    unit: 120,
+    annual: 480,
+  });
 
   if (/diabetes/.test(cond)) {
-    util.push({ category: "Diabetes", item: "Endocrinologist visit", freq: "2 / yr", unit: 220, annual: 440 });
-    util.push({ category: "Diabetes", item: "A1C + diabetic panel", freq: "4 / yr", unit: 55, annual: 220 });
-    util.push({ category: "Diabetes", item: "Diabetic eye exam", freq: "1 / yr", unit: 145, annual: 145 });
-    util.push({ category: "Diabetes", item: "CGM sensors / supplies (DME)", freq: "monthly", unit: 320, annual: 3840 });
-    util.push({ category: "Diabetes", item: "Insulin (capped at $35/mo)", freq: "monthly", unit: INSULIN_CAP_MONTHLY, annual: INSULIN_CAP_MONTHLY * 12 });
+    util.push({
+      category: "Diabetes",
+      item: "Endocrinologist visit",
+      freq: "2 / yr",
+      unit: 220,
+      annual: 440,
+    });
+    util.push({
+      category: "Diabetes",
+      item: "A1C + diabetic panel",
+      freq: "4 / yr",
+      unit: 55,
+      annual: 220,
+    });
+    util.push({
+      category: "Diabetes",
+      item: "Diabetic eye exam",
+      freq: "1 / yr",
+      unit: 145,
+      annual: 145,
+    });
+    util.push({
+      category: "Diabetes",
+      item: "CGM sensors / supplies (DME)",
+      freq: "monthly",
+      unit: 320,
+      annual: 3840,
+    });
+    util.push({
+      category: "Diabetes",
+      item: "Insulin (capped at $35/mo)",
+      freq: "monthly",
+      unit: INSULIN_CAP_MONTHLY,
+      annual: INSULIN_CAP_MONTHLY * 12,
+    });
   }
   if (/heart|cardio|chf|hypertension|blood pressure/.test(cond)) {
-    util.push({ category: "Cardiac", item: "Cardiologist visit", freq: "2 / yr", unit: 240, annual: 480 });
-    util.push({ category: "Cardiac", item: "EKG + echocardiogram", freq: "1 / yr", unit: 410, annual: 410 });
-    util.push({ category: "Cardiac", item: "Cardiac rehab sessions", freq: "12 / yr", unit: 75, annual: 900 });
+    util.push({
+      category: "Cardiac",
+      item: "Cardiologist visit",
+      freq: "2 / yr",
+      unit: 240,
+      annual: 480,
+    });
+    util.push({
+      category: "Cardiac",
+      item: "EKG + echocardiogram",
+      freq: "1 / yr",
+      unit: 410,
+      annual: 410,
+    });
+    util.push({
+      category: "Cardiac",
+      item: "Cardiac rehab sessions",
+      freq: "12 / yr",
+      unit: 75,
+      annual: 900,
+    });
   }
   if (/copd|asthma|pulmonary/.test(cond)) {
-    util.push({ category: "Pulmonary", item: "Pulmonologist visit", freq: "3 / yr", unit: 215, annual: 645 });
-    util.push({ category: "Pulmonary", item: "Spirometry / PFT", freq: "1 / yr", unit: 180, annual: 180 });
-    util.push({ category: "Pulmonary", item: "Nebulizer + oxygen (DME 20%)", freq: "monthly", unit: 95, annual: 1140 });
+    util.push({
+      category: "Pulmonary",
+      item: "Pulmonologist visit",
+      freq: "3 / yr",
+      unit: 215,
+      annual: 645,
+    });
+    util.push({
+      category: "Pulmonary",
+      item: "Spirometry / PFT",
+      freq: "1 / yr",
+      unit: 180,
+      annual: 180,
+    });
+    util.push({
+      category: "Pulmonary",
+      item: "Nebulizer + oxygen (DME 20%)",
+      freq: "monthly",
+      unit: 95,
+      annual: 1140,
+    });
   }
   if (/kidney|renal|ckd/.test(cond)) {
-    util.push({ category: "Renal", item: "Nephrologist visit", freq: "4 / yr", unit: 235, annual: 940 });
-    util.push({ category: "Renal", item: "Renal panel + GFR", freq: "4 / yr", unit: 65, annual: 260 });
+    util.push({
+      category: "Renal",
+      item: "Nephrologist visit",
+      freq: "4 / yr",
+      unit: 235,
+      annual: 940,
+    });
+    util.push({
+      category: "Renal",
+      item: "Renal panel + GFR",
+      freq: "4 / yr",
+      unit: 65,
+      annual: 260,
+    });
   }
   if (/cancer|oncology|chemo/.test(cond)) {
-    util.push({ category: "Oncology", item: "Oncologist visit", freq: "6 / yr", unit: 285, annual: 1710 });
-    util.push({ category: "Oncology", item: "Imaging (CT/MRI surveillance)", freq: "2 / yr", unit: 850, annual: 1700 });
-    util.push({ category: "Oncology", item: "Infusion therapy", freq: "varies", unit: 0, annual: 4500 });
+    util.push({
+      category: "Oncology",
+      item: "Oncologist visit",
+      freq: "6 / yr",
+      unit: 285,
+      annual: 1710,
+    });
+    util.push({
+      category: "Oncology",
+      item: "Imaging (CT/MRI surveillance)",
+      freq: "2 / yr",
+      unit: 850,
+      annual: 1700,
+    });
+    util.push({
+      category: "Oncology",
+      item: "Infusion therapy",
+      freq: "varies",
+      unit: 0,
+      annual: 4500,
+    });
   }
   if (/arthritis|joint|orthop/.test(cond)) {
-    util.push({ category: "Ortho", item: "Orthopedic visit + injection", freq: "2 / yr", unit: 310, annual: 620 });
-    util.push({ category: "Ortho", item: "Physical therapy sessions", freq: "12 / yr", unit: 110, annual: 1320 });
+    util.push({
+      category: "Ortho",
+      item: "Orthopedic visit + injection",
+      freq: "2 / yr",
+      unit: 310,
+      annual: 620,
+    });
+    util.push({
+      category: "Ortho",
+      item: "Physical therapy sessions",
+      freq: "12 / yr",
+      unit: 110,
+      annual: 1320,
+    });
   }
   if (/mental|depression|anxiety/.test(cond)) {
-    util.push({ category: "Behavioral", item: "Therapy / counseling sessions", freq: "24 / yr", unit: 130, annual: 3120 });
+    util.push({
+      category: "Behavioral",
+      item: "Therapy / counseling sessions",
+      freq: "24 / yr",
+      unit: 130,
+      annual: 3120,
+    });
   }
 
   // Always show prescription baseline
-  const rxAnnualRetail = input.medications.reduce((s, m) => s + (m.estimated_monthly_retail ?? 0) * 12, 0);
-  util.push({ category: "Pharmacy", item: "All prescriptions (retail)", freq: `${input.medications.length} meds`, unit: 0, annual: Math.round(rxAnnualRetail) });
-  util.push({ category: "Pharmacy", item: "Capped Part D OOP", freq: "annual cap", unit: 0, annual: g.partDOOPCap });
+  const rxAnnualRetail = input.medications.reduce(
+    (s, m) => s + (m.estimated_monthly_retail ?? 0) * 12,
+    0,
+  );
+  util.push({
+    category: "Pharmacy",
+    item: "All prescriptions (retail)",
+    freq: `${input.medications.length} meds`,
+    unit: 0,
+    annual: Math.round(rxAnnualRetail),
+  });
+  util.push({
+    category: "Pharmacy",
+    item: "Capped Part D OOP",
+    freq: "annual cap",
+    unit: 0,
+    annual: g.partDOOPCap,
+  });
 
   const totalRetail = util.reduce((s, r) => s + r.annual, 0);
 
@@ -589,7 +893,10 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
   y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 16;
 
   // What each pathway pays for this scenario
-  if (y > 600) { doc.addPage(); y = 60; }
+  if (y > 600) {
+    doc.addPage();
+    y = 60;
+  }
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
   doc.setTextColor(20, 20, 20);
@@ -601,19 +908,51 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
   const bPathwayOOP = Math.min(medicalRetail * 0.2 + 400, g.moopHigh);
   autoTable(doc, {
     startY: y,
-    head: [["Pathway", "Plan premiums /yr", "Drug costs /yr", "Medical OOP /yr", "Est. total /yr", "Worst-case /yr"]],
+    head: [
+      [
+        "Pathway",
+        "Plan premiums /yr",
+        "Drug costs /yr",
+        "Medical OOP /yr",
+        "Est. total /yr",
+        "Worst-case /yr",
+      ],
+    ],
     body: [
-      [A.label, usd(A.annualPremium), usd(A.annualDrugCost), usd(aPathwayOOP), usd(A.annualPremium + A.annualDrugCost + aPathwayOOP), usd(A.worstCaseAnnual)],
-      [B.label, usd(B.annualPremium), usd(B.annualDrugCost), usd(bPathwayOOP), usd(B.annualPremium + B.annualDrugCost + bPathwayOOP), usd(B.worstCaseAnnual)],
+      [
+        A.label,
+        usd(A.annualPremium),
+        usd(A.annualDrugCost),
+        usd(aPathwayOOP),
+        usd(A.annualPremium + A.annualDrugCost + aPathwayOOP),
+        usd(A.worstCaseAnnual),
+      ],
+      [
+        B.label,
+        usd(B.annualPremium),
+        usd(B.annualDrugCost),
+        usd(bPathwayOOP),
+        usd(B.annualPremium + B.annualDrugCost + bPathwayOOP),
+        usd(B.worstCaseAnnual),
+      ],
     ],
     headStyles: { fillColor: [16, 122, 87], textColor: 255, fontSize: 9 },
     styles: { fontSize: 8.5, cellPadding: 5 },
-    columnStyles: { 1: { halign: "right" }, 2: { halign: "right" }, 3: { halign: "right" }, 4: { halign: "right", fontStyle: "bold" }, 5: { halign: "right" } },
+    columnStyles: {
+      1: { halign: "right" },
+      2: { halign: "right" },
+      3: { halign: "right" },
+      4: { halign: "right", fontStyle: "bold" },
+      5: { halign: "right" },
+    },
     margin: { left: margin, right: margin },
   });
 
   // ---------- Contact a Licensed Agent (only clickable link) ----------
-  if (y > 680) { doc.addPage(); y = 60; }
+  if (y > 680) {
+    doc.addPage();
+    y = 60;
+  }
   doc.setFillColor(232, 245, 238);
   doc.setDrawColor(16, 122, 87);
   doc.roundedRect(margin, y, pageW - margin * 2, 68, 6, 6, "FD");
@@ -649,7 +988,9 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
       doc.internal.pageSize.getHeight() - 24,
       { maxWidth: pageW - margin * 2 },
     );
-    doc.text(`Page ${i} of ${pageCount}`, pageW - margin, doc.internal.pageSize.getHeight() - 10, { align: "right" });
+    doc.text(`Page ${i} of ${pageCount}`, pageW - margin, doc.internal.pageSize.getHeight() - 10, {
+      align: "right",
+    });
   }
 
   return doc;
@@ -671,7 +1012,11 @@ export function buildConsumerScenarioPdf(input: ScenarioPdfInput): jsPDF {
   const pageW = doc.internal.pageSize.getWidth();
   const margin = 40;
 
-  const ranked = rankedPlanDetails({ year: input.year, zip3: input.zip3, medications: input.medications });
+  const ranked = rankedPlanDetails({
+    year: input.year,
+    zip3: input.zip3,
+    medications: input.medications,
+  });
   const top3 = ranked.slice(0, 3);
   const rec = top3[0];
   const alt = top3[1];
@@ -701,11 +1046,16 @@ export function buildConsumerScenarioPdf(input: ScenarioPdfInput): jsPDF {
   doc.setTextColor(90, 90, 90);
   doc.text(
     `Including prescription drug coverage and bundled benefits. Total monthly is all-in: Part B + plan + Part D + dental + vision.`,
-    margin, y, { maxWidth: pageW - margin * 2 },
+    margin,
+    y,
+    { maxWidth: pageW - margin * 2 },
   );
   y += 18;
 
-  const colHeads = ["Detail", ...top3.map((p, i) => `#${i + 1} ${p.carrier}\n${p.plan}${i === 0 ? "  ★" : ""}`)];
+  const colHeads = [
+    "Detail",
+    ...top3.map((p, i) => `#${i + 1} ${p.carrier}\n${p.plan}${i === 0 ? "  ★" : ""}`),
+  ];
   const rows: (string | number)[][] = [
     ["Plan type", ...top3.map((p) => p.planType)],
     ["Network", ...top3.map((p) => p.network)],
@@ -714,18 +1064,33 @@ export function buildConsumerScenarioPdf(input: ScenarioPdfInput): jsPDF {
     ["Part B premium", ...top3.map((p) => `${usd(Math.round(p.premiumPartB * 100) / 100)}/mo`)],
     ["Plan premium", ...top3.map((p) => `${usd(Math.round(p.premiumPlan * 100) / 100)}/mo`)],
     ["Part D / Rx premium", ...top3.map((p) => `${usd(Math.round(p.premiumRx * 100) / 100)}/mo`)],
-    ["Dental premium", ...top3.map((p) => p.premiumDental ? `${usd(Math.round(p.premiumDental * 100) / 100)}/mo` : "—")],
-    ["Vision premium", ...top3.map((p) => p.premiumVision ? `${usd(Math.round(p.premiumVision * 100) / 100)}/mo` : "—")],
-    ["Extras premium", ...top3.map((p) => p.premiumExtras ? `${usd(Math.round(p.premiumExtras * 100) / 100)}/mo` : "Bundled")],
+    [
+      "Dental premium",
+      ...top3.map((p) =>
+        p.premiumDental ? `${usd(Math.round(p.premiumDental * 100) / 100)}/mo` : "—",
+      ),
+    ],
+    [
+      "Vision premium",
+      ...top3.map((p) =>
+        p.premiumVision ? `${usd(Math.round(p.premiumVision * 100) / 100)}/mo` : "—",
+      ),
+    ],
+    [
+      "Extras premium",
+      ...top3.map((p) =>
+        p.premiumExtras ? `${usd(Math.round(p.premiumExtras * 100) / 100)}/mo` : "Bundled",
+      ),
+    ],
     ["TOTAL MONTHLY", ...top3.map((p) => `${usd(Math.round(p.monthly * 100) / 100)}/mo`)],
     ["EST. ANNUAL TOTAL", ...top3.map((p) => usd(p.annual))],
-    ["Medical deductible", ...top3.map((p) => p.deductibleMed ? usd(p.deductibleMed) : "$0")],
+    ["Medical deductible", ...top3.map((p) => (p.deductibleMed ? usd(p.deductibleMed) : "$0"))],
     ["Primary care", ...top3.map((p) => p.pcpCopay)],
     ["Specialist", ...top3.map((p) => p.specCopay)],
     ["Hospital", ...top3.map((p) => p.hospCopay)],
     ["Emergency room", ...top3.map((p) => p.erCopay)],
     ["Medical OOP max", ...top3.map((p) => p.moop)],
-    ["Rx deductible", ...top3.map((p) => p.deductibleRx ? usd(p.deductibleRx) : "$0")],
+    ["Rx deductible", ...top3.map((p) => (p.deductibleRx ? usd(p.deductibleRx) : "$0"))],
     ["Tier 1 generic", ...top3.map((p) => p.rxTier1)],
     ["Tier 2 generic", ...top3.map((p) => p.rxTier2)],
     ["Tier 3 brand", ...top3.map((p) => p.rxTier3)],
@@ -774,7 +1139,8 @@ export function buildConsumerScenarioPdf(input: ScenarioPdfInput): jsPDF {
   doc.setFontSize(10);
   doc.text(
     `Plan year ${input.year} · ZIP ${input.zip3}${input.county ? ` · ${input.county}` : ""} · ${rec.planType} · ${rec.stars}`,
-    lsMargin, 50,
+    lsMargin,
+    50,
   );
 
   doc.setTextColor(20, 20, 20);
@@ -790,11 +1156,27 @@ export function buildConsumerScenarioPdf(input: ScenarioPdfInput): jsPDF {
     head: [["Premium component", "Monthly", "Annual"]],
     body: [
       ["Medicare Part B", fmtMo(rec.premiumPartB), usd(Math.round(rec.premiumPartB * 12))],
-      [`Plan premium (${rec.planType})`, fmtMo(rec.premiumPlan), usd(Math.round(rec.premiumPlan * 12))],
+      [
+        `Plan premium (${rec.planType})`,
+        fmtMo(rec.premiumPlan),
+        usd(Math.round(rec.premiumPlan * 12)),
+      ],
       ["Part D / Rx", fmtMo(rec.premiumRx), usd(Math.round(rec.premiumRx * 12))],
-      ["Dental", rec.premiumDental ? fmtMo(rec.premiumDental) : "Included", rec.premiumDental ? usd(Math.round(rec.premiumDental * 12)) : "—"],
-      ["Vision", rec.premiumVision ? fmtMo(rec.premiumVision) : "Included", rec.premiumVision ? usd(Math.round(rec.premiumVision * 12)) : "—"],
-      ["Extras (hearing / OTC / wellness)", rec.premiumExtras ? fmtMo(rec.premiumExtras) : "Bundled", rec.premiumExtras ? usd(Math.round(rec.premiumExtras * 12)) : "—"],
+      [
+        "Dental",
+        rec.premiumDental ? fmtMo(rec.premiumDental) : "Included",
+        rec.premiumDental ? usd(Math.round(rec.premiumDental * 12)) : "—",
+      ],
+      [
+        "Vision",
+        rec.premiumVision ? fmtMo(rec.premiumVision) : "Included",
+        rec.premiumVision ? usd(Math.round(rec.premiumVision * 12)) : "—",
+      ],
+      [
+        "Extras (hearing / OTC / wellness)",
+        rec.premiumExtras ? fmtMo(rec.premiumExtras) : "Bundled",
+        rec.premiumExtras ? usd(Math.round(rec.premiumExtras * 12)) : "—",
+      ],
     ],
     foot: [["TOTAL (all-in)", fmtMo(rec.monthly), usd(Math.round(rec.monthly * 12))]],
     headStyles: { fillColor: [16, 122, 87], textColor: 255, fontSize: 9 },
@@ -877,7 +1259,9 @@ export function buildConsumerScenarioPdf(input: ScenarioPdfInput): jsPDF {
     doc.setTextColor(90, 90, 90);
     doc.text(
       "Each medication classified using CMS Part D tier guidance. Actual tier and copay vary by plan formulary.",
-      margin, my + 12, { maxWidth: pageW - margin * 2 },
+      margin,
+      my + 12,
+      { maxWidth: pageW - margin * 2 },
     );
     my += 28;
 
@@ -893,7 +1277,15 @@ export function buildConsumerScenarioPdf(input: ScenarioPdfInput): jsPDF {
         usd(r.estPlanMonthly),
         usd(r.estPlanAnnual),
       ]),
-      foot: [["Totals (before Part D OOP cap)", "", usd(drugRows.reduce((s, r) => s + r.retailMonthly, 0)), usd(totalMo), usd(totalMo * 12)]],
+      foot: [
+        [
+          "Totals (before Part D OOP cap)",
+          "",
+          usd(drugRows.reduce((s, r) => s + r.retailMonthly, 0)),
+          usd(totalMo),
+          usd(totalMo * 12),
+        ],
+      ],
       headStyles: { fillColor: [16, 122, 87], textColor: 255, fontSize: 9 },
       footStyles: { fillColor: [232, 245, 238], textColor: [16, 122, 87], fontStyle: "bold" },
       styles: { fontSize: 8.5, cellPadding: 5, valign: "top" },
@@ -929,7 +1321,9 @@ export function buildConsumerScenarioPdf(input: ScenarioPdfInput): jsPDF {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.setTextColor(16, 122, 87);
-  doc.textWithLink("Open the latest Medicare & You handbook (PDF) \u2197", margin, dy, { url: MEDICARE_HANDBOOK_URL });
+  doc.textWithLink("Open the latest Medicare & You handbook (PDF) \u2197", margin, dy, {
+    url: MEDICARE_HANDBOOK_URL,
+  });
 
   // Footer disclaimer
   const pageCount = doc.getNumberOfPages();
@@ -941,7 +1335,9 @@ export function buildConsumerScenarioPdf(input: ScenarioPdfInput): jsPDF {
     const h = doc.internal.pageSize.getHeight();
     doc.text(
       "Educational comparison only — not a complete listing of plans, not insurance, medical, tax, or legal advice. Verify benefits with the carrier or a licensed agent. See the Medicare & You handbook for official details.",
-      28, h - 22, { maxWidth: w - 56 },
+      28,
+      h - 22,
+      { maxWidth: w - 56 },
     );
     doc.text(`Page ${i} of ${pageCount}`, w - 28, h - 10, { align: "right" });
   }
@@ -981,7 +1377,8 @@ function renderRecommendationPage(
   doc.setFontSize(10);
   doc.text(
     `Best total annual value for Age ${age}, ZIP ${input.zip3}${input.county ? ` · ${input.county}` : ""} · Plan year ${input.year}`,
-    margin, 100,
+    margin,
+    100,
   );
 
   // Three big stat tiles
@@ -991,8 +1388,16 @@ function renderRecommendationPage(
   const gap = 10;
   const tileW = (pageW - margin * 2 - gap * 2) / 3;
   const tiles: { label: string; value: string; sub: string }[] = [
-    { label: "TOTAL MONTHLY", value: fmtMo(rec.monthly), sub: "All-in: Part B + plan + Rx + dental + vision + extras" },
-    { label: "EST. ANNUAL TOTAL", value: usd(rec.annual), sub: "Premiums + capped drug costs + expected OOP" },
+    {
+      label: "TOTAL MONTHLY",
+      value: fmtMo(rec.monthly),
+      sub: "All-in: Part B + plan + Rx + dental + vision + extras",
+    },
+    {
+      label: "EST. ANNUAL TOTAL",
+      value: usd(rec.annual),
+      sub: "Premiums + capped drug costs + expected OOP",
+    },
     { label: "STAR RATING", value: rec.stars, sub: `A.M. Best: ${rec.amBest}` },
   ];
   tiles.forEach((t, i) => {
@@ -1033,7 +1438,10 @@ function renderRecommendationPage(
     { label: "Income band", value: input.incomeBand || "—" },
     { label: "Conditions", value: condCount ? String(condCount) : "None" },
     { label: "Medications", value: medCount ? String(medCount) : "None" },
-    { label: "Priority", value: input.costPreference === "minimize_monthly" ? "Low monthly" : "Predictability" },
+    {
+      label: "Priority",
+      value: input.costPreference === "minimize_monthly" ? "Low monthly" : "Predictability",
+    },
   ];
   const cellW = (pageW - margin * 2 - 24) / cells.length;
   cells.forEach((c, i) => {
@@ -1052,16 +1460,32 @@ function renderRecommendationPage(
   // ---------- Why this plan ----------
   const reasons: string[] = [];
   if (rec.planType.toLowerCase().includes("medigap") || /plan [a-n]/i.test(rec.plan)) {
-    reasons.push("Predictable monthly cost — Medigap covers most Part B coinsurance after the small annual deductible, so doctor and hospital bills don't surprise you.");
+    reasons.push(
+      "Predictable monthly cost — Medigap covers most Part B coinsurance after the small annual deductible, so doctor and hospital bills don't surprise you.",
+    );
     reasons.push("Use any provider nationwide that accepts Medicare — no networks, no referrals.");
-  } else if (rec.planType.toLowerCase().includes("advantage") || rec.planType.toLowerCase().includes("ma")) {
-    reasons.push("Low or $0 plan premium with bundled medical + Part D drug coverage in a single plan.");
-    reasons.push(`Caps your annual medical out-of-pocket at ${rec.moop}, protecting you from worst-case bills.`);
+  } else if (
+    rec.planType.toLowerCase().includes("advantage") ||
+    rec.planType.toLowerCase().includes("ma")
+  ) {
+    reasons.push(
+      "Low or $0 plan premium with bundled medical + Part D drug coverage in a single plan.",
+    );
+    reasons.push(
+      `Caps your annual medical out-of-pocket at ${rec.moop}, protecting you from worst-case bills.`,
+    );
   } else {
-    reasons.push("Best balance of monthly premium, drug coverage, and out-of-pocket risk for the medications and conditions you reported.");
+    reasons.push(
+      "Best balance of monthly premium, drug coverage, and out-of-pocket risk for the medications and conditions you reported.",
+    );
   }
-  if (medCount > 0) reasons.push(`Formulary fit checked against your ${medCount} medication${medCount === 1 ? "" : "s"} — Tier 1 generics at ${rec.rxTier1}, insulin capped at ${usd(rec.insulinCap)}/mo.`);
-  reasons.push(`Carrier financial strength: A.M. Best ${rec.amBest} · CMS Star Rating ${rec.stars}.`);
+  if (medCount > 0)
+    reasons.push(
+      `Formulary fit checked against your ${medCount} medication${medCount === 1 ? "" : "s"} — Tier 1 generics at ${rec.rxTier1}, insulin capped at ${usd(rec.insulinCap)}/mo.`,
+    );
+  reasons.push(
+    `Carrier financial strength: A.M. Best ${rec.amBest} · CMS Star Rating ${rec.stars}.`,
+  );
 
   doc.setFillColor(255, 251, 235);
   doc.setDrawColor(230, 200, 110);
@@ -1090,13 +1514,35 @@ function renderRecommendationPage(
     head: [["Component", "Monthly", "Annual"]],
     body: [
       ["Medicare Part B premium", fmtMo(rec.premiumPartB), usd(Math.round(rec.premiumPartB * 12))],
-      [`Plan premium (${rec.planType})`, fmtMo(rec.premiumPlan), usd(Math.round(rec.premiumPlan * 12))],
-      ["Part D / prescription drug premium", fmtMo(rec.premiumRx), usd(Math.round(rec.premiumRx * 12))],
-      ["Dental premium", rec.premiumDental ? fmtMo(rec.premiumDental) : "Included / standalone", rec.premiumDental ? usd(Math.round(rec.premiumDental * 12)) : "—"],
-      ["Vision premium", rec.premiumVision ? fmtMo(rec.premiumVision) : "Included / standalone", rec.premiumVision ? usd(Math.round(rec.premiumVision * 12)) : "—"],
-      ["Extras (hearing / OTC / wellness)", rec.premiumExtras ? fmtMo(rec.premiumExtras) : "Bundled / included", rec.premiumExtras ? usd(Math.round(rec.premiumExtras * 12)) : "—"],
+      [
+        `Plan premium (${rec.planType})`,
+        fmtMo(rec.premiumPlan),
+        usd(Math.round(rec.premiumPlan * 12)),
+      ],
+      [
+        "Part D / prescription drug premium",
+        fmtMo(rec.premiumRx),
+        usd(Math.round(rec.premiumRx * 12)),
+      ],
+      [
+        "Dental premium",
+        rec.premiumDental ? fmtMo(rec.premiumDental) : "Included / standalone",
+        rec.premiumDental ? usd(Math.round(rec.premiumDental * 12)) : "—",
+      ],
+      [
+        "Vision premium",
+        rec.premiumVision ? fmtMo(rec.premiumVision) : "Included / standalone",
+        rec.premiumVision ? usd(Math.round(rec.premiumVision * 12)) : "—",
+      ],
+      [
+        "Extras (hearing / OTC / wellness)",
+        rec.premiumExtras ? fmtMo(rec.premiumExtras) : "Bundled / included",
+        rec.premiumExtras ? usd(Math.round(rec.premiumExtras * 12)) : "—",
+      ],
     ],
-    foot: [["TOTAL MONTHLY PAYMENT (all-in)", fmtMo(rec.monthly), usd(Math.round(rec.monthly * 12))]],
+    foot: [
+      ["TOTAL MONTHLY PAYMENT (all-in)", fmtMo(rec.monthly), usd(Math.round(rec.monthly * 12))],
+    ],
     headStyles: { fillColor: [16, 122, 87], textColor: 255, fontSize: 9 },
     footStyles: { fillColor: [232, 245, 238], textColor: [16, 122, 87], fontStyle: "bold" },
     styles: { fontSize: 9, cellPadding: 5 },
@@ -1128,7 +1574,10 @@ function renderRecommendationPage(
   });
   y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 14;
 
-  if (y > 640) { doc.addPage(); y = 60; }
+  if (y > 640) {
+    doc.addPage();
+    y = 60;
+  }
 
   // Drug & ancillary side-by-side
   doc.setFont("helvetica", "bold");
@@ -1173,7 +1622,10 @@ function renderRecommendationPage(
 
   // Alternate
   if (alt) {
-    if (y > 660) { doc.addPage(); y = 60; }
+    if (y > 660) {
+      doc.addPage();
+      y = 60;
+    }
     doc.setFillColor(248, 248, 248);
     doc.setDrawColor(180, 180, 180);
     doc.roundedRect(margin, y, pageW - margin * 2, 56, 6, 6, "FD");
@@ -1189,7 +1641,8 @@ function renderRecommendationPage(
     doc.setTextColor(80, 80, 80);
     doc.text(
       `${fmtMo(alt.monthly)} all-in · ${usd(alt.annual)}/yr estimated · ${alt.stars}`,
-      margin + 14, y + 50,
+      margin + 14,
+      y + 50,
     );
   }
 }

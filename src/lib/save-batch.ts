@@ -13,7 +13,13 @@
 // ============================================================================
 
 export type SaveField =
-  | "status" | "qaNote" | "devNote" | "severity" | "assignee" | "sprint";
+  | "status"
+  | "qaNote"
+  | "devNote"
+  | "severity"
+  | "assignee"
+  | "devAssignee"
+  | "sprint";
 
 export interface PendingChangeInput {
   key: string;
@@ -28,6 +34,7 @@ export interface DraftValues {
   devNote: Record<string, string>;
   severity: Record<string, string>;
   assignee: Record<string, string>;
+  devAssignee: Record<string, string>;
   sprint: Record<string, string>;
 }
 
@@ -35,6 +42,7 @@ export type PushTestPatch = {
   status?: string | null;
   severity?: string | null;
   assignee?: string | null;
+  dev_assignee?: string | null;
   sprint_id?: string | null;
 };
 
@@ -85,6 +93,13 @@ export function buildCloudOps(
         pushes.set(id, p);
         break;
       }
+      case "devAssignee": {
+        const v = draft.devAssignee[id] ?? "";
+        const p = pushes.get(id) ?? {};
+        p.dev_assignee = v || null;
+        pushes.set(id, p);
+        break;
+      }
       case "sprint": {
         const v = draft.sprint[id] ?? "";
         const p = pushes.get(id) ?? {};
@@ -106,7 +121,9 @@ export function buildCloudOps(
   }
 
   const pushOps: CloudOp[] = Array.from(pushes.entries()).map(([testId, patch]) => ({
-    kind: "push", testId, patch,
+    kind: "push",
+    testId,
+    patch,
   }));
   return [...pushOps, ...notes];
 }

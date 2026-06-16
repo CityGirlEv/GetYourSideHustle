@@ -8,7 +8,9 @@ export function listScenarioHistory(): ScenarioHistoryEntry[] {
     if (!raw) return [];
     const arr = JSON.parse(raw) as ScenarioHistoryEntry[];
     return Array.isArray(arr) ? arr.filter((e) => e?.code) : [];
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
 
 export function rememberScenario(code: string) {
@@ -16,5 +18,7 @@ export function rememberScenario(code: string) {
     const existing = listScenarioHistory().filter((e) => e.code !== code);
     const next = [{ code, createdAt: Date.now() }, ...existing].slice(0, 20);
     localStorage.setItem(KEY, JSON.stringify(next));
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }

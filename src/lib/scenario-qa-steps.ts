@@ -3,13 +3,19 @@ export function splitScenarioDemographics(demographics: string): {
   basics: string;
   costPreference: string;
 } {
-  const parts = demographics.split(", ").map((s) => s.trim()).filter(Boolean);
+  const parts = demographics
+    .split(", ")
+    .map((s) => s.trim())
+    .filter(Boolean);
   const costIdx = parts.findIndex((p) => /^cost preference/i.test(p));
-  const costPreference =
-    costIdx >= 0 ? parts[costIdx]! : "cost preference = 'minimize monthly'";
-  const basics =
-    costIdx >= 0 ? parts.filter((_, i) => i !== costIdx).join(", ") : demographics;
+  const costPreference = costIdx >= 0 ? parts[costIdx]! : "cost preference = 'minimize monthly'";
+  const basics = costIdx >= 0 ? parts.filter((_, i) => i !== costIdx).join(", ") : demographics;
   return { basics, costPreference };
+}
+
+/** QA checkbox label for a condition — guides testers to use Other when not listed. */
+export function formatConditionForQaStep(condition: string): string {
+  return `Condition: ${condition} — check if listed; if not present, select Other and type in the condition`;
 }
 
 /** QA checkbox label for cost preference — adds PPO/HMO guidance on predictability. */
@@ -62,12 +68,13 @@ export function buildScenarioQaAuditSteps(parts: {
   medications: string;
   costTotal: string;
 }): string[] {
-  const { birthYear, zip3, countyLine, demographics, conditions, medications, costTotal } =
-    parts;
+  const { birthYear, zip3, countyLine, demographics, conditions, medications, costTotal } = parts;
   const { basics, costPreference } = splitScenarioDemographics(demographics);
-  const demoParts = basics.split(", ").map((s) => s.trim()).filter(Boolean);
-  const step1Intro =
-    "Step 1 — Demographics: Enter the following for the Scenario Information.";
+  const demoParts = basics
+    .split(", ")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const step1Intro = "Step 1 — Demographics: Enter the following for the Scenario Information.";
   const step1Substeps = [
     birthYear,
     `ZIP3 = ${zip3}`,
@@ -75,15 +82,21 @@ export function buildScenarioQaAuditSteps(parts: {
     ...demoParts,
     "THEN CLICK NEXT.",
   ];
-  const conditionParts = conditions.split(", ").map((s) => s.trim()).filter(Boolean);
+  const conditionParts = conditions
+    .split(", ")
+    .map((s) => s.trim())
+    .filter(Boolean);
   const step2Substeps = [
     formatCostPreferenceForQaStep(costPreference),
-    ...conditionParts,
+    ...conditionParts.map(formatConditionForQaStep),
     "THEN CLICK NEXT.",
   ];
   const step2Intro =
-    'Step 2 — Preferences & Conditions: On the Part 2 page, cost preference is first (section a), then conditions (section b). If a condition isn\'t listed, use Other.';
-  const medParts = medications.split("; ").map((s) => s.trim()).filter(Boolean);
+    "Step 2 — Preferences & Conditions: On the Part 2 page, cost preference is first (section a), then conditions (section b). If a condition isn't listed, select Other and type in the condition if not present.";
+  const medParts = medications
+    .split("; ")
+    .map((s) => s.trim())
+    .filter(Boolean);
   const medSubsteps = [
     "Add these medications.",
     ...medParts.map((med) => `${med}.`),
@@ -91,8 +104,7 @@ export function buildScenarioQaAuditSteps(parts: {
   ];
   const step3Intro =
     "Step 3 — Medications: Under Common medications for your conditions: Select the medication (if present). Those medications will be added to the list below. Click the plus sign to add additional medications.";
-  const step5Intro =
-    "A pop-up screen will appear allowing the user to Opt In.";
+  const step5Intro = "A pop-up screen will appear allowing the user to Opt In.";
   const step5Substeps = [
     "Enter your email and phone number.",
     'Click the "Contact Me" button.',
@@ -113,7 +125,7 @@ export function buildScenarioQaAuditSteps(parts: {
     `County = ${countyLabelFromLine(countyLine)}`,
     ...demoParts,
     formatCostPreferenceForQaStep(costPreference),
-    ...conditionParts.map((c) => `Condition: ${c}`),
+    ...conditionParts.map(formatConditionForQaStep),
     ...medParts.map((m) => `Medication: ${m}`),
   ];
   const crossCheckIntro =
@@ -123,8 +135,7 @@ export function buildScenarioQaAuditSteps(parts: {
     "Demographics printed in the PDF and XLSX match what you entered.",
     `ZIP3 (${zip3}) printed in the PDF and XLSX matches what you entered.`,
   ];
-  const downloadFilesIntro =
-    "On the confirmation page (or View scenario summary), download files:";
+  const downloadFilesIntro = "On the confirmation page (or View scenario summary), download files:";
   const downloadFilesSubsteps = [
     "Click 'Download PDF' to generate the system output report.",
     "Click 'Download Excel' to generate the system output report.",

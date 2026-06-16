@@ -10,10 +10,7 @@ function loadEnv() {
     if (!line || line.startsWith("#") || !line.includes("=")) continue;
     const i = line.indexOf("=");
     let val = line.slice(i + 1).trim();
-    if (
-      (val.startsWith('"') && val.endsWith('"')) ||
-      (val.startsWith("'") && val.endsWith("'"))
-    ) {
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
       val = val.slice(1, -1);
     }
     env[line.slice(0, i)] = val;
@@ -24,7 +21,8 @@ function loadEnv() {
 const env = loadEnv();
 const secret = env.TEST_EMAIL_SECRET;
 const recipient = process.argv[2] ?? "evelyn3@cox.net";
-const origin = (process.argv[3] ?? env.PUBLIC_SITE_URL ?? "https://mypartb.com").replace(/\/$/, "");
+const template = process.argv[3] ?? "welcome";
+const origin = (process.argv[4] ?? env.PUBLIC_SITE_URL ?? "https://mypartb.com").replace(/\/$/, "");
 
 if (!secret) {
   console.error("TEST_EMAIL_SECRET missing in .env");
@@ -38,7 +36,7 @@ const res = await fetch(
   {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ template: "welcome", recipient }),
+    body: JSON.stringify({ template, recipient }),
   },
 );
 

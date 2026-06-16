@@ -14,6 +14,7 @@ const ALL_ENTRIES: { path: string; changefreq?: string; priority?: string }[] = 
   { path: "/register", changefreq: "monthly", priority: "0.4" },
   { path: "/reset-password", changefreq: "yearly", priority: "0.2" },
   { path: "/nda", changefreq: "yearly", priority: "0.2" },
+  { path: "/legal", changefreq: "monthly", priority: "0.5" },
 
   // Authenticated staff surface
   { path: "/admin", changefreq: "weekly", priority: "0.6" },
@@ -23,7 +24,8 @@ const ALL_ENTRIES: { path: string; changefreq?: string; priority?: string }[] = 
   { path: "/testing", changefreq: "weekly", priority: "0.5" },
   { path: "/sources", changefreq: "monthly", priority: "0.4" },
   { path: "/tasks", changefreq: "weekly", priority: "0.5" },
-  { path: "/users", changefreq: "monthly", priority: "0.4" },
+  { path: "/staff", changefreq: "monthly", priority: "0.4" },
+  { path: "/staff/report", changefreq: "monthly", priority: "0.4" },
 
   // Dynamic scenario routes (parameterized — listed as patterns for reference)
   { path: "/scenario/$code", changefreq: "weekly", priority: "0.5" },
@@ -44,7 +46,9 @@ export const Route = createFileRoute("/sitemap-internal.xml")({
             e.changefreq ? `    <changefreq>${e.changefreq}</changefreq>` : null,
             e.priority ? `    <priority>${e.priority}</priority>` : null,
             `  </url>`,
-          ].filter(Boolean).join("\n"),
+          ]
+            .filter(Boolean)
+            .join("\n"),
         );
         const xml = [
           `<?xml version="1.0" encoding="UTF-8"?>`,

@@ -1,11 +1,20 @@
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+  type ReactNode,
+} from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import type { Session } from "@supabase/supabase-js";
 import { getCurrentUserProfile } from "./current-user.functions";
+import { clearLocalAuthSession, isForceLoggedOut } from "./auth-session";
 import type { Year, Medication } from "./medicare-math";
 
-export type Role = "admin" | "qa" | "agent" | "editor" | "viewer" | "advisor";
+export type Role = "leads_admin" | "admin" | "qa" | "agent" | "editor" | "viewer" | "advisor";
 
 export interface User {
   id: string;
@@ -105,41 +114,91 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [activeScenarioCode, setActiveScenarioCode] = useState<string | null>(null);
 
-  // Auth bootstrap
+  // Auth bootstrap — validate with the auth server; getSession() alone can restore
+  // a stale localStorage token for up to ~1h after admin global sign-out.
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_e, s) => {
       setSession(s);
       if (!s) {
         setUser(null);
-        setScenarios([]); setSoas([]); setCredits(0); setCreditTxns([]); setAuditLogs([]);
+        setScenarios([]);
+        setSoas([]);
+        setCredits(0);
+        setCreditTxns([]);
+        setAuditLogs([]);
         setAuthLoading(false);
       }
     });
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      if (!data.session) setAuthLoading(false);
-    });
+
+    (async () => {
+      try {
+        const {
+          data: { session: cached },
+        } = await supabase.auth.getSession();
+        if (!cached) {
+          setAuthLoading(false);
+          return;
+        }
+
+        const {
+          data: { user: authUser },
+          error: userErr,
+        } = await supabase.auth.getUser();
+        if (userErr || !authUser || isForceLoggedOut(cached, authUser)) {
+          await clearLocalAuthSession((opts) => supabase.auth.signOut(opts));
+          setSession(null);
+          setUser(null);
+          setAuthLoading(false);
+          return;
+        }
+
+        // Ensure profile hydration runs even if INITIAL_SESSION hasn't fired yet.
+        setSession((prev) => prev ?? cached);
+
+        // Refresh in the background — blocking here caused session churn that
+        // cancelled profile hydration and left authLoading stuck on /testing.
+        void supabase.auth.refreshSession().catch((err) => {
+          console.warn("[auth] background refresh failed:", err?.message ?? err);
+        });
+      } catch {
+        setAuthLoading(false);
+      }
+    })();
+
     return () => subscription.unsubscribe();
   }, []);
 
-  // Hydrate profile + role
+  // Hydrate profile + role — keyed on user id so token refresh does not re-run.
+  const sessionUserId = session?.user?.id;
+  const hydrateGenRef = useRef(0);
   useEffect(() => {
-    if (!session) return;
+    if (!sessionUserId) return;
+    if (user?.id === sessionUserId) {
+      setAuthLoading(false);
+      return;
+    }
+    const gen = ++hydrateGenRef.current;
     let cancelled = false;
     (async () => {
       setAuthLoading(true);
       try {
         const profile = await fetchCurrentUserProfile();
-        if (cancelled) return;
+        if (cancelled || gen !== hydrateGenRef.current) return;
         setUser(profile as User);
       } catch (err) {
         console.error("Failed to hydrate user profile:", err);
-        if (!cancelled) {
+        if (!cancelled && gen === hydrateGenRef.current) {
           const errMsg = err instanceof Error ? err.message : String(err);
           const { toast } = await import("sonner");
           toast.error("Failed to load user profile: " + errMsg);
-          
-          if (errMsg.includes("Unauthorized") || errMsg.includes("Invalid token") || errMsg.includes("invalid claim")) {
+
+          if (
+            errMsg.includes("Unauthorized") ||
+            errMsg.includes("Invalid token") ||
+            errMsg.includes("invalid claim")
+          ) {
             console.warn("Invalid session token detected, clearing session...");
             supabase.auth.signOut().then(() => {
               setUser(null);
@@ -148,68 +207,113 @@ export function AppProvider({ children }: { children: ReactNode }) {
           }
         }
       } finally {
-        if (!cancelled) {
+        if (!cancelled && gen === hydrateGenRef.current) {
           setAuthLoading(false);
         }
       }
     })();
-    return () => { cancelled = true; };
-  }, [session, fetchCurrentUserProfile]);
-
-  const log = useCallback((action: string, details?: Record<string, unknown>) => {
-    if (!user) return;
-    const entry: AuditLog = {
-      id: crypto.randomUUID(),
-      user_email: user.email,
-      user_role: user.role,
-      action,
-      ip_address: "client",
-      details,
-      timestamp: new Date().toISOString(),
+    return () => {
+      cancelled = true;
     };
-    setAuditLogs((p) => [entry, ...p]);
-    supabase.rpc("log_audit_event", {
-      p_action: action,
-      p_metadata: (details ?? {}) as never,
-    }).then(({ error }) => { if (error) console.warn("audit insert failed", error.message); });
+    // fetchCurrentUserProfile is stable for the app lifetime; omit from deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sessionUserId is the only trigger
+  }, [sessionUserId]);
+
+  const log = useCallback(
+    (action: string, details?: Record<string, unknown>) => {
+      if (!user) return;
+      const entry: AuditLog = {
+        id: crypto.randomUUID(),
+        user_email: user.email,
+        user_role: user.role,
+        action,
+        ip_address: "client",
+        details,
+        timestamp: new Date().toISOString(),
+      };
+      setAuditLogs((p) => [entry, ...p]);
+      supabase
+        .rpc("log_audit_event", {
+          p_action: action,
+          p_metadata: (details ?? {}) as never,
+        })
+        .then(({ error }) => {
+          if (error) console.warn("audit insert failed", error.message);
+        });
+    },
+    [user],
+  );
+
+  const fetchScenarios = useCallback(async () => {
+    if (!user) return [];
+    const { data, error } = await supabase
+      .from("scenarios")
+      .select("*")
+      .or(`claimed_by.eq.${user.id},assigned_agent_id.eq.${user.id},created_by.eq.${user.id}`);
+    if (error) {
+      console.error("fetchScenarios failed:", error);
+      return [];
+    }
+    const rows = (data ?? []) as unknown as Scenario[];
+    return rows.sort((a, b) => {
+      if (a.claimed_at && b.claimed_at) {
+        return new Date(b.claimed_at).getTime() - new Date(a.claimed_at).getTime();
+      }
+      if (a.claimed_at) return -1;
+      if (b.claimed_at) return 1;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
   }, [user]);
 
   const refreshScenarios = useCallback(async () => {
-    if (!user) return;
-    const { data, error } = await supabase.rpc("my_scenarios");
-    if (error) { console.error("my_scenarios", error); return; }
-    setScenarios((data ?? []) as unknown as Scenario[]);
-  }, [user]);
+    const list = await fetchScenarios();
+    setScenarios(list);
+  }, [fetchScenarios]);
 
   // Load advisor data once signed in
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
     (async () => {
-      const [scenariosRes, soasRes, creditsRes, txnRes, logsRes] = await Promise.all([
-        supabase.rpc("my_scenarios"),
-        supabase.from("soas").select("id, scenario_id, plan_type, status, signed_at").order("signed_at", { ascending: false }),
+      const [scenariosList, soasRes, creditsRes, txnRes, logsRes] = await Promise.all([
+        fetchScenarios(),
+        supabase
+          .from("soas")
+          .select("id, scenario_id, plan_type, status, signed_at")
+          .order("signed_at", { ascending: false }),
         supabase.from("advisor_credits").select("balance").eq("advisor_id", user.id).maybeSingle(),
-        supabase.from("credit_txns").select("id, advisor_id, amount, description, created_at").order("created_at", { ascending: false }).limit(50),
-        supabase.from("audit_logs").select("id, action, metadata, created_at").order("created_at", { ascending: false }).limit(100),
+        supabase
+          .from("credit_txns")
+          .select("id, advisor_id, amount, description, created_at")
+          .order("created_at", { ascending: false })
+          .limit(50),
+        supabase
+          .from("audit_logs")
+          .select("id, action, metadata, created_at")
+          .order("created_at", { ascending: false })
+          .limit(100),
       ]);
       if (cancelled) return;
-      setScenarios((scenariosRes.data ?? []) as unknown as Scenario[]);
+      setScenarios(scenariosList);
       setSoas((soasRes.data ?? []) as SOA[]);
       setCredits(creditsRes.data?.balance ?? 0);
       setCreditTxns((txnRes.data ?? []) as CreditTxn[]);
-      setAuditLogs((logsRes.data ?? []).map((r) => ({
-        id: r.id,
-        user_email: user.email,
-        user_role: user.role,
-        action: r.action,
-        ip_address: "server",
-        details: (r.metadata ?? {}) as Record<string, unknown>,
-        timestamp: r.created_at,
-      })));
+      setAuditLogs(
+        (logsRes.data ?? []).map((r) => ({
+          id: r.id,
+          user_email: user.email,
+          user_role: user.role,
+          action: r.action,
+          ip_address: "server",
+          details: (r.metadata ?? {}) as Record<string, unknown>,
+          timestamp: r.created_at,
+        })),
+      );
     })();
-    return () => { cancelled = true; };
-  }, [user]);
+    return () => {
+      cancelled = true;
+    };
+  }, [user, fetchScenarios]);
 
   const signOut = async () => {
     log("LOGOUT");
@@ -240,10 +344,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addSOA: Ctx["addSOA"] = async (scenarioId, planType) => {
     if (!user) return;
-    const { data, error } = await supabase.from("soas")
-      .insert({ advisor_id: user.id, scenario_id: scenarioId, plan_type: planType, status: "active" })
-      .select("id, scenario_id, plan_type, status, signed_at").single();
-    if (error || !data) { console.error("addSOA", error); return; }
+    const { data, error } = await supabase
+      .from("soas")
+      .insert({
+        advisor_id: user.id,
+        scenario_id: scenarioId,
+        plan_type: planType,
+        status: "active",
+      })
+      .select("id, scenario_id, plan_type, status, signed_at")
+      .single();
+    if (error || !data) {
+      console.error("addSOA", error);
+      return;
+    }
     setSoas((p) => [data as SOA, ...p]);
     log("SIGN_SOA", { scenario: scenarioId, plan_type: planType });
   };
@@ -251,9 +365,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const deductCredit: Ctx["deductCredit"] = async (description) => {
     if (!user || credits <= 0) return false;
     const { data, error } = await supabase.rpc("deduct_credit", { p_description: description });
-    if (error || data === null) { console.warn("deduct_credit failed", error?.message); return false; }
+    if (error || data === null) {
+      console.warn("deduct_credit failed", error?.message);
+      return false;
+    }
     setCredits(data as number);
-    setCreditTxns((p) => [{ id: crypto.randomUUID(), advisor_id: user.id, amount: -1, description, created_at: new Date().toISOString() }, ...p]);
+    setCreditTxns((p) => [
+      {
+        id: crypto.randomUUID(),
+        advisor_id: user.id,
+        amount: -1,
+        description,
+        created_at: new Date().toISOString(),
+      },
+      ...p,
+    ]);
     return true;
   };
 
@@ -270,25 +396,56 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return;
       }
     } else if (amount < 0) {
-      const { data, error } = await supabase.rpc("admin_adjust_credits", { p_target: user.id, p_amount: amount, p_description: description });
-      if (error || data === null) { console.warn("admin_adjust_credits failed", error?.message); return; }
+      const { data, error } = await supabase.rpc("admin_adjust_credits", {
+        p_target: user.id,
+        p_amount: amount,
+        p_description: description,
+      });
+      if (error || data === null) {
+        console.warn("admin_adjust_credits failed", error?.message);
+        return;
+      }
       setCredits(data as number);
     } else {
       return;
     }
-    setCreditTxns((p) => [{ id: crypto.randomUUID(), advisor_id: user.id, amount, description, created_at: new Date().toISOString() }, ...p]);
+    setCreditTxns((p) => [
+      {
+        id: crypto.randomUUID(),
+        advisor_id: user.id,
+        amount,
+        description,
+        created_at: new Date().toISOString(),
+      },
+      ...p,
+    ]);
   };
 
   return (
-    <AppCtx.Provider value={{
-      user, authLoading, signOut,
-      year, setYear,
-      scenarios, refreshScenarios, lookupScenario,
-      soas, addSOA,
-      credits, creditTxns, deductCredit, addCredits,
-      auditLogs, log,
-      activeScenarioCode, setActiveScenarioCode,
-    }}>{children}</AppCtx.Provider>
+    <AppCtx.Provider
+      value={{
+        user,
+        authLoading,
+        signOut,
+        year,
+        setYear,
+        scenarios,
+        refreshScenarios,
+        lookupScenario,
+        soas,
+        addSOA,
+        credits,
+        creditTxns,
+        deductCredit,
+        addCredits,
+        auditLogs,
+        log,
+        activeScenarioCode,
+        setActiveScenarioCode,
+      }}
+    >
+      {children}
+    </AppCtx.Provider>
   );
 }
 

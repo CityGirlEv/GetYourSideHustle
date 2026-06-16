@@ -3,6 +3,7 @@ import {
   BookOpen,
   ChevronDown,
   ClipboardList,
+  DollarSign,
   FileSignature,
   FlaskConical,
   LayoutDashboard,
@@ -17,6 +18,9 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -55,12 +59,24 @@ export function AdminNavDropdown({ variant = "button" }: AdminNavDropdownProps) 
             Admin Dashboard
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link to="/users" className="flex items-center gap-2 cursor-pointer">
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger className="flex items-center gap-2 cursor-pointer text-xs">
             <Users className="h-4 w-4" />
-            Users & Staff
-          </Link>
-        </DropdownMenuItem>
+            Staff
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent className="text-xs">
+            <DropdownMenuItem asChild>
+              <Link to="/staff" className="flex items-center gap-2 cursor-pointer">
+                Staff roster
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to="/staff/report" className="flex items-center gap-2 cursor-pointer">
+                Device report
+              </Link>
+            </DropdownMenuItem>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
         <DropdownMenuItem asChild>
           <Link to="/tasks" className="flex items-center gap-2 cursor-pointer">
             <ListChecks className="h-4 w-4" />
@@ -77,6 +93,12 @@ export function AdminNavDropdown({ variant = "button" }: AdminNavDropdownProps) 
           <Link to="/admin/email-templates" className="flex items-center gap-2 cursor-pointer">
             <Mail className="h-4 w-4" />
             Email Templates
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/admin/pricing" className="flex items-center gap-2 cursor-pointer">
+            <DollarSign className="h-4 w-4" />
+            Lead Pricing
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />

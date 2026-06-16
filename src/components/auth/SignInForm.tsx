@@ -1,10 +1,14 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
+import { resolveSignInErrorMessage } from "@/lib/auth.functions";
+import { useApp } from "@/lib/app-store";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Lock, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
+import { passwordRecoveryRedirectUrl } from "@/lib/auth-recovery";
 
 type SignInFormProps = {
   embedded?: boolean;
@@ -16,13 +20,43 @@ export function SignInForm({ embedded, onRegisterClick }: SignInFormProps) {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
+  const { user } = useApp();
+  const resolveSignInError = useServerFn(resolveSignInErrorMessage);
+
+  useEffect(() => {
+    if (busy && user) setBusy(false);
+  }, [busy, user]);
+
+  useEffect(() => {
+    if (!busy) return;
+    const timeout = window.setTimeout(() => setBusy(false), 15_000);
+    return () => window.clearTimeout(timeout);
+  }, [busy]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setBusy(false);
-    if (error) return toast.error(error.message);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        try {
+          const resolved = await resolveSignInError({
+            email,
+            error_message: error.message,
+          });
+          toast.error(
+            resolved.message === "User is banned" ? "User Needs Admin Approval" : resolved.message,
+          );
+        } catch {
+          toast.error(
+            error.message === "User is banned" ? "User Needs Admin Approval" : error.message,
+          );
+        }
+        setBusy(false);
+      }
+    } catch {
+      setBusy(false);
+    }
   };
 
   const handleForgot = async (e: React.FormEvent) => {
@@ -30,7 +64,7 @@ export function SignInForm({ embedded, onRegisterClick }: SignInFormProps) {
     if (!email) return toast.error("Enter your email above first.");
     setBusy(true);
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin + "/reset-password",
+      redirectTo: passwordRecoveryRedirectUrl(),
     });
     setBusy(false);
     if (error) return toast.error(error.message);
@@ -40,12 +74,20 @@ export function SignInForm({ embedded, onRegisterClick }: SignInFormProps) {
   return (
     <form onSubmit={handleSignIn} className="space-y-3">
       <div>
-        <Label>Email</Label>
-        <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
+        <Label htmlFor="signin-email">Email</Label>
+        <Input
+          id="signin-email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          autoComplete="email"
+        />
       </div>
       <div className="relative">
-        <Label>Password</Label>
+        <Label htmlFor="signin-password">Password</Label>
         <Input
+          id="signin-password"
           type={showPassword ? "text" : "password"}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
@@ -72,12 +114,16 @@ export function SignInForm({ embedded, onRegisterClick }: SignInFormProps) {
         disabled={busy}
         className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 w-full text-center"
       >
-        Forgot password?
+        Forgot / Reset password?
       </button>
       {!embedded && onRegisterClick && (
         <p className="text-xs text-center text-muted-foreground pt-1">
           Need an account?{" "}
-          <button type="button" onClick={onRegisterClick} className="underline font-medium text-primary">
+          <button
+            type="button"
+            onClick={onRegisterClick}
+            className="underline font-medium text-primary"
+          >
             Register here
           </button>
         </p>

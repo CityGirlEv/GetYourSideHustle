@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/visits")({
   head: () => ({
     meta: [
-      { title: "Site Visits — The Medicare Optimizer" },
+      { title: "Site Visits — Get Part B Optimizer" },
       { name: "robots", content: "noindex,nofollow" },
     ],
   }),
@@ -42,7 +42,9 @@ function VisitsPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from("site_visits")
-      .select("id, ip_address, country, country_code, region, city, path, referrer, user_agent, user_id, created_at")
+      .select(
+        "id, ip_address, country, country_code, region, city, path, referrer, user_agent, user_id, created_at",
+      )
       .order("created_at", { ascending: false })
       .limit(500);
     if (!error && data) setRows(data as VisitRow[]);
@@ -63,7 +65,10 @@ function VisitsPage() {
     );
   }, [rows, q]);
 
-  const uniqueIps = useMemo(() => new Set(rows.map((r) => r.ip_address).filter(Boolean)).size, [rows]);
+  const uniqueIps = useMemo(
+    () => new Set(rows.map((r) => r.ip_address).filter(Boolean)).size,
+    [rows],
+  );
 
   if (user?.role !== "admin") {
     return (
@@ -84,7 +89,11 @@ function VisitsPage() {
             className="w-72"
           />
           <Button variant="outline" size="sm" onClick={load} disabled={loading}>
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCcw className="h-4 w-4" />
+            )}
             <span className="ml-2">Refresh</span>
           </Button>
           <div className="ml-auto text-xs text-muted-foreground">
@@ -114,11 +123,19 @@ function VisitsPage() {
                     <td className="px-3 py-2 font-mono text-xs">{r.ip_address ?? "—"}</td>
                     <td className="px-3 py-2 text-xs">
                       {[r.city, r.region, r.country].filter(Boolean).join(", ") || "—"}
-                      {r.country_code ? <span className="ml-1 text-muted-foreground">({r.country_code})</span> : null}
+                      {r.country_code ? (
+                        <span className="ml-1 text-muted-foreground">({r.country_code})</span>
+                      ) : null}
                     </td>
-                    <td className="px-3 py-2 font-mono text-xs break-all max-w-[260px]">{r.path ?? "—"}</td>
-                    <td className="px-3 py-2 text-xs break-all max-w-[220px]">{r.referrer ?? "—"}</td>
-                    <td className="px-3 py-2 text-xs break-all max-w-[260px] text-muted-foreground">{r.user_agent ?? "—"}</td>
+                    <td className="px-3 py-2 font-mono text-xs break-all max-w-[260px]">
+                      {r.path ?? "—"}
+                    </td>
+                    <td className="px-3 py-2 text-xs break-all max-w-[220px]">
+                      {r.referrer ?? "—"}
+                    </td>
+                    <td className="px-3 py-2 text-xs break-all max-w-[260px] text-muted-foreground">
+                      {r.user_agent ?? "—"}
+                    </td>
                   </tr>
                 ))}
                 {!loading && filtered.length === 0 && (

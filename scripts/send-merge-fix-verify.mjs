@@ -7,10 +7,7 @@ function loadEnv() {
     if (!line || line.startsWith("#") || !line.includes("=")) continue;
     const i = line.indexOf("=");
     let val = line.slice(i + 1).trim();
-    if (
-      (val.startsWith('"') && val.endsWith('"')) ||
-      (val.startsWith("'") && val.endsWith("'"))
-    ) {
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
       val = val.slice(1, -1);
     }
     env[line.slice(0, i)] = val;
@@ -36,7 +33,7 @@ const { error } = await sb.rpc("enqueue_email", {
   payload: {
     message_id: messageId,
     to: recipient,
-    from: "The Medicare Optimizer <noreply@mypartb.com>",
+    from: "Get Part B Optimizer <noreply@mypartb.com>",
     sender_domain: "mypartb.com",
     subject: "New beta registration — Merge Fix Test User",
     html: `<p>If you see this, Cox delivery is working. Merge-field fix deployed ${new Date().toISOString()}. Earlier registration emails may be in Spam/Junk — search for <strong>New beta registration</strong>.</p>`,

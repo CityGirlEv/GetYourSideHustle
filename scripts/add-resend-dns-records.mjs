@@ -3,7 +3,13 @@ import path from "path";
 
 const ZONE_ID = "bc51ba8f291107c7c8bc930ffc3a0ef2";
 
-const configPath = path.join(process.env.APPDATA ?? "", "xdg.config", ".wrangler", "config", "default.toml");
+const configPath = path.join(
+  process.env.APPDATA ?? "",
+  "xdg.config",
+  ".wrangler",
+  "config",
+  "default.toml",
+);
 const token = fs.readFileSync(configPath, "utf8").match(/oauth_token = "([^"]+)"/)[1];
 const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
@@ -28,21 +34,18 @@ const records = [
 ];
 
 for (const rec of records) {
-  const res = await fetch(
-    `https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records`,
-    {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        type: rec.type,
-        name: rec.name,
-        content: rec.content,
-        ttl: 1,
-        proxied: false,
-        ...(rec.priority != null ? { priority: rec.priority } : {}),
-      }),
-    },
-  );
+  const res = await fetch(`https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      type: rec.type,
+      name: rec.name,
+      content: rec.content,
+      ttl: 1,
+      proxied: false,
+      ...(rec.priority != null ? { priority: rec.priority } : {}),
+    }),
+  });
   const json = await res.json();
-  console.log(rec.type, rec.name, json.success ? "ok" : json.errors?.[0]?.message ?? json.errors);
+  console.log(rec.type, rec.name, json.success ? "ok" : (json.errors?.[0]?.message ?? json.errors));
 }

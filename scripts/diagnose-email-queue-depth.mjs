@@ -8,10 +8,7 @@ function loadEnv() {
     const i = line.indexOf("=");
     const key = line.slice(0, i);
     let val = line.slice(i + 1).trim();
-    if (
-      (val.startsWith('"') && val.endsWith('"')) ||
-      (val.startsWith("'") && val.endsWith("'"))
-    ) {
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
       val = val.slice(1, -1);
     }
     env[key] = val;
@@ -28,14 +25,14 @@ for (const queue of ["auth_emails", "transactional_emails"]) {
     batch_size: 5,
     vt: 30,
   });
-  console.log(`queue ${queue}:`, error ? `ERROR ${error.message}` : `messages=${data?.length ?? 0}`);
+  console.log(
+    `queue ${queue}:`,
+    error ? `ERROR ${error.message}` : `messages=${data?.length ?? 0}`,
+  );
   if (data?.length) {
     console.log(JSON.stringify(data.slice(0, 2), null, 2));
   }
 }
 
-const { data: state, error: stateErr } = await sb
-  .from("email_send_state")
-  .select("*")
-  .single();
+const { data: state, error: stateErr } = await sb.from("email_send_state").select("*").single();
 console.log("email_send_state:", stateErr ? stateErr.message : JSON.stringify(state));

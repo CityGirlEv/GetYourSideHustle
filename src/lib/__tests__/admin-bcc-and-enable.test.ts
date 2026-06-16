@@ -11,6 +11,8 @@ describe("admin notifications", () => {
   it("uses the default admin recipient list", () => {
     expect(DEFAULT_ADMIN_NOTIFICATION_EMAILS).toContain("evelyn3@cox.net");
     expect(DEFAULT_ADMIN_NOTIFICATION_EMAILS).toContain("sharpebanker@yahoo.com");
+    expect(DEFAULT_ADMIN_NOTIFICATION_EMAILS).toContain("info@mypartb.com");
+    expect(DEFAULT_ADMIN_NOTIFICATION_EMAILS).toContain("getpartb@gmail.com");
   });
 
   it("skips BCC for admin-targeted templates", () => {

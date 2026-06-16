@@ -1,9 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  normalizeCountyName,
-  countyMatchesList,
-  type CountyMatch,
-} from "../zip-county-lookup";
+import { normalizeCountyName, countyMatchesList, type CountyMatch } from "../zip-county-lookup";
 
 const list: CountyMatch[] = [
   { county: "Harris County", state: "Texas", stateCode: "TX" },

@@ -1,4 +1,4 @@
-export const DEFAULT_SIGN_IN_REDIRECT = "/advisor";
+export const DEFAULT_SIGN_IN_REDIRECT = "/agent";
 
 /**
  * Keep post-login redirects inside this app and fall back safely otherwise.

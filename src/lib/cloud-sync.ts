@@ -5,17 +5,37 @@
 // history on the DB side (latest entry by any author is shown locally).
 // ============================================================================
 import { supabase } from "@/integrations/supabase/client";
-import { localStorageKeysForTestResultId } from "@/lib/platform-variants";
+import { localStorageKeysForTestResultId, resolveTestContentId } from "@/lib/platform-variants";
 import { toast } from "sonner";
 import {
   TEST_CASES,
-  TEST_STATUS_KEY, TEST_SEVERITY_KEY, TEST_ASSIGNEE_KEY, TEST_SPRINT_KEY,
-  TEST_QA_NOTE_KEY, TEST_DEV_NOTE_KEY, TEST_QA_NOTE_AUTHOR_KEY, TEST_DEV_NOTE_AUTHOR_KEY, TEST_DESC_KEY,
-  type TestStatus, type FailSeverity, type TestDescriptionOverride,
+  TEST_STATUS_KEY,
+  TEST_SEVERITY_KEY,
+  TEST_ASSIGNEE_KEY,
+  TEST_DEV_ASSIGNEE_KEY,
+  TEST_SPRINT_KEY,
+  TEST_QA_NOTE_KEY,
+  TEST_DEV_NOTE_KEY,
+  TEST_QA_NOTE_AUTHOR_KEY,
+  TEST_DEV_NOTE_AUTHOR_KEY,
+  TEST_DESC_KEY,
+  TEST_QA_NOTE_AUTHOR_NAME_KEY,
+  TEST_DEV_NOTE_AUTHOR_NAME_KEY,
+  TEST_QA_NOTE_AT_KEY,
+  TEST_DEV_NOTE_AT_KEY,
+  type TestStatus,
+  type FailSeverity,
+  type TestDescriptionOverride,
 } from "@/lib/test-plan";
 import { TASKS_STORAGE_KEY, type TaskRow } from "@/lib/tasks-sheet";
+import { normalizeNoteEntries } from "@/lib/note-format";
 
-export interface NoteEntry { author_id: string; author_name: string; text: string; at: string }
+export interface NoteEntry {
+  author_id: string;
+  author_name: string;
+  text: string;
+  at: string;
+}
 export type NoteKind = "qa" | "dev";
 
 /** Fetch the full note thread (qa or dev) for a test in chronological order. */
@@ -24,12 +44,14 @@ export async function cloudFetchNotes(test_id: string, kind: NoteKind): Promise<
   const col = kind === "qa" ? "qa_notes" : "dev_notes";
   const { data, error } = await supabase
     .from("test_results")
-    .select(col)
+    .select(`${col}, updated_at`)
     .eq("test_id", test_id)
     .maybeSingle();
   if (error || !data) return [];
-  const raw = (data as Record<string, unknown>)[col];
-  return Array.isArray(raw) ? (raw as unknown as NoteEntry[]) : [];
+  const row = data as Record<string, unknown>;
+  const raw = row[col];
+  const fallbackAt = typeof row.updated_at === "string" ? row.updated_at : null;
+  return normalizeNoteEntries(raw, fallbackAt);
 }
 
 /** Append a brand-new note entry (no de-dup). Returns the updated thread. */
@@ -40,7 +62,10 @@ export async function cloudAddNoteEntry(
 ): Promise<NoteEntry[] | null> {
   if (typeof window === "undefined" || !text.trim()) return null;
   const u = await uid();
-  if (!u) { warnNotSignedIn("cloudAddNoteEntry"); return null; }
+  if (!u) {
+    warnNotSignedIn("cloudAddNoteEntry");
+    return null;
+  }
   const col = kind === "qa" ? "qa_notes" : "dev_notes";
   const existing = await cloudFetchNotes(test_id, kind);
   const next: NoteEntry[] = [
@@ -52,7 +77,11 @@ export async function cloudAddNoteEntry(
     .upsert({ test_id, [col]: next, updated_by: u.id } as never, { onConflict: "test_id" });
   if (error) {
     console.warn("[cloud-sync] cloudAddNoteEntry", error.message);
-    try { toast.error("Couldn't save note to cloud", { description: error.message }); } catch { /* noop */ }
+    try {
+      toast.error("Couldn't save note to cloud", { description: error.message });
+    } catch {
+      /* noop */
+    }
     return null;
   }
   return next;
@@ -67,7 +96,10 @@ export async function cloudUpdateNoteEntry(
 ): Promise<NoteEntry[] | null> {
   if (typeof window === "undefined") return null;
   const u = await uid();
-  if (!u) { warnNotSignedIn("cloudUpdateNoteEntry"); return null; }
+  if (!u) {
+    warnNotSignedIn("cloudUpdateNoteEntry");
+    return null;
+  }
   const col = kind === "qa" ? "qa_notes" : "dev_notes";
   const existing = await cloudFetchNotes(test_id, kind);
   let touched = false;
@@ -79,7 +111,11 @@ export async function cloudUpdateNoteEntry(
     return e;
   });
   if (!touched) {
-    try { toast.error("You can only edit notes you authored."); } catch { /* noop */ }
+    try {
+      toast.error("You can only edit notes you authored.");
+    } catch {
+      /* noop */
+    }
     return null;
   }
   const { error } = await supabase
@@ -87,7 +123,11 @@ export async function cloudUpdateNoteEntry(
     .upsert({ test_id, [col]: next, updated_by: u.id } as never, { onConflict: "test_id" });
   if (error) {
     console.warn("[cloud-sync] cloudUpdateNoteEntry", error.message);
-    try { toast.error("Couldn't update note", { description: error.message }); } catch { /* noop */ }
+    try {
+      toast.error("Couldn't update note", { description: error.message });
+    } catch {
+      /* noop */
+    }
     return null;
   }
   return next;
@@ -99,19 +139,34 @@ export async function cloudCurrentUserId(): Promise<string | null> {
   return u?.id ?? null;
 }
 
-export interface CheckedSteps { steps: number[]; substeps: string[] }
+export interface CheckedSteps {
+  steps: number[];
+  substeps: string[];
+}
 
 /** Upsert the checked-step state for a test. Shared across all viewers. */
-export async function cloudPushCheckedSteps(test_id: string, checked: CheckedSteps): Promise<boolean> {
+export async function cloudPushCheckedSteps(
+  test_id: string,
+  checked: CheckedSteps,
+): Promise<boolean> {
   if (typeof window === "undefined") return false;
   const u = await uid();
-  if (!u) { warnNotSignedIn("cloudPushCheckedSteps"); return false; }
+  if (!u) {
+    warnNotSignedIn("cloudPushCheckedSteps");
+    return false;
+  }
   const { error } = await supabase
     .from("test_results")
-    .upsert({ test_id, checked_steps: checked, updated_by: u.id } as never, { onConflict: "test_id" });
+    .upsert({ test_id, checked_steps: checked, updated_by: u.id } as never, {
+      onConflict: "test_id",
+    });
   if (error) {
     console.warn("[cloud-sync] cloudPushCheckedSteps", error.message);
-    try { toast.error("Couldn't save step checks to cloud", { description: error.message }); } catch { /* noop */ }
+    try {
+      toast.error("Couldn't save step checks to cloud", { description: error.message });
+    } catch {
+      /* noop */
+    }
     return false;
   }
   return true;
@@ -131,16 +186,19 @@ export async function cloudFetchCheckedSteps(test_id: string): Promise<CheckedSt
   const r = raw as { steps?: unknown; substeps?: unknown };
   return {
     steps: Array.isArray(r.steps) ? r.steps.filter((n): n is number => typeof n === "number") : [],
-    substeps: Array.isArray(r.substeps) ? r.substeps.filter((s): s is string => typeof s === "string") : [],
+    substeps: Array.isArray(r.substeps)
+      ? r.substeps.filter((s): s is string => typeof s === "string")
+      : [],
   };
 }
 
 async function uid(): Promise<{ id: string; name: string } | null> {
   const { data } = await supabase.auth.getUser();
   if (!data.user) return null;
-  const name = (data.user.user_metadata?.full_name as string | undefined)
-    || (data.user.email ?? "")
-    || "Unknown";
+  const name =
+    (data.user.user_metadata?.full_name as string | undefined) ||
+    (data.user.email ?? "") ||
+    "Unknown";
   return { id: data.user.id, name };
 }
 
@@ -148,31 +206,54 @@ let warnedNotSignedIn = false;
 function warnNotSignedIn(label: string) {
   if (warnedNotSignedIn) return;
   warnedNotSignedIn = true;
-  setTimeout(() => { warnedNotSignedIn = false; }, 10_000);
-  console.warn(`[cloud-sync] ${label} skipped — not signed in. Changes will NOT persist across refresh.`);
-  try { toast.error("Not signed in — your changes won't sync to the cloud", { description: "Sign in to save changes permanently." }); } catch { /* noop */ }
+  setTimeout(() => {
+    warnedNotSignedIn = false;
+  }, 10_000);
+  console.warn(
+    `[cloud-sync] ${label} skipped — not signed in. Changes will NOT persist across refresh.`,
+  );
+  try {
+    toast.error("Not signed in — your changes won't sync to the cloud", {
+      description: "Sign in to save changes permanently.",
+    });
+  } catch {
+    /* noop */
+  }
 }
 
 /** Fire-and-forget upsert of a single test_results column. */
-export function cloudPushTest(test_id: string, patch: Partial<{
-  status: TestStatus | null;
-  severity: FailSeverity | "" | null;
-  assignee: string | null;
-  sprint_id: string | null;
-  description_override: TestDescriptionOverride | null;
-}>): Promise<boolean> {
+export function cloudPushTest(
+  test_id: string,
+  patch: Partial<{
+    status: TestStatus | null;
+    severity: FailSeverity | "" | null;
+    assignee: string | null;
+    dev_assignee: string | null;
+    sprint_id: string | null;
+    description_override: TestDescriptionOverride | null;
+  }>,
+): Promise<boolean> {
   if (typeof window === "undefined") return Promise.resolve(false);
   return (async () => {
     const u = await uid();
-    if (!u) { warnNotSignedIn("cloudPushTest"); return false; }
+    if (!u) {
+      warnNotSignedIn("cloudPushTest");
+      return false;
+    }
     const normalized: Record<string, unknown> = { test_id, updated_by: u.id };
     for (const [k, v] of Object.entries(patch)) {
       normalized[k] = v === "" ? null : v;
     }
-    const { error } = await supabase.from("test_results").upsert(normalized as never, { onConflict: "test_id" });
+    const { error } = await supabase
+      .from("test_results")
+      .upsert(normalized as never, { onConflict: "test_id" });
     if (error) {
       console.warn("[cloud-sync] cloudPushTest", error.message, normalized);
-      try { toast.error(`Couldn't save ${test_id} to cloud`, { description: error.message }); } catch { /* noop */ }
+      try {
+        toast.error(`Couldn't save ${test_id} to cloud`, { description: error.message });
+      } catch {
+        /* noop */
+      }
       return false;
     }
     return true;
@@ -184,27 +265,36 @@ export function cloudAppendNote(test_id: string, kind: NoteKind, text: string) {
   if (typeof window === "undefined" || !text.trim()) return;
   (async () => {
     const u = await uid();
-    if (!u) { warnNotSignedIn("cloudAppendNote"); return; }
+    if (!u) {
+      warnNotSignedIn("cloudAppendNote");
+      return;
+    }
     const col = kind === "qa" ? "qa_notes" : "dev_notes";
     const { data: existing } = await supabase
       .from("test_results")
-      .select(col)
+      .select(`${col}, updated_at`)
       .eq("test_id", test_id)
       .maybeSingle();
     const existingRec = existing as Record<string, unknown> | null;
-    const arr: NoteEntry[] = Array.isArray(existingRec?.[col])
-      ? (existingRec![col] as unknown as NoteEntry[])
-      : [];
+    const fallbackAt = typeof existingRec?.updated_at === "string" ? existingRec.updated_at : null;
+    const arr = normalizeNoteEntries(existingRec?.[col], fallbackAt);
     // De-dup if last entry by this author matches text
     const lastFromAuthor = [...arr].reverse().find((e) => e.author_id === u.id);
     if (lastFromAuthor && lastFromAuthor.text === text) return;
-    const next: NoteEntry[] = [...arr, { author_id: u.id, author_name: u.name, text, at: new Date().toISOString() }];
+    const next: NoteEntry[] = [
+      ...arr,
+      { author_id: u.id, author_name: u.name, text, at: new Date().toISOString() },
+    ];
     const { error } = await supabase
       .from("test_results")
       .upsert({ test_id, [col]: next, updated_by: u.id } as never, { onConflict: "test_id" });
     if (error) {
       console.warn("[cloud-sync] cloudAppendNote", error.message);
-      try { toast.error("Couldn't save note to cloud", { description: error.message }); } catch { /* noop */ }
+      try {
+        toast.error("Couldn't save note to cloud", { description: error.message });
+      } catch {
+        /* noop */
+      }
     }
   })();
 }
@@ -214,12 +304,26 @@ export function cloudPushAllTasks(rows: TaskRow[]) {
   if (typeof window === "undefined") return;
   (async () => {
     const u = await uid();
-    if (!u) { warnNotSignedIn("cloudPushAllTasks"); return; }
-    const payload = rows.map((r, i) => ({ id: r.id, data: r as unknown, sort_order: i, updated_by: u.id }));
-    const { error } = await supabase.from("task_rows").upsert(payload as never, { onConflict: "id" });
+    if (!u) {
+      warnNotSignedIn("cloudPushAllTasks");
+      return;
+    }
+    const payload = rows.map((r, i) => ({
+      id: r.id,
+      data: r as unknown,
+      sort_order: i,
+      updated_by: u.id,
+    }));
+    const { error } = await supabase
+      .from("task_rows")
+      .upsert(payload as never, { onConflict: "id" });
     if (error) {
       console.warn("[cloud-sync] cloudPushAllTasks", error.message);
-      try { toast.error("Couldn't save tasks to cloud", { description: error.message }); } catch { /* noop */ }
+      try {
+        toast.error("Couldn't save tasks to cloud", { description: error.message });
+      } catch {
+        /* noop */
+      }
     }
   })();
 }
@@ -234,15 +338,29 @@ export async function cloudSyncAllTasks(
 ): Promise<{ upserted: number; deleted: number } | null> {
   if (typeof window === "undefined") return null;
   const u = await uid();
-  if (!u) { warnNotSignedIn("cloudSyncAllTasks"); return null; }
+  if (!u) {
+    warnNotSignedIn("cloudSyncAllTasks");
+    return null;
+  }
   const keepIds = new Set(rows.map((r) => r.id));
-  const payload = rows.map((r, i) => ({ id: r.id, data: r as unknown, sort_order: i, updated_by: u.id }));
+  const payload = rows.map((r, i) => ({
+    id: r.id,
+    data: r as unknown,
+    sort_order: i,
+    updated_by: u.id,
+  }));
 
   if (payload.length) {
-    const { error } = await supabase.from("task_rows").upsert(payload as never, { onConflict: "id" });
+    const { error } = await supabase
+      .from("task_rows")
+      .upsert(payload as never, { onConflict: "id" });
     if (error) {
       console.warn("[cloud-sync] cloudSyncAllTasks upsert", error.message);
-      try { toast.error("Couldn't save tasks to cloud", { description: error.message }); } catch { /* noop */ }
+      try {
+        toast.error("Couldn't save tasks to cloud", { description: error.message });
+      } catch {
+        /* noop */
+      }
       return null;
     }
   }
@@ -257,7 +375,11 @@ export async function cloudSyncAllTasks(
     const { error: delErr } = await supabase.from("task_rows").delete().in("id", stale);
     if (delErr) {
       console.warn("[cloud-sync] cloudSyncAllTasks delete", delErr.message);
-      try { toast.error("Couldn't remove deleted tasks from cloud", { description: delErr.message }); } catch { /* noop */ }
+      try {
+        toast.error("Couldn't remove deleted tasks from cloud", { description: delErr.message });
+      } catch {
+        /* noop */
+      }
       return { upserted: payload.length, deleted: 0 };
     }
   }
@@ -269,7 +391,9 @@ export async function hydrateTestResultsToLocal(): Promise<number> {
   if (typeof window === "undefined") return 0;
   const { data, error } = await supabase
     .from("test_results")
-    .select("test_id, status, severity, assignee, sprint_id, description_override, qa_notes, dev_notes");
+    .select(
+      "test_id, status, severity, assignee, dev_assignee, sprint_id, description_override, qa_notes, dev_notes, updated_at",
+    );
   if (error) {
     console.warn("[cloud-sync] hydrateTestResultsToLocal failed:", error.message);
     return 0;
@@ -281,20 +405,23 @@ export async function hydrateTestResultsToLocal(): Promise<number> {
     row: (typeof data)[number],
     setOrClear: (k: string, v: string | null) => void,
   ) => {
-    setOrClear(TEST_STATUS_KEY(id),   (row.status as string | null) ?? null);
+    setOrClear(TEST_STATUS_KEY(id), (row.status as string | null) ?? null);
     setOrClear(TEST_SEVERITY_KEY(id), (row.severity as string | null) ?? null);
     setOrClear(TEST_ASSIGNEE_KEY(id), (row.assignee as string | null) ?? null);
-    setOrClear(TEST_SPRINT_KEY(id),   (row.sprint_id as string | null) ?? null);
-    setOrClear(
-      TEST_DESC_KEY(id),
-      row.description_override ? JSON.stringify(row.description_override) : null,
-    );
-    const qa = Array.isArray(row.qa_notes) ? (row.qa_notes as unknown as NoteEntry[]) : [];
-    const dev = Array.isArray(row.dev_notes) ? (row.dev_notes as unknown as NoteEntry[]) : [];
-    setOrClear(TEST_QA_NOTE_KEY(id),  qa.length  ? qa[qa.length - 1].text  : null);
-    setOrClear(TEST_DEV_NOTE_KEY(id), dev.length ? dev[dev.length - 1].text : null);
-    setOrClear(TEST_QA_NOTE_AUTHOR_KEY(id),  qa.length  ? qa[qa.length - 1].author_id  : null);
-    setOrClear(TEST_DEV_NOTE_AUTHOR_KEY(id), dev.length ? dev[dev.length - 1].author_id : null);
+    setOrClear(TEST_DEV_ASSIGNEE_KEY(id), (row.dev_assignee as string | null) ?? null);
+    setOrClear(TEST_SPRINT_KEY(id), (row.sprint_id as string | null) ?? null);
+    const qa = normalizeNoteEntries(row.qa_notes, row.updated_at as string | undefined);
+    const dev = normalizeNoteEntries(row.dev_notes, row.updated_at as string | undefined);
+    const latestQa = qa.length ? qa[qa.length - 1] : null;
+    const latestDev = dev.length ? dev[dev.length - 1] : null;
+    setOrClear(TEST_QA_NOTE_KEY(id), latestQa?.text ?? null);
+    setOrClear(TEST_DEV_NOTE_KEY(id), latestDev?.text ?? null);
+    setOrClear(TEST_QA_NOTE_AUTHOR_KEY(id), latestQa?.author_id ?? null);
+    setOrClear(TEST_DEV_NOTE_AUTHOR_KEY(id), latestDev?.author_id ?? null);
+    setOrClear(TEST_QA_NOTE_AUTHOR_NAME_KEY(id), latestQa?.author_name ?? null);
+    setOrClear(TEST_DEV_NOTE_AUTHOR_NAME_KEY(id), latestDev?.author_name ?? null);
+    setOrClear(TEST_QA_NOTE_AT_KEY(id), latestQa?.at ?? null);
+    setOrClear(TEST_DEV_NOTE_AT_KEY(id), latestDev?.at ?? null);
   };
 
   for (const row of data) {
@@ -303,6 +430,11 @@ export async function hydrateTestResultsToLocal(): Promise<number> {
       if (v == null || v === "") localStorage.removeItem(k);
       else localStorage.setItem(k, v);
     };
+    // Description overrides apply to the shared source test, not per-platform variants.
+    setOrClear(
+      TEST_DESC_KEY(resolveTestContentId(id)),
+      row.description_override ? JSON.stringify(row.description_override) : null,
+    );
     for (const storageId of localStorageKeysForTestResultId(id)) {
       applyRowToKey(storageId, row, setOrClear);
     }
@@ -337,40 +469,73 @@ export async function syncLocalToCloud(): Promise<{ tests: number; notes: number
     const status = localStorage.getItem(TEST_STATUS_KEY(id));
     const severity = localStorage.getItem(TEST_SEVERITY_KEY(id));
     const assignee = localStorage.getItem(TEST_ASSIGNEE_KEY(id));
+    const devAssignee = localStorage.getItem(TEST_DEV_ASSIGNEE_KEY(id));
     const sprintId = localStorage.getItem(TEST_SPRINT_KEY(id));
     const descRaw = localStorage.getItem(TEST_DESC_KEY(id));
     const qaText = localStorage.getItem(TEST_QA_NOTE_KEY(id));
     const devText = localStorage.getItem(TEST_DEV_NOTE_KEY(id));
-    if (!status && !severity && !assignee && !sprintId && !descRaw && !qaText && !devText) continue;
+    if (!status && !severity && !assignee && !devAssignee && !sprintId && !descRaw && !qaText && !devText)
+      continue;
 
     // Fetch existing for merge-append of notes
     const { data: existing } = await supabase
       .from("test_results")
-      .select("qa_notes, dev_notes")
+      .select("qa_notes, dev_notes, updated_at")
       .eq("test_id", id)
       .maybeSingle();
-    const qaArr: NoteEntry[] = Array.isArray(existing?.qa_notes) ? (existing!.qa_notes as unknown as NoteEntry[]) : [];
-    const devArr: NoteEntry[] = Array.isArray(existing?.dev_notes) ? (existing!.dev_notes as unknown as NoteEntry[]) : [];
+    const fallbackAt = typeof existing?.updated_at === "string" ? existing.updated_at : null;
+    const qaArr = normalizeNoteEntries(existing?.qa_notes, fallbackAt);
+    const devArr = normalizeNoteEntries(existing?.dev_notes, fallbackAt);
+
+    const qaAuthorId = localStorage.getItem(TEST_QA_NOTE_AUTHOR_KEY(id));
+    const qaAuthorName = localStorage.getItem(TEST_QA_NOTE_AUTHOR_NAME_KEY(id));
+    const qaAt = localStorage.getItem(TEST_QA_NOTE_AT_KEY(id));
+    const devAuthorId = localStorage.getItem(TEST_DEV_NOTE_AUTHOR_KEY(id));
+    const devAuthorName = localStorage.getItem(TEST_DEV_NOTE_AUTHOR_NAME_KEY(id));
+    const devAt = localStorage.getItem(TEST_DEV_NOTE_AT_KEY(id));
 
     const newQa = [...qaArr];
     if (qaText && qaText.trim()) {
-      const dup = [...qaArr].reverse().find((e) => e.author_id === u.id && e.text === qaText);
-      if (!dup) { newQa.push({ author_id: u.id, author_name: u.name, text: qaText, at: new Date().toISOString() }); noteCount++; }
+      const dup = [...qaArr].reverse().find((e) => e.text === qaText.trim());
+      if (!dup) {
+        newQa.push({
+          author_id: qaAuthorId || u.id,
+          author_name: qaAuthorName?.trim() || (qaAuthorId ? "Unknown author" : "Legacy note"),
+          text: qaText.trim(),
+          at: qaAt || new Date().toISOString(),
+        });
+        noteCount++;
+      }
     }
     const newDev = [...devArr];
     if (devText && devText.trim()) {
-      const dup = [...devArr].reverse().find((e) => e.author_id === u.id && e.text === devText);
-      if (!dup) { newDev.push({ author_id: u.id, author_name: u.name, text: devText, at: new Date().toISOString() }); noteCount++; }
+      const dup = [...devArr].reverse().find((e) => e.text === devText.trim());
+      if (!dup) {
+        newDev.push({
+          author_id: devAuthorId || u.id,
+          author_name: devAuthorName?.trim() || (devAuthorId ? "Unknown author" : "Legacy note"),
+          text: devText.trim(),
+          at: devAt || new Date().toISOString(),
+        });
+        noteCount++;
+      }
     }
 
     let descOv: unknown = null;
-    if (descRaw) { try { descOv = JSON.parse(descRaw); } catch { descOv = null; } }
+    if (descRaw) {
+      try {
+        descOv = JSON.parse(descRaw);
+      } catch {
+        descOv = null;
+      }
+    }
 
     testPayload.push({
       test_id: id,
       status: status || null,
       severity: severity || null,
       assignee: assignee || null,
+      dev_assignee: devAssignee || null,
       sprint_id: sprintId || null,
       description_override: descOv,
       qa_notes: newQa,
@@ -379,7 +544,9 @@ export async function syncLocalToCloud(): Promise<{ tests: number; notes: number
     });
   }
   if (testPayload.length) {
-    const { error } = await supabase.from("test_results").upsert(testPayload as never, { onConflict: "test_id" });
+    const { error } = await supabase
+      .from("test_results")
+      .upsert(testPayload as never, { onConflict: "test_id" });
     if (error) throw new Error("test_results sync failed: " + error.message);
   }
 
@@ -390,8 +557,15 @@ export async function syncLocalToCloud(): Promise<{ tests: number; notes: number
     try {
       const rows = JSON.parse(raw) as TaskRow[];
       if (Array.isArray(rows) && rows.length) {
-        const payload = rows.map((r, i) => ({ id: r.id, data: r as unknown, sort_order: i, updated_by: u.id }));
-        const { error } = await supabase.from("task_rows").upsert(payload as never, { onConflict: "id" });
+        const payload = rows.map((r, i) => ({
+          id: r.id,
+          data: r as unknown,
+          sort_order: i,
+          updated_by: u.id,
+        }));
+        const { error } = await supabase
+          .from("task_rows")
+          .upsert(payload as never, { onConflict: "id" });
         if (error) throw new Error("task_rows sync failed: " + error.message);
         taskCount = rows.length;
       }
@@ -410,7 +584,12 @@ export function lastSyncedAt(): string | null {
 }
 
 /** Evidence index — DB pointer for files in the test-evidence bucket. */
-export async function cloudRegisterEvidence(args: { test_id: string; storage_path: string; file_name: string; size: number }) {
+export async function cloudRegisterEvidence(args: {
+  test_id: string;
+  storage_path: string;
+  file_name: string;
+  size: number;
+}) {
   const u = await uid();
   if (!u) return;
   const { error } = await supabase.from("test_evidence_index").insert({
@@ -420,41 +599,58 @@ export async function cloudRegisterEvidence(args: { test_id: string; storage_pat
     size: args.size,
     uploaded_by: u.id,
   });
-  if (error && !/duplicate/i.test(error.message)) console.warn("[cloud-sync] registerEvidence", error.message);
+  if (error && !/duplicate/i.test(error.message))
+    console.warn("[cloud-sync] registerEvidence", error.message);
 }
 
 export async function cloudDeleteEvidence(storage_path: string) {
-  const { error } = await supabase.from("test_evidence_index").delete().eq("storage_path", storage_path);
+  const { error } = await supabase
+    .from("test_evidence_index")
+    .delete()
+    .eq("storage_path", storage_path);
   if (error) console.warn("[cloud-sync] deleteEvidence", error.message);
 }
 
 /**
  * BULK push — collapses many cloudPushTest calls into ONE upsert round-trip.
  * `patches` is a list of {test_id, patch} where patch holds any subset of
- * status / severity / assignee / sprint_id / description_override.
+ * status / severity / assignee / dev_assignee / sprint_id / description_override.
  * Returns the number of rows the server accepted (0 on error / not signed in).
  */
 export async function cloudPushTestsBulk(
-  patches: Array<{ test_id: string; patch: Partial<{
-    status: TestStatus | null;
-    severity: FailSeverity | "" | null;
-    assignee: string | null;
-    sprint_id: string | null;
-    description_override: TestDescriptionOverride | null;
-  }> }>,
+  patches: Array<{
+    test_id: string;
+    patch: Partial<{
+      status: TestStatus | null;
+      severity: FailSeverity | "" | null;
+      assignee: string | null;
+      dev_assignee: string | null;
+      sprint_id: string | null;
+      description_override: TestDescriptionOverride | null;
+    }>;
+  }>,
 ): Promise<number> {
   if (typeof window === "undefined" || patches.length === 0) return 0;
   const u = await uid();
-  if (!u) { warnNotSignedIn("cloudPushTestsBulk"); return 0; }
+  if (!u) {
+    warnNotSignedIn("cloudPushTestsBulk");
+    return 0;
+  }
   const rows = patches.map(({ test_id, patch }) => {
     const r: Record<string, unknown> = { test_id, updated_by: u.id };
     for (const [k, v] of Object.entries(patch)) r[k] = v === "" ? null : v;
     return r;
   });
-  const { error } = await supabase.from("test_results").upsert(rows as never, { onConflict: "test_id" });
+  const { error } = await supabase
+    .from("test_results")
+    .upsert(rows as never, { onConflict: "test_id" });
   if (error) {
     console.warn("[cloud-sync] cloudPushTestsBulk", error.message);
-    try { toast.error("Couldn't save changes to cloud", { description: error.message }); } catch { /* noop */ }
+    try {
+      toast.error("Couldn't save changes to cloud", { description: error.message });
+    } catch {
+      /* noop */
+    }
     return 0;
   }
   return rows.length;
@@ -470,19 +666,28 @@ export async function cloudAppendNotesBulk(
 ): Promise<number> {
   if (typeof window === "undefined" || entries.length === 0) return 0;
   const u = await uid();
-  if (!u) { warnNotSignedIn("cloudAppendNotesBulk"); return 0; }
+  if (!u) {
+    warnNotSignedIn("cloudAppendNotesBulk");
+    return 0;
+  }
   const ids = Array.from(new Set(entries.map((e) => e.test_id)));
   const { data: existing } = await supabase
     .from("test_results")
-    .select("test_id, qa_notes, dev_notes")
+    .select("test_id, qa_notes, dev_notes, updated_at")
     .in("test_id", ids);
   const byId = new Map<string, { qa: NoteEntry[]; dev: NoteEntry[] }>();
   for (const id of ids) byId.set(id, { qa: [], dev: [] });
   for (const row of existing ?? []) {
-    const r = row as { test_id: string; qa_notes: unknown; dev_notes: unknown };
+    const r = row as {
+      test_id: string;
+      qa_notes: unknown;
+      dev_notes: unknown;
+      updated_at?: string;
+    };
+    const fallbackAt = typeof r.updated_at === "string" ? r.updated_at : null;
     byId.set(r.test_id, {
-      qa:  Array.isArray(r.qa_notes)  ? (r.qa_notes  as unknown as NoteEntry[]) : [],
-      dev: Array.isArray(r.dev_notes) ? (r.dev_notes as unknown as NoteEntry[]) : [],
+      qa: normalizeNoteEntries(r.qa_notes, fallbackAt),
+      dev: normalizeNoteEntries(r.dev_notes, fallbackAt),
     });
   }
   const now = new Date().toISOString();
@@ -499,10 +704,16 @@ export async function cloudAppendNotesBulk(
     const b = byId.get(id)!;
     return { test_id: id, qa_notes: b.qa, dev_notes: b.dev, updated_by: u.id };
   });
-  const { error } = await supabase.from("test_results").upsert(rows as never, { onConflict: "test_id" });
+  const { error } = await supabase
+    .from("test_results")
+    .upsert(rows as never, { onConflict: "test_id" });
   if (error) {
     console.warn("[cloud-sync] cloudAppendNotesBulk", error.message);
-    try { toast.error("Couldn't save notes to cloud", { description: error.message }); } catch { /* noop */ }
+    try {
+      toast.error("Couldn't save notes to cloud", { description: error.message });
+    } catch {
+      /* noop */
+    }
     return 0;
   }
   return rows.length;

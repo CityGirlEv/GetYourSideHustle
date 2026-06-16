@@ -60,15 +60,11 @@ export const CMS_CATALOG: CmsCatalog = {
 };
 
 export function openMedigapLetters(): MedigapPlanRow[] {
-  return CMS_CATALOG.medigapPlans.filter(
-    (p) => !/closed/i.test(p["Enrollment Status"] ?? ""),
-  );
+  return CMS_CATALOG.medigapPlans.filter((p) => !/closed/i.test(p["Enrollment Status"] ?? ""));
 }
 
 export function openAdvantageTypes(): AdvantageTypeRow[] {
-  return CMS_CATALOG.advantageTypes.filter(
-    (p) => !/closed/i.test(p["Enrollment Status"] ?? ""),
-  );
+  return CMS_CATALOG.advantageTypes.filter((p) => !/closed/i.test(p["Enrollment Status"] ?? ""));
 }
 
 export const CMS_DATA_REVISION = "CMS-approved reference catalog, plan year 2026";

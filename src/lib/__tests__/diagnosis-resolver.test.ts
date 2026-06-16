@@ -5,6 +5,7 @@ import {
   searchMedCatalog,
   MED_CATALOG,
   COMMON_MEDS_BY_CONDITION,
+  getCommonMedsForCondition,
 } from "../diagnosis-resolver";
 
 describe("resolveDiagnosis", () => {
@@ -13,6 +14,8 @@ describe("resolveDiagnosis", () => {
     expect(resolveDiagnosis("atorvastatin 20mg")).toBe("Hyperlipidemia");
     expect(resolveDiagnosis("Metformin")).toBe("Type 2 Diabetes");
     expect(resolveDiagnosis("Eliquis")).toBe("Anticoagulation");
+    expect(resolveDiagnosis("Alendronate")).toBe("Osteoporosis");
+    expect(resolveDiagnosis("Donepezil")).toBe("Alzheimer's Disease");
   });
   it("returns undefined for unknown drugs", () => {
     expect(resolveDiagnosis("zzz-fake")).toBeUndefined();
@@ -47,6 +50,20 @@ describe("searchMedCatalog", () => {
     const res = searchMedCatalog("lipitor");
     expect(res.some((r) => r.name === "Atorvastatin")).toBe(true);
   });
+  it("includes SCEN-QA audit drugs in the pricing catalog", () => {
+    for (const name of [
+      "Alendronate",
+      "Donepezil",
+      "Buspirone",
+      "Clopidogrel",
+      "Entresto",
+      "Carbidopa-Levodopa",
+      "Humira",
+      "Ocrevus",
+    ]) {
+      expect(searchMedCatalog(name.toLowerCase(), 1).some((r) => r.name === name)).toBe(true);
+    }
+  });
 });
 
 describe("MED_CATALOG", () => {
@@ -61,5 +78,26 @@ describe("COMMON_MEDS_BY_CONDITION", () => {
     for (const [, meds] of Object.entries(COMMON_MEDS_BY_CONDITION)) {
       expect(meds.length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe("getCommonMedsForCondition", () => {
+  it("returns preset meds for exact condition keys", () => {
+    expect(getCommonMedsForCondition("Diabetes").map((m) => m.name)).toContain("Metformin");
+  });
+
+  it("maps free-text other conditions to related meds", () => {
+    const asthma = getCommonMedsForCondition("Asthma");
+    expect(asthma.length).toBeGreaterThan(0);
+    expect(asthma.map((m) => m.name)).toContain("Albuterol");
+
+    const osteoporosis = getCommonMedsForCondition("Osteoporosis");
+    expect(osteoporosis.length).toBeGreaterThan(0);
+    expect(osteoporosis.map((m) => m.name)).toContain("Alendronate");
+  });
+
+  it("returns empty for blank input", () => {
+    expect(getCommonMedsForCondition("")).toEqual([]);
+    expect(getCommonMedsForCondition("   ")).toEqual([]);
   });
 });

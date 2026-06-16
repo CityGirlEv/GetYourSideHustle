@@ -15,6 +15,8 @@ import { AppProvider } from "@/lib/app-store";
 import { Toaster } from "@/components/ui/sonner";
 import { ConfirmProvider } from "@/components/ConfirmDialog";
 import { QAOnboardingGate } from "@/components/QAOnboardingDialog";
+import { DeployVersionGate } from "@/components/DeployVersionGate";
+import { AuthRecoveryGate } from "@/components/auth/AuthRecoveryGate";
 import { GlobalBusyIndicator } from "@/components/GlobalBusyIndicator";
 import { supabase } from "@/integrations/supabase/client";
 import { getEnvVariable } from "@/lib/env";
@@ -44,6 +46,7 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
+  const showDetails = import.meta.env.DEV;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -54,6 +57,11 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         <p className="mt-2 text-sm text-muted-foreground">
           Something went wrong on our end. You can try refreshing or head back home.
         </p>
+        {showDetails && error?.message ? (
+          <p className="mt-3 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-left text-xs text-destructive break-words">
+            {error.message}
+          </p>
+        ) : null}
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {
@@ -81,18 +89,38 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "The Medicare Optimizer" },
-      { name: "description", content: "AI-powered Medicare plan optimizer & advisor platform using de-identified scenarios for 2026 and 2027 federal guidelines. No personal information is collected." },
-      { name: "author", content: "The Medicare Optimizer" },
-      { property: "og:title", content: "The Medicare Optimizer" },
-      { property: "og:description", content: "AI-powered Medicare plan optimizer & advisor platform using de-identified scenarios for 2026 and 2027 federal guidelines. No personal information is collected." },
+      { title: "Get Part B Optimizer" },
+      {
+        name: "description",
+        content:
+          "AI-powered Medicare plan optimizer & advisor platform using de-identified scenarios for 2026 and 2027 federal guidelines. No personal information is collected.",
+      },
+      { name: "author", content: "Get Part B Optimizer" },
+      { property: "og:title", content: "Get Part B Optimizer" },
+      {
+        property: "og:description",
+        content:
+          "AI-powered Medicare plan optimizer & advisor platform using de-identified scenarios for 2026 and 2027 federal guidelines. No personal information is collected.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
-      { name: "twitter:title", content: "The Medicare Optimizer" },
-      { name: "twitter:description", content: "AI-powered Medicare plan optimizer & advisor platform using de-identified scenarios for 2026 and 2027 federal guidelines. No personal information is collected." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9760489b-c5dc-49c9-a55e-8d71d9a248c8/id-preview-0fae72f9--ddccd332-57e9-4c5b-956b-437effa2470c.lovable.app-1779404467518.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9760489b-c5dc-49c9-a55e-8d71d9a248c8/id-preview-0fae72f9--ddccd332-57e9-4c5b-956b-437effa2470c.lovable.app-1779404467518.png" },
+      { name: "twitter:title", content: "Get Part B Optimizer" },
+      {
+        name: "twitter:description",
+        content:
+          "AI-powered Medicare plan optimizer & advisor platform using de-identified scenarios for 2026 and 2027 federal guidelines. No personal information is collected.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9760489b-c5dc-49c9-a55e-8d71d9a248c8/id-preview-0fae72f9--ddccd332-57e9-4c5b-956b-437effa2470c.lovable.app-1779404467518.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9760489b-c5dc-49c9-a55e-8d71d9a248c8/id-preview-0fae72f9--ddccd332-57e9-4c5b-956b-437effa2470c.lovable.app-1779404467518.png",
+      },
     ],
     links: [
       {
@@ -182,7 +210,9 @@ function RootComponent() {
       <AppProvider>
         <ConfirmProvider>
           <Outlet />
+          <AuthRecoveryGate />
           <QAOnboardingGate />
+          <DeployVersionGate />
           <GlobalBusyIndicator />
           <Toaster position="top-right" richColors />
         </ConfirmProvider>

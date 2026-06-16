@@ -43,8 +43,10 @@ export function useQaTesters(enabled: boolean): QaTesterProfile[] {
       return;
     }
     subscribers.add(setList);
-    fetchOnce().then((v) => setList(v));
-    const onFocus = () => { fetchOnce(true); };
+    fetchOnce(true).then((v) => setList(v));
+    const onFocus = () => {
+      fetchOnce(true);
+    };
     if (typeof window !== "undefined") window.addEventListener("focus", onFocus);
     return () => {
       subscribers.delete(setList);

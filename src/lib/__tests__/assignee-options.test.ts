@@ -3,11 +3,7 @@ import { describe, it, expect } from "vitest";
 // Mirrors the option-building logic in src/routes/testing.tsx Owner <select>.
 // Keeps the rule (current assignee is always a selectable option) covered by
 // a fast unit test even though the consumer is a JSX expression.
-function buildAssigneeOptions(
-  assignee: string,
-  base: string[],
-  assigneeLocked = false,
-): string[] {
+function buildAssigneeOptions(assignee: string, base: string[], assigneeLocked = false): string[] {
   if (assigneeLocked) return [assignee];
   return assignee && !base.includes(assignee) ? [assignee, ...base] : base;
 }
@@ -42,15 +38,10 @@ describe("Owner select options", () => {
   });
 
   it("returns only the current assignee when locked (automated tests)", () => {
-    expect(buildAssigneeOptions("AutomationBot", ["Catria"], true)).toEqual([
-      "AutomationBot",
-    ]);
+    expect(buildAssigneeOptions("AutomationBot", ["Catria"], true)).toEqual(["AutomationBot"]);
   });
 
   it("does not prepend empty assignee", () => {
-    expect(buildAssigneeOptions("", ["Unassigned", "Catria"])).toEqual([
-      "Unassigned",
-      "Catria",
-    ]);
+    expect(buildAssigneeOptions("", ["Unassigned", "Catria"])).toEqual(["Unassigned", "Catria"]);
   });
 });

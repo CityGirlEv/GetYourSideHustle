@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from "vitest";
 
 /**
  * Behavior contract for email template version history:
@@ -16,32 +16,32 @@ import { describe, it, expect } from 'vitest'
  * documents the invariant so a future refactor can't silently drop the
  * snapshot step.
  */
-describe('email template version snapshots', () => {
-  it('snapshots the prior version on every save', () => {
+describe("email template version snapshots", () => {
+  it("snapshots the prior version on every save", () => {
     // Pseudocode contract — the actual handler is in
     // src/lib/email-template-admin.functions.ts (saveEmailTemplateOverride).
-    const events: string[] = []
+    const events: string[] = [];
     function fakeSave(hasPriorOverride: boolean) {
-      events.push(hasPriorOverride ? 'snapshot:override' : 'snapshot:builtin')
-      events.push('upsert:new-override')
+      events.push(hasPriorOverride ? "snapshot:override" : "snapshot:builtin");
+      events.push("upsert:new-override");
     }
-    fakeSave(false)
-    fakeSave(true)
+    fakeSave(false);
+    fakeSave(true);
     expect(events).toEqual([
-      'snapshot:builtin',
-      'upsert:new-override',
-      'snapshot:override',
-      'upsert:new-override',
-    ])
-  })
+      "snapshot:builtin",
+      "upsert:new-override",
+      "snapshot:override",
+      "upsert:new-override",
+    ]);
+  });
 
-  it('snapshots before delete (reset to default)', () => {
-    const events: string[] = []
+  it("snapshots before delete (reset to default)", () => {
+    const events: string[] = [];
     function fakeDelete(hasPriorOverride: boolean) {
-      if (hasPriorOverride) events.push('snapshot:override')
-      events.push('delete:override')
+      if (hasPriorOverride) events.push("snapshot:override");
+      events.push("delete:override");
     }
-    fakeDelete(true)
-    expect(events).toEqual(['snapshot:override', 'delete:override'])
-  })
-})
+    fakeDelete(true);
+    expect(events).toEqual(["snapshot:override", "delete:override"]);
+  });
+});

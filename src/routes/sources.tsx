@@ -8,11 +8,11 @@ export const Route = createFileRoute("/sources")({
   component: SourcesPage,
   head: () => ({
     meta: [
-      { title: "Scenario Data Sources | Medicare Optimizer" },
+      { title: "Scenario Data Sources | Get Part B Optimizer" },
       {
         name: "description",
         content:
-          "Citations for every figure used to build a Medicare Optimizer scenario result — CMS cost parameters, plan catalogs, and drug pricing inputs.",
+          "Citations for every figure used to build a Get Part B Optimizer scenario result — CMS cost parameters, plan catalogs, and drug pricing inputs.",
       },
     ],
   }),
@@ -39,25 +39,29 @@ const SECTIONS: SourceSection[] = [
       {
         label: "2026 Medicare Parts A & B Premiums and Deductibles",
         url: "https://www.cms.gov/newsroom/fact-sheets/2026-medicare-parts-b-premiums-deductibles",
-        description: "Sets the Part B premium ($202.90/mo) and deductible ($283) used in every scenario result.",
+        description:
+          "Sets the Part B premium ($202.90/mo) and deductible ($283) used in every scenario result.",
         badge: "CMS",
       },
       {
         label: "CY 2026 Part D Redesign Program Instructions",
         url: "https://www.cms.gov/files/document/final-cy-2026-part-d-redesign-program-instruction.pdf",
-        description: "Defines the $2,100 Part D out-of-pocket cap and deductible rules applied to drug-cost projections.",
+        description:
+          "Defines the $2,100 Part D out-of-pocket cap and deductible rules applied to drug-cost projections.",
         badge: "CMS",
       },
       {
         label: "2026 Medicare Part D Bid & Premium Info",
         url: "https://www.cms.gov/newsroom/fact-sheets/2026-medicare-part-d-bid-information-and-part-d-premium-stabilization-demonstration-parameters",
-        description: "Baseline Part D bid parameters used to derive plan-level monthly premiums shown in result plans.",
+        description:
+          "Baseline Part D bid parameters used to derive plan-level monthly premiums shown in result plans.",
         badge: "CMS",
       },
       {
         label: "Inflation Reduction Act & Medicare",
         url: "https://www.cms.gov/inflation-reduction-act-and-medicare",
-        description: "IRA provisions enforced in scenario math — $35/mo insulin cap and $0 vaccine cost-sharing.",
+        description:
+          "IRA provisions enforced in scenario math — $35/mo insulin cap and $0 vaccine cost-sharing.",
         badge: "CMS",
       },
     ],
@@ -69,13 +73,15 @@ const SECTIONS: SourceSection[] = [
       {
         label: "CMS Medigap Policies",
         url: "https://www.cms.gov/medicare/health-plans/medigap",
-        description: "Standardized 2026 Medigap plan letters (A, B, D, G, HDG, K, L, M, N) and benefit tables that drive Medigap result rows.",
+        description:
+          "Standardized 2026 Medigap plan letters (A, B, D, G, HDG, K, L, M, N) and benefit tables that drive Medigap result rows.",
         badge: "CMS",
       },
       {
         label: "CMS Medicare Plan Finder",
         url: "https://www.medicare.gov/plan-compare",
-        description: "Source-of-truth catalog for Medicare Advantage and Part D plan types referenced by scenario results.",
+        description:
+          "Source-of-truth catalog for Medicare Advantage and Part D plan types referenced by scenario results.",
         badge: "CMS",
       },
     ],
@@ -87,13 +93,15 @@ const SECTIONS: SourceSection[] = [
       {
         label: "CMS Medicare Part D Spending by Drug",
         url: "https://data.cms.gov/summary-statistics-on-use-and-payments/medicare-medicaid-spending-by-drug/medicare-part-d-spending-by-drug",
-        description: "Average total spending, unit cost, and claim counts per drug — anchors the retail estimates used in scenario drug-cost lines.",
+        description:
+          "Average total spending, unit cost, and claim counts per drug — anchors the retail estimates used in scenario drug-cost lines.",
         badge: "CMS",
       },
       {
         label: "Manufacturer WAC / List Prices",
         url: "https://www.medicare.gov/drug-coverage-comparison",
-        description: "Brand-name WAC pricing cross-checked against Medicare Plan Finder drug files for scenario brand-drug estimates.",
+        description:
+          "Brand-name WAC pricing cross-checked against Medicare Plan Finder drug files for scenario brand-drug estimates.",
         badge: "Industry",
       },
     ],
@@ -102,7 +110,10 @@ const SECTIONS: SourceSection[] = [
 
 export default function SourcesPage() {
   return (
-    <AppShell title="Data Sources & Citations" subtitle="Every figure, rate, and catalog entry in the Medicare Optimizer is traceable to an official CMS publication, a manufacturer source, or an established third-party price index.">
+    <AppShell
+      title="Data Sources & Citations"
+      subtitle="Every figure, rate, and catalog entry in Get Part B Optimizer is traceable to an official CMS publication, a manufacturer source, or an established third-party price index."
+    >
       <div className="grid gap-6 md:grid-cols-2">
         {SECTIONS.map((section) => (
           <Card key={section.title}>
@@ -142,21 +153,21 @@ export default function SourcesPage() {
         <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
           <li>
             <strong>Generic drugs</strong> — priced against national pharmacy discount programs
-            (Costco Member Prescription, Walmart $4 list, GoodRx coupons). Typical range $4–$15
-            per 30-day supply.
+            (Costco Member Prescription, Walmart $4 list, GoodRx coupons). Typical range $4–$15 per
+            30-day supply.
           </li>
           <li>
-            <strong>Brand-name drugs</strong> — anchored to published WAC (Wholesale Acquisition Cost)
-            or manufacturer list price, then validated against CMS Part D spending reports and
+            <strong>Brand-name drugs</strong> — anchored to published WAC (Wholesale Acquisition
+            Cost) or manufacturer list price, then validated against CMS Part D spending reports and
             Medicare Plan Finder negotiated-price files.
           </li>
           <li>
-            <strong>Insulin</strong> — member cost capped at $35/mo under the Inflation Reduction Act
-            (IRA) starting in 2023. Pre-cap retail figures are shown only for context.
+            <strong>Insulin</strong> — member cost capped at $35/mo under the Inflation Reduction
+            Act (IRA) starting in 2023. Pre-cap retail figures are shown only for context.
           </li>
           <li>
-            <strong>DME items (CGMs, pumps, CPAP)</strong> — billed under Medicare Part B, not Part D,
-            so they are excluded from Part D drug-cost math but listed for completeness. Pricing
+            <strong>DME items (CGMs, pumps, CPAP)</strong> — billed under Medicare Part B, not Part
+            D, so they are excluded from Part D drug-cost math but listed for completeness. Pricing
             reflects typical supplier cash rates.
           </li>
         </ul>
@@ -164,7 +175,12 @@ export default function SourcesPage() {
           All prices are <strong>estimates for educational comparison only</strong>. They are not
           guaranteed rates, plan-specific copays, or pharmacy quotes. Always verify current pricing
           through{" "}
-          <a className="underline" href="https://www.medicare.gov/plan-compare" target="_blank" rel="noopener noreferrer">
+          <a
+            className="underline"
+            href="https://www.medicare.gov/plan-compare"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             Medicare Plan Finder
           </a>{" "}
           or your plan&apos;s formulary.
@@ -172,7 +188,10 @@ export default function SourcesPage() {
       </div>
 
       <div className="text-center pt-4">
-        <Link to="/" className="text-sm underline underline-offset-2 hover:text-primary transition-colors">
+        <Link
+          to="/"
+          className="text-sm underline underline-offset-2 hover:text-primary transition-colors"
+        >
           Back to home
         </Link>
       </div>

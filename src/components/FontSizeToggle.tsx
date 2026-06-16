@@ -15,7 +15,10 @@ export function FontSizeToggle() {
 
   useEffect(() => {
     const saved = parseFloat(localStorage.getItem(STORAGE_KEY) || "1");
-    const i = Math.max(0, STEPS.findIndex((s) => Math.abs(s - saved) < 0.01));
+    const i = Math.max(
+      0,
+      STEPS.findIndex((s) => Math.abs(s - saved) < 0.01),
+    );
     const safeIdx = i === -1 ? 1 : i;
     setIdx(safeIdx);
     applyScale(STEPS[safeIdx]);
@@ -57,7 +60,9 @@ export function FontSizeToggle() {
       </Button>
       <div className="flex items-center gap-1 px-1">
         <Type className="h-3.5 w-3.5 text-white/70" />
-        <span className="text-xs font-semibold text-white w-8 text-center">{Math.round(STEPS[idx] * 100)}%</span>
+        <span className="text-xs font-semibold text-white w-8 text-center">
+          {Math.round(STEPS[idx] * 100)}%
+        </span>
       </div>
       <Button
         size="icon"

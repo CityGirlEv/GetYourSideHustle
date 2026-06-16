@@ -1,11 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { Route as TestEmailRoute } from "@/routes/api/public/send-test-email";
-import { Route as TransactionalSendRoute } from "@/routes/lovable/email/transactional/send";
+import { Route as TransactionalSendRoute } from "@/routes/api/email/transactional/send";
 
-const testEmailHandler =
-  (TestEmailRoute as any).options.server.handlers.POST as (ctx: { request: Request }) => Promise<Response>;
-const sendHandler =
-  (TransactionalSendRoute as any).options.server.handlers.POST as (ctx: { request: Request }) => Promise<Response>;
+const testEmailHandler = (TestEmailRoute as any).options.server.handlers.POST as (ctx: {
+  request: Request;
+}) => Promise<Response>;
+const sendHandler = (TransactionalSendRoute as any).options.server.handlers.POST as (ctx: {
+  request: Request;
+}) => Promise<Response>;
 
 describe("send-test-email endpoint authorization", () => {
   it("is disabled (503) when TEST_EMAIL_SECRET is not configured", async () => {
@@ -30,14 +32,11 @@ describe("send-test-email endpoint authorization", () => {
     process.env.TEST_EMAIL_SECRET = "real-secret";
     try {
       const res = await testEmailHandler({
-        request: new Request(
-          "https://example.test/api/public/send-test-email?secret=wrong",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ recipient: "a@b.com" }),
-          },
-        ),
+        request: new Request("https://example.test/api/public/send-test-email?secret=wrong", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ recipient: "a@b.com" }),
+        }),
       });
       expect(res.status).toBe(401);
     } finally {
@@ -50,7 +49,7 @@ describe("send-test-email endpoint authorization", () => {
 describe("transactional send endpoint authorization", () => {
   it("rejects requests without an Authorization header", async () => {
     const res = await sendHandler({
-      request: new Request("https://example.test/lovable/email/transactional/send", {
+      request: new Request("https://example.test/api/email/transactional/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ templateName: "welcome", recipientEmail: "a@b.com" }),

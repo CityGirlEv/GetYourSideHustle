@@ -1,120 +1,368 @@
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter, Link } from "@tanstack/react-router";
+import { useApp } from "@/lib/app-store";
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useApp } from "@/lib/app-store";
-import { supabase } from "@/integrations/supabase/client";
-import { Briefcase, FileText } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Users, Search, Receipt, Plus, Sparkles, CreditCard, Lock } from "lucide-react";
+import { toast } from "sonner";
 import { NdaStatusCard } from "@/components/NdaStatusCard";
-
-interface AssignedScenario {
-  id: string;
-  scenario_code: string;
-  birth_year: number;
-  zip3: string;
-  gender: string | null;
-  tobacco: boolean;
-  income_band: string | null;
-  agent_notes: string | null;
-  created_at: string;
-  wants_contact: boolean;
-}
+import { AgentMarketing } from "@/components/AgentMarketing";
+import {
+  createStripeCustomerPortalSession,
+  getBillingStatus,
+} from "@/lib/stripe.functions";
+import { userHasAdminRole } from "@/lib/user-roles";
 
 export const Route = createFileRoute("/agent")({
   head: () => ({
     meta: [
-      { title: "Agent Portal — The Medicare Optimizer" },
-      { name: "description", content: "Licensed agents review assigned Medicare scenarios and outreach requests." },
-      { property: "og:title", content: "Agent Portal — The Medicare Optimizer" },
-      { property: "og:description", content: "Assigned Medicare scenarios for licensed agents." },
+      { title: "Agent Command Center — Get Part B Optimizer" },
+      {
+        name: "description",
+        content: "Look up Medicare scenarios by ID and manage your agent caseload. No PII stored.",
+      },
+      { property: "og:title", content: "Agent Command Center — Get Part B Optimizer" },
+      { property: "og:description", content: "Agent caseload and scenario lookup." },
       { property: "og:url", content: "https://themedicareoptimizer.lovable.app/agent" },
       { name: "robots", content: "noindex,nofollow" },
     ],
-    links: [
-      { rel: "canonical", href: "https://themedicareoptimizer.lovable.app/agent" },
-    ],
+    links: [{ rel: "canonical", href: "https://themedicareoptimizer.lovable.app/agent" }],
   }),
   component: AgentPortal,
 });
 
 function AgentPortal() {
-  const { user, authLoading } = useApp();
+  const { user, authLoading, scenarios, creditTxns, lookupScenario } = useApp();
   const router = useRouter();
-  const [rows, setRows] = useState<AssignedScenario[]>([]);
-  const [loading, setLoading] = useState(true);
+  const fetchBilling = useServerFn(getBillingStatus);
+  const openPortal = useServerFn(createStripeCustomerPortalSession);
+  const [tab, setTab] = useState("lookup");
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [billingLoading, setBillingLoading] = useState(true);
+  const [billing, setBilling] = useState<Awaited<ReturnType<typeof fetchBilling>> | null>(null);
+  const [portalBusy, setPortalBusy] = useState(false);
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!user) { router.navigate({ to: "/auth" }); return; }
-    if (user.role !== "agent" && user.role !== "admin") return;
-    let cancelled = false;
-    (async () => {
-      const { data, error } = await supabase
-        .from("scenarios")
-        .select("id, scenario_code, birth_year, zip3, gender, tobacco, income_band, agent_notes, created_at, wants_contact")
-        .or(`assigned_agent_id.eq.${user.id},created_by.eq.${user.id}`)
-        .order("created_at", { ascending: false });
-      if (cancelled) return;
-      if (error) console.error(error);
-      setRows((data ?? []) as AssignedScenario[]);
-      setLoading(false);
-    })();
-    return () => { cancelled = true; };
-  }, [user, router]);
+    if (!authLoading && !user) router.navigate({ to: "/auth" });
+  }, [user, authLoading, router]);
+
+  useEffect(() => {
+    if (!user) return;
+    setBillingLoading(true);
+    fetchBilling()
+      .then(setBilling)
+      .catch(() => setBilling(null))
+      .finally(() => setBillingLoading(false));
+  }, [user, fetchBilling]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("checkout") === "success") {
+      toast.success("Payment received — your subscription is being activated.");
+      params.delete("checkout");
+      params.delete("session_id");
+      const next = `${window.location.pathname}${params.toString() ? `?${params}` : ""}`;
+      window.history.replaceState({}, "", next);
+    }
+    if (params.get("tab") === "billing") setTab("billing");
+  }, []);
 
   if (!user) return null;
-  if (user.role !== "agent" && user.role !== "admin") {
+
+  const isStaffAdmin = userHasAdminRole(user);
+  const hasAccess = isStaffAdmin || billing?.agentDashboardAccess;
+
+  const openBillingPortal = async () => {
+    setPortalBusy(true);
+    try {
+      const { url } = await openPortal();
+      window.location.href = url;
+    } catch (e) {
+      toast.error((e as Error).message ?? "Could not open billing portal");
+    } finally {
+      setPortalBusy(false);
+    }
+  };
+
+  if (!billingLoading && !hasAccess) {
     return (
-      <AppShell title="Agent portal">
-        <Card className="glass p-6">This area is for users with the agent role.</Card>
+      <AppShell title="Agent command center" subtitle="Subscription required">
+        <Card className="glass p-8 max-w-xl mx-auto text-center space-y-4">
+          <Lock className="h-10 w-10 mx-auto text-muted-foreground" />
+          <h2 className="font-display text-xl font-bold">Subscribe to unlock the agent dashboard</h2>
+          <p className="text-sm text-muted-foreground">
+            An active or trialing subscription is required to access scenario lookup, your caseload,
+            and billing tools.
+          </p>
+          {billing?.subscription?.status && (
+            <p className="text-sm">
+              Current subscription status:{" "}
+              <b className="capitalize">{billing.subscription.status.replace(/_/g, " ")}</b>
+            </p>
+          )}
+          <div className="flex flex-wrap justify-center gap-2 pt-2">
+            <Link to="/pricing">
+              <Button className="grad-indigo">View plans & subscribe</Button>
+            </Link>
+            <Button variant="outline" onClick={() => router.navigate({ to: "/" })}>
+              Return home
+            </Button>
+          </div>
+        </Card>
       </AppShell>
     );
   }
 
+  const submitLookup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!code.trim()) return;
+    setBusy(true);
+    try {
+      const s = await lookupScenario(code);
+      toast.success(`Loaded scenario ${s.scenario_code}`);
+      router.navigate({ to: "/agent/scenario/$code", params: { code: s.scenario_code } });
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
-    <AppShell title="My assignments" subtitle="Scenarios assigned to you by an administrator">
-      <div className="mb-4"><NdaStatusCard /></div>
-      <Card className="glass p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <Briefcase className="h-4 w-4" />
-          <h3 className="font-display font-bold">Assigned scenarios</h3>
-          <span className="text-xs text-muted-foreground">{rows.length} total</span>
+    <AppShell
+      title="Agent command center"
+      subtitle="Look up scenarios by ID — no personal information stored"
+    >
+      <div className="mb-4">
+        <NdaStatusCard />
+      </div>
+      <Tabs value={tab} onValueChange={setTab} className="space-y-6">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <TabsList className="glass">
+            <TabsTrigger value="lookup">
+              <Search className="h-4 w-4 mr-1.5" />
+              Look up scenario
+            </TabsTrigger>
+            <TabsTrigger value="roster">
+              <Users className="h-4 w-4 mr-1.5" />
+              My scenarios ({scenarios.length})
+            </TabsTrigger>
+            <TabsTrigger value="billing">
+              <Receipt className="h-4 w-4 mr-1.5" />
+              Billing
+            </TabsTrigger>
+            <TabsTrigger value="marketing">
+              <Sparkles className="h-4 w-4 mr-1.5" />
+              AI Marketing & Growth
+            </TabsTrigger>
+          </TabsList>
+          <Link to="/scenario/new">
+            <Button size="sm" className="grad-indigo">
+              <Plus className="h-4 w-4 mr-1.5" />
+              Create new scenario
+            </Button>
+          </Link>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-secondary/60 text-left text-xs uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="px-3 py-2">Scenario ID</th>
-                <th className="px-3 py-2">Created</th>
-                <th className="px-3 py-2">ZIP3</th>
-                <th className="px-3 py-2">Birth yr</th>
-                <th className="px-3 py-2">Notes</th>
-                <th className="px-3 py-2"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((s) => (
-                <tr key={s.id} className="border-t border-border">
-                  <td className="px-3 py-2 font-mono text-xs">{s.scenario_code}</td>
-                  <td className="px-3 py-2 text-muted-foreground tabular-nums whitespace-nowrap">{new Date(s.created_at).toLocaleString()}</td>
-                  <td className="px-3 py-2">{s.zip3}xx</td>
-                  <td className="px-3 py-2 tabular-nums">{s.birth_year}</td>
-                  <td className="px-3 py-2 text-xs text-muted-foreground truncate max-w-xs">{s.agent_notes ? s.agent_notes.slice(0, 80) : <span className="italic">none</span>}</td>
-                  <td className="px-3 py-2">
-                    <Link to="/agent/scenario/$code" params={{ code: s.scenario_code }}>
-                      <Button size="sm" variant="outline"><FileText className="h-3 w-3 mr-1" />Open</Button>
-                    </Link>
-                  </td>
+
+        <TabsContent value="lookup">
+          <Card className="glass p-8 max-w-2xl mx-auto space-y-5">
+            <div className="text-center space-y-1">
+              <h2 className="font-display text-xl font-bold">Enter a Scenario ID</h2>
+              <p className="text-sm text-muted-foreground">
+                The consumer received this ID after building their scenario. The first agent to look
+                it up claims it.
+              </p>
+            </div>
+            <form onSubmit={submitLookup} className="space-y-3">
+              <Input
+                value={code}
+                onChange={(e) => setCode(e.target.value.toUpperCase())}
+                placeholder="SCN-2026-XXXX-XXXX"
+                className="font-mono text-center text-lg h-12 tracking-wider"
+                autoFocus
+              />
+              <Button type="submit" disabled={busy || !code} className="grad-indigo w-full h-11">
+                {busy ? "Looking up…" : "Look up scenario"}
+              </Button>
+            </form>
+            <p className="text-xs text-muted-foreground text-center">
+              Rate-limited: 10 failed attempts per minute.
+            </p>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="roster" className="space-y-4">
+          {scenarios.length === 0 ? (
+            <Card className="glass p-6 text-center text-sm text-muted-foreground">
+              No scenarios claimed or assigned yet. Use <strong>Look up scenario</strong> to
+              retrieve one by ID.
+            </Card>
+          ) : (
+            <Card className="glass overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-secondary/60 text-left text-xs uppercase tracking-wider text-muted-foreground">
+                  <tr>
+                    <th className="px-4 py-3">Scenario ID</th>
+                    <th className="px-4 py-3">Profile</th>
+                    <th className="px-4 py-3">Meds</th>
+                    <th className="px-4 py-3">Type</th>
+                    <th className="px-4 py-3">Claimed/Created</th>
+                    <th className="px-4 py-3"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {scenarios.map((s) => {
+                    const isClaimed = s.claimed_by === user.id;
+                    const isAssigned = s.assigned_agent_id === user.id;
+                    const typeLabel = isClaimed ? "Claimed" : isAssigned ? "Assigned" : "Created";
+                    const badgeColor = isClaimed
+                      ? "bg-indigo/10 text-indigo border-indigo/20"
+                      : isAssigned
+                        ? "bg-emerald/10 text-emerald border-emerald/20"
+                        : "bg-muted text-muted-foreground border-border";
+
+                    return (
+                      <tr
+                        key={s.id}
+                        className="border-t border-border hover:bg-secondary/30 transition"
+                      >
+                        <td className="px-4 py-3 font-mono text-xs">
+                          <Link
+                            to="/agent/scenario/$code"
+                            params={{ code: s.scenario_code }}
+                            className="hover:underline text-primary"
+                          >
+                            {s.scenario_code}
+                          </Link>
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground">
+                          b. {s.birth_year} · ZIP {s.zip3}xx · {s.gender ?? "—"}
+                        </td>
+                        <td className="px-4 py-3">{s.medications.length}</td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold ${badgeColor}`}
+                          >
+                            {typeLabel}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-muted-foreground">
+                          {s.claimed_at
+                            ? new Date(s.claimed_at).toLocaleDateString()
+                            : new Date(s.created_at).toLocaleDateString()}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <Link to="/agent/scenario/$code" params={{ code: s.scenario_code }}>
+                            <Button size="sm" variant="ghost">
+                              View summary →
+                            </Button>
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="billing" className="space-y-4">
+          <Card className="glass p-5 space-y-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h3 className="font-display font-bold">Subscription & billing</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Manage payment methods, invoices, and plan changes in Stripe.
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={portalBusy || !billing?.hasStripeCustomer}
+                onClick={openBillingPortal}
+              >
+                <CreditCard className="h-4 w-4 mr-1.5" />
+                {portalBusy ? "Opening…" : "Manage billing"}
+              </Button>
+            </div>
+            <dl className="grid gap-2 sm:grid-cols-2 text-sm">
+              <div>
+                <dt className="text-muted-foreground">Subscription status</dt>
+                <dd className="font-medium capitalize">
+                  {billing?.subscription?.status?.replace(/_/g, " ") ?? "None"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">Plan</dt>
+                <dd className="font-medium">{billing?.subscription?.planKey ?? "—"}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">Lead credits</dt>
+                <dd className="font-medium tabular-nums">
+                  {billing?.leadCredits?.balance ?? 0}
+                  {billing?.leadCredits?.monthly_allowance
+                    ? ` / ${billing.leadCredits.monthly_allowance} monthly`
+                    : ""}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground">Renews / period end</dt>
+                <dd className="font-medium">
+                  {billing?.subscription?.currentPeriodEnd
+                    ? new Date(billing.subscription.currentPeriodEnd).toLocaleDateString()
+                    : "—"}
+                </dd>
+              </div>
+            </dl>
+            {!billing?.hasStripeCustomer && (
+              <Link to="/pricing">
+                <Button size="sm" className="grad-indigo">
+                  Subscribe to a plan
+                </Button>
+              </Link>
+            )}
+          </Card>
+
+          <Card className="glass p-5">
+            <h3 className="font-display font-bold mb-3">Scenario credit ledger</h3>
+            <table className="w-full text-sm">
+              <thead className="text-left text-xs uppercase tracking-wider text-muted-foreground border-b border-border">
+                <tr>
+                  <th className="py-2">When</th>
+                  <th className="py-2">Description</th>
+                  <th className="py-2 text-right">Δ</th>
                 </tr>
-              ))}
-              {!rows.length && !loading && (
-                <tr><td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">No scenarios assigned to you yet.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+              </thead>
+              <tbody>
+                {creditTxns.map((t) => (
+                  <tr key={t.id} className="border-b border-border/60">
+                    <td className="py-2 text-muted-foreground">
+                      {new Date(t.created_at).toLocaleString()}
+                    </td>
+                    <td className="py-2">{t.description}</td>
+                    <td
+                      className={`py-2 text-right tabular-nums font-semibold ${t.amount > 0 ? "text-emerald" : "text-warning"}`}
+                    >
+                      {t.amount > 0 ? `+${t.amount}` : t.amount}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="marketing">
+          <AgentMarketing />
+        </TabsContent>
+      </Tabs>
     </AppShell>
   );
 }

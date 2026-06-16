@@ -5,7 +5,7 @@ export const Route = createFileRoute("/register")({
     throw redirect({ to: "/auth", search: { tab: "register" } });
   },
   head: () => ({
-    meta: [{ title: "Register — The Medicare Optimizer" }],
+    meta: [{ title: "Register — Get Part B Optimizer" }],
     links: [{ rel: "canonical", href: "https://themedicareoptimizer.lovable.app/auth" }],
   }),
   component: () => null,

@@ -8,10 +8,7 @@ function loadEnv() {
     const i = line.indexOf("=");
     const key = line.slice(0, i);
     let val = line.slice(i + 1).trim();
-    if (
-      (val.startsWith('"') && val.endsWith('"')) ||
-      (val.startsWith("'") && val.endsWith("'"))
-    ) {
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
       val = val.slice(1, -1);
     }
     env[key] = val;
@@ -25,7 +22,7 @@ const sb = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 const testPayload = {
   message_id: crypto.randomUUID(),
   to: env.ADMIN_NOTIFICATION_EMAILS?.split(",")[0]?.trim() || "evelyn3@cox.net",
-  from: "The Medicare Optimizer <onboarding@resend.dev>",
+  from: "Get Part B Optimizer <onboarding@resend.dev>",
   sender_domain: "resend.dev",
   subject: `[DIAG] Email queue test ${new Date().toISOString()}`,
   html: "<p>Queue processor diagnostic email.</p>",

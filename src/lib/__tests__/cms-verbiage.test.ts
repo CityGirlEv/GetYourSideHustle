@@ -19,9 +19,18 @@ const ALLOWLIST = new Set<string>([
 const FORBIDDEN: Array<{ label: string; pattern: RegExp }> = [
   { label: "'best Medicare plan'", pattern: /best\s+medicare\s+plan/i },
   { label: "'#1 plan' / '#1 Medicare'", pattern: /#\s*1\s+(?:plan|medicare)/i },
-  { label: "'all Medicare plans' / 'every plan'", pattern: /\b(?:all|every)\s+medicare\s+plans?\b/i },
-  { label: "'guaranteed savings/coverage/approval'", pattern: /\bguaranteed\s+(?:savings|coverage|approval|enrollment|acceptance)\b/i },
-  { label: "'free Medicare' / 'free plan'", pattern: /\bfree\s+(?:medicare|plan|coverage|insurance)\b/i },
+  {
+    label: "'all Medicare plans' / 'every plan'",
+    pattern: /\b(?:all|every)\s+medicare\s+plans?\b/i,
+  },
+  {
+    label: "'guaranteed savings/coverage/approval'",
+    pattern: /\bguaranteed\s+(?:savings|coverage|approval|enrollment|acceptance)\b/i,
+  },
+  {
+    label: "'free Medicare' / 'free plan'",
+    pattern: /\bfree\s+(?:medicare|plan|coverage|insurance)\b/i,
+  },
   { label: "'lowest price guaranteed'", pattern: /\blowest\s+price\s+guaranteed\b/i },
   { label: "'cheapest Medicare plan'", pattern: /\bcheapest\s+medicare\s+plan/i },
 ];
@@ -29,11 +38,19 @@ const FORBIDDEN: Array<{ label: string; pattern: RegExp }> = [
 function walk(dir: string): string[] {
   let out: string[] = [];
   let entries: string[] = [];
-  try { entries = readdirSync(dir); } catch { return out; }
+  try {
+    entries = readdirSync(dir);
+  } catch {
+    return out;
+  }
   for (const name of entries) {
     const p = join(dir, name);
     let s;
-    try { s = statSync(p); } catch { continue; }
+    try {
+      s = statSync(p);
+    } catch {
+      continue;
+    }
     if (s.isDirectory()) {
       if (name === "__tests__" || name === "node_modules") continue;
       out = out.concat(walk(p));

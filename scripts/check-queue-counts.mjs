@@ -8,10 +8,7 @@ function loadEnv() {
     const i = line.indexOf("=");
     const key = line.slice(0, i);
     let val = line.slice(i + 1).trim();
-    if (
-      (val.startsWith('"') && val.endsWith('"')) ||
-      (val.startsWith("'") && val.endsWith("'"))
-    ) {
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
       val = val.slice(1, -1);
     }
     env[key] = val;
@@ -22,7 +19,12 @@ function loadEnv() {
 const env = loadEnv();
 const sb = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 
-for (const queue of ["auth_emails", "transactional_emails", "auth_emails_dlq", "transactional_emails_dlq"]) {
+for (const queue of [
+  "auth_emails",
+  "transactional_emails",
+  "auth_emails_dlq",
+  "transactional_emails_dlq",
+]) {
   const { data, error } = await sb.rpc("read_email_batch", {
     queue_name: queue,
     batch_size: 1,
@@ -42,27 +44,27 @@ for (const queue of ["auth_emails", "transactional_emails", "auth_emails_dlq", "
 const { data: counts, error: sqlError } = await sb.rpc("read_email_batch", {
   queue_name: "auth_emails",
   batch_size: 100,
-  vt: 1
+  vt: 1,
 });
 console.log("auth_emails count in batch (max 100):", counts?.length ?? 0);
 
 const { data: txCounts } = await sb.rpc("read_email_batch", {
   queue_name: "transactional_emails",
   batch_size: 100,
-  vt: 1
+  vt: 1,
 });
 console.log("transactional_emails count in batch (max 100):", txCounts?.length ?? 0);
 
 const { data: authDlq } = await sb.rpc("read_email_batch", {
   queue_name: "auth_emails_dlq",
   batch_size: 100,
-  vt: 1
+  vt: 1,
 });
 console.log("auth_emails_dlq count in batch (max 100):", authDlq?.length ?? 0);
 
 const { data: txDlq } = await sb.rpc("read_email_batch", {
   queue_name: "transactional_emails_dlq",
   batch_size: 100,
-  vt: 1
+  vt: 1,
 });
 console.log("transactional_emails_dlq count in batch (max 100):", txDlq?.length ?? 0);

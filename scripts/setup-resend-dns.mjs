@@ -16,10 +16,7 @@ function loadEnv() {
     if (!line || line.startsWith("#") || !line.includes("=")) continue;
     const i = line.indexOf("=");
     let val = line.slice(i + 1).trim();
-    if (
-      (val.startsWith('"') && val.endsWith('"')) ||
-      (val.startsWith("'") && val.endsWith("'"))
-    ) {
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
       val = val.slice(1, -1);
     }
     env[line.slice(0, i)] = val;
@@ -28,8 +25,7 @@ function loadEnv() {
 }
 
 const env = loadEnv();
-const cfToken =
-  process.env.CLOUDFLARE_API_TOKEN?.trim() || env.CLOUDFLARE_API_TOKEN?.trim();
+const cfToken = process.env.CLOUDFLARE_API_TOKEN?.trim() || env.CLOUDFLARE_API_TOKEN?.trim();
 const resendKey = env.RESEND_API_KEY?.trim();
 
 if (!cfToken) {
@@ -59,9 +55,7 @@ async function listDns() {
 }
 
 async function upsertDns(record) {
-  const existing = (await listDns()).find(
-    (r) => r.type === record.type && r.name === record.name,
-  );
+  const existing = (await listDns()).find((r) => r.type === record.type && r.name === record.name);
   const body = {
     type: record.type,
     name: record.name,
@@ -79,7 +73,12 @@ async function upsertDns(record) {
     body: JSON.stringify(body),
   });
   const json = await res.json();
-  console.log(existing ? "updated" : "created", record.type, record.name, json.success ? "ok" : json.errors);
+  console.log(
+    existing ? "updated" : "created",
+    record.type,
+    record.name,
+    json.success ? "ok" : json.errors,
+  );
   if (!json.success) throw new Error(JSON.stringify(json.errors));
 }
 
@@ -88,15 +87,15 @@ const domains = await domainsRes.json();
 const domain = domains.data?.find((d) => d.name === DOMAIN);
 if (!domain) throw new Error(`Resend domain ${DOMAIN} not found`);
 
-const detailRes = await fetch(`https://api.resend.com/domains/${domain.id}`, { headers: resendHeaders });
+const detailRes = await fetch(`https://api.resend.com/domains/${domain.id}`, {
+  headers: resendHeaders,
+});
 const detail = await detailRes.json();
 console.log("Resend status before:", detail.status);
 
 for (const rec of detail.records ?? []) {
   const fqdn =
-    rec.name === DOMAIN || rec.name.endsWith(`.${DOMAIN}`)
-      ? rec.name
-      : `${rec.name}.${DOMAIN}`;
+    rec.name === DOMAIN || rec.name.endsWith(`.${DOMAIN}`) ? rec.name : `${rec.name}.${DOMAIN}`;
   if (rec.type === "MX") {
     await upsertDns({
       type: "MX",
@@ -116,7 +115,9 @@ await fetch(`https://api.resend.com/domains/${domain.id}/verify`, {
 
 for (let i = 0; i < 12; i++) {
   await new Promise((r) => setTimeout(r, 5000));
-  const afterRes = await fetch(`https://api.resend.com/domains/${domain.id}`, { headers: resendHeaders });
+  const afterRes = await fetch(`https://api.resend.com/domains/${domain.id}`, {
+    headers: resendHeaders,
+  });
   const after = await afterRes.json();
   const dkim = after.records?.find((r) => r.record === "DKIM")?.status;
   console.log(`verify ${i + 1}: domain=${after.status} dkim=${dkim}`);

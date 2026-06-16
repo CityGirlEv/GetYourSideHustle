@@ -17,7 +17,10 @@ export function GlobalBusyIndicator() {
 
   const [visible, setVisible] = useState(false);
   useEffect(() => {
-    if (!busy) { setVisible(false); return; }
+    if (!busy) {
+      setVisible(false);
+      return;
+    }
     const t = setTimeout(() => setVisible(true), 250);
     return () => clearTimeout(t);
   }, [busy]);

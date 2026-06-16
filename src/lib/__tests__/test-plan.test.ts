@@ -42,7 +42,14 @@ import {
   saveDevNoteAuthor,
   loadAllQaNoteAuthors,
   loadAllDevNoteAuthors,
+  saveQaNoteMeta,
+  saveDevNoteMeta,
+  loadQaNoteMeta,
+  loadDevNoteMeta,
+  loadAllQaNoteMeta,
+  loadAllDevNoteMeta,
 } from "../test-plan";
+import { isIncomeBand, parseIncomeBandFromDemographics } from "../income-bands";
 
 beforeEach(() => {
   localStorage.clear();
@@ -124,6 +131,46 @@ describe("note author tracking", () => {
   });
 });
 
+describe("note meta (author name + timestamp)", () => {
+  const meta = { author_id: "user-a", author_name: "Jane Doe", at: "2026-06-09T20:12:00Z" };
+
+  it("round-trips QA note meta", () => {
+    saveQaNoteMeta("Z-1", meta);
+    expect(loadQaNoteMeta("Z-1")).toEqual(meta);
+    expect(loadQaNoteAuthor("Z-1")).toBe("user-a");
+    saveQaNoteMeta("Z-1", null);
+    expect(loadQaNoteMeta("Z-1")).toBeNull();
+  });
+  it("round-trips dev note meta", () => {
+    saveDevNoteMeta("Z-1", meta);
+    expect(loadDevNoteMeta("Z-1")).toEqual(meta);
+    saveDevNoteMeta("Z-1", null);
+    expect(loadDevNoteMeta("Z-1")).toBeNull();
+  });
+  it("bulk meta loaders include platform variants", () => {
+    saveQaNoteMeta("VOICE-001-IPAD", meta);
+    saveDevNoteMeta("VOICE-001-IPAD", { ...meta, author_id: "dev-1", author_name: "Dev User" });
+    expect(loadAllQaNoteMeta()["VOICE-001-IPAD"]).toEqual(meta);
+    expect(loadAllDevNoteMeta()["VOICE-001-IPAD"]?.author_name).toBe("Dev User");
+  });
+  it("returns legacy meta for text-only notes without author keys", () => {
+    saveQaNote("Z-legacy", "old note text", { syncCloud: false });
+    expect(loadQaNoteMeta("Z-legacy")).toEqual({
+      author_id: "",
+      author_name: "Legacy note",
+      at: "",
+    });
+    expect(loadAllQaNoteMeta()["Z-legacy"]?.author_name).toBe("Legacy note");
+    saveQaNote("Z-legacy", "", { syncCloud: false });
+    expect(loadQaNoteMeta("Z-legacy")).toBeNull();
+  });
+  it("uses Unknown author when author id exists but name is missing", () => {
+    saveQaNoteAuthor("Z-2", "user-a");
+    saveQaNote("Z-2", "note body", { syncCloud: false });
+    expect(loadQaNoteMeta("Z-2")?.author_name).toBe("Unknown author");
+  });
+});
+
 describe("severity", () => {
   it("round-trips and clears", () => {
     saveSeverity("Z-1", "high");
@@ -163,6 +210,19 @@ describe("constants", () => {
     const ids = TEST_CASES.map((t) => t.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
+  it("SCEN-QA scenario tests use wizard-selectable income bands", () => {
+    const scenTests = TEST_CASES.filter(
+      (t) => t.id.startsWith("SCEN-QA-") && t.steps.some((s) => /income band =/i.test(s)),
+    );
+    expect(scenTests.length).toBeGreaterThan(0);
+    for (const t of scenTests) {
+      const demoStep = t.steps.find((s) => /income band =/i.test(s));
+      expect(demoStep, `${t.id} missing income band step`).toBeTruthy();
+      const band = parseIncomeBandFromDemographics(demoStep!);
+      expect(band, `${t.id} could not parse income band`).toBeTruthy();
+      expect(isIncomeBand(band!), `${t.id} uses invalid band: ${band}`).toBe(true);
+    }
+  });
 });
 
 describe("sprint routing", () => {
@@ -170,19 +230,52 @@ describe("sprint routing", () => {
     expect(SPRINTS.some((s) => s.id === BACKLOG_SPRINT_ID)).toBe(true);
   });
   it("Unassigned tests with no explicit sprint default to Backlog", () => {
-    const t = { id: "X-1", area: "X", title: "x", priority: "P2", steps: [], expected: "", assignee: "Unassigned" } as any;
+    const t = {
+      id: "X-1",
+      area: "X",
+      title: "x",
+      priority: "P2",
+      steps: [],
+      expected: "",
+      assignee: "Unassigned",
+    } as any;
     expect(getTestSprintId(t)).toBe(BACKLOG_SPRINT_ID);
   });
   it("owned tests default to the active sprint", () => {
-    const t = { id: "X-2", area: "X", title: "x", priority: "P2", steps: [], expected: "", assignee: "Catria" } as any;
+    const t = {
+      id: "X-2",
+      area: "X",
+      title: "x",
+      priority: "P2",
+      steps: [],
+      expected: "",
+      assignee: "Catria",
+    } as any;
     expect(getTestSprintId(t)).toBe(ACTIVE_SPRINT_ID);
   });
   it("explicit sprintId wins over the unassigned->backlog fallback", () => {
-    const t = { id: "X-3", area: "X", title: "x", priority: "P2", steps: [], expected: "", assignee: "Unassigned", sprintId: ACTIVE_SPRINT_ID } as any;
+    const t = {
+      id: "X-3",
+      area: "X",
+      title: "x",
+      priority: "P2",
+      steps: [],
+      expected: "",
+      assignee: "Unassigned",
+      sprintId: ACTIVE_SPRINT_ID,
+    } as any;
     expect(getTestSprintId(t)).toBe(ACTIVE_SPRINT_ID);
   });
   it("user override wins over everything", () => {
-    const t = { id: "X-4", area: "X", title: "x", priority: "P2", steps: [], expected: "", assignee: "Unassigned" } as any;
+    const t = {
+      id: "X-4",
+      area: "X",
+      title: "x",
+      priority: "P2",
+      steps: [],
+      expected: "",
+      assignee: "Unassigned",
+    } as any;
     saveSprintOverride("X-4", ACTIVE_SPRINT_ID);
     expect(getTestSprintId(t)).toBe(ACTIVE_SPRINT_ID);
   });

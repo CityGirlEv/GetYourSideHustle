@@ -65,26 +65,59 @@ export function SignaturePad({ onSign }: { onSign: (data: string) => void }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <Button type="button" size="sm" variant={mode === "draw" ? "default" : "outline"} onClick={() => setMode("draw")}><PenLine className="h-4 w-4 mr-1"/>Draw</Button>
-        <Button type="button" size="sm" variant={mode === "type" ? "default" : "outline"} onClick={() => setMode("type")}><TypeIcon className="h-4 w-4 mr-1"/>Type</Button>
-        {mode === "draw" && <Button type="button" size="sm" variant="ghost" onClick={clear}><Eraser className="h-4 w-4 mr-1"/>Clear</Button>}
+        <Button
+          type="button"
+          size="sm"
+          variant={mode === "draw" ? "default" : "outline"}
+          onClick={() => setMode("draw")}
+        >
+          <PenLine className="h-4 w-4 mr-1" />
+          Draw
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant={mode === "type" ? "default" : "outline"}
+          onClick={() => setMode("type")}
+        >
+          <TypeIcon className="h-4 w-4 mr-1" />
+          Type
+        </Button>
+        {mode === "draw" && (
+          <Button type="button" size="sm" variant="ghost" onClick={clear}>
+            <Eraser className="h-4 w-4 mr-1" />
+            Clear
+          </Button>
+        )}
       </div>
       {mode === "draw" ? (
         <canvas
           ref={canvasRef}
           className="w-full h-44 rounded-xl bg-white border-2 border-dashed border-border touch-none"
-          onPointerDown={(e) => { const p = point(e); start(p.x, p.y); }}
-          onPointerMove={(e) => { const p = point(e); move(p.x, p.y); }}
+          onPointerDown={(e) => {
+            const p = point(e);
+            start(p.x, p.y);
+          }}
+          onPointerMove={(e) => {
+            const p = point(e);
+            move(p.x, p.y);
+          }}
           onPointerUp={end}
           onPointerLeave={end}
         />
       ) : (
         <div className="rounded-xl bg-white border-2 border-dashed border-border p-6">
-          <Input value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="Type your full legal name" />
+          <Input
+            value={typed}
+            onChange={(e) => setTyped(e.target.value)}
+            placeholder="Type your full legal name"
+          />
           {typed && <div className="script text-4xl mt-3 text-primary">{typed}</div>}
         </div>
       )}
-      <Button onClick={submit} className="w-full grad-indigo">Sign &amp; lock signature</Button>
+      <Button onClick={submit} className="w-full grad-indigo">
+        Sign &amp; lock signature
+      </Button>
     </div>
   );
 }

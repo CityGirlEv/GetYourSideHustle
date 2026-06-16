@@ -1,8 +1,8 @@
-# The Medicare Optimizer
+# Get Part B Optimizer
 
 > De-identified Medicare plan comparison platform that models Original Medicare + Medigap vs. Medicare Advantage under 2026 and 2027 federal rules. No personally identifiable information is collected — scenarios use only year of birth and ZIP3.
 
-The Medicare Optimizer lets consumers build a private Medicare scenario in about two minutes and receive a shareable Scenario ID they can hand to the licensed agent of their choice. Scenarios auto-delete after 90 days.
+Get Part B Optimizer lets consumers build a private Medicare scenario in about two minutes and receive a shareable Scenario ID they can hand to the licensed agent of their choice. Scenarios auto-delete after 90 days.
 
 ## Pages
 
@@ -12,5 +12,5 @@ The Medicare Optimizer lets consumers build a private Medicare scenario in about
 ## Optional
 
 - [Beta NDA](/nda): Non-disclosure agreement for staff and beta testers.
-- [Register](/register): Request beta access to the staff portal.
-- [Sign in](/auth): Staff sign-in for advisors, agents, QA, and admins.
+- [Register](/register): Request beta access to the Team Member Portal.
+- [Sign in](/auth): Team Member sign-in for advisors, agents, QA, and admins.

@@ -54,30 +54,24 @@ for (const [name, entry] of Object.entries(envVars)) {
   if (entry?.value) byName[name] = entry.value;
 }
 
-const required = [
-  "SUPABASE_PUBLISHABLE_KEY",
-  "SUPABASE_SERVICE_ROLE_KEY",
-];
+const required = ["SUPABASE_PUBLISHABLE_KEY", "SUPABASE_SERVICE_ROLE_KEY"];
 
 const missing = required.filter((name) => !byName[name]);
 if (missing.length) {
+  console.error("Could not retrieve encrypted secret values from Cloudflare:", missing.join(", "));
+  console.error("Cloudflare only exposes secret values in the dashboard. Open:");
   console.error(
-    "Could not retrieve encrypted secret values from Cloudflare:",
-    missing.join(", "),
-  );
-  console.error(
-    "Cloudflare only exposes secret values in the dashboard. Open:",
-  );
-  console.error(
-    "https://dash.cloudflare.com/" + accountId + "/pages/view/" + projectName + "/settings/environment-variables",
+    "https://dash.cloudflare.com/" +
+      accountId +
+      "/pages/view/" +
+      projectName +
+      "/settings/environment-variables",
   );
   process.exit(1);
 }
 
 const supabaseUrl =
-  byName.SUPABASE_URL ??
-  byName.VITE_SUPABASE_URL ??
-  "https://xiqknyrikpuysbkvpkju.supabase.co";
+  byName.SUPABASE_URL ?? byName.VITE_SUPABASE_URL ?? "https://xiqknyrikpuysbkvpkju.supabase.co";
 
 let content = fs.readFileSync(envPath, "utf8");
 content = setEnvLine(content, "SUPABASE_URL", supabaseUrl);

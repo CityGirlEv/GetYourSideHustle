@@ -14,6 +14,7 @@ import { Route as UsersRouteImport } from './routes/users'
 import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as TestingRouteImport } from './routes/testing'
 import { Route as TasksRouteImport } from './routes/tasks'
+import { Route as StaffRouteImport } from './routes/staff'
 import { Route as SourcesRouteImport } from './routes/sources'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SitemapInternalDotxmlRouteImport } from './routes/sitemap-internal[.]xml'
@@ -22,29 +23,35 @@ import { Route as RegisterRouteImport } from './routes/register'
 import { Route as QaManualRouteImport } from './routes/qa-manual'
 import { Route as QaCreditsRouteImport } from './routes/qa-credits'
 import { Route as QaRouteImport } from './routes/qa'
+import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as NdaRouteImport } from './routes/nda'
+import { Route as LegalRouteImport } from './routes/legal'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AgentRouteImport } from './routes/agent'
-import { Route as AdvisorRouteImport } from './routes/advisor'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as StaffReportRouteImport } from './routes/staff_.report'
 import { Route as ScenarioNewRouteImport } from './routes/scenario.new'
 import { Route as ScenarioCodeRouteImport } from './routes/scenario.$code'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
+import { Route as AuthVerifyRouteImport } from './routes/auth.verify'
+import { Route as AdminUsersRouteImport } from './routes/admin_.users'
+import { Route as AdminStaffRouteImport } from './routes/admin_.staff'
+import { Route as AdminPricingRouteImport } from './routes/admin_.pricing'
 import { Route as AdminEmailTemplatesRouteImport } from './routes/admin_.email-templates'
 import { Route as ScenarioCreatedCodeRouteImport } from './routes/scenario.created.$code'
-import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
+import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe/webhook'
 import { Route as ApiPublicTrackVisitRouteImport } from './routes/api/public/track-visit'
 import { Route as ApiPublicSendTestEmailRouteImport } from './routes/api/public/send-test-email'
+import { Route as ApiEmailSuppressionRouteImport } from './routes/api/email/suppression'
 import { Route as ApiCronQaDailySummaryRouteImport } from './routes/api/cron/qa-daily-summary'
 import { Route as AgentScenarioCodeRouteImport } from './routes/agent.scenario.$code'
-import { Route as AdvisorScenarioCodeRouteImport } from './routes/advisor.scenario.$code'
-import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
-import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
-import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
-import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
-import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
-import { Route as AdvisorScenarioCodeEditRouteImport } from './routes/advisor.scenario.$code.edit'
+import { Route as ApiEmailTransactionalSendRouteImport } from './routes/api/email/transactional/send'
+import { Route as ApiEmailTransactionalPreviewRouteImport } from './routes/api/email/transactional/preview'
+import { Route as ApiEmailQueueProcessRouteImport } from './routes/api/email/queue/process'
+import { Route as ApiEmailAuthWebhookRouteImport } from './routes/api/email/auth/webhook'
+import { Route as ApiEmailAuthPreviewRouteImport } from './routes/api/email/auth/preview'
+import { Route as AgentScenarioCodeEditRouteImport } from './routes/agent.scenario.$code.edit'
 
 const VisitsRoute = VisitsRouteImport.update({
   id: '/visits',
@@ -69,6 +76,11 @@ const TestingRoute = TestingRouteImport.update({
 const TasksRoute = TasksRouteImport.update({
   id: '/tasks',
   path: '/tasks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StaffRoute = StaffRouteImport.update({
+  id: '/staff',
+  path: '/staff',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SourcesRoute = SourcesRouteImport.update({
@@ -111,9 +123,19 @@ const QaRoute = QaRouteImport.update({
   path: '/qa',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PricingRoute = PricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const NdaRoute = NdaRouteImport.update({
   id: '/nda',
   path: '/nda',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LegalRoute = LegalRouteImport.update({
+  id: '/legal',
+  path: '/legal',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -126,11 +148,6 @@ const AgentRoute = AgentRouteImport.update({
   path: '/agent',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdvisorRoute = AdvisorRouteImport.update({
-  id: '/advisor',
-  path: '/advisor',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -139,6 +156,11 @@ const AdminRoute = AdminRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StaffReportRoute = StaffReportRouteImport.update({
+  id: '/staff_/report',
+  path: '/staff/report',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ScenarioNewRoute = ScenarioNewRouteImport.update({
@@ -156,6 +178,26 @@ const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
   path: '/email/unsubscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthVerifyRoute = AuthVerifyRouteImport.update({
+  id: '/verify',
+  path: '/verify',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/admin_/users',
+  path: '/admin/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminStaffRoute = AdminStaffRouteImport.update({
+  id: '/admin_/staff',
+  path: '/admin/staff',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminPricingRoute = AdminPricingRouteImport.update({
+  id: '/admin_/pricing',
+  path: '/admin/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminEmailTemplatesRoute = AdminEmailTemplatesRouteImport.update({
   id: '/admin_/email-templates',
   path: '/admin/email-templates',
@@ -166,9 +208,9 @@ const ScenarioCreatedCodeRoute = ScenarioCreatedCodeRouteImport.update({
   path: '/scenario/created/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
-  id: '/lovable/email/suppression',
-  path: '/lovable/email/suppression',
+const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
+  id: '/api/stripe/webhook',
+  path: '/api/stripe/webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicTrackVisitRoute = ApiPublicTrackVisitRouteImport.update({
@@ -181,6 +223,11 @@ const ApiPublicSendTestEmailRoute = ApiPublicSendTestEmailRouteImport.update({
   path: '/api/public/send-test-email',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiEmailSuppressionRoute = ApiEmailSuppressionRouteImport.update({
+  id: '/api/email/suppression',
+  path: '/api/email/suppression',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCronQaDailySummaryRoute = ApiCronQaDailySummaryRouteImport.update({
   id: '/api/cron/qa-daily-summary',
   path: '/api/cron/qa-daily-summary',
@@ -191,52 +238,47 @@ const AgentScenarioCodeRoute = AgentScenarioCodeRouteImport.update({
   path: '/scenario/$code',
   getParentRoute: () => AgentRoute,
 } as any)
-const AdvisorScenarioCodeRoute = AdvisorScenarioCodeRouteImport.update({
-  id: '/scenario/$code',
-  path: '/scenario/$code',
-  getParentRoute: () => AdvisorRoute,
-} as any)
-const LovableEmailTransactionalSendRoute =
-  LovableEmailTransactionalSendRouteImport.update({
-    id: '/lovable/email/transactional/send',
-    path: '/lovable/email/transactional/send',
+const ApiEmailTransactionalSendRoute =
+  ApiEmailTransactionalSendRouteImport.update({
+    id: '/api/email/transactional/send',
+    path: '/api/email/transactional/send',
     getParentRoute: () => rootRouteImport,
   } as any)
-const LovableEmailTransactionalPreviewRoute =
-  LovableEmailTransactionalPreviewRouteImport.update({
-    id: '/lovable/email/transactional/preview',
-    path: '/lovable/email/transactional/preview',
+const ApiEmailTransactionalPreviewRoute =
+  ApiEmailTransactionalPreviewRouteImport.update({
+    id: '/api/email/transactional/preview',
+    path: '/api/email/transactional/preview',
     getParentRoute: () => rootRouteImport,
   } as any)
-const LovableEmailQueueProcessRoute =
-  LovableEmailQueueProcessRouteImport.update({
-    id: '/lovable/email/queue/process',
-    path: '/lovable/email/queue/process',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const LovableEmailAuthWebhookRoute = LovableEmailAuthWebhookRouteImport.update({
-  id: '/lovable/email/auth/webhook',
-  path: '/lovable/email/auth/webhook',
+const ApiEmailQueueProcessRoute = ApiEmailQueueProcessRouteImport.update({
+  id: '/api/email/queue/process',
+  path: '/api/email/queue/process',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LovableEmailAuthPreviewRoute = LovableEmailAuthPreviewRouteImport.update({
-  id: '/lovable/email/auth/preview',
-  path: '/lovable/email/auth/preview',
+const ApiEmailAuthWebhookRoute = ApiEmailAuthWebhookRouteImport.update({
+  id: '/api/email/auth/webhook',
+  path: '/api/email/auth/webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdvisorScenarioCodeEditRoute = AdvisorScenarioCodeEditRouteImport.update({
+const ApiEmailAuthPreviewRoute = ApiEmailAuthPreviewRouteImport.update({
+  id: '/api/email/auth/preview',
+  path: '/api/email/auth/preview',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgentScenarioCodeEditRoute = AgentScenarioCodeEditRouteImport.update({
   id: '/edit',
   path: '/edit',
-  getParentRoute: () => AdvisorScenarioCodeRoute,
+  getParentRoute: () => AgentScenarioCodeRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
-  '/advisor': typeof AdvisorRouteWithChildren
   '/agent': typeof AgentRouteWithChildren
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
+  '/legal': typeof LegalRoute
   '/nda': typeof NdaRoute
+  '/pricing': typeof PricingRoute
   '/qa': typeof QaRoute
   '/qa-credits': typeof QaCreditsRoute
   '/qa-manual': typeof QaManualRoute
@@ -245,36 +287,43 @@ export interface FileRoutesByFullPath {
   '/sitemap-internal.xml': typeof SitemapInternalDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sources': typeof SourcesRoute
+  '/staff': typeof StaffRoute
   '/tasks': typeof TasksRoute
   '/testing': typeof TestingRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/users': typeof UsersRoute
   '/visits': typeof VisitsRoute
   '/admin/email-templates': typeof AdminEmailTemplatesRoute
+  '/admin/pricing': typeof AdminPricingRoute
+  '/admin/staff': typeof AdminStaffRoute
+  '/admin/users': typeof AdminUsersRoute
+  '/auth/verify': typeof AuthVerifyRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/scenario/$code': typeof ScenarioCodeRoute
   '/scenario/new': typeof ScenarioNewRoute
-  '/advisor/scenario/$code': typeof AdvisorScenarioCodeRouteWithChildren
-  '/agent/scenario/$code': typeof AgentScenarioCodeRoute
+  '/staff/report': typeof StaffReportRoute
+  '/agent/scenario/$code': typeof AgentScenarioCodeRouteWithChildren
   '/api/cron/qa-daily-summary': typeof ApiCronQaDailySummaryRoute
+  '/api/email/suppression': typeof ApiEmailSuppressionRoute
   '/api/public/send-test-email': typeof ApiPublicSendTestEmailRoute
   '/api/public/track-visit': typeof ApiPublicTrackVisitRoute
-  '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
+  '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/scenario/created/$code': typeof ScenarioCreatedCodeRoute
-  '/advisor/scenario/$code/edit': typeof AdvisorScenarioCodeEditRoute
-  '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
-  '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
-  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
-  '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
-  '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
+  '/agent/scenario/$code/edit': typeof AgentScenarioCodeEditRoute
+  '/api/email/auth/preview': typeof ApiEmailAuthPreviewRoute
+  '/api/email/auth/webhook': typeof ApiEmailAuthWebhookRoute
+  '/api/email/queue/process': typeof ApiEmailQueueProcessRoute
+  '/api/email/transactional/preview': typeof ApiEmailTransactionalPreviewRoute
+  '/api/email/transactional/send': typeof ApiEmailTransactionalSendRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
-  '/advisor': typeof AdvisorRouteWithChildren
   '/agent': typeof AgentRouteWithChildren
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
+  '/legal': typeof LegalRoute
   '/nda': typeof NdaRoute
+  '/pricing': typeof PricingRoute
   '/qa': typeof QaRoute
   '/qa-credits': typeof QaCreditsRoute
   '/qa-manual': typeof QaManualRoute
@@ -283,37 +332,44 @@ export interface FileRoutesByTo {
   '/sitemap-internal.xml': typeof SitemapInternalDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sources': typeof SourcesRoute
+  '/staff': typeof StaffRoute
   '/tasks': typeof TasksRoute
   '/testing': typeof TestingRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/users': typeof UsersRoute
   '/visits': typeof VisitsRoute
   '/admin/email-templates': typeof AdminEmailTemplatesRoute
+  '/admin/pricing': typeof AdminPricingRoute
+  '/admin/staff': typeof AdminStaffRoute
+  '/admin/users': typeof AdminUsersRoute
+  '/auth/verify': typeof AuthVerifyRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/scenario/$code': typeof ScenarioCodeRoute
   '/scenario/new': typeof ScenarioNewRoute
-  '/advisor/scenario/$code': typeof AdvisorScenarioCodeRouteWithChildren
-  '/agent/scenario/$code': typeof AgentScenarioCodeRoute
+  '/staff/report': typeof StaffReportRoute
+  '/agent/scenario/$code': typeof AgentScenarioCodeRouteWithChildren
   '/api/cron/qa-daily-summary': typeof ApiCronQaDailySummaryRoute
+  '/api/email/suppression': typeof ApiEmailSuppressionRoute
   '/api/public/send-test-email': typeof ApiPublicSendTestEmailRoute
   '/api/public/track-visit': typeof ApiPublicTrackVisitRoute
-  '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
+  '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/scenario/created/$code': typeof ScenarioCreatedCodeRoute
-  '/advisor/scenario/$code/edit': typeof AdvisorScenarioCodeEditRoute
-  '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
-  '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
-  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
-  '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
-  '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
+  '/agent/scenario/$code/edit': typeof AgentScenarioCodeEditRoute
+  '/api/email/auth/preview': typeof ApiEmailAuthPreviewRoute
+  '/api/email/auth/webhook': typeof ApiEmailAuthWebhookRoute
+  '/api/email/queue/process': typeof ApiEmailQueueProcessRoute
+  '/api/email/transactional/preview': typeof ApiEmailTransactionalPreviewRoute
+  '/api/email/transactional/send': typeof ApiEmailTransactionalSendRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
-  '/advisor': typeof AdvisorRouteWithChildren
   '/agent': typeof AgentRouteWithChildren
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
+  '/legal': typeof LegalRoute
   '/nda': typeof NdaRoute
+  '/pricing': typeof PricingRoute
   '/qa': typeof QaRoute
   '/qa-credits': typeof QaCreditsRoute
   '/qa-manual': typeof QaManualRoute
@@ -322,38 +378,45 @@ export interface FileRoutesById {
   '/sitemap-internal.xml': typeof SitemapInternalDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sources': typeof SourcesRoute
+  '/staff': typeof StaffRoute
   '/tasks': typeof TasksRoute
   '/testing': typeof TestingRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/users': typeof UsersRoute
   '/visits': typeof VisitsRoute
   '/admin_/email-templates': typeof AdminEmailTemplatesRoute
+  '/admin_/pricing': typeof AdminPricingRoute
+  '/admin_/staff': typeof AdminStaffRoute
+  '/admin_/users': typeof AdminUsersRoute
+  '/auth/verify': typeof AuthVerifyRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/scenario/$code': typeof ScenarioCodeRoute
   '/scenario/new': typeof ScenarioNewRoute
-  '/advisor/scenario/$code': typeof AdvisorScenarioCodeRouteWithChildren
-  '/agent/scenario/$code': typeof AgentScenarioCodeRoute
+  '/staff_/report': typeof StaffReportRoute
+  '/agent/scenario/$code': typeof AgentScenarioCodeRouteWithChildren
   '/api/cron/qa-daily-summary': typeof ApiCronQaDailySummaryRoute
+  '/api/email/suppression': typeof ApiEmailSuppressionRoute
   '/api/public/send-test-email': typeof ApiPublicSendTestEmailRoute
   '/api/public/track-visit': typeof ApiPublicTrackVisitRoute
-  '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
+  '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/scenario/created/$code': typeof ScenarioCreatedCodeRoute
-  '/advisor/scenario/$code/edit': typeof AdvisorScenarioCodeEditRoute
-  '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
-  '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
-  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
-  '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
-  '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
+  '/agent/scenario/$code/edit': typeof AgentScenarioCodeEditRoute
+  '/api/email/auth/preview': typeof ApiEmailAuthPreviewRoute
+  '/api/email/auth/webhook': typeof ApiEmailAuthWebhookRoute
+  '/api/email/queue/process': typeof ApiEmailQueueProcessRoute
+  '/api/email/transactional/preview': typeof ApiEmailTransactionalPreviewRoute
+  '/api/email/transactional/send': typeof ApiEmailTransactionalSendRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/admin'
-    | '/advisor'
     | '/agent'
     | '/auth'
+    | '/legal'
     | '/nda'
+    | '/pricing'
     | '/qa'
     | '/qa-credits'
     | '/qa-manual'
@@ -362,36 +425,43 @@ export interface FileRouteTypes {
     | '/sitemap-internal.xml'
     | '/sitemap.xml'
     | '/sources'
+    | '/staff'
     | '/tasks'
     | '/testing'
     | '/unsubscribe'
     | '/users'
     | '/visits'
     | '/admin/email-templates'
+    | '/admin/pricing'
+    | '/admin/staff'
+    | '/admin/users'
+    | '/auth/verify'
     | '/email/unsubscribe'
     | '/scenario/$code'
     | '/scenario/new'
-    | '/advisor/scenario/$code'
+    | '/staff/report'
     | '/agent/scenario/$code'
     | '/api/cron/qa-daily-summary'
+    | '/api/email/suppression'
     | '/api/public/send-test-email'
     | '/api/public/track-visit'
-    | '/lovable/email/suppression'
+    | '/api/stripe/webhook'
     | '/scenario/created/$code'
-    | '/advisor/scenario/$code/edit'
-    | '/lovable/email/auth/preview'
-    | '/lovable/email/auth/webhook'
-    | '/lovable/email/queue/process'
-    | '/lovable/email/transactional/preview'
-    | '/lovable/email/transactional/send'
+    | '/agent/scenario/$code/edit'
+    | '/api/email/auth/preview'
+    | '/api/email/auth/webhook'
+    | '/api/email/queue/process'
+    | '/api/email/transactional/preview'
+    | '/api/email/transactional/send'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/admin'
-    | '/advisor'
     | '/agent'
     | '/auth'
+    | '/legal'
     | '/nda'
+    | '/pricing'
     | '/qa'
     | '/qa-credits'
     | '/qa-manual'
@@ -400,36 +470,43 @@ export interface FileRouteTypes {
     | '/sitemap-internal.xml'
     | '/sitemap.xml'
     | '/sources'
+    | '/staff'
     | '/tasks'
     | '/testing'
     | '/unsubscribe'
     | '/users'
     | '/visits'
     | '/admin/email-templates'
+    | '/admin/pricing'
+    | '/admin/staff'
+    | '/admin/users'
+    | '/auth/verify'
     | '/email/unsubscribe'
     | '/scenario/$code'
     | '/scenario/new'
-    | '/advisor/scenario/$code'
+    | '/staff/report'
     | '/agent/scenario/$code'
     | '/api/cron/qa-daily-summary'
+    | '/api/email/suppression'
     | '/api/public/send-test-email'
     | '/api/public/track-visit'
-    | '/lovable/email/suppression'
+    | '/api/stripe/webhook'
     | '/scenario/created/$code'
-    | '/advisor/scenario/$code/edit'
-    | '/lovable/email/auth/preview'
-    | '/lovable/email/auth/webhook'
-    | '/lovable/email/queue/process'
-    | '/lovable/email/transactional/preview'
-    | '/lovable/email/transactional/send'
+    | '/agent/scenario/$code/edit'
+    | '/api/email/auth/preview'
+    | '/api/email/auth/webhook'
+    | '/api/email/queue/process'
+    | '/api/email/transactional/preview'
+    | '/api/email/transactional/send'
   id:
     | '__root__'
     | '/'
     | '/admin'
-    | '/advisor'
     | '/agent'
     | '/auth'
+    | '/legal'
     | '/nda'
+    | '/pricing'
     | '/qa'
     | '/qa-credits'
     | '/qa-manual'
@@ -438,37 +515,44 @@ export interface FileRouteTypes {
     | '/sitemap-internal.xml'
     | '/sitemap.xml'
     | '/sources'
+    | '/staff'
     | '/tasks'
     | '/testing'
     | '/unsubscribe'
     | '/users'
     | '/visits'
     | '/admin_/email-templates'
+    | '/admin_/pricing'
+    | '/admin_/staff'
+    | '/admin_/users'
+    | '/auth/verify'
     | '/email/unsubscribe'
     | '/scenario/$code'
     | '/scenario/new'
-    | '/advisor/scenario/$code'
+    | '/staff_/report'
     | '/agent/scenario/$code'
     | '/api/cron/qa-daily-summary'
+    | '/api/email/suppression'
     | '/api/public/send-test-email'
     | '/api/public/track-visit'
-    | '/lovable/email/suppression'
+    | '/api/stripe/webhook'
     | '/scenario/created/$code'
-    | '/advisor/scenario/$code/edit'
-    | '/lovable/email/auth/preview'
-    | '/lovable/email/auth/webhook'
-    | '/lovable/email/queue/process'
-    | '/lovable/email/transactional/preview'
-    | '/lovable/email/transactional/send'
+    | '/agent/scenario/$code/edit'
+    | '/api/email/auth/preview'
+    | '/api/email/auth/webhook'
+    | '/api/email/queue/process'
+    | '/api/email/transactional/preview'
+    | '/api/email/transactional/send'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
-  AdvisorRoute: typeof AdvisorRouteWithChildren
   AgentRoute: typeof AgentRouteWithChildren
-  AuthRoute: typeof AuthRoute
+  AuthRoute: typeof AuthRouteWithChildren
+  LegalRoute: typeof LegalRoute
   NdaRoute: typeof NdaRoute
+  PricingRoute: typeof PricingRoute
   QaRoute: typeof QaRoute
   QaCreditsRoute: typeof QaCreditsRoute
   QaManualRoute: typeof QaManualRoute
@@ -477,25 +561,31 @@ export interface RootRouteChildren {
   SitemapInternalDotxmlRoute: typeof SitemapInternalDotxmlRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   SourcesRoute: typeof SourcesRoute
+  StaffRoute: typeof StaffRoute
   TasksRoute: typeof TasksRoute
   TestingRoute: typeof TestingRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
   UsersRoute: typeof UsersRoute
   VisitsRoute: typeof VisitsRoute
   AdminEmailTemplatesRoute: typeof AdminEmailTemplatesRoute
+  AdminPricingRoute: typeof AdminPricingRoute
+  AdminStaffRoute: typeof AdminStaffRoute
+  AdminUsersRoute: typeof AdminUsersRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   ScenarioCodeRoute: typeof ScenarioCodeRoute
   ScenarioNewRoute: typeof ScenarioNewRoute
+  StaffReportRoute: typeof StaffReportRoute
   ApiCronQaDailySummaryRoute: typeof ApiCronQaDailySummaryRoute
+  ApiEmailSuppressionRoute: typeof ApiEmailSuppressionRoute
   ApiPublicSendTestEmailRoute: typeof ApiPublicSendTestEmailRoute
   ApiPublicTrackVisitRoute: typeof ApiPublicTrackVisitRoute
-  LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
+  ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   ScenarioCreatedCodeRoute: typeof ScenarioCreatedCodeRoute
-  LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
-  LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
-  LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
-  LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
-  LovableEmailTransactionalSendRoute: typeof LovableEmailTransactionalSendRoute
+  ApiEmailAuthPreviewRoute: typeof ApiEmailAuthPreviewRoute
+  ApiEmailAuthWebhookRoute: typeof ApiEmailAuthWebhookRoute
+  ApiEmailQueueProcessRoute: typeof ApiEmailQueueProcessRoute
+  ApiEmailTransactionalPreviewRoute: typeof ApiEmailTransactionalPreviewRoute
+  ApiEmailTransactionalSendRoute: typeof ApiEmailTransactionalSendRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -533,6 +623,13 @@ declare module '@tanstack/react-router' {
       path: '/tasks'
       fullPath: '/tasks'
       preLoaderRoute: typeof TasksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/staff': {
+      id: '/staff'
+      path: '/staff'
+      fullPath: '/staff'
+      preLoaderRoute: typeof StaffRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sources': {
@@ -591,11 +688,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof QaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/pricing': {
+      id: '/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/nda': {
       id: '/nda'
       path: '/nda'
       fullPath: '/nda'
       preLoaderRoute: typeof NdaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/legal': {
+      id: '/legal'
+      path: '/legal'
+      fullPath: '/legal'
+      preLoaderRoute: typeof LegalRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -612,13 +723,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AgentRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/advisor': {
-      id: '/advisor'
-      path: '/advisor'
-      fullPath: '/advisor'
-      preLoaderRoute: typeof AdvisorRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/admin': {
       id: '/admin'
       path: '/admin'
@@ -631,6 +735,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/staff_/report': {
+      id: '/staff_/report'
+      path: '/staff/report'
+      fullPath: '/staff/report'
+      preLoaderRoute: typeof StaffReportRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/scenario/new': {
@@ -654,6 +765,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EmailUnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth/verify': {
+      id: '/auth/verify'
+      path: '/verify'
+      fullPath: '/auth/verify'
+      preLoaderRoute: typeof AuthVerifyRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/admin_/users': {
+      id: '/admin_/users'
+      path: '/admin/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin_/staff': {
+      id: '/admin_/staff'
+      path: '/admin/staff'
+      fullPath: '/admin/staff'
+      preLoaderRoute: typeof AdminStaffRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin_/pricing': {
+      id: '/admin_/pricing'
+      path: '/admin/pricing'
+      fullPath: '/admin/pricing'
+      preLoaderRoute: typeof AdminPricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin_/email-templates': {
       id: '/admin_/email-templates'
       path: '/admin/email-templates'
@@ -668,11 +807,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ScenarioCreatedCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/lovable/email/suppression': {
-      id: '/lovable/email/suppression'
-      path: '/lovable/email/suppression'
-      fullPath: '/lovable/email/suppression'
-      preLoaderRoute: typeof LovableEmailSuppressionRouteImport
+    '/api/stripe/webhook': {
+      id: '/api/stripe/webhook'
+      path: '/api/stripe/webhook'
+      fullPath: '/api/stripe/webhook'
+      preLoaderRoute: typeof ApiStripeWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/track-visit': {
@@ -689,6 +828,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicSendTestEmailRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/email/suppression': {
+      id: '/api/email/suppression'
+      path: '/api/email/suppression'
+      fullPath: '/api/email/suppression'
+      preLoaderRoute: typeof ApiEmailSuppressionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/cron/qa-daily-summary': {
       id: '/api/cron/qa-daily-summary'
       path: '/api/cron/qa-daily-summary'
@@ -703,97 +849,90 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AgentScenarioCodeRouteImport
       parentRoute: typeof AgentRoute
     }
-    '/advisor/scenario/$code': {
-      id: '/advisor/scenario/$code'
-      path: '/scenario/$code'
-      fullPath: '/advisor/scenario/$code'
-      preLoaderRoute: typeof AdvisorScenarioCodeRouteImport
-      parentRoute: typeof AdvisorRoute
-    }
-    '/lovable/email/transactional/send': {
-      id: '/lovable/email/transactional/send'
-      path: '/lovable/email/transactional/send'
-      fullPath: '/lovable/email/transactional/send'
-      preLoaderRoute: typeof LovableEmailTransactionalSendRouteImport
+    '/api/email/transactional/send': {
+      id: '/api/email/transactional/send'
+      path: '/api/email/transactional/send'
+      fullPath: '/api/email/transactional/send'
+      preLoaderRoute: typeof ApiEmailTransactionalSendRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/lovable/email/transactional/preview': {
-      id: '/lovable/email/transactional/preview'
-      path: '/lovable/email/transactional/preview'
-      fullPath: '/lovable/email/transactional/preview'
-      preLoaderRoute: typeof LovableEmailTransactionalPreviewRouteImport
+    '/api/email/transactional/preview': {
+      id: '/api/email/transactional/preview'
+      path: '/api/email/transactional/preview'
+      fullPath: '/api/email/transactional/preview'
+      preLoaderRoute: typeof ApiEmailTransactionalPreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/lovable/email/queue/process': {
-      id: '/lovable/email/queue/process'
-      path: '/lovable/email/queue/process'
-      fullPath: '/lovable/email/queue/process'
-      preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
+    '/api/email/queue/process': {
+      id: '/api/email/queue/process'
+      path: '/api/email/queue/process'
+      fullPath: '/api/email/queue/process'
+      preLoaderRoute: typeof ApiEmailQueueProcessRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/lovable/email/auth/webhook': {
-      id: '/lovable/email/auth/webhook'
-      path: '/lovable/email/auth/webhook'
-      fullPath: '/lovable/email/auth/webhook'
-      preLoaderRoute: typeof LovableEmailAuthWebhookRouteImport
+    '/api/email/auth/webhook': {
+      id: '/api/email/auth/webhook'
+      path: '/api/email/auth/webhook'
+      fullPath: '/api/email/auth/webhook'
+      preLoaderRoute: typeof ApiEmailAuthWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/lovable/email/auth/preview': {
-      id: '/lovable/email/auth/preview'
-      path: '/lovable/email/auth/preview'
-      fullPath: '/lovable/email/auth/preview'
-      preLoaderRoute: typeof LovableEmailAuthPreviewRouteImport
+    '/api/email/auth/preview': {
+      id: '/api/email/auth/preview'
+      path: '/api/email/auth/preview'
+      fullPath: '/api/email/auth/preview'
+      preLoaderRoute: typeof ApiEmailAuthPreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/advisor/scenario/$code/edit': {
-      id: '/advisor/scenario/$code/edit'
+    '/agent/scenario/$code/edit': {
+      id: '/agent/scenario/$code/edit'
       path: '/edit'
-      fullPath: '/advisor/scenario/$code/edit'
-      preLoaderRoute: typeof AdvisorScenarioCodeEditRouteImport
-      parentRoute: typeof AdvisorScenarioCodeRoute
+      fullPath: '/agent/scenario/$code/edit'
+      preLoaderRoute: typeof AgentScenarioCodeEditRouteImport
+      parentRoute: typeof AgentScenarioCodeRoute
     }
   }
 }
 
-interface AdvisorScenarioCodeRouteChildren {
-  AdvisorScenarioCodeEditRoute: typeof AdvisorScenarioCodeEditRoute
+interface AgentScenarioCodeRouteChildren {
+  AgentScenarioCodeEditRoute: typeof AgentScenarioCodeEditRoute
 }
 
-const AdvisorScenarioCodeRouteChildren: AdvisorScenarioCodeRouteChildren = {
-  AdvisorScenarioCodeEditRoute: AdvisorScenarioCodeEditRoute,
+const AgentScenarioCodeRouteChildren: AgentScenarioCodeRouteChildren = {
+  AgentScenarioCodeEditRoute: AgentScenarioCodeEditRoute,
 }
 
-const AdvisorScenarioCodeRouteWithChildren =
-  AdvisorScenarioCodeRoute._addFileChildren(AdvisorScenarioCodeRouteChildren)
-
-interface AdvisorRouteChildren {
-  AdvisorScenarioCodeRoute: typeof AdvisorScenarioCodeRouteWithChildren
-}
-
-const AdvisorRouteChildren: AdvisorRouteChildren = {
-  AdvisorScenarioCodeRoute: AdvisorScenarioCodeRouteWithChildren,
-}
-
-const AdvisorRouteWithChildren =
-  AdvisorRoute._addFileChildren(AdvisorRouteChildren)
+const AgentScenarioCodeRouteWithChildren =
+  AgentScenarioCodeRoute._addFileChildren(AgentScenarioCodeRouteChildren)
 
 interface AgentRouteChildren {
-  AgentScenarioCodeRoute: typeof AgentScenarioCodeRoute
+  AgentScenarioCodeRoute: typeof AgentScenarioCodeRouteWithChildren
 }
 
 const AgentRouteChildren: AgentRouteChildren = {
-  AgentScenarioCodeRoute: AgentScenarioCodeRoute,
+  AgentScenarioCodeRoute: AgentScenarioCodeRouteWithChildren,
 }
 
 const AgentRouteWithChildren = AgentRoute._addFileChildren(AgentRouteChildren)
 
+interface AuthRouteChildren {
+  AuthVerifyRoute: typeof AuthVerifyRoute
+}
+
+const AuthRouteChildren: AuthRouteChildren = {
+  AuthVerifyRoute: AuthVerifyRoute,
+}
+
+const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
-  AdvisorRoute: AdvisorRouteWithChildren,
   AgentRoute: AgentRouteWithChildren,
-  AuthRoute: AuthRoute,
+  AuthRoute: AuthRouteWithChildren,
+  LegalRoute: LegalRoute,
   NdaRoute: NdaRoute,
+  PricingRoute: PricingRoute,
   QaRoute: QaRoute,
   QaCreditsRoute: QaCreditsRoute,
   QaManualRoute: QaManualRoute,
@@ -802,25 +941,31 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapInternalDotxmlRoute: SitemapInternalDotxmlRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   SourcesRoute: SourcesRoute,
+  StaffRoute: StaffRoute,
   TasksRoute: TasksRoute,
   TestingRoute: TestingRoute,
   UnsubscribeRoute: UnsubscribeRoute,
   UsersRoute: UsersRoute,
   VisitsRoute: VisitsRoute,
   AdminEmailTemplatesRoute: AdminEmailTemplatesRoute,
+  AdminPricingRoute: AdminPricingRoute,
+  AdminStaffRoute: AdminStaffRoute,
+  AdminUsersRoute: AdminUsersRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   ScenarioCodeRoute: ScenarioCodeRoute,
   ScenarioNewRoute: ScenarioNewRoute,
+  StaffReportRoute: StaffReportRoute,
   ApiCronQaDailySummaryRoute: ApiCronQaDailySummaryRoute,
+  ApiEmailSuppressionRoute: ApiEmailSuppressionRoute,
   ApiPublicSendTestEmailRoute: ApiPublicSendTestEmailRoute,
   ApiPublicTrackVisitRoute: ApiPublicTrackVisitRoute,
-  LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
+  ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   ScenarioCreatedCodeRoute: ScenarioCreatedCodeRoute,
-  LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
-  LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
-  LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
-  LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,
-  LovableEmailTransactionalSendRoute: LovableEmailTransactionalSendRoute,
+  ApiEmailAuthPreviewRoute: ApiEmailAuthPreviewRoute,
+  ApiEmailAuthWebhookRoute: ApiEmailAuthWebhookRoute,
+  ApiEmailQueueProcessRoute: ApiEmailQueueProcessRoute,
+  ApiEmailTransactionalPreviewRoute: ApiEmailTransactionalPreviewRoute,
+  ApiEmailTransactionalSendRoute: ApiEmailTransactionalSendRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

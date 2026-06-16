@@ -7,10 +7,7 @@ function loadEnv() {
     const i = line.indexOf("=");
     const key = line.slice(0, i);
     let val = line.slice(i + 1).trim();
-    if (
-      (val.startsWith('"') && val.endsWith('"')) ||
-      (val.startsWith("'") && val.endsWith("'"))
-    ) {
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
       val = val.slice(1, -1);
     }
     env[key] = val;
@@ -38,8 +35,8 @@ if (domainId) {
 }
 
 for (const from of [
-  "The Medicare Optimizer <onboarding@resend.dev>",
-  "The Medicare Optimizer <noreply@mypartb.com>",
+  "Get Part B Optimizer <onboarding@resend.dev>",
+  "Get Part B Optimizer <noreply@mypartb.com>",
 ]) {
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",

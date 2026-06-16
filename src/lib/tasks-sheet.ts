@@ -1,5 +1,5 @@
 // ============================================================================
-// THE MEDICARE OPTIMIZER — TASK SHEET
+// Get Part B Optimizer — TASK SHEET
 // ----------------------------------------------------------------------------
 // Spreadsheet-style task tracker modeled after the Rassavong Realty Master
 // Task Tracker. Tasks are persisted to localStorage (key TASKS_STORAGE_KEY)
@@ -33,9 +33,9 @@ export interface TaskRow {
   status: TaskRowStatus;
   assignBy: string;
   assignedTo: string;
-  dateAssigned: string;   // MM/DD/YY
-  dueDate: string;        // MM/DD/YY
-  dateCompleted: string;  // MM/DD/YY or ""
+  dateAssigned: string; // MM/DD/YY
+  dueDate: string; // MM/DD/YY
+  dateCompleted: string; // MM/DD/YY or ""
   cost: number;
   notes: string;
   /** Optional severity for task triage (same scale as test failures). */
@@ -78,8 +78,7 @@ function categoryFromArea(_area: string): TaskRowCategory {
 // is reserved for non-test operational work (ops, design, compliance, etc.).
 // QA / test items are filtered out below so they live only on /testing.
 const OWNERS = ["Catria", "Evelyn", "Eng", "Eng", "Catria"]; // Catria-heavy
-export const SEED_TASK_ROWS: TaskRow[] = TASKS
-  .map((t, i) => ({
+export const SEED_TASK_ROWS: TaskRow[] = TASKS.map((t, i) => ({
   id: t.id,
   description: t.title,
   sprintId: ACTIVE_SPRINT_ID,
@@ -100,7 +99,8 @@ export const SEED_TASK_ROWS: TaskRow[] = TASKS
 SEED_TASK_ROWS.push(
   {
     id: "T-100",
-    description: "Catria recruits 10 beta agents (hand-picked) and collects NDA + Agent Agreement signatures",
+    description:
+      "Catria recruits 10 beta agents (hand-picked) and collects NDA + Agent Agreement signatures",
     sprintId: ACTIVE_SPRINT_ID,
     category: "engineering",
     priority: "P0",
@@ -111,7 +111,8 @@ SEED_TASK_ROWS.push(
     dueDate: END,
     dateCompleted: "",
     cost: 0,
-    notes: "Each agent must sign NDA + contract before being granted /agent access. Tracks in admin → users.",
+    notes:
+      "Each agent must sign NDA + contract before being granted /agent access. Tracks in admin → users.",
     path: "/admin",
   },
   {
@@ -127,7 +128,8 @@ SEED_TASK_ROWS.push(
     dueDate: END,
     dateCompleted: "",
     cost: 0,
-    notes: "Status persisted on /testing — mirror Pass/Fail/Blocked here in notes for the daily standup.",
+    notes:
+      "Status persisted on /testing — mirror Pass/Fail/Blocked here in notes for the daily standup.",
     path: "/testing",
   },
   {
@@ -159,7 +161,8 @@ SEED_TASK_ROWS.push(
     dueDate: END,
     dateCompleted: "",
     cost: 0,
-    notes: "Verify site ownership via META tag, submit sitemap.xml and sitemap-internal.xml, and monitor indexing coverage.",
+    notes:
+      "Verify site ownership via META tag, submit sitemap.xml and sitemap-internal.xml, and monitor indexing coverage.",
     path: "",
   },
 );
@@ -213,7 +216,8 @@ SEED_TASK_ROWS.push(
     dueDate: S0_END,
     dateCompleted: S0_END,
     cost: 0,
-    notes: "Confirmed each VoiceButton step writes the correct field and a scenario can be created.",
+    notes:
+      "Confirmed each VoiceButton step writes the correct field and a scenario can be created.",
     path: "/scenario/new",
   },
   {

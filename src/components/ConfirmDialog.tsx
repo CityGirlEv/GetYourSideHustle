@@ -30,8 +30,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   }>({ open: false, opts: { description: "" } });
 
   const confirm = React.useCallback<ConfirmContextValue>((input) => {
-    const opts: ConfirmOptions =
-      typeof input === "string" ? { description: input } : input;
+    const opts: ConfirmOptions = typeof input === "string" ? { description: input } : input;
     return new Promise<boolean>((resolve) => {
       setState({ open: true, opts, resolve });
     });
@@ -47,7 +46,9 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
       {children}
       <AlertDialog
         open={state.open}
-        onOpenChange={(v) => { if (!v) close(false); }}
+        onOpenChange={(v) => {
+          if (!v) close(false);
+        }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -62,7 +63,11 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => close(true)}
-              className={state.opts.destructive ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : undefined}
+              className={
+                state.opts.destructive
+                  ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  : undefined
+              }
             >
               {state.opts.confirmLabel ?? "Continue"}
             </AlertDialogAction>

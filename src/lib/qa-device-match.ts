@@ -10,10 +10,7 @@ export function normalizeDeviceLabel(device: string): string {
 }
 
 /** True when the tester owns at least one of the selected devices. */
-export function testerMatchesDevices(
-  testerDevices: string[],
-  selectedDevices: string[],
-): boolean {
+export function testerMatchesDevices(testerDevices: string[], selectedDevices: string[]): boolean {
   if (selectedDevices.length === 0) return true;
   const owned = new Set(testerDevices.map(normalizeDeviceLabel));
   return selectedDevices.some((d) => owned.has(normalizeDeviceLabel(d)));

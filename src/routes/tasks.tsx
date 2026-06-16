@@ -10,8 +10,11 @@ import { ListChecks, FlaskConical } from "lucide-react";
 export const Route = createFileRoute("/tasks")({
   head: () => ({
     meta: [
-      { title: "Task Sheet — The Medicare Optimizer" },
-      { name: "description", content: "Spreadsheet-style task tracker for The Medicare Optimizer team." },
+      { title: "Task Sheet — Get Part B Optimizer" },
+      {
+        name: "description",
+        content: "Spreadsheet-style task tracker for Get Part B Optimizer team.",
+      },
       { name: "robots", content: "noindex,nofollow" },
     ],
   }),
@@ -31,30 +34,44 @@ function TaskSheetPage() {
 
   if (authLoading || !user) {
     return (
-      <AppShell title="Task Sheet" subtitle="Loading…" titleClassName="bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-500 [-webkit-background-clip:text] [-webkit-text-fill-color:transparent]">
+      <AppShell
+        title="Task Sheet"
+        subtitle="Loading…"
+        titleClassName="bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-500 [-webkit-background-clip:text] [-webkit-text-fill-color:transparent]"
+      >
         <p className="text-sm text-muted-foreground">Loading your task sheet…</p>
       </AppShell>
     );
   }
   if (!isAdmin) {
     return (
-      <AppShell title="Task Sheet" subtitle="Admin only." titleClassName="text-accent-foreground bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-500 [-webkit-background-clip:text] [-webkit-text-fill-color:transparent]">
-        <p className="text-sm text-muted-foreground">You don't have access to the task sheet. Please contact an administrator.</p>
+      <AppShell
+        title="Task Sheet"
+        subtitle="Admin only."
+        titleClassName="text-accent-foreground bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-500 [-webkit-background-clip:text] [-webkit-text-fill-color:transparent]"
+      >
+        <p className="text-sm text-muted-foreground">
+          You don't have access to the task sheet. Please contact an administrator.
+        </p>
       </AppShell>
     );
   }
   return (
     <AppShell
       title="Task Sheet"
-      subtitle="Spreadsheet-style task tracker for The Medicare Optimizer team."
+      subtitle="Spreadsheet-style task tracker for Get Part B Optimizer team."
       titleClassName="bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-500 [-webkit-background-clip:text] [-webkit-text-fill-color:transparent]"
     >
       {(isQa || isAdmin) && (
         <div className="mb-3 flex items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
           <div>
-            <b>New here?</b> Read the QA Manual — filters, statuses, bulk edits, and the bug pipeline in one short page.
+            <b>New here?</b> Read the QA Manual — filters, statuses, bulk edits, and the bug
+            pipeline in one short page.
           </div>
-          <a href="/qa-manual" className="inline-flex items-center rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90">
+          <a
+            href="/qa-manual"
+            className="inline-flex items-center rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
+          >
             Open QA Manual →
           </a>
         </div>
@@ -62,7 +79,10 @@ function TaskSheetPage() {
       <Tabs defaultValue="tasks" className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <TabsList className="grid w-full md:w-auto grid-cols-1">
-            <TabsTrigger value="tasks"><ListChecks className="h-3.5 w-3.5 mr-1.5" />Task Sheet</TabsTrigger>
+            <TabsTrigger value="tasks">
+              <ListChecks className="h-3.5 w-3.5 mr-1.5" />
+              Task Sheet
+            </TabsTrigger>
           </TabsList>
           <div className="flex items-center gap-2">
             <Link
@@ -72,7 +92,6 @@ function TaskSheetPage() {
               <FlaskConical className="h-3.5 w-3.5" />
               Testing Portal →
             </Link>
-            
           </div>
         </div>
         <TabsContent value="tasks">

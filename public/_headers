@@ -1,0 +1,19 @@
+# Deploy detection — always fetch the latest build id.
+/version.json
+  Cache-Control: no-store, no-cache, must-revalidate
+
+# Admin routes — always serve fresh HTML (avoid stale staff-management shell).
+/admin/*
+  Cache-Control: no-store, no-cache, must-revalidate
+
+/staff
+  Cache-Control: no-store, no-cache, must-revalidate
+
+/staff/*
+  Cache-Control: no-store, no-cache, must-revalidate
+
+/users
+  Cache-Control: no-store, no-cache, must-revalidate
+
+/users/*
+  Cache-Control: no-store, no-cache, must-revalidate

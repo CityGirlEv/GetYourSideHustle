@@ -10,13 +10,15 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 export const purchaseCreditsServer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
-    z.object({
-      amount: z.number().int().min(1).max(500),
-      description: z.string().trim().min(1).max(200),
-      // Placeholder for a real payment token. Until a payment provider is
-      // wired in, callers omit this and the demo checkout grants credits.
-      payment_token: z.string().trim().min(1).max(512).optional(),
-    }).parse(input)
+    z
+      .object({
+        amount: z.number().int().min(1).max(500),
+        description: z.string().trim().min(1).max(200),
+        // Placeholder for a real payment token. Until a payment provider is
+        // wired in, callers omit this and the demo checkout grants credits.
+        payment_token: z.string().trim().min(1).max(512).optional(),
+      })
+      .parse(input),
   )
   .handler(async ({ data, context }) => {
     const { userId } = context;

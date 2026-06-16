@@ -3,8 +3,9 @@ import { roleDestination } from "../role-destination";
 import { safeSignInRedirect } from "../auth-redirect";
 
 describe("roleDestination", () => {
-  it("sends admins to /admin", () => {
+  it("sends admins and Leads Admin to /admin", () => {
     expect(roleDestination("admin")).toBe("/admin");
+    expect(roleDestination("leads_admin")).toBe("/admin");
   });
   it("sends agents to /agent", () => {
     expect(roleDestination("agent")).toBe("/agent");
@@ -12,13 +13,16 @@ describe("roleDestination", () => {
   it("sends QA users straight to the Testing Portal", () => {
     expect(roleDestination("qa")).toBe("/testing");
   });
-  it("falls back to /advisor for advisor/editor/viewer/unknown/null", () => {
-    expect(roleDestination("advisor")).toBe("/advisor");
-    expect(roleDestination("editor")).toBe("/advisor");
-    expect(roleDestination("viewer")).toBe("/advisor");
-    expect(roleDestination("something-else")).toBe("/advisor");
-    expect(roleDestination(null)).toBe("/advisor");
-    expect(roleDestination(undefined)).toBe("/advisor");
+  it("sends clients to home (scenario builder)", () => {
+    expect(roleDestination("client")).toBe("/");
+  });
+  it("falls back to /agent for advisor/editor/viewer/unknown/null", () => {
+    expect(roleDestination("advisor")).toBe("/agent");
+    expect(roleDestination("editor")).toBe("/agent");
+    expect(roleDestination("viewer")).toBe("/agent");
+    expect(roleDestination("something-else")).toBe("/agent");
+    expect(roleDestination(null)).toBe("/agent");
+    expect(roleDestination(undefined)).toBe("/agent");
   });
 });
 
@@ -36,16 +40,16 @@ describe("safeSignInRedirect", () => {
 
 describe("qa routing override", () => {
   it("routes QA users to /testing even when their primary role is something else", () => {
-    const userWithQaRole = { roles: ["qa", "advisor"], role: "advisor" };
+    const userWithQaRole = { roles: ["qa", "agent"], role: "agent" };
     const qaOverride = userWithQaRole.roles.includes("qa") ? "/testing" : null;
     const destination = qaOverride ?? roleDestination(userWithQaRole.role);
     expect(destination).toBe("/testing");
   });
 
   it("does not override when the user has no qa role", () => {
-    const userWithoutQa = { roles: ["advisor"], role: "advisor" };
+    const userWithoutQa = { roles: ["agent"], role: "agent" };
     const qaOverride = userWithoutQa.roles.includes("qa") ? "/testing" : null;
     const destination = qaOverride ?? roleDestination(userWithoutQa.role);
-    expect(destination).toBe("/advisor");
+    expect(destination).toBe("/agent");
   });
 });

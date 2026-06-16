@@ -19,36 +19,112 @@ type SR = {
 
 function getRecognitionCtor(): { new (): SR } | null {
   if (typeof window === "undefined") return null;
-  const w = window as unknown as { SpeechRecognition?: { new (): SR }; webkitSpeechRecognition?: { new (): SR } };
+  const w = window as unknown as {
+    SpeechRecognition?: { new (): SR };
+    webkitSpeechRecognition?: { new (): SR };
+  };
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 }
 
 // NATO + common ad-hoc phonetic words → letters.
 const PHONETIC: Record<string, string> = {
-  alpha: "a", bravo: "b", charlie: "c", delta: "d", echo: "e", foxtrot: "f",
-  golf: "g", hotel: "h", india: "i", juliet: "j", juliett: "j", kilo: "k",
-  lima: "l", mike: "m", november: "n", oscar: "o", papa: "p", quebec: "q",
-  romeo: "r", sierra: "s", tango: "t", uniform: "u", victor: "v", whiskey: "w",
-  whisky: "w", xray: "x", "x-ray": "x", yankee: "y", zulu: "z",
+  alpha: "a",
+  bravo: "b",
+  charlie: "c",
+  delta: "d",
+  echo: "e",
+  foxtrot: "f",
+  golf: "g",
+  hotel: "h",
+  india: "i",
+  juliet: "j",
+  juliett: "j",
+  kilo: "k",
+  lima: "l",
+  mike: "m",
+  november: "n",
+  oscar: "o",
+  papa: "p",
+  quebec: "q",
+  romeo: "r",
+  sierra: "s",
+  tango: "t",
+  uniform: "u",
+  victor: "v",
+  whiskey: "w",
+  whisky: "w",
+  xray: "x",
+  "x-ray": "x",
+  yankee: "y",
+  zulu: "z",
   // Common spell-outs people use
-  apple: "a", boy: "b", cat: "c", dog: "d", easy: "e", frank: "f",
-  george: "g", harry: "h", ida: "i", john: "j", king: "k", love: "l",
-  mary: "m", nancy: "n", peter: "p", queen: "q", robert: "r", sam: "s",
-  tom: "t", union: "u", william: "w", young: "y", zebra: "z",
+  apple: "a",
+  boy: "b",
+  cat: "c",
+  dog: "d",
+  easy: "e",
+  frank: "f",
+  george: "g",
+  harry: "h",
+  ida: "i",
+  john: "j",
+  king: "k",
+  love: "l",
+  mary: "m",
+  nancy: "n",
+  peter: "p",
+  queen: "q",
+  robert: "r",
+  sam: "s",
+  tom: "t",
+  union: "u",
+  william: "w",
+  young: "y",
+  zebra: "z",
 };
 
 function transcriptToSpelled(raw: string): string {
-  const tokens = raw.toLowerCase().replace(/[.,!?;:]/g, " ").split(/\s+/).filter(Boolean);
+  const tokens = raw
+    .toLowerCase()
+    .replace(/[.,!?;:]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean);
   let out = "";
   for (const t of tokens) {
-    if (t === "space") { out += " "; continue; }
-    if (t === "dash" || t === "hyphen") { out += "-"; continue; }
-    if (PHONETIC[t]) { out += PHONETIC[t]; continue; }
+    if (t === "space") {
+      out += " ";
+      continue;
+    }
+    if (t === "dash" || t === "hyphen") {
+      out += "-";
+      continue;
+    }
+    if (PHONETIC[t]) {
+      out += PHONETIC[t];
+      continue;
+    }
     // Single character letter/digit
-    if (/^[a-z0-9]$/.test(t)) { out += t; continue; }
+    if (/^[a-z0-9]$/.test(t)) {
+      out += t;
+      continue;
+    }
     // Spoken digits
-    const digits: Record<string, string> = { zero: "0", one: "1", two: "2", three: "3", four: "4", five: "5", six: "6", seven: "7", eight: "8", nine: "9" };
-    if (digits[t]) { out += digits[t]; continue; }
+    const digits: Record<string, string> = {
+      zero: "0",
+      one: "1",
+      two: "2",
+      three: "3",
+      four: "4",
+      five: "5",
+      six: "6",
+      seven: "7",
+      eight: "8",
+      nine: "9",
+    };
+    if (digits[t]) {
+      out += digits[t];
+      continue;
+    }
     // Strip vowels-only suffixes, take first letter as fallback
     out += t[0];
   }
@@ -68,19 +144,40 @@ interface Props {
   size?: "sm" | "md";
 }
 
-export function VoiceButton({ onTranscript, replace = true, allowSpell = true, className, label = "Voice input", size = "sm" }: Props) {
+export function VoiceButton({
+  onTranscript,
+  replace = true,
+  allowSpell = true,
+  className,
+  label = "Voice input",
+  size = "sm",
+}: Props) {
   const [mounted, setMounted] = useState(false);
   const [listening, setListening] = useState(false);
   const [spell, setSpell] = useState(false);
   const recRef = useRef<SR | null>(null);
   const supported = mounted && !!getRecognitionCtor();
 
-  useEffect(() => { setMounted(true); }, []);
-  useEffect(() => () => { try { recRef.current?.abort(); } catch { /* noop */ } }, []);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  useEffect(
+    () => () => {
+      try {
+        recRef.current?.abort();
+      } catch {
+        /* noop */
+      }
+    },
+    [],
+  );
 
   const start = () => {
     const Ctor = getRecognitionCtor();
-    if (!Ctor) { toast.error("Voice input isn't supported in this browser. Try Chrome, Edge, or Safari."); return; }
+    if (!Ctor) {
+      toast.error("Voice input isn't supported in this browser. Try Chrome, Edge, or Safari.");
+      return;
+    }
     try {
       const rec = new Ctor();
       rec.lang = "en-US";
@@ -90,10 +187,11 @@ export function VoiceButton({ onTranscript, replace = true, allowSpell = true, c
       rec.onresult = (e) => {
         const result = e.results?.[e.results.length - 1];
         if (!result) return;
-        const raw = Array.from(result)
-          .map((alt) => alt.transcript?.trim() ?? "")
-          .filter(Boolean)
-          .sort((a, b) => b.length - a.length)[0] ?? "";
+        const raw =
+          Array.from(result)
+            .map((alt) => alt.transcript?.trim() ?? "")
+            .filter(Boolean)
+            .sort((a, b) => b.length - a.length)[0] ?? "";
         if (!raw) return;
         const text = spell ? transcriptToSpelled(raw) : raw.trim();
         onTranscript(text);
@@ -117,7 +215,14 @@ export function VoiceButton({ onTranscript, replace = true, allowSpell = true, c
     }
   };
 
-  const stop = () => { try { recRef.current?.stop(); } catch { /* noop */ } setListening(false); };
+  const stop = () => {
+    try {
+      recRef.current?.stop();
+    } catch {
+      /* noop */
+    }
+    setListening(false);
+  };
 
   if (!supported) return null;
 
@@ -134,13 +239,19 @@ export function VoiceButton({ onTranscript, replace = true, allowSpell = true, c
         <button
           type="button"
           onClick={() => setSpell((s) => !s)}
-          title={spell ? "Spell mode ON — speak letters or NATO (alpha, bravo…)" : "Toggle spell mode (letter-by-letter)"}
+          title={
+            spell
+              ? "Spell mode ON — speak letters or NATO (alpha, bravo…)"
+              : "Toggle spell mode (letter-by-letter)"
+          }
           aria-pressed={spell}
           aria-label="Toggle spell mode"
           className={cn(
             "inline-flex items-center justify-center rounded-md border text-[10px] font-semibold transition",
             sz,
-            spell ? "bg-primary text-primary-foreground border-primary" : "bg-background border-input text-muted-foreground hover:text-foreground",
+            spell
+              ? "bg-primary text-primary-foreground border-primary"
+              : "bg-background border-input text-muted-foreground hover:text-foreground",
           )}
         >
           <SpellCheck className={icon} />
@@ -149,7 +260,7 @@ export function VoiceButton({ onTranscript, replace = true, allowSpell = true, c
       <button
         type="button"
         onClick={listening ? stop : start}
-        title={listening ? "Stop listening" : (spell ? `${label} (spell mode)` : label)}
+        title={listening ? "Stop listening" : spell ? `${label} (spell mode)` : label}
         aria-label={label}
         aria-pressed={listening}
         className={cn(

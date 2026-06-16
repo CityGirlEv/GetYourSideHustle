@@ -40,7 +40,9 @@ describe("downloadScenarioXlsx", () => {
     vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
       const el = origCreate(tag) as HTMLElement;
       if (tag === "a") {
-        (el as HTMLAnchorElement).click = () => { clicked.push(el as HTMLAnchorElement); };
+        (el as HTMLAnchorElement).click = () => {
+          clicked.push(el as HTMLAnchorElement);
+        };
       }
       return el;
     });

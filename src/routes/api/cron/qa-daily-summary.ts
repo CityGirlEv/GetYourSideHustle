@@ -1,6 +1,6 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { getEnvVariable } from '@/lib/env'
-import { sendQaDailySummaryToAdmins } from '@/lib/qa-daily-summary.server'
+import { createFileRoute } from "@tanstack/react-router";
+import { getEnvVariable } from "@/lib/env";
+import { sendQaDailySummaryToAdmins } from "@/lib/qa-daily-summary.server";
 
 /**
  * Cron endpoint — send the QA daily summary to admin inboxes.
@@ -13,41 +13,37 @@ import { sendQaDailySummaryToAdmins } from '@/lib/qa-daily-summary.server'
  *     body := '{}'::jsonb
  *   );
  */
-export const Route = createFileRoute('/api/cron/qa-daily-summary')({
+export const Route = createFileRoute("/api/cron/qa-daily-summary")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const url = new URL(request.url)
-        const secret =
-          url.searchParams.get('secret') ??
-          request.headers.get('x-cron-secret') ??
-          ''
+        const url = new URL(request.url);
+        const secret = url.searchParams.get("secret") ?? request.headers.get("x-cron-secret") ?? "";
         const expected =
-          getEnvVariable('QA_DAILY_SUMMARY_SECRET') ??
-          getEnvVariable('TEST_EMAIL_SECRET')
+          getEnvVariable("QA_DAILY_SUMMARY_SECRET") ?? getEnvVariable("TEST_EMAIL_SECRET");
 
         if (!expected) {
           return Response.json(
-            { error: 'Endpoint disabled: QA_DAILY_SUMMARY_SECRET is not configured' },
+            { error: "Endpoint disabled: QA_DAILY_SUMMARY_SECRET is not configured" },
             { status: 503 },
-          )
+          );
         }
         if (secret !== expected) {
-          return Response.json({ error: 'Unauthorized' }, { status: 401 })
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
         }
 
         try {
-          const result = await sendQaDailySummaryToAdmins()
+          const result = await sendQaDailySummaryToAdmins();
           return Response.json({
             success: true,
             ...result,
-          })
+          });
         } catch (err) {
-          const message = err instanceof Error ? err.message : 'Send failed'
-          console.error('[qa-daily-summary] cron failed', err)
-          return Response.json({ error: message }, { status: 500 })
+          const message = err instanceof Error ? err.message : "Send failed";
+          console.error("[qa-daily-summary] cron failed", err);
+          return Response.json({ error: message }, { status: 500 });
         }
       },
     },
   },
-})
+});

@@ -51,9 +51,7 @@ describe("getGenericFor", () => {
       ok: true,
       json: async () => ({
         relatedGroup: {
-          conceptGroup: [
-            { tty: "IN", conceptProperties: [{ name: "atorvastatin" }] },
-          ],
+          conceptGroup: [{ tty: "IN", conceptProperties: [{ name: "atorvastatin" }] }],
         },
       }),
     });

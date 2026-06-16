@@ -20,10 +20,7 @@ function loadEnv() {
     const i = line.indexOf("=");
     const key = line.slice(0, i);
     let val = line.slice(i + 1).trim();
-    if (
-      (val.startsWith('"') && val.endsWith('"')) ||
-      (val.startsWith("'") && val.endsWith("'"))
-    ) {
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
       val = val.slice(1, -1);
     }
     env[key] = val;
@@ -126,7 +123,12 @@ async function upsertCfRecord(record) {
     body: JSON.stringify(body),
   });
   const json = await res.json();
-  console.log(existing ? "updated" : "created", record.type, name, json.success ? "ok" : json.errors);
+  console.log(
+    existing ? "updated" : "created",
+    record.type,
+    name,
+    json.success ? "ok" : json.errors,
+  );
   if (!json.success) throw new Error(JSON.stringify(json.errors));
 }
 
@@ -157,7 +159,7 @@ async function updatePagesEnv() {
   const envVars = { ...(production.env_vars ?? {}) };
   envVars.EMAIL_FROM = {
     type: "plain_text",
-    value: `The Medicare Optimizer <noreply@${DOMAIN}>`,
+    value: `Get Part B Optimizer <noreply@${DOMAIN}>`,
   };
   envVars.EMAIL_SENDER_DOMAIN = { type: "plain_text", value: DOMAIN };
 
@@ -184,7 +186,7 @@ async function testSend() {
     method: "POST",
     headers: resendHeaders,
     body: JSON.stringify({
-      from: `The Medicare Optimizer <noreply@${DOMAIN}>`,
+      from: `Get Part B Optimizer <noreply@${DOMAIN}>`,
       to: ["evelyn3@cox.net"],
       subject: "[mypartb] Resend notify subdomain test",
       html: "<p>If you received this, notify.mypartb.com is verified and sending.</p>",
@@ -206,7 +208,12 @@ console.log("status after verify:", detail.status);
 console.log(
   "records:",
   JSON.stringify(
-    detail.records?.map((r) => ({ record: r.record, name: r.name, type: r.type, status: r.status })),
+    detail.records?.map((r) => ({
+      record: r.record,
+      name: r.name,
+      type: r.type,
+      status: r.status,
+    })),
     null,
     2,
   ),

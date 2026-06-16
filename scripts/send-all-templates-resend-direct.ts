@@ -20,10 +20,7 @@ function loadEnv() {
     if (!line || line.startsWith("#") || !line.includes("=")) continue;
     const i = line.indexOf("=");
     let val = line.slice(i + 1).trim();
-    if (
-      (val.startsWith('"') && val.endsWith('"')) ||
-      (val.startsWith("'") && val.endsWith("'"))
-    ) {
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
       val = val.slice(1, -1);
     }
     env[line.slice(0, i)] = val;
@@ -55,11 +52,9 @@ async function getOverride(name: string) {
 }
 
 const recipients =
-  process.argv.length > 2
-    ? process.argv.slice(2)
-    : ["evelyn3@cox.net", "sharpebanker@yahoo.com"];
+  process.argv.length > 2 ? process.argv.slice(2) : ["evelyn3@cox.net", "sharpebanker@yahoo.com"];
 
-const from = env.EMAIL_FROM ?? "The Medicare Optimizer <noreply@mypartb.com>";
+const from = env.EMAIL_FROM ?? "Get Part B Optimizer <noreply@mypartb.com>";
 const templateNames = Array.from(
   new Set([...ALL_TEMPLATES.map((t) => t.name), ...Object.keys(TEMPLATES)]),
 ).sort();
@@ -76,9 +71,7 @@ function resolveTemplate(name: string) {
   const subject =
     registry?.subject && typeof registry.subject === "function"
       ? registry.subject(previewData)
-      : registry?.subject ??
-        descriptor?.defaultSubject ??
-        `[TEST] ${name}`;
+      : (registry?.subject ?? descriptor?.defaultSubject ?? `[TEST] ${name}`);
   return { name, component, previewData, subject: `[TEST] ${subject}` };
 }
 

@@ -1,20 +1,12 @@
-import * as React from 'react'
+import * as React from "react";
 
-import {
-  Body,
-  Container,
-  Head,
-  Heading,
-  Html,
-  Preview,
-  Text,
-} from '@react-email/components'
-import { EmailHeader } from './email-header'
-import { EmailFooter } from './email-footer'
+import { Body, Container, Head, Heading, Html, Preview, Text } from "@react-email/components";
+import { EmailHeader } from "./email-header";
+import { EmailFooter } from "./email-footer";
 
 interface ReauthenticationEmailProps {
-  token: string
-  siteUrl?: string
+  token: string;
+  siteUrl?: string;
 }
 
 export const ReauthenticationEmail = ({ token, siteUrl }: ReauthenticationEmailProps) => (
@@ -28,36 +20,36 @@ export const ReauthenticationEmail = ({ token, siteUrl }: ReauthenticationEmailP
         <Text style={text}>Use the code below to confirm your identity:</Text>
         <Text style={codeStyle}>{token}</Text>
         <Text style={footer}>
-          This code will expire shortly. If you didn't request this, you can
-          safely ignore this email.
+          This code will expire shortly. If you didn't request this, you can safely ignore this
+          email.
         </Text>
         <EmailFooter siteUrl={siteUrl} />
       </Container>
     </Body>
   </Html>
-)
+);
 
-export default ReauthenticationEmail
+export default ReauthenticationEmail;
 
-const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
-const container = { padding: '20px 25px' }
+const main = { backgroundColor: "#ffffff", fontFamily: "Arial, sans-serif" };
+const container = { padding: "20px 25px" };
 const h1 = {
-  fontSize: '22px',
-  fontWeight: 'bold' as const,
-  color: '#000000',
-  margin: '0 0 20px',
-}
+  fontSize: "12px",
+  fontWeight: "bold" as const,
+  color: "#000000",
+  margin: "0 0 20px",
+};
 const text = {
-  fontSize: '14px',
-  color: '#55575d',
-  lineHeight: '1.5',
-  margin: '0 0 25px',
-}
+  fontSize: "12px",
+  color: "#55575d",
+  lineHeight: "1.5",
+  margin: "0 0 25px",
+};
 const codeStyle = {
-  fontFamily: 'Courier, monospace',
-  fontSize: '22px',
-  fontWeight: 'bold' as const,
-  color: '#000000',
-  margin: '0 0 30px',
-}
-const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
+  fontFamily: "Courier, monospace",
+  fontSize: "12px",
+  fontWeight: "bold" as const,
+  color: "#000000",
+  margin: "0 0 30px",
+};
+const footer = { fontSize: "12px", color: "#999999", margin: "30px 0 0" };

@@ -4,9 +4,9 @@
 // We dedupe counties across all places in the ZIP.
 
 export type CountyMatch = {
-  county: string;       // e.g. "Harris County"
-  state: string;        // e.g. "Texas"
-  stateCode: string;    // e.g. "TX"
+  county: string; // e.g. "Harris County"
+  state: string; // e.g. "Texas"
+  stateCode: string; // e.g. "TX"
 };
 
 type ZippoPlace = {
@@ -34,7 +34,7 @@ export function lookupCountiesForZip(zip: string): Promise<CountyMatch[]> {
       places.map(async (pl) => {
         try {
           const r = await fetch(
-            `https://geo.fcc.gov/api/census/area?lat=${pl.latitude}&lon=${pl.longitude}&format=json`
+            `https://geo.fcc.gov/api/census/area?lat=${pl.latitude}&lon=${pl.longitude}&format=json`,
           );
           if (!r.ok) return null;
           const j = (await r.json()) as {
@@ -50,7 +50,7 @@ export function lookupCountiesForZip(zip: string): Promise<CountyMatch[]> {
         } catch {
           return null;
         }
-      })
+      }),
     );
 
     const seen = new Set<string>();

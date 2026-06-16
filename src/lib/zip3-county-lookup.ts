@@ -5,9 +5,18 @@ export type Zip3County = { county: string; stateCode: string };
 type RawEntry = { c: string; s: string };
 const DATA = zip3Data as unknown as Record<string, RawEntry[]>;
 
+/** Normalize typed/pasted/autofill input to a 3-digit ZIP prefix. */
+export function normalizeZip3Input(raw: string): string {
+  return raw
+    .replace(/[\uFF10-\uFF19]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xff10 + 0x30))
+    .replace(/\D/g, "")
+    .slice(0, 3);
+}
+
 export function countiesForZip3(zip3: string): Zip3County[] {
-  if (!/^\d{3}$/.test(zip3)) return [];
-  const raw = DATA[zip3];
+  const normalized = normalizeZip3Input(zip3);
+  if (!/^\d{3}$/.test(normalized)) return [];
+  const raw = DATA[normalized];
   if (!raw) return [];
   return raw.map((e) => ({ county: e.c, stateCode: e.s }));
 }

@@ -6,7 +6,8 @@ function loadEnv() {
     if (!line || line.startsWith("#") || !line.includes("=")) continue;
     const i = line.indexOf("=");
     let val = line.slice(i + 1).trim();
-    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) val = val.slice(1, -1);
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'")))
+      val = val.slice(1, -1);
     env[line.slice(0, i)] = val;
   }
   return env;
@@ -23,7 +24,7 @@ const res = await fetch("https://api.resend.com/emails", {
     "Content-Type": "application/json",
   },
   body: JSON.stringify({
-    from: "The Medicare Optimizer <noreply@mypartb.com>",
+    from: "Get Part B Optimizer <noreply@mypartb.com>",
     to: [to],
     subject: "[mypartb] Domain verification test",
     html: "<p>If you received this, Resend delivery from <strong>noreply@mypartb.com</strong> is working.</p>",

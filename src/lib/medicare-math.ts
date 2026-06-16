@@ -11,9 +11,23 @@ export interface Guidelines {
 
 export const GUIDELINES: Record<Year, Guidelines> = {
   // 2026 values from CMS fact sheet: https://www.cms.gov/newsroom/fact-sheets/2026-medicare-parts-b-premiums-deductibles
-  2026: { year: 2026, partBPremiumMonthly: 202.9, partBDeductible: 283, partDOOPCap: 2100, moopLow: 6500, moopHigh: 9250 },
+  2026: {
+    year: 2026,
+    partBPremiumMonthly: 202.9,
+    partBDeductible: 283,
+    partDOOPCap: 2100,
+    moopLow: 6500,
+    moopHigh: 9250,
+  },
   // 2027 values are preliminary estimates pending CMS announcement (typically Oct/Nov prior year)
-  2027: { year: 2027, partBPremiumMonthly: 212.5, partBDeductible: 295, partDOOPCap: 2400, moopLow: 6900, moopHigh: 9500 },
+  2027: {
+    year: 2027,
+    partBPremiumMonthly: 212.5,
+    partBDeductible: 295,
+    partDOOPCap: 2400,
+    moopLow: 6900,
+    moopHigh: 9500,
+  },
 };
 
 export const INSULIN_CAP_MONTHLY = 35;
@@ -29,8 +43,16 @@ export function isDmeForm(form: string | undefined | null): boolean {
 // Derived from 2026 carrier rate filings and state DOI premium summaries.
 // See CMS Medigap page: https://www.cms.gov/medicare/health-plans/medigap
 const MEDIGAP_BY_ZIP3_DIGIT: Record<string, number> = {
-  "0": 195, "1": 175, "2": 165, "3": 180, "4": 155,
-  "5": 145, "6": 150, "7": 145, "8": 160, "9": 195,
+  "0": 195,
+  "1": 175,
+  "2": 165,
+  "3": 180,
+  "4": 155,
+  "5": 145,
+  "6": 150,
+  "7": 145,
+  "8": 160,
+  "9": 195,
 };
 export function medigapPremiumByZip3(zip3: string): number {
   return MEDIGAP_BY_ZIP3_DIGIT[zip3?.[0] ?? "5"] ?? 165;
@@ -43,8 +65,16 @@ export function medigapPremiumByZip3(zip3: string): number {
 // 4=Great Lakes, 5=Upper Midwest, 6=Plains/South Central, 7=South Central,
 // 8=Mountain, 9=West Coast/AK/HI.
 const PARTD_BY_ZIP3_DIGIT: Record<string, number> = {
-  "0": 48, "1": 52, "2": 42, "3": 45, "4": 38,
-  "5": 36, "6": 35, "7": 38, "8": 41, "9": 44,
+  "0": 48,
+  "1": 52,
+  "2": 42,
+  "3": 45,
+  "4": 38,
+  "5": 36,
+  "6": 35,
+  "7": 38,
+  "8": 41,
+  "9": 44,
 };
 export function partDPremiumByZip3(zip3: string): number {
   return PARTD_BY_ZIP3_DIGIT[zip3?.[0] ?? "5"] ?? 40;
@@ -83,17 +113,27 @@ function annualDrugCostWithCap(meds: Medication[], cap: number) {
     // DME (CGM, insulin pump, CPAP) is Part B, not Part D — exclude from
     // Part D drug spend and the Part D OOP cap.
     if (isDmeForm(m.dosage_form)) return sum;
-    const isInsulin = /insulin|novolog|humalog|lantus|tresiba|admelog|basaglar|levemir|toujeo/i.test(
-      m.medication_name + " " + (m.resolved_diagnosis ?? ""),
-    );
+    const isInsulin =
+      /insulin|novolog|humalog|lantus|tresiba|admelog|basaglar|levemir|toujeo/i.test(
+        m.medication_name + " " + (m.resolved_diagnosis ?? ""),
+      );
     // IRA insulin cap ($35/mo): https://www.cms.gov/inflation-reduction-act-and-medicare
-    return sum + (isInsulin ? Math.min(m.estimated_monthly_retail, INSULIN_CAP_MONTHLY) : m.estimated_monthly_retail);
+    return (
+      sum +
+      (isInsulin
+        ? Math.min(m.estimated_monthly_retail, INSULIN_CAP_MONTHLY)
+        : m.estimated_monthly_retail)
+    );
   }, 0);
   return Math.min(monthly * 12, cap);
 }
 
-export function calcPathways(opts: { year: Year; zip3: string; meds: Medication[]; hasDME?: boolean }):
-  { A: PathwayResult; B: PathwayResult } {
+export function calcPathways(opts: {
+  year: Year;
+  zip3: string;
+  meds: Medication[];
+  hasDME?: boolean;
+}): { A: PathwayResult; B: PathwayResult } {
   const g = GUIDELINES[opts.year];
   const drug = annualDrugCostWithCap(opts.meds, g.partDOOPCap);
   const medigap = medigapPremiumByZip3(opts.zip3);
@@ -104,9 +144,12 @@ export function calcPathways(opts: { year: Year; zip3: string; meds: Medication[
   const aTotal = aPremium * 12 + drug;
   const A: PathwayResult = {
     label: "Original Medicare + Medigap Plan G + Part D",
-    monthlyPremium: aPremium, annualPremium: aPremium * 12,
-    annualDrugCost: drug, annualMedicalOOP: 0,
-    totalAnnual: aTotal, worstCaseAnnual: aTotal,
+    monthlyPremium: aPremium,
+    annualPremium: aPremium * 12,
+    annualDrugCost: drug,
+    annualMedicalOOP: 0,
+    totalAnnual: aTotal,
+    worstCaseAnnual: aTotal,
     breakdown: [
       { label: "Part B premium", value: g.partBPremiumMonthly * 12 },
       { label: "Medigap Plan G premium", value: medigap * 12 },
@@ -123,9 +166,12 @@ export function calcPathways(opts: { year: Year; zip3: string; meds: Medication[
   const bWorst = bPremium * 12 + drug + g.moopHigh;
   const B: PathwayResult = {
     label: "Medicare Advantage (Part C)",
-    monthlyPremium: bPremium, annualPremium: bPremium * 12,
-    annualDrugCost: drug, annualMedicalOOP: bExpected,
-    totalAnnual: bTotal, worstCaseAnnual: bWorst,
+    monthlyPremium: bPremium,
+    annualPremium: bPremium * 12,
+    annualDrugCost: drug,
+    annualMedicalOOP: bExpected,
+    totalAnnual: bTotal,
+    worstCaseAnnual: bWorst,
     breakdown: [
       { label: "Part B premium", value: g.partBPremiumMonthly * 12 },
       { label: "MA plan premium (est. $0)", value: 0 },
@@ -159,25 +205,43 @@ import {
 // Rough premium multiplier vs. Plan G baseline for each open Medigap letter.
 // (Industry-typical ratios — refined estimates only; not a rate quote.)
 const MEDIGAP_PREMIUM_FACTOR: Record<string, number> = {
-  A: 0.78, B: 0.85, D: 0.95, G: 1.0,
+  A: 0.78,
+  B: 0.85,
+  D: 0.95,
+  G: 1.0,
   "High-Deductible G": 0.32,
-  K: 0.45, L: 0.65, M: 0.82, N: 0.82,
+  K: 0.45,
+  L: 0.65,
+  M: 0.82,
+  N: 0.82,
 };
 
 // Approximate share of standard medical gaps each Medigap letter leaves on the member,
 // expressed as expected annual out-of-pocket against a typical utilization profile.
 // Based on CMS standardized benefit tables: https://www.cms.gov/medicare/health-plans/medigap
 const MEDIGAP_EXPECTED_OOP: Record<string, number> = {
-  A: 1900, B: 900, D: 350, G: 283,
+  A: 1900,
+  B: 900,
+  D: 350,
+  G: 283,
   "High-Deductible G": 2870,
-  K: 2400, L: 1400, M: 1100, N: 700,
+  K: 2400,
+  L: 1400,
+  M: 1100,
+  N: 700,
 };
 
 // Worst-case annual exposure ceiling for each Medigap letter.
 const MEDIGAP_WORST_CASE: Record<string, number> = {
-  A: 5000, B: 3500, D: 2000, G: 283,
+  A: 5000,
+  B: 3500,
+  D: 2000,
+  G: 283,
   "High-Deductible G": 2870,
-  K: 7220, L: 3610, M: 3500, N: 2800,
+  K: 7220,
+  L: 3610,
+  M: 3500,
+  N: 2800,
 };
 
 function medigapKey(letter: string): string {
@@ -234,14 +298,9 @@ function scoreMedigap(
   return { score, monthly, annual, worst: worstAnnual };
 }
 
-function chooseAdvantage(
-  rows: AdvantageTypeRow[],
-  conditions: string[],
-): AdvantageTypeRow {
+function chooseAdvantage(rows: AdvantageTypeRow[], conditions: string[]): AdvantageTypeRow {
   const lc = conditions.map((c) => c.toLowerCase());
-  const hasChronic = lc.some((c) =>
-    /diabetes|heart|copd|kidney|cancer/.test(c),
-  );
+  const hasChronic = lc.some((c) => /diabetes|heart|copd|kidney|cancer/.test(c));
   // C-SNP for chronic conditions if present in catalog, otherwise PPO for flexibility,
   // otherwise HMO for lowest premium.
   if (hasChronic) {
@@ -291,7 +350,8 @@ export function recommendPlans(input: RecommendInput): PersonalizedRecommendatio
     estAnnualTotal: bestMedigap.annual,
     estWorstCase: bestMedigap.worst,
     carriers: CMS_CATALOG.medigapCarriers,
-    source: "CMS-approved 2026 standardized Medigap policies (https://www.cms.gov/medicare/health-plans/medigap)",
+    source:
+      "CMS-approved 2026 standardized Medigap policies (https://www.cms.gov/medicare/health-plans/medigap)",
   };
 
   const bRec: PlanRecommendation = {

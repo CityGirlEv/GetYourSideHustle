@@ -8,18 +8,19 @@ PR via `.github/workflows/tests.yml`, so coverage added here runs automatically.
 
 Decision matrix:
 
-| Kind of change                                                | Required coverage                                      |
-|---------------------------------------------------------------|--------------------------------------------------------|
-| Pure logic / utility / parser / validator / formula           | Vitest unit test under `src/**/__tests__/*.test.ts(x)` |
-| Reducer, hook, store, permission gate, data transform         | Vitest unit test (mock IO with `vi.mock`)              |
-| Security gate (uploads, role checks, signature verification)  | Vitest test for the happy path **and** each reject path |
-| New public route (auth gating, redirect, title)               | Add a case to `e2e/smoke.spec.ts`                      |
-| New user-facing flow (form submit, multi-step wizard, modal)  | Playwright spec under `e2e/*.spec.ts`                  |
-| Server function (`createServerFn`)                            | Vitest test for the handler + auth/validation paths    |
-| Pre-existing edge function change                             | `supabase--test_edge_functions` Deno test              |
-| Pure UI restyle with no behavior change                       | No new test required                                   |
+| Kind of change                                               | Required coverage                                       |
+| ------------------------------------------------------------ | ------------------------------------------------------- |
+| Pure logic / utility / parser / validator / formula          | Vitest unit test under `src/**/__tests__/*.test.ts(x)`  |
+| Reducer, hook, store, permission gate, data transform        | Vitest unit test (mock IO with `vi.mock`)               |
+| Security gate (uploads, role checks, signature verification) | Vitest test for the happy path **and** each reject path |
+| New public route (auth gating, redirect, title)              | Add a case to `e2e/smoke.spec.ts`                       |
+| New user-facing flow (form submit, multi-step wizard, modal) | Playwright spec under `e2e/*.spec.ts`                   |
+| Server function (`createServerFn`)                           | Vitest test for the handler + auth/validation paths     |
+| Pre-existing edge function change                            | `supabase--test_edge_functions` Deno test               |
+| Pure UI restyle with no behavior change                      | No new test required                                    |
 
 Rules of thumb:
+
 - If you write a new exported function, write a Vitest test for it in the same change.
 - If you add a new route file in `src/routes/`, add a smoke case (auth gate +
   title or one visible element) to `e2e/smoke.spec.ts`.

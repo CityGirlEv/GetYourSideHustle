@@ -1,9 +1,9 @@
-import { supabaseAdmin } from '@/integrations/supabase/client.server'
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 export interface EmailTemplateOverride {
-  subject: string
-  html: string
-  text: string
+  subject: string;
+  html: string;
+  text: string;
 }
 
 /**
@@ -12,19 +12,19 @@ export interface EmailTemplateOverride {
  */
 export function htmlToPlainText(html: string): string {
   return html
-    .replace(/<style[\s\S]*?<\/style>/gi, '')
-    .replace(/<script[\s\S]*?<\/script>/gi, '')
-    .replace(/<\/(p|div|h[1-6]|li|tr|br)>/gi, '\n')
-    .replace(/<br\s*\/?\s*>/gi, '\n')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<\/(p|div|h[1-6]|li|tr|br)>/gi, "\n")
+    .replace(/<br\s*\/?\s*>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
-    .replace(/\n{3,}/g, '\n\n')
-    .trim()
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 /**
@@ -37,25 +37,25 @@ export async function getEmailTemplateOverride(
 ): Promise<EmailTemplateOverride | null> {
   try {
     const { data, error } = await supabaseAdmin
-      .from('email_template_overrides')
-      .select('subject, html')
-      .eq('template_name', templateName)
-      .maybeSingle()
+      .from("email_template_overrides")
+      .select("subject, html")
+      .eq("template_name", templateName)
+      .maybeSingle();
     if (error) {
-      console.error('[email-overrides] lookup failed', {
+      console.error("[email-overrides] lookup failed", {
         templateName,
         error: error.message,
-      })
-      return null
+      });
+      return null;
     }
-    if (!data) return null
+    if (!data) return null;
     return {
       subject: data.subject,
       html: data.html,
       text: htmlToPlainText(data.html),
-    }
+    };
   } catch (err) {
-    console.error('[email-overrides] unexpected error', { templateName, err })
-    return null
+    console.error("[email-overrides] unexpected error", { templateName, err });
+    return null;
   }
 }

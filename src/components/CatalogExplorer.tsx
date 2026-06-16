@@ -1,7 +1,15 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronRight, ChevronDown, ExternalLink, Building2, ShieldCheck, Pill, Activity } from "lucide-react";
+import {
+  ChevronRight,
+  ChevronDown,
+  ExternalLink,
+  Building2,
+  ShieldCheck,
+  Pill,
+  Activity,
+} from "lucide-react";
 import {
   CMS_CATALOG,
   type CarrierRow,
@@ -27,16 +35,28 @@ function Disclosure({
   const [open, setOpen] = useState(!!defaultOpen);
   const pad = depth === 0 ? "pl-3" : depth === 1 ? "pl-6" : "pl-9";
   return (
-    <div className={`border-l-2 ${depth === 0 ? "border-primary/40" : depth === 1 ? "border-primary/20" : "border-border"} ${pad}`}>
+    <div
+      className={`border-l-2 ${depth === 0 ? "border-primary/40" : depth === 1 ? "border-primary/20" : "border-border"} ${pad}`}
+    >
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center gap-2 py-2 text-left hover:bg-secondary/40 rounded-md px-2 -ml-2"
       >
-        {open ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+        {open ? (
+          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+        )}
         <span className="font-medium text-sm">{title}</span>
-        {badge && <Badge variant="outline" className="text-[10px]">{badge}</Badge>}
-        {subtitle && <span className="text-xs text-muted-foreground truncate ml-1">{subtitle}</span>}
+        {badge && (
+          <Badge variant="outline" className="text-[10px]">
+            {badge}
+          </Badge>
+        )}
+        {subtitle && (
+          <span className="text-xs text-muted-foreground truncate ml-1">{subtitle}</span>
+        )}
       </button>
       {open && <div className="pb-2">{children}</div>}
     </div>
@@ -56,9 +76,15 @@ function CarrierCard({ c }: { c: CarrierRow }) {
           </div>
           <div className="text-xs text-muted-foreground mt-0.5">{c["Key Characteristics"]}</div>
           <div className="flex flex-wrap gap-1 mt-1.5">
-            <Badge variant="secondary" className="text-[10px]">{c["Market Share Tier"]}</Badge>
-            <Badge variant="outline" className="text-[10px]">{c["A.M. Best Rating"]}</Badge>
-            <Badge variant="outline" className="text-[10px]">{c["National Footprint"]}</Badge>
+            <Badge variant="secondary" className="text-[10px]">
+              {c["Market Share Tier"]}
+            </Badge>
+            <Badge variant="outline" className="text-[10px]">
+              {c["A.M. Best Rating"]}
+            </Badge>
+            <Badge variant="outline" className="text-[10px]">
+              {c["National Footprint"]}
+            </Badge>
           </div>
         </div>
         {isReal ? (
@@ -95,14 +121,23 @@ function MedigapPlanDetail({ p }: { p: MedigapPlanRow }) {
       <p className="text-xs text-muted-foreground">{p["General Summary"]}</p>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-1 text-xs">
         {benefits.map(([k, v]) => (
-          <div key={k} className="flex justify-between gap-2 border border-border/60 rounded px-2 py-1">
+          <div
+            key={k}
+            className="flex justify-between gap-2 border border-border/60 rounded px-2 py-1"
+          >
             <span className="text-muted-foreground">{k}</span>
             <span className="font-medium text-right">{v}</span>
           </div>
         ))}
       </div>
-      <Disclosure title="Carriers offering this letter" depth={2} badge={`${CMS_CATALOG.medigapCarriers.length}`}>
-        {CMS_CATALOG.medigapCarriers.map((c) => <CarrierCard key={c["Carrier Name"]} c={c} />)}
+      <Disclosure
+        title="Carriers offering this letter"
+        depth={2}
+        badge={`${CMS_CATALOG.medigapCarriers.length}`}
+      >
+        {CMS_CATALOG.medigapCarriers.map((c) => (
+          <CarrierCard key={c["Carrier Name"]} c={c} />
+        ))}
       </Disclosure>
     </div>
   );
@@ -111,7 +146,10 @@ function MedigapPlanDetail({ p }: { p: MedigapPlanRow }) {
 function AdvantageTypeDetail({ t }: { t: AdvantageTypeRow }) {
   return (
     <div className="px-2 py-1.5 space-y-2">
-      <div className="text-xs"><span className="text-muted-foreground">Full name: </span>{t["Full Name"]}</div>
+      <div className="text-xs">
+        <span className="text-muted-foreground">Full name: </span>
+        {t["Full Name"]}
+      </div>
       <p className="text-xs text-muted-foreground">{t.Description}</p>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
         <div className="border border-emerald/30 bg-emerald/5 rounded px-2 py-1.5">
@@ -123,8 +161,14 @@ function AdvantageTypeDetail({ t }: { t: AdvantageTypeRow }) {
           <div className="text-muted-foreground">{t["Cons / Trade-offs"]}</div>
         </div>
       </div>
-      <Disclosure title="Carriers offering this plan type" depth={2} badge={`${CMS_CATALOG.advantageCarriers.length}`}>
-        {CMS_CATALOG.advantageCarriers.map((c) => <CarrierCard key={c["Carrier Name"]} c={c} />)}
+      <Disclosure
+        title="Carriers offering this plan type"
+        depth={2}
+        badge={`${CMS_CATALOG.advantageCarriers.length}`}
+      >
+        {CMS_CATALOG.advantageCarriers.map((c) => (
+          <CarrierCard key={c["Carrier Name"]} c={c} />
+        ))}
       </Disclosure>
     </div>
   );
@@ -150,7 +194,8 @@ export function CatalogExplorer() {
         depth={0}
       >
         <div className="flex items-center gap-1 py-1 text-xs text-muted-foreground">
-          <ShieldCheck className="h-3.5 w-3.5" /> Standardized federal benefits — same coverage from any carrier.
+          <ShieldCheck className="h-3.5 w-3.5" /> Standardized federal benefits — same coverage from
+          any carrier.
         </div>
         {CMS_CATALOG.medigapPlans.map((p) => (
           <Disclosure
@@ -170,7 +215,8 @@ export function CatalogExplorer() {
         depth={0}
       >
         <div className="flex items-center gap-1 py-1 text-xs text-muted-foreground">
-          <Activity className="h-3.5 w-3.5" /> Bundled Part A/B/D with carrier networks and extra benefits.
+          <Activity className="h-3.5 w-3.5" /> Bundled Part A/B/D with carrier networks and extra
+          benefits.
         </div>
         {CMS_CATALOG.advantageTypes.map((t) => (
           <Disclosure
@@ -199,7 +245,10 @@ export function CatalogExplorer() {
             <Disclosure key={tier + i} title={tier} depth={1}>
               <div className="px-2 py-1.5 space-y-1 text-xs">
                 {Object.entries(t).map(([k, v]) => (
-                  <div key={k} className="flex justify-between gap-2 border border-border/60 rounded px-2 py-1">
+                  <div
+                    key={k}
+                    className="flex justify-between gap-2 border border-border/60 rounded px-2 py-1"
+                  >
                     <span className="text-muted-foreground">{k}</span>
                     <span className="font-medium text-right">{String(v)}</span>
                   </div>
@@ -210,7 +259,9 @@ export function CatalogExplorer() {
         })}
         <Disclosure title="Part D carriers" depth={1} badge={`${CMS_CATALOG.partDCarriers.length}`}>
           <div className="px-2">
-            {CMS_CATALOG.partDCarriers.map((c) => <CarrierCard key={c["Carrier Name"]} c={c} />)}
+            {CMS_CATALOG.partDCarriers.map((c) => (
+              <CarrierCard key={c["Carrier Name"]} c={c} />
+            ))}
           </div>
         </Disclosure>
       </Disclosure>

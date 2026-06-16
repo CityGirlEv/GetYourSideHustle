@@ -1,6 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { buildQaRosterUsers } from "@/lib/qa-assignees.server";
+import { compareStaffByDisplayName } from "@/lib/staff-name-sort";
+import { listAllAuthUsers } from "@/lib/supabase-auth-users.server";
 
 export type QaTesterProfile = {
   userId: string;
@@ -20,7 +23,7 @@ async function verifyAdmin(userId: string) {
 }
 
 /**
- * Admin-only roster of enabled QA testers with the devices they registered.
+ * Admin-only roster of every QA-role user with the devices they registered.
  * firstName matches test_results.assignee labels used in the Testing Portal.
  */
 export const listQaTestersWithDevices = createServerFn({ method: "POST" })
@@ -36,9 +39,9 @@ export const listQaTestersWithDevices = createServerFn({ method: "POST" })
     const ids = (roleRows ?? []).map((r) => r.user_id);
     if (ids.length === 0) return [];
 
-    const [{ data: profiles }, authList] = await Promise.all([
+    const [{ data: profiles }, authUsers] = await Promise.all([
       supabaseAdmin.from("profiles").select("id, full_name, qa_devices").in("id", ids),
-      supabaseAdmin.auth.admin.listUsers(),
+      listAllAuthUsers(),
     ]);
 
     const profileMap = new Map(
@@ -50,32 +53,34 @@ export const listQaTestersWithDevices = createServerFn({ method: "POST" })
         },
       ]),
     );
+    const authById = new Map(
+      authUsers.map((u) => [
+        u.id,
+        {
+          user_metadata: u.user_metadata as Record<string, unknown> | undefined,
+          email: u.email,
+          banned_until: (u as unknown as { banned_until?: string | null }).banned_until ?? null,
+        },
+      ]),
+    );
 
     const testers: QaTesterProfile[] = [];
-    for (const u of authList.data?.users ?? []) {
-      if (!ids.includes(u.id)) continue;
-      const bannedUntil = (u as unknown as { banned_until?: string | null }).banned_until;
-      if (bannedUntil && new Date(bannedUntil).getTime() > Date.now()) continue;
-
-      const profile = profileMap.get(u.id);
-      const full = (
-        profile?.full_name ||
-        (u.user_metadata?.full_name as string) ||
-        u.email ||
-        ""
-      ).trim();
+    for (const row of buildQaRosterUsers(ids, profileMap, authById)) {
+      const profile = profileMap.get(row.id);
+      const auth = authById.get(row.id);
+      const full = row.fullName.trim();
       if (!full) continue;
       const firstName = full.split(/\s+/)[0];
       if (!firstName) continue;
 
       testers.push({
-        userId: u.id,
+        userId: row.id,
         firstName,
         fullName: full,
-        email: u.email ?? "",
+        email: auth?.email ?? "",
         qa_devices: profile?.qa_devices ?? [],
       });
     }
 
-    return testers.sort((a, b) => a.firstName.localeCompare(b.firstName));
+    return testers.sort((a, b) => compareStaffByDisplayName(a.fullName, b.fullName));
   });

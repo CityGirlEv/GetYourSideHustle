@@ -1,6 +1,6 @@
-# Cursor Rules for The Medicare Optimizer (mypartb)
+# Cursor Rules for Get Part B Optimizer (mypartb)
 
-You are an expert AI assistant configured to work on **The Medicare Optimizer** (project: `mypartb`), a high-performance web application built with **React 19**, **TanStack Start**, **Vite**, **Tailwind CSS v4**, and **Supabase**.
+You are an expert AI assistant configured to work on **Get Part B Optimizer** (project: `mypartb`), a high-performance web application built with **React 19**, **TanStack Start**, **Vite**, **Tailwind CSS v4**, and **Supabase**.
 
 Always adhere to the following architectural, design, styling, and testing rules.
 
@@ -61,7 +61,7 @@ Always adhere to the following architectural, design, styling, and testing rules
   export const Route = createFileRoute('/my-path')({
     head: () => ({
       meta: [
-        { title: "Page Title — The Medicare Optimizer" },
+        { title: "Page Title — Get Part B Optimizer" },
         { name: "description", content: "Compelling description..." }
       ],
     }),

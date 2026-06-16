@@ -1,14 +1,9 @@
 import { describe, it, expect } from "vitest";
-import {
-  buildDeviceFilterOptions,
-  testerMatchesDevices,
-} from "../qa-device-match";
+import { buildDeviceFilterOptions, testerMatchesDevices } from "../qa-device-match";
 
 describe("testerMatchesDevices", () => {
   it("matches when tester owns any selected device", () => {
-    expect(
-      testerMatchesDevices(["iPhone", "MacBook"], ["iPad", "iPhone"]),
-    ).toBe(true);
+    expect(testerMatchesDevices(["iPhone", "MacBook"], ["iPad", "iPhone"])).toBe(true);
   });
 
   it("is case-insensitive", () => {

@@ -8,10 +8,7 @@ function loadEnv() {
     const i = line.indexOf("=");
     const key = line.slice(0, i);
     let val = line.slice(i + 1).trim();
-    if (
-      (val.startsWith('"') && val.endsWith('"')) ||
-      (val.startsWith("'") && val.endsWith("'"))
-    ) {
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
       val = val.slice(1, -1);
     }
     env[key] = val;
@@ -30,13 +27,10 @@ const { data: logBefore } = await sb
   .maybeSingle();
 console.log("log before:", logBefore);
 
-const processRes = await fetch(
-  "https://mypartb.pages.dev/lovable/email/queue/process",
-  {
-    method: "POST",
-    headers: { Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` },
-  },
-);
+const processRes = await fetch("https://mypartb.pages.dev/lovable/email/queue/process", {
+  method: "POST",
+  headers: { Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` },
+});
 console.log("process:", processRes.status, await processRes.text());
 
 const { data: logAfter } = await sb
@@ -48,8 +42,8 @@ console.log("log after:", logAfter);
 
 const key = env.RESEND_API_KEY;
 for (const from of [
-  "The Medicare Optimizer <onboarding@resend.dev>",
-  "The Medicare Optimizer <noreply@mypartb.com>",
+  "Get Part B Optimizer <onboarding@resend.dev>",
+  "Get Part B Optimizer <noreply@mypartb.com>",
 ]) {
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",

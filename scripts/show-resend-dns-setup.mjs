@@ -7,10 +7,7 @@ function loadEnv() {
     const i = line.indexOf("=");
     const key = line.slice(0, i);
     let val = line.slice(i + 1).trim();
-    if (
-      (val.startsWith('"') && val.endsWith('"')) ||
-      (val.startsWith("'") && val.endsWith("'"))
-    ) {
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
       val = val.slice(1, -1);
     }
     env[key] = val;
@@ -52,6 +49,6 @@ for (const rec of detail.records ?? []) {
 console.log("\nAfter saving DNS records, verify in Resend:");
 console.log(`  node scripts/setup-resend-dns.mjs   (or click Verify in the Resend dashboard)`);
 console.log("\nThen set EMAIL_FROM in Cloudflare Pages:");
-console.log(`  The Medicare Optimizer <noreply@${DOMAIN}>`);
+console.log(`  Get Part B Optimizer <noreply@${DOMAIN}>`);
 console.log("\nTest send to any address:");
 console.log("  node scripts/test-resend-from-addresses.mjs\n");

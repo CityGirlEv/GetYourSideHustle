@@ -8,11 +8,15 @@
 // These helpers are extracted so the predicate is unit-testable without
 // rendering the full route.
 
-export type ScopingUser = {
-  role?: string | null;
-  full_name?: string | null;
-  email?: string | null;
-} | null | undefined;
+export type ScopingUser =
+  | {
+      role?: string | null;
+      roles?: string[] | null;
+      full_name?: string | null;
+      email?: string | null;
+    }
+  | null
+  | undefined;
 
 function toDisplayFirstName(value: string): string {
   const first = value.trim().split(/\s+/)[0] || "";
@@ -32,7 +36,9 @@ export function getQaFirstName(user: ScopingUser): string {
 
 /** True when the current user must only see their own rows. */
 export function shouldRestrictToSelf(user: ScopingUser): boolean {
-  return !!user && user.role === "qa";
+  if (!user || user.role !== "qa") return false;
+  if (user.roles?.includes("admin") || user.roles?.includes("leads_admin")) return false;
+  return true;
 }
 
 /** Owners a non-admin QA can see or assign: themselves plus Unassigned. */

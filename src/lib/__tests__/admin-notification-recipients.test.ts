@@ -6,6 +6,8 @@ describe("admin notification recipients", () => {
     expect(DEFAULT_ADMIN_NOTIFICATION_EMAILS).toEqual([
       "evelyn3@cox.net",
       "sharpebanker@yahoo.com",
+      "info@mypartb.com",
+      "getpartb@gmail.com",
     ]);
   });
 });

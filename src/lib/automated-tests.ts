@@ -58,14 +58,14 @@ function shortFile(path: string): string {
 }
 
 function idSlug(s: string): string {
-  return s.replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40).toUpperCase();
+  return s
+    .replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40)
+    .toUpperCase();
 }
 
-function buildCases(
-  files: Record<string, string>,
-  area: string,
-  idPrefix: string,
-): TestCase[] {
+function buildCases(files: Record<string, string>, area: string, idPrefix: string): TestCase[] {
   const out: TestCase[] = [];
   const owner = idPrefix === "UNIT" ? "Vitest" : "Playwright";
   for (const [path, src] of Object.entries(files)) {

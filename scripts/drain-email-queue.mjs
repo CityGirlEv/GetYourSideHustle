@@ -8,10 +8,7 @@ function loadEnv() {
     const i = line.indexOf("=");
     const key = line.slice(0, i);
     let val = line.slice(i + 1).trim();
-    if (
-      (val.startsWith('"') && val.endsWith('"')) ||
-      (val.startsWith("'") && val.endsWith("'"))
-    ) {
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
       val = val.slice(1, -1);
     }
     env[key] = val;
@@ -20,11 +17,7 @@ function loadEnv() {
 }
 
 const env = loadEnv();
-const origins = [
-  env.SITE_ORIGIN,
-  "http://localhost:8080",
-  "http://localhost:8081",
-].filter(Boolean);
+const origins = [env.SITE_ORIGIN, "http://localhost:8080", "http://localhost:8081"].filter(Boolean);
 
 let origin = null;
 for (const o of origins) {

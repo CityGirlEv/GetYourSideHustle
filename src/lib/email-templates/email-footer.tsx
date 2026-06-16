@@ -1,20 +1,18 @@
-import * as React from 'react'
-import { Hr, Img, Link, Section, Text } from '@react-email/components'
-import {
-  emailFooterLogoHeight,
-  emailFooterLogoUrl,
-  resolveEmailSiteUrl,
-} from './email-header'
+import * as React from "react";
+import { Hr, Img, Link, Section, Text } from "@react-email/components";
+import { emailFooterLogoHeight, emailFooterLogoUrl, resolveEmailSiteUrl } from "./email-header";
+import { SITE_BRAND_NAME } from "@/lib/site-brand";
+import { TPMO_PLATFORM_DISCLAIMER } from "@/lib/medicare-disclaimers";
 
-/** Icon mark — smaller than the full header wordmark. */
-export const EMAIL_FOOTER_LOGO_WIDTH_MOBILE = 56
-export const EMAIL_FOOTER_LOGO_WIDTH_DESKTOP = 72
-export const DEFAULT_CONTACT_EMAIL = 'info@MyPartB.com'
+/** Full wordmark — smaller than header but wide enough to read. */
+export const EMAIL_FOOTER_LOGO_WIDTH_MOBILE = 200;
+export const EMAIL_FOOTER_LOGO_WIDTH_DESKTOP = 280;
+export const DEFAULT_CONTACT_EMAIL = "info@MyPartB.com";
 
 interface EmailFooterProps {
-  siteUrl?: string
-  contactEmail?: string
-  unsubscribeToken?: string
+  siteUrl?: string;
+  contactEmail?: string;
+  unsubscribeToken?: string;
 }
 
 export function EmailFooter({
@@ -22,13 +20,13 @@ export function EmailFooter({
   contactEmail = DEFAULT_CONTACT_EMAIL,
   unsubscribeToken,
 }: EmailFooterProps) {
-  const baseUrl = resolveEmailSiteUrl(siteUrl)
-  const logoUrl = emailFooterLogoUrl()
-  const mobileWidth = EMAIL_FOOTER_LOGO_WIDTH_MOBILE
-  const mobileHeight = emailFooterLogoHeight(mobileWidth)
+  const baseUrl = resolveEmailSiteUrl(siteUrl);
+  const logoUrl = emailFooterLogoUrl();
+  const mobileWidth = EMAIL_FOOTER_LOGO_WIDTH_MOBILE;
+  const mobileHeight = emailFooterLogoHeight(mobileWidth);
   const unsubscribeHref = unsubscribeToken
     ? `${baseUrl}/email/unsubscribe?token=${encodeURIComponent(unsubscribeToken)}`
-    : undefined
+    : undefined;
 
   return (
     <Section style={footerSection}>
@@ -50,7 +48,7 @@ export function EmailFooter({
         <Link href={baseUrl} style={brandLink}>
           <Img
             src={logoUrl}
-            alt="The Medicare Optimizer"
+            alt={SITE_BRAND_NAME}
             width={mobileWidth}
             height={mobileHeight}
             className="email-footer-brand-logo"
@@ -59,106 +57,107 @@ export function EmailFooter({
         </Link>
       </Section>
       <Text style={contactLine}>
-        Contact:{' '}
+        Contact:{" "}
         <Link href={`mailto:${contactEmail}`} style={link}>
           {contactEmail}
         </Link>
       </Text>
       <Text style={disclaimer}>
-        <strong>De-identification:</strong> The Medicare Optimizer uses de-identified
-        Medicare plan scenarios for educational comparison. Our scenario tools do not
-        collect or store Social Security numbers, Medicare Beneficiary Identifiers
-        (MBI), full dates of birth, or other protected health information.
+        <strong>TPMO:</strong> {TPMO_PLATFORM_DISCLAIMER}
       </Text>
       <Text style={disclaimer}>
-        <strong>Medicare notice:</strong> This tool compares sample Medicare plan
-        scenarios for educational purposes only. It is not a complete listing of plans
-        available in your area. For a complete listing, contact{' '}
+        <strong>De-identification:</strong> Get Part B Optimizer uses de-identified Medicare plan
+        scenarios for educational comparison. Our scenario tools do not collect or store Social
+        Security numbers, Medicare Beneficiary Identifiers (MBI), full dates of birth, or other
+        protected health information.
+      </Text>
+      <Text style={disclaimer}>
+        <strong>Medicare notice:</strong> This tool compares sample Medicare plan scenarios for
+        educational purposes only. It is not a complete listing of plans available in your area. For
+        a complete listing, contact{" "}
         <Link href="https://www.medicare.gov" style={link}>
           Medicare.gov
-        </Link>{' '}
+        </Link>{" "}
         or 1-800-MEDICARE (1-800-633-4227).
       </Text>
       <Text style={disclaimer}>
-        <strong>Disclaimer:</strong> The Medicare Optimizer is an educational and
-        comparison tool only. We do not sell insurance, act as a licensed agent, or
-        provide personalized legal, tax, or medical advice. Plan names, premiums, and
-        benefits shown are estimated based on publicly available CMS data and may
-        differ from actual carrier offerings in your area. Always verify details with a
-        licensed insurance agent or by visiting{' '}
+        <strong>Disclaimer:</strong> Get Part B Optimizer is an educational and comparison tool
+        only. We do not sell insurance, act as a licensed agent, or provide personalized legal, tax,
+        or medical advice. Plan names, premiums, and benefits shown are estimated based on publicly
+        available CMS data and may differ from actual carrier offerings in your area. Always verify
+        details with a licensed insurance agent or by visiting{" "}
         <Link href="https://www.medicare.gov" style={link}>
           Medicare.gov
-        </Link>{' '}
-        before enrolling. We are not affiliated with the U.S. government or the
-        Medicare program.
+        </Link>{" "}
+        before enrolling. We are not affiliated with the U.S. government or the Medicare program.
       </Text>
       {unsubscribeHref ? (
         <Text style={unsubscribeLine}>
           <Link href={unsubscribeHref} style={link}>
             Unsubscribe
-          </Link>{' '}
+          </Link>{" "}
           from non-essential emails.
         </Text>
       ) : null}
     </Section>
-  )
+  );
 }
 
 const footerSection = {
-  margin: '32px 0 0',
-}
+  margin: "32px 0 0",
+};
 
 const hr = {
-  borderColor: '#e2e8f0',
-  margin: '24px 0 20px',
-}
+  borderColor: "#e2e8f0",
+  margin: "24px 0 20px",
+};
 
 const brandSection = {
-  margin: '0 0 16px',
-  textAlign: 'left' as const,
-}
+  margin: "0 0 16px",
+  textAlign: "left" as const,
+};
 
 const brandLink = {
-  display: 'inline-block',
-  textDecoration: 'none',
-}
+  display: "inline-block",
+  textDecoration: "none",
+};
 
 const footerLogoImg = {
-  display: 'block',
-  margin: '0',
-  border: '0',
-  outline: 'none',
-  textDecoration: 'none',
+  display: "block",
+  margin: "0",
+  border: "0",
+  outline: "none",
+  textDecoration: "none",
   width: `${EMAIL_FOOTER_LOGO_WIDTH_MOBILE}px`,
   maxWidth: `${EMAIL_FOOTER_LOGO_WIDTH_DESKTOP}px`,
-  height: 'auto',
-}
+  height: "auto",
+};
 
 const contactLine = {
-  fontSize: '12px',
-  color: '#64748b',
-  margin: '0 0 16px',
-  lineHeight: '1.5',
-  textAlign: 'left' as const,
-}
+  fontSize: "12px",
+  color: "#64748b",
+  margin: "0 0 16px",
+  lineHeight: "1.5",
+  textAlign: "left" as const,
+};
 
 const disclaimer = {
-  fontSize: '11px',
-  color: '#64748b',
-  margin: '0 0 12px',
-  lineHeight: '1.55',
-  textAlign: 'left' as const,
-}
+  fontSize: "11px",
+  color: "#64748b",
+  margin: "0 0 12px",
+  lineHeight: "1.55",
+  textAlign: "left" as const,
+};
 
 const unsubscribeLine = {
-  fontSize: '11px',
-  color: '#94a3b8',
-  margin: '8px 0 0',
-  lineHeight: '1.5',
-  textAlign: 'left' as const,
-}
+  fontSize: "11px",
+  color: "#94a3b8",
+  margin: "8px 0 0",
+  lineHeight: "1.5",
+  textAlign: "left" as const,
+};
 
 const link = {
-  color: '#003888',
-  textDecoration: 'underline',
-}
+  color: "#003888",
+  textDecoration: "underline",
+};

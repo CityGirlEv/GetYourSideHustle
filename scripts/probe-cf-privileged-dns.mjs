@@ -22,17 +22,21 @@ const tests = [
 ];
 
 for (const [label, body] of tests) {
-  const url =
-    label.startsWith("sending")
-      ? `https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/email/sending/subdomains`
-      : `https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/email/routing/dns`;
-  const init =
-    label.startsWith("sending")
-      ? { method: "POST", body: JSON.stringify({ name: "notify.mypartb.com" }) }
-      : { method: "POST", body: JSON.stringify(body) };
+  const url = label.startsWith("sending")
+    ? `https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/email/sending/subdomains`
+    : `https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/email/routing/dns`;
+  const init = label.startsWith("sending")
+    ? { method: "POST", body: JSON.stringify({ name: "notify.mypartb.com" }) }
+    : { method: "POST", body: JSON.stringify(body) };
   const res = await fetch(url, { headers, ...init });
   const json = await res.json();
-  console.log(label, res.status, json.success, json.errors?.[0]?.message ?? "", json.result?.status ?? "");
+  console.log(
+    label,
+    res.status,
+    json.success,
+    json.errors?.[0]?.message ?? "",
+    json.result?.status ?? "",
+  );
 }
 
 // Try connectivity admin endpoints

@@ -8,9 +8,30 @@ import {
 } from "../budget";
 
 const sample: BudgetLine[] = [
-  { id: "X1", function: "a", category: "Build · One-time", amount: 1000, unit: "one-time", basis: "" },
-  { id: "X2", function: "b", category: "Infra · Recurring", amount: 100, unit: "monthly", basis: "" },
-  { id: "X3", function: "c", category: "Compliance & Legal", amount: 1200, unit: "annual", basis: "" },
+  {
+    id: "X1",
+    function: "a",
+    category: "Build · One-time",
+    amount: 1000,
+    unit: "one-time",
+    basis: "",
+  },
+  {
+    id: "X2",
+    function: "b",
+    category: "Infra · Recurring",
+    amount: 100,
+    unit: "monthly",
+    basis: "",
+  },
+  {
+    id: "X3",
+    function: "c",
+    category: "Compliance & Legal",
+    amount: 1200,
+    unit: "annual",
+    basis: "",
+  },
 ];
 
 describe("computeBudgetTotals", () => {

@@ -2,34 +2,84 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { Mic, MicOff, Volume2, RotateCcw, SkipForward, Keyboard, Check, Loader2, Info, ListChecks } from "lucide-react";
+import {
+  Mic,
+  MicOff,
+  Volume2,
+  RotateCcw,
+  SkipForward,
+  Keyboard,
+  Check,
+  Loader2,
+  Info,
+  ListChecks,
+} from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { COMMON_MEDS_BY_CONDITION, resolveDiagnosis, searchMedCatalog, MED_CATALOG } from "@/lib/diagnosis-resolver";
+import {
+  getCommonMedsForCondition,
+  resolveDiagnosis,
+  searchMedCatalog,
+  MED_CATALOG,
+} from "@/lib/diagnosis-resolver";
 import { countiesForZip3 } from "@/lib/zip3-county-lookup";
 import type { Medication } from "@/lib/medicare-math";
+import { INCOME_BANDS, type IncomeBand } from "@/lib/income-bands";
 
 // ------------------- Web Speech API typing -------------------
 type SR = {
-  start: () => void; stop: () => void; abort: () => void;
-  lang: string; continuous: boolean; interimResults: boolean; maxAlternatives: number;
-  onresult: ((e: { resultIndex?: number; results: ArrayLike<ArrayLike<{ transcript: string; confidence?: number }> & { isFinal?: boolean }> }) => void) | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  maxAlternatives: number;
+  onresult:
+    | ((e: {
+        resultIndex?: number;
+        results: ArrayLike<
+          ArrayLike<{ transcript: string; confidence?: number }> & { isFinal?: boolean }
+        >;
+      }) => void)
+    | null;
   onerror: ((e: { error: string }) => void) | null;
   onend: (() => void) | null;
 };
 function getRecognitionCtor(): { new (): SR } | null {
   if (typeof window === "undefined") return null;
-  const w = window as unknown as { SpeechRecognition?: { new (): SR }; webkitSpeechRecognition?: { new (): SR } };
+  const w = window as unknown as {
+    SpeechRecognition?: { new (): SR };
+    webkitSpeechRecognition?: { new (): SR };
+  };
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 }
 
 // ------------------- Speech parsers -------------------
 const DIGIT_WORDS: Record<string, string> = {
-  zero: "0", oh: "0", o: "0", one: "1", two: "2", to: "2", too: "2", three: "3", four: "4", for: "4",
-  five: "5", six: "6", seven: "7", eight: "8", ate: "8", nine: "9",
+  zero: "0",
+  oh: "0",
+  o: "0",
+  one: "1",
+  two: "2",
+  to: "2",
+  too: "2",
+  three: "3",
+  four: "4",
+  for: "4",
+  five: "5",
+  six: "6",
+  seven: "7",
+  eight: "8",
+  ate: "8",
+  nine: "9",
 };
 function parseDigits(text: string, max = 32): string {
-  const tokens = text.toLowerCase().replace(/[.,!?]/g, " ").split(/\s+/).filter(Boolean);
+  const tokens = text
+    .toLowerCase()
+    .replace(/[.,!?]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean);
   let out = "";
   for (const t of tokens) {
     if (/^\d+$/.test(t)) out += t;
@@ -49,9 +99,15 @@ function parseYear(text: string): number | null {
 function parseYesNo(text: string): boolean | null {
   const t = normalizeSpeech(text);
   if (!t || /\b(yes or no|no or yes)\b/.test(t)) return null;
-  const hasExplicitNo = /\b(no|nope|nah|negative|never|incorrect|wrong)\b|\b(do not|dont|not right|not correct|not true|not it)\b/.test(t);
+  const hasExplicitNo =
+    /\b(no|nope|nah|negative|never|incorrect|wrong)\b|\b(do not|dont|not right|not correct|not true|not it)\b/.test(
+      t,
+    );
   if (hasExplicitNo) return false;
-  const hasExplicitYes = /\b(yes|yeah|yep|yup|ya|correct|right|true|sure|ok|okay|affirmative)\b|\b(that is right|thats right|sounds right|i do|i am|smoke|smoker)\b/.test(t);
+  const hasExplicitYes =
+    /\b(yes|yeah|yep|yup|ya|correct|right|true|sure|ok|okay|affirmative)\b|\b(that is right|thats right|sounds right|i do|i am|smoke|smoker)\b/.test(
+      t,
+    );
   if (hasExplicitYes) return true;
   return null;
 }
@@ -66,7 +122,10 @@ function matchOption<T extends string>(text: string, options: readonly T[]): T |
   let best: { o: T; score: number } | null = null;
   for (const o of options) {
     const oTokens = o.toLowerCase().split(/\s+/);
-    const score = tokens.reduce((acc, t) => acc + (oTokens.some((ot) => ot.includes(t) || t.includes(ot)) ? 1 : 0), 0);
+    const score = tokens.reduce(
+      (acc, t) => acc + (oTokens.some((ot) => ot.includes(t) || t.includes(ot)) ? 1 : 0),
+      0,
+    );
     if (score > 0 && (!best || score > best.score)) best = { o, score };
   }
   return best?.o ?? null;
@@ -102,7 +161,7 @@ function bestMedicationMatch(text: string) {
   const direct = searchMedCatalog(text, 1)[0];
   if (direct) return direct;
 
-  let best: { entry: typeof MED_CATALOG[number]; score: number } | null = null;
+  let best: { entry: (typeof MED_CATALOG)[number]; score: number } | null = null;
   for (const entry of MED_CATALOG) {
     const labels = [entry.name, ...(entry.aliases ?? [])];
     for (const label of labels) {
@@ -118,14 +177,21 @@ function bestMedicationMatch(text: string) {
 // Join runs of single-letter tokens ("p r e d" -> "pred") so the user can
 // spell out a drug name letter by letter and have it search the catalog.
 function parseSpelledOrSpoken(text: string): string {
-  const tokens = text.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter(Boolean);
+  const tokens = text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean);
   const out: string[] = [];
   let buf = "";
   for (const t of tokens) {
     if (t.length === 1 && /[a-z]/.test(t)) {
       buf += t;
     } else {
-      if (buf) { out.push(buf); buf = ""; }
+      if (buf) {
+        out.push(buf);
+        buf = "";
+      }
       out.push(t);
     }
   }
@@ -136,16 +202,29 @@ function parseSpelledOrSpoken(text: string): string {
 // ------------------- Config -------------------
 const CURRENT_YEAR = new Date().getFullYear();
 const MIN_BIRTH_YEAR = CURRENT_YEAR - 110;
-const INCOME_BANDS = ["Under $25k", "$25k–$50k", "$50k–$100k", "$100k–$200k", "Over $200k", "Prefer not to say"] as const;
-const INCOME_SPOKEN: Array<{ band: typeof INCOME_BANDS[number]; matches: RegExp }> = [
-  { band: "Under $25k", matches: /under\s*25|less than\s*25|below\s*25|twenty[\s-]?five thousand or less/i },
-  { band: "$25k–$50k", matches: /25.*50|twenty[\s-]?five.*fifty/i },
-  { band: "$50k–$100k", matches: /50.*100|fifty.*hundred|fifty.*one[\s-]?hundred/i },
-  { band: "$100k–$200k", matches: /100.*200|hundred.*two hundred|one[\s-]?hundred.*two[\s-]?hundred/i },
-  { band: "Over $200k", matches: /over\s*200|more than\s*200|above\s*200|two hundred or more/i },
+const INCOME_SPOKEN: Array<{ band: IncomeBand; matches: RegExp }> = [
+  { band: "Under $15k", matches: /under\s*15|less than\s*15|below\s*15|fifteen thousand or less/i },
+  { band: "$15k–$35k", matches: /15.*35|fifteen.*thirty[\s-]?five/i },
+  { band: "$35k–$55k", matches: /35.*55|thirty[\s-]?five.*fifty[\s-]?five/i },
+  { band: "$55k–$75k", matches: /55.*75|fifty[\s-]?five.*seventy[\s-]?five/i },
+  { band: "$75k–$95k", matches: /75.*95|seventy[\s-]?five.*ninety[\s-]?five/i },
+  { band: "$95k–$115k", matches: /95.*115|ninety[\s-]?five.*one[\s-]?hundred[\s-]?fifteen/i },
+  {
+    band: "Over $115k",
+    matches: /over\s*115|more than\s*115|above\s*115|one[\s-]?hundred[\s-]?fifteen or more/i,
+  },
   { band: "Prefer not to say", matches: /prefer not|skip|don't (want|say)|rather not/i },
 ];
-const CONDITIONS = ["Diabetes", "Hypertension", "Heart disease", "COPD", "Cancer history", "Chronic kidney disease", "Arthritis"] as const;
+const CONDITIONS = [
+  "Diabetes",
+  "Type 2 Diabetes",
+  "Hypertension",
+  "Heart disease",
+  "COPD",
+  "Cancer history",
+  "Chronic kidney disease",
+  "Arthritis",
+] as const;
 const GENDERS = ["female", "male", "nonbinary", "prefer_not_to_say"] as const;
 
 function blankMed(name = "", strength = ""): Medication {
@@ -162,25 +241,52 @@ function blankMed(name = "", strength = ""): Medication {
 
 // ------------------- Step machine -------------------
 type StepKey =
-  | "intro" | "birthYear" | "zip" | "county" | "gender" | "tobacco"
-  | "income" | "costPref" | "conditionsAsk" | "conditionsAdd"
-  | "medsAsk" | "medsName" | "medsStrength" | "medsMore"
-  | "confirm" | "verify" | "submitting" | "done";
+  | "intro"
+  | "birthYear"
+  | "zip"
+  | "county"
+  | "gender"
+  | "tobacco"
+  | "income"
+  | "costPref"
+  | "conditionsAsk"
+  | "conditionsAdd"
+  | "medsAsk"
+  | "medsName"
+  | "medsStrength"
+  | "medsMore"
+  | "confirm"
+  | "verify"
+  | "submitting"
+  | "done";
 
-interface Transcript { q: string; a?: string; speaker?: "assistant" | "you" }
+interface Transcript {
+  q: string;
+  a?: string;
+  speaker?: "assistant" | "you";
+}
 
 // ------------------- Component -------------------
-export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code: string) => void; onSwitchToManual?: () => void }) {
-  const supported = !!getRecognitionCtor() && typeof window !== "undefined" && "speechSynthesis" in window;
+export function VoiceIntakeWizard({
+  onDone,
+  onSwitchToManual,
+}: {
+  onDone?: (code: string) => void;
+  onSwitchToManual?: () => void;
+}) {
+  const supported =
+    !!getRecognitionCtor() && typeof window !== "undefined" && "speechSynthesis" in window;
 
   // Collected data
   const [birthYear, setBirthYear] = useState<number | null>(null);
   const [zip3, setZip3] = useState("");
   const [county, setCounty] = useState("");
-  const [gender, setGender] = useState<typeof GENDERS[number]>("prefer_not_to_say");
+  const [gender, setGender] = useState<(typeof GENDERS)[number]>("prefer_not_to_say");
   const [tobacco, setTobacco] = useState(false);
-  const [income, setIncome] = useState<typeof INCOME_BANDS[number]>("Prefer not to say");
-  const [costPref, setCostPref] = useState<"minimize_monthly" | "predictability">("minimize_monthly");
+  const [income, setIncome] = useState<(typeof INCOME_BANDS)[number]>("Prefer not to say");
+  const [costPref, setCostPref] = useState<"minimize_monthly" | "predictability">(
+    "minimize_monthly",
+  );
   const [conditions, setConditions] = useState<string[]>([]);
   const [meds, setMeds] = useState<Medication[]>([]);
   const [pendingMedName, setPendingMedName] = useState("");
@@ -197,7 +303,10 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
   const [submitting, setSubmitting] = useState(false);
 
   const recRef = useRef<SR | null>(null);
-  const stepRef = useRef(step); useEffect(() => { stepRef.current = step; }, [step]);
+  const stepRef = useRef(step);
+  useEffect(() => {
+    stepRef.current = step;
+  }, [step]);
   const historyRef = useRef<StepKey[]>([]);
   const pendingRef = useRef<{ apply: () => void; next: StepKey; from: StepKey } | null>(null);
   const cancelMedLoopRef = useRef(false);
@@ -219,100 +328,162 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
     return searchMedCatalog(q, 6);
   }, [medQuery]);
 
-  const countyOptions = useMemo(() => /^\d{3}$/.test(zip3) ? countiesForZip3(zip3) : [], [zip3]);
+  const countyOptions = useMemo(() => (/^\d{3}$/.test(zip3) ? countiesForZip3(zip3) : []), [zip3]);
 
   // ------------------- TTS -------------------
-  const speak = (text: string) => new Promise<void>((resolve) => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) { resolve(); return; }
-    try {
-      window.speechSynthesis.cancel();
-      // Small delay after cancel() — Chrome drops the next utterance otherwise
-      setTimeout(() => {
-        try {
-          const u = new SpeechSynthesisUtterance(text);
-          u.rate = 1; u.pitch = 1; u.lang = "en-US";
-          let done = false;
-          const finish = () => { if (done) return; done = true; setSpeaking(false); resolve(); };
-          u.onstart = () => setSpeaking(true);
-          u.onend = finish;
-          u.onerror = finish;
-          // Safety: if onend never fires (Chrome bug), resolve after a reasonable cap
-          const cap = Math.max(3000, Math.min(20000, text.length * 80));
-          setTimeout(finish, cap);
-          window.speechSynthesis.speak(u);
-        } catch { setSpeaking(false); resolve(); }
-      }, 80);
-    } catch { resolve(); }
-  });
+  const speak = (text: string) =>
+    new Promise<void>((resolve) => {
+      if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+        resolve();
+        return;
+      }
+      try {
+        window.speechSynthesis.cancel();
+        // Small delay after cancel() — Chrome drops the next utterance otherwise
+        setTimeout(() => {
+          try {
+            const u = new SpeechSynthesisUtterance(text);
+            u.rate = 1;
+            u.pitch = 1;
+            u.lang = "en-US";
+            let done = false;
+            const finish = () => {
+              if (done) return;
+              done = true;
+              setSpeaking(false);
+              resolve();
+            };
+            u.onstart = () => setSpeaking(true);
+            u.onend = finish;
+            u.onerror = finish;
+            // Safety: if onend never fires (Chrome bug), resolve after a reasonable cap
+            const cap = Math.max(3000, Math.min(20000, text.length * 80));
+            setTimeout(finish, cap);
+            window.speechSynthesis.speak(u);
+          } catch {
+            setSpeaking(false);
+            resolve();
+          }
+        }, 80);
+      } catch {
+        resolve();
+      }
+    });
 
   // ------------------- STT -------------------
-  const listen = (timeoutMs = 22000, opts: { minListenMs?: number; silenceMs?: number } = {}): Promise<string> => new Promise((resolve) => {
-    const Ctor = getRecognitionCtor();
-    if (!Ctor) { resolve(""); return; }
-    let settled = false;
-    let bestTranscript = "";
-    let finalTranscript = "";
-    const startedAt = Date.now();
-    const minListenMs = opts.minListenMs ?? 700;
-    const silenceMs = opts.silenceMs ?? 1800;
-    let stopTimer: ReturnType<typeof setTimeout> | null = null;
-    let silenceTimer: ReturnType<typeof setTimeout> | null = null;
-    const finish = (t?: string) => {
-      if (settled) return;
-      settled = true;
-      if (stopTimer) clearTimeout(stopTimer);
-      if (silenceTimer) clearTimeout(silenceTimer);
-      const finalText = (t ?? (finalTranscript || bestTranscript)).trim();
-      setListening(false);
-      resolve(finalText);
-    };
-    try {
-      const rec = new Ctor();
-      rec.lang = "en-US"; rec.continuous = true; rec.interimResults = true; rec.maxAlternatives = 5;
-      rec.onresult = (e) => {
-        const start = e.resultIndex ?? 0;
-        for (let i = start; i < e.results.length; i += 1) {
-          const result = e.results[i];
-          if (!result) continue;
-          const choices = Array.from(result)
-            .map((alt) => ({ text: alt.transcript?.trim() ?? "", confidence: alt.confidence ?? 0 }))
-            .filter((alt) => alt.text);
-          const picked = choices.sort((a, b) => (b.confidence - a.confidence) || (b.text.length - a.text.length))[0]?.text ?? "";
-          if (!picked) continue;
-          bestTranscript = picked;
-          if (result.isFinal) finalTranscript = `${finalTranscript} ${picked}`.trim();
-        }
-        const heard = (finalTranscript || bestTranscript).trim();
-        if (!heard) return;
-        setLastHeard(heard);
+  const listen = (
+    timeoutMs = 22000,
+    opts: { minListenMs?: number; silenceMs?: number } = {},
+  ): Promise<string> =>
+    new Promise((resolve) => {
+      const Ctor = getRecognitionCtor();
+      if (!Ctor) {
+        resolve("");
+        return;
+      }
+      let settled = false;
+      let bestTranscript = "";
+      let finalTranscript = "";
+      const startedAt = Date.now();
+      const minListenMs = opts.minListenMs ?? 700;
+      const silenceMs = opts.silenceMs ?? 1800;
+      let stopTimer: ReturnType<typeof setTimeout> | null = null;
+      let silenceTimer: ReturnType<typeof setTimeout> | null = null;
+      const finish = (t?: string) => {
+        if (settled) return;
+        settled = true;
+        if (stopTimer) clearTimeout(stopTimer);
         if (silenceTimer) clearTimeout(silenceTimer);
-        silenceTimer = setTimeout(() => {
-          if (Date.now() - startedAt < minListenMs) {
-            silenceTimer = setTimeout(() => { try { rec.stop(); } catch { finish(heard); } }, minListenMs - (Date.now() - startedAt));
-            return;
+        const finalText = (t ?? (finalTranscript || bestTranscript)).trim();
+        setListening(false);
+        resolve(finalText);
+      };
+      try {
+        const rec = new Ctor();
+        rec.lang = "en-US";
+        rec.continuous = true;
+        rec.interimResults = true;
+        rec.maxAlternatives = 5;
+        rec.onresult = (e) => {
+          const start = e.resultIndex ?? 0;
+          for (let i = start; i < e.results.length; i += 1) {
+            const result = e.results[i];
+            if (!result) continue;
+            const choices = Array.from(result)
+              .map((alt) => ({
+                text: alt.transcript?.trim() ?? "",
+                confidence: alt.confidence ?? 0,
+              }))
+              .filter((alt) => alt.text);
+            const picked =
+              choices.sort(
+                (a, b) => b.confidence - a.confidence || b.text.length - a.text.length,
+              )[0]?.text ?? "";
+            if (!picked) continue;
+            bestTranscript = picked;
+            if (result.isFinal) finalTranscript = `${finalTranscript} ${picked}`.trim();
           }
-          try { rec.stop(); } catch { finish(heard); }
-        }, silenceMs);
-      };
-      rec.onerror = (e) => {
-        if (e.error === "not-allowed" || e.error === "service-not-allowed") {
-          toast.error("Microphone permission denied. Please enable it in your browser settings.");
-        } else if (e.error === "no-speech") {
-          toast.message("I didn't catch that — try speaking a little slower and closer to the mic.");
-        }
+          const heard = (finalTranscript || bestTranscript).trim();
+          if (!heard) return;
+          setLastHeard(heard);
+          if (silenceTimer) clearTimeout(silenceTimer);
+          silenceTimer = setTimeout(() => {
+            if (Date.now() - startedAt < minListenMs) {
+              silenceTimer = setTimeout(
+                () => {
+                  try {
+                    rec.stop();
+                  } catch {
+                    finish(heard);
+                  }
+                },
+                minListenMs - (Date.now() - startedAt),
+              );
+              return;
+            }
+            try {
+              rec.stop();
+            } catch {
+              finish(heard);
+            }
+          }, silenceMs);
+        };
+        rec.onerror = (e) => {
+          if (e.error === "not-allowed" || e.error === "service-not-allowed") {
+            toast.error("Microphone permission denied. Please enable it in your browser settings.");
+          } else if (e.error === "no-speech") {
+            toast.message(
+              "I didn't catch that — try speaking a little slower and closer to the mic.",
+            );
+          }
+          finish("");
+        };
+        rec.onend = () => finish();
+        recRef.current = rec;
+        setListening(true);
+        playBeep();
+        toast.info("🎤 Your turn — speak now", { duration: 2500, id: "voice-listen" });
+        rec.start();
+        stopTimer = setTimeout(() => {
+          try {
+            rec.stop();
+          } catch {
+            /* noop */
+          }
+        }, timeoutMs);
+      } catch {
         finish("");
-      };
-      rec.onend = () => finish();
-      recRef.current = rec;
-      setListening(true);
-      playBeep();
-      toast.info("🎤 Your turn — speak now", { duration: 2500, id: "voice-listen" });
-      rec.start();
-      stopTimer = setTimeout(() => { try { rec.stop(); } catch { /* noop */ } }, timeoutMs);
-    } catch { finish(""); }
-  });
+      }
+    });
 
-  const stopListening = () => { try { recRef.current?.abort(); } catch { /* noop */ } setListening(false); };
+  const stopListening = () => {
+    try {
+      recRef.current?.abort();
+    } catch {
+      /* noop */
+    }
+    setListening(false);
+  };
 
   // Stop any in-flight key-pick session
   const stopKeyPick = () => {
@@ -320,7 +491,11 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
     pickingRef.current = null;
     setPickOptions([]);
     setPickIndex(-1);
-    try { window.speechSynthesis?.cancel(); } catch { /* noop */ }
+    try {
+      window.speechSynthesis?.cancel();
+    } catch {
+      /* noop */
+    }
   };
 
   // Speak each option in turn. Resolves the user's choice when they press any
@@ -336,7 +511,10 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
     pickingRef.current = { active: true, options, index: -1, onPick, onExhausted };
     setPickOptions(options);
     setPickIndex(-1);
-    setTranscript((p) => [...p, { q: `${intro} Press any key when I say the correct one.`, speaker: "assistant" }]);
+    setTranscript((p) => [
+      ...p,
+      { q: `${intro} Press any key when I say the correct one.`, speaker: "assistant" },
+    ]);
     await speak(`${intro} Press any key when I say the correct one.`);
     for (let i = 0; i < options.length; i += 1) {
       const cur = pickingRef.current;
@@ -366,7 +544,12 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
       if (!p || !p.active) return;
       const target = e.target as HTMLElement | null;
       const tag = target?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || (target as HTMLElement | null)?.isContentEditable) return;
+      if (
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        (target as HTMLElement | null)?.isContentEditable
+      )
+        return;
       if (e.key === "Shift" || e.key === "Control" || e.key === "Alt" || e.key === "Meta") return;
       e.preventDefault();
       const idx = p.index >= 0 ? p.index : 0;
@@ -374,7 +557,11 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
       pickingRef.current = null;
       setPickOptions([]);
       setPickIndex(-1);
-      try { window.speechSynthesis?.cancel(); } catch { /* noop */ }
+      try {
+        window.speechSynthesis?.cancel();
+      } catch {
+        /* noop */
+      }
       p.onPick(idx);
     };
     window.addEventListener("keydown", onKey);
@@ -384,7 +571,10 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
   // Short audible cue so the user knows the mic is now open
   const playBeep = () => {
     try {
-      const w = window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext };
+      const w = window as unknown as {
+        AudioContext?: typeof AudioContext;
+        webkitAudioContext?: typeof AudioContext;
+      };
       const Ctx = w.AudioContext ?? w.webkitAudioContext;
       if (!Ctx) return;
       const ctx = new Ctx();
@@ -398,8 +588,16 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
       osc.connect(gain).connect(ctx.destination);
       osc.start();
       osc.stop(ctx.currentTime + 0.2);
-      setTimeout(() => { try { ctx.close(); } catch { /* noop */ } }, 400);
-    } catch { /* noop */ }
+      setTimeout(() => {
+        try {
+          ctx.close();
+        } catch {
+          /* noop */
+        }
+      }, 400);
+    } catch {
+      /* noop */
+    }
   };
 
   // ------------------- Conversation runner -------------------
@@ -409,16 +607,24 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
     // Hard cap on TTS so listening always opens even if speech engine hangs
     await Promise.race([
       speak(question),
-      new Promise<void>((r) => setTimeout(r, Math.max(2500, Math.min(15000, question.length * 75)))),
+      new Promise<void>((r) =>
+        setTimeout(r, Math.max(2500, Math.min(15000, question.length * 75))),
+      ),
     ]);
     if (opts.skipListen) return;
     // Make absolutely sure speech is finished before opening mic
-    try { window.speechSynthesis?.cancel(); } catch { /* noop */ }
+    try {
+      window.speechSynthesis?.cancel();
+    } catch {
+      /* noop */
+    }
     setSpeaking(false);
     await new Promise((r) => setTimeout(r, 250));
     const heard = await listen(
       expect === "verify" || expect === "confirm" ? 30000 : 22000,
-      expect === "verify" || expect === "confirm" ? { minListenMs: 1400, silenceMs: 2600 } : undefined,
+      expect === "verify" || expect === "confirm"
+        ? { minListenMs: 1400, silenceMs: 2600 }
+        : undefined,
     );
     if (heard) {
       await handleAnswer(expect, heard);
@@ -435,7 +641,9 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
     }
   };
 
-  const reAsk = (q: string, step: StepKey) => { void ask(q, step); };
+  const reAsk = (q: string, step: StepKey) => {
+    void ask(q, step);
+  };
   const lastQuestion = transcript[transcript.length - 1]?.q ?? "";
 
   const handleAnswer = async (forStep: StepKey, text: string) => {
@@ -449,7 +657,10 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
       case "birthYear": {
         const y = parseYear(text);
         if (!y || y < MIN_BIRTH_YEAR || y > CURRENT_YEAR) {
-          reAsk(`I didn't catch a valid year. Please say a year between ${MIN_BIRTH_YEAR} and ${CURRENT_YEAR}, like "nineteen fifty".`, "birthYear");
+          reAsk(
+            `I didn't catch a valid year. Please say a year between ${MIN_BIRTH_YEAR} and ${CURRENT_YEAR}, like "nineteen fifty".`,
+            "birthYear",
+          );
           return;
         }
         verify(`birth year ${y}`, () => setBirthYear(y), "zip", "birthYear");
@@ -458,19 +669,28 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
       case "zip": {
         const digits = parseDigits(text, 3);
         if (!/^\d{3}$/.test(digits)) {
-          reAsk("Please say the first three digits of your ZIP code slowly, one at a time. For example: seven, seven, zero.", "zip");
+          reAsk(
+            "Please say the first three digits of your ZIP code slowly, one at a time. For example: seven, seven, zero.",
+            "zip",
+          );
           return;
         }
         const opts = countiesForZip3(digits);
         if (opts.length === 0) {
-          reAsk(`I don't recognize ZIP prefix ${digits.split("").join(" ")}. Please say the first three digits again.`, "zip");
+          reAsk(
+            `I don't recognize ZIP prefix ${digits.split("").join(" ")}. Please say the first three digits again.`,
+            "zip",
+          );
           return;
         }
         if (opts.length === 1) {
           const only = opts[0];
           verify(
             `ZIP ${digits.split("").join(" ")}, ${only.county}, ${only.stateCode}`,
-            () => { setZip3(digits); setCounty(only.county); },
+            () => {
+              setZip3(digits);
+              setCounty(only.county);
+            },
             "gender",
             "zip",
           );
@@ -481,9 +701,15 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
       }
       case "county": {
         const opts = countiesForZip3(zip3);
-        const match = matchOption(text, opts.map((o) => o.county));
+        const match = matchOption(
+          text,
+          opts.map((o) => o.county),
+        );
         if (!match) {
-          reAsk(`I didn't catch that. Please say one of: ${opts.map((o) => o.county).join(", ")}.`, "county");
+          reAsk(
+            `I didn't catch that. Please say one of: ${opts.map((o) => o.county).join(", ")}.`,
+            "county",
+          );
           return;
         }
         verify(`county ${match}`, () => setCounty(match), "gender", "county");
@@ -491,7 +717,7 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
       }
       case "gender": {
         const t = text.toLowerCase();
-        let g: typeof GENDERS[number] = "prefer_not_to_say";
+        let g: (typeof GENDERS)[number] = "prefer_not_to_say";
         if (/female|woman|she/.test(t)) g = "female";
         else if (/\bmale\b|\bman\b|\bhe\b/.test(t)) g = "male";
         else if (/non[\s-]?binary|enby|they/.test(t)) g = "nonbinary";
@@ -501,15 +727,26 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
       }
       case "tobacco": {
         const v = parseYesNo(text);
-        if (v === null) { reAsk("I didn't catch that — please say yes or no.", "tobacco"); return; }
-        verify(v ? "tobacco user, yes" : "non-tobacco, no", () => setTobacco(v), "income", "tobacco");
+        if (v === null) {
+          reAsk("I didn't catch that — please say yes or no.", "tobacco");
+          return;
+        }
+        verify(
+          v ? "tobacco user, yes" : "non-tobacco, no",
+          () => setTobacco(v),
+          "income",
+          "tobacco",
+        );
         return;
       }
       case "income": {
         const t = text.toLowerCase();
         const found = INCOME_SPOKEN.find((b) => b.matches.test(t));
         if (!found) {
-          reAsk("Please pick one: under 25 thousand, 25 to 50, 50 to 100, 100 to 200, over 200, or prefer not to say.", "income");
+          reAsk(
+            "Please pick one: under 25 thousand, 25 to 50, 50 to 100, 100 to 200, over 200, or prefer not to say.",
+            "income",
+          );
           return;
         }
         verify(`income ${found.band}`, () => setIncome(found.band), "costPref", "income");
@@ -518,11 +755,21 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
       case "costPref": {
         const t = text.toLowerCase();
         if (/predict|surprise|stable|fixed/.test(t)) {
-          verify("priority: predictability", () => setCostPref("predictability"), "conditionsAsk", "costPref");
+          verify(
+            "priority: predictability",
+            () => setCostPref("predictability"),
+            "conditionsAsk",
+            "costPref",
+          );
           return;
         }
         if (/minim|low(est)?|cheap|save|monthly/.test(t)) {
-          verify("priority: minimize monthly cost", () => setCostPref("minimize_monthly"), "conditionsAsk", "costPref");
+          verify(
+            "priority: minimize monthly cost",
+            () => setCostPref("minimize_monthly"),
+            "conditionsAsk",
+            "costPref",
+          );
           return;
         }
         reAsk("Please say either 'minimize monthly cost' or 'predictability'.", "costPref");
@@ -530,20 +777,29 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
       }
       case "conditionsAsk": {
         const v = parseYesNo(text);
-        if (v === false) { nextStep("medsAsk"); return; }
-        if (v === true) { nextStep("conditionsAdd"); return; }
+        if (v === false) {
+          nextStep("medsAsk");
+          return;
+        }
+        if (v === true) {
+          nextStep("conditionsAdd");
+          return;
+        }
         reAsk("Please say yes or no.", "conditionsAsk");
         return;
       }
       case "conditionsAdd": {
         const t = text.toLowerCase();
-        if (/no more|none|done|that's it|finish|nothing else|move on/.test(t)) { nextStep("medsAsk"); return; }
+        if (/no more|none|done|that's it|finish|nothing else|move on/.test(t)) {
+          nextStep("medsAsk");
+          return;
+        }
         // Try to match known conditions, otherwise accept free text
         const match = matchOption(text, CONDITIONS as unknown as string[]);
         const value = match ?? text.trim();
         verify(
           `condition ${value}`,
-          () => setConditions((p) => p.includes(value) ? p : [...p, value]),
+          () => setConditions((p) => (p.includes(value) ? p : [...p, value])),
           "conditionsAdd",
           "conditionsAdd",
         );
@@ -551,8 +807,14 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
       }
       case "medsAsk": {
         const v = parseYesNo(text);
-        if (v === false) { nextStep("confirm"); return; }
-        if (v === true) { nextStep("medsName"); return; }
+        if (v === false) {
+          nextStep("confirm");
+          return;
+        }
+        if (v === true) {
+          nextStep("medsName");
+          return;
+        }
         reAsk("Please say yes or no.", "medsAsk");
         return;
       }
@@ -564,7 +826,12 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
       case "medsStrength": {
         const t = text.trim();
         const skip = /skip|don'?t know|not sure|none/i.test(t);
-        const strength = skip ? "" : t.replace(/milligrams?/gi, "mg").replace(/micrograms?/gi, "mcg").replace(/units?/gi, "u");
+        const strength = skip
+          ? ""
+          : t
+              .replace(/milligrams?/gi, "mg")
+              .replace(/micrograms?/gi, "mcg")
+              .replace(/units?/gi, "u");
         verify(
           strength ? `strength ${strength}` : "no strength (skipped)",
           () => {
@@ -574,7 +841,8 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
               m.dosage_form = local.form ?? m.dosage_form;
               m.frequency = local.freq ?? m.frequency;
               m.estimated_monthly_retail = local.retail ?? m.estimated_monthly_retail;
-              m.resolved_diagnosis = resolveDiagnosis(local.name) ?? local.category ?? m.resolved_diagnosis;
+              m.resolved_diagnosis =
+                resolveDiagnosis(local.name) ?? local.category ?? m.resolved_diagnosis;
             }
             setMeds((p) => [...p, m]);
             setPendingMedName("");
@@ -586,20 +854,31 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
       }
       case "medsMore": {
         const v = parseYesNo(text);
-        if (v === true) { nextStep("medsName"); return; }
-        if (v === false) { nextStep("confirm"); return; }
+        if (v === true) {
+          nextStep("medsName");
+          return;
+        }
+        if (v === false) {
+          nextStep("confirm");
+          return;
+        }
         reAsk("Please say yes or no.", "medsMore");
         return;
       }
       case "verify": {
         const v = parseYesNo(text);
         if (v === true) {
-          const p = pendingRef.current; pendingRef.current = null;
-          if (p) { p.apply(); nextStep(p.next); }
+          const p = pendingRef.current;
+          pendingRef.current = null;
+          if (p) {
+            p.apply();
+            nextStep(p.next);
+          }
           return;
         }
         if (v === false) {
-          const p = pendingRef.current; pendingRef.current = null;
+          const p = pendingRef.current;
+          pendingRef.current = null;
           if (p) {
             // Re-ask the original question for this step
             setStep(p.from);
@@ -612,12 +891,22 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
       }
       case "confirm": {
         const v = parseYesNo(text);
-        if (v === true) { void submit(); return; }
-        if (v === false) { void ask("Okay — switching to the manual form so you can edit anything.", "done", { skipListen: true }); onSwitchToManual?.(); return; }
+        if (v === true) {
+          void submit();
+          return;
+        }
+        if (v === false) {
+          void ask("Okay — switching to the manual form so you can edit anything.", "done", {
+            skipListen: true,
+          });
+          onSwitchToManual?.();
+          return;
+        }
         reAsk("Should I create the scenario? Please say yes or no.", "confirm");
         return;
       }
-      default: return;
+      default:
+        return;
     }
   };
 
@@ -649,7 +938,15 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
     if (!prev || prev === "intro") {
       void speak("There's no previous question.");
       // Restore the current step so the user can keep going
-      setTimeout(() => askForStep(stepRef.current === "verify" ? (pendingRef.current?.from ?? "birthYear") : stepRef.current), 250);
+      setTimeout(
+        () =>
+          askForStep(
+            stepRef.current === "verify"
+              ? (pendingRef.current?.from ?? "birthYear")
+              : stepRef.current,
+          ),
+        250,
+      );
       return;
     }
     setStep(prev);
@@ -658,67 +955,109 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
 
   const askForStep = (s: StepKey) => {
     switch (s) {
-      case "birthYear": return void ask("What year were you born?", "birthYear");
-      case "zip": return void ask("What are the first three digits of your ZIP code?", "zip");
+      case "birthYear":
+        return void ask("What year were you born?", "birthYear");
+      case "zip":
+        return void ask("What are the first three digits of your ZIP code?", "zip");
       case "county": {
         const opts = countyOptions.length ? countyOptions : countiesForZip3(zip3);
         if (opts.length === 0) {
-          return void ask("I don't have counties for that ZIP. Please say your county name.", "county");
+          return void ask(
+            "I don't have counties for that ZIP. Please say your county name.",
+            "county",
+          );
         }
         return void startKeyPick(
           "Which county?",
           opts.map((o) => o.county),
           (idx) => {
             const picked = opts[idx];
-            if (!picked) { void ask("Sorry, I lost track. Let's try again.", "county"); return; }
+            if (!picked) {
+              void ask("Sorry, I lost track. Let's try again.", "county");
+              return;
+            }
             verify(`county ${picked.county}`, () => setCounty(picked.county), "gender", "county");
           },
           () => {
             // Cycled through every option without a key press — fall back to voice
-            void ask(`I didn't catch a key press. Please say one of: ${opts.map((o) => o.county).join(", ")}.`, "county");
+            void ask(
+              `I didn't catch a key press. Please say one of: ${opts.map((o) => o.county).join(", ")}.`,
+              "county",
+            );
           },
         );
       }
-      case "gender": return void ask("What is your gender? Female, male, non-binary, or prefer not to say?", "gender");
-      case "tobacco": return void ask("Do you use tobacco? Yes or no?", "tobacco");
-      case "income": return void ask("Which income band fits you best? Under twenty-five thousand, twenty-five to fifty, fifty to one hundred, one hundred to two hundred, over two hundred, or prefer not to say?", "income");
-      case "costPref": return void ask("What matters more — minimizing your monthly cost, or predictability with no surprise bills?", "costPref");
-      case "conditionsAsk": return void ask("Do you have any chronic health conditions? Yes or no?", "conditionsAsk");
+      case "gender":
+        return void ask(
+          "What is your gender? Female, male, non-binary, or prefer not to say?",
+          "gender",
+        );
+      case "tobacco":
+        return void ask("Do you use tobacco? Yes or no?", "tobacco");
+      case "income":
+        return void ask(
+          "Which income band fits you best? Under fifteen thousand, fifteen to thirty-five, thirty-five to fifty-five, fifty-five to seventy-five, seventy-five to ninety-five, ninety-five to one fifteen, over one fifteen thousand, or prefer not to say?",
+          "income",
+        );
+      case "costPref":
+        return void ask(
+          "What matters more — minimizing your monthly cost, or predictability with no surprise bills?",
+          "costPref",
+        );
+      case "conditionsAsk":
+        return void ask("Do you have any chronic health conditions? Yes or no?", "conditionsAsk");
       case "conditionsAdd": {
         const remaining = (CONDITIONS as readonly string[]).filter((c) => !conditions.includes(c));
         if (remaining.length === 0) {
-          return void ask("You've covered the common ones. Say another condition, or say 'done'.", "conditionsAdd");
+          return void ask(
+            "You've covered the common ones. Say another condition, or say 'done'.",
+            "conditionsAdd",
+          );
         }
         return void startKeyPick(
           "Which condition? Or press a key on the 'none of these' option to type one in.",
           [...remaining, "None of these / I'll say my own"],
           (idx) => {
             if (idx === remaining.length) {
-              void ask("Okay — please say the condition. Or say 'done' to finish.", "conditionsAdd");
+              void ask(
+                "Okay — please say the condition. Or say 'done' to finish.",
+                "conditionsAdd",
+              );
               return;
             }
             const value = remaining[idx];
             verify(
               `condition ${value}`,
-              () => setConditions((p) => p.includes(value) ? p : [...p, value]),
+              () => setConditions((p) => (p.includes(value) ? p : [...p, value])),
               "conditionsAdd",
               "conditionsAdd",
             );
           },
           () => {
-            void ask("I didn't catch a key press. Say a condition, or say 'done' to finish.", "conditionsAdd");
+            void ask(
+              "I didn't catch a key press. Say a condition, or say 'done' to finish.",
+              "conditionsAdd",
+            );
           },
         );
       }
-      case "medsAsk": return void ask("Do you take any prescription medications? Yes or no?", "medsAsk");
-      case "medsName": return void startMedSearch();
-      case "medsStrength": return void ask(`What strength of ${pendingMedName}? For example, ten milligrams. Or say "skip" if you're not sure.`, "medsStrength");
-      case "medsMore": return void ask("Any other medications? Yes or no?", "medsMore");
+      case "medsAsk":
+        return void ask("Do you take any prescription medications? Yes or no?", "medsAsk");
+      case "medsName":
+        return void startMedSearch();
+      case "medsStrength":
+        return void ask(
+          `What strength of ${pendingMedName}? For example, ten milligrams. Or say "skip" if you're not sure.`,
+          "medsStrength",
+        );
+      case "medsMore":
+        return void ask("Any other medications? Yes or no?", "medsMore");
       case "confirm": {
         const summary = `Let me confirm: born ${birthYear}, ZIP ${zip3}, ${county}, ${gender.replace(/_/g, " ")}, ${tobacco ? "tobacco user" : "non-tobacco"}, income ${income}, priority ${costPref === "minimize_monthly" ? "minimize cost" : "predictability"}, ${conditions.length} condition${conditions.length === 1 ? "" : "s"}, ${meds.length} medication${meds.length === 1 ? "" : "s"}. Should I create the scenario? Yes or no?`;
         return void ask(summary, "confirm");
       }
-      default: return;
+      default:
+        return;
     }
   };
 
@@ -756,36 +1095,65 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
       if (!heard) continue;
       setTranscript((p) => [...p, { q: heard, speaker: "you" }]);
       const t = heard.toLowerCase().trim();
-      if (/\b(go back|previous question|back up)\b/.test(t)) { cancelMedLoopRef.current = true; goBack(); return; }
-      if (/\b(cancel|never mind|stop searching|no more meds|i'?m done|that's all|nothing else)\b/.test(t)) {
+      if (/\b(go back|previous question|back up)\b/.test(t)) {
+        cancelMedLoopRef.current = true;
+        goBack();
+        return;
+      }
+      if (
+        /\b(cancel|never mind|stop searching|no more meds|i'?m done|that's all|nothing else)\b/.test(
+          t,
+        )
+      ) {
         cancelMedSearch();
         return;
       }
-      if (/\b(clear|start over|reset)\b/.test(t)) { setMedQuery(""); continue; }
+      if (/\b(clear|start over|reset)\b/.test(t)) {
+        setMedQuery("");
+        continue;
+      }
       // "read options" / "list options" / "read them" → speak each match and let any key pick
-      if (/\b(read (options|them|matches|the list)|list (options|matches)|read aloud|read em|read 'em)\b/.test(t)) {
+      if (
+        /\b(read (options|them|matches|the list)|list (options|matches)|read aloud|read em|read 'em)\b/.test(
+          t,
+        )
+      ) {
         const q = medQuery.trim();
         const matches = q ? searchMedCatalog(q, 6) : [];
-        if (matches.length === 0) { void speak("No matches yet. Say or spell more of the name."); continue; }
+        if (matches.length === 0) {
+          void speak("No matches yet. Say or spell more of the name.");
+          continue;
+        }
         cancelMedLoopRef.current = true;
         void readMedOptions(matches.map((m) => m.name));
         return;
       }
-      if (/\b(keep going|continue|more|refine|next letter)\b/.test(t)) { continue; }
+      if (/\b(keep going|continue|more|refine|next letter)\b/.test(t)) {
+        continue;
+      }
       // "add <name>" / "pick <name>" / "select <name>"
       const addMatch = t.match(/^(?:add|pick|choose|select)\s+(.+)$/);
       if (addMatch) {
         const m = bestMedicationMatch(addMatch[1]) ?? searchMedCatalog(addMatch[1], 1)[0];
-        if (m) { pickMed(m.name); return; }
+        if (m) {
+          pickMed(m.name);
+          return;
+        }
       }
       // Just "add" / "add it" / "add that" -> pick top match
       if (/^add( it| that| this)?\.?$/.test(t)) {
         const q = medQuery.trim();
         const top = q ? searchMedCatalog(q, 1)[0] : null;
-        if (top) { pickMed(top.name); return; }
+        if (top) {
+          pickMed(top.name);
+          return;
+        }
       }
       // Otherwise treat as additional search text
-      const parsed = parseSpelledOrSpoken(heard).replace(/^(it'?s|the drug is|i take|i'?m on)\s+/i, "");
+      const parsed = parseSpelledOrSpoken(heard).replace(
+        /^(it'?s|the drug is|i take|i'?m on)\s+/i,
+        "",
+      );
       if (!parsed) continue;
       setMedQuery((p) => (p ? `${p} ${parsed}` : parsed).slice(0, 80));
     }
@@ -795,11 +1163,17 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
   const readMedOptions = async (names: string[]) => {
     if (!names.length) return;
     // Blur the search input so global key handler isn't swallowed by typing
-    try { (document.activeElement as HTMLElement | null)?.blur(); } catch { /* noop */ }
+    try {
+      (document.activeElement as HTMLElement | null)?.blur();
+    } catch {
+      /* noop */
+    }
     await startKeyPick(
       "Here are the closest matches.",
       names,
-      (idx) => { pickMed(names[idx]); },
+      (idx) => {
+        pickMed(names[idx]);
+      },
       () => {
         // None picked — return to active search loop
         cancelMedLoopRef.current = false;
@@ -814,10 +1188,13 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
   }, [step]);
 
   // Cancel any in-flight key-pick when the step changes
-  useEffect(() => { stopKeyPick(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [step]);
+  useEffect(() => {
+    stopKeyPick(); /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [step]);
 
   const submit = async () => {
-    setStep("submitting"); setSubmitting(true);
+    setStep("submitting");
+    setSubmitting(true);
     await speak("Creating your scenario now.");
     const { data, error } = await supabase.rpc("create_scenario", {
       p_birth_year: birthYear as number,
@@ -838,15 +1215,30 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
     }
     const code = data as string;
     try {
-      sessionStorage.setItem(`scenario:${code}`, JSON.stringify({
-        scenarioCode: code,
-        year: new Date().getFullYear() < 2027 ? 2026 : 2027,
-        birthYear, zip3, county, gender, tobacco,
-        incomeBand: income, costPreference: costPref,
-        conditions, medications: meds,
-      }));
-    } catch { /* ignore quota */ }
-    try { (await import("@/lib/scenario-history")).rememberScenario(code); } catch { /* ignore */ }
+      sessionStorage.setItem(
+        `scenario:${code}`,
+        JSON.stringify({
+          scenarioCode: code,
+          year: new Date().getFullYear() < 2027 ? 2026 : 2027,
+          birthYear,
+          zip3,
+          county,
+          gender,
+          tobacco,
+          incomeBand: income,
+          costPreference: costPref,
+          conditions,
+          medications: meds,
+        }),
+      );
+    } catch {
+      /* ignore quota */
+    }
+    try {
+      (await import("@/lib/scenario-history")).rememberScenario(code);
+    } catch {
+      /* ignore */
+    }
     await speak(`Done. Your scenario ID is ${code.split("").join(" ")}.`);
     setStep("done");
     onDone?.(code);
@@ -855,14 +1247,22 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
   // Add common-meds suggestion when conditions known and meds empty.
   useEffect(() => {
     if (step !== "medsAsk") return;
-    const suggestions = conditions.flatMap((c) => COMMON_MEDS_BY_CONDITION[c] ?? []).slice(0, 4);
+    const suggestions = conditions.flatMap((c) => getCommonMedsForCondition(c)).slice(0, 4);
     if (suggestions.length) {
-      setTranscript((p) => [...p, { q: `Common for your conditions: ${suggestions.map((s) => s.name).join(", ")}.`, speaker: "assistant" }]);
+      setTranscript((p) => [
+        ...p,
+        {
+          q: `Common for your conditions: ${suggestions.map((s) => s.name).join(", ")}.`,
+          speaker: "assistant",
+        },
+      ]);
     }
   }, [step, conditions]);
 
   // Manual controls
-  const repeat = () => { if (lastQuestion) void speak(lastQuestion); };
+  const repeat = () => {
+    if (lastQuestion) void speak(lastQuestion);
+  };
   const retry = async () => {
     stopListening();
     if (typeof window !== "undefined") window.speechSynthesis?.cancel();
@@ -876,7 +1276,8 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
     else if (s === "medsAsk" || s === "medsMore") nextStep("confirm");
     else if (s === "medsStrength") {
       setMeds((p) => [...p, blankMed(pendingMedName)]);
-      setPendingMedName(""); nextStep("medsMore");
+      setPendingMedName("");
+      nextStep("medsMore");
     } else toast.message("This question can't be skipped.");
   };
   const submitTyped = () => {
@@ -887,10 +1288,17 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
   };
 
   // Cleanup on unmount
-  useEffect(() => () => {
-    try { recRef.current?.abort(); } catch { /* noop */ }
-    if (typeof window !== "undefined") window.speechSynthesis?.cancel();
-  }, []);
+  useEffect(
+    () => () => {
+      try {
+        recRef.current?.abort();
+      } catch {
+        /* noop */
+      }
+      if (typeof window !== "undefined") window.speechSynthesis?.cancel();
+    },
+    [],
+  );
 
   // ------------------- Start -------------------
   const begin = async () => {
@@ -903,7 +1311,9 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
       toast.error("Microphone access is required for voice intake. Please allow it and try again.");
       return;
     }
-    await speak("Hi — I'll ask you a few questions to build your Medicare scenario. You can repeat any question, retry your answer, or type instead. Let's start.");
+    await speak(
+      "Hi — I'll ask you a few questions to build your Medicare scenario. You can repeat any question, retry your answer, or type instead. Let's start.",
+    );
     nextStep("birthYear");
   };
 
@@ -911,7 +1321,10 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
     return (
       <Card className="glass p-6 max-w-2xl mx-auto text-center space-y-4">
         <h3 className="font-display text-xl font-bold">Voice mode not supported</h3>
-        <p className="text-sm text-muted-foreground">Your browser doesn't support the Web Speech API. Try Chrome, Edge, or Safari — or use the manual form.</p>
+        <p className="text-sm text-muted-foreground">
+          Your browser doesn't support the Web Speech API. Try Chrome, Edge, or Safari — or use the
+          manual form.
+        </p>
         <Button onClick={onSwitchToManual}>Use manual form</Button>
       </Card>
     );
@@ -926,8 +1339,18 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
           <p className="text-xs text-muted-foreground">I'll ask, you answer. No typing required.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge active={speaking} color="primary" icon={<Volume2 className="h-3 w-3" />} label="Speaking" />
-          <Badge active={listening} color="destructive" icon={listening ? <Mic className="h-3 w-3" /> : <MicOff className="h-3 w-3" />} label="Listening" />
+          <Badge
+            active={speaking}
+            color="primary"
+            icon={<Volume2 className="h-3 w-3" />}
+            label="Speaking"
+          />
+          <Badge
+            active={listening}
+            color="destructive"
+            icon={listening ? <Mic className="h-3 w-3" /> : <MicOff className="h-3 w-3" />}
+            label="Listening"
+          />
         </div>
       </div>
 
@@ -935,7 +1358,9 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
       {step !== "intro" && step !== "done" && step !== "submitting" && (
         <div className="flex items-center gap-1.5 rounded-md bg-primary/5 border border-primary/10 px-2.5 py-1.5 text-[11px] text-primary">
           <Info className="h-3 w-3 shrink-0" />
-          <span>Wait for the beep and the <strong>"Speak now"</strong> banner before answering.</span>
+          <span>
+            Wait for the beep and the <strong>"Speak now"</strong> banner before answering.
+          </span>
         </div>
       )}
 
@@ -968,7 +1393,11 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
                     pickingRef.current = null;
                     setPickOptions([]);
                     setPickIndex(-1);
-                    try { window.speechSynthesis?.cancel(); } catch { /* noop */ }
+                    try {
+                      window.speechSynthesis?.cancel();
+                    } catch {
+                      /* noop */
+                    }
                     p.onPick(i);
                   }}
                   className={`cursor-pointer rounded-md px-2.5 py-1.5 text-sm border transition flex items-center gap-2 ${
@@ -993,22 +1422,35 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
       <div className="bg-muted/40 border border-border rounded-lg p-3 h-64 overflow-y-auto text-sm space-y-2">
         {transcript.length === 0 && (
           <div className="text-muted-foreground text-center py-12 space-y-2">
-            <p>Press <strong>Start voice intake</strong> below — I'll ask the first question.</p>
-            <p className="text-[11px]">Tip: wait until the Listening indicator turns on before answering.</p>
+            <p>
+              Press <strong>Start voice intake</strong> below — I'll ask the first question.
+            </p>
+            <p className="text-[11px]">
+              Tip: wait until the Listening indicator turns on before answering.
+            </p>
           </div>
         )}
         {transcript.map((t, i) => (
           <div key={i} className={t.speaker === "you" ? "flex justify-end" : "flex justify-start"}>
-            <div className={`max-w-[85%] rounded-lg px-3 py-2 ${t.speaker === "you" ? "bg-primary text-primary-foreground" : "bg-background border border-border"}`}>
-              {t.speaker === "you" ? "" : "🤖 "}{t.q}
+            <div
+              className={`max-w-[85%] rounded-lg px-3 py-2 ${t.speaker === "you" ? "bg-primary text-primary-foreground" : "bg-background border border-border"}`}
+            >
+              {t.speaker === "you" ? "" : "🤖 "}
+              {t.q}
             </div>
           </div>
         ))}
       </div>
 
-      {lastHeard && listening === false && step !== "intro" && step !== "done" && step !== "submitting" && (
-        <p className="text-xs text-muted-foreground">Last heard: <em>"{lastHeard}"</em></p>
-      )}
+      {lastHeard &&
+        listening === false &&
+        step !== "intro" &&
+        step !== "done" &&
+        step !== "submitting" && (
+          <p className="text-xs text-muted-foreground">
+            Last heard: <em>"{lastHeard}"</em>
+          </p>
+        )}
 
       {/* Interactive medication picker */}
       {step === "medsName" && (
@@ -1021,8 +1463,17 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
               placeholder="Say or spell the med name, or type here…"
               className="flex-1"
             />
-            <Button variant="outline" size="sm" onClick={() => setMedQuery("")} disabled={!medQuery}>Clear</Button>
-            <Button variant="ghost" size="sm" onClick={cancelMedSearch}>Cancel</Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setMedQuery("")}
+              disabled={!medQuery}
+            >
+              Clear
+            </Button>
+            <Button variant="ghost" size="sm" onClick={cancelMedSearch}>
+              Cancel
+            </Button>
           </div>
           {medMatches.length > 0 && (
             <Button
@@ -1035,13 +1486,17 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
                 void readMedOptions(medMatches.map((m) => m.name));
               }}
             >
-              <Volume2 className="h-3.5 w-3.5 mr-1" />Read these aloud (press any key to pick)
+              <Volume2 className="h-3.5 w-3.5 mr-1" />
+              Read these aloud (press any key to pick)
             </Button>
           )}
           {medMatches.length > 0 ? (
             <div className="space-y-1.5">
               {medMatches.map((m) => (
-                <div key={m.name} className="flex items-center justify-between gap-2 rounded-md border border-border bg-background px-2.5 py-1.5">
+                <div
+                  key={m.name}
+                  className="flex items-center justify-between gap-2 rounded-md border border-border bg-background px-2.5 py-1.5"
+                >
                   <div className="min-w-0">
                     <div className="text-sm font-semibold truncate">{m.name}</div>
                     <div className="text-[11px] text-muted-foreground truncate">
@@ -1049,7 +1504,8 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
                     </div>
                   </div>
                   <Button size="sm" onClick={() => pickMed(m.name)}>
-                    <Check className="h-3.5 w-3.5 mr-1" />Add
+                    <Check className="h-3.5 w-3.5 mr-1" />
+                    Add
                   </Button>
                 </div>
               ))}
@@ -1062,34 +1518,76 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
             </p>
           )}
           <p className="text-[11px] text-muted-foreground">
-            Voice commands: <strong>add</strong> (top match), <strong>add &lt;name&gt;</strong>, <strong>read options</strong>, <strong>keep going</strong>, <strong>clear</strong>, <strong>cancel</strong>.
+            Voice commands: <strong>add</strong> (top match), <strong>add &lt;name&gt;</strong>,{" "}
+            <strong>read options</strong>, <strong>keep going</strong>, <strong>clear</strong>,{" "}
+            <strong>cancel</strong>.
           </p>
         </div>
       )}
 
       {/* Controls */}
       {step === "intro" ? (
-        <Button className="w-full grad-indigo" onClick={begin}><Mic className="h-4 w-4 mr-2" />Start voice intake</Button>
+        <Button className="w-full grad-indigo" onClick={begin}>
+          <Mic className="h-4 w-4 mr-2" />
+          Start voice intake
+        </Button>
       ) : step === "submitting" ? (
-        <Button className="w-full" disabled><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating scenario…</Button>
+        <Button className="w-full" disabled>
+          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          Creating scenario…
+        </Button>
       ) : step === "done" ? (
-        <div className="text-center text-sm text-emerald font-semibold flex items-center justify-center gap-2"><Check className="h-4 w-4" />Scenario created.</div>
+        <div className="text-center text-sm text-emerald font-semibold flex items-center justify-center gap-2">
+          <Check className="h-4 w-4" />
+          Scenario created.
+        </div>
       ) : (
         <>
           {typing ? (
             <div className="flex gap-2">
-              <Input autoFocus value={typedAnswer} onChange={(e) => setTypedAnswer(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submitTyped(); } }}
-                placeholder="Type your answer…" />
-              <Button onClick={submitTyped} disabled={!typedAnswer.trim()}>Send</Button>
-              <Button variant="outline" onClick={() => { setTyping(false); setTypedAnswer(""); }}>Cancel</Button>
+              <Input
+                autoFocus
+                value={typedAnswer}
+                onChange={(e) => setTypedAnswer(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    submitTyped();
+                  }
+                }}
+                placeholder="Type your answer…"
+              />
+              <Button onClick={submitTyped} disabled={!typedAnswer.trim()}>
+                Send
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setTyping(false);
+                  setTypedAnswer("");
+                }}
+              >
+                Cancel
+              </Button>
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <Button variant="outline" size="sm" onClick={repeat} disabled={speaking}><Volume2 className="h-3.5 w-3.5 mr-1" />Repeat</Button>
-              <Button variant="outline" size="sm" onClick={retry} disabled={listening}><RotateCcw className="h-3.5 w-3.5 mr-1" />Retry</Button>
-              <Button variant="outline" size="sm" onClick={() => setTyping(true)}><Keyboard className="h-3.5 w-3.5 mr-1" />Type</Button>
-              <Button variant="outline" size="sm" onClick={skip}><SkipForward className="h-3.5 w-3.5 mr-1" />Skip</Button>
+              <Button variant="outline" size="sm" onClick={repeat} disabled={speaking}>
+                <Volume2 className="h-3.5 w-3.5 mr-1" />
+                Repeat
+              </Button>
+              <Button variant="outline" size="sm" onClick={retry} disabled={listening}>
+                <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                Retry
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setTyping(true)}>
+                <Keyboard className="h-3.5 w-3.5 mr-1" />
+                Type
+              </Button>
+              <Button variant="outline" size="sm" onClick={skip}>
+                <SkipForward className="h-3.5 w-3.5 mr-1" />
+                Skip
+              </Button>
             </div>
           )}
         </>
@@ -1097,18 +1595,43 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
 
       {/* Running summary */}
       <div className="text-[11px] text-muted-foreground border-t border-border pt-3 grid grid-cols-2 md:grid-cols-3 gap-x-3 gap-y-1">
-        <span>Birth: <strong className="text-foreground">{birthYear ?? "—"}</strong></span>
-        <span>ZIP3: <strong className="text-foreground">{zip3 || "—"}</strong></span>
-        <span>County: <strong className="text-foreground">{county || "—"}</strong></span>
-        <span>Gender: <strong className="text-foreground">{gender.replace(/_/g, " ")}</strong></span>
-        <span>Tobacco: <strong className="text-foreground">{tobacco ? "Yes" : "No"}</strong></span>
-        <span>Income: <strong className="text-foreground">{income}</strong></span>
-        <span className="col-span-2 md:col-span-3">Conditions: <strong className="text-foreground">{conditions.join(", ") || "None"}</strong></span>
-        <span className="col-span-2 md:col-span-3">Meds: <strong className="text-foreground">{meds.map((m) => `${m.medication_name}${m.strength ? ` ${m.strength}` : ""}`).join(", ") || "None"}</strong></span>
+        <span>
+          Birth: <strong className="text-foreground">{birthYear ?? "—"}</strong>
+        </span>
+        <span>
+          ZIP3: <strong className="text-foreground">{zip3 || "—"}</strong>
+        </span>
+        <span>
+          County: <strong className="text-foreground">{county || "—"}</strong>
+        </span>
+        <span>
+          Gender: <strong className="text-foreground">{gender.replace(/_/g, " ")}</strong>
+        </span>
+        <span>
+          Tobacco: <strong className="text-foreground">{tobacco ? "Yes" : "No"}</strong>
+        </span>
+        <span>
+          Income: <strong className="text-foreground">{income}</strong>
+        </span>
+        <span className="col-span-2 md:col-span-3">
+          Conditions: <strong className="text-foreground">{conditions.join(", ") || "None"}</strong>
+        </span>
+        <span className="col-span-2 md:col-span-3">
+          Meds:{" "}
+          <strong className="text-foreground">
+            {meds
+              .map((m) => `${m.medication_name}${m.strength ? ` ${m.strength}` : ""}`)
+              .join(", ") || "None"}
+          </strong>
+        </span>
       </div>
 
       <div className="flex justify-center">
-        <button type="button" className="text-xs text-muted-foreground underline hover:text-foreground" onClick={onSwitchToManual}>
+        <button
+          type="button"
+          className="text-xs text-muted-foreground underline hover:text-foreground"
+          onClick={onSwitchToManual}
+        >
           Switch to manual form
         </button>
       </div>
@@ -1116,11 +1639,28 @@ export function VoiceIntakeWizard({ onDone, onSwitchToManual }: { onDone?: (code
   );
 }
 
-function Badge({ active, color, icon, label }: { active: boolean; color: "primary" | "destructive"; icon: React.ReactNode; label: string }) {
-  const base = "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold border transition";
+function Badge({
+  active,
+  color,
+  icon,
+  label,
+}: {
+  active: boolean;
+  color: "primary" | "destructive";
+  icon: React.ReactNode;
+  label: string;
+}) {
+  const base =
+    "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold border transition";
   const off = "bg-muted text-muted-foreground border-border";
-  const on = color === "primary"
-    ? "bg-primary/10 text-primary border-primary/30 animate-pulse"
-    : "bg-destructive/10 text-destructive border-destructive/30 animate-pulse";
-  return <span className={`${base} ${active ? on : off}`}>{icon}{label}</span>;
+  const on =
+    color === "primary"
+      ? "bg-primary/10 text-primary border-primary/30 animate-pulse"
+      : "bg-destructive/10 text-destructive border-destructive/30 animate-pulse";
+  return (
+    <span className={`${base} ${active ? on : off}`}>
+      {icon}
+      {label}
+    </span>
+  );
 }

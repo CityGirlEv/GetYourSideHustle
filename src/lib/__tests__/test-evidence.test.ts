@@ -1,4 +1,6 @@
-const PNG_HEAD = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0, 0, 0, 0, 0]);
+const PNG_HEAD = new Uint8Array([
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0, 0, 0, 0, 0,
+]);
 function pngFile(name: string) {
   return new File([PNG_HEAD], name, { type: "image/png" });
 }
@@ -37,7 +39,12 @@ describe("test-evidence", () => {
   it("lists and maps files", async () => {
     storage.list.mockResolvedValue({
       data: [
-        { name: "a.png", metadata: { size: 100 }, updated_at: "2026-01-01", created_at: "2026-01-01" },
+        {
+          name: "a.png",
+          metadata: { size: 100 },
+          updated_at: "2026-01-01",
+          created_at: "2026-01-01",
+        },
         { name: "sub/", metadata: null, updated_at: "", created_at: "" },
       ],
       error: null,
@@ -97,19 +104,23 @@ describe("validateEvidenceFile (security gate)", () => {
   });
 
   it("rejects empty files", async () => {
-    await expect(validateEvidenceFile(new File([], "x.png", { type: "image/png" })))
-      .rejects.toThrow(/empty/i);
+    await expect(
+      validateEvidenceFile(new File([], "x.png", { type: "image/png" })),
+    ).rejects.toThrow(/empty/i);
   });
 
   it("rejects files over 20 MB", async () => {
-    const big = new File([new Uint8Array(EVIDENCE_MAX_BYTES + 1)], "big.png", { type: "image/png" });
+    const big = new File([new Uint8Array(EVIDENCE_MAX_BYTES + 1)], "big.png", {
+      type: "image/png",
+    });
     await expect(validateEvidenceFile(big)).rejects.toThrow(/20 MB/);
   });
 
   it("rejects disallowed extensions (.exe, .html, .svg, .zip, .js)", async () => {
     for (const ext of ["exe", "html", "svg", "zip", "js"]) {
-      await expect(validateEvidenceFile(make([0x89, 0x50, 0x4e, 0x47], `bad.${ext}`)))
-        .rejects.toThrow();
+      await expect(
+        validateEvidenceFile(make([0x89, 0x50, 0x4e, 0x47], `bad.${ext}`)),
+      ).rejects.toThrow();
     }
   });
 

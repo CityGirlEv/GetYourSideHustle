@@ -1,7 +1,17 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const ROLE_PRIORITY = ["admin", "qa", "agent", "editor", "viewer", "advisor"] as const;
+const ROLE_PRIORITY = [
+  "leads_admin",
+  "admin",
+  "qa",
+  "agent",
+  "customer",
+  "editor",
+  "client",
+  "viewer",
+  "advisor",
+] as const;
 
 function pickRole(roles: string[]) {
   for (const role of ROLE_PRIORITY) {
@@ -20,10 +30,7 @@ export const getCurrentUserProfile = createServerFn({ method: "POST" })
         .select("full_name, npn_number, qa_devices")
         .eq("id", context.userId)
         .maybeSingle(),
-      supabaseAdmin
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", context.userId),
+      supabaseAdmin.from("user_roles").select("role").eq("user_id", context.userId),
       supabaseAdmin.auth.admin.getUserById(context.userId),
     ]);
 

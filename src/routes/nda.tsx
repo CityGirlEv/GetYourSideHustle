@@ -14,15 +14,17 @@ import { FileSignature, FileCheck2, Download, ShieldCheck } from "lucide-react";
 export const Route = createFileRoute("/nda")({
   head: () => ({
     meta: [
-      { title: "Beta NDA — The Medicare Optimizer" },
-      { name: "description", content: "Review and sign the non-disclosure agreement required for Medicare Optimizer beta access." },
-      { property: "og:title", content: "Beta NDA — The Medicare Optimizer" },
-      { property: "og:description", content: "Review and sign the Medicare Optimizer beta NDA." },
+      { title: "Beta NDA — Get Part B Optimizer" },
+      {
+        name: "description",
+        content:
+          "Review and sign the non-disclosure agreement required for Get Part B Optimizer beta access.",
+      },
+      { property: "og:title", content: "Beta NDA — Get Part B Optimizer" },
+      { property: "og:description", content: "Review and sign Get Part B Optimizer beta NDA." },
       { property: "og:url", content: "https://themedicareoptimizer.lovable.app/nda" },
     ],
-    links: [
-      { rel: "canonical", href: "https://themedicareoptimizer.lovable.app/nda" },
-    ],
+    links: [{ rel: "canonical", href: "https://themedicareoptimizer.lovable.app/nda" }],
   }),
   component: NdaPage,
 });
@@ -47,7 +49,10 @@ function NdaPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) { router.navigate({ to: "/auth" }); return; }
+    if (!user) {
+      router.navigate({ to: "/auth" });
+      return;
+    }
     setFullName(user.full_name || "");
     let cancelled = false;
     (async () => {
@@ -67,13 +72,21 @@ function NdaPage() {
       }
       setLoading(false);
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [user, router]);
 
   async function handleSign() {
     if (!user) return;
-    if (fullName.trim().length < 3) { toast.error("Please type your full legal name."); return; }
-    if (!accept) { toast.error("You must check the box to confirm agreement."); return; }
+    if (fullName.trim().length < 3) {
+      toast.error("Please type your full legal name.");
+      return;
+    }
+    if (!accept) {
+      toast.error("You must check the box to confirm agreement.");
+      return;
+    }
     setSubmitting(true);
     try {
       const signedAt = new Date();
@@ -92,14 +105,18 @@ function NdaPage() {
         .upload(path, blob, { contentType: "application/pdf", upsert: false });
       if (up.error) throw up.error;
 
-      const ins = await supabase.from("nda_signatures").insert({
-        user_id: user.id,
-        full_name: fullName.trim(),
-        email: user.email,
-        agreement_version: NDA_VERSION,
-        pdf_path: path,
-        user_agent: ua,
-      }).select("id, full_name, signed_at, pdf_path, agreement_version").single();
+      const ins = await supabase
+        .from("nda_signatures")
+        .insert({
+          user_id: user.id,
+          full_name: fullName.trim(),
+          email: user.email,
+          agreement_version: NDA_VERSION,
+          pdf_path: path,
+          user_agent: ua,
+        })
+        .select("id, full_name, signed_at, pdf_path, agreement_version")
+        .single();
       if (ins.error) throw ins.error;
 
       const { data: signed } = await supabase.storage
@@ -119,7 +136,10 @@ function NdaPage() {
   if (!user) return null;
 
   return (
-    <AppShell title="Non-Disclosure Agreement" subtitle="Sign electronically before accessing the beta">
+    <AppShell
+      title="Non-Disclosure Agreement"
+      subtitle="Sign electronically before accessing the beta"
+    >
       {loading ? (
         <Card className="glass p-6 text-sm text-muted-foreground">Loading…</Card>
       ) : existing ? (
@@ -129,16 +149,29 @@ function NdaPage() {
             <h2 className="font-display text-lg font-bold">NDA on file</h2>
           </div>
           <div className="text-sm grid gap-1">
-            <div><span className="text-muted-foreground">Signed by:</span> {existing.full_name}</div>
-            <div><span className="text-muted-foreground">Date:</span> {new Date(existing.signed_at).toLocaleString()}</div>
-            <div><span className="text-muted-foreground">Version:</span> {existing.agreement_version}</div>
+            <div>
+              <span className="text-muted-foreground">Signed by:</span> {existing.full_name}
+            </div>
+            <div>
+              <span className="text-muted-foreground">Date:</span>{" "}
+              {new Date(existing.signed_at).toLocaleString()}
+            </div>
+            <div>
+              <span className="text-muted-foreground">Version:</span> {existing.agreement_version}
+            </div>
           </div>
           {downloadUrl && (
             <div className="flex gap-2">
               <a href={downloadUrl} target="_blank" rel="noreferrer" download>
-                <Button size="sm"><Download className="h-4 w-4 mr-1.5" /> Download signed PDF</Button>
+                <Button size="sm">
+                  <Download className="h-4 w-4 mr-1.5" /> Download signed PDF
+                </Button>
               </a>
-              <Link to="/agent"><Button size="sm" variant="outline">Continue</Button></Link>
+              <Link to="/agent">
+                <Button size="sm" variant="outline">
+                  Continue
+                </Button>
+              </Link>
             </div>
           )}
         </Card>
@@ -150,7 +183,9 @@ function NdaPage() {
               <h2 className="font-display text-lg font-bold">{NDA_TITLE}</h2>
             </div>
             <div className="max-h-[420px] overflow-y-auto border rounded-md p-4 bg-background/40 text-sm leading-relaxed space-y-2">
-              {NDA_BODY.map((p, i) => p === "" ? <div key={i} className="h-2" /> : <p key={i}>{p}</p>)}
+              {NDA_BODY.map((p, i) =>
+                p === "" ? <div key={i} className="h-2" /> : <p key={i}>{p}</p>,
+              )}
             </div>
           </Card>
 
@@ -158,7 +193,11 @@ function NdaPage() {
             <div className="grid gap-2 sm:grid-cols-2">
               <div>
                 <label className="text-xs text-muted-foreground">Your full legal name</label>
-                <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Jane A. Doe" />
+                <Input
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Jane A. Doe"
+                />
               </div>
               <div>
                 <label className="text-xs text-muted-foreground">Email</label>
@@ -167,14 +206,19 @@ function NdaPage() {
             </div>
             <label className="flex items-start gap-2 text-sm">
               <Checkbox checked={accept} onCheckedChange={(v) => setAccept(!!v)} />
-              <span>I have read the NDA above and agree to its terms. I understand that typing my name and clicking "I agree and sign" constitutes my legal electronic signature.</span>
+              <span>
+                I have read the NDA above and agree to its terms. I understand that typing my name
+                and clicking "I agree and sign" constitutes my legal electronic signature.
+              </span>
             </label>
             <div className="flex gap-2">
               <Button onClick={handleSign} disabled={submitting}>
                 <FileSignature className="h-4 w-4 mr-1.5" />
                 {submitting ? "Signing…" : "I agree and sign"}
               </Button>
-              <Link to="/"><Button variant="outline">Cancel</Button></Link>
+              <Link to="/">
+                <Button variant="outline">Cancel</Button>
+              </Link>
             </div>
           </Card>
         </div>

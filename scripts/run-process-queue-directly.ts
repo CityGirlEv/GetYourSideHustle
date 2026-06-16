@@ -8,10 +8,7 @@ for (const line of envContent.split(/\r?\n/)) {
   const i = line.indexOf("=");
   const key = line.slice(0, i);
   let val = line.slice(i + 1).trim();
-  if (
-    (val.startsWith('"') && val.endsWith('"')) ||
-    (val.startsWith("'") && val.endsWith("'"))
-  ) {
+  if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
     val = val.slice(1, -1);
   }
   process.env[key] = val;

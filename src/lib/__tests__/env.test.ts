@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { getEnvVariable, getRuntimeSecret } from "../env";
+import { getEnvVariable, getRuntimeConfig, getRuntimeSecret } from "../env";
 
 describe("getEnvVariable helper", () => {
   const originalProcessEnv = { ...process.env };
@@ -72,6 +72,47 @@ describe("getEnvVariable helper", () => {
   it("should trim whitespace from env values", () => {
     process.env.TEST_VAR = "  spaced-val  ";
     expect(getEnvVariable("TEST_VAR")).toBe("spaced-val");
+  });
+});
+
+describe("getRuntimeConfig helper", () => {
+  const originalProcessEnv = { ...process.env };
+
+  beforeEach(() => {
+    process.env = { ...originalProcessEnv };
+    delete (globalThis as any).__ENV__;
+  });
+
+  afterEach(() => {
+    process.env = originalProcessEnv;
+    delete (globalThis as any).__ENV__;
+  });
+
+  it("prefers process.env over worker bindings in local dev", () => {
+    if ((import.meta as { env?: { DEV?: boolean } }).env) {
+      (import.meta as { env: { DEV?: boolean } }).env.DEV = true;
+    }
+    process.env.SUPABASE_URL = "https://local-project.supabase.co";
+    (globalThis as any).__ENV__ = { SUPABASE_URL: "https://remote-project.supabase.co" };
+    expect(getRuntimeConfig("SUPABASE_URL")).toBe("https://local-project.supabase.co");
+    if ((import.meta as { env?: { DEV?: boolean } }).env) {
+      (import.meta as { env: { DEV?: boolean } }).env.DEV = false;
+    }
+  });
+
+  it("prefers worker bindings over process.env in production", () => {
+    const prevDev = (import.meta as { env?: { DEV?: boolean } }).env?.DEV;
+    if ((import.meta as { env?: { DEV?: boolean } }).env) {
+      (import.meta as { env: { DEV?: boolean } }).env.DEV = false;
+    }
+    process.env.NODE_ENV = "production";
+    process.env.SUPABASE_URL = "https://process-project.supabase.co";
+    (globalThis as any).__ENV__ = { SUPABASE_URL: "https://worker-project.supabase.co" };
+    expect(getRuntimeConfig("SUPABASE_URL")).toBe("https://worker-project.supabase.co");
+    process.env.NODE_ENV = "test";
+    if ((import.meta as { env?: { DEV?: boolean } }).env) {
+      (import.meta as { env: { DEV?: boolean } }).env.DEV = prevDev;
+    }
   });
 });
 

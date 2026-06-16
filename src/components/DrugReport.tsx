@@ -44,8 +44,17 @@ function classifyTier(m: Medication): { tier: string; rationale: string; estPlan
   const isBrand = !!m.generic_alternative || m.no_generic_available === true;
   if (!isBrand) {
     // Generic
-    if (retail < 15) return { tier: "Tier 1 — Preferred Generic", rationale: "Low-cost generic on most formularies.", estPlanMonthly: 4 };
-    return { tier: "Tier 2 — Generic", rationale: "Generic drug, typical copay $10–$20.", estPlanMonthly: 12 };
+    if (retail < 15)
+      return {
+        tier: "Tier 1 — Preferred Generic",
+        rationale: "Low-cost generic on most formularies.",
+        estPlanMonthly: 4,
+      };
+    return {
+      tier: "Tier 2 — Generic",
+      rationale: "Generic drug, typical copay $10–$20.",
+      estPlanMonthly: 12,
+    };
   }
   // Brand
   if (retail >= 670) {
@@ -56,9 +65,17 @@ function classifyTier(m: Medication): { tier: string; rationale: string; estPlan
     };
   }
   if (m.no_generic_available) {
-    return { tier: "Tier 4 — Non-Preferred Brand", rationale: "Brand-only drug with no generic equivalent.", estPlanMonthly: Math.round(retail * 0.4) };
+    return {
+      tier: "Tier 4 — Non-Preferred Brand",
+      rationale: "Brand-only drug with no generic equivalent.",
+      estPlanMonthly: Math.round(retail * 0.4),
+    };
   }
-  return { tier: "Tier 3 — Preferred Brand", rationale: "Brand drug with a generic alternative available.", estPlanMonthly: Math.round(retail * 0.25) };
+  return {
+    tier: "Tier 3 — Preferred Brand",
+    rationale: "Brand drug with a generic alternative available.",
+    estPlanMonthly: Math.round(retail * 0.25),
+  };
 }
 
 export function buildDrugReport(meds: Medication[]): DrugReportRow[] {
@@ -97,7 +114,8 @@ export function DrugReport({ medications }: { medications: Medication[] }) {
         <h3 className="font-display text-lg font-bold">Prescription Drug Report</h3>
       </div>
       <p className="text-xs text-muted-foreground">
-        Estimated CMS Part D formulary tier and member cost for each medication you entered. Actual tier and copay vary by plan formulary.
+        Estimated CMS Part D formulary tier and member cost for each medication you entered. Actual
+        tier and copay vary by plan formulary.
       </p>
 
       <div className="overflow-x-auto -mx-5 px-5">
@@ -116,13 +134,22 @@ export function DrugReport({ medications }: { medications: Medication[] }) {
               <tr key={i} className="border-b border-border/50 align-top">
                 <td className="py-2 pr-3">
                   <div className="font-semibold">{r.name || "Unnamed medication"}</div>
-                  <div className="text-[11px] text-muted-foreground">{[r.strength, r.form, r.frequency].filter(Boolean).join(" · ")}</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {[r.strength, r.form, r.frequency].filter(Boolean).join(" · ")}
+                  </div>
                   {r.resolvedDiagnosis ? (
-                    <div className="text-[10px] text-muted-foreground mt-0.5">Condition: {r.resolvedDiagnosis}</div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">
+                      Condition: {r.resolvedDiagnosis}
+                    </div>
                   ) : null}
-                  <div className="text-[10px] text-muted-foreground mt-0.5">Retail: {usd(r.retailMonthly)}/mo</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">
+                    Retail: {usd(r.retailMonthly)}/mo
+                  </div>
                   {r.notes.map((n, j) => (
-                    <div key={j} className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
+                    <div
+                      key={j}
+                      className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5"
+                    >
                       <AlertCircle className="h-2.5 w-2.5 shrink-0" /> {n}
                     </div>
                   ))}
@@ -132,14 +159,18 @@ export function DrugReport({ medications }: { medications: Medication[] }) {
                   <div className="text-[10px] text-muted-foreground">{r.tierRationale}</div>
                 </td>
                 <td className="py-2 pr-3 text-right tabular-nums">{usd(r.retailMonthly)}</td>
-                <td className="py-2 pr-3 text-right tabular-nums font-semibold">{usd(r.estPlanMonthly)}</td>
+                <td className="py-2 pr-3 text-right tabular-nums font-semibold">
+                  {usd(r.estPlanMonthly)}
+                </td>
                 <td className="py-2 pr-3 text-right tabular-nums">{usd(r.estPlanAnnual)}</td>
               </tr>
             ))}
           </tbody>
           <tfoot>
             <tr className="font-semibold">
-              <td className="py-2 pr-3" colSpan={2}>Totals (before Part D $2,100 OOP cap)</td>
+              <td className="py-2 pr-3" colSpan={2}>
+                Totals (before Part D $2,100 OOP cap)
+              </td>
               <td className="py-2 pr-3 text-right tabular-nums">{usd(totalRetail)}</td>
               <td className="py-2 pr-3 text-right tabular-nums">{usd(totalPlanMonthly)}</td>
               <td className="py-2 pr-3 text-right tabular-nums">{usd(totalPlanMonthly * 12)}</td>
@@ -149,7 +180,9 @@ export function DrugReport({ medications }: { medications: Medication[] }) {
       </div>
 
       <p className="text-[10px] text-muted-foreground border-t border-border pt-2">
-        Tier estimates follow CMS Part D guidance: Tier 1/2 generics, Tier 3 preferred brand, Tier 4 non-preferred brand, Tier 5 specialty (≥ $670/mo). Insulin capped at $35/mo (IRA). DME billed under Part B.
+        Tier estimates follow CMS Part D guidance: Tier 1/2 generics, Tier 3 preferred brand, Tier 4
+        non-preferred brand, Tier 5 specialty (≥ $670/mo). Insulin capped at $35/mo (IRA). DME
+        billed under Part B.
       </p>
     </Card>
   );

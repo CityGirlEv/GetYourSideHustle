@@ -55,10 +55,7 @@ export interface GenericInfo {
 }
 
 /** Look up the generic (active ingredient, TTY=IN) for a given RxCUI. */
-export async function getGenericFor(
-  rxcui: string,
-  signal?: AbortSignal,
-): Promise<GenericInfo> {
+export async function getGenericFor(rxcui: string, signal?: AbortSignal): Promise<GenericInfo> {
   try {
     const r = await fetch(`${BASE}/rxcui/${rxcui}/related.json?tty=IN`, { signal });
     if (!r.ok) return { noGenericAvailable: false };

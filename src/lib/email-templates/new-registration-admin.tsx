@@ -1,53 +1,61 @@
 import {
-  Body, Container, Head, Heading, Hr, Html, Preview, Section, Text,
-} from '@react-email/components'
-import type { TemplateEntry } from './registry'
-import { EmailHeader } from './email-header'
-import { EmailFooter } from './email-footer'
+  Body,
+  Container,
+  Head,
+  Heading,
+  Hr,
+  Html,
+  Preview,
+  Section,
+  Text,
+} from "@react-email/components";
+import type { TemplateEntry } from "./registry";
+import { EmailHeader } from "./email-header";
+import { EmailFooter } from "./email-footer";
 
-const SITE_NAME = 'The Medicare Optimizer'
-const SITE_URL = 'https://mypartb.pages.dev'
+const SITE_NAME = "Get Part B Optimizer";
+const SITE_URL = "https://mypartb.pages.dev";
 
 export interface NewRegistrationAdminProps {
-  firstName?: string
-  lastName?: string
-  email?: string
-  phone?: string
-  requestedRole?: string
-  qaDevices?: string[]
-  additionalRole?: boolean
-  existingRoles?: string[]
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  requestedRole?: string;
+  qaDevices?: string[];
+  additionalRole?: boolean;
+  existingRoles?: string[];
 }
 
 const NewRegistrationAdminEmail = ({
-  firstName = '',
-  lastName = '',
-  email = '',
-  phone = '',
-  requestedRole = '',
+  firstName = "",
+  lastName = "",
+  email = "",
+  phone = "",
+  requestedRole = "",
   qaDevices = [],
   additionalRole = false,
   existingRoles = [],
 }: NewRegistrationAdminProps) => {
-  const fullName = `${firstName} ${lastName}`.trim() || 'A new user'
-  const devicesLabel = qaDevices.length ? qaDevices.join(', ') : 'None specified'
-  const existingRolesLabel = existingRoles.length ? existingRoles.join(', ') : 'None'
+  const fullName = `${firstName} ${lastName}`.trim() || "A new user";
+  const devicesLabel = qaDevices.length ? qaDevices.join(", ") : "None specified";
+  const existingRolesLabel = existingRoles.length ? existingRoles.join(", ") : "None";
   return (
     <Html lang="en" dir="ltr">
       <Head />
       <Preview>
-        {additionalRole ? 'Additional beta role request' : 'New beta registration'} — {fullName}
+        {additionalRole ? "Additional beta role request" : "New beta registration"} — {fullName}
       </Preview>
       <Body style={main}>
         <Container style={container}>
           <EmailHeader siteUrl={SITE_URL} />
           <Heading style={h1}>
-            {additionalRole ? 'Additional beta role request' : 'New beta access request'}
+            {additionalRole ? "Additional beta role request" : "New beta access request"}
           </Heading>
           <Text style={text}>
-            <b>{fullName}</b>{' '}
+            <b>{fullName}</b>{" "}
             {additionalRole
-              ? `signed the NDA again and requested an additional ${requestedRole || 'role'} on their existing ${SITE_NAME} account.`
+              ? `signed the NDA again and requested an additional ${requestedRole || "role"} on their existing ${SITE_NAME} account.`
               : `just signed the NDA and registered for ${SITE_NAME}. The account has been created but is disabled until an administrator approves it.`}
           </Text>
           <Section style={card}>
@@ -55,8 +63,11 @@ const NewRegistrationAdminEmail = ({
             <Row label="Email" value={email} />
             <Row label="Phone" value={phone} />
             {additionalRole ? <Row label="Existing roles" value={existingRolesLabel} /> : null}
-            <Row label={additionalRole ? 'New role requested' : 'Requested role'} value={requestedRole} />
-            {requestedRole === 'qa' && <Row label="QA devices" value={devicesLabel} />}
+            <Row
+              label={additionalRole ? "New role requested" : "Requested role"}
+              value={requestedRole}
+            />
+            {requestedRole === "qa" && <Row label="QA devices" value={devicesLabel} />}
           </Section>
           <Hr style={hr} />
           <Text style={footer}>
@@ -66,48 +77,48 @@ const NewRegistrationAdminEmail = ({
         </Container>
       </Body>
     </Html>
-  )
-}
+  );
+};
 
 const Row = ({ label, value }: { label: string; value: string }) => (
   <Text style={rowText}>
     <span style={rowLabel}>{label}: </span>
     <span style={rowValue}>{value}</span>
   </Text>
-)
+);
 
 export const template = {
   component: NewRegistrationAdminEmail,
   subject: (data: Record<string, any>) => {
-    const name = `${data?.firstName ?? ''} ${data?.lastName ?? ''}`.trim()
-    return `New beta registration${name ? ` — ${name}` : ''}`
+    const name = `${data?.firstName ?? ""} ${data?.lastName ?? ""}`.trim();
+    return `New beta registration${name ? ` — ${name}` : ""}`;
   },
-  displayName: 'New registration (admin notification)',
+  displayName: "New registration (admin notification)",
   previewData: {
-    firstName: 'Jane',
-    lastName: 'Doe',
-    email: 'jane@example.com',
-    phone: '(555) 555-1234',
-    requestedRole: 'qa',
-    qaDevices: ['iPhone', 'MacBook'],
+    firstName: "Jane",
+    lastName: "Doe",
+    email: "jane@example.com",
+    phone: "(555) 555-1234",
+    requestedRole: "qa",
+    qaDevices: ["iPhone", "MacBook"],
   },
-} satisfies TemplateEntry
+} satisfies TemplateEntry;
 
 const main = {
-  backgroundColor: '#ffffff',
+  backgroundColor: "#ffffff",
   fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif',
-}
-const container = { padding: '32px 24px', maxWidth: '560px' }
-const h1 = { fontSize: '22px', fontWeight: 700, color: '#0f172a', margin: '0 0 16px' }
-const text = { fontSize: '14px', color: '#334155', lineHeight: '1.6', margin: '0 0 20px' }
+};
+const container = { padding: "32px 24px", maxWidth: "560px" };
+const h1 = { fontSize: "12px", fontWeight: 700, color: "#0f172a", margin: "0 0 16px" };
+const text = { fontSize: "12px", color: "#334155", lineHeight: "1.6", margin: "0 0 20px" };
 const card = {
-  border: '1px solid #e2e8f0',
-  borderRadius: '8px',
-  padding: '16px 20px',
-  backgroundColor: '#f8fafc',
-}
-const rowText = { fontSize: '14px', color: '#0f172a', margin: '6px 0', lineHeight: '1.5' }
-const rowLabel = { color: '#64748b', fontWeight: 600 }
-const rowValue = { color: '#0f172a' }
-const hr = { borderColor: '#e2e8f0', margin: '24px 0' }
-const footer = { fontSize: '12px', color: '#64748b', margin: 0 }
+  border: "1px solid #e2e8f0",
+  borderRadius: "8px",
+  padding: "16px 20px",
+  backgroundColor: "#f8fafc",
+};
+const rowText = { fontSize: "12px", color: "#0f172a", margin: "6px 0", lineHeight: "1.5" };
+const rowLabel = { color: "#64748b", fontWeight: 600 };
+const rowValue = { color: "#0f172a" };
+const hr = { borderColor: "#e2e8f0", margin: "24px 0" };
+const footer = { fontSize: "12px", color: "#64748b", margin: 0 };

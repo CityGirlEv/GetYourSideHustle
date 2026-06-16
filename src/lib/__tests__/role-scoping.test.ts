@@ -36,6 +36,12 @@ describe("role-scoping", () => {
       expect(shouldRestrictToSelf(null)).toBe(false);
       expect(shouldRestrictToSelf(undefined)).toBe(false);
     });
+
+    it("is false when the user also has the admin role", () => {
+      expect(shouldRestrictToSelf({ role: "qa", roles: ["qa", "admin"], full_name: "A" })).toBe(
+        false,
+      );
+    });
   });
 
   describe("QA visible owners", () => {
@@ -69,29 +75,17 @@ describe("role-scoping", () => {
     });
 
     it("returns own and Unassigned items for QA users", () => {
-      const out = filterToOwnAssignments(
-        cases,
-        { role: "qa", full_name: "Alice Smith" },
-        getOwner,
-      );
+      const out = filterToOwnAssignments(cases, { role: "qa", full_name: "Alice Smith" }, getOwner);
       expect(out.map((c) => c.id)).toEqual(["1", "3", "5"]);
     });
 
     it("still returns Unassigned for QA user with no resolvable name", () => {
-      const out = filterToOwnAssignments(
-        cases,
-        { role: "qa", full_name: "", email: "" },
-        getOwner,
-      );
+      const out = filterToOwnAssignments(cases, { role: "qa", full_name: "", email: "" }, getOwner);
       expect(out.map((c) => c.id)).toEqual(["5"]);
     });
 
     it("still returns Unassigned when QA user has no owner matches", () => {
-      const out = filterToOwnAssignments(
-        cases,
-        { role: "qa", full_name: "Dave" },
-        getOwner,
-      );
+      const out = filterToOwnAssignments(cases, { role: "qa", full_name: "Dave" }, getOwner);
       expect(out.map((c) => c.id)).toEqual(["5"]);
     });
 

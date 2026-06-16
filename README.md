@@ -1,8 +1,9 @@
-# The Medicare Optimizer
+# Get Part B Optimizer
 
 ## E2E Test Setup
 
 1. Copy the template:
+
    ```bash
    cp .env.local.example .env.local
    ```

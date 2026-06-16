@@ -3,33 +3,43 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getEnvVariable } from "@/lib/env";
 import { z } from "zod";
 import { buildNdaPdf, NDA_VERSION } from "./nda";
-import { notifyAdminInboxes, publicSiteUrl, sendTransactionalTemplates } from "@/lib/send-transactional-template.server";
+import {
+  notifyAdminInboxes,
+  publicSiteUrl,
+  sendTransactionalTemplates,
+} from "@/lib/send-transactional-template.server";
 import {
   mergeQaDevices,
   registrationRoleLabel,
   roleAlreadyRegistered,
   type BetaRegistrationRole,
 } from "@/lib/registration.server";
+import { ACCOUNT_STATUS_PENDING } from "@/lib/auth-sign-in.server";
+import { markPasswordConfirmed } from "@/lib/password-status.server";
 
 export { DEFAULT_ADMIN_NOTIFICATION_EMAILS } from "@/lib/admin-notification-emails";
 
-function randomPassword(len = 24) {
-  const alpha = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%^&*";
-  let out = "";
-  const arr = new Uint32Array(len);
-  crypto.getRandomValues(arr);
-  for (let i = 0; i < len; i++) out += alpha[arr[i] % alpha.length];
-  return out;
+function assertNewUserPassword(password: string, passwordConfirm: string) {
+  if (!password || password.length < 12) {
+    throw new Error("Password must be at least 12 characters.");
+  }
+  if (password !== passwordConfirm) {
+    throw new Error("Passwords do not match.");
+  }
 }
 
 async function sendRegistrationNotification(opts: {
   userId: string;
-  firstName: string; lastName: string; email: string; phone: string;
-  requestedRole: string; qaDevices?: string[];
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  requestedRole: string;
+  qaDevices?: string[];
   additionalRole?: boolean;
   existingRoles?: string[];
 }) {
-  if (!getEnvVariable('SUPABASE_SERVICE_ROLE_KEY')) {
+  if (!getEnvVariable("SUPABASE_SERVICE_ROLE_KEY")) {
     console.warn("[registration] notification skipped — missing service role key");
     return;
   }
@@ -59,7 +69,7 @@ async function sendQaRegistrationConfirmation(opts: {
   email: string;
   qaDevices?: string[];
 }) {
-  if (!getEnvVariable('SUPABASE_SERVICE_ROLE_KEY')) {
+  if (!getEnvVariable("SUPABASE_SERVICE_ROLE_KEY")) {
     console.warn("[registration] QA confirmation email skipped — missing service role key");
     return;
   }
@@ -87,7 +97,7 @@ async function sendAgentRegistrationConfirmation(opts: {
   lastName: string;
   email: string;
 }) {
-  if (!getEnvVariable('SUPABASE_SERVICE_ROLE_KEY')) {
+  if (!getEnvVariable("SUPABASE_SERVICE_ROLE_KEY")) {
     console.warn("[registration] agent confirmation email skipped — missing service role key");
     return;
   }
@@ -148,7 +158,9 @@ function isAuthUserDisabled(user: { banned_until?: string | null } | null | unde
 
 async function findUserByEmail(email: string) {
   const { data: existing } = await supabaseAdmin.auth.admin.listUsers();
-  return (existing?.users ?? []).find((u) => u.email?.toLowerCase() === email.toLowerCase()) ?? null;
+  return (
+    (existing?.users ?? []).find((u) => u.email?.toLowerCase() === email.toLowerCase()) ?? null
+  );
 }
 
 async function persistNdaSignature(userId: string, data: RegistrationPayload) {
@@ -238,15 +250,26 @@ async function addRoleToExistingUser(
   await persistNdaSignature(userId, data);
 }
 
-async function createNewRegistrationUser(data: RegistrationPayload, fullName: string) {
-  const password = randomPassword(24);
+async function createNewRegistrationUser(
+  data: RegistrationPayload,
+  fullName: string,
+  password: string,
+) {
   const { data: created, error: createErr } = await supabaseAdmin.auth.admin.createUser({
     email: data.email,
     password,
-    email_confirm: true,
+    email_confirm: false,
     user_metadata: { full_name: fullName, phone: data.phone },
+    app_metadata: { account_status: ACCOUNT_STATUS_PENDING },
     ban_duration: "876000h",
-  } as unknown as { email: string; password: string; email_confirm: boolean; user_metadata: Record<string, string>; ban_duration: string });
+  } as unknown as {
+    email: string;
+    password: string;
+    email_confirm: boolean;
+    user_metadata: Record<string, string>;
+    app_metadata: Record<string, string>;
+    ban_duration: string;
+  });
   if (createErr || !created.user) {
     throw new Error(createErr?.message ?? "Failed to create account");
   }
@@ -254,7 +277,8 @@ async function createNewRegistrationUser(data: RegistrationPayload, fullName: st
   const userId = created.user.id;
 
   try {
-    await upsertRegistrationProfile(userId, data, fullName);
+    await upsertRegistrationProfile(userId, data, fullName, undefined);
+    await markPasswordConfirmed(userId);
     const { error: roleErr } = await supabaseAdmin
       .from("user_roles")
       .insert({ user_id: userId, role: data.requested_role });
@@ -337,17 +361,21 @@ async function notifyRegistrationComplete(opts: {
 
 export const registerWithNda = createServerFn({ method: "POST" })
   .inputValidator((input) =>
-    z.object({
-      first_name: z.string().trim().min(1).max(100),
-      last_name: z.string().trim().min(1).max(100),
-      email: z.string().trim().email().max(255),
-      phone: z.string().trim().min(7).max(40),
-      signature_name: z.string().trim().min(3).max(255),
-      accept_nda: z.literal(true),
-      requested_role: z.enum(["qa", "agent"]),
-      user_agent: z.string().max(1024).optional().nullable(),
-      qa_devices: z.array(z.string().trim().min(1).max(80)).max(20).optional().nullable(),
-    }).parse(input)
+    z
+      .object({
+        first_name: z.string().trim().min(1).max(100),
+        last_name: z.string().trim().min(1).max(100),
+        email: z.string().trim().email().max(255),
+        phone: z.string().trim().min(7).max(40),
+        signature_name: z.string().trim().min(3).max(255),
+        accept_nda: z.literal(true),
+        requested_role: z.enum(["qa", "agent"]),
+        user_agent: z.string().max(1024).optional().nullable(),
+        qa_devices: z.array(z.string().trim().min(1).max(80)).max(20).optional().nullable(),
+        password: z.string().min(12).max(128),
+        password_confirm: z.string().min(12).max(128),
+      })
+      .parse(input),
   )
   .handler(async ({ data }) => {
     const fullName = `${data.first_name} ${data.last_name}`.trim();
@@ -384,7 +412,8 @@ export const registerWithNda = createServerFn({ method: "POST" })
       await addRoleToExistingUser(userId, payload, fullName, existingRoles);
       roleAdded = true;
     } else {
-      userId = await createNewRegistrationUser(payload, fullName);
+      assertNewUserPassword(data.password, data.password_confirm);
+      userId = await createNewRegistrationUser(payload, fullName, data.password!);
     }
 
     await notifyRegistrationComplete({

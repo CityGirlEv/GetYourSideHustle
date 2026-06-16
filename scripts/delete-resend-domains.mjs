@@ -10,10 +10,7 @@ function loadEnv() {
     if (!line || line.startsWith("#") || !line.includes("=")) continue;
     const i = line.indexOf("=");
     let val = line.slice(i + 1).trim();
-    if (
-      (val.startsWith('"') && val.endsWith('"')) ||
-      (val.startsWith("'") && val.endsWith("'"))
-    ) {
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
       val = val.slice(1, -1);
     }
     env[line.slice(0, i)] = val;
@@ -30,7 +27,14 @@ const headers = {
 
 const list = await fetch("https://api.resend.com/domains", { headers });
 const domains = await list.json();
-console.log("domains:", JSON.stringify(domains.data?.map((d) => ({ id: d.id, name: d.name, status: d.status })), null, 2));
+console.log(
+  "domains:",
+  JSON.stringify(
+    domains.data?.map((d) => ({ id: d.id, name: d.name, status: d.status })),
+    null,
+    2,
+  ),
+);
 
 for (const d of domains.data ?? []) {
   const del = await fetch(`https://api.resend.com/domains/${d.id}`, { method: "DELETE", headers });

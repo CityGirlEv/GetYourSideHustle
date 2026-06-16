@@ -1,1 +1,1 @@
-export * from './template-merge-fields.server'
+export * from "./template-merge-fields.server";

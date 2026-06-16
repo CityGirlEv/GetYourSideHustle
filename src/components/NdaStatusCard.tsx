@@ -33,7 +33,9 @@ export function NdaStatusCard() {
       }
       setLoading(false);
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
   if (!user || loading) return null;
@@ -42,11 +44,11 @@ export function NdaStatusCard() {
     return (
       <Card className="glass p-3 flex flex-wrap items-center gap-3 text-sm border-emerald/40">
         <FileCheck2 className="h-4 w-4 text-emerald" />
-        <span>
-          NDA on file — signed {new Date(signedAt).toLocaleDateString()}.
-        </span>
+        <span>NDA on file — signed {new Date(signedAt).toLocaleDateString()}.</span>
         <a href={url} target="_blank" rel="noreferrer" className="ml-auto">
-          <Button size="sm" variant="outline"><Download className="h-3.5 w-3.5 mr-1.5" /> Download signed NDA</Button>
+          <Button size="sm" variant="outline">
+            <Download className="h-3.5 w-3.5 mr-1.5" /> Download signed NDA
+          </Button>
         </a>
       </Card>
     );

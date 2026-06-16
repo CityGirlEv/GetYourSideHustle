@@ -6,7 +6,9 @@ import { Card } from "./ui/card";
 export function StrategyScorecard({ scenario }: { scenario: Scenario }) {
   const { year } = useApp();
   const g = GUIDELINES[year];
-  const hasDME = scenario.medications.some((m) => /CGM|Pump|CPAP|DME/i.test(m.resolved_diagnosis ?? m.dosage_form));
+  const hasDME = scenario.medications.some((m) =>
+    /CGM|Pump|CPAP|DME/i.test(m.resolved_diagnosis ?? m.dosage_form),
+  );
   const { A, B } = calcPathways({ year, zip3: scenario.zip3, meds: scenario.medications, hasDME });
   const minimize = scenario.cost_preference === "minimize_monthly";
   const recommend = minimize && B.totalAnnual < A.totalAnnual ? "B" : "A";
@@ -18,10 +20,12 @@ export function StrategyScorecard({ scenario }: { scenario: Scenario }) {
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-emerald flex items-center justify-center">
-              <Sparkles className="h-5 w-5 text-emerald-foreground"/>
+              <Sparkles className="h-5 w-5 text-emerald-foreground" />
             </div>
             <div>
-              <div className="text-xs uppercase tracking-wider text-muted-foreground">Optimal pathway · {year}</div>
+              <div className="text-xs uppercase tracking-wider text-muted-foreground">
+                Optimal pathway · {year}
+              </div>
               <div className="font-display text-xl font-bold">{winner.label}</div>
             </div>
           </div>
@@ -35,11 +39,13 @@ export function StrategyScorecard({ scenario }: { scenario: Scenario }) {
       {minimize && (
         <Card className="glass p-4 border-warning/40 bg-warning/5">
           <div className="flex gap-3">
-            <AlertTriangle className="h-5 w-5 text-warning shrink-0 mt-0.5"/>
+            <AlertTriangle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
             <div className="text-sm">
               <div className="font-semibold">MOOP surprise risk on Medicare Advantage</div>
               <div className="text-muted-foreground">
-                Monthly cost predictability is flagged as critical. Pathway B caps annual medical out-of-pocket between {usd(g.moopLow)}–{usd(g.moopHigh)}. Pathway A (Medigap Plan G) covers 100% of Part B coinsurance after the {usd(g.partBDeductible)} deductible.
+                Monthly cost predictability is flagged as critical. Pathway B caps annual medical
+                out-of-pocket between {usd(g.moopLow)}–{usd(g.moopHigh)}. Pathway A (Medigap Plan G)
+                covers 100% of Part B coinsurance after the {usd(g.partBDeductible)} deductible.
               </div>
             </div>
           </div>
@@ -53,10 +59,17 @@ export function StrategyScorecard({ scenario }: { scenario: Scenario }) {
             <Card key={p.label} className={`glass p-5 ${isWinner ? "ring-2 ring-emerald" : ""}`}>
               <div className="flex items-start justify-between mb-3">
                 <div>
-                  <div className="text-xs uppercase tracking-wider text-muted-foreground">Pathway {i === 0 ? "A" : "B"}</div>
+                  <div className="text-xs uppercase tracking-wider text-muted-foreground">
+                    Pathway {i === 0 ? "A" : "B"}
+                  </div>
                   <div className="font-semibold">{p.label}</div>
                 </div>
-                {isWinner && <span className="text-xs bg-emerald text-emerald-foreground px-2 py-0.5 rounded-full flex items-center gap-1"><Check className="h-3 w-3"/>Recommended</span>}
+                {isWinner && (
+                  <span className="text-xs bg-emerald text-emerald-foreground px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <Check className="h-3 w-3" />
+                    Recommended
+                  </span>
+                )}
               </div>
               <div className="space-y-1.5 text-sm">
                 {p.breakdown.map((b) => (
@@ -73,10 +86,18 @@ export function StrategyScorecard({ scenario }: { scenario: Scenario }) {
                 </div>
                 <div className="flex justify-between text-xs">
                   <span className="text-muted-foreground flex items-center gap-1">
-                    {i === 0 ? <TrendingDown className="h-3 w-3 text-emerald"/> : <TrendingUp className="h-3 w-3 text-warning"/>}
+                    {i === 0 ? (
+                      <TrendingDown className="h-3 w-3 text-emerald" />
+                    ) : (
+                      <TrendingUp className="h-3 w-3 text-warning" />
+                    )}
                     Worst-case annual
                   </span>
-                  <span className={`tabular-nums font-medium ${i === 1 ? "text-warning" : "text-emerald"}`}>{usd(p.worstCaseAnnual)}</span>
+                  <span
+                    className={`tabular-nums font-medium ${i === 1 ? "text-warning" : "text-emerald"}`}
+                  >
+                    {usd(p.worstCaseAnnual)}
+                  </span>
                 </div>
               </div>
             </Card>

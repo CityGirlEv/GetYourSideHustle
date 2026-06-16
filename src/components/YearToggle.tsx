@@ -1,7 +1,13 @@
 import { useApp } from "@/lib/app-store";
 import { Sparkles } from "lucide-react";
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { GUIDELINES } from "@/lib/medicare-math";
 import { toast } from "sonner";
 
@@ -24,7 +30,8 @@ export function YearToggle({ tone = "light" }: { tone?: "dark" | "light" }) {
           onClick={() => {
             if (y === 2027 && !CMS_2027_PUBLISHED) {
               toast.error("2027 rules are not published", {
-                description: "CMS has not yet released the 2027 figures. Calculations will continue to use 2026 rules.",
+                description:
+                  "CMS has not yet released the 2027 figures. Calculations will continue to use 2026 rules.",
               });
               return;
             }
@@ -40,7 +47,7 @@ export function YearToggle({ tone = "light" }: { tone?: "dark" | "light" }) {
                 : "text-primary/75 hover:text-primary"
           }`}
         >
-          {y} <span className="hidden sm:inline">rules</span>
+          {y} <span className="hidden sm:inline">Plans</span>
         </button>
       ))}
       <Dialog open={open} onOpenChange={setOpen}>
@@ -60,13 +67,15 @@ export function YearToggle({ tone = "light" }: { tone?: "dark" | "light" }) {
             <div className="font-semibold text-muted-foreground">Metric</div>
             <div className="font-semibold">2026</div>
             <div className="font-semibold">2027</div>
-            {([
-              ["Part B premium / mo", "partBPremiumMonthly"],
-              ["Part B deductible", "partBDeductible"],
-              ["Part D OOP cap", "partDOOPCap"],
-              ["MA MOOP (low)", "moopLow"],
-              ["MA MOOP (high)", "moopHigh"],
-            ] as const).map(([label, key]) => (
+            {(
+              [
+                ["Part B premium / mo", "partBPremiumMonthly"],
+                ["Part B deductible", "partBDeductible"],
+                ["Part D OOP cap", "partDOOPCap"],
+                ["MA MOOP (low)", "moopLow"],
+                ["MA MOOP (high)", "moopHigh"],
+              ] as const
+            ).map(([label, key]) => (
               <ContextRow key={key} label={label} k={key} />
             ))}
             <div className="col-span-3 mt-2 text-muted-foreground">
@@ -80,14 +89,16 @@ export function YearToggle({ tone = "light" }: { tone?: "dark" | "light" }) {
   );
 }
 
-function ContextRow({ label, k }: { label: string; k: keyof typeof GUIDELINES[2026] }) {
+function ContextRow({ label, k }: { label: string; k: keyof (typeof GUIDELINES)[2026] }) {
   const a = GUIDELINES[2026][k];
   const b = GUIDELINES[2027][k];
   return (
     <>
       <div className="text-muted-foreground">{label}</div>
       <div>{typeof a === "number" ? `$${a.toLocaleString()}` : a}</div>
-      <div className="text-emerald font-medium">{typeof b === "number" ? `$${b.toLocaleString()}` : b}</div>
+      <div className="text-emerald font-medium">
+        {typeof b === "number" ? `$${b.toLocaleString()}` : b}
+      </div>
     </>
   );
 }

@@ -1,23 +1,17 @@
-import { cn } from '@/lib/utils'
-import { MEDICARE_DISCLAIMER_SECTIONS, MEDICARE_GOV_URL } from '@/lib/medicare-disclaimers'
+import { cn } from "@/lib/utils";
+import { MEDICARE_DISCLAIMER_SECTIONS, MEDICARE_GOV_URL } from "@/lib/medicare-disclaimers";
 
 interface MedicareDisclaimersProps {
-  className?: string
+  className?: string;
 }
 
-function DisclaimerBody({
-  body,
-  medicareLink,
-}: {
-  body: string
-  medicareLink?: boolean
-}) {
+function DisclaimerBody({ body, medicareLink }: { body: string; medicareLink?: boolean }) {
   if (!medicareLink) {
-    return <>{body}</>
+    return <>{body}</>;
   }
 
-  const parts = body.split('Medicare.gov')
-  if (parts.length === 1) return <>{body}</>
+  const parts = body.split("Medicare.gov");
+  if (parts.length === 1) return <>{body}</>;
 
   return (
     <>
@@ -37,18 +31,23 @@ function DisclaimerBody({
         </span>
       ))}
     </>
-  )
+  );
 }
 
 export function MedicareDisclaimers({ className }: MedicareDisclaimersProps) {
   return (
-    <div className={cn('space-y-3 text-left text-xs leading-relaxed text-muted-foreground', className)}>
+    <div
+      className={cn("space-y-3 text-left text-xs leading-relaxed text-muted-foreground", className)}
+    >
       {MEDICARE_DISCLAIMER_SECTIONS.map((section) => (
         <p key={section.label}>
-          <strong className="text-foreground">{section.label}:</strong>{' '}
-          <DisclaimerBody body={section.body} medicareLink={'medicareLink' in section && section.medicareLink} />
+          <strong className="text-foreground">{section.label}:</strong>{" "}
+          <DisclaimerBody
+            body={section.body}
+            medicareLink={"medicareLink" in section && section.medicareLink}
+          />
         </p>
       ))}
     </div>
-  )
+  );
 }

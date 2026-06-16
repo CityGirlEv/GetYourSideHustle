@@ -1,4 +1,4 @@
-import { ShieldCheck, EyeOff, KeyRound, Sparkles, ClipboardCheck, Search } from "lucide-react";
+import { ShieldCheck, EyeOff, KeyRound, Sparkles, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
@@ -7,7 +7,6 @@ const items = [
   { icon: ShieldCheck, text: "Your scenario is anonymous unless you opt in" },
   { icon: Search, text: "Find the optimal plan for your unique situation" },
   { icon: Sparkles, text: "Compare Original Medicare + Medigap vs. Medicare Advantage" },
-  { icon: ClipboardCheck, text: "Live 2026 & 2027 CMS rules applied automatically" },
 ];
 
 interface TrustBannerProps {

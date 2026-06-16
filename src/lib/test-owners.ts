@@ -6,15 +6,23 @@
 // no longer hand the row off from QA to Eng on fail.
 
 export interface ComputeOwnersInput {
-  primary: string;        // already-resolved QA owner (no fail reroute)
+  primary: string; // already-resolved QA owner (no fail reroute)
   status: string | undefined;
-  isAutomated?: boolean;  // automated tests stay owned by the runner
+  isAutomated?: boolean; // automated tests stay owned by the runner
+  devOwner?: string; // resolved dev owner; defaults to Eng on fail
 }
 
-export function computeTestOwners({ primary, status, isAutomated }: ComputeOwnersInput): string[] {
+export function computeTestOwners({
+  primary,
+  status,
+  isAutomated,
+  devOwner,
+}: ComputeOwnersInput): string[] {
   const failed = status === "fail" || status === "failed_retest";
+  const dev = devOwner || "Eng";
   if (failed && !isAutomated && primary !== "Eng" && primary !== "Unassigned") {
-    return [primary, "Eng"];
+    if (dev === primary) return [primary];
+    return [primary, dev];
   }
   return [primary];
 }

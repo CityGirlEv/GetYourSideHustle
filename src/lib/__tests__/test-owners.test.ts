@@ -9,7 +9,15 @@ describe("computeTestOwners", () => {
   });
   it("co-owns failed tests with Eng alongside the QA", () => {
     expect(computeTestOwners({ primary: "Lyriq", status: "fail" })).toEqual(["Lyriq", "Eng"]);
-    expect(computeTestOwners({ primary: "Catria", status: "failed_retest" })).toEqual(["Catria", "Eng"]);
+    expect(computeTestOwners({ primary: "Catria", status: "failed_retest" })).toEqual([
+      "Catria",
+      "Eng",
+    ]);
+  });
+  it("uses a custom devOwner when provided", () => {
+    expect(
+      computeTestOwners({ primary: "Lyriq", status: "fail", devOwner: "CustomDev" }),
+    ).toEqual(["Lyriq", "CustomDev"]);
   });
   it("does not duplicate Eng when the primary owner is already Eng", () => {
     expect(computeTestOwners({ primary: "Eng", status: "fail" })).toEqual(["Eng"]);
@@ -18,6 +26,8 @@ describe("computeTestOwners", () => {
     expect(computeTestOwners({ primary: "Unassigned", status: "fail" })).toEqual(["Unassigned"]);
   });
   it("does not add Eng to automated failing tests", () => {
-    expect(computeTestOwners({ primary: "Vitest", status: "fail", isAutomated: true })).toEqual(["Vitest"]);
+    expect(computeTestOwners({ primary: "Vitest", status: "fail", isAutomated: true })).toEqual([
+      "Vitest",
+    ]);
   });
 });

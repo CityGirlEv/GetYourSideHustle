@@ -8,10 +8,7 @@ function loadEnv() {
     const i = line.indexOf("=");
     const key = line.slice(0, i);
     let val = line.slice(i + 1).trim();
-    if (
-      (val.startsWith('"') && val.endsWith('"')) ||
-      (val.startsWith("'") && val.endsWith("'"))
-    ) {
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
       val = val.slice(1, -1);
     }
     env[key] = val;
@@ -21,8 +18,7 @@ function loadEnv() {
 
 const env = loadEnv();
 const sb = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
-const processUrl =
-  process.argv[2] ?? "https://mypartb.pages.dev/lovable/email/queue/process";
+const processUrl = process.argv[2] ?? "https://mypartb.pages.dev/lovable/email/queue/process";
 
 for (const dlqName of ["transactional_emails_dlq", "auth_emails_dlq"]) {
   const { data: dlqMessages, error } = await sb.rpc("read_email_batch", {
@@ -43,7 +39,7 @@ for (const dlqName of ["transactional_emails_dlq", "auth_emails_dlq"]) {
       payload: {
         ...payload,
         queued_at: new Date().toISOString(),
-        from: "The Medicare Optimizer <onboarding@resend.dev>",
+        from: "Get Part B Optimizer <onboarding@resend.dev>",
         sender_domain: "resend.dev",
       },
     });

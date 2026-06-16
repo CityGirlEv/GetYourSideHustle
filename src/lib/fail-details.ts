@@ -2,11 +2,11 @@
  * Validation + formatting helpers for the "fail details" gate.
  *
  * When a tester flips a test to Fail / Failed-Retest we force them to
- * capture three things in one dialog so the bug is actionable:
+ * capture two things in one dialog so the bug is actionable:
  *   - a freeform note describing the failure
  *   - which step (1-based index) the failure occurred on
- *   - either a screenshot attachment OR an explicit "no screenshot
- *     available" acknowledgement
+ *
+ * Screenshot attachment is optional (Evidence panel or dialog upload).
  *
  * Keeping the validator pure (no React, no IO) so we can unit-test every
  * reject path without spinning up the dialog.
@@ -15,8 +15,6 @@
 export interface FailDetailsInput {
   note: string;
   stepIndex: number | null;
-  hasEvidence: boolean;
-  noScreenshot: boolean;
 }
 
 /** Returns null when the input is complete enough to save, or a
@@ -27,9 +25,6 @@ export function validateFailDetails(input: FailDetailsInput): string | null {
   }
   if (input.stepIndex == null || input.stepIndex < 0) {
     return "Select which step failed.";
-  }
-  if (!input.hasEvidence && !input.noScreenshot) {
-    return "Attach a screenshot or check \"No screenshot available\".";
   }
   return null;
 }

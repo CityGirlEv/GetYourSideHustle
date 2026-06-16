@@ -12,16 +12,28 @@ import {
 } from "../medicare-math";
 
 const insulin: Medication = {
-  id: "1", medication_name: "Novolog (insulin)", strength: "100 U/mL",
-  dosage_form: "Vial", frequency: "With meals", estimated_monthly_retail: 289,
+  id: "1",
+  medication_name: "Novolog (insulin)",
+  strength: "100 U/mL",
+  dosage_form: "Vial",
+  frequency: "With meals",
+  estimated_monthly_retail: 289,
 };
 const metformin: Medication = {
-  id: "2", medication_name: "Metformin", strength: "500 mg",
-  dosage_form: "Tablet", frequency: "Twice daily", estimated_monthly_retail: 4,
+  id: "2",
+  medication_name: "Metformin",
+  strength: "500 mg",
+  dosage_form: "Tablet",
+  frequency: "Twice daily",
+  estimated_monthly_retail: 4,
 };
 const cgm: Medication = {
-  id: "3", medication_name: "Dexcom G7", strength: "—",
-  dosage_form: "CGM (DME)", frequency: "Continuous", estimated_monthly_retail: 420,
+  id: "3",
+  medication_name: "Dexcom G7",
+  strength: "—",
+  dosage_form: "CGM (DME)",
+  frequency: "Continuous",
+  estimated_monthly_retail: 420,
 };
 
 describe("isDmeForm", () => {
@@ -73,7 +85,10 @@ describe("calcPathways", () => {
 describe("recommendPlans", () => {
   it("returns a primary + alternate across pathways A/B", () => {
     const rec = recommendPlans({
-      year: 2026, zip3: "770", meds: [metformin], conditions: ["Hypertension"],
+      year: 2026,
+      zip3: "770",
+      meds: [metformin],
+      conditions: ["Hypertension"],
       costPreference: "predictability",
     });
     expect(["A", "B"]).toContain(rec.primary.pathway);
@@ -82,7 +97,10 @@ describe("recommendPlans", () => {
   });
   it("prefers chronic-condition friendly MA plan when chronic conditions exist", () => {
     const rec = recommendPlans({
-      year: 2026, zip3: "770", meds: [], conditions: ["Diabetes"],
+      year: 2026,
+      zip3: "770",
+      meds: [],
+      conditions: ["Diabetes"],
       costPreference: "minimize_monthly",
     });
     const bRec = rec.primary.pathway === "B" ? rec.primary : rec.alternate;

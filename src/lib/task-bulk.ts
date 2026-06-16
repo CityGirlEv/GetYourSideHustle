@@ -24,7 +24,8 @@ export interface BulkEdit {
 
 export function toggleInSet<T>(set: Set<T>, value: T, checked: boolean): Set<T> {
   const next = new Set(set);
-  if (checked) next.add(value); else next.delete(value);
+  if (checked) next.add(value);
+  else next.delete(value);
   return next;
 }
 

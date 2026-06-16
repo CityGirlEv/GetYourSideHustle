@@ -111,7 +111,10 @@ export function LoginAlertDialog() {
                     {row.priority}
                   </Badge>
                   {pastDue && (
-                    <Badge variant="outline" className="border-destructive/60 text-destructive gap-1">
+                    <Badge
+                      variant="outline"
+                      className="border-destructive/60 text-destructive gap-1"
+                    >
                       <Clock className="h-3 w-3" /> Past due
                     </Badge>
                   )}
@@ -145,7 +148,9 @@ export function LoginAlertDialog() {
 
         <DialogFooter className="gap-2 sm:gap-2">
           <Button asChild variant="outline">
-            <a href="/tasks" onClick={() => setOpen(false)}>Open task sheet</a>
+            <a href="/tasks" onClick={() => setOpen(false)}>
+              Open task sheet
+            </a>
           </Button>
           <Button onClick={() => setOpen(false)}>Dismiss</Button>
         </DialogFooter>

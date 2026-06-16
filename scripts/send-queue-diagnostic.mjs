@@ -8,10 +8,7 @@ function loadEnv() {
     const i = line.indexOf("=");
     const key = line.slice(0, i);
     let val = line.slice(i + 1).trim();
-    if (
-      (val.startsWith('"') && val.endsWith('"')) ||
-      (val.startsWith("'") && val.endsWith("'"))
-    ) {
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
       val = val.slice(1, -1);
     }
     env[key] = val;
@@ -36,7 +33,7 @@ const { error } = await sb.rpc("enqueue_email", {
   payload: {
     message_id: messageId,
     to: recipient,
-    from: env.EMAIL_FROM ?? "The Medicare Optimizer <noreply@mypartb.com>",
+    from: env.EMAIL_FROM ?? "Get Part B Optimizer <noreply@mypartb.com>",
     sender_domain: env.EMAIL_SENDER_DOMAIN ?? "mypartb.com",
     subject: "[TEST] post-fix diagnostic",
     html: "<p>Queue send after sandbox from fallback fix.</p>",
@@ -49,13 +46,10 @@ const { error } = await sb.rpc("enqueue_email", {
 });
 if (error) throw error;
 
-const processRes = await fetch(
-  "https://mypartb.pages.dev/lovable/email/queue/process",
-  {
-    method: "POST",
-    headers: { Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` },
-  },
-);
+const processRes = await fetch("https://mypartb.pages.dev/lovable/email/queue/process", {
+  method: "POST",
+  headers: { Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` },
+});
 console.log("process:", processRes.status, await processRes.text());
 
 const { data: log } = await sb

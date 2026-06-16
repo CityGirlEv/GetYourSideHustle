@@ -16,10 +16,7 @@ function loadEnv() {
     const i = line.indexOf("=");
     const key = line.slice(0, i);
     let val = line.slice(i + 1).trim();
-    if (
-      (val.startsWith('"') && val.endsWith('"')) ||
-      (val.startsWith("'") && val.endsWith("'"))
-    ) {
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
       val = val.slice(1, -1);
     }
     env[key] = val;
@@ -30,8 +27,9 @@ function loadEnv() {
 const env = loadEnv();
 const origin = (env.SITE_ORIGIN || "http://localhost:8080").replace(/\/$/, "");
 const secret = env.TEST_EMAIL_SECRET;
-const recipientArg = process.argv.find((a) => a.startsWith("--recipient="))?.slice(12)
-  ?? process.argv[process.argv.indexOf("--recipient") + 1];
+const recipientArg =
+  process.argv.find((a) => a.startsWith("--recipient="))?.slice(12) ??
+  process.argv[process.argv.indexOf("--recipient") + 1];
 const recipient =
   recipientArg ||
   env.TEST_EMAIL_RECIPIENT ||
@@ -45,11 +43,14 @@ if (!secret) {
 
 console.log(`Sending all templates to ${recipient} via ${origin} ...`);
 
-const res = await fetch(`${origin}/api/public/send-test-email?secret=${encodeURIComponent(secret)}`, {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ all: true, recipient }),
-});
+const res = await fetch(
+  `${origin}/api/public/send-test-email?secret=${encodeURIComponent(secret)}`,
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ all: true, recipient }),
+  },
+);
 
 const body = await res.text();
 let json;

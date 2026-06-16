@@ -26,8 +26,11 @@ import {
 export const Route = createFileRoute("/qa-credits")({
   head: () => ({
     meta: [
-      { title: "QA Credit Guide — The Medicare Optimizer" },
-      { name: "description", content: "How QA testers earn credit tokens for every test executed and bug filed." },
+      { title: "QA Credit Guide — Get Part B Optimizer" },
+      {
+        name: "description",
+        content: "How QA testers earn credit tokens for every test executed and bug filed.",
+      },
       { name: "robots", content: "noindex,nofollow" },
     ],
   }),
@@ -40,8 +43,13 @@ function QACreditsPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user) { router.navigate({ to: "/auth" }); return; }
-    if (user.role !== "qa" && user.role !== "admin") { router.navigate({ to: "/" }); }
+    if (!user) {
+      router.navigate({ to: "/auth" });
+      return;
+    }
+    if (user.role !== "qa" && user.role !== "admin") {
+      router.navigate({ to: "/" });
+    }
   }, [user, authLoading, router]);
 
   if (!user) return null;
@@ -59,7 +67,10 @@ function QACreditsPage() {
   }
 
   return (
-    <AppShell title="QA Credit Guide" subtitle="How you earn credits for testing, and how they’re spent.">
+    <AppShell
+      title="QA Credit Guide"
+      subtitle="How you earn credits for testing, and how they’re spent."
+    >
       <div className="max-w-4xl mx-auto space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -87,7 +98,9 @@ function QACreditsPage() {
             </div>
             <div className="text-right">
               <div className="text-sm text-muted-foreground">Total available in test plan</div>
-              <div className="font-display text-2xl font-bold tabular-nums text-primary">{totalBudget}</div>
+              <div className="font-display text-2xl font-bold tabular-nums text-primary">
+                {totalBudget}
+              </div>
             </div>
           </div>
         </Card>
@@ -105,7 +118,8 @@ function QACreditsPage() {
                 Mark a test as Pass
               </div>
               <p className="text-sm text-muted-foreground">
-                Execute the test case, verify all steps, then set the status to <b>Pass</b>. Credits are awarded immediately based on the test priority.
+                Execute the test case, verify all steps, then set the status to <b>Pass</b>. Credits
+                are awarded immediately based on the test priority.
               </p>
             </div>
             <div className="space-y-2">
@@ -114,14 +128,17 @@ function QACreditsPage() {
                 File a reproducible Fail
               </div>
               <p className="text-sm text-muted-foreground">
-                If you find a bug, set status to <b>Fail</b> and leave detailed QA notes (steps, expected vs actual). You still earn the base credit, plus a bonus for the first reproducible fail on that test.
+                If you find a bug, set status to <b>Fail</b> and leave detailed QA notes (steps,
+                expected vs actual). You still earn the base credit, plus a bonus for the first
+                reproducible fail on that test.
               </p>
             </div>
           </div>
           <div className="rounded-md border border-amber/40 bg-amber/10 p-3 text-sm flex gap-2">
             <AlertTriangle className="h-4 w-4 text-amber shrink-0 mt-0.5" />
             <span>
-              <b>Blocked</b> and <b>Not Run</b> earn <b>0</b> credits. A test must reach <b>Pass</b> or a documented <b>Fail</b> with QA notes to be eligible.
+              <b>Blocked</b> and <b>Not Run</b> earn <b>0</b> credits. A test must reach <b>Pass</b>{" "}
+              or a documented <b>Fail</b> with QA notes to be eligible.
             </span>
           </div>
         </Card>
@@ -149,23 +166,51 @@ function QACreditsPage() {
               <tbody>
                 {(
                   [
-                    { key: "P0", label: "Severe (Show Stopper)", reward: CREDIT_REWARDS.P0, count: countsByPriority.P0 },
-                    { key: "P1", label: "High (w/i 24h)", reward: CREDIT_REWARDS.P1, count: countsByPriority.P1 },
-                    { key: "P2", label: "Medium (Can wait)", reward: CREDIT_REWARDS.P2, count: countsByPriority.P2 },
-                    { key: "P3", label: "Low (Non-Priority)", reward: CREDIT_REWARDS.P3, count: countsByPriority.P3 },
+                    {
+                      key: "P0",
+                      label: "Severe (Show Stopper)",
+                      reward: CREDIT_REWARDS.P0,
+                      count: countsByPriority.P0,
+                    },
+                    {
+                      key: "P1",
+                      label: "High (w/i 24h)",
+                      reward: CREDIT_REWARDS.P1,
+                      count: countsByPriority.P1,
+                    },
+                    {
+                      key: "P2",
+                      label: "Medium (Can wait)",
+                      reward: CREDIT_REWARDS.P2,
+                      count: countsByPriority.P2,
+                    },
+                    {
+                      key: "P3",
+                      label: "Low (Non-Priority)",
+                      reward: CREDIT_REWARDS.P3,
+                      count: countsByPriority.P3,
+                    },
                   ] as const
                 ).map((row) => (
                   <tr key={row.key} className="border-t border-border">
                     <td className="px-3 py-2 font-mono font-semibold">{row.key}</td>
                     <td className="px-3 py-2">{row.label}</td>
-                    <td className="px-3 py-2 text-right tabular-nums font-semibold">{row.reward}</td>
+                    <td className="px-3 py-2 text-right tabular-nums font-semibold">
+                      {row.reward}
+                    </td>
                     <td className="px-3 py-2 text-right tabular-nums">{row.count}</td>
-                    <td className="px-3 py-2 text-right tabular-nums font-semibold text-emerald">{row.reward * row.count}</td>
+                    <td className="px-3 py-2 text-right tabular-nums font-semibold text-emerald">
+                      {row.reward * row.count}
+                    </td>
                   </tr>
                 ))}
                 <tr className="border-t border-border bg-secondary/30">
-                  <td className="px-3 py-2 font-semibold" colSpan={4}>Total credit budget</td>
-                  <td className="px-3 py-2 text-right tabular-nums font-bold text-emerald">{totalBudget}</td>
+                  <td className="px-3 py-2 font-semibold" colSpan={4}>
+                    Total credit budget
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums font-bold text-emerald">
+                    {totalBudget}
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -179,13 +224,16 @@ function QACreditsPage() {
             First-reproducible-fail bonus
           </h2>
           <p className="text-sm text-muted-foreground">
-            The <b>first</b> time a test id gets a reproducible <b>Fail</b> with QA notes, the filer receives an extra bonus:
+            The <b>first</b> time a test id gets a reproducible <b>Fail</b> with QA notes, the filer
+            receives an extra bonus:
           </p>
           <div className="flex items-center gap-3 rounded-md bg-primary/5 border border-primary/20 p-4">
             <div className="font-display text-3xl font-bold text-primary">+{REPRO_FAIL_BONUS}</div>
             <div className="text-sm">
               <div className="font-semibold">Bonus tokens</div>
-              <div className="text-muted-foreground">Paid manually by admin during sprint retro.</div>
+              <div className="text-muted-foreground">
+                Paid manually by admin during sprint retro.
+              </div>
             </div>
           </div>
         </Card>
@@ -198,13 +246,15 @@ function QACreditsPage() {
           </h2>
           <ul className="text-sm space-y-1.5 ml-1">
             <li>
-              <b>Scenario lookups</b> — Advisors spend 1 credit each time they look up a scenario by code (first lookup claims it free).
+              <b>Scenario lookups</b> — Advisors spend 1 credit each time they look up a scenario by
+              code (first lookup claims it free).
             </li>
             <li>
               <b>Plan exports</b> — Coming soon: credit-gated PDF/CSV exports for advisors.
             </li>
             <li>
-              <b>QA redemption</b> — QA testers can request credit payout or conversion to advisor lookup credits via admin.
+              <b>QA redemption</b> — QA testers can request credit payout or conversion to advisor
+              lookup credits via admin.
             </li>
           </ul>
         </Card>
@@ -243,7 +293,9 @@ function QACreditsPage() {
                         {new Date(t.created_at).toLocaleString()}
                       </td>
                       <td className="py-2">{t.description}</td>
-                      <td className={`py-2 text-right tabular-nums font-semibold ${t.amount > 0 ? "text-emerald" : "text-warning"}`}>
+                      <td
+                        className={`py-2 text-right tabular-nums font-semibold ${t.amount > 0 ? "text-emerald" : "text-warning"}`}
+                      >
                         {t.amount > 0 ? `+${t.amount}` : t.amount}
                       </td>
                     </tr>
@@ -261,10 +313,14 @@ function QACreditsPage() {
           </p>
           <div className="pt-2 flex flex-wrap gap-2">
             <Link to="/testing">
-              <Button size="sm" className="grad-indigo">Open Testing Portal</Button>
+              <Button size="sm" className="grad-indigo">
+                Open Testing Portal
+              </Button>
             </Link>
             <Link to="/qa-manual">
-              <Button size="sm" variant="outline">Open QA Manual</Button>
+              <Button size="sm" variant="outline">
+                Open QA Manual
+              </Button>
             </Link>
           </div>
         </Card>

@@ -2,7 +2,13 @@ import fs from "fs";
 import path from "path";
 
 const ZONE_ID = "bc51ba8f291107c7c8bc930ffc3a0ef2";
-const configPath = path.join(process.env.APPDATA ?? "", "xdg.config", ".wrangler", "config", "default.toml");
+const configPath = path.join(
+  process.env.APPDATA ?? "",
+  "xdg.config",
+  ".wrangler",
+  "config",
+  "default.toml",
+);
 const config = fs.readFileSync(configPath, "utf8");
 const token = config.match(/oauth_token = "([^"]+)"/)[1];
 

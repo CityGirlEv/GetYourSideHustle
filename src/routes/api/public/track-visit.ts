@@ -21,7 +21,7 @@ async function lookupGeo(ip: string) {
       { signal: AbortSignal.timeout(3000) },
     );
     if (!res.ok) return null;
-    const j = await res.json() as any;
+    const j = (await res.json()) as any;
     if (j.status !== "success") return null;
     return {
       country: j.country ?? null,
@@ -44,7 +44,7 @@ export const Route = createFileRoute("/api/public/track-visit")({
     handlers: {
       POST: async ({ request }) => {
         try {
-          const body = await request.json().catch(() => ({} as any));
+          const body = await request.json().catch(() => ({}) as any);
           const path = typeof body?.path === "string" ? body.path.slice(0, 1024) : null;
           const referrer = typeof body?.referrer === "string" ? body.referrer.slice(0, 1024) : null;
           // Do not trust caller-supplied userId. Derive from Authorization header if present.

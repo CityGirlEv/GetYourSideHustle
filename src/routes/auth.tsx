@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useApp } from "@/lib/app-store";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -7,7 +7,10 @@ import { ShieldCheck, LogIn, UserPlus } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { roleDestination } from "@/lib/role-destination";
 import { safeSignInRedirect } from "@/lib/auth-redirect";
+import { consumeDeployResume } from "@/lib/deploy-version";
 import { SignInForm } from "@/components/auth/SignInForm";
+import { supabase } from "@/integrations/supabase/client";
+import { RESET_PASSWORD_PATH } from "@/lib/auth-recovery";
 import { RegisterForm } from "@/components/auth/RegisterForm";
 
 export type AuthTab = "sign-in" | "register";
@@ -20,9 +23,7 @@ export const Route = createFileRoute("/auth")({
         : search.tab === "sign-in"
           ? ("sign-in" as const)
           : undefined;
-    const redirect = search.redirect
-      ? safeSignInRedirect(search.redirect, undefined)
-      : undefined;
+    const redirect = search.redirect ? safeSignInRedirect(search.redirect, undefined) : undefined;
     return {
       ...(redirect ? { redirect } : {}),
       ...(tab ? { tab } : {}),
@@ -30,10 +31,10 @@ export const Route = createFileRoute("/auth")({
   },
   head: () => ({
     meta: [
-      { title: "Sign In — The Medicare Optimizer" },
+      { title: "Sign In — Get Part B Optimizer" },
       {
         name: "description",
-        content: "Sign in or register for the Medicare Optimizer staff portal.",
+        content: "Sign in or register for Get Part B Optimizer Team Member Portal.",
       },
       { name: "robots", content: "noindex" },
     ],
@@ -48,12 +49,36 @@ function AuthPage() {
   const navigate = useNavigate({ from: Route.fullPath });
   const search = Route.useSearch();
   const tab = search.tab ?? "sign-in";
+  const recoverySessionRef = useRef(false);
+
+  useEffect(() => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") recoverySessionRef.current = true;
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (!user) return;
+    if (recoverySessionRef.current) {
+      router.navigate({ to: RESET_PASSWORD_PATH, replace: true });
+      return;
+    }
     const qaOverride = user.roles?.includes("qa") ? "/testing" : null;
-    const destination = search.redirect ?? qaOverride ?? roleDestination(user.role);
-    router.navigate({ to: destination as "/admin" | "/agent" | "/testing" | "/advisor" | "/tasks" });
+    const resumeRedirect = search.redirect ?? consumeDeployResume();
+    const destination = resumeRedirect ?? qaOverride ?? roleDestination(user.role);
+
+    if (resumeRedirect) {
+      // Full reload after a deploy logout loads the new bundle and restores the exact URL.
+      window.location.assign(destination);
+      return;
+    }
+
+    router.navigate({
+      to: destination as "/" | "/admin" | "/agent" | "/testing" | "/advisor" | "/tasks",
+    });
   }, [user, router, search.redirect]);
 
   const setTab = (next: AuthTab) => {
@@ -74,12 +99,16 @@ function AuthPage() {
             <p className="text-sm text-muted-foreground">
               {tab === "register"
                 ? "Tell us who you are. After you sign the NDA, an administrator will review and enable your account."
-                : "Sign in to the Medicare Optimizer staff portal."}
+                : "Sign in to Get Part B Optimizer Team Member Portal."}
             </p>
           </div>
 
           <Card className="glass p-6">
-            <Tabs value={tab} onValueChange={(value) => setTab(value as AuthTab)} className="space-y-4">
+            <Tabs
+              value={tab}
+              onValueChange={(value) => setTab(value as AuthTab)}
+              className="space-y-4"
+            >
               <TabsList className="grid w-full grid-cols-2 h-10">
                 <TabsTrigger value="sign-in" className="gap-1.5">
                   <LogIn className="h-4 w-4" />

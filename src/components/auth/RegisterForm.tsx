@@ -5,7 +5,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ShieldCheck, FileSignature, CheckCircle2, FlaskConical, Headset } from "lucide-react";
+import {
+  ShieldCheck,
+  FileSignature,
+  CheckCircle2,
+  FlaskConical,
+  Headset,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { NDA_BODY, NDA_TITLE, NDA_VERSION } from "@/lib/nda";
@@ -24,6 +32,10 @@ export function RegisterForm({ embedded, onSignInClick }: RegisterFormProps) {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [requestedRole, setRequestedRole] = useState<"qa" | "agent" | "">("");
   const [qaDevices, setQaDevices] = useState<string[]>([]);
   const [qaDeviceOther, setQaDeviceOther] = useState("");
@@ -41,9 +53,17 @@ export function RegisterForm({ embedded, onSignInClick }: RegisterFormProps) {
     if (lastName.trim().length < 1) return toast.error("Enter your last name.");
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return toast.error("Enter a valid email.");
     if (phone.replace(/\D/g, "").length < 7) return toast.error("Enter a valid phone number.");
-    if (requestedRole !== "qa" && requestedRole !== "agent") return toast.error("Pick the role you're registering for.");
+    if (!password) return toast.error("Enter a password.");
+    if (!confirmPassword) return toast.error("Confirm your password.");
+    if (password.length < 12) return toast.error("Password must be at least 12 characters.");
+    if (password !== confirmPassword) return toast.error("Passwords do not match.");
+    if (requestedRole !== "qa" && requestedRole !== "agent")
+      return toast.error("Pick the role you're registering for.");
     if (requestedRole === "qa") {
-      const extras = qaDeviceOther.split(",").map((s) => s.trim()).filter(Boolean);
+      const extras = qaDeviceOther
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
       if (qaDevices.length === 0 && extras.length === 0) {
         return toast.error("Select at least one device you can test on.");
       }
@@ -58,10 +78,12 @@ export function RegisterForm({ embedded, onSignInClick }: RegisterFormProps) {
     if (!accept) return toast.error("Check the box to agree to the NDA.");
     setBusy(true);
     try {
-      const extras = qaDeviceOther.split(",").map((s) => s.trim()).filter(Boolean);
-      const devices = requestedRole === "qa"
-        ? Array.from(new Set([...qaDevices, ...extras]))
-        : undefined;
+      const extras = qaDeviceOther
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const devices =
+        requestedRole === "qa" ? Array.from(new Set([...qaDevices, ...extras])) : undefined;
       const result = await doRegister({
         data: {
           first_name: firstName.trim(),
@@ -73,6 +95,8 @@ export function RegisterForm({ embedded, onSignInClick }: RegisterFormProps) {
           requested_role: requestedRole as "qa" | "agent",
           user_agent: typeof navigator !== "undefined" ? navigator.userAgent : null,
           qa_devices: devices,
+          password,
+          password_confirm: confirmPassword,
         },
       });
       setRoleAdded(!!result?.role_added);
@@ -107,8 +131,10 @@ export function RegisterForm({ embedded, onSignInClick }: RegisterFormProps) {
               {roleAdded ? (
                 <>
                   {" "}
-                  Your NDA is signed and the <b>{requestedRole === "qa" ? "QA tester" : "agent"}</b> role
-                  has been added to your account.
+                  Your NDA is signed and the <b>
+                    {requestedRole === "qa" ? "QA tester" : "agent"}
+                  </b>{" "}
+                  role has been added to your account.
                 </>
               ) : (
                 <> Your NDA is signed and your account has been created.</>
@@ -118,7 +144,8 @@ export function RegisterForm({ embedded, onSignInClick }: RegisterFormProps) {
               <div className="rounded-md border border-amber/40 bg-amber/10 p-3">
                 <p className="font-semibold mb-1">Your account is under review.</p>
                 <p className="text-muted-foreground">
-                  It is <b>disabled</b> until an administrator approves it. You will <b>not</b> be able to sign in yet.
+                  It is <b>disabled</b> until an administrator approves it. You will <b>not</b> be
+                  able to sign in yet.
                 </p>
               </div>
             ) : (
@@ -137,14 +164,16 @@ export function RegisterForm({ embedded, onSignInClick }: RegisterFormProps) {
                   <>
                     <li>An admin reviews your request (typically within 1 business day).</li>
                     <li>
-                      Once approved, you&apos;ll receive an <b>email at {email}</b> letting you know your account is active.
+                      Once approved, you&apos;ll receive an <b>email at {email}</b> letting you know
+                      your account is active.
                     </li>
                   </>
                 ) : null}
                 <li>Return to the sign-in tab and log in with your email and password.</li>
                 {requestedRole === "qa" && (
                   <li>
-                    After logging in, you&apos;ll land on the Testing Portal. Open the <b>QA Manual</b> link at the top.
+                    After logging in, you&apos;ll land on the Testing Portal. Open the{" "}
+                    <b>QA Manual</b> link at the top.
                   </li>
                 )}
               </ol>
@@ -168,21 +197,41 @@ export function RegisterForm({ embedded, onSignInClick }: RegisterFormProps) {
       <form onSubmit={openNda} className="space-y-3">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label>First name</Label>
-            <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} required autoComplete="given-name" />
+            <Label htmlFor="register-first-name">First name</Label>
+            <Input
+              id="register-first-name"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              required
+              autoComplete="given-name"
+            />
           </div>
           <div>
-            <Label>Last name</Label>
-            <Input value={lastName} onChange={(e) => setLastName(e.target.value)} required autoComplete="family-name" />
+            <Label htmlFor="register-last-name">Last name</Label>
+            <Input
+              id="register-last-name"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              required
+              autoComplete="family-name"
+            />
           </div>
         </div>
         <div>
-          <Label>Email</Label>
-          <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
+          <Label htmlFor="register-email">Email</Label>
+          <Input
+            id="register-email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            autoComplete="email"
+          />
         </div>
         <div>
-          <Label>Phone</Label>
+          <Label htmlFor="register-phone">Phone</Label>
           <Input
+            id="register-phone"
             type="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
@@ -193,6 +242,51 @@ export function RegisterForm({ embedded, onSignInClick }: RegisterFormProps) {
           <p className="text-[11px] text-muted-foreground mt-1">
             Message and data rates may apply depending on your carrier.
           </p>
+        </div>
+        <div className="relative">
+          <Label htmlFor="register-password">Password</Label>
+          <Input
+            id="register-password"
+            type={showPassword ? "text" : "password"}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={12}
+            autoComplete="new-password"
+            className="pr-10"
+          />
+          <button
+            type="button"
+            tabIndex={-1}
+            onClick={() => setShowPassword((v) => !v)}
+            className="absolute right-3 top-[30px] text-muted-foreground hover:text-foreground"
+          >
+            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Required — at least 12 characters.
+          </p>
+        </div>
+        <div className="relative">
+          <Label htmlFor="register-confirm-password">Confirm password</Label>
+          <Input
+            id="register-confirm-password"
+            type={showConfirmPassword ? "text" : "password"}
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            minLength={12}
+            autoComplete="new-password"
+            className="pr-10"
+          />
+          <button
+            type="button"
+            tabIndex={-1}
+            onClick={() => setShowConfirmPassword((v) => !v)}
+            className="absolute right-3 top-[30px] text-muted-foreground hover:text-foreground"
+          >
+            {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
         </div>
         <div className="space-y-2">
           <Label>I&apos;m registering as</Label>
@@ -222,7 +316,7 @@ export function RegisterForm({ embedded, onSignInClick }: RegisterFormProps) {
           </div>
           <p className="text-[11px] text-muted-foreground">
             An administrator will review and enable your account. Already registered as QA or Agent?
-            Use the same email here to add another role to your profile.
+            Use the same email here to add another role — your existing password stays the same.
           </p>
         </div>
         {requestedRole === "qa" && (
@@ -233,7 +327,9 @@ export function RegisterForm({ embedded, onSignInClick }: RegisterFormProps) {
             </p>
             <div className="space-y-3 pt-1">
               <div>
-                <div className="text-xs font-semibold mb-1.5 text-muted-foreground uppercase tracking-wide">Computer</div>
+                <div className="text-xs font-semibold mb-1.5 text-muted-foreground uppercase tracking-wide">
+                  Computer
+                </div>
                 <div className="grid grid-cols-2 gap-2">
                   {["MacBook", "iMac", "Windows desktop", "Windows laptop", "Linux"].map((d) => {
                     const active = qaDevices.includes(d);
@@ -245,7 +341,9 @@ export function RegisterForm({ embedded, onSignInClick }: RegisterFormProps) {
                         <Checkbox
                           checked={active}
                           onCheckedChange={(v) =>
-                            setQaDevices((prev) => (v ? Array.from(new Set([...prev, d])) : prev.filter((x) => x !== d)))
+                            setQaDevices((prev) =>
+                              v ? Array.from(new Set([...prev, d])) : prev.filter((x) => x !== d),
+                            )
                           }
                         />
                         <span>{d}</span>
@@ -255,7 +353,9 @@ export function RegisterForm({ embedded, onSignInClick }: RegisterFormProps) {
                 </div>
               </div>
               <div>
-                <div className="text-xs font-semibold mb-1.5 text-muted-foreground uppercase tracking-wide">Mobile device</div>
+                <div className="text-xs font-semibold mb-1.5 text-muted-foreground uppercase tracking-wide">
+                  Mobile device
+                </div>
                 <div className="grid grid-cols-2 gap-2">
                   {["iPhone", "iPad", "Android phone", "Android tablet"].map((d) => {
                     const active = qaDevices.includes(d);
@@ -267,7 +367,9 @@ export function RegisterForm({ embedded, onSignInClick }: RegisterFormProps) {
                         <Checkbox
                           checked={active}
                           onCheckedChange={(v) =>
-                            setQaDevices((prev) => (v ? Array.from(new Set([...prev, d])) : prev.filter((x) => x !== d)))
+                            setQaDevices((prev) =>
+                              v ? Array.from(new Set([...prev, d])) : prev.filter((x) => x !== d),
+                            )
                           }
                         />
                         <span>{d}</span>
@@ -293,7 +395,11 @@ export function RegisterForm({ embedded, onSignInClick }: RegisterFormProps) {
         {!embedded && onSignInClick && (
           <p className="text-xs text-center text-muted-foreground">
             Already have an account?{" "}
-            <button type="button" onClick={onSignInClick} className="underline font-medium text-primary">
+            <button
+              type="button"
+              onClick={onSignInClick}
+              className="underline font-medium text-primary"
+            >
               Sign in
             </button>
           </p>
@@ -308,19 +414,26 @@ export function RegisterForm({ embedded, onSignInClick }: RegisterFormProps) {
             </DialogTitle>
           </DialogHeader>
           <div className="max-h-[40vh] overflow-y-auto border rounded-md p-4 bg-background/40 text-sm leading-relaxed space-y-2">
-            {NDA_BODY.map((p, i) => (p === "" ? <div key={i} className="h-2" /> : <p key={i}>{p}</p>))}
+            {NDA_BODY.map((p, i) =>
+              p === "" ? <div key={i} className="h-2" /> : <p key={i}>{p}</p>,
+            )}
           </div>
           <p className="text-[11px] text-muted-foreground">Agreement version: {NDA_VERSION}</p>
           <div className="space-y-3 pt-2 sticky bottom-0 bg-background pb-1">
             <div>
               <Label>Type your full legal name to sign</Label>
-              <Input value={signatureName} onChange={(e) => setSignatureName(e.target.value)} placeholder="Jane A. Doe" />
+              <Input
+                value={signatureName}
+                onChange={(e) => setSignatureName(e.target.value)}
+                placeholder="Jane A. Doe"
+              />
             </div>
             <label className="flex items-start gap-2 text-sm">
               <Checkbox checked={accept} onCheckedChange={(v) => setAccept(!!v)} />
               <span>
-                I have read the NDA above and agree to its terms. I understand that typing my name and clicking
-                &quot;Sign &amp; submit&quot; constitutes my legal electronic signature under the U.S. E-SIGN Act.
+                I have read the NDA above and agree to its terms. I understand that typing my name
+                and clicking &quot;Sign &amp; submit&quot; constitutes my legal electronic signature
+                under the U.S. E-SIGN Act.
               </span>
             </label>
             <div className="flex flex-wrap justify-end gap-2 pt-1">

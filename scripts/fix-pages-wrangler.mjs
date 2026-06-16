@@ -27,9 +27,7 @@ config.compatibility_date = config.compatibility_date ?? "2026-06-05";
 config.compatibility_flags = config.compatibility_flags ?? ["nodejs_compat"];
 config.main = "index.js";
 config.no_bundle = true;
-config.rules = config.rules ?? [
-  { type: "ESModule", globs: ["**/*.mjs", "**/*.js"] },
-];
+config.rules = config.rules ?? [{ type: "ESModule", globs: ["**/*.mjs", "**/*.js"] }];
 
 // Required: worker fetch handler serves public assets via env.ASSETS.fetch()
 if (!config.assets) {

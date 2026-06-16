@@ -11,6 +11,11 @@
 // ============================================================================
 import type { TestCase } from "@/lib/test-plan";
 import { ACTIVE_SPRINT_ID, getTestAssignee, TEST_CASES } from "@/lib/test-plan";
+import {
+  buildAgentRegistrationSteps,
+  buildQaRegistrationSteps,
+  type RegistrationPlatform,
+} from "@/lib/registration-test-steps";
 
 export type PlatformCategory = "Mobile" | "Tablet" | "Desktop";
 
@@ -23,9 +28,9 @@ export interface TestPlatform {
 }
 
 export const TEST_PLATFORMS: TestPlatform[] = [
-  { suffix: "COMP",  label: "Computer",  category: "Desktop" },
-  { suffix: "PHONE", label: "Phone",     category: "Mobile" },
-  { suffix: "IPAD",  label: "iPad",      category: "Tablet" },
+  { suffix: "COMP", label: "Computer", category: "Desktop" },
+  { suffix: "PHONE", label: "Phone", category: "Mobile" },
+  { suffix: "IPAD", label: "iPad", category: "Tablet" },
 ];
 
 /** Legacy fallback owner when a source test has no owner and cannot be derived. */
@@ -39,10 +44,10 @@ export const PLATFORM_VARIANT_OWNER = "Catria";
  */
 const MULTI_PLATFORM_AREA_PREFIXES = [
   "Scenario",
-  "Voice",            // Voice · Inputs, Voice · Wizard
-  "Intake",           // Intake · Manual, Intake · Meds
-  "Auth",             // login / signup / reset
-  "Registration",     // Registration · Email
+  "Voice", // Voice · Inputs, Voice · Wizard
+  "Intake", // Intake · Manual, Intake · Meds
+  "Auth", // login / signup / reset
+  "Registration", // Registration · Email
   "Landing",
   "Expert opt-in",
   "Exports",
@@ -66,15 +71,19 @@ type NonDesktopOwner = (typeof NON_DESKTOP_OWNERS)[number];
  * same test always lands on the same owner across renders.
  */
 function nonDesktopOwner(sourceId: string, suffix: string): NonDesktopOwner {
-  const n = parseInt((sourceId.match(/(\d+)/)?.[1] ?? "0"), 10);
+  const n = parseInt(sourceId.match(/(\d+)/)?.[1] ?? "0", 10);
   const platformIdx = ["PHONE", "IPAD"].indexOf(suffix);
   // Hash the source id alpha portion in too so different areas don't all
   // land on the same owner for the same numeric suffix.
-  const alphaSeed = (sourceId.match(/[A-Z]/g) ?? []).reduce(
-    (acc, c) => acc + c.charCodeAt(0),
-    0,
-  );
+  const alphaSeed = (sourceId.match(/[A-Z]/g) ?? []).reduce((acc, c) => acc + c.charCodeAt(0), 0);
   return NON_DESKTOP_OWNERS[(n + platformIdx + alphaSeed) % NON_DESKTOP_OWNERS.length];
+}
+
+function registrationStepsForPlatform(sourceId: string, platformLabel: string): string[] | null {
+  const platform = platformLabel as RegistrationPlatform;
+  if (sourceId === "AUTH-001") return buildQaRegistrationSteps(platform);
+  if (sourceId === "AUTH-005") return buildAgentRegistrationSteps(platform);
+  return null;
 }
 
 /**
@@ -88,10 +97,7 @@ export function expandTestWithPlatforms(t: TestCase): TestCase[] {
   if (!isMultiPlatformArea(t.area)) return [t];
   return TEST_PLATFORMS.map((p) => {
     const baseAssignee = t.assignee || getTestAssignee(t);
-    const assignee =
-      p.category !== "Desktop"
-        ? nonDesktopOwner(t.id, p.suffix)
-        : baseAssignee;
+    const assignee = p.category !== "Desktop" ? nonDesktopOwner(t.id, p.suffix) : baseAssignee;
     // Unassigned variants must fall into the Backlog (handled by
     // getTestSprintId when sprintId is undefined). Only pin a sprint when
     // the source already had one or the variant has a real owner.
@@ -100,11 +106,13 @@ export function expandTestWithPlatforms(t: TestCase): TestCase[] {
       : assignee === "Unassigned"
         ? undefined
         : ACTIVE_SPRINT_ID;
+    const platformSteps = registrationStepsForPlatform(t.id, p.label);
     return {
       ...t,
       id: `${t.id}-${p.suffix}`,
       title: `${t.title} — ${p.label}`,
       area: `${t.area} · ${p.category}`,
+      steps: platformSteps ?? t.steps,
       assignee,
       sprintId,
       notes: t.notes
@@ -133,6 +141,16 @@ export function parsePlatformVariantId(id: string): {
     }
   }
   return { sourceId: id, platformSuffix: null };
+}
+
+/** Base test id for shared content (steps, expected, …) — strips platform suffixes. */
+export function resolveTestContentId(testId: string): string {
+  return parsePlatformVariantId(testId).sourceId;
+}
+
+/** User-created tests stored in custom_tests (not test_results overrides). */
+export function isCustomTestContentId(testId: string): boolean {
+  return /^CUS-\d+$/.test(resolveTestContentId(testId));
 }
 
 /**

@@ -2,30 +2,57 @@ import { useEffect, useState } from "react";
 import { TEST_OWNERS } from "@/lib/test-plan";
 import { listQaAssignees } from "@/lib/qa-assignees.functions";
 
-// Module-level cache so we don't refetch on every component mount.
-let cache: string[] | null = null;
-let inflight: Promise<string[]> | null = null;
-const subscribers = new Set<(v: string[]) => void>();
+export type AssigneeOption = {
+  name: string;
+  selectable: boolean;
+};
 
-function publish(list: string[]) {
+const BUILTIN_OPTIONS: AssigneeOption[] = [
+  { name: "Unassigned", selectable: true },
+  ...(TEST_OWNERS as readonly string[]).map((name) => ({ name, selectable: true })),
+];
+
+function mergeAssigneeOptions(qa: { name: string; active: boolean }[]): AssigneeOption[] {
+  const builtinNames = new Set(BUILTIN_OPTIONS.map((o) => o.name));
+  const merged = [...BUILTIN_OPTIONS];
+  for (const entry of qa) {
+    if (builtinNames.has(entry.name)) continue;
+    merged.push({ name: entry.name, selectable: true });
+  }
+  return merged;
+}
+
+export function assigneeOptionNames(options: AssigneeOption[]): string[] {
+  return options.map((o) => o.name);
+}
+
+export function formatAssigneeOptionLabel(option: AssigneeOption): string {
+  return option.selectable ? option.name : `${option.name} (inactive)`;
+}
+
+// Module-level cache so we don't refetch on every component mount.
+let cache: AssigneeOption[] | null = null;
+let inflight: Promise<AssigneeOption[]> | null = null;
+const subscribers = new Set<(v: AssigneeOption[]) => void>();
+
+function publish(list: AssigneeOption[]) {
   cache = list;
   subscribers.forEach((cb) => cb(list));
 }
 
-function fetchOnce(force = false): Promise<string[]> {
+function fetchOnce(force = false): Promise<AssigneeOption[]> {
   if (inflight) return inflight;
   if (!force && cache) return Promise.resolve(cache);
   inflight = listQaAssignees()
     .then((qa) => {
-      const merged = Array.from(new Set(["Unassigned", ...(TEST_OWNERS as readonly string[]), ...qa]));
+      const merged = mergeAssigneeOptions(qa);
       publish(merged);
       return merged;
     })
     .catch((e) => {
       console.warn("[assignees] failed to load QA list", e);
-      const merged = ["Unassigned", ...(TEST_OWNERS as readonly string[])];
-      publish(merged);
-      return merged;
+      publish([...BUILTIN_OPTIONS]);
+      return [...BUILTIN_OPTIONS];
     })
     .finally(() => {
       inflight = null;
@@ -38,23 +65,23 @@ function fetchOnce(force = false): Promise<string[]> {
  * value to every mounted subscriber. Call this after admin actions that
  * change which accounts are enabled or which users have the QA role.
  */
-export function refreshAssigneeOptions(): Promise<string[]> {
+export function refreshAssigneeOptions(): Promise<AssigneeOption[]> {
   cache = null;
   return fetchOnce(true);
 }
 
 /**
  * Hook returning the merged assignee list: built-in TEST_OWNERS plus every
- * enabled QA user. Refreshes on mount but de-dupes requests app-wide.
+ * QA user (all QA-role users are selectable).
  */
-export function useAssigneeOptions(): string[] {
-  const [list, setList] = useState<string[]>(cache ?? ["Unassigned", ...(TEST_OWNERS as readonly string[])]);
+export function useAssigneeOptions(): AssigneeOption[] {
+  const [list, setList] = useState<AssigneeOption[]>(cache ?? [...BUILTIN_OPTIONS]);
   useEffect(() => {
     subscribers.add(setList);
-    fetchOnce().then((v) => setList(v));
-    // Refetch when the tab regains focus so admin changes made in another
-    // tab (or just now in this one) propagate without a full reload.
-    const onFocus = () => { fetchOnce(true); };
+    fetchOnce(true).then((v) => setList(v));
+    const onFocus = () => {
+      fetchOnce(true);
+    };
     if (typeof window !== "undefined") window.addEventListener("focus", onFocus);
     return () => {
       subscribers.delete(setList);

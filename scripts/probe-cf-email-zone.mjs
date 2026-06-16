@@ -15,7 +15,13 @@ const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application
 async function api(url, init = {}) {
   const res = await fetch(url, { headers, ...init });
   const json = await res.json();
-  console.log(init.method ?? "GET", url.split("/v4/")[1], res.status, json.success, json.errors?.[0]?.message ?? "");
+  console.log(
+    init.method ?? "GET",
+    url.split("/v4/")[1],
+    res.status,
+    json.success,
+    json.errors?.[0]?.message ?? "",
+  );
   if (json.result != null) console.log(JSON.stringify(json.result, null, 2));
   return json;
 }

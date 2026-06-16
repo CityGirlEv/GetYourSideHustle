@@ -11,10 +11,7 @@ function loadEnv() {
     if (!line || line.startsWith("#") || !line.includes("=")) continue;
     const i = line.indexOf("=");
     let val = line.slice(i + 1).trim();
-    if (
-      (val.startsWith('"') && val.endsWith('"')) ||
-      (val.startsWith("'") && val.endsWith("'"))
-    ) {
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
       val = val.slice(1, -1);
     }
     env[line.slice(0, i)] = val;
@@ -53,4 +50,10 @@ const detail = await fetch(`https://api.resend.com/domains/${domain.id}`, { head
   r.json(),
 );
 console.log("status:", detail.status);
-console.log(JSON.stringify(detail.records?.map((r) => ({ record: r.record, name: r.name, status: r.status })), null, 2));
+console.log(
+  JSON.stringify(
+    detail.records?.map((r) => ({ record: r.record, name: r.name, status: r.status })),
+    null,
+    2,
+  ),
+);

@@ -57,11 +57,17 @@ test.describe("role-based scoping on /agent", () => {
     await page.goto("/agent");
 
     // Page loads with agent portal heading
-    await expect(page.getByRole("heading", { name: /My assignments/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Agent command center/i })).toBeVisible();
 
     // Either scenarios table or the empty state is shown (both prove scoping ran)
-    const hasTable = await page.locator("table").isVisible().catch(() => false);
-    const hasEmpty = await page.getByText(/No scenarios assigned/).isVisible().catch(() => false);
+    const hasTable = await page
+      .locator("table")
+      .isVisible()
+      .catch(() => false);
+    const hasEmpty = await page
+      .getByText(/No scenarios claimed or assigned yet/)
+      .isVisible()
+      .catch(() => false);
     expect(hasTable || hasEmpty).toBe(true);
   });
 });

@@ -23,10 +23,7 @@ function loadEnvFile() {
     if (!line || line.startsWith("#") || !line.includes("=")) continue;
     const i = line.indexOf("=");
     let val = line.slice(i + 1).trim();
-    if (
-      (val.startsWith('"') && val.endsWith('"')) ||
-      (val.startsWith("'") && val.endsWith("'"))
-    ) {
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
       val = val.slice(1, -1);
     }
     env[line.slice(0, i)] = val;
@@ -144,11 +141,11 @@ async function syncPagesEnv() {
   const envVars = { ...(production.env_vars ?? {}) };
   envVars.ADMIN_NOTIFICATION_EMAILS = {
     type: "plain_text",
-    value: "evelyn3@cox.net,sharpebanker@yahoo.com",
+    value: "evelyn3@cox.net,sharpebanker@yahoo.com,info@mypartb.com,getpartb@gmail.com",
   };
   envVars.EMAIL_FROM = {
     type: "plain_text",
-    value: `The Medicare Optimizer <noreply@${ZONE_NAME}>`,
+    value: `Get Part B Optimizer <noreply@${ZONE_NAME}>`,
   };
   envVars.EMAIL_SENDER_DOMAIN = { type: "plain_text", value: ZONE_NAME };
   const patchRes = await fetch(
@@ -179,7 +176,7 @@ async function testSend() {
       "User-Agent": "mypartb-fix/1.0",
     },
     body: JSON.stringify({
-      from: `The Medicare Optimizer <noreply@${ZONE_NAME}>`,
+      from: `Get Part B Optimizer <noreply@${ZONE_NAME}>`,
       to: ["evelyn3@cox.net"],
       subject: "[mypartb] Resend delivery test",
       html: "<p>If you received this, mypartb.com is verified and sending.</p>",

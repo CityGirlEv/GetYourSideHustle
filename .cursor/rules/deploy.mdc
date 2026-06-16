@@ -1,0 +1,25 @@
+---
+description: Production deploy must update Cloudflare Pages and the standalone Worker
+alwaysApply: true
+---
+
+# Deploy (Pages + Worker)
+
+When the user asks to **deploy**, always run the full production deploy — never Pages-only unless they explicitly say otherwise.
+
+```bash
+cd C:\Users\evely\Documents\antigravity\eager-hypatia
+npm run deploy
+```
+
+This runs, in order:
+
+1. `npm run build` (includes `fix-pages-wrangler.mjs`)
+2. **Cloudflare Pages** → `mypartb` project (`mypartb.com` / `*.mypartb.pages.dev`)
+3. **Cloudflare Worker** → `mypartb.evelyn3.workers.dev` via `deploy:worker`
+
+`npm run deploy:pages` is an alias for `npm run deploy` (both targets).
+
+Do **not** use `wrangler pages deploy` alone. Do **not** skip `deploy:worker` after a Pages deploy.
+
+After deploy, report both URLs: latest Pages preview + Worker URL.

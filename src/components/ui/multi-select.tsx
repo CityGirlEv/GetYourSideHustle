@@ -28,9 +28,12 @@ interface MultiSelectProps {
 }
 
 export function MultiSelect({
-  options, value, onChange,
+  options,
+  value,
+  onChange,
   placeholder = "Select…",
-  className, triggerClassName,
+  className,
+  triggerClassName,
   allLabel = "All",
   searchable = false,
   searchPlaceholder = "Search…",
@@ -59,7 +62,8 @@ export function MultiSelect({
       return;
     }
     const set = new Set(value);
-    if (checked) set.add(v); else set.delete(v);
+    if (checked) set.add(v);
+    else set.delete(v);
     const arr = Array.from(set);
     // If the user selected everything, normalize to [] meaning "All".
     // If they cleared the last one, fall back to the "none" sentinel.
@@ -94,16 +98,30 @@ export function MultiSelect({
           size="sm"
           className={cn("h-9 justify-between font-normal", triggerClassName)}
         >
-          <span className="truncate text-left">{placeholder ? `${placeholder}: ${label}` : label}</span>
+          <span className="truncate text-left">
+            {placeholder ? `${placeholder}: ${label}` : label}
+          </span>
           <ChevronDown className="h-3.5 w-3.5 opacity-60 ml-2 shrink-0" />
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className={cn("w-[240px] p-2", className)}>
         <div className="flex items-center justify-between gap-2 pb-2 mb-2 border-b">
-          <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={selectAll}>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-7 px-2 text-xs"
+            onClick={selectAll}
+          >
             <Check className="h-3 w-3 mr-1" /> Select all
           </Button>
-          <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={setNone}>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-7 px-2 text-xs"
+            onClick={setNone}
+          >
             <X className="h-3 w-3 mr-1" /> Clear
           </Button>
         </div>
@@ -127,10 +145,7 @@ export function MultiSelect({
                 key={o.value}
                 className="flex items-center gap-2 px-1.5 py-1 rounded hover:bg-muted cursor-pointer text-sm"
               >
-                <Checkbox
-                  checked={checked}
-                  onCheckedChange={(c) => toggle(o.value, Boolean(c))}
-                />
+                <Checkbox checked={checked} onCheckedChange={(c) => toggle(o.value, Boolean(c))} />
                 <span className="truncate">{o.label}</span>
               </label>
             );

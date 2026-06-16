@@ -16,6 +16,7 @@ import { YearToggle } from "./YearToggle";
 import { AdminNotificationsBell } from "./AdminNotificationsBell";
 import { AdminNavDropdown } from "./AdminNavDropdown";
 import { BrandLogo } from "./BrandLogo";
+import { userHasAdminRole } from "@/lib/user-roles";
 import { FontSizeToggle } from "./FontSizeToggle";
 import { CreditPill } from "./CreditPill";
 import { Button } from "./ui/button";
@@ -28,12 +29,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const navLink =
-  "flex items-center gap-1.5 text-primary font-semibold underline-offset-4 transition-colors hover:text-primary/65 hover:underline";
+  "flex items-center gap-1.5 min-h-11 py-2 text-primary font-semibold underline-offset-4 transition-colors touch-manipulation hover:text-primary/65 hover:underline";
 
 export function SecurityBanner() {
   const { user, authLoading, signOut } = useApp();
   const router = useRouter();
-  const isAdmin = user?.role === "admin";
+  const isAdmin = userHasAdminRole(user);
 
   const logout = async () => {
     await signOut();
@@ -43,14 +44,17 @@ export function SecurityBanner() {
   return (
     <nav
       aria-label="Site navigation"
-      className="relative z-10 border-b-0 bg-transparent px-4 pt-0.5 pb-1.5 sm:pb-2 text-sm"
+      className="relative z-10 border-b-0 bg-transparent px-4 py-1 text-sm"
     >
       <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-x-3 sm:gap-x-6">
-          <div className="flex flex-col items-start gap-1.5 min-w-0">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-x-3 sm:gap-x-6">
+          <div className="flex flex-col items-start justify-center gap-1 min-w-0 self-center">
             <div className="flex flex-wrap items-center gap-x-3 sm:gap-x-4 gap-y-1">
               <Link to="/" className={navLink}>
                 <Home className="h-4 w-4 shrink-0" /> Home
+              </Link>
+              <Link to="/pricing" className={navLink}>
+                <Briefcase className="h-4 w-4 shrink-0" /> Pricing
               </Link>
               {!authLoading && isAdmin && (
                 <>
@@ -72,33 +76,32 @@ export function SecurityBanner() {
             )}
           </div>
 
-          <div className="flex flex-col items-center self-start -mt-0.5 shrink-0">
+          <div className="flex flex-col items-center justify-center shrink-0 self-center">
             <Link
               to="/"
-              aria-label="The Medicare Optimizer"
+              aria-label="Get Part B Optimizer"
               className="block drop-shadow-[0_2px_4px_rgba(0,40,112,0.1)]"
             >
-              <BrandLogo className="w-32 sm:w-44 md:w-56 lg:w-64 h-auto max-w-[min(42vw,16rem)] sm:max-w-none" />
+              <BrandLogo size="nav" />
             </Link>
-            <p className="mt-0.5 max-w-[13rem] sm:max-w-xs md:max-w-sm text-center font-display text-[10px] sm:text-xs md:text-sm text-primary font-medium italic leading-tight px-2">
-              Let The Optimizer Find The Medicare Plan You Deserve!
-            </p>
           </div>
 
-          <div className="flex flex-col items-end gap-1.5 min-w-0">
+          <div className="flex flex-col items-end justify-center gap-1 min-w-0 self-center">
             <div className="flex flex-wrap items-center justify-end gap-x-3 sm:gap-x-4 gap-y-1">
               {user ? (
                 <button onClick={logout} className={navLink}>
                   <LogOut className="h-4 w-4 shrink-0" /> Log out
                 </button>
               ) : (
-                <Link to="/auth" search={{ tab: "sign-in" }} className={navLink}>
-                  <LogIn className="h-4 w-4 shrink-0" /> Log in
-                </Link>
+                <>
+                  <Link to="/auth" search={{ tab: "sign-in" }} className={navLink}>
+                    <LogIn className="h-4 w-4 shrink-0" /> Log in
+                  </Link>
+                  <Link to="/auth" search={{ tab: "register" }} className={navLink}>
+                    <UserPlus className="h-4 w-4 shrink-0" /> Register
+                  </Link>
+                </>
               )}
-              <Link to="/auth" search={{ tab: "register" }} className={navLink}>
-                <UserPlus className="h-4 w-4 shrink-0" /> Register
-              </Link>
             </div>
             {user && <YearToggle tone="light" />}
             <div className="flex flex-wrap items-center justify-end gap-x-3 sm:gap-x-4 gap-y-1">
@@ -115,15 +118,20 @@ export function SecurityBanner() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-52">
                     <DropdownMenuItem asChild>
-                      <Link to="/qa" className="flex items-center gap-2 cursor-pointer">
-                        <LayoutDashboard className="h-4 w-4" /> QA Dashboard
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
                       <Link to="/testing" className="flex items-center gap-2 cursor-pointer">
                         <FlaskConical className="h-4 w-4" /> Testing Portal
                       </Link>
                     </DropdownMenuItem>
+                    {userHasAdminRole(user) && (
+                      <DropdownMenuItem asChild>
+                        <Link
+                          to="/admin/email-templates"
+                          className="flex items-center gap-2 cursor-pointer"
+                        >
+                          <FileText className="h-4 w-4" /> Email Templates
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem asChild>
                       <Link to="/nda" className="flex items-center gap-2 cursor-pointer">
                         <FileSignature className="h-4 w-4" /> NDA
@@ -132,7 +140,7 @@ export function SecurityBanner() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
-              {user?.role === "agent" && (
+              {(user?.role === "agent" || user?.role === "customer") && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button size="sm" variant="outline" className="gap-1 h-8">

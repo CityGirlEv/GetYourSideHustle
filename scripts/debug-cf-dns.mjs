@@ -20,12 +20,15 @@ function readToken() {
 const token = readToken();
 console.log("Token length:", token.length);
 
-const res = await fetch(`https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records?per_page=5`, {
-  headers: {
-    "Authorization": `Bearer ${token}`,
-    "Content-Type": "application/json"
-  }
-});
+const res = await fetch(
+  `https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records?per_page=5`,
+  {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  },
+);
 
 console.log("Status:", res.status);
 console.log("Headers:", Object.fromEntries(res.headers.entries()));

@@ -23,9 +23,7 @@ describe("component smoke renders", () => {
   });
 
   it("DateField", () => {
-    const { container } = render(
-      <DateField value="" onChange={() => {}} />,
-    );
+    const { container } = render(<DateField value="" onChange={() => {}} />);
     expect(container.firstChild).toBeTruthy();
   });
 
