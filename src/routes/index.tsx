@@ -107,9 +107,6 @@ function Index() {
               <span className="block mt-0.5">*** COMPLETELY ANONYMOUS ***</span>
             </div>
             <BrandLogo size="icon" className="my-1" />
-            <p className="text-[11px] sm:text-xs text-primary font-display font-medium italic leading-snug px-2 -mt-0.5">
-              Let The Optimizer Find The Medicare Plan You Deserve!
-            </p>
             <div className="-mt-2">
               <h2 className="font-display text-2xl sm:text-3xl font-bold leading-tight uppercase">
                 <span className="block">Find the Medicare Plan</span>

@@ -16,6 +16,7 @@ import { YearToggle } from "./YearToggle";
 import { AdminNotificationsBell } from "./AdminNotificationsBell";
 import { AdminNavDropdown } from "./AdminNavDropdown";
 import { BrandLogo } from "./BrandLogo";
+import { SITE_TAGLINE } from "@/lib/site-brand";
 import { userHasAdminRole } from "@/lib/user-roles";
 import { FontSizeToggle } from "./FontSizeToggle";
 import { CreditPill } from "./CreditPill";
@@ -76,7 +77,7 @@ export function SecurityBanner() {
             )}
           </div>
 
-          <div className="flex flex-col items-center justify-center shrink-0 self-center">
+          <div className="flex flex-col items-center justify-center shrink-0 self-center text-center">
             <Link
               to="/"
               aria-label="Get Part B Optimizer"
@@ -84,6 +85,9 @@ export function SecurityBanner() {
             >
               <BrandLogo size="nav" />
             </Link>
+            <p className="mt-0.5 max-w-[15rem] sm:max-w-[18rem] px-1 text-[10px] sm:text-[11px] font-display font-medium italic leading-snug text-primary">
+              {SITE_TAGLINE}
+            </p>
           </div>
 
           <div className="flex flex-col items-end justify-center gap-1 min-w-0 self-center">
