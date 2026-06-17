@@ -1,5 +1,6 @@
 import * as React from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { SITE_BRAND_NAME } from "@/lib/site-brand";
 
 export const Route = createFileRoute("/unsubscribe")({
   component: UnsubscribePage,
@@ -66,8 +67,8 @@ function UnsubscribePage() {
         {status === "ready" && (
           <>
             <p className="text-muted-foreground mb-6">
-              Unsubscribe {email ? <strong>{email}</strong> : "this address"} from The Medicare
-              Optimizer emails?
+              Unsubscribe {email ? <strong>{email}</strong> : "this address"} from {SITE_BRAND_NAME}{" "}
+              emails?
             </p>
             <button
               onClick={confirm}

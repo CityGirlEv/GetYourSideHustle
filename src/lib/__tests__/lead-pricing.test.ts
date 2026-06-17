@@ -15,6 +15,9 @@ describe("lead-pricing", () => {
     expect(LEAD_SUBSCRIPTION_PRICING.regular.monthlyFee).toBe(100);
     expect(LEAD_SUBSCRIPTION_PRICING.introductory.monthlyFee).toBe(60);
     expect(LEAD_SUBSCRIPTION_PRICING.includedLeadsPerMonth).toBe(8);
+    expect(LEAD_SUBSCRIPTION_PRICING.introductory.includedLeadsPerMonth).toBe(8);
+    expect(LEAD_SUBSCRIPTION_PRICING.regular.includedLeadsPerMonth).toBe(8);
+    expect(LEAD_SUBSCRIPTION_PRICING.introductory.effectivePerLead).toBe(7.5);
     expect(LEAD_SUBSCRIPTION_PRICING.minimumTermMonths).toBe(3);
   });
 

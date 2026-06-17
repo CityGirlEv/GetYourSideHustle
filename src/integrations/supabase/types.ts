@@ -423,6 +423,107 @@ export type Database = {
           },
         ];
       };
+      learning_article_versions: {
+        Row: {
+          body_md: string;
+          category: string;
+          created_at: string;
+          created_by: string | null;
+          excerpt: string;
+          id: string;
+          is_featured: boolean;
+          meta_description: string;
+          slug: string;
+          source: string;
+          status: string;
+          title: string;
+        };
+        Insert: {
+          body_md: string;
+          category: string;
+          created_at?: string;
+          created_by?: string | null;
+          excerpt?: string;
+          id?: string;
+          is_featured?: boolean;
+          meta_description: string;
+          slug: string;
+          source?: string;
+          status: string;
+          title: string;
+        };
+        Update: {
+          body_md?: string;
+          category?: string;
+          created_at?: string;
+          created_by?: string | null;
+          excerpt?: string;
+          id?: string;
+          is_featured?: boolean;
+          meta_description?: string;
+          slug?: string;
+          source?: string;
+          status?: string;
+          title?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "learning_article_versions_slug_fkey";
+            columns: ["slug"];
+            isOneToOne: false;
+            referencedRelation: "learning_articles";
+            referencedColumns: ["slug"];
+          },
+        ];
+      };
+      learning_articles: {
+        Row: {
+          body_md: string;
+          category: string;
+          created_at: string;
+          excerpt: string;
+          is_featured: boolean;
+          meta_description: string;
+          published_at: string | null;
+          slug: string;
+          sort_order: number;
+          status: string;
+          title: string;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          body_md: string;
+          category: string;
+          created_at?: string;
+          excerpt?: string;
+          is_featured?: boolean;
+          meta_description: string;
+          published_at?: string | null;
+          slug: string;
+          sort_order?: number;
+          status?: string;
+          title: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          body_md?: string;
+          category?: string;
+          created_at?: string;
+          excerpt?: string;
+          is_featured?: boolean;
+          meta_description?: string;
+          published_at?: string | null;
+          slug?: string;
+          sort_order?: number;
+          status?: string;
+          title?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [];
+      };
       nda_signatures: {
         Row: {
           agreement_version: string;

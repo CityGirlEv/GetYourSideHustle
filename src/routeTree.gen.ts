@@ -26,6 +26,7 @@ import { Route as QaRouteImport } from './routes/qa'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as NdaRouteImport } from './routes/nda'
 import { Route as LegalRouteImport } from './routes/legal'
+import { Route as LearningCenterRouteImport } from './routes/learning-center'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AgentRouteImport } from './routes/agent'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -33,12 +34,17 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as StaffReportRouteImport } from './routes/staff_.report'
 import { Route as ScenarioNewRouteImport } from './routes/scenario.new'
 import { Route as ScenarioCodeRouteImport } from './routes/scenario.$code'
+import { Route as LearningCenterSlugRouteImport } from './routes/learning-center_.$slug'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as AuthVerifyRouteImport } from './routes/auth.verify'
 import { Route as AdminUsersRouteImport } from './routes/admin_.users'
 import { Route as AdminStaffRouteImport } from './routes/admin_.staff'
 import { Route as AdminPricingRouteImport } from './routes/admin_.pricing'
+import { Route as AdminNewsletterRouteImport } from './routes/admin_.newsletter'
 import { Route as AdminEmailTemplatesRouteImport } from './routes/admin_.email-templates'
+import { Route as AdminContentFactoryRouteImport } from './routes/admin_.content-factory'
+import { Route as AdminCalendarRouteImport } from './routes/admin_.calendar'
+import { Route as AdminArticlesRouteImport } from './routes/admin_.articles'
 import { Route as ScenarioCreatedCodeRouteImport } from './routes/scenario.created.$code'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe/webhook'
 import { Route as ApiPublicTrackVisitRouteImport } from './routes/api/public/track-visit'
@@ -138,6 +144,11 @@ const LegalRoute = LegalRouteImport.update({
   path: '/legal',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LearningCenterRoute = LearningCenterRouteImport.update({
+  id: '/learning-center',
+  path: '/learning-center',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -173,6 +184,11 @@ const ScenarioCodeRoute = ScenarioCodeRouteImport.update({
   path: '/scenario/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LearningCenterSlugRoute = LearningCenterSlugRouteImport.update({
+  id: '/learning-center_/$slug',
+  path: '/learning-center/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
   id: '/email/unsubscribe',
   path: '/email/unsubscribe',
@@ -198,9 +214,29 @@ const AdminPricingRoute = AdminPricingRouteImport.update({
   path: '/admin/pricing',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminNewsletterRoute = AdminNewsletterRouteImport.update({
+  id: '/admin_/newsletter',
+  path: '/admin/newsletter',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminEmailTemplatesRoute = AdminEmailTemplatesRouteImport.update({
   id: '/admin_/email-templates',
   path: '/admin/email-templates',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminContentFactoryRoute = AdminContentFactoryRouteImport.update({
+  id: '/admin_/content-factory',
+  path: '/admin/content-factory',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminCalendarRoute = AdminCalendarRouteImport.update({
+  id: '/admin_/calendar',
+  path: '/admin/calendar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminArticlesRoute = AdminArticlesRouteImport.update({
+  id: '/admin_/articles',
+  path: '/admin/articles',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ScenarioCreatedCodeRoute = ScenarioCreatedCodeRouteImport.update({
@@ -276,6 +312,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/agent': typeof AgentRouteWithChildren
   '/auth': typeof AuthRouteWithChildren
+  '/learning-center': typeof LearningCenterRoute
   '/legal': typeof LegalRoute
   '/nda': typeof NdaRoute
   '/pricing': typeof PricingRoute
@@ -293,12 +330,17 @@ export interface FileRoutesByFullPath {
   '/unsubscribe': typeof UnsubscribeRoute
   '/users': typeof UsersRoute
   '/visits': typeof VisitsRoute
+  '/admin/articles': typeof AdminArticlesRoute
+  '/admin/calendar': typeof AdminCalendarRoute
+  '/admin/content-factory': typeof AdminContentFactoryRoute
   '/admin/email-templates': typeof AdminEmailTemplatesRoute
+  '/admin/newsletter': typeof AdminNewsletterRoute
   '/admin/pricing': typeof AdminPricingRoute
   '/admin/staff': typeof AdminStaffRoute
   '/admin/users': typeof AdminUsersRoute
   '/auth/verify': typeof AuthVerifyRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
+  '/learning-center/$slug': typeof LearningCenterSlugRoute
   '/scenario/$code': typeof ScenarioCodeRoute
   '/scenario/new': typeof ScenarioNewRoute
   '/staff/report': typeof StaffReportRoute
@@ -321,6 +363,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/agent': typeof AgentRouteWithChildren
   '/auth': typeof AuthRouteWithChildren
+  '/learning-center': typeof LearningCenterRoute
   '/legal': typeof LegalRoute
   '/nda': typeof NdaRoute
   '/pricing': typeof PricingRoute
@@ -338,12 +381,17 @@ export interface FileRoutesByTo {
   '/unsubscribe': typeof UnsubscribeRoute
   '/users': typeof UsersRoute
   '/visits': typeof VisitsRoute
+  '/admin/articles': typeof AdminArticlesRoute
+  '/admin/calendar': typeof AdminCalendarRoute
+  '/admin/content-factory': typeof AdminContentFactoryRoute
   '/admin/email-templates': typeof AdminEmailTemplatesRoute
+  '/admin/newsletter': typeof AdminNewsletterRoute
   '/admin/pricing': typeof AdminPricingRoute
   '/admin/staff': typeof AdminStaffRoute
   '/admin/users': typeof AdminUsersRoute
   '/auth/verify': typeof AuthVerifyRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
+  '/learning-center/$slug': typeof LearningCenterSlugRoute
   '/scenario/$code': typeof ScenarioCodeRoute
   '/scenario/new': typeof ScenarioNewRoute
   '/staff/report': typeof StaffReportRoute
@@ -367,6 +415,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/agent': typeof AgentRouteWithChildren
   '/auth': typeof AuthRouteWithChildren
+  '/learning-center': typeof LearningCenterRoute
   '/legal': typeof LegalRoute
   '/nda': typeof NdaRoute
   '/pricing': typeof PricingRoute
@@ -384,12 +433,17 @@ export interface FileRoutesById {
   '/unsubscribe': typeof UnsubscribeRoute
   '/users': typeof UsersRoute
   '/visits': typeof VisitsRoute
+  '/admin_/articles': typeof AdminArticlesRoute
+  '/admin_/calendar': typeof AdminCalendarRoute
+  '/admin_/content-factory': typeof AdminContentFactoryRoute
   '/admin_/email-templates': typeof AdminEmailTemplatesRoute
+  '/admin_/newsletter': typeof AdminNewsletterRoute
   '/admin_/pricing': typeof AdminPricingRoute
   '/admin_/staff': typeof AdminStaffRoute
   '/admin_/users': typeof AdminUsersRoute
   '/auth/verify': typeof AuthVerifyRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
+  '/learning-center_/$slug': typeof LearningCenterSlugRoute
   '/scenario/$code': typeof ScenarioCodeRoute
   '/scenario/new': typeof ScenarioNewRoute
   '/staff_/report': typeof StaffReportRoute
@@ -414,6 +468,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/agent'
     | '/auth'
+    | '/learning-center'
     | '/legal'
     | '/nda'
     | '/pricing'
@@ -431,12 +486,17 @@ export interface FileRouteTypes {
     | '/unsubscribe'
     | '/users'
     | '/visits'
+    | '/admin/articles'
+    | '/admin/calendar'
+    | '/admin/content-factory'
     | '/admin/email-templates'
+    | '/admin/newsletter'
     | '/admin/pricing'
     | '/admin/staff'
     | '/admin/users'
     | '/auth/verify'
     | '/email/unsubscribe'
+    | '/learning-center/$slug'
     | '/scenario/$code'
     | '/scenario/new'
     | '/staff/report'
@@ -459,6 +519,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/agent'
     | '/auth'
+    | '/learning-center'
     | '/legal'
     | '/nda'
     | '/pricing'
@@ -476,12 +537,17 @@ export interface FileRouteTypes {
     | '/unsubscribe'
     | '/users'
     | '/visits'
+    | '/admin/articles'
+    | '/admin/calendar'
+    | '/admin/content-factory'
     | '/admin/email-templates'
+    | '/admin/newsletter'
     | '/admin/pricing'
     | '/admin/staff'
     | '/admin/users'
     | '/auth/verify'
     | '/email/unsubscribe'
+    | '/learning-center/$slug'
     | '/scenario/$code'
     | '/scenario/new'
     | '/staff/report'
@@ -504,6 +570,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/agent'
     | '/auth'
+    | '/learning-center'
     | '/legal'
     | '/nda'
     | '/pricing'
@@ -521,12 +588,17 @@ export interface FileRouteTypes {
     | '/unsubscribe'
     | '/users'
     | '/visits'
+    | '/admin_/articles'
+    | '/admin_/calendar'
+    | '/admin_/content-factory'
     | '/admin_/email-templates'
+    | '/admin_/newsletter'
     | '/admin_/pricing'
     | '/admin_/staff'
     | '/admin_/users'
     | '/auth/verify'
     | '/email/unsubscribe'
+    | '/learning-center_/$slug'
     | '/scenario/$code'
     | '/scenario/new'
     | '/staff_/report'
@@ -550,6 +622,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   AgentRoute: typeof AgentRouteWithChildren
   AuthRoute: typeof AuthRouteWithChildren
+  LearningCenterRoute: typeof LearningCenterRoute
   LegalRoute: typeof LegalRoute
   NdaRoute: typeof NdaRoute
   PricingRoute: typeof PricingRoute
@@ -567,11 +640,16 @@ export interface RootRouteChildren {
   UnsubscribeRoute: typeof UnsubscribeRoute
   UsersRoute: typeof UsersRoute
   VisitsRoute: typeof VisitsRoute
+  AdminArticlesRoute: typeof AdminArticlesRoute
+  AdminCalendarRoute: typeof AdminCalendarRoute
+  AdminContentFactoryRoute: typeof AdminContentFactoryRoute
   AdminEmailTemplatesRoute: typeof AdminEmailTemplatesRoute
+  AdminNewsletterRoute: typeof AdminNewsletterRoute
   AdminPricingRoute: typeof AdminPricingRoute
   AdminStaffRoute: typeof AdminStaffRoute
   AdminUsersRoute: typeof AdminUsersRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
+  LearningCenterSlugRoute: typeof LearningCenterSlugRoute
   ScenarioCodeRoute: typeof ScenarioCodeRoute
   ScenarioNewRoute: typeof ScenarioNewRoute
   StaffReportRoute: typeof StaffReportRoute
@@ -709,6 +787,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LegalRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/learning-center': {
+      id: '/learning-center'
+      path: '/learning-center'
+      fullPath: '/learning-center'
+      preLoaderRoute: typeof LearningCenterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -758,6 +843,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ScenarioCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/learning-center_/$slug': {
+      id: '/learning-center_/$slug'
+      path: '/learning-center/$slug'
+      fullPath: '/learning-center/$slug'
+      preLoaderRoute: typeof LearningCenterSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/email/unsubscribe': {
       id: '/email/unsubscribe'
       path: '/email/unsubscribe'
@@ -793,11 +885,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPricingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin_/newsletter': {
+      id: '/admin_/newsletter'
+      path: '/admin/newsletter'
+      fullPath: '/admin/newsletter'
+      preLoaderRoute: typeof AdminNewsletterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin_/email-templates': {
       id: '/admin_/email-templates'
       path: '/admin/email-templates'
       fullPath: '/admin/email-templates'
       preLoaderRoute: typeof AdminEmailTemplatesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin_/content-factory': {
+      id: '/admin_/content-factory'
+      path: '/admin/content-factory'
+      fullPath: '/admin/content-factory'
+      preLoaderRoute: typeof AdminContentFactoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin_/calendar': {
+      id: '/admin_/calendar'
+      path: '/admin/calendar'
+      fullPath: '/admin/calendar'
+      preLoaderRoute: typeof AdminCalendarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin_/articles': {
+      id: '/admin_/articles'
+      path: '/admin/articles'
+      fullPath: '/admin/articles'
+      preLoaderRoute: typeof AdminArticlesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/scenario/created/$code': {
@@ -930,6 +1050,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   AgentRoute: AgentRouteWithChildren,
   AuthRoute: AuthRouteWithChildren,
+  LearningCenterRoute: LearningCenterRoute,
   LegalRoute: LegalRoute,
   NdaRoute: NdaRoute,
   PricingRoute: PricingRoute,
@@ -947,11 +1068,16 @@ const rootRouteChildren: RootRouteChildren = {
   UnsubscribeRoute: UnsubscribeRoute,
   UsersRoute: UsersRoute,
   VisitsRoute: VisitsRoute,
+  AdminArticlesRoute: AdminArticlesRoute,
+  AdminCalendarRoute: AdminCalendarRoute,
+  AdminContentFactoryRoute: AdminContentFactoryRoute,
   AdminEmailTemplatesRoute: AdminEmailTemplatesRoute,
+  AdminNewsletterRoute: AdminNewsletterRoute,
   AdminPricingRoute: AdminPricingRoute,
   AdminStaffRoute: AdminStaffRoute,
   AdminUsersRoute: AdminUsersRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
+  LearningCenterSlugRoute: LearningCenterSlugRoute,
   ScenarioCodeRoute: ScenarioCodeRoute,
   ScenarioNewRoute: ScenarioNewRoute,
   StaffReportRoute: StaffReportRoute,

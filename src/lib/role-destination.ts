@@ -16,7 +16,7 @@ export type UserRole =
 export function roleDestination(role: UserRole | string | null | undefined): string {
   if (role === "admin" || role === "leads_admin") return "/admin";
   if (role === "agent") return "/agent";
-  if (role === "customer") return "/pricing";
+  if (role === "customer") return "/agent";
   if (role === "qa") return "/testing";
   if (role === "client") return "/";
   return "/agent";

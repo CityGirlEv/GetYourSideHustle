@@ -81,7 +81,7 @@ import {
   REFERRAL_SOURCES_WITH_DETAIL,
   REFERRAL_DETAIL_FIELDS,
   buildReferralPreferences,
-  referralTextLooksLikePii,
+  validateReferralDetails,
   type ReferralSource,
 } from "@/lib/referral-sources";
 const GENDER_OPTIONS = [
@@ -653,28 +653,14 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
       toast.error("Please select a cost preference");
       return;
     }
-    if (referralSources.includes("agent_referral") && referralTextLooksLikePii(referralAgentName)) {
-      toast.error(
-        "Agent name cannot include email, phone, or ID numbers. Enter the agent or agency name only.",
-      );
-      return;
-    }
-    if (referralSources.includes("friend_family") && referralTextLooksLikePii(referralFriendFamily)) {
-      toast.error(
-        "Referral details cannot include names, email, or phone numbers.",
-      );
-      return;
-    }
-    if (referralSources.includes("medicare_event") && referralTextLooksLikePii(referralMedicareEvent)) {
-      toast.error(
-        "Event details cannot include names, email, or phone numbers.",
-      );
-      return;
-    }
-    if (referralSources.includes("other") && referralTextLooksLikePii(referralOther)) {
-      toast.error(
-        "Please describe how you heard about us without names, email, or phone numbers.",
-      );
+    const referralError = validateReferralDetails(referralSources, {
+      agent_referral: referralAgentName,
+      friend_family: referralFriendFamily,
+      medicare_event: referralMedicareEvent,
+      other: referralOther,
+    });
+    if (referralError) {
+      toast.error(referralError);
       return;
     }
     const submittedMeds = meds.filter(
@@ -1609,7 +1595,10 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
                 const field = REFERRAL_DETAIL_FIELDS[source];
                 return (
                   <div key={source} className="space-y-1 pt-1 border-t border-primary/10">
-                    <WizardFieldLabel tip={field.hint}>{field.label}</WizardFieldLabel>
+                    <WizardFieldLabel tip={field.hint}>
+                      {field.label}
+                      {field.required ? " *" : ""}
+                    </WizardFieldLabel>
                     <Input
                       className="h-9 text-sm"
                       placeholder={field.placeholder}
@@ -1618,6 +1607,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
                         setReferralDetailValue(source, e.target.value.slice(0, 80))
                       }
                       maxLength={80}
+                      required={field.required}
                     />
                   </div>
                 );
@@ -1625,13 +1615,14 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
             )}
             {referralSources.includes("other") && (
               <div className="space-y-1 pt-1 border-t border-primary/10">
-                <Label className="text-xs">Please briefly describe (optional)</Label>
+                <Label className="text-xs">Please briefly describe *</Label>
                 <Input
                   className="h-9 text-sm"
                   placeholder="e.g. Community bulletin board"
                   value={referralOther}
                   onChange={(e) => setReferralOther(e.target.value.slice(0, 80))}
                   maxLength={80}
+                  required
                 />
                 <p className="text-[11px] text-muted-foreground">
                   No names, email addresses, or phone numbers.

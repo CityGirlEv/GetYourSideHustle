@@ -12,6 +12,7 @@ export interface EmailLogRow {
   message_id: string | null;
   template_name: string;
   recipient_email: string;
+  recipient_name?: string;
   status: string;
   error_message: string | null;
   created_at: string;

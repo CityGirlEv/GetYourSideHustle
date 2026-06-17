@@ -1059,7 +1059,7 @@ function EmailSendLogPanel({ templateName }: { templateName: string | null }) {
                   />
                 ) : null}
                 <SortHeader
-                  label="Recipient"
+                  label="Sent to"
                   sortKey="recipient_email"
                   currentKey={sortKey}
                   currentDir={sortDir}
@@ -1088,7 +1088,17 @@ function EmailSendLogPanel({ templateName }: { templateName: string | null }) {
                     {new Date(row.created_at).toLocaleString()}
                   </td>
                   {showAll ? <td className="py-2 pr-3">{row.template_name}</td> : null}
-                  <td className="py-2 pr-3 break-all">{row.recipient_email}</td>
+                  <td className="py-2 pr-3 break-all">
+                    {row.recipient_name && row.recipient_name !== row.recipient_email ? (
+                      <>
+                        <span className="font-medium text-foreground">{row.recipient_name}</span>
+                        <br />
+                        <span className="text-xs text-muted-foreground">{row.recipient_email}</span>
+                      </>
+                    ) : (
+                      row.recipient_email
+                    )}
+                  </td>
                   <td className="py-2 pr-3">
                     <Badge variant={statusBadgeVariant(row.status)} className="capitalize">
                       {row.status}

@@ -16,7 +16,7 @@ import { EmailHeader } from "./email-header";
 import { EmailFooter } from "./email-footer";
 import { resolveEmailSiteUrl } from "./email-header";
 
-const SITE_NAME = "Get Part B Optimizer";
+import { SITE_BRAND_NAME as SITE_NAME } from "@/lib/site-brand";
 
 export interface UnassignedTestRow {
   id: string;

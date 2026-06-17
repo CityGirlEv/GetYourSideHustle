@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   Briefcase,
   FileText,
+  BookOpen,
 } from "lucide-react";
 import { Link, useRouter } from "@tanstack/react-router";
 import { useApp } from "@/lib/app-store";
@@ -16,7 +17,6 @@ import { YearToggle } from "./YearToggle";
 import { AdminNotificationsBell } from "./AdminNotificationsBell";
 import { AdminNavDropdown } from "./AdminNavDropdown";
 import { BrandLogo } from "./BrandLogo";
-import { SITE_TAGLINE } from "@/lib/site-brand";
 import { userHasAdminRole } from "@/lib/user-roles";
 import { FontSizeToggle } from "./FontSizeToggle";
 import { CreditPill } from "./CreditPill";
@@ -57,6 +57,9 @@ export function SecurityBanner() {
               <Link to="/pricing" className={navLink}>
                 <Briefcase className="h-4 w-4 shrink-0" /> Pricing
               </Link>
+              <Link to="/learning-center" className={navLink}>
+                <BookOpen className="h-4 w-4 shrink-0" /> Learning Center
+              </Link>
               {!authLoading && isAdmin && (
                 <>
                   <AdminNotificationsBell tone="light" />
@@ -85,9 +88,6 @@ export function SecurityBanner() {
             >
               <BrandLogo size="nav" />
             </Link>
-            <p className="mt-1 max-w-[16rem] sm:max-w-[22rem] px-1 text-xs sm:text-sm font-display font-semibold italic leading-snug text-primary">
-              {SITE_TAGLINE}
-            </p>
           </div>
 
           <div className="flex flex-col items-end justify-center gap-1 min-w-0 self-center">

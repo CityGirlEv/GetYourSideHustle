@@ -1,9 +1,10 @@
 import { EmailAPIError } from "@/lib/email/api-error";
 import { getEnvVariable, getRuntimeSecret } from "@/lib/env";
+import { SITE_BRAND_NAME } from "@/lib/site-brand";
 
 export const DEFAULT_EMAIL_DOMAIN = "mypartb.com";
-export const DEFAULT_TRANSACTIONAL_FROM = `Get Part B Optimizer <noreply@${DEFAULT_EMAIL_DOMAIN}>`;
-export const RESEND_SANDBOX_FROM = "Get Part B Optimizer <onboarding@resend.dev>";
+export const DEFAULT_TRANSACTIONAL_FROM = `${SITE_BRAND_NAME} <noreply@${DEFAULT_EMAIL_DOMAIN}>`;
+export const RESEND_SANDBOX_FROM = `${SITE_BRAND_NAME} <onboarding@resend.dev>`;
 
 export function getTransactionalSenderDomain(): string {
   return getEnvVariable("EMAIL_SENDER_DOMAIN") ?? DEFAULT_EMAIL_DOMAIN;

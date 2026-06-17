@@ -26,6 +26,7 @@ import { CMS_PARTNER_CTA, LICENSED_AGENT_WILL_CONTACT } from "@/lib/lead-consent
 import { recommendPlans, usd, type PersonalizedRecommendation } from "@/lib/medicare-math";
 import { useApp } from "@/lib/app-store";
 import { DrugReport } from "@/components/DrugReport";
+import { ScenarioProfileHeader } from "@/components/ScenarioProfileHeader";
 
 export const Route = createFileRoute("/scenario/created/$code")({
   head: () => ({
@@ -166,6 +167,12 @@ function ScenarioCreated() {
           <Button onClick={copyLink} variant="outline" className="w-full">
             <Copy className="h-4 w-4 mr-2" /> Copy scenario link
           </Button>
+
+          {scenario && (
+            <div className="text-left border border-border rounded-xl p-4 bg-background/60">
+              <ScenarioProfileHeader scenario={scenario} title="Your scenario" />
+            </div>
+          )}
 
           <Link to="/scenario/$code" params={{ code }} className="block">
             <Button variant="default" className="w-full">

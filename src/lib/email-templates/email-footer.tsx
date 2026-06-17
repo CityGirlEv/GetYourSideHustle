@@ -66,7 +66,7 @@ export function EmailFooter({
         <strong>TPMO:</strong> {TPMO_PLATFORM_DISCLAIMER}
       </Text>
       <Text style={disclaimer}>
-        <strong>De-identification:</strong> Get Part B Optimizer uses de-identified Medicare plan
+        <strong>De-identification:</strong> {SITE_BRAND_NAME} uses de-identified Medicare plan
         scenarios for educational comparison. Our scenario tools do not collect or store Social
         Security numbers, Medicare Beneficiary Identifiers (MBI), full dates of birth, or other
         protected health information.
@@ -81,7 +81,7 @@ export function EmailFooter({
         or 1-800-MEDICARE (1-800-633-4227).
       </Text>
       <Text style={disclaimer}>
-        <strong>Disclaimer:</strong> Get Part B Optimizer is an educational and comparison tool
+        <strong>Disclaimer:</strong> {SITE_BRAND_NAME} is an educational and comparison tool
         only. We do not sell insurance, act as a licensed agent, or provide personalized legal, tax,
         or medical advice. Plan names, premiums, and benefits shown are estimated based on publicly
         available CMS data and may differ from actual carrier offerings in your area. Always verify

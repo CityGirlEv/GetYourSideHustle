@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "node --use-system-ca ./node_modules/vite/bin/vite.js dev --port 8081",
     "build": "vite build && node scripts/prepare-email-logo.mjs && node scripts/fix-pages-wrangler.mjs",
+    "learning-center:images": "node scripts/generate-learning-center-images.mjs",
     "build:pages": "bun install && bun run build",
     "deploy:worker": "node --use-system-ca ./node_modules/wrangler/bin/wrangler.js deploy --config dist/_worker.js/wrangler.json --keep-vars",
     "fix:workers-builds": "node --use-system-ca scripts/fix-workers-builds.mjs",

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
@@ -39,6 +39,7 @@ export const Route = createFileRoute("/pricing")({
       },
       { property: "og:title", content: "Agent Plans & Pricing — Get Part B Optimizer" },
       { property: "og:url", content: PRICING_URL },
+      { name: "robots", content: "noindex,nofollow" },
     ],
     links: [{ rel: "canonical", href: PRICING_URL }],
   }),
@@ -47,6 +48,7 @@ export const Route = createFileRoute("/pricing")({
 
 function PricingPage() {
   const { user, authLoading } = useApp();
+  const router = useRouter();
   const fetchPlans = useServerFn(listPublicStripePlans);
   const startCheckout = useServerFn(createStripeCheckoutSession);
   const registerAndCheckout = useServerFn(registerCustomerAndCheckout);
@@ -75,6 +77,8 @@ function PricingPage() {
       })
       .catch(() => {});
   }, [fetchPlans]);
+
+  if (authLoading) return null;
 
   const handleSelectPlan = async (planKey: StripePlanKey) => {
     setSelectedPlan(planKey);

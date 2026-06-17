@@ -5,7 +5,7 @@ import { EmailHeader } from "./email-header";
 import { EmailFooter } from "./email-footer";
 import { LICENSED_AGENT_WILL_CONTACT } from "@/lib/lead-consent";
 
-const SITE_NAME = "Get Part B Optimizer";
+import { SITE_BRAND_NAME as SITE_NAME } from "@/lib/site-brand";
 
 interface Props {
   recipientName?: string;

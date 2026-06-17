@@ -107,9 +107,15 @@ function AgentPortal() {
             </p>
           )}
           <div className="flex flex-wrap justify-center gap-2 pt-2">
-            <Link to="/pricing">
-              <Button className="grad-indigo">View plans & subscribe</Button>
-            </Link>
+            {isStaffAdmin ? (
+              <Link to="/pricing">
+                <Button className="grad-indigo">View plans & subscribe</Button>
+              </Link>
+            ) : (
+              <p className="text-sm text-muted-foreground w-full">
+                Contact your administrator to activate a subscription.
+              </p>
+            )}
             <Button variant="outline" onClick={() => router.navigate({ to: "/" })}>
               Return home
             </Button>
@@ -321,7 +327,7 @@ function AgentPortal() {
                 </dd>
               </div>
             </dl>
-            {!billing?.hasStripeCustomer && (
+            {!billing?.hasStripeCustomer && isStaffAdmin && (
               <Link to="/pricing">
                 <Button size="sm" className="grad-indigo">
                   Subscribe to a plan

@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type {} from "@tanstack/react-start";
 
-const BASE_URL = "https://themedicareoptimizer.lovable.app";
+import { publicSiteUrl } from "@/lib/site-url";
 
 // Internal sitemap — full surface area including authenticated staff areas
 // (admin, advisor, agent, QA, testing, sources, tasks, users). Not intended
@@ -39,6 +39,7 @@ export const Route = createFileRoute("/sitemap-internal.xml")({
   server: {
     handlers: {
       GET: async () => {
+        const BASE_URL = publicSiteUrl();
         const urls = ALL_ENTRIES.map((e) =>
           [
             `  <url>`,

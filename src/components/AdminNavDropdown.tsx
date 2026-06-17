@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import {
   BookOpen,
+  Calendar,
   ChevronDown,
   ClipboardList,
   DollarSign,
@@ -10,6 +11,7 @@ import {
   ListChecks,
   Mail,
   Shield,
+  Sparkles,
   Users,
 } from "lucide-react";
 import {
@@ -99,6 +101,30 @@ export function AdminNavDropdown({ variant = "button" }: AdminNavDropdownProps) 
           <Link to="/admin/pricing" className="flex items-center gap-2 cursor-pointer">
             <DollarSign className="h-4 w-4" />
             Lead Pricing
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/admin/articles" className="flex items-center gap-2 cursor-pointer">
+            <BookOpen className="h-4 w-4" />
+            Create article
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/admin/content-factory" className="flex items-center gap-2 cursor-pointer">
+            <Sparkles className="h-4 w-4" />
+            Content Factory
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/admin/newsletter" className="flex items-center gap-2 cursor-pointer">
+            <Mail className="h-4 w-4" />
+            Newsletter Center
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/admin/calendar" className="flex items-center gap-2 cursor-pointer">
+            <Calendar className="h-4 w-4" />
+            Content Calendar
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />

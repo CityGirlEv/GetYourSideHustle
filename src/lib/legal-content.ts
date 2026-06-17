@@ -24,7 +24,7 @@ export const LEGAL_SECTIONS: LegalSection[] = [
   {
     id: "privacy",
     title: "Privacy Policy",
-    intro: `Last updated: ${new Date().getFullYear()}. This Privacy Policy describes how ${LEGAL_OPERATOR_NAME} ("we," "us," or "our") collects, uses, and protects information when you use ${SITE_BRAND_NAME} (the "Service").`,
+    intro: `Last updated: ${new Date().getFullYear()}. This Privacy Policy describes how ${SITE_BRAND_NAME} ("we," "us," or "our") collects, uses, and protects information when you use ${SITE_BRAND_NAME} (the "Service").`,
     blocks: [
       {
         heading: "Information we collect",

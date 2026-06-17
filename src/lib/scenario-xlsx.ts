@@ -11,6 +11,12 @@ import {
 } from "./medicare-math";
 import { CMS_CATALOG } from "@/data/cms-catalog";
 import { rankedPlanDetails, type PlanDetail } from "./plan-details";
+import {
+  formatScenarioConditions,
+  formatScenarioMedicationsMultiline,
+  scenarioMedicationRetailAnnual,
+  scenarioMedicationRetailMonthly,
+} from "./scenario-display";
 
 export interface ScenarioXlsxInput {
   scenarioCode: string;
@@ -184,13 +190,15 @@ function buildPersonalSheet(wb: ExcelJS.Workbook, input: ScenarioXlsxInput) {
     costPreference: input.costPreference,
   });
   const g = GUIDELINES[input.year];
-  const medsList = input.medications.map((m) => m.medication_name).join(", ") || "None reported";
+  const medsList = formatScenarioMedicationsMultiline(input.medications);
   const rxTier = rec.partD?.tier ?? "Standard";
   const priorityLabel =
     input.costPreference === "minimize_monthly"
       ? "Money Conscious"
       : "Predictability / Worst-case protection";
-  const diagnosis = input.conditions.length ? input.conditions.join(", ") : "None reported";
+  const diagnosis = formatScenarioConditions(input.conditions);
+  const medRetailMonthly = scenarioMedicationRetailMonthly(input.medications);
+  const medRetailAnnual = scenarioMedicationRetailAnnual(input.medications);
 
   const totalA =
     (g.partBPremiumMonthly + medigapPremiumByZip3(input.zip3) + partDPremiumByZip3(input.zip3)) *
@@ -228,6 +236,34 @@ function buildPersonalSheet(wb: ExcelJS.Workbook, input: ScenarioXlsxInput) {
     { kind: "kv", key: "Income Band:", value: input.incomeBand },
     { kind: "kv", key: "Clinical Diagnoses:", value: diagnosis },
     { kind: "kv", key: "Regular Medications:", value: medsList },
+    {
+      kind: "kv",
+      key: "Medication Cost (retail):",
+      value: `${usd(medRetailMonthly)}/mo · ${usd(medRetailAnnual)}/yr`,
+    },
+    ...(input.medications.length
+      ? ([
+          { kind: "blank" as const },
+          {
+            kind: "tableHeader" as const,
+            cells: ["Medication", "Strength", "Form", "Frequency", "Condition", "Retail / mo"],
+          },
+          ...input.medications.map(
+            (m, i): StyledRow => ({
+              kind: "tableRow",
+              alt: i % 2 === 1,
+              cells: [
+                m.medication_name || "—",
+                m.strength || "—",
+                m.dosage_form || "—",
+                m.frequency || "—",
+                m.resolved_diagnosis || "—",
+                usd(m.estimated_monthly_retail ?? 0),
+              ],
+            }),
+          ),
+        ] satisfies StyledRow[])
+      : []),
     {
       kind: "kv",
       key: "Pharmacy Strategy:",

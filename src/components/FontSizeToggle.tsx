@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Minus, Plus, Type } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const STEPS = [1, 1.125, 1.25, 1.4];
 const STORAGE_KEY = "font-scale";
@@ -10,8 +11,9 @@ function applyScale(scale: number) {
   document.documentElement.style.fontSize = `${BASE_PX * scale}px`;
 }
 
-export function FontSizeToggle() {
+export function FontSizeToggle({ tone = "light" }: { tone?: "light" | "dark" }) {
   const [idx, setIdx] = useState(1);
+  const onDark = tone === "dark";
 
   useEffect(() => {
     const saved = parseFloat(localStorage.getItem(STORAGE_KEY) || "1");
@@ -25,7 +27,7 @@ export function FontSizeToggle() {
   }, []);
 
   const decrease = () => {
-    const next = Math.max(1, idx - 1);
+    const next = Math.max(0, idx - 1);
     if (next !== idx) {
       setIdx(next);
       applyScale(STEPS[next]);
@@ -46,7 +48,13 @@ export function FontSizeToggle() {
   const canIncrease = idx < STEPS.length - 1;
 
   return (
-    <div className="flex items-center gap-0.5 rounded-full bg-white/10 px-1 py-0.5">
+    <div
+      className={cn(
+        "flex items-center gap-0.5 rounded-full px-1 py-0.5 shrink-0",
+        onDark ? "bg-white/10" : "bg-primary/10 border border-primary/15",
+      )}
+      aria-label="Text size"
+    >
       <Button
         size="icon"
         variant="ghost"
@@ -54,13 +62,23 @@ export function FontSizeToggle() {
         disabled={!canDecrease}
         title="Decrease text size"
         aria-label="Decrease text size"
-        className="h-7 w-7 text-white/80 hover:text-white hover:bg-white/10 disabled:opacity-30"
+        className={cn(
+          "h-7 w-7 disabled:opacity-30",
+          onDark
+            ? "text-white/80 hover:text-white hover:bg-white/10"
+            : "text-primary/80 hover:text-primary hover:bg-primary/10",
+        )}
       >
         <Minus className="h-3.5 w-3.5" />
       </Button>
       <div className="flex items-center gap-1 px-1">
-        <Type className="h-3.5 w-3.5 text-white/70" />
-        <span className="text-xs font-semibold text-white w-8 text-center">
+        <Type className={cn("h-3.5 w-3.5", onDark ? "text-white/70" : "text-primary/70")} />
+        <span
+          className={cn(
+            "text-xs font-semibold w-8 text-center tabular-nums",
+            onDark ? "text-white" : "text-primary",
+          )}
+        >
           {Math.round(STEPS[idx] * 100)}%
         </span>
       </div>
@@ -71,7 +89,12 @@ export function FontSizeToggle() {
         disabled={!canIncrease}
         title="Increase text size"
         aria-label="Increase text size"
-        className="h-7 w-7 text-white/80 hover:text-white hover:bg-white/10 disabled:opacity-30"
+        className={cn(
+          "h-7 w-7 disabled:opacity-30",
+          onDark
+            ? "text-white/80 hover:text-white hover:bg-white/10"
+            : "text-primary/80 hover:text-primary hover:bg-primary/10",
+        )}
       >
         <Plus className="h-3.5 w-3.5" />
       </Button>

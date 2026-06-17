@@ -29,6 +29,7 @@ import { TEMPLATES } from "@/lib/email-templates/registry";
 import * as React from "react";
 import { render } from "@react-email/components";
 import { emailLogMatchesTemplate, dedupeEmailLogRows } from "@/lib/email-log-sort";
+import { resolveRecipientDisplays } from "@/lib/email-recipient-names.server";
 import {
   getTransactionalFromAddress,
   getTransactionalSenderDomain,
@@ -425,7 +426,22 @@ export const listEmailSendLog = createServerFn({ method: "POST" })
       ? (rows ?? []).filter((r) => emailLogMatchesTemplate(r.template_name, templateName))
       : (rows ?? []);
 
-    return dedupeEmailLogRows(filtered).slice(0, limit);
+    const deduped = dedupeEmailLogRows(filtered).slice(0, limit);
+    const displayByRaw = await resolveRecipientDisplays(
+      deduped.map((row) => row.recipient_email),
+    );
+
+    return deduped.map((row) => {
+      const recipient = displayByRaw.get(row.recipient_email) ?? {
+        recipient_name: row.recipient_email,
+        recipient_email: row.recipient_email,
+      };
+      return {
+        ...row,
+        recipient_email: recipient.recipient_email,
+        recipient_name: recipient.recipient_name,
+      };
+    });
   });
 
 export const listEmailTemplateChanges = createServerFn({ method: "POST" })

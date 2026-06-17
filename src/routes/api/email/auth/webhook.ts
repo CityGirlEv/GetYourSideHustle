@@ -25,6 +25,7 @@ import { enqueueAdminEmailCopies } from "@/lib/dispatch-transactional-template.s
 import { triggerEmailQueueProcess } from "@/lib/trigger-email-queue-process";
 import { brandRecoveryConfirmationUrl } from "@/lib/auth-recovery";
 import { publicSiteUrl } from "@/lib/site-url";
+import { SITE_BRAND_NAME as SITE_NAME } from "@/lib/site-brand";
 
 const EMAIL_SUBJECTS: Record<string, string> = {
   signup: "Confirm your email",
@@ -44,9 +45,6 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
   email_change: EmailChangeEmail,
   reauthentication: ReauthenticationEmail,
 };
-
-// Configuration
-const SITE_NAME = "Get Part B Optimizer";
 
 function redactEmail(email: string | null | undefined): string {
   if (!email) return "***";

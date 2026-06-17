@@ -13,7 +13,7 @@ import type { TemplateEntry } from "./registry";
 import { EmailHeader } from "./email-header";
 import { EmailFooter } from "./email-footer";
 
-const SITE_NAME = "Get Part B Optimizer";
+import { SITE_BRAND_NAME as SITE_NAME } from "@/lib/site-brand";
 const SITE_URL = "https://mypartb.pages.dev";
 
 export interface NewRegistrationAdminProps {

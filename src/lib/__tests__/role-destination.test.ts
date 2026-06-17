@@ -7,8 +7,9 @@ describe("roleDestination", () => {
     expect(roleDestination("admin")).toBe("/admin");
     expect(roleDestination("leads_admin")).toBe("/admin");
   });
-  it("sends agents to /agent", () => {
+  it("sends agents and customers to /agent", () => {
     expect(roleDestination("agent")).toBe("/agent");
+    expect(roleDestination("customer")).toBe("/agent");
   });
   it("sends QA users straight to the Testing Portal", () => {
     expect(roleDestination("qa")).toBe("/testing");

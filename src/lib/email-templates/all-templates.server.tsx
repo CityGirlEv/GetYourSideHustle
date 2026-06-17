@@ -43,7 +43,7 @@ export interface TemplateDescriptor {
   sampleProps: Record<string, any>;
 }
 
-const SITE_NAME = "Get Part B Optimizer";
+import { SITE_BRAND_NAME as SITE_NAME } from "@/lib/site-brand";
 
 function subjectOf(entry: { subject: string | ((d: any) => string) }, sample: Record<string, any>) {
   return typeof entry.subject === "function" ? entry.subject(sample) : entry.subject;

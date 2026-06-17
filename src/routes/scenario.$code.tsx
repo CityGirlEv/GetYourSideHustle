@@ -7,10 +7,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   ArrowLeft,
   Pill,
-  MapPin,
-  User,
-  Calendar,
-  DollarSign,
   FileText,
   FileDown,
   Sparkles,
@@ -32,6 +28,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { getPublicScenarioByCode } from "@/lib/scenario-lookup.functions";
 import { ExpertOptInDialog } from "@/components/ExpertOptInDialog";
 import { CMS_PARTNER_CTA } from "@/lib/lead-consent";
+import { ScenarioProfileHeader } from "@/components/ScenarioProfileHeader";
 
 export const Route = createFileRoute("/scenario/$code")({
   head: () => ({
@@ -171,44 +168,7 @@ function ScenarioSummary() {
         ) : (
           <>
             <Card className="glass p-6 space-y-4">
-              <h2 className="font-display text-xl font-bold">Your information</h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                <Field
-                  icon={<Calendar className="h-3 w-3" />}
-                  label="Plan year"
-                  value={String(scenario.year)}
-                />
-                <Field
-                  icon={<User className="h-3 w-3" />}
-                  label="Birth year"
-                  value={String(scenario.birthYear)}
-                />
-                <Field
-                  icon={<MapPin className="h-3 w-3" />}
-                  label="ZIP region"
-                  value={`${scenario.zip3}xx${scenario.county ? ` · ${scenario.county}` : ""}`}
-                />
-                <Field label="Gender" value={scenario.gender?.replace(/_/g, " ") || "—"} />
-                <Field label="Tobacco" value={scenario.tobacco ? "Yes" : "No"} />
-                <Field label="Income band" value={scenario.incomeBand || "—"} />
-                <Field
-                  icon={<DollarSign className="h-3 w-3" />}
-                  label="Cost preference"
-                  value={
-                    scenario.costPreference === "minimize_monthly"
-                      ? "Minimize monthly"
-                      : "Predictability"
-                  }
-                />
-              </div>
-              <div>
-                <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
-                  Conditions
-                </div>
-                <div className="text-sm">
-                  {scenario.conditions.length ? scenario.conditions.join(", ") : "None reported"}
-                </div>
-              </div>
+              <ScenarioProfileHeader scenario={scenario} title="Your information" />
             </Card>
 
             <Tabs defaultValue="recommendation" className="w-full">
@@ -544,18 +504,6 @@ function Stat({ label, value }: { label: string; value: string }) {
     <div className="rounded-md bg-background/50 border border-border p-2">
       <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
       <div className="font-semibold">{value}</div>
-    </div>
-  );
-}
-
-function Field({ icon, label, value }: { icon?: React.ReactNode; label: string; value: string }) {
-  return (
-    <div>
-      <div className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1">
-        {icon}
-        {label}
-      </div>
-      <div className="font-semibold capitalize">{value}</div>
     </div>
   );
 }

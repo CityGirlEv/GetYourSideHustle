@@ -1,12 +1,16 @@
 import { Link } from "@tanstack/react-router";
-import { Home, LogIn, Link2 } from "lucide-react";
+import { Home, LogIn, Link2, BookOpen } from "lucide-react";
 import { MedicareDisclaimers } from "@/components/MedicareDisclaimers";
+import { BrandLogo } from "@/components/BrandLogo";
 import { formatSiteCopyright } from "@/lib/medicare-disclaimers";
 
 export function CMSFooter() {
   return (
     <footer className="mt-4 border-t border-border bg-secondary/40 px-6 py-4 text-xs text-muted-foreground">
       <div className="max-w-4xl mx-auto space-y-3 text-left">
+        <Link to="/" className="inline-flex items-center gap-2 hover:opacity-90 transition-opacity">
+          <BrandLogo size="footer" />
+        </Link>
         <MedicareDisclaimers />
         <p className="text-[11px] text-muted-foreground/80">{formatSiteCopyright()}</p>
         <div className="flex items-center gap-x-4 gap-y-2 text-muted-foreground flex-wrap pt-1">
@@ -18,6 +22,12 @@ export function CMSFooter() {
             className="flex items-center gap-1 hover:text-foreground transition-colors"
           >
             <LogIn className="h-3.5 w-3.5" /> Agent login
+          </Link>
+          <Link
+            to="/learning-center"
+            className="flex items-center gap-1 hover:text-foreground transition-colors"
+          >
+            <BookOpen className="h-3.5 w-3.5" /> Learning Center
           </Link>
           <Link
             to="/sources"

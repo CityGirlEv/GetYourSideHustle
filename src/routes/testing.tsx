@@ -5901,8 +5901,7 @@ function TestEvidence({ testId }: { testId: string }) {
           ref={cameraRef}
           type="file"
           className="hidden"
-          accept="image/*"
-          capture="environment"
+          accept={EVIDENCE_ACCEPT_ATTR}
           onChange={onUpload}
         />
         <div className="flex gap-1">
@@ -5931,7 +5930,7 @@ function TestEvidence({ testId }: { testId: string }) {
               onClick={onTakePhoto}
             >
               <Upload className="h-3 w-3 mr-1" />
-              Take photo
+              Choose image
             </Button>
           )}
           <Button

@@ -10,6 +10,7 @@ import { MagicLinkEmail } from "@/lib/email-templates/magic-link";
 import { RecoveryEmail } from "@/lib/email-templates/recovery";
 import { EmailChangeEmail } from "@/lib/email-templates/email-change";
 import { ReauthenticationEmail } from "@/lib/email-templates/reauthentication";
+import { SITE_BRAND_NAME as SITE_NAME } from "@/lib/site-brand";
 
 const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
   signup: SignupEmail,
@@ -19,9 +20,6 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
   email_change: EmailChangeEmail,
   reauthentication: ReauthenticationEmail,
 };
-
-// Configuration
-const SITE_NAME = "Get Part B Optimizer";
 
 // Sample data for preview mode ONLY (not used in actual email sending).
 const SAMPLE_PROJECT_URL = publicSiteUrl();

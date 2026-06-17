@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { z } from "zod";
 import { sendAssignmentEmailsToAssignees } from "@/lib/qa-test-assignment.functions";
 import { dedupeEmailLogRows } from "@/lib/email-log-sort";
+import { resolveRecipientDisplays } from "@/lib/email-recipient-names.server";
 
 async function verifyAdmin(userId: string) {
   const { data: callerRoles } = await supabaseAdmin
@@ -18,6 +19,8 @@ async function verifyAdmin(userId: string) {
 export type StaffEmailLogEntry = {
   id: string;
   template_name: string;
+  recipient_email: string;
+  recipient_name: string;
   status: string;
   error_message: string | null;
   created_at: string;
@@ -40,7 +43,11 @@ const TEMPLATE_LABELS: Record<string, string> = {
   welcome: "Welcome",
 };
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function templateDisplayName(name: string): string {
+  if (UUID_RE.test(name)) return "Email send";
   return TEMPLATE_LABELS[name] ?? name.replace(/-/g, " ");
 }
 
@@ -69,13 +76,23 @@ export const listStaffEmailHistory = createServerFn({ method: "POST" })
       (rows ?? []).filter((r) => (r.recipient_email ?? "").trim().toLowerCase() === email),
     ).slice(0, limit);
 
+    const displayByRaw = await resolveRecipientDisplays(
+      deduped.map((row) => row.recipient_email),
+    );
+
     const byTemplate = new Map<string, StaffEmailLogEntry[]>();
     for (const row of deduped) {
       const key = row.template_name;
       const list = byTemplate.get(key) ?? [];
+      const recipient = displayByRaw.get(row.recipient_email) ?? {
+        recipient_name: row.recipient_email,
+        recipient_email: row.recipient_email,
+      };
       list.push({
         id: row.id,
         template_name: row.template_name,
+        recipient_email: recipient.recipient_email,
+        recipient_name: recipient.recipient_name,
         status: row.status,
         error_message: row.error_message,
         created_at: row.created_at,

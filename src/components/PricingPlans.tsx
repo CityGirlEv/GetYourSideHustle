@@ -57,6 +57,7 @@ export function PricingPlans({
               title: "Introductory plan",
               fee: sub.introductory.monthlyFee,
               perLead: sub.introductory.effectivePerLead,
+              includedLeads: sub.introductory.includedLeadsPerMonth,
               note: `${sub.introductory.discountPercent}% off regular pricing`,
               featured: true,
             },
@@ -66,6 +67,7 @@ export function PricingPlans({
               title: "Regular plan",
               fee: sub.regular.monthlyFee,
               perLead: sub.regular.effectivePerLead,
+              includedLeads: sub.regular.includedLeadsPerMonth,
               note: "Full platform access",
               featured: false,
             },
@@ -97,7 +99,7 @@ export function PricingPlans({
                 </span>
               </div>
               <p className="text-sm">
-                {formatUsd(plan.perLead)} per lead · up to {sub.includedLeadsPerMonth} leads/month
+                {formatUsd(plan.perLead)} per lead · up to {plan.includedLeads} leads/month
               </p>
               <p className="text-xs text-muted-foreground">{plan.note}</p>
               <ul className="text-sm space-y-1 text-muted-foreground">

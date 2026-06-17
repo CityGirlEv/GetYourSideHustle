@@ -1,5 +1,6 @@
 import { ALL_TEMPLATES } from "@/lib/email-templates/all-templates.server";
 import { listTemplateMergeFields } from "@/lib/email-templates/template-merge-fields.server";
+import { SITE_BRAND_NAME } from "@/lib/site-brand";
 
 export interface EmailTemplateCatalogEntry {
   name: string;
@@ -219,7 +220,7 @@ export function buildEmailTemplateCatalog(opts?: {
 
   return {
     generatedAt: new Date().toISOString(),
-    site: "Get Part B Optimizer (mypartb.com)",
+    site: `${SITE_BRAND_NAME} (mypartb.com)`,
     systemDependencies: SYSTEM_DEPENDENCIES,
     templates,
   };

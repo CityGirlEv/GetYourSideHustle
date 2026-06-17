@@ -957,7 +957,7 @@ export const TEST_CASES: TestCase[] = [
     title: "Multi-Plan Disclaimer (MPD) on plan-comparison output",
     steps: ["Generate scenario recommendations", "Inspect the plan list header"],
     expected:
-      "Displays 'We do not offer every plan available in your area. Any information we provide is limited to those plans we do offer in your area. Please contact Medicare.gov or 1-800-MEDICARE to get information on all of your options.'",
+      "Displays 'We do not present every plan available in your area. Any information we provide is limited to those plans we do offer in your area. Please contact Medicare.gov or 1-800-MEDICARE to get information on all of your options.'",
     notes: "Required MPD language per CMS Communications & Marketing Guidelines.",
   },
   {

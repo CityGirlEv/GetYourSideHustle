@@ -14,17 +14,21 @@ export const LEAD_PRICING_FEATURES = [
 export const LEAD_SUBSCRIPTION_PRICING = {
   label: "Subscription + Leads",
   rating: 5,
+  /** Regular subscription tier — up to 8 leads/month. */
   includedLeadsPerMonth: 8,
   minimumTermMonths: 3,
   additionalLeadPrice: 15,
   regular: {
     monthlyFee: 100,
     effectivePerLead: 12.5,
+    includedLeadsPerMonth: 8,
   },
   introductory: {
     discountPercent: 40,
     monthlyFee: 60,
     effectivePerLead: 7.5,
+    /** Introductory tier — up to 8 leads/month at the discounted platform fee. */
+    includedLeadsPerMonth: 8,
   },
 } as const;
 

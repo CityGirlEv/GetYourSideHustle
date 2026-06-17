@@ -26,22 +26,65 @@ export const EVIDENCE_ALLOWED_EXT = [
   "gif",
   "heic",
   "heif",
+  "jfif",
   "pdf",
   "log",
   "txt",
 ] as const;
 export const EVIDENCE_ACCEPT_ATTR =
-  "image/png,image/jpeg,image/webp,image/gif,image/heic,image/heif,application/pdf,.log,.txt";
+  "image/png,image/jpeg,image/webp,image/gif,image/heic,image/heif,application/pdf,.log,.txt,.jpg,.jpeg,.jfif";
 export const EVIDENCE_MAX_BYTES = 20 * 1024 * 1024; // 20 MB
+
+export type EvidenceKind = "png" | "jpeg" | "gif" | "webp" | "pdf" | "heic" | "text";
+
+const GENERIC_MIMES = new Set(["", "application/octet-stream", "binary/octet-stream"]);
+
+const MIME_ALIASES: Record<string, (typeof EVIDENCE_ALLOWED_MIME)[number]> = {
+  "image/jpg": "image/jpeg",
+  "image/pjpeg": "image/jpeg",
+  "image/x-png": "image/png",
+};
+
+const KIND_TO_EXT: Record<EvidenceKind, string> = {
+  png: "png",
+  jpeg: "jpg",
+  gif: "gif",
+  webp: "webp",
+  pdf: "pdf",
+  heic: "heic",
+  text: "txt",
+};
+
+const KIND_TO_MIME: Record<EvidenceKind, string> = {
+  png: "image/png",
+  jpeg: "image/jpeg",
+  gif: "image/gif",
+  webp: "image/webp",
+  pdf: "application/pdf",
+  heic: "image/heic",
+  text: "text/plain",
+};
+
+const EXT_TO_KIND: Record<string, EvidenceKind[]> = {
+  png: ["png"],
+  jpg: ["jpeg"],
+  jpeg: ["jpeg"],
+  jfif: ["jpeg"],
+  gif: ["gif"],
+  webp: ["webp"],
+  heic: ["heic"],
+  heif: ["heic"],
+  pdf: ["pdf"],
+  log: ["text"],
+  txt: ["text"],
+};
 
 /**
  * Verify the file's leading bytes match a known-safe signature. Prevents
  * uploads where the extension/MIME is spoofed but the actual content is an
  * executable, HTML payload, script, or archive.
  */
-async function sniffMagicBytes(
-  file: File,
-): Promise<"png" | "jpeg" | "gif" | "webp" | "pdf" | "heic" | "text" | "unknown"> {
+async function sniffMagicBytes(file: File): Promise<EvidenceKind | "unknown"> {
   const head = new Uint8Array(await file.slice(0, 16).arrayBuffer());
   const b = (i: number) => head[i];
   // PNG: 89 50 4E 47 0D 0A 1A 0A
@@ -76,20 +119,54 @@ async function sniffMagicBytes(
   return "unknown";
 }
 
+function fileExtension(file: File): string {
+  const parts = file.name.split(".");
+  if (parts.length < 2) return "";
+  return (parts.pop() || "").toLowerCase();
+}
+
+function normalizeMime(file: File): string {
+  if (GENERIC_MIMES.has(file.type)) return "";
+  return MIME_ALIASES[file.type] ?? file.type;
+}
+
+function resolveExtension(file: File, kind: EvidenceKind): string {
+  const ext = fileExtension(file);
+  if (ext && EXT_TO_KIND[ext]?.includes(kind)) return ext;
+  return KIND_TO_EXT[kind];
+}
+
+function mimeMatchesKind(mime: string, kind: EvidenceKind): boolean {
+  if (!mime) return true;
+  const expected = KIND_TO_MIME[kind];
+  if (mime === expected) return true;
+  if (kind === "jpeg" && (mime === "image/jpeg" || mime === "image/jpg" || mime === "image/pjpeg"))
+    return true;
+  if (kind === "heic" && (mime === "image/heic" || mime === "image/heif")) return true;
+  if (kind === "text" && mime === "text/plain") return true;
+  return false;
+}
+
+export interface PreparedEvidenceFile {
+  kind: EvidenceKind;
+  ext: string;
+  contentType: string;
+  safeName: string;
+}
+
 /**
- * Throws a user-facing Error if the file is not a safe screenshot/log/PDF.
- * Checks extension, MIME, size, and magic bytes — and explicitly rejects
- * SVG, HTML, scripts, archives, and executables even if the extension was
- * renamed.
+ * Validates and normalizes an evidence upload. Many browsers (especially on
+ * Windows) send generic MIME types like application/octet-stream even for
+ * real PNG/JPEG screenshots — we trust magic bytes in that case.
  */
-export async function validateEvidenceFile(file: File): Promise<void> {
+export async function prepareEvidenceFile(file: File): Promise<PreparedEvidenceFile> {
   if (file.size === 0) throw new Error("File is empty.");
   if (file.size > EVIDENCE_MAX_BYTES) throw new Error("File too large — 20 MB max.");
 
-  const ext = (file.name.split(".").pop() || "").toLowerCase();
-  if (!EVIDENCE_ALLOWED_EXT.includes(ext as (typeof EVIDENCE_ALLOWED_EXT)[number])) {
+  const ext = fileExtension(file);
+  if (ext && !EVIDENCE_ALLOWED_EXT.includes(ext as (typeof EVIDENCE_ALLOWED_EXT)[number])) {
     throw new Error(
-      `.${ext || "?"} files are not allowed. Upload a screenshot (PNG/JPG/HEIC), PDF, or .log/.txt file.`,
+      `.${ext} files are not allowed. Upload a screenshot (PNG/JPG/HEIC), PDF, or .log/.txt file.`,
     );
   }
   // Reject obviously dangerous extensions even if somehow in allowlist.
@@ -121,33 +198,36 @@ export async function validateEvidenceFile(file: File): Promise<void> {
   ];
   if (banned.includes(ext)) throw new Error("File type is not allowed for security reasons.");
 
-  if (
-    file.type &&
-    !EVIDENCE_ALLOWED_MIME.includes(file.type as (typeof EVIDENCE_ALLOWED_MIME)[number])
-  ) {
-    throw new Error(`MIME type "${file.type}" is not allowed.`);
-  }
-
   const kind = await sniffMagicBytes(file);
   if (kind === "unknown") {
     throw new Error("File contents do not match a screenshot, PDF, or text log. Upload rejected.");
   }
-  // Cross-check magic bytes against extension to catch spoofed files
-  const okMap: Record<string, string[]> = {
-    png: ["png"],
-    jpg: ["jpeg"],
-    jpeg: ["jpeg"],
-    gif: ["gif"],
-    webp: ["webp"],
-    heic: ["heic"],
-    heif: ["heic"],
-    pdf: ["pdf"],
-    log: ["text"],
-    txt: ["text"],
-  };
-  if (!okMap[ext]?.includes(kind)) {
-    throw new Error("File contents do not match its extension. Upload rejected.");
+
+  const resolvedExt = resolveExtension(file, kind);
+  const mime = normalizeMime(file);
+  if (mime && !EVIDENCE_ALLOWED_MIME.includes(mime as (typeof EVIDENCE_ALLOWED_MIME)[number])) {
+    throw new Error(`MIME type "${file.type}" is not allowed.`);
   }
+  if (!mimeMatchesKind(mime, kind)) {
+    throw new Error("File contents do not match its type. Upload rejected.");
+  }
+
+  const baseName = file.name.includes(".")
+    ? file.name.slice(0, file.name.lastIndexOf("."))
+    : file.name || "evidence";
+  const safeName = `${baseName.replace(/[^a-zA-Z0-9._-]/g, "_")}.${resolvedExt}`;
+
+  return {
+    kind,
+    ext: resolvedExt,
+    contentType: KIND_TO_MIME[kind],
+    safeName,
+  };
+}
+
+/** @deprecated use prepareEvidenceFile — kept for tests and callers expecting throw-only API */
+export async function validateEvidenceFile(file: File): Promise<void> {
+  await prepareEvidenceFile(file);
 }
 
 export interface EvidenceFile {
@@ -159,6 +239,16 @@ export interface EvidenceFile {
 
 function folder(userId: string, testId: string) {
   return `${userId}/${testId}`;
+}
+
+function friendlyStorageError(message: string): string {
+  if (/row-level security|permission denied|not authorized/i.test(message)) {
+    return "Upload blocked — sign out and sign back in. If it still fails, ask an admin to confirm your QA account is active.";
+  }
+  if (/bucket not found|Bucket not found/i.test(message)) {
+    return "Screenshot storage is not configured on the server. Ask an admin to run the Supabase storage setup.";
+  }
+  return message;
 }
 
 export async function listTestEvidence(userId: string, testId: string): Promise<EvidenceFile[]> {
@@ -181,14 +271,19 @@ export async function uploadTestEvidence(
   testId: string,
   file: File,
 ): Promise<EvidenceFile> {
-  await validateEvidenceFile(file);
-  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const path = `${folder(userId, testId)}/${Date.now()}-${safeName}`;
-  const { error } = await supabase.storage
-    .from(TEST_EVIDENCE_BUCKET)
-    .upload(path, file, { upsert: false, contentType: file.type || "application/octet-stream" });
-  if (error) throw new Error(error.message);
-  return { name: safeName, path, size: file.size, updated_at: new Date().toISOString() };
+  const prepared = await prepareEvidenceFile(file);
+  const path = `${folder(userId, testId)}/${Date.now()}-${prepared.safeName}`;
+  const { error } = await supabase.storage.from(TEST_EVIDENCE_BUCKET).upload(path, file, {
+    upsert: false,
+    contentType: prepared.contentType,
+  });
+  if (error) throw new Error(friendlyStorageError(error.message));
+  return {
+    name: prepared.safeName,
+    path,
+    size: file.size,
+    updated_at: new Date().toISOString(),
+  };
 }
 
 export async function deleteTestEvidence(path: string): Promise<void> {

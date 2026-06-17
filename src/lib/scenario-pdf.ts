@@ -13,6 +13,13 @@ import {
 import { CMS_CATALOG } from "@/data/cms-catalog";
 import { rankedPlanDetails, type PlanDetail } from "./plan-details";
 import { buildDrugReport } from "@/components/DrugReport";
+import {
+  formatScenarioConditions,
+  formatScenarioMedicationLine,
+  formatScenarioMedicationsList,
+  scenarioMedicationRetailAnnual,
+  scenarioMedicationRetailMonthly,
+} from "./scenario-display";
 
 const MEDICARE_HANDBOOK_URL = "https://www.medicare.gov/Pubs/pdf/10050-Medicare-and-You.pdf";
 
@@ -74,7 +81,7 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
   autoTable(doc, {
     startY: y,
     theme: "plain",
-    styles: { fontSize: 9, cellPadding: 3 },
+    styles: { fontSize: 9, cellPadding: 3, overflow: "linebreak" },
     body: [
       ["Year of birth", String(input.birthYear), "ZIP region", `${input.zip3}xx`],
       ["Gender", input.gender.replace(/_/g, " "), "Tobacco user", input.tobacco ? "Yes" : "No"],
@@ -86,9 +93,9 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
       ],
       [
         "Conditions",
-        input.conditions.join(", ") || "None reported",
+        formatScenarioConditions(input.conditions),
         "Medications",
-        String(input.medications.length),
+        formatScenarioMedicationsList(input.medications),
       ],
     ],
     columnStyles: {
@@ -1421,9 +1428,12 @@ function renderRecommendationPage(
   let y = tileY + tileH + 18;
 
   // ---------- Scenario snapshot strip ----------
-  const condCount = (input.conditions ?? []).length;
-  const medCount = (input.medications ?? []).length;
-  const snapH = 56;
+  const conditionsText = formatScenarioConditions(input.conditions);
+  const medicationLines = input.medications?.length
+    ? input.medications.map(formatScenarioMedicationLine)
+    : ["None reported"];
+  const medBlockHeight = Math.max(16, medicationLines.length * 12);
+  const snapH = 72 + medBlockHeight;
   doc.setFillColor(248, 251, 249);
   doc.setDrawColor(210, 225, 218);
   doc.roundedRect(margin, y, pageW - margin * 2, snapH, 6, 6, "FD");
@@ -1436,8 +1446,6 @@ function renderRecommendationPage(
     { label: "ZIP region", value: `${input.zip3}xx` },
     { label: "Tobacco", value: input.tobacco ? "Yes" : "No" },
     { label: "Income band", value: input.incomeBand || "—" },
-    { label: "Conditions", value: condCount ? String(condCount) : "None" },
-    { label: "Medications", value: medCount ? String(medCount) : "None" },
     {
       label: "Priority",
       value: input.costPreference === "minimize_monthly" ? "Low monthly" : "Predictability",
@@ -1454,6 +1462,27 @@ function renderRecommendationPage(
     doc.setFontSize(9.5);
     doc.setTextColor(20, 20, 20);
     doc.text(c.value, cx, y + 44, { maxWidth: cellW - 4 });
+  });
+
+  const clinicalY = y + 56;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.5);
+  doc.setTextColor(120, 120, 120);
+  doc.text("CONDITIONS", margin + 12, clinicalY);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(20, 20, 20);
+  doc.text(conditionsText, margin + 12, clinicalY + 12, { maxWidth: pageW - margin * 2 - 24 });
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.5);
+  doc.setTextColor(120, 120, 120);
+  doc.text("MEDICATIONS", margin + 12, clinicalY + 28);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(20, 20, 20);
+  medicationLines.forEach((line, i) => {
+    doc.text(line, margin + 12, clinicalY + 40 + i * 12, { maxWidth: pageW - margin * 2 - 24 });
   });
   y += snapH + 14;
 
@@ -1479,6 +1508,7 @@ function renderRecommendationPage(
       "Best balance of monthly premium, drug coverage, and out-of-pocket risk for the medications and conditions you reported.",
     );
   }
+  const medCount = input.medications?.length ?? 0;
   if (medCount > 0)
     reasons.push(
       `Formulary fit checked against your ${medCount} medication${medCount === 1 ? "" : "s"} — Tier 1 generics at ${rec.rxTier1}, insulin capped at ${usd(rec.insulinCap)}/mo.`,

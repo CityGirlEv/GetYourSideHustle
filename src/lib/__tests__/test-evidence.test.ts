@@ -24,6 +24,7 @@ import {
   getTestEvidenceUrl,
   TEST_EVIDENCE_BUCKET,
   validateEvidenceFile,
+  prepareEvidenceFile,
   EVIDENCE_MAX_BYTES,
 } from "../test-evidence";
 
@@ -145,5 +146,22 @@ describe("validateEvidenceFile (security gate)", () => {
   it("accepts a plain-text log", async () => {
     const log = new File(["hello log\n"], "out.log", { type: "text/plain" });
     await expect(validateEvidenceFile(log)).resolves.toBeUndefined();
+  });
+
+  it("accepts PNG when the browser sends application/octet-stream", async () => {
+    const file = new File([PNG_HEAD], "Screenshot.png", { type: "application/octet-stream" });
+    await expect(validateEvidenceFile(file)).resolves.toBeUndefined();
+  });
+
+  it("accepts JPEG with image/jpg MIME", async () => {
+    const jpeg = make([0xff, 0xd8, 0xff, 0xe0, 0, 0x10], "photo.jpg", "image/jpg");
+    await expect(validateEvidenceFile(jpeg)).resolves.toBeUndefined();
+  });
+
+  it("accepts screenshots without a file extension when bytes are PNG", async () => {
+    const file = new File([PNG_HEAD], "Screenshot", { type: "" });
+    const prepared = await prepareEvidenceFile(file);
+    expect(prepared.ext).toBe("png");
+    expect(prepared.safeName).toBe("Screenshot.png");
   });
 });

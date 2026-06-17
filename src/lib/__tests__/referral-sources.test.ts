@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   buildReferralPreferences,
   referralTextLooksLikePii,
+  validateReferralDetails,
   isReferralSource,
 } from "../referral-sources";
 
@@ -12,7 +13,7 @@ describe("referral-sources", () => {
     expect(referralTextLooksLikePii("Smith Insurance Group")).toBe(false);
   });
 
-  it("builds preferences for agent referral with optional agency name", () => {
+  it("builds preferences for agent referral with agency name", () => {
     expect(
       buildReferralPreferences(["agent_referral"], {
         agent_referral: "Smith Insurance Group",
@@ -48,5 +49,19 @@ describe("referral-sources", () => {
   it("validates referral source values", () => {
     expect(isReferralSource("facebook")).toBe(true);
     expect(isReferralSource("not-a-source")).toBe(false);
+  });
+
+  it("requires agent name when agent referral is selected", () => {
+    expect(
+      validateReferralDetails(["agent_referral"], { agent_referral: "  " }),
+    ).toMatch(/agent or agency name/i);
+    expect(validateReferralDetails(["agent_referral"], { agent_referral: "Smith Insurance" })).toBe(
+      null,
+    );
+  });
+
+  it("requires description when other is selected", () => {
+    expect(validateReferralDetails(["other"], { other: "" })).toMatch(/briefly describe/i);
+    expect(validateReferralDetails(["other"], { other: "Community bulletin board" })).toBe(null);
   });
 });

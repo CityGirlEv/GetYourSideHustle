@@ -141,10 +141,10 @@ function assignedTestStatusClass(status: string) {
     "px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0 ml-2",
     status === "pass" && "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/35 dark:text-emerald-300",
     (status === "fail" || status === "failed_retest") &&
-      "bg-red-100 text-red-800 dark:bg-red-900/35 dark:text-red-300",
+    "bg-red-100 text-red-800 dark:bg-red-900/35 dark:text-red-300",
     status === "blocked" && "bg-amber-100 text-amber-800 dark:bg-amber-900/35 dark:text-amber-300",
     (status === "in_progress" || status === "fixed_retest") &&
-      "bg-blue-100 text-blue-800 dark:bg-blue-900/35 dark:text-blue-300",
+    "bg-blue-100 text-blue-800 dark:bg-blue-900/35 dark:text-blue-300",
     status === "not_run" && "bg-slate-100 text-slate-800 dark:bg-slate-900/35 dark:text-slate-300",
   );
 }

@@ -118,7 +118,7 @@ function AdminPricingPage() {
               </div>
               <p className="text-sm text-emerald font-medium">
                 {formatUsd(sub.introductory.effectivePerLead)} per lead (up to{" "}
-                {sub.includedLeadsPerMonth} leads)
+                {sub.introductory.includedLeadsPerMonth} leads)
               </p>
               <p className="text-xs text-muted-foreground">
                 {sub.introductory.discountPercent}% off regular platform fee
@@ -137,7 +137,7 @@ function AdminPricingPage() {
               </div>
               <p className="text-sm text-muted-foreground">
                 {formatUsd(sub.regular.effectivePerLead)} per lead (up to{" "}
-                {sub.includedLeadsPerMonth} leads)
+                {sub.regular.includedLeadsPerMonth} leads)
               </p>
             </div>
           </div>
@@ -216,7 +216,9 @@ function AdminPricingPage() {
                   <td className="px-3 py-2 text-right tabular-nums">
                     {formatUsd(sub.introductory.monthlyFee)}/mo
                   </td>
-                  <td className="px-3 py-2 text-right tabular-nums">Up to {sub.includedLeadsPerMonth}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    Up to {sub.introductory.includedLeadsPerMonth}
+                  </td>
                   <td className="px-3 py-2 text-right tabular-nums">
                     {formatUsd(sub.introductory.effectivePerLead)}
                   </td>
@@ -226,7 +228,9 @@ function AdminPricingPage() {
                   <td className="px-3 py-2 text-right tabular-nums">
                     {formatUsd(sub.regular.monthlyFee)}/mo
                   </td>
-                  <td className="px-3 py-2 text-right tabular-nums">Up to {sub.includedLeadsPerMonth}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    Up to {sub.regular.includedLeadsPerMonth}
+                  </td>
                   <td className="px-3 py-2 text-right tabular-nums">
                     {formatUsd(sub.regular.effectivePerLead)}
                   </td>

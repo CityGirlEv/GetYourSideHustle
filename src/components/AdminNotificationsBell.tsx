@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useId } from "react";
 import { Bell, Check, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +22,7 @@ type Notif = {
 export function AdminNotificationsBell({ tone = "light" }: { tone?: "light" | "dark" }) {
   const [items, setItems] = useState<Notif[]>([]);
   const [open, setOpen] = useState(false);
+  const instanceId = useId().replace(/:/g, "");
 
   const load = useCallback(async () => {
     const { data, error } = await supabase
@@ -33,19 +34,26 @@ export function AdminNotificationsBell({ tone = "light" }: { tone?: "light" | "d
   }, []);
 
   useEffect(() => {
-    load();
+    let cancelled = false;
+    void load();
+
     const channel = supabase
-      .channel("admin_notifications")
-      .on("postgres_changes", { event: "*", schema: "public", table: "admin_notifications" }, () =>
-        load(),
-      )
+      .channel(`admin_notifications:${instanceId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "admin_notifications" }, () => {
+        if (!cancelled) void load();
+      })
       .subscribe();
-    const t = setInterval(load, 60_000);
+
+    const t = setInterval(() => {
+      if (!cancelled) void load();
+    }, 60_000);
+
     return () => {
-      supabase.removeChannel(channel);
+      cancelled = true;
       clearInterval(t);
+      void supabase.removeChannel(channel);
     };
-  }, [load]);
+  }, [instanceId, load]);
 
   const unread = items.filter((n) => !n.read_at).length;
 

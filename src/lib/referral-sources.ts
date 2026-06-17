@@ -25,12 +25,13 @@ export type ReferralDetailSource = (typeof REFERRAL_SOURCES_WITH_DETAIL)[number]
 
 export const REFERRAL_DETAIL_FIELDS: Record<
   ReferralDetailSource,
-  { label: string; placeholder: string; hint: string }
+  { label: string; placeholder: string; hint: string; required?: boolean }
 > = {
   agent_referral: {
-    label: "Referring agent or agency name (optional)",
+    label: "Referring agent or agency name",
     placeholder: "e.g. Smith Insurance Group",
     hint: "Licensed agent or agency only — not your personal information.",
+    required: true,
   },
   friend_family: {
     label: "Referral details (optional)",
@@ -108,4 +109,38 @@ export function buildReferralPreferences(
     if (other) prefs.referralOther = other;
   }
   return prefs;
+}
+
+/** Returns a user-facing error when required referral detail fields are missing or invalid. */
+export function validateReferralDetails(
+  sources: ReferralSource[],
+  details: ReferralDetailValues,
+): string | null {
+  if (sources.includes("agent_referral")) {
+    const name = sanitizeReferralDetail(details.agent_referral ?? "");
+    if (!name) return "Please enter the referring agent or agency name.";
+    if (referralTextLooksLikePii(name)) {
+      return "Agent name cannot include email, phone, or ID numbers. Enter the agent or agency name only.";
+    }
+  }
+  if (sources.includes("friend_family")) {
+    const text = sanitizeReferralDetail(details.friend_family ?? "");
+    if (text && referralTextLooksLikePii(text)) {
+      return "Referral details cannot include names, email, or phone numbers.";
+    }
+  }
+  if (sources.includes("medicare_event")) {
+    const text = sanitizeReferralDetail(details.medicare_event ?? "");
+    if (text && referralTextLooksLikePii(text)) {
+      return "Event details cannot include names, email, or phone numbers.";
+    }
+  }
+  if (sources.includes("other")) {
+    const other = sanitizeReferralDetail(details.other ?? "");
+    if (!other) return "Please briefly describe how you heard about us.";
+    if (referralTextLooksLikePii(other)) {
+      return "Please describe how you heard about us without names, email, or phone numbers.";
+    }
+  }
+  return null;
 }
