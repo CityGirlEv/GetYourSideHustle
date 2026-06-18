@@ -4,7 +4,7 @@ slug: original-medicare-vs-medicare-advantage
 excerpt: Learn how fee-for-service Original Medicare differs from bundled Medicare Advantage plans — without enrollment pressure.
 category: plan-types
 metaDescription: Educational overview of Original Medicare (Parts A and B) compared with Medicare Advantage (Part C), including how coverage is structured.
-featuredImage: /learning-center/original-medicare-vs-medicare-advantage.png
+featuredImage: /learning-center/original-medicare-vs-medicare-advantage.jpg
 featured: true
 published: true
 sortOrder: 10

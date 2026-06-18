@@ -58,6 +58,16 @@ describe("articles", () => {
     expect(html).toContain("&lt;script&gt;");
   });
 
+  it("renders internal learning center links and autolinks bare URLs", () => {
+    const html = renderLearningMarkdown(
+      "See [3 months before 65](/learning-center/medicare-at-65-action-plan). Visit https://getpartb.com today.",
+    );
+    expect(html).toContain('href="/learning-center/medicare-at-65-action-plan"');
+    expect(html).not.toMatch(/href="\/learning-center[^"]*"[^>]*target="_blank"/);
+    expect(html).toContain('href="https://getpartb.com"');
+    expect(html).toContain(">https://getpartb.com</a>");
+  });
+
   it("splits FAQ sections from article bodies", () => {
     const { mainBody, faq } = splitArticleBody(`## Intro
 

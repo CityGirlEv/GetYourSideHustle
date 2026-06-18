@@ -4,7 +4,7 @@ slug: what-is-medicare-prior-authorization
 excerpt: Why some Medicare plans require approval before care — and what to verify before you assume a service is covered.
 category: comparing-plans
 metaDescription: Educational overview of prior authorization in Medicare Advantage, what it means for access to care, and how to verify plan rules.
-featuredImage: /learning-center/what-is-medicare-prior-authorization.png
+featuredImage: /learning-center/what-is-medicare-prior-authorization.jpg
 featured: false
 published: true
 sortOrder: 100

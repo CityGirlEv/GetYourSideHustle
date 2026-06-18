@@ -1,3 +1,5 @@
+import { AGENCY_REFERRAL_NOTICE } from "@/lib/medicare-disclaimers";
+
 export interface MarketingContent {
   topic: string;
   seoArticle: {
@@ -186,7 +188,7 @@ Get Part B Optimizer Team`,
 
 When evaluating how ${cleanTopic} fits into your overall healthcare plan, consider factors such as monthly premiums, deductibles, copayments, and your access to trusted providers. 
 
-Get Part B Optimizer operates as an independent educational platform and Third-Party Marketing Organization (TPMO). We focus on providing consumers with the resources and comparison tools they need to understand their options. If you need further assistance, we can connect you with a licensed professional.
+Get Part B Optimizer operates as an independent educational platform and Third-Party Marketing Organization (TPMO). We focus on providing consumers with the resources and comparison tools they need to understand their options. ${AGENCY_REFERRAL_NOTICE}
 
 ${MANDATORY_SEO_FOOTER}`,
     },

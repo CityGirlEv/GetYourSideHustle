@@ -210,6 +210,14 @@ describe("constants", () => {
     const ids = TEST_CASES.map((t) => t.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
+  it("no test step is a bare wizard step label", () => {
+    const bareStepLabel = /^(?:Go to )?Step [0-9]+$/;
+    for (const t of TEST_CASES) {
+      for (const step of t.steps) {
+        expect(step, `${t.id}: "${step}"`).not.toMatch(bareStepLabel);
+      }
+    }
+  });
   it("SCEN-QA scenario tests use wizard-selectable income bands", () => {
     const scenTests = TEST_CASES.filter(
       (t) => t.id.startsWith("SCEN-QA-") && t.steps.some((s) => /income band =/i.test(s)),

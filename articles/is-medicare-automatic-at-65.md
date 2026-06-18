@@ -4,7 +4,7 @@ slug: is-medicare-automatic-at-65
 excerpt: "Find out if your Medicare enrollment is automatic or if you must actively apply, depending on your Social Security status."
 category: enrollment
 metaDescription: "Will your Medicare enrollment start automatically when you turn 65? Learn who gets enrolled automatically and who must submit an online application."
-featuredImage: /learning-center/is-medicare-automatic-at-65.png
+featuredImage: /learning-center/is-medicare-automatic-at-65.jpg
 featured: false
 published: true
 sortOrder: 6
@@ -65,6 +65,6 @@ If you are receiving Social Security but your Medicare card has not arrived by t
 
 ---
 
-We do not offer every plan available in your area. Any information we provide is limited to those plans we do offer in your area. Please contact Medicare.gov or 1-800-MEDICARE to get information on all of your options.
+We may not present every plan available in your area. Any information we provide is for educational purposes only and is not a complete listing of plans. Please contact Medicare.gov or 1-800-MEDICARE to get information on all of your options.
 
-Ready to better understand your Medicare options? Visit https://getpartb.com and compare your choices with Get Part B Optimizer.
+Ready to better understand your Medicare options? Visit [getpartb.com](https://getpartb.com) and compare your choices with Get Part B Optimizer.

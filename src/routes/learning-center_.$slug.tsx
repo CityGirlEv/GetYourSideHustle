@@ -21,6 +21,9 @@ export const Route = createFileRoute("/learning-center_/$slug")({
     };
   },
   head: ({ loaderData }) => {
+    if (!loaderData?.article) {
+      return { meta: [{ title: `Learning Center — ${SITE_BRAND_NAME}` }] };
+    }
     const { article } = loaderData;
     const url = canonicalUrl(`/learning-center/${article.slug}`);
     const ogImage = article.featuredImage || ogImageUrl();

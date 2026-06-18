@@ -84,7 +84,7 @@ describe("buildScenarioQaAuditSteps", () => {
       costTotal: "$7/mo and $84/yr",
     });
 
-    expect(steps[0]).toContain("Build My Scenario");
+    expect(steps[0]).toContain("Compare Plans Privately");
     expect(steps[1]).toContain("Step 1 — Demographics");
     expect(steps[1]).toContain("birth year = 1958 (age 68 in 2026)");
     expect(steps[1]).toContain("ZIP3 = 606");
@@ -188,7 +188,7 @@ describe("buildScenarioQaAuditSteps", () => {
       costTotal: "$7/mo and $84/yr",
     });
 
-    expect(steps[0]).toContain("Build My Scenario");
+    expect(steps[0]).toContain("Compare Plans Privately");
     expect(steps[1]).toContain("Step 1 — Demographics");
     const step1 = parseStep1Substeps(steps[1]);
     expect(step1[0]).toContain("birth year = 1958");

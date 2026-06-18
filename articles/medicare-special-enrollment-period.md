@@ -4,7 +4,7 @@ slug: medicare-special-enrollment-period
 excerpt: "Learn the qualifying life events that allow you to sign up for Medicare outside standard windows, including active worker transitions."
 category: enrollment
 metaDescription: "Transitioning off work insurance? Learn the Medicare Special Enrollment Period (SEP) rules, forms, and deadlines to sign up penalty-free."
-featuredImage: /learning-center/medicare-special-enrollment-period.png
+featuredImage: /learning-center/medicare-special-enrollment-period.jpg
 featured: false
 published: true
 sortOrder: 7
@@ -15,7 +15,7 @@ If you delayed enrolling in Medicare when you turned 65 because you were covered
 
 Understanding the timing and documentation requirements for an SEP is essential to avoid gaps in coverage and secure your health insurance during retirement.
 
-For an overview of all enrollment windows, review our core directory page on medicare enrollment periods. If you are preparing to retire mid-year, see our week-by-week guide on 3 months before 65: your medicare action plan.
+For an overview of all enrollment windows, review our core directory page on medicare enrollment periods. If you are preparing to retire mid-year, [see our week-by-week guide on 3 months before 65: your medicare action plan](/learning-center/medicare-at-65-action-plan).
 
 ---
 
@@ -67,6 +67,6 @@ If your former employer has closed down, Social Security will accept alternative
 
 ---
 
-We do not offer every plan available in your area. Any information we provide is limited to those plans we do offer in your area. Please contact Medicare.gov or 1-800-MEDICARE to get information on all of your options.
+We may not present every plan available in your area. Any information we provide is for educational purposes only and is not a complete listing of plans. Please contact Medicare.gov or 1-800-MEDICARE to get information on all of your options.
 
-Ready to better understand your Medicare options? Visit https://getpartb.com and compare your choices with Get Part B Optimizer.
+Ready to better understand your Medicare options? Visit [getpartb.com](https://getpartb.com) and compare your choices with Get Part B Optimizer.

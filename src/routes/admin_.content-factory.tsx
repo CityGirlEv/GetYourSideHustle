@@ -22,6 +22,7 @@ import {
   listContentFactoryBatchesAdmin,
   listContentFactoryDraftsAdmin,
   publishContentFactoryDraftAdmin,
+  sendContentFactoryNewsletterTestAdmin,
   updateContentFactoryDraftAdmin,
   updateContentFactoryDraftStatusAdmin,
 } from "@/lib/content-factory.functions";
@@ -41,6 +42,14 @@ import {
   formatContentTimestamp,
 } from "@/components/content-factory/content-factory-ui";
 import { ContentFactoryDraftDialog } from "@/components/content-factory/ContentFactoryDraftDialog";
+import { ContentDispatchLogPanel } from "@/components/content-factory/ContentDispatchLogPanel";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   ArrowLeft,
   CalendarClock,
@@ -74,6 +83,7 @@ function ContentFactoryPage() {
   const updateDraft = useServerFn(updateContentFactoryDraftAdmin);
   const updateStatus = useServerFn(updateContentFactoryDraftStatusAdmin);
   const publishDraft = useServerFn(publishContentFactoryDraftAdmin);
+  const sendNewsletterTest = useServerFn(sendContentFactoryNewsletterTestAdmin);
 
   const [topic, setTopic] = useState("Medicare education weekly themes");
   const [typeFilter, setTypeFilter] = useState<ContentAssetType | "all">("all");
@@ -81,6 +91,8 @@ function ContentFactoryPage() {
   const [batchFilter, setBatchFilter] = useState<string>("all");
   const [dialogDraft, setDialogDraft] = useState<ContentDraft | null>(null);
   const [dialogMode, setDialogMode] = useState<"view" | "edit">("view");
+  const [newsletterTestDraft, setNewsletterTestDraft] = useState<ContentDraft | null>(null);
+  const [newsletterTestEmail, setNewsletterTestEmail] = useState("");
 
   useEffect(() => {
     if (authLoading) return;
@@ -160,6 +172,18 @@ function ContentFactoryPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const newsletterTestMutation = useMutation({
+    mutationFn: (input: { draftId: string; recipient: string }) =>
+      sendNewsletterTest({ data: input }),
+    onSuccess: () => {
+      invalidateAll();
+      setNewsletterTestDraft(null);
+      setNewsletterTestEmail("");
+      toast.success("Newsletter test queued. Check dispatch log for delivery status.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const drafts = draftsQuery.data ?? [];
   const batches = batchesQuery.data ?? [];
 
@@ -181,13 +205,15 @@ function ContentFactoryPage() {
       subtitle="Generate weekly Medicare education assets, review them, and publish through the draft queue."
     >
       <div className="max-w-6xl mx-auto space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Sparkles className="h-4 w-4 text-indigo-400" />
-            Weekly batch workflow · {weeklyBatchAssetTotal()} assets per run
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-0">
+            <Sparkles className="h-4 w-4 shrink-0 text-indigo-400" />
+            <span className="truncate">
+              Weekly batch workflow · {weeklyBatchAssetTotal()} assets per run
+            </span>
           </div>
-          <Link to="/admin">
-            <Button size="sm" variant="outline">
+          <Link to="/admin" className="w-full sm:w-auto">
+            <Button size="sm" variant="outline" className="w-full sm:w-auto">
               <ArrowLeft className="h-4 w-4 mr-1.5" />
               Admin dashboard
             </Button>
@@ -336,6 +362,16 @@ function ContentFactoryPage() {
                         >
                           <Check className="h-3.5 w-3.5 mr-1" /> Approve
                         </Button>
+                        {draft.type === "newsletter" ? (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 text-xs"
+                            onClick={() => setNewsletterTestDraft(draft)}
+                          >
+                            <Send className="h-3.5 w-3.5 mr-1" /> Send Test
+                          </Button>
+                        ) : null}
                         <Button
                           size="sm"
                           variant="ghost"
@@ -430,7 +466,62 @@ function ContentFactoryPage() {
             ) : null}
           </Card>
         </div>
+
+        <ContentDispatchLogPanel
+          batchId={batchFilter === "all" ? undefined : batchFilter}
+          title="Content dispatch log"
+          description="Tracks newsletter tests, scheduled social posts, and published assets for the filtered batch."
+        />
       </div>
+
+      <Dialog open={Boolean(newsletterTestDraft)} onOpenChange={(open) => !open && setNewsletterTestDraft(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Send newsletter test</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-xs text-muted-foreground">
+              Sends the current draft body through Resend as <strong>[TEST]</strong> mail.
+            </p>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold">Recipient address</label>
+              <Input
+                type="email"
+                placeholder="you@example.com"
+                value={newsletterTestEmail}
+                onChange={(event) => setNewsletterTestEmail(event.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setNewsletterTestDraft(null)}>
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              className="grad-indigo"
+              disabled={newsletterTestMutation.isPending || !newsletterTestDraft}
+              onClick={() => {
+                if (!newsletterTestDraft || !newsletterTestEmail.trim()) {
+                  toast.error("Enter a recipient email address.");
+                  return;
+                }
+                newsletterTestMutation.mutate({
+                  draftId: newsletterTestDraft.id,
+                  recipient: newsletterTestEmail.trim(),
+                });
+              }}
+            >
+              {newsletterTestMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-3.5 w-3.5 mr-1" />
+              )}
+              Send Test
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ContentFactoryDraftDialog
         draft={dialogDraft}

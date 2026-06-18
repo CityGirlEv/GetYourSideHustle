@@ -1,6 +1,11 @@
-import { ASSISTANCE_AGENCY_SHARING_NOTICE, SITE_BRAND_NAME } from "@/lib/medicare-disclaimers";
+import {
+  AGENCY_REFERRAL_NOTICE,
+  ASSISTANCE_AGENCY_SHARING_NOTICE,
+  CMS_HEALTH_WEALTH_INSURANCE,
+  SITE_BRAND_NAME,
+} from "@/lib/medicare-disclaimers";
 
-export const LEGAL_OPERATOR_NAME = "CMS Health & Wealth Insurance";
+export const LEGAL_OPERATOR_NAME = CMS_HEALTH_WEALTH_INSURANCE;
 export const PRIVACY_CONTACT_EMAIL = "info@mypartb.com";
 
 export const LEGAL_NAV = [
@@ -30,7 +35,7 @@ export const LEGAL_SECTIONS: LegalSection[] = [
         heading: "Information we collect",
         paragraphs: [
           "Scenario comparison inputs you choose to enter (for example, year of birth, ZIP3, medications, and plan preferences). By design, our public scenario builder does not require your full name, Social Security number, Medicare Beneficiary Identifier (MBI), or full date of birth.",
-          "Contact information you voluntarily provide when you opt in to speak with a CMS Health & Wealth Insurance Partner (name, email, and phone number).",
+          `Contact information you voluntarily provide when you opt in to speak with a ${LEGAL_OPERATOR_NAME} Partner (name, email, and phone number).`,
           "Account information if you register as an agent, QA tester, or staff user (name, email, phone, and role-related profile data).",
           "Technical data such as browser type, device information, IP address, and cookies described in our Cookie Policy.",
         ],
@@ -39,7 +44,7 @@ export const LEGAL_SECTIONS: LegalSection[] = [
         heading: "How we use information",
         bullets: [
           "Provide educational Medicare plan comparisons and scenario results.",
-          "Connect you with a licensed partner when you opt in and authorize contact.",
+          AGENCY_REFERRAL_NOTICE,
           "Operate, secure, and improve the Service.",
           "Send transactional emails you request (confirmations, account notices).",
           "Comply with law and respond to privacy requests.",
@@ -121,8 +126,9 @@ export const LEGAL_SECTIONS: LegalSection[] = [
       {
         heading: "Partner contact & recordings",
         paragraphs: [
+          AGENCY_REFERRAL_NOTICE,
           ASSISTANCE_AGENCY_SHARING_NOTICE,
-          "If you opt in to partner contact, you authorize CMS Health & Wealth Insurance Partner to reach you using the contact method you provide.",
+          `If you opt in to partner contact, you authorize ${LEGAL_OPERATOR_NAME} Partner to reach you using the contact method you provide.`,
           "If a call is conducted with an agent, you consent to being recorded for quality assurance purposes.",
         ],
       },
@@ -141,7 +147,7 @@ export const LEGAL_SECTIONS: LegalSection[] = [
       {
         heading: "Governing law",
         paragraphs: [
-          "These Terms are governed by the laws of the United States and the state in which CMS Health & Wealth Insurance operates, without regard to conflict-of-law rules.",
+          `These Terms are governed by the laws of the United States and the state in which ${LEGAL_OPERATOR_NAME} operates, without regard to conflict-of-law rules.`,
         ],
       },
     ],

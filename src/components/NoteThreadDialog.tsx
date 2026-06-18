@@ -21,6 +21,8 @@ import {
 import { toast } from "sonner";
 
 import { NoteEntryMeta } from "@/components/NoteEntryMeta";
+import { NoteAttachmentField } from "@/components/NoteAttachmentField";
+import { NoteAttachmentLink } from "@/components/NoteAttachmentLink";
 
 /** Modal that shows the full chronological note thread for a test.
  *  Any signed-in user can append a new note. Only the author of an
@@ -32,6 +34,7 @@ export function NoteThreadDialog({
   testTitle,
   currentUserId,
   initialKind = "qa",
+  onEvidenceUploaded,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -39,6 +42,7 @@ export function NoteThreadDialog({
   testTitle?: string;
   currentUserId: string | null;
   initialKind?: NoteKind;
+  onEvidenceUploaded?: () => void;
 }) {
   const [kind, setKind] = useState<NoteKind>(initialKind);
   const [qa, setQa] = useState<NoteEntry[]>([]);
@@ -48,6 +52,7 @@ export function NoteThreadDialog({
   const [editingAt, setEditingAt] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
   const [busy, setBusy] = useState(false);
+  const [attachment, setAttachment] = useState<File | null>(null);
 
   useEffect(() => {
     if (open) setKind(initialKind);
@@ -76,14 +81,22 @@ export function NoteThreadDialog({
   const setList = kind === "qa" ? setQa : setDev;
 
   async function addNote() {
-    if (!draft.trim() || busy) return;
+    if (busy || !currentUserId) return;
+    if (!draft.trim() && !attachment) return;
     setBusy(true);
-    const next = await cloudAddNoteEntry(testId, kind, draft);
-    setBusy(false);
-    if (next) {
-      setList(next);
-      setDraft("");
-      toast.success("Note added");
+    try {
+      const next = await cloudAddNoteEntry(testId, kind, draft, attachment);
+      if (next) {
+        setList(next);
+        setDraft("");
+        setAttachment(null);
+        if (attachment) onEvidenceUploaded?.();
+        toast.success(attachment ? "Note saved with attachment" : "Note added");
+      }
+    } catch (err) {
+      toast.error(`Could not save note: ${(err as Error).message}`);
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -107,6 +120,7 @@ export function NoteThreadDialog({
         if (!v) {
           setEditingAt(null);
           setDraft("");
+          setAttachment(null);
         }
         onOpenChange(v);
       }}
@@ -125,6 +139,7 @@ export function NoteThreadDialog({
           onValueChange={(v) => {
             setEditingAt(null);
             setDraft("");
+            setAttachment(null);
             setKind(v as NoteKind);
           }}
         >
@@ -208,7 +223,15 @@ export function NoteThreadDialog({
                             </div>
                           </div>
                         ) : (
-                          <p className="text-sm whitespace-pre-wrap">{e.text}</p>
+                          <>
+                            <p className="text-sm whitespace-pre-wrap">{e.text}</p>
+                            {e.attachment_path && e.attachment_name && (
+                              <NoteAttachmentLink
+                                path={e.attachment_path}
+                                name={e.attachment_name}
+                              />
+                            )}
+                          </>
                         )}
                       </div>
                     );
@@ -230,10 +253,16 @@ export function NoteThreadDialog({
                   }
                   className="text-sm"
                 />
+                <NoteAttachmentField
+                  file={kind === k ? attachment : null}
+                  onFileChange={setAttachment}
+                  userId={currentUserId}
+                  disabled={busy || kind !== k}
+                />
                 <div className="flex justify-end">
                   <Button
                     size="sm"
-                    disabled={busy || !draft.trim() || !currentUserId}
+                    disabled={busy || (!draft.trim() && !attachment) || !currentUserId}
                     onClick={addNote}
                   >
                     <MessageSquarePlus className="h-3.5 w-3.5 mr-1" /> Add note

@@ -9,6 +9,7 @@
 
 import { buildScenarioQaAuditSteps } from "./scenario-qa-steps";
 import { buildAgentRegistrationSteps, buildQaRegistrationSteps } from "./registration-test-steps";
+import { MPD_DISCLAIMER } from "./medicare-disclaimers";
 
 /** Shared preconditions for QA scenario tests that start on /scenario/new. */
 const SCENARIO_QA_NEW_PRECONDITIONS =
@@ -189,7 +190,10 @@ export const TEST_CASES: TestCase[] = [
     area: "Intake · Manual",
     priority: "P1",
     title: "Cost preference toggle switches label and value",
-    steps: ["Go to Step 2", "Toggle the switch"],
+    steps: [
+      "On /scenario/new, complete Demographics and click Next to reach Preferences & Conditions",
+      "Toggle the cost preference switch",
+    ],
     expected: "Label flips between 'Minimize monthly cost' and 'Predictability matters more'.",
   },
   {
@@ -197,7 +201,10 @@ export const TEST_CASES: TestCase[] = [
     area: "Intake · Manual",
     priority: "P1",
     title: "Conditions multi-select — 'Other' opens free-text input",
-    steps: ["Step 3", "Toggle 'Other'", "Type 'Glaucoma' and press Enter"],
+    steps: [
+      "On Preferences & Conditions (Part 2), toggle 'Other'",
+      "Type 'Glaucoma' and press Enter",
+    ],
     expected: "Glaucoma chip appears with × to remove; selection persists to summary on Step 4.",
   },
 
@@ -207,7 +214,10 @@ export const TEST_CASES: TestCase[] = [
     area: "Intake · Meds",
     priority: "P0",
     title: "Medication search — local catalog hit",
-    steps: ["Step 4", "Type 'metf' in drug search", "Click Metformin in dropdown"],
+    steps: [
+      "On Medications (Part 3), type 'metf' in drug search",
+      "Click Metformin in dropdown",
+    ],
     expected:
       "Drug name, strength, form, frequency, retail cost auto-fill; coverage_uncertain is false (no warning chip).",
   },
@@ -957,7 +967,7 @@ export const TEST_CASES: TestCase[] = [
     title: "Multi-Plan Disclaimer (MPD) on plan-comparison output",
     steps: ["Generate scenario recommendations", "Inspect the plan list header"],
     expected:
-      "Displays 'We do not present every plan available in your area. Any information we provide is limited to those plans we do offer in your area. Please contact Medicare.gov or 1-800-MEDICARE to get information on all of your options.'",
+      `Displays '${MPD_DISCLAIMER}'`,
     notes: "Required MPD language per CMS Communications & Marketing Guidelines.",
   },
   {

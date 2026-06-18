@@ -4,7 +4,7 @@ slug: how-to-compare-medicare-plans-educationally
 excerpt: Use side-by-side educational comparisons and official sources before making coverage decisions.
 category: comparing-plans
 metaDescription: Practical steps for comparing Medicare plan types using de-identified scenarios and official CMS resources.
-featuredImage: /learning-center/how-to-compare-medicare-plans-educationally.png
+featuredImage: /learning-center/how-to-compare-medicare-plans-educationally.jpg
 featured: false
 published: true
 sortOrder: 40

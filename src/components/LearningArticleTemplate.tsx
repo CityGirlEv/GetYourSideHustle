@@ -13,6 +13,7 @@ import {
   Download,
   Share2,
 } from "lucide-react";
+import { ArticleTitleWithImage } from "@/components/ArticleTitleWithImage";
 import { LearningArticleBody } from "@/components/LearningArticleBody";
 import { LearningArticleCard } from "@/components/LearningArticleCard";
 import { LearningCenterCta } from "@/components/LearningCenterCta";
@@ -26,7 +27,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { Article, ArticleListItem } from "@/lib/articles";
-import { downloadTextFile, serializeArticleMarkdown } from "@/lib/article-authoring";
 import {
   LEARNING_ARTICLE_DISCLAIMER,
   categoryLabel,
@@ -217,23 +217,21 @@ function ArticleDownloadCta({
       variant="outline"
       className="w-full justify-center"
       onClick={() => {
-        downloadTextFile(
-          `${article.slug}.md`,
-          serializeArticleMarkdown({
-            title: article.title,
-            slug: article.slug,
-            excerpt: article.excerpt,
-            category: article.category,
-            metaDescription: article.metaDescription,
-            featuredImage: article.featuredImage,
-            featured: article.featured,
-            published: article.published,
-            sortOrder: article.sortOrder,
-            publishedAt: article.publishedAt ?? new Date().toISOString().slice(0, 10),
-            bodyMd: article.bodyMd,
-          }),
-        );
-        toast.success("Guide downloaded");
+        void import("@/lib/article-pdf")
+          .then((mod) =>
+            mod.downloadArticleGuide({
+              title: article.title,
+              slug: article.slug,
+              excerpt: article.excerpt,
+              category: article.category,
+              bodyMd: article.bodyMd,
+              featuredImage: article.featuredImage,
+              publishedAt: article.publishedAt,
+              lastUpdated: article.lastUpdated,
+            }),
+          )
+          .then(() => toast.success("Executive guide PDF downloaded"))
+          .catch(() => toast.error("Could not generate PDF. Try again."));
       }}
     >
       <Download className="h-4 w-4 mr-1.5" />
@@ -313,59 +311,34 @@ export function LearningArticleTemplate({
         </Link>
       </Button>
 
-      <header className="space-y-4">
-        {article.featuredImage ? (
-          <div className="overflow-hidden rounded-2xl border border-border bg-muted/20">
-            <img
-              src={article.featuredImage}
-              alt={article.title}
-              className="w-full aspect-[21/9] object-cover"
-            />
-          </div>
-        ) : (
-          <div className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-background to-muted/30 aspect-[21/9] max-h-56 sm:max-h-72 flex items-end p-5 sm:p-8">
-            <div className="space-y-2">
-              <Badge variant="secondary">{categoryLabel(article.category)}</Badge>
-              <h1 className="font-display text-xl sm:text-2xl lg:text-3xl font-bold text-primary leading-tight max-w-2xl">
-                {article.title}
-              </h1>
-            </div>
-          </div>
-        )}
-
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="secondary">{categoryLabel(article.category)}</Badge>
-            {article.featured ? <Badge className="bg-emerald/90">Featured</Badge> : null}
+      <header className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="secondary">{categoryLabel(article.category)}</Badge>
+          {article.featured ? <Badge className="bg-emerald/90">Featured</Badge> : null}
+          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+            <Clock3 className="h-3.5 w-3.5" />
+            {readMin} min read
+          </span>
+          {publishedLabel ? (
             <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-              <Clock3 className="h-3.5 w-3.5" />
-              {readMin} min read
+              <CalendarDays className="h-3.5 w-3.5" />
+              Published {publishedLabel}
             </span>
-            {publishedLabel ? (
-              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                <CalendarDays className="h-3.5 w-3.5" />
-                Published {publishedLabel}
-              </span>
-            ) : null}
-            {showUpdated ? (
-              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                Updated {updatedLabel}
-              </span>
-            ) : null}
-          </div>
-
-          {article.featuredImage ? (
-            <h1 className="font-display text-3xl sm:text-4xl lg:text-[2.5rem] font-bold text-primary leading-tight">
-              {article.title}
-            </h1>
           ) : null}
-
-          <p className="text-base sm:text-lg text-muted-foreground leading-relaxed max-w-3xl">
-            {article.excerpt}
-          </p>
-
-          <ArticleShareButtons title={article.title} slug={article.slug} />
+          {showUpdated ? (
+            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+              Updated {updatedLabel}
+            </span>
+          ) : null}
         </div>
+
+        <ArticleTitleWithImage
+          title={article.title}
+          excerpt={article.excerpt}
+          imageSrc={article.featuredImage}
+          size="page"
+          footer={<ArticleShareButtons title={article.title} slug={article.slug} />}
+        />
       </header>
 
       {headings.length ? (

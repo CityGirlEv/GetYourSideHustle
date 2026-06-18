@@ -93,7 +93,7 @@ export function parseArticleMarkdown(raw: string): Article {
     excerpt: String(fields.excerpt ?? "").trim(),
     category: category as ArticleCategory,
     metaDescription: String(fields.metaDescription ?? "").trim(),
-    featuredImage: featuredImage || undefined,
+    featuredImage: featuredImage || `/learning-center/${slug}.jpg`,
     featured: Boolean(fields.featured),
     published: fields.published !== false,
     sortOrder: Number(fields.sortOrder ?? 0),

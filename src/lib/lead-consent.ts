@@ -1,8 +1,12 @@
-import { ASSISTANCE_AGENCY_SHARING_NOTICE, TPMO_PLATFORM_DISCLAIMER } from "@/lib/medicare-disclaimers";
+import {
+  AGENCY_REFERRAL_NOTICE,
+  ASSISTANCE_AGENCY_SHARING_NOTICE,
+  TPMO_PLATFORM_DISCLAIMER,
+} from "@/lib/medicare-disclaimers";
 import { LEGAL_OPERATOR_NAME } from "@/lib/legal-content";
 
 /** Bump when checkbox labels or required flow changes (stored on each certificate). */
-export const LEAD_CONSENT_FLOW_VERSION = "2026-06-15-v1";
+export const LEAD_CONSENT_FLOW_VERSION = "2026-06-17-v2";
 
 export const DEFAULT_LEAD_AGENCY_NAME = LEGAL_OPERATOR_NAME;
 
@@ -19,14 +23,14 @@ export const LEAD_MARKETING_OPT_IN_LABEL =
   "I would like to receive future educational Medicare tips and updates.";
 
 /** Button / dialog title for partner opt-in. */
-export const CMS_PARTNER_CTA = "Connect with a CMS Health & Wealth Insurance Partner";
+export const CMS_PARTNER_CTA = `Connect with a ${LEGAL_OPERATOR_NAME} Partner`;
 
 /** User-facing notice that a licensed agent from CMS will follow up. */
 export const LICENSED_AGENT_WILL_CONTACT =
-  "A licensed Medicare Agent from CMS Health & Wealth Insurance — will contact you";
+  `A licensed Medicare Agent from ${LEGAL_OPERATOR_NAME} — will contact you`;
 
 export const LEAD_OPT_IN_INTRO =
-  `Your comparison is complete! If you'd like personalized guidance, ${CMS_PARTNER_CTA.toLowerCase()} who can review your results and answer your questions.`;
+  `Your comparison is complete! If you'd like personalized guidance, a ${LEGAL_OPERATOR_NAME} Partner can review your results and answer your questions.`;
 
 export type LeadCheckboxSnapshot = {
   label: string;
@@ -58,7 +62,12 @@ export function buildLeadConsentSnapshot(opts: {
     flow_version: LEAD_CONSENT_FLOW_VERSION,
     agency_name: agencyName,
     scenario_code: opts.scenarioCode?.trim().toUpperCase() || null,
-    notices_shown: [LEAD_OPT_IN_INTRO, TPMO_PLATFORM_DISCLAIMER, ASSISTANCE_AGENCY_SHARING_NOTICE],
+    notices_shown: [
+      LEAD_OPT_IN_INTRO,
+      TPMO_PLATFORM_DISCLAIMER,
+      AGENCY_REFERRAL_NOTICE,
+      ASSISTANCE_AGENCY_SHARING_NOTICE,
+    ],
     checkboxes: {
       privacy_acknowledgment: {
         label: LEAD_PRIVACY_ACK_LABEL,

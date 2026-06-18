@@ -4,7 +4,7 @@ slug: medicare-enrollment-periods-overview
 excerpt: A non-sales overview of common Medicare enrollment windows and why timing matters.
 category: enrollment
 metaDescription: Educational summary of Initial Enrollment, General Enrollment, and Special Enrollment Periods for Medicare Part B.
-featuredImage: /learning-center/medicare-enrollment-periods-overview.png
+featuredImage: /learning-center/medicare-enrollment-periods-overview.jpg
 featured: false
 published: true
 sortOrder: 30

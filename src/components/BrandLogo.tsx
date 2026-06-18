@@ -8,9 +8,9 @@ const logoSizes = {
   /** Full-width hero / email header */
   default: "block h-auto w-48 sm:w-60 md:w-80 max-w-full object-contain object-top",
   /** Compact wordmark beside inline mobile nav links */
-  navMobile: "block h-auto w-[5.25rem] max-w-[30vw] object-contain object-left",
-  /** Center column in site nav — wide horizontal wordmark */
-  nav: "block h-auto w-32 sm:w-40 md:w-52 lg:w-60 max-w-[min(60vw,14rem)] sm:max-w-none object-contain object-top",
+  navMobile: "block h-auto w-[4.5rem] max-w-[28vw] object-contain object-left",
+  /** Header wordmark — left-aligned in site nav */
+  nav: "block h-auto w-28 sm:w-32 md:w-40 lg:w-48 max-w-[min(55vw,12rem)] sm:max-w-none object-contain object-top",
   /** Compact card / home hero */
   compact: "block h-auto w-full max-w-[10rem] sm:max-w-[11rem] mx-auto object-contain object-top",
   /** GPB monogram icon — home hero white card */

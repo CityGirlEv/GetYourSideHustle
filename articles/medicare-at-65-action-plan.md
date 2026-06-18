@@ -4,7 +4,7 @@ slug: medicare-at-65-action-plan
 excerpt: "A practical, timeline-driven roadmap designed to help you prepare, evaluate, and apply for Medicare during the critical 90 days before your 65th birthday."
 category: enrollment
 metaDescription: "Turning 65 in 3 months? Follow this week-by-week Medicare action plan to gather documents, coordinate group coverage, and apply online."
-featuredImage: /learning-center/medicare-at-65-action-plan.png
+featuredImage: /learning-center/medicare-at-65-action-plan.jpg
 featured: false
 published: true
 sortOrder: 2
@@ -74,7 +74,7 @@ Traditional Medicare has no out-of-pocket maximum limit. If you undergo major su
 * If no—and you want the freedom to see any doctor in the country without referrals—traditional **Original Medicare + Medigap** is the appropriate path.
 
 ### Action Item 3: Test Drug Formularies Privately
-Every prescription drug plan (Part D or Advantage) has a "formulary," which is a list of covered medications grouped into cost tiers. A drug that costs $10/month on one plan might cost $80/month on another. Use our de-identified Scenario Creator to model your specific medications against current plan tiers to find the lowest annual total cost.
+Every prescription drug plan (Part D or Advantage) has a "formulary," which is a list of covered medications grouped into cost tiers. A drug that costs $10/month on one plan might cost $80/month on another. [Use our de-identified Scenario Creator](/) to model your specific medications against current plan tiers to find the lowest annual total cost.
 
 ---
 
@@ -122,6 +122,6 @@ No, you do not have to sign up at 65 if you work for an employer with 20 or more
 
 ---
 
-We do not offer every plan available in your area. Any information we provide is limited to those plans we do offer in your area. Please contact Medicare.gov or 1-800-MEDICARE to get information on all of your options.
+We may not present every plan available in your area. Any information we provide is for educational purposes only and is not a complete listing of plans. Please contact Medicare.gov or 1-800-MEDICARE to get information on all of your options.
 
-Ready to better understand your Medicare options? Visit https://getpartb.com and compare your choices with Get Part B Optimizer.
+Ready to better understand your Medicare options? Visit [getpartb.com](https://getpartb.com) and compare your choices with Get Part B Optimizer.

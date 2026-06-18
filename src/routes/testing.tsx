@@ -159,11 +159,13 @@ import {
   deleteTestEvidence,
   getTestEvidenceUrl,
   EVIDENCE_ACCEPT_ATTR,
+  EVIDENCE_HELP_TEXT,
   type EvidenceFile,
 } from "@/lib/test-evidence";
 import { validateFailDetails, formatFailNote } from "@/lib/fail-details";
 import { toast } from "sonner";
 import { NoteThreadDialog } from "@/components/NoteThreadDialog";
+import { NoteAttachmentField } from "@/components/NoteAttachmentField";
 import { InlineTestNote } from "@/components/InlineTestNote";
 import type { NoteKind } from "@/lib/cloud-sync";
 import { MessageSquare } from "lucide-react";
@@ -192,6 +194,7 @@ import { notifyBetaTestUnassignments, notifyBetaTestDevNotes } from "@/lib/qa-te
 import { isUnassignNotificationCandidate } from "@/lib/qa-test-assignment.server";
 import { cn } from "@/lib/utils";
 import { registerDeploySaveHandler } from "@/lib/deploy-version";
+import { noteTextForSave, saveNoteAttachment } from "@/lib/note-attachment";
 
 // Derive a link target for a test case: explicit `path` wins, otherwise scan
 // preconditions + steps for the first "/route" token (e.g. "Open /advisor").
@@ -407,6 +410,49 @@ async function copyRunCommand(cmd: string, label: string) {
   } catch {
     toast.error("Could not copy to clipboard", { description: cmd });
   }
+}
+
+type PendingNoteCloudEntry = {
+  test_id: string;
+  kind: NoteKind;
+  text: string;
+  attachment?: { attachment_path: string; attachment_name: string };
+};
+
+async function buildNoteCloudEntries(args: {
+  userId: string;
+  testId: string;
+  qaNote: string;
+  devNote: string;
+  qaFile?: File;
+  devFile?: File;
+}): Promise<PendingNoteCloudEntry[]> {
+  const entries: PendingNoteCloudEntry[] = [];
+  if (args.qaNote.trim() || args.qaFile) {
+    let attachment: PendingNoteCloudEntry["attachment"];
+    if (args.qaFile) {
+      attachment = await saveNoteAttachment(args.userId, args.testId, args.qaFile);
+    }
+    entries.push({
+      test_id: args.testId,
+      kind: "qa",
+      text: noteTextForSave(args.qaNote, attachment?.attachment_name),
+      attachment,
+    });
+  }
+  if (args.devNote.trim() || args.devFile) {
+    let attachment: PendingNoteCloudEntry["attachment"];
+    if (args.devFile) {
+      attachment = await saveNoteAttachment(args.userId, args.testId, args.devFile);
+    }
+    entries.push({
+      test_id: args.testId,
+      kind: "dev",
+      text: noteTextForSave(args.devNote, attachment?.attachment_name),
+      attachment,
+    });
+  }
+  return entries;
 }
 
 /** Extract the shell command stored in an automated test's first step
@@ -667,6 +713,8 @@ export function TestPlanTab() {
   const commitChangesRef = useRef<(selectedKeys: Set<string>) => Promise<void>>(async () => {});
   const dCheckedStepsRef = useRef<Record<string, CheckedSteps>>({});
   const saveInFlightRef = useRef(false);
+  const pendingQaAttachmentsRef = useRef<Record<string, File>>({});
+  const pendingDevAttachmentsRef = useRef<Record<string, File>>({});
   const savedCheckedStepsRef = useRef<Record<string, CheckedSteps>>({});
   /** Last cloud/local snapshot used to revert session-only writes on discard. */
   const persistedBaselineRef = useRef<{
@@ -1589,9 +1637,24 @@ export function TestPlanTab() {
         }
       }
 
-      const noteEntries: { test_id: string; kind: "qa" | "dev"; text: string }[] = [];
-      if (qaNote.trim()) noteEntries.push({ test_id: id, kind: "qa", text: qaNote });
-      if (devNote.trim()) noteEntries.push({ test_id: id, kind: "dev", text: devNote });
+      const noteEntries: PendingNoteCloudEntry[] = [];
+      if (user?.id && (qaNote.trim() || devNote.trim() || pendingQaAttachmentsRef.current[id] || pendingDevAttachmentsRef.current[id])) {
+        noteEntries.push(
+          ...(await buildNoteCloudEntries({
+            userId: user.id,
+            testId: id,
+            qaNote,
+            devNote,
+            qaFile: pendingQaAttachmentsRef.current[id],
+            devFile: pendingDevAttachmentsRef.current[id],
+          })),
+        );
+        delete pendingQaAttachmentsRef.current[id];
+        delete pendingDevAttachmentsRef.current[id];
+      } else {
+        if (qaNote.trim()) noteEntries.push({ test_id: id, kind: "qa", text: qaNote.trim() });
+        if (devNote.trim()) noteEntries.push({ test_id: id, kind: "dev", text: devNote.trim() });
+      }
       if (noteEntries.length) await cloudAppendNotesBulk(noteEntries);
 
       if (pushed > 0) {
@@ -1629,9 +1692,9 @@ export function TestPlanTab() {
     const blockReason = getTestResultSaveBlockReason(user);
     if (blockReason) {
       toast.error("Cannot save test result", { description: blockReason });
-      return;
+      return Promise.resolve();
     }
-    void commitSingleTestSnapshot(id);
+    return commitSingleTestSnapshot(id);
   };
 
   const cardActionsRef = useRef({
@@ -1735,6 +1798,14 @@ export function TestPlanTab() {
   );
   const onCardEdit = useCallback((id: string) => cardActionsRef.current.setEditingId(id), []);
   const onCardSave = useCallback((id: string) => cardActionsRef.current.saveSingleTest(id), []);
+  const onCardPendingQaAttachment = useCallback((id: string, file: File | null) => {
+    if (file) pendingQaAttachmentsRef.current[id] = file;
+    else delete pendingQaAttachmentsRef.current[id];
+  }, []);
+  const onCardPendingDevAttachment = useCallback((id: string, file: File | null) => {
+    if (file) pendingDevAttachmentsRef.current[id] = file;
+    else delete pendingDevAttachmentsRef.current[id];
+  }, []);
   const onCardDuplicate = useCallback((id: string) => {
     void cardActionsRef.current.duplicateCustomTestRow?.(id);
   }, []);
@@ -2013,9 +2084,57 @@ export function TestPlanTab() {
         test_id: o.testId,
         patch: (o.patch ?? {}) as Parameters<typeof cloudPushTestsBulk>[0][number]["patch"],
       }));
-    const noteEntries = ops
-      .filter((o) => o.kind === "note")
-      .map((o) => ({ test_id: o.testId, kind: o.note!.kind, text: o.note!.text }));
+    const noteEntries: PendingNoteCloudEntry[] = [];
+    for (const o of ops.filter((op) => op.kind === "note")) {
+      const testId = o.testId;
+      const kind = o.note!.kind;
+      const text = o.note!.text;
+      const pendingFile =
+        kind === "qa"
+          ? pendingQaAttachmentsRef.current[testId]
+          : pendingDevAttachmentsRef.current[testId];
+      if (user?.id && pendingFile) {
+        const attachment = await saveNoteAttachment(user.id, testId, pendingFile);
+        if (kind === "qa") delete pendingQaAttachmentsRef.current[testId];
+        else delete pendingDevAttachmentsRef.current[testId];
+        noteEntries.push({
+          test_id: testId,
+          kind,
+          text: noteTextForSave(text, attachment.attachment_name),
+          attachment,
+        });
+      } else if (text.trim()) {
+        noteEntries.push({ test_id: testId, kind, text: text.trim() });
+      }
+    }
+    // Attachments picked without a note-field change still save with the card note on bulk save.
+    if (user?.id) {
+      const noteTestIds = new Set(noteEntries.map((e) => `${e.test_id}:${e.kind}`));
+      for (const c of pendingChanges) {
+        if (!selectedKeys.has(c.key)) continue;
+        const testId = c.testId;
+        for (const kind of ["qa", "dev"] as const) {
+          const key = `${testId}:${kind}`;
+          if (noteTestIds.has(key)) continue;
+          const pendingFile =
+            kind === "qa"
+              ? pendingQaAttachmentsRef.current[testId]
+              : pendingDevAttachmentsRef.current[testId];
+          if (!pendingFile) continue;
+          const text = (kind === "qa" ? newSaved.qaNote[testId] : newSaved.devNote[testId]) ?? "";
+          const attachment = await saveNoteAttachment(user.id, testId, pendingFile);
+          if (kind === "qa") delete pendingQaAttachmentsRef.current[testId];
+          else delete pendingDevAttachmentsRef.current[testId];
+          noteEntries.push({
+            test_id: testId,
+            kind,
+            text: noteTextForSave(text, attachment.attachment_name),
+            attachment,
+          });
+          noteTestIds.add(key);
+        }
+      }
+    }
     const totalBatches = (pushPatches.length ? 1 : 0) + (noteEntries.length ? 1 : 0);
     setSaveProgress({ done: 0, total: totalBatches });
     let okBatches = 0;
@@ -3024,6 +3143,8 @@ export function TestPlanTab() {
             hasTestChanges={hasTestChanges}
             isTestEngaged={isTestEngaged}
             onCardSave={onCardSave}
+            onCardPendingQaAttachment={onCardPendingQaAttachment}
+            onCardPendingDevAttachment={onCardPendingDevAttachment}
             canSaveToCloud={canSaveToCloud}
             multiTestPending={multiTestPending}
             saveBlockReason={getTestResultSaveBlockReason(user) ?? undefined}
@@ -4284,6 +4405,8 @@ function VirtualizedTestList({
   hasTestChanges,
   isTestEngaged,
   onCardSave,
+  onCardPendingQaAttachment,
+  onCardPendingDevAttachment,
   canSaveToCloud,
   multiTestPending,
   saveBlockReason,
@@ -4328,7 +4451,9 @@ function VirtualizedTestList({
   onCardDuplicate: (id: string) => void;
   hasTestChanges: (id: string) => boolean;
   isTestEngaged: (id: string) => boolean;
-  onCardSave: (id: string) => void;
+  onCardSave: (id: string) => void | Promise<void>;
+  onCardPendingQaAttachment: (id: string, file: File | null) => void;
+  onCardPendingDevAttachment: (id: string, file: File | null) => void;
   canSaveToCloud: boolean;
   multiTestPending: boolean;
   saveBlockReason?: string;
@@ -4520,6 +4645,8 @@ function VirtualizedTestList({
                   hasChanges={hasTestChanges(row.test.id)}
                   engaged={isTestEngaged(row.test.id)}
                   onSave={onCardSave}
+                  onPendingQaAttachment={onCardPendingQaAttachment}
+                  onPendingDevAttachment={onCardPendingDevAttachment}
                   canSave={canSaveToCloud}
                   saveBlockReason={saveBlockReason}
                   preferBulkSave={multiTestPending}
@@ -4534,24 +4661,19 @@ function VirtualizedTestList({
   );
 }
 
-/** Full-card background + border tint for each test status in the portal. */
+/** Full-card background + border tint — matches StatBadge / status button palette. */
+const TEST_STATUS_SURFACE: Record<TestStatus, string> = {
+  not_run: "border-border bg-muted/40",
+  pass: "border-emerald-500/30 bg-emerald-500/10",
+  fail: "border-destructive/30 bg-destructive/10",
+  in_progress: "border-amber-500/30 bg-amber-500/10",
+  blocked: "border-amber-600/30 bg-amber-500/10",
+  fixed_retest: "border-sky-500/30 bg-sky-500/10",
+  failed_retest: "border-orange-500/30 bg-orange-500/10",
+};
+
 function testCardStatusShade(status: TestStatus): string {
-  switch (status) {
-    case "pass":
-      return "border-emerald-500/45 bg-emerald-50 dark:bg-emerald-950/40";
-    case "fail":
-      return "border-destructive/45 bg-red-50 dark:bg-red-950/40";
-    case "in_progress":
-      return "border-amber-500/45 bg-amber-50 dark:bg-amber-950/40";
-    case "blocked":
-      return "border-amber-600/45 bg-amber-50/90 dark:bg-amber-950/35";
-    case "fixed_retest":
-      return "border-sky-500/45 bg-sky-50 dark:bg-sky-950/40";
-    case "failed_retest":
-      return "border-orange-500/55 bg-orange-50 dark:bg-orange-950/45";
-    default:
-      return "border-border bg-muted/50 dark:bg-muted/25";
-  }
+  return TEST_STATUS_SURFACE[status] ?? TEST_STATUS_SURFACE.not_run;
 }
 
 const TestCaseCard = memo(function TestCaseCard({
@@ -4587,6 +4709,8 @@ const TestCaseCard = memo(function TestCaseCard({
   hasChanges,
   engaged,
   onSave,
+  onPendingQaAttachment,
+  onPendingDevAttachment,
   assigneeLocked,
   preferBulkSave,
   canSave,
@@ -4630,7 +4754,9 @@ const TestCaseCard = memo(function TestCaseCard({
   hasChanges?: boolean;
   /** True when the user has interacted with this card since the last row save. */
   engaged?: boolean;
-  onSave?: (id: string) => void;
+  onSave?: (id: string) => void | Promise<void>;
+  onPendingQaAttachment?: (id: string, file: File | null) => void;
+  onPendingDevAttachment?: (id: string, file: File | null) => void;
   /** When true, nudge users toward the top-level Save all changes button. */
   preferBulkSave?: boolean;
   /** Whether the current user may persist results to the cloud. */
@@ -4869,6 +4995,24 @@ const TestCaseCard = memo(function TestCaseCard({
   const { user: cardUser } = useApp();
   const [pendingFail, setPendingFail] = useState<TestStatus | null>(null);
   const [pendingPass, setPendingPass] = useState(false);
+  const [evidenceRefresh, setEvidenceRefresh] = useState(0);
+  const bumpEvidence = () => setEvidenceRefresh((n) => n + 1);
+  const [qaPendingAttachmentName, setQaPendingAttachmentName] = useState<string | null>(null);
+  const [devPendingAttachmentName, setDevPendingAttachmentName] = useState<string | null>(null);
+  const handleQaAttachment = (file: File | null) => {
+    setQaPendingAttachmentName(file?.name ?? null);
+    onPendingQaAttachment?.(t.id, file);
+    if (file) touchTest();
+  };
+  const handleDevAttachment = (file: File | null) => {
+    setDevPendingAttachmentName(file?.name ?? null);
+    onPendingDevAttachment?.(t.id, file);
+    if (file) touchTest();
+  };
+  const clearPendingAttachmentLabels = () => {
+    setQaPendingAttachmentName(null);
+    setDevPendingAttachmentName(null);
+  };
   const [pendingStatus, setPendingStatus] = useState<TestStatus | null>(null);
   const [notesOpen, setNotesOpen] = useState(false);
   const [notesInitialKind, setNotesInitialKind] = useState<NoteKind>("qa");
@@ -4904,11 +5048,15 @@ const TestCaseCard = memo(function TestCaseCard({
     onStatusChange(t.id, s);
   };
   return (
-    <Card
+    <div
       id={`test-row-${t.id}`}
       tabIndex={-1}
       onClick={handleCardEngage}
-      className={`p-4 cursor-pointer ${shade} ${selected ? "ring-2 ring-primary/60" : ""}`}
+      className={cn(
+        "rounded-xl border shadow p-4 cursor-pointer text-card-foreground",
+        shade,
+        selected && "ring-2 ring-primary/60",
+      )}
     >
       <div className="flex flex-wrap items-start gap-2 mb-2 relative z-10">
         <div data-no-auto-start>
@@ -5074,7 +5222,11 @@ const TestCaseCard = memo(function TestCaseCard({
             showGreenSave && hasChanges && "animate-pulse",
             showGreenSave && "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600",
           )}
-          onClick={() => onSave?.(t.id)}
+          onClick={async () => {
+            await onSave?.(t.id);
+            clearPendingAttachmentLabels();
+            bumpEvidence();
+          }}
           disabled={canSave === false || !onSave}
           title={
             canSave === false
@@ -5277,6 +5429,10 @@ const TestCaseCard = memo(function TestCaseCard({
                 draftText={qaNote}
                 meta={qaNoteMeta}
                 currentUserId={cardUser?.id ?? null}
+                testId={t.id}
+                userId={cardUser?.id ?? null}
+                pendingAttachmentName={qaPendingAttachmentName}
+                onAttachmentChange={handleQaAttachment}
                 onOpenHistory={() => openNotes("qa")}
                 onChange={(v) => {
                   touchTest();
@@ -5302,6 +5458,10 @@ const TestCaseCard = memo(function TestCaseCard({
               draftText={devNote}
               meta={devNoteMeta}
               currentUserId={cardUser?.id ?? null}
+              testId={t.id}
+              userId={cardUser?.id ?? null}
+              pendingAttachmentName={devPendingAttachmentName}
+              onAttachmentChange={handleDevAttachment}
               onOpenHistory={() => openNotes("dev")}
               onChange={(v) => {
                 touchTest();
@@ -5314,7 +5474,7 @@ const TestCaseCard = memo(function TestCaseCard({
           )}
         </div>
       )}
-      <TestEvidence testId={t.id} />
+      <TestEvidence testId={t.id} refreshToken={evidenceRefresh} />
       <FailDetailsDialog
         open={pendingFail != null}
         onOpenChange={(v) => {
@@ -5328,14 +5488,7 @@ const TestCaseCard = memo(function TestCaseCard({
           const s = pendingFail;
           if (!s) return;
           touchTest();
-          if (file && cardUser) {
-            try {
-              await uploadTestEvidence(cardUser.id, t.id, file);
-            } catch (e) {
-              toast.error(`Screenshot upload failed: ${(e as Error).message}`);
-              return;
-            }
-          }
+          if (file) handleQaAttachment(file);
           persistFailedStep(String(stepIndex + 1));
           onQaNoteChange(t.id, formatFailNote(qaNote, { note, stepLabel, noScreenshot: !file }));
           onStatusChange(t.id, s);
@@ -5348,10 +5501,15 @@ const TestCaseCard = memo(function TestCaseCard({
           if (!v) setPendingPass(false);
         }}
         testId={t.id}
+        userId={cardUser?.id ?? null}
         initialNote={qaNote}
-        onConfirm={(note) => {
+        onConfirm={async (note, file) => {
+          if (file) handleQaAttachment(file);
           touchTest();
-          onQaNoteChange(t.id, note);
+          const finalNote =
+            note.trim() ||
+            (file ? `Attachment: ${file.name}` : note);
+          onQaNoteChange(t.id, finalNote);
           onStatusChange(t.id, "pass");
           setPendingPass(false);
         }}
@@ -5362,13 +5520,16 @@ const TestCaseCard = memo(function TestCaseCard({
           if (!v) setPendingStatus(null);
         }}
         testId={t.id}
+        userId={cardUser?.id ?? null}
         status={pendingStatus ?? "not_run"}
         initialNote={qaNote}
-        onConfirm={(note) => {
+        onConfirm={async (note, file) => {
           const s = pendingStatus;
           if (!s) return;
+          if (file) handleQaAttachment(file);
           touchTest();
-          if (note && note !== qaNote) onQaNoteChange(t.id, note);
+          const finalNote = file && !note.trim() ? `Attachment: ${file.name}` : note;
+          if (finalNote && finalNote !== qaNote) onQaNoteChange(t.id, finalNote);
           onStatusChange(t.id, s);
           setPendingStatus(null);
         }}
@@ -5380,8 +5541,9 @@ const TestCaseCard = memo(function TestCaseCard({
         testTitle={t.title}
         currentUserId={cardUser?.id ?? null}
         initialKind={notesInitialKind}
+        onEvidenceUploaded={bumpEvidence}
       />
-    </Card>
+    </div>
   );
 });
 
@@ -5466,7 +5628,7 @@ function FailDetailsDialog({
         <DialogHeader>
           <DialogTitle>Record failure for {test.id}</DialogTitle>
           <DialogDescription>
-            Describe what broke and which step failed. Screenshot is optional.
+            Describe what broke and which step failed. Attachment is optional.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3 text-sm">
@@ -5500,26 +5662,12 @@ function FailDetailsDialog({
               ))}
             </select>
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-muted-foreground">
-              Screenshot (optional)
-            </Label>
-            <input
-              type="file"
-              accept={EVIDENCE_ACCEPT_ATTR}
-              disabled={!userId}
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              className="block w-full text-xs file:mr-2 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-1 file:text-primary-foreground"
-            />
-            {file && (
-              <p className="text-[11px] text-muted-foreground">
-                Will upload: <span className="font-mono">{file.name}</span>
-              </p>
-            )}
-            {!userId && (
-              <p className="text-[11px] text-amber-700">Sign in to attach a screenshot.</p>
-            )}
-          </div>
+          <NoteAttachmentField
+            file={file}
+            onFileChange={setFile}
+            userId={userId}
+            disabled={busy}
+          />
           {error && <p className="text-[11px] text-destructive">{error}</p>}
         </div>
         <DialogFooter>
@@ -5549,24 +5697,43 @@ function PassNoteDialog({
   open,
   onOpenChange,
   testId,
+  userId,
   initialNote,
   onConfirm,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   testId: string;
+  userId: string | null;
   initialNote: string;
-  onConfirm: (note: string) => void;
+  onConfirm: (note: string, file: File | null) => void | Promise<void>;
 }) {
   const [note, setNote] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
   useEffect(() => {
     if (!open) return;
     setNote(initialNote ?? "");
+    setFile(null);
+    setBusy(false);
   }, [open, initialNote]);
   const hasNote = note.trim().length > 0;
-  const blockDismiss = hasNote;
+  const blockDismiss = hasNote || !!file;
+  const submit = async () => {
+    setBusy(true);
+    try {
+      await onConfirm(note, file);
+    } finally {
+      setBusy(false);
+    }
+  };
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!busy) onOpenChange(v);
+      }}
+    >
       <DialogContent
         className="max-w-lg"
         onInteractOutside={(e) => {
@@ -5595,18 +5762,29 @@ function PassNoteDialog({
               className="mt-1 text-xs"
             />
           </div>
+          <NoteAttachmentField
+            file={file}
+            onFileChange={setFile}
+            userId={userId}
+            disabled={busy}
+          />
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
             Cancel
           </Button>
           <Button
             variant="default"
             className="bg-emerald-600 hover:bg-emerald-700 text-white"
-            onClick={() => onConfirm(note)}
+            onClick={submit}
+            disabled={busy}
           >
-            <CheckCircle2 className="h-4 w-4 mr-1" />
-            {hasNote ? "Save Note" : "No Note for this Test - Just Save It"}
+            {busy ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-1" />
+            ) : (
+              <CheckCircle2 className="h-4 w-4 mr-1" />
+            )}
+            {hasNote || file ? "Save Note" : "No Note for this Test - Just Save It"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -5628,6 +5806,7 @@ function StatusNoteDialog({
   open,
   onOpenChange,
   testId,
+  userId,
   status,
   initialNote,
   onConfirm,
@@ -5635,22 +5814,40 @@ function StatusNoteDialog({
   open: boolean;
   onOpenChange: (v: boolean) => void;
   testId: string;
+  userId: string | null;
   status: TestStatus;
   initialNote: string;
-  onConfirm: (note: string) => void;
+  onConfirm: (note: string, file: File | null) => void | Promise<void>;
 }) {
   const [note, setNote] = useState("");
+  const [file, setFile] = useState<File | null>(null);
   const [working, setWorking] = useState(false);
+  const [busy, setBusy] = useState(false);
   useEffect(() => {
     if (!open) return;
     setNote(initialNote ?? "");
+    setFile(null);
     setWorking(false);
+    setBusy(false);
   }, [open, initialNote]);
   const label = STATUS_LABEL[status] ?? status;
   const hasNote = note.trim().length > 0;
-  const blockDismiss = hasNote && !working;
+  const blockDismiss = (hasNote || !!file) && !working && !busy;
+  const submit = async () => {
+    setBusy(true);
+    try {
+      await onConfirm(working ? "Working as expected." : note, working ? null : file);
+    } finally {
+      setBusy(false);
+    }
+  };
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!busy) onOpenChange(v);
+      }}
+    >
       <DialogContent
         className="max-w-lg"
         onInteractOutside={(e) => {
@@ -5694,18 +5891,26 @@ function StatusNoteDialog({
               disabled={working}
             />
           </div>
+          {!working && (
+            <NoteAttachmentField
+              file={file}
+              onFileChange={setFile}
+              userId={userId}
+              disabled={busy}
+            />
+          )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
             Cancel
           </Button>
-          <Button
-            variant="default"
-            onClick={() => onConfirm(working ? "Working as expected." : note)}
-          >
+          <Button variant="default" onClick={submit} disabled={busy}>
+            {busy ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-1" />
+            ) : null}
             {working
               ? "Save — Working as expected"
-              : hasNote
+              : hasNote || file
                 ? "Save Comment"
                 : "Save without comment"}
           </Button>
@@ -5715,7 +5920,7 @@ function StatusNoteDialog({
   );
 }
 
-function TestEvidence({ testId }: { testId: string }) {
+function TestEvidence({ testId, refreshToken = 0 }: { testId: string; refreshToken?: number }) {
   const { user } = useApp();
   const confirm = useConfirm();
   const [files, setFiles] = useState<EvidenceFile[]>([]);
@@ -5745,7 +5950,7 @@ function TestEvidence({ testId }: { testId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [user, testId]);
+  }, [user, testId, refreshToken]);
 
   if (!user) return null;
 
@@ -5950,8 +6155,7 @@ function TestEvidence({ testId }: { testId: string }) {
         </div>
       </div>
       <div className="text-[10px] text-muted-foreground mb-2 leading-snug">
-        Required for Fail / Failed-Retest. Allowed: PNG, JPG, HEIC, GIF, WEBP, PDF, .log, .txt
-        (20&nbsp;MB max). Executables, HTML, SVG, scripts, and archives are blocked.
+        Required for Fail / Failed-Retest. {EVIDENCE_HELP_TEXT}
       </div>
       {loading ? (
         <div className="text-[11px] text-muted-foreground">Loading attachments…</div>

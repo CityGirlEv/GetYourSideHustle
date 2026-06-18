@@ -24,17 +24,19 @@ export function AppShell({
           <SecurityBanner />
         </div>
       </section>
-      <main className="px-4 md:px-8 pt-1 sm:pt-2 pb-4 max-w-7xl w-full mx-auto">
+      <main className="px-3 sm:px-4 md:px-8 pt-1 sm:pt-2 pb-4 max-w-7xl w-full mx-auto">
         {(title || subtitle) && (
           <div className="mb-3">
             {title && (
               <h1
-                className={`font-display font-bold text-2xl md:text-3xl ${titleClassName ?? "text-primary"}`}
+                className={`font-display font-bold text-xl sm:text-2xl md:text-3xl leading-tight ${titleClassName ?? "text-primary"}`}
               >
                 {title}
               </h1>
             )}
-            {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
+            {subtitle && (
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1 leading-relaxed">{subtitle}</p>
+            )}
           </div>
         )}
         {children}

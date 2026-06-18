@@ -14,39 +14,91 @@ const ARTICLE_TOPIC_IDS = [
 
 const FACEBOOK_POSTS = [
   {
+    title: "Welcome to Get Part B Optimizer! Learn about Medicare Prior Authorization",
+    excerpt: "Welcome post introducing the page and linking to our first Learning Center article.",
+    body: `Welcome to the Get Part B Optimizer page! 🌟
+
+Turning 65 comes with a lot of decisions — and unfortunately, a lot of high-pressure sales calls. We’re here to change that.
+
+Our mission is simple: to provide calm, clear, and completely unbiased Medicare education. No sales pitches, no pushy agents, and no government affiliation — just honest resources to help you take control of your healthcare journey.
+
+To kick things off, we’ve just published our very first Learning Center guide: "What Is Medicare Prior Authorization? A Plain-Language Overview." If you've ever wondered how prior authorizations work and how to protect yourself from surprise coverage denials, read our walkthrough here:
+
+👉 https://mypartb.com/learning-center/what-is-medicare-prior-authorization
+
+Like our page to follow along as we share weekly tips, checklists, and official resources.
+
+Educational purposes only. We do not sell insurance or solicit enrollments. We are not affiliated with or endorsed by Medicare, CMS, or any government agency.
+
+#MedicareEducation #Turning65 #MedicareSimplified #HealthcareTransparency`,
+  },
+  {
+    title: "The Medigap Open Enrollment Window: Why Timing Matters",
+    excerpt: "Share Article 2 and invite friends to follow our page.",
+    body: `If you are new to Medicare Part B, you generally have a one-time six-month Medigap open enrollment window where guaranteed-issue rules protect you.
+
+Missing this window is one of the most common regrets we hear about, as you may face medical underwriting later if you try to switch to a supplemental plan.
+
+Read our plain-language guide on why timing is critical:
+👉 https://mypartb.com/learning-center/medigap-open-enrollment-window-explained
+
+📌 Help us spread the word! Invite friends or family members who are turning 65 to follow the Get Part B Optimizer page for transparent, non-sales education.
+
+Educational only. Verify your state's supplemental insurance rules.
+
+#MedicareEducation #Medigap #Turning65`,
+  },
+  {
+    title: "A $0 premium is not the same as $0 total cost",
+    excerpt: "Educational post linking to Article 3 on Medicare Advantage premiums.",
+    body: `Many Medicare Advantage plans advertise a $0 monthly premium. Copays, deductibles, and out-of-network bills can still add up.
+
+Compare the full cost picture — not just the headline premium. Read our plain-language guide on what $0 premiums really mean:
+👉 https://mypartb.com/learning-center/medicare-advantage-zero-premium-explained
+
+Educational only — not a solicitation to enroll.
+
+#MedicareEducation #ComparePlans #MedicareAdvantage`,
+  },
+  {
     title: "Still working at 65? Check employer size first",
     excerpt: "Educational post on Medicare and employer coverage coordination.",
-    body: `Turning 65 while you still have employer health coverage?\n\nBefore you defer Part B, confirm whether your employer has 20 or more employees — that detail changes whether Medicare is primary or secondary.\n\nEducational only. Verify your timeline with SSA and Medicare.gov.\n\n#MedicareEducation #Turning65`,
+    body: `Turning 65 while you still have employer health coverage?
+
+Before you defer Part B, confirm whether your employer has 20 or more employees — that detail changes whether Medicare is primary or secondary.
+
+Educational only. Verify your timeline with SSA and Medicare.gov.
+
+#MedicareEducation #Turning65`,
   },
   {
     title: "TV ads make Medicare sound simple — compare the documents",
     excerpt: "Reminder to read Evidence of Coverage, not just marketing perks.",
-    body: `Dental and vision perks are easy to understand in Medicare ads. Networks, prior authorization, and cost-sharing rules often live deeper in the plan booklet.\n\nMatch ad claims to official plan documents before you choose.\n\nEducational only — not a solicitation to enroll.\n\n#MedicareEducation`,
-  },
-  {
-    title: "A $0 premium is not the same as $0 total cost",
-    excerpt: "Educational post on premiums vs. copays and out-of-pocket maximums.",
-    body: `Many Medicare Advantage plans advertise a $0 monthly premium. Copays, deductibles, and out-of-network bills can still add up.\n\nCompare the full cost picture — not just the headline premium.\n\n#MedicareEducation #ComparePlans`,
+    body: `Dental and vision perks are easy to understand in Medicare ads. Networks, prior authorization, and cost-sharing rules often live deeper in the plan booklet.
+
+Match ad claims to official plan documents before you choose.
+
+Educational only — not a solicitation to enroll.
+
+#MedicareEducation`,
   },
   {
     title: "Is your doctor in network for next year?",
     excerpt: "Annual reminder to verify provider directories before enrollment.",
-    body: `Plan networks can change every contract year. A doctor who was in network last year may not be next year.\n\nVerify providers on Medicare.gov Plan Finder before you assume you can keep the same care team.\n\n#MedicareEducation`,
-  },
-  {
-    title: "Missed your Medigap window? Timing matters",
-    excerpt: "Educational post on guaranteed-issue Medigap enrollment.",
-    body: `When you first enroll in Part B, you generally have a six-month Medigap open enrollment window with guaranteed-issue rights in most states.\n\nMissing that window can mean medical underwriting later if you want supplemental coverage.\n\n#MedicareEducation #Medigap`,
-  },
-  {
-    title: "Annual enrollment is a review — not autopilot",
-    excerpt: "Encourage beneficiaries to re-check drugs, doctors, and costs each fall.",
-    body: `Even if you like your current plan, benefits, networks, and drug tiers can change for the coming year.\n\nUse the fall enrollment window to compare — not just renew by default.\n\n#MedicareEducation #AEP`,
+    body: `Plan networks can change every contract year. A doctor who was in network last year may not be next year.
+
+Verify providers on Medicare.gov Plan Finder before you assume you can keep the same care team.
+
+#MedicareEducation`,
   },
   {
     title: "Part D formulary changes can surprise you mid-year",
     excerpt: "Educational post on prescription tier changes and appeals.",
-    body: `Each Part D plan maintains its own drug list. A medication can move tiers or require prior authorization without much fanfare.\n\nKeep your bottle handy when comparing plans on Medicare.gov.\n\n#MedicareEducation #PartD`,
+    body: `Each Part D plan maintains its own drug list. A medication can move tiers or require prior authorization without much fanfare.
+
+Keep your bottle handy when comparing plans on Medicare.gov.
+
+#MedicareEducation #PartD`,
   },
 ];
 
@@ -223,7 +275,8 @@ function buildFaqAsset(): GeneratedAssetInput {
 
 function buildImagePromptAsset(slotIndex: number): GeneratedAssetInput {
   const topic = IMAGE_PROMPT_TOPICS[slotIndex % IMAGE_PROMPT_TOPICS.length];
-  const prompt = buildFeaturedImagePrompt(topic);
+  const suggestedSlug = topic.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 80);
+  const prompt = buildFeaturedImagePrompt({ ...topic, slug: suggestedSlug });
   return {
     type: "image_prompt",
     slotIndex,
@@ -231,8 +284,8 @@ function buildImagePromptAsset(slotIndex: number): GeneratedAssetInput {
     excerpt: "TPMO-safe hero image prompt for Learning Center article headers.",
     body: prompt,
     payload: seedPayload("image_prompt", {
-      aspectRatio: "21:9",
-      suggestedSlug: topic.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 80),
+      aspectRatio: "3:2",
+      suggestedSlug,
     }),
   };
 }

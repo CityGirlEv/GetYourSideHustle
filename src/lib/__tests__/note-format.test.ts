@@ -75,14 +75,24 @@ describe("normalizeNoteEntry", () => {
     });
   });
 
-  it("preserves fully populated entries", () => {
-    const entry = {
+  it("preserves attachment metadata on structured entries", () => {
+    expect(
+      normalizeNoteEntry({
+        text: "See attached log",
+        author_id: "user-a",
+        author_name: "Jane Doe",
+        at: "2026-06-09T20:12:00Z",
+        attachment_path: "user-a/T1/123-log.txt",
+        attachment_name: "log.txt",
+      }),
+    ).toEqual({
       author_id: "user-a",
       author_name: "Jane Doe",
-      text: "hello",
+      text: "See attached log",
       at: "2026-06-09T20:12:00Z",
-    };
-    expect(normalizeNoteEntry(entry)).toEqual(entry);
+      attachment_path: "user-a/T1/123-log.txt",
+      attachment_name: "log.txt",
+    });
   });
 
   it("returns null for empty values", () => {

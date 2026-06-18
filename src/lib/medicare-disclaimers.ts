@@ -3,11 +3,22 @@ import { SITE_BRAND_NAME, formatSiteCopyright } from "@/lib/site-brand";
 
 export { SITE_BRAND_NAME, formatSiteCopyright };
 
+/** Canonical legal name for the licensed partner agency (proper capitalization). */
+export const CMS_HEALTH_WEALTH_INSURANCE = "CMS Health & Wealth Insurance";
+
+/** TPMO referral disclosure — licensed agencies users may be referred to. */
+export const AGENCY_REFERRAL_NOTICE =
+  `${SITE_BRAND_NAME} may refer to licensed insurance agencies that include ${CMS_HEALTH_WEALTH_INSURANCE} and other participating agencies.`;
+
 export const ASSISTANCE_AGENCY_SHARING_NOTICE =
-  "By requesting assistance, you agree that your information will be shared with CMS Health & Wealth Insurance agency so they can contact you regarding your request.";
+  `By requesting assistance, you agree that your information will be shared with ${CMS_HEALTH_WEALTH_INSURANCE} so they can contact you regarding your request.`;
+
+/** CMS Multi-Plan Disclaimer (MPD) — educational tone; avoids "offer" language that implies plan sales. */
+export const MPD_DISCLAIMER =
+  "We may not present every plan available in your area. Any information we provide is for educational purposes only and is not a complete listing of plans. Please contact Medicare.gov or 1-800-MEDICARE to get information on all of your options.";
 
 export const TPMO_PLATFORM_DISCLAIMER =
-  `${SITE_BRAND_NAME} is an independent educational platform and Third-Party Marketing Organization (TPMO). We are not affiliated with or endorsed by Medicare, CMS, or any federal government agency. We do not present every plan available in your area. Information is provided for educational purposes only. If requested, we may connect you with a licensed Medicare professional.`;
+  `${SITE_BRAND_NAME} is an independent educational platform and Third-Party Marketing Organization (TPMO). We are not affiliated with or endorsed by Medicare, CMS, or any federal government agency. We may not present every plan available in your area. Information is provided for educational purposes only. ${AGENCY_REFERRAL_NOTICE}`;
 
 export const MEDICARE_DISCLAIMER_SECTIONS = [
   {
@@ -31,6 +42,10 @@ export const MEDICARE_DISCLAIMER_SECTIONS = [
   {
     label: "Call recording",
     body: "If a call is conducted with an agent, the user consents to being recorded for quality assurance purposes.",
+  },
+  {
+    label: "Agency referrals",
+    body: AGENCY_REFERRAL_NOTICE,
   },
   {
     label: "Assistance requests",

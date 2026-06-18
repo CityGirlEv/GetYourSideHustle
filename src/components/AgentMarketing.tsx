@@ -1,3 +1,4 @@
+import { AGENCY_REFERRAL_NOTICE } from "@/lib/medicare-disclaimers";
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -150,7 +151,7 @@ export function AgentMarketing() {
               <a href="https://mypartb.com" target="_blank" rel="noreferrer" className="underline text-indigo hover:text-indigo/80 font-medium">
                 https://mypartb.com
               </a>
-              ) strictly as an **independent educational technology platform and Third-Party Marketing Organization (TPMO)**. We do not sell insurance directly. Instead, we simplify Medicare comparisons and connect users with licensed agents upon request.
+              ) strictly as an **independent educational technology platform and Third-Party Marketing Organization (TPMO)**. We do not sell insurance directly. {AGENCY_REFERRAL_NOTICE}
             </p>
           </div>
           <div className="shrink-0 bg-background/50 border border-border rounded-xl p-3 text-xs space-y-1.5 max-w-xs">

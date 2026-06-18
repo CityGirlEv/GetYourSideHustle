@@ -45,7 +45,10 @@ export const LEARNING_ARTICLE_DISCLAIMER =
   `${TPMO_PLATFORM_DISCLAIMER} Articles in the Learning Center are educational only and do not recommend or endorse any specific carrier or plan.`;
 
 export const LEARNING_CENTER_INTRO =
-  `${SITE_BRAND_NAME} Learning Center offers plain-language Medicare education. We do not sell insurance or enroll you in coverage.`;
+  `${SITE_BRAND_NAME} Learning Center is plain-language Medicare education. We do not sell insurance or enroll you in coverage.`;
+
+export const LEARNING_CENTER_SCOPE_NOTE =
+  "We may not present every plan available in your area. Articles are for learning only — not personalized advice or enrollment.";
 
 export function categoryLabel(category: ArticleCategory): string {
   return LEARNING_CENTER_CATEGORIES.find((c) => c.id === category)?.label ?? category;
@@ -176,8 +179,9 @@ export function escapeHtml(text: string): string {
 /** Safe subset of Markdown for educational articles (no raw HTML). */
 export function renderLearningMarkdown(
   bodyMd: string,
-  options?: { withHeadingIds?: boolean },
+  options?: { withHeadingIds?: boolean; plain?: boolean },
 ): string {
+  const plain = options?.plain ?? false;
   const lines = bodyMd.replace(/\r\n/g, "\n").split("\n");
   const html: string[] = [];
   let inUl = false;
@@ -196,19 +200,42 @@ export function renderLearningMarkdown(
     }
   };
 
-  const inline = (text: string) =>
-    escapeHtml(text)
+  const abbr = (term: string, title: string) =>
+    plain
+      ? `<abbr title="${escapeHtml(title)}">${term}</abbr>`
+      : `<abbr title="${escapeHtml(title)}" class="underline decoration-dotted cursor-help">${term}</abbr>`;
+
+  const linkClass = plain ? "" : ' class="text-primary underline"';
+  const inline = (text: string) => {
+    let out = escapeHtml(text)
       .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-      .replace(/\*(.+?)\*/g, "<em>$1</em>")
-      .replace(
-        /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
-        '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-primary underline">$1</a>',
-      )
-      .replace(/\bIRMAA\b/g, '<abbr title="Income-Related Monthly Adjustment Amount" class="underline decoration-dotted cursor-help">IRMAA</abbr>')
-      .replace(/\bIEP\b/g, '<abbr title="Initial Enrollment Period" class="underline decoration-dotted cursor-help">IEP</abbr>')
-      .replace(/\bMBI\b/g, '<abbr title="Medicare Beneficiary Identifier" class="underline decoration-dotted cursor-help">MBI</abbr>')
-      .replace(/\bDME\b/g, '<abbr title="Durable Medical Equipment" class="underline decoration-dotted cursor-help">DME</abbr>')
-      .replace(/\bAEP\b/g, '<abbr title="Annual Enrollment Period" class="underline decoration-dotted cursor-help">AEP</abbr>');
+      .replace(/\*(.+?)\*/g, "<em>$1</em>");
+
+    out = out.replace(
+      /\[([^\]]+)\]\(([^)\s]+)\)/g,
+      (_match, label: string, href: string) => {
+        const external = /^https?:\/\//i.test(href);
+        const attrs = external ? ' target="_blank" rel="noopener noreferrer"' : "";
+        return `<a href="${href}"${attrs}${linkClass}>${label}</a>`;
+      },
+    );
+
+    out = out.replace(
+      /(^|[^\w"'=/>])(https?:\/\/[^\s<]+)/g,
+      (_match, prefix: string, rawUrl: string) => {
+        const url = rawUrl.replace(/[.,;:!?)]+$/, "");
+        const trailing = rawUrl.slice(url.length);
+        return `${prefix}<a href="${url}" target="_blank" rel="noopener noreferrer"${linkClass}>${url}</a>${trailing}`;
+      },
+    );
+
+    return out
+      .replace(/\bIRMAA\b/g, abbr("IRMAA", "Income-Related Monthly Adjustment Amount"))
+      .replace(/\bIEP\b/g, abbr("IEP", "Initial Enrollment Period"))
+      .replace(/\bMBI\b/g, abbr("MBI", "Medicare Beneficiary Identifier"))
+      .replace(/\bDME\b/g, abbr("DME", "Durable Medical Equipment"))
+      .replace(/\bAEP\b/g, abbr("AEP", "Annual Enrollment Period"));
+  };
 
   for (const raw of lines) {
     const line = raw.trimEnd();
@@ -222,7 +249,9 @@ export function renderLearningMarkdown(
       headingIndex += 1;
       const idAttr = options?.withHeadingIds && heading ? ` id="${heading.id}"` : "";
       html.push(
-        `<h2${idAttr} class="font-display text-2xl font-bold mt-8 mb-3 scroll-mt-28">${inline(line.slice(3))}</h2>`,
+        plain
+          ? `<h2${idAttr}>${inline(line.slice(3))}</h2>`
+          : `<h2${idAttr} class="font-display text-2xl font-bold mt-8 mb-3 scroll-mt-28">${inline(line.slice(3))}</h2>`,
       );
       continue;
     }
@@ -232,14 +261,16 @@ export function renderLearningMarkdown(
       headingIndex += 1;
       const idAttr = options?.withHeadingIds && heading ? ` id="${heading.id}"` : "";
       html.push(
-        `<h3${idAttr} class="text-lg font-semibold mt-6 mb-2 scroll-mt-28">${inline(line.slice(4))}</h3>`,
+        plain
+          ? `<h3${idAttr}>${inline(line.slice(4))}</h3>`
+          : `<h3${idAttr} class="text-lg font-semibold mt-6 mb-2 scroll-mt-28">${inline(line.slice(4))}</h3>`,
       );
       continue;
     }
     if (/^[-*]\s+/.test(line)) {
       if (!inUl) {
         closeLists();
-        html.push('<ul class="list-disc list-outside pl-5 space-y-1 my-2">');
+        html.push(plain ? "<ul>" : '<ul class="list-disc list-outside pl-5 space-y-1 my-2">');
         inUl = true;
       }
       html.push(`<li>${inline(line.replace(/^[-*]\s+/, ""))}</li>`);
@@ -248,14 +279,18 @@ export function renderLearningMarkdown(
     if (/^\d+\.\s+/.test(line)) {
       if (!inOl) {
         closeLists();
-        html.push('<ol class="list-decimal list-outside pl-5 space-y-1 my-2">');
+        html.push(plain ? "<ol>" : '<ol class="list-decimal list-outside pl-5 space-y-1 my-2">');
         inOl = true;
       }
       html.push(`<li>${inline(line.replace(/^\d+\.\s+/, ""))}</li>`);
       continue;
     }
     closeLists();
-    html.push(`<p class="text-base leading-relaxed text-foreground/80 my-4">${inline(line)}</p>`);
+    html.push(
+      plain
+        ? `<p>${inline(line)}</p>`
+        : `<p class="text-base leading-relaxed text-foreground/80 my-4">${inline(line)}</p>`,
+    );
   }
   closeLists();
   return html.join("\n");

@@ -45,6 +45,8 @@ export interface NormalizedNoteEntry {
   author_name: string;
   text: string;
   at: string;
+  attachment_path?: string;
+  attachment_name?: string;
 }
 
 export interface NormalizeNoteOptions {
@@ -77,7 +79,15 @@ export function normalizeNoteEntry(
   const text = (
     typeof o.text === "string" ? o.text : typeof o.body === "string" ? o.body : ""
   ).trim();
-  if (!text) return null;
+  const attachment_path =
+    typeof o.attachment_path === "string" && o.attachment_path.trim()
+      ? o.attachment_path.trim()
+      : undefined;
+  const attachment_name =
+    typeof o.attachment_name === "string" && o.attachment_name.trim()
+      ? o.attachment_name.trim()
+      : undefined;
+  if (!text && !attachment_path) return null;
 
   const author_id = typeof o.author_id === "string" ? o.author_id : "";
   const author_name =
@@ -88,7 +98,14 @@ export function normalizeNoteEntry(
         : LEGACY_NOTE_AUTHOR;
   const at = typeof o.at === "string" && o.at.trim() ? o.at.trim() : fallbackAt?.trim() || "";
 
-  return { author_id, author_name, text, at };
+  return {
+    author_id,
+    author_name,
+    text: text || (attachment_name ? `Attachment: ${attachment_name}` : ""),
+    at,
+    ...(attachment_path ? { attachment_path } : {}),
+    ...(attachment_name ? { attachment_name } : {}),
+  };
 }
 
 /** Normalize a note thread array, preserving order and dropping empty entries. */

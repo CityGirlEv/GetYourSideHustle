@@ -4,7 +4,7 @@ slug: understanding-medicare-part-b-premiums
 excerpt: How Part B premiums work, what IRMAA means, and where to verify official amounts.
 category: costs
 metaDescription: Plain-language explanation of Medicare Part B premiums, the standard amount, and Income-Related Monthly Adjustment Amounts (IRMAA).
-featuredImage: /learning-center/understanding-medicare-part-b-premiums.png
+featuredImage: /learning-center/understanding-medicare-part-b-premiums.jpg
 featured: true
 published: true
 sortOrder: 20

@@ -84,6 +84,7 @@ import {
   validateReferralDetails,
   type ReferralSource,
 } from "@/lib/referral-sources";
+import { LEGAL_OPERATOR_NAME } from "@/lib/legal-content";
 const GENDER_OPTIONS = [
   { value: "female", label: "Female" },
   { value: "male", label: "Male" },
@@ -1558,8 +1559,8 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
               }}
             >
               <span className="text-sm">
-                I have questions about my medications — please have a licensed Medicare Agent from
-                CMS Health &amp; Wealth Insurance contact me
+                I have questions about my medications — please have a licensed Medicare Agent from{" "}
+                {LEGAL_OPERATOR_NAME} contact me
               </span>
             </TouchCheckboxField>
           </Card>
@@ -1711,7 +1712,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
             <DialogTitle>We&apos;ll connect you with an expert</DialogTitle>
             <DialogDescription className="text-sm leading-relaxed text-left">
               After you create your scenario, you&apos;ll enter your email and phone. A licensed
-              Medicare Agent from CMS Health &amp; Wealth Insurance — will contact you about your
+              Medicare Agent from {LEGAL_OPERATOR_NAME} — will contact you about your
               medications.
             </DialogDescription>
           </DialogHeader>

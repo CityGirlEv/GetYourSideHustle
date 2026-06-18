@@ -17,6 +17,11 @@ export const EVIDENCE_ALLOWED_MIME = [
   "image/heif",
   "application/pdf",
   "text/plain",
+  "application/msword",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/zip",
 ] as const;
 export const EVIDENCE_ALLOWED_EXT = [
   "png",
@@ -30,12 +35,29 @@ export const EVIDENCE_ALLOWED_EXT = [
   "pdf",
   "log",
   "txt",
+  "doc",
+  "docx",
+  "xls",
+  "xlsx",
 ] as const;
 export const EVIDENCE_ACCEPT_ATTR =
-  "image/png,image/jpeg,image/webp,image/gif,image/heic,image/heif,application/pdf,.log,.txt,.jpg,.jpeg,.jfif";
+  "image/png,image/jpeg,image/webp,image/gif,image/heic,image/heif,application/pdf,application/msword,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.doc,.docx,.xls,.xlsx,.log,.txt,.jpg,.jpeg,.jfif";
 export const EVIDENCE_MAX_BYTES = 20 * 1024 * 1024; // 20 MB
+export const EVIDENCE_HELP_TEXT =
+  "PNG, JPG, HEIC, GIF, WEBP, PDF, Word (.doc/.docx), Excel (.xls/.xlsx), .log, .txt (20 MB max). Executables, HTML, SVG, scripts, and archives are blocked.";
 
-export type EvidenceKind = "png" | "jpeg" | "gif" | "webp" | "pdf" | "heic" | "text";
+export type EvidenceKind =
+  | "png"
+  | "jpeg"
+  | "gif"
+  | "webp"
+  | "pdf"
+  | "heic"
+  | "text"
+  | "doc"
+  | "docx"
+  | "xls"
+  | "xlsx";
 
 const GENERIC_MIMES = new Set(["", "application/octet-stream", "binary/octet-stream"]);
 
@@ -53,6 +75,10 @@ const KIND_TO_EXT: Record<EvidenceKind, string> = {
   pdf: "pdf",
   heic: "heic",
   text: "txt",
+  doc: "doc",
+  docx: "docx",
+  xls: "xls",
+  xlsx: "xlsx",
 };
 
 const KIND_TO_MIME: Record<EvidenceKind, string> = {
@@ -63,6 +89,10 @@ const KIND_TO_MIME: Record<EvidenceKind, string> = {
   pdf: "application/pdf",
   heic: "image/heic",
   text: "text/plain",
+  doc: "application/msword",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  xls: "application/vnd.ms-excel",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 };
 
 const EXT_TO_KIND: Record<string, EvidenceKind[]> = {
@@ -77,6 +107,10 @@ const EXT_TO_KIND: Record<string, EvidenceKind[]> = {
   pdf: ["pdf"],
   log: ["text"],
   txt: ["text"],
+  doc: ["doc"],
+  docx: ["docx"],
+  xls: ["xls"],
+  xlsx: ["xlsx"],
 };
 
 /**
@@ -116,6 +150,29 @@ async function sniffMagicBytes(file: File): Promise<EvidenceKind | "unknown"> {
   // Plain text: every byte printable ASCII or common whitespace
   if (head.every((c) => c === 0x09 || c === 0x0a || c === 0x0d || (c >= 0x20 && c <= 0x7e)))
     return "text";
+  // OOXML (docx/xlsx) — ZIP container; extension disambiguates below.
+  if (b(0) === 0x50 && b(1) === 0x4b && (b(2) === 0x03 || b(2) === 0x05 || b(2) === 0x07)) {
+    const ext = fileExtension(file);
+    if (ext === "docx") return "docx";
+    if (ext === "xlsx") return "xlsx";
+    return "unknown";
+  }
+  // Legacy OLE compound document (.doc / .xls)
+  if (
+    b(0) === 0xd0 &&
+    b(1) === 0xcf &&
+    b(2) === 0x11 &&
+    b(3) === 0xe0 &&
+    b(4) === 0xa1 &&
+    b(5) === 0xb1 &&
+    b(6) === 0x1a &&
+    b(7) === 0xe1
+  ) {
+    const ext = fileExtension(file);
+    if (ext === "doc") return "doc";
+    if (ext === "xls") return "xls";
+    return "unknown";
+  }
   return "unknown";
 }
 
@@ -144,6 +201,12 @@ function mimeMatchesKind(mime: string, kind: EvidenceKind): boolean {
     return true;
   if (kind === "heic" && (mime === "image/heic" || mime === "image/heif")) return true;
   if (kind === "text" && mime === "text/plain") return true;
+  if ((kind === "docx" || kind === "xlsx") && mime === "application/zip") return true;
+  if (
+    (kind === "doc" || kind === "xls") &&
+    (mime === "application/octet-stream" || mime === "application/x-ole-storage")
+  )
+    return true;
   return false;
 }
 
@@ -166,7 +229,7 @@ export async function prepareEvidenceFile(file: File): Promise<PreparedEvidenceF
   const ext = fileExtension(file);
   if (ext && !EVIDENCE_ALLOWED_EXT.includes(ext as (typeof EVIDENCE_ALLOWED_EXT)[number])) {
     throw new Error(
-      `.${ext} files are not allowed. Upload a screenshot (PNG/JPG/HEIC), PDF, or .log/.txt file.`,
+      `.${ext} files are not allowed. Upload an image, PDF, Word, Excel, or .log/.txt file.`,
     );
   }
   // Reject obviously dangerous extensions even if somehow in allowlist.
@@ -200,7 +263,9 @@ export async function prepareEvidenceFile(file: File): Promise<PreparedEvidenceF
 
   const kind = await sniffMagicBytes(file);
   if (kind === "unknown") {
-    throw new Error("File contents do not match a screenshot, PDF, or text log. Upload rejected.");
+    throw new Error(
+      "File contents do not match an allowed type (image, PDF, Word, Excel, or text log). Upload rejected.",
+    );
   }
 
   const resolvedExt = resolveExtension(file, kind);
@@ -246,7 +311,7 @@ function friendlyStorageError(message: string): string {
     return "Upload blocked — sign out and sign back in. If it still fails, ask an admin to confirm your QA account is active.";
   }
   if (/bucket not found|Bucket not found/i.test(message)) {
-    return "Screenshot storage is not configured on the server. Ask an admin to run the Supabase storage setup.";
+    return "File storage is not configured on the server. Ask an admin to run the Supabase storage setup.";
   }
   return message;
 }

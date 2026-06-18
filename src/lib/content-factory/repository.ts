@@ -13,6 +13,8 @@ import {
   type ContentDraftStatus,
   type ContentAssetType,
 } from "@/lib/content-factory/types";
+import { logContentDispatchEvent } from "@/lib/content-factory/dispatch-log";
+import { hashContentBody } from "@/lib/content-factory/newsletter-dispatch";
 import {
   assertDraftStatusTransition,
   validateDraftEdit,
@@ -291,7 +293,31 @@ export async function updateContentDraftStatus(
     .single();
 
   if (error || !data) throw new Error(error?.message ?? "Could not update draft status");
-  return mapDraft(data as DraftRow);
+  const updated = mapDraft(data as DraftRow);
+
+  if (nextStatus === "scheduled") {
+    const channel =
+      existing.type === "newsletter" ||
+      existing.type === "facebook_post" ||
+      existing.type === "article" ||
+      existing.type === "lead_magnet"
+        ? existing.type
+        : "broadcast";
+    await logContentDispatchEvent({
+      channel,
+      dispatchKind: "scheduled",
+      draftId: updated.id,
+      batchId: updated.batchId,
+      subject: updated.title,
+      templateLabel: `content-factory/${existing.type}`,
+      bodyPreview: updated.body.replace(/\s+/g, " ").trim().slice(0, 240),
+      bodyHash: hashContentBody(updated.body),
+      sentBy: userId,
+      metadata: { scheduled_for: updated.scheduledFor },
+    });
+  }
+
+  return updated;
 }
 
 export async function publishContentDraft(draftId: string, userId: string): Promise<ContentDraft> {

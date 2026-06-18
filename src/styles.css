@@ -233,8 +233,10 @@ html {
     color: oklch(0.98 0.005 250);
   }
   .grad-indigo {
+    background: var(--gradient-indigo);
     background-color: var(--brand-navy-mid);
     color: oklch(0.99 0 0);
+    border-color: transparent;
   }
   .grad-indigo:hover {
     background-color: var(--brand-navy-light);

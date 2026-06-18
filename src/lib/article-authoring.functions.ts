@@ -188,6 +188,6 @@ export const saveArticleFilesAdmin = createServerFn({ method: "POST" })
     return {
       ok: true as const,
       markdownPath: `articles/${draft.slug}.md`,
-      imagePath: `public/learning-center/${draft.slug}.png`,
+      imagePath: `public/learning-center/${draft.slug}.jpg`,
     };
   });

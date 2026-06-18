@@ -4,7 +4,7 @@ slug: medicare-enrollment-timeline
 excerpt: "Understand the 7-month Medicare Initial Enrollment Period (IEP). Follow our month-by-month timeline to secure your start dates and avoid late fees."
 category: enrollment
 metaDescription: "Understand the 7-month Medicare Initial Enrollment Period (IEP). Follow our month-by-month timeline to secure your start dates and avoid late fees."
-featuredImage: /learning-center/medicare-enrollment-timeline.png
+featuredImage: /learning-center/medicare-enrollment-timeline.jpg
 featured: false
 published: true
 sortOrder: 3
@@ -15,7 +15,7 @@ Signing up for Medicare is not a single event; it is a structured timeline that 
 
 This guide provides a detailed, chronological breakdown of the 7-month Medicare enrollment timeline. We will cover what to do each month, how to determine your coverage start date, and what steps to take to secure your health insurance transition.
 
-For general background on enrollment windows, review our core directory page on medicare enrollment periods. If you are looking to build a step-by-step action plan, see our checklist for 3 months before 65: your medicare action plan.
+For general background on enrollment windows, review our core directory page on medicare enrollment periods. If you are looking to build a step-by-step action plan, [see our checklist for 3 months before 65: your medicare action plan](/learning-center/medicare-at-65-action-plan).
 
 ---
 
@@ -158,6 +158,6 @@ No. If you enroll during your birthday month, your coverage starts on the first 
 
 ---
 
-We do not offer every plan available in your area. Any information we provide is limited to those plans we do offer in your area. Please contact Medicare.gov or 1-800-MEDICARE to get information on all of your options.
+We may not present every plan available in your area. Any information we provide is for educational purposes only and is not a complete listing of plans. Please contact Medicare.gov or 1-800-MEDICARE to get information on all of your options.
 
-Ready to better understand your Medicare options? Visit https://getpartb.com and compare your choices with Get Part B Optimizer.
+Ready to better understand your Medicare options? Visit [getpartb.com](https://getpartb.com) and compare your choices with Get Part B Optimizer.

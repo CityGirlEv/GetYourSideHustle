@@ -37,12 +37,14 @@ describe("article-authoring", () => {
       title: "Understanding Part B",
       excerpt: "Plain-language overview of Part B premiums without sales pressure.",
       category: "costs",
+      slug: "understanding-medicare-part-b-premiums",
     });
-    expect(prompt).toContain("Educational Medicare");
+    expect(prompt).toContain("Multicultural");
+    expect(prompt.toLowerCase()).toContain("photorealistic");
     expect(prompt.toLowerCase()).not.toContain("enroll now");
   });
 
   it("builds public featured image paths", () => {
-    expect(featuredImagePublicPath("my-slug", "png")).toBe("/learning-center/my-slug.png");
+    expect(featuredImagePublicPath("my-slug", "jpg")).toBe("/learning-center/my-slug.jpg");
   });
 });

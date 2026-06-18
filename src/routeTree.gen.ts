@@ -41,6 +41,7 @@ import { Route as AdminUsersRouteImport } from './routes/admin_.users'
 import { Route as AdminStaffRouteImport } from './routes/admin_.staff'
 import { Route as AdminPricingRouteImport } from './routes/admin_.pricing'
 import { Route as AdminNewsletterRouteImport } from './routes/admin_.newsletter'
+import { Route as AdminFacebookPostsRouteImport } from './routes/admin_.facebook-posts'
 import { Route as AdminEmailTemplatesRouteImport } from './routes/admin_.email-templates'
 import { Route as AdminContentFactoryRouteImport } from './routes/admin_.content-factory'
 import { Route as AdminCalendarRouteImport } from './routes/admin_.calendar'
@@ -219,6 +220,11 @@ const AdminNewsletterRoute = AdminNewsletterRouteImport.update({
   path: '/admin/newsletter',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminFacebookPostsRoute = AdminFacebookPostsRouteImport.update({
+  id: '/admin_/facebook-posts',
+  path: '/admin/facebook-posts',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminEmailTemplatesRoute = AdminEmailTemplatesRouteImport.update({
   id: '/admin_/email-templates',
   path: '/admin/email-templates',
@@ -334,6 +340,7 @@ export interface FileRoutesByFullPath {
   '/admin/calendar': typeof AdminCalendarRoute
   '/admin/content-factory': typeof AdminContentFactoryRoute
   '/admin/email-templates': typeof AdminEmailTemplatesRoute
+  '/admin/facebook-posts': typeof AdminFacebookPostsRoute
   '/admin/newsletter': typeof AdminNewsletterRoute
   '/admin/pricing': typeof AdminPricingRoute
   '/admin/staff': typeof AdminStaffRoute
@@ -385,6 +392,7 @@ export interface FileRoutesByTo {
   '/admin/calendar': typeof AdminCalendarRoute
   '/admin/content-factory': typeof AdminContentFactoryRoute
   '/admin/email-templates': typeof AdminEmailTemplatesRoute
+  '/admin/facebook-posts': typeof AdminFacebookPostsRoute
   '/admin/newsletter': typeof AdminNewsletterRoute
   '/admin/pricing': typeof AdminPricingRoute
   '/admin/staff': typeof AdminStaffRoute
@@ -437,6 +445,7 @@ export interface FileRoutesById {
   '/admin_/calendar': typeof AdminCalendarRoute
   '/admin_/content-factory': typeof AdminContentFactoryRoute
   '/admin_/email-templates': typeof AdminEmailTemplatesRoute
+  '/admin_/facebook-posts': typeof AdminFacebookPostsRoute
   '/admin_/newsletter': typeof AdminNewsletterRoute
   '/admin_/pricing': typeof AdminPricingRoute
   '/admin_/staff': typeof AdminStaffRoute
@@ -490,6 +499,7 @@ export interface FileRouteTypes {
     | '/admin/calendar'
     | '/admin/content-factory'
     | '/admin/email-templates'
+    | '/admin/facebook-posts'
     | '/admin/newsletter'
     | '/admin/pricing'
     | '/admin/staff'
@@ -541,6 +551,7 @@ export interface FileRouteTypes {
     | '/admin/calendar'
     | '/admin/content-factory'
     | '/admin/email-templates'
+    | '/admin/facebook-posts'
     | '/admin/newsletter'
     | '/admin/pricing'
     | '/admin/staff'
@@ -592,6 +603,7 @@ export interface FileRouteTypes {
     | '/admin_/calendar'
     | '/admin_/content-factory'
     | '/admin_/email-templates'
+    | '/admin_/facebook-posts'
     | '/admin_/newsletter'
     | '/admin_/pricing'
     | '/admin_/staff'
@@ -644,6 +656,7 @@ export interface RootRouteChildren {
   AdminCalendarRoute: typeof AdminCalendarRoute
   AdminContentFactoryRoute: typeof AdminContentFactoryRoute
   AdminEmailTemplatesRoute: typeof AdminEmailTemplatesRoute
+  AdminFacebookPostsRoute: typeof AdminFacebookPostsRoute
   AdminNewsletterRoute: typeof AdminNewsletterRoute
   AdminPricingRoute: typeof AdminPricingRoute
   AdminStaffRoute: typeof AdminStaffRoute
@@ -892,6 +905,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminNewsletterRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin_/facebook-posts': {
+      id: '/admin_/facebook-posts'
+      path: '/admin/facebook-posts'
+      fullPath: '/admin/facebook-posts'
+      preLoaderRoute: typeof AdminFacebookPostsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin_/email-templates': {
       id: '/admin_/email-templates'
       path: '/admin/email-templates'
@@ -1072,6 +1092,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminCalendarRoute: AdminCalendarRoute,
   AdminContentFactoryRoute: AdminContentFactoryRoute,
   AdminEmailTemplatesRoute: AdminEmailTemplatesRoute,
+  AdminFacebookPostsRoute: AdminFacebookPostsRoute,
   AdminNewsletterRoute: AdminNewsletterRoute,
   AdminPricingRoute: AdminPricingRoute,
   AdminStaffRoute: AdminStaffRoute,

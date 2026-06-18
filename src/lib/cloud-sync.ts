@@ -35,6 +35,8 @@ export interface NoteEntry {
   author_name: string;
   text: string;
   at: string;
+  attachment_path?: string;
+  attachment_name?: string;
 }
 export type NoteKind = "qa" | "dev";
 
@@ -59,18 +61,35 @@ export async function cloudAddNoteEntry(
   test_id: string,
   kind: NoteKind,
   text: string,
+  attachmentFile?: File | null,
 ): Promise<NoteEntry[] | null> {
-  if (typeof window === "undefined" || !text.trim()) return null;
+  if (typeof window === "undefined") return null;
   const u = await uid();
   if (!u) {
     warnNotSignedIn("cloudAddNoteEntry");
     return null;
   }
+  let attachment: Pick<NoteEntry, "attachment_path" | "attachment_name"> | undefined;
+  if (attachmentFile) {
+    const { saveNoteAttachment } = await import("@/lib/note-attachment");
+    attachment = await saveNoteAttachment(u.id, test_id, attachmentFile);
+  }
+  const trimmed = text.trim();
+  const entryText =
+    trimmed ||
+    (attachment?.attachment_name ? `Attachment: ${attachment.attachment_name}` : "");
+  if (!entryText && !attachment) return null;
   const col = kind === "qa" ? "qa_notes" : "dev_notes";
   const existing = await cloudFetchNotes(test_id, kind);
   const next: NoteEntry[] = [
     ...existing,
-    { author_id: u.id, author_name: u.name, text: text.trim(), at: new Date().toISOString() },
+    {
+      author_id: u.id,
+      author_name: u.name,
+      text: entryText,
+      at: new Date().toISOString(),
+      ...attachment,
+    },
   ];
   const { error } = await supabase
     .from("test_results")
@@ -260,15 +279,25 @@ export function cloudPushTest(
   })();
 }
 
-/** Append a QA or Dev note entry. De-dupes (author_id + text) within last 50. */
-export function cloudAppendNote(test_id: string, kind: NoteKind, text: string) {
-  if (typeof window === "undefined" || !text.trim()) return;
+/** Append a QA or Dev note entry. De-dupes (author_id + text + attachment) within last 50. */
+export function cloudAppendNote(
+  test_id: string,
+  kind: NoteKind,
+  text: string,
+  attachment?: Pick<NoteEntry, "attachment_path" | "attachment_name"> | null,
+) {
+  if (typeof window === "undefined") return;
   (async () => {
     const u = await uid();
     if (!u) {
       warnNotSignedIn("cloudAppendNote");
       return;
     }
+    const trimmed = text.trim();
+    const entryText =
+      trimmed ||
+      (attachment?.attachment_name ? `Attachment: ${attachment.attachment_name}` : "");
+    if (!entryText && !attachment) return;
     const col = kind === "qa" ? "qa_notes" : "dev_notes";
     const { data: existing } = await supabase
       .from("test_results")
@@ -278,12 +307,22 @@ export function cloudAppendNote(test_id: string, kind: NoteKind, text: string) {
     const existingRec = existing as Record<string, unknown> | null;
     const fallbackAt = typeof existingRec?.updated_at === "string" ? existingRec.updated_at : null;
     const arr = normalizeNoteEntries(existingRec?.[col], fallbackAt);
-    // De-dup if last entry by this author matches text
     const lastFromAuthor = [...arr].reverse().find((e) => e.author_id === u.id);
-    if (lastFromAuthor && lastFromAuthor.text === text) return;
+    if (
+      lastFromAuthor &&
+      lastFromAuthor.text === entryText &&
+      (lastFromAuthor.attachment_path ?? "") === (attachment?.attachment_path ?? "")
+    )
+      return;
     const next: NoteEntry[] = [
       ...arr,
-      { author_id: u.id, author_name: u.name, text, at: new Date().toISOString() },
+      {
+        author_id: u.id,
+        author_name: u.name,
+        text: entryText,
+        at: new Date().toISOString(),
+        ...(attachment ?? {}),
+      },
     ];
     const { error } = await supabase
       .from("test_results")
@@ -662,7 +701,12 @@ export async function cloudPushTestsBulk(
  * with 1×SELECT + 1×UPSERT.
  */
 export async function cloudAppendNotesBulk(
-  entries: Array<{ test_id: string; kind: NoteKind; text: string }>,
+  entries: Array<{
+    test_id: string;
+    kind: NoteKind;
+    text: string;
+    attachment?: Pick<NoteEntry, "attachment_path" | "attachment_name"> | null;
+  }>,
 ): Promise<number> {
   if (typeof window === "undefined" || entries.length === 0) return 0;
   const u = await uid();
@@ -692,13 +736,27 @@ export async function cloudAppendNotesBulk(
   }
   const now = new Date().toISOString();
   for (const e of entries) {
-    const t = e.text.trim();
-    if (!t) continue;
+    const attachment = e.attachment ?? undefined;
+    const entryText =
+      e.text.trim() ||
+      (attachment?.attachment_name ? `Attachment: ${attachment.attachment_name}` : "");
+    if (!entryText && !attachment) continue;
     const bucket = byId.get(e.test_id)!;
     const arr = e.kind === "qa" ? bucket.qa : bucket.dev;
     const lastFromAuthor = [...arr].reverse().find((x) => x.author_id === u.id);
-    if (lastFromAuthor && lastFromAuthor.text === t) continue;
-    arr.push({ author_id: u.id, author_name: u.name, text: t, at: now });
+    if (
+      lastFromAuthor &&
+      lastFromAuthor.text === entryText &&
+      (lastFromAuthor.attachment_path ?? "") === (attachment?.attachment_path ?? "")
+    )
+      continue;
+    arr.push({
+      author_id: u.id,
+      author_name: u.name,
+      text: entryText,
+      at: now,
+      ...(attachment ?? {}),
+    });
   }
   const rows = ids.map((id) => {
     const b = byId.get(id)!;

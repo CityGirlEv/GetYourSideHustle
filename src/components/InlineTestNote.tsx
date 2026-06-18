@@ -1,5 +1,6 @@
 import type { NoteMeta } from "@/lib/test-plan";
 import { NoteEntryMeta } from "@/components/NoteEntryMeta";
+import { NoteAttachmentField } from "@/components/NoteAttachmentField";
 
 /** Inline QA/dev note field with author + timestamp on every displayed note. */
 export function InlineTestNote({
@@ -17,6 +18,10 @@ export function InlineTestNote({
   textareaClassName,
   rows = 2,
   historyKind = "qa",
+  testId,
+  userId,
+  pendingAttachmentName,
+  onAttachmentChange,
 }: {
   label: React.ReactNode;
   labelClassName?: string;
@@ -32,6 +37,10 @@ export function InlineTestNote({
   textareaClassName: string;
   rows?: number;
   historyKind?: "qa" | "dev";
+  testId?: string;
+  userId?: string | null;
+  pendingAttachmentName?: string | null;
+  onAttachmentChange?: (file: File | null) => void;
 }) {
   const saved = savedText.trim();
   const hasSaved = saved.length > 0;
@@ -95,6 +104,20 @@ export function InlineTestNote({
         rows={rows}
         className={textareaClassName}
       />
+      {testId && onAttachmentChange && (
+        <div className="mt-2">
+          <NoteAttachmentField
+            userId={userId ?? null}
+            onFileChange={onAttachmentChange}
+            disabled={!userId}
+          />
+          {pendingAttachmentName && (
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Will save with note: <span className="font-mono">{pendingAttachmentName}</span>
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

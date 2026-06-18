@@ -4,7 +4,7 @@ slug: medicare-initial-enrollment-period
 excerpt: "Learn how to calculate your exact 7-month Initial Enrollment Period (IEP) dates, including the shift rules for 1st-of-the-month birthdays."
 category: enrollment
 metaDescription: "Ready to enroll at 65? Learn how to calculate your 7-month Medicare Initial Enrollment Period (IEP) dates and avoid late enrollment trap."
-featuredImage: /learning-center/medicare-initial-enrollment-period.png
+featuredImage: /learning-center/medicare-initial-enrollment-period.jpg
 featured: false
 published: true
 sortOrder: 5
@@ -15,7 +15,7 @@ Signing up for Medicare when you turn 65 is governed by a strict timeline called
 
 This guide provides a practical, step-by-step walkthrough to help you calculate your exact IEP dates, determine your coverage start date, and manage the timing rules.
 
-Before diving into calculations, review the general milestones in our core guide to medicare enrollment periods. If you are preparing a detailed checklist, check out our guide on 3 months before 65: your medicare action plan.
+Before diving into calculations, review the general milestones in our core guide to medicare enrollment periods. If you are preparing a detailed checklist, [check out our guide on 3 months before 65: your medicare action plan](/learning-center/medicare-at-65-action-plan).
 
 ---
 
@@ -77,6 +77,6 @@ Your IEP for Part D is the same 7-month window as your IEP for Part A and Part B
 
 ---
 
-We do not offer every plan available in your area. Any information we provide is limited to those plans we do offer in your area. Please contact Medicare.gov or 1-800-MEDICARE to get information on all of your options.
+We may not present every plan available in your area. Any information we provide is for educational purposes only and is not a complete listing of plans. Please contact Medicare.gov or 1-800-MEDICARE to get information on all of your options.
 
-Ready to better understand your Medicare options? Visit https://getpartb.com and compare your choices with Get Part B Optimizer.
+Ready to better understand your Medicare options? Visit [getpartb.com](https://getpartb.com) and compare your choices with Get Part B Optimizer.

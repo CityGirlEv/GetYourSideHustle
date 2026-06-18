@@ -9,6 +9,7 @@ import { listPublishedArticles } from "@/lib/articles";
 import {
   LEARNING_CENTER_CATEGORIES,
   LEARNING_CENTER_INTRO,
+  LEARNING_CENTER_SCOPE_NOTE,
   type ArticleCategory,
 } from "@/lib/learning-center";
 import { SITE_BRAND_NAME } from "@/lib/site-brand";
@@ -76,15 +77,16 @@ function LearningCenterPage() {
       subtitle="Plain-language Medicare education — no enrollment pressure, no personal data required to read."
     >
       <div className="max-w-5xl mx-auto space-y-8">
-        <div className="glass rounded-2xl p-5 sm:p-6 space-y-3">
-          <div className="flex items-start gap-3">
-            <BookOpen className="h-6 w-6 text-primary shrink-0 mt-0.5" />
-            <p className="text-sm text-muted-foreground leading-relaxed">{LEARNING_CENTER_INTRO}</p>
+        <div className="glass rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3">
+          <div className="flex items-start gap-2">
+            <BookOpen className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+            <div className="space-y-1 text-muted-foreground">
+              <p className="text-sm leading-snug">{LEARNING_CENTER_INTRO}</p>
+              <p className="text-xs leading-snug border-t border-border/60 pt-1.5">
+                {LEARNING_CENTER_SCOPE_NOTE}
+              </p>
+            </div>
           </div>
-          <p className="text-xs text-muted-foreground leading-relaxed border-t border-border pt-3">
-            We do not present every plan available in your area. Articles are for learning only — not
-            personalized advice or enrollment.
-          </p>
         </div>
 
         <div className="flex flex-wrap gap-2">

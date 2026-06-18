@@ -1,48 +1,51 @@
 /**
- * Shared Learning Center hero image prompts — keep in sync with buildFeaturedImagePrompt().
+ * Shared Learning Center image prompts — keep in sync with src/lib/learning-center-image-prompts.ts
  */
 export const LEARNING_CENTER_IMAGE_STYLE = [
-  "Educational Medicare blog header illustration, calm and trustworthy, no text overlays, no logos, no sales language.",
-  "Style: clean flat vector illustration matching a cohesive Learning Center series — soft blues and white, inclusive older adults as simple non-identifiable silhouettes at a table reviewing documents, warm trustworthy tone.",
-  "Composition: wide horizontal scene, layered depth, subtle rounded shapes, clipboard or calendar motifs, CMS-compliant educational tone.",
-  "Avoid: enrollment CTAs, agent portraits, carrier branding, clip art medical crosses with urgency colors, words or numbers on the image.",
+  "Professional photorealistic editorial photograph for a Medicare education article.",
+  "Natural window light, shallow depth of field, warm trustworthy mood.",
+  "Multicultural representation is required: reflect America's Medicare-age population with varied skin tones, ethnicities, and family structures.",
+  "Older adults (60s–80s) in a realistic home or calm office setting reviewing paperwork, calendars, or a laptop — candid not posed like a stock ad.",
+  "Polished magazine-quality composition, soft neutral palette with subtle blue accents.",
+  "NO text, NO logos, NO watermark, NO cartoon, NO illustration, NO clip art, NO infographic style.",
+  "CMS-compliant educational tone — informative, calm, never salesy.",
 ].join(" ");
 
-export function buildFeaturedImagePrompt({ title, excerpt, category }) {
+export const MULTICULTURAL_SCENE_HINTS = [
+  "Cast: Black or African American couple in their late 60s at a bright kitchen table.",
+  "Cast: East Asian American senior with an adult daughter reviewing documents together.",
+  "Cast: Latino/Hispanic couple in their 70s with coffee mugs and Medicare paperwork.",
+  "Cast: South Asian American woman in her 60s with reading glasses and a checklist.",
+  "Cast: Interracial Black and white couple comparing plan summaries side by side.",
+  "Cast: Middle Eastern American man in his 60s in a calm home office with natural light.",
+  "Cast: Indigenous American elders at a dining table with a wall calendar visible.",
+  "Cast: Southeast Asian American grandparents with an adult child pointing at a laptop screen.",
+  "Cast: Caribbean American senior reviewing mail at a tidy desk near a window.",
+  "Cast: Filipino American couple in their 60s seated together with printed guides.",
+  "Cast: White Jewish senior with a neighbor or friend of a different ethnicity reviewing forms together.",
+  "Cast: Multigenerational household — grandmother of color with adult granddaughter at the table.",
+];
+
+function hashSeed(value) {
+  let hash = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    hash = (hash * 31 + value.charCodeAt(i)) >>> 0;
+  }
+  return hash;
+}
+
+export function multiculturalSceneHint(seed) {
+  if (!seed?.trim()) return MULTICULTURAL_SCENE_HINTS[0];
+  const index = hashSeed(seed.trim().toLowerCase()) % MULTICULTURAL_SCENE_HINTS.length;
+  return MULTICULTURAL_SCENE_HINTS[index];
+}
+
+export function buildFeaturedImagePrompt({ title, excerpt, category, slug }) {
   return [
     LEARNING_CENTER_IMAGE_STYLE,
+    multiculturalSceneHint(slug ?? title),
     `Topic: ${title}.`,
     `Category: ${String(category).replace(/-/g, " ")}.`,
     `Context: ${excerpt}`,
   ].join(" ");
 }
-
-export const SCENE_MOTIFS = {
-  "original-medicare-vs-medicare-advantage": "split-path",
-  "understanding-medicare-part-b-premiums": "premium-chart",
-  "medicare-enrollment-periods-overview": "calendar",
-  "how-to-compare-medicare-plans-educationally": "compare-grid",
-  "what-is-medicare-prior-authorization": "approval-shield",
-  "turning-65-medicare-guide": "milestone-65",
-  "medicare-at-65-action-plan": "checklist",
-  "medicare-enrollment-timeline": "timeline",
-  "turning-65-and-still-working": "work-calendar",
-  "medicare-initial-enrollment-period": "seven-month-window",
-  "is-medicare-automatic-at-65": "question-shield",
-  "medicare-special-enrollment-period": "special-door",
-};
-
-/** Unified palette — matches the DALL-E prior-auth series look */
-export const PALETTE = {
-  sky: "#E8F4FC",
-  blueLight: "#A8D4FF",
-  blue: "#5B9FED",
-  blueDeep: "#2E6DB4",
-  navy: "#1B3A5C",
-  white: "#FFFFFF",
-  warm1: "#F4C4A8",
-  warm2: "#D4956A",
-  warm3: "#8B5E3C",
-  green: "#6BBF8A",
-  amber: "#F0B429",
-};

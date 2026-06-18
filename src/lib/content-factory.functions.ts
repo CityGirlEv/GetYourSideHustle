@@ -1,7 +1,16 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { listPublishedArticles } from "@/lib/articles";
+import { publicSiteUrl } from "@/lib/site-url";
+import {
+  listContentDispatchLog,
+  listContentDraftVersions,
+  logContentDispatchEvent,
+} from "@/lib/content-factory/dispatch-log";
+import { sendNewsletterEmail, hashContentBody } from "@/lib/content-factory/newsletter-dispatch";
 import {
   CONTENT_ASSET_TYPES,
   CONTENT_DRAFT_STATUSES,
@@ -127,5 +136,136 @@ export const publishContentFactoryDraftAdmin = createServerFn({ method: "POST" }
   .inputValidator((input: unknown) => z.object({ draftId: z.string().uuid() }).parse(input))
   .handler(async ({ context, data }) => {
     await verifyContentFactoryAdmin(context.userId);
-    return publishContentDraft(data.draftId, context.userId);
+    const draft = await publishContentDraft(data.draftId, context.userId);
+    const channel =
+      draft.type === "newsletter" ||
+      draft.type === "facebook_post" ||
+      draft.type === "article" ||
+      draft.type === "lead_magnet"
+        ? draft.type
+        : "broadcast";
+    await logContentDispatchEvent({
+      channel,
+      dispatchKind: "publish",
+      draftId: draft.id,
+      batchId: draft.batchId,
+      subject: draft.title,
+      templateLabel: `content-factory/${draft.type}`,
+      bodyPreview: draft.body.replace(/\s+/g, " ").trim().slice(0, 240),
+      bodyHash: hashContentBody(draft.body),
+      sentBy: context.userId,
+      metadata: { published_ref: draft.publishedRef },
+    });
+    return draft;
+  });
+
+export const sendContentFactoryNewsletterTestAdmin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        draftId: z.string().uuid(),
+        recipient: z.string().email().max(320),
+      })
+      .parse(input),
+  )
+  .handler(async ({ context, data }) => {
+    await verifyContentFactoryAdmin(context.userId);
+    const draft = await getContentDraft(data.draftId);
+    if (!draft) throw new Error("Draft not found");
+    if (draft.type !== "newsletter") throw new Error("Only newsletter drafts support Send Test");
+
+    return sendNewsletterEmail({
+      recipient: data.recipient,
+      subject: draft.title,
+      body: draft.body,
+      templateLabel: "content-factory-newsletter",
+      userId: context.userId,
+      draftId: draft.id,
+      batchId: draft.batchId,
+      dispatchKind: "test",
+      requestUrl: getRequest()?.url,
+    });
+  });
+
+export const sendNewsletterCenterTestAdmin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        recipient: z.string().email().max(320),
+        subject: z.string().min(3).max(500),
+        body: z.string().min(20).max(50_000),
+        featuredSlugs: z.array(z.string().min(1).max(120)).optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ context, data }) => {
+    await verifyContentFactoryAdmin(context.userId);
+    const site = publicSiteUrl();
+    const featuredArticles =
+      data.featuredSlugs?.map((slug) => listPublishedArticles().find((article) => article.slug === slug)).filter(
+        (article): article is NonNullable<typeof article> => Boolean(article),
+      ).map((article) => ({
+        slug: article.slug,
+        title: article.title,
+        excerpt: article.excerpt,
+        featuredImage: article.featuredImage,
+      })) ?? [];
+
+    return sendNewsletterEmail({
+      recipient: data.recipient,
+      subject: data.subject,
+      body: data.body,
+      templateLabel: "newsletter-center",
+      userId: context.userId,
+      dispatchKind: "test",
+      requestUrl: getRequest()?.url,
+      featuredArticles,
+      siteUrl: site,
+    });
+  });
+
+export const listContentDispatchLogAdmin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        limit: z.number().int().min(1).max(200).optional(),
+        channel: z.enum(["newsletter", "facebook_post", "article", "lead_magnet", "broadcast"]).optional(),
+        draftId: z.string().uuid().optional(),
+        batchId: z.string().uuid().optional(),
+      })
+      .parse(input ?? {}),
+  )
+  .handler(async ({ context, data }) => {
+    await verifyContentFactoryAdmin(context.userId);
+    return listContentDispatchLog({
+      limit: data.limit ?? 50,
+      channel: data.channel,
+      draftId: data.draftId,
+      batchId: data.batchId,
+    });
+  });
+
+export const listContentDraftVersionsAdmin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ draftId: z.string().uuid(), limit: z.number().int().min(1).max(50).optional() }).parse(input),
+  )
+  .handler(async ({ context, data }) => {
+    await verifyContentFactoryAdmin(context.userId);
+    return listContentDraftVersions(data.draftId, data.limit ?? 20);
+  });
+
+export const listNewsletterArticlesAdmin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await verifyContentFactoryAdmin(context.userId);
+    return listPublishedArticles().map((article) => ({
+      slug: article.slug,
+      title: article.title,
+      excerpt: article.excerpt,
+      featuredImage: article.featuredImage,
+    }));
   });

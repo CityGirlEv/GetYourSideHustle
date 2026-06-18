@@ -1,4 +1,6 @@
 import type { ArticleCategory } from "@/lib/learning-center";
+import { LEARNING_CENTER_IMAGE_STYLE, multiculturalSceneHint } from "@/lib/learning-center-image-prompts";
+import { MPD_DISCLAIMER } from "@/lib/medicare-disclaimers";
 
 export interface ArticleDraft {
   title: string;
@@ -43,6 +45,17 @@ No. Learning Center articles are educational only. They do not recommend specifi
 ### Where should I verify official Medicare rules?
 Use [Medicare.gov](https://www.medicare.gov), 1-800-MEDICARE, or your State Health Insurance Assistance Program (SHIP) for rules that apply to you.`;
 
+const LEGACY_MPD_PATTERN =
+  /We do not (?:offer|present) every plan available in your area\.[\s\S]*?all of your options\./g;
+
+/** Ensure article markdown ends with the current MPD footer (replaces legacy "offer" wording). */
+export function ensureArticleMpdFooter(bodyMd: string): string {
+  let body = bodyMd.trim();
+  body = body.replace(LEGACY_MPD_PATTERN, MPD_DISCLAIMER);
+  if (body.includes("We may not present every plan available in your area")) return body;
+  return `${body}\n\n---\n\n${MPD_DISCLAIMER}\n`;
+}
+
 export function ensureArticleFaqBlock(bodyMd: string): string {
   if (/^##\s+frequently asked questions\s*$/im.test(bodyMd)) return bodyMd.trim();
   return `${bodyMd.trim()}\n\n${LEARNING_ARTICLE_FAQ_BLOCK}\n`;
@@ -68,24 +81,23 @@ export function serializeArticleMarkdown(draft: ArticleDraft): string {
   if (draft.relatedSlugs?.length) lines.push(`relatedSlugs: ${draft.relatedSlugs.join(", ")}`);
   if (draft.downloadLabel?.trim()) lines.push(`downloadLabel: ${yamlQuote(draft.downloadLabel.trim())}`);
   if (draft.downloadPath?.trim()) lines.push(`downloadPath: ${yamlQuote(draft.downloadPath.trim())}`);
-  lines.push("---", "", ensureArticleFaqBlock(draft.bodyMd), "");
+  lines.push("---", "", ensureArticleMpdFooter(ensureArticleFaqBlock(draft.bodyMd)), "");
   return lines.join("\n");
 }
 
-/** TPMO-safe image prompt for educational Medicare art (no sales language). */
-export function buildFeaturedImagePrompt(draft: Pick<ArticleDraft, "title" | "excerpt" | "category">): string {
+/** TPMO-safe image prompt for educational Medicare inline photos (no sales language). */
+export function buildFeaturedImagePrompt(draft: Pick<ArticleDraft, "title" | "excerpt" | "category" | "slug">): string {
   return [
-    "Educational Medicare blog header illustration, calm and trustworthy, no text overlays, no logos, no sales language.",
+    LEARNING_CENTER_IMAGE_STYLE,
+    multiculturalSceneHint(draft.slug || draft.title),
     `Topic: ${draft.title}.`,
     `Category: ${draft.category.replace(/-/g, " ")}.`,
     `Context: ${draft.excerpt}`,
-    "Style: clean flat vector, soft blues and whites, inclusive older adults in abstract non-identifiable silhouettes, CMS-compliant educational tone.",
-    "Avoid: enrollment CTAs, agent portraits, carrier branding, clip art medical crosses with urgency colors.",
   ].join(" ");
 }
 
 export function featuredImagePublicPath(slug: string, ext: string): string {
-  const safeExt = ext.replace(/^\./, "").toLowerCase() || "png";
+  const safeExt = ext.replace(/^\./, "").toLowerCase() || "jpg";
   return `/learning-center/${slug}.${safeExt}`;
 }
 

@@ -148,6 +148,34 @@ describe("validateEvidenceFile (security gate)", () => {
     await expect(validateEvidenceFile(log)).resolves.toBeUndefined();
   });
 
+  it("accepts a DOCX by ZIP magic bytes", async () => {
+    const docx = make([0x50, 0x4b, 0x03, 0x04, 0, 0, 0, 0], "brief.docx", "application/zip");
+    await expect(validateEvidenceFile(docx)).resolves.toBeUndefined();
+  });
+
+  it("accepts an XLSX by ZIP magic bytes", async () => {
+    const xlsx = make(
+      [0x50, 0x4b, 0x03, 0x04, 0, 0, 0, 0],
+      "sheet.xlsx",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    await expect(validateEvidenceFile(xlsx)).resolves.toBeUndefined();
+  });
+
+  it("accepts legacy XLS by OLE magic bytes", async () => {
+    const xls = make(
+      [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1, 0, 0, 0, 0],
+      "legacy.xls",
+      "application/vnd.ms-excel",
+    );
+    await expect(validateEvidenceFile(xls)).resolves.toBeUndefined();
+  });
+
+  it("rejects ZIP files without an allowed Office extension", async () => {
+    const zip = make([0x50, 0x4b, 0x03, 0x04, 0, 0, 0, 0], "payload.zip", "application/zip");
+    await expect(validateEvidenceFile(zip)).rejects.toThrow();
+  });
+
   it("accepts PNG when the browser sends application/octet-stream", async () => {
     const file = new File([PNG_HEAD], "Screenshot.png", { type: "application/octet-stream" });
     await expect(validateEvidenceFile(file)).resolves.toBeUndefined();

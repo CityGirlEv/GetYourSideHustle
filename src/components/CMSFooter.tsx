@@ -8,11 +8,13 @@ export function CMSFooter() {
   return (
     <footer className="mt-4 border-t border-border bg-secondary/40 px-6 py-4 text-xs text-muted-foreground">
       <div className="max-w-4xl mx-auto space-y-3 text-left">
-        <Link to="/" className="inline-flex items-center gap-2 hover:opacity-90 transition-opacity">
-          <BrandLogo size="footer" />
-        </Link>
         <MedicareDisclaimers />
-        <p className="text-[11px] text-muted-foreground/80">{formatSiteCopyright()}</p>
+        <div className="flex items-center gap-2.5">
+          <Link to="/" className="shrink-0 hover:opacity-90 transition-opacity">
+            <BrandLogo size="footer" />
+          </Link>
+          <p className="text-[11px] text-muted-foreground/80">{formatSiteCopyright()}</p>
+        </div>
         <div className="flex items-center gap-x-4 gap-y-2 text-muted-foreground flex-wrap pt-1">
           <Link to="/" className="flex items-center gap-1 hover:text-foreground transition-colors">
             <Home className="h-3.5 w-3.5" /> Home

@@ -4,7 +4,7 @@ slug: turning-65-medicare-guide
 excerpt: "An objective, step-by-step roadmap to navigating your Initial Enrollment Period (IEP), understanding your options, and avoiding lifetime Medicare late penalties."
 category: enrollment
 metaDescription: "Turning 65 this year? Learn how to navigate the Medicare Initial Enrollment Period (IEP), avoid late enrollment penalties, and choose your plans."
-featuredImage: /learning-center/turning-65-medicare-guide.png
+featuredImage: /learning-center/turning-65-medicare-guide.jpg
 featured: true
 published: true
 sortOrder: 1
@@ -140,6 +140,6 @@ If you miss your IEP, you must wait until the General Enrollment Period (GEP) wh
 
 ---
 
-We do not offer every plan available in your area. Any information we provide is limited to those plans we do offer in your area. Please contact Medicare.gov or 1-800-MEDICARE to get information on all of your options.
+We may not present every plan available in your area. Any information we provide is for educational purposes only and is not a complete listing of plans. Please contact Medicare.gov or 1-800-MEDICARE to get information on all of your options.
 
-Ready to better understand your Medicare options? Visit https://getpartb.com and compare your choices with Get Part B Optimizer.
+Ready to better understand your Medicare options? Visit [getpartb.com](https://getpartb.com) and compare your choices with Get Part B Optimizer.

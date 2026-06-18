@@ -143,7 +143,7 @@ export function buildScenarioQaAuditSteps(parts: {
   const medCostIntro = "Review the Medication Cost summary in each report:";
 
   return [
-    "Start from home page where the user clicks Build My Scenario",
+    "Start from home page where the user clicks Compare Plans Privately",
     `${step1Intro} ${step1Substeps.join(" | ")}`,
     `${step2Intro} ||| ${step2Substeps.join(" | ")}`,
     `${step3Intro} ||| ${medSubsteps.join(" | ")}`,

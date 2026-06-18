@@ -4,7 +4,7 @@ slug: turning-65-and-still-working
 excerpt: "Learn how employer group health plans interact with Medicare, when you can safely delay Part B, and how the 20-employee rule applies."
 category: enrollment
 metaDescription: "Still working at 65? Understand how your employer group health plan coordinates with Medicare, the 20-employee rule, and when to delay Part B."
-featuredImage: /learning-center/turning-65-and-still-working.png
+featuredImage: /learning-center/turning-65-and-still-working.jpg
 featured: false
 published: true
 sortOrder: 4
@@ -15,7 +15,7 @@ Remaining in the workforce past age 65 has become increasingly common. However, 
 
 Coordinating employer group coverage with Medicare depends on specific federal rules. Making the wrong decision can result in high out-of-pocket medical costs or lifetime premium surcharges.
 
-Before deciding, make sure you understand the baseline rules in our core guide to medicare enrollment periods. If you need a checklist of steps to take leading up to your birthday, see our guide on 3 months before 65: your medicare action plan.
+Before deciding, make sure you understand the baseline rules in our core guide to medicare enrollment periods. If you need a checklist of steps to take leading up to your birthday, [see our guide on 3 months before 65: your medicare action plan](/learning-center/medicare-at-65-action-plan).
 
 ---
 
@@ -67,7 +67,7 @@ If you work for a large company and have the option to delay Medicare, you shoul
 2. **Calculate the Medicare Costs:** Compare those numbers against the cost of standard Medicare Part B premiums + a Medigap supplement + a Part D prescription plan (or a bundled Medicare Advantage plan).
 3. **Compare doctor access:** If your group plan has network limits, traditional Medicare + Medigap will open up nationwide doctor choices without network rules.
 
-Use our de-identified Scenario Creator to build a custom profile and compare sample rates privately.
+[Use our de-identified Scenario Creator](/) to build a custom profile and compare sample rates privately.
 
 ---
 
@@ -84,6 +84,6 @@ Yes. If you work for a company with 20+ employees, you can enroll in Part A only
 
 ---
 
-We do not offer every plan available in your area. Any information we provide is limited to those plans we do offer in your area. Please contact Medicare.gov or 1-800-MEDICARE to get information on all of your options.
+We may not present every plan available in your area. Any information we provide is for educational purposes only and is not a complete listing of plans. Please contact Medicare.gov or 1-800-MEDICARE to get information on all of your options.
 
-Ready to better understand your Medicare options? Visit https://getpartb.com and compare your choices with Get Part B Optimizer.
+Ready to better understand your Medicare options? Visit [getpartb.com](https://getpartb.com) and compare your choices with Get Part B Optimizer.
