@@ -20,8 +20,7 @@ const ACCOUNT_ID = "100285aafdca60b46f266877fa2fa7dc";
 const WORKER_NAME = "mypartb";
 const BUN_VERSION = "1.3.14";
 const BUILD_COMMAND = "bun run build:ci";
-const DEPLOY_COMMAND =
-  "env -u CLOUDFLARE_API_TOKEN -u WRANGLER_API_KEY node scripts/deploy-ci.mjs";
+const DEPLOY_COMMAND = "node scripts/deploy-ci.mjs";
 const BUILD_ENV = {
   SKIP_DEPENDENCY_INSTALL: "true",
   BUN_VERSION,
@@ -53,10 +52,10 @@ if (!token) {
       "  Variables: SKIP_DEPENDENCY_INSTALL = true\n" +
       "             BUN_VERSION = 1.3.14\n" +
       "             NODE_OPTIONS = --max-old-space-size=8192\n" +
-      "  Do NOT set CLOUDFLARE_API_TOKEN here — Workers Builds injects deploy auth.\n" +
-      "  (A custom token without Cloudflare Pages → Edit breaks pages deploy.)\n" +
+      "  API token (Settings > Builds): must include Cloudflare Pages (Edit) + Workers Scripts (Edit)\n" +
+      "  Do NOT set CLOUDFLARE_API_TOKEN in build environment variables.\n" +
       "  Build command: bun run build:ci\n" +
-      "  Deploy command: env -u CLOUDFLARE_API_TOKEN -u WRANGLER_API_KEY node scripts/deploy-ci.mjs\n",
+      "  Deploy command: node scripts/deploy-ci.mjs\n",
   );
   process.exit(1);
 }

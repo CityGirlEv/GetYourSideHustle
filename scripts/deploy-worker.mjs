@@ -6,7 +6,6 @@ import fs from "fs";
 import path from "path";
 import { spawnSync } from "child_process";
 import { fileURLToPath } from "url";
-import { wranglerSpawnEnv } from "./wrangler-ci-env.mjs";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const wranglerBin = path.join(root, "node_modules", "wrangler", "bin", "wrangler.js");
@@ -38,7 +37,7 @@ try {
       "dist/wrangler.worker.json",
       "--keep-vars",
     ],
-    { cwd: root, stdio: "inherit", env: wranglerSpawnEnv() },
+    { cwd: root, stdio: "inherit", env: process.env },
   );
   if (result.status !== 0) {
     process.exit(result.status ?? 1);
