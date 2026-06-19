@@ -61,9 +61,10 @@ export default defineConfig({
   vite: {
     plugins: [appBuildVersionPlugin()],
     build: {
+      sourcemap: false,
       // Lower Rollup parallelism to reduce peak memory during Cloudflare CI builds.
       rollupOptions: {
-        maxParallelFileOps: 2,
+        maxParallelFileOps: 1,
       },
     },
   },

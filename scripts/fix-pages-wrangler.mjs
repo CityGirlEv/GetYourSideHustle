@@ -21,7 +21,8 @@ if (!fs.existsSync(wranglerPath)) {
 
 const config = JSON.parse(fs.readFileSync(wranglerPath, "utf8"));
 
-// pages_build_output_dir is only for wrangler.toml-style deploys, not pages deploy dist/
+// Worker entry uses `main`; Pages wrangler config cannot set both `main` and
+// `pages_build_output_dir`. Pages deploy passes `dist` on the CLI instead.
 delete config.pages_build_output_dir;
 // Pages provides ASSETS at runtime; manual binding fails wrangler deploy validation.
 delete config.assets;

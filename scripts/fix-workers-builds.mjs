@@ -19,13 +19,14 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ACCOUNT_ID = "100285aafdca60b46f266877fa2fa7dc";
 const WORKER_NAME = "mypartb";
 const BUN_VERSION = "1.3.14";
-const BUILD_COMMAND = "bun install && bun run build";
-const DEPLOY_COMMAND = "bun run deploy:ci";
+const BUILD_COMMAND = "bun run build:ci";
+const DEPLOY_COMMAND =
+  "env -u CLOUDFLARE_API_TOKEN -u WRANGLER_API_KEY node scripts/deploy-ci.mjs";
 const BUILD_ENV = {
   SKIP_DEPENDENCY_INSTALL: "true",
   BUN_VERSION,
-  // Cloudflare build containers have ~8GB RAM; default Node heap is too small for this app.
-  NODE_OPTIONS: "--max-old-space-size=6144",
+  // Cloudflare Workers Builds containers have 8 GB RAM total.
+  NODE_OPTIONS: "--max-old-space-size=8192",
 };
 
 function loadEnv() {
@@ -51,9 +52,11 @@ if (!token) {
       "Manual dashboard fix (Worker mypartb.com → Settings → Builds):\n" +
       "  Variables: SKIP_DEPENDENCY_INSTALL = true\n" +
       "             BUN_VERSION = 1.3.14\n" +
-      "             NODE_OPTIONS = --max-old-space-size=6144\n" +
-      "  Build command: bun install && bun run build\n" +
-      "  Deploy command: bun run deploy:ci\n",
+      "             NODE_OPTIONS = --max-old-space-size=8192\n" +
+      "  Do NOT set CLOUDFLARE_API_TOKEN here — Workers Builds injects deploy auth.\n" +
+      "  (A custom token without Cloudflare Pages → Edit breaks pages deploy.)\n" +
+      "  Build command: bun run build:ci\n" +
+      "  Deploy command: env -u CLOUDFLARE_API_TOKEN -u WRANGLER_API_KEY node scripts/deploy-ci.mjs\n",
   );
   process.exit(1);
 }
@@ -92,16 +95,23 @@ for (const trigger of triggers) {
   console.log(`  was build: ${trigger.build_command ?? "(none)"}`);
   console.log(`  was deploy: ${trigger.deploy_command ?? "(none)"}`);
   console.log(`  was env: ${JSON.stringify(trigger.environment_variables ?? {})}`);
+  const mergedEnv = {
+    ...(trigger.environment_variables ?? {}),
+    ...BUILD_ENV,
+  };
+  // Workers Builds supplies deploy credentials automatically. A manually-set
+  // CLOUDFLARE_API_TOKEN (often Workers-only) breaks `wrangler pages deploy`
+  // with upload-token Authentication error 10000.
+  delete mergedEnv.CLOUDFLARE_API_TOKEN;
+  delete mergedEnv.WRANGLER_API_KEY;
+  console.log(`  next env: ${JSON.stringify(mergedEnv)}`);
   await cf(`/accounts/${ACCOUNT_ID}/builds/triggers/${trigger.trigger_uuid}`, {
     method: "PATCH",
     body: JSON.stringify({
       build_command: BUILD_COMMAND,
       deploy_command: DEPLOY_COMMAND,
       build_caching_enabled: false,
-      environment_variables: {
-        ...(trigger.environment_variables ?? {}),
-        ...BUILD_ENV,
-      },
+      environment_variables: mergedEnv,
     }),
   });
   console.log("  triggering rebuild...");
