@@ -23,7 +23,7 @@ const res = await fetch("https://api.resend.com/emails", {
     "Content-Type": "application/json",
   },
   body: JSON.stringify({
-    from: "Get Part B Optimizer <onboarding@resend.dev>",
+    from: "Part B Optimizer <onboarding@resend.dev>",
     to: ["riverashretreat@gmail.com"],
     subject: `[TEST] Resend key verification ${new Date().toISOString()}`,
     html: "<p>If you received this, the new Resend API key is working.</p>",

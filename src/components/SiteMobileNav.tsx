@@ -6,6 +6,7 @@ import {
   FileSignature,
   FlaskConical,
   Home,
+  Info,
   LayoutDashboard,
   LogIn,
   LogOut,
@@ -93,7 +94,7 @@ export function SiteMobileNav({ onLogout }: { onLogout: () => void | Promise<voi
       <div className="lg:hidden flex items-center justify-between gap-2 py-1">
         <Link
           to="/"
-          aria-label="Get Part B Optimizer home"
+          aria-label="Part B Optimizer home"
           className="block shrink-0 drop-shadow-[0_2px_4px_rgba(0,40,112,0.1)]"
           onClick={close}
         >
@@ -143,6 +144,7 @@ export function SiteMobileNav({ onLogout }: { onLogout: () => void | Promise<voi
                 label="Learning Center"
                 onNavigate={close}
               />
+              <MobileNavLink to="/about" icon={Info} label="About" onNavigate={close} />
             </MobileNavSection>
 
             <MobileNavSection title="Account">

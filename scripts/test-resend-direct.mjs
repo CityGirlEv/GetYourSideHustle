@@ -24,7 +24,7 @@ const res = await fetch("https://api.resend.com/emails", {
     "Content-Type": "application/json",
   },
   body: JSON.stringify({
-    from: "Get Part B Optimizer <noreply@mypartb.com>",
+    from: "Part B Optimizer <noreply@mypartb.com>",
     to: [to],
     subject: "[mypartb] Domain verification test",
     html: "<p>If you received this, Resend delivery from <strong>noreply@mypartb.com</strong> is working.</p>",

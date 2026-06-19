@@ -39,7 +39,7 @@ for (const dlqName of ["transactional_emails_dlq", "auth_emails_dlq"]) {
       payload: {
         ...payload,
         queued_at: new Date().toISOString(),
-        from: "Get Part B Optimizer <onboarding@resend.dev>",
+        from: "Part B Optimizer <onboarding@resend.dev>",
         sender_domain: "resend.dev",
       },
     });

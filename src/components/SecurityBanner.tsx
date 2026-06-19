@@ -19,6 +19,7 @@ import { AdminNavDropdown } from "./AdminNavDropdown";
 import { BrandLogo } from "./BrandLogo";
 import { SiteMobileNav } from "./SiteMobileNav";
 import { userHasAdminRole } from "@/lib/user-roles";
+import { SITE_BRAND_NAME } from "@/lib/site-brand";
 import { FontSizeToggle } from "./FontSizeToggle";
 import { CreditPill } from "./CreditPill";
 import { Button } from "./ui/button";
@@ -49,6 +50,9 @@ function PrimaryNavLinks() {
       ) : null}
       <Link to="/learning-center" className={navLink}>
         <BookOpen className="h-4 w-4 shrink-0" /> Learning Center
+      </Link>
+      <Link to="/about" className={navLink}>
+        About
       </Link>
     </>
   );
@@ -198,7 +202,7 @@ export function SecurityBanner() {
         <div className="hidden lg:flex items-center justify-between gap-x-6 gap-y-2 py-0.5">
           <Link
             to="/"
-            aria-label="Get Part B Optimizer"
+            aria-label={SITE_BRAND_NAME}
             className="block shrink-0 drop-shadow-[0_2px_4px_rgba(0,40,112,0.1)]"
           >
             <BrandLogo size="nav" />

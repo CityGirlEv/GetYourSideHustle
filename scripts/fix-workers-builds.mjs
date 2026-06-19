@@ -4,8 +4,11 @@
  * Cloudflare auto-runs `bun install --frozen-lockfile` before your build command.
  * Set SKIP_DEPENDENCY_INSTALL so our build command runs a normal `bun install`.
  *
- * Requires user-scoped CLOUDFLARE_API_TOKEN in .env:
- *   Workers Builds Configuration (Edit), Workers Scripts (Read)
+ * Requires user-scoped CLOUDFLARE_API_TOKEN in .env / Cloudflare settings:
+ *   Account -> Workers Builds Configuration -> Edit
+ *   Account -> Workers Scripts -> Edit
+ *   Account -> Cloudflare Pages -> Edit
+ *   Zone -> DNS -> Edit
  * https://dash.cloudflare.com/profile/api-tokens
  */
 import fs from "fs";
@@ -17,11 +20,12 @@ const ACCOUNT_ID = "100285aafdca60b46f266877fa2fa7dc";
 const WORKER_NAME = "mypartb";
 const BUN_VERSION = "1.3.14";
 const BUILD_COMMAND = "bun install && bun run build";
-const DEPLOY_COMMAND =
-  "npx wrangler deploy --config dist/_worker.js/wrangler.json --keep-vars";
+const DEPLOY_COMMAND = "bun run deploy:ci";
 const BUILD_ENV = {
   SKIP_DEPENDENCY_INSTALL: "true",
   BUN_VERSION,
+  // Cloudflare build containers have ~8GB RAM; default Node heap is too small for this app.
+  NODE_OPTIONS: "--max-old-space-size=6144",
 };
 
 function loadEnv() {
@@ -47,8 +51,9 @@ if (!token) {
       "Manual dashboard fix (Worker mypartb.com → Settings → Builds):\n" +
       "  Variables: SKIP_DEPENDENCY_INSTALL = true\n" +
       "             BUN_VERSION = 1.3.14\n" +
+      "             NODE_OPTIONS = --max-old-space-size=6144\n" +
       "  Build command: bun install && bun run build\n" +
-      "  Deploy command: npx wrangler deploy --config dist/_worker.js/wrangler.json --keep-vars\n",
+      "  Deploy command: bun run deploy:ci\n",
   );
   process.exit(1);
 }

@@ -13,7 +13,7 @@ import type { TemplateEntry } from "./registry";
 import { EmailHeader } from "./email-header";
 import { EmailFooter } from "./email-footer";
 
-import { SITE_BRAND_NAME as SITE_NAME } from "@/lib/site-brand";
+import { SITE_BRAND_NAME, SITE_BRAND_THE } from "@/lib/site-brand";
 
 export interface AccountEnabledAdminProps {
   fullName?: string;
@@ -38,7 +38,7 @@ const AccountEnabledAdminEmail = ({
           <EmailHeader />
           <Heading style={h1}>An account was enabled</Heading>
           <Text style={text}>
-            An administrator just enabled a {SITE_NAME} account. They can now sign in.
+            An administrator just enabled a {SITE_BRAND_NAME} account. They can now sign in.
           </Text>
           <Section style={card}>
             <Row label="Name" value={fullName || "—"} />

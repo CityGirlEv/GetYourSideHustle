@@ -26,14 +26,14 @@ import { NdaStatusCard } from "@/components/NdaStatusCard";
 export const Route = createFileRoute("/qa")({
   head: () => ({
     meta: [
-      { title: "QA Dashboard — Get Part B Optimizer" },
+      { title: "QA Dashboard — Part B Optimizer" },
       {
         name: "description",
         content:
-          "Quality assurance dashboard for Get Part B Optimizer test plans, scenarios, and NDAs.",
+          "Quality assurance dashboard for The Part B Optimizer test plans, scenarios, and NDAs.",
       },
-      { property: "og:title", content: "QA Dashboard — Get Part B Optimizer" },
-      { property: "og:description", content: "Internal QA dashboard for Get Part B Optimizer." },
+      { property: "og:title", content: "QA Dashboard — Part B Optimizer" },
+      { property: "og:description", content: "Internal QA dashboard for The Part B Optimizer." },
       { property: "og:url", content: "https://themedicareoptimizer.lovable.app/qa" },
       { name: "robots", content: "noindex,nofollow" },
     ],

@@ -20,6 +20,7 @@ import { AuthRecoveryGate } from "@/components/auth/AuthRecoveryGate";
 import { GlobalBusyIndicator } from "@/components/GlobalBusyIndicator";
 import { supabase } from "@/integrations/supabase/client";
 import { getEnvVariable } from "@/lib/env";
+import { SITE_BRAND_NAME } from "@/lib/site-brand";
 
 function NotFoundComponent() {
   return (
@@ -89,14 +90,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Get Part B Optimizer" },
+      { title: SITE_BRAND_NAME },
       {
         name: "description",
         content:
           "AI-powered Medicare plan optimizer & advisor platform using de-identified scenarios for 2026 and 2027 federal guidelines. No personal information is collected.",
       },
-      { name: "author", content: "Get Part B Optimizer" },
-      { property: "og:title", content: "Get Part B Optimizer" },
+      { name: "author", content: SITE_BRAND_NAME },
+      { property: "og:title", content: SITE_BRAND_NAME },
       {
         property: "og:description",
         content:
@@ -105,7 +106,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
-      { name: "twitter:title", content: "Get Part B Optimizer" },
+      { name: "twitter:title", content: SITE_BRAND_NAME },
       {
         name: "twitter:description",
         content:

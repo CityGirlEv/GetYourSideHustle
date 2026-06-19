@@ -9,6 +9,7 @@ const PUBLIC_ENTRIES: { path: string; changefreq?: string; priority?: string }[]
   { path: "/", changefreq: "weekly", priority: "1.0" },
   { path: "/scenario/new", changefreq: "weekly", priority: "0.9" },
   { path: "/learning-center", changefreq: "weekly", priority: "0.8" },
+  { path: "/about", changefreq: "monthly", priority: "0.7" },
   { path: "/auth", changefreq: "monthly", priority: "0.4" },
   { path: "/register", changefreq: "monthly", priority: "0.4" },
   { path: "/reset-password", changefreq: "yearly", priority: "0.2" },

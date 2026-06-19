@@ -35,7 +35,7 @@ for (const queue of ["transactional_emails_dlq", "auth_emails_dlq"]) {
 const testPayload = {
   message_id: crypto.randomUUID(),
   to: "test@example.com",
-  from: "Get Part B Optimizer <onboarding@resend.dev>",
+  from: "Part B Optimizer <onboarding@resend.dev>",
   sender_domain: "resend.dev",
   subject: "queue test",
   html: "<p>test</p>",

@@ -1,5 +1,5 @@
 // ============================================================================
-// Get Part B Optimizer — TEST PLAN, IMPLEMENTATION PLAN, SPRINTS, TASKS
+// Part B Optimizer — TEST PLAN, IMPLEMENTATION PLAN, SPRINTS, TASKS
 // ----------------------------------------------------------------------------
 // This file is the single source of truth for the /testing portal.
 // As new functionality ships, ADD a new TestCase here so it shows up in the

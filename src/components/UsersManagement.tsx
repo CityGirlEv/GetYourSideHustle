@@ -362,7 +362,7 @@ export function UsersManagement() {
       // Title
       doc.setFont("helvetica", "bold");
       doc.setFontSize(16);
-      doc.text("Get Part B Optimizer — User Details Report", margin, y);
+      doc.text("Part B Optimizer — User Details Report", margin, y);
       y += 24;
 
       doc.setFont("helvetica", "normal");

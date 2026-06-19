@@ -5,7 +5,7 @@ import { ShieldCheck, EyeOff, KeyRound, Search } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useState } from "react";
 import { HomeCoverHero } from "@/components/HomeCoverHero";
-import { SITE_TAGLINE_LINE_1, SITE_TAGLINE_LINE_2 } from "@/lib/site-brand";
+import { SITE_BRAND_NAME, SITE_TAGLINE_LINE_1, SITE_TAGLINE_LINE_2, SITE_BRAND_THE } from "@/lib/site-brand";
 import { canonicalUrl } from "@/lib/site-url";
 
 const HOME_URL = canonicalUrl("/");
@@ -13,13 +13,13 @@ const HOME_URL = canonicalUrl("/");
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Get Part B Optimizer — De-identified Plan Comparison" },
+      { title: `${SITE_BRAND_NAME} — De-identified Plan Comparison` },
       {
         name: "description",
         content:
           "Compare Medicare plans without giving up your personal information. We store only de-identified scenarios you control.",
       },
-      { property: "og:title", content: "Get Part B Optimizer — De-identified Plan Comparison" },
+      { property: "og:title", content: `${SITE_BRAND_NAME} — De-identified Plan Comparison` },
       {
         property: "og:description",
         content:
@@ -34,7 +34,7 @@ export const Route = createFileRoute("/")({
         children: JSON.stringify({
           "@context": "https://schema.org",
           "@type": "WebSite",
-          name: "Get Part B Optimizer",
+          name: SITE_BRAND_NAME,
           url: HOME_URL,
           description: "De-identified Medicare plan comparison for 2026 and 2027.",
         }),
@@ -44,7 +44,7 @@ export const Route = createFileRoute("/")({
         children: JSON.stringify({
           "@context": "https://schema.org",
           "@type": "Organization",
-          name: "Get Part B Optimizer",
+          name: SITE_BRAND_NAME,
           url: HOME_URL,
           description:
             "Medicare plan comparison tool using de-identified scenarios under live federal rules.",
@@ -81,7 +81,7 @@ function Index() {
               <HomeCoverHero />
             </div>
             <div className="mt-auto shrink-0 bg-primary px-3 py-2 text-primary-foreground sm:px-4 sm:py-2.5">
-              <p className="text-xs sm:text-sm leading-snug font-semibold uppercase text-center text-yellow-300">
+              <p className="text-xs sm:text-sm leading-snug font-semibold uppercase text-center text-primary-foreground">
                 <span className="block">Confused by your Medicare medical plan</span>
                 <span className="block">options? You are not alone!</span>
               </p>
@@ -92,8 +92,8 @@ function Index() {
             <div className="flex min-h-0 flex-1 flex-col px-4 pb-4 pt-2 sm:px-5 sm:pb-5 sm:pt-2.5">
               <div className="shrink-0 w-full rounded-lg border border-primary/40 bg-primary px-3 py-2.5 text-xs font-semibold leading-snug text-primary-foreground shadow-sm sm:text-sm">
                 <div className="flex items-start justify-center gap-2 text-left sm:text-center">
-                  <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-yellow-300 sm:mx-auto sm:h-4 sm:w-4" />
-                  <span className="text-yellow-300">
+                  <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary-foreground sm:mx-auto sm:h-4 sm:w-4" />
+                  <span className="text-primary-foreground">
                     No phone, no email, no login. Your privacy is 100% protected and completely
                     anonymous unless you opt in.
                   </span>
@@ -111,14 +111,14 @@ function Index() {
                 </div>
                 <Button
                   onClick={() => router.navigate({ to: "/scenario/new" })}
-                  className="grad-indigo h-10 w-full max-w-[18rem] border-0 px-5 text-sm font-bold animate-pulse shadow-md !text-yellow-300 hover:!bg-[var(--brand-navy-light)] hover:!text-yellow-200 sm:h-11 md:max-w-[22rem]"
+                  className="grad-indigo h-10 w-full max-w-[18rem] border-0 px-5 text-sm font-bold animate-pulse shadow-md text-primary-foreground hover:!bg-[var(--brand-navy-light)] sm:h-11 md:max-w-[22rem]"
                 >
                   COMPARE PLANS PRIVATELY →
                 </Button>
               </div>
 
               <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-1 py-3 sm:py-4">
-                <p className="max-w-[18rem] text-center font-display text-sm font-semibold italic leading-snug text-primary sm:max-w-[22rem] sm:text-base sm:leading-normal">
+                <p className="max-w-[18rem] text-center font-display text-sm font-semibold italic leading-snug text-foreground sm:max-w-[22rem] sm:text-base sm:leading-normal">
                   <span className="block">{SITE_TAGLINE_LINE_1}</span>
                   <span className="block">{SITE_TAGLINE_LINE_2}</span>
                 </p>
@@ -188,10 +188,10 @@ function Index() {
         <div className="rounded-2xl border border-border bg-primary px-4 py-3 text-primary-foreground shadow-sm sm:px-6 sm:py-3.5">
           <p className="text-xs sm:text-sm leading-snug text-center">
             <span className="block">
-              Get Part B Optimizer creates a side-by-side comparison of the current Medicare plans
+              {SITE_BRAND_THE} creates a side-by-side comparison of the current Medicare plans
               available using current federal guidelines, so you can
             </span>
-            <strong className="mt-0.5 block font-semibold text-yellow-300">
+            <strong className="mt-0.5 block font-semibold text-primary-foreground">
               UNDERSTAND YOUR OPTIONS AND CHOOSE WITH CONFIDENCE!
             </strong>
           </p>

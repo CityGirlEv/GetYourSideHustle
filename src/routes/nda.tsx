@@ -14,14 +14,14 @@ import { FileSignature, FileCheck2, Download, ShieldCheck } from "lucide-react";
 export const Route = createFileRoute("/nda")({
   head: () => ({
     meta: [
-      { title: "Beta NDA — Get Part B Optimizer" },
+      { title: "Beta NDA — Part B Optimizer" },
       {
         name: "description",
         content:
-          "Review and sign the non-disclosure agreement required for Get Part B Optimizer beta access.",
+          "Review and sign the non-disclosure agreement required for The Part B Optimizer beta access.",
       },
-      { property: "og:title", content: "Beta NDA — Get Part B Optimizer" },
-      { property: "og:description", content: "Review and sign Get Part B Optimizer beta NDA." },
+      { property: "og:title", content: "Beta NDA — Part B Optimizer" },
+      { property: "og:description", content: "Review and sign The Part B Optimizer beta NDA." },
       { property: "og:url", content: "https://themedicareoptimizer.lovable.app/nda" },
     ],
     links: [{ rel: "canonical", href: "https://themedicareoptimizer.lovable.app/nda" }],

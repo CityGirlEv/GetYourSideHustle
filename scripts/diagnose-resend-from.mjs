@@ -42,8 +42,8 @@ console.log("log after:", logAfter);
 
 const key = env.RESEND_API_KEY;
 for (const from of [
-  "Get Part B Optimizer <onboarding@resend.dev>",
-  "Get Part B Optimizer <noreply@mypartb.com>",
+  "Part B Optimizer <onboarding@resend.dev>",
+  "Part B Optimizer <noreply@mypartb.com>",
 ]) {
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",

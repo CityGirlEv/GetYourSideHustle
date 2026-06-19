@@ -1,3 +1,4 @@
+import { SITE_BRAND_NAME, SITE_BRAND_THE } from "@/lib/site-brand";
 import { buildFeaturedImagePrompt } from "@/lib/article-authoring";
 import { getArticleTopicDraft } from "@/lib/medicare-complaint-topics";
 import type { GeneratedAssetInput } from "@/lib/content-factory/ai-provider";
@@ -14,9 +15,9 @@ const ARTICLE_TOPIC_IDS = [
 
 const FACEBOOK_POSTS = [
   {
-    title: "Welcome to Get Part B Optimizer! Learn about Medicare Prior Authorization",
+    title: `Welcome to ${SITE_BRAND_THE}! Learn about Medicare Prior Authorization`,
     excerpt: "Welcome post introducing the page and linking to our first Learning Center article.",
-    body: `Welcome to the Get Part B Optimizer page! 🌟
+    body: `Welcome to the ${SITE_BRAND_THE} page! 🌟
 
 Turning 65 comes with a lot of decisions — and unfortunately, a lot of high-pressure sales calls. We’re here to change that.
 
@@ -42,7 +43,7 @@ Missing this window is one of the most common regrets we hear about, as you may 
 Read our plain-language guide on why timing is critical:
 👉 https://mypartb.com/learning-center/medigap-open-enrollment-window-explained
 
-📌 Help us spread the word! Invite friends or family members who are turning 65 to follow the Get Part B Optimizer page for transparent, non-sales education.
+📌 Help us spread the word! Invite friends or family members who are turning 65 to follow the ${SITE_BRAND_THE} page for transparent, non-sales education.
 
 Educational only. Verify your state's supplemental insurance rules.
 
@@ -110,7 +111,7 @@ const NEWSLETTER = {
     "",
     "Hello {{fullName}},",
     "",
-    "Welcome to this week's Learning Center roundup from Get Part B Optimizer. We publish plain-language Medicare education — not enrollment sales.",
+    `Welcome to this week's Learning Center roundup from ${SITE_BRAND_THE}. We publish plain-language Medicare education — not enrollment sales.`,
     "",
     "## Featured guides",
     "",

@@ -5,7 +5,7 @@ import { EmailHeader } from "./email-header";
 import { EmailFooter } from "./email-footer";
 import { LICENSED_AGENT_WILL_CONTACT } from "@/lib/lead-consent";
 
-import { SITE_BRAND_NAME as SITE_NAME } from "@/lib/site-brand";
+import { SITE_BRAND_NAME, SITE_BRAND_THE } from "@/lib/site-brand";
 
 interface Props {
   recipientName?: string;
@@ -33,7 +33,7 @@ const ContactRequestEmail = ({ recipientName, scenarioCode }: Props) => (
           . {LICENSED_AGENT_WILL_CONTACT} shortly.
         </Text>
         <Text style={text}>If you need immediate help, just reply to this email.</Text>
-        <Text style={footer}>The {SITE_NAME} team</Text>
+        <Text style={footer}>{SITE_BRAND_THE} team</Text>
         <EmailFooter />
       </Container>
     </Body>

@@ -10,10 +10,10 @@ import { ListChecks, FlaskConical } from "lucide-react";
 export const Route = createFileRoute("/tasks")({
   head: () => ({
     meta: [
-      { title: "Task Sheet — Get Part B Optimizer" },
+      { title: "Task Sheet — Part B Optimizer" },
       {
         name: "description",
-        content: "Spreadsheet-style task tracker for Get Part B Optimizer team.",
+        content: "Spreadsheet-style task tracker for The Part B Optimizer team.",
       },
       { name: "robots", content: "noindex,nofollow" },
     ],
@@ -59,7 +59,7 @@ function TaskSheetPage() {
   return (
     <AppShell
       title="Task Sheet"
-      subtitle="Spreadsheet-style task tracker for Get Part B Optimizer team."
+      subtitle="Spreadsheet-style task tracker for The Part B Optimizer team."
       titleClassName="bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-500 [-webkit-background-clip:text] [-webkit-text-fill-color:transparent]"
     >
       {(isQa || isAdmin) && (

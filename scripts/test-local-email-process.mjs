@@ -22,7 +22,7 @@ const sb = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 const testPayload = {
   message_id: crypto.randomUUID(),
   to: env.ADMIN_NOTIFICATION_EMAILS?.split(",")[0]?.trim() || "evelyn3@cox.net",
-  from: "Get Part B Optimizer <onboarding@resend.dev>",
+  from: "Part B Optimizer <onboarding@resend.dev>",
   sender_domain: "resend.dev",
   subject: `[DIAG] Email queue test ${new Date().toISOString()}`,
   html: "<p>Queue processor diagnostic email.</p>",

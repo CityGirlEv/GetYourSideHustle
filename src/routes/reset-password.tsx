@@ -20,15 +20,15 @@ import { roleDestination } from "@/lib/role-destination";
 export const Route = createFileRoute("/reset-password")({
   head: () => ({
     meta: [
-      { title: "Reset Password — Get Part B Optimizer" },
+      { title: "Reset Password — Part B Optimizer" },
       {
         name: "description",
-        content: "Reset the password for your Get Part B Optimizer staff account.",
+        content: "Reset the password for your Part B Optimizer staff account.",
       },
-      { property: "og:title", content: "Reset Password — Get Part B Optimizer" },
+      { property: "og:title", content: "Reset Password — Part B Optimizer" },
       {
         property: "og:description",
-        content: "Reset your Get Part B Optimizer staff account password.",
+        content: "Reset your Part B Optimizer staff account password.",
       },
       { property: "og:url", content: "https://themedicareoptimizer.lovable.app/reset-password" },
       { name: "robots", content: "noindex" },

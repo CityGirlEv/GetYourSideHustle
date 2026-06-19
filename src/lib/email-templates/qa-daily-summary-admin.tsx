@@ -16,7 +16,7 @@ import { EmailHeader } from "./email-header";
 import { EmailFooter } from "./email-footer";
 import { resolveEmailSiteUrl } from "./email-header";
 
-import { SITE_BRAND_NAME as SITE_NAME } from "@/lib/site-brand";
+import { SITE_BRAND_NAME, SITE_BRAND_THE } from "@/lib/site-brand";
 
 export interface QaCompletedTestRow {
   id: string;
@@ -80,7 +80,7 @@ const QaDailySummaryAdminEmail = ({
           <Heading style={h1}>QA daily summary</Heading>
           <Text style={text}>
             End-of-day report for <strong>{reportDateLabel}</strong>. Below are the tests QA marked
-            complete in the Testing Portal on {SITE_NAME}.
+            complete in the Testing Portal on {SITE_BRAND_THE}.
           </Text>
 
           <Section style={statsCard}>

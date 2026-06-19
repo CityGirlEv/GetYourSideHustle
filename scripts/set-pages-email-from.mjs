@@ -30,7 +30,7 @@ if (!projectJson.success) throw new Error(JSON.stringify(projectJson.errors));
 
 const production = projectJson.result?.deployment_configs?.production ?? {};
 const envVars = { ...(production.env_vars ?? {}) };
-envVars.EMAIL_FROM = { type: "plain_text", value: "Get Part B Optimizer <noreply@mypartb.com>" };
+envVars.EMAIL_FROM = { type: "plain_text", value: "Part B Optimizer <noreply@mypartb.com>" };
 envVars.EMAIL_SENDER_DOMAIN = { type: "plain_text", value: "mypartb.com" };
 
 const patchRes = await fetch(

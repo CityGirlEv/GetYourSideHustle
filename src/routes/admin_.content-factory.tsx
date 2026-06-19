@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/AppShell";
+import { AdminAccessGate } from "@/components/AdminAccessGate";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,6 +64,27 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/admin_/content-factory")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    batchId: typeof search.batchId === "string" ? search.batchId : undefined,
+    type:
+      typeof search.type === "string" &&
+      [
+        "article",
+        "facebook_post",
+        "newsletter",
+        "faq",
+        "lead_magnet",
+        "image_prompt",
+      ].includes(search.type)
+        ? (search.type as ContentAssetType)
+        : undefined,
+    slot:
+      typeof search.slot === "number"
+        ? search.slot
+        : typeof search.slot === "string" && search.slot !== ""
+          ? Number(search.slot)
+          : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "AI Content Factory — Admin" },
@@ -76,6 +98,11 @@ function ContentFactoryPage() {
   const { user, authLoading } = useApp();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const {
+    batchId: searchBatchId,
+    type: searchType,
+    slot: searchSlot,
+  } = Route.useSearch();
 
   const listBatches = useServerFn(listContentFactoryBatchesAdmin);
   const listDrafts = useServerFn(listContentFactoryDraftsAdmin);
@@ -97,13 +124,14 @@ function ContentFactoryPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
-      router.navigate({ to: "/auth" });
-      return;
-    }
-    if (!userHasAdminRole(user)) {
-      router.navigate({ to: "/" });
+      router.navigate({ to: "/auth", search: { tab: "sign-in" } });
     }
   }, [user, authLoading, router]);
+
+  useEffect(() => {
+    if (searchBatchId) setBatchFilter(searchBatchId);
+    if (searchType) setTypeFilter(searchType);
+  }, [searchBatchId, searchType]);
 
   const batchesQuery = useQuery({
     queryKey: ["content-factory-batches"],
@@ -192,7 +220,20 @@ function ContentFactoryPage() {
     [batches, batchFilter],
   );
 
-  if (authLoading || !user || !userHasAdminRole(user)) return null;
+  useEffect(() => {
+    if (searchSlot == null || Number.isNaN(searchSlot)) return;
+    if (draftsQuery.isLoading) return;
+    const match = drafts.find(
+      (draft) =>
+        draft.slotIndex === searchSlot && (searchType ? draft.type === searchType : true),
+    );
+    if (match) {
+      setDialogDraft(match);
+      setDialogMode("view");
+    }
+  }, [searchSlot, searchType, drafts, draftsQuery.isLoading]);
+
+  if (authLoading || !user) return null;
 
   const openDraft = (draft: ContentDraft, mode: "view" | "edit") => {
     setDialogDraft(draft);
@@ -200,10 +241,11 @@ function ContentFactoryPage() {
   };
 
   return (
-    <AppShell
-      title="AI Content Factory"
-      subtitle="Generate weekly Medicare education assets, review them, and publish through the draft queue."
-    >
+    <AdminAccessGate>
+      <AppShell
+        title="AI Content Factory"
+        subtitle="Generate weekly Medicare education assets, review them, and publish through the draft queue."
+      >
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-0">
@@ -537,5 +579,6 @@ function ContentFactoryPage() {
         }}
       />
     </AppShell>
+    </AdminAccessGate>
   );
 }

@@ -30,7 +30,7 @@ export const Route = createFileRoute("/legal")({
       {
         name: "description",
         content:
-          "Privacy Policy, Terms of Use, Cookie Policy, data deletion requests, and privacy contact information for Get Part B Optimizer.",
+          "Privacy Policy, Terms of Use, Cookie Policy, data deletion requests, and privacy contact information for The Part B Optimizer.",
       },
     ],
   }),
@@ -214,7 +214,7 @@ function PrivacyContactSection() {
         <p className="text-sm text-muted-foreground leading-relaxed">
           Questions about this Privacy Policy, your data, or your privacy rights? Email us at{" "}
           <a
-            href={`mailto:${PRIVACY_CONTACT_EMAIL}?subject=${encodeURIComponent("Privacy inquiry — Get Part B Optimizer")}`}
+            href={`mailto:${PRIVACY_CONTACT_EMAIL}?subject=${encodeURIComponent("Privacy inquiry — Part B Optimizer")}`}
             className="text-primary underline underline-offset-2"
           >
             {PRIVACY_CONTACT_EMAIL}

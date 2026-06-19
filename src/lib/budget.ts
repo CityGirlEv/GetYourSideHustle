@@ -1,5 +1,5 @@
 // ============================================================================
-// Get Part B Optimizer — PRODUCT BUDGET
+// Part B Optimizer — PRODUCT BUDGET
 // ----------------------------------------------------------------------------
 // AI-accelerated actuals. Engineering lines reflect real time spent (prompting,
 // review, testing, polish) — not traditional pre-AI estimates. Most features

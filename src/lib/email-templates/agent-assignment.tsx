@@ -13,7 +13,7 @@ import type { TemplateEntry } from "./registry";
 import { EmailHeader } from "./email-header";
 import { EmailFooter } from "./email-footer";
 
-import { SITE_BRAND_NAME as SITE_NAME } from "@/lib/site-brand";
+import { SITE_BRAND_NAME, SITE_BRAND_THE } from "@/lib/site-brand";
 
 interface Props {
   agentName?: string;
@@ -56,7 +56,7 @@ const AgentAssignmentEmail = ({ agentName, scenarioCode, clientName, scenarioUrl
             Open scenario
           </Button>
         ) : null}
-        <Text style={footer}>{SITE_NAME}</Text>
+        <Text style={footer}>{SITE_BRAND_THE}</Text>
         <EmailFooter />
       </Container>
     </Body>

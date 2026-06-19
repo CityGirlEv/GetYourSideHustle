@@ -20,7 +20,7 @@ const env = loadEnv();
 const sb = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 const resendKey = env.RESEND_API_KEY;
 const from =
-  env.EMAIL_FROM ?? "Get Part B Optimizer <noreply@mypartb.com>";
+  env.EMAIL_FROM ?? "Part B Optimizer <noreply@mypartb.com>";
 
 async function sendViaResend(payload) {
   const res = await fetch("https://api.resend.com/emails", {

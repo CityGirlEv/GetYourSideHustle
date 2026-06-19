@@ -16,7 +16,7 @@ import { EmailHeader } from "./email-header";
 import { EmailFooter } from "./email-footer";
 import { resolveEmailSiteUrl } from "./email-header";
 
-import { SITE_BRAND_NAME as SITE_NAME } from "@/lib/site-brand";
+import { SITE_BRAND_NAME, SITE_BRAND_THE } from "@/lib/site-brand";
 
 export interface AssignedTestRow {
   id: string;
@@ -76,19 +76,19 @@ const BetaTestAssignmentEmail = ({
           <Text style={text}>
             {newCount === 1 ? (
               <>
-                A new beta test has been assigned to you on <strong>{SITE_NAME}</strong>. When you
+                A new beta test has been assigned to you on <strong>{SITE_BRAND_THE}</strong>. When you
                 have a moment, please log in, open the Testing Portal, and run through the steps
                 below.
               </>
             ) : newCount > 1 ? (
               <>
                 <strong>{newCount}</strong> new beta tests have been assigned to you on{" "}
-                <strong>{SITE_NAME}</strong>. When you have a moment, please log in and work through
+                <strong>{SITE_BRAND_THE}</strong>. When you have a moment, please log in and work through
                 them in the Testing Portal.
               </>
             ) : (
               <>
-                Here is your current beta test assignment list on <strong>{SITE_NAME}</strong>. Log
+                Here is your current beta test assignment list on <strong>{SITE_BRAND_THE}</strong>. Log
                 in anytime to update status and add notes in the Testing Portal.
               </>
             )}
@@ -131,7 +131,7 @@ const BetaTestAssignmentEmail = ({
 
           <Section style={buttonRow}>
             <Button style={button} href={signInUrl}>
-              Log in to {SITE_NAME}
+              Log in to {SITE_BRAND_THE}
             </Button>
           </Section>
           <Text style={text}>
@@ -141,7 +141,7 @@ const BetaTestAssignmentEmail = ({
             </Link>{" "}
             to view your assignments, update status, and add notes.
           </Text>
-          <Text style={footer}>Thank you for helping us improve {SITE_NAME}.</Text>
+          <Text style={footer}>Thank you for helping us improve {SITE_BRAND_THE}.</Text>
           <EmailFooter siteUrl={siteUrl} />
         </Container>
       </Body>

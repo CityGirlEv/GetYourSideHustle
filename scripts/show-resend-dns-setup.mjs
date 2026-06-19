@@ -49,6 +49,6 @@ for (const rec of detail.records ?? []) {
 console.log("\nAfter saving DNS records, verify in Resend:");
 console.log(`  node scripts/setup-resend-dns.mjs   (or click Verify in the Resend dashboard)`);
 console.log("\nThen set EMAIL_FROM in Cloudflare Pages:");
-console.log(`  Get Part B Optimizer <noreply@${DOMAIN}>`);
+console.log(`  Part B Optimizer <noreply@${DOMAIN}>`);
 console.log("\nTest send to any address:");
 console.log("  node scripts/test-resend-from-addresses.mjs\n");

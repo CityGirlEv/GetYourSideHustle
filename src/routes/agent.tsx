@@ -20,12 +20,12 @@ import { userHasAdminRole } from "@/lib/user-roles";
 export const Route = createFileRoute("/agent")({
   head: () => ({
     meta: [
-      { title: "Agent Command Center — Get Part B Optimizer" },
+      { title: "Agent Command Center — Part B Optimizer" },
       {
         name: "description",
         content: "Look up Medicare scenarios by ID and manage your agent caseload. No PII stored.",
       },
-      { property: "og:title", content: "Agent Command Center — Get Part B Optimizer" },
+      { property: "og:title", content: "Agent Command Center — Part B Optimizer" },
       { property: "og:description", content: "Agent caseload and scenario lookup." },
       { property: "og:url", content: "https://themedicareoptimizer.lovable.app/agent" },
       { name: "robots", content: "noindex,nofollow" },

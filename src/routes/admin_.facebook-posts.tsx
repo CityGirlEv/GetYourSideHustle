@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { AppShell } from "@/components/AppShell";
+import { AdminAccessGate } from "@/components/AdminAccessGate";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,11 +15,13 @@ import {
   listContentFactoryDraftsAdmin,
 } from "@/lib/content-factory.functions";
 import {
-  buildEditorialCalendar,
+  buildWeeklyEditorialCalendar,
   editorialActionTime,
+  editorialLaunchWeekStart,
   formatEditorialTimeLabel,
-  isCatchUpWeek,
-  startOfWeekMonday,
+  formatLaunchWeekLabel,
+  isPreLaunchWeek,
+  startOfWeekSaturday,
 } from "@/lib/content-factory/weekly-editorial-schedule";
 import {
   extractHashtags,
@@ -26,6 +29,10 @@ import {
   facebookPostBodyWithoutHashtags,
   formatFacebookPasteText,
 } from "@/lib/content-factory/facebook-post-copy";
+import {
+  facebookPostImageGuidance,
+  type CalendarDraftRef,
+} from "@/lib/content-factory/editorial-calendar-links";
 import {
   ContentStatusBadge,
   formatContentTimestamp,
@@ -38,6 +45,7 @@ import {
   Copy,
   ExternalLink,
   Facebook,
+  Image as ImageIcon,
 } from "lucide-react";
 
 export const Route = createFileRoute("/admin_/facebook-posts")({
@@ -69,11 +77,7 @@ function FacebookPostsPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
-      router.navigate({ to: "/auth" });
-      return;
-    }
-    if (!userHasAdminRole(user)) {
-      router.navigate({ to: "/" });
+      router.navigate({ to: "/auth", search: { tab: "sign-in" } });
     }
   }, [user, authLoading, router]);
 
@@ -88,19 +92,31 @@ function FacebookPostsPage() {
 
   const draftsQuery = useQuery({
     queryKey: ["content-factory-drafts", "facebook-posts", activeBatchId],
-    queryFn: () =>
-      listDrafts({ data: { batchId: activeBatchId ?? undefined, type: "facebook_post" } }),
+    queryFn: () => listDrafts({ data: { batchId: activeBatchId ?? undefined } }),
     enabled: Boolean(user && userHasAdminRole(user) && activeBatchId),
   });
 
+  const draftBySlot = useMemo(() => {
+    const map = new Map<string, CalendarDraftRef>();
+    for (const draft of draftsQuery.data ?? []) {
+      map.set(`${draft.type}:${draft.slotIndex}`, draft);
+    }
+    return map;
+  }, [draftsQuery.data]);
+
   const fbDrafts = useMemo(
-    () => [...(draftsQuery.data ?? [])].sort((a, b) => a.slotIndex - b.slotIndex),
+    () =>
+      [...(draftsQuery.data ?? [])]
+        .filter((draft) => draft.type === "facebook_post")
+        .sort((a, b) => a.slotIndex - b.slotIndex),
     [draftsQuery.data],
   );
 
-  const weekStart = startOfWeekMonday(new Date());
+  const weekStart = startOfWeekSaturday(new Date());
+  const preLaunch = isPreLaunchWeek(weekStart);
+  const scheduleWeekStart = preLaunch ? editorialLaunchWeekStart() : weekStart;
   const scheduleBySlot = useMemo(() => {
-    const events = buildEditorialCalendar({ weekStart });
+    const events = buildWeeklyEditorialCalendar({ weekStart: scheduleWeekStart });
     const map = new Map<
       number,
       { produceDate: string; launchDate: string; produceTime: string; launchTime: string }
@@ -132,15 +148,15 @@ function FacebookPostsPage() {
       }
     }
     return map;
-  }, [fbDrafts, weekStart]);
+  }, [fbDrafts, scheduleWeekStart]);
 
   const pageUrl = facebookPageUrl();
-  const catchUp = isCatchUpWeek(weekStart);
 
-  if (authLoading || !user || !userHasAdminRole(user)) return null;
+  if (authLoading || !user) return null;
 
   return (
-    <AppShell
+    <AdminAccessGate>
+      <AppShell
       title="Facebook Posts"
       subtitle="Copy-ready post text, hashtags, and scheduled times from your Content Factory batch."
     >
@@ -197,16 +213,26 @@ function FacebookPostsPage() {
                 </option>
               ))}
             </select>
-            {catchUp && (
-              <Badge variant="outline" className="text-[10px]">
-                Catch-up week schedule
+            {preLaunch && (
+              <Badge variant="outline" className="text-[10px] border-amber-500/40">
+                Posting starts {formatLaunchWeekLabel()}
               </Badge>
             )}
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Copy the post body below into Facebook Business Suite or your page composer. Hashtags
-            are split out so you can paste them at the end. Launch times match the Content Calendar
-            daily checklist.
+            {preLaunch ? (
+              <>
+                <strong className="text-foreground">Do not publish yet.</strong> Sprint week: finish
+                LLC setup by Friday — earliest go-live {formatEarliestLaunchLabel()}. Scheduled post
+                times below are for Week 1 ({formatLaunchWeekLabel()}).
+              </>
+            ) : (
+              <>
+                Copy the post body below into Facebook Business Suite or your page composer. Hashtags
+                are split out so you can paste them at the end. Each card includes which image to attach
+                — for Posts 1–3, use the same hero JPG as the linked Learning Center article.
+              </>
+            )}
           </p>
         </Card>
 
@@ -232,6 +258,7 @@ function FacebookPostsPage() {
                 schedule={scheduleBySlot.get(draft.slotIndex)}
                 highlighted={highlightSlot === draft.slotIndex}
                 pageUrl={pageUrl}
+                draftBySlot={draftBySlot}
               />
             ))}
           </div>
@@ -245,6 +272,7 @@ function FacebookPostsPage() {
         </Link>
       </div>
     </AppShell>
+    </AdminAccessGate>
   );
 }
 
@@ -253,6 +281,7 @@ function FacebookPostCard({
   schedule,
   highlighted,
   pageUrl,
+  draftBySlot,
 }: {
   draft: ContentDraft;
   schedule?: {
@@ -263,11 +292,13 @@ function FacebookPostCard({
   };
   highlighted?: boolean;
   pageUrl: string | null;
+  draftBySlot: Map<string, CalendarDraftRef>;
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
   const hashtags = extractHashtags(draft.body);
   const bodyWithoutTags = facebookPostBodyWithoutHashtags(draft.body);
   const fullPaste = formatFacebookPasteText(draft);
+  const imageGuidance = facebookPostImageGuidance(draft.slotIndex, draftBySlot);
 
   useEffect(() => {
     if (!highlighted || !cardRef.current) return;
@@ -356,6 +387,32 @@ function FacebookPostCard({
         </div>
       )}
 
+      <div className="space-y-2 rounded-md border border-amber-400/40 bg-amber-50 p-3 dark:border-amber-500/30 dark:bg-amber-950/30">
+        <div className="flex flex-wrap items-center gap-2">
+          <ImageIcon className="h-4 w-4 text-amber-800 dark:text-amber-200 shrink-0" />
+          <label className="text-xs font-semibold text-amber-950 dark:text-amber-50">Which image to post</label>
+        </div>
+        <p className="text-xs text-amber-950/90 dark:text-amber-100/90 leading-relaxed">{imageGuidance.headline}</p>
+        <p className="text-[11px] text-amber-950 dark:text-amber-100">
+          <span className="font-semibold">File:</span> {imageGuidance.imageLabel}
+        </p>
+        <ol className="text-[11px] text-amber-900/90 dark:text-amber-100/90 space-y-1 list-decimal list-inside">
+          {imageGuidance.steps.map((step) => (
+            <li key={step}>{step}</li>
+          ))}
+        </ol>
+        {imageGuidance.imageUrl ? (
+          <div className="flex flex-wrap gap-2 pt-1">
+            <Button size="sm" variant="outline" className="h-7 text-xs" asChild>
+              <a href={imageGuidance.imageUrl} target="_blank" rel="noopener noreferrer">
+                Open image URL
+                <ExternalLink className="h-3 w-3 ml-1 opacity-70" />
+              </a>
+            </Button>
+          </div>
+        ) : null}
+      </div>
+
       <div className="flex flex-wrap gap-2 pt-1">
         {pageUrl ? (
           <Button size="sm" variant="outline" className="h-8 text-xs" asChild>
@@ -383,7 +440,7 @@ function FacebookPostCard({
             href={draft.publishedRef}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sky-300 hover:underline"
+            className="text-primary font-medium hover:underline"
           >
             {draft.publishedRef}
           </a>

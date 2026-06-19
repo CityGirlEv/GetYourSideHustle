@@ -80,7 +80,7 @@ async function probeKey(label, key) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: "Get Part B Optimizer <noreply@mypartb.com>",
+      from: "Part B Optimizer <noreply@mypartb.com>",
       to: ["evelyn3@cox.net"],
       subject: `[probe] ${label}`,
       html: "<p>probe</p>",

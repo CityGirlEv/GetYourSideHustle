@@ -4,10 +4,10 @@ import {
   EMAIL_FOOTER_LOGO_PATH,
   EMAIL_LOGO_PATH,
 } from "@/lib/email-templates/email-header";
-import { SITE_BRAND_NAME } from "@/lib/site-brand";
+import { SITE_BRAND_NAME, SITE_BRAND_THE } from "@/lib/site-brand";
 
 export const AUTH_SAMPLE_PROPS: Record<string, unknown> = {
-  siteName: SITE_BRAND_NAME,
+  siteName: SITE_BRAND_THE,
   siteUrl: "https://mypartb.pages.dev",
   recipient: "jane@example.com",
   confirmationUrl: "https://example.com/confirm?token=sample",
@@ -30,10 +30,9 @@ export const AUTH_TEMPLATE_NAMES = new Set([
 export const AUTH_LEGACY_PLACEHOLDERS: Array<{ sample: string; key: string }> = [
   { sample: "user@example.test", key: "email" },
   { sample: "https://themedicareoptimizer.lovable.app", key: "confirmationUrl" },
-  { sample: "themedicareoptimizer", key: "siteName" },
+  { sample: SITE_BRAND_THE, key: "siteName" },
+  { sample: SITE_BRAND_NAME, key: "siteName" },
   { sample: "The Medicare Optimizer", key: "siteName" },
-  { sample: "Part B Optimizer", key: "siteName" },
-  { sample: "Get Part B Optimizer", key: "siteName" },
 ];
 
 /** Merge fields available per auth template (admin editor + send pipeline). */
@@ -53,7 +52,7 @@ export function getAuthTemplateTestData(
 ): Record<string, unknown> {
   const baseUrl = "https://getpartb.com";
   return {
-    siteName: SITE_BRAND_NAME,
+    siteName: SITE_BRAND_THE,
     siteUrl: baseUrl,
     recipient,
     email: recipient,
@@ -70,9 +69,9 @@ export const SHARED_MERGE_LITERALS: Array<{ sample: string; key: string }> = [
   { sample: `${DEFAULT_EMAIL_SITE_URL}${EMAIL_FOOTER_LOGO_PATH}`, key: "emailFooterLogoUrl" },
   { sample: `https://mypartb.com${EMAIL_LOGO_PATH}`, key: "emailLogoUrl" },
   { sample: `https://mypartb.com${EMAIL_FOOTER_LOGO_PATH}`, key: "emailFooterLogoUrl" },
-  { sample: SITE_BRAND_NAME, key: "siteName" },
+  { sample: SITE_BRAND_THE, key: "siteName" },
   { sample: "The Medicare Optimizer", key: "siteName" },
-  { sample: "Part B Optimizer", key: "siteName" },
+  { sample: SITE_BRAND_NAME, key: "siteName" },
   { sample: "https://mypartb.pages.dev", key: "siteUrl" },
   { sample: "https://mypartb.com", key: "siteUrl" },
 ];

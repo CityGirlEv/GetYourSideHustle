@@ -18,7 +18,7 @@ export function LearningCenterCta({ compact = false }: { compact?: boolean }) {
         </p>
       </div>
       <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-        <Button asChild className="grad-indigo font-semibold !text-yellow-300">
+        <Button asChild className="grad-indigo font-semibold text-primary-foreground">
           <Link to="/scenario/new">
             Build my scenario <ArrowRight className="h-4 w-4 ml-1" />
           </Link>

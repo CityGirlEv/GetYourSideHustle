@@ -16,7 +16,7 @@ import { EmailHeader } from "./email-header";
 import { EmailFooter } from "./email-footer";
 import { resolveEmailSiteUrl } from "./email-header";
 
-import { SITE_BRAND_NAME as SITE_NAME } from "@/lib/site-brand";
+import { SITE_BRAND_NAME, SITE_BRAND_THE } from "@/lib/site-brand";
 
 export interface BetaTestDevNoteProps {
   testerName?: string;
@@ -61,7 +61,7 @@ const BetaTestDevNoteEmail = ({
           <Text style={text}>Hope this email finds you well.</Text>
           <Text style={text}>
             A developer left a note on a beta test assigned to you in the{" "}
-            <strong>{SITE_NAME}</strong> Testing Portal.
+            <strong>{SITE_BRAND_THE}</strong> Testing Portal.
           </Text>
 
           <Section style={card}>
@@ -91,7 +91,7 @@ const BetaTestDevNoteEmail = ({
 
           <Section style={buttonRow}>
             <Button style={button} href={signInUrl}>
-              Log in to {SITE_NAME}
+              Log in to {SITE_BRAND_THE}
             </Button>
           </Section>
           <Text style={text}>
@@ -101,7 +101,7 @@ const BetaTestDevNoteEmail = ({
             </Link>{" "}
             to review the test and respond.
           </Text>
-          <Text style={footer}>Thank you for helping us improve {SITE_NAME}.</Text>
+          <Text style={footer}>Thank you for helping us improve {SITE_BRAND_THE}.</Text>
           <EmailFooter siteUrl={siteUrl} />
         </Container>
       </Body>

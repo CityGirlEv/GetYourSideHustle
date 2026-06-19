@@ -600,7 +600,7 @@ function buildPathwayBSheet(wb: ExcelJS.Workbook, input: ScenarioXlsxInput) {
 
 function buildScenarioWorkbook(input: ScenarioXlsxInput): ExcelJS.Workbook {
   const wb = new ExcelJS.Workbook();
-  wb.creator = "Get Part B Optimizer";
+  wb.creator = "Part B Optimizer";
   wb.created = new Date();
   buildPersonalSheet(wb, input);
   buildPathwayASheet(wb, input);

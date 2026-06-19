@@ -4,7 +4,7 @@ import { InviteEmail } from "../src/lib/email-templates/invite.tsx";
 
 const html = await render(
   React.createElement(InviteEmail, {
-    siteName: "Get Part B Optimizer",
+    siteName: "Part B Optimizer",
     siteUrl: "https://mypartb.pages.dev",
     confirmationUrl: "https://example.com/confirm",
   }),

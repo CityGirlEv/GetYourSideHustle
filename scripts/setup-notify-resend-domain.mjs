@@ -159,7 +159,7 @@ async function updatePagesEnv() {
   const envVars = { ...(production.env_vars ?? {}) };
   envVars.EMAIL_FROM = {
     type: "plain_text",
-    value: `Get Part B Optimizer <noreply@${DOMAIN}>`,
+    value: `Part B Optimizer <noreply@${DOMAIN}>`,
   };
   envVars.EMAIL_SENDER_DOMAIN = { type: "plain_text", value: DOMAIN };
 
@@ -186,7 +186,7 @@ async function testSend() {
     method: "POST",
     headers: resendHeaders,
     body: JSON.stringify({
-      from: `Get Part B Optimizer <noreply@${DOMAIN}>`,
+      from: `Part B Optimizer <noreply@${DOMAIN}>`,
       to: ["evelyn3@cox.net"],
       subject: "[mypartb] Resend notify subdomain test",
       html: "<p>If you received this, notify.mypartb.com is verified and sending.</p>",

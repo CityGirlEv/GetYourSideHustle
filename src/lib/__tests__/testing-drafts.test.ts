@@ -10,6 +10,7 @@ import {
   omitMatchingStringDrafts,
   omitTestDraft,
   resolveSavedStatusBaseline,
+  isMetadataOnlyPendingChanges,
   shouldForceInProgressStatus,
   shouldSkipCloudReload,
   statusFilterMatchesOrEngaged,
@@ -92,6 +93,25 @@ describe("testing-drafts", () => {
     expect(statusFilterMatchesOrEngaged(["not_run"], "in_progress", "T-1", engaged)).toBe(true);
     expect(statusFilterMatchesOrEngaged(["not_run"], "in_progress", "T-2", engaged)).toBe(false);
     expect(statusFilterMatchesOrEngaged([], "in_progress", "T-2", engaged)).toBe(true);
+  });
+
+  it("isMetadataOnlyPendingChanges is true only for owner/sprint drafts", () => {
+    expect(
+      isMetadataOnlyPendingChanges("T-1", [
+        { testId: "T-1", field: "assignee" },
+        { testId: "T-1", field: "devAssignee" },
+      ]),
+    ).toBe(true);
+    expect(isMetadataOnlyPendingChanges("T-1", [{ testId: "T-1", field: "assignee" }])).toBe(
+      true,
+    );
+    expect(
+      isMetadataOnlyPendingChanges("T-1", [
+        { testId: "T-1", field: "assignee" },
+        { testId: "T-1", field: "status" },
+      ]),
+    ).toBe(false);
+    expect(isMetadataOnlyPendingChanges("T-1", [])).toBe(false);
   });
 
   it("shouldForceInProgressStatus starts not_run tests when a step is checked", () => {

@@ -20,7 +20,7 @@ import { CREDIT_REWARDS, REPRO_FAIL_BONUS } from "@/lib/test-plan";
 export const Route = createFileRoute("/qa-manual")({
   head: () => ({
     meta: [
-      { title: "QA Manual — Get Part B Optimizer" },
+      { title: "QA Manual — Part B Optimizer" },
       {
         name: "description",
         content:

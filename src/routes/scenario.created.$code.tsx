@@ -31,7 +31,7 @@ import { ScenarioProfileHeader } from "@/components/ScenarioProfileHeader";
 export const Route = createFileRoute("/scenario/created/$code")({
   head: () => ({
     meta: [
-      { title: "Scenario Created — Get Part B Optimizer" },
+      { title: "Scenario Created — Part B Optimizer" },
       { name: "robots", content: "noindex" },
     ],
   }),

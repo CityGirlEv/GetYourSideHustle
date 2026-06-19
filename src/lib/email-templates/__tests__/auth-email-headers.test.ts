@@ -17,7 +17,7 @@ const authTemplates = [
     name: "signup",
     component: SignupEmail,
     props: {
-      siteName: "Get Part B Optimizer",
+      siteName: "The Part B Optimizer",
       siteUrl: GETPARTB,
       recipient: "user@example.com",
       confirmationUrl: `${GETPARTB}/confirm`,
@@ -27,7 +27,7 @@ const authTemplates = [
     name: "invite",
     component: InviteEmail,
     props: {
-      siteName: "Get Part B Optimizer",
+      siteName: "The Part B Optimizer",
       siteUrl: GETPARTB,
       confirmationUrl: `${GETPARTB}/invite`,
     },
@@ -36,7 +36,7 @@ const authTemplates = [
     name: "magic-link",
     component: MagicLinkEmail,
     props: {
-      siteName: "Get Part B Optimizer",
+      siteName: "The Part B Optimizer",
       siteUrl: GETPARTB,
       recipient: "user@example.com",
       confirmationUrl: `${GETPARTB}/magic`,
@@ -46,7 +46,7 @@ const authTemplates = [
     name: "recovery",
     component: RecoveryEmail,
     props: {
-      siteName: "Get Part B Optimizer",
+      siteName: "The Part B Optimizer",
       siteUrl: GETPARTB,
       recipient: "user@example.com",
       confirmationUrl: `${GETPARTB}/reset`,
@@ -56,7 +56,7 @@ const authTemplates = [
     name: "email-change",
     component: EmailChangeEmail,
     props: {
-      siteName: "Get Part B Optimizer",
+      siteName: "The Part B Optimizer",
       siteUrl: GETPARTB,
       email: "new@example.com",
       oldEmail: "old@example.com",
@@ -82,9 +82,9 @@ describe("auth email headers", () => {
       expect(html).toContain(ASSET_LOGO);
       expect(html).not.toContain(`${GETPARTB}/email-logo.png`);
       expect(html).toContain("email-brand-logo");
-      expect(html).toContain('alt="Get Part B Optimizer"');
+      expect(html).toContain('alt="Part B Optimizer"');
       expect(html).toContain("email-header-copyright");
-      expect(html).toMatch(/© \d{4} Get Part B Optimizer\. All rights reserved\./);
+      expect(html).toMatch(/© \d{4} Part B Optimizer\. All rights reserved\./);
     },
   );
 });

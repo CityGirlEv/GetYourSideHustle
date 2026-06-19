@@ -3,7 +3,7 @@ import {
   emailLogoUrl,
   resolveEmailAssetUrl,
 } from "@/lib/email-templates/email-header";
-import { SITE_BRAND_NAME } from "@/lib/site-brand";
+import { SITE_BRAND_NAME, SITE_BRAND_THE } from "@/lib/site-brand";
 import {
   AUTH_LEGACY_PLACEHOLDERS,
   AUTH_MERGE_FIELDS_BY_TEMPLATE,
@@ -93,7 +93,7 @@ export function buildMergeContext(data: Record<string, unknown>): Record<string,
   if (!out.email && out.recipient) out.email = out.recipient;
   if (!out.recipient && out.email) out.recipient = out.email;
 
-  if (!out.siteName) out.siteName = SITE_BRAND_NAME;
+  if (!out.siteName) out.siteName = SITE_BRAND_THE;
   if (!out.siteUrl) out.siteUrl = "https://mypartb.com";
   if (!out.emailLogoUrl) out.emailLogoUrl = emailLogoUrl();
   if (!out.emailFooterLogoUrl) out.emailFooterLogoUrl = emailFooterLogoUrl();

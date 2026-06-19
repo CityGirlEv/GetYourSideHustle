@@ -3,6 +3,7 @@ import { useApp } from "@/lib/app-store";
 import { userHasAdminRole } from "@/lib/user-roles";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { AdminContentPublishingLinks } from "@/components/AdminContentPublishingLinks";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -57,13 +58,13 @@ import {
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
-      { title: "Admin Console — Get Part B Optimizer" },
+      { title: "Admin Console — Part B Optimizer" },
       {
         name: "description",
         content: "Admin tools for managing scenarios, users, agents, and operations.",
       },
-      { property: "og:title", content: "Admin Console — Get Part B Optimizer" },
-      { property: "og:description", content: "Internal admin tools for Get Part B Optimizer." },
+      { property: "og:title", content: "Admin Console — Part B Optimizer" },
+      { property: "og:description", content: "Internal admin tools for The Part B Optimizer." },
       { property: "og:url", content: "https://themedicareoptimizer.lovable.app/admin" },
       { name: "robots", content: "noindex,nofollow" },
     ],
@@ -443,6 +444,7 @@ function AdminPortal() {
 
   return (
     <AppShell title="Admin" subtitle="Immutable audit trail · global Medicare config">
+      {userHasAdminRole(user) ? <AdminContentPublishingLinks /> : null}
       {userHasAdminRole(user) && (
         <Card className="glass mb-4 p-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">

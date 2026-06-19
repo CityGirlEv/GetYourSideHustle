@@ -25,7 +25,7 @@ Medicare.gov Plan Finder and 1-800-MEDICARE remain the authoritative sources for
 
 ## Try a sample scenario
 
-Build a de-identified scenario on Get Part B Optimizer to see how Original Medicare + Medigap vs. Medicare Advantage might look for a sample profile — then validate with a licensed professional if you want personalized guidance.
+Build a de-identified scenario on The Part B Optimizer to see how Original Medicare + Medigap vs. Medicare Advantage might look for a sample profile — then validate with a licensed professional if you want personalized guidance.
 
 ## Frequently asked questions
 

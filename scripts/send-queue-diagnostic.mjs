@@ -33,7 +33,7 @@ const { error } = await sb.rpc("enqueue_email", {
   payload: {
     message_id: messageId,
     to: recipient,
-    from: env.EMAIL_FROM ?? "Get Part B Optimizer <noreply@mypartb.com>",
+    from: env.EMAIL_FROM ?? "Part B Optimizer <noreply@mypartb.com>",
     sender_domain: env.EMAIL_SENDER_DOMAIN ?? "mypartb.com",
     subject: "[TEST] post-fix diagnostic",
     html: "<p>Queue send after sandbox from fallback fix.</p>",

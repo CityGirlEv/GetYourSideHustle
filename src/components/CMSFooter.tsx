@@ -15,7 +15,7 @@ export function CMSFooter() {
           </Link>
           <p className="text-[11px] text-muted-foreground/80">{formatSiteCopyright()}</p>
         </div>
-        <div className="flex items-center gap-x-4 gap-y-2 text-muted-foreground flex-wrap pt-1">
+        <div className="flex items-center gap-x-4 gap-y-2 text-foreground flex-wrap pt-1">
           <Link to="/" className="flex items-center gap-1 hover:text-foreground transition-colors">
             <Home className="h-3.5 w-3.5" /> Home
           </Link>
@@ -36,6 +36,12 @@ export function CMSFooter() {
             className="flex items-center gap-1 hover:text-foreground transition-colors"
           >
             <Link2 className="h-3.5 w-3.5" /> Data sources
+          </Link>
+          <Link
+            to="/about"
+            className="hover:text-foreground transition-colors"
+          >
+            About
           </Link>
           <Link
             to="/legal"

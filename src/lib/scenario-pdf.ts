@@ -65,7 +65,7 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
-  doc.text("Get Part B Optimizer", margin, 30);
+  doc.text("Part B Optimizer", margin, 30);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
   doc.text(`Scenario ${input.scenarioCode} · Plan year ${input.year}`, margin, 50);

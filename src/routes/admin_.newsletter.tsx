@@ -58,7 +58,7 @@ function buildNewsletterBody(
   return [
     "Hello {{fullName}},",
     "",
-    "Welcome to this week's Learning Center roundup from Get Part B Optimizer. We publish plain-language Medicare education — not enrollment sales.",
+    "Welcome to this week's Learning Center roundup from The Part B Optimizer. We publish plain-language Medicare education — not enrollment sales.",
     "",
     "## Featured guides",
     "",

@@ -2,7 +2,9 @@
  * Cloudflare Pages deploy fix for Nitro-generated worker config.
  *
  * Nitro emits main: index.mjs; Pages expects index.js in _worker.js.
- * Keep the ASSETS binding so the worker can serve /assets/* (CSS, JS, images).
+ * Do NOT declare an ASSETS binding — Pages injects env.ASSETS automatically
+ * for _worker.js, and wrangler 4.98+ rejects a manual ASSETS binding when
+ * pages_build_output_dir is present anywhere in the merged config.
  */
 import fs from "fs";
 import path from "path";
@@ -21,6 +23,8 @@ const config = JSON.parse(fs.readFileSync(wranglerPath, "utf8"));
 
 // pages_build_output_dir is only for wrangler.toml-style deploys, not pages deploy dist/
 delete config.pages_build_output_dir;
+// Pages provides ASSETS at runtime; manual binding fails wrangler deploy validation.
+delete config.assets;
 
 config.name = config.name ?? "mypartb";
 config.compatibility_date = config.compatibility_date ?? "2026-06-05";
@@ -29,12 +33,12 @@ config.main = "index.js";
 config.no_bundle = true;
 config.rules = config.rules ?? [{ type: "ESModule", globs: ["**/*.mjs", "**/*.js"] }];
 
-// Required: worker fetch handler serves public assets via env.ASSETS.fetch()
-if (!config.assets) {
-  config.assets = { binding: "ASSETS", directory: ".." };
-}
-
 fs.writeFileSync(wranglerPath, `${JSON.stringify(config, null, 2)}\n`);
+
+if (config.assets?.binding === "ASSETS" || config.pages_build_output_dir) {
+  console.error("fix-pages-wrangler: ASSETS/pages_build_output_dir still present after sanitize");
+  process.exit(1);
+}
 
 const indexMjs = path.join(workerDir, "index.mjs");
 const indexJs = path.join(workerDir, "index.js");
@@ -44,5 +48,5 @@ if (!fs.existsSync(indexMjs)) {
 }
 fs.copyFileSync(indexMjs, indexJs);
 
-console.log("Fixed dist/_worker.js/wrangler.json (kept ASSETS binding, main=index.js)");
+console.log("Fixed dist/_worker.js/wrangler.json (main=index.js, no manual ASSETS binding)");
 console.log("Worker entry: dist/_worker.js/index.js");

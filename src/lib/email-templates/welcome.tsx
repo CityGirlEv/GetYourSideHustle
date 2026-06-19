@@ -16,7 +16,7 @@ import { EmailHeader } from "./email-header";
 import { EmailFooter } from "./email-footer";
 import { resolveEmailSiteUrl } from "./email-header";
 
-import { SITE_BRAND_NAME as SITE_NAME } from "@/lib/site-brand";
+import { SITE_BRAND_NAME, SITE_BRAND_THE } from "@/lib/site-brand";
 
 interface Props {
   recipientName?: string;
@@ -41,7 +41,7 @@ const WelcomeEmail = ({
   return (
     <Html lang="en" dir="ltr">
       <Head />
-      <Preview>Your {SITE_NAME} account is active</Preview>
+      <Preview>Your {SITE_BRAND_NAME} account is active</Preview>
       <Body style={main}>
         <Container style={container}>
           <EmailHeader siteUrl={siteUrl} />
@@ -51,7 +51,7 @@ const WelcomeEmail = ({
             <>
               <Text style={text}>
                 You registered before we required passwords, so you never set one. To access{" "}
-                {SITE_NAME}, sign in if you already created a password elsewhere, or set your
+                {SITE_BRAND_THE}, sign in if you already created a password elsewhere, or set your
                 password using the link below.
               </Text>
               <Text style={text}>
@@ -72,7 +72,7 @@ const WelcomeEmail = ({
           ) : (
             <>
               <Text style={text}>
-                An administrator has approved your account. You can now sign in to {SITE_NAME}.
+                An administrator has approved your account. You can now sign in to {SITE_BRAND_THE}.
               </Text>
               <Text style={text}>
                 Sign in with your email and the password you confirmed during registration.
@@ -89,7 +89,7 @@ const WelcomeEmail = ({
               </Text>
             </>
           )}
-          <Text style={footer}>The {SITE_NAME} team</Text>
+          <Text style={footer}>{SITE_BRAND_THE} team</Text>
           <EmailFooter siteUrl={siteUrl} />
         </Container>
       </Body>
@@ -99,7 +99,7 @@ const WelcomeEmail = ({
 
 export const template = {
   component: WelcomeEmail,
-  subject: `Your ${SITE_NAME} account is active`,
+  subject: `Your ${SITE_BRAND_NAME} account is active`,
   displayName: "Welcome",
   previewData: {
     recipientName: "Jane",

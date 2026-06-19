@@ -1,3 +1,4 @@
+import { SITE_BRAND_THE } from "@/lib/site-brand";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useRouterState } from "@tanstack/react-router";
 import { AlertTriangle, LogOut, Save } from "lucide-react";
@@ -233,7 +234,7 @@ export function DeployVersionGate() {
             <AlertDialogDescription asChild>
               <div className="space-y-3 text-sm text-muted-foreground">
                 <p>
-                  A new version of Get Part B Optimizer has been deployed.{" "}
+                  A new version of {SITE_BRAND_THE} has been deployed.{" "}
                   <strong className="font-semibold text-foreground">Save your work</strong> before
                   logging out — unsaved changes may be lost.
                 </p>

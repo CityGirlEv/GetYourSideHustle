@@ -177,6 +177,7 @@ import {
   checkedStepsEqual,
   clearRecentLocalWrites,
   disengageTestIds,
+  isMetadataOnlyPendingChanges,
   mergeStatusesRespectingRecentWrites,
   noteLocalTestWrites,
   omitMatchingCheckedStepDrafts,
@@ -486,11 +487,11 @@ export const Route = createFileRoute("/testing")({
   }),
   head: () => ({
     meta: [
-      { title: "Testing Portal — Get Part B Optimizer" },
+      { title: "Testing Portal — Part B Optimizer" },
       {
         name: "description",
         content:
-          "Internal test plan, implementation plan, sprint schedule, and tasks for Get Part B Optimizer.",
+          "Internal test plan, implementation plan, sprint schedule, and tasks for The Part B Optimizer.",
       },
       { name: "robots", content: "noindex,nofollow" },
     ],
@@ -1507,6 +1508,7 @@ export function TestPlanTab() {
 
     setSaveBusy("Saving…");
     try {
+      const metadataOnlySave = isMetadataOnlyPendingChanges(id, pendingChanges);
       let status = getStatus(id);
       const previousAssignee = readSavedQaOwner(id);
       const previousDevNote = (savedDevNotes[id] ?? "").trim();
@@ -1518,7 +1520,11 @@ export function TestPlanTab() {
       const devNote = devNotes[id] ?? "";
       const checkedDraft = dCheckedSteps[id];
       const checkedForStatus = checkedDraft ?? readLocalStepChecks(id);
-      if (status === "not_run" && hasAnyStepChecks(checkedForStatus)) {
+      if (
+        !metadataOnlySave &&
+        status === "not_run" &&
+        hasAnyStepChecks(checkedForStatus)
+      ) {
         status = "in_progress";
       }
 
@@ -1526,7 +1532,7 @@ export function TestPlanTab() {
         t.steps.length === 0 ||
         t.steps.every((_, idx) => checkedForStatus.steps.includes(idx));
 
-      if (status === "pass" && !allStepsChecked) {
+      if (!metadataOnlySave && status === "pass" && !allStepsChecked) {
         toast.error("Cannot save test result", {
           description: `All test steps must be completed to pass this test. Please go back and check all the boxes for saving the passed test.`,
         });
@@ -5101,7 +5107,6 @@ const TestCaseCard = memo(function TestCaseCard({
             className="bg-transparent text-[11px] font-semibold text-primary focus:outline-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-90"
             value={assignee}
             onChange={(e) => {
-              touchTest();
               onAssigneeChange(t.id, e.target.value);
             }}
             disabled={assigneeLocked || (restrictAssigneeTo && restrictAssigneeTo.length <= 1)}
@@ -5137,7 +5142,6 @@ const TestCaseCard = memo(function TestCaseCard({
             className="bg-transparent text-[11px] font-semibold text-sky-700 focus:outline-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-90"
             value={devAssignee || "Unassigned"}
             onChange={(e) => {
-              touchTest();
               onDevAssigneeChange(t.id, e.target.value === "Unassigned" ? "" : e.target.value);
             }}
             disabled={!isAdmin || assigneeLocked}

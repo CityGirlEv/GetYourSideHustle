@@ -145,7 +145,7 @@ async function syncPagesEnv() {
   };
   envVars.EMAIL_FROM = {
     type: "plain_text",
-    value: `Get Part B Optimizer <noreply@${ZONE_NAME}>`,
+    value: `Part B Optimizer <noreply@${ZONE_NAME}>`,
   };
   envVars.EMAIL_SENDER_DOMAIN = { type: "plain_text", value: ZONE_NAME };
   const patchRes = await fetch(
@@ -176,7 +176,7 @@ async function testSend() {
       "User-Agent": "mypartb-fix/1.0",
     },
     body: JSON.stringify({
-      from: `Get Part B Optimizer <noreply@${ZONE_NAME}>`,
+      from: `Part B Optimizer <noreply@${ZONE_NAME}>`,
       to: ["evelyn3@cox.net"],
       subject: "[mypartb] Resend delivery test",
       html: "<p>If you received this, mypartb.com is verified and sending.</p>",

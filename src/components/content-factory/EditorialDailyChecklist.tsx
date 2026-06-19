@@ -1,16 +1,17 @@
-import { Link } from "@tanstack/react-router";
-import { PenLine, Rocket, ExternalLink } from "lucide-react";
+import { PenLine, Rocket } from "lucide-react";
 import {
   buildDailyChecklistItems,
   groupDailyChecklistByDate,
 } from "@/lib/content-factory/editorial-daily-checklist";
-import { facebookPostAdminSearch, facebookPageUrl } from "@/lib/content-factory/facebook-post-copy";
+import { facebookPageUrl } from "@/lib/content-factory/facebook-post-copy";
 import type { EditorialCalendarEvent } from "@/lib/content-factory/weekly-editorial-schedule";
 import {
   contentTypeIcon,
   ContentStatusBadge,
 } from "@/components/content-factory/content-factory-ui";
 import type { ContentDraftStatus } from "@/lib/content-factory/types";
+import { EditorialCalendarActionLinks } from "@/components/content-factory/EditorialCalendarLinks";
+import type { CalendarDraftRef } from "@/lib/content-factory/editorial-calendar-links";
 
 export function EditorialDailyChecklist({
   events,
@@ -21,7 +22,7 @@ export function EditorialDailyChecklist({
   onToggleCompleted,
 }: {
   events: EditorialCalendarEvent[];
-  draftBySlot: Map<string, { status: ContentDraftStatus; title: string }>;
+  draftBySlot: Map<string, CalendarDraftRef>;
   batchId: string | null;
   today?: string;
   completedEvents?: Record<string, boolean>;
@@ -36,7 +37,7 @@ export function EditorialDailyChecklist({
         <div key={date}>
           <h3
             className={`text-[10px] font-bold uppercase tracking-wide mb-2 ${
-              date === today ? "text-indigo-300" : "text-muted-foreground"
+              date === today ? "text-primary font-bold" : "text-muted-foreground"
             }`}
           >
             {label}
@@ -68,7 +69,7 @@ export function EditorialDailyChecklist({
                     />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
-                        <span className={`shrink-0 tabular-nums text-[10px] font-bold text-indigo-300/90 min-w-[4.5rem] ${
+                        <span className={`shrink-0 tabular-nums text-[10px] font-bold text-primary min-w-[4.5rem] ${
                           isCompleted ? "line-through opacity-70" : ""
                         }`}>
                           {item.timeLabel}
@@ -88,7 +89,7 @@ export function EditorialDailyChecklist({
                       <div className="text-[10px] text-muted-foreground mt-0.5 pl-[5rem]">
                         {isProduce ? "Produce" : "Launch"} · {item.event.detail}
                       </div>
-                      <div className="pl-[5rem]">
+                      <div className="pl-[5rem] space-y-1">
                         {item.event.slotIndex === 99 && (
                           <div className="mt-1 flex flex-wrap items-center gap-1.5">
                             {pageUrl ? (
@@ -96,10 +97,9 @@ export function EditorialDailyChecklist({
                                 href={pageUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-0.5 text-[10px] text-sky-300 hover:text-sky-200 underline-offset-2 hover:underline"
+                                className="inline-flex items-center gap-0.5 text-[10px] text-primary font-medium hover:text-primary/80 underline-offset-2 hover:underline"
                               >
                                 Open Facebook Page
-                                <ExternalLink className="h-2.5 w-2.5" />
                               </a>
                             ) : (
                               <span className="text-[10px] text-muted-foreground">
@@ -111,27 +111,16 @@ export function EditorialDailyChecklist({
                         {draft && (
                           <div className="mt-1 flex flex-wrap items-center gap-1.5">
                             <ContentStatusBadge status={draft.status} />
-                            {item.event.type === "facebook_post" && item.event.slotIndex !== 99 && (
-                              <Link
-                                to="/admin/facebook-posts"
-                                search={facebookPostAdminSearch(batchId, item.event.slotIndex)}
-                                className="inline-flex items-center gap-0.5 text-[10px] text-sky-300 hover:text-sky-200 underline-offset-2 hover:underline"
-                              >
-                                Copy post
-                                <ExternalLink className="h-2.5 w-2.5" />
-                              </Link>
-                            )}
                           </div>
                         )}
-                        {!draft && item.event.type === "facebook_post" && item.event.slotIndex !== 99 && (
-                          <Link
-                            to="/admin/facebook-posts"
-                            search={facebookPostAdminSearch(batchId, item.event.slotIndex)}
-                            className="mt-1 inline-flex items-center gap-0.5 text-[10px] text-sky-300 hover:text-sky-200 underline-offset-2 hover:underline"
-                          >
-                            Open post copy
-                            <ExternalLink className="h-2.5 w-2.5" />
-                          </Link>
+                        {item.event.slotIndex !== 99 && (
+                          <EditorialCalendarActionLinks
+                            event={item.event}
+                            draft={draft}
+                            batchId={batchId}
+                            draftBySlot={draftBySlot}
+                            compact
+                          />
                         )}
                       </div>
                     </div>

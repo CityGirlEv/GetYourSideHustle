@@ -16,7 +16,7 @@ import { EmailHeader } from "./email-header";
 import { EmailFooter } from "./email-footer";
 import { resolveEmailSiteUrl } from "./email-header";
 
-import { SITE_BRAND_NAME as SITE_NAME } from "@/lib/site-brand";
+import { SITE_BRAND_NAME, SITE_BRAND_THE } from "@/lib/site-brand";
 
 export interface ScenarioAssignmentRow {
   scenarioCode: string;
@@ -117,7 +117,7 @@ const ScenarioAssignmentAdminEmail = ({
           <Button style={button} href={dashboardUrl}>
             Open admin dashboard
           </Button>
-          <Text style={footer}>Automated notification for {SITE_NAME} administrators.</Text>
+          <Text style={footer}>Automated notification for {SITE_BRAND_THE} administrators.</Text>
           <EmailFooter />
         </Container>
       </Body>

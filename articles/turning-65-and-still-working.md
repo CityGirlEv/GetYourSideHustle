@@ -86,4 +86,4 @@ Yes. If you work for a company with 20+ employees, you can enroll in Part A only
 
 We may not present every plan available in your area. Any information we provide is for educational purposes only and is not a complete listing of plans. Please contact Medicare.gov or 1-800-MEDICARE to get information on all of your options.
 
-Ready to better understand your Medicare options? Visit [getpartb.com](https://getpartb.com) and compare your choices with Get Part B Optimizer.
+Ready to better understand your Medicare options? Visit [getpartb.com](https://getpartb.com) and compare your choices with The Part B Optimizer.

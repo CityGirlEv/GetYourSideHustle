@@ -244,7 +244,7 @@ function EmailTemplatesAdminPage() {
         ) : (
           <>
         <p className="text-sm text-muted-foreground">
-          Every template includes Get Part B Optimizer header logo. Auth templates use merge
+          Every template includes Part B Optimizer header logo. Auth templates use merge
           fields like <code className="rounded bg-muted px-1">{"{{confirmationUrl}}"}</code>;
           transactional templates use scenario and user data from each trigger.
         </p>

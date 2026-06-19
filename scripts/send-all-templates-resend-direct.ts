@@ -54,7 +54,7 @@ async function getOverride(name: string) {
 const recipients =
   process.argv.length > 2 ? process.argv.slice(2) : ["evelyn3@cox.net", "sharpebanker@yahoo.com"];
 
-const from = env.EMAIL_FROM ?? "Get Part B Optimizer <noreply@mypartb.com>";
+const from = env.EMAIL_FROM ?? "Part B Optimizer <noreply@mypartb.com>";
 const templateNames = Array.from(
   new Set([...ALL_TEMPLATES.map((t) => t.name), ...Object.keys(TEMPLATES)]),
 ).sort();

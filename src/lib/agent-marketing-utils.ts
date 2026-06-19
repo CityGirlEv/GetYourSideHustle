@@ -1,4 +1,5 @@
 import { AGENCY_REFERRAL_NOTICE } from "@/lib/medicare-disclaimers";
+import { SITE_BRAND_NAME, SITE_BRAND_THE } from "@/lib/site-brand";
 
 export interface MarketingContent {
   topic: string;
@@ -49,7 +50,7 @@ export const TRENDING_TOPICS = [
 ];
 
 const MANDATORY_SEO_FOOTER =
-  "Ready to better understand your Medicare options? Visit https://mypartb.com and compare your choices with Get Part B Optimizer.";
+  `Ready to better understand your Medicare options? Visit https://mypartb.com and compare your choices with ${SITE_BRAND_THE}.`;
 
 export function generateMarketingContent(topic: string): MarketingContent {
   const normalizedTopic = topic.trim();
@@ -72,7 +73,7 @@ Choosing between the two depends on your budget, healthcare needs, and preferenc
 ${MANDATORY_SEO_FOOTER}`,
       },
       facebookPost: {
-        text: "Are you confused by the differences between Medicare Advantage and Medigap? You are not alone! Get Part B Optimizer is here to help. Compare your choices side-by-side on our independent educational platform and choose the right option with confidence.",
+        text: `Are you confused by the differences between Medicare Advantage and Medigap? You are not alone! ${SITE_BRAND_THE} is here to help. Compare your choices side-by-side on our independent educational platform and choose the right option with confidence.`,
         cta: "Learn More",
         link: "https://mypartb.com",
       },
@@ -98,10 +99,10 @@ Deciding between Medicare Advantage and Medigap is a critical step in your Medic
 
 Medicare Advantage plans bundle your coverage, often with additional perks like dental or vision, but bind you to regional provider networks. Medigap, on the other hand, covers the cost gaps of Original Medicare and allows you to visit any provider nationwide, but carries a higher monthly premium.
 
-At Get Part B Optimizer, we believe you deserve unbiased information. As an independent educational technology platform, we help you compare these options side-by-side.
+At ${SITE_BRAND_THE}, we believe you deserve unbiased information. As an independent educational technology platform, we help you compare these options side-by-side.
 
 Best regards,
-Get Part B Optimizer Team`,
+${SITE_BRAND_THE} Team`,
       },
       faqContent: [
         {
@@ -133,7 +134,7 @@ Additionally, you'll want to evaluate if you need a Prescription Drug Plan (Part
 ${MANDATORY_SEO_FOOTER}`,
       },
       facebookPost: {
-        text: "Turning 65 soon? Medicare enrollment doesn't have to be a headache. Discover key deadlines, compare your coverage options side-by-side, and avoid lifelong penalties. Visit Get Part B Optimizer to get started.",
+        text: `Turning 65 soon? Medicare enrollment doesn't have to be a headache. Discover key deadlines, compare your coverage options side-by-side, and avoid lifelong penalties. Visit ${SITE_BRAND_THE} to get started.`,
         cta: "Learn More",
         link: "https://mypartb.com",
       },
@@ -162,7 +163,7 @@ Your Initial Enrollment Period (IEP) is a crucial 7-month window. If you miss it
 Our independent educational platform makes it easy to understand Medicare parts A, B, C, and D.
 
 Best regards,
-Get Part B Optimizer Team`,
+${SITE_BRAND_THE} Team`,
       },
       faqContent: [
         {
@@ -188,12 +189,12 @@ Get Part B Optimizer Team`,
 
 When evaluating how ${cleanTopic} fits into your overall healthcare plan, consider factors such as monthly premiums, deductibles, copayments, and your access to trusted providers. 
 
-Get Part B Optimizer operates as an independent educational platform and Third-Party Marketing Organization (TPMO). We focus on providing consumers with the resources and comparison tools they need to understand their options. ${AGENCY_REFERRAL_NOTICE}
+${SITE_BRAND_THE} operates as an independent educational platform and Third-Party Marketing Organization (TPMO). We focus on providing consumers with the resources and comparison tools they need to understand their options. ${AGENCY_REFERRAL_NOTICE}
 
 ${MANDATORY_SEO_FOOTER}`,
     },
     facebookPost: {
-      text: `Have questions about ${cleanTopic}? We've got answers. Get Part B Optimizer is an independent educational platform that helps you compare plans and understand your options without the sales pressure.`,
+      text: `Have questions about ${cleanTopic}? We've got answers. ${SITE_BRAND_THE} is an independent educational platform that helps you compare plans and understand your options without the sales pressure.`,
       cta: "Learn More",
       link: "https://mypartb.com",
     },
@@ -220,7 +221,7 @@ Today, we're taking a closer look at ${cleanTopic}.
 Navigating Medicare requires understanding how specific rules, networks, and plan costs interact. Our goal is to empower you with educational tools to make comparisons easy.
 
 Best regards,
-Get Part B Optimizer Team`,
+${SITE_BRAND_THE} Team`,
     },
     faqContent: [
       {
@@ -229,7 +230,7 @@ Get Part B Optimizer Team`,
       },
       {
         question: "Where can I get unbiased help?",
-        answer: "You can compare options on independent educational platforms like Get Part B Optimizer, or consult official government resources like Medicare.gov.",
+        answer: `You can compare options on independent educational platforms like ${SITE_BRAND_THE}, or consult official government resources like Medicare.gov.`,
       },
     ],
   };

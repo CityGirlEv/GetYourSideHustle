@@ -50,7 +50,7 @@ export function ContentStatusBadge({ status }: { status: ContentDraftStatus }) {
         : status === "scheduled"
           ? "bg-indigo-500/15 text-indigo-300 border-indigo-500/30"
           : status === "pending_review"
-            ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
+            ? "bg-amber-100 text-amber-900 border-amber-400/50 dark:bg-amber-500/15 dark:text-amber-100 dark:border-amber-500/30"
             : status === "rejected"
               ? "bg-rose-500/15 text-rose-300 border-rose-500/30"
               : "bg-muted text-muted-foreground border-border";

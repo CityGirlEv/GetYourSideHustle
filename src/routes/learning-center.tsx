@@ -31,7 +31,7 @@ export const Route = createFileRoute("/learning-center")({
       {
         property: "og:description",
         content:
-          "Plain-language Medicare education from Get Part B Optimizer. Compare concepts before you talk to a licensed professional.",
+          `Plain-language Medicare education from ${SITE_BRAND_NAME}. Compare concepts before you talk to a licensed professional.`,
       },
       { property: "og:url", content: PAGE_URL },
     ],

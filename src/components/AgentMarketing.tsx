@@ -145,9 +145,9 @@ export function AgentMarketing() {
                 Compliance Verified
               </span>
             </div>
-            <h2 className="font-display text-xl font-bold text-foreground">Get Part B Optimizer Marketing Center</h2>
+            <h2 className="font-display text-xl font-bold text-foreground">Part B Optimizer Marketing Center</h2>
             <p className="text-sm text-muted-foreground leading-relaxed max-w-3xl">
-              We position **Get Part B Optimizer** (
+              We position **Part B Optimizer** (
               <a href="https://mypartb.com" target="_blank" rel="noreferrer" className="underline text-indigo hover:text-indigo/80 font-medium">
                 https://mypartb.com
               </a>
@@ -156,7 +156,7 @@ export function AgentMarketing() {
           </div>
           <div className="shrink-0 bg-background/50 border border-border rounded-xl p-3 text-xs space-y-1.5 max-w-xs">
             <div className="font-bold text-foreground uppercase tracking-wide">Facebook Page Profile</div>
-            <div><strong className="text-muted-foreground">Name:</strong> Get Part B Optimizer</div>
+            <div><strong className="text-muted-foreground">Name:</strong> Part B Optimizer</div>
             <div><strong className="text-muted-foreground">Category:</strong> Educational Website</div>
             <div><strong className="text-muted-foreground">CTA:</strong> Learn More &rarr; mypartb.com</div>
           </div>
@@ -341,7 +341,7 @@ export function AgentMarketing() {
                       </div>
                       <div>
                         <div className="font-bold text-sm text-foreground flex items-center gap-1.5">
-                          Get Part B Optimizer
+                          Part B Optimizer
                           <ShieldCheck className="h-4 w-4 text-blue-500 fill-blue-500/10" />
                         </div>
                         <div className="text-[11px] text-muted-foreground">Sponsored · Educational Website</div>

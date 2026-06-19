@@ -60,6 +60,12 @@ export default defineConfig({
   plugins: [],
   vite: {
     plugins: [appBuildVersionPlugin()],
+    build: {
+      // Lower Rollup parallelism to reduce peak memory during Cloudflare CI builds.
+      rollupOptions: {
+        maxParallelFileOps: 2,
+      },
+    },
   },
   tanstackStart: {
     server: { entry: "server" },

@@ -16,7 +16,7 @@ import { EmailHeader } from "./email-header";
 import { EmailFooter } from "./email-footer";
 import { resolveEmailSiteUrl } from "./email-header";
 
-import { SITE_BRAND_NAME as SITE_NAME } from "@/lib/site-brand";
+import { SITE_BRAND_NAME, SITE_BRAND_THE } from "@/lib/site-brand";
 
 export interface AgentRegistrationConfirmationProps {
   firstName?: string;
@@ -47,7 +47,7 @@ const AgentRegistrationConfirmationEmail = ({
           <Heading style={h1}>Registration submitted — next steps</Heading>
           <Text style={text}>
             Hi <strong>{greetingName}</strong>, Your NDA is signed and your account has been
-            created on <strong>{SITE_NAME}</strong>.
+            created on <strong>{SITE_BRAND_THE}</strong>.
           </Text>
 
           <Section style={alertBox}>
@@ -93,7 +93,7 @@ const AgentRegistrationConfirmationEmail = ({
               Go to sign-in
             </Button>
           </Section>
-          <Text style={footer}>Thank you for joining {SITE_NAME} as a licensed advisor.</Text>
+          <Text style={footer}>Thank you for joining {SITE_BRAND_THE} as a licensed advisor.</Text>
           <EmailFooter siteUrl={siteUrl} />
         </Container>
       </Body>

@@ -8,11 +8,11 @@ export const Route = createFileRoute("/sources")({
   component: SourcesPage,
   head: () => ({
     meta: [
-      { title: "Scenario Data Sources | Get Part B Optimizer" },
+      { title: "Scenario Data Sources | Part B Optimizer" },
       {
         name: "description",
         content:
-          "Citations for every figure used to build a Get Part B Optimizer scenario result — CMS cost parameters, plan catalogs, and drug pricing inputs.",
+          "Citations for every figure used to build a Part B Optimizer scenario result — CMS cost parameters, plan catalogs, and drug pricing inputs.",
       },
     ],
   }),
@@ -112,7 +112,7 @@ export default function SourcesPage() {
   return (
     <AppShell
       title="Data Sources & Citations"
-      subtitle="Every figure, rate, and catalog entry in Get Part B Optimizer is traceable to an official CMS publication, a manufacturer source, or an established third-party price index."
+      subtitle="Every figure, rate, and catalog entry in The Part B Optimizer is traceable to an official CMS publication, a manufacturer source, or an established third-party price index."
     >
       <div className="grid gap-6 md:grid-cols-2">
         {SECTIONS.map((section) => (

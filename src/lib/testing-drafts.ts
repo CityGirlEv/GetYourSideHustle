@@ -41,6 +41,23 @@ export function statusFilterMatchesOrEngaged(
   return engaged.has(testId);
 }
 
+/** Fields that can be saved without touching status, notes, severity, or step checks. */
+export const METADATA_ONLY_SAVE_FIELDS = new Set([
+  "assignee",
+  "devAssignee",
+  "sprint",
+]);
+
+/** True when every pending change for a test is owner/sprint metadata only. */
+export function isMetadataOnlyPendingChanges(
+  testId: string,
+  changes: Array<{ testId: string; field: string }>,
+): boolean {
+  const fields = changes.filter((c) => c.testId === testId).map((c) => c.field);
+  if (fields.length === 0) return false;
+  return fields.every((f) => METADATA_ONLY_SAVE_FIELDS.has(f));
+}
+
 /** Move to in progress when the tester checks steps but has not finished the list. */
 export function shouldForceInProgressStatus(
   allStepsChecked: boolean,

@@ -7,17 +7,17 @@ import {
 import { buildWeeklyEditorialCalendar } from "@/lib/content-factory/weekly-editorial-schedule";
 
 describe("editorial-daily-checklist", () => {
-  const weekStart = new Date(2026, 5, 15);
+  const weekStart = new Date(2026, 5, 13); // Sat Jun 13, 2026
 
-  it("returns seven ISO dates for a Monday-start week", () => {
+  it("returns seven ISO dates for a Saturday-start week", () => {
     expect(weekIsoDates(weekStart)).toEqual([
+      "2026-06-13",
+      "2026-06-14",
       "2026-06-15",
       "2026-06-16",
       "2026-06-17",
       "2026-06-18",
       "2026-06-19",
-      "2026-06-20",
-      "2026-06-21",
     ]);
   });
 

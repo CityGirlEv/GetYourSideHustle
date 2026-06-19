@@ -31,13 +31,13 @@ const PRICING_URL = canonicalUrl("/pricing");
 export const Route = createFileRoute("/pricing")({
   head: () => ({
     meta: [
-      { title: "Agent Plans & Pricing — Get Part B Optimizer" },
+      { title: "Agent Plans & Pricing — Part B Optimizer" },
       {
         name: "description",
         content:
-          "Subscribe to Get Part B Optimizer agent plans with exclusive leads, CRM access, and scenario tools.",
+          "Subscribe to agent plans from The Part B Optimizer with exclusive leads, CRM access, and scenario tools.",
       },
-      { property: "og:title", content: "Agent Plans & Pricing — Get Part B Optimizer" },
+      { property: "og:title", content: "Agent Plans & Pricing — Part B Optimizer" },
       { property: "og:url", content: PRICING_URL },
       { name: "robots", content: "noindex,nofollow" },
     ],

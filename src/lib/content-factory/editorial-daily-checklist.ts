@@ -2,6 +2,7 @@ import {
   editorialActionTime,
   formatEditorialTimeLabel,
   parseIsoDate,
+  startOfWeekSaturday,
   type EditorialCalendarEvent,
 } from "@/lib/content-factory/weekly-editorial-schedule";
 
@@ -76,8 +77,8 @@ export function shiftIsoDate(isoDate: string, days: number): string {
   return formatIsoDate(d);
 }
 
-export function weekIsoDates(weekStartMonday: Date): string[] {
-  const start = new Date(weekStartMonday);
+export function weekIsoDates(weekStart: Date): string[] {
+  const start = startOfWeekSaturday(weekStart);
   start.setHours(12, 0, 0, 0);
   return Array.from({ length: 7 }, (_, index) => {
     const day = new Date(start);
@@ -86,8 +87,8 @@ export function weekIsoDates(weekStartMonday: Date): string[] {
   });
 }
 
-export function isoDateInWeek(isoDate: string, weekStartMonday: Date): boolean {
-  return weekIsoDates(weekStartMonday).includes(isoDate);
+export function isoDateInWeek(isoDate: string, weekStart: Date): boolean {
+  return weekIsoDates(weekStart).includes(isoDate);
 }
 
 export function checklistItemsForDate(

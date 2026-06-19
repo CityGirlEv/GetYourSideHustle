@@ -1,10 +1,14 @@
 import { describe, it, expect } from "vitest";
+import { SITE_BRAND_THE } from "@/lib/site-brand";
 import {
   generateMarketingContent,
   checkMarketingCompliance,
   TRENDING_TOPICS,
   type MarketingContent,
 } from "../agent-marketing-utils";
+
+const SEO_FOOTER =
+  `Ready to better understand your Medicare options? Visit https://mypartb.com and compare your choices with ${SITE_BRAND_THE}.`;
 
 describe("AI Marketing & Growth Agent content generator", () => {
   it("should contain standard trending topics", () => {
@@ -19,9 +23,7 @@ describe("AI Marketing & Growth Agent content generator", () => {
     expect(content.seoArticle.title).toContain("Medicare Advantage vs. Medigap");
     expect(content.seoArticle.body).toContain("Medicare Advantage (Part C)");
     expect(content.seoArticle.body).toContain("Medicare Supplement Insurance (Medigap)");
-    expect(content.seoArticle.body.trim().endsWith(
-      "Ready to better understand your Medicare options? Visit https://mypartb.com and compare your choices with Get Part B Optimizer."
-    )).toBe(true);
+    expect(content.seoArticle.body.trim().endsWith(SEO_FOOTER)).toBe(true);
     expect(content.facebookPost.text).toContain("Medicare Advantage and Medigap");
     expect(content.facebookPost.link).toBe("https://mypartb.com");
     expect(content.facebookPost.cta).toBe("Learn More");
@@ -31,9 +33,7 @@ describe("AI Marketing & Growth Agent content generator", () => {
     const content = generateMarketingContent("my custom topic about deductibles");
     expect(content.topic).toBe("My custom topic about deductibles");
     expect(content.seoArticle.title).toContain("My custom topic about deductibles");
-    expect(content.seoArticle.body.trim().endsWith(
-      "Ready to better understand your Medicare options? Visit https://mypartb.com and compare your choices with Get Part B Optimizer."
-    )).toBe(true);
+    expect(content.seoArticle.body.trim().endsWith(SEO_FOOTER)).toBe(true);
     expect(content.facebookPost.link).toBe("https://mypartb.com");
     expect(content.facebookPost.cta).toBe("Learn More");
   });

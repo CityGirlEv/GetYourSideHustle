@@ -16,7 +16,7 @@ import { EmailHeader } from "./email-header";
 import { EmailFooter } from "./email-footer";
 import { resolveEmailSiteUrl } from "./email-header";
 
-import { SITE_BRAND_NAME as SITE_NAME } from "@/lib/site-brand";
+import { SITE_BRAND_NAME, SITE_BRAND_THE } from "@/lib/site-brand";
 
 export interface UnassignedTestRow {
   id: string;
@@ -73,17 +73,17 @@ const BetaTestUnassignedEmail = ({
           <Text style={text}>
             {count === 1 ? (
               <>
-                A beta test that was assigned to you on <strong>{SITE_NAME}</strong> has been
+                A beta test that was assigned to you on <strong>{SITE_BRAND_THE}</strong> has been
                 re-assigned and is no longer on your roster.
               </>
             ) : count > 1 ? (
               <>
                 <strong>{count}</strong> beta tests that were assigned to you on{" "}
-                <strong>{SITE_NAME}</strong> have been re-assigned and are no longer on your roster.
+                <strong>{SITE_BRAND_THE}</strong> have been re-assigned and are no longer on your roster.
               </>
             ) : (
               <>
-                One or more beta tests on <strong>{SITE_NAME}</strong> have been re-assigned and are
+                One or more beta tests on <strong>{SITE_BRAND_THE}</strong> have been re-assigned and are
                 no longer on your roster.
               </>
             )}
@@ -167,7 +167,7 @@ const BetaTestUnassignedEmail = ({
 
           <Section style={buttonRow}>
             <Button style={button} href={signInUrl}>
-              Log in to {SITE_NAME}
+              Log in to {SITE_BRAND_THE}
             </Button>
           </Section>
           <Text style={text}>
@@ -177,7 +177,7 @@ const BetaTestUnassignedEmail = ({
             </Link>{" "}
             to view your current assignments.
           </Text>
-          <Text style={footer}>Thank you for helping us improve {SITE_NAME}.</Text>
+          <Text style={footer}>Thank you for helping us improve {SITE_BRAND_THE}.</Text>
           <EmailFooter siteUrl={siteUrl} />
         </Container>
       </Body>

@@ -1,4 +1,4 @@
-# Get Part B Optimizer
+# Part B Optimizer
 
 ## E2E Test Setup
 

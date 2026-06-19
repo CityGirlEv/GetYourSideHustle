@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { Link } from "@tanstack/react-router";
 import { ExternalLink, PenLine, Rocket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -7,7 +6,7 @@ import {
   checklistItemsForDate,
   type DailyChecklistItem,
 } from "@/lib/content-factory/editorial-daily-checklist";
-import { facebookPageUrl, facebookPostAdminSearch } from "@/lib/content-factory/facebook-post-copy";
+import { facebookPageUrl } from "@/lib/content-factory/facebook-post-copy";
 import type { EditorialCalendarEvent } from "@/lib/content-factory/weekly-editorial-schedule";
 import { parseIsoDate } from "@/lib/content-factory/weekly-editorial-schedule";
 import {
@@ -15,16 +14,18 @@ import {
   ContentStatusBadge,
 } from "@/components/content-factory/content-factory-ui";
 import type { ContentAssetType, ContentDraftStatus } from "@/lib/content-factory/types";
+import { EditorialCalendarActionLinks } from "@/components/content-factory/EditorialCalendarLinks";
+import type { CalendarDraftRef } from "@/lib/content-factory/editorial-calendar-links";
 
 export type CalendarViewMode = "weekly" | "daily";
 
 const TYPE_SURFACE: Record<ContentAssetType, string> = {
-  article: "bg-indigo-500/10 text-indigo-300 border-indigo-500/20",
-  facebook_post: "bg-sky-500/10 text-sky-300 border-sky-500/20",
-  newsletter: "bg-emerald-500/10 text-emerald-300 border-emerald-500/20",
-  lead_magnet: "bg-pink-500/10 text-pink-300 border-pink-500/20",
-  faq: "bg-violet-500/10 text-violet-300 border-violet-500/20",
-  image_prompt: "bg-amber-500/10 text-foreground/90 border-amber-500/20",
+  article: "bg-indigo-100 text-indigo-950 border-indigo-300/50 dark:bg-indigo-500/15 dark:text-indigo-50 dark:border-indigo-500/25",
+  facebook_post: "bg-sky-100 text-sky-950 border-sky-300/50 dark:bg-sky-500/15 dark:text-sky-50 dark:border-sky-500/25",
+  newsletter: "bg-emerald-100 text-emerald-950 border-emerald-300/50 dark:bg-emerald-500/15 dark:text-emerald-50 dark:border-emerald-500/25",
+  lead_magnet: "bg-pink-100 text-pink-950 border-pink-300/50 dark:bg-pink-500/15 dark:text-pink-50 dark:border-pink-500/25",
+  faq: "bg-violet-100 text-violet-950 border-violet-300/50 dark:bg-violet-500/15 dark:text-violet-50 dark:border-violet-500/25",
+  image_prompt: "bg-amber-100 text-amber-950 border-amber-300/50 dark:bg-amber-500/15 dark:text-amber-50 dark:border-amber-500/25",
 };
 
 export function CalendarViewToggle({
@@ -66,7 +67,7 @@ export function EditorialWeekGrid({
   onSelectDay: (isoDate: string) => void;
   renderEventChip: (event: EditorialCalendarEvent) => ReactNode;
 }) {
-  const weekdayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const weekdayLabels = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"];
 
   return (
     <div className="grid grid-cols-7 gap-2">
@@ -103,7 +104,7 @@ export function EditorialWeekGrid({
             <div className="flex items-center justify-between gap-1 mb-1">
               <span
                 className={`text-[11px] font-bold tabular-nums ${
-                  isToday ? "text-indigo-300" : "text-muted-foreground"
+                  isToday ? "text-primary font-bold" : "text-muted-foreground"
                 }`}
               >
                 {dayNum}
@@ -142,7 +143,7 @@ export function EditorialDayAgenda({
 }: {
   isoDate: string;
   events: EditorialCalendarEvent[];
-  draftBySlot: Map<string, { status: ContentDraftStatus; title: string }>;
+  draftBySlot: Map<string, CalendarDraftRef>;
   batchId: string | null;
   today: string;
   mapDraftStatus: (status: ContentDraftStatus) => string;
@@ -165,7 +166,7 @@ export function EditorialDayAgenda({
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
         <span>{items.length} scheduled action{items.length === 1 ? "" : "s"}</span>
         {isToday && (
-          <span className="rounded-full bg-indigo-500/15 px-2 py-0.5 text-indigo-300 font-semibold">
+          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-primary font-semibold">
             Today
           </span>
         )}
@@ -176,6 +177,7 @@ export function EditorialDayAgenda({
             key={item.event.id}
             item={item}
             draft={draftBySlot.get(`${item.event.type}:${item.event.slotIndex}`)}
+            draftBySlot={draftBySlot}
             batchId={batchId}
             mapDraftStatus={mapDraftStatus}
             isCompleted={!!completedEvents[item.event.id]}
@@ -190,13 +192,15 @@ export function EditorialDayAgenda({
 function DayAgendaRow({
   item,
   draft,
+  draftBySlot,
   batchId,
   mapDraftStatus,
   isCompleted,
   onToggleCompleted,
 }: {
   item: DailyChecklistItem;
-  draft?: { status: ContentDraftStatus; title: string };
+  draft?: CalendarDraftRef;
+  draftBySlot: Map<string, CalendarDraftRef>;
   batchId: string | null;
   mapDraftStatus: (status: ContentDraftStatus) => string;
   isCompleted: boolean;
@@ -224,7 +228,7 @@ function DayAgendaRow({
           />
         </div>
         <div className="shrink-0 min-w-[5rem]">
-          <div className={`text-sm font-bold tabular-nums text-indigo-200 ${isCompleted ? "line-through opacity-70" : ""}`}>
+          <div className={`text-sm font-bold tabular-nums text-primary ${isCompleted ? "line-through opacity-70" : ""}`}>
             {item.timeLabel}
           </div>
           <div className="text-[10px] text-muted-foreground uppercase tracking-wide">
@@ -262,21 +266,18 @@ function DayAgendaRow({
               </>
             )}
             {draft && <ContentStatusBadge status={draft.status} />}
-            {item.event.type === "facebook_post" && item.event.slotIndex !== 99 && (
-              <Link
-                to="/admin/facebook-posts"
-                search={facebookPostAdminSearch(batchId, item.event.slotIndex)}
-              >
-                <Button size="sm" variant="outline" className="h-7 text-[11px]">
-                  Copy post
-                  <ExternalLink className="h-3 w-3 ml-1" />
-                </Button>
-              </Link>
-            )}
             {draft && (
               <span className="text-[10px] text-muted-foreground">{mapDraftStatus(draft.status)}</span>
             )}
           </div>
+          {item.event.slotIndex !== 99 && (
+            <EditorialCalendarActionLinks
+              event={item.event}
+              draft={draft}
+              batchId={batchId}
+              draftBySlot={draftBySlot}
+            />
+          )}
         </div>
       </div>
     </li>

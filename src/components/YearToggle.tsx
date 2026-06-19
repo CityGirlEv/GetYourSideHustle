@@ -44,7 +44,7 @@ export function YearToggle({ tone = "light" }: { tone?: "dark" | "light" }) {
                 : "bg-primary text-primary-foreground shadow"
               : onDark
                 ? "text-white/80 hover:text-white"
-                : "text-primary/75 hover:text-primary"
+                : "text-foreground/85 hover:text-foreground"
           }`}
         >
           {y} <span className="hidden sm:inline">Plans</span>

@@ -3,10 +3,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { AppShell } from "@/components/AppShell";
+import { AdminAccessGate } from "@/components/AdminAccessGate";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
 import { useApp } from "@/lib/app-store";
 import { userHasAdminRole } from "@/lib/user-roles";
 import {
@@ -37,14 +37,25 @@ import {
 } from "@/lib/content-factory/editorial-daily-checklist";
 import { facebookPostAdminSearch, facebookPageUrl } from "@/lib/content-factory/facebook-post-copy";
 import {
+  primaryCalendarEventDestination,
+  type CalendarDraftRef,
+} from "@/lib/content-factory/editorial-calendar-links";
+import {
   buildEditorialCalendar,
-  CATCH_UP_WEEK_NOTE,
-  editorialWeekLabel,
+  EDITORIAL_EARLIEST_LAUNCH_FRIDAY,
+  EDITORIAL_LAUNCH_WEEK_SATURDAY,
   FB_PAGE_INVITE_GUIDANCE,
-  isCatchUpWeek,
+  formatEarliestLaunchLabel,
+  formatLaunchWeekLabel,
+  editorialWeekLabel,
+  isLaunchWeek,
+  isPreLaunchWeek,
+  LAUNCH_WEEK_NOTE,
   LEAD_MAGNET_PURPOSE,
+  PRE_LAUNCH_GUIDANCE,
+  PRE_LAUNCH_NOTE,
   shiftWeekStart,
-  startOfWeekMonday,
+  startOfWeekSaturday,
   parseIsoDate,
   type EditorialCalendarEvent,
 } from "@/lib/content-factory/weekly-editorial-schedule";
@@ -58,6 +69,7 @@ import {
   PenLine,
   ExternalLink,
   Facebook,
+  Shield,
 } from "lucide-react";
 
 export const Route = createFileRoute("/admin_/calendar")({
@@ -78,12 +90,12 @@ export const Route = createFileRoute("/admin_/calendar")({
 });
 
 const TYPE_SURFACE: Record<ContentAssetType, string> = {
-  article: "bg-indigo-500/10 text-indigo-300 border-indigo-500/20",
-  facebook_post: "bg-sky-500/10 text-sky-300 border-sky-500/20",
-  newsletter: "bg-emerald-500/10 text-emerald-300 border-emerald-500/20",
-  lead_magnet: "bg-pink-500/10 text-pink-300 border-pink-500/20",
-  faq: "bg-violet-500/10 text-violet-300 border-violet-500/20",
-  image_prompt: "bg-amber-500/10 text-foreground/90 border-amber-500/20",
+  article: "bg-indigo-100 text-indigo-950 border-indigo-300/50 dark:bg-indigo-500/15 dark:text-indigo-50 dark:border-indigo-500/25",
+  facebook_post: "bg-sky-100 text-sky-950 border-sky-300/50 dark:bg-sky-500/15 dark:text-sky-50 dark:border-sky-500/25",
+  newsletter: "bg-emerald-100 text-emerald-950 border-emerald-300/50 dark:bg-emerald-500/15 dark:text-emerald-50 dark:border-emerald-500/25",
+  lead_magnet: "bg-pink-100 text-pink-950 border-pink-300/50 dark:bg-pink-500/15 dark:text-pink-50 dark:border-pink-500/25",
+  faq: "bg-violet-100 text-violet-950 border-violet-300/50 dark:bg-violet-500/15 dark:text-violet-50 dark:border-violet-500/25",
+  image_prompt: "bg-amber-100 text-amber-950 border-amber-300/50 dark:bg-amber-500/15 dark:text-amber-50 dark:border-amber-500/25",
 };
 
 const TYPE_SWATCH: Record<ContentAssetType, string> = {
@@ -107,7 +119,7 @@ function ContentCalendarPage() {
   const listDrafts = useServerFn(listContentFactoryDraftsAdmin);
 
   const today = formatToday();
-  const [weekStart, setWeekStart] = useState(() => startOfWeekMonday(new Date()));
+  const [weekStart, setWeekStart] = useState(() => startOfWeekSaturday(new Date()));
   const [view, setView] = useState<CalendarViewMode>(searchView);
   const [selectedDay, setSelectedDay] = useState(
     () => searchDate ?? today,
@@ -152,11 +164,7 @@ function ContentCalendarPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
-      router.navigate({ to: "/auth" });
-      return;
-    }
-    if (!userHasAdminRole(user)) {
-      router.navigate({ to: "/" });
+      router.navigate({ to: "/auth", search: { tab: "sign-in" } });
     }
   }, [user, authLoading, router]);
 
@@ -167,7 +175,7 @@ function ContentCalendarPage() {
 
   useEffect(() => {
     if (!isoDateInWeek(selectedDay, weekStart)) {
-      setWeekStart(startOfWeekMonday(parseIsoDate(selectedDay)));
+      setWeekStart(startOfWeekSaturday(parseIsoDate(selectedDay)));
     }
   }, [selectedDay, weekStart]);
 
@@ -188,7 +196,7 @@ function ContentCalendarPage() {
   });
 
   const draftBySlot = useMemo(() => {
-    const map = new Map<string, (typeof draftsQuery.data)[number]>();
+    const map = new Map<string, CalendarDraftRef>();
     for (const draft of draftsQuery.data ?? []) {
       map.set(`${draft.type}:${draft.slotIndex}`, draft);
     }
@@ -203,7 +211,8 @@ function ContentCalendarPage() {
     return titles;
   }, [draftBySlot]);
 
-  const catchUp = isCatchUpWeek(weekStart);
+  const preLaunch = isPreLaunchWeek(weekStart);
+  const launchWeek = isLaunchWeek(weekStart);
   const weekDates = useMemo(() => weekIsoDates(weekStart), [weekStart]);
 
   const events = useMemo(
@@ -236,7 +245,7 @@ function ContentCalendarPage() {
   const selectDay = (isoDate: string) => {
     setSelectedDay(isoDate);
     if (!isoDateInWeek(isoDate, weekStart)) {
-      setWeekStart(startOfWeekMonday(parseIsoDate(isoDate)));
+      setWeekStart(startOfWeekSaturday(parseIsoDate(isoDate)));
     }
     setView("daily");
     syncSearch("daily", isoDate);
@@ -250,7 +259,7 @@ function ContentCalendarPage() {
     const next = shiftIsoDate(selectedDay, -1);
     setSelectedDay(next);
     if (!isoDateInWeek(next, weekStart)) {
-      setWeekStart(startOfWeekMonday(parseIsoDate(next)));
+      setWeekStart(startOfWeekSaturday(parseIsoDate(next)));
     }
     syncSearch("daily", next);
   };
@@ -263,45 +272,59 @@ function ContentCalendarPage() {
     const next = shiftIsoDate(selectedDay, 1);
     setSelectedDay(next);
     if (!isoDateInWeek(next, weekStart)) {
-      setWeekStart(startOfWeekMonday(parseIsoDate(next)));
+      setWeekStart(startOfWeekSaturday(parseIsoDate(next)));
     }
     syncSearch("daily", next);
   };
 
   const goToToday = () => {
-    const monday = startOfWeekMonday(new Date());
-    setWeekStart(monday);
+    const saturday = startOfWeekSaturday(new Date());
+    setWeekStart(saturday);
     setSelectedDay(today);
     setView("daily");
     syncSearch("daily", today);
   };
 
-  if (authLoading || !user || !userHasAdminRole(user)) return null;
+  if (authLoading || !user) return null;
 
   const renderEventChip = (event: EditorialCalendarEvent) => {
     const Icon = contentTypeIcon(event.type);
     const draft = draftBySlot.get(`${event.type}:${event.slotIndex}`);
+    const isPrelaunchTask = event.category === "prelaunch";
     const isProduce = event.milestone === "produce";
     const isCompleted = !!completedEvents[event.id];
-    
-    const chipClass = `w-full text-left border rounded text-[9px] px-1 py-0.5 font-medium leading-normal truncate transition-all ${TYPE_SURFACE[event.type]} ${
-      isProduce ? "border-dashed" : "border-solid"
-    } ${isCompleted ? "opacity-45 line-through" : "hover:brightness-110"}`;
+    const destination = isPrelaunchTask
+      ? null
+      : primaryCalendarEventDestination({
+          event,
+          draft,
+          batchId: activeBatchId,
+        });
+
+    const chipClass = `w-full text-left border rounded text-[9px] px-1 py-0.5 font-medium leading-normal truncate transition-all ${
+      isPrelaunchTask
+        ? "bg-slate-100 text-slate-900 border-slate-300/60 dark:bg-slate-500/15 dark:text-slate-50"
+        : TYPE_SURFACE[event.type]
+    } ${isProduce ? "border-dashed" : "border-solid"} ${
+      isCompleted ? "opacity-45 line-through" : "hover:brightness-110"
+    }`;
 
     const chipContent = (
       <>
-        {isProduce ? (
+        {isPrelaunchTask ? (
+          <Shield className="h-2.5 w-2.5 inline mr-0.5 shrink-0" />
+        ) : isProduce ? (
           <PenLine className="h-2.5 w-2.5 inline mr-0.5 shrink-0" />
         ) : (
           <Rocket className="h-2.5 w-2.5 inline mr-0.5 shrink-0" />
         )}
-        <Icon className="h-2.5 w-2.5 inline mr-0.5 shrink-0" />
+        {!isPrelaunchTask ? <Icon className="h-2.5 w-2.5 inline mr-0.5 shrink-0" /> : null}
         {event.title}
-        {(event.type === "facebook_post" || event.slotIndex === 99) && (
-          <ExternalLink className="h-2 w-2 inline ml-0.5 shrink-0 opacity-70" />
-        )}
+        {destination ? <ExternalLink className="h-2 w-2 inline ml-0.5 shrink-0 opacity-70" /> : null}
       </>
     );
+
+    const chipTitle = `${event.title}\n${isPrelaunchTask ? "Setup" : isProduce ? "Produce" : "Launch"}: ${event.detail}${draft ? `\nStatus: ${mapDraftStatus(draft.status)}` : ""}`;
 
     if (event.slotIndex === 99) {
       const pageUrl = facebookPageUrl();
@@ -312,7 +335,7 @@ function ContentCalendarPage() {
             href={pageUrl}
             target="_blank"
             rel="noopener noreferrer"
-            title={`${event.title}\nOpen Facebook Page`}
+            title={`${chipTitle}\nOpen Facebook Page`}
             className={`${chipClass} block`}
             onClick={(e) => e.stopPropagation()}
           >
@@ -320,35 +343,31 @@ function ContentCalendarPage() {
           </a>
         );
       }
+    }
+
+    if (destination?.kind === "external") {
       return (
-        <button
+        <a
           key={event.id}
-          type="button"
-          title={event.title}
-          className={chipClass}
-          onClick={(e) => {
-            e.stopPropagation();
-            toast.info(event.title, {
-              description: event.detail,
-              action: {
-                label: isCompleted ? "Mark active" : "Mark done",
-                onClick: () => toggleEventCompleted(event.id),
-              },
-            });
-          }}
+          href={destination.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={chipTitle}
+          className={`${chipClass} block`}
+          onClick={(e) => e.stopPropagation()}
         >
           {chipContent}
-        </button>
+        </a>
       );
     }
 
-    if (event.type === "facebook_post") {
+    if (destination?.kind === "internal") {
       return (
         <Link
           key={event.id}
-          to="/admin/facebook-posts"
-          search={facebookPostAdminSearch(activeBatchId, event.slotIndex)}
-          title={`${event.title}\n${isProduce ? "Produce" : "Launch"}: ${event.detail}${draft ? `\nStatus: ${mapDraftStatus(draft.status)}` : ""}\nOpen copy page`}
+          to={destination.to}
+          search={destination.search as Record<string, unknown>}
+          title={chipTitle}
           className={`${chipClass} block`}
           onClick={(e) => e.stopPropagation()}
         >
@@ -361,17 +380,11 @@ function ContentCalendarPage() {
       <button
         key={event.id}
         type="button"
-        title={`${event.title}\n${isProduce ? "Produce" : "Launch"}: ${event.detail}${draft ? `\nStatus: ${mapDraftStatus(draft.status)}` : ""}`}
+        title={chipTitle}
         className={chipClass}
         onClick={(e) => {
           e.stopPropagation();
-          toast.info(event.title, {
-            description: `${isProduce ? "Produce" : "Launch"} · ${event.detail}${draft ? ` · ${mapDraftStatus(draft.status)}` : ""}`,
-            action: {
-              label: isCompleted ? "Mark active" : "Mark done",
-              onClick: () => toggleEventCompleted(event.id),
-            },
-          });
+          selectDay(event.date);
         }}
       >
         {chipContent}
@@ -379,29 +392,30 @@ function ContentCalendarPage() {
     );
   };
 
-  const upcomingProduce = events.filter(
-    (e) => e.milestone === "produce" && e.date >= today,
-  ).length;
-  const upcomingLaunch = events.filter(
-    (e) => e.milestone === "launch" && e.date >= today,
-  ).length;
+  const upcomingTasks = events.filter((e) => e.date >= today).length;
 
   const navTitle =
     view === "weekly" ? editorialWeekLabel(weekStart) : formatChecklistDayLabel(selectedDay);
 
   return (
-    <AppShell
-      title="Content Calendar"
-      subtitle="Weekly editorial schedule — produce dates and launch dates for every Content Factory asset."
-    >
+    <AdminAccessGate>
+      <AppShell
+        title="Content Calendar"
+        subtitle="Weekly editorial schedule — produce dates and launch dates for every Content Factory asset."
+      >
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <CalendarIcon className="h-4 w-4 text-indigo-400" />
             {editorialWeekLabel(weekStart)}
-            {catchUp && (
-              <Badge variant="outline" className="text-[10px] border-indigo-500/40 text-foreground">
-                Catch-up (Wed start)
+            {preLaunch && (
+              <Badge variant="outline" className="text-[10px] border-amber-500/40 text-foreground">
+                Pre-launch (LLC setup)
+              </Badge>
+            )}
+            {launchWeek && (
+              <Badge variant="outline" className="text-[10px] border-emerald-500/40 text-foreground">
+                Week 1 launch
               </Badge>
             )}
           </div>
@@ -427,47 +441,60 @@ function ContentCalendarPage() {
           </div>
         </div>
 
-        {catchUp ? (
-          <Card className="glass p-4 border-indigo-500/25 space-y-3 bg-indigo-500/5">
+        {preLaunch ? (
+          <Card className="glass p-4 border-amber-500/25 space-y-3 bg-amber-500/5">
             <h3 className="font-display text-sm font-bold text-foreground">
-              This week: catch-up from Wednesday
+              Accelerated pre-launch — go live Friday or Saturday when LLC is ready
             </h3>
-            <p className="text-xs text-muted-foreground leading-relaxed">{CATCH_UP_WEEK_NOTE}</p>
+            <p className="text-xs text-muted-foreground leading-relaxed">{PRE_LAUNCH_NOTE}</p>
+            <p className="text-xs text-foreground/90 leading-relaxed">{PRE_LAUNCH_GUIDANCE}</p>
+            <ul className="text-[11px] text-muted-foreground space-y-1.5 list-disc list-inside">
+              <li>
+                <strong className="text-foreground">Sprint week (Mon–Fri):</strong> file LLC → EIN →
+                bank → legal pages → Facebook drafts → go/no-go Friday
+              </li>
+              <li>
+                <strong className="text-foreground">Earliest go-live:</strong>{" "}
+                {formatEarliestLaunchLabel()} ({EDITORIAL_EARLIEST_LAUNCH_FRIDAY}) — Article 1 +
+                welcome post if LLC is green
+              </li>
+              <li>
+                <strong className="text-foreground">Content week starts:</strong>{" "}
+                {formatLaunchWeekLabel()} ({EDITORIAL_LAUNCH_WEEK_SATURDAY})
+              </li>
+            </ul>
+            <p className="text-[11px] text-muted-foreground">
+              LLC done early? Update the launch dates in{" "}
+              <code className="text-[10px]">weekly-editorial-schedule.ts</code> and deploy, or tell
+              us to move them up.
+            </p>
+          </Card>
+        ) : launchWeek ? (
+          <Card className="glass p-4 border-emerald-500/25 space-y-3 bg-emerald-500/5">
+            <h3 className="font-display text-sm font-bold text-foreground">Week 1 — go live</h3>
+            <p className="text-xs text-muted-foreground leading-relaxed">{LAUNCH_WEEK_NOTE}</p>
             <p className="text-xs text-foreground/90 leading-relaxed">{FB_PAGE_INVITE_GUIDANCE}</p>
-            <ol className="text-[11px] text-muted-foreground space-y-1 list-decimal list-inside">
-              <li>
-                <strong className="text-foreground">Today (Wed):</strong> Publish Article 1 + rollout
-                Facebook post (skip Mon/Tue posts).
-              </li>
-              <li>
-                <strong className="text-foreground">Thu:</strong> Article 2, lead magnet live, then invite
-                people to follow the page.
-              </li>
-              <li>
-                <strong className="text-foreground">Fri–Sun:</strong> Article 3, FAQ, remaining posts,
-                newsletter Sunday.
-              </li>
-            </ol>
           </Card>
         ) : (
           <Card className="glass p-4 border-primary/15 space-y-2">
             <h3 className="font-display text-sm font-bold">Standard weekly schedule</h3>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Full Monday–Sunday editorial plan — produce and launch dates for every Content Factory
+              Full Saturday–Friday editorial plan — produce and launch dates for every Content Factory
               asset. Facebook posts run daily; articles publish Wed–Fri.
             </p>
           </Card>
         )}
 
-        <Card className="glass p-4 border-primary/15 space-y-2">
-          <h3 className="font-display text-sm font-bold">What the lead magnet does</h3>
-          <p className="text-xs text-muted-foreground leading-relaxed">{LEAD_MAGNET_PURPOSE}</p>
-          <p className="text-[11px] text-muted-foreground">
-            {catchUp
-              ? "Catch-up: finalize the PDF today (Wed), launch landing page Thursday."
-              : "Each weekly batch includes one lead magnet (PDF workbook). Produce Tuesday, launch Thursday."}
-          </p>
-        </Card>
+        {!preLaunch && (
+          <Card className="glass p-4 border-primary/15 space-y-2">
+            <h3 className="font-display text-sm font-bold">What the lead magnet does</h3>
+            <p className="text-xs text-muted-foreground leading-relaxed">{LEAD_MAGNET_PURPOSE}</p>
+            <p className="text-[11px] text-muted-foreground">
+              Each weekly batch includes one lead magnet (PDF workbook). Produce Tuesday, launch
+              Thursday.
+            </p>
+          </Card>
+        )}
 
         <div className="grid lg:grid-cols-4 gap-6">
           <Card className="glass p-5 border-primary/10 lg:col-span-3 space-y-4">
@@ -571,8 +598,8 @@ function ContentCalendarPage() {
                 ))}
               </select>
               <p className="text-[11px] text-muted-foreground leading-relaxed">
-                {catchUp
-                  ? "Catch-up mode: only Wed–Sun tasks show. Next week uses the standard Mon–Sun template."
+                {preLaunch
+                  ? "Pre-launch weeks show LLC and legal setup tasks only. Navigate to Week 1 launch for content dates."
                   : "Calendar dates follow the weekly editorial template. Selecting a batch replaces placeholder labels with real draft titles."}
               </p>
             </Card>
@@ -581,16 +608,31 @@ function ContentCalendarPage() {
               <h2 className="font-display text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 This week
               </h2>
-              <div className="grid grid-cols-2 gap-2 text-center">
-                <div className="rounded-lg border bg-background/50 p-2">
-                  <div className="text-lg font-bold tabular-nums">{upcomingProduce}</div>
-                  <div className="text-[10px] text-muted-foreground">Produce days left</div>
-                </div>
-                <div className="rounded-lg border bg-background/50 p-2">
-                  <div className="text-lg font-bold tabular-nums">{upcomingLaunch}</div>
-                  <div className="text-[10px] text-muted-foreground">Launch days left</div>
+              <div className="rounded-lg border bg-background/50 p-2 text-center">
+                <div className="text-lg font-bold tabular-nums">{upcomingTasks}</div>
+                <div className="text-[10px] text-muted-foreground">
+                  {preLaunch ? "Setup tasks left" : "Scheduled items left"}
                 </div>
               </div>
+            </Card>
+
+            <Card className="glass p-5 border-border/40 space-y-3">
+              <h2 className="font-display text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Facebook post images
+              </h2>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Posts 1–3 (Wed–Fri article promos): upload the same hero JPG as the linked Learning
+                Center article — generate it from the matching Image Prompt draft first.
+              </p>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Posts 4–7 (Mon–Sun tips): no linked article — use the brand logo (
+                <code className="text-[10px]">email-header-logo.png</code>) or a calm educational
+                photo. Full step-by-step instructions are on each post in{" "}
+                <Link to="/admin/facebook-posts" search={facebookPostAdminSearch(activeBatchId, 0)} className="text-primary font-medium hover:text-primary/80 underline-offset-2 hover:underline">
+                  Facebook Posts
+                </Link>
+                .
+              </p>
             </Card>
 
             {view === "weekly" && (
@@ -615,6 +657,7 @@ function ContentCalendarPage() {
         </div>
       </div>
     </AppShell>
+    </AdminAccessGate>
   );
 }
 
