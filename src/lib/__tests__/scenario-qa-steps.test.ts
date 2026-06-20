@@ -210,8 +210,7 @@ describe("buildScenarioQaAuditSteps", () => {
       "Losartan 50 mg tablet (daily) = $7/mo.",
       "THEN CLICK CREATE SCENARIO.",
     ]);
-    expect(steps[4]).toContain("pop-up screen");
-    expect(steps[4]).toContain("Opt In");
+    expect(steps[4]).toContain("A pop-up screen will appear allowing the user to Opt In.");
     const step5Body = steps[4].split(" ||| ", 2)[1] ?? "";
     expect(step5Body.split(" | ").map((s) => s.trim())).toEqual([
       "Enter your email and phone number.",

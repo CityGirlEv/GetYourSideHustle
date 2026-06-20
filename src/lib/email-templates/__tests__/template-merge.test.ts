@@ -134,6 +134,15 @@ describe("template merge fields", () => {
     expect(upgraded).not.toContain("user@example.test");
   });
 
+  it("upgrades legacy Get Part B Optimizer literals to {{siteName}}", () => {
+    const upgraded = upgradeOverrideLiteralsToMergeFields(
+      "<p>Welcome to Get Part B Optimizer — confirm at {{confirmationUrl}}</p>",
+      "signup",
+    );
+    expect(upgraded).toContain("{{siteName}}");
+    expect(upgraded).not.toContain("Get Part B Optimizer");
+  });
+
   it("normalizes single-brace auth placeholders", () => {
     const upgraded = normalizeAuthBracePlaceholders(
       '<a href="{confirmationUrl}">Go</a> code {token}',

@@ -241,8 +241,54 @@ html {
   .grad-indigo:hover {
     background-color: var(--brand-navy-light);
   }
+  .compare-plans-cta {
+    background-color: #facc15 !important;
+    background-image: none !important;
+    color: var(--brand-navy-mid) !important;
+    border-color: transparent !important;
+    box-shadow:
+      0 0 0 1px rgb(234 179 8 / 0.4),
+      0 0 20px rgb(250 204 21 / 0.65),
+      0 0 40px rgb(250 204 21 / 0.35) !important;
+    animation: compare-plans-cta-blink 1.25s ease-in-out infinite;
+  }
+  .compare-plans-cta:hover {
+    background-color: #eab308 !important;
+    color: var(--brand-navy-mid) !important;
+    filter: brightness(1.08);
+    box-shadow:
+      0 0 0 1px rgb(234 179 8 / 0.55),
+      0 0 28px rgb(250 204 21 / 0.85),
+      0 0 56px rgb(250 204 21 / 0.45) !important;
+    animation: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .compare-plans-cta {
+      animation: none;
+    }
+  }
   .script {
     font-family: var(--font-script);
+  }
+}
+
+@keyframes compare-plans-cta-blink {
+  0%,
+  100% {
+    filter: brightness(0.72);
+    background-color: #eab308 !important;
+    box-shadow:
+      0 0 0 1px rgb(234 179 8 / 0.2),
+      0 0 4px rgb(250 204 21 / 0.2),
+      0 0 10px rgb(250 204 21 / 0.1) !important;
+  }
+  50% {
+    filter: brightness(1.2);
+    background-color: #fde047 !important;
+    box-shadow:
+      0 0 0 1px rgb(234 179 8 / 0.55),
+      0 0 26px rgb(250 204 21 / 0.9),
+      0 0 52px rgb(250 204 21 / 0.5) !important;
   }
 }
 

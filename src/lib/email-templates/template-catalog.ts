@@ -111,6 +111,13 @@ const EXTENDED_META: Record<
     dependencies: [...COMMON_TRANSACTIONAL_DEPS, "test_results assignee labels", "dev_notes"],
     notes: "Fired when Testing Portal save includes a new or updated dev note.",
   },
+  "beta-test-qa-retest": {
+    recipient: "Enabled QA tester (primary owner) + admin notification inboxes",
+    sourceFile: "src/lib/email-templates/beta-test-qa-retest.tsx",
+    invokedFrom: ["src/lib/qa-test-assignment.functions.ts → notifyBetaTestQaRetest()"],
+    dependencies: [...COMMON_TRANSACTIONAL_DEPS, "test_results assignee labels"],
+    notes: "Fired when Testing Portal save sets status to fixed_retest or failed_retest.",
+  },
   "qa-daily-summary-admin": {
     recipient: "All admin notification inboxes",
     sourceFile: "src/lib/email-templates/qa-daily-summary-admin.tsx",

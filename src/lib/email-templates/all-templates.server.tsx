@@ -12,6 +12,7 @@ import { template as scenarioClaimed } from "./scenario-claimed";
 import { template as betaTestAssignment } from "./beta-test-assignment";
 import { template as betaTestUnassigned } from "./beta-test-unassigned";
 import { template as betaTestDevNote } from "./beta-test-dev-note";
+import { template as betaTestQaRetest } from "./beta-test-qa-retest";
 import { template as qaDailySummaryAdmin } from "./qa-daily-summary-admin";
 import { template as scenarioAssignmentAdmin } from "./scenario-assignment-admin";
 import { template as qaRegistrationConfirmation } from "./qa-registration-confirmation";
@@ -139,6 +140,17 @@ export const ALL_TEMPLATES: TemplateDescriptor[] = [
     defaultSubject: subjectOf(betaTestDevNote, betaTestDevNote.previewData ?? {}),
     component: betaTestDevNote.component,
     sampleProps: betaTestDevNote.previewData ?? {},
+  },
+  {
+    name: "beta-test-qa-retest",
+    kind: "transactional",
+    displayName: betaTestQaRetest.displayName ?? "Beta test QA retest",
+    description:
+      "Notifies the assigned QA tester when dev marks a test Fixed/Retest or Failed/Retest.",
+    trigger: "Testing Portal save sets status to fixed_retest or failed_retest.",
+    defaultSubject: subjectOf(betaTestQaRetest, betaTestQaRetest.previewData ?? {}),
+    component: betaTestQaRetest.component,
+    sampleProps: betaTestQaRetest.previewData ?? {},
   },
   {
     name: "qa-daily-summary-admin",

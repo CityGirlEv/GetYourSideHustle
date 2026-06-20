@@ -16,7 +16,7 @@ import { EmailHeader } from "./email-header";
 import { EmailFooter } from "./email-footer";
 import { resolveEmailSiteUrl } from "./email-header";
 
-import { SITE_BRAND_NAME, SITE_BRAND_THE } from "@/lib/site-brand";
+import { SITE_BRAND_NAME, SITE_BRAND_TEAM_SIGNATURE, SITE_BRAND_THE } from "@/lib/site-brand";
 
 interface Props {
   recipientName?: string;
@@ -89,7 +89,7 @@ const WelcomeEmail = ({
               </Text>
             </>
           )}
-          <Text style={footer}>{SITE_BRAND_THE} team</Text>
+          <Text style={footer}>{SITE_BRAND_TEAM_SIGNATURE}</Text>
           <EmailFooter siteUrl={siteUrl} />
         </Container>
       </Body>

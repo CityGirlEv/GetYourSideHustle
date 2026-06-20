@@ -1,12 +1,13 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ShieldCheck, EyeOff, KeyRound, Search } from "lucide-react";
+import { ShieldCheck, EyeOff, KeyRound, Search, Mic } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useState } from "react";
 import { HomeCoverHero } from "@/components/HomeCoverHero";
-import { SITE_BRAND_NAME, SITE_TAGLINE_LINE_1, SITE_TAGLINE_LINE_2, SITE_BRAND_THE } from "@/lib/site-brand";
+import { SITE_BRAND_NAME, SITE_TAGLINE, SITE_BRAND_THE } from "@/lib/site-brand";
 import { canonicalUrl } from "@/lib/site-url";
+import { VOICE_WIZARD_ENABLED } from "@/lib/feature-flags";
 
 const HOME_URL = canonicalUrl("/");
 
@@ -89,7 +90,7 @@ function Index() {
           </figure>
 
           <div className="glass flex min-h-[20rem] flex-col overflow-hidden rounded-2xl text-center sm:min-h-[24rem] md:h-full md:min-h-0">
-            <div className="flex min-h-0 flex-1 flex-col px-4 pb-4 pt-2 sm:px-5 sm:pb-5 sm:pt-2.5">
+            <div className="flex min-h-0 flex-1 flex-col px-4 pb-4 pt-2 sm:px-5 sm:pb-5 sm:pt-2">
               <div className="shrink-0 w-full rounded-lg border border-primary/40 bg-primary px-3 py-2.5 text-xs font-semibold leading-snug text-primary-foreground shadow-sm sm:text-sm">
                 <div className="flex items-start justify-center gap-2 text-left sm:text-center">
                   <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary-foreground sm:mx-auto sm:h-4 sm:w-4" />
@@ -100,8 +101,8 @@ function Index() {
                 </div>
               </div>
 
-              <div className="mt-7 flex shrink-0 flex-col items-center gap-3 sm:mt-8 sm:gap-3.5">
-                <div className="mx-auto w-full max-w-[18rem] space-y-2 md:max-w-[22rem]">
+              <div className="mt-4 flex w-full min-w-0 shrink-0 flex-col items-center gap-1.5 sm:mt-5">
+                <div className="mx-auto w-full min-w-0 max-w-[18rem] space-y-0.5 md:max-w-[22rem]">
                   <h2 className="font-display text-lg font-bold uppercase leading-tight sm:text-xl md:text-2xl">
                     Find the Medicare Plan That Fits A Scenario
                   </h2>
@@ -109,18 +110,33 @@ function Index() {
                     Build a de-identified scenario in 2 minutes.
                   </p>
                 </div>
-                <Button
-                  onClick={() => router.navigate({ to: "/scenario/new" })}
-                  className="grad-indigo h-10 w-full max-w-[18rem] border-0 px-5 text-sm font-bold animate-pulse shadow-md text-primary-foreground hover:!bg-[var(--brand-navy-light)] sm:h-11 md:max-w-[22rem]"
-                >
-                  COMPARE PLANS PRIVATELY →
-                </Button>
+                <div className="inline-grid grid-cols-1 gap-1.5">
+                  <Button
+                    onClick={() => router.navigate({ to: "/scenario/new" })}
+                    className="compare-plans-cta h-10 w-full justify-center border-0 px-3 py-1 text-[10px] font-bold leading-tight shadow-none sm:h-11 sm:px-4 sm:text-xs"
+                  >
+                    COMPARE PLANS PRIVATELY →
+                  </Button>
+                  {VOICE_WIZARD_ENABLED && (
+                    <Button
+                      onClick={() =>
+                        router.navigate({ to: "/scenario/new", search: { mode: "voice" } })
+                      }
+                      className="compare-plans-cta h-10 w-full justify-center whitespace-normal border-0 px-3 py-1 text-[10px] font-bold leading-tight shadow-none sm:h-11 sm:px-4 sm:text-xs"
+                    >
+                      <Mic className="mr-1.5 h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
+                      <span className="flex flex-col items-center leading-tight text-center">
+                        <span>COMPARE PLANS PRIVATELY</span>
+                        <span>with VOICE WIZARD →</span>
+                      </span>
+                    </Button>
+                  )}
+                </div>
               </div>
 
-              <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-1 py-3 sm:py-4">
-                <p className="max-w-[18rem] text-center font-display text-sm font-semibold italic leading-snug text-foreground sm:max-w-[22rem] sm:text-base sm:leading-normal">
-                  <span className="block">{SITE_TAGLINE_LINE_1}</span>
-                  <span className="block">{SITE_TAGLINE_LINE_2}</span>
+              <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-1 py-1 sm:py-1.5">
+                <p className="whitespace-nowrap text-center font-display text-[9px] font-semibold italic leading-tight tracking-tight text-foreground sm:text-[10px] md:text-xs">
+                  {SITE_TAGLINE}
                 </p>
               </div>
 
@@ -154,33 +170,33 @@ function Index() {
                     </div>
                   </div>
                 </div>
-
-                <form
-                  onSubmit={goToScenario}
-                  className="mx-auto w-full max-w-[18rem] space-y-2 pt-1 text-center sm:space-y-2.5 sm:pt-2 md:max-w-[21rem]"
-                >
-                  <div className="text-xs font-medium text-muted-foreground sm:text-sm">
-                    Already have a Scenario ID?
-                  </div>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Enter scenario code"
-                      value={lookupCode}
-                      onChange={(e) => setLookupCode(e.target.value)}
-                      className="h-9 min-w-0 flex-1 text-sm"
-                    />
-                    <Button
-                      type="submit"
-                      variant="outline"
-                      size="sm"
-                      disabled={!lookupCode.trim()}
-                      className="shrink-0"
-                    >
-                      <Search className="h-4 w-4 mr-1" /> Find
-                    </Button>
-                  </div>
-                </form>
               </div>
+
+              <form
+                onSubmit={goToScenario}
+                className="mx-auto mt-auto w-full max-w-[18rem] shrink-0 space-y-2 pt-4 text-center sm:space-y-2.5 sm:pt-6 md:max-w-[21rem]"
+              >
+                <div className="text-xs font-medium text-muted-foreground sm:text-sm">
+                  Already have a Scenario ID?
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Enter scenario code"
+                    value={lookupCode}
+                    onChange={(e) => setLookupCode(e.target.value)}
+                    className="h-9 min-w-0 flex-1 text-sm"
+                  />
+                  <Button
+                    type="submit"
+                    variant="outline"
+                    size="sm"
+                    disabled={!lookupCode.trim()}
+                    className="shrink-0"
+                  >
+                    <Search className="h-4 w-4 mr-1" /> Find
+                  </Button>
+                </div>
+              </form>
             </div>
           </div>
         </div>

@@ -191,8 +191,8 @@ import {
   unionDiscardTestIds,
 } from "@/lib/testing-drafts";
 import { useServerFn } from "@tanstack/react-start";
-import { notifyBetaTestUnassignments, notifyBetaTestDevNotes } from "@/lib/qa-test-assignment.functions";
-import { isUnassignNotificationCandidate } from "@/lib/qa-test-assignment.server";
+import { notifyBetaTestUnassignments, notifyBetaTestDevNotes, notifyBetaTestQaRetest } from "@/lib/qa-test-assignment.functions";
+import { isNewQaRetestTransition, isUnassignNotificationCandidate } from "@/lib/qa-test-assignment.server";
 import { cn } from "@/lib/utils";
 import { registerDeploySaveHandler } from "@/lib/deploy-version";
 import { noteTextForSave, saveNoteAttachment } from "@/lib/note-attachment";
@@ -639,6 +639,7 @@ export function TestPlanTab() {
   const confirm = useConfirm();
   const notifyUnassignments = useServerFn(notifyBetaTestUnassignments);
   const notifyDevNotes = useServerFn(notifyBetaTestDevNotes);
+  const notifyQaRetest = useServerFn(notifyBetaTestQaRetest);
   const fireUnassignEmails = useCallback(
     (rows: Array<{ testId: string; previousAssignee: string }>) => {
       if (!rows.length) return;
@@ -664,6 +665,23 @@ export function TestPlanTab() {
       );
     },
     [notifyDevNotes],
+  );
+  const fireQaRetestEmails = useCallback(
+    (
+      rows: Array<{
+        testId: string;
+        assigneeLabel: string;
+        status: "fixed_retest" | "failed_retest";
+        devAuthorName?: string;
+        devNote?: string;
+      }>,
+    ) => {
+      if (!rows.length) return;
+      void notifyQaRetest({ data: { notifications: rows } }).catch((e) =>
+        console.warn("[testing] QA retest email failed", e),
+      );
+    },
+    [notifyQaRetest],
   );
   // Persisted/saved state, hydrated from local storage
   // Seed local statuses with the last recorded vitest/playwright run so
@@ -1510,6 +1528,7 @@ export function TestPlanTab() {
     try {
       const metadataOnlySave = isMetadataOnlyPendingChanges(id, pendingChanges);
       let status = getStatus(id);
+      const previousStatus = (savedStatuses[id] ?? "not_run") as TestStatus;
       const previousAssignee = readSavedQaOwner(id);
       const previousDevNote = (savedDevNotes[id] ?? "").trim();
       const assignee = effPrimaryOwner(t);
@@ -1685,6 +1704,20 @@ export function TestPlanTab() {
             },
           ]);
         }
+        if (isNewQaRetestTransition(previousStatus, status)) {
+          fireQaRetestEmails([
+            {
+              testId: id,
+              assigneeLabel: resolveQaOwnerLabel(id, t, status, {
+                ...savedAssignees,
+                [id]: assignee,
+              }),
+              status,
+              devAuthorName: user?.full_name?.trim() || user?.email || "Development",
+              devNote: trimmedDevNote || undefined,
+            },
+          ]);
+        }
         requestScrollToTest(id);
       } else {
         toast.error(`Could not save ${id} to cloud — check your connection and try again.`);
@@ -1857,6 +1890,7 @@ export function TestPlanTab() {
     );
     const assigneesSnapshot = { ...savedAssignees };
     const previousDevNotesSnapshot = { ...savedDevNotes };
+    const previousStatusesSnapshot = { ...savedStatuses };
     const stillDraft = {
       status: { ...dStatuses },
       qaNote: { ...dQaNotes },
@@ -1956,6 +1990,29 @@ export function TestPlanTab() {
         devNote: note,
         devAuthorName: user?.full_name?.trim() || user?.email || "Development",
         status,
+      });
+    }
+    const retestNotifications: Array<{
+      testId: string;
+      assigneeLabel: string;
+      status: "fixed_retest" | "failed_retest";
+      devAuthorName?: string;
+      devNote?: string;
+    }> = [];
+    for (const c of pendingChanges) {
+      if (!selectedKeys.has(c.key) || c.field !== "status") continue;
+      const id = c.testId;
+      const newStatus = newSaved.status[id]! as TestStatus;
+      const previousStatus = (previousStatusesSnapshot[id] ?? "not_run") as TestStatus;
+      if (!isNewQaRetestTransition(previousStatus, newStatus)) continue;
+      if (newStatus !== "fixed_retest" && newStatus !== "failed_retest") continue;
+      const t = effectiveById.get(id);
+      retestNotifications.push({
+        testId: id,
+        assigneeLabel: resolveQaOwnerLabel(id, t, newStatus, assigneesSnapshot),
+        status: newStatus,
+        devAuthorName: user?.full_name?.trim() || user?.email || "Development",
+        devNote: (newSaved.devNote[id] ?? "").trim() || undefined,
       });
     }
     // Record the current user as the author of locally-saved notes so the
@@ -2168,6 +2225,7 @@ export function TestPlanTab() {
       toast.success(`Saved ${selectedCount} change${selectedCount === 1 ? "" : "s"} to cloud.`);
       if (unassignRows.length > 0) fireUnassignEmails(unassignRows);
       if (devNoteNotifications.length > 0) fireDevNoteEmails(devNoteNotifications);
+      if (retestNotifications.length > 0) fireQaRetestEmails(retestNotifications);
       // Assignment emails are sent on user enable or manually from Staff — not on save.
     } else {
       toast.error(
@@ -4046,10 +4104,7 @@ function StepWithSublist({
   }
 
   // Expert opt-in pop-up after Create Scenario
-  if (
-    step.startsWith("A pop-up screen will appear allowing the user to Opt In.") &&
-    step.includes(" ||| ")
-  ) {
+  if (step.startsWith("A pop-up screen will appear allowing the user to Opt In.") && step.includes(" ||| ")) {
     const [intro, body] = step.split(" ||| ", 2);
     const items = body
       .split(" | ")

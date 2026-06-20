@@ -25,6 +25,16 @@ import {
 import { countiesForZip3 } from "@/lib/zip3-county-lookup";
 import type { Medication } from "@/lib/medicare-math";
 import { INCOME_BANDS, type IncomeBand } from "@/lib/income-bands";
+import {
+  ensureSpeechVoicesReady,
+  looksLikeAmbientSpeech,
+  playVoiceBeep,
+  primeSpeechVoices,
+  speakQuestionThenCue,
+  speakVoiceText,
+} from "@/lib/voice-prompt";
+
+const MAX_VOICE_PROMPT_RETRIES = 3;
 
 // ------------------- Web Speech API typing -------------------
 type SR = {
@@ -110,6 +120,23 @@ function parseYesNo(text: string): boolean | null {
     );
   if (hasExplicitYes) return true;
   return null;
+}
+
+/** Yes/no on the echo-confirmation step — slightly more permissive phrasing. */
+function parseConfirmation(text: string): boolean | null {
+  const t = normalizeSpeech(text);
+  if (!t) return null;
+  if (/\b(no|nope|nah|negative|incorrect|wrong|not right|not correct|try again|change it)\b/.test(t)) {
+    return false;
+  }
+  if (
+    /\b(yes|yeah|yep|yup|correct|right|true|sure|ok|okay|affirmative|absolutely|perfect|go ahead|continue|sounds good|that works)\b/.test(
+      t,
+    )
+  ) {
+    return true;
+  }
+  return parseYesNo(text);
 }
 function matchOption<T extends string>(text: string, options: readonly T[]): T | null {
   const s = text.toLowerCase().trim();
@@ -310,6 +337,7 @@ export function VoiceIntakeWizard({
   const historyRef = useRef<StepKey[]>([]);
   const pendingRef = useRef<{ apply: () => void; next: StepKey; from: StepKey } | null>(null);
   const cancelMedLoopRef = useRef(false);
+  const promptRetryRef = useRef<{ step: StepKey; count: number }>({ step: "birthYear", count: 0 });
 
   // ---- Sequential "press any key when I say the correct option" picker ----
   const pickingRef = useRef<{
@@ -331,49 +359,40 @@ export function VoiceIntakeWizard({
   const countyOptions = useMemo(() => (/^\d{3}$/.test(zip3) ? countiesForZip3(zip3) : []), [zip3]);
 
   // ------------------- TTS -------------------
-  const speak = (text: string) =>
-    new Promise<void>((resolve) => {
-      if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-        resolve();
-        return;
-      }
-      try {
-        window.speechSynthesis.cancel();
-        // Small delay after cancel() — Chrome drops the next utterance otherwise
-        setTimeout(() => {
-          try {
-            const u = new SpeechSynthesisUtterance(text);
-            u.rate = 1;
-            u.pitch = 1;
-            u.lang = "en-US";
-            let done = false;
-            const finish = () => {
-              if (done) return;
-              done = true;
-              setSpeaking(false);
-              resolve();
-            };
-            u.onstart = () => setSpeaking(true);
-            u.onend = finish;
-            u.onerror = finish;
-            // Safety: if onend never fires (Chrome bug), resolve after a reasonable cap
-            const cap = Math.max(3000, Math.min(20000, text.length * 80));
-            setTimeout(finish, cap);
-            window.speechSynthesis.speak(u);
-          } catch {
-            setSpeaking(false);
-            resolve();
-          }
-        }, 80);
-      } catch {
-        resolve();
-      }
-    });
+  const speak = async (text: string) => {
+    setSpeaking(true);
+    try {
+      await speakVoiceText(text);
+    } finally {
+      setSpeaking(false);
+    }
+  };
+
+  const resetPromptRetries = (step: StepKey) => {
+    promptRetryRef.current = { step, count: 0 };
+  };
+
+  const bumpPromptRetries = (step: StepKey) => {
+    if (promptRetryRef.current.step !== step) {
+      promptRetryRef.current = { step, count: 1 };
+    } else {
+      promptRetryRef.current.count += 1;
+    }
+    return promptRetryRef.current.count;
+  };
+
+  const offerTypedFallback = () => {
+    toast.message(
+      "Having trouble hearing you? Use Type instead, or try a quieter room / headphones.",
+      { duration: 5000 },
+    );
+    setTyping(true);
+  };
 
   // ------------------- STT -------------------
   const listen = (
     timeoutMs = 22000,
-    opts: { minListenMs?: number; silenceMs?: number } = {},
+    opts: { minListenMs?: number; silenceMs?: number; playBeep?: boolean } = {},
   ): Promise<string> =>
     new Promise((resolve) => {
       const Ctor = getRecognitionCtor();
@@ -385,8 +404,9 @@ export function VoiceIntakeWizard({
       let bestTranscript = "";
       let finalTranscript = "";
       const startedAt = Date.now();
-      const minListenMs = opts.minListenMs ?? 700;
-      const silenceMs = opts.silenceMs ?? 1800;
+      const minListenMs = opts.minListenMs ?? 1200;
+      const silenceMs = opts.silenceMs ?? 2800;
+      const playBeep = opts.playBeep ?? false;
       let stopTimer: ReturnType<typeof setTimeout> | null = null;
       let silenceTimer: ReturnType<typeof setTimeout> | null = null;
       const finish = (t?: string) => {
@@ -394,7 +414,9 @@ export function VoiceIntakeWizard({
         settled = true;
         if (stopTimer) clearTimeout(stopTimer);
         if (silenceTimer) clearTimeout(silenceTimer);
-        const finalText = (t ?? (finalTranscript || bestTranscript)).trim();
+        const raw = (t ?? (finalTranscript || bestTranscript)).trim();
+        const finalText =
+          raw && !looksLikeAmbientSpeech(raw) ? raw : finalTranscript.trim() || "";
         setListening(false);
         resolve(finalText);
       };
@@ -451,18 +473,13 @@ export function VoiceIntakeWizard({
         rec.onerror = (e) => {
           if (e.error === "not-allowed" || e.error === "service-not-allowed") {
             toast.error("Microphone permission denied. Please enable it in your browser settings.");
-          } else if (e.error === "no-speech") {
-            toast.message(
-              "I didn't catch that — try speaking a little slower and closer to the mic.",
-            );
           }
           finish("");
         };
-        rec.onend = () => finish();
+        rec.onend = () => finish(finalTranscript || undefined);
         recRef.current = rec;
         setListening(true);
-        playBeep();
-        toast.info("🎤 Your turn — speak now", { duration: 2500, id: "voice-listen" });
+        if (playBeep) playVoiceBeep();
         rec.start();
         stopTimer = setTimeout(() => {
           try {
@@ -568,58 +585,20 @@ export function VoiceIntakeWizard({
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // Short audible cue so the user knows the mic is now open
-  const playBeep = () => {
-    try {
-      const w = window as unknown as {
-        AudioContext?: typeof AudioContext;
-        webkitAudioContext?: typeof AudioContext;
-      };
-      const Ctx = w.AudioContext ?? w.webkitAudioContext;
-      if (!Ctx) return;
-      const ctx = new Ctx();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.frequency.value = 880;
-      osc.type = "sine";
-      gain.gain.value = 0.0001;
-      gain.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime + 0.01);
-      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.18);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.2);
-      setTimeout(() => {
-        try {
-          ctx.close();
-        } catch {
-          /* noop */
-        }
-      }, 400);
-    } catch {
-      /* noop */
-    }
-  };
-
   // ------------------- Conversation runner -------------------
   // Speaks the question, then listens once and routes the response.
   const ask = async (question: string, expect: StepKey, opts: { skipListen?: boolean } = {}) => {
     setTranscript((p) => [...p, { q: question, speaker: "assistant" }]);
-    // Hard cap on TTS so listening always opens even if speech engine hangs
-    await Promise.race([
-      speak(question),
-      new Promise<void>((r) =>
-        setTimeout(r, Math.max(2500, Math.min(15000, question.length * 75))),
-      ),
-    ]);
-    if (opts.skipListen) return;
-    // Make absolutely sure speech is finished before opening mic
-    try {
-      window.speechSynthesis?.cancel();
-    } catch {
-      /* noop */
+    if (opts.skipListen) {
+      await speak(question);
+      return;
     }
-    setSpeaking(false);
-    await new Promise((r) => setTimeout(r, 250));
+    setSpeaking(true);
+    try {
+      await speakQuestionThenCue(question);
+    } finally {
+      setSpeaking(false);
+    }
     const heard = await listen(
       expect === "verify" || expect === "confirm" ? 30000 : 22000,
       expect === "verify" || expect === "confirm"
@@ -777,21 +756,29 @@ export function VoiceIntakeWizard({
       }
       case "conditionsAsk": {
         const v = parseYesNo(text);
-        if (v === false) {
-          nextStep("medsAsk");
+        if (v === null) {
+          reAsk("Please say yes or no.", "conditionsAsk");
           return;
         }
-        if (v === true) {
-          nextStep("conditionsAdd");
-          return;
-        }
-        reAsk("Please say yes or no.", "conditionsAsk");
+        verify(
+          v ? "yes, you have chronic health conditions" : "no chronic health conditions",
+          () => {},
+          v ? "conditionsAdd" : "medsAsk",
+          "conditionsAsk",
+        );
         return;
       }
       case "conditionsAdd": {
         const t = text.toLowerCase();
         if (/no more|none|done|that's it|finish|nothing else|move on/.test(t)) {
-          nextStep("medsAsk");
+          verify(
+            conditions.length
+              ? `done adding conditions — ${conditions.length} listed`
+              : "done adding conditions — none listed",
+            () => {},
+            "medsAsk",
+            "conditionsAdd",
+          );
           return;
         }
         // Try to match known conditions, otherwise accept free text
@@ -807,15 +794,16 @@ export function VoiceIntakeWizard({
       }
       case "medsAsk": {
         const v = parseYesNo(text);
-        if (v === false) {
-          nextStep("confirm");
+        if (v === null) {
+          reAsk("Please say yes or no.", "medsAsk");
           return;
         }
-        if (v === true) {
-          nextStep("medsName");
-          return;
-        }
-        reAsk("Please say yes or no.", "medsAsk");
+        verify(
+          v ? "yes, you take prescription medications" : "no prescription medications",
+          () => {},
+          v ? "medsName" : "confirm",
+          "medsAsk",
+        );
         return;
       }
       case "medsName": {
@@ -1303,7 +1291,17 @@ export function VoiceIntakeWizard({
   // ------------------- Start -------------------
   const begin = async () => {
     setTranscript([]);
-    // Pre-warm mic permission so the first Listening window actually captures audio
+    primeSpeechVoices();
+    await ensureSpeechVoicesReady();
+    try {
+      window.speechSynthesis?.resume();
+    } catch {
+      /* noop */
+    }
+    // Speak first while the Start click user-gesture is still active (before mic dialog).
+    await speak(
+      "Hi — I'll ask you a few questions to build your Medicare scenario. You can repeat any question, retry your answer, or type instead. Let's start.",
+    );
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       stream.getTracks().forEach((t) => t.stop());
@@ -1311,9 +1309,6 @@ export function VoiceIntakeWizard({
       toast.error("Microphone access is required for voice intake. Please allow it and try again.");
       return;
     }
-    await speak(
-      "Hi — I'll ask you a few questions to build your Medicare scenario. You can repeat any question, retry your answer, or type instead. Let's start.",
-    );
     nextStep("birthYear");
   };
 

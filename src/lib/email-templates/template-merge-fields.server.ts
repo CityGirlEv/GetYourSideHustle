@@ -3,7 +3,7 @@ import {
   emailLogoUrl,
   resolveEmailAssetUrl,
 } from "@/lib/email-templates/email-header";
-import { SITE_BRAND_NAME, SITE_BRAND_THE } from "@/lib/site-brand";
+import { SITE_BRAND_NAME, SITE_BRAND_THE, normalizeLegacyBrandText } from "@/lib/site-brand";
 import {
   AUTH_LEGACY_PLACEHOLDERS,
   AUTH_MERGE_FIELDS_BY_TEMPLATE,
@@ -115,7 +115,8 @@ export function normalizeAuthBracePlaceholders(content: string, templateName: st
 export function applyTemplateMergeFields(content: string, data: Record<string, unknown>): string {
   const ctx = buildMergeContext(data);
   const normalized = normalizeMergeFieldMarkup(content);
-  return normalized.replace(MERGE_FIELD_PATTERN, (_, key: string) => ctx[key] ?? "");
+  const merged = normalized.replace(MERGE_FIELD_PATTERN, (_, key: string) => ctx[key] ?? "");
+  return normalizeLegacyBrandText(merged);
 }
 
 function previewLiteralsForTemplate(templateName: string): Array<{ sample: string; key: string }> {
@@ -183,7 +184,7 @@ export function upgradeOverrideLiteralsToMergeFields(
     if (result.includes(`{{${key}}}`)) continue;
     result = result.split(sample).join(`{{${key}}}`);
   }
-  return result;
+  return normalizeLegacyBrandText(result);
 }
 
 export function getDefaultSubjectWithMergeFields(
@@ -225,7 +226,11 @@ export function normalizeTemplateOverrideContent(
     text = stripAuthTransactionalGreetings(text);
   }
 
-  return { subject, html, text };
+  return {
+    subject: normalizeLegacyBrandText(subject),
+    html: normalizeLegacyBrandText(html),
+    text: normalizeLegacyBrandText(text),
+  };
 }
 
 function pickMergedOrRendered(merged: string, rendered: string): string {

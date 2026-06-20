@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Mic, MicOff, SpellCheck } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { VOICE_INPUT_ENABLED } from "@/lib/feature-flags";
 
 // Minimal typings for the Web Speech API (not in lib.dom for all browsers).
 type SR = {
@@ -224,7 +225,7 @@ export function VoiceButton({
     setListening(false);
   };
 
-  if (!supported) return null;
+  if (!VOICE_INPUT_ENABLED || !supported) return null;
 
   const sz = size === "sm" ? "h-7 w-7" : "h-9 w-9";
   const icon = size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4";

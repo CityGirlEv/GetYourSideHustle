@@ -283,19 +283,23 @@ export const TEST_CASES: TestCase[] = [
     area: "Voice · Inputs",
     priority: "P1",
     title: "Mic button appears next to text inputs (Chrome/Edge/Safari)",
+    path: "/scenario/new",
+    preconditions:
+      "Voice input enabled (VOICE_INPUT_ENABLED = true in feature-flags.ts). Use Chrome, Edge, or Safari.",
     steps: [
-      "Open /scenario/new",
+      "Open https://mypartb.com/scenario/new (Manual Wizard mode)",
       "Inspect drug search, strength, county, conditions, resolved-condition inputs",
     ],
     expected:
-      "Each shows a 🎤 button plus an A-Z spell toggle. Hidden in browsers without Web Speech API.",
+      "Each shows a mic button plus an A-Z spell toggle. Hidden in browsers without Web Speech API or when voice input is disabled.",
   },
   {
     id: "VOICE-002",
     area: "Voice · Inputs",
     priority: "P1",
     title: "Spell mode — NATO phonetic converts to letters",
-    steps: ["Toggle spell mode on the drug search mic", "Say: 'alpha tango oscar romeo'"],
+    path: "/scenario/new",
+    steps: ["Open /scenario/new", "Toggle spell mode on the drug search mic", "Say: 'alpha tango oscar romeo'"],
     expected: "Drug input fills with 'ator'.",
   },
   {
@@ -303,7 +307,8 @@ export const TEST_CASES: TestCase[] = [
     area: "Voice · Inputs",
     priority: "P1",
     title: "Voice-select dropdowns map spoken word to closest option",
-    steps: ["Click mic next to Frequency dropdown", "Say: 'twice a day'"],
+    path: "/scenario/new",
+    steps: ["Open /scenario/new", "Click mic next to Frequency dropdown", "Say: 'twice a day'"],
     expected: "Dropdown selects 'Twice daily' (best-match).",
   },
   {
@@ -311,7 +316,8 @@ export const TEST_CASES: TestCase[] = [
     area: "Voice · Inputs",
     priority: "P2",
     title: "Mic permission denied — friendly toast",
-    steps: ["In browser settings block mic for the site", "Click any mic"],
+    path: "/scenario/new",
+    steps: ["Open /scenario/new", "In browser settings block mic for the site", "Click any mic"],
     expected: "Toast: 'Microphone permission denied. Enable it in your browser settings.'",
   },
 
@@ -321,21 +327,24 @@ export const TEST_CASES: TestCase[] = [
     area: "Voice · Wizard",
     priority: "P0",
     title: "Mode toggle switches Manual ↔ Voice on /scenario/new",
+    path: "/scenario/new",
     preconditions:
-      "Voice wizard enabled (VOICE_WIZARD_ENABLED = true in feature-flags.ts). Skip or expect N/A while disabled.",
+      "Voice wizard enabled (VOICE_WIZARD_ENABLED = true in feature-flags.ts). Use Chrome, Edge, or Safari.",
     steps: [
-      "Open /scenario/new",
-      "If Voice pill is visible, click it; otherwise confirm only Manual Wizard is shown",
+      "Open https://mypartb.com/scenario/new",
+      "Confirm Manual Wizard and Voice pills are visible at the top",
+      "Click Voice",
     ],
     expected:
-      "When enabled: Voice intake card renders; clicking 'Go back to Manual Wizard' returns without state loss. When disabled: Voice pill is hidden and manual wizard loads directly.",
+      "Voice intake card renders; clicking 'Go back to Manual Wizard' returns without state loss.",
   },
   {
     id: "VWIZ-002",
     area: "Voice · Wizard",
     priority: "P0",
     title: "Wizard speaks intro then asks birth year",
-    steps: ["Switch to Voice", "Click Start voice intake"],
+    path: "/scenario/new",
+    steps: ["Open /scenario/new", "Switch to Voice", "Click Start voice intake"],
     expected: "TTS speaks the intro then 'What year were you born?'; Listening badge pulses.",
   },
   {
@@ -343,7 +352,8 @@ export const TEST_CASES: TestCase[] = [
     area: "Voice · Wizard",
     priority: "P0",
     title: "Birth year parser accepts numerals and words",
-    steps: ["Say 'nineteen fifty'", "Or say '1950'"],
+    path: "/scenario/new",
+    steps: ["Open /scenario/new in Voice mode", "Say 'nineteen fifty'", "Or say '1950'"],
     expected: "Transcript records the answer, wizard advances to ZIP step.",
   },
   {
@@ -351,7 +361,8 @@ export const TEST_CASES: TestCase[] = [
     area: "Voice · Wizard",
     priority: "P0",
     title: "ZIP digits parsed from spoken numbers",
-    steps: ["At ZIP step say 'seven seven zero'"],
+    path: "/scenario/new",
+    steps: ["Open /scenario/new in Voice mode", "At ZIP step say 'seven seven zero'"],
     expected: "ZIP3=770; if multiple counties, wizard lists them aloud.",
   },
   {
@@ -359,7 +370,8 @@ export const TEST_CASES: TestCase[] = [
     area: "Voice · Wizard",
     priority: "P1",
     title: "Single-county ZIP auto-skips county question",
-    steps: ["Use a ZIP3 with exactly one county"],
+    path: "/scenario/new",
+    steps: ["Open /scenario/new in Voice mode", "Use a ZIP3 with exactly one county"],
     expected: "Wizard says 'Got it — <county>' and jumps to gender.",
   },
   {
@@ -367,7 +379,8 @@ export const TEST_CASES: TestCase[] = [
     area: "Voice · Wizard",
     priority: "P1",
     title: "Yes/No parser handles natural speech",
-    steps: ["At tobacco step say 'I don't smoke'"],
+    path: "/scenario/new",
+    steps: ["Open /scenario/new in Voice mode", "At tobacco step say 'I don't smoke'"],
     expected: "Tobacco set to false; advances to income.",
   },
   {
@@ -375,7 +388,8 @@ export const TEST_CASES: TestCase[] = [
     area: "Voice · Wizard",
     priority: "P1",
     title: "Income band matched from natural phrasing",
-    steps: ["Say 'about fifty-five to seventy-five thousand'"],
+    path: "/scenario/new",
+    steps: ["Open /scenario/new in Voice mode", "Say 'about fifty-five to seventy-five thousand'"],
     expected: "Income band set to '$55k–$75k'.",
   },
   {
@@ -383,7 +397,8 @@ export const TEST_CASES: TestCase[] = [
     area: "Voice · Wizard",
     priority: "P1",
     title: "Conditions loop — adds multiple, exits on 'no more'",
-    steps: ["Say 'diabetes', then 'hypertension', then 'no more'"],
+    path: "/scenario/new",
+    steps: ["Open /scenario/new in Voice mode", "Say 'diabetes', then 'hypertension', then 'no more'"],
     expected: "Both appear in running summary; wizard moves to meds.",
   },
   {
@@ -391,7 +406,8 @@ export const TEST_CASES: TestCase[] = [
     area: "Voice · Wizard",
     priority: "P1",
     title: "Meds loop — name + strength + 'any more?'",
-    steps: ["Say 'metformin', then '500 milligrams', then 'no'"],
+    path: "/scenario/new",
+    steps: ["Open /scenario/new in Voice mode", "Say 'metformin', then '500 milligrams', then 'no'"],
     expected:
       "Med added with mg suffix; catalog auto-fills form/frequency/retail; wizard goes to confirm.",
   },
@@ -400,7 +416,8 @@ export const TEST_CASES: TestCase[] = [
     area: "Voice · Wizard",
     priority: "P1",
     title: "Manual controls — Repeat, Retry, Type, Skip work",
-    steps: ["Click each control during a question"],
+    path: "/scenario/new",
+    steps: ["Open /scenario/new in Voice mode", "Click each control during a question"],
     expected:
       "Repeat re-speaks; Retry restarts listening; Type opens an input that submits as the answer; Skip advances on optional steps and toasts on required ones.",
   },
@@ -409,7 +426,8 @@ export const TEST_CASES: TestCase[] = [
     area: "Voice · Wizard",
     priority: "P0",
     title: "Confirm + submit creates scenario via same RPC",
-    steps: ["At confirm step say 'yes'"],
+    path: "/scenario/new",
+    steps: ["Open /scenario/new in Voice mode", "At confirm step say 'yes'"],
     expected:
       "Submitting state shows; on success TTS reads back the scenario ID and onDone navigates to /scenario/created/<code>.",
   },
@@ -418,7 +436,8 @@ export const TEST_CASES: TestCase[] = [
     area: "Voice · Wizard",
     priority: "P2",
     title: "Unsupported browser fallback",
-    steps: ["Open in Firefox (no Web Speech API)"],
+    path: "/scenario/new",
+    steps: ["Open https://mypartb.com/scenario/new?mode=voice in Firefox (no Web Speech API)"],
     expected: "Card shows 'Voice mode not supported' with a Use manual form button.",
   },
 
@@ -1021,7 +1040,8 @@ export const TEST_CASES: TestCase[] = [
     area: "CMS Compliance",
     priority: "P1",
     title: "Call recording / consent notice (if voice wizard transmits audio)",
-    steps: ["Start voice wizard"],
+    path: "/scenario/new",
+    steps: ["Open /scenario/new", "Switch to Voice mode", "Start voice wizard"],
     expected:
       "Intro TTS or visible notice states audio is processed locally in the browser via Web Speech API and not stored, OR a recording-consent prompt is shown before listening starts.",
   },
@@ -1207,8 +1227,13 @@ export const TEST_CASES: TestCase[] = [
     area: "Alpha · Voice",
     priority: "P1",
     title: "Voice intake + scenario flow validated end-to-end",
+    path: "/scenario/new",
     sprintId: "S-2026-00",
-    steps: ["Start a new scenario", "Use VoiceButton for each step (birth year → meds)", "Submit"],
+    steps: [
+      "Open https://mypartb.com/scenario/new",
+      "Use VoiceButton mic on each manual wizard step (birth year → meds), or complete via Voice wizard",
+      "Submit",
+    ],
     expected:
       "Each voice step transcribes into the correct field; final scenario submits and returns a code.",
   },

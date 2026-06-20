@@ -26,6 +26,7 @@ import { template as scenarioClaimedTemplate } from "./scenario-claimed";
 import { template as betaTestAssignmentTemplate } from "./beta-test-assignment";
 import { template as betaTestUnassignedTemplate } from "./beta-test-unassigned";
 import { template as betaTestDevNoteTemplate } from "./beta-test-dev-note";
+import { template as betaTestQaRetestTemplate } from "./beta-test-qa-retest";
 import { template as qaDailySummaryAdminTemplate } from "./qa-daily-summary-admin";
 import { template as scenarioAssignmentAdminTemplate } from "./scenario-assignment-admin";
 import { template as qaRegistrationConfirmationTemplate } from "./qa-registration-confirmation";
@@ -41,6 +42,7 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   "beta-test-assignment": betaTestAssignmentTemplate,
   "beta-test-unassigned": betaTestUnassignedTemplate,
   "beta-test-dev-note": betaTestDevNoteTemplate,
+  "beta-test-qa-retest": betaTestQaRetestTemplate,
   "qa-daily-summary-admin": qaDailySummaryAdminTemplate,
   "scenario-assignment-admin": scenarioAssignmentAdminTemplate,
   "qa-registration-confirmation": qaRegistrationConfirmationTemplate,

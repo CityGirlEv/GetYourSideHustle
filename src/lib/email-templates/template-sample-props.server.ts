@@ -4,7 +4,7 @@ import {
   EMAIL_FOOTER_LOGO_PATH,
   EMAIL_LOGO_PATH,
 } from "@/lib/email-templates/email-header";
-import { SITE_BRAND_NAME, SITE_BRAND_THE } from "@/lib/site-brand";
+import { SITE_BRAND_NAME, SITE_BRAND_TEAM_SIGNATURE, SITE_BRAND_THE } from "@/lib/site-brand";
 
 export const AUTH_SAMPLE_PROPS: Record<string, unknown> = {
   siteName: SITE_BRAND_THE,
@@ -31,8 +31,14 @@ export const AUTH_LEGACY_PLACEHOLDERS: Array<{ sample: string; key: string }> = 
   { sample: "user@example.test", key: "email" },
   { sample: "https://themedicareoptimizer.lovable.app", key: "confirmationUrl" },
   { sample: SITE_BRAND_THE, key: "siteName" },
+  { sample: `${SITE_BRAND_THE} Team`, key: "siteName" },
+  { sample: `${SITE_BRAND_THE} team`, key: "siteName" },
+  { sample: SITE_BRAND_TEAM_SIGNATURE, key: "siteName" },
   { sample: SITE_BRAND_NAME, key: "siteName" },
   { sample: "The Medicare Optimizer", key: "siteName" },
+  { sample: "The Get Part B Optimizer", key: "siteName" },
+  { sample: "Get Part B Optimizer", key: "siteName" },
+  { sample: "GET PART B OPTIMIZER", key: "siteName" },
 ];
 
 /** Merge fields available per auth template (admin editor + send pipeline). */
@@ -70,7 +76,13 @@ export const SHARED_MERGE_LITERALS: Array<{ sample: string; key: string }> = [
   { sample: `https://mypartb.com${EMAIL_LOGO_PATH}`, key: "emailLogoUrl" },
   { sample: `https://mypartb.com${EMAIL_FOOTER_LOGO_PATH}`, key: "emailFooterLogoUrl" },
   { sample: SITE_BRAND_THE, key: "siteName" },
+  { sample: `${SITE_BRAND_THE} Team`, key: "siteName" },
+  { sample: `${SITE_BRAND_THE} team`, key: "siteName" },
+  { sample: SITE_BRAND_TEAM_SIGNATURE, key: "siteName" },
   { sample: "The Medicare Optimizer", key: "siteName" },
+  { sample: "The Get Part B Optimizer", key: "siteName" },
+  { sample: "Get Part B Optimizer", key: "siteName" },
+  { sample: "GET PART B OPTIMIZER", key: "siteName" },
   { sample: SITE_BRAND_NAME, key: "siteName" },
   { sample: "https://mypartb.pages.dev", key: "siteUrl" },
   { sample: "https://mypartb.com", key: "siteUrl" },

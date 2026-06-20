@@ -34,6 +34,8 @@ describe("email template registry", () => {
   it("renders the Medicare footer disclaimers in welcome emails", async () => {
     const t = TEMPLATES["welcome"];
     const html = await render(React.createElement(t.component, t.previewData ?? {}));
+    expect(html).toContain("Part B Optimizer Team");
+    expect(html).not.toContain("The Part B Optimizer Team");
     expect(html).toContain(DEFAULT_CONTACT_EMAIL);
     expect(html).toContain("https://mypartb.pages.dev/email-footer-logo.png");
     expect(html).toContain('class="email-footer-brand-logo"');
@@ -64,6 +66,19 @@ describe("email template registry", () => {
     expect(html).toContain("AUTH-QA-001");
     expect(html).toContain("Fixed the redirect loop");
     expect(html).toContain("/testing");
+  });
+
+  it("registers beta-test-qa-retest with retest messaging", async () => {
+    const t = TEMPLATES["beta-test-qa-retest"];
+    expect(t).toBeDefined();
+    const html = await render(React.createElement(t.component, t.previewData ?? {}));
+    expect(html).toContain("returned it to QA");
+    expect(html).toContain("Fixed / Retest");
+    expect(html).toContain("AUTH-QA-001");
+    expect(html).toContain("/testing");
+    const subjectFn = t.subject as (data: Record<string, unknown>) => string;
+    expect(subjectFn({ testId: "AUTH-QA-001", status: "fixed_retest" })).toMatch(/retest/i);
+    expect(subjectFn({ testId: "AUTH-QA-001", status: "failed_retest" })).toMatch(/re-review/i);
   });
 
   it("registers beta-test-unassigned with greeting and removed tests", async () => {

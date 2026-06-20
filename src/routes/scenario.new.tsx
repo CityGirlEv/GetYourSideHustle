@@ -8,7 +8,19 @@ import { Mic, Keyboard, Clock } from "lucide-react";
 import { listScenarioHistory, type ScenarioHistoryEntry } from "@/lib/scenario-history";
 import { VOICE_WIZARD_ENABLED } from "@/lib/feature-flags";
 
+export type ScenarioNewSearch = {
+  mode?: "manual" | "voice";
+};
+
 export const Route = createFileRoute("/scenario/new")({
+  validateSearch: (search: Record<string, unknown>): ScenarioNewSearch => ({
+    mode:
+      VOICE_WIZARD_ENABLED && search.mode === "voice"
+        ? "voice"
+        : search.mode === "manual"
+          ? "manual"
+          : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Build a Medicare Scenario — No Personal Info Required" },
@@ -32,7 +44,10 @@ export const Route = createFileRoute("/scenario/new")({
 
 function ScenarioNew() {
   const router = useRouter();
-  const [mode, setMode] = useState<"manual" | "voice">("manual");
+  const { mode: searchMode } = Route.useSearch();
+  const [mode, setMode] = useState<"manual" | "voice">(() =>
+    VOICE_WIZARD_ENABLED && searchMode === "voice" ? "voice" : "manual",
+  );
   const [history, setHistory] = useState<ScenarioHistoryEntry[]>([]);
   useEffect(() => {
     setHistory(listScenarioHistory());
@@ -42,6 +57,10 @@ function ScenarioNew() {
   useEffect(() => {
     if (!VOICE_WIZARD_ENABLED && mode === "voice") setMode("manual");
   }, [mode]);
+
+  useEffect(() => {
+    if (VOICE_WIZARD_ENABLED && searchMode === "voice") setMode("voice");
+  }, [searchMode]);
 
   const showModeToggle = VOICE_WIZARD_ENABLED;
   const activeMode = VOICE_WIZARD_ENABLED ? mode : "manual";

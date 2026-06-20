@@ -13,7 +13,7 @@ import type { TemplateEntry } from "./registry";
 import { EmailHeader } from "./email-header";
 import { EmailFooter } from "./email-footer";
 
-import { SITE_BRAND_NAME, SITE_BRAND_THE } from "@/lib/site-brand";
+import { SITE_BRAND_NAME, SITE_BRAND_TEAM_SIGNATURE, SITE_BRAND_THE } from "@/lib/site-brand";
 
 interface Props {
   recipientName?: string;
@@ -54,7 +54,7 @@ const ScenarioClaimedEmail = ({ recipientName, advisorName, scenarioCode, scenar
             View your scenario
           </Button>
         ) : null}
-        <Text style={footer}>{SITE_BRAND_THE} team</Text>
+        <Text style={footer}>{SITE_BRAND_TEAM_SIGNATURE}</Text>
         <EmailFooter />
       </Container>
     </Body>
