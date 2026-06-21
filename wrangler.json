@@ -1,5 +1,8 @@
 {
   "name": "mypartb",
   "compatibility_date": "2026-06-05",
-  "compatibility_flags": ["nodejs_compat"]
+  "compatibility_flags": ["nodejs_compat"],
+  "ai": {
+    "binding": "AI"
+  }
 }

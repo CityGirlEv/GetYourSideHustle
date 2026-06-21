@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
+import { cn } from "@/lib/utils";
 import {
   Mic,
   MicOff,
@@ -13,6 +14,8 @@ import {
   Loader2,
   Info,
   ListChecks,
+  Pause,
+  Play,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,43 +29,38 @@ import { countiesForZip3 } from "@/lib/zip3-county-lookup";
 import type { Medication } from "@/lib/medicare-math";
 import { INCOME_BANDS, type IncomeBand } from "@/lib/income-bands";
 import {
-  ensureSpeechVoicesReady,
-  looksLikeAmbientSpeech,
+  getSpeechRecognitionCtor,
+  startLiveSpeechRecognition,
+  type LiveSpeechSession,
+} from "@/lib/speech-recognition";
+import { startRecordedTranscription } from "@/lib/recorded-transcription";
+import {
+  listMicDevices,
+  primeMicAccess,
+  recordMicClip,
+  startMicLevelMonitor,
+  type MicDevice,
+  type MicLevelSnapshot,
+} from "@/lib/mic-audio";
+import {
+  cancelSpeech,
+  MIC_TEST_PROMPT,
   playVoiceBeep,
-  primeSpeechVoices,
+  primeVoiceSession,
   speakQuestionThenCue,
   speakVoiceText,
+  speakVoiceTextImmediate,
+  SPEAKER_TEST_PHRASE,
+  finishSpeakerTestFromUserGesture,
+  VOICE_WIZARD_INTRO,
+  waitUntilSpeechSilent,
 } from "@/lib/voice-prompt";
 
 const MAX_VOICE_PROMPT_RETRIES = 3;
 
 // ------------------- Web Speech API typing -------------------
-type SR = {
-  start: () => void;
-  stop: () => void;
-  abort: () => void;
-  lang: string;
-  continuous: boolean;
-  interimResults: boolean;
-  maxAlternatives: number;
-  onresult:
-    | ((e: {
-        resultIndex?: number;
-        results: ArrayLike<
-          ArrayLike<{ transcript: string; confidence?: number }> & { isFinal?: boolean }
-        >;
-      }) => void)
-    | null;
-  onerror: ((e: { error: string }) => void) | null;
-  onend: (() => void) | null;
-};
-function getRecognitionCtor(): { new (): SR } | null {
-  if (typeof window === "undefined") return null;
-  const w = window as unknown as {
-    SpeechRecognition?: { new (): SR };
-    webkitSpeechRecognition?: { new (): SR };
-  };
-  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
+function getRecognitionCtor() {
+  return getSpeechRecognitionCtor();
 }
 
 // ------------------- Speech parsers -------------------
@@ -293,6 +291,125 @@ interface Transcript {
   speaker?: "assistant" | "you";
 }
 
+function MicVolumeControl({
+  level,
+  active,
+  mode = "hardware",
+  className,
+  heardWords = false,
+}: {
+  level: number;
+  active: boolean;
+  mode?: "hardware" | "speech";
+  className?: string;
+  heardWords?: boolean;
+}) {
+  const bars = 12;
+  const speechMode = mode === "speech";
+  const visualLevel = level;
+  const filled = active ? Math.round((visualLevel / 100) * bars) : 0;
+  const hot = level >= 18;
+
+  return (
+    <div className={cn("space-y-1.5", className)}>
+      <div className="flex items-center justify-between gap-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+        <span className="inline-flex items-center gap-1">
+          <Mic className={cn("h-3 w-3", speechMode && active && "text-destructive animate-pulse")} />
+          {speechMode ? "Speech-to-text" : "Mic signal"}
+        </span>
+        <span
+          className={cn(
+            "tabular-nums",
+            heardWords || hot ? "text-emerald-700" : "text-muted-foreground",
+          )}
+        >
+          {heardWords
+            ? "HEARD"
+            : active
+              ? hot
+                ? `${level}%`
+                : speechMode
+                  ? "WAITING"
+                  : "—"
+              : "—"}
+        </span>
+      </div>
+      <div className="flex items-end justify-center gap-1 h-8">
+        {Array.from({ length: bars }, (_, i) => {
+          const on = active && i < filled;
+          return (
+            <div
+              key={i}
+              className={cn(
+                "w-2 rounded-sm transition-all duration-75",
+                on
+                  ? hot || heardWords
+                    ? "bg-emerald-500"
+                    : "bg-amber-500"
+                  : "bg-muted",
+              )}
+              style={{ height: `${20 + (i + 1) * 4}px` }}
+            />
+          );
+        })}
+      </div>
+      <div className="h-2 rounded-full bg-muted overflow-hidden">
+        <div
+          className={cn(
+            "h-full transition-[width] duration-75",
+            heardWords || hot
+              ? "bg-emerald-500"
+              : active && visualLevel > 0
+                ? "bg-amber-500/80"
+                : "bg-transparent",
+          )}
+          style={{ width: active && visualLevel > 0 ? `${visualLevel}%` : undefined }}
+        />
+      </div>
+      {active && !hot && !heardWords && (
+        <p className="text-[10px] text-center text-muted-foreground">
+          {speechMode
+            ? "Engine is on — words appear in the box when speech is recognized. Green bars only move when text is captured."
+            : "Speak now — these bars should move with your voice."}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function LiveAnswerBox({
+  value,
+  onChange,
+  listening,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  listening: boolean;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        {listening ? "Typing what I hear — edit if needed" : "Your answer"}
+      </label>
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={
+          listening
+            ? "Speak after the beep… your words appear here live. You can also type."
+            : "Your answer will appear here"
+        }
+        rows={3}
+        className={cn(
+          "w-full resize-none rounded-lg border-2 bg-background px-3 py-2.5 text-base leading-snug",
+          "placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+          listening ? "border-destructive/60 font-medium" : "border-border",
+        )}
+      />
+    </div>
+  );
+}
+
 // ------------------- Component -------------------
 export function VoiceIntakeWizard({
   onDone,
@@ -301,8 +418,12 @@ export function VoiceIntakeWizard({
   onDone?: (code: string) => void;
   onSwitchToManual?: () => void;
 }) {
-  const supported =
-    !!getRecognitionCtor() && typeof window !== "undefined" && "speechSynthesis" in window;
+  const [voiceReady, setVoiceReady] = useState<boolean | null>(null);
+  const supported = voiceReady === true;
+
+  useEffect(() => {
+    setVoiceReady(!!getRecognitionCtor() && typeof window !== "undefined" && "speechSynthesis" in window);
+  }, []);
 
   // Collected data
   const [birthYear, setBirthYear] = useState<number | null>(null);
@@ -328,9 +449,78 @@ export function VoiceIntakeWizard({
   const [typing, setTyping] = useState(false);
   const [typedAnswer, setTypedAnswer] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const [micTestPassed, setMicTestPassed] = useState(false);
+  const [testingMic, setTestingMic] = useState(false);
+  const [liveListenText, setLiveListenText] = useState("");
+  const [listeningDraft, setListeningDraft] = useState("");
+  const listeningDraftRef = useRef("");
+  const [answerCapture, setAnswerCapture] = useState<{
+    expect: StepKey;
+    epoch: number;
+    listenGen: number;
+  } | null>(null);
+  const answerCaptureRef = useRef<typeof answerCapture>(null);
+  const pendingAnswerRef = useRef("");
+  const [awaitingEchoConfirm, setAwaitingEchoConfirm] = useState(false);
+  const [micTestReady, setMicTestReady] = useState(false);
+  const [speechEngineLive, setSpeechEngineLive] = useState(false);
+  const [sttStatus, setSttStatus] = useState<string | null>(null);
+  const [micDevices, setMicDevices] = useState<MicDevice[]>([]);
+  const [selectedMicId, setSelectedMicId] = useState("");
+  const [hardwareMicLevel, setHardwareMicLevel] = useState(0);
+  const [micSignal, setMicSignal] = useState<MicLevelSnapshot | null>(null);
+  const [checkingMicSignal, setCheckingMicSignal] = useState(false);
+  const [browserRecording, setBrowserRecording] = useState(false);
+  const testMicButtonRef = useRef<HTMLButtonElement>(null);
+  const startSpeakingBtnRef = useRef<HTMLButtonElement>(null);
+  const micLevelMonitorRef = useRef<{ stop: () => void } | null>(null);
 
-  const recRef = useRef<SR | null>(null);
+  const speechVisualLevel = useMemo(() => {
+    const heard = listeningDraft.trim();
+    if (heard) return Math.min(95, 45 + heard.length);
+    return hardwareMicLevel;
+  }, [listeningDraft, hardwareMicLevel]);
+
+  const heardSpeech = listeningDraft.trim().length > 0;
+
+  const refreshMicDevices = useCallback(async () => {
+    const devices = await listMicDevices();
+    setMicDevices(devices);
+    if (!selectedMicId && devices[0]) {
+      const emeet = devices.find((d) => /emeet|smartcam|c60/i.test(d.label));
+      setSelectedMicId(emeet?.deviceId ?? devices[0]!.deviceId);
+    }
+  }, [selectedMicId]);
+
+  const stopMicSignalCheck = useCallback(() => {
+    micLevelMonitorRef.current?.stop();
+    micLevelMonitorRef.current = null;
+    setCheckingMicSignal(false);
+    setHardwareMicLevel(0);
+    setMicSignal(null);
+  }, []);
+
+  useEffect(() => () => stopMicSignalCheck(), [stopMicSignalCheck]);
+
+  useEffect(() => {
+    if (step !== "intro" || !supported) return;
+    const id = window.requestAnimationFrame(() => {
+      testMicButtonRef.current?.focus();
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [step, supported]);
+
+  const speechSessionRef = useRef<LiveSpeechSession | null>(null);
+  const listenAbortRef = useRef(false);
+  const listenGenRef = useRef(0);
+  const currentPromptRef = useRef<{ question: string; expect: StepKey } | null>(null);
   const stepRef = useRef(step);
+  const flowEpochRef = useRef(0);
+  const pausedRef = useRef(false);
+  useEffect(() => {
+    pausedRef.current = paused;
+  }, [paused]);
   useEffect(() => {
     stepRef.current = step;
   }, [step]);
@@ -338,6 +528,10 @@ export function VoiceIntakeWizard({
   const pendingRef = useRef<{ apply: () => void; next: StepKey; from: StepKey } | null>(null);
   const cancelMedLoopRef = useRef(false);
   const promptRetryRef = useRef<{ step: StepKey; count: number }>({ step: "birthYear", count: 0 });
+  const askTokenRef = useRef(0);
+  const sttBlockedRef = useRef(false);
+  const lastSttErrorToastRef = useRef(0);
+  const [sttBlocked, setSttBlocked] = useState(false);
 
   // ---- Sequential "press any key when I say the correct option" picker ----
   const pickingRef = useRef<{
@@ -383,123 +577,441 @@ export function VoiceIntakeWizard({
 
   const offerTypedFallback = () => {
     toast.message(
-      "Having trouble hearing you? Use Type instead, or try a quieter room / headphones.",
+      "Having trouble hearing you? Edit the text box while listening, use Type, or try Chrome/Edge.",
       { duration: 5000 },
     );
     setTyping(true);
   };
 
-  // ------------------- STT -------------------
+  const showSttError = (message: string) => {
+    const now = Date.now();
+    if (now - lastSttErrorToastRef.current < 3500) return;
+    lastSttErrorToastRef.current = now;
+    toast.error(message);
+  };
+
+  const markSttBlocked = () => {
+    sttBlockedRef.current = true;
+    setSttBlocked(true);
+    setListening(false);
+  };
+
+  const clearSttBlocked = () => {
+    sttBlockedRef.current = false;
+    setSttBlocked(false);
+  };
+
+  const syncListeningDraft = (text: string) => {
+    listeningDraftRef.current = text;
+    setListeningDraft(text);
+    setLiveListenText(text);
+    if (text.trim()) setLastHeard(text.trim());
+  };
+
+  /** Must run synchronously right after mic prime (same user click). */
+  const startListenFromGesture = (timeoutMs = 35000): LiveSpeechSession | null => {
+    if (listenAbortRef.current) return null;
+    if (speechSessionRef.current) return speechSessionRef.current;
+
+    stopMicSignalCheck();
+    setHardwareMicLevel(0);
+
+    const session = startLiveSpeechRecognition({
+      timeoutMs,
+      onTranscript: (text) => syncListeningDraft(text),
+      onStarted: () => {
+        setSpeechEngineLive(true);
+        setSttStatus("Speech engine live — say something. Words appear in the box when recognized.");
+      },
+      onError: (message) => {
+        setSttStatus(message);
+        showSttError(message);
+      },
+      onNetworkFailure: markSttBlocked,
+    });
+
+    if (!session) {
+      toast.error("Voice not supported. Use Chrome or Edge, or type your answer.");
+      setListening(false);
+      setSpeechEngineLive(false);
+      return null;
+    }
+
+    speechSessionRef.current = session;
+    void session.done.then(() => {
+      speechSessionRef.current = null;
+      setListening(false);
+      setSpeechEngineLive(false);
+    });
+    return session;
+  };
+
+  /** Record + Whisper first (same mic path as browser record test); Web Speech as fallback. */
+  const beginListeningFromClick = (
+    timeoutMs = 35000,
+    mode: "answer" | "confirm" | "micTest" = "answer",
+  ): LiveSpeechSession | null => {
+    if (listenAbortRef.current) return null;
+    if (speechSessionRef.current) return speechSessionRef.current;
+
+    primeVoiceSession();
+    cancelSpeech();
+    stopMicSignalCheck();
+    clearSttBlocked();
+    listenAbortRef.current = false;
+    setSpeechEngineLive(false);
+    setSttStatus(mode === "confirm" ? "Opening microphone for yes or no…" : "Opening microphone…");
+    setListening(true);
+
+    const attachSession = (session: LiveSpeechSession) => {
+      speechSessionRef.current = session;
+      void session.done.then((heard) => {
+        if (listenAbortRef.current) return;
+        if (mode === "confirm") void onConfirmRecordingFinished(heard);
+        else void onRecordingFinished(heard, { micTest: mode === "micTest" });
+      });
+      toast.message(
+        mode === "confirm"
+          ? "Say yes or no."
+          : "Speak now — I'll stop when you pause.",
+        { duration: 3000 },
+      );
+      return session;
+    };
+
+    const recorded = startRecordedTranscription({
+      deviceId: selectedMicId || undefined,
+      chunkMs: mode === "confirm" ? 650 : 900,
+      silenceHangMs: mode === "confirm" ? 1500 : 2200,
+      timeoutMs,
+      onTranscript: (text) => {
+        if (mode === "confirm") return;
+        syncListeningDraft(text);
+        if (text.trim()) {
+          setSttStatus("Got it — keep speaking, or pause when you're done.");
+        }
+      },
+      onTranscribing: () => {
+        if (mode === "confirm") return;
+        setSttStatus("Transcribing — words appear in a second or two…");
+      },
+      onLevel: setHardwareMicLevel,
+      onStarted: (label) => {
+        setSpeechEngineLive(true);
+        setSttStatus(
+          mode === "confirm"
+            ? `Say yes or no on ${label}.`
+            : `Listening on ${label} — speak now; words appear within ~1–2 seconds.`,
+        );
+      },
+      onError: (message) => {
+        setSttStatus(message);
+        showSttError(message);
+      },
+    });
+
+    if (recorded) return attachSession(recorded);
+
+    setSttStatus("Trying browser speech recognition…");
+    const fallback = startListenFromGesture(timeoutMs);
+    if (fallback) return attachSession(fallback);
+
+    setListening(false);
+    return null;
+  };
+
+  const tryAutoListen = (mode: "answer" | "confirm" | "micTest" = "answer") => {
+    if (listenAbortRef.current || pausedRef.current || speechSessionRef.current) return;
+    listenAbortRef.current = false;
+    setAwaitingEchoConfirm(mode === "confirm");
+    if (mode === "confirm") {
+      beginListeningFromClick(15000, "confirm");
+      return;
+    }
+    if (mode === "micTest") {
+      setMicTestReady(false);
+      listeningDraftRef.current = "";
+      setListeningDraft("");
+      beginListeningFromClick(20000, "micTest");
+      return;
+    }
+    setAwaitingEchoConfirm(false);
+    pendingAnswerRef.current = "";
+    listeningDraftRef.current = "";
+    setListeningDraft("");
+    beginListeningFromClick();
+  };
+
   const listen = (
-    timeoutMs = 22000,
-    opts: { minListenMs?: number; silenceMs?: number; playBeep?: boolean } = {},
+    timeoutMs = 35000,
+    _opts: { endListeningWhenDone?: boolean } = {},
   ): Promise<string> =>
     new Promise((resolve) => {
-      const Ctor = getRecognitionCtor();
-      if (!Ctor) {
+      const session = startListenFromGesture(timeoutMs);
+      if (!session) {
         resolve("");
         return;
       }
-      let settled = false;
-      let bestTranscript = "";
-      let finalTranscript = "";
-      const startedAt = Date.now();
-      const minListenMs = opts.minListenMs ?? 1200;
-      const silenceMs = opts.silenceMs ?? 2800;
-      const playBeep = opts.playBeep ?? false;
-      let stopTimer: ReturnType<typeof setTimeout> | null = null;
-      let silenceTimer: ReturnType<typeof setTimeout> | null = null;
-      const finish = (t?: string) => {
-        if (settled) return;
-        settled = true;
-        if (stopTimer) clearTimeout(stopTimer);
-        if (silenceTimer) clearTimeout(silenceTimer);
-        const raw = (t ?? (finalTranscript || bestTranscript)).trim();
-        const finalText =
-          raw && !looksLikeAmbientSpeech(raw) ? raw : finalTranscript.trim() || "";
-        setListening(false);
-        resolve(finalText);
-      };
-      try {
-        const rec = new Ctor();
-        rec.lang = "en-US";
-        rec.continuous = true;
-        rec.interimResults = true;
-        rec.maxAlternatives = 5;
-        rec.onresult = (e) => {
-          const start = e.resultIndex ?? 0;
-          for (let i = start; i < e.results.length; i += 1) {
-            const result = e.results[i];
-            if (!result) continue;
-            const choices = Array.from(result)
-              .map((alt) => ({
-                text: alt.transcript?.trim() ?? "",
-                confidence: alt.confidence ?? 0,
-              }))
-              .filter((alt) => alt.text);
-            const picked =
-              choices.sort(
-                (a, b) => b.confidence - a.confidence || b.text.length - a.text.length,
-              )[0]?.text ?? "";
-            if (!picked) continue;
-            bestTranscript = picked;
-            if (result.isFinal) finalTranscript = `${finalTranscript} ${picked}`.trim();
-          }
-          const heard = (finalTranscript || bestTranscript).trim();
-          if (!heard) return;
-          setLastHeard(heard);
-          if (silenceTimer) clearTimeout(silenceTimer);
-          silenceTimer = setTimeout(() => {
-            if (Date.now() - startedAt < minListenMs) {
-              silenceTimer = setTimeout(
-                () => {
-                  try {
-                    rec.stop();
-                  } catch {
-                    finish(heard);
-                  }
-                },
-                minListenMs - (Date.now() - startedAt),
-              );
-              return;
-            }
-            try {
-              rec.stop();
-            } catch {
-              finish(heard);
-            }
-          }, silenceMs);
-        };
-        rec.onerror = (e) => {
-          if (e.error === "not-allowed" || e.error === "service-not-allowed") {
-            toast.error("Microphone permission denied. Please enable it in your browser settings.");
-          }
-          finish("");
-        };
-        rec.onend = () => finish(finalTranscript || undefined);
-        recRef.current = rec;
-        setListening(true);
-        if (playBeep) playVoiceBeep();
-        rec.start();
-        stopTimer = setTimeout(() => {
-          try {
-            rec.stop();
-          } catch {
-            /* noop */
-          }
-        }, timeoutMs);
-      } catch {
-        finish("");
-      }
+      void session.done.then((text) => {
+        const captured = (text || listeningDraftRef.current).trim();
+        resolve(captured);
+      });
     });
 
-  const stopListening = () => {
-    try {
-      recRef.current?.abort();
-    } catch {
-      /* noop */
+  const clearAnswerCapture = () => {
+    answerCaptureRef.current = null;
+    setAnswerCapture(null);
+    setAwaitingEchoConfirm(false);
+    pendingAnswerRef.current = "";
+    setMicTestReady(false);
+  };
+
+  const processEmptyAnswer = (expect: StepKey, epoch: number) => {
+    const flowActive = () => epoch === flowEpochRef.current && !pausedRef.current;
+    if (sttBlockedRef.current) {
+      offerTypedFallback();
+      toast.message(
+        "Voice needs internet — type in the box above, or reconnect and click Start speaking.",
+        { duration: 6000 },
+      );
+      return;
     }
+    const retries = bumpPromptRetries(expect);
+    if (retries >= MAX_VOICE_PROMPT_RETRIES) {
+      offerTypedFallback();
+      return;
+    }
+    const prompt =
+      expect === "verify"
+        ? "I didn't hear you. Was that right? Please say yes or no."
+        : expect === "confirm"
+          ? "I didn't hear you. Should I create the scenario? Please say yes or no."
+          : "I didn't catch that. Could you say it again?";
+    if (!flowActive()) return;
+    setTimeout(() => {
+      if (flowActive()) void ask(prompt, expect);
+    }, 400);
+  };
+
+  const submitCapturedAnswer = async () => {
+    if (awaitingEchoConfirm) {
+      await confirmEchoAnswer(true);
+      return;
+    }
+    const capture = answerCaptureRef.current;
+    if (!capture) return;
+    const { expect, epoch } = capture;
+    if (speechSessionRef.current) {
+      speechSessionRef.current.stop();
+      await speechSessionRef.current.done;
+    }
+    const text = listeningDraftRef.current.trim();
+    stopListening();
+    clearAnswerCapture();
+    if (epoch !== flowEpochRef.current || pausedRef.current) return;
+    if (text) {
+      resetPromptRetries(expect);
+      await handleAnswer(expect, text);
+    } else {
+      processEmptyAnswer(expect, epoch);
+    }
+  };
+
+  const echoHeardText = async (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    setLastHeard(trimmed);
+    setSpeaking(true);
+    try {
+      await speakVoiceText(`I heard ${trimmed}.`);
+    } finally {
+      setSpeaking(false);
+    }
+  };
+
+  const promptEchoConfirm = async () => {
+    setAwaitingEchoConfirm(true);
+    setSpeaking(true);
+    try {
+      await speakQuestionThenCue("Is that correct? Yes or no.");
+    } finally {
+      setSpeaking(false);
+    }
+    if (!listenAbortRef.current && answerCaptureRef.current) {
+      tryAutoListen("confirm");
+    }
+  };
+
+  const confirmEchoAnswer = async (confirmed: boolean) => {
+    const capture = answerCaptureRef.current;
+    if (!capture || !awaitingEchoConfirm) return;
+    const { expect, epoch } = capture;
+    const text = pendingAnswerRef.current.trim() || listeningDraftRef.current.trim();
+
+    setAwaitingEchoConfirm(false);
+    pendingAnswerRef.current = "";
+    stopListening();
+
+    if (!confirmed) {
+      listeningDraftRef.current = "";
+      setListeningDraft("");
+      toast.message("OK — speak again after the beep.", { duration: 3500 });
+      window.setTimeout(() => {
+        if (answerCaptureRef.current && !pausedRef.current && !listenAbortRef.current) {
+          tryAutoListen("answer");
+        }
+      }, 350);
+      return;
+    }
+
+    clearAnswerCapture();
+    if (epoch !== flowEpochRef.current || pausedRef.current) return;
+    if (text) {
+      resetPromptRetries(expect);
+      await handleAnswer(expect, text);
+    } else {
+      processEmptyAnswer(expect, epoch);
+    }
+  };
+
+  const onConfirmRecordingFinished = async (heard: string) => {
+    speechSessionRef.current = null;
     setListening(false);
+    setSpeechEngineLive(false);
+    setHardwareMicLevel(0);
+    setSttStatus(null);
+
+    const reply = heard.trim();
+    const v = parseConfirmation(reply);
+    if (v === true) {
+      await confirmEchoAnswer(true);
+      return;
+    }
+    if (v === false) {
+      await confirmEchoAnswer(false);
+      return;
+    }
+    toast.message("Say yes or no, or tap the Yes / No buttons.", { duration: 4500 });
+  };
+
+  const onRecordingFinished = async (heard: string, opts: { micTest?: boolean } = {}) => {
+    speechSessionRef.current = null;
+    setListening(false);
+    setSpeechEngineLive(false);
+    setHardwareMicLevel(0);
+    setSttStatus(null);
+
+    const text = (heard || listeningDraftRef.current).trim();
+    if (!text) {
+      if (opts.micTest) {
+        setMicTestPassed(false);
+        setMicTestReady(true);
+        toast.error(
+          "Windows hears you but speech didn't come through. Allow mic for this site, check internet, or type your answers.",
+        );
+      }
+      return;
+    }
+
+    if (opts.micTest) {
+      await echoHeardText(text);
+      setMicTestPassed(true);
+      setTestingMic(false);
+      setMicTestReady(false);
+      toast.success(`Mic works! I heard: "${text}"`);
+      return;
+    }
+
+    if (!answerCaptureRef.current) return;
+
+    pendingAnswerRef.current = text;
+    syncListeningDraft(text);
+    await echoHeardText(text);
+    await promptEchoConfirm();
+  };
+
+  const startSpeakingAnswer = () => {
+    if (listening) return;
+    tryAutoListen(awaitingEchoConfirm ? "confirm" : "answer");
+  };
+
+  const checkMicSignal = () => {
+    if (checkingMicSignal) {
+      stopMicSignalCheck();
+      return;
+    }
+    stopListening();
+    primeVoiceSession();
+    void (async () => {
+      try {
+        await primeMicAccess(selectedMicId || undefined);
+        await refreshMicDevices();
+      } catch {
+        toast.error("Allow microphone access, then try Check mic signal again.");
+        return;
+      }
+      stopMicSignalCheck();
+      setCheckingMicSignal(true);
+      micLevelMonitorRef.current = startMicLevelMonitor((snapshot) => {
+        setMicSignal(snapshot);
+        setHardwareMicLevel(snapshot.level);
+      }, selectedMicId || undefined);
+      toast.message("Stay quiet 1 sec, then speak. Bars should jump only when you talk.", {
+        duration: 6000,
+      });
+    })();
+  };
+
+  const browserRecordTest = () => {
+    if (browserRecording) return;
+    stopListening();
+    primeVoiceSession();
+    setBrowserRecording(true);
+    toast.message("Recording 3 seconds — say hello…", { duration: 3500 });
+    void (async () => {
+      try {
+        const clip = await recordMicClip(3, selectedMicId || undefined);
+        const audio = new Audio(clip.url);
+        audio.onended = () => clip.revoke();
+        await audio.play();
+        toast.success(`Browser recorded from: ${clip.deviceLabel}. Did you hear yourself?`);
+      } catch {
+        toast.error("Browser couldn't record. Allow microphone for this site.");
+      } finally {
+        setBrowserRecording(false);
+      }
+    })();
+  };
+
+  // Focus mic control after each question (manual fallback if auto-listen fails).
+  useEffect(() => {
+    if (!answerCapture || paused || speaking || testingMic) return;
+    const id = window.requestAnimationFrame(() => startSpeakingBtnRef.current?.focus());
+    return () => window.cancelAnimationFrame(id);
+  }, [answerCapture?.listenGen, paused, speaking, testingMic, awaitingEchoConfirm]);
+
+  const submitAnswerNow = () => {
+    speechSessionRef.current?.stop();
+  };
+
+  const updateListeningDraft = (value: string) => {
+    listeningDraftRef.current = value;
+    setListeningDraft(value);
+    setLiveListenText(value);
+    if (value.trim()) setLastHeard(value.trim());
+  };
+
+  const stopListening = () => {
+    listenAbortRef.current = true;
+    speechSessionRef.current?.stop();
+    speechSessionRef.current = null;
+    setListening(false);
+    setSpeechEngineLive(false);
+    setSttStatus(null);
+    setLiveListenText("");
+    setAwaitingEchoConfirm(false);
+    pendingAnswerRef.current = "";
+    stopMicSignalCheck();
   };
 
   // Stop any in-flight key-pick session
@@ -587,43 +1099,54 @@ export function VoiceIntakeWizard({
 
   // ------------------- Conversation runner -------------------
   // Speaks the question, then listens once and routes the response.
-  const ask = async (question: string, expect: StepKey, opts: { skipListen?: boolean } = {}) => {
-    setTranscript((p) => [...p, { q: question, speaker: "assistant" }]);
+  const ask = async (
+    question: string,
+    expect: StepKey,
+    opts: { skipListen?: boolean; silentTranscript?: boolean } = {},
+  ) => {
+    const token = ++askTokenRef.current;
+    const epoch = flowEpochRef.current;
+    const flowActive = () =>
+      token === askTokenRef.current && epoch === flowEpochRef.current && !pausedRef.current;
+
+    stopListening();
+    cancelSpeech();
+    setSpeaking(false);
+    clearSttBlocked();
+
+    currentPromptRef.current = { question, expect };
+    if (!opts.silentTranscript) {
+      setTranscript((p) => [...p, { q: question, speaker: "assistant" }]);
+    }
     if (opts.skipListen) {
       await speak(question);
       return;
     }
+    if (!flowActive()) return;
+
+    void primeMicAccess(selectedMicId || undefined).catch(() => undefined);
     setSpeaking(true);
     try {
       await speakQuestionThenCue(question);
     } finally {
       setSpeaking(false);
     }
-    const heard = await listen(
-      expect === "verify" || expect === "confirm" ? 30000 : 22000,
-      expect === "verify" || expect === "confirm"
-        ? { minListenMs: 1400, silenceMs: 2600 }
-        : undefined,
-    );
-    if (heard) {
-      await handleAnswer(expect, heard);
-    } else {
-      // Mic returned nothing (timeout / no-speech). Re-prompt so we don't hang —
-      // especially important on the verify step where the user is just saying yes/no.
-      const prompt =
-        expect === "verify"
-          ? "I didn't hear you. Was that right? Please say yes or no."
-          : expect === "confirm"
-            ? "I didn't hear you. Should I create the scenario? Please say yes or no."
-            : "I didn't catch that. Could you say it again?";
-      setTimeout(() => void ask(prompt, expect), 200);
-    }
+    if (!flowActive()) return;
+
+    stopListening();
+    listenAbortRef.current = false;
+    listeningDraftRef.current = "";
+    setListeningDraft("");
+    listenGenRef.current += 1;
+    const capture = { expect, epoch, listenGen: listenGenRef.current };
+    answerCaptureRef.current = capture;
+    setAnswerCapture(capture);
+    tryAutoListen("answer");
   };
 
   const reAsk = (q: string, step: StepKey) => {
     void ask(q, step);
   };
-  const lastQuestion = transcript[transcript.length - 1]?.q ?? "";
 
   const handleAnswer = async (forStep: StepKey, text: string) => {
     setTranscript((p) => [...p, { q: text, speaker: "you" }]);
@@ -854,7 +1377,7 @@ export function VoiceIntakeWizard({
         return;
       }
       case "verify": {
-        const v = parseYesNo(text);
+        const v = parseConfirmation(text);
         if (v === true) {
           const p = pendingRef.current;
           pendingRef.current = null;
@@ -878,7 +1401,7 @@ export function VoiceIntakeWizard({
         return;
       }
       case "confirm": {
-        const v = parseYesNo(text);
+        const v = parseConfirmation(text);
         if (v === true) {
           void submit();
           return;
@@ -1073,78 +1596,10 @@ export function VoiceIntakeWizard({
       "medsName",
       { skipListen: true },
     );
-    void medListenLoop();
   };
 
   const medListenLoop = async () => {
-    while (!cancelMedLoopRef.current && stepRef.current === "medsName") {
-      const heard = await listen(20000, { minListenMs: 900, silenceMs: 2200 });
-      if (cancelMedLoopRef.current || stepRef.current !== "medsName") return;
-      if (!heard) continue;
-      setTranscript((p) => [...p, { q: heard, speaker: "you" }]);
-      const t = heard.toLowerCase().trim();
-      if (/\b(go back|previous question|back up)\b/.test(t)) {
-        cancelMedLoopRef.current = true;
-        goBack();
-        return;
-      }
-      if (
-        /\b(cancel|never mind|stop searching|no more meds|i'?m done|that's all|nothing else)\b/.test(
-          t,
-        )
-      ) {
-        cancelMedSearch();
-        return;
-      }
-      if (/\b(clear|start over|reset)\b/.test(t)) {
-        setMedQuery("");
-        continue;
-      }
-      // "read options" / "list options" / "read them" → speak each match and let any key pick
-      if (
-        /\b(read (options|them|matches|the list)|list (options|matches)|read aloud|read em|read 'em)\b/.test(
-          t,
-        )
-      ) {
-        const q = medQuery.trim();
-        const matches = q ? searchMedCatalog(q, 6) : [];
-        if (matches.length === 0) {
-          void speak("No matches yet. Say or spell more of the name.");
-          continue;
-        }
-        cancelMedLoopRef.current = true;
-        void readMedOptions(matches.map((m) => m.name));
-        return;
-      }
-      if (/\b(keep going|continue|more|refine|next letter)\b/.test(t)) {
-        continue;
-      }
-      // "add <name>" / "pick <name>" / "select <name>"
-      const addMatch = t.match(/^(?:add|pick|choose|select)\s+(.+)$/);
-      if (addMatch) {
-        const m = bestMedicationMatch(addMatch[1]) ?? searchMedCatalog(addMatch[1], 1)[0];
-        if (m) {
-          pickMed(m.name);
-          return;
-        }
-      }
-      // Just "add" / "add it" / "add that" -> pick top match
-      if (/^add( it| that| this)?\.?$/.test(t)) {
-        const q = medQuery.trim();
-        const top = q ? searchMedCatalog(q, 1)[0] : null;
-        if (top) {
-          pickMed(top.name);
-          return;
-        }
-      }
-      // Otherwise treat as additional search text
-      const parsed = parseSpelledOrSpoken(heard).replace(
-        /^(it'?s|the drug is|i take|i'?m on)\s+/i,
-        "",
-      );
-      if (!parsed) continue;
-      setMedQuery((p) => (p ? `${p} ${parsed}` : parsed).slice(0, 80));
-    }
+    // Medication names are entered via the search box (voice requires a click to unlock mic).
   };
 
   // Read medication match names one at a time; any key picks the current one.
@@ -1163,9 +1618,7 @@ export function VoiceIntakeWizard({
         pickMed(names[idx]);
       },
       () => {
-        // None picked — return to active search loop
         cancelMedLoopRef.current = false;
-        void medListenLoop();
       },
     );
   };
@@ -1247,15 +1700,67 @@ export function VoiceIntakeWizard({
     }
   }, [step, conditions]);
 
-  // Manual controls
-  const repeat = () => {
-    if (lastQuestion) void speak(lastQuestion);
-  };
-  const retry = async () => {
+  const pauseVoice = () => {
+    flowEpochRef.current += 1;
+    askTokenRef.current += 1;
+    listenAbortRef.current = true;
+    pausedRef.current = true;
+    setPaused(true);
     stopListening();
-    if (typeof window !== "undefined") window.speechSynthesis?.cancel();
-    const heard = await listen();
-    if (heard) handleAnswer(stepRef.current, heard);
+    clearAnswerCapture();
+    stopKeyPick();
+    cancelSpeech();
+    setSpeaking(false);
+    toast.message("Paused — click Resume, then Repeat question when ready.");
+  };
+
+  const resumeVoice = () => {
+    pausedRef.current = false;
+    listenAbortRef.current = false;
+    setPaused(false);
+    toast.message("Resumed — press Repeat question to hear it again.");
+  };
+
+  const repeatQuestion = () => {
+    if (pausedRef.current) {
+      toast.message("Click Resume first.");
+      return;
+    }
+    if (speaking || listening) {
+      flowEpochRef.current += 1;
+      listenAbortRef.current = true;
+      stopListening();
+      cancelSpeech();
+      setSpeaking(false);
+    }
+    const prompt = currentPromptRef.current;
+    const expect =
+      prompt?.expect ??
+      (stepRef.current === "verify" ? "verify" : stepRef.current);
+    const question = prompt?.question;
+
+    flowEpochRef.current += 1;
+    listenAbortRef.current = false;
+    clearAnswerCapture();
+    const epoch = flowEpochRef.current;
+
+    setTimeout(() => {
+      if (epoch !== flowEpochRef.current || pausedRef.current) return;
+      if (question) {
+        void ask(question, expect, { silentTranscript: true });
+      } else {
+        void askForStep(stepRef.current);
+      }
+    }, 150);
+  };
+
+  const retryListen = () => {
+    if (pausedRef.current || speaking) return;
+    if (answerCapture) {
+      startSpeakingAnswer();
+      return;
+    }
+    toast.message("Press Repeat question first, then Start speaking.");
   };
   const skip = () => {
     const s = stepRef.current;
@@ -1278,39 +1783,94 @@ export function VoiceIntakeWizard({
   // Cleanup on unmount
   useEffect(
     () => () => {
-      try {
-        recRef.current?.abort();
-      } catch {
-        /* noop */
-      }
+      speechSessionRef.current?.stop();
+      speechSessionRef.current = null;
       if (typeof window !== "undefined") window.speechSynthesis?.cancel();
     },
     [],
   );
 
   // ------------------- Start -------------------
-  const begin = async () => {
+  const begin = () => {
+    primeVoiceSession();
+    void beginAsync();
+  };
+
+  const beginAsync = async () => {
     setTranscript([]);
-    primeSpeechVoices();
-    await ensureSpeechVoicesReady();
+    setSpeaking(true);
     try {
-      window.speechSynthesis?.resume();
-    } catch {
-      /* noop */
-    }
-    // Speak first while the Start click user-gesture is still active (before mic dialog).
-    await speak(
-      "Hi — I'll ask you a few questions to build your Medicare scenario. You can repeat any question, retry your answer, or type instead. Let's start.",
-    );
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      stream.getTracks().forEach((t) => t.stop());
-    } catch {
-      toast.error("Microphone access is required for voice intake. Please allow it and try again.");
-      return;
+      await speakVoiceTextImmediate(VOICE_WIZARD_INTRO);
+      await waitUntilSpeechSilent(20000);
+    } finally {
+      setSpeaking(false);
     }
     nextStep("birthYear");
   };
+
+  const testSpeakers = () => {
+    if (speaking || testingMic) return;
+    primeVoiceSession();
+    const speechPromise = speakVoiceTextImmediate(SPEAKER_TEST_PHRASE);
+    void (async () => {
+      setSpeaking(true);
+      try {
+        const started = await finishSpeakerTestFromUserGesture(speechPromise);
+        if (started) {
+          toast.success("Speaker test finished. Did you hear the voice and beep?");
+        } else {
+          toast.error(
+            "No speech started. Check system volume, browser tab mute, and try Chrome or Edge.",
+          );
+        }
+      } catch {
+        toast.error(
+          "Speaker test failed. Check system volume, browser tab mute, and try Chrome or Edge.",
+        );
+      } finally {
+        setSpeaking(false);
+      }
+    })();
+  };
+
+  const testMic = () => {
+    if (testingMic || listening || speaking) return;
+    primeVoiceSession();
+    void primeMicAccess(selectedMicId || undefined).catch(() => undefined);
+    const speechPromise = speakVoiceTextImmediate(MIC_TEST_PROMPT);
+    void (async () => {
+      setTestingMic(true);
+      setMicTestReady(false);
+      setLiveListenText("");
+      setSpeaking(true);
+      try {
+        await speechPromise;
+        await waitUntilSpeechSilent(12000);
+        setSpeaking(false);
+        await playVoiceBeep();
+        await new Promise((r) => setTimeout(r, 300));
+        tryAutoListen("micTest");
+      } catch {
+        setTestingMic(false);
+        setMicTestReady(false);
+      } finally {
+        setSpeaking(false);
+      }
+    })();
+  };
+
+  const startMicTestListen = () => {
+    if (listening) return;
+    tryAutoListen("micTest");
+  };
+
+  if (voiceReady === null) {
+    return (
+      <Card className="glass p-6 max-w-2xl mx-auto text-center">
+        <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
+      </Card>
+    );
+  }
 
   if (!supported) {
     return (
@@ -1327,11 +1887,20 @@ export function VoiceIntakeWizard({
 
   // ------------------- UI -------------------
   return (
-    <Card className="glass p-6 max-w-2xl mx-auto space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h3 className="font-display text-xl font-bold">Voice intake</h3>
-          <p className="text-xs text-muted-foreground">I'll ask, you answer. No typing required.</p>
+    <Card className={`glass max-w-2xl mx-auto p-4 sm:p-5 ${step === "intro" ? "space-y-2" : "space-y-4"}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="font-display text-lg font-bold leading-tight sm:text-xl">Voice intake</h3>
+          {step === "intro" ? (
+            <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground sm:text-xs">
+              <strong>Test your mic first</strong> — after the beep, speak hello (listening starts
+              automatically).
+            </p>
+          ) : (
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              I'll ask, you answer. No typing required. Wait for the beep, then speak.
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Badge
@@ -1349,21 +1918,331 @@ export function VoiceIntakeWizard({
         </div>
       </div>
 
-      {/* Mic readiness tip */}
       {step !== "intro" && step !== "done" && step !== "submitting" && (
+        <div className="flex gap-2">
+          <Button
+            variant={paused ? "default" : "outline"}
+            size="sm"
+            className="flex-1 h-9"
+            onClick={paused ? resumeVoice : pauseVoice}
+          >
+            {paused ? (
+              <Play className="h-3.5 w-3.5 mr-1.5" />
+            ) : (
+              <Pause className="h-3.5 w-3.5 mr-1.5" />
+            )}
+            {paused ? "Resume" : "Pause"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1 h-9"
+            onClick={repeatQuestion}
+            disabled={paused}
+          >
+            <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+            Repeat question
+          </Button>
+        </div>
+      )}
+
+      {step === "intro" && (
+        <div className="space-y-2">
+          <div className="rounded-lg border border-primary/20 bg-muted/30 px-3 py-2.5 space-y-2">
+            <p className="text-[11px] font-semibold text-foreground">Microphone</p>
+            <select
+              className="w-full rounded-md border border-input bg-background px-2.5 py-2 text-sm"
+              value={selectedMicId}
+              onFocus={() => void refreshMicDevices()}
+              onChange={(e) => setSelectedMicId(e.target.value)}
+            >
+              {micDevices.length === 0 ? (
+                <option value="">Click Check mic signal to detect mics</option>
+              ) : (
+                micDevices.map((d) => (
+                  <option key={d.deviceId} value={d.deviceId}>
+                    {d.label}
+                  </option>
+                ))
+              )}
+            </select>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full h-8"
+              onClick={checkMicSignal}
+              disabled={speaking || listening}
+            >
+              {checkingMicSignal ? "Stop mic signal check" : "Check mic signal"}
+            </Button>
+            {checkingMicSignal && (
+              <>
+                {micSignal?.deviceLabel && (
+                  <p className="text-[10px] text-center text-muted-foreground">
+                    Active device: <strong>{micSignal.deviceLabel}</strong>
+                  </p>
+                )}
+                <MicVolumeControl
+                  level={hardwareMicLevel}
+                  active
+                  mode="hardware"
+                  className="pt-1"
+                />
+                {micSignal?.hint && (
+                  <p
+                    className={cn(
+                      "text-[10px] text-center leading-snug",
+                      micSignal.quality === "good"
+                        ? "text-emerald-700 font-medium"
+                        : micSignal.quality === "noise"
+                          ? "text-amber-800"
+                          : "text-muted-foreground",
+                    )}
+                  >
+                    {micSignal.hint}
+                  </p>
+                )}
+              </>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full h-8"
+              onClick={browserRecordTest}
+              disabled={speaking || listening || browserRecording}
+            >
+              {browserRecording ? "Recording…" : "Browser record test (3 sec)"}
+            </Button>
+            <p className="text-[10px] text-muted-foreground leading-snug">
+              Windows mic works? Good. Voice uses <strong>record + transcribe</strong> (same path as
+              browser record test) — words appear within a few seconds of speaking.
+            </p>
+            <p className="text-[10px] text-muted-foreground leading-snug">
+              Pick your <strong>EMEET</strong> mic. Run <strong>Browser record test</strong> — you
+              should hear yourself back. Then run <strong>Test mic</strong> for speech-to-text.
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full h-7 text-xs"
+              type="button"
+              onClick={() => {
+                window.open("ms-settings:sound", "_blank");
+              }}
+            >
+              Open Windows Sound settings
+            </Button>
+          </div>
+          <div className="flex flex-row gap-1.5 sm:gap-2">
+            <Button
+              ref={testMicButtonRef}
+              variant="default"
+              size="sm"
+              className="h-8 flex-1 min-w-0 px-2 text-xs sm:h-9 sm:text-sm"
+              onClick={testMic}
+              disabled={speaking || testingMic || listening}
+            >
+              {testingMic ? (
+                <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin sm:mr-1.5" />
+              ) : (
+                <Mic className="h-3.5 w-3.5 shrink-0 sm:mr-1.5" />
+              )}
+              <span className="truncate">Test mic</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 flex-1 min-w-0 px-2 text-xs sm:h-9 sm:text-sm"
+              onClick={testSpeakers}
+              disabled={speaking || testingMic}
+            >
+              <Volume2 className="h-3.5 w-3.5 shrink-0 sm:mr-1.5" />
+              <span className="truncate">Test speakers</span>
+            </Button>
+            <Button
+              size="sm"
+              className="h-8 flex-1 min-w-0 px-2 text-xs grad-indigo sm:h-9 sm:text-sm"
+              onClick={begin}
+              disabled={speaking || testingMic}
+            >
+              <Mic className="h-3.5 w-3.5 shrink-0 sm:mr-1.5" />
+              <span className="truncate">Start intake</span>
+            </Button>
+          </div>
+          {micTestPassed && (
+            <p className="text-center text-[11px] font-medium text-emerald-700">
+              Microphone check passed.
+            </p>
+          )}
+          {testingMic && (speaking || listening || liveListenText || micTestReady) && (
+            <div className="rounded-lg border-2 border-primary/50 bg-primary/5 px-3 py-2.5 space-y-1.5">
+              <div className="flex items-center justify-center gap-2 text-sm font-semibold min-h-[1.25rem]">
+                {speaking && !listening && !micTestReady ? (
+                  <>
+                    <Volume2 className="h-4 w-4 shrink-0 text-primary" />
+                    <span className="text-primary">Listen to the prompt…</span>
+                  </>
+                ) : (
+                  <>
+                    <Mic className="h-4 w-4 shrink-0 text-destructive" />
+                    <span className="text-destructive">
+                      {listening ? "Speak now — I'm listening" : "Starting microphone…"}
+                    </span>
+                  </>
+                )}
+              </div>
+              {(listening || micTestReady) && (
+                <>
+                  <MicVolumeControl
+                    level={speechVisualLevel}
+                    active={listening}
+                    mode="speech"
+                    heardWords={heardSpeech}
+                    className="pt-1"
+                  />
+                  <LiveAnswerBox
+                    value={listeningDraft}
+                    onChange={updateListeningDraft}
+                    listening={listening}
+                  />
+                  <Button
+                    size="sm"
+                    className="w-full grad-indigo text-primary-foreground"
+                    onClick={listening ? submitAnswerNow : startMicTestListen}
+                    disabled={speaking && !listening && !micTestReady}
+                  >
+                    {listening ? (
+                      <>
+                        <Check className="h-4 w-4 mr-1.5" />
+                        Submit answer
+                      </>
+                    ) : (
+                      <>
+                        <Mic className="h-4 w-4 mr-1.5" />
+                        Start speaking
+                      </>
+                    )}
+                  </Button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {paused && step !== "intro" && step !== "done" && step !== "submitting" && (
+        <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-center text-sm font-semibold text-amber-900">
+          Paused — click <strong>Resume</strong> when you're ready.
+        </div>
+      )}
+
+      {/* Mic readiness tip */}
+      {step !== "intro" && step !== "done" && step !== "submitting" && !paused && (
         <div className="flex items-center gap-1.5 rounded-md bg-primary/5 border border-primary/10 px-2.5 py-1.5 text-[11px] text-primary">
           <Info className="h-3 w-3 shrink-0" />
           <span>
-            Wait for the beep and the <strong>"Speak now"</strong> banner before answering.
+            Wait for the <strong>beep</strong> — listening starts automatically. I stop when you
+            pause, echo back what I heard, then ask <strong>yes or no</strong> before moving on.
           </span>
         </div>
       )}
 
-      {/* Big "Speak now" banner while the mic is open */}
-      {listening && (
-        <div className="flex items-center justify-center gap-2 rounded-lg border-2 border-destructive bg-destructive/10 px-4 py-3 text-destructive font-bold animate-pulse">
-          <Mic className="h-5 w-5" />
-          <span>Speak now — I'm listening</span>
+      {sttBlocked && !paused && step !== "intro" && step !== "done" && step !== "submitting" && (
+        <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-center text-xs text-amber-950">
+          Voice recognition needs internet. <strong>Type your answer</strong> in the box below, or
+          reconnect and click <strong>Start speaking</strong>.
+        </div>
+      )}
+
+      {answerCapture && !paused && (
+        <div className="rounded-lg border-2 border-primary bg-primary/5 px-4 py-3 space-y-3">
+          <p className="text-center text-sm font-semibold text-primary min-h-[1.25rem]">
+            {listening
+              ? awaitingEchoConfirm
+                ? "Listening for yes or no"
+                : "Listening — speak your answer (I stop after a short pause)"
+              : awaitingEchoConfirm
+                ? "Say yes or no — is that correct?"
+                : sttBlocked
+                  ? "Voice paused — type your answer below"
+                  : speaking
+                    ? "Listen to the question…"
+                    : "Starting microphone after the beep…"}
+          </p>
+          <MicVolumeControl
+            level={speechVisualLevel}
+            active={listening}
+            mode="speech"
+            heardWords={heardSpeech}
+            className="px-1"
+          />
+          <LiveAnswerBox
+            value={listeningDraft}
+            onChange={updateListeningDraft}
+            listening={listening}
+          />
+          {listening && !listeningDraft.trim() && (
+            <p className="text-[10px] text-center text-muted-foreground">
+              {sttStatus ??
+                (speechEngineLive
+                  ? "Mic is live — speak clearly. Words appear in the box as you talk."
+                  : "Starting microphone…")}
+            </p>
+          )}
+          {listening && sttStatus && listeningDraft.trim() && (
+            <p className="text-[10px] text-center text-emerald-700">{sttStatus}</p>
+          )}
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+            {awaitingEchoConfirm ? (
+              <>
+                <Button
+                  size="sm"
+                  variant="default"
+                  className="flex-1 h-10"
+                  onClick={() => void confirmEchoAnswer(true)}
+                  disabled={listening || speaking}
+                >
+                  <Check className="h-4 w-4 mr-1.5" />
+                  Yes, correct
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1 h-10"
+                  onClick={() => void confirmEchoAnswer(false)}
+                  disabled={listening || speaking}
+                >
+                  No, try again
+                </Button>
+              </>
+            ) : null}
+            <Button
+              ref={startSpeakingBtnRef}
+              size="sm"
+              className="flex-1 grad-indigo text-primary-foreground h-10"
+              onClick={listening ? () => speechSessionRef.current?.stop() : startSpeakingAnswer}
+              disabled={speaking}
+            >
+              <Mic className="h-4 w-4 mr-1.5" />
+              {listening
+                ? "Stop listening"
+                : awaitingEchoConfirm
+                  ? "Say yes or no"
+                  : "Start speaking"}
+            </Button>
+            {!awaitingEchoConfirm ? (
+              <Button
+                size="sm"
+                variant="default"
+                className="flex-1 h-10"
+                onClick={() => void submitCapturedAnswer()}
+                disabled={listening || !listeningDraft.trim()}
+              >
+                <Check className="h-4 w-4 mr-1.5" />
+                Submit answer
+              </Button>
+            ) : null}
+          </div>
         </div>
       )}
 
@@ -1414,14 +2293,13 @@ export function VoiceIntakeWizard({
       )}
 
       {/* Conversation transcript */}
-      <div className="bg-muted/40 border border-border rounded-lg p-3 h-64 overflow-y-auto text-sm space-y-2">
-        {transcript.length === 0 && (
+      <div
+        className={`bg-muted/40 border border-border rounded-lg p-3 overflow-y-auto text-sm space-y-2 ${step === "intro" ? "h-44" : "h-64"}`}
+      >
+        {transcript.length === 0 && step !== "intro" && (
           <div className="text-muted-foreground text-center py-12 space-y-2">
-            <p>
-              Press <strong>Start voice intake</strong> below — I'll ask the first question.
-            </p>
             <p className="text-[11px]">
-              Tip: wait until the Listening indicator turns on before answering.
+              Tip: the mic opens after the beep — watch for the Listening indicator.
             </p>
           </div>
         )}
@@ -1439,9 +2317,9 @@ export function VoiceIntakeWizard({
 
       {lastHeard &&
         listening === false &&
-        step !== "intro" &&
         step !== "done" &&
-        step !== "submitting" && (
+        step !== "submitting" &&
+        (step !== "intro" || testingMic) && (
           <p className="text-xs text-muted-foreground">
             Last heard: <em>"{lastHeard}"</em>
           </p>
@@ -1521,12 +2399,7 @@ export function VoiceIntakeWizard({
       )}
 
       {/* Controls */}
-      {step === "intro" ? (
-        <Button className="w-full grad-indigo" onClick={begin}>
-          <Mic className="h-4 w-4 mr-2" />
-          Start voice intake
-        </Button>
-      ) : step === "submitting" ? (
+      {step === "intro" ? null : step === "submitting" ? (
         <Button className="w-full" disabled>
           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
           Creating scenario…
@@ -1567,19 +2440,24 @@ export function VoiceIntakeWizard({
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <Button variant="outline" size="sm" onClick={repeat} disabled={speaking}>
-                <Volume2 className="h-3.5 w-3.5 mr-1" />
+              <Button variant="outline" size="sm" onClick={repeatQuestion} disabled={paused}>
+                <RotateCcw className="h-3.5 w-3.5 mr-1" />
                 Repeat
               </Button>
-              <Button variant="outline" size="sm" onClick={retry} disabled={listening}>
-                <RotateCcw className="h-3.5 w-3.5 mr-1" />
-                Retry
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={retryListen}
+                disabled={listening || speaking || paused}
+              >
+                <Mic className="h-3.5 w-3.5 mr-1" />
+                Answer again
               </Button>
-              <Button variant="outline" size="sm" onClick={() => setTyping(true)}>
+              <Button variant="outline" size="sm" onClick={() => setTyping(true)} disabled={paused}>
                 <Keyboard className="h-3.5 w-3.5 mr-1" />
                 Type
               </Button>
-              <Button variant="outline" size="sm" onClick={skip}>
+              <Button variant="outline" size="sm" onClick={skip} disabled={paused}>
                 <SkipForward className="h-3.5 w-3.5 mr-1" />
                 Skip
               </Button>

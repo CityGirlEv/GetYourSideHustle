@@ -9,6 +9,7 @@ import { fileURLToPath } from "url";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const workerWranglerPath = path.join(root, "dist", "_worker.js", "wrangler.json");
+const rootWranglerPath = path.join(root, "wrangler.json");
 const standalonePath = path.join(root, "dist", "wrangler.worker.json");
 
 if (!fs.existsSync(workerWranglerPath)) {
@@ -17,6 +18,9 @@ if (!fs.existsSync(workerWranglerPath)) {
 }
 
 const generated = JSON.parse(fs.readFileSync(workerWranglerPath, "utf8"));
+const rootConfig = fs.existsSync(rootWranglerPath)
+  ? JSON.parse(fs.readFileSync(rootWranglerPath, "utf8"))
+  : {};
 
 const config = {
   name: generated.name ?? "mypartb",
@@ -26,7 +30,13 @@ const config = {
   no_bundle: true,
   rules: generated.rules ?? [{ type: "ESModule", globs: ["**/*.mjs", "**/*.js"] }],
   assets: { binding: "ASSETS", directory: "." },
+  routes: [
+    { pattern: "mypartb.com/*", zone_name: "mypartb.com" },
+    { pattern: "www.mypartb.com/*", zone_name: "mypartb.com" },
+  ],
 };
+
+if (rootConfig.ai) config.ai = rootConfig.ai;
 
 fs.writeFileSync(standalonePath, `${JSON.stringify(config, null, 2)}\n`);
 console.log("Wrote dist/wrangler.worker.json for standalone Worker deploy");

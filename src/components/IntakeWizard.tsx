@@ -35,6 +35,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { VoiceButton, matchSpokenOption } from "./VoiceButton";
 import type { Medication } from "@/lib/medicare-math";
+import type { IntakeWizardVoiceSync } from "@/lib/intake-wizard-voice-sync";
 import {
   countiesForZip3,
   countyMatchesZip3,
@@ -85,6 +86,7 @@ import {
   type ReferralSource,
 } from "@/lib/referral-sources";
 import { LEGAL_OPERATOR_NAME } from "@/lib/legal-content";
+import { validateMedicationsForSubmit } from "@/lib/intake-medications-validation";
 const GENDER_OPTIONS = [
   { value: "female", label: "Female" },
   { value: "male", label: "Male" },
@@ -178,7 +180,16 @@ function WizardFieldLabel({
   );
 }
 
-export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
+export function IntakeWizard({
+  onDone,
+  voiceMirror = false,
+  voiceSync = null,
+}: {
+  onDone?: (code: string) => void;
+  /** When true, the form mirrors voice intake — fields fill in as answers are confirmed. */
+  voiceMirror?: boolean;
+  voiceSync?: IntakeWizardVoiceSync | null;
+}) {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [birthYear, setBirthYear] = useState<number | "">("");
@@ -664,20 +675,12 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
       toast.error(referralError);
       return;
     }
-    const submittedMeds = meds.filter(
-      (m) => confirmedMedIds.includes(m.id) && m.medication_name.trim(),
-    );
-    const unconfirmedFilled = meds.filter(
-      (m) => !confirmedMedIds.includes(m.id) && m.medication_name.trim(),
-    );
-    if (unconfirmedFilled.length) {
-      toast.error('Click "Add this Drug" on each medication card before creating your scenario.');
+    const medValidation = validateMedicationsForSubmit(meds, confirmedMedIds);
+    if (!medValidation.ok) {
+      toast.error(medValidation.error);
       return;
     }
-    if (submittedMeds.length === 0) {
-      toast.error('Add at least one medication using "Add this Drug".');
-      return;
-    }
+    const submittedMeds = medValidation.submitted;
     setBusy(true);
     const referralPrefs = buildReferralPreferences(referralSources, {
       agent_referral: referralAgentName,
@@ -1098,7 +1101,11 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
 
       {step === 3 && (
         <div className="space-y-4">
-          <h3 className="font-display text-xl font-bold">Step 3 · Medications</h3>
+          <h3 className="font-display text-xl font-bold">Step 3 · Medications (optional)</h3>
+          <p className="text-sm text-muted-foreground">
+            Not taking any prescription medications? You can skip this step and click{" "}
+            <strong>Create scenario</strong> below.
+          </p>
 
           <Card className="p-2.5 md:p-3 bg-muted/40 border-dashed">
             <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
@@ -1150,8 +1157,9 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
             if (!suggestions.length && !confirmedMeds.length)
               return (
                 <p className="text-xs text-muted-foreground">
-                  Tip: go back to Step 2 and pick your conditions to see a list of common
-                  medications you can add with one click.
+                  No medications to add? Click <strong>Create scenario</strong> when you are ready.
+                  Tip: go back to Step 2 and pick your conditions to see common medications you can
+                  add with one click.
                 </p>
               );
             return (
@@ -1553,7 +1561,7 @@ export function IntakeWizard({ onDone }: { onDone?: (code: string) => void }) {
             <TouchCheckboxField
               checked={requestExpertContact}
               onChange={(e) => {
-                const checked = e.target.checked;
+                const checked = (e.target as any).checked;
                 setRequestExpertContact(checked);
                 if (checked) setExpertContactNoticeOpen(true);
               }}

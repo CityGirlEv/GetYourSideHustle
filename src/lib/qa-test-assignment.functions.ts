@@ -8,7 +8,7 @@ import {
   sendTransactionalTemplates,
   notifyAdminInboxes,
 } from "@/lib/send-transactional-template.server";
-import { isEnabledQaAccount, NON_QA_ASSIGNEE_LABELS } from "@/lib/qa-test-assignment.server";
+import { isEnabledQaAccount, NON_QA_ASSIGNEE_LABELS, isQaRetestStatus } from "@/lib/qa-test-assignment.server";
 
 const SKIP_ASSIGNEES = NON_QA_ASSIGNEE_LABELS;
 
@@ -66,11 +66,9 @@ async function buildEnabledQaUserIndex(): Promise<QaUserIndex> {
 
     const bannedUntil = (user as { banned_until?: string | null }).banned_until;
     const banned = !!(bannedUntil && new Date(bannedUntil).getTime() > Date.now());
-    const emailConfirmed = !!(user as { email_confirmed_at?: string | null }).email_confirmed_at;
     if (
       !isEnabledQaAccount({
         hasQaRole: true,
-        emailConfirmed,
         banned,
       })
     ) {
@@ -336,6 +334,90 @@ async function sendDevNoteEmail(
   return qaSent ? "sent" : "skipped";
 }
 
+async function sendQaRetestEmail(
+  row: {
+    testId: string;
+    assigneeLabel: string;
+    status: TestStatus;
+    devAuthorName?: string;
+    devNote?: string;
+  },
+  index?: QaUserIndex,
+): Promise<"sent" | "skipped"> {
+  if (!isQaRetestStatus(row.status)) return "skipped";
+
+  const siteUrl = publicSiteUrl().replace(/\/$/, "");
+  const loginUrl = `${siteUrl}/auth?tab=sign-in`;
+  const testingUrl = `${siteUrl}/testing`;
+  const meta = testMeta(row.testId);
+  const statusLabel = STATUS_LABELS[row.status];
+  const recipient = await resolveAssigneeRecipient(row.assigneeLabel, index);
+  const templateData = {
+    testerName: recipient?.testerName ?? (assigneeFirstName(row.assigneeLabel) || "there"),
+    loginUrl,
+    testingUrl,
+    testId: meta.id,
+    testTitle: meta.title,
+    testArea: meta.area,
+    status: row.status,
+    statusLabel,
+    devAuthorName: row.devAuthorName || "Development",
+    devNote: row.devNote?.trim() || "",
+  };
+
+  let qaSent = false;
+  if (recipient) {
+    const idempotencyKey = `beta-test-qa-retest-${recipient.email}-${row.testId}-${row.status}-${Date.now()}`;
+    const result = await sendTransactionalTemplates({
+      templateName: "beta-test-qa-retest",
+      recipientEmail: recipient.email,
+      templateData,
+      idempotencyKey,
+    });
+    qaSent = result.queued > 0;
+  }
+
+  try {
+    await notifyAdminInboxes({
+      templateName: "beta-test-qa-retest",
+      templateData,
+      idempotencyPrefix: `admin-beta-test-qa-retest-${row.testId}-${row.status}-${Date.now()}`,
+    });
+  } catch (e) {
+    console.warn("[email] failed to notify admins of beta test QA retest", e);
+  }
+
+  return qaSent ? "sent" : "skipped";
+}
+
+export async function sendQaRetestEmailsToOwners(
+  notifications: Array<{
+    testId: string;
+    assigneeLabel: string;
+    status: TestStatus;
+    devAuthorName?: string;
+    devNote?: string;
+  }>,
+): Promise<{ sent: number; skipped: number }> {
+  let sent = 0;
+  let skipped = 0;
+  const index = await buildEnabledQaUserIndex();
+
+  for (const row of notifications) {
+    if (!isQaRetestStatus(row.status)) continue;
+    const assignee = row.assigneeLabel.trim();
+    if (SKIP_ASSIGNEES.has(assignee)) {
+      skipped++;
+      continue;
+    }
+    const outcome = await sendQaRetestEmail(row, index);
+    if (outcome === "sent") sent++;
+    else skipped++;
+  }
+
+  return { sent, skipped };
+}
+
 export async function sendDevNoteEmailsToQaOwners(
   notifications: Array<{
     testId: string;
@@ -393,7 +475,6 @@ export async function sendAssignmentEmailOnUserEnable(userId: string): Promise<"
 
   const bannedUntil = (user as { banned_until?: string | null }).banned_until;
   const banned = !!(bannedUntil && new Date(bannedUntil).getTime() > Date.now());
-  const emailConfirmed = !!(user as { email_confirmed_at?: string | null }).email_confirmed_at;
   const { data: roleRow } = await supabaseAdmin
     .from("user_roles")
     .select("role")
@@ -403,7 +484,6 @@ export async function sendAssignmentEmailOnUserEnable(userId: string): Promise<"
   if (
     !isEnabledQaAccount({
       hasQaRole: !!roleRow,
-      emailConfirmed,
       banned,
     })
   ) {
@@ -531,6 +611,28 @@ export const notifyBetaTestDevNotes = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data }) => sendDevNoteEmailsToQaOwners(data.notifications));
+
+export const notifyBetaTestQaRetest = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        notifications: z
+          .array(
+            z.object({
+              testId: z.string().min(1).max(80),
+              assigneeLabel: z.string().min(1).max(80),
+              status: z.enum(["fixed_retest", "failed_retest"]),
+              devAuthorName: z.string().max(120).optional(),
+              devNote: z.string().max(4000).optional(),
+            }),
+          )
+          .min(1)
+          .max(50),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => sendQaRetestEmailsToOwners(data.notifications));
 
 export const getAssignedTestsForAssignee = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

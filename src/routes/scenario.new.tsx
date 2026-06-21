@@ -6,7 +6,8 @@ import { VoiceIntakeWizard } from "@/components/VoiceIntakeWizard";
 import { AppShell } from "@/components/AppShell";
 import { Mic, Keyboard, Clock } from "lucide-react";
 import { listScenarioHistory, type ScenarioHistoryEntry } from "@/lib/scenario-history";
-import { VOICE_WIZARD_ENABLED } from "@/lib/feature-flags";
+import { VOICE_WIZARD_ENABLED, isVoiceWizardAvailable } from "@/lib/feature-flags";
+import { useApp } from "@/lib/app-store";
 
 export type ScenarioNewSearch = {
   mode?: "manual" | "voice";
@@ -44,26 +45,28 @@ export const Route = createFileRoute("/scenario/new")({
 
 function ScenarioNew() {
   const router = useRouter();
+  const { user } = useApp();
+  const voiceWizardAvailable = isVoiceWizardAvailable(user?.role);
   const { mode: searchMode } = Route.useSearch();
   const [mode, setMode] = useState<"manual" | "voice">(() =>
-    VOICE_WIZARD_ENABLED && searchMode === "voice" ? "voice" : "manual",
+    voiceWizardAvailable && searchMode === "voice" ? "voice" : "manual",
   );
   const [history, setHistory] = useState<ScenarioHistoryEntry[]>([]);
   useEffect(() => {
     setHistory(listScenarioHistory());
   }, []);
 
-  // If voice wizard is turned off in production, never stay on voice mode.
+  // Non-admins (or when voice is disabled) must stay on manual mode.
   useEffect(() => {
-    if (!VOICE_WIZARD_ENABLED && mode === "voice") setMode("manual");
-  }, [mode]);
+    if (!voiceWizardAvailable && mode === "voice") setMode("manual");
+  }, [voiceWizardAvailable, mode]);
 
   useEffect(() => {
-    if (VOICE_WIZARD_ENABLED && searchMode === "voice") setMode("voice");
-  }, [searchMode]);
+    if (voiceWizardAvailable && searchMode === "voice") setMode("voice");
+  }, [voiceWizardAvailable, searchMode]);
 
-  const showModeToggle = VOICE_WIZARD_ENABLED;
-  const activeMode = VOICE_WIZARD_ENABLED ? mode : "manual";
+  const showModeToggle = voiceWizardAvailable;
+  const activeMode = voiceWizardAvailable && mode === "voice" ? "voice" : "manual";
 
   return (
     <AppShell

@@ -253,7 +253,7 @@ export const setUserEmailConfirmed = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await verifyAdmin(context.userId);
-    const { data: confirmedAt, error } = await supabaseAdmin.rpc("admin_set_email_confirmed", {
+    const { data: confirmedAt, error } = await supabaseAdmin.rpc("admin_set_email_confirmed" as any, {
       p_user_id: data.user_id,
       p_confirmed: data.confirmed,
     });
@@ -370,6 +370,16 @@ export const signOutAllUsers = createServerFn({ method: "POST" })
     return { signed_out: signedOut, failed: errors.length, errors };
   });
 
+async function ensureUserEmailConfirmed(userId: string): Promise<void> {
+  const { error } = await supabaseAdmin.rpc("admin_set_email_confirmed" as any, {
+    p_user_id: userId,
+    p_confirmed: true,
+  });
+  if (error) {
+    console.warn("[admin] ensureUserEmailConfirmed failed", userId, error.message);
+  }
+}
+
 async function applyUserDisabledState(actorId: string, userId: string, disabled: boolean) {
   if (userId === actorId && disabled) throw new Error("You cannot disable your own account");
 
@@ -405,6 +415,10 @@ async function applyUserDisabledState(actorId: string, userId: string, disabled:
     app_metadata: { ...appMeta, account_status: accountStatus },
   } as unknown as { ban_duration: string; app_metadata: Record<string, unknown> });
   if (error) throw new Error(error.message);
+
+  if (!disabled) {
+    await ensureUserEmailConfirmed(userId);
+  }
 
   if (!disabled && wasDisabled && recipientEmail) {
     await sendAccountApprovedEmail(userId, recipientEmail, recipientName);
@@ -478,7 +492,7 @@ export const bulkUpdateUsers = createServerFn({ method: "POST" })
           await applyUserDisabledState(context.userId, userId, data.disabled);
         }
         if (data.email_confirmed !== undefined) {
-          const { error } = await supabaseAdmin.rpc("admin_set_email_confirmed", {
+          const { error } = await supabaseAdmin.rpc("admin_set_email_confirmed" as any, {
             p_user_id: userId,
             p_confirmed: data.email_confirmed,
           });
@@ -572,7 +586,7 @@ export const createAdvisor = createServerFn({ method: "POST" })
     const { data: createData, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email: data.email,
       password: data.password,
-      email_confirm: false,
+      email_confirm: true,
       user_metadata: {
         full_name: data.full_name ?? "",
       },

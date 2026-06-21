@@ -1,5 +1,16 @@
+import type { TestStatus } from "@/lib/test-plan";
+
 /** Assignee labels that are not QA testers — skip for assignment/unassign emails. */
 export const NON_QA_ASSIGNEE_LABELS = new Set(["", "Unassigned", "Eng"]);
+
+/** Dev returned a test to QA for retest or re-review. */
+export function isQaRetestStatus(status: TestStatus): boolean {
+  return status === "fixed_retest" || status === "failed_retest";
+}
+
+export function isNewQaRetestTransition(previous: TestStatus, next: TestStatus): boolean {
+  return isQaRetestStatus(next) && previous !== next;
+}
 
 export function isUnassignNotificationCandidate(
   previousAssignee: string,
@@ -14,7 +25,6 @@ export function isUnassignNotificationCandidate(
 /** QA user eligible for transactional test emails (active, has qa role). */
 export function isEnabledQaAccount(opts: {
   hasQaRole: boolean;
-  emailConfirmed: boolean;
   banned: boolean;
 }): boolean {
   return opts.hasQaRole && !opts.banned;

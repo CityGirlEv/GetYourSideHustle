@@ -49,6 +49,7 @@ import { Route as AdminCalendarRouteImport } from './routes/admin_.calendar'
 import { Route as AdminArticlesRouteImport } from './routes/admin_.articles'
 import { Route as ScenarioCreatedCodeRouteImport } from './routes/scenario.created.$code'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe/webhook'
+import { Route as ApiPublicTranscribeRouteImport } from './routes/api/public/transcribe'
 import { Route as ApiPublicTrackVisitRouteImport } from './routes/api/public/track-visit'
 import { Route as ApiPublicSendTestEmailRouteImport } from './routes/api/public/send-test-email'
 import { Route as ApiEmailSuppressionRouteImport } from './routes/api/email/suppression'
@@ -261,6 +262,11 @@ const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
   path: '/api/stripe/webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicTranscribeRoute = ApiPublicTranscribeRouteImport.update({
+  id: '/api/public/transcribe',
+  path: '/api/public/transcribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicTrackVisitRoute = ApiPublicTrackVisitRouteImport.update({
   id: '/api/public/track-visit',
   path: '/api/public/track-visit',
@@ -363,6 +369,7 @@ export interface FileRoutesByFullPath {
   '/api/email/suppression': typeof ApiEmailSuppressionRoute
   '/api/public/send-test-email': typeof ApiPublicSendTestEmailRoute
   '/api/public/track-visit': typeof ApiPublicTrackVisitRoute
+  '/api/public/transcribe': typeof ApiPublicTranscribeRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/scenario/created/$code': typeof ScenarioCreatedCodeRoute
   '/agent/scenario/$code/edit': typeof AgentScenarioCodeEditRoute
@@ -416,6 +423,7 @@ export interface FileRoutesByTo {
   '/api/email/suppression': typeof ApiEmailSuppressionRoute
   '/api/public/send-test-email': typeof ApiPublicSendTestEmailRoute
   '/api/public/track-visit': typeof ApiPublicTrackVisitRoute
+  '/api/public/transcribe': typeof ApiPublicTranscribeRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/scenario/created/$code': typeof ScenarioCreatedCodeRoute
   '/agent/scenario/$code/edit': typeof AgentScenarioCodeEditRoute
@@ -470,6 +478,7 @@ export interface FileRoutesById {
   '/api/email/suppression': typeof ApiEmailSuppressionRoute
   '/api/public/send-test-email': typeof ApiPublicSendTestEmailRoute
   '/api/public/track-visit': typeof ApiPublicTrackVisitRoute
+  '/api/public/transcribe': typeof ApiPublicTranscribeRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/scenario/created/$code': typeof ScenarioCreatedCodeRoute
   '/agent/scenario/$code/edit': typeof AgentScenarioCodeEditRoute
@@ -525,6 +534,7 @@ export interface FileRouteTypes {
     | '/api/email/suppression'
     | '/api/public/send-test-email'
     | '/api/public/track-visit'
+    | '/api/public/transcribe'
     | '/api/stripe/webhook'
     | '/scenario/created/$code'
     | '/agent/scenario/$code/edit'
@@ -578,6 +588,7 @@ export interface FileRouteTypes {
     | '/api/email/suppression'
     | '/api/public/send-test-email'
     | '/api/public/track-visit'
+    | '/api/public/transcribe'
     | '/api/stripe/webhook'
     | '/scenario/created/$code'
     | '/agent/scenario/$code/edit'
@@ -631,6 +642,7 @@ export interface FileRouteTypes {
     | '/api/email/suppression'
     | '/api/public/send-test-email'
     | '/api/public/track-visit'
+    | '/api/public/transcribe'
     | '/api/stripe/webhook'
     | '/scenario/created/$code'
     | '/agent/scenario/$code/edit'
@@ -683,6 +695,7 @@ export interface RootRouteChildren {
   ApiEmailSuppressionRoute: typeof ApiEmailSuppressionRoute
   ApiPublicSendTestEmailRoute: typeof ApiPublicSendTestEmailRoute
   ApiPublicTrackVisitRoute: typeof ApiPublicTrackVisitRoute
+  ApiPublicTranscribeRoute: typeof ApiPublicTranscribeRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   ScenarioCreatedCodeRoute: typeof ScenarioCreatedCodeRoute
   ApiEmailAuthPreviewRoute: typeof ApiEmailAuthPreviewRoute
@@ -974,6 +987,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiStripeWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/transcribe': {
+      id: '/api/public/transcribe'
+      path: '/api/public/transcribe'
+      fullPath: '/api/public/transcribe'
+      preLoaderRoute: typeof ApiPublicTranscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/track-visit': {
       id: '/api/public/track-visit'
       path: '/api/public/track-visit'
@@ -1127,6 +1147,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiEmailSuppressionRoute: ApiEmailSuppressionRoute,
   ApiPublicSendTestEmailRoute: ApiPublicSendTestEmailRoute,
   ApiPublicTrackVisitRoute: ApiPublicTrackVisitRoute,
+  ApiPublicTranscribeRoute: ApiPublicTranscribeRoute,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   ScenarioCreatedCodeRoute: ScenarioCreatedCodeRoute,
   ApiEmailAuthPreviewRoute: ApiEmailAuthPreviewRoute,

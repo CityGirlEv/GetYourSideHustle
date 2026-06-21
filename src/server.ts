@@ -2,6 +2,7 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
+import { handleTranscribeRequest } from "./lib/transcribe-handler";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -66,10 +67,22 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
   return brandedErrorResponse();
 }
 
+function resolveWorkerEnv(env: unknown): Record<string, unknown> {
+  const passed =
+    env && typeof env === "object" ? (env as Record<string, unknown>) : undefined;
+  const stored = (globalThis as Record<string, unknown>).__env__ as
+    | Record<string, unknown>
+    | undefined;
+  // Nitro's SSR bridge calls fetch(request) without env — keep bindings from the worker entry.
+  const envBag =
+    passed && Object.keys(passed).length > 0 ? passed : (stored ?? {});
+  (globalThis as Record<string, unknown>).__env__ = envBag;
+  return envBag;
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
-    const envBag = env && typeof env === "object" ? (env as Record<string, unknown>) : {};
-    (globalThis as Record<string, unknown>).__env__ = envBag;
+    const envBag = resolveWorkerEnv(env);
 
     if (typeof process !== "undefined" && process.env) {
       for (const [key, value] of Object.entries(envBag)) {
@@ -79,6 +92,9 @@ export default {
       }
     }
     const url = new URL(request.url);
+    if (url.pathname === "/api/public/transcribe") {
+      return handleTranscribeRequest(request, envBag);
+    }
     if (url.pathname === "/users" || url.pathname.startsWith("/users/")) {
       url.pathname = url.pathname.replace(/^\/users/, "/staff");
       return Response.redirect(url.toString(), 308);

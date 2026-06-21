@@ -1,41 +1,19 @@
-import { describe, it, expect } from "vitest";
-import {
-  isEnabledQaAccount,
-  isUnassignNotificationCandidate,
-  NON_QA_ASSIGNEE_LABELS,
-} from "@/lib/qa-test-assignment.server";
+import { describe, expect, it } from "vitest";
+import { isNewQaRetestTransition, isQaRetestStatus } from "../qa-test-assignment.server";
 
-describe("isUnassignNotificationCandidate", () => {
-  it("fires when a named QA owner moves to Unassigned", () => {
-    expect(isUnassignNotificationCandidate("Jane", "Unassigned")).toBe(true);
-    expect(isUnassignNotificationCandidate(" Catria ", "Unassigned")).toBe(true);
+describe("qa-test-assignment.server", () => {
+  it("identifies QA retest statuses", () => {
+    expect(isQaRetestStatus("fixed_retest")).toBe(true);
+    expect(isQaRetestStatus("failed_retest")).toBe(true);
+    expect(isQaRetestStatus("fail")).toBe(false);
+    expect(isQaRetestStatus("pass")).toBe(false);
   });
 
-  it("skips when already unassigned or non-QA owners", () => {
-    expect(isUnassignNotificationCandidate("Unassigned", "Unassigned")).toBe(false);
-    expect(isUnassignNotificationCandidate("Eng", "Unassigned")).toBe(false);
-    expect(isUnassignNotificationCandidate("", "Unassigned")).toBe(false);
-  });
-
-  it("fires when assignee changes to another QA user", () => {
-    expect(isUnassignNotificationCandidate("Jane", "Alex")).toBe(true);
-  });
-});
-
-describe("isEnabledQaAccount", () => {
-  it("requires qa role and active account, email confirmation optional", () => {
-    expect(isEnabledQaAccount({ hasQaRole: true, emailConfirmed: true, banned: false })).toBe(true);
-    expect(isEnabledQaAccount({ hasQaRole: true, emailConfirmed: false, banned: false })).toBe(true);
-    expect(isEnabledQaAccount({ hasQaRole: false, emailConfirmed: true, banned: false })).toBe(
-      false,
-    );
-    expect(isEnabledQaAccount({ hasQaRole: true, emailConfirmed: true, banned: true })).toBe(false);
-  });
-});
-
-describe("NON_QA_ASSIGNEE_LABELS", () => {
-  it("includes system owners that should not receive QA emails", () => {
-    expect(NON_QA_ASSIGNEE_LABELS.has("Unassigned")).toBe(true);
-    expect(NON_QA_ASSIGNEE_LABELS.has("Eng")).toBe(true);
+  it("fires only on transition into fixed_retest or failed_retest", () => {
+    expect(isNewQaRetestTransition("fail", "fixed_retest")).toBe(true);
+    expect(isNewQaRetestTransition("in_progress", "failed_retest")).toBe(true);
+    expect(isNewQaRetestTransition("fixed_retest", "fixed_retest")).toBe(false);
+    expect(isNewQaRetestTransition("fixed_retest", "failed_retest")).toBe(true);
+    expect(isNewQaRetestTransition("pass", "pass")).toBe(false);
   });
 });

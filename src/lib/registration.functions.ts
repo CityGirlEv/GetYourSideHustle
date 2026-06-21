@@ -258,7 +258,7 @@ async function createNewRegistrationUser(
   const { data: created, error: createErr } = await supabaseAdmin.auth.admin.createUser({
     email: data.email,
     password,
-    email_confirm: false,
+    email_confirm: true,
     user_metadata: { full_name: fullName, phone: data.phone },
     app_metadata: { account_status: ACCOUNT_STATUS_PENDING },
     ban_duration: "876000h",
