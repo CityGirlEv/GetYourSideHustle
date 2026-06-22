@@ -119,7 +119,7 @@ function ScenarioDetail() {
 
   const signSOA = async () => {
     await addSOA(scenario.id, "Medicare Advantage");
-    toast.success("SOA recorded for this scenario");
+    toast.success("SOA recorded for this comparison");
   };
 
   const saveNotes = async () => {
@@ -145,7 +145,7 @@ function ScenarioDetail() {
 
   return (
     <AppShell
-      title={`Scenario ${scenario.scenario_code}`}
+      title={`Comparison ${scenario.scenario_code}`}
       subtitle="De-identified data — no personal information attached"
     >
       <div className="space-y-4">
@@ -159,7 +159,7 @@ function ScenarioDetail() {
           <Link to="/agent/scenario/$code/edit" params={{ code: scenario.scenario_code }}>
             <Button variant="outline" size="sm">
               <Pencil className="h-3.5 w-3.5 mr-1.5" />
-              Edit scenario
+              Edit comparison
             </Button>
           </Link>
         </div>
@@ -169,7 +169,7 @@ function ScenarioDetail() {
             <div>
               <h2 className="font-display text-lg font-bold">Recommendation</h2>
               <p className="text-xs text-muted-foreground">
-                Strategy scorecard for scenario {scenario.scenario_code}
+                Strategy scorecard for comparison {scenario.scenario_code}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -271,7 +271,7 @@ function ScenarioDetail() {
                 </div>
               ) : (
                 <Button onClick={signSOA} className="w-full">
-                  Record SOA for this scenario
+                  Record SOA for this comparison
                 </Button>
               )}
             </Card>

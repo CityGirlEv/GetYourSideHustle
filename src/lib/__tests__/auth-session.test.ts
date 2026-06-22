@@ -30,7 +30,7 @@ describe("isForceLoggedOut", () => {
     const session = fakeSession(fakeJwt(1_700_000_000));
     const user = {
       app_metadata: { force_logout_at: "2026-06-09T23:00:00.000Z" },
-    } as User;
+    } as any as User;
     expect(isForceLoggedOut(session, user)).toBe(true);
   });
 
@@ -38,7 +38,7 @@ describe("isForceLoggedOut", () => {
     const session = fakeSession(fakeJwt(Math.floor(Date.parse("2026-06-10T00:00:00.000Z") / 1000)));
     const user = {
       app_metadata: { force_logout_at: "2026-06-09T23:00:00.000Z" },
-    } as User;
+    } as any as User;
     expect(isForceLoggedOut(session, user)).toBe(false);
   });
 });

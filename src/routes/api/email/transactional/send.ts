@@ -80,7 +80,8 @@ export const Route = createFileRoute("/api/email/transactional/send")({
           if ("reason" in result && result.reason === "email_suppressed") {
             return Response.json({ success: false, reason: "email_suppressed" });
           }
-          return Response.json({ error: result.error }, { status: result.status });
+          const fail = result as { error: string; status: number };
+          return Response.json({ error: fail.error }, { status: fail.status });
         }
 
         await triggerEmailQueueProcess(request.url);

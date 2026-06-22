@@ -27,11 +27,22 @@ import { recommendPlans, usd, type PersonalizedRecommendation } from "@/lib/medi
 import { useApp } from "@/lib/app-store";
 import { DrugReport } from "@/components/DrugReport";
 import { ScenarioProfileHeader } from "@/components/ScenarioProfileHeader";
+import {
+  COMPARISON_ID_COPIED,
+  COMPARISON_ID_LABEL,
+  COMPARISON_LINK_COPIED,
+  COPY_COMPARISON_ID,
+  COPY_COMPARISON_LINK,
+  PLAN_COMPARISON_EDUCATIONAL_NOTE,
+  VIEW_COMPARISON_SUMMARY,
+  VIEW_PLAN_COMPARISON,
+  YOUR_PLAN_COMPARISON,
+} from "@/lib/plan-comparison-copy";
 
 export const Route = createFileRoute("/scenario/created/$code")({
   head: () => ({
     meta: [
-      { title: "Scenario Created — Part B Optimizer" },
+      { title: "Plan Comparison Created — Part B Optimizer" },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -92,7 +103,7 @@ function ScenarioCreated() {
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(code);
-      toast.success("Scenario ID copied");
+      toast.success(COMPARISON_ID_COPIED);
     } catch {
       toast.error("Copy failed — please write it down");
     }
@@ -102,7 +113,7 @@ function ScenarioCreated() {
     try {
       const url = `${window.location.origin}/scenario/${code}`;
       await navigator.clipboard.writeText(url);
-      toast.success("Scenario link copied");
+      toast.success(COMPARISON_LINK_COPIED);
     } catch {
       toast.error("Copy failed — please write the link down");
     }
@@ -111,7 +122,7 @@ function ScenarioCreated() {
   const downloadPdf = () => {
     try {
       if (!scenario) {
-        toast.error("PDF not available — re-open after creating the scenario.");
+        toast.error("PDF not available — re-open after creating the comparison.");
         return;
       }
       if (isSignedIn) {
@@ -129,7 +140,7 @@ function ScenarioCreated() {
   const downloadXlsx = () => {
     try {
       if (!scenario) {
-        toast.error("Workbook not available — re-open after creating the scenario.");
+        toast.error("Workbook not available — re-open after creating the comparison.");
         return;
       }
       downloadScenarioXlsx({ ...scenario, county: scenario.county });
@@ -144,16 +155,17 @@ function ScenarioCreated() {
     <AppShell title="" subtitle="">
       <div className="flex-1 flex items-center justify-center px-4 py-12">
         <Card className="glass p-8 max-w-xl w-full space-y-6 text-center">
-          <h1 className="font-display text-3xl font-bold tracking-tight">View My Scenario</h1>
+          <h1 className="font-display text-3xl font-bold tracking-tight">{VIEW_PLAN_COMPARISON}</h1>
           <div className="inline-flex h-14 w-14 items-center justify-center rounded-xl bg-emerald mx-auto">
             <CheckCircle2 className="h-7 w-7 text-emerald-foreground" />
           </div>
           <div className="space-y-2">
-            <h2 className="font-display text-2xl font-bold">Your Scenario ID</h2>
+            <h2 className="font-display text-2xl font-bold">Your {COMPARISON_ID_LABEL}</h2>
             <p className="text-sm text-muted-foreground">
               Write this down or copy it.{" "}
-              <strong>Without it, even we cannot find your scenario.</strong>
+              <strong>Without it, even we cannot find your plan comparison.</strong>
             </p>
+            <p className="text-xs text-muted-foreground">{PLAN_COMPARISON_EDUCATIONAL_NOTE}</p>
           </div>
 
           <div className="bg-background border-2 border-primary rounded-xl p-5 font-mono text-2xl tracking-wider break-all select-all">
@@ -161,22 +173,22 @@ function ScenarioCreated() {
           </div>
 
           <Button onClick={copy} variant="outline" className="w-full">
-            <Copy className="h-4 w-4 mr-2" /> Copy Scenario ID
+            <Copy className="h-4 w-4 mr-2" /> {COPY_COMPARISON_ID}
           </Button>
 
           <Button onClick={copyLink} variant="outline" className="w-full">
-            <Copy className="h-4 w-4 mr-2" /> Copy scenario link
+            <Copy className="h-4 w-4 mr-2" /> {COPY_COMPARISON_LINK}
           </Button>
 
           {scenario && (
             <div className="text-left border border-border rounded-xl p-4 bg-background/60">
-              <ScenarioProfileHeader scenario={scenario} title="Your scenario" />
+              <ScenarioProfileHeader scenario={scenario} title={YOUR_PLAN_COMPARISON} />
             </div>
           )}
 
           <Link to="/scenario/$code" params={{ code }} className="block">
             <Button variant="default" className="w-full">
-              View scenario summary
+              {VIEW_COMPARISON_SUMMARY}
             </Button>
           </Link>
 
@@ -313,14 +325,14 @@ function ScenarioCreated() {
               <li>
                 Contact the Medicare agent of <em>your</em> choice — by phone, email, or in person.
               </li>
-              <li>Give them this Scenario ID.</li>
+              <li>Give them this {COMPARISON_ID_LABEL}.</li>
               <li>
-                They'll log in and review your de-identified scenario, then walk you through the
-                comparison.
+                They'll log in and review your de-identified plan comparison, then walk you through
+                the options.
               </li>
             </ol>
             <p className="text-xs pt-2">
-              <strong>We will never contact you.</strong> Your scenario auto-deletes after 90 days.
+              <strong>We will never contact you.</strong> Your comparison auto-deletes after 90 days.
             </p>
           </div>
 

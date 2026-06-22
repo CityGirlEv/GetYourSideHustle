@@ -1,8 +1,8 @@
 import {
   editorialActionTime,
+  editorialWeekStart,
   formatEditorialTimeLabel,
   parseIsoDate,
-  startOfWeekSaturday,
   type EditorialCalendarEvent,
 } from "@/lib/content-factory/weekly-editorial-schedule";
 
@@ -78,7 +78,7 @@ export function shiftIsoDate(isoDate: string, days: number): string {
 }
 
 export function weekIsoDates(weekStart: Date): string[] {
-  const start = startOfWeekSaturday(weekStart);
+  const start = editorialWeekStart(weekStart);
   start.setHours(12, 0, 0, 0);
   return Array.from({ length: 7 }, (_, index) => {
     const day = new Date(start);
@@ -89,6 +89,46 @@ export function weekIsoDates(weekStart: Date): string[] {
 
 export function isoDateInWeek(isoDate: string, weekStart: Date): boolean {
   return weekIsoDates(weekStart).includes(isoDate);
+}
+
+export function calendarMonthStart(date: Date): Date {
+  const d = new Date(date);
+  d.setHours(12, 0, 0, 0);
+  d.setDate(1);
+  return d;
+}
+
+export function shiftCalendarMonth(monthStart: Date, months: number): Date {
+  const d = new Date(monthStart);
+  d.setMonth(d.getMonth() + months);
+  return calendarMonthStart(d);
+}
+
+export function formatCalendarMonthLabel(monthStart: Date): string {
+  return monthStart.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+}
+
+export function isoDateInMonth(isoDate: string, monthStart: Date): boolean {
+  const d = parseIsoDate(isoDate);
+  return d.getMonth() === monthStart.getMonth() && d.getFullYear() === monthStart.getFullYear();
+}
+
+/** Six-week Sun–Sat grid covering a calendar month (includes leading/trailing days). */
+export function monthGridCells(monthStart: Date): Array<{ isoDate: string; inMonth: boolean }> {
+  const month = monthStart.getMonth();
+  const year = monthStart.getFullYear();
+  const first = new Date(year, month, 1, 12, 0, 0, 0);
+  const gridStart = new Date(first);
+  gridStart.setDate(first.getDate() - first.getDay());
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const day = new Date(gridStart);
+    day.setDate(gridStart.getDate() + index);
+    return {
+      isoDate: formatIsoDate(day),
+      inMonth: day.getMonth() === month && day.getFullYear() === year,
+    };
+  });
 }
 
 export function checklistItemsForDate(

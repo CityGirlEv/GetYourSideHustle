@@ -77,8 +77,8 @@ const authTemplates = [
 describe("auth email headers", () => {
   it.each(authTemplates)(
     "$name loads the logo from the app asset host when siteUrl is getpartb.com",
-    async ({ component: Component, props }) => {
-      const html = await render(React.createElement(Component, props));
+    async ({ component, props }) => {
+      const html = await render(React.createElement(component as any, props as any));
       expect(html).toContain(ASSET_LOGO);
       expect(html).not.toContain(`${GETPARTB}/email-logo.png`);
       expect(html).toContain("email-brand-logo");

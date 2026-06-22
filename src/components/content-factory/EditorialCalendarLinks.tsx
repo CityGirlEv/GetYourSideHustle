@@ -28,8 +28,20 @@ export function EditorialCalendarActionLinks({
 
   return (
     <div className={`flex flex-wrap items-center ${compact ? "gap-1.5" : "gap-2"} pt-0.5`}>
-      {links.map((link) =>
-        link.external ? (
+      {links.map((link) => {
+        if (!link.href) {
+          return (
+            <span
+              key={link.label}
+              className={`${className} cursor-default opacity-80 no-underline`}
+              title={link.description ?? link.label}
+            >
+              {link.label}
+            </span>
+          );
+        }
+
+        return link.external ? (
           <a
             key={link.label}
             href={link.href}
@@ -54,8 +66,8 @@ export function EditorialCalendarActionLinks({
           >
             {link.label}
           </a>
-        ),
-      )}
+        );
+      })}
     </div>
   );
 }

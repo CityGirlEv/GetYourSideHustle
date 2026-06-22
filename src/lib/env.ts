@@ -96,6 +96,9 @@ function isUsableSecret(name: string, value: string | undefined): value is strin
   if (name === "STRIPE_WEBHOOK_SECRET") {
     if (!/^whsec_/.test(value)) return false;
   }
+  if (name === "OPENAI_API_KEY") {
+    if (!/^sk-/.test(value)) return false;
+  }
   return true;
 }
 

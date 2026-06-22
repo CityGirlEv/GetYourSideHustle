@@ -9,9 +9,9 @@ type StaffSubNavProps = {
 
 export function StaffSubNav({ active, className }: StaffSubNavProps) {
   return (
-    <nav className={cn("flex flex-wrap gap-2", className)} aria-label="Staff sections">
+    <nav className={cn("flex flex-wrap gap-2", className)} aria-label="Users sections">
       <Button asChild size="sm" variant={active === "roster" ? "default" : "outline"}>
-        <Link to="/staff">Staff roster</Link>
+        <Link to="/staff">Users</Link>
       </Button>
       <Button asChild size="sm" variant={active === "report" ? "default" : "outline"}>
         <Link to="/staff/report">Device report</Link>

@@ -70,7 +70,7 @@ export const Route = createFileRoute("/admin")({
     ],
     links: [{ rel: "canonical", href: "https://themedicareoptimizer.lovable.app/admin" }],
   }),
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (search: Record<string, unknown>): { tab?: string } => ({
     tab: typeof search.tab === "string" ? (search.tab as string) : undefined,
   }),
   component: AdminPortal,

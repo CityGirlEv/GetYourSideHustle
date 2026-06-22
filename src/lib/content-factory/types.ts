@@ -51,7 +51,7 @@ export interface ContentDraft {
   title: string;
   excerpt: string;
   body: string;
-  payload: Record<string, unknown>;
+  payload: Record<string, any>;
   status: ContentDraftStatus;
   scheduledFor: string | null;
   publishedAt: string | null;
@@ -67,7 +67,7 @@ export interface ContentDraftSnapshot {
   title: string;
   excerpt: string;
   body: string;
-  payload: Record<string, unknown>;
+  payload: Record<string, any>;
   status: ContentDraftStatus;
 }
 

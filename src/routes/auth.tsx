@@ -77,7 +77,7 @@ function AuthPage() {
     }
 
     router.navigate({
-      to: destination as "/" | "/admin" | "/agent" | "/testing" | "/advisor" | "/tasks",
+      to: destination as any,
     });
   }, [user, router, search.redirect]);
 

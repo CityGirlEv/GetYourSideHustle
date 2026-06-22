@@ -27,6 +27,12 @@ import {
 import { cn } from "@/lib/utils";
 import { sortStaffByName } from "@/lib/staff-name-sort";
 
+function formatLastLogin(value: string | null | undefined): string {
+  if (!value) return "Never";
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString();
+}
+
 function filterTestsByPlatform(
   tests: StaffReportTestRow[],
   platformFilter: string[],
@@ -92,6 +98,10 @@ function TesterCard({
         <div>
           <div className="font-semibold">{view.fullName}</div>
           <div className="text-xs text-muted-foreground">{view.email}</div>
+          <div className="text-xs text-muted-foreground tabular-nums">
+            <span className="font-medium text-foreground">Last login</span>{" "}
+            {formatLastLogin(view.lastSignInAt)}
+          </div>
           <div className="mt-1 flex flex-wrap gap-1">
             {view.roles.map((r) => (
               <Badge key={r} variant="outline" className="text-[10px] capitalize">
@@ -183,7 +193,7 @@ function DeviceSection({
               <Smartphone className="h-4 w-4 text-primary shrink-0" />
               <span className="font-semibold truncate">{group.device}</span>
               <Badge variant="secondary" className="text-[10px] shrink-0">
-                {group.testers.length} staff
+                {group.testers.length} users
               </Badge>
             </div>
             <ChevronDown
@@ -229,7 +239,7 @@ function AllStaffSection({
             className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/40 transition-colors"
           >
             <div className="flex items-center gap-2 min-w-0">
-              <span className="font-semibold">All staff</span>
+              <span className="font-semibold">All users</span>
               <Badge variant="secondary" className="text-[10px] shrink-0">
                 {testers.length} user{testers.length === 1 ? "" : "s"}
               </Badge>
@@ -341,8 +351,8 @@ export function StaffReport() {
 
   return (
     <AppShell
-      title="Staff device report"
-      subtitle="All staff, grouped by registered hardware — filter by user, test platform (Computer / Phone / iPad), or device"
+      title="User device report"
+      subtitle="All users, grouped by registered hardware — filter by user, test platform (Computer / Phone / iPad), or device"
     >
       <StaffSubNav active="report" className="mb-4" />
 
@@ -351,18 +361,18 @@ export function StaffReport() {
           <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input
             className="pl-8 h-9"
-            placeholder="Search staff…"
+            placeholder="Search users…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
         <MultiSelect
-          placeholder="Staff"
+          placeholder="User"
           triggerClassName="w-[220px]"
           options={userOptions}
           value={userFilter}
           onChange={setUserFilter}
-          allLabel="All staff"
+          allLabel="All users"
           searchable
           searchPlaceholder="Search users…"
         />
@@ -412,7 +422,7 @@ export function StaffReport() {
         <div className="space-y-3">
           {selectedUsers.length > 0 && (
             <Card className="p-4 space-y-3 border-primary/30 bg-primary/5">
-              <h3 className="font-semibold text-sm">Selected staff ({selectedUsers.length})</h3>
+              <h3 className="font-semibold text-sm">Selected users ({selectedUsers.length})</h3>
               <p className="text-xs text-muted-foreground">
                 Includes users with or without registered devices.
               </p>
@@ -443,7 +453,7 @@ export function StaffReport() {
 
           {filteredUnassigned.length > 0 && userFilter.length === 0 && (
             <Card className="p-4 space-y-3 border-amber-500/30 bg-amber-500/5">
-              <h3 className="font-semibold text-sm">Staff without registered devices</h3>
+              <h3 className="font-semibold text-sm">Users without registered devices</h3>
               <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                 {filteredUnassigned.map((t) => (
                   <TesterCard key={t.userId} tester={t} platformFilter={platformFilter} />
@@ -454,7 +464,7 @@ export function StaffReport() {
 
           {!hasContent && (
             <Card className="glass p-8 text-center text-muted-foreground text-sm">
-              No staff match the current filters.
+              No users match the current filters.
             </Card>
           )}
         </div>

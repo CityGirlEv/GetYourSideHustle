@@ -1,4 +1,5 @@
 import { jsPDF } from "jspdf";
+import { stampPdfPageFooters } from "@/lib/pdf-page-footer";
 
 export const NDA_VERSION = "v1";
 export const NDA_TITLE = "Part B Optimizer — Beta Tester Non-Disclosure Agreement";
@@ -111,6 +112,8 @@ export function buildNdaPdf(input: NdaPdfInput): jsPDF {
     y,
     { maxWidth: contentW },
   );
+
+  stampPdfPageFooters(doc, { margin, footerY: pageH - 18, fontSize: 8, textColor: [110, 110, 110] });
 
   return doc;
 }

@@ -35,11 +35,11 @@ export const MEDICARE_DISCLAIMER_SECTIONS = [
   },
   {
     label: "De-identification",
-    body: `${SITE_BRAND_THE} uses de-identified Medicare plan scenarios for educational comparison. Our scenario tools do not collect or store Social Security numbers, Medicare Beneficiary Identifiers (MBI), full dates of birth, or other protected health information.`,
+    body: `${SITE_BRAND_THE} uses de-identified Medicare plan comparisons for educational comparison. Our tools do not collect or store Social Security numbers, Medicare Beneficiary Identifiers (MBI), full dates of birth, or other protected health information.`,
   },
   {
     label: "Medicare notice",
-    body: "This tool compares sample Medicare plan scenarios for educational purposes only. It is not a complete listing of plans available in your area. For a complete listing, contact Medicare.gov or 1-800-MEDICARE (1-800-633-4227).",
+    body: "This tool compares sample Medicare plan options for educational purposes only. It is not a complete listing of plans available in your area. For a complete listing, contact Medicare.gov or 1-800-MEDICARE (1-800-633-4227).",
     medicareLink: true,
   },
   {

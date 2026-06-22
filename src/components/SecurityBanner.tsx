@@ -151,7 +151,7 @@ function RoleMenus() {
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link to="/agent" className="flex items-center gap-2 cursor-pointer">
-                <FileText className="h-4 w-4" /> My Scenarios
+                <FileText className="h-4 w-4" /> My Comparisons
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>

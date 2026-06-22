@@ -13,6 +13,7 @@ import {
 import { CMS_CATALOG } from "@/data/cms-catalog";
 import { rankedPlanDetails, type PlanDetail } from "./plan-details";
 import { buildDrugReport } from "@/components/DrugReport";
+import { formatPdfPageLabel } from "@/lib/pdf-page-footer";
 import {
   formatScenarioConditions,
   formatScenarioMedicationLine,
@@ -22,6 +23,60 @@ import {
 } from "./scenario-display";
 
 const MEDICARE_HANDBOOK_URL = "https://www.medicare.gov/Pubs/pdf/10050-Medicare-and-You.pdf";
+const PDF_LINE_HEIGHT = 1.18;
+const PDF_FOOTER_RESERVE = 46;
+
+type LastAutoTableDoc = jsPDF & { lastAutoTable?: { finalY: number } };
+
+function splitLines(doc: jsPDF, text: string, maxWidth: number): string[] {
+  return doc.splitTextToSize(text, maxWidth) as string[];
+}
+
+function wrappedTextHeight(doc: jsPDF, text: string, maxWidth: number, fontSize: number): number {
+  doc.setFontSize(fontSize);
+  return splitLines(doc, text, maxWidth).length * fontSize * PDF_LINE_HEIGHT;
+}
+
+/** Draw wrapped text; returns the Y position just below the last line. */
+function drawWrappedText(
+  doc: jsPDF,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  fontSize: number,
+): number {
+  doc.setFontSize(fontSize);
+  const lines = splitLines(doc, text, maxWidth);
+  const step = fontSize * PDF_LINE_HEIGHT;
+  lines.forEach((line, i) => doc.text(line, x, y + i * step));
+  return y + lines.length * step;
+}
+
+function tableEndY(doc: jsPDF): number {
+  return (doc as LastAutoTableDoc).lastAutoTable?.finalY ?? 0;
+}
+
+function stampPdfFooters(doc: jsPDF, disclaimer: string, margin = 40) {
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.setTextColor(120, 120, 120);
+    const w = doc.internal.pageSize.getWidth();
+    const h = doc.internal.pageSize.getHeight();
+    const footerLines = splitLines(doc, disclaimer, w - margin * 2);
+    const footerStep = 7 * PDF_LINE_HEIGHT;
+    const footerStart = h - 12 - footerLines.length * footerStep;
+    footerLines.forEach((line, idx) => {
+      doc.text(line, margin, footerStart + idx * footerStep);
+    });
+    doc.text(formatPdfPageLabel(i, pageCount), w - margin, h - 10, { align: "right" });
+  }
+}
+
+const PDF_TABLE_MARGIN = { bottom: PDF_FOOTER_RESERVE };
 
 export interface ScenarioPdfInput {
   scenarioCode: string;
@@ -108,27 +163,30 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
   // Recommended plan banner
   // @ts-expect-error lastAutoTable is a runtime field set by jspdf-autotable
   y = doc.lastAutoTable.finalY + 18;
+  const pathwayW = pageW - margin * 2 - 28;
+  const pathwaySub = preferPredictability
+    ? `Best worst-case exposure: ${usd(best.worstCaseAnnual)} / yr`
+    : `Lowest expected annual cost: ${usd(best.totalAnnual)} / yr`;
+  const pathwayH =
+    24 +
+    wrappedTextHeight(doc, best.label, pathwayW, 14) +
+    wrappedTextHeight(doc, pathwaySub, pathwayW, 10) +
+    14;
   doc.setFillColor(232, 245, 238);
   doc.setDrawColor(16, 122, 87);
-  doc.roundedRect(margin, y, pageW - margin * 2, 56, 6, 6, "FD");
+  doc.roundedRect(margin, y, pageW - margin * 2, pathwayH, 6, 6, "FD");
   doc.setTextColor(16, 122, 87);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.text("RECOMMENDED PATHWAY", margin + 14, y + 18);
   doc.setFontSize(14);
-  doc.text(best.label, margin + 14, y + 36);
+  let pathwayY = drawWrappedText(doc, best.label, margin + 14, y + 34, pathwayW, 14) + 2;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.setTextColor(60, 60, 60);
-  doc.text(
-    preferPredictability
-      ? `Best worst-case exposure: ${usd(best.worstCaseAnnual)} / yr`
-      : `Lowest expected annual cost: ${usd(best.totalAnnual)} / yr`,
-    margin + 14,
-    y + 52,
-  );
+  drawWrappedText(doc, pathwaySub, margin + 14, pathwayY, pathwayW, 10);
 
-  y += 76;
+  y += pathwayH + 20;
 
   // ============ RECOMMENDED PLAN — full benefit & cost detail page ============
   const ranked = rankedPlanDetails({
@@ -960,9 +1018,13 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
     doc.addPage();
     y = 60;
   }
+  const enrollW = pageW - margin * 2 - 28;
+  const enrollBody =
+    "Speak with a licensed agent who can verify carrier availability in your county, check provider networks, and confirm formulary coverage before you enroll.";
+  const enrollH = 24 + wrappedTextHeight(doc, enrollBody, enrollW, 10) + 22;
   doc.setFillColor(232, 245, 238);
   doc.setDrawColor(16, 122, 87);
-  doc.roundedRect(margin, y, pageW - margin * 2, 68, 6, 6, "FD");
+  doc.roundedRect(margin, y, pageW - margin * 2, enrollH, 6, 6, "FD");
   doc.setTextColor(16, 122, 87);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
@@ -970,35 +1032,20 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.setTextColor(60, 60, 60);
-  doc.text(
-    "Speak with a licensed agent who can verify carrier availability in your county, check provider networks, and confirm formulary coverage before you enroll.",
-    margin + 14,
-    y + 38,
-    { maxWidth: pageW - margin * 2 - 28 },
-  );
+  const enrollBodyY = drawWrappedText(doc, enrollBody, margin + 14, y + 38, enrollW, 10) + 6;
   const linkText = "Contact a Licensed Agent →";
   const linkUrl = `https://themedicareoptimizer.lovable.app/scenario/created/${input.scenarioCode}`;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.setTextColor(16, 122, 87);
-  doc.textWithLink(linkText, margin + 14, y + 60, { url: linkUrl });
+  doc.textWithLink(linkText, margin + 14, enrollBodyY, { url: linkUrl });
 
   // Footer disclaimer
-  const pageCount = doc.getNumberOfPages();
-  for (let i = 1; i <= pageCount; i++) {
-    doc.setPage(i);
-    doc.setFontSize(7);
-    doc.setTextColor(120, 120, 120);
-    doc.text(
-      "This tool compares sample Medicare plan scenarios for educational purposes only. It is not a complete listing of plans available in your area. For a complete listing, contact Medicare.gov or 1-800-MEDICARE.",
-      margin,
-      doc.internal.pageSize.getHeight() - 24,
-      { maxWidth: pageW - margin * 2 },
-    );
-    doc.text(`Page ${i} of ${pageCount}`, pageW - margin, doc.internal.pageSize.getHeight() - 10, {
-      align: "right",
-    });
-  }
+  stampPdfFooters(
+    doc,
+    "This tool compares sample Medicare plan options for educational purposes only. It is not a complete listing of plans available in your area. For a complete listing, contact Medicare.gov or 1-800-MEDICARE.",
+    margin,
+  );
 
   return doc;
 }
@@ -1051,13 +1098,15 @@ export function buildConsumerScenarioPdf(input: ScenarioPdfInput): jsPDF {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(90, 90, 90);
-  doc.text(
-    `Including prescription drug coverage and bundled benefits. Total monthly is all-in: Part B + plan + Part D + dental + vision.`,
-    margin,
-    y,
-    { maxWidth: pageW - margin * 2 },
-  );
-  y += 18;
+  y =
+    drawWrappedText(
+      doc,
+      "Including prescription drug coverage and bundled benefits. Total monthly is all-in: Part B + plan + Part D + dental + vision.",
+      margin,
+      y,
+      pageW - margin * 2,
+      9,
+    ) + 8;
 
   const colHeads = [
     "Detail",
@@ -1128,30 +1177,33 @@ export function buildConsumerScenarioPdf(input: ScenarioPdfInput): jsPDF {
         data.cell.styles.textColor = [16, 122, 87];
       }
     },
-    margin: { left: margin, right: margin },
+    margin: { left: margin, right: margin, ...PDF_TABLE_MARGIN },
   });
 
   // ---------- Page 3: Landscape — full plan details of recommended plan ----------
   doc.addPage("letter", "landscape");
   const lsW = doc.internal.pageSize.getWidth();
   const lsMargin = 28;
+  const lsHeaderTitle = `Recommended plan — full detail: ${rec.carrier} · ${rec.plan}`;
+  const lsHeaderSub = `Plan year ${input.year} · ZIP ${input.zip3}${input.county ? ` · ${input.county}` : ""} · ${rec.planType} · ${rec.stars}`;
+  const lsHeaderH =
+    20 +
+    wrappedTextHeight(doc, lsHeaderTitle, lsW - lsMargin * 2, 14) +
+    wrappedTextHeight(doc, lsHeaderSub, lsW - lsMargin * 2, 10) +
+    16;
 
   doc.setFillColor(16, 122, 87);
-  doc.rect(0, 0, lsW, 64, "F");
+  doc.rect(0, 0, lsW, lsHeaderH, "F");
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
-  doc.text(`Recommended plan — full detail: ${rec.carrier} · ${rec.plan}`, lsMargin, 30);
+  doc.setFontSize(14);
+  let lsHeaderY = drawWrappedText(doc, lsHeaderTitle, lsMargin, 24, lsW - lsMargin * 2, 14) + 4;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
-  doc.text(
-    `Plan year ${input.year} · ZIP ${input.zip3}${input.county ? ` · ${input.county}` : ""} · ${rec.planType} · ${rec.stars}`,
-    lsMargin,
-    50,
-  );
+  drawWrappedText(doc, lsHeaderSub, lsMargin, lsHeaderY, lsW - lsMargin * 2, 10);
 
   doc.setTextColor(20, 20, 20);
-  let lsY = 84;
+  let lsY = lsHeaderH + 20;
 
   const fmtMo = (n: number) => `${usd(Math.round(n * 100) / 100)}/mo`;
 
@@ -1333,21 +1385,11 @@ export function buildConsumerScenarioPdf(input: ScenarioPdfInput): jsPDF {
   });
 
   // Footer disclaimer
-  const pageCount = doc.getNumberOfPages();
-  for (let i = 1; i <= pageCount; i++) {
-    doc.setPage(i);
-    doc.setFontSize(7);
-    doc.setTextColor(120, 120, 120);
-    const w = doc.internal.pageSize.getWidth();
-    const h = doc.internal.pageSize.getHeight();
-    doc.text(
-      "Educational comparison only — not a complete listing of plans, not insurance, medical, tax, or legal advice. Verify benefits with the carrier or a licensed agent. See the Medicare & You handbook for official details.",
-      28,
-      h - 22,
-      { maxWidth: w - 56 },
-    );
-    doc.text(`Page ${i} of ${pageCount}`, w - 28, h - 10, { align: "right" });
-  }
+  stampPdfFooters(
+    doc,
+    "Educational comparison only — not a complete listing of plans, not insurance, medical, tax, or legal advice. Verify benefits with the carrier or a licensed agent. See the Medicare & You handbook for official details.",
+    margin,
+  );
 
   return doc;
 }
@@ -1369,29 +1411,40 @@ function renderRecommendationPage(
   const fmtMo = (n: number) => `${usd(Math.round(n * 100) / 100)}/mo`;
   const age = new Date().getFullYear() - input.birthYear;
 
-  // Hero header band
+  // Hero header band — height follows wrapped carrier/plan lines
+  const heroW = pageW - margin * 2;
+  const heroSubtitle = `Best total annual value for Age ${age}, ZIP ${input.zip3}${input.county ? ` · ${input.county}` : ""} · Plan year ${input.year}`;
+  doc.setFont("helvetica", "bold");
+  let heroH =
+    36 +
+    11 * PDF_LINE_HEIGHT +
+    wrappedTextHeight(doc, `#1 · ${rec.carrier}`, heroW, 20) +
+    6 +
+    wrappedTextHeight(doc, rec.plan, heroW, 12) +
+    6 +
+    wrappedTextHeight(doc, heroSubtitle, heroW, 10) +
+    16;
+  heroH = Math.max(110, heroH);
+
   doc.setFillColor(16, 122, 87);
-  doc.rect(0, 0, pageW, 110, "F");
+  doc.rect(0, 0, pageW, heroH, "F");
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
-  doc.text("YOUR PERSONALIZED RECOMMENDATION", margin, 36);
-  doc.setFontSize(22);
-  doc.text(`#1 · ${rec.carrier}`, margin, 64);
+  let hy = 36;
+  doc.text("YOUR PERSONALIZED RECOMMENDATION", margin, hy);
+  hy += 11 * PDF_LINE_HEIGHT + 4;
+  doc.setFontSize(20);
+  hy = drawWrappedText(doc, `#1 · ${rec.carrier}`, margin, hy, heroW, 20) + 4;
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(13);
-  doc.text(rec.plan, margin, 84);
+  doc.setFontSize(12);
+  hy = drawWrappedText(doc, rec.plan, margin, hy, heroW, 12) + 4;
   doc.setFontSize(10);
-  doc.text(
-    `Best total annual value for Age ${age}, ZIP ${input.zip3}${input.county ? ` · ${input.county}` : ""} · Plan year ${input.year}`,
-    margin,
-    100,
-  );
+  drawWrappedText(doc, heroSubtitle, margin, hy, heroW, 10);
 
   // Three big stat tiles
   doc.setTextColor(20, 20, 20);
-  const tileY = 128;
-  const tileH = 64;
+  const tileY = heroH + 18;
   const gap = 10;
   const tileW = (pageW - margin * 2 - gap * 2) / 3;
   const tiles: { label: string; value: string; sub: string }[] = [
@@ -1407,6 +1460,10 @@ function renderRecommendationPage(
     },
     { label: "STAR RATING", value: rec.stars, sub: `A.M. Best: ${rec.amBest}` },
   ];
+  const tileSubMax = Math.max(
+    ...tiles.map((t) => wrappedTextHeight(doc, t.sub, tileW - 20, 7.5)),
+  );
+  const tileH = Math.max(68, 52 + tileSubMax + 8);
   tiles.forEach((t, i) => {
     const x = margin + i * (tileW + gap);
     doc.setFillColor(245, 250, 247);
@@ -1422,25 +1479,30 @@ function renderRecommendationPage(
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
     doc.setTextColor(90, 90, 90);
-    doc.text(t.sub, x + 10, tileY + 54, { maxWidth: tileW - 20 });
+    drawWrappedText(doc, t.sub, x + 10, tileY + 52, tileW - 20, 7.5);
   });
 
   let y = tileY + tileH + 18;
 
-  // ---------- Scenario snapshot strip ----------
+  // ---------- Plan comparison snapshot strip ----------
+  const contentW = pageW - margin * 2 - 24;
   const conditionsText = formatScenarioConditions(input.conditions);
   const medicationLines = input.medications?.length
     ? input.medications.map(formatScenarioMedicationLine)
     : ["None reported"];
-  const medBlockHeight = Math.max(16, medicationLines.length * 12);
-  const snapH = 72 + medBlockHeight;
+  const conditionsH = wrappedTextHeight(doc, conditionsText, contentW, 9);
+  const medsH = medicationLines.reduce(
+    (sum, line) => sum + wrappedTextHeight(doc, line, contentW, 9) + 2,
+    0,
+  );
+  const snapH = 56 + conditionsH + 16 + 12 + medsH + 12;
   doc.setFillColor(248, 251, 249);
   doc.setDrawColor(210, 225, 218);
   doc.roundedRect(margin, y, pageW - margin * 2, snapH, 6, 6, "FD");
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
   doc.setTextColor(16, 122, 87);
-  doc.text("YOUR SCENARIO AT A GLANCE", margin + 12, y + 14);
+  doc.text("YOUR PLAN COMPARISON AT A GLANCE", margin + 12, y + 14);
   const cells: { label: string; value: string }[] = [
     { label: "Age", value: String(age) },
     { label: "ZIP region", value: `${input.zip3}xx` },
@@ -1472,17 +1534,18 @@ function renderRecommendationPage(
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(20, 20, 20);
-  doc.text(conditionsText, margin + 12, clinicalY + 12, { maxWidth: pageW - margin * 2 - 24 });
-
+  const medsLabelY =
+    drawWrappedText(doc, conditionsText, margin + 12, clinicalY + 12, contentW, 9) + 8;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7.5);
   doc.setTextColor(120, 120, 120);
-  doc.text("MEDICATIONS", margin + 12, clinicalY + 28);
+  doc.text("MEDICATIONS", margin + 12, medsLabelY);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(20, 20, 20);
-  medicationLines.forEach((line, i) => {
-    doc.text(line, margin + 12, clinicalY + 40 + i * 12, { maxWidth: pageW - margin * 2 - 24 });
+  let medY = medsLabelY + 12;
+  medicationLines.forEach((line) => {
+    medY = drawWrappedText(doc, line, margin + 12, medY, contentW, 9) + 2;
   });
   y += snapH + 14;
 
@@ -1519,7 +1582,11 @@ function renderRecommendationPage(
 
   doc.setFillColor(255, 251, 235);
   doc.setDrawColor(230, 200, 110);
-  const whyH = 18 + reasons.length * 13 + 12;
+  const reasonWidth = pageW - margin * 2 - 36;
+  const whyH =
+    28 +
+    reasons.reduce((sum, r) => sum + wrappedTextHeight(doc, r, reasonWidth, 8.5) + 5, 0) +
+    10;
   doc.roundedRect(margin, y, pageW - margin * 2, whyH, 6, 6, "FD");
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
@@ -1528,9 +1595,10 @@ function renderRecommendationPage(
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
   doc.setTextColor(60, 60, 60);
-  reasons.forEach((r, i) => {
-    doc.text(`•`, margin + 14, y + 30 + i * 13);
-    doc.text(r, margin + 22, y + 30 + i * 13, { maxWidth: pageW - margin * 2 - 36 });
+  let reasonY = y + 28;
+  reasons.forEach((r) => {
+    doc.text("•", margin + 14, reasonY);
+    reasonY = drawWrappedText(doc, r, margin + 22, reasonY, reasonWidth, 8.5) + 5;
   });
   y += whyH + 14;
 
@@ -1579,7 +1647,7 @@ function renderRecommendationPage(
     columnStyles: { 1: { halign: "right" }, 2: { halign: "right" } },
     margin: { left: margin, right: margin },
   });
-  y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 14;
+  y = tableEndY(doc) + 14;
 
   // Medical cost-sharing
   doc.setFont("helvetica", "bold");
@@ -1602,9 +1670,9 @@ function renderRecommendationPage(
     columnStyles: { 0: { fontStyle: "bold", cellWidth: 200 } },
     margin: { left: margin, right: margin },
   });
-  y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 14;
+  y = tableEndY(doc) + 14;
 
-  if (y > 640) {
+  if (y > doc.internal.pageSize.getHeight() - PDF_FOOTER_RESERVE - 120) {
     doc.addPage();
     y = 60;
   }
@@ -1631,7 +1699,7 @@ function renderRecommendationPage(
     margin: { left: margin },
     tableWidth: colW,
   });
-  const leftEnd = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
+  const leftEnd = tableEndY(doc);
   autoTable(doc, {
     startY: y + 6,
     head: [["Benefit", "Coverage"]],
@@ -1647,32 +1715,36 @@ function renderRecommendationPage(
     margin: { left: margin + colW + 10 },
     tableWidth: colW,
   });
-  const rightEnd = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
+  const rightEnd = tableEndY(doc);
   y = Math.max(leftEnd, rightEnd) + 14;
 
   // Alternate
   if (alt) {
-    if (y > 660) {
+    if (y > doc.internal.pageSize.getHeight() - PDF_FOOTER_RESERVE - 80) {
       doc.addPage();
       y = 60;
     }
+    const altW = pageW - margin * 2 - 28;
+    const altTitle = `${alt.carrier} — ${alt.plan}`;
+    const altSub = `${fmtMo(alt.monthly)} all-in · ${usd(alt.annual)}/yr estimated · ${alt.stars}`;
+    const altBoxH =
+      34 +
+      wrappedTextHeight(doc, altTitle, altW, 12) +
+      wrappedTextHeight(doc, altSub, altW, 9) +
+      12;
     doc.setFillColor(248, 248, 248);
     doc.setDrawColor(180, 180, 180);
-    doc.roundedRect(margin, y, pageW - margin * 2, 56, 6, 6, "FD");
+    doc.roundedRect(margin, y, pageW - margin * 2, altBoxH, 6, 6, "FD");
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
     doc.setTextColor(80, 80, 80);
     doc.text("RUNNER-UP — also worth a look", margin + 14, y + 18);
     doc.setFontSize(12);
     doc.setTextColor(20, 20, 20);
-    doc.text(`${alt.carrier} — ${alt.plan}`, margin + 14, y + 36);
+    let altY = drawWrappedText(doc, altTitle, margin + 14, y + 34, altW, 12) + 2;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     doc.setTextColor(80, 80, 80);
-    doc.text(
-      `${fmtMo(alt.monthly)} all-in · ${usd(alt.annual)}/yr estimated · ${alt.stars}`,
-      margin + 14,
-      y + 50,
-    );
+    drawWrappedText(doc, altSub, margin + 14, altY, altW, 9);
   }
 }

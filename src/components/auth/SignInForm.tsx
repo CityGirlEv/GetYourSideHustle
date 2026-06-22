@@ -41,8 +41,10 @@ export function SignInForm({ embedded, onRegisterClick }: SignInFormProps) {
       if (error) {
         try {
           const resolved = await resolveSignInError({
-            email,
-            error_message: error.message,
+            data: {
+              email,
+              error_message: error.message,
+            },
           });
           toast.error(
             resolved.message === "User is banned" ? "User Needs Admin Approval" : resolved.message,

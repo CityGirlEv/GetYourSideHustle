@@ -3,6 +3,7 @@ import {
   extractHashtags,
   facebookPostBodyWithoutHashtags,
   formatFacebookPasteText,
+  toFacebookBold,
 } from "@/lib/content-factory/facebook-post-copy";
 
 describe("facebook-post-copy", () => {
@@ -23,7 +24,19 @@ Educational only.
     expect(facebookPostBodyWithoutHashtags(sampleBody)).toContain("Turning 65");
   });
 
-  it("formats full paste text from draft body", () => {
-    expect(formatFacebookPasteText({ title: "Test", body: sampleBody })).toBe(sampleBody.trim());
+  it("converts text to Facebook bold unicode", () => {
+    expect(toFacebookBold("Test 123")).toBe("𝗧𝗲𝘀𝘁 𝟭𝟮𝟯");
+  });
+
+  it("formats full paste text with bold title then body and hashtags", () => {
+    const result = formatFacebookPasteText({ title: "Test Title", body: sampleBody });
+    expect(result.startsWith("𝗧𝗲𝘀𝘁 𝗧𝗶𝘁𝗹𝗲\n\n")).toBe(true);
+    expect(result).toContain("#MedicareEducation");
+    expect(result).toContain("Turning 65");
+  });
+
+  it("does not duplicate title when body already includes it", () => {
+    const body = `Test Title\n\n${sampleBody}`;
+    expect(formatFacebookPasteText({ title: "Test Title", body })).toBe(body.trim());
   });
 });

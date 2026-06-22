@@ -12,14 +12,14 @@ const UsersManagement = lazy(() =>
 /** Canonical admin user roster at /staff. */
 export const Route = createFileRoute("/staff")({
   head: () => ({
-    meta: [{ title: "Staff — Admin" }, { name: "robots", content: "noindex,nofollow" }],
+    meta: [{ title: "Users — Admin" }, { name: "robots", content: "noindex,nofollow" }],
   }),
   component: StaffPage,
 });
 
 function StaffLoading() {
   return (
-    <AppShell title="Staff" subtitle="Loading roster…">
+    <AppShell title="Users" subtitle="Loading users…">
       <div className="flex justify-center py-16">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>

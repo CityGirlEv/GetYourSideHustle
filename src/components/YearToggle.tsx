@@ -37,7 +37,7 @@ export function YearToggle({ tone = "light" }: { tone?: "dark" | "light" }) {
             }
             setYear(y as 2026 | 2027);
           }}
-          className={`px-2 py-0.5 rounded-full text-xs font-semibold transition whitespace-nowrap ${
+          className={`flex flex-col items-center px-2 py-0.5 rounded-full text-xs font-semibold transition whitespace-nowrap min-w-[4.5rem] ${
             year === y
               ? onDark
                 ? "bg-white text-primary shadow"
@@ -47,7 +47,24 @@ export function YearToggle({ tone = "light" }: { tone?: "dark" | "light" }) {
                 : "text-foreground/85 hover:text-foreground"
           }`}
         >
-          {y} <span className="hidden sm:inline">Plans</span>
+          <span>
+            {y} <span className="hidden sm:inline">Plans</span>
+          </span>
+          <span
+            className={`text-[8px] font-normal leading-tight ${
+              year === y
+                ? onDark
+                  ? "text-primary/80"
+                  : "text-primary-foreground/85"
+                : onDark
+                  ? "text-white/65"
+                  : "text-muted-foreground"
+            }`}
+          >
+            {y === 2027 && !CMS_2027_PUBLISHED
+              ? "2027 Plans not available yet"
+              : "Using 2026 CMS Plan Data"}
+          </span>
         </button>
       ))}
       <Dialog open={open} onOpenChange={setOpen}>

@@ -10,7 +10,7 @@ import {
 
 function parseStep1Substeps(step: string): string[] {
   const body = step.replace(
-    /^Step 1 — Demographics: Enter the following for the Scenario Information\. /,
+    /^Step 1 — Demographics: Enter the following for the plan comparison\. /,
     "",
   );
   return body.split(" | ").map((s) => s.trim());
@@ -84,7 +84,7 @@ describe("buildScenarioQaAuditSteps", () => {
       costTotal: "$7/mo and $84/yr",
     });
 
-    expect(steps[0]).toContain("Compare Plans Privately");
+    expect(steps[0]).toContain("Find Plans That Fit You — Privately");
     expect(steps[1]).toContain("Step 1 — Demographics");
     expect(steps[1]).toContain("birth year = 1958 (age 68 in 2026)");
     expect(steps[1]).toContain("ZIP3 = 606");
@@ -171,8 +171,31 @@ describe("buildScenarioQaAuditSteps", () => {
       "Add these medications.",
       "Metformin 500 mg tablet (twice daily) = $8/mo.",
       "Lisinopril 10 mg tablet (daily) = $5/mo.",
-      "THEN CLICK CREATE SCENARIO.",
+      "THEN CLICK CREATE COMPARISON.",
     ]);
+  });
+
+  it("allows skipping medications when none are listed", () => {
+    const steps = buildScenarioQaAuditSteps({
+      birthYear: "birth year = 1958 (age 68 in 2026)",
+      zip3: "606",
+      countyLine:
+        "From the county dropdown that auto-populates for ZIP3=606, select Cook, IL — this scopes the carrier/plan check to only plans available in that county.",
+      demographics:
+        "gender = male, tobacco use = NO, income band = $55k–$75k, cost preference = 'minimize monthly'",
+      conditions: "None of the above",
+      medications: "",
+      costTotal: "$0/mo and $0/yr",
+    });
+
+    expect(steps[3]).toContain("Step 3 — Medications (optional)");
+    const step3Body = steps[3].split(" ||| ", 2)[1] ?? "";
+    expect(step3Body.split(" | ").map((s) => s.trim())).toEqual([
+      "Skip adding medications — not on any prescriptions.",
+      "THEN CLICK CREATE COMPARISON.",
+    ]);
+    const headerBody = steps[7].split(" ||| ", 2)[1] ?? "";
+    expect(headerBody).not.toMatch(/Medication:/);
   });
 
   it("builds minimize-monthly cost preference without PPO note", () => {
@@ -188,7 +211,7 @@ describe("buildScenarioQaAuditSteps", () => {
       costTotal: "$7/mo and $84/yr",
     });
 
-    expect(steps[0]).toContain("Compare Plans Privately");
+    expect(steps[0]).toContain("Find Plans That Fit You — Privately");
     expect(steps[1]).toContain("Step 1 — Demographics");
     const step1 = parseStep1Substeps(steps[1]);
     expect(step1[0]).toContain("birth year = 1958");
@@ -208,7 +231,7 @@ describe("buildScenarioQaAuditSteps", () => {
     expect(step3Body.split(" | ").map((s) => s.trim())).toEqual([
       "Add these medications.",
       "Losartan 50 mg tablet (daily) = $7/mo.",
-      "THEN CLICK CREATE SCENARIO.",
+      "THEN CLICK CREATE COMPARISON.",
     ]);
     expect(steps[4]).toContain("A pop-up screen will appear allowing the user to Opt In.");
     const step5Body = steps[4].split(" ||| ", 2)[1] ?? "";
@@ -217,7 +240,7 @@ describe("buildScenarioQaAuditSteps", () => {
       'Click the "Contact Me" button.',
       "You should receive a confirmation email at the email you entered. Verify that you received the email.",
     ]);
-    expect(steps[5]).toContain("Copy the generated Scenario ID");
+    expect(steps[5]).toContain("Copy the generated Comparison ID");
     expect(steps[8]).toContain("download files");
     const downloadBody = steps[8].split(" ||| ", 2)[1] ?? "";
     expect(downloadBody.split(" | ").map((s) => s.trim())).toEqual([
@@ -234,7 +257,7 @@ describe("buildScenarioQaAuditSteps", () => {
     ]);
   });
 
-  it("checkboxes copy scenario link verification on the confirmation page", () => {
+  it("checkboxes copy comparison link verification on the confirmation page", () => {
     const steps = buildScenarioQaAuditSteps({
       birthYear: "birth year = 1958 (age 68 in 2026)",
       zip3: "606",
@@ -250,10 +273,10 @@ describe("buildScenarioQaAuditSteps", () => {
     expect(steps[6]).toContain("On the confirmation page :");
     const linkBody = steps[6].split(" ||| ", 2)[1] ?? "";
     expect(linkBody.split(" | ").map((s) => s.trim())).toEqual([
-      'Click "Copy scenario link".',
+      'Click "Copy comparison link".',
       "Verify the link uses the form /scenario/<SCN code>.",
       "Paste it into a new browser tab.",
-      "Confirm the scenario detail page loads with the SCN ID, summary card, share button, and expert opt-in trigger all present.",
+      "Confirm the plan comparison summary page loads with the Comparison ID, summary card, share button, and expert opt-in trigger all present.",
     ]);
   });
 

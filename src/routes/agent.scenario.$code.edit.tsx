@@ -100,7 +100,7 @@ function EditScenario() {
     setZip3(scenario.zip3);
     setGender(scenario.gender ?? "prefer_not_to_say");
     setTobacco(scenario.tobacco);
-    setIncomeBand(scenario.income_band ?? DEFAULT_INCOME_BAND);
+    setIncomeBand((scenario.income_band as any) ?? DEFAULT_INCOME_BAND);
     setCostPref(scenario.cost_preference);
     setConditions(scenario.conditions ?? []);
     setCounty(((scenario.preferences ?? {}) as { county?: string }).county ?? "");
@@ -144,14 +144,14 @@ function EditScenario() {
     }
     log("UPDATE_SCENARIO", { scenario: scenario.id });
     await refreshScenarios();
-    toast.success("Scenario saved");
+    toast.success("Comparison saved");
     router.history.back();
   };
 
   return (
     <AppShell
       title={`Edit ${scenario.scenario_code}`}
-      subtitle="Update scenario details — changes are audit-logged"
+      subtitle="Update plan comparison details — changes are audit-logged"
     >
       <div className="space-y-4 max-w-4xl">
         <Link to="/agent/scenario/$code" params={{ code: scenario.scenario_code }}>

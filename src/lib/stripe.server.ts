@@ -141,11 +141,11 @@ async function upsertSubscriptionRow(opts: {
       plan_key: opts.planKey,
       status: sub.status,
       cancel_at_period_end: sub.cancel_at_period_end,
-      current_period_start: sub.current_period_start
-        ? new Date(sub.current_period_start * 1000).toISOString()
+      current_period_start: (sub as any).current_period_start
+        ? new Date((sub as any).current_period_start * 1000).toISOString()
         : null,
-      current_period_end: sub.current_period_end
-        ? new Date(sub.current_period_end * 1000).toISOString()
+      current_period_end: (sub as any).current_period_end
+        ? new Date((sub as any).current_period_end * 1000).toISOString()
         : null,
       trial_start: sub.trial_start ? new Date(sub.trial_start * 1000).toISOString() : null,
       trial_end: sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null,
@@ -180,7 +180,7 @@ async function recordPayment(opts: {
     stripe_payment_intent_id: opts.stripePaymentIntentId ?? null,
     stripe_invoice_id: opts.stripeInvoiceId ?? null,
     stripe_checkout_session_id: opts.stripeCheckoutSessionId ?? null,
-    metadata: opts.metadata ?? {},
+    metadata: (opts.metadata as any) ?? {},
   };
 
   if (opts.stripePaymentIntentId) {
@@ -280,9 +280,9 @@ export async function handleStripeWebhookEvent(event: Stripe.Event): Promise<voi
         ? invoice.metadata.user_id
         : await findUserIdByStripeCustomerId(String(invoice.customer));
       const subscriptionId =
-        typeof invoice.subscription === "string"
-          ? invoice.subscription
-          : invoice.subscription?.id;
+        typeof (invoice as any).subscription === "string"
+          ? (invoice as any).subscription
+          : (invoice as any).subscription?.id;
 
       if (userId && subscriptionId) {
         const { data: subRow } = await supabaseAdmin
@@ -302,9 +302,9 @@ export async function handleStripeWebhookEvent(event: Stripe.Event): Promise<voi
         status: invoice.status ?? "paid",
         description: invoice.description ?? "Subscription invoice",
         stripePaymentIntentId:
-          typeof invoice.payment_intent === "string"
-            ? invoice.payment_intent
-            : invoice.payment_intent?.id,
+          typeof (invoice as any).payment_intent === "string"
+            ? (invoice as any).payment_intent
+            : (invoice as any).payment_intent?.id,
         stripeInvoiceId: invoice.id,
         metadata: { subscription_id: subscriptionId },
       });

@@ -67,6 +67,7 @@ import { refreshQaTesters } from "@/lib/use-qa-testers";
 import { QADevicePicker, splitDevices, mergeDevices } from "@/components/QADevicePicker";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { StaffSubNav } from "@/components/StaffSubNav";
+import { UserLoginReport } from "@/components/UserLoginReport";
 import { StaffEmailMenu } from "@/components/StaffEmailMenu";
 import {
   sendStaffAssignmentEmails,
@@ -452,6 +453,9 @@ export function UsersManagement() {
         y += 10; // Spacer between roles
       }
 
+      const { stampPdfPageFooters } = await import("@/lib/pdf-page-footer");
+      stampPdfPageFooters(doc, { margin, footerY: pageH - 18, fontSize: 8 });
+
       doc.save(`medicare-optimizer-user-report-${Date.now()}.pdf`);
       toast.success("PDF User Report downloaded successfully!");
     } catch (err) {
@@ -782,10 +786,11 @@ export function UsersManagement() {
 
   return (
     <AppShell
-      title="Staff"
-      subtitle="Create, edit, disable, and remove staff accounts · role toggles, bulk actions, email confirmed"
+      title="Users"
+      subtitle="Login activity report, user roster, role toggles, bulk actions, and email confirmed"
     >
       <StaffSubNav active="roster" className="mb-4" />
+      <UserLoginReport users={staff} loading={loading} />
       <div className="grid lg:grid-cols-[360px_1fr] gap-6 items-start">
         <Card className="glass p-5 space-y-4 lg:sticky lg:top-24">
           <h3 className="font-display font-bold flex items-center gap-2">

@@ -25,7 +25,7 @@ export interface ContentDispatchLogEntry {
   messageId: string | null;
   status: ContentDispatchStatus;
   errorMessage: string | null;
-  metadata: Record<string, unknown>;
+  metadata: Record<string, any>;
   sentBy: string | null;
   createdAt: string;
 }
@@ -108,7 +108,7 @@ export async function insertContentDispatchLog(input: {
   sentBy?: string | null;
 }): Promise<ContentDispatchLogEntry> {
   const { data, error } = await supabaseAdmin
-    .from("content_dispatch_log")
+    .from("content_dispatch_log" as any)
     .insert({
       channel: input.channel,
       dispatch_kind: input.dispatchKind,
@@ -129,7 +129,7 @@ export async function insertContentDispatchLog(input: {
     .single();
 
   if (error || !data) throw new Error(error?.message ?? "Could not write dispatch log");
-  return mapDispatchRow(data as DispatchRow);
+  return mapDispatchRow(data as any as DispatchRow);
 }
 
 export async function updateContentDispatchLog(
@@ -137,7 +137,7 @@ export async function updateContentDispatchLog(
   patch: { status?: ContentDispatchStatus; errorMessage?: string | null },
 ): Promise<void> {
   const { error } = await supabaseAdmin
-    .from("content_dispatch_log")
+    .from("content_dispatch_log" as any)
     .update({
       ...(patch.status ? { status: patch.status } : {}),
       ...(patch.errorMessage !== undefined ? { error_message: patch.errorMessage } : {}),
@@ -153,7 +153,7 @@ export async function listContentDispatchLog(options: {
   batchId?: string;
 }): Promise<ContentDispatchLogEntry[]> {
   let query = supabaseAdmin
-    .from("content_dispatch_log")
+    .from("content_dispatch_log" as any)
     .select("*")
     .order("created_at", { ascending: false })
     .limit(options.limit ?? 50);
@@ -164,7 +164,7 @@ export async function listContentDispatchLog(options: {
 
   const { data, error } = await query;
   if (error) throw new Error(error.message);
-  return (data as DispatchRow[]).map(mapDispatchRow);
+  return (data as any as DispatchRow[]).map(mapDispatchRow);
 }
 
 export async function listContentDraftVersions(
@@ -172,14 +172,14 @@ export async function listContentDraftVersions(
   limit = 20,
 ): Promise<ContentDraftVersionEntry[]> {
   const { data, error } = await supabaseAdmin
-    .from("content_draft_versions")
+    .from("content_draft_versions" as any)
     .select("*")
     .eq("draft_id", draftId)
     .order("created_at", { ascending: false })
     .limit(limit);
 
   if (error) throw new Error(error.message);
-  return (data as VersionRow[]).map((row) => ({
+  return (data as any as VersionRow[]).map((row) => ({
     id: row.id,
     draftId: row.draft_id,
     snapshot: row.snapshot as ContentDraftVersionEntry["snapshot"],

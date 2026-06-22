@@ -77,6 +77,8 @@ export type StaffReportTester = {
   email: string;
   roles: string[];
   qa_devices: string[];
+  /** ISO timestamp from Supabase Auth last_sign_in_at. */
+  lastSignInAt: string | null;
   assignedTests: StaffReportTestRow[];
   counts: {
     total: number;
@@ -183,6 +185,7 @@ export const getStaffDeviceReport = createServerFn({ method: "POST" })
         email: u.email ?? "",
         roles: rolesMap.get(u.id) ?? [],
         qa_devices: profile?.qa_devices ?? [],
+        lastSignInAt: u.last_sign_in_at ?? null,
         assignedTests,
         counts: countStatuses(assignedTests),
       });

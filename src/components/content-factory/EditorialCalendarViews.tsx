@@ -4,9 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   checklistItemsForDate,
+  monthGridCells,
   type DailyChecklistItem,
 } from "@/lib/content-factory/editorial-daily-checklist";
-import { facebookPageUrl } from "@/lib/content-factory/facebook-post-copy";
 import type { EditorialCalendarEvent } from "@/lib/content-factory/weekly-editorial-schedule";
 import { parseIsoDate } from "@/lib/content-factory/weekly-editorial-schedule";
 import {
@@ -15,9 +15,12 @@ import {
 } from "@/components/content-factory/content-factory-ui";
 import type { ContentAssetType, ContentDraftStatus } from "@/lib/content-factory/types";
 import { EditorialCalendarActionLinks } from "@/components/content-factory/EditorialCalendarLinks";
+import { FacebookInviteDaySteps } from "@/components/content-factory/FacebookInviteDaySteps";
+import { ImagePromptCalendarPanel } from "@/components/content-factory/ImagePromptCalendarPanel";
+import { LeadMagnetPdfPanel } from "@/components/content-factory/LeadMagnetPdfPanel";
 import type { CalendarDraftRef } from "@/lib/content-factory/editorial-calendar-links";
 
-export type CalendarViewMode = "weekly" | "daily";
+export type CalendarViewMode = "weekly" | "daily" | "monthly";
 
 const TYPE_SURFACE: Record<ContentAssetType, string> = {
   article: "bg-indigo-100 text-indigo-950 border-indigo-300/50 dark:bg-indigo-500/15 dark:text-indigo-50 dark:border-indigo-500/25",
@@ -41,6 +44,9 @@ export function CalendarViewToggle({
       onValueChange={(value) => onViewChange(value as CalendarViewMode)}
     >
       <TabsList className="h-8">
+        <TabsTrigger value="monthly" className="text-xs px-3">
+          Month
+        </TabsTrigger>
         <TabsTrigger value="weekly" className="text-xs px-3">
           Week
         </TabsTrigger>
@@ -140,6 +146,8 @@ export function EditorialDayAgenda({
   mapDraftStatus,
   completedEvents = {},
   onToggleCompleted,
+  onHeroUploaded,
+  onPdfSaved,
 }: {
   isoDate: string;
   events: EditorialCalendarEvent[];
@@ -149,6 +157,8 @@ export function EditorialDayAgenda({
   mapDraftStatus: (status: ContentDraftStatus) => string;
   completedEvents?: Record<string, boolean>;
   onToggleCompleted?: (eventId: string) => void;
+  onHeroUploaded?: () => void;
+  onPdfSaved?: () => void;
 }) {
   const items = checklistItemsForDate(events, isoDate);
   const isToday = isoDate === today;
@@ -182,6 +192,9 @@ export function EditorialDayAgenda({
             mapDraftStatus={mapDraftStatus}
             isCompleted={!!completedEvents[item.event.id]}
             onToggleCompleted={onToggleCompleted}
+            completedEvents={completedEvents}
+            onHeroUploaded={onHeroUploaded}
+            onPdfSaved={onPdfSaved}
           />
         ))}
       </ul>
@@ -197,6 +210,9 @@ function DayAgendaRow({
   mapDraftStatus,
   isCompleted,
   onToggleCompleted,
+  completedEvents = {},
+  onHeroUploaded,
+  onPdfSaved,
 }: {
   item: DailyChecklistItem;
   draft?: CalendarDraftRef;
@@ -205,11 +221,13 @@ function DayAgendaRow({
   mapDraftStatus: (status: ContentDraftStatus) => string;
   isCompleted: boolean;
   onToggleCompleted?: (eventId: string) => void;
+  completedEvents?: Record<string, boolean>;
+  onHeroUploaded?: () => void;
+  onPdfSaved?: () => void;
 }) {
   const Icon = contentTypeIcon(item.event.type);
   const isProduce = item.event.milestone === "produce";
   const surface = TYPE_SURFACE[item.event.type];
-  const pageUrl = facebookPageUrl();
 
   return (
     <li
@@ -250,20 +268,10 @@ function DayAgendaRow({
           <p className="text-xs text-muted-foreground">{item.event.detail}</p>
           <div className="flex flex-wrap items-center gap-2 pt-0.5">
             {item.event.slotIndex === 99 && (
-              <>
-                {pageUrl ? (
-                  <Button size="sm" variant="outline" className="h-7 text-[11px]" asChild>
-                    <a href={pageUrl} target="_blank" rel="noopener noreferrer">
-                      Open Facebook Page
-                      <ExternalLink className="h-3 w-3 ml-1" />
-                    </a>
-                  </Button>
-                ) : (
-                  <span className="text-[10px] text-muted-foreground">
-                    Set PUBLIC_FACEBOOK_PAGE_URL in env to link
-                  </span>
-                )}
-              </>
+              <FacebookInviteDaySteps
+                completedEvents={completedEvents}
+                onToggleCompleted={onToggleCompleted}
+              />
             )}
             {draft && <ContentStatusBadge status={draft.status} />}
             {draft && (
@@ -276,6 +284,22 @@ function DayAgendaRow({
               draft={draft}
               batchId={batchId}
               draftBySlot={draftBySlot}
+            />
+          )}
+          {item.event.type === "image_prompt" && (
+            <ImagePromptCalendarPanel
+              event={item.event}
+              draft={draft}
+              draftBySlot={draftBySlot}
+              batchId={batchId}
+              onHeroUploaded={onHeroUploaded}
+            />
+          )}
+          {item.event.type === "lead_magnet" && (
+            <LeadMagnetPdfPanel
+              draft={draft}
+              batchId={batchId}
+              onSaved={onPdfSaved}
             />
           )}
         </div>
@@ -315,6 +339,96 @@ export function WeekDayPicker({
           </Button>
         );
       })}
+    </div>
+  );
+}
+
+export function EditorialMonthGrid({
+  monthStart,
+  eventsByDate,
+  today,
+  selectedDay,
+  onSelectDay,
+  renderEventChip,
+}: {
+  monthStart: Date;
+  eventsByDate: Map<string, EditorialCalendarEvent[]>;
+  today: string;
+  selectedDay: string;
+  onSelectDay: (isoDate: string) => void;
+  renderEventChip: (event: EditorialCalendarEvent) => ReactNode;
+}) {
+  const weekdayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const cells = monthGridCells(monthStart);
+
+  return (
+    <div className="space-y-2">
+      <div className="grid grid-cols-7 gap-2">
+        {weekdayLabels.map((label) => (
+          <div
+            key={label}
+            className="text-center font-semibold text-[10px] uppercase text-muted-foreground py-1"
+          >
+            {label}
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-2">
+        {cells.map(({ isoDate, inMonth }) => {
+          const dayEvents = eventsByDate.get(isoDate) ?? [];
+          const produceCount = dayEvents.filter((e) => e.milestone === "produce").length;
+          const launchCount = dayEvents.filter((e) => e.milestone === "launch").length;
+          const dayNum = parseIsoDayNumber(isoDate);
+          const isToday = isoDate === today;
+          const isSelected = isoDate === selectedDay;
+
+          return (
+            <button
+              key={isoDate}
+              type="button"
+              onClick={() => onSelectDay(isoDate)}
+              className={`min-h-[7.5rem] text-left border rounded-lg p-2 flex flex-col transition-all ${
+                !inMonth
+                  ? "border-border/30 bg-muted/20 opacity-50"
+                  : isSelected
+                    ? "border-indigo-500/50 bg-indigo-500/10 ring-1 ring-indigo-500/30"
+                    : isToday
+                      ? "border-indigo-500/30 bg-indigo-500/5 hover:border-indigo-500/40"
+                      : "border-border/60 bg-background/30 hover:border-primary/20"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-1 mb-1">
+                <span
+                  className={`text-[11px] font-bold tabular-nums ${
+                    isToday ? "text-primary font-bold" : inMonth ? "text-foreground" : "text-muted-foreground"
+                  }`}
+                >
+                  {dayNum}
+                </span>
+                {inMonth && (produceCount > 0 || launchCount > 0) && (
+                  <span className="text-[8px] text-muted-foreground tabular-nums">
+                    {produceCount > 0 && `${produceCount}P`}
+                    {produceCount > 0 && launchCount > 0 && "·"}
+                    {launchCount > 0 && `${launchCount}L`}
+                  </span>
+                )}
+              </div>
+              <div className="flex-1 overflow-y-auto space-y-1 pr-0.5 max-h-24">
+                {inMonth && dayEvents.length > 0 ? (
+                  dayEvents.slice(0, 3).map(renderEventChip)
+                ) : inMonth ? (
+                  <span className="text-[9px] text-muted-foreground/70">No tasks</span>
+                ) : null}
+                {inMonth && dayEvents.length > 3 && (
+                  <span className="text-[9px] text-muted-foreground font-medium">
+                    +{dayEvents.length - 3} more
+                  </span>
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

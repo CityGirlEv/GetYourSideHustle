@@ -45,9 +45,9 @@ const FACEBOOK_POSTS = [
     body: `Many Medicare Advantage plans advertise a $0 monthly premium. Copays, deductibles, and out-of-network bills can still add up.\n\nCompare the full cost picture — not just the headline premium. Read our plain-language guide on what $0 premiums really mean:\n👉 https://mypartb.com/learning-center/medicare-advantage-zero-premium-explained\n\nEducational only — not a solicitation to enroll.\n\n#MedicareEducation #ComparePlans #MedicareAdvantage`,
   },
   {
-    title: "Still working at 65? Check employer size first",
-    excerpt: "Educational post on Medicare and employer coverage coordination.",
-    body: `Turning 65 while you still have employer health coverage?\n\nBefore you defer Part B, confirm whether your employer has 20 or more employees — that detail changes whether Medicare is primary or secondary.\n\nEducational only. Verify your timeline with SSA and Medicare.gov.\n\n#MedicareEducation #Turning65`,
+    title: "Free Medicare at 65 Planning Workbook (PDF)",
+    excerpt: "Promote the printable workbook — free download, no email required.",
+    body: `Turning 65 soon? Before you compare plans, it helps to gather the facts in one place.\n\nWe just published a free printable workbook to help you list:\n\n• Prescriptions and dosages\n• Doctors, specialists, and hospitals you want to keep\n• Employer coverage details (if you're still working)\n• Questions to verify with Medicare.gov and SHIP\n\nDownload the PDF — no signup required:\n👉 https://mypartb.com/downloads/medicare-at-65-planning-workbook.pdf\n\nSave it, print it, or share the link with a friend or family member who's navigating Medicare this year.\n\nFollow the Part B Optimizer page for calm, non-sales Medicare education each week.\n\nEducational workbook only — not enrollment advice. We do not sell insurance or solicit enrollments. Not affiliated with Medicare, CMS, or any government agency.\n\n#MedicareEducation #Turning65 #MedicarePlanning`,
   },
   {
     title: "TV ads make Medicare sound simple — compare the documents",

@@ -14,6 +14,7 @@ import {
   type ContentAssetType,
 } from "@/lib/content-factory/types";
 import { logContentDispatchEvent } from "@/lib/content-factory/dispatch-log";
+import { normalizeLegacyBrandJson, normalizeLegacyBrandText } from "@/lib/site-brand";
 import { hashContentBody } from "@/lib/content-factory/newsletter-dispatch";
 import {
   assertDraftStatusTransition,
@@ -73,10 +74,10 @@ function mapDraft(row: DraftRow): ContentDraft {
     batchId: row.batch_id,
     type: row.type as ContentAssetType,
     slotIndex: row.slot_index,
-    title: row.title,
-    excerpt: row.excerpt,
-    body: row.body,
-    payload: row.payload ?? {},
+    title: normalizeLegacyBrandText(row.title),
+    excerpt: normalizeLegacyBrandText(row.excerpt),
+    body: normalizeLegacyBrandText(row.body),
+    payload: (normalizeLegacyBrandJson(row.payload ?? {}) ?? {}) as Record<string, unknown>,
     status: row.status as ContentDraftStatus,
     scheduledFor: row.scheduled_for,
     publishedAt: row.published_at,
@@ -94,7 +95,7 @@ async function insertDraftVersion(
   snapshot: ContentDraftSnapshot,
   userId: string,
 ): Promise<void> {
-  await supabaseAdmin.from("content_draft_versions").insert({
+  await supabaseAdmin.from("content_draft_versions" as any).insert({
     draft_id: draftId,
     snapshot,
     created_by: userId,
@@ -103,28 +104,28 @@ async function insertDraftVersion(
 
 export async function listContentBatches(limit = 20): Promise<ContentBatch[]> {
   const { data, error } = await supabaseAdmin
-    .from("content_batches")
+    .from("content_batches" as any)
     .select("*")
     .order("created_at", { ascending: false })
     .limit(limit);
 
   if (error) throw new Error(error.message);
-  return (data as BatchRow[]).map(mapBatch);
+  return (data as any as BatchRow[]).map(mapBatch);
 }
 
 export async function getContentBatch(batchId: string): Promise<ContentBatch | null> {
   const { data, error } = await supabaseAdmin
-    .from("content_batches")
+    .from("content_batches" as any)
     .select("*")
     .eq("id", batchId)
     .maybeSingle();
 
   if (error) throw new Error(error.message);
-  return data ? mapBatch(data as BatchRow) : null;
+  return data ? mapBatch(data as any as BatchRow) : null;
 }
 
 export async function listContentDrafts(filters: ContentDraftFilters = {}): Promise<ContentDraft[]> {
-  let query = supabaseAdmin.from("content_drafts").select("*").order("created_at", { ascending: false });
+  let query = supabaseAdmin.from("content_drafts" as any).select("*").order("created_at", { ascending: false });
 
   if (filters.batchId) query = query.eq("batch_id", filters.batchId);
   if (filters.type && filters.type !== "all") query = query.eq("type", filters.type);
@@ -132,18 +133,18 @@ export async function listContentDrafts(filters: ContentDraftFilters = {}): Prom
 
   const { data, error } = await query;
   if (error) throw new Error(error.message);
-  return (data as DraftRow[]).map(mapDraft);
+  return (data as any as DraftRow[]).map(mapDraft);
 }
 
 export async function getContentDraft(draftId: string): Promise<ContentDraft | null> {
   const { data, error } = await supabaseAdmin
-    .from("content_drafts")
+    .from("content_drafts" as any)
     .select("*")
     .eq("id", draftId)
     .maybeSingle();
 
   if (error) throw new Error(error.message);
-  return data ? mapDraft(data as DraftRow) : null;
+  return data ? mapDraft(data as any as DraftRow) : null;
 }
 
 export async function createWeeklyContentBatch(
@@ -152,7 +153,7 @@ export async function createWeeklyContentBatch(
 ): Promise<{ batch: ContentBatch; drafts: ContentDraft[] }> {
   const batchName = buildWeeklyBatchName();
   const { data: batchRow, error: batchError } = await supabaseAdmin
-    .from("content_batches")
+    .from("content_batches" as any)
     .insert({
       name: batchName,
       topic,
@@ -166,7 +167,7 @@ export async function createWeeklyContentBatch(
 
   if (batchError || !batchRow) throw new Error(batchError?.message ?? "Could not create content batch");
 
-  const batch = mapBatch(batchRow as BatchRow);
+  const batch = mapBatch(batchRow as any as BatchRow);
   const generated = generateWeeklyBatchAssets(topic, batch.id);
 
   const draftRows = generated.map((asset) => ({
@@ -183,23 +184,23 @@ export async function createWeeklyContentBatch(
   }));
 
   const { data: insertedDrafts, error: draftError } = await supabaseAdmin
-    .from("content_drafts")
+    .from("content_drafts" as any)
     .insert(draftRows)
     .select("*");
 
   if (draftError || !insertedDrafts) {
     await supabaseAdmin
-      .from("content_batches")
+      .from("content_batches" as any)
       .update({ status: "failed" })
       .eq("id", batch.id);
     throw new Error(draftError?.message ?? "Could not create draft queue items");
   }
 
-  const drafts = (insertedDrafts as DraftRow[]).map(mapDraft);
+  const drafts = (insertedDrafts as any as DraftRow[]).map(mapDraft);
   const assetCounts = countAssetsByType(drafts);
 
   const { data: completedBatch, error: completeError } = await supabaseAdmin
-    .from("content_batches")
+    .from("content_batches" as any)
     .update({
       status: "ready",
       asset_counts: assetCounts,
@@ -211,7 +212,7 @@ export async function createWeeklyContentBatch(
 
   if (completeError || !completedBatch) throw new Error(completeError?.message ?? "Could not finalize batch");
 
-  return { batch: mapBatch(completedBatch as BatchRow), drafts };
+  return { batch: mapBatch(completedBatch as any as BatchRow), drafts };
 }
 
 export async function updateContentDraft(
@@ -232,7 +233,7 @@ export async function updateContentDraft(
   };
 
   const { data, error } = await supabaseAdmin
-    .from("content_drafts")
+    .from("content_drafts" as any)
     .update({
       title: input.title,
       excerpt: input.excerpt,
@@ -246,7 +247,41 @@ export async function updateContentDraft(
 
   if (error || !data) throw new Error(error?.message ?? "Could not update draft");
   await insertDraftVersion(draftId, snapshot, userId);
-  return mapDraft(data as DraftRow);
+  return mapDraft(data as any as DraftRow);
+}
+
+export async function patchContentDraftPayload(
+  draftId: string,
+  userId: string,
+  payloadPatch: Record<string, unknown>,
+): Promise<ContentDraft> {
+  const existing = await getContentDraft(draftId);
+  if (!existing) throw new Error("Draft not found");
+
+  const snapshot: ContentDraftSnapshot = {
+    title: existing.title,
+    excerpt: existing.excerpt,
+    body: existing.body,
+    payload: existing.payload,
+    status: existing.status,
+  };
+
+  const payload = { ...existing.payload, ...payloadPatch };
+
+  const { data, error } = await supabaseAdmin
+    .from("content_drafts" as any)
+    .update({
+      payload,
+      updated_by: userId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", draftId)
+    .select("*")
+    .single();
+
+  if (error || !data) throw new Error(error?.message ?? "Could not update draft payload");
+  await insertDraftVersion(draftId, snapshot, userId);
+  return mapDraft(data as any as DraftRow);
 }
 
 export async function updateContentDraftStatus(
@@ -286,14 +321,14 @@ export async function updateContentDraftStatus(
   }
 
   const { data, error } = await supabaseAdmin
-    .from("content_drafts")
+    .from("content_drafts" as any)
     .update(patch)
     .eq("id", draftId)
     .select("*")
     .single();
 
   if (error || !data) throw new Error(error?.message ?? "Could not update draft status");
-  const updated = mapDraft(data as DraftRow);
+  const updated = mapDraft(data as any as DraftRow);
 
   if (nextStatus === "scheduled") {
     const channel =

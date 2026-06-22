@@ -171,7 +171,7 @@ import type { NoteKind } from "@/lib/cloud-sync";
 import { MessageSquare } from "lucide-react";
 import { MultiSelect, multiSelectMatches } from "@/components/ui/multi-select";
 import { useConfirm } from "@/components/ConfirmDialog";
-import { buildCloudOps, type DraftValues } from "@/lib/save-batch";
+import { buildCloudOps, type DraftValues, type SaveField } from "@/lib/save-batch";
 import { canSaveTestResults, getTestResultSaveBlockReason } from "@/lib/qa-save-permissions";
 import {
   checkedStepsEqual,
@@ -481,7 +481,7 @@ function RunAutomatedButton({ t }: { t: TestCase }) {
 }
 
 export const Route = createFileRoute("/testing")({
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (search: Record<string, unknown>): { owner?: string; device?: string } => ({
     owner: typeof search.owner === "string" ? search.owner : undefined,
     device: typeof search.device === "string" ? search.device : undefined,
   }),
@@ -1712,7 +1712,7 @@ export function TestPlanTab() {
                 ...savedAssignees,
                 [id]: assignee,
               }),
-              status,
+              status: status as "failed_retest" | "fixed_retest",
               devAuthorName: user?.full_name?.trim() || user?.email || "Development",
               devNote: trimmedDevNote || undefined,
             },
@@ -2128,7 +2128,9 @@ export function TestPlanTab() {
       }
     }
     const ops = buildCloudOps(
-      pendingChanges.map((c) => ({ key: c.key, testId: c.testId, field: c.field })),
+      pendingChanges
+        .filter((c) => c.field !== "checkedSteps")
+        .map((c) => ({ key: c.key, testId: c.testId, field: c.field as SaveField })),
       selectedKeys,
       draftSnapshot,
     );
@@ -3063,7 +3065,7 @@ export function TestPlanTab() {
             <p className="text-sm text-muted-foreground">
               No QA testers registered those devices. Check{" "}
               <Link to="/staff/report" className="text-primary underline underline-offset-2">
-                Staff device report
+                User device report
               </Link>{" "}
               to review or update tester hardware.
             </p>
@@ -3519,7 +3521,7 @@ function getStepSubstepKeys(step: string, stepIndex: number): string[] {
   };
 
   const basicsSectionsMatch = step.match(
-    /^(Step 1 — (?:Demographics|Basics): Enter the following for the Scenario Information\.)\s*\|\|\|\s*(.+)$/,
+    /^(Step 1 — (?:Demographics|Basics): Enter the following for the plan comparison\.)\s*\|\|\|\s*(.+)$/,
   );
   if (basicsSectionsMatch) {
     const sections = basicsSectionsMatch[2]
@@ -3542,7 +3544,7 @@ function getStepSubstepKeys(step: string, stepIndex: number): string[] {
   }
 
   const basicsPipeMatch = step.match(
-    /^(Step 1 — (?:Demographics|Basics): Enter the following for the Scenario Information\.)\s*(.+)$/,
+    /^(Step 1 — (?:Demographics|Basics): Enter the following for the plan comparison\.)\s*(.+)$/,
   );
   if (
     basicsPipeMatch &&
@@ -3559,7 +3561,7 @@ function getStepSubstepKeys(step: string, stepIndex: number): string[] {
   }
 
   if (
-    step.startsWith("Enter the remaining for the Scenario Information:") &&
+    step.startsWith("Enter the remaining for the plan comparison:") &&
     step.includes(" ||| ")
   ) {
     add(
@@ -3573,7 +3575,7 @@ function getStepSubstepKeys(step: string, stepIndex: number): string[] {
   }
 
   const basicsMatch = step.match(
-    /^(Step 1 — (?:Demographics|Basics): Enter the following for the Scenario Information\.)\s*(.+?)\.\s*THEN CLICK NEXT\.$/,
+    /^(Step 1 — (?:Demographics|Basics): Enter the following for the plan comparison\.)\s*(.+?)\.\s*THEN CLICK NEXT\.$/,
   );
   if (basicsMatch && basicsMatch[2].includes("ZIP3 =")) {
     add([...basicsMatch[2].split(", ").map((s) => s.trim()), "THEN CLICK NEXT."]);
@@ -3615,7 +3617,7 @@ function getStepSubstepKeys(step: string, stepIndex: number): string[] {
   }
 
   const countyDemoMatch = step.match(
-    /^(From the county dropdown.+?county\.)\s*(Enter the remaining for the Scenario Information:)\s*(.+?)\.\s*THEN CLICK NEXT\.$/,
+    /^(From the county dropdown.+?county\.)\s*(Enter the remaining for the plan comparison:)\s*(.+?)\.\s*THEN CLICK NEXT\.$/,
   );
   if (countyDemoMatch) {
     add([...countyDemoMatch[3].split(", ").map((s) => s.trim()), "THEN CLICK NEXT."]);
@@ -3711,14 +3713,14 @@ function getStepSubstepKeys(step: string, stepIndex: number): string[] {
   }
 
   if (
-    step.startsWith('On the confirmation page, click "Copy scenario link"') &&
+    step.startsWith('On the confirmation page, click "Copy comparison link"') &&
     step.includes("/scenario/<SCN code>")
   ) {
     add([
-      'Click "Copy scenario link".',
+      'Click "Copy comparison link".',
       "Verify the link uses the form /scenario/<SCN code>.",
       "Paste it into a new browser tab.",
-      "Confirm the scenario detail page loads with the SCN ID, summary card, share button, and expert opt-in trigger all present.",
+      "Confirm the plan comparison summary page loads with the Comparison ID, summary card, share button, and expert opt-in trigger all present.",
     ]);
     return keys;
   }
@@ -3735,32 +3737,32 @@ function getStepSubstepKeys(step: string, stepIndex: number): string[] {
   }
 
   const medsMatch = step.match(
-    /^(?:Step 3 — Medications: )?Under Common medications for your conditions: Select the medication \(if present\)\. Those medications will be added to the list below\. Click the plus sign to add additional medications\. Add these medications:\s*(.+?)\.\s*THEN CLICK CREATE SCENARIO\.$/,
+    /^(?:Step 3 — Medications: )?Under Common medications for your conditions: Select the medication \(if present\)\. Those medications will be added to the list below\. Click the plus sign to add additional medications\. Add these medications:\s*(.+?)\.\s*THEN CLICK CREATE COMPARISON\.$/,
   );
   if (medsMatch) {
     const items = medsMatch[1]
       .split("; ")
       .map((s) => s.trim())
       .filter(Boolean);
-    add(["Add these medications.", ...items.map((med) => `${med}.`), "THEN CLICK CREATE SCENARIO."]);
+    add(["Add these medications.", ...items.map((med) => `${med}.`), "THEN CLICK CREATE COMPARISON."]);
     return keys;
   }
 
   const basicsLegacyMatch = step.match(
-    /^(Step 1 — (?:Demographics|Basics): Enter the following for the Scenario Information THEN CLICK NEXT\.)\s*(.+)$/,
+    /^(Step 1 — (?:Demographics|Basics): Enter the following for the plan comparison THEN CLICK NEXT\.)\s*(.+)$/,
   );
   if (basicsLegacyMatch && basicsLegacyMatch[2].includes("ZIP3 =")) {
     add([...basicsLegacyMatch[2].split(", ").map((s) => s.trim()), "THEN CLICK NEXT."]);
     return keys;
   }
 
-  const introMatch = step.match(/^(Enter the following for the Scenario Information:)\s*(.+)$/);
+  const introMatch = step.match(/^(Enter the following for the plan comparison:)\s*(.+)$/);
   if (introMatch && introMatch[2].includes("ZIP3=")) {
     add(introMatch[2].split(", "));
     return keys;
   }
 
-  const remainingMatch = step.match(/^(Enter the remaining for the Scenario Information:)\s*(.+)$/);
+  const remainingMatch = step.match(/^(Enter the remaining for the plan comparison:)\s*(.+)$/);
   if (remainingMatch) {
     add(remainingMatch[2].split(", "));
     return keys;
@@ -3808,7 +3810,7 @@ function getStepSubstepKeys(step: string, stepIndex: number): string[] {
   }
 
   if (
-    step.startsWith("On the confirmation page (or View scenario summary), download files:") &&
+    step.startsWith("On the confirmation page (or View comparison summary), download files:") &&
     step.includes(" ||| ")
   ) {
     add(
@@ -3822,8 +3824,8 @@ function getStepSubstepKeys(step: string, stepIndex: number): string[] {
   }
 
   if (
-    step.startsWith("On the confirmation page (or View scenario summary), click 'Download PDF'") ||
-    step.startsWith("On the confirmation page (or View scenario summary), click 'Download Excel'")
+    step.startsWith("On the confirmation page (or View comparison summary), click 'Download PDF'") ||
+    step.startsWith("On the confirmation page (or View comparison summary), click 'Download Excel'")
   ) {
     add([
       "Click 'Download PDF' to generate the system output report.",
@@ -3927,7 +3929,7 @@ function StepWithSublist({
 
   // Step 1 · Demographics — birth (2a), ZIP3 (2b), county (2c), then gender/tobacco/income
   const basicsSectionsMatch = step.match(
-    /^(Step 1 — (?:Demographics|Basics): Enter the following for the Scenario Information\.)\s*\|\|\|\s*(.+)$/,
+    /^(Step 1 — (?:Demographics|Basics): Enter the following for the plan comparison\.)\s*\|\|\|\s*(.+)$/,
   );
   if (basicsSectionsMatch) {
     const sections = basicsSectionsMatch[2]
@@ -3957,7 +3959,7 @@ function StepWithSublist({
 
   // "Step 1 — Demographics: ..." with pipe-delimited substeps (legacy single-block)
   const basicsPipeMatch = step.match(
-    /^(Step 1 — (?:Demographics|Basics): Enter the following for the Scenario Information\.)\s*(.+)$/,
+    /^(Step 1 — (?:Demographics|Basics): Enter the following for the plan comparison\.)\s*(.+)$/,
   );
   if (
     basicsPipeMatch &&
@@ -3978,7 +3980,7 @@ function StepWithSublist({
 
   // Remaining demographics on Step 1 (legacy separate audit step)
   if (
-    step.startsWith("Enter the remaining for the Scenario Information:") &&
+    step.startsWith("Enter the remaining for the plan comparison:") &&
     step.includes(" ||| ")
   ) {
     const [intro, body] = step.split(" ||| ", 2);
@@ -3996,7 +3998,7 @@ function StepWithSublist({
 
   // "Step 1 — Demographics: ... birth year..., ZIP3 = ... THEN CLICK NEXT." (legacy)
   const basicsMatch = step.match(
-    /^(Step 1 — (?:Demographics|Basics): Enter the following for the Scenario Information\.)\s*(.+?)\.\s*THEN CLICK NEXT\.$/,
+    /^(Step 1 — (?:Demographics|Basics): Enter the following for the plan comparison\.)\s*(.+?)\.\s*THEN CLICK NEXT\.$/,
   );
   if (basicsMatch && basicsMatch[2].includes("ZIP3 =")) {
     const items = basicsMatch[2].split(", ").map((s) => s.trim());
@@ -4056,7 +4058,7 @@ function StepWithSublist({
 
   // County + remaining demographics on the same wizard page (legacy)
   const countyDemoMatch = step.match(
-    /^(From the county dropdown.+?county\.)\s*(Enter the remaining for the Scenario Information:)\s*(.+?)\.\s*THEN CLICK NEXT\.$/,
+    /^(From the county dropdown.+?county\.)\s*(Enter the remaining for the plan comparison:)\s*(.+?)\.\s*THEN CLICK NEXT\.$/,
   );
   if (countyDemoMatch) {
     const demoItems = countyDemoMatch[3].split(", ").map((s) => s.trim());
@@ -4168,7 +4170,7 @@ function StepWithSublist({
     );
   }
 
-  // Copy scenario link on confirmation page
+  // Copy comparison link on confirmation page
   if (step.startsWith("On the confirmation page :") && step.includes(" ||| ")) {
     const [intro, body] = step.split(" ||| ", 2);
     const items = body
@@ -4183,19 +4185,19 @@ function StepWithSublist({
     );
   }
 
-  // Legacy copy scenario link step (single line)
+  // Legacy copy comparison link step (single line)
   if (
-    step.startsWith('On the confirmation page, click "Copy scenario link"') &&
+    step.startsWith('On the confirmation page, click "Copy comparison link"') &&
     step.includes("/scenario/<SCN code>")
   ) {
     return (
       <span className={className}>
         On the confirmation page :
         {renderSublist([
-          'Click "Copy scenario link".',
+          'Click "Copy comparison link".',
           "Verify the link uses the form /scenario/<SCN code>.",
           "Paste it into a new browser tab.",
-          "Confirm the scenario detail page loads with the SCN ID, summary card, share button, and expert opt-in trigger all present.",
+          "Confirm the plan comparison summary page loads with the Comparison ID, summary card, share button, and expert opt-in trigger all present.",
         ])}
       </span>
     );
@@ -4220,7 +4222,7 @@ function StepWithSublist({
   const medsIntro =
     "Under Common medications for your conditions: Select the medication (if present). Those medications will be added to the list below. Click the plus sign to add additional medications. Add these medications:";
   const medsMatch = step.match(
-    /^(?:Step 3 — Medications: )?Under Common medications for your conditions: Select the medication \(if present\)\. Those medications will be added to the list below\. Click the plus sign to add additional medications\. Add these medications:\s*(.+?)\.\s*THEN CLICK CREATE SCENARIO\.$/,
+    /^(?:Step 3 — Medications: )?Under Common medications for your conditions: Select the medication \(if present\)\. Those medications will be added to the list below\. Click the plus sign to add additional medications\. Add these medications:\s*(.+?)\.\s*THEN CLICK CREATE COMPARISON\.$/,
   );
   if (medsMatch) {
     const items = medsMatch[1]
@@ -4231,27 +4233,27 @@ function StepWithSublist({
     return (
       <span className={className}>
         Step 3 — Medications: {medsIntro}
-        {renderSublist([...legacyItems, "THEN CLICK CREATE SCENARIO."])}
+        {renderSublist([...legacyItems, "THEN CLICK CREATE COMPARISON."])}
       </span>
     );
   }
 
   // Legacy basics heading (THEN CLICK embedded in intro sentence)
   const basicsLegacyMatch = step.match(
-    /^(Step 1 — (?:Demographics|Basics): Enter the following for the Scenario Information THEN CLICK NEXT\.)\s*(.+)$/,
+    /^(Step 1 — (?:Demographics|Basics): Enter the following for the plan comparison THEN CLICK NEXT\.)\s*(.+)$/,
   );
   if (basicsLegacyMatch && basicsLegacyMatch[2].includes("ZIP3 =")) {
     const items = basicsLegacyMatch[2].split(", ").map((s) => s.trim());
     return (
       <span className={className}>
-        Step 1 — Demographics: Enter the following for the Scenario Information.
+        Step 1 — Demographics: Enter the following for the plan comparison.
         {renderSublist([...items, "THEN CLICK NEXT."])}
       </span>
     );
   }
 
-  // "Enter the following for the Scenario Information: birth year..., ZIP3=..., ..." → heading + sublist
-  const introMatch = step.match(/^(Enter the following for the Scenario Information:)\s*(.+)$/);
+  // "Enter the following for the plan comparison: birth year..., ZIP3=..., ..." → heading + sublist
+  const introMatch = step.match(/^(Enter the following for the plan comparison:)\s*(.+)$/);
   if (introMatch && introMatch[2].includes("ZIP3=")) {
     const items = introMatch[2].split(", ");
     return (
@@ -4261,8 +4263,8 @@ function StepWithSublist({
       </span>
     );
   }
-  // "Enter the remaining for the Scenario Information: gender..., tobacco..., ..." → heading + sublist
-  const remainingMatch = step.match(/^(Enter the remaining for the Scenario Information:)\s*(.+)$/);
+  // "Enter the remaining for the plan comparison: gender..., tobacco..., ..." → heading + sublist
+  const remainingMatch = step.match(/^(Enter the remaining for the plan comparison:)\s*(.+)$/);
   if (remainingMatch) {
     const items = remainingMatch[2].split(", ");
     return (
@@ -4335,7 +4337,7 @@ function StepWithSublist({
 
   // Download PDF + Excel on confirmation page
   if (
-    step.startsWith("On the confirmation page (or View scenario summary), download files:") &&
+    step.startsWith("On the confirmation page (or View comparison summary), download files:") &&
     step.includes(" ||| ")
   ) {
     const [intro, body] = step.split(" ||| ", 2);
@@ -4352,12 +4354,12 @@ function StepWithSublist({
   }
 
   if (
-    step.startsWith("On the confirmation page (or View scenario summary), click 'Download PDF'") ||
-    step.startsWith("On the confirmation page (or View scenario summary), click 'Download Excel'")
+    step.startsWith("On the confirmation page (or View comparison summary), click 'Download PDF'") ||
+    step.startsWith("On the confirmation page (or View comparison summary), click 'Download Excel'")
   ) {
     return (
       <span className={className}>
-        On the confirmation page (or View scenario summary), download files:
+        On the confirmation page (or View comparison summary), download files:
         {renderSublist([
           "Click 'Download PDF' to generate the system output report.",
           "Click 'Download Excel' to generate the system output report.",
@@ -5928,7 +5930,7 @@ function StatusNoteDialog({
         <div className="space-y-3 text-sm">
           <TouchCheckboxField
             checked={working}
-            onChange={(e) => setWorking(e.target.checked)}
+            onChange={(e) => setWorking((e.target as HTMLInputElement).checked)}
             className="rounded-md border border-emerald-500/40 bg-emerald-500/5 p-3 !py-3"
           >
             <span className="text-xs font-semibold text-foreground">

@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { AppShell } from "@/components/AppShell";
 import { AdminAccessGate } from "@/components/AdminAccessGate";
@@ -24,14 +24,18 @@ import { EditorialDailyChecklist } from "@/components/content-factory/EditorialD
 import {
   CalendarViewToggle,
   EditorialDayAgenda,
+  EditorialMonthGrid,
   EditorialWeekGrid,
   WeekDayPicker,
   type CalendarViewMode,
 } from "@/components/content-factory/EditorialCalendarViews";
 import {
+  calendarMonthStart,
+  formatCalendarMonthLabel,
   formatChecklistDayLabel,
   formatIsoDate,
   isoDateInWeek,
+  shiftCalendarMonth,
   shiftIsoDate,
   weekIsoDates,
 } from "@/lib/content-factory/editorial-daily-checklist";
@@ -42,20 +46,22 @@ import {
 } from "@/lib/content-factory/editorial-calendar-links";
 import {
   buildEditorialCalendar,
-  EDITORIAL_EARLIEST_LAUNCH_FRIDAY,
-  EDITORIAL_LAUNCH_WEEK_SATURDAY,
+  buildEditorialCalendarForMonth,
+  EDITORIAL_LEGAL_COMPLETE_DATE,
+  EDITORIAL_ROUND_START_DATE,
   FB_PAGE_INVITE_GUIDANCE,
   formatEarliestLaunchLabel,
   formatLaunchWeekLabel,
   editorialWeekLabel,
+  editorialWeekStart,
+  editorialLaunchWeekNote,
+  editorialPreLaunchNote,
+  publishedLearningCenterArticleCount,
   isLaunchWeek,
   isPreLaunchWeek,
-  LAUNCH_WEEK_NOTE,
   LEAD_MAGNET_PURPOSE,
   PRE_LAUNCH_GUIDANCE,
-  PRE_LAUNCH_NOTE,
   shiftWeekStart,
-  startOfWeekSaturday,
   parseIsoDate,
   type EditorialCalendarEvent,
 } from "@/lib/content-factory/weekly-editorial-schedule";
@@ -73,8 +79,13 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/admin_/calendar")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    view: search.view === "daily" ? ("daily" as const) : ("weekly" as const),
+  validateSearch: (search: Record<string, unknown>): { view?: "daily" | "monthly" | "weekly"; date?: string } => ({
+    view:
+      search.view === "daily"
+        ? "daily"
+        : search.view === "monthly"
+          ? "monthly"
+          : "weekly",
     date:
       typeof search.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(search.date)
         ? search.date
@@ -117,10 +128,16 @@ function ContentCalendarPage() {
   const { view: searchView, date: searchDate } = Route.useSearch();
   const listBatches = useServerFn(listContentFactoryBatchesAdmin);
   const listDrafts = useServerFn(listContentFactoryDraftsAdmin);
+  const queryClient = useQueryClient();
+
+  const refreshDrafts = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ["content-factory-drafts", "calendar"] });
+  }, [queryClient]);
 
   const today = formatToday();
-  const [weekStart, setWeekStart] = useState(() => startOfWeekSaturday(new Date()));
-  const [view, setView] = useState<CalendarViewMode>(searchView);
+  const [weekStart, setWeekStart] = useState(() => editorialWeekStart(new Date()));
+  const [monthStart, setMonthStart] = useState(() => calendarMonthStart(new Date()));
+  const [view, setView] = useState<CalendarViewMode>(searchView ?? "weekly");
   const [selectedDay, setSelectedDay] = useState(
     () => searchDate ?? today,
   );
@@ -169,13 +186,16 @@ function ContentCalendarPage() {
   }, [user, authLoading, router]);
 
   useEffect(() => {
-    setView(searchView);
-    if (searchDate) setSelectedDay(searchDate);
+    setView(searchView ?? "weekly");
+    if (searchDate) {
+      setSelectedDay(searchDate);
+      setMonthStart(calendarMonthStart(parseIsoDate(searchDate)));
+    }
   }, [searchView, searchDate]);
 
   useEffect(() => {
     if (!isoDateInWeek(selectedDay, weekStart)) {
-      setWeekStart(startOfWeekSaturday(parseIsoDate(selectedDay)));
+      setWeekStart(editorialWeekStart(parseIsoDate(selectedDay)));
     }
   }, [selectedDay, weekStart]);
 
@@ -197,7 +217,7 @@ function ContentCalendarPage() {
 
   const draftBySlot = useMemo(() => {
     const map = new Map<string, CalendarDraftRef>();
-    for (const draft of draftsQuery.data ?? []) {
+    for (const draft of (draftsQuery.data as any) ?? []) {
       map.set(`${draft.type}:${draft.slotIndex}`, draft);
     }
     return map;
@@ -211,14 +231,34 @@ function ContentCalendarPage() {
     return titles;
   }, [draftBySlot]);
 
+  const draftStatusBySlot = useMemo(() => {
+    const statuses: Record<string, string> = {};
+    for (const [key, draft] of draftBySlot) {
+      statuses[key] = draft.status;
+    }
+    return statuses;
+  }, [draftBySlot]);
+
+  const publishedArticleCount = publishedLearningCenterArticleCount();
+
   const preLaunch = isPreLaunchWeek(weekStart);
   const launchWeek = isLaunchWeek(weekStart);
   const weekDates = useMemo(() => weekIsoDates(weekStart), [weekStart]);
 
-  const events = useMemo(
-    () => buildEditorialCalendar({ weekStart, titles: titleOverrides }),
-    [weekStart, titleOverrides],
-  );
+  const events = useMemo(() => {
+    const options = {
+      titles: titleOverrides,
+      publishedArticleCount,
+      draftStatusBySlot,
+    };
+    if (view === "monthly") {
+      return buildEditorialCalendarForMonth(monthStart, options);
+    }
+    return buildEditorialCalendar({
+      weekStart,
+      ...options,
+    });
+  }, [view, monthStart, weekStart, titleOverrides, publishedArticleCount, draftStatusBySlot]);
 
   const eventsByDate = useMemo(() => {
     const map = new Map<string, EditorialCalendarEvent[]>();
@@ -232,6 +272,12 @@ function ContentCalendarPage() {
 
   const changeView = (nextView: CalendarViewMode) => {
     setView(nextView);
+    if (nextView === "monthly") {
+      const anchor = calendarMonthStart(parseIsoDate(selectedDay));
+      setMonthStart(anchor);
+      syncSearch("monthly", selectedDay);
+      return;
+    }
     const date =
       nextView === "daily" && !isoDateInWeek(selectedDay, weekStart)
         ? weekDates.includes(today)
@@ -244,14 +290,19 @@ function ContentCalendarPage() {
 
   const selectDay = (isoDate: string) => {
     setSelectedDay(isoDate);
+    setMonthStart(calendarMonthStart(parseIsoDate(isoDate)));
     if (!isoDateInWeek(isoDate, weekStart)) {
-      setWeekStart(startOfWeekSaturday(parseIsoDate(isoDate)));
+      setWeekStart(editorialWeekStart(parseIsoDate(isoDate)));
     }
     setView("daily");
     syncSearch("daily", isoDate);
   };
 
   const goToPrevious = () => {
+    if (view === "monthly") {
+      setMonthStart((m) => shiftCalendarMonth(m, -1));
+      return;
+    }
     if (view === "weekly") {
       setWeekStart((w) => shiftWeekStart(w, -1));
       return;
@@ -259,12 +310,16 @@ function ContentCalendarPage() {
     const next = shiftIsoDate(selectedDay, -1);
     setSelectedDay(next);
     if (!isoDateInWeek(next, weekStart)) {
-      setWeekStart(startOfWeekSaturday(parseIsoDate(next)));
+      setWeekStart(editorialWeekStart(parseIsoDate(next)));
     }
     syncSearch("daily", next);
   };
 
   const goToNext = () => {
+    if (view === "monthly") {
+      setMonthStart((m) => shiftCalendarMonth(m, 1));
+      return;
+    }
     if (view === "weekly") {
       setWeekStart((w) => shiftWeekStart(w, 1));
       return;
@@ -272,15 +327,20 @@ function ContentCalendarPage() {
     const next = shiftIsoDate(selectedDay, 1);
     setSelectedDay(next);
     if (!isoDateInWeek(next, weekStart)) {
-      setWeekStart(startOfWeekSaturday(parseIsoDate(next)));
+      setWeekStart(editorialWeekStart(parseIsoDate(next)));
     }
     syncSearch("daily", next);
   };
 
   const goToToday = () => {
-    const saturday = startOfWeekSaturday(new Date());
-    setWeekStart(saturday);
+    const weekAnchor = editorialWeekStart(new Date());
+    setWeekStart(weekAnchor);
+    setMonthStart(calendarMonthStart(new Date()));
     setSelectedDay(today);
+    if (view === "monthly") {
+      syncSearch("monthly", today);
+      return;
+    }
     setView("daily");
     syncSearch("daily", today);
   };
@@ -395,7 +455,11 @@ function ContentCalendarPage() {
   const upcomingTasks = events.filter((e) => e.date >= today).length;
 
   const navTitle =
-    view === "weekly" ? editorialWeekLabel(weekStart) : formatChecklistDayLabel(selectedDay);
+    view === "monthly"
+      ? formatCalendarMonthLabel(monthStart)
+      : view === "weekly"
+        ? editorialWeekLabel(weekStart)
+        : formatChecklistDayLabel(selectedDay);
 
   return (
     <AdminAccessGate>
@@ -410,12 +474,12 @@ function ContentCalendarPage() {
             {editorialWeekLabel(weekStart)}
             {preLaunch && (
               <Badge variant="outline" className="text-[10px] border-amber-500/40 text-foreground">
-                Pre-launch (LLC setup)
+                Pre-launch (through Jun 18)
               </Badge>
             )}
             {launchWeek && (
               <Badge variant="outline" className="text-[10px] border-emerald-500/40 text-foreground">
-                Week 1 launch
+                Week 1 — started Jun 19
               </Badge>
             )}
           </div>
@@ -444,35 +508,38 @@ function ContentCalendarPage() {
         {preLaunch ? (
           <Card className="glass p-4 border-amber-500/25 space-y-3 bg-amber-500/5">
             <h3 className="font-display text-sm font-bold text-foreground">
-              Accelerated pre-launch — go live Friday or Saturday when LLC is ready
+              Pre-launch sprint — legal and first post target Friday, June 19
             </h3>
-            <p className="text-xs text-muted-foreground leading-relaxed">{PRE_LAUNCH_NOTE}</p>
+            <p className="text-xs text-muted-foreground leading-relaxed">{editorialPreLaunchNote(publishedArticleCount)}</p>
             <p className="text-xs text-foreground/90 leading-relaxed">{PRE_LAUNCH_GUIDANCE}</p>
             <ul className="text-[11px] text-muted-foreground space-y-1.5 list-disc list-inside">
               <li>
-                <strong className="text-foreground">Sprint week (Mon–Fri):</strong> file LLC → EIN →
-                bank → legal pages → Facebook drafts → go/no-go Friday
+                <strong className="text-foreground">Learning Center:</strong>{" "}
+                {publishedArticleCount} articles already published
               </li>
               <li>
-                <strong className="text-foreground">Earliest go-live:</strong>{" "}
-                {formatEarliestLaunchLabel()} ({EDITORIAL_EARLIEST_LAUNCH_FRIDAY}) — Article 1 +
-                welcome post if LLC is green
+                <strong className="text-foreground">Legal complete:</strong>{" "}
+                {formatEarliestLaunchLabel()} ({EDITORIAL_LEGAL_COMPLETE_DATE})
               </li>
               <li>
-                <strong className="text-foreground">Content week starts:</strong>{" "}
-                {formatLaunchWeekLabel()} ({EDITORIAL_LAUNCH_WEEK_SATURDAY})
+                <strong className="text-foreground">Posting starts:</strong>{" "}
+                {formatEarliestLaunchLabel()} ({EDITORIAL_ROUND_START_DATE}) — welcome Facebook
+                post {publishedArticleCount >= 10 ? "promoting live articles" : "+ Article 1"}
+              </li>
+              <li>
+                <strong className="text-foreground">Week 1:</strong>{" "}
+                {formatLaunchWeekLabel()} (starts {EDITORIAL_ROUND_START_DATE})
               </li>
             </ul>
-            <p className="text-[11px] text-muted-foreground">
-              LLC done early? Update the launch dates in{" "}
-              <code className="text-[10px]">weekly-editorial-schedule.ts</code> and deploy, or tell
-              us to move them up.
-            </p>
           </Card>
         ) : launchWeek ? (
           <Card className="glass p-4 border-emerald-500/25 space-y-3 bg-emerald-500/5">
-            <h3 className="font-display text-sm font-bold text-foreground">Week 1 — go live</h3>
-            <p className="text-xs text-muted-foreground leading-relaxed">{LAUNCH_WEEK_NOTE}</p>
+            <h3 className="font-display text-sm font-bold text-foreground">
+              Week 1 — legal complete &amp; posting live since June 19
+            </h3>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {editorialLaunchWeekNote(publishedArticleCount)}
+            </p>
             <p className="text-xs text-foreground/90 leading-relaxed">{FB_PAGE_INVITE_GUIDANCE}</p>
           </Card>
         ) : (
@@ -505,7 +572,13 @@ function ContentCalendarPage() {
                   variant="ghost"
                   className="h-8 w-8"
                   onClick={goToPrevious}
-                  aria-label={view === "weekly" ? "Previous week" : "Previous day"}
+                  aria-label={
+                    view === "monthly"
+                      ? "Previous month"
+                      : view === "weekly"
+                        ? "Previous week"
+                        : "Previous day"
+                  }
                 >
                   <ChevronLeft className="h-5 w-5" />
                 </Button>
@@ -517,7 +590,9 @@ function ContentCalendarPage() {
                   variant="ghost"
                   className="h-8 w-8"
                   onClick={goToNext}
-                  aria-label={view === "weekly" ? "Next week" : "Next day"}
+                  aria-label={
+                    view === "monthly" ? "Next month" : view === "weekly" ? "Next week" : "Next day"
+                  }
                 >
                   <ChevronRight className="h-5 w-5" />
                 </Button>
@@ -544,7 +619,21 @@ function ContentCalendarPage() {
               </div>
             </div>
 
-            {view === "weekly" ? (
+            {view === "monthly" ? (
+              <>
+                <p className="text-[11px] text-muted-foreground">
+                  Click a day to open the daily agenda with timed tasks.
+                </p>
+                <EditorialMonthGrid
+                  monthStart={monthStart}
+                  eventsByDate={eventsByDate}
+                  today={today}
+                  selectedDay={selectedDay}
+                  onSelectDay={selectDay}
+                  renderEventChip={renderEventChip}
+                />
+              </>
+            ) : view === "weekly" ? (
               <>
                 <p className="text-[11px] text-muted-foreground">
                   Click a day to open the daily view with timed tasks.
@@ -575,6 +664,8 @@ function ContentCalendarPage() {
                   mapDraftStatus={mapDraftStatus}
                   completedEvents={completedEvents}
                   onToggleCompleted={toggleEventCompleted}
+                  onHeroUploaded={refreshDrafts}
+                  onPdfSaved={refreshDrafts}
                 />
               </>
             )}
@@ -599,7 +690,7 @@ function ContentCalendarPage() {
               </select>
               <p className="text-[11px] text-muted-foreground leading-relaxed">
                 {preLaunch
-                  ? "Pre-launch weeks show LLC and legal setup tasks only. Navigate to Week 1 launch for content dates."
+                  ? "Pre-launch weeks show the sprint through June 18. Week 1 content and posting start Friday, June 19."
                   : "Calendar dates follow the weekly editorial template. Selecting a batch replaces placeholder labels with real draft titles."}
               </p>
             </Card>
@@ -635,7 +726,7 @@ function ContentCalendarPage() {
               </p>
             </Card>
 
-            {view === "weekly" && (
+            {(view === "weekly" || view === "monthly") && (
               <Card className="glass p-5 border-border/40 space-y-2 max-h-[520px] overflow-y-auto">
                 <h2 className="font-display text-xs font-bold uppercase tracking-wider text-muted-foreground sticky top-0 bg-card/95 pb-2">
                   Daily checklist
@@ -650,6 +741,8 @@ function ContentCalendarPage() {
                   batchId={activeBatchId}
                   completedEvents={completedEvents}
                   onToggleCompleted={toggleEventCompleted}
+                  onHeroUploaded={refreshDrafts}
+                  onPdfSaved={refreshDrafts}
                 />
               </Card>
             )}

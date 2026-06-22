@@ -14,7 +14,7 @@ import { getCurrentUserProfile } from "./current-user.functions";
 import { clearLocalAuthSession, isForceLoggedOut } from "./auth-session";
 import type { Year, Medication } from "./medicare-math";
 
-export type Role = "leads_admin" | "admin" | "qa" | "agent" | "editor" | "viewer" | "advisor";
+export type Role = "leads_admin" | "admin" | "qa" | "agent" | "editor" | "viewer" | "advisor" | "customer";
 
 export interface User {
   id: string;
@@ -42,6 +42,8 @@ export interface Scenario {
   claimed_at: string | null;
   created_at: string;
   expires_at: string;
+  agent_notes?: string | null;
+  assigned_agent_id?: string | null;
 }
 
 export interface SOA {

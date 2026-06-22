@@ -119,7 +119,7 @@ export const LEGAL_SECTIONS: LegalSection[] = [
         bullets: [
           "Do not misuse the Service, attempt unauthorized access, or interfere with its operation.",
           "Do not submit false, misleading, or unlawful information.",
-          "Staff and beta accounts must comply with applicable confidentiality obligations (including any signed NDA).",
+          "Users and beta accounts must comply with applicable confidentiality obligations (including any signed NDA).",
         ],
         paragraphs: [],
       },

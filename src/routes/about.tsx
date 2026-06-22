@@ -11,6 +11,10 @@ import {
 } from "@/lib/medicare-disclaimers";
 import { SITE_TAGLINE } from "@/lib/site-brand";
 import { canonicalUrl } from "@/lib/site-url";
+import {
+  PLAN_COMPARISON_CTA,
+  PLAN_COMPARISON_EDUCATIONAL_NOTE,
+} from "@/lib/plan-comparison-copy";
 
 const PAGE_URL = canonicalUrl("/about");
 
@@ -38,7 +42,7 @@ function AboutPage() {
   return (
     <AppShell
       title={`About ${SITE_BRAND_NAME}`}
-      subtitle="Independent Medicare education — de-identified scenarios, no sales pressure."
+      subtitle="Independent Medicare education — de-identified plan comparisons, no sales pressure."
     >
       <div className="max-w-3xl mx-auto space-y-6">
         <Card className="glass p-5 border-primary/20 space-y-3">
@@ -50,8 +54,9 @@ function AboutPage() {
               </p>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 {SITE_BRAND_THE} is a Third-Party Marketing Organization (TPMO) and educational
-                technology platform. We help people compare sample Medicare plan scenarios using
-                de-identified inputs — not personal health records or Social Security numbers.
+                technology platform. We help people compare sample Medicare plan options using
+                de-identified inputs — not personal health records or Social Security numbers.{" "}
+                {PLAN_COMPARISON_EDUCATIONAL_NOTE}
               </p>
             </div>
           </div>
@@ -74,7 +79,7 @@ function AboutPage() {
           </p>
           <p>
             We do not sell insurance, act as your agent of record, or enroll you in coverage through
-            the public scenario builder. When you request assistance, your information may be shared
+            the public plan comparison builder. When you request assistance, your information may be shared
             with a licensed agency partner so they can respond — always on your terms.
           </p>
         </div>
@@ -82,7 +87,7 @@ function AboutPage() {
         <div className="flex flex-wrap gap-2">
           <Button asChild className="grad-indigo">
             <Link to="/scenario/new">
-              Build a scenario <ArrowRight className="h-4 w-4 ml-1.5" />
+              {PLAN_COMPARISON_CTA} <ArrowRight className="h-4 w-4 ml-1.5" />
             </Link>
           </Button>
           <Button asChild variant="outline">

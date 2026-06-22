@@ -9,6 +9,7 @@ import {
   splitArticleBody,
 } from "@/lib/learning-center";
 import { MEDICARE_DISCLAIMER_SECTIONS, formatSiteCopyright } from "@/lib/medicare-disclaimers";
+import { stampPdfPageFooters } from "@/lib/pdf-page-footer";
 import { SITE_BRAND_NAME, SITE_TAGLINE } from "@/lib/site-brand";
 import { canonicalUrl } from "@/lib/site-url";
 
@@ -94,15 +95,6 @@ function detectImageFormat(dataUrl: string): "PNG" | "JPEG" | "WEBP" {
   return "JPEG";
 }
 
-function addPageFooter(doc: jsPDF, margin: number, pageW: number, pageH: number) {
-  const page = doc.getNumberOfPages();
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.setTextColor(...MUTED);
-  doc.text(formatSiteCopyright(), margin, pageH - 18);
-  doc.text(`Page ${page}`, pageW - margin, pageH - 18, { align: "right" });
-}
-
 function ensureSpace(
   doc: jsPDF,
   y: number,
@@ -112,7 +104,6 @@ function ensureSpace(
   pageH: number,
 ): number {
   if (y + needed <= pageH - 36) return y;
-  addPageFooter(doc, margin, pageW, pageH);
   doc.addPage();
   return 72;
 }
@@ -135,8 +126,8 @@ export function buildArticleDownloadPdf(
   const { mainBody, faq } = splitArticleBody(article.bodyMd);
   const blocks = markdownToPdfBlocks(mainBody);
   const publishedLabel = formatArticleDate(article.publishedAt);
-  const updatedRaw = getArticleLastUpdated(article);
-  const updatedLabel = formatArticleDate(updatedRaw);
+  const updatedRaw = getArticleLastUpdated(article as any);
+  const updatedLabel = formatArticleDate(updatedRaw ?? null);
   const showUpdated = updatedRaw && updatedRaw !== article.publishedAt;
   const articleUrl = canonicalUrl(`/learning-center/${article.slug}`);
 
@@ -287,7 +278,6 @@ export function buildArticleDownloadPdf(
     }
   }
 
-  addPageFooter(doc, margin, pageW, pageH);
   doc.addPage();
   y = 72;
   doc.setFont("helvetica", "bold");
@@ -326,7 +316,12 @@ export function buildArticleDownloadPdf(
   y += 14;
   doc.text(SITE_TAGLINE, margin, y);
 
-  addPageFooter(doc, margin, pageW, pageH);
+  stampPdfPageFooters(doc, {
+    margin,
+    pageH,
+    textColor: MUTED,
+    copyright: formatSiteCopyright(),
+  });
   return doc;
 }
 
@@ -346,18 +341,43 @@ async function loadImageAsDataUrl(url: string): Promise<string | null> {
   }
 }
 
+/** White logo for dark/colored PDF headers (blue wordmark → invisible on blue band). */
+export async function invertLogoForDarkBackground(dataUrl: string): Promise<string> {
+  if (typeof document === "undefined") return dataUrl;
+
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        resolve(dataUrl);
+        return;
+      }
+      ctx.filter = "brightness(0) invert(1)";
+      ctx.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
 function resolveAssetUrl(path: string): string {
   if (/^https?:\/\//i.test(path)) return path;
   return canonicalUrl(path.startsWith("/") ? path : `/${path}`);
 }
 
 export async function downloadArticleGuide(article: ArticleDownloadSource): Promise<void> {
-  const [logoDataUrl, featuredDataUrl] = await Promise.all([
+  const [rawLogo, featuredDataUrl] = await Promise.all([
     loadImageAsDataUrl(canonicalUrl("/email-logo.png")),
     article.featuredImage
       ? loadImageAsDataUrl(resolveAssetUrl(article.featuredImage))
       : Promise.resolve(null),
   ]);
+  const logoDataUrl = rawLogo ? await invertLogoForDarkBackground(rawLogo) : null;
 
   const doc = buildArticleDownloadPdf(article, { logoDataUrl, featuredDataUrl });
   downloadBlobFile(`${article.slug}.pdf`, doc.output("blob"));

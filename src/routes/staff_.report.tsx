@@ -7,7 +7,7 @@ import { StaffReport } from "@/components/StaffReport";
 export const Route = createFileRoute("/staff_/report")({
   head: () => ({
     meta: [
-      { title: "Staff device report — Admin" },
+      { title: "User device report — Admin" },
       { name: "robots", content: "noindex,nofollow" },
     ],
   }),

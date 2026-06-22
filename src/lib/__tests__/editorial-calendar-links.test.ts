@@ -3,6 +3,7 @@ import {
   buildCalendarEventLinks,
   facebookPostImageGuidance,
   facebookPostPairedArticleSlot,
+  resolveHeroSlugForImagePrompt,
   slugFromDraft,
 } from "@/lib/content-factory/editorial-calendar-links";
 import type { CalendarDraftRef } from "@/lib/content-factory/editorial-calendar-links";
@@ -28,7 +29,7 @@ describe("editorial-calendar-links", () => {
     expect(slugFromDraft(articleDraft)).toBe("what-is-medicare-prior-authorization");
   });
 
-  it("builds article links with learning center and hero image", () => {
+  it("builds article links with learning center and hero placeholder when not uploaded", () => {
     const draftBySlot = new Map<string, CalendarDraftRef>([
       ["article:0", articleDraft],
       ["image_prompt:0", { ...articleDraft, type: "image_prompt", slotIndex: 0 }],
@@ -48,21 +49,90 @@ describe("editorial-calendar-links", () => {
       draftBySlot,
     });
     expect(links.some((l) => l.label === "Learning Center article")).toBe(true);
-    expect(links.some((l) => l.label === "Hero image")).toBe(true);
+    expect(links.some((l) => l.label === "Hero image (upload via Image Prompt)")).toBe(true);
+    expect(links.some((l) => l.label === "View hero image")).toBe(false);
     expect(links.some((l) => l.label === "Image Prompt 1")).toBe(true);
   });
 
-  it("guides article-promo facebook posts to use article hero", () => {
+  it("guides article-promo facebook posts without hero URL until uploaded", () => {
     const draftBySlot = new Map<string, CalendarDraftRef>([["article:0", articleDraft]]);
     const guidance = facebookPostImageGuidance(0, draftBySlot);
     expect(guidance.source).toBe("article-hero");
-    expect(guidance.imageUrl).toContain("what-is-medicare-prior-authorization.jpg");
+    expect(guidance.imageUrl).toBeNull();
     expect(guidance.steps.length).toBeGreaterThan(2);
   });
 
-  it("guides standalone facebook posts to brand image", () => {
-    const guidance = facebookPostImageGuidance(4, new Map());
-    expect(guidance.source).toBe("brand");
-    expect(guidance.imageUrl).toContain("email-header-logo.png");
+  it("builds image prompt links with open prompt and hero placeholder", () => {
+    const imageDraft: CalendarDraftRef = {
+      ...articleDraft,
+      type: "image_prompt",
+      slotIndex: 0,
+      body: "Photorealistic Medicare education scene...",
+      payload: { suggestedSlug: "what-is-medicare-prior-authorization" },
+    };
+    const draftBySlot = new Map<string, CalendarDraftRef>([
+      ["article:0", articleDraft],
+      ["image_prompt:0", imageDraft],
+    ]);
+    const links = buildCalendarEventLinks({
+      event: {
+        id: "image_prompt:0:produce",
+        type: "image_prompt",
+        slotIndex: 0,
+        milestone: "produce",
+        title: "Image Prompt 1",
+        date: "2026-06-19",
+        detail: "Generate hero image prompt",
+      },
+      draft: imageDraft,
+      batchId: "batch-1",
+      draftBySlot,
+    });
+    expect(links.some((l) => l.label === "Open image prompt")).toBe(true);
+    expect(links.some((l) => l.label === "Hero image (upload below)")).toBe(true);
+    expect(links.some((l) => l.label === "View hero image")).toBe(false);
+  });
+
+  it("links hero image after calendar upload", () => {
+    const uploadedAt = "2026-06-19T12:00:00.000Z";
+    const imageDraft: CalendarDraftRef = {
+      ...articleDraft,
+      type: "image_prompt",
+      slotIndex: 0,
+      payload: {
+        suggestedSlug: "what-is-medicare-prior-authorization",
+        heroUploadedAt: uploadedAt,
+        heroUploadPath: "/learning-center/what-is-medicare-prior-authorization.jpg",
+      },
+    };
+    const draftBySlot = new Map<string, CalendarDraftRef>([
+      ["article:0", articleDraft],
+      ["image_prompt:0", imageDraft],
+    ]);
+    const links = buildCalendarEventLinks({
+      event: {
+        id: "image_prompt:0:produce",
+        type: "image_prompt",
+        slotIndex: 0,
+        milestone: "produce",
+        title: "Image Prompt 1",
+        date: "2026-06-19",
+        detail: "Generate hero image prompt",
+      },
+      draft: imageDraft,
+      batchId: "batch-1",
+      draftBySlot,
+    });
+    const heroLink = links.find((l) => l.label === "View hero image");
+    expect(heroLink?.href).toBe(
+      `/learning-center/what-is-medicare-prior-authorization.jpg?v=${encodeURIComponent(uploadedAt)}`,
+    );
+  });
+
+  it("resolves hero slug from paired article", () => {
+    const draftBySlot = new Map<string, CalendarDraftRef>([["article:0", articleDraft]]);
+    expect(
+      resolveHeroSlugForImagePrompt(undefined, draftBySlot, 0),
+    ).toBe("what-is-medicare-prior-authorization");
   });
 });

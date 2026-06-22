@@ -1,4 +1,5 @@
 import { SITE_BRAND_NAME, SITE_BRAND_THE } from "@/lib/site-brand";
+import { workbookDownloadUrl } from "@/lib/content-factory/lead-magnet-paths";
 import { buildFeaturedImagePrompt } from "@/lib/article-authoring";
 import { getArticleTopicDraft } from "@/lib/medicare-complaint-topics";
 import type { GeneratedAssetInput } from "@/lib/content-factory/ai-provider";
@@ -62,15 +63,27 @@ Educational only — not a solicitation to enroll.
 #MedicareEducation #ComparePlans #MedicareAdvantage`,
   },
   {
-    title: "Still working at 65? Check employer size first",
-    excerpt: "Educational post on Medicare and employer coverage coordination.",
-    body: `Turning 65 while you still have employer health coverage?
+    title: "Free Medicare at 65 Planning Workbook (PDF)",
+    excerpt: "Promote the printable workbook — free download, no email required.",
+    body: `Turning 65 soon? Before you compare plans, it helps to gather the facts in one place.
 
-Before you defer Part B, confirm whether your employer has 20 or more employees — that detail changes whether Medicare is primary or secondary.
+We just published a free printable workbook to help you list:
 
-Educational only. Verify your timeline with SSA and Medicare.gov.
+• Prescriptions and dosages
+• Doctors, specialists, and hospitals you want to keep
+• Employer coverage details (if you're still working)
+• Questions to verify with Medicare.gov and SHIP
 
-#MedicareEducation #Turning65`,
+Download the PDF — no signup required:
+👉 ${workbookDownloadUrl()}
+
+Save it, print it, or share the link with a friend or family member who's navigating Medicare this year.
+
+Follow ${SITE_BRAND_THE} for calm, non-sales Medicare education each week.
+
+Educational workbook only — not enrollment advice. We do not sell insurance or solicit enrollments. Not affiliated with Medicare, CMS, or any government agency.
+
+#MedicareEducation #Turning65 #MedicarePlanning`,
   },
   {
     title: "TV ads make Medicare sound simple — compare the documents",
@@ -259,7 +272,10 @@ function buildLeadMagnetAsset(): GeneratedAssetInput {
     title: LEAD_MAGNET.title,
     excerpt: LEAD_MAGNET.excerpt,
     body: LEAD_MAGNET.body,
-    payload: seedPayload("lead_magnet", { format: "pdf" }),
+    payload: seedPayload("lead_magnet", {
+      format: "pdf",
+      suggestedSlug: "medicare-at-65-planning-workbook",
+    }),
   };
 }
 

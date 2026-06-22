@@ -6,12 +6,13 @@ import {
   formatScenarioGender,
   formatScenarioMedicationLine,
 } from "@/lib/scenario-display";
+import { YOUR_PLAN_COMPARISON } from "@/lib/plan-comparison-copy";
 
 type ScenarioProfile = ScenarioPdfInput & { county?: string };
 
 export function ScenarioProfileHeader({
   scenario,
-  title = "Your scenario",
+  title = YOUR_PLAN_COMPARISON,
 }: {
   scenario: ScenarioProfile;
   title?: string;

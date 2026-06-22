@@ -243,7 +243,7 @@ export function ExpertOptInDialog({
 
           <p className="text-xs text-muted-foreground leading-relaxed">
             {ASSISTANCE_AGENCY_SHARING_NOTICE}
-            {scenarioCode ? ` Scenario ${scenarioCode} will be included with your request.` : ""}
+            {scenarioCode ? ` Comparison ${scenarioCode} will be included with your request.` : ""}
           </p>
         </div>
 

@@ -2,6 +2,11 @@ import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, ExternalLink } from "lucide-react";
 import { MEDICARE_GOV_URL } from "@/lib/medicare-disclaimers";
+import {
+  BUILD_COMPARISON_SUBTITLE,
+  PLAN_COMPARISON_CTA,
+  PLAN_COMPARISON_EDUCATIONAL_NOTE,
+} from "@/lib/plan-comparison-copy";
 
 export function LearningCenterCta({ compact = false }: { compact?: boolean }) {
   return (
@@ -13,14 +18,14 @@ export function LearningCenterCta({ compact = false }: { compact?: boolean }) {
           Ready to compare sample plans?
         </h3>
         <p className="text-sm text-muted-foreground leading-relaxed">
-          Build a de-identified Medicare scenario in about two minutes — no account, no Social
-          Security number, and no enrollment commitment.
+          {BUILD_COMPARISON_SUBTITLE} No account, no Social Security number, and no enrollment
+          commitment. {PLAN_COMPARISON_EDUCATIONAL_NOTE}
         </p>
       </div>
       <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
         <Button asChild className="grad-indigo font-semibold text-primary-foreground">
           <Link to="/scenario/new">
-            Build my scenario <ArrowRight className="h-4 w-4 ml-1" />
+            {PLAN_COMPARISON_CTA} <ArrowRight className="h-4 w-4 ml-1" />
           </Link>
         </Button>
         <Button asChild variant="outline" className="font-medium">

@@ -1,12 +1,17 @@
 import { ShieldCheck, EyeOff, KeyRound, Sparkles, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  COMPARISON_ANONYMOUS_UNLESS_OPT_IN,
+  DEIDENTIFIED_COMPARISONS_ONLY,
+  PLAN_COMPARISON_CTA,
+} from "@/lib/plan-comparison-copy";
 
 const items = [
   { icon: EyeOff, text: "No personal information collected" },
-  { icon: KeyRound, text: "De-identified scenarios only" },
-  { icon: ShieldCheck, text: "Your scenario is anonymous unless you opt in" },
+  { icon: KeyRound, text: DEIDENTIFIED_COMPARISONS_ONLY },
+  { icon: ShieldCheck, text: COMPARISON_ANONYMOUS_UNLESS_OPT_IN },
   { icon: Search, text: "Find the optimal plan for your unique situation" },
-  { icon: Sparkles, text: "Compare Original Medicare + Medigap vs. Medicare Advantage" },
+  { icon: Sparkles, text: PLAN_COMPARISON_CTA },
 ];
 
 interface TrustBannerProps {

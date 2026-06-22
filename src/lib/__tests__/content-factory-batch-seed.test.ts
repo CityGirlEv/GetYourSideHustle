@@ -26,6 +26,6 @@ describe("content-factory batch-seed", () => {
     const assets = generateWeeklyBatchAssets("Topic", "batch-article-test");
     const articles = assets.filter((asset) => asset.type === "article");
     expect(articles.every((article) => article.body.includes("##"))).toBe(true);
-    expect(articles.every((article) => article.payload.provider === "seed")).toBe(true);
+    expect(articles.every((article) => article.payload?.provider === "seed")).toBe(true);
   });
 });

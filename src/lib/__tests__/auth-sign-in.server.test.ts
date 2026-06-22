@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mockGetUserById = vi.fn();
 const mockMaybeSingle = vi.fn();
-const mockFrom = vi.fn(() => ({
+const mockFrom = vi.fn((..._args: any[]) => ({
   select: vi.fn(() => ({
     ilike: vi.fn(() => ({
       order: vi.fn(() => ({
@@ -23,10 +23,10 @@ vi.mock("@/integrations/supabase/client.server", () => ({
   supabaseAdmin: {
     auth: {
       admin: {
-        getUserById: (...args: unknown[]) => mockGetUserById(...args),
+        getUserById: (id: any) => mockGetUserById(id),
       },
     },
-    from: (...args: unknown[]) => mockFrom(...args),
+    from: (relation: any) => mockFrom(relation),
   },
 }));
 

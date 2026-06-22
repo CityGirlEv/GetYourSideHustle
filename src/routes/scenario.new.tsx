@@ -8,6 +8,12 @@ import { Mic, Keyboard, Clock } from "lucide-react";
 import { listScenarioHistory, type ScenarioHistoryEntry } from "@/lib/scenario-history";
 import { VOICE_WIZARD_ENABLED, isVoiceWizardAvailable } from "@/lib/feature-flags";
 import { useApp } from "@/lib/app-store";
+import {
+  BUILD_COMPARISON_HEADLINE,
+  BUILD_COMPARISON_SUBTITLE,
+  COMPARISON_ID_LABEL,
+  PREVIOUS_COMPARISONS_LABEL,
+} from "@/lib/plan-comparison-copy";
 
 export type ScenarioNewSearch = {
   mode?: "manual" | "voice";
@@ -24,17 +30,17 @@ export const Route = createFileRoute("/scenario/new")({
   }),
   head: () => ({
     meta: [
-      { title: "Build a Medicare Scenario — No Personal Info Required" },
+      { title: `${BUILD_COMPARISON_HEADLINE} — No Personal Info Required` },
       {
         name: "description",
         content:
-          "Build a de-identified Medicare scenario. We never collect your name, address, phone, or date of birth.",
+          "Compare sample Medicare plans for educational purposes. Build a de-identified plan comparison — we never collect your name, address, phone, or date of birth.",
       },
-      { property: "og:title", content: "Build a Medicare Scenario — No Personal Info Required" },
+      { property: "og:title", content: `${BUILD_COMPARISON_HEADLINE} — No Personal Info Required` },
       {
         property: "og:description",
         content:
-          "Create a zero-PII Medicare scenario in 2 minutes and get a shareable Scenario ID.",
+          "Create a zero-PII Medicare plan comparison in 2 minutes and get a shareable Comparison ID.",
       },
       { property: "og:url", content: "https://themedicareoptimizer.lovable.app/scenario/new" },
     ],
@@ -46,7 +52,7 @@ export const Route = createFileRoute("/scenario/new")({
 function ScenarioNew() {
   const router = useRouter();
   const { user } = useApp();
-  const voiceWizardAvailable = isVoiceWizardAvailable(user?.role);
+  const voiceWizardAvailable = isVoiceWizardAvailable(user);
   const { mode: searchMode } = Route.useSearch();
   const [mode, setMode] = useState<"manual" | "voice">(() =>
     voiceWizardAvailable && searchMode === "voice" ? "voice" : "manual",
@@ -70,13 +76,13 @@ function ScenarioNew() {
 
   return (
     <AppShell
-      title="Build your scenario"
-      subtitle="You'll get a Scenario ID at the end — share it with the agent of your choice."
+      title={BUILD_COMPARISON_HEADLINE}
+      subtitle={`${BUILD_COMPARISON_SUBTITLE} You'll get a ${COMPARISON_ID_LABEL} at the end — share it with the agent of your choice.`}
     >
       {history.length > 0 && (
         <div className="max-w-3xl mx-auto mb-4 rounded-lg border border-border bg-white/60 p-3">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-            <Clock className="h-3 w-3" /> Previous scenarios on this device
+            <Clock className="h-3 w-3" /> {PREVIOUS_COMPARISONS_LABEL}
           </div>
           <ul className="flex flex-wrap gap-2">
             {history.map((h) => (

@@ -247,10 +247,10 @@ html {
     color: var(--brand-navy-mid) !important;
     border-color: transparent !important;
     box-shadow:
-      0 0 0 1px rgb(234 179 8 / 0.4),
-      0 0 20px rgb(250 204 21 / 0.65),
-      0 0 40px rgb(250 204 21 / 0.35) !important;
-    animation: compare-plans-cta-blink 1.25s ease-in-out infinite;
+      0 0 0 1px rgb(234 179 8 / 0.35),
+      0 0 18px rgb(250 204 21 / 0.55),
+      0 0 36px rgb(250 204 21 / 0.28);
+    animation: compare-plans-cta-blink 1.1s step-end infinite;
   }
   .compare-plans-cta:hover {
     background-color: #eab308 !important;

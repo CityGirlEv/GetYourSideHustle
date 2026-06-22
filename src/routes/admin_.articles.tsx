@@ -233,7 +233,7 @@ function AdminArticlesPage() {
       featuredImage:
         uploadedImageFile || generatedImageDataUrl
           ? featuredImagePublicPath(slug, ext)
-          : draft.featuredImage.trim() || undefined,
+          : draft.featuredImage?.trim() || undefined,
     };
   };
 

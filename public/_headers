@@ -2,6 +2,10 @@
 /version.json
   Cache-Control: no-store, no-cache, must-revalidate
 
+# Allow microphone for voice intake on the scenario wizard (Web Speech API).
+/*
+  Permissions-Policy: microphone=(self)
+
 # Admin routes — always serve fresh HTML (avoid stale staff-management shell).
 /admin/*
   Cache-Control: no-store, no-cache, must-revalidate

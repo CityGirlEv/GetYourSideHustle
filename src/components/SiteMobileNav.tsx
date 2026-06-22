@@ -4,6 +4,7 @@ import {
   BookOpen,
   Briefcase,
   FileSignature,
+  FileText,
   FlaskConical,
   Home,
   Info,

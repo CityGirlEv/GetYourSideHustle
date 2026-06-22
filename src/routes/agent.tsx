@@ -16,6 +16,7 @@ import {
   getBillingStatus,
 } from "@/lib/stripe.functions";
 import { userHasAdminRole } from "@/lib/user-roles";
+import { COMPARISON_ID_LABEL } from "@/lib/plan-comparison-copy";
 
 export const Route = createFileRoute("/agent")({
   head: () => ({
@@ -23,10 +24,10 @@ export const Route = createFileRoute("/agent")({
       { title: "Agent Command Center — Part B Optimizer" },
       {
         name: "description",
-        content: "Look up Medicare scenarios by ID and manage your agent caseload. No PII stored.",
+        content: `Look up Medicare plan comparisons by ${COMPARISON_ID_LABEL} and manage your agent caseload. No PII stored.`,
       },
       { property: "og:title", content: "Agent Command Center — Part B Optimizer" },
-      { property: "og:description", content: "Agent caseload and scenario lookup." },
+      { property: "og:description", content: "Agent caseload and plan comparison lookup." },
       { property: "og:url", content: "https://themedicareoptimizer.lovable.app/agent" },
       { name: "robots", content: "noindex,nofollow" },
     ],
@@ -97,7 +98,7 @@ function AgentPortal() {
           <Lock className="h-10 w-10 mx-auto text-muted-foreground" />
           <h2 className="font-display text-xl font-bold">Subscribe to unlock the agent dashboard</h2>
           <p className="text-sm text-muted-foreground">
-            An active or trialing subscription is required to access scenario lookup, your caseload,
+            An active or trialing subscription is required to access comparison lookup, your caseload,
             and billing tools.
           </p>
           {billing?.subscription?.status && (
@@ -131,7 +132,7 @@ function AgentPortal() {
     setBusy(true);
     try {
       const s = await lookupScenario(code);
-      toast.success(`Loaded scenario ${s.scenario_code}`);
+      toast.success(`Loaded comparison ${s.scenario_code}`);
       router.navigate({ to: "/agent/scenario/$code", params: { code: s.scenario_code } });
     } catch (err) {
       toast.error((err as Error).message);
@@ -143,7 +144,7 @@ function AgentPortal() {
   return (
     <AppShell
       title="Agent command center"
-      subtitle="Look up scenarios by ID — no personal information stored"
+      subtitle={`Look up plan comparisons by ${COMPARISON_ID_LABEL} — no personal information stored`}
     >
       <div className="mb-4">
         <NdaStatusCard />
@@ -153,11 +154,11 @@ function AgentPortal() {
           <TabsList className="glass">
             <TabsTrigger value="lookup">
               <Search className="h-4 w-4 mr-1.5" />
-              Look up scenario
+              Look up comparison
             </TabsTrigger>
             <TabsTrigger value="roster">
               <Users className="h-4 w-4 mr-1.5" />
-              My scenarios ({scenarios.length})
+              My comparisons ({scenarios.length})
             </TabsTrigger>
             <TabsTrigger value="billing">
               <Receipt className="h-4 w-4 mr-1.5" />
@@ -171,7 +172,7 @@ function AgentPortal() {
           <Link to="/scenario/new">
             <Button size="sm" className="grad-indigo">
               <Plus className="h-4 w-4 mr-1.5" />
-              Create new scenario
+              Create new comparison
             </Button>
           </Link>
         </div>
@@ -179,9 +180,9 @@ function AgentPortal() {
         <TabsContent value="lookup">
           <Card className="glass p-8 max-w-2xl mx-auto space-y-5">
             <div className="text-center space-y-1">
-              <h2 className="font-display text-xl font-bold">Enter a Scenario ID</h2>
+              <h2 className="font-display text-xl font-bold">Enter a {COMPARISON_ID_LABEL}</h2>
               <p className="text-sm text-muted-foreground">
-                The consumer received this ID after building their scenario. The first agent to look
+                The consumer received this ID after building their plan comparison. The first agent to look
                 it up claims it.
               </p>
             </div>
@@ -194,7 +195,7 @@ function AgentPortal() {
                 autoFocus
               />
               <Button type="submit" disabled={busy || !code} className="grad-indigo w-full h-11">
-                {busy ? "Looking up…" : "Look up scenario"}
+                {busy ? "Looking up…" : "Look up comparison"}
               </Button>
             </form>
             <p className="text-xs text-muted-foreground text-center">
@@ -206,7 +207,7 @@ function AgentPortal() {
         <TabsContent value="roster" className="space-y-4">
           {scenarios.length === 0 ? (
             <Card className="glass p-6 text-center text-sm text-muted-foreground">
-              No scenarios claimed or assigned yet. Use <strong>Look up scenario</strong> to
+              No comparisons claimed or assigned yet. Use <strong>Look up comparison</strong> to
               retrieve one by ID.
             </Card>
           ) : (
@@ -214,7 +215,7 @@ function AgentPortal() {
               <table className="w-full text-sm">
                 <thead className="bg-secondary/60 text-left text-xs uppercase tracking-wider text-muted-foreground">
                   <tr>
-                    <th className="px-4 py-3">Scenario ID</th>
+                    <th className="px-4 py-3">{COMPARISON_ID_LABEL}</th>
                     <th className="px-4 py-3">Profile</th>
                     <th className="px-4 py-3">Meds</th>
                     <th className="px-4 py-3">Type</th>
@@ -337,7 +338,7 @@ function AgentPortal() {
           </Card>
 
           <Card className="glass p-5">
-            <h3 className="font-display font-bold mb-3">Scenario credit ledger</h3>
+            <h3 className="font-display font-bold mb-3">Comparison credit ledger</h3>
             <table className="w-full text-sm">
               <thead className="text-left text-xs uppercase tracking-wider text-muted-foreground border-b border-border">
                 <tr>

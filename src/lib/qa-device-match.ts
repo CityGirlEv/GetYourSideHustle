@@ -19,7 +19,7 @@ export function testerMatchesDevices(testerDevices: string[], selectedDevices: s
 /** Merge known device options with any custom devices saved on QA profiles. */
 export function buildDeviceFilterOptions(extraDevices: string[] = []): string[] {
   const known = new Set<string>(QA_DEVICE_FILTER_OPTIONS);
-  const out = [...QA_DEVICE_FILTER_OPTIONS];
+  const out: string[] = [...QA_DEVICE_FILTER_OPTIONS];
   for (const d of extraDevices) {
     const trimmed = d.trim();
     if (!trimmed || known.has(trimmed)) continue;

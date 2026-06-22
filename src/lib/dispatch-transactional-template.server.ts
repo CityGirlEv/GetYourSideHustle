@@ -241,7 +241,7 @@ function enrichTemplateDataForSend(
   data: Record<string, unknown>,
   recipientEmail: string,
 ): Record<string, unknown> {
-  const merged = {
+  const merged: any = {
     ...data,
     email: data.email ?? recipientEmail,
     recipient: data.recipient ?? recipientEmail,

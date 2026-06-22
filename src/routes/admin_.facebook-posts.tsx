@@ -18,16 +18,17 @@ import {
   buildWeeklyEditorialCalendar,
   editorialActionTime,
   editorialLaunchWeekStart,
+  editorialWeekStart,
+  formatEarliestLaunchLabel,
   formatEditorialTimeLabel,
   formatLaunchWeekLabel,
   isPreLaunchWeek,
-  startOfWeekSaturday,
 } from "@/lib/content-factory/weekly-editorial-schedule";
 import {
   extractHashtags,
   facebookPageUrl,
-  facebookPostBodyWithoutHashtags,
   formatFacebookPasteText,
+  formatFacebookPostPreviewText,
 } from "@/lib/content-factory/facebook-post-copy";
 import {
   facebookPostImageGuidance,
@@ -49,7 +50,7 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/admin_/facebook-posts")({
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (search: Record<string, unknown>): { batchId?: string; slot?: number } => ({
     batchId: typeof search.batchId === "string" ? search.batchId : undefined,
     slot:
       typeof search.slot === "number"
@@ -98,7 +99,7 @@ function FacebookPostsPage() {
 
   const draftBySlot = useMemo(() => {
     const map = new Map<string, CalendarDraftRef>();
-    for (const draft of draftsQuery.data ?? []) {
+    for (const draft of (draftsQuery.data as any) ?? []) {
       map.set(`${draft.type}:${draft.slotIndex}`, draft);
     }
     return map;
@@ -106,13 +107,13 @@ function FacebookPostsPage() {
 
   const fbDrafts = useMemo(
     () =>
-      [...(draftsQuery.data ?? [])]
+      [...((draftsQuery.data as any) ?? [])]
         .filter((draft) => draft.type === "facebook_post")
         .sort((a, b) => a.slotIndex - b.slotIndex),
     [draftsQuery.data],
   );
 
-  const weekStart = startOfWeekSaturday(new Date());
+  const weekStart = editorialWeekStart(new Date());
   const preLaunch = isPreLaunchWeek(weekStart);
   const scheduleWeekStart = preLaunch ? editorialLaunchWeekStart() : weekStart;
   const scheduleBySlot = useMemo(() => {
@@ -215,16 +216,16 @@ function FacebookPostsPage() {
             </select>
             {preLaunch && (
               <Badge variant="outline" className="text-[10px] border-amber-500/40">
-                Posting starts {formatLaunchWeekLabel()}
+                Posting starts Fri Jun 19
               </Badge>
             )}
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
             {preLaunch ? (
               <>
-                <strong className="text-foreground">Do not publish yet.</strong> Sprint week: finish
-                LLC setup by Friday — earliest go-live {formatEarliestLaunchLabel()}. Scheduled post
-                times below are for Week 1 ({formatLaunchWeekLabel()}).
+                <strong className="text-foreground">Pre-launch.</strong> Legal pages and first post
+                go live Friday, June 19 ({formatEarliestLaunchLabel()}). Scheduled post times below
+                are for Week 1 ({formatLaunchWeekLabel()}).
               </>
             ) : (
               <>
@@ -296,7 +297,7 @@ function FacebookPostCard({
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
   const hashtags = extractHashtags(draft.body);
-  const bodyWithoutTags = facebookPostBodyWithoutHashtags(draft.body);
+  const previewText = formatFacebookPostPreviewText(draft);
   const fullPaste = formatFacebookPasteText(draft);
   const imageGuidance = facebookPostImageGuidance(draft.slotIndex, draftBySlot);
 
@@ -363,7 +364,7 @@ function FacebookPostCard({
           </Button>
         </div>
         <pre className="text-xs whitespace-pre-wrap rounded-md border border-border bg-muted/20 p-3 leading-relaxed">
-          {bodyWithoutTags || draft.body}
+          {previewText || draft.body}
         </pre>
       </div>
 

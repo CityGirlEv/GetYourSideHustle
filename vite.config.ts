@@ -8,8 +8,8 @@
 import { writeFileSync, mkdirSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
-import { defineConfig, type Plugin } from "@lovable.dev/vite-tanstack-config";
-import { loadEnv } from "vite";
+import { defineConfig } from "@lovable.dev/vite-tanstack-config";
+import { loadEnv, type Plugin } from "vite";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const serverEnv = loadEnv(process.env.NODE_ENV || "development", __dirname, "");
@@ -25,7 +25,7 @@ function resolveBuildId(command: "build" | "serve", mode: string): string {
 function appBuildVersionPlugin(): Plugin {
   return {
     name: "app-build-version",
-    config(_config, { command, mode }) {
+    config(_config: unknown, { command, mode }: { command: "build" | "serve"; mode: string }) {
       const buildId = resolveBuildId(command, mode);
       const manifest = {
         buildId,

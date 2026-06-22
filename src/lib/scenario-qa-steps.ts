@@ -74,7 +74,7 @@ export function buildScenarioQaAuditSteps(parts: {
     .split(", ")
     .map((s) => s.trim())
     .filter(Boolean);
-  const step1Intro = "Step 1 — Demographics: Enter the following for the Scenario Information.";
+  const step1Intro = "Step 1 — Demographics: Enter the following for the plan comparison.";
   const step1Substeps = [
     birthYear,
     `ZIP3 = ${zip3}`,
@@ -97,25 +97,33 @@ export function buildScenarioQaAuditSteps(parts: {
     .split("; ")
     .map((s) => s.trim())
     .filter(Boolean);
-  const medSubsteps = [
-    "Add these medications.",
-    ...medParts.map((med) => `${med}.`),
-    "THEN CLICK CREATE SCENARIO.",
-  ];
+  const medSubsteps =
+    medParts.length > 0
+      ? [
+          "Add these medications.",
+          ...medParts.map((med) => `${med}.`),
+          "THEN CLICK CREATE COMPARISON.",
+        ]
+      : [
+          "Skip adding medications — not on any prescriptions.",
+          "THEN CLICK CREATE COMPARISON.",
+        ];
   const step3Intro =
-    "Step 3 — Medications: Under Common medications for your conditions: Select the medication (if present). Those medications will be added to the list below. Click the plus sign to add additional medications.";
+    medParts.length > 0
+      ? "Step 3 — Medications: Under Common medications for your conditions: Select the medication (if present). Those medications will be added to the list below. Click the plus sign to add additional medications."
+      : "Step 3 — Medications (optional): Skip adding medications if the person is not on any prescriptions, then create the comparison.";
   const step5Intro = "A pop-up screen will appear allowing the user to Opt In.";
   const step5Substeps = [
     "Enter your email and phone number.",
     'Click the "Contact Me" button.',
     "You should receive a confirmation email at the email you entered. Verify that you received the email.",
   ];
-  const scenarioLinkIntro = "On the confirmation page :";
-  const scenarioLinkSubsteps = [
-    'Click "Copy scenario link".',
+  const comparisonLinkIntro = "On the confirmation page :";
+  const comparisonLinkSubsteps = [
+    'Click "Copy comparison link".',
     "Verify the link uses the form /scenario/<SCN code>.",
     "Paste it into a new browser tab.",
-    "Confirm the scenario detail page loads with the SCN ID, summary card, share button, and expert opt-in trigger all present.",
+    "Confirm the plan comparison summary page loads with the Comparison ID, summary card, share button, and expert opt-in trigger all present.",
   ];
   const headerVerifyIntro =
     "On the confirmation page, verify the header echoes back each item character-for-character:";
@@ -135,7 +143,7 @@ export function buildScenarioQaAuditSteps(parts: {
     "Demographics printed in the PDF and XLSX match what you entered.",
     `ZIP3 (${zip3}) printed in the PDF and XLSX matches what you entered.`,
   ];
-  const downloadFilesIntro = "On the confirmation page (or View scenario summary), download files:";
+  const downloadFilesIntro = "On the confirmation page (or View comparison summary), download files:";
   const downloadFilesSubsteps = [
     "Click 'Download PDF' to generate the system output report.",
     "Click 'Download Excel' to generate the system output report.",
@@ -143,13 +151,13 @@ export function buildScenarioQaAuditSteps(parts: {
   const medCostIntro = "Review the Medication Cost summary in each report:";
 
   return [
-    "Start from home page where the user clicks Compare Plans Privately",
+    "Start from home page where the user clicks Find Plans That Fit You — Privately",
     `${step1Intro} ${step1Substeps.join(" | ")}`,
     `${step2Intro} ||| ${step2Substeps.join(" | ")}`,
     `${step3Intro} ||| ${medSubsteps.join(" | ")}`,
     `${step5Intro} ||| ${step5Substeps.join(" | ")}`,
-    "Copy the generated Scenario ID (SCN-YYYY-XXXX-XXXX) — write it in QA notes",
-    `${scenarioLinkIntro} ||| ${scenarioLinkSubsteps.join(" | ")}`,
+    "Copy the generated Comparison ID (SCN-YYYY-XXXX-XXXX) — write it in QA notes",
+    `${comparisonLinkIntro} ||| ${comparisonLinkSubsteps.join(" | ")}`,
     `${headerVerifyIntro} ||| ${headerVerifySubsteps.join(" | ")}`,
     `${downloadFilesIntro} ||| ${downloadFilesSubsteps.join(" | ")}`,
     `${medCostIntro} ||| ${buildMedicationCostSubsteps(costTotal).join(" | ")}`,

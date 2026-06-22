@@ -91,7 +91,7 @@ export const resolveFeaturedImageAdmin = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     await verifyAdmin(context.userId);
-    const prompt = buildFeaturedImagePrompt(data as Pick<ArticleDraft, "title" | "excerpt" | "category">);
+    const prompt = buildFeaturedImagePrompt({ ...data, slug: "" });
 
     if (!canAutoGenerateArticleImages()) {
       return { mode: "prompt" as const, prompt };

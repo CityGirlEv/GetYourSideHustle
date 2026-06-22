@@ -89,7 +89,7 @@ function NewsletterCenterPage() {
 
   const articlesQuery = useQuery({
     queryKey: ["newsletter-articles"],
-    queryFn: () => listArticles({ data: {} }),
+    queryFn: () => listArticles({ data: undefined }),
     enabled: Boolean(user && userHasAdminRole(user)),
   });
 

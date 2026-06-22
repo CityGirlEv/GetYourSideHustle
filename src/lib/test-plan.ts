@@ -272,9 +272,22 @@ export const TEST_CASES: TestCase[] = [
     area: "Intake · Meds",
     priority: "P0",
     title: "Scenario creation — RPC returns a code",
-    steps: ["Complete steps 1–4 with valid data", "Click Create Scenario"],
+    steps: ["Complete steps 1–3 with valid data and at least one medication", "Click Create scenario"],
     expected:
       "Toast 'Scenario created'; redirected to /scenario/created/<code> where code matches SCN-YYYY-XXXX-XXXX.",
+  },
+  {
+    id: "MED-008",
+    area: "Intake · Meds",
+    priority: "P0",
+    title: "Medications optional — create scenario with none listed",
+    steps: [
+      "Complete Step 1 (demographics) and Step 2 (cost preference)",
+      "On Step 3, do not add or confirm any medications",
+      "Click Create scenario",
+    ],
+    expected:
+      "No toast requiring medications; scenario is created with an empty medication list and user reaches /scenario/created/<code>.",
   },
 
   // ===== Voice on every field =====
@@ -439,6 +452,21 @@ export const TEST_CASES: TestCase[] = [
     path: "/scenario/new",
     steps: ["Open https://mypartb.com/scenario/new?mode=voice in Firefox (no Web Speech API)"],
     expected: "Card shows 'Voice mode not supported' with a Use manual form button.",
+  },
+  {
+    id: "VWIZ-013",
+    area: "Voice · Wizard",
+    priority: "P0",
+    title: "No medications — say no or skip at meds step",
+    path: "/scenario/new",
+    steps: [
+      "Open /scenario/new in Voice mode",
+      "Complete demographics through conditions",
+      "At 'Do you take any prescription medications?' say 'no' (or click Skip)",
+      "Confirm the summary shows 0 medications and say 'yes' to create",
+    ],
+    expected:
+      "Wizard advances to confirm with zero medications; scenario submits successfully via create_scenario RPC.",
   },
 
   // ===== Scenario downstream =====
@@ -1249,18 +1277,21 @@ export const TEST_CASES: TestCase[] = [
 ];
 
 // ----------------------------------------------------------------------------
-// IMPLEMENTATION PLAN — phases. We are currently executing PHASE 1, a 4-week
-// effort delivered as four 1-week sprints (Sprint 0 → Sprint 3). Final
-// production go-live lands at the end of Sprint 3 (Sunday 6/14). Beta with
-// public registration opens mid-Sprint 1 on Wednesday 5/27 (alpha closes
-// Tuesday 5/26 at midnight). Later phases pick up after Phase 1 ships.
+// IMPLEMENTATION PLAN — phases. Phase 1 (Sprints 0–3) shipped production by 6/14.
+// Sprint 4 (6/19–6/25) covers legal go-live and Week 1 content/social publishing.
 // ----------------------------------------------------------------------------
 export const IMPLEMENTATION_PLAN: PhaseItem[] = [
   {
     name: "Phase 1 · Beta → GA (Sprints 0–3, 5/18–6/14)",
-    status: "in_progress",
+    status: "done",
     description:
       "4-week effort: alpha (S0) → beta go-live Wed 5/27 with registration (S1) → optimizer math hardening (S2) → final production go-live end of S3 (Sun 6/14). Sprint detail in SPRINTS below.",
+  },
+  {
+    name: "Phase 1b · Content & social launch (Sprint 4, 6/19–6/25)",
+    status: "in_progress",
+    description:
+      "Legal documents live and first Facebook post published Friday 6/19. Week 1 editorial calendar: daily Facebook, articles Wed–Fri, newsletter, lead magnet, FAQ.",
   },
   {
     name: "Phase 2 · Agent + SOA flow",
@@ -1291,7 +1322,8 @@ export const IMPLEMENTATION_PLAN: PhaseItem[] = [
 //                  goes live Wed 5/27 with public registration.
 //   S2 (6/01–6/07) Optimizer math hardening on the beta.
 //   S3 (6/08–6/14) Final production go-live Sun 6/14 (end of Phase 1).
-export const ACTIVE_SPRINT_ID = "S-2026-01";
+//   S4 (6/19–6/25) Legal pages live + Week 1 content/social publishing (Fri kickoff).
+export const ACTIVE_SPRINT_ID = "S-2026-04";
 // Catch-all bucket for tests that don't yet have an owner (or sprint).
 // Rendered as its own group in the test plan UI under the "Backlog" heading.
 export const BACKLOG_SPRINT_ID = "S-BACKLOG";
@@ -1430,12 +1462,52 @@ export const SPRINTS: Sprint[] = [
         id: "S3-4",
         title: "Final production go-live (Sun 6/14, end of Phase 1)",
         type: "feature",
-        status: "todo",
+        status: "done",
       },
       {
         id: "S3-5",
         title: "Phase 1 retro + Phase 2 kickoff brief",
         type: "design",
+        status: "todo",
+      },
+    ],
+  },
+  {
+    id: "S-2026-04",
+    number: 4,
+    name: "Content & social launch",
+    start: "2026-06-19",
+    end: "2026-06-25",
+    goal: "Friday 6/19: legal documents complete and first Facebook post published. Execute Week 1 editorial calendar (Facebook daily, articles, newsletter, lead magnet).",
+    items: [
+      {
+        id: "S4-1",
+        title: "Privacy Policy, Terms, and /about live with Delaware LLC name (Fri 6/19)",
+        type: "feature",
+        status: "done",
+      },
+      {
+        id: "S4-2",
+        title: "Welcome Facebook post published (Fri 6/19)",
+        type: "feature",
+        status: "done",
+      },
+      {
+        id: "S4-3",
+        title: "Week 1 editorial calendar — daily Facebook + articles Wed–Fri",
+        type: "feature",
+        status: "in_progress",
+      },
+      {
+        id: "S4-4",
+        title: "Invite network to follow Facebook page (Wed 6/24)",
+        type: "feature",
+        status: "todo",
+      },
+      {
+        id: "S4-5",
+        title: "Newsletter + lead magnet per Week 1 schedule",
+        type: "feature",
         status: "todo",
       },
     ],

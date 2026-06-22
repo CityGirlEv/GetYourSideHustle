@@ -1,6 +1,7 @@
 import type { ArticleCategory } from "@/lib/learning-center";
-import { LEARNING_CENTER_IMAGE_STYLE, multiculturalSceneHint } from "@/lib/learning-center-image-prompts";
 import { MPD_DISCLAIMER } from "@/lib/medicare-disclaimers";
+
+export { buildFeaturedImagePrompt } from "@/lib/learning-center-image-prompts";
 
 export interface ArticleDraft {
   title: string;
@@ -83,17 +84,6 @@ export function serializeArticleMarkdown(draft: ArticleDraft): string {
   if (draft.downloadPath?.trim()) lines.push(`downloadPath: ${yamlQuote(draft.downloadPath.trim())}`);
   lines.push("---", "", ensureArticleMpdFooter(ensureArticleFaqBlock(draft.bodyMd)), "");
   return lines.join("\n");
-}
-
-/** TPMO-safe image prompt for educational Medicare inline photos (no sales language). */
-export function buildFeaturedImagePrompt(draft: Pick<ArticleDraft, "title" | "excerpt" | "category" | "slug">): string {
-  return [
-    LEARNING_CENTER_IMAGE_STYLE,
-    multiculturalSceneHint(draft.slug || draft.title),
-    `Topic: ${draft.title}.`,
-    `Category: ${draft.category.replace(/-/g, " ")}.`,
-    `Context: ${draft.excerpt}`,
-  ].join(" ");
 }
 
 export function featuredImagePublicPath(slug: string, ext: string): string {

@@ -55,3 +55,10 @@ if (action === "validate" && domain) {
   );
   console.log(JSON.stringify(result, null, 2));
 }
+
+if (action === "remove" && domain) {
+  const result = await api(`/accounts/${accountId}/pages/projects/${project}/domains/${domain}`, {
+    method: "DELETE",
+  });
+  console.log("removed:", JSON.stringify(result, null, 2));
+}

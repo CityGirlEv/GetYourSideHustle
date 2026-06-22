@@ -29,11 +29,16 @@ import { getPublicScenarioByCode } from "@/lib/scenario-lookup.functions";
 import { ExpertOptInDialog } from "@/components/ExpertOptInDialog";
 import { CMS_PARTNER_CTA } from "@/lib/lead-consent";
 import { ScenarioProfileHeader } from "@/components/ScenarioProfileHeader";
+import {
+  COMPARISON_ID_LABEL,
+  PLAN_COMPARISON_EDUCATIONAL_NOTE,
+  YOUR_PLAN_COMPARISON,
+} from "@/lib/plan-comparison-copy";
 
 export const Route = createFileRoute("/scenario/$code")({
   head: () => ({
     meta: [
-      { title: "Scenario Summary — Part B Optimizer" },
+      { title: "Plan Comparison Summary — Part B Optimizer" },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -86,7 +91,7 @@ function ScenarioSummary() {
         } catch {
           /* ignore */
         }
-        const msg = e instanceof Error ? e.message : "Could not load scenario";
+        const msg = e instanceof Error ? e.message : "Could not load plan comparison";
         setError(msg);
       })
       .finally(() => {
@@ -115,7 +120,7 @@ function ScenarioSummary() {
     const url = `${window.location.origin}/scenario/${code}`;
     if (navigator.share) {
       try {
-        await navigator.share({ title: "My Medicare Scenario", url });
+        await navigator.share({ title: "My Medicare Plan Comparison", url });
         return;
       } catch {
         /* fallback */
@@ -145,7 +150,7 @@ function ScenarioSummary() {
     : undefined;
 
   return (
-    <AppShell title="Scenario summary" subtitle={`ID ${code}`}>
+    <AppShell title="Plan comparison summary" subtitle={`${COMPARISON_ID_LABEL} ${code}`}>
       <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
         <Link to="/scenario/created/$code" params={{ code }}>
           <Button variant="ghost" size="sm">
@@ -155,15 +160,16 @@ function ScenarioSummary() {
         </Link>
 
         {loading ? (
-          <Card className="glass p-6 text-sm text-muted-foreground">Loading scenario…</Card>
+          <Card className="glass p-6 text-sm text-muted-foreground">Loading plan comparison…</Card>
         ) : !scenario ? (
           <Card className="glass p-6 text-sm text-muted-foreground">
-            We couldn&apos;t load this scenario.{" "}
+            We couldn&apos;t load this plan comparison.{" "}
             {error ? <span className="block mt-1 text-xs">({error})</span> : null}
             <div className="mt-2 text-xs">
-              Double-check the Scenario ID, or create a new scenario if this one has expired
-              (scenarios auto-delete after 90 days).
+              Double-check the {COMPARISON_ID_LABEL}, or create a new comparison if this one has
+              expired (comparisons auto-delete after 90 days).
             </div>
+            <p className="mt-2 text-xs">{PLAN_COMPARISON_EDUCATIONAL_NOTE}</p>
           </Card>
         ) : (
           <>
@@ -206,7 +212,7 @@ function ScenarioSummary() {
                   <DrugReport medications={scenario.medications} />
                 ) : (
                   <Card className="glass p-6 text-sm text-muted-foreground">
-                    No medications were entered for this scenario.
+                    No medications were entered for this plan comparison.
                   </Card>
                 )}
               </TabsContent>

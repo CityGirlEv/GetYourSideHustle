@@ -98,11 +98,11 @@ export const ADMIN_QA_GROUP: AdminNavGroup = {
 
 export const ADMIN_STAFF_GROUP: AdminNavGroup = {
   id: "staff",
-  label: "Staff",
+  label: "Users",
   icon: Users,
   items: [
     {
-      label: "Staff roster",
+      label: "Users",
       to: "/staff",
       icon: Users,
     },

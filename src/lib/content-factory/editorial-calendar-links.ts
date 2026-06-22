@@ -3,15 +3,17 @@ import { canonicalUrl } from "@/lib/site-url";
 import type { ContentAssetType, ContentDraft } from "@/lib/content-factory/types";
 import type { EditorialCalendarEvent } from "@/lib/content-factory/weekly-editorial-schedule";
 import { facebookPostAdminSearch } from "@/lib/content-factory/facebook-post-copy";
+import { leadMagnetPdfHrefIfSaved } from "@/lib/content-factory/lead-magnet-paths";
 
 export type CalendarDraftRef = Pick<
   ContentDraft,
-  "id" | "status" | "title" | "payload" | "publishedRef" | "type" | "slotIndex"
+  "id" | "status" | "title" | "excerpt" | "body" | "payload" | "publishedRef" | "type" | "slotIndex"
 >;
 
 export interface CalendarResourceLink {
   label: string;
-  href: string;
+  /** Omit href for labels-only rows (e.g. hero not uploaded yet). */
+  href?: string;
   external?: boolean;
   description?: string;
 }
@@ -77,6 +79,66 @@ export function getDraftFromMap(
   return draftBySlot.get(draftSlotKey(type, slotIndex));
 }
 
+/** Full TPMO-safe prompt text stored on the image_prompt draft body. */
+export function imagePromptTextFromDraft(draft: CalendarDraftRef | undefined): string {
+  return draft?.body?.trim() ?? "";
+}
+
+/** Slug for the hero JPG — draft payload first, then paired weekly article. */
+export function resolveHeroSlugForImagePrompt(
+  imagePromptDraft: CalendarDraftRef | undefined,
+  draftBySlot: Map<string, CalendarDraftRef>,
+  slotIndex: number,
+): string | null {
+  const fromPrompt = slugFromDraft(imagePromptDraft);
+  if (fromPrompt) return fromPrompt;
+  const paired = imagePromptPairedArticleSlot(slotIndex);
+  if (paired === null) return null;
+  return slugFromDraft(getDraftFromMap(draftBySlot, "article", paired));
+}
+
+export function heroUploadPathFromPayload(
+  payload: Record<string, unknown> | undefined,
+): string | null {
+  const path = payload?.heroImagePath;
+  return typeof path === "string" && path.trim() ? path.trim() : null;
+}
+
+export function heroUploadedAtFromPayload(
+  payload: Record<string, unknown> | undefined,
+): string | null {
+  const at = payload?.heroUploadedAt;
+  return typeof at === "string" && at.trim() ? at.trim() : null;
+}
+
+/** Same-origin hero URL — only when uploaded via the calendar (avoids 404 on production before deploy). */
+export function heroImageHrefIfUploaded(
+  slug: string,
+  imagePromptDraft: CalendarDraftRef | undefined,
+): string | null {
+  const uploadedAt = heroUploadedAtFromPayload(imagePromptDraft?.payload);
+  if (!uploadedAt) return null;
+  const heroPath =
+    heroUploadPathFromPayload(imagePromptDraft?.payload) ?? featuredImagePathForSlug(slug);
+  return `${heroPath}?v=${encodeURIComponent(uploadedAt)}`;
+}
+
+export function heroImageTargetPath(slug: string, imagePromptDraft?: CalendarDraftRef): string {
+  return heroUploadPathFromPayload(imagePromptDraft?.payload) ?? featuredImagePathForSlug(slug);
+}
+
+export function contentFactoryDraftHref(
+  batchId: string | null,
+  type: ContentAssetType,
+  slotIndex: number,
+): string {
+  return `/admin/content-factory?${new URLSearchParams({
+    ...(batchId ? { batchId } : {}),
+    type,
+    slot: String(slotIndex),
+  }).toString()}`;
+}
+
 export function facebookPostImageGuidance(
   fbSlotIndex: number,
   draftBySlot: Map<string, CalendarDraftRef>,
@@ -85,8 +147,8 @@ export function facebookPostImageGuidance(
   if (articleSlot !== null) {
     const articleDraft = getDraftFromMap(draftBySlot, "article", articleSlot);
     const slug = slugFromDraft(articleDraft);
-    const imageUrl = slug ? featuredImageUrlForSlug(slug) : null;
     const imagePromptDraft = getDraftFromMap(draftBySlot, "image_prompt", articleSlot);
+    const imageUrl = slug ? heroImageHrefIfUploaded(slug, imagePromptDraft) : null;
 
     return {
       headline: "Use the same hero image as the linked Learning Center article.",
@@ -116,7 +178,7 @@ export function facebookPostImageGuidance(
     steps: [
       "These tips stand alone (no article link). Upload the Part B Optimizer logo or a calm Medicare-education photo.",
       "Optional: Image Prompt 4 or 5 in Content Factory can produce a custom photo if you want variety.",
-      "Keep images TPMO-safe: no plan names, no enrollment CTAs, no fine-print disclaimers baked into the graphic.",
+      "Keep images CMS-compliant: no Medicare card or government logos, no carrier/plan names, no star ratings or premiums, no readable text or disclaimers in the graphic, no enrollment CTAs.",
       "Paste the post text from this page after adding the image.",
     ],
   };
@@ -152,12 +214,21 @@ export function buildCalendarEventLinks(input: {
           external: true,
           description: event.milestone === "launch" ? "Publish destination" : "Preview when live",
         });
-        links.push({
-          label: "Hero image",
-          href: featuredImageUrlForSlug(slug),
-          external: true,
-          description: "Featured JPG for article header and Facebook posts",
-        });
+        const imageDraft = getDraftFromMap(draftBySlot, "image_prompt", event.slotIndex);
+        const heroHref = heroImageHrefIfUploaded(slug, imageDraft);
+        if (heroHref) {
+          links.push({
+            label: "View hero image",
+            href: heroHref,
+            external: true,
+            description: "Uploaded hero JPG for article header and Facebook posts",
+          });
+        } else {
+          links.push({
+            label: "Hero image (upload via Image Prompt)",
+            description: `Target: public${heroImageTargetPath(slug, imageDraft)}`,
+          });
+        }
       }
       links.push({
         label: "Create Articles admin",
@@ -165,8 +236,8 @@ export function buildCalendarEventLinks(input: {
         description: "Generate hero image, edit markdown, download files",
       });
       const imageSlot = event.slotIndex;
-      const imageDraft = getDraftFromMap(draftBySlot, "image_prompt", imageSlot);
-      if (imageDraft) {
+      const imageDraftForLink = getDraftFromMap(draftBySlot, "image_prompt", imageSlot);
+      if (imageDraftForLink) {
         links.push({
           label: `Image Prompt ${imageSlot + 1}`,
           href: `/admin/content-factory?${new URLSearchParams({
@@ -180,16 +251,32 @@ export function buildCalendarEventLinks(input: {
       break;
     }
     case "image_prompt": {
-      const slug = slugFromDraft(draft);
-      const pairedArticle = imagePromptPairedArticleSlot(event.slotIndex);
+      const promptText = imagePromptTextFromDraft(draft);
+      const slug = resolveHeroSlugForImagePrompt(draft, draftBySlot, event.slotIndex);
+      links.push({
+        label: "Open image prompt",
+        href: contentFactoryDraftHref(batchId, "image_prompt", event.slotIndex),
+        description: promptText
+          ? "View full prompt text in Content Factory"
+          : "Image prompt draft in Content Factory",
+      });
       if (slug) {
-        links.push({
-          label: "Target hero JPG",
-          href: featuredImageUrlForSlug(slug),
-          external: true,
-          description: "Upload generated image to this path",
-        });
+        const heroHref = heroImageHrefIfUploaded(slug, draft);
+        if (heroHref) {
+          links.push({
+            label: "View hero image",
+            href: heroHref,
+            external: true,
+            description: `Saved to public${heroImageTargetPath(slug, draft)}`,
+          });
+        } else {
+          links.push({
+            label: "Hero image (upload below)",
+            description: `Target: public${heroImageTargetPath(slug, draft)} — upload after generating`,
+          });
+        }
       }
+      const pairedArticle = imagePromptPairedArticleSlot(event.slotIndex);
       if (pairedArticle !== null) {
         const articleDraft = getDraftFromMap(draftBySlot, "article", pairedArticle);
         const articleSlug = slugFromDraft(articleDraft);
@@ -201,11 +288,6 @@ export function buildCalendarEventLinks(input: {
           });
         }
       }
-      links.push({
-        label: "Create Articles admin",
-        href: "/admin/articles",
-        description: "Paste prompt and download hero image",
-      });
       break;
     }
     case "facebook_post": {
@@ -249,12 +331,28 @@ export function buildCalendarEventLinks(input: {
       });
       break;
     }
-    case "lead_magnet":
+    case "lead_magnet": {
+      links.push({
+        label: "Edit workbook",
+        href: contentFactoryDraftHref(batchId, "lead_magnet", event.slotIndex),
+        description: "Edit checklist markdown, then generate PDF below",
+      });
+      const pdfHref = leadMagnetPdfHrefIfSaved(draft);
+      if (pdfHref) {
+        links.push({
+          label: "View workbook PDF",
+          href: pdfHref,
+          external: true,
+          description: "Saved PDF in public/downloads/",
+        });
+      }
+      break;
+    }
     case "faq":
       break;
   }
 
-  if (draft?.publishedRef && !links.some((l) => l.href === draft.publishedRef)) {
+  if (draft?.publishedRef && draft.publishedRef.startsWith("http") && !links.some((l) => l.href === draft.publishedRef)) {
     links.push({
       label: "Published URL",
       href: draft.publishedRef,

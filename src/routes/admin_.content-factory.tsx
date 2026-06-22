@@ -64,7 +64,7 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/admin_/content-factory")({
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (search: Record<string, unknown>): { batchId?: string; type?: ContentAssetType; slot?: number } => ({
     batchId: typeof search.batchId === "string" ? search.batchId : undefined,
     type:
       typeof search.type === "string" &&
@@ -159,7 +159,7 @@ function ContentFactoryPage() {
 
   const generateMutation = useMutation({
     mutationFn: () => generateBatch({ data: { topic: topic.trim() || undefined } }),
-    onSuccess: (result) => {
+    onSuccess: (result: any) => {
       invalidateAll();
       setBatchFilter(result.batch.id);
       toast.success(`Created batch with ${result.drafts.length} drafts in the queue.`);
@@ -184,18 +184,18 @@ function ContentFactoryPage() {
       status: ContentDraftStatus;
       rejectionReason?: string;
     }) => updateStatus({ data: input }),
-    onSuccess: (draft) => {
+    onSuccess: (draft: any) => {
       invalidateAll();
-      toast.success(`Status updated to ${CONTENT_STATUS_LABELS[draft.status]}.`);
+      toast.success(`Status updated to ${CONTENT_STATUS_LABELS[draft.status as ContentDraftStatus]}.`);
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
   const publishMutation = useMutation({
     mutationFn: (draftId: string) => publishDraft({ data: { draftId } }),
-    onSuccess: (draft) => {
+    onSuccess: (draft: any) => {
       invalidateAll();
-      toast.success(`Published ${CONTENT_TYPE_LABELS[draft.type].toLowerCase()}.`);
+      toast.success(`Published ${CONTENT_TYPE_LABELS[draft.type as ContentAssetType].toLowerCase()}.`);
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -212,11 +212,11 @@ function ContentFactoryPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const drafts = draftsQuery.data ?? [];
-  const batches = batchesQuery.data ?? [];
+  const drafts = (draftsQuery.data as any) ?? [];
+  const batches = (batchesQuery.data as any) ?? [];
 
   const activeBatch = useMemo(
-    () => batches.find((batch) => batch.id === batchFilter) ?? null,
+    () => batches.find((batch: any) => batch.id === batchFilter) ?? null,
     [batches, batchFilter],
   );
 
@@ -224,7 +224,7 @@ function ContentFactoryPage() {
     if (searchSlot == null || Number.isNaN(searchSlot)) return;
     if (draftsQuery.isLoading) return;
     const match = drafts.find(
-      (draft) =>
+      (draft: any) =>
         draft.slotIndex === searchSlot && (searchType ? draft.type === searchType : true),
     );
     if (match) {
@@ -349,7 +349,7 @@ function ContentFactoryPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {drafts.map((draft) => (
+                  {drafts.map((draft: any) => (
                     <Card key={draft.id} className="p-4 space-y-3 border-border/80">
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div className="space-y-2 min-w-0">
@@ -469,7 +469,7 @@ function ContentFactoryPage() {
               <p className="text-sm text-muted-foreground">No batches yet.</p>
             ) : (
               <div className="space-y-2">
-                {batches.map((batch) => (
+                {batches.map((batch: any) => (
                   <button
                     key={batch.id}
                     type="button"
@@ -573,6 +573,8 @@ function ContentFactoryPage() {
           if (!open) setDialogDraft(null);
         }}
         busy={saveMutation.isPending}
+        batchId={batchFilter === "all" ? null : batchFilter}
+        onPdfSaved={() => void draftsQuery.refetch()}
         onSave={(values) => {
           if (!dialogDraft) return;
           saveMutation.mutate({ draftId: dialogDraft.id, ...values });

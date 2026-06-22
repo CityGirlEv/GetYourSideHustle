@@ -1,28 +1,54 @@
-/** TPMO-safe photorealistic image prompt for Learning Center inline article photos. */
+/**
+ * TPMO- and CMS-aligned photorealistic image prompts for Learning Center heroes.
+ * See CMS Medicare Marketing Guidelines (MCMG) — visuals must not imply government
+ * endorsement, show plan/carrier branding, or embed sales claims in the picture.
+ */
+
+/** Hard prohibitions appended to every image prompt (what must NOT appear in the frame). */
+export const CMS_IMAGE_VISUAL_PROHIBITIONS = [
+  "CMS VISUAL RULES — the finished image must NOT contain any of the following:",
+  "Government: Medicare card, red-white-blue Medicare logo, CMS or HHS seal, eagle emblem, Medicare.gov branding, or anything resembling a federal ID or official government document.",
+  "Insurance marketing: carrier logos, plan names, star ratings, premiums, dollar amounts, savings claims, enrollment forms, sign-here boxes, phone numbers, URLs, QR codes, or compare-plans tables.",
+  "Sales pressure: agents pitching, handshake deal-closing, gift cards, countdown timers, urgency cues, or before/after cost graphics.",
+  "Text in image: NO readable text, headlines, watermarks, disclaimers, or fine print anywhere (props must be angled or out of focus so wording is not legible).",
+  "Style bans: NO cartoon, illustration, clip art, infographic, diagram, chart, or meme format.",
+  "Medical endorsement: NO white-coat doctors promoting insurance, stethoscopes as sales props, or hospital branding.",
+  "Topic context below is mood-only — do NOT render article titles, quotes, numbers, or marketing phrases as visible text.",
+].join(" ");
+
 export const LEARNING_CENTER_IMAGE_STYLE = [
   "Professional photorealistic editorial photograph for a Medicare education article.",
   "Natural window light, shallow depth of field, warm trustworthy mood.",
   "Multicultural representation is required: reflect America's Medicare-age population with varied skin tones, ethnicities, and family structures.",
-  "Older adults (60s–80s) in a realistic home or calm office setting reviewing paperwork, calendars, or a laptop — candid not posed like a stock ad.",
+  "Older adults (60s–80s) in a realistic home or calm office — candid lifestyle scene, not a posed insurance advertisement.",
+  "Safe props only: unbranded folders, wall calendar, reading glasses, coffee mug, laptop with blank or blurred screen.",
   "Polished magazine-quality composition, soft neutral palette with subtle blue accents.",
-  "NO text, NO logos, NO watermark, NO cartoon, NO illustration, NO clip art, NO infographic style.",
-  "CMS-compliant educational tone — informative, calm, never salesy.",
+  "Output: 3:2 landscape hero safe for web — target about 1600px on the long edge, JPEG-friendly, not ultra-high resolution.",
+  "CMS-compliant educational tone — informative, calm, never salesy; no implied Medicare or CMS endorsement.",
 ].join(" ");
 
-/** Rotate cast/scene cues so article images show different multicultural households. */
+/** Rotate cast/scene cues — no plan names, legible documents, or sales setups. */
 export const MULTICULTURAL_SCENE_HINTS = [
-  "Cast: Black or African American couple in their late 60s at a bright kitchen table.",
-  "Cast: East Asian American senior with an adult daughter reviewing documents together.",
-  "Cast: Latino/Hispanic couple in their 70s with coffee mugs and Medicare paperwork.",
-  "Cast: South Asian American woman in her 60s with reading glasses and a checklist.",
-  "Cast: Interracial Black and white couple comparing plan summaries side by side.",
-  "Cast: Middle Eastern American man in his 60s in a calm home office with natural light.",
-  "Cast: Indigenous American elders at a dining table with a wall calendar visible.",
-  "Cast: Southeast Asian American grandparents with an adult child pointing at a laptop screen.",
-  "Cast: Caribbean American senior reviewing mail at a tidy desk near a window.",
-  "Cast: Filipino American couple in their 60s seated together with printed guides.",
-  "Cast: White Jewish senior with a neighbor or friend of a different ethnicity reviewing forms together.",
-  "Cast: Multigenerational household — grandmother of color with adult granddaughter at the table.",
+  "Cast: Black or African American couple in their late 60s at a bright kitchen table with an unbranded folder.",
+  "Cast: East Asian American senior with an adult daughter, documents angled so no text is readable.",
+  "Cast: Latino/Hispanic couple in their 70s with coffee mugs and a wall calendar in the background.",
+  "Cast: South Asian American woman in her 60s with reading glasses and a blank notepad.",
+  "Cast: Interracial Black and white couple at a dining table with generic unbranded paperwork, no logos visible.",
+  "Cast: Middle Eastern American man in his 60s in a calm home office with natural light and a closed laptop.",
+  "Cast: Indigenous American elders at a dining table with a wall calendar visible, no readable dates as marketing.",
+  "Cast: Southeast Asian American grandparents with an adult child, laptop screen blurred with no readable UI.",
+  "Cast: Caribbean American senior sorting unmarked mail at a tidy desk near a window.",
+  "Cast: Filipino American couple in their 60s seated together with spine-out books and a folder, no legible covers.",
+  "Cast: White Jewish senior with a neighbor of a different ethnicity, shared folder with pages turned away from camera.",
+  "Cast: Multigenerational household — grandmother of color with adult granddaughter reviewing a calendar together.",
+] as const;
+
+/** Phrases that must appear in every generated image prompt (guardrail for tests and review). */
+export const CMS_IMAGE_PROMPT_REQUIRED_MARKERS = [
+  "CMS VISUAL RULES",
+  "Medicare card",
+  "NO readable text",
+  "Multicultural",
 ] as const;
 
 function hashSeed(value: string): number {
@@ -39,19 +65,32 @@ export function multiculturalSceneHint(seed: string): string {
   return MULTICULTURAL_SCENE_HINTS[index];
 }
 
+/** Strip marketing numbers/phrases from excerpt so the image model is not asked to render them. */
+export function sanitizeImagePromptContext(excerpt: string): string {
+  return excerpt
+    .replace(/\$[\d,]+(?:\.\d{2})?/g, "cost topics")
+    .replace(/\b(best|lowest|free|save|#\d+|enroll now|call today)\b/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 export function buildFeaturedImagePrompt(input: {
   title: string;
   excerpt: string;
   category: string;
   slug?: string;
 }): string {
+  const context = sanitizeImagePromptContext(input.excerpt);
   return [
     LEARNING_CENTER_IMAGE_STYLE,
+    CMS_IMAGE_VISUAL_PROHIBITIONS,
     multiculturalSceneHint(input.slug ?? input.title),
-    `Topic: ${input.title}.`,
+    `Topic (mood only, not visible text): ${input.title}.`,
     `Category: ${input.category.replace(/-/g, " ")}.`,
-    `Context: ${input.excerpt}`,
-  ].join(" ");
+    context ? `Educational context (do not render as text in image): ${context}.` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 }
 
 /** Public path for a Learning Center featured image. */

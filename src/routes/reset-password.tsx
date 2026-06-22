@@ -123,7 +123,7 @@ function ResetPasswordPage() {
     setBusy(false);
     toast.success("Password updated. You're now signed in.");
     const destination = postLoginRole === "qa" ? "/testing" : roleDestination(postLoginRole);
-    router.navigate({ to: destination as "/" | "/testing" | "/advisor" | "/agent" | "/admin" });
+    router.navigate({ to: destination as any });
   };
 
   if (ready && phase === "devices") {

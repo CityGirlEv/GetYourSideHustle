@@ -86,6 +86,12 @@ import {
   type ReferralSource,
 } from "@/lib/referral-sources";
 import { LEGAL_OPERATOR_NAME } from "@/lib/legal-content";
+import {
+  COMPARISON_CREATED,
+  COMPARISON_ID_LABEL,
+  CREATE_COMPARISON,
+  YOUR_PLAN_COMPARISON,
+} from "@/lib/plan-comparison-copy";
 import { validateMedicationsForSubmit } from "@/lib/intake-medications-validation";
 const GENDER_OPTIONS = [
   { value: "female", label: "Female" },
@@ -271,7 +277,7 @@ export function IntakeWizard({
     setReferralFriendFamily(draft.referralFriendFamily ?? "");
     setReferralMedicareEvent(draft.referralMedicareEvent ?? "");
     setReferralOther(draft.referralOther);
-    toast.message("Restored your in-progress scenario");
+    toast.message("Restored your in-progress plan comparison");
   }, []);
 
   const scrollWizardIntoView = useCallback(() => {
@@ -705,7 +711,7 @@ export function IntakeWizard({
     });
     setBusy(false);
     if (error || !data) {
-      toast.error(error?.message ?? "Could not create scenario");
+      toast.error(error?.message ?? "Could not create comparison");
       return;
     }
     const code = data as string;
@@ -740,7 +746,7 @@ export function IntakeWizard({
     } catch {
       /* ignore */
     }
-    toast.success("Scenario created");
+    toast.success(COMPARISON_CREATED);
     clearIntakeWizardDraft();
     onDone?.(code);
   };
@@ -753,7 +759,7 @@ export function IntakeWizard({
         <div>
           <strong>We do not collect any personally identifiable information.</strong> Do NOT enter
           your name, address, phone, email, Social Security number, Medicare ID, or date of birth —
-          there are no fields for these. You will receive a Scenario ID to share with your agent
+          there are no fields for these. You will receive a {COMPARISON_ID_LABEL} to share with your agent
           yourself.
         </div>
       </div>
@@ -1104,12 +1110,12 @@ export function IntakeWizard({
           <h3 className="font-display text-xl font-bold">Step 3 · Medications (optional)</h3>
           <p className="text-sm text-muted-foreground">
             Not taking any prescription medications? You can skip this step and click{" "}
-            <strong>Create scenario</strong> below.
+            <strong>{CREATE_COMPARISON}</strong> below.
           </p>
 
           <Card className="p-2.5 md:p-3 bg-muted/40 border-dashed">
             <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
-              Your scenario so far
+              {YOUR_PLAN_COMPARISON} so far
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-0.5 text-xs leading-snug">
               <div>
@@ -1157,7 +1163,7 @@ export function IntakeWizard({
             if (!suggestions.length && !confirmedMeds.length)
               return (
                 <p className="text-xs text-muted-foreground">
-                  No medications to add? Click <strong>Create scenario</strong> when you are ready.
+                  No medications to add? Click <strong>{CREATE_COMPARISON}</strong> when you are ready.
                   Tip: go back to Step 2 and pick your conditions to see common medications you can
                   add with one click.
                 </p>
@@ -1706,7 +1712,7 @@ export function IntakeWizard({
           </Button>
         ) : (
           <Button type="button" onClick={finish} disabled={busy} className="grad-indigo">
-            {busy ? "Creating…" : "Create scenario"}
+            {busy ? "Creating…" : CREATE_COMPARISON}
           </Button>
         )}
       </div>
@@ -1719,7 +1725,7 @@ export function IntakeWizard({
             </div>
             <DialogTitle>We&apos;ll connect you with an expert</DialogTitle>
             <DialogDescription className="text-sm leading-relaxed text-left">
-              After you create your scenario, you&apos;ll enter your email and phone. A licensed
+              After you create your plan comparison, you&apos;ll enter your email and phone. A licensed
               Medicare Agent from {LEGAL_OPERATOR_NAME} — will contact you about your
               medications.
             </DialogDescription>

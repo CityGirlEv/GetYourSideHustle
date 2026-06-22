@@ -409,7 +409,7 @@ export function LearningArticleTemplate({
             <div className="space-y-1">
               <h3 className="font-display text-base font-bold text-primary">Take action</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Save this guide or build a sample Medicare scenario to compare plans educationally.
+                Save this guide or build a sample Medicare plan comparison to compare plans educationally.
               </p>
             </div>
             <ArticleDownloadCta

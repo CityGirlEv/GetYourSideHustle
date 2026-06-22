@@ -116,7 +116,7 @@ export const ALL_TEMPLATES: TemplateDescriptor[] = [
     kind: "transactional",
     displayName: betaTestAssignment.displayName ?? "Beta test assignment",
     description: "Notifies a beta tester of their current QA test roster.",
-    trigger: "Admin enables a QA user with pending assignments, or manual send from Staff.",
+    trigger: "Admin enables a QA user with pending assignments, or manual send from Users.",
     defaultSubject: subjectOf(betaTestAssignment, betaTestAssignment.previewData ?? {}),
     component: betaTestAssignment.component,
     sampleProps: betaTestAssignment.previewData ?? {},

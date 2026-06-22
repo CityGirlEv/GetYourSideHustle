@@ -3,7 +3,6 @@ import {
   buildDailyChecklistItems,
   groupDailyChecklistByDate,
 } from "@/lib/content-factory/editorial-daily-checklist";
-import { facebookPageUrl } from "@/lib/content-factory/facebook-post-copy";
 import type { EditorialCalendarEvent } from "@/lib/content-factory/weekly-editorial-schedule";
 import {
   contentTypeIcon,
@@ -11,6 +10,9 @@ import {
 } from "@/components/content-factory/content-factory-ui";
 import type { ContentDraftStatus } from "@/lib/content-factory/types";
 import { EditorialCalendarActionLinks } from "@/components/content-factory/EditorialCalendarLinks";
+import { ImagePromptCalendarPanel } from "@/components/content-factory/ImagePromptCalendarPanel";
+import { LeadMagnetPdfPanel } from "@/components/content-factory/LeadMagnetPdfPanel";
+import { FacebookInviteDaySteps } from "@/components/content-factory/FacebookInviteDaySteps";
 import type { CalendarDraftRef } from "@/lib/content-factory/editorial-calendar-links";
 
 export function EditorialDailyChecklist({
@@ -20,6 +22,8 @@ export function EditorialDailyChecklist({
   today = formatToday(),
   completedEvents = {},
   onToggleCompleted,
+  onHeroUploaded,
+  onPdfSaved,
 }: {
   events: EditorialCalendarEvent[];
   draftBySlot: Map<string, CalendarDraftRef>;
@@ -27,9 +31,10 @@ export function EditorialDailyChecklist({
   today?: string;
   completedEvents?: Record<string, boolean>;
   onToggleCompleted?: (eventId: string) => void;
+  onHeroUploaded?: () => void;
+  onPdfSaved?: () => void;
 }) {
   const days = groupDailyChecklistByDate(buildDailyChecklistItems(events));
-  const pageUrl = facebookPageUrl();
 
   return (
     <div className="space-y-4">
@@ -91,22 +96,11 @@ export function EditorialDailyChecklist({
                       </div>
                       <div className="pl-[5rem] space-y-1">
                         {item.event.slotIndex === 99 && (
-                          <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                            {pageUrl ? (
-                              <a
-                                href={pageUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-0.5 text-[10px] text-primary font-medium hover:text-primary/80 underline-offset-2 hover:underline"
-                              >
-                                Open Facebook Page
-                              </a>
-                            ) : (
-                              <span className="text-[10px] text-muted-foreground">
-                                Set PUBLIC_FACEBOOK_PAGE_URL in env to link
-                              </span>
-                            )}
-                          </div>
+                          <FacebookInviteDaySteps
+                            compact
+                            completedEvents={completedEvents}
+                            onToggleCompleted={onToggleCompleted}
+                          />
                         )}
                         {draft && (
                           <div className="mt-1 flex flex-wrap items-center gap-1.5">
@@ -120,6 +114,24 @@ export function EditorialDailyChecklist({
                             batchId={batchId}
                             draftBySlot={draftBySlot}
                             compact
+                          />
+                        )}
+                        {item.event.type === "image_prompt" && (
+                          <ImagePromptCalendarPanel
+                            event={item.event}
+                            draft={draft}
+                            draftBySlot={draftBySlot}
+                            batchId={batchId}
+                            compact
+                            onHeroUploaded={onHeroUploaded}
+                          />
+                        )}
+                        {item.event.type === "lead_magnet" && (
+                          <LeadMagnetPdfPanel
+                            draft={draft}
+                            batchId={batchId}
+                            compact
+                            onSaved={onPdfSaved}
                           />
                         )}
                       </div>

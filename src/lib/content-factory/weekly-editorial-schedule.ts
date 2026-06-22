@@ -3,6 +3,7 @@ import {
   WEEKLY_CONTENT_BATCH_PLAN,
   type ContentAssetType,
 } from "@/lib/content-factory/types";
+import { listPublishedArticles } from "@/lib/articles";
 
 /** Produce (write/design) vs launch (publish/send/go-live). */
 export type EditorialMilestone = "produce" | "launch";
@@ -17,28 +18,70 @@ export interface EditorialCalendarEvent {
   detail: string;
   /** Pre-launch business setup vs. public content publishing. */
   category?: "prelaunch" | "content";
+  /** Set when a milestone is already satisfied (e.g. article live in Learning Center). */
+  alreadyComplete?: boolean;
 }
 
-/** Saturday (YYYY-MM-DD) when Week 1 begins — editorial weeks run Saturday through Friday. */
-export const EDITORIAL_LAUNCH_WEEK_SATURDAY = "2026-06-20";
+/** Friday (YYYY-MM-DD) when Week 1 content publishing and social posting begin. */
+export const EDITORIAL_ROUND_START_DATE = "2026-06-19";
 
-/** Optional first-publish day if LLC is ready before the Saturday kickoff (Friday go-live). */
-export const EDITORIAL_EARLIEST_LAUNCH_FRIDAY = "2026-06-19";
+/** Friday (YYYY-MM-DD) when Privacy Policy, Terms, and /about went live. */
+export const EDITORIAL_LEGAL_COMPLETE_DATE = "2026-06-19";
 
-/** @deprecated Use EDITORIAL_LAUNCH_WEEK_SATURDAY */
-export const EDITORIAL_LAUNCH_WEEK_MONDAY = EDITORIAL_LAUNCH_WEEK_SATURDAY;
+/** Delaware LLC + EIN confirmed before the June 19 go-live. */
+export const EDITORIAL_ENTITY_READY_DATE = "2026-06-19";
+
+/** @deprecated Use EDITORIAL_ROUND_START_DATE — Week 1 is a Friday kickoff, not Saturday. */
+export const EDITORIAL_LAUNCH_WEEK_SATURDAY = EDITORIAL_ROUND_START_DATE;
+
+/** @deprecated Same as EDITORIAL_ROUND_START_DATE */
+export const EDITORIAL_EARLIEST_LAUNCH_FRIDAY = EDITORIAL_ROUND_START_DATE;
+
+/** @deprecated Use EDITORIAL_ROUND_START_DATE */
+export const EDITORIAL_LAUNCH_WEEK_MONDAY = EDITORIAL_ROUND_START_DATE;
+
+/** When at least this many articles are live, Week 1 promotes the library instead of "Article 1". */
+export const EDITORIAL_EXISTING_LIBRARY_THRESHOLD = 10;
+
+export function publishedLearningCenterArticleCount(): number {
+  return listPublishedArticles().length;
+}
+
+export function hasExistingArticleLibrary(
+  publishedCount = publishedLearningCenterArticleCount(),
+): boolean {
+  return publishedCount >= EDITORIAL_EXISTING_LIBRARY_THRESHOLD;
+}
 
 export const PRE_LAUNCH_NOTE =
-  "Accelerated path: complete LLC, EIN, bank, and legal pages in one sprint week. No public posts until go/no-go passes. If the LLC is active by mid-week, you may publish Article 1 and the welcome Facebook post as early as Friday — otherwise start the content week Saturday.";
+  "Pre-launch sprint targets Friday, June 19, 2026: legal documents complete and the first public Facebook post. Delaware LLC and EIN are confirmed.";
 
 export const PRE_LAUNCH_GUIDANCE =
-  "Target go-live: Friday evening or Saturday once LLC, legal pages, EIN, and bank account are confirmed. Do not invite followers until Article 1 is live. To launch earlier, set EDITORIAL_EARLIEST_LAUNCH_FRIDAY or EDITORIAL_LAUNCH_WEEK_SATURDAY in weekly-editorial-schedule.ts and deploy.";
+  "Friday, June 19: legal pages (Privacy, Terms, /about) are complete. First Facebook post publishes today — Week 1 editorial calendar runs June 19–25.";
 
 export const LAUNCH_WEEK_NOTE =
-  "Week 1: if you did not publish Friday, start the Saturday–Friday plan today. Publish Article 1 and the welcome Facebook post by Wednesday at the latest before inviting anyone to follow the page.";
+  "Week 1 (Jun 19–25): legal documents completed and the first Facebook post went live Friday, June 19. Continue the Week 1 calendar — invite followers Wednesday, June 24 once a second post is live.";
+
+export function editorialLaunchWeekNote(
+  publishedCount = publishedLearningCenterArticleCount(),
+): string {
+  if (hasExistingArticleLibrary(publishedCount)) {
+    return `Week 1 (Jun 19–25): legal complete and welcome Facebook post live since Friday, June 19. ${publishedCount} Learning Center articles are already published — link posts to cornerstone articles. New Content Factory articles are #${publishedCount + 1}+. Invite followers Wednesday, June 24 once two posts are up.`;
+  }
+  return LAUNCH_WEEK_NOTE;
+}
+
+export function editorialPreLaunchNote(
+  publishedCount = publishedLearningCenterArticleCount(),
+): string {
+  if (hasExistingArticleLibrary(publishedCount)) {
+    return `${publishedCount} Learning Center articles are already published. Content and social publishing begin Friday, June 19, 2026 — legal documents complete that same day. Week 1 focuses on Facebook rollout, newsletter, and lead magnet.`;
+  }
+  return PRE_LAUNCH_NOTE;
+}
 
 export const FB_PAGE_INVITE_GUIDANCE =
-  "Publish Article 1 and the Week 1 rollout Facebook post before inviting anyone. Send follow invites on Thursday once the page shows a live article link and at least two posts.";
+  "First Facebook post published Friday, June 19. Send follow invites Wednesday, June 24 once a second post is live and the page has at least two posts.";
 
 /** @deprecated Catch-up mode removed — use pre-launch weeks until EDITORIAL_LAUNCH_WEEK_SATURDAY. */
 export const CATCH_UP_WEEK_NOTE = PRE_LAUNCH_NOTE;
@@ -48,6 +91,44 @@ interface SlotSchedule {
   produceDay: number;
   launchDay: number | null;
 }
+
+/** Week 1 kickoff schedules (day 0 = Friday June 19). */
+/** Week 1 kickoff when cornerstone articles are already live — no new article on day 0. */
+const FRIDAY_KICKOFF_ARTICLE_EXISTING_LIBRARY: SlotSchedule[] = [
+  { produceDay: 1, launchDay: 4 },
+  { produceDay: 2, launchDay: 5 },
+  { produceDay: 3, launchDay: 6 },
+];
+
+const FRIDAY_KICKOFF_ARTICLE: SlotSchedule[] = [
+  { produceDay: 0, launchDay: 0 },
+  { produceDay: 1, launchDay: 4 },
+  { produceDay: 2, launchDay: 6 },
+];
+
+const FRIDAY_KICKOFF_FACEBOOK: SlotSchedule[] = [
+  { produceDay: 0, launchDay: 0 },
+  { produceDay: 1, launchDay: 4 },
+  { produceDay: 2, launchDay: 6 },
+  { produceDay: 1, launchDay: 1 },
+  { produceDay: 2, launchDay: 2 },
+  { produceDay: 3, launchDay: 3 },
+  { produceDay: 4, launchDay: 4 },
+];
+
+const FRIDAY_KICKOFF_SINGLE: Record<"newsletter" | "lead_magnet" | "faq", SlotSchedule> = {
+  newsletter: { produceDay: 1, launchDay: 2 },
+  lead_magnet: { produceDay: 1, launchDay: 4 },
+  faq: { produceDay: 3, launchDay: 5 },
+};
+
+const FRIDAY_KICKOFF_IMAGE: SlotSchedule[] = [
+  { produceDay: 0, launchDay: 0 },
+  { produceDay: 1, launchDay: 4 },
+  { produceDay: 2, launchDay: 6 },
+  { produceDay: 3, launchDay: 6 },
+  { produceDay: 3, launchDay: 6 },
+];
 
 const ARTICLE_SCHEDULE: SlotSchedule[] = [
   { produceDay: 2, launchDay: 4 }, // Mon → Wed
@@ -98,67 +179,94 @@ const PRE_LAUNCH_WEEK_PLANS: Record<number, PreLaunchTaskTemplate[]> = {
   2: [
     {
       day: 2,
-      title: "Choose LLC legal name & registered agent",
+      title: "Delaware LLC + EIN — confirmed",
       detail:
-        "Pick the entity name and agent now so you can file on Monday of sprint week (or today if ready).",
+        "Entity formation and IRS EIN complete. Save the exact legal name for Privacy Policy, Terms, email footers, and /about.",
     },
     {
       day: 3,
-      title: "Gather formation documents",
-      detail: "Member info, operating agreement outline, and business address of record.",
+      title: "Business bank + legal page drafts",
+      detail:
+        "Open or confirm business bank account. Draft Privacy Policy, Terms, and /about with the Delaware LLC legal name.",
     },
     {
       day: 4,
       title: "Review Content Factory Week 1 drafts",
-      detail: "Edit copy offline only — no Facebook or Learning Center publishes yet.",
+      detail: "Edit welcome Facebook post and Week 1 assets offline — target first post Friday, June 19.",
     },
     {
       day: 5,
-      title: "Optional: file LLC early",
+      title: "Facebook page + email domain",
       detail:
-        "If your state allows expedited filing, submit now to hit Friday/Saturday go-live. Otherwise wait for sprint week.",
+        "Create or verify the Facebook page. Confirm Resend/domain. Pre-stage welcome post for June 19.",
     },
     {
       day: 6,
-      title: "Hold — no public posts",
-      detail: "Sprint week starts Monday. No marketing until go/no-go Friday.",
+      title: "Pre-stage Week 1 launch",
+      detail:
+        "Final proofread of legal pages and welcome post. Go live Friday, June 19 (legal complete + first post).",
     },
   ],
   1: [
     {
       day: 2,
-      title: "File LLC + confirm registered agent",
+      title: "Delaware LLC + EIN — confirmed",
       detail:
-        "Submit formation today. Save the exact legal entity name for Privacy Policy, Terms, and email footers.",
+        "Formation and EIN on file. Use the exact legal entity name on all public legal pages and email footers.",
     },
     {
       day: 3,
-      title: "Operating agreement + apply for EIN",
-      detail: "Finalize ownership terms and apply at IRS.gov once filing is accepted (or same day if eligible).",
+      title: "Business bank account",
+      detail: "Open or confirm the business bank account with EIN confirmation and operating agreement on file.",
     },
     {
       day: 4,
-      title: "Business bank account + legal pages",
+      title: "Legal pages drafted",
       detail:
-        "Open the bank account with EIN confirmation. Update Privacy Policy, Terms, and /about with the LLC name — deploy.",
+        "Privacy Policy, Terms, and /about finalized with Delaware LLC name and TPMO disclaimers.",
     },
     {
       day: 5,
-      title: "Facebook page, email domain, pre-stage Article 1",
-      detail:
-        "Create the Facebook page and draft posts (unpublished). Verify Resend/domain. Generate Article 1 hero image and proofread welcome post.",
+      title: "Legal pages deployed",
+      detail: "Privacy, Terms, and /about live on production — ready for the June 19 public launch.",
     },
     {
       day: 6,
-      title: "Go / no-go — go live Friday or Saturday",
+      title: "Go live — legal complete + first post",
       detail:
-        "LLC active, EIN, bank, legal pages, and disclaimers confirmed? Green → publish Article 1 + welcome Facebook post Friday evening, or start the full content week Saturday. Red → push EDITORIAL_LAUNCH_WEEK_SATURDAY forward.",
+        "Friday, June 19: all legal documents complete. Publish the welcome Facebook post and begin Week 1 editorial calendar.",
     },
   ],
 };
 
 export function editorialLaunchWeekStart(): Date {
-  return startOfWeekSaturday(parseIsoDate(EDITORIAL_LAUNCH_WEEK_SATURDAY));
+  return parseIsoDate(EDITORIAL_ROUND_START_DATE);
+}
+
+/** Editorial week anchor: Friday kickoff for Week 1, then Saturday-start weeks. */
+export function editorialWeekStart(date: Date): Date {
+  const launch = editorialLaunchWeekStart();
+  const d = new Date(date);
+  d.setHours(12, 0, 0, 0);
+  if (d < launch) {
+    return startOfWeekSaturday(d);
+  }
+
+  const launchWeekEnd = new Date(launch);
+  launchWeekEnd.setDate(launchWeekEnd.getDate() + 6);
+  if (d <= launchWeekEnd) {
+    return new Date(launch);
+  }
+
+  const week2Saturday = new Date(launchWeekEnd);
+  week2Saturday.setDate(week2Saturday.getDate() + 1);
+
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const daysSince = Math.floor((d.getTime() - week2Saturday.getTime()) / msPerDay);
+  const weekIndex = Math.max(0, Math.floor(daysSince / 7));
+  const ws = new Date(week2Saturday);
+  ws.setDate(ws.getDate() + weekIndex * 7);
+  return ws;
 }
 
 /** @deprecated Use editorialLaunchWeekStart */
@@ -167,29 +275,34 @@ export function editorialLaunchWeekMonday(): Date {
 }
 
 export function formatEarliestLaunchLabel(): string {
-  const fri = parseIsoDate(EDITORIAL_EARLIEST_LAUNCH_FRIDAY);
-  return fri.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric", year: "numeric" });
+  const start = parseIsoDate(EDITORIAL_ROUND_START_DATE);
+  return start.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
 export function formatLaunchWeekLabel(): string {
   return editorialWeekLabel(editorialLaunchWeekStart());
 }
 
-/** Whole weeks between weekStart Saturday and launch Saturday (0 = launch week, 1 = week before, etc.). */
+/** Whole weeks before the Friday kickoff (pre-launch sprint weeks only). */
 export function weeksBeforeLaunch(weekStart: Date): number {
+  if (!isPreLaunchWeek(weekStart)) return 0;
   const week = startOfWeekSaturday(weekStart);
   const launch = editorialLaunchWeekStart();
   const diffDays = Math.round((launch.getTime() - week.getTime()) / (24 * 60 * 60 * 1000));
-  return Math.max(0, Math.floor(diffDays / 7));
+  return Math.ceil(diffDays / 7);
 }
 
 export function isPreLaunchWeek(weekStart: Date): boolean {
-  const week = startOfWeekSaturday(weekStart);
-  return week < editorialLaunchWeekStart();
+  return editorialWeekStart(weekStart) < editorialLaunchWeekStart();
 }
 
 export function isLaunchWeek(weekStart: Date): boolean {
-  return formatIsoDate(startOfWeekSaturday(weekStart)) === formatIsoDate(editorialLaunchWeekStart());
+  return formatIsoDate(editorialWeekStart(weekStart)) === EDITORIAL_ROUND_START_DATE;
 }
 
 /** @deprecated Replaced by isPreLaunchWeek — catch-up mode is no longer used. */
@@ -221,23 +334,39 @@ export function buildPreLaunchEditorialCalendar(
   }));
 }
 
-/** Wednesday of the Saturday-start week containing `weekStart`. */
+/** Wednesday of the current editorial week (day 5 from Friday kickoff, day 4 from Saturday start). */
 export function wednesdayOfWeek(weekStart: Date): Date {
-  const d = startOfWeekSaturday(weekStart);
-  d.setDate(d.getDate() + 4);
+  const start = editorialWeekStart(weekStart);
+  const d = new Date(start);
+  d.setDate(d.getDate() + (isFridayKickoffWeek(start) ? 5 : 4));
   return d;
 }
 
-/** Pre-launch setup weeks, then standard Sat–Fri content from launch week onward. */
+export interface BuildWeeklyEditorialCalendarOptions {
+  weekStart?: Date;
+  titles?: Record<string, string>;
+  publishedArticleCount?: number;
+  draftStatusBySlot?: Record<string, string>;
+}
+
+/** @deprecated Use BuildWeeklyEditorialCalendarOptions */
+export type BuildEditorialCalendarOptions = BuildWeeklyEditorialCalendarOptions & { today?: Date };
+
+/** Pre-launch setup weeks, then standard content from launch week onward. */
 export function buildEditorialCalendar(
   options: BuildWeeklyEditorialCalendarOptions & { today?: Date } = {},
 ): EditorialCalendarEvent[] {
   const today = options.today ?? new Date();
-  const weekStart = startOfWeekSaturday(options.weekStart ?? today);
+  const weekStart = editorialWeekStart(options.weekStart ?? today);
   if (isPreLaunchWeek(weekStart)) {
     return buildPreLaunchEditorialCalendar(weekStart);
   }
-  return buildWeeklyEditorialCalendar({ weekStart, titles: options.titles });
+  return buildWeeklyEditorialCalendar({
+    weekStart,
+    titles: options.titles,
+    publishedArticleCount: options.publishedArticleCount,
+    draftStatusBySlot: options.draftStatusBySlot,
+  });
 }
 
 export function startOfWeekSaturday(date: Date): Date {
@@ -267,12 +396,69 @@ function addDays(base: Date, days: number): string {
   return formatIsoDate(d);
 }
 
-function slotLabel(type: ContentAssetType, slotIndex: number, count: number): string {
+function slotLabel(
+  type: ContentAssetType,
+  slotIndex: number,
+  count: number,
+  articleNumber?: number,
+): string {
+  if (type === "article" && articleNumber != null) {
+    return count > 1 ? `Learning Center Article ${articleNumber}` : `Learning Center Article ${articleNumber}`;
+  }
   const base = CONTENT_TYPE_LABELS[type];
   return count > 1 ? `${base} ${slotIndex + 1}` : base;
 }
 
-function scheduleForType(type: ContentAssetType, slotIndex: number): SlotSchedule {
+function editorialWeekIndex(weekStart: Date): number {
+  const anchor = editorialLaunchWeekStart();
+  const ws = editorialWeekStart(weekStart);
+  if (ws < anchor) return -1;
+  if (formatIsoDate(ws) === EDITORIAL_ROUND_START_DATE) return 0;
+  const week2Saturday = new Date(anchor);
+  week2Saturday.setDate(week2Saturday.getDate() + 7);
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const daysSince = Math.floor((ws.getTime() - week2Saturday.getTime()) / msPerDay);
+  return 1 + Math.max(0, Math.floor(daysSince / 7));
+}
+
+function articleNumberForSlot(
+  slotIndex: number,
+  weekStart: Date,
+  publishedArticleCount: number,
+): number {
+  const weekIndex = Math.max(0, editorialWeekIndex(weekStart));
+  return publishedArticleCount + weekIndex * 3 + slotIndex + 1;
+}
+
+function isFridayKickoffWeek(weekStart: Date): boolean {
+  return formatIsoDate(weekStart) === EDITORIAL_ROUND_START_DATE;
+}
+
+function scheduleForType(
+  type: ContentAssetType,
+  slotIndex: number,
+  weekStart: Date,
+  publishedArticleCount: number,
+): SlotSchedule {
+  if (isFridayKickoffWeek(weekStart)) {
+    switch (type) {
+      case "article":
+        if (hasExistingArticleLibrary(publishedArticleCount)) {
+          return FRIDAY_KICKOFF_ARTICLE_EXISTING_LIBRARY[slotIndex] ?? FRIDAY_KICKOFF_ARTICLE_EXISTING_LIBRARY[0];
+        }
+        return FRIDAY_KICKOFF_ARTICLE[slotIndex] ?? FRIDAY_KICKOFF_ARTICLE[0];
+      case "facebook_post":
+        return FRIDAY_KICKOFF_FACEBOOK[slotIndex] ?? FRIDAY_KICKOFF_FACEBOOK[0];
+      case "newsletter":
+        return FRIDAY_KICKOFF_SINGLE.newsletter;
+      case "lead_magnet":
+        return FRIDAY_KICKOFF_SINGLE.lead_magnet;
+      case "faq":
+        return FRIDAY_KICKOFF_SINGLE.faq;
+      case "image_prompt":
+        return FRIDAY_KICKOFF_IMAGE[slotIndex] ?? FRIDAY_KICKOFF_IMAGE[0];
+    }
+  }
   switch (type) {
     case "article":
       return ARTICLE_SCHEDULE[slotIndex] ?? ARTICLE_SCHEDULE[0];
@@ -322,24 +508,41 @@ function milestoneDetail(type: ContentAssetType, milestone: EditorialMilestone):
   }
 }
 
-export interface BuildWeeklyEditorialCalendarOptions {
-  weekStart?: Date;
-  /** Optional draft titles keyed by `${type}:${slotIndex}` */
-  titles?: Record<string, string>;
-}
-
 /** Build produce + launch milestones for every asset in the weekly batch plan. */
 export function buildWeeklyEditorialCalendar(
   options: BuildWeeklyEditorialCalendarOptions = {},
 ): EditorialCalendarEvent[] {
-  const weekStart = startOfWeekSaturday(options.weekStart ?? new Date());
+  const weekStart = editorialWeekStart(options.weekStart ?? new Date());
+  const publishedArticleCount =
+    options.publishedArticleCount ?? publishedLearningCenterArticleCount();
   const events: EditorialCalendarEvent[] = [];
+  const kickoff = isFridayKickoffWeek(weekStart);
+  const existingLibrary = hasExistingArticleLibrary(publishedArticleCount);
+
+  if (kickoff && existingLibrary) {
+    events.push({
+      id: "library:promote",
+      type: "facebook_post",
+      slotIndex: -2,
+      milestone: "launch",
+      title: `Promote ${publishedArticleCount} live Learning Center articles`,
+      date: addDays(weekStart, 0),
+      detail:
+        "Welcome Facebook post links to a cornerstone article — first post went live June 19; the library is already live.",
+      category: "content",
+      alreadyComplete: false,
+    });
+  }
 
   for (const slot of WEEKLY_CONTENT_BATCH_PLAN) {
     for (let i = 0; i < slot.count; i++) {
-      const schedule = scheduleForType(slot.type, i);
+      const schedule = scheduleForType(slot.type, i, weekStart, publishedArticleCount);
       const key = `${slot.type}:${i}`;
-      const label = slotLabel(slot.type, i, slot.count);
+      const draftStatus = options.draftStatusBySlot?.[key];
+      const draftAlreadyPublished = draftStatus === "published";
+      const articleNumber =
+        slot.type === "article" ? articleNumberForSlot(i, weekStart, publishedArticleCount) : undefined;
+      const label = slotLabel(slot.type, i, slot.count, articleNumber);
       const customTitle = options.titles?.[key];
       const title = customTitle ?? label;
 
@@ -351,9 +554,10 @@ export function buildWeeklyEditorialCalendar(
         title,
         date: addDays(weekStart, schedule.produceDay),
         detail: milestoneDetail(slot.type, "produce"),
+        alreadyComplete: draftAlreadyPublished,
       });
 
-      if (schedule.launchDay != null) {
+      if (schedule.launchDay != null && !draftAlreadyPublished) {
         events.push({
           id: `${key}:launch`,
           type: slot.type,
@@ -367,22 +571,23 @@ export function buildWeeklyEditorialCalendar(
     }
   }
 
-  // Network follower invites on Thursday (day 5)
+  // Network follower invites — always Wednesday of the editorial week
   events.push({
     id: "facebook_invite:launch",
     type: "facebook_post",
     slotIndex: 99,
     milestone: "launch",
     title: "Invite network to follow Facebook page",
-    date: addDays(weekStart, 5),
-    detail: "Send follow invites once Article 2 is live and you have at least two posts",
+    date: formatIsoDate(wednesdayOfWeek(weekStart)),
+    detail:
+      "Wednesday invite day — run the pipeline, then invite_agent.py (see sub-steps on calendar)",
   });
 
   return events.sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title));
 }
 
 export function editorialWeekLabel(weekStart: Date): string {
-  const start = startOfWeekSaturday(weekStart);
+  const start = editorialWeekStart(weekStart);
   const end = new Date(start);
   end.setDate(end.getDate() + 6);
   const fmt = (d: Date) =>
@@ -396,9 +601,61 @@ export function parseIsoDate(iso: string): Date {
 }
 
 export function shiftWeekStart(weekStart: Date, weeks: number): Date {
-  const d = startOfWeekSaturday(weekStart);
+  const anchor = editorialWeekStart(weekStart);
+  if (formatIsoDate(anchor) === EDITORIAL_ROUND_START_DATE) {
+    if (weeks <= 0) return new Date(anchor);
+    const week2Saturday = new Date(anchor);
+    week2Saturday.setDate(week2Saturday.getDate() + 7);
+    if (weeks === 1) return week2Saturday;
+    const d = new Date(week2Saturday);
+    d.setDate(d.getDate() + (weeks - 1) * 7);
+    return d;
+  }
+  const d = startOfWeekSaturday(anchor);
   d.setDate(d.getDate() + weeks * 7);
   return d;
+}
+
+function editorialWeekStartsBetween(startIso: string, endIso: string): Date[] {
+  const start = parseIsoDate(startIso);
+  const end = parseIsoDate(endIso);
+  const seen = new Set<string>();
+  const out: Date[] = [];
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    const weekStart = editorialWeekStart(cursor);
+    const key = formatIsoDate(weekStart);
+    if (!seen.has(key)) {
+      seen.add(key);
+      out.push(new Date(weekStart));
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return out.sort((a, b) => a.getTime() - b.getTime());
+}
+
+/** Merge editorial events for every editorial week that touches the calendar month. */
+export function buildEditorialCalendarForMonth(
+  monthStart: Date,
+  options: BuildWeeklyEditorialCalendarOptions & { today?: Date } = {},
+): EditorialCalendarEvent[] {
+  const month = monthStart.getMonth();
+  const year = monthStart.getFullYear();
+  const firstDay = new Date(year, month, 1, 12, 0, 0, 0);
+  const lastDay = new Date(year, month + 1, 0, 12, 0, 0, 0);
+  const weekStarts = editorialWeekStartsBetween(formatIsoDate(firstDay), formatIsoDate(lastDay));
+  const events: EditorialCalendarEvent[] = [];
+
+  for (const weekStart of weekStarts) {
+    for (const event of buildEditorialCalendar({ ...options, weekStart })) {
+      const eventDate = parseIsoDate(event.date);
+      if (eventDate.getMonth() === month && eventDate.getFullYear() === year) {
+        events.push(event);
+      }
+    }
+  }
+
+  return events.sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title));
 }
 
 /** Recommended local times (24h HH:mm) for produce vs launch actions. */

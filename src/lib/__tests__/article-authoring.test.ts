@@ -41,6 +41,7 @@ describe("article-authoring", () => {
     });
     expect(prompt).toContain("Multicultural");
     expect(prompt.toLowerCase()).toContain("photorealistic");
+    expect(prompt).toContain("CMS VISUAL RULES");
     expect(prompt.toLowerCase()).not.toContain("enroll now");
   });
 

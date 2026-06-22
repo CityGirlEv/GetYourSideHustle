@@ -126,15 +126,15 @@ export function touchCloudReloadCooldown(
 }
 
 /** Drop string draft rows that already match the saved baseline. */
-export function omitMatchingStringDrafts(
-  draft: Record<string, string>,
-  saved: Record<string, string>,
-  resolveBaseline?: (id: string) => string,
-): Record<string, string> {
+export function omitMatchingStringDrafts<T extends string>(
+  draft: Record<string, T>,
+  saved: Record<string, T>,
+  resolveBaseline?: (id: string) => T,
+): Record<string, T> {
   let changed = false;
   const next = { ...draft };
   for (const [id, value] of Object.entries(draft)) {
-    const baseline = resolveBaseline ? resolveBaseline(id) : (saved[id] ?? "");
+    const baseline = resolveBaseline ? resolveBaseline(id) : ((saved[id] ?? "") as T);
     if (value === baseline) {
       delete next[id];
       changed = true;

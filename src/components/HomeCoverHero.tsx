@@ -6,7 +6,7 @@ export function HomeCoverHero() {
     <img
       src={homeCoverHero}
       alt={`Before and after: from confusing Medicare plan choices to clarity with ${SITE_BRAND_THE}`}
-      className="block h-auto max-h-full w-full object-contain object-top leading-none"
+      className="block h-auto w-full"
     />
   );
 }

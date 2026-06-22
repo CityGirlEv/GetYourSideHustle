@@ -39,11 +39,10 @@ async function addPagesDomain(name) {
   }
 }
 
+// mypartb.com + www.mypartb.com are served by the Worker (routes), not Pages.
 const defaults = [
   "themedicareoptimizer.com",
   "www.themedicareoptimizer.com",
-  "mypartb.com",
-  "www.mypartb.com",
   "getpartb.com",
   "www.getpartb.com",
 ];

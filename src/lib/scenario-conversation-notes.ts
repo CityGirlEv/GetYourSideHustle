@@ -54,7 +54,7 @@ export async function updateScenarioConversationNote(
   const trimmed = body.trim();
   if (!trimmed) return false;
 
-  const { error } = await supabase.rpc("update_scenario_conversation_note", {
+  const { error } = await supabase.rpc("update_scenario_conversation_note" as any, {
     p_note: noteId,
     p_body: trimmed,
   });

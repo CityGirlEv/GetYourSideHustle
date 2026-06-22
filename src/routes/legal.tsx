@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { COMPARISON_ID_LABEL } from "@/lib/plan-comparison-copy";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -141,7 +142,7 @@ function DeleteDataForm() {
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="delete-scenario">Scenario ID (optional)</Label>
+            <Label htmlFor="delete-scenario">{COMPARISON_ID_LABEL} (optional)</Label>
             <Input
               id="delete-scenario"
               placeholder="SCN-XXXX"
@@ -163,7 +164,7 @@ function DeleteDataForm() {
               placeholder="Describe the data you want removed (contact opt-in, account, etc.)."
             />
           </div>
-          <TouchCheckboxField checked={confirm} onChange={(e) => setConfirm(e.target.checked)}>
+          <TouchCheckboxField checked={confirm} onChange={(e) => setConfirm((e.target as HTMLInputElement).checked)}>
             <span className="text-sm">
               I confirm this request relates to my own information and the details above are
               accurate.
@@ -285,7 +286,7 @@ function LegalPage() {
   }, []);
 
   return (
-    <AppShell>
+    <AppShell title="Legal & Privacy" subtitle="Policies and privacy tools for Part B Optimizer">
       <div className="max-w-3xl mx-auto px-4 py-8 space-y-10">
         <div className="space-y-3">
           <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">

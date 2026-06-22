@@ -785,7 +785,7 @@ export function VoiceIntakeWizard({
       expect === "verify"
         ? "I didn't hear you. Was that right? Please say yes or no."
         : expect === "confirm"
-          ? "I didn't hear you. Should I create the scenario? Please say yes or no."
+          ? "I didn't hear you. Should I create the comparison? Please say yes or no."
           : "I didn't catch that. Could you say it again?";
     if (!flowActive()) return;
     setTimeout(() => {
@@ -1413,7 +1413,7 @@ export function VoiceIntakeWizard({
           onSwitchToManual?.();
           return;
         }
-        reAsk("Should I create the scenario? Please say yes or no.", "confirm");
+        reAsk("Should I create the comparison? Please say yes or no.", "confirm");
         return;
       }
       default:
@@ -1564,7 +1564,7 @@ export function VoiceIntakeWizard({
       case "medsMore":
         return void ask("Any other medications? Yes or no?", "medsMore");
       case "confirm": {
-        const summary = `Let me confirm: born ${birthYear}, ZIP ${zip3}, ${county}, ${gender.replace(/_/g, " ")}, ${tobacco ? "tobacco user" : "non-tobacco"}, income ${income}, priority ${costPref === "minimize_monthly" ? "minimize cost" : "predictability"}, ${conditions.length} condition${conditions.length === 1 ? "" : "s"}, ${meds.length} medication${meds.length === 1 ? "" : "s"}. Should I create the scenario? Yes or no?`;
+        const summary = `Let me confirm: born ${birthYear}, ZIP ${zip3}, ${county}, ${gender.replace(/_/g, " ")}, ${tobacco ? "tobacco user" : "non-tobacco"}, income ${income}, priority ${costPref === "minimize_monthly" ? "minimize cost" : "predictability"}, ${conditions.length} condition${conditions.length === 1 ? "" : "s"}, ${meds.length} medication${meds.length === 1 ? "" : "s"}. Should I create the comparison? Yes or no?`;
         return void ask(summary, "confirm");
       }
       default:
@@ -1636,7 +1636,7 @@ export function VoiceIntakeWizard({
   const submit = async () => {
     setStep("submitting");
     setSubmitting(true);
-    await speak("Creating your scenario now.");
+    await speak("Creating your plan comparison now.");
     const { data, error } = await supabase.rpc("create_scenario", {
       p_birth_year: birthYear as number,
       p_zip3: zip3,
@@ -1650,7 +1650,7 @@ export function VoiceIntakeWizard({
     });
     setSubmitting(false);
     if (error || !data) {
-      toast.error(error?.message ?? "Could not create scenario");
+      toast.error(error?.message ?? "Could not create comparison");
       setStep("confirm");
       return;
     }
@@ -1680,7 +1680,7 @@ export function VoiceIntakeWizard({
     } catch {
       /* ignore */
     }
-    await speak(`Done. Your scenario ID is ${code.split("").join(" ")}.`);
+    await speak(`Done. Your comparison ID is ${code.split("").join(" ")}.`);
     setStep("done");
     onDone?.(code);
   };
@@ -2402,12 +2402,12 @@ export function VoiceIntakeWizard({
       {step === "intro" ? null : step === "submitting" ? (
         <Button className="w-full" disabled>
           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          Creating scenario…
+          Creating comparison…
         </Button>
       ) : step === "done" ? (
         <div className="text-center text-sm text-emerald font-semibold flex items-center justify-center gap-2">
           <Check className="h-4 w-4" />
-          Scenario created.
+          Comparison created.
         </div>
       ) : (
         <>
