@@ -1,16 +1,21 @@
 import type { LucideIcon } from "lucide-react";
 import {
   BookOpen,
+  Calculator,
   Calendar,
   ClipboardList,
   DollarSign,
   Facebook,
   FileSignature,
   FlaskConical,
+  GraduationCap,
   LayoutDashboard,
   ListChecks,
   Mail,
+  Map,
+  Megaphone,
   PenLine,
+  ShieldCheck,
   Sparkles,
   Users,
 } from "lucide-react";
@@ -52,6 +57,11 @@ export const ADMIN_CONTENT_GROUP: AdminNavGroup = {
       label: "Content Calendar",
       to: "/admin/calendar",
       icon: Calendar,
+    },
+    {
+      label: "Meta",
+      to: "/admin/meta",
+      icon: Megaphone,
     },
     {
       label: "Facebook Posts",
@@ -116,6 +126,18 @@ export const ADMIN_STAFF_GROUP: AdminNavGroup = {
 
 export const ADMIN_OPERATION_LINKS: AdminNavLink[] = [
   {
+    label: "Competitor Scouting",
+    to: "/admin/competitor-scouting",
+    icon: ShieldCheck,
+  },
+  {
+    label: "Lead Certificates",
+    to: "/admin",
+    hash: "lead-certificates",
+    search: { tab: "scenarios" },
+    icon: ShieldCheck,
+  },
+  {
     label: "Task Sheet",
     to: "/tasks",
     icon: ListChecks,
@@ -133,6 +155,16 @@ export const ADMIN_OPERATION_LINKS: AdminNavLink[] = [
 ];
 
 export const ADMIN_REFERENCE_LINKS: AdminNavLink[] = [
+  {
+    label: "Training",
+    to: "/admin/training",
+    icon: GraduationCap,
+  },
+  {
+    label: "Site Map",
+    to: "/admin/sitemap",
+    icon: Map,
+  },
   {
     label: "Sources",
     to: "/sources",

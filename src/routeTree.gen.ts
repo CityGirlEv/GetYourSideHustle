@@ -9,15 +9,18 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WorkbookRouteImport } from './routes/workbook'
 import { Route as VisitsRouteImport } from './routes/visits'
 import { Route as UsersRouteImport } from './routes/users'
 import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as TestingRouteImport } from './routes/testing'
 import { Route as TasksRouteImport } from './routes/tasks'
+import { Route as SubscribeRouteImport } from './routes/subscribe'
 import { Route as StaffRouteImport } from './routes/staff'
 import { Route as SourcesRouteImport } from './routes/sources'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SitemapInternalDotxmlRouteImport } from './routes/sitemap-internal[.]xml'
+import { Route as SitemapRouteImport } from './routes/sitemap'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as QaManualRouteImport } from './routes/qa-manual'
@@ -33,24 +36,35 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as StaffReportRouteImport } from './routes/staff_.report'
+import { Route as ScenarioOldRouteImport } from './routes/scenario.old'
 import { Route as ScenarioNewRouteImport } from './routes/scenario.new'
+import { Route as ScenarioBenchmarkRouteImport } from './routes/scenario.benchmark'
 import { Route as ScenarioCodeRouteImport } from './routes/scenario.$code'
 import { Route as LearningCenterSlugRouteImport } from './routes/learning-center_.$slug'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as AuthVerifyRouteImport } from './routes/auth.verify'
 import { Route as AdminUsersRouteImport } from './routes/admin_.users'
+import { Route as AdminTrainingRouteImport } from './routes/admin_.training'
 import { Route as AdminStaffRouteImport } from './routes/admin_.staff'
+import { Route as AdminSitemapRouteImport } from './routes/admin_.sitemap'
 import { Route as AdminPricingRouteImport } from './routes/admin_.pricing'
 import { Route as AdminNewsletterRouteImport } from './routes/admin_.newsletter'
+import { Route as AdminMetaRouteImport } from './routes/admin_.meta'
 import { Route as AdminFacebookPostsRouteImport } from './routes/admin_.facebook-posts'
+import { Route as AdminFacebookAdsRouteImport } from './routes/admin_.facebook-ads'
 import { Route as AdminEmailTemplatesRouteImport } from './routes/admin_.email-templates'
 import { Route as AdminContentFactoryRouteImport } from './routes/admin_.content-factory'
+import { Route as AdminCompetitorScoutingRouteImport } from './routes/admin_.competitor-scouting'
 import { Route as AdminCalendarRouteImport } from './routes/admin_.calendar'
+import { Route as AdminBudgetRouteImport } from './routes/admin_.budget'
 import { Route as AdminArticlesRouteImport } from './routes/admin_.articles'
+import { Route as ScenarioEstimateCodeRouteImport } from './routes/scenario.estimate.$code'
+import { Route as ScenarioEstimateCreatedCodeRouteImport } from './routes/scenario.estimate-created.$code'
 import { Route as ScenarioCreatedCodeRouteImport } from './routes/scenario.created.$code'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe/webhook'
 import { Route as ApiPublicTranscribeRouteImport } from './routes/api/public/transcribe'
 import { Route as ApiPublicTrackVisitRouteImport } from './routes/api/public/track-visit'
+import { Route as ApiPublicTrackLeadEventRouteImport } from './routes/api/public/track-lead-event'
 import { Route as ApiPublicSendTestEmailRouteImport } from './routes/api/public/send-test-email'
 import { Route as ApiEmailSuppressionRouteImport } from './routes/api/email/suppression'
 import { Route as ApiCronQaDailySummaryRouteImport } from './routes/api/cron/qa-daily-summary'
@@ -62,6 +76,11 @@ import { Route as ApiEmailAuthWebhookRouteImport } from './routes/api/email/auth
 import { Route as ApiEmailAuthPreviewRouteImport } from './routes/api/email/auth/preview'
 import { Route as AgentScenarioCodeEditRouteImport } from './routes/agent.scenario.$code.edit'
 
+const WorkbookRoute = WorkbookRouteImport.update({
+  id: '/workbook',
+  path: '/workbook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const VisitsRoute = VisitsRouteImport.update({
   id: '/visits',
   path: '/visits',
@@ -87,6 +106,11 @@ const TasksRoute = TasksRouteImport.update({
   path: '/tasks',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SubscribeRoute = SubscribeRouteImport.update({
+  id: '/subscribe',
+  path: '/subscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StaffRoute = StaffRouteImport.update({
   id: '/staff',
   path: '/staff',
@@ -105,6 +129,11 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
 const SitemapInternalDotxmlRoute = SitemapInternalDotxmlRouteImport.update({
   id: '/sitemap-internal.xml',
   path: '/sitemap-internal.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapRoute = SitemapRouteImport.update({
+  id: '/sitemap',
+  path: '/sitemap',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -182,9 +211,19 @@ const StaffReportRoute = StaffReportRouteImport.update({
   path: '/staff/report',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ScenarioOldRoute = ScenarioOldRouteImport.update({
+  id: '/scenario/old',
+  path: '/scenario/old',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ScenarioNewRoute = ScenarioNewRouteImport.update({
   id: '/scenario/new',
   path: '/scenario/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScenarioBenchmarkRoute = ScenarioBenchmarkRouteImport.update({
+  id: '/scenario/benchmark',
+  path: '/scenario/benchmark',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ScenarioCodeRoute = ScenarioCodeRouteImport.update({
@@ -212,9 +251,19 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
   path: '/admin/users',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminTrainingRoute = AdminTrainingRouteImport.update({
+  id: '/admin_/training',
+  path: '/admin/training',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminStaffRoute = AdminStaffRouteImport.update({
   id: '/admin_/staff',
   path: '/admin/staff',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminSitemapRoute = AdminSitemapRouteImport.update({
+  id: '/admin_/sitemap',
+  path: '/admin/sitemap',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminPricingRoute = AdminPricingRouteImport.update({
@@ -227,9 +276,19 @@ const AdminNewsletterRoute = AdminNewsletterRouteImport.update({
   path: '/admin/newsletter',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminMetaRoute = AdminMetaRouteImport.update({
+  id: '/admin_/meta',
+  path: '/admin/meta',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminFacebookPostsRoute = AdminFacebookPostsRouteImport.update({
   id: '/admin_/facebook-posts',
   path: '/admin/facebook-posts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminFacebookAdsRoute = AdminFacebookAdsRouteImport.update({
+  id: '/admin_/facebook-ads',
+  path: '/admin/facebook-ads',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminEmailTemplatesRoute = AdminEmailTemplatesRouteImport.update({
@@ -242,9 +301,19 @@ const AdminContentFactoryRoute = AdminContentFactoryRouteImport.update({
   path: '/admin/content-factory',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminCompetitorScoutingRoute = AdminCompetitorScoutingRouteImport.update({
+  id: '/admin_/competitor-scouting',
+  path: '/admin/competitor-scouting',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminCalendarRoute = AdminCalendarRouteImport.update({
   id: '/admin_/calendar',
   path: '/admin/calendar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminBudgetRoute = AdminBudgetRouteImport.update({
+  id: '/admin_/budget',
+  path: '/admin/budget',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminArticlesRoute = AdminArticlesRouteImport.update({
@@ -252,6 +321,17 @@ const AdminArticlesRoute = AdminArticlesRouteImport.update({
   path: '/admin/articles',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ScenarioEstimateCodeRoute = ScenarioEstimateCodeRouteImport.update({
+  id: '/scenario/estimate/$code',
+  path: '/scenario/estimate/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScenarioEstimateCreatedCodeRoute =
+  ScenarioEstimateCreatedCodeRouteImport.update({
+    id: '/scenario/estimate-created/$code',
+    path: '/scenario/estimate-created/$code',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ScenarioCreatedCodeRoute = ScenarioCreatedCodeRouteImport.update({
   id: '/scenario/created/$code',
   path: '/scenario/created/$code',
@@ -270,6 +350,11 @@ const ApiPublicTranscribeRoute = ApiPublicTranscribeRouteImport.update({
 const ApiPublicTrackVisitRoute = ApiPublicTrackVisitRouteImport.update({
   id: '/api/public/track-visit',
   path: '/api/public/track-visit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicTrackLeadEventRoute = ApiPublicTrackLeadEventRouteImport.update({
+  id: '/api/public/track-lead-event',
+  path: '/api/public/track-lead-event',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicSendTestEmailRoute = ApiPublicSendTestEmailRouteImport.update({
@@ -340,38 +425,52 @@ export interface FileRoutesByFullPath {
   '/qa-manual': typeof QaManualRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sitemap': typeof SitemapRoute
   '/sitemap-internal.xml': typeof SitemapInternalDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sources': typeof SourcesRoute
   '/staff': typeof StaffRoute
+  '/subscribe': typeof SubscribeRoute
   '/tasks': typeof TasksRoute
   '/testing': typeof TestingRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/users': typeof UsersRoute
   '/visits': typeof VisitsRoute
+  '/workbook': typeof WorkbookRoute
   '/admin/articles': typeof AdminArticlesRoute
+  '/admin/budget': typeof AdminBudgetRoute
   '/admin/calendar': typeof AdminCalendarRoute
+  '/admin/competitor-scouting': typeof AdminCompetitorScoutingRoute
   '/admin/content-factory': typeof AdminContentFactoryRoute
   '/admin/email-templates': typeof AdminEmailTemplatesRoute
+  '/admin/facebook-ads': typeof AdminFacebookAdsRoute
   '/admin/facebook-posts': typeof AdminFacebookPostsRoute
+  '/admin/meta': typeof AdminMetaRoute
   '/admin/newsletter': typeof AdminNewsletterRoute
   '/admin/pricing': typeof AdminPricingRoute
+  '/admin/sitemap': typeof AdminSitemapRoute
   '/admin/staff': typeof AdminStaffRoute
+  '/admin/training': typeof AdminTrainingRoute
   '/admin/users': typeof AdminUsersRoute
   '/auth/verify': typeof AuthVerifyRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/learning-center/$slug': typeof LearningCenterSlugRoute
   '/scenario/$code': typeof ScenarioCodeRoute
+  '/scenario/benchmark': typeof ScenarioBenchmarkRoute
   '/scenario/new': typeof ScenarioNewRoute
+  '/scenario/old': typeof ScenarioOldRoute
   '/staff/report': typeof StaffReportRoute
   '/agent/scenario/$code': typeof AgentScenarioCodeRouteWithChildren
   '/api/cron/qa-daily-summary': typeof ApiCronQaDailySummaryRoute
   '/api/email/suppression': typeof ApiEmailSuppressionRoute
   '/api/public/send-test-email': typeof ApiPublicSendTestEmailRoute
+  '/api/public/track-lead-event': typeof ApiPublicTrackLeadEventRoute
   '/api/public/track-visit': typeof ApiPublicTrackVisitRoute
   '/api/public/transcribe': typeof ApiPublicTranscribeRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/scenario/created/$code': typeof ScenarioCreatedCodeRoute
+  '/scenario/estimate-created/$code': typeof ScenarioEstimateCreatedCodeRoute
+  '/scenario/estimate/$code': typeof ScenarioEstimateCodeRoute
   '/agent/scenario/$code/edit': typeof AgentScenarioCodeEditRoute
   '/api/email/auth/preview': typeof ApiEmailAuthPreviewRoute
   '/api/email/auth/webhook': typeof ApiEmailAuthWebhookRoute
@@ -394,38 +493,52 @@ export interface FileRoutesByTo {
   '/qa-manual': typeof QaManualRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sitemap': typeof SitemapRoute
   '/sitemap-internal.xml': typeof SitemapInternalDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sources': typeof SourcesRoute
   '/staff': typeof StaffRoute
+  '/subscribe': typeof SubscribeRoute
   '/tasks': typeof TasksRoute
   '/testing': typeof TestingRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/users': typeof UsersRoute
   '/visits': typeof VisitsRoute
+  '/workbook': typeof WorkbookRoute
   '/admin/articles': typeof AdminArticlesRoute
+  '/admin/budget': typeof AdminBudgetRoute
   '/admin/calendar': typeof AdminCalendarRoute
+  '/admin/competitor-scouting': typeof AdminCompetitorScoutingRoute
   '/admin/content-factory': typeof AdminContentFactoryRoute
   '/admin/email-templates': typeof AdminEmailTemplatesRoute
+  '/admin/facebook-ads': typeof AdminFacebookAdsRoute
   '/admin/facebook-posts': typeof AdminFacebookPostsRoute
+  '/admin/meta': typeof AdminMetaRoute
   '/admin/newsletter': typeof AdminNewsletterRoute
   '/admin/pricing': typeof AdminPricingRoute
+  '/admin/sitemap': typeof AdminSitemapRoute
   '/admin/staff': typeof AdminStaffRoute
+  '/admin/training': typeof AdminTrainingRoute
   '/admin/users': typeof AdminUsersRoute
   '/auth/verify': typeof AuthVerifyRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/learning-center/$slug': typeof LearningCenterSlugRoute
   '/scenario/$code': typeof ScenarioCodeRoute
+  '/scenario/benchmark': typeof ScenarioBenchmarkRoute
   '/scenario/new': typeof ScenarioNewRoute
+  '/scenario/old': typeof ScenarioOldRoute
   '/staff/report': typeof StaffReportRoute
   '/agent/scenario/$code': typeof AgentScenarioCodeRouteWithChildren
   '/api/cron/qa-daily-summary': typeof ApiCronQaDailySummaryRoute
   '/api/email/suppression': typeof ApiEmailSuppressionRoute
   '/api/public/send-test-email': typeof ApiPublicSendTestEmailRoute
+  '/api/public/track-lead-event': typeof ApiPublicTrackLeadEventRoute
   '/api/public/track-visit': typeof ApiPublicTrackVisitRoute
   '/api/public/transcribe': typeof ApiPublicTranscribeRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/scenario/created/$code': typeof ScenarioCreatedCodeRoute
+  '/scenario/estimate-created/$code': typeof ScenarioEstimateCreatedCodeRoute
+  '/scenario/estimate/$code': typeof ScenarioEstimateCodeRoute
   '/agent/scenario/$code/edit': typeof AgentScenarioCodeEditRoute
   '/api/email/auth/preview': typeof ApiEmailAuthPreviewRoute
   '/api/email/auth/webhook': typeof ApiEmailAuthWebhookRoute
@@ -449,38 +562,52 @@ export interface FileRoutesById {
   '/qa-manual': typeof QaManualRoute
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sitemap': typeof SitemapRoute
   '/sitemap-internal.xml': typeof SitemapInternalDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sources': typeof SourcesRoute
   '/staff': typeof StaffRoute
+  '/subscribe': typeof SubscribeRoute
   '/tasks': typeof TasksRoute
   '/testing': typeof TestingRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/users': typeof UsersRoute
   '/visits': typeof VisitsRoute
+  '/workbook': typeof WorkbookRoute
   '/admin_/articles': typeof AdminArticlesRoute
+  '/admin_/budget': typeof AdminBudgetRoute
   '/admin_/calendar': typeof AdminCalendarRoute
+  '/admin_/competitor-scouting': typeof AdminCompetitorScoutingRoute
   '/admin_/content-factory': typeof AdminContentFactoryRoute
   '/admin_/email-templates': typeof AdminEmailTemplatesRoute
+  '/admin_/facebook-ads': typeof AdminFacebookAdsRoute
   '/admin_/facebook-posts': typeof AdminFacebookPostsRoute
+  '/admin_/meta': typeof AdminMetaRoute
   '/admin_/newsletter': typeof AdminNewsletterRoute
   '/admin_/pricing': typeof AdminPricingRoute
+  '/admin_/sitemap': typeof AdminSitemapRoute
   '/admin_/staff': typeof AdminStaffRoute
+  '/admin_/training': typeof AdminTrainingRoute
   '/admin_/users': typeof AdminUsersRoute
   '/auth/verify': typeof AuthVerifyRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/learning-center_/$slug': typeof LearningCenterSlugRoute
   '/scenario/$code': typeof ScenarioCodeRoute
+  '/scenario/benchmark': typeof ScenarioBenchmarkRoute
   '/scenario/new': typeof ScenarioNewRoute
+  '/scenario/old': typeof ScenarioOldRoute
   '/staff_/report': typeof StaffReportRoute
   '/agent/scenario/$code': typeof AgentScenarioCodeRouteWithChildren
   '/api/cron/qa-daily-summary': typeof ApiCronQaDailySummaryRoute
   '/api/email/suppression': typeof ApiEmailSuppressionRoute
   '/api/public/send-test-email': typeof ApiPublicSendTestEmailRoute
+  '/api/public/track-lead-event': typeof ApiPublicTrackLeadEventRoute
   '/api/public/track-visit': typeof ApiPublicTrackVisitRoute
   '/api/public/transcribe': typeof ApiPublicTranscribeRoute
   '/api/stripe/webhook': typeof ApiStripeWebhookRoute
   '/scenario/created/$code': typeof ScenarioCreatedCodeRoute
+  '/scenario/estimate-created/$code': typeof ScenarioEstimateCreatedCodeRoute
+  '/scenario/estimate/$code': typeof ScenarioEstimateCodeRoute
   '/agent/scenario/$code/edit': typeof AgentScenarioCodeEditRoute
   '/api/email/auth/preview': typeof ApiEmailAuthPreviewRoute
   '/api/email/auth/webhook': typeof ApiEmailAuthWebhookRoute
@@ -505,38 +632,52 @@ export interface FileRouteTypes {
     | '/qa-manual'
     | '/register'
     | '/reset-password'
+    | '/sitemap'
     | '/sitemap-internal.xml'
     | '/sitemap.xml'
     | '/sources'
     | '/staff'
+    | '/subscribe'
     | '/tasks'
     | '/testing'
     | '/unsubscribe'
     | '/users'
     | '/visits'
+    | '/workbook'
     | '/admin/articles'
+    | '/admin/budget'
     | '/admin/calendar'
+    | '/admin/competitor-scouting'
     | '/admin/content-factory'
     | '/admin/email-templates'
+    | '/admin/facebook-ads'
     | '/admin/facebook-posts'
+    | '/admin/meta'
     | '/admin/newsletter'
     | '/admin/pricing'
+    | '/admin/sitemap'
     | '/admin/staff'
+    | '/admin/training'
     | '/admin/users'
     | '/auth/verify'
     | '/email/unsubscribe'
     | '/learning-center/$slug'
     | '/scenario/$code'
+    | '/scenario/benchmark'
     | '/scenario/new'
+    | '/scenario/old'
     | '/staff/report'
     | '/agent/scenario/$code'
     | '/api/cron/qa-daily-summary'
     | '/api/email/suppression'
     | '/api/public/send-test-email'
+    | '/api/public/track-lead-event'
     | '/api/public/track-visit'
     | '/api/public/transcribe'
     | '/api/stripe/webhook'
     | '/scenario/created/$code'
+    | '/scenario/estimate-created/$code'
+    | '/scenario/estimate/$code'
     | '/agent/scenario/$code/edit'
     | '/api/email/auth/preview'
     | '/api/email/auth/webhook'
@@ -559,38 +700,52 @@ export interface FileRouteTypes {
     | '/qa-manual'
     | '/register'
     | '/reset-password'
+    | '/sitemap'
     | '/sitemap-internal.xml'
     | '/sitemap.xml'
     | '/sources'
     | '/staff'
+    | '/subscribe'
     | '/tasks'
     | '/testing'
     | '/unsubscribe'
     | '/users'
     | '/visits'
+    | '/workbook'
     | '/admin/articles'
+    | '/admin/budget'
     | '/admin/calendar'
+    | '/admin/competitor-scouting'
     | '/admin/content-factory'
     | '/admin/email-templates'
+    | '/admin/facebook-ads'
     | '/admin/facebook-posts'
+    | '/admin/meta'
     | '/admin/newsletter'
     | '/admin/pricing'
+    | '/admin/sitemap'
     | '/admin/staff'
+    | '/admin/training'
     | '/admin/users'
     | '/auth/verify'
     | '/email/unsubscribe'
     | '/learning-center/$slug'
     | '/scenario/$code'
+    | '/scenario/benchmark'
     | '/scenario/new'
+    | '/scenario/old'
     | '/staff/report'
     | '/agent/scenario/$code'
     | '/api/cron/qa-daily-summary'
     | '/api/email/suppression'
     | '/api/public/send-test-email'
+    | '/api/public/track-lead-event'
     | '/api/public/track-visit'
     | '/api/public/transcribe'
     | '/api/stripe/webhook'
     | '/scenario/created/$code'
+    | '/scenario/estimate-created/$code'
+    | '/scenario/estimate/$code'
     | '/agent/scenario/$code/edit'
     | '/api/email/auth/preview'
     | '/api/email/auth/webhook'
@@ -613,38 +768,52 @@ export interface FileRouteTypes {
     | '/qa-manual'
     | '/register'
     | '/reset-password'
+    | '/sitemap'
     | '/sitemap-internal.xml'
     | '/sitemap.xml'
     | '/sources'
     | '/staff'
+    | '/subscribe'
     | '/tasks'
     | '/testing'
     | '/unsubscribe'
     | '/users'
     | '/visits'
+    | '/workbook'
     | '/admin_/articles'
+    | '/admin_/budget'
     | '/admin_/calendar'
+    | '/admin_/competitor-scouting'
     | '/admin_/content-factory'
     | '/admin_/email-templates'
+    | '/admin_/facebook-ads'
     | '/admin_/facebook-posts'
+    | '/admin_/meta'
     | '/admin_/newsletter'
     | '/admin_/pricing'
+    | '/admin_/sitemap'
     | '/admin_/staff'
+    | '/admin_/training'
     | '/admin_/users'
     | '/auth/verify'
     | '/email/unsubscribe'
     | '/learning-center_/$slug'
     | '/scenario/$code'
+    | '/scenario/benchmark'
     | '/scenario/new'
+    | '/scenario/old'
     | '/staff_/report'
     | '/agent/scenario/$code'
     | '/api/cron/qa-daily-summary'
     | '/api/email/suppression'
     | '/api/public/send-test-email'
+    | '/api/public/track-lead-event'
     | '/api/public/track-visit'
     | '/api/public/transcribe'
     | '/api/stripe/webhook'
     | '/scenario/created/$code'
+    | '/scenario/estimate-created/$code'
+    | '/scenario/estimate/$code'
     | '/agent/scenario/$code/edit'
     | '/api/email/auth/preview'
     | '/api/email/auth/webhook'
@@ -668,36 +837,50 @@ export interface RootRouteChildren {
   QaManualRoute: typeof QaManualRoute
   RegisterRoute: typeof RegisterRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  SitemapRoute: typeof SitemapRoute
   SitemapInternalDotxmlRoute: typeof SitemapInternalDotxmlRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   SourcesRoute: typeof SourcesRoute
   StaffRoute: typeof StaffRoute
+  SubscribeRoute: typeof SubscribeRoute
   TasksRoute: typeof TasksRoute
   TestingRoute: typeof TestingRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
   UsersRoute: typeof UsersRoute
   VisitsRoute: typeof VisitsRoute
+  WorkbookRoute: typeof WorkbookRoute
   AdminArticlesRoute: typeof AdminArticlesRoute
+  AdminBudgetRoute: typeof AdminBudgetRoute
   AdminCalendarRoute: typeof AdminCalendarRoute
+  AdminCompetitorScoutingRoute: typeof AdminCompetitorScoutingRoute
   AdminContentFactoryRoute: typeof AdminContentFactoryRoute
   AdminEmailTemplatesRoute: typeof AdminEmailTemplatesRoute
+  AdminFacebookAdsRoute: typeof AdminFacebookAdsRoute
   AdminFacebookPostsRoute: typeof AdminFacebookPostsRoute
+  AdminMetaRoute: typeof AdminMetaRoute
   AdminNewsletterRoute: typeof AdminNewsletterRoute
   AdminPricingRoute: typeof AdminPricingRoute
+  AdminSitemapRoute: typeof AdminSitemapRoute
   AdminStaffRoute: typeof AdminStaffRoute
+  AdminTrainingRoute: typeof AdminTrainingRoute
   AdminUsersRoute: typeof AdminUsersRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   LearningCenterSlugRoute: typeof LearningCenterSlugRoute
   ScenarioCodeRoute: typeof ScenarioCodeRoute
+  ScenarioBenchmarkRoute: typeof ScenarioBenchmarkRoute
   ScenarioNewRoute: typeof ScenarioNewRoute
+  ScenarioOldRoute: typeof ScenarioOldRoute
   StaffReportRoute: typeof StaffReportRoute
   ApiCronQaDailySummaryRoute: typeof ApiCronQaDailySummaryRoute
   ApiEmailSuppressionRoute: typeof ApiEmailSuppressionRoute
   ApiPublicSendTestEmailRoute: typeof ApiPublicSendTestEmailRoute
+  ApiPublicTrackLeadEventRoute: typeof ApiPublicTrackLeadEventRoute
   ApiPublicTrackVisitRoute: typeof ApiPublicTrackVisitRoute
   ApiPublicTranscribeRoute: typeof ApiPublicTranscribeRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   ScenarioCreatedCodeRoute: typeof ScenarioCreatedCodeRoute
+  ScenarioEstimateCreatedCodeRoute: typeof ScenarioEstimateCreatedCodeRoute
+  ScenarioEstimateCodeRoute: typeof ScenarioEstimateCodeRoute
   ApiEmailAuthPreviewRoute: typeof ApiEmailAuthPreviewRoute
   ApiEmailAuthWebhookRoute: typeof ApiEmailAuthWebhookRoute
   ApiEmailQueueProcessRoute: typeof ApiEmailQueueProcessRoute
@@ -707,6 +890,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/workbook': {
+      id: '/workbook'
+      path: '/workbook'
+      fullPath: '/workbook'
+      preLoaderRoute: typeof WorkbookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/visits': {
       id: '/visits'
       path: '/visits'
@@ -742,6 +932,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TasksRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/subscribe': {
+      id: '/subscribe'
+      path: '/subscribe'
+      fullPath: '/subscribe'
+      preLoaderRoute: typeof SubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/staff': {
       id: '/staff'
       path: '/staff'
@@ -768,6 +965,13 @@ declare module '@tanstack/react-router' {
       path: '/sitemap-internal.xml'
       fullPath: '/sitemap-internal.xml'
       preLoaderRoute: typeof SitemapInternalDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap': {
+      id: '/sitemap'
+      path: '/sitemap'
+      fullPath: '/sitemap'
+      preLoaderRoute: typeof SitemapRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -875,11 +1079,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StaffReportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/scenario/old': {
+      id: '/scenario/old'
+      path: '/scenario/old'
+      fullPath: '/scenario/old'
+      preLoaderRoute: typeof ScenarioOldRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/scenario/new': {
       id: '/scenario/new'
       path: '/scenario/new'
       fullPath: '/scenario/new'
       preLoaderRoute: typeof ScenarioNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scenario/benchmark': {
+      id: '/scenario/benchmark'
+      path: '/scenario/benchmark'
+      fullPath: '/scenario/benchmark'
+      preLoaderRoute: typeof ScenarioBenchmarkRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/scenario/$code': {
@@ -917,11 +1135,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin_/training': {
+      id: '/admin_/training'
+      path: '/admin/training'
+      fullPath: '/admin/training'
+      preLoaderRoute: typeof AdminTrainingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin_/staff': {
       id: '/admin_/staff'
       path: '/admin/staff'
       fullPath: '/admin/staff'
       preLoaderRoute: typeof AdminStaffRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin_/sitemap': {
+      id: '/admin_/sitemap'
+      path: '/admin/sitemap'
+      fullPath: '/admin/sitemap'
+      preLoaderRoute: typeof AdminSitemapRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin_/pricing': {
@@ -938,11 +1170,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminNewsletterRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin_/meta': {
+      id: '/admin_/meta'
+      path: '/admin/meta'
+      fullPath: '/admin/meta'
+      preLoaderRoute: typeof AdminMetaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin_/facebook-posts': {
       id: '/admin_/facebook-posts'
       path: '/admin/facebook-posts'
       fullPath: '/admin/facebook-posts'
       preLoaderRoute: typeof AdminFacebookPostsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin_/facebook-ads': {
+      id: '/admin_/facebook-ads'
+      path: '/admin/facebook-ads'
+      fullPath: '/admin/facebook-ads'
+      preLoaderRoute: typeof AdminFacebookAdsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin_/email-templates': {
@@ -959,6 +1205,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminContentFactoryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin_/competitor-scouting': {
+      id: '/admin_/competitor-scouting'
+      path: '/admin/competitor-scouting'
+      fullPath: '/admin/competitor-scouting'
+      preLoaderRoute: typeof AdminCompetitorScoutingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin_/calendar': {
       id: '/admin_/calendar'
       path: '/admin/calendar'
@@ -966,11 +1219,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCalendarRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin_/budget': {
+      id: '/admin_/budget'
+      path: '/admin/budget'
+      fullPath: '/admin/budget'
+      preLoaderRoute: typeof AdminBudgetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin_/articles': {
       id: '/admin_/articles'
       path: '/admin/articles'
       fullPath: '/admin/articles'
       preLoaderRoute: typeof AdminArticlesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scenario/estimate/$code': {
+      id: '/scenario/estimate/$code'
+      path: '/scenario/estimate/$code'
+      fullPath: '/scenario/estimate/$code'
+      preLoaderRoute: typeof ScenarioEstimateCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scenario/estimate-created/$code': {
+      id: '/scenario/estimate-created/$code'
+      path: '/scenario/estimate-created/$code'
+      fullPath: '/scenario/estimate-created/$code'
+      preLoaderRoute: typeof ScenarioEstimateCreatedCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/scenario/created/$code': {
@@ -999,6 +1273,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/track-visit'
       fullPath: '/api/public/track-visit'
       preLoaderRoute: typeof ApiPublicTrackVisitRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/track-lead-event': {
+      id: '/api/public/track-lead-event'
+      path: '/api/public/track-lead-event'
+      fullPath: '/api/public/track-lead-event'
+      preLoaderRoute: typeof ApiPublicTrackLeadEventRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/send-test-email': {
@@ -1120,36 +1401,50 @@ const rootRouteChildren: RootRouteChildren = {
   QaManualRoute: QaManualRoute,
   RegisterRoute: RegisterRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  SitemapRoute: SitemapRoute,
   SitemapInternalDotxmlRoute: SitemapInternalDotxmlRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   SourcesRoute: SourcesRoute,
   StaffRoute: StaffRoute,
+  SubscribeRoute: SubscribeRoute,
   TasksRoute: TasksRoute,
   TestingRoute: TestingRoute,
   UnsubscribeRoute: UnsubscribeRoute,
   UsersRoute: UsersRoute,
   VisitsRoute: VisitsRoute,
+  WorkbookRoute: WorkbookRoute,
   AdminArticlesRoute: AdminArticlesRoute,
+  AdminBudgetRoute: AdminBudgetRoute,
   AdminCalendarRoute: AdminCalendarRoute,
+  AdminCompetitorScoutingRoute: AdminCompetitorScoutingRoute,
   AdminContentFactoryRoute: AdminContentFactoryRoute,
   AdminEmailTemplatesRoute: AdminEmailTemplatesRoute,
+  AdminFacebookAdsRoute: AdminFacebookAdsRoute,
   AdminFacebookPostsRoute: AdminFacebookPostsRoute,
+  AdminMetaRoute: AdminMetaRoute,
   AdminNewsletterRoute: AdminNewsletterRoute,
   AdminPricingRoute: AdminPricingRoute,
+  AdminSitemapRoute: AdminSitemapRoute,
   AdminStaffRoute: AdminStaffRoute,
+  AdminTrainingRoute: AdminTrainingRoute,
   AdminUsersRoute: AdminUsersRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   LearningCenterSlugRoute: LearningCenterSlugRoute,
   ScenarioCodeRoute: ScenarioCodeRoute,
+  ScenarioBenchmarkRoute: ScenarioBenchmarkRoute,
   ScenarioNewRoute: ScenarioNewRoute,
+  ScenarioOldRoute: ScenarioOldRoute,
   StaffReportRoute: StaffReportRoute,
   ApiCronQaDailySummaryRoute: ApiCronQaDailySummaryRoute,
   ApiEmailSuppressionRoute: ApiEmailSuppressionRoute,
   ApiPublicSendTestEmailRoute: ApiPublicSendTestEmailRoute,
+  ApiPublicTrackLeadEventRoute: ApiPublicTrackLeadEventRoute,
   ApiPublicTrackVisitRoute: ApiPublicTrackVisitRoute,
   ApiPublicTranscribeRoute: ApiPublicTranscribeRoute,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   ScenarioCreatedCodeRoute: ScenarioCreatedCodeRoute,
+  ScenarioEstimateCreatedCodeRoute: ScenarioEstimateCreatedCodeRoute,
+  ScenarioEstimateCodeRoute: ScenarioEstimateCodeRoute,
   ApiEmailAuthPreviewRoute: ApiEmailAuthPreviewRoute,
   ApiEmailAuthWebhookRoute: ApiEmailAuthWebhookRoute,
   ApiEmailQueueProcessRoute: ApiEmailQueueProcessRoute,
