@@ -4287,7 +4287,7 @@ h1, h2, h3, h4, h5, h6 {
   min-height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   align-self: stretch;
   box-sizing: border-box;
   padding: 0;
@@ -4301,15 +4301,14 @@ h1, h2, h3, h4, h5, h6 {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
   flex: 0 0 auto;
   width: 100%;
   text-align: center;
-  padding: 14px 14px 16px;
+  padding: 8px 10px 10px;
   border: 1px solid rgba(92, 64, 51, 0.28);
-  border-radius: 16px;
+  border-radius: 12px;
   background: linear-gradient(165deg, rgba(255, 252, 247, 0.98) 0%, rgba(247, 238, 220, 0.92) 100%);
-  box-shadow: 0 4px 16px rgba(92, 64, 51, 0.1);
   box-shadow: 0 3px 12px -10px rgba(80, 60, 40, 0.35);
   box-sizing: border-box;
 }
@@ -4317,69 +4316,94 @@ h1, h2, h3, h4, h5, h6 {
 .kids-wizard-mode-row .kids-mode-bar {
   justify-content: center;
   margin: 0;
-  gap: 12px;
+  gap: 8px;
   width: 100%;
 }
 
 .kids-wizard-mode-row .kids-intro-title--compact {
   margin: 0;
   justify-content: center;
-  font-size: clamp(1.35rem, 2.2vw, 1.65rem);
+  align-items: center;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  font-size: clamp(1.15rem, 1.8vw, 1.4rem);
   font-weight: 800;
-  line-height: 1.2;
-  gap: 8px;
+  line-height: 1.15;
+  gap: 6px;
   text-align: center;
+  max-width: 100%;
+}
+
+.kids-wizard-mode-row .kids-intro-title--compact .kids-intro-title-text {
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.kids-wizard-mode-row .kids-intro-title--compact.kids-intro-title--teens {
+  gap: 5px;
+}
+
+.kids-wizard-mode-row .kids-intro-title--compact.kids-intro-title--teens .kids-audience-age-badge {
+  margin-left: 2px;
+  flex-shrink: 0;
 }
 
 .kids-audience-age-badge,
-.kids-wizard-mode-row .kids-intro-title--compact .kids-audience-age-badge,
 .kids-page-header .kids-audience-age-badge {
   margin-left: 6px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 2rem;
-  min-width: 7.5rem;
-  padding: 6px 14px;
-  font-size: 0.95rem !important;
+  min-height: 1.75rem;
+  min-width: 6.75rem;
+  padding: 4px 12px;
+  font-size: 0.85rem !important;
   font-weight: 800;
   line-height: 1.1;
   box-sizing: border-box;
+}
+
+.kids-wizard-mode-row .kids-intro-title--compact .kids-audience-age-badge {
+  margin-left: 4px;
+  min-height: 1.5rem;
+  min-width: 6.25rem;
+  padding: 3px 10px;
+  font-size: 0.78rem !important;
 }
 
 .kids-wizard-mode-row .kids-mode-btn {
   flex: 1 1 0;
   min-width: 0;
   justify-content: center;
-  padding: 14px 16px;
-  gap: 10px;
-  font-size: 1.05rem;
-  border-width: 2px;
-  border-radius: 14px;
-  min-height: 56px;
-  box-shadow: 0 2px 8px rgba(92, 64, 51, 0.08);
+  padding: 7px 10px;
+  gap: 6px;
+  font-size: 0.9rem;
+  border-width: 1px;
+  border-radius: 10px;
+  min-height: 38px;
+  box-shadow: none;
 }
 
 .kids-wizard-mode-row .kids-mode-btn svg {
-  width: 22px;
-  height: 22px;
+  width: 16px;
+  height: 16px;
   flex-shrink: 0;
 }
 
 .kids-wizard-mode-row .kids-mode-label {
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   font-weight: 800;
 }
 
 .kids-wizard-mode-row .kids-mode-ages {
-  font-size: 0.9rem;
+  font-size: 0.78rem;
   font-weight: 700;
-  padding: 4px 10px;
+  padding: 2px 7px;
 }
 
 .kids-wizard-mode-row .kids-mode-btn.active {
   transform: none;
-  box-shadow: 0 4px 14px rgba(92, 70, 52, 0.35);
+  box-shadow: 0 2px 8px rgba(92, 70, 52, 0.28);
 }
 
 .kids-wizard-media-pane {
@@ -4778,23 +4802,25 @@ h1, h2, h3, h4, h5, h6 {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
   gap: 8px;
-  padding: 14px 16px;
+  padding: 12px 14px;
   border-radius: 12px;
-  overflow: auto;
+  overflow: hidden;
   align-self: stretch;
 }
 
 .kids-wizard-intro {
   margin: 0;
-  padding: 0 0 8px;
+  padding: 0 0 4px;
   border-bottom: 1px solid rgba(92, 64, 51, 0.12);
+  flex: 0 0 auto;
 }
 
 .kids-wizard-intro p {
-  margin: 0 0 6px;
-  font-size: 0.84rem;
-  line-height: 1.4;
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.35;
   color: var(--text-primary);
 }
 
@@ -4805,12 +4831,12 @@ h1, h2, h3, h4, h5, h6 {
 .kids-wizard-tip,
 .wizard-fill-tip {
   margin: 0;
-  padding: 8px 10px;
-  border-radius: 10px;
+  padding: 5px 7px;
+  border-radius: 8px;
   background: rgba(107, 79, 58, 0.06);
   border: 1px solid rgba(92, 64, 51, 0.14);
-  font-size: 0.8rem;
-  line-height: 1.4;
+  font-size: 0.72rem;
+  line-height: 1.3;
   font-weight: 600;
   color: var(--text-primary);
   flex: 0 0 auto;
@@ -4860,11 +4886,35 @@ h1, h2, h3, h4, h5, h6 {
   justify-content: center;
   align-self: center;
   gap: 4px;
-  margin: 2px 0 0;
+  margin: 0;
   padding: 0;
   background: none;
   border: none;
   color: var(--crimson);
+  flex: 0 0 auto;
+}
+
+.kids-wizard-card .wizard-start-here {
+  display: inline-flex;
+  align-self: flex-start;
+  margin: 2px 0 0;
+}
+
+.kids-wizard-card .wizard-start-here__chip {
+  padding: 5px 12px 5px 8px;
+  background: rgba(155, 47, 40, 0.12);
+  border: 1px solid rgba(155, 47, 40, 0.35);
+  box-shadow: 0 2px 8px rgba(155, 47, 40, 0.12);
+}
+
+.kids-wizard-card .wizard-start-here__label {
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+}
+
+.kids-wizard-card .wizard-start-here__spark {
+  width: 14px;
+  height: 14px;
 }
 
 .wizard-start-here__chip {
@@ -4918,17 +4968,18 @@ h1, h2, h3, h4, h5, h6 {
   align-items: center;
   gap: 8px;
   margin: 0;
-  padding: 8px 10px;
+  padding: 6px 10px;
   border-radius: 10px;
-  background: linear-gradient(135deg, rgba(155, 47, 40, 0.1) 0%, rgba(107, 79, 58, 0.08) 100%);
-  border: 1px solid rgba(155, 47, 40, 0.22);
+  background: linear-gradient(135deg, rgba(155, 47, 40, 0.12) 0%, rgba(107, 79, 58, 0.08) 100%);
+  border: 1px solid rgba(155, 47, 40, 0.28);
   box-sizing: border-box;
+  flex: 0 0 auto;
 }
 
 .kids-wizard-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
   background: rgba(155, 47, 40, 0.12);
   border: 1px solid rgba(155, 47, 40, 0.28);
   color: var(--crimson);
@@ -4939,21 +4990,21 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .kids-wizard-icon svg {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
 .kids-wizard-header h2 {
-  font-size: 1.2rem;
+  font-size: 1.08rem;
   font-weight: 800;
-  color: var(--charcoal);
+  color: var(--crimson);
   margin: 0 0 2px;
   letter-spacing: -0.01em;
 }
 
 .kids-wizard-header p {
   color: var(--text-primary);
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   margin: 0;
   line-height: 1.3;
   font-weight: 600;
@@ -4961,19 +5012,19 @@ h1, h2, h3, h4, h5, h6 {
 
 .kids-wizard-options {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 6px;
   margin: 0;
 }
 
 .kids-wizard-option {
-  padding: 9px 10px;
+  padding: 7px 8px;
   border-radius: 10px;
   border: 1px solid var(--border-color);
   background: #fff;
   cursor: pointer;
   text-align: center;
-  font-size: 0.86rem;
+  font-size: 0.82rem;
   font-weight: 600;
   color: var(--charcoal);
   box-shadow: none;
@@ -4996,9 +5047,11 @@ h1, h2, h3, h4, h5, h6 {
 .kids-wizard-nav {
   display: flex;
   justify-content: space-between;
-  margin-top: auto;
+  align-items: center;
+  margin-top: 0;
   border-top: 1px solid var(--border-color);
-  padding-top: 10px;
+  padding-top: 8px;
+  flex: 0 0 auto;
 }
 
 .kids-wizard-nav .btn {

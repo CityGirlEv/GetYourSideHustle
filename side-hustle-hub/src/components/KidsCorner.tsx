@@ -861,7 +861,7 @@ function KidsModeToggles({
         onClick={() => onModeChange("kids")}
         className={`kids-mode-btn ${mode === "kids" ? "active" : ""}`}
       >
-        <Users size={20} aria-hidden />
+        <Users size={16} aria-hidden />
         <span className="kids-mode-label">Kids</span>
         <span className="kids-mode-ages">Ages 4–12</span>
       </button>
@@ -872,7 +872,7 @@ function KidsModeToggles({
         onClick={() => onModeChange("junior")}
         className={`kids-mode-btn ${mode === "junior" ? "active" : ""}`}
       >
-        <Smile size={20} aria-hidden />
+        <Smile size={16} aria-hidden />
         <span className="kids-mode-label">Teens</span>
         <span className="kids-mode-ages">Ages 13–17</span>
       </button>
@@ -884,16 +884,18 @@ function KidsAudienceHeading({ mode, compact = false }: { mode: AudienceMode; co
   if (mode === "kids") {
     return (
       <h2 className={`kids-intro-title${compact ? " kids-intro-title--compact" : ""}`}>
-        <Star size={compact ? 26 : 22} style={{ color: "var(--crimson)" }} aria-hidden />
-        GYSH Kid&apos;s Side Hustles
+        <Star size={compact ? 20 : 22} style={{ color: "var(--crimson)" }} aria-hidden />
+        <span className="kids-intro-title-text">GYSH Kid&apos;s Side Hustles</span>
         <span className="glow-badge pink kids-audience-age-badge">Ages 4–12</span>
       </h2>
     );
   }
   return (
-    <h2 className={`kids-intro-title${compact ? " kids-intro-title--compact" : ""}`}>
-      <Smile size={compact ? 26 : 22} style={{ color: "var(--crimson)" }} aria-hidden />
-      GYSH Teens Side Hustles
+    <h2
+      className={`kids-intro-title${compact ? " kids-intro-title--compact kids-intro-title--teens" : ""}`}
+    >
+      <Smile size={compact ? 20 : 22} style={{ color: "var(--crimson)" }} aria-hidden />
+      <span className="kids-intro-title-text">GYSH Teens Side Hustles</span>
       <span className="glow-badge emerald kids-audience-age-badge">Ages 13–17</span>
     </h2>
   );
@@ -962,14 +964,14 @@ function KidsHustleWizard({
     {
       key: "age",
       title: "How old are you?",
-      subtitle: "Pick the group that fits you best (with a parent if you like).",
+      subtitle: "Pick the group that fits you best.",
       icon: <Users size={24} style={{ color: "var(--crimson)" }} />,
       options: ageOptions,
     },
     {
       key: "interest",
       title: "What sounds most fun?",
-      subtitle: "Choose the thing you’d happily spend an afternoon doing.",
+      subtitle: "Pick what you’d happily do for an afternoon.",
       icon: <Heart size={24} style={{ color: "var(--crimson)" }} />,
       options: [
         { label: "Animals & pets", value: "animals" },
@@ -983,7 +985,7 @@ function KidsHustleWizard({
     {
       key: "place",
       title: "Where do you like to work?",
-      subtitle: "Indoor, outdoor, or a mix — all are great.",
+      subtitle: "Indoor, outdoor, or a mix.",
       icon: <Trees size={24} style={{ color: "var(--accent-emerald)" }} />,
       options: [
         { label: "Mostly outdoors", value: "outdoor" },
@@ -994,7 +996,7 @@ function KidsHustleWizard({
     {
       key: "time",
       title: "How much time do you have?",
-      subtitle: "Be honest — school and rest come first!",
+      subtitle: "School and rest come first!",
       icon: <Clock size={24} style={{ color: "#6b4f3a" }} />,
       options: [
         { label: "A little (under 1 hour)", value: "short" },
@@ -1120,22 +1122,14 @@ function KidsHustleWizard({
                   {mode === "junior" ? (
                     <p>
                       Welcome! Try the <strong>GYSH Match Wizard</strong>, browse safe <strong>Ideas</strong>, set
-                      savings goals in <strong>My Bank</strong>, and explore <strong>Guides</strong> — all with a
-                      parent nearby.
+                      savings goals in <strong>My Bank</strong>, and explore <strong>Guides</strong> — with a parent
+                      nearby.
                     </p>
                   ) : (
-                    <>
-                      <p>
-                        Welcome! Watch <strong>Kevina Starr</strong> stories, try the{" "}
-                        <strong>GYSH Match Wizard</strong>, browse safe <strong>Ideas</strong>, set savings goals in
-                        the <strong>Piggy Bank</strong>, and explore <strong>Guides</strong> — all with a parent
-                        nearby.
-                      </p>
-                      <p>
-                        Kevina is your Glow Getter motivator: her stories build confidence and kindness so your
-                        earning dreams feel possible — one small, safe step at a time.
-                      </p>
-                    </>
+                    <p>
+                      Welcome! Try the <strong>GYSH Match Wizard</strong>, browse <strong>Ideas</strong>, save in the{" "}
+                      <strong>Piggy Bank</strong>, and explore <strong>Guides</strong> — with a parent nearby.
+                    </p>
                   )}
                 </div>
 
@@ -1150,7 +1144,6 @@ function KidsHustleWizard({
                 </div>
 
                 {currentStep === 0 && <WizardStartHereBanner />}
-
                 <div className="kids-wizard-header">
                   <div className="kids-wizard-icon">{step.icon}</div>
                   <div>
@@ -1174,8 +1167,8 @@ function KidsHustleWizard({
 
                 <p className="kids-wizard-tip">
                   {mode === "junior"
-                    ? "Tip: Answer with a parent nearby. Your matches stay age-right, safer to try, and ready for a first earn-and-learn step."
-                    : "Tip: Pick what feels true today — with a parent nearby. Matches stay safe, age-right, and fun to try one small step at a time."}
+                    ? "Tip: Answer with a parent nearby. Matches stay age-right and safer to try."
+                    : "Tip: Pick what feels true — with a parent nearby. Matches stay safe and age-right."}
                 </p>
 
                 <div className="kids-wizard-nav">
