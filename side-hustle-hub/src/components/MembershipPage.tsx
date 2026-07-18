@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   BadgeCheck,
   Bell,
@@ -32,6 +32,11 @@ import {
   type MemberPerkAudience,
   type TierId,
 } from "../lib/membership";
+import {
+  normalizeAudienceGroup,
+  readSavedJoinAudience,
+  saveJoinAudience,
+} from "../lib/join-audience";
 import membershipHero from "../assets/membership-hero.png";
 
 const PERK_AUDIENCES: MemberPerkAudience[] = ["adult", "kids", "junior", "senior"];
@@ -96,6 +101,8 @@ type MembershipPageProps = {
   onGoToJoin?: () => void;
   onGoToLogin?: () => void;
   onOpenFreeGuides?: () => void;
+  /** Pre-select membership lane from the page that linked here (kids / teens / adult / senior). */
+  initialAudience?: AudienceGroup | null;
 };
 
 const AUDIENCE_TABS: AudienceGroup[] = ["kids", "junior", "adult", "senior"];
@@ -104,29 +111,89 @@ export function MembershipPage({
   onGoToJoin,
   onGoToLogin,
   onOpenFreeGuides,
+  initialAudience = null,
 }: MembershipPageProps) {
-  const [audience, setAudience] = useState<AudienceGroup>("adult");
+  const [audience, setAudience] = useState<AudienceGroup>(() =>
+    normalizeAudienceGroup(initialAudience, readSavedJoinAudience("adult")),
+  );
+  const [highlightAudience, setHighlightAudience] = useState(Boolean(initialAudience));
+  const audienceTabsRef = useRef<HTMLDivElement>(null);
   const usesCredits = audience === "kids" || audience === "junior";
   const showKidCreditPool = audience === "adult" || audience === "senior";
   const earnActions = CREDIT_EARN_ACTIONS.filter((a) => a.audiences.includes(audience));
   const alaCarte = ALA_CARTE_PRICE_LIST.filter((i) => i.audiences.includes(audience));
 
+  useEffect(() => {
+    if (!initialAudience) return;
+    const next = normalizeAudienceGroup(initialAudience, audience);
+    setAudience(next);
+    saveJoinAudience(next);
+    setHighlightAudience(true);
+  }, [initialAudience]); // eslint-disable-line react-hooks/exhaustive-deps -- apply inbound lane when Join opens
+
+  useEffect(() => {
+    saveJoinAudience(audience);
+  }, [audience]);
+
+  useEffect(() => {
+    if (!highlightAudience) return;
+    const el = audienceTabsRef.current;
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    const t = window.setTimeout(() => setHighlightAudience(false), 2800);
+    return () => window.clearTimeout(t);
+  }, [highlightAudience, audience]);
+
+  const selectAudience = (next: AudienceGroup) => {
+    setAudience(next);
+    saveJoinAudience(next);
+    setHighlightAudience(true);
+  };
+
   return (
     <div className="membership-page" data-testid="membership-page">
-      <section className="glass membership-hero">
-        <div className="membership-hero-copy">
-          <span className="glow-badge free">
-            <Crown size={13} /> Membership
-          </span>
-          <h2 className="membership-hero-heading">
-            Join GYSH!
-            <span className="membership-hero-heading-aside">(FREE PLANS AVAILABLE)</span>
-          </h2>
-          <p data-testid="membership-lead">
-            Start free with open guides — upgrade for schedules, trackers, progress reports, email
-            alerts, training, and monthly 1-on-1 consulting (30 / 60 / 90 min by plan). Consulting
-            rates are the same for Kids, Teens, Adults, and Seniors.
-          </p>
+      <section className="membership-hero" aria-label="Join GYSH membership">
+        <div className="membership-hero-media">
+          <img
+            src={membershipHero}
+            alt="Join the GYSH Community — together we learn, grow, and succeed. A place for every age: kids, teens, adults, and seniors."
+            loading="eager"
+            decoding="async"
+          />
+        </div>
+        <div className="glass membership-hero-copy">
+          <div className="membership-hero-intro">
+            <span className="glow-badge free">
+              <Crown size={13} /> Membership
+            </span>
+            <h2 className="membership-hero-heading">
+              Join GYSH!
+              <span className="membership-hero-heading-aside">(FREE PLANS AVAILABLE)</span>
+            </h2>
+            <p data-testid="membership-lead">
+              Start free with open guides — upgrade for schedules, trackers, progress reports, email
+              alerts, training, and monthly 1-on-1 consulting (30 / 60 / 90 min by plan).
+            </p>
+          </div>
+          <ul className="membership-hero-pillars">
+            <li>
+              <BadgeCheck size={16} aria-hidden />
+              <span>Free plan to browse guides &amp; save progress</span>
+            </li>
+            <li>
+              <CalendarDays size={16} aria-hidden />
+              <span>Pro+ schedule suite, tracker &amp; email alerts</span>
+            </li>
+            <li>
+              <Sparkles size={16} aria-hidden />
+              <span>Monthly 1-on-1 consulting on paid plans</span>
+            </li>
+            <li>
+              <Coins size={16} aria-hidden />
+              <span>Same consulting rates for Kids, Teens, Adults &amp; Seniors</span>
+            </li>
+          </ul>
           <div className="membership-hero-actions">
             {onOpenFreeGuides && (
               <button type="button" className="btn btn-outline" onClick={onOpenFreeGuides}>
@@ -144,14 +211,6 @@ export function MembershipPage({
               </button>
             )}
           </div>
-        </div>
-        <div className="membership-hero-media">
-          <img
-            src={membershipHero}
-            alt="Join the GYSH Community — together we learn, grow, and succeed. A place for every age: kids, teens, adults, and seniors."
-            loading="eager"
-            decoding="async"
-          />
         </div>
       </section>
 
@@ -184,11 +243,15 @@ export function MembershipPage({
       </section>
 
       <div
-        className="membership-audience-tabs"
+        ref={audienceTabsRef}
+        className={`membership-audience-tabs${highlightAudience ? " is-spotlight" : ""}`}
         role="tablist"
         aria-label="Membership audience"
         data-testid="membership-audience-tabs"
       >
+        <p className="membership-audience-tabs__label" id="membership-audience-heading">
+          Membership for: <strong>{AUDIENCE_LABELS[audience]}</strong>
+        </p>
         {AUDIENCE_TABS.map((a) => (
           <button
             key={a}
@@ -196,8 +259,8 @@ export function MembershipPage({
             role="tab"
             aria-selected={audience === a}
             data-testid={`membership-audience-${a}`}
-            className={`glow-chip-btn${audience === a ? " is-active" : ""}`}
-            onClick={() => setAudience(a)}
+            className={`glow-chip-btn membership-audience-tab${audience === a ? " is-active" : ""}`}
+            onClick={() => selectAudience(a)}
           >
             {AUDIENCE_LABELS[a]}
           </button>

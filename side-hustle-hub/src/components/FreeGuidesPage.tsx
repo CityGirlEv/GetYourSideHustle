@@ -17,13 +17,14 @@ import {
   MARKETING_GUIDES,
   type MarketingGuideId,
 } from "../lib/marketing-guides";
+import type { AudienceGroup } from "../lib/membership";
 import guidesLibraryHero from "../assets/guides-library-hero.png";
 
 type GuideFilter = "all" | "free" | "adult" | "kids" | "junior";
 
 type FreeGuidesPageProps = {
   isLoggedIn?: boolean;
-  onGoToJoin?: () => void;
+  onGoToJoin?: (audience?: AudienceGroup) => void;
   onGoToLogin?: () => void;
   onOpenAdultGuide: (hustleId: string) => void;
   onOpenKidsGuides: () => void;
@@ -138,10 +139,23 @@ export function FreeGuidesPage({
   const showKids = filter === "all" || filter === "free" || filter === "kids";
   const showJunior = filter === "all" || filter === "free" || filter === "junior";
 
+  const manuals = MARKETING_GUIDES.filter((g) => {
+    if (filter === "all" || filter === "free") return true;
+    if (g.id === "master") return true;
+    if (filter === "adult") return g.id === "adult" || g.id === "seniors";
+    if (filter === "kids") return g.id === "kids";
+    if (filter === "junior") return g.id === "teens";
+    return true;
+  });
+
   const empty =
+    manuals.length === 0 &&
     (!showAdult || (adultGuides.length === 0 && seniorGuides.length === 0)) &&
     (!showKids || kidsGuides.length === 0) &&
     (!showJunior || juniorGuides.length === 0);
+
+  const joinAudience: AudienceGroup =
+    filter === "kids" ? "kids" : filter === "junior" ? "junior" : "adult";
 
   return (
     <div className="free-guides-page" data-testid="free-guides-page">
@@ -158,16 +172,7 @@ export function FreeGuidesPage({
           <div className="free-guides-hero-intro">
             <p>
               Age-ready how-to playbooks for Kids, Teens, Adults, and Seniors. Browse free previews;
-              join free to unlock the full library.
-            </p>
-            <p className="free-guides-hero-membership">
-              <strong>Free membership</strong> saves your guide progress, unlocks member-only playbooks, and keeps
-              your Match Wizard blueprint handy. Filter by age lane, peek free previews, then join free so your
-              checklist and favorites stay with you on every device.
-            </p>
-            <p className="free-guides-hero-membership">
-              Ready for more? Paid plans add workshops, deeper toolkits, and coach-style support — start free,
-              upgrade when your hustle needs a bigger boost.
+              open a manual, or filter the library below.
             </p>
           </div>
           <div className="free-guides-filters" role="tablist" aria-label="Filter guides" data-testid="free-guides-filters">
@@ -185,6 +190,23 @@ export function FreeGuidesPage({
               </button>
             ))}
           </div>
+          {onOpenManual && manuals.length > 0 && (
+            <nav className="free-guides-hero-links" aria-label="Open GYSH manuals">
+              {manuals.map((g) => (
+                <button
+                  key={g.id}
+                  type="button"
+                  className={`free-guides-hero-link${g.id === "master" ? " is-master" : ""}`}
+                  onClick={() => onOpenManual(g.id)}
+                  data-testid={`hero-open-manual-${g.id}`}
+                >
+                  <BookMarked size={16} aria-hidden />
+                  <span className="free-guides-hero-link__label">{g.menuLabel}</span>
+                  <ChevronRight size={16} className="free-guides-hero-link__chev" aria-hidden />
+                </button>
+              ))}
+            </nav>
+          )}
           <div className="free-guides-hero-actions">
             {onGoToLogin && (
               <button type="button" className="btn btn-outline" onClick={onGoToLogin}>
@@ -192,7 +214,11 @@ export function FreeGuidesPage({
               </button>
             )}
             {onGoToJoin && (
-              <button type="button" className="btn btn-primary" onClick={onGoToJoin}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => onGoToJoin(joinAudience)}
+              >
                 <UserPlus size={16} /> Join GYSH
               </button>
             )}
@@ -200,17 +226,22 @@ export function FreeGuidesPage({
         </div>
       </section>
 
-      {onOpenManual && (
+      {onOpenManual && manuals.length > 0 && (
         <section className="glass marketing-manuals-strip" aria-label="Downloadable GYSH manuals">
           <div className="marketing-manuals-strip__head">
             <h3>Marketing manuals</h3>
             <p>
-              Beautifully formatted, downloadable showcases — Adult, Kids, Teens, Seniors, plus one Complete
-              Guide with every section. Checklists, membership perks, and journey arrows included.
+              {filter === "all" || filter === "free"
+                ? "Beautifully formatted, downloadable showcases — Adult, Kids, Teens, Seniors, plus one Complete Guide with every section."
+                : filter === "adult"
+                  ? "Adult and Seniors manuals for this filter — plus the Complete Guide."
+                  : filter === "kids"
+                    ? "Kids manual for this filter — plus the Complete Guide."
+                    : "Teens manual for this filter — plus the Complete Guide."}
             </p>
           </div>
           <div className="marketing-manuals-strip__grid">
-            {MARKETING_GUIDES.map((g) => (
+            {manuals.map((g) => (
               <button
                 key={g.id}
                 type="button"

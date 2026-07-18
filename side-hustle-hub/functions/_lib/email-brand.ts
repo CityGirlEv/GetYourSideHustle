@@ -102,12 +102,25 @@ export type BrandedEmailParts = {
 
 /** Popping branded GYSH email wrapper — logo header, CTA, site/Facebook footer on every send. */
 export function wrapBrandedEmail(parts: BrandedEmailParts): { html: string; text: string } {
+  // Solid-color table button — many clients strip CSS gradients, which made white CTA text invisible.
   const cta =
     parts.ctaLabel && parts.ctaUrl
-      ? `<tr><td align="center" style="padding:8px 32px 24px;">
-          <a href="${escapeHtml(parts.ctaUrl)}" style="display:inline-block;background:linear-gradient(135deg,#9B2F28,#c45c4a);color:#fff;font-weight:800;font-size:16px;text-decoration:none;padding:14px 28px;border-radius:999px;letter-spacing:0.02em;">
-            ${escapeHtml(parts.ctaLabel)} →
-          </a>
+      ? `<tr><td align="center" style="padding:16px 32px 28px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto;">
+            <tr>
+              <td align="center" bgcolor="#9B2F28" style="background-color:#9B2F28;border-radius:10px;border:1px solid #7a241e;">
+                <a href="${escapeHtml(parts.ctaUrl)}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background-color:#9B2F28;color:#ffffff !important;font-family:Helvetica,Arial,sans-serif;font-weight:800;font-size:16px;line-height:1.25;text-decoration:none;padding:14px 28px;border-radius:10px;letter-spacing:0.02em;mso-padding-alt:0;">
+                  <!--[if mso]><i style="letter-spacing:28px;mso-font-width:-100%;mso-text-raise:21pt;">&nbsp;</i><![endif]-->
+                  <span style="color:#ffffff !important;text-decoration:none;">${escapeHtml(parts.ctaLabel)} →</span>
+                  <!--[if mso]><i style="letter-spacing:28px;mso-font-width:-100%;">&nbsp;</i><![endif]-->
+                </a>
+              </td>
+            </tr>
+          </table>
+          <p style="margin:14px 0 0;font-family:Helvetica,Arial,sans-serif;font-size:12px;line-height:1.45;color:#8a7a68;">
+            Button not showing? Open this link:<br/>
+            <a href="${escapeHtml(parts.ctaUrl)}" style="color:#9B2F28;word-break:break-all;">${escapeHtml(parts.ctaUrl)}</a>
+          </p>
         </td></tr>`
       : "";
 
@@ -235,8 +248,10 @@ export function upgradesHtml(current: TierId): string {
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>${cards}</tr></table>`;
 }
 
-export function membershipDeepLink(): string {
-  return `${SITE_URL}/?next=join&from=welcome`;
+export function membershipDeepLink(audience?: "kids" | "junior" | "adult" | "senior"): string {
+  const params = new URLSearchParams({ next: "join", from: "welcome" });
+  if (audience) params.set("audience", audience);
+  return `${SITE_URL}/?${params.toString()}`;
 }
 
 export function tierLabel(tier: TierId): string {

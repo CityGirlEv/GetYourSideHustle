@@ -221,8 +221,8 @@ export async function sendPasswordResetEmail(
     preheader: "Reset your Get Your Side Hustle password.",
     eyebrow: "Account security",
     headline: "Reset your password",
-    subhead: `Hi ${input.name || "Side Hustler"}, we got a request to reset your GYSH password.`,
-    bodyHtml: `<p style="margin:0 0 12px;">Tap the button below to choose a new password. This link expires in <strong>1 hour</strong> and can only be used once.</p>
+    subhead: `Hi ${input.name || "Side Hustler"}, we received a request to reset a GYSH password for this email.`,
+    bodyHtml: `<p style="margin:0 0 12px;">If an account exists for this email address, tap the button below to choose a new password. This link expires in <strong>1 hour</strong> and can only be used once.</p>
       <p style="margin:0 0 12px;">If you didn’t ask for this, you can ignore this email — your password stays the same.</p>`,
     ctaLabel: "Reset my password",
     ctaUrl: input.resetUrl,

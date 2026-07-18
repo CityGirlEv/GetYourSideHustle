@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Mail, RefreshCw, Send } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { List, Mail, RefreshCw, Send } from "lucide-react";
 import { api, ApiError } from "../../lib/api";
 
 type TemplateRow = {
@@ -13,6 +13,18 @@ type TemplateRow = {
 
 type Preview = { slug: string; subject: string; html: string; text: string };
 
+type LogEntry = {
+  id: string;
+  templateSlug: string;
+  toEmail: string;
+  userId: string | null;
+  subject: string;
+  status: string;
+  providerId: string | null;
+  error: string;
+  createdAt: string;
+};
+
 export function EmailTemplates() {
   const [emailConfigured, setEmailConfigured] = useState<boolean | null>(null);
   const [logoUrl, setLogoUrl] = useState("");
@@ -23,6 +35,9 @@ export function EmailTemplates() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [logsBusy, setLogsBusy] = useState(false);
+  const [showAllLogs, setShowAllLogs] = useState(false);
 
   const load = async () => {
     setErr("");
@@ -40,6 +55,22 @@ export function EmailTemplates() {
       setErr(e instanceof ApiError ? e.message : "Could not load email templates.");
     }
   };
+
+  const loadLogs = useCallback(async (slug: string, all: boolean) => {
+    setLogsBusy(true);
+    try {
+      const qs = all
+        ? "email/log?limit=200"
+        : `email/log?template=${encodeURIComponent(slug)}&limit=100`;
+      const data = await api<{ entries: LogEntry[] }>(qs);
+      setLogs(data.entries || []);
+    } catch (e) {
+      setLogs([]);
+      setErr(e instanceof ApiError ? e.message : "Could not load email logs.");
+    } finally {
+      setLogsBusy(false);
+    }
+  }, []);
 
   useEffect(() => {
     void load();
@@ -66,6 +97,11 @@ export function EmailTemplates() {
     };
   }, [selected]);
 
+  useEffect(() => {
+    if (!selected && !showAllLogs) return;
+    void loadLogs(selected, showAllLogs);
+  }, [selected, showAllLogs, loadLogs]);
+
   const sendTest = async () => {
     setMsg("");
     setErr("");
@@ -77,12 +113,18 @@ export function EmailTemplates() {
       });
       setMsg(data.message || `Test sent for ${selected}.`);
       await load();
+      await loadLogs(selected, showAllLogs);
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : "Test send failed.");
     } finally {
       setBusy(false);
     }
   };
+
+  const templateName = (slug: string) =>
+    templates.find((t) => t.slug === slug)?.name || slug;
+
+  const totalLogged = templates.reduce((n, t) => n + (t.sendCount || 0), 0);
 
   return (
     <div className="email-templates-admin" data-testid="email-templates-admin">
@@ -93,12 +135,32 @@ export function EmailTemplates() {
           </h2>
           <p>
             Every template uses the GYSH logo header plus website / Facebook footer. Preview here, then send a
-            test through Resend.
+            test through Resend. Send history is logged under each template.
           </p>
         </div>
-        <button type="button" className="btn btn-outline" onClick={() => void load()} disabled={busy}>
-          <RefreshCw size={16} /> Refresh
-        </button>
+        <div className="email-templates-admin__head-actions">
+          <button
+            type="button"
+            className={`btn ${showAllLogs ? "btn-primary" : "btn-outline"}`}
+            data-testid="email-logs-show-all"
+            aria-pressed={showAllLogs}
+            onClick={() => setShowAllLogs((v) => !v)}
+          >
+            <List size={16} />
+            {showAllLogs ? "Showing all emails" : "Show all emails"}
+          </button>
+          <button
+            type="button"
+            className="btn btn-outline"
+            onClick={() => {
+              void load();
+              void loadLogs(selected, showAllLogs);
+            }}
+            disabled={busy || logsBusy}
+          >
+            <RefreshCw size={16} /> Refresh
+          </button>
+        </div>
       </header>
 
       <div className="email-templates-admin__status" role="status">
@@ -108,9 +170,15 @@ export function EmailTemplates() {
             {emailConfigured == null ? "…" : emailConfigured ? "configured" : "missing"}
           </strong>
         </span>
+        <span>
+          Logged sends: <strong data-testid="email-log-total">{totalLogged}</strong>
+        </span>
         {logoUrl ? (
           <span className="email-templates-admin__logo-chip">
-            Logo: <a href={logoUrl} target="_blank" rel="noreferrer">/brand/gysh-logo-rocket.png</a>
+            Logo:{" "}
+            <a href={logoUrl} target="_blank" rel="noreferrer">
+              /brand/gysh-logo-rocket.png
+            </a>
           </span>
         ) : null}
       </div>
@@ -124,12 +192,15 @@ export function EmailTemplates() {
             <button
               key={t.slug}
               type="button"
-              className={`email-templates-admin__item${selected === t.slug ? " is-active" : ""}`}
-              onClick={() => setSelected(t.slug)}
+              className={`email-templates-admin__item${selected === t.slug && !showAllLogs ? " is-active" : ""}`}
+              onClick={() => {
+                setShowAllLogs(false);
+                setSelected(t.slug);
+              }}
             >
               <strong>{t.name}</strong>
               <span>{t.description}</span>
-              <em>{t.sendCount} logged sends</em>
+              <em data-testid={`email-template-count-${t.slug}`}>{t.sendCount} logged sends</em>
             </button>
           ))}
         </aside>
@@ -170,6 +241,80 @@ export function EmailTemplates() {
           )}
         </section>
       </div>
+
+      <section
+        className="email-templates-admin__logs glass"
+        aria-label="Email send log"
+        data-testid="email-send-log"
+      >
+        <header className="email-templates-admin__logs-head">
+          <h3>
+            {showAllLogs
+              ? "All email sends"
+              : `Sends for ${templateName(selected) || "template"}`}
+          </h3>
+          <span>
+            {logsBusy ? "Loading…" : `${logs.length} shown`}
+            {showAllLogs ? " · all templates" : null}
+          </span>
+        </header>
+
+        {logs.length === 0 && !logsBusy ? (
+          <p className="email-templates-admin__logs-empty">
+            No logged sends yet{showAllLogs ? "" : " for this template"}. Test sends and live transactional
+            emails (password reset, welcome, contact, etc.) appear here after Resend accepts them.
+          </p>
+        ) : (
+          <div className="email-templates-admin__logs-table-wrap">
+            <table className="email-templates-admin__logs-table">
+              <thead>
+                <tr>
+                  <th scope="col">When</th>
+                  {showAllLogs ? <th scope="col">Template</th> : null}
+                  <th scope="col">To</th>
+                  <th scope="col">Subject</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Detail</th>
+                </tr>
+              </thead>
+              <tbody>
+                {logs.map((row) => (
+                  <tr key={row.id} data-testid={`email-log-row-${row.id}`}>
+                    <td>
+                      <time dateTime={row.createdAt}>
+                        {new Date(row.createdAt).toLocaleString()}
+                      </time>
+                    </td>
+                    {showAllLogs ? (
+                      <td>
+                        <code>{row.templateSlug}</code>
+                      </td>
+                    ) : null}
+                    <td>{row.toEmail}</td>
+                    <td>{row.subject}</td>
+                    <td>
+                      <span
+                        className={`email-templates-admin__status-pill is-${row.status || "unknown"}`}
+                      >
+                        {row.status || "—"}
+                      </span>
+                    </td>
+                    <td className="email-templates-admin__logs-detail">
+                      {row.error ? (
+                        <span className="is-error">{row.error}</span>
+                      ) : row.providerId ? (
+                        <span title="Resend id">{row.providerId}</span>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
     </div>
   );
 }

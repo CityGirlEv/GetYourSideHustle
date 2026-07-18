@@ -8,7 +8,7 @@
  * A Vite proxy with no worker on :8788 shows as HTTP 502 in the UI.
  */
 import { spawn, execSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import http from "node:http";
 import net from "node:net";
 import path from "node:path";
@@ -19,6 +19,30 @@ const wrangler = path.resolve(
   root,
   "../../muntie-ev-ai-studio-main/node_modules/wrangler/bin/wrangler.js",
 );
+
+/** Load `.dev.vars` into the child env so Wrangler picks up Resend secrets even if a long-lived session is restarted. */
+function loadDevVars() {
+  const file = path.join(root, ".dev.vars");
+  if (!existsSync(file)) {
+    console.warn("⚠ No .dev.vars — local email/auth secrets will be missing.");
+    return {};
+  }
+  const out = {};
+  for (const line of readFileSync(file, "utf8").split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const i = trimmed.indexOf("=");
+    if (i <= 0) continue;
+    out[trimmed.slice(0, i)] = trimmed.slice(i + 1);
+  }
+  const key = (out.RESEND_API_KEY || "").trim();
+  if (key.startsWith("re_")) {
+    console.log(`✓ .dev.vars RESEND_API_KEY loaded (${key.slice(0, 6)}… len ${key.length})`);
+  } else {
+    console.warn("⚠ .dev.vars has no usable RESEND_API_KEY — reset emails will fail locally.");
+  }
+  return out;
+}
 
 const VITE_PORT = 5173;
 const API_PORT = 8788;
@@ -101,12 +125,14 @@ function freePort(port, label) {
   }
 }
 
-function spawnInherit(cmd, args, label) {
+const devVars = loadDevVars();
+
+function spawnInherit(cmd, args, label, extraEnv = {}) {
   const child = spawn(cmd, args, {
     cwd: root,
     stdio: "inherit",
     shell: isWin,
-    env: process.env,
+    env: { ...process.env, ...devVars, ...extraEnv },
     detached: !isWin,
   });
   child.on("exit", (code, signal) => {

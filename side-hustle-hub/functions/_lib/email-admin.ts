@@ -105,8 +105,8 @@ export function buildTemplatePreview(slug: string): {
       preheader: "Reset your Get Your Side Hustle password.",
       eyebrow: "Account security",
       headline: "Reset your password",
-      subhead: "Hi Side Hustler, we got a request to reset your GYSH password.",
-      bodyHtml: `<p style="margin:0 0 12px;">Tap the button below to choose a new password. This link expires in <strong>1 hour</strong>.</p>
+      subhead: "Hi Side Hustler, we received a request to reset a GYSH password for this email.",
+      bodyHtml: `<p style="margin:0 0 12px;">If an account exists for this email address, tap the button below to choose a new password. This link expires in <strong>1 hour</strong>.</p>
         <p style="margin:0;">If you didn’t ask for this, ignore this email.</p>`,
       ctaLabel: "Reset my password",
       ctaUrl: `${SITE_URL}/?reset=preview-token`,

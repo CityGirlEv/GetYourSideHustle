@@ -93,8 +93,8 @@ type JuniorTab = "wizard" | "jobs" | "piggy" | "guides" | "join";
 type KidsCornerProps = {
   /** GYSH portal login — also unlocks member guides. */
   isLoggedIn?: boolean;
-  /** Navigate to the site Join page for a full account. */
-  onGoToJoin?: () => void;
+  /** Navigate to Join with Kids or Teens membership lane selected. */
+  onGoToJoin?: (audience: "kids" | "junior") => void;
   /** Deep-link from checklist / GYSH Match Wizard entry points. */
   entryFocus?: { mode: AudienceMode; tab: "guides" | "wizard" } | null;
 };
@@ -429,7 +429,7 @@ function JoinTeamTab({
   isMember: boolean;
   isLoggedIn: boolean;
   onJoined: () => void;
-  onGoToJoin?: () => void;
+  onGoToJoin?: (audience: "kids" | "junior") => void;
   onOpenGuides: () => void;
 }) {
   const copy = getTeamJoinCopy(mode);
@@ -528,7 +528,12 @@ function JoinTeamTab({
                 </button>
               )}
               {onGoToJoin && (
-                <button type="button" className="btn btn-outline" onClick={onGoToJoin} style={{ gap: 6 }}>
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => onGoToJoin(mode === "junior" ? "junior" : "kids")}
+                  style={{ gap: 6 }}
+                >
                   <Users size={16} /> Full GYSH Join page
                 </button>
               )}
@@ -856,7 +861,7 @@ function KidsModeToggles({
         onClick={() => onModeChange("kids")}
         className={`kids-mode-btn ${mode === "kids" ? "active" : ""}`}
       >
-        <Users size={16} />
+        <Users size={20} aria-hidden />
         <span className="kids-mode-label">Kids</span>
         <span className="kids-mode-ages">Ages 4–12</span>
       </button>
@@ -867,7 +872,7 @@ function KidsModeToggles({
         onClick={() => onModeChange("junior")}
         className={`kids-mode-btn ${mode === "junior" ? "active" : ""}`}
       >
-        <Smile size={16} />
+        <Smile size={20} aria-hidden />
         <span className="kids-mode-label">Teens</span>
         <span className="kids-mode-ages">Ages 13–17</span>
       </button>
@@ -879,27 +884,17 @@ function KidsAudienceHeading({ mode, compact = false }: { mode: AudienceMode; co
   if (mode === "kids") {
     return (
       <h2 className={`kids-intro-title${compact ? " kids-intro-title--compact" : ""}`}>
-        <Star size={compact ? 16 : 22} style={{ color: "var(--crimson)" }} aria-hidden />
+        <Star size={compact ? 26 : 22} style={{ color: "var(--crimson)" }} aria-hidden />
         GYSH Kid&apos;s Side Hustles
-        <span
-          className="glow-badge pink"
-          style={{ marginLeft: 4, fontSize: compact ? "0.75rem" : "0.9375rem" }}
-        >
-          Ages 4–12
-        </span>
+        <span className="glow-badge pink kids-audience-age-badge">Ages 4–12</span>
       </h2>
     );
   }
   return (
     <h2 className={`kids-intro-title${compact ? " kids-intro-title--compact" : ""}`}>
-      <Smile size={compact ? 16 : 22} style={{ color: "var(--crimson)" }} aria-hidden />
+      <Smile size={compact ? 26 : 22} style={{ color: "var(--crimson)" }} aria-hidden />
       GYSH Teens Side Hustles
-      <span
-        className="glow-badge emerald"
-        style={{ marginLeft: 4, fontSize: compact ? "0.75rem" : "0.9375rem" }}
-      >
-        Ages 13–17
-      </span>
+      <span className="glow-badge emerald kids-audience-age-badge">Ages 13–17</span>
     </h2>
   );
 }
@@ -1680,12 +1675,41 @@ export const KidsCorner: React.FC<KidsCornerProps> = ({
   ];
 
   const handleModeChange = (next: AudienceMode) => {
-    const onWizard = (mode === "kids" ? kidsTab : juniorTab) === "wizard";
+    if (next === mode) return;
+
+    // Keep the user on the equivalent tab when flipping Kids ↔ Teens
+    // (Ideas, Piggy Bank ↔ My Bank, Guides, Join, Match Wizard).
+    const currentTab = mode === "kids" ? kidsTab : juniorTab;
+    const mappedJunior = ((): JuniorTab => {
+      if (currentTab === "stories") return "wizard";
+      if (
+        currentTab === "wizard" ||
+        currentTab === "jobs" ||
+        currentTab === "piggy" ||
+        currentTab === "guides" ||
+        currentTab === "join"
+      ) {
+        return currentTab;
+      }
+      return "wizard";
+    })();
+    const mappedKids = ((): KidsTab => {
+      if (
+        currentTab === "wizard" ||
+        currentTab === "jobs" ||
+        currentTab === "piggy" ||
+        currentTab === "guides" ||
+        currentTab === "join" ||
+        currentTab === "stories"
+      ) {
+        return currentTab === "stories" ? "stories" : currentTab;
+      }
+      return "wizard";
+    })();
+
     setMode(next);
-    if (onWizard) {
-      if (next === "kids") setKidsTab("wizard");
-      else setJuniorTab("wizard");
-    }
+    if (next === "junior") setJuniorTab(mappedJunior);
+    else setKidsTab(mappedKids);
   };
 
   const onWizard = (mode === "kids" ? kidsTab : juniorTab) === "wizard";
@@ -1723,7 +1747,7 @@ export const KidsCorner: React.FC<KidsCornerProps> = ({
               onModeChange={handleModeChange}
               onOpenPiggy={() => setKidsTab("piggy")}
               isLoggedIn={isLoggedIn}
-              onUnlockBlueprint={onGoToJoin}
+              onUnlockBlueprint={onGoToJoin ? () => onGoToJoin("kids") : undefined}
             />
           )}
           {kidsTab === "jobs" && <JobsTab mode="kids" />}
@@ -1764,7 +1788,7 @@ export const KidsCorner: React.FC<KidsCornerProps> = ({
               onModeChange={handleModeChange}
               onOpenPiggy={() => setJuniorTab("piggy")}
               isLoggedIn={isLoggedIn}
-              onUnlockBlueprint={onGoToJoin}
+              onUnlockBlueprint={onGoToJoin ? () => onGoToJoin("junior") : undefined}
             />
           )}
           {juniorTab === "jobs" && <JobsTab mode="junior" />}

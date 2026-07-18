@@ -2,6 +2,8 @@ import { LogIn, MessageSquare, Smile } from "lucide-react";
 import { MembershipPage } from "./MembershipPage";
 import { BlueprintUnlockPanel } from "./BlueprintUnlockPanel";
 import type { BlueprintAgeGroup } from "../lib/gysh-analytics";
+import type { AudienceGroup } from "../lib/membership";
+import { AUDIENCE_LABELS } from "../lib/membership";
 
 type JoinPageProps = {
   onLogin: () => void;
@@ -10,6 +12,8 @@ type JoinPageProps = {
   onOpenFreeGuides?: () => void;
   /** After free Blueprint signup, restore the wizard results. */
   onBlueprintUnlocked?: (ageGroup: BlueprintAgeGroup) => void;
+  /** Audience lane selected from the page that opened Join. */
+  membershipAudience?: AudienceGroup | null;
 };
 
 export function JoinPage({
@@ -18,6 +22,7 @@ export function JoinPage({
   onKidsCorner,
   onOpenFreeGuides,
   onBlueprintUnlocked,
+  membershipAudience = null,
 }: JoinPageProps) {
   return (
     <div className="join-page-combined" data-testid="join-page">
@@ -30,13 +35,15 @@ export function JoinPage({
           GYSH Membership plans
         </h2>
         <p className="join-membership-lead">
-          Pick the plan that fits your Side Hustle — Free through Elite — with audience options for
-          Kids, Teens, Adults, and Seniors.
+          {membershipAudience
+            ? `Showing ${AUDIENCE_LABELS[membershipAudience]} membership options first — change the lane anytime below.`
+            : "Pick the plan that fits your Side Hustle — Free through Elite — with audience options for Kids, Teens, Adults, and Seniors."}
         </p>
         <MembershipPage
           onGoToJoin={onLogin}
           onGoToLogin={onLogin}
           onOpenFreeGuides={onOpenFreeGuides}
+          initialAudience={membershipAudience}
         />
       </section>
 

@@ -56,6 +56,12 @@ import type { FooterNavView } from "./components/SiteFooter";
 import { AboutPage } from "./components/AboutPage";
 import { ContactPage } from "./components/ContactPage";
 import { JoinPage } from "./components/JoinPage";
+import type { AudienceGroup } from "./lib/membership";
+import {
+  audienceFromAgeGroup,
+  isAudienceGroup,
+  saveJoinAudience,
+} from "./lib/join-audience";
 import { LaunchChecklistPage } from "./components/LaunchChecklistPage";
 import { ParentConsentPage } from "./components/ParentConsentPage";
 import { clearConsentTokenFromUrl, readConsentTokenFromUrl } from "./lib/junior-signup";
@@ -405,6 +411,7 @@ function App() {
   const [resetError, setResetError] = useState("");
   const [resetSuccess, setResetSuccess] = useState("");
   const [showResetNew, setShowResetNew] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [resetBusy, setResetBusy] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [adminSessionKey, setAdminSessionKey] = useState(0);
@@ -423,6 +430,7 @@ function App() {
     tab: "guides" | "wizard";
   } | null>(null);
   const [seniorsEntryTab, setSeniorsEntryTab] = useState<"guides" | null>(null);
+  const [joinAudience, setJoinAudience] = useState<AudienceGroup | null>(null);
   const [howOpen, setHowOpen] = useState(false);
   const [guidesDetailId, setGuidesDetailId] = useState<string | null>(null);
   const [guidesManualId, setGuidesManualId] = useState<MarketingGuideId | null>(null);
@@ -463,9 +471,23 @@ function App() {
       setGuidesDetailId(null);
       setGuidesManualId(null);
     }
+    if (view !== "join") {
+      setJoinAudience(null);
+    }
     setHowOpen(false);
     if (view === "quiz") setFindMineMode("select");
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const openJoin = (audience?: AudienceGroup | null) => {
+    if (audience) {
+      const next = audienceFromAgeGroup(audience);
+      saveJoinAudience(next);
+      setJoinAudience(next);
+    } else {
+      setJoinAudience(null);
+    }
+    goTo("join");
   };
 
   const openGuidesLibrary = () => {
@@ -925,6 +947,27 @@ function App() {
     setResetSuccess("");
   }, []);
 
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("next") !== "join") return;
+      const audienceParam = params.get("audience");
+      if (isAudienceGroup(audienceParam)) {
+        openJoin(audienceParam);
+      } else {
+        openJoin();
+      }
+      params.delete("next");
+      params.delete("audience");
+      params.delete("from");
+      const next = params.toString();
+      window.history.replaceState({}, "", `${window.location.pathname}${next ? `?${next}` : ""}${window.location.hash}`);
+    } catch {
+      /* ignore */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot deep link on load
+  }, []);
+
   const handleLogout = async () => {
     await logout();
     setIsLoggedIn(false);
@@ -1109,13 +1152,7 @@ function App() {
                 >
                   <button
                     type="button"
-                    onClick={() => {
-                      if (window.matchMedia("(max-width: 980px)").matches) {
-                        openGuidesLibrary();
-                        return;
-                      }
-                      openGuidesLibrary();
-                    }}
+                    onClick={() => openGuidesLibrary()}
                     className={`nav-link-btn admin-nav-trigger${activeView === "guides" ? " active" : ""}`}
                     data-testid="nav-free-guides"
                     aria-label="Guides"
@@ -1181,7 +1218,7 @@ function App() {
               <li>
                 <button
                   type="button"
-                  onClick={() => goTo("join")}
+                  onClick={() => openJoin()}
                   className={`nav-link-btn ${activeView === "join" ? "active" : ""}`}
                   data-testid="nav-join"
                 >
@@ -1479,7 +1516,15 @@ function App() {
                       <div className="header-title-guides-main">
                         <h1 data-testid="page-title">{getHeaderTitle()}</h1>
                         <div className="free-guides-perk-banner free-guides-perk-banner--header" role="note">
-                          <span className="glow-badge free">Free</span>
+                          <button
+                            type="button"
+                            className="glow-badge free free-guides-perk-free-btn"
+                            onClick={() => openJoin("adult")}
+                            data-testid="guides-free-membership-btn"
+                            aria-label="Go to membership — free plans available"
+                          >
+                            Free
+                          </button>
                           <div className="free-guides-perk-banner__copy">
                             <strong>Free Membership Unlocks Perks</strong>
                             <span>Join free for member guides &amp; saved progress.</span>
@@ -1650,7 +1695,7 @@ function App() {
                         <button
                           type="button"
                           className="home-step-bubble"
-                          onClick={() => setActiveView("join")}
+                          onClick={() => openJoin()}
                         >
                           <span className="home-step-bubble__num" aria-hidden="true">5</span>
                           <span className="home-step-bubble__body">
@@ -1803,7 +1848,7 @@ function App() {
                 hustles={HUSTLES_DATA}
                 onSelectAction={handleSelectHustleAction}
                 isLoggedIn={hasMemberAccess}
-                onUnlockBlueprint={() => goTo("join")}
+                onUnlockBlueprint={() => openJoin("adult")}
               />
             )}
             <TrainingCircles
@@ -1831,7 +1876,17 @@ function App() {
             <MarketingManual
               guideId={guidesManualId}
               onBack={openGuidesLibrary}
-              onGoToJoin={() => goTo("join")}
+              onGoToJoin={() =>
+                openJoin(
+                  guidesManualId === "kids"
+                    ? "kids"
+                    : guidesManualId === "teens"
+                      ? "junior"
+                      : guidesManualId === "seniors"
+                        ? "senior"
+                        : "adult",
+                )
+              }
               onOpenMatchWizard={() => {
                 if (guidesManualId === "kids") openKidsCorner({ mode: "kids", tab: "wizard" });
                 else if (guidesManualId === "teens") openKidsCorner({ mode: "junior", tab: "wizard" });
@@ -1844,14 +1899,14 @@ function App() {
               selectedHustleId={guidesDetailId}
               onGoToCalculator={handleGoToCalculatorFromGuide}
               isLoggedIn={isLoggedIn}
-              onGoToJoin={() => goTo("join")}
+              onGoToJoin={() => openJoin("adult")}
               onGoToLogin={() => goTo("login")}
               onBackToCatalog={() => setGuidesDetailId(null)}
             />
           ) : (
             <FreeGuidesPage
               isLoggedIn={isLoggedIn}
-              onGoToJoin={() => goTo("join")}
+              onGoToJoin={(audience) => openJoin(audience ?? "adult")}
               onGoToLogin={() => goTo("login")}
               onOpenAdultGuide={(id) => {
                 setSelectedHustleId(id);
@@ -1869,7 +1924,7 @@ function App() {
         {activeView === "checklist" && (
           <LaunchChecklistPage
             isLoggedIn={isLoggedIn}
-            onGoToJoin={() => goTo("join")}
+            onGoToJoin={() => openJoin("adult")}
             onGoToLogin={() => goTo("login")}
             onOpenGuide={handleOpenGuidePeek}
           />
@@ -1886,7 +1941,7 @@ function App() {
         {activeView === "kids" && (
           <KidsCorner
             isLoggedIn={hasMemberAccess}
-            onGoToJoin={() => goTo("join")}
+            onGoToJoin={(audience) => openJoin(audience)}
             entryFocus={kidsEntryFocus}
           />
         )}
@@ -1894,7 +1949,7 @@ function App() {
         {activeView === "seniors" && (
           <SeniorSideHustles
             isLoggedIn={hasMemberAccess}
-            onGoToJoin={() => goTo("join")}
+            onGoToJoin={() => openJoin("senior")}
             onOpenGuides={() => goTo("guides")}
             entryTab={seniorsEntryTab}
           />
@@ -1994,7 +2049,7 @@ function App() {
 
                   <p style={{ marginTop: "12px", fontSize: "0.9375rem", color: "var(--text-primary)", textAlign: "center" }}>
                     New here?{" "}
-                    <button type="button" className="inline-text-link" onClick={() => goTo("join")}>
+                    <button type="button" className="inline-text-link" onClick={() => openJoin()}>
                       Join GYSH
                     </button>
                   </p>
@@ -2080,14 +2135,24 @@ function App() {
 
                     <div className="form-group" style={{ margin: 0 }}>
                       <label className="form-label" style={{ fontSize: "0.9375rem" }}>Confirm new password</label>
-                      <input
-                        type="password"
-                        value={resetConfirm}
-                        onChange={(e) => setResetConfirm(e.target.value)}
-                        className="text-input"
-                        required
-                        autoComplete="new-password"
-                      />
+                      <div className="password-field">
+                        <input
+                          type={showResetConfirm ? "text" : "password"}
+                          value={resetConfirm}
+                          onChange={(e) => setResetConfirm(e.target.value)}
+                          className="text-input"
+                          required
+                          autoComplete="new-password"
+                        />
+                        <button
+                          type="button"
+                          className="password-toggle"
+                          onClick={() => setShowResetConfirm((v) => !v)}
+                          aria-label={showResetConfirm ? "Hide confirm password" : "Show confirm password"}
+                        >
+                          {showResetConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
                     </div>
 
                     <button
@@ -2121,6 +2186,7 @@ function App() {
 
         {activeView === "join" && (
           <JoinPage
+            key={joinAudience ? `join-${joinAudience}` : "join-saved"}
             onLogin={() => goTo("login")}
             onCommunity={() => goTo("community")}
             onKidsCorner={() => openKidsCorner()}
@@ -2128,6 +2194,7 @@ function App() {
               setGuidesDetailId(null);
               goTo("guides");
             }}
+            membershipAudience={joinAudience}
             onBlueprintUnlocked={(ageGroup) => {
               setMemberAccessTick((n) => n + 1);
               restoreBlueprintAfterUnlock(ageGroup);

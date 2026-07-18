@@ -400,96 +400,98 @@ function SeniorMatchFinder({
 
               {currentStep === 0 && <WizardStartHereBanner />}
 
-              <div className="match-finder-adult-header">
-                <div className="match-finder-adult-icon">{currentStepData.icon}</div>
-                <div>
-                  <h2>{currentStepData.title}</h2>
-                  <p>{currentStepData.subtitle}</p>
+              <div className="match-finder-adult-scroll">
+                <div className="match-finder-adult-header">
+                  <div className="match-finder-adult-icon">{currentStepData.icon}</div>
+                  <div className="match-finder-adult-header-copy">
+                    <h2>{currentStepData.title}</h2>
+                    <p>{currentStepData.subtitle}</p>
+                  </div>
                 </div>
-              </div>
 
-              {currentStepData.mode === "ranked" && (
-                <div className="quiz-rank-legend match-finder-adult-rank-legend">
-                  {currentStepData.key === "skills" ? (
-                    <span>
-                      Selected: <strong>{answers.skills.length}/2</strong>
-                      {answers.skills.length > 0 && (
-                        <>
-                          {" "}
-                          · Priority:{" "}
-                          {answers.skills.map((v, i) => (
-                            <span key={v} className="quiz-rank-chip">
-                              #{i + 1} {SKILL_LABELS[v]}
-                            </span>
-                          ))}
-                        </>
-                      )}
-                    </span>
-                  ) : (
-                    <span>
-                      Selected: <strong>{answers.goals.length}</strong> (need 2+)
-                      {answers.goals.length > 0 && (
-                        <>
-                          {" "}
-                          · Top ranks:{" "}
-                          {answers.goals.slice(0, 3).map((v, i) => (
-                            <span key={v} className="quiz-rank-chip">
-                              #{i + 1} {GOAL_LABELS[v]}
-                            </span>
-                          ))}
-                        </>
-                      )}
-                    </span>
-                  )}
-                </div>
-              )}
+                {currentStepData.mode === "ranked" && (
+                  <div className="quiz-rank-legend match-finder-adult-rank-legend">
+                    {currentStepData.key === "skills" ? (
+                      <span>
+                        Selected: <strong>{answers.skills.length}/2</strong>
+                        {answers.skills.length > 0 && (
+                          <>
+                            {" "}
+                            · Priority:{" "}
+                            {answers.skills.map((v, i) => (
+                              <span key={v} className="quiz-rank-chip">
+                                #{i + 1} {SKILL_LABELS[v]}
+                              </span>
+                            ))}
+                          </>
+                        )}
+                      </span>
+                    ) : (
+                      <span>
+                        Selected: <strong>{answers.goals.length}</strong> (need 2+)
+                        {answers.goals.length > 0 && (
+                          <>
+                            {" "}
+                            · Top ranks:{" "}
+                            {answers.goals.slice(0, 3).map((v, i) => (
+                              <span key={v} className="quiz-rank-chip">
+                                #{i + 1} {GOAL_LABELS[v]}
+                              </span>
+                            ))}
+                          </>
+                        )}
+                      </span>
+                    )}
+                  </div>
+                )}
 
-              <div className="match-finder-adult-options">
-                {currentStepData.options.map((option) => {
-                  if (currentStepData.mode === "single") {
-                    const selected = answers[currentStepData.key as SingleKey] === option.value;
+                <div className="match-finder-adult-options">
+                  {currentStepData.options.map((option) => {
+                    if (currentStepData.mode === "single") {
+                      const selected = answers[currentStepData.key as SingleKey] === option.value;
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          className={`match-finder-adult-option ${selected ? "is-selected" : ""}`}
+                          onClick={() => handleSelectSingle(option.value)}
+                        >
+                          {option.label}
+                        </button>
+                      );
+                    }
+
+                    const key = currentStepData.key as RankedKey;
+                    const selected = answers[key].includes(option.value);
+                    const rank = rankOf(key, option.value);
+
                     return (
                       <button
                         key={option.value}
                         type="button"
-                        className={`match-finder-adult-option ${selected ? "is-selected" : ""}`}
-                        onClick={() => handleSelectSingle(option.value)}
+                        className={`match-finder-adult-option ${selected ? "is-selected" : ""} ${
+                          rank === 1 ? "ranked-1" : ""
+                        }`}
+                        onClick={() => handleToggleRanked(option.value)}
                       >
+                        {rank !== null && <span className="quiz-option-rank">#{rank}</span>}
                         {option.label}
                       </button>
                     );
-                  }
+                  })}
+                </div>
 
-                  const key = currentStepData.key as RankedKey;
-                  const selected = answers[key].includes(option.value);
-                  const rank = rankOf(key, option.value);
+                {validationHint && (
+                  <p className="quiz-validation" role="status">
+                    {validationHint}
+                  </p>
+                )}
 
-                  return (
-                    <button
-                      key={option.value}
-                      type="button"
-                      className={`match-finder-adult-option ${selected ? "is-selected" : ""} ${
-                        rank === 1 ? "ranked-1" : ""
-                      }`}
-                      onClick={() => handleToggleRanked(option.value)}
-                    >
-                      {rank !== null && <span className="quiz-option-rank">#{rank}</span>}
-                      {option.label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {validationHint && (
-                <p className="quiz-validation" role="status">
-                  {validationHint}
+                <p className="wizard-fill-tip">
+                  Tip: Choose the pace that fits your week — we favor flexible Side Hustles that honor experience,
+                  energy, and a lighter workday.
                 </p>
-              )}
-
-              <p className="wizard-fill-tip">
-                Tip: Choose the pace that fits your week — we favor flexible Side Hustles that honor experience,
-                energy, and a lighter workday.
-              </p>
+              </div>
 
               <div className="match-finder-adult-nav">
                 <button
