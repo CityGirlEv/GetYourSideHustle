@@ -2,6 +2,7 @@
 
 import type { TestOwnerId } from "./gysh-roles";
 import { api } from "./api";
+import { PROOFREAD_CASES } from "./gysh-proofread-cases";
 import { WIZARD_SCENARIO_CASES } from "./gysh-wizard-scenarios";
 
 export type TestSuite = "manual" | "vitest" | "playwright";
@@ -23,7 +24,7 @@ export const PRIORITY_LABELS: Record<Priority, string> = {
 };
 
 export const STATUS_LABELS: Record<TestStatus, string> = {
-  not_run: "Not Run",
+  not_run: "Not Started",
   in_progress: "In Progress",
   pass: "Pass",
   fail: "Fail",
@@ -50,7 +51,7 @@ export type TestCase = {
   roles: Array<"admin" | "qa" | "kid" | "junior" | "adult" | "senior" | "all">;
   /**
    * Case owner in the Testing Portal.
-   * Manual → human QA (tina / evelyn / lyriq).
+   * Manual → human QA (tina / evelyn / lyriq), or [] = Unassigned.
    * Vitest → vitest suite owner. Playwright → playwright suite owner.
    */
   assignees: TestOwnerId[];
@@ -61,7 +62,47 @@ export type TestCase = {
   path?: string;
 };
 
-/** High-level categories for portal filtering (groups related areas). */
+/**
+ * Highest-level organization — every case is External or Internal.
+ * External = what members / guests / parents see on the live site.
+ * Internal = Admin Studio, Testing Portal, Schedule, suite runners, ops.
+ */
+export type TestFacing = "external" | "internal";
+
+export const TEST_FACINGS: TestFacing[] = ["external", "internal"];
+
+export const TEST_FACING_LABELS: Record<TestFacing, string> = {
+  external: "External",
+  internal: "Internal",
+};
+
+/** Areas that are always internal (admin / QA tooling). */
+const INTERNAL_AREAS = new Set([
+  "Admin",
+  "Schedule",
+  "Vitest",
+  "Playwright",
+  "Vitest Failure",
+  "Playwright Failure",
+]);
+
+/** Edge cases whose area is shared but the subject under test is internal. */
+const INTERNAL_CASE_IDS = new Set([
+  "AUTH-001", // Admin Studio login
+  "AUTH-006", // Log out clears Admin Studio
+  "AUTH-007", // Testing Portal access for T / E / Lyriq
+  "EMAIL-001", // API health / Resend configured
+  "EMAIL-005", // Resend From domain ops check
+]);
+
+/** Map every case to External (user-facing) or Internal (admin / QA). */
+export function facingForCase(t: Pick<TestCase, "area" | "id" | "suite">): TestFacing {
+  if (INTERNAL_CASE_IDS.has(t.id)) return "internal";
+  if (INTERNAL_AREAS.has(t.area)) return "internal";
+  return "external";
+}
+
+/** Feature categories for portal filtering (under External / Internal). */
 export type TestCategory =
   | "auth_access"
   | "navigation_brand"
@@ -144,6 +185,7 @@ export function categoryForCase(t: Pick<TestCase, "area" | "suite" | "id">): Tes
     case "Community":
     case "About":
     case "Family Coach":
+    case "Proofread":
       return "content_workshops";
     case "Kids Get Your Side Hustle":
       return "wizard_kids";
@@ -1326,6 +1368,9 @@ export const TEST_CASES: TestCase[] = [
     expected: "Family unlock path is safe and understandable for parents",
     path: "kids",
   },
+
+  // External proofread — pages + every guide + Complete Guide (Unassigned / Backlog)
+  ...PROOFREAD_CASES,
 
   // Exhaustive Get Your Side Hustle option paths (Vitest-owned matrix)
   ...WIZARD_SCENARIO_CASES,

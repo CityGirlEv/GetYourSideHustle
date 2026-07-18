@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { TEST_CASES, testerCaseCount, categoryForCase } from "../gysh-test-plan";
+import {
+  TEST_CASES,
+  testerCaseCount,
+  categoryForCase,
+  facingForCase,
+  TEST_FACINGS,
+} from "../gysh-test-plan";
 import {
   WIZARD_SCENARIO_CASES,
   wizardScenarioStats,
@@ -10,12 +16,24 @@ import { isAutomatedTestId } from "../gysh-automated-tests";
 describe("gysh-test-plan", () => {
   const manualCases = TEST_CASES.filter((t) => (t.suite ?? "manual") === "manual");
 
-  it("assigns every manual case to at least one of T / E / Lyriq", () => {
+  it("assigns every manual case to T / E / Lyriq, or leaves Unassigned (empty)", () => {
     for (const t of manualCases) {
-      expect(t.assignees.length).toBeGreaterThan(0);
       for (const a of t.assignees) {
         expect(["tina", "evelyn", "lyriq"]).toContain(a);
       }
+    }
+  });
+
+  it("keeps proofread cases Unassigned and in Backlog", async () => {
+    const { suggestedSprintForTest } = await import("../gysh-sprint-board");
+    const { BACKLOG_SPRINT } = await import("../gysh-sprints");
+    const proof = TEST_CASES.filter((t) => t.id.startsWith("PROOF-"));
+    expect(proof.length).toBeGreaterThan(20);
+    for (const t of proof) {
+      expect(t.assignees).toEqual([]);
+      expect(t.area).toBe("Proofread");
+      expect(suggestedSprintForTest(t)).toBe(BACKLOG_SPRINT);
+      expect(facingForCase(t)).toBe("external");
     }
   });
 
@@ -34,6 +52,25 @@ describe("gysh-test-plan", () => {
     for (const t of TEST_CASES) {
       expect(categoryForCase(t)).toBeTruthy();
     }
+  });
+
+  it("maps every case to External or Internal", () => {
+    for (const t of TEST_CASES) {
+      expect(TEST_FACINGS).toContain(facingForCase(t));
+    }
+  });
+
+  it("classifies Admin / Schedule / suite runners as Internal", () => {
+    expect(facingForCase({ id: "ADMIN-001", area: "Admin", suite: "manual" })).toBe("internal");
+    expect(facingForCase({ id: "ADMIN-005", area: "Schedule", suite: "manual" })).toBe("internal");
+    expect(facingForCase({ id: "AUTH-001", area: "Auth", suite: "manual" })).toBe("internal");
+  });
+
+  it("classifies public pages and wizards as External", () => {
+    expect(facingForCase({ id: "ABOUT-001", area: "About", suite: "manual" })).toBe("external");
+    expect(facingForCase({ id: "GUIDE-001", area: "Free Guides", suite: "manual" })).toBe("external");
+    expect(facingForCase({ id: "NAV-001", area: "Navigation", suite: "manual" })).toBe("external");
+    expect(facingForCase({ id: "AUTH-002", area: "Auth", suite: "manual" })).toBe("external");
   });
 });
 

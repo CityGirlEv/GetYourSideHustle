@@ -22,10 +22,10 @@ export const ACT_AS_AUDIENCE_OPTIONS: {
   label: string;
   description: string;
 }[] = [
-  { audience: "adult", label: "Adult member", description: "Adult hub, Match Wizard, guides" },
-  { audience: "kids", label: "Kids (4–12)", description: "Kids Side Hustle Corner" },
-  { audience: "junior", label: "Teens (13–17)", description: "GYSH Teens Corner" },
-  { audience: "senior", label: "Senior (55+)", description: "GYSH Seniors Corner" },
+  { audience: "adult", label: "Adult Member", description: "Adult hub, Match Wizard, guides" },
+  { audience: "kids", label: "Kids Member (4–12)", description: "Kids Side Hustle Corner" },
+  { audience: "junior", label: "Teens Member (13–17)", description: "GYSH Teens Corner" },
+  { audience: "senior", label: "Senior Member (55+)", description: "GYSH Seniors Corner" },
 ];
 
 export function readActAsTarget(): ActAsTarget {

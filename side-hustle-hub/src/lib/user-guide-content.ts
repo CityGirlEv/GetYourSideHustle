@@ -410,11 +410,11 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
     items: [
       {
         id: "qa-filter",
-        text: "Filter by search, area, category, status, QA tester, suite (manual / Vitest / Playwright), and sprint.",
+        text: "Top filter: External (live site) vs Internal (admin / QA). Then filter by search, area, category, status, QA tester, suite (manual / Vitest / Playwright), and sprint.",
       },
       {
         id: "qa-status",
-        text: "Set status: not run, in progress, pass, fail, blocked — notes required for fail/blocked.",
+        text: "Set status: not started, in progress, pass, fail, blocked — notes required for fail/blocked. Untouched cases stay Not Started. Use Save everything to persist notes.",
       },
       {
         id: "qa-assign",

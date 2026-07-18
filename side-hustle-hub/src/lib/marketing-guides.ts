@@ -210,7 +210,7 @@ function buildAdultGuide(): MarketingGuideDoc {
         kind: "perks",
         imageKey: "membership",
         intro:
-          "Consulting rates are the same across ages. Adults pay in USD; family kid-credit pools appear on Pro+.",
+          "Consulting rates are the same across ages. Adults pay in USD; every paid package includes Kid Credits for workshops & 1-on-1s (kids or adults; 2 Kid Credits = 1 adult credit).",
         perks: perkTiersFor("adult"),
       },
       {
@@ -630,9 +630,9 @@ function buildSeniorsGuide(): MarketingGuideDoc {
           body: "Run the Seniors Match Wizard, preview opportunities, and join free. Upgrade when you want member seating, consulting, and a flexible plan.",
           bullets: [
             "Free — explore + interest list",
-            "Starter $14/mo senior — team + 30-min 1-on-1",
-            "Pro $37/mo senior — schedule suite + 60-min 1-on-1",
-            "Elite $74/mo senior — 90-min 1-on-1 + ZIP scout",
+            "Starter $34/mo senior — team + 30-min 1-on-1",
+            "Pro $57/mo senior — schedule suite + 60-min 1-on-1",
+            "Elite $94/mo senior — 90-min 1-on-1 + ZIP scout",
           ],
         },
       },

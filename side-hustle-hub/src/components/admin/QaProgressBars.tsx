@@ -24,7 +24,7 @@ const SEGMENTS: Array<{ key: keyof StatusTally; color: string; label: string }> 
   { key: "fail", color: "#9B2F28", label: "Fail" },
   { key: "blocked", color: "#a16207", label: "Blocked" },
   { key: "in_progress", color: "#b8860b", label: "In progress" },
-  { key: "not_run", color: "#6b5344", label: "Not run" },
+  { key: "not_run", color: "#6b5344", label: "Not Started" },
 ];
 
 export function emptyTally(): StatusTally {
@@ -135,7 +135,7 @@ function SegmentedMeter({ row }: { row: QaProgressRow }) {
         <span>Fail {tally.fail}</span>
         <span>Blocked {tally.blocked}</span>
         <span>In progress {tally.in_progress}</span>
-        <span>Not run {tally.not_run}</span>
+        <span>Not Started {tally.not_run}</span>
       </div>
     </div>
   );

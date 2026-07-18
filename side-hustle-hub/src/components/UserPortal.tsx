@@ -1,12 +1,21 @@
-import React, { useState } from "react";
-import { 
-  Award, 
-  CheckSquare, 
-  Bookmark, 
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  Award,
+  CheckSquare,
+  Bookmark,
   Star,
   Zap,
-  Check
+  Check,
+  Coins,
+  Copy,
+  Link2,
+  Sparkles,
 } from "lucide-react";
+import {
+  CREDIT_EARN_ACTIONS,
+  KID_TO_ADULT_CREDIT_RATIO,
+} from "../lib/membership";
+import { buildReferralUrl, getOrCreateReferralCode } from "../lib/referral";
 
 interface Goal {
   id: string;
@@ -29,6 +38,20 @@ export const UserPortal: React.FC = () => {
     { id: "4", title: "Request sample packaging from manufacturer", done: false },
     { id: "5", title: "Verify local city STR/Airbnb permit guidelines", done: false }
   ]);
+  const [referralCode, setReferralCode] = useState("GYSHHOME");
+  const [referralUrl, setReferralUrl] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    const code = getOrCreateReferralCode();
+    setReferralCode(code);
+    setReferralUrl(buildReferralUrl(code));
+  }, []);
+
+  const earnActions = useMemo(
+    () => CREDIT_EARN_ACTIONS.filter((a) => a.audiences.includes("adult")),
+    [],
+  );
 
   const badges: Badge[] = [
     { name: "Scout Apprentice 🏷️", desc: "Searched product databases for profitable margins", icon: "🏷️", unlocked: true },
@@ -45,11 +68,22 @@ export const UserPortal: React.FC = () => {
     }));
   };
 
+  const copyReferral = async () => {
+    if (!referralUrl) return;
+    try {
+      await navigator.clipboard.writeText(referralUrl);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
+  };
+
   const completedGoalsCount = goals.filter(g => g.done).length;
   const progressPercent = Math.round((completedGoalsCount / goals.length) * 100);
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1.2fr 0.8fr", gap: "32px" }}>
+    <div className="user-portal" style={{ display: "grid", gridTemplateColumns: "1.2fr 0.8fr", gap: "32px" }}>
       
       {/* Roadmap Goal Tracker */}
       <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
@@ -78,6 +112,70 @@ export const UserPortal: React.FC = () => {
               }} />
             </div>
           </div>
+        </div>
+
+        <div className="glass user-portal-referral" data-testid="user-portal-referral" style={{ padding: "24px 28px", borderRadius: "16px" }}>
+          <h3 style={{ fontSize: "1.15rem", color: "var(--text-primary)", marginBottom: "8px", display: "flex", alignItems: "center", gap: "8px" }}>
+            <Link2 size={20} aria-hidden /> Your referral link
+          </h3>
+          <p style={{ color: "#5c4a38", fontSize: "0.95rem", marginBottom: "14px", lineHeight: 1.45 }}>
+            Share this link to earn <strong>+40 Kid Credits</strong> when a friend joins. Kid Credits work for
+            kids or adults on workshops and 1-on-1s ({KID_TO_ADULT_CREDIT_RATIO} Kid Credits = 1 adult credit).
+          </p>
+          <label className="flat-label" htmlFor="user-referral-link" style={{ display: "block", marginBottom: "6px" }}>
+            Code: <strong>{referralCode}</strong>
+          </label>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center" }}>
+            <input
+              id="user-referral-link"
+              className="flat-input"
+              readOnly
+              value={referralUrl}
+              data-testid="user-referral-link"
+              style={{ flex: "1 1 220px", minWidth: 0 }}
+            />
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={copyReferral}
+              data-testid="user-referral-copy"
+            >
+              <Copy size={16} aria-hidden /> {copied ? "Copied" : "Copy link"}
+            </button>
+          </div>
+        </div>
+
+        <div className="glass" data-testid="user-portal-earn-credits" style={{ padding: "24px 28px", borderRadius: "16px" }}>
+          <h3 style={{ fontSize: "1.15rem", color: "var(--text-primary)", marginBottom: "8px", display: "flex", alignItems: "center", gap: "8px" }}>
+            <Coins size={20} aria-hidden /> Ways to earn Kid Credits
+          </h3>
+          <p style={{ color: "#5c4a38", fontSize: "0.95rem", marginBottom: "14px", lineHeight: 1.45 }}>
+            <Sparkles size={14} aria-hidden style={{ verticalAlign: "middle" }} /> Treat this like an earnings
+            checklist — learn, launch, refer, and check in weekly.
+          </p>
+          <ul className="user-portal-earn-list" style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: "10px" }}>
+            {earnActions.map((a) => (
+              <li
+                key={a.id}
+                data-testid={`user-earn-${a.id}`}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "64px 1fr",
+                  gap: "12px",
+                  padding: "12px 14px",
+                  borderRadius: "12px",
+                  border: "1px solid var(--border-color)",
+                  background: "rgba(255,255,255,0.65)",
+                }}
+              >
+                <strong style={{ color: "var(--crimson)", fontSize: "1.05rem" }}>+{a.credits}</strong>
+                <span>
+                  <strong style={{ display: "block", color: "var(--charcoal)", marginBottom: "2px" }}>{a.label}</strong>
+                  <em style={{ fontStyle: "normal", color: "#5c4a38", fontSize: "0.9rem", lineHeight: 1.4 }}>{a.detail}</em>
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
 
         {/* Dynamic Goal List */}

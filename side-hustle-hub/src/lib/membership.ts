@@ -34,9 +34,9 @@ export const MEMBERSHIP_FEATURES: MembershipFeature[] = [
   { id: "story_time", label: "Story time seats", detail: "Kevina Starr / Glow Getter story sessions for kids." },
   {
     id: "kid_credits",
-    label: "Kid credits",
+    label: "Kid Credits",
     detail:
-      "Monthly kid-credit pool for Kids & Teens activities — adults can redeem the same pool for consulting at half rate (2 kid credits = 1 adult credit).",
+      "Monthly Kid Credit pool for Kids, Teens, Adults, or Seniors — redeem toward workshops and 1-on-1s. Adult redemptions use half value (2 Kid Credits = 1 adult credit).",
   },
 ];
 
@@ -55,7 +55,7 @@ export type MembershipTier = {
   kidCreditsMonthly?: number;
   /** Included monthly 1-on-1 consulting length (minutes). Paid tiers only. */
   oneOnOneMinutes?: 30 | 60 | 90;
-  /** Minimum paid commitment in months (Starter requires 3). */
+  /** Minimum paid commitment in months (all paid plans require 3). */
   commitmentMonths?: number;
   audiences: AudienceGroup[];
   featureIds: string[];
@@ -76,12 +76,13 @@ export const MEMBERSHIP_TIERS: MembershipTier[] = [
   {
     id: "starter",
     name: "Starter",
-    tagline: "Member guides, community, and a monthly 30-min 1-on-1 — 3-month commitment.",
-    priceMonthlyUsd: 19,
-    priceYearlyUsd: 190,
-    priceMonthlyUsdSenior: 14,
-    priceYearlyUsdSenior: 140,
+    tagline: "Member guides, community, monthly 30-min 1-on-1, and Kid Credits — 3-month commitment.",
+    priceMonthlyUsd: 39,
+    priceYearlyUsd: 390,
+    priceMonthlyUsdSenior: 34,
+    priceYearlyUsdSenior: 340,
     creditsPerMonth: 60,
+    kidCreditsMonthly: 30,
     oneOnOneMinutes: 30,
     commitmentMonths: 3,
     audiences: ["kids", "junior", "adult", "senior"],
@@ -92,18 +93,20 @@ export const MEMBERSHIP_TIERS: MembershipTier[] = [
       "workshop_discount",
       "one_on_one",
       "story_time",
+      "kid_credits",
     ],
   },
   {
     id: "pro",
     name: "Pro",
-    tagline: "Hustle schedule suite plus a monthly 60-min 1-on-1 consulting session.",
-    priceMonthlyUsd: 49,
-    priceYearlyUsd: 490,
-    priceMonthlyUsdSenior: 37,
-    priceYearlyUsdSenior: 370,
+    tagline: "Hustle schedule suite plus a monthly 60-min 1-on-1 — 3-month commitment.",
+    priceMonthlyUsd: 69,
+    priceYearlyUsd: 690,
+    priceMonthlyUsdSenior: 57,
+    priceYearlyUsdSenior: 570,
     creditsPerMonth: 140,
     oneOnOneMinutes: 60,
+    commitmentMonths: 3,
     audiences: ["kids", "junior", "adult", "senior"],
     featureIds: [
       "free_guides",
@@ -126,13 +129,14 @@ export const MEMBERSHIP_TIERS: MembershipTier[] = [
   {
     id: "elite",
     name: "Elite",
-    tagline: "Monthly 90-min 1-on-1, ZIP timing scout, and full priority support.",
-    priceMonthlyUsd: 99,
-    priceYearlyUsd: 990,
-    priceMonthlyUsdSenior: 74,
-    priceYearlyUsdSenior: 740,
+    tagline: "Monthly 90-min 1-on-1, ZIP timing scout, and priority support — 3-month commitment.",
+    priceMonthlyUsd: 119,
+    priceYearlyUsd: 1190,
+    priceMonthlyUsdSenior: 94,
+    priceYearlyUsdSenior: 940,
     creditsPerMonth: 280,
     oneOnOneMinutes: 90,
+    commitmentMonths: 3,
     audiences: ["kids", "junior", "adult", "senior"],
     featureIds: [
       "free_guides",
@@ -235,7 +239,11 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
       },
       {
         title: "Monthly 30-min 1-on-1",
-        detail: "Consulting with T / E — 3-month commitment.",
+        detail: "Consulting with T / E — 3-month commitment on all paid plans.",
+      },
+      {
+        title: "Monthly Kid Credits",
+        detail: "30 Kid Credits / mo — redeem for workshops & 1-on-1s (kids or adults).",
       },
     ],
     kids: [
@@ -301,11 +309,11 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
       },
       {
         title: "Monthly 60-min 1-on-1",
-        detail: "Deeper consulting for launches, pricing, and ops.",
+        detail: "Deeper consulting for launches, pricing, and ops — 3-month commitment.",
       },
       {
-        title: "Family kid-credit pool",
-        detail: "Monthly credits for Kids/Teens activities (or consulting at half rate).",
+        title: "Monthly Kid Credits",
+        detail: "Use for kids or adults on workshops & 1-on-1s (2 Kid Credits = 1 adult credit).",
       },
     ],
     kids: [
@@ -367,15 +375,15 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
     adult: [
       {
         title: "Monthly 90-min 1-on-1",
-        detail: "Priority consulting for scaling, ads, and multi-hustle ops.",
+        detail: "Priority consulting for scaling, ads, and multi-hustle ops — 3-month commitment.",
       },
       {
         title: "Best-times ZIP scout",
         detail: "Peak windows for rideshare & delivery in your ZIP.",
       },
       {
-        title: "Larger kid-credit pool",
-        detail: "More monthly family credits for Kids/Teens activities.",
+        title: "Larger Kid Credit pool",
+        detail: "More monthly credits for workshops & 1-on-1s (kids or adults).",
       },
       {
         title: "Priority workshop access",
@@ -445,78 +453,119 @@ export type CreditEarnAction = {
   credits: number;
   audiences: AudienceGroup[];
   detail: string;
+  /** Optional grouping for “ways to earn” lists */
+  category?: "referral" | "learn" | "launch" | "community" | "habit";
 };
 
+/**
+ * Ways members earn Kid Credits (dashboard + membership page).
+ * Rule of thumb: small habits 5–10, learning 10–20, launches 25–50, referrals 40–50.
+ * Adult redemptions spend at half rate (2 Kid Credits = 1 adult credit).
+ */
 export const CREDIT_EARN_ACTIONS: CreditEarnAction[] = [
+  {
+    id: "refer_friend",
+    label: "Refer a friend who joins",
+    credits: 40,
+    audiences: ["kids", "junior", "adult", "senior"],
+    category: "referral",
+    detail: "Share your dashboard referral link. When they create a free or paid account, you earn Kid Credits.",
+  },
   {
     id: "quiz_complete",
     label: "Finish GYSH Match Wizard",
     credits: 10,
-    audiences: ["kids", "junior"],
-    detail: "Complete the age-group wizard once per season.",
+    audiences: ["kids", "junior", "adult", "senior"],
+    category: "learn",
+    detail: "Complete your age-group wizard once per season.",
   },
   {
-    id: "guide_quiz",
-    label: "Pass a guide quiz",
+    id: "guide_complete",
+    label: "Finish a member guide",
     credits: 15,
-    audiences: ["kids", "junior"],
-    detail: "Score 80%+ on a member-guide knowledge check.",
+    audiences: ["kids", "junior", "adult", "senior"],
+    category: "learn",
+    detail: "Mark a guide complete (or pass an 80%+ guide quiz when available).",
+  },
+  {
+    id: "workshop_attend",
+    label: "Attend a workshop",
+    credits: 20,
+    audiences: ["kids", "junior", "adult", "senior"],
+    category: "learn",
+    detail: "Check in at a live GYSH workshop, Glow lab, or training session.",
   },
   {
     id: "story_attend",
     label: "Attend Story Time",
     credits: 10,
     audiences: ["kids"],
+    category: "learn",
     detail: "Join a Kevina Starr / Glow Getter session with a parent.",
+  },
+  {
+    id: "one_on_one_prep",
+    label: "Complete 1-on-1 prep checklist",
+    credits: 10,
+    audiences: ["adult", "senior", "junior"],
+    category: "habit",
+    detail: "Send your questions and goals before a consulting session.",
   },
   {
     id: "launch_hustle",
     label: "Launch your first hustle",
     credits: 50,
-    audiences: ["kids", "junior"],
-    detail: "Parent-confirmed first sale, gig, or lemonade day.",
+    audiences: ["kids", "junior", "adult", "senior"],
+    category: "launch",
+    detail: "Confirm a first sale, gig, listing, or lemonade day (parent OK for Kids/Teens).",
   },
   {
     id: "income_25",
     label: "Earn $25 milestone",
     credits: 25,
-    audiences: ["kids", "junior"],
-    detail: "Log verified earnings of $25 from a safe hustle.",
+    audiences: ["kids", "junior", "adult", "senior"],
+    category: "launch",
+    detail: "Log verified earnings of $25 from a side hustle.",
   },
   {
     id: "income_100",
     label: "Earn $100 milestone",
     credits: 60,
-    audiences: ["junior"],
-    detail: "Hit $100 cumulative earnings with parent approval.",
+    audiences: ["junior", "adult", "senior"],
+    category: "launch",
+    detail: "Hit $100 cumulative earnings (parent approval for Teens).",
   },
   {
     id: "piggy_goal",
     label: "Complete a Piggy / My Bank goal",
     credits: 20,
     audiences: ["kids", "junior"],
+    category: "habit",
     detail: "Reach a savings goal tracked in Piggy Bank or My Bank.",
   },
   {
     id: "weekly_checkin",
     label: "Weekly hustle check-in",
     credits: 5,
-    audiences: ["kids", "junior"],
-    detail: "Log hours + wins in the Pro tracker (when unlocked).",
+    audiences: ["kids", "junior", "adult", "senior"],
+    category: "habit",
+    detail: "Log hours + wins on your dashboard (or Pro tracker when unlocked).",
+  },
+  {
+    id: "community_win",
+    label: "Share a win in Community",
+    credits: 10,
+    audiences: ["kids", "junior", "adult", "senior"],
+    category: "community",
+    detail: "Post a helpful win or tip in GYSH Community (once per week).",
   },
   {
     id: "parent_plan",
     label: "Parent approves your hustle plan",
     credits: 15,
     audiences: ["kids", "junior"],
+    category: "habit",
     detail: "Guardian signs off on your proposed schedule.",
-  },
-  {
-    id: "refer_friend",
-    label: "Refer a teammate",
-    credits: 30,
-    audiences: ["kids", "junior"],
-    detail: "A friend joins Kids or Teens with your invite code.",
   },
 ];
 
@@ -708,9 +757,9 @@ export function adultCreditsFromKidCredits(kidCredits: number): number {
 
 export function kidCreditsFeatureLabel(tierId: TierId): string {
   const kidCredits = tierKidCredits(tierId);
-  if (kidCredits <= 0) return "Kid credits";
+  if (kidCredits <= 0) return "Kid Credits";
   const adultCredits = adultCreditsFromKidCredits(kidCredits);
-  return `${kidCredits} kid credits (${adultCredits} adult credits)`;
+  return `${kidCredits} Kid Credits (${adultCredits} adult credits)`;
 }
 
 /** Monthly 1-on-1 consulting length by paid tier (Free has none). */

@@ -190,265 +190,236 @@ export const CommunityHub: React.FC = () => {
 
   return (
     <div className="community-hub">
-      <section className="community-hero-row" aria-label="GYSH Community">
-        <div className="community-hero-media">
-          <img
-            src={communityHero}
-            alt="Join the GYSH Community — together we learn, grow, and succeed. A place for every age: kids, teens, adults, and seniors."
-            className="community-hero-img"
-            width={1024}
-            height={682}
-            decoding="async"
-          />
-        </div>
-        <div className="glass community-hero-panel">
-          <div className="community-hero-intro">
-            <span className="glow-badge emerald">
-              <Users size={12} aria-hidden /> Community
-            </span>
-            <h2>Join the GYSH Community</h2>
-            <p className="community-hero-lead">
-              Together we learn, grow, and succeed — across Kids, Teens, Adults, and Seniors. This is
-              your home base to ask questions, share Side Hustle updates, and trade tips with people
-              building the same way you are.
-            </p>
-            <p>
-              Post a win when a gig lands, ask for help when a listing stalls, or drop a tip that
-              saved you time. Members cheer each other on, swap real playbooks, and keep momentum
-              going between workshops and Match Wizard sessions.
-            </p>
-            <p>
-              Whether you&apos;re launching a lemonade stand with a parent, testing a teen hustle, or
-              growing an adult or senior Side Hustle, you belong here. Filter by topic below, share an
-              update, and grow with the community.
-            </p>
+      <section className="community-hero" aria-label="GYSH Community">
+        <div className="community-hero-row">
+          <div className="community-hero-media">
+            <img
+              src={communityHero}
+              alt="Join the GYSH Community — together we learn, grow, and succeed. A place for every age: kids, teens, adults, and seniors."
+              className="community-hero-img"
+              width={1024}
+              height={682}
+              decoding="async"
+            />
           </div>
-          <ul className="community-hero-pillars">
-            <li>
-              <Users size={16} aria-hidden />
-              <span>
-                <strong>Share your wins</strong>
-                <em>Celebrate milestones and first earnings</em>
+          <div className="community-hero-side">
+            <div className="glass community-hero-panel">
+              <span className="glow-badge emerald">
+                <Users size={12} aria-hidden /> Community
               </span>
-            </li>
-            <li>
-              <Lightbulb size={16} aria-hidden />
-              <span>
-                <strong>Get practical help</strong>
-                <em>Ask when you&apos;re stuck — members answer</em>
-              </span>
-            </li>
-            <li>
-              <Handshake size={16} aria-hidden />
-              <span>
-                <strong>Grow together</strong>
-                <em>Kids, teens, adults &amp; seniors welcome</em>
-              </span>
-            </li>
-            <li>
-              <Heart size={16} aria-hidden />
-              <span>
-                <strong>Support each other</strong>
-                <em>Kind feedback and accountability</em>
-              </span>
-            </li>
-            <li>
-              <TrendingUp size={16} aria-hidden />
-              <span>
-                <strong>Topic feed</strong>
-                <em>Airbnb, POD, affiliate, FBA &amp; more</em>
-              </span>
-            </li>
-            <li>
-              <MessageSquare size={16} aria-hidden />
-              <span>
-                <strong>Real conversations</strong>
-                <em>Tips, questions, and Side Hustle stories</em>
-              </span>
-            </li>
-          </ul>
+              <h2>Join the GYSH Community</h2>
+              <p className="community-hero-lead">
+                Together we learn, grow, and succeed — across Kids, Teens, Adults, and Seniors. Ask
+                questions, share Side Hustle updates, and trade tips with people building the same way
+                you are.
+              </p>
+              <p>
+                Post a win, ask for help when you&apos;re stuck, or drop a tip that saved you time.
+                Filter by topic below and grow with the community.
+              </p>
+            </div>
+            <ul className="community-hero-pillars">
+              <li>
+                <Users size={16} aria-hidden />
+                <span>
+                  <strong>Share your wins</strong>
+                  <em>Celebrate milestones and first earnings</em>
+                </span>
+              </li>
+              <li>
+                <Lightbulb size={16} aria-hidden />
+                <span>
+                  <strong>Get practical help</strong>
+                  <em>Ask when you&apos;re stuck — members answer</em>
+                </span>
+              </li>
+              <li>
+                <Handshake size={16} aria-hidden />
+                <span>
+                  <strong>Grow together</strong>
+                  <em>Kids, teens, adults &amp; seniors welcome</em>
+                </span>
+              </li>
+              <li>
+                <Heart size={16} aria-hidden />
+                <span>
+                  <strong>Support each other</strong>
+                  <em>Kind feedback and accountability</em>
+                </span>
+              </li>
+              <li>
+                <TrendingUp size={16} aria-hidden />
+                <span>
+                  <strong>Topic feed</strong>
+                  <em>Airbnb, POD, affiliate, FBA &amp; more</em>
+                </span>
+              </li>
+              <li>
+                <MessageSquare size={16} aria-hidden />
+                <span>
+                  <strong>Real conversations</strong>
+                  <em>Tips, questions, and Side Hustle stories</em>
+                </span>
+              </li>
+            </ul>
+          </div>
         </div>
       </section>
 
-      <div className="community-body">
-      {/* Feed Column */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-        
-        {/* Share Form */}
-        <div className="glass" style={{ padding: "24px", borderRadius: "16px" }}>
-          <h3 style={{ fontSize: "1.1rem", color: "var(--charcoal)", marginBottom: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
-            <Sparkles size={16} style={{ color: "var(--bronze)" }} /> Share Your Side Hustle Update
-          </h3>
-
-          <form onSubmit={handlePostSubmit}>
-            <textarea
-              className="text-input"
-              rows={3}
-              placeholder="What milestone did you reach? Ask a question or share a tip..."
-              value={newPostContent}
-              onChange={(e) => setNewPostContent(e.target.value)}
-              style={{ width: "100%", resize: "none", fontSize: "1rem", marginBottom: "16px" }}
-            />
-
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ fontSize: "0.9375rem", color: "var(--text-primary)" }}>Hustle Topic:</span>
-                <select 
-                  value={newPostTag}
-                  onChange={(e) => setNewPostTag(e.target.value)}
-                  className="select-input"
-                  style={{ width: "180px", padding: "6px 12px", fontSize: "0.9375rem" }}
-                >
-                  <option value="airbnb">Airbnb Hosting</option>
-                  <option value="pod">Print-on-Demand</option>
-                  <option value="dropshipping">Dropshipping</option>
-                  <option value="affiliate">Affiliate Marketing</option>
-                  <option value="amazon">Amazon FBA</option>
-                  <option value="social">Social Influencer</option>
-                </select>
+      <div className="community-body community-body--feed">
+        <div className="community-feed-column">
+          <div className="community-bubble-strip" aria-label="Community stats and mentors">
+            <div className="community-bubble-group">
+              <span className="community-bubble-label">
+                <TrendingUp size={14} aria-hidden /> Community Stats
+              </span>
+              <div className="community-bubbles">
+                <span className="community-bubble">
+                  <strong>12,840</strong>
+                  <em>Active members</em>
+                </span>
+                <span className="community-bubble community-bubble--live">
+                  <strong>1,492</strong>
+                  <em>Online now</em>
+                </span>
+                <span className="community-bubble">
+                  <strong>243</strong>
+                  <em>Weekly successes</em>
+                </span>
               </div>
-
-              <button type="submit" className="btn btn-primary" style={{ padding: "8px 16px", fontSize: "0.95rem", gap: "6px" }}>
-                <Send size={14} /> Post Update
-              </button>
             </div>
-          </form>
-        </div>
-
-        {/* Filter Bar */}
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", overflowX: "auto", paddingBottom: "4px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text-primary)", fontSize: "0.95rem", whiteSpace: "nowrap" }}>
-            <Filter size={14} /> Filter Feed:
+            <div className="community-bubble-group">
+              <span className="community-bubble-label">
+                <UserCheck size={14} aria-hidden /> Featured Mentors
+              </span>
+              <div className="community-bubbles">
+                <span className="community-bubble community-bubble--mentor">
+                  <span className="feed-avatar community-bubble-avatar" style={{ background: "var(--grad-pink)" }}>
+                    JD
+                  </span>
+                  <span>
+                    <strong>Jordan Davis</strong>
+                    <em>Amazon FBA ($100k+)</em>
+                  </span>
+                </span>
+                <span className="community-bubble community-bubble--mentor">
+                  <span className="feed-avatar community-bubble-avatar" style={{ background: "var(--grad-amber)" }}>
+                    MK
+                  </span>
+                  <span>
+                    <strong>Mia K.</strong>
+                    <em>Airbnb Co-Hosting</em>
+                  </span>
+                </span>
+                <span className="community-bubble community-bubble--mentor">
+                  <span className="feed-avatar community-bubble-avatar" style={{ background: "var(--grad-primary)" }}>
+                    TW
+                  </span>
+                  <span>
+                    <strong>Tyler Webb</strong>
+                    <em>Affiliate Automation</em>
+                  </span>
+                </span>
+              </div>
+            </div>
           </div>
-          {tags.map((t, idx) => (
-            <button
-              key={idx}
-              onClick={() => setSelectedTag(t.value)}
-              className={`glow-badge ${selectedTag === t.value ? "purple" : ""}`}
-              style={{ 
-                cursor: "pointer", 
-                border: selectedTag === t.value ? "1px solid var(--accent-purple)" : "1px solid var(--border-color)",
-                background: selectedTag === t.value ? "rgba(139, 92, 246, 0.1)" : "rgba(255,255,255,0.01)",
-                color: selectedTag === t.value ? "var(--accent-purple)" : "var(--text-secondary)",
-                whiteSpace: "nowrap"
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
 
-        {/* Feed List */}
-        <div className="community-feed">
-          {filteredComments.map((comment) => {
-            const hInfo = tags.find(t => t.value === comment.hustleTag);
-            return (
-              <div key={comment.id} className="feed-item">
-                <div className="feed-item-header">
-                  <div className="feed-avatar">
-                    {comment.avatarSeed}
-                  </div>
-                  <div>
-                    <span className="feed-username" style={{ color: "var(--charcoal)" }}>{comment.author}</span>
-                    <span className="glow-badge" style={{ fontSize: "0.9375rem", padding: "2px 8px", marginLeft: "8px", verticalAlign: "middle" }}>
-                      {comment.roleBadge}
-                    </span>
-                  </div>
-                  <span className="feed-timestamp">{comment.timestamp}</span>
-                </div>
+          <div className="glass community-compose">
+            <h3>
+              <Sparkles size={16} aria-hidden /> Share Your Side Hustle Update
+            </h3>
 
-                <div className="feed-content">
-                  {comment.content}
-                </div>
+            <form onSubmit={handlePostSubmit}>
+              <textarea
+                className="text-input"
+                rows={3}
+                placeholder="What milestone did you reach? Ask a question or share a tip..."
+                value={newPostContent}
+                onChange={(e) => setNewPostContent(e.target.value)}
+              />
 
-                {comment.hustleTag && (
-                  <div style={{ marginTop: "12px" }}>
-                    <span className="glow-badge cyan" style={{ fontSize: "0.9375rem", padding: "2px 8px" }}>
-                      #{hInfo?.label}
-                    </span>
-                  </div>
-                )}
-
-                <div className="feed-actions">
-                  <button 
-                    onClick={() => handleLike(comment.id)}
-                    className="feed-action-btn"
-                    style={{ color: comment.likedByUser ? "var(--accent-pink)" : "var(--text-muted)" }}
+              <div className="community-compose-actions">
+                <div className="community-compose-topic">
+                  <span>Hustle Topic:</span>
+                  <select
+                    value={newPostTag}
+                    onChange={(e) => setNewPostTag(e.target.value)}
+                    className="select-input"
                   >
-                    <ThumbsUp size={14} style={{ fill: comment.likedByUser ? "var(--accent-pink)" : "none" }} /> 
-                    {comment.likes} {comment.likes === 1 ? "Like" : "Likes"}
-                  </button>
-                  <button className="feed-action-btn">
-                    <MessageSquare size={14} /> 
-                    {comment.replies} {comment.replies === 1 ? "Reply" : "Replies"}
-                  </button>
+                    <option value="airbnb">Airbnb Hosting</option>
+                    <option value="pod">Print-on-Demand</option>
+                    <option value="dropshipping">Dropshipping</option>
+                    <option value="affiliate">Affiliate Marketing</option>
+                    <option value="amazon">Amazon FBA</option>
+                    <option value="social">Social Influencer</option>
+                  </select>
                 </div>
+
+                <button type="submit" className="btn btn-primary">
+                  <Send size={14} /> Post Update
+                </button>
               </div>
-            );
-          })}
-        </div>
+            </form>
+          </div>
 
-      </div>
+          <div className="community-filter-bar">
+            <div className="community-filter-label">
+              <Filter size={14} /> Filter Feed:
+            </div>
+            {tags.map((t) => (
+              <button
+                key={t.value}
+                type="button"
+                onClick={() => setSelectedTag(t.value)}
+                className={`glow-badge ${selectedTag === t.value ? "purple" : ""}`}
+                aria-pressed={selectedTag === t.value}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
 
-      {/* Sidebar Column */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-        
-        {/* Community Stats */}
-        <div className="glass" style={{ padding: "20px", borderRadius: "16px" }}>
-          <h3 style={{ fontSize: "1rem", color: "var(--charcoal)", marginBottom: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
-            <TrendingUp size={16} style={{ color: "var(--accent-emerald)" }} /> Community Stats
-          </h3>
+          <div className="community-feed">
+            {filteredComments.map((comment) => {
+              const hInfo = tags.find((t) => t.value === comment.hustleTag);
+              return (
+                <div key={comment.id} className="feed-item">
+                  <div className="feed-item-header">
+                    <div className="feed-avatar">{comment.avatarSeed}</div>
+                    <div>
+                      <span className="feed-username">{comment.author}</span>
+                      <span className="glow-badge feed-role-badge">{comment.roleBadge}</span>
+                    </div>
+                    <span className="feed-timestamp">{comment.timestamp}</span>
+                  </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--border-color)", paddingBottom: "10px" }}>
-              <span style={{ fontSize: "0.95rem", color: "var(--text-primary)" }}>Active Members:</span>
-              <strong style={{ color: "var(--charcoal)" }}>12,840</strong>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--border-color)", paddingBottom: "10px" }}>
-              <span style={{ fontSize: "0.95rem", color: "var(--text-primary)" }}>Online Now:</span>
-              <strong style={{ color: "var(--accent-emerald)" }}>1,492</strong>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ fontSize: "0.95rem", color: "var(--text-primary)" }}>Weekly Successes:</span>
-              <strong style={{ color: "var(--bronze)" }}>243</strong>
-            </div>
+                  <div className="feed-content">{comment.content}</div>
+
+                  {comment.hustleTag && (
+                    <div className="feed-tag-row">
+                      <span className="glow-badge cyan">#{hInfo?.label}</span>
+                    </div>
+                  )}
+
+                  <div className="feed-actions">
+                    <button
+                      type="button"
+                      onClick={() => handleLike(comment.id)}
+                      className={`feed-action-btn${comment.likedByUser ? " is-liked" : ""}`}
+                    >
+                      <ThumbsUp size={14} />
+                      {comment.likes} {comment.likes === 1 ? "Like" : "Likes"}
+                    </button>
+                    <button type="button" className="feed-action-btn">
+                      <MessageSquare size={14} />
+                      {comment.replies} {comment.replies === 1 ? "Reply" : "Replies"}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
-
-        {/* Expert Directory Mock */}
-        <div className="glass" style={{ padding: "20px", borderRadius: "16px" }}>
-          <h3 style={{ fontSize: "1rem", color: "var(--charcoal)", marginBottom: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
-            <UserCheck size={16} style={{ color: "var(--bronze)" }} /> Featured Mentors
-          </h3>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <div className="feed-avatar" style={{ background: "var(--grad-pink)" }}>JD</div>
-              <div style={{ display: "flex", flexDirection: "column" }}>
-                <span style={{ fontSize: "0.95rem", fontWeight: 600, color: "var(--charcoal)" }}>Jordan Davis</span>
-                <span style={{ fontSize: "0.9375rem", color: "var(--text-primary)" }}>Amazon FBA ($100k+ Sales)</span>
-              </div>
-            </div>
-
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <div className="feed-avatar" style={{ background: "var(--grad-amber)" }}>MK</div>
-              <div style={{ display: "flex", flexDirection: "column" }}>
-                <span style={{ fontSize: "0.95rem", fontWeight: 600, color: "var(--charcoal)" }}>Mia K.</span>
-                <span style={{ fontSize: "0.9375rem", color: "var(--text-primary)" }}>Airbnb Co-Hosting Coach</span>
-              </div>
-            </div>
-
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <div className="feed-avatar" style={{ background: "var(--grad-primary)" }}>TW</div>
-              <div style={{ display: "flex", flexDirection: "column" }}>
-                <span style={{ fontSize: "0.95rem", fontWeight: 600, color: "var(--charcoal)" }}>Tyler Webb</span>
-                <span style={{ fontSize: "0.9375rem", color: "var(--text-primary)" }}>Affiliate Automation Pro</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-      </div>
       </div>
     </div>
   );

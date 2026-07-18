@@ -105,6 +105,11 @@ export function suggestedSprintForTest(
   const id = test.id.toUpperCase();
   const area = test.area.toLowerCase();
 
+  // External proofread pool — stay in Backlog until claimed into a sprint
+  if (id.startsWith("PROOF-") || area === "proofread") {
+    return BACKLOG_SPRINT;
+  }
+
   if (
     area === "kids Get Your Side Hustle" ||
     id.includes("KIDS-FMSH") ||
@@ -205,7 +210,7 @@ export function ownerFromAssignees(assignees: TestOwnerId[] | string[]): string 
   const names = assignees
     .map((id) => testOwnerLabel(String(id)))
     .filter(Boolean);
-  if (names.length === 0) return "Both";
+  if (names.length === 0) return "Unassigned";
   if (names.length > 1) {
     // Multiple human owners → Both; suite owners stay as their label.
     if (names.every((n) => n === "Vitest" || n === "Playwright")) return names[0]!;

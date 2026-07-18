@@ -24,9 +24,9 @@ const TIER_LABEL: Record<TierId, string> = {
 
 const TIER_PRICE: Record<TierId, string> = {
   free: "$0",
-  starter: "$19/mo",
-  pro: "$49/mo",
-  elite: "$99/mo",
+  starter: "$39/mo",
+  pro: "$69/mo",
+  elite: "$119/mo",
 };
 
 /** Slim perk lists for email (mirrors membership.ts highlights). */

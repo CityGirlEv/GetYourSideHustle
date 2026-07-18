@@ -16,7 +16,6 @@ import {
   AUDIENCE_LABELS,
   CREDIT_EARN_ACTIONS,
   CREDIT_PACKS,
-  MEMBER_PERK_AUDIENCE_LABELS,
   MEMBER_PERKS_BY_TIER,
   MEMBERSHIP_FEATURES,
   MEMBERSHIP_TIERS,
@@ -39,60 +38,106 @@ import {
 } from "../lib/join-audience";
 import membershipHero from "../assets/membership-hero.png";
 
-const PERK_AUDIENCES: MemberPerkAudience[] = ["adult", "kids", "junior", "senior"];
+const PREVIEW_BENEFIT_COUNT = 5;
 
-function TierMemberPerks({ tierId }: { tierId: TierId }) {
-  const [open, setOpen] = useState(false);
-  const [openAudience, setOpenAudience] = useState<MemberPerkAudience | null>("kids");
-  const perks = MEMBER_PERKS_BY_TIER[tierId];
+type BenefitRow = {
+  id: string;
+  title: string;
+  detail?: string;
+};
+
+function audienceToPerkKey(audience: AudienceGroup): MemberPerkAudience {
+  return audience;
+}
+
+function buildTierBenefits(tier: (typeof MEMBERSHIP_TIERS)[number], audience: AudienceGroup): BenefitRow[] {
+  const rows: BenefitRow[] = [];
+  const seen = new Set<string>();
+
+  for (const f of MEMBERSHIP_FEATURES) {
+    if (!tier.featureIds.includes(f.id)) continue;
+    if (audience === "kids" && f.id === "zip_timing") continue;
+    if (audience === "junior" && f.id === "story_time") continue;
+    if ((audience === "adult" || audience === "senior") && f.id === "story_time") continue;
+
+    let title =
+      f.id === "kid_credits"
+        ? kidCreditsFeatureLabel(tier.id)
+        : f.id === "one_on_one"
+          ? oneOnOneFeatureLabel(tier.id)
+          : f.label;
+    if (
+      SCHEDULE_SUITE_FEATURE_IDS.includes(f.id as (typeof SCHEDULE_SUITE_FEATURE_IDS)[number])
+    ) {
+      title = `${title} · schedule suite`;
+    }
+    if (f.id === "kid_credits") title = `${title} · kids or adults`;
+    if (f.id === "one_on_one" && tier.commitmentMonths && tier.commitmentMonths > 1) {
+      title = `${title} · ${tier.commitmentMonths}-mo commitment`;
+    }
+    if (f.id === "one_on_one") title = `${title} · all ages`;
+
+    const key = title.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    rows.push({ id: `feature-${f.id}`, title, detail: f.detail });
+  }
+
+  for (const perk of MEMBER_PERKS_BY_TIER[tier.id][audienceToPerkKey(audience)]) {
+    const key = perk.title.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    rows.push({ id: `perk-${perk.title}`, title: perk.title, detail: perk.detail });
+  }
+
+  return rows;
+}
+
+function TierBenefitsList({
+  tierId,
+  benefits,
+}: {
+  tierId: TierId;
+  benefits: BenefitRow[];
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const preview = benefits.slice(0, PREVIEW_BENEFIT_COUNT);
+  const rest = benefits.slice(PREVIEW_BENEFIT_COUNT);
+  const visible = expanded ? benefits : preview;
+  const moreCount = rest.length;
 
   return (
-    <div className="membership-member-perks" data-testid={`membership-perks-${tierId}`}>
+    <div
+      className={`membership-tier-benefits${expanded ? " is-expanded" : ""}`}
+      data-testid={`membership-benefits-${tierId}`}
+    >
+      <ul className="membership-tier-features">
+        {visible.map((b) => (
+          <li key={b.id}>
+            <BadgeCheck size={14} className="membership-check" aria-hidden />
+            <span>
+              <strong>{b.title}</strong>
+              {expanded && b.detail ? (
+                <em className="membership-benefit-detail">{b.detail}</em>
+              ) : null}
+            </span>
+          </li>
+        ))}
+      </ul>
       <button
         type="button"
-        className="membership-member-perks-toggle"
-        aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
+        className="membership-tier-expand"
+        aria-expanded={expanded}
+        data-testid={`membership-benefits-expand-${tierId}`}
+        onClick={() => setExpanded((v) => !v)}
       >
-        {open ? <ChevronDown size={16} aria-hidden /> : <ChevronRight size={16} aria-hidden />}
-        Member Perks
-        <span className="membership-member-perks-hint">Adult · Kids · Teens · Senior</span>
+        {expanded ? <ChevronDown size={16} aria-hidden /> : <ChevronRight size={16} aria-hidden />}
+        {expanded
+          ? "Show less"
+          : moreCount > 0
+            ? `Show ${moreCount} more`
+            : "Show details"}
       </button>
-      {open && (
-        <div className="membership-member-perks-body">
-          {PERK_AUDIENCES.map((aud) => {
-            const items = perks[aud];
-            const isOpen = openAudience === aud;
-            return (
-              <div key={aud} className="membership-perk-audience">
-                <button
-                  type="button"
-                  className="membership-perk-audience-toggle"
-                  aria-expanded={isOpen}
-                  data-testid={`membership-perks-${tierId}-${aud}`}
-                  onClick={() => setOpenAudience((cur) => (cur === aud ? null : aud))}
-                >
-                  {isOpen ? <ChevronDown size={14} aria-hidden /> : <ChevronRight size={14} aria-hidden />}
-                  {MEMBER_PERK_AUDIENCE_LABELS[aud]}
-                </button>
-                {isOpen && (
-                  <ul className="membership-perk-list">
-                    {items.map((item) => (
-                      <li key={item.title}>
-                        <BadgeCheck size={13} aria-hidden />
-                        <span>
-                          <strong>{item.title}</strong>
-                          <em>{item.detail}</em>
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }
@@ -233,8 +278,8 @@ export function MembershipPage({
             Starting at <strong>Pro</strong>, members unlock a personalized weekly schedule from
             their Get Your Side Hustle matches, a live hustle tracker, progress reports, and email
             notifications for milestones and workshop seats. Every paid plan includes a monthly
-            1-on-1 consulting session (Starter 30 min with a 3-month commitment, Pro 60 min, Elite
-            90 min). Elite also adds the ZIP best-times scout for rideshare &amp; delivery.
+            1-on-1 consulting session (Starter 30 min, Pro 60 min, Elite 90 min) with a 3-month
+            commitment. Elite also adds the ZIP best-times scout for rideshare &amp; delivery.
           </p>
           <ul className="membership-schedule-list">
             {SCHEDULE_SUITE_FEATURE_IDS.map((id) => {
@@ -274,25 +319,21 @@ export function MembershipPage({
         ))}
       </div>
 
+      <p className="membership-credit-note glass" data-testid="membership-kid-credit-pool-note">
+        <Coins size={16} aria-hidden />{" "}
+        <strong>Seniors save on every paid plan</strong> (Starter $34 · Pro $57 · Elite $94 / mo vs Adult $39 ·
+        $69 · $119). <strong>Every paid package includes monthly Kid Credits</strong> — usable by kids{" "}
+        <em>or</em> adults toward workshops and 1-on-1s. Adult redemptions run at half value:{" "}
+        <strong>
+          {KID_TO_ADULT_CREDIT_RATIO} Kid Credits = 1 adult credit
+        </strong>
+        . Earn more with referrals and the dashboard checklist below.
+      </p>
+
       {usesCredits && (
         <p className="membership-credit-note glass">
-          <Coins size={16} aria-hidden /> Kids and Teens pay with <strong>GYSH credits</strong>{" "}
-          parents can fund — or kids earn by quizzes, launches, and milestones below.
-        </p>
-      )}
-
-      {showKidCreditPool && (
-        <p className="membership-credit-note glass" data-testid="membership-kid-credit-pool-note">
-          <Coins size={16} aria-hidden /> Adult &amp; Senior plans include a monthly <strong>kid-credit</strong>{" "}
-          pool for family activities. The same pool can pay for adult consulting at half rate —{" "}
-          <strong>{KID_TO_ADULT_CREDIT_RATIO} kid credits = 1 adult credit</strong>.
-        </p>
-      )}
-
-      {audience === "senior" && (
-        <p className="membership-credit-note glass" data-testid="membership-senior-pricing-note">
-          <Crown size={16} aria-hidden /> <strong>Senior pricing:</strong> 55+ members pay less than Adult
-          plans — Starter $14, Pro $37, Elite $74 / mo (vs $19 / $49 / $99 for Adults).
+          <Coins size={16} aria-hidden /> Kids and Teens can also spend parent-funded packs — or earn Kid
+          Credits by learning, launching, and sharing your referral link.
         </p>
       )}
 
@@ -300,85 +341,57 @@ export function MembershipPage({
         {MEMBERSHIP_TIERS.map((tier) => {
           const monthly = tierPriceMonthlyUsd(tier, audience);
           const yearly = tierPriceYearlyUsd(tier, audience);
+          const benefits = buildTierBenefits(tier, audience);
           return (
           <article
             key={tier.id}
             className={`glass membership-tier-card${tier.highlight ? " is-featured" : ""}${tier.id === SCHEDULE_SUITE_TIER ? " unlocks-schedule" : ""}`}
             data-testid={`membership-tier-${tier.id}`}
           >
-            {tier.highlight && <span className="glow-badge amber">Most popular</span>}
-            {tier.id === SCHEDULE_SUITE_TIER && (
-              <span className="glow-badge free">Unlocks schedule suite</span>
-            )}
-            {tier.commitmentMonths && tier.commitmentMonths > 1 ? (
-              <span className="glow-badge amber" data-testid={`membership-commitment-${tier.id}`}>
-                {tier.commitmentMonths}-month commitment
-              </span>
-            ) : null}
-            {tier.oneOnOneMinutes ? (
-              <span className="glow-badge free" data-testid={`membership-session-${tier.id}`}>
-                1× {tier.oneOnOneMinutes}-min 1-on-1 / mo
-              </span>
-            ) : null}
-            <h3>{tier.name}</h3>
-            <p className="membership-tier-tagline">{tier.tagline}</p>
-            <p className="membership-tier-price">
-              {usesCredits ? (
-                <>
-                  <strong>{tier.creditsPerMonth ?? 0}</strong> credits / mo
-                  {tier.id !== "free" && <span className="membership-tier-or">or parent top-up</span>}
-                </>
-              ) : (
-                <>
-                  <strong>{formatUsd(monthly)}</strong>
-                  {tier.id !== "free" && "/ mo"}
-                  {yearly ? (
-                    <span className="membership-tier-or">
-                      or {formatUsd(yearly)} / yr
-                    </span>
-                  ) : null}
-                  {audience === "senior" && tier.id !== "free" && (tier.priceMonthlyUsd ?? 0) > monthly ? (
-                    <span className="membership-tier-or">
-                      Adult price {formatUsd(tier.priceMonthlyUsd ?? 0)} / mo
-                    </span>
-                  ) : null}
-                </>
-              )}
-            </p>
-            <ul className="membership-tier-features">
-              {MEMBERSHIP_FEATURES.filter((f) => {
-                if (!tier.featureIds.includes(f.id)) return false;
-                if (audience === "kids" && (f.id === "zip_timing" || f.id === "kid_credits")) return false;
-                if (audience === "junior" && f.id === "story_time") return false;
-                if ((audience === "adult" || audience === "senior") && f.id === "story_time") return false;
-                if (audience === "senior" && f.id === "zip_timing") return true;
-                return true;
-              }).map((f) => (
-                <li key={f.id}>
-                  <BadgeCheck size={14} className="membership-check" aria-hidden />
-                  <span>
-                    <strong>
-                      {f.id === "kid_credits" && showKidCreditPool
-                        ? kidCreditsFeatureLabel(tier.id)
-                        : f.id === "one_on_one"
-                          ? oneOnOneFeatureLabel(tier.id)
-                          : f.label}
-                    </strong>
-                    {SCHEDULE_SUITE_FEATURE_IDS.includes(
-                      f.id as (typeof SCHEDULE_SUITE_FEATURE_IDS)[number],
-                    )
-                      ? " · schedule suite"
-                      : ""}
-                    {f.id === "kid_credits" && showKidCreditPool ? " · family pool" : ""}
-                    {f.id === "one_on_one" && tier.commitmentMonths && tier.commitmentMonths > 1
-                      ? ` · ${tier.commitmentMonths}-mo commitment`
-                      : ""}
-                    {f.id === "one_on_one" ? " · all ages" : ""}
+            <div className="membership-tier-card__top">
+              <h3>{tier.name}</h3>
+              <div className="membership-tier-badges">
+                {tier.highlight && <span className="glow-badge amber">Most popular</span>}
+                {tier.id === SCHEDULE_SUITE_TIER && (
+                  <span className="glow-badge free">Unlocks schedule suite</span>
+                )}
+                {tier.commitmentMonths && tier.commitmentMonths > 1 ? (
+                  <span className="glow-badge amber" data-testid={`membership-commitment-${tier.id}`}>
+                    {tier.commitmentMonths}-month commitment
                   </span>
-                </li>
-              ))}
-            </ul>
-            <TierMemberPerks tierId={tier.id} />
+                ) : null}
+                {tier.oneOnOneMinutes ? (
+                  <span className="glow-badge free" data-testid={`membership-session-${tier.id}`}>
+                    1× {tier.oneOnOneMinutes}-min 1-on-1 / mo
+                  </span>
+                ) : null}
+              </div>
+              <p className="membership-tier-tagline">{tier.tagline}</p>
+              <p className="membership-tier-price">
+                {usesCredits ? (
+                  <>
+                    <strong>{tier.creditsPerMonth ?? 0}</strong> credits / mo
+                    {tier.id !== "free" && <span className="membership-tier-or">or parent top-up</span>}
+                  </>
+                ) : (
+                  <>
+                    <strong>{formatUsd(monthly)}</strong>
+                    {tier.id !== "free" && "/ mo"}
+                    {yearly ? (
+                      <span className="membership-tier-or">
+                        or {formatUsd(yearly)} / yr
+                      </span>
+                    ) : null}
+                    {audience === "senior" && tier.id !== "free" && (tier.priceMonthlyUsd ?? 0) > monthly ? (
+                      <span className="membership-tier-or">
+                        Adult price {formatUsd(tier.priceMonthlyUsd ?? 0)} / mo
+                      </span>
+                    ) : null}
+                  </>
+                )}
+              </p>
+            </div>
+            <TierBenefitsList tierId={tier.id} benefits={benefits} />
             <button
               type="button"
               className={`btn ${tier.id === "free" ? "btn-outline" : "btn-primary"}`}
@@ -399,53 +412,55 @@ export function MembershipPage({
       </div>
 
       {usesCredits && (
-        <>
-          <section className="glass membership-credit-packs" data-testid="membership-credit-packs">
-            <h3>
-              <Coins size={18} /> Parent-funded credit packs
-            </h3>
-            <p>
-              Parents and guardians can add credits at any time. Kids can also earn credits below,
-              so purchasing a pack is always optional.
-            </p>
-            <div className="membership-credit-pack-grid">
-              {CREDIT_PACKS.map((pack) => (
-                <article
-                  key={pack.id}
-                  className={`membership-credit-pack-card${pack.popular ? " is-popular" : ""}`}
-                  data-testid={`membership-credit-pack-${pack.id}`}
-                >
-                  {pack.popular && <span className="glow-badge amber">Most popular</span>}
-                  <h4>{pack.name}</h4>
-                  <strong>{pack.credits} credits</strong>
-                  <span>{formatUsd(pack.priceUsd)}</span>
-                  <p>{pack.detail}</p>
-                </article>
-              ))}
-            </div>
-            <small>
-              Credit purchases require parent or guardian approval. Credits have no cash value and
-              cannot be transferred or withdrawn.
-            </small>
-          </section>
-
-          <section className="glass membership-credits" data-testid="membership-credits">
-            <h3>
-              <Sparkles size={18} /> Earn credits — {AUDIENCE_LABELS[audience]}
-            </h3>
-            <p>Stack earned credits instead of (or on top of) a parent-funded pack.</p>
-            <div className="membership-credits-grid">
-              {earnActions.map((a) => (
-                <article key={a.id} className="membership-credit-card">
-                  <strong>+{a.credits}</strong>
-                  <span>{a.label}</span>
-                  <p>{a.detail}</p>
-                </article>
-              ))}
-            </div>
-          </section>
-        </>
+        <section className="glass membership-credit-packs" data-testid="membership-credit-packs">
+          <h3>
+            <Coins size={18} /> Parent-funded credit packs
+          </h3>
+          <p>
+            Parents and guardians can add Kid Credits anytime. Members can also earn credits below,
+            so purchasing a pack is always optional.
+          </p>
+          <div className="membership-credit-pack-grid">
+            {CREDIT_PACKS.map((pack) => (
+              <article
+                key={pack.id}
+                className={`membership-credit-pack-card${pack.popular ? " is-popular" : ""}`}
+                data-testid={`membership-credit-pack-${pack.id}`}
+              >
+                {pack.popular && <span className="glow-badge amber">Most popular</span>}
+                <h4>{pack.name}</h4>
+                <strong>{pack.credits} Kid Credits</strong>
+                <span>{formatUsd(pack.priceUsd)}</span>
+                <p>{pack.detail}</p>
+              </article>
+            ))}
+          </div>
+          <small>
+            Credit purchases require parent or guardian approval. Credits have no cash value and
+            cannot be transferred or withdrawn.
+          </small>
+        </section>
       )}
+
+      <section className="glass membership-credits" data-testid="membership-credits">
+        <h3>
+          <Sparkles size={18} /> Ways to earn Kid Credits — {AUDIENCE_LABELS[audience]}
+        </h3>
+        <p>
+          Use Kid Credits for workshops and 1-on-1s (kids or adults). Adult redemptions spend at half
+          rate ({KID_TO_ADULT_CREDIT_RATIO} Kid Credits = 1 adult credit). Your personal referral link
+          lives on the member dashboard.
+        </p>
+        <div className="membership-credits-grid">
+          {earnActions.map((a) => (
+            <article key={a.id} className="membership-credit-card" data-testid={`membership-earn-${a.id}`}>
+              <strong>+{a.credits}</strong>
+              <span>{a.label}</span>
+              <p>{a.detail}</p>
+            </article>
+          ))}
+        </div>
+      </section>
 
       <section className="glass membership-alacarte" data-testid="membership-alacarte">
         <h3>A la carte price list — {AUDIENCE_LABELS[audience]}</h3>

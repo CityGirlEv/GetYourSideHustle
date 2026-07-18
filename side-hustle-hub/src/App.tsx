@@ -1022,11 +1022,11 @@ function App() {
 
   const getHeaderTitle = () => {
     switch (activeView) {
-      case "dashboard": return "Four GYSH Match Wizards. One Family Adventure.";
+      case "dashboard": return "Four “Get Your Side Hustle” Match Wizards. One Family Adventure.";
       case "quiz":
         return findMineMode === "adult"
           ? "GYSH Adults Match Wizard"
-          : "Four GYSH Match Wizards. One Family Adventure.";
+          : "Four “Get Your Side Hustle” Match Wizards. One Family Adventure.";
       case "calculators": return "GYSH Profit Estimator";
       case "guides":
         if (guidesManualId) {
@@ -1096,20 +1096,20 @@ function App() {
     <div className="app-container">
       <header className={`top-header${mobileMenuOpen ? " open" : ""}`}>
         <div className="top-header-inner">
-          <div className="top-header-row top-header-row--main">
-            <button type="button" className="brand-section" onClick={() => goTo("dashboard")} aria-label="Home">
-              <img src={gyshLogo} alt="Get Your Side Hustle" className="brand-header-logo" />
-            </button>
+          <button type="button" className="brand-section" onClick={() => goTo("dashboard")} aria-label="Home">
+            <img src={gyshLogo} alt="Get Your Side Hustle" className="brand-header-logo" />
+          </button>
 
-            <button
-              type="button"
-              className="menu-toggle"
-              aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
-              onClick={() => setMobileMenuOpen((v) => !v)}
-            >
-              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-            </button>
+          <button
+            type="button"
+            className="menu-toggle"
+            aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+            onClick={() => setMobileMenuOpen((v) => !v)}
+          >
+            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
 
+          <div className="top-header-menus">
             <nav className="nav-primary" aria-label="Primary">
               <ul className="nav-links nav-links--primary">
                 <li>
@@ -1247,7 +1247,6 @@ function App() {
                 </li>
               </ul>
             </nav>
-          </div>
 
           <div className="top-header-row top-header-row--meta">
             <nav className="nav-secondary" aria-label="Account and info">
@@ -1535,6 +1534,7 @@ function App() {
             </div>
             </div>
           </div>
+          </div>
         </div>
       </header>
 
@@ -1638,17 +1638,10 @@ function App() {
         {activeView === "dashboard" && (
           <div className="dashboard-home">
             <header className="home-page-header" data-testid="home-page-header">
-              <p className="home-page-header__eyebrow">
-                <Sparkles size={14} aria-hidden="true" /> GYSH Match Wizard
-              </p>
               <h1 className="home-page-header__title" data-testid="page-title">
-                <span>Four</span>
-                <span>GYSH</span>
-                <span>Match</span>
-                <span>Wizards.</span>
-                <span>One</span>
-                <span>Family</span>
-                <span>Adventure.</span>
+                Four{" "}
+                <em className="home-page-header__brand">&ldquo;Get Your Side Hustle&rdquo;</em> Match
+                Wizards. One Family Adventure.
               </h1>
               <p className="home-page-header__purpose" data-testid="home-site-purpose">
                 {SITE_PURPOSE}
@@ -1658,19 +1651,6 @@ function App() {
                 <strong>GYSH Coaches</strong> for kids and teens: cheer, set boundaries, and help turn ideas into
                 safe first wins. Parental consent required through age 12.
               </p>
-              <div className="home-follow-cta">
-                <button type="button" className="btn btn-primary" onClick={() => openJoin()}>
-                  <UserPlus size={16} aria-hidden /> Join GYSH free
-                </button>
-                <a
-                  href={FACEBOOK_URL}
-                  className="btn btn-outline"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <FacebookIcon size={16} /> Follow on Facebook
-                </a>
-              </div>
             </header>
 
             <section className="home-promo-hero" aria-label="Get Your Side Hustle family promotion">
@@ -1778,15 +1758,32 @@ function App() {
               aria-labelledby="home-match-family-title"
             >
               <div className="home-match-family__section-head">
-                <span className="glow-badge free home-match-family__eyebrow">
-                  <Sparkles size={13} /> Your age · Your wizard
-                </span>
-                <h2 id="home-match-family-title" className="home-match-family__section-title">
-                  Pick Your Path — Kids · Teens · Adults · Seniors
-                </h2>
-                <p className="home-match-family__section-sub">
-                  Four demographic lanes. One family adventure. Choose the wizard built for your stage of life.
-                </p>
+                <button
+                  type="button"
+                  className="btn btn-primary home-match-family__side-cta"
+                  onClick={() => openJoin()}
+                >
+                  <UserPlus size={16} aria-hidden /> Join GYSH free
+                </button>
+                <div className="home-match-family__section-copy">
+                  <span className="glow-badge free home-match-family__eyebrow">
+                    <Sparkles size={13} /> Your age · Your wizard
+                  </span>
+                  <h2 id="home-match-family-title" className="home-match-family__section-title">
+                    Pick Your Path — Kids · Teens · Adults · Seniors
+                  </h2>
+                  <p className="home-match-family__section-sub">
+                    Four demographic lanes. One family adventure. Choose the wizard built for your stage of life.
+                  </p>
+                </div>
+                <a
+                  href={FACEBOOK_URL}
+                  className="btn btn-outline home-match-family__side-cta"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <FacebookIcon size={16} /> Follow on Facebook
+                </a>
               </div>
               <ul className="home-match-family__grid">
                 <li>
