@@ -98,7 +98,8 @@ function TierMemberPerks({ tierId }: { tierId: TierId }) {
 }
 
 type MembershipPageProps = {
-  onGoToJoin?: () => void;
+  /** Open membership sign-up; optional tier from a plan card (free / starter / pro / elite). */
+  onGoToJoin?: (tier?: TierId) => void;
   onGoToLogin?: () => void;
   onOpenFreeGuides?: () => void;
   /** Pre-select membership lane from the page that linked here (kids / teens / adult / senior). */
@@ -175,6 +176,29 @@ export function MembershipPage({
               Start free with open guides — upgrade for schedules, trackers, progress reports, email
               alerts, training, and monthly 1-on-1 consulting (30 / 60 / 90 min by plan).
             </p>
+            <div className="membership-hero-actions">
+              {onOpenFreeGuides && (
+                <button type="button" className="btn btn-outline" onClick={onOpenFreeGuides}>
+                  Browse free guides
+                </button>
+              )}
+              {onGoToLogin && (
+                <button type="button" className="btn btn-outline" onClick={onGoToLogin}>
+                  Sign in
+                </button>
+              )}
+              {onGoToJoin && (
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => onGoToJoin("free")}
+                  style={{ gap: 6 }}
+                  data-testid="membership-hero-join"
+                >
+                  <UserPlus size={16} /> Create account / Join
+                </button>
+              )}
+            </div>
           </div>
           <ul className="membership-hero-pillars">
             <li>
@@ -194,23 +218,6 @@ export function MembershipPage({
               <span>Same consulting rates for Kids, Teens, Adults &amp; Seniors</span>
             </li>
           </ul>
-          <div className="membership-hero-actions">
-            {onOpenFreeGuides && (
-              <button type="button" className="btn btn-outline" onClick={onOpenFreeGuides}>
-                Browse free guides
-              </button>
-            )}
-            {onGoToLogin && (
-              <button type="button" className="btn btn-outline" onClick={onGoToLogin}>
-                Sign in
-              </button>
-            )}
-            {onGoToJoin && (
-              <button type="button" className="btn btn-primary" onClick={onGoToJoin} style={{ gap: 6 }}>
-                <UserPlus size={16} /> Create account / Join
-              </button>
-            )}
-          </div>
         </div>
       </section>
 
@@ -375,9 +382,16 @@ export function MembershipPage({
             <button
               type="button"
               className={`btn ${tier.id === "free" ? "btn-outline" : "btn-primary"}`}
-              onClick={tier.id === "free" ? onOpenFreeGuides : onGoToJoin}
+              onClick={() => {
+                if (tier.id === "free") {
+                  onGoToJoin?.("free");
+                  return;
+                }
+                onGoToJoin?.(tier.id);
+              }}
+              data-testid={`membership-choose-${tier.id}`}
             >
-              {tier.id === "free" ? "Stay on Free" : `Choose ${tier.name}`}
+              {tier.id === "free" ? "Join Free" : `Choose ${tier.name}`}
             </button>
           </article>
           );

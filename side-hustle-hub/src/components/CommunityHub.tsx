@@ -12,7 +12,7 @@ import {
   Handshake,
   Heart,
 } from "lucide-react";
-import gyshCommunityHero from "../assets/gysh-community-hero.png";
+import communityHero from "../assets/membership-hero.png";
 
 interface Comment {
   id: string;
@@ -193,8 +193,8 @@ export const CommunityHub: React.FC = () => {
       <section className="community-hero-row" aria-label="GYSH Community">
         <div className="community-hero-media">
           <img
-            src={gyshCommunityHero}
-            alt="GYSH Community — Ask questions, share updates, and exchange tips with active creators."
+            src={communityHero}
+            alt="Join the GYSH Community — together we learn, grow, and succeed. A place for every age: kids, teens, adults, and seniors."
             className="community-hero-img"
             width={1024}
             height={682}
@@ -202,19 +202,70 @@ export const CommunityHub: React.FC = () => {
           />
         </div>
         <div className="glass community-hero-panel">
-          <span className="glow-badge emerald" style={{ marginBottom: 8 }}>
-            <Users size={12} /> Members
-          </span>
-          <h2>GYSH Community</h2>
-          <p>
-            Ask questions, share updates, and exchange tips with active creators. Celebrate wins,
-            get help when you&apos;re stuck, and grow together.
-          </p>
+          <div className="community-hero-intro">
+            <span className="glow-badge emerald">
+              <Users size={12} aria-hidden /> Community
+            </span>
+            <h2>Join the GYSH Community</h2>
+            <p className="community-hero-lead">
+              Together we learn, grow, and succeed — across Kids, Teens, Adults, and Seniors. This is
+              your home base to ask questions, share Side Hustle updates, and trade tips with people
+              building the same way you are.
+            </p>
+            <p>
+              Post a win when a gig lands, ask for help when a listing stalls, or drop a tip that
+              saved you time. Members cheer each other on, swap real playbooks, and keep momentum
+              going between workshops and Match Wizard sessions.
+            </p>
+            <p>
+              Whether you&apos;re launching a lemonade stand with a parent, testing a teen hustle, or
+              growing an adult or senior Side Hustle, you belong here. Filter by topic below, share an
+              update, and grow with the community.
+            </p>
+          </div>
           <ul className="community-hero-pillars">
-            <li><Users size={16} aria-hidden /> Share your wins</li>
-            <li><Lightbulb size={16} aria-hidden /> Get help</li>
-            <li><Handshake size={16} aria-hidden /> Grow together</li>
-            <li><Heart size={16} aria-hidden /> Support each other</li>
+            <li>
+              <Users size={16} aria-hidden />
+              <span>
+                <strong>Share your wins</strong>
+                <em>Celebrate milestones and first earnings</em>
+              </span>
+            </li>
+            <li>
+              <Lightbulb size={16} aria-hidden />
+              <span>
+                <strong>Get practical help</strong>
+                <em>Ask when you&apos;re stuck — members answer</em>
+              </span>
+            </li>
+            <li>
+              <Handshake size={16} aria-hidden />
+              <span>
+                <strong>Grow together</strong>
+                <em>Kids, teens, adults &amp; seniors welcome</em>
+              </span>
+            </li>
+            <li>
+              <Heart size={16} aria-hidden />
+              <span>
+                <strong>Support each other</strong>
+                <em>Kind feedback and accountability</em>
+              </span>
+            </li>
+            <li>
+              <TrendingUp size={16} aria-hidden />
+              <span>
+                <strong>Topic feed</strong>
+                <em>Airbnb, POD, affiliate, FBA &amp; more</em>
+              </span>
+            </li>
+            <li>
+              <MessageSquare size={16} aria-hidden />
+              <span>
+                <strong>Real conversations</strong>
+                <em>Tips, questions, and Side Hustle stories</em>
+              </span>
+            </li>
           </ul>
         </div>
       </section>

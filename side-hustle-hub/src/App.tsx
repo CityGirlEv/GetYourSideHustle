@@ -25,6 +25,7 @@ import {
   Minus,
   Plus,
 } from "lucide-react";
+import { FacebookIcon } from "./components/FacebookIcon";
 import { HustleCard } from "./components/HustleCard";
 import type { Hustle } from "./components/HustleCard";
 import { CalculatorSection } from "./components/CalculatorSection";
@@ -56,16 +57,18 @@ import type { FooterNavView } from "./components/SiteFooter";
 import { AboutPage } from "./components/AboutPage";
 import { ContactPage } from "./components/ContactPage";
 import { JoinPage } from "./components/JoinPage";
-import type { AudienceGroup } from "./lib/membership";
+import { MembershipSignupPage } from "./components/MembershipSignupPage";
+import type { AudienceGroup, TierId } from "./lib/membership";
 import {
   audienceFromAgeGroup,
   isAudienceGroup,
+  readSavedJoinAudience,
   saveJoinAudience,
 } from "./lib/join-audience";
 import { LaunchChecklistPage } from "./components/LaunchChecklistPage";
 import { ParentConsentPage } from "./components/ParentConsentPage";
 import { clearConsentTokenFromUrl, readConsentTokenFromUrl } from "./lib/junior-signup";
-import { SITE_NAME } from "./lib/site-config";
+import { FACEBOOK_URL, SITE_NAME, SITE_PURPOSE } from "./lib/site-config";
 import {
   confirmPasswordReset,
   login,
@@ -111,7 +114,8 @@ export type AppView =
   | "admin"
   | "about"
   | "contact"
-  | "join";
+  | "join"
+  | "membership_signup";
 
 const HUSTLES_DATA: Hustle[] = [
   {
@@ -431,6 +435,7 @@ function App() {
   } | null>(null);
   const [seniorsEntryTab, setSeniorsEntryTab] = useState<"guides" | null>(null);
   const [joinAudience, setJoinAudience] = useState<AudienceGroup | null>(null);
+  const [signupTier, setSignupTier] = useState<TierId>("free");
   const [howOpen, setHowOpen] = useState(false);
   const [guidesDetailId, setGuidesDetailId] = useState<string | null>(null);
   const [guidesManualId, setGuidesManualId] = useState<MarketingGuideId | null>(null);
@@ -488,6 +493,18 @@ function App() {
       setJoinAudience(null);
     }
     goTo("join");
+  };
+
+  /** Membership registration + optional demo checkout for paid tiers. */
+  const openMembershipSignup = (tier: TierId = "free", audience?: AudienceGroup | null) => {
+    const next =
+      audience != null
+        ? audienceFromAgeGroup(audience)
+        : joinAudience ?? readSavedJoinAudience("adult");
+    saveJoinAudience(next);
+    setJoinAudience(next);
+    setSignupTier(tier);
+    goTo("membership_signup");
   };
 
   const openGuidesLibrary = () => {
@@ -1031,6 +1048,7 @@ function App() {
       case "about": return "About GYSH";
       case "contact": return "GYSH Contact Us";
       case "join": return "Join GYSH";
+      case "membership_signup": return "GYSH Membership Sign-up";
       case "login": return "GYSH Sign In";
       case "user_portal": return "GYSH My Dashboard";
       case "admin": return "GYSH Admin Studio";
@@ -1040,7 +1058,7 @@ function App() {
 
   const getHeaderDesc = () => {
     switch (activeView) {
-      case "dashboard": return "Explore verified side hustles and step-by-step guides to grow your earnings.";
+      case "dashboard": return SITE_PURPOSE;
       case "quiz": return "";
       case "calculators": return "Estimate cash flow, product margins, and affiliate returns.";
       case "guides":
@@ -1078,180 +1096,200 @@ function App() {
     <div className="app-container">
       <header className={`top-header${mobileMenuOpen ? " open" : ""}`}>
         <div className="top-header-inner">
-          <button type="button" className="brand-section" onClick={() => goTo("dashboard")} aria-label="Home">
-            <img src={gyshLogo} alt="Get Your Side Hustle" className="brand-header-logo" />
-          </button>
+          <div className="top-header-row top-header-row--main">
+            <button type="button" className="brand-section" onClick={() => goTo("dashboard")} aria-label="Home">
+              <img src={gyshLogo} alt="Get Your Side Hustle" className="brand-header-logo" />
+            </button>
 
-          <button
-            type="button"
-            className="menu-toggle"
-            aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
-            onClick={() => setMobileMenuOpen((v) => !v)}
-          >
-            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
+            <button
+              type="button"
+              className="menu-toggle"
+              aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+              onClick={() => setMobileMenuOpen((v) => !v)}
+            >
+              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
 
-          <nav style={{ flex: 1, display: "contents" }}>
-            <ul className="nav-links">
-              <li>
-                <button
-                  type="button"
-                  onClick={() => goTo("dashboard")}
-                  className={`nav-link-btn ${activeView === "dashboard" ? "active" : ""}`}
-                  data-testid="nav-home"
-                >
-                  <Home size={16} className="nav-icon nav-icon--home" aria-hidden />
-                  Home
-                </button>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  onClick={() => goTo("quiz")}
-                  className={`nav-link-btn ${activeView === "quiz" ? "active" : ""}`}
-                  data-testid="nav-find-mine"
-                >
-                  <Sparkles size={16} className="nav-icon nav-icon--quiz" aria-hidden />
-                  GYSH Match Wizard
-                </button>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  onClick={() => openKidsCorner()}
-                  className={`nav-link-btn ${activeView === "kids" ? "active" : ""}`}
-                  data-testid="nav-kids"
-                >
-                  <img
-                    src={kevinaNavMark}
-                    alt=""
-                    className="nav-kevina-mark"
-                    width={28}
-                    height={28}
-                  />
-                  Kids & Teens
-                </button>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  onClick={() => openSeniors()}
-                  className={`nav-link-btn ${activeView === "seniors" ? "active" : ""}`}
-                  data-testid="nav-seniors"
-                >
-                  <Heart size={16} className="nav-icon nav-icon--seniors" aria-hidden />
-                  Seniors
-                </button>
-              </li>
-              <li>
-                <div
-                  ref={guidesMenuRef}
-                  className={`admin-nav-dropdown guides-nav-dropdown${guidesMenuOpen ? " open" : ""}`}
-                  onMouseEnter={() => setGuidesMenuOpen(true)}
-                  onMouseLeave={() => setGuidesMenuOpen(false)}
-                >
+            <nav className="nav-primary" aria-label="Primary">
+              <ul className="nav-links nav-links--primary">
+                <li>
                   <button
                     type="button"
-                    onClick={() => openGuidesLibrary()}
-                    className={`nav-link-btn admin-nav-trigger${activeView === "guides" ? " active" : ""}`}
-                    data-testid="nav-free-guides"
-                    aria-label="Guides"
-                    aria-expanded={guidesMenuOpen}
-                    aria-haspopup="menu"
+                    onClick={() => goTo("dashboard")}
+                    className={`nav-link-btn ${activeView === "dashboard" ? "active" : ""}`}
+                    data-testid="nav-home"
                   >
-                    <BookOpen size={16} className="nav-icon nav-icon--guides" aria-hidden />
-                    Guides
-                    <ChevronDown size={14} className="admin-nav-chevron" aria-hidden />
+                    <Home size={16} className="nav-icon nav-icon--home" aria-hidden />
+                    Home
                   </button>
-                  <ul className="admin-nav-menu" role="menu" hidden={!guidesMenuOpen}>
-                    <li role="none">
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className={`admin-nav-item${
-                          activeView === "guides" && !guidesManualId && !guidesDetailId ? " active" : ""
-                        }`}
-                        onClick={openGuidesLibrary}
-                      >
-                        Guides Library
-                      </button>
-                    </li>
-                    {MARKETING_GUIDE_MENU.map((guide) => (
-                      <li key={guide.id} role="none">
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => goTo("quiz")}
+                    className={`nav-link-btn ${activeView === "quiz" ? "active" : ""}`}
+                    data-testid="nav-find-mine"
+                  >
+                    <Sparkles size={16} className="nav-icon nav-icon--quiz" aria-hidden />
+                    GYSH Match Wizard
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => openKidsCorner()}
+                    className={`nav-link-btn ${activeView === "kids" ? "active" : ""}`}
+                    data-testid="nav-kids"
+                  >
+                    <img
+                      src={kevinaNavMark}
+                      alt=""
+                      className="nav-kevina-mark"
+                      width={28}
+                      height={28}
+                    />
+                    Kids & Teens
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => openSeniors()}
+                    className={`nav-link-btn ${activeView === "seniors" ? "active" : ""}`}
+                    data-testid="nav-seniors"
+                  >
+                    <Heart size={16} className="nav-icon nav-icon--seniors" aria-hidden />
+                    Seniors
+                  </button>
+                </li>
+                <li>
+                  <div
+                    ref={guidesMenuRef}
+                    className={`admin-nav-dropdown guides-nav-dropdown${guidesMenuOpen ? " open" : ""}`}
+                    onMouseEnter={() => setGuidesMenuOpen(true)}
+                    onMouseLeave={() => setGuidesMenuOpen(false)}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => openGuidesLibrary()}
+                      className={`nav-link-btn admin-nav-trigger${activeView === "guides" ? " active" : ""}`}
+                      data-testid="nav-free-guides"
+                      aria-label="Guides"
+                      aria-expanded={guidesMenuOpen}
+                      aria-haspopup="menu"
+                    >
+                      <BookOpen size={16} className="nav-icon nav-icon--guides" aria-hidden />
+                      Guides
+                      <ChevronDown size={14} className="admin-nav-chevron" aria-hidden />
+                    </button>
+                    <ul className="admin-nav-menu" role="menu" hidden={!guidesMenuOpen}>
+                      <li role="none">
                         <button
                           type="button"
                           role="menuitem"
                           className={`admin-nav-item${
-                            activeView === "guides" && guidesManualId === guide.id ? " active" : ""
+                            activeView === "guides" && !guidesManualId && !guidesDetailId ? " active" : ""
                           }`}
-                          onClick={() => openGuidesManual(guide.id)}
-                          data-testid={`nav-guide-manual-${guide.id}`}
+                          onClick={openGuidesLibrary}
                         >
-                          {guide.label}
+                          Guides Library
                         </button>
                       </li>
-                    ))}
-                  </ul>
-                </div>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  onClick={() => goTo("workshops")}
-                  className={`nav-link-btn ${activeView === "workshops" ? "active" : ""}`}
-                  data-testid="nav-workshops"
-                >
-                  <Mic2 size={16} className="nav-icon nav-icon--workshops" aria-hidden />
-                  Workshops
-                </button>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  onClick={() => goTo("community")}
-                  className={`nav-link-btn ${activeView === "community" ? "active" : ""}`}
-                >
-                  <MessageSquare size={16} className="nav-icon nav-icon--community" aria-hidden />
-                  Community
-                </button>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  onClick={() => openJoin()}
-                  className={`nav-link-btn ${activeView === "join" ? "active" : ""}`}
-                  data-testid="nav-join"
-                >
-                  <UserPlus size={16} className="nav-icon nav-icon--join" aria-hidden />
-                  Join
-                </button>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  onClick={() => goTo("about")}
-                  className={`nav-link-btn ${activeView === "about" ? "active" : ""}`}
-                  data-testid="nav-about"
-                >
-                  <Info size={16} className="nav-icon nav-icon--about" aria-hidden />
-                  About
-                </button>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  onClick={() => goTo("contact")}
-                  className={`nav-link-btn ${activeView === "contact" ? "active" : ""}`}
-                  data-testid="nav-contact"
-                >
-                  <Mail size={16} className="nav-icon nav-icon--contact" aria-hidden />
-                  Contact Us
-                </button>
-              </li>
-            </ul>
-          </nav>
+                      {MARKETING_GUIDE_MENU.map((guide) => (
+                        <li key={guide.id} role="none">
+                          <button
+                            type="button"
+                            role="menuitem"
+                            className={`admin-nav-item${
+                              activeView === "guides" && guidesManualId === guide.id ? " active" : ""
+                            }`}
+                            onClick={() => openGuidesManual(guide.id)}
+                            data-testid={`nav-guide-manual-${guide.id}`}
+                          >
+                            {guide.label}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => goTo("workshops")}
+                    className={`nav-link-btn ${activeView === "workshops" ? "active" : ""}`}
+                    data-testid="nav-workshops"
+                  >
+                    <Mic2 size={16} className="nav-icon nav-icon--workshops" aria-hidden />
+                    Workshops
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => goTo("community")}
+                    className={`nav-link-btn ${activeView === "community" ? "active" : ""}`}
+                  >
+                    <MessageSquare size={16} className="nav-icon nav-icon--community" aria-hidden />
+                    Community
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => openJoin()}
+                    className={`nav-link-btn ${activeView === "join" ? "active" : ""}`}
+                    data-testid="nav-join"
+                  >
+                    <UserPlus size={16} className="nav-icon nav-icon--join" aria-hidden />
+                    Join
+                  </button>
+                </li>
+              </ul>
+            </nav>
+          </div>
 
-          <div className="header-actions">
+          <div className="top-header-row top-header-row--meta">
+            <nav className="nav-secondary" aria-label="Account and info">
+              <ul className="nav-links nav-links--secondary">
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => goTo("about")}
+                    className={`nav-link-btn ${activeView === "about" ? "active" : ""}`}
+                    data-testid="nav-about"
+                  >
+                    <Info size={16} className="nav-icon nav-icon--about" aria-hidden />
+                    About
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => goTo("contact")}
+                    className={`nav-link-btn ${activeView === "contact" ? "active" : ""}`}
+                    data-testid="nav-contact"
+                  >
+                    <Mail size={16} className="nav-icon nav-icon--contact" aria-hidden />
+                    Contact Us
+                  </button>
+                </li>
+              </ul>
+              <a
+                href={FACEBOOK_URL}
+                className="header-social-link header-social-link--icon"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Follow Get Your Side Hustle on Facebook"
+                data-testid="header-facebook"
+                title="Follow us on Facebook — facebook.com/getyoursidehustle"
+              >
+                <FacebookIcon size={20} />
+                <span className="header-social-link__label">Facebook</span>
+              </a>
+            </nav>
+
+            <div className="header-actions">
             {isLoggedIn ? (
               <>
                 {userRole === "admin" ? (
@@ -1495,6 +1533,7 @@ function App() {
                 <Plus size={16} aria-hidden />
               </button>
             </div>
+            </div>
           </div>
         </div>
       </header>
@@ -1507,7 +1546,7 @@ function App() {
                 activeView === "guides" ? " header-row--guides" : ""
               }${activeView === "kids" ? " header-row--kids" : ""}${
                 activeView === "seniors" ? " header-row--seniors" : ""
-              }`}
+              }${activeView === "about" ? " header-row--about" : ""}`}
             >
               <div className="header-title-block">
                 <div className="header-title-top">
@@ -1548,11 +1587,14 @@ function App() {
                     <>
                       <h1 data-testid="page-title">
                         {getHeaderTitle()}
-                        {activeView === "join" && (
+                        {(activeView === "join" || activeView === "membership_signup") && (
                           <span className="header-title-aside">(FREE PLANS AVAILABLE)</span>
                         )}
                       </h1>
-                      {(activeView === "kids" || activeView === "seniors") && getHeaderDesc() ? (
+                      {(activeView === "kids" ||
+                        activeView === "seniors" ||
+                        activeView === "about") &&
+                      getHeaderDesc() ? (
                         <p className="header-title-desc header-title-desc--inline">{getHeaderDesc()}</p>
                       ) : null}
                       <button
@@ -1568,7 +1610,10 @@ function App() {
                     </>
                   )}
                 </div>
-                {activeView !== "kids" && activeView !== "seniors" && getHeaderDesc() ? (
+                {activeView !== "kids" &&
+                activeView !== "seniors" &&
+                activeView !== "about" &&
+                getHeaderDesc() ? (
                   <p className="header-title-desc">{getHeaderDesc()}</p>
                 ) : null}
               </div>
@@ -1605,11 +1650,27 @@ function App() {
                 <span>Family</span>
                 <span>Adventure.</span>
               </h1>
+              <p className="home-page-header__purpose" data-testid="home-site-purpose">
+                {SITE_PURPOSE}
+              </p>
               <p className="home-page-header__lead">
                 Each wizard asks age-right questions so matches feel doable—not generic. Parents become{" "}
                 <strong>GYSH Coaches</strong> for kids and teens: cheer, set boundaries, and help turn ideas into
                 safe first wins. Parental consent required through age 12.
               </p>
+              <div className="home-follow-cta">
+                <button type="button" className="btn btn-primary" onClick={() => openJoin()}>
+                  <UserPlus size={16} aria-hidden /> Join GYSH free
+                </button>
+                <a
+                  href={FACEBOOK_URL}
+                  className="btn btn-outline"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <FacebookIcon size={16} /> Follow on Facebook
+                </a>
+              </div>
             </header>
 
             <section className="home-promo-hero" aria-label="Get Your Side Hustle family promotion">
@@ -2049,7 +2110,11 @@ function App() {
 
                   <p style={{ marginTop: "12px", fontSize: "0.9375rem", color: "var(--text-primary)", textAlign: "center" }}>
                     New here?{" "}
-                    <button type="button" className="inline-text-link" onClick={() => openJoin()}>
+                    <button
+                      type="button"
+                      className="inline-text-link"
+                      onClick={() => openMembershipSignup("free")}
+                    >
                       Join GYSH
                     </button>
                   </p>
@@ -2180,7 +2245,7 @@ function App() {
           </div>
         )}
 
-        {activeView === "about" && <AboutPage />}
+        {activeView === "about" && <AboutPage onJoin={() => openJoin()} />}
 
         {activeView === "contact" && <ContactPage />}
 
@@ -2188,6 +2253,7 @@ function App() {
           <JoinPage
             key={joinAudience ? `join-${joinAudience}` : "join-saved"}
             onLogin={() => goTo("login")}
+            onSignup={(tier) => openMembershipSignup(tier ?? "free")}
             onCommunity={() => goTo("community")}
             onKidsCorner={() => openKidsCorner()}
             onOpenFreeGuides={() => {
@@ -2198,6 +2264,20 @@ function App() {
             onBlueprintUnlocked={(ageGroup) => {
               setMemberAccessTick((n) => n + 1);
               restoreBlueprintAfterUnlock(ageGroup);
+            }}
+          />
+        )}
+
+        {activeView === "membership_signup" && (
+          <MembershipSignupPage
+            key={`signup-${joinAudience ?? "adult"}-${signupTier}`}
+            initialAudience={joinAudience ?? readSavedJoinAudience("adult")}
+            initialTier={signupTier}
+            onBackToPlans={() => openJoin(joinAudience)}
+            onGoToLogin={() => goTo("login")}
+            onOpenFreeGuides={() => {
+              setGuidesDetailId(null);
+              goTo("guides");
             }}
           />
         )}

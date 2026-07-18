@@ -4,7 +4,6 @@ import {
   BookMarked,
   ChevronDown,
   ChevronRight,
-  Download,
   Lock,
   LogIn,
   Unlock,
@@ -225,41 +224,6 @@ export function FreeGuidesPage({
           </div>
         </div>
       </section>
-
-      {onOpenManual && manuals.length > 0 && (
-        <section className="glass marketing-manuals-strip" aria-label="Downloadable GYSH manuals">
-          <div className="marketing-manuals-strip__head">
-            <h3>Marketing manuals</h3>
-            <p>
-              {filter === "all" || filter === "free"
-                ? "Beautifully formatted, downloadable showcases — Adult, Kids, Teens, Seniors, plus one Complete Guide with every section."
-                : filter === "adult"
-                  ? "Adult and Seniors manuals for this filter — plus the Complete Guide."
-                  : filter === "kids"
-                    ? "Kids manual for this filter — plus the Complete Guide."
-                    : "Teens manual for this filter — plus the Complete Guide."}
-            </p>
-          </div>
-          <div className="marketing-manuals-strip__grid">
-            {manuals.map((g) => (
-              <button
-                key={g.id}
-                type="button"
-                className={`marketing-manuals-strip__card${g.id === "master" ? " is-master" : ""}`}
-                onClick={() => onOpenManual(g.id)}
-                data-testid={`open-manual-${g.id}`}
-              >
-                <span className="glow-badge free">{g.menuLabel}</span>
-                <strong>{g.title}</strong>
-                <span>{g.audienceBadge}</span>
-                <span className="marketing-manuals-strip__cta">
-                  <Download size={14} aria-hidden /> Open & download PDF
-                </span>
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
 
       {empty && (
         <div className="glass free-guides-empty">

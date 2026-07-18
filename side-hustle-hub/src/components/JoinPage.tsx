@@ -1,12 +1,14 @@
-import { LogIn, MessageSquare, Smile } from "lucide-react";
+import { LogIn, MessageSquare, Smile, UserPlus } from "lucide-react";
 import { MembershipPage } from "./MembershipPage";
 import { BlueprintUnlockPanel } from "./BlueprintUnlockPanel";
 import type { BlueprintAgeGroup } from "../lib/gysh-analytics";
-import type { AudienceGroup } from "../lib/membership";
+import type { AudienceGroup, TierId } from "../lib/membership";
 import { AUDIENCE_LABELS } from "../lib/membership";
 
 type JoinPageProps = {
   onLogin: () => void;
+  /** Open membership registration / sign-up (optional tier from plan cards). */
+  onSignup: (tier?: TierId) => void;
   onCommunity: () => void;
   onKidsCorner?: () => void;
   onOpenFreeGuides?: () => void;
@@ -18,6 +20,7 @@ type JoinPageProps = {
 
 export function JoinPage({
   onLogin,
+  onSignup,
   onCommunity,
   onKidsCorner,
   onOpenFreeGuides,
@@ -40,7 +43,7 @@ export function JoinPage({
             : "Pick the plan that fits your Side Hustle — Free through Elite — with audience options for Kids, Teens, Adults, and Seniors."}
         </p>
         <MembershipPage
-          onGoToJoin={onLogin}
+          onGoToJoin={onSignup}
           onGoToLogin={onLogin}
           onOpenFreeGuides={onOpenFreeGuides}
           initialAudience={membershipAudience}
@@ -48,8 +51,11 @@ export function JoinPage({
       </section>
 
       <div className="join-cta-row join-cta-row--footer">
-        <button type="button" className="btn btn-primary" onClick={onLogin}>
-          <LogIn size={16} /> Create account / Sign in
+        <button type="button" className="btn btn-primary" onClick={() => onSignup("free")}>
+          <UserPlus size={16} /> Create account / Join
+        </button>
+        <button type="button" className="btn btn-outline" onClick={onLogin}>
+          <LogIn size={16} /> Sign in
         </button>
         <button type="button" className="btn btn-outline" onClick={onCommunity}>
           <MessageSquare size={16} /> Browse GYSH Community

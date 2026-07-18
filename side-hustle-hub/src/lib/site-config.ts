@@ -4,7 +4,13 @@ export const ROOT_DOMAIN = "getyoursidehustle.com";
 export const SITE_NAME = "Get Your Side Hustle";
 export const SITE_SLUG = "getyoursidehustle";
 export const ADMIN_EMAIL = `info@${ROOT_DOMAIN}`;
+/** Official GYSH Facebook page */
 export const FACEBOOK_URL = "https://www.facebook.com/getyoursidehustle";
+export const FACEBOOK_HANDLE = "@getyoursidehustle";
+
+/** One-line site purpose for home and social CTAs */
+export const SITE_PURPOSE =
+  "Get Your Side Hustle helps families — kids, teens, adults, and seniors — find safe, age-right Side Hustles and take the next earning step together.";
 
 /** Resend verified sending host (DNS required). Prefer notify subdomain like Munties. */
 export const EMAIL_SENDER_DOMAIN = ROOT_DOMAIN;

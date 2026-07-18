@@ -307,6 +307,7 @@ export async function handleRegister(env: Env, request: Request): Promise<Respon
     ageGroup?: RegisterAgeGroup;
     childDisplayName?: string;
     claimToken?: string;
+    membershipTier?: string;
   };
   try {
     body = (await request.json()) as typeof body;
@@ -320,6 +321,10 @@ export async function handleRegister(env: Env, request: Request): Promise<Respon
   const ageGroup = (body.ageGroup || "adult") as RegisterAgeGroup;
   const childDisplayName = String(body.childDisplayName || "").trim();
   const claimToken = String(body.claimToken || "").trim();
+  const requestedTier = String(body.membershipTier || "free").toLowerCase();
+  const membershipTier = ["free", "starter", "pro", "elite"].includes(requestedTier)
+    ? requestedTier
+    : "free";
 
   if (!email || !email.includes("@")) return error("A valid email is required.");
   {
@@ -356,11 +361,19 @@ export async function handleRegister(env: Env, request: Request): Promise<Respon
           ? "GYSH Senior"
           : "GYSH Member");
 
+  const notes =
+    membershipTier === "free"
+      ? isParent
+        ? "Parent family account (Kids Side Hustle Blueprint)"
+        : "Free GYSH member"
+      : `Requested ${membershipTier} plan · demo checkout pending real Stripe · ${ageGroup}`;
+
   // New members start pending — admins must activate before login.
+  // Store requested tier; paid activation still happens after admin review (demo checkout is client-side).
   try {
     await env.DB.prepare(
       `INSERT INTO users (id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt, membership_tier, audience, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, 'free', ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
       .bind(
         userId,
@@ -369,9 +382,10 @@ export async function handleRegister(env: Env, request: Request): Promise<Respon
         primaryRole,
         rolesJson,
         now.slice(0, 10),
-        isParent ? "Parent family account (Kids Side Hustle Blueprint)" : "Free GYSH member",
+        notes,
         hash,
         salt,
+        membershipTier,
         audience,
         now,
         now,
@@ -391,7 +405,7 @@ export async function handleRegister(env: Env, request: Request): Promise<Respon
           primaryRole,
           rolesJson,
           now.slice(0, 10),
-          isParent ? "Parent family account (Kids Side Hustle Blueprint)" : "Free GYSH member",
+          notes,
           hash,
           salt,
           now,
@@ -433,7 +447,12 @@ export async function handleRegister(env: Env, request: Request): Promise<Respon
   const user = await getUserByEmail(env.DB, email);
   if (!user) return error("Registration failed.", 500);
 
-  await appendAudit(env.DB, "register_ok", email, `free register pending · ${ageGroup}`);
+  await appendAudit(
+    env.DB,
+    "register_ok",
+    email,
+    `${membershipTier} register pending · ${ageGroup}`,
+  );
 
   // Keep pending Blueprint claimable after admin activation
   if (claimToken) {
@@ -456,7 +475,7 @@ export async function handleRegister(env: Env, request: Request): Promise<Respon
       email: user.email,
       name: user.name,
       audience: String(audience),
-      membership_tier: "free",
+      membership_tier: membershipTier,
     });
   } catch {
     emailSent = false;
@@ -467,13 +486,16 @@ export async function handleRegister(env: Env, request: Request): Promise<Respon
       ok: true,
       pendingActivation: true,
       emailSent,
+      membershipTier,
       user: publicUser(user),
       token: null,
       isAdmin: false,
       childProfileId,
       claimedBlueprintId: null,
       message:
-        "Account created and awaiting admin activation. Check your email for confirmation — we'll send a welcome with your perks once you're activated.",
+        membershipTier === "free"
+          ? "Account created and awaiting admin activation. Check your email for confirmation — we'll send a welcome with your perks once you're activated."
+          : `Account created for the ${membershipTier} plan and awaiting admin activation. Demo checkout may follow — real billing will replace it later.`,
     },
     201,
   );

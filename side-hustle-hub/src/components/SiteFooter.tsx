@@ -1,6 +1,8 @@
-import { SITE_NAME, ROOT_DOMAIN, ADMIN_EMAIL } from "../lib/site-config";
+import { UserPlus } from "lucide-react";
+import { SITE_NAME, ROOT_DOMAIN, ADMIN_EMAIL, FACEBOOK_URL, SITE_PURPOSE } from "../lib/site-config";
 import gyshLogo from "../assets/gysh-logo-rocket.png";
 import muntiesLogo from "../assets/munties-ai-agents-logo.png";
+import { FacebookIcon } from "./FacebookIcon";
 
 export type FooterNavView = "about" | "contact" | "join" | "login" | "community";
 
@@ -18,10 +20,28 @@ export function SiteFooter({ onNavigate }: SiteFooterProps) {
       <div className="site-footer-inner">
         <div className="site-footer-brand">
           <img src={gyshLogo} alt={SITE_NAME} className="site-footer-logo" />
-          <p className="site-footer-tagline">
-            Educational side-hustle playbooks for adults, juniors, and families — built by{" "}
-            <span className="nowrap">T&nbsp;+&nbsp;E.</span>
-          </p>
+          <p className="site-footer-tagline">{SITE_PURPOSE}</p>
+          <div className="site-footer-social">
+            <a
+              href={FACEBOOK_URL}
+              className="site-footer-social-link"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Follow Get Your Side Hustle on Facebook"
+              data-testid="footer-facebook"
+            >
+              <FacebookIcon size={18} />
+              <span>Follow on Facebook</span>
+            </a>
+            <button
+              type="button"
+              className="site-footer-social-link site-footer-social-link--btn"
+              onClick={() => onNavigate("join")}
+            >
+              <UserPlus size={18} aria-hidden />
+              <span>Join GYSH</span>
+            </button>
+          </div>
         </div>
 
         <nav className="site-footer-nav" aria-label="Footer">
@@ -31,9 +51,22 @@ export function SiteFooter({ onNavigate }: SiteFooterProps) {
           <button type="button" className="site-footer-link" onClick={() => onNavigate("join")}>
             Join
           </button>
+          <button type="button" className="site-footer-link" onClick={() => onNavigate("community")}>
+            Community
+          </button>
           <button type="button" className="site-footer-link" onClick={() => onNavigate("contact")}>
             Contact Us
           </button>
+          <a
+            href={FACEBOOK_URL}
+            className="site-footer-link site-footer-link--facebook"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="GYSH on Facebook"
+          >
+            <FacebookIcon size={16} />
+            Facebook
+          </a>
         </nav>
       </div>
 

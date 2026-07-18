@@ -55,6 +55,29 @@ function drawPageChrome(doc: jsPDF) {
   doc.rect(0, PAGE_H - 4, PAGE_W, 4, "F");
 }
 
+/** Diagonal DRAFT stamp — applied to every PDF page before save. */
+function drawDraftWatermark(doc: jsPDF) {
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(78);
+  doc.setTextColor(200, 150, 145);
+  const centers: Array<[number, number]> = [
+    [PAGE_W * 0.32, PAGE_H * 0.28],
+    [PAGE_W * 0.68, PAGE_H * 0.52],
+    [PAGE_W * 0.4, PAGE_H * 0.78],
+  ];
+  for (const [x, y] of centers) {
+    doc.text("DRAFT", x, y, { align: "center", baseline: "middle", angle: 32 });
+  }
+}
+
+function stampDraftOnAllPages(doc: jsPDF) {
+  const total = doc.getNumberOfPages();
+  for (let i = 1; i <= total; i += 1) {
+    doc.setPage(i);
+    drawDraftWatermark(doc);
+  }
+}
+
 function coverEditionLabel(kind: "member" | "admin" | "marketing"): string {
   if (kind === "member") return "Checklist edition · Families & Side Hustlers";
   if (kind === "admin") return "Checklist edition · Admin partners";
@@ -398,6 +421,7 @@ export function downloadMemberUserGuidePdf() {
   drawChecklist(ctx, MEMBER_QUICK_START);
 
   addFooters(doc, "Member User Guide");
+  stampDraftOnAllPages(doc);
   doc.save(MEMBER_GUIDE_META.filename);
 }
 
@@ -418,6 +442,7 @@ export function downloadAdminUserGuidePdf() {
   }
 
   addFooters(doc, "Admin User Guide");
+  stampDraftOnAllPages(doc);
   doc.save(ADMIN_GUIDE_META.filename);
 }
 
@@ -471,5 +496,6 @@ export async function downloadMarketingGuidePdf(
   }
 
   addFooters(doc, guide.menuLabel);
+  stampDraftOnAllPages(doc);
   doc.save(guide.filename);
 }

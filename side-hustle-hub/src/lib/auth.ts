@@ -78,6 +78,8 @@ export async function registerFreeMember(input: {
   ageGroup: BlueprintAgeGroup;
   childDisplayName?: string;
   claimToken?: string;
+  /** Requested membership plan (free / starter / pro / elite). Paid plans still need activation. */
+  membershipTier?: "free" | "starter" | "pro" | "elite";
 }): Promise<{
   ok: boolean;
   user?: AuthUser;
@@ -105,6 +107,7 @@ export async function registerFreeMember(input: {
         ageGroup: input.ageGroup,
         childDisplayName: input.childDisplayName,
         claimToken: input.claimToken,
+        membershipTier: input.membershipTier ?? "free",
       },
     });
     setSessionToken(data.token ?? null);
