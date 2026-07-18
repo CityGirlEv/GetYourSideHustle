@@ -3,10 +3,10 @@
  * Case definitions live in code; pass/fail statuses persist in D1.
  *
  * ~972 matrix paths are suite "vitest" (automated via npm run test:unit).
- * Ownership is split across Tina, Evelyn, and Lyriq for tracking — not manual click-through.
+ * Owned by the Vitest QA Runner — not human testers.
  */
 
-import type { QaTesterId } from "./gysh-roles";
+import type { TestOwnerId } from "./gysh-roles";
 import type { TestCase } from "./gysh-test-plan";
 
 type Opt = { label: string; value: string; short: string };
@@ -128,7 +128,7 @@ function buildKidsJuniorCases(): TestCase[] {
             title: `[Kids FMSH] ${age.short} · ${interest.short} · ${place.short} · ${time.short}`,
             priority: "P1",
             roles: ["kid", "qa", "admin"],
-            assignees: ["lyriq"],
+            assignees: ["vitest"],
             suite: "vitest",
             path: "kids",
             steps: [
@@ -154,7 +154,7 @@ function buildKidsJuniorCases(): TestCase[] {
             title: `[Junior FMSH] ${age.short} · ${interest.short} · ${place.short} · ${time.short}`,
             priority: "P1",
             roles: ["junior", "qa", "admin"],
-            assignees: ["lyriq"],
+            assignees: ["vitest"],
             suite: "vitest",
             path: "kids",
             steps: [
@@ -188,7 +188,7 @@ function buildAdultCases(): TestCase[] {
             title: `[Adult FMSH] ${budget.short} · ${time.short} · ${skill.short} · ${goal.short}`,
             priority: "P1",
             roles: ["adult", "qa", "admin"],
-            assignees: ["evelyn"],
+            assignees: ["vitest"],
             suite: "vitest",
             path: "quiz",
             steps: [
@@ -222,7 +222,7 @@ function buildSeniorCases(): TestCase[] {
             title: `[Senior FMSH] ${lifestyle.short} · ${skill.short} · ${goal.short} · ${avail.short}`,
             priority: "P1",
             roles: ["adult", "qa", "admin"],
-            assignees: ["evelyn"],
+            assignees: ["vitest"],
             suite: "vitest",
             path: "seniors",
             steps: [
@@ -240,36 +240,25 @@ function buildSeniorCases(): TestCase[] {
   return cases;
 }
 
-const OWNERS_ROTATE: QaTesterId[] = ["tina", "evelyn", "lyriq"];
-
 /**
- * Kids + Junior → Lyriq (QA). Adult + Senior → round-robin T / E / Lyriq.
- * All wizard scenarios are automated (suite: vitest).
+ * All wizard scenarios are automated (suite: vitest) and owned by the Vitest QA Runner.
  */
 export function balanceWizardAssignees(
   kidsJunior: TestCase[],
   remaining: TestCase[],
 ): TestCase[] {
-  const kids = kidsJunior.map((c) => ({
+  return [...kidsJunior, ...remaining].map((c) => ({
     ...c,
-    assignees: ["lyriq"] as QaTesterId[],
+    assignees: ["vitest"] as TestOwnerId[],
     suite: "vitest" as const,
   }));
-
-  const rest = remaining.map((c, i) => ({
-    ...c,
-    assignees: [OWNERS_ROTATE[i % OWNERS_ROTATE.length]!] as QaTesterId[],
-    suite: "vitest" as const,
-  }));
-
-  return [...kids, ...rest];
 }
 
 const RAW_KIDS_JUNIOR = buildKidsJuniorCases();
 const RAW_ADULT = buildAdultCases();
 const RAW_SENIOR = buildSeniorCases();
 
-/** All wizard scenario tests — automated Vitest suite, owned across T / E / Lyriq. */
+/** All wizard scenario tests — automated Vitest suite, owned by Vitest QA Runner. */
 export const WIZARD_SCENARIO_CASES: TestCase[] = balanceWizardAssignees(RAW_KIDS_JUNIOR, [
   ...RAW_ADULT,
   ...RAW_SENIOR,
@@ -277,20 +266,14 @@ export const WIZARD_SCENARIO_CASES: TestCase[] = balanceWizardAssignees(RAW_KIDS
 
 export function wizardScenarioStats(cases: TestCase[] = WIZARD_SCENARIO_CASES) {
   const byWizard: Record<string, number> = {};
-  let tina = 0;
-  let evelyn = 0;
-  let lyriq = 0;
+  let vitest = 0;
   for (const c of cases) {
     byWizard[c.area] = (byWizard[c.area] ?? 0) + 1;
-    if (c.assignees.includes("tina")) tina += 1;
-    if (c.assignees.includes("evelyn")) evelyn += 1;
-    if (c.assignees.includes("lyriq")) lyriq += 1;
+    if (c.assignees.includes("vitest")) vitest += 1;
   }
   return {
     total: cases.length,
-    tina,
-    evelyn,
-    lyriq,
+    vitest,
     byWizard,
     kidsJunior:
       (byWizard["Kids Get Your Side Hustle"] ?? 0) +

@@ -8,8 +8,10 @@ import {
 import { isAutomatedTestId } from "../gysh-automated-tests";
 
 describe("gysh-test-plan", () => {
-  it("assigns every case to at least one of T / E / Lyriq", () => {
-    for (const t of TEST_CASES) {
+  const manualCases = TEST_CASES.filter((t) => (t.suite ?? "manual") === "manual");
+
+  it("assigns every manual case to at least one of T / E / Lyriq", () => {
+    for (const t of manualCases) {
       expect(t.assignees.length).toBeGreaterThan(0);
       for (const a of t.assignees) {
         expect(["tina", "evelyn", "lyriq"]).toContain(a);
@@ -17,10 +19,10 @@ describe("gysh-test-plan", () => {
     }
   });
 
-  it("splits cases across all three testers", () => {
-    expect(testerCaseCount("tina", TEST_CASES)).toBeGreaterThan(0);
-    expect(testerCaseCount("evelyn", TEST_CASES)).toBeGreaterThan(0);
-    expect(testerCaseCount("lyriq", TEST_CASES)).toBeGreaterThan(0);
+  it("splits manual cases across all three testers", () => {
+    expect(testerCaseCount("tina", manualCases)).toBeGreaterThan(0);
+    expect(testerCaseCount("evelyn", manualCases)).toBeGreaterThan(0);
+    expect(testerCaseCount("lyriq", manualCases)).toBeGreaterThan(0);
   });
 
   it("has unique test IDs", () => {
@@ -58,26 +60,14 @@ describe("gysh-wizard-scenarios", () => {
     }
   });
 
-  it("assigns 100% of Kids + Junior scenarios to Lyriq", () => {
-    const kidsJunior = WIZARD_SCENARIO_CASES.filter(
-      (c) =>
-        c.area === "Kids Get Your Side Hustle" ||
-        c.area === "Junior Get Your Side Hustle",
-    );
-    expect(kidsJunior.length).toBe(216);
-    for (const c of kidsJunior) {
-      expect(c.assignees).toEqual(["lyriq"]);
+  it("assigns 100% of wizard scenarios to the Vitest QA Runner", () => {
+    expect(stats.vitest).toBe(stats.total);
+    for (const c of WIZARD_SCENARIO_CASES) {
+      expect(c.assignees).toEqual(["vitest"]);
     }
   });
 
-  it("splits adult/senior ownership across Tina, Evelyn, and Lyriq", () => {
-    expect(stats.tina).toBeGreaterThan(0);
-    expect(stats.evelyn).toBeGreaterThan(0);
-    expect(stats.lyriq).toBeGreaterThanOrEqual(216);
-    expect(stats.tina + stats.evelyn + stats.lyriq).toBe(stats.total);
-  });
-
-  it("balanceWizardAssignees keeps kids/junior on Lyriq and suites as vitest", () => {
+  it("balanceWizardAssignees keeps suite as vitest with Vitest owner", () => {
     const kids = WIZARD_SCENARIO_CASES.filter(
       (c) => c.area === "Kids Get Your Side Hustle",
     ).slice(0, 10);
@@ -86,9 +76,7 @@ describe("gysh-wizard-scenarios", () => {
       6,
     );
     const balanced = balanceWizardAssignees(kids, fewAdult);
-    expect(balanced.filter((c) => c.area === "Kids Get Your Side Hustle").every((c) => c.assignees[0] === "lyriq")).toBe(
-      true,
-    );
+    expect(balanced.every((c) => c.assignees[0] === "vitest")).toBe(true);
     expect(balanced.every((c) => c.suite === "vitest")).toBe(true);
   });
 });

@@ -1,6 +1,6 @@
 /** GYSH Testing Portal — declarative test plan */
 
-import type { QaTesterId } from "./gysh-roles";
+import type { TestOwnerId } from "./gysh-roles";
 import { api } from "./api";
 import { WIZARD_SCENARIO_CASES } from "./gysh-wizard-scenarios";
 
@@ -48,8 +48,12 @@ export type TestCase = {
   title: string;
   priority: Priority;
   roles: Array<"admin" | "qa" | "kid" | "junior" | "adult" | "senior" | "all">;
-  /** Who owns this case in the Testing Portal (T / E / Lyriq). */
-  assignees: QaTesterId[];
+  /**
+   * Case owner in the Testing Portal.
+   * Manual → human QA (tina / evelyn / lyriq).
+   * Vitest → vitest suite owner. Playwright → playwright suite owner.
+   */
+  assignees: TestOwnerId[];
   /** manual = human QA; vitest / playwright = automated suites */
   suite?: TestSuite;
   steps: string[];
@@ -729,7 +733,7 @@ export async function fetchAutomatedTestRuns(): Promise<{
   return api("automated-tests/runs");
 }
 
-export function testerCaseCount(testerId: QaTesterId, cases: TestCase[]): number {
+export function testerCaseCount(testerId: TestOwnerId, cases: TestCase[]): number {
   return cases.filter((t) => t.assignees.includes(testerId)).length;
 }
 

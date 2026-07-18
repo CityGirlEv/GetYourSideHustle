@@ -19,7 +19,7 @@ export const GYSH_SITE_MAP: SiteMapNode = {
         { id: "home", label: "Home", blurb: "Family start + hustle catalog" },
         {
           id: "match",
-          label: "GYSH Match Wizard",
+          label: "Match Wizard",
           blurb: "Four age-customized wizards",
           children: [
             { id: "match-kids", label: "Kids (4–12)", blurb: "Bands 4–8 & 9–12 · GYSH Coaches · consent ≤12" },
@@ -33,7 +33,7 @@ export const GYSH_SITE_MAP: SiteMapNode = {
           label: "Kids / Teens Corner (Families)",
           children: [
             { id: "fam-stories", label: "Kids · Stories (Kevina Starr)" },
-            { id: "fam-wizard", label: "GYSH Match Wizard" },
+            { id: "fam-wizard", label: "Match Wizard" },
             { id: "fam-ideas", label: "Side Hustle Ideas" },
             { id: "fam-bank", label: "Piggy Bank / My Bank" },
             { id: "fam-guides", label: "Guides (free + member)" },
@@ -44,7 +44,7 @@ export const GYSH_SITE_MAP: SiteMapNode = {
           id: "seniors",
           label: "Seniors Corner",
           children: [
-            { id: "sen-wizard", label: "GYSH Match Wizard" },
+            { id: "sen-wizard", label: "Match Wizard" },
             { id: "sen-ideas", label: "Opportunities" },
             { id: "sen-guides", label: "Guides" },
             { id: "sen-join", label: "Join" },

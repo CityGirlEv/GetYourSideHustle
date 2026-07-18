@@ -42,20 +42,20 @@ const VITEST_CATALOG_IDS = [
 ] as const;
 
 const PLAYWRIGHT_CATALOG: Array<{ id: string; assignee: string; check: string }> = [
-  { id: "PW-SMOKE-001", assignee: "tina", check: "home" },
-  { id: "PW-SMOKE-007", assignee: "tina", check: "home" },
-  { id: "PW-SMOKE-002", assignee: "tina", check: "shell" },
-  { id: "PW-SMOKE-003", assignee: "tina", check: "shell" },
-  { id: "PW-FIND-001", assignee: "tina", check: "shell" },
-  { id: "PW-FREE-001", assignee: "tina", check: "shell" },
-  { id: "PW-MEMBER-001", assignee: "evelyn", check: "shell" },
-  { id: "PW-SMOKE-004", assignee: "evelyn", check: "login" },
-  { id: "PW-SMOKE-005", assignee: "evelyn", check: "shell" },
-  { id: "PW-SMOKE-006", assignee: "evelyn", check: "shell" },
-  { id: "PW-JOIN-001", assignee: "tina", check: "shell" },
-  { id: "PW-JOIN-002", assignee: "evelyn", check: "shell" },
-  { id: "PW-JOIN-003", assignee: "evelyn", check: "shell" },
-  { id: "PW-AUTH-001", assignee: "tina", check: "login" },
+  { id: "PW-SMOKE-001", assignee: "playwright", check: "home" },
+  { id: "PW-SMOKE-007", assignee: "playwright", check: "home" },
+  { id: "PW-SMOKE-002", assignee: "playwright", check: "shell" },
+  { id: "PW-SMOKE-003", assignee: "playwright", check: "shell" },
+  { id: "PW-FIND-001", assignee: "playwright", check: "shell" },
+  { id: "PW-FREE-001", assignee: "playwright", check: "shell" },
+  { id: "PW-MEMBER-001", assignee: "playwright", check: "shell" },
+  { id: "PW-SMOKE-004", assignee: "playwright", check: "login" },
+  { id: "PW-SMOKE-005", assignee: "playwright", check: "shell" },
+  { id: "PW-SMOKE-006", assignee: "playwright", check: "shell" },
+  { id: "PW-JOIN-001", assignee: "playwright", check: "shell" },
+  { id: "PW-JOIN-002", assignee: "playwright", check: "shell" },
+  { id: "PW-JOIN-003", assignee: "playwright", check: "shell" },
+  { id: "PW-AUTH-001", assignee: "playwright", check: "login" },
 ];
 
 function runVitestChecks(): { ok: boolean; details: string[] } {
@@ -293,22 +293,12 @@ export async function runAutomatedTests(
       ? `Portal Vitest runner passed. ${vitest.details.join("; ")}`
       : `Portal Vitest runner failed. ${vitest.details.join("; ")}`;
     const status = vitest.ok ? "pass" : "fail";
-    const vtAssignees: Record<string, string> = {
-      "VT-AUTH-001": "evelyn",
-      "VT-JOIN-001": "tina",
-      "VT-MEMBER-001": "evelyn",
-      "VT-ROLE-001": "evelyn",
-      "VT-PLAN-001": "evelyn",
-      "VT-WIZARD-001": "lyriq",
-      "VT-WORK-001": "tina",
-      "VT-FIND-001": "tina",
-    };
     for (const id of VITEST_CATALOG_IDS) {
       caseResults.push({
         caseId: id,
         status,
         note,
-        assignee: vtAssignees[id] ?? "evelyn",
+        assignee: "vitest",
       });
     }
     // Update existing wizard matrix rows only (avoid inserting ~972 empty sprint rows).
@@ -318,14 +308,14 @@ export async function runAutomatedTests(
       : `Wizard matrix structural check failed: ${vitest.details.filter((d) => d.includes("!=")).join("; ") || "see run details"}`;
     await env.DB.prepare(
       `UPDATE test_case_status
-       SET status = ?, note = ?, updated_at = ?, updated_by = ?
+       SET status = ?, note = ?, assignee = ?, updated_at = ?, updated_by = ?
        WHERE case_id LIKE 'KIDS-FMSH-%'
           OR case_id LIKE 'JR-FMSH-%'
           OR case_id LIKE 'ADULT-FMSH-%'
           OR case_id LIKE 'SENIOR-FMSH-%'
           OR case_id LIKE 'WIZARD-EDGE-%'`,
     )
-      .bind(status, wizardNote, now, actor.email)
+      .bind(status, wizardNote, "vitest", now, actor.email)
       .run();
     allDetails.push(
       vitest.ok

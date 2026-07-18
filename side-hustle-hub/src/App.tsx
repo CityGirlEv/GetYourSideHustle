@@ -873,7 +873,7 @@ function App() {
 
   const getHeaderTitle = () => {
     switch (activeView) {
-      case "dashboard": return "GYSH Discover Side Hustles";
+      case "dashboard": return "Four GYSH Match Wizards. One Family Adventure.";
       case "quiz":
         return findMineMode === "adult"
           ? "GYSH Adults Match Wizard"
@@ -1345,9 +1345,25 @@ function App() {
         {/* View Switcher */}
         {activeView === "dashboard" && (
           <div className="dashboard-home">
-            <h1 className="sr-only" data-testid="page-title">
-              {getHeaderTitle()}
-            </h1>
+            <header className="home-page-header" data-testid="home-page-header">
+              <p className="home-page-header__eyebrow">
+                <Sparkles size={14} aria-hidden="true" /> GYSH Match Wizard
+              </p>
+              <h1 className="home-page-header__title" data-testid="page-title">
+                <span>Four</span>
+                <span>GYSH</span>
+                <span>Match</span>
+                <span>Wizards.</span>
+                <span>One</span>
+                <span>Family</span>
+                <span>Adventure.</span>
+              </h1>
+              <p className="home-page-header__lead">
+                Each wizard asks age-right questions so matches feel doable — not generic. Parents become{" "}
+                <strong>GYSH Coaches</strong> for kids and teens: cheer, set boundaries, and help turn ideas
+                into safe first wins. Parental consent is required through age 12.
+              </p>
+            </header>
 
             <section className="home-promo-hero" aria-label="Get Your Side Hustle family promotion">
               <div className="home-promo-hero__band">
@@ -1462,16 +1478,22 @@ function App() {
               </div>
             </section>
 
-            <section className="glass home-match-family" data-testid="home-match-family" aria-labelledby="home-match-family-title">
-              <span className="glow-badge free home-match-family__eyebrow">
-                <Sparkles size={13} /> GYSH Match Wizard
-              </span>
-              <h2 id="home-match-family-title">Four GYSH Match Wizards. One Family Adventure.</h2>
-              <p className="home-match-family__lead">
-                Each wizard asks age-right questions so matches feel doable — not generic. Parents become{" "}
-                <strong>GYSH Coaches</strong> for kids and teens: cheer, set boundaries, and help turn ideas
-                into safe first wins. Parental consent is required through age 12.
-              </p>
+            <section
+              className="glass home-match-family"
+              data-testid="home-match-family"
+              aria-labelledby="home-match-family-title"
+            >
+              <div className="home-match-family__section-head">
+                <span className="glow-badge free home-match-family__eyebrow">
+                  <Sparkles size={13} /> Your age · Your wizard
+                </span>
+                <h2 id="home-match-family-title" className="home-match-family__section-title">
+                  Pick Your Path — Kids · Teens · Adults · Seniors
+                </h2>
+                <p className="home-match-family__section-sub">
+                  Four demographic lanes. One family adventure. Choose the wizard built for your stage of life.
+                </p>
+              </div>
               <ul className="home-match-family__grid">
                 <li>
                   <strong>Kids (4–12)</strong>

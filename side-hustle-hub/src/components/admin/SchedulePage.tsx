@@ -54,8 +54,13 @@ import {
 import {
   AUTOMATED_PLAYWRIGHT_CASES,
   AUTOMATED_VITEST_CASES,
+  isAutomatedTestId,
 } from "../../lib/gysh-automated-tests";
-import { QA_TESTERS, type QaTesterId } from "../../lib/gysh-roles";
+import {
+  AUTOMATED_SUITE_OWNERS,
+  QA_TESTERS,
+  type QaTesterId,
+} from "../../lib/gysh-roles";
 import {
   BACKLOG_SPRINT,
   CEREMONY_LABELS,
@@ -534,29 +539,10 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
       } else {
         setRetro(planData.retro);
       }
+      // Read-only load — do not rewrite task/plan sprints on open (that wiped concurrent edits).
+      // Use "Apply suggested sprint schedule" for intentional bulk placement.
       setItems(planItems);
-
-      const planCommitted = commitPlanSprintPlan(planItems);
-      if (planCommitted.changed) {
-        try {
-          const saved = await persistAgilePlan(planCommitted.items, planData.retro);
-          setItems(saved.items);
-          setRetro(saved.retro);
-        } catch {
-          setItems(planCommitted.items);
-        }
-      }
-
-      const placed = commitTaskSprintPlan(taskList);
-      if (placed.changed) {
-        try {
-          setTasks(await persistTasks(placed.tasks));
-        } catch {
-          setTasks(placed.tasks);
-        }
-      } else {
-        setTasks(taskList);
-      }
+      setTasks(taskList);
 
       setTestStatuses(testData.statuses);
       setTestNotes(testData.notes);
@@ -595,9 +581,9 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
       setItems(saved.items);
       setRetro(saved.retro);
     } catch (e) {
-      setItems(nextItems);
-      setRetro(nextRetro);
+      // Keep prior D1-backed state — do not pretend a failed save succeeded.
       setError(e instanceof ApiError ? e.message : "Could not save plan items.");
+      throw e;
     } finally {
       setBusy(false);
     }
@@ -699,6 +685,15 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
     }));
   };
 
+  /** Stage a field change and persist to D1 immediately so everyone's edits stick. */
+  const patchDraftAndSave = (card: BoardCard, patch: CardDraft) => {
+    setDrafts((prev) => ({
+      ...prev,
+      [card.key]: { ...prev[card.key], ...patch },
+    }));
+    void saveCard(card, patch);
+  };
+
   const clearDraft = (key: string) => {
     setDrafts((prev) => {
       if (!prev[key]) return prev;
@@ -728,12 +723,19 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
     });
   };
 
-  const saveCard = async (card: BoardCard): Promise<boolean> => {
-    const draft = drafts[card.key] ?? {};
-    const assignee = draft.assignee !== undefined ? draft.assignee : cardAssigneeValue(card);
+  const saveCard = async (card: BoardCard, draftOverride?: CardDraft): Promise<boolean> => {
+    const draft = { ...(drafts[card.key] ?? {}), ...(draftOverride ?? {}) };
     const status = draft.status !== undefined ? draft.status : cardStatusValue(card);
     const sprint = draft.sprint !== undefined ? draft.sprint : cardSprintValue(card);
     const note = draft.note !== undefined ? draft.note : cardNoteValue(card);
+    const requestedAssignee =
+      draft.assignee !== undefined ? draft.assignee : cardAssigneeValue(card);
+    // Automated suite owners stay locked — never overwrite with a human tester.
+    const assignee =
+      card.source === "test" && isAutomatedTestId(card.sourceId)
+        ? TEST_DEFAULT_ASSIGNEES[card.sourceId] ||
+          (card.sourceId.startsWith("PW-") ? "playwright" : "vitest")
+        : requestedAssignee;
 
     setBusy(true);
     setError("");
@@ -1679,7 +1681,7 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                 <div
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "auto 1fr auto",
+                    gridTemplateColumns: "auto 1fr",
                     gap: 12,
                     alignItems: "start",
                   }}
@@ -1695,7 +1697,7 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                       aria-label={`Select ${card.title}`}
                     />
                   </label>
-                  <div>
+                  <div style={{ minWidth: 0 }}>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                       <span
                         style={{
@@ -1777,144 +1779,224 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                         )}
                       </div>
                     )}
-                  </div>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "end" }}>
-                    {card.source === "plan" && (
-                      <select
-                        className="select-input"
-                        aria-label={`Assignee for ${card.title}`}
-                        style={{ width: 140 }}
-                        value={assigneeVal}
-                        onChange={(e) => patchDraft(card.key, { assignee: e.target.value })}
-                        disabled={busy}
-                      >
-                        {PLAN_ASSIGNEES.map((name) => (
-                          <option key={name} value={name}>
-                            {name}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                    {card.source === "task" && (
-                      <select
-                        className="select-input"
-                        aria-label={`Assignee for ${card.title}`}
-                        style={{ width: 140 }}
-                        value={assigneeVal}
-                        onChange={(e) => patchDraft(card.key, { assignee: e.target.value })}
-                        disabled={busy}
-                      >
-                        {TASK_ASSIGNEES.map((name) => (
-                          <option key={name} value={name}>
-                            {name}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                    {card.source === "test" && (
-                      <select
-                        className="select-input"
-                        aria-label={`Assignee for ${card.title}`}
-                        style={{ width: 140 }}
-                        value={assigneeVal}
-                        onChange={(e) => patchDraft(card.key, { assignee: e.target.value })}
-                        disabled={busy}
-                      >
-                        {QA_TESTERS.map((tester) => (
-                          <option key={tester.id} value={tester.id}>
-                            {tester.shortName}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                    {card.source === "plan" && (
-                      <select
-                        className="select-input"
-                        aria-label={`Status for ${card.title}`}
-                        style={{ width: 140 }}
-                        value={statusVal}
-                        onChange={(e) => patchDraft(card.key, { status: e.target.value })}
-                        disabled={busy}
-                      >
-                        {(Object.keys(STATUS_LABELS) as PlanItemStatus[]).map((s) => {
-                          const plan = items.find((i) => i.id === card.sourceId);
-                          const bothBlocked =
-                            plan?.owner === "Both" &&
-                            s === "done" &&
-                            !(plan.tinaDone && plan.evelynDone);
-                          return (
-                            <option key={s} value={s} disabled={bothBlocked}>
-                              {STATUS_LABELS[s]}
-                            </option>
-                          );
-                        })}
-                      </select>
-                    )}
-                    {card.source === "task" && (
-                      <select
-                        className="select-input"
-                        aria-label={`Status for ${card.title}`}
-                        style={{ width: 140 }}
-                        value={statusVal}
-                        onChange={(e) => patchDraft(card.key, { status: e.target.value })}
-                        disabled={busy}
-                      >
-                        {(Object.keys(TASK_STATUS_LABELS) as TaskStatus[]).map((s) => {
-                          const task = tasks.find((t) => t.id === card.sourceId);
-                          const bothBlocked =
-                            task?.assignedTo === "Both" &&
-                            s === "done" &&
-                            !(task.tinaDone && task.evelynDone);
-                          return (
-                            <option key={s} value={s} disabled={bothBlocked}>
-                              {TASK_STATUS_LABELS[s]}
-                            </option>
-                          );
-                        })}
-                      </select>
-                    )}
-                    {card.source === "test" && (
-                      <select
-                        className="select-input"
-                        aria-label={`Status for ${card.title}`}
-                        style={{ width: 140 }}
-                        value={statusVal}
-                        onChange={(e) => patchDraft(card.key, { status: e.target.value })}
-                        disabled={busy}
-                      >
-                        {(Object.keys(TEST_STATUS_LABELS) as TestStatus[]).map((s) => (
-                          <option key={s} value={s}>
-                            {TEST_STATUS_LABELS[s]}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                    <select
-                      className="select-input"
-                      style={{ width: 150 }}
-                      value={sprintVal}
-                      onChange={(e) => patchDraft(card.key, { sprint: Number(e.target.value) })}
-                      disabled={busy}
-                      aria-label={`Sprint for ${card.title}`}
+
+                    <div
+                      className="sprint-card-controls"
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "minmax(0, 1fr)",
+                        gap: 8,
+                        marginTop: 12,
+                      }}
                     >
-                      <option value={BACKLOG_SPRINT}>Backlog</option>
-                      {sprints.map((s) => (
-                        <option key={s.index} value={s.index}>
-                          {s.label} ({s.startLabel}–{s.endLabel.replace(/, \d{4}$/, "")})
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      className="btn btn-primary"
-                      style={{ padding: "8px 12px" }}
-                      disabled={busy || !dirty}
-                      onClick={() => void saveCard(card)}
-                      data-testid={`sprint-card-save-${card.sourceId}`}
-                      title={dirty ? "Save this card" : "No unsaved changes"}
-                    >
-                      <Save size={14} /> Save
-                    </button>
+                      <label
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "88px minmax(0, 1fr)",
+                          gap: 10,
+                          alignItems: "center",
+                          fontSize: "0.78rem",
+                          color: "var(--text-secondary)",
+                          fontWeight: 600,
+                        }}
+                      >
+                        Assignee
+                        {card.source === "plan" && (
+                          <select
+                            className="select-input"
+                            aria-label={`Assignee for ${card.title}`}
+                            style={{ width: "100%", minWidth: 0 }}
+                            value={assigneeVal}
+                            onChange={(e) =>
+                              patchDraftAndSave(card, { assignee: e.target.value })
+                            }
+                            disabled={busy}
+                          >
+                            {PLAN_ASSIGNEES.map((name) => (
+                              <option key={name} value={name}>
+                                {name}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                        {card.source === "task" && (
+                          <select
+                            className="select-input"
+                            aria-label={`Assignee for ${card.title}`}
+                            style={{ width: "100%", minWidth: 0 }}
+                            value={assigneeVal}
+                            onChange={(e) =>
+                              patchDraftAndSave(card, { assignee: e.target.value })
+                            }
+                            disabled={busy}
+                          >
+                            {TASK_ASSIGNEES.map((name) => (
+                              <option key={name} value={name}>
+                                {name}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                        {card.source === "test" &&
+                          (isAutomatedTestId(card.sourceId) ? (
+                            <select
+                              className="select-input"
+                              aria-label={`Assignee for ${card.title}`}
+                              style={{ width: "100%", minWidth: 0 }}
+                              value={assigneeVal || TEST_DEFAULT_ASSIGNEES[card.sourceId] || "vitest"}
+                              disabled
+                              title="Automated suite owner — locked"
+                            >
+                              {AUTOMATED_SUITE_OWNERS.map((owner) => (
+                                <option key={owner.id} value={owner.id}>
+                                  {owner.name}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <select
+                              className="select-input"
+                              aria-label={`Assignee for ${card.title}`}
+                              style={{ width: "100%", minWidth: 0 }}
+                              value={assigneeVal}
+                              onChange={(e) =>
+                                patchDraftAndSave(card, { assignee: e.target.value })
+                              }
+                              disabled={busy}
+                            >
+                              {QA_TESTERS.map((tester) => (
+                                <option key={tester.id} value={tester.id}>
+                                  {tester.shortName}
+                                </option>
+                              ))}
+                            </select>
+                          ))}
+                      </label>
+
+                      <label
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "88px minmax(0, 1fr)",
+                          gap: 10,
+                          alignItems: "center",
+                          fontSize: "0.78rem",
+                          color: "var(--text-secondary)",
+                          fontWeight: 600,
+                        }}
+                      >
+                        Status
+                        {card.source === "plan" && (
+                          <select
+                            className="select-input"
+                            aria-label={`Status for ${card.title}`}
+                            style={{ width: "100%", minWidth: 0 }}
+                            value={statusVal}
+                            onChange={(e) =>
+                              patchDraftAndSave(card, { status: e.target.value })
+                            }
+                            disabled={busy}
+                          >
+                            {(Object.keys(STATUS_LABELS) as PlanItemStatus[]).map((s) => {
+                              const plan = items.find((i) => i.id === card.sourceId);
+                              const bothBlocked =
+                                plan?.owner === "Both" &&
+                                s === "done" &&
+                                !(plan.tinaDone && plan.evelynDone);
+                              return (
+                                <option key={s} value={s} disabled={bothBlocked}>
+                                  {STATUS_LABELS[s]}
+                                </option>
+                              );
+                            })}
+                          </select>
+                        )}
+                        {card.source === "task" && (
+                          <select
+                            className="select-input"
+                            aria-label={`Status for ${card.title}`}
+                            style={{ width: "100%", minWidth: 0 }}
+                            value={statusVal}
+                            onChange={(e) =>
+                              patchDraftAndSave(card, { status: e.target.value })
+                            }
+                            disabled={busy}
+                          >
+                            {(Object.keys(TASK_STATUS_LABELS) as TaskStatus[]).map((s) => {
+                              const task = tasks.find((t) => t.id === card.sourceId);
+                              const bothBlocked =
+                                task?.assignedTo === "Both" &&
+                                s === "done" &&
+                                !(task.tinaDone && task.evelynDone);
+                              return (
+                                <option key={s} value={s} disabled={bothBlocked}>
+                                  {TASK_STATUS_LABELS[s]}
+                                </option>
+                              );
+                            })}
+                          </select>
+                        )}
+                        {card.source === "test" && (
+                          <select
+                            className="select-input"
+                            aria-label={`Status for ${card.title}`}
+                            style={{ width: "100%", minWidth: 0 }}
+                            value={statusVal}
+                            onChange={(e) =>
+                              patchDraftAndSave(card, { status: e.target.value })
+                            }
+                            disabled={busy}
+                          >
+                            {(Object.keys(TEST_STATUS_LABELS) as TestStatus[]).map((s) => (
+                              <option key={s} value={s}>
+                                {TEST_STATUS_LABELS[s]}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </label>
+
+                      <label
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "88px minmax(0, 1fr) auto",
+                          gap: 10,
+                          alignItems: "center",
+                          fontSize: "0.78rem",
+                          color: "var(--text-secondary)",
+                          fontWeight: 600,
+                        }}
+                      >
+                        Sprint
+                        <select
+                          className="select-input"
+                          style={{ width: "100%", minWidth: 0 }}
+                          value={sprintVal}
+                          onChange={(e) =>
+                            patchDraftAndSave(card, { sprint: Number(e.target.value) })
+                          }
+                          disabled={busy}
+                          aria-label={`Sprint for ${card.title}`}
+                        >
+                          <option value={BACKLOG_SPRINT}>Backlog</option>
+                          {sprints.map((s) => (
+                            <option key={s.index} value={s.index}>
+                              {s.label} ({s.startLabel}–{s.endLabel.replace(/, \d{4}$/, "")})
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          style={{ padding: "8px 14px", whiteSpace: "nowrap" }}
+                          disabled={busy || !dirty}
+                          onClick={() => void saveCard(card)}
+                          data-testid={`sprint-card-save-${card.sourceId}`}
+                          title={dirty ? "Save this card" : "No unsaved changes"}
+                        >
+                          <Save size={14} /> Save
+                        </button>
+                      </label>
+                    </div>
                   </div>
                 </div>
                 {card.source === "test" &&

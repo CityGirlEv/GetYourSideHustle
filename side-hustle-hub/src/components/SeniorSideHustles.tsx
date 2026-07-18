@@ -628,9 +628,8 @@ export function SeniorSideHustles({
         <p className="seniors-lead-copy">{SENIOR_INTRO.lead}</p>
         {tab === "opportunities" && (
           <p className="seniors-lead-ideas">
-            Ideas suited to experience, flexible hours, and lower physical intensity —
-            <br />
-            pick what matches your energy and interests.
+            Ideas suited to experience, flexible hours, and lower physical intensity — pick what
+            matches your energy and interests.
           </p>
         )}
       </div>

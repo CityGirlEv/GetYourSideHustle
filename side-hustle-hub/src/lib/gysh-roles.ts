@@ -82,11 +82,24 @@ export function userHasRole(u: Pick<GyshUser, "role" | "roles">, role: GyshRole)
   return userRoles(u).includes(role);
 }
 
-/** QA Testing Portal assignees (clickable bubbles). */
+/** Human QA testers — Manual suite only (clickable bubbles). */
 export type QaTesterId = "tina" | "evelyn" | "lyriq";
+
+/** Automated suite owners — Vitest / Playwright runners (not D1 users). */
+export type AutomatedSuiteOwnerId = "vitest" | "playwright";
+
+/** Any Testing Portal case owner (human QA or automated suite runner). */
+export type TestOwnerId = QaTesterId | AutomatedSuiteOwnerId;
 
 export type QaTester = {
   id: QaTesterId;
+  name: string;
+  shortName: string;
+  accent: string;
+};
+
+export type AutomatedSuiteOwner = {
+  id: AutomatedSuiteOwnerId;
   name: string;
   shortName: string;
   accent: string;
@@ -112,6 +125,40 @@ export const QA_TESTERS: QaTester[] = [
     accent: "var(--accent-emerald)",
   },
 ];
+
+/** System owners for automated suites — status tracked under these, not human testers. */
+export const AUTOMATED_SUITE_OWNERS: AutomatedSuiteOwner[] = [
+  {
+    id: "vitest",
+    name: "Vitest QA Runner",
+    shortName: "Vitest",
+    accent: "#2563eb",
+  },
+  {
+    id: "playwright",
+    name: "Playwright QA Runner",
+    shortName: "Playwright",
+    accent: "#7c3aed",
+  },
+];
+
+export const HUMAN_QA_TESTER_IDS: QaTesterId[] = QA_TESTERS.map((t) => t.id);
+
+export function isHumanQaTester(id: string): id is QaTesterId {
+  return HUMAN_QA_TESTER_IDS.includes(id as QaTesterId);
+}
+
+export function isAutomatedSuiteOwner(id: string): id is AutomatedSuiteOwnerId {
+  return id === "vitest" || id === "playwright";
+}
+
+export function testOwnerLabel(id: TestOwnerId | string): string {
+  const human = QA_TESTERS.find((t) => t.id === id);
+  if (human) return human.shortName;
+  const auto = AUTOMATED_SUITE_OWNERS.find((t) => t.id === id);
+  if (auto) return auto.shortName;
+  return id;
+}
 
 export type GyshUser = {
   id: string;

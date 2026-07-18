@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  AUTOMATED_SUITE_OWNERS,
   GYSH_ROLE_LABELS,
   QA_TESTERS,
   formatRoles,
+  isAutomatedSuiteOwner,
+  isHumanQaTester,
   userHasRole,
   userRoles,
   type GyshUser,
@@ -16,6 +19,13 @@ describe("gysh-roles", () => {
   it("defines QA tester bubbles for Tina, Evelyn, and Lyriq", () => {
     expect(QA_TESTERS.map((t) => t.id)).toEqual(["tina", "evelyn", "lyriq"]);
     expect(QA_TESTERS.map((t) => t.shortName)).toEqual(["Tina", "Evelyn", "Lyriq"]);
+  });
+
+  it("defines Vitest and Playwright suite owners (not human testers)", () => {
+    expect(AUTOMATED_SUITE_OWNERS.map((t) => t.id)).toEqual(["vitest", "playwright"]);
+    expect(isHumanQaTester("vitest")).toBe(false);
+    expect(isAutomatedSuiteOwner("vitest")).toBe(true);
+    expect(isAutomatedSuiteOwner("playwright")).toBe(true);
   });
 
   it("keeps Kid age band at 3–12 in label", () => {

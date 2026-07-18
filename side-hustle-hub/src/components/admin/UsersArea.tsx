@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Users, Plus, Pencil, Check, X, ChevronDown, ChevronRight, ScrollText } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Users, Plus, Pencil, Check, X } from "lucide-react";
 import {
   GYSH_ROLE_ACCENT,
   GYSH_ROLE_DESCRIPTIONS,
@@ -14,7 +14,6 @@ import {
   type GyshRole,
   type GyshUser,
 } from "../../lib/gysh-roles";
-import { loadAuthAudit, type AuthAuditEntry } from "../../lib/auth";
 import { ApiError } from "../../lib/api";
 
 type EditDraft = {
@@ -268,39 +267,21 @@ function RoleBubbles({
   );
 }
 
-function formatAuditWhen(at: string): string {
-  const d = new Date(at);
-  if (Number.isNaN(d.getTime())) return at;
-  return d.toLocaleString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
 export function UsersArea() {
   const [users, setUsers] = useState<GyshUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [roleFilter, setRoleFilter] = useState<"all" | GyshRole>("all");
-  const [roleTabQuery, setRoleTabQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | GyshUser["status"]>("all");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [newRoles, setNewRoles] = useState<GyshRole[]>(["adult"]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<EditDraft | null>(null);
   const [saveMsg, setSaveMsg] = useState("");
   const [busy, setBusy] = useState(false);
   const [roleBusyId, setRoleBusyId] = useState<string | null>(null);
   const [roleMenuUserId, setRoleMenuUserId] = useState<string | null>(null);
-  const [auditOpen, setAuditOpen] = useState(false);
-  const [auditLoading, setAuditLoading] = useState(false);
-  const [auditError, setAuditError] = useState("");
-  const [auditEvents, setAuditEvents] = useState<AuthAuditEntry[]>([]);
-  const [auditFilter, setAuditFilter] = useState("");
-  const auditRef = useRef<HTMLElement | null>(null);
 
   const reload = async () => {
     setLoading(true);

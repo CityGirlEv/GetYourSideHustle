@@ -559,18 +559,34 @@ export function TaskList({
     });
   }, [focusTaskId, loading, tasks, onFocusConsumed]);
 
+  const tasksRef = useRef(tasks);
+  tasksRef.current = tasks;
+  const persistQueue = useRef(Promise.resolve());
+
   const persist = async (next: GyshTask[]) => {
+    tasksRef.current = next;
+    setTasks(next);
     setBusy(true);
     setError("");
-    try {
-      const saved = await persistTasks(next);
-      setTasks(saved);
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Failed to save tasks.");
-      throw e;
-    } finally {
-      setBusy(false);
-    }
+    const run = async () => {
+      try {
+        const saved = await persistTasks(tasksRef.current);
+        tasksRef.current = saved;
+        setTasks(saved);
+      } catch (e) {
+        setError(e instanceof ApiError ? e.message : "Failed to save tasks.");
+        throw e;
+      } finally {
+        setBusy(false);
+      }
+    };
+    // Serialize writes so rapid edits from T/E/Lyriq don't clobber each other mid-flight.
+    const queued = persistQueue.current.then(run, run);
+    persistQueue.current = queued.then(
+      () => undefined,
+      () => undefined,
+    );
+    await queued;
   };
 
   const filtered = tasks.filter((t) => {
@@ -620,7 +636,7 @@ export function TaskList({
       attachments: [],
     };
     try {
-      await persist([t, ...tasks]);
+      await persist([t, ...tasksRef.current]);
       setDesc("");
       setNewDueDate(todayIsoDate());
     } catch {
@@ -658,7 +674,7 @@ export function TaskList({
   };
 
   const patch = async (id: string, updates: Partial<GyshTask>) => {
-    const next = tasks.map((t) => {
+    const next = tasksRef.current.map((t) => {
       if (t.id !== id) return t;
       return applyPartnerDone(t, updates);
     });
@@ -671,7 +687,7 @@ export function TaskList({
 
   const patchSelected = async (updates: Partial<GyshTask>) => {
     if (selectedIds.size === 0) return;
-    const next = tasks.map((t) => {
+    const next = tasksRef.current.map((t) => {
       if (!selectedIds.has(t.id)) return t;
       return applyPartnerDone(t, updates);
     });
@@ -1169,9 +1185,9 @@ export function TaskList({
                 className="task-row"
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "28px 28px 70px 1.4fr 150px 100px 100px 110px 120px 90px 44px",
+                  gridTemplateColumns: "28px 28px 70px minmax(0, 1fr) 44px",
                   gap: 10,
-                  alignItems: "center",
+                  alignItems: "start",
                 }}
               >
                 <input
@@ -1179,6 +1195,7 @@ export function TaskList({
                   checked={checked}
                   onChange={() => toggleSelect(t.id)}
                   aria-label={`Select ${t.id}`}
+                  style={{ marginTop: 8 }}
                 />
                 <button
                   type="button"
@@ -1189,14 +1206,15 @@ export function TaskList({
                     border: "none",
                     cursor: "pointer",
                     padding: 4,
+                    marginTop: 4,
                     color: "var(--bronze)",
                     display: "flex",
                   }}
                 >
                   {open ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                 </button>
-                <span className="flat-label flat-label--id">{t.id}</span>
-                <div>
+                <span className="flat-label flat-label--id" style={{ marginTop: 6 }}>{t.id}</span>
+                <div style={{ minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                     <textarea
                       className="text-input"
@@ -1207,6 +1225,7 @@ export function TaskList({
                       style={{
                         flex: "1 1 220px",
                         minWidth: 160,
+                        width: "100%",
                         color: "var(--charcoal)",
                         fontSize: "0.95rem",
                         fontWeight: 600,
@@ -1251,86 +1270,122 @@ export function TaskList({
                     {" · by "}
                     {t.assignBy}
                     {count > 0 ? ` · ${count} file${count === 1 ? "" : "s"}` : ""}
+                    {t.dateCompleted ? ` · Completed ${t.dateCompleted}` : ""}
+                  </div>
+
+                  <div
+                    className="task-card-controls"
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                      gap: "8px 14px",
+                      marginTop: 12,
+                    }}
+                  >
+                    <label className="task-card-control">
+                      <span>Category</span>
+                      <select
+                        className="select-input"
+                        value={t.category}
+                        onChange={(e) => void patch(t.id, { category: e.target.value as TaskCategory })}
+                        aria-label={`Category for ${t.id}`}
+                      >
+                        {TASK_CATEGORIES.map((c) => (
+                          <option key={c.id} value={c.id}>{c.label}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="task-card-control">
+                      <span>Assignee</span>
+                      <select
+                        className="select-input"
+                        value={t.assignedTo}
+                        onChange={(e) => void patch(t.id, { assignedTo: e.target.value as GyshTask["assignedTo"] })}
+                        style={{ borderLeft: `3px solid ${OWNER_ACCENT[t.assignedTo]}` }}
+                        aria-label={`Assignee for ${t.id}`}
+                      >
+                        <option value="Tina">Tina</option>
+                        <option value="Evelyn">Evelyn</option>
+                        <option value="Lyriq">Lyriq</option>
+                        <option value="Both">Both</option>
+                      </select>
+                    </label>
+                    <label className="task-card-control">
+                      <span>Sprint</span>
+                      <select
+                        className="select-input"
+                        value={t.sprint ?? 0}
+                        onChange={(e) => void patch(t.id, { sprint: Number(e.target.value) })}
+                        aria-label={`Sprint for ${t.id}`}
+                      >
+                        <option value={BACKLOG_SPRINT}>Backlog</option>
+                        {sprints.map((s) => (
+                          <option key={s.index} value={s.index}>{s.label}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="task-card-control">
+                      <span>Priority</span>
+                      <select
+                        className="select-input"
+                        value={t.priority}
+                        onChange={(e) => void patch(t.id, { priority: e.target.value as TaskPriority })}
+                        aria-label={`Priority for ${t.id}`}
+                      >
+                        <option value="P0">P0 Severe</option>
+                        <option value="P1">P1 High</option>
+                        <option value="P2">P2 Medium</option>
+                        <option value="P3">P3 Low</option>
+                      </select>
+                    </label>
+                    <label className="task-card-control">
+                      <span>Due date</span>
+                      <input
+                        className="text-input"
+                        type="date"
+                        value={mmddyyToIso(t.dueDate)}
+                        key={`${t.id}-${t.dueDate}`}
+                        aria-label={`Due date for ${t.id}`}
+                        title={overdue ? "Overdue" : dueToday ? "Due today" : "Due date"}
+                        style={{
+                          color: dueColor,
+                          fontWeight: overdue || dueToday ? 700 : 400,
+                          borderColor: overdue ? "rgba(155,47,40,0.45)" : undefined,
+                        }}
+                        onChange={(e) => void commitDueDate(t.id, e.target.value)}
+                      />
+                    </label>
+                    <label className="task-card-control">
+                      <span>Status</span>
+                      <select
+                        className="select-input"
+                        value={t.status}
+                        onChange={(e) => {
+                          const status = e.target.value as TaskStatus;
+                          if (t.assignedTo === "Both" && status === "done" && !(t.tinaDone && t.evelynDone)) {
+                            setError(
+                              "Both T + E must mark their own Done before this task can be Done.",
+                            );
+                            return;
+                          }
+                          void patch(t.id, { status });
+                        }}
+                        style={{ borderLeft: `3px solid ${STATUS_ACCENT[t.status]}` }}
+                        aria-label={`Status for ${t.id}`}
+                      >
+                        {(Object.keys(TASK_STATUS_LABELS) as TaskStatus[]).map((s) => (
+                          <option key={s} value={s} disabled={t.assignedTo === "Both" && s === "done" && !(t.tinaDone && t.evelynDone)}>
+                            {TASK_STATUS_LABELS[s]}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
                   </div>
                 </div>
-                <select
-                  className="select-input"
-                  value={t.category}
-                  onChange={(e) => void patch(t.id, { category: e.target.value as TaskCategory })}
-                  aria-label={`Category for ${t.id}`}
-                >
-                  {TASK_CATEGORIES.map((c) => (
-                    <option key={c.id} value={c.id}>{c.label}</option>
-                  ))}
-                </select>
-                <select
-                  className="select-input"
-                  value={t.assignedTo}
-                  onChange={(e) => void patch(t.id, { assignedTo: e.target.value as GyshTask["assignedTo"] })}
-                  style={{ borderLeft: `3px solid ${OWNER_ACCENT[t.assignedTo]}` }}
-                >
-                  <option value="Tina">Tina</option>
-                  <option value="Evelyn">Evelyn</option>
-                  <option value="Lyriq">Lyriq</option>
-                  <option value="Both">Both</option>
-                </select>
-                <select
-                  className="select-input"
-                  value={t.sprint ?? 0}
-                  onChange={(e) => void patch(t.id, { sprint: Number(e.target.value) })}
-                  aria-label={`Sprint for ${t.id}`}
-                >
-                  <option value={BACKLOG_SPRINT}>Backlog</option>
-                  {sprints.map((s) => (
-                    <option key={s.index} value={s.index}>{s.label}</option>
-                  ))}
-                </select>
-                <select className="select-input" value={t.priority} onChange={(e) => void patch(t.id, { priority: e.target.value as TaskPriority })}>
-                  <option value="P0">P0 Severe</option>
-                  <option value="P1">P1 High</option>
-                  <option value="P2">P2 Medium</option>
-                  <option value="P3">P3 Low</option>
-                </select>
-                <input
-                  className="text-input"
-                  type="date"
-                  value={mmddyyToIso(t.dueDate)}
-                  key={`${t.id}-${t.dueDate}`}
-                  aria-label={`Due date for ${t.id}`}
-                  title={overdue ? "Overdue" : dueToday ? "Due today" : "Due date"}
-                  style={{
-                    color: dueColor,
-                    fontWeight: overdue || dueToday ? 700 : 400,
-                    borderColor: overdue ? "rgba(155,47,40,0.45)" : undefined,
-                  }}
-                  onChange={(e) => void commitDueDate(t.id, e.target.value)}
-                />
-                <select
-                  className="select-input"
-                  value={t.status}
-                  onChange={(e) => {
-                    const status = e.target.value as TaskStatus;
-                    if (t.assignedTo === "Both" && status === "done" && !(t.tinaDone && t.evelynDone)) {
-                      setError(
-                        "Both T + E must mark their own Done before this task can be Done.",
-                      );
-                      return;
-                    }
-                    void patch(t.id, { status });
-                  }}
-                  style={{ borderLeft: `3px solid ${STATUS_ACCENT[t.status]}` }}
-                >
-                  {(Object.keys(TASK_STATUS_LABELS) as TaskStatus[]).map((s) => (
-                    <option key={s} value={s} disabled={t.assignedTo === "Both" && s === "done" && !(t.tinaDone && t.evelynDone)}>
-                      {TASK_STATUS_LABELS[s]}
-                    </option>
-                  ))}
-                </select>
-                <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{t.dateCompleted || "—"}</span>
                 <button
                   type="button"
                   className="btn btn-outline"
-                  style={{ padding: "6px 8px" }}
+                  style={{ padding: "6px 8px", marginTop: 4 }}
                   onClick={() => toggleExpand(t.id)}
                   title="Attachments"
                 >
@@ -1420,8 +1475,8 @@ export function TaskList({
       </div>
 
       <style>{`
-        @media (max-width: 980px) {
-          .task-row {
+        @media (max-width: 700px) {
+          .task-card-controls {
             grid-template-columns: 1fr !important;
           }
         }

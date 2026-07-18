@@ -22,7 +22,7 @@ export const ACT_AS_AUDIENCE_OPTIONS: {
   label: string;
   description: string;
 }[] = [
-  { audience: "adult", label: "Adult member", description: "Adult hub, GYSH Match Wizard, guides" },
+  { audience: "adult", label: "Adult member", description: "Adult hub, Match Wizard, guides" },
   { audience: "kids", label: "Kids (4–12)", description: "Kids Side Hustle Corner" },
   { audience: "junior", label: "Teens (13–17)", description: "GYSH Teens Corner" },
   { audience: "senior", label: "Senior (55+)", description: "GYSH Seniors Corner" },

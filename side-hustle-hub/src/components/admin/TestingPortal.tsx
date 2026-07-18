@@ -26,7 +26,14 @@ import {
   AUTOMATED_PLAYWRIGHT_CASES,
   isAutomatedTestId,
 } from "../../lib/gysh-automated-tests";
-import { QA_TESTERS, type QaTesterId } from "../../lib/gysh-roles";
+import {
+  AUTOMATED_SUITE_OWNERS,
+  QA_TESTERS,
+  isHumanQaTester,
+  testOwnerLabel,
+  type QaTesterId,
+  type TestOwnerId,
+} from "../../lib/gysh-roles";
 import { listUpcomingSprints, sprintLabel, BACKLOG_SPRINT } from "../../lib/gysh-sprints";
 import { ApiError } from "../../lib/api";
 import { suggestedSprintForTest } from "../../lib/gysh-sprint-board";
@@ -210,20 +217,26 @@ export function TestingPortal({
     [],
   );
 
-  /** Effective assignees: D1 override wins, else code default. */
-  const effectiveAssignees = (t: (typeof ALL_CASES)[number]): QaTesterId[] => {
+  /** Effective assignees: humans for manual; suite owners for automated (D1 human override ignored). */
+  const effectiveAssignees = (t: (typeof ALL_CASES)[number]): TestOwnerId[] => {
+    if (isAutomatedTestId(t.id) || t.suite === "vitest" || t.suite === "playwright") {
+      return t.assignees;
+    }
     const override = assigneeOverrides[t.id];
-    if (override && QA_TESTERS.some((x) => x.id === override)) {
-      return [override as QaTesterId];
+    if (override && isHumanQaTester(override)) {
+      return [override];
     }
     return t.assignees;
   };
 
-  /** Persist primary owner so Lyriq/T/E results stay attributed in D1. */
+  /** Persist primary owner — suite owner for automated; human for manual. */
   const persistedAssignee = (id: string): string => {
-    const override = assigneeOverrides[id];
-    if (override && QA_TESTERS.some((x) => x.id === override)) return override;
     const t = ALL_CASES.find((c) => c.id === id);
+    if (t && (isAutomatedTestId(id) || t.suite === "vitest" || t.suite === "playwright")) {
+      return t.assignees[0] ?? "";
+    }
+    const override = assigneeOverrides[id];
+    if (override && isHumanQaTester(override)) return override;
     return t?.assignees[0] ?? "";
   };
 
@@ -241,13 +254,25 @@ export function TestingPortal({
   };
 
   const testerStats = useMemo(() => {
+    const manual = ALL_CASES.filter((t) => t.suite === "manual");
     return QA_TESTERS.map((tester) => {
-      const cases = ALL_CASES.filter((t) => effectiveAssignees(t).includes(tester.id));
+      const cases = manual.filter((t) => effectiveAssignees(t).includes(tester.id));
       const done = cases.filter((t) => isCaseComplete(t.id)).length;
       return { ...tester, total: cases.length, done };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- effectiveAssignees derives from assigneeOverrides
   }, [statuses, assigneeOverrides]);
+
+  const suiteOwnerStats = useMemo(() => {
+    return AUTOMATED_SUITE_OWNERS.map((owner) => {
+      const cases = ALL_CASES.filter(
+        (t) => t.suite === owner.id && effectiveAssignees(t).includes(owner.id),
+      );
+      const done = cases.filter((t) => isCaseComplete(t.id)).length;
+      return { ...owner, total: cases.length, done };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- effectiveAssignees is pure over ALL_CASES
+  }, [statuses]);
 
   const suiteStats = useMemo(() => {
     const counts: Record<TestSuite, { done: number; total: number }> = {
@@ -567,10 +592,8 @@ export function TestingPortal({
     }
   };
 
-  const testerLabel = (ids: QaTesterId[]) =>
-    ids
-      .map((id) => QA_TESTERS.find((t) => t.id === id)?.shortName ?? id)
-      .join(", ");
+  const testerLabel = (ids: TestOwnerId[]) =>
+    ids.map((id) => testOwnerLabel(id)).join(", ");
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
@@ -722,7 +745,7 @@ export function TestingPortal({
 
         <div style={{ marginTop: "16px" }}>
           <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 8 }}>
-            QA Testers — click to filter
+            Manual QA Testers — click to filter (manual suite only)
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
             {testerStats.map((tester) => {
@@ -731,8 +754,11 @@ export function TestingPortal({
                 <button
                   key={tester.id}
                   type="button"
-                  onClick={() => setTesterFilter(active ? null : tester.id)}
-                  title={`${tester.name} — click again to show everyone`}
+                  onClick={() => {
+                    setTesterFilter(active ? null : tester.id);
+                    if (!active) setSuiteFilter("manual");
+                  }}
+                  title={`${tester.name} — manual cases only`}
                   className="qa-tester-bubble"
                   data-active={active ? "true" : "false"}
                   style={{
@@ -756,6 +782,35 @@ export function TestingPortal({
                 Show all assignees
               </button>
             )}
+          </div>
+          <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", margin: "12px 0 8px" }}>
+            Automated suite owners — status only (not assigned to human testers)
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+            {suiteOwnerStats.map((owner) => {
+              const active = suiteFilter === owner.id;
+              return (
+                <button
+                  key={owner.id}
+                  type="button"
+                  onClick={() => {
+                    setTesterFilter(null);
+                    setSuiteFilter(active ? "all" : owner.id);
+                  }}
+                  title={`${owner.name} runs these tests`}
+                  className="qa-tester-bubble"
+                  data-active={active ? "true" : "false"}
+                  style={{
+                    borderColor: active ? owner.accent : undefined,
+                    boxShadow: active ? `0 0 0 1px ${owner.accent}` : undefined,
+                  }}
+                >
+                  <span className="qa-tester-dot" style={{ background: owner.accent }} />
+                  {owner.shortName}
+                  <span className="qa-tester-meta">· {owner.done}/{owner.total}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -1098,44 +1153,45 @@ export function TestingPortal({
                     </span>
                   )}
                 </button>
-                <label
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    padding: "0 12px",
-                    borderLeft: "1px solid var(--border-color)",
-                    fontSize: "0.75rem",
-                    color: "var(--text-secondary)",
-                    whiteSpace: "nowrap",
-                  }}
+              </div>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "72px minmax(0, 1fr)",
+                  gap: 10,
+                  alignItems: "center",
+                  padding: "10px 14px",
+                  borderTop: "1px solid var(--border-color)",
+                  fontSize: "0.78rem",
+                  color: "var(--text-secondary)",
+                  fontWeight: 600,
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                Status
+                <select
+                  className="text-input"
+                  aria-label={`Status for ${t.id}`}
+                  value={st}
+                  disabled={isSaving(t.id)}
                   onClick={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onChange={(e) => void setStatus(t.id, e.target.value as TestStatus)}
+                  style={{
+                    width: "100%",
+                    minWidth: 0,
+                    padding: "8px 12px",
+                    fontSize: "0.9rem",
+                    color: STATUS_COLOR[st],
+                    fontWeight: 600,
+                  }}
                 >
-                  Status
-                  <select
-                    className="text-input"
-                    aria-label={`Status for ${t.id}`}
-                    value={st}
-                    disabled={isSaving(t.id)}
-                    onClick={(e) => e.stopPropagation()}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onChange={(e) => void setStatus(t.id, e.target.value as TestStatus)}
-                    style={{
-                      width: 148,
-                      minWidth: 148,
-                      padding: "6px 10px",
-                      fontSize: "0.8rem",
-                      color: STATUS_COLOR[st],
-                      fontWeight: 600,
-                    }}
-                  >
-                    {STATUSES.map((s) => (
-                      <option key={s} value={s}>
-                        {STATUS_LABELS[s]}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                  {STATUSES.map((s) => (
+                    <option key={s} value={s}>
+                      {STATUS_LABELS[s]}
+                    </option>
+                  ))}
+                </select>
               </div>
               {open && (
                 <div style={{ padding: "0 16px 16px", borderTop: "1px solid var(--border-color)" }}>
@@ -1144,11 +1200,22 @@ export function TestingPortal({
                     {automated && " · Automated (owner locked)"}
                   </p>
                   {!automated && (
-                    <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, fontSize: "0.8rem", color: "var(--text-secondary)" }}>
+                    <label
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "88px minmax(0, 1fr)",
+                        gap: 10,
+                        alignItems: "center",
+                        marginTop: 8,
+                        fontSize: "0.8rem",
+                        color: "var(--text-secondary)",
+                        fontWeight: 600,
+                      }}
+                    >
                       Assign to
                       <select
                         className="text-input"
-                        style={{ width: 200, minWidth: 200, padding: "6px 10px", fontSize: "0.8rem" }}
+                        style={{ width: "100%", minWidth: 0, padding: "8px 12px", fontSize: "0.9rem" }}
                         value={assigneeOverrides[t.id] ?? ""}
                         onChange={(e) => void reassign(t.id, e.target.value)}
                       >
@@ -1161,11 +1228,22 @@ export function TestingPortal({
                       </select>
                     </label>
                   )}
-                  <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, fontSize: "0.8rem", color: "var(--text-secondary)" }}>
+                  <label
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "88px minmax(0, 1fr)",
+                      gap: 10,
+                      alignItems: "center",
+                      marginTop: 8,
+                      fontSize: "0.8rem",
+                      color: "var(--text-secondary)",
+                      fontWeight: 600,
+                    }}
+                  >
                     Sprint
                     <select
                       className="text-input"
-                      style={{ width: 260, minWidth: 260, padding: "6px 10px", fontSize: "0.8rem" }}
+                      style={{ width: "100%", minWidth: 0, padding: "8px 12px", fontSize: "0.9rem" }}
                       value={effectiveSprint(t)}
                       onChange={(e) => void setSprint(t.id, Number(e.target.value))}
                     >

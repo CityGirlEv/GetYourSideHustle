@@ -1537,7 +1537,7 @@ export const KidsCorner: React.FC<KidsCornerProps> = ({
   entryFocus = null,
 }) => {
   const [mode, setMode] = useState<AudienceMode>("kids");
-  const [kidsTab, setKidsTab] = useState<KidsTab>("stories");
+  const [kidsTab, setKidsTab] = useState<KidsTab>("wizard");
   const [juniorTab, setJuniorTab] = useState<JuniorTab>("join");
   /** Bumped after lightweight team join so localStorage membership re-reads. */
   const [memberVersion, setMemberVersion] = useState(0);

@@ -15,7 +15,7 @@ import {
 } from "./gysh-sprints";
 import type { GyshTask } from "./gysh-tasks";
 import type { TestCase, TestStatus } from "./gysh-test-plan";
-import { QA_TESTERS, type QaTesterId } from "./gysh-roles";
+import { QA_TESTERS, testOwnerLabel, type TestOwnerId } from "./gysh-roles";
 
 /** Explicit task → sprint (everything else → heuristic / backlog). */
 export const TASK_SPRINT_MAP: Record<string, number> = {
@@ -198,12 +198,16 @@ export function testStatusToBoard(status: TestStatus | undefined): string {
   return "todo";
 }
 
-export function ownerFromAssignees(assignees: QaTesterId[]): string {
+export function ownerFromAssignees(assignees: TestOwnerId[] | string[]): string {
   const names = assignees
-    .map((id) => QA_TESTERS.find((t) => t.id === id)?.shortName ?? id)
+    .map((id) => testOwnerLabel(String(id)))
     .filter(Boolean);
   if (names.length === 0) return "Both";
-  if (names.length > 1) return "Both";
+  if (names.length > 1) {
+    // Multiple human owners → Both; suite owners stay as their label.
+    if (names.every((n) => n === "Vitest" || n === "Playwright")) return names[0]!;
+    return "Both";
+  }
   return names[0]!;
 }
 
@@ -256,7 +260,7 @@ export function testToBoardCard(
   const sprint =
     typeof sprintOverride === "number" ? sprintOverride : suggestedSprintForTest(test);
   const owner = assigneeOverride
-    ? ownerFromAssignees([assigneeOverride as QaTesterId])
+    ? ownerFromAssignees([assigneeOverride])
     : ownerFromAssignees(test.assignees);
   return {
     key: `test:${test.id}`,

@@ -418,7 +418,7 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
       },
       {
         id: "qa-assign",
-        text: "Assign cases to T / E / Lyriq; set sprint; expand case detail.",
+        text: "Assign manual cases to T / E / Lyriq; Vitest/Playwright cases stay on suite owners; set sprint; expand case detail.",
       },
       {
         id: "qa-bulk",

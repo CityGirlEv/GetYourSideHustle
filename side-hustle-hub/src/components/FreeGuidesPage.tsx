@@ -148,12 +148,25 @@ export function FreeGuidesPage({
           />
         </div>
         <div className="free-guides-hero-copy">
-          <span className="glow-badge free">Free</span>
-          <h2>GYSH Guides</h2>
-          <p>
-            Browse every GYSH guide in one place. Free guides are open to everyone — member guides
-            stay locked until you join or sign in.
-          </p>
+          <div className="free-guides-hero-intro">
+            <div className="free-guides-perk-banner" role="note">
+              <span className="glow-badge free">Free</span>
+              <div className="free-guides-perk-banner__copy">
+                <strong>Free Membership Unlocks Perks</strong>
+                <span>
+                  Create a free GYSH account to open member guides, save progress, and keep your match
+                  results handy — no paid plan required.
+                </span>
+              </div>
+            </div>
+            <h2>GYSH Guides</h2>
+            <p>
+              Practical how-to playbooks for every generation under one roof. Each guide is tailored to
+              your age group and stage of life — Kids and Teens with parent-friendly safety, Adults with
+              launch steps and costs, and Seniors with flexible pacing. Browse free previews now; join
+              free to unlock the full library and keep building at your own speed.
+            </p>
+          </div>
           <div className="free-guides-filters" role="tablist" aria-label="Filter guides" data-testid="free-guides-filters">
             {FILTERS.map((f) => (
               <button
