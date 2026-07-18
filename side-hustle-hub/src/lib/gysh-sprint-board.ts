@@ -15,7 +15,7 @@ import {
 } from "./gysh-sprints";
 import type { GyshTask } from "./gysh-tasks";
 import type { TestCase, TestStatus } from "./gysh-test-plan";
-import { QA_TESTERS, testOwnerLabel, type TestOwnerId } from "./gysh-roles";
+import { testOwnerLabel, type TestOwnerId } from "./gysh-roles";
 
 /** Explicit task → sprint (everything else → heuristic / backlog). */
 export const TASK_SPRINT_MAP: Record<string, number> = {
@@ -132,6 +132,10 @@ export function suggestedSprintForTest(
 
   if (
     id.startsWith("AUTH-") ||
+    id.startsWith("EMAIL-") ||
+    id.startsWith("REG-") ||
+    id.startsWith("BP-") ||
+    id.startsWith("CONTACT-") ||
     id.startsWith("BRAND-") ||
     id.startsWith("ADMIN-") ||
     id.startsWith("NAV-") ||
@@ -148,7 +152,6 @@ export function suggestedSprintForTest(
     id.startsWith("JOIN-") ||
     id.startsWith("FACTORY-") ||
     id.startsWith("CONTENT-") ||
-    id.startsWith("CONTACT-") ||
     id.startsWith("VT-WORK") ||
     id.startsWith("VT-JOIN") ||
     id.startsWith("TASK-") ||

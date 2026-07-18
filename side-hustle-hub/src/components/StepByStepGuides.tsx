@@ -373,7 +373,7 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
             <h2 style={{ fontSize: "1.35rem", color: "var(--charcoal)", margin: "0 0 6px" }}>
               {activeGuide.name} guide
             </h2>
-            <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: "0.9rem", maxWidth: 560 }}>
+            <p style={{ margin: 0, color: "var(--text-primary)", fontSize: "1rem", maxWidth: 560 }}>
               {activeGuide.bestFor} Full step-by-step details unlock when you sign in as a member.
             </p>
           </div>
@@ -406,7 +406,7 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
       
       {/* Sidebar Selector */}
       <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-        <span style={{ fontSize: "0.8rem", color: "var(--text-secondary)", textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.05em", paddingLeft: "8px" }}>
+        <span style={{ fontSize: "0.9375rem", color: "var(--text-primary)", textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.05em", paddingLeft: "8px" }}>
           Select Guide
         </span>
         {guides.map((g) => {
@@ -418,10 +418,10 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
             type="button"
             onClick={() => setActiveGuideId(g.id)}
             className={`nav-link-btn ${activeGuideId === g.id ? "active" : ""}`}
-            style={{ padding: "10px 14px", fontSize: "0.9rem", opacity: gUnlocked ? 1 : 0.7 }}
+            style={{ padding: "10px 14px", fontSize: "1rem", opacity: gUnlocked ? 1 : 0.7 }}
           >
             {g.name}
-            {gFree && <span className="glow-badge free" style={{ marginLeft: 6, fontSize: "0.6rem", padding: "2px 8px" }}>Free</span>}
+            {gFree && <span className="glow-badge free" style={{ marginLeft: 6, fontSize: "0.9375rem", padding: "2px 8px" }}>Free</span>}
             {!gUnlocked && <Lock size={12} style={{ marginLeft: 6, flexShrink: 0 }} />}
           </button>
           );
@@ -441,7 +441,7 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
                 {activeGuide.name} Setup
               </h2>
             </div>
-            <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", maxWidth: "600px" }}>{activeGuide.bestFor}</p>
+            <p style={{ color: "var(--text-primary)", fontSize: "1rem", maxWidth: "600px" }}>{activeGuide.bestFor}</p>
           </div>
 
           <div style={{ 
@@ -449,15 +449,15 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
             padding: "16px", 
             borderRadius: "12px", 
             border: "1px solid var(--border-color)",
-            fontSize: "0.85rem",
+            fontSize: "0.95rem",
             minWidth: "220px"
           }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-              <span style={{ color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "4px" }}><Coins size={14} /> Startup Time:</span>
+              <span style={{ color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "4px" }}><Coins size={14} /> Startup Time:</span>
               <strong style={{ color: "var(--charcoal)" }}>{activeGuide.timeframe}</strong>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "4px" }}><TrendingUp size={14} /> Est. Return:</span>
+              <span style={{ color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "4px" }}><TrendingUp size={14} /> Est. Return:</span>
               <strong style={{ color: "var(--accent-emerald)" }}>{activeGuide.estEarnings}</strong>
             </div>
           </div>
@@ -465,7 +465,7 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
 
         {/* Progress Tracker */}
         <div style={{ marginBottom: "32px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "8px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.95rem", color: "var(--text-primary)", marginBottom: "8px" }}>
             <span>Launch Roadmap Progress</span>
             <span style={{ fontWeight: 700, color: progressPercent === 100 ? "var(--accent-emerald)" : "var(--charcoal)" }}>
               {activeCompletedSteps} of {activeStepsCount} Completed ({Math.round(progressPercent)}%)
@@ -499,7 +499,7 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
                   <strong style={{ color: isDone ? "var(--text-muted)" : "var(--charcoal)", fontSize: "0.95rem", display: "block", marginBottom: "4px" }}>
                     {idx + 1}. {step.title}
                   </strong>
-                  <span style={{ color: isDone ? "var(--text-muted)" : "var(--text-secondary)", fontSize: "0.85rem" }}>
+                  <span style={{ color: isDone ? "var(--text-muted)" : "var(--text-secondary)", fontSize: "0.95rem" }}>
                     {step.desc}
                   </span>
                 </div>
@@ -519,7 +519,7 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
             <h4 style={{ color: "var(--accent-emerald)", fontSize: "0.95rem", fontWeight: 700, display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px" }}>
               <Award size={16} /> Professional Secret
             </h4>
-            <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", lineHeight: 1.6 }}>{activeGuide.proTip}</p>
+            <p style={{ fontSize: "0.95rem", color: "var(--text-primary)", lineHeight: 1.6 }}>{activeGuide.proTip}</p>
           </div>
 
           <div style={{ 
@@ -531,19 +531,19 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
             <h4 style={{ color: "#ef4444", fontSize: "0.95rem", fontWeight: 700, display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px" }}>
               <AlertTriangle size={16} /> High-Risk Pitfall
             </h4>
-            <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", lineHeight: 1.6 }}>{activeGuide.pitfall}</p>
+            <p style={{ fontSize: "0.95rem", color: "var(--text-primary)", lineHeight: 1.6 }}>{activeGuide.pitfall}</p>
           </div>
         </div>
 
         {/* Footer Actions */}
         <div style={{ marginTop: "32px", borderTop: "1px solid var(--border-color)", paddingTop: "24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
+          <span style={{ fontSize: "0.95rem", color: "var(--text-primary)" }}>
             Ready to calculate your customized returns?
           </span>
           <button 
             onClick={() => onGoToCalculator(activeGuide.id)}
             className="btn btn-outline"
-            style={{ fontSize: "0.85rem", gap: "6px" }}
+            style={{ fontSize: "0.95rem", gap: "6px" }}
           >
             Launch Revenue Calculator <ArrowRight size={14} />
           </button>

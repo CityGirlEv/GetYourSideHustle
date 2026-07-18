@@ -174,7 +174,7 @@ export function SideHustleBlueprintResults({
               <div className="match-finder-adult-result-meta">
                 {row.meta.map((m) => (
                   <span key={m.label}>
-                    <span style={{ color: "var(--text-muted)" }}>{m.label}: </span>
+                    <span style={{ color: "var(--text-primary)" }}>{m.label}: </span>
                     <strong>{m.value}</strong>
                   </span>
                 ))}

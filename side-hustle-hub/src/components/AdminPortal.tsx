@@ -11,6 +11,9 @@ import {
   CalendarRange,
   Map,
   BookOpen,
+  Clock,
+  Award,
+  Mail,
 } from "lucide-react";
 import { ROOT_DOMAIN } from "../lib/site-config";
 import { TestingPortal } from "./admin/TestingPortal";
@@ -21,7 +24,10 @@ import { Financials } from "./admin/Financials";
 import { SchedulePage } from "./admin/SchedulePage";
 import { DueTasksModal } from "./admin/DueTasksModal";
 import { SiteMapPage } from "./admin/SiteMapPage";
+import { TimesheetPage } from "./admin/TimesheetPage";
 import { UserGuidesHub, type UserGuideId } from "./admin/UserGuidesHub";
+import { CertificatesAdmin } from "./admin/CertificatesAdmin";
+import { EmailTemplates } from "./admin/EmailTemplates";
 import type { AuthUser } from "../lib/auth";
 import {
   assigneeForAuthUser,
@@ -37,15 +43,23 @@ export type AdminTab =
   | "users"
   | "factory"
   | "tasks"
+  | "timesheet"
   | "financials"
   | "sitemap"
-  | "user-guides";
+  | "user-guides"
+  | "certificates"
+  | "email";
 
-export const ADMIN_TABS: { id: AdminTab; label: string; adminOnly?: boolean }[] = [
+export type AdminTabDef = { id: AdminTab; label: string; adminOnly?: boolean };
+
+export const ADMIN_TABS: AdminTabDef[] = [
   { id: "schedule", label: "Schedule & Plan" },
   { id: "tasks", label: "Task List" },
   { id: "testing", label: "Testing Portal" },
+  { id: "timesheet", label: "Timesheet" },
   { id: "users", label: "Users Area" },
+  { id: "certificates", label: "Certificates" },
+  { id: "email", label: "Email Templates" },
   { id: "factory", label: "Content Factory" },
   { id: "financials", label: "Financials", adminOnly: true },
   { id: "studio", label: "Growth Studio" },
@@ -53,10 +67,27 @@ export const ADMIN_TABS: { id: AdminTab; label: string; adminOnly?: boolean }[] 
   { id: "user-guides", label: "User Guides" },
 ];
 
+/** Grouped Admin header menu — keeps the long list scannable. */
+export const ADMIN_MENU_GROUPS: { id: string; label: string; tabs: AdminTab[] }[] = [
+  { id: "delivery", label: "Plan & delivery", tabs: ["schedule", "tasks", "timesheet", "testing"] },
+  { id: "people", label: "People & access", tabs: ["users", "certificates", "email"] },
+  { id: "content", label: "Content & growth", tabs: ["factory", "studio", "financials"] },
+  { id: "reference", label: "Reference", tabs: ["sitemap", "user-guides"] },
+];
+
 export const ADMIN_USER_GUIDE_LINKS: { id: UserGuideId; label: string }[] = [
-  { id: "member", label: "Member User Guide" },
+  { id: "master", label: "Complete Guide" },
+  { id: "adult", label: "Adult Manual" },
+  { id: "kids", label: "Kids Manual" },
+  { id: "teens", label: "Teens Manual" },
+  { id: "seniors", label: "Seniors Manual" },
+  { id: "member", label: "Member Tour" },
   { id: "admin", label: "Admin User Guide" },
 ];
+
+export function adminTabById(id: AdminTab): AdminTabDef | undefined {
+  return ADMIN_TABS.find((t) => t.id === id);
+}
 
 function userIsAdmin(user: AuthUser | null | undefined): boolean {
   if (!user) return false;
@@ -106,7 +137,10 @@ export const AdminPortal: React.FC<Props> = ({
     { id: "schedule", label: "Schedule & Plan", icon: <CalendarRange size={16} /> },
     { id: "tasks", label: "Task List", icon: <ListChecks size={16} /> },
     { id: "testing", label: "Testing Portal", icon: <FlaskConical size={16} /> },
+    { id: "timesheet", label: "Timesheet", icon: <Clock size={16} /> },
     { id: "users", label: "Users Area", icon: <Users size={16} /> },
+    { id: "certificates", label: "Certificates", icon: <Award size={16} /> },
+    { id: "email", label: "Email Templates", icon: <Mail size={16} /> },
     { id: "factory", label: "Content Factory", icon: <Sparkles size={16} /> },
     ...(isAdmin
       ? [{ id: "financials" as const, label: "Financials", icon: <DollarSign size={16} /> }]
@@ -179,36 +213,38 @@ export const AdminPortal: React.FC<Props> = ({
         onOpenTaskList={() => onTabChange("tasks")}
       />
 
-      <div
-        style={{
-          display: "flex",
-          gap: 8,
-          flexWrap: "wrap",
-          marginBottom: 24,
-          padding: 6,
-          borderRadius: 14,
-          background: "linear-gradient(135deg, rgba(215,198,151,0.65), #fff)",
-          border: "1px solid var(--border-color)",
-        }}
-      >
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => onTabChange(t.id)}
-            className={`nav-link-btn ${activeTab === t.id ? "active" : ""}`}
-            style={{ borderRadius: 10 }}
-          >
-            {t.icon}
-            {t.label}
-          </button>
-        ))}
+      <div className="admin-portal-nav" aria-label="Admin sections">
+        {ADMIN_MENU_GROUPS.map((group) => {
+          const groupTabs = group.tabs
+            .map((id) => tabs.find((t) => t.id === id))
+            .filter((t): t is (typeof tabs)[number] => Boolean(t));
+          if (groupTabs.length === 0) return null;
+          return (
+            <div key={group.id} className="admin-portal-nav__group">
+              <p className="admin-portal-nav__label">{group.label}</p>
+              <div className="admin-portal-nav__tabs">
+                {groupTabs.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => onTabChange(t.id)}
+                    className={`nav-link-btn ${activeTab === t.id ? "active" : ""}`}
+                  >
+                    {t.icon}
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {activeTab === "testing" && (
         <TestingPortal
           focusTestId={focusTestId}
           onFocusConsumed={() => setFocusTestId(null)}
+          authUser={authUser}
         />
       )}
       {activeTab === "schedule" && (
@@ -224,13 +260,17 @@ export const AdminPortal: React.FC<Props> = ({
         />
       )}
       {activeTab === "users" && <UsersArea />}
+      {activeTab === "certificates" && <CertificatesAdmin />}
+      {activeTab === "email" && <EmailTemplates />}
       {activeTab === "factory" && <ContentFactory />}
       {activeTab === "tasks" && (
         <TaskList
           focusTaskId={focusTaskId}
           onFocusConsumed={() => setFocusTaskId(null)}
+          authUser={authUser}
         />
       )}
+      {activeTab === "timesheet" && <TimesheetPage authUser={authUser} />}
       {activeTab === "financials" && isAdmin && <Financials />}
       {activeTab === "sitemap" && <SiteMapPage />}
       {activeTab === "user-guides" && (
@@ -243,7 +283,7 @@ export const AdminPortal: React.FC<Props> = ({
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
               <div>
                 <h2 style={{ fontSize: "1.6rem", color: "var(--bronze)", marginBottom: "6px" }}>GYSH Growth Studio</h2>
-                <p style={{ color: "var(--text-secondary)", fontSize: "0.95rem" }}>
+                <p style={{ color: "var(--text-primary)", fontSize: "0.95rem" }}>
                   Planning notes for {ROOT_DOMAIN}. Publishing calendar will connect to Content Factory / DB later — no placeholder posts shown as live data.
                 </p>
               </div>
@@ -264,7 +304,7 @@ export const AdminPortal: React.FC<Props> = ({
           </div>
 
           {activeSubTab === "calendar" && (
-            <div className="glass" style={{ padding: 28, borderRadius: 14, color: "var(--text-secondary)" }}>
+            <div className="glass" style={{ padding: 28, borderRadius: 14, color: "var(--text-primary)" }}>
               <h3 style={{ fontSize: "1.2rem", color: "var(--text-primary)", marginBottom: 8 }}>Publishing schedule</h3>
               <p style={{ margin: "0 0 16px" }}>
                 The overall schedule and implementation plan have their own workspace with a Tuesday–Monday sprint cadence.
@@ -280,7 +320,7 @@ export const AdminPortal: React.FC<Props> = ({
               <h3 style={{ fontSize: "1.2rem", marginBottom: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
                 <DollarSign size={20} style={{ color: "var(--bronze)" }} /> Monetization ideas (planning notes)
               </h3>
-              <p style={{ fontSize: "0.9rem", color: "var(--text-secondary)", marginBottom: 16 }}>
+              <p style={{ fontSize: "1rem", color: "var(--text-primary)", marginBottom: 16 }}>
                 These are strategy notes only — not live products or revenue data.
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -297,7 +337,7 @@ export const AdminPortal: React.FC<Props> = ({
                     </div>
                     <div>
                       <h4 style={{ fontSize: "1rem", fontWeight: 600, marginBottom: "4px" }}>{title}</h4>
-                      <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", lineHeight: "1.5" }}>{body}</p>
+                      <p style={{ fontSize: "0.95rem", color: "var(--text-primary)", lineHeight: "1.5" }}>{body}</p>
                     </div>
                   </div>
                 ))}
@@ -319,7 +359,7 @@ export const AdminPortal: React.FC<Props> = ({
                 ].map(([title, body]) => (
                   <div key={title} style={{ padding: "16px", borderRadius: "10px", border: "1px solid var(--border-color)", background: "#fff" }}>
                     <h4 style={{ fontSize: "0.95rem", fontWeight: 600, marginBottom: "8px" }}>{title}</h4>
-                    <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", lineHeight: "1.5" }}>{body}</p>
+                    <p style={{ fontSize: "0.95rem", color: "var(--text-primary)", lineHeight: "1.5" }}>{body}</p>
                   </div>
                 ))}
               </div>

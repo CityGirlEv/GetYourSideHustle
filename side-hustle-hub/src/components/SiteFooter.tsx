@@ -19,7 +19,8 @@ export function SiteFooter({ onNavigate }: SiteFooterProps) {
         <div className="site-footer-brand">
           <img src={gyshLogo} alt={SITE_NAME} className="site-footer-logo" />
           <p className="site-footer-tagline">
-            Educational side-hustle playbooks for adults, juniors, and families — built by T + E.
+            Educational side-hustle playbooks for adults, juniors, and families — built by{" "}
+            <span className="nowrap">T&nbsp;+&nbsp;E.</span>
           </p>
         </div>
 

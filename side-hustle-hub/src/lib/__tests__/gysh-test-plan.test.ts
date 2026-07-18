@@ -17,7 +17,47 @@ describe("gysh-test-plan", () => {
   it("splits manual cases across testers", () => {
     expect(testerCaseCount("tina", manualCases)).toBeGreaterThan(0);
     expect(testerCaseCount("evelyn", manualCases)).toBeGreaterThan(0);
-    expect(manualCases.length).toBeGreaterThan(0);
+    expect(testerCaseCount("lyriq", manualCases)).toBeGreaterThan(0);
+    expect(manualCases.length).toBeGreaterThanOrEqual(50);
+  });
+
+  it("includes a sample pool for automation blind spots (UX, a11y, tone, inbox)", () => {
+    const ids = new Set(manualCases.map((t) => t.id));
+    for (const id of [
+      "UX-001",
+      "UX-003",
+      "A11Y-001",
+      "FAMILY-001",
+      "WIZ-UX-001",
+      "WIZ-UX-002",
+      "WIZ-UX-003",
+      "CONTACT-003",
+      "AUTH-006",
+      "ADMIN-008",
+      "EMAIL-001",
+      "EMAIL-002",
+      "EMAIL-004",
+      "REG-001",
+      "REG-002",
+      "BP-001",
+    ]) {
+      expect(ids.has(id)).toBe(true);
+    }
+  });
+
+  it("assigns email, registration, and Blueprint cases to Lyriq", () => {
+    const owned = TEST_CASES.filter(
+      (t) =>
+        (t.suite ?? "manual") === "manual" &&
+        (t.id.startsWith("EMAIL-") ||
+          t.id.startsWith("REG-") ||
+          t.id.startsWith("BP-") ||
+          t.id.startsWith("CONTACT-")),
+    );
+    expect(owned.length).toBeGreaterThanOrEqual(12);
+    for (const t of owned) {
+      expect(t.assignees).toContain("lyriq");
+    }
   });
 
   it("has unique test IDs", () => {

@@ -55,6 +55,7 @@ import {
   AUTOMATED_PLAYWRIGHT_CASES,
   AUTOMATED_VITEST_CASES,
   isAutomatedTestId,
+  isWizardMatrixCaseId,
 } from "../../lib/gysh-automated-tests";
 import {
   AUTOMATED_SUITE_OWNERS,
@@ -96,7 +97,7 @@ const ALL_TESTS = [
   ...withDefaultSuite(TEST_CASES),
   ...AUTOMATED_VITEST_CASES,
   ...AUTOMATED_PLAYWRIGHT_CASES,
-];
+].filter((t) => !isWizardMatrixCaseId(t.id));
 
 const TEST_DEFAULT_ASSIGNEES = Object.fromEntries(
   ALL_TESTS.map((test) => [test.id, test.assignees[0] ?? ""]),
@@ -218,11 +219,11 @@ function ProgressMeter({
           justifyContent: "space-between",
           gap: 8,
           marginBottom: 5,
-          fontSize: "0.78rem",
+          fontSize: "0.9375rem",
         }}
       >
         <strong style={{ color: "var(--charcoal)" }}>{label}</strong>
-        <span style={{ color: "var(--text-muted)", fontVariantNumeric: "tabular-nums" }}>
+        <span style={{ color: "var(--text-primary)", fontVariantNumeric: "tabular-nums" }}>
           {done}/{total} · {value}%
         </span>
       </div>
@@ -360,7 +361,7 @@ function PlanItemAttachments({
         <button
           type="button"
           className="btn btn-outline"
-          style={{ padding: "5px 10px", fontSize: "0.78rem" }}
+          style={{ padding: "5px 10px", fontSize: "0.9375rem" }}
           onClick={() => inputRef.current?.click()}
           disabled={uploading}
         >
@@ -375,11 +376,11 @@ function PlanItemAttachments({
           style={{ display: "none" }}
           onChange={(e) => void handleFiles(e.target.files)}
         />
-        <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
+        <span style={{ fontSize: "1rem", color: "var(--text-primary)" }}>
           PDF, Word, images, video, txt, csv
         </span>
       </div>
-      {error && <div style={{ fontSize: "0.75rem", color: "#9B2F28" }}>{error}</div>}
+      {error && <div style={{ fontSize: "0.9375rem", color: "#9B2F28" }}>{error}</div>}
       {(item.attachments ?? []).length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {(item.attachments ?? []).map((att) => (
@@ -400,7 +401,7 @@ function PlanItemAttachments({
                 <div
                   title={att.name}
                   style={{
-                    fontSize: "0.82rem",
+                    fontSize: "0.95rem",
                     color: "var(--charcoal)",
                     fontWeight: 600,
                     overflow: "hidden",
@@ -410,14 +411,14 @@ function PlanItemAttachments({
                 >
                   {att.name}
                 </div>
-                <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
+                <div style={{ fontSize: "0.9375rem", color: "var(--text-primary)" }}>
                   {formatFileSize(att.size)} · {att.mimeType || "file"} · {att.addedAt}
                 </div>
               </div>
               <button
                 type="button"
                 className="btn btn-outline"
-                style={{ padding: "4px 8px", fontSize: "0.75rem" }}
+                style={{ padding: "4px 8px", fontSize: "0.9375rem" }}
                 onClick={() => void openOrDownload(att)}
                 title="Download / open"
               >
@@ -426,7 +427,7 @@ function PlanItemAttachments({
               <button
                 type="button"
                 className="btn btn-outline"
-                style={{ padding: "4px 8px", fontSize: "0.75rem", color: "#9B2F28" }}
+                style={{ padding: "4px 8px", fontSize: "0.9375rem", color: "#9B2F28" }}
                 onClick={() => void remove(att)}
                 title="Remove"
               >
@@ -1166,19 +1167,19 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
               <CalendarDays size={22} style={{ color: "var(--bronze)" }} /> Schedule &amp;
               Implementation Plan
             </h2>
-            <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", marginTop: 6 }}>
+            <p style={{ color: "var(--text-primary)", fontSize: "1rem", marginTop: 6 }}>
               Sprint board includes <strong>every task</strong> and <strong>every test</strong> plus
               plan milestones. Backlog is scheduled into themed sprints (Tue–Mon) via the
               implementation plan.
             </p>
-            <p style={{ color: "var(--text-muted)", fontSize: "0.8rem", marginTop: 4 }}>
+            <p style={{ color: "var(--text-primary)", fontSize: "0.9375rem", marginTop: 4 }}>
               {sprint0.label}: {sprint0.rangeLabel} · Board cards: {boardCards.length} (plan{" "}
               {items.length} · tasks {tasks.length} · tests {ALL_TESTS.length})
             </p>
             {activeTheme && (
-              <p style={{ color: "var(--charcoal)", fontSize: "0.9rem", marginTop: 10, fontWeight: 600 }}>
+              <p style={{ color: "var(--charcoal)", fontSize: "1rem", marginTop: 10, fontWeight: 600 }}>
                 {sprintLabel(activeTheme.index)} · {activeTheme.theme}
-                <span style={{ display: "block", fontWeight: 400, color: "var(--text-secondary)", fontSize: "0.82rem", marginTop: 2 }}>
+                <span style={{ display: "block", fontWeight: 400, color: "var(--text-primary)", fontSize: "0.95rem", marginTop: 2 }}>
                   {activeTheme.goal}
                 </span>
               </p>
@@ -1214,7 +1215,7 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
               background: "rgba(155,47,40,0.1)",
               border: "1px solid rgba(155,47,40,0.35)",
               color: "#9B2F28",
-              fontSize: "0.85rem",
+              fontSize: "0.95rem",
             }}
           >
             {error}
@@ -1248,8 +1249,8 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
       <div className="glass" style={{ padding: 16, borderRadius: 14 }}>
         <div
           style={{
-            fontSize: "0.7rem",
-            color: "var(--text-muted)",
+            fontSize: "0.9375rem",
+            color: "var(--text-primary)",
             textTransform: "uppercase",
             letterSpacing: "0.04em",
             marginBottom: 8,
@@ -1296,8 +1297,8 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                 </span>
                 <span
                   style={{
-                    fontSize: "0.72rem",
-                    color: "var(--text-muted)",
+                    fontSize: "1rem",
+                    color: "var(--text-primary)",
                     fontWeight: 500,
                     lineHeight: 1.25,
                   }}
@@ -1309,7 +1310,7 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
           })}
         </div>
         {activeSprint !== "backlog" && activeTheme && (
-          <p style={{ marginTop: 12, fontSize: "0.85rem", color: "var(--text-secondary)" }}>
+          <p style={{ marginTop: 12, fontSize: "0.95rem", color: "var(--text-primary)" }}>
             <strong style={{ color: "var(--charcoal)" }}>
               {sprintLabel(activeSprint)} · {getSprintWindow(activeSprint).rangeLabel}
             </strong>
@@ -1335,11 +1336,11 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
               <strong style={{ color: "var(--charcoal)" }}>
                 {sprintLabel(activeSprint)} progress
               </strong>
-              <span style={{ color: "var(--text-muted)", fontSize: "0.78rem", marginLeft: 8 }}>
+              <span style={{ color: "var(--text-primary)", fontSize: "0.9375rem", marginLeft: 8 }}>
                 Shared “Both” items count toward T + E
               </span>
             </div>
-            <span style={{ color: "var(--text-muted)", fontSize: "0.78rem" }}>
+            <span style={{ color: "var(--text-primary)", fontSize: "0.9375rem" }}>
               {getSprintWindow(activeSprint).rangeLabel}
             </span>
           </div>
@@ -1370,8 +1371,8 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
               <div style={{ flex: "1 1 260px", minWidth: 220 }}>
                 <div
                   style={{
-                    fontSize: "0.7rem",
-                    color: "var(--text-muted)",
+                    fontSize: "0.9375rem",
+                    color: "var(--text-primary)",
                     textTransform: "uppercase",
                     letterSpacing: "0.04em",
                     marginBottom: 8,
@@ -1415,8 +1416,8 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
               <div style={{ flex: "1 1 280px", minWidth: 220 }}>
                 <div
                   style={{
-                    fontSize: "0.7rem",
-                    color: "var(--text-muted)",
+                    fontSize: "0.9375rem",
+                    color: "var(--text-primary)",
                     textTransform: "uppercase",
                     letterSpacing: "0.04em",
                     marginBottom: 8,
@@ -1534,12 +1535,12 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
               </button>
             </div>
             {saveFlash && (
-              <p style={{ marginTop: 10, color: "#2e7d32", fontSize: "0.85rem", fontWeight: 600 }}>
+              <p style={{ marginTop: 10, color: "#2e7d32", fontSize: "0.95rem", fontWeight: 600 }}>
                 {saveFlash}
               </p>
             )}
             {loading && (
-              <p style={{ marginTop: 10, color: "var(--text-muted)" }}>Loading sprint board…</p>
+              <p style={{ marginTop: 10, color: "var(--text-primary)" }}>Loading sprint board…</p>
             )}
           </div>
 
@@ -1578,7 +1579,7 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                   </>
                 )}
               </button>
-              <span style={{ fontSize: "0.82rem", color: "var(--charcoal)", fontWeight: 700 }}>
+              <span style={{ fontSize: "0.95rem", color: "var(--charcoal)", fontWeight: 700 }}>
                 Bulk edit · {selectedKeys.size} selected
               </span>
               <div className="form-group" style={{ margin: 0, minWidth: 140 }}>
@@ -1701,7 +1702,7 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                       <span
                         style={{
-                          fontSize: "0.7rem",
+                          fontSize: "0.9375rem",
                           fontWeight: 600,
                           color: "#fff",
                           background: card.kindColor,
@@ -1714,7 +1715,7 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                       {dirty && (
                         <span
                           className="glow-badge amber"
-                          style={{ fontSize: "0.65rem" }}
+                          style={{ fontSize: "0.9375rem" }}
                         >
                           Unsaved
                         </span>
@@ -1722,7 +1723,7 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                       <strong style={{ color: "var(--charcoal)" }}>{card.title}</strong>
                       <span
                         style={{
-                          fontSize: "0.75rem",
+                          fontSize: "0.9375rem",
                           color: card.owner === "Unassigned" ? "#9B2F28" : "var(--text-muted)",
                           fontWeight: card.owner === "Unassigned" ? 700 : 500,
                         }}
@@ -1734,8 +1735,8 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                       <p
                         style={{
                           margin: "6px 0 0",
-                          fontSize: "0.8rem",
-                          color: "var(--text-secondary)",
+                          fontSize: "0.9375rem",
+                          color: "var(--text-primary)",
                           lineHeight: 1.45,
                         }}
                       >
@@ -1757,7 +1758,7 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                             key={tid}
                             type="button"
                             className="btn btn-outline"
-                            style={{ padding: "4px 10px", fontSize: "0.75rem" }}
+                            style={{ padding: "4px 10px", fontSize: "0.9375rem" }}
                             onClick={() => onOpenTask?.(tid)}
                             disabled={!onOpenTask}
                             title={`Open ${tid} in Task List`}
@@ -1769,7 +1770,7 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                           <button
                             type="button"
                             className="btn btn-outline"
-                            style={{ padding: "4px 10px", fontSize: "0.75rem" }}
+                            style={{ padding: "4px 10px", fontSize: "0.9375rem" }}
                             onClick={() => onOpenTest?.(linkedTestId)}
                             disabled={!onOpenTest}
                             title={`Open ${linkedTestId} in Testing Portal`}
@@ -1795,8 +1796,8 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                           gridTemplateColumns: "88px minmax(0, 1fr)",
                           gap: 10,
                           alignItems: "center",
-                          fontSize: "0.78rem",
-                          color: "var(--text-secondary)",
+                          fontSize: "0.9375rem",
+                          color: "var(--text-primary)",
                           fontWeight: 600,
                         }}
                       >
@@ -1879,8 +1880,8 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                           gridTemplateColumns: "88px minmax(0, 1fr)",
                           gap: 10,
                           alignItems: "center",
-                          fontSize: "0.78rem",
-                          color: "var(--text-secondary)",
+                          fontSize: "0.9375rem",
+                          color: "var(--text-primary)",
                           fontWeight: 600,
                         }}
                       >
@@ -1961,8 +1962,8 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                           gridTemplateColumns: "88px minmax(0, 1fr) auto",
                           gap: 10,
                           alignItems: "center",
-                          fontSize: "0.78rem",
-                          color: "var(--text-secondary)",
+                          fontSize: "0.9375rem",
+                          color: "var(--text-primary)",
                           fontWeight: 600,
                         }}
                       >
@@ -2044,7 +2045,7 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                       borderTop: "1px solid var(--border-color)",
                     }}
                   >
-                    <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                    <span style={{ fontSize: "0.9375rem", color: "var(--text-primary)" }}>
                       Partner done (both required):
                     </span>
                     {(() => {
@@ -2061,7 +2062,7 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                             className={`btn ${tinaDone ? "btn-primary" : "btn-outline"}`}
                             style={{
                               padding: "4px 10px",
-                              fontSize: "0.78rem",
+                              fontSize: "0.9375rem",
                               borderColor: "#9B2F28",
                               background: tinaDone ? "#9B2F28" : undefined,
                               color: tinaDone ? "#fff" : "#9B2F28",
@@ -2076,7 +2077,7 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                             className={`btn ${evelynDone ? "btn-primary" : "btn-outline"}`}
                             style={{
                               padding: "4px 10px",
-                              fontSize: "0.78rem",
+                              fontSize: "0.9375rem",
                               borderColor: "#947D64",
                               background: evelynDone ? "#947D64" : undefined,
                               color: evelynDone ? "#fff" : "#947D64",
@@ -2097,7 +2098,7 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
             {!loading && visibleCards.length === 0 && (
               <div
                 className="glass"
-                style={{ padding: 24, textAlign: "center", color: "var(--text-secondary)" }}
+                style={{ padding: 24, textAlign: "center", color: "var(--text-primary)" }}
               >
                 {activeSprint === "backlog"
                   ? "Backlog is empty for this filter."
@@ -2116,13 +2117,13 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
               ? "pick a sprint"
               : `${sprintLabel(activeSprint)} (${getSprintWindow(activeSprint).rangeLabel})`}
           </h3>
-          <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem", marginBottom: 14 }}>
+          <p style={{ color: "var(--text-primary)", fontSize: "0.95rem", marginBottom: 14 }}>
             Standup 3× per week (Tue / Thu / Sat). Planning/Review on Sunday (day before the
             sprint ends) to close Done work and carry incomplete items. Retrospective on Monday
             sprint-end — capture notes on the Retrospective board.
           </p>
           {activeSprint === "backlog" ? (
-            <p style={{ color: "var(--text-muted)" }}>Select a sprint above to see its ceremonies.</p>
+            <p style={{ color: "var(--text-primary)" }}>Select a sprint above to see its ceremonies.</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {ceremonies.map((c) => (
@@ -2139,16 +2140,16 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                   }}
                 >
                   <div>
-                    <div style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--charcoal)" }}>
+                    <div style={{ fontSize: "0.9375rem", fontWeight: 600, color: "var(--charcoal)" }}>
                       {c.dateLabel}
                     </div>
-                    <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{c.time}</div>
+                    <div style={{ fontSize: "0.9375rem", color: "var(--text-primary)" }}>{c.time}</div>
                   </div>
                   <div>
                     <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                       <span
                         style={{
-                          fontSize: "0.7rem",
+                          fontSize: "0.9375rem",
                           fontWeight: 600,
                           color: "#fff",
                           background: CEREMONY_COLORS[c.type],
@@ -2163,8 +2164,8 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                     <p
                       style={{
                         margin: "6px 0 0",
-                        fontSize: "0.85rem",
-                        color: "var(--text-secondary)",
+                        fontSize: "0.95rem",
+                        color: "var(--text-primary)",
                         lineHeight: 1.45,
                       }}
                     >
@@ -2174,7 +2175,7 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                       <button
                         type="button"
                         className="btn btn-outline"
-                        style={{ marginTop: 10, padding: "6px 12px", fontSize: "0.8rem" }}
+                        style={{ marginTop: 10, padding: "6px 12px", fontSize: "0.9375rem" }}
                         onClick={() => setTab("board")}
                       >
                         Open sprint board to review / carry over
@@ -2184,7 +2185,7 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                       <button
                         type="button"
                         className="btn btn-outline"
-                        style={{ marginTop: 10, padding: "6px 12px", fontSize: "0.8rem" }}
+                        style={{ marginTop: 10, padding: "6px 12px", fontSize: "0.9375rem" }}
                         onClick={() => setTab("retro")}
                       >
                         Open Retrospective board
@@ -2212,13 +2213,13 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
           >
             <MessageSquare size={18} style={{ color: "var(--bronze)" }} /> Retrospective board
           </h3>
-          <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem", marginBottom: 14 }}>
+          <p style={{ color: "var(--text-primary)", fontSize: "0.95rem", marginBottom: 14 }}>
             {activeSprint === "backlog"
               ? "Select a sprint to run its retrospective."
               : `${sprintLabel(activeSprint)} — Went well · Needs improvement · Action items`}
           </p>
           {activeSprint === "backlog" ? (
-            <p style={{ color: "var(--text-muted)" }}>Pick a sprint first.</p>
+            <p style={{ color: "var(--text-primary)" }}>Pick a sprint first.</p>
           ) : (
             <div
               style={{
@@ -2243,7 +2244,7 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                     <strong style={{ color: "var(--charcoal)", fontSize: "0.95rem" }}>
                       {col.label}
                     </strong>
-                    <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", margin: "4px 0 10px" }}>
+                    <p style={{ fontSize: "0.9375rem", color: "var(--text-primary)", margin: "4px 0 10px" }}>
                       {col.hint}
                     </p>
                     <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 }}>
@@ -2255,7 +2256,7 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                             borderRadius: 8,
                             background: "#fff",
                             border: "1px solid var(--border-color)",
-                            fontSize: "0.85rem",
+                            fontSize: "0.95rem",
                             color: "var(--charcoal)",
                           }}
                         >
@@ -2266,7 +2267,7 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                             style={{
                               marginTop: 6,
                               padding: "2px 8px",
-                              fontSize: "0.72rem",
+                              fontSize: "1rem",
                               color: "#9B2F28",
                             }}
                             onClick={() => void removeRetroCard(card.id)}
@@ -2276,7 +2277,7 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                         </div>
                       ))}
                       {cards.length === 0 && (
-                        <p style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>No cards yet</p>
+                        <p style={{ fontSize: "0.9375rem", color: "var(--text-primary)" }}>No cards yet</p>
                       )}
                     </div>
                     <textarea
@@ -2287,12 +2288,12 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                         setRetroDraft((d) => ({ ...d, [col.id]: e.target.value }))
                       }
                       placeholder={`Add to ${col.label}…`}
-                      style={{ resize: "vertical", width: "100%", fontSize: "0.85rem" }}
+                      style={{ resize: "vertical", width: "100%", fontSize: "0.95rem" }}
                     />
                     <button
                       type="button"
                       className="btn btn-primary"
-                      style={{ marginTop: 8, padding: "6px 12px", fontSize: "0.8rem" }}
+                      style={{ marginTop: 8, padding: "6px 12px", fontSize: "0.9375rem" }}
                       disabled={busy || !retroDraft[col.id].trim()}
                       onClick={() => void addRetroCard(col.id)}
                     >

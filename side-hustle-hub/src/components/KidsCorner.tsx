@@ -15,7 +15,6 @@ import {
   Compass,
   ArrowLeft,
   ArrowRight,
-  RotateCcw,
   Clock,
   Trees,
   Heart,
@@ -54,6 +53,7 @@ import {
 } from "../lib/pending-blueprint";
 import { saveBlueprintToAccount } from "../lib/blueprints-api";
 import { SideHustleBlueprintResults } from "./SideHustleBlueprintResults";
+import { WizardStartHereBanner } from "./WizardStartHereBanner";
 import juniorSideHustleTeam from "../assets/junior-side-hustle-team.png";
 import juniorJoinTeamHero from "../assets/junior-join-team-hero.png";
 import kidsJoinTeamHero from "../assets/kids-join-team-hero.png";
@@ -353,7 +353,7 @@ function KidsStoriesTab() {
                   loading="lazy"
                 />
                 <div className="kids-story-body">
-                  <span className="glow-badge cyan" style={{ fontSize: "0.65rem" }}>
+                  <span className="glow-badge cyan" style={{ fontSize: "0.9375rem" }}>
                     {ep.theme}
                   </span>
                   <strong>{ep.title}</strong>
@@ -543,7 +543,7 @@ function JoinTeamTab({
           <BadgeCheck size={20} style={{ color: "var(--crimson)" }} /> {copy.headline}
           <span
             className={`glow-badge ${mode === "kids" ? "pink" : "emerald"}`}
-            style={{ marginLeft: 8, fontSize: "0.7rem" }}
+            style={{ marginLeft: 8, fontSize: "0.9375rem" }}
           >
             {copy.ages}
           </span>
@@ -689,7 +689,7 @@ function GuideCard({
     <article className={`glass kids-guide-card ${guide.free ? "is-free" : "is-gated"}`}>
       <div className="kids-guide-card-head">
         <div>
-          <span className={`glow-badge ${guide.free ? "free" : "pink"}`} style={{ fontSize: "0.65rem" }}>
+          <span className={`glow-badge ${guide.free ? "free" : "pink"}`} style={{ fontSize: "0.9375rem" }}>
             {guide.free ? "Free guide" : "Members"}
           </span>
           <span className="kids-guide-theme">{themeLabel(guide.theme)}</span>
@@ -798,7 +798,7 @@ function GuidesTab({
             {isKids ? "GYSH Kids Corner Guides" : "GYSH Teens Side Hustle Guides"}
             <span
               className={`glow-badge ${isKids ? "pink" : "emerald"}`}
-              style={{ marginLeft: 10, fontSize: "0.7rem" }}
+              style={{ marginLeft: 10, fontSize: "0.9375rem" }}
             >
               {isKids ? "Ages 4–12" : "Ages 13–17"}
             </span>
@@ -840,13 +840,79 @@ function GuidesTab({
   );
 }
 
+function KidsModeToggles({
+  mode,
+  onModeChange,
+}: {
+  mode: AudienceMode;
+  onModeChange: (next: AudienceMode) => void;
+}) {
+  return (
+    <div className="kids-mode-bar" role="tablist" aria-label="Kids Corner age groups">
+      <button
+        type="button"
+        role="tab"
+        aria-selected={mode === "kids"}
+        onClick={() => onModeChange("kids")}
+        className={`kids-mode-btn ${mode === "kids" ? "active" : ""}`}
+      >
+        <Users size={16} />
+        <span className="kids-mode-label">Kids</span>
+        <span className="kids-mode-ages">Ages 4–12</span>
+      </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={mode === "junior"}
+        onClick={() => onModeChange("junior")}
+        className={`kids-mode-btn ${mode === "junior" ? "active" : ""}`}
+      >
+        <Smile size={16} />
+        <span className="kids-mode-label">Teens</span>
+        <span className="kids-mode-ages">Ages 13–17</span>
+      </button>
+    </div>
+  );
+}
+
+function KidsAudienceHeading({ mode, compact = false }: { mode: AudienceMode; compact?: boolean }) {
+  if (mode === "kids") {
+    return (
+      <h2 className={`kids-intro-title${compact ? " kids-intro-title--compact" : ""}`}>
+        <Star size={compact ? 16 : 22} style={{ color: "var(--crimson)" }} aria-hidden />
+        GYSH Kid&apos;s Side Hustles
+        <span
+          className="glow-badge pink"
+          style={{ marginLeft: 4, fontSize: compact ? "0.75rem" : "0.9375rem" }}
+        >
+          Ages 4–12
+        </span>
+      </h2>
+    );
+  }
+  return (
+    <h2 className={`kids-intro-title${compact ? " kids-intro-title--compact" : ""}`}>
+      <Smile size={compact ? 16 : 22} style={{ color: "var(--crimson)" }} aria-hidden />
+      GYSH Teens Side Hustles
+      <span
+        className="glow-badge emerald"
+        style={{ marginLeft: 4, fontSize: compact ? "0.75rem" : "0.9375rem" }}
+      >
+        Ages 13–17
+      </span>
+    </h2>
+  );
+}
+
 function KidsHustleWizard({
   mode,
+  onModeChange,
   onOpenPiggy,
   isLoggedIn = false,
   onUnlockBlueprint,
 }: {
   mode: AudienceMode;
+  onModeChange: (next: AudienceMode) => void;
   onOpenPiggy: () => void;
   isLoggedIn?: boolean;
   onUnlockBlueprint?: () => void;
@@ -1047,102 +1113,139 @@ function KidsHustleWizard({
         <div className="kids-wizard-media-pane">
           <MatchFinderWizardHero mode={mode} />
         </div>
-        <div className="kids-wizard-card glass">
-          {rankedIds === null ? (
-            <>
-              <div className="kids-wizard-progress-meta">
-                <span>{mode === "junior" ? "GYSH Teens Match Wizard" : "GYSH Kids Match Wizard"}</span>
-                <span>
-                  Question {currentStep + 1} of {steps.length}
-                </span>
-              </div>
-              <div className="kids-wizard-progress-bar">
-                <div className="kids-wizard-progress-fill" style={{ width: `${progressPercent}%` }} />
-              </div>
-
-              <div className="kids-wizard-header">
-                <div className="kids-wizard-icon">{step.icon}</div>
-                <div>
-                  <h2>{step.title}</h2>
-                  <p>{step.subtitle}</p>
-                </div>
-              </div>
-
-              <div className="kids-wizard-options">
-                {step.options.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    className={`kids-wizard-option ${selected === opt.value ? "is-selected" : ""}`}
-                    onClick={() => handleSelect(opt.value)}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-
-              <div className="kids-wizard-nav">
-                <button
-                  type="button"
-                  onClick={handleBack}
-                  disabled={currentStep === 0}
-                  className="btn btn-outline"
-                  style={{ visibility: currentStep === 0 ? "hidden" : "visible", gap: 6 }}
-                >
-                  <ArrowLeft size={16} /> Back
-                </button>
-                <button
-                  type="button"
-                  onClick={handleNext}
-                  disabled={!selected}
-                  className="btn btn-primary"
-                  style={{ gap: 6 }}
-                >
-                  {currentStep === steps.length - 1 ? (
-                    <>
-                      See my matches <Sparkles size={16} />
-                    </>
+        <div className="kids-wizard-side">
+          <div className="kids-wizard-mode-row">
+            <KidsAudienceHeading mode={mode} compact />
+            <KidsModeToggles mode={mode} onModeChange={onModeChange} />
+          </div>
+          <div className="kids-wizard-card glass">
+            {rankedIds === null ? (
+              <>
+                <div className="kids-wizard-intro">
+                  {mode === "junior" ? (
+                    <p>
+                      Welcome! Try the <strong>GYSH Match Wizard</strong>, browse safe <strong>Ideas</strong>, set
+                      savings goals in <strong>My Bank</strong>, and explore <strong>Guides</strong> — all with a
+                      parent nearby.
+                    </p>
                   ) : (
                     <>
-                      Next <ArrowRight size={16} />
+                      <p>
+                        Welcome! Watch <strong>Kevina Starr</strong> stories, try the{" "}
+                        <strong>GYSH Match Wizard</strong>, browse safe <strong>Ideas</strong>, set savings goals in
+                        the <strong>Piggy Bank</strong>, and explore <strong>Guides</strong> — all with a parent
+                        nearby.
+                      </p>
+                      <p>
+                        Kevina is your Glow Getter motivator: her stories build confidence and kindness so your
+                        earning dreams feel possible — one small, safe step at a time.
+                      </p>
                     </>
                   )}
-                </button>
-              </div>
-            </>
-          ) : (
-            <SideHustleBlueprintResults
-              ageGroup={ageGroup}
-              matches={rankedHustles.map((h, index) => ({
-                id: h.id,
-                title: h.name,
-                description: h.desc,
-                tier: index === 0 ? "Best match" : index === 1 ? "Strong match" : "Good fit",
-                badge: h.difficulty,
-                icon: h.icon,
-                whyFits:
-                  "This Side Hustle fits your age, interests, place, and time answers — a safe place to start earning and learning.",
-                benefits: h.nextSteps.slice(0, 3),
-                safetyNote: h.safety,
-                meta: [
-                  { label: "Est. pay", value: h.pay },
-                  { label: "Difficulty", value: h.difficulty },
-                ],
-              }))}
-              unlocked={unlocked}
-              onUnlock={handleUnlock}
-              onRetake={resetQuiz}
-              extraActions={
-                unlocked ? (
-                  <button type="button" onClick={onOpenPiggy} className="btn btn-primary" style={{ gap: 6 }}>
-                    <Coins size={16} /> Set a Piggy Bank goal
+                </div>
+
+                <div className="kids-wizard-progress-meta">
+                  <span>{mode === "junior" ? "GYSH Teens Match Wizard" : "GYSH Kids Match Wizard"}</span>
+                  <span>
+                    Question {currentStep + 1} of {steps.length}
+                  </span>
+                </div>
+                <div className="kids-wizard-progress-bar">
+                  <div className="kids-wizard-progress-fill" style={{ width: `${progressPercent}%` }} />
+                </div>
+
+                {currentStep === 0 && <WizardStartHereBanner />}
+
+                <div className="kids-wizard-header">
+                  <div className="kids-wizard-icon">{step.icon}</div>
+                  <div>
+                    <h2>{step.title}</h2>
+                    <p>{step.subtitle}</p>
+                  </div>
+                </div>
+
+                <div className="kids-wizard-options">
+                  {step.options.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      className={`kids-wizard-option ${selected === opt.value ? "is-selected" : ""}`}
+                      onClick={() => handleSelect(opt.value)}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+
+                <p className="kids-wizard-tip">
+                  {mode === "junior"
+                    ? "Tip: Answer with a parent nearby. Your matches stay age-right, safer to try, and ready for a first earn-and-learn step."
+                    : "Tip: Pick what feels true today — with a parent nearby. Matches stay safe, age-right, and fun to try one small step at a time."}
+                </p>
+
+                <div className="kids-wizard-nav">
+                  <button
+                    type="button"
+                    onClick={handleBack}
+                    disabled={currentStep === 0}
+                    className="btn btn-outline"
+                    style={{ visibility: currentStep === 0 ? "hidden" : "visible", gap: 6 }}
+                  >
+                    <ArrowLeft size={16} /> Back
                   </button>
-                ) : undefined
-              }
-            >
-              {unlocked && <SafetyCallout />}
-            </SideHustleBlueprintResults>
-          )}
+                  <button
+                    type="button"
+                    onClick={handleNext}
+                    disabled={!selected}
+                    className="btn btn-primary"
+                    style={{ gap: 6 }}
+                  >
+                    {currentStep === steps.length - 1 ? (
+                      <>
+                        See my matches <Sparkles size={16} />
+                      </>
+                    ) : (
+                      <>
+                        Next <ArrowRight size={16} />
+                      </>
+                    )}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <SideHustleBlueprintResults
+                ageGroup={ageGroup}
+                matches={rankedHustles.map((h, index) => ({
+                  id: h.id,
+                  title: h.name,
+                  description: h.desc,
+                  tier: index === 0 ? "Best match" : index === 1 ? "Strong match" : "Good fit",
+                  badge: h.difficulty,
+                  icon: h.icon,
+                  whyFits:
+                    "This Side Hustle fits your age, interests, place, and time answers — a safe place to start earning and learning.",
+                  benefits: h.nextSteps.slice(0, 3),
+                  safetyNote: h.safety,
+                  meta: [
+                    { label: "Est. pay", value: h.pay },
+                    { label: "Difficulty", value: h.difficulty },
+                  ],
+                }))}
+                unlocked={unlocked}
+                onUnlock={handleUnlock}
+                onRetake={resetQuiz}
+                extraActions={
+                  unlocked ? (
+                    <button type="button" onClick={onOpenPiggy} className="btn btn-primary" style={{ gap: 6 }}>
+                      <Coins size={16} /> Set a Piggy Bank goal
+                    </button>
+                  ) : undefined
+                }
+              >
+                {unlocked && <SafetyCallout />}
+              </SideHustleBlueprintResults>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -1157,7 +1260,7 @@ function HustleIdeaCard({ jh }: { jh: JrHustle }) {
           <div className="kids-hustle-icon">{jh.icon}</div>
           <h3>{jh.name}</h3>
         </div>
-        <span className="glow-badge emerald" style={{ fontSize: "0.7rem" }}>
+        <span className="glow-badge emerald" style={{ fontSize: "0.9375rem" }}>
           {jh.difficulty}
         </span>
       </div>
@@ -1217,7 +1320,7 @@ function JobsTab({ mode }: { mode: AudienceMode }) {
             <Smile size={24} style={{ color: "var(--crimson)" }} /> {title}
             <span
               className={`glow-badge ${isKids ? "pink" : "emerald"}`}
-              style={{ marginLeft: 10, fontSize: "0.7rem" }}
+              style={{ marginLeft: 10, fontSize: "0.9375rem" }}
             >
               {isKids ? "Ages 4–12" : "Ages 13–17"}
             </span>
@@ -1560,12 +1663,12 @@ export const KidsCorner: React.FC<KidsCornerProps> = ({
   const refreshMembership = () => setMemberVersion((n) => n + 1);
 
   const kidsTabs: { id: KidsTab; label: string; icon: React.ReactNode }[] = [
+    { id: "stories", label: "Stories", icon: <Star size={16} /> },
     { id: "wizard", label: "GYSH Match Wizard", icon: <Compass size={16} /> },
     { id: "jobs", label: "Ideas", icon: <Smile size={16} /> },
     { id: "piggy", label: "Piggy Bank", icon: <Coins size={16} /> },
     { id: "guides", label: "Guides", icon: <BookMarked size={16} /> },
     { id: "join", label: "Join", icon: <BadgeCheck size={16} /> },
-    { id: "stories", label: "Stories", icon: <Star size={16} /> },
   ];
 
   const juniorTabs: { id: JuniorTab; label: string; icon: React.ReactNode }[] = [
@@ -1576,70 +1679,25 @@ export const KidsCorner: React.FC<KidsCornerProps> = ({
     { id: "join", label: "Join", icon: <BadgeCheck size={16} /> },
   ];
 
+  const handleModeChange = (next: AudienceMode) => {
+    const onWizard = (mode === "kids" ? kidsTab : juniorTab) === "wizard";
+    setMode(next);
+    if (onWizard) {
+      if (next === "kids") setKidsTab("wizard");
+      else setJuniorTab("wizard");
+    }
+  };
+
+  const onWizard = (mode === "kids" ? kidsTab : juniorTab) === "wizard";
+
   return (
     <div className="kids-corner-page">
-      <header className="kids-page-header">
-        {mode === "kids" ? (
-          <>
-            <h2 className="kids-intro-title">
-              <Star size={22} style={{ color: "var(--crimson)" }} aria-hidden />
-              GYSH Kid&apos;s Side Hustles
-              <span className="glow-badge pink" style={{ marginLeft: 4, fontSize: "0.7rem" }}>
-                Ages 4–12
-              </span>
-            </h2>
-            <p>
-              Welcome! Watch <strong>Kevina Starr</strong> stories, try the{" "}
-              <strong>GYSH Match Wizard</strong>, browse safe <strong>Ideas</strong>, set savings goals in the{" "}
-              <strong>Piggy Bank</strong>, and explore <strong>Guides</strong> — all with a parent nearby.
-            </p>
-            <p>
-              Kevina is your Glow Getter motivator: her stories build confidence and kindness so your
-              earning dreams feel possible — one small, safe step at a time.
-            </p>
-          </>
-        ) : (
-          <>
-            <h2 className="kids-intro-title">
-              <Smile size={22} style={{ color: "var(--crimson)" }} aria-hidden />
-              GYSH Teens Side Hustles
-              <span className="glow-badge emerald" style={{ marginLeft: 4, fontSize: "0.7rem" }}>
-                Ages 13–17
-              </span>
-            </h2>
-            <p>
-              Welcome! Try the <strong>GYSH Match Wizard</strong>, browse safe <strong>Ideas</strong>, set
-              savings goals in <strong>My Bank</strong>, and explore <strong>Guides</strong> — all with a
-              parent nearby.
-            </p>
-          </>
-        )}
-      </header>
-
-      <div className="kids-mode-bar" role="tablist" aria-label="Kids Corner age groups">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mode === "kids"}
-          onClick={() => setMode("kids")}
-          className={`kids-mode-btn ${mode === "kids" ? "active" : ""}`}
-        >
-          <Users size={16} />
-          <span className="kids-mode-label">Kids</span>
-          <span className="kids-mode-ages">Ages 4–12</span>
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mode === "junior"}
-          onClick={() => setMode("junior")}
-          className={`kids-mode-btn ${mode === "junior" ? "active" : ""}`}
-        >
-          <Smile size={16} />
-          <span className="kids-mode-label">Teens</span>
-          <span className="kids-mode-ages">Ages 13–17</span>
-        </button>
-      </div>
+      {!onWizard && (
+        <header className="kids-page-header kids-page-header--with-modes">
+          <KidsAudienceHeading mode={mode} />
+          <KidsModeToggles mode={mode} onModeChange={handleModeChange} />
+        </header>
+      )}
 
       {mode === "kids" ? (
         <>
@@ -1662,6 +1720,7 @@ export const KidsCorner: React.FC<KidsCornerProps> = ({
           {kidsTab === "wizard" && (
             <KidsHustleWizard
               mode="kids"
+              onModeChange={handleModeChange}
               onOpenPiggy={() => setKidsTab("piggy")}
               isLoggedIn={isLoggedIn}
               onUnlockBlueprint={onGoToJoin}
@@ -1702,6 +1761,7 @@ export const KidsCorner: React.FC<KidsCornerProps> = ({
           {juniorTab === "wizard" && (
             <KidsHustleWizard
               mode="junior"
+              onModeChange={handleModeChange}
               onOpenPiggy={() => setJuniorTab("piggy")}
               isLoggedIn={isLoggedIn}
               onUnlockBlueprint={onGoToJoin}

@@ -11,6 +11,12 @@ import {
   memberChapters,
   type GuideCheckItem,
 } from "./user-guide-content";
+import {
+  getMarketingGuide,
+  marketingGuideToc,
+  type MarketingGuideId,
+  type MarketingSection,
+} from "./marketing-guides";
 
 const MARGIN = 48;
 const PAGE_W = 612; // US Letter pt
@@ -49,47 +55,218 @@ function drawPageChrome(doc: jsPDF) {
   doc.rect(0, PAGE_H - 4, PAGE_W, 4, "F");
 }
 
+function coverEditionLabel(kind: "member" | "admin" | "marketing"): string {
+  if (kind === "member") return "Checklist edition · Families & Side Hustlers";
+  if (kind === "admin") return "Checklist edition · Admin partners";
+  return "Marketing edition · Showcase · Membership · Checklists";
+}
+
 function drawCover(
   doc: jsPDF,
   meta: { eyebrow: string; title: string; lead: string },
-  kind: "member" | "admin",
+  kind: "member" | "admin" | "marketing",
+  coverImageDataUrl?: string,
 ) {
   drawPageChrome(doc);
   doc.setFillColor(...COLORS.soft);
-  doc.rect(MARGIN, 120, CONTENT_W, 280, "F");
+  doc.rect(MARGIN, 100, CONTENT_W, coverImageDataUrl ? 360 : 280, "F");
 
   doc.setDrawColor(...COLORS.bronze);
   doc.setLineWidth(1.25);
-  doc.line(MARGIN + 24, 148, MARGIN + 120, 148);
+  doc.line(MARGIN + 24, 128, MARGIN + 120, 128);
 
   doc.setTextColor(...COLORS.bronze);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
-  doc.text(meta.eyebrow.toUpperCase(), MARGIN + 24, 176);
+  doc.text(meta.eyebrow.toUpperCase(), MARGIN + 24, 156);
 
   doc.setTextColor(...COLORS.charcoal);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(28);
+  doc.setFontSize(26);
   const titleLines = doc.splitTextToSize(meta.title, CONTENT_W - 48);
-  doc.text(titleLines, MARGIN + 24, 210);
+  doc.text(titleLines, MARGIN + 24, 188);
 
+  let y = 188 + titleLines.length * 30 + 12;
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(12);
+  doc.setFontSize(11);
   doc.setTextColor(...COLORS.muted);
   const leadLines = doc.splitTextToSize(meta.lead, CONTENT_W - 48);
-  doc.text(leadLines, MARGIN + 24, 210 + titleLines.length * 34 + 16);
+  doc.text(leadLines, MARGIN + 24, y);
+  y += leadLines.length * 14 + 16;
+
+  if (coverImageDataUrl) {
+    try {
+      const maxW = CONTENT_W - 48;
+      const maxH = 160;
+      const props = doc.getImageProperties(coverImageDataUrl);
+      const ratio = props.width / Math.max(1, props.height);
+      let imgW = maxW;
+      let imgH = imgW / ratio;
+      if (imgH > maxH) {
+        imgH = maxH;
+        imgW = imgH * ratio;
+      }
+      const x = MARGIN + 24 + (maxW - imgW) / 2;
+      doc.addImage(coverImageDataUrl, "PNG", x, y, imgW, imgH);
+      y += imgH + 18;
+    } catch {
+      /* image optional */
+    }
+  }
 
   doc.setFontSize(10);
   doc.setTextColor(...COLORS.bronze);
-  doc.text(
-    kind === "member" ? "Checklist edition · Families & Side Hustlers" : "Checklist edition · Admin partners",
-    MARGIN + 24,
-    380,
-  );
+  doc.text(coverEditionLabel(kind), MARGIN + 24, Math.min(y, 430));
 
   doc.setFontSize(9);
   doc.setTextColor(...COLORS.muted);
-  doc.text(`Get Your Side Hustle  ·  ${new Date().toLocaleDateString()}`, MARGIN + 24, 400);
+  doc.text(`Get Your Side Hustle  ·  ${new Date().toLocaleDateString()}`, MARGIN + 24, Math.min(y + 18, 448));
+}
+
+async function imageUrlToDataUrl(url: string): Promise<string | undefined> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return undefined;
+    const blob = await res.blob();
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return undefined;
+  }
+}
+
+function drawJourney(ctx: PdfCtx, steps: { label: string; detail: string }[]) {
+  for (let i = 0; i < steps.length; i++) {
+    const step = steps[i];
+    const lines = ctx.doc.splitTextToSize(step.detail, CONTENT_W - 56);
+    const blockH = 28 + lines.length * 12;
+    ensureSpace(ctx, blockH + 18);
+
+    ctx.doc.setFillColor(...COLORS.soft);
+    ctx.doc.roundedRect(MARGIN, ctx.y - 12, CONTENT_W, blockH, 4, 4, "F");
+    ctx.doc.setFillColor(...COLORS.bronze);
+    ctx.doc.circle(MARGIN + 16, ctx.y + 2, 8, "F");
+    ctx.doc.setTextColor(...COLORS.white);
+    ctx.doc.setFont("helvetica", "bold");
+    ctx.doc.setFontSize(9);
+    ctx.doc.text(String(i + 1), MARGIN + 16, ctx.y + 5, { align: "center" });
+
+    ctx.doc.setTextColor(...COLORS.bronze);
+    ctx.doc.setFont("helvetica", "bold");
+    ctx.doc.setFontSize(11);
+    ctx.doc.text(step.label.toUpperCase(), MARGIN + 34, ctx.y);
+    ctx.doc.setTextColor(...COLORS.charcoal);
+    ctx.doc.setFont("helvetica", "normal");
+    ctx.doc.setFontSize(10);
+    ctx.doc.text(lines, MARGIN + 34, ctx.y + 14);
+    ctx.y += blockH + 4;
+
+    if (i < steps.length - 1) {
+      ensureSpace(ctx, 16);
+      ctx.doc.setDrawColor(...COLORS.bronze);
+      ctx.doc.setLineWidth(1.2);
+      const ax = MARGIN + 16;
+      ctx.doc.line(ax, ctx.y - 2, ax, ctx.y + 8);
+      // arrow head
+      ctx.doc.line(ax, ctx.y + 8, ax - 3, ctx.y + 4);
+      ctx.doc.line(ax, ctx.y + 8, ax + 3, ctx.y + 4);
+      ctx.y += 14;
+    }
+  }
+}
+
+function drawMarketingSection(
+  ctx: PdfCtx,
+  section: MarketingSection,
+  images: Partial<Record<"hero" | "membership" | "community", string>>,
+) {
+  drawSectionHeading(ctx, `${section.number}. ${section.title}`);
+  if (section.intro) {
+    drawNote(ctx, section.intro);
+  }
+
+  const imgKey =
+    section.imageKey === "secondary" || section.imageKey === "hero"
+      ? "hero"
+      : section.imageKey === "membership" || section.imageKey === "community"
+        ? section.imageKey
+        : undefined;
+  const dataUrl = imgKey ? images[imgKey] : undefined;
+  if (dataUrl && (section.kind === "prose" || section.kind === "perks" || section.kind === "cta")) {
+    try {
+      const props = ctx.doc.getImageProperties(dataUrl);
+      const ratio = props.width / Math.max(1, props.height);
+      let imgW = CONTENT_W;
+      let imgH = imgW / ratio;
+      const maxH = 140;
+      if (imgH > maxH) {
+        imgH = maxH;
+        imgW = imgH * ratio;
+      }
+      ensureSpace(ctx, imgH + 14);
+      const x = MARGIN + (CONTENT_W - imgW) / 2;
+      ctx.doc.addImage(dataUrl, "PNG", x, ctx.y, imgW, imgH);
+      ctx.y += imgH + 12;
+    } catch {
+      /* skip */
+    }
+  }
+
+  if (section.prose) {
+    for (const p of section.prose) {
+      const lines = ctx.doc.splitTextToSize(p, CONTENT_W);
+      ensureSpace(ctx, lines.length * 13 + 10);
+      ctx.doc.setFont("helvetica", "normal");
+      ctx.doc.setFontSize(10.5);
+      ctx.doc.setTextColor(...COLORS.charcoal);
+      ctx.doc.text(lines, MARGIN, ctx.y);
+      ctx.y += lines.length * 13 + 10;
+    }
+  }
+
+  if (section.callout) {
+    drawNote(ctx, `${section.callout.title}: ${section.callout.body}`);
+  }
+
+  if (section.items) drawChecklist(ctx, section.items);
+  if (section.journey) drawJourney(ctx, section.journey);
+
+  if (section.perks) {
+    for (const tier of section.perks) {
+      ensureSpace(ctx, 36);
+      ctx.doc.setFont("helvetica", "bold");
+      ctx.doc.setFontSize(12);
+      ctx.doc.setTextColor(...COLORS.bronze);
+      ctx.doc.text(`${tier.name}  ·  ${tier.priceLine}`, MARGIN, ctx.y);
+      ctx.y += 16;
+      drawChecklist(
+        ctx,
+        tier.bullets.map((text, i) => ({ id: `${tier.tierId}-${i}`, text })),
+      );
+      ctx.y += 6;
+    }
+  }
+
+  if (section.cta) {
+    ensureSpace(ctx, 40);
+    ctx.doc.setFont("helvetica", "bold");
+    ctx.doc.setFontSize(12);
+    ctx.doc.setTextColor(...COLORS.charcoal);
+    const hl = ctx.doc.splitTextToSize(section.cta.headline, CONTENT_W);
+    ctx.doc.text(hl, MARGIN, ctx.y);
+    ctx.y += hl.length * 14 + 8;
+    drawNote(ctx, section.cta.body);
+    drawChecklist(
+      ctx,
+      section.cta.bullets.map((text, i) => ({ id: `cta-${i}`, text })),
+    );
+  }
+
+  ctx.y += 6;
 }
 
 function drawToc(doc: jsPDF, title: string, entries: { id: string; label: string }[]) {
@@ -242,4 +419,57 @@ export function downloadAdminUserGuidePdf() {
 
   addFooters(doc, "Admin User Guide");
   doc.save(ADMIN_GUIDE_META.filename);
+}
+
+export type MarketingPdfImages = {
+  hero?: string;
+  membership?: string;
+  community?: string;
+};
+
+/** Beautifully formatted marketing manual PDF (async — embeds hero images when available). */
+export async function downloadMarketingGuidePdf(
+  guideId: MarketingGuideId,
+  imageUrls: MarketingPdfImages = {},
+) {
+  const guide = getMarketingGuide(guideId);
+  const toc = marketingGuideToc(guide);
+
+  const images: MarketingPdfImages = {};
+  if (imageUrls.hero) images.hero = await imageUrlToDataUrl(imageUrls.hero);
+  if (imageUrls.membership) images.membership = await imageUrlToDataUrl(imageUrls.membership);
+  if (imageUrls.community) images.community = await imageUrlToDataUrl(imageUrls.community);
+
+  const doc = new jsPDF({ unit: "pt", format: "letter" });
+  drawCover(
+    doc,
+    { eyebrow: guide.eyebrow, title: guide.title, lead: guide.lead },
+    "marketing",
+    images.hero,
+  );
+  drawToc(
+    doc,
+    "Contents",
+    toc.map((e) => ({ id: e.id, label: `${e.number}. ${e.label}` })),
+  );
+
+  const ctx: PdfCtx = { doc, y: 0 };
+  doc.addPage();
+  drawPageChrome(doc);
+  ctx.y = MARGIN + 28;
+
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(10);
+  doc.setTextColor(...COLORS.muted);
+  const tag = doc.splitTextToSize(guide.tagline, CONTENT_W);
+  doc.text(tag, MARGIN, ctx.y);
+  ctx.y += tag.length * 13 + 8;
+  drawNote(ctx, guide.audienceBadge);
+
+  for (const section of guide.sections) {
+    drawMarketingSection(ctx, section, images);
+  }
+
+  addFooters(doc, guide.menuLabel);
+  doc.save(guide.filename);
 }

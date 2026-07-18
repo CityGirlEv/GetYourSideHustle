@@ -16,7 +16,7 @@ export function TrainingCircles({ onOpenGuides, onOpenKids }: Props) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "end", gap: 12, flexWrap: "wrap", marginBottom: 18 }}>
         <div>
           <h2 style={{ fontSize: "1.85rem", color: "var(--charcoal)", marginBottom: 6 }}>GYSH Training Circles</h2>
-          <p style={{ color: "var(--text-secondary)", maxWidth: 640, fontSize: "0.95rem" }}>
+          <p style={{ color: "var(--text-primary)", maxWidth: 640, fontSize: "0.95rem" }}>
             Cohort-ready tracks from the GYSH partnership — adult hustles, AI agents, build skills, and kids/junior glow.
           </p>
         </div>
@@ -66,7 +66,7 @@ export function TrainingCircles({ onOpenGuides, onOpenKids }: Props) {
               <span className="glow-badge cyan">{c.audience === "junior" ? "Kids / Teens" : "Adult"}</span>
             </div>
             <h3 style={{ fontSize: "1.15rem", color: "var(--charcoal)", marginBottom: 6 }}>{c.name}</h3>
-            <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", lineHeight: 1.5 }}>{c.blurb}</p>
+            <p style={{ fontSize: "0.95rem", color: "var(--text-primary)", lineHeight: 1.5 }}>{c.blurb}</p>
           </button>
         ))}
       </div>

@@ -70,7 +70,7 @@ export function WorkshopsAdmin() {
   };
 
   if (loading) {
-    return <p style={{ color: "var(--text-muted)" }}>Loading workshops…</p>;
+    return <p style={{ color: "var(--text-primary)" }}>Loading workshops…</p>;
   }
 
   return (
@@ -79,16 +79,16 @@ export function WorkshopsAdmin() {
         <h3 style={{ fontSize: "1.15rem", color: "var(--charcoal)", display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
           <Mic2 size={18} style={{ color: "var(--bronze)" }} /> Edit workshops
         </h3>
-        <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem", margin: 0 }}>
+        <p style={{ color: "var(--text-primary)", fontSize: "0.95rem", margin: 0 }}>
           Title, blurb, date (use TBD until confirmed), time, status, and speakers persist to D1 and power the public Workshops hub.
         </p>
         {error && (
-          <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 8, background: "rgba(155,47,40,0.1)", border: "1px solid rgba(155,47,40,0.35)", color: "#9B2F28", fontSize: "0.85rem" }}>
+          <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 8, background: "rgba(155,47,40,0.1)", border: "1px solid rgba(155,47,40,0.35)", color: "#9B2F28", fontSize: "0.95rem" }}>
             {error}
           </div>
         )}
         {savedMsg && (
-          <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 8, background: "rgba(46,125,50,0.1)", border: "1px solid rgba(46,125,50,0.35)", color: "#2e7d32", fontSize: "0.85rem" }}>
+          <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 8, background: "rgba(46,125,50,0.1)", border: "1px solid rgba(46,125,50,0.35)", color: "#2e7d32", fontSize: "0.95rem" }}>
             {savedMsg}
           </div>
         )}
@@ -116,10 +116,10 @@ export function WorkshopsAdmin() {
                 background: selected?.id === w.id ? "rgba(215,198,151,0.35)" : "#fff",
               }}
             >
-              <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+              <div style={{ fontSize: "0.9375rem", color: "var(--text-primary)" }}>
                 {STATUS_LABELS[w.status]} · {w.date || "TBD"}
               </div>
-              <strong style={{ fontSize: "0.9rem", color: "var(--charcoal)" }}>{w.title}</strong>
+              <strong style={{ fontSize: "1rem", color: "var(--charcoal)" }}>{w.title}</strong>
             </button>
           ))}
         </div>
@@ -182,10 +182,10 @@ export function WorkshopsAdmin() {
               }}
             >
               <div>
-                <strong style={{ fontSize: "0.9rem", color: "var(--charcoal)" }}>
+                <strong style={{ fontSize: "1rem", color: "var(--charcoal)" }}>
                   Registration {selected.registrationOpen ? "open" : "closed"}
                 </strong>
-                <p style={{ margin: "2px 0 0", fontSize: "0.78rem", color: "var(--text-muted)" }}>
+                <p style={{ margin: "2px 0 0", fontSize: "0.9375rem", color: "var(--text-primary)" }}>
                   Registration stays disabled for the public until you turn this on.
                 </p>
               </div>
@@ -267,7 +267,7 @@ export function WorkshopsAdmin() {
                       key={s.id}
                       type="button"
                       className={`btn ${on ? "btn-primary" : "btn-outline"}`}
-                      style={{ padding: "6px 10px", fontSize: "0.8rem" }}
+                      style={{ padding: "6px 10px", fontSize: "0.9375rem" }}
                       onClick={() => patchSelected({ speakerIds: toggleId(selected.speakerIds, s.id) })}
                     >
                       {s.name}

@@ -1,14 +1,15 @@
-/** GYSH user roles — age-banded audiences + admin + QA (types + labels only). DB is source of truth. */
+/** GYSH user roles — age-banded audiences + admin + QA + Dev (types + labels only). DB is source of truth. */
 
 import { api } from "./api";
 
-export type GyshRole = "admin" | "qa" | "kid" | "junior" | "adult" | "senior";
+export type GyshRole = "admin" | "qa" | "dev" | "kid" | "junior" | "adult" | "senior";
 
-export const GYSH_ROLES: GyshRole[] = ["admin", "qa", "kid", "junior", "adult", "senior"];
+export const GYSH_ROLES: GyshRole[] = ["admin", "qa", "dev", "kid", "junior", "adult", "senior"];
 
 export const GYSH_ROLE_LABELS: Record<GyshRole, string> = {
   admin: "Admin",
   qa: "QA",
+  dev: "Dev",
   kid: "Kid (3–12)",
   junior: "Teens (13–17)",
   adult: "Adult (18+)",
@@ -18,6 +19,7 @@ export const GYSH_ROLE_LABELS: Record<GyshRole, string> = {
 export const GYSH_ROLE_SHORT: Record<GyshRole, string> = {
   admin: "Admin",
   qa: "QA",
+  dev: "Dev",
   kid: "Kids",
   junior: "Teens",
   adult: "Adult",
@@ -27,6 +29,7 @@ export const GYSH_ROLE_SHORT: Record<GyshRole, string> = {
 export const GYSH_ROLE_DESCRIPTIONS: Record<GyshRole, string> = {
   admin: "Full GYSH Admin Studio access",
   qa: "Testing Portal / QA verification (can combine with Admin)",
+  dev: "Engineering / bug fixes — owns failed tests routed from QA",
   kid: "Kids Side Hustle Corner — Kevina Starr Stories & Glow Getter content",
   junior: "Teens Side Hustle Corner — safe earning projects & piggy bank tools",
   adult: "Adult Side Hustle Hub — Get Your Side Hustle, calculators, launch guides",
@@ -36,6 +39,7 @@ export const GYSH_ROLE_DESCRIPTIONS: Record<GyshRole, string> = {
 export const GYSH_ROLE_HOME: Record<GyshRole, string> = {
   admin: "admin",
   qa: "admin",
+  dev: "admin",
   kid: "kids",
   junior: "kids",
   adult: "dashboard",
@@ -46,6 +50,7 @@ export const GYSH_ROLE_HOME: Record<GyshRole, string> = {
 export const GYSH_ROLE_ACCENT: Record<GyshRole, string> = {
   admin: "#9B2F28",
   qa: "#6B5344",
+  dev: "#1F4E79",
   kid: "#3D6F88",
   junior: "#4A6B52",
   adult: "#5C4A1F",
@@ -84,6 +89,9 @@ export function userHasRole(u: Pick<GyshUser, "role" | "roles">, role: GyshRole)
 
 /** Human QA testers — Manual suite only (clickable bubbles). */
 export type QaTesterId = "tina" | "evelyn" | "lyriq";
+
+/** Failed Testing Portal cases are assigned to Evelyn (Dev). */
+export const FAILED_TEST_ASSIGNEE: QaTesterId = "evelyn";
 
 /** Automated suite owners — Vitest / Playwright runners (not D1 users). */
 export type AutomatedSuiteOwnerId = "vitest" | "playwright";
@@ -166,7 +174,7 @@ export type GyshUser = {
   email: string;
   /** Primary role (highest privilege). */
   role: GyshRole;
-  /** All assigned roles (admin + QA allowed together). */
+  /** All assigned roles (admin + QA + Dev allowed together). */
   roles?: GyshRole[];
   status: "active" | "pending" | "disabled";
   joinedAt: string;

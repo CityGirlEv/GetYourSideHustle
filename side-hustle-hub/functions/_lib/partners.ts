@@ -3,15 +3,15 @@
  * Passwords match production login (Tina Admin123, Evelyn Admin).
  */
 import { hashPassword, randomSaltHex, type DbUser, type Env } from "./auth";
-
-const ADMIN_QA_ROLES = '["admin","qa"]';
+import { serializeRoles, type GyshRole } from "./roles";
 
 export const PARTNER_ADMINS = [
   {
     id: "u-tina",
     name: "Tina Marie Barham",
-    email: "tinabarham@gmail.com",
-    role: "admin",
+    email: "tinamariebarham@gmail.com",
+    role: "admin" as const,
+    roles: ["admin", "qa"] as GyshRole[],
     password: "Admin123",
     notes: "Co-founder — kids / Kevina Starr focus; portal admin + QA Testing Portal",
     joinedAt: "2026-07-01",
@@ -20,16 +20,18 @@ export const PARTNER_ADMINS = [
     id: "u-ev",
     name: "Evelyn Irving",
     email: "evelyn3@cox.net",
-    role: "admin",
+    role: "admin" as const,
+    roles: ["admin", "qa", "dev"] as GyshRole[],
     password: "Admin",
-    notes: "Co-founder — adult hustles & tech; portal admin + QA Testing Portal",
+    notes: "Co-founder — adult hustles & tech; portal admin + QA + Dev (owns failed tests)",
     joinedAt: "2026-07-01",
   },
   {
     id: "u-lyriq",
     name: "Lyriq",
     email: "leegaulden1222@icloud.com",
-    role: "admin",
+    role: "admin" as const,
+    roles: ["admin", "qa"] as GyshRole[],
     password: "Lyriq123",
     notes: "Portal admin + QA — Testing Portal & schedule (Kids/Junior wizard matrix)",
     joinedAt: "2026-07-16",
@@ -48,6 +50,8 @@ export async function ensurePartnerAdmins(env: Env): Promise<void> {
       .bind(partner.email)
       .first<{ id: string }>();
 
+    const rolesJson = serializeRoles([...partner.roles]);
+
     if (byId || byEmail) {
       // Keep identity + roles/status fresh; leave passwords alone if already set.
       const id = byId?.id ?? byEmail!.id;
@@ -56,7 +60,7 @@ export async function ensurePartnerAdmins(env: Env): Promise<void> {
            name = ?, email = ?, role = 'admin', roles = ?, status = 'active', notes = ?, updated_at = ?
          WHERE id = ?`,
       )
-        .bind(partner.name, partner.email, ADMIN_QA_ROLES, partner.notes, now, id)
+        .bind(partner.name, partner.email, rolesJson, partner.notes, now, id)
         .run();
       continue;
     }
@@ -71,7 +75,7 @@ export async function ensurePartnerAdmins(env: Env): Promise<void> {
         partner.id,
         partner.name,
         partner.email,
-        ADMIN_QA_ROLES,
+        rolesJson,
         partner.joinedAt,
         partner.notes,
         hash,

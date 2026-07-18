@@ -21,7 +21,7 @@ export type Env = {
   DB: D1Database;
   /** Cloudflare Pages secret / .dev.vars — never expose to client */
   RESEND_API_KEY?: string;
-  /** Optional From override, e.g. `GYSH <noreply@notify.getyoursidehustle.com>` */
+  /** Optional From override, e.g. `GYSH <noreply@getyoursidehustle.com>` */
   EMAIL_FROM?: string;
   /** Optional contact inbox override (defaults to info@getyoursidehustle.com) */
   CONTACT_TO?: string;
@@ -54,7 +54,7 @@ function isMissingRolesColumn(e: unknown): boolean {
 }
 
 const SESSION_DAYS = 14;
-const MIN_PASSWORD_LENGTH = 5;
+import { MIN_PASSWORD_LENGTH, passwordPolicyError } from "./password-policy";
 
 export function requireDb(env: Env): Response | null {
   if (!env?.DB) {
@@ -260,7 +260,16 @@ export async function handleLogin(env: Env, request: Request): Promise<Response>
     return error("Invalid email or password.", 401);
   }
   if (user.status !== "active") {
-    await appendAudit(env.DB, "login_failed", email, "inactive account");
+    await appendAudit(env.DB, "login_failed", email, `inactive account · ${user.status}`);
+    if (user.status === "pending") {
+      return error(
+        "Your account is awaiting admin activation. Check your email for confirmation — you'll get a welcome message when you're cleared to sign in.",
+        403,
+      );
+    }
+    if (user.status === "disabled") {
+      return error("This account has been deactivated. Contact info@getyoursidehustle.com if you need help.", 403);
+    }
     return error("Invalid email or password.", 401);
   }
 
@@ -313,8 +322,9 @@ export async function handleRegister(env: Env, request: Request): Promise<Respon
   const claimToken = String(body.claimToken || "").trim();
 
   if (!email || !email.includes("@")) return error("A valid email is required.");
-  if (password.length < MIN_PASSWORD_LENGTH) {
-    return error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
+  {
+    const pwErr = passwordPolicyError(password);
+    if (pwErr) return error(pwErr);
   }
   if (!["kids", "junior", "adult", "senior"].includes(ageGroup)) {
     return error("Invalid age group.");
@@ -346,10 +356,11 @@ export async function handleRegister(env: Env, request: Request): Promise<Respon
           ? "GYSH Senior"
           : "GYSH Member");
 
+  // New members start pending — admins must activate before login.
   try {
     await env.DB.prepare(
       `INSERT INTO users (id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt, membership_tier, audience, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, 'free', ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, 'free', ?, ?, ?)`,
     )
       .bind(
         userId,
@@ -371,7 +382,7 @@ export async function handleRegister(env: Env, request: Request): Promise<Respon
     if (msg.includes("no such column")) {
       await env.DB.prepare(
         `INSERT INTO users (id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)`,
       )
         .bind(
           userId,
@@ -422,34 +433,49 @@ export async function handleRegister(env: Env, request: Request): Promise<Respon
   const user = await getUserByEmail(env.DB, email);
   if (!user) return error("Registration failed.", 500);
 
-  const { token, cookie } = await createSession(env.DB, userId);
-  await appendAudit(env.DB, "register_ok", email, `free register · ${ageGroup}`);
+  await appendAudit(env.DB, "register_ok", email, `free register pending · ${ageGroup}`);
 
-  let claimedBlueprintId: string | null = null;
+  // Keep pending Blueprint claimable after admin activation
   if (claimToken) {
     try {
       const { claimPendingBlueprintForUser } = await import("./blueprints");
-      const claimed = await claimPendingBlueprintForUser(env, userId, claimToken, {
+      await claimPendingBlueprintForUser(env, userId, claimToken, {
         childProfileId,
         ageGroup,
       });
-      claimedBlueprintId = claimed?.id ?? null;
     } catch {
-      /* claim is best-effort; client can retry */
+      /* claim is best-effort; client can retry after activation */
     }
+  }
+
+  let emailSent = false;
+  try {
+    const { sendRegistrationConfirmation } = await import("./email");
+    emailSent = await sendRegistrationConfirmation(env, {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      audience: String(audience),
+      membership_tier: "free",
+    });
+  } catch {
+    emailSent = false;
   }
 
   return json(
     {
       ok: true,
+      pendingActivation: true,
+      emailSent,
       user: publicUser(user),
-      token,
+      token: null,
       isAdmin: false,
       childProfileId,
-      claimedBlueprintId,
+      claimedBlueprintId: null,
+      message:
+        "Account created and awaiting admin activation. Check your email for confirmation — we'll send a welcome with your perks once you're activated.",
     },
     201,
-    { "set-cookie": cookie },
   );
 }
 
@@ -466,6 +492,213 @@ export async function handleMe(env: Env, request: Request): Promise<Response> {
   return json({ user: publicUser(auth.user) });
 }
 
+const RESET_TOKEN_HOURS = 1;
+
+async function ensurePasswordResetTable(db: D1Database): Promise<void> {
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS password_reset_tokens (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token_hash TEXT NOT NULL UNIQUE,
+        expires_at TEXT NOT NULL,
+        used_at TEXT,
+        created_at TEXT NOT NULL
+      )`,
+    )
+    .run();
+}
+
+function publicBaseUrl(request: Request): string {
+  const origin = (request.headers.get("origin") || "").replace(/\/$/, "");
+  if (
+    origin &&
+    (origin.includes("localhost") ||
+      origin.includes("127.0.0.1") ||
+      origin.includes("getyoursidehustle.com") ||
+      origin.includes("pages.dev"))
+  ) {
+    return origin;
+  }
+  return "https://getyoursidehustle.com";
+}
+
+/** Forgot password: email → check account → send Resend reset link. */
+export async function handleForgotPassword(env: Env, request: Request): Promise<Response> {
+  const dbFail = requireDb(env);
+  if (dbFail) return dbFail;
+
+  let body: { email?: string };
+  try {
+    body = (await request.json()) as { email?: string };
+  } catch {
+    return error("Invalid JSON body.");
+  }
+
+  const email = canonicalizeEmail(body.email || "");
+  if (!email || !email.includes("@")) {
+    return error("Enter the email address for your GYSH account.");
+  }
+
+  const { emailConfigured, sendPasswordResetEmail, EmailSendError } = await import("./email");
+  if (!emailConfigured(env)) {
+    return error(
+      "Password reset email is not available right now (Resend is not configured on the server). Contact info@getyoursidehustle.com.",
+      503,
+    );
+  }
+
+  const user = await getUserByEmail(env.DB, email);
+  if (!user) {
+    await appendAudit(env.DB, "password_forgot", email, "no account");
+    return error("No GYSH account found for that email.");
+  }
+  if (!user.password_hash || !user.password_salt) {
+    await appendAudit(env.DB, "password_forgot", email, "no login password on account");
+    return error(
+      "This account does not have a login password yet. Contact info@getyoursidehustle.com for help.",
+    );
+  }
+  if (user.status === "pending") {
+    return error(
+      "Your account is still awaiting admin activation. You can reset your password after you're activated.",
+      403,
+    );
+  }
+  if (user.status === "disabled") {
+    return error(
+      "This account has been deactivated. Contact info@getyoursidehustle.com if you need help.",
+      403,
+    );
+  }
+  if (user.status !== "active") {
+    return error("No active GYSH account found for that email.");
+  }
+
+  await ensurePasswordResetTable(env.DB);
+  const token = randomToken();
+  const tokenHash = await sha256Hex(token);
+  const now = new Date();
+  const expires = new Date(now.getTime() + RESET_TOKEN_HOURS * 60 * 60 * 1000);
+  const id = `prt-${crypto.randomUUID()}`;
+
+  // Invalidate prior unused tokens for this user
+  await env.DB.prepare(
+    `UPDATE password_reset_tokens SET used_at = ? WHERE user_id = ? AND used_at IS NULL`,
+  )
+    .bind(now.toISOString(), user.id)
+    .run();
+
+  await env.DB.prepare(
+    `INSERT INTO password_reset_tokens (id, user_id, token_hash, expires_at, used_at, created_at)
+     VALUES (?, ?, ?, ?, NULL, ?)`,
+  )
+    .bind(id, user.id, tokenHash, expires.toISOString(), now.toISOString())
+    .run();
+
+  const resetUrl = `${publicBaseUrl(request)}/?reset=${encodeURIComponent(token)}`;
+
+  try {
+    await sendPasswordResetEmail(env, {
+      to: email,
+      name: user.name,
+      resetUrl,
+      userId: user.id,
+    });
+  } catch (e) {
+    const msg = e instanceof EmailSendError ? e.message : e instanceof Error ? e.message : String(e);
+    await appendAudit(env.DB, "password_forgot_email_failed", email, msg);
+    return error(`Could not send the reset email: ${msg}`, 502);
+  }
+
+  await appendAudit(env.DB, "password_forgot", email, "reset link emailed");
+  return json({
+    ok: true,
+    message:
+      "We found your account and emailed a password reset link. Check your inbox (and spam) — the link expires in 1 hour.",
+  });
+}
+
+/** Complete forgot-password flow with emailed token + new password. */
+export async function handleConfirmPasswordReset(env: Env, request: Request): Promise<Response> {
+  const dbFail = requireDb(env);
+  if (dbFail) return dbFail;
+
+  let body: { token?: string; newPassword?: string; confirmPassword?: string };
+  try {
+    body = (await request.json()) as typeof body;
+  } catch {
+    return error("Invalid JSON body.");
+  }
+
+  const token = String(body.token || "").trim();
+  const newPassword = String(body.newPassword || "");
+  const confirmPassword = String(body.confirmPassword || "");
+
+  if (!token) return error("Reset link is missing or invalid.");
+  if (!newPassword || !confirmPassword) return error("Enter and confirm your new password.");
+  if (newPassword !== confirmPassword) return error("New passwords do not match.");
+  {
+    const pwErr = passwordPolicyError(newPassword);
+    if (pwErr) return error(pwErr);
+  }
+
+  await ensurePasswordResetTable(env.DB);
+  const tokenHash = await sha256Hex(token);
+  const row = await env.DB.prepare(
+    `SELECT id, user_id, expires_at, used_at FROM password_reset_tokens WHERE token_hash = ?`,
+  )
+    .bind(tokenHash)
+    .first<{ id: string; user_id: string; expires_at: string; used_at: string | null }>();
+
+  if (!row) return error("This reset link is invalid or has already been used.");
+  if (row.used_at) return error("This reset link was already used. Request a new one.");
+  if (new Date(row.expires_at).getTime() < Date.now()) {
+    return error("This reset link has expired. Request a new one.");
+  }
+
+  const user = await getUserById(env.DB, row.user_id);
+  if (!user || user.status !== "active") {
+    return error("This account is not available for password reset.");
+  }
+
+  const salt = randomSaltHex();
+  const hash = await hashPassword(newPassword, salt);
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    `UPDATE users SET password_hash = ?, password_salt = ?, updated_at = ? WHERE id = ?`,
+  )
+    .bind(hash, salt, now, user.id)
+    .run();
+  await env.DB.prepare(`UPDATE password_reset_tokens SET used_at = ? WHERE id = ?`)
+    .bind(now, row.id)
+    .run();
+  await env.DB.prepare(`DELETE FROM sessions WHERE user_id = ?`).bind(user.id).run();
+  await appendAudit(env.DB, "password_reset", user.email, "password updated via email link");
+
+  let emailSent = false;
+  try {
+    const { sendPasswordChangedNotice } = await import("./email");
+    emailSent = await sendPasswordChangedNotice(env, user.email, user.name, user.id);
+  } catch (e) {
+    await appendAudit(
+      env.DB,
+      "password_reset_email_failed",
+      user.email,
+      e instanceof Error ? e.message : String(e),
+    );
+  }
+
+  return json({
+    ok: true,
+    email: user.email,
+    message: emailSent
+      ? "Password updated. A confirmation email was sent. Sign in with your new password."
+      : "Password updated. Sign in with your new password.",
+  });
+}
+
+/** Change password when you know the current password (optional path). */
 export async function handleResetPassword(env: Env, request: Request): Promise<Response> {
   const dbFail = requireDb(env);
   if (dbFail) return dbFail;
@@ -501,11 +734,12 @@ export async function handleResetPassword(env: Env, request: Request): Promise<R
     await appendAudit(env.DB, "password_reset", email, "failed: current password incorrect");
     return error("Current password is incorrect.");
   }
-  if (newPassword.length < MIN_PASSWORD_LENGTH) {
-    return error(`New password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
-  }
   if (newPassword !== confirmPassword) {
     return error("New passwords do not match.");
+  }
+  {
+    const pwErr = passwordPolicyError(newPassword);
+    if (pwErr) return error(pwErr);
   }
   if (newPassword === currentPassword) {
     return error("New password must be different from the current password.");
@@ -525,7 +759,7 @@ export async function handleResetPassword(env: Env, request: Request): Promise<R
   let emailSent = false;
   try {
     const { sendPasswordChangedNotice } = await import("./email");
-    emailSent = await sendPasswordChangedNotice(env, email, user.name);
+    emailSent = await sendPasswordChangedNotice(env, email, user.name, user.id);
   } catch (e) {
     await appendAudit(
       env.DB,

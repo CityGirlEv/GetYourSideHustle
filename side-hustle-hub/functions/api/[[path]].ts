@@ -3,6 +3,8 @@
  * Production source of truth: Cloudflare D1 (binding DB).
  */
 import {
+  handleConfirmPasswordReset,
+  handleForgotPassword,
   handleLogin,
   handleLogout,
   handleMe,
@@ -42,6 +44,19 @@ import {
   upsertUser,
 } from "../_lib/data";
 import {
+  listEmailLog,
+  listEmailTemplates,
+  previewEmailTemplate,
+  sendTestEmail,
+} from "../_lib/email-admin";
+import {
+  getCertificatePdf,
+  getCertificateSvg,
+  listMemberCertificates,
+  regenerateOneCertificate,
+  updateCertificateTemplate,
+} from "../_lib/certificates";
+import {
   claimPendingBlueprint,
   createPendingBlueprint,
   getBlueprint,
@@ -51,6 +66,13 @@ import {
   saveBlueprintFavorite,
 } from "../_lib/blueprints";
 import { listAutomatedTestRuns, runAutomatedTests } from "../_lib/automated-runner";
+import {
+  endTimeEntry,
+  listTimeEntries,
+  listTimeEntryUsers,
+  pauseTimeEntry,
+  startTimeEntry,
+} from "../_lib/time-entries";
 import { error, json } from "../_lib/crypto";
 
 function pathParts(params: { path?: string | string[] }): string[] {
@@ -106,6 +128,12 @@ export async function onRequest(context: {
     }
     if (route === "auth/logout" && method === "POST") {
       return withCors(request, await handleLogout(env, request));
+    }
+    if (route === "auth/forgot-password" && method === "POST") {
+      return withCors(request, await handleForgotPassword(env, request));
+    }
+    if (route === "auth/confirm-password-reset" && method === "POST") {
+      return withCors(request, await handleConfirmPasswordReset(env, request));
     }
     if (route === "auth/reset-password" && method === "POST") {
       return withCors(request, await handleResetPassword(env, request));
@@ -225,6 +253,48 @@ export async function onRequest(context: {
     }
     if (route === "agile-plan" && method === "PUT") {
       return withCors(request, await saveAgilePlan(env, request));
+    }
+    if (route === "time-entries" && method === "GET") {
+      return withCors(request, await listTimeEntries(env, request, user));
+    }
+    if (route === "time-entries/users" && method === "GET") {
+      return withCors(request, await listTimeEntryUsers(env, user));
+    }
+    if (route === "time-entries/start" && method === "POST") {
+      return withCors(request, await startTimeEntry(env, request, user));
+    }
+    if (route === "time-entries/pause" && method === "POST") {
+      return withCors(request, await pauseTimeEntry(env, request, user));
+    }
+    if (route === "time-entries/end" && method === "POST") {
+      return withCors(request, await endTimeEntry(env, request, user));
+    }
+    if (route === "email/templates" && method === "GET") {
+      return withCors(request, await listEmailTemplates(env));
+    }
+    if (route === "email/log" && method === "GET") {
+      return withCors(request, await listEmailLog(env, request));
+    }
+    if (route === "email/preview" && method === "POST") {
+      return withCors(request, await previewEmailTemplate(env, request));
+    }
+    if (route === "email/test-send" && method === "POST") {
+      return withCors(request, await sendTestEmail(env, request, user));
+    }
+    if (route === "certificates" && method === "GET") {
+      return withCors(request, await listMemberCertificates(env));
+    }
+    if (route === "certificates/template" && method === "PUT") {
+      return withCors(request, await updateCertificateTemplate(env, request, user));
+    }
+    if (parts[0] === "certificates" && parts[1] && parts[2] === "svg" && method === "GET") {
+      return withCors(request, await getCertificateSvg(env, parts[1]));
+    }
+    if (parts[0] === "certificates" && parts[1] && parts[2] === "pdf" && method === "GET") {
+      return withCors(request, await getCertificatePdf(env, parts[1]));
+    }
+    if (parts[0] === "certificates" && parts[1] && parts[2] === "regenerate" && method === "POST") {
+      return withCors(request, await regenerateOneCertificate(env, parts[1]));
     }
 
     const dbFail = requireDb(env);

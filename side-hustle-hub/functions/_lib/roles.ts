@@ -1,10 +1,10 @@
 /** Shared role helpers for GYSH D1 users (single primary + optional multi-role JSON). */
 
-export const ALL_ROLES = ["admin", "qa", "kid", "junior", "adult", "senior"] as const;
+export const ALL_ROLES = ["admin", "qa", "dev", "kid", "junior", "adult", "senior"] as const;
 export type GyshRole = (typeof ALL_ROLES)[number];
 
 /** Privilege order — first match becomes the stored primary `role`. */
-const ROLE_PRIORITY: GyshRole[] = ["admin", "qa", "adult", "senior", "junior", "kid"];
+const ROLE_PRIORITY: GyshRole[] = ["admin", "qa", "dev", "adult", "senior", "junior", "kid"];
 
 export function isGyshRole(value: unknown): value is GyshRole {
   return typeof value === "string" && (ALL_ROLES as readonly string[]).includes(value);
@@ -54,11 +54,14 @@ export function normalizeRolesInput(
   return null;
 }
 
-/** Portal login / Admin Studio: admin or QA (or both). */
+/** Portal login / Admin Studio: admin, QA, or Dev. */
 export function canAccessAdminPortal(roles: GyshRole[]): boolean {
-  return roles.includes("admin") || roles.includes("qa");
+  return roles.includes("admin") || roles.includes("qa") || roles.includes("dev");
 }
 
 export function hasRole(roles: GyshRole[], role: GyshRole): boolean {
   return roles.includes(role);
 }
+
+/** Failed tests are routed to Evelyn (Dev) for fix. */
+export const FAILED_TEST_ASSIGNEE = "evelyn";

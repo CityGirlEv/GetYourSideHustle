@@ -16,7 +16,7 @@ Optional secrets/vars on the same Pages project:
 | Name | Purpose |
 |------|---------|
 | `RESEND_API_KEY` | Required. Resend API key (`re_…`) |
-| `EMAIL_FROM` | Optional. Full From header, default `Get Your Side Hustle <noreply@notify.getyoursidehustle.com>` |
+| `EMAIL_FROM` | Optional. Full From header, default `Get Your Side Hustle <noreply@getyoursidehustle.com>` |
 | `CONTACT_TO` | Optional. Contact-form inbox, default `info@getyoursidehustle.com` |
 
 ## 2. Local development
@@ -33,26 +33,25 @@ Optional secrets/vars on the same Pages project:
 
 ## 3. Domain / DNS (required for real From addresses)
 
-Intended sender: **`notify.getyoursidehustle.com`** (see `EMAIL_SENDER_DOMAIN` in `src/lib/site-config.ts` and `functions/_lib/email.ts`).
+Intended sender: **`getyoursidehustle.com`** (verified on the Get Your Side Hustle Resend account).
 
-1. Open [Resend → Domains](https://resend.com/domains).
-2. Add `notify.getyoursidehustle.com` (or apex `getyoursidehustle.com`).
-3. Add the SPF / DKIM / (optional) MX records Resend shows in DNS for `getyoursidehustle.com`.
-4. Click Verify in Resend.
+1. Open [Resend → Domains](https://resend.com/domains) on the **Get Your Side Hustle** account.
+2. Confirm apex `getyoursidehustle.com` is **Verified** (sending enabled).
+3. Production secrets: `RESEND_API_KEY` + `EMAIL_FROM=Get Your Side Hustle <noreply@getyoursidehustle.com>`.
 
-**Plan note:** Resend free plans allow **one** domain. If this API key’s account already has `mypartb.com` verified, you cannot add GYSH until you upgrade, remove that domain, or create a **separate Resend account + API key** for GYSH and replace the Pages secret.
-
-Until the GYSH domain is verified, `/api/contact` and password-change notices will fail with a domain error (contact form surfaces a friendly message).
+Use a **separate** Resend account/key from Munties (free plans are one domain per account).
 
 ## 4. What the code sends today
 
 | Flow | Endpoint | Behavior |
 |------|----------|----------|
 | Contact form | `POST /api/contact` | Emails admin inbox via Resend |
-| Password change | `POST /api/auth/reset-password` | Still on-screen change with current password; also tries a confirmation email |
+| Forgot password | `POST /api/auth/forgot-password` | Checks account email, emails one-time reset link via Resend |
+| Confirm reset | `POST /api/auth/confirm-password-reset` | Sets new password from emailed token |
+| Password change | `POST /api/auth/reset-password` | Optional known-current-password change + confirmation email |
 | Health | `GET /api/health` | Includes `email: "configured" \| "missing"` |
 
-True “forgot password” email links are **not** implemented yet (UI still says reset link coming soon).
+Forgot-password UI: Login → Forgot / Reset password? → enter account email → Resend link → open link → choose new password.
 
 ## 5. Deploy
 

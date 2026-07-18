@@ -3,7 +3,7 @@ import { normalizeEmail, canonicalizeEmail, userCanLogin } from "../auth";
 
 describe("auth", () => {
   it("normalizes email to lowercase trimmed", () => {
-    expect(normalizeEmail("  TinaBarham@Gmail.com ")).toBe("tinabarham@gmail.com");
+    expect(normalizeEmail("  TinaMarieBarham@Gmail.com ")).toBe("tinamariebarham@gmail.com");
   });
 
   it("canonicalizes Evelyn alias to primary email", () => {

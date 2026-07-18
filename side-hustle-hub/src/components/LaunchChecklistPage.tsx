@@ -95,7 +95,7 @@ export function LaunchChecklistPage({
           </p>
         )}
         {progressError && (
-          <p style={{ marginTop: 8, color: "var(--crimson)", fontSize: "0.85rem" }}>{progressError}</p>
+          <p style={{ marginTop: 8, color: "var(--crimson)", fontSize: "0.95rem" }}>{progressError}</p>
         )}
       </section>
 
@@ -110,7 +110,7 @@ export function LaunchChecklistPage({
                 : `Showing ${CHECKLIST_PREVIEW_COUNT} of ${LAUNCH_CHECKLIST_ITEMS.length} steps.`}
             </p>
           </div>
-          <span className={`glow-badge ${unlocked ? "emerald" : "pink"}`} style={{ fontSize: "0.65rem" }}>
+          <span className={`glow-badge ${unlocked ? "emerald" : "pink"}`} style={{ fontSize: "0.9375rem" }}>
             {unlocked ? "Members" : "Locked"}
           </span>
         </div>

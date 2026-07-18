@@ -98,7 +98,7 @@ export const CalculatorSection: React.FC<CalculatorSectionProps> = ({
         <h2 style={{ fontSize: "1.5rem", color: "white", marginBottom: "8px" }}>
           GYSH Earnings & Profitability Calculator
         </h2>
-        <p style={{ color: "var(--text-secondary)", fontSize: "0.95rem" }}>
+        <p style={{ color: "var(--text-primary)", fontSize: "0.95rem" }}>
           Adjust the sliders to estimate startup viability and monthly earnings.
         </p>
 
@@ -115,9 +115,9 @@ export const CalculatorSection: React.FC<CalculatorSectionProps> = ({
             border: "1px solid var(--border-color)",
             borderRadius: 10,
             padding: "8px 14px",
-            color: "var(--text-secondary)",
+            color: "var(--text-primary)",
             cursor: "pointer",
-            fontSize: "0.85rem",
+            fontSize: "0.95rem",
           }}
         >
           {howOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
@@ -132,8 +132,8 @@ export const CalculatorSection: React.FC<CalculatorSectionProps> = ({
               borderRadius: 12,
               border: "1px solid var(--border-color)",
               background: "rgba(255,255,255,0.03)",
-              color: "var(--text-secondary)",
-              fontSize: "0.88rem",
+              color: "var(--text-primary)",
+              fontSize: "0.95rem",
               lineHeight: 1.55,
             }}
           >
@@ -178,7 +178,7 @@ export const CalculatorSection: React.FC<CalculatorSectionProps> = ({
               </>
             )}
 
-            <p style={{ marginTop: 10, fontSize: "0.8rem", color: "var(--text-muted)", fontStyle: "italic" }}>
+            <p style={{ marginTop: 10, fontSize: "0.9375rem", color: "var(--text-primary)", fontStyle: "italic" }}>
               Tip: use the related Launch Guide to sanity-check real costs and steps against these estimates.
             </p>
           </div>
@@ -256,7 +256,7 @@ export const CalculatorSection: React.FC<CalculatorSectionProps> = ({
                 onChange={(e) => setAirbnbOccupancy(Number(e.target.value))}
                 className="range-slider"
               />
-              <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "4px", display: "block" }}>
+              <span style={{ fontSize: "0.9375rem", color: "var(--text-primary)", marginTop: "4px", display: "block" }}>
                 Estimated {airbnbBookingsCount} bookings/month (averaging 3 nights per stay).
               </span>
             </div>
@@ -291,7 +291,7 @@ export const CalculatorSection: React.FC<CalculatorSectionProps> = ({
                 onChange={(e) => setAirbnbExpenses(Number(e.target.value))}
                 className="range-slider"
               />
-              <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "4px", display: "block" }}>
+              <span style={{ fontSize: "0.9375rem", color: "var(--text-primary)", marginTop: "4px", display: "block" }}>
                 Includes mortgage/rent, utilities, restocking, and cleaning services.
               </span>
             </div>
@@ -469,7 +469,7 @@ export const CalculatorSection: React.FC<CalculatorSectionProps> = ({
 
             {/* Main Profit Display */}
             <div style={{ margin: "16px 0" }}>
-              <span style={{ fontSize: "0.85rem", color: "var(--text-secondary)", display: "block" }}>
+              <span style={{ fontSize: "0.95rem", color: "var(--text-primary)", display: "block" }}>
                 Est. Net Monthly Profit
               </span>
               <h1 style={{ 
@@ -488,7 +488,7 @@ export const CalculatorSection: React.FC<CalculatorSectionProps> = ({
 
             {/* Progress / Breakdown bar */}
             <div style={{ marginTop: "24px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem", color: "var(--text-secondary)", marginBottom: "6px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.9375rem", color: "var(--text-primary)", marginBottom: "6px" }}>
                 <span>Profit Margin</span>
                 <span style={{ fontWeight: 700 }}>
                   {activeTab === "airbnb" ? airbnbMargin.toFixed(1) : 
@@ -510,15 +510,15 @@ export const CalculatorSection: React.FC<CalculatorSectionProps> = ({
             </div>
 
             {/* Detailed line items */}
-            <div style={{ marginTop: "28px", display: "flex", flexDirection: "column", gap: "12px", fontSize: "0.85rem" }}>
+            <div style={{ marginTop: "28px", display: "flex", flexDirection: "column", gap: "12px", fontSize: "0.95rem" }}>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ color: "var(--text-secondary)" }}>Gross Revenue</span>
+                <span style={{ color: "var(--text-primary)" }}>Gross Revenue</span>
                 <strong style={{ color: "white" }}>
                   {formatCurrency(activeTab === "airbnb" ? airbnbRevenue : activeTab === "ecom" ? ecomRevenue : socialRevenue)}
                 </strong>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ color: "var(--text-secondary)" }}>
+                <span style={{ color: "var(--text-primary)" }}>
                   {activeTab === "airbnb" ? "Platform Fees (3%)" : activeTab === "ecom" ? `Platform Fees (${ecomPlatformFee}%)` : "Platform Fees (0%)"}
                 </span>
                 <strong style={{ color: "white" }}>
@@ -526,7 +526,7 @@ export const CalculatorSection: React.FC<CalculatorSectionProps> = ({
                 </strong>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ color: "var(--text-secondary)" }}>
+                <span style={{ color: "var(--text-primary)" }}>
                   {activeTab === "airbnb" ? "Operating Expenses" : activeTab === "ecom" ? "Product COGS & Ads" : "Tool Expenses"}
                 </span>
                 <strong style={{ color: "white" }}>
@@ -537,7 +537,7 @@ export const CalculatorSection: React.FC<CalculatorSectionProps> = ({
           </div>
 
           <div style={{ marginTop: "32px", borderTop: "1px solid var(--border-color)", paddingTop: "20px" }}>
-            <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: "16px", fontStyle: "italic" }}>
+            <p style={{ fontSize: "0.9375rem", color: "var(--text-primary)", marginBottom: "16px", fontStyle: "italic" }}>
               {activeTab === "airbnb" && "*Estimates assume professional cleaning and high-season listing demand."}
               {activeTab === "ecom" && "*Assumes an average conversion rate of 2.5% on marketing traffic."}
               {activeTab === "social" && `*Estimated sponsorship rate: ${formatCurrency(sponsorFeePerPost)} per sponsor post.`}
@@ -546,7 +546,7 @@ export const CalculatorSection: React.FC<CalculatorSectionProps> = ({
             <button 
               onClick={() => onGoToGuide(getHustleIdFromTab())}
               className="btn btn-primary" 
-              style={{ width: "100%", fontSize: "0.85rem", gap: "8px" }}
+              style={{ width: "100%", fontSize: "0.95rem", gap: "8px" }}
             >
               <BookOpen size={14} />
               View Actionable Launch Guide

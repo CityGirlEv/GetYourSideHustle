@@ -4,6 +4,7 @@ import {
   BookMarked,
   ChevronDown,
   ChevronRight,
+  Download,
   Lock,
   LogIn,
   Unlock,
@@ -12,6 +13,10 @@ import {
 import { guidesForAudience, themeLabel, type KidsGuide } from "../lib/kids-guides";
 import { LAUNCH_GUIDES } from "../lib/launch-guides";
 import { SENIOR_GUIDE_TEASERS } from "../lib/seniors-content";
+import {
+  MARKETING_GUIDES,
+  type MarketingGuideId,
+} from "../lib/marketing-guides";
 import guidesLibraryHero from "../assets/guides-library-hero.png";
 
 type GuideFilter = "all" | "free" | "adult" | "kids" | "junior";
@@ -24,6 +29,7 @@ type FreeGuidesPageProps = {
   onOpenKidsGuides: () => void;
   onOpenJuniorGuides: () => void;
   onOpenSeniorsGuides: () => void;
+  onOpenManual?: (id: MarketingGuideId) => void;
 };
 
 const FILTERS: { id: GuideFilter; label: string }[] = [
@@ -118,6 +124,7 @@ export function FreeGuidesPage({
   onOpenKidsGuides,
   onOpenJuniorGuides,
   onOpenSeniorsGuides,
+  onOpenManual,
 }: FreeGuidesPageProps) {
   const [filter, setFilter] = useState<GuideFilter>("all");
   const freeOnly = filter === "free";
@@ -138,7 +145,7 @@ export function FreeGuidesPage({
 
   return (
     <div className="free-guides-page" data-testid="free-guides-page">
-      <section className="glass free-guides-hero">
+      <section className="free-guides-hero" aria-label="GYSH Guides library">
         <div className="free-guides-hero-media">
           <img
             src={guidesLibraryHero}
@@ -147,24 +154,20 @@ export function FreeGuidesPage({
             decoding="async"
           />
         </div>
-        <div className="free-guides-hero-copy">
+        <div className="free-guides-hero-copy glass">
           <div className="free-guides-hero-intro">
-            <div className="free-guides-perk-banner" role="note">
-              <span className="glow-badge free">Free</span>
-              <div className="free-guides-perk-banner__copy">
-                <strong>Free Membership Unlocks Perks</strong>
-                <span>
-                  Create a free GYSH account to open member guides, save progress, and keep your match
-                  results handy — no paid plan required.
-                </span>
-              </div>
-            </div>
-            <h2>GYSH Guides</h2>
             <p>
-              Practical how-to playbooks for every generation under one roof. Each guide is tailored to
-              your age group and stage of life — Kids and Teens with parent-friendly safety, Adults with
-              launch steps and costs, and Seniors with flexible pacing. Browse free previews now; join
-              free to unlock the full library and keep building at your own speed.
+              Age-ready how-to playbooks for Kids, Teens, Adults, and Seniors. Browse free previews;
+              join free to unlock the full library.
+            </p>
+            <p className="free-guides-hero-membership">
+              <strong>Free membership</strong> saves your guide progress, unlocks member-only playbooks, and keeps
+              your Match Wizard blueprint handy. Filter by age lane, peek free previews, then join free so your
+              checklist and favorites stay with you on every device.
+            </p>
+            <p className="free-guides-hero-membership">
+              Ready for more? Paid plans add workshops, deeper toolkits, and coach-style support — start free,
+              upgrade when your hustle needs a bigger boost.
             </p>
           </div>
           <div className="free-guides-filters" role="tablist" aria-label="Filter guides" data-testid="free-guides-filters">
@@ -196,6 +199,36 @@ export function FreeGuidesPage({
           </div>
         </div>
       </section>
+
+      {onOpenManual && (
+        <section className="glass marketing-manuals-strip" aria-label="Downloadable GYSH manuals">
+          <div className="marketing-manuals-strip__head">
+            <h3>Marketing manuals</h3>
+            <p>
+              Beautifully formatted, downloadable showcases — Adult, Kids, Teens, Seniors, plus one Complete
+              Guide with every section. Checklists, membership perks, and journey arrows included.
+            </p>
+          </div>
+          <div className="marketing-manuals-strip__grid">
+            {MARKETING_GUIDES.map((g) => (
+              <button
+                key={g.id}
+                type="button"
+                className={`marketing-manuals-strip__card${g.id === "master" ? " is-master" : ""}`}
+                onClick={() => onOpenManual(g.id)}
+                data-testid={`open-manual-${g.id}`}
+              >
+                <span className="glow-badge free">{g.menuLabel}</span>
+                <strong>{g.title}</strong>
+                <span>{g.audienceBadge}</span>
+                <span className="marketing-manuals-strip__cta">
+                  <Download size={14} aria-hidden /> Open & download PDF
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       {empty && (
         <div className="glass free-guides-empty">

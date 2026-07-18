@@ -27,7 +27,7 @@ const ADMINS = [
   {
     id: "u-tina",
     name: "Tina Marie Barham",
-    email: "tinabarham@gmail.com",
+    email: "tinamariebarham@gmail.com",
     role: "admin",
     roles: ["admin", "qa"],
     password: "Admin123",
@@ -38,9 +38,9 @@ const ADMINS = [
     name: "Evelyn Irving",
     email: "evelyn3@cox.net",
     role: "admin",
-    roles: ["admin", "qa"],
+    roles: ["admin", "qa", "dev"],
     password: "Admin",
-    notes: "Co-founder — adult hustles & tech; portal admin + QA Testing Portal",
+    notes: "Co-founder — adult hustles & tech; portal admin + QA + Dev (owns failed tests)",
   },
   {
     id: "u-lyriq",
@@ -335,7 +335,7 @@ ON CONFLICT(id) DO NOTHING;
 
   console.log("\nSeed complete. Portal logins against D1:");
   console.log("Default passwords (change after first login):");
-  console.log("  tinabarham@gmail.com / Admin123");
+  console.log("  tinamariebarham@gmail.com / Admin123");
   console.log("  evelyn3@cox.net / Admin");
   console.log("  leegaulden1222@icloud.com / Lyriq123 (Admin + QA)");
 }

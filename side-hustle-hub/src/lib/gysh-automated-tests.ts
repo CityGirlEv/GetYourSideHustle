@@ -73,10 +73,10 @@ export const AUTOMATED_VITEST_CASES: GyshTestCase[] = [
     suite: "vitest",
     steps: [
       "Run: npm run test:unit",
-      "Verify gysh-wizard-scenarios.test.ts passes (972 automated path cases)",
-      "Confirm suite=vitest on all *-FMSH-* cases in Testing Portal",
+      "Verify gysh-wizard-scenarios.test.ts passes (matrix catalog integrity)",
+      "Portal Vitest counts use real it() totals from vitest-last-run.json — not FMSH inventory rows",
     ],
-    expected: "All wizard matrix combinations are represented and owned by the Vitest QA Runner",
+    expected: "Wizard matrix catalog is complete; Vitest suite reports real assertion counts",
   },
   {
     id: "VT-WORK-001",
@@ -283,10 +283,18 @@ export const AUTOMATED_TEST_IDS = new Set([
   ...AUTOMATED_PLAYWRIGHT_CASES.map((t) => t.id),
 ]);
 
+/** Wizard path inventory rows — not real Vitest `it()` tests. */
+export function isWizardMatrixCaseId(id: string): boolean {
+  return (
+    /^(KIDS|JR|ADULT|SENIOR)-FMSH-\d+$/i.test(id) || /^WIZARD-EDGE-\d+$/i.test(id)
+  );
+}
+
 export function isAutomatedTestId(id: string): boolean {
   if (AUTOMATED_TEST_IDS.has(id)) return true;
   // Wizard matrix paths are Vitest-covered — treat as automated in the portal.
-  return /^(KIDS|JR|ADULT|SENIOR)-FMSH-\d+$/i.test(id) || /^WIZARD-EDGE-\d+$/i.test(id);
+  // VT-FAIL-* / PW-FAIL-* are generated from suite failures.
+  return isWizardMatrixCaseId(id) || /^(VT|PW)-FAIL-/i.test(id);
 }
 
 export function casesForTester(

@@ -9,6 +9,7 @@ import {
 import {
   AUTOMATED_PLAYWRIGHT_CASES,
   AUTOMATED_VITEST_CASES,
+  isWizardMatrixCaseId,
 } from "../../lib/gysh-automated-tests";
 import {
   planToBoardCard,
@@ -22,7 +23,7 @@ const ALL_TESTS = [
   ...withDefaultSuite(TEST_CASES),
   ...AUTOMATED_VITEST_CASES,
   ...AUTOMATED_PLAYWRIGHT_CASES,
-];
+].filter((t) => !isWizardMatrixCaseId(t.id));
 
 function Meter({
   label,

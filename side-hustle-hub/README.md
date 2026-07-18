@@ -110,7 +110,7 @@ npm run deploy:pages
 **Do not** run `wrangler pages deploy dist --project-name=getyoursidehustle` from `muntie-ev-ai-studio-main` (static `dist` only -> `/api` 404, including login).
 
 Seed creates:
-- `tinabarham@gmail.com` / `Admin123`
+- `tinamariebarham@gmail.com` / `Admin123`
 - `evelyn3@cox.net` / `Admin`
 
 Re-running seed does **not** overwrite passwords that were changed later. Attachment **file blobs** still use browser IndexedDB until R2 (phase 2); metadata is in D1.
@@ -119,4 +119,4 @@ There is **no localStorage fallback** for structured admin data — if the API/D
 
 ## Email (Resend)
 
-Transactional email uses **Resend** from Pages Functions (`RESEND_API_KEY` secret). See [docs/EMAIL.md](docs/EMAIL.md) for Cloudflare secrets, `.dev.vars`, and DNS (`notify.getyoursidehustle.com`).
+Transactional email uses **Resend** from Pages Functions (`RESEND_API_KEY` secret). See [docs/EMAIL.md](docs/EMAIL.md) for Cloudflare secrets, `.dev.vars`, and DNS (`getyoursidehustle.com`).

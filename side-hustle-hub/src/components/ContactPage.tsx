@@ -60,7 +60,7 @@ export function ContactPage() {
           <a href={`mailto:${ADMIN_EMAIL}`} className="contact-email-link">
             {ADMIN_EMAIL}
           </a>
-          <p style={{ marginTop: 16, fontSize: "0.85rem", color: "var(--text-muted)" }}>
+          <p style={{ marginTop: 16, fontSize: "0.95rem", color: "var(--text-primary)" }}>
             Typical response within 2–3 business days.
           </p>
         </div>

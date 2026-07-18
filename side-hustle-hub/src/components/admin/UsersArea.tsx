@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Users, Plus, Pencil, Check, X } from "lucide-react";
 import {
   GYSH_ROLE_ACCENT,
@@ -78,7 +78,7 @@ function RoleBubble({
         background: bg,
         color: fg,
         WebkitTextFillColor: fg,
-        fontSize: "0.78rem",
+        fontSize: "0.9375rem",
         fontWeight: active ? 700 : 600,
         cursor: disabled ? "not-allowed" : "pointer",
         opacity: disabled ? 0.55 : 1,
@@ -215,7 +215,7 @@ function RoleBubbles({
                 gap: 4,
               }}
             >
-              <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", padding: "2px 6px 6px" }}>
+              <div style={{ fontSize: "0.9375rem", color: "var(--text-primary)", padding: "2px 6px 6px" }}>
                 Add role
               </div>
               {missing.map((r) => (
@@ -237,7 +237,7 @@ function RoleBubbles({
                     background: "transparent",
                     cursor: "pointer",
                     textAlign: "left",
-                    fontSize: "0.85rem",
+                    fontSize: "0.95rem",
                     color: "var(--charcoal)",
                   }}
                   onMouseEnter={(e) => {
@@ -296,35 +296,9 @@ export function UsersArea() {
     }
   };
 
-  const reloadAudit = async () => {
-    setAuditLoading(true);
-    setAuditError("");
-    try {
-      setAuditEvents(await loadAuthAudit());
-    } catch (e) {
-      setAuditEvents([]);
-      setAuditError(e instanceof ApiError ? e.message : "Failed to load audit trail.");
-    } finally {
-      setAuditLoading(false);
-    }
-  };
-
   useEffect(() => {
     void reload();
   }, []);
-
-  useEffect(() => {
-    if (auditOpen && auditEvents.length === 0 && !auditLoading && !auditError) {
-      void reloadAudit();
-    }
-  }, [auditOpen]);
-
-  const openAuditTrail = () => {
-    setAuditOpen(true);
-    requestAnimationFrame(() => {
-      auditRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-  };
 
   const filtered = users.filter((u) => {
     if (roleFilter !== "all" && !userHasRole(u, roleFilter)) return false;
@@ -342,32 +316,10 @@ export function UsersArea() {
     );
   }, [users]);
 
-  const visibleRoleTabs = useMemo(() => {
-    const q = roleTabQuery.trim().toLowerCase();
-    if (!q) return GYSH_ROLES;
-    return GYSH_ROLES.filter(
-      (r) =>
-        GYSH_ROLE_SHORT[r].toLowerCase().includes(q) ||
-        GYSH_ROLE_LABELS[r].toLowerCase().includes(q) ||
-        r.includes(q),
-    );
-  }, [roleTabQuery]);
-
-  const filteredAudit = useMemo(() => {
-    const q = auditFilter.trim().toLowerCase();
-    if (!q) return auditEvents;
-    return auditEvents.filter(
-      (e) =>
-        e.action.toLowerCase().includes(q) ||
-        e.email.toLowerCase().includes(q) ||
-        e.detail.toLowerCase().includes(q) ||
-        e.at.toLowerCase().includes(q),
-    );
-  }, [auditEvents, auditFilter]);
-
   const addUser = async () => {
     if (!name.trim() || !email.trim()) return;
-    const newRoles: GyshRole[] = roleFilter !== "all" ? [roleFilter] : ["adult"];
+    const rolesToSave: GyshRole[] =
+      newRoles.length > 0 ? newRoles : roleFilter !== "all" ? [roleFilter] : ["adult"];
     setBusy(true);
     setSaveMsg("");
     setError("");
@@ -375,7 +327,7 @@ export function UsersArea() {
       await saveUser({
         name: name.trim(),
         email: email.trim().toLowerCase(),
-        roles: newRoles,
+        roles: rolesToSave,
         status: "pending",
         notes: "",
         joinedAt: new Date().toISOString().slice(0, 10),
@@ -495,10 +447,10 @@ export function UsersArea() {
         <h2 style={{ fontSize: "1.5rem", color: "var(--charcoal)", display: "flex", alignItems: "center", gap: "8px" }}>
           <Users size={22} style={{ color: "var(--bronze)" }} /> Users Area
         </h2>
-        <p style={{ color: "var(--text-secondary)", marginTop: "6px", fontSize: "0.9rem" }}>
-          GYSH audiences in production D1 — Admin, QA, Kids, Teens, Adult, and Senior. Assigned roles show as
-          highlighted bubbles; click a bubble to toggle, or use + to add a role. Passwords are never shown —
-          only set or reset from Edit.
+        <p style={{ color: "var(--text-primary)", marginTop: "6px", fontSize: "1rem" }}>
+          GYSH audiences in production D1 — Admin, QA, Dev, Kids, Teens, Adult, and Senior. Assigned roles show as
+          highlighted bubbles; click a bubble to toggle, or use + to add a role. Failed tests assign to Evelyn (Dev).
+          Passwords are never shown — only set or reset from Edit.
         </p>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "12px", marginTop: "18px" }}>
@@ -524,14 +476,14 @@ export function UsersArea() {
                 {GYSH_ROLE_SHORT[r]}
               </div>
               <div style={{ fontSize: "1.4rem", fontWeight: 800, color: GYSH_ROLE_ACCENT[r] }}>{counts[r]}</div>
-              <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: 4 }}>{GYSH_ROLE_LABELS[r]}</div>
+              <div style={{ fontSize: "1rem", color: "var(--text-primary)", marginTop: 4 }}>{GYSH_ROLE_LABELS[r]}</div>
             </button>
           ))}
         </div>
       </div>
 
       {error && (
-        <div style={{ padding: "12px 14px", borderRadius: 8, background: "rgba(155,47,40,0.1)", border: "1px solid rgba(155,47,40,0.35)", color: "#9B2F28", fontSize: "0.85rem" }}>
+        <div style={{ padding: "12px 14px", borderRadius: 8, background: "rgba(155,47,40,0.1)", border: "1px solid rgba(155,47,40,0.35)", color: "#9B2F28", fontSize: "0.95rem" }}>
           {error}
         </div>
       )}
@@ -563,20 +515,20 @@ export function UsersArea() {
         </div>
         <div className="form-group" style={{ margin: 0 }}>
           <label className="form-label">Roles</label>
-          <RoleBubbles value={roles} onChange={setRoles} showAll disabled={busy} />
+          <RoleBubbles value={newRoles} onChange={setNewRoles} showAll disabled={busy} />
         </div>
       </div>
 
       {saveMsg && (
-        <div style={{ padding: "10px 14px", borderRadius: 8, background: "rgba(95,122,69,0.12)", border: "1px solid rgba(95,122,69,0.35)", color: "#3f5230", fontSize: "0.85rem" }}>
+        <div style={{ padding: "10px 14px", borderRadius: 8, background: "rgba(95,122,69,0.12)", border: "1px solid rgba(95,122,69,0.35)", color: "#3f5230", fontSize: "0.95rem" }}>
           {saveMsg}
         </div>
       )}
 
       {loading ? (
-        <p style={{ color: "var(--text-muted)" }}>Loading users from database…</p>
+        <p style={{ color: "var(--text-primary)" }}>Loading users from database…</p>
       ) : filtered.length === 0 ? (
-        <p style={{ color: "var(--text-muted)" }}>
+        <p style={{ color: "var(--text-primary)" }}>
           {roleFilter !== "all" || statusFilter !== "all"
             ? "No users match the current filters. Clear role/status filters to see everyone."
             : "No users yet."}
@@ -603,13 +555,13 @@ export function UsersArea() {
                     <div style={{ display: "grid", gridTemplateColumns: "1.4fr 0.9fr auto", gap: "12px", alignItems: "start" }}>
                       <div>
                         <strong style={{ color: "var(--charcoal)" }}>{u.name}</strong>
-                        <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{u.email}</div>
-                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: 4 }}>{u.notes || "—"}</div>
+                        <div style={{ fontSize: "0.9375rem", color: "var(--text-primary)" }}>{u.email}</div>
+                        <div style={{ fontSize: "0.9375rem", color: "var(--text-primary)", marginTop: 4 }}>{u.notes || "—"}</div>
                         {u.canLogin && (
-                          <div style={{ fontSize: "0.7rem", color: "var(--bronze)", marginTop: 4 }}>Portal login account</div>
+                          <div style={{ fontSize: "0.9375rem", color: "var(--bronze)", marginTop: 4 }}>Portal login account</div>
                         )}
                       </div>
-                      <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
+                      <div style={{ fontSize: "0.95rem", color: "var(--text-primary)" }}>
                         {u.status} · Joined {u.joinedAt}
                       </div>
                       <button type="button" className="btn btn-outline" onClick={() => startEdit(u)} style={{ padding: "8px 12px" }}>
@@ -617,7 +569,7 @@ export function UsersArea() {
                       </button>
                     </div>
                     <div>
-                      <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginBottom: 6, fontWeight: 600 }}>
+                      <div style={{ fontSize: "1rem", color: "var(--text-primary)", marginBottom: 6, fontWeight: 600 }}>
                         Roles
                       </div>
                       <RoleBubbles

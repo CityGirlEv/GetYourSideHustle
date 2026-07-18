@@ -23,7 +23,7 @@ function TaskLine({ t, tone }: { t: GyshTask; tone: "overdue" | "today" }) {
         alignItems: "start",
         padding: "10px 0",
         borderBottom: "1px solid var(--border-color)",
-        fontSize: "0.88rem",
+        fontSize: "0.95rem",
       }}
     >
       <span className="flat-label flat-label--id">{t.id}</span>
@@ -37,7 +37,7 @@ function TaskLine({ t, tone }: { t: GyshTask; tone: "overdue" | "today" }) {
       >
         {t.dueDate || "—"}
       </span>
-      <span style={{ color: "var(--text-muted)", whiteSpace: "nowrap" }}>
+      <span style={{ color: "var(--text-primary)", whiteSpace: "nowrap" }}>
         {TASK_STATUS_LABELS[t.status]}
       </span>
     </li>
@@ -95,7 +95,7 @@ export function DueTasksModal({
             <h3 id="due-tasks-modal-title" style={{ margin: 0, fontSize: "1.25rem", color: "var(--charcoal)" }}>
               Tasks needing attention
             </h3>
-            <p style={{ margin: "6px 0 0", fontSize: "0.88rem", color: "var(--text-secondary)" }}>
+            <p style={{ margin: "6px 0 0", fontSize: "0.95rem", color: "var(--text-primary)" }}>
               Due today or past due for {assigneeLabel} (includes Both).
             </p>
           </div>
@@ -111,12 +111,12 @@ export function DueTasksModal({
         </div>
 
         {empty ? (
-          <p style={{ marginTop: 20, color: "var(--text-secondary)" }}>Nothing due today or overdue. Nice work.</p>
+          <p style={{ marginTop: 20, color: "var(--text-primary)" }}>Nothing due today or overdue. Nice work.</p>
         ) : (
           <div style={{ marginTop: 16 }}>
             {overdue.length > 0 && (
               <section style={{ marginBottom: 18 }}>
-                <h4 style={{ margin: "0 0 4px", fontSize: "0.8rem", color: "#9B2F28", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                <h4 style={{ margin: "0 0 4px", fontSize: "0.9375rem", color: "#9B2F28", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                   Past due ({overdue.length})
                 </h4>
                 <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
@@ -128,7 +128,7 @@ export function DueTasksModal({
             )}
             {dueToday.length > 0 && (
               <section>
-                <h4 style={{ margin: "0 0 4px", fontSize: "0.8rem", color: "var(--bronze)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                <h4 style={{ margin: "0 0 4px", fontSize: "0.9375rem", color: "var(--bronze)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                   Due today ({dueToday.length})
                 </h4>
                 <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>

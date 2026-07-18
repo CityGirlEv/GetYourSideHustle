@@ -8,15 +8,33 @@
 
 import type { DbUser, Env } from "./auth";
 import { error, json } from "./crypto";
+import { FAILED_TEST_ASSIGNEE } from "./roles";
 
 export type AutomatedSuite = "vitest" | "playwright" | "all";
+/** all = full catalog; new = only not_run / missing statuses (default after baseline). */
+export type AutomatedRunMode = "all" | "new";
 
 type CaseResult = {
   caseId: string;
   status: "pass" | "fail";
   note: string;
   assignee: string;
+  sprint: number;
 };
+
+/** Match src/lib/gysh-sprints.ts currentSprintIndex (Sprint 0 starts 2026-07-14). */
+function currentSprintIndex(ref: Date = new Date()): number {
+  const d = new Date(ref);
+  const day = d.getDay();
+  const toTue = (day + 5) % 7;
+  d.setDate(d.getDate() - toTue);
+  d.setHours(0, 0, 0, 0);
+  const base = new Date(2026, 6, 14);
+  base.setHours(0, 0, 0, 0);
+  const idx = Math.floor((d.getTime() - base.getTime()) / (7 * 24 * 60 * 60 * 1000));
+  if (!Number.isFinite(idx)) return 0;
+  return Math.max(0, Math.min(7, idx));
+}
 
 function pad(n: number): string {
   return String(n).padStart(3, "0");
@@ -182,6 +200,26 @@ async function ensureRunTable(env: Env): Promise<void> {
   ).run();
 }
 
+async function ensureGeneratedCasesTable(env: Env): Promise<void> {
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS generated_test_cases (
+      id TEXT PRIMARY KEY,
+      area TEXT NOT NULL,
+      title TEXT NOT NULL,
+      priority TEXT NOT NULL DEFAULT 'P1',
+      suite TEXT NOT NULL DEFAULT 'vitest',
+      steps_json TEXT NOT NULL DEFAULT '[]',
+      expected TEXT NOT NULL DEFAULT '',
+      failure_detail TEXT NOT NULL DEFAULT '',
+      fix_steps_json TEXT NOT NULL DEFAULT '[]',
+      severity TEXT NOT NULL DEFAULT 'P1',
+      source_file TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL,
+      created_from_run TEXT NOT NULL DEFAULT ''
+    )`,
+  ).run();
+}
+
 async function upsertCaseResults(env: Env, actor: DbUser, results: CaseResult[]): Promise<void> {
   if (results.length === 0) return;
   await env.DB.prepare(
@@ -206,22 +244,121 @@ async function upsertCaseResults(env: Env, actor: DbUser, results: CaseResult[])
 
   const now = new Date().toISOString();
   const sql = `INSERT INTO test_case_status (case_id, status, note, assignee, sprint, updated_at, updated_by)
-     VALUES (?, ?, ?, ?, 0, ?, ?)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(case_id) DO UPDATE SET
        status = excluded.status,
        note = excluded.note,
        assignee = excluded.assignee,
+       sprint = excluded.sprint,
        updated_at = excluded.updated_at,
        updated_by = excluded.updated_by`;
 
   const CHUNK = 40;
   for (let i = 0; i < results.length; i += CHUNK) {
     const slice = results.slice(i, i + CHUNK);
-    const stmts = slice.map((r) =>
-      env.DB.prepare(sql).bind(r.caseId, r.status, r.note, r.assignee, now, actor.email),
-    );
+    const stmts = slice.map((r) => {
+      const assignee = r.status === "fail" ? FAILED_TEST_ASSIGNEE : r.assignee;
+      return env.DB.prepare(sql).bind(r.caseId, r.status, r.note, assignee, r.sprint, now, actor.email);
+    });
     await env.DB.batch(stmts);
   }
+}
+
+async function createFailureTestCase(
+  env: Env,
+  actor: DbUser,
+  args: {
+    suite: "vitest" | "playwright";
+    title: string;
+    severity: "P0" | "P1" | "P2" | "P3";
+    why: string;
+    reproSteps: string[];
+    fixSteps: string[];
+    detail: string;
+    sourceFile?: string;
+    runId: string;
+    sprint: number;
+  },
+): Promise<string> {
+  await ensureGeneratedCasesTable(env);
+  const id = `${args.suite === "vitest" ? "VT" : "PW"}-FAIL-${crypto.randomUUID().slice(0, 8)}`;
+  const now = new Date().toISOString();
+  const failureDetail = [
+    `SEVERITY: ${args.severity}`,
+    `WHY IT FAILED: ${args.why}`,
+    "",
+    args.detail,
+  ].join("\n");
+  await env.DB.prepare(
+    `INSERT INTO generated_test_cases (
+      id, area, title, priority, suite, steps_json, expected, failure_detail, fix_steps_json,
+      severity, source_file, created_at, created_from_run
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  )
+    .bind(
+      id,
+      args.suite === "vitest" ? "Vitest Failure" : "Playwright Failure",
+      `FAIL: ${args.title}`.slice(0, 180),
+      args.severity,
+      args.suite,
+      JSON.stringify(args.reproSteps),
+      "Suite check passes with no errors",
+      failureDetail,
+      JSON.stringify(args.fixSteps),
+      args.severity,
+      args.sourceFile ?? "",
+      now,
+      args.runId,
+    )
+    .run();
+
+  const note = [
+    failureDetail,
+    "",
+    "STEPS TO REPRODUCE:",
+    ...args.reproSteps.map((s, i) => `${i + 1}. ${s}`),
+    "",
+    "STEPS TO FIX:",
+    ...args.fixSteps.map((s, i) => `${i + 1}. ${s}`),
+  ].join("\n");
+
+  await upsertCaseResults(env, actor, [
+    {
+      caseId: id,
+      status: "fail",
+      note,
+      assignee: FAILED_TEST_ASSIGNEE,
+      sprint: args.sprint,
+    },
+  ]);
+  return id;
+}
+
+async function statusesForIds(
+  env: Env,
+  ids: string[],
+): Promise<Record<string, string>> {
+  const out: Record<string, string> = {};
+  if (ids.length === 0) return out;
+  // Chunk IN queries
+  const CHUNK = 80;
+  for (let i = 0; i < ids.length; i += CHUNK) {
+    const slice = ids.slice(i, i + CHUNK);
+    const placeholders = slice.map(() => "?").join(",");
+    const { results } = await env.DB.prepare(
+      `SELECT case_id, status FROM test_case_status WHERE case_id IN (${placeholders})`,
+    )
+      .bind(...slice)
+      .all<{ case_id: string; status: string }>();
+    for (const row of results ?? []) out[row.case_id] = row.status;
+  }
+  return out;
+}
+
+function shouldUpdateCase(mode: AutomatedRunMode, current: string | undefined): boolean {
+  if (mode === "all") return true;
+  // new = only missing or not_run
+  return !current || current === "not_run";
 }
 
 function siteBase(request: Request): string {
@@ -239,7 +376,7 @@ export async function runAutomatedTests(
   request: Request,
   actor: DbUser,
 ): Promise<Response> {
-  let body: { suite?: string };
+  let body: { suite?: string; mode?: string };
   try {
     body = await request.json();
   } catch {
@@ -249,8 +386,11 @@ export async function runAutomatedTests(
   if (!["vitest", "playwright", "all"].includes(suite)) {
     return error("suite must be vitest, playwright, or all.");
   }
+  const mode = (body.mode === "all" ? "all" : "new") as AutomatedRunMode;
+  const sprint = currentSprintIndex();
 
   await ensureRunTable(env);
+  await ensureGeneratedCasesTable(env);
   // Ensure test status table exists before vitest updates wizard rows.
   await env.DB.prepare(
     `CREATE TABLE IF NOT EXISTS test_case_status (
@@ -283,7 +423,9 @@ export async function runAutomatedTests(
 
   const allDetails: string[] = [];
   const caseResults: CaseResult[] = [];
+  const createdFailureIds: string[] = [];
   let overallOk = true;
+  allDetails.push(`Run mode: ${mode} · sprint: ${sprint}`);
 
   if (suite === "vitest" || suite === "all") {
     const vitest = runVitestChecks();
@@ -293,35 +435,83 @@ export async function runAutomatedTests(
       ? `Portal Vitest runner passed. ${vitest.details.join("; ")}`
       : `Portal Vitest runner failed. ${vitest.details.join("; ")}`;
     const status = vitest.ok ? "pass" : "fail";
+    const existing = await statusesForIds(env, [...VITEST_CATALOG_IDS]);
     for (const id of VITEST_CATALOG_IDS) {
+      if (!shouldUpdateCase(mode, existing[id])) continue;
       caseResults.push({
         caseId: id,
         status,
         note,
         assignee: "vitest",
+        sprint,
       });
     }
+
+    if (!vitest.ok) {
+      const failBits = vitest.details.filter((d) => d.includes("!=") || d.startsWith("Duplicate") || d.includes("incomplete"));
+      const failId = await createFailureTestCase(env, actor, {
+        suite: "vitest",
+        title: "Portal Vitest structural checks",
+        severity: "P0",
+        why: "Portal Vitest structural runner detected catalog/matrix integrity errors.",
+        reproSteps: [
+          "Open Admin → Testing Portal.",
+          "Click Run Vitest (or npm run test:unit locally).",
+          "Compare wizard matrix sizes / catalog ids in the run log.",
+        ],
+        fixSteps: [
+          "Inspect gysh-wizard-scenarios / AUTOMATED_VITEST_CASES for size or id drift.",
+          "Align expected path counts (Kids/Junior 108, Adult/Senior 378) with the matrix generator.",
+          "Re-run Vitest; mark this failure case Pass when green.",
+        ],
+        detail: failBits.join("\n") || vitest.details.join("\n"),
+        sourceFile: "functions/_lib/automated-runner.ts",
+        runId,
+        sprint,
+      });
+      createdFailureIds.push(failId);
+      allDetails.push(`Created failure case ${failId} (P0) in sprint ${sprint}`);
+    }
+
     // Update existing wizard matrix rows only (avoid inserting ~972 empty sprint rows).
     const now = new Date().toISOString();
     const wizardNote = vitest.ok
       ? "Covered by portal Vitest matrix runner (npm run test:unit equivalent checks)."
       : `Wizard matrix structural check failed: ${vitest.details.filter((d) => d.includes("!=")).join("; ") || "see run details"}`;
-    await env.DB.prepare(
-      `UPDATE test_case_status
-       SET status = ?, note = ?, assignee = ?, updated_at = ?, updated_by = ?
-       WHERE case_id LIKE 'KIDS-FMSH-%'
-          OR case_id LIKE 'JR-FMSH-%'
-          OR case_id LIKE 'ADULT-FMSH-%'
-          OR case_id LIKE 'SENIOR-FMSH-%'
-          OR case_id LIKE 'WIZARD-EDGE-%'`,
-    )
-      .bind(status, wizardNote, "vitest", now, actor.email)
-      .run();
-    allDetails.push(
-      vitest.ok
-        ? "Updated existing wizard FMSH rows in D1 to pass"
-        : "Updated existing wizard FMSH rows in D1 to fail",
-    );
+    if (mode === "all") {
+      await env.DB.prepare(
+        `UPDATE test_case_status
+         SET status = ?, note = ?, assignee = ?, sprint = ?, updated_at = ?, updated_by = ?
+         WHERE case_id LIKE 'KIDS-FMSH-%'
+            OR case_id LIKE 'JR-FMSH-%'
+            OR case_id LIKE 'ADULT-FMSH-%'
+            OR case_id LIKE 'SENIOR-FMSH-%'
+            OR case_id LIKE 'WIZARD-EDGE-%'`,
+      )
+        .bind(status, wizardNote, "vitest", sprint, now, actor.email)
+        .run();
+      allDetails.push(
+        vitest.ok
+          ? "Updated existing wizard FMSH rows in D1 to pass"
+          : "Updated existing wizard FMSH rows in D1 to fail",
+      );
+    } else {
+      await env.DB.prepare(
+        `UPDATE test_case_status
+         SET status = ?, note = ?, assignee = ?, sprint = ?, updated_at = ?, updated_by = ?
+         WHERE (status = 'not_run' OR status IS NULL OR status = '')
+           AND (
+             case_id LIKE 'KIDS-FMSH-%'
+             OR case_id LIKE 'JR-FMSH-%'
+             OR case_id LIKE 'ADULT-FMSH-%'
+             OR case_id LIKE 'SENIOR-FMSH-%'
+             OR case_id LIKE 'WIZARD-EDGE-%'
+           )`,
+      )
+        .bind(status, wizardNote, "vitest", sprint, now, actor.email)
+        .run();
+      allDetails.push("Updated only not_run wizard FMSH rows (mode=new)");
+    }
   }
 
   if (suite === "playwright" || suite === "all") {
@@ -329,14 +519,43 @@ export async function runAutomatedTests(
     const pw = await runPlaywrightSmoke(base);
     allDetails.push(`=== Playwright HTTP smoke (${base}) ===`, ...pw.details);
     overallOk = overallOk && pw.ok;
+    const pwIds = PLAYWRIGHT_CATALOG.map((c) => c.id);
+    const existingPw = await statusesForIds(env, pwIds);
     for (const c of PLAYWRIGHT_CATALOG) {
+      if (!shouldUpdateCase(mode, existingPw[c.id])) continue;
       const check = pw.byCheck[c.check] ?? pw.byCheck.shell;
       caseResults.push({
         caseId: c.id,
         status: check.ok ? "pass" : "fail",
         note: `${check.note} Full browser suite: npm run test:e2e`,
         assignee: c.assignee,
+        sprint,
       });
+      if (!check.ok) {
+        const failId = await createFailureTestCase(env, actor, {
+          suite: "playwright",
+          title: `${c.id} — ${c.check} smoke`,
+          severity: c.check === "health" || c.check === "login" ? "P0" : "P1",
+          why: `Playwright portal HTTP smoke check "${c.check}" failed against ${base}.`,
+          reproSteps: [
+            `Open ${base} in a browser.`,
+            "Confirm /api/health returns ok and the homepage shell loads.",
+            `Re-run Testing Portal → Run Playwright (case ${c.id}).`,
+            "Optional full UI: npm run test:e2e",
+          ],
+          fixSteps: [
+            "Verify Pages deploy includes Functions + D1 bindings.",
+            "Fix the failing route/health response or content assertion.",
+            "Re-run Playwright smoke; mark this failure case Pass when green.",
+          ],
+          detail: check.note,
+          sourceFile: "functions/_lib/automated-runner.ts",
+          runId,
+          sprint,
+        });
+        createdFailureIds.push(failId);
+        allDetails.push(`Created failure case ${failId} for ${c.id}`);
+      }
     }
   }
 
@@ -344,8 +563,8 @@ export async function runAutomatedTests(
 
   const finishedAt = new Date().toISOString();
   const summary = overallOk
-    ? `Passed (${suite}) — ${caseResults.filter((r) => r.status === "pass").length}/${caseResults.length} cases`
-    : `Failed (${suite}) — ${caseResults.filter((r) => r.status === "fail").length} failing`;
+    ? `Passed (${suite}/${mode}) — ${caseResults.filter((r) => r.status === "pass").length}/${caseResults.length} cases updated · sprint ${sprint}`
+    : `Failed (${suite}/${mode}) — ${caseResults.filter((r) => r.status === "fail").length} failing · ${createdFailureIds.length} new failure cases · sprint ${sprint}`;
 
   await env.DB.prepare(
     `UPDATE automated_test_runs SET status = ?, summary = ?, details = ?, finished_at = ? WHERE id = ?`,
@@ -357,12 +576,16 @@ export async function runAutomatedTests(
     ok: overallOk,
     runId,
     suite,
+    mode,
+    sprint,
     summary,
     details: allDetails,
     updatedCases: caseResults.length,
+    createdFailureCases: createdFailureIds,
     commands: {
       vitest: "npm run test:unit",
       playwright: "npm run test:e2e",
+      report: "node --use-system-ca scripts/report-vitest-to-d1.mjs",
     },
   });
 }

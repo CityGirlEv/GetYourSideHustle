@@ -309,7 +309,7 @@ export function WorkshopsHub() {
                 key={f}
                 type="button"
                 className={`btn btn-outline ${statusFilter === f ? "active" : ""}`}
-                style={{ padding: "6px 14px", fontSize: "0.8rem" }}
+                style={{ padding: "6px 14px", fontSize: "0.9375rem" }}
                 onClick={() => setStatusFilter(f)}
               >
                 {f === "all" ? "All" : STATUS_LABELS[f]}
@@ -324,7 +324,7 @@ export function WorkshopsHub() {
               key={a}
               type="button"
               className={`nav-link-btn ${audienceFilter === a ? "active" : ""}`}
-              style={{ borderRadius: 10, fontSize: "0.8rem" }}
+              style={{ borderRadius: 10, fontSize: "0.9375rem" }}
               onClick={() => setAudienceFilter(a)}
             >
               {a === "all" ? "All audiences" : AUDIENCE_LABELS[a]}
@@ -333,7 +333,7 @@ export function WorkshopsHub() {
         </div>
 
         {loading ? (
-          <p style={{ color: "var(--text-muted)", padding: 24 }}>Loading workshops…</p>
+          <p style={{ color: "var(--text-primary)", padding: 24 }}>Loading workshops…</p>
         ) : (
           <div className="workshops-grid">
             {filtered.map((w) => (
@@ -414,7 +414,7 @@ export function WorkshopsHub() {
 
         {!loading && filtered.length === 0 && (
           <div className="glass" style={{ padding: 40, textAlign: "center", borderRadius: 16 }}>
-            <p style={{ color: "var(--text-secondary)" }}>No workshops match those filters yet — check back soon.</p>
+            <p style={{ color: "var(--text-primary)" }}>No workshops match those filters yet — check back soon.</p>
           </div>
         )}
       </section>

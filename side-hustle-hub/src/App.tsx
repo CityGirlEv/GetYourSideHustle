@@ -32,14 +32,20 @@ import { HustleQuiz } from "./components/HustleQuiz";
 import { FindMineWizardSelector } from "./components/FindMineWizardSelector";
 import { StepByStepGuides } from "./components/StepByStepGuides";
 import { FreeGuidesPage } from "./components/FreeGuidesPage";
+import { MarketingManual } from "./components/MarketingManual";
 import { CommunityHub } from "./components/CommunityHub";
+import {
+  MARKETING_GUIDE_MENU,
+  type MarketingGuideId,
+} from "./lib/marketing-guides";
 import { KidsCorner } from "./components/KidsCorner";
 import { SeniorSideHustles } from "./components/SeniorSideHustles";
 import { UserPortal } from "./components/UserPortal";
 import {
   AdminPortal,
-  ADMIN_TABS,
+  ADMIN_MENU_GROUPS,
   ADMIN_USER_GUIDE_LINKS,
+  adminTabById,
   type AdminTab,
 } from "./components/AdminPortal";
 import type { UserGuideId } from "./components/admin/UserGuidesHub";
@@ -54,7 +60,14 @@ import { LaunchChecklistPage } from "./components/LaunchChecklistPage";
 import { ParentConsentPage } from "./components/ParentConsentPage";
 import { clearConsentTokenFromUrl, readConsentTokenFromUrl } from "./lib/junior-signup";
 import { SITE_NAME } from "./lib/site-config";
-import { login, logout, resetPassword, type AuthUser } from "./lib/auth";
+import {
+  confirmPasswordReset,
+  login,
+  logout,
+  requestPasswordReset,
+  type AuthUser,
+} from "./lib/auth";
+import { clearResetTokenFromUrl, readResetTokenFromUrl } from "./lib/password-reset-url";
 import type { GuidePeekNav } from "./lib/launch-guide-peeks";
 import {
   ACT_AS_AUDIENCE_OPTIONS,
@@ -382,21 +395,25 @@ function App() {
   const [passInput, setPassInput] = useState("");
   const [loginError, setLoginError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [loginMode, setLoginMode] = useState<"login" | "reset">("login");
+  const [loginMode, setLoginMode] = useState<"login" | "forgot" | "set-password">(() =>
+    readResetTokenFromUrl() ? "set-password" : "login",
+  );
+  const [resetToken, setResetToken] = useState<string | null>(() => readResetTokenFromUrl());
   const [resetEmail, setResetEmail] = useState("");
-  const [resetCurrent, setResetCurrent] = useState("");
   const [resetNew, setResetNew] = useState("");
   const [resetConfirm, setResetConfirm] = useState("");
   const [resetError, setResetError] = useState("");
   const [resetSuccess, setResetSuccess] = useState("");
-  const [showResetCurrent, setShowResetCurrent] = useState(false);
   const [showResetNew, setShowResetNew] = useState(false);
+  const [resetBusy, setResetBusy] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [adminSessionKey, setAdminSessionKey] = useState(0);
   const [adminTab, setAdminTab] = useState<AdminTab>("schedule");
-  const [adminUserGuide, setAdminUserGuide] = useState<UserGuideId>("member");
+  const [adminUserGuide, setAdminUserGuide] = useState<UserGuideId>("master");
   const [adminMenuOpen, setAdminMenuOpen] = useState(false);
   const adminMenuRef = useRef<HTMLDivElement>(null);
+  const [guidesMenuOpen, setGuidesMenuOpen] = useState(false);
+  const guidesMenuRef = useRef<HTMLDivElement>(null);
   const [actAsTarget, setActAsTarget] = useState<ActAsTarget>(() => readActAsTarget());
   const [actAsMenuOpen, setActAsMenuOpen] = useState(false);
   const actAsMenuRef = useRef<HTMLDivElement>(null);
@@ -408,6 +425,7 @@ function App() {
   const [seniorsEntryTab, setSeniorsEntryTab] = useState<"guides" | null>(null);
   const [howOpen, setHowOpen] = useState(false);
   const [guidesDetailId, setGuidesDetailId] = useState<string | null>(null);
+  const [guidesManualId, setGuidesManualId] = useState<MarketingGuideId | null>(null);
   const [findMineMode, setFindMineMode] = useState<"select" | "adult">("select");
   /** Bump when free Blueprint signup succeeds so member access re-reads storage. */
   const [memberAccessTick, setMemberAccessTick] = useState(0);
@@ -440,9 +458,28 @@ function App() {
     setActiveView(view);
     setMobileMenuOpen(false);
     setAdminMenuOpen(false);
-    if (view !== "guides") setGuidesDetailId(null);
+    setGuidesMenuOpen(false);
+    if (view !== "guides") {
+      setGuidesDetailId(null);
+      setGuidesManualId(null);
+    }
     setHowOpen(false);
     if (view === "quiz") setFindMineMode("select");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const openGuidesLibrary = () => {
+    setGuidesDetailId(null);
+    setGuidesManualId(null);
+    goTo("guides");
+  };
+
+  const openGuidesManual = (id: MarketingGuideId) => {
+    setGuidesDetailId(null);
+    setGuidesManualId(id);
+    setActiveView("guides");
+    setMobileMenuOpen(false);
+    setGuidesMenuOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -471,7 +508,7 @@ function App() {
         };
       case "kids":
         return {
-          title: "How GYSH Kids/Teens Corner works",
+          title: "How GYSH Kids & Teens Corner works",
           steps: [
             "Choose Kids (ages 4–12) or Teens (ages 13–17).",
             "Use the GYSH Match Wizard, Ideas, savings tools, Guides, and Join the Team.",
@@ -669,6 +706,22 @@ function App() {
   }, [adminMenuOpen]);
 
   useEffect(() => {
+    if (!guidesMenuOpen) return;
+    const onPointerDown = (e: MouseEvent | TouchEvent) => {
+      const el = guidesMenuRef.current;
+      if (el && !el.contains(e.target as Node)) {
+        setGuidesMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("touchstart", onPointerDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("touchstart", onPointerDown);
+    };
+  }, [guidesMenuOpen]);
+
+  useEffect(() => {
     if (!actAsMenuOpen) return;
     const onPointerDown = (e: MouseEvent | TouchEvent) => {
       const el = actAsMenuRef.current;
@@ -796,45 +849,81 @@ function App() {
   };
 
   const openResetMode = () => {
-    setLoginMode("reset");
+    setLoginMode("forgot");
     setLoginError("");
     setResetError("");
     setResetSuccess("");
     setResetEmail(emailInput);
-    setResetCurrent("");
     setResetNew("");
     setResetConfirm("");
+    setResetToken(null);
   };
 
   const backToLogin = () => {
     setLoginMode("login");
     setResetError("");
     setResetSuccess("");
-    setShowResetCurrent(false);
     setShowResetNew(false);
+    setResetToken(null);
+    clearResetTokenFromUrl();
   };
 
-  const handleResetSubmit = async (e: React.FormEvent) => {
+  const handleForgotSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setResetError("");
     setResetSuccess("");
-    const result = await resetPassword({
-      email: resetEmail,
-      currentPassword: resetCurrent,
-      newPassword: resetNew,
-      confirmPassword: resetConfirm,
-    });
+    setResetBusy(true);
+    const result = await requestPasswordReset(resetEmail);
+    setResetBusy(false);
     if (!result.ok) {
       setResetError(result.error);
       return;
     }
-    setResetSuccess(result.message || "Password updated. You can sign in with your new password.");
-    setPassInput("");
-    setResetCurrent("");
-    setResetNew("");
-    setResetConfirm("");
+    setResetSuccess(
+      result.message ||
+        "We emailed a password reset link to that address. Check your inbox (and spam).",
+    );
     setEmailInput(resetEmail.trim().toLowerCase());
   };
+
+  const handleSetPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetError("");
+    setResetSuccess("");
+    if (!resetToken) {
+      setResetError("This reset link is missing or invalid. Request a new one.");
+      return;
+    }
+    setResetBusy(true);
+    const result = await confirmPasswordReset({
+      token: resetToken,
+      newPassword: resetNew,
+      confirmPassword: resetConfirm,
+    });
+    setResetBusy(false);
+    if (!result.ok) {
+      setResetError(result.error);
+      return;
+    }
+    setResetSuccess(result.message || "Password updated. Sign in with your new password.");
+    setPassInput("");
+    setResetNew("");
+    setResetConfirm("");
+    if (result.email) setEmailInput(result.email);
+    clearResetTokenFromUrl();
+    setResetToken(null);
+    setLoginMode("login");
+  };
+
+  useEffect(() => {
+    const token = readResetTokenFromUrl();
+    if (!token) return;
+    setResetToken(token);
+    setLoginMode("set-password");
+    setActiveView("login");
+    setResetError("");
+    setResetSuccess("");
+  }, []);
 
   const handleLogout = async () => {
     await logout();
@@ -879,11 +968,22 @@ function App() {
           ? "GYSH Adults Match Wizard"
           : "Four GYSH Match Wizards. One Family Adventure.";
       case "calculators": return "GYSH Profit Estimator";
-      case "guides": return "GYSH Guides";
+      case "guides":
+        if (guidesManualId) {
+          const labels: Record<MarketingGuideId, string> = {
+            adult: "Adult Marketing Manual",
+            kids: "Kids Marketing Manual",
+            teens: "Teens Marketing Manual",
+            seniors: "Seniors Marketing Manual",
+            master: "Complete GYSH Guide",
+          };
+          return labels[guidesManualId];
+        }
+        return "GYSH Guides";
       case "checklist": return "GYSH Side Hustle Guide";
       case "community": return "GYSH Community";
       case "workshops": return "GYSH Workshops & Speakers";
-      case "kids": return "GYSH Kids/Teens Corner";
+      case "kids": return "GYSH Kids & Teens Corner";
       case "seniors": return "GYSH Seniors Corner";
       case "about": return "About GYSH";
       case "contact": return "GYSH Contact Us";
@@ -900,7 +1000,10 @@ function App() {
       case "dashboard": return "Explore verified side hustles and step-by-step guides to grow your earnings.";
       case "quiz": return "";
       case "calculators": return "Estimate cash flow, product margins, and affiliate returns.";
-      case "guides": return "Browse Adult, Senior, Kids, and Teens guides — free ones are open; member guides unlock when you join.";
+      case "guides":
+        return guidesManualId
+          ? "Downloadable showcase manual with checklists, journey arrows, membership perks, and CTAs."
+          : "Browse Adult, Senior, Kids, and Teens guides — plus downloadable marketing manuals from the Guides menu.";
       case "checklist": return "Practical launch steps — preview is open; the full list unlocks when you sign in.";
       case "workshops": return "Live sessions and guest experts for adult Side Hustles, AI agents, and Kids Glow nights.";
       case "community": return "Ask questions, share updates, and exchange tips with other Side Hustlers.";
@@ -983,7 +1086,7 @@ function App() {
                     width={28}
                     height={28}
                   />
-                  Kids/Teens Corner
+                  Kids & Teens
                 </button>
               </li>
               <li>
@@ -998,19 +1101,61 @@ function App() {
                 </button>
               </li>
               <li>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setGuidesDetailId(null);
-                    goTo("guides");
-                  }}
-                  className={`nav-link-btn ${activeView === "guides" ? "active" : ""}`}
-                  data-testid="nav-free-guides"
-                  aria-label="Guides"
+                <div
+                  ref={guidesMenuRef}
+                  className={`admin-nav-dropdown guides-nav-dropdown${guidesMenuOpen ? " open" : ""}`}
+                  onMouseEnter={() => setGuidesMenuOpen(true)}
+                  onMouseLeave={() => setGuidesMenuOpen(false)}
                 >
-                  <BookOpen size={16} className="nav-icon nav-icon--guides" aria-hidden />
-                  Guides
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (window.matchMedia("(max-width: 980px)").matches) {
+                        openGuidesLibrary();
+                        return;
+                      }
+                      openGuidesLibrary();
+                    }}
+                    className={`nav-link-btn admin-nav-trigger${activeView === "guides" ? " active" : ""}`}
+                    data-testid="nav-free-guides"
+                    aria-label="Guides"
+                    aria-expanded={guidesMenuOpen}
+                    aria-haspopup="menu"
+                  >
+                    <BookOpen size={16} className="nav-icon nav-icon--guides" aria-hidden />
+                    Guides
+                    <ChevronDown size={14} className="admin-nav-chevron" aria-hidden />
+                  </button>
+                  <ul className="admin-nav-menu" role="menu" hidden={!guidesMenuOpen}>
+                    <li role="none">
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className={`admin-nav-item${
+                          activeView === "guides" && !guidesManualId && !guidesDetailId ? " active" : ""
+                        }`}
+                        onClick={openGuidesLibrary}
+                      >
+                        Guides Library
+                      </button>
+                    </li>
+                    {MARKETING_GUIDE_MENU.map((guide) => (
+                      <li key={guide.id} role="none">
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className={`admin-nav-item${
+                            activeView === "guides" && guidesManualId === guide.id ? " active" : ""
+                          }`}
+                          onClick={() => openGuidesManual(guide.id)}
+                          data-testid={`nav-guide-manual-${guide.id}`}
+                        >
+                          {guide.label}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </li>
               <li>
                 <button
@@ -1091,56 +1236,77 @@ function App() {
                       Admin
                       <ChevronDown size={14} className="admin-nav-chevron" aria-hidden />
                     </button>
-                    <ul className="admin-nav-menu" role="menu" hidden={!adminMenuOpen}>
-                      {ADMIN_TABS.filter(
-                        (tab) =>
-                          !tab.adminOnly ||
-                          (authUser?.roles ?? [authUser?.role]).includes("admin"),
-                      ).map((tab) =>
-                        tab.id === "user-guides" ? (
-                          <li key={tab.id} className="admin-nav-group" role="none">
-                            <button
-                              type="button"
-                              role="menuitem"
-                              className={`admin-nav-item${activeView === "admin" && adminTab === "user-guides" ? " active" : ""}`}
-                              onClick={() => goToAdmin("user-guides")}
-                            >
-                              {tab.label}
-                            </button>
-                            <ul className="admin-nav-submenu" role="group" aria-label="User Guides">
-                              {ADMIN_USER_GUIDE_LINKS.map((guide) => (
-                                <li key={guide.id} role="none">
-                                  <button
-                                    type="button"
-                                    role="menuitem"
-                                    className={`admin-nav-item admin-nav-item--sub${
-                                      activeView === "admin" &&
-                                      adminTab === "user-guides" &&
-                                      adminUserGuide === guide.id
-                                        ? " active"
-                                        : ""
-                                    }`}
-                                    onClick={() => goToAdmin("user-guides", guide.id)}
-                                  >
-                                    {guide.label}
-                                  </button>
-                                </li>
-                              ))}
+                    <ul className="admin-nav-menu admin-nav-menu--grouped" role="menu" hidden={!adminMenuOpen}>
+                      {ADMIN_MENU_GROUPS.map((group) => {
+                        const roles = authUser?.roles?.length
+                          ? authUser.roles
+                          : authUser?.role
+                            ? [authUser.role]
+                            : [];
+                        const tabs = group.tabs
+                          .map((id) => adminTabById(id))
+                          .filter((tab): tab is NonNullable<typeof tab> => Boolean(tab))
+                          .filter((tab) => !tab.adminOnly || roles.includes("admin"));
+                        if (tabs.length === 0) return null;
+                        return (
+                          <li key={group.id} className="admin-nav-group" role="none">
+                            <p className="admin-nav-group__label" aria-hidden>
+                              {group.label}
+                            </p>
+                            <ul className="admin-nav-group__list" role="group" aria-label={group.label}>
+                              {tabs.map((tab) =>
+                                tab.id === "user-guides" ? (
+                                  <li key={tab.id} role="none">
+                                    <button
+                                      type="button"
+                                      role="menuitem"
+                                      className={`admin-nav-item${
+                                        activeView === "admin" && adminTab === "user-guides" ? " active" : ""
+                                      }`}
+                                      onClick={() => goToAdmin("user-guides")}
+                                    >
+                                      {tab.label}
+                                    </button>
+                                    <ul className="admin-nav-submenu" role="group" aria-label="User Guides">
+                                      {ADMIN_USER_GUIDE_LINKS.map((guide) => (
+                                        <li key={guide.id} role="none">
+                                          <button
+                                            type="button"
+                                            role="menuitem"
+                                            className={`admin-nav-item admin-nav-item--sub${
+                                              activeView === "admin" &&
+                                              adminTab === "user-guides" &&
+                                              adminUserGuide === guide.id
+                                                ? " active"
+                                                : ""
+                                            }`}
+                                            onClick={() => goToAdmin("user-guides", guide.id)}
+                                          >
+                                            {guide.label}
+                                          </button>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </li>
+                                ) : (
+                                  <li key={tab.id} role="none">
+                                    <button
+                                      type="button"
+                                      role="menuitem"
+                                      className={`admin-nav-item${
+                                        activeView === "admin" && adminTab === tab.id ? " active" : ""
+                                      }`}
+                                      onClick={() => goToAdmin(tab.id)}
+                                    >
+                                      {tab.label}
+                                    </button>
+                                  </li>
+                                ),
+                              )}
                             </ul>
                           </li>
-                        ) : (
-                          <li key={tab.id} role="none">
-                            <button
-                              type="button"
-                              role="menuitem"
-                              className={`admin-nav-item${activeView === "admin" && adminTab === tab.id ? " active" : ""}`}
-                              onClick={() => goToAdmin(tab.id)}
-                            >
-                              {tab.label}
-                            </button>
-                          </li>
-                        ),
-                      )}
+                        );
+                      })}
                     </ul>
                   </div>
                 ) : (
@@ -1251,7 +1417,7 @@ function App() {
                     setActAsMenuOpen(false);
                   }}
                   className="btn btn-outline"
-                  style={{ padding: "6px 12px", fontSize: "0.8rem", gap: "6px" }}
+                  style={{ padding: "6px 12px", fontSize: "0.9375rem", gap: "6px" }}
                 >
                   <LogOut size={12} /> Log Out
                 </button>
@@ -1261,7 +1427,7 @@ function App() {
                 type="button"
                 onClick={() => goTo("login")}
                 className={`btn btn-primary ${activeView === "login" ? "" : ""}`}
-                style={{ padding: "8px 14px", fontSize: "0.85rem", gap: "6px" }}
+                style={{ padding: "8px 14px", fontSize: "0.95rem", gap: "6px" }}
               >
                 <LogIn size={14} />
                 Login
@@ -1302,28 +1468,64 @@ function App() {
             <div
               className={`header-row header-row--how${
                 activeView === "guides" ? " header-row--guides" : ""
+              }${activeView === "kids" ? " header-row--kids" : ""}${
+                activeView === "seniors" ? " header-row--seniors" : ""
               }`}
             >
               <div className="header-title-block">
                 <div className="header-title-top">
-                  <h1 data-testid="page-title">
-                    {getHeaderTitle()}
-                    {activeView === "join" && (
-                      <span className="header-title-aside">(FREE PLANS AVAILABLE)</span>
-                    )}
-                  </h1>
-                  <button
-                    type="button"
-                    className="match-finder-adult-how-toggle page-how-toggle"
-                    onClick={() => setHowOpen((o) => !o)}
-                    aria-expanded={howOpen}
-                    data-testid="page-how-it-works"
-                  >
-                    {howOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                    How it works
-                  </button>
+                  {activeView === "guides" && !guidesManualId && !guidesDetailId ? (
+                    <>
+                      <div className="header-title-guides-main">
+                        <h1 data-testid="page-title">{getHeaderTitle()}</h1>
+                        <div className="free-guides-perk-banner free-guides-perk-banner--header" role="note">
+                          <span className="glow-badge free">Free</span>
+                          <div className="free-guides-perk-banner__copy">
+                            <strong>Free Membership Unlocks Perks</strong>
+                            <span>Join free for member guides &amp; saved progress.</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="header-title-guides-aside">
+                        <button
+                          type="button"
+                          className="match-finder-adult-how-toggle page-how-toggle"
+                          onClick={() => setHowOpen((o) => !o)}
+                          aria-expanded={howOpen}
+                          data-testid="page-how-it-works"
+                        >
+                          {howOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                          How it works
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <h1 data-testid="page-title">
+                        {getHeaderTitle()}
+                        {activeView === "join" && (
+                          <span className="header-title-aside">(FREE PLANS AVAILABLE)</span>
+                        )}
+                      </h1>
+                      {(activeView === "kids" || activeView === "seniors") && getHeaderDesc() ? (
+                        <p className="header-title-desc header-title-desc--inline">{getHeaderDesc()}</p>
+                      ) : null}
+                      <button
+                        type="button"
+                        className="match-finder-adult-how-toggle page-how-toggle"
+                        onClick={() => setHowOpen((o) => !o)}
+                        aria-expanded={howOpen}
+                        data-testid="page-how-it-works"
+                      >
+                        {howOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                        How it works
+                      </button>
+                    </>
+                  )}
                 </div>
-                {getHeaderDesc() ? <p className="header-title-desc">{getHeaderDesc()}</p> : null}
+                {activeView !== "kids" && activeView !== "seniors" && getHeaderDesc() ? (
+                  <p className="header-title-desc">{getHeaderDesc()}</p>
+                ) : null}
               </div>
             </div>
             {howOpen && (() => {
@@ -1359,9 +1561,9 @@ function App() {
                 <span>Adventure.</span>
               </h1>
               <p className="home-page-header__lead">
-                Each wizard asks age-right questions so matches feel doable — not generic. Parents become{" "}
-                <strong>GYSH Coaches</strong> for kids and teens: cheer, set boundaries, and help turn ideas
-                into safe first wins. Parental consent is required through age 12.
+                Each wizard asks age-right questions so matches feel doable—not generic. Parents become{" "}
+                <strong>GYSH Coaches</strong> for kids and teens: cheer, set boundaries, and help turn ideas into
+                safe first wins. Parental consent required through age 12.
               </p>
             </header>
 
@@ -1380,10 +1582,13 @@ function App() {
                     />
                   </div>
                   <aside className="home-promo-hero__steps" aria-labelledby="home-steps-title">
-                    <p className="home-promo-hero__steps-eyebrow">Start here</p>
-                    <h2 id="home-steps-title" className="home-promo-hero__steps-title">
-                      Pick your starting point
+                    <h2 id="home-steps-title" className="home-promo-hero__steps-heading">
+                      <span className="home-promo-hero__steps-eyebrow">Start here</span>
+                      <span className="home-promo-hero__steps-title">Pick your starting point</span>
                     </h2>
+                    <p className="home-promo-hero__steps-note">
+                      Kids, Teens, Adults, and Seniors each get a GYSH Match Wizard matched to their age and pace.
+                    </p>
                     <ol className="home-promo-hero__bubbles">
                       <li>
                         <button
@@ -1457,23 +1662,6 @@ function App() {
                       </li>
                     </ol>
                   </aside>
-                </div>
-              </div>
-              <div className="home-promo-hero__below">
-                <p className="home-promo-hero__lead">
-                  Family fun for every generation — Kids, Teens, Adults, and Seniors each get a GYSH Match
-                  Wizard customized to their age and pace.
-                </p>
-                <div className="home-promo-hero__ctas">
-                  <button type="button" onClick={() => goTo("quiz")} className="btn btn-primary">
-                    Start GYSH Match Wizard <Sparkles size={16} />
-                  </button>
-                  <button type="button" onClick={() => openKidsCorner()} className="btn btn-outline">
-                    Families
-                  </button>
-                  <button type="button" onClick={() => openSeniors()} className="btn btn-outline">
-                    Seniors
-                  </button>
                 </div>
               </div>
             </section>
@@ -1587,7 +1775,7 @@ function App() {
               </div>
             ) : (
               <div className="glass" style={{ padding: "48px", textAlign: "center", borderRadius: "16px" }}>
-                <p style={{ color: "var(--text-secondary)", marginBottom: "16px" }}>No side hustles match your search criteria.</p>
+                <p style={{ color: "var(--text-primary)", marginBottom: "16px" }}>No side hustles match your search criteria.</p>
                 <button onClick={() => { setSearchQuery(""); setFilterCategory("all"); }} className="btn btn-outline">
                   Clear Filters
                 </button>
@@ -1639,7 +1827,19 @@ function App() {
         )}
 
         {activeView === "guides" && (
-          guidesDetailId ? (
+          guidesManualId ? (
+            <MarketingManual
+              guideId={guidesManualId}
+              onBack={openGuidesLibrary}
+              onGoToJoin={() => goTo("join")}
+              onOpenMatchWizard={() => {
+                if (guidesManualId === "kids") openKidsCorner({ mode: "kids", tab: "wizard" });
+                else if (guidesManualId === "teens") openKidsCorner({ mode: "junior", tab: "wizard" });
+                else if (guidesManualId === "seniors") openSeniors(null);
+                else goTo("quiz");
+              }}
+            />
+          ) : guidesDetailId ? (
             <StepByStepGuides
               selectedHustleId={guidesDetailId}
               onGoToCalculator={handleGoToCalculatorFromGuide}
@@ -1661,6 +1861,7 @@ function App() {
               onOpenKidsGuides={() => openKidsCorner({ mode: "kids", tab: "guides" })}
               onOpenJuniorGuides={() => openKidsCorner({ mode: "junior", tab: "guides" })}
               onOpenSeniorsGuides={() => openSeniors("guides")}
+              onOpenManual={openGuidesManual}
             />
           )
         )}
@@ -1704,16 +1905,34 @@ function App() {
           <div style={{ maxWidth: "420px", margin: "40px auto" }} className="glass" data-testid="login-page">
             <div style={{ padding: "32px", borderRadius: "16px" }}>
               <div style={{ textAlign: "center", marginBottom: "28px" }}>
-                <div className="brand-logo" style={{ margin: "0 auto 16px auto", width: "48px", height: "48px" }}>
-                  <LogIn size={20} />
-                </div>
+                <img
+                  src={gyshLogo}
+                  alt="Get Your Side Hustle"
+                  className="login-box-logo"
+                  style={{
+                    display: "block",
+                    margin: "0 auto 18px",
+                    height: "120px",
+                    width: "auto",
+                    maxWidth: "100%",
+                    objectFit: "contain",
+                    background: "transparent",
+                    mixBlendMode: "multiply",
+                  }}
+                />
                 <h2 style={{ fontSize: "1.4rem", color: "var(--text-primary)", marginBottom: "6px" }}>
-                  {loginMode === "login" ? "Sign In" : "Reset Password"}
+                  {loginMode === "login"
+                    ? "Sign In"
+                    : loginMode === "set-password"
+                      ? "Choose a new password"
+                      : "Reset Password"}
                 </h2>
-                <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>
+                <p style={{ color: "var(--text-primary)", fontSize: "0.95rem" }}>
                   {loginMode === "login"
                     ? "Sign in to unlock bookmarks, calendars, and admin tools."
-                    : "Password change uses your current password on this screen. A confirmation email is sent when Resend is configured."}
+                    : loginMode === "set-password"
+                      ? "Enter and confirm your new password for this GYSH account."
+                      : "Enter the email on your GYSH account. We’ll send you a reset link."}
                 </p>
               </div>
 
@@ -1721,13 +1940,13 @@ function App() {
                 <>
                   <form onSubmit={handleLoginSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                     {loginError && (
-                      <div style={{ padding: "10px", background: "rgba(239, 68, 68, 0.05)", border: "1px solid rgba(239, 68, 68, 0.2)", borderRadius: "8px", color: "#ef4444", fontSize: "0.8rem", textAlign: "center" }}>
+                      <div style={{ padding: "10px", background: "rgba(239, 68, 68, 0.05)", border: "1px solid rgba(239, 68, 68, 0.2)", borderRadius: "8px", color: "#ef4444", fontSize: "0.9375rem", textAlign: "center" }}>
                         {loginError}
                       </div>
                     )}
 
                     <div className="form-group" style={{ margin: 0 }}>
-                      <label className="form-label" style={{ fontSize: "0.8rem" }}>Email Address</label>
+                      <label className="form-label" style={{ fontSize: "0.9375rem" }}>Email Address</label>
                       <input
                         type="email"
                         placeholder="you@example.com"
@@ -1740,7 +1959,7 @@ function App() {
                     </div>
 
                     <div className="form-group" style={{ margin: 0 }}>
-                      <label className="form-label" style={{ fontSize: "0.8rem" }}>Password</label>
+                      <label className="form-label" style={{ fontSize: "0.9375rem" }}>Password</label>
                       <div className="password-field">
                         <input
                           type={showPassword ? "text" : "password"}
@@ -1767,35 +1986,35 @@ function App() {
                     </button>
                   </form>
 
-                  <p style={{ marginTop: "16px", fontSize: "0.8rem", color: "var(--text-muted)", textAlign: "center" }}>
+                  <p style={{ marginTop: "16px", fontSize: "0.9375rem", color: "var(--text-primary)", textAlign: "center" }}>
                     <button type="button" className="inline-text-link" onClick={openResetMode}>
                       Forgot / Reset password?
                     </button>
                   </p>
 
-                  <p style={{ marginTop: "12px", fontSize: "0.8rem", color: "var(--text-muted)", textAlign: "center" }}>
+                  <p style={{ marginTop: "12px", fontSize: "0.9375rem", color: "var(--text-primary)", textAlign: "center" }}>
                     New here?{" "}
                     <button type="button" className="inline-text-link" onClick={() => goTo("join")}>
                       Join GYSH
                     </button>
                   </p>
                 </>
-              ) : (
+              ) : loginMode === "forgot" ? (
                 <>
-                  <form onSubmit={handleResetSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                  <form onSubmit={handleForgotSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                     {resetError && (
-                      <div style={{ padding: "10px", background: "rgba(239, 68, 68, 0.05)", border: "1px solid rgba(239, 68, 68, 0.2)", borderRadius: "8px", color: "#ef4444", fontSize: "0.8rem", textAlign: "center" }}>
+                      <div style={{ padding: "10px", background: "rgba(239, 68, 68, 0.05)", border: "1px solid rgba(239, 68, 68, 0.2)", borderRadius: "8px", color: "#ef4444", fontSize: "0.9375rem", textAlign: "center" }}>
                         {resetError}
                       </div>
                     )}
                     {resetSuccess && (
-                      <div style={{ padding: "10px", background: "rgba(95, 122, 69, 0.12)", border: "1px solid rgba(95, 122, 69, 0.35)", borderRadius: "8px", color: "#3f5230", fontSize: "0.8rem", textAlign: "center" }}>
+                      <div style={{ padding: "10px", background: "rgba(95, 122, 69, 0.12)", border: "1px solid rgba(95, 122, 69, 0.35)", borderRadius: "8px", color: "#3f5230", fontSize: "0.9375rem", textAlign: "center" }}>
                         {resetSuccess}
                       </div>
                     )}
 
                     <div className="form-group" style={{ margin: 0 }}>
-                      <label className="form-label" style={{ fontSize: "0.8rem" }}>Account email</label>
+                      <label className="form-label" style={{ fontSize: "0.9375rem" }}>Account email</label>
                       <input
                         type="email"
                         value={resetEmail}
@@ -1803,33 +2022,42 @@ function App() {
                         className="text-input"
                         required
                         autoComplete="username"
+                        placeholder="you@example.com"
                       />
                     </div>
 
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label className="form-label" style={{ fontSize: "0.8rem" }}>Current password</label>
-                      <div className="password-field">
-                        <input
-                          type={showResetCurrent ? "text" : "password"}
-                          value={resetCurrent}
-                          onChange={(e) => setResetCurrent(e.target.value)}
-                          className="text-input"
-                          required
-                          autoComplete="current-password"
-                        />
-                        <button
-                          type="button"
-                          className="password-toggle"
-                          onClick={() => setShowResetCurrent((v) => !v)}
-                          aria-label={showResetCurrent ? "Hide password" : "Show password"}
-                        >
-                          {showResetCurrent ? <EyeOff size={18} /> : <Eye size={18} />}
-                        </button>
+                    <button
+                      type="submit"
+                      className="btn btn-primary"
+                      style={{ width: "100%", marginTop: "10px" }}
+                      disabled={resetBusy}
+                    >
+                      {resetBusy ? "Sending…" : "Email me a reset link"}
+                    </button>
+                  </form>
+
+                  <p style={{ marginTop: "16px", fontSize: "0.9375rem", color: "var(--text-primary)", textAlign: "center" }}>
+                    <button type="button" className="inline-text-link" onClick={backToLogin}>
+                      Back to sign in
+                    </button>
+                  </p>
+                </>
+              ) : (
+                <>
+                  <form onSubmit={handleSetPasswordSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                    {resetError && (
+                      <div style={{ padding: "10px", background: "rgba(239, 68, 68, 0.05)", border: "1px solid rgba(239, 68, 68, 0.2)", borderRadius: "8px", color: "#ef4444", fontSize: "0.9375rem", textAlign: "center" }}>
+                        {resetError}
                       </div>
-                    </div>
+                    )}
+                    {resetSuccess && (
+                      <div style={{ padding: "10px", background: "rgba(95, 122, 69, 0.12)", border: "1px solid rgba(95, 122, 69, 0.35)", borderRadius: "8px", color: "#3f5230", fontSize: "0.9375rem", textAlign: "center" }}>
+                        {resetSuccess}
+                      </div>
+                    )}
 
                     <div className="form-group" style={{ margin: 0 }}>
-                      <label className="form-label" style={{ fontSize: "0.8rem" }}>New password</label>
+                      <label className="form-label" style={{ fontSize: "0.9375rem" }}>New password</label>
                       <div className="password-field">
                         <input
                           type={showResetNew ? "text" : "password"}
@@ -1851,7 +2079,7 @@ function App() {
                     </div>
 
                     <div className="form-group" style={{ margin: 0 }}>
-                      <label className="form-label" style={{ fontSize: "0.8rem" }}>Confirm new password</label>
+                      <label className="form-label" style={{ fontSize: "0.9375rem" }}>Confirm new password</label>
                       <input
                         type="password"
                         value={resetConfirm}
@@ -1862,12 +2090,21 @@ function App() {
                       />
                     </div>
 
-                    <button type="submit" className="btn btn-primary" style={{ width: "100%", marginTop: "10px" }}>
-                      Update password
+                    <button
+                      type="submit"
+                      className="btn btn-primary"
+                      style={{ width: "100%", marginTop: "10px" }}
+                      disabled={resetBusy}
+                    >
+                      {resetBusy ? "Saving…" : "Save new password"}
                     </button>
                   </form>
 
-                  <p style={{ marginTop: "16px", fontSize: "0.8rem", color: "var(--text-muted)", textAlign: "center" }}>
+                  <p style={{ marginTop: "16px", fontSize: "0.9375rem", color: "var(--text-primary)", textAlign: "center" }}>
+                    <button type="button" className="inline-text-link" onClick={openResetMode}>
+                      Request a new reset link
+                    </button>
+                    {" · "}
                     <button type="button" className="inline-text-link" onClick={backToLogin}>
                       Back to sign in
                     </button>

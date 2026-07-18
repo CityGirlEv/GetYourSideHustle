@@ -37,10 +37,10 @@ export type GuideChapter = {
 };
 
 export const MEMBER_GUIDE_META = {
-  eyebrow: "GYSH Member User Guide",
+  eyebrow: "GYSH Member Tour",
   title: "How Get Your Side Hustle works",
   lead:
-    "A concise tour for families and Side Hustlers — GYSH Match Wizards by age, Corners, Guides, and membership.",
+    "A concise tour for families and Side Hustlers — Match Wizards by age, Corners, Guides, and membership. For full showcase manuals (Adult, Kids, Teens, Seniors, Complete), open Guides → Marketing manuals.",
   filename: "GYSH-Member-User-Guide.pdf",
 };
 
@@ -81,7 +81,7 @@ export const MEMBER_GUIDE_SECTIONS: GuideDocSection[] = [
       },
       {
         id: "bp-guides",
-        text: "Guides & Workshops — step-by-step playbooks and live learning for Side Hustles.",
+        text: "Guides & Workshops — launch playbooks, live learning, plus downloadable Adult / Kids / Teens / Seniors / Complete marketing manuals.",
       },
       {
         id: "bp-join",

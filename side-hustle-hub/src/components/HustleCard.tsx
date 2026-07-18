@@ -88,13 +88,13 @@ export const HustleCard: React.FC<HustleCardProps> = ({ hustle, onSelectAction }
       </div>
 
       {/* Category */}
-      <span style={{ fontSize: "0.75rem", fontWeight: 600, color: `var(--accent-${hustle.gradient})`, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "6px", display: "block" }}>
+      <span style={{ fontSize: "0.9375rem", fontWeight: 600, color: `var(--accent-${hustle.gradient})`, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "6px", display: "block" }}>
         {hustle.category}
       </span>
 
       {/* Name and Description */}
       <h3 style={{ fontSize: "1.25rem", color: "var(--charcoal)", marginBottom: "8px" }}>{hustle.name}</h3>
-      <p style={{ fontSize: "0.875rem", color: "var(--text-secondary)", marginBottom: "20px", flexGrow: 1 }}>{hustle.description}</p>
+      <p style={{ fontSize: "0.9375rem", color: "var(--text-primary)", marginBottom: "20px", flexGrow: 1 }}>{hustle.description}</p>
 
       {/* Metrics Grid */}
       <div style={{ 
@@ -106,23 +106,23 @@ export const HustleCard: React.FC<HustleCardProps> = ({ hustle, onSelectAction }
         borderRadius: "8px", 
         border: "1px solid var(--border-color)",
         marginBottom: "20px",
-        fontSize: "0.8rem"
+        fontSize: "0.9375rem"
       }}>
         <div>
-          <span style={{ color: "var(--text-muted)", display: "block" }}>Est. Startup Cost</span>
-          <strong style={{ color: "var(--charcoal)", fontSize: "0.9rem" }}>{hustle.startupCost}</strong>
+          <span style={{ color: "var(--text-primary)", display: "block" }}>Est. Startup Cost</span>
+          <strong style={{ color: "var(--charcoal)", fontSize: "1rem" }}>{hustle.startupCost}</strong>
         </div>
         <div>
-          <span style={{ color: "var(--text-muted)", display: "block" }}>Time Commitment</span>
-          <strong style={{ color: "var(--charcoal)", fontSize: "0.9rem" }}>{hustle.timeReq}</strong>
+          <span style={{ color: "var(--text-primary)", display: "block" }}>Time Commitment</span>
+          <strong style={{ color: "var(--charcoal)", fontSize: "1rem" }}>{hustle.timeReq}</strong>
         </div>
         <div>
-          <span style={{ color: "var(--text-muted)", display: "block" }}>Income Style</span>
-          <strong style={{ color: "var(--charcoal)", fontSize: "0.9rem" }}>{hustle.type}</strong>
+          <span style={{ color: "var(--text-primary)", display: "block" }}>Income Style</span>
+          <strong style={{ color: "var(--charcoal)", fontSize: "1rem" }}>{hustle.type}</strong>
         </div>
         <div>
-          <span style={{ color: "var(--text-muted)", display: "block" }}>Potential Profit</span>
-          <strong style={{ color: `var(--accent-${hustle.gradient})`, fontSize: "0.9rem" }}>{hustle.potentialIncome}</strong>
+          <span style={{ color: "var(--text-primary)", display: "block" }}>Potential Profit</span>
+          <strong style={{ color: `var(--accent-${hustle.gradient})`, fontSize: "1rem" }}>{hustle.potentialIncome}</strong>
         </div>
       </div>
 
@@ -131,7 +131,7 @@ export const HustleCard: React.FC<HustleCardProps> = ({ hustle, onSelectAction }
         <button 
           onClick={() => onSelectAction(hustle.id, "calculator")}
           className="btn btn-outline" 
-          style={{ flex: 1, padding: "8px 12px", fontSize: "0.85rem", gap: "6px" }}
+          style={{ flex: 1, padding: "8px 12px", fontSize: "0.95rem", gap: "6px" }}
           title="Calculator"
         >
           <Calculator size={14} />
@@ -143,7 +143,7 @@ export const HustleCard: React.FC<HustleCardProps> = ({ hustle, onSelectAction }
           style={{ 
             flex: 1, 
             padding: "8px 12px", 
-            fontSize: "0.85rem", 
+            fontSize: "0.95rem", 
             gap: "6px",
             background: `var(--grad-${hustle.gradient})`,
             boxShadow: `0 4px 10px var(--accent-${hustle.gradient}-glow)`

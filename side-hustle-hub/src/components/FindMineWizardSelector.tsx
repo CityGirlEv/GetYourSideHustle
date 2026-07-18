@@ -71,6 +71,39 @@ export const FIND_MINE_FAMILY_LEAD =
 export const FIND_MINE_FAMILY_TEASER =
   "Pick your age group — Kids, Teens, Adult, or Senior — and get matched for your stage of life.";
 
+function AgeBubble({
+  group,
+  onClick,
+}: {
+  group: (typeof FIND_MINE_WIZARD_GROUPS)[number];
+  onClick: () => void;
+}) {
+  const Icon = group.icon;
+  return (
+    <button
+      type="button"
+      className={`find-mine-age-bubble find-mine-age-bubble--${group.id}`}
+      data-testid={`find-mine-card-${group.id}`}
+      onClick={onClick}
+      title={group.copy}
+    >
+      <span className={`glow-badge ${group.accent}`}>{group.ages}</span>
+      <span className="find-mine-age-bubble__main">
+        <span className="find-mine-selector-icon">
+          <Icon size={18} aria-hidden />
+        </span>
+        <span className="find-mine-age-bubble__text">
+          <strong>{group.label}</strong>
+          <em>{group.bands}</em>
+        </span>
+        <span className="find-mine-age-bubble__go" aria-hidden>
+          <ArrowRight size={16} />
+        </span>
+      </span>
+    </button>
+  );
+}
+
 export function FindMineWizardSelector({
   onKids,
   onJunior,
@@ -84,7 +117,6 @@ export function FindMineWizardSelector({
     adult: onAdult,
     senior: onSenior,
   };
-
   return (
     <div className="find-mine-selector" data-testid="find-mine-selector">
       <section className="find-mine-promo" aria-label="GYSH Match Wizard">
@@ -102,81 +134,59 @@ export function FindMineWizardSelector({
           </div>
 
           <aside className="find-mine-promo__side" aria-label="Choose a GYSH Match Wizard">
-            <p data-testid="find-mine-selector-lead" className="find-mine-promo__lead find-mine-promo__teaser">
-              {FIND_MINE_FAMILY_TEASER}
-            </p>
+            <div className="find-mine-promo__side-top">
+              <p data-testid="find-mine-selector-lead" className="find-mine-promo__lead find-mine-promo__teaser">
+                {FIND_MINE_FAMILY_TEASER}
+              </p>
 
-            <button
-              type="button"
-              className="find-mine-promo__more-btn"
-              aria-expanded={descOpen}
-              aria-controls="find-mine-description"
-              data-testid="find-mine-desc-toggle"
-              onClick={() => setDescOpen((o) => !o)}
-            >
-              {descOpen ? <ChevronDown size={16} aria-hidden /> : <ChevronRight size={16} aria-hidden />}
-              {descOpen ? "Hide details" : "More about GYSH Match Wizard"}
-            </button>
+              <button
+                type="button"
+                className="find-mine-promo__more-btn"
+                aria-expanded={descOpen}
+                aria-controls="find-mine-description"
+                data-testid="find-mine-desc-toggle"
+                onClick={() => setDescOpen((o) => !o)}
+              >
+                {descOpen ? <ChevronDown size={16} aria-hidden /> : <ChevronRight size={16} aria-hidden />}
+                {descOpen ? "Hide details" : "More about GYSH Match Wizard"}
+              </button>
 
-            {descOpen && (
-              <div id="find-mine-description" className="find-mine-promo__details" data-testid="find-mine-description">
-                <p className="find-mine-promo__lead">{FIND_MINE_FAMILY_LEAD}</p>
-                <ol className="find-mine-promo__family-points">
-                  <li>
-                    <strong>Kids (4–12):</strong> we match ages <strong>4–8</strong> and{" "}
-                    <strong>9–12</strong>. Parents become <strong>GYSH Coaches</strong>; parental
-                    consent is required through age 12.
-                  </li>
-                  <li>
-                    <strong>Teens (13–17):</strong> we match ages <strong>13–14</strong> and{" "}
-                    <strong>15–17</strong> with bigger skills and safer independence — still coach-
-                    friendly for parents.
-                  </li>
-                  <li>
-                    <strong>Adult &amp; Senior:</strong> questions focus on budget, hours, strengths,
-                    and pace so every generation finds a fit you can try together or on your own.
-                  </li>
-                </ol>
-                <p className="find-mine-promo__family-note" data-testid="find-mine-family-note">
-                  Make it a family night: kids and teens take their wizards with a GYSH Coach nearby, while
-                  adults and seniors run theirs for career, retirement, or second-act ideas — then compare
-                  matches and cheer each other on.
-                </p>
-              </div>
-            )}
+              {descOpen && (
+                <div id="find-mine-description" className="find-mine-promo__details" data-testid="find-mine-description">
+                  <p className="find-mine-promo__lead">{FIND_MINE_FAMILY_LEAD}</p>
+                  <ol className="find-mine-promo__family-points">
+                    <li>
+                      <strong>Kids (4–12):</strong> we match ages <strong>4–8</strong> and{" "}
+                      <strong>9–12</strong>. Parents become <strong>GYSH Coaches</strong>; parental
+                      consent is required through age 12.
+                    </li>
+                    <li>
+                      <strong>Teens (13–17):</strong> we match ages <strong>13–14</strong> and{" "}
+                      <strong>15–17</strong> with bigger skills and safer independence — still coach-
+                      friendly for parents.
+                    </li>
+                    <li>
+                      <strong>Adult &amp; Senior:</strong> questions focus on budget, hours, strengths,
+                      and pace so every generation finds a fit you can try together or on your own.
+                    </li>
+                  </ol>
+                  <p className="find-mine-promo__family-note" data-testid="find-mine-family-note">
+                    Make it a family night: kids and teens take their wizards with a GYSH Coach nearby, while
+                    adults and seniors run theirs for career, retirement, or second-act ideas — then compare
+                    matches and cheer each other on.
+                  </p>
+                </div>
+              )}
+            </div>
 
             <div
               className="find-mine-promo__age-bubbles"
               role="group"
-              aria-label="Choose your GYSH Match Wizard age group"
+              aria-label="GYSH Match Wizards by age"
             >
-              {FIND_MINE_WIZARD_GROUPS.map((group) => {
-                const Icon = group.icon;
-                return (
-                  <button
-                    key={group.id}
-                    type="button"
-                    className={`find-mine-age-bubble find-mine-age-bubble--${group.id}`}
-                    data-testid={`find-mine-card-${group.id}`}
-                    onClick={handlers[group.id]}
-                    title={group.copy}
-                  >
-                    <span className={`glow-badge ${group.accent}`}>{group.ages}</span>
-                    <span className="find-mine-age-bubble__main">
-                      <span className="find-mine-selector-icon">
-                        <Icon size={18} aria-hidden />
-                      </span>
-                      <span className="find-mine-age-bubble__text">
-                        <strong>{group.label}</strong>
-                        <em>{group.bands}</em>
-                      </span>
-                      <span className="find-mine-age-bubble__go" aria-hidden>
-                        <ArrowRight size={16} />
-                      </span>
-                    </span>
-                  </button>
-                );
-              })}
+              {FIND_MINE_WIZARD_GROUPS.map((group) => (
+                <AgeBubble key={group.id} group={group} onClick={handlers[group.id]} />
+              ))}
             </div>
           </aside>
         </div>

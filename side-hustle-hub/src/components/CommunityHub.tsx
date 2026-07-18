@@ -236,17 +236,17 @@ export const CommunityHub: React.FC = () => {
               placeholder="What milestone did you reach? Ask a question or share a tip..."
               value={newPostContent}
               onChange={(e) => setNewPostContent(e.target.value)}
-              style={{ width: "100%", resize: "none", fontSize: "0.9rem", marginBottom: "16px" }}
+              style={{ width: "100%", resize: "none", fontSize: "1rem", marginBottom: "16px" }}
             />
 
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>Hustle Topic:</span>
+                <span style={{ fontSize: "0.9375rem", color: "var(--text-primary)" }}>Hustle Topic:</span>
                 <select 
                   value={newPostTag}
                   onChange={(e) => setNewPostTag(e.target.value)}
                   className="select-input"
-                  style={{ width: "180px", padding: "6px 12px", fontSize: "0.8rem" }}
+                  style={{ width: "180px", padding: "6px 12px", fontSize: "0.9375rem" }}
                 >
                   <option value="airbnb">Airbnb Hosting</option>
                   <option value="pod">Print-on-Demand</option>
@@ -257,7 +257,7 @@ export const CommunityHub: React.FC = () => {
                 </select>
               </div>
 
-              <button type="submit" className="btn btn-primary" style={{ padding: "8px 16px", fontSize: "0.85rem", gap: "6px" }}>
+              <button type="submit" className="btn btn-primary" style={{ padding: "8px 16px", fontSize: "0.95rem", gap: "6px" }}>
                 <Send size={14} /> Post Update
               </button>
             </div>
@@ -266,7 +266,7 @@ export const CommunityHub: React.FC = () => {
 
         {/* Filter Bar */}
         <div style={{ display: "flex", alignItems: "center", gap: "12px", overflowX: "auto", paddingBottom: "4px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text-secondary)", fontSize: "0.85rem", whiteSpace: "nowrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text-primary)", fontSize: "0.95rem", whiteSpace: "nowrap" }}>
             <Filter size={14} /> Filter Feed:
           </div>
           {tags.map((t, idx) => (
@@ -299,7 +299,7 @@ export const CommunityHub: React.FC = () => {
                   </div>
                   <div>
                     <span className="feed-username" style={{ color: "var(--charcoal)" }}>{comment.author}</span>
-                    <span className="glow-badge" style={{ fontSize: "0.65rem", padding: "2px 8px", marginLeft: "8px", verticalAlign: "middle" }}>
+                    <span className="glow-badge" style={{ fontSize: "0.9375rem", padding: "2px 8px", marginLeft: "8px", verticalAlign: "middle" }}>
                       {comment.roleBadge}
                     </span>
                   </div>
@@ -312,7 +312,7 @@ export const CommunityHub: React.FC = () => {
 
                 {comment.hustleTag && (
                   <div style={{ marginTop: "12px" }}>
-                    <span className="glow-badge cyan" style={{ fontSize: "0.65rem", padding: "2px 8px" }}>
+                    <span className="glow-badge cyan" style={{ fontSize: "0.9375rem", padding: "2px 8px" }}>
                       #{hInfo?.label}
                     </span>
                   </div>
@@ -350,15 +350,15 @@ export const CommunityHub: React.FC = () => {
 
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--border-color)", paddingBottom: "10px" }}>
-              <span style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>Active Members:</span>
+              <span style={{ fontSize: "0.95rem", color: "var(--text-primary)" }}>Active Members:</span>
               <strong style={{ color: "var(--charcoal)" }}>12,840</strong>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--border-color)", paddingBottom: "10px" }}>
-              <span style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>Online Now:</span>
+              <span style={{ fontSize: "0.95rem", color: "var(--text-primary)" }}>Online Now:</span>
               <strong style={{ color: "var(--accent-emerald)" }}>1,492</strong>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>Weekly Successes:</span>
+              <span style={{ fontSize: "0.95rem", color: "var(--text-primary)" }}>Weekly Successes:</span>
               <strong style={{ color: "var(--bronze)" }}>243</strong>
             </div>
           </div>
@@ -374,24 +374,24 @@ export const CommunityHub: React.FC = () => {
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
               <div className="feed-avatar" style={{ background: "var(--grad-pink)" }}>JD</div>
               <div style={{ display: "flex", flexDirection: "column" }}>
-                <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--charcoal)" }}>Jordan Davis</span>
-                <span style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>Amazon FBA ($100k+ Sales)</span>
+                <span style={{ fontSize: "0.95rem", fontWeight: 600, color: "var(--charcoal)" }}>Jordan Davis</span>
+                <span style={{ fontSize: "0.9375rem", color: "var(--text-primary)" }}>Amazon FBA ($100k+ Sales)</span>
               </div>
             </div>
 
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
               <div className="feed-avatar" style={{ background: "var(--grad-amber)" }}>MK</div>
               <div style={{ display: "flex", flexDirection: "column" }}>
-                <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--charcoal)" }}>Mia K.</span>
-                <span style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>Airbnb Co-Hosting Coach</span>
+                <span style={{ fontSize: "0.95rem", fontWeight: 600, color: "var(--charcoal)" }}>Mia K.</span>
+                <span style={{ fontSize: "0.9375rem", color: "var(--text-primary)" }}>Airbnb Co-Hosting Coach</span>
               </div>
             </div>
 
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
               <div className="feed-avatar" style={{ background: "var(--grad-primary)" }}>TW</div>
               <div style={{ display: "flex", flexDirection: "column" }}>
-                <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--charcoal)" }}>Tyler Webb</span>
-                <span style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>Affiliate Automation Pro</span>
+                <span style={{ fontSize: "0.95rem", fontWeight: 600, color: "var(--charcoal)" }}>Tyler Webb</span>
+                <span style={{ fontSize: "0.9375rem", color: "var(--text-primary)" }}>Affiliate Automation Pro</span>
               </div>
             </div>
           </div>

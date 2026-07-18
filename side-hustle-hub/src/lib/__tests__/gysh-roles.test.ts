@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   AUTOMATED_SUITE_OWNERS,
+  FAILED_TEST_ASSIGNEE,
   GYSH_ROLE_LABELS,
+  GYSH_ROLES,
   QA_TESTERS,
   formatRoles,
   isAutomatedSuiteOwner,
@@ -12,8 +14,14 @@ import {
 } from "../gysh-roles";
 
 describe("gysh-roles", () => {
-  it("includes QA role in labels", () => {
+  it("includes QA and Dev roles in labels", () => {
     expect(GYSH_ROLE_LABELS.qa).toBe("QA");
+    expect(GYSH_ROLE_LABELS.dev).toBe("Dev");
+    expect(GYSH_ROLES).toContain("dev");
+  });
+
+  it("routes failed tests to Evelyn", () => {
+    expect(FAILED_TEST_ASSIGNEE).toBe("evelyn");
   });
 
   it("defines QA tester bubbles for Tina, Evelyn, and Lyriq", () => {
@@ -51,6 +59,22 @@ describe("gysh-roles", () => {
     expect(userHasRole(u, "admin")).toBe(true);
     expect(userHasRole(u, "qa")).toBe(true);
     expect(formatRoles(u)).toBe("Admin · QA");
+  });
+
+  it("supports Evelyn admin + QA + Dev", () => {
+    const u: GyshUser = {
+      id: "u-ev",
+      name: "Evelyn Irving",
+      email: "evelyn3@cox.net",
+      role: "admin",
+      roles: ["admin", "qa", "dev"],
+      status: "active",
+      joinedAt: "2026-07-01",
+      notes: "",
+    };
+    expect(userRoles(u)).toEqual(["admin", "qa", "dev"]);
+    expect(userHasRole(u, "dev")).toBe(true);
+    expect(formatRoles(u)).toBe("Admin · QA · Dev");
   });
 
   it("falls back to single role when roles array missing", () => {

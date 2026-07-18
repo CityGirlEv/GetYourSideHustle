@@ -21,6 +21,7 @@ import {
   SideHustleBlueprintResults,
   type BlueprintMatchCard,
 } from "./SideHustleBlueprintResults";
+import { WizardStartHereBanner } from "./WizardStartHereBanner";
 
 interface HustleQuizProps {
   hustles: any[];
@@ -529,6 +530,8 @@ export const HustleQuiz: React.FC<HustleQuizProps> = ({
                 />
               </div>
 
+              {currentStep === 0 && <WizardStartHereBanner />}
+
               <div className="match-finder-adult-header">
                 <div className="match-finder-adult-icon">{currentStepData.icon}</div>
                 <div>
@@ -617,6 +620,11 @@ export const HustleQuiz: React.FC<HustleQuizProps> = ({
                   {validationHint}
                 </p>
               )}
+
+              <p className="wizard-fill-tip">
+                Tip: Honest answers beat perfect ones — we match hustles to your real budget, hours, strengths, and
+                goals so your next step feels doable.
+              </p>
 
               <div className="match-finder-adult-nav">
                 <button

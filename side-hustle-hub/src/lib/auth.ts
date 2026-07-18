@@ -140,8 +140,53 @@ export async function fetchMe(): Promise<AuthUser | null> {
   }
 }
 
-export type ResetPasswordResult = { ok: true; message: string } | { ok: false; error: string };
+export type ResetPasswordResult = { ok: true; message: string; email?: string } | { ok: false; error: string };
 
+/** Request a one-time password reset email (checks account exists). */
+export async function requestPasswordReset(email: string): Promise<ResetPasswordResult> {
+  try {
+    const data = await api<{ ok: boolean; message?: string }>("auth/forgot-password", {
+      method: "POST",
+      body: { email },
+      auth: false,
+    });
+    return {
+      ok: true,
+      message: data.message || "If that account exists, we emailed a reset link.",
+    };
+  } catch (e) {
+    const msg = e instanceof ApiError ? e.message : "Could not send password reset email.";
+    return { ok: false, error: msg };
+  }
+}
+
+/** Set a new password using the emailed reset token. */
+export async function confirmPasswordReset(input: {
+  token: string;
+  newPassword: string;
+  confirmPassword: string;
+}): Promise<ResetPasswordResult> {
+  try {
+    const data = await api<{ ok: boolean; message?: string; email?: string }>(
+      "auth/confirm-password-reset",
+      {
+        method: "POST",
+        body: input,
+        auth: false,
+      },
+    );
+    return {
+      ok: true,
+      message: data.message || "Password updated. Sign in with your new password.",
+      email: data.email,
+    };
+  } catch (e) {
+    const msg = e instanceof ApiError ? e.message : "Password reset failed.";
+    return { ok: false, error: msg };
+  }
+}
+
+/** Change password when you know the current password. */
 export async function resetPassword(input: {
   email: string;
   currentPassword: string;

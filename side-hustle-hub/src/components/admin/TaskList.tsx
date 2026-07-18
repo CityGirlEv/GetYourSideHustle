@@ -39,6 +39,10 @@ import {
   type TaskPriority,
   type TaskCategory,
 } from "../../lib/gysh-tasks";
+import type { AuthUser } from "../../lib/auth";
+import { WorkTimer } from "./WorkTimer";
+import { useActiveTimers } from "../../lib/use-active-timers";
+import { stopTimerOnStatusChange } from "../../lib/gysh-time-entries";
 import {
   deleteTaskFile,
   getTaskFile,
@@ -160,8 +164,8 @@ function MultiSelectDropdown({
               padding: "6px 8px",
               borderRadius: 6,
               cursor: "pointer",
-              fontSize: "0.85rem",
-              color: "var(--text-secondary)",
+              fontSize: "0.95rem",
+              color: "var(--text-primary)",
             }}
           >
             <input
@@ -186,7 +190,7 @@ function MultiSelectDropdown({
                   padding: "6px 8px",
                   borderRadius: 6,
                   cursor: "pointer",
-                  fontSize: "0.85rem",
+                  fontSize: "0.95rem",
                   color: "var(--charcoal)",
                   background: checked ? "rgba(215,198,151,0.35)" : "transparent",
                 }}
@@ -225,10 +229,10 @@ const OWNER_LABEL_CLASS: Record<GyshTask["assignedTo"], string> = {
 };
 
 const STATUS_ACCENT: Record<TaskStatus, string> = {
-  not_started: "#947D64",
-  in_progress: "#c9a227",
+  not_started: "#6b5344",
+  in_progress: "#b8860b",
   blocked: "#9B2F28",
-  done: "#5f7a45",
+  done: "#3f6b2e",
 };
 
 const OWNER_BUBBLES: { id: OwnerFilter; label: string; accent?: string }[] = [
@@ -356,7 +360,7 @@ function AttachmentRow({
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
           style={{
-            fontSize: "0.85rem",
+            fontSize: "0.95rem",
             color: "var(--charcoal)",
             fontWeight: 600,
             overflow: "hidden",
@@ -367,14 +371,14 @@ function AttachmentRow({
         >
           {att.name}
         </div>
-        <div style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
+        <div style={{ fontSize: "1rem", color: "var(--text-primary)" }}>
           {formatFileSize(att.size)} · {att.mimeType || "file"} · {att.addedAt}
         </div>
       </div>
       <button
         type="button"
         className="btn btn-outline"
-        style={{ padding: "4px 8px", fontSize: "0.75rem" }}
+        style={{ padding: "4px 8px", fontSize: "0.9375rem" }}
         onClick={openOrDownload}
         disabled={busy}
         title="Download / open"
@@ -384,7 +388,7 @@ function AttachmentRow({
       <button
         type="button"
         className="btn btn-outline"
-        style={{ padding: "4px 8px", fontSize: "0.75rem", color: "#9B2F28" }}
+        style={{ padding: "4px 8px", fontSize: "0.9375rem", color: "#9B2F28" }}
         onClick={onRemove}
         title="Remove"
       >
@@ -456,7 +460,7 @@ function TaskAttachments({
         <button
           type="button"
           className="btn btn-outline"
-          style={{ padding: "6px 10px", fontSize: "0.8rem" }}
+          style={{ padding: "6px 10px", fontSize: "0.9375rem" }}
           onClick={() => inputRef.current?.click()}
           disabled={uploading}
         >
@@ -470,11 +474,11 @@ function TaskAttachments({
           style={{ display: "none" }}
           onChange={(e) => handleFiles(e.target.files)}
         />
-        <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
+        <span style={{ fontSize: "1rem", color: "var(--text-primary)" }}>
           Images, PDF, Word, video (mp4/webm/mov), txt, csv
         </span>
       </div>
-      {error && <div style={{ fontSize: "0.75rem", color: "#9B2F28" }}>{error}</div>}
+      {error && <div style={{ fontSize: "0.9375rem", color: "#9B2F28" }}>{error}</div>}
       {(task.attachments ?? []).length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {(task.attachments ?? []).map((att) => (
@@ -489,14 +493,18 @@ function TaskAttachments({
 export function TaskList({
   focusTaskId = null,
   onFocusConsumed,
+  authUser = null,
 }: {
   focusTaskId?: string | null;
   onFocusConsumed?: () => void;
+  authUser?: AuthUser | null;
 } = {}) {
   const [tasks, setTasks] = useState<GyshTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const timers = useActiveTimers(Boolean(authUser));
+  void authUser;
   const [desc, setDesc] = useState("");
   const [assignee, setAssignee] = useState<GyshTask["assignedTo"]>("Evelyn");
   const [newCategory, setNewCategory] = useState<TaskCategory>("admin_ops");
@@ -674,12 +682,17 @@ export function TaskList({
   };
 
   const patch = async (id: string, updates: Partial<GyshTask>) => {
+    const prev = tasksRef.current.find((t) => t.id === id);
     const next = tasksRef.current.map((t) => {
       if (t.id !== id) return t;
       return applyPartnerDone(t, updates);
     });
     try {
       await persist(next);
+      if (updates.status != null && prev && updates.status !== prev.status) {
+        await stopTimerOnStatusChange("task", id);
+        void timers.refresh();
+      }
     } catch {
       /* error already set */
     }
@@ -687,12 +700,22 @@ export function TaskList({
 
   const patchSelected = async (updates: Partial<GyshTask>) => {
     if (selectedIds.size === 0) return;
+    const ids = [...selectedIds];
+    const prevById = new Map(tasksRef.current.map((t) => [t.id, t.status]));
     const next = tasksRef.current.map((t) => {
       if (!selectedIds.has(t.id)) return t;
       return applyPartnerDone(t, updates);
     });
     try {
       await persist(next);
+      if (updates.status != null) {
+        for (const id of ids) {
+          if (prevById.get(id) !== updates.status) {
+            await stopTimerOnStatusChange("task", id);
+          }
+        }
+        void timers.refresh();
+      }
     } catch {
       /* error already set */
     }
@@ -751,10 +774,10 @@ export function TaskList({
             <h2 style={{ fontSize: "1.5rem", color: "var(--charcoal)", display: "flex", alignItems: "center", gap: 8 }}>
               <ListChecks size={22} style={{ color: "var(--bronze)" }} /> Task List
             </h2>
-            <p style={{ color: "var(--text-secondary)", marginTop: 6, fontSize: "0.9rem" }}>
+            <p style={{ color: "var(--text-primary)", marginTop: 6, fontSize: "1rem", lineHeight: 1.5 }}>
               T + E operational tracker — saved in production D1.
             </p>
-            <p style={{ color: "var(--text-muted)", marginTop: 4, fontSize: "0.78rem" }}>
+            <p style={{ color: "var(--text-primary)", marginTop: 6, fontSize: "1rem", lineHeight: 1.5 }}>
               Attachment files stay in this browser (IndexedDB) until R2 phase 2; metadata is in the database.
             </p>
           </div>
@@ -769,7 +792,7 @@ export function TaskList({
         </div>
 
         {error && (
-          <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 8, background: "rgba(155,47,40,0.1)", border: "1px solid rgba(155,47,40,0.35)", color: "#9B2F28", fontSize: "0.85rem" }}>
+          <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 8, background: "rgba(155,47,40,0.1)", border: "1px solid rgba(155,47,40,0.35)", color: "#9B2F28", fontSize: "0.95rem" }}>
             {error}
           </div>
         )}
@@ -830,7 +853,7 @@ export function TaskList({
             }}
           >
             <div style={{ flex: "1 1 220px", minWidth: 200 }}>
-              <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 8 }}>
+              <div style={{ fontSize: "0.9375rem", color: "var(--text-primary)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 8 }}>
                 Assignees
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
@@ -860,7 +883,7 @@ export function TaskList({
                     >
                       {b.accent && <span className="qa-tester-dot" style={{ background: b.accent }} />}
                       {b.label}
-                      <span className="qa-tester-meta" style={{ color: "var(--text-muted)", fontVariantNumeric: "tabular-nums" }}>
+                      <span className="qa-tester-meta" style={{ color: "var(--text-primary)", fontVariantNumeric: "tabular-nums" }}>
                         {done}✓ / {assigned}
                       </span>
                     </button>
@@ -870,7 +893,7 @@ export function TaskList({
             </div>
 
             <div style={{ flex: "1 1 240px", minWidth: 200 }}>
-              <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 8 }}>
+              <div style={{ fontSize: "0.9375rem", color: "var(--text-primary)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 8 }}>
                 Status — click to filter (multi)
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
@@ -924,13 +947,13 @@ export function TaskList({
               ]}
             />
           </div>
-          <p style={{ marginTop: 8, fontSize: "0.72rem", color: "var(--text-muted)" }}>
+          <p style={{ marginTop: 8, fontSize: "1rem", color: "var(--text-primary)" }}>
             Select tasks with checkboxes, then bulk-assign (including Lyriq). Status buttons toggle filters.
           </p>
         </div>
 
         <div style={{ marginTop: 14 }}>
-          <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 8 }}>
+          <div style={{ fontSize: "0.9375rem", color: "var(--text-primary)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 8 }}>
             Categories — click to filter
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
@@ -953,7 +976,7 @@ export function TaskList({
         </div>
 
         <div className="task-legend" aria-label="Color legend">
-          <span style={{ fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", fontSize: "0.65rem" }}>
+          <span style={{ fontWeight: 700, color: "var(--text-primary)", textTransform: "uppercase", letterSpacing: "0.04em", fontSize: "0.9375rem" }}>
             Status
           </span>
           {STATUS_LEGEND.map((s) => (
@@ -962,7 +985,7 @@ export function TaskList({
               {s.label}
             </span>
           ))}
-          <span style={{ fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", fontSize: "0.65rem", marginLeft: 8 }}>
+          <span style={{ fontWeight: 700, color: "var(--text-primary)", textTransform: "uppercase", letterSpacing: "0.04em", fontSize: "0.9375rem", marginLeft: 8 }}>
             Assignee
           </span>
           {(Object.keys(OWNER_SWATCH) as GyshTask["assignedTo"][]).map((name) => (
@@ -971,7 +994,7 @@ export function TaskList({
               {name}
             </span>
           ))}
-          <span style={{ fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", fontSize: "0.65rem", marginLeft: 8 }}>
+          <span style={{ fontWeight: 700, color: "var(--text-primary)", textTransform: "uppercase", letterSpacing: "0.04em", fontSize: "0.9375rem", marginLeft: 8 }}>
             Due
           </span>
           <span className="task-legend-item">
@@ -999,10 +1022,10 @@ export function TaskList({
             background: "rgba(215,198,151,0.25)",
           }}
         >
-          <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--charcoal)" }}>
+          <span style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--charcoal)" }}>
             {selectedIds.size} selected
           </span>
-          <label className="form-label" style={{ margin: 0, fontSize: "0.75rem" }}>Category</label>
+          <label className="form-label" style={{ margin: 0, fontSize: "0.9375rem" }}>Category</label>
           <select
             className="select-input"
             style={{ width: 180 }}
@@ -1020,11 +1043,11 @@ export function TaskList({
               <option key={c.id} value={c.id}>{c.label}</option>
             ))}
           </select>
-          <label className="form-label" style={{ margin: 0, fontSize: "0.75rem" }}>Assignee</label>
+          <label className="form-label" style={{ margin: 0, fontSize: "0.9375rem" }}>Assignee</label>
           <button
             type="button"
             className="btn btn-primary"
-            style={{ padding: "6px 12px", fontSize: "0.8rem", background: OWNER_SWATCH.Lyriq, borderColor: OWNER_SWATCH.Lyriq }}
+            style={{ padding: "6px 12px", fontSize: "0.9375rem", background: OWNER_SWATCH.Lyriq, borderColor: OWNER_SWATCH.Lyriq }}
             onClick={() => void patchSelected({ assignedTo: "Lyriq" })}
           >
             Assign Lyriq
@@ -1047,7 +1070,7 @@ export function TaskList({
             <option value="Lyriq">Lyriq</option>
             <option value="Both">Both</option>
           </select>
-          <label className="form-label" style={{ margin: 0, fontSize: "0.75rem" }}>Sprint</label>
+          <label className="form-label" style={{ margin: 0, fontSize: "0.9375rem" }}>Sprint</label>
           <select
             className="select-input"
             style={{ width: 130 }}
@@ -1066,7 +1089,7 @@ export function TaskList({
               <option key={s.index} value={s.index}>{s.label}</option>
             ))}
           </select>
-          <label className="form-label" style={{ margin: 0, fontSize: "0.75rem" }}>Status</label>
+          <label className="form-label" style={{ margin: 0, fontSize: "0.9375rem" }}>Status</label>
           <select
             className="select-input"
             style={{ width: 140 }}
@@ -1084,7 +1107,7 @@ export function TaskList({
               <option key={s} value={s}>{TASK_STATUS_LABELS[s]}</option>
             ))}
           </select>
-          <label className="form-label" style={{ margin: 0, fontSize: "0.75rem" }}>Priority</label>
+          <label className="form-label" style={{ margin: 0, fontSize: "0.9375rem" }}>Priority</label>
           <select
             className="select-input"
             style={{ width: 130 }}
@@ -1103,7 +1126,7 @@ export function TaskList({
             <option value="P2">P2 Medium</option>
             <option value="P3">P3 Low</option>
           </select>
-          <label className="form-label" style={{ margin: 0, fontSize: "0.75rem" }}>Due</label>
+          <label className="form-label" style={{ margin: 0, fontSize: "0.9375rem" }}>Due</label>
           <input
             className="text-input"
             type="date"
@@ -1136,7 +1159,7 @@ export function TaskList({
       )}
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 4px" }}>
-        <label style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: "0.85rem", color: "var(--charcoal)" }}>
+        <label style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: "0.95rem", color: "var(--charcoal)" }}>
           <input
             type="checkbox"
             checked={allFilteredSelected}
@@ -1149,9 +1172,9 @@ export function TaskList({
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {loading && <p style={{ color: "var(--text-muted)" }}>Loading tasks from database…</p>}
+        {loading && <p style={{ color: "var(--text-primary)" }}>Loading tasks from database…</p>}
         {!loading && !error && filtered.length === 0 && (
-          <div className="glass" style={{ padding: 24, textAlign: "center", color: "var(--text-secondary)" }}>
+          <div className="glass" style={{ padding: 24, textAlign: "center", color: "var(--text-primary)" }}>
             No tasks yet.
           </div>
         )}
@@ -1246,7 +1269,7 @@ export function TaskList({
                       {(t.sprint ?? 0) === BACKLOG_SPRINT ? "Backlog" : sprintLabel(t.sprint ?? 0)}
                     </span>
                     {t.assignedTo === "Both" && (
-                      <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", fontWeight: 600 }}>
+                      <span style={{ fontSize: "1rem", color: "var(--text-primary)", fontWeight: 600 }}>
                         {partnerDoneSummary(t)}
                       </span>
                     )}
@@ -1255,17 +1278,17 @@ export function TaskList({
                       {TASK_STATUS_LABELS[t.status]}
                     </span>
                     {overdue && (
-                      <span style={{ fontSize: "0.7rem", fontWeight: 700, color: "#9B2F28", textTransform: "uppercase" }}>
+                      <span style={{ fontSize: "0.9375rem", fontWeight: 700, color: "#9B2F28", textTransform: "uppercase" }}>
                         Overdue
                       </span>
                     )}
                     {dueToday && !overdue && (
-                      <span style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--bronze)", textTransform: "uppercase" }}>
+                      <span style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--bronze)", textTransform: "uppercase" }}>
                         Due today
                       </span>
                     )}
                   </div>
-                  <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: 4 }}>
+                  <div style={{ fontSize: "0.9375rem", color: "var(--text-primary)", marginTop: 4 }}>
                     <span style={{ color: "var(--charcoal)", fontWeight: 600 }}>{categoryLabel(t.category)}</span>
                     {" · by "}
                     {t.assignBy}
@@ -1380,6 +1403,18 @@ export function TaskList({
                         ))}
                       </select>
                     </label>
+                    <div className="task-card-control task-card-control--timer">
+                      <span>Time</span>
+                      <WorkTimer
+                        source="task"
+                        sourceId={t.id}
+                        sourceLabel={t.description}
+                        entry={timers.entryFor("task", t.id)}
+                        onChanged={timers.onChanged}
+                        compact
+                        disabled={t.status === "done"}
+                      />
+                    </div>
                   </div>
                 </div>
                 <button
@@ -1404,7 +1439,7 @@ export function TaskList({
                     paddingLeft: 66,
                   }}
                 >
-                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                  <span style={{ fontSize: "0.9375rem", color: "var(--text-primary)" }}>
                     Partner done (both required):
                   </span>
                   <button
@@ -1412,7 +1447,7 @@ export function TaskList({
                     className={`btn ${t.tinaDone ? "btn-primary" : "btn-outline"}`}
                     style={{
                       padding: "4px 10px",
-                      fontSize: "0.78rem",
+                      fontSize: "0.9375rem",
                       borderColor: OWNER_SWATCH.Tina,
                       background: t.tinaDone ? OWNER_SWATCH.Tina : undefined,
                       color: t.tinaDone ? "#fff" : OWNER_SWATCH.Tina,
@@ -1426,7 +1461,7 @@ export function TaskList({
                     className={`btn ${t.evelynDone ? "btn-primary" : "btn-outline"}`}
                     style={{
                       padding: "4px 10px",
-                      fontSize: "0.78rem",
+                      fontSize: "0.9375rem",
                       borderColor: OWNER_SWATCH.Evelyn,
                       background: t.evelynDone ? OWNER_SWATCH.Evelyn : undefined,
                       color: t.evelynDone ? "#fff" : undefined,
@@ -1444,8 +1479,8 @@ export function TaskList({
                   gap: 6,
                   marginTop: 10,
                   paddingLeft: 66,
-                  fontSize: "0.8rem",
-                  color: "var(--text-secondary)",
+                  fontSize: "0.9375rem",
+                  color: "var(--text-primary)",
                 }}
               >
                 Notes

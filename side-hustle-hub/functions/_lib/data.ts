@@ -16,6 +16,7 @@ import {
 } from "./auth";
 import { ensurePartnerAdmins } from "./partners";
 import {
+  FAILED_TEST_ASSIGNEE,
   hasRole,
   normalizeRolesInput,
   primaryRole,
@@ -175,8 +176,10 @@ export async function upsertUser(env: Env, request: Request, actor: DbUser): Pro
   if (!name || !email) return error("Name and email are required.");
   if (!roles) return error("Select at least one valid role.");
   if (!["active", "pending", "disabled"].includes(status)) return error("Invalid status.");
-  if (password && password.length < MIN_PASSWORD_LENGTH) {
-    return error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
+  if (password) {
+    const { passwordPolicyError } = await import("./password-policy");
+    const pwErr = passwordPolicyError(password);
+    if (pwErr) return error(pwErr);
   }
 
   const role = primaryRole(roles);
@@ -233,13 +236,80 @@ export async function upsertUser(env: Env, request: Request, actor: DbUser): Pro
     )
     .run();
 
-  const user = await env.DB.prepare(
-    `SELECT id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt FROM users WHERE id = ?`,
-  )
-    .bind(id)
-    .first<DbUser>();
+  const prevStatus = existing?.status ?? "";
+  const becameActive = status === "active" && prevStatus !== "active";
 
-  return json({ user: user ? publicUser(user) : null });
+  if (becameActive) {
+    try {
+      await env.DB.prepare(
+        `UPDATE users SET activated_at = ?, activated_by = ? WHERE id = ?`,
+      )
+        .bind(now, actor.email, id)
+        .run();
+    } catch {
+      /* columns from migration 0019 */
+    }
+  }
+  if (status === "disabled" && prevStatus !== "disabled") {
+    try {
+      await env.DB.prepare(
+        `UPDATE users SET deactivated_at = ?, deactivated_by = ? WHERE id = ?`,
+      )
+        .bind(now, actor.email, id)
+        .run();
+    } catch {
+      /* columns from migration 0019 */
+    }
+  }
+
+  let user =
+    (await env.DB.prepare(
+      `SELECT id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt FROM users WHERE id = ?`,
+    )
+      .bind(id)
+      .first<DbUser>()) ?? null;
+
+  let membershipTier = "free";
+  let audience = "adult";
+  try {
+    const extra = await env.DB.prepare(
+      `SELECT membership_tier, audience FROM users WHERE id = ?`,
+    )
+      .bind(id)
+      .first<{ membership_tier: string | null; audience: string | null }>();
+    if (extra?.membership_tier) membershipTier = extra.membership_tier;
+    if (extra?.audience) audience = extra.audience;
+  } catch {
+    /* older schema */
+  }
+
+  let welcomeEmailSent = false;
+  if (becameActive && user) {
+    try {
+      const { sendAccountActivatedWelcome } = await import("./email");
+      welcomeEmailSent = await sendAccountActivatedWelcome(env, {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        membership_tier: membershipTier,
+        audience,
+      });
+      await appendAudit(
+        env.DB,
+        "user_activated",
+        user.email,
+        `activated by ${actor.email}${welcomeEmailSent ? " · welcome email sent" : " · welcome email skipped"}`,
+      );
+    } catch {
+      welcomeEmailSent = false;
+    }
+  }
+
+  return json({
+    user: user ? publicUser(user) : null,
+    welcomeEmailSent,
+    activated: becameActive,
+  });
 }
 
 export async function deleteUser(env: Env, id: string): Promise<Response> {
@@ -389,6 +459,87 @@ async function ensureTestCaseStatusColumns(env: Env): Promise<void> {
   );
 }
 
+async function listGeneratedTestCases(env: Env): Promise<
+  Array<{
+    id: string;
+    area: string;
+    title: string;
+    priority: string;
+    suite: string;
+    steps: string[];
+    expected: string;
+    failureDetail: string;
+    fixSteps: string[];
+    severity: string;
+    sourceFile: string;
+  }>
+> {
+  try {
+    await env.DB.prepare(
+      `CREATE TABLE IF NOT EXISTS generated_test_cases (
+        id TEXT PRIMARY KEY,
+        area TEXT NOT NULL,
+        title TEXT NOT NULL,
+        priority TEXT NOT NULL DEFAULT 'P1',
+        suite TEXT NOT NULL DEFAULT 'vitest',
+        steps_json TEXT NOT NULL DEFAULT '[]',
+        expected TEXT NOT NULL DEFAULT '',
+        failure_detail TEXT NOT NULL DEFAULT '',
+        fix_steps_json TEXT NOT NULL DEFAULT '[]',
+        severity TEXT NOT NULL DEFAULT 'P1',
+        source_file TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL,
+        created_from_run TEXT NOT NULL DEFAULT ''
+      )`,
+    ).run();
+    const { results } = await env.DB.prepare(
+      `SELECT id, area, title, priority, suite, steps_json, expected, failure_detail, fix_steps_json, severity, source_file
+       FROM generated_test_cases ORDER BY created_at DESC LIMIT 200`,
+    ).all<{
+      id: string;
+      area: string;
+      title: string;
+      priority: string;
+      suite: string;
+      steps_json: string;
+      expected: string;
+      failure_detail: string;
+      fix_steps_json: string;
+      severity: string;
+      source_file: string;
+    }>();
+    return (results ?? []).map((r) => {
+      let steps: string[] = [];
+      let fixSteps: string[] = [];
+      try {
+        steps = JSON.parse(r.steps_json) as string[];
+      } catch {
+        steps = [];
+      }
+      try {
+        fixSteps = JSON.parse(r.fix_steps_json) as string[];
+      } catch {
+        fixSteps = [];
+      }
+      return {
+        id: r.id,
+        area: r.area,
+        title: r.title,
+        priority: r.priority,
+        suite: r.suite,
+        steps,
+        expected: r.expected,
+        failureDetail: r.failure_detail,
+        fixSteps,
+        severity: r.severity,
+        sourceFile: r.source_file,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
 export async function listTestStatuses(env: Env): Promise<Response> {
   try {
     await ensureTestCaseStatusColumns(env);
@@ -405,7 +556,8 @@ export async function listTestStatuses(env: Env): Promise<Response> {
       if (row.assignee) assignees[row.case_id] = row.assignee;
       sprints[row.case_id] = typeof row.sprint === "number" ? row.sprint : 0;
     }
-    return json({ statuses, notes, assignees, sprints });
+    const generatedCases = await listGeneratedTestCases(env);
+    return json({ statuses, notes, assignees, sprints, generatedCases });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     if (isSchemaDriftError(msg)) {
@@ -495,7 +647,7 @@ export async function setTestStatus(env: Env, request: Request, actor: DbUser): 
     const caseId = String(raw.caseId || "");
     const status = String(raw.status || "");
     const note = String(raw.note ?? "").trim();
-    const assignee = String(raw.assignee ?? "").trim();
+    let assignee = String(raw.assignee ?? "").trim();
     const sprint = Number(raw.sprint ?? 0);
     if (!caseId || !status) return error("Each item needs caseId and status.");
     if (!["not_run", "in_progress", "pass", "fail", "blocked"].includes(status)) {
@@ -506,6 +658,8 @@ export async function setTestStatus(env: Env, request: Request, actor: DbUser): 
         `A note is required for ${status} on ${caseId}. Describe what failed or what is blocking (at least a short sentence).`,
       );
     }
+    // Failed tests always go to Evelyn (Dev) for fix.
+    if (status === "fail") assignee = FAILED_TEST_ASSIGNEE;
 
     if (status === "not_run" && !assignee && !note && !(sprint > 0)) {
       // Never wipe a completed/in-progress row via accidental empty PUT (e.g. notes blur race).
@@ -879,6 +1033,25 @@ export async function createWorkshopRegistration(env: Env, request: Request): Pr
     .bind(`wr-${crypto.randomUUID()}`, workshopId, name, email, phone, attendeeCount, notes, new Date().toISOString())
     .run();
 
+  try {
+    const { sendAdminFormNotify } = await import("./email");
+    const { escapeHtml: esc } = await import("./email-brand");
+    await sendAdminFormNotify(env, {
+      formName: "Workshop registration",
+      summary: `${name} registered for ${workshop.title}`,
+      detailsHtml: `<p style="margin:0 0 8px;"><strong>Workshop:</strong> ${esc(workshop.title)}</p>
+        <p style="margin:0 0 8px;"><strong>Name:</strong> ${esc(name)}</p>
+        <p style="margin:0 0 8px;"><strong>Email:</strong> <a href="mailto:${esc(email)}" style="color:#9B2F28;">${esc(email)}</a></p>
+        <p style="margin:0 0 8px;"><strong>Phone:</strong> ${esc(phone || "—")}</p>
+        <p style="margin:0 0 8px;"><strong>Attendees:</strong> ${attendeeCount}</p>
+        ${notes ? `<p style="margin:0;"><strong>Notes:</strong> ${esc(notes)}</p>` : ""}`,
+      replyTo: email,
+      meta: { workshopId, email },
+    });
+  } catch {
+    /* non-fatal */
+  }
+
   return json({ ok: true, message: `You're registered for ${workshop.title}.` });
 }
 
@@ -969,23 +1142,28 @@ export async function createJuniorSignup(env: Env, request: Request): Promise<Re
   // Email the parent a consent link. Non-fatal if email is not configured.
   let emailSent = false;
   try {
-    const { emailConfigured, sendResendEmail, ROOT_DOMAIN, SITE_NAME } = await import("./email");
+    const { emailConfigured, sendParentConsentEmail, sendAdminFormNotify, ROOT_DOMAIN } =
+      await import("./email");
+    const { escapeHtml: esc } = await import("./email-brand");
     if (emailConfigured(env)) {
       const consentUrl = `https://${ROOT_DOMAIN}/?consent=${token}`;
-      const safeChild = childName.replace(/[<>&"]/g, "");
-      await sendResendEmail(env, {
-        to: parentEmail,
-        subject: `${SITE_NAME} — Parental consent needed for ${safeChild}`,
-        html: `<p>Hi,</p>
-<p><strong>${safeChild}</strong> would like to join the <strong>${teamLabel(team)}</strong> on ${SITE_NAME}.</p>
-<p>Because ${safeChild} is under 18, we need a parent or guardian to approve and complete registration before the account is activated. We never collect a child's address or phone number — that information comes only from you, the parent.</p>
-<p><a href="${consentUrl}" style="display:inline-block;padding:12px 20px;background:#9B2F28;color:#fff;border-radius:8px;text-decoration:none;font-weight:700">Review &amp; grant permission</a></p>
-<p>Or paste this link into your browser:<br/><a href="${consentUrl}">${consentUrl}</a></p>
-<p>If you did not expect this, you can ignore this email and the account will stay inactive.</p>
-<p>— ${SITE_NAME}</p>`,
-        text: `${safeChild} wants to join the ${teamLabel(team)} on ${SITE_NAME}. As a parent/guardian, please review and grant permission: ${consentUrl}`,
+      await sendParentConsentEmail(env, {
+        parentEmail,
+        childName,
+        consentUrl,
+        audience: team === "junior" ? "junior" : "kids",
       });
       emailSent = true;
+      await sendAdminFormNotify(env, {
+        formName: "Kids/Teens team signup",
+        summary: `${childName} · ${teamLabel(team)} · parent ${parentEmail}`,
+        detailsHtml: `<p style="margin:0 0 8px;"><strong>Team:</strong> ${esc(teamLabel(team))}</p>
+          <p style="margin:0 0 8px;"><strong>Child:</strong> ${esc(childName)} (${esc(childEmail)})</p>
+          <p style="margin:0 0 8px;"><strong>Parent email:</strong> ${esc(parentEmail)}</p>
+          <p style="margin:0;">Status: pending parent consent${emailSent ? " · consent email sent" : ""}.</p>`,
+        replyTo: parentEmail,
+        meta: { team, childEmail, parentEmail },
+      });
     }
   } catch {
     // Swallow email errors — signup is recorded; parent can be re-notified later.
@@ -1070,6 +1248,23 @@ export async function grantJuniorConsent(env: Env, token: string, request: Reque
     .run();
 
   await appendAudit(env, "junior_signup_activated", row.parent_email, `${teamLabel(row.team)} · child ${row.child_name}`);
+
+  try {
+    const { sendAdminFormNotify } = await import("./email");
+    const { escapeHtml: esc } = await import("./email-brand");
+    await sendAdminFormNotify(env, {
+      formName: "Parent consent granted",
+      summary: `${parentName} approved ${row.child_name} · ${teamLabel(row.team)}`,
+      detailsHtml: `<p style="margin:0 0 8px;"><strong>Child:</strong> ${esc(row.child_name)} (${esc(row.child_email)})</p>
+        <p style="margin:0 0 8px;"><strong>Parent:</strong> ${esc(parentName)} · ${esc(row.parent_email)}</p>
+        <p style="margin:0 0 8px;"><strong>Phone:</strong> ${esc(parentPhone)}</p>
+        <p style="margin:0;"><strong>Relationship:</strong> ${esc(parentRelationship || "—")}</p>`,
+      replyTo: row.parent_email,
+      meta: { team: row.team, childEmail: row.child_email },
+    });
+  } catch {
+    /* non-fatal */
+  }
 
   return json({
     ok: true,

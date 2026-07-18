@@ -13,6 +13,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:unit": "vitest run",
+    "test:unit:report": "node --use-system-ca scripts/report-vitest-to-d1.mjs",
     "test:e2e": "playwright test",
     "build:prod": "tsc -b && vite build",
     "db:migrate": "node --use-system-ca ../../muntie-ev-ai-studio-main/node_modules/wrangler/bin/wrangler.js d1 migrations apply gysh-db --remote",

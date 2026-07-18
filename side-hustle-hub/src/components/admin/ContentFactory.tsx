@@ -131,11 +131,11 @@ export function ContentFactory() {
         <h2 style={{ fontSize: "1.5rem", color: "var(--charcoal)", display: "flex", alignItems: "center", gap: 8 }}>
           <Sparkles size={22} style={{ color: "var(--bronze)" }} /> Content Factory
         </h2>
-        <p style={{ color: "var(--text-secondary)", marginTop: 6, fontSize: "0.9rem" }}>
+        <p style={{ color: "var(--text-primary)", marginTop: 6, fontSize: "1rem" }}>
           Create and review content drafts and manage workshop details. Drafts persist in D1.
         </p>
         {error && (
-          <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 8, background: "rgba(155,47,40,0.1)", border: "1px solid rgba(155,47,40,0.35)", color: "#9B2F28", fontSize: "0.85rem" }}>
+          <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 8, background: "rgba(155,47,40,0.1)", border: "1px solid rgba(155,47,40,0.35)", color: "#9B2F28", fontSize: "0.95rem" }}>
             {error}
           </div>
         )}
@@ -174,7 +174,7 @@ export function ContentFactory() {
                 <Wand2 size={14} /> Generate weekly batch
               </button>
             </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12, fontSize: "0.8rem", color: "var(--text-secondary)" }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12, fontSize: "0.9375rem", color: "var(--text-primary)" }}>
               {Object.entries(counts).map(([k, v]) => (
                 <span key={k}>{CONTENT_STATUS_LABELS[k as ContentDraftStatus] ?? k}: {v}</span>
               ))}
@@ -183,9 +183,9 @@ export function ContentFactory() {
           </div>
 
           {loading ? (
-            <p style={{ color: "var(--text-muted)" }}>Loading content from database…</p>
+            <p style={{ color: "var(--text-primary)" }}>Loading content from database…</p>
           ) : drafts.length === 0 && !error ? (
-            <div className="glass" style={{ padding: 28, textAlign: "center", color: "var(--text-secondary)" }}>
+            <div className="glass" style={{ padding: 28, textAlign: "center", color: "var(--text-primary)" }}>
               No drafts yet. Generate a weekly batch to get started.
             </div>
           ) : (
@@ -220,13 +220,13 @@ export function ContentFactory() {
                       background: selected?.id === d.id ? "rgba(215,198,151,0.35)" : "#fff",
                     }}
                   >
-                    <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{CONTENT_TYPE_LABELS[d.type]} · {CONTENT_STATUS_LABELS[d.status]}</div>
-                    <strong style={{ color: "var(--charcoal)", fontSize: "0.9rem" }}>{d.title}</strong>
-                    <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginTop: 4 }}>{d.excerpt}</div>
+                    <div style={{ fontSize: "0.9375rem", color: "var(--text-primary)" }}>{CONTENT_TYPE_LABELS[d.type]} · {CONTENT_STATUS_LABELS[d.status]}</div>
+                    <strong style={{ color: "var(--charcoal)", fontSize: "1rem" }}>{d.title}</strong>
+                    <div style={{ fontSize: "0.9375rem", color: "var(--text-primary)", marginTop: 4 }}>{d.excerpt}</div>
                   </button>
                 ))}
                 {filtered.length === 0 && (
-                  <p style={{ color: "var(--text-muted)" }}>No drafts match filters.</p>
+                  <p style={{ color: "var(--text-primary)" }}>No drafts match filters.</p>
                 )}
               </div>
 
@@ -247,7 +247,7 @@ export function ContentFactory() {
                     <button type="button" className="btn btn-outline" onClick={() => void reject(selected)}>
                       Reject
                     </button>
-                    <span style={{ alignSelf: "center", fontSize: "0.85rem", color: "var(--text-muted)" }}>
+                    <span style={{ alignSelf: "center", fontSize: "0.95rem", color: "var(--text-primary)" }}>
                       Owner: {selected.owner} · {CONTENT_STATUS_LABELS[selected.status]}
                     </span>
                   </div>

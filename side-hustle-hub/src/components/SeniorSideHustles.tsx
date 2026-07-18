@@ -9,13 +9,10 @@ import {
   BadgeCheck,
   ArrowRight,
   ArrowLeft,
-  RotateCcw,
   Compass,
   BrainCircuit,
   Target,
   Leaf,
-  ChevronDown,
-  ChevronRight,
 } from "lucide-react";
 import {
   SENIOR_AUDIENCE_LABEL,
@@ -37,6 +34,7 @@ import {
 } from "../lib/pending-blueprint";
 import { saveBlueprintToAccount } from "../lib/blueprints-api";
 import { SideHustleBlueprintResults } from "./SideHustleBlueprintResults";
+import { WizardStartHereBanner } from "./WizardStartHereBanner";
 import seniorSideHustleHero from "../assets/senior-side-hustle-hero.png";
 import seniorSideHustleIdeasHero from "../assets/senior-side-hustle-ideas-hero.png";
 import seniorGuidesHero from "../assets/senior-guides-hero.png";
@@ -83,18 +81,6 @@ type ScoredMatch = {
 
 type SingleKey = "lifestyle" | "availability";
 type RankedKey = "skills" | "goals";
-
-const LIFESTYLE_LABELS: Record<string, string> = {
-  gentle: "Gentle pace",
-  balanced: "Balanced energy",
-  active: "Active & social",
-};
-
-const AVAILABILITY_LABELS: Record<string, string> = {
-  light: "A few hours / week",
-  steady: "Part-time days",
-  flexible: "Seasonal / as-needed",
-};
 
 const SKILL_LABELS: Record<string, string> = {
   teaching: "Teaching & coaching",
@@ -412,6 +398,8 @@ function SeniorMatchFinder({
                 />
               </div>
 
+              {currentStep === 0 && <WizardStartHereBanner />}
+
               <div className="match-finder-adult-header">
                 <div className="match-finder-adult-icon">{currentStepData.icon}</div>
                 <div>
@@ -497,6 +485,11 @@ function SeniorMatchFinder({
                   {validationHint}
                 </p>
               )}
+
+              <p className="wizard-fill-tip">
+                Tip: Choose the pace that fits your week — we favor flexible Side Hustles that honor experience,
+                energy, and a lighter workday.
+              </p>
 
               <div className="match-finder-adult-nav">
                 <button
@@ -620,11 +613,13 @@ export function SeniorSideHustles({
   return (
     <div className="seniors-stage" data-testid="seniors-page">
       <div className="seniors-lead">
-        <span className="flat-label flat-label--accent">{SENIOR_AUDIENCE_LABEL}</span>
-        <h2 className="seniors-lead-title">
-          <Heart size={22} aria-hidden="true" />
-          {SENIOR_INTRO.headline}
-        </h2>
+        <div className="seniors-lead-top">
+          <span className="flat-label flat-label--accent">{SENIOR_AUDIENCE_LABEL}</span>
+          <h2 className="seniors-lead-title">
+            <Heart size={20} aria-hidden="true" />
+            {SENIOR_INTRO.headline}
+          </h2>
+        </div>
         <p className="seniors-lead-copy">{SENIOR_INTRO.lead}</p>
         {tab === "opportunities" && (
           <p className="seniors-lead-ideas">

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { FlaskConical, RotateCcw, Search, ChevronDown, ChevronRight, Play } from "lucide-react";
 import {
   TEST_CASES,
@@ -20,14 +20,20 @@ import {
   type TestSuite,
   type TestCategory,
   type AutomatedSuite,
+  type AutomatedRunMode,
+  type GeneratedTestCase,
+  type TestCase,
 } from "../../lib/gysh-test-plan";
 import {
   AUTOMATED_VITEST_CASES,
   AUTOMATED_PLAYWRIGHT_CASES,
   isAutomatedTestId,
+  isWizardMatrixCaseId,
 } from "../../lib/gysh-automated-tests";
+import vitestLastRun from "../../lib/vitest-last-run.json";
 import {
   AUTOMATED_SUITE_OWNERS,
+  FAILED_TEST_ASSIGNEE,
   QA_TESTERS,
   isHumanQaTester,
   testOwnerLabel,
@@ -36,49 +42,171 @@ import {
 } from "../../lib/gysh-roles";
 import { listUpcomingSprints, sprintLabel, BACKLOG_SPRINT } from "../../lib/gysh-sprints";
 import { ApiError } from "../../lib/api";
+import type { AuthUser } from "../../lib/auth";
 import { suggestedSprintForTest } from "../../lib/gysh-sprint-board";
+import { stopTimerOnStatusChange } from "../../lib/gysh-time-entries";
+import { useActiveTimers } from "../../lib/use-active-timers";
 import { SprintStatusBars } from "./SprintStatusBars";
+import { QaProgressBars, emptyTally, tallyStatuses, type StatusTally } from "./QaProgressBars";
+import { WorkTimer } from "./WorkTimer";
 
 const STATUSES: TestStatus[] = ["not_run", "in_progress", "pass", "fail", "blocked"];
 
-const STATUS_COLOR: Record<TestStatus, string> = {
-  not_run: "var(--text-muted)",
-  in_progress: "var(--bronze)",
-  pass: "var(--accent-emerald)",
-  fail: "var(--crimson)",
-  blocked: "#a16207",
+function pctComplete(done: number, total: number): string {
+  if (total <= 0) return "0%";
+  return `${Math.round((done / total) * 100)}%`;
+}
+
+function countWithPct(done: number, total: number, suffix = ""): string {
+  const base = `${done}/${total}${suffix}`;
+  return `${base} · ${pctComplete(done, total)}`;
+}
+
+type SprintFilterKey = number | "backlog";
+
+function toggleSetValue<T>(prev: Set<T>, value: T): Set<T> {
+  const next = new Set(prev);
+  if (next.has(value)) next.delete(value);
+  else next.add(value);
+  return next;
+}
+
+/** Multi-select toggle with Shift+click range select (like Categories). */
+function applyMultiSelectClick<T>(
+  prev: Set<T>,
+  value: T,
+  ordered: readonly T[],
+  lastIndex: number | null,
+  shiftKey: boolean,
+): { next: Set<T>; lastIndex: number | null } {
+  const idx = ordered.indexOf(value);
+  if (shiftKey && lastIndex != null && idx >= 0) {
+    const lo = Math.min(lastIndex, idx);
+    const hi = Math.max(lastIndex, idx);
+    const next = new Set(prev);
+    for (let i = lo; i <= hi; i++) next.add(ordered[i]!);
+    return { next, lastIndex: idx };
+  }
+  return { next: toggleSetValue(prev, value), lastIndex: idx >= 0 ? idx : lastIndex };
+}
+
+function FilterChip({
+  active,
+  onToggle,
+  children,
+  title,
+  accent,
+}: {
+  active: boolean;
+  onToggle: (e: MouseEvent<HTMLButtonElement>) => void;
+  children: ReactNode;
+  title?: string;
+  accent?: string;
+}) {
+  return (
+    <button
+      type="button"
+      className="qa-tester-bubble qa-filter-chip"
+      data-active={active ? "true" : "false"}
+      title={title}
+      onClick={onToggle}
+      style={
+        active && accent
+          ? { borderColor: accent, boxShadow: `0 0 0 1px ${accent}` }
+          : undefined
+      }
+    >
+      <input
+        type="checkbox"
+        className="qa-filter-chip__check"
+        checked={active}
+        readOnly
+        tabIndex={-1}
+        aria-hidden
+      />
+      {children}
+    </button>
+  );
+}
+
+/** List order: in progress → not started → done (fail/blocked before pass). */
+const STATUS_LIST_ORDER: Record<TestStatus, number> = {
+  in_progress: 0,
+  not_run: 1,
+  fail: 2,
+  blocked: 3,
+  pass: 4,
 };
 
-const ALL_CASES = [
+const STATUS_COLOR: Record<TestStatus, string> = {
+  not_run: "#6b5344",
+  in_progress: "#b8860b",
+  pass: "#3f6b2e",
+  fail: "#9B2F28",
+  blocked: "#9B2F28",
+};
+
+const BASE_CASES: TestCase[] = [
   ...withDefaultSuite(TEST_CASES),
   ...AUTOMATED_VITEST_CASES,
   ...AUTOMATED_PLAYWRIGHT_CASES,
 ];
 
-const SUITE_OPTIONS: Array<TestSuite | "all"> = ["all", "manual", "vitest", "playwright"];
+function generatedToCase(g: GeneratedTestCase): TestCase {
+  return {
+    id: g.id,
+    area: g.area,
+    title: g.title,
+    priority: g.priority,
+    roles: ["qa", "admin"],
+    assignees: [g.suite === "playwright" ? "playwright" : "vitest"],
+    suite: g.suite,
+    steps: [
+      ...g.steps,
+      ...(g.fixSteps.length ? ["— Steps to fix —", ...g.fixSteps] : []),
+      ...(g.failureDetail ? ["— Failure detail —", g.failureDetail] : []),
+      ...(g.severity ? [`Severity: ${g.severity}`] : []),
+    ],
+    expected: g.expected,
+  };
+}
 
 export function TestingPortal({
   focusTestId = null,
   onFocusConsumed,
+  authUser = null,
 }: {
   focusTestId?: string | null;
   onFocusConsumed?: () => void;
+  authUser?: AuthUser | null;
 } = {}) {
   const [statuses, setStatuses] = useState<Record<string, TestStatus>>({});
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [assigneeOverrides, setAssigneeOverrides] = useState<Record<string, string>>({});
   const [sprintByCase, setSprintByCase] = useState<Record<string, number>>({});
+  const [generatedCases, setGeneratedCases] = useState<GeneratedTestCase[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const timers = useActiveTimers(Boolean(authUser));
+  void authUser;
   const [query, setQuery] = useState("");
   const [areaFilter, setAreaFilter] = useState("all");
   const [categoryFilters, setCategoryFilters] = useState<Set<TestCategory>>(() => new Set());
   const [categoriesOpen, setCategoriesOpen] = useState(true);
   const [statusFilters, setStatusFilters] = useState<Set<TestStatus>>(() => new Set());
-  const [testerFilter, setTesterFilter] = useState<QaTesterId | null>(null);
-  const [suiteFilter, setSuiteFilter] = useState<TestSuite | "all">("manual");
-  const [sprintFilter, setSprintFilter] = useState<number | "all" | "backlog">("all");
+  const [testerFilters, setTesterFilters] = useState<Set<QaTesterId>>(() => new Set());
+  /** Empty = all suites. Default manual to match prior portal focus. */
+  const [suiteFilters, setSuiteFilters] = useState<Set<TestSuite>>(() => new Set(["manual"]));
+  /** Empty = all sprints. Values are sprint index or "backlog". */
+  const [sprintFilters, setSprintFilters] = useState<Set<SprintFilterKey>>(() => new Set());
+  const lastCategoryIdx = useRef<number | null>(null);
+  const lastStatusIdx = useRef<number | null>(null);
+  const lastTesterIdx = useRef<number | null>(null);
+  const lastSuiteIdx = useRef<number | null>(null);
+  const lastSprintIdx = useRef<number | null>(null);
   const [openIds, setOpenIds] = useState<Set<string>>(() => new Set());
+  /** When true (default), visible cards stay expanded as filters change. */
+  const [preferExpanded, setPreferExpanded] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
   const [highlightId, setHighlightId] = useState<string | null>(null);
@@ -121,7 +249,21 @@ export function TestingPortal({
 
   const isSaving = (id: string) => savingIds.has(id);
 
-  const effectiveSprint = (t: (typeof ALL_CASES)[number]) =>
+  const ALL_CASES = useMemo(() => {
+    const seen = new Set(BASE_CASES.map((c) => c.id));
+    const extras = generatedCases
+      .filter((g) => !seen.has(g.id))
+      .map(generatedToCase);
+    return [...BASE_CASES, ...extras];
+  }, [generatedCases]);
+
+  /** Portal totals never include FMSH wizard inventory (~972 rows). */
+  const COUNTABLE_CASES = useMemo(
+    () => ALL_CASES.filter((t) => !isWizardMatrixCaseId(t.id)),
+    [ALL_CASES],
+  );
+
+  const effectiveSprint = (t: TestCase) =>
     sprintByCase[t.id] ?? suggestedSprintForTest(t);
 
   const applyServerData = (
@@ -130,6 +272,7 @@ export function TestingPortal({
       notes: Record<string, string>;
       assignees: Record<string, string>;
       sprints: Record<string, number>;
+      generatedCases?: GeneratedTestCase[];
     },
     savedId?: string,
   ) => {
@@ -144,6 +287,7 @@ export function TestingPortal({
     });
     setAssigneeOverrides(data.assignees);
     setSprintByCase(data.sprints);
+    if (data.generatedCases) setGeneratedCases(data.generatedCases);
     if (savedId) {
       setRowErrors((prev) => {
         if (!prev[savedId]) return prev;
@@ -194,9 +338,14 @@ export function TestingPortal({
     setAreaFilter("all");
     setCategoryFilters(new Set());
     setStatusFilters(new Set());
-    setTesterFilter(null);
-    setSuiteFilter("all");
-    setSprintFilter("all");
+    setTesterFilters(new Set());
+    setSuiteFilters(new Set());
+    setSprintFilters(new Set());
+    lastCategoryIdx.current = null;
+    lastStatusIdx.current = null;
+    lastTesterIdx.current = null;
+    lastSuiteIdx.current = null;
+    lastSprintIdx.current = null;
     setOpenIds((prev) => {
       const next = new Set(prev);
       next.add(focusTestId);
@@ -213,12 +362,12 @@ export function TestingPortal({
   }, [focusTestId, loading, onFocusConsumed]);
 
   const areas = useMemo(
-    () => ["all", ...Array.from(new Set(ALL_CASES.map((t) => t.area)))],
-    [],
+    () => ["all", ...Array.from(new Set(COUNTABLE_CASES.map((t) => t.area)))],
+    [COUNTABLE_CASES],
   );
 
   /** Effective assignees: humans for manual; suite owners for automated (D1 human override ignored). */
-  const effectiveAssignees = (t: (typeof ALL_CASES)[number]): TestOwnerId[] => {
+  const effectiveAssignees = (t: TestCase): TestOwnerId[] => {
     if (isAutomatedTestId(t.id) || t.suite === "vitest" || t.suite === "playwright") {
       return t.assignees;
     }
@@ -254,42 +403,176 @@ export function TestingPortal({
   };
 
   const testerStats = useMemo(() => {
-    const manual = ALL_CASES.filter((t) => t.suite === "manual");
+    const manual = COUNTABLE_CASES.filter((t) => t.suite === "manual");
     return QA_TESTERS.map((tester) => {
       const cases = manual.filter((t) => effectiveAssignees(t).includes(tester.id));
       const done = cases.filter((t) => isCaseComplete(t.id)).length;
       return { ...tester, total: cases.length, done };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- effectiveAssignees derives from assigneeOverrides
-  }, [statuses, assigneeOverrides]);
+  }, [statuses, assigneeOverrides, COUNTABLE_CASES]);
+
+  /** Real Vitest `it()` counts from last `npm test` / report-vitest-to-d1 run (not FMSH inventory). */
+  const vitestReal = useMemo(() => {
+    const total = Number(vitestLastRun.total) || 0;
+    const passed = Number(vitestLastRun.passed) || 0;
+    const failed = Number(vitestLastRun.failed) || 0;
+    const tally: StatusTally = {
+      ...emptyTally(),
+      pass: passed,
+      fail: failed,
+      total,
+    };
+    return {
+      total,
+      passed,
+      failed,
+      done: passed + failed,
+      tally,
+      at: String(vitestLastRun.at || ""),
+      ok: Boolean(vitestLastRun.ok),
+    };
+  }, []);
 
   const suiteOwnerStats = useMemo(() => {
     return AUTOMATED_SUITE_OWNERS.map((owner) => {
-      const cases = ALL_CASES.filter(
+      if (owner.id === "vitest") {
+        return {
+          ...owner,
+          total: vitestReal.total,
+          done: vitestReal.done,
+          passed: vitestReal.passed,
+          tally: vitestReal.tally,
+        };
+      }
+      const cases = COUNTABLE_CASES.filter(
         (t) => t.suite === owner.id && effectiveAssignees(t).includes(owner.id),
       );
-      const done = cases.filter((t) => isCaseComplete(t.id)).length;
-      return { ...owner, total: cases.length, done };
+      const tally = tallyStatuses(
+        cases.map((c) => c.id),
+        statuses,
+      );
+      return { ...owner, total: tally.total, done: tally.pass + tally.fail + tally.blocked, passed: tally.pass, tally };
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- effectiveAssignees is pure over ALL_CASES
-  }, [statuses]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- effectiveAssignees is pure over COUNTABLE_CASES
+  }, [statuses, vitestReal, COUNTABLE_CASES]);
 
   const suiteStats = useMemo(() => {
-    const counts: Record<TestSuite, { done: number; total: number }> = {
-      manual: { done: 0, total: 0 },
-      vitest: { done: 0, total: 0 },
-      playwright: { done: 0, total: 0 },
+    const counts: Record<TestSuite, { done: number; total: number; passed: number; tally: StatusTally }> = {
+      manual: { done: 0, total: 0, passed: 0, tally: emptyTally() },
+      vitest: {
+        done: vitestReal.done,
+        total: vitestReal.total,
+        passed: vitestReal.passed,
+        tally: vitestReal.tally,
+      },
+      playwright: { done: 0, total: 0, passed: 0, tally: emptyTally() },
     };
-    for (const t of ALL_CASES) {
-      counts[t.suite].total += 1;
-      if (isCaseComplete(t.id)) counts[t.suite].done += 1;
+    for (const suite of ["manual", "playwright"] as TestSuite[]) {
+      const ids = COUNTABLE_CASES.filter((t) => t.suite === suite).map((t) => t.id);
+      const tally = tallyStatuses(ids, statuses);
+      counts[suite] = {
+        done: tally.pass + tally.fail + tally.blocked,
+        total: tally.total,
+        passed: tally.pass,
+        tally,
+      };
     }
     return counts;
-  }, [statuses]);
+  }, [statuses, vitestReal, COUNTABLE_CASES]);
+
+  const qaProgress = useMemo(() => {
+    const overallTally: StatusTally = {
+      ...emptyTally(),
+      pass: suiteStats.manual.tally.pass + suiteStats.vitest.tally.pass + suiteStats.playwright.tally.pass,
+      fail: suiteStats.manual.tally.fail + suiteStats.vitest.tally.fail + suiteStats.playwright.tally.fail,
+      blocked:
+        suiteStats.manual.tally.blocked +
+        suiteStats.vitest.tally.blocked +
+        suiteStats.playwright.tally.blocked,
+      in_progress:
+        suiteStats.manual.tally.in_progress +
+        suiteStats.vitest.tally.in_progress +
+        suiteStats.playwright.tally.in_progress,
+      not_run:
+        suiteStats.manual.tally.not_run +
+        suiteStats.vitest.tally.not_run +
+        suiteStats.playwright.tally.not_run,
+      total: suiteStats.manual.total + suiteStats.vitest.total + suiteStats.playwright.total,
+    };
+    const suites = (["vitest", "playwright", "manual"] as TestSuite[]).map((suite) => ({
+      id: suite,
+      label: SUITE_LABELS[suite],
+      detail:
+        suite === "vitest"
+          ? `Real Vitest suite (${vitestReal.total} tests)`
+          : suite === "playwright"
+            ? "Automated suite"
+            : "Human QA",
+      accent: suite === "vitest" ? "#2563eb" : suite === "playwright" ? "#7c3aed" : "#6B5344",
+      tally: suiteStats[suite].tally,
+    }));
+
+    const sprintRows = [
+      {
+        id: "backlog",
+        label: "Backlog",
+        detail: "Uncommitted cases",
+        tally: tallyStatuses(
+          COUNTABLE_CASES.filter((t) => effectiveSprint(t) === BACKLOG_SPRINT).map((t) => t.id),
+          statuses,
+        ),
+      },
+      ...sprints.map((s) => ({
+        id: `sprint-${s.index}`,
+        label: s.label,
+        detail: s.rangeLabel,
+        tally: tallyStatuses(
+          COUNTABLE_CASES.filter((t) => effectiveSprint(t) === s.index).map((t) => t.id),
+          statuses,
+        ),
+      })),
+    ].filter((row) => row.tally.total > 0);
+
+    const resources = [
+      ...QA_TESTERS.map((tester) => {
+        const ids = COUNTABLE_CASES.filter(
+          (t) => t.suite === "manual" && effectiveAssignees(t).includes(tester.id),
+        ).map((t) => t.id);
+        return {
+          id: tester.id,
+          label: tester.name,
+          detail: "Manual QA",
+          accent: tester.id === "tina" ? "#9B2F28" : tester.id === "evelyn" ? "#947D64" : "#3f6b2e",
+          tally: tallyStatuses(ids, statuses),
+        };
+      }),
+      ...AUTOMATED_SUITE_OWNERS.map((owner) => ({
+        id: owner.id,
+        label: owner.name,
+        detail: "Automated suite owner",
+        accent: owner.accent,
+        tally: suiteStats[owner.id].tally,
+      })),
+    ];
+
+    return {
+      overall: {
+        id: "overall",
+        label: "Overall progress",
+        detail: "Manual + Vitest + Playwright",
+        tally: overallTally,
+      },
+      suites,
+      sprints: sprintRows,
+      resources,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- effectiveAssignees / effectiveSprint derive from state above
+  }, [statuses, sprintByCase, suiteStats, sprints, assigneeOverrides, vitestReal.total, COUNTABLE_CASES]);
 
   const categoryStats = useMemo(() => {
     const counts: Partial<Record<TestCategory, { done: number; total: number }>> = {};
-    for (const t of ALL_CASES) {
+    for (const t of COUNTABLE_CASES) {
       const cat = categoryForCase(t);
       const cur = counts[cat] ?? { done: 0, total: 0 };
       cur.total += 1;
@@ -297,12 +580,12 @@ export function TestingPortal({
       counts[cat] = cur;
     }
     return counts;
-  }, [statuses]);
+  }, [statuses, COUNTABLE_CASES]);
 
   const sprintStats = useMemo(() => {
     const bySprint = new Map<number, { done: number; total: number }>();
     let backlog = { done: 0, total: 0 };
-    for (const t of ALL_CASES) {
+    for (const t of COUNTABLE_CASES) {
       const sprint = effectiveSprint(t);
       if (sprint === BACKLOG_SPRINT) {
         backlog.total += 1;
@@ -316,49 +599,92 @@ export function TestingPortal({
     }
     return { bySprint, backlog };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- effectiveSprint uses sprintByCase
-  }, [statuses, sprintByCase]);
+  }, [statuses, sprintByCase, COUNTABLE_CASES]);
 
   const completedCases = useMemo(
-    () => ALL_CASES.filter((t) => isCaseComplete(t.id)).length,
-    [statuses],
+    () => COUNTABLE_CASES.filter((t) => isCaseComplete(t.id)).length,
+    [statuses, COUNTABLE_CASES],
   );
 
-  const filtered = ALL_CASES.filter((t) => {
-    const st = statuses[t.id] ?? "not_run";
-    const cat = categoryForCase(t);
-    if (categoryFilters.size > 0 && !categoryFilters.has(cat)) return false;
-    if (areaFilter !== "all" && t.area !== areaFilter) return false;
-    if (statusFilters.size > 0 && !statusFilters.has(st)) return false;
-    if (testerFilter && !effectiveAssignees(t).includes(testerFilter)) return false;
-    if (suiteFilter !== "all" && t.suite !== suiteFilter) return false;
-    if (sprintFilter === "backlog") {
-      if (effectiveSprint(t) !== BACKLOG_SPRINT) return false;
-    } else if (sprintFilter !== "all" && effectiveSprint(t) !== sprintFilter) {
-      return false;
-    }
-    if (query.trim()) {
-      const q = query.toLowerCase();
-      return (
-        t.id.toLowerCase().includes(q) ||
-        t.title.toLowerCase().includes(q) ||
-        t.area.toLowerCase().includes(q) ||
-        TEST_CATEGORY_LABELS[cat].toLowerCase().includes(q) ||
-        (notes[t.id] ?? "").toLowerCase().includes(q)
-      );
-    }
-    return true;
-  });
+  const sprintFilterOrder = useMemo<SprintFilterKey[]>(
+    () => ["backlog", ...sprints.map((s) => s.index)],
+    [sprints],
+  );
+  const suiteFilterOrder = useMemo<TestSuite[]>(() => ["manual", "vitest", "playwright"], []);
+  const testerFilterOrder = useMemo(() => QA_TESTERS.map((t) => t.id), []);
 
-  const toggleCategoryFilter = (cat: TestCategory) => {
-    setCategoryFilters((prev) => {
-      const next = new Set(prev);
-      if (next.has(cat)) next.delete(cat);
-      else next.add(cat);
-      return next;
+  const filtered = useMemo(() => {
+    const list = COUNTABLE_CASES.filter((t) => {
+      const st = statuses[t.id] ?? "not_run";
+      const cat = categoryForCase(t);
+      if (categoryFilters.size > 0 && !categoryFilters.has(cat)) return false;
+      if (areaFilter !== "all" && t.area !== areaFilter) return false;
+      if (statusFilters.size > 0 && !statusFilters.has(st)) return false;
+      if (testerFilters.size > 0) {
+        const owners = effectiveAssignees(t);
+        if (!owners.some((a) => testerFilters.has(a as QaTesterId))) return false;
+      }
+      if (suiteFilters.size > 0 && !suiteFilters.has(t.suite ?? "manual")) return false;
+      if (sprintFilters.size > 0) {
+        const sprint = effectiveSprint(t);
+        const key: SprintFilterKey = sprint === BACKLOG_SPRINT ? "backlog" : sprint;
+        if (!sprintFilters.has(key)) return false;
+      }
+      if (query.trim()) {
+        const q = query.toLowerCase();
+        return (
+          t.id.toLowerCase().includes(q) ||
+          t.title.toLowerCase().includes(q) ||
+          t.area.toLowerCase().includes(q) ||
+          TEST_CATEGORY_LABELS[cat].toLowerCase().includes(q) ||
+          (notes[t.id] ?? "").toLowerCase().includes(q)
+        );
+      }
+      return true;
     });
+    list.sort((a, b) => {
+      const sa = statuses[a.id] ?? "not_run";
+      const sb = statuses[b.id] ?? "not_run";
+      const byStatus = STATUS_LIST_ORDER[sa] - STATUS_LIST_ORDER[sb];
+      if (byStatus !== 0) return byStatus;
+      return a.id.localeCompare(b.id);
+    });
+    return list;
+  }, [
+    COUNTABLE_CASES,
+    statuses,
+    categoryFilters,
+    areaFilter,
+    statusFilters,
+    testerFilters,
+    suiteFilters,
+    sprintFilters,
+    query,
+    notes,
+    sprintByCase,
+    assigneeOverrides,
+  ]);
+
+  const filteredIds = useMemo(() => filtered.map((t) => t.id), [filtered]);
+
+  useEffect(() => {
+    if (loading || !preferExpanded) return;
+    setOpenIds(new Set(filteredIds));
+  }, [loading, preferExpanded, filteredIds]);
+
+  const toggleCategoryFilter = (cat: TestCategory, e?: MouseEvent) => {
+    const { next, lastIndex } = applyMultiSelectClick(
+      categoryFilters,
+      cat,
+      TEST_CATEGORIES,
+      lastCategoryIdx.current,
+      Boolean(e?.shiftKey),
+    );
+    lastCategoryIdx.current = lastIndex;
+    setCategoryFilters(next);
   };
 
-  const counts = ALL_CASES.reduce(
+  const counts = COUNTABLE_CASES.reduce(
     (acc, t) => {
       const st = statuses[t.id] ?? "not_run";
       acc[st] = (acc[st] ?? 0) + 1;
@@ -394,18 +720,26 @@ export function TestingPortal({
     });
     const gen = beginSave(id);
     const prev = statusesRef.current[id] ?? "not_run";
+    const assignee = status === "fail" ? FAILED_TEST_ASSIGNEE : persistedAssignee(id);
     setStatuses((s) => ({ ...s, [id]: status }));
+    if (status === "fail") {
+      setAssigneeOverrides((prevAssignees) => ({ ...prevAssignees, [id]: FAILED_TEST_ASSIGNEE }));
+    }
     try {
       const data = await saveTestStatus(
         id,
         status,
         note,
-        persistedAssignee(id),
+        assignee,
         persistedSprint(id),
       );
       if (!endSave(id, gen)) return;
       applyServerData(data, id);
       setSaveFlash(`${id} → ${STATUS_LABELS[status]} saved`);
+      if (status !== prev) {
+        await stopTimerOnStatusChange("test", id);
+        void timers.refresh();
+      }
     } catch (e) {
       if (!endSave(id, gen)) return;
       setStatuses((s) => ({ ...s, [id]: prev }));
@@ -498,16 +832,61 @@ export function TestingPortal({
     }
   };
 
-  const toggleStatusFilter = (status: TestStatus) => {
-    setStatusFilters((prev) => {
-      const next = new Set(prev);
-      if (next.has(status)) next.delete(status);
-      else next.add(status);
-      return next;
-    });
+  const toggleStatusFilter = (status: TestStatus, e?: MouseEvent) => {
+    const { next, lastIndex } = applyMultiSelectClick(
+      statusFilters,
+      status,
+      STATUSES,
+      lastStatusIdx.current,
+      Boolean(e?.shiftKey),
+    );
+    lastStatusIdx.current = lastIndex;
+    setStatusFilters(next);
   };
 
-  const filteredIds = filtered.map((t) => t.id);
+  const toggleTesterFilter = (id: QaTesterId, e?: MouseEvent) => {
+    const { next, lastIndex } = applyMultiSelectClick(
+      testerFilters,
+      id,
+      testerFilterOrder,
+      lastTesterIdx.current,
+      Boolean(e?.shiftKey),
+    );
+    lastTesterIdx.current = lastIndex;
+    setTesterFilters(next);
+    if (next.size > 0) {
+      setSuiteFilters((prev) => {
+        const suites = new Set(prev);
+        suites.add("manual");
+        return suites;
+      });
+    }
+  };
+
+  const toggleSuiteFilter = (suite: TestSuite, e?: MouseEvent) => {
+    const { next, lastIndex } = applyMultiSelectClick(
+      suiteFilters,
+      suite,
+      suiteFilterOrder,
+      lastSuiteIdx.current,
+      Boolean(e?.shiftKey),
+    );
+    lastSuiteIdx.current = lastIndex;
+    setSuiteFilters(next);
+  };
+
+  const toggleSprintFilter = (key: SprintFilterKey, e?: MouseEvent) => {
+    const { next, lastIndex } = applyMultiSelectClick(
+      sprintFilters,
+      key,
+      sprintFilterOrder,
+      lastSprintIdx.current,
+      Boolean(e?.shiftKey),
+    );
+    lastSprintIdx.current = lastIndex;
+    setSprintFilters(next);
+  };
+
   const allFilteredSelected =
     filteredIds.length > 0 && filteredIds.every((id) => selectedIds.has(id));
   const someSelected = selectedIds.size > 0;
@@ -568,19 +947,34 @@ export function TestingPortal({
     }
   };
 
-  const runSuite = async (suite: AutomatedSuite) => {
+  const runSuite = async (suite: AutomatedSuite, mode: AutomatedRunMode = "new") => {
     setSuiteRunning(suite);
     setError("");
-    setRunLog(`Running ${suite === "all" ? "Vitest + Playwright" : suite}…`);
+    setRunLog(
+      `Running ${suite === "all" ? "Vitest + Playwright" : suite} (${mode === "new" ? "new / not-run only" : "full regression"})…`,
+    );
     try {
-      const result = await runAutomatedSuite(suite);
+      const result = await runAutomatedSuite(suite, mode);
+      const failCreated =
+        result.createdFailureCases && result.createdFailureCases.length > 0
+          ? `\nNew failure cases: ${result.createdFailureCases.join(", ")}`
+          : "";
       setRunLog(
-        [result.summary, ...result.details, `Local full suite: ${result.commands.vitest} · ${result.commands.playwright}`].join(
-          "\n",
-        ),
+        [
+          result.summary,
+          ...result.details,
+          failCreated,
+          `Local full suite: ${result.commands.vitest} · ${result.commands.playwright}`,
+          result.commands.report ? `Report to D1: ${result.commands.report}` : "",
+        ]
+          .filter(Boolean)
+          .join("\n"),
       );
       if (!result.ok) {
         setError(result.summary);
+      } else {
+        setSaveFlash(result.summary);
+        window.setTimeout(() => setSaveFlash(""), 4000);
       }
       await reload();
     } catch (e) {
@@ -595,6 +989,13 @@ export function TestingPortal({
   const testerLabel = (ids: TestOwnerId[]) =>
     ids.map((id) => testOwnerLabel(id)).join(", ");
 
+  const vitestPass = vitestReal.passed;
+  const vitestTotal = vitestReal.total;
+  const pwPass = suiteStats.playwright.passed;
+  const pwTotal = suiteStats.playwright.total;
+  const autoPass = vitestPass + pwPass;
+  const autoTotal = vitestTotal + pwTotal;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
       <SprintStatusBars />
@@ -604,37 +1005,66 @@ export function TestingPortal({
             <h2 style={{ fontSize: "1.5rem", color: "var(--charcoal)", display: "flex", alignItems: "center", gap: "8px" }}>
               <FlaskConical size={22} style={{ color: "var(--bronze)" }} /> Testing Portal
             </h2>
-            <p style={{ color: "var(--text-secondary)", marginTop: "6px", fontSize: "0.9rem" }}>
+            <p style={{ color: "var(--text-primary)", marginTop: "6px", fontSize: "1rem" }}>
               Select tests with checkboxes to bulk-assign (including Lyriq). Use status buttons to filter.
             </p>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
             <button
               type="button"
-              className="btn btn-primary"
+              className="btn btn-primary suite-run-btn"
               disabled={suiteRunning !== null || loading}
-              onClick={() => void runSuite("vitest")}
-              title="Run portal Vitest checks and update automated Vitest / wizard matrix statuses"
+              onClick={() => void runSuite("vitest", "new")}
+              title="Run Vitest for new / not-run cases only. Failures create VT-FAIL-* cases in the current sprint."
             >
-              <Play size={14} /> {suiteRunning === "vitest" ? "Running Vitest…" : "Run Vitest"}
+              <Play size={14} />
+              <span className="suite-run-btn__label">
+                {suiteRunning === "vitest" ? "Running Vitest…" : "Run Vitest"}
+                <span className="suite-run-btn__count">
+                  {countWithPct(vitestPass, vitestTotal, " passed")}
+                </span>
+              </span>
             </button>
             <button
               type="button"
-              className="btn btn-primary"
+              className="btn btn-outline suite-run-btn"
               disabled={suiteRunning !== null || loading}
-              onClick={() => void runSuite("playwright")}
-              title="Run live HTTP smoke checks and update Playwright case statuses"
+              onClick={() => void runSuite("vitest", "all")}
+              title="Full Vitest regression — re-check all Vitest catalog + wizard rows"
             >
-              <Play size={14} /> {suiteRunning === "playwright" ? "Running Playwright…" : "Run Playwright"}
+              <span className="suite-run-btn__label">
+                Run all Vitest
+                <span className="suite-run-btn__count">regression</span>
+              </span>
             </button>
             <button
               type="button"
-              className="btn btn-outline"
+              className="btn btn-primary suite-run-btn"
               disabled={suiteRunning !== null || loading}
-              onClick={() => void runSuite("all")}
-              title="Run Vitest + Playwright portal checks"
+              onClick={() => void runSuite("playwright", "new")}
+              title="Run Playwright for new / not-run cases only. Failures create PW-FAIL-* cases in the current sprint."
             >
-              {suiteRunning === "all" ? "Running both…" : "Run both"}
+              <Play size={14} />
+              <span className="suite-run-btn__label">
+                {suiteRunning === "playwright" ? "Running Playwright…" : "Run Playwright"}
+                <span className="suite-run-btn__count">
+                  {countWithPct(pwPass, pwTotal, " passed")}
+                </span>
+              </span>
+            </button>
+            <button
+              type="button"
+              className="btn btn-outline suite-run-btn"
+              disabled={suiteRunning !== null || loading}
+              onClick={() => void runSuite("all", "new")}
+              title="Run Vitest + Playwright for new / not-run cases only"
+            >
+              <span className="suite-run-btn__label">
+                {suiteRunning === "all" ? "Running both…" : "Run both"}
+                <span className="suite-run-btn__count">
+                  {countWithPct(autoPass, autoTotal, " passed")}
+                </span>
+              </span>
             </button>
             <button
               type="button"
@@ -657,6 +1087,17 @@ export function TestingPortal({
           </div>
         </div>
 
+        <QaProgressBars
+          title="All Test Cases"
+          embedded
+          collapsible
+          defaultOpen={false}
+          overall={qaProgress.overall}
+          suites={qaProgress.suites}
+          sprints={qaProgress.sprints}
+          resources={qaProgress.resources}
+        />
+
         {runLog && (
           <pre
             style={{
@@ -666,7 +1107,7 @@ export function TestingPortal({
               background: "rgba(148,125,100,0.08)",
               border: "1px solid var(--border-color)",
               color: "var(--charcoal)",
-              fontSize: "0.78rem",
+              fontSize: "0.9375rem",
               whiteSpace: "pre-wrap",
               maxHeight: 180,
               overflow: "auto",
@@ -677,21 +1118,21 @@ export function TestingPortal({
         )}
 
         {error && (
-          <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 8, background: "rgba(155,47,40,0.1)", border: "1px solid rgba(155,47,40,0.35)", color: "#9B2F28", fontSize: "0.85rem" }}>
+          <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 8, background: "rgba(155,47,40,0.1)", border: "1px solid rgba(155,47,40,0.35)", color: "#9B2F28", fontSize: "0.95rem" }}>
             {error}
           </div>
         )}
         {saveFlash && !error && (
-          <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 8, background: "rgba(46,125,50,0.1)", border: "1px solid rgba(46,125,50,0.35)", color: "#2e7d32", fontSize: "0.85rem" }}>
+          <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 8, background: "rgba(46,125,50,0.1)", border: "1px solid rgba(46,125,50,0.35)", color: "#2e7d32", fontSize: "0.95rem" }}>
             {saveFlash}
           </div>
         )}
-        {loading && <p style={{ marginTop: 12, color: "var(--text-muted)" }}>Loading statuses from database…</p>}
+        {loading && <p style={{ marginTop: 12, color: "var(--text-primary)" }}>Loading statuses from database…</p>}
 
         <div className="qa-categories-panel" data-testid="qa-categories-panel">
           <button
             type="button"
-            className="qa-categories-panel__toggle"
+            className="qa-section-heading qa-categories-panel__toggle"
             onClick={() => setCategoriesOpen((o) => !o)}
             aria-expanded={categoriesOpen}
           >
@@ -699,233 +1140,253 @@ export function TestingPortal({
             <span className="qa-categories-panel__title">Categories</span>
             {categoryFilters.size > 0 ? (
               <span className="qa-categories-panel__active">
-                {[...categoryFilters].map((c) => TEST_CATEGORY_LABELS[c]).join(", ")}
+                — {[...categoryFilters].map((c) => TEST_CATEGORY_LABELS[c]).join(", ")}
               </span>
             ) : (
-              <span className="qa-categories-panel__hint">click to filter (multi)</span>
+              <span className="qa-categories-panel__hint">— multi-select · Shift+click range</span>
             )}
           </button>
           {categoriesOpen && (
             <div className="qa-categories-panel__bubbles">
-              <button
-                type="button"
-                className="qa-tester-bubble qa-categories-panel__bubble"
-                data-active={categoryFilters.size === 0 ? "true" : "false"}
-                onClick={() => setCategoryFilters(new Set())}
+              <FilterChip
+                active={categoryFilters.size === 0}
+                onToggle={() => {
+                  setCategoryFilters(new Set());
+                  lastCategoryIdx.current = null;
+                }}
+                title="Clear category filter"
               >
                 All categories
                 <span className="qa-tester-meta">
-                  · {completedCases}/{ALL_CASES.length}
+                  · {countWithPct(completedCases, COUNTABLE_CASES.length)}
                 </span>
-              </button>
+              </FilterChip>
               {TEST_CATEGORIES.map((cat) => {
                 const active = categoryFilters.has(cat);
                 const stats = categoryStats[cat];
                 if (!stats || stats.total === 0) return null;
                 return (
-                  <button
+                  <FilterChip
                     key={cat}
-                    type="button"
-                    className="qa-tester-bubble qa-categories-panel__bubble"
-                    data-active={active ? "true" : "false"}
-                    onClick={() => toggleCategoryFilter(cat)}
-                    title={TEST_CATEGORY_LABELS[cat]}
+                    active={active}
+                    onToggle={(e) => toggleCategoryFilter(cat, e)}
+                    title={`${TEST_CATEGORY_LABELS[cat]} — Shift+click to select a range`}
                   >
                     {TEST_CATEGORY_LABELS[cat]}
                     <span className="qa-tester-meta">
-                      · {stats.done}/{stats.total}
+                      · {countWithPct(stats.done, stats.total)}
                     </span>
-                  </button>
+                  </FilterChip>
                 );
               })}
-              <p className="qa-categories-panel__note">Wizard FMSH matrices are automated (Vitest).</p>
+              <p className="qa-categories-panel__note">
+                Wizard FMSH inventory rows (~972) are excluded from all portal totals. Vitest shows real it() counts
+                ({countWithPct(vitestReal.passed, vitestReal.total)}).
+              </p>
             </div>
           )}
         </div>
 
-        <div style={{ marginTop: "16px" }}>
-          <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 8 }}>
-            Manual QA Testers — click to filter (manual suite only)
-          </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-            {testerStats.map((tester) => {
-              const active = testerFilter === tester.id;
-              return (
-                <button
-                  key={tester.id}
-                  type="button"
-                  onClick={() => {
-                    setTesterFilter(active ? null : tester.id);
-                    if (!active) setSuiteFilter("manual");
-                  }}
-                  title={`${tester.name} — manual cases only`}
-                  className="qa-tester-bubble"
-                  data-active={active ? "true" : "false"}
-                  style={{
-                    borderColor: active ? tester.accent : undefined,
-                    boxShadow: active ? `0 0 0 1px ${tester.accent}` : undefined,
-                  }}
-                >
-                  <span className="qa-tester-dot" style={{ background: tester.accent }} />
-                  {tester.shortName}
-                  <span className="qa-tester-meta">· {tester.done}/{tester.total}</span>
-                </button>
-              );
-            })}
-            {testerFilter && (
-              <button
-                type="button"
-                className="btn btn-outline"
-                style={{ padding: "6px 12px", fontSize: "0.8rem" }}
-                onClick={() => setTesterFilter(null)}
+        <div
+          className="qa-owner-split"
+          style={{
+            marginTop: "16px",
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+            gap: "16px 20px",
+            alignItems: "start",
+          }}
+        >
+          <div>
+            <div className="qa-section-heading">
+              Manual QA Testers — multi-select (Shift+click range)
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+              <FilterChip
+                active={testerFilters.size === 0}
+                onToggle={() => {
+                  setTesterFilters(new Set());
+                  lastTesterIdx.current = null;
+                }}
+                title="Clear tester filter"
               >
-                Show all assignees
-              </button>
-            )}
+                All testers
+              </FilterChip>
+              {testerStats.map((tester) => {
+                const active = testerFilters.has(tester.id);
+                return (
+                  <FilterChip
+                    key={tester.id}
+                    active={active}
+                    accent={tester.accent}
+                    title={`${tester.name} — Shift+click to select a range`}
+                    onToggle={(e) => toggleTesterFilter(tester.id, e)}
+                  >
+                    <span className="qa-tester-dot" style={{ background: tester.accent }} />
+                    {tester.shortName}
+                    <span className="qa-tester-meta">· {countWithPct(tester.done, tester.total)}</span>
+                  </FilterChip>
+                );
+              })}
+            </div>
           </div>
-          <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", margin: "12px 0 8px" }}>
-            Automated suite owners — status only (not assigned to human testers)
-          </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-            {suiteOwnerStats.map((owner) => {
-              const active = suiteFilter === owner.id;
-              return (
-                <button
-                  key={owner.id}
-                  type="button"
-                  onClick={() => {
-                    setTesterFilter(null);
-                    setSuiteFilter(active ? "all" : owner.id);
-                  }}
-                  title={`${owner.name} runs these tests`}
-                  className="qa-tester-bubble"
-                  data-active={active ? "true" : "false"}
-                  style={{
-                    borderColor: active ? owner.accent : undefined,
-                    boxShadow: active ? `0 0 0 1px ${owner.accent}` : undefined,
-                  }}
-                >
-                  <span className="qa-tester-dot" style={{ background: owner.accent }} />
-                  {owner.shortName}
-                  <span className="qa-tester-meta">· {owner.done}/{owner.total}</span>
-                </button>
-              );
-            })}
+          <div>
+            <div className="qa-section-heading">
+              Automated suite owners — multi-select
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+              {suiteOwnerStats.map((owner) => {
+                const active = suiteFilters.has(owner.id);
+                return (
+                  <FilterChip
+                    key={owner.id}
+                    active={active}
+                    accent={owner.accent}
+                    title={
+                      owner.id === "vitest"
+                        ? `Real Vitest suite: ${countWithPct(owner.passed, owner.total, " passed")}${vitestReal.at ? ` · last run ${new Date(vitestReal.at).toLocaleString()}` : ""}`
+                        : `${owner.name} — Shift+click for range`
+                    }
+                    onToggle={(e) => toggleSuiteFilter(owner.id, e)}
+                  >
+                    <span className="qa-tester-dot" style={{ background: owner.accent }} />
+                    {owner.shortName}
+                    <span className="qa-tester-meta">
+                      · {countWithPct(owner.passed, owner.total, " passed")}
+                    </span>
+                  </FilterChip>
+                );
+              })}
+            </div>
           </div>
         </div>
 
         <div style={{ marginTop: "16px" }}>
-          <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 8 }}>
-            Sprint — click to filter
+          <div className="qa-section-heading">
+            Sprint — multi-select (Shift+click range · checkboxes)
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            <button
-              type="button"
-              className="qa-tester-bubble"
-              data-active={sprintFilter === "all" ? "true" : "false"}
-              onClick={() => setSprintFilter("all")}
+            <FilterChip
+              active={sprintFilters.size === 0}
+              onToggle={() => {
+                setSprintFilters(new Set());
+                lastSprintIdx.current = null;
+              }}
+              title="Clear sprint filter"
             >
               All sprints
               <span className="qa-tester-meta">
-                · {completedCases}/{ALL_CASES.length}
+                · {countWithPct(completedCases, COUNTABLE_CASES.length)}
               </span>
-            </button>
-            <button
-              type="button"
-              className="qa-tester-bubble"
-              data-active={sprintFilter === "backlog" ? "true" : "false"}
-              onClick={() => setSprintFilter("backlog")}
+            </FilterChip>
+            <FilterChip
+              active={sprintFilters.has("backlog")}
+              title="Backlog — Shift+click to select a range"
+              onToggle={(e) => toggleSprintFilter("backlog", e)}
             >
               Backlog
               <span className="qa-tester-meta">
-                · {sprintStats.backlog.done}/{sprintStats.backlog.total}
+                · {countWithPct(sprintStats.backlog.done, sprintStats.backlog.total)}
               </span>
-            </button>
+            </FilterChip>
             {sprints.map((s) => {
               const stats = sprintStats.bySprint.get(s.index) ?? { done: 0, total: 0 };
               return (
-                <button
+                <FilterChip
                   key={s.index}
-                  type="button"
-                  className="qa-tester-bubble"
-                  data-active={sprintFilter === s.index ? "true" : "false"}
-                  onClick={() => setSprintFilter(s.index)}
-                  title={s.rangeLabel}
+                  active={sprintFilters.has(s.index)}
+                  title={`${s.rangeLabel} — Shift+click to select a range`}
+                  onToggle={(e) => toggleSprintFilter(s.index, e)}
                 >
                   {s.label}
                   <span className="qa-tester-meta">
-                    · {stats.done}/{stats.total}
+                    · {countWithPct(stats.done, stats.total)}
                   </span>
-                </button>
+                </FilterChip>
               );
             })}
           </div>
         </div>
 
         <div style={{ marginTop: "16px" }}>
-          <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 8 }}>
-            Status — click to filter (multi)
+          <div className="qa-section-heading">
+            Status — multi-select (Shift+click range)
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-            <button
-              type="button"
-              className="qa-tester-bubble"
-              data-active={statusFilters.size === 0 ? "true" : "false"}
-              onClick={() => setStatusFilters(new Set())}
+            <FilterChip
+              active={statusFilters.size === 0}
+              onToggle={() => {
+                setStatusFilters(new Set());
+                lastStatusIdx.current = null;
+              }}
+              title="Clear status filter"
             >
               All statuses
               <span className="qa-tester-meta">
-                · {completedCases}/{counts.total}
+                · {countWithPct(completedCases, counts.total)}
               </span>
-            </button>
+            </FilterChip>
             {STATUSES.map((s) => {
               const active = statusFilters.has(s);
               return (
-                <button
+                <FilterChip
                   key={s}
-                  type="button"
-                  className="qa-tester-bubble"
-                  data-active={active ? "true" : "false"}
-                  onClick={() => toggleStatusFilter(s)}
-                  style={{
-                    borderColor: active ? STATUS_COLOR[s] : undefined,
-                    boxShadow: active ? `0 0 0 1px ${STATUS_COLOR[s]}` : undefined,
-                  }}
+                  active={active}
+                  accent={STATUS_COLOR[s]}
+                  title={`${STATUS_LABELS[s]} — Shift+click to select a range`}
+                  onToggle={(e) => toggleStatusFilter(s, e)}
                 >
                   <span className="qa-tester-dot" style={{ background: STATUS_COLOR[s] }} />
                   {STATUS_LABELS[s]}
-                  <span className="qa-tester-meta">· {counts[s] ?? 0}</span>
-                </button>
+                  <span className="qa-tester-meta">
+                    · {counts[s] ?? 0} · {pctComplete(counts[s] ?? 0, counts.total)}
+                  </span>
+                </FilterChip>
               );
             })}
           </div>
         </div>
 
         <div style={{ marginTop: "16px" }}>
-          <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 8 }}>
-            Test suites
+          <div className="qa-section-heading">
+            Test suites — multi-select (Shift+click range)
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {SUITE_OPTIONS.map((suite) => {
-              const active = suiteFilter === suite;
-              const stats =
-                suite === "all"
-                  ? { done: completedCases, total: ALL_CASES.length }
-                  : suiteStats[suite];
-              const label = suite === "all" ? "All suites" : SUITE_LABELS[suite];
+            {(() => {
+              const allPassed =
+                suiteStats.manual.passed + suiteStats.vitest.passed + suiteStats.playwright.passed;
+              const allTotal =
+                suiteStats.manual.total + suiteStats.vitest.total + suiteStats.playwright.total;
               return (
-                <button
-                  key={suite}
-                  type="button"
-                  className="qa-tester-bubble"
-                  data-active={active ? "true" : "false"}
-                  onClick={() => setSuiteFilter(active && suite !== "all" ? "all" : suite)}
+                <FilterChip
+                  active={suiteFilters.size === 0}
+                  onToggle={() => {
+                    setSuiteFilters(new Set());
+                    lastSuiteIdx.current = null;
+                  }}
+                  title="Clear suite filter"
                 >
-                  {label}
+                  All suites
                   <span className="qa-tester-meta">
-                    · {stats.done}/{stats.total}
+                    · {countWithPct(allPassed, allTotal, " passed")}
                   </span>
-                </button>
+                </FilterChip>
+              );
+            })()}
+            {suiteFilterOrder.map((suite) => {
+              const stats = suiteStats[suite];
+              return (
+                <FilterChip
+                  key={suite}
+                  active={suiteFilters.has(suite)}
+                  title={`${SUITE_LABELS[suite]} — Shift+click to select a range`}
+                  onToggle={(e) => toggleSuiteFilter(suite, e)}
+                >
+                  {SUITE_LABELS[suite]}
+                  <span className="qa-tester-meta">
+                    · {countWithPct(stats.passed, stats.total, " passed")}
+                  </span>
+                </FilterChip>
               );
             })}
           </div>
@@ -935,29 +1396,30 @@ export function TestingPortal({
           {(["total", ...STATUSES] as const).map((k) => {
             const isTotal = k === "total";
             const active = isTotal ? statusFilters.size === 0 : statusFilters.has(k);
+            const statusCount = isTotal ? completedCases : (counts[k] ?? 0);
+            const statusPct = pctComplete(statusCount, counts.total);
             return (
               <button
                 key={k}
                 type="button"
-                className="glass"
-                onClick={() => {
-                  if (isTotal) setStatusFilters(new Set());
-                  else toggleStatusFilter(k);
-                }}
-                style={{
-                  padding: "12px",
-                  textAlign: "center",
-                  background: active ? "rgba(215,198,151,0.4)" : "#fff",
-                  border: active ? "1px solid var(--bronze)" : "1px solid var(--border-color)",
-                  cursor: "pointer",
-                  borderRadius: 12,
+                className={`qa-status-tile${active ? " qa-status-tile--active" : ""}`}
+                onClick={(e) => {
+                  if (isTotal) {
+                    setStatusFilters(new Set());
+                    lastStatusIdx.current = null;
+                  } else {
+                    toggleStatusFilter(k, e);
+                  }
                 }}
               >
-                <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", textTransform: "uppercase" }}>
+                <div className="qa-status-tile__label">
                   {isTotal ? "Complete / Total" : STATUS_LABELS[k]}
                 </div>
-                <div style={{ fontSize: "1.4rem", fontWeight: 700, color: isTotal ? "var(--charcoal)" : STATUS_COLOR[k] }}>
-                  {isTotal ? `${completedCases}/${counts.total}` : counts[k] ?? 0}
+                <div
+                  className="qa-status-tile__num"
+                  style={active ? undefined : { color: isTotal ? "var(--charcoal)" : STATUS_COLOR[k] }}
+                >
+                  {isTotal ? countWithPct(completedCases, counts.total) : `${statusCount} · ${statusPct}`}
                 </div>
               </button>
             );
@@ -979,14 +1441,14 @@ export function TestingPortal({
             background: "rgba(215,198,151,0.25)",
           }}
         >
-          <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--charcoal)" }}>
+          <span style={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--charcoal)" }}>
             {selectedIds.size} selected
           </span>
           <button
             type="button"
             className="btn btn-primary"
             disabled={bulkBusy}
-            style={{ padding: "6px 12px", fontSize: "0.8rem", background: "#2e7d32", borderColor: "#2e7d32" }}
+            style={{ padding: "6px 12px", fontSize: "0.9375rem", background: "#2e7d32", borderColor: "#2e7d32" }}
             onClick={() => void bulkAssign("lyriq")}
           >
             Assign Lyriq
@@ -997,7 +1459,7 @@ export function TestingPortal({
               type="button"
               className="btn btn-outline"
               disabled={bulkBusy}
-              style={{ padding: "6px 12px", fontSize: "0.8rem" }}
+              style={{ padding: "6px 12px", fontSize: "0.9375rem" }}
               onClick={() => void bulkAssign(tester.id)}
             >
               Assign {tester.shortName}
@@ -1010,7 +1472,7 @@ export function TestingPortal({
       )}
 
       <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
-        <label style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: "0.85rem", color: "var(--charcoal)" }}>
+        <label style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: "0.95rem", color: "var(--charcoal)" }}>
           <input
             type="checkbox"
             checked={allFilteredSelected}
@@ -1023,22 +1485,28 @@ export function TestingPortal({
         <button
           type="button"
           className="btn btn-outline"
-          style={{ padding: "6px 12px", fontSize: "0.8rem" }}
+          style={{ padding: "6px 12px", fontSize: "0.9375rem" }}
           disabled={filteredIds.length === 0}
-          onClick={() => setOpenIds(new Set(filteredIds))}
+          onClick={() => {
+            setPreferExpanded(true);
+            setOpenIds(new Set(filteredIds));
+          }}
         >
-          Expand all visible
+          Expand all
         </button>
         <button
           type="button"
           className="btn btn-outline"
-          style={{ padding: "6px 12px", fontSize: "0.8rem" }}
-          onClick={() => setOpenIds(new Set())}
+          style={{ padding: "6px 12px", fontSize: "0.9375rem" }}
+          onClick={() => {
+            setPreferExpanded(false);
+            setOpenIds(new Set());
+          }}
         >
           Collapse all
         </button>
         <div style={{ position: "relative", flex: "1 1 220px" }}>
-          <Search size={14} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
+          <Search size={14} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--text-primary)" }} />
           <input
             className="text-input"
             style={{ paddingLeft: 34, height: 40 }}
@@ -1054,19 +1522,47 @@ export function TestingPortal({
         </select>
       </div>
 
-      {(testerFilter || suiteFilter !== "all" || statusFilters.size > 0 || categoryFilters.size > 0) && (
-        <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--text-secondary)" }}>
+      {(testerFilters.size > 0 ||
+        suiteFilters.size > 0 ||
+        sprintFilters.size > 0 ||
+        statusFilters.size > 0 ||
+        categoryFilters.size > 0) && (
+        <p style={{ margin: 0, fontSize: "0.95rem", color: "var(--text-primary)" }}>
           Showing {filtered.length} case{filtered.length === 1 ? "" : "s"}
-          {testerFilter && (
+          {testerFilters.size > 0 && (
             <>
-              {" "}for <strong style={{ color: "var(--charcoal)" }}>
-                {QA_TESTERS.find((t) => t.id === testerFilter)?.name}
+              {" "}· testers:{" "}
+              <strong style={{ color: "var(--charcoal)" }}>
+                {[...testerFilters]
+                  .map((id) => QA_TESTERS.find((t) => t.id === id)?.shortName ?? id)
+                  .join(", ")}
               </strong>
             </>
           )}
-          {suiteFilter !== "all" && (
+          {suiteFilters.size > 0 && (
             <>
-              {" "}in <strong style={{ color: "var(--charcoal)" }}>{SUITE_LABELS[suiteFilter]}</strong>
+              {" "}· suites:{" "}
+              <strong style={{ color: "var(--charcoal)" }}>
+                {[...suiteFilters].map((s) => SUITE_LABELS[s]).join(", ")}
+              </strong>
+            </>
+          )}
+          {sprintFilters.size > 0 && (
+            <>
+              {" "}· sprints:{" "}
+              <strong style={{ color: "var(--charcoal)" }}>
+                {[...sprintFilters]
+                  .map((k) => (k === "backlog" ? "Backlog" : sprintLabel(k)))
+                  .join(", ")}
+              </strong>
+            </>
+          )}
+          {statusFilters.size > 0 && (
+            <>
+              {" "}· status:{" "}
+              <strong style={{ color: "var(--charcoal)" }}>
+                {[...statusFilters].map((s) => STATUS_LABELS[s]).join(", ")}
+              </strong>
             </>
           )}
           {categoryFilters.size > 0 && (
@@ -1090,10 +1586,10 @@ export function TestingPortal({
             <div
               key={t.id}
               id={`test-row-${t.id}`}
-              className="glass"
+              className={`glass test-case-card test-case-card--${st}`}
               style={{
                 borderRadius: "12px",
-                borderLeft: `4px solid ${STATUS_COLOR[st]}`,
+                borderLeft: `5px solid ${STATUS_COLOR[st]}`,
                 overflow: "hidden",
                 outline:
                   highlightId === t.id
@@ -1126,21 +1622,22 @@ export function TestingPortal({
                 </label>
                 <button
                   type="button"
-                  onClick={() =>
+                  onClick={() => {
+                    setPreferExpanded(false);
                     setOpenIds((prev) => {
                       const next = new Set(prev);
                       if (next.has(t.id)) next.delete(t.id);
                       else next.add(t.id);
                       return next;
-                    })
-                  }
+                    });
+                  }}
                   className="test-case-row"
                   style={{ flex: 1 }}
                 >
                   {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                   <span className="flat-label flat-label--id">{t.id}</span>
                   <span className="flat-label flat-label--priority">{PRIORITY_LABELS[t.priority]}</span>
-                  <span className="flat-label flat-label--suite">{SUITE_LABELS[t.suite]}</span>
+                  <span className="flat-label flat-label--suite">{SUITE_LABELS[t.suite ?? "manual"]}</span>
                   <strong className="test-case-title">{t.title}</strong>
                   <span className="flat-label flat-label--assignee">{testerLabel(effectiveAssignees(t))}</span>
                   <span className="flat-label flat-label--id">
@@ -1162,8 +1659,8 @@ export function TestingPortal({
                   alignItems: "center",
                   padding: "10px 14px",
                   borderTop: "1px solid var(--border-color)",
-                  fontSize: "0.78rem",
-                  color: "var(--text-secondary)",
+                  fontSize: "0.9375rem",
+                  color: "var(--text-primary)",
                   fontWeight: 600,
                 }}
                 onClick={(e) => e.stopPropagation()}
@@ -1181,7 +1678,7 @@ export function TestingPortal({
                     width: "100%",
                     minWidth: 0,
                     padding: "8px 12px",
-                    fontSize: "0.9rem",
+                    fontSize: "1rem",
                     color: STATUS_COLOR[st],
                     fontWeight: 600,
                   }}
@@ -1192,78 +1689,99 @@ export function TestingPortal({
                     </option>
                   ))}
                 </select>
+                <span style={{ gridColumn: "1 / -1" }}>
+                  <WorkTimer
+                    source="test"
+                    sourceId={t.id}
+                    sourceLabel={t.title}
+                    entry={timers.entryFor("test", t.id)}
+                    onChanged={timers.onChanged}
+                    compact
+                    disabled={st === "pass" || st === "fail" || st === "blocked"}
+                  />
+                </span>
               </div>
               {open && (
                 <div style={{ padding: "0 16px 16px", borderTop: "1px solid var(--border-color)" }}>
-                  <p style={{ marginTop: 12, fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                  <p style={{ marginTop: 12, fontSize: "0.9375rem", color: "var(--text-primary)" }}>
                     Roles: {t.roles.join(", ")} · Assignees: {testerLabel(effectiveAssignees(t))}
                     {automated && " · Automated (owner locked)"}
                   </p>
-                  {!automated && (
+                  <div
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: 12,
+                      alignItems: "center",
+                      marginTop: 8,
+                    }}
+                  >
+                    {!automated && (
+                      <label
+                        style={{
+                          display: "flex",
+                          gap: 8,
+                          alignItems: "center",
+                          flex: "1 1 220px",
+                          minWidth: 200,
+                          fontSize: "0.9375rem",
+                          color: "var(--text-primary)",
+                          fontWeight: 600,
+                        }}
+                      >
+                        <span style={{ whiteSpace: "nowrap" }}>Assign to</span>
+                        <select
+                          className="text-input"
+                          style={{ flex: 1, minWidth: 0, padding: "8px 12px", fontSize: "1rem" }}
+                          value={assigneeOverrides[t.id] ?? ""}
+                          onChange={(e) => void reassign(t.id, e.target.value)}
+                        >
+                          <option value="">Default ({testerLabel(t.assignees)})</option>
+                          {QA_TESTERS.map((tester) => (
+                            <option key={tester.id} value={tester.id}>
+                              {tester.shortName}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    )}
                     <label
                       style={{
-                        display: "grid",
-                        gridTemplateColumns: "88px minmax(0, 1fr)",
-                        gap: 10,
+                        display: "flex",
+                        gap: 8,
                         alignItems: "center",
-                        marginTop: 8,
-                        fontSize: "0.8rem",
-                        color: "var(--text-secondary)",
+                        flex: "1 1 220px",
+                        minWidth: 200,
+                        fontSize: "0.9375rem",
+                        color: "var(--text-primary)",
                         fontWeight: 600,
                       }}
                     >
-                      Assign to
+                      <span style={{ whiteSpace: "nowrap" }}>Sprint</span>
                       <select
                         className="text-input"
-                        style={{ width: "100%", minWidth: 0, padding: "8px 12px", fontSize: "0.9rem" }}
-                        value={assigneeOverrides[t.id] ?? ""}
-                        onChange={(e) => void reassign(t.id, e.target.value)}
+                        style={{ flex: 1, minWidth: 0, padding: "8px 12px", fontSize: "1rem" }}
+                        value={effectiveSprint(t)}
+                        onChange={(e) => void setSprint(t.id, Number(e.target.value))}
                       >
-                        <option value="">Default ({testerLabel(t.assignees)})</option>
-                        {QA_TESTERS.map((tester) => (
-                          <option key={tester.id} value={tester.id}>
-                            {tester.shortName}
+                        <option value={BACKLOG_SPRINT}>Backlog</option>
+                        {sprints.map((s) => (
+                          <option key={s.index} value={s.index}>
+                            {s.label}
                           </option>
                         ))}
                       </select>
                     </label>
-                  )}
-                  <label
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "88px minmax(0, 1fr)",
-                      gap: 10,
-                      alignItems: "center",
-                      marginTop: 8,
-                      fontSize: "0.8rem",
-                      color: "var(--text-secondary)",
-                      fontWeight: 600,
-                    }}
-                  >
-                    Sprint
-                    <select
-                      className="text-input"
-                      style={{ width: "100%", minWidth: 0, padding: "8px 12px", fontSize: "0.9rem" }}
-                      value={effectiveSprint(t)}
-                      onChange={(e) => void setSprint(t.id, Number(e.target.value))}
-                    >
-                      <option value={BACKLOG_SPRINT}>Backlog</option>
-                      {sprints.map((s) => (
-                        <option key={s.index} value={s.index}>
-                          {s.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <ol style={{ margin: "10px 0", paddingLeft: 18, color: "var(--text-secondary)", fontSize: "0.9rem", lineHeight: 1.55 }}>
+                  </div>
+                  <ol style={{ margin: "10px 0", paddingLeft: 18, color: "var(--text-primary)", fontSize: "1rem", lineHeight: 1.55 }}>
                     {t.steps.map((s, i) => (
                       <li key={i}>{s}</li>
                     ))}
                   </ol>
-                  <p style={{ fontSize: "0.9rem", color: "var(--charcoal)" }}>
+                  <p style={{ fontSize: "1rem", color: "var(--charcoal)" }}>
                     <strong>Expected:</strong> {t.expected}
                   </p>
-                  <label style={{ display: "grid", gap: 6, marginTop: 12, fontSize: "0.8rem", color: "var(--text-secondary)" }}>
+                  <label style={{ display: "grid", gap: 6, marginTop: 12, fontSize: "0.9375rem", color: "var(--text-primary)" }}>
                     Notes{" "}
                     {statusRequiresNote(st) ? (
                       <span style={{ color: "var(--crimson)" }}>
@@ -1297,7 +1815,7 @@ export function TestingPortal({
                     <button
                       type="button"
                       className="btn btn-outline"
-                      style={{ padding: "6px 12px", fontSize: "0.8rem" }}
+                      style={{ padding: "6px 12px", fontSize: "0.9375rem" }}
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => void saveNotes(t.id)}
                       disabled={isSaving(t.id)}
@@ -1309,7 +1827,7 @@ export function TestingPortal({
                         key={s}
                         type="button"
                         className={`btn ${st === s ? "btn-primary" : "btn-outline"}`}
-                        style={{ padding: "6px 12px", fontSize: "0.8rem" }}
+                        style={{ padding: "6px 12px", fontSize: "0.9375rem" }}
                         onMouseDown={(e) => e.preventDefault()}
                         onClick={() => void setStatus(t.id, s)}
                         disabled={isSaving(t.id)}
@@ -1319,7 +1837,7 @@ export function TestingPortal({
                     ))}
                   </div>
                   {rowErrors[t.id] && (
-                    <p style={{ marginTop: 10, fontSize: "0.85rem", color: "#9B2F28" }}>{rowErrors[t.id]}</p>
+                    <p style={{ marginTop: 10, fontSize: "0.95rem", color: "#9B2F28" }}>{rowErrors[t.id]}</p>
                   )}
                 </div>
               )}
@@ -1327,7 +1845,7 @@ export function TestingPortal({
           );
         })}
         {filtered.length === 0 && (
-          <div className="glass" style={{ padding: 24, textAlign: "center", color: "var(--text-secondary)" }}>
+          <div className="glass" style={{ padding: 24, textAlign: "center", color: "var(--text-primary)" }}>
             No tests match the current filters.
           </div>
         )}

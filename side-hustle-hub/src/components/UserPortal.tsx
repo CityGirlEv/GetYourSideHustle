@@ -59,13 +59,13 @@ export const UserPortal: React.FC = () => {
           <h2 style={{ fontSize: "1.5rem", color: "var(--text-primary)", marginBottom: "6px" }}>
             Welcome back, Guest Pilot!
           </h2>
-          <p style={{ color: "var(--text-secondary)", fontSize: "0.95rem" }}>
+          <p style={{ color: "var(--text-primary)", fontSize: "0.95rem" }}>
             Here is your personalized roadmap tracker. Cross off steps as you build your side business.
           </p>
 
           {/* Goal progress */}
           <div style={{ marginTop: "24px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "8px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.95rem", color: "var(--text-primary)", marginBottom: "8px" }}>
               <span>Overall Roadmap Completion</span>
               <span style={{ fontWeight: 700, color: "var(--accent-purple)" }}>{progressPercent}% Complete</span>
             </div>
@@ -113,15 +113,15 @@ export const UserPortal: React.FC = () => {
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
             <div style={{ padding: "16px", borderRadius: "10px", border: "1px solid var(--border-color)", background: "rgba(0,0,0,0.01)" }}>
-              <span className="glow-badge pink" style={{ fontSize: "0.65rem", padding: "2px 8px", marginBottom: "8px" }}>Real Estate</span>
+              <span className="glow-badge pink" style={{ fontSize: "0.9375rem", padding: "2px 8px", marginBottom: "8px" }}>Real Estate</span>
               <h4 style={{ fontSize: "0.95rem", color: "var(--text-primary)", marginBottom: "6px" }}>Airbnb Hosting</h4>
-              <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>Active guide progress: 33%</p>
+              <p style={{ fontSize: "0.9375rem", color: "var(--text-primary)" }}>Active guide progress: 33%</p>
             </div>
 
             <div style={{ padding: "16px", borderRadius: "10px", border: "1px solid var(--border-color)", background: "rgba(0,0,0,0.01)" }}>
-              <span className="glow-badge purple" style={{ fontSize: "0.65rem", padding: "2px 8px", marginBottom: "8px" }}>E-Commerce</span>
+              <span className="glow-badge purple" style={{ fontSize: "0.9375rem", padding: "2px 8px", marginBottom: "8px" }}>E-Commerce</span>
               <h4 style={{ fontSize: "0.95rem", color: "var(--text-primary)", marginBottom: "6px" }}>Print-on-Demand</h4>
-              <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>Active guide progress: 50%</p>
+              <p style={{ fontSize: "0.9375rem", color: "var(--text-primary)" }}>Active guide progress: 50%</p>
             </div>
           </div>
         </div>
@@ -163,11 +163,11 @@ export const UserPortal: React.FC = () => {
                   fontSize: "1.25rem",
                   boxShadow: b.unlocked ? "0 4px 10px var(--accent-amber-glow)" : "none"
                 }}>
-                  {b.unlocked ? <Star size={20} style={{ color: "white", fill: "white" }} /> : <Zap size={20} style={{ color: "var(--text-muted)" }} />}
+                  {b.unlocked ? <Star size={20} style={{ color: "white", fill: "white" }} /> : <Zap size={20} style={{ color: "var(--text-primary)" }} />}
                 </div>
                 <div>
-                  <h4 style={{ fontSize: "0.875rem", color: "var(--text-primary)", fontWeight: 600 }}>{b.name}</h4>
-                  <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)", lineHeight: "1.3" }}>{b.desc}</p>
+                  <h4 style={{ fontSize: "0.9375rem", color: "var(--text-primary)", fontWeight: 600 }}>{b.name}</h4>
+                  <p style={{ fontSize: "0.9375rem", color: "var(--text-primary)", lineHeight: "1.3" }}>{b.desc}</p>
                 </div>
               </div>
             ))}
@@ -177,7 +177,7 @@ export const UserPortal: React.FC = () => {
         {/* User Level Info */}
         <div className="glass" style={{ padding: "20px", borderRadius: "16px" }}>
           <h3 style={{ fontSize: "1rem", color: "var(--text-primary)", marginBottom: "12px" }}>Hustle Level: 3</h3>
-          <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginBottom: "12px" }}>
+          <p style={{ fontSize: "0.9375rem", color: "var(--text-primary)", marginBottom: "12px" }}>
             Earn 120 more XP by completing milestones to unlock "Level 4: Affiliate Expert".
           </p>
           <div style={{ width: "100%", height: "6px", background: "rgba(0,0,0,0.03)", borderRadius: "9999px", overflow: "hidden" }}>

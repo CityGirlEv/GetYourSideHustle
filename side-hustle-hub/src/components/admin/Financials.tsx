@@ -75,7 +75,7 @@ function FileChip({
         borderRadius: 8,
         background: "rgba(215,198,151,0.35)",
         border: "1px solid var(--border-color)",
-        fontSize: "0.8rem",
+        fontSize: "0.9375rem",
       }}
     >
       <button type="button" onClick={() => void open()} style={{ background: "none", border: 0, cursor: "pointer", color: "var(--bronze)", display: "inline-flex", alignItems: "center", gap: 4 }}>
@@ -83,7 +83,7 @@ function FileChip({
         {file.title || file.name}
       </button>
       {onRemove && (
-        <button type="button" onClick={onRemove} aria-label="Remove file" style={{ background: "none", border: 0, cursor: "pointer", color: "var(--text-secondary)" }}>
+        <button type="button" onClick={onRemove} aria-label="Remove file" style={{ background: "none", border: 0, cursor: "pointer", color: "var(--text-primary)" }}>
           <Trash2 size={12} />
         </button>
       )}
@@ -118,7 +118,7 @@ function LineItemEditor({
       }}
     >
       <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 0.8fr 0.9fr auto", gap: 8, alignItems: "end" }}>
-        <label style={{ display: "grid", gap: 4, fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+        <label style={{ display: "grid", gap: 4, fontSize: "0.9375rem", color: "var(--text-primary)" }}>
           Title
           <input
             value={item.title}
@@ -127,7 +127,7 @@ function LineItemEditor({
             style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border-color)" }}
           />
         </label>
-        <label style={{ display: "grid", gap: 4, fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+        <label style={{ display: "grid", gap: 4, fontSize: "0.9375rem", color: "var(--text-primary)" }}>
           Category
           <select
             value={item.category}
@@ -139,7 +139,7 @@ function LineItemEditor({
             ))}
           </select>
         </label>
-        <label style={{ display: "grid", gap: 4, fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+        <label style={{ display: "grid", gap: 4, fontSize: "0.9375rem", color: "var(--text-primary)" }}>
           Amount
           <input
             type="number"
@@ -149,7 +149,7 @@ function LineItemEditor({
             style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid var(--border-color)" }}
           />
         </label>
-        <label style={{ display: "grid", gap: 4, fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+        <label style={{ display: "grid", gap: 4, fontSize: "0.9375rem", color: "var(--text-primary)" }}>
           Date
           <input
             type="date"
@@ -162,7 +162,7 @@ function LineItemEditor({
           <Trash2 size={16} />
         </button>
       </div>
-      <label style={{ display: "grid", gap: 4, fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+      <label style={{ display: "grid", gap: 4, fontSize: "0.9375rem", color: "var(--text-primary)" }}>
         Notes
         <textarea
           value={item.notes}
@@ -349,7 +349,7 @@ export const Financials: React.FC = () => {
             <h2 style={{ fontSize: "1.5rem", color: "var(--bronze)", marginBottom: 6, display: "flex", alignItems: "center", gap: 8 }}>
               <DollarSign size={22} /> Financials
             </h2>
-            <p style={{ color: "var(--text-secondary)", margin: 0, fontSize: "0.92rem" }}>
+            <p style={{ color: "var(--text-primary)", margin: 0, fontSize: "0.92rem" }}>
               Admin-only budget, expenses, receipts, and the T + E partnership contract.
             </p>
           </div>
@@ -360,15 +360,15 @@ export const Financials: React.FC = () => {
         </div>
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 16 }}>
           <div style={{ padding: "10px 14px", borderRadius: 12, background: "rgba(45,106,79,0.08)", minWidth: 140 }}>
-            <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Budget total</div>
+            <div style={{ fontSize: "0.9375rem", color: "var(--text-primary)" }}>Budget total</div>
             <strong style={{ color: "var(--text-primary)" }}>{formatMoney(budgetTotal)}</strong>
           </div>
           <div style={{ padding: "10px 14px", borderRadius: 12, background: "rgba(185,28,28,0.08)", minWidth: 140 }}>
-            <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Expenses total</div>
+            <div style={{ fontSize: "0.9375rem", color: "var(--text-primary)" }}>Expenses total</div>
             <strong style={{ color: "var(--text-primary)" }}>{formatMoney(expenseTotal)}</strong>
           </div>
           <div style={{ padding: "10px 14px", borderRadius: 12, background: "rgba(215,198,151,0.45)", minWidth: 140 }}>
-            <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Net (budget − expenses)</div>
+            <div style={{ fontSize: "0.9375rem", color: "var(--text-primary)" }}>Net (budget − expenses)</div>
             <strong style={{ color: "var(--text-primary)" }}>{formatMoney(budgetTotal - expenseTotal)}</strong>
           </div>
         </div>
@@ -395,18 +395,18 @@ export const Financials: React.FC = () => {
       </div>
 
       {error && (
-        <div style={{ marginBottom: 12, padding: 12, borderRadius: 10, background: "rgba(185,28,28,0.08)", color: "#991b1b", fontSize: "0.9rem" }}>
+        <div style={{ marginBottom: 12, padding: 12, borderRadius: 10, background: "rgba(185,28,28,0.08)", color: "#991b1b", fontSize: "1rem" }}>
           {error}
         </div>
       )}
       {message && (
-        <div style={{ marginBottom: 12, padding: 12, borderRadius: 10, background: "rgba(45,106,79,0.1)", color: "#1b4332", fontSize: "0.9rem" }}>
+        <div style={{ marginBottom: 12, padding: 12, borderRadius: 10, background: "rgba(45,106,79,0.1)", color: "#1b4332", fontSize: "1rem" }}>
           {message}
         </div>
       )}
 
       {loading ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-secondary)", padding: 24 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-primary)", padding: 24 }}>
           <Loader2 size={18} className="spin" /> Loading financials…
         </div>
       ) : sub === "contract" ? (
@@ -414,7 +414,7 @@ export const Financials: React.FC = () => {
           <h3 style={{ marginTop: 0, marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
             <FileText size={18} style={{ color: "var(--bronze)" }} /> Partnership contract
           </h3>
-          <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", marginTop: 0 }}>
+          <p style={{ color: "var(--text-primary)", fontSize: "1rem", marginTop: 0 }}>
             Store the signed agreement between <strong>Tina Marie Barham</strong> and <strong>Evelyn Irving</strong>. Upload PDF or image copies here (admin only).
           </p>
           <button
@@ -438,7 +438,7 @@ export const Financials: React.FC = () => {
           />
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {contracts.length === 0 && (
-              <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>No contract files yet.</p>
+              <p style={{ color: "var(--text-primary)", fontSize: "1rem" }}>No contract files yet.</p>
             )}
             {contracts.map((c) => (
               <div
@@ -485,7 +485,7 @@ export const Financials: React.FC = () => {
             <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
               {sub === "budget" ? <Wallet size={18} /> : <Receipt size={18} />}
               {sub === "budget" ? "Budget line items" : "Expense line items"}
-              <span style={{ fontWeight: 500, color: "var(--text-secondary)", fontSize: "0.9rem" }}>
+              <span style={{ fontWeight: 500, color: "var(--text-primary)", fontSize: "1rem" }}>
                 ({formatMoney(sub === "budget" ? budgetTotal : expenseTotal)})
               </span>
             </h3>
@@ -499,7 +499,7 @@ export const Financials: React.FC = () => {
             </button>
           </div>
           {activeList.length === 0 && (
-            <p style={{ color: "var(--text-secondary)" }}>No items yet — add your first line item.</p>
+            <p style={{ color: "var(--text-primary)" }}>No items yet — add your first line item.</p>
           )}
           {activeList.map((item) => (
             <LineItemEditor

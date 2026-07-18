@@ -4,9 +4,10 @@ export const ROOT_DOMAIN = "getyoursidehustle.com";
 export const SITE_NAME = "Get Your Side Hustle";
 export const SITE_SLUG = "getyoursidehustle";
 export const ADMIN_EMAIL = `info@${ROOT_DOMAIN}`;
+export const FACEBOOK_URL = "https://www.facebook.com/getyoursidehustle";
 
 /** Resend verified sending host (DNS required). Prefer notify subdomain like Munties. */
-export const EMAIL_SENDER_DOMAIN = `notify.${ROOT_DOMAIN}`;
+export const EMAIL_SENDER_DOMAIN = ROOT_DOMAIN;
 export const EMAIL_FROM_DOMAIN = ROOT_DOMAIN;
 
 export const CLOUDFLARE_PAGES_PROJECT = SITE_SLUG;
