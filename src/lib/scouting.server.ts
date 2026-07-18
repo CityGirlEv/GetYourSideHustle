@@ -6,6 +6,7 @@ import type { ScoutingReport, ScoutingSourceId, ScoutingSourceStatus } from "@/t
 const SOURCE_LABELS: Record<ScoutingSourceId, string> = {
   facebook: "Meta Ad Library (Facebook)",
   tiktok: "TikTok discover search",
+  kalodata: "Kalodata (TikTok ads)",
   web: "Curated Medicare competitor pages",
 };
 
@@ -27,9 +28,7 @@ export async function fetchScoutingSource(source: ScoutingSourceId): Promise<{
   const label = SOURCE_LABELS[source];
 
   if (source === "facebook") {
-    const { fetchFacebookAds } = await import("@/fetchers/facebookAdFetcher");
-    const { items, error } = await safeFetch("facebook", () => fetchFacebookAds(defaultAdsPerSet));
-    if (!CONFIG.facebookAccessToken) {
+    if (!CONFIG.facebookAccessToken.trim()) {
       return {
         ads: [],
         status: {
@@ -41,13 +40,19 @@ export async function fetchScoutingSource(source: ScoutingSourceId): Promise<{
         },
       };
     }
+    const { fetchFacebookAds } = await import("@/fetchers/facebookAdFetcher");
+    const { items, error } = await safeFetch("facebook", () => fetchFacebookAds(defaultAdsPerSet));
     return {
       ads: items,
       status: {
         id: source,
         label,
         status: error ? "error" : "done",
-        message: error ?? `Loaded ${items.length} ads from Meta Ad Library.`,
+        message:
+          error ??
+          (items.length
+            ? `Loaded ${items.length} ads from Meta Ad Library (Medicare keyword search).`
+            : "Meta Ad Library returned 0 ads for Medicare keywords (US) — confirm identity verification on your Meta app."),
         adCount: items.length,
       },
     };
@@ -67,6 +72,39 @@ export async function fetchScoutingSource(source: ScoutingSourceId): Promise<{
           (items.length
             ? `Loaded ${items.length} TikTok posts matching medicare.`
             : "No TikTok results returned (site may block headless browsers)."),
+        adCount: items.length,
+      },
+    };
+  }
+
+  if (source === "kalodata") {
+    const { isKalodataConfigured } = await import("@/fetchers/kalodataAdFetcher");
+    if (!isKalodataConfigured()) {
+      return {
+        ads: [],
+        status: {
+          id: source,
+          label,
+          status: "skipped",
+          message:
+            "Kalodata API not configured — Enterprise custom API required (see docs/KALODATA_API.md).",
+          adCount: 0,
+        },
+      };
+    }
+    const { fetchKalodataAds } = await import("@/fetchers/kalodataAdFetcher");
+    const { items, error } = await safeFetch("kalodata", () => fetchKalodataAds(defaultAdsPerSet));
+    return {
+      ads: items,
+      status: {
+        id: source,
+        label,
+        status: error ? "error" : "done",
+        message:
+          error ??
+          (items.length
+            ? `Loaded ${items.length} Medicare-related videos from Kalodata.`
+            : "Kalodata returned 0 Medicare video results for configured keywords."),
         adCount: items.length,
       },
     };
@@ -93,7 +131,7 @@ export async function loadScoutingData(): Promise<{
   report: ScoutingReport;
   sources: ScoutingSourceStatus[];
 }> {
-  const sources: ScoutingSourceId[] = ["facebook", "tiktok", "web"];
+  const sources: ScoutingSourceId[] = ["facebook", "tiktok", "kalodata", "web"];
   const ads: MedicareAd[] = [];
   const statuses: ScoutingSourceStatus[] = [];
   const warnings: string[] = [

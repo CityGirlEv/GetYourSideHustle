@@ -1,0 +1,8 @@
+{
+  "contractYear": 2026,
+  "sourceUrl": "https://www.cms.gov/files/zip/cy2026-landscape-202603.zip",
+  "ingestedAt": "2026-07-03T20:19:54.343Z",
+  "planCount": 5961,
+  "countyBucketCount": 3215,
+  "disclaimer": "Official CMS Medicare Advantage and Part D Landscape data. Medigap supplements are modeled separately. D-SNP plans require Medicaid eligibility."
+}

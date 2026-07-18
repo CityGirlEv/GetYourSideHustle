@@ -138,7 +138,7 @@ export const template = {
     agentName: "Alex Morgan",
     agentEmail: "alex@example.com",
     assignedBy: "Evelyn Admin",
-    adminUrl: "https://mypartb.com/admin",
+    adminUrl: "https://www.mypartb.com/admin",
     assignmentsByAgent: [
       {
         agentName: "Alex Morgan",

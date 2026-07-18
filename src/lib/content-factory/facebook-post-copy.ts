@@ -1,5 +1,6 @@
 import { getRuntimeConfig } from "@/lib/env";
 import type { ContentDraft } from "@/lib/content-factory/types";
+import { WORKBOOK_PAGE_FB_SLOT } from "@/lib/content-factory/workbook-facebook-posts";
 
 /** Unicode Mathematical Sans-Serif Bold — renders as bold when pasted into Facebook. */
 const FB_BOLD_UPPER_OFFSET = 0x1d5d4 - 0x41;
@@ -81,4 +82,15 @@ export function facebookPostAdminSearch(
   slotIndex: number,
 ): { batchId?: string; slot: number } {
   return batchId ? { batchId, slot: slotIndex } : { slot: slotIndex };
+}
+
+/** Deep-link to the grouped workbook posts card on Facebook Posts admin. */
+export function facebookWorkbookPostsAdminSearch(
+  batchId: string | null | undefined,
+): { batchId?: string; slot: number; workbook: true } {
+  return {
+    ...(batchId ? { batchId } : {}),
+    slot: WORKBOOK_PAGE_FB_SLOT,
+    workbook: true,
+  };
 }

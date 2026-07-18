@@ -1,5 +1,5 @@
 import { useState, type ComponentType, type ReactNode } from "react";
-import { Link } from "@tanstack/react-router";
+import { SiteNavLink } from "@/components/SiteNavLink";
 import {
   BookOpen,
   Briefcase,
@@ -12,16 +12,18 @@ import {
   LogIn,
   LogOut,
   Menu,
+  Mail,
+  Sparkles,
   UserPlus,
 } from "lucide-react";
 import { useApp } from "@/lib/app-store";
+import { useAdminNavAccess } from "@/lib/admin-nav-access";
 import { userHasAdminRole } from "@/lib/user-roles";
 import { ADMIN_MOBILE_SECTIONS } from "@/lib/admin-nav-config";
 import { AdminNotificationsBell } from "@/components/AdminNotificationsBell";
 import { BrandLogo } from "@/components/BrandLogo";
+import { PlanYearZoomControls } from "@/components/PlanYearZoomControls";
 import { CreditPill } from "@/components/CreditPill";
-import { FontSizeToggle } from "@/components/FontSizeToggle";
-import { YearToggle } from "@/components/YearToggle";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -52,7 +54,7 @@ function MobileNavLink({
   className?: string;
 }) {
   return (
-    <Link
+    <SiteNavLink
       to={to}
       search={search}
       hash={hash}
@@ -61,7 +63,7 @@ function MobileNavLink({
     >
       <Icon className="h-4 w-4 shrink-0 text-primary" />
       {label}
-    </Link>
+    </SiteNavLink>
   );
 }
 
@@ -76,7 +78,7 @@ function MobileNavSection({
 }) {
   return (
     <section className={cn("space-y-1", className)}>
-      <p className="px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <p className="px-3 text-micro font-semibold uppercase tracking-wider text-muted-foreground">
         {title}
       </p>
       <div className="space-y-0.5">{children}</div>
@@ -86,24 +88,28 @@ function MobileNavSection({
 
 export function SiteMobileNav({ onLogout }: { onLogout: () => void | Promise<void> }) {
   const { user, authLoading } = useApp();
+  const { showAdminNav } = useAdminNavAccess();
   const [open, setOpen] = useState(false);
   const isAdmin = userHasAdminRole(user);
+  const isQa =
+    Boolean(user) &&
+    (user!.role === "qa" || user!.roles?.some((role) => role.toLowerCase() === "qa"));
   const close = () => setOpen(false);
 
   return (
     <>
       <div className="lg:hidden flex items-center justify-between gap-2 py-1">
-        <Link
+        <SiteNavLink
           to="/"
-          aria-label="Part B Optimizer home"
-          className="block shrink-0 drop-shadow-[0_2px_4px_rgba(0,40,112,0.1)]"
+          aria-label="Part B Optimizer Benchmark Tool home"
+          className="block shrink-0"
           onClick={close}
         >
-          <BrandLogo size="navMobile" className="w-[4.75rem] sm:w-[5.25rem]" />
-        </Link>
+          <BrandLogo size="navMobile" className="w-[5.75rem] sm:w-[6.25rem]" />
+        </SiteNavLink>
 
-        <div className="flex shrink-0 items-center gap-2">
-          {!authLoading && isAdmin ? <AdminNotificationsBell tone="light" /> : null}
+        <div className="flex shrink-0 items-center gap-1.5">
+          {!authLoading && showAdminNav ? <AdminNotificationsBell tone="light" /> : null}
           <Button
             type="button"
             variant="outline"
@@ -121,7 +127,7 @@ export function SiteMobileNav({ onLogout }: { onLogout: () => void | Promise<voi
         <SheetContent side="left" className="w-[min(100vw-1rem,20rem)] p-0 sm:max-w-xs">
           <SheetHeader className="border-b border-border px-4 py-4 text-left space-y-3">
             <SheetTitle className="sr-only">Site menu</SheetTitle>
-            <BrandLogo size="navMobile" className="w-[5.25rem]" />
+            <BrandLogo size="navMobile" className="w-[6.25rem]" />
             {user ? (
               <div className="min-w-0 text-left text-xs leading-tight">
                 <div className="truncate font-medium text-foreground">{user.full_name}</div>
@@ -136,15 +142,14 @@ export function SiteMobileNav({ onLogout }: { onLogout: () => void | Promise<voi
           <div className="flex max-h-[calc(100vh-8rem)] flex-col gap-5 overflow-y-auto px-3 py-4">
             <MobileNavSection title="Explore">
               <MobileNavLink to="/" icon={Home} label="Home" onNavigate={close} />
-              {!authLoading && isAdmin ? (
-                <MobileNavLink to="/pricing" icon={Briefcase} label="Pricing" onNavigate={close} />
-              ) : null}
+              <MobileNavLink to="/features" icon={Sparkles} label="Features" onNavigate={close} />
               <MobileNavLink
                 to="/learning-center"
                 icon={BookOpen}
                 label="Learning Center"
                 onNavigate={close}
               />
+              <MobileNavLink to="/subscribe" icon={Mail} label="Subscribe" onNavigate={close} />
               <MobileNavLink to="/about" icon={Info} label="About" onNavigate={close} />
             </MobileNavSection>
 
@@ -193,7 +198,7 @@ export function SiteMobileNav({ onLogout }: { onLogout: () => void | Promise<voi
               </MobileNavSection>
             )}
 
-            {user?.role === "qa" && (
+            {isQa && (
               <MobileNavSection title="QA">
                 <MobileNavLink
                   to="/testing"
@@ -213,7 +218,7 @@ export function SiteMobileNav({ onLogout }: { onLogout: () => void | Promise<voi
               </MobileNavSection>
             )}
 
-            {isAdmin ? (
+            {showAdminNav ? (
               <>
                 {ADMIN_MOBILE_SECTIONS.map((section) => {
                   if (section.type === "link") {
@@ -284,8 +289,7 @@ export function SiteMobileNav({ onLogout }: { onLogout: () => void | Promise<voi
 
             <MobileNavSection title="Preferences">
               <div className="flex flex-wrap items-center gap-2 px-3 py-1">
-                <YearToggle tone="light" />
-                <FontSizeToggle />
+                <PlanYearZoomControls tone="light" />
                 {(user?.role === "advisor" || user?.role === "qa") && <CreditPill />}
               </div>
             </MobileNavSection>

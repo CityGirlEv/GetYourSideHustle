@@ -1,5 +1,6 @@
 import { AGENCY_REFERRAL_NOTICE } from "@/lib/medicare-disclaimers";
 import { SITE_BRAND_NAME, SITE_BRAND_THE } from "@/lib/site-brand";
+import { PRODUCTION_SITE_ORIGIN, PUBLIC_WEBSITE_HOST } from "@/lib/site-url";
 
 export interface MarketingContent {
   topic: string;
@@ -50,7 +51,7 @@ export const TRENDING_TOPICS = [
 ];
 
 const MANDATORY_SEO_FOOTER =
-  `Ready to better understand your Medicare options? Visit https://mypartb.com and compare your choices with ${SITE_BRAND_THE}.`;
+  `Ready to better understand your Medicare options? Visit ${PRODUCTION_SITE_ORIGIN} and compare your choices with ${SITE_BRAND_THE}.`;
 
 export function generateMarketingContent(topic: string): MarketingContent {
   const normalizedTopic = topic.trim();
@@ -75,7 +76,7 @@ ${MANDATORY_SEO_FOOTER}`,
       facebookPost: {
         text: `Are you confused by the differences between Medicare Advantage and Medigap? You are not alone! ${SITE_BRAND_THE} is here to help. Compare your choices side-by-side on our independent educational platform and choose the right option with confidence.`,
         cta: "Learn More",
-        link: "https://mypartb.com",
+        link: PRODUCTION_SITE_ORIGIN,
       },
       infographicConcept: {
         title: "Advantage vs Medigap Comparison",
@@ -88,7 +89,7 @@ ${MANDATORY_SEO_FOOTER}`,
       videoScript: {
         hook: "Medicare Advantage or Medigap? It's one of the biggest decisions you'll make when turning 65.",
         body: "Advantage plans offer low premiums and bundled benefits, but keep you in a network. Medigap costs more monthly but covers almost all out-of-pocket gaps and lets you see any Medicare doctor nationwide.",
-        cta: "Head to mypartb.com right now to compare your Medicare options side-by-side using our free, de-identified comparison tools.",
+        cta: `Head to ${PUBLIC_WEBSITE_HOST} right now to compare your Medicare options side-by-side using our free, de-identified comparison tools.`,
       },
       newsletterDraft: {
         subject: "Medicare Advantage vs. Medigap: The Unbiased Breakdown",
@@ -136,7 +137,7 @@ ${MANDATORY_SEO_FOOTER}`,
       facebookPost: {
         text: `Turning 65 soon? Medicare enrollment doesn't have to be a headache. Discover key deadlines, compare your coverage options side-by-side, and avoid lifelong penalties. Visit ${SITE_BRAND_THE} to get started.`,
         cta: "Learn More",
-        link: "https://mypartb.com",
+        link: PRODUCTION_SITE_ORIGIN,
       },
       infographicConcept: {
         title: "Initial Enrollment Period Timeline",
@@ -149,7 +150,7 @@ ${MANDATORY_SEO_FOOTER}`,
       videoScript: {
         hook: "If you're turning 65, you need to hear this: missing your Medicare enrollment window could cost you for the rest of your life.",
         body: "Your Initial Enrollment Period is 7 months long. Sign up during the first 3 months to make sure your coverage starts the day you turn 65 and you avoid late-enrollment penalties.",
-        cta: "Visit mypartb.com to learn more about turning 65 and compare plans anonymously.",
+        cta: `Visit ${PUBLIC_WEBSITE_HOST} to learn more about turning 65 and compare plans anonymously.`,
       },
       newsletterDraft: {
         subject: "Turning 65? Your Medicare Countdown Starts Now",
@@ -196,7 +197,7 @@ ${MANDATORY_SEO_FOOTER}`,
     facebookPost: {
       text: `Have questions about ${cleanTopic}? We've got answers. ${SITE_BRAND_THE} is an independent educational platform that helps you compare plans and understand your options without the sales pressure.`,
       cta: "Learn More",
-      link: "https://mypartb.com",
+      link: PRODUCTION_SITE_ORIGIN,
     },
     infographicConcept: {
       title: `Understanding ${cleanTopic}`,
@@ -209,7 +210,7 @@ ${MANDATORY_SEO_FOOTER}`,
     videoScript: {
       hook: `Confused about ${cleanTopic}? Let's break it down in 30 seconds.`,
       body: `Understanding ${cleanTopic} is crucial for managing your out-of-pocket costs under Medicare. Compare how different plan types cover this topic.`,
-      cta: `Go to mypartb.com to run a free, de-identified comparison today.`,
+      cta: `Go to ${PUBLIC_WEBSITE_HOST} to run a free, de-identified comparison today.`,
     },
     newsletterDraft: {
       subject: `What You Need to Know About ${cleanTopic}`,

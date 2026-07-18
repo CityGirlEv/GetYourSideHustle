@@ -5,6 +5,7 @@ import {
   upgradeOverrideLiteralsToMergeFields,
   listTemplateMergeFields,
   normalizeAuthBracePlaceholders,
+  normalizeEmailSalutations,
   stripAuthTransactionalGreetings,
 } from "../template-merge.server";
 
@@ -92,6 +93,13 @@ describe("template merge fields", () => {
     expect(out).toBe("<p>Hello Evelyn3,</p>");
   });
 
+  it("fixes spaced salutations like Dear Evelyn ,", () => {
+    expect(normalizeEmailSalutations("Dear Evelyn ,")).toBe("Dear Evelyn,");
+    expect(normalizeEmailSalutations("Dear {{firstName}} ,")).toBe("Dear {{firstName}},");
+    const out = applyTemplateMergeFields("<p>Dear {{firstName}} ,</p>", { firstName: "Evelyn" });
+    expect(out).toBe("<p>Dear Evelyn,</p>");
+  });
+
   it("falls back to there when email local-part is empty", () => {
     const html = "<p>Hello {{recipientName}},</p>";
     const out = applyTemplateMergeFields(html, { email: "@invalid" });
@@ -157,9 +165,9 @@ describe("template merge fields", () => {
       templateName: "signup",
       templateData: {
         siteName: "themedicareoptimizer",
-        siteUrl: "https://getpartb.com",
+        siteUrl: "https://www.mypartb.com",
         email: "real.user@example.com",
-        confirmationUrl: "https://getpartb.com/auth/confirm?token=abc",
+        confirmationUrl: "https://www.mypartb.com/auth/confirm?token=abc",
       },
       renderedHtml: "<h1>Confirm your email</h1>",
       renderedText: "Confirm your email",

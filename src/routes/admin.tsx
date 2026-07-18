@@ -12,8 +12,6 @@ import {
   ScrollText,
   Settings2,
   Search,
-  Inbox,
-  Phone,
   Mail,
   Layers,
   GitBranch,
@@ -21,12 +19,10 @@ import {
   DollarSign,
   ListChecks,
   Send,
-  MessageSquare,
   Loader2,
-  UserCheck,
+  ClipboardCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ScenarioConversationDialog } from "@/components/ScenarioConversationDialog";
 import {
   Select,
   SelectContent,
@@ -38,9 +34,6 @@ import { GUIDELINES } from "@/lib/medicare-math";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { TaskSheetContent } from "@/components/TaskSheet";
-import { useServerFn } from "@tanstack/react-start";
-import { listAgents, assignAgent } from "@/lib/admin.functions";
-import { compareStaffByFullName } from "@/lib/staff-name-sort";
 import { CatalogExplorer } from "@/components/CatalogExplorer";
 import { ImplementationTab, SprintsTab } from "@/routes/testing";
 import {
@@ -50,21 +43,16 @@ import {
   fmtUSD,
   type BudgetCategory,
 } from "@/lib/budget";
-import {
-  LeadCertificateAuditTable,
-  type LeadCertificateAuditRow,
-} from "@/components/LeadCertificateAuditTable";
-
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
-      { title: "Admin Console — Part B Optimizer" },
+      { title: "Admin Console — Part B Optimizer Benchmark Tool" },
       {
         name: "description",
         content: "Admin tools for managing scenarios, users, agents, and operations.",
       },
-      { property: "og:title", content: "Admin Console — Part B Optimizer" },
-      { property: "og:description", content: "Internal admin tools for The Part B Optimizer." },
+      { property: "og:title", content: "Admin Console — Part B Optimizer Benchmark Tool" },
+      { property: "og:description", content: "Internal admin tools for The Part B Optimizer Benchmark Tool." },
       { property: "og:url", content: "https://themedicareoptimizer.lovable.app/admin" },
       { name: "robots", content: "noindex,nofollow" },
     ],
@@ -75,41 +63,6 @@ export const Route = createFileRoute("/admin")({
   }),
   component: AdminPortal,
 });
-
-interface AdminScenarioRow {
-  id: string;
-  scenario_code: string;
-  birth_year: number;
-  zip3: string;
-  gender: string | null;
-  tobacco: boolean;
-  income_band: string | null;
-  cost_preference: string;
-  medications: unknown;
-  conditions: unknown;
-  claimed_by: string | null;
-  claimed_at: string | null;
-  created_at: string;
-  expires_at: string;
-  wants_contact?: boolean;
-  assigned_agent_id?: string | null;
-  agent_notes?: string | null;
-}
-
-interface AdminContactRow {
-  id: string;
-  full_name: string | null;
-  email: string;
-  phone: string;
-  scenario_code: string | null;
-  scenario_snapshot: Record<string, unknown> | null;
-  marketing_opt_in: boolean;
-  agency_name: string | null;
-  lead_certificate_id: string | null;
-  created_at: string;
-}
-
-interface AdminLeadCertificateRow extends LeadCertificateAuditRow {}
 
 function BudgetTab() {
   const totals = computeBudgetTotals();
@@ -230,31 +183,15 @@ function BudgetTab() {
   );
 }
 
-interface AgentOption {
-  id: string;
-  full_name: string;
-  email: string;
-}
-
 function AdminPortal() {
   const { user, authLoading, auditLogs, addCredits, credits, year } = useApp();
   const router = useRouter();
   const search = Route.useSearch();
   const initialTab =
-    search.tab === "staff" || search.tab === "users" ? "scenarios" : search.tab || "scenarios";
+    search.tab === "staff" || search.tab === "users" || search.tab === "scenarios"
+      ? "audit"
+      : search.tab || "audit";
   const [q, setQ] = useState("");
-  const [scenarios, setScenarios] = useState<AdminScenarioRow[]>([]);
-  const [contacts, setContacts] = useState<AdminContactRow[]>([]);
-  const [leadCertificates, setLeadCertificates] = useState<AdminLeadCertificateRow[]>([]);
-  const [loadingData, setLoadingData] = useState(false);
-  const [selectedScenarioForNotes, setSelectedScenarioForNotes] = useState<AdminScenarioRow | null>(
-    null,
-  );
-
-  const [agents, setAgents] = useState<AgentOption[]>([]);
-
-  const fetchAgents = useServerFn(listAgents);
-  const doAssignAgent = useServerFn(assignAgent);
 
   const [testTemplate, setTestTemplate] = useState("welcome");
   const [testRecipient, setTestRecipient] = useState("");
@@ -273,81 +210,16 @@ function AdminPortal() {
   }, [search.tab, router]);
 
   useEffect(() => {
-    if (!userHasAdminRole(user)) return;
-    let cancelled = false;
-    setLoadingData(true);
-    (async () => {
-      const [sRes, cRes, certRes] = await Promise.all([
-        supabase.from("scenarios").select("*").order("created_at", { ascending: false }).limit(500),
-        supabase
-          .from("expert_contact_requests")
-          .select("*")
-          .order("created_at", { ascending: false })
-          .limit(500),
-        supabase
-          .from("lead_certificates")
-          .select("*")
-          .order("submitted_at", { ascending: false })
-          .limit(500),
-      ]);
-      if (cancelled) return;
-      if (sRes.error) console.error("scenarios load", sRes.error);
-      if (cRes.error) console.error("contacts load", cRes.error);
-      if (certRes.error) console.error("lead certificates load", certRes.error);
-      setScenarios((sRes.data ?? []) as AdminScenarioRow[]);
-      setContacts((cRes.data ?? []) as AdminContactRow[]);
-      setLeadCertificates((certRes.data ?? []) as AdminLeadCertificateRow[]);
-      setLoadingData(false);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [user]);
+    if (search.tab === "scenarios") {
+      router.navigate({ to: "/admin/pbo-scenarios", replace: true });
+    }
+  }, [search.tab, router]);
 
   useEffect(() => {
-    if (!userHasAdminRole(user)) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const agentData = await fetchAgents();
-        if (!cancelled) setAgents(agentData as AgentOption[]);
-      } catch (e) {
-        console.error("load agents", e);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [user, fetchAgents]);
-
-  const refreshScenarioAndCertificateData = async () => {
-    const [sRes, certRes] = await Promise.all([
-      supabase.from("scenarios").select("*").order("created_at", { ascending: false }).limit(500),
-      supabase
-        .from("lead_certificates")
-        .select("*")
-        .order("submitted_at", { ascending: false })
-        .limit(500),
-    ]);
-    if (sRes.data) setScenarios(sRes.data as AdminScenarioRow[]);
-    if (certRes.data) setLeadCertificates(certRes.data as AdminLeadCertificateRow[]);
-  };
-
-  const handleAssignAgent = async (scenarioId: string, agentId: string) => {
-    try {
-      await doAssignAgent({
-        data: { scenario_id: scenarioId, agent_id: agentId === "__none" ? null : agentId },
-      });
-      if (agentId === "__none") {
-        toast.success("Agent assignment cleared");
-      } else {
-        toast.success("Agent assigned — notification emails queued");
-      }
-      await refreshScenarioAndCertificateData();
-    } catch (e: unknown) {
-      toast.error((e as Error)?.message ?? "Failed to assign agent");
-    }
-  };
+    if (typeof window === "undefined") return;
+    if (window.location.hash !== "#lead-certificates") return;
+    router.navigate({ to: "/admin/lead-certificates", hash: "lead-certificates", replace: true });
+  }, [router]);
 
   const sendTestEmail = async () => {
     if (!testRecipient) {
@@ -404,72 +276,52 @@ function AdminPortal() {
     [auditLogs, q],
   );
 
-  // Map contact requests by scenario_code for quick lookup
-  const contactsByCode = useMemo(() => {
-    const m = new Map<string, AdminContactRow[]>();
-    contacts.forEach((c) => {
-      if (!c.scenario_code) return;
-      const arr = m.get(c.scenario_code) ?? [];
-      arr.push(c);
-      m.set(c.scenario_code, arr);
-    });
-    return m;
-  }, [contacts]);
-
-  const orphanedContacts = contacts.filter((c) => !c.scenario_code);
-
-  const certificatesByRequestId = useMemo(() => {
-    const m = new Map<string, AdminLeadCertificateRow>();
-    leadCertificates.forEach((c) => {
-      if (c.expert_contact_request_id) m.set(c.expert_contact_request_id, c);
-    });
-    return m;
-  }, [leadCertificates]);
-
-  const assignmentSummary = useMemo(() => {
-    const agentMap = new Map(agents.map((a) => [a.id, a]));
-    const groups = new Map<string, { agent: AgentOption; scenarios: AdminScenarioRow[] }>();
-    for (const s of scenarios) {
-      if (!s.assigned_agent_id) continue;
-      const agent = agentMap.get(s.assigned_agent_id);
-      if (!agent) continue;
-      const existing = groups.get(s.assigned_agent_id);
-      if (existing) existing.scenarios.push(s);
-      else groups.set(s.assigned_agent_id, { agent, scenarios: [s] });
-    }
-    return [...groups.values()].sort((a, b) => compareStaffByFullName(a.agent, b.agent));
-  }, [scenarios, agents]);
-
   const g = GUIDELINES[year];
 
   return (
     <AppShell title="Admin" subtitle="Immutable audit trail · global Medicare config">
       {userHasAdminRole(user) ? <AdminContentPublishingLinks /> : null}
       {userHasAdminRole(user) && (
-        <Card className="glass mb-4 p-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Mail className="h-4 w-4 text-primary" />
-            <div>
-              <div className="text-sm font-semibold">Email templates</div>
-              <div className="text-xs text-muted-foreground">
-                Edit subjects &amp; HTML for every transactional and auth email.
+        <div className="grid gap-4 md:grid-cols-2 mb-4">
+          <Card className="glass p-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Mail className="h-4 w-4 text-primary" />
+              <div>
+                <div className="text-sm font-semibold">Email templates</div>
+                <div className="text-xs text-muted-foreground">
+                  Edit subjects &amp; HTML for every transactional and auth email.
+                </div>
               </div>
             </div>
-          </div>
-          <Button asChild>
-            <Link to="/admin/email-templates">
-              <Mail className="h-4 w-4 mr-1.5" />
-              Manage templates
-            </Link>
-          </Button>
-        </Card>
+            <Button asChild>
+              <Link to="/admin/email-templates">
+                <Mail className="h-4 w-4 mr-1.5" />
+                Manage templates
+              </Link>
+            </Button>
+          </Card>
+          <Card className="glass p-3 flex items-center justify-between gap-3 border-emerald-500/20 bg-emerald-500/5">
+            <div className="flex items-center gap-2">
+              <ClipboardCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              <div>
+                <div className="text-sm font-semibold">CMS &amp; Facebook approval</div>
+                <div className="text-xs text-muted-foreground">
+                  CMS requirements reference plus prep checklist for Meta ads and Medicare
+                  compliance before launch.
+                </div>
+              </div>
+            </div>
+            <Button asChild variant="outline">
+              <Link to="/admin/submission-checklist">
+                <ClipboardCheck className="h-4 w-4 mr-1.5" />
+                Compliance checklist
+              </Link>
+            </Button>
+          </Card>
+        </div>
       )}
       <Tabs defaultValue={initialTab} className="space-y-6">
         <TabsList className="glass">
-          <TabsTrigger value="scenarios">
-            <Inbox className="h-4 w-4 mr-1.5" />
-            Scenarios &amp; contacts
-          </TabsTrigger>
           <TabsTrigger value="audit">
             <ScrollText className="h-4 w-4 mr-1.5" />
             Audit logs
@@ -507,265 +359,6 @@ function AdminPortal() {
             </>
           )}
         </TabsList>
-
-        <TabsContent value="scenarios" className="space-y-6">
-          <Card className="glass p-4 space-y-3 border-primary/20">
-            <div className="flex items-start gap-2">
-              <UserCheck className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-              <div className="space-y-1">
-                <h3 className="font-display font-bold">Agent scenario assignments</h3>
-                <p className="text-xs text-muted-foreground">
-                  Assign any scenario to a licensed agent below. The agent and all admin inboxes
-                  receive email when you assign.
-                </p>
-              </div>
-            </div>
-            {assignmentSummary.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No scenarios are assigned to agents yet.
-              </p>
-            ) : (
-              <div className="grid gap-3 md:grid-cols-2">
-                {assignmentSummary.map(({ agent, scenarios: assigned }) => (
-                  <div
-                    key={agent.id}
-                    className="rounded-md border border-border bg-secondary/30 p-3 space-y-2"
-                  >
-                    <div className="text-sm font-semibold">{agent.full_name || agent.email}</div>
-                    <div className="text-[11px] text-muted-foreground">{agent.email}</div>
-                    <ul className="space-y-1">
-                      {assigned.map((s) => (
-                        <li key={s.id} className="text-xs font-mono flex items-center gap-2">
-                          <Link
-                            to="/scenario/$code"
-                            params={{ code: s.scenario_code }}
-                            className="text-primary hover:underline"
-                          >
-                            {s.scenario_code}
-                          </Link>
-                          {(s.wants_contact ||
-                            (contactsByCode.get(s.scenario_code)?.length ?? 0) > 0) && (
-                            <span className="text-[10px] text-emerald font-sans normal-case">
-                              opt-in
-                            </span>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-
-          <Card className="glass p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-display font-bold">All scenarios</h3>
-                <p className="text-xs text-muted-foreground">
-                  {scenarios.length} entered · most recent 500 shown
-                </p>
-              </div>
-              {loadingData && <span className="text-xs text-muted-foreground">Loading…</span>}
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-secondary/60 text-left text-xs uppercase tracking-wider text-muted-foreground">
-                  <tr>
-                    <th className="px-3 py-2">Created</th>
-                    <th className="px-3 py-2">Scenario ID</th>
-                    <th className="px-3 py-2">ZIP3</th>
-                    <th className="px-3 py-2">Birth yr</th>
-                    <th className="px-3 py-2">Gender</th>
-                    <th className="px-3 py-2">Tobacco</th>
-                    <th className="px-3 py-2">Income</th>
-                    <th className="px-3 py-2">Priority</th>
-                    <th className="px-3 py-2">Meds</th>
-                    <th className="px-3 py-2">Conditions</th>
-                    <th className="px-3 py-2">Claimed</th>
-                    <th className="px-3 py-2">Opt-in contact</th>
-                    <th className="px-3 py-2">Assigned agent</th>
-                    <th className="px-3 py-2">Agent notes</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {scenarios.map((s) => {
-                    const reqs = contactsByCode.get(s.scenario_code) ?? [];
-                    const medCount = Array.isArray(s.medications) ? s.medications.length : 0;
-                    const condCount = Array.isArray(s.conditions) ? s.conditions.length : 0;
-                    return (
-                      <tr key={s.id} className="border-t border-border align-top">
-                        <td className="px-3 py-2 text-muted-foreground tabular-nums whitespace-nowrap">
-                          {new Date(s.created_at).toLocaleString()}
-                        </td>
-                        <td className="px-3 py-2 font-mono text-xs">
-                          <Link
-                            to="/scenario/$code"
-                            params={{ code: s.scenario_code }}
-                            className="text-primary hover:underline"
-                          >
-                            {s.scenario_code}
-                          </Link>
-                        </td>
-                        <td className="px-3 py-2">{s.zip3}xx</td>
-                        <td className="px-3 py-2 tabular-nums">{s.birth_year}</td>
-                        <td className="px-3 py-2 capitalize">
-                          {(s.gender ?? "—").replace(/_/g, " ")}
-                        </td>
-                        <td className="px-3 py-2">{s.tobacco ? "Yes" : "No"}</td>
-                        <td className="px-3 py-2 text-xs">{s.income_band ?? "—"}</td>
-                        <td className="px-3 py-2 text-xs">
-                          {s.cost_preference === "predictability"
-                            ? "Predictability"
-                            : "Min monthly"}
-                        </td>
-                        <td className="px-3 py-2 tabular-nums">{medCount}</td>
-                        <td className="px-3 py-2 tabular-nums">{condCount}</td>
-                        <td className="px-3 py-2 text-xs text-muted-foreground">
-                          {s.claimed_at ? new Date(s.claimed_at).toLocaleDateString() : "—"}
-                        </td>
-                        <td className="px-3 py-2 text-xs">
-                          {reqs.length === 0 ? (
-                            <span className="text-muted-foreground">—</span>
-                          ) : (
-                            <div className="space-y-1">
-                              {reqs.map((r) => {
-                                const cert = certificatesByRequestId.get(r.id);
-                                return (
-                                <div
-                                  key={r.id}
-                                  className="rounded-md bg-emerald/5 border border-emerald/30 px-2 py-1"
-                                >
-                                  {r.full_name && (
-                                    <div className="font-medium text-[11px]">{r.full_name}</div>
-                                  )}
-                                  <div className="flex items-center gap-1">
-                                    <Mail className="h-3 w-3" />
-                                    <a href={`mailto:${r.email}`} className="underline">
-                                      {r.email}
-                                    </a>
-                                  </div>
-                                  <div className="flex items-center gap-1">
-                                    <Phone className="h-3 w-3" />
-                                    <a href={`tel:${r.phone}`} className="underline">
-                                      {r.phone}
-                                    </a>
-                                  </div>
-                                  {cert && (
-                                    <div className="text-[10px] text-muted-foreground mt-1 space-y-0.5">
-                                      <div>Cert: {cert.id.slice(0, 8)}…</div>
-                                      {cert.assigned_agent_name && (
-                                        <div>Agent: {cert.assigned_agent_name}</div>
-                                      )}
-                                      <div>
-                                        Privacy ✓ · Contact ✓
-                                        {cert.marketing_opt_in ? " · Marketing ✓" : ""}
-                                      </div>
-                                    </div>
-                                  )}
-                                  <div className="text-[10px] text-muted-foreground">
-                                    {new Date(r.created_at).toLocaleString()}
-                                  </div>
-                                </div>
-                              );
-                              })}
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-3 py-2 text-xs">
-                          <Select
-                            value={s.assigned_agent_id ?? "__none"}
-                            onValueChange={(v) => handleAssignAgent(s.id, v)}
-                          >
-                            <SelectTrigger className="h-8 text-xs min-w-[160px]">
-                              <SelectValue placeholder="Unassigned" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="__none">— Unassigned —</SelectItem>
-                              {agents.map((a) => (
-                                <SelectItem key={a.id} value={a.id}>
-                                  {a.full_name || a.email}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </td>
-                        <td className="px-3 py-2 text-xs max-w-xs">
-                          <div className="flex flex-col gap-1">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 px-2 text-xs justify-start w-fit cursor-pointer"
-                              onClick={() => setSelectedScenarioForNotes(s)}
-                            >
-                              <MessageSquare className="h-3.5 w-3.5 mr-1 text-primary" />
-                              Manage notes
-                            </Button>
-                            {s.agent_notes && (
-                              <span className="text-muted-foreground line-clamp-2 whitespace-pre-wrap text-[11px] pl-2 border-l border-border">
-                                {s.agent_notes}
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {!scenarios.length && !loadingData && (
-                    <tr>
-                      <td colSpan={14} className="px-3 py-6 text-center text-muted-foreground">
-                        No scenarios yet.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-
-          {orphanedContacts.length > 0 && (
-            <Card className="glass p-4 space-y-3">
-              <div>
-                <h3 className="font-display font-bold">Unlinked contact requests</h3>
-                <p className="text-xs text-muted-foreground">
-                  Submitted without a scenario reference.
-                </p>
-              </div>
-              <table className="w-full text-sm">
-                <thead className="bg-secondary/60 text-left text-xs uppercase tracking-wider text-muted-foreground">
-                  <tr>
-                    <th className="px-3 py-2">Submitted</th>
-                    <th className="px-3 py-2">Name</th>
-                    <th className="px-3 py-2">Email</th>
-                    <th className="px-3 py-2">Phone</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {orphanedContacts.map((c) => (
-                    <tr key={c.id} className="border-t border-border">
-                      <td className="px-3 py-2 text-muted-foreground tabular-nums">
-                        {new Date(c.created_at).toLocaleString()}
-                      </td>
-                      <td className="px-3 py-2">{c.full_name ?? "—"}</td>
-                      <td className="px-3 py-2">
-                        <a href={`mailto:${c.email}`} className="underline">
-                          {c.email}
-                        </a>
-                      </td>
-                      <td className="px-3 py-2">
-                        <a href={`tel:${c.phone}`} className="underline">
-                          {c.phone}
-                        </a>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </Card>
-          )}
-
-          <LeadCertificateAuditTable certificates={leadCertificates} />
-        </TabsContent>
 
         <TabsContent value="audit" className="space-y-3">
           <div className="relative max-w-md">
@@ -925,17 +518,6 @@ function AdminPortal() {
           </>
         )}
       </Tabs>
-
-      {selectedScenarioForNotes && (
-        <ScenarioConversationDialog
-          open={!!selectedScenarioForNotes}
-          onOpenChange={(open) => !open && setSelectedScenarioForNotes(null)}
-          scenarioId={selectedScenarioForNotes.id}
-          scenarioCode={selectedScenarioForNotes.scenario_code}
-          currentUserId={user?.id ?? null}
-          canAddNotes={user?.role === "admin"}
-        />
-      )}
     </AppShell>
   );
 }

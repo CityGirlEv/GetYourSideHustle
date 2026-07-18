@@ -3,6 +3,8 @@ import {
   WEEKLY_CONTENT_BATCH_PLAN,
   type ContentAssetType,
 } from "@/lib/content-factory/types";
+import { withStandaloneEditorialEvents } from "@/lib/content-factory/facebook-ad-launch";
+import { editorialDefaultTitlesForWeek } from "@/lib/content-factory/editorial-week-topics";
 import { listPublishedArticles } from "@/lib/articles";
 
 /** Produce (write/design) vs launch (publish/send/go-live). */
@@ -20,6 +22,8 @@ export interface EditorialCalendarEvent {
   category?: "prelaunch" | "content";
   /** Set when a milestone is already satisfied (e.g. article live in Learning Center). */
   alreadyComplete?: boolean;
+  /** Override default checklist time (24h HH:mm). */
+  actionTime?: string;
 }
 
 /** Friday (YYYY-MM-DD) when Week 1 content publishing and social posting begin. */
@@ -96,7 +100,7 @@ interface SlotSchedule {
 /** Week 1 kickoff when cornerstone articles are already live — no new article on day 0. */
 const FRIDAY_KICKOFF_ARTICLE_EXISTING_LIBRARY: SlotSchedule[] = [
   { produceDay: 1, launchDay: 4 },
-  { produceDay: 2, launchDay: 5 },
+  { produceDay: 2, launchDay: 3 }, // Medigap article launch Mon Jun 22 (day after Sunday draft)
   { produceDay: 3, launchDay: 6 },
 ];
 
@@ -114,11 +118,24 @@ const FRIDAY_KICKOFF_FACEBOOK: SlotSchedule[] = [
   { produceDay: 2, launchDay: 2 },
   { produceDay: 3, launchDay: 3 },
   { produceDay: 4, launchDay: 4 },
+  { produceDay: 1, launchDay: 1 },
+];
+
+/** Week 1 when 10+ articles are already live — FB article promos align with article launch days. */
+const FRIDAY_KICKOFF_FACEBOOK_EXISTING_LIBRARY: SlotSchedule[] = [
+  { produceDay: 1, launchDay: 4 }, // slot 0 — Prior Auth promo (Tue Jun 23)
+  { produceDay: 2, launchDay: 2 }, // slot 1 — Medigap promo Sun Jun 21 (with draft day; not repeated Wed)
+  { produceDay: 3, launchDay: 6 }, // slot 2 — $0 premium promo (Thu Jun 25)
+  { produceDay: 1, launchDay: 1 }, // slot 3 — workbook page post (Sat Jun 20)
+  { produceDay: 2, launchDay: 2 }, // slot 4 — TV ads tip (Sun Jun 21)
+  { produceDay: 3, launchDay: 3 }, // slot 5 — doctor network (Mon Jun 22; early publish overrides)
+  { produceDay: 4, launchDay: 3 }, // slot 6 — Part D tip (Mon Jun 22, off Jun 23)
+  { produceDay: 1, launchDay: 2 }, // slot 7 — workbook personal share (Sun Jun 21, with PDF launch)
 ];
 
 const FRIDAY_KICKOFF_SINGLE: Record<"newsletter" | "lead_magnet" | "faq", SlotSchedule> = {
   newsletter: { produceDay: 1, launchDay: 2 },
-  lead_magnet: { produceDay: 1, launchDay: 4 },
+  lead_magnet: { produceDay: 1, launchDay: 2 }, // Sat produce → Sun Jun 21 launch (with newsletter)
   faq: { produceDay: 3, launchDay: 5 },
 };
 
@@ -141,11 +158,33 @@ const FACEBOOK_SCHEDULE: SlotSchedule[] = [
   { produceDay: 4, launchDay: 4 }, // Slot 0 (Welcome / Article 1) -> Wed
   { produceDay: 5, launchDay: 5 }, // Slot 1 (Medigap / Article 2) -> Thu
   { produceDay: 6, launchDay: 6 }, // Slot 2 ($0 premium / Article 3) -> Fri
-  { produceDay: 2, launchDay: 2 }, // Slot 3 (Still working at 65) -> Mon
+  { produceDay: 2, launchDay: 2 }, // Slot 3 (Workbook page post) -> Mon
   { produceDay: 3, launchDay: 3 }, // Slot 4 (TV ads) -> Tue
-  { produceDay: 0, launchDay: 0 }, // Slot 5 (Is doctor in network) -> Sat
+  { produceDay: 0, launchDay: 0 }, // Slot 5 — scheduled via DOCTOR_NETWORK_CONTENT_DATE
   { produceDay: 1, launchDay: 1 }, // Slot 6 (Part D formulary) -> Sun
+  { produceDay: 3, launchDay: 5 }, // Slot 7 (Workbook personal share) -> Thu with lead magnet launch
 ];
+
+/** Doctor-network article + Facebook post 5 — early publish (before Week 1 kickoff). */
+export const DOCTOR_NETWORK_CONTENT_DATE = "2026-06-09";
+
+export const DOCTOR_NETWORK_ARTICLE_TITLE = "Is Your Doctor In Network for Next Year?";
+
+export const DOCTOR_NETWORK_ARTICLE_SLUG = "is-your-doctor-in-network-next-year";
+
+const DOCTOR_NETWORK_FB_SLOT = 5;
+
+function weekIncludesIsoDate(weekStart: Date, isoDate: string): boolean {
+  const start = editorialWeekStart(weekStart);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
+  const target = parseIsoDate(isoDate);
+  return target >= start && target <= end;
+}
+
+export function isDoctorNetworkContentWeek(weekStart: Date): boolean {
+  return weekIncludesIsoDate(weekStart, DOCTOR_NETWORK_CONTENT_DATE);
+}
 
 const SINGLE_ASSET_SCHEDULE: Record<
   "newsletter" | "lead_magnet" | "faq",
@@ -347,6 +386,10 @@ export interface BuildWeeklyEditorialCalendarOptions {
   titles?: Record<string, string>;
   publishedArticleCount?: number;
   draftStatusBySlot?: Record<string, string>;
+  /** When workbook PDF is saved to public/downloads/, hide launch and mark produce done. */
+  leadMagnetPdfSavedBySlot?: Record<string, boolean>;
+  /** Skip Facebook post launch rows when that slot was checked off on any earlier day. */
+  completedFacebookPostSlots?: Set<number>;
 }
 
 /** @deprecated Use BuildWeeklyEditorialCalendarOptions */
@@ -359,7 +402,13 @@ export function buildEditorialCalendar(
   const today = options.today ?? new Date();
   const weekStart = editorialWeekStart(options.weekStart ?? today);
   if (isPreLaunchWeek(weekStart)) {
-    return buildPreLaunchEditorialCalendar(weekStart);
+    const prelaunch = buildPreLaunchEditorialCalendar(weekStart);
+    const earlyDoctor = isDoctorNetworkContentWeek(weekStart)
+      ? buildDoctorNetworkEarlyEvents({ titles: options.titles })
+      : [];
+    return [...prelaunch, ...earlyDoctor].sort(
+      (a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title),
+    );
   }
   return buildWeeklyEditorialCalendar({
     weekStart,
@@ -409,7 +458,7 @@ function slotLabel(
   return count > 1 ? `${base} ${slotIndex + 1}` : base;
 }
 
-function editorialWeekIndex(weekStart: Date): number {
+export function editorialWeekIndex(weekStart: Date): number {
   const anchor = editorialLaunchWeekStart();
   const ws = editorialWeekStart(weekStart);
   if (ws < anchor) return -1;
@@ -448,6 +497,12 @@ function scheduleForType(
         }
         return FRIDAY_KICKOFF_ARTICLE[slotIndex] ?? FRIDAY_KICKOFF_ARTICLE[0];
       case "facebook_post":
+        if (hasExistingArticleLibrary(publishedArticleCount)) {
+          return (
+            FRIDAY_KICKOFF_FACEBOOK_EXISTING_LIBRARY[slotIndex] ??
+            FRIDAY_KICKOFF_FACEBOOK_EXISTING_LIBRARY[0]
+          );
+        }
         return FRIDAY_KICKOFF_FACEBOOK[slotIndex] ?? FRIDAY_KICKOFF_FACEBOOK[0];
       case "newsletter":
         return FRIDAY_KICKOFF_SINGLE.newsletter;
@@ -475,6 +530,15 @@ function scheduleForType(
   }
 }
 
+function shouldEmitEditorialCalendarEvent(
+  type: ContentAssetType,
+  milestone: EditorialMilestone,
+): boolean {
+  if (type === "image_prompt") return false;
+  if (type === "facebook_post" && milestone === "produce") return false;
+  return true;
+}
+
 function milestoneDetail(type: ContentAssetType, milestone: EditorialMilestone): string {
   if (milestone === "produce") {
     switch (type) {
@@ -496,7 +560,7 @@ function milestoneDetail(type: ContentAssetType, milestone: EditorialMilestone):
     case "article":
       return "Publish to Learning Center";
     case "facebook_post":
-      return "Post to Facebook";
+      return "Generate or attach image, copy post, publish to Facebook page";
     case "newsletter":
       return "Send weekly email";
     case "lead_magnet":
@@ -506,6 +570,46 @@ function milestoneDetail(type: ContentAssetType, milestone: EditorialMilestone):
     case "image_prompt":
       return "Attach hero to article go-live";
   }
+}
+
+function buildDoctorNetworkEarlyEvents(
+  options: Pick<BuildWeeklyEditorialCalendarOptions, "titles">,
+): EditorialCalendarEvent[] {
+  const customFbTitle = options.titles?.[`facebook_post:${DOCTOR_NETWORK_FB_SLOT}`];
+  const fbTitle = customFbTitle ?? "Is your doctor in network for next year?";
+
+  return [
+    {
+      id: "early:doctor-network:article:produce",
+      type: "article",
+      slotIndex: 100,
+      milestone: "produce",
+      title: DOCTOR_NETWORK_ARTICLE_TITLE,
+      date: DOCTOR_NETWORK_CONTENT_DATE,
+      detail: milestoneDetail("article", "produce"),
+      category: "content",
+    },
+    {
+      id: "early:doctor-network:article:launch",
+      type: "article",
+      slotIndex: 100,
+      milestone: "launch",
+      title: DOCTOR_NETWORK_ARTICLE_TITLE,
+      date: DOCTOR_NETWORK_CONTENT_DATE,
+      detail: milestoneDetail("article", "launch"),
+      category: "content",
+    },
+    {
+      id: `facebook_post:${DOCTOR_NETWORK_FB_SLOT}:launch`,
+      type: "facebook_post",
+      slotIndex: DOCTOR_NETWORK_FB_SLOT,
+      milestone: "launch",
+      title: fbTitle,
+      date: DOCTOR_NETWORK_CONTENT_DATE,
+      detail: milestoneDetail("facebook_post", "launch"),
+      category: "content",
+    },
+  ];
 }
 
 /** Build produce + launch milestones for every asset in the weekly batch plan. */
@@ -518,6 +622,7 @@ export function buildWeeklyEditorialCalendar(
   const events: EditorialCalendarEvent[] = [];
   const kickoff = isFridayKickoffWeek(weekStart);
   const existingLibrary = hasExistingArticleLibrary(publishedArticleCount);
+  const weekDefaultTitles = editorialDefaultTitlesForWeek(weekStart);
 
   if (kickoff && existingLibrary) {
     events.push({
@@ -536,39 +641,54 @@ export function buildWeeklyEditorialCalendar(
 
   for (const slot of WEEKLY_CONTENT_BATCH_PLAN) {
     for (let i = 0; i < slot.count; i++) {
+      if (slot.type === "facebook_post" && i === DOCTOR_NETWORK_FB_SLOT) {
+        continue;
+      }
       const schedule = scheduleForType(slot.type, i, weekStart, publishedArticleCount);
       const key = `${slot.type}:${i}`;
       const draftStatus = options.draftStatusBySlot?.[key];
       const draftAlreadyPublished = draftStatus === "published";
+      const workbookPdfLive =
+        slot.type === "lead_magnet" && options.leadMagnetPdfSavedBySlot?.[key] === true;
       const articleNumber =
         slot.type === "article" ? articleNumberForSlot(i, weekStart, publishedArticleCount) : undefined;
       const label = slotLabel(slot.type, i, slot.count, articleNumber);
       const customTitle = options.titles?.[key];
-      const title = customTitle ?? label;
+      const title = customTitle ?? weekDefaultTitles[key] ?? label;
 
-      events.push({
-        id: `${key}:produce`,
-        type: slot.type,
-        slotIndex: i,
-        milestone: "produce",
-        title,
-        date: addDays(weekStart, schedule.produceDay),
-        detail: milestoneDetail(slot.type, "produce"),
-        alreadyComplete: draftAlreadyPublished,
-      });
+      const milestones: EditorialMilestone[] = ["produce", "launch"];
 
-      if (schedule.launchDay != null && !draftAlreadyPublished) {
+      for (const milestone of milestones) {
+        if (!shouldEmitEditorialCalendarEvent(slot.type, milestone)) continue;
+        const dayOffset =
+          milestone === "produce" ? schedule.produceDay : schedule.launchDay;
+        if (dayOffset == null) continue;
+        const facebookPostAlreadyDone =
+          slot.type === "facebook_post" &&
+          milestone === "launch" &&
+          options.completedFacebookPostSlots?.has(i) === true;
+        const launchAlreadyComplete =
+          milestone === "launch" &&
+          (draftAlreadyPublished || workbookPdfLive || facebookPostAlreadyDone);
+        const produceAlreadyComplete =
+          milestone === "produce" && (draftAlreadyPublished || workbookPdfLive);
+
         events.push({
-          id: `${key}:launch`,
+          id: `${key}:${milestone}`,
           type: slot.type,
           slotIndex: i,
-          milestone: "launch",
+          milestone,
           title,
-          date: addDays(weekStart, schedule.launchDay),
-          detail: milestoneDetail(slot.type, "launch"),
+          date: addDays(weekStart, dayOffset),
+          detail: milestoneDetail(slot.type, milestone),
+          alreadyComplete: launchAlreadyComplete || produceAlreadyComplete || undefined,
         });
       }
     }
+  }
+
+  if (isDoctorNetworkContentWeek(weekStart)) {
+    events.push(...buildDoctorNetworkEarlyEvents({ titles: options.titles }));
   }
 
   // Network follower invites — always Wednesday of the editorial week
@@ -655,7 +775,9 @@ export function buildEditorialCalendarForMonth(
     }
   }
 
-  return events.sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title));
+  return withStandaloneEditorialEvents(
+    events.sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title)),
+  );
 }
 
 /** Recommended local times (24h HH:mm) for produce vs launch actions. */
@@ -675,7 +797,23 @@ export function editorialActionTime(
   type: ContentAssetType,
   milestone: EditorialMilestone,
 ): string {
+  if (type === "facebook_post") {
+    return EDITORIAL_ACTION_TIMES.facebook_post.launch;
+  }
   return EDITORIAL_ACTION_TIMES[type][milestone];
+}
+
+/** UI label for calendar checklist rows. */
+export function editorialMilestoneLabel(
+  type: ContentAssetType,
+  milestone: EditorialMilestone,
+  slotIndex?: number,
+): string {
+  if (slotIndex === 98) {
+    return milestone === "produce" ? "Prep ad" : "Ad live";
+  }
+  if (type === "facebook_post" && milestone === "launch") return "Post";
+  return milestone === "produce" ? "Produce" : "Launch";
 }
 
 export function formatEditorialTimeLabel(time24: string): string {

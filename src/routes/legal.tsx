@@ -31,7 +31,7 @@ export const Route = createFileRoute("/legal")({
       {
         name: "description",
         content:
-          "Privacy Policy, Terms of Use, Cookie Policy, data deletion requests, and privacy contact information for The Part B Optimizer.",
+          "Privacy Policy, Terms of Use, Cookie Policy, data deletion requests, and privacy contact information for The Part B Optimizer Benchmark Tool.",
       },
     ],
   }),
@@ -215,7 +215,7 @@ function PrivacyContactSection() {
         <p className="text-sm text-muted-foreground leading-relaxed">
           Questions about this Privacy Policy, your data, or your privacy rights? Email us at{" "}
           <a
-            href={`mailto:${PRIVACY_CONTACT_EMAIL}?subject=${encodeURIComponent("Privacy inquiry — Part B Optimizer")}`}
+            href={`mailto:${PRIVACY_CONTACT_EMAIL}?subject=${encodeURIComponent("Privacy inquiry — Part B Optimizer Benchmark Tool")}`}
             className="text-primary underline underline-offset-2"
           >
             {PRIVACY_CONTACT_EMAIL}
@@ -286,7 +286,7 @@ function LegalPage() {
   }, []);
 
   return (
-    <AppShell title="Legal & Privacy" subtitle="Policies and privacy tools for Part B Optimizer">
+    <AppShell title="Legal & Privacy" subtitle="Policies and privacy tools for Part B Optimizer Benchmark Tool">
       <div className="max-w-3xl mx-auto px-4 py-8 space-y-10">
         <div className="space-y-3">
           <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">

@@ -4,6 +4,7 @@ import {
   resolveEmailAssetUrl,
 } from "@/lib/email-templates/email-header";
 import { SITE_BRAND_NAME, SITE_BRAND_THE, normalizeLegacyBrandText } from "@/lib/site-brand";
+import { PRODUCTION_SITE_ORIGIN } from "@/lib/site-url";
 import {
   AUTH_LEGACY_PLACEHOLDERS,
   AUTH_MERGE_FIELDS_BY_TEMPLATE,
@@ -26,6 +27,44 @@ const AUTH_SINGLE_BRACE_FIELDS = [
 
 const MERGE_FIELD_PATTERN = /\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}/g;
 
+const NAME_MERGE_KEYS = new Set([
+  "firstName",
+  "lastName",
+  "fullName",
+  "recipientName",
+  "testerName",
+  "agentName",
+]);
+
+const SALUTATION_GREETINGS = "(?:Dear|Hi|Hello|Hey|Greetings)";
+
+function trimMergeNameFields(out: Record<string, string>): void {
+  for (const key of NAME_MERGE_KEYS) {
+    if (out[key]) out[key] = out[key].trim();
+  }
+}
+
+/** Fix "Dear Evelyn ," and {{firstName}} , spacing in greetings. */
+export function normalizeEmailSalutations(content: string): string {
+  let result = content;
+  result = result.replace(
+    /\{\{\s*(firstName|lastName|fullName|recipientName|testerName|agentName)\s*\}\}\s+,/gi,
+    "{{$1}},",
+  );
+  result = result.replace(
+    new RegExp(
+      `(\\b${SALUTATION_GREETINGS}\\s+<(?:strong|b|span)[^>]*>\\s*)([^<]+?)(\\s*<\\/(?:strong|b|span)>)\\s+,`,
+      "gi",
+    ),
+    (_, open, name, close) => `${open}${name.trim()}${close},`,
+  );
+  result = result.replace(
+    new RegExp(`(\\b${SALUTATION_GREETINGS}\\b\\s+[^,\\n<]+?)\\s+,`, "gi"),
+    "$1,",
+  );
+  return result;
+}
+
 /** Friendly display name from an email local-part (e.g. john.doe@x.com → John Doe). */
 export function deriveRecipientNameFromEmail(email: string): string {
   const local = email.trim().split("@")[0]?.trim() ?? "";
@@ -45,7 +84,8 @@ export function hasUnresolvedMergeFields(content: string): boolean {
 
 /** Normalize editor HTML so merge tokens match even when wrapped in tags/entities. */
 export function normalizeMergeFieldMarkup(content: string): string {
-  return content.replace(/&nbsp;|\u00a0/gi, " ").replace(/\s+/g, " ");
+  const spaced = content.replace(/&nbsp;|\u00a0/gi, " ").replace(/\s+/g, " ");
+  return normalizeEmailSalutations(spaced);
 }
 
 /** Flatten templateData into string merge keys (includes computed helpers). */
@@ -94,10 +134,11 @@ export function buildMergeContext(data: Record<string, unknown>): Record<string,
   if (!out.recipient && out.email) out.recipient = out.email;
 
   if (!out.siteName) out.siteName = SITE_BRAND_THE;
-  if (!out.siteUrl) out.siteUrl = "https://mypartb.com";
+  if (!out.siteUrl) out.siteUrl = PRODUCTION_SITE_ORIGIN;
   if (!out.emailLogoUrl) out.emailLogoUrl = emailLogoUrl();
   if (!out.emailFooterLogoUrl) out.emailFooterLogoUrl = emailFooterLogoUrl();
 
+  trimMergeNameFields(out);
   return out;
 }
 
@@ -116,7 +157,7 @@ export function applyTemplateMergeFields(content: string, data: Record<string, u
   const ctx = buildMergeContext(data);
   const normalized = normalizeMergeFieldMarkup(content);
   const merged = normalized.replace(MERGE_FIELD_PATTERN, (_, key: string) => ctx[key] ?? "");
-  return normalizeLegacyBrandText(merged);
+  return normalizeLegacyBrandText(normalizeEmailSalutations(merged));
 }
 
 function previewLiteralsForTemplate(templateName: string): Array<{ sample: string; key: string }> {
@@ -227,9 +268,9 @@ export function normalizeTemplateOverrideContent(
   }
 
   return {
-    subject: normalizeLegacyBrandText(subject),
-    html: normalizeLegacyBrandText(html),
-    text: normalizeLegacyBrandText(text),
+    subject: normalizeLegacyBrandText(normalizeEmailSalutations(subject)),
+    html: normalizeLegacyBrandText(normalizeEmailSalutations(html)),
+    text: normalizeLegacyBrandText(normalizeEmailSalutations(text)),
   };
 }
 

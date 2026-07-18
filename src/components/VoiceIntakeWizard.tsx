@@ -1676,7 +1676,7 @@ export function VoiceIntakeWizard({
       /* ignore quota */
     }
     try {
-      (await import("@/lib/scenario-history")).rememberScenario(code);
+      (await import("@/lib/scenario-history")).rememberScenario(code, zip3);
     } catch {
       /* ignore */
     }

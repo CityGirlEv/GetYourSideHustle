@@ -44,6 +44,16 @@ import {
   primaryCalendarEventDestination,
   type CalendarDraftRef,
 } from "@/lib/content-factory/editorial-calendar-links";
+import { leadMagnetPdfSavedAtFromPayload } from "@/lib/content-factory/lead-magnet-paths";
+import {
+  completedFacebookPostSlots,
+  isCalendarTaskDone,
+} from "@/lib/content-factory/editorial-calendar-progress";
+import { useEditorialCalendarProgress } from "@/hooks/use-editorial-calendar-progress";
+import {
+  draftMatchesEditorialWeekTopic,
+  editorialDefaultTitlesForWeek,
+} from "@/lib/content-factory/editorial-week-topics";
 import {
   buildEditorialCalendar,
   buildEditorialCalendarForMonth,
@@ -55,6 +65,7 @@ import {
   editorialWeekLabel,
   editorialWeekStart,
   editorialLaunchWeekNote,
+  editorialMilestoneLabel,
   editorialPreLaunchNote,
   publishedLearningCenterArticleCount,
   isLaunchWeek,
@@ -65,6 +76,7 @@ import {
   parseIsoDate,
   type EditorialCalendarEvent,
 } from "@/lib/content-factory/weekly-editorial-schedule";
+import { withStandaloneEditorialEvents } from "@/lib/content-factory/facebook-ad-launch";
 import {
   Calendar as CalendarIcon,
   ArrowLeft,
@@ -75,6 +87,7 @@ import {
   PenLine,
   ExternalLink,
   Facebook,
+  Megaphone,
   Shield,
 } from "lucide-react";
 
@@ -129,6 +142,8 @@ function ContentCalendarPage() {
   const listBatches = useServerFn(listContentFactoryBatchesAdmin);
   const listDrafts = useServerFn(listContentFactoryDraftsAdmin);
   const queryClient = useQueryClient();
+  const { completedEvents, toggleEventCompleted, progressSyncError } =
+    useEditorialCalendarProgress(user);
 
   const refreshDrafts = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ["content-factory-drafts", "calendar"] });
@@ -138,34 +153,8 @@ function ContentCalendarPage() {
   const [weekStart, setWeekStart] = useState(() => editorialWeekStart(new Date()));
   const [monthStart, setMonthStart] = useState(() => calendarMonthStart(new Date()));
   const [view, setView] = useState<CalendarViewMode>(searchView ?? "weekly");
-  const [selectedDay, setSelectedDay] = useState(
-    () => searchDate ?? today,
-  );
+  const [selectedDay, setSelectedDay] = useState(() => searchDate ?? today);
   const [selectedBatchId, setSelectedBatchId] = useState<string>("latest");
-
-  const [completedEvents, setCompletedEvents] = useState<Record<string, boolean>>(() => {
-    const out: Record<string, boolean> = {};
-    if (typeof window !== "undefined") {
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i) || "";
-        if (key.startsWith("calendar-task-done:")) {
-          const val = localStorage.getItem(key);
-          if (val === "true") {
-            out[key.replace("calendar-task-done:", "")] = true;
-          }
-        }
-      }
-    }
-    return out;
-  });
-
-  const toggleEventCompleted = useCallback((eventId: string) => {
-    setCompletedEvents((prev) => {
-      const next = { ...prev, [eventId]: !prev[eventId] };
-      localStorage.setItem(`calendar-task-done:${eventId}`, String(next[eventId]));
-      return next;
-    });
-  }, []);
 
   const syncSearch = useCallback(
     (nextView: CalendarViewMode, nextDate: string) => {
@@ -224,12 +213,27 @@ function ContentCalendarPage() {
   }, [draftsQuery.data]);
 
   const titleOverrides = useMemo(() => {
-    const titles: Record<string, string> = {};
+    const titles = editorialDefaultTitlesForWeek(weekStart);
     for (const [key, draft] of draftBySlot) {
+      const [type, slotStr] = key.split(":");
+      const slotIndex = Number(slotStr);
+      const isRotatingArticlePromo =
+        (type === "article" || type === "facebook_post") && slotIndex >= 0 && slotIndex <= 2;
+      if (isRotatingArticlePromo) {
+        if (type === "article" && draftMatchesEditorialWeekTopic(draft, weekStart, slotIndex)) {
+          titles[key] = draft.title;
+        } else if (type === "facebook_post") {
+          const articleDraft = draftBySlot.get(`article:${slotIndex}`);
+          if (articleDraft && draftMatchesEditorialWeekTopic(articleDraft, weekStart, slotIndex)) {
+            titles[key] = draft.title;
+          }
+        }
+        continue;
+      }
       titles[key] = draft.title;
     }
     return titles;
-  }, [draftBySlot]);
+  }, [draftBySlot, weekStart]);
 
   const draftStatusBySlot = useMemo(() => {
     const statuses: Record<string, string> = {};
@@ -238,6 +242,21 @@ function ContentCalendarPage() {
     }
     return statuses;
   }, [draftBySlot]);
+
+  const leadMagnetPdfSavedBySlot = useMemo(() => {
+    const saved: Record<string, boolean> = {};
+    for (const [key, draft] of draftBySlot) {
+      if (leadMagnetPdfSavedAtFromPayload(draft.payload)) {
+        saved[key] = true;
+      }
+    }
+    return saved;
+  }, [draftBySlot]);
+
+  const doneFacebookPostSlots = useMemo(
+    () => completedFacebookPostSlots(completedEvents),
+    [completedEvents],
+  );
 
   const publishedArticleCount = publishedLearningCenterArticleCount();
 
@@ -250,15 +269,19 @@ function ContentCalendarPage() {
       titles: titleOverrides,
       publishedArticleCount,
       draftStatusBySlot,
+      leadMagnetPdfSavedBySlot,
+      completedFacebookPostSlots: doneFacebookPostSlots,
     };
     if (view === "monthly") {
       return buildEditorialCalendarForMonth(monthStart, options);
     }
-    return buildEditorialCalendar({
-      weekStart,
-      ...options,
-    });
-  }, [view, monthStart, weekStart, titleOverrides, publishedArticleCount, draftStatusBySlot]);
+    return withStandaloneEditorialEvents(
+      buildEditorialCalendar({
+        weekStart,
+        ...options,
+      }),
+    );
+  }, [view, monthStart, weekStart, titleOverrides, publishedArticleCount, draftStatusBySlot, leadMagnetPdfSavedBySlot, doneFacebookPostSlots]);
 
   const eventsByDate = useMemo(() => {
     const map = new Map<string, EditorialCalendarEvent[]>();
@@ -351,8 +374,11 @@ function ContentCalendarPage() {
     const Icon = contentTypeIcon(event.type);
     const draft = draftBySlot.get(`${event.type}:${event.slotIndex}`);
     const isPrelaunchTask = event.category === "prelaunch";
+    const milestoneLabel = isPrelaunchTask
+      ? "Setup"
+      : editorialMilestoneLabel(event.type, event.milestone);
     const isProduce = event.milestone === "produce";
-    const isCompleted = !!completedEvents[event.id];
+    const isCompleted = isCalendarTaskDone(completedEvents, event);
     const destination = isPrelaunchTask
       ? null
       : primaryCalendarEventDestination({
@@ -384,7 +410,7 @@ function ContentCalendarPage() {
       </>
     );
 
-    const chipTitle = `${event.title}\n${isPrelaunchTask ? "Setup" : isProduce ? "Produce" : "Launch"}: ${event.detail}${draft ? `\nStatus: ${mapDraftStatus(draft.status)}` : ""}`;
+    const chipTitle = `${event.title}\n${milestoneLabel}: ${event.detail}${draft ? `\nStatus: ${mapDraftStatus(draft.status)}` : ""}`;
 
     if (event.slotIndex === 99) {
       const pageUrl = facebookPageUrl();
@@ -465,7 +491,7 @@ function ContentCalendarPage() {
     <AdminAccessGate>
       <AppShell
         title="Content Calendar"
-        subtitle="Weekly editorial schedule — produce dates and launch dates for every Content Factory asset."
+        subtitle="Weekly editorial schedule — produce and launch dates; Facebook posts are one combined Post step with image prompt inline."
       >
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -484,6 +510,12 @@ function ContentCalendarPage() {
             )}
           </div>
           <div className="flex flex-wrap gap-2">
+            <Link to="/admin/meta">
+              <Button size="sm" variant="outline">
+                <Megaphone className="h-4 w-4 mr-1.5" />
+                Meta
+              </Button>
+            </Link>
             <Link to="/admin/facebook-posts" search={facebookPostAdminSearch(activeBatchId, 0)}>
               <Button size="sm" variant="outline">
                 <Facebook className="h-4 w-4 mr-1.5" />
@@ -546,8 +578,8 @@ function ContentCalendarPage() {
           <Card className="glass p-4 border-primary/15 space-y-2">
             <h3 className="font-display text-sm font-bold">Standard weekly schedule</h3>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Full Saturday–Friday editorial plan — produce and launch dates for every Content Factory
-              asset. Facebook posts run daily; articles publish Wed–Fri.
+              Full Saturday–Friday editorial plan — articles use produce + launch; Facebook posts are
+              one Post step (image prompt + copy + publish at 10:30 AM). Facebook posts run daily; articles publish Wed–Fri.
             </p>
           </Card>
         )}
@@ -562,6 +594,15 @@ function ContentCalendarPage() {
             </p>
           </Card>
         )}
+
+        {progressSyncError ? (
+          <Card className="glass p-3 border-amber-500/30 bg-amber-500/5">
+            <p className="text-xs text-foreground">
+              Calendar sync is offline — checkboxes are saved on this device only until the database
+              connection is restored.
+            </p>
+          </Card>
+        ) : null}
 
         <div className="grid lg:grid-cols-4 gap-6">
           <Card className="glass p-5 border-primary/10 lg:col-span-3 space-y-4">
@@ -712,17 +753,8 @@ function ContentCalendarPage() {
                 Facebook post images
               </h2>
               <p className="text-[11px] text-muted-foreground leading-relaxed">
-                Posts 1–3 (Wed–Fri article promos): upload the same hero JPG as the linked Learning
-                Center article — generate it from the matching Image Prompt draft first.
-              </p>
-              <p className="text-[11px] text-muted-foreground leading-relaxed">
-                Posts 4–7 (Mon–Sun tips): no linked article — use the brand logo (
-                <code className="text-[10px]">email-header-logo.png</code>) or a calm educational
-                photo. Full step-by-step instructions are on each post in{" "}
-                <Link to="/admin/facebook-posts" search={facebookPostAdminSearch(activeBatchId, 0)} className="text-primary font-medium hover:text-primary/80 underline-offset-2 hover:underline">
-                  Facebook Posts
-                </Link>
-                .
+                Each Facebook post is one calendar task at 10:30 AM — expand it for the image prompt,
+                hero upload, post copy, and publish steps. Posts 1–3 reuse the linked article hero JPG.
               </p>
             </Card>
 
@@ -732,8 +764,8 @@ function ContentCalendarPage() {
                   Daily checklist
                 </h2>
                 <p className="text-[10px] text-muted-foreground pb-2">
-                  Times are suggested local hours — produce in the morning, launch by early afternoon
-                  (Facebook posts at 10:30 AM).
+                  Times are suggested local hours — produce in the morning, launch by early afternoon.
+                  Facebook posts: one Post step at 10:30 AM with image prompt inline.
                 </p>
                 <EditorialDailyChecklist
                   events={events}

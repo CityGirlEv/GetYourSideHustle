@@ -14,6 +14,7 @@ import {
   type ContentAssetType,
 } from "@/lib/content-factory/types";
 import { logContentDispatchEvent } from "@/lib/content-factory/dispatch-log";
+import { buildWorkbookFacebookPostTemplates } from "@/lib/content-factory/workbook-facebook-post-templates";
 import { normalizeLegacyBrandJson, normalizeLegacyBrandText } from "@/lib/site-brand";
 import { hashContentBody } from "@/lib/content-factory/newsletter-dispatch";
 import {
@@ -305,7 +306,10 @@ export async function updateContentDraftStatus(
   }
   if (nextStatus === "scheduled") {
     patch.scheduled_for = options?.scheduledFor ?? new Date().toISOString();
+  } else if (existing.status === "scheduled") {
+    patch.scheduled_for = null;
   }
+
   if (nextStatus === "published") {
     validateDraftPublish(existing.status);
     patch.published_at = new Date().toISOString();
@@ -318,6 +322,13 @@ export async function updateContentDraftStatus(
     } else {
       patch.published_ref = `content-factory/${existing.type}/${existing.id}`;
     }
+  } else if (existing.status === "published") {
+    patch.published_at = null;
+    patch.published_ref = null;
+  }
+
+  if (nextStatus !== "rejected" && existing.status === "rejected") {
+    patch.rejection_reason = null;
   }
 
   const { data, error } = await supabaseAdmin
@@ -357,4 +368,65 @@ export async function updateContentDraftStatus(
 
 export async function publishContentDraft(draftId: string, userId: string): Promise<ContentDraft> {
   return updateContentDraftStatus(draftId, userId, "published");
+}
+
+/** Upsert workbook Facebook posts (slots 3 + 7) from current templates. */
+export async function syncWorkbookFacebookPosts(
+  batchId: string,
+  userId: string,
+): Promise<{ updatedSlots: number[]; insertedSlots: number[] }> {
+  const drafts = await listContentDrafts({ batchId, type: "facebook_post" });
+  const updatedSlots: number[] = [];
+  const insertedSlots: number[] = [];
+
+  for (const template of buildWorkbookFacebookPostTemplates()) {
+    const existing = drafts.find((d) => d.slotIndex === template.slotIndex);
+    if (existing) {
+      await updateContentDraft(existing.id, userId, {
+        title: template.title,
+        excerpt: template.excerpt,
+        body: template.body,
+      });
+      await patchContentDraftPayload(existing.id, userId, {
+        provider: "seed",
+        platform: "facebook",
+        slot: template.slotIndex + 1,
+        audience: template.audience,
+      });
+      updatedSlots.push(template.slotIndex);
+      continue;
+    }
+
+    const { error } = await supabaseAdmin.from("content_drafts" as any).insert({
+      batch_id: batchId,
+      type: "facebook_post",
+      slot_index: template.slotIndex,
+      title: template.title,
+      excerpt: template.excerpt,
+      body: template.body,
+      payload: {
+        provider: "seed",
+        platform: "facebook",
+        slot: template.slotIndex + 1,
+        audience: template.audience,
+      },
+      status: "draft",
+      created_by: userId,
+      updated_by: userId,
+    });
+
+    if (error) throw new Error(error.message ?? `Could not insert Facebook post slot ${template.slotIndex}`);
+    insertedSlots.push(template.slotIndex);
+  }
+
+  const allDrafts = await listContentDrafts({ batchId });
+  await supabaseAdmin
+    .from("content_batches" as any)
+    .update({
+      asset_counts: countAssetsByType(allDrafts),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", batchId);
+
+  return { updatedSlots, insertedSlots };
 }

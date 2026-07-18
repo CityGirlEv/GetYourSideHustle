@@ -5,7 +5,7 @@ import { verifyStaffAdmin } from "@/lib/staff-admin.server";
 import type { MedicareAd } from "@/types/MedicareAd";
 import type { ScoutingSourceId } from "@/types/scouting-report";
 
-const sourceSchema = z.enum(["facebook", "tiktok", "web"]);
+const sourceSchema = z.enum(["facebook", "tiktok", "kalodata", "web"]);
 
 export const getScoutingSourceAdmin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -27,10 +27,10 @@ export const getScoutingDataAdmin = createServerFn({ method: "POST" })
 export const buildScoutingReportAdmin = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
-    z.object({ ads: z.array(z.custom<MedicareAd>()) }).parse(input),
+    z.object({ ads: z.array(z.custom<MedicareAd>()), warnings: z.array(z.string()).optional() }).parse(input),
   )
   .handler(async ({ context, data }) => {
     await verifyStaffAdmin(context.userId);
     const { buildScoutingReport } = await import("@/lib/scouting-research");
-    return buildScoutingReport(data.ads);
+    return buildScoutingReport(data.ads, data.warnings ?? []);
   });

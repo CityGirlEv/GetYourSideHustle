@@ -43,8 +43,7 @@ async function addPagesDomain(name) {
 const defaults = [
   "themedicareoptimizer.com",
   "www.themedicareoptimizer.com",
-  "getpartb.com",
-  "www.getpartb.com",
+  "www.mypartb.com",
 ];
 
 const domains = process.argv.slice(2).length ? process.argv.slice(2) : defaults;

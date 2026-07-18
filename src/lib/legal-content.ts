@@ -1,6 +1,8 @@
 import {
   AGENCY_REFERRAL_NOTICE,
   ASSISTANCE_AGENCY_SHARING_NOTICE,
+  BENCHMARK_ESTIMATES_DISCLAIMER,
+  BENCHMARK_SCOPE_NOTE,
   CMS_HEALTH_WEALTH_INSURANCE,
   SITE_BRAND_NAME,
 } from "@/lib/medicare-disclaimers";
@@ -104,8 +106,8 @@ export const LEGAL_SECTIONS: LegalSection[] = [
       {
         heading: "Educational purpose only",
         paragraphs: [
-          `${SITE_BRAND_NAME} is an educational comparison tool. It is not a complete listing of plans available in your area, does not enroll you in coverage, and does not provide personalized legal, tax, or medical advice.`,
-          "Plan names, premiums, and benefits shown are estimates based on publicly available CMS data and may differ from actual carrier offerings. Always verify details with a licensed insurance agent or Medicare.gov before enrolling.",
+          `${SITE_BRAND_NAME} is an educational benchmark tool. ${BENCHMARK_SCOPE_NOTE} It does not enroll you in coverage and does not provide personalized legal, tax, or medical advice.`,
+          `${BENCHMARK_ESTIMATES_DISCLAIMER} Always verify details with a licensed insurance agent or Medicare.gov before enrolling.`,
         ],
       },
       {

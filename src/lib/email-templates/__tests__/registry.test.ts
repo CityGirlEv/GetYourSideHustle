@@ -25,19 +25,17 @@ describe("email template registry", () => {
     const t = TEMPLATES["new-registration-admin"];
     const html = await render(React.createElement(t.component, t.previewData ?? {}));
     expect(html).toContain(EMAIL_LOGO_PATH);
-    expect(html).toContain('alt="Part B Optimizer"');
+    expect(html).toContain('alt="Part B Optimizer Benchmark Tool"');
     expect(html).toContain("email-brand-logo");
-    expect(html).toContain("email-header-copyright");
-    expect(html).toMatch(/© \d{4} Part B Optimizer\. All rights reserved\./);
   });
 
   it("renders the Medicare footer disclaimers in welcome emails", async () => {
     const t = TEMPLATES["welcome"];
     const html = await render(React.createElement(t.component, t.previewData ?? {}));
-    expect(html).toContain("Part B Optimizer Team");
-    expect(html).not.toContain("The Part B Optimizer Team");
+    expect(html).toContain("Part B Optimizer Benchmark Tool Team");
+    expect(html).not.toContain("The Part B Optimizer Benchmark Tool Team");
     expect(html).toContain(DEFAULT_CONTACT_EMAIL);
-    expect(html).toContain("https://mypartb.pages.dev/email-footer-logo.png");
+    expect(html).toContain("https://www.mypartb.com/email-footer-logo.png");
     expect(html).toContain('class="email-footer-brand-logo"');
     expect(html).toContain("Government affiliation:");
     expect(html).toContain("Not affiliated with or endorsed by the government or the federal Medicare program.");
@@ -52,7 +50,7 @@ describe("email template registry", () => {
     const html = await render(React.createElement(t.component, t.previewData ?? {}));
     expect(html).toContain("Hope this email finds you well.");
     expect(html).toContain("Log in to");
-    expect(html).toContain("The Part B Optimizer");
+    expect(html).toContain("The Part B Optimizer Benchmark Tool");
     expect(html).toContain("/auth?tab=sign-in");
     expect(html).toContain("/testing");
     expect(html).toContain("AUTH-QA-001");

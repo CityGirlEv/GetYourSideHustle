@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { getPublishedArticleBySlug, listPublishedArticles, parseArticleMarkdown } from "@/lib/articles";
 import {
   extractHeadings,
+  normalizeNewsletterMarkdown,
   renderLearningMarkdown,
   splitArticleBody,
 } from "@/lib/learning-center";
@@ -36,13 +37,34 @@ describe("articles", () => {
 
   it("loads published articles from the articles folder", () => {
     const articles = listPublishedArticles();
-    expect(articles.length).toBeGreaterThanOrEqual(4);
+    expect(articles.length).toBeGreaterThanOrEqual(16);
+    expect(articles.some((a) => a.slug === "parts-of-medicare")).toBe(true);
+    expect(articles.some((a) => a.slug === "when-to-sign-up-for-medicare")).toBe(true);
     expect(articles.some((a) => a.slug === "original-medicare-vs-medicare-advantage")).toBe(true);
+    expect(articles.some((a) => a.slug === "medicare-advantage-zero-premium-explained")).toBe(true);
+    expect(articles.some((a) => a.slug === "medigap-open-enrollment-window-explained")).toBe(true);
+    expect(articles.some((a) => a.slug === "is-your-doctor-in-network-next-year")).toBe(true);
   });
 
   it("finds a published article by slug", () => {
     const article = getPublishedArticleBySlug("medicare-enrollment-periods-overview");
     expect(article?.title).toContain("Enrollment Periods");
+  });
+
+  it("loads the parts of Medicare foundational article", () => {
+    const article = getPublishedArticleBySlug("parts-of-medicare");
+    expect(article?.title).toContain("Parts of Medicare");
+    expect(article?.bodyMd).toContain("Part A");
+    expect(article?.bodyMd).toContain("medicare.gov/basics/get-started-with-medicare/medicare-basics/parts-of-medicare");
+  });
+
+  it("loads the when to sign up for Medicare article", () => {
+    const article = getPublishedArticleBySlug("when-to-sign-up-for-medicare");
+    expect(article?.title).toContain("Sign Up");
+    expect(article?.category).toBe("enrollment");
+    expect(article?.bodyMd).toContain("Initial Enrollment Period");
+    expect(article?.bodyMd).toContain("General Enrollment Period");
+    expect(article?.bodyMd).toContain("medicare.gov/basics/get-started-with-medicare/sign-up");
   });
 
   it("renders markdown without raw HTML injection", () => {
@@ -60,12 +82,23 @@ describe("articles", () => {
 
   it("renders internal learning center links and autolinks bare URLs", () => {
     const html = renderLearningMarkdown(
-      "See [3 months before 65](/learning-center/medicare-at-65-action-plan). Visit https://getpartb.com today.",
+      "See [3 months before 65](/learning-center/medicare-at-65-action-plan). Visit https://www.mypartb.com today.",
     );
     expect(html).toContain('href="/learning-center/medicare-at-65-action-plan"');
     expect(html).not.toMatch(/href="\/learning-center[^"]*"[^>]*target="_blank"/);
-    expect(html).toContain('href="https://getpartb.com"');
-    expect(html).toContain(">https://getpartb.com</a>");
+    expect(html).toContain('href="https://www.mypartb.com"');
+    expect(html).toContain(">https://www.mypartb.com</a>");
+  });
+
+  it("merges soft-wrapped newsletter lines before email rendering", () => {
+    const normalized = normalizeNewsletterMarkdown(
+      "Line one that was wrapped in the editor\nand should read as one sentence.\n\n## Section\n\n- Bullet item",
+    );
+    expect(normalized).toContain(
+      "Line one that was wrapped in the editor and should read as one sentence.",
+    );
+    expect(normalized).toContain("## Section");
+    expect(normalized).toContain("- Bullet item");
   });
 
   it("splits FAQ sections from article bodies", () => {

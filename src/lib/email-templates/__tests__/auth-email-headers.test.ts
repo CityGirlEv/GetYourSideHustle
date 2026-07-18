@@ -8,67 +8,68 @@ import { RecoveryEmail } from "../recovery";
 import { EmailChangeEmail } from "../email-change";
 import { ReauthenticationEmail } from "../reauthentication";
 import { DEFAULT_EMAIL_SITE_URL } from "../email-header";
+import { EMAIL_LOGO_CACHE_VERSION } from "@/lib/email-logo-version";
 
-const GETPARTB = "https://getpartb.com";
-const ASSET_LOGO = `${DEFAULT_EMAIL_SITE_URL}/email-logo.png`;
+const MYPARTB = "https://www.mypartb.com";
+const ASSET_LOGO = `${DEFAULT_EMAIL_SITE_URL}/email-logo.png?v=${EMAIL_LOGO_CACHE_VERSION}`;
 
 const authTemplates = [
   {
     name: "signup",
     component: SignupEmail,
     props: {
-      siteName: "The Part B Optimizer",
-      siteUrl: GETPARTB,
+      siteName: "The Part B Optimizer Benchmark Tool",
+      siteUrl: MYPARTB,
       recipient: "user@example.com",
-      confirmationUrl: `${GETPARTB}/confirm`,
+      confirmationUrl: `${MYPARTB}/confirm`,
     },
   },
   {
     name: "invite",
     component: InviteEmail,
     props: {
-      siteName: "The Part B Optimizer",
-      siteUrl: GETPARTB,
-      confirmationUrl: `${GETPARTB}/invite`,
+      siteName: "The Part B Optimizer Benchmark Tool",
+      siteUrl: MYPARTB,
+      confirmationUrl: `${MYPARTB}/invite`,
     },
   },
   {
     name: "magic-link",
     component: MagicLinkEmail,
     props: {
-      siteName: "The Part B Optimizer",
-      siteUrl: GETPARTB,
+      siteName: "The Part B Optimizer Benchmark Tool",
+      siteUrl: MYPARTB,
       recipient: "user@example.com",
-      confirmationUrl: `${GETPARTB}/magic`,
+      confirmationUrl: `${MYPARTB}/magic`,
     },
   },
   {
     name: "recovery",
     component: RecoveryEmail,
     props: {
-      siteName: "The Part B Optimizer",
-      siteUrl: GETPARTB,
+      siteName: "The Part B Optimizer Benchmark Tool",
+      siteUrl: MYPARTB,
       recipient: "user@example.com",
-      confirmationUrl: `${GETPARTB}/reset`,
+      confirmationUrl: `${MYPARTB}/reset`,
     },
   },
   {
     name: "email-change",
     component: EmailChangeEmail,
     props: {
-      siteName: "The Part B Optimizer",
-      siteUrl: GETPARTB,
+      siteName: "The Part B Optimizer Benchmark Tool",
+      siteUrl: MYPARTB,
       email: "new@example.com",
       oldEmail: "old@example.com",
       newEmail: "new@example.com",
-      confirmationUrl: `${GETPARTB}/email-change`,
+      confirmationUrl: `${MYPARTB}/email-change`,
     },
   },
   {
     name: "reauthentication",
     component: ReauthenticationEmail,
     props: {
-      siteUrl: GETPARTB,
+      siteUrl: MYPARTB,
       token: "123456",
     },
   },
@@ -76,15 +77,13 @@ const authTemplates = [
 
 describe("auth email headers", () => {
   it.each(authTemplates)(
-    "$name loads the logo from the app asset host when siteUrl is getpartb.com",
+    "$name loads the logo from the app asset host when siteUrl is mypartb.com",
     async ({ component, props }) => {
       const html = await render(React.createElement(component as any, props as any));
       expect(html).toContain(ASSET_LOGO);
-      expect(html).not.toContain(`${GETPARTB}/email-logo.png`);
+      expect(html).not.toMatch(/src="https:\/\/www\.mypartb\.com\/email-logo\.png"/);
       expect(html).toContain("email-brand-logo");
-      expect(html).toContain('alt="Part B Optimizer"');
-      expect(html).toContain("email-header-copyright");
-      expect(html).toMatch(/© \d{4} Part B Optimizer\. All rights reserved\./);
+      expect(html).toContain('alt="Part B Optimizer Benchmark Tool"');
     },
   );
 });

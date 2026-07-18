@@ -3,7 +3,20 @@ import { canonicalUrl } from "@/lib/site-url";
 import type { ContentAssetType, ContentDraft } from "@/lib/content-factory/types";
 import type { EditorialCalendarEvent } from "@/lib/content-factory/weekly-editorial-schedule";
 import { facebookPostAdminSearch } from "@/lib/content-factory/facebook-post-copy";
-import { leadMagnetPdfHrefIfSaved } from "@/lib/content-factory/lead-magnet-paths";
+import {
+  facebookAdAdminHref,
+  facebookAdAdminSearch,
+  FACEBOOK_AD_SLOT_INDEX,
+  isFacebookAdLaunchEvent,
+} from "@/lib/content-factory/facebook-ad-launch";
+import {
+  DEFAULT_WORKBOOK_SLUG,
+  leadMagnetPdfHrefIfSaved,
+  leadMagnetSlugFromDraft,
+  WORKBOOK_FACEBOOK_ARTICLE_SLUG,
+  workbookSocialTeaserHrefIfSaved,
+} from "@/lib/content-factory/lead-magnet-paths";
+import { isWorkbookFacebookSlot } from "@/lib/content-factory/workbook-facebook-posts";
 
 export type CalendarDraftRef = Pick<
   ContentDraft,
@@ -22,7 +35,7 @@ export interface FacebookPostImageGuidance {
   headline: string;
   imageLabel: string;
   imageUrl: string | null;
-  source: "article-hero" | "brand" | "optional-prompt";
+  source: "article-hero" | "brand" | "optional-prompt" | "workbook-teaser";
   steps: string[];
 }
 
@@ -62,6 +75,12 @@ export function featuredImageUrlForSlug(slug: string): string {
 /** Facebook posts 1–3 (slots 0–2) promote the matching weekly article. */
 export function facebookPostPairedArticleSlot(fbSlotIndex: number): number | null {
   if (fbSlotIndex >= 0 && fbSlotIndex <= 2) return fbSlotIndex;
+  return null;
+}
+
+/** Standalone promos that still link to a published Learning Center slug. */
+export function facebookPostLinkedArticleSlug(fbSlotIndex: number): string | null {
+  if (fbSlotIndex === 5) return "is-your-doctor-in-network-next-year";
   return null;
 }
 
@@ -143,6 +162,24 @@ export function facebookPostImageGuidance(
   fbSlotIndex: number,
   draftBySlot: Map<string, CalendarDraftRef>,
 ): FacebookPostImageGuidance {
+  if (isWorkbookFacebookSlot(fbSlotIndex)) {
+    const leadDraft = getDraftFromMap(draftBySlot, "lead_magnet", 0);
+    const slug = leadDraft ? leadMagnetSlugFromDraft(leadDraft) : DEFAULT_WORKBOOK_SLUG;
+    const imageUrl = workbookSocialTeaserHrefIfSaved(leadDraft);
+    return {
+      headline: "Attach the checklist teaser JPG as the post photo — it previews the printable PDF inside.",
+      imageLabel: `${slug}-facebook-teaser.jpg`,
+      imageUrl,
+      source: "workbook-teaser",
+      steps: [
+        "Save the workbook PDF in the calendar (10:00 AM task) — this also saves the Facebook teaser JPG to public/downloads/.",
+        "In Facebook, click Add photo and upload the checklist teaser JPG (not the logo alone, and not the PDF file).",
+        "Paste the post copy. Put the PDF download link in the post text — the image teases the checklist inside.",
+        "Post #4 pairs with the Still Working at 65 Learning Center article; both links are in the post text.",
+      ],
+    };
+  }
+
   const articleSlot = facebookPostPairedArticleSlot(fbSlotIndex);
   if (articleSlot !== null) {
     const articleDraft = getDraftFromMap(draftBySlot, "article", articleSlot);
@@ -170,13 +207,29 @@ export function facebookPostImageGuidance(
     };
   }
 
+  const linkedSlug = facebookPostLinkedArticleSlug(fbSlotIndex);
+  if (linkedSlug) {
+    return {
+      headline: "Use the same hero image as the linked Learning Center article.",
+      imageLabel: `${linkedSlug}.jpg`,
+      imageUrl: featuredImageUrlForSlug(linkedSlug),
+      source: "article-hero",
+      steps: [
+        `Article: ${learningCenterArticleUrl(linkedSlug)}`,
+        `Save the hero JPG as public/learning-center/${linkedSlug}.jpg (generate with npm run generate:learning-center-images if needed).`,
+        "In Facebook, click Add photo and upload that hero image — do not post text-only for article promos.",
+        "Paste the post copy from this page. The mypartb.com article link is already in the post text.",
+      ],
+    };
+  }
+
   return {
     headline: "No linked article — attach a brand or educational photo.",
     imageLabel: "email-header-logo.png (brand fallback)",
     imageUrl: canonicalUrl("/email-header-logo.png"),
     source: "brand",
     steps: [
-      "These tips stand alone (no article link). Upload the Part B Optimizer logo or a calm Medicare-education photo.",
+      "These tips stand alone (no article link). Upload the Part B Optimizer Benchmark Tool logo or a calm Medicare-education photo.",
       "Optional: Image Prompt 4 or 5 in Content Factory can produce a custom photo if you want variety.",
       "Keep images CMS-compliant: no Medicare card or government logos, no carrier/plan names, no star ratings or premiums, no readable text or disclaimers in the graphic, no enrollment CTAs.",
       "Paste the post text from this page after adding the image.",
@@ -292,6 +345,22 @@ export function buildCalendarEventLinks(input: {
     }
     case "facebook_post": {
       if (event.slotIndex === 99) break;
+      if (event.slotIndex === FACEBOOK_AD_SLOT_INDEX || isFacebookAdLaunchEvent(event)) {
+        links.push({
+          label: "Open in Meta admin",
+          href: facebookAdAdminHref(event.milestone),
+          description: "Full ad copy, creative prompts, and setup checklists",
+        });
+        break;
+      }
+      if (isWorkbookFacebookSlot(event.slotIndex)) {
+        links.push({
+          label: "Still Working at 65 article",
+          href: learningCenterArticleUrl(WORKBOOK_FACEBOOK_ARTICLE_SLUG),
+          external: true,
+          description: "Learning Center guide paired with Post #4",
+        });
+      }
       links.push({
         label: "Copy post text",
         href: `/admin/facebook-posts?${new URLSearchParams({
@@ -333,17 +402,17 @@ export function buildCalendarEventLinks(input: {
     }
     case "lead_magnet": {
       links.push({
-        label: "Edit workbook",
+        label: "Preview / edit workbook",
         href: contentFactoryDraftHref(batchId, "lead_magnet", event.slotIndex),
-        description: "Edit checklist markdown, then generate PDF below",
+        description: "Live PDF preview from current workbook text — Save to public/ when ready",
       });
       const pdfHref = leadMagnetPdfHrefIfSaved(draft);
       if (pdfHref) {
         links.push({
-          label: "View workbook PDF",
+          label: "Open saved PDF",
           href: pdfHref,
           external: true,
-          description: "Saved PDF in public/downloads/",
+          description: "Last copy in public/downloads/ — re-save after preview if layout changed",
         });
       }
       break;
@@ -368,13 +437,21 @@ export function primaryCalendarEventDestination(input: {
   draft?: CalendarDraftRef;
   batchId: string | null;
 }):
-  | { kind: "internal"; to: "/admin/content-factory" | "/admin/facebook-posts" | "/admin/newsletter" | "/admin/articles"; search?: Record<string, unknown> }
+  | { kind: "internal"; to: "/admin/content-factory" | "/admin/facebook-posts" | "/admin/meta" | "/admin/newsletter" | "/admin/articles"; search?: Record<string, unknown> }
   | { kind: "external"; href: string }
   | null {
   const { event, draft, batchId } = input;
 
   if (event.slotIndex === 99) {
     return null;
+  }
+
+  if (isFacebookAdLaunchEvent(event)) {
+    return {
+      kind: "internal",
+      to: "/admin/meta",
+      search: facebookAdAdminSearch(event.milestone),
+    };
   }
 
   switch (event.type) {

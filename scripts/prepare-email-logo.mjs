@@ -1,15 +1,17 @@
 import fs from "fs";
 import path from "path";
+import crypto from "crypto";
 import { fileURLToPath } from "url";
 import sharp from "sharp";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
 
-const rawLogoSource = path.join(root, "src", "assets", "get-part-b-optimizer-logo-raw.png");
-const processedLogoPath = path.join(root, "src", "assets", "get-part-b-optimizer-logo.png");
-const rawIconSource = path.join(root, "src", "assets", "get-part-b-optimizer-icon-raw.png");
-const processedIconPath = path.join(root, "src", "assets", "get-part-b-optimizer-icon.png");
+const rawLogoSource = path.join(root, "src", "assets", "part-b-optimizer-logo-raw.png");
+const processedLogoPath = path.join(root, "src", "assets", "part-b-optimizer-logo.png");
+const processedIconPath = path.join(root, "src", "assets", "part-b-optimizer-icon.png");
+const footerMiniLogoPath = path.join(root, "src", "assets", "footer-mini-logo.png");
+const footerMiniRawSource = path.join(root, "src", "assets", "footer-mini-logo-raw.png");
 
 const emailOutputs = ["email-logo.png", "email-header-logo.png", "email-footer-logo.png"];
 
@@ -116,8 +118,45 @@ async function processLogo(inputPath, outputPath, transparentFn = makeBlackTrans
   return { width, height };
 }
 
+/** Crop the PB monogram from the left edge of the processed wordmark. */
+async function extractIconFromWordmark(pngBuffer) {
+  const { data, info } = await sharp(pngBuffer)
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  let minX = info.width;
+  let minY = info.height;
+  let maxX = 0;
+  let maxY = 0;
+
+  for (let y = 0; y < info.height; y++) {
+    for (let x = 0; x < info.width; x++) {
+      const alpha = data[(y * info.width + x) * 4 + 3];
+      if (alpha > 12) {
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+      }
+    }
+  }
+
+  const contentWidth = maxX - minX + 1;
+  const iconWidth = Math.max(64, Math.round(contentWidth * 0.24));
+  const iconHeight = info.height;
+  const extractWidth = Math.min(iconWidth, info.width);
+  const iconBuffer = await sharp(pngBuffer)
+    .extract({ left: 0, top: 0, width: extractWidth, height: iconHeight })
+    .png()
+    .toBuffer();
+  const iconPadding = { top: 4, right: 4, bottom: 4, left: 4 };
+  const { buffer } = await cropToContent(iconBuffer, iconPadding);
+  return buffer;
+}
+
 async function main() {
-  const source = process.argv[2] ?? rawLogoSource;
+  const keepMini = process.argv.includes("--keep-mini");
+  const source = process.argv.find((arg) => !arg.startsWith("-") && arg.endsWith(".png")) ?? rawLogoSource;
   if (!fs.existsSync(source)) {
     if (fs.existsSync(processedLogoPath)) {
       console.warn("Raw logo missing; syncing existing processed logo to public/");
@@ -131,27 +170,80 @@ async function main() {
   }
 
   const tempOut = path.join(root, "src", "assets", ".logo-processed.tmp.png");
-  const { width, height } = await processLogo(source, tempOut);
+  const { width, height } = await processLogo(source, tempOut, makeBackgroundTransparent);
   fs.renameSync(tempOut, processedLogoPath);
   console.log(`Processed logo (${width}x${height}, tight bottom crop): ${processedLogoPath}`);
 
-  for (const outName of emailOutputs) {
+  const logoBuffer = fs.readFileSync(processedLogoPath);
+
+  if (keepMini) {
+    console.log("Keeping existing part-b-optimizer-icon.png and footer-mini-logo.png");
+  } else {
+    const iconBuffer = await extractIconFromWordmark(logoBuffer);
+    await sharp(iconBuffer).png({ compressionLevel: 9 }).toFile(processedIconPath);
+
+    if (fs.existsSync(footerMiniRawSource)) {
+      const footerTemp = path.join(root, "src", "assets", ".footer-mini.tmp.png");
+      const footerPadding = { top: 6, right: 6, bottom: 6, left: 6 };
+      const footerDims = await processLogo(
+        footerMiniRawSource,
+        footerTemp,
+        makeBlackTransparent,
+        footerPadding,
+      );
+      fs.renameSync(footerTemp, footerMiniLogoPath);
+      console.log(`Footer mini logo (${footerDims.width}x${footerDims.height}) -> ${footerMiniLogoPath}`);
+    } else {
+      await sharp(iconBuffer).png({ compressionLevel: 9 }).toFile(footerMiniLogoPath);
+      console.log(`Footer mini logo (from wordmark) -> ${footerMiniLogoPath}`);
+    }
+
+    const faviconSource = fs.existsSync(footerMiniLogoPath)
+      ? footerMiniLogoPath
+      : processedIconPath;
+    const faviconPath = path.join(root, "public", "favicon.png");
+    await sharp(faviconSource)
+      .resize(192, 192, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
+      .png({ compressionLevel: 9 })
+      .toFile(faviconPath);
+    console.log(`Processed icon -> ${processedIconPath}`);
+    console.log(`Favicon -> ${faviconPath}`);
+  }
+
+  for (const outName of ["email-logo.png", "email-header-logo.png"]) {
     const outPath = path.join(root, "public", outName);
     fs.copyFileSync(processedLogoPath, outPath);
     console.log(`Copied -> ${outPath}`);
   }
 
-  if (fs.existsSync(rawIconSource)) {
-    const iconTemp = path.join(root, "src", "assets", ".icon-processed.tmp.png");
-    const iconPadding = { top: 4, right: 4, bottom: 4, left: 4 };
-    const iconDims = await processLogo(
-      rawIconSource,
-      iconTemp,
-      makeBackgroundTransparent,
-      iconPadding,
-    );
-    fs.renameSync(iconTemp, processedIconPath);
-    console.log(`Processed icon (${iconDims.width}x${iconDims.height}): ${processedIconPath}`);
+  const footerLogoSource = fs.existsSync(footerMiniLogoPath)
+    ? footerMiniLogoPath
+    : processedIconPath;
+  const footerOutPath = path.join(root, "public", "email-footer-logo.png");
+  fs.copyFileSync(footerLogoSource, footerOutPath);
+  console.log(`Footer mini logo -> ${footerOutPath}`);
+
+  const logoHash = crypto
+    .createHash("md5")
+    .update(fs.readFileSync(processedLogoPath))
+    .update(fs.readFileSync(footerLogoSource))
+    .digest("hex")
+    .slice(0, 10);
+  const versionTsPath = path.join(root, "src", "lib", "email-logo-version.ts");
+  fs.writeFileSync(
+    versionTsPath,
+    `/** Auto-generated by scripts/prepare-email-logo.mjs — do not edit */\nexport const EMAIL_LOGO_CACHE_VERSION = "${logoHash}";\n`,
+  );
+  console.log(`Logo cache version -> ${logoHash}`);
+
+  const distDir = path.join(root, "dist");
+  if (fs.existsSync(distDir)) {
+    for (const fileName of ["email-logo.png", "email-header-logo.png", "email-footer-logo.png", "favicon.png"]) {
+      const src = path.join(root, "public", fileName);
+      if (!fs.existsSync(src)) continue;
+      fs.copyFileSync(src, path.join(distDir, fileName));
+    }
+    console.log("Synced email logos + favicon to dist/");
   }
 }
 

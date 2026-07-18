@@ -59,7 +59,7 @@ export function rewriteRecoveryConfirmationUrl(
   return url;
 }
 
-/** Use a mypartb.com verify URL in emails; `/auth/verify` forwards to Supabase. */
+/** Use a branded verify URL in emails; `/auth/verify` forwards to Supabase. */
 export function brandRecoveryConfirmationUrl(
   supabaseVerifyUrl: string,
   redirectTarget = passwordRecoveryRedirectUrl(),

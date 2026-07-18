@@ -1,5 +1,20 @@
 import "@testing-library/jest-dom/vitest";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { vi } from "vitest";
+import { __hydrateCmsLandscapeForTests } from "@/lib/cms-landscape";
+
+const vitestRoot = join(dirname(fileURLToPath(import.meta.url)));
+const cmsYear = "2026";
+__hydrateCmsLandscapeForTests({
+  plans: JSON.parse(
+    readFileSync(join(vitestRoot, "src/data/cms-landscape", cmsYear, "plans.json"), "utf8"),
+  ),
+  countyIndex: JSON.parse(
+    readFileSync(join(vitestRoot, "src/data/cms-landscape", cmsYear, "county-index.json"), "utf8"),
+  ),
+});
 
 // Set mock environment variables for tests
 process.env.VITE_SUPABASE_URL = "https://mock-project.supabase.co";

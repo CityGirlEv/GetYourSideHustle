@@ -106,15 +106,29 @@ export function parseArticleMarkdown(raw: string): Article {
   };
 }
 
-function loadAllArticles(): Article[] {
+let cachedArticles: Article[] | undefined;
+
+export function loadBundledArticles(): Article[] {
   return Object.values(articleModules).map((raw) => parseArticleMarkdown(raw));
 }
 
-let cachedArticles: Article[] | undefined;
+function loadAllArticles(): Article[] {
+  return loadBundledArticles();
+}
 
 function allArticles(): Article[] {
+  if (import.meta.env.DEV) return loadAllArticles();
   if (!cachedArticles) cachedArticles = loadAllArticles();
   return cachedArticles;
+}
+
+export function publishedArticleListItems(articles: Article[]): ArticleListItem[] {
+  const published = articles.filter((a) => a.published);
+  return sortArticles(published).map(toListItem);
+}
+
+export function findPublishedArticleBySlug(articles: Article[], slug: string): Article | null {
+  return articles.find((a) => a.published && a.slug === slug) ?? null;
 }
 
 function sortArticles<T extends { sortOrder: number; publishedAt: string | null }>(rows: T[]): T[] {
@@ -149,8 +163,12 @@ export function listPublishedArticleSlugs(): string[] {
   return listPublishedArticles().map((a) => a.slug);
 }
 
-export function getRelatedArticles(article: Article, limit = 3): ArticleListItem[] {
-  const published = listPublishedArticles().filter((a) => a.slug !== article.slug);
+export function getRelatedArticles(
+  article: Article,
+  limit = 3,
+  source?: ArticleListItem[],
+): ArticleListItem[] {
+  const published = (source ?? listPublishedArticles()).filter((a) => a.slug !== article.slug);
   if (article.relatedSlugs?.length) {
     const picked = article.relatedSlugs
       .map((slug) => published.find((a) => a.slug === slug))
@@ -161,11 +179,14 @@ export function getRelatedArticles(article: Article, limit = 3): ArticleListItem
   return published.filter((a) => a.category === article.category).slice(0, limit);
 }
 
-export function getArticleNeighbors(slug: string): {
+export function getArticleNeighbors(
+  slug: string,
+  source?: ArticleListItem[],
+): {
   previous: ArticleListItem | null;
   next: ArticleListItem | null;
 } {
-  const ordered = listPublishedArticles();
+  const ordered = source ?? listPublishedArticles();
   const index = ordered.findIndex((a) => a.slug === slug);
   if (index === -1) return { previous: null, next: null };
   return {

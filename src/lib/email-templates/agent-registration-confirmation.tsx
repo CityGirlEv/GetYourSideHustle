@@ -109,7 +109,7 @@ export const template = {
     firstName: "Jane",
     lastName: "Doe",
     email: "jane@example.com",
-    signInUrl: "https://mypartb.com/auth?tab=sign-in",
+    signInUrl: "https://www.mypartb.com/auth?tab=sign-in",
   },
 } satisfies TemplateEntry;
 

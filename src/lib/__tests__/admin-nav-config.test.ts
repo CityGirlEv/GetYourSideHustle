@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   ADMIN_CONTENT_GROUP,
   ADMIN_MOBILE_SECTIONS,
+  ADMIN_OPERATION_LINKS,
   ADMIN_QA_GROUP,
 } from "@/lib/admin-nav-config";
 
@@ -10,6 +11,7 @@ describe("admin-nav-config", () => {
     expect(ADMIN_CONTENT_GROUP.items.map((item) => item.to)).toEqual([
       "/admin/content-factory",
       "/admin/calendar",
+      "/admin/meta",
       "/admin/facebook-posts",
       "/admin/articles",
       "/admin/newsletter",
@@ -26,5 +28,14 @@ describe("admin-nav-config", () => {
       section.type === "group" ? section.group.label : section.type === "links" ? section.title : "Admin",
     );
     expect(titles.indexOf("Content")).toBeLessThan(titles.indexOf("QA & Testing"));
+  });
+
+  it("links lead certificates and PBO scenarios to dedicated admin routes", () => {
+    const leadCerts = ADMIN_OPERATION_LINKS.find((l) => l.label === "Lead Certificates");
+    const pboScenarios = ADMIN_OPERATION_LINKS.find((l) => l.label === "PBO Scenarios");
+    expect(leadCerts?.to).toBe("/admin/lead-certificates");
+    expect(leadCerts?.hash).toBe("lead-certificates");
+    expect(leadCerts?.search).toBeUndefined();
+    expect(pboScenarios?.to).toBe("/admin/pbo-scenarios");
   });
 });

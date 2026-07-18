@@ -62,7 +62,7 @@ function ArticleTableOfContents({
   return (
     <nav aria-label="Table of contents" className={className}>
       <p
-        className={`font-semibold text-foreground ${variant === "sidebar" ? "text-sm mb-3" : "text-xs mb-2 px-1"}`}
+        className={`font-semibold text-foreground ${variant === "sidebar" ? "text-sm mb-2" : "text-xs mb-1.5 px-1"}`}
       >
         On this page
       </p>
@@ -98,8 +98,8 @@ function ArticleFaqSection({ faq }: { faq: ArticleFaqItem[] }) {
   if (!faq.length) return null;
 
   return (
-    <section id="article-faq" className="scroll-mt-28 space-y-3">
-      <h2 className="font-display text-2xl font-bold text-primary">Frequently asked questions</h2>
+    <section id="article-faq" className="scroll-mt-28 space-y-2">
+      <h2 className="font-display text-xl font-bold text-primary">Frequently asked questions</h2>
       <Accordion type="single" collapsible className="rounded-lg border border-border bg-background/60 px-4">
         {faq.map((item, index) => (
           <AccordionItem key={item.question} value={`faq-${index}`}>
@@ -173,7 +173,7 @@ function ArticleAuthorBox() {
   return (
     <section
       id="article-author"
-      className="scroll-mt-28 rounded-xl border border-border bg-muted/20 p-4 sm:p-5 flex gap-4"
+      className="scroll-mt-28 rounded-xl border border-border bg-muted/20 p-3 sm:p-4 flex gap-3"
     >
       <div className="h-12 w-12 shrink-0 rounded-full bg-primary/10 flex items-center justify-center">
         <BookOpen className="h-5 w-5 text-primary" />
@@ -252,7 +252,7 @@ function ArticlePrevNext({
   return (
     <nav
       aria-label="Previous and next articles"
-      className="grid gap-3 sm:grid-cols-2 border-t border-border pt-6"
+      className="grid gap-3 sm:grid-cols-2 border-t border-border pt-4"
     >
       {previous ? (
         <Link
@@ -304,15 +304,15 @@ export function LearningArticleTemplate({
   const showUpdated = Boolean(updatedLabel && updatedLabel !== publishedLabel);
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8">
-      <Button asChild variant="ghost" size="sm" className="px-0 text-primary">
+    <div className="max-w-6xl mx-auto space-y-4 sm:space-y-5">
+      <Button asChild variant="ghost" size="sm" className="px-0 text-primary -mb-1">
         <Link to="/learning-center">
           <ArrowLeft className="h-4 w-4 mr-1" /> Back to Learning Center
         </Link>
       </Button>
 
-      <header className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
+      <header className="space-y-2">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <Badge variant="secondary">{categoryLabel(article.category)}</Badge>
           {article.featured ? <Badge className="bg-emerald/90">Featured</Badge> : null}
           <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
@@ -347,7 +347,7 @@ export function LearningArticleTemplate({
         </div>
       ) : null}
 
-      <div className="grid lg:grid-cols-[220px_minmax(0,1fr)_240px] xl:grid-cols-[240px_minmax(0,1fr)_260px] gap-8 xl:gap-10 items-start">
+      <div className="grid lg:grid-cols-[220px_minmax(0,1fr)_240px] xl:grid-cols-[240px_minmax(0,1fr)_260px] gap-5 xl:gap-7 items-start">
         {headings.length ? (
           <aside className="hidden lg:block sticky top-24 self-start">
             <ArticleTableOfContents headings={headings} variant="sidebar" />
@@ -356,7 +356,7 @@ export function LearningArticleTemplate({
           <div className="hidden lg:block" />
         )}
 
-        <main className="min-w-0 space-y-8">
+        <main className="min-w-0 space-y-5">
           <LearningArticleBody bodyMd={article.bodyMd} />
 
           <ArticleFaqSection faq={faq} />
@@ -365,9 +365,9 @@ export function LearningArticleTemplate({
 
           <section
             id="article-disclaimer"
-            className="scroll-mt-28 rounded-lg border border-border bg-muted/30 p-4 sm:p-5"
+            className="scroll-mt-28 rounded-lg border border-border bg-muted/30 p-3 sm:p-4"
           >
-            <strong className="block text-sm text-foreground mb-2">Educational disclaimer</strong>
+            <strong className="block text-sm text-foreground mb-1.5">Educational disclaimer</strong>
             <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
               {LEARNING_ARTICLE_DISCLAIMER}
             </p>
@@ -383,9 +383,9 @@ export function LearningArticleTemplate({
           </div>
 
           {related.length ? (
-            <section id="related-articles" className="scroll-mt-28 space-y-4">
+            <section id="related-articles" className="scroll-mt-28 space-y-3">
               <div className="flex items-center justify-between gap-3">
-                <h2 className="font-display text-2xl font-bold text-primary">Related articles</h2>
+                <h2 className="font-display text-xl font-bold text-primary">Related articles</h2>
                 <Link
                   to="/learning-center"
                   className="text-sm font-semibold text-primary hover:underline inline-flex items-center gap-1"
@@ -393,7 +393,7 @@ export function LearningArticleTemplate({
                   View all <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
                 {related.map((item) => (
                   <LearningArticleCard key={item.slug} article={item} />
                 ))}
@@ -404,8 +404,8 @@ export function LearningArticleTemplate({
           <ArticlePrevNext previous={previous} next={next} />
         </main>
 
-        <aside className="hidden lg:block sticky top-24 self-start space-y-4">
-          <Card className="p-4 space-y-3 border-primary/20 bg-primary/5">
+        <aside className="hidden lg:block sticky top-24 self-start space-y-3">
+          <Card className="p-3 space-y-2.5 border-primary/20 bg-primary/5">
             <div className="space-y-1">
               <h3 className="font-display text-base font-bold text-primary">Take action</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">

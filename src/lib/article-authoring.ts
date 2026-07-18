@@ -53,7 +53,7 @@ const LEGACY_MPD_PATTERN =
 export function ensureArticleMpdFooter(bodyMd: string): string {
   let body = bodyMd.trim();
   body = body.replace(LEGACY_MPD_PATTERN, MPD_DISCLAIMER);
-  if (body.includes("We may not present every plan available in your area")) return body;
+  if (body.includes("We may not represent every plan available in your area")) return body;
   return `${body}\n\n---\n\n${MPD_DISCLAIMER}\n`;
 }
 

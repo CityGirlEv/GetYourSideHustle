@@ -4,8 +4,13 @@ Competitor Scouting uses the **Meta Ad Library API** (`/ads_archive`) — not yo
 Set the token in `.env` as:
 
 ```bash
-FACEBOOK_ACCESS_TOKEN="your_long_lived_token_here"
+# Place your **long‑lived** token here (valid ~60 days)
+FACEBOOK_ACCESS_TOKEN="YOUR_LONG_LIVED_TOKEN"
 ```
+
+> **⚠️ NOTE:** The token expires after about 60 days. When you see an "Error validating access token: Session has expired" message, generate a new long‑lived token (see **Step 5** below) and update the `.env` file.
+
+> **Important:** Ensure the token was generated with the `ads_read` permission on the same app that has the Ad Library API enabled.
 
 Restart the dev server (or redeploy) after saving. On **Admin → Competitor Scouting**, click **Refresh scouting**.
 The **Meta Ad Library** row should show ads found instead of “skipped”.
@@ -118,7 +123,7 @@ Per Meta’s docs, the API is **not** a full dump of every commercial ad on Face
 | Ads delivered to the **EU** | Extra fields (reach, beneficiary, etc.), ~1 year |
 | Other US commercial ads | **Limited** — often only if in special categories (e.g. **Financial products and services**, housing, employment) or EU-delivered |
 
-For Medicare competitor scouting, try `ad_type=FINANCIAL_PRODUCTS_AND_SERVICES_ADS` or `ALL` with `search_terms=medicare`. Empty results may mean no eligible archived ads, not necessarily a bad token.
+For Medicare competitor scouting, try `ad_type=FINANCIAL_PRODUCTS_AND_SERVICES_ADS` or `ALL` with Medicare keywords (`medicare`, `medicare advantage`, `medicare supplement`, `part b`, `turning 65`, `medigap`). The fetcher runs multiple keyword searches and dedupes results. Empty results may mean no eligible archived ads, not necessarily a bad token.
 
 ---
 
@@ -212,9 +217,24 @@ Never commit the token to git.
 | Symptom | Likely cause |
 |--------|----------------|
 | Meta source **skipped** in scouting | `FACEBOOK_ACCESS_TOKEN` missing or empty in server env |
+| **Application does not have permission for this action** | Ad Library API product not enabled on the app **or** token was generated from a different app **or** token lacks `ads_read` — see fix checklist below |
 | OAuth / invalid token | Token expired — generate a new long-lived token |
 | Empty `data` array | Try `ad_type=ALL`, broader `search_terms`, or confirm ID verification finished |
-| Permission error | Regenerate token with `ads_read` on the correct app |
+| Permission error (other) | Regenerate token with `ads_read` on the correct app |
+
+### Fix: “Application does not have permission for this action”
+
+Your token is reaching Meta, but the **app tied to that token** is not authorized for `/ads_archive`. Fix in this order:
+
+1. Open [developers.facebook.com/apps](https://developers.facebook.com/apps/) → select the **same app** you used in Graph API Explorer.
+2. **Add product** → **Ad Library API** → **Set up** (accept terms). If already added, remove and re-add only if Meta support suggests it.
+3. Confirm [facebook.com/ID](https://www.facebook.com/ID) identity verification is **approved** (required before Ad Library works).
+4. Open [Graph API Explorer](https://developers.facebook.com/tools/explorer/) → **Meta App** = that app → **Get User Access Token** → add **`ads_read`** → generate.
+5. Run the test query from Step 4 above until JSON returns (empty `data` is OK).
+6. Exchange for a long-lived token (Step 5 in this doc) and replace `FACEBOOK_ACCESS_TOKEN` in `.env`.
+7. Restart the dev server and click **Refresh scouting** on Admin → Competitor Scouting.
+
+**Common mistake:** token generated from your default/personal app while Ad Library API was enabled on a different app. The token always inherits permissions from the app selected in Graph API Explorer.
 
 ---
 

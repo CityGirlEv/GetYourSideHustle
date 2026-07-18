@@ -57,7 +57,7 @@ async function createCheckoutForUser(opts: {
     mode: plan.mode,
     line_items: [{ price: priceId, quantity: 1 }],
     success_url: `${base}/agent?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${base}/pricing?checkout=canceled`,
+    cancel_url: `${base}/features?tab=agents&checkout=canceled#agent-pricing`,
     metadata: {
       user_id: opts.userId,
       plan_key: opts.planKey,

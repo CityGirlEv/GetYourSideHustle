@@ -28,12 +28,12 @@ const INLINE_MAX_WIDTH = 960;
 
 /** Photo-only regions inside the 1024×682 enrollment card screenshot. */
 const ENROLLMENT_CROPS = [
-  { slug: "medicare-at-65-action-plan", left: 10, top: 38, width: 494, height: 112 },
-  { slug: "medicare-enrollment-timeline", left: 520, top: 38, width: 494, height: 112 },
-  { slug: "turning-65-and-still-working", left: 10, top: 292, width: 494, height: 112 },
-  { slug: "medicare-initial-enrollment-period", left: 520, top: 292, width: 494, height: 112 },
-  { slug: "is-medicare-automatic-at-65", left: 10, top: 546, width: 494, height: 72 },
-  { slug: "medicare-special-enrollment-period", left: 520, top: 546, width: 494, height: 72 },
+  { slug: "medicare-at-65-action-plan", left: 10, top: 38, width: 494, height: 200 },
+  { slug: "medicare-enrollment-timeline", left: 520, top: 38, width: 494, height: 200 },
+  { slug: "turning-65-and-still-working", left: 10, top: 292, width: 494, height: 200 },
+  { slug: "medicare-initial-enrollment-period", left: 520, top: 292, width: 494, height: 200 },
+  { slug: "is-medicare-automatic-at-65", left: 10, top: 546, width: 494, height: 128 },
+  { slug: "medicare-special-enrollment-period", left: 520, top: 546, width: 494, height: 128 },
 ];
 
 /** Photo-only regions inside the 1024×512 comparing-plans screenshot. */
@@ -80,6 +80,14 @@ async function main() {
   for (const crop of COMPARING_CROPS) {
     await saveCrop(COMPARING_GRID, crop.slug, crop);
   }
+
+  console.log("Newsletter email thumbs (3:2)…");
+  const { spawnSync } = await import("node:child_process");
+  const thumbs = spawnSync("node", ["scripts/generate-newsletter-article-thumbs.mjs"], {
+    cwd: root,
+    stdio: "inherit",
+  });
+  if (thumbs.status !== 0) process.exit(thumbs.status ?? 1);
 }
 
 main().catch((err) => {

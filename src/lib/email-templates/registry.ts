@@ -22,6 +22,8 @@ import { template as accountEnabledAdminTemplate } from "./account-enabled-admin
 import { template as welcomeTemplate } from "./welcome";
 import { template as agentAssignmentTemplate } from "./agent-assignment";
 import { template as contactRequestTemplate } from "./contact-request";
+import { template as newsletterWelcomeTemplate } from "./newsletter-welcome";
+import { template as leadMagnetDeliveryTemplate } from "./lead-magnet-delivery";
 import { template as scenarioClaimedTemplate } from "./scenario-claimed";
 import { template as betaTestAssignmentTemplate } from "./beta-test-assignment";
 import { template as betaTestUnassignedTemplate } from "./beta-test-unassigned";
@@ -38,6 +40,8 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   welcome: welcomeTemplate,
   "agent-assignment": agentAssignmentTemplate,
   "contact-request": contactRequestTemplate,
+  "newsletter-welcome": newsletterWelcomeTemplate,
+  "lead-magnet-delivery": leadMagnetDeliveryTemplate,
   "scenario-claimed": scenarioClaimedTemplate,
   "beta-test-assignment": betaTestAssignmentTemplate,
   "beta-test-unassigned": betaTestUnassignedTemplate,

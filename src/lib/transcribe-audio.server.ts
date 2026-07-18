@@ -1,5 +1,6 @@
 import { Buffer } from "node:buffer";
 import { getEnvVariable, getRuntimeSecret, isLocalDevEnvironment } from "@/lib/env";
+import { PRODUCTION_SITE_ORIGIN } from "@/lib/site-url";
 
 type WorkersAiBinding = {
   run: (model: string, inputs: Record<string, unknown>) => Promise<Record<string, unknown>>;
@@ -108,7 +109,7 @@ async function transcribeViaProductionProxy(blob: Blob, filename: string): Promi
   const origin =
     configured && !/localhost|127\.0\.0\.1/i.test(configured)
       ? configured
-      : "https://mypartb.com";
+      : PRODUCTION_SITE_ORIGIN;
 
   const body = new FormData();
   body.append("file", blob, filename);

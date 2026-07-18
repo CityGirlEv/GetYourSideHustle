@@ -20,4 +20,11 @@ describe("content-factory workflow", () => {
   it("allows approved drafts to publish", () => {
     expect(canTransitionDraftStatus("approved", "published")).toBe(true);
   });
+
+  it("allows reversing approval and publication", () => {
+    expect(canTransitionDraftStatus("approved", "pending_review")).toBe(true);
+    expect(canTransitionDraftStatus("scheduled", "approved")).toBe(true);
+    expect(canTransitionDraftStatus("published", "approved")).toBe(true);
+    expect(() => assertDraftStatusTransition("published", "approved")).not.toThrow();
+  });
 });

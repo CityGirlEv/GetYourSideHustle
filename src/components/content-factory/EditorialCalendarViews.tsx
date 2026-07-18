@@ -16,9 +16,23 @@ import {
 import type { ContentAssetType, ContentDraftStatus } from "@/lib/content-factory/types";
 import { EditorialCalendarActionLinks } from "@/components/content-factory/EditorialCalendarLinks";
 import { FacebookInviteDaySteps } from "@/components/content-factory/FacebookInviteDaySteps";
+import { FacebookAdLaunchPanel } from "@/components/content-factory/FacebookAdLaunchPanel";
+import { FacebookPostCalendarPanel } from "@/components/content-factory/FacebookPostCalendarPanel";
 import { ImagePromptCalendarPanel } from "@/components/content-factory/ImagePromptCalendarPanel";
 import { LeadMagnetPdfPanel } from "@/components/content-factory/LeadMagnetPdfPanel";
-import type { CalendarDraftRef } from "@/lib/content-factory/editorial-calendar-links";
+import { WorkbookFacebookPostsPanel } from "@/components/content-factory/WorkbookFacebookPostsPanel";
+import {
+  hideStandaloneWorkbookPersonalPost,
+  shouldShowWorkbookFacebookPostsPanel,
+} from "@/lib/content-factory/workbook-facebook-posts";
+import {
+  calendarTaskStorageId,
+  isCalendarTaskDone,
+} from "@/lib/content-factory/editorial-calendar-progress";
+import { articleImagePromptSlot } from "@/lib/content-factory/facebook-post-calendar";
+import { getDraftFromMap } from "@/lib/content-factory/editorial-calendar-links";
+import { editorialMilestoneLabel } from "@/lib/content-factory/weekly-editorial-schedule";
+import { isFacebookAdLaunchEvent } from "@/lib/content-factory/facebook-ad-launch";
 
 export type CalendarViewMode = "weekly" | "daily" | "monthly";
 
@@ -156,7 +170,7 @@ export function EditorialDayAgenda({
   today: string;
   mapDraftStatus: (status: ContentDraftStatus) => string;
   completedEvents?: Record<string, boolean>;
-  onToggleCompleted?: (eventId: string) => void;
+  onToggleCompleted?: (storageId: string, legacyId?: string) => void;
   onHeroUploaded?: () => void;
   onPdfSaved?: () => void;
 }) {
@@ -182,7 +196,11 @@ export function EditorialDayAgenda({
         )}
       </div>
       <ul className="space-y-2">
-        {items.map((item) => (
+        {items.map((item) => {
+          if (hideStandaloneWorkbookPersonalPost(item.event)) {
+            return null;
+          }
+          return (
           <DayAgendaRow
             key={item.event.id}
             item={item}
@@ -190,13 +208,14 @@ export function EditorialDayAgenda({
             draftBySlot={draftBySlot}
             batchId={batchId}
             mapDraftStatus={mapDraftStatus}
-            isCompleted={!!completedEvents[item.event.id]}
+            isCompleted={isCalendarTaskDone(completedEvents, item.event)}
             onToggleCompleted={onToggleCompleted}
             completedEvents={completedEvents}
             onHeroUploaded={onHeroUploaded}
             onPdfSaved={onPdfSaved}
           />
-        ))}
+          );
+        })}
       </ul>
     </div>
   );
@@ -220,14 +239,27 @@ function DayAgendaRow({
   batchId: string | null;
   mapDraftStatus: (status: ContentDraftStatus) => string;
   isCompleted: boolean;
-  onToggleCompleted?: (eventId: string) => void;
+  onToggleCompleted?: (storageId: string, legacyId?: string) => void;
   completedEvents?: Record<string, boolean>;
   onHeroUploaded?: () => void;
   onPdfSaved?: () => void;
 }) {
   const Icon = contentTypeIcon(item.event.type);
   const isProduce = item.event.milestone === "produce";
+  const milestoneLabel = editorialMilestoneLabel(
+    item.event.type,
+    item.event.milestone,
+    item.event.slotIndex,
+  );
   const surface = TYPE_SURFACE[item.event.type];
+  const articleImageSlot =
+    item.event.type === "article" && isProduce
+      ? articleImagePromptSlot(item.event.slotIndex)
+      : null;
+  const articleImageDraft =
+    articleImageSlot !== null
+      ? getDraftFromMap(draftBySlot, "image_prompt", articleImageSlot)
+      : undefined;
 
   return (
     <li
@@ -240,7 +272,12 @@ function DayAgendaRow({
           <input
             type="checkbox"
             checked={isCompleted}
-            onChange={() => onToggleCompleted?.(item.event.id)}
+            onChange={() =>
+              onToggleCompleted?.(
+                calendarTaskStorageId(item.event),
+                item.event.id,
+              )
+            }
             className="h-4 w-4 rounded border-input bg-background text-indigo-500 focus:ring-indigo-500/50 cursor-pointer"
             title={isCompleted ? "Mark active" : "Mark done"}
           />
@@ -250,7 +287,7 @@ function DayAgendaRow({
             {item.timeLabel}
           </div>
           <div className="text-[10px] text-muted-foreground uppercase tracking-wide">
-            {isProduce ? "Produce" : "Launch"}
+            {milestoneLabel}
           </div>
         </div>
         <div className="min-w-0 flex-1 space-y-1">
@@ -269,6 +306,7 @@ function DayAgendaRow({
           <div className="flex flex-wrap items-center gap-2 pt-0.5">
             {item.event.slotIndex === 99 && (
               <FacebookInviteDaySteps
+                eventDate={item.event.date}
                 completedEvents={completedEvents}
                 onToggleCompleted={onToggleCompleted}
               />
@@ -278,6 +316,14 @@ function DayAgendaRow({
               <span className="text-[10px] text-muted-foreground">{mapDraftStatus(draft.status)}</span>
             )}
           </div>
+          {isFacebookAdLaunchEvent(item.event) && (
+            <FacebookAdLaunchPanel
+              milestone={item.event.milestone}
+              eventDate={item.event.date}
+              completedEvents={completedEvents}
+              onToggleCompleted={onToggleCompleted}
+            />
+          )}
           {item.event.slotIndex !== 99 && (
             <EditorialCalendarActionLinks
               event={item.event}
@@ -286,10 +332,25 @@ function DayAgendaRow({
               draftBySlot={draftBySlot}
             />
           )}
-          {item.event.type === "image_prompt" && (
-            <ImagePromptCalendarPanel
+          {item.event.type === "facebook_post" &&
+            item.event.milestone === "launch" &&
+            !isFacebookAdLaunchEvent(item.event) && (
+            <FacebookPostCalendarPanel
               event={item.event}
               draft={draft}
+              draftBySlot={draftBySlot}
+              batchId={batchId}
+              onHeroUploaded={onHeroUploaded}
+            />
+          )}
+          {articleImageSlot !== null && articleImageDraft && (
+            <ImagePromptCalendarPanel
+              event={{
+                ...item.event,
+                type: "image_prompt",
+                slotIndex: articleImageSlot,
+              }}
+              draft={articleImageDraft}
               draftBySlot={draftBySlot}
               batchId={batchId}
               onHeroUploaded={onHeroUploaded}
@@ -300,6 +361,13 @@ function DayAgendaRow({
               draft={draft}
               batchId={batchId}
               onSaved={onPdfSaved}
+            />
+          )}
+          {shouldShowWorkbookFacebookPostsPanel(item.event) && (
+            <WorkbookFacebookPostsPanel
+              draftBySlot={draftBySlot}
+              batchId={batchId}
+              onPostsSynced={onPdfSaved}
             />
           )}
         </div>

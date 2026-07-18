@@ -1,9 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { CheckCircle2, Download, ExternalLink, FileText, Loader2, RefreshCw, Save } from "lucide-react";
+import {
+  CheckCircle2,
+  Download,
+  ExternalLink,
+  FileText,
+  Loader2,
+  RefreshCw,
+  Save,
+  Undo2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { saveLeadMagnetPdfAdmin } from "@/lib/content-factory.functions";
+import {
+  saveLeadMagnetPdfAdmin,
+  unpublishLeadMagnetPdfAdmin,
+} from "@/lib/content-factory.functions";
 import {
   contentFactoryDraftHref,
   type CalendarDraftRef,
@@ -16,13 +28,14 @@ import {
 import {
   buildLeadMagnetWorkbookPdf,
   downloadLeadMagnetPdf,
-  leadMagnetPdfBlob,
   leadMagnetPdfToBase64,
   leadMagnetSourceFromDraft,
   loadLeadMagnetPdfLogo,
-  type LeadMagnetPdfAssets,
   type LeadMagnetPdfSource,
 } from "@/lib/lead-magnet-pdf";
+import { workbookSocialTeaserToBase64 } from "@/lib/workbook-social-teaser";
+import { WorkbookPdfPreview } from "@/components/content-factory/WorkbookPdfPreview";
+import { WorkbookSocialTeaserPreview } from "@/components/content-factory/WorkbookSocialTeaserPreview";
 
 export function LeadMagnetPdfPanel({
   draft,
@@ -34,21 +47,17 @@ export function LeadMagnetPdfPanel({
   draft?: CalendarDraftRef;
   batchId?: string | null;
   compact?: boolean;
-  /** When editing in Content Factory, pass unsaved title/excerpt/body for live preview. */
   liveSource?: LeadMagnetPdfSource;
   onSaved?: () => void;
 }) {
   const savePdf = useServerFn(saveLeadMagnetPdfAdmin);
+  const unpublishPdf = useServerFn(unpublishLeadMagnetPdfAdmin);
   const [saving, setSaving] = useState(false);
-  const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null);
+  const [unpublishing, setUnpublishing] = useState(false);
   const [previewKey, setPreviewKey] = useState(0);
   const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null);
-  const [logoReady, setLogoReady] = useState(false);
 
-  const pdfAssets: LeadMagnetPdfAssets = useMemo(
-    () => ({ logoDataUrl }),
-    [logoDataUrl],
-  );
+  const pdfAssets = useMemo(() => ({ logoDataUrl }), [logoDataUrl]);
 
   const source = liveSource ?? (draft ? leadMagnetSourceFromDraft(draft) : null);
   const slug = draft ? leadMagnetSlugFromDraft(draft) : null;
@@ -59,33 +68,15 @@ export function LeadMagnetPdfPanel({
       ? contentFactoryDraftHref(batchId ?? null, "lead_magnet", draft.slotIndex)
       : null;
 
-  const sourceFingerprint = useMemo(
-    () => (source ? `${source.title}\0${source.excerpt}\0${source.body}` : ""),
-    [source],
-  );
-
   useEffect(() => {
     let cancelled = false;
     void loadLeadMagnetPdfLogo().then((url) => {
-      if (!cancelled) {
-        setLogoDataUrl(url);
-        setLogoReady(true);
-      }
+      if (!cancelled) setLogoDataUrl(url);
     });
     return () => {
       cancelled = true;
     };
   }, []);
-
-  useEffect(() => {
-    if (!source || !logoReady) return;
-    const doc = buildLeadMagnetWorkbookPdf(source, pdfAssets);
-    const url = URL.createObjectURL(leadMagnetPdfBlob(doc));
-    setPreviewBlobUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [source, sourceFingerprint, previewKey, logoReady, pdfAssets]);
-
-  const displayPreviewUrl = previewBlobUrl ?? savedHref;
 
   const regeneratePreview = () => {
     setPreviewKey((k) => k + 1);
@@ -99,19 +90,42 @@ export function LeadMagnetPdfPanel({
     });
   };
 
+  const handleUnpublish = async () => {
+    if (!draft?.id || !slug || !savedAt) return;
+    if (
+      !window.confirm(
+        `Remove public/downloads/${slug}.pdf from the site? You can save again after editing.`,
+      )
+    ) {
+      return;
+    }
+    setUnpublishing(true);
+    try {
+      await unpublishPdf({ data: { draftId: draft.id, slug } });
+      toast.success("Workbook PDF unpublished — no longer linked from this draft");
+      onSaved?.();
+    } catch (err) {
+      toast.error((err as Error).message ?? "Could not unpublish PDF");
+    } finally {
+      setUnpublishing(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!source || !draft?.id || !slug) return;
     setSaving(true);
     try {
       const doc = buildLeadMagnetWorkbookPdf(source, pdfAssets);
+      const teaserBase64 = await workbookSocialTeaserToBase64(source, pdfAssets);
       const result = await savePdf({
         data: {
           draftId: draft.id,
           slug,
           pdfBase64: leadMagnetPdfToBase64(doc),
+          teaserBase64,
         },
       });
-      toast.success(`Workbook saved to ${result.diskPath}`);
+      toast.success(`Workbook + Facebook teaser saved to ${result.diskPath}`);
       onSaved?.();
     } catch (err) {
       toast.error((err as Error).message ?? "Could not save PDF");
@@ -165,27 +179,29 @@ export function LeadMagnetPdfPanel({
         </p>
       ) : null}
 
-      {displayPreviewUrl ? (
-        <div className="space-y-1">
-          <iframe
-            title="Workbook PDF preview"
-            src={displayPreviewUrl}
-            className={`w-full rounded-md border border-border/60 bg-white ${
-              compact ? "h-48" : "h-64"
-            }`}
-          />
-          {savedHref ? (
-            <a
-              href={savedHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`inline-flex items-center gap-1 font-medium text-primary hover:text-primary/80 underline-offset-2 hover:underline ${textSize}`}
-            >
-              Open saved PDF
-              <ExternalLink className="h-3 w-3" />
-            </a>
-          ) : null}
-        </div>
+      <WorkbookPdfPreview
+        leadDraft={draft}
+        liveSource={liveSource}
+        compact={compact}
+        refreshKey={previewKey}
+      />
+
+      <WorkbookSocialTeaserPreview
+        leadDraft={draft}
+        liveSource={liveSource}
+        compact={compact}
+      />
+
+      {savedHref ? (
+        <a
+          href={savedHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`inline-flex items-center gap-1 font-medium text-muted-foreground hover:text-primary underline-offset-2 hover:underline ${textSize}`}
+        >
+          Open saved copy in public/downloads/
+          <ExternalLink className="h-3 w-3" />
+        </a>
       ) : null}
 
       <div className="flex flex-wrap items-center gap-2">
@@ -213,7 +229,7 @@ export function LeadMagnetPdfPanel({
           type="button"
           size="sm"
           className={`h-7 grad-indigo ${compact ? "text-[10px]" : "text-xs"}`}
-          disabled={saving}
+          disabled={saving || unpublishing}
           onClick={() => void handleSave()}
         >
           {saving ? (
@@ -223,6 +239,23 @@ export function LeadMagnetPdfPanel({
           )}
           Save to public/
         </Button>
+        {savedAt ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className={`h-7 text-destructive border-destructive/40 hover:bg-destructive/10 ${compact ? "text-[10px]" : "text-xs"}`}
+            disabled={saving || unpublishing}
+            onClick={() => void handleUnpublish()}
+          >
+            {unpublishing ? (
+              <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+            ) : (
+              <Undo2 className="h-3.5 w-3.5 mr-1" />
+            )}
+            Unpublish PDF
+          </Button>
+        ) : null}
       </div>
     </div>
   );

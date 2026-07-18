@@ -15,6 +15,8 @@ publishedAt: 2026-06-16
 
 Signing up for Medicare at the wrong time can lead to **late enrollment penalties** for Part B and Part D in some situations. Understanding the basic windows helps you plan conversations with SSA or a licensed advisor.
 
+For a fuller walkthrough of IEP, GEP, SEP, working past 65, and late penalties, see our guide on [when to sign up for Medicare](/learning-center/when-to-sign-up-for-medicare).
+
 ## Common periods (high level)
 
 - **Initial Enrollment Period (IEP):** Usually the seven-month window around your 65th birthday month.

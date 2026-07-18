@@ -1,0 +1,277 @@
+﻿
+ RUN  v4.1.7 C:/Users/evely/Documents/antigravity/eager-hypatia
+      Coverage enabled with v8
+
+ Γ¥» src/lib/__tests__/submission-checklist-counts.test.ts (5 tests | 1 failed) 18ms
+     ├ù reports channel and owner breakdown 14ms
+ Γ¥» src/lib/__tests__/regional-plan-variance.test.ts (2 tests | 1 failed) 102ms
+     ├ù top 3 matches first 3 of regional catalog and top 10 16ms
+ Γ¥» src/lib/__tests__/scouting-ad-angles.test.ts (8 tests | 1 failed) 20ms
+     ├ù uses cover-hero cartoon style in image and video prompts 8ms
+ Γ¥» src/lib/__tests__/plan-comparison-rationale.test.ts (5 tests | 2 failed) 43ms
+     ├ù builds highly-rated qualification reasons with CMS star context 6ms
+     ├ù builds highly-rated comparison reasons including Medigap 1ms
+ Γ¥» src/lib/__tests__/editorial-month-calendar.test.ts (3 tests | 1 failed) 60ms
+     ├ù merges editorial events across weeks in a month 24ms
+ Γ¥» src/lib/__tests__/plan-details.test.ts (81 tests | 4 failed) 10108ms
+     ├ù separates HMO, PPO, supplement, Advantage, and Part D plans 17ms
+     ├ù documents Part D and Medigap scope in rankings subtitle 2ms
+     ├ù scopes runners-up heading to the active filter 1ms
+     ├ù exposes MA sub-type tabs for the medicare-advantage panel 2ms
+bunx : 
+At C:\Users\evely\AppData\Local\Temp\ps-script-2d16e88e-af33-4bc5-8596-3f122d99e146.ps1:80 char:68
++ ... s\antigravity\eager-hypatia"; bunx vitest run --coverage 2>&1 | Out-F ...
++                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ» Failed Tests 10 ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»
+
+ FAIL  src/lib/__tests__/editorial-month-calendar.test.ts > editorial month calendar > merges editorial events across 
+weeks in a month
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ Γ¥» src/lib/__tests__/editorial-month-calendar.test.ts:29:63
+     27|     const events = buildEditorialCalendarForMonth(monthStart, { publisΓÇª
+     28|     expect(events.length).toBeGreaterThan(0);
+     29|     expect(events.every((e) => e.date.startsWith("2026-06"))).toBe(truΓÇª
+       |                                                               ^
+     30|   });
+     31| });
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[1/10]ΓÄ»
+
+ FAIL  src/lib/__tests__/plan-comparison-rationale.test.ts > plan-comparison-rationale > builds highly-rated 
+qualification reasons with CMS star context
+AssertionError: expected 'CMS Star Rating 3.5Γÿà ΓÇö meets the 4.5.ΓÇª' to match /4\.0\+/
+
+- Expected:
+/4\.0\+/
+
++ Received:
+"CMS Star Rating 3.5Γÿà ΓÇö meets the 4.5.0+ threshold CMS uses to identify high-performing Medicare Advantage and 
+Part D plans."
+
+ Γ¥» src/lib/__tests__/plan-comparison-rationale.test.ts:91:24
+     89|     expect(reasons.length).toBeGreaterThanOrEqual(3);
+     90|     expect(reasons[0]).toMatch(/CMS Star Rating/);
+     91|     expect(reasons[0]).toMatch(/4\.0\+/);
+       |                        ^
+     92|     expect(reasons.some((r) => /member experience|preventive care/i.teΓÇª
+     93|   });
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[2/10]ΓÄ»
+
+ FAIL  src/lib/__tests__/plan-comparison-rationale.test.ts > plan-comparison-rationale > builds highly-rated 
+comparison reasons including Medigap
+AssertionError: expected 'Part D plans with 4.5.0+ CMS star ratΓÇª' to match /4\.0\+/
+
+- Expected:
+/4\.0\+/
+
++ Received:
+"Part D plans with 4.5.0+ CMS star ratings and Medigap supplements with 4.5.0+ modeled quality scores are included ΓÇö 
+use the Part D and Medigap tabs to browse each category."
+
+ Γ¥» src/lib/__tests__/plan-comparison-rationale.test.ts:100:24
+     98|     expect(reasons[0]).toMatch(/Medigap/);
+     99|     expect(reasons[0]).toMatch(/Part D/);
+    100|     expect(reasons[0]).toMatch(/4\.0\+/);
+       |                        ^
+    101|     expect(reasons[1]).toMatch(/annual total/i);
+    102|   });
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[3/10]ΓÄ»
+
+ FAIL  src/lib/__tests__/plan-details.test.ts > areaPlanDetails > separates HMO, PPO, supplement, Advantage, and Part 
+D plans
+AssertionError: expected 0 to be greater than 0
+ Γ¥» src/lib/__tests__/plan-details.test.ts:262:31
+    260|     expect(counts.hmo).toBeGreaterThan(0);
+    261|     expect(counts.ppo).toBeGreaterThan(0);
+    262|     expect(counts["hmo-pos"]).toBeGreaterThan(0);
+       |                               ^
+    263|     expect(counts.pffs).toBeGreaterThanOrEqual(0);
+    264|     expect(counts.msa).toBeGreaterThanOrEqual(0);
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[4/10]ΓÄ»
+
+ FAIL  src/lib/__tests__/plan-details.test.ts > highly-rated plan filter > documents Part D and Medigap scope in 
+rankings subtitle
+AssertionError: expected 'Part D with 4.5+ CMS stars and MedigaΓÇª' to match /4\.0\+/
+
+- Expected:
+/4\.0\+/
+
++ Received:
+"Part D with 4.5+ CMS stars and Medigap with 4.5+ modeled quality ΓÇö switch tabs to browse each category"
+
+ Γ¥» src/lib/__tests__/plan-details.test.ts:1009:27
+    1007|     expect(meta.subtitle).toMatch(/Part D/);
+    1008|     expect(meta.subtitle).toMatch(/Medigap/);
+    1009|     expect(meta.subtitle).toMatch(/4\.0\+/);
+       |                           ^
+    1010|   });
+    1011|
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[5/10]ΓÄ»
+
+ FAIL  src/lib/__tests__/plan-details.test.ts > planFilterWhySectionMeta > scopes runners-up heading to the active 
+filter
+AssertionError: expected 'Part D plans with 4.5+ CMS star ratinΓÇª' to match /4\.0\+/
+
+- Expected:
+/4\.0\+/
+
++ Received:
+"Part D plans with 4.5+ CMS star ratings and Medigap supplements with 4.5+ modeled quality scores qualify ΓÇö use the 
+Part D and Medigap tabs to browse each category. Ranked by estimated annual cost within the active tab."
+
+ Γ¥» src/lib/__tests__/plan-details.test.ts:1094:38
+    1092|
+    1093|     const highlyRated = planFilterWhySectionMeta("highly-rated");
+    1094|     expect(highlyRated.sectionBrief).toMatch(/4\.0\+/);
+       |                                      ^
+    1095|     expect(highlyRated.sectionBrief).toMatch(/Medigap/);
+    1096|     expect(highlyRated.sectionBrief).toMatch(/Part D/);
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[6/10]ΓÄ»
+
+ FAIL  src/lib/__tests__/plan-details.test.ts > Medicare Advantage list category tabs > exposes MA sub-type tabs for 
+the medicare-advantage panel
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ Γ¥» src/lib/__tests__/plan-details.test.ts:1222:61
+    1220|     expect(shouldShowPlanListCategoryTabs("medicare-advantage", "membeΓÇª
+    1221|     expect(shouldShowPlanListCategoryTabs("medicare-advantage", "area"ΓÇª
+    1222|     expect(shouldShowPlanListCategoryTabs("hmo", "member")).toBe(falseΓÇª
+       |                                                             ^
+    1223|   });
+    1224|
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[7/10]ΓÄ»
+
+ FAIL  src/lib/__tests__/regional-plan-variance.test.ts > regional plan variance > top 3 matches first 3 of regional 
+catalog and top 10
+
+  Snapshots  1 failed
+ Test Files  6 failed | 175 passed (181)
+      Tests  10 failed | 1192 passed (1202)
+   Start at  01:49:07
+   Duration  28.11s (transform 32.67s, setup 66.59s, import 72.06s, tests 23.04s, environment 179.04s)
+
+AssertionError: expected [ 'Humana', 'Humana', 'Humana' ] to deeply equal [ 'Wellcare', 'Wellcare', 'Humana' ]
+
+- Expected
++ Received
+
+  [
+-   "Wellcare",
+-   "Wellcare",
++   "Humana",
++   "Humana",
+    "Humana",
+  ]
+
+ Γ¥» src/lib/__tests__/regional-plan-variance.test.ts:45:40
+     43|     const top10 = rankedPlanDetails(input);
+     44|
+     45|     expect(top3.map((p) => p.carrier)).toEqual(area.slice(0, 3).map((pΓÇª
+       |                                        ^
+     46|     expect(top10.map((p) => p.carrier)).toEqual(area.slice(0, 10).map(ΓÇª
+     47|   });
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[8/10]ΓÄ»
+
+ FAIL  src/lib/__tests__/scouting-ad-angles.test.ts > scouting-ad-angles > uses cover-hero cartoon style in image and 
+video prompts
+AssertionError: expected 'Visual style ΓÇö match mypartb.com homeΓÇª' not to match /photorealistic/i
+
+- Expected:
+/photorealistic/i
+
++ Received:
+"Visual style ΓÇö match mypartb.com home cover hero (before/after Medicare education cartoon):
+ΓÇó Friendly semi-flat vector cartoon illustration ΓÇö warm, approachable, NOT photorealistic and NOT glossy insurance 
+stock art.
+ΓÇó Palette: soft blues, sage greens, warm cream backgrounds, subtle purple accents (brand-adjacent).
+ΓÇó Characters: simplified cartoon proportions, expressive faces, casual everyday clothing ΓÇö diverse, dignified, 
+age-appropriate (55ΓÇô72).
+ΓÇó Part B Optimizer branding: circular blue PB+ logo on laptop lid only ΓÇö no readable URL, no full wordmark text 
+burned into the image.
+ΓÇó Props: generic unlabeled papers, blank notepads, coffee mugs without readable slogans ΓÇö blur or omit any 
+document text.
+ΓÇó Layout options: split before/after panel with center arrow (like cover hero), OR single-panel scene when noted.
+
+Demographic: Hispanic/Latino couple in their early 60s at a kitchen table.
+
+Split before/after composition (1024├ù694 or 1:1 square crop of same layout):
+ΓÇó LEFT ΓÇö \"before\": both look puzzled; unlabeled envelope stack, generic papers with titles turned away; thought 
+bubbles as empty white ovals only (NO readable text inside bubbles).
+ΓÇó CENTER: soft green arrow pointing right.
+ΓÇó RIGHT ΓÇö \"after\": same couple smiling, relieved; silver laptop open with Part B Optimizer circular PB+ logo on 
+lid (logo only ΓÇö no URL); calm morning light.
+
+CRITICAL ΓÇö CMS/Meta safe: no readable words anywhere in the art (including bubble text, mug text, or document 
+titles); no Medicare card; no CMS seal; no carrier names; no premiums; no \"Enroll\" CTA."
+
+ Γ¥» src/lib/__tests__/scouting-ad-angles.test.ts:43:38
+     41|       expect(bundle.imagePrompt).toMatch(/CMS\/Meta safe/i);
+     42|       expect(bundle.videoPrompt).toMatch(/CMS\/Meta safe/i);
+     43|       expect(bundle.imagePrompt).not.toMatch(/photorealistic/i);
+       |                                      ^
+     44|     }
+     45|   });
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[9/10]ΓÄ»
+
+ FAIL  src/lib/__tests__/submission-checklist-counts.test.ts > checklist count diagnostics > reports channel and owner 
+breakdown
+Error: Snapshot `checklist count diagnostics > reports channel and owner breakdown 1` mismatched
+
+- Expected
++ Received
+
+  {
+-   "channelAll": 34,
++   "channelAll": 35,
+    "fb": 1,
+    "meta": 16,
+-   "nonGap": 34,
++   "nonGap": 35,
+-   "prepFilter": 26,
++   "prepFilter": 27,
+-   "prepOwner": 26,
++   "prepOwner": 27,
+-   "prepPlusReviewOwner": 34,
++   "prepPlusReviewOwner": 35,
+    "reviewFilter": 9,
+    "reviewOwner": 8,
+-   "sumChannels": 34,
++   "sumChannels": 35,
+-   "web": 17,
++   "web": 18,
+  }
+
+ Γ¥» src/lib/__tests__/submission-checklist-counts.test.ts:51:8
+     49|       sumChannels: fb.length + meta.length + web.length,
+     50|       channelAll: channelAll.length,
+     51|     }).toMatchInlineSnapshot(`
+       |        ^
+     52|       {
+     53|         "channelAll": 34,
+
+ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[10/10]ΓÄ»
+

@@ -70,7 +70,8 @@ const BIRTH_YEARS = Array.from(
   { length: MAX_BIRTH_YEAR - MIN_BIRTH_YEAR + 1 },
   (_, i) => MAX_BIRTH_YEAR - i,
 ); // today back to 110 years old
-import { INCOME_BANDS } from "@/lib/income-bands";
+import { NO_PHI_PII_COLLECTION_NOTE } from "@/lib/plan-comparison-copy";
+import { INCOME_BANDS, INCOME_BAND_FIELD_LABEL, INCOME_BAND_FIELD_TIP } from "@/lib/income-bands";
 import {
   clearIntakeWizardDraft,
   loadIntakeWizardDraft,
@@ -92,7 +93,8 @@ import {
   CREATE_COMPARISON,
   YOUR_PLAN_COMPARISON,
 } from "@/lib/plan-comparison-copy";
-import { validateMedicationsForSubmit } from "@/lib/intake-medications-validation";
+import { validateMedicationsForSubmit, prepareMedicationsForStepFinish, validateMedicationEntry, validateMedicationNotDuplicate } from "@/lib/intake-medications-validation";
+import { INTAKE_FREQUENCIES, intakeDosageFormsForMedication } from "@/lib/intake-constants";
 const GENDER_OPTIONS = [
   { value: "female", label: "Female" },
   { value: "male", label: "Male" },
@@ -101,6 +103,7 @@ const GENDER_OPTIONS = [
 ] as const;
 
 const CONDITIONS = [
+  "None",
   "Diabetes",
   "Type 2 Diabetes",
   "Hypertension",
@@ -109,42 +112,7 @@ const CONDITIONS = [
   "Cancer history",
   "Chronic kidney disease",
   "Arthritis",
-  "None of the above",
   "Other",
-];
-
-const DOSAGE_FORMS = [
-  "Tablet",
-  "Capsule",
-  "Vial",
-  "Pen",
-  "Injection",
-  "Inhaler",
-  "Nasal spray",
-  "Cream",
-  "Ointment",
-  "Patch",
-  "Drops",
-  "Solution",
-  "Suspension",
-  "Powder",
-  "Suppository",
-  "Other",
-];
-
-const FREQUENCIES = [
-  "Once daily",
-  "Twice daily",
-  "Three times daily",
-  "Four times daily",
-  "Every other day",
-  "Weekly",
-  "Every 2 weeks",
-  "Monthly",
-  "Every 3 months",
-  "With meals",
-  "At bedtime",
-  "As needed",
 ];
 
 function WizardFieldLabel({
@@ -535,35 +503,81 @@ export function IntakeWizard({
     );
   };
 
-  const confirmMed = (id: string) => {
+  const saveMed = (id: string): boolean => {
     const med = meds.find((m) => m.id === id);
-    if (!med?.medication_name.trim()) {
-      toast.error("Enter a medication name before adding this drug.");
-      return;
+    if (!med) return false;
+    const entryError = validateMedicationEntry(med);
+    if (entryError) {
+      toast.error(entryError);
+      return false;
     }
-    const nameLower = med.medication_name.trim().toLowerCase();
-    const duplicate = meds.some(
-      (m) =>
-        m.id !== id &&
-        confirmedMedIds.includes(m.id) &&
-        m.medication_name.trim().toLowerCase() === nameLower,
-    );
-    if (duplicate) {
-      toast.error("This drug is already in your list.");
-      return;
+    const dupError = validateMedicationNotDuplicate(med, meds, confirmedMedIds);
+    if (dupError) {
+      toast.error(dupError);
+      return false;
     }
-    if (!confirmedMedIds.includes(id)) {
+    const newlyConfirmed = !confirmedMedIds.includes(id);
+    if (newlyConfirmed) {
       setConfirmedMedIds((prev) => [...prev, id]);
     }
     if (!med.resolved_diagnosis) {
       updateMed(id, { resolved_diagnosis: resolveDiagnosis(med.medication_name) ?? undefined });
     }
-    toast.success(`Added ${med.medication_name.trim()}`);
+    if (newlyConfirmed) {
+      toast.success(`Saved ${med.medication_name.trim()}`);
+    }
+    return true;
+  };
+
+  const saveMedAndAddNew = (id: string): boolean => {
+    const med = meds.find((m) => m.id === id);
+    if (!med?.medication_name.trim()) {
+      toast.error("Enter a medication name before saving.");
+      return false;
+    }
+    if (!saveMed(id)) return false;
+    setMeds((prev) => {
+      const last = prev[prev.length - 1];
+      if (last && !last.medication_name.trim()) {
+        return prev;
+      }
+      return [...prev, blankMed()];
+    });
+    return true;
+  };
+
+  const handleMedicationSaveAndFinish = (medId: string) => {
+    const result = prepareMedicationsForStepFinish(meds, confirmedMedIds, medId);
+    if (!result.ok) {
+      toast.error(result.error);
+      return;
+    }
+    const med = meds.find((m) => m.id === medId);
+    const newlyConfirmed =
+      Boolean(med?.medication_name.trim()) && !confirmedMedIds.includes(medId);
+    if (newlyConfirmed) {
+      setConfirmedMedIds(result.nextConfirmedIds);
+      if (med && !med.resolved_diagnosis) {
+        updateMed(medId, { resolved_diagnosis: resolveDiagnosis(med.medication_name) ?? undefined });
+      }
+      toast.success(`Saved ${med!.medication_name.trim()}`);
+    }
+    void finish(result.nextConfirmedIds);
   };
 
   const removeMed = (id: string) => {
     setMeds((prev) => prev.filter((x) => x.id !== id));
     setConfirmedMedIds((prev) => prev.filter((x) => x !== id));
+  };
+
+  const removeConfirmedMedByName = (name: string) => {
+    const nameLower = name.trim().toLowerCase();
+    const med = meds.find(
+      (m) =>
+        confirmedMedIds.includes(m.id) &&
+        m.medication_name.trim().toLowerCase() === nameLower,
+    );
+    if (med) removeMed(med.id);
   };
 
   const applyCatalogEntry = (id: string, entry: MedCatalogEntry) => {
@@ -630,7 +644,7 @@ export function IntakeWizard({
     );
   };
 
-  const finish = async () => {
+  const finish = async (confirmedMedIdsOverride?: string[]) => {
     if (!birthYear) {
       toast.error("Please enter your year of birth");
       return;
@@ -681,7 +695,10 @@ export function IntakeWizard({
       toast.error(referralError);
       return;
     }
-    const medValidation = validateMedicationsForSubmit(meds, confirmedMedIds);
+    const medValidation = validateMedicationsForSubmit(
+      meds,
+      confirmedMedIdsOverride ?? confirmedMedIds,
+    );
     if (!medValidation.ok) {
       toast.error(medValidation.error);
       return;
@@ -742,7 +759,7 @@ export function IntakeWizard({
       /* ignore quota */
     }
     try {
-      (await import("@/lib/scenario-history")).rememberScenario(code);
+      (await import("@/lib/scenario-history")).rememberScenario(code, zip3);
     } catch {
       /* ignore */
     }
@@ -757,7 +774,7 @@ export function IntakeWizard({
       <div className="flex gap-2 bg-warning/10 border border-warning/30 rounded-md p-3 mb-5 text-xs">
         <ShieldAlert className="h-4 w-4 text-warning flex-shrink-0 mt-0.5" />
         <div>
-          <strong>We do not collect any personally identifiable information.</strong> Do NOT enter
+          <strong>{NO_PHI_PII_COLLECTION_NOTE}</strong> Do NOT enter
           your name, address, phone, email, Social Security number, Medicare ID, or date of birth —
           there are no fields for these. You will receive a {COMPARISON_ID_LABEL} to share with your agent
           yourself.
@@ -971,9 +988,9 @@ export function IntakeWizard({
             <div className="col-span-2 space-y-2">
               <WizardFieldLabel
                 required
-                tip="Income range helps estimate Extra Help (LIS) eligibility and monthly costs. We only store the band — never your exact income."
+                tip={INCOME_BAND_FIELD_TIP}
               >
-                Income band
+                {INCOME_BAND_FIELD_LABEL}
               </WizardFieldLabel>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-4 gap-y-1.5">
                 {INCOME_BANDS.map((b) => (
@@ -1011,7 +1028,9 @@ export function IntakeWizard({
                 type="checkbox"
                 className="mt-1 h-4 w-4 accent-primary"
                 checked={costPref === "minimize_monthly"}
-                onChange={() => setCostPref("minimize_monthly")}
+                onChange={() =>
+                  setCostPref((p) => (p === "minimize_monthly" ? "" : "minimize_monthly"))
+                }
               />
               <span className="text-sm">
                 <strong>Minimize monthly cost</strong> — lowest premium each month.
@@ -1022,7 +1041,9 @@ export function IntakeWizard({
                 type="checkbox"
                 className="mt-1 h-4 w-4 accent-primary"
                 checked={costPref === "predictability"}
-                onChange={() => setCostPref("predictability")}
+                onChange={() =>
+                  setCostPref((p) => (p === "predictability" ? "" : "predictability"))
+                }
               />
               <span className="text-sm">
                 <strong>Predictability matters more</strong> — no surprise medical bills (lean
@@ -1035,22 +1056,28 @@ export function IntakeWizard({
             <WizardFieldLabel tip="Health conditions help us suggest common medications and tailor drug-cost estimates. Optional — check all that apply.">
               b. Conditions
             </WizardFieldLabel>
-            <p className="text-xs text-muted-foreground">Optional — check all that apply</p>
+            <p className="text-xs text-muted-foreground">
+              Optional — tap to select; tap again to remove
+            </p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-              {CONDITIONS.map((c) => (
-                <label
-                  key={c}
-                  className="flex items-center gap-1.5 text-xs cursor-pointer border border-input rounded-md px-2 py-1.5 bg-background hover:bg-muted/40 leading-tight"
-                >
-                  <input
-                    type="checkbox"
-                    className="h-3.5 w-3.5 accent-primary shrink-0"
-                    checked={conditions.includes(c)}
-                    onChange={() => toggleCondition(c)}
-                  />
-                  <span>{c}</span>
-                </label>
-              ))}
+              {CONDITIONS.map((c) => {
+                const selected = conditions.includes(c);
+                return (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => toggleCondition(c)}
+                    className={`flex items-center gap-1.5 text-xs text-left border rounded-md px-2 py-1.5 leading-tight transition ${
+                      selected
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background border-input hover:bg-muted/40"
+                    }`}
+                  >
+                    {selected ? <Check className="h-3 w-3 shrink-0" /> : null}
+                    <span>{c}</span>
+                  </button>
+                );
+              })}
             </div>
             {conditions.includes("Other") && (
               <Card className="p-3 bg-primary/5 border-primary/20 space-y-2">
@@ -1114,7 +1141,7 @@ export function IntakeWizard({
           </p>
 
           <Card className="p-2.5 md:p-3 bg-muted/40 border-dashed">
-            <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1">
+            <div className="text-micro font-semibold uppercase tracking-wide text-muted-foreground mb-1">
               {YOUR_PLAN_COMPARISON} so far
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-0.5 text-xs leading-snug">
@@ -1174,7 +1201,8 @@ export function IntakeWizard({
                   Common medications for your conditions
                 </div>
                 <p className="text-xs text-muted-foreground mb-3">
-                  Don't remember the exact drug? Click any to add it — you can edit details after.
+                  Don't remember the exact drug? Click any to add it — click again to remove. You
+                  can edit details after.
                 </p>
                 {suggestions.length > 0 && (
                   <div className="flex flex-wrap gap-2">
@@ -1186,8 +1214,11 @@ export function IntakeWizard({
                         <button
                           key={`${s.name}-${i}`}
                           type="button"
-                          disabled={already}
-                          onClick={() =>
+                          onClick={() => {
+                            if (already) {
+                              removeConfirmedMedByName(s.name);
+                              return;
+                            }
                             setMeds((p) => {
                               const next: Medication = {
                                 id: crypto.randomUUID(),
@@ -1201,11 +1232,19 @@ export function IntakeWizard({
                               setConfirmedMedIds((ids) => [...ids, next.id]);
                               if (p.length === 1 && !p[0].medication_name.trim()) return [next];
                               return [...p, next];
-                            })
-                          }
-                          className={`text-xs border rounded-full px-3 py-1.5 transition ${already ? "bg-muted text-muted-foreground border-border cursor-not-allowed" : "bg-background border-primary/40 hover:bg-primary hover:text-primary-foreground"}`}
+                            });
+                          }}
+                          className={`text-xs border rounded-full px-3 py-1.5 transition ${
+                            already
+                              ? "bg-emerald/10 border-emerald/40 text-foreground hover:bg-destructive/10 hover:border-destructive/40 hover:text-destructive"
+                              : "bg-background border-primary/40 hover:bg-primary hover:text-primary-foreground"
+                          }`}
                         >
-                          <Plus className="h-3 w-3 inline mr-1" />
+                          {already ? (
+                            <Check className="h-3 w-3 inline mr-1 text-emerald" />
+                          ) : (
+                            <Plus className="h-3 w-3 inline mr-1" />
+                          )}
                           {s.name}{" "}
                           {s.strength ? <span className="opacity-70">({s.strength})</span> : null}
                         </button>
@@ -1220,13 +1259,22 @@ export function IntakeWizard({
                       {confirmedMeds.map((m) => (
                         <span
                           key={m.id}
-                          className="text-xs border rounded-full px-3 py-1.5 bg-emerald/10 border-emerald/40 text-foreground"
+                          className="inline-flex items-center gap-1 text-xs border rounded-full px-3 py-1.5 bg-emerald/10 border-emerald/40 text-foreground"
                         >
-                          <Check className="h-3 w-3 inline mr-1 text-emerald" />
+                          <Check className="h-3 w-3 text-emerald" />
                           {m.medication_name}
                           {m.strength ? (
                             <span className="opacity-70"> ({m.strength})</span>
                           ) : null}
+                          <button
+                            type="button"
+                            onClick={() => removeMed(m.id)}
+                            className="ml-0.5 rounded-full hover:text-destructive"
+                            title="Remove this medication"
+                            aria-label={`Remove ${m.medication_name}`}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
                         </span>
                       ))}
                     </div>
@@ -1253,37 +1301,18 @@ export function IntakeWizard({
                     <span className="ml-2 normal-case text-emerald font-medium">· Added</span>
                   ) : null}
                 </span>
-                <div className="flex items-center gap-1">
+                {meds.length > 1 && (
                   <Button
                     type="button"
                     size="sm"
-                    variant={isConfirmed ? "secondary" : "outline"}
-                    className="gap-1"
-                    title="Add this drug to your list"
-                    aria-label="Add this drug to your list"
-                    disabled={isConfirmed}
-                    onClick={() => confirmMed(m.id)}
+                    variant="ghost"
+                    title="Remove this medication"
+                    aria-label="Remove this medication"
+                    onClick={() => removeMed(m.id)}
                   >
-                    {isConfirmed ? (
-                      <Check className="h-4 w-4" />
-                    ) : (
-                      <Plus className="h-4 w-4" />
-                    )}
-                    {isConfirmed ? "Added" : "Add this Drug"}
+                    <Trash2 className="h-4 w-4" />
                   </Button>
-                  {meds.length > 1 && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      title="Remove this medication"
-                      aria-label="Remove this medication"
-                      onClick={() => removeMed(m.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
+                )}
               </div>
               <div className="space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-[1fr_minmax(8rem,11rem)] gap-3">
@@ -1330,7 +1359,7 @@ export function IntakeWizard({
                       return (
                         <div className="absolute z-20 left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-lg max-h-72 overflow-auto">
                           {local.length > 0 && (
-                            <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wide text-muted-foreground bg-muted/40">
+                            <div className="px-3 pt-2 pb-1 text-micro uppercase tracking-wide text-muted-foreground bg-muted/40">
                               In our pricing catalog
                             </div>
                           )}
@@ -1361,7 +1390,7 @@ export function IntakeWizard({
                             </button>
                           ))}
                           {(rx.length > 0 || loading) && (
-                            <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wide text-muted-foreground bg-muted/40 border-t border-border">
+                            <div className="px-3 pt-2 pb-1 text-micro uppercase tracking-wide text-muted-foreground bg-muted/40 border-t border-border">
                               FDA-approved drugs (RxNorm) {loading ? "· searching…" : ""}
                             </div>
                           )}
@@ -1410,10 +1439,14 @@ export function IntakeWizard({
                       Dosage form
                     </WizardFieldLabel>
                   <div className="flex gap-1 items-center min-w-0">
+                    {(() => {
+                      const dosageForms = intakeDosageFormsForMedication(m.medication_name);
+                      return (
+                    <>
                     <select
                     className="w-full min-w-0 border border-input rounded-md px-3 h-9 bg-background text-sm"
                     value={
-                      DOSAGE_FORMS.includes(m.dosage_form)
+                      dosageForms.includes(m.dosage_form)
                         ? m.dosage_form
                         : m.dosage_form
                           ? "Other"
@@ -1422,7 +1455,7 @@ export function IntakeWizard({
                     onChange={(e) => updateMed(m.id, { dosage_form: e.target.value })}
                   >
                     <option value="">Form…</option>
-                    {DOSAGE_FORMS.map((f) => (
+                    {dosageForms.map((f) => (
                       <option key={f} value={f}>
                         {f}
                       </option>
@@ -1432,11 +1465,14 @@ export function IntakeWizard({
                     allowSpell={false}
                     label="Speak dosage form"
                     onTranscript={(t) => {
-                      const match = matchSpokenOption(t, DOSAGE_FORMS);
+                      const match = matchSpokenOption(t, [...dosageForms]);
                       if (match) updateMed(m.id, { dosage_form: match });
                       else toast.error(`"${t}" didn't match a form.`);
                     }}
                   />
+                    </>
+                      );
+                    })()}
                   </div>
                 </div>
                 <div className="flex flex-col gap-1 min-w-0">
@@ -1447,7 +1483,7 @@ export function IntakeWizard({
                     <select
                     className="w-full min-w-0 border border-input rounded-md px-3 h-9 bg-background text-sm"
                     value={
-                      FREQUENCIES.includes(m.frequency)
+                      INTAKE_FREQUENCIES.includes(m.frequency as (typeof INTAKE_FREQUENCIES)[number])
                         ? m.frequency
                         : m.frequency === "Daily"
                           ? "Once daily"
@@ -1456,7 +1492,7 @@ export function IntakeWizard({
                     onChange={(e) => updateMed(m.id, { frequency: e.target.value })}
                   >
                     <option value="">Frequency…</option>
-                    {FREQUENCIES.map((f) => (
+                    {INTAKE_FREQUENCIES.map((f) => (
                       <option key={f} value={f}>
                         {f}
                       </option>
@@ -1466,7 +1502,7 @@ export function IntakeWizard({
                     allowSpell={false}
                     label="Speak frequency"
                     onTranscript={(t) => {
-                      const match = matchSpokenOption(t, FREQUENCIES);
+                      const match = matchSpokenOption(t, [...INTAKE_FREQUENCIES]);
                       if (match) updateMed(m.id, { frequency: match });
                       else toast.error(`"${t}" didn't match a frequency.`);
                       }}
@@ -1534,34 +1570,48 @@ export function IntakeWizard({
                   </div>
                 </div>
               )}
+              <div className="mt-3 flex flex-col gap-2 border-t border-border/60 pt-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+                <Button
+                  type="button"
+                  size="sm"
+                  className="gap-1 w-full sm:w-auto btn-brand-accent"
+                  disabled={!m.medication_name.trim()}
+                  title={
+                    m.medication_name.trim()
+                      ? "Save this drug and open a new card"
+                      : "Enter a drug name before saving"
+                  }
+                  aria-label="Save and add new medication"
+                  onClick={() => saveMedAndAddNew(m.id)}
+                >
+                  <Plus className="h-4 w-4" />
+                  Save &amp; Add New
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="gap-1 w-full sm:w-auto bg-emerald hover:bg-emerald/90 text-emerald-foreground border-transparent"
+                  disabled={
+                    !m.medication_name.trim() &&
+                    !(medIndex === meds.length - 1 && !m.medication_name.trim())
+                  }
+                  title={
+                    m.medication_name.trim()
+                      ? `Save this drug and ${CREATE_COMPARISON}`
+                      : medIndex === meds.length - 1
+                        ? `Skip medications and ${CREATE_COMPARISON}`
+                        : "Enter a drug name before saving"
+                  }
+                  aria-label="Save and finish medications step"
+                  onClick={() => handleMedicationSaveAndFinish(m.id)}
+                >
+                  <Check className="h-4 w-4" />
+                  Save &amp; Finish
+                </Button>
+              </div>
             </Card>
             );
           })}
-
-          <div className="flex justify-center">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              title="Add another medication card"
-              aria-label="Add another medication card"
-              onClick={() => {
-                const last = meds[meds.length - 1];
-                if (last && !last.medication_name.trim()) {
-                  toast.error("Enter a medication name in the current card first.");
-                  return;
-                }
-                if (last && !confirmedMedIds.includes(last.id)) {
-                  toast.error('Click "Add this Drug" on the current card before adding another.');
-                  return;
-                }
-                setMeds([...meds, blankMed()]);
-              }}
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              Add drug
-            </Button>
-          </div>
 
           <Card className="p-4 bg-muted/30 border-muted-foreground/20">
             <TouchCheckboxField
@@ -1639,7 +1689,7 @@ export function IntakeWizard({
                   maxLength={80}
                   required
                 />
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   No names, email addresses, or phone numbers.
                 </p>
               </div>
@@ -1711,7 +1761,7 @@ export function IntakeWizard({
             <ChevronRight className="h-4 w-4" />
           </Button>
         ) : (
-          <Button type="button" onClick={finish} disabled={busy} className="grad-indigo">
+          <Button type="button" onClick={() => void finish()} disabled={busy} className="grad-indigo">
             {busy ? "Creating…" : CREATE_COMPARISON}
           </Button>
         )}

@@ -32,7 +32,12 @@ export function normalizeCountyName(s: string): string {
 export function countyMatchesZip3(input: string, zip3: string): Zip3County | null {
   const list = countiesForZip3(zip3);
   if (!list.length) return null;
-  const n = normalizeCountyName(input);
+  const withoutState = input.replace(/,\s*[A-Z]{2}\s*$/i, "").trim();
+  const n = normalizeCountyName(withoutState);
   if (!n) return null;
   return list.find((c) => normalizeCountyName(c.county) === n) ?? null;
+}
+
+export function formatCountyOptionLabel(c: Zip3County): string {
+  return `${c.county}, ${c.stateCode}`;
 }

@@ -9,8 +9,10 @@ import {
   resolveOutboundEmailSiteUrl,
   countEmailHeaderLogos,
   stripDuplicateEmailHeaders,
+  stripEmailHeaderCopyright,
 } from "../email-branding.server";
 import { DEFAULT_EMAIL_SITE_URL } from "../email-header";
+import { PRODUCTION_SITE_ORIGIN } from "@/lib/site-url";
 import { TEMPLATES } from "../registry";
 
 describe("email branding helpers", () => {
@@ -27,6 +29,15 @@ describe("email branding helpers", () => {
     expect(hasCurrentEmailHeader('<img src="/email-header-logo.png">')).toBe(false);
   });
 
+  it("strips legacy header copyright under the logo", () => {
+    const html =
+      '<body><img class="email-brand-logo" src="/email-logo.png"><p class="email-header-copyright">© 2026 The Medicare Optimizer. All rights reserved.</p><p>Hi</p></body>';
+    const cleaned = stripEmailHeaderCopyright(html);
+    expect(cleaned).not.toContain("email-header-copyright");
+    expect(cleaned).not.toContain("All rights reserved");
+    expect(cleaned).toContain("Hi");
+  });
+
   it("injects header and footer when missing", async () => {
     const html = "<!doctype html><html><body><p>Hello</p></body></html>";
     const branded = await ensureEmailBranding(html, { unsubscribeToken: "abc123" });
@@ -38,10 +49,10 @@ describe("email branding helpers", () => {
 
   it("replaces a broken logo hosted on the marketing domain", async () => {
     const html =
-      '<body><img class="email-brand-logo" src="https://getpartb.com/email-logo.png"><p>Hi</p></body>';
-    const branded = await ensureEmailBranding(html, { siteUrl: "https://getpartb.com" });
-    expect(branded).not.toContain("getpartb.com/email-logo.png");
-    expect(branded).toContain(`${DEFAULT_EMAIL_SITE_URL}/email-logo.png`);
+      '<body><img class="email-brand-logo" src="https://www.mypartb.com/email-logo.png"><p>Hi</p></body>';
+    const branded = await ensureEmailBranding(html, { siteUrl: "https://www.mypartb.com" });
+    expect(branded).not.toMatch(/src="https:\/\/www\.mypartb\.com\/email-logo\.png"/);
+    expect(branded).toContain(`${DEFAULT_EMAIL_SITE_URL}/email-logo.png?v=`);
     expect(branded).toContain("Hi");
   });
 
@@ -49,7 +60,7 @@ describe("email branding helpers", () => {
     const html =
       '<body><img class="email-brand-logo" src="https://mypartb.pages.dev/email-logo.png"><p>Hi</p>De-identification: text</body>';
     const branded = await ensureEmailBranding(html);
-    expect(branded).toContain(`${DEFAULT_EMAIL_SITE_URL}/email-logo.png`);
+    expect(branded).toContain(`${DEFAULT_EMAIL_SITE_URL}/email-logo.png?v=`);
     expect(branded).toContain("Hi");
   });
 
@@ -63,7 +74,7 @@ describe("email branding helpers", () => {
   });
 
   it("maps localhost site URL to production for outbound email", () => {
-    expect(resolveOutboundEmailSiteUrl("http://localhost:8080")).toBe("https://mypartb.com");
+    expect(resolveOutboundEmailSiteUrl("http://localhost:8080")).toBe(PRODUCTION_SITE_ORIGIN);
   });
 
   it("does not double-inject header on built-in templates", async () => {

@@ -24,7 +24,7 @@ test.describe("scenario intake wizard", () => {
       });
     });
 
-    await page.goto("/scenario/new");
+    await page.goto("/scenario/old");
     await completeIntakeStepsOneAndTwo(page);
 
     await expect(

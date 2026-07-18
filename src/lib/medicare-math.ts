@@ -85,6 +85,8 @@ export interface Medication {
   medication_name: string;
   strength: string;
   dosage_form: string;
+  /** Units per dose — tablet, capsule, or pill count when applicable. */
+  tablets_per_dose?: string;
   frequency: string;
   resolved_diagnosis?: string;
   estimated_monthly_retail: number;
@@ -204,7 +206,7 @@ import {
 
 // Rough premium multiplier vs. Plan G baseline for each open Medigap letter.
 // (Industry-typical ratios — refined estimates only; not a rate quote.)
-const MEDIGAP_PREMIUM_FACTOR: Record<string, number> = {
+export const MEDIGAP_PREMIUM_FACTOR: Record<string, number> = {
   A: 0.78,
   B: 0.85,
   D: 0.95,
@@ -219,7 +221,7 @@ const MEDIGAP_PREMIUM_FACTOR: Record<string, number> = {
 // Approximate share of standard medical gaps each Medigap letter leaves on the member,
 // expressed as expected annual out-of-pocket against a typical utilization profile.
 // Based on CMS standardized benefit tables: https://www.cms.gov/medicare/health-plans/medigap
-const MEDIGAP_EXPECTED_OOP: Record<string, number> = {
+export const MEDIGAP_EXPECTED_OOP: Record<string, number> = {
   A: 1900,
   B: 900,
   D: 350,
@@ -244,7 +246,7 @@ const MEDIGAP_WORST_CASE: Record<string, number> = {
   N: 2800,
 };
 
-function medigapKey(letter: string): string {
+export function medigapKey(letter: string): string {
   return letter.replace(/^Plan\s+/i, "").trim();
 }
 

@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import { ChevronDown, Shield } from "lucide-react";
+import { ChevronDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   ADMIN_CONTENT_GROUP,
   ADMIN_DASHBOARD_LINK,
@@ -23,8 +24,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
+export const adminNavLinkClass =
+  "inline-flex items-center gap-1.5 min-h-11 py-2 text-primary font-semibold underline-offset-4 transition-colors touch-manipulation hover:text-primary/65 hover:underline outline-none";
+
 type AdminNavDropdownProps = {
-  variant?: "banner" | "button";
+  variant?: "banner" | "button" | "outline" | "navlink";
 };
 
 function AdminNavLinkItem({ link }: { link: AdminNavLink }) {
@@ -69,27 +73,35 @@ function AdminNavSubMenu({ group }: { group: AdminNavGroup }) {
   );
 }
 
-export function AdminNavDropdown({ variant = "button" }: AdminNavDropdownProps) {
+export function AdminNavDropdown({ variant = "outline" }: AdminNavDropdownProps) {
   const trigger =
     variant === "banner" ? (
       <button
         type="button"
-        className="inline-flex items-center justify-center gap-1 min-h-11 min-w-11 xl:min-w-0 xl:px-0 xl:gap-1.5 text-primary font-semibold underline-offset-4 transition-colors hover:text-primary/65 hover:underline outline-none touch-manipulation"
+        className="inline-flex items-center justify-center gap-1.5 min-h-11 px-0 text-primary font-semibold underline-offset-4 transition-colors hover:text-primary/65 hover:underline outline-none touch-manipulation"
         aria-label="Admin menu"
       >
-        <Shield className="h-4 w-4 shrink-0" />
-        <span className="hidden xl:inline">Admin</span>
-        <ChevronDown className="h-3 w-3 hidden xl:inline" />
+        <span>Admin</span>
+        <ChevronDown className="h-3 w-3 shrink-0" />
       </button>
-    ) : (
+    ) : variant === "button" ? (
       <button
         type="button"
         className="inline-flex items-center justify-center gap-1 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90"
       >
-        <Shield className="h-4 w-4" />
-        <span className="hidden sm:inline">Admin</span>
-        <ChevronDown className="h-3 w-3" />
+        <span>Admin</span>
+        <ChevronDown className="h-3 w-3 shrink-0" />
       </button>
+    ) : variant === "navlink" ? (
+      <button type="button" className={adminNavLinkClass} aria-label="Admin menu">
+        Admin
+        <ChevronDown className="h-3 w-3 shrink-0" />
+      </button>
+    ) : (
+      <Button size="sm" variant="outline" className="gap-1 h-8 shrink-0">
+        <span>Admin</span>
+        <ChevronDown className="h-3 w-3" />
+      </Button>
     );
 
   return (
@@ -116,7 +128,7 @@ export function AdminNavDropdown({ variant = "button" }: AdminNavDropdownProps) 
           Operations
         </DropdownMenuLabel>
         {ADMIN_OPERATION_LINKS.map((link) => (
-          <AdminNavLinkItem key={link.to} link={link} />
+          <AdminNavLinkItem key={`${link.to}-${link.hash ?? link.label}`} link={link} />
         ))}
 
         <DropdownMenuSeparator />

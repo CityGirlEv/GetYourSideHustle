@@ -3,14 +3,16 @@ import { cn } from "@/lib/utils";
 import {
   COMPARISON_ANONYMOUS_UNLESS_OPT_IN,
   DEIDENTIFIED_COMPARISONS_ONLY,
+  BENCHMARK_TOOL_CTA,
   PLAN_COMPARISON_CTA,
+  TRUST_BANNER_NO_PHI_PII,
 } from "@/lib/plan-comparison-copy";
 
 const items = [
-  { icon: EyeOff, text: "No personal information collected" },
+  { icon: EyeOff, text: TRUST_BANNER_NO_PHI_PII },
   { icon: KeyRound, text: DEIDENTIFIED_COMPARISONS_ONLY },
   { icon: ShieldCheck, text: COMPARISON_ANONYMOUS_UNLESS_OPT_IN },
-  { icon: Search, text: "Find the optimal plan for your unique situation" },
+  { icon: Search, text: BENCHMARK_TOOL_CTA },
   { icon: Sparkles, text: PLAN_COMPARISON_CTA },
 ];
 

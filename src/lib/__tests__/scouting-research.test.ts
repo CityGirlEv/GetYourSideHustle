@@ -5,6 +5,7 @@ import {
   isBlockedResearchUrl,
   sanitizeAdUrls,
   synthesizeMetaAdCopy,
+  tagAdPlatform,
 } from "@/lib/scouting-research";
 import type { MedicareAd } from "@/types/MedicareAd";
 
@@ -30,6 +31,21 @@ describe("scouting-research", () => {
   it("flags Google search URLs as blocked", () => {
     expect(isBlockedResearchUrl("https://www.google.com/search?q=medicare+ads")).toBe(true);
     expect(isBlockedResearchUrl("https://www.humana.com/medicare")).toBe(false);
+  });
+
+  it("tags Kalodata-sourced ads by source marker", () => {
+    const platform = tagAdPlatform(
+      sampleAd({
+        adUrl: "https://www.tiktok.com/@shop/video/1",
+        websiteUrl: "https://www.tiktok.com/@shop/video/1",
+        socialMedia: {
+          facebook: "",
+          tiktok: "https://www.tiktok.com/@shop/video/1",
+          other: ["source:kalodata"],
+        },
+      }),
+    );
+    expect(platform).toBe("kalodata");
   });
 
   it("sanitizes blocked URLs from ads", () => {

@@ -26,7 +26,7 @@ import {
 export const Route = createFileRoute("/qa-credits")({
   head: () => ({
     meta: [
-      { title: "QA Credit Guide — Part B Optimizer" },
+      { title: "QA Credit Guide — Part B Optimizer Benchmark Tool" },
       {
         name: "description",
         content: "How QA testers earn credit tokens for every test executed and bug filed.",

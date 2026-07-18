@@ -10,10 +10,24 @@ import {
 } from "@/components/content-factory/content-factory-ui";
 import type { ContentDraftStatus } from "@/lib/content-factory/types";
 import { EditorialCalendarActionLinks } from "@/components/content-factory/EditorialCalendarLinks";
+import { FacebookPostCalendarPanel } from "@/components/content-factory/FacebookPostCalendarPanel";
 import { ImagePromptCalendarPanel } from "@/components/content-factory/ImagePromptCalendarPanel";
 import { LeadMagnetPdfPanel } from "@/components/content-factory/LeadMagnetPdfPanel";
 import { FacebookInviteDaySteps } from "@/components/content-factory/FacebookInviteDaySteps";
-import type { CalendarDraftRef } from "@/lib/content-factory/editorial-calendar-links";
+import { FacebookAdLaunchPanel } from "@/components/content-factory/FacebookAdLaunchPanel";
+import { WorkbookFacebookPostsPanel } from "@/components/content-factory/WorkbookFacebookPostsPanel";
+import {
+  hideStandaloneWorkbookPersonalPost,
+  shouldShowWorkbookFacebookPostsPanel,
+} from "@/lib/content-factory/workbook-facebook-posts";
+import { isFacebookAdLaunchEvent } from "@/lib/content-factory/facebook-ad-launch";
+import { articleImagePromptSlot } from "@/lib/content-factory/facebook-post-calendar";
+import { getDraftFromMap } from "@/lib/content-factory/editorial-calendar-links";
+import { editorialMilestoneLabel } from "@/lib/content-factory/weekly-editorial-schedule";
+import {
+  calendarTaskStorageId,
+  isCalendarTaskDone,
+} from "@/lib/content-factory/editorial-calendar-progress";
 
 export function EditorialDailyChecklist({
   events,
@@ -30,7 +44,7 @@ export function EditorialDailyChecklist({
   batchId: string | null;
   today?: string;
   completedEvents?: Record<string, boolean>;
-  onToggleCompleted?: (eventId: string) => void;
+  onToggleCompleted?: (storageId: string, legacyId?: string) => void;
   onHeroUploaded?: () => void;
   onPdfSaved?: () => void;
 }) {
@@ -50,12 +64,28 @@ export function EditorialDailyChecklist({
           </h3>
           <ul className="space-y-1.5">
             {items.map((item) => {
+              if (hideStandaloneWorkbookPersonalPost(item.event)) {
+                return null;
+              }
               const draft = draftBySlot.get(
                 `${item.event.type}:${item.event.slotIndex}`,
               );
               const Icon = contentTypeIcon(item.event.type);
               const isProduce = item.event.milestone === "produce";
-              const isCompleted = !!completedEvents[item.event.id];
+              const milestoneLabel = editorialMilestoneLabel(
+                item.event.type,
+                item.event.milestone,
+                item.event.slotIndex,
+              );
+              const isCompleted = isCalendarTaskDone(completedEvents, item.event);
+              const articleImageSlot =
+                item.event.type === "article" && isProduce
+                  ? articleImagePromptSlot(item.event.slotIndex)
+                  : null;
+              const articleImageDraft =
+                articleImageSlot !== null
+                  ? getDraftFromMap(draftBySlot, "image_prompt", articleImageSlot)
+                  : undefined;
 
               return (
                 <li
@@ -68,7 +98,12 @@ export function EditorialDailyChecklist({
                     <input
                       type="checkbox"
                       checked={isCompleted}
-                      onChange={() => onToggleCompleted?.(item.event.id)}
+                      onChange={() =>
+                        onToggleCompleted?.(
+                          calendarTaskStorageId(item.event),
+                          item.event.id,
+                        )
+                      }
                       className="mt-0.5 h-3.5 w-3.5 rounded border-input bg-background text-indigo-500 focus:ring-indigo-500/50 cursor-pointer"
                       title={isCompleted ? "Mark active" : "Mark done"}
                     />
@@ -92,12 +127,22 @@ export function EditorialDailyChecklist({
                         </div>
                       </div>
                       <div className="text-[10px] text-muted-foreground mt-0.5 pl-[5rem]">
-                        {isProduce ? "Produce" : "Launch"} · {item.event.detail}
+                        {milestoneLabel} · {item.event.detail}
                       </div>
                       <div className="pl-[5rem] space-y-1">
                         {item.event.slotIndex === 99 && (
                           <FacebookInviteDaySteps
                             compact
+                            eventDate={item.event.date}
+                            completedEvents={completedEvents}
+                            onToggleCompleted={onToggleCompleted}
+                          />
+                        )}
+                        {isFacebookAdLaunchEvent(item.event) && (
+                          <FacebookAdLaunchPanel
+                            compact
+                            milestone={item.event.milestone}
+                            eventDate={item.event.date}
                             completedEvents={completedEvents}
                             onToggleCompleted={onToggleCompleted}
                           />
@@ -116,10 +161,26 @@ export function EditorialDailyChecklist({
                             compact
                           />
                         )}
-                        {item.event.type === "image_prompt" && (
-                          <ImagePromptCalendarPanel
+                        {item.event.type === "facebook_post" &&
+                          item.event.milestone === "launch" &&
+                          !isFacebookAdLaunchEvent(item.event) && (
+                          <FacebookPostCalendarPanel
                             event={item.event}
                             draft={draft}
+                            draftBySlot={draftBySlot}
+                            batchId={batchId}
+                            compact
+                            onHeroUploaded={onHeroUploaded}
+                          />
+                        )}
+                        {articleImageSlot !== null && articleImageDraft && (
+                          <ImagePromptCalendarPanel
+                            event={{
+                              ...item.event,
+                              type: "image_prompt",
+                              slotIndex: articleImageSlot,
+                            }}
+                            draft={articleImageDraft}
                             draftBySlot={draftBySlot}
                             batchId={batchId}
                             compact
@@ -132,6 +193,14 @@ export function EditorialDailyChecklist({
                             batchId={batchId}
                             compact
                             onSaved={onPdfSaved}
+                          />
+                        )}
+                        {shouldShowWorkbookFacebookPostsPanel(item.event) && (
+                          <WorkbookFacebookPostsPanel
+                            draftBySlot={draftBySlot}
+                            batchId={batchId}
+                            compact
+                            onPostsSynced={onPdfSaved}
                           />
                         )}
                       </div>

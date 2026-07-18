@@ -1,0 +1,3 @@
+# SPA fallback for client-side routes. /api/* is handled by Pages Functions
+# via public/_routes.json (include: /api/*) — do not rewrite API paths here.
+/*    /index.html   200

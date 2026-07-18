@@ -12,6 +12,8 @@ import { useServerFn } from "@tanstack/react-start";
 import type { Session } from "@supabase/supabase-js";
 import { getCurrentUserProfile } from "./current-user.functions";
 import { clearLocalAuthSession, isForceLoggedOut } from "./auth-session";
+import { clearStaffNavUser, persistStaffNavUser } from "./staff-nav-session";
+import { userCanSeeAdminMenu } from "./user-roles";
 import type { Year, Medication } from "./medicare-math";
 
 export type Role = "leads_admin" | "admin" | "qa" | "agent" | "editor" | "viewer" | "advisor" | "customer";
@@ -74,6 +76,7 @@ export interface CreditTxn {
 
 interface Ctx {
   user: User | null;
+  session: Session | null;
   authLoading: boolean;
   signOut: () => Promise<void>;
 
@@ -125,6 +128,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setSession(s);
       if (!s) {
         setUser(null);
+        clearStaffNavUser();
         setScenarios([]);
         setSoas([]);
         setCredits(0);
@@ -188,7 +192,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       try {
         const profile = await fetchCurrentUserProfile();
         if (cancelled || gen !== hydrateGenRef.current) return;
-        setUser(profile as User);
+        const nextUser = profile as User;
+        setUser(nextUser);
+        if (userCanSeeAdminMenu(nextUser)) {
+          persistStaffNavUser(nextUser.id);
+        } else {
+          clearStaffNavUser();
+        }
       } catch (err) {
         console.error("Failed to hydrate user profile:", err);
         if (!cancelled && gen === hydrateGenRef.current) {
@@ -319,6 +329,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     log("LOGOUT");
+    clearStaffNavUser();
     await supabase.auth.signOut();
   };
 
@@ -427,6 +438,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     <AppCtx.Provider
       value={{
         user,
+        session,
         authLoading,
         signOut,
         year,

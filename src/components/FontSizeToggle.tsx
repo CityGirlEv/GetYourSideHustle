@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Minus, Plus, Type } from "lucide-react";
+import { ROOT_FONT_SIZE_PX } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 const STEPS = [1, 1.125, 1.25, 1.4];
 const STORAGE_KEY = "font-scale";
-const BASE_PX = 18;
 
 function applyScale(scale: number) {
-  document.documentElement.style.fontSize = `${BASE_PX * scale}px`;
+  document.documentElement.style.fontSize = `${ROOT_FONT_SIZE_PX * scale}px`;
 }
 
 export function FontSizeToggle({ tone = "light" }: { tone?: "light" | "dark" }) {

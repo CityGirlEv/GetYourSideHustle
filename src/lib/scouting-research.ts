@@ -164,6 +164,7 @@ export function extractPainPointsFromText(...parts: string[]): string[] {
 }
 
 export function tagAdPlatform(ad: MedicareAd): ScoutingSourceId | "unknown" {
+  if (ad.socialMedia.other.some((tag) => tag === "source:kalodata")) return "kalodata";
   const adUrl = ad.adUrl.toLowerCase();
   const website = ad.websiteUrl.toLowerCase();
   if (adUrl.includes("facebook.com") || website.includes("facebook.com")) return "facebook";

@@ -37,7 +37,7 @@ function DisclaimerBody({ body, medicareLink }: { body: string; medicareLink?: b
 export function MedicareDisclaimers({ className }: MedicareDisclaimersProps) {
   return (
     <div
-      className={cn("space-y-3 text-left text-xs leading-relaxed text-muted-foreground", className)}
+      className={cn("space-y-3 text-left text-sm leading-relaxed text-muted-foreground", className)}
     >
       {MEDICARE_DISCLAIMER_SECTIONS.map((section) => (
         <p key={section.label}>

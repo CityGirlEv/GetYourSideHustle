@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/AppShell";
@@ -27,6 +27,10 @@ import {
   updateContentFactoryDraftAdmin,
   updateContentFactoryDraftStatusAdmin,
 } from "@/lib/content-factory.functions";
+import {
+  leadMagnetSourceFromDraft,
+  openLeadMagnetWorkbookPdfInNewTab,
+} from "@/lib/lead-magnet-pdf";
 import {
   CONTENT_ASSET_TYPES,
   CONTENT_DRAFT_STATUSES,
@@ -57,9 +61,11 @@ import {
   Check,
   Edit2,
   Eye,
+  FileText,
   Loader2,
   Send,
   Sparkles,
+  Undo2,
   X,
 } from "lucide-react";
 
@@ -118,6 +124,8 @@ function ContentFactoryPage() {
   const [batchFilter, setBatchFilter] = useState<string>("all");
   const [dialogDraft, setDialogDraft] = useState<ContentDraft | null>(null);
   const [dialogMode, setDialogMode] = useState<"view" | "edit">("view");
+  const [openingPdfDraftId, setOpeningPdfDraftId] = useState<string | null>(null);
+  const openedPdfLinkRef = useRef<string | null>(null);
   const [newsletterTestDraft, setNewsletterTestDraft] = useState<ContentDraft | null>(null);
   const [newsletterTestEmail, setNewsletterTestEmail] = useState("");
 
@@ -227,10 +235,20 @@ function ContentFactoryPage() {
       (draft: any) =>
         draft.slotIndex === searchSlot && (searchType ? draft.type === searchType : true),
     );
-    if (match) {
-      setDialogDraft(match);
-      setDialogMode("view");
+    if (!match) return;
+
+    if (match.type === "lead_magnet") {
+      const linkKey = `${match.id}:${searchSlot}`;
+      if (openedPdfLinkRef.current === linkKey) return;
+      openedPdfLinkRef.current = linkKey;
+      void openLeadMagnetWorkbookPdfInNewTab(leadMagnetSourceFromDraft(match)).catch((err: Error) => {
+        toast.error(err.message ?? "Could not open workbook PDF");
+      });
+      return;
     }
+
+    setDialogDraft(match);
+    setDialogMode("view");
   }, [searchSlot, searchType, drafts, draftsQuery.isLoading]);
 
   if (authLoading || !user) return null;
@@ -238,6 +256,17 @@ function ContentFactoryPage() {
   const openDraft = (draft: ContentDraft, mode: "view" | "edit") => {
     setDialogDraft(draft);
     setDialogMode(mode);
+  };
+
+  const viewWorkbookPdf = async (draft: ContentDraft) => {
+    setOpeningPdfDraftId(draft.id);
+    try {
+      await openLeadMagnetWorkbookPdfInNewTab(leadMagnetSourceFromDraft(draft));
+    } catch (err) {
+      toast.error((err as Error).message ?? "Could not open workbook PDF");
+    } finally {
+      setOpeningPdfDraftId(null);
+    }
   };
 
   return (
@@ -369,6 +398,22 @@ function ContentFactoryPage() {
                         <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => openDraft(draft, "view")}>
                           <Eye className="h-3.5 w-3.5 mr-1" /> View
                         </Button>
+                        {draft.type === "lead_magnet" ? (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 text-xs text-pink-400"
+                            disabled={openingPdfDraftId === draft.id}
+                            onClick={() => void viewWorkbookPdf(draft)}
+                          >
+                            {openingPdfDraftId === draft.id ? (
+                              <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                            ) : (
+                              <FileText className="h-3.5 w-3.5 mr-1" />
+                            )}
+                            View PDF
+                          </Button>
+                        ) : null}
                         <Button
                           size="sm"
                           variant="ghost"
@@ -393,17 +438,43 @@ function ContentFactoryPage() {
                             Send to review
                           </Button>
                         ) : null}
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 text-xs text-emerald-400"
-                          disabled={draft.status === "approved" || draft.status === "published"}
-                          onClick={() =>
-                            statusMutation.mutate({ draftId: draft.id, status: "approved" })
-                          }
-                        >
-                          <Check className="h-3.5 w-3.5 mr-1" /> Approve
-                        </Button>
+                        {draft.status === "approved" ? (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 text-xs text-amber-400"
+                            onClick={() =>
+                              statusMutation.mutate({
+                                draftId: draft.id,
+                                status: "pending_review",
+                              })
+                            }
+                          >
+                            <Undo2 className="h-3.5 w-3.5 mr-1" /> Unapprove
+                          </Button>
+                        ) : draft.status === "scheduled" ? (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 text-xs text-amber-400"
+                            onClick={() =>
+                              statusMutation.mutate({ draftId: draft.id, status: "approved" })
+                            }
+                          >
+                            <Undo2 className="h-3.5 w-3.5 mr-1" /> Unschedule
+                          </Button>
+                        ) : draft.status !== "published" ? (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 text-xs text-emerald-400"
+                            onClick={() =>
+                              statusMutation.mutate({ draftId: draft.id, status: "approved" })
+                            }
+                          >
+                            <Check className="h-3.5 w-3.5 mr-1" /> Approve
+                          </Button>
+                        ) : null}
                         {draft.type === "newsletter" ? (
                           <Button
                             size="sm"
@@ -440,19 +511,33 @@ function ContentFactoryPage() {
                         >
                           <X className="h-3.5 w-3.5 mr-1" /> Reject
                         </Button>
-                        <Button
-                          size="sm"
-                          className="h-8 text-xs grad-indigo ml-auto"
-                          disabled={
-                            draft.status === "published" ||
-                            (draft.status !== "approved" && draft.status !== "scheduled") ||
-                            publishMutation.isPending
-                          }
-                          onClick={() => publishMutation.mutate(draft.id)}
-                        >
-                          <Send className="h-3.5 w-3.5 mr-1" />
-                          {draft.status === "published" ? "Published" : "Publish"}
-                        </Button>
+                        {draft.status === "published" ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 text-xs text-amber-400 border-amber-500/40 ml-auto"
+                            disabled={statusMutation.isPending}
+                            onClick={() =>
+                              statusMutation.mutate({ draftId: draft.id, status: "approved" })
+                            }
+                          >
+                            <Undo2 className="h-3.5 w-3.5 mr-1" />
+                            Unpublish
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            className="h-8 text-xs grad-indigo ml-auto"
+                            disabled={
+                              (draft.status !== "approved" && draft.status !== "scheduled") ||
+                              publishMutation.isPending
+                            }
+                            onClick={() => publishMutation.mutate(draft.id)}
+                          >
+                            <Send className="h-3.5 w-3.5 mr-1" />
+                            Publish
+                          </Button>
+                        )}
                       </div>
                     </Card>
                   ))}

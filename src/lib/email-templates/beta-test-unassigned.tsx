@@ -200,8 +200,8 @@ export const template = {
   displayName: "Beta test unassigned",
   previewData: {
     testerName: "Jane",
-    loginUrl: "https://mypartb.com/auth?tab=sign-in",
-    testingUrl: "https://mypartb.com/testing",
+    loginUrl: "https://www.mypartb.com/auth?tab=sign-in",
+    testingUrl: "https://www.mypartb.com/testing",
     removedTests: [
       {
         id: "AUTH-QA-001",

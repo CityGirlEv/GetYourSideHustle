@@ -103,9 +103,9 @@ export const template = {
   displayName: "Welcome",
   previewData: {
     recipientName: "Jane",
-    signInUrl: "https://mypartb.com/auth?tab=sign-in",
-    forgotPasswordUrl: "https://mypartb.com/auth?tab=sign-in",
-    resetPasswordUrl: "https://mypartb.com/auth/verify?token=example&type=recovery",
+    signInUrl: "https://www.mypartb.com/auth?tab=sign-in",
+    forgotPasswordUrl: "https://www.mypartb.com/auth?tab=sign-in",
+    resetPasswordUrl: "https://www.mypartb.com/auth/verify?token=example&type=recovery",
     needsPasswordSetup: false,
   },
 } satisfies TemplateEntry;

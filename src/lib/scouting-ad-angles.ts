@@ -304,7 +304,7 @@ export function findScoutingAdCmsViolations(bundle: ScoutingAdAngleBundle): stri
   if (!/cartoon|vector|cover hero/i.test(bundle.imagePrompt)) {
     issues.push("Image prompt should reference cartoon / cover hero style");
   }
-  if (/photorealistic/i.test(bundle.imagePrompt)) {
+  if (/photorealistic/i.test(bundle.imagePrompt) && !/not photorealistic/i.test(bundle.imagePrompt)) {
     issues.push("Image prompt must not request photorealistic style");
   }
   return issues;

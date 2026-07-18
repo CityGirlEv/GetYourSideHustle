@@ -12,7 +12,7 @@ describe("auth email greeting audit", () => {
   it.each(AUTH.map((t) => [t.name] as const))("%s raw and admin html", async (name) => {
     const raw = await renderDefaultHtml(name);
     const merged = await renderDefaultHtmlWithMergeFields(name);
-    const branded = await ensureEmailBranding(merged, { siteUrl: "https://getpartb.com" });
+    const branded = await ensureEmailBranding(merged, { siteUrl: "https://www.mypartb.com" });
 
     for (const [label, html] of [
       ["raw", raw],

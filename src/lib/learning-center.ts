@@ -48,7 +48,7 @@ export const LEARNING_CENTER_INTRO =
   `${SITE_BRAND_NAME} Learning Center is plain-language Medicare education. We do not sell insurance or enroll you in coverage.`;
 
 export const LEARNING_CENTER_SCOPE_NOTE =
-  "We may not present every plan available in your area. Articles are for learning only — not personalized advice or enrollment.";
+  "We may not represent every plan available in your area. Articles are for learning only — not personalized advice or enrollment.";
 
 export function categoryLabel(category: ArticleCategory): string {
   return LEARNING_CENTER_CATEGORIES.find((c) => c.id === category)?.label ?? category;
@@ -177,12 +177,57 @@ export function escapeHtml(text: string): string {
 }
 
 /** Safe subset of Markdown for educational articles (no raw HTML). */
+export function normalizeNewsletterMarkdown(bodyMd: string): string {
+  const lines = bodyMd.replace(/\r\n/g, "\n").split("\n");
+  const blocks: string[] = [];
+  let paragraphLines: string[] = [];
+
+  const flushParagraph = () => {
+    if (!paragraphLines.length) return;
+    blocks.push(paragraphLines.join(" ").replace(/\s+/g, " ").trim());
+    paragraphLines = [];
+  };
+
+  const isStructuredLine = (line: string) =>
+    line.startsWith("## ") ||
+    line.startsWith("### ") ||
+    /^[-*]\s+/.test(line) ||
+    /^\d+\.\s+/.test(line);
+
+  for (const raw of lines) {
+    const line = raw.trimEnd();
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      flushParagraph();
+      if (blocks.length && blocks[blocks.length - 1] !== "") {
+        blocks.push("");
+      }
+      continue;
+    }
+
+    if (isStructuredLine(line)) {
+      flushParagraph();
+      blocks.push(line);
+      continue;
+    }
+
+    paragraphLines.push(trimmed);
+  }
+
+  flushParagraph();
+  return blocks.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+/** Safe subset of Markdown for educational articles (no raw HTML). */
 export function renderLearningMarkdown(
   bodyMd: string,
-  options?: { withHeadingIds?: boolean; plain?: boolean },
+  options?: { withHeadingIds?: boolean; plain?: boolean; email?: boolean },
 ): string {
   const plain = options?.plain ?? false;
-  const lines = bodyMd.replace(/\r\n/g, "\n").split("\n");
+  const email = options?.email ?? false;
+  const normalizedBody = email ? normalizeNewsletterMarkdown(bodyMd) : bodyMd;
+  const lines = normalizedBody.replace(/\r\n/g, "\n").split("\n");
   const html: string[] = [];
   let inUl = false;
   let inOl = false;
@@ -206,6 +251,9 @@ export function renderLearningMarkdown(
       : `<abbr title="${escapeHtml(title)}" class="underline decoration-dotted cursor-help">${term}</abbr>`;
 
   const linkClass = plain ? "" : ' class="text-primary underline"';
+  const linkStyle = email
+    ? ' style="color:#1d4ed8;text-decoration:underline;"'
+    : linkClass;
   const inline = (text: string) => {
     let out = escapeHtml(text)
       .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
@@ -216,7 +264,7 @@ export function renderLearningMarkdown(
       (_match, label: string, href: string) => {
         const external = /^https?:\/\//i.test(href);
         const attrs = external ? ' target="_blank" rel="noopener noreferrer"' : "";
-        return `<a href="${href}"${attrs}${linkClass}>${label}</a>`;
+        return `<a href="${href}"${attrs}${email ? linkStyle : linkClass}>${label}</a>`;
       },
     );
 
@@ -225,7 +273,7 @@ export function renderLearningMarkdown(
       (_match, prefix: string, rawUrl: string) => {
         const url = rawUrl.replace(/[.,;:!?)]+$/, "");
         const trailing = rawUrl.slice(url.length);
-        return `${prefix}<a href="${url}" target="_blank" rel="noopener noreferrer"${linkClass}>${url}</a>${trailing}`;
+        return `${prefix}<a href="${url}" target="_blank" rel="noopener noreferrer"${email ? linkStyle : linkClass}>${url}</a>${trailing}`;
       },
     );
 
@@ -250,8 +298,10 @@ export function renderLearningMarkdown(
       const idAttr = options?.withHeadingIds && heading ? ` id="${heading.id}"` : "";
       html.push(
         plain
-          ? `<h2${idAttr}>${inline(line.slice(3))}</h2>`
-          : `<h2${idAttr} class="font-display text-2xl font-bold mt-8 mb-3 scroll-mt-28">${inline(line.slice(3))}</h2>`,
+          ? email
+            ? `<h2${idAttr} style="font-size:20px;font-weight:700;margin:28px 0 12px;color:#111827;line-height:1.35;">${inline(line.slice(3))}</h2>`
+            : `<h2${idAttr}>${inline(line.slice(3))}</h2>`
+          : `<h2${idAttr} class="font-display text-xl font-bold mt-5 mb-2 scroll-mt-28">${inline(line.slice(3))}</h2>`,
       );
       continue;
     }
@@ -262,34 +312,58 @@ export function renderLearningMarkdown(
       const idAttr = options?.withHeadingIds && heading ? ` id="${heading.id}"` : "";
       html.push(
         plain
-          ? `<h3${idAttr}>${inline(line.slice(4))}</h3>`
-          : `<h3${idAttr} class="text-lg font-semibold mt-6 mb-2 scroll-mt-28">${inline(line.slice(4))}</h3>`,
+          ? email
+            ? `<h3${idAttr} style="font-size:17px;font-weight:600;margin:22px 0 10px;color:#111827;line-height:1.35;">${inline(line.slice(4))}</h3>`
+            : `<h3${idAttr}>${inline(line.slice(4))}</h3>`
+          : `<h3${idAttr} class="text-base font-semibold mt-4 mb-1.5 scroll-mt-28">${inline(line.slice(4))}</h3>`,
       );
       continue;
     }
     if (/^[-*]\s+/.test(line)) {
       if (!inUl) {
         closeLists();
-        html.push(plain ? "<ul>" : '<ul class="list-disc list-outside pl-5 space-y-1 my-2">');
+        html.push(
+          plain
+            ? email
+              ? '<ul style="margin:0 0 18px;padding-left:22px;">'
+              : "<ul>"
+            : '<ul class="list-disc list-outside pl-5 space-y-0.5 my-1.5">',
+        );
         inUl = true;
       }
-      html.push(`<li>${inline(line.replace(/^[-*]\s+/, ""))}</li>`);
+      html.push(
+        email
+          ? `<li style="margin:0 0 10px;font-size:16px;line-height:1.7;color:#1a1a1a;">${inline(line.replace(/^[-*]\s+/, ""))}</li>`
+          : `<li>${inline(line.replace(/^[-*]\s+/, ""))}</li>`,
+      );
       continue;
     }
     if (/^\d+\.\s+/.test(line)) {
       if (!inOl) {
         closeLists();
-        html.push(plain ? "<ol>" : '<ol class="list-decimal list-outside pl-5 space-y-1 my-2">');
+        html.push(
+          plain
+            ? email
+              ? '<ol style="margin:0 0 18px;padding-left:22px;">'
+              : "<ol>"
+            : '<ol class="list-decimal list-outside pl-5 space-y-0.5 my-1.5">',
+        );
         inOl = true;
       }
-      html.push(`<li>${inline(line.replace(/^\d+\.\s+/, ""))}</li>`);
+      html.push(
+        email
+          ? `<li style="margin:0 0 10px;font-size:16px;line-height:1.7;color:#1a1a1a;">${inline(line.replace(/^\d+\.\s+/, ""))}</li>`
+          : `<li>${inline(line.replace(/^\d+\.\s+/, ""))}</li>`,
+      );
       continue;
     }
     closeLists();
     html.push(
       plain
-        ? `<p>${inline(line)}</p>`
-        : `<p class="text-base leading-relaxed text-foreground/80 my-4">${inline(line)}</p>`,
+        ? email
+          ? `<p style="margin:0 0 18px;font-size:16px;line-height:1.7;color:#1a1a1a;">${inline(line)}</p>`
+          : `<p>${inline(line)}</p>`
+        : `<p class="text-base leading-relaxed text-foreground/80 my-2.5">${inline(line)}</p>`,
     );
   }
   closeLists();

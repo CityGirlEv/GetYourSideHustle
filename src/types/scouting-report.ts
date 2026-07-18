@@ -1,7 +1,7 @@
 import type { MedicareAd } from "@/types/MedicareAd";
 import type { ScoutingCmsStatus, ScoutingSitePurpose } from "@/lib/scouting-site-profile";
 
-export type ScoutingSourceId = "facebook" | "tiktok" | "web";
+export type ScoutingSourceId = "facebook" | "tiktok" | "kalodata" | "web";
 
 /** Medicare marketing entity type — an ad may match several. */
 export type ScoutingAdCategory = "fmo" | "medicare_gov" | "tpmo" | "agent";

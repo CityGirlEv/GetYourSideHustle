@@ -67,6 +67,16 @@ export function openAdvantageTypes(): AdvantageTypeRow[] {
   return CMS_CATALOG.advantageTypes.filter((p) => !/closed/i.test(p["Enrollment Status"] ?? ""));
 }
 
+/** Every Medigap letter in the CMS reference catalog (including closed-to-new). */
+export function catalogMedigapLetters(): MedigapPlanRow[] {
+  return CMS_CATALOG.medigapPlans;
+}
+
+/** Every Medicare Advantage plan type in the CMS reference catalog (including SNPs). */
+export function catalogAdvantageTypes(): AdvantageTypeRow[] {
+  return CMS_CATALOG.advantageTypes;
+}
+
 export const CMS_DATA_REVISION = "CMS-approved reference catalog, plan year 2026";
 // Plan benefit data sourced from CMS standardized Medigap policies
 // (https://www.cms.gov/medicare/health-plans/medigap) and Medicare Plan Finder

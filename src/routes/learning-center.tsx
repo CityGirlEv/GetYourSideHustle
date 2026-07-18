@@ -3,8 +3,11 @@ import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { LearningArticleCard } from "@/components/LearningArticleCard";
 import { LearningCenterCta } from "@/components/LearningCenterCta";
+import { NewsletterSignupForm } from "@/components/NewsletterSignupForm";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
+import { BookOpen, Mail } from "lucide-react";
 import { listPublishedArticles } from "@/lib/articles";
 import {
   LEARNING_CENTER_CATEGORIES,
@@ -14,6 +17,7 @@ import {
 } from "@/lib/learning-center";
 import { SITE_BRAND_NAME } from "@/lib/site-brand";
 import { canonicalUrl } from "@/lib/site-url";
+import { cn } from "@/lib/utils";
 
 const PAGE_URL = canonicalUrl("/learning-center");
 
@@ -78,14 +82,41 @@ function LearningCenterPage() {
     >
       <div className="max-w-5xl mx-auto space-y-8">
         <div className="glass rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3">
-          <div className="flex items-start gap-2">
-            <BookOpen className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-            <div className="space-y-1 text-muted-foreground">
-              <p className="text-sm leading-snug">{LEARNING_CENTER_INTRO}</p>
-              <p className="text-xs leading-snug border-t border-border/60 pt-1.5">
-                {LEARNING_CENTER_SCOPE_NOTE}
-              </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex items-start gap-2 min-w-0">
+              <BookOpen className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+              <div className="space-y-1 text-muted-foreground">
+                <p className="text-sm leading-snug">{LEARNING_CENTER_INTRO}</p>
+                <p className="text-xs leading-snug border-t border-border/60 pt-1.5">
+                  {LEARNING_CENTER_SCOPE_NOTE}{" "}
+                  <Link
+                    to="/learning-center/$slug"
+                    params={{ slug: "parts-of-medicare" }}
+                    className="text-primary font-semibold hover:underline"
+                  >
+                    New to Medicare? Start with the parts of Medicare →
+                  </Link>{" "}
+                  <span className="text-muted-foreground/80">·</span>{" "}
+                  <Link
+                    to="/learning-center/$slug"
+                    params={{ slug: "when-to-sign-up-for-medicare" }}
+                    className="text-primary font-semibold hover:underline"
+                  >
+                    Turning 65? See when to sign up →
+                  </Link>
+                </p>
+              </div>
             </div>
+            <Link
+              to="/subscribe"
+              className={cn(
+                buttonVariants({ variant: "outline", size: "sm" }),
+                "shrink-0 gap-1.5 font-semibold self-start",
+              )}
+            >
+              <Mail className="h-4 w-4" aria-hidden />
+              Subscribe
+            </Link>
           </div>
         </div>
 
@@ -136,6 +167,14 @@ function LearningCenterPage() {
             </section>
           </>
         )}
+
+        <Card className="glass p-5 sm:p-6 border-emerald-500/20 bg-emerald-500/5 space-y-3">
+          <h2 className="font-display text-lg font-bold">Weekly Learning Center email</h2>
+          <p className="text-sm text-muted-foreground">
+            Get calm Medicare education in your inbox — no sales calls, no enrollment pressure.
+          </p>
+          <NewsletterSignupForm />
+        </Card>
 
         <LearningCenterCta />
 

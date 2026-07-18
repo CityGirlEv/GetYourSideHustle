@@ -487,11 +487,11 @@ export const Route = createFileRoute("/testing")({
   }),
   head: () => ({
     meta: [
-      { title: "Testing Portal — Part B Optimizer" },
+      { title: "Testing Portal — Part B Optimizer Benchmark Tool" },
       {
         name: "description",
         content:
-          "Internal test plan, implementation plan, sprint schedule, and tasks for The Part B Optimizer.",
+          "Internal test plan, implementation plan, sprint schedule, and tasks for The Part B Optimizer Benchmark Tool.",
       },
       { name: "robots", content: "noindex,nofollow" },
     ],
@@ -3825,11 +3825,12 @@ function getStepSubstepKeys(step: string, stepIndex: number): string[] {
 
   if (
     step.startsWith("On the confirmation page (or View comparison summary), click 'Download PDF'") ||
+    step.startsWith("On the confirmation page (or View comparison summary), click 'Open Excel'") ||
     step.startsWith("On the confirmation page (or View comparison summary), click 'Download Excel'")
   ) {
     add([
       "Click 'Download PDF' to generate the system output report.",
-      "Click 'Download Excel' to generate the system output report.",
+      "Click 'Open Excel' to generate the system output report.",
     ]);
     return keys;
   }
@@ -4355,6 +4356,7 @@ function StepWithSublist({
 
   if (
     step.startsWith("On the confirmation page (or View comparison summary), click 'Download PDF'") ||
+    step.startsWith("On the confirmation page (or View comparison summary), click 'Open Excel'") ||
     step.startsWith("On the confirmation page (or View comparison summary), click 'Download Excel'")
   ) {
     return (
@@ -4362,7 +4364,7 @@ function StepWithSublist({
         On the confirmation page (or View comparison summary), download files:
         {renderSublist([
           "Click 'Download PDF' to generate the system output report.",
-          "Click 'Download Excel' to generate the system output report.",
+          "Click 'Open Excel' to generate the system output report.",
         ])}
       </span>
     );

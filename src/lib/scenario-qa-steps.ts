@@ -1,4 +1,5 @@
 /** Shared wizard steps for SCEN-QA-00x scenario audit tests in the Testing Portal. */
+import { BENCHMARK_TOOL_CTA } from "@/lib/plan-comparison-copy";
 export function splitScenarioDemographics(demographics: string): {
   basics: string;
   costPreference: string;
@@ -146,12 +147,12 @@ export function buildScenarioQaAuditSteps(parts: {
   const downloadFilesIntro = "On the confirmation page (or View comparison summary), download files:";
   const downloadFilesSubsteps = [
     "Click 'Download PDF' to generate the system output report.",
-    "Click 'Download Excel' to generate the system output report.",
+    "Click 'Open Excel' to generate the system output report.",
   ];
   const medCostIntro = "Review the Medication Cost summary in each report:";
 
   return [
-    "Start from home page where the user clicks Find Plans That Fit You — Privately",
+    `Start from home page where the user clicks ${BENCHMARK_TOOL_CTA}`,
     `${step1Intro} ${step1Substeps.join(" | ")}`,
     `${step2Intro} ||| ${step2Substeps.join(" | ")}`,
     `${step3Intro} ||| ${medSubsteps.join(" | ")}`,

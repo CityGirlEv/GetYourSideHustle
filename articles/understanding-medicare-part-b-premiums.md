@@ -25,7 +25,7 @@ Official premium tables are published by CMS and Medicare.gov. Amounts change an
 
 ## Educational use only
 
-The Part B Optimizer helps you model sample scenarios for learning — we do not enroll you in coverage or collect Social Security numbers in our public scenario tool.
+The Part B Optimizer Benchmark Tool helps you model sample scenarios for learning — we do not enroll you in coverage or collect Social Security numbers in our public scenario tool.
 
 ## Frequently asked questions
 

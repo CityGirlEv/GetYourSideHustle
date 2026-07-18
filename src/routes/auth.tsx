@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ShieldCheck, LogIn, UserPlus } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { roleDestination } from "@/lib/role-destination";
+import { userHasAdminRole } from "@/lib/user-roles";
 import { safeSignInRedirect } from "@/lib/auth-redirect";
 import { consumeDeployResume } from "@/lib/deploy-version";
 import { SignInForm } from "@/components/auth/SignInForm";
@@ -31,10 +32,10 @@ export const Route = createFileRoute("/auth")({
   },
   head: () => ({
     meta: [
-      { title: "Sign In — Part B Optimizer" },
+      { title: "Sign In — Part B Optimizer Benchmark Tool" },
       {
         name: "description",
-        content: "Sign in or register for The Part B Optimizer Team Member Portal.",
+        content: "Sign in or register for The Part B Optimizer Benchmark Tool Team Member Portal.",
       },
       { name: "robots", content: "noindex" },
     ],
@@ -66,7 +67,7 @@ function AuthPage() {
       router.navigate({ to: RESET_PASSWORD_PATH, replace: true });
       return;
     }
-    const qaOverride = user.roles?.includes("qa") ? "/testing" : null;
+    const qaOverride = user.roles?.includes("qa") && !userHasAdminRole(user) ? "/testing" : null;
     const resumeRedirect = search.redirect ?? consumeDeployResume();
     const destination = resumeRedirect ?? qaOverride ?? roleDestination(user.role);
 
@@ -99,7 +100,7 @@ function AuthPage() {
             <p className="text-sm text-muted-foreground">
               {tab === "register"
                 ? "Tell us who you are. After you sign the NDA, an administrator will review and enable your account."
-                : "Sign in to The Part B Optimizer Team Member Portal."}
+                : "Sign in to The Part B Optimizer Benchmark Tool Team Member Portal."}
             </p>
           </div>
 

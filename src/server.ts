@@ -1,5 +1,7 @@
 import "./lib/error-capture";
 
+import { createCmsLandscapeAssetResponse } from "./lib/cms-landscape-files.server";
+import { ensureCmsLandscapeLoadedServer } from "./lib/cms-landscape.server";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import { handleTranscribeRequest } from "./lib/transcribe-handler";
@@ -122,7 +124,21 @@ export default {
       return Response.redirect(url.toString(), 308);
     }
 
+    const assets = envBag.ASSETS as { fetch: typeof fetch } | undefined;
+    const cmsAssetResponse = await createCmsLandscapeAssetResponse(
+      url.pathname,
+      assets,
+      request,
+    );
+    if (cmsAssetResponse) {
+      return cmsAssetResponse;
+    }
+
     try {
+      await ensureCmsLandscapeLoadedServer({
+        origin: url.origin,
+        assets,
+      });
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);

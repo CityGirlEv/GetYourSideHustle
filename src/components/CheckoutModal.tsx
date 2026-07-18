@@ -3,14 +3,20 @@ import { useState } from "react";
 import { useApp } from "@/lib/app-store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AddToCartButton } from "@/components/AddToCartButton";
+import { AUDIT_CREDIT_PACKAGES } from "@/lib/cart-products";
 import { Check, CreditCard, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
-const PACKAGES = [
-  { id: "starter", name: "Starter", price: 29, credits: 10, blurb: "Best for solo agents" },
-  { id: "growth", name: "Growth", price: 99, credits: 50, blurb: "Most popular" },
-  { id: "unlimited", name: "Unlimited", price: 199, credits: 999, blurb: "Monthly all-access" },
-];
+const PACKAGES = AUDIT_CREDIT_PACKAGES.map((pkg) => ({
+  ...pkg,
+  blurb:
+    pkg.id === "starter"
+      ? "Best for solo agents"
+      : pkg.id === "growth"
+        ? "Most popular"
+        : "Monthly all-access",
+}));
 
 export function CheckoutModal({
   open,
@@ -68,6 +74,11 @@ export function CheckoutModal({
                   <div className="text-2xl font-bold mt-1">${p.price}</div>
                   <div className="text-sm text-emerald font-medium">{p.credits} audits</div>
                   <div className="text-xs text-muted-foreground mt-1">{p.blurb}</div>
+                  <AddToCartButton
+                    payload={{ kind: "audit-credits", packageId: p.id }}
+                    className="w-full mt-3"
+                    onClick={() => setPkg(p.id)}
+                  />
                 </button>
               ))}
             </div>

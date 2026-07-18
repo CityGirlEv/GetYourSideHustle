@@ -195,8 +195,8 @@ export const template = {
   displayName: "QA daily summary (admin)",
   previewData: {
     reportDateLabel: "Monday, June 9, 2026",
-    testingUrl: "https://mypartb.com/testing",
-    qaDashboardUrl: "https://mypartb.com/qa",
+    testingUrl: "https://www.mypartb.com/testing",
+    qaDashboardUrl: "https://www.mypartb.com/qa",
     totals: { pass: 5, fail: 2, blocked: 1, other: 1, total: 9 },
     testerSummaries: [
       { assignee: "Catria", pass: 3, fail: 1, blocked: 0, other: 0, total: 4 },

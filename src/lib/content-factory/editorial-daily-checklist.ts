@@ -19,7 +19,7 @@ export function buildDailyChecklistItems(
 ): DailyChecklistItem[] {
   return events
     .map((event) => {
-      const time = editorialActionTime(event.type, event.milestone);
+      const time = event.actionTime ?? editorialActionTime(event.type, event.milestone);
       return {
         date: event.date,
         time,

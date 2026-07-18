@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { downloadScenarioXlsx } from "../scenario-xlsx";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { openScenarioXlsxInNewTab } from "../scenario-xlsx";
 import type { Medication } from "../medicare-math";
 
 const med: Medication = {
@@ -25,30 +25,31 @@ const input = {
   medications: [med],
 };
 
-beforeEach(() => {
-  vi.stubGlobal("URL", {
-    ...URL,
-    createObjectURL: vi.fn(() => "blob:mock"),
-    revokeObjectURL: vi.fn(),
-  });
-});
-
-describe("downloadScenarioXlsx", () => {
-  it("builds and triggers a workbook download", async () => {
-    const clicked: HTMLAnchorElement[] = [];
-    const origCreate = document.createElement.bind(document);
-    vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
-      const el = origCreate(tag) as HTMLElement;
-      if (tag === "a") {
-        (el as HTMLAnchorElement).click = () => {
-          clicked.push(el as HTMLAnchorElement);
-        };
-      }
-      return el;
+describe("openScenarioXlsxInNewTab", () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      "open",
+      vi.fn(() => ({
+        closed: false,
+        document: { title: "", body: { innerHTML: "" } },
+        location: { href: "" },
+        focus: vi.fn(),
+        close: vi.fn(),
+      })),
+    );
+    vi.stubGlobal("URL", {
+      ...URL,
+      createObjectURL: vi.fn(() => "blob:mock"),
+      revokeObjectURL: vi.fn(),
     });
+  });
 
-    await downloadScenarioXlsx(input);
-    expect(clicked.length).toBe(1);
-    expect(clicked[0].download).toMatch(/\.xlsx$/);
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("builds and opens a workbook in a new tab", async () => {
+    await openScenarioXlsxInNewTab(input);
+    expect(window.open).toHaveBeenCalledWith("about:blank", "_blank");
   });
 });

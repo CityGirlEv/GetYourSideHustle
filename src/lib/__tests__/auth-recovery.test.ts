@@ -8,6 +8,7 @@ import {
   rewriteRecoveryConfirmationUrl,
   supabaseAuthVerifyUrl,
 } from "../auth-recovery";
+import { PRODUCTION_SITE_ORIGIN } from "@/lib/site-url";
 
 describe("passwordRecoveryRedirectUrl", () => {
   it("points to /reset-password on the public site", () => {
@@ -38,13 +39,13 @@ describe("hasRecoveryTokensInUrl", () => {
 });
 
 describe("brandRecoveryConfirmationUrl", () => {
-  const target = "https://mypartb.com/reset-password";
+  const target = passwordRecoveryRedirectUrl();
 
-  it("uses mypartb.com/auth/verify instead of supabase.co", () => {
+  it("uses branded auth/verify instead of supabase.co", () => {
     const input =
-      "https://xiqknyrikpuysbkvpkju.supabase.co/auth/v1/verify?token=abc&type=recovery&redirect_to=https%3A%2F%2Fmypartb.com%2Fauth";
+      "https://xiqknyrikpuysbkvpkju.supabase.co/auth/v1/verify?token=abc&type=recovery&redirect_to=https%3A%2F%2Fwww.mypartb.com%2Fauth";
     const output = brandRecoveryConfirmationUrl(input, target);
-    expect(output).toMatch(/^https:\/\/mypartb\.com\/auth\/verify\?/);
+    expect(output).toMatch(/^https:\/\/www\.mypartb\.com\/auth\/verify\?/);
     expect(output).not.toContain("supabase.co");
     expect(decodeURIComponent(output)).toContain("token=abc");
     expect(decodeURIComponent(output)).toContain(target);
@@ -53,27 +54,29 @@ describe("brandRecoveryConfirmationUrl", () => {
 
 describe("supabaseAuthVerifyUrl", () => {
   it("forwards query params to Supabase verify endpoint", () => {
-    const params = new URLSearchParams("token=abc&type=recovery&redirect_to=https%3A%2F%2Fmypartb.com%2Freset-password");
+    const params = new URLSearchParams(
+      `token=abc&type=recovery&redirect_to=${encodeURIComponent(`${PRODUCTION_SITE_ORIGIN}/reset-password`)}`,
+    );
     expect(supabaseAuthVerifyUrl(params, "https://project.supabase.co")).toBe(
-      "https://project.supabase.co/auth/v1/verify?token=abc&type=recovery&redirect_to=https%3A%2F%2Fmypartb.com%2Freset-password",
+      `https://project.supabase.co/auth/v1/verify?token=abc&type=recovery&redirect_to=${encodeURIComponent(`${PRODUCTION_SITE_ORIGIN}/reset-password`)}`,
     );
   });
 });
 
 describe("rewriteRecoveryConfirmationUrl", () => {
-  const target = "https://mypartb.com/reset-password";
+  const target = passwordRecoveryRedirectUrl();
 
   it("rewrites redirect_to on Supabase verify links", () => {
     const input =
-      "https://xiqknyrikpuysbkvpkju.supabase.co/auth/v1/verify?token=abc&type=recovery&redirect_to=https%3A%2F%2Fmypartb.com%2Fauth";
+      "https://xiqknyrikpuysbkvpkju.supabase.co/auth/v1/verify?token=abc&type=recovery&redirect_to=https%3A%2F%2Fwww.mypartb.com%2Fauth";
     const output = rewriteRecoveryConfirmationUrl(input, target);
     expect(output).toContain("redirect_to=");
     expect(decodeURIComponent(output)).toContain(target);
-    expect(output).not.toContain("redirect_to=https%3A%2F%2Fmypartb.com%2Fauth");
+    expect(output).not.toContain("redirect_to=https%3A%2F%2Fwww.mypartb.com%2Fauth");
   });
 
   it("leaves non-recovery URLs unchanged", () => {
-    const input = "https://mypartb.com/auth?tab=sign-in";
+    const input = `${PRODUCTION_SITE_ORIGIN}/auth?tab=sign-in`;
     expect(rewriteRecoveryConfirmationUrl(input, target)).toBe(input);
   });
 });

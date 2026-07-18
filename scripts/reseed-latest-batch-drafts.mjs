@@ -1,22 +1,33 @@
 import { createClient } from "@supabase/supabase-js";
+import { createJiti } from "jiti";
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 
-// Load .env file manually
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const jiti = createJiti(import.meta.url, {
+  alias: {
+    "@": path.join(root, "src"),
+  },
+});
+const { buildFacebookPostSeedCopy } = jiti("../src/lib/content-factory/facebook-post-seed-copy.ts");
+const { buildWorkbookFacebookPostTemplates } = jiti(
+  "../src/lib/content-factory/workbook-facebook-post-templates.ts",
+);
+
 const envPath = path.resolve(process.cwd(), ".env");
 const envContent = fs.readFileSync(envPath, "utf-8");
 const env = {};
-envContent.split("\n").forEach((line) => {
+for (const line of envContent.split("\n")) {
   const match = line.match(/^\s*([\w.-]+)\s*=\s*(.*)?\s*$/);
-  if (match) {
-    const key = match[1];
-    let value = match[2] || "";
-    if (value.startsWith('"') && value.endsWith('"')) {
-      value = value.slice(1, -1);
-    }
-    env[key] = value;
+  if (!match) continue;
+  const key = match[1];
+  let value = match[2] || "";
+  if (value.startsWith('"') && value.endsWith('"')) {
+    value = value.slice(1, -1);
   }
-});
+  env[key] = value;
+}
 
 const supabaseUrl = env.SUPABASE_URL;
 const supabaseKey = env.SUPABASE_SERVICE_ROLE_KEY;
@@ -28,46 +39,27 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-const FACEBOOK_POSTS = [
-  {
-    title: "Welcome to Part B Optimizer! Learn about Medicare Prior Authorization",
-    excerpt: "Welcome post introducing the page and linking to our first Learning Center article.",
-    body: `Welcome to the Part B Optimizer page! 🌟\n\nTurning 65 comes with a lot of decisions — and unfortunately, a lot of high-pressure sales calls. We’re here to change that.\n\nOur mission is simple: to provide calm, clear, and completely unbiased Medicare education. No sales pitches, no pushy agents, and no government affiliation — just honest resources to help you take control of your healthcare journey.\n\nTo kick things off, we’ve just published our very first Learning Center guide: "What Is Medicare Prior Authorization? A Plain-Language Overview." If you've ever wondered how prior authorizations work and how to protect yourself from surprise coverage denials, read our walkthrough here:\n\n👉 https://mypartb.com/learning-center/what-is-medicare-prior-authorization\n\nLike our page to follow along as we share weekly tips, checklists, and official resources.\n\nEducational purposes only. We do not sell insurance or solicit enrollments. We are not affiliated with or endorsed by Medicare, CMS, or any government agency.\n\n#MedicareEducation #Turning65 #MedicareSimplified #HealthcareTransparency`,
-  },
-  {
-    title: "The Medigap Open Enrollment Window: Why Timing Matters",
-    excerpt: "Share Article 2 and invite friends to follow our page.",
-    body: `If you are new to Medicare Part B, you generally have a one-time six-month Medigap open enrollment window where guaranteed-issue rules protect you.\n\nMissing this window is one of the most common regrets we hear about, as you may face medical underwriting later if you try to switch to a supplemental plan.\n\nRead our plain-language guide on why timing is critical:\n👉 https://mypartb.com/learning-center/medigap-open-enrollment-window-explained\n\n📌 Help us spread the word! Invite friends or family members who are turning 65 to follow the Part B Optimizer page for transparent, non-sales education.\n\nEducational only. Verify your state's supplemental insurance rules.\n\n#MedicareEducation #Medigap #Turning65`,
-  },
-  {
-    title: "A $0 premium is not the same as $0 total cost",
-    excerpt: "Educational post linking to Article 3 on Medicare Advantage premiums.",
-    body: `Many Medicare Advantage plans advertise a $0 monthly premium. Copays, deductibles, and out-of-network bills can still add up.\n\nCompare the full cost picture — not just the headline premium. Read our plain-language guide on what $0 premiums really mean:\n👉 https://mypartb.com/learning-center/medicare-advantage-zero-premium-explained\n\nEducational only — not a solicitation to enroll.\n\n#MedicareEducation #ComparePlans #MedicareAdvantage`,
-  },
-  {
-    title: "Free Medicare at 65 Planning Workbook (PDF)",
-    excerpt: "Promote the printable workbook — free download, no email required.",
-    body: `Turning 65 soon? Before you compare plans, it helps to gather the facts in one place.\n\nWe just published a free printable workbook to help you list:\n\n• Prescriptions and dosages\n• Doctors, specialists, and hospitals you want to keep\n• Employer coverage details (if you're still working)\n• Questions to verify with Medicare.gov and SHIP\n\nDownload the PDF — no signup required:\n👉 https://mypartb.com/downloads/medicare-at-65-planning-workbook.pdf\n\nSave it, print it, or share the link with a friend or family member who's navigating Medicare this year.\n\nFollow the Part B Optimizer page for calm, non-sales Medicare education each week.\n\nEducational workbook only — not enrollment advice. We do not sell insurance or solicit enrollments. Not affiliated with Medicare, CMS, or any government agency.\n\n#MedicareEducation #Turning65 #MedicarePlanning`,
-  },
-  {
-    title: "TV ads make Medicare sound simple — compare the documents",
-    excerpt: "Reminder to read Evidence of Coverage, not just marketing perks.",
-    body: `Dental and vision perks are easy to understand in Medicare ads. Networks, prior authorization, and cost-sharing rules often live deeper in the plan booklet.\n\nMatch ad claims to official plan documents before you choose.\n\nEducational only — not a solicitation to enroll.\n\n#MedicareEducation`,
-  },
-  {
-    title: "Is your doctor in network for next year?",
-    excerpt: "Annual reminder to verify provider directories before enrollment.",
-    body: `Plan networks can change every contract year. A doctor who was in network last year may not be next year.\n\nVerify providers on Medicare.gov Plan Finder before you assume you can keep the same care team.\n\n#MedicareEducation`,
-  },
-  {
-    title: "Part D formulary changes can surprise you mid-year",
-    excerpt: "Educational post on prescription tier changes and appeals.",
-    body: `Each Part D plan maintains its own drug list. A medication can move tiers or require prior authorization without much fanfare.\n\nKeep your bottle handy when comparing plans on Medicare.gov.\n\n#MedicareEducation #PartD`,
-  },
-];
+function facebookPostsForReseed() {
+  const seeds = buildFacebookPostSeedCopy();
+  const workbookBySlot = new Map(
+    buildWorkbookFacebookPostTemplates().map((t) => [t.slotIndex, t]),
+  );
+  return seeds.map((seed, slotIndex) => {
+    const workbook = workbookBySlot.get(slotIndex);
+    if (workbook) {
+      return {
+        title: workbook.title,
+        excerpt: workbook.excerpt,
+        body: workbook.body,
+      };
+    }
+    return seed;
+  });
+}
+
+const FACEBOOK_POSTS = facebookPostsForReseed();
 
 async function run() {
-  // 1. Get latest batch
   const { data: batches, error: batchErr } = await supabase
     .from("content_batches")
     .select("id, name")
@@ -79,7 +71,7 @@ async function run() {
     process.exit(1);
   }
 
-  if (!batches || batches.length === 0) {
+  if (!batches?.length) {
     console.log("No content batches found in database.");
     return;
   }
@@ -87,7 +79,6 @@ async function run() {
   const batch = batches[0];
   console.log(`Found latest batch: ${batch.name} (ID: ${batch.id})`);
 
-  // 2. Fetch facebook posts for this batch
   const { data: drafts, error: draftsErr } = await supabase
     .from("content_drafts")
     .select("id, slot_index, title")
@@ -101,24 +92,41 @@ async function run() {
 
   console.log(`Found ${drafts.length} facebook post drafts in this batch.`);
 
-  // 3. Update each draft to match the new templates
   for (const draft of drafts) {
     const post = FACEBOOK_POSTS[draft.slot_index];
-    if (post) {
-      console.log(`Updating Slot ${draft.slot_index} (ID: ${draft.id}) to: "${post.title}"`);
-      const { error: updateErr } = await supabase
-        .from("content_drafts")
-        .update({
-          title: post.title,
-          excerpt: post.excerpt,
-          body: post.body,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", draft.id);
+    if (!post?.body?.trim()) continue;
+    console.log(`Updating Slot ${draft.slot_index} (ID: ${draft.id}) to: "${post.title}"`);
+    const { error: updateErr } = await supabase
+      .from("content_drafts")
+      .update({
+        title: post.title,
+        excerpt: post.excerpt,
+        body: post.body,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", draft.id);
 
-      if (updateErr) {
-        console.error(`Error updating draft ${draft.id}:`, updateErr);
-      }
+    if (updateErr) {
+      console.error(`Error updating draft ${draft.id}:`, updateErr);
+    }
+  }
+
+  const hasPersonalShare = drafts.some((d) => d.slot_index === 7);
+  if (!hasPersonalShare && FACEBOOK_POSTS[7]?.body?.trim()) {
+    const post = FACEBOOK_POSTS[7];
+    console.log(`Inserting missing slot 7: "${post.title}"`);
+    const { error: insertErr } = await supabase.from("content_drafts").insert({
+      batch_id: batch.id,
+      type: "facebook_post",
+      slot_index: 7,
+      title: post.title,
+      excerpt: post.excerpt,
+      body: post.body,
+      payload: { provider: "seed", platform: "facebook", slot: 8, audience: "personal_profile" },
+      status: "draft",
+    });
+    if (insertErr) {
+      console.error("Error inserting slot 7 draft:", insertErr);
     }
   }
 

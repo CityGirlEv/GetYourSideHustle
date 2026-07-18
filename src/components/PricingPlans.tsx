@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { AddToCartButton } from "@/components/AddToCartButton";
 import {
   formatUsd,
   LEAD_PAY_AS_YOU_GO,
@@ -9,7 +9,6 @@ import {
 } from "@/lib/lead-pricing";
 import {
   Check,
-  MapPin,
   Sparkles,
   Database,
   Mail,
@@ -19,7 +18,7 @@ import {
 } from "lucide-react";
 import type { StripePlanKey } from "@/lib/stripe-products";
 
-const FEATURE_ICONS = [MapPin, Sparkles, Database, Mail, Waypoints, Users] as const;
+const FEATURE_ICONS = [Sparkles, Database, Mail, Waypoints, Users] as const;
 
 function StarRating({ count }: { count: number }) {
   return (
@@ -107,13 +106,12 @@ export function PricingPlans({
                 <li>Additional leads: {formatUsd(sub.additionalLeadPrice)} each</li>
               </ul>
               {showActions && onSelectPlan && (
-                <Button
-                  className="w-full grad-indigo"
+                <AddToCartButton
+                  payload={{ kind: "stripe-plan", planKey: plan.key }}
+                  className="w-full"
                   disabled={!configured}
-                  onClick={() => onSelectPlan(plan.key)}
-                >
-                  {configured ? "Subscribe" : "Coming soon"}
-                </Button>
+                  disabledReason="Coming soon"
+                />
               )}
             </Card>
           );
@@ -145,15 +143,12 @@ export function PricingPlans({
                   {formatUsd(tier.price / tier.leads)} / lead
                 </div>
                 {showActions && onSelectPlan && (
-                  <Button
-                    size="sm"
-                    variant="outline"
+                  <AddToCartButton
+                    payload={{ kind: "stripe-plan", planKey }}
                     className="w-full"
                     disabled={!configured}
-                    onClick={() => onSelectPlan(planKey)}
-                  >
-                    Buy now
-                  </Button>
+                    disabledReason="Coming soon"
+                  />
                 )}
               </div>
             );

@@ -1,4 +1,5 @@
 import { AGENCY_REFERRAL_NOTICE } from "@/lib/medicare-disclaimers";
+import { PRODUCTION_SITE_ORIGIN, PUBLIC_WEBSITE_HOST } from "@/lib/site-url";
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -145,20 +146,20 @@ export function AgentMarketing() {
                 Compliance Verified
               </span>
             </div>
-            <h2 className="font-display text-xl font-bold text-foreground">Part B Optimizer Marketing Center</h2>
+            <h2 className="font-display text-xl font-bold text-foreground">Part B Optimizer Benchmark Tool Marketing Center</h2>
             <p className="text-sm text-muted-foreground leading-relaxed max-w-3xl">
-              We position **Part B Optimizer** (
-              <a href="https://mypartb.com" target="_blank" rel="noreferrer" className="underline text-indigo hover:text-indigo/80 font-medium">
-                https://mypartb.com
+              We position **Part B Optimizer Benchmark Tool** (
+              <a href={PRODUCTION_SITE_ORIGIN} target="_blank" rel="noreferrer" className="underline text-indigo hover:text-indigo/80 font-medium">
+                {PRODUCTION_SITE_ORIGIN}
               </a>
               ) strictly as an **independent educational technology platform and Third-Party Marketing Organization (TPMO)**. We do not sell insurance directly. {AGENCY_REFERRAL_NOTICE}
             </p>
           </div>
           <div className="shrink-0 bg-background/50 border border-border rounded-xl p-3 text-xs space-y-1.5 max-w-xs">
             <div className="font-bold text-foreground uppercase tracking-wide">Facebook Page Profile</div>
-            <div><strong className="text-muted-foreground">Name:</strong> Part B Optimizer</div>
+            <div><strong className="text-muted-foreground">Name:</strong> Part B Optimizer Benchmark Tool</div>
             <div><strong className="text-muted-foreground">Category:</strong> Educational Website</div>
-            <div><strong className="text-muted-foreground">CTA:</strong> Learn More &rarr; mypartb.com</div>
+            <div><strong className="text-muted-foreground">CTA:</strong> Learn More &rarr; {PUBLIC_WEBSITE_HOST}</div>
           </div>
         </div>
       </Card>
@@ -341,7 +342,7 @@ export function AgentMarketing() {
                       </div>
                       <div>
                         <div className="font-bold text-sm text-foreground flex items-center gap-1.5">
-                          Part B Optimizer
+                          Part B Optimizer Benchmark Tool
                           <ShieldCheck className="h-4 w-4 text-blue-500 fill-blue-500/10" />
                         </div>
                         <div className="text-[11px] text-muted-foreground">Sponsored · Educational Website</div>
@@ -359,7 +360,7 @@ export function AgentMarketing() {
                       <div className="p-4 flex-1 flex flex-col justify-between min-w-0">
                         <div className="space-y-1">
                           <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-wide">
-                            mypartb.com
+                            {PUBLIC_WEBSITE_HOST}
                           </div>
                           <div className="font-bold text-sm text-foreground truncate">
                             Compare Medicare Options Unbiased &amp; Anonymously
@@ -369,7 +370,7 @@ export function AgentMarketing() {
                           </p>
                         </div>
                         <div className="flex justify-between items-center mt-3 pt-2 border-t border-border/40">
-                          <span className="text-[10px] text-indigo font-semibold">mypartb.com/compare</span>
+                          <span className="text-[10px] text-indigo font-semibold">{PUBLIC_WEBSITE_HOST}/compare</span>
                           <a
                             href={content.facebookPost.link}
                             target="_blank"
@@ -427,7 +428,7 @@ export function AgentMarketing() {
                       ))}
                     </div>
                     <div className="bg-emerald/5 border border-emerald-500/20 text-emerald-700 text-xs rounded-xl p-3 text-center">
-                      <strong>Visual Theme:</strong> Harmony of deep blues and organic greens. Prominent mypartb.com logo. Clear CTA layout at the bottom panel.
+                      <strong>Visual Theme:</strong> Harmony of deep blues and organic greens. Prominent {PUBLIC_WEBSITE_HOST} logo. Clear CTA layout at the bottom panel.
                     </div>
                   </div>
                 </Card>

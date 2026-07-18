@@ -1,13 +1,14 @@
-# Part B Optimizer
+# Part B Optimizer Benchmark Tool
 
 > De-identified Medicare plan comparison platform that models Original Medicare + Medigap vs. Medicare Advantage under 2026 and 2027 federal rules. No personally identifiable information is collected — scenarios use only year of birth and ZIP3.
 
-Part B Optimizer lets consumers build a private Medicare scenario in about two minutes and receive a shareable Scenario ID they can hand to the licensed agent of their choice. Scenarios auto-delete after 90 days.
+Part B Optimizer Benchmark Tool lets consumers build a private Medicare scenario in about two minutes and receive a shareable Scenario ID they can hand to the licensed agent of their choice. Scenarios auto-delete after 90 days.
 
 ## Pages
 
 - [Home](/): Overview of the zero-PII Medicare scenario model and how it works.
-- [Build a Scenario](/scenario/new): Create a de-identified Medicare scenario and get a Scenario ID.
+- [Part B Benchmark Tool](/scenario/new): Answer a few Medicare questions and get an educational cost benchmark.
+- [Plan comparison (legacy)](/scenario/old): Full de-identified plan comparison wizard with Comparison ID.
 
 ## Optional
 

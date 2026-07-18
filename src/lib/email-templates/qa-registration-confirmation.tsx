@@ -140,9 +140,9 @@ export const template = {
     lastName: "Doe",
     email: "jane@example.com",
     qaDevices: ["iPhone", "MacBook"],
-    signInUrl: "https://mypartb.com/auth?tab=sign-in",
-    qaManualUrl: "https://mypartb.com/qa-manual",
-    testingUrl: "https://mypartb.com/testing",
+    signInUrl: "https://www.mypartb.com/auth?tab=sign-in",
+    qaManualUrl: "https://www.mypartb.com/qa-manual",
+    testingUrl: "https://www.mypartb.com/testing",
   },
 } satisfies TemplateEntry;
 

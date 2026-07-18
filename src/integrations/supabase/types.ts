@@ -305,42 +305,66 @@ export type Database = {
       expert_contact_requests: {
         Row: {
           agency_name: string | null;
+          consent_snapshot: Json | null;
+          consent_text: string | null;
           created_at: string;
           email: string;
           full_name: string | null;
           id: string;
+          ip_address: string | null;
           lead_certificate_id: string | null;
           marketing_opt_in: boolean;
           phone: string;
           scenario_code: string | null;
           scenario_id: string | null;
           scenario_snapshot: Json | null;
+          source_url: string | null;
+          submitted_at: string | null;
+          trustedform_cert_url: string | null;
+          trustedform_ping_url: string | null;
+          trustedform_token: string | null;
         };
         Insert: {
           agency_name?: string | null;
+          consent_snapshot?: Json | null;
+          consent_text?: string | null;
           created_at?: string;
           email: string;
           full_name?: string | null;
           id?: string;
+          ip_address?: string | null;
           lead_certificate_id?: string | null;
           marketing_opt_in?: boolean;
           phone: string;
           scenario_code?: string | null;
           scenario_id?: string | null;
           scenario_snapshot?: Json | null;
+          source_url?: string | null;
+          submitted_at?: string | null;
+          trustedform_cert_url?: string | null;
+          trustedform_ping_url?: string | null;
+          trustedform_token?: string | null;
         };
         Update: {
           agency_name?: string | null;
+          consent_snapshot?: Json | null;
+          consent_text?: string | null;
           created_at?: string;
           email?: string;
           full_name?: string | null;
           id?: string;
+          ip_address?: string | null;
           lead_certificate_id?: string | null;
           marketing_opt_in?: boolean;
           phone?: string;
           scenario_code?: string | null;
           scenario_id?: string | null;
           scenario_snapshot?: Json | null;
+          source_url?: string | null;
+          submitted_at?: string | null;
+          trustedform_cert_url?: string | null;
+          trustedform_ping_url?: string | null;
+          trustedform_token?: string | null;
         };
         Relationships: [
           {
@@ -359,6 +383,7 @@ export type Database = {
           assigned_agent_name: string | null;
           client_metadata: Json;
           consent_snapshot: Json;
+          consent_text: string | null;
           contact_authorized: boolean;
           consumer_name: string;
           created_at: string;
@@ -370,7 +395,11 @@ export type Database = {
           phone: string;
           privacy_acknowledged: boolean;
           scenario_code: string | null;
+          source_url: string | null;
           submitted_at: string;
+          trustedform_cert_url: string | null;
+          trustedform_ping_url: string | null;
+          trustedform_token: string | null;
           user_agent: string | null;
         };
         Insert: {
@@ -379,6 +408,7 @@ export type Database = {
           assigned_agent_name?: string | null;
           client_metadata?: Json;
           consent_snapshot: Json;
+          consent_text?: string | null;
           contact_authorized?: boolean;
           consumer_name: string;
           created_at?: string;
@@ -390,7 +420,11 @@ export type Database = {
           phone: string;
           privacy_acknowledged?: boolean;
           scenario_code?: string | null;
+          source_url?: string | null;
           submitted_at?: string;
+          trustedform_cert_url?: string | null;
+          trustedform_ping_url?: string | null;
+          trustedform_token?: string | null;
           user_agent?: string | null;
         };
         Update: {
@@ -399,6 +433,7 @@ export type Database = {
           assigned_agent_name?: string | null;
           client_metadata?: Json;
           consent_snapshot?: Json;
+          consent_text?: string | null;
           contact_authorized?: boolean;
           consumer_name?: string;
           created_at?: string;
@@ -410,7 +445,11 @@ export type Database = {
           phone?: string;
           privacy_acknowledged?: boolean;
           scenario_code?: string | null;
+          source_url?: string | null;
           submitted_at?: string;
+          trustedform_cert_url?: string | null;
+          trustedform_ping_url?: string | null;
+          trustedform_token?: string | null;
           user_agent?: string | null;
         };
         Relationships: [
@@ -659,6 +698,7 @@ export type Database = {
         Row: {
           agent_notes: string | null;
           assigned_agent_id: string | null;
+          assigned_at: string | null;
           birth_year: number;
           claimed_at: string | null;
           claimed_by: string | null;
@@ -680,6 +720,7 @@ export type Database = {
         Insert: {
           agent_notes?: string | null;
           assigned_agent_id?: string | null;
+          assigned_at?: string | null;
           birth_year: number;
           claimed_at?: string | null;
           claimed_by?: string | null;
@@ -701,6 +742,7 @@ export type Database = {
         Update: {
           agent_notes?: string | null;
           assigned_agent_id?: string | null;
+          assigned_at?: string | null;
           birth_year?: number;
           claimed_at?: string | null;
           claimed_by?: string | null;

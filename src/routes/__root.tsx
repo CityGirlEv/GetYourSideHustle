@@ -12,15 +12,22 @@ import { useEffect, useRef } from "react";
 
 import appCss from "../styles.css?url";
 import { AppProvider } from "@/lib/app-store";
+import { CartProvider } from "@/lib/cart-store";
 import { Toaster } from "@/components/ui/sonner";
 import { ConfirmProvider } from "@/components/ConfirmDialog";
 import { QAOnboardingGate } from "@/components/QAOnboardingDialog";
 import { DeployVersionGate } from "@/components/DeployVersionGate";
 import { AuthRecoveryGate } from "@/components/auth/AuthRecoveryGate";
-import { GlobalBusyIndicator } from "@/components/GlobalBusyIndicator";
 import { supabase } from "@/integrations/supabase/client";
 import { getEnvVariable } from "@/lib/env";
+import {
+  buildMetaPixelInitScript,
+  getMetaPixelId,
+  metaPixelNoscriptSrc,
+  trackMetaPageView,
+} from "@/lib/meta-pixel";
 import { SITE_BRAND_NAME } from "@/lib/site-brand";
+import { ogImageUrl } from "@/lib/site-url";
 
 function NotFoundComponent() {
   return (
@@ -114,16 +121,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       {
         property: "og:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9760489b-c5dc-49c9-a55e-8d71d9a248c8/id-preview-0fae72f9--ddccd332-57e9-4c5b-956b-437effa2470c.lovable.app-1779404467518.png",
+        content: ogImageUrl(),
       },
       {
         name: "twitter:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9760489b-c5dc-49c9-a55e-8d71d9a248c8/id-preview-0fae72f9--ddccd332-57e9-4c5b-956b-437effa2470c.lovable.app-1779404467518.png",
+        content: ogImageUrl(),
       },
     ],
     links: [
+      { rel: "icon", type: "image/png", href: "/favicon.png" },
       {
         rel: "preconnect",
         href: "https://fonts.googleapis.com",
@@ -161,15 +167,34 @@ function RootShell({ children }: { children: React.ReactNode }) {
   }
 
   const envScript = `if (!window.__ENV__) { window.__ENV__ = ${JSON.stringify(env)}; }`;
+  const fontScaleScript = `(function(){try{var s=localStorage.getItem("font-scale");var scale=s?parseFloat(s):1;if(!isNaN(scale)&&scale>0){document.documentElement.style.fontSize=(16*scale)+"px"}}catch(e){}})();`;
+  const metaPixelId = getMetaPixelId();
 
   return (
     <html lang="en">
       <head>
         <HeadContent />
         <script dangerouslySetInnerHTML={{ __html: envScript }} />
+        <script dangerouslySetInnerHTML={{ __html: fontScaleScript }} />
+        {metaPixelId ? (
+          <script
+            dangerouslySetInnerHTML={{ __html: buildMetaPixelInitScript(metaPixelId) }}
+          />
+        ) : null}
       </head>
       <body>
         {children}
+        {metaPixelId ? (
+          <noscript>
+            <img
+              height="1"
+              width="1"
+              style={{ display: "none" }}
+              alt=""
+              src={metaPixelNoscriptSrc(metaPixelId)}
+            />
+          </noscript>
+        ) : null}
         <Scripts />
       </body>
     </html>
@@ -180,6 +205,16 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const lastTrackedRef = useRef<string | null>(null);
+  const metaPixelBootedRef = useRef(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (metaPixelBootedRef.current) {
+      trackMetaPageView();
+    } else {
+      metaPixelBootedRef.current = true;
+    }
+  }, [pathname]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -209,14 +244,15 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AppProvider>
-        <ConfirmProvider>
-          <Outlet />
-          <AuthRecoveryGate />
-          <QAOnboardingGate />
-          <DeployVersionGate />
-          <GlobalBusyIndicator />
-          <Toaster position="top-right" richColors />
-        </ConfirmProvider>
+        <CartProvider>
+          <ConfirmProvider>
+            <Outlet />
+            <AuthRecoveryGate />
+            <QAOnboardingGate />
+            <DeployVersionGate />
+            <Toaster position="top-right" richColors />
+          </ConfirmProvider>
+        </CartProvider>
       </AppProvider>
     </QueryClientProvider>
   );

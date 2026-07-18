@@ -21,12 +21,56 @@ import {
   scenarioMedicationRetailAnnual,
   scenarioMedicationRetailMonthly,
 } from "./scenario-display";
+import {
+  BENCHMARK_SCOPE_NOTE,
+  MEDICARE_BENCHMARK_NOTICE,
+} from "@/lib/medicare-disclaimers";
 
 const MEDICARE_HANDBOOK_URL = "https://www.medicare.gov/Pubs/pdf/10050-Medicare-and-You.pdf";
 const PDF_LINE_HEIGHT = 1.18;
 const PDF_FOOTER_RESERVE = 46;
+const PDF_SECTION_TITLE_GAP = 18;
 
 type LastAutoTableDoc = jsPDF & { lastAutoTable?: { finalY: number } };
+
+function pageContentBottom(doc: jsPDF): number {
+  return doc.internal.pageSize.getHeight() - PDF_FOOTER_RESERVE;
+}
+
+/** Start a new page when the remaining space is too small for the next block. */
+function ensurePdfSpace(
+  doc: jsPDF,
+  y: number,
+  minHeight: number,
+  topY = 60,
+  orientation?: "portrait" | "landscape",
+): number {
+  if (y + minHeight > pageContentBottom(doc)) {
+    if (orientation === "landscape") {
+      doc.addPage("letter", "landscape");
+    } else {
+      doc.addPage();
+    }
+    return topY;
+  }
+  return y;
+}
+
+/** Draw a section heading and return the Y position for content below it. */
+function sectionTitleY(
+  doc: jsPDF,
+  title: string,
+  x: number,
+  y: number,
+  fontSize = 12,
+  color: [number, number, number] = [20, 20, 20],
+): number {
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(fontSize);
+  doc.setTextColor(...color);
+  doc.text(title, x, y);
+  return y + PDF_SECTION_TITLE_GAP;
+}
 
 function splitLines(doc: jsPDF, text: string, maxWidth: number): string[] {
   return doc.splitTextToSize(text, maxWidth) as string[];
@@ -120,7 +164,7 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
-  doc.text("Part B Optimizer", margin, 30);
+  doc.text("Part B Optimizer Benchmark Tool", margin, 30);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
   doc.text(`Scenario ${input.scenarioCode} · Plan year ${input.year}`, margin, 50);
@@ -199,14 +243,13 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
   if (top) {
     doc.addPage();
     renderRecommendationPage(doc, input, top, second, pageW, margin);
+    doc.addPage();
+    y = 60;
   }
 
   // Side-by-side comparison
   doc.setTextColor(20, 20, 20);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(13);
-  doc.text("Side-by-side benefit comparison", margin, y);
-  y += 10;
+  y = sectionTitleY(doc, "Side-by-side benefit comparison", margin, y, 13);
 
   const labelCol = [
     "Monthly premium",
@@ -256,7 +299,7 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
   doc.setFontSize(12);
   doc.text("Cost breakdown — recommended", margin, y);
   doc.text("Cost breakdown — alternative", margin + (pageW - margin * 2) / 2 + 10, y);
-  y += 6;
+  y += PDF_SECTION_TITLE_GAP;
 
   const colW = (pageW - margin * 2 - 10) / 2;
 
@@ -335,17 +378,12 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(90, 90, 90);
-  doc.text(
-    `Standardized Medicare Supplement (Plan G & Plan N) premiums for Age ${new Date().getFullYear() - input.birthYear}, ${input.gender}${input.tobacco ? ", Tobacco Smoker" : ", Non-smoker"}.`,
-    margin,
-    y + 12,
-    { maxWidth: pageW - margin * 2 },
-  );
-  y += 28;
+  const pathwayAIntro = `Standardized Medicare Supplement (Plan G & Plan N) premiums for Age ${new Date().getFullYear() - input.birthYear}, ${input.gender}${input.tobacco ? ", Tobacco Smoker" : ", Non-smoker"}.`;
+  y = drawWrappedText(doc, pathwayAIntro, margin, y + 12, pageW - margin * 2, 9) + 12;
 
   autoTable(doc, {
     startY: y,
-    head: [["Supplement Carrier", "Plan G Premium", "Plan N Premium", "A.M. Best", "Portal"]],
+    head: [["Supplement Carrier", "Plan G Premium", "Plan N Premium", "A.M. Best"]],
     body: CMS_CATALOG.medigapCarriers.slice(0, 8).map((c, i) => {
       const mult = [1.08, 0.99, 1.0, 1.02, 0.96, 1.05, 0.94, 1.03][i] ?? 1;
       return [
@@ -353,34 +391,22 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
         fmtMo(baseG * mult),
         fmtMo(baseN * mult),
         c["A.M. Best Rating"],
-        c["Carrier Portal"] ?? "Visit carrier portal",
       ];
     }),
     headStyles: { fillColor: [16, 122, 87], textColor: 255, fontSize: 9 },
     styles: { fontSize: 8.5, cellPadding: 5 },
     columnStyles: { 1: { halign: "right" }, 2: { halign: "right" } },
     margin: { left: margin, right: margin },
-    didDrawCell: (data) => {
-      if (data.section !== "body" || data.column.index !== 4) return;
-      const url = String(data.cell.raw ?? "");
-      if (!/^https?:\/\//i.test(url)) return;
-      const { x, y, width, height } = data.cell;
-      doc.setTextColor(16, 122, 87);
-      doc.setFontSize(8.5);
-      doc.textWithLink("Visit Portal ↗", x + 5, y + height / 2 + 2, { url });
-      data.cell.text = [""]; // suppress default raw URL render
-    },
   });
   y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 18;
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
   doc.setTextColor(20, 20, 20);
-  doc.text("Standalone Prescription Drug Plans (Part D)", margin, y);
-  y += 6;
+  y = sectionTitleY(doc, "Standalone Prescription Drug Plans (Part D)", margin, y);
   autoTable(doc, {
     startY: y,
-    head: [["Part D Carrier", "Basic PDP", "Standard PDP", "Star Rating", "Portal"]],
+    head: [["Part D Carrier", "Basic PDP", "Standard PDP", "Star Rating"]],
     body: CMS_CATALOG.partDCarriers.slice(0, 6).map((c, i) => {
       const mult = [0.72, 0.83, 1.15, 1.05, 0.95, 1.0][i] ?? 1;
       return [
@@ -388,23 +414,12 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
         fmtMo(basePartD * mult * 0.55),
         fmtMo(basePartD * mult),
         ["3.5 Stars", "4.0 Stars", "4.5 Stars"][i % 3],
-        c["Carrier Portal"] ?? "Visit Rx portal",
       ];
     }),
     headStyles: { fillColor: [16, 122, 87], textColor: 255, fontSize: 9 },
     styles: { fontSize: 8.5, cellPadding: 5 },
     columnStyles: { 1: { halign: "right" }, 2: { halign: "right" } },
     margin: { left: margin, right: margin },
-    didDrawCell: (data) => {
-      if (data.section !== "body" || data.column.index !== 4) return;
-      const url = String(data.cell.raw ?? "");
-      if (!/^https?:\/\//i.test(url)) return;
-      const { x, y, height } = data.cell;
-      doc.setTextColor(16, 122, 87);
-      doc.setFontSize(8.5);
-      doc.textWithLink("Visit Rx Portal ↗", x + 5, y + height / 2 + 2, { url });
-      data.cell.text = [""];
-    },
   });
 
   // ---------- Pathway B — Medicare Advantage ----------
@@ -418,18 +433,19 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(90, 90, 90);
-  doc.text(
+  y = drawWrappedText(
+    doc,
     "Coordinated HMO and PPO networks offering low upfront costs and bundled dental/vision/hearing/OTC benefits.",
     margin,
     y + 12,
-    { maxWidth: pageW - margin * 2 },
-  );
-  y += 28;
+    pageW - margin * 2,
+    9,
+  ) + 12;
 
   autoTable(doc, {
     startY: y,
     head: [
-      ["Carrier", "HMO Premium", "PPO Premium", "Star Rating", "Network Characteristics", "Portal"],
+      ["Carrier", "HMO Premium", "PPO Premium", "Star Rating", "Network Characteristics"],
     ],
     body: CMS_CATALOG.advantageCarriers.slice(0, 8).map((c, i) => {
       const hmo = [0, 0, 0, 0, 14, 0, 0, 18][i] ?? 0;
@@ -440,7 +456,6 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
         ppo === 0 ? "$0/mo" : `$${ppo}/mo`,
         ["4.0", "4.5", "4.0", "3.5", "4.0", "4.0", "3.5", "4.0"][i] + " Stars",
         c["Key Characteristics"],
-        c["Carrier Portal"] ?? "Visit Advantage Portal",
       ];
     }),
     headStyles: { fillColor: [16, 122, 87], textColor: 255, fontSize: 9 },
@@ -449,29 +464,14 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
       1: { halign: "right" },
       2: { halign: "right" },
       4: { cellWidth: 170 },
-      5: { cellWidth: 70 },
     },
     margin: { left: margin, right: margin },
-    didDrawCell: (data) => {
-      if (data.section !== "body" || data.column.index !== 5) return;
-      const url = String(data.cell.raw ?? "");
-      if (!/^https?:\/\//i.test(url)) return;
-      const { x, y, height } = data.cell;
-      doc.setTextColor(16, 122, 87);
-      doc.setFontSize(8.5);
-      doc.textWithLink("Visit Portal ↗", x + 5, y + height / 2 + 2, { url });
-      data.cell.text = [""];
-    },
   });
   y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 18;
 
   const lc = input.conditions.map((c) => c.toLowerCase()).join(" ");
   if (/diabetes|heart|copd|kidney|cancer/.test(lc)) {
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.setTextColor(20, 20, 20);
-    doc.text("Specialized Chronic Special Needs Plans (C-SNP)", margin, y);
-    y += 6;
+    y = sectionTitleY(doc, "Specialized Chronic Special Needs Plans (C-SNP)", margin, y);
     autoTable(doc, {
       startY: y,
       head: [["C-SNP Carrier", "Qualifying Focus", "Stars", "Bundled Disease Perks"]],
@@ -576,16 +576,14 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
   doc.setTextColor(90, 90, 90);
-  doc.text(
-    `Side-by-side line-item view of every premium, deductible, copay, drug tier, and bundled benefit. Total monthly = Part B + plan + Part D + dental + vision + extras (hearing / OTC / wellness) where applicable.`,
-    lsMargin,
-    66,
-    { maxWidth: lsW - lsMargin * 2 },
-  );
+  const lsIntro =
+    "Side-by-side line-item view of every premium, deductible, copay, drug tier, and bundled benefit. Total monthly = Part B + plan + Part D + dental + vision + extras (hearing / OTC / wellness) where applicable.";
+  const lsTableStartY =
+    drawWrappedText(doc, lsIntro, lsMargin, 68, lsW - lsMargin * 2, 8.5) + 12;
 
   // Monthly premium breakdown table
   autoTable(doc, {
-    startY: 82,
+    startY: lsTableStartY,
     head: [
       [
         "#",
@@ -631,11 +629,8 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
   });
   let lsY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 14;
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.setTextColor(20, 20, 20);
-  doc.text("Medical cost-sharing & out-of-pocket detail", lsMargin, lsY);
-  lsY += 4;
+  lsY = ensurePdfSpace(doc, lsY, 90, 50, "landscape");
+  lsY = sectionTitleY(doc, "Medical cost-sharing & out-of-pocket detail", lsMargin, lsY, 10);
   autoTable(doc, {
     startY: lsY,
     head: [
@@ -669,10 +664,8 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
   });
   lsY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 14;
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.text("Prescription drug detail (Part D / MA-PD)", lsMargin, lsY);
-  lsY += 4;
+  lsY = ensurePdfSpace(doc, lsY, 90, 50, "landscape");
+  lsY = sectionTitleY(doc, "Prescription drug detail (Part D / MA-PD)", lsMargin, lsY, 10);
   autoTable(doc, {
     startY: lsY,
     head: [
@@ -708,11 +701,8 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
     doc.addPage("letter", "landscape");
     lsY = 50;
   }
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.setTextColor(20, 20, 20);
-  doc.text("Ancillary benefits — dental, vision, hearing, OTC", lsMargin, lsY);
-  lsY += 4;
+  lsY = ensurePdfSpace(doc, lsY, 90, 50, "landscape");
+  lsY = sectionTitleY(doc, "Ancillary benefits — dental, vision, hearing, OTC", lsMargin, lsY, 10);
   autoTable(doc, {
     startY: lsY,
     head: [["#", "Carrier", "Dental", "Vision", "Hearing", "OTC / wellness"]],
@@ -730,24 +720,19 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
     margin: { left: lsMargin, right: lsMargin },
   });
 
-  // ---------- Yearly cost scenario based on health profile ----------
+  // ---------- Yearly cost scenario based on reported input ----------
   doc.addPage();
   y = 60;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(15);
   doc.setTextColor(20, 20, 20);
-  doc.text("Annual cost scenario — based on your reported health profile", margin, y);
+  doc.text("Annual cost scenario — based on your reported input", margin, y);
   y += 8;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(90, 90, 90);
-  doc.text(
-    `Projected utilization for a Medicare beneficiary with: ${input.conditions.join(", ") || "no chronic conditions reported"}. Estimates assume typical care patterns at CMS national average reimbursement rates.`,
-    margin,
-    y + 12,
-    { maxWidth: pageW - margin * 2 },
-  );
-  y += 36;
+  const annualIntro = `Projected utilization for a Medicare beneficiary with: ${input.conditions.join(", ") || "no chronic conditions reported"}. Estimates assume typical care patterns at CMS national average reimbursement rates.`;
+  y = drawWrappedText(doc, annualIntro, margin, y + 12, pageW - margin * 2, 9) + 12;
 
   // Build expected utilization line items from conditions
   const cond = input.conditions.map((c) => c.toLowerCase()).join(" ");
@@ -965,8 +950,7 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
   doc.setTextColor(20, 20, 20);
-  doc.text("What this scenario costs you on each pathway", margin, y);
-  y += 6;
+  y = sectionTitleY(doc, "What this scenario costs you on each pathway", margin, y);
 
   const medicalRetail = totalRetail - rxAnnualRetail - g.partDOOPCap;
   const aPathwayOOP = g.partBDeductible; // Plan G covers almost everything else
@@ -1043,7 +1027,7 @@ export function buildScenarioPdf(input: ScenarioPdfInput): jsPDF {
   // Footer disclaimer
   stampPdfFooters(
     doc,
-    "This tool compares sample Medicare plan options for educational purposes only. It is not a complete listing of plans available in your area. For a complete listing, contact Medicare.gov or 1-800-MEDICARE.",
+    MEDICARE_BENCHMARK_NOTICE,
     margin,
   );
 
@@ -1316,13 +1300,14 @@ export function buildConsumerScenarioPdf(input: ScenarioPdfInput): jsPDF {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     doc.setTextColor(90, 90, 90);
-    doc.text(
+    my = drawWrappedText(
+      doc,
       "Each medication classified using CMS Part D tier guidance. Actual tier and copay vary by plan formulary.",
       margin,
       my + 12,
-      { maxWidth: pageW - margin * 2 },
-    );
-    my += 28;
+      pageW - margin * 2,
+      9,
+    ) + 12;
 
     const drugRows = buildDrugReport(input.medications);
     const totalMo = drugRows.reduce((s, r) => s + r.estPlanMonthly, 0);
@@ -1365,9 +1350,8 @@ export function buildConsumerScenarioPdf(input: ScenarioPdfInput): jsPDF {
   doc.setFontSize(10);
   doc.setTextColor(60, 60, 60);
   const disclaimer = [
-    "This summary is provided for educational purposes only and is not a complete listing of plans available in your area.",
-    "Estimated drug tiers, copays, premiums, and out-of-pocket costs are illustrative. Actual benefits and pricing vary by plan formulary, effective date, county, age, and personal eligibility.",
-    "Nothing in this document constitutes insurance, medical, tax, or legal advice. Please verify benefits and coverage with the carrier or a licensed insurance agent before enrolling.",
+    `${BENCHMARK_SCOPE_NOTE} Estimated drug tiers, copays, premiums, and out-of-pocket costs are illustrative. Actual benefits and pricing vary by formulary, effective date, county, age, and personal eligibility.`,
+    "Nothing in this document constitutes insurance, medical, tax, or legal advice. Please verify benefit details with a licensed insurance agent before enrolling.",
     "For the official Medicare program details, please refer to the latest Medicare & You handbook published by the Centers for Medicare & Medicaid Services (CMS).",
   ];
   disclaimer.forEach((line) => {
@@ -1387,7 +1371,7 @@ export function buildConsumerScenarioPdf(input: ScenarioPdfInput): jsPDF {
   // Footer disclaimer
   stampPdfFooters(
     doc,
-    "Educational comparison only — not a complete listing of plans, not insurance, medical, tax, or legal advice. Verify benefits with the carrier or a licensed agent. See the Medicare & You handbook for official details.",
+    "Educational benchmark only — not a carrier plan catalog, not insurance, medical, tax, or legal advice. Verify benefit details with a licensed agent. See the Medicare & You handbook for official details.",
     margin,
   );
 
@@ -1490,19 +1474,6 @@ function renderRecommendationPage(
   const medicationLines = input.medications?.length
     ? input.medications.map(formatScenarioMedicationLine)
     : ["None reported"];
-  const conditionsH = wrappedTextHeight(doc, conditionsText, contentW, 9);
-  const medsH = medicationLines.reduce(
-    (sum, line) => sum + wrappedTextHeight(doc, line, contentW, 9) + 2,
-    0,
-  );
-  const snapH = 56 + conditionsH + 16 + 12 + medsH + 12;
-  doc.setFillColor(248, 251, 249);
-  doc.setDrawColor(210, 225, 218);
-  doc.roundedRect(margin, y, pageW - margin * 2, snapH, 6, 6, "FD");
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
-  doc.setTextColor(16, 122, 87);
-  doc.text("YOUR PLAN COMPARISON AT A GLANCE", margin + 12, y + 14);
   const cells: { label: string; value: string }[] = [
     { label: "Age", value: String(age) },
     { label: "ZIP region", value: `${input.zip3}xx` },
@@ -1513,41 +1484,62 @@ function renderRecommendationPage(
       value: input.costPreference === "minimize_monthly" ? "Low monthly" : "Predictability",
     },
   ];
+  const conditionsH = wrappedTextHeight(doc, conditionsText, contentW, 9);
+  const medsH = medicationLines.reduce(
+    (sum, line) => sum + wrappedTextHeight(doc, line, contentW, 9) + 2,
+    0,
+  );
   const cellW = (pageW - margin * 2 - 24) / cells.length;
+  const cellValueH = Math.max(
+    ...cells.map((c) => wrappedTextHeight(doc, c.value, cellW - 4, 9.5)),
+  );
+  const clinicalY = y + 44 + cellValueH + 12;
+  const medsLabelY = clinicalY + 12 + conditionsH + 8;
+  const medsEndY = medsLabelY + 12 + medsH;
+  const snapH = medsEndY - y + 12;
+  y = ensurePdfSpace(doc, y, snapH + 14);
+  const snapshotY = y;
+  const snapshotClinicalY = snapshotY + 44 + cellValueH + 12;
+  doc.setFillColor(248, 251, 249);
+  doc.setDrawColor(210, 225, 218);
+  doc.roundedRect(margin, snapshotY, pageW - margin * 2, snapH, 6, 6, "FD");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(16, 122, 87);
+  doc.text("YOUR PLAN COMPARISON AT A GLANCE", margin + 12, snapshotY + 14);
   cells.forEach((c, i) => {
     const cx = margin + 12 + i * cellW;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
     doc.setTextColor(120, 120, 120);
-    doc.text(c.label.toUpperCase(), cx, y + 28);
+    doc.text(c.label.toUpperCase(), cx, snapshotY + 28);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9.5);
     doc.setTextColor(20, 20, 20);
-    doc.text(c.value, cx, y + 44, { maxWidth: cellW - 4 });
+    drawWrappedText(doc, c.value, cx, snapshotY + 44, cellW - 4, 9.5);
   });
 
-  const clinicalY = y + 56;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7.5);
   doc.setTextColor(120, 120, 120);
-  doc.text("CONDITIONS", margin + 12, clinicalY);
+  doc.text("CONDITIONS", margin + 12, snapshotClinicalY);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(20, 20, 20);
-  const medsLabelY =
-    drawWrappedText(doc, conditionsText, margin + 12, clinicalY + 12, contentW, 9) + 8;
+  const medsLabelYActual =
+    drawWrappedText(doc, conditionsText, margin + 12, snapshotClinicalY + 12, contentW, 9) + 8;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7.5);
   doc.setTextColor(120, 120, 120);
-  doc.text("MEDICATIONS", margin + 12, medsLabelY);
+  doc.text("MEDICATIONS", margin + 12, medsLabelYActual);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(20, 20, 20);
-  let medY = medsLabelY + 12;
+  let medY = medsLabelYActual + 12;
   medicationLines.forEach((line) => {
     medY = drawWrappedText(doc, line, margin + 12, medY, contentW, 9) + 2;
   });
-  y += snapH + 14;
+  y = snapshotY + snapH + 14;
 
   // ---------- Why this plan ----------
   const reasons: string[] = [];
@@ -1577,16 +1569,17 @@ function renderRecommendationPage(
       `Formulary fit checked against your ${medCount} medication${medCount === 1 ? "" : "s"} — Tier 1 generics at ${rec.rxTier1}, insulin capped at ${usd(rec.insulinCap)}/mo.`,
     );
   reasons.push(
-    `Carrier financial strength: A.M. Best ${rec.amBest} · CMS Star Rating ${rec.stars}.`,
+    `Carrier financial strength: A.M. Best ${rec.amBest}. CMS Star Rating ${rec.stars}.`,
   );
 
   doc.setFillColor(255, 251, 235);
   doc.setDrawColor(230, 200, 110);
-  const reasonWidth = pageW - margin * 2 - 36;
+  const reasonTextWidth = pageW - margin * 2 - 40;
   const whyH =
     28 +
-    reasons.reduce((sum, r) => sum + wrappedTextHeight(doc, r, reasonWidth, 8.5) + 5, 0) +
+    reasons.reduce((sum, r) => sum + wrappedTextHeight(doc, r, reasonTextWidth, 8.5) + 5, 0) +
     10;
+  y = ensurePdfSpace(doc, y, whyH + 20);
   doc.roundedRect(margin, y, pageW - margin * 2, whyH, 6, 6, "FD");
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
@@ -1598,17 +1591,15 @@ function renderRecommendationPage(
   let reasonY = y + 28;
   reasons.forEach((r) => {
     doc.text("•", margin + 14, reasonY);
-    reasonY = drawWrappedText(doc, r, margin + 22, reasonY, reasonWidth, 8.5) + 5;
+    reasonY = drawWrappedText(doc, r, margin + 22, reasonY, reasonTextWidth, 8.5) + 5;
   });
   y += whyH + 14;
 
   // Monthly premium breakdown
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(12);
-  doc.setTextColor(20, 20, 20);
-  doc.text("Monthly premium breakdown", margin, y);
+  y = ensurePdfSpace(doc, y, 240);
+  y = sectionTitleY(doc, "Monthly premium breakdown", margin, y);
   autoTable(doc, {
-    startY: y + 6,
+    startY: y,
     head: [["Component", "Monthly", "Annual"]],
     body: [
       ["Medicare Part B premium", fmtMo(rec.premiumPartB), usd(Math.round(rec.premiumPartB * 12))],
@@ -1645,16 +1636,15 @@ function renderRecommendationPage(
     footStyles: { fillColor: [232, 245, 238], textColor: [16, 122, 87], fontStyle: "bold" },
     styles: { fontSize: 9, cellPadding: 5 },
     columnStyles: { 1: { halign: "right" }, 2: { halign: "right" } },
-    margin: { left: margin, right: margin },
+    margin: { left: margin, right: margin, ...PDF_TABLE_MARGIN },
   });
   y = tableEndY(doc) + 14;
 
   // Medical cost-sharing
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(12);
-  doc.text("Medical cost-sharing", margin, y);
+  y = ensurePdfSpace(doc, y, 200);
+  y = sectionTitleY(doc, "Medical cost-sharing", margin, y);
   autoTable(doc, {
-    startY: y + 6,
+    startY: y,
     head: [["Service", "Member cost"]],
     body: [
       ["Medical deductible", rec.deductibleMed ? usd(rec.deductibleMed) : "$0"],
@@ -1668,23 +1658,21 @@ function renderRecommendationPage(
     headStyles: { fillColor: [16, 122, 87], textColor: 255, fontSize: 9 },
     styles: { fontSize: 9, cellPadding: 5 },
     columnStyles: { 0: { fontStyle: "bold", cellWidth: 200 } },
-    margin: { left: margin, right: margin },
+    margin: { left: margin, right: margin, ...PDF_TABLE_MARGIN },
   });
   y = tableEndY(doc) + 14;
 
-  if (y > doc.internal.pageSize.getHeight() - PDF_FOOTER_RESERVE - 120) {
-    doc.addPage();
-    y = 60;
-  }
-
   // Drug & ancillary side-by-side
+  y = ensurePdfSpace(doc, y, 180);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
+  doc.setTextColor(20, 20, 20);
   doc.text("Prescription drugs", margin, y);
   doc.text("Bundled benefits", margin + (pageW - margin * 2) / 2 + 10, y);
+  const drugTableY = y + PDF_SECTION_TITLE_GAP;
   const colW = (pageW - margin * 2 - 10) / 2;
   autoTable(doc, {
-    startY: y + 6,
+    startY: drugTableY,
     head: [["Tier / item", "Cost"]],
     body: [
       ["Rx deductible", rec.deductibleRx ? usd(rec.deductibleRx) : "$0"],
@@ -1696,12 +1684,12 @@ function renderRecommendationPage(
     ],
     headStyles: { fillColor: [16, 122, 87], textColor: 255, fontSize: 9 },
     styles: { fontSize: 8.5, cellPadding: 4 },
-    margin: { left: margin },
+    margin: { left: margin, ...PDF_TABLE_MARGIN },
     tableWidth: colW,
   });
   const leftEnd = tableEndY(doc);
   autoTable(doc, {
-    startY: y + 6,
+    startY: drugTableY,
     head: [["Benefit", "Coverage"]],
     body: [
       ["Dental", rec.dentalBenefit],
@@ -1712,7 +1700,7 @@ function renderRecommendationPage(
     ],
     headStyles: { fillColor: [16, 122, 87], textColor: 255, fontSize: 9 },
     styles: { fontSize: 8.5, cellPadding: 4 },
-    margin: { left: margin + colW + 10 },
+    margin: { left: margin + colW + 10, ...PDF_TABLE_MARGIN },
     tableWidth: colW,
   });
   const rightEnd = tableEndY(doc);
@@ -1720,10 +1708,6 @@ function renderRecommendationPage(
 
   // Alternate
   if (alt) {
-    if (y > doc.internal.pageSize.getHeight() - PDF_FOOTER_RESERVE - 80) {
-      doc.addPage();
-      y = 60;
-    }
     const altW = pageW - margin * 2 - 28;
     const altTitle = `${alt.carrier} — ${alt.plan}`;
     const altSub = `${fmtMo(alt.monthly)} all-in · ${usd(alt.annual)}/yr estimated · ${alt.stars}`;
@@ -1732,6 +1716,7 @@ function renderRecommendationPage(
       wrappedTextHeight(doc, altTitle, altW, 12) +
       wrappedTextHeight(doc, altSub, altW, 9) +
       12;
+    y = ensurePdfSpace(doc, y, altBoxH + 10);
     doc.setFillColor(248, 248, 248);
     doc.setDrawColor(180, 180, 180);
     doc.roundedRect(margin, y, pageW - margin * 2, altBoxH, 6, 6, "FD");

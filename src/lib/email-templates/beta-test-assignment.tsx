@@ -164,8 +164,8 @@ export const template = {
   displayName: "Beta test assignment",
   previewData: {
     testerName: "Jane",
-    loginUrl: "https://mypartb.com/auth?tab=sign-in",
-    testingUrl: "https://mypartb.com/testing",
+    loginUrl: "https://www.mypartb.com/auth?tab=sign-in",
+    testingUrl: "https://www.mypartb.com/testing",
     newTests: [
       {
         id: "AUTH-QA-001",

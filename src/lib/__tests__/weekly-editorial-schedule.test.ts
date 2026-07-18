@@ -7,7 +7,9 @@ import {
   EDITORIAL_ENTITY_READY_DATE,
   EDITORIAL_ROUND_START_DATE,
   editorialLaunchWeekStart,
+  DOCTOR_NETWORK_CONTENT_DATE,
   editorialWeekStart,
+  isDoctorNetworkContentWeek,
   formatLaunchWeekLabel,
   hasExistingArticleLibrary,
   formatEditorialTimeLabel,
@@ -19,7 +21,6 @@ import {
   startOfWeekSaturday,
   weeksBeforeLaunch,
 } from "@/lib/content-factory/weekly-editorial-schedule";
-import { weeklyBatchAssetTotal } from "@/lib/content-factory/types";
 
 describe("weekly-editorial-schedule", () => {
   const sprintWeekStart = new Date(2026, 5, 13); // Sat Jun 13 — one week before kickoff
@@ -44,12 +45,18 @@ describe("weekly-editorial-schedule", () => {
     expect(formatIsoDate(startOfWeekSaturday(new Date(2026, 5, 17)))).toBe("2026-06-13");
   });
 
-  it("creates produce and launch events for every weekly asset", () => {
+  it("creates produce and launch events for weekly assets (FB + image prompts folded into parent tasks)", () => {
     const events = buildWeeklyEditorialCalendar({ weekStart: launchWeekStart });
     const produce = events.filter((e) => e.milestone === "produce");
     const launch = events.filter((e) => e.milestone === "launch");
-    expect(produce).toHaveLength(weeklyBatchAssetTotal());
+    expect(produce).toHaveLength(6);
     expect(launch.length).toBeGreaterThan(0);
+    expect(events.some((e) => e.type === "image_prompt")).toBe(false);
+    expect(events.some((e) => e.type === "facebook_post" && e.milestone === "produce")).toBe(
+      false,
+    );
+    const fbPosts = events.filter((e) => e.type === "facebook_post" && e.slotIndex >= 0);
+    expect(fbPosts.every((e) => e.milestone === "launch")).toBe(true);
   });
 
   it("schedules Facebook page invites on Wednesday of Week 1", () => {
@@ -74,8 +81,83 @@ describe("weekly-editorial-schedule", () => {
       (e) => e.type === "article" && e.slotIndex === 0 && e.milestone === "launch",
     );
     expect(article1Launch?.date).toBe("2026-06-23");
-    expect(article1Launch?.title).toMatch(/Article 13/);
+    expect(article1Launch?.title).toMatch(/Prior Authorization/i);
     expect(events.some((e) => e.id === "library:promote")).toBe(true);
+  });
+
+  it("aligns Facebook article promos with article launch days when library exists", () => {
+    const events = buildWeeklyEditorialCalendar({
+      weekStart: launchWeekStart,
+      publishedArticleCount: 12,
+    });
+    const fbPriorAuth = events.find(
+      (e) => e.type === "facebook_post" && e.slotIndex === 0 && e.milestone === "launch",
+    );
+    const fbMedigap = events.find(
+      (e) => e.type === "facebook_post" && e.slotIndex === 1 && e.milestone === "launch",
+    );
+    const fbZeroPremium = events.find(
+      (e) => e.type === "facebook_post" && e.slotIndex === 2 && e.milestone === "launch",
+    );
+    expect(fbPriorAuth?.date).toBe("2026-06-23");
+    expect(fbMedigap?.date).toBe("2026-06-21");
+    expect(fbZeroPremium?.date).toBe("2026-06-25");
+  });
+
+  it("keeps June 24 and June 25 distinct from earlier week days", () => {
+    const events = buildWeeklyEditorialCalendar({
+      weekStart: launchWeekStart,
+      publishedArticleCount: 12,
+      leadMagnetPdfSavedBySlot: { "lead_magnet:0": true },
+    });
+    const june24 = events.filter((e) => e.date === "2026-06-24");
+    const june25 = events.filter((e) => e.date === "2026-06-25");
+    const june21 = events.filter((e) => e.date === "2026-06-21");
+
+    expect(june24.some((e) => e.type === "facebook_post" && e.slotIndex === 1)).toBe(false);
+    expect(june24.some((e) => e.type === "article" && e.slotIndex === 1 && e.milestone === "launch")).toBe(
+      false,
+    );
+    expect(june24.some((e) => e.id === "facebook_invite:launch")).toBe(true);
+    expect(june24.some((e) => e.type === "faq" && e.milestone === "launch")).toBe(true);
+
+    expect(june25.some((e) => e.type === "article" && e.slotIndex === 2 && e.milestone === "launch")).toBe(
+      true,
+    );
+    expect(june25.some((e) => e.type === "facebook_post" && e.slotIndex === 2)).toBe(true);
+    expect(june25.some((e) => e.type === "facebook_post" && e.slotIndex === 1)).toBe(false);
+    expect(june21.some((e) => e.type === "facebook_post" && e.slotIndex === 1)).toBe(true);
+  });
+
+  it("still shows a Facebook post launch when that slot is checked off elsewhere in the week", () => {
+    const events = buildWeeklyEditorialCalendar({
+      weekStart: launchWeekStart,
+      publishedArticleCount: 12,
+      completedFacebookPostSlots: new Set([1]),
+    });
+    const fb = events.find(
+      (e) => e.type === "facebook_post" && e.slotIndex === 1 && e.milestone === "launch",
+    );
+    expect(fb).toBeDefined();
+    expect(fb?.alreadyComplete).toBe(true);
+  });
+
+  it("keeps June 21 and June 23 calendar tasks distinct when library exists", () => {
+    const events = buildWeeklyEditorialCalendar({
+      weekStart: launchWeekStart,
+      publishedArticleCount: 12,
+    });
+    const june21 = events.filter((e) => e.date === "2026-06-21");
+    const june23 = events.filter((e) => e.date === "2026-06-23");
+    expect(june21.some((e) => e.type === "facebook_post" && e.slotIndex === 4)).toBe(true);
+    expect(june21.some((e) => e.type === "facebook_post" && e.slotIndex === 1)).toBe(true);
+    expect(june23.some((e) => e.type === "article" && e.slotIndex === 0 && e.milestone === "launch")).toBe(
+      true,
+    );
+    expect(june23.some((e) => e.type === "facebook_post" && e.slotIndex === 0)).toBe(true);
+    expect(june23.some((e) => e.type === "facebook_post" && e.slotIndex === 1)).toBe(false);
+    expect(june23.some((e) => e.type === "lead_magnet" && e.milestone === "launch")).toBe(false);
+    expect(june21.some((e) => e.type === "lead_magnet" && e.milestone === "launch")).toBe(true);
   });
 
   it("publishes article 1 on kickoff day when starting from zero", () => {
@@ -97,8 +179,21 @@ describe("weekly-editorial-schedule", () => {
     const produce = events.find((e) => e.type === "lead_magnet" && e.milestone === "produce")!;
     const launch = events.find((e) => e.type === "lead_magnet" && e.milestone === "launch")!;
     expect(produce.date).toBe("2026-06-20");
-    expect(launch.date).toBe("2026-06-23");
+    expect(launch.date).toBe("2026-06-21");
     expect(produce.date < launch.date).toBe(true);
+  });
+
+  it("still shows lead magnet launch when workbook PDF is already saved", () => {
+    const events = buildWeeklyEditorialCalendar({
+      weekStart: launchWeekStart,
+      publishedArticleCount: 12,
+      leadMagnetPdfSavedBySlot: { "lead_magnet:0": true },
+    });
+    const launch = events.find((e) => e.type === "lead_magnet" && e.milestone === "launch");
+    expect(launch).toBeDefined();
+    expect(launch?.alreadyComplete).toBe(true);
+    const produce = events.find((e) => e.type === "lead_magnet" && e.milestone === "produce");
+    expect(produce?.alreadyComplete).toBe(true);
   });
 
   it("builds go-live sprint before kickoff", () => {
@@ -109,6 +204,18 @@ describe("weekly-editorial-schedule", () => {
     expect(events.at(-1)?.title).toMatch(/Go live/i);
     expect(events.at(-1)?.date).toBe("2026-06-19");
   });
+
+  it("schedules doctor network article and Facebook post on June 9", () => {
+    const june9 = parseIsoDate("2026-06-09");
+    expect(isDoctorNetworkContentWeek(june9)).toBe(true);
+    const events = buildEditorialCalendar({ weekStart: june9, today: june9 });
+    const doctorFb = events.find(
+      (e) => e.type === "facebook_post" && e.slotIndex === 5 && e.milestone === "launch",
+    );
+    expect(doctorFb?.date).toBe(DOCTOR_NETWORK_CONTENT_DATE);
+    expect(events.some((e) => e.id === "early:doctor-network:article:launch")).toBe(true);
+  });
+
 
   it("uses pre-launch sprint during the week before kickoff", () => {
     const events = buildEditorialCalendar({ weekStart: sprintWeekStart, today: new Date(2026, 5, 10) });

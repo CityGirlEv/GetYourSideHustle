@@ -47,4 +47,11 @@ test.describe("public smoke", () => {
     await page.goto("/scenario/new");
     await expect(page.getByRole("heading", { name: /Build your scenario/i })).toBeVisible();
   });
+
+  test("about page Learning Center button navigates", async ({ page }) => {
+    await page.goto("/about");
+    await page.getByRole("link", { name: "Learning Center", exact: true }).click();
+    await expect(page).toHaveURL(/\/learning-center\/?$/);
+    await expect(page.getByRole("heading", { name: "Learning Center" })).toBeVisible();
+  });
 });

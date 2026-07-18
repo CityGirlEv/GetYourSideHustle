@@ -135,4 +135,52 @@ describe("editorial-calendar-links", () => {
       resolveHeroSlugForImagePrompt(undefined, draftBySlot, 0),
     ).toBe("what-is-medicare-prior-authorization");
   });
+
+  it("guides workbook posts to the checklist teaser image", () => {
+    const draftBySlot = new Map<string, CalendarDraftRef>([
+      [
+        "lead_magnet:0",
+        {
+          id: "lm1",
+          type: "lead_magnet",
+          slotIndex: 0,
+          status: "draft",
+          title: "Medicare at 65 Planning Workbook",
+          excerpt: "",
+          body: "",
+          payload: {
+            suggestedSlug: "PBO_Turning_65_Workbook",
+            socialTeaserSavedAt: "2026-06-20T12:00:00.000Z",
+          },
+          publishedRef: null,
+        },
+      ],
+    ]);
+    const guidance = facebookPostImageGuidance(3, draftBySlot);
+    expect(guidance.source).toBe("workbook-teaser");
+    expect(guidance.headline).toMatch(/checklist teaser/i);
+    expect(guidance.imageLabel).toContain("facebook-teaser.jpg");
+    expect(guidance.imageUrl).toContain("/downloads/PBO_Turning_65_Workbook-facebook-teaser.jpg");
+  });
+
+  it("omits workbook teaser URL until the JPG is saved", () => {
+    const draftBySlot = new Map<string, CalendarDraftRef>([
+      [
+        "lead_magnet:0",
+        {
+          id: "lm1",
+          type: "lead_magnet",
+          slotIndex: 0,
+          status: "draft",
+          title: "Medicare at 65 Planning Workbook",
+          excerpt: "",
+          body: "",
+          payload: { suggestedSlug: "PBO_Turning_65_Workbook" },
+          publishedRef: null,
+        },
+      ],
+    ]);
+    const guidance = facebookPostImageGuidance(3, draftBySlot);
+    expect(guidance.imageUrl).toBeNull();
+  });
 });

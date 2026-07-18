@@ -8,17 +8,19 @@ export function AppShell({
   children,
   title,
   subtitle,
+  subtitleFooter,
   titleClassName,
 }: {
   children: ReactNode;
   title: string;
-  subtitle?: string;
+  subtitle?: ReactNode;
+  subtitleFooter?: ReactNode;
   titleClassName?: string;
 }) {
   return (
     <div className="flex flex-col">
       <LoginAlertDialog />
-      <section className="relative z-20 w-full border-b border-primary/10">
+      <section className="relative z-30 w-full border-b border-primary/10">
         <TrustBanner />
         <div className="bg-background/95 backdrop-blur-sm">
           <SecurityBanner />
@@ -34,8 +36,16 @@ export function AppShell({
                 {title}
               </h1>
             )}
-            {subtitle && (
-              <p className="text-xs sm:text-sm text-muted-foreground mt-1 leading-relaxed">{subtitle}</p>
+            {(subtitle || subtitleFooter) && (
+              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground leading-relaxed">
+                {subtitle ? <span className="shrink-0">{subtitle}</span> : null}
+                {subtitle && subtitleFooter ? (
+                  <span className="hidden sm:inline text-muted-foreground/40" aria-hidden>
+                    ·
+                  </span>
+                ) : null}
+                {subtitleFooter}
+              </div>
             )}
           </div>
         )}

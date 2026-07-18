@@ -1,0 +1,20 @@
+﻿You are an AI‑assisted full‑stack engineer. Build a Vite React app called side‑hustle‑hub that uses Supabase (auth + database + edge functions) and will be deployed on Cloudflare Pages. The app must contain:
+
+- Supabase tables: auth.users (with role), wizard_inputs, tasks, test_results.
+- Row‑level‑security policies: admin can see everything; normal users only their own rows.
+- Edge functions: create-task, run-test.
+- React pages/components:
+  * Auth (login / register) with role selection (adult, parent, admin).
+  * Admin console (user management, analytics).
+  * Wizard flow that collects budget, schedule, interests, kid age and stores in wizard_inputs.
+  * Task list page that shows generated tasks, lets the user update status.
+  * Testing portal that triggers Supabase edge functions and stores results.
+  * Static pages: about, contact, bootcamp, workshops, master‑classes.
+- Premium UI: glass‑morphism, gradient background, animated navigation, brand CSS variables.
+- Vitest unit tests for all API wrappers and edge‑function calls.
+- Playwright E2E smoke test that visits '/' and asserts the header contains “Side Hustle Hub”.
+- CI workflow (GitHub Actions) that runs vitest + playwright on every push.
+- Add placeholder branding variables (‑‑brand‑primary, ‑‑brand‑secondary, ‑‑brand‑accent, ‑‑font‑primary) in src/styles/index.css.
+
+Generate the full directory tree (as shown in the previous answer) and the contents of every file. Use TypeScript for all source files. Include comments where the user should replace placeholder colours with the actual branding assets from their Google Drive.
+EOF

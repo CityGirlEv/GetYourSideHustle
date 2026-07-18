@@ -17,7 +17,7 @@ export function LearningArticleCard({
     <Card
       className={`h-full overflow-hidden flex flex-col hover:border-primary/40 transition-colors ${featured ? "border-primary/30 bg-primary/5" : ""}`}
     >
-      <div className="p-4 flex flex-col gap-3 flex-1">
+      <div className="p-3.5 flex flex-col gap-2.5 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="secondary" className="text-[10px] uppercase tracking-wide">
             {categoryLabel(article.category)}

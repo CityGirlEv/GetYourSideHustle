@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/visits")({
   head: () => ({
     meta: [
-      { title: "Site Visits — Part B Optimizer" },
+      { title: "Site Visits — Part B Optimizer Benchmark Tool" },
       { name: "robots", content: "noindex,nofollow" },
     ],
   }),

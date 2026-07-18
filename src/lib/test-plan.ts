@@ -1,5 +1,5 @@
 // ============================================================================
-// Part B Optimizer — TEST PLAN, IMPLEMENTATION PLAN, SPRINTS, TASKS
+// Part B Optimizer Benchmark Tool — TEST PLAN, IMPLEMENTATION PLAN, SPRINTS, TASKS
 // ----------------------------------------------------------------------------
 // This file is the single source of truth for the /testing portal.
 // As new functionality ships, ADD a new TestCase here so it shows up in the
@@ -9,11 +9,16 @@
 
 import { buildScenarioQaAuditSteps } from "./scenario-qa-steps";
 import { buildAgentRegistrationSteps, buildQaRegistrationSteps } from "./registration-test-steps";
+import { PUBLIC_PAGE_LINK_TESTS } from "./public-page-link-tests";
+import { BENCHMARK_WIZARD_TESTS } from "./benchmark-wizard-tests";
+import { BENCHMARK_REPORT_LAYOUT_TESTS } from "./benchmark-report-layout-tests";
+import { BENCHMARK_REPORT_UX_TESTS } from "./benchmark-report-ux-tests";
+import { BENCHMARK_MOBILE_SCENARIO_TESTS } from "./benchmark-mobile-scenario-tests";
 import { MPD_DISCLAIMER } from "./medicare-disclaimers";
 
-/** Shared preconditions for QA scenario tests that start on /scenario/new. */
+/** Shared preconditions for QA scenario tests that start on /scenario/old. */
 const SCENARIO_QA_NEW_PRECONDITIONS =
-  "Logged in as QA. Create Scenario (/scenario/new) is available and the site is responding normally.";
+  "Logged in as QA. Create Scenario (/scenario/old) is available and the site is responding normally.";
 
 export type TestStatus =
   | "not_run"
@@ -159,13 +164,28 @@ export const TEST_CASES: TestCase[] = [
       "Body text grows/shrinks across steps; size persists on reload (localStorage key font-scale).",
   },
 
+  // ===== Public page link tests (Lyriq) =====
+  ...PUBLIC_PAGE_LINK_TESTS,
+
+  // ===== Educational benchmark wizard (/scenario/new) — Lyriq =====
+  ...BENCHMARK_WIZARD_TESTS,
+
+  // ===== Benchmark report layout (Computer / Phone / iPad) — Lyriq =====
+  ...BENCHMARK_REPORT_LAYOUT_TESTS,
+
+  // ===== Benchmark report UX (hint, ranks, hourglass, disclaimer) — Lyriq =====
+  ...BENCHMARK_REPORT_UX_TESTS,
+
+  // ===== Benchmark mobile / iPhone / iPad scenarios — Unassigned review =====
+  ...BENCHMARK_MOBILE_SCENARIO_TESTS,
+
   // ===== Intake — Manual wizard =====
   {
     id: "INTAKE-001",
     area: "Intake · Manual",
     priority: "P0",
     title: "Step 1 — birth year, ZIP3, county required",
-    steps: ["Open /scenario/new", "Leave birth year empty", "Click Next"],
+    steps: ["Open /scenario/old", "Leave birth year empty", "Click Next"],
     expected: "Toast 'Please enter your year of birth before continuing.' appears.",
   },
   {
@@ -191,7 +211,7 @@ export const TEST_CASES: TestCase[] = [
     priority: "P1",
     title: "Cost preference toggle switches label and value",
     steps: [
-      "On /scenario/new, complete Demographics and click Next to reach Preferences & Conditions",
+      "On /scenario/old, complete Demographics and click Next to reach Preferences & Conditions",
       "Toggle the cost preference switch",
     ],
     expected: "Label flips between 'Minimize monthly cost' and 'Predictability matters more'.",
@@ -296,11 +316,11 @@ export const TEST_CASES: TestCase[] = [
     area: "Voice · Inputs",
     priority: "P1",
     title: "Mic button appears next to text inputs (Chrome/Edge/Safari)",
-    path: "/scenario/new",
+    path: "/scenario/old",
     preconditions:
       "Voice input enabled (VOICE_INPUT_ENABLED = true in feature-flags.ts). Use Chrome, Edge, or Safari.",
     steps: [
-      "Open https://mypartb.com/scenario/new (Manual Wizard mode)",
+      "Open https://mypartb.com/scenario/old (Manual Wizard mode)",
       "Inspect drug search, strength, county, conditions, resolved-condition inputs",
     ],
     expected:
@@ -311,8 +331,8 @@ export const TEST_CASES: TestCase[] = [
     area: "Voice · Inputs",
     priority: "P1",
     title: "Spell mode — NATO phonetic converts to letters",
-    path: "/scenario/new",
-    steps: ["Open /scenario/new", "Toggle spell mode on the drug search mic", "Say: 'alpha tango oscar romeo'"],
+    path: "/scenario/old",
+    steps: ["Open /scenario/old", "Toggle spell mode on the drug search mic", "Say: 'alpha tango oscar romeo'"],
     expected: "Drug input fills with 'ator'.",
   },
   {
@@ -320,8 +340,8 @@ export const TEST_CASES: TestCase[] = [
     area: "Voice · Inputs",
     priority: "P1",
     title: "Voice-select dropdowns map spoken word to closest option",
-    path: "/scenario/new",
-    steps: ["Open /scenario/new", "Click mic next to Frequency dropdown", "Say: 'twice a day'"],
+    path: "/scenario/old",
+    steps: ["Open /scenario/old", "Click mic next to Frequency dropdown", "Say: 'twice a day'"],
     expected: "Dropdown selects 'Twice daily' (best-match).",
   },
   {
@@ -329,8 +349,8 @@ export const TEST_CASES: TestCase[] = [
     area: "Voice · Inputs",
     priority: "P2",
     title: "Mic permission denied — friendly toast",
-    path: "/scenario/new",
-    steps: ["Open /scenario/new", "In browser settings block mic for the site", "Click any mic"],
+    path: "/scenario/old",
+    steps: ["Open /scenario/old", "In browser settings block mic for the site", "Click any mic"],
     expected: "Toast: 'Microphone permission denied. Enable it in your browser settings.'",
   },
 
@@ -339,12 +359,12 @@ export const TEST_CASES: TestCase[] = [
     id: "VWIZ-001",
     area: "Voice · Wizard",
     priority: "P0",
-    title: "Mode toggle switches Manual ↔ Voice on /scenario/new",
-    path: "/scenario/new",
+    title: "Mode toggle switches Manual ↔ Voice on /scenario/old",
+    path: "/scenario/old",
     preconditions:
       "Voice wizard enabled (VOICE_WIZARD_ENABLED = true in feature-flags.ts). Use Chrome, Edge, or Safari.",
     steps: [
-      "Open https://mypartb.com/scenario/new",
+      "Open https://mypartb.com/scenario/old",
       "Confirm Manual Wizard and Voice pills are visible at the top",
       "Click Voice",
     ],
@@ -356,8 +376,8 @@ export const TEST_CASES: TestCase[] = [
     area: "Voice · Wizard",
     priority: "P0",
     title: "Wizard speaks intro then asks birth year",
-    path: "/scenario/new",
-    steps: ["Open /scenario/new", "Switch to Voice", "Click Start voice intake"],
+    path: "/scenario/old",
+    steps: ["Open /scenario/old", "Switch to Voice", "Click Start voice intake"],
     expected: "TTS speaks the intro then 'What year were you born?'; Listening badge pulses.",
   },
   {
@@ -365,8 +385,8 @@ export const TEST_CASES: TestCase[] = [
     area: "Voice · Wizard",
     priority: "P0",
     title: "Birth year parser accepts numerals and words",
-    path: "/scenario/new",
-    steps: ["Open /scenario/new in Voice mode", "Say 'nineteen fifty'", "Or say '1950'"],
+    path: "/scenario/old",
+    steps: ["Open /scenario/old in Voice mode", "Say 'nineteen fifty'", "Or say '1950'"],
     expected: "Transcript records the answer, wizard advances to ZIP step.",
   },
   {
@@ -374,8 +394,8 @@ export const TEST_CASES: TestCase[] = [
     area: "Voice · Wizard",
     priority: "P0",
     title: "ZIP digits parsed from spoken numbers",
-    path: "/scenario/new",
-    steps: ["Open /scenario/new in Voice mode", "At ZIP step say 'seven seven zero'"],
+    path: "/scenario/old",
+    steps: ["Open /scenario/old in Voice mode", "At ZIP step say 'seven seven zero'"],
     expected: "ZIP3=770; if multiple counties, wizard lists them aloud.",
   },
   {
@@ -383,8 +403,8 @@ export const TEST_CASES: TestCase[] = [
     area: "Voice · Wizard",
     priority: "P1",
     title: "Single-county ZIP auto-skips county question",
-    path: "/scenario/new",
-    steps: ["Open /scenario/new in Voice mode", "Use a ZIP3 with exactly one county"],
+    path: "/scenario/old",
+    steps: ["Open /scenario/old in Voice mode", "Use a ZIP3 with exactly one county"],
     expected: "Wizard says 'Got it — <county>' and jumps to gender.",
   },
   {
@@ -392,8 +412,8 @@ export const TEST_CASES: TestCase[] = [
     area: "Voice · Wizard",
     priority: "P1",
     title: "Yes/No parser handles natural speech",
-    path: "/scenario/new",
-    steps: ["Open /scenario/new in Voice mode", "At tobacco step say 'I don't smoke'"],
+    path: "/scenario/old",
+    steps: ["Open /scenario/old in Voice mode", "At tobacco step say 'I don't smoke'"],
     expected: "Tobacco set to false; advances to income.",
   },
   {
@@ -401,8 +421,8 @@ export const TEST_CASES: TestCase[] = [
     area: "Voice · Wizard",
     priority: "P1",
     title: "Income band matched from natural phrasing",
-    path: "/scenario/new",
-    steps: ["Open /scenario/new in Voice mode", "Say 'about fifty-five to seventy-five thousand'"],
+    path: "/scenario/old",
+    steps: ["Open /scenario/old in Voice mode", "Say 'about fifty-five to seventy-five thousand'"],
     expected: "Income band set to '$55k–$75k'.",
   },
   {
@@ -410,8 +430,8 @@ export const TEST_CASES: TestCase[] = [
     area: "Voice · Wizard",
     priority: "P1",
     title: "Conditions loop — adds multiple, exits on 'no more'",
-    path: "/scenario/new",
-    steps: ["Open /scenario/new in Voice mode", "Say 'diabetes', then 'hypertension', then 'no more'"],
+    path: "/scenario/old",
+    steps: ["Open /scenario/old in Voice mode", "Say 'diabetes', then 'hypertension', then 'no more'"],
     expected: "Both appear in running summary; wizard moves to meds.",
   },
   {
@@ -419,8 +439,8 @@ export const TEST_CASES: TestCase[] = [
     area: "Voice · Wizard",
     priority: "P1",
     title: "Meds loop — name + strength + 'any more?'",
-    path: "/scenario/new",
-    steps: ["Open /scenario/new in Voice mode", "Say 'metformin', then '500 milligrams', then 'no'"],
+    path: "/scenario/old",
+    steps: ["Open /scenario/old in Voice mode", "Say 'metformin', then '500 milligrams', then 'no'"],
     expected:
       "Med added with mg suffix; catalog auto-fills form/frequency/retail; wizard goes to confirm.",
   },
@@ -429,8 +449,8 @@ export const TEST_CASES: TestCase[] = [
     area: "Voice · Wizard",
     priority: "P1",
     title: "Manual controls — Repeat, Retry, Type, Skip work",
-    path: "/scenario/new",
-    steps: ["Open /scenario/new in Voice mode", "Click each control during a question"],
+    path: "/scenario/old",
+    steps: ["Open /scenario/old in Voice mode", "Click each control during a question"],
     expected:
       "Repeat re-speaks; Retry restarts listening; Type opens an input that submits as the answer; Skip advances on optional steps and toasts on required ones.",
   },
@@ -439,8 +459,8 @@ export const TEST_CASES: TestCase[] = [
     area: "Voice · Wizard",
     priority: "P0",
     title: "Confirm + submit creates scenario via same RPC",
-    path: "/scenario/new",
-    steps: ["Open /scenario/new in Voice mode", "At confirm step say 'yes'"],
+    path: "/scenario/old",
+    steps: ["Open /scenario/old in Voice mode", "At confirm step say 'yes'"],
     expected:
       "Submitting state shows; on success TTS reads back the scenario ID and onDone navigates to /scenario/created/<code>.",
   },
@@ -449,8 +469,8 @@ export const TEST_CASES: TestCase[] = [
     area: "Voice · Wizard",
     priority: "P2",
     title: "Unsupported browser fallback",
-    path: "/scenario/new",
-    steps: ["Open https://mypartb.com/scenario/new?mode=voice in Firefox (no Web Speech API)"],
+    path: "/scenario/old",
+    steps: ["Open https://mypartb.com/scenario/old?mode=voice in Firefox (no Web Speech API)"],
     expected: "Card shows 'Voice mode not supported' with a Use manual form button.",
   },
   {
@@ -458,9 +478,9 @@ export const TEST_CASES: TestCase[] = [
     area: "Voice · Wizard",
     priority: "P0",
     title: "No medications — say no or skip at meds step",
-    path: "/scenario/new",
+    path: "/scenario/old",
     steps: [
-      "Open /scenario/new in Voice mode",
+      "Open /scenario/old in Voice mode",
       "Complete demographics through conditions",
       "At 'Do you take any prescription medications?' say 'no' (or click Skip)",
       "Confirm the summary shows 0 medications and say 'yes' to create",
@@ -556,7 +576,7 @@ export const TEST_CASES: TestCase[] = [
       "Scenario is created successfully and a new SCN- code is issued. Both PDF and XLSX show monthly medication retail = $13 and annual = $156 exactly. Every demographic, condition, and medication line in the system output matches the values QA entered in the wizard.",
     notes:
       "Drug pricing caveat: All drug costs shown in the PDF and XLSX are estimates and may vary by carrier plan and location. If the amounts differ from the expected values, note the difference in your QA notes, but this does not constitute a fail.",
-    path: "/scenario/new",
+    path: "/scenario/old",
   },
   {
     id: "SCEN-QA-002",
@@ -579,7 +599,7 @@ export const TEST_CASES: TestCase[] = [
       "Scenario is created successfully and a new SCN- code is issued. Both PDF and XLSX show monthly medication retail = $380 and annual = $4,560 exactly. Every demographic, condition, and medication line in the system output matches the values QA entered in the wizard.",
     notes:
       "Drug pricing caveat: All drug costs shown in the PDF and XLSX are estimates and may vary by carrier plan and location. If the amounts differ from the expected values, note the difference in your QA notes, but this does not constitute a fail.",
-    path: "/scenario/new",
+    path: "/scenario/old",
   },
   {
     id: "SCEN-QA-003",
@@ -603,7 +623,7 @@ export const TEST_CASES: TestCase[] = [
       "Scenario is created successfully and a new SCN- code is issued. Both PDF and XLSX show monthly medication retail = $562 and annual = $6,744 exactly. Every demographic, condition, and medication line in the system output matches the values QA entered in the wizard.",
     notes:
       "Drug pricing caveat: All drug costs shown in the PDF and XLSX are estimates and may vary by carrier plan and location. If the amounts differ from the expected values, note the difference in your QA notes, but this does not constitute a fail.",
-    path: "/scenario/new",
+    path: "/scenario/old",
   },
   {
     id: "SCEN-QA-004",
@@ -626,7 +646,7 @@ export const TEST_CASES: TestCase[] = [
       "Scenario is created successfully and a new SCN- code is issued. Both PDF and XLSX show monthly medication retail = $6,900 and annual = $82,800 exactly. Every demographic, condition, and medication line in the system output matches the values QA entered in the wizard.",
     notes:
       "Drug pricing caveat: All drug costs shown in the PDF and XLSX are estimates and may vary by carrier plan and location. If the amounts differ from the expected values, note the difference in your QA notes, but this does not constitute a fail.",
-    path: "/scenario/new",
+    path: "/scenario/old",
   },
   {
     id: "SCEN-QA-005",
@@ -650,7 +670,7 @@ export const TEST_CASES: TestCase[] = [
       "Scenario is created successfully and a new SCN- code is issued. Both PDF and XLSX show monthly medication retail = $626 and annual = $7,512 exactly. Every demographic, condition, and medication line in the system output matches the values QA entered in the wizard.",
     notes:
       "Drug pricing caveat: All drug costs shown in the PDF and XLSX are estimates and may vary by carrier plan and location. If the amounts differ from the expected values, note the difference in your QA notes, but this does not constitute a fail.",
-    path: "/scenario/new",
+    path: "/scenario/old",
   },
   {
     id: "SCEN-QA-006",
@@ -674,7 +694,7 @@ export const TEST_CASES: TestCase[] = [
       "Scenario is created successfully and a new SCN- code is issued. Both PDF and XLSX show monthly medication retail = $65 and annual = $780 exactly. Every demographic, condition, and medication line in the system output matches the values QA entered in the wizard.",
     notes:
       "Drug pricing caveat: All drug costs shown in the PDF and XLSX are estimates and may vary by carrier plan and location. If the amounts differ from the expected values, note the difference in your QA notes, but this does not constitute a fail.",
-    path: "/scenario/new",
+    path: "/scenario/old",
   },
   {
     id: "SCEN-QA-007",
@@ -698,7 +718,7 @@ export const TEST_CASES: TestCase[] = [
       "Scenario is created successfully and a new SCN- code is issued. Both PDF and XLSX show monthly medication retail = $7 and annual = $84 exactly. Every demographic, condition, and medication line in the system output matches the values QA entered in the wizard.",
     notes:
       "Drug pricing caveat: All drug costs shown in the PDF and XLSX are estimates and may vary by carrier plan and location. If the amounts differ from the expected values, note the difference in your QA notes, but this does not constitute a fail.",
-    path: "/scenario/new",
+    path: "/scenario/old",
   },
   {
     id: "SCEN-QA-008",
@@ -723,7 +743,7 @@ export const TEST_CASES: TestCase[] = [
       "Scenario is created successfully and a new SCN- code is issued. Both PDF and XLSX show monthly medication retail = $23 and annual = $276 exactly. Every demographic, condition, and medication line in the system output matches the values QA entered in the wizard.",
     notes:
       "Drug pricing caveat: All drug costs shown in the PDF and XLSX are estimates and may vary by carrier plan and location. If the amounts differ from the expected values, note the difference in your QA notes, but this does not constitute a fail.",
-    path: "/scenario/new",
+    path: "/scenario/old",
   },
   {
     id: "SCEN-QA-009",
@@ -747,7 +767,7 @@ export const TEST_CASES: TestCase[] = [
       "Scenario is created successfully and a new SCN- code is issued. Both PDF and XLSX show monthly medication retail = $18 and annual = $216 exactly. Every demographic, condition, and medication line in the system output matches the values QA entered in the wizard.",
     notes:
       "Drug pricing caveat: All drug costs shown in the PDF and XLSX are estimates and may vary by carrier plan and location. If the amounts differ from the expected values, note the difference in your QA notes, but this does not constitute a fail.",
-    path: "/scenario/new",
+    path: "/scenario/old",
   },
   {
     id: "SCEN-QA-010",
@@ -770,7 +790,7 @@ export const TEST_CASES: TestCase[] = [
       "Scenario is created successfully and a new SCN- code is issued. Both PDF and XLSX show monthly medication retail = $34,000 and annual = $408,000 exactly. Every demographic, condition, and medication line in the system output matches the values QA entered in the wizard.",
     notes:
       "Drug pricing caveat: All drug costs shown in the PDF and XLSX are estimates and may vary by carrier plan and location. If the amounts differ from the expected values, note the difference in your QA notes, but this does not constitute a fail.",
-    path: "/scenario/new",
+    path: "/scenario/old",
   },
   {
     id: "SCEN-QA-011",
@@ -793,7 +813,7 @@ export const TEST_CASES: TestCase[] = [
       "Scenario is created successfully and a new SCN- code is issued. Both PDF and XLSX show monthly medication retail = $22 and annual = $264 exactly. Every demographic, condition, and medication line in the system output matches the values QA entered in the wizard.",
     notes:
       "Drug pricing caveat: All drug costs shown in the PDF and XLSX are estimates and may vary by carrier plan and location. If the amounts differ from the expected values, note the difference in your QA notes, but this does not constitute a fail.",
-    path: "/scenario/new",
+    path: "/scenario/old",
   },
   {
     id: "SCEN-QA-012",
@@ -817,7 +837,7 @@ export const TEST_CASES: TestCase[] = [
       "Scenario is created successfully and a new SCN- code is issued. Both PDF and XLSX show monthly medication retail = $20 and annual = $240 exactly. Every demographic, condition, and medication line in the system output matches the values QA entered in the wizard.",
     notes:
       "Drug pricing caveat: All drug costs shown in the PDF and XLSX are estimates and may vary by carrier plan and location. If the amounts differ from the expected values, note the difference in your QA notes, but this does not constitute a fail.",
-    path: "/scenario/new",
+    path: "/scenario/old",
   },
   {
     id: "SCEN-QA-013",
@@ -841,7 +861,7 @@ export const TEST_CASES: TestCase[] = [
       "Scenario is created successfully and a new SCN- code is issued. Both PDF and XLSX show monthly medication retail = $1,040 and annual = $12,480 exactly. Every demographic, condition, and medication line in the system output matches the values QA entered in the wizard.",
     notes:
       "Drug pricing caveat: All drug costs shown in the PDF and XLSX are estimates and may vary by carrier plan and location. If the amounts differ from the expected values, note the difference in your QA notes, but this does not constitute a fail.",
-    path: "/scenario/new",
+    path: "/scenario/old",
   },
   {
     id: "SCEN-QA-014",
@@ -865,7 +885,7 @@ export const TEST_CASES: TestCase[] = [
       "Scenario is created successfully and a new SCN- code is issued. Both PDF and XLSX show monthly medication retail = $14 and annual = $168 exactly. Every demographic, condition, and medication line in the system output matches the values QA entered in the wizard.",
     notes:
       "Drug pricing caveat: All drug costs shown in the PDF and XLSX are estimates and may vary by carrier plan and location. If the amounts differ from the expected values, note the difference in your QA notes, but this does not constitute a fail.",
-    path: "/scenario/new",
+    path: "/scenario/old",
   },
   {
     id: "SCEN-QA-015",
@@ -888,7 +908,7 @@ export const TEST_CASES: TestCase[] = [
       "Scenario is created successfully and a new SCN- code is issued. Both PDF and XLSX show monthly medication retail = $15 and annual = $180 exactly. Every demographic, condition, and medication line in the system output matches the values QA entered in the wizard.",
     notes:
       "Drug pricing caveat: All drug costs shown in the PDF and XLSX are estimates and may vary by carrier plan and location. If the amounts differ from the expected values, note the difference in your QA notes, but this does not constitute a fail.",
-    path: "/scenario/new",
+    path: "/scenario/old",
   },
   {
     id: "SCEN-QA-016",
@@ -1040,7 +1060,7 @@ export const TEST_CASES: TestCase[] = [
     area: "CMS Compliance",
     priority: "P1",
     title: "No prohibited superlatives ('best', '#1', 'free')",
-    steps: ["Grep rendered marketing copy on /, /scenario/new, plan results"],
+    steps: ["Grep rendered marketing copy on /, /scenario/old, plan results"],
     expected:
       "No unqualified use of 'best Medicare plan', 'free', '#1 plan', 'guaranteed', or 'all plans' in rendered copy. Tagline frames the Optimizer as the searcher, not the plan, to stay CMS-compliant.",
     notes: "CMS prohibits absolute/superlative marketing claims about plans.",
@@ -1068,8 +1088,8 @@ export const TEST_CASES: TestCase[] = [
     area: "CMS Compliance",
     priority: "P1",
     title: "Call recording / consent notice (if voice wizard transmits audio)",
-    path: "/scenario/new",
-    steps: ["Open /scenario/new", "Switch to Voice mode", "Start voice wizard"],
+    path: "/scenario/old",
+    steps: ["Open /scenario/old", "Switch to Voice mode", "Start voice wizard"],
     expected:
       "Intro TTS or visible notice states audio is processed locally in the browser via Web Speech API and not stored, OR a recording-consent prompt is shown before listening starts.",
   },
@@ -1116,7 +1136,7 @@ export const TEST_CASES: TestCase[] = [
     title: "Material accessibility — font scale + contrast",
     steps: ["Use font-size + toggle", "Run Lighthouse accessibility audit on key pages"],
     expected:
-      "Contrast ≥ 4.5:1 on body text in both font sizes; no a11y errors on /, /scenario/new, /auth.",
+      "Contrast ≥ 4.5:1 on body text in both font sizes; no a11y errors on /, /scenario/old, /auth.",
   },
   {
     id: "CMS-014",
@@ -1255,10 +1275,10 @@ export const TEST_CASES: TestCase[] = [
     area: "Alpha · Voice",
     priority: "P1",
     title: "Voice intake + scenario flow validated end-to-end",
-    path: "/scenario/new",
+    path: "/scenario/old",
     sprintId: "S-2026-00",
     steps: [
-      "Open https://mypartb.com/scenario/new",
+      "Open https://mypartb.com/scenario/old",
       "Use VoiceButton mic on each manual wizard step (birth year → meds), or complete via Voice wizard",
       "Submit",
     ],
@@ -1649,12 +1669,12 @@ export const TASKS: Task[] = [
   {
     id: "T-018",
     title:
-      "Verify getpartb.com domain (add NS records) so non-owner admins receive registration email",
+      "Verify mypartb.com domain (add NS records) so non-owner admins receive registration email",
     area: "Ops",
     status: "todo",
     priority: "P2",
     notes:
-      "Blocked: no DNS access today. Add notify.getpartb.com NS ns3/ns4.lovable.cloud when registrar access is available.",
+      "Blocked: no DNS access today. Add notify.mypartb.com NS ns3/ns4.lovable.cloud when registrar access is available.",
   },
 ];
 

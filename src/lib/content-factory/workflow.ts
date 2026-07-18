@@ -5,7 +5,7 @@ const ALLOWED_TRANSITIONS: Record<ContentDraftStatus, ContentDraftStatus[]> = {
   pending_review: ["draft", "approved", "rejected"],
   approved: ["pending_review", "scheduled", "published", "rejected"],
   scheduled: ["approved", "published", "rejected"],
-  published: [],
+  published: ["approved"],
   rejected: ["draft"],
 };
 

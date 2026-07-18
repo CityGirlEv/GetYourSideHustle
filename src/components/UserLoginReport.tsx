@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,27 +17,17 @@ import {
 } from "@/components/ui/collapsible";
 import { ChevronDown, Clock, Loader2, LogIn, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  compareUsersByLastLogin,
+  LOGIN_FILTER_LABELS,
+  loginReportStats,
+  matchesLoginFilter,
+  parseLoginTime,
+  type LoginFilter,
+  type LoginReportUser,
+} from "@/lib/user-login-report-filters";
 
-export type LoginReportUser = {
-  id: string;
-  email: string;
-  full_name: string;
-  role: string;
-  roles: string[];
-  disabled?: boolean;
-  email_confirmed?: boolean;
-  last_sign_in_at?: string | null;
-};
-
-type LoginFilter = "all" | "logged_in" | "never" | "last_7d" | "last_30d";
-
-const MS_DAY = 86_400_000;
-
-function parseLoginTime(value: string | null | undefined): Date | null {
-  if (!value) return null;
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? null : d;
-}
+export type { LoginReportUser };
 
 function formatAbsoluteLogin(value: string | null | undefined): string {
   const d = parseLoginTime(value);
@@ -51,39 +41,33 @@ function formatRelativeLogin(value: string | null | undefined): string {
   return formatDistanceToNow(d, { addSuffix: true });
 }
 
-function daysSinceLogin(value: string | null | undefined): number | null {
-  const d = parseLoginTime(value);
-  if (!d) return null;
-  return (Date.now() - d.getTime()) / MS_DAY;
-}
-
-function matchesLoginFilter(user: LoginReportUser, filter: LoginFilter): boolean {
-  const last = parseLoginTime(user.last_sign_in_at);
-  switch (filter) {
-    case "logged_in":
-      return !!last;
-    case "never":
-      return !last;
-    case "last_7d": {
-      const days = daysSinceLogin(user.last_sign_in_at);
-      return days !== null && days <= 7;
-    }
-    case "last_30d": {
-      const days = daysSinceLogin(user.last_sign_in_at);
-      return days !== null && days <= 30;
-    }
-    default:
-      return true;
-  }
-}
-
-function compareByLastLogin(a: LoginReportUser, b: LoginReportUser): number {
-  const at = parseLoginTime(a.last_sign_in_at)?.getTime() ?? 0;
-  const bt = parseLoginTime(b.last_sign_in_at)?.getTime() ?? 0;
-  if (at !== bt) return bt - at;
-  return (a.full_name || a.email).localeCompare(b.full_name || b.email, undefined, {
-    sensitivity: "base",
-  });
+function FilterBubble({
+  active,
+  onClick,
+  children,
+  className,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-normal transition-colors",
+        active
+          ? "border-primary bg-primary/15 text-primary font-semibold ring-1 ring-primary/25"
+          : "border-border bg-background hover:bg-muted/60",
+        className,
+      )}
+    >
+      {children}
+    </button>
+  );
 }
 
 type UserLoginReportProps = {
@@ -96,23 +80,11 @@ export function UserLoginReport({ users, loading }: UserLoginReportProps) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<LoginFilter>("all");
 
-  const stats = useMemo(() => {
-    let loggedIn = 0;
-    let never = 0;
-    let last7 = 0;
-    let last30 = 0;
-    for (const u of users) {
-      const days = daysSinceLogin(u.last_sign_in_at);
-      if (days === null) {
-        never += 1;
-      } else {
-        loggedIn += 1;
-        if (days <= 7) last7 += 1;
-        if (days <= 30) last30 += 1;
-      }
-    }
-    return { total: users.length, loggedIn, never, last7, last30 };
-  }, [users]);
+  const setFilterOrClear = (next: LoginFilter) => {
+    setFilter((current) => (current === next ? "all" : next));
+  };
+
+  const stats = useMemo(() => loginReportStats(users), [users]);
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -123,7 +95,7 @@ export function UserLoginReport({ users, loading }: UserLoginReportProps) {
         const roles = (u.roles ?? [u.role]).join(" ");
         return [u.full_name, u.email, u.role, roles].join(" ").toLowerCase().includes(q);
       })
-      .sort(compareByLastLogin);
+      .sort(compareUsersByLastLogin);
   }, [users, filter, query]);
 
   return (
@@ -149,30 +121,52 @@ export function UserLoginReport({ users, loading }: UserLoginReportProps) {
         <CollapsibleContent>
           <div className="px-4 pb-4 space-y-4 border-t border-border/60">
             <p className="text-xs text-muted-foreground pt-3">
-              Who has actually signed in, sorted by most recent login. Timestamps come from Supabase
-              Auth when a user completes sign-in.
+              Who has actually signed in, sorted by most recent login. Click a bubble to filter the
+              table — click again to clear. Timestamps come from Supabase Auth when a user completes
+              sign-in.
             </p>
 
             <div className="flex flex-wrap gap-2 text-xs">
-              <Badge variant="outline" className="gap-1 font-normal">
+              <FilterBubble active={filter === "all"} onClick={() => setFilterOrClear("all")}>
                 <Users className="h-3 w-3" />
                 {stats.total} accounts
-              </Badge>
-              <Badge variant="outline" className="gap-1 font-normal text-emerald-700 border-emerald-500/40">
+              </FilterBubble>
+              <FilterBubble
+                active={filter === "logged_in"}
+                onClick={() => setFilterOrClear("logged_in")}
+                className="text-emerald-700 border-emerald-500/40 data-[active]:text-emerald-800"
+              >
                 <LogIn className="h-3 w-3" />
                 {stats.loggedIn} logged in at least once
-              </Badge>
-              <Badge variant="outline" className="gap-1 font-normal">
+              </FilterBubble>
+              <FilterBubble
+                active={filter === "last_1d"}
+                onClick={() => setFilterOrClear("last_1d")}
+              >
+                <Clock className="h-3 w-3" />
+                {stats.last1} in last 1 day
+              </FilterBubble>
+              <FilterBubble
+                active={filter === "last_7d"}
+                onClick={() => setFilterOrClear("last_7d")}
+              >
                 <Clock className="h-3 w-3" />
                 {stats.last7} in last 7 days
-              </Badge>
-              <Badge variant="outline" className="gap-1 font-normal">
+              </FilterBubble>
+              <FilterBubble
+                active={filter === "last_30d"}
+                onClick={() => setFilterOrClear("last_30d")}
+              >
                 <Clock className="h-3 w-3" />
                 {stats.last30} in last 30 days
-              </Badge>
-              <Badge variant="outline" className="gap-1 font-normal text-muted-foreground">
+              </FilterBubble>
+              <FilterBubble
+                active={filter === "never"}
+                onClick={() => setFilterOrClear("never")}
+                className="text-muted-foreground"
+              >
                 {stats.never} never logged in
-              </Badge>
+              </FilterBubble>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -187,13 +181,22 @@ export function UserLoginReport({ users, loading }: UserLoginReportProps) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All users</SelectItem>
-                  <SelectItem value="logged_in">Has logged in</SelectItem>
-                  <SelectItem value="never">Never logged in</SelectItem>
-                  <SelectItem value="last_7d">Last 7 days</SelectItem>
-                  <SelectItem value="last_30d">Last 30 days</SelectItem>
+                  {(Object.keys(LOGIN_FILTER_LABELS) as LoginFilter[]).map((key) => (
+                    <SelectItem key={key} value={key}>
+                      {LOGIN_FILTER_LABELS[key]}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+              {filter !== "all" && (
+                <button
+                  type="button"
+                  onClick={() => setFilter("all")}
+                  className="text-xs text-primary hover:text-primary/80 underline-offset-2 hover:underline"
+                >
+                  Clear filter
+                </button>
+              )}
               {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
             </div>
 

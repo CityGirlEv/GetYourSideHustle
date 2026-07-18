@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 const imageSizes = {
   /** Learning Center article page — beside the title */
-  page: "w-32 sm:w-44 md:w-48 lg:w-56 shrink-0",
+  page: "w-28 sm:w-36 md:w-40 lg:w-44 shrink-0",
   /** Newsletter admin preview cards */
   newsletter: "w-28 sm:w-32 md:w-36 shrink-0",
   /** Article list cards */
@@ -51,8 +51,8 @@ export function ArticleTitleWithImage({
   );
 
   return (
-    <div className={cn("space-y-3", className)}>
-      <div className="flex items-start gap-3 sm:gap-4 md:gap-5">
+    <div className={cn(className)}>
+      <div className="flex items-start gap-3 sm:gap-3.5 md:gap-4">
         {imageSrc ? (
           <figure className={imageSizes[size]}>
             <img
@@ -65,34 +65,36 @@ export function ArticleTitleWithImage({
           </figure>
         ) : null}
 
-        <TitleTag
-          className={cn(
-            "min-w-0 flex-1 font-display font-bold text-primary leading-tight",
-            size === "page"
-              ? "text-2xl sm:text-3xl lg:text-4xl"
-              : size === "newsletter"
-                ? "text-sm sm:text-base font-semibold"
-                : "text-lg",
-            !titleHref ? titleClassName : undefined,
-          )}
-        >
-          {titleContent}
-        </TitleTag>
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <TitleTag
+            className={cn(
+              "font-display font-bold text-primary leading-tight",
+              size === "page"
+                ? "text-xl sm:text-2xl lg:text-3xl"
+                : size === "newsletter"
+                  ? "text-sm sm:text-base font-semibold"
+                  : "text-lg",
+              !titleHref ? titleClassName : undefined,
+            )}
+          >
+            {titleContent}
+          </TitleTag>
+
+          {excerpt ? (
+            <p
+              className={cn(
+                "text-muted-foreground leading-snug",
+                size === "page" ? "text-sm sm:text-base" : "text-xs sm:text-sm",
+                excerptClassName,
+              )}
+            >
+              {excerpt}
+            </p>
+          ) : null}
+
+          {footer ? <div className="pt-0.5">{footer}</div> : null}
+        </div>
       </div>
-
-      {excerpt ? (
-        <p
-          className={cn(
-            "text-muted-foreground leading-relaxed",
-            size === "page" ? "text-base sm:text-lg max-w-3xl" : "text-xs sm:text-sm",
-            excerptClassName,
-          )}
-        >
-          {excerpt}
-        </p>
-      ) : null}
-
-      {footer}
     </div>
   );
 }

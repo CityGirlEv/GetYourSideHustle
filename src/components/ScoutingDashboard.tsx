@@ -14,6 +14,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   buildScoutingReportAdmin,
@@ -43,12 +44,15 @@ import type {
   ScoutingSourceStatus,
 } from "@/types/scouting-report";
 import { cn } from "@/lib/utils";
+import { META_AD_LIBRARY_SETUP_DOC } from "@/fetchers/facebookAdFetcher";
+import { KALODATA_SETUP_DOC } from "@/fetchers/kalodataAdFetcher";
 
-const SOURCE_ORDER: ScoutingSourceId[] = ["facebook", "tiktok", "web"];
+const SOURCE_ORDER: ScoutingSourceId[] = ["facebook", "tiktok", "kalodata", "web"];
 
 const SOURCE_LABELS: Record<ScoutingSourceId, string> = {
   facebook: "Meta Ad Library",
   tiktok: "TikTok discover",
+  kalodata: "Kalodata",
   web: "Competitor landing pages",
 };
 
@@ -141,6 +145,18 @@ function AdCategoryBadges({
   );
 }
 
+function isMetaSetupMessage(message: string): boolean {
+  return (
+    /FACEBOOK_ACCESS_TOKEN/i.test(message) ||
+    /Ad Library API/i.test(message) ||
+    /does not have permission/i.test(message)
+  );
+}
+
+function isKalodataSetupMessage(message: string): boolean {
+  return /KALODATA_API/i.test(message) || /Kalodata API/i.test(message);
+}
+
 function SourceStatusRow({ source }: { source: ScoutingSourceStatus }) {
   const icon =
     source.status === "running" ? (
@@ -168,7 +184,31 @@ function SourceStatusRow({ source }: { source: ScoutingSourceStatus }) {
           ) : null}
         </div>
         {source.message ? (
-          <p className="text-xs text-muted-foreground leading-relaxed">{source.message}</p>
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground leading-relaxed">{source.message}</p>
+            {source.status === "error" && source.id === "facebook" && isMetaSetupMessage(source.message) ? (
+              <p className="text-xs text-muted-foreground">
+                TikTok and curated web competitors still load. Fix Meta in{" "}
+                <code className="rounded bg-muted px-1">{META_AD_LIBRARY_SETUP_DOC}</code> (Ad Library
+                API + <code className="rounded bg-muted px-1">ads_read</code> token).
+              </p>
+            ) : source.status === "skipped" && source.id === "facebook" ? (
+              <p className="text-xs text-muted-foreground">
+                Optional — see <code className="rounded bg-muted px-1">{META_AD_LIBRARY_SETUP_DOC}</code>.
+              </p>
+            ) : source.status === "skipped" && source.id === "kalodata" ? (
+              <p className="text-xs text-muted-foreground">
+                Optional — Enterprise API only. See{" "}
+                <code className="rounded bg-muted px-1">{KALODATA_SETUP_DOC}</code>.
+              </p>
+            ) : source.status === "error" && source.id === "kalodata" && isKalodataSetupMessage(source.message ?? "") ? (
+              <p className="text-xs text-muted-foreground">
+                Verify <code className="rounded bg-muted px-1">KALODATA_API_KEY</code> and{" "}
+                <code className="rounded bg-muted px-1">KALODATA_API_BASE_URL</code> in{" "}
+                <code className="rounded bg-muted px-1">{KALODATA_SETUP_DOC}</code>.
+              </p>
+            ) : null}
+          </div>
         ) : source.status === "pending" ? (
           <p className="text-xs text-muted-foreground">Waiting…</p>
         ) : source.status === "running" ? (
@@ -225,6 +265,7 @@ export function ScoutingDashboard() {
     setSources(initialSourceStatuses());
 
     const collected: MedicareAd[] = [];
+    const sourceWarnings: string[] = [];
 
     try {
       for (const sourceId of SOURCE_ORDER) {
@@ -237,9 +278,12 @@ export function ScoutingDashboard() {
         const result = await fetchSource({ data: { source: sourceId } });
         collected.push(...(result.ads ?? []));
         setSources((prev) => prev.map((s) => (s.id === sourceId ? result.status : s)));
+        if (result.status.status === "error" && result.status.message) {
+          sourceWarnings.push(`${SOURCE_LABELS[sourceId]}: ${result.status.message}`);
+        }
       }
 
-      const built = await buildReport({ data: { ads: collected } });
+      const built = await buildReport({ data: { ads: collected, warnings: sourceWarnings } });
       setReport(built);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Could not load competitor scouting data.");
@@ -264,6 +308,14 @@ export function ScoutingDashboard() {
     return ads;
   })();
 
+  const completedSourceCount = sources.filter((s) =>
+    ["done", "error", "skipped"].includes(s.status),
+  ).length;
+  const scoutingProgress =
+    loading && SOURCE_ORDER.length > 0
+      ? Math.round((completedSourceCount / SOURCE_ORDER.length) * 100)
+      : 100;
+
   return (
     <Card className="glass p-4 sm:p-5 space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -273,8 +325,8 @@ export function ScoutingDashboard() {
             <h3 className="font-display font-bold">Competitor scouting</h3>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Meta Ad Library, TikTok, and curated Medicare competitor pages — tagged as FMO, Medicare
-            / Gov, TPMO, or Agent (one ad can have several).
+            Meta Ad Library (Medicare keywords), TikTok, Kalodata, and curated Medicare competitor pages —
+            tagged as FMO, Medicare / Gov, TPMO, or Agent (one ad can have several).
           </p>
         </div>
         <Button
@@ -300,7 +352,15 @@ export function ScoutingDashboard() {
           <p className="text-sm font-semibold">
             {loading ? "Processing competitor sources…" : "Scouting run complete"}
           </p>
+          {loading ? (
+            <p className="text-xs text-muted-foreground">
+              {completedSourceCount} of {SOURCE_ORDER.length} sources complete
+            </p>
+          ) : null}
         </div>
+        {loading ? (
+          <Progress value={scoutingProgress} aria-label="Scouting progress" className="h-1.5" />
+        ) : null}
         <div className="grid gap-2">
           {sources.map((source) => (
             <SourceStatusRow key={source.id} source={source} />
@@ -388,6 +448,15 @@ export function ScoutingDashboard() {
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
+      {!loading && report?.warnings.length ? (
+        <div className="rounded-lg border border-amber-200/80 bg-amber-50/80 px-3 py-2.5 text-xs leading-relaxed text-amber-950 space-y-1">
+          <p className="font-semibold">Scouting notes</p>
+          {report.warnings.map((warning) => (
+            <p key={warning}>{warning}</p>
+          ))}
+        </div>
+      ) : null}
+
       {!loading && report ? (
         <Tabs defaultValue="competitors" className="space-y-3">
           <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1">
@@ -401,8 +470,9 @@ export function ScoutingDashboard() {
           <TabsContent value="competitors" className="space-y-2">
             {report.competitors.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No competitors yet. Add FACEBOOK_ACCESS_TOKEN for live Meta ads, or refresh to load
-                curated web competitors.
+                {sources.find((s) => s.id === "facebook")?.status === "error"
+                  ? "No competitors from this run. Meta Ad Library failed (see status above); TikTok and curated web sources may still need a refresh or broader filters."
+                  : "No competitors yet. Add FACEBOOK_ACCESS_TOKEN for live Meta ads, or refresh to load curated web competitors."}
               </p>
             ) : (
               <div className="overflow-x-auto rounded-lg border border-border">

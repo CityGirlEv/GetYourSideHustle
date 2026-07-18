@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   buildLeadConsentSnapshot,
+  collectLeadClientMetadata,
+  formatLeadConsentText,
   LEAD_CONSENT_FLOW_VERSION,
   LEAD_MARKETING_OPT_IN_LABEL,
   LEAD_OPT_IN_INTRO,
   LEAD_PRIVACY_ACK_LABEL,
   leadContactAuthorizationLabel,
+  resolveLeadSourceUrl,
 } from "@/lib/lead-consent";
 import { LEGAL_OPERATOR_NAME } from "@/lib/legal-content";
 
@@ -38,5 +41,24 @@ describe("lead-consent", () => {
       required: false,
     });
     expect(snapshot.notices_shown.length).toBeGreaterThan(0);
+  });
+
+  it("formats consent text for database audit storage", () => {
+    const snapshot = buildLeadConsentSnapshot({
+      privacyAcknowledged: true,
+      contactAuthorized: true,
+      marketingOptIn: true,
+    });
+    const text = formatLeadConsentText(snapshot);
+    expect(text).toContain(LEAD_PRIVACY_ACK_LABEL);
+    expect(text).toContain("[x]");
+    expect(text).toContain(LEAD_MARKETING_OPT_IN_LABEL);
+  });
+
+  it("captures page URL in client metadata and resolves source URL", () => {
+    const metadata = collectLeadClientMetadata();
+    expect(metadata.pageUrl).toBeTruthy();
+    expect(resolveLeadSourceUrl(metadata)).toBe(metadata.pageUrl);
+    expect(resolveLeadSourceUrl({ pageUrl: "javascript:alert(1)" })).toBeNull();
   });
 });

@@ -1,6 +1,28 @@
+# Learning Center hero photos — long cache (filenames are slug-stable).
+/learning-center/*
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+
+# Landing page walkthrough video
+/videos/*
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+
 # Deploy detection — always fetch the latest build id.
 /version.json
   Cache-Control: no-store, no-cache, must-revalidate
+
+# Workbook PDF and teaser — revalidate after each deploy.
+/downloads/*
+  Cache-Control: public, max-age=0, must-revalidate
+
+# Email logos — bust cache after each logo refresh / deploy.
+/email-logo.png
+  Cache-Control: public, max-age=0, must-revalidate
+
+/email-header-logo.png
+  Cache-Control: public, max-age=0, must-revalidate
+
+/email-footer-logo.png
+  Cache-Control: public, max-age=0, must-revalidate
 
 # Allow microphone for voice intake on the scenario wizard (Web Speech API).
 /*
@@ -21,3 +43,10 @@
 
 /users/*
   Cache-Control: no-store, no-cache, must-revalidate
+
+# CMS landscape JSON — versioned by deploy; long cache with revalidation.
+/data/cms-landscape/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

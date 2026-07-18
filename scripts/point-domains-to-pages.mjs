@@ -60,7 +60,7 @@ async function pointZoneToPages(zoneName) {
   console.log("  ok:", create.result?.id);
 }
 
-for (const zoneName of ["mypartb.com", "getpartb.com", "www.mypartb.com", "www.getpartb.com"]) {
+for (const zoneName of ["mypartb.com", "www.mypartb.com"]) {
   if (zoneName.startsWith("www.")) {
     const apex = zoneName.slice(4);
     const zones = (await api(`/zones?name=${encodeURIComponent(apex)}`)).result ?? [];

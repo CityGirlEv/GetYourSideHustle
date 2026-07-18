@@ -121,7 +121,7 @@ export interface WeeklyBatchSlot {
 
 export const WEEKLY_CONTENT_BATCH_PLAN: WeeklyBatchSlot[] = [
   { type: "article", count: 3, label: "Learning Center Articles" },
-  { type: "facebook_post", count: 7, label: "Facebook Posts" },
+  { type: "facebook_post", count: 8, label: "Facebook Posts" },
   { type: "newsletter", count: 1, label: "Newsletter" },
   { type: "lead_magnet", count: 1, label: "Lead Magnet" },
   { type: "faq", count: 1, label: "FAQ Collection" },

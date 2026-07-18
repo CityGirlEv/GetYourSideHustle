@@ -21,6 +21,7 @@ import {
 } from "@/lib/password-status.server";
 import { canManageLeadsAdminRole, LEADS_ADMIN_ROLE } from "@/lib/leads-admin";
 import { verifyStaffAdmin } from "@/lib/staff-admin.server";
+import { buildAgentAssigneeOptions } from "@/lib/agent-assignees.server";
 import {
   resolveAgentDisplayName,
   syncLeadCertificatesAgentForScenario,
@@ -713,26 +714,23 @@ export const listAgents = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await verifyAdmin(context.userId);
-    const { data: agentRoles, error } = await supabaseAdmin
+    const { data: agentRoles, error: rolesErr } = await supabaseAdmin
       .from("user_roles")
       .select("user_id")
       .eq("role", "agent");
-    if (error) throw new Error(error.message);
-    const ids = (agentRoles ?? []).map((r) => r.user_id);
+    if (rolesErr) throw new Error(rolesErr.message);
+    const ids = [...new Set((agentRoles ?? []).map((r) => r.user_id))];
     if (ids.length === 0) return [];
-    const [profilesRes, authRes] = await Promise.all([
-      supabaseAdmin.from("profiles").select("id, full_name").in("id", ids),
-      supabaseAdmin.auth.admin.listUsers(),
+
+    const [profiles, authUsers] = await Promise.all([
+      fetchRowsInChunks(ids, (chunk) =>
+        supabaseAdmin.from("profiles").select("id, full_name").in("id", chunk),
+      ),
+      listAllAuthUsers(),
     ]);
-    const profileMap = new Map((profilesRes.data ?? []).map((p) => [p.id, p]));
-    const emailMap = new Map((authRes.data?.users ?? []).map((u) => [u.id, u.email ?? ""]));
-    const agents = ids.map((id) => ({
-      id,
-      full_name: profileMap.get(id)?.full_name ?? "",
-      email: emailMap.get(id) ?? "",
-    }));
-    agents.sort(compareStaffByFullName);
-    return agents;
+    const profileMap = new Map(profiles.map((p) => [p.id, p]));
+    const authById = new Map(authUsers.map((u) => [u.id, u]));
+    return buildAgentAssigneeOptions(ids, profileMap, authById);
   });
 
 async function fetchScenarioAssignmentsByAgent(): Promise<AgentAssignmentGroup[]> {
@@ -804,16 +802,24 @@ export const assignAgent = createServerFn({ method: "POST" })
     if (data.agent_id) {
       const { data: agentRole } = await supabaseAdmin
         .from("user_roles")
-        .select("role")
+        .select("user_id")
         .eq("user_id", data.agent_id)
         .eq("role", "agent")
         .maybeSingle();
-      if (!agentRole) throw new Error("Target user is not an agent");
+      if (!agentRole) throw new Error("Target user does not have the agent role");
+    }
+
+    const assignmentChanged = data.agent_id !== before.assigned_agent_id;
+    const updatePayload: { assigned_agent_id: string | null; assigned_at?: string | null } = {
+      assigned_agent_id: data.agent_id,
+    };
+    if (assignmentChanged) {
+      updatePayload.assigned_at = data.agent_id ? new Date().toISOString() : null;
     }
 
     const { error: updateErr } = await supabaseAdmin
       .from("scenarios")
-      .update({ assigned_agent_id: data.agent_id })
+      .update(updatePayload)
       .eq("id", data.scenario_id);
     if (updateErr) throw new Error(updateErr.message);
 

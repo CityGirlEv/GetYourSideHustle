@@ -1,12 +1,38 @@
 import * as React from "react";
-import { Hr, Img, Link, Section, Text } from "@react-email/components";
-import { emailFooterLogoHeight, emailFooterLogoUrl, resolveEmailSiteUrl } from "./email-header";
-import { SITE_BRAND_NAME, SITE_BRAND_THE } from "@/lib/site-brand";
-import { TPMO_PLATFORM_DISCLAIMER, GOVERNMENT_MEDICARE_AFFILIATION_DISCLAIMER } from "@/lib/medicare-disclaimers";
+import { Column, Hr, Img, Link, Row, Section, Text } from "@react-email/components";
+import {
+  EMAIL_FOOTER_LOGO_WIDTH_DESKTOP,
+  EMAIL_FOOTER_LOGO_WIDTH_MOBILE,
+  emailFooterLogoHeight,
+  emailFooterLogoUrl,
+  resolveEmailSiteUrl,
+} from "./email-header";
+import { SITE_BRAND_NAME, SITE_BRAND_THE, formatSiteCopyright } from "@/lib/site-brand";
+import { PRODUCTION_SITE_ORIGIN, PUBLIC_WEBSITE_HOST } from "@/lib/site-url";
+import {
+  TPMO_PLATFORM_DISCLAIMER,
+  GOVERNMENT_MEDICARE_AFFILIATION_DISCLAIMER,
+  MEDICARE_BENCHMARK_NOTICE,
+  BENCHMARK_TOOL_DISCLAIMER,
+} from "@/lib/medicare-disclaimers";
 
-/** Full wordmark — smaller than header but wide enough to read. */
-export const EMAIL_FOOTER_LOGO_WIDTH_MOBILE = 200;
-export const EMAIL_FOOTER_LOGO_WIDTH_DESKTOP = 280;
+function medicareGovLinkedText(body: string) {
+  const parts = body.split("Medicare.gov");
+  if (parts.length === 1) return body;
+  return parts.flatMap((part, index) =>
+    index < parts.length - 1
+      ? [
+          part,
+          <Link key={`mg-${index}`} href="https://www.medicare.gov" style={link}>
+            Medicare.gov
+          </Link>,
+        ]
+      : [part],
+  );
+}
+
+/** Site footer mini monogram — matches BrandLogo size="footer". */
+export { EMAIL_FOOTER_LOGO_WIDTH_MOBILE, EMAIL_FOOTER_LOGO_WIDTH_DESKTOP };
 export const DEFAULT_CONTACT_EMAIL = "info@MyPartB.com";
 
 interface EmailFooterProps {
@@ -32,29 +58,29 @@ export function EmailFooter({
     <Section style={footerSection}>
       <Hr style={hr} />
       <Section style={brandSection}>
-        <style
-          dangerouslySetInnerHTML={{
-            __html: `
-              @media only screen and (min-width: 480px) {
-                .email-footer-brand-logo {
-                  width: ${EMAIL_FOOTER_LOGO_WIDTH_DESKTOP}px !important;
-                  height: ${emailFooterLogoHeight(EMAIL_FOOTER_LOGO_WIDTH_DESKTOP)}px !important;
-                  max-width: 100% !important;
-                }
-              }
-            `,
-          }}
-        />
-        <Link href={baseUrl} style={brandLink}>
-          <Img
-            src={logoUrl}
-            alt={SITE_BRAND_NAME}
-            width={mobileWidth}
-            height={mobileHeight}
-            className="email-footer-brand-logo"
-            style={footerLogoImg}
-          />
-        </Link>
+        <Row style={brandRow}>
+          <Column style={brandLogoCol}>
+            <Link href={baseUrl} style={brandLink}>
+              <Img
+                src={logoUrl}
+                alt={SITE_BRAND_NAME}
+                width={mobileWidth}
+                height={mobileHeight}
+                className="email-footer-brand-logo"
+                style={footerLogoImg}
+              />
+            </Link>
+          </Column>
+          <Column style={brandTextCol}>
+            <Text style={brandLine}>
+              <Link href={PRODUCTION_SITE_ORIGIN} style={link}>
+                {PUBLIC_WEBSITE_HOST}
+              </Link>
+              <span style={brandDivider}> · </span>
+              {formatSiteCopyright()}
+            </Text>
+          </Column>
+        </Row>
       </Section>
       <Text style={contactLine}>
         Contact:{" "}
@@ -75,24 +101,10 @@ export function EmailFooter({
         protected health information.
       </Text>
       <Text style={disclaimer}>
-        <strong>Medicare notice:</strong> This tool compares sample Medicare plan scenarios for
-        educational purposes only. It is not a complete listing of plans available in your area. For
-        a complete listing, contact{" "}
-        <Link href="https://www.medicare.gov" style={link}>
-          Medicare.gov
-        </Link>{" "}
-        or 1-800-MEDICARE (1-800-633-4227).
+        <strong>Medicare notice:</strong> {medicareGovLinkedText(MEDICARE_BENCHMARK_NOTICE)}
       </Text>
       <Text style={disclaimer}>
-        <strong>Disclaimer:</strong> {SITE_BRAND_THE} is an educational and comparison tool
-        only. We do not sell insurance, act as a licensed agent, or provide personalized legal, tax,
-        or medical advice. Plan names, premiums, and benefits shown are estimated based on publicly
-        available CMS data and may differ from actual carrier offerings in your area. Always verify
-        details with a licensed insurance agent or by visiting{" "}
-        <Link href="https://www.medicare.gov" style={link}>
-          Medicare.gov
-        </Link>{" "}
-        before enrolling. We are not affiliated with the U.S. government or the Medicare program.
+        <strong>Disclaimer:</strong> {medicareGovLinkedText(BENCHMARK_TOOL_DISCLAIMER)}
       </Text>
       {unsubscribeHref ? (
         <Text style={unsubscribeLine}>
@@ -120,9 +132,24 @@ const brandSection = {
   textAlign: "left" as const,
 };
 
+const brandRow = {
+  margin: "0",
+};
+
+const brandLogoCol = {
+  width: `${EMAIL_FOOTER_LOGO_WIDTH_MOBILE + 8}px`,
+  verticalAlign: "middle" as const,
+  paddingRight: "8px",
+};
+
+const brandTextCol = {
+  verticalAlign: "middle" as const,
+};
+
 const brandLink = {
   display: "inline-block",
   textDecoration: "none",
+  verticalAlign: "middle" as const,
 };
 
 const footerLogoImg = {
@@ -134,6 +161,18 @@ const footerLogoImg = {
   width: `${EMAIL_FOOTER_LOGO_WIDTH_MOBILE}px`,
   maxWidth: `${EMAIL_FOOTER_LOGO_WIDTH_DESKTOP}px`,
   height: "auto",
+};
+
+const brandLine = {
+  fontSize: "11px",
+  color: "#94a3b8",
+  margin: "0",
+  lineHeight: "1.4",
+  textAlign: "left" as const,
+};
+
+const brandDivider = {
+  color: "#94a3b8",
 };
 
 const contactLine = {

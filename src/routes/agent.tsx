@@ -21,12 +21,12 @@ import { COMPARISON_ID_LABEL } from "@/lib/plan-comparison-copy";
 export const Route = createFileRoute("/agent")({
   head: () => ({
     meta: [
-      { title: "Agent Command Center — Part B Optimizer" },
+      { title: "Agent Command Center — Part B Optimizer Benchmark Tool" },
       {
         name: "description",
         content: `Look up Medicare plan comparisons by ${COMPARISON_ID_LABEL} and manage your agent caseload. No PII stored.`,
       },
-      { property: "og:title", content: "Agent Command Center — Part B Optimizer" },
+      { property: "og:title", content: "Agent Command Center — Part B Optimizer Benchmark Tool" },
       { property: "og:description", content: "Agent caseload and plan comparison lookup." },
       { property: "og:url", content: "https://themedicareoptimizer.lovable.app/agent" },
       { name: "robots", content: "noindex,nofollow" },
@@ -109,7 +109,11 @@ function AgentPortal() {
           )}
           <div className="flex flex-wrap justify-center gap-2 pt-2">
             {isStaffAdmin ? (
-              <Link to="/pricing">
+              <Link
+                to="/features"
+                search={{ tab: "agents" }}
+                hash="agent-pricing"
+              >
                 <Button className="grad-indigo">View plans & subscribe</Button>
               </Link>
             ) : (
@@ -169,7 +173,7 @@ function AgentPortal() {
               AI Marketing & Growth
             </TabsTrigger>
           </TabsList>
-          <Link to="/scenario/new">
+          <Link to="/scenario/old">
             <Button size="sm" className="grad-indigo">
               <Plus className="h-4 w-4 mr-1.5" />
               Create new comparison
@@ -329,7 +333,11 @@ function AgentPortal() {
               </div>
             </dl>
             {!billing?.hasStripeCustomer && isStaffAdmin && (
-              <Link to="/pricing">
+              <Link
+                to="/features"
+                search={{ tab: "agents" }}
+                hash="agent-pricing"
+              >
                 <Button size="sm" className="grad-indigo">
                   Subscribe to a plan
                 </Button>

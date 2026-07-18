@@ -8,9 +8,6 @@ import {
   ShieldCheck,
   FileDown,
   FileText,
-  Phone,
-  Sparkles,
-  Building2,
   BookOpen,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -19,13 +16,16 @@ import {
   downloadConsumerScenarioPdf,
   type ScenarioPdfInput,
 } from "@/lib/scenario-pdf";
-import { downloadScenarioXlsx } from "@/lib/scenario-xlsx";
+import { openScenarioXlsxInNewTab } from "@/lib/scenario-xlsx";
 import { useEffect, useMemo, useState } from "react";
 import { ExpertOptInDialog } from "@/components/ExpertOptInDialog";
-import { CMS_PARTNER_CTA, LICENSED_AGENT_WILL_CONTACT } from "@/lib/lead-consent";
-import { recommendPlans, usd, type PersonalizedRecommendation } from "@/lib/medicare-math";
+import { CmsPartnerCtaButton } from "@/components/CmsPartnerCtaButton";
+import { LICENSED_AGENT_WILL_CONTACT } from "@/lib/lead-consent";
+import { rankedPlanDetails } from "@/lib/plan-details";
+import { useCmsLandscapeReady } from "@/hooks/use-cms-landscape-ready";
 import { useApp } from "@/lib/app-store";
 import { DrugReport } from "@/components/DrugReport";
+import { PlanComparisonRecommendation } from "@/components/PlanComparisonRecommendation";
 import { ScenarioProfileHeader } from "@/components/ScenarioProfileHeader";
 import {
   COMPARISON_ID_COPIED,
@@ -34,6 +34,8 @@ import {
   COPY_COMPARISON_ID,
   COPY_COMPARISON_LINK,
   PLAN_COMPARISON_EDUCATIONAL_NOTE,
+  PLAN_COMPARISON_OPEN_EXCEL,
+  PLAN_COMPARISON_XLSX_OPENED,
   VIEW_COMPARISON_SUMMARY,
   VIEW_PLAN_COMPARISON,
   YOUR_PLAN_COMPARISON,
@@ -42,7 +44,7 @@ import {
 export const Route = createFileRoute("/scenario/created/$code")({
   head: () => ({
     meta: [
-      { title: "Plan Comparison Created — Part B Optimizer" },
+      { title: "Plan Comparison Created — Part B Optimizer Benchmark Tool" },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -67,17 +69,17 @@ function ScenarioCreated() {
     }
   }, [code]);
 
-  const recommendation: PersonalizedRecommendation | null = useMemo(() => {
-    if (!scenario) return null;
-    return recommendPlans({
+  const landscapeReady = useCmsLandscapeReady();
+
+  const topPlanLabel = useMemo(() => {
+    if (!scenario || !landscapeReady) return undefined;
+    const top = rankedPlanDetails({
       year: scenario.year,
       zip3: scenario.zip3,
-      county: scenario.county,
-      meds: scenario.medications,
-      conditions: scenario.conditions,
-      costPreference: scenario.costPreference,
-    });
-  }, [scenario]);
+      medications: scenario.medications,
+    })[0];
+    return top ? `${top.carrier} — ${top.plan}` : undefined;
+  }, [scenario, landscapeReady]);
 
   useEffect(() => {
     const seen = sessionStorage.getItem(`expert-optin-shown:${code}`);
@@ -137,16 +139,16 @@ function ScenarioCreated() {
     }
   };
 
-  const downloadXlsx = () => {
+  const openXlsx = async () => {
     try {
       if (!scenario) {
         toast.error("Workbook not available — re-open after creating the comparison.");
         return;
       }
-      downloadScenarioXlsx({ ...scenario, county: scenario.county });
-      toast.success("Excel workbook downloaded");
+      await openScenarioXlsxInNewTab({ ...scenario, county: scenario.county });
+      toast.success(PLAN_COMPARISON_XLSX_OPENED);
     } catch (e) {
-      toast.error("Could not generate workbook");
+      toast.error("Could not open workbook");
       console.error(e);
     }
   };
@@ -197,8 +199,8 @@ function ScenarioCreated() {
               <Button onClick={downloadPdf} variant="outline" className="w-full">
                 <FileText className="h-4 w-4 mr-2" /> Download PDF
               </Button>
-              <Button onClick={downloadXlsx} variant="outline" className="w-full">
-                <FileDown className="h-4 w-4 mr-2" /> Download Excel
+              <Button onClick={openXlsx} variant="outline" className="w-full">
+                <FileDown className="h-4 w-4 mr-2" /> {PLAN_COMPARISON_OPEN_EXCEL}
               </Button>
             </div>
           )}
@@ -211,10 +213,12 @@ function ScenarioCreated() {
           )}
 
           <div className="space-y-1">
-            <Button onClick={() => setOptInOpen(true)} variant="outline" className="w-full">
-              <Phone className="h-4 w-4 mr-2" /> {CMS_PARTNER_CTA}
-            </Button>
-            <p className="text-[11px] text-muted-foreground px-1 text-left">
+            <CmsPartnerCtaButton
+              variant="outline"
+              scenarioCode={code}
+              onClick={() => setOptInOpen(true)}
+            />
+            <p className="text-xs text-muted-foreground px-1 text-left">
               Optional — share your email and phone only if you want personalized guidance. We never
               contact you unless you opt in and authorize contact.
             </p>
@@ -232,87 +236,27 @@ function ScenarioCreated() {
             </Button>
           </a>
 
-          {recommendation && (
-            <div className="text-left bg-emerald/5 border border-emerald/30 rounded-lg p-4 space-y-3 text-sm">
-              <div className="flex items-start justify-between gap-2">
-                <div className="font-semibold flex items-center gap-2 text-emerald">
-                  <Sparkles className="h-4 w-4" /> Personalized recommendation
-                </div>
-                <div className="flex flex-col gap-1 shrink-0">
-                  <Button
-                    onClick={downloadPdf}
-                    size="sm"
-                    variant="outline"
-                    className="h-7 px-2 text-[11px]"
-                  >
-                    <FileDown className="h-3 w-3 mr-1" /> PDF
-                  </Button>
-                  <Button
-                    onClick={downloadXlsx}
-                    size="sm"
-                    variant="outline"
-                    className="h-7 px-2 text-[11px]"
-                  >
-                    <FileDown className="h-3 w-3 mr-1" /> Excel
-                  </Button>
-                </div>
+          {scenario && (
+            <div className="text-left space-y-3">
+              <div className="flex flex-col gap-1 shrink-0 sm:flex-row sm:justify-end">
+                <Button
+                  onClick={downloadPdf}
+                  size="sm"
+                  variant="outline"
+                  className="h-8 px-3 text-xs"
+                >
+                  <FileDown className="h-3 w-3 mr-1" /> Download PDF
+                </Button>
+                <Button
+                  onClick={openXlsx}
+                  size="sm"
+                  variant="outline"
+                  className="h-8 px-3 text-xs"
+                >
+                  <FileDown className="h-3 w-3 mr-1" /> {PLAN_COMPARISON_OPEN_EXCEL}
+                </Button>
               </div>
-              <div>
-                <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Best fit for your priorities
-                </div>
-                <div className="font-bold text-base">{recommendation.primary.planName}</div>
-                <div className="text-xs text-muted-foreground">
-                  {recommendation.primary.pathwayLabel}
-                </div>
-                <p className="text-xs mt-1">{recommendation.primary.planDescription}</p>
-                <p className="text-xs mt-1 italic">{recommendation.primary.rationale}</p>
-                <div className="grid grid-cols-3 gap-2 mt-2 text-xs">
-                  <div>
-                    <span className="text-muted-foreground">Est. monthly:</span>{" "}
-                    <strong>{usd(recommendation.primary.estMonthlyPremium)}</strong>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Est. annual:</span>{" "}
-                    <strong>{usd(recommendation.primary.estAnnualTotal)}</strong>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Worst-case:</span>{" "}
-                    <strong>{usd(recommendation.primary.estWorstCase)}</strong>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-2 border-t border-emerald/20">
-                <div className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1">
-                  <Building2 className="h-3 w-3" /> Carriers offering this in your area
-                </div>
-                <ul className="mt-1 space-y-1">
-                  {recommendation.primary.carriers.slice(0, 6).map((c) => (
-                    <li key={c["Carrier Name"]} className="text-xs">
-                      <strong>{c["Carrier Name"]}</strong>
-                      <span className="text-muted-foreground"> — {c["A.M. Best Rating"]}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="pt-2 border-t border-emerald/20">
-                <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Also consider
-                </div>
-                <div className="text-sm font-semibold">{recommendation.alternate.planName}</div>
-                <div className="text-xs text-muted-foreground">
-                  {recommendation.alternate.pathwayLabel} · est.{" "}
-                  {usd(recommendation.alternate.estAnnualTotal)} / yr
-                </div>
-              </div>
-
-              <p className="text-[10px] text-muted-foreground pt-2 border-t border-emerald/20">
-                Source: {recommendation.primary.source}. Reviewed against all open standardized
-                Medigap letters, all CMS-approved MA plan types, and all PDP tiers in the catalog.
-                Premium figures are regional estimates — not a binding rate quote.
-              </p>
+              <PlanComparisonRecommendation scenario={scenario} className="text-left" />
             </div>
           )}
           {scenario?.medications?.length ? <DrugReport medications={scenario.medications} /> : null}
@@ -361,7 +305,7 @@ function ScenarioCreated() {
                 costPreference: scenario.costPreference,
                 conditions: scenario.conditions,
                 medications: scenario.medications,
-                recommendation: recommendation?.primary?.planName,
+                recommendation: topPlanLabel,
               }
             : undefined
         }

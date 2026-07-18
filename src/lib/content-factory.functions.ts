@@ -25,12 +25,13 @@ import {
   listContentDrafts,
   patchContentDraftPayload,
   publishContentDraft,
+  syncWorkbookFacebookPosts,
   updateContentDraft,
   updateContentDraftStatus,
 } from "@/lib/content-factory/repository";
 import { featuredImagePublicPath } from "@/lib/article-authoring";
 import { isLocalDevEnvironment } from "@/lib/env";
-import { mkdirSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, unlinkSync, writeFileSync } from "fs";
 import { join } from "path";
 
 async function verifyContentFactoryAdmin(userId: string) {
@@ -206,6 +207,7 @@ export const saveLeadMagnetPdfAdmin = createServerFn({ method: "POST" })
         draftId: z.string().uuid(),
         slug: z.string().min(3).max(80),
         pdfBase64: z.string().min(32).max(24_000_000),
+        teaserBase64: z.string().min(32).max(12_000_000).optional(),
       })
       .parse(input),
   )
@@ -217,6 +219,7 @@ export const saveLeadMagnetPdfAdmin = createServerFn({ method: "POST" })
     }
 
     const pdfPath = `/downloads/${data.slug}.pdf`;
+    const socialTeaserPath = `/downloads/${data.slug}-facebook-teaser.jpg`;
     const savedAt = new Date().toISOString();
 
     if (!isLocalDevEnvironment()) {
@@ -228,19 +231,84 @@ export const saveLeadMagnetPdfAdmin = createServerFn({ method: "POST" })
     const downloadsDir = join(process.cwd(), "public", "downloads");
     mkdirSync(downloadsDir, { recursive: true });
     writeFileSync(join(downloadsDir, `${data.slug}.pdf`), Buffer.from(data.pdfBase64, "base64"));
+    if (data.teaserBase64) {
+      writeFileSync(
+        join(downloadsDir, `${data.slug}-facebook-teaser.jpg`),
+        Buffer.from(data.teaserBase64, "base64"),
+      );
+    }
 
     await patchContentDraftPayload(data.draftId, context.userId, {
       pdfPath,
       pdfSavedAt: savedAt,
       pdfSlug: data.slug,
+      ...(data.teaserBase64
+        ? { socialTeaserPath, socialTeaserSavedAt: savedAt }
+        : {}),
     });
 
     return {
       ok: true as const,
       pdfPath,
+      socialTeaserPath: data.teaserBase64 ? socialTeaserPath : null,
       diskPath: `public/downloads/${data.slug}.pdf`,
       savedAt,
     };
+  });
+
+/** Remove saved workbook PDF from public/downloads/ and clear draft payload (local dev). */
+export const unpublishLeadMagnetPdfAdmin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        draftId: z.string().uuid(),
+        slug: z.string().min(3).max(80),
+      })
+      .parse(input),
+  )
+  .handler(async ({ context, data }) => {
+    await verifyContentFactoryAdmin(context.userId);
+    const draft = await getContentDraft(data.draftId);
+    if (!draft || draft.type !== "lead_magnet") {
+      throw new Error("Lead magnet draft not found");
+    }
+
+    if (!isLocalDevEnvironment()) {
+      throw new Error(
+        "PDF unpublish removes files from public/downloads/ in local development only. Delete the committed files manually for production.",
+      );
+    }
+
+    const downloadsDir = join(process.cwd(), "public", "downloads");
+    const pdfFile = join(downloadsDir, `${data.slug}.pdf`);
+    const teaserFile = join(downloadsDir, `${data.slug}-facebook-teaser.jpg`);
+    if (existsSync(pdfFile)) unlinkSync(pdfFile);
+    if (existsSync(teaserFile)) unlinkSync(teaserFile);
+
+    await patchContentDraftPayload(data.draftId, context.userId, {
+      pdfPath: null,
+      pdfSavedAt: null,
+      pdfSlug: null,
+      socialTeaserPath: null,
+      socialTeaserSavedAt: null,
+    });
+
+    return {
+      ok: true as const,
+      removedPdf: pdfFile,
+      removedTeaser: teaserFile,
+    };
+  });
+
+export const syncWorkbookFacebookPostsAdmin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ batchId: z.string().uuid() }).parse(input),
+  )
+  .handler(async ({ context, data }) => {
+    await verifyContentFactoryAdmin(context.userId);
+    return syncWorkbookFacebookPosts(data.batchId, context.userId);
   });
 
 export const publishContentFactoryDraftAdmin = createServerFn({ method: "POST" })
@@ -380,4 +448,49 @@ export const listNewsletterArticlesAdmin = createServerFn({ method: "POST" })
       excerpt: article.excerpt,
       featuredImage: article.featuredImage,
     }));
+  });
+
+export const loadEditorialCalendarProgressAdmin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await verifyContentFactoryAdmin(context.userId);
+    const {
+      loadEditorialCalendarProgressFromDb,
+    } = await import("@/lib/content-factory/editorial-calendar-progress.server");
+    return loadEditorialCalendarProgressFromDb();
+  });
+
+export const setEditorialCalendarTaskAdmin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        storageId: z.string().min(1).max(200),
+        completed: z.boolean(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ context, data }) => {
+    await verifyContentFactoryAdmin(context.userId);
+    const { setEditorialCalendarTaskInDb } = await import(
+      "@/lib/content-factory/editorial-calendar-progress.server"
+    );
+    return setEditorialCalendarTaskInDb(data.storageId, data.completed);
+  });
+
+export const mergeEditorialCalendarProgressAdmin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        tasks: z.record(z.string(), z.boolean()),
+      })
+      .parse(input),
+  )
+  .handler(async ({ context, data }) => {
+    await verifyContentFactoryAdmin(context.userId);
+    const { mergeEditorialCalendarProgressInDb } = await import(
+      "@/lib/content-factory/editorial-calendar-progress.server"
+    );
+    return mergeEditorialCalendarProgressInDb(data.tasks);
   });

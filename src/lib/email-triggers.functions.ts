@@ -11,7 +11,11 @@ import { getClientIpFromRequest, getUserAgentFromRequest } from "@/lib/request-c
 import {
   buildLeadConsentSnapshot,
   DEFAULT_LEAD_AGENCY_NAME,
+  formatLeadConsentText,
+  resolveLeadSourceUrl,
 } from "@/lib/lead-consent";
+import { recordLeadEvent } from "@/lib/lead-events.server";
+import { LEAD_STATUSES, LEAD_TYPES } from "@/lib/lead-types";
 
 const submitExpertContactSchema = z
   .object({
@@ -25,8 +29,24 @@ const submitExpertContactSchema = z
     contact_authorized: z.literal(true),
     marketing_opt_in: z.boolean(),
     client_metadata: z.record(z.string(), z.unknown()).optional().nullable(),
+    trustedform_cert_url: z.string().url().max(2048).optional().nullable(),
+    trustedform_token: z.string().max(512).optional().nullable(),
+    trustedform_ping_url: z.string().url().max(2048).optional().nullable(),
   })
   .strict();
+
+/** Omit TrustedForm keys when empty — DB may not have columns until migration is applied. */
+function trustedFormInsertFields(data: {
+  trustedform_cert_url?: string | null;
+  trustedform_token?: string | null;
+  trustedform_ping_url?: string | null;
+}): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (data.trustedform_cert_url) out.trustedform_cert_url = data.trustedform_cert_url;
+  if (data.trustedform_token) out.trustedform_token = data.trustedform_token;
+  if (data.trustedform_ping_url) out.trustedform_ping_url = data.trustedform_ping_url;
+  return out;
+}
 
 export const submitExpertContactRequest = createServerFn({ method: "POST" })
   .inputValidator((input) => submitExpertContactSchema.parse(input))
@@ -45,6 +65,9 @@ export const submitExpertContactRequest = createServerFn({ method: "POST" })
       contactAuthorized: data.contact_authorized,
       marketingOptIn: data.marketing_opt_in,
     });
+    const consentText = formatLeadConsentText(consentSnapshot);
+    const sourceUrl = resolveLeadSourceUrl(data.client_metadata);
+    const trustedFormFields = trustedFormInsertFields(data);
 
     const { data: contactRow, error: contactErr } = await supabaseAdmin
       .from("expert_contact_requests")
@@ -56,6 +79,12 @@ export const submitExpertContactRequest = createServerFn({ method: "POST" })
         scenario_snapshot: data.scenario_snapshot ? (data.scenario_snapshot as never) : null,
         marketing_opt_in: data.marketing_opt_in,
         agency_name: agencyName,
+        ip_address: ipAddress,
+        source_url: sourceUrl,
+        consent_text: consentText,
+        consent_snapshot: consentSnapshot as never,
+        submitted_at: submittedAt,
+        ...trustedFormFields,
       })
       .select("id")
       .single();
@@ -75,12 +104,15 @@ export const submitExpertContactRequest = createServerFn({ method: "POST" })
         agency_name: agencyName,
         ip_address: ipAddress,
         user_agent: userAgent,
+        source_url: sourceUrl,
+        consent_text: consentText,
         client_metadata: (data.client_metadata ?? {}) as never,
         consent_snapshot: consentSnapshot as never,
         privacy_acknowledged: true,
         contact_authorized: true,
         marketing_opt_in: data.marketing_opt_in,
         submitted_at: submittedAt,
+        ...trustedFormFields,
       })
       .select("id")
       .single();
@@ -90,10 +122,35 @@ export const submitExpertContactRequest = createServerFn({ method: "POST" })
       throw new Error(certErr?.message ?? "Could not create lead certificate");
     }
 
+    if (data.trustedform_cert_url) {
+      console.info("[TrustedForm] certificate captured", {
+        lead_certificate_id: certificate.id,
+        cert_url: data.trustedform_cert_url,
+      });
+    } else if (sourceUrl?.includes("mypartb.com")) {
+      console.warn(
+        "[TrustedForm] production lead without certificate — complete domain verification in ActiveProspect",
+      );
+    }
+
     await supabaseAdmin
       .from("expert_contact_requests")
       .update({ lead_certificate_id: certificate.id })
       .eq("id", contactRow.id);
+
+    await recordLeadEvent(supabaseAdmin, {
+      leadType: LEAD_TYPES.AGENT_OPT_IN_SUBMIT,
+      leadStatus: LEAD_STATUSES.COMPLETED,
+      email: data.email,
+      fullName: data.full_name,
+      phone: data.phone,
+      scenarioCode,
+      sourceUrl,
+      ipAddress,
+      userAgent,
+      expertContactRequestId: contactRow.id,
+      clientMetadata: data.client_metadata ?? null,
+    });
 
     await sendTransactionalTemplates({
       templateName: "contact-request",

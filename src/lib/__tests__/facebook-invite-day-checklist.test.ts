@@ -13,9 +13,9 @@ describe("facebook-invite-day-checklist", () => {
     );
   });
 
-  it("uses stable storage ids per sub-step", () => {
-    expect(facebookInviteStepStorageId("send-invites")).toBe(
-      "facebook_invite:launch:send-invites",
+  it("uses stable date-scoped storage ids per sub-step", () => {
+    expect(facebookInviteStepStorageId("2026-06-24", "send-invites")).toBe(
+      "2026-06-24:facebook_invite:launch:send-invites",
     );
   });
 });

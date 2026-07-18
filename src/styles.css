@@ -4,11 +4,16 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Site-wide base font size + user-adjustable scaling.
-   Tailwind's rem-based sizing inherits from html, so changing the
-   root font-size scales typography across the entire app. */
+/* Site-wide base font size + user-adjustable scaling (see src/lib/typography.ts).
+   Tailwind rem utilities inherit from html; FontSizeToggle multiplies ROOT_FONT_SIZE_PX. */
 html {
-  font-size: 18px;
+  font-size: 16px;
+}
+
+@media (min-width: 1024px) {
+  html {
+    font-size: 17px;
+  }
 }
 
 /*
@@ -69,6 +74,23 @@ html {
   --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-script: "Dancing Script", cursive;
+  /* Readable rem scale — avoids fixed px classes that ignore user font-scale. */
+  --text-micro: 0.75rem;
+  --text-micro--line-height: 1.25;
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.35;
+  --text-sm: 0.9375rem;
+  --text-sm--line-height: 1.5;
+  --text-base: 1rem;
+  --text-base--line-height: 1.6;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.5;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.4;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 1.3;
+  --text-3xl: 1.875rem;
+  --text-3xl--line-height: 1.25;
   --color-emerald: var(--emerald);
   --color-emerald-foreground: var(--emerald-foreground);
   --color-warning: var(--warning);
@@ -81,6 +103,7 @@ html {
   /* Logo navy #002870 */
   --brand-navy: #002870;
   --brand-navy-mid: #003888;
+  --brand-navy-accent: #0040a0;
   --brand-navy-light: #0048a0;
   /* Light slate canvas behind glass panels */
   --background: oklch(0.985 0.008 250);
@@ -177,6 +200,8 @@ html {
     background-attachment: fixed;
     color: var(--color-foreground);
     font-family: var(--font-sans);
+    font-size: 1rem;
+    line-height: 1.6;
     -webkit-font-smoothing: antialiased;
   }
 
@@ -187,6 +212,41 @@ html {
   h5 {
     font-family: var(--font-display);
     letter-spacing: -0.01em;
+    line-height: 1.25;
+  }
+
+  h1 {
+    font-size: 1.75rem;
+  }
+
+  h2 {
+    font-size: 1.5rem;
+  }
+
+  h3 {
+    font-size: 1.25rem;
+  }
+
+  h4 {
+    font-size: 1.125rem;
+  }
+
+  h5 {
+    font-size: 1rem;
+  }
+
+  @media (min-width: 640px) {
+    h1 {
+      font-size: 2rem;
+    }
+
+    h2 {
+      font-size: 1.75rem;
+    }
+
+    h3 {
+      font-size: 1.375rem;
+    }
   }
 
   /* Tablets / phones: remove tap delay and enlarge common controls. */
@@ -241,54 +301,30 @@ html {
   .grad-indigo:hover {
     background-color: var(--brand-navy-light);
   }
+  .btn-brand-accent {
+    background-color: var(--brand-navy-accent);
+    color: oklch(0.99 0 0);
+    border-color: transparent;
+  }
+  .btn-brand-accent:hover {
+    background-color: var(--brand-navy-light);
+  }
   .compare-plans-cta {
-    background-color: #facc15 !important;
+    background-color: var(--emerald) !important;
     background-image: none !important;
-    color: var(--brand-navy-mid) !important;
-    border-color: transparent !important;
-    box-shadow:
-      0 0 0 1px rgb(234 179 8 / 0.35),
-      0 0 18px rgb(250 204 21 / 0.55),
-      0 0 36px rgb(250 204 21 / 0.28);
-    animation: compare-plans-cta-blink 1.1s step-end infinite;
+    color: var(--emerald-foreground) !important;
+    border-color: var(--emerald) !important;
+    box-shadow: none !important;
   }
   .compare-plans-cta:hover {
-    background-color: #eab308 !important;
-    color: var(--brand-navy-mid) !important;
-    filter: brightness(1.08);
-    box-shadow:
-      0 0 0 1px rgb(234 179 8 / 0.55),
-      0 0 28px rgb(250 204 21 / 0.85),
-      0 0 56px rgb(250 204 21 / 0.45) !important;
-    animation: none;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .compare-plans-cta {
-      animation: none;
-    }
+    background-color: color-mix(in oklch, var(--emerald) 90%, transparent) !important;
+    color: var(--emerald-foreground) !important;
+    opacity: 1 !important;
+    filter: none;
+    box-shadow: none !important;
   }
   .script {
     font-family: var(--font-script);
-  }
-}
-
-@keyframes compare-plans-cta-blink {
-  0%,
-  100% {
-    filter: brightness(0.72);
-    background-color: #eab308 !important;
-    box-shadow:
-      0 0 0 1px rgb(234 179 8 / 0.2),
-      0 0 4px rgb(250 204 21 / 0.2),
-      0 0 10px rgb(250 204 21 / 0.1) !important;
-  }
-  50% {
-    filter: brightness(1.2);
-    background-color: #fde047 !important;
-    box-shadow:
-      0 0 0 1px rgb(234 179 8 / 0.55),
-      0 0 26px rgb(250 204 21 / 0.9),
-      0 0 52px rgb(250 204 21 / 0.5) !important;
   }
 }
 
@@ -306,4 +342,11 @@ html {
   will-change: transform;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+}
+
+@media print {
+  .workbook-print-section {
+    break-before: page;
+    page-break-before: always;
+  }
 }

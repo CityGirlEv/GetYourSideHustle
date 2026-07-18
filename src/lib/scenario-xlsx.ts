@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs";
+import { openXlsxBlobInTab, prepareXlsxPreviewTab } from "@/lib/xlsx-open";
 import {
   GUIDELINES,
   medigapPremiumByZip3,
@@ -48,7 +49,7 @@ const FILL_CALLOUT = "FFF2F6F9";
 const FILL_TOTAL = "FFEAEAEA";
 const FILL_HIGHLIGHT = "FFDAEFDA";
 
-type StyledRow =
+export type StyledRow =
   | { kind: "blank" }
   | { kind: "title"; text: string; span: number }
   | { kind: "subtitle"; text: string; span: number }
@@ -61,7 +62,7 @@ type StyledRow =
   | { kind: "highlightRow"; cells: (string | number)[]; greenCols?: number[] }
   | { kind: "note"; text: string; span: number };
 
-function renderSheet(ws: ExcelJS.Worksheet, rows: StyledRow[], widths: number[]) {
+export function renderSheet(ws: ExcelJS.Worksheet, rows: StyledRow[], widths: number[]) {
   widths.forEach((w, i) => {
     ws.getColumn(i + 1).width = w;
   });
@@ -225,7 +226,7 @@ function buildPersonalSheet(wb: ExcelJS.Workbook, input: ScenarioXlsxInput) {
     },
     { kind: "blank" },
     { kind: "blank" },
-    { kind: "section", text: "YOUR OPTIMIZER PROFILE", span: 3 },
+    { kind: "section", text: "YOUR INPUT", span: 3 },
     {
       kind: "kv",
       key: "Demographics:",
@@ -393,13 +394,11 @@ function buildPathwayASheet(wb: ExcelJS.Workbook, input: ScenarioXlsxInput) {
     return {
       kind: "tableRow",
       alt: i % 2 === 1,
-      linkCol: 5,
       cells: [
         c["Carrier Name"],
         fmtMo(baseG * mult),
         fmtMo(baseN * mult),
         c["A.M. Best Rating"],
-        c["Carrier Portal"] ?? "Visit Carrier Portal",
       ],
     };
   });
@@ -409,13 +408,11 @@ function buildPathwayASheet(wb: ExcelJS.Workbook, input: ScenarioXlsxInput) {
     return {
       kind: "tableRow",
       alt: i % 2 === 1,
-      linkCol: 5,
       cells: [
         c["Carrier Name"],
         fmtMo(basePartD * mult * 0.55),
         fmtMo(basePartD * mult),
         ["3.5 Stars", "4.0 Stars", "4.5 Stars"][i % 3],
-        c["Carrier Portal"] ?? "Visit Rx Portal",
       ],
     };
   });
@@ -424,18 +421,18 @@ function buildPathwayASheet(wb: ExcelJS.Workbook, input: ScenarioXlsxInput) {
     {
       kind: "title",
       text: `Pathway A Medigap Options (ZIP ${input.zip3}${input.county ? ` · ${input.county}` : ""})`,
-      span: 5,
+      span: 4,
     },
     {
       kind: "subtitle",
-      span: 5,
+      span: 4,
       text: `Standardized Medicare Supplement (Plan G and Plan N) and Standalone Part D plan premiums for Age ${new Date().getFullYear() - input.birthYear}, ${input.gender}${input.tobacco ? ", Tobacco Smoker" : ", Non-smoker"}.`,
     },
     { kind: "blank" },
-    { kind: "section", text: "Medicare Supplement Carrier Premium Estimates", span: 5 },
+    { kind: "section", text: "Medicare Supplement Carrier Premium Estimates", span: 4 },
     {
       kind: "subtitle",
-      span: 5,
+      span: 4,
       text: "Plan G is the comprehensive standard; Plan N is the lower-premium copay alternative.",
     },
     { kind: "blank" },
@@ -446,32 +443,30 @@ function buildPathwayASheet(wb: ExcelJS.Workbook, input: ScenarioXlsxInput) {
         "Plan G Monthly Premium",
         "Plan N Monthly Premium",
         "Financial Strength Rating",
-        "Portal Links",
       ],
     },
     ...medigapCarriers,
     { kind: "blank" },
-    { kind: "section", text: "Standalone Prescription Drug Plans (Part D)", span: 5 },
+    { kind: "section", text: "Standalone Prescription Drug Plans (Part D)", span: 4 },
     {
       kind: "subtitle",
-      span: 5,
+      span: 4,
       text: `Pharmacy strategy sized to the ${input.medications.length} medication${input.medications.length === 1 ? "" : "s"} you listed.`,
     },
     { kind: "blank" },
     {
       kind: "tableHeader",
       cells: [
-        "Part D Carrier & Plan Name",
+        "Part D carrier & coverage",
         "Basic PDP Premium",
         "Standard PDP Premium",
         "Formulary Star Rating",
-        "Portal Links",
       ],
     },
     ...partDCarriers,
   ];
 
-  renderSheet(ws, rows, [34, 22, 22, 24, 22]);
+  renderSheet(ws, rows, [34, 22, 22, 24]);
 }
 
 function buildPathwayBSheet(wb: ExcelJS.Workbook, input: ScenarioXlsxInput) {
@@ -485,7 +480,6 @@ function buildPathwayBSheet(wb: ExcelJS.Workbook, input: ScenarioXlsxInput) {
     return {
       kind: "tableRow",
       alt: i % 2 === 1,
-      linkCol: 6,
       cells: [
         c["Carrier Name"],
         hmo === 0 ? "$0/month" : `$${hmo}/month`,
@@ -501,7 +495,6 @@ function buildPathwayBSheet(wb: ExcelJS.Workbook, input: ScenarioXlsxInput) {
           "4.0 Stars",
         ][i],
         c["Key Characteristics"],
-        c["Carrier Portal"] ?? "Visit Advantage Portal",
       ],
     };
   });
@@ -510,15 +503,15 @@ function buildPathwayBSheet(wb: ExcelJS.Workbook, input: ScenarioXlsxInput) {
     {
       kind: "title",
       text: `Pathway B Coordinated Care Network Choices (ZIP ${input.zip3})`,
-      span: 6,
+      span: 5,
     },
     {
       kind: "subtitle",
-      span: 6,
+      span: 5,
       text: "Medicare Advantage HMO and PPO plan carriers available in your area — coordinated networks with low upfront costs and bundled benefits.",
     },
     { kind: "blank" },
-    { kind: "section", text: "Regional Medicare Advantage Plans", span: 6 },
+    { kind: "section", text: "Regional Medicare Advantage Plans", span: 5 },
     { kind: "blank" },
     {
       kind: "tableHeader",
@@ -528,7 +521,6 @@ function buildPathwayBSheet(wb: ExcelJS.Workbook, input: ScenarioXlsxInput) {
         "PPO Premium",
         "Local Avg Star Rating",
         "Network Characteristics",
-        "Portal Links",
       ],
     },
     ...maCarriers,
@@ -537,10 +529,10 @@ function buildPathwayBSheet(wb: ExcelJS.Workbook, input: ScenarioXlsxInput) {
   if (hasChronic) {
     rows.push(
       { kind: "blank" },
-      { kind: "section", text: "Specialized Chronic Special Needs Plans (C-SNP)", span: 6 },
+      { kind: "section", text: "Specialized Chronic Special Needs Plans (C-SNP)", span: 4 },
       {
         kind: "subtitle",
-        span: 6,
+        span: 4,
         text: `Clinical Diagnosis Alert: Detected chronic condition (${input.conditions.join(", ")}). C-SNPs offer specialized disease-care networks and customized pharmacy formularies.`,
       },
       { kind: "blank" },
@@ -551,56 +543,45 @@ function buildPathwayBSheet(wb: ExcelJS.Workbook, input: ScenarioXlsxInput) {
           "Qualifying Chronic Focus",
           "Star Rating",
           "Bundled Disease Perks",
-          "Carrier Portal",
-          "",
         ],
       },
       {
         kind: "tableRow",
-        linkCol: 5,
         cells: [
           "UnitedHealthcare Chronic Care",
           "Diabetes & Cardiovascular",
           "4.0 Stars",
           "Specialized endocrinologist copays, zero insulin cost tiers",
-          "Visit C-SNP Portal",
-          "",
         ],
       },
       {
         kind: "tableRow",
         alt: true,
-        linkCol: 5,
         cells: [
           "Humana Chronic Care",
           "Cardiovascular & Heart Failure",
           "4.5 Stars",
           "Free home BP cuffs, customized cardiac rehab programs",
-          "Visit C-SNP Portal",
-          "",
         ],
       },
       {
         kind: "tableRow",
-        linkCol: 5,
         cells: [
           "Aetna Chronic Care",
           "Diabetes & COPD",
           "4.0 Stars",
           "Care manager + medication therapy management",
-          "Visit C-SNP Portal",
-          "",
         ],
       },
     );
   }
 
-  renderSheet(ws, rows, [30, 18, 18, 22, 40, 22]);
+  renderSheet(ws, rows, [30, 18, 18, 22, 40]);
 }
 
 function buildScenarioWorkbook(input: ScenarioXlsxInput): ExcelJS.Workbook {
   const wb = new ExcelJS.Workbook();
-  wb.creator = "Part B Optimizer";
+  wb.creator = "Part B Optimizer Benchmark Tool";
   wb.created = new Date();
   buildPersonalSheet(wb, input);
   buildPathwayASheet(wb, input);
@@ -628,7 +609,6 @@ interface Top10Row {
   starRating: string;
   amBest: string;
   extras: string;
-  portal: string;
   estAnnualTotal: number;
 }
 
@@ -675,7 +655,6 @@ function buildTop10Sheet(wb: ExcelJS.Workbook, input: ScenarioXlsxInput) {
       starRating: ["4.0", "4.5", "4.0", "3.5"][i] + " Stars",
       amBest: c["A.M. Best Rating"],
       extras: "No bundled extras – add standalone dental/vision",
-      portal: c["Carrier Portal"] ?? "Carrier portal",
       estAnnualTotal: Math.round(monthly * 12 + annualDrugEst),
     });
   });
@@ -703,7 +682,6 @@ function buildTop10Sheet(wb: ExcelJS.Workbook, input: ScenarioXlsxInput) {
       starRating: ["4.0", "4.5"][i] + " Stars",
       amBest: c["A.M. Best Rating"],
       extras: "Lower premium than Plan G; small office copays",
-      portal: c["Carrier Portal"] ?? "Carrier portal",
       estAnnualTotal: Math.round(monthly * 12 + annualDrugEst),
     });
   });
@@ -729,7 +707,6 @@ function buildTop10Sheet(wb: ExcelJS.Workbook, input: ScenarioXlsxInput) {
       starRating: ["4.5", "4.0", "4.0", "3.5"][i] + " Stars",
       amBest: c["A.M. Best Rating"],
       extras: "Bundles dental, vision, hearing, fitness, OTC",
-      portal: c["Carrier Portal"] ?? "Carrier portal",
       estAnnualTotal: Math.round(monthly * 12 + annualDrugEst + 800),
     });
   });
@@ -755,7 +732,6 @@ function buildTop10Sheet(wb: ExcelJS.Workbook, input: ScenarioXlsxInput) {
       starRating: ["4.0", "4.0", "4.5"][i] + " Stars",
       amBest: c["A.M. Best Rating"],
       extras: "Dental, vision, hearing + nationwide PPO flexibility",
-      portal: c["Carrier Portal"] ?? "Carrier portal",
       estAnnualTotal: Math.round(monthly * 12 + annualDrugEst + 1100),
     });
   });
@@ -767,7 +743,7 @@ function buildTop10Sheet(wb: ExcelJS.Workbook, input: ScenarioXlsxInput) {
   const header: string[] = [
     "Rank",
     "Carrier",
-    "Plan Name",
+    "Coverage approach",
     "Plan Type",
     "Network & Referrals",
     "Total Monthly Premium",
@@ -781,7 +757,6 @@ function buildTop10Sheet(wb: ExcelJS.Workbook, input: ScenarioXlsxInput) {
     "Star Rating",
     "A.M. Best",
     "Bundled Extras",
-    "Carrier Portal",
     "Estimated Annual Total",
   ];
 
@@ -799,7 +774,6 @@ function buildTop10Sheet(wb: ExcelJS.Workbook, input: ScenarioXlsxInput) {
       (r, i): StyledRow => ({
         kind: "tableRow",
         alt: i % 2 === 1,
-        linkCol: 17,
         cells: [
           r.rank,
           r.carrier,
@@ -817,7 +791,6 @@ function buildTop10Sheet(wb: ExcelJS.Workbook, input: ScenarioXlsxInput) {
           r.starRating,
           r.amBest,
           r.extras,
-          r.portal,
           usd(r.estAnnualTotal),
         ],
       }),
@@ -846,24 +819,32 @@ function buildTop10Sheet(wb: ExcelJS.Workbook, input: ScenarioXlsxInput) {
     },
   ];
 
-  renderSheet(ws, rows, [6, 24, 28, 30, 34, 18, 22, 22, 22, 26, 28, 22, 22, 12, 10, 36, 22, 20]);
+  renderSheet(ws, rows, [6, 24, 28, 30, 34, 18, 22, 22, 22, 26, 28, 22, 22, 12, 10, 36, 20]);
 }
 
-export async function downloadScenarioXlsx(input: ScenarioXlsxInput) {
-  const wb = buildScenarioWorkbook(input);
-  const buffer = await wb.xlsx.writeBuffer();
-  const blob = new Blob([buffer], {
-    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `medicare-optimizer-${input.scenarioCode}.xlsx`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+export function scenarioXlsxFilename(scenarioCode: string): string {
+  return `medicare-optimizer-${scenarioCode}.xlsx`;
 }
+
+export async function openScenarioXlsxInNewTab(input: ScenarioXlsxInput) {
+  const tab = prepareXlsxPreviewTab();
+  try {
+    const wb = buildScenarioWorkbook(input);
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    openXlsxBlobInTab(tab, blob, {
+      fallbackFilename: scenarioXlsxFilename(input.scenarioCode),
+    });
+  } catch (err) {
+    tab?.close();
+    throw err;
+  }
+}
+
+/** @deprecated Use {@link openScenarioXlsxInNewTab} */
+export const downloadScenarioXlsx = openScenarioXlsxInNewTab;
 
 // ============ Recommended-plan detail rows (used in Personal sheet) ============
 function buildRecommendationDetailRows(rec: PlanDetail, alt?: PlanDetail): StyledRow[] {
@@ -1290,7 +1271,7 @@ function buildAnnualScenarioSheet(wb: ExcelJS.Workbook, input: ScenarioXlsxInput
   const rows: StyledRow[] = [
     {
       kind: "title",
-      text: "Annual Cost Scenario — Based on Your Reported Health Profile",
+      text: "Annual Cost Scenario — Based on Your Reported Input",
       span: 5,
     },
     {

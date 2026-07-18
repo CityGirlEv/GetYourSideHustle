@@ -2,8 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { MedicareDisclaimers } from "@/components/MedicareDisclaimers";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { ArrowRight, Shield } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   GOVERNMENT_MEDICARE_AFFILIATION_DISCLAIMER,
   SITE_BRAND_NAME,
@@ -85,14 +86,12 @@ function AboutPage() {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button asChild className="grad-indigo">
-            <Link to="/scenario/new">
-              {PLAN_COMPARISON_CTA} <ArrowRight className="h-4 w-4 ml-1.5" />
-            </Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link to="/learning-center">Learning Center</Link>
-          </Button>
+          <Link to="/scenario/new" className={cn(buttonVariants(), "grad-indigo")}>
+            {PLAN_COMPARISON_CTA} <ArrowRight className="h-4 w-4 ml-1.5" />
+          </Link>
+          <Link to="/learning-center" className={cn(buttonVariants({ variant: "outline" }))}>
+            Learning Center
+          </Link>
         </div>
 
         <Card className="glass p-5 border-border/60">

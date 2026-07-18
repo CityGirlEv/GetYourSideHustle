@@ -1,4 +1,6 @@
 import { jsPDF } from "jspdf";
+import headerLogoBundled from "@/assets/part-b-optimizer-logo.png?inline";
+import footerMiniLogoBundled from "@/assets/footer-mini-logo.png?inline";
 import { downloadBlobFile } from "@/lib/article-authoring";
 import type { ArticleDownloadSource } from "@/lib/article-download";
 import {
@@ -10,13 +12,23 @@ import {
 } from "@/lib/learning-center";
 import { MEDICARE_DISCLAIMER_SECTIONS, formatSiteCopyright } from "@/lib/medicare-disclaimers";
 import { stampPdfPageFooters } from "@/lib/pdf-page-footer";
-import { SITE_BRAND_NAME, SITE_TAGLINE } from "@/lib/site-brand";
+import { SITE_TAGLINE } from "@/lib/site-brand";
+import { PUBLIC_WEBSITE_HOST } from "@/lib/site-url";
 import { canonicalUrl } from "@/lib/site-url";
 
 const BRAND_BLUE: [number, number, number] = [29, 78, 216];
 const INK: [number, number, number] = [17, 24, 39];
 const MUTED: [number, number, number] = [75, 85, 99];
 const PANEL: [number, number, number] = [239, 246, 255];
+/** Light header band — full-color wordmark reads clearly (same as workbook PDF). */
+const HEADER_BG: [number, number, number] = PANEL;
+const HEADER_BORDER: [number, number, number] = [191, 219, 254];
+const PAGE_TOP_MARGIN = 12;
+const HEADER_HEIGHT = 78;
+const HEADER_CONTENT_GAP = 18;
+const ARTICLE_CONTENT_START_Y = PAGE_TOP_MARGIN + HEADER_HEIGHT + HEADER_CONTENT_GAP;
+const ARTICLE_PDF_LOGO_PATH = "/email-header-logo.png";
+const PDF_FOOTER_MINI_LOGO_PATH = "/email-footer-logo.png";
 
 type PdfBlock =
   | { type: "h2"; text: string }
@@ -95,6 +107,50 @@ function detectImageFormat(dataUrl: string): "PNG" | "JPEG" | "WEBP" {
   return "JPEG";
 }
 
+/** Light page header with brand logo on every article PDF page. */
+export function drawArticlePageHeader(
+  doc: jsPDF,
+  pageW: number,
+  margin: number,
+  logoDataUrl?: string | null,
+): void {
+  const headerTop = PAGE_TOP_MARGIN;
+  const headerBottom = headerTop + HEADER_HEIGHT;
+
+  doc.setFillColor(...HEADER_BG);
+  doc.rect(0, headerTop, pageW, HEADER_HEIGHT, "F");
+  doc.setDrawColor(...HEADER_BORDER);
+  doc.setLineWidth(0.75);
+  doc.line(0, headerBottom, pageW, headerBottom);
+
+  doc.setTextColor(...MUTED);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.text("Learning Center · Educational Guide", pageW - margin, headerTop + 44, {
+    align: "right",
+  });
+
+  const logoW = 200;
+  const logoH = Math.round(logoW * (308 / 1024));
+  const logoX = margin;
+  const logoY = headerTop + 8;
+
+  if (logoDataUrl) {
+    try {
+      doc.addImage(
+        logoDataUrl,
+        detectImageFormat(logoDataUrl),
+        logoX,
+        logoY,
+        logoW,
+        logoH,
+      );
+    } catch {
+      /* optional logo */
+    }
+  }
+}
+
 function ensureSpace(
   doc: jsPDF,
   y: number,
@@ -102,15 +158,18 @@ function ensureSpace(
   margin: number,
   pageW: number,
   pageH: number,
+  logoDataUrl?: string | null,
 ): number {
   if (y + needed <= pageH - 36) return y;
   doc.addPage();
-  return 72;
+  drawArticlePageHeader(doc, pageW, margin, logoDataUrl);
+  return ARTICLE_CONTENT_START_Y;
 }
 
 export interface ArticlePdfAssets {
   logoDataUrl?: string | null;
   featuredDataUrl?: string | null;
+  miniLogoDataUrl?: string | null;
 }
 
 /** Executive-style Learning Center guide PDF. */
@@ -131,32 +190,13 @@ export function buildArticleDownloadPdf(
   const showUpdated = updatedRaw && updatedRaw !== article.publishedAt;
   const articleUrl = canonicalUrl(`/learning-center/${article.slug}`);
 
-  doc.setFillColor(...BRAND_BLUE);
-  doc.rect(0, 0, pageW, 64, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
-  doc.text(SITE_BRAND_NAME, margin, 28);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.text("Learning Center · Executive Guide", margin, 46);
+  drawArticlePageHeader(doc, pageW, margin, assets.logoDataUrl);
 
-  if (assets.logoDataUrl) {
-    try {
-      doc.addImage(
-        assets.logoDataUrl,
-        detectImageFormat(assets.logoDataUrl),
-        pageW - margin - 140,
-        12,
-        140,
-        40,
-      );
-    } catch {
-      /* optional logo */
-    }
-  }
+  const logoDataUrl = assets.logoDataUrl ?? null;
+  const nextPage = (currentY: number, needed: number) =>
+    ensureSpace(doc, currentY, needed, margin, pageW, pageH, logoDataUrl);
 
-  let y = 88;
+  let y = ARTICLE_CONTENT_START_Y;
 
   doc.setFillColor(...PANEL);
   doc.setDrawColor(191, 219, 254);
@@ -210,7 +250,7 @@ export function buildArticleDownloadPdf(
 
   for (const block of blocks) {
     if (block.type === "h2") {
-      y = ensureSpace(doc, y, 40, margin, pageW, pageH);
+      y = nextPage(y, 40);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(14);
       doc.setTextColor(...BRAND_BLUE);
@@ -219,7 +259,7 @@ export function buildArticleDownloadPdf(
       continue;
     }
     if (block.type === "h3") {
-      y = ensureSpace(doc, y, 32, margin, pageW, pageH);
+      y = nextPage(y, 32);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
       doc.setTextColor(...INK);
@@ -234,7 +274,7 @@ export function buildArticleDownloadPdf(
       for (const [index, item] of block.items.entries()) {
         const prefix = block.type === "ol" ? `${index + 1}. ` : "• ";
         const lines = doc.splitTextToSize(prefix + item, contentW - 12);
-        y = ensureSpace(doc, y, lines.length * 14 + 6, margin, pageW, pageH);
+        y = nextPage(y, lines.length * 14 + 6);
         doc.text(lines, margin + 8, y);
         y += lines.length * 14 + 4;
       }
@@ -242,7 +282,7 @@ export function buildArticleDownloadPdf(
       continue;
     }
     const lines = doc.splitTextToSize(block.text, contentW);
-    y = ensureSpace(doc, y, lines.length * 14 + 8, margin, pageW, pageH);
+    y = nextPage(y, lines.length * 14 + 8);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10.5);
     doc.setTextColor(...INK);
@@ -251,14 +291,14 @@ export function buildArticleDownloadPdf(
   }
 
   if (faq.length) {
-    y = ensureSpace(doc, y, 40, margin, pageW, pageH);
+    y = nextPage(y, 40);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
     doc.setTextColor(...BRAND_BLUE);
     doc.text("Frequently asked questions", margin, y);
     y += 22;
     for (const item of faq) {
-      y = ensureSpace(doc, y, 36, margin, pageW, pageH);
+      y = nextPage(y, 36);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(11);
       doc.setTextColor(...INK);
@@ -267,7 +307,7 @@ export function buildArticleDownloadPdf(
       for (const answerBlock of markdownToPdfBlocks(item.answer)) {
         if (answerBlock.type !== "p") continue;
         const lines = doc.splitTextToSize(answerBlock.text, contentW);
-        y = ensureSpace(doc, y, lines.length * 14 + 6, margin, pageW, pageH);
+        y = nextPage(y, lines.length * 14 + 6);
         doc.setFont("helvetica", "normal");
         doc.setFontSize(10);
         doc.setTextColor(...MUTED);
@@ -279,7 +319,8 @@ export function buildArticleDownloadPdf(
   }
 
   doc.addPage();
-  y = 72;
+  drawArticlePageHeader(doc, pageW, margin, logoDataUrl);
+  y = ARTICLE_CONTENT_START_Y;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
   doc.setTextColor(...BRAND_BLUE);
@@ -300,7 +341,7 @@ export function buildArticleDownloadPdf(
 
   for (const section of MEDICARE_DISCLAIMER_SECTIONS) {
     const lines = doc.splitTextToSize(`${section.label}: ${section.body}`, contentW);
-    y = ensureSpace(doc, y, lines.length * 11 + 10, margin, pageW, pageH);
+    y = nextPage(y, lines.length * 11 + 10);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     doc.setTextColor(...INK);
@@ -308,7 +349,7 @@ export function buildArticleDownloadPdf(
     y += lines.length * 11 + 10;
   }
 
-  y = ensureSpace(doc, y, 40, margin, pageW, pageH);
+  y = nextPage(y, 40);
   doc.setFont("helvetica", "italic");
   doc.setFontSize(9);
   doc.setTextColor(...MUTED);
@@ -321,6 +362,9 @@ export function buildArticleDownloadPdf(
     pageH,
     textColor: MUTED,
     copyright: formatSiteCopyright(),
+    website: PUBLIC_WEBSITE_HOST,
+    miniLogoDataUrl: assets.miniLogoDataUrl,
+    miniLogoSize: 14,
   });
   return doc;
 }
@@ -341,28 +385,18 @@ async function loadImageAsDataUrl(url: string): Promise<string | null> {
   }
 }
 
-/** White logo for dark/colored PDF headers (blue wordmark → invisible on blue band). */
-export async function invertLogoForDarkBackground(dataUrl: string): Promise<string> {
-  if (typeof document === "undefined") return dataUrl;
+export async function loadArticlePdfLogo(): Promise<string | null> {
+  if (headerLogoBundled?.startsWith("data:")) return headerLogoBundled;
+  const headerLogo = await loadImageAsDataUrl(canonicalUrl(ARTICLE_PDF_LOGO_PATH));
+  if (headerLogo) return headerLogo;
+  return loadImageAsDataUrl(canonicalUrl("/email-logo.png"));
+}
 
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        resolve(dataUrl);
-        return;
-      }
-      ctx.filter = "brightness(0) invert(1)";
-      ctx.drawImage(img, 0, 0);
-      resolve(canvas.toDataURL("image/png"));
-    };
-    img.onerror = () => resolve(dataUrl);
-    img.src = dataUrl;
-  });
+export async function loadPdfFooterMiniLogo(): Promise<string | null> {
+  if (footerMiniLogoBundled?.startsWith("data:")) return footerMiniLogoBundled;
+  const footerLogo = await loadImageAsDataUrl(canonicalUrl(PDF_FOOTER_MINI_LOGO_PATH));
+  if (footerLogo) return footerLogo;
+  return loadImageAsDataUrl(canonicalUrl("/favicon.png"));
 }
 
 function resolveAssetUrl(path: string): string {
@@ -371,14 +405,14 @@ function resolveAssetUrl(path: string): string {
 }
 
 export async function downloadArticleGuide(article: ArticleDownloadSource): Promise<void> {
-  const [rawLogo, featuredDataUrl] = await Promise.all([
-    loadImageAsDataUrl(canonicalUrl("/email-logo.png")),
+  const [logoDataUrl, miniLogoDataUrl, featuredDataUrl] = await Promise.all([
+    loadArticlePdfLogo(),
+    loadPdfFooterMiniLogo(),
     article.featuredImage
       ? loadImageAsDataUrl(resolveAssetUrl(article.featuredImage))
       : Promise.resolve(null),
   ]);
-  const logoDataUrl = rawLogo ? await invertLogoForDarkBackground(rawLogo) : null;
 
-  const doc = buildArticleDownloadPdf(article, { logoDataUrl, featuredDataUrl });
+  const doc = buildArticleDownloadPdf(article, { logoDataUrl, miniLogoDataUrl, featuredDataUrl });
   downloadBlobFile(`${article.slug}.pdf`, doc.output("blob"));
 }

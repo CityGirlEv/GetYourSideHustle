@@ -1,0 +1,48 @@
+{
+  "name": "side-hustle-hub",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --use-system-ca scripts/dev-pages.mjs",
+    "dev:vite": "vite",
+    "dev:full": "node --use-system-ca scripts/dev-pages.mjs",
+    "dev:pages": "node --use-system-ca scripts/dev-pages.mjs",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:e2e": "playwright test",
+    "build:prod": "tsc -b && vite build",
+    "db:migrate": "node --use-system-ca ../../muntie-ev-ai-studio-main/node_modules/wrangler/bin/wrangler.js d1 migrations apply gysh-db --remote",
+    "db:migrate:local": "node --use-system-ca ../../muntie-ev-ai-studio-main/node_modules/wrangler/bin/wrangler.js d1 migrations apply gysh-db --local --persist-to .wrangler/state",
+    "db:seed": "node --use-system-ca scripts/seed-d1.mjs",
+    "db:seed:local": "node --use-system-ca scripts/seed-d1.mjs --local",
+    "db:setup:local": "npm run db:migrate:local && npm run db:seed:local",
+    "deploy:pages": "node --use-system-ca scripts/deploy-pages.mjs",
+    "domains:attach": "node --use-system-ca scripts/attach-pages-domains.mjs"
+  },
+  "dependencies": {
+    "jspdf": "^4.2.1",
+    "lucide-react": "^1.21.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.61.1",
+    "@types/node": "^24.12.3",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "eslint": "^10.3.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.6.0",
+    "typescript": "~6.0.2",
+    "typescript-eslint": "^8.59.2",
+    "vite": "^8.0.12",
+    "vitest": "^3.2.7"
+  }
+}

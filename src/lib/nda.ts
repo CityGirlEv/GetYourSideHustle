@@ -2,10 +2,10 @@ import { jsPDF } from "jspdf";
 import { stampPdfPageFooters } from "@/lib/pdf-page-footer";
 
 export const NDA_VERSION = "v1";
-export const NDA_TITLE = "Part B Optimizer — Beta Tester Non-Disclosure Agreement";
+export const NDA_TITLE = "Part B Optimizer Benchmark Tool — Beta Tester Non-Disclosure Agreement";
 
 export const NDA_BODY: string[] = [
-  'This Non-Disclosure Agreement ("Agreement") is entered into between Part B Optimizer ("Company") and the undersigned beta tester ("Recipient") as of the date of electronic signature below.',
+  'This Non-Disclosure Agreement ("Agreement") is entered into between Part B Optimizer Benchmark Tool ("Company") and the undersigned beta tester ("Recipient") as of the date of electronic signature below.',
   "",
   '1. Confidential Information. Recipient acknowledges that during participation in the beta program, Recipient will have access to non-public information including software features, scenario data, scoring models, screenshots, roadmap materials, recommendations, pricing, and any data identified verbally or in writing as confidential (collectively, "Confidential Information").',
   "",

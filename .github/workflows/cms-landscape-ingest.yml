@@ -1,0 +1,35 @@
+name: CMS landscape ingest
+
+on:
+  schedule:
+    # 06:00 UTC daily — midnight US Central (CST); refreshes CMS MA/Part D landscape
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - run: bun install --frozen-lockfile
+
+      - name: Download and parse CMS landscape (nationwide)
+        run: bun run ingest:cms-landscape
+
+      - name: Commit updated landscape data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/data/cms-landscape/
+          if git diff --staged --quiet; then
+            echo "No CMS landscape changes."
+          else
+            git commit -m "chore(data): refresh CMS MA/Part D landscape from CMS.gov"
+            git push
+          fi

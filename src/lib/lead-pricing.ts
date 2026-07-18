@@ -3,7 +3,6 @@
 export const LEAD_PRICING_OPTION_ID = "subscription-leads-v1";
 
 export const LEAD_PRICING_FEATURES = [
-  "Exclusive territory (if available)",
   "AI-qualified Medicare prospects",
   "CRM access",
   "Automated follow-up tools",

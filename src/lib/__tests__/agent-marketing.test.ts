@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { PRODUCTION_SITE_ORIGIN } from "@/lib/site-url";
 import { SITE_BRAND_THE } from "@/lib/site-brand";
 import {
   generateMarketingContent,
@@ -8,7 +9,7 @@ import {
 } from "../agent-marketing-utils";
 
 const SEO_FOOTER =
-  `Ready to better understand your Medicare options? Visit https://mypartb.com and compare your choices with ${SITE_BRAND_THE}.`;
+  `Ready to better understand your Medicare options? Visit ${PRODUCTION_SITE_ORIGIN} and compare your choices with ${SITE_BRAND_THE}.`;
 
 describe("AI Marketing & Growth Agent content generator", () => {
   it("should contain standard trending topics", () => {
@@ -25,7 +26,7 @@ describe("AI Marketing & Growth Agent content generator", () => {
     expect(content.seoArticle.body).toContain("Medicare Supplement Insurance (Medigap)");
     expect(content.seoArticle.body.trim().endsWith(SEO_FOOTER)).toBe(true);
     expect(content.facebookPost.text).toContain("Medicare Advantage and Medigap");
-    expect(content.facebookPost.link).toBe("https://mypartb.com");
+    expect(content.facebookPost.link).toBe(PRODUCTION_SITE_ORIGIN);
     expect(content.facebookPost.cta).toBe("Learn More");
   });
 
@@ -34,7 +35,7 @@ describe("AI Marketing & Growth Agent content generator", () => {
     expect(content.topic).toBe("My custom topic about deductibles");
     expect(content.seoArticle.title).toContain("My custom topic about deductibles");
     expect(content.seoArticle.body.trim().endsWith(SEO_FOOTER)).toBe(true);
-    expect(content.facebookPost.link).toBe("https://mypartb.com");
+    expect(content.facebookPost.link).toBe(PRODUCTION_SITE_ORIGIN);
     expect(content.facebookPost.cta).toBe("Learn More");
   });
 
@@ -70,7 +71,7 @@ describe("AI Marketing & Growth Agent content generator", () => {
         metaDescription: "Test Desc",
         body: "This is some article body without the standard footer at the end.",
       },
-      facebookPost: { text: "Facebook copy", cta: "Learn More", link: "https://mypartb.com" },
+      facebookPost: { text: "Facebook copy", cta: "Learn More", link: PRODUCTION_SITE_ORIGIN },
       infographicConcept: { title: "Title", panels: [] },
       videoScript: { hook: "Hook", body: "Body", cta: "CTA" },
       newsletterDraft: { subject: "Sub", previewText: "Prev", body: "Body" },

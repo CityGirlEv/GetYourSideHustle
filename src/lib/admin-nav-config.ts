@@ -9,6 +9,7 @@ import {
   FileSignature,
   FlaskConical,
   GraduationCap,
+  Inbox,
   LayoutDashboard,
   ListChecks,
   Mail,
@@ -126,16 +127,25 @@ export const ADMIN_STAFF_GROUP: AdminNavGroup = {
 
 export const ADMIN_OPERATION_LINKS: AdminNavLink[] = [
   {
+    label: "Compliance Checklist",
+    to: "/admin/submission-checklist",
+    icon: ClipboardList,
+  },
+  {
     label: "Competitor Scouting",
     to: "/admin/competitor-scouting",
     icon: ShieldCheck,
   },
   {
     label: "Lead Certificates",
-    to: "/admin",
+    to: "/admin/lead-certificates",
     hash: "lead-certificates",
-    search: { tab: "scenarios" },
     icon: ShieldCheck,
+  },
+  {
+    label: "PBO Scenarios",
+    to: "/admin/pbo-scenarios",
+    icon: Inbox,
   },
   {
     label: "Task Sheet",

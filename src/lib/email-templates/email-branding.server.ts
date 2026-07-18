@@ -7,6 +7,9 @@ import {
   DEFAULT_EMAIL_SITE_URL,
 } from "./email-header";
 import { EmailFooter } from "./email-footer";
+import { PRODUCTION_SITE_ORIGIN } from "@/lib/site-url";
+import { EMAIL_LOGO_CACHE_VERSION } from "@/lib/email-logo-version";
+import { normalizeLegacyBrandText } from "@/lib/site-brand";
 
 /** True when HTML already includes the branded email header logo image. */
 export function hasCurrentEmailHeader(html: string): boolean {
@@ -42,15 +45,19 @@ export function stripDuplicateEmailHeaders(html: string): string {
     return "";
   });
 
-  let firstCopyright = true;
-  result = result.replace(/<[^>]*email-header-copyright[^>]*>[\s\S]*?<\/[^>]+>/gi, (block) => {
-    if (firstCopyright) {
-      firstCopyright = false;
-      return block;
-    }
-    return "";
-  });
+  return stripEmailHeaderCopyright(result);
+}
 
+/** Remove copyright lines saved under the header logo (legacy editor overrides). */
+export function stripEmailHeaderCopyright(html: string): string {
+  let result = html.replace(
+    /<[^>]*email-header-copyright[^>]*>[\s\S]*?<\/(?:p|td|div|span|Text)>/gi,
+    "",
+  );
+  result = result.replace(
+    /(<img[^>]*email-brand-logo[^>]*>[\s\S]{0,500}?)<p[^>]*>\s*©\s*\d{4}[\s\S]*?All rights reserved\.\s*<\/p>/gi,
+    "$1",
+  );
   return result;
 }
 
@@ -60,7 +67,7 @@ export function hasEmailFooter(html: string): boolean {
 
 function stripLegacyEmailBranding(html: string): string {
   const assetHost = resolveEmailAssetUrl();
-  let result = html;
+  let result = stripEmailHeaderCopyright(html);
   result = result.replace(/<img[^>]+email-logo\.png[^>]*>/gi, (tag) => {
     if (tag.includes("email-brand-logo")) return tag;
     return "";
@@ -78,16 +85,21 @@ function stripLegacyEmailBranding(html: string): string {
 
 /** Resolve header/footer logo src to the deployed app asset host (never siteUrl). */
 export function fixBrandedLogoSources(html: string): string {
-  const headerLogoUrl = `${resolveOutboundEmailAssetUrl()}/email-logo.png`;
-  const footerLogoUrl = `${resolveOutboundEmailAssetUrl()}/email-footer-logo.png`;
+  const assetHost = resolveOutboundEmailAssetUrl();
+  const logoQuery =
+    EMAIL_LOGO_CACHE_VERSION && EMAIL_LOGO_CACHE_VERSION !== "placeholder"
+      ? `?v=${encodeURIComponent(EMAIL_LOGO_CACHE_VERSION)}`
+      : "";
+  const headerLogoUrl = `${assetHost}/email-logo.png${logoQuery}`;
+  const footerLogoUrl = `${assetHost}/email-footer-logo.png${logoQuery}`;
 
   let result = html.replace(/<img([^>]*class="[^"]*email-brand-logo[^"]*"[^>]*)>/gi, (tag) => {
-    if (tag.includes(`src="${headerLogoUrl}"`)) return tag;
+    if (tag.includes(headerLogoUrl)) return tag;
     return tag.replace(/src="[^"]*"/i, `src="${headerLogoUrl}"`);
   });
 
   result = result.replace(/<img([^>]*class="[^"]*email-footer-brand-logo[^"]*"[^>]*)>/gi, (tag) => {
-    if (tag.includes(`src="${footerLogoUrl}"`)) return tag;
+    if (tag.includes(footerLogoUrl)) return tag;
     return tag.replace(/src="[^"]*"/i, `src="${footerLogoUrl}"`);
   });
 
@@ -124,7 +136,7 @@ function injectBeforeBodyClose(html: string, fragment: string): string {
 export function resolveOutboundEmailSiteUrl(siteUrl?: string): string {
   const raw = (siteUrl ?? resolveEmailSiteUrl()).replace(/\/$/, "");
   if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(raw)) {
-    return "https://mypartb.com";
+    return PRODUCTION_SITE_ORIGIN;
   }
   return raw;
 }
@@ -133,7 +145,7 @@ export function resolveOutboundEmailSiteUrl(siteUrl?: string): string {
 export function resolveOutboundEmailAssetUrl(): string {
   const raw = resolveEmailAssetUrl();
   if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(raw)) {
-    return "https://mypartb.com";
+    return PRODUCTION_SITE_ORIGIN;
   }
   return raw;
 }
@@ -177,5 +189,5 @@ export async function ensureEmailBranding(
   }
 
   result = fixBrandedLogoSources(result);
-  return stripDuplicateEmailHeaders(result);
+  return normalizeLegacyBrandText(stripDuplicateEmailHeaders(result));
 }

@@ -6,7 +6,7 @@ export function LearningArticleBody({ bodyMd }: { bodyMd: string }) {
 
   return (
     <article
-      className="learning-article-body space-y-1"
+      className="learning-article-body [&>*:first-child]:mt-2"
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );

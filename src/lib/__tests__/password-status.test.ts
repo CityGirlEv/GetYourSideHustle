@@ -19,9 +19,9 @@ describe("welcome email no-password copy", () => {
     const html = await render(
       template.component({
         recipientName: "Jane",
-        signInUrl: "https://mypartb.com/auth?tab=sign-in",
-        forgotPasswordUrl: "https://mypartb.com/auth?tab=sign-in",
-        resetPasswordUrl: "https://mypartb.com/auth/verify?token=abc&type=recovery",
+        signInUrl: "https://www.mypartb.com/auth?tab=sign-in",
+        forgotPasswordUrl: "https://www.mypartb.com/auth?tab=sign-in",
+        resetPasswordUrl: "https://www.mypartb.com/auth/verify?token=abc&type=recovery",
         needsPasswordSetup: true,
       }),
     );
@@ -37,8 +37,8 @@ describe("welcome email no-password copy", () => {
     const html = await render(
       template.component({
         recipientName: "Jane",
-        signInUrl: "https://mypartb.com/auth?tab=sign-in",
-        forgotPasswordUrl: "https://mypartb.com/auth?tab=sign-in",
+        signInUrl: "https://www.mypartb.com/auth?tab=sign-in",
+        forgotPasswordUrl: "https://www.mypartb.com/auth?tab=sign-in",
         needsPasswordSetup: false,
       }),
     );

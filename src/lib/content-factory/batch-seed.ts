@@ -1,120 +1,18 @@
-import { SITE_BRAND_NAME, SITE_BRAND_THE } from "@/lib/site-brand";
-import { workbookDownloadUrl } from "@/lib/content-factory/lead-magnet-paths";
+import { buildFacebookPostSeedCopy } from "@/lib/content-factory/facebook-post-seed-copy";
+import { DEFAULT_WORKBOOK_LEAD_MAGNET } from "@/lib/content-factory/workbook-lead-magnet-seed";
+import { SITE_BRAND_THE } from "@/lib/site-brand";
+import { workbookFacebookPostTemplate } from "@/lib/content-factory/workbook-facebook-post-templates";
 import { buildFeaturedImagePrompt } from "@/lib/article-authoring";
 import { getArticleTopicDraft } from "@/lib/medicare-complaint-topics";
+import { editorialArticleTopicIdForSlot } from "@/lib/content-factory/editorial-week-topics";
+import { editorialWeekStart } from "@/lib/content-factory/weekly-editorial-schedule";
 import type { GeneratedAssetInput } from "@/lib/content-factory/ai-provider";
 import {
   WEEKLY_CONTENT_BATCH_PLAN,
   type ContentAssetType,
 } from "@/lib/content-factory/types";
 
-const ARTICLE_TOPIC_IDS = [
-  "prior-auth-overview",
-  "medigap-window",
-  "zero-premium-explained",
-] as const;
-
-const FACEBOOK_POSTS = [
-  {
-    title: `Welcome to ${SITE_BRAND_THE}! Learn about Medicare Prior Authorization`,
-    excerpt: "Welcome post introducing the page and linking to our first Learning Center article.",
-    body: `Welcome to the ${SITE_BRAND_THE} page! 🌟
-
-Turning 65 comes with a lot of decisions — and unfortunately, a lot of high-pressure sales calls. We’re here to change that.
-
-Our mission is simple: to provide calm, clear, and completely unbiased Medicare education. No sales pitches, no pushy agents, and no government affiliation — just honest resources to help you take control of your healthcare journey.
-
-To kick things off, we’ve just published our very first Learning Center guide: "What Is Medicare Prior Authorization? A Plain-Language Overview." If you've ever wondered how prior authorizations work and how to protect yourself from surprise coverage denials, read our walkthrough here:
-
-👉 https://mypartb.com/learning-center/what-is-medicare-prior-authorization
-
-Like our page to follow along as we share weekly tips, checklists, and official resources.
-
-Educational purposes only. We do not sell insurance or solicit enrollments. We are not affiliated with or endorsed by Medicare, CMS, or any government agency.
-
-#MedicareEducation #Turning65 #MedicareSimplified #HealthcareTransparency`,
-  },
-  {
-    title: "The Medigap Open Enrollment Window: Why Timing Matters",
-    excerpt: "Share Article 2 and invite friends to follow our page.",
-    body: `If you are new to Medicare Part B, you generally have a one-time six-month Medigap open enrollment window where guaranteed-issue rules protect you.
-
-Missing this window is one of the most common regrets we hear about, as you may face medical underwriting later if you try to switch to a supplemental plan.
-
-Read our plain-language guide on why timing is critical:
-👉 https://mypartb.com/learning-center/medigap-open-enrollment-window-explained
-
-📌 Help us spread the word! Invite friends or family members who are turning 65 to follow the ${SITE_BRAND_THE} page for transparent, non-sales education.
-
-Educational only. Verify your state's supplemental insurance rules.
-
-#MedicareEducation #Medigap #Turning65`,
-  },
-  {
-    title: "A $0 premium is not the same as $0 total cost",
-    excerpt: "Educational post linking to Article 3 on Medicare Advantage premiums.",
-    body: `Many Medicare Advantage plans advertise a $0 monthly premium. Copays, deductibles, and out-of-network bills can still add up.
-
-Compare the full cost picture — not just the headline premium. Read our plain-language guide on what $0 premiums really mean:
-👉 https://mypartb.com/learning-center/medicare-advantage-zero-premium-explained
-
-Educational only — not a solicitation to enroll.
-
-#MedicareEducation #ComparePlans #MedicareAdvantage`,
-  },
-  {
-    title: "Free Medicare at 65 Planning Workbook (PDF)",
-    excerpt: "Promote the printable workbook — free download, no email required.",
-    body: `Turning 65 soon? Before you compare plans, it helps to gather the facts in one place.
-
-We just published a free printable workbook to help you list:
-
-• Prescriptions and dosages
-• Doctors, specialists, and hospitals you want to keep
-• Employer coverage details (if you're still working)
-• Questions to verify with Medicare.gov and SHIP
-
-Download the PDF — no signup required:
-👉 ${workbookDownloadUrl()}
-
-Save it, print it, or share the link with a friend or family member who's navigating Medicare this year.
-
-Follow ${SITE_BRAND_THE} for calm, non-sales Medicare education each week.
-
-Educational workbook only — not enrollment advice. We do not sell insurance or solicit enrollments. Not affiliated with Medicare, CMS, or any government agency.
-
-#MedicareEducation #Turning65 #MedicarePlanning`,
-  },
-  {
-    title: "TV ads make Medicare sound simple — compare the documents",
-    excerpt: "Reminder to read Evidence of Coverage, not just marketing perks.",
-    body: `Dental and vision perks are easy to understand in Medicare ads. Networks, prior authorization, and cost-sharing rules often live deeper in the plan booklet.
-
-Match ad claims to official plan documents before you choose.
-
-Educational only — not a solicitation to enroll.
-
-#MedicareEducation`,
-  },
-  {
-    title: "Is your doctor in network for next year?",
-    excerpt: "Annual reminder to verify provider directories before enrollment.",
-    body: `Plan networks can change every contract year. A doctor who was in network last year may not be next year.
-
-Verify providers on Medicare.gov Plan Finder before you assume you can keep the same care team.
-
-#MedicareEducation`,
-  },
-  {
-    title: "Part D formulary changes can surprise you mid-year",
-    excerpt: "Educational post on prescription tier changes and appeals.",
-    body: `Each Part D plan maintains its own drug list. A medication can move tiers or require prior authorization without much fanfare.
-
-Keep your bottle handy when comparing plans on Medicare.gov.
-
-#MedicareEducation #PartD`,
-  },
-];
+const FACEBOOK_POSTS = buildFacebookPostSeedCopy();
 
 const NEWSLETTER = {
   title: "Weekly Learning Center Roundup",
@@ -134,42 +32,15 @@ const NEWSLETTER = {
     "",
     "## Quick reminders",
     "",
-    "- Confirm enrollment deadlines that apply to your situation on Medicare.gov or with SSA",
-    "- Compare plans using official tools before sharing personal identifiers online",
+    "- Confirm enrollment deadlines that apply to your situation on https://www.medicare.gov or with SSA",
+    "- Compare plans using https://www.medicare.gov/plan-compare — not third-party enrollment sites",
     "- Contact SHIP in your state for free, unbiased help",
     "",
     "Educational only — we do not sell insurance or enroll you in coverage.",
   ].join("\n"),
 };
 
-const LEAD_MAGNET = {
-  title: "Medicare at 65 Planning Workbook",
-  excerpt: "Printable checklist to gather facts before comparing Medicare options.",
-  body: [
-    "# Medicare at 65 Planning Workbook",
-    "",
-    "## Before you compare plans",
-    "",
-    "- List every prescription with exact dosage",
-    "- Write down preferred doctors, specialists, and hospitals",
-    "- Note whether you are still working and whether your employer has 20+ employees",
-    "- Gather current premium and deductible amounts for existing coverage",
-    "",
-    "## Questions for your review meeting",
-    "",
-    "- Do I need Part B now or can I delay without a penalty?",
-    "- Would Original Medicare plus Medigap or a Medicare Advantage plan fit my care patterns?",
-    "- How do my drugs appear on each plan formulary?",
-    "",
-    "## Official sources to verify",
-    "",
-    "- Medicare.gov and 1-800-MEDICARE",
-    "- Social Security Administration for Part B enrollment",
-    "- Your State Health Insurance Assistance Program (SHIP)",
-    "",
-    "Educational workbook only — not personalized enrollment advice.",
-  ].join("\n"),
-};
+export { DEFAULT_WORKBOOK_LEAD_MAGNET } from "@/lib/content-factory/workbook-lead-magnet-seed";
 
 const FAQ_ITEMS = [
   {
@@ -222,8 +93,11 @@ function seedPayload(type: ContentAssetType, extra: Record<string, unknown> = {}
   return { provider: "seed", source: "weekly-batch", type, ...extra };
 }
 
-function buildArticleAsset(slotIndex: number): GeneratedAssetInput {
-  const topicId = ARTICLE_TOPIC_IDS[slotIndex % ARTICLE_TOPIC_IDS.length];
+function buildArticleAsset(
+  slotIndex: number,
+  weekStart: Date = editorialWeekStart(new Date()),
+): GeneratedAssetInput {
+  const topicId = editorialArticleTopicIdForSlot(weekStart, slotIndex);
   const draft = getArticleTopicDraft(topicId);
   if (!draft) {
     throw new Error(`Missing article seed for topic ${topicId}`);
@@ -243,14 +117,19 @@ function buildArticleAsset(slotIndex: number): GeneratedAssetInput {
 }
 
 function buildFacebookAsset(slotIndex: number): GeneratedAssetInput {
-  const post = FACEBOOK_POSTS[slotIndex % FACEBOOK_POSTS.length];
+  const workbook = workbookFacebookPostTemplate(slotIndex);
+  const post = workbook ?? FACEBOOK_POSTS[slotIndex];
   return {
     type: "facebook_post",
     slotIndex,
     title: post.title,
     excerpt: post.excerpt,
     body: post.body,
-    payload: seedPayload("facebook_post", { platform: "facebook", slot: slotIndex + 1 }),
+    payload: seedPayload("facebook_post", {
+      platform: "facebook",
+      slot: slotIndex + 1,
+      audience: workbook?.audience ?? "facebook_page",
+    }),
   };
 }
 
@@ -269,12 +148,12 @@ function buildLeadMagnetAsset(): GeneratedAssetInput {
   return {
     type: "lead_magnet",
     slotIndex: 0,
-    title: LEAD_MAGNET.title,
-    excerpt: LEAD_MAGNET.excerpt,
-    body: LEAD_MAGNET.body,
+    title: DEFAULT_WORKBOOK_LEAD_MAGNET.title,
+    excerpt: DEFAULT_WORKBOOK_LEAD_MAGNET.excerpt,
+    body: DEFAULT_WORKBOOK_LEAD_MAGNET.body,
     payload: seedPayload("lead_magnet", {
       format: "pdf",
-      suggestedSlug: "medicare-at-65-planning-workbook",
+      suggestedSlug: "PBO_Turning_65_Workbook",
     }),
   };
 }
@@ -308,14 +187,18 @@ function buildImagePromptAsset(slotIndex: number): GeneratedAssetInput {
 }
 
 /** Seeds weekly batch assets from curated Medicare education content (no AI API). */
-export function generateWeeklyBatchAssets(topic: string, _batchId: string): GeneratedAssetInput[] {
+export function generateWeeklyBatchAssets(
+  topic: string,
+  _batchId: string,
+  weekStart: Date = editorialWeekStart(new Date()),
+): GeneratedAssetInput[] {
   const assets: GeneratedAssetInput[] = [];
 
   for (const slot of WEEKLY_CONTENT_BATCH_PLAN) {
     for (let i = 0; i < slot.count; i++) {
       switch (slot.type) {
         case "article":
-          assets.push(buildArticleAsset(i));
+          assets.push(buildArticleAsset(i, weekStart));
           break;
         case "facebook_post":
           assets.push(buildFacebookAsset(i));

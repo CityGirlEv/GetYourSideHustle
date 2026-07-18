@@ -1,0 +1,79 @@
+/* Design Tokens - Premium Dark Mode with Blue, White, Green palette */
+:root {
+  /* Primary colors */
+  --color-primary: hsl(210, 60%, 55%); /* blue */
+  --color-primary-dark: hsl(210, 60%, 45%);
+  --color-primary-light: hsl(210, 60%, 65%);
+  
+  --color-accent: hsl(120, 40%, 55%); /* green */
+  --color-accent-dark: hsl(120, 40%, 45%);
+  --color-accent-light: hsl(120, 40%, 65%);
+
+  --color-bg: hsl(210, 20%, 10%); /* dark background */
+  --color-surface: hsla(210, 20%, 15%, 0.8); /* glass surface */
+  --color-text: #e5e5e5; /* light text */
+  --color-muted: #a0a0a0;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Glassmorphism utility class */
+.glass {
+  background: var(--color-surface);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 1rem;
+}
+
+/* Buttons */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.6rem 1.2rem;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.button-primary {
+  background: var(--color-primary);
+  color: #fff;
+}
+.button-primary:hover {
+  background: var(--color-primary-dark);
+}
+
+.button-accent {
+  background: var(--color-accent);
+  color: #fff;
+}
+.button-accent:hover {
+  background: var(--color-accent-dark);
+}
+
+/* Input fields */
+.input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 6px;
+  color: var(--color-text);
+  font-size: 1rem;
+}
+.input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  background: rgba(255,255,255,0.15);
+}

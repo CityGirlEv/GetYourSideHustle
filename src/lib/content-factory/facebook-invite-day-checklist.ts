@@ -47,6 +47,6 @@ export const FACEBOOK_INVITE_DAY_STEPS: FacebookInviteDayStep[] = [
   },
 ];
 
-export function facebookInviteStepStorageId(stepId: string): string {
-  return `${FACEBOOK_INVITE_EVENT_ID}:${stepId}`;
+export function facebookInviteStepStorageId(eventDate: string, stepId: string): string {
+  return `${eventDate}:${FACEBOOK_INVITE_EVENT_ID}:${stepId}`;
 }

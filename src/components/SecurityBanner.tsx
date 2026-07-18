@@ -10,19 +10,22 @@ import {
   FileText,
   BookOpen,
   Home,
+  Mail,
+  Sparkles,
 } from "lucide-react";
-import { Link, useRouter } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useApp } from "@/lib/app-store";
-import { YearToggle } from "./YearToggle";
+import { SiteNavLink } from "./SiteNavLink";
+import { PlanYearZoomControls } from "./PlanYearZoomControls";
 import { AdminNotificationsBell } from "./AdminNotificationsBell";
 import { AdminNavDropdown } from "./AdminNavDropdown";
 import { BrandLogo } from "./BrandLogo";
 import { SiteMobileNav } from "./SiteMobileNav";
+import { useAdminNavAccess } from "@/lib/admin-nav-access";
 import { userHasAdminRole } from "@/lib/user-roles";
 import { SITE_BRAND_NAME } from "@/lib/site-brand";
-import { FontSizeToggle } from "./FontSizeToggle";
 import { CreditPill } from "./CreditPill";
-import { Button } from "./ui/button";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,25 +38,23 @@ const navLink =
   "flex items-center gap-1.5 min-h-11 py-2 text-primary font-semibold underline-offset-4 transition-colors touch-manipulation hover:text-primary/65 hover:underline";
 
 function PrimaryNavLinks() {
-  const { user, authLoading } = useApp();
-  const showPricing = !authLoading && userHasAdminRole(user);
-
   return (
     <>
-      <Link to="/" className={navLink}>
+      <SiteNavLink to="/" className={navLink}>
         <Home className="h-4 w-4 shrink-0" /> Home
-      </Link>
-      {showPricing ? (
-        <Link to="/pricing" className={navLink}>
-          <Briefcase className="h-4 w-4 shrink-0" /> Pricing
-        </Link>
-      ) : null}
-      <Link to="/learning-center" className={navLink}>
+      </SiteNavLink>
+      <SiteNavLink to="/features" className={navLink}>
+        <Sparkles className="h-4 w-4 shrink-0" /> Features
+      </SiteNavLink>
+      <SiteNavLink to="/learning-center" className={navLink}>
         <BookOpen className="h-4 w-4 shrink-0" /> Learning Center
-      </Link>
-      <Link to="/about" className={navLink}>
+      </SiteNavLink>
+      <SiteNavLink to="/subscribe" className={navLink}>
+        <Mail className="h-4 w-4 shrink-0" /> Subscribe
+      </SiteNavLink>
+      <SiteNavLink to="/about" className={navLink}>
         About
-      </Link>
+      </SiteNavLink>
     </>
   );
 }
@@ -71,12 +72,12 @@ function AuthLinks({ onLogout }: { onLogout: () => void }) {
 
   return (
     <>
-      <Link to="/auth" search={{ tab: "sign-in" }} className={navLink}>
+      <SiteNavLink to="/auth" search={{ tab: "sign-in" }} className={navLink}>
         <LogIn className="h-4 w-4 shrink-0" /> Log in
-      </Link>
-      <Link to="/auth" search={{ tab: "register" }} className={navLink}>
+      </SiteNavLink>
+      <SiteNavLink to="/auth" search={{ tab: "register" }} className={navLink}>
         <UserPlus className="h-4 w-4 shrink-0" /> Register
-      </Link>
+      </SiteNavLink>
     </>
   );
 }
@@ -85,13 +86,23 @@ function UserSummary({ className }: { className?: string }) {
   const { user } = useApp();
   if (!user) return null;
 
+  const roleLabel = [
+    user.role,
+    user.npn_number ? `NPN ${user.npn_number}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
-    <div className={cn("min-w-0 text-xs leading-tight", className)}>
-      <div className="truncate font-medium text-foreground">{user.full_name}</div>
-      <div className="truncate capitalize text-muted-foreground">
-        {user.role}
-        {user.npn_number && ` · NPN ${user.npn_number}`}
-      </div>
+    <div
+      className={cn("min-w-0 max-w-[14rem] truncate text-xs leading-none", className)}
+      title={`${user.full_name} · ${roleLabel}`}
+    >
+      <span className="font-medium text-foreground">{user.full_name}</span>
+      <span className="text-muted-foreground">
+        {" · "}
+        <span className="capitalize">{roleLabel}</span>
+      </span>
     </div>
   );
 }
@@ -162,17 +173,15 @@ function RoleMenus() {
           </DropdownMenuContent>
         </DropdownMenu>
       )}
-      <FontSizeToggle />
       {(user?.role === "advisor" || user?.role === "qa") && <CreditPill />}
     </>
   );
 }
 
 function AdminTools() {
-  const { user, authLoading } = useApp();
-  const isAdmin = userHasAdminRole(user);
+  const { showAdminNav, authLoading } = useAdminNavAccess();
 
-  if (authLoading || !isAdmin) return null;
+  if (authLoading || !showAdminNav) return null;
 
   return (
     <>
@@ -183,46 +192,34 @@ function AdminTools() {
 }
 
 export function SecurityBanner() {
-  const { user, signOut } = useApp();
-  const router = useRouter();
+  const { signOut } = useApp();
 
   const logout = async () => {
     await signOut();
-    router.navigate({ to: "/auth" });
+    window.location.assign("/auth");
   };
 
   return (
     <nav
       aria-label="Site navigation"
-      className="relative z-10 border-b-0 bg-transparent px-3 sm:px-4 py-1 text-sm"
+      className="relative z-20 border-b-0 bg-transparent px-3 sm:px-4 py-1 text-sm"
     >
       <div className="max-w-7xl mx-auto">
         <SiteMobileNav onLogout={logout} />
 
         <div className="hidden lg:flex items-center justify-between gap-x-6 gap-y-2 py-0.5">
-          <Link
-            to="/"
-            aria-label={SITE_BRAND_NAME}
-            className="block shrink-0 drop-shadow-[0_2px_4px_rgba(0,40,112,0.1)]"
-          >
+          <SiteNavLink to="/" aria-label={SITE_BRAND_NAME} className="block shrink-0">
             <BrandLogo size="nav" />
-          </Link>
+          </SiteNavLink>
 
-          <div className="flex min-w-0 flex-col items-end justify-center gap-1">
-            <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-1">
-              <PrimaryNavLinks />
-              <AdminTools />
-              <AuthLinks onLogout={logout} />
-              <RoleMenus />
-            </div>
-            {!user ? (
-              <YearToggle tone="light" />
-            ) : (
-              <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
-                <UserSummary className="max-w-[14rem] text-right" />
-                <YearToggle tone="light" />
-              </div>
-            )}
+          <div className="relative z-10 flex min-w-0 flex-wrap items-center justify-end gap-x-3 gap-y-1">
+            <PrimaryNavLinks />
+            <AdminTools />
+            <span className="mx-1 hidden h-5 w-px shrink-0 bg-border/80 xl:inline" aria-hidden />
+            <UserSummary className="shrink-0" />
+            <AuthLinks onLogout={logout} />
+            <RoleMenus />
+            <PlanYearZoomControls tone="light" className="shrink-0" />
           </div>
         </div>
       </div>

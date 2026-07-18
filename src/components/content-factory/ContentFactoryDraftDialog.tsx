@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ import { ContentStatusBadge, ContentTypeBadge } from "@/components/content-facto
 import type { ContentDraft } from "@/lib/content-factory/types";
 import { toast } from "sonner";
 import { LeadMagnetPdfPanel } from "@/components/content-factory/LeadMagnetPdfPanel";
+import type { LeadMagnetPdfSource } from "@/lib/lead-magnet-pdf";
 
 export function ContentFactoryDraftDialog({
   draft,
@@ -44,6 +45,15 @@ export function ContentFactoryDraftDialog({
     setExcerpt(draft.excerpt);
     setBody(draft.body);
   }, [draft, open]);
+
+  const liveSource: LeadMagnetPdfSource | undefined = useMemo(() => {
+    if (!draft || draft.type !== "lead_magnet") return undefined;
+    return {
+      title: mode === "edit" ? title : draft.title,
+      excerpt: mode === "edit" ? excerpt : draft.excerpt,
+      body: mode === "edit" ? body : draft.body,
+    };
+  }, [draft, mode, title, excerpt, body]);
 
   if (!draft) return null;
 
@@ -152,11 +162,7 @@ export function ContentFactoryDraftDialog({
             <LeadMagnetPdfPanel
               draft={draft}
               batchId={batchId}
-              liveSource={
-                mode === "edit"
-                  ? { title, excerpt, body }
-                  : undefined
-              }
+              liveSource={liveSource}
               onSaved={onPdfSaved}
             />
           ) : null}

@@ -4,6 +4,10 @@ import { htmlToPlainText } from "@/lib/email-templates/overrides.server";
 import { ensureEmailBranding } from "@/lib/email-templates/email-branding.server";
 import { escapeHtml, renderLearningMarkdown } from "@/lib/learning-center";
 import {
+  sanitizeEmailHtmlLinks,
+  sanitizeMarkdownOutboundLinks,
+} from "@/lib/safe-external-links";
+import {
   getTransactionalFromAddress,
   getTransactionalSenderDomain,
 } from "@/lib/send-transactional-email";
@@ -59,16 +63,36 @@ export function newsletterBodyToHtml(
   body: string,
   options?: { featuredArticles?: NewsletterFeaturedArticle[]; siteUrl?: string },
 ): string {
+  const content = renderNewsletterMarkdown(body, options);
+  return content;
+}
+
+const NEWSLETTER_EMAIL_WRAPPER_STYLE =
+  "font-family:Georgia,'Times New Roman',Times,serif;max-width:600px;line-height:1.7;color:#1a1a1a;";
+
+function renderNewsletterMarkdown(
+  body: string,
+  options?: { featuredArticles?: NewsletterFeaturedArticle[]; siteUrl?: string },
+): string {
+  const safeBody = sanitizeMarkdownOutboundLinks(body);
   if (options?.featuredArticles?.length && options.siteUrl) {
-    return buildNewsletterEmailHtml(body, options.featuredArticles, options.siteUrl);
+    return buildNewsletterEmailHtml(safeBody, options.featuredArticles, options.siteUrl);
   }
-  const content = renderLearningMarkdown(body);
-  return `<div style="font-family:system-ui,-apple-system,sans-serif;line-height:1.6;color:#1a1a1a;">${content}</div>`;
+  const content = renderLearningMarkdown(safeBody, { plain: true, email: true });
+  return `<div style="${NEWSLETTER_EMAIL_WRAPPER_STYLE}">${content}</div>`;
 }
 
 function resolveAbsoluteAssetUrl(path: string, siteUrl: string): string {
   if (/^https?:\/\//i.test(path)) return path;
   return `${siteUrl.replace(/\/$/, "")}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+const NEWSLETTER_THUMB_WIDTH = 168;
+const NEWSLETTER_THUMB_HEIGHT = 112; // 3:2 — matches Learning Center card thumbnails
+
+/** Email uses a center-cropped 3:2 JPEG (`{slug}-email.jpg`) so thumbs are tall, not thin strips. */
+export function resolveNewsletterThumbPath(featuredImage: string): string {
+  return featuredImage.replace(/(\.jpe?g)$/i, "-email$1");
 }
 
 export function renderNewsletterFeaturedGuidesHtml(
@@ -77,18 +101,32 @@ export function renderNewsletterFeaturedGuidesHtml(
 ): string {
   if (!articles.length) return "";
 
+  const imageWidth = NEWSLETTER_THUMB_WIDTH;
+  const imageHeight = NEWSLETTER_THUMB_HEIGHT;
+
   const rows = articles
     .map((article) => {
       const url = `${siteUrl.replace(/\/$/, "")}/learning-center/${article.slug}`;
+      const thumbSrc = article.featuredImage
+        ? resolveNewsletterThumbPath(article.featuredImage)
+        : "";
       const imageCell = article.featuredImage
-        ? `<td style="width:168px;padding:0 16px 18px 0;vertical-align:top;">
-            <img src="${escapeHtml(resolveAbsoluteAssetUrl(article.featuredImage, siteUrl))}" alt="" width="168" height="112" style="display:block;width:168px;height:112px;object-fit:cover;border-radius:10px;border:1px solid #e5e7eb;" />
+        ? `<td style="width:${imageWidth}px;padding:0 16px 20px 0;vertical-align:top;">
+            <a href="${escapeHtml(url)}" style="text-decoration:none;">
+              <img
+                src="${escapeHtml(resolveAbsoluteAssetUrl(thumbSrc, siteUrl))}"
+                alt=""
+                width="${imageWidth}"
+                height="${imageHeight}"
+                style="display:block;width:${imageWidth}px;height:${imageHeight}px;max-width:100%;border:0;outline:none;border-radius:10px;border:1px solid #e5e7eb;"
+              />
+            </a>
           </td>`
         : "";
 
       return `<tr>
         ${imageCell}
-        <td style="vertical-align:top;padding-bottom:18px;">
+        <td style="vertical-align:top;padding-bottom:20px;">
           <a href="${escapeHtml(url)}" style="color:#1d4ed8;font-weight:700;text-decoration:none;font-size:17px;line-height:1.35;">${escapeHtml(article.title)}</a>
           ${article.excerpt ? `<p style="margin:8px 0 0;color:#4b5563;font-size:14px;line-height:1.55;">${escapeHtml(article.excerpt)}</p>` : ""}
         </td>
@@ -96,7 +134,7 @@ export function renderNewsletterFeaturedGuidesHtml(
     })
     .join("");
 
-  return `<h2 style="font-size:20px;font-weight:700;margin:24px 0 12px;color:#111827;">Featured guides</h2>
+  return `<h2 style="font-size:20px;font-weight:700;margin:28px 0 12px;color:#111827;line-height:1.35;">Featured guides</h2>
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0;">${rows}</table>`;
 }
 
@@ -117,11 +155,10 @@ export function buildNewsletterEmailHtml(
     after = (nextHeading === -1 ? "" : afterMarker.slice(nextHeading)).trim();
   }
 
-  const introHtml = before ? renderLearningMarkdown(before) : "";
+  const introHtml = before ? renderLearningMarkdown(before, { plain: true, email: true }) : "";
   const guidesHtml = renderNewsletterFeaturedGuidesHtml(featuredArticles, siteUrl);
-  const restHtml = after ? renderLearningMarkdown(after) : "";
-
-  return `<div style="font-family:system-ui,-apple-system,sans-serif;line-height:1.6;color:#1a1a1a;">${introHtml}${guidesHtml}${restHtml}</div>`;
+  const restHtml = after ? renderLearningMarkdown(after, { plain: true, email: true }) : "";
+  return `<div style="${NEWSLETTER_EMAIL_WRAPPER_STYLE}">${introHtml}${guidesHtml}${restHtml}</div>`;
 }
 
 async function getOrCreateUnsubscribeToken(email: string): Promise<string> {
@@ -144,8 +181,9 @@ export async function sendNewsletterEmail(input: NewsletterSendInput): Promise<{
 }> {
   const parsed = parseNewsletterSubject(input.body, input.subject);
   const personalized = personalizeNewsletterBody(parsed.body);
-  const bodyHash = hashContentBody(personalized);
-  const bodyPreview = personalized.replace(/\s+/g, " ").trim().slice(0, 240);
+  const safeBody = sanitizeMarkdownOutboundLinks(personalized);
+  const bodyHash = hashContentBody(safeBody);
+  const bodyPreview = safeBody.replace(/\s+/g, " ").trim().slice(0, 240);
   const messageId = crypto.randomUUID();
   const dispatchKind = input.dispatchKind ?? "test";
   const testSubject =
@@ -168,10 +206,12 @@ export async function sendNewsletterEmail(input: NewsletterSendInput): Promise<{
   });
 
   const unsubscribeToken = await getOrCreateUnsubscribeToken(input.recipient);
-  const html = newsletterBodyToHtml(personalized, {
-    featuredArticles: input.featuredArticles,
-    siteUrl: input.siteUrl,
-  });
+  const html = sanitizeEmailHtmlLinks(
+    newsletterBodyToHtml(safeBody, {
+      featuredArticles: input.featuredArticles,
+      siteUrl: input.siteUrl,
+    }),
+  );
   const brandedHtml = await ensureEmailBranding(html, { unsubscribeToken });
   const text = htmlToPlainText(brandedHtml);
 

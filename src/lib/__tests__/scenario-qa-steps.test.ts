@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { BENCHMARK_TOOL_CTA } from "../plan-comparison-copy";
 import {
   buildScenarioQaAuditSteps,
   splitScenarioDemographics,
@@ -84,7 +85,7 @@ describe("buildScenarioQaAuditSteps", () => {
       costTotal: "$7/mo and $84/yr",
     });
 
-    expect(steps[0]).toContain("Find Plans That Fit You — Privately");
+    expect(steps[0]).toContain(BENCHMARK_TOOL_CTA);
     expect(steps[1]).toContain("Step 1 — Demographics");
     expect(steps[1]).toContain("birth year = 1958 (age 68 in 2026)");
     expect(steps[1]).toContain("ZIP3 = 606");
@@ -183,7 +184,7 @@ describe("buildScenarioQaAuditSteps", () => {
         "From the county dropdown that auto-populates for ZIP3=606, select Cook, IL — this scopes the carrier/plan check to only plans available in that county.",
       demographics:
         "gender = male, tobacco use = NO, income band = $55k–$75k, cost preference = 'minimize monthly'",
-      conditions: "None of the above",
+      conditions: "None",
       medications: "",
       costTotal: "$0/mo and $0/yr",
     });
@@ -211,7 +212,7 @@ describe("buildScenarioQaAuditSteps", () => {
       costTotal: "$7/mo and $84/yr",
     });
 
-    expect(steps[0]).toContain("Find Plans That Fit You — Privately");
+    expect(steps[0]).toContain(BENCHMARK_TOOL_CTA);
     expect(steps[1]).toContain("Step 1 — Demographics");
     const step1 = parseStep1Substeps(steps[1]);
     expect(step1[0]).toContain("birth year = 1958");
@@ -245,7 +246,7 @@ describe("buildScenarioQaAuditSteps", () => {
     const downloadBody = steps[8].split(" ||| ", 2)[1] ?? "";
     expect(downloadBody.split(" | ").map((s) => s.trim())).toEqual([
       "Click 'Download PDF' to generate the system output report.",
-      "Click 'Download Excel' to generate the system output report.",
+      "Click 'Open Excel' to generate the system output report.",
     ]);
     expect(steps[9]).toContain("Review the Medication Cost summary");
     const medCostBody = steps[9].split(" ||| ", 2)[1] ?? "";

@@ -1,146 +1,52 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { IntakeWizard } from "@/components/IntakeWizard";
-import { VoiceIntakeWizard } from "@/components/VoiceIntakeWizard";
-import { AppShell } from "@/components/AppShell";
-import { Mic, Keyboard, Clock } from "lucide-react";
-import { listScenarioHistory, type ScenarioHistoryEntry } from "@/lib/scenario-history";
-import { VOICE_WIZARD_ENABLED, isVoiceWizardAvailable } from "@/lib/feature-flags";
-import { useApp } from "@/lib/app-store";
+import { createFileRoute } from "@tanstack/react-router";
+import { EducationalIntakeForm } from "@/components/EducationalIntakeForm";
+import { ScenarioNewHowItWorks } from "@/components/ScenarioNewHowItWorks";
+import { BenchmarkIdLookupForm } from "@/components/BenchmarkIdLookupForm";
 import {
-  BUILD_COMPARISON_HEADLINE,
-  BUILD_COMPARISON_SUBTITLE,
-  COMPARISON_ID_LABEL,
-  PREVIOUS_COMPARISONS_LABEL,
-} from "@/lib/plan-comparison-copy";
-
-export type ScenarioNewSearch = {
-  mode?: "manual" | "voice";
-};
+  PreviousBenchmarksOnDeviceLink,
+  PreviousBenchmarksOnDevicePanel,
+} from "@/components/PreviousBenchmarkScenarios";
+import { AppShell } from "@/components/AppShell";
+import { BENCHMARK_TOOL_NAME } from "@/lib/plan-comparison-copy";
 
 export const Route = createFileRoute("/scenario/new")({
-  validateSearch: (search: Record<string, unknown>): ScenarioNewSearch => ({
-    mode:
-      VOICE_WIZARD_ENABLED && search.mode === "voice"
-        ? "voice"
-        : search.mode === "manual"
-          ? "manual"
-          : undefined,
-  }),
   head: () => ({
     meta: [
-      { title: `${BUILD_COMPARISON_HEADLINE} — No Personal Info Required` },
+      { title: `${BENCHMARK_TOOL_NAME} — Get Started` },
       {
         name: "description",
         content:
-          "Compare sample Medicare plans for educational purposes. Build a de-identified plan comparison — we never collect your name, address, phone, or date of birth.",
+          "Answer a few benchmark questions about your Medicare needs and connect with a licensed professional when you are ready.",
       },
-      { property: "og:title", content: `${BUILD_COMPARISON_HEADLINE} — No Personal Info Required` },
+      { property: "og:title", content: `${BENCHMARK_TOOL_NAME} — Get Started` },
       {
         property: "og:description",
         content:
-          "Create a zero-PII Medicare plan comparison in 2 minutes and get a shareable Comparison ID.",
+          "Multi-step Part B benchmark intake to explore Medicare options and authorize partner contact on your terms.",
       },
-      { property: "og:url", content: "https://themedicareoptimizer.lovable.app/scenario/new" },
+      { property: "og:url", content: "https://mypartb.com/scenario/new" },
     ],
-    links: [{ rel: "canonical", href: "https://themedicareoptimizer.lovable.app/scenario/new" }],
+    links: [{ rel: "canonical", href: "https://mypartb.com/scenario/new" }],
   }),
   component: ScenarioNew,
 });
 
 function ScenarioNew() {
-  const router = useRouter();
-  const { user } = useApp();
-  const voiceWizardAvailable = isVoiceWizardAvailable(user);
-  const { mode: searchMode } = Route.useSearch();
-  const [mode, setMode] = useState<"manual" | "voice">(() =>
-    voiceWizardAvailable && searchMode === "voice" ? "voice" : "manual",
-  );
-  const [history, setHistory] = useState<ScenarioHistoryEntry[]>([]);
-  useEffect(() => {
-    setHistory(listScenarioHistory());
-  }, []);
-
-  // Non-admins (or when voice is disabled) must stay on manual mode.
-  useEffect(() => {
-    if (!voiceWizardAvailable && mode === "voice") setMode("manual");
-  }, [voiceWizardAvailable, mode]);
-
-  useEffect(() => {
-    if (voiceWizardAvailable && searchMode === "voice") setMode("voice");
-  }, [voiceWizardAvailable, searchMode]);
-
-  const showModeToggle = voiceWizardAvailable;
-  const activeMode = voiceWizardAvailable && mode === "voice" ? "voice" : "manual";
-
   return (
     <AppShell
-      title={BUILD_COMPARISON_HEADLINE}
-      subtitle={`${BUILD_COMPARISON_SUBTITLE} You'll get a ${COMPARISON_ID_LABEL} at the end — share it with the agent of your choice.`}
+      title={BENCHMARK_TOOL_NAME}
+      subtitle="Answer a few questions to benchmark your options. Partner contact happens only when you authorize it after submitting."
     >
-      {history.length > 0 && (
-        <div className="max-w-3xl mx-auto mb-4 rounded-lg border border-border bg-white/60 p-3">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-            <Clock className="h-3 w-3" /> {PREVIOUS_COMPARISONS_LABEL}
-          </div>
-          <ul className="flex flex-wrap gap-2">
-            {history.map((h) => (
-              <li key={h.code}>
-                <Link
-                  to="/scenario/$code"
-                  params={{ code: h.code }}
-                  className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-mono hover:bg-secondary/60 hover:underline text-primary"
-                >
-                  {h.code}
-                  <span className="text-[10px] text-muted-foreground font-sans">
-                    {new Date(h.createdAt).toLocaleDateString()}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      {showModeToggle ? (
-        <div className="flex justify-center mb-4">
-          <div className="inline-flex rounded-full border border-border bg-white p-1 shadow-sm">
-            <button
-              type="button"
-              onClick={() => setMode("manual")}
-              className={`inline-flex items-center gap-1.5 px-4 py-1.5 text-sm font-semibold rounded-full transition ${activeMode === "manual" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
-            >
-              <Keyboard className="h-3.5 w-3.5" />
-              {activeMode === "manual" ? (
-                <span className="flex flex-col items-start leading-tight text-left">
-                  <span>You are in Manual Wizard mode</span>
-                  <span className="text-[10px] font-normal opacity-90">(complete form below)</span>
-                </span>
-              ) : (
-                <span>Go back to Manual Wizard</span>
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("voice")}
-              className={`inline-flex items-center gap-1.5 px-4 py-1.5 text-sm font-semibold rounded-full transition ${activeMode === "voice" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
-            >
-              <Mic className="h-3.5 w-3.5" /> Voice
-            </button>
-          </div>
-        </div>
-      ) : null}
+      <ScenarioNewHowItWorks className="max-w-3xl mx-auto mb-3" />
 
-      {activeMode === "manual" ? (
-        <IntakeWizard
-          onDone={(code) => router.navigate({ to: "/scenario/created/$code", params: { code } })}
-        />
-      ) : (
-        <VoiceIntakeWizard
-          onDone={(code) => router.navigate({ to: "/scenario/created/$code", params: { code } })}
-          onSwitchToManual={() => setMode("manual")}
-        />
-      )}
+      <div className="max-w-3xl mx-auto mb-3 flex justify-center">
+        <PreviousBenchmarksOnDeviceLink />
+      </div>
+
+      <EducationalIntakeForm />
+      <BenchmarkIdLookupForm className="max-w-3xl mx-auto mt-8" />
+
+      <PreviousBenchmarksOnDevicePanel className="max-w-3xl mx-auto mt-4" />
     </AppShell>
   );
 }

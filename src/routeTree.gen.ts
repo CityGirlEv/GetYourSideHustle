@@ -30,6 +30,7 @@ import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as NdaRouteImport } from './routes/nda'
 import { Route as LegalRouteImport } from './routes/legal'
 import { Route as LearningCenterRouteImport } from './routes/learning-center'
+import { Route as FeaturesRouteImport } from './routes/features'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AgentRouteImport } from './routes/agent'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -42,14 +43,18 @@ import { Route as ScenarioBenchmarkRouteImport } from './routes/scenario.benchma
 import { Route as ScenarioCodeRouteImport } from './routes/scenario.$code'
 import { Route as LearningCenterSlugRouteImport } from './routes/learning-center_.$slug'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
+import { Route as DashboardProductResearchRouteImport } from './routes/dashboard/product-research'
 import { Route as AuthVerifyRouteImport } from './routes/auth.verify'
 import { Route as AdminUsersRouteImport } from './routes/admin_.users'
 import { Route as AdminTrainingRouteImport } from './routes/admin_.training'
+import { Route as AdminSubmissionChecklistRouteImport } from './routes/admin_.submission-checklist'
 import { Route as AdminStaffRouteImport } from './routes/admin_.staff'
 import { Route as AdminSitemapRouteImport } from './routes/admin_.sitemap'
 import { Route as AdminPricingRouteImport } from './routes/admin_.pricing'
+import { Route as AdminPboScenariosRouteImport } from './routes/admin_.pbo-scenarios'
 import { Route as AdminNewsletterRouteImport } from './routes/admin_.newsletter'
 import { Route as AdminMetaRouteImport } from './routes/admin_.meta'
+import { Route as AdminLeadCertificatesRouteImport } from './routes/admin_.lead-certificates'
 import { Route as AdminFacebookPostsRouteImport } from './routes/admin_.facebook-posts'
 import { Route as AdminFacebookAdsRouteImport } from './routes/admin_.facebook-ads'
 import { Route as AdminEmailTemplatesRouteImport } from './routes/admin_.email-templates'
@@ -181,6 +186,11 @@ const LearningCenterRoute = LearningCenterRouteImport.update({
   path: '/learning-center',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FeaturesRoute = FeaturesRouteImport.update({
+  id: '/features',
+  path: '/features',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -241,6 +251,12 @@ const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
   path: '/email/unsubscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DashboardProductResearchRoute =
+  DashboardProductResearchRouteImport.update({
+    id: '/dashboard/product-research',
+    path: '/dashboard/product-research',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthVerifyRoute = AuthVerifyRouteImport.update({
   id: '/verify',
   path: '/verify',
@@ -256,6 +272,12 @@ const AdminTrainingRoute = AdminTrainingRouteImport.update({
   path: '/admin/training',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminSubmissionChecklistRoute =
+  AdminSubmissionChecklistRouteImport.update({
+    id: '/admin_/submission-checklist',
+    path: '/admin/submission-checklist',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AdminStaffRoute = AdminStaffRouteImport.update({
   id: '/admin_/staff',
   path: '/admin/staff',
@@ -271,6 +293,11 @@ const AdminPricingRoute = AdminPricingRouteImport.update({
   path: '/admin/pricing',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminPboScenariosRoute = AdminPboScenariosRouteImport.update({
+  id: '/admin_/pbo-scenarios',
+  path: '/admin/pbo-scenarios',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminNewsletterRoute = AdminNewsletterRouteImport.update({
   id: '/admin_/newsletter',
   path: '/admin/newsletter',
@@ -279,6 +306,11 @@ const AdminNewsletterRoute = AdminNewsletterRouteImport.update({
 const AdminMetaRoute = AdminMetaRouteImport.update({
   id: '/admin_/meta',
   path: '/admin/meta',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminLeadCertificatesRoute = AdminLeadCertificatesRouteImport.update({
+  id: '/admin_/lead-certificates',
+  path: '/admin/lead-certificates',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminFacebookPostsRoute = AdminFacebookPostsRouteImport.update({
@@ -416,6 +448,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/agent': typeof AgentRouteWithChildren
   '/auth': typeof AuthRouteWithChildren
+  '/features': typeof FeaturesRoute
   '/learning-center': typeof LearningCenterRoute
   '/legal': typeof LegalRoute
   '/nda': typeof NdaRoute
@@ -445,14 +478,18 @@ export interface FileRoutesByFullPath {
   '/admin/email-templates': typeof AdminEmailTemplatesRoute
   '/admin/facebook-ads': typeof AdminFacebookAdsRoute
   '/admin/facebook-posts': typeof AdminFacebookPostsRoute
+  '/admin/lead-certificates': typeof AdminLeadCertificatesRoute
   '/admin/meta': typeof AdminMetaRoute
   '/admin/newsletter': typeof AdminNewsletterRoute
+  '/admin/pbo-scenarios': typeof AdminPboScenariosRoute
   '/admin/pricing': typeof AdminPricingRoute
   '/admin/sitemap': typeof AdminSitemapRoute
   '/admin/staff': typeof AdminStaffRoute
+  '/admin/submission-checklist': typeof AdminSubmissionChecklistRoute
   '/admin/training': typeof AdminTrainingRoute
   '/admin/users': typeof AdminUsersRoute
   '/auth/verify': typeof AuthVerifyRoute
+  '/dashboard/product-research': typeof DashboardProductResearchRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/learning-center/$slug': typeof LearningCenterSlugRoute
   '/scenario/$code': typeof ScenarioCodeRoute
@@ -484,6 +521,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/agent': typeof AgentRouteWithChildren
   '/auth': typeof AuthRouteWithChildren
+  '/features': typeof FeaturesRoute
   '/learning-center': typeof LearningCenterRoute
   '/legal': typeof LegalRoute
   '/nda': typeof NdaRoute
@@ -513,14 +551,18 @@ export interface FileRoutesByTo {
   '/admin/email-templates': typeof AdminEmailTemplatesRoute
   '/admin/facebook-ads': typeof AdminFacebookAdsRoute
   '/admin/facebook-posts': typeof AdminFacebookPostsRoute
+  '/admin/lead-certificates': typeof AdminLeadCertificatesRoute
   '/admin/meta': typeof AdminMetaRoute
   '/admin/newsletter': typeof AdminNewsletterRoute
+  '/admin/pbo-scenarios': typeof AdminPboScenariosRoute
   '/admin/pricing': typeof AdminPricingRoute
   '/admin/sitemap': typeof AdminSitemapRoute
   '/admin/staff': typeof AdminStaffRoute
+  '/admin/submission-checklist': typeof AdminSubmissionChecklistRoute
   '/admin/training': typeof AdminTrainingRoute
   '/admin/users': typeof AdminUsersRoute
   '/auth/verify': typeof AuthVerifyRoute
+  '/dashboard/product-research': typeof DashboardProductResearchRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/learning-center/$slug': typeof LearningCenterSlugRoute
   '/scenario/$code': typeof ScenarioCodeRoute
@@ -553,6 +595,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/agent': typeof AgentRouteWithChildren
   '/auth': typeof AuthRouteWithChildren
+  '/features': typeof FeaturesRoute
   '/learning-center': typeof LearningCenterRoute
   '/legal': typeof LegalRoute
   '/nda': typeof NdaRoute
@@ -582,14 +625,18 @@ export interface FileRoutesById {
   '/admin_/email-templates': typeof AdminEmailTemplatesRoute
   '/admin_/facebook-ads': typeof AdminFacebookAdsRoute
   '/admin_/facebook-posts': typeof AdminFacebookPostsRoute
+  '/admin_/lead-certificates': typeof AdminLeadCertificatesRoute
   '/admin_/meta': typeof AdminMetaRoute
   '/admin_/newsletter': typeof AdminNewsletterRoute
+  '/admin_/pbo-scenarios': typeof AdminPboScenariosRoute
   '/admin_/pricing': typeof AdminPricingRoute
   '/admin_/sitemap': typeof AdminSitemapRoute
   '/admin_/staff': typeof AdminStaffRoute
+  '/admin_/submission-checklist': typeof AdminSubmissionChecklistRoute
   '/admin_/training': typeof AdminTrainingRoute
   '/admin_/users': typeof AdminUsersRoute
   '/auth/verify': typeof AuthVerifyRoute
+  '/dashboard/product-research': typeof DashboardProductResearchRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/learning-center_/$slug': typeof LearningCenterSlugRoute
   '/scenario/$code': typeof ScenarioCodeRoute
@@ -623,6 +670,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/agent'
     | '/auth'
+    | '/features'
     | '/learning-center'
     | '/legal'
     | '/nda'
@@ -652,14 +700,18 @@ export interface FileRouteTypes {
     | '/admin/email-templates'
     | '/admin/facebook-ads'
     | '/admin/facebook-posts'
+    | '/admin/lead-certificates'
     | '/admin/meta'
     | '/admin/newsletter'
+    | '/admin/pbo-scenarios'
     | '/admin/pricing'
     | '/admin/sitemap'
     | '/admin/staff'
+    | '/admin/submission-checklist'
     | '/admin/training'
     | '/admin/users'
     | '/auth/verify'
+    | '/dashboard/product-research'
     | '/email/unsubscribe'
     | '/learning-center/$slug'
     | '/scenario/$code'
@@ -691,6 +743,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/agent'
     | '/auth'
+    | '/features'
     | '/learning-center'
     | '/legal'
     | '/nda'
@@ -720,14 +773,18 @@ export interface FileRouteTypes {
     | '/admin/email-templates'
     | '/admin/facebook-ads'
     | '/admin/facebook-posts'
+    | '/admin/lead-certificates'
     | '/admin/meta'
     | '/admin/newsletter'
+    | '/admin/pbo-scenarios'
     | '/admin/pricing'
     | '/admin/sitemap'
     | '/admin/staff'
+    | '/admin/submission-checklist'
     | '/admin/training'
     | '/admin/users'
     | '/auth/verify'
+    | '/dashboard/product-research'
     | '/email/unsubscribe'
     | '/learning-center/$slug'
     | '/scenario/$code'
@@ -759,6 +816,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/agent'
     | '/auth'
+    | '/features'
     | '/learning-center'
     | '/legal'
     | '/nda'
@@ -788,14 +846,18 @@ export interface FileRouteTypes {
     | '/admin_/email-templates'
     | '/admin_/facebook-ads'
     | '/admin_/facebook-posts'
+    | '/admin_/lead-certificates'
     | '/admin_/meta'
     | '/admin_/newsletter'
+    | '/admin_/pbo-scenarios'
     | '/admin_/pricing'
     | '/admin_/sitemap'
     | '/admin_/staff'
+    | '/admin_/submission-checklist'
     | '/admin_/training'
     | '/admin_/users'
     | '/auth/verify'
+    | '/dashboard/product-research'
     | '/email/unsubscribe'
     | '/learning-center_/$slug'
     | '/scenario/$code'
@@ -828,6 +890,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   AgentRoute: typeof AgentRouteWithChildren
   AuthRoute: typeof AuthRouteWithChildren
+  FeaturesRoute: typeof FeaturesRoute
   LearningCenterRoute: typeof LearningCenterRoute
   LegalRoute: typeof LegalRoute
   NdaRoute: typeof NdaRoute
@@ -857,13 +920,17 @@ export interface RootRouteChildren {
   AdminEmailTemplatesRoute: typeof AdminEmailTemplatesRoute
   AdminFacebookAdsRoute: typeof AdminFacebookAdsRoute
   AdminFacebookPostsRoute: typeof AdminFacebookPostsRoute
+  AdminLeadCertificatesRoute: typeof AdminLeadCertificatesRoute
   AdminMetaRoute: typeof AdminMetaRoute
   AdminNewsletterRoute: typeof AdminNewsletterRoute
+  AdminPboScenariosRoute: typeof AdminPboScenariosRoute
   AdminPricingRoute: typeof AdminPricingRoute
   AdminSitemapRoute: typeof AdminSitemapRoute
   AdminStaffRoute: typeof AdminStaffRoute
+  AdminSubmissionChecklistRoute: typeof AdminSubmissionChecklistRoute
   AdminTrainingRoute: typeof AdminTrainingRoute
   AdminUsersRoute: typeof AdminUsersRoute
+  DashboardProductResearchRoute: typeof DashboardProductResearchRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   LearningCenterSlugRoute: typeof LearningCenterSlugRoute
   ScenarioCodeRoute: typeof ScenarioCodeRoute
@@ -1037,6 +1104,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LearningCenterRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/features': {
+      id: '/features'
+      path: '/features'
+      fullPath: '/features'
+      preLoaderRoute: typeof FeaturesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -1121,6 +1195,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EmailUnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dashboard/product-research': {
+      id: '/dashboard/product-research'
+      path: '/dashboard/product-research'
+      fullPath: '/dashboard/product-research'
+      preLoaderRoute: typeof DashboardProductResearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth/verify': {
       id: '/auth/verify'
       path: '/verify'
@@ -1140,6 +1221,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/training'
       fullPath: '/admin/training'
       preLoaderRoute: typeof AdminTrainingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin_/submission-checklist': {
+      id: '/admin_/submission-checklist'
+      path: '/admin/submission-checklist'
+      fullPath: '/admin/submission-checklist'
+      preLoaderRoute: typeof AdminSubmissionChecklistRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin_/staff': {
@@ -1163,6 +1251,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPricingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin_/pbo-scenarios': {
+      id: '/admin_/pbo-scenarios'
+      path: '/admin/pbo-scenarios'
+      fullPath: '/admin/pbo-scenarios'
+      preLoaderRoute: typeof AdminPboScenariosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin_/newsletter': {
       id: '/admin_/newsletter'
       path: '/admin/newsletter'
@@ -1175,6 +1270,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/meta'
       fullPath: '/admin/meta'
       preLoaderRoute: typeof AdminMetaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin_/lead-certificates': {
+      id: '/admin_/lead-certificates'
+      path: '/admin/lead-certificates'
+      fullPath: '/admin/lead-certificates'
+      preLoaderRoute: typeof AdminLeadCertificatesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin_/facebook-posts': {
@@ -1392,6 +1494,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   AgentRoute: AgentRouteWithChildren,
   AuthRoute: AuthRouteWithChildren,
+  FeaturesRoute: FeaturesRoute,
   LearningCenterRoute: LearningCenterRoute,
   LegalRoute: LegalRoute,
   NdaRoute: NdaRoute,
@@ -1421,13 +1524,17 @@ const rootRouteChildren: RootRouteChildren = {
   AdminEmailTemplatesRoute: AdminEmailTemplatesRoute,
   AdminFacebookAdsRoute: AdminFacebookAdsRoute,
   AdminFacebookPostsRoute: AdminFacebookPostsRoute,
+  AdminLeadCertificatesRoute: AdminLeadCertificatesRoute,
   AdminMetaRoute: AdminMetaRoute,
   AdminNewsletterRoute: AdminNewsletterRoute,
+  AdminPboScenariosRoute: AdminPboScenariosRoute,
   AdminPricingRoute: AdminPricingRoute,
   AdminSitemapRoute: AdminSitemapRoute,
   AdminStaffRoute: AdminStaffRoute,
+  AdminSubmissionChecklistRoute: AdminSubmissionChecklistRoute,
   AdminTrainingRoute: AdminTrainingRoute,
   AdminUsersRoute: AdminUsersRoute,
+  DashboardProductResearchRoute: DashboardProductResearchRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   LearningCenterSlugRoute: LearningCenterSlugRoute,
   ScenarioCodeRoute: ScenarioCodeRoute,

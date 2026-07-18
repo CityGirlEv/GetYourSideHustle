@@ -43,9 +43,9 @@ describe("auth template merge at send time", () => {
       templateName: "signup",
       templateData: {
         siteName: "themedicareoptimizer",
-        siteUrl: "https://getpartb.com",
+        siteUrl: "https://www.mypartb.com",
         recipient: "real.user@example.com",
-        confirmationUrl: "https://getpartb.com/auth/confirm?token=abc",
+        confirmationUrl: "https://www.mypartb.com/auth/confirm?token=abc",
         token: "999888",
         email: "real.user@example.com",
       },
@@ -60,7 +60,7 @@ describe("auth template merge at send time", () => {
     });
 
     expect(result.html).toContain("real.user@example.com");
-    expect(result.html).toContain("https://getpartb.com/auth/confirm?token=abc");
+    expect(result.html).toContain("https://www.mypartb.com/auth/confirm?token=abc");
     expect(result.html).toContain("themedicareoptimizer");
     expect(result.html).not.toContain("{{");
   });
@@ -70,8 +70,8 @@ describe("auth template merge at send time", () => {
       templateName: "recovery",
       templateData: {
         siteName: "themedicareoptimizer",
-        siteUrl: "https://getpartb.com",
-        confirmationUrl: "https://getpartb.com/auth/reset?token=xyz",
+        siteUrl: "https://www.mypartb.com",
+        confirmationUrl: "https://www.mypartb.com/auth/reset?token=xyz",
         email: "evelyn3@cox.net",
       },
       renderedHtml: "<p>fallback</p>",
@@ -84,7 +84,7 @@ describe("auth template merge at send time", () => {
       },
     });
 
-    expect(result.html).toContain("https://getpartb.com/auth/reset?token=xyz");
+    expect(result.html).toContain("https://www.mypartb.com/auth/reset?token=xyz");
     expect(result.html).not.toContain("example.com/confirm");
   });
 });

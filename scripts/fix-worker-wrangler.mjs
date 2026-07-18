@@ -23,7 +23,7 @@ const rootConfig = fs.existsSync(rootWranglerPath)
   : {};
 
 const config = {
-  name: generated.name ?? "mypartb",
+  name: rootConfig.name ?? "mypartb",
   compatibility_date: generated.compatibility_date ?? "2026-06-05",
   compatibility_flags: generated.compatibility_flags ?? ["nodejs_compat"],
   main: "_worker.js/index.js",

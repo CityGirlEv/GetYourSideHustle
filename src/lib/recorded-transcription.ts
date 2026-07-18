@@ -1,5 +1,6 @@
 /** Record mic audio and transcribe via /api/public/transcribe (Workers AI Whisper). */
 
+import { PRODUCTION_SITE_ORIGIN } from "@/lib/site-url";
 import type { LiveSpeechSession } from "@/lib/speech-recognition";
 
 const DEFAULT_SILENCE_HANG_MS = 2200;
@@ -35,7 +36,7 @@ async function transcribeBlob(blob: Blob, filename: string): Promise<string> {
     typeof window !== "undefined" &&
     /localhost|127\.0\.0\.1/.test(window.location.hostname);
   const url = onLocalhost
-    ? "https://mypartb.com/api/public/transcribe"
+    ? `${PRODUCTION_SITE_ORIGIN}/api/public/transcribe`
     : "/api/public/transcribe";
 
   const res = await fetch(url, { method: "POST", body: form, mode: "cors" });

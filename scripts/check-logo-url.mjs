@@ -5,7 +5,7 @@ import { SignupEmail } from "../src/lib/email-templates/signup.tsx";
 const html = await render(
   React.createElement(SignupEmail, {
     siteName: "Test",
-    siteUrl: "https://getpartb.com",
+    siteUrl: "https://www.mypartb.com",
     recipient: "a@b.com",
     confirmationUrl: "https://x.com",
   }),

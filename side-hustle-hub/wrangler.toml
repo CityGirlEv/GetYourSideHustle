@@ -1,0 +1,19 @@
+# Cloudflare Pages + D1 for getyoursidehustle.com
+name = "getyoursidehustle"
+compatibility_date = "2024-09-23"
+pages_build_output_dir = "dist"
+
+[vars]
+# Set in Cloudflare Pages dashboard for production builds:
+# VITE_SITE_URL=https://getyoursidehustle.com
+#
+# Secrets (NOT in this file — use dashboard or wrangler):
+#   wrangler pages secret put RESEND_API_KEY --project-name=getyoursidehustle
+# Optional plain vars: EMAIL_FROM, CONTACT_TO
+# Local: copy into .dev.vars (gitignored)
+
+[[d1_databases]]
+binding = "DB"
+database_name = "gysh-db"
+database_id = "f0e2620f-e5dd-41a4-b2b7-b3f2ca2d8c9e"
+migrations_dir = "migrations"

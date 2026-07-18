@@ -183,7 +183,7 @@ const TOPIC_TEMPLATES: Record<string, TopicTemplate> = {
           ],
         },
       ],
-      "Educational only — not a complete listing of plans in your area.",
+      "Educational benchmark results only — not a carrier plan catalog in your area.",
     ),
   },
   "medigap-window": {
@@ -248,32 +248,39 @@ const TOPIC_TEMPLATES: Record<string, TopicTemplate> = {
     ),
   },
   "network-changes": {
-    title: "Medicare Advantage Networks: When Your Doctor Is No Longer In Network",
-    slug: "medicare-advantage-network-changes",
+    title: "Is Your Doctor In Network for Next Year?",
+    slug: "is-your-doctor-in-network-next-year",
     excerpt:
-      "Network rules affect who you can see — here is how to compare plans with your providers in mind.",
+      "Plan networks change every year — here is a calm checklist before you assume your care team stays covered.",
     metaDescription:
-      "How provider networks work in Medicare Advantage, why they can change, and educational questions to ask before choosing a plan.",
+      "Educational guide to Medicare Advantage provider networks, annual directory changes, and questions to ask before renewing coverage.",
     category: "comparing-plans",
     bodyMd: body(
       [
         {
-          heading: "Networks are plan-specific",
+          heading: "Networks are not guaranteed year to year",
           paragraphs: [
-            "Medicare Advantage plans often use provider networks. If your doctor or hospital is out of network, you may pay more or receive no plan payment at all.",
-            "Beneficiaries frequently report frustration when a trusted provider leaves the network mid-year or was never in network despite assumptions.",
+            "Many Medicare Advantage plans use provider networks. A doctor who was in network this year may not be next year — even if you keep the same plan name and carrier.",
+            "Beneficiaries often report assuming a longtime doctor would stay covered, then learning at the appointment desk that the office no longer accepts the plan.",
           ],
         },
         {
-          heading: "Protect yourself with verification",
+          heading: "Before you renew or switch",
           bullets: [
-            "Check each provider on the plan's current directory before enrollment.",
-            "Ask if referral rules apply for specialists.",
-            "Re-check networks if your plan sends a change notice.",
+            "List every doctor, specialist, and hospital you want to keep",
+            "Call each office and ask whether they plan to accept your coverage for the upcoming contract year",
+            "Read any plan change notice you receive in the mail or by email",
+            "Compare out-of-pocket costs if a favorite provider is out of network",
+          ],
+        },
+        {
+          heading: "Hospital in network does not mean every doctor is",
+          paragraphs: [
+            "A hospital may be in network while an anesthesiologist, radiologist, or other specialist who treats you is not.",
           ],
         },
       ],
-      "Educational only — networks and rules change; verify before care.",
+      "Educational only — networks and rules change; verify with your plan documents and providers.",
     ),
   },
   "out-of-network-surprises": {

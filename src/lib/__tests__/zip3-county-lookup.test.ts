@@ -44,4 +44,10 @@ describe("countyMatchesZip3", () => {
   it("returns null for an empty county input", () => {
     expect(countyMatchesZip3("", "770")).toBeNull();
   });
+  it("matches county names with optional state suffix", () => {
+    expect(countyMatchesZip3("Evangeline Parish, LA", "705")).toEqual({
+      county: "Evangeline Parish",
+      stateCode: "LA",
+    });
+  });
 });

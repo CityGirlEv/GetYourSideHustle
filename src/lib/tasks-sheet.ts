@@ -1,5 +1,5 @@
 // ============================================================================
-// Part B Optimizer — TASK SHEET
+// Part B Optimizer Benchmark Tool — TASK SHEET
 // ----------------------------------------------------------------------------
 // Spreadsheet-style task tracker modeled after the Rassavong Realty Master
 // Task Tracker. Tasks are persisted to localStorage (key TASKS_STORAGE_KEY)

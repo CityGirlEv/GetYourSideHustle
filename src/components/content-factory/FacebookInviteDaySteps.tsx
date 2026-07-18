@@ -1,18 +1,21 @@
 import { useCallback } from "react";
 import {
   FACEBOOK_INVITE_DAY_STEPS,
+  FACEBOOK_INVITE_EVENT_ID,
   facebookInviteStepStorageId,
   type FacebookInviteDayStep,
 } from "@/lib/content-factory/facebook-invite-day-checklist";
 import { facebookPageUrl } from "@/lib/content-factory/facebook-post-copy";
 
 export function FacebookInviteDaySteps({
+  eventDate,
   completedEvents = {},
   onToggleCompleted,
   compact = false,
 }: {
+  eventDate: string;
   completedEvents?: Record<string, boolean>;
-  onToggleCompleted?: (eventId: string) => void;
+  onToggleCompleted?: (storageId: string, legacyId?: string) => void;
   compact?: boolean;
 }) {
   const pageUrl = facebookPageUrl();
@@ -23,16 +26,20 @@ export function FacebookInviteDaySteps({
         Invite day — whiz through these:
       </p>
       <ol className={`space-y-1 ${compact ? "text-[10px]" : "text-xs"}`}>
-        {FACEBOOK_INVITE_DAY_STEPS.map((step, index) => (
+        {FACEBOOK_INVITE_DAY_STEPS.map((step, index) => {
+          const storageId = facebookInviteStepStorageId(eventDate, step.id);
+          const legacyId = `${FACEBOOK_INVITE_EVENT_ID}:${step.id}`;
+          return (
           <FacebookInviteStepRow
             key={step.id}
             index={index + 1}
             step={step}
             compact={compact}
-            checked={!!completedEvents[facebookInviteStepStorageId(step.id)]}
-            onToggle={() => onToggleCompleted?.(facebookInviteStepStorageId(step.id))}
+            checked={!!(completedEvents[storageId] ?? completedEvents[legacyId])}
+            onToggle={() => onToggleCompleted?.(storageId, legacyId)}
           />
-        ))}
+          );
+        })}
       </ol>
       {pageUrl ? (
         <a

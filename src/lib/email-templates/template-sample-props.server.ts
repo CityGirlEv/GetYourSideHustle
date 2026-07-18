@@ -5,6 +5,7 @@ import {
   EMAIL_LOGO_PATH,
 } from "@/lib/email-templates/email-header";
 import { SITE_BRAND_NAME, SITE_BRAND_TEAM_SIGNATURE, SITE_BRAND_THE } from "@/lib/site-brand";
+import { PRODUCTION_SITE_ORIGIN } from "@/lib/site-url";
 
 export const AUTH_SAMPLE_PROPS: Record<string, unknown> = {
   siteName: SITE_BRAND_THE,
@@ -56,7 +57,7 @@ export function getAuthTemplateTestData(
   templateName: string,
   recipient: string,
 ): Record<string, unknown> {
-  const baseUrl = "https://getpartb.com";
+  const baseUrl = PRODUCTION_SITE_ORIGIN;
   return {
     siteName: SITE_BRAND_THE,
     siteUrl: baseUrl,
@@ -86,6 +87,7 @@ export const SHARED_MERGE_LITERALS: Array<{ sample: string; key: string }> = [
   { sample: SITE_BRAND_NAME, key: "siteName" },
   { sample: "https://mypartb.pages.dev", key: "siteUrl" },
   { sample: "https://mypartb.com", key: "siteUrl" },
+  { sample: PRODUCTION_SITE_ORIGIN, key: "siteUrl" },
 ];
 
 /** Subject lines that use dynamic merge tokens instead of preview literals. */

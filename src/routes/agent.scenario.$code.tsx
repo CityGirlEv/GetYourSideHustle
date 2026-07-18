@@ -20,9 +20,11 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { buildScenarioPdf, type ScenarioPdfInput } from "@/lib/scenario-pdf";
-import { downloadScenarioXlsx } from "@/lib/scenario-xlsx";
+import { openScenarioXlsxInNewTab } from "@/lib/scenario-xlsx";
 import { ScenarioConversationDialog } from "@/components/ScenarioConversationDialog";
+import { ScenarioAgentAssign } from "@/components/ScenarioAgentAssign";
 import { supabase } from "@/integrations/supabase/client";
+import { userHasAdminRole } from "@/lib/user-roles";
 import type { Scenario } from "@/lib/app-store";
 import type { Year } from "@/lib/medicare-math";
 
@@ -108,9 +110,9 @@ function ScenarioDetail() {
       return;
     }
     try {
-      await downloadScenarioXlsx(buildExportInput(scenario, year));
+      await openScenarioXlsxInNewTab(buildExportInput(scenario, year));
       log("EXPORT_DOSSIER", { scenario: scenario.id, format: "xlsx" });
-      toast.success("Dossier spreadsheet downloaded");
+      toast.success("Dossier spreadsheet opened in a new tab");
     } catch (e) {
       console.error(e);
       toast.error("Could not generate spreadsheet");
@@ -142,6 +144,7 @@ function ScenarioDetail() {
     user?.role === "admin" ||
     scenario.assigned_agent_id === user?.id ||
     scenario.claimed_by === user?.id;
+  const isStaffAdmin = userHasAdminRole(user);
 
   return (
     <AppShell
@@ -156,12 +159,15 @@ function ScenarioDetail() {
               Back to command center
             </Button>
           </Link>
-          <Link to="/agent/scenario/$code/edit" params={{ code: scenario.scenario_code }}>
-            <Button variant="outline" size="sm">
-              <Pencil className="h-3.5 w-3.5 mr-1.5" />
-              Edit comparison
-            </Button>
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            {isStaffAdmin ? <ScenarioAgentAssign scenarioCode={code} /> : null}
+            <Link to="/agent/scenario/$code/edit" params={{ code: scenario.scenario_code }}>
+              <Button variant="outline" size="sm">
+                <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                Edit comparison
+              </Button>
+            </Link>
+          </div>
         </div>
 
         <Card className="glass p-5">
