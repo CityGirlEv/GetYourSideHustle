@@ -82,6 +82,12 @@ import {
 import { healIncompleteTestDueDates } from "../../lib/gysh-sprint-board";
 import { formatAuditTrail } from "../../lib/gysh-audit";
 import {
+  appendActorNote,
+  applyNoteDrafts,
+  noteEntriesPlainText,
+  notesHaveUnsavedDraft,
+} from "../../lib/gysh-note-entries";
+import {
   SYSTEM_ASSIGNED_BY,
   assignedBySelectOptions,
   auditActorLabel,
@@ -99,6 +105,7 @@ import { useActiveTimers } from "../../lib/use-active-timers";
 import { SprintStatusBars } from "./SprintStatusBars";
 import { QaProgressBars, emptyTally, tallyStatuses, type StatusTally } from "./QaProgressBars";
 import { WorkTimer } from "./WorkTimer";
+import { NotesThread } from "./NotesThread";
 
 const STATUSES: TestStatus[] = ["not_run", "in_progress", "pass", "fail", "blocked"];
 
@@ -233,6 +240,8 @@ export function TestingPortal({
 } = {}) {
   const [statuses, setStatuses] = useState<Record<string, TestStatus>>({});
   const [notes, setNotes] = useState<Record<string, string>>({});
+  const [newNoteDrafts, setNewNoteDrafts] = useState<Record<string, string>>({});
+  const [editNoteDrafts, setEditNoteDrafts] = useState<Record<string, Record<string, string>>>({});
   const [assigneeOverrides, setAssigneeOverrides] = useState<Record<string, string>>({});
   const [sprintByCase, setSprintByCase] = useState<Record<string, number>>({});
   const [updatedAtByCase, setUpdatedAtByCase] = useState<Record<string, string>>({});
@@ -327,6 +336,10 @@ export function TestingPortal({
   statusesRef.current = statuses;
   const notesRef = useRef(notes);
   notesRef.current = notes;
+  const newNoteDraftsRef = useRef(newNoteDrafts);
+  newNoteDraftsRef.current = newNoteDrafts;
+  const editNoteDraftsRef = useRef(editNoteDrafts);
+  editNoteDraftsRef.current = editNoteDrafts;
   const checkedStepsRef = useRef(checkedStepsByCase);
   checkedStepsRef.current = checkedStepsByCase;
   const failedStepRef = useRef(failedStepByCase);
@@ -433,7 +446,7 @@ export function TestingPortal({
   const saveOneCase = async (id: string) => {
     if (!assertCaseUnlocked(id)) return;
     const currentStatus = statusesRef.current[id] ?? DEFAULT_TEST_STATUS;
-    const note = (notesRef.current[id] ?? "").trim();
+    const note = composedNote(id);
     if (statusRequiresNote(currentStatus) && !noteMeetsRequirement(note)) {
       const msg = `A note is required for ${STATUS_LABELS[currentStatus]} (at least ${NOTE_MIN_LENGTH} characters).`;
       setRowErrors((prev) => ({ ...prev, [id]: msg }));
@@ -479,6 +492,14 @@ export function TestingPortal({
   const effectiveSprint = (t: TestCase) =>
     sprintByCase[t.id] ?? suggestedSprintForTest(t);
 
+  const composedNote = (id: string) =>
+    applyNoteDrafts(
+      notesRef.current[id] ?? "",
+      actingAssignBy,
+      editNoteDraftsRef.current[id],
+      newNoteDraftsRef.current[id],
+    );
+
   const applyServerData = (data: TestStatusesPayload, savedId?: string) => {
     if (savedId) {
       clearDirtyNote(savedId);
@@ -486,13 +507,8 @@ export function TestingPortal({
     }
     // Merge server payload into local state so concurrent saves cannot drop fields.
     setStatuses((prev) => ({ ...prev, ...data.statuses }));
-    setNotes((prev) => {
-      const next: Record<string, string> = { ...prev, ...data.notes };
-      for (const id of dirtyNotesRef.current) {
-        if (prev[id] !== undefined) next[id] = prev[id];
-      }
-      return next;
-    });
+    // Server notes are source of truth; unsaved drafts live in new/edit draft maps.
+    setNotes((prev) => ({ ...prev, ...data.notes }));
     setAssigneeOverrides((prev) => ({ ...prev, ...data.assignees }));
     setSprintByCase((prev) => ({ ...prev, ...data.sprints }));
     setDueDatesByCase((prev) => ({ ...prev, ...(data.dueDates ?? {}) }));
@@ -524,14 +540,38 @@ export function TestingPortal({
     }
   };
 
-  const markNoteDirty = (id: string, value: string) => {
+  const markTestNotesDirty = (id: string) => {
     dirtyNotesRef.current.add(id);
     syncDirtySaveCount();
-    setNotes((prev) => ({ ...prev, [id]: value }));
+  };
+
+  const setNewNoteDraft = (id: string, value: string) => {
+    setNewNoteDrafts((prev) => ({ ...prev, [id]: value }));
+    markTestNotesDirty(id);
+  };
+
+  const setEditNoteDraft = (caseId: string, noteId: string, value: string) => {
+    setEditNoteDrafts((prev) => ({
+      ...prev,
+      [caseId]: { ...(prev[caseId] ?? {}), [noteId]: value },
+    }));
+    markTestNotesDirty(caseId);
   };
 
   const clearDirtyNote = (id: string) => {
     dirtyNotesRef.current.delete(id);
+    setNewNoteDrafts((prev) => {
+      if (!(id in prev)) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    setEditNoteDrafts((prev) => {
+      if (!(id in prev)) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
     syncDirtySaveCount();
   };
 
@@ -1084,7 +1124,7 @@ export function TestingPortal({
       setError("Only Evelyn may set a test to Blocked.");
       return;
     }
-    const note = (notesRef.current[id] ?? "").trim();
+    const note = composedNote(id);
     const steps = stepsFor(id);
     const checked = checkedFor(id);
     const failedIdx = failedStepRef.current[id];
@@ -1253,7 +1293,7 @@ export function TestingPortal({
       const data = await saveTestStatus(
         id,
         status,
-        (notesRef.current[id] ?? "").trim(),
+        composedNote(id),
         assignee,
         persistedSprint(id),
         {
@@ -1282,7 +1322,7 @@ export function TestingPortal({
       const data = await saveTestStatus(
         id,
         status,
-        (notesRef.current[id] ?? "").trim(),
+        composedNote(id),
         persistedAssignee(id),
         persistedSprint(id),
         {
@@ -1312,7 +1352,7 @@ export function TestingPortal({
         return {
           caseId: id,
           status,
-          note: (notesRef.current[id] ?? "").trim(),
+          note: composedNote(id),
           assignee: persistedAssignee(id),
           sprint,
           dueDate: persistedDueDate(id, sprint),
@@ -1356,7 +1396,7 @@ export function TestingPortal({
       const data = await saveTestStatus(
         id,
         status,
-        (notesRef.current[id] ?? "").trim(),
+        composedNote(id),
         nextAssignee,
         sprint,
         evidenceOpts(id, status, due),
@@ -1384,7 +1424,7 @@ export function TestingPortal({
       const data = await saveTestStatus(
         id,
         status,
-        (notesRef.current[id] ?? "").trim(),
+        composedNote(id),
         persistedAssignee(id),
         persistedSprint(id),
         evidenceOpts(id, status, normalized),
@@ -1412,7 +1452,7 @@ export function TestingPortal({
     try {
       for (const id of ids) {
         const currentStatus = statusesRef.current[id] ?? DEFAULT_TEST_STATUS;
-        const note = (notesRef.current[id] ?? "").trim();
+        const note = composedNote(id);
         if (statusRequiresNote(currentStatus) && !noteMeetsRequirement(note)) {
           const msg = `A note is required for ${STATUS_LABELS[currentStatus]} on ${id} (at least ${NOTE_MIN_LENGTH} characters).`;
           setRowErrors((prev) => ({ ...prev, [id]: msg }));
@@ -1588,7 +1628,7 @@ export function TestingPortal({
         return {
           caseId: id,
           status,
-          note: (notesRef.current[id] ?? "").trim(),
+          note: composedNote(id),
           assignee,
           sprint,
           dueDate: persistedDueDate(id, sprint),
@@ -1637,7 +1677,7 @@ export function TestingPortal({
     }
     const ids = [...selectedIds];
     if (statusRequiresNote(status)) {
-      const missing = ids.filter((id) => !noteMeetsRequirement((notesRef.current[id] ?? "").trim()));
+      const missing = ids.filter((id) => !noteMeetsRequirement(composedNote(id)));
       if (missing.length > 0) {
         setError(
           `A note is required for ${STATUS_LABELS[status]} on ${missing.length} selected case(s) (at least ${NOTE_MIN_LENGTH} characters). Add notes first, or choose Pass / In Progress / Not Started.`,
@@ -1675,7 +1715,7 @@ export function TestingPortal({
       const items = ids.map((id) => ({
         caseId: id,
         status,
-        note: (notesRef.current[id] ?? "").trim(),
+        note: composedNote(id),
         assignee: status === "fail" ? FAILED_TEST_ASSIGNEE : persistedAssignee(id),
         sprint: persistedSprint(id),
         dueDate: persistedDueDate(id),
@@ -1732,7 +1772,7 @@ export function TestingPortal({
         return {
           caseId: id,
           status,
-          note: (notesRef.current[id] ?? "").trim(),
+          note: composedNote(id),
           assignee,
           sprint,
           dueDate: due,
@@ -1788,7 +1828,7 @@ export function TestingPortal({
         return {
           caseId: id,
           status,
-          note: (notesRef.current[id] ?? "").trim(),
+          note: composedNote(id),
           assignee: persistedAssignee(id),
           sprint: persistedSprint(id),
           dueDate: normalized,

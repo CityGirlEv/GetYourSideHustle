@@ -34,6 +34,7 @@ import {
   SPRINT_LOCKED_MESSAGE,
 } from "./closed-sprints";
 import { sprintLabel } from "./sprints";
+import { mergeNoteEntries, noteEntriesPlainText } from "./note-entries";
 
 /** D1 string values max ~2MB; base64 expands ~4/3 — keep decoded payload under that. */
 const TASK_ATTACHMENT_MAX_BYTES = 1_500_000;
@@ -505,7 +506,11 @@ export async function saveTasks(env: Env, request: Request, actor: DbUser): Prom
     const dateAssigned = String(t.dateAssigned || "");
     const dueDate = String(t.dueDate || "");
     const dateCompleted = String(t.dateCompleted || "");
-    const notes = String(t.notes || "");
+    const incomingNotes = String(t.notes || "");
+    const prevNotesForMerge = String(priorById.get(id)?.notes ?? "");
+    const notesMerged = mergeNoteEntries(prevNotesForMerge, incomingNotes, byLabel, now);
+    if (!notesMerged.ok) return error(notesMerged.error, 400);
+    const notes = notesMerged.notes;
     const sprintRaw = Number(t.sprint ?? 0);
     const sprint = Number.isFinite(sprintRaw) ? sprintRaw : 0;
     // Backlog tasks are always Unassigned (do not invent an owner when leaving backlog).
@@ -1421,8 +1426,15 @@ export async function setTestStatus(env: Env, request: Request, actor: DbUser): 
     const prevSprint = Number.isFinite(prevSprintNum) ? prevSprintNum : BACKLOG_SPRINT;
 
     const status = String(raw.status ?? prev?.status ?? "");
-    const note =
-      raw.note !== undefined ? String(raw.note ?? "").trim() : String(prev?.note ?? "").trim();
+    const whoForNotes = actorLabel(actor);
+    const prevNoteRaw = String(prev?.note ?? "");
+    let note =
+      raw.note !== undefined ? String(raw.note ?? "").trim() : prevNoteRaw.trim();
+    if (raw.note !== undefined) {
+      const mergedNote = mergeNoteEntries(prevNoteRaw, String(raw.note ?? ""), whoForNotes, now);
+      if (!mergedNote.ok) return error(mergedNote.error, 400);
+      note = mergedNote.notes;
+    }
     let assignee =
       raw.assignee !== undefined
         ? String(raw.assignee ?? "").trim()
@@ -1443,10 +1455,11 @@ export async function setTestStatus(env: Env, request: Request, actor: DbUser): 
     // general → Backlog + Unassigned; Kevina/Kids/Youth → Tina + current/next sprint + due+1.
     let createDefaultsAssignee = "";
     if (isNewRow && (isGeneratedFailureCaseId(caseId) || raw.sprint === undefined || raw.sprint === null)) {
+      const notePlain = noteEntriesPlainText(note);
       const defaults = defaultsForNewTest({
         id: caseId,
-        title: note.slice(0, 180),
-        tags: note,
+        title: notePlain.slice(0, 180),
+        tags: notePlain,
       });
       sprint = defaults.sprint;
       createDefaultsAssignee = defaults.assignee;
@@ -1489,7 +1502,7 @@ export async function setTestStatus(env: Env, request: Request, actor: DbUser): 
     if (status === "blocked" && prevStatus !== "blocked" && !canSetTestBlocked(actor)) {
       return error("Only Evelyn may set a test to Blocked.", 403);
     }
-    if ((status === "fail" || status === "blocked") && note.length < 8) {
+    if ((status === "fail" || status === "blocked") && noteEntriesPlainText(note).length < 8) {
       return error(
         `A note is required for ${status} on ${caseId}. Describe what failed or what is blocking (at least a short sentence).`,
       );

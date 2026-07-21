@@ -4,9 +4,14 @@ import {
   pairProofreadCase,
   PROOFREAD_CASES,
   proofreadLogicalId,
+  testIdHasNumber,
 } from "../gysh-proofread-cases";
 import { suggestedSprintForTest } from "../gysh-sprint-board";
 import { TEST_CASES } from "../gysh-test-plan";
+import {
+  AUTOMATED_PLAYWRIGHT_CASES,
+  AUTOMATED_VITEST_CASES,
+} from "../gysh-automated-tests";
 
 describe("gysh-proofread Tina + Lyriq pairing", () => {
   const proofreadFromCatalog = TEST_CASES.filter(
@@ -16,6 +21,18 @@ describe("gysh-proofread Tina + Lyriq pairing", () => {
   it("exports PROOFREAD_CASES into the main test plan", () => {
     expect(PROOFREAD_CASES.length).toBeGreaterThan(0);
     expect(proofreadFromCatalog.length).toBe(PROOFREAD_CASES.length);
+  });
+
+  it("numbers every proofread logical case as PROOF-NNN", () => {
+    for (const t of proofreadFromCatalog) {
+      expect(t.id).toMatch(/^PROOF-\d{3}-(TINA|LYRIQ)$/);
+      expect(testIdHasNumber(t.id)).toBe(true);
+    }
+    const logicals = [
+      ...new Set(proofreadFromCatalog.map((t) => proofreadLogicalId(t.id))),
+    ].sort();
+    expect(logicals[0]).toBe("PROOF-001");
+    expect(logicals).toContain(`PROOF-${String(logicals.length).padStart(3, "0")}`);
   });
 
   it("gives every proofread logical case a Tina + Lyriq pair (no orphans)", () => {
@@ -56,7 +73,7 @@ describe("gysh-proofread Tina + Lyriq pairing", () => {
 
   it("pairProofreadCase builds matching Tina/Lyriq siblings", () => {
     const [tina, lyriq] = pairProofreadCase({
-      id: "PROOF-PAGE-DEMO",
+      id: "PROOF-999",
       area: "Proofread",
       title: "Proofread: Demo",
       priority: "P2",
@@ -66,11 +83,17 @@ describe("gysh-proofread Tina + Lyriq pairing", () => {
       expected: "Looks good",
       path: "dashboard",
     });
-    expect(tina.id).toBe("PROOF-PAGE-DEMO-TINA");
-    expect(lyriq.id).toBe("PROOF-PAGE-DEMO-LYRIQ");
+    expect(tina.id).toBe("PROOF-999-TINA");
+    expect(lyriq.id).toBe("PROOF-999-LYRIQ");
     expect(tina.assignees).toEqual(["tina"]);
     expect(lyriq.assignees).toEqual(["lyriq"]);
     expect(tina.title).toBe(lyriq.title);
-    expect(proofreadLogicalId(tina.id)).toBe("PROOF-PAGE-DEMO");
+    expect(proofreadLogicalId(tina.id)).toBe("PROOF-999");
+  });
+
+  it("gives every catalog / automated test id a number", () => {
+    const all = [...TEST_CASES, ...AUTOMATED_VITEST_CASES, ...AUTOMATED_PLAYWRIGHT_CASES];
+    const missing = all.filter((t) => !testIdHasNumber(t.id)).map((t) => t.id);
+    expect(missing, `Unnumbered test ids: ${missing.join(", ")}`).toEqual([]);
   });
 });

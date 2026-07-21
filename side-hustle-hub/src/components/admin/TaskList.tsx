@@ -85,6 +85,13 @@ import {
 } from "../../lib/gysh-closed-sprints";
 import { healIncompleteTaskDueDates } from "../../lib/gysh-sprint-board";
 import { formatAuditTrail } from "../../lib/gysh-audit";
+import {
+  appendActorNote,
+  applyNoteDrafts,
+  noteEntriesPlainText,
+  notesHaveUnsavedDraft,
+} from "../../lib/gysh-note-entries";
+import { NotesThread } from "./NotesThread";
 
 type OwnerFilter = GyshTask["assignedTo"];
 type CategoryFilter = TaskCategory;
@@ -98,7 +105,7 @@ function taskMatchesSearch(task: GyshTask, rawQuery: string): boolean {
   const haystack = [
     task.id,
     task.description,
-    task.notes,
+    noteEntriesPlainText(task.notes),
     categoryLabel(task.category),
     isBacklogSprint(sprint) ? UNASSIGNED_OWNER : task.assignedTo,
     task.assignBy,
@@ -572,7 +579,8 @@ export function TaskList({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [highlightId, setHighlightId] = useState<string | null>(null);
   /** Local note drafts — Save persists; checkbox/select starts the work timer. */
-  const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
+  const [newNoteDrafts, setNewNoteDrafts] = useState<Record<string, string>>({});
+  const [editNoteDrafts, setEditNoteDrafts] = useState<Record<string, Record<string, string>>>({});
   const [dirtyNoteIds, setDirtyNoteIds] = useState<Set<string>>(() => new Set());
   const [savingAll, setSavingAll] = useState(false);
   const [saveFlash, setSaveFlash] = useState("");
@@ -592,7 +600,8 @@ export function TaskList({
       const backlogHealed = sanitizeBacklogTaskAssignees(synced.tasks);
       const dueHealed = healIncompleteTaskDueDates(backlogHealed.tasks);
       setTasks(dueHealed.tasks);
-      setNoteDrafts({});
+      setNewNoteDrafts({});
+      setEditNoteDrafts({});
       setDirtyNoteIds(new Set());
       if (backlogHealed.changed || dueHealed.changed) {
         try {
@@ -639,7 +648,8 @@ export function TaskList({
     const hadDrafts = dirtySaveCount > 0 || Boolean(desc.trim());
     if (!hadDrafts && filtersAreAll) return;
     if (hadDrafts) {
-      setNoteDrafts({});
+      setNewNoteDrafts({});
+      setEditNoteDrafts({});
       setDirtyNoteIds(new Set());
       setDesc("");
     }
@@ -835,13 +845,25 @@ export function TaskList({
     }
   };
 
-  const markNoteDirty = (id: string, value: string) => {
-    setNoteDrafts((prev) => ({ ...prev, [id]: value }));
+  const markTaskNotesDirty = (id: string) => {
     setDirtyNoteIds((prev) => {
       const next = new Set(prev);
       next.add(id);
       return next;
     });
+  };
+
+  const setNewNoteDraft = (id: string, value: string) => {
+    setNewNoteDrafts((prev) => ({ ...prev, [id]: value }));
+    markTaskNotesDirty(id);
+  };
+
+  const setEditNoteDraft = (taskId: string, noteId: string, value: string) => {
+    setEditNoteDrafts((prev) => ({
+      ...prev,
+      [taskId]: { ...(prev[taskId] ?? {}), [noteId]: value },
+    }));
+    markTaskNotesDirty(taskId);
   };
 
   const clearNoteDirty = (id: string) => {
@@ -851,7 +873,13 @@ export function TaskList({
       next.delete(id);
       return next;
     });
-    setNoteDrafts((prev) => {
+    setNewNoteDrafts((prev) => {
+      if (!(id in prev)) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    setEditNoteDrafts((prev) => {
       if (!(id in prev)) return prev;
       const next = { ...prev };
       delete next[id];
@@ -859,13 +887,18 @@ export function TaskList({
     });
   };
 
-  const noteValue = (t: GyshTask) =>
-    dirtyNoteIds.has(t.id) && noteDrafts[t.id] !== undefined ? noteDrafts[t.id]! : t.notes;
+  const composedNotesForTask = (task: GyshTask) =>
+    applyNoteDrafts(
+      task.notes,
+      actingAssignBy,
+      editNoteDrafts[task.id],
+      newNoteDrafts[task.id],
+    );
 
   const saveOneTask = async (id: string) => {
     const current = tasksRef.current.find((t) => t.id === id);
     if (!current) return;
-    const nextNotes = (noteDrafts[id] ?? current.notes).trim();
+    const nextNotes = composedNotesForTask(current);
     try {
       await patch(id, { notes: nextNotes });
       clearNoteDirty(id);
@@ -877,7 +910,16 @@ export function TaskList({
   };
 
   const saveEverything = async () => {
-    const ids = [...dirtyNoteIds];
+    const ids = [...dirtyNoteIds].filter((id) => {
+      const current = tasksRef.current.find((t) => t.id === id);
+      if (!current) return false;
+      return notesHaveUnsavedDraft(
+        current.notes,
+        actingAssignBy,
+        editNoteDrafts[id],
+        newNoteDrafts[id],
+      );
+    });
     if (ids.length === 0) {
       setSaveFlash("Nothing to save — no unsaved notes.");
       window.setTimeout(() => setSaveFlash(""), 2500);
@@ -892,8 +934,7 @@ export function TaskList({
           clearNoteDirty(id);
           continue;
         }
-        const nextNotes = (noteDrafts[id] ?? current.notes).trim();
-        await patch(id, { notes: nextNotes });
+        await patch(id, { notes: composedNotesForTask(current) });
         clearNoteDirty(id);
         saved += 1;
       }
@@ -1286,61 +1327,66 @@ export function TaskList({
               </div>
             </div>
 
-            <div className="task-list-toolbar__filter-group">
+            <div className="task-list-toolbar__filter-group task-list-toolbar__filter-group--sprint">
               <div className="task-list-toolbar__filter-label">
                 Sprints
                 <span className="task-list-toolbar__label-hint">multi-select</span>
               </div>
-              <div
-                className="task-list-toolbar__chips"
-                style={
-                  {
-                    "--chip-cols": chipColsForTwoRows(2 + sprints.length),
-                  } as CSSProperties
-                }
-              >
-                <button
-                  type="button"
-                  className="qa-tester-bubble"
-                  data-active={sprintFilters.size === 0 ? "true" : "false"}
-                  onClick={() => setSprintFilters(new Set())}
+              <details className="task-list-sprint-filter">
+                <summary className="task-list-sprint-filter__summary">
+                  {sprintFilters.size === 0
+                    ? "All sprints"
+                    : sprintFilters.size === 1
+                      ? sprintFilters.has(BACKLOG_SPRINT)
+                        ? "Backlog"
+                        : (sprints.find((s) => sprintFilters.has(s.index))?.label ?? "1 sprint")
+                      : `${sprintFilters.size} sprints`}
+                </summary>
+                <div
+                  className="task-list-sprint-filter__panel"
+                  role="group"
+                  aria-label="Filter by sprint"
                 >
-                  All sprints
-                </button>
-                <button
-                  type="button"
-                  className="qa-tester-bubble"
-                  data-active={sprintFilters.has(BACKLOG_SPRINT) ? "true" : "false"}
-                  onClick={() => toggleSprintFilter(BACKLOG_SPRINT)}
-                  title={`Backlog · ${tasks.filter((t) => (t.sprint ?? 0) === BACKLOG_SPRINT).length} tasks`}
-                >
-                  Backlog
-                  <span className="qa-tester-meta">
-                    · {tasks.filter((t) => (t.sprint ?? 0) === BACKLOG_SPRINT).length}
-                  </span>
-                </button>
-                {sprints.map((s) => {
-                  const active = sprintFilters.has(s.index);
-                  const count = tasks.filter((t) => (t.sprint ?? 0) === s.index).length;
-                  return (
-                    <button
-                      key={s.index}
-                      type="button"
-                      className="qa-tester-bubble"
-                      data-active={active ? "true" : "false"}
-                      onClick={() => toggleSprintFilter(s.index)}
-                      title={`${s.label} · ${count} tasks`}
-                    >
-                      {s.label}
-                      <span className="qa-tester-meta">· {count}</span>
-                    </button>
-                  );
-                })}
-              </div>
+                  <label className="task-list-sprint-filter__option">
+                    <input
+                      type="checkbox"
+                      checked={sprintFilters.size === 0}
+                      onChange={() => setSprintFilters(new Set())}
+                    />
+                    <span>All sprints</span>
+                  </label>
+                  <label className="task-list-sprint-filter__option">
+                    <input
+                      type="checkbox"
+                      checked={sprintFilters.has(BACKLOG_SPRINT)}
+                      onChange={() => toggleSprintFilter(BACKLOG_SPRINT)}
+                    />
+                    <span>Backlog</span>
+                    <span className="task-list-sprint-filter__count">
+                      {tasks.filter((t) => (t.sprint ?? 0) === BACKLOG_SPRINT).length}
+                    </span>
+                  </label>
+                  {sprints.map((s) => {
+                    const count = tasks.filter((t) => (t.sprint ?? 0) === s.index).length;
+                    return (
+                      <label key={s.index} className="task-list-sprint-filter__option">
+                        <input
+                          type="checkbox"
+                          checked={sprintFilters.has(s.index)}
+                          onChange={() => toggleSprintFilter(s.index)}
+                        />
+                        <span>{s.label}</span>
+                        <span className="task-list-sprint-filter__count">{count}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </details>
             </div>
           </div>
           <p className="task-list-toolbar__hint">
-            Select tasks with checkboxes, then bulk-assign (including Lyriq). Filter bubbles toggle multi-select.
+            Select tasks with checkboxes, then bulk-assign (including Lyriq). Use Sprint checkboxes to
+            multi-filter; assignee and status bubbles still toggle multi-select.
           </p>
         </div>
 
@@ -1620,9 +1666,9 @@ export function TaskList({
             className="text-input"
             style={{ width: 200 }}
             value={bulkNotes}
-            placeholder="Replace notes…"
+            placeholder="Append your note…"
             onChange={(e) => setBulkNotes(e.target.value)}
-            aria-label="Bulk notes for selected tasks"
+            aria-label="Bulk append note for selected tasks"
           />
           <button
             type="button"
@@ -1631,13 +1677,22 @@ export function TaskList({
             onClick={() => {
               const next = bulkNotes.trim();
               if (!next) {
-                setError("Enter notes to apply.");
+                setError("Enter a note to append.");
                 return;
               }
-              void patchSelected({ notes: next }).then(() => setBulkNotes(""));
+              void (async () => {
+                for (const id of selectedIds) {
+                  const t = tasksRef.current.find((x) => x.id === id);
+                  if (!t) continue;
+                  await patch(id, {
+                    notes: appendActorNote(t.notes, actingAssignBy, next),
+                  });
+                }
+                setBulkNotes("");
+              })();
             }}
           >
-            Apply notes
+            Append notes
           </button>
           <button type="button" className="btn btn-outline" style={{ color: "#9B2F28" }} onClick={deleteSelected}>
             <Trash2 size={14} /> Delete
@@ -2151,24 +2206,25 @@ export function TaskList({
                   paddingLeft: 66,
                   fontSize: "0.9375rem",
                   color: "var(--text-primary)",
+                  maxWidth: 720,
                 }}
+                onFocusCapture={() => void maybeStartTaskTimer(t.id)}
               >
-                <label style={{ display: "grid", gap: 6 }}>
-                  Notes{" "}
-                  {dirtyNoteIds.has(t.id) ? (
-                    <span style={{ color: "#16a34a", fontWeight: 600 }}>(unsaved)</span>
-                  ) : null}
-                  <textarea
-                    className="text-input"
-                    rows={2}
-                    value={noteValue(t)}
-                    aria-label={`Notes for ${t.id}`}
-                    placeholder="Add notes for this task… (Save to persist)"
-                    style={{ resize: "vertical", width: "100%", maxWidth: 720 }}
-                    onChange={(e) => markNoteDirty(t.id, e.target.value)}
-                    onFocus={() => void maybeStartTaskTimer(t.id)}
-                  />
-                </label>
+                <NotesThread
+                  rawNotes={t.notes}
+                  actor={actingAssignBy}
+                  editDrafts={editNoteDrafts[t.id]}
+                  newDraft={newNoteDrafts[t.id] ?? ""}
+                  onEditDraft={(noteId, text) => setEditNoteDraft(t.id, noteId, text)}
+                  onNewDraft={(text) => setNewNoteDraft(t.id, text)}
+                  disabled={busy || locked}
+                  label={
+                    dirtyNoteIds.has(t.id)
+                      ? "Notes (unsaved)"
+                      : "Notes"
+                  }
+                  newPlaceholder="Add your note… (only you can edit it later)"
+                />
                 <div
                   style={{
                     display: "flex",

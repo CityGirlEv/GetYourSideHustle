@@ -1,12 +1,16 @@
 /** Kevina Starr Stories — Kids Side Hustle Corner */
 
 /** Primary public handle for About / follow CTAs */
-export const KEVINA_CHANNEL_HANDLE = "@KevinaStarr";
-export const KEVINA_CHANNEL_URL = "https://www.youtube.com/@KevinaStarr";
-export const KEVINA_CHANNEL_NAME = "Kevina Starr";
+export const KEVINA_CHANNEL_HANDLE = "@KevinaStarrStories";
+export const KEVINA_CHANNEL_URL = "https://www.youtube.com/@KevinaStarrStories";
+export const KEVINA_CHANNEL_NAME = "Kevina Starr Stories";
 export const KEVINA_CHANNEL_ID = "UC1vmj6h-voNOymbsApdBvpw";
 /** Uploads playlist = UU + channelId without UC */
 export const KEVINA_UPLOADS_PLAYLIST = "UU1vmj6h-voNOymbsApdBvpw";
+
+/** Glow Getter TikTok */
+export const KEVINA_TIKTOK_HANDLE = "@KevinaGlowGetter";
+export const KEVINA_TIKTOK_URL = "https://www.tiktok.com/@KevinaGlowGetter";
 
 /** Official channel bio from YouTube About */
 export const KEVINA_BIO = `🌟 Welcome to the world of Kevina Starr —

@@ -12,7 +12,12 @@ import {
   Zap,
 } from "lucide-react";
 import { FACEBOOK_URL, SITE_NAME } from "../lib/site-config";
-import { KEVINA_CHANNEL_HANDLE, KEVINA_CHANNEL_URL } from "../lib/kevina-starr";
+import {
+  KEVINA_CHANNEL_HANDLE,
+  KEVINA_CHANNEL_URL,
+  KEVINA_TIKTOK_HANDLE,
+  KEVINA_TIKTOK_URL,
+} from "../lib/kevina-starr";
 import {
   TRINITY_HOUSE_CHANNEL_URL,
   TRINITY_HOUSE_HANDLE,
@@ -62,16 +67,17 @@ export function AboutPage({ onJoin, onOpenKids }: AboutPageProps) {
               </span>
               <h2>Two partners. One mission. Decades of grit.</h2>
               <p>
-                {SITE_NAME} is the brainchild of <strong className="about-em">Tina Marie Barham</strong>, with{" "}
-                <strong className="about-em">Evelyn Irving</strong> as the build partner who took it from spark to
-                platform. Both are <strong>educators</strong> and <strong>grandmas</strong> with{" "}
-                <strong>30+ year IT careers</strong> who still hustle like the next win is personal.
+                {SITE_NAME} began with <strong className="about-em">Tina Marie Barham</strong>&apos;s vision and
+                grew into a working platform through her partnership with{" "}
+                <strong className="about-em">Evelyn Irving</strong>. Together, they combine decades of experience
+                in technology, education, entrepreneurship, service, and community leadership to help people turn
+                their skills, interests, and life experience into practical income opportunities.
               </p>
               <p>
-                Their paths have kept crossing for <strong>30+ years</strong> — first in school{" "}
-                <strong>pursuing their Ph.D.s</strong>, then when they <strong>wound up at the same IT job</strong>.
-                That shared history is why they build{" "}
-                <strong className="about-em">The GYSH Family Side Hustle Gang</strong> together — from{" "}
+                Their paths have crossed repeatedly for more than <strong>30 years</strong> — from graduate and
+                doctoral studies to the same IT organization, and later reconnecting through ecommerce, AI, and
+                entrepreneurship. Today they&apos;re building{" "}
+                <strong className="about-em">The GYSH Family Side Hustle Gang</strong> — from{" "}
                 {onOpenKids ? (
                   <button type="button" className="about-inline-link about-inline-link--btn" onClick={onOpenKids}>
                     Kids Corner
@@ -88,7 +94,11 @@ export function AboutPage({ onJoin, onOpenKids }: AboutPageProps) {
                 >
                   Kevina Starr
                 </a>{" "}
-                to adult tooling and senior-friendly paths.
+                to Match Wizard tools, launch guides, workshops, and senior-friendly paths.
+              </p>
+              <p>
+                Their mission is simple: help people find a side hustle that fits their{" "}
+                <strong>skills, schedule, season of life, and goals</strong>.
               </p>
             </div>
           </div>
@@ -101,10 +111,10 @@ export function AboutPage({ onJoin, onOpenKids }: AboutPageProps) {
               <li>
                 <GraduationCap size={16} aria-hidden />
                 <span>
-                  <strong>Degrees</strong>
+                  <strong>Education</strong>
                   <span className="about-creds-pair">
                     <span className="about-creds-line">
-                      <strong className="about-em">Tina</strong>: Bachelor&apos;s in Education,
+                      <strong className="about-em">Tina Marie</strong>: Bachelor&apos;s in Education,
                       Master&apos;s in Software Engineering
                     </span>
                     <span className="about-creds-line">
@@ -117,10 +127,14 @@ export function AboutPage({ onJoin, onOpenKids }: AboutPageProps) {
               <li>
                 <Shield size={16} aria-hidden />
                 <span>
-                  <strong>Service</strong>
+                  <strong>Service &amp; leadership</strong>
                   <span className="about-creds-pair">
                     <span className="about-creds-line">
-                      <strong className="about-em">Evelyn</strong>: Co-Founded{" "}
+                      <strong className="about-em">Tina Marie</strong>: Disabled U.S. Navy veteran; retired
+                      Pentagon IT supervisor; educator, author, and ecommerce entrepreneur
+                    </span>
+                    <span className="about-creds-line">
+                      <strong className="about-em">Evelyn</strong>: Co-founded{" "}
                       <a
                         href={TRINITY_HOUSE_CHANNEL_URL}
                         target="_blank"
@@ -129,11 +143,7 @@ export function AboutPage({ onJoin, onOpenKids }: AboutPageProps) {
                       >
                         {TRINITY_HOUSE_NAME}
                       </a>
-                      , a San Diego non-profit that ran its course
-                    </span>
-                    <span className="about-creds-line">
-                      <strong className="about-em">Tina</strong>: Disabled retired veteran; military
-                      grit in every Kids &amp; family path
+                      , a San Diego nonprofit; technology professional and platform builder
                     </span>
                   </span>
                 </span>
@@ -141,24 +151,16 @@ export function AboutPage({ onJoin, onOpenKids }: AboutPageProps) {
               <li>
                 <Home size={16} aria-hidden />
                 <span>
-                  <strong>The Grind</strong>
+                  <strong>Entrepreneurship</strong>
                   <span className="about-creds-pair">
                     <span className="about-creds-line">
-                      <strong className="about-em">Tina</strong>: Career Military Veteran (disabled)
-                      and 2nd Civil Servant career
+                      <strong className="about-em">Tina Marie</strong>: Dropshipping, print on demand, digital
+                      products, affiliate marketing, publishing, and AI-powered content
                     </span>
                     <span className="about-creds-line">
-                      <strong className="about-em">Evelyn</strong>: Real Estate Landlord &amp; Investor,
-                      15+ doors, Shopify, Dropshipping, Print on Demand, Airbnb Co-Host,{" "}
-                      <a
-                        href={TRINITY_HOUSE_CHANNEL_URL}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="about-inline-link"
-                      >
-                        {TRINITY_HOUSE_NAME}
-                      </a>{" "}
-                      &amp; Side Hustles
+                      <strong className="about-em">Evelyn</strong>: Real estate landlord &amp; investor (15+
+                      doors), Shopify, dropshipping, print on demand, Airbnb co-hosting, and multiple side-hustle
+                      models
                     </span>
                   </span>
                 </span>
@@ -166,9 +168,10 @@ export function AboutPage({ onJoin, onOpenKids }: AboutPageProps) {
               <li>
                 <Users size={16} aria-hidden />
                 <span>
-                  <strong>Paths crossed</strong> — Destiny keeps crossing our paths tracing 30+ years
-                  back, from Ph.D. school days, to the same IT job, to another energy infusion in
-                  Ecom, Dropshipping, Print on Demand and The AI space — and here we are again.
+                  <strong>Paths crossed</strong> — More than three decades from school and doctoral studies to
+                  the same IT workplace, then ecommerce, dropshipping, print on demand, digital products, and AI.
+                  Different paths kept bringing them back to the same place. This time, they decided to build
+                  something together.
                 </span>
               </li>
             </ul>
@@ -214,16 +217,17 @@ export function AboutPage({ onJoin, onOpenKids }: AboutPageProps) {
           </span>
           <h3>Ideas. Action. Income. Freedom.</h3>
           <p>
-            <strong className="about-em">Tina</strong> dreamed the family glow-up;{" "}
-            <strong className="about-em">Evelyn</strong> engineered the platform —{" "}
-            <strong>six decades of IT</strong> between them, and one brand built for the whole crew.
+            <strong className="about-em">Tina Marie</strong> dreamed it;{" "}
+            <strong className="about-em">Evelyn</strong> helped turn the vision into a working platform —
+            decades of technology, education, and entrepreneurship between them, and one brand for the whole
+            crew.
           </p>
           <p>
-            That&apos;s the <strong>GYSH</strong> promise on every tee and every page — for parents, teens,
-            adults, and seniors launching a <strong>Side Hustle</strong>. Start with an{" "}
-            <strong>idea</strong> that fits your life, take <strong>action</strong> with clear next steps
-            instead of gatekeeping, build <strong>income</strong> on your terms, and grow toward the{" "}
-            <strong>freedom</strong> you actually want.
+            That&apos;s the <strong>GYSH</strong> promise on every tee and every page — help people find a
+            side hustle that fits their <strong>skills, schedule, season of life, and goals</strong>. Start
+            with an <strong>idea</strong>, take <strong>action</strong> with clear next steps, build{" "}
+            <strong>income</strong> on your terms, and grow toward the <strong>freedom</strong> you actually
+            want.
           </p>
         </div>
         <div className="about-brand-media">
@@ -255,46 +259,34 @@ export function AboutPage({ onJoin, onOpenKids }: AboutPageProps) {
           </span>
           <h3>Partners in the &ldquo;Get Your Side Hustle&rdquo;</h3>
           <p>
-            Off the stage and in the studio, <strong className="about-em">Tina</strong> and{" "}
-            <strong className="about-em">Evelyn</strong> wear the same mission they teach: show up, point to the
-            work, and invite the whole family along.
+            <strong className="about-em">Tina Marie</strong> is a disabled U.S. Navy veteran who built a federal
+            civilian IT career and retired from the Pentagon as an IT supervisor — then reinvented herself as an
+            online entrepreneur across ecommerce, dropshipping, print on demand, digital products, affiliate
+            marketing, publishing, and AI-powered content creation.
           </p>
           <p>
-            They didn&apos;t build <strong>GYSH</strong> because Side Hustles were trendy. They built it because
-            too many good people get stuck between a dream and a blank page — kids with big ideas, parents juggling
-            two jobs, adults restarting mid-career, and seniors who still have plenty of hustle left.{" "}
-            <strong className="about-em">Tina</strong> dreamed a place where the whole crew could start without
-            shame or gatekeeping. <strong className="about-em">Evelyn</strong> helped turn that spark into a
-            platform with Match Wizard paths, guides, workshops, and tools that actually move you forward.
+            <strong className="about-em">Evelyn</strong> brings the technical and operational experience that helped
+            transform the original idea into the {SITE_NAME} platform — technology, real estate investing, Shopify,
+            dropshipping, print on demand, Airbnb co-hosting, nonprofit leadership, and a wide range of side-hustle
+            ventures.
           </p>
           <p>
-            What each brings is different on purpose. <strong className="about-em">Tina</strong> leads with heart,
-            storytelling, Kids Corner energy, and the{" "}
-            <strong className="about-em">Kevina Starr</strong> / Glow Getter spirit — the cheer and clarity that
-            make starting feel doable for families. <strong className="about-em">Evelyn</strong> brings builder
-            muscle: decades of IT, Side Hustle practice from Shopify and Print on Demand to Real Estate, and the
-            platform thinking that keeps GYSH useful after the motivation fades. Together they&apos;re not a
-            brand committee — they&apos;re partners who&apos;ve been crossing paths for <strong>30+ years</strong>{" "}
-            and finally put the friendship to work for everyone else.
+            Their paths have crossed for more than <strong>30 years</strong>. This time they decided to build{" "}
+            <strong className="about-em">The GYSH Family Side Hustle Gang</strong> together — an educational
+            community for adults, seniors, teens, children, and families. Same brand pillars for every age:{" "}
+            <strong>Ideas. Action. Income. Freedom.</strong>
           </p>
           <p>
-            At home, that family is real — <strong className="about-em">Tina</strong> with her{" "}
-            <strong>1 son</strong> and <strong>2 grandchildren</strong>,{" "}
-            <strong className="about-em">Evelyn</strong> with her <strong>2 daughters</strong> and{" "}
-            <strong>3 grandchildren</strong>. One of those grandkids already runs her own{" "}
-            <strong>Side Hustle</strong> as a <strong>tester</strong> and <strong>Virtual Assistant</strong>,
-            so the next generation isn&apos;t waiting on the sidelines.
+            At home, that family is real — <strong className="about-em">Tina Marie</strong> with her{" "}
+            <strong>one son</strong> and <strong>two grandsons</strong>,{" "}
+            <strong className="about-em">Evelyn</strong> with her <strong>two daughters</strong> and{" "}
+            <strong>three grandchildren</strong>. One of those grandkids already helps as a{" "}
+            <strong>tester</strong> and <strong>Virtual Assistant</strong>, so the next generation isn&apos;t waiting
+            on the sidelines.
           </p>
           <p>
-            <strong>GYSH</strong> is for kids through seniors — parents coaching little ones, teens learning
-            money skills, adults stacking income on nights and weekends, and 55+ members building flexible second
-            chapters. Same brand pillars for every age: <strong>Ideas. Action. Income. Freedom.</strong> Clear
-            steps, real tools, and a crew that actually shows up.
-          </p>
-          <p>
-            Before anything ships, it gets family eyes in the <strong>Testing Portal</strong>. That&apos;s{" "}
-            <strong className="about-em">The GYSH Family Side Hustle Gang</strong> promise — we don&apos;t send
-            half-baked rockets into the world.
+            Before anything ships, it gets family eyes in the <strong>Testing Portal</strong>. That&apos;s the Gang
+            promise — clear tools, real next steps, and nothing half-baked.
           </p>
         </div>
       </section>
@@ -319,7 +311,7 @@ export function AboutPage({ onJoin, onOpenKids }: AboutPageProps) {
               />
             </a>
           </div>
-          <h3>Kids Glow, Kevina Starr &amp; Service</h3>
+          <h3>Service, Stories &amp; Side Hustles</h3>
           <div className="about-bio-card__body">
             <div className="about-bio-card__copy">
               <img
@@ -339,16 +331,25 @@ export function AboutPage({ onJoin, onOpenKids }: AboutPageProps) {
                 </span>
               </div>
               <p>
-                <strong>30+ years in IT</strong>, educator, and <strong>Disabled retired veteran</strong> who held a{" "}
-                <strong>Top Secret clearance</strong> and built a <strong>double career</strong> as a{" "}
-                <strong>military</strong> and <strong>civil servant</strong>. That service forged the grit behind{" "}
-                <strong>Kids Corner</strong> and family workshop nights — structure without scolding, and a belief
-                that every age deserves a clear next step.
+                <strong className="about-em">Tina Marie Barham</strong> is a disabled{" "}
+                <strong>U.S. Navy veteran</strong>, retired <strong>Pentagon IT supervisor</strong>, educator,
+                author, and online entrepreneur with more than <strong>30 years</strong> of combined military and
+                federal information-technology experience.
               </p>
               <p>
-                She&apos;s been <strong>married for 38 years</strong>. Mom of <strong>1 son</strong> and{" "}
-                <strong>2 grandkids</strong>, and she brings{" "}
-                <strong className="about-em">Kevina Starr</strong> / <strong>Glow Getter</strong>
+                During her double career as a Navy service member and federal civil servant, Tina Marie held a{" "}
+                <strong>Top Secret</strong> security clearance and developed the discipline, leadership, and
+                determination that now guide her work with <strong>Get Your Side Hustle</strong>.
+              </p>
+              <p>
+                After retiring from the Pentagon, she began building a new chapter through online entrepreneurship.
+                Her experience includes <strong>Shopify</strong>, ecommerce, dropshipping, print on demand, digital
+                products, affiliate marketing, publishing, content creation, and{" "}
+                <strong>AI-powered business systems</strong>.
+              </p>
+              <p>
+                Tina Marie is also the creator of{" "}
+                <strong className="about-em">Kevina Starr</strong>
                 <img
                   src={kevinaStarrMark}
                   alt=""
@@ -356,24 +357,38 @@ export function AboutPage({ onJoin, onOpenKids }: AboutPageProps) {
                   width={22}
                   height={22}
                   decoding="async"
-                />{" "}
-                stories to YouTube on the{" "}
+                />
+                , the Glow Getter character at the heart of her children&apos;s stories and{" "}
                 <a
                   href={KEVINA_CHANNEL_URL}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="about-inline-link"
                 >
-                  Kevina Starr channel ({KEVINA_CHANNEL_HANDLE})
+                  YouTube channel ({KEVINA_CHANNEL_HANDLE})
+                </a>{" "}
+                and{" "}
+                <a
+                  href={KEVINA_TIKTOK_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="about-inline-link"
+                >
+                  TikTok ({KEVINA_TIKTOK_HANDLE})
                 </a>
-                , writes children&apos;s books, runs a <strong>Shopify</strong> storefront, and treats Side Hustles as a{" "}
-                <strong>family glow-up</strong> for the whole crew — workshops, Kids Corner nights, and the kind of
-                practical cheer that makes starting feel doable.
+                . Through Kevina Starr, Kids Corner, children&apos;s books, and family workshops, she encourages
+                children to build confidence, embrace creativity, practice kindness, and learn age-appropriate
+                entrepreneurship skills.
               </p>
               <p>
-                On GYSH, Tina is the why-maker: the dream for kids, teens, parents, and seniors to hustle together
-                without waiting for permission. She keeps the brand warm, the workshops human, and the mission
-                pointed at real families — not hustle-bro noise.
+                Married for <strong>37 years</strong>, Tina Marie is the mother of <strong>one son</strong> and
+                grandmother of <strong>two boys</strong>. She believes side hustles can become a{" "}
+                <strong>family growth experience</strong> — helping adults, seniors, teens, and children discover
+                new skills, build confidence, and create additional possibilities together.
+              </p>
+              <p>
+                Tina Marie brings the service, stories, practical experience, and encouraging push that make
+                starting something new feel possible.
               </p>
             </div>
           </div>
@@ -388,10 +403,9 @@ export function AboutPage({ onJoin, onOpenKids }: AboutPageProps) {
           <h3>The GYSH Family Side Hustle Gang</h3>
           <div className="about-bio-card__body">
             <p>
-              <strong className="about-em">Tina</strong> dreamed it;{" "}
-              <strong className="about-em">Evelyn</strong> helped build it — family storytelling plus serious hustle
-              tooling. Between them you get <strong>degrees</strong>, decades, deployments,{" "}
-              <strong>Real Estate Landlord &amp; Investor</strong> (15+ doors),{" "}
+              <strong className="about-em">Tina Marie</strong> dreamed it;{" "}
+              <strong className="about-em">Evelyn</strong> helped build it — Navy service and Pentagon IT plus
+              real estate, Shopify,{" "}
               <a
                 href={TRINITY_HOUSE_CHANNEL_URL}
                 target="_blank"
@@ -400,19 +414,18 @@ export function AboutPage({ onJoin, onOpenKids }: AboutPageProps) {
               >
                 {TRINITY_HOUSE_NAME}
               </a>
-              , <strong>Shopify</strong>, YouTube, and a children&apos;s book.
+              , Kevina Starr stories, and the tools that turn ideas into income.
             </p>
             <p>
-              The partnership tone is simple: Tina brings the vision and the family glow; Evelyn brings the build
-              and the Side Hustle ops. Neither one is window dressing. Kids Corner, adult tools, senior-friendly
-              paths, workshops, and the Testing Portal all grow from that same handshake — two educators, two
-              grandmas, one Gang.
+              Tina Marie brings the vision and the family glow; Evelyn brings the build and the Side Hustle ops.
+              Kids Corner, adult tools, senior-friendly paths, workshops, and the Testing Portal all grow from that
+              same handshake — two educators, two grandmas, one Gang.
             </p>
             <p>
               Five grandchildren are watching up close — and{" "}
-              <strong className="about-em">Evelyn</strong>&apos;s <strong>15-year-old granddaughter</strong> is already
-              a <strong>worker bee</strong>, acting as a <strong>Virtual Assistant</strong> for the gang. One brand, one
-              rocket, and a <strong>Testing Portal</strong> where the family still signs off before anything ships.
+              <strong className="about-em">Evelyn</strong>&apos;s <strong>15-year-old granddaughter</strong> already
+              helps as a <strong>tester</strong> and <strong>Virtual Assistant</strong>. One brand, one rocket, and a{" "}
+              <strong>Testing Portal</strong> where the family still signs off before anything ships.
             </p>
             <img
               src={aboutGangTees}
@@ -451,11 +464,16 @@ export function AboutPage({ onJoin, onOpenKids }: AboutPageProps) {
                 </span>
               </div>
               <p>
-                <strong>30+ years in IT</strong>, and an <strong>educator</strong> who still builds in public.
-                She&apos;s a serial <strong>Side Hustler</strong> with a <strong>Shopify</strong> storefront and decades
-                as a <strong>Real Estate Landlord &amp; Investor</strong> (<strong>15+ doors</strong>), plus Dropshipping,
-                Print on Demand, and Airbnb Co-Host work from the same builder habit. With her late husband{" "}
-                <strong>Glen Jackson</strong> — <strong>28 years</strong> together — she Co-Founded{" "}
+                <strong className="about-em">Evelyn Irving</strong> is a software professional, educator, real
+                estate investor, and serial side hustler with more than <strong>30 years</strong> of experience in
+                information technology and a lifelong passion for building practical solutions.
+              </p>
+              <p>
+                Her entrepreneurial experience spans <strong>Shopify</strong>, ecommerce, real estate, and property
+                investing — including ownership and management of more than <strong>15 doors</strong>.
+              </p>
+              <p>
+                Evelyn also co-founded{" "}
                 <a
                   href={TRINITY_HOUSE_CHANNEL_URL}
                   target="_blank"
@@ -464,7 +482,9 @@ export function AboutPage({ onJoin, onOpenKids }: AboutPageProps) {
                 >
                   {TRINITY_HOUSE_NAME}
                 </a>{" "}
-                in San Diego. That chapter ran its course, and she still shares the story on{" "}
+                in San Diego with her late husband, <strong>Glen Jackson</strong>, during their{" "}
+                <strong>28 years</strong> together. Although that chapter has ended, she continues sharing its story
+                through{" "}
                 <a
                   href={TRINITY_HOUSE_CHANNEL_URL}
                   target="_blank"
@@ -476,15 +496,15 @@ export function AboutPage({ onJoin, onOpenKids }: AboutPageProps) {
                 on YouTube.
               </p>
               <p>
-                Mom of <strong>2 girls</strong> and grandma of <strong>3 grandchildren</strong>, she turns that same
-                builder energy into Match Wizard, calculators, and <strong>AI-agent</strong> playbooks so{" "}
-                <strong className="about-em">Tina</strong>&apos;s vision scales — clear tools, real next steps, and a
-                platform the whole family can grow with.
+                As a mother of <strong>two daughters</strong> and grandmother of <strong>three</strong>, Evelyn brings
+                both technical expertise and family-centered purpose to {SITE_NAME}. She develops the systems that
+                help turn <strong className="about-em">Tina Marie</strong>&apos;s vision into a working platform —
+                including the GYSH Match Wizard, calculators, AI-agent playbooks, and practical business tools.
               </p>
               <p>
-                On GYSH, Evelyn is the how-maker: the partner who takes Tina&apos;s dream and turns it into screens,
-                flows, and Side Hustle tooling kids through seniors can actually use — without pretending the grind
-                is glamorous.
+                Her focus is simple: create clear resources, real next steps, and technology that helps people move
+                from idea to action with confidence. Evelyn turns complex technology into practical tools that
+                families can actually use, understand, and grow with.
               </p>
             </div>
           </div>

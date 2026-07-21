@@ -550,8 +550,7 @@ function JoinTeamTab({
         <h2 className="kids-intro-title">
           <BadgeCheck size={20} style={{ color: "var(--crimson)" }} /> {copy.headline}
           <span
-            className={`glow-badge ${mode === "kids" ? "pink" : "emerald"}`}
-            style={{ marginLeft: 8, fontSize: "0.9375rem" }}
+            className={`glow-badge ${mode === "kids" ? "pink" : "emerald"} kids-audience-age-badge`}
           >
             {copy.ages}
           </span>
@@ -805,8 +804,7 @@ function GuidesTab({
             <BookMarked size={24} style={{ color: "var(--crimson)" }} />{" "}
             {isKids ? "GYSH Kids Corner Guides" : "GYSH Teens Side Hustle Guides"}
             <span
-              className={`glow-badge ${isKids ? "pink" : "emerald"}`}
-              style={{ marginLeft: 10, fontSize: "0.9375rem" }}
+              className={`glow-badge ${isKids ? "pink" : "emerald"} kids-audience-age-badge`}
             >
               {isKids ? "Ages 4–12" : "Ages 13–17"}
             </span>
@@ -1310,8 +1308,7 @@ function JobsTab({ mode }: { mode: AudienceMode }) {
           <h2>
             <Smile size={24} style={{ color: "var(--crimson)" }} /> {title}
             <span
-              className={`glow-badge ${isKids ? "pink" : "emerald"}`}
-              style={{ marginLeft: 10, fontSize: "0.9375rem" }}
+              className={`glow-badge ${isKids ? "pink" : "emerald"} kids-audience-age-badge`}
             >
               {isKids ? "Ages 4–12" : "Ages 13–17"}
             </span>

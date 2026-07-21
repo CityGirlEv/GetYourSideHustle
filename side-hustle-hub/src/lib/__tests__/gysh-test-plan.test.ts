@@ -37,7 +37,7 @@ describe("gysh-test-plan", () => {
     );
     expect(categoryForCase({ area: "Facebook", suite: "manual", id: "FB-001" })).toBe("facebook");
     expect(
-      categoryForCase({ area: "Proofread", suite: "manual", id: "PROOF-PAGE-WORKSHOPS-TINA" }),
+      categoryForCase({ area: "Proofread", suite: "manual", id: "PROOF-005-TINA" }),
     ).toBe("proofread");
 
     // Residual Content bucket should stay empty once content areas are retagged.

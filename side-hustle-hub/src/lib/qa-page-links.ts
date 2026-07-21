@@ -262,9 +262,15 @@ export function ensureTaskNotesPageLink(notes: string, task: {
 }): string {
   const open = taskOpenPageStep({ ...task, notes });
   if (!open) return notes;
+  const href = pageRefForTask(task)?.href;
   const trimmed = String(notes ?? "").trim();
-  if (trimmed.includes(`](${pageRefForTask(task)?.href})`)) return notes;
+  if (href && trimmed.includes(`](${href})`)) return notes;
   if (!trimmed) return open;
+  // Structured note threads: keep as-is if any entry already has the link.
+  if (trimmed.startsWith("[")) {
+    if (href && trimmed.includes(`](${href})`)) return notes;
+    return notes;
+  }
   if (/^Open\s+\[[^\]]+\]\([^)]+\)/i.test(trimmed)) return notes;
   return `${open}\n${trimmed}`;
 }

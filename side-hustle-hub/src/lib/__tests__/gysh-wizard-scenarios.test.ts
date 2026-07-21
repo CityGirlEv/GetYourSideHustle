@@ -31,7 +31,7 @@ describe("gysh-test-plan", () => {
     expect(proof.length).toBeGreaterThan(20);
     expect(proof.length % 2).toBe(0);
     for (const t of proof) {
-      expect(t.id).toMatch(/-(TINA|LYRIQ)$/);
+      expect(t.id).toMatch(/^PROOF-\d{3}-(TINA|LYRIQ)$/);
       expect(t.assignees).toHaveLength(1);
       expect(["tina", "lyriq"]).toContain(t.assignees[0]);
       expect(t.area).toBe("Proofread");

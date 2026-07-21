@@ -5,6 +5,7 @@ import { api } from "./api";
 import { PROOFREAD_CASES } from "./gysh-proofread-cases";
 import { WIZARD_SCENARIO_CASES } from "./gysh-wizard-scenarios";
 import { withPageLinkInFirstStep } from "./qa-page-links";
+import { noteEntriesPlainText } from "./gysh-note-entries";
 
 export type TestSuite = "manual" | "vitest" | "playwright";
 
@@ -44,7 +45,8 @@ export function statusRequiresNote(status: TestStatus): boolean {
 }
 
 export function noteMeetsRequirement(note: string): boolean {
-  return note.trim().length >= NOTE_MIN_LENGTH;
+  // Supports legacy plain notes and timestamped JSON note threads.
+  return noteEntriesPlainText(note).trim().length >= NOTE_MIN_LENGTH;
 }
 
 export function allStepsChecked(checked: boolean[] | undefined, stepCount: number): boolean {
