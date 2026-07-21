@@ -68,18 +68,26 @@ export function GuideChecklist({
 export function GuideToc({
   entries,
 }: {
-  entries: { id: string; label: string }[];
+  entries: { id: string; label: string; number?: string; level?: 1 | 2 }[];
 }) {
   return (
     <nav className="user-guide-toc" aria-label="Table of contents">
       <h3 className="user-guide-toc__title">Contents</h3>
-      <ol className="user-guide-toc__list">
+      <ul className="user-guide-toc__list">
         {entries.map((entry) => (
-          <li key={entry.id}>
-            <a href={`#guide-${entry.id}`}>{entry.label}</a>
+          <li
+            key={entry.id}
+            className={entry.level === 2 ? "user-guide-toc__item--sub" : undefined}
+          >
+            <a href={`#guide-${entry.id}`}>
+              {entry.number ? (
+                <span className="user-guide-toc__num">{entry.number}</span>
+              ) : null}
+              <span className="user-guide-toc__label">{entry.label}</span>
+            </a>
           </li>
         ))}
-      </ol>
+      </ul>
     </nav>
   );
 }

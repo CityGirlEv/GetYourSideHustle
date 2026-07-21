@@ -2,12 +2,13 @@
 
 import type { TestOwnerId } from "./gysh-roles";
 import type { TestCase, TestSuite } from "./gysh-test-plan";
+import { withPageLinkInFirstStep } from "./qa-page-links";
 
 export type GyshTestCase = TestCase & { suite: TestSuite };
 
 export { SUITE_LABELS } from "./gysh-test-plan";
 
-export const AUTOMATED_VITEST_CASES: GyshTestCase[] = [
+const AUTOMATED_VITEST_CASES_RAW: GyshTestCase[] = [
   {
     id: "VT-AUTH-001",
     area: "Vitest",
@@ -105,7 +106,7 @@ export const AUTOMATED_VITEST_CASES: GyshTestCase[] = [
   },
 ];
 
-export const AUTOMATED_PLAYWRIGHT_CASES: GyshTestCase[] = [
+const AUTOMATED_PLAYWRIGHT_CASES_RAW: GyshTestCase[] = [
   {
     id: "PW-SMOKE-001",
     area: "Playwright",
@@ -114,6 +115,7 @@ export const AUTOMATED_PLAYWRIGHT_CASES: GyshTestCase[] = [
     roles: ["qa", "all"],
     assignees: ["playwright"],
     suite: "playwright",
+    path: "dashboard",
     steps: ["Run: npm run test:e2e", "Open / and assert dashboard heading"],
     expected: "Discover Side Hustles visible; no console errors",
   },
@@ -125,6 +127,7 @@ export const AUTOMATED_PLAYWRIGHT_CASES: GyshTestCase[] = [
     roles: ["qa", "all"],
     assignees: ["playwright"],
     suite: "playwright",
+    path: "quiz",
     steps: ["Open Find Mine", "Click Home in header", "Assert Discover Side Hustles title"],
     expected: "Home nav restores the homepage view",
   },
@@ -136,6 +139,7 @@ export const AUTOMATED_PLAYWRIGHT_CASES: GyshTestCase[] = [
     roles: ["qa", "all"],
     assignees: ["playwright"],
     suite: "playwright",
+    path: "workshops",
     steps: ["Click Workshops in header", "Assert workshops content visible"],
     expected: "GYSH Workshops & Guest Speakers section renders",
   },
@@ -147,6 +151,7 @@ export const AUTOMATED_PLAYWRIGHT_CASES: GyshTestCase[] = [
     roles: ["qa", "kid"],
     assignees: ["playwright"],
     suite: "playwright",
+    path: "kids",
     steps: ["Click Kids/Juniors Corner", "Assert Kids / Junior age modes + tabs visible"],
     expected: "Kids/Juniors Corner loads without error",
   },
@@ -158,6 +163,7 @@ export const AUTOMATED_PLAYWRIGHT_CASES: GyshTestCase[] = [
     roles: ["qa", "all"],
     assignees: ["playwright"],
     suite: "playwright",
+    path: "quiz",
     steps: [
       "Click Find Mine",
       "Assert age-group selector + one-line lead copy",
@@ -175,6 +181,7 @@ export const AUTOMATED_PLAYWRIGHT_CASES: GyshTestCase[] = [
     roles: ["qa", "all"],
     assignees: ["playwright"],
     suite: "playwright",
+    path: "guides",
     steps: [
       "Click Guides in header",
       "Assert filter chips",
@@ -192,6 +199,7 @@ export const AUTOMATED_PLAYWRIGHT_CASES: GyshTestCase[] = [
     roles: ["qa", "all"],
     assignees: ["playwright"],
     suite: "playwright",
+    path: "join",
     steps: [
       "Click Membership in header",
       "Assert Membership page title + tier grid",
@@ -207,6 +215,7 @@ export const AUTOMATED_PLAYWRIGHT_CASES: GyshTestCase[] = [
     roles: ["qa", "admin"],
     assignees: ["playwright"],
     suite: "playwright",
+    path: "login",
     steps: ["Open Login", "Assert no Admin123 or partner emails in page text"],
     expected: "Credentials not rendered in DOM (educational security check)",
   },
@@ -218,6 +227,7 @@ export const AUTOMATED_PLAYWRIGHT_CASES: GyshTestCase[] = [
     roles: ["qa"],
     assignees: ["playwright"],
     suite: "playwright",
+    path: "dashboard",
     steps: ["Scroll to footer", "Click About, Join, Contact Us"],
     expected: "Each footer link opens the correct static page",
   },
@@ -229,6 +239,7 @@ export const AUTOMATED_PLAYWRIGHT_CASES: GyshTestCase[] = [
     roles: ["qa", "admin"],
     assignees: ["playwright"],
     suite: "playwright",
+    path: "dashboard",
     steps: ["Click About, Join, Contact Us in top header"],
     expected: "Each header link opens the correct static page",
   },
@@ -240,6 +251,7 @@ export const AUTOMATED_PLAYWRIGHT_CASES: GyshTestCase[] = [
     roles: ["qa", "all"],
     assignees: ["playwright"],
     suite: "playwright",
+    path: "join",
     steps: ["Click Join in header", "Assert join page + Create account / Sign in + Kids & Junior sections"],
     expected: "Join signup hub renders with member and family team paths",
   },
@@ -251,6 +263,7 @@ export const AUTOMATED_PLAYWRIGHT_CASES: GyshTestCase[] = [
     roles: ["qa"],
     assignees: ["playwright"],
     suite: "playwright",
+    path: "contact",
     steps: ["Open Contact Us", "Assert contact form fields and Send message button"],
     expected: "Contact form is present with required inputs",
   },
@@ -262,6 +275,7 @@ export const AUTOMATED_PLAYWRIGHT_CASES: GyshTestCase[] = [
     roles: ["qa", "adult"],
     assignees: ["playwright"],
     suite: "playwright",
+    path: "seniors",
     steps: ["Open Seniors", "Click Join Senior Team tab", "Assert I'm interested / Create free GYSH account"],
     expected: "Senior join panel renders signup actions",
   },
@@ -273,10 +287,18 @@ export const AUTOMATED_PLAYWRIGHT_CASES: GyshTestCase[] = [
     roles: ["qa"],
     assignees: ["playwright"],
     suite: "playwright",
+    path: "login",
     steps: ["Open Login", "Assert email and password inputs are required"],
     expected: "Required attributes present on login fields",
   },
 ];
+
+export const AUTOMATED_VITEST_CASES: GyshTestCase[] = AUTOMATED_VITEST_CASES_RAW.map(
+  withPageLinkInFirstStep,
+);
+export const AUTOMATED_PLAYWRIGHT_CASES: GyshTestCase[] = AUTOMATED_PLAYWRIGHT_CASES_RAW.map(
+  withPageLinkInFirstStep,
+);
 
 export const AUTOMATED_TEST_IDS = new Set([
   ...AUTOMATED_VITEST_CASES.map((t) => t.id),

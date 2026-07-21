@@ -1,0 +1,13 @@
+# HTML must revalidate every time. Prevents a stale index.html from pointing at
+# missing hashed bundles after a deploy.
+/
+  Cache-Control: public, max-age=0, must-revalidate
+
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+# Fingerprinted Vite assets are immutable. Keep browser cache long, but never
+# let a mistaken SPA HTML rewrite sit here for hours (zone Browser Cache TTL).
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+  X-Content-Type-Options: nosniff

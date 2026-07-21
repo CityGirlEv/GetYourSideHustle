@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Mail, Send } from "lucide-react";
+import { BusyOverlay, WaitLabel } from "./WaitFeedback";
 import { api, ApiError } from "../lib/api";
 import { ADMIN_EMAIL, SITE_NAME } from "../lib/site-config";
 
@@ -39,6 +40,7 @@ export function ContactPage() {
 
   return (
     <div className="static-page" data-testid="contact-page">
+      <BusyOverlay active={submitting} message="Sending message…" />
       <section className="glass static-page-hero">
         <span className="flat-label flat-label--accent">Contact Us</span>
         <h2>Reach T + E</h2>
@@ -98,7 +100,7 @@ export function ContactPage() {
             />
           </div>
           <button type="submit" className="btn btn-primary" disabled={submitting}>
-            <Send size={14} /> {submitting ? "Sending…" : "Send message"}
+            {submitting ? <WaitLabel>Sending…</WaitLabel> : <><Send size={14} /> Send message</>}
           </button>
         </form>
       </div>

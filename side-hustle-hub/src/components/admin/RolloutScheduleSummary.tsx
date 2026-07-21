@@ -1,0 +1,80 @@
+import { useMemo, useState } from "react";
+import { ChevronDown, ChevronRight } from "lucide-react";
+import { listRolloutScheduleSummary } from "../../lib/gysh-sprints";
+
+type RolloutScheduleSummaryProps = {
+  className?: string;
+  /** Prefer collapsed to save vertical space on Admin Schedule. */
+  defaultOpen?: boolean;
+};
+
+const LEDE = "Soft launch S2 (~Aug 3) · Kids S4 · Jr/Adult S5 · Senior S6";
+
+/**
+ * Compact phased rollout for Evelyn: soft launch (S2) then GMSH bands (S4–S6).
+ * Dense table/grid — no sparse card stacks. Collapsible like Task/Tests status.
+ */
+export function RolloutScheduleSummary({
+  className,
+  defaultOpen = false,
+}: RolloutScheduleSummaryProps) {
+  const rows = useMemo(() => listRolloutScheduleSummary(), []);
+  const [open, setOpen] = useState(defaultOpen);
+
+  return (
+    <div
+      className={`rollout-schedule${className ? ` ${className}` : ""}`}
+      data-testid="rollout-schedule-summary"
+    >
+      <button
+        type="button"
+        className="rollout-schedule__toggle"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        data-testid="rollout-schedule-toggle"
+      >
+        {open ? <ChevronDown size={16} aria-hidden /> : <ChevronRight size={16} aria-hidden />}
+        <span className="rollout-schedule__title">Rollout schedule</span>
+        {!open && <span className="rollout-schedule__lede">{LEDE}</span>}
+      </button>
+      {open && (
+        <>
+          <p className="rollout-schedule__lede rollout-schedule__lede--open">{LEDE}</p>
+          <div className="rollout-schedule__table" role="table" aria-label="Rollout schedule by sprint">
+            <div className="rollout-schedule__row rollout-schedule__row--head" role="row">
+              <span role="columnheader">Sprint</span>
+              <span role="columnheader">Dates</span>
+              <span role="columnheader">Goal</span>
+              <span role="columnheader">Phase</span>
+            </div>
+            {rows.map((row) => {
+              const highlight =
+                row.sprint === 2 || row.sprint === 4 || row.sprint === 5 || row.sprint === 6;
+              return (
+                <div
+                  key={row.sprint}
+                  className={`rollout-schedule__row${highlight ? " rollout-schedule__row--key" : ""}`}
+                  role="row"
+                  data-sprint={row.sprint}
+                >
+                  <span className="rollout-schedule__sprint" role="cell">
+                    S{row.sprint}
+                  </span>
+                  <span className="rollout-schedule__dates" role="cell">
+                    {row.rangeLabel}
+                  </span>
+                  <span className="rollout-schedule__goal" role="cell">
+                    {row.goal}
+                  </span>
+                  <span className="rollout-schedule__focus" role="cell">
+                    {row.focus}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}

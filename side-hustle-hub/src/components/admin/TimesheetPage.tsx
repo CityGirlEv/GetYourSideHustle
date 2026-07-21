@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { CalendarClock, RefreshCw } from "lucide-react";
+import { BusyOverlay, WaitIndicator } from "../WaitFeedback";
 import type { AuthUser } from "../../lib/auth";
 import { ApiError } from "../../lib/api";
 import {
@@ -85,6 +86,7 @@ export function TimesheetPage({ authUser = null }: TimesheetPageProps) {
 
   return (
     <div className="timesheet-page" data-testid="timesheet-page">
+      <BusyOverlay active={loading} message="Loading timesheet…" />
       <header className="glass timesheet-page__hero">
         <div>
           <p className="timesheet-page__eyebrow">
@@ -143,7 +145,9 @@ export function TimesheetPage({ authUser = null }: TimesheetPageProps) {
       </div>
 
       {error && <div className="timesheet-page__error">{error}</div>}
-      {loading && <p className="timesheet-page__muted">Loading timesheet…</p>}
+      {loading && (
+        <WaitIndicator className="timesheet-page__muted" message="Loading timesheet…" style={{ marginTop: 0 }} />
+      )}
 
       {!loading && (
         <div className="timesheet-page__days">

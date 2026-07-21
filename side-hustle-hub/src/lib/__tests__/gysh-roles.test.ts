@@ -5,6 +5,7 @@ import {
   GYSH_ROLE_LABELS,
   GYSH_ROLES,
   QA_TESTERS,
+  canAccessAdminPortal,
   formatRoles,
   isAutomatedSuiteOwner,
   isHumanQaTester,
@@ -89,5 +90,14 @@ describe("gysh-roles", () => {
     };
     expect(userRoles(u)).toEqual(["adult"]);
     expect(userHasRole(u, "adult")).toBe(true);
+  });
+
+  it("gates Admin Studio to admin, qa, or dev only", () => {
+    expect(canAccessAdminPortal(null)).toBe(false);
+    expect(canAccessAdminPortal({ role: "adult" })).toBe(false);
+    expect(canAccessAdminPortal({ role: "admin" })).toBe(true);
+    expect(canAccessAdminPortal({ role: "qa" })).toBe(true);
+    expect(canAccessAdminPortal({ role: "dev" })).toBe(true);
+    expect(canAccessAdminPortal({ role: "adult", roles: ["qa"] })).toBe(true);
   });
 });

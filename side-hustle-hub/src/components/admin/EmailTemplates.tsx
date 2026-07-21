@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { List, Mail, RefreshCw, Send } from "lucide-react";
+import { BusyOverlay, WaitIndicator } from "../WaitFeedback";
 import { api, ApiError } from "../../lib/api";
 
 type TemplateRow = {
@@ -121,6 +122,48 @@ export function EmailTemplates() {
     }
   };
 
+  const sendDigests = async (mode: "all" | "evelyn") => {
+    setMsg("");
+    setErr("");
+    setBusy(true);
+    try {
+      if (mode === "evelyn") {
+        const data = await api<{
+          ok: boolean;
+          sent?: Array<{ email: string; id?: string; skipped?: string }>;
+          errors?: Array<{ email: string; error: string }>;
+          note?: string;
+        }>("email/digest/send-evelyn-test", { method: "POST", body: {} });
+        const n = data.sent?.filter((s) => s.id).length ?? 0;
+        setMsg(data.note || `Evelyn test digest sent (${n} delivered).`);
+      } else {
+        const data = await api<{
+          ok: boolean;
+          chicagoDate?: string;
+          timezone?: string;
+          sent?: Array<{ email: string; id?: string; skipped?: string }>;
+          errors?: Array<{ email: string; error: string }>;
+        }>("email/digest/send", {
+          method: "POST",
+          body: { force: true, allowResend: true },
+        });
+        const n = data.sent?.filter((s) => s.id).length ?? 0;
+        const skipped = data.sent?.filter((s) => s.skipped).length ?? 0;
+        const errs = data.errors?.length ?? 0;
+        setMsg(
+          `Digests (${data.timezone || "America/Chicago"} ${data.chicagoDate || ""}): ${n} sent, ${skipped} skipped, ${errs} errors.`,
+        );
+      }
+      setSelected("daily_admin_digest");
+      await load();
+      await loadLogs("daily_admin_digest", false);
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : "Digest send failed.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const templateName = (slug: string) =>
     templates.find((t) => t.slug === slug)?.name || slug;
 
@@ -128,6 +171,10 @@ export function EmailTemplates() {
 
   return (
     <div className="email-templates-admin" data-testid="email-templates-admin">
+      <BusyOverlay
+        active={busy || logsBusy}
+        message={logsBusy ? "Loading email log…" : "Working on email…"}
+      />
       <header className="email-templates-admin__head">
         <div>
           <h2>
@@ -139,6 +186,26 @@ export function EmailTemplates() {
           </p>
         </div>
         <div className="email-templates-admin__head-actions">
+          <button
+            type="button"
+            className="btn btn-outline"
+            data-testid="email-digest-evelyn-test"
+            disabled={busy || !emailConfigured}
+            onClick={() => void sendDigests("evelyn")}
+            title="Send live digest to evelyn3@cox.net only"
+          >
+            <Send size={16} /> Test digest → Evelyn
+          </button>
+          <button
+            type="button"
+            className="btn btn-outline"
+            data-testid="email-digest-send-all"
+            disabled={busy || !emailConfigured}
+            onClick={() => void sendDigests("all")}
+            title="Force-send digests to all Admin/QA now (America/Chicago date)"
+          >
+            <Send size={16} /> Send digests now
+          </button>
           <button
             type="button"
             className={`btn ${showAllLogs ? "btn-primary" : "btn-outline"}`}
@@ -236,8 +303,10 @@ export function EmailTemplates() {
                 srcDoc={preview.html}
               />
             </>
+          ) : busy ? (
+            <WaitIndicator message="Loading preview…" style={{ marginTop: 0 }} />
           ) : (
-            <p>{busy ? "Loading preview…" : "Select a template."}</p>
+            <p>Select a template.</p>
           )}
         </section>
       </div>

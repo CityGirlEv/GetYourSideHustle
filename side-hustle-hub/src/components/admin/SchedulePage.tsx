@@ -1,11 +1,21 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import {
   CalendarDays,
   CheckSquare,
+  ChevronDown,
+  ChevronRight,
   ClipboardList,
   Download,
   ExternalLink,
   FileText,
+  Lock,
   MessageSquare,
   Paperclip,
   Plus,
@@ -13,33 +23,72 @@ import {
   Save,
   Square,
   Trash2,
-  Upload,
   Users,
 } from "lucide-react";
 import { ApiError } from "../../lib/api";
+import type { AuthUser } from "../../lib/auth";
 import { fetchAgilePlan, persistAgilePlan } from "../../lib/gysh-agile-plan";
 import {
-  commitPlanSprintPlan,
-  commitTaskSprintPlan,
-  commitTestSprintPlan,
+  closeSprint,
+  fetchClosedSprints,
+  isSprintLocked,
+  reopenSprint,
+  sprintLockedMessage,
+} from "../../lib/gysh-closed-sprints";
+import { ensureWorkTimerStarted, stopTimerOnStatusChange } from "../../lib/gysh-time-entries";
+import { useActiveTimers } from "../../lib/use-active-timers";
+import { WorkTimer } from "./WorkTimer";
+import { BusyOverlay, WaitIndicator, WaitLabel } from "../WaitFeedback";
+import { MarkdownLinkText } from "./MarkdownLinkText";
+import {
+  applyRolloutSprintSchedule,
   planToBoardCard,
+  ROLLOUT_SCHEDULE_VERSION,
   taskToBoardCard,
   testToBoardCard,
   type BoardCard,
 } from "../../lib/gysh-sprint-board";
 import { SprintStatusBars } from "./SprintStatusBars";
 import {
+  EndSprintModal,
+  listIncompletePlanItems,
+  listIncompleteSprintWork,
+  type EndSprintAction,
+} from "./EndSprintModal";
+import {
   ACCEPT_ATTACHMENTS,
   applyPartnerDone,
+  assigneeDisplayLabel,
+  assigneeIncludes,
+  base64ToBlob,
+  deletePlanAttachmentRemote,
+  fetchPlanAttachmentContent,
   fetchTasks,
+  fileToBase64,
   formatFileSize,
   isAcceptedAttachment,
+  isoToMmddyy,
+  mmddyyToIso,
+  parseAssigneePeople,
+  parseMMDDYY,
   persistTasks,
+  requiresPartnerDone,
   TASK_STATUS_LABELS,
   todayMMDDYY,
+  uploadPlanAttachment,
   type GyshTask,
   type TaskStatus,
 } from "../../lib/gysh-tasks";
+import { AssigneeMultiSelect } from "./AssigneeMultiSelect";
+import { formatAuditTrail } from "../../lib/gysh-audit";
+import {
+  SYSTEM_ASSIGNED_BY,
+  assignedBySelectOptions,
+  auditActorLabel,
+  canSetTestBlocked,
+  todayMMDDYY as assignmentToday,
+  userHasAdminRole,
+} from "../../lib/gysh-assignment";
 import {
   TEST_CASES,
   fetchTestStatuses,
@@ -49,6 +98,7 @@ import {
   STATUS_LABELS as TEST_STATUS_LABELS,
   statusRequiresNote,
   noteMeetsRequirement,
+  type TestStatusesPayload,
   type TestStatus,
 } from "../../lib/gysh-test-plan";
 import {
@@ -67,15 +117,27 @@ import {
   CEREMONY_LABELS,
   RETRO_COLUMNS,
   STATUS_LABELS,
+  UNASSIGNED_OWNER,
   applyPlanPartnerDone,
+  assigneeForBacklogSprint,
   buildDefaultPlanItems,
   ceremoniesForSprint,
+  dueDateForSprint,
+  formatDisplayDate,
+  formatNumericDateRange,
   getSprintWindow,
+  isBacklogSprint,
   listUpcomingSprints,
   newPlanItemId,
   newRetroCardId,
   sprintLabel,
   themeForSprint,
+  sanitizeBacklogPlanOwners,
+  sanitizeBacklogTaskAssignees,
+  sanitizeBacklogTestAssignees,
+  withBacklogPlanUnassigned,
+  withBacklogTaskUnassigned,
+  withSprintDueDate,
   type PlanItem,
   type PlanItemAttachment,
   type PlanItemStatus,
@@ -92,6 +154,12 @@ import {
 } from "../../lib/gysh-task-files";
 
 type ScheduleTab = "board" | "ceremonies" | "retro";
+/** Sprint bubble selection: a sprint index, Backlog, or All Sprints (non-backlog combined). */
+type SprintBoardSelection = number | "backlog" | "all";
+
+function isSprintIndex(selection: SprintBoardSelection): selection is number {
+  return typeof selection === "number";
+}
 
 const ALL_TESTS = [
   ...withDefaultSuite(TEST_CASES),
@@ -99,16 +167,31 @@ const ALL_TESTS = [
   ...AUTOMATED_PLAYWRIGHT_CASES,
 ].filter((t) => !isWizardMatrixCaseId(t.id));
 
+/** Includes FMSH wizard rows so one-shot rollout heal can place Kids/Jr/Adult/Senior bands. */
+const ROLLOUT_HEAL_TESTS = [
+  ...withDefaultSuite(TEST_CASES),
+  ...AUTOMATED_VITEST_CASES,
+  ...AUTOMATED_PLAYWRIGHT_CASES,
+];
+
+const ROLLOUT_HEAL_STORAGE_KEY = "gysh-rollout-schedule-version";
+
 const TEST_DEFAULT_ASSIGNEES = Object.fromEntries(
   ALL_TESTS.map((test) => [test.id, test.assignees[0] ?? ""]),
 ) as Record<string, QaTesterId | "">;
 
 const STATUS_COLORS: Record<string, string> = {
-  todo: "#947D64",
-  in_progress: "#c9a227",
-  done: "#5f7a45",
-  carried: "#9B2F28",
-  blocked: "#9B2F28",
+  todo: "#9ca3af",
+  not_run: "#9ca3af",
+  not_started: "#9ca3af",
+  in_progress: "#ca8a04",
+  done: "#16a34a",
+  pass: "#16a34a",
+  fail: "#dc2626",
+  carried: "#dc2626",
+  blocked: "#ea580c",
+  fixed_retest: "#2563eb",
+  failed_retest: "#f97316",
 };
 
 const CEREMONY_COLORS: Record<SprintCeremony["type"], string> = {
@@ -124,6 +207,10 @@ type CardDraft = {
   status?: string;
   sprint?: number;
   note?: string;
+  /** MM/DD/YY — tasks/tests dueDate; plan items map to `date` / `dateLabel`. */
+  dueDate?: string;
+  /** Tasks: assignBy · Tests: assignedBy. Ignored for plan cards. */
+  assignBy?: string;
 };
 
 const BULK_STATUS_OPTIONS: { id: string; label: string }[] = [
@@ -159,15 +246,23 @@ function mapBulkStatusToSource(
 
 function bulkAssigneeForSource(source: BoardCard["source"], value: string): string | null {
   if (!value) return null;
-  if (source === "test") {
-    const id = QA_TESTERS.find((t) => t.id === value || t.shortName === value)?.id;
-    return id ?? null;
+  if (value === UNASSIGNED_OWNER || value === "unassigned") {
+    return source === "test" ? "" : UNASSIGNED_OWNER;
   }
-  if (value === "tina" || value === "evelyn" || value === "lyriq") {
-    const name = QA_TESTERS.find((t) => t.id === value)?.shortName;
-    return name ?? null;
+  // Tasks/plans store multi-assignee strings (Both, Tina+Lyriq, …).
+  if (source !== "test") {
+    if (value === "tina" || value === "evelyn" || value === "lyriq") {
+      return QA_TESTERS.find((t) => t.id === value)?.shortName ?? null;
+    }
+    return value;
   }
-  return value;
+  // Tests use a single QA tester id — only apply when exactly one person is staged.
+  const people = parseAssigneePeople(value);
+  if (people.length === 1) {
+    return QA_TESTERS.find((t) => t.shortName === people[0])?.id ?? null;
+  }
+  const id = QA_TESTERS.find((t) => t.id === value || t.shortName === value)?.id;
+  return id ?? null;
 }
 
 const OWNER_BUBBLES: { id: BoardOwnerFilter; label: string; accent?: string }[] = [
@@ -179,20 +274,178 @@ const OWNER_BUBBLES: { id: BoardOwnerFilter; label: string; accent?: string }[] 
   { id: "Unassigned", label: "Unassigned", accent: "#7a7064" },
 ];
 
-/** T/E also match "Both" cards; Lyriq and Both match exactly. */
-function cardMatchesOwner(card: BoardCard, owner: BoardOwnerFilter): boolean {
-  if (owner === "all") return true;
-  if (owner === "Both" || owner === "Lyriq" || owner === "Unassigned") {
-    return card.owner === owner;
-  }
-  return card.owner === owner || card.owner === "Both";
+/** Columns so chips fill exactly 2 rows (row-major). */
+function chipColsForTwoRows(count: number): number {
+  return Math.max(1, Math.ceil(count / 2));
 }
 
-const PLAN_ASSIGNEES: PlanOwner[] = ["Unassigned", "Tina", "Evelyn", "Lyriq", "Both"];
-const TASK_ASSIGNEES: GyshTask["assignedTo"][] = ["Tina", "Evelyn", "Lyriq", "Both"];
+/** Owner filter: Tina/Evelyn match any card that includes them (incl. Both / multi). */
+function cardMatchesOwner(card: BoardCard, owner: BoardOwnerFilter): boolean {
+  if (owner === "all") return true;
+  if (owner === "Unassigned") {
+    return card.owner === "Unassigned" || !String(card.owner || "").trim();
+  }
+  if (owner === "Both") {
+    return requiresPartnerDone(card.owner);
+  }
+  if (owner === "Tina" || owner === "Evelyn" || owner === "Lyriq") {
+    return assigneeIncludes(card.owner, owner);
+  }
+  return card.owner === owner;
+}
 
 function isDone(card: BoardCard): boolean {
   return card.status === "done";
+}
+
+/** Tasks / Tests / Plan counts with done (status === done; tests pass → done). */
+function countBySource(cards: BoardCard[]) {
+  let tasks = 0;
+  let tests = 0;
+  let plan = 0;
+  let tasksDone = 0;
+  let testsDone = 0;
+  let planDone = 0;
+  for (const c of cards) {
+    const done = isDone(c);
+    if (c.source === "task") {
+      tasks += 1;
+      if (done) tasksDone += 1;
+    } else if (c.source === "test") {
+      tests += 1;
+      if (done) testsDone += 1;
+    } else if (c.source === "plan") {
+      plan += 1;
+      if (done) planDone += 1;
+    }
+  }
+  // Face totals = Tasks + Tests only (Plan stays in tooltips via formatTQTitle).
+  const workDone = tasksDone + testsDone;
+  const workTotal = tasks + tests;
+  return {
+    tasks,
+    tests,
+    plan,
+    tasksDone,
+    testsDone,
+    planDone,
+    workDone,
+    workTotal,
+    /** All board cards including Plan (not used for face totals). */
+    total: cards.length,
+  };
+}
+
+type TQCounts = {
+  tasks: number;
+  tests: number;
+  tasksDone: number;
+  testsDone: number;
+  plan?: number;
+  planDone?: number;
+  workDone?: number;
+  workTotal?: number;
+};
+
+/** Compact readable label: Tests then Tasks (tooltips / inline). */
+function formatTQ(c: Pick<TQCounts, "tasks" | "tests" | "tasksDone" | "testsDone">): string {
+  return `Tests: ${c.testsDone}/${c.tests} · Tasks: ${c.tasksDone}/${c.tasks}`;
+}
+
+/** Face headline: Tasks+Tests done/total (excludes Plan). */
+function formatWorkDoneTotal(c: Pick<TQCounts, "tasks" | "tests" | "tasksDone" | "testsDone">): string {
+  const done = c.tasksDone + c.testsDone;
+  const total = c.tasks + c.tests;
+  return `${done}/${total}`;
+}
+
+/** Plain-language breakdown for tooltips (Plan only when plan > 0). */
+function formatTQTitle(c: TQCounts): string {
+  const base = formatTQ(c);
+  const plan = c.plan ?? 0;
+  const planDone = c.planDone ?? 0;
+  return plan > 0 ? `${base} · Plan: ${planDone}/${plan}` : base;
+}
+
+/** Sprint bubble face: Tests on first line, Tasks stacked underneath. */
+function TQBubbleLines({
+  c,
+}: {
+  c: Pick<TQCounts, "tasks" | "tests" | "tasksDone" | "testsDone">;
+}) {
+  return (
+    <span className="qa-tester-meta schedule-sprint-tq" title={formatTQ(c)}>
+      <span>Tests: {c.testsDone}/{c.tests}</span>
+      <span>Tasks: {c.tasksDone}/{c.tasks}</span>
+    </span>
+  );
+}
+
+/** Wine-band heading + chevron; chips/body hide when collapsed.
+ * Chevron toggles collapse; optional title click applies a filter (does not collapse). */
+function CollapsibleFilterSection({
+  title,
+  hint,
+  defaultOpen = false,
+  testId,
+  onFilterClick,
+  children,
+}: {
+  title: string;
+  hint?: string;
+  defaultOpen?: boolean;
+  testId?: string;
+  /** When set, the title label filters; chevron alone collapses. */
+  onFilterClick?: () => void;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  const filterable = Boolean(onFilterClick);
+  return (
+    <div className="schedule-board-filters__row" data-testid={testId}>
+      <div className="schedule-board-filters__label schedule-board-filters__label--bar">
+        <button
+          type="button"
+          className="schedule-board-filters__chevron"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          aria-label={open ? `Collapse ${title}` : `Expand ${title}`}
+          data-testid={testId ? `${testId}-toggle` : undefined}
+        >
+          {open ? <ChevronDown size={16} aria-hidden /> : <ChevronRight size={16} aria-hidden />}
+        </button>
+        {filterable ? (
+          <button
+            type="button"
+            className="schedule-board-filters__filter-title"
+            onClick={onFilterClick}
+            title="Click to filter"
+            aria-label={`${title}. Click to filter`}
+            data-testid={testId ? `${testId}-filter` : undefined}
+          >
+            <span>{title}</span>
+            <span className="schedule-board-filters__click-hint">Click to filter</span>
+            {!open && hint ? (
+              <span className="schedule-board-filters__label-hint">{hint}</span>
+            ) : null}
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="schedule-board-filters__filter-title schedule-board-filters__filter-title--collapse"
+            onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
+          >
+            <span>{title}</span>
+            {!open && hint ? (
+              <span className="schedule-board-filters__label-hint">{hint}</span>
+            ) : null}
+          </button>
+        )}
+      </div>
+      {open ? children : null}
+    </div>
+  );
 }
 
 function percent(done: number, total: number): number {
@@ -204,15 +457,37 @@ function ProgressMeter({
   done,
   total,
   accent,
+  tasks,
+  tests,
+  tasksDone,
+  testsDone,
+  onFilterClick,
+  selected,
 }: {
   label: string;
   done: number;
   total: number;
   accent: string;
+  tasks?: number;
+  tests?: number;
+  tasksDone?: number;
+  testsDone?: number;
+  onFilterClick?: () => void;
+  selected?: boolean;
 }) {
   const value = percent(done, total);
+  const showTQ =
+    tasks !== undefined &&
+    tests !== undefined &&
+    tasksDone !== undefined &&
+    testsDone !== undefined;
+  const tq = showTQ ? { tasks, tests, tasksDone, testsDone } : null;
+  const filterable = Boolean(onFilterClick);
   return (
-    <div style={{ minWidth: 0 }}>
+    <div
+      className={`schedule-progress-meter${filterable ? " schedule-progress-meter--filterable" : ""}${selected ? " schedule-progress-meter--selected" : ""}`}
+      style={{ minWidth: 0 }}
+    >
       <div
         style={{
           display: "flex",
@@ -222,9 +497,32 @@ function ProgressMeter({
           fontSize: "0.9375rem",
         }}
       >
-        <strong style={{ color: "var(--charcoal)" }}>{label}</strong>
-        <span style={{ color: "var(--text-primary)", fontVariantNumeric: "tabular-nums" }}>
+        {filterable ? (
+          <button
+            type="button"
+            className="schedule-progress-meter__filter-btn"
+            onClick={onFilterClick}
+            title="Click to filter"
+            aria-label={`${label}. Click to filter`}
+          >
+            <strong style={{ color: "var(--charcoal)" }}>{label}</strong>
+            <span className="schedule-board-filters__click-hint">Click to filter</span>
+          </button>
+        ) : (
+          <strong style={{ color: "var(--charcoal)" }}>{label}</strong>
+        )}
+        <span style={{ color: "var(--text-primary)", fontVariantNumeric: "tabular-nums", textAlign: "right" }}>
           {done}/{total} · {value}%
+          {tq && (
+            <span
+              className="schedule-sprint-tq"
+              style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", fontSize: "0.85rem", marginTop: 1 }}
+              title={formatTQTitle(tq)}
+            >
+              <span>Tests: {tq.testsDone}/{tq.tests}</span>
+              <span>Tasks: {tq.tasksDone}/{tq.tasks}</span>
+            </span>
+          )}
         </span>
       </div>
       <div
@@ -254,13 +552,51 @@ function ProgressMeter({
   );
 }
 
-const BOARD_STATUS_BUBBLES: { id: string; label: string }[] = [
+/** Card type filter — Tasks vs Tests (QA). Plan milestones stay in DB but are hidden from the board. */
+type BoardSourceFilter = "all" | "task" | "test";
+
+const SOURCE_BUBBLES: { id: BoardSourceFilter; label: string; accent?: string }[] = [
+  { id: "all", label: "All types" },
+  { id: "test", label: "Tests (QA)", accent: "#3b6ea5" },
+  { id: "task", label: "Tasks", accent: "#5c4033" },
+];
+
+/** Board face shows Tasks + Tests only (Plan excluded from All types). */
+function matchesSourceFilter(source: BoardCard["source"], filter: BoardSourceFilter): boolean {
+  if (filter === "all") return source === "task" || source === "test";
+  return source === filter;
+}
+
+/** Sprint placement status (carry-over vs still in this sprint). Not work progress. */
+type SprintPlacementStatus = "active" | "carried";
+
+const SPRINT_STATUS_BUBBLES: { id: SprintPlacementStatus; label: string }[] = [
+  { id: "active", label: "In sprint" },
+  { id: "carried", label: "Carry over" },
+];
+
+/** Work progress for tasks (excludes carry-over). Tests use TEST_STATUS_BUBBLES. */
+const WORK_STATUS_BUBBLES: { id: string; label: string }[] = [
   { id: "todo", label: "To do" },
   { id: "in_progress", label: "In progress" },
   { id: "blocked", label: "Blocked" },
-  { id: "carried", label: "Carry over" },
   { id: "done", label: "Done" },
 ];
+
+/** Test progress — same statuses as Testing Portal. */
+const TEST_STATUS_BUBBLES: { id: TestStatus; label: string }[] = (
+  ["not_run", "in_progress", "pass", "fail", "blocked"] as const
+).map((id) => ({ id, label: TEST_STATUS_LABELS[id] }));
+
+function cardSprintPlacement(card: BoardCard): SprintPlacementStatus {
+  return card.status === "carried" ? "carried" : "active";
+}
+
+/** Task work status for filtering; carry-over is sprint status only. */
+function cardWorkStatus(card: BoardCard): string | null {
+  if (card.status === "carried") return null;
+  return card.status;
+}
 
 /** Task IDs referenced in plan notes (e.g. T-003, T-LG-airbnb). */
 function taskIdsInText(text: string): string[] {
@@ -275,16 +611,18 @@ function planFileKey(planItemId: string): string {
 function PlanItemAttachments({
   item,
   onChange,
+  readOnly = false,
 }: {
   item: PlanItem;
   onChange: (attachments: PlanItemAttachment[]) => void;
+  readOnly?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
 
   const handleFiles = async (files: FileList | null) => {
-    if (!files?.length) return;
+    if (readOnly || !files?.length) return;
     setError("");
     setUploading(true);
     try {
@@ -296,27 +634,38 @@ function PlanItemAttachments({
         }
         const id = newFileId();
         const addedAt = todayMMDDYY();
-        await putTaskFile({
-          taskId: planFileKey(item.id),
-          fileId: id,
-          name: file.name,
-          mimeType: file.type || "application/octet-stream",
-          size: file.size,
-          blob: file,
-          addedAt,
-        });
-        next.push({
+        const mimeType = file.type || "application/octet-stream";
+        const contentBase64 = await fileToBase64(file);
+        const saved = await uploadPlanAttachment({
+          planItemId: item.id,
           id,
           name: file.name,
-          mimeType: file.type || "application/octet-stream",
-          size: file.size,
-          storedId: id,
+          mimeType,
+          contentBase64,
           addedAt,
+        });
+        await putTaskFile({
+          taskId: planFileKey(item.id),
+          fileId: saved.storedId || saved.id,
+          name: saved.name,
+          mimeType: saved.mimeType,
+          size: saved.size,
+          blob: file,
+          addedAt: saved.addedAt,
+        });
+        next.push({
+          id: saved.id,
+          name: saved.name,
+          mimeType: saved.mimeType,
+          size: saved.size,
+          storedId: saved.storedId || saved.id,
+          addedAt: saved.addedAt,
+          hasContent: true,
         });
       }
       onChange(next);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Upload failed");
+      setError(e instanceof ApiError ? e.message : e instanceof Error ? e.message : "Upload failed");
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";
@@ -324,12 +673,36 @@ function PlanItemAttachments({
   };
 
   const openOrDownload = async (att: PlanItemAttachment) => {
+    let blob: Blob | null = null;
     const rec = await getTaskFile(planFileKey(item.id), att.storedId);
-    if (!rec) {
-      alert("File not found in this browser. File metadata is saved, but the blob is local until R2 is wired.");
+    if (rec) blob = rec.blob;
+    else {
+      try {
+        const remote = await fetchPlanAttachmentContent(att.id);
+        blob = base64ToBlob(remote.contentBase64, remote.mimeType || att.mimeType);
+        void putTaskFile({
+          taskId: planFileKey(item.id),
+          fileId: att.storedId,
+          name: att.name,
+          mimeType: att.mimeType,
+          size: att.size,
+          blob,
+          addedAt: att.addedAt,
+        });
+      } catch (e) {
+        alert(
+          e instanceof ApiError
+            ? e.message
+            : "File not found. If this was uploaded before server storage, please re-upload it.",
+        );
+        return;
+      }
+    }
+    if (!blob) {
+      alert("File not found. Please re-upload the attachment.");
       return;
     }
-    const url = URL.createObjectURL(rec.blob);
+    const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = att.name;
@@ -342,6 +715,12 @@ function PlanItemAttachments({
   };
 
   const remove = async (att: PlanItemAttachment) => {
+    if (readOnly) return;
+    try {
+      await deletePlanAttachmentRemote(att.id);
+    } catch {
+      /* still remove from plan metadata */
+    }
     await deleteTaskFile(planFileKey(item.id), att.storedId);
     onChange((item.attachments ?? []).filter((a) => a.id !== att.id));
   };
@@ -363,10 +742,10 @@ function PlanItemAttachments({
           className="btn btn-outline"
           style={{ padding: "5px 10px", fontSize: "0.9375rem" }}
           onClick={() => inputRef.current?.click()}
-          disabled={uploading}
+          disabled={uploading || readOnly}
+          title={readOnly ? "Sprint is closed and locked" : undefined}
         >
-          {uploading ? <Upload size={13} /> : <Paperclip size={13} />}
-          {uploading ? "Uploading..." : "Attach document"}
+          {uploading ? <WaitLabel>Uploading…</WaitLabel> : <><Paperclip size={13} /> Attach document</>}
         </button>
         <input
           ref={inputRef}
@@ -377,7 +756,7 @@ function PlanItemAttachments({
           onChange={(e) => void handleFiles(e.target.files)}
         />
         <span style={{ fontSize: "1rem", color: "var(--text-primary)" }}>
-          PDF, Word, images, video, txt, csv
+          PDF, Word, Excel, images, video, txt, csv
         </span>
       </div>
       {error && <div style={{ fontSize: "0.9375rem", color: "#9B2F28" }}>{error}</div>}
@@ -424,6 +803,7 @@ function PlanItemAttachments({
               >
                 <Download size={13} />
               </button>
+              {!readOnly && (
               <button
                 type="button"
                 className="btn btn-outline"
@@ -433,6 +813,7 @@ function PlanItemAttachments({
               >
                 <Trash2 size={13} />
               </button>
+              )}
             </div>
           ))}
         </div>
@@ -444,41 +825,83 @@ function PlanItemAttachments({
 type SchedulePageProps = {
   onOpenTask?: (taskId: string) => void;
   onOpenTest?: (testId: string) => void;
+  authUser?: AuthUser | null;
 };
 
-export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {}) {
+export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: SchedulePageProps = {}) {
+  const actingAssignBy = auditActorLabel(authUser);
+  const isAdmin = userHasAdminRole(authUser);
+  const canBlockTests = canSetTestBlocked(authUser);
   const [tab, setTab] = useState<ScheduleTab>("board");
-  const [activeSprint, setActiveSprint] = useState<number | "backlog">(0);
+  const [activeSprint, setActiveSprint] = useState<SprintBoardSelection>(0);
   const [items, setItems] = useState<PlanItem[]>([]);
   const [tasks, setTasks] = useState<GyshTask[]>([]);
   const [testStatuses, setTestStatuses] = useState<Record<string, TestStatus>>({});
   const [testNotes, setTestNotes] = useState<Record<string, string>>({});
   const [testAssignees, setTestAssignees] = useState<Record<string, string>>({});
   const [testSprints, setTestSprints] = useState<Record<string, number>>({});
+  const [testDueDates, setTestDueDates] = useState<Record<string, string>>({});
+  const [testAssignedBy, setTestAssignedBy] = useState<Record<string, string>>({});
+  const [testUpdatedAt, setTestUpdatedAt] = useState<Record<string, string>>({});
+  const [testUpdatedBy, setTestUpdatedBy] = useState<Record<string, string>>({});
   const [retro, setRetro] = useState<RetroCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [newTitle, setNewTitle] = useState("");
   const [newOwner, setNewOwner] = useState<PlanOwner>("Unassigned");
-  const [sourceFilter, setSourceFilter] = useState<"all" | "plan" | "task" | "test">("all");
+  const [sourceFilter, setSourceFilter] = useState<BoardSourceFilter>("all");
   const [ownerFilter, setOwnerFilter] = useState<BoardOwnerFilter>("all");
-  const [statusFilters, setStatusFilters] = useState<Set<string>>(() => new Set());
+  /** Sprint placement: empty = all (in sprint + carry over). */
+  const [sprintStatusFilters, setSprintStatusFilters] = useState<Set<SprintPlacementStatus>>(
+    () => new Set(),
+  );
+  /** Task work progress: empty = all. Applies to task cards only. */
+  const [workStatusFilters, setWorkStatusFilters] = useState<Set<string>>(() => new Set());
+  /** Test progress: empty = all. Applies to test cards only. */
+  const [testStatusFilters, setTestStatusFilters] = useState<Set<TestStatus>>(() => new Set());
   const [drafts, setDrafts] = useState<Record<string, CardDraft>>({});
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(() => new Set());
   const [bulkAssignee, setBulkAssignee] = useState("");
+  const [bulkAssignBy, setBulkAssignBy] = useState("");
   const [bulkSprint, setBulkSprint] = useState("");
   const [bulkStatus, setBulkStatus] = useState("");
+  const [bulkDueDate, setBulkDueDate] = useState("");
+  const [bulkDescription, setBulkDescription] = useState("");
+  const assignByOptions = useMemo(
+    () =>
+      assignedBySelectOptions(
+        actingAssignBy,
+        ...tasks.map((t) => t.assignBy),
+        ...Object.values(testAssignedBy),
+      ),
+    [actingAssignBy, tasks, testAssignedBy],
+  );
   const [saveFlash, setSaveFlash] = useState("");
+  const [endSprintOpen, setEndSprintOpen] = useState(false);
+  /** Sprint index for EndSprintModal — set when opening Close from a bubble. */
+  const [endSprintTarget, setEndSprintTarget] = useState<number | null>(null);
+  const [closedSprints, setClosedSprints] = useState<Set<number>>(() => new Set());
   const [retroDraft, setRetroDraft] = useState<Record<RetroColumn, string>>({
     went_well: "",
     improve: "",
     action: "",
   });
+  const timers = useActiveTimers(Boolean(authUser));
+  const startingTimersRef = useRef(new Set<string>());
+
+  const applyTestAudit = (data: Pick<TestStatusesPayload, "updatedAt" | "updatedBy">) => {
+    setTestUpdatedAt(data.updatedAt ?? {});
+    setTestUpdatedBy(data.updatedBy ?? {});
+  };
 
   const sprints = useMemo(() => listUpcomingSprints(), []);
   const sprint0 = useMemo(() => getSprintWindow(0), []);
-  const selectedSprintIndex = activeSprint === "backlog" ? 0 : activeSprint;
+  const allSprintsNumericRange = useMemo(() => {
+    if (sprints.length === 0) return "—";
+    return formatNumericDateRange(sprints[0].start, sprints[sprints.length - 1].end);
+  }, [sprints]);
+  const selectedSprintIndex = isSprintIndex(activeSprint) ? activeSprint : 0;
   const ceremonies = useMemo(
     () => ceremoniesForSprint(getSprintWindow(selectedSprintIndex)),
     [selectedSprintIndex],
@@ -488,28 +911,67 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
     const planCards = items.map(planToBoardCard);
     const taskCards = tasks.map(taskToBoardCard);
     const testCards = ALL_TESTS.map((t) =>
-      testToBoardCard(t, testStatuses[t.id], testSprints[t.id], testAssignees[t.id]),
+      testToBoardCard(t, testStatuses[t.id], testSprints[t.id], testAssignees[t.id], {
+        updatedAt: testUpdatedAt[t.id],
+        updatedBy: testUpdatedBy[t.id],
+      }),
     );
-    return [...planCards, ...taskCards, ...testCards];
-  }, [items, tasks, testStatuses, testSprints, testAssignees]);
+    // Tests first in columns; tasks underneath (plan stays off the board face).
+    return [...planCards, ...testCards, ...taskCards];
+  }, [items, tasks, testStatuses, testSprints, testAssignees, testUpdatedAt, testUpdatedBy]);
 
   const cardsInSprint = (sprint: number) =>
     boardCards.filter((c) => c.sprint === sprint);
 
-  const sprintScopedCards = boardCards.filter((c) => {
-    if (sourceFilter !== "all" && c.source !== sourceFilter) return false;
+  /** Cards in the selected sprint/backlog/all-sprints (before type/owner/status filters). */
+  const sprintOnlyCards = boardCards.filter((c) => {
     if (activeSprint === "backlog") return c.sprint === BACKLOG_SPRINT;
+    if (activeSprint === "all") return !isBacklogSprint(c.sprint);
     return c.sprint === activeSprint;
   });
 
-  const visibleCards = sprintScopedCards.filter(
-    (c) =>
-      cardMatchesOwner(c, ownerFilter) &&
-      (statusFilters.size === 0 || statusFilters.has(c.status)),
+  const sprintScopedCards = sprintOnlyCards.filter((c) =>
+    matchesSourceFilter(c.source, sourceFilter),
   );
 
-  const toggleStatusFilter = (status: string) => {
-    setStatusFilters((prev) => {
+  const visibleCards = sprintScopedCards.filter((c) => {
+    // Backlog has no assignees — never filter by owner there.
+    if (activeSprint !== "backlog" && !cardMatchesOwner(c, ownerFilter)) return false;
+    if (sprintStatusFilters.size > 0 && !sprintStatusFilters.has(cardSprintPlacement(c))) {
+      return false;
+    }
+    if (c.source === "task" && workStatusFilters.size > 0) {
+      const work = cardWorkStatus(c);
+      // Carry-over has no work status — use Sprint status filter for those cards.
+      if (work === null || !workStatusFilters.has(work)) return false;
+    }
+    if (c.source === "test" && testStatusFilters.size > 0) {
+      const st = (testStatuses[c.sourceId] ?? "not_run") as TestStatus;
+      if (!testStatusFilters.has(st)) return false;
+    }
+    return true;
+  });
+
+  const toggleSprintStatusFilter = (status: SprintPlacementStatus) => {
+    setSprintStatusFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(status)) next.delete(status);
+      else next.add(status);
+      return next;
+    });
+  };
+
+  const toggleWorkStatusFilter = (status: string) => {
+    setWorkStatusFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(status)) next.delete(status);
+      else next.add(status);
+      return next;
+    });
+  };
+
+  const toggleTestStatusFilter = (status: TestStatus) => {
+    setTestStatusFilters((prev) => {
       const next = new Set(prev);
       if (next.has(status)) next.delete(status);
       else next.add(status);
@@ -521,11 +983,13 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
     setLoading(true);
     setError("");
     try {
-      const [planData, taskList, testData] = await Promise.all([
+      const [planData, taskList, testData, closedList] = await Promise.all([
         fetchAgilePlan(),
         fetchTasks(),
         fetchTestStatuses(),
+        fetchClosedSprints().catch(() => [] as number[]),
       ]);
+      setClosedSprints(new Set(closedList));
 
       let planItems = planData.items;
       if (planItems.length === 0) {
@@ -540,22 +1004,139 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
       } else {
         setRetro(planData.retro);
       }
-      // Read-only load — do not rewrite task/plan sprints on open (that wiped concurrent edits).
-      // Use "Apply suggested sprint schedule" for intentional bulk placement.
-      setItems(planItems);
-      setTasks(taskList);
+      // Versioned soft fill only — never force-overwrite stored sprints on Schedule load.
+      // Manual sprint edits persist; opt-in scripts may still force via mode: "force".
+      let workingPlan = planItems;
+      let workingTasks = taskList;
+      let workingTestSprints = { ...testData.sprints };
+      let workingTestDueDates = { ...(testData.dueDates ?? {}) };
+      let appliedRollout = false;
+      try {
+        const seen =
+          typeof localStorage !== "undefined"
+            ? localStorage.getItem(ROLLOUT_HEAL_STORAGE_KEY)
+            : null;
+        if (seen !== ROLLOUT_SCHEDULE_VERSION) {
+          const rolled = applyRolloutSprintSchedule({
+            planItems: workingPlan,
+            tasks: workingTasks,
+            tests: ROLLOUT_HEAL_TESTS,
+            testSprints: workingTestSprints,
+            testDueDates: workingTestDueDates,
+            testStatuses: testData.statuses,
+            mode: "preserve",
+          });
+          if (rolled.planChanged || rolled.tasksChanged || rolled.testChangedIds.length > 0) {
+            if (rolled.planChanged) {
+              const saved = await persistAgilePlan(rolled.planItems, planData.retro);
+              workingPlan = saved.items;
+              setRetro(saved.retro);
+            } else {
+              workingPlan = rolled.planItems;
+            }
+            if (rolled.tasksChanged) {
+              workingTasks = await persistTasks(rolled.tasks);
+            } else {
+              workingTasks = rolled.tasks;
+            }
+            if (rolled.testChangedIds.length > 0) {
+              const batch = rolled.testChangedIds.map((caseId) => ({
+                caseId,
+                status: (testData.statuses[caseId] ?? "not_run") as TestStatus,
+                note: (testData.notes[caseId] ?? "").trim(),
+                assignee: testData.assignees?.[caseId] ?? "",
+                sprint: rolled.testSprints[caseId] ?? BACKLOG_SPRINT,
+                dueDate: rolled.testDueDates[caseId] ?? "",
+              }));
+              const data = await saveTestStatusesBatch(batch);
+              workingTestSprints = { ...rolled.testSprints, ...data.sprints };
+              workingTestDueDates = { ...rolled.testDueDates, ...data.dueDates };
+              setTestAssignees({ ...testData.assignees, ...data.assignees });
+              setTestStatuses(data.statuses);
+              setTestNotes(data.notes);
+              setTestAssignedBy((prev) => ({ ...prev, ...(data.assignedBy ?? {}) }));
+              applyTestAudit(data);
+            } else {
+              workingTestSprints = rolled.testSprints;
+              workingTestDueDates = rolled.testDueDates;
+            }
+            appliedRollout = true;
+          }
+          // Gate even when nothing changed so later opens never re-run silently.
+          if (typeof localStorage !== "undefined") {
+            localStorage.setItem(ROLLOUT_HEAL_STORAGE_KEY, ROLLOUT_SCHEDULE_VERSION);
+          }
+        }
+      } catch {
+        /* keep loaded state; soft fill can retry next open */
+      }
 
-      setTestStatuses(testData.statuses);
-      setTestNotes(testData.notes);
-      setTestAssignees(testData.assignees);
-      // Prefer schedule suggestions for any test not yet persisted
-      const nextSprints: Record<string, number> = { ...testData.sprints };
+      // Heal stale backlog assignees so storage matches "backlog = Unassigned".
+      const healedPlan = sanitizeBacklogPlanOwners(workingPlan);
+      const healedTasks = sanitizeBacklogTaskAssignees(workingTasks);
+      const healedTests = sanitizeBacklogTestAssignees(
+        workingTestSprints,
+        testData.assignees ?? {},
+      );
+      const nextSprints: Record<string, number> = { ...workingTestSprints };
       for (const t of ALL_TESTS) {
         if (nextSprints[t.id] === undefined) {
           nextSprints[t.id] = testToBoardCard(t, testData.statuses[t.id], undefined).sprint;
         }
       }
+
+      setItems(healedPlan.items);
+      setTasks(healedTasks.tasks);
+      if (!appliedRollout) {
+        setTestStatuses(testData.statuses);
+        setTestNotes(testData.notes);
+        setTestAssignedBy(testData.assignedBy ?? {});
+        applyTestAudit(testData);
+      }
+      setTestAssignees(healedTests.assignees);
+      setTestDueDates(workingTestDueDates);
       setTestSprints(nextSprints);
+      // Fresh load is the new baseline — discard any staged card edits.
+      setDrafts({});
+
+      if (healedPlan.changed) {
+        try {
+          const saved = await persistAgilePlan(healedPlan.items, planData.retro);
+          setItems(saved.items);
+          setRetro(saved.retro);
+        } catch {
+          /* keep healed local state */
+        }
+      }
+      if (healedTasks.changed) {
+        try {
+          setTasks(await persistTasks(healedTasks.tasks));
+        } catch {
+          /* keep healed local state */
+        }
+      }
+      if (healedTests.changedIds.length > 0) {
+        try {
+          const batch = healedTests.changedIds.map((caseId) => ({
+            caseId,
+            status: (testData.statuses[caseId] ?? "not_run") as TestStatus,
+            note: (testData.notes[caseId] ?? "").trim(),
+            assignee: "",
+            sprint: workingTestSprints[caseId] ?? BACKLOG_SPRINT,
+            dueDate: workingTestDueDates[caseId] ?? "",
+          }));
+          const data = await saveTestStatusesBatch(batch);
+          setTestStatuses(data.statuses);
+          setTestNotes(data.notes);
+          setTestAssignees({ ...healedTests.assignees, ...data.assignees });
+          setTestSprints({ ...nextSprints, ...data.sprints });
+          setTestDueDates({ ...workingTestDueDates, ...data.dueDates });
+          setTestAssignedBy((prev) => ({ ...prev, ...(data.assignedBy ?? {}) }));
+          applyTestAudit(data);
+        } catch {
+          /* keep healed local state */
+        }
+      }
     } catch (e) {
       setItems(buildDefaultPlanItems());
       setTasks([]);
@@ -594,6 +1175,11 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
     id: string,
     attachments: PlanItemAttachment[],
   ) => {
+    const item = items.find((i) => i.id === id);
+    if (item && isSprintLocked(closedSprints, item.sprint)) {
+      setError(sprintLockedMessage(item.sprint));
+      return;
+    }
     const next = items.map((i) => (i.id === id ? { ...i, attachments } : i));
     await persistPlan(next, retro);
   };
@@ -602,6 +1188,10 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
     card: BoardCard,
     partner: "tina" | "evelyn",
   ) => {
+    if (isSprintLocked(closedSprints, card.sprint)) {
+      setError(sprintLockedMessage(card.sprint));
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -636,12 +1226,28 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
   };
 
   const cardAssigneeValue = (card: BoardCard): string => {
+    const sprint = cardSprintValue(card);
+    // Backlog never keeps a person — drafts cannot override this.
+    if (isBacklogSprint(sprint)) {
+      return card.source === "test" ? "" : UNASSIGNED_OWNER;
+    }
     const draft = drafts[card.key]?.assignee;
     if (draft !== undefined) return draft;
     if (card.source === "test") {
       return testAssignees[card.sourceId] || TEST_DEFAULT_ASSIGNEES[card.sourceId] || "";
     }
     return card.owner;
+  };
+
+  /** Tasks: assignBy · Tests: assignedBy. Empty for plan cards. */
+  const cardAssignByValue = (card: BoardCard): string => {
+    if (card.source === "plan") return "";
+    const draft = drafts[card.key]?.assignBy;
+    if (draft !== undefined) return draft;
+    if (card.source === "task") {
+      return tasks.find((t) => t.id === card.sourceId)?.assignBy?.trim() || "";
+    }
+    return testAssignedBy[card.sourceId]?.trim() || SYSTEM_ASSIGNED_BY;
   };
 
   const cardStatusValue = (card: BoardCard): string => {
@@ -675,7 +1281,9 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
       d.assignee !== undefined ||
       d.status !== undefined ||
       d.sprint !== undefined ||
-      d.note !== undefined
+      d.note !== undefined ||
+      d.dueDate !== undefined ||
+      d.assignBy !== undefined
     );
   };
 
@@ -686,13 +1294,20 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
     }));
   };
 
-  /** Stage a field change and persist to D1 immediately so everyone's edits stick. */
-  const patchDraftAndSave = (card: BoardCard, patch: CardDraft) => {
+  /** Stage a field change as a dirty draft — persists only on Save / Save all. */
+  const stageCardDraft = (card: BoardCard, patch: CardDraft) => {
+    const nextPatch: CardDraft = { ...patch };
+    if (
+      nextPatch.sprint !== undefined &&
+      isBacklogSprint(nextPatch.sprint) &&
+      nextPatch.assignee === undefined
+    ) {
+      nextPatch.assignee = card.source === "test" ? "" : UNASSIGNED_OWNER;
+    }
     setDrafts((prev) => ({
       ...prev,
-      [card.key]: { ...prev[card.key], ...patch },
+      [card.key]: { ...prev[card.key], ...nextPatch },
     }));
-    void saveCard(card, patch);
   };
 
   const clearDraft = (key: string) => {
@@ -706,13 +1321,87 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
 
   const dirtyCount = Object.keys(drafts).length;
 
+  const filtersAreAll =
+    sourceFilter === "all" &&
+    ownerFilter === "all" &&
+    sprintStatusFilters.size === 0 &&
+    workStatusFilters.size === 0 &&
+    testStatusFilters.size === 0;
+
+  const bulkStagingActive = Boolean(
+    bulkAssignee ||
+      bulkAssignBy ||
+      bulkSprint !== "" ||
+      bulkStatus ||
+      bulkDueDate ||
+      bulkDescription.trim(),
+  );
+
+  /** Discard unsaved card edits / bulk staging and set all filters to All — no server fetch. */
+  const resetDrafts = () => {
+    const hadDrafts = dirtyCount > 0 || Boolean(newTitle.trim()) || bulkStagingActive;
+    if (!hadDrafts && filtersAreAll) return;
+    if (hadDrafts) {
+      setDrafts({});
+      setNewTitle("");
+      setBulkAssignee("");
+      setBulkAssignBy("");
+      setBulkSprint("");
+      setBulkStatus("");
+      setBulkDueDate("");
+      setBulkDescription("");
+    }
+    setSourceFilter("all");
+    setOwnerFilter("all");
+    setSprintStatusFilters(new Set());
+    setWorkStatusFilters(new Set());
+    setTestStatusFilters(new Set());
+    setSaveFlash(
+      hadDrafts
+        ? "Reset — unsaved edits discarded; filters set to All"
+        : "Reset — filters set to All",
+    );
+    window.setTimeout(() => setSaveFlash(""), 2000);
+  };
+
+  const maybeStartCardTimer = async (card: BoardCard) => {
+    if (card.source !== "test" && card.source !== "task") return;
+    if (!authUser) return;
+    const terminal =
+      card.source === "test"
+        ? ["pass", "fail", "blocked"].includes(cardStatusValue(card))
+        : cardStatusValue(card) === "done";
+    if (terminal) return;
+    const source = card.source;
+    const existing = timers.entryFor(source, card.sourceId);
+    if (existing?.status === "running" || existing?.status === "paused") return;
+    const lockKey = `${source}:${card.sourceId}`;
+    if (startingTimersRef.current.has(lockKey)) return;
+    startingTimersRef.current.add(lockKey);
+    try {
+      await ensureWorkTimerStarted({
+        source,
+        sourceId: card.sourceId,
+        sourceLabel: card.title,
+      });
+      void timers.refresh();
+    } finally {
+      startingTimersRef.current.delete(lockKey);
+    }
+  };
+
   const toggleSelectCard = (key: string) => {
+    const selecting = !selectedKeys.has(key);
     setSelectedKeys((prev) => {
       const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
+      if (selecting) next.add(key);
+      else next.delete(key);
       return next;
     });
+    if (selecting) {
+      const card = visibleCards.find((c) => c.key === key);
+      if (card) void maybeStartCardTimer(card);
+    }
   };
 
   const toggleSelectAllVisible = () => {
@@ -728,15 +1417,28 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
     const draft = { ...(drafts[card.key] ?? {}), ...(draftOverride ?? {}) };
     const status = draft.status !== undefined ? draft.status : cardStatusValue(card);
     const sprint = draft.sprint !== undefined ? draft.sprint : cardSprintValue(card);
+    if (isSprintLocked(closedSprints, card.sprint) || isSprintLocked(closedSprints, sprint)) {
+      setError(
+        sprintLockedMessage(
+          isSprintLocked(closedSprints, card.sprint) ? card.sprint : sprint,
+        ),
+      );
+      return false;
+    }
     const note = draft.note !== undefined ? draft.note : cardNoteValue(card);
     const requestedAssignee =
       draft.assignee !== undefined ? draft.assignee : cardAssigneeValue(card);
-    // Automated suite owners stay locked — never overwrite with a human tester.
-    const assignee =
-      card.source === "test" && isAutomatedTestId(card.sourceId)
+    // Automated suite owners stay locked in committed sprints — backlog clears person/suite display owners.
+    let assignee =
+      card.source === "test" &&
+      isAutomatedTestId(card.sourceId) &&
+      !isBacklogSprint(sprint)
         ? TEST_DEFAULT_ASSIGNEES[card.sourceId] ||
           (card.sourceId.startsWith("PW-") ? "playwright" : "vitest")
         : requestedAssignee;
+    if (isBacklogSprint(sprint)) {
+      assignee = assigneeForBacklogSprint(sprint, card.source === "test" ? "test" : card.source === "plan" ? "plan" : "task", assignee);
+    }
 
     setBusy(true);
     setError("");
@@ -744,24 +1446,38 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
       if (card.source === "plan") {
         const item = items.find((i) => i.id === card.sourceId);
         if (!item) return false;
-        if (item.owner === "Both" || assignee === "Both") {
+        if (requiresPartnerDone(assignee) || requiresPartnerDone(item.owner)) {
           const tinaDone = item.tinaDone;
           const evelynDone = item.evelynDone;
-          if (status === "done" && !(tinaDone && evelynDone) && item.owner === "Both") {
+          if (status === "done" && !(tinaDone && evelynDone) && requiresPartnerDone(item.owner)) {
             setError("Both T + E must mark Done before this plan item can be Done.");
             return false;
           }
         }
+        const dueFromDraft =
+          draft.dueDate !== undefined ? parseMMDDYY(draft.dueDate) : null;
         const sw = sprint === BACKLOG_SPRINT ? null : getSprintWindow(sprint);
         const next = items.map((i) =>
           i.id === card.sourceId
             ? applyPlanPartnerDone(
                 {
                   ...i,
-                  owner: assignee as PlanOwner,
-                  sprint,
-                  dateLabel: sw ? sw.label : "Backlog",
-                  date: sw ? sw.start.toISOString().slice(0, 10) : "",
+                  ...withBacklogPlanUnassigned(
+                    {
+                      owner: assignee as PlanOwner,
+                      sprint,
+                    },
+                    item.sprint,
+                  ),
+                  ...(dueFromDraft
+                    ? {
+                        date: mmddyyToIso(draft.dueDate!),
+                        dateLabel: formatDisplayDate(dueFromDraft),
+                      }
+                    : {
+                        dateLabel: sw ? sw.label : "Backlog",
+                        date: sw ? sw.start.toISOString().slice(0, 10) : "",
+                      }),
                 },
                 { status: status as PlanItemStatus },
               )
@@ -772,18 +1488,48 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
         const task = tasks.find((t) => t.id === card.sourceId);
         if (!task) return false;
         if (
-          (assignee === "Both" || task.assignedTo === "Both") &&
+          (requiresPartnerDone(assignee) || requiresPartnerDone(task.assignedTo)) &&
           status === "done" &&
           !(task.tinaDone && task.evelynDone) &&
-          (assignee === "Both" || task.assignedTo === "Both")
+          requiresPartnerDone(task.assignedTo)
         ) {
           setError("Both T + E must mark Done before this task can be Done.");
           return false;
         }
+        const sprintChanged = draft.sprint !== undefined && draft.sprint !== card.sprint;
+        const resolvedAssignee = assigneeForBacklogSprint(
+          sprint,
+          "task",
+          assignee,
+        ) as GyshTask["assignedTo"];
+        const assigneeChanged = task.assignedTo !== resolvedAssignee;
+        const taskPatch = withBacklogTaskUnassigned(
+          withSprintDueDate({
+            assignedTo: resolvedAssignee,
+            sprint,
+            ...(draft.assignBy !== undefined
+              ? { assignBy: draft.assignBy }
+              : assigneeChanged
+                ? { assignBy: actingAssignBy }
+                : {}),
+          }),
+          task.sprint,
+        );
+        const nextDue =
+          draft.dueDate !== undefined
+            ? draft.dueDate
+            : sprintChanged
+              ? dueDateForSprint(sprint) || task.dueDate
+              : task.dueDate;
         const next = tasks.map((t) =>
           t.id === card.sourceId
             ? applyPartnerDone(
-                { ...t, assignedTo: assignee as GyshTask["assignedTo"], sprint },
+                {
+                  ...t,
+                  ...taskPatch,
+                  dueDate: nextDue,
+                  ...(draft.note !== undefined ? { notes: draft.note } : {}),
+                },
                 { status: status as TaskStatus },
               )
             : t,
@@ -791,19 +1537,52 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
         setTasks(await persistTasks(next));
       } else {
         const st = status as TestStatus;
+        if (st === "blocked" && !canBlockTests && (testStatuses[card.sourceId] ?? "not_run") !== "blocked") {
+          setError("Only Evelyn may set a test to Blocked.");
+          return false;
+        }
         if (statusRequiresNote(st) && !noteMeetsRequirement(note)) {
           setError(
             `Add a short note on the card (or in Testing Portal) before marking ${TEST_STATUS_LABELS[st]}.`,
           );
           return false;
         }
-        const data = await saveTestStatus(card.sourceId, st, note.trim(), assignee, sprint);
+        const sprintChanged = draft.sprint !== undefined && draft.sprint !== card.sprint;
+        const dueDate =
+          draft.dueDate !== undefined
+            ? draft.dueDate
+            : sprintChanged
+              ? dueDateForSprint(sprint)
+              : (testDueDates[card.sourceId] ?? dueDateForSprint(sprint));
+        const resolvedAssignee = assigneeForBacklogSprint(sprint, "test", assignee);
+        const prevAssignee = testAssignees[card.sourceId] || "";
+        const assigneeChanged =
+          String(resolvedAssignee || "").trim() !== String(prevAssignee || "").trim();
+        const data = await saveTestStatus(card.sourceId, st, note.trim(), resolvedAssignee, sprint, {
+          dueDate,
+          ...(draft.assignBy !== undefined
+            ? { assignedBy: draft.assignBy }
+            : assigneeChanged
+              ? { assignedBy: actingAssignBy, dateAssigned: assignmentToday() }
+              : {}),
+        });
         setTestStatuses(data.statuses);
         setTestNotes(data.notes);
-        setTestAssignees({ ...testAssignees, ...data.assignees, [card.sourceId]: assignee });
+        setTestAssignees({ ...testAssignees, ...data.assignees, [card.sourceId]: resolvedAssignee });
         setTestSprints({ ...testSprints, ...data.sprints, [card.sourceId]: sprint });
+        setTestDueDates({ ...testDueDates, ...data.dueDates, [card.sourceId]: dueDate });
+        setTestAssignedBy((prev) => ({ ...prev, ...(data.assignedBy ?? {}) }));
+        applyTestAudit(data);
       }
       clearDraft(card.key);
+      if (
+        (card.source === "test" || card.source === "task") &&
+        draft.status !== undefined &&
+        draft.status !== card.status
+      ) {
+        await stopTimerOnStatusChange(card.source, card.sourceId);
+        void timers.refresh();
+      }
       setSaveFlash(`Saved ${card.sourceId}`);
       window.setTimeout(() => setSaveFlash(""), 2000);
       return true;
@@ -823,7 +1602,9 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
         (d.assignee !== undefined ||
           d.status !== undefined ||
           d.sprint !== undefined ||
-          d.note !== undefined)
+          d.note !== undefined ||
+          d.dueDate !== undefined ||
+          d.assignBy !== undefined)
       );
     });
     if (dirtyCards.length === 0) {
@@ -847,16 +1628,37 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
         note?: string;
         assignee?: string;
         sprint?: number;
+        dueDate?: string;
+        assignedBy?: string;
+        dateAssigned?: string;
       }> = [];
+      let nextDueDates = { ...testDueDates };
+      let nextAssignedBy = { ...testAssignedBy };
 
       for (const card of dirtyCards) {
         const draft = draftMap[card.key] ?? {};
-        const assignee =
+        const sprint = draft.sprint !== undefined ? draft.sprint : card.sprint;
+        if (isSprintLocked(closedSprints, card.sprint) || isSprintLocked(closedSprints, sprint)) {
+          throw new ApiError(
+            sprintLockedMessage(
+              isSprintLocked(closedSprints, card.sprint) ? card.sprint : sprint,
+            ),
+            403,
+          );
+        }
+        let assignee =
           draft.assignee !== undefined
             ? draft.assignee
             : card.source === "test"
               ? testAssignees[card.sourceId] || TEST_DEFAULT_ASSIGNEES[card.sourceId] || ""
               : card.owner;
+        if (isBacklogSprint(sprint)) {
+          assignee = assigneeForBacklogSprint(
+            sprint,
+            card.source === "test" ? "test" : card.source === "plan" ? "plan" : "task",
+            assignee,
+          );
+        }
         const status =
           draft.status !== undefined
             ? draft.status
@@ -871,21 +1673,36 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                       ? "done"
                       : "in_progress"
                 : card.status;
-        const sprint = draft.sprint !== undefined ? draft.sprint : card.sprint;
         const note =
           draft.note !== undefined ? draft.note : (testNotes[card.sourceId] ?? "");
+        const sprintChanged = draft.sprint !== undefined && draft.sprint !== card.sprint;
 
         if (card.source === "plan") {
+          const dueFromDraft =
+            draft.dueDate !== undefined ? parseMMDDYY(draft.dueDate) : null;
           const sw = sprint === BACKLOG_SPRINT ? null : getSprintWindow(sprint);
           nextItems = nextItems.map((i) =>
             i.id === card.sourceId
               ? applyPlanPartnerDone(
                   {
                     ...i,
-                    owner: assignee as PlanOwner,
-                    sprint,
-                    dateLabel: sw ? sw.label : "Backlog",
-                    date: sw ? sw.start.toISOString().slice(0, 10) : "",
+                    ...withBacklogPlanUnassigned(
+                      {
+                        owner: assignee as PlanOwner,
+                        sprint,
+                      },
+                      items.find((x) => x.id === card.sourceId)?.sprint,
+                    ),
+                    ...(dueFromDraft
+                      ? {
+                          date: mmddyyToIso(draft.dueDate!),
+                          dateLabel: formatDisplayDate(dueFromDraft),
+                        }
+                      : {
+                          dateLabel: sw ? sw.label : "Backlog",
+                          date: sw ? sw.start.toISOString().slice(0, 10) : "",
+                        }),
+                    ...(draft.note !== undefined ? { notes: draft.note } : {}),
                   },
                   { status: status as PlanItemStatus },
                 )
@@ -893,10 +1710,38 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
           );
           planChanged = true;
         } else if (card.source === "task") {
+          const prevTask = nextTasks.find((t) => t.id === card.sourceId);
+          const resolvedAssignee = assigneeForBacklogSprint(
+            sprint,
+            "task",
+            assignee,
+          ) as GyshTask["assignedTo"];
+          const assigneeChanged = prevTask ? prevTask.assignedTo !== resolvedAssignee : true;
           nextTasks = nextTasks.map((t) =>
             t.id === card.sourceId
               ? applyPartnerDone(
-                  { ...t, assignedTo: assignee as GyshTask["assignedTo"], sprint },
+                  {
+                    ...t,
+                    ...withBacklogTaskUnassigned(
+                      {
+                        assignedTo: resolvedAssignee,
+                        sprint,
+                        ...(draft.assignBy !== undefined
+                          ? { assignBy: draft.assignBy }
+                          : assigneeChanged
+                            ? { assignBy: actingAssignBy }
+                            : {}),
+                      },
+                      prevTask?.sprint,
+                    ),
+                    dueDate:
+                      draft.dueDate !== undefined
+                        ? draft.dueDate
+                        : sprintChanged
+                          ? dueDateForSprint(sprint) || t.dueDate
+                          : t.dueDate,
+                    ...(draft.note !== undefined ? { notes: draft.note } : {}),
+                  },
                   { status: status as TaskStatus },
                 )
               : t,
@@ -911,15 +1756,37 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
             setBusy(false);
             return;
           }
+          const dueDate =
+            draft.dueDate !== undefined
+              ? draft.dueDate
+              : sprintChanged
+                ? dueDateForSprint(sprint)
+                : (testDueDates[card.sourceId] ?? dueDateForSprint(sprint));
+          const resolvedAssignee = assigneeForBacklogSprint(sprint, "test", assignee);
+          const prevAssignee = testAssignees[card.sourceId] || nextAssignees[card.sourceId] || "";
+          const assigneeChanged =
+            String(resolvedAssignee || "").trim() !== String(prevAssignee || "").trim();
+          const assignorPatch =
+            draft.assignBy !== undefined
+              ? { assignedBy: draft.assignBy }
+              : assigneeChanged
+                ? { assignedBy: actingAssignBy, dateAssigned: assignmentToday() }
+                : {};
           testBatch.push({
             caseId: card.sourceId,
             status: st,
             note: note.trim(),
-            assignee,
+            assignee: resolvedAssignee,
             sprint,
+            dueDate,
+            ...assignorPatch,
           });
-          nextAssignees[card.sourceId] = assignee;
+          nextAssignees[card.sourceId] = resolvedAssignee;
           nextSprints[card.sourceId] = sprint;
+          nextDueDates[card.sourceId] = dueDate;
+          if (assignorPatch.assignedBy !== undefined) {
+            nextAssignedBy[card.sourceId] = assignorPatch.assignedBy;
+          }
         }
       }
 
@@ -931,6 +1798,9 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
         setTestNotes(data.notes);
         setTestAssignees({ ...nextAssignees, ...data.assignees });
         setTestSprints({ ...nextSprints, ...data.sprints });
+        setTestDueDates({ ...nextDueDates, ...data.dueDates });
+        setTestAssignedBy({ ...nextAssignedBy, ...(data.assignedBy ?? {}) });
+        applyTestAudit(data);
       }
 
       setDrafts((prev) => {
@@ -956,33 +1826,95 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
       setError("Select one or more cards first.");
       return;
     }
-    if (!bulkAssignee && bulkSprint === "" && !bulkStatus) {
-      setError("Choose a bulk Assignee, Sprint, and/or Status.");
+    const desc = bulkDescription.trim();
+    const dueNormalized = bulkDueDate ? isoToMmddyy(bulkDueDate) : "";
+    if (bulkDueDate && (dueNormalized === null || dueNormalized === "")) {
+      setError("Pick a valid due date from the calendar.");
+      return;
+    }
+    if (
+      !bulkAssignee &&
+      !bulkAssignBy &&
+      bulkSprint === "" &&
+      !bulkStatus &&
+      !desc &&
+      !dueNormalized
+    ) {
+      setError("Choose a bulk Assignee, Assigned By, Sprint, Status, Due, and/or Description.");
+      return;
+    }
+    if (bulkSprint !== "" && isSprintLocked(closedSprints, Number(bulkSprint))) {
+      setError(sprintLockedMessage(Number(bulkSprint)));
       return;
     }
 
     const nextDrafts: Record<string, CardDraft> = { ...drafts };
     let changed = 0;
+    let skippedLocked = 0;
     for (const card of boardCards) {
       if (!selectedKeys.has(card.key)) continue;
+      if (isSprintLocked(closedSprints, card.sprint)) {
+        skippedLocked += 1;
+        continue;
+      }
       const mapped: CardDraft = { ...nextDrafts[card.key] };
-      if (bulkSprint !== "") mapped.sprint = Number(bulkSprint);
-      if (bulkAssignee) {
+      if (bulkSprint !== "") {
+        mapped.sprint = Number(bulkSprint);
+      }
+      const resultingSprint =
+        mapped.sprint !== undefined ? mapped.sprint : card.sprint;
+      if (bulkAssignee && !isBacklogSprint(resultingSprint)) {
         const a = bulkAssigneeForSource(card.source, bulkAssignee);
-        if (a) mapped.assignee = a;
+        // Empty string is valid for clearing test assignees (Unassigned).
+        if (a !== null) mapped.assignee = a;
+      }
+      // Backlog always wins — never store a person on backlog cards.
+      if (isBacklogSprint(resultingSprint)) {
+        mapped.assignee = card.source === "test" ? "" : UNASSIGNED_OWNER;
+      }
+      if (bulkAssignBy && (card.source === "task" || card.source === "test")) {
+        mapped.assignBy = bulkAssignBy;
       }
       if (bulkStatus) {
-        const s = mapBulkStatusToSource(card.source, bulkStatus);
-        if (s) mapped.status = s;
+        const blockTestsDenied =
+          bulkStatus === "blocked" &&
+          card.source === "test" &&
+          !canBlockTests &&
+          (testStatuses[card.sourceId] ?? "not_run") !== "blocked";
+        if (blockTestsDenied) {
+          setError("Only Evelyn may set a test to Blocked. Task Blocked still applies.");
+        } else {
+          const s = mapBulkStatusToSource(card.source, bulkStatus);
+          if (s) mapped.status = s;
+        }
+      }
+      if (dueNormalized) {
+        mapped.dueDate = dueNormalized;
+      }
+      if (desc && (card.source === "test" || card.source === "plan" || card.source === "task")) {
+        mapped.note = desc;
       }
       nextDrafts[card.key] = mapped;
       changed += 1;
     }
     setDrafts(nextDrafts);
-    setError("");
+    if (changed === 0 && skippedLocked > 0) {
+      setError(
+        `Selected cards are in a closed/locked sprint — no bulk edits applied (${skippedLocked} locked).`,
+      );
+      return;
+    }
+    setError(
+      skippedLocked > 0
+        ? `Skipped ${skippedLocked} locked-sprint card(s). Staged ${changed}.`
+        : "",
+    );
 
     if (andSave) {
-      void persistDraftMap(nextDrafts);
+      void persistDraftMap(nextDrafts).then(() => {
+        setBulkDescription("");
+        setBulkDueDate("");
+      });
     } else {
       setSaveFlash(`Bulk edits staged on ${changed} card(s) — click Save or Save all`);
       window.setTimeout(() => setSaveFlash(""), 2500);
@@ -990,14 +1922,21 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
   };
 
   const addBacklogItem = async () => {
-    if (!newTitle.trim()) return;
+    if (!newTitle.trim() || activeSprint === "all") return;
+    const sprint = activeSprint === "backlog" ? BACKLOG_SPRINT : activeSprint;
+    if (isSprintLocked(closedSprints, sprint)) {
+      setError(sprintLockedMessage(Number(sprint)));
+      return;
+    }
     const item: PlanItem = {
       id: newPlanItemId(),
       title: newTitle.trim(),
       notes: "",
-      owner: newOwner,
+      owner: (isBacklogSprint(sprint)
+        ? UNASSIGNED_OWNER
+        : newOwner) as PlanOwner,
       kind: "rollout",
-      sprint: activeSprint === "backlog" ? BACKLOG_SPRINT : activeSprint,
+      sprint,
       status: "todo",
       date: "",
       dateLabel: activeSprint === "backlog" ? "Backlog" : sprintLabel(activeSprint),
@@ -1006,87 +1945,173 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
     await persistPlan([item, ...items], retro);
   };
 
-  const carryIncomplete = async () => {
-    if (activeSprint === "backlog") return;
-    const nextSprint = activeSprint + 1;
-    const nextPlan = items.map((i) => {
-      if (i.sprint !== activeSprint || i.status === "done") return i;
-      return { ...i, sprint: nextSprint, status: "carried" as PlanItemStatus, dateLabel: sprintLabel(nextSprint) };
+  const endingSprintIndex =
+    endSprintTarget !== null
+      ? endSprintTarget
+      : isSprintIndex(activeSprint)
+        ? activeSprint
+        : null;
+  const incompleteEndSprintWork = useMemo(() => {
+    if (endingSprintIndex === null) return { tasks: [], tests: [] };
+    return listIncompleteSprintWork({
+      sprintIndex: endingSprintIndex,
+      tasks,
+      tests: ALL_TESTS,
+      testStatuses,
+      testSprints,
+      testAssignees,
     });
-    const nextTasks = tasks.map((t) => {
-      if (t.sprint !== activeSprint || t.status === "done") return t;
-      return { ...t, sprint: nextSprint, status: t.status === "not_started" ? "in_progress" : t.status };
-    });
+  }, [endingSprintIndex, tasks, testStatuses, testSprints, testAssignees]);
+
+  const openEndSprint = (sprintIndex: number) => {
+    if (isSprintLocked(closedSprints, sprintIndex)) {
+      setError(sprintLockedMessage(sprintIndex));
+      return;
+    }
+    setActiveSprint(sprintIndex);
+    setEndSprintTarget(sprintIndex);
+    setEndSprintOpen(true);
+  };
+
+  const confirmReopenSprint = async (sprintIndex: number) => {
+    if (!isSprintLocked(closedSprints, sprintIndex)) return;
     setBusy(true);
+    setError("");
     try {
-      await persistPlan(nextPlan, retro);
-      setTasks(await persistTasks(nextTasks));
-      // Move incomplete tests in this sprint forward (best-effort for rows we can write)
-      for (const t of ALL_TESTS) {
-        const sprint = testSprints[t.id] ?? testToBoardCard(t, testStatuses[t.id], undefined).sprint;
-        const st = testStatuses[t.id] ?? "not_run";
-        if (sprint !== activeSprint || st === "pass") continue;
-        try {
-          const data = await saveTestStatus(
-            t.id,
-            st === "not_run" ? "in_progress" : st,
-            testNotes[t.id] ?? "",
-            testAssignees[t.id] || TEST_DEFAULT_ASSIGNEES[t.id] || "",
-            nextSprint,
-          );
-          setTestSprints((prev) => ({ ...prev, ...data.sprints, [t.id]: nextSprint }));
-          setTestStatuses(data.statuses);
-        } catch {
-          setTestSprints((prev) => ({ ...prev, [t.id]: nextSprint }));
-        }
-      }
-      setActiveSprint(nextSprint);
+      const closedList = await reopenSprint(sprintIndex);
+      setClosedSprints(new Set(closedList));
+      setSaveFlash(`${sprintLabel(sprintIndex)} re-opened.`);
+      window.setTimeout(() => setSaveFlash(""), 3500);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Carry-over failed.");
+      setError(e instanceof ApiError ? e.message : "Re-open sprint failed.");
     } finally {
       setBusy(false);
     }
   };
 
-  /** Commit the full implementation schedule: backlog → themed sprints. */
-  const applySprintSchedule = async () => {
+  /** Apply End Sprint choices: rollover → next sprint, complete → done/pass. Also carries open plan items. */
+  const confirmEndSprint = async (actions: Record<string, EndSprintAction>) => {
+    if (endingSprintIndex === null) return;
+    if (isSprintLocked(closedSprints, endingSprintIndex)) {
+      setError(sprintLockedMessage(endingSprintIndex));
+      setEndSprintOpen(false);
+      setEndSprintTarget(null);
+      return;
+    }
+    const sprint = endingSprintIndex;
+    const nextSprint = sprint + 1;
+    const nextDue = dueDateForSprint(nextSprint);
+
     setBusy(true);
     setError("");
     try {
-      const planNext = commitPlanSprintPlan(items);
-      const taskNext = commitTaskSprintPlan(tasks);
-      const testNext = commitTestSprintPlan(ALL_TESTS, testSprints);
-
-      if (planNext.changed) {
-        await persistPlan(planNext.items, retro);
+      // Plan milestones: always roll incomplete forward (not in the task/test modal).
+      const incompletePlan = listIncompletePlanItems(items, sprint);
+      let nextPlan = items;
+      if (incompletePlan.length > 0) {
+        nextPlan = items.map((i) => {
+          if (i.sprint !== sprint || i.status === "done") return i;
+          return {
+            ...i,
+            sprint: nextSprint,
+            status: "carried" as PlanItemStatus,
+            dateLabel: sprintLabel(nextSprint),
+          };
+        });
+        await persistPlan(nextPlan, retro);
       }
-      if (taskNext.changed) {
-        setTasks(await persistTasks(taskNext.tasks));
-      }
-      setTestSprints(testNext.sprints);
 
-      // Persist sprint for every changed test — including not_run (Lyriq owns hundreds of wizard cases).
-      // Batch write so the board stays usable (sequential PUTs used to lock status selects for minutes).
-      if (testNext.changedIds.length > 0) {
-        const data = await saveTestStatusesBatch(
-          testNext.changedIds.map((id) => {
-            const st = testStatuses[id] ?? "not_run";
-            return {
-              caseId: id,
-              status: st,
-              note: testNotes[id] ?? "",
-              assignee: testAssignees[id] || TEST_DEFAULT_ASSIGNEES[id] || "",
-              sprint: testNext.sprints[id]!,
-            };
-          }),
-        );
+      let tasksChanged = false;
+      const nextTasks = tasks.map((t) => {
+        if (Number(t.sprint) !== sprint || t.status === "done") return t;
+        tasksChanged = true;
+        const action = actions[`task:${t.id}`] ?? "rollover";
+        if (action === "complete") {
+          return applyPartnerDone(t, {
+            status: "done",
+            ...(requiresPartnerDone(t.assignedTo)
+              ? { tinaDone: true, evelynDone: true }
+              : {}),
+          });
+        }
+        return {
+          ...t,
+          ...withSprintDueDate({ sprint: nextSprint }),
+          status: t.status === "not_started" ? "in_progress" : t.status,
+        };
+      });
+      if (tasksChanged) {
+        setTasks(await persistTasks(nextTasks));
+      }
+
+      const testBatch: Array<{
+        caseId: string;
+        status: TestStatus;
+        note?: string;
+        assignee?: string;
+        sprint?: number;
+        dueDate?: string;
+        checkedSteps?: boolean[];
+        stepCount?: number;
+      }> = [];
+      for (const t of ALL_TESTS) {
+        const rowSprint = Number(testSprints[t.id]);
+        if (rowSprint !== sprint) continue;
+        const st = testStatuses[t.id] ?? "not_run";
+        if (st === "pass") continue;
+        const action = actions[`test:${t.id}`] ?? "rollover";
+        const assignee = testAssignees[t.id] || TEST_DEFAULT_ASSIGNEES[t.id] || "";
+        const note = testNotes[t.id] ?? "";
+        if (action === "complete") {
+          const stepCount = Array.isArray(t.steps) ? t.steps.length : 0;
+          testBatch.push({
+            caseId: t.id,
+            status: "pass",
+            note: note.trim() || "Completed at sprint end",
+            assignee,
+            sprint,
+            dueDate: testDueDates[t.id],
+            ...(stepCount > 0
+              ? { stepCount, checkedSteps: Array.from({ length: stepCount }, () => true) }
+              : {}),
+          });
+        } else {
+          testBatch.push({
+            caseId: t.id,
+            status: st === "not_run" ? "in_progress" : st,
+            note,
+            assignee,
+            sprint: nextSprint,
+            dueDate: nextDue || testDueDates[t.id],
+          });
+        }
+      }
+      if (testBatch.length > 0) {
+        const data = await saveTestStatusesBatch(testBatch);
         setTestStatuses(data.statuses);
         setTestNotes(data.notes);
-        setTestAssignees((prev) => ({ ...prev, ...data.assignees }));
-        setTestSprints((prev) => ({ ...prev, ...data.sprints }));
+        setTestAssignees(data.assignees);
+        setTestSprints(data.sprints);
+        setTestDueDates(data.dueDates);
+        setTestAssignedBy(data.assignedBy);
+        applyTestAudit(data);
       }
+
+      // Persist closed/locked state after unfinished work has been moved or completed.
+      const closedList = await closeSprint(sprint);
+      setClosedSprints(new Set(closedList));
+
+      setDrafts({});
+      setSelectedKeys(new Set());
+      setEndSprintOpen(false);
+      setEndSprintTarget(null);
+      setActiveSprint(nextSprint);
+      setSaveFlash(
+        `${sprintLabel(sprint)} closed & locked → ${sprintLabel(nextSprint)}. Open items rolled or completed.`,
+      );
+      window.setTimeout(() => setSaveFlash(""), 3500);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Could not apply sprint schedule.");
+      setError(e instanceof ApiError ? e.message : "End sprint failed.");
     } finally {
       setBusy(false);
     }
@@ -1094,7 +2119,11 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
 
   const addRetroCard = async (column: RetroColumn) => {
     const text = retroDraft[column].trim();
-    if (!text || activeSprint === "backlog") return;
+    if (!text || !isSprintIndex(activeSprint)) return;
+    if (isSprintLocked(closedSprints, activeSprint)) {
+      setError(sprintLockedMessage(activeSprint));
+      return;
+    }
     const card: RetroCard = {
       id: newRetroCardId(),
       sprint: activeSprint,
@@ -1107,44 +2136,93 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
   };
 
   const removeRetroCard = async (id: string) => {
+    const existing = retro.find((c) => c.id === id);
+    if (existing && isSprintLocked(closedSprints, existing.sprint)) {
+      setError(sprintLockedMessage(existing.sprint));
+      return;
+    }
     await persistPlan(
       items,
       retro.filter((c) => c.id !== id),
     );
   };
 
-  const retroForSprint =
-    activeSprint === "backlog" ? [] : retro.filter((c) => c.sprint === activeSprint);
+  const retroForSprint = isSprintIndex(activeSprint)
+    ? retro.filter((c) => c.sprint === activeSprint)
+    : [];
 
-  const backlogCount = cardsInSprint(BACKLOG_SPRINT).length;
-  const activeTheme =
-    activeSprint === "backlog" ? undefined : themeForSprint(activeSprint);
+  const backlogCards = cardsInSprint(BACKLOG_SPRINT);
+  const backlogBySource = countBySource(backlogCards);
+  const allSprintCards = boardCards.filter((c) => !isBacklogSprint(c.sprint));
+  const allSprintBySource = countBySource(allSprintCards);
+  const backlogFilterCards = boardCards.filter(
+    (c) => matchesSourceFilter(c.source, sourceFilter) && c.sprint === BACKLOG_SPRINT,
+  );
+  const backlogFilterBySource = countBySource(backlogFilterCards);
+  const activeTheme = isSprintIndex(activeSprint)
+    ? themeForSprint(activeSprint)
+    : undefined;
   const activeSprintCards =
-    activeSprint === "backlog" ? [] : cardsInSprint(activeSprint);
-  const overallDone = activeSprintCards.filter(isDone).length;
+    activeSprint === "backlog"
+      ? []
+      : activeSprint === "all"
+        ? allSprintCards
+        : cardsInSprint(activeSprint);
+  const activeSprintBySource = countBySource(activeSprintCards);
+  const overallDone = activeSprintBySource.workDone;
+  const scopeCards =
+    activeSprint === "backlog" ? backlogFilterCards : sprintScopedCards;
+  const scopeBySource = countBySource(scopeCards);
   const assigneeProgress = [
     { label: "Tina", accent: "#9B2F28" },
     { label: "Evelyn", accent: "#947D64" },
     { label: "Lyriq", accent: "#2e7d32" },
+    { label: "Both", accent: "#181718" },
     { label: "Unassigned", accent: "#7a7064" },
   ].map(({ label, accent }) => {
     const cards = activeSprintCards.filter((card) => {
-      if (label === "Unassigned") return card.owner === "Unassigned";
-      if (label === "Tina" || label === "Evelyn") {
-        return card.owner === label || card.owner === "Both";
+      if (label === "Unassigned") {
+        return card.owner === "Unassigned" || !String(card.owner || "").trim();
+      }
+      if (label === "Both") return requiresPartnerDone(card.owner);
+      if (label === "Tina" || label === "Evelyn" || label === "Lyriq") {
+        return assigneeIncludes(card.owner, label);
       }
       return card.owner === label;
     });
+    const bySource = countBySource(cards);
     return {
       label,
       accent,
-      done: cards.filter(isDone).length,
-      total: cards.length,
+      done: bySource.workDone,
+      total: bySource.workTotal,
+      tasks: bySource.tasks,
+      tests: bySource.tests,
+      tasksDone: bySource.tasksDone,
+      testsDone: bySource.testsDone,
     };
   });
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <BusyOverlay
+        active={busy || loading}
+        message={loading ? "Loading sprint board…" : "Saving schedule…"}
+      />
+      {endingSprintIndex !== null && (
+        <EndSprintModal
+          open={endSprintOpen}
+          sprintIndex={endingSprintIndex}
+          tasks={incompleteEndSprintWork.tasks}
+          tests={incompleteEndSprintWork.tests}
+          busy={busy}
+          onClose={() => {
+            setEndSprintOpen(false);
+            setEndSprintTarget(null);
+          }}
+          onConfirm={(actions) => void confirmEndSprint(actions)}
+        />
+      )}
       <div
         className="glass"
         style={{
@@ -1153,57 +2231,35 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
           background: "linear-gradient(135deg, rgba(215,198,151,0.55), #fff)",
         }}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-          <div>
-            <h2
-              style={{
-                fontSize: "1.5rem",
-                color: "var(--charcoal)",
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-              }}
-            >
-              <CalendarDays size={22} style={{ color: "var(--bronze)" }} /> Schedule &amp;
-              Implementation Plan
-            </h2>
-            <p style={{ color: "var(--text-primary)", fontSize: "1rem", marginTop: 6 }}>
-              Sprint board includes <strong>every task</strong> and <strong>every test</strong> plus
-              plan milestones. Backlog is scheduled into themed sprints (Tue–Mon) via the
-              implementation plan.
+        <div>
+          <h2
+            style={{
+              fontSize: "1.5rem",
+              color: "var(--charcoal)",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <CalendarDays size={22} style={{ color: "var(--bronze)" }} /> Schedule &amp;
+            Implementation Plan
+          </h2>
+          <p style={{ color: "var(--text-primary)", fontSize: "1rem", marginTop: 6 }}>
+            Sprint board shows <strong>tasks</strong> and <strong>tests</strong> only. Backlog is
+            scheduled into themed sprints (Tue–Mon) via the implementation plan.
+          </p>
+          <p style={{ color: "var(--text-primary)", fontSize: "0.9375rem", marginTop: 4 }}>
+            {sprint0.label}: {sprint0.rangeLabel} · Board cards:{" "}
+            {tasks.length + ALL_TESTS.length} (tests {ALL_TESTS.length} · tasks {tasks.length})
+          </p>
+          {activeTheme && (
+            <p style={{ color: "var(--charcoal)", fontSize: "1rem", marginTop: 10, fontWeight: 600 }}>
+              {sprintLabel(activeTheme.index)} · Sprint Goal: {activeTheme.goal}
+              <span style={{ display: "block", fontWeight: 400, color: "var(--text-primary)", fontSize: "0.95rem", marginTop: 2 }}>
+                {activeTheme.theme}
+              </span>
             </p>
-            <p style={{ color: "var(--text-primary)", fontSize: "0.9375rem", marginTop: 4 }}>
-              {sprint0.label}: {sprint0.rangeLabel} · Board cards: {boardCards.length} (plan{" "}
-              {items.length} · tasks {tasks.length} · tests {ALL_TESTS.length})
-            </p>
-            {activeTheme && (
-              <p style={{ color: "var(--charcoal)", fontSize: "1rem", marginTop: 10, fontWeight: 600 }}>
-                {sprintLabel(activeTheme.index)} · {activeTheme.theme}
-                <span style={{ display: "block", fontWeight: 400, color: "var(--text-primary)", fontSize: "0.95rem", marginTop: 2 }}>
-                  {activeTheme.goal}
-                </span>
-              </p>
-            )}
-          </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "start" }}>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => void applySprintSchedule()}
-              disabled={loading || busy}
-              title="Assign items into themed sprints (soft launch by end of Sprint 2)"
-            >
-              Apply sprint schedule
-            </button>
-            <button
-              type="button"
-              className="btn btn-outline"
-              onClick={() => void reload()}
-              disabled={loading || busy}
-            >
-              <RotateCcw size={14} /> Reload
-            </button>
-          </div>
+          )}
         </div>
 
         {error && (
@@ -1244,7 +2300,17 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
         </div>
       </div>
 
-      <SprintStatusBars boardCards={boardCards} />
+      <SprintStatusBars
+        boardCards={boardCards}
+        selectedSprint={activeSprint}
+        onSelectSprint={(selection) => {
+          if (selection === "all") {
+            setActiveSprint("all");
+            return;
+          }
+          setActiveSprint(selection);
+        }}
+      />
 
       <div className="glass" style={{ padding: 16, borderRadius: 14 }}>
         <div
@@ -1258,133 +2324,385 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
         >
           Sprints &amp; backlog
         </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        <div className="schedule-sprint-bubble-grid">
+          <button
+            type="button"
+            className="qa-tester-bubble"
+            data-active={activeSprint === "all" ? "true" : "false"}
+            onClick={() => setActiveSprint("all")}
+            title={`All Sprints · ${allSprintsNumericRange} · every non-backlog sprint · ${formatWorkDoneTotal(allSprintBySource)} · ${formatTQTitle(allSprintBySource)}`}
+          >
+            <span style={{ display: "flex", gap: 6, alignItems: "baseline", flexWrap: "wrap" }}>
+              <strong>All Sprints</strong>
+              <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
+                · {formatWorkDoneTotal(allSprintBySource)}
+              </span>
+            </span>
+            <TQBubbleLines c={allSprintBySource} />
+            <span
+              className="qa-tester-meta"
+              style={{
+                fontSize: "0.8rem",
+                fontWeight: 600,
+                fontVariantNumeric: "tabular-nums",
+                lineHeight: 1.2,
+                opacity: 0.9,
+              }}
+            >
+              {allSprintsNumericRange}
+            </span>
+          </button>
           <button
             type="button"
             className="qa-tester-bubble"
             data-active={activeSprint === "backlog" ? "true" : "false"}
-            onClick={() => setActiveSprint("backlog")}
+            onClick={() => {
+              setOwnerFilter("all");
+              setActiveSprint("backlog");
+            }}
+            title={`Backlog · — · ${formatWorkDoneTotal(backlogBySource)} · ${formatTQTitle(backlogBySource)}`}
           >
-            Backlog
-            <span className="qa-tester-meta">· {backlogCount}</span>
+            <span style={{ display: "flex", gap: 6, alignItems: "baseline", flexWrap: "wrap" }}>
+              <strong>Backlog</strong>
+              <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
+                · {formatWorkDoneTotal(backlogBySource)}
+              </span>
+            </span>
+            <TQBubbleLines c={backlogBySource} />
+            <span
+              className="qa-tester-meta"
+              style={{
+                fontSize: "0.8rem",
+                fontWeight: 600,
+                fontVariantNumeric: "tabular-nums",
+                lineHeight: 1.2,
+                opacity: 0.9,
+              }}
+            >
+              —
+            </span>
           </button>
           {sprints.map((s) => {
             const cards = cardsInSprint(s.index);
-            const done = cards.filter((c) => c.status === "done").length;
+            const bySource = countBySource(cards);
+            const workFace = formatWorkDoneTotal(bySource);
             const theme = themeForSprint(s.index);
+            const goal = theme?.goal;
+            const locked = isSprintLocked(closedSprints, s.index);
+            const showDone = !locked;
+            const showReopen = locked;
             return (
-              <button
+              <div
                 key={s.index}
-                type="button"
-                className="qa-tester-bubble"
-                data-active={activeSprint === s.index ? "true" : "false"}
-                onClick={() => setActiveSprint(s.index)}
-                title={theme ? `${s.rangeLabel} — ${theme.theme}` : s.rangeLabel}
                 style={{
                   display: "flex",
                   flexDirection: "column",
-                  alignItems: "flex-start",
-                  gap: 2,
-                  padding: "8px 12px",
-                  minWidth: 140,
+                  gap: 6,
+                  alignItems: "stretch",
                 }}
               >
-                <span style={{ display: "flex", gap: 6, alignItems: "baseline", flexWrap: "wrap" }}>
-                  <strong>{s.label}</strong>
-                  <span className="qa-tester-meta">
-                    · {done}/{cards.length}
-                  </span>
-                </span>
-                <span
-                  style={{
-                    fontSize: "1rem",
-                    color: "var(--text-primary)",
-                    fontWeight: 500,
-                    lineHeight: 1.25,
-                  }}
+                <button
+                  type="button"
+                  className="qa-tester-bubble"
+                  data-active={activeSprint === s.index ? "true" : "false"}
+                  data-locked={locked ? "true" : "false"}
+                  onClick={() => setActiveSprint(s.index)}
+                  title={
+                    locked
+                      ? `${s.label} · Closed & locked · ${s.numericRangeLabel}`
+                      : theme
+                        ? `${s.label} · Sprint Goal: ${theme.goal} · ${s.numericRangeLabel} — ${theme.theme} · ${workFace} · ${formatTQTitle(bySource)}`
+                        : `${s.label} · ${s.numericRangeLabel} · ${workFace} · ${formatTQTitle(bySource)}`
+                  }
                 >
-                  {s.rangeLabel}
-                </span>
-              </button>
+                  <span style={{ display: "flex", gap: 6, alignItems: "baseline", flexWrap: "wrap" }}>
+                    <strong>{s.label}</strong>
+                    {locked ? (
+                      <span
+                        className="glow-badge"
+                        style={{
+                          fontSize: "0.75rem",
+                          background: "#475569",
+                          color: "#fff",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
+                        }}
+                      >
+                        <Lock size={11} /> Locked
+                      </span>
+                    ) : null}
+                    <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
+                      · {workFace}
+                    </span>
+                  </span>
+                  {goal ? (
+                    <span
+                      className="qa-tester-meta"
+                      style={{
+                        fontSize: "0.88rem",
+                        fontWeight: 700,
+                        lineHeight: 1.25,
+                        color: "inherit",
+                        maxWidth: "100%",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {goal}
+                    </span>
+                  ) : null}
+                  <TQBubbleLines c={bySource} />
+                  <span
+                    className="qa-tester-meta"
+                    style={{
+                      fontSize: "0.8rem",
+                      fontWeight: 600,
+                      fontVariantNumeric: "tabular-nums",
+                      lineHeight: 1.2,
+                      opacity: 0.9,
+                    }}
+                  >
+                    {s.numericRangeLabel}
+                  </span>
+                </button>
+                {showDone ? (
+                  <button
+                    type="button"
+                    className="inline-text-link schedule-sprint-bubble-link"
+                    data-testid={`sprint-bubble-done-${s.index}`}
+                    onClick={() => openEndSprint(s.index)}
+                    disabled={busy}
+                    title={`Done ${s.label} — rollover or complete open work`}
+                  >
+                    Done
+                  </button>
+                ) : null}
+                {showReopen ? (
+                  <button
+                    type="button"
+                    className="inline-text-link schedule-sprint-bubble-link"
+                    data-testid={`sprint-bubble-reopen-${s.index}`}
+                    onClick={() => void confirmReopenSprint(s.index)}
+                    disabled={busy}
+                    title={`Re-open ${s.label} — unlock so items can be edited again`}
+                  >
+                    Re-open
+                  </button>
+                ) : null}
+              </div>
             );
           })}
         </div>
-        {activeSprint !== "backlog" && activeTheme && (
+        {isSprintIndex(activeSprint) && activeTheme && (
           <p style={{ marginTop: 12, fontSize: "0.95rem", color: "var(--text-primary)" }}>
             <strong style={{ color: "var(--charcoal)" }}>
-              {sprintLabel(activeSprint)} · {getSprintWindow(activeSprint).rangeLabel}
+              {sprintLabel(activeSprint)} · Sprint Goal: {activeTheme.goal}
             </strong>
             {" — "}
-            {activeTheme.theme}. {activeTheme.goal}
+            {getSprintWindow(activeSprint).rangeLabel}. {activeTheme.theme}
+            {isSprintLocked(closedSprints, activeSprint) ? (
+              <span style={{ marginLeft: 8, color: "#475569", fontWeight: 700 }}>
+                · Closed & locked — no further modifications
+              </span>
+            ) : null}
+          </p>
+        )}
+        {activeSprint === "all" && (
+          <p style={{ marginTop: 12, fontSize: "0.95rem", color: "var(--text-primary)" }}>
+            <strong style={{ color: "var(--charcoal)" }}>All Sprints</strong>
+            {" — "}
+            Combined view of every sprint-assigned item (Backlog excluded).
           </p>
         )}
       </div>
 
       {activeSprint !== "backlog" && (
-        <div className="glass" style={{ padding: 16, borderRadius: 14 }}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              gap: 12,
-              flexWrap: "wrap",
-              alignItems: "baseline",
-              marginBottom: 14,
-            }}
+        <div className="glass schedule-board-filters" style={{ padding: "10px 12px", borderRadius: 12 }}>
+          <CollapsibleFilterSection
+            title={
+              isSprintIndex(activeSprint)
+                ? `${sprintLabel(activeSprint)} progress`
+                : "All Sprints progress"
+            }
+            hint={`${formatWorkDoneTotal(activeSprintBySource)} · ${
+              isSprintIndex(activeSprint)
+                ? getSprintWindow(activeSprint).rangeLabel
+                : "Every sprint"
+            }`}
+            testId="schedule-assignee-progress"
+            onFilterClick={() => setOwnerFilter("all")}
           >
-            <div>
-              <strong style={{ color: "var(--charcoal)" }}>
-                {sprintLabel(activeSprint)} progress
-              </strong>
-              <span style={{ color: "var(--text-primary)", fontSize: "0.9375rem", marginLeft: 8 }}>
-                Shared “Both” items count toward T + E
-              </span>
+            <p
+              style={{
+                margin: "0 0 6px",
+                color: "var(--text-primary)",
+                fontSize: "0.8125rem",
+              }}
+            >
+              {formatTQTitle(activeSprintBySource)}
+              {" · "}Shared “Both” items count toward Tina + Evelyn
+              {" · "}
+              <span style={{ color: "#7a241f", fontWeight: 650 }}>Click a name to filter</span>
+            </p>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+                gap: 8,
+              }}
+            >
+              <ProgressMeter
+                label={activeSprint === "all" ? "All sprints" : "Overall sprint"}
+                done={overallDone}
+                total={activeSprintBySource.workTotal}
+                accent="#5f7a45"
+                tasks={activeSprintBySource.tasks}
+                tests={activeSprintBySource.tests}
+                tasksDone={activeSprintBySource.tasksDone}
+                testsDone={activeSprintBySource.testsDone}
+                selected={ownerFilter === "all"}
+                onFilterClick={() => setOwnerFilter("all")}
+              />
+              {assigneeProgress.map((row) => {
+                const ownerId = row.label as BoardOwnerFilter;
+                return (
+                  <ProgressMeter
+                    key={row.label}
+                    {...row}
+                    selected={ownerFilter === ownerId}
+                    onFilterClick={() => setOwnerFilter(ownerId)}
+                  />
+                );
+              })}
             </div>
-            <span style={{ color: "var(--text-primary)", fontSize: "0.9375rem" }}>
-              {getSprintWindow(activeSprint).rangeLabel}
-            </span>
-          </div>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-              gap: 16,
-            }}
-          >
-            <ProgressMeter
-              label="Overall sprint"
-              done={overallDone}
-              total={activeSprintCards.length}
-              accent="#5f7a45"
-            />
-            {assigneeProgress.map((row) => (
-              <ProgressMeter key={row.label} {...row} />
-            ))}
-          </div>
+          </CollapsibleFilterSection>
         </div>
       )}
 
       {tab === "board" && (
         <>
-          <div className="glass" style={{ padding: 16, borderRadius: 14 }}>
-            <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-              <div style={{ flex: "1 1 260px", minWidth: 220 }}>
-                <div
+          <div className="glass schedule-board-filters" data-testid="schedule-board-filters">
+            <div className="schedule-board-filters__scope">
+              <strong>
+                {activeSprint === "backlog"
+                  ? "Backlog"
+                  : activeSprint === "all"
+                    ? "All Sprints"
+                    : sprintLabel(activeSprint)}
+              </strong>
+              <span style={{ fontVariantNumeric: "tabular-nums" }}>
+                {formatTQTitle(scopeBySource)}
+                {" · "}
+                {formatWorkDoneTotal(scopeBySource)}
+              </span>
+              {activeSprint !== "backlog" && (
+                <span
                   style={{
-                    fontSize: "0.9375rem",
                     color: "var(--text-primary)",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.04em",
-                    marginBottom: 8,
+                    fontSize: "0.8125rem",
+                    fontVariantNumeric: "tabular-nums",
                   }}
                 >
-                  Owners — click to filter
-                </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                  Backlog also {formatTQTitle(backlogBySource)}
+                </span>
+              )}
+            </div>
+
+            <CollapsibleFilterSection
+              title="Type — tasks vs tests"
+              hint={SOURCE_BUBBLES.find((b) => b.id === sourceFilter)?.label}
+              defaultOpen
+              testId="schedule-filter-type"
+              onFilterClick={() => setSourceFilter("all")}
+            >
+              <div
+                className="schedule-board-filters__chips schedule-board-filters__chips--type"
+                style={{ "--chip-cols": chipColsForTwoRows(SOURCE_BUBBLES.length) } as CSSProperties}
+              >
+                {SOURCE_BUBBLES.map((b) => {
+                  const active = sourceFilter === b.id;
+                  const matched = sprintOnlyCards.filter((c) =>
+                    matchesSourceFilter(c.source, b.id),
+                  );
+                  return (
+                    <button
+                      key={b.id}
+                      type="button"
+                      className="qa-tester-bubble"
+                      data-active={active ? "true" : "false"}
+                      data-testid={`sprint-board-type-${b.id}`}
+                      onClick={() => setSourceFilter(b.id)}
+                      title={
+                        b.id === "all"
+                          ? "Show tasks and tests"
+                          : b.id === "test"
+                            ? "QA tests only"
+                            : "Implementation tasks only"
+                      }
+                      style={{
+                        borderColor: active && b.accent ? b.accent : undefined,
+                        boxShadow: active && b.accent ? `0 0 0 1px ${b.accent}` : undefined,
+                      }}
+                    >
+                      {b.accent && (
+                        <span className="qa-tester-dot" style={{ background: b.accent }} />
+                      )}
+                      {b.label}
+                      <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
+                        · {matched.length}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </CollapsibleFilterSection>
+
+            {/* Backlog never has assignees — hide owner/user bubbles. */}
+            {activeSprint !== "backlog" && (
+              <>
+              <hr className="schedule-board-filters__divider" />
+              <CollapsibleFilterSection
+                title="Owners & backlog"
+                hint={
+                  ownerFilter === "all"
+                    ? "All owners"
+                    : OWNER_BUBBLES.find((b) => b.id === ownerFilter)?.label
+                }
+                defaultOpen
+                testId="schedule-filter-owners"
+                onFilterClick={() => setOwnerFilter("all")}
+              >
+                <div
+                  className="schedule-board-filters__chips"
+                  style={
+                    { "--chip-cols": chipColsForTwoRows(1 + OWNER_BUBBLES.length) } as CSSProperties
+                  }
+                >
+                  <button
+                    type="button"
+                    className="qa-tester-bubble"
+                    data-active="false"
+                    onClick={() => {
+                      setOwnerFilter("all");
+                      setActiveSprint("backlog");
+                    }}
+                    title={`Backlog (sprint ${BACKLOG_SPRINT}) · ${formatWorkDoneTotal(backlogFilterBySource)} · ${formatTQTitle(backlogFilterBySource)}`}
+                  >
+                    <span className="qa-tester-dot" style={{ background: "#6B5344" }} />
+                    Backlog
+                    <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
+                      {formatTQ(backlogFilterBySource)}
+                      {" · "}
+                      {formatWorkDoneTotal(backlogFilterBySource)}
+                    </span>
+                  </button>
                   {OWNER_BUBBLES.map((b) => {
                     const active = ownerFilter === b.id;
                     const matched = sprintScopedCards.filter((c) => cardMatchesOwner(c, b.id));
-                    const done = matched.filter((c) => c.status === "done").length;
+                    const bySource = countBySource(matched);
+                    const workFace = formatWorkDoneTotal(bySource);
                     return (
                       <button
                         key={b.id}
@@ -1394,84 +2712,225 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                         onClick={() => setOwnerFilter(b.id)}
                         title={
                           b.id === "all"
-                            ? `${matched.length} items · ${done} done`
-                            : `${matched.length} owned by ${b.label} · ${done} done`
+                            ? `${workFace} · ${formatTQTitle(bySource)}`
+                            : `${b.label}: ${formatTQTitle(bySource)} · ${workFace}`
                         }
                         style={{
                           borderColor: active && b.accent ? b.accent : undefined,
                           boxShadow: active && b.accent ? `0 0 0 1px ${b.accent}` : undefined,
                         }}
                       >
-                        {b.accent && <span className="qa-tester-dot" style={{ background: b.accent }} />}
+                        {b.accent && (
+                          <span className="qa-tester-dot" style={{ background: b.accent }} />
+                        )}
                         {b.label}
                         <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
-                          {done}✓ / {matched.length}
+                          {formatTQ(bySource)}
+                          {" · "}
+                          {workFace}
                         </span>
                       </button>
                     );
                   })}
                 </div>
-              </div>
+              </CollapsibleFilterSection>
+              </>
+            )}
 
-              <div style={{ flex: "1 1 280px", minWidth: 220 }}>
-                <div
-                  style={{
-                    fontSize: "0.9375rem",
-                    color: "var(--text-primary)",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.04em",
-                    marginBottom: 8,
-                  }}
+            <hr className="schedule-board-filters__divider" />
+
+            <CollapsibleFilterSection
+              title="Sprint status — placement (multi)"
+              hint={
+                sprintStatusFilters.size === 0
+                  ? "All in sprint"
+                  : `${sprintStatusFilters.size} selected`
+              }
+              testId="schedule-filter-sprint-status"
+              onFilterClick={() => setSprintStatusFilters(new Set())}
+            >
+              <div
+                className="schedule-board-filters__chips schedule-board-filters__chips--status"
+                style={
+                  {
+                    "--chip-cols": chipColsForTwoRows(1 + SPRINT_STATUS_BUBBLES.length),
+                  } as CSSProperties
+                }
+              >
+                <button
+                  type="button"
+                  className="qa-tester-bubble"
+                  data-active={sprintStatusFilters.size === 0 ? "true" : "false"}
+                  data-testid="sprint-board-sprint-status-all"
+                  onClick={() => setSprintStatusFilters(new Set())}
+                  title="Show every item in this sprint, including carry-over"
                 >
-                  Status — click to filter (multi)
-                </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-                  <button
-                    type="button"
-                    className="qa-tester-bubble"
-                    data-active={statusFilters.size === 0 ? "true" : "false"}
-                    onClick={() => setStatusFilters(new Set())}
-                  >
-                    All statuses
-                  </button>
-                  {BOARD_STATUS_BUBBLES.map((s) => {
-                    const active = statusFilters.has(s.id);
-                    const count = sprintScopedCards.filter((c) => c.status === s.id).length;
-                    const accent = STATUS_COLORS[s.id] || "#947D64";
-                    return (
-                      <button
-                        key={s.id}
-                        type="button"
-                        className="qa-tester-bubble"
-                        data-active={active ? "true" : "false"}
-                        onClick={() => toggleStatusFilter(s.id)}
-                        style={{
-                          borderColor: active ? accent : undefined,
-                          boxShadow: active ? `0 0 0 1px ${accent}` : undefined,
-                        }}
-                      >
-                        <span className="qa-tester-dot" style={{ background: accent }} />
-                        {s.label}
-                        <span className="qa-tester-meta">· {count}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+                  All in sprint
+                </button>
+                {SPRINT_STATUS_BUBBLES.map((s) => {
+                  const active = sprintStatusFilters.has(s.id);
+                  const count = sprintScopedCards.filter(
+                    (c) => cardSprintPlacement(c) === s.id,
+                  ).length;
+                  const accent = s.id === "carried" ? STATUS_COLORS.carried : "#5f7a45";
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      className="qa-tester-bubble"
+                      data-active={active ? "true" : "false"}
+                      data-testid={`sprint-board-sprint-status-${s.id}`}
+                      onClick={() => toggleSprintStatusFilter(s.id)}
+                      style={{
+                        borderColor: active ? accent : undefined,
+                        boxShadow: active ? `0 0 0 1px ${accent}` : undefined,
+                      }}
+                    >
+                      <span className="qa-tester-dot" style={{ background: accent }} />
+                      {s.label}
+                      <span className="qa-tester-meta">· {count}</span>
+                    </button>
+                  );
+                })}
               </div>
-            </div>
+            </CollapsibleFilterSection>
+
+            <hr className="schedule-board-filters__divider" />
+
+            <CollapsibleFilterSection
+              title="Tests status — QA progress (multi)"
+              hint={
+                testStatusFilters.size === 0
+                  ? "All statuses"
+                  : `${testStatusFilters.size} selected`
+              }
+              testId="schedule-filter-test-status"
+              onFilterClick={() => setTestStatusFilters(new Set())}
+            >
+              <div
+                className="schedule-board-filters__chips schedule-board-filters__chips--status"
+                style={
+                  {
+                    "--chip-cols": chipColsForTwoRows(1 + TEST_STATUS_BUBBLES.length),
+                  } as CSSProperties
+                }
+              >
+                <button
+                  type="button"
+                  className="qa-tester-bubble"
+                  data-active={testStatusFilters.size === 0 ? "true" : "false"}
+                  data-testid="sprint-board-test-status-all"
+                  onClick={() => setTestStatusFilters(new Set())}
+                  title="All test statuses (not started through blocked). Filters tests only."
+                >
+                  All statuses
+                </button>
+                {TEST_STATUS_BUBBLES.map((s) => {
+                  const active = testStatusFilters.has(s.id);
+                  const count = sprintScopedCards.filter(
+                    (c) =>
+                      c.source === "test" &&
+                      (testStatuses[c.sourceId] ?? "not_run") === s.id,
+                  ).length;
+                  const accent = STATUS_COLORS[s.id] || "#947D64";
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      className="qa-tester-bubble"
+                      data-active={active ? "true" : "false"}
+                      data-testid={`sprint-board-test-status-${s.id}`}
+                      onClick={() => toggleTestStatusFilter(s.id)}
+                      style={{
+                        borderColor: active ? accent : undefined,
+                        boxShadow: active ? `0 0 0 1px ${accent}` : undefined,
+                      }}
+                    >
+                      <span className="qa-tester-dot" style={{ background: accent }} />
+                      {s.label}
+                      <span className="qa-tester-meta">· {count}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </CollapsibleFilterSection>
+
+            <hr className="schedule-board-filters__divider" />
+
+            <CollapsibleFilterSection
+              title="Task status — work progress (multi)"
+              hint={
+                workStatusFilters.size === 0
+                  ? "All statuses"
+                  : `${workStatusFilters.size} selected`
+              }
+              testId="schedule-filter-task-status"
+              onFilterClick={() => setWorkStatusFilters(new Set())}
+            >
+              <div
+                className="schedule-board-filters__chips schedule-board-filters__chips--status"
+                style={
+                  {
+                    "--chip-cols": chipColsForTwoRows(1 + WORK_STATUS_BUBBLES.length),
+                  } as CSSProperties
+                }
+              >
+                <button
+                  type="button"
+                  className="qa-tester-bubble"
+                  data-active={workStatusFilters.size === 0 ? "true" : "false"}
+                  data-testid="sprint-board-work-status-all"
+                  onClick={() => setWorkStatusFilters(new Set())}
+                  title="All task statuses (to do through done). Filters tasks only. Carry-over uses Sprint status."
+                >
+                  All statuses
+                </button>
+                {WORK_STATUS_BUBBLES.map((s) => {
+                  const active = workStatusFilters.has(s.id);
+                  const count = sprintScopedCards.filter(
+                    (c) => c.source === "task" && cardWorkStatus(c) === s.id,
+                  ).length;
+                  const accent = STATUS_COLORS[s.id] || "#947D64";
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      className="qa-tester-bubble"
+                      data-active={active ? "true" : "false"}
+                      data-testid={`sprint-board-work-status-${s.id}`}
+                      onClick={() => toggleWorkStatusFilter(s.id)}
+                      style={{
+                        borderColor: active ? accent : undefined,
+                        boxShadow: active ? `0 0 0 1px ${accent}` : undefined,
+                      }}
+                    >
+                      <span className="qa-tester-dot" style={{ background: accent }} />
+                      {s.label}
+                      <span className="qa-tester-meta">· {count}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </CollapsibleFilterSection>
           </div>
 
           <div className="glass" style={{ padding: 16, borderRadius: 14 }}>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "end" }}>
               <div className="form-group" style={{ margin: 0, flex: "1 1 240px" }}>
                 <label className="form-label">
-                  Add plan item to {activeSprint === "backlog" ? "Backlog" : sprintLabel(activeSprint)}
+                  Add plan item to{" "}
+                  {activeSprint === "backlog"
+                    ? "Backlog"
+                    : activeSprint === "all"
+                      ? "a sprint (pick one above)"
+                      : sprintLabel(activeSprint)}
                 </label>
                 <input
                   className="text-input"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   placeholder="Implementation milestone…"
+                  disabled={activeSprint === "all"}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") void addBacklogItem();
                   }}
@@ -1483,6 +2942,7 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                   className="select-input"
                   value={newOwner}
                   onChange={(e) => setNewOwner(e.target.value as PlanOwner)}
+                  disabled={activeSprint === "all"}
                 >
                   <option value="Unassigned">Unassigned</option>
                   <option value="Tina">Tina</option>
@@ -1491,47 +2951,78 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                   <option value="Both">Both</option>
                 </select>
               </div>
-              <div className="form-group" style={{ margin: 0, width: 140 }}>
-                <label className="form-label">Show</label>
-                <select
-                  className="select-input"
-                  value={sourceFilter}
-                  onChange={(e) => setSourceFilter(e.target.value as typeof sourceFilter)}
-                >
-                  <option value="all">All types</option>
-                  <option value="plan">Plan only</option>
-                  <option value="task">Tasks only</option>
-                  <option value="test">Tests only</option>
-                </select>
-              </div>
               <button
                 type="button"
                 className="btn btn-primary"
                 onClick={() => void addBacklogItem()}
-                disabled={busy || !newTitle.trim()}
+                disabled={busy || !newTitle.trim() || activeSprint === "all"}
               >
                 <Plus size={14} /> Add
               </button>
-              {activeSprint !== "backlog" && (
+              {isSprintIndex(activeSprint) &&
+                !isSprintLocked(closedSprints, activeSprint) && (
                 <button
                   type="button"
-                  className="btn btn-outline"
-                  onClick={() => void carryIncomplete()}
+                  className="inline-text-link schedule-sprint-bubble-link"
+                  data-testid="end-sprint-btn"
+                  onClick={() => openEndSprint(activeSprint)}
                   disabled={busy}
-                  title="Move incomplete plan/tasks/tests to the next sprint"
+                  title={`Done ${sprintLabel(activeSprint)} — review open tasks/tests to rollover or complete`}
                 >
-                  Carry incomplete → Sprint {activeSprint + 1}
+                  Done {sprintLabel(activeSprint)}
+                  {incompleteEndSprintWork.tasks.length + incompleteEndSprintWork.tests.length > 0
+                    ? ` (${incompleteEndSprintWork.tasks.length + incompleteEndSprintWork.tests.length} open)`
+                    : ""}
+                </button>
+              )}
+              {isSprintIndex(activeSprint) && isSprintLocked(closedSprints, activeSprint) && (
+                <button
+                  type="button"
+                  className="inline-text-link schedule-sprint-bubble-link"
+                  data-testid="reopen-sprint-btn"
+                  onClick={() => void confirmReopenSprint(activeSprint)}
+                  disabled={busy}
+                  title={`Re-open ${sprintLabel(activeSprint)} — unlock so items can be edited again`}
+                >
+                  Re-open {sprintLabel(activeSprint)}
                 </button>
               )}
               <button
                 type="button"
-                className="btn btn-primary"
+                className="btn btn-primary qa-save-btn--ready"
                 onClick={() => void saveAllDirty()}
                 disabled={busy || dirtyCount === 0}
                 data-testid="sprint-board-save-all"
-                title="Save all unsaved card edits"
+                title={
+                  dirtyCount > 0
+                    ? "Save all unsaved card edits"
+                    : "No unsaved changes"
+                }
               >
                 <Save size={14} /> Save all{dirtyCount > 0 ? ` (${dirtyCount})` : ""}
+              </button>
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={resetDrafts}
+                disabled={
+                  busy ||
+                  loading ||
+                  (dirtyCount === 0 && !newTitle.trim() && !bulkStagingActive && filtersAreAll)
+                }
+                data-testid="sprint-board-reset"
+                title={
+                  dirtyCount > 0 || newTitle.trim() || bulkStagingActive || !filtersAreAll
+                    ? "Discard unsaved edits / bulk staging and set all filters to All"
+                    : "Nothing to reset — filters already All, no unsaved changes"
+                }
+                aria-label={
+                  dirtyCount > 0 || newTitle.trim() || bulkStagingActive || !filtersAreAll
+                    ? "Reset unsaved card edits and set all filters to All"
+                    : "Reset unavailable — nothing to clear"
+                }
+              >
+                <RotateCcw size={14} /> Reset
               </button>
             </div>
             {saveFlash && (
@@ -1539,9 +3030,7 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                 {saveFlash}
               </p>
             )}
-            {loading && (
-              <p style={{ marginTop: 10, color: "var(--text-primary)" }}>Loading sprint board…</p>
-            )}
+            {loading && <WaitIndicator message="Loading sprint board…" />}
           </div>
 
           <div
@@ -1554,6 +3043,11 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
               background: "linear-gradient(135deg, rgba(215,198,151,0.35), #fff)",
             }}
           >
+            <CollapsibleFilterSection
+              title="Bulk Edit"
+              hint={`${selectedKeys.size} selected · Apply stages; Save / Save all persists`}
+              testId="schedule-filter-bulk-edit"
+            >
             <div
               style={{
                 display: "flex",
@@ -1579,25 +3073,50 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                   </>
                 )}
               </button>
-              <span style={{ fontSize: "0.95rem", color: "var(--charcoal)", fontWeight: 700 }}>
-                Bulk edit · {selectedKeys.size} selected
-              </span>
-              <div className="form-group" style={{ margin: 0, minWidth: 140 }}>
-                <label className="form-label">Assignee</label>
-                <select
-                  className="select-input"
-                  value={bulkAssignee}
-                  onChange={(e) => setBulkAssignee(e.target.value)}
+              <div className="form-group" style={{ margin: 0, minWidth: 220 }}>
+                <label className="form-label" id="schedule-bulk-assigned-to-label">
+                  Assigned To
+                </label>
+                <AssigneeMultiSelect
+                  aria-label="Bulk Assigned To"
+                  value={bulkAssignee || "Unassigned"}
+                  onChange={(next) =>
+                    setBulkAssignee(next === "Unassigned" && !bulkAssignee ? "" : next)
+                  }
                   disabled={busy}
+                />
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  style={{ marginTop: 6, padding: "2px 8px", fontSize: "0.8125rem" }}
+                  disabled={busy}
+                  onClick={() => setBulkAssignee("")}
                 >
-                  <option value="">— keep —</option>
-                  <option value="Tina">Tina</option>
-                  <option value="Evelyn">Evelyn</option>
-                  <option value="Lyriq">Lyriq</option>
-                  <option value="Both">Both (plan/task)</option>
-                  <option value="Unassigned">Unassigned (plan)</option>
-                </select>
+                  — keep current —
+                </button>
               </div>
+              {isAdmin && (
+                <div className="form-group" style={{ margin: 0, minWidth: 150 }}>
+                  <label className="form-label" htmlFor="schedule-bulk-assign-by">
+                    Assigned By
+                  </label>
+                  <select
+                    id="schedule-bulk-assign-by"
+                    className="select-input"
+                    value={bulkAssignBy}
+                    onChange={(e) => setBulkAssignBy(e.target.value)}
+                    disabled={busy}
+                    aria-label="Bulk Assigned By for selected cards"
+                  >
+                    <option value="">— keep —</option>
+                    {assignByOptions.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="form-group" style={{ margin: 0, minWidth: 150 }}>
                 <label className="form-label">Sprint</label>
                 <select
@@ -1631,6 +3150,34 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                   ))}
                 </select>
               </div>
+              <div className="form-group" style={{ margin: 0, minWidth: 150 }}>
+                <label className="form-label" htmlFor="schedule-bulk-due">
+                  Due
+                </label>
+                <input
+                  id="schedule-bulk-due"
+                  className="text-input"
+                  type="date"
+                  value={bulkDueDate}
+                  onChange={(e) => setBulkDueDate(e.target.value)}
+                  disabled={busy}
+                  aria-label="Bulk due date for selected cards"
+                />
+              </div>
+              <div className="form-group" style={{ margin: 0, minWidth: 220, flex: "1 1 200px" }}>
+                <label className="form-label" htmlFor="schedule-bulk-desc">
+                  Description / note
+                </label>
+                <input
+                  id="schedule-bulk-desc"
+                  className="text-input"
+                  value={bulkDescription}
+                  onChange={(e) => setBulkDescription(e.target.value)}
+                  disabled={busy}
+                  placeholder="Apply to selected cards…"
+                  aria-label="Bulk description or note for selected cards"
+                />
+              </div>
               <button
                 type="button"
                 className="btn btn-outline"
@@ -1641,13 +3188,19 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
               </button>
               <button
                 type="button"
-                className="btn btn-primary"
+                className="btn btn-primary qa-save-btn--ready"
                 disabled={busy || selectedKeys.size === 0}
                 onClick={() => applyBulkToSelected(true)}
+                title={
+                  selectedKeys.size > 0
+                    ? "Apply bulk edits and save selected cards"
+                    : "Select cards first"
+                }
               >
                 <Save size={14} /> Apply &amp; save selected
               </button>
             </div>
+            </CollapsibleFilterSection>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -1664,7 +3217,29 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
               const statusVal = cardStatusValue(card);
               const sprintVal = cardSprintValue(card);
               const assigneeVal = cardAssigneeValue(card);
+              const assignByVal = cardAssignByValue(card);
               const noteVal = cardNoteValue(card);
+              const showAssignBy = card.source === "task" || card.source === "test";
+              const cardLocked =
+                isSprintLocked(closedSprints, card.sprint) ||
+                isSprintLocked(closedSprints, sprintVal);
+              const controlsDisabled = busy || cardLocked;
+
+              const statusAccent = STATUS_COLORS[statusVal] || STATUS_COLORS[card.status] || "#9ca3af";
+              const statusFill =
+                statusVal === "done" || statusVal === "pass"
+                  ? "#dcfce7"
+                  : statusVal === "fail" || statusVal === "carried"
+                    ? "#fee2e2"
+                    : statusVal === "in_progress"
+                      ? "#fef9c3"
+                      : statusVal === "blocked" || statusVal === "failed_retest"
+                        ? "#ffedd5"
+                        : statusVal === "fixed_retest"
+                          ? "#dbeafe"
+                          : statusVal === "not_run" || statusVal === "not_started" || statusVal === "todo"
+                            ? "#f3f4f6"
+                            : "#fff";
 
               return (
               <div
@@ -1674,8 +3249,8 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                 style={{
                   padding: "12px 14px",
                   borderRadius: 12,
-                  borderLeft: `4px solid ${STATUS_COLORS[card.status] || "#947D64"}`,
-                  background: dirty ? "rgba(215,198,151,0.18)" : "#fff",
+                  borderLeft: `4px solid ${statusAccent}`,
+                  background: dirty ? "rgba(215,198,151,0.28)" : statusFill,
                   outline: selected ? "2px solid var(--bronze)" : undefined,
                 }}
               >
@@ -1712,6 +3287,22 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                       >
                         {card.kindLabel}
                       </span>
+                      {cardLocked && (
+                        <span
+                          className="glow-badge"
+                          style={{
+                            fontSize: "0.8125rem",
+                            background: "#475569",
+                            color: "#fff",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                          }}
+                          title={sprintLockedMessage(card.sprint)}
+                        >
+                          <Lock size={12} /> Locked
+                        </span>
+                      )}
                       {dirty && (
                         <span
                           className="glow-badge amber"
@@ -1728,8 +3319,35 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                           fontWeight: card.owner === "Unassigned" ? 700 : 500,
                         }}
                       >
-                        Assignee: {card.owner}
+                        Assignee:{" "}
+                        {isBacklogSprint(sprintVal)
+                          ? "Unassigned"
+                          : assigneeDisplayLabel(assigneeVal || card.owner)}
                       </span>
+                      {showAssignBy && (
+                        <span
+                          style={{
+                            fontSize: "0.9375rem",
+                            color: "var(--text-muted)",
+                            fontWeight: 500,
+                          }}
+                          data-testid={`board-assign-by-${card.key}`}
+                        >
+                          Assigned By: {assignByVal || "—"}
+                        </span>
+                      )}
+                      {formatAuditTrail(card.updatedAt, card.updatedBy) && (
+                        <span
+                          style={{
+                            fontSize: "0.85rem",
+                            fontWeight: 600,
+                            color: "var(--text-primary)",
+                            opacity: 0.85,
+                          }}
+                        >
+                          {formatAuditTrail(card.updatedAt, card.updatedBy)}
+                        </span>
+                      )}
                     </div>
                     {card.notes && (
                       <p
@@ -1740,7 +3358,7 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                           lineHeight: 1.45,
                         }}
                       >
-                        {card.notes}
+                        <MarkdownLinkText text={card.notes} />
                       </p>
                     )}
                     {(linkedTaskIds.length > 0 || linkedTestId) && (
@@ -1753,6 +3371,18 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                           alignItems: "center",
                         }}
                       >
+                        {linkedTestId && (
+                          <button
+                            type="button"
+                            className="btn btn-outline"
+                            style={{ padding: "4px 10px", fontSize: "0.9375rem" }}
+                            onClick={() => onOpenTest?.(linkedTestId)}
+                            disabled={!onOpenTest}
+                            title={`Open ${linkedTestId} in Testing Portal`}
+                          >
+                            <ExternalLink size={12} /> Test {linkedTestId}
+                          </button>
+                        )}
                         {linkedTaskIds.map((tid) => (
                           <button
                             key={tid}
@@ -1766,18 +3396,6 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                             <ExternalLink size={12} /> Task {tid}
                           </button>
                         ))}
-                        {linkedTestId && (
-                          <button
-                            type="button"
-                            className="btn btn-outline"
-                            style={{ padding: "4px 10px", fontSize: "0.9375rem" }}
-                            onClick={() => onOpenTest?.(linkedTestId)}
-                            disabled={!onOpenTest}
-                            title={`Open ${linkedTestId} in Testing Portal`}
-                          >
-                            <ExternalLink size={12} /> Test {linkedTestId}
-                          </button>
-                        )}
                       </div>
                     )}
 
@@ -1802,44 +3420,20 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                         }}
                       >
                         Assignee
-                        {card.source === "plan" && (
-                          <select
-                            className="select-input"
-                            aria-label={`Assignee for ${card.title}`}
-                            style={{ width: "100%", minWidth: 0 }}
-                            value={assigneeVal}
-                            onChange={(e) =>
-                              patchDraftAndSave(card, { assignee: e.target.value })
+                        {(card.source === "plan" || card.source === "task") && (
+                          <AssigneeMultiSelect
+                            aria-label={`Assignees for ${card.title}`}
+                            value={
+                              isBacklogSprint(sprintVal) ? "Unassigned" : assigneeVal
                             }
-                            disabled={busy}
-                          >
-                            {PLAN_ASSIGNEES.map((name) => (
-                              <option key={name} value={name}>
-                                {name}
-                              </option>
-                            ))}
-                          </select>
-                        )}
-                        {card.source === "task" && (
-                          <select
-                            className="select-input"
-                            aria-label={`Assignee for ${card.title}`}
-                            style={{ width: "100%", minWidth: 0 }}
-                            value={assigneeVal}
-                            onChange={(e) =>
-                              patchDraftAndSave(card, { assignee: e.target.value })
+                            onChange={(next) =>
+                              stageCardDraft(card, { assignee: next })
                             }
-                            disabled={busy}
-                          >
-                            {TASK_ASSIGNEES.map((name) => (
-                              <option key={name} value={name}>
-                                {name}
-                              </option>
-                            ))}
-                          </select>
+                            disabled={controlsDisabled || isBacklogSprint(sprintVal)}
+                          />
                         )}
                         {card.source === "test" &&
-                          (isAutomatedTestId(card.sourceId) ? (
+                          (isAutomatedTestId(card.sourceId) && !isBacklogSprint(sprintVal) ? (
                             <select
                               className="select-input"
                               aria-label={`Assignee for ${card.title}`}
@@ -1861,10 +3455,18 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                               style={{ width: "100%", minWidth: 0 }}
                               value={assigneeVal}
                               onChange={(e) =>
-                                patchDraftAndSave(card, { assignee: e.target.value })
+                                stageCardDraft(card, { assignee: e.target.value })
                               }
-                              disabled={busy}
+                              disabled={controlsDisabled || isBacklogSprint(sprintVal)}
+                              title={
+                                cardLocked
+                                  ? sprintLockedMessage(card.sprint)
+                                  : isBacklogSprint(sprintVal)
+                                  ? "Backlog items stay Unassigned until moved into a sprint"
+                                  : undefined
+                              }
                             >
+                              <option value="">Unassigned</option>
                               {QA_TESTERS.map((tester) => (
                                 <option key={tester.id} value={tester.id}>
                                   {tester.shortName}
@@ -1873,6 +3475,72 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                             </select>
                           ))}
                       </label>
+
+                      {showAssignBy &&
+                        (isAdmin ? (
+                          <label
+                            style={{
+                              display: "grid",
+                              gridTemplateColumns: "88px minmax(0, 1fr)",
+                              gap: 10,
+                              alignItems: "center",
+                              fontSize: "0.9375rem",
+                              color: "var(--text-primary)",
+                              fontWeight: 600,
+                            }}
+                          >
+                            Assigned By
+                            <select
+                              className="select-input"
+                              aria-label={`Assigned By for ${card.title}`}
+                              style={{ width: "100%", minWidth: 0 }}
+                              value={assignByVal}
+                              onChange={(e) =>
+                                stageCardDraft(card, { assignBy: e.target.value })
+                              }
+                              disabled={controlsDisabled}
+                            >
+                              {card.source === "task" && !assignByVal && (
+                                <option value="" disabled>
+                                  —
+                                </option>
+                              )}
+                              {assignByOptions.map((name) => (
+                                <option key={name} value={name}>
+                                  {name}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        ) : (
+                          <div
+                            style={{
+                              display: "grid",
+                              gridTemplateColumns: "88px minmax(0, 1fr)",
+                              gap: 10,
+                              alignItems: "center",
+                              fontSize: "0.9375rem",
+                              color: "var(--text-primary)",
+                              fontWeight: 600,
+                            }}
+                          >
+                            Assigned By
+                            <div
+                              className="text-input"
+                              style={{
+                                padding: "8px 12px",
+                                fontSize: "0.9375rem",
+                                fontWeight: 600,
+                                color: "var(--charcoal)",
+                                background: "transparent",
+                                border: "1px solid var(--border-color)",
+                              }}
+                              aria-label={`Assigned By for ${card.title}`}
+                            >
+                              {assignByVal || "—"}
+                            </div>
+                          </div>
+                        ))}
 
                       <label
                         style={{
@@ -1893,14 +3561,15 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                             style={{ width: "100%", minWidth: 0 }}
                             value={statusVal}
                             onChange={(e) =>
-                              patchDraftAndSave(card, { status: e.target.value })
+                              stageCardDraft(card, { status: e.target.value })
                             }
-                            disabled={busy}
+                            disabled={controlsDisabled}
                           >
                             {(Object.keys(STATUS_LABELS) as PlanItemStatus[]).map((s) => {
                               const plan = items.find((i) => i.id === card.sourceId);
                               const bothBlocked =
-                                plan?.owner === "Both" &&
+                                !!plan &&
+                                requiresPartnerDone(plan.owner) &&
                                 s === "done" &&
                                 !(plan.tinaDone && plan.evelynDone);
                               return (
@@ -1918,14 +3587,15 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                             style={{ width: "100%", minWidth: 0 }}
                             value={statusVal}
                             onChange={(e) =>
-                              patchDraftAndSave(card, { status: e.target.value })
+                              stageCardDraft(card, { status: e.target.value })
                             }
-                            disabled={busy}
+                            disabled={controlsDisabled}
                           >
                             {(Object.keys(TASK_STATUS_LABELS) as TaskStatus[]).map((s) => {
                               const task = tasks.find((t) => t.id === card.sourceId);
                               const bothBlocked =
-                                task?.assignedTo === "Both" &&
+                                !!task &&
+                                requiresPartnerDone(task.assignedTo) &&
                                 s === "done" &&
                                 !(task.tinaDone && task.evelynDone);
                               return (
@@ -1943,15 +3613,27 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                             style={{ width: "100%", minWidth: 0 }}
                             value={statusVal}
                             onChange={(e) =>
-                              patchDraftAndSave(card, { status: e.target.value })
+                              stageCardDraft(card, { status: e.target.value })
                             }
-                            disabled={busy}
+                            disabled={controlsDisabled}
                           >
-                            {(Object.keys(TEST_STATUS_LABELS) as TestStatus[]).map((s) => (
-                              <option key={s} value={s}>
-                                {TEST_STATUS_LABELS[s]}
-                              </option>
-                            ))}
+                            {(Object.keys(TEST_STATUS_LABELS) as TestStatus[])
+                              .filter(
+                                (s) =>
+                                  s !== "blocked" ||
+                                  canBlockTests ||
+                                  String(statusVal) === "blocked",
+                              )
+                              .map((s) => (
+                                <option
+                                  key={s}
+                                  value={s}
+                                  disabled={s === "blocked" && !canBlockTests}
+                                >
+                                  {TEST_STATUS_LABELS[s]}
+                                  {s === "blocked" && !canBlockTests ? " (Evelyn only)" : ""}
+                                </option>
+                              ))}
                           </select>
                         )}
                       </label>
@@ -1973,30 +3655,65 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                           style={{ width: "100%", minWidth: 0 }}
                           value={sprintVal}
                           onChange={(e) =>
-                            patchDraftAndSave(card, { sprint: Number(e.target.value) })
+                            stageCardDraft(card, { sprint: Number(e.target.value) })
                           }
-                          disabled={busy}
+                          disabled={controlsDisabled}
                           aria-label={`Sprint for ${card.title}`}
                         >
                           <option value={BACKLOG_SPRINT}>Backlog</option>
                           {sprints.map((s) => (
-                            <option key={s.index} value={s.index}>
+                            <option
+                              key={s.index}
+                              value={s.index}
+                              disabled={isSprintLocked(closedSprints, s.index)}
+                            >
                               {s.label} ({s.startLabel}–{s.endLabel.replace(/, \d{4}$/, "")})
+                              {isSprintLocked(closedSprints, s.index) ? " · Locked" : ""}
                             </option>
                           ))}
                         </select>
                         <button
                           type="button"
-                          className="btn btn-primary"
+                          className="btn btn-primary qa-save-btn--ready"
                           style={{ padding: "8px 14px", whiteSpace: "nowrap" }}
-                          disabled={busy || !dirty}
-                          onClick={() => void saveCard(card)}
+                          disabled={controlsDisabled || !dirty}
+                          onClick={() => {
+                            if (cardLocked) {
+                              setError(sprintLockedMessage(card.sprint));
+                              return;
+                            }
+                            void saveCard(card);
+                          }}
                           data-testid={`sprint-card-save-${card.sourceId}`}
-                          title={dirty ? "Save this card" : "No unsaved changes"}
+                          title={
+                            cardLocked
+                              ? sprintLockedMessage(card.sprint)
+                              : dirty
+                                ? "Save this card"
+                                : "No unsaved changes"
+                          }
                         >
                           <Save size={14} /> Save
                         </button>
                       </label>
+                      {(card.source === "test" || card.source === "task") && (
+                        <div className="task-card-control task-card-control--timer" style={{ marginTop: 4 }}>
+                          <span style={{ fontSize: "0.9375rem", fontWeight: 600 }}>Time</span>
+                          <WorkTimer
+                            source={card.source}
+                            sourceId={card.sourceId}
+                            sourceLabel={card.title}
+                            entry={timers.entryFor(card.source, card.sourceId)}
+                            onChanged={timers.onChanged}
+                            compact
+                            disabled={
+                              card.source === "test"
+                                ? ["pass", "fail", "blocked"].includes(String(statusVal))
+                                : statusVal === "done"
+                            }
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -2013,7 +3730,7 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                         value={noteVal}
                         onChange={(e) => patchDraft(card.key, { note: e.target.value })}
                         placeholder="What failed or what is blocking…"
-                        disabled={busy}
+                        disabled={controlsDisabled}
                       />
                     </div>
                   )}
@@ -2024,6 +3741,7 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                     return (
                       <PlanItemAttachments
                         item={item}
+                        readOnly={cardLocked}
                         onChange={(attachments) =>
                           void patchPlanAttachments(item.id, attachments)
                         }
@@ -2031,9 +3749,13 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                     );
                   })()}
                 {((card.source === "plan" &&
-                  items.find((i) => i.id === card.sourceId)?.owner === "Both") ||
+                  requiresPartnerDone(
+                    items.find((i) => i.id === card.sourceId)?.owner,
+                  )) ||
                   (card.source === "task" &&
-                    tasks.find((t) => t.id === card.sourceId)?.assignedTo === "Both")) && (
+                    requiresPartnerDone(
+                      tasks.find((t) => t.id === card.sourceId)?.assignedTo,
+                    ))) && (
                   <div
                     style={{
                       display: "flex",
@@ -2068,7 +3790,7 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                               color: tinaDone ? "#fff" : "#9B2F28",
                             }}
                             onClick={() => void togglePartnerDone(card, "tina")}
-                            disabled={busy}
+                            disabled={controlsDisabled}
                           >
                             Tina {tinaDone ? "✓ Done" : "○ Mark done"}
                           </button>
@@ -2083,7 +3805,7 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
                               color: evelynDone ? "#fff" : "#947D64",
                             }}
                             onClick={() => void togglePartnerDone(card, "evelyn")}
-                            disabled={busy}
+                            disabled={controlsDisabled}
                           >
                             Evelyn {evelynDone ? "✓ Done" : "○ Mark done"}
                           </button>
@@ -2102,7 +3824,9 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
               >
                 {activeSprint === "backlog"
                   ? "Backlog is empty for this filter."
-                  : "No items in this sprint for this filter — pull from the Backlog."}
+                  : activeSprint === "all"
+                    ? "No sprint-assigned items for this filter."
+                    : "No items in this sprint for this filter — pull from the Backlog."}
               </div>
             )}
           </div>
@@ -2113,16 +3837,16 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
         <div className="glass" style={{ padding: 20, borderRadius: 14 }}>
           <h3 style={{ fontSize: "1.15rem", color: "var(--charcoal)", marginBottom: 6 }}>
             Ceremonies —{" "}
-            {activeSprint === "backlog"
-              ? "pick a sprint"
-              : `${sprintLabel(activeSprint)} (${getSprintWindow(activeSprint).rangeLabel})`}
+            {isSprintIndex(activeSprint)
+              ? `${sprintLabel(activeSprint)} (${getSprintWindow(activeSprint).rangeLabel})`
+              : "pick a sprint"}
           </h3>
           <p style={{ color: "var(--text-primary)", fontSize: "0.95rem", marginBottom: 14 }}>
             Standup 3× per week (Tue / Thu / Sat). Planning/Review on Sunday (day before the
             sprint ends) to close Done work and carry incomplete items. Retrospective on Monday
             sprint-end — capture notes on the Retrospective board.
           </p>
-          {activeSprint === "backlog" ? (
+          {!isSprintIndex(activeSprint) ? (
             <p style={{ color: "var(--text-primary)" }}>Select a sprint above to see its ceremonies.</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -2214,11 +3938,11 @@ export function SchedulePage({ onOpenTask, onOpenTest }: SchedulePageProps = {})
             <MessageSquare size={18} style={{ color: "var(--bronze)" }} /> Retrospective board
           </h3>
           <p style={{ color: "var(--text-primary)", fontSize: "0.95rem", marginBottom: 14 }}>
-            {activeSprint === "backlog"
-              ? "Select a sprint to run its retrospective."
-              : `${sprintLabel(activeSprint)} — Went well · Needs improvement · Action items`}
+            {isSprintIndex(activeSprint)
+              ? `${sprintLabel(activeSprint)} — Went well · Needs improvement · Action items`
+              : "Select a sprint to run its retrospective."}
           </p>
-          {activeSprint === "backlog" ? (
+          {!isSprintIndex(activeSprint) ? (
             <p style={{ color: "var(--text-primary)" }}>Pick a sprint first.</p>
           ) : (
             <div

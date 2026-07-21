@@ -1,8 +1,49 @@
 import { describe, expect, it } from "vitest";
-import { TEST_CASES, testerCaseCount } from "../gysh-test-plan";
+import {
+  TEST_CASES,
+  TEST_CATEGORIES,
+  categoryForCase,
+  testerCaseCount,
+} from "../gysh-test-plan";
 
 describe("gysh-test-plan", () => {
   const manualCases = TEST_CASES.filter((t) => (t.suite ?? "manual") === "manual");
+
+  it("splits former Content into ProofRead / Website / Facebook / Contact (Workshops stays separate)", () => {
+    expect(TEST_CATEGORIES).toContain("workshops");
+    expect(TEST_CATEGORIES).toContain("proofread");
+    expect(TEST_CATEGORIES).toContain("website");
+    expect(TEST_CATEGORIES).toContain("facebook");
+    expect(TEST_CATEGORIES).toContain("contact");
+    expect(TEST_CATEGORIES).not.toContain("content_workshops");
+
+    const workshopCases = TEST_CASES.filter((t) => t.area === "Workshops");
+    expect(workshopCases.length).toBeGreaterThan(0);
+    for (const t of workshopCases) {
+      expect(categoryForCase(t)).toBe("workshops");
+    }
+
+    const proofreadCases = TEST_CASES.filter((t) => t.area === "Proofread");
+    expect(proofreadCases.length).toBeGreaterThan(0);
+    for (const t of proofreadCases) {
+      expect(categoryForCase(t)).toBe("proofread");
+    }
+
+    expect(categoryForCase({ area: "Contact", suite: "manual", id: "CONTACT-001" })).toBe("contact");
+    expect(categoryForCase({ area: "About", suite: "manual", id: "ABOUT-001" })).toBe("website");
+    expect(categoryForCase({ area: "Community", suite: "manual", id: "COMM-001" })).toBe("website");
+    expect(categoryForCase({ area: "Family Coach", suite: "manual", id: "FAMILY-001" })).toBe(
+      "website",
+    );
+    expect(categoryForCase({ area: "Facebook", suite: "manual", id: "FB-001" })).toBe("facebook");
+    expect(
+      categoryForCase({ area: "Proofread", suite: "manual", id: "PROOF-PAGE-WORKSHOPS-TINA" }),
+    ).toBe("proofread");
+
+    // Residual Content bucket should stay empty once content areas are retagged.
+    const residualContent = TEST_CASES.filter((t) => categoryForCase(t) === "content");
+    expect(residualContent).toHaveLength(0);
+  });
 
   it("assigns every manual case to Tina, Evelyn, and/or Lyriq", () => {
     for (const t of manualCases) {

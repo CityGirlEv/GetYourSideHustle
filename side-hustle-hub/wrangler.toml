@@ -9,8 +9,12 @@ pages_build_output_dir = "dist"
 #
 # Secrets (NOT in this file — use dashboard or wrangler):
 #   wrangler pages secret put RESEND_API_KEY --project-name=getyoursidehustle
+#   wrangler pages secret put CRON_SECRET --project-name=getyoursidehustle
 # Optional plain vars: EMAIL_FROM, CONTACT_TO
 # Local: copy into .dev.vars (gitignored)
+#
+# Daily digest cron: Pages cannot use [triggers] crons — see workers/daily-digest/
+# (America/Chicago 12:01 via UTC 17:01 + 18:01). Docs: docs/EMAIL.md
 
 [[d1_databases]]
 binding = "DB"

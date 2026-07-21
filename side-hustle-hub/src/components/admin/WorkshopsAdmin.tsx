@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Mic2, Save } from "lucide-react";
+import { BusyOverlay, WaitIndicator, WaitLabel } from "../WaitFeedback";
 import {
   AUDIENCE_LABELS,
   STATUS_LABELS,
@@ -70,11 +71,12 @@ export function WorkshopsAdmin() {
   };
 
   if (loading) {
-    return <p style={{ color: "var(--text-primary)" }}>Loading workshops…</p>;
+    return <WaitIndicator message="Loading workshops…" style={{ marginTop: 0 }} />;
   }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <BusyOverlay active={saving} message="Saving workshops…" />
       <div className="glass" style={{ padding: 20, borderRadius: 14 }}>
         <h3 style={{ fontSize: "1.15rem", color: "var(--charcoal)", display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
           <Mic2 size={18} style={{ color: "var(--bronze)" }} /> Edit workshops
@@ -94,7 +96,7 @@ export function WorkshopsAdmin() {
         )}
         <div style={{ marginTop: 14 }}>
           <button type="button" className="btn btn-primary" onClick={() => void save()} disabled={saving}>
-            <Save size={14} /> {saving ? "Saving…" : "Save workshops"}
+            {saving ? <WaitLabel>Saving…</WaitLabel> : <><Save size={14} /> Save workshops</>}
           </button>
         </div>
       </div>

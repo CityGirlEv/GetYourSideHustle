@@ -33,3 +33,6 @@ playwright/.cache
 .env.local
 .env.*.local
 
+# Local D1 snapshots (may include notes / PII)
+backups/
+

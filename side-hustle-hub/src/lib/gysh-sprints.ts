@@ -4,6 +4,8 @@
  * Sprint 0 is anchored to Jul 14–Jul 20, 2026 (assignments never drift).
  */
 
+import { parseAssigneePeople, requiresPartnerDone } from "./gysh-tasks";
+
 export type SprintWindow = {
   index: number;
   label: string;
@@ -12,10 +14,34 @@ export type SprintWindow = {
   startLabel: string;
   endLabel: string;
   rangeLabel: string;
+  /** Numbers-only range for compact UI (e.g. `7/14/26–7/20/26`). */
+  numericRangeLabel: string;
 };
 
 /** -1 = Product Backlog (not yet committed to a sprint). */
 export const BACKLOG_SPRINT = -1;
+
+/** Tasks / plan items in backlog always use this owner label. */
+export const UNASSIGNED_OWNER = "Unassigned" as const;
+
+export function isBacklogSprint(sprint: number | null | undefined): boolean {
+  return Number(sprint) === BACKLOG_SPRINT;
+}
+
+/**
+ * Backlog items have no person assignment.
+ * - Tasks / plan: "Unassigned"
+ * - Tests (D1): empty string (board shows Unassigned)
+ * Leaving backlog does not invent an assignee — caller keeps the cleared value until set.
+ */
+export function assigneeForBacklogSprint(
+  sprint: number,
+  kind: "task" | "plan" | "test",
+  current?: string | null,
+): string {
+  if (!isBacklogSprint(sprint)) return String(current ?? "").trim();
+  return kind === "test" ? "" : UNASSIGNED_OWNER;
+}
 
 export type PlanItemKind =
   | "meeting"
@@ -28,7 +54,8 @@ export type PlanItemKind =
 
 export type PlanItemStatus = "todo" | "in_progress" | "done" | "carried";
 
-export type PlanOwner = "Tina" | "Evelyn" | "Lyriq" | "Both" | "Unassigned";
+/** Same encoding as task assignees (Both = Tina+Evelyn; multi via Tina+Lyriq etc.). */
+export type PlanOwner = string;
 
 export type PlanItem = {
   id: string;
@@ -47,7 +74,7 @@ export type PlanItem = {
   attachments?: PlanItemAttachment[];
 };
 
-/** Lightweight sprint item attachment metadata (blob currently lives in browser IndexedDB). */
+/** Sprint item attachment metadata. File bytes live in D1; IndexedDB is a local cache. */
 export type PlanItemAttachment = {
   id: string;
   name: string;
@@ -56,6 +83,7 @@ export type PlanItemAttachment = {
   storedId: string;
   r2Key?: string | null;
   addedAt: string;
+  hasContent?: boolean;
 };
 
 /** Apply status / partner-done rules for plan items (mirrors task Both rules). */
@@ -71,19 +99,9 @@ export function applyPlanPartnerDone(
     attachments: patch.attachments ?? item.attachments ?? [],
   };
 
-  if (next.owner === "Tina") {
-    if (patch.status === "done") next.tinaDone = true;
-    if (patch.status && patch.status !== "done") next.tinaDone = false;
-    if (patch.tinaDone === true) next.status = "done";
-    if (patch.tinaDone === false && next.status === "done") next.status = "in_progress";
-    next.evelynDone = false;
-  } else if (next.owner === "Evelyn") {
-    if (patch.status === "done") next.evelynDone = true;
-    if (patch.status && patch.status !== "done") next.evelynDone = false;
-    if (patch.evelynDone === true) next.status = "done";
-    if (patch.evelynDone === false && next.status === "done") next.status = "in_progress";
-    next.tinaDone = false;
-  } else if (next.owner === "Both") {
+  const people = parseAssigneePeople(next.owner);
+
+  if (requiresPartnerDone(next.owner)) {
     if (patch.status === "done" && !(next.tinaDone && next.evelynDone)) {
       next.status = "in_progress";
     }
@@ -98,8 +116,20 @@ export function applyPlanPartnerDone(
     } else if (next.status === "done") {
       next.status = "in_progress";
     }
+  } else if (people.length === 1 && people[0] === "Tina") {
+    if (patch.status === "done") next.tinaDone = true;
+    if (patch.status && patch.status !== "done") next.tinaDone = false;
+    if (patch.tinaDone === true) next.status = "done";
+    if (patch.tinaDone === false && next.status === "done") next.status = "in_progress";
+    next.evelynDone = false;
+  } else if (people.length === 1 && people[0] === "Evelyn") {
+    if (patch.status === "done") next.evelynDone = true;
+    if (patch.status && patch.status !== "done") next.evelynDone = false;
+    if (patch.evelynDone === true) next.status = "done";
+    if (patch.evelynDone === false && next.status === "done") next.status = "in_progress";
+    next.tinaDone = false;
   } else {
-    // Lyriq / Unassigned — overall status is enough
+    // Lyriq / Unassigned / other multi — overall status is enough
     next.tinaDone = false;
     next.evelynDone = false;
   }
@@ -169,62 +199,115 @@ const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Se
 export const SPRINT_ZERO_START = new Date(2026, 6, 14);
 export const DEFAULT_SPRINT_COUNT = 8;
 
-/** Implementation themes — one focus per Tue–Mon sprint. */
+/**
+ * Sprint Goals — each sprint is a milestone.
+ * `goal` is the short label on schedule pills; `theme` is the longer outcome detail.
+ */
 export type SprintTheme = {
   index: number;
-  theme: string;
+  /** Short Sprint Goal (milestone) — shown on sprint bubbles. */
   goal: string;
+  /** Longer outcome detail for headers / tooltips. */
+  theme: string;
 };
 
 export const SPRINT_THEMES: SprintTheme[] = [
   {
     index: 0,
-    theme: "Brand & public foundation",
-    goal: "FB page created, brand kit live, About story, home/layout polish — public face takes shape",
+    goal: "Infrastructure",
+    theme: "Deploy, tooling, email/accounts, and board foundations ready for soft-launch work",
   },
   {
     index: 1,
-    theme: "Public pages & launch content",
-    goal: "Contact live, main hustle copy pass, Kevina launch assets, Content Factory cadence for launch week",
+    goal: "Brand & Content",
+    theme: "Public face: Contact, hustle copy, brand continuity, Kevina launch assets, Content Factory cadence",
   },
   {
     index: 2,
-    theme: "Go public — introduce GYSH",
-    goal: "By Mon Aug 3: introduce the Facebook Page and website to the world (soft launch)",
+    goal: "Soft Launch",
+    theme: "By Mon Aug 3: introduce the Facebook Page and website to the world — public smoke only; do not block on full GMSH matrices",
   },
   {
     index: 3,
-    theme: "Post-launch polish",
-    goal: "Workshop/conference dates, Senior page, safety PDF, SEO landings, first launch-guide batch, QA cycle",
+    goal: "Polish",
+    theme: "Post-launch: workshop/conference dates, Senior page, safety PDF, SEO landings, first guides, QA cycle",
   },
   {
     index: 4,
-    theme: "Growth & Kids FMSH verify",
-    goal: "AI brainstorm, R2 attachments, mentor listings, remaining guides, Kids Get Your Side Hustle sign-off",
+    goal: "Kids GMSH + Growth",
+    theme: "Kids Get My Side Hustle sign-off, plus AI brainstorm, mentors, and remaining guides",
   },
   {
     index: 5,
-    theme: "Junior & Adult FMSH verify",
-    goal: "Junior + Adult Get Your Side Hustle automated matrices (Vitest ownership)",
+    goal: "Junior & Adult GMSH",
+    theme: "Junior/Teens + Adult Get My Side Hustle automated matrices (Vitest ownership)",
   },
   {
     index: 6,
-    theme: "Senior FMSH & seniors polish",
-    goal: "Senior Get Your Side Hustle matrix + Senior Side Hustles content polish",
+    goal: "Senior GMSH",
+    theme: "Senior Get My Side Hustle matrix + Senior Side Hustles content polish",
   },
   {
     index: 7,
-    theme: "Buffer & carry-over",
-    goal: "Polish, deferred items, Planning pull for next horizon",
+    goal: "Buffer",
+    theme: "Deferred items, catch-up, Planning pull for next horizon",
   },
 ];
+
+/** Concise phased rollout rows for Admin Schedule summary UI. */
+export type RolloutScheduleRow = {
+  sprint: number;
+  goal: string;
+  rangeLabel: string;
+  /** Soft-launch / GMSH band callout for Evelyn. */
+  focus: string;
+};
+
+/** Soft launch + GMSH band schedule (Sprint 0–7) with live date windows. */
+export function listRolloutScheduleSummary(ref: Date = new Date()): RolloutScheduleRow[] {
+  const focusBySprint: Record<number, string> = {
+    0: "Infra & accounts — foundations only",
+    1: "Brand & public content ready",
+    2: "Soft launch (~Aug 3) — public smoke; GMSH matrices not required",
+    3: "Polish: SEO, guides, Senior page, workshops",
+    4: "Kids Get My Side Hustle sign-off + Growth",
+    5: "Junior/Teens + Adult Get My Side Hustle",
+    6: "Senior Get My Side Hustle",
+    7: "Buffer / deferred pull",
+  };
+  return SPRINT_THEMES.map((t) => {
+    const sw = getSprintWindow(t.index, ref);
+    return {
+      sprint: t.index,
+      goal: t.goal,
+      rangeLabel: sw.numericRangeLabel,
+      focus: focusBySprint[t.index] ?? t.theme,
+    };
+  });
+}
 
 export function themeForSprint(index: number): SprintTheme | undefined {
   return SPRINT_THEMES.find((t) => t.index === index);
 }
 
+/** Short Sprint Goal for a sprint index, if defined. */
+export function sprintGoalFor(index: number): string | undefined {
+  return themeForSprint(index)?.goal;
+}
+
 export function formatDisplayDate(d: Date): string {
   return `${MONTH_SHORT[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+}
+
+/** Compact numeric date with 2-digit year (no month letters), e.g. `7/14/26`. */
+export function formatNumericDate(d: Date): string {
+  const yy = String(d.getFullYear()).slice(-2);
+  return `${d.getMonth() + 1}/${d.getDate()}/${yy}`;
+}
+
+/** Compact numeric range with years, e.g. `7/14/26–7/20/26`. */
+export function formatNumericDateRange(start: Date, end: Date): string {
+  return `${formatNumericDate(start)}–${formatNumericDate(end)}`;
 }
 
 export function toISODate(d: Date): string {
@@ -270,6 +353,7 @@ export function getSprintWindow(index: number, _ref?: Date): SprintWindow {
     startLabel: formatDisplayDate(start),
     endLabel: formatDisplayDate(end),
     rangeLabel: `${formatDisplayDate(start)} – ${formatDisplayDate(end)}`,
+    numericRangeLabel: formatNumericDateRange(start, end),
   };
 }
 
@@ -288,9 +372,147 @@ export function currentSprintIndex(ref: Date = new Date()): number {
   return Math.max(0, Math.min(DEFAULT_SPRINT_COUNT - 1, idx));
 }
 
+/** Whole calendar days from `ref` until the current sprint's Monday end (0 = ends today). */
+export function daysUntilSprintEnd(ref: Date = new Date()): number {
+  const sw = getSprintWindow(currentSprintIndex(ref), ref);
+  const today = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate());
+  const endDay = new Date(sw.end.getFullYear(), sw.end.getMonth(), sw.end.getDate());
+  const msPerDay = 24 * 60 * 60 * 1000;
+  return Math.max(0, Math.round((endDay.getTime() - today.getTime()) / msPerDay));
+}
+
+/** True when `ref` falls on the Monday end day of the given sprint (End Sprint button day). */
+export function isSprintEndDay(sprintIndex: number, ref: Date = new Date()): boolean {
+  if (!Number.isFinite(sprintIndex) || sprintIndex < 0) return false;
+  const sw = getSprintWindow(Math.floor(sprintIndex), ref);
+  const today = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate());
+  const endDay = new Date(sw.end.getFullYear(), sw.end.getMonth(), sw.end.getDate());
+  return today.getTime() === endDay.getTime();
+}
+
 export function sprintLabel(sprint: number): string {
   if (sprint === BACKLOG_SPRINT) return "Backlog";
   return sprint === 0 ? "Sprint 0" : `Sprint ${sprint}`;
+}
+
+/**
+ * Default due date for a sprint.
+ * Sprint 0 → planning Sunday (Sun Jul 19, 2026) — historical special case (Tue+5).
+ * Sprint N≥1 → 2 calendar days after that sprint's Tuesday start (Sprint 1 → Thu Jul 23, 2026).
+ * Backlog → empty (no auto due).
+ * Returned as MM/DD/YY for tasks / test due fields.
+ */
+function dueDateOffsetForSprint(sprint: number): number {
+  // Tue+5 = planning Sunday; Tue+2 = Thursday (2 calendar days after start)
+  return Math.floor(sprint) === 0 ? 5 : 2;
+}
+
+export function dueDateForSprint(sprint: number): string {
+  if (sprint === BACKLOG_SPRINT || !Number.isFinite(sprint) || sprint < 0) return "";
+  const idx = Math.floor(sprint);
+  const sw = getSprintWindow(idx);
+  const due = dayOffset(sw, dueDateOffsetForSprint(idx));
+  due.setHours(0, 0, 0, 0);
+  const mm = String(due.getMonth() + 1).padStart(2, "0");
+  const dd = String(due.getDate()).padStart(2, "0");
+  const yy = String(due.getFullYear()).slice(-2);
+  return `${mm}/${dd}/${yy}`;
+}
+
+/** Same as dueDateForSprint but YYYY-MM-DD for `<input type="date">`. */
+export function dueDateIsoForSprint(sprint: number): string {
+  if (sprint === BACKLOG_SPRINT || !Number.isFinite(sprint) || sprint < 0) return "";
+  const idx = Math.floor(sprint);
+  const sw = getSprintWindow(idx);
+  return toISODate(dayOffset(sw, dueDateOffsetForSprint(idx)));
+}
+
+/** Calendar due date N days from today (MM/DD/YY). Used for newly created backlog tests. */
+export function dueDatePlusDays(days: number, ref: Date = new Date()): string {
+  const d = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate());
+  d.setDate(d.getDate() + days);
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const yy = String(d.getFullYear()).slice(-2);
+  return `${mm}/${dd}/${yy}`;
+}
+
+/** When sprint is in a patch, also set dueDate to the sprint default. */
+export function withSprintDueDate<T extends { sprint?: number; dueDate?: string }>(
+  updates: Partial<T>,
+): Partial<T> {
+  if (updates.sprint === undefined) return updates;
+  return { ...updates, dueDate: dueDateForSprint(Number(updates.sprint)) } as Partial<T>;
+}
+
+/**
+ * Force Unassigned when the resulting sprint is backlog.
+ * Pass `currentSprint` when `updates` may omit sprint (e.g. assignee-only edits).
+ */
+export function withBacklogTaskUnassigned<T extends { sprint?: number; assignedTo?: string }>(
+  updates: Partial<T>,
+  currentSprint?: number | null,
+): Partial<T> {
+  const sprint =
+    updates.sprint !== undefined ? Number(updates.sprint) : currentSprint;
+  if (sprint === undefined || sprint === null || !isBacklogSprint(sprint)) return updates;
+  return { ...updates, assignedTo: UNASSIGNED_OWNER } as Partial<T>;
+}
+
+/**
+ * Force Unassigned when the resulting sprint is backlog.
+ * Pass `currentSprint` when `updates` may omit sprint (e.g. owner-only edits).
+ */
+export function withBacklogPlanUnassigned<T extends { sprint?: number; owner?: string }>(
+  updates: Partial<T>,
+  currentSprint?: number | null,
+): Partial<T> {
+  const sprint =
+    updates.sprint !== undefined ? Number(updates.sprint) : currentSprint;
+  if (sprint === undefined || sprint === null || !isBacklogSprint(sprint)) return updates;
+  return { ...updates, owner: UNASSIGNED_OWNER } as Partial<T>;
+}
+
+/** Clear stored person owners on backlog tasks (persistence heal). */
+export function sanitizeBacklogTaskAssignees<T extends { sprint?: number; assignedTo?: string }>(
+  tasks: T[],
+): { tasks: T[]; changed: boolean } {
+  let changed = false;
+  const next = tasks.map((t) => {
+    if (!isBacklogSprint(t.sprint) || t.assignedTo === UNASSIGNED_OWNER) return t;
+    changed = true;
+    return { ...t, assignedTo: UNASSIGNED_OWNER };
+  });
+  return { tasks: next, changed };
+}
+
+/** Clear stored person owners on backlog plan items (persistence heal). */
+export function sanitizeBacklogPlanOwners<T extends { sprint?: number; owner?: string }>(
+  items: T[],
+): { items: T[]; changed: boolean } {
+  let changed = false;
+  const next = items.map((i) => {
+    if (!isBacklogSprint(i.sprint) || i.owner === UNASSIGNED_OWNER) return i;
+    changed = true;
+    return { ...i, owner: UNASSIGNED_OWNER };
+  });
+  return { items: next, changed };
+}
+
+/** Clear stored test assignees for cases parked in backlog (persistence heal). */
+export function sanitizeBacklogTestAssignees(
+  sprints: Record<string, number>,
+  assignees: Record<string, string>,
+): { assignees: Record<string, string>; changedIds: string[] } {
+  const next = { ...assignees };
+  const changedIds: string[] = [];
+  for (const [id, sprint] of Object.entries(sprints)) {
+    if (!isBacklogSprint(sprint)) continue;
+    if (!String(next[id] ?? "").trim()) continue;
+    next[id] = "";
+    changedIds.push(id);
+  }
+  return { assignees: next, changedIds };
 }
 
 export function dayOffset(sprint: SprintWindow, offset: number): Date {

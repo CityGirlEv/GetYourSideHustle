@@ -24,8 +24,10 @@ import {
   Home,
   Minus,
   Plus,
+  ArrowRight,
 } from "lucide-react";
 import { FacebookIcon } from "./components/FacebookIcon";
+import { BusyOverlay, WaitLabel } from "./components/WaitFeedback";
 import { HustleCard } from "./components/HustleCard";
 import type { Hustle } from "./components/HustleCard";
 import { CalculatorSection } from "./components/CalculatorSection";
@@ -49,7 +51,9 @@ import {
   adminTabById,
   type AdminTab,
 } from "./components/AdminPortal";
+import { DailyProgressReport } from "./components/admin/DailyProgressReport";
 import type { UserGuideId } from "./components/admin/UserGuidesHub";
+import type { SiteMapHref } from "./lib/site-map";
 import { TrainingCircles } from "./components/TrainingCircles";
 import { WorkshopsHub } from "./components/WorkshopsHub";
 import { SiteFooter } from "./components/SiteFooter";
@@ -70,7 +74,13 @@ import { ParentConsentPage } from "./components/ParentConsentPage";
 import { clearConsentTokenFromUrl, readConsentTokenFromUrl } from "./lib/junior-signup";
 import { FACEBOOK_URL, SITE_NAME, SITE_PURPOSE } from "./lib/site-config";
 import {
+  parseAppRoute,
+  syncUrlToView,
+  titleForView,
+} from "./lib/app-routes";
+import {
   confirmPasswordReset,
+  fetchMe,
   login,
   logout,
   requestPasswordReset,
@@ -88,7 +98,7 @@ import {
   writeActAsTarget,
   type ActAsTarget,
 } from "./lib/admin-act-as";
-import { fetchUsers, type GyshUser } from "./lib/gysh-roles";
+import { canAccessAdminPortal, fetchUsers, type GyshUser } from "./lib/gysh-roles";
 import { hasFreeMemberSession } from "./lib/free-member-session";
 import { readPendingBlueprint } from "./lib/pending-blueprint";
 import type { BlueprintAgeGroup } from "./lib/gysh-analytics";
@@ -391,8 +401,12 @@ const HUSTLES_DATA: Hustle[] = [
 ];
 
 function App() {
-  const [activeView, setActiveView] = useState<AppView>("dashboard");
+  const bootRoute = parseAppRoute();
+  const [activeView, setActiveView] = useState<AppView>(bootRoute.view as AppView);
   const [consentToken, setConsentToken] = useState<string | null>(() => readConsentTokenFromUrl());
+  /** Skip pushState when the URL change came from back/forward. */
+  const skipNextUrlSync = useRef(false);
+  const urlSyncReady = useRef(false);
   const [selectedHustleId, setSelectedHustleId] = useState<string>("airbnb");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
@@ -401,9 +415,12 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<"user" | "admin">("user");
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  /** False until /auth/me finishes so /admin never flashes Schedule to anonymous visitors. */
+  const [authReady, setAuthReady] = useState(false);
   const [emailInput, setEmailInput] = useState("");
   const [passInput, setPassInput] = useState("");
   const [loginError, setLoginError] = useState("");
+  const [loginBusy, setLoginBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loginMode, setLoginMode] = useState<"login" | "forgot" | "set-password">(() =>
     readResetTokenFromUrl() ? "set-password" : "login",
@@ -431,14 +448,19 @@ function App() {
   const [profileUsers, setProfileUsers] = useState<GyshUser[]>([]);
   const [kidsEntryFocus, setKidsEntryFocus] = useState<{
     mode: "kids" | "junior";
-    tab: "guides" | "wizard";
+    tab: "stories" | "wizard" | "jobs" | "piggy" | "guides" | "join";
   } | null>(null);
-  const [seniorsEntryTab, setSeniorsEntryTab] = useState<"guides" | null>(null);
+  const [seniorsEntryTab, setSeniorsEntryTab] = useState<
+    "match" | "opportunities" | "guides" | "join" | null
+  >(null);
   const [joinAudience, setJoinAudience] = useState<AudienceGroup | null>(null);
   const [signupTier, setSignupTier] = useState<TierId>("free");
   const [howOpen, setHowOpen] = useState(false);
+  const [homeHowOpen, setHomeHowOpen] = useState(false);
   const [guidesDetailId, setGuidesDetailId] = useState<string | null>(null);
-  const [guidesManualId, setGuidesManualId] = useState<MarketingGuideId | null>(null);
+  const [guidesManualId, setGuidesManualId] = useState<MarketingGuideId | null>(
+    () => (bootRoute.guidesManualId as MarketingGuideId | null) ?? null,
+  );
   const [findMineMode, setFindMineMode] = useState<"select" | "adult">("select");
   /** Bump when free Blueprint signup succeeds so member access re-reads storage. */
   const [memberAccessTick, setMemberAccessTick] = useState(0);
@@ -456,16 +478,104 @@ function App() {
   });
 
   useEffect(() => {
-    document.documentElement.style.zoom = `${pageZoom}%`;
+    // Never set zoom on <html> — Chromium CSS zoom breaks sticky-header hit-testing,
+    // so Login/nav clicks miss when zoom ≠ 100% (value is persisted per-origin).
+    // Zoom is applied to .app-zoom-content only (below the header).
+    document.documentElement.style.zoom = "";
     try {
       localStorage.setItem("gysh-page-zoom", String(pageZoom));
     } catch {
       /* ignore */
     }
-    return () => {
-      document.documentElement.style.zoom = "";
-    };
   }, [pageZoom]);
+
+  const contentZoomStyle =
+    pageZoom === 100 ? undefined : ({ zoom: `${pageZoom}%` } as React.CSSProperties);
+
+  // Keep the address bar in sync so pages are shareable deep links
+  useEffect(() => {
+    if (skipNextUrlSync.current) {
+      skipNextUrlSync.current = false;
+      return;
+    }
+    syncUrlToView(activeView, {
+      guidesManualId,
+      replace: !urlSyncReady.current,
+    });
+    urlSyncReady.current = true;
+  }, [activeView, guidesManualId]);
+
+  useEffect(() => {
+    const onPopState = () => {
+      const parsed = parseAppRoute(window.location.pathname);
+      skipNextUrlSync.current = true;
+      setActiveView(parsed.view as AppView);
+      setGuidesManualId((parsed.guidesManualId as MarketingGuideId | null) ?? null);
+      if (parsed.view !== "guides") {
+        setGuidesDetailId(null);
+      }
+      setHowOpen(false);
+      setHomeHowOpen(false);
+      window.scrollTo(0, 0);
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  useEffect(() => {
+    document.title = titleForView(activeView);
+    const canonical = document.querySelector('link[rel="canonical"]');
+    if (canonical) {
+      const origin = window.location.origin.replace(/\/$/, "");
+      const path = window.location.pathname === "/" ? "/" : window.location.pathname;
+      canonical.setAttribute("href", `${origin}${path}`);
+    }
+  }, [activeView, guidesManualId]);
+
+  const canUseAdminPortal =
+    isLoggedIn && (userRole === "admin" || canAccessAdminPortal(authUser));
+  /** Profile Switcher is previewing a member audience (hide Admin chrome). */
+  const previewingAsMember = actAsTarget.type !== "self";
+  const actAsAudienceNow = actAsAudience(actAsTarget);
+  /**
+   * Kids/Teens member guides unlock for:
+   * - Profile Switcher → Kids/Teens Member
+   * - Real non-staff members (or free Blueprint session)
+   * - Lightweight team join (handled inside KidsCorner via localStorage)
+   * Staff (Tina/Evelyn/Lyriq admin|qa) browsing as themselves stay gated.
+   */
+  const kidsCornerMemberAccess =
+    actAsAudienceNow === "kids" ||
+    actAsAudienceNow === "junior" ||
+    (hasMemberAccess && !canUseAdminPortal);
+
+  // Restore partner/member session (cookie or sessionStorage token) before exposing /admin.
+  useEffect(() => {
+    let cancelled = false;
+    void fetchMe()
+      .then((user) => {
+        if (cancelled) return;
+        if (user) {
+          setIsLoggedIn(true);
+          setAuthUser(user);
+          setUserRole(canAccessAdminPortal(user) ? "admin" : "user");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setAuthReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Deep link /admin must not render Admin Studio (Schedule) without portal roles.
+  useEffect(() => {
+    if (!authReady) return;
+    if (activeView !== "admin") return;
+    if (canUseAdminPortal) return;
+    setActiveView("login");
+  }, [authReady, activeView, canUseAdminPortal]);
 
   const goTo = (view: AppView) => {
     setActiveView(view);
@@ -480,6 +590,7 @@ function App() {
       setJoinAudience(null);
     }
     setHowOpen(false);
+    if (view !== "dashboard") setHomeHowOpen(false);
     if (view === "quiz") setFindMineMode("select");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -658,23 +769,86 @@ function App() {
     }
   };
 
-  const openKidsCorner = (entry?: { mode: "kids" | "junior"; tab: "guides" | "wizard" } | null) => {
+  const openKidsCorner = (
+    entry?: {
+      mode: "kids" | "junior";
+      tab: "stories" | "wizard" | "jobs" | "piggy" | "guides" | "join";
+    } | null,
+  ) => {
     setKidsEntryFocus(entry ?? null);
     goTo("kids");
   };
 
-  const openSeniors = (entryTab?: "guides" | null) => {
+  const openSeniors = (entryTab?: "match" | "opportunities" | "guides" | "join" | null) => {
     setSeniorsEntryTab(entryTab ?? null);
     goTo("seniors");
   };
 
   const goToAdmin = (tab: AdminTab, guide?: UserGuideId) => {
+    if (!canUseAdminPortal) {
+      setActiveView("login");
+      setAdminMenuOpen(false);
+      setMobileMenuOpen(false);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
     setAdminTab(tab);
     if (guide) setAdminUserGuide(guide);
     setActiveView("admin");
     setAdminMenuOpen(false);
     setMobileMenuOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const navigateFromSiteMap = (href: SiteMapHref) => {
+    switch (href.kind) {
+      case "home":
+        goTo("dashboard");
+        break;
+      case "quiz":
+        setFindMineMode("select");
+        goTo("quiz");
+        break;
+      case "quiz-adult":
+        openAdultFindMine();
+        break;
+      case "kids":
+        openKidsCorner({ mode: href.mode, tab: href.tab ?? "wizard" });
+        break;
+      case "seniors":
+        openSeniors(href.tab ?? "match");
+        break;
+      case "guides":
+        if (href.manual) openGuidesManual(href.manual);
+        else openGuidesLibrary();
+        break;
+      case "workshops":
+        goTo("workshops");
+        break;
+      case "community":
+        goTo("community");
+        break;
+      case "join":
+        openJoin();
+        break;
+      case "join-signup":
+        openMembershipSignup("free");
+        break;
+      case "login":
+        goTo("login");
+        break;
+      case "about":
+        goTo("about");
+        break;
+      case "contact":
+        goTo("contact");
+        break;
+      case "admin":
+        goToAdmin(href.tab, href.guide);
+        break;
+      default:
+        break;
+    }
   };
 
   const openAdultFindMine = () => {
@@ -838,52 +1012,58 @@ function App() {
   // Login handler — only partner admin accounts; everything else stays logged out
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loginBusy) return;
     setLoginError("");
+    setLoginBusy(true);
 
-    const { outcome, error, user } = await login(emailInput, passInput);
+    try {
+      const { outcome, error, user } = await login(emailInput, passInput);
 
-    if (outcome === "admin" || outcome === "member") {
-      setIsLoggedIn(true);
-      setUserRole(outcome === "admin" ? "admin" : "user");
-      setAuthUser(user ?? null);
-      setEmailInput("");
-      setPassInput("");
-      setShowPassword(false);
-      setMemberAccessTick((n) => n + 1);
+      if (outcome === "admin" || outcome === "member") {
+        setIsLoggedIn(true);
+        setUserRole(outcome === "admin" ? "admin" : "user");
+        setAuthUser(user ?? null);
+        setEmailInput("");
+        setPassInput("");
+        setShowPassword(false);
+        setMemberAccessTick((n) => n + 1);
 
-      const pending = readPendingBlueprint();
-      if (pending?.claimToken) {
-        void import("./lib/blueprints-api").then(({ claimBlueprint, saveBlueprintToAccount }) =>
-          claimBlueprint(pending.claimToken!)
-            .catch(() =>
-              saveBlueprintToAccount({
-                ageGroup: pending.ageGroup,
-                answers: pending.answers,
-                resultIds: pending.resultIds,
-                resultPcts: pending.resultPcts,
-                claimToken: pending.claimToken,
+        const pending = readPendingBlueprint();
+        if (pending?.claimToken) {
+          void import("./lib/blueprints-api").then(({ claimBlueprint, saveBlueprintToAccount }) =>
+            claimBlueprint(pending.claimToken!)
+              .catch(() =>
+                saveBlueprintToAccount({
+                  ageGroup: pending.ageGroup,
+                  answers: pending.answers,
+                  resultIds: pending.resultIds,
+                  resultPcts: pending.resultPcts,
+                  claimToken: pending.claimToken,
+                }),
+              )
+              .finally(() => {
+                /* local restore still runs below */
               }),
-            )
-            .finally(() => {
-              /* local restore still runs below */
-            }),
-        );
-      }
+          );
+        }
 
-      if (pending) {
-        restoreBlueprintAfterUnlock(pending.ageGroup);
-      } else if (outcome === "admin") {
-        sessionStorage.setItem(DUE_POPUP_LOGIN_FLAG, "1");
-        setAdminSessionKey((k) => k + 1);
-        setAdminTab("schedule");
-        setActiveView("admin");
+        if (pending) {
+          restoreBlueprintAfterUnlock(pending.ageGroup);
+        } else if (outcome === "admin") {
+          sessionStorage.setItem(DUE_POPUP_LOGIN_FLAG, "1");
+          setAdminSessionKey((k) => k + 1);
+          setAdminTab("schedule");
+          setActiveView("admin");
+        } else {
+          setActiveView("user_portal");
+        }
+      } else if (outcome === "unavailable") {
+        setLoginError(error || "Database unavailable. Try again after deploy/bindings are fixed.");
       } else {
-        setActiveView("user_portal");
+        setLoginError(error || "Invalid email or password.");
       }
-    } else if (outcome === "unavailable") {
-      setLoginError(error || "Database unavailable. Try again after deploy/bindings are fixed.");
-    } else {
-      setLoginError(error || "Invalid email or password.");
+    } finally {
+      setLoginBusy(false);
     }
   };
 
@@ -967,18 +1147,22 @@ function App() {
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
-      if (params.get("next") !== "join") return;
       const audienceParam = params.get("audience");
-      if (isAudienceGroup(audienceParam)) {
-        openJoin(audienceParam);
-      } else {
-        openJoin();
+      // Legacy: /?next=join → /join (path deep links are preferred)
+      if (params.get("next") === "join") {
+        if (isAudienceGroup(audienceParam)) {
+          openJoin(audienceParam);
+        } else {
+          openJoin();
+        }
+        return;
       }
-      params.delete("next");
-      params.delete("audience");
-      params.delete("from");
-      const next = params.toString();
-      window.history.replaceState({}, "", `${window.location.pathname}${next ? `?${next}` : ""}${window.location.hash}`);
+      // /join?audience=kids|teens|adult|senior
+      if (bootRoute.view === "join" && isAudienceGroup(audienceParam)) {
+        const next = audienceFromAgeGroup(audienceParam);
+        saveJoinAudience(next);
+        setJoinAudience(next);
+      }
     } catch {
       /* ignore */
     }
@@ -993,7 +1177,7 @@ function App() {
     clearActAsTarget();
     setActAsTarget({ type: "self" });
     sessionStorage.removeItem(DUE_POPUP_LOGIN_FLAG);
-    setActiveView("dashboard");
+    goTo("dashboard");
     setLoginMode("login");
   };
 
@@ -1091,6 +1275,84 @@ function App() {
       />
     );
   }
+
+  const renderHomeHowSteps = (titleId: string) => (
+    <aside className="home-promo-hero__steps" aria-labelledby={titleId}>
+      <h2 id={titleId} className="home-promo-hero__steps-heading">
+        <span className="home-promo-hero__steps-eyebrow">Start here</span>
+        <span className="home-promo-hero__steps-title">Pick your starting point</span>
+      </h2>
+      <p className="home-promo-hero__steps-note">
+        Kids, Teens, Adults, and Seniors each get a GYSH Match Wizard matched to their age and pace.
+      </p>
+      <ol className="home-promo-hero__bubbles">
+        <li>
+          <button type="button" className="home-step-bubble" onClick={() => goTo("quiz")}>
+            <span className="home-step-bubble__num" aria-hidden="true">
+              1
+            </span>
+            <span className="home-step-bubble__body">
+              <strong>GYSH Match Wizard</strong>
+              <span>Four age wizards for Kids, Teens, Adults &amp; Seniors — family fun.</span>
+            </span>
+            <Sparkles size={16} className="home-step-bubble__icon" aria-hidden="true" />
+          </button>
+        </li>
+        <li>
+          <button type="button" className="home-step-bubble" onClick={() => openKidsCorner()}>
+            <span className="home-step-bubble__num" aria-hidden="true">
+              2
+            </span>
+            <span className="home-step-bubble__body">
+              <strong>Families</strong>
+              <span>Safe hustles, stories, and parents as GYSH Coaches.</span>
+            </span>
+            <Star size={16} className="home-step-bubble__icon" aria-hidden="true" />
+          </button>
+        </li>
+        <li>
+          <button type="button" className="home-step-bubble" onClick={() => openSeniors()}>
+            <span className="home-step-bubble__num" aria-hidden="true">
+              3
+            </span>
+            <span className="home-step-bubble__body">
+              <strong>Seniors</strong>
+              <span>Flexible hustles for 55+, retirees, and second careers.</span>
+            </span>
+            <Heart size={16} className="home-step-bubble__icon" aria-hidden="true" />
+          </button>
+        </li>
+        <li>
+          <button
+            type="button"
+            className="home-step-bubble"
+            onClick={() => setActiveView("workshops")}
+          >
+            <span className="home-step-bubble__num" aria-hidden="true">
+              4
+            </span>
+            <span className="home-step-bubble__body">
+              <strong>Workshops</strong>
+              <span>Live sessions and guest experts to launch with support.</span>
+            </span>
+            <Mic2 size={16} className="home-step-bubble__icon" aria-hidden="true" />
+          </button>
+        </li>
+        <li>
+          <button type="button" className="home-step-bubble" onClick={() => openJoin()}>
+            <span className="home-step-bubble__num" aria-hidden="true">
+              5
+            </span>
+            <span className="home-step-bubble__body">
+              <strong>Join</strong>
+              <span>Create a free account and start tracking your pilot.</span>
+            </span>
+            <UserPlus size={16} className="home-step-bubble__icon" aria-hidden="true" />
+          </button>
+        </li>
+      </ol>
+    </aside>
+  );
 
   return (
     <div className="app-container">
@@ -1281,9 +1543,9 @@ function App() {
                 rel="noopener noreferrer"
                 aria-label="Follow Get Your Side Hustle on Facebook"
                 data-testid="header-facebook"
-                title="Follow us on Facebook — facebook.com/getyoursidehustle"
+                title="Follow us on Facebook — facebook.com/getyoursidehustleofficial"
               >
-                <FacebookIcon size={20} />
+                <FacebookIcon size={24} />
                 <span className="header-social-link__label">Facebook</span>
               </a>
             </nav>
@@ -1291,7 +1553,7 @@ function App() {
             <div className="header-actions">
             {isLoggedIn ? (
               <>
-                {userRole === "admin" ? (
+                {userRole === "admin" && !previewingAsMember ? (
                   <div
                     ref={adminMenuRef}
                     className={`admin-nav-dropdown${adminMenuOpen ? " open" : ""}`}
@@ -1383,7 +1645,7 @@ function App() {
                       })}
                     </ul>
                   </div>
-                ) : (
+                ) : userRole !== "admin" ? (
                   <button
                     type="button"
                     onClick={() => goTo("user_portal")}
@@ -1392,7 +1654,7 @@ function App() {
                     <User size={16} className="nav-icon nav-icon--portal" aria-hidden />
                     Portal
                   </button>
-                )}
+                ) : null}
                 {userRole === "admin" ? (
                   <div
                     ref={actAsMenuRef}
@@ -1538,6 +1800,7 @@ function App() {
         </div>
       </header>
 
+      <div className="app-zoom-content" style={contentZoomStyle}>
       <main className="main-content">
         {activeView !== "dashboard" && (
           <>
@@ -1591,34 +1854,30 @@ function App() {
                           <span className="header-title-aside">(FREE PLANS AVAILABLE)</span>
                         )}
                       </h1>
-                      {(activeView === "kids" ||
-                        activeView === "seniors" ||
-                        activeView === "about") &&
-                      getHeaderDesc() ? (
-                        <p className="header-title-desc header-title-desc--inline">{getHeaderDesc()}</p>
-                      ) : null}
-                      <button
-                        type="button"
-                        className="match-finder-adult-how-toggle page-how-toggle"
-                        onClick={() => setHowOpen((o) => !o)}
-                        aria-expanded={howOpen}
-                        data-testid="page-how-it-works"
-                      >
-                        {howOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                        How it works
-                      </button>
+                      {activeView === "admin" && adminTab !== "daily-progress" && (
+                        <DailyProgressReport onOpen={() => goToAdmin("daily-progress")} />
+                      )}
+                      {!(activeView === "admin" && adminTab === "daily-progress") && (
+                        <button
+                          type="button"
+                          className="match-finder-adult-how-toggle page-how-toggle"
+                          onClick={() => setHowOpen((o) => !o)}
+                          aria-expanded={howOpen}
+                          data-testid="page-how-it-works"
+                        >
+                          {howOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                          How it works
+                        </button>
+                      )}
                     </>
                   )}
                 </div>
-                {activeView !== "kids" &&
-                activeView !== "seniors" &&
-                activeView !== "about" &&
-                getHeaderDesc() ? (
+                {getHeaderDesc() ? (
                   <p className="header-title-desc">{getHeaderDesc()}</p>
                 ) : null}
               </div>
             </div>
-            {howOpen && (() => {
+            {howOpen && !(activeView === "admin" && adminTab === "daily-progress") && (() => {
               const how = getHowItWorksContent();
               return (
                 <div className="match-finder-adult-how-panel page-how-panel" data-testid="page-how-panel">
@@ -1646,7 +1905,22 @@ function App() {
               <p className="home-page-header__purpose" data-testid="home-site-purpose">
                 {SITE_PURPOSE}
               </p>
-              <p className="home-page-header__lead">
+              <button
+                type="button"
+                className="home-how-intro-toggle"
+                onClick={() => setHomeHowOpen((o) => !o)}
+                aria-expanded={homeHowOpen}
+                aria-controls="home-how-lead"
+                data-testid="home-how-it-works"
+              >
+                {homeHowOpen ? <ChevronDown size={16} aria-hidden /> : <ChevronRight size={16} aria-hidden />}
+                How It Works
+              </button>
+              <p
+                id="home-how-lead"
+                className={`home-page-header__lead${homeHowOpen ? " is-open" : ""}`}
+                data-testid="home-how-panel"
+              >
                 Each wizard asks age-right questions so matches feel doable—not generic. Parents become{" "}
                 <strong>GYSH Coaches</strong> for kids and teens: cheer, set boundaries, and help turn ideas into
                 safe first wins. Parental consent required through age 12.
@@ -1659,7 +1933,7 @@ function App() {
                   <div className="home-promo-hero__frame">
                     <img
                       src={gyshHomeHero}
-                      alt="Get Your Side Hustle — Ideas, Action, Income, Freedom. For adults, kids, teens, and seniors. Start your journey today."
+                      alt="Get Your Side Hustle — Ideas, Action, Income, Freedom. For Kids, Teens, Adults & Seniors. Start your journey today."
                       className="home-promo-hero__img"
                       width={1600}
                       height={900}
@@ -1667,87 +1941,9 @@ function App() {
                       fetchPriority="high"
                     />
                   </div>
-                  <aside className="home-promo-hero__steps" aria-labelledby="home-steps-title">
-                    <h2 id="home-steps-title" className="home-promo-hero__steps-heading">
-                      <span className="home-promo-hero__steps-eyebrow">Start here</span>
-                      <span className="home-promo-hero__steps-title">Pick your starting point</span>
-                    </h2>
-                    <p className="home-promo-hero__steps-note">
-                      Kids, Teens, Adults, and Seniors each get a GYSH Match Wizard matched to their age and pace.
-                    </p>
-                    <ol className="home-promo-hero__bubbles">
-                      <li>
-                        <button
-                          type="button"
-                          className="home-step-bubble"
-                          onClick={() => goTo("quiz")}
-                        >
-                          <span className="home-step-bubble__num" aria-hidden="true">1</span>
-                          <span className="home-step-bubble__body">
-                            <strong>GYSH Match Wizard</strong>
-                            <span>Four age wizards for Kids, Teens, Adults &amp; Seniors — family fun.</span>
-                          </span>
-                          <Sparkles size={16} className="home-step-bubble__icon" aria-hidden="true" />
-                        </button>
-                      </li>
-                      <li>
-                        <button
-                          type="button"
-                          className="home-step-bubble"
-                          onClick={() => openKidsCorner()}
-                        >
-                          <span className="home-step-bubble__num" aria-hidden="true">2</span>
-                          <span className="home-step-bubble__body">
-                            <strong>Families</strong>
-                            <span>Safe hustles, stories, and parents as GYSH Coaches.</span>
-                          </span>
-                          <Star size={16} className="home-step-bubble__icon" aria-hidden="true" />
-                        </button>
-                      </li>
-                      <li>
-                        <button
-                          type="button"
-                          className="home-step-bubble"
-                          onClick={() => openSeniors()}
-                        >
-                          <span className="home-step-bubble__num" aria-hidden="true">3</span>
-                          <span className="home-step-bubble__body">
-                            <strong>Seniors</strong>
-                            <span>Flexible hustles for 55+, retirees, and second careers.</span>
-                          </span>
-                          <Heart size={16} className="home-step-bubble__icon" aria-hidden="true" />
-                        </button>
-                      </li>
-                      <li>
-                        <button
-                          type="button"
-                          className="home-step-bubble"
-                          onClick={() => setActiveView("workshops")}
-                        >
-                          <span className="home-step-bubble__num" aria-hidden="true">4</span>
-                          <span className="home-step-bubble__body">
-                            <strong>Workshops</strong>
-                            <span>Live sessions and guest experts to launch with support.</span>
-                          </span>
-                          <Mic2 size={16} className="home-step-bubble__icon" aria-hidden="true" />
-                        </button>
-                      </li>
-                      <li>
-                        <button
-                          type="button"
-                          className="home-step-bubble"
-                          onClick={() => openJoin()}
-                        >
-                          <span className="home-step-bubble__num" aria-hidden="true">5</span>
-                          <span className="home-step-bubble__body">
-                            <strong>Join</strong>
-                            <span>Create a free account and start tracking your pilot.</span>
-                          </span>
-                          <UserPlus size={16} className="home-step-bubble__icon" aria-hidden="true" />
-                        </button>
-                      </li>
-                    </ol>
-                  </aside>
+                  <div className="home-promo-hero__steps--desktop">
+                    {renderHomeHowSteps("home-steps-title")}
+                  </div>
                 </div>
               </div>
             </section>
@@ -1778,37 +1974,91 @@ function App() {
                 </div>
                 <a
                   href={FACEBOOK_URL}
-                  className="btn btn-outline home-match-family__side-cta"
+                  className="btn btn-outline home-match-family__side-cta home-match-family__facebook"
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label="Follow Get Your Side Hustle on Facebook"
+                  data-testid="home-facebook"
+                  title="Follow us on Facebook — facebook.com/getyoursidehustleofficial"
                 >
-                  <FacebookIcon size={16} /> Follow on Facebook
+                  <FacebookIcon size={22} />
+                  <span>Follow on Facebook</span>
                 </a>
               </div>
               <ul className="home-match-family__grid">
-                <li>
-                  <strong>Kids (4–12)</strong>
-                  <span>
-                    Custom matches for ages <strong>4–8</strong> and <strong>9–12</strong> — confidence,
-                    kindness, and parent-guided first hustles.
+                <li className="home-match-family__card home-match-family__card--kids">
+                  <div className="home-match-family__title-row">
+                    <strong>Kids (4–12)</strong>
+                    <button
+                      type="button"
+                      className="home-match-family__card-cta home-match-family__card-cta--kids"
+                      data-testid="home-path-cta-kids"
+                      aria-label="Open Kids page"
+                      onClick={() => openKidsCorner({ mode: "kids", tab: "wizard" })}
+                    >
+                      Open <ArrowRight size={14} aria-hidden />
+                    </button>
+                  </div>
+                  <span className="home-match-family__bands" aria-label="Match ages 4–8 and 9–12">
+                    <span className="home-match-family__band">4–8</span>
+                    <span className="home-match-family__band">9–12</span>
+                  </span>
+                  <span className="home-match-family__desc">
+                    Confidence, kindness, and parent-guided first hustles.
                   </span>
                 </li>
-                <li>
-                  <strong>Teens (13–17)</strong>
-                  <span>
-                    Custom matches for ages <strong>13–14</strong> and <strong>15–17</strong> — bigger skills,
-                    safer independence, still coach-friendly.
+                <li className="home-match-family__card home-match-family__card--teens">
+                  <div className="home-match-family__title-row">
+                    <strong>Teens (13–17)</strong>
+                    <button
+                      type="button"
+                      className="home-match-family__card-cta home-match-family__card-cta--teens"
+                      data-testid="home-path-cta-teens"
+                      aria-label="Open Teens page"
+                      onClick={() => openKidsCorner({ mode: "junior", tab: "wizard" })}
+                    >
+                      Open <ArrowRight size={14} aria-hidden />
+                    </button>
+                  </div>
+                  <span className="home-match-family__bands" aria-label="Match ages 13–14 and 15–17">
+                    <span className="home-match-family__band">13–14</span>
+                    <span className="home-match-family__band">15–17</span>
+                  </span>
+                  <span className="home-match-family__desc">
+                    Bigger skills, safer independence, still coach-friendly.
                   </span>
                 </li>
-                <li>
-                  <strong>Adult (18–54)</strong>
-                  <span>
+                <li className="home-match-family__card home-match-family__card--adult">
+                  <div className="home-match-family__title-row">
+                    <strong>Adult (18–54)</strong>
+                    <button
+                      type="button"
+                      className="home-match-family__card-cta home-match-family__card-cta--adult"
+                      data-testid="home-path-cta-adult"
+                      aria-label="Open Adults page"
+                      onClick={openAdultFindMine}
+                    >
+                      Open <ArrowRight size={14} aria-hidden />
+                    </button>
+                  </div>
+                  <span className="home-match-family__desc">
                     Ranked matches from budget, hours, strengths, and goals — built for real adult schedules.
                   </span>
                 </li>
-                <li>
-                  <strong>Senior (55+)</strong>
-                  <span>
+                <li className="home-match-family__card home-match-family__card--senior">
+                  <div className="home-match-family__title-row">
+                    <strong>Senior (55+)</strong>
+                    <button
+                      type="button"
+                      className="home-match-family__card-cta home-match-family__card-cta--senior"
+                      data-testid="home-path-cta-senior"
+                      aria-label="Open Seniors page"
+                      onClick={() => openSeniors(null)}
+                    >
+                      Open <ArrowRight size={14} aria-hidden />
+                    </button>
+                  </div>
+                  <span className="home-match-family__desc">
                     Flexible pacing for retirees, second careers, and experience-powered side hustles.
                   </span>
                 </li>
@@ -1998,7 +2248,7 @@ function App() {
 
         {activeView === "kids" && (
           <KidsCorner
-            isLoggedIn={hasMemberAccess}
+            isLoggedIn={kidsCornerMemberAccess}
             onGoToJoin={(audience) => openJoin(audience)}
             entryFocus={kidsEntryFocus}
           />
@@ -2006,7 +2256,9 @@ function App() {
 
         {activeView === "seniors" && (
           <SeniorSideHustles
-            isLoggedIn={hasMemberAccess}
+            isLoggedIn={
+              actAsAudienceNow === "senior" || (hasMemberAccess && !canUseAdminPortal)
+            }
             onGoToJoin={() => openJoin("senior")}
             onOpenGuides={() => goTo("guides")}
             entryTab={seniorsEntryTab}
@@ -2022,16 +2274,9 @@ function App() {
                   src={gyshLogo}
                   alt="Get Your Side Hustle"
                   className="login-box-logo"
-                  style={{
-                    display: "block",
-                    margin: "0 auto 18px",
-                    height: "120px",
-                    width: "auto",
-                    maxWidth: "100%",
-                    objectFit: "contain",
-                    background: "transparent",
-                    mixBlendMode: "multiply",
-                  }}
+                  width={234}
+                  height={112}
+                  decoding="async"
                 />
                 <h2 style={{ fontSize: "1.4rem", color: "var(--text-primary)", marginBottom: "6px" }}>
                   {loginMode === "login"
@@ -2094,8 +2339,13 @@ function App() {
                       </div>
                     </div>
 
-                    <button type="submit" className="btn btn-primary" style={{ width: "100%", marginTop: "10px" }}>
-                      Log In
+                    <button
+                      type="submit"
+                      className="btn btn-primary"
+                      style={{ width: "100%", marginTop: "10px" }}
+                      disabled={loginBusy}
+                    >
+                      {loginBusy ? <WaitLabel>Signing in…</WaitLabel> : "Log In"}
                     </button>
                   </form>
 
@@ -2149,7 +2399,7 @@ function App() {
                       style={{ width: "100%", marginTop: "10px" }}
                       disabled={resetBusy}
                     >
-                      {resetBusy ? "Sending…" : "Email me a reset link"}
+                      {resetBusy ? <WaitLabel>Sending…</WaitLabel> : "Email me a reset link"}
                     </button>
                   </form>
 
@@ -2223,7 +2473,7 @@ function App() {
                       style={{ width: "100%", marginTop: "10px" }}
                       disabled={resetBusy}
                     >
-                      {resetBusy ? "Saving…" : "Save new password"}
+                      {resetBusy ? <WaitLabel>Saving…</WaitLabel> : "Save new password"}
                     </button>
                   </form>
 
@@ -2242,7 +2492,9 @@ function App() {
           </div>
         )}
 
-        {activeView === "about" && <AboutPage onJoin={() => openJoin()} />}
+        {activeView === "about" && (
+          <AboutPage onJoin={() => openJoin()} onOpenKids={() => setActiveView("kids")} />
+        )}
 
         {activeView === "contact" && <ContactPage />}
 
@@ -2283,7 +2535,7 @@ function App() {
           <UserPortal />
         )}
 
-        {activeView === "admin" && (
+        {activeView === "admin" && authReady && canUseAdminPortal && (
           <AdminPortal
             key={adminSessionKey}
             authUser={authUser}
@@ -2291,11 +2543,23 @@ function App() {
             onTabChange={setAdminTab}
             userGuide={adminUserGuide}
             onUserGuideChange={setAdminUserGuide}
+            onSiteMapNavigate={navigateFromSiteMap}
           />
         )}
       </main>
 
       <SiteFooter onNavigate={handleFooterNav} />
+      <BusyOverlay
+        active={loginBusy || resetBusy}
+        message={
+          loginBusy
+            ? "Signing in…"
+            : loginMode === "forgot"
+              ? "Sending reset link…"
+              : "Saving new password…"
+        }
+      />
+      </div>
     </div>
   );
 }

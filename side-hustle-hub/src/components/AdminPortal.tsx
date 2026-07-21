@@ -14,6 +14,8 @@ import {
   Clock,
   Award,
   Mail,
+  FileText,
+  BadgeCheck,
 } from "lucide-react";
 import { ROOT_DOMAIN } from "../lib/site-config";
 import { TestingPortal } from "./admin/TestingPortal";
@@ -23,27 +25,41 @@ import { TaskList } from "./admin/TaskList";
 import { Financials } from "./admin/Financials";
 import { SchedulePage } from "./admin/SchedulePage";
 import { DueTasksModal } from "./admin/DueTasksModal";
+import { SprintCelebration } from "./admin/SprintCelebration";
 import { SiteMapPage } from "./admin/SiteMapPage";
+import type { SiteMapHref } from "../lib/site-map";
 import { TimesheetPage } from "./admin/TimesheetPage";
 import { UserGuidesHub, type UserGuideId } from "./admin/UserGuidesHub";
 import { CertificatesAdmin } from "./admin/CertificatesAdmin";
 import { EmailTemplates } from "./admin/EmailTemplates";
+import { DailyProgressPage } from "./admin/DailyProgressPage";
+import { MembershipsPage } from "./admin/MembershipsPage";
 import type { AuthUser } from "../lib/auth";
+import { canAccessAdminPortal } from "../lib/gysh-roles";
 import {
   assigneeForAuthUser,
   dueAttentionTasks,
   syncGuideReviewTasks,
   type GyshTask,
 } from "../lib/gysh-tasks";
+import { dueAttentionTests, type AttentionTest } from "../lib/gysh-due-attention";
+import {
+  attentionClearForPartner,
+  sprintWorkClearForPartner,
+  type SprintClearResult,
+} from "../lib/gysh-sprint-complete";
+import { fetchTestStatuses } from "../lib/gysh-test-plan";
 
 export type AdminTab =
   | "studio"
   | "schedule"
   | "testing"
   | "users"
+  | "memberships"
   | "factory"
   | "tasks"
   | "timesheet"
+  | "daily-progress"
   | "financials"
   | "sitemap"
   | "user-guides"
@@ -57,7 +73,9 @@ export const ADMIN_TABS: AdminTabDef[] = [
   { id: "tasks", label: "Task List" },
   { id: "testing", label: "Testing Portal" },
   { id: "timesheet", label: "Timesheet" },
+  { id: "daily-progress", label: "Daily Progress" },
   { id: "users", label: "Users Area" },
+  { id: "memberships", label: "Memberships" },
   { id: "certificates", label: "Certificates" },
   { id: "email", label: "Email Templates" },
   { id: "factory", label: "Content Factory" },
@@ -69,8 +87,12 @@ export const ADMIN_TABS: AdminTabDef[] = [
 
 /** Grouped Admin header menu — keeps the long list scannable. */
 export const ADMIN_MENU_GROUPS: { id: string; label: string; tabs: AdminTab[] }[] = [
-  { id: "delivery", label: "Plan & delivery", tabs: ["schedule", "tasks", "timesheet", "testing"] },
-  { id: "people", label: "People & access", tabs: ["users", "certificates", "email"] },
+  {
+    id: "delivery",
+    label: "Plan & delivery",
+    tabs: ["schedule", "tasks", "testing", "timesheet", "daily-progress"],
+  },
+  { id: "people", label: "People & access", tabs: ["users", "memberships", "certificates", "email"] },
   { id: "content", label: "Content & growth", tabs: ["factory", "studio", "financials"] },
   { id: "reference", label: "Reference", tabs: ["sitemap", "user-guides"] },
 ];
@@ -97,6 +119,8 @@ function userIsAdmin(user: AuthUser | null | undefined): boolean {
 
 const LOGIN_POPUP_FLAG = "gysh_due_popup_login";
 const DAILY_POPUP_PREFIX = "gysh_due_popup_day_";
+const CELEB_DAY_PREFIX = "gysh_sprint_celeb_day_";
+const CELEB_DONE_PREFIX = "gysh_sprint_celeb_done_";
 
 function todayKey(): string {
   const d = new Date();
@@ -109,6 +133,7 @@ type Props = {
   onTabChange: (tab: AdminTab) => void;
   userGuide?: UserGuideId;
   onUserGuideChange?: (guide: UserGuideId) => void;
+  onSiteMapNavigate?: (href: SiteMapHref) => void;
 };
 
 export const AdminPortal: React.FC<Props> = ({
@@ -117,12 +142,16 @@ export const AdminPortal: React.FC<Props> = ({
   onTabChange,
   userGuide = "member",
   onUserGuideChange,
+  onSiteMapNavigate,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<"calendar" | "monetize" | "growth">("calendar");
   const [localGuide, setLocalGuide] = useState<UserGuideId>(userGuide);
   const [dueModalOpen, setDueModalOpen] = useState(false);
+  const [celebOpen, setCelebOpen] = useState(false);
+  const [celebClear, setCelebClear] = useState<SprintClearResult | null>(null);
   const [overdue, setOverdue] = useState<GyshTask[]>([]);
   const [dueToday, setDueToday] = useState<GyshTask[]>([]);
+  const [overdueTests, setOverdueTests] = useState<AttentionTest[]>([]);
   const [focusTaskId, setFocusTaskId] = useState<string | null>(null);
   const [focusTestId, setFocusTestId] = useState<string | null>(null);
   const isAdmin = userIsAdmin(authUser);
@@ -138,7 +167,9 @@ export const AdminPortal: React.FC<Props> = ({
     { id: "tasks", label: "Task List", icon: <ListChecks size={16} /> },
     { id: "testing", label: "Testing Portal", icon: <FlaskConical size={16} /> },
     { id: "timesheet", label: "Timesheet", icon: <Clock size={16} /> },
+    { id: "daily-progress", label: "Daily Progress", icon: <FileText size={16} /> },
     { id: "users", label: "Users Area", icon: <Users size={16} /> },
+    { id: "memberships", label: "Memberships", icon: <BadgeCheck size={16} /> },
     { id: "certificates", label: "Certificates", icon: <Award size={16} /> },
     { id: "email", label: "Email Templates", icon: <Mail size={16} /> },
     { id: "factory", label: "Content Factory", icon: <Sparkles size={16} /> },
@@ -166,29 +197,63 @@ export const AdminPortal: React.FC<Props> = ({
     (async () => {
       try {
         // Keep Task List in sync: one review item per launch guide (D1).
-        const { tasks } = await syncGuideReviewTasks();
+        const [{ tasks }, testStatuses] = await Promise.all([
+          syncGuideReviewTasks(),
+          fetchTestStatuses(),
+        ]);
         if (cancelled) return;
         const attention = dueAttentionTasks(tasks, me);
-        const hasItems = attention.overdue.length > 0 || attention.dueToday.length > 0;
+        const testAttention = dueAttentionTests(testStatuses, me);
+        const hasTaskItems = attention.overdue.length > 0 || attention.dueToday.length > 0;
+        const hasOverdueTests = testAttention.overdue.length > 0;
+        const hasItems = hasTaskItems || hasOverdueTests;
+        const sprintClear = sprintWorkClearForPartner(tasks, testStatuses, me);
+        const noAttention = attentionClearForPartner(tasks, testStatuses, me);
 
-        // Fresh login: show modal when there are due-today or overdue items.
+        const openModal = () => {
+          setOverdue(attention.overdue);
+          setDueToday(attention.dueToday);
+          setOverdueTests(testAttention.overdue);
+          setDueModalOpen(true);
+          localStorage.setItem(dayKey, todayKey());
+        };
+
+        const celebDayKey = `${CELEB_DAY_PREFIX}${authUser?.id || me}_${sprintClear.sprintIndex}`;
+        const celebDoneKey = `${CELEB_DONE_PREFIX}${authUser?.id || me}_${sprintClear.sprintIndex}`;
+        const celebShownToday = localStorage.getItem(celebDayKey) === todayKey();
+        const wasAlreadyComplete = localStorage.getItem(celebDoneKey) === "1";
+        const newlyCompleted = sprintClear.allClear && !wasAlreadyComplete;
+
+        const openCelebration = () => {
+          setCelebClear(sprintClear);
+          setCelebOpen(true);
+          localStorage.setItem(celebDayKey, todayKey());
+          localStorage.setItem(celebDoneKey, "1");
+        };
+
+        if (!sprintClear.allClear) {
+          localStorage.removeItem(celebDoneKey);
+        }
+
+        // Fresh login: due/overdue first; else celebrate a clear sprint board.
         if (forceFromLogin) {
           sessionStorage.removeItem(LOGIN_POPUP_FLAG);
-          if (hasItems) {
-            setOverdue(attention.overdue);
-            setDueToday(attention.dueToday);
-            setDueModalOpen(true);
-            localStorage.setItem(dayKey, todayKey());
+          if (hasItems) openModal();
+          else if (sprintClear.allClear && noAttention && (newlyCompleted || !celebShownToday)) {
+            openCelebration();
           }
           return;
         }
 
-        // Optional: once per day when opening Admin if overdue exists
-        if (!alreadyToday && attention.overdue.length > 0) {
-          setOverdue(attention.overdue);
-          setDueToday(attention.dueToday);
-          setDueModalOpen(true);
-          localStorage.setItem(dayKey, todayKey());
+        // Once per day when opening Admin if overdue tasks or tests remain
+        if (!alreadyToday && (attention.overdue.length > 0 || hasOverdueTests)) {
+          openModal();
+          return;
+        }
+
+        // Once per day (or when newly completed) when Admin opens and sprint work is clear
+        if (sprintClear.allClear && noAttention && (newlyCompleted || !celebShownToday)) {
+          openCelebration();
         }
       } catch {
         if (forceFromLogin) sessionStorage.removeItem(LOGIN_POPUP_FLAG);
@@ -202,6 +267,21 @@ export const AdminPortal: React.FC<Props> = ({
 
   const assigneeLabel = assigneeForAuthUser(authUser) ?? "you";
 
+  // Defense in depth: never render Schedule / partner tools without portal roles.
+  if (!canAccessAdminPortal(authUser)) {
+    return (
+      <div className="glass" style={{ padding: 28, borderRadius: 14, color: "var(--text-primary)" }}>
+        <h2 style={{ fontSize: "1.4rem", color: "var(--bronze)", marginBottom: 8 }}>
+          Admin sign-in required
+        </h2>
+        <p style={{ margin: 0 }}>
+          Schedule &amp; Plan and other Admin Studio tools are only available to signed-in Admin, QA,
+          or Dev accounts.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div>
       <DueTasksModal
@@ -209,9 +289,19 @@ export const AdminPortal: React.FC<Props> = ({
         assigneeLabel={assigneeLabel}
         overdue={overdue}
         dueToday={dueToday}
+        overdueTests={overdueTests}
         onClose={() => setDueModalOpen(false)}
         onOpenTaskList={() => onTabChange("tasks")}
+        onOpenTesting={() => onTabChange("testing")}
       />
+      {celebClear ? (
+        <SprintCelebration
+          open={celebOpen}
+          assigneeLabel={assigneeLabel}
+          clear={celebClear}
+          onClose={() => setCelebOpen(false)}
+        />
+      ) : null}
 
       <div className="admin-portal-nav" aria-label="Admin sections">
         {ADMIN_MENU_GROUPS.map((group) => {
@@ -220,7 +310,10 @@ export const AdminPortal: React.FC<Props> = ({
             .filter((t): t is (typeof tabs)[number] => Boolean(t));
           if (groupTabs.length === 0) return null;
           return (
-            <div key={group.id} className="admin-portal-nav__group">
+            <div
+              key={group.id}
+              className={`admin-portal-nav__group${group.id === "delivery" ? " admin-portal-nav__group--delivery" : ""}`}
+            >
               <p className="admin-portal-nav__label">{group.label}</p>
               <div className="admin-portal-nav__tabs">
                 {groupTabs.map((t) => (
@@ -249,6 +342,7 @@ export const AdminPortal: React.FC<Props> = ({
       )}
       {activeTab === "schedule" && (
         <SchedulePage
+          authUser={authUser}
           onOpenTask={(id) => {
             setFocusTaskId(id);
             onTabChange("tasks");
@@ -260,6 +354,7 @@ export const AdminPortal: React.FC<Props> = ({
         />
       )}
       {activeTab === "users" && <UsersArea />}
+      {activeTab === "memberships" && <MembershipsPage />}
       {activeTab === "certificates" && <CertificatesAdmin />}
       {activeTab === "email" && <EmailTemplates />}
       {activeTab === "factory" && <ContentFactory />}
@@ -271,8 +366,9 @@ export const AdminPortal: React.FC<Props> = ({
         />
       )}
       {activeTab === "timesheet" && <TimesheetPage authUser={authUser} />}
+      {activeTab === "daily-progress" && <DailyProgressPage />}
       {activeTab === "financials" && isAdmin && <Financials />}
-      {activeTab === "sitemap" && <SiteMapPage />}
+      {activeTab === "sitemap" && <SiteMapPage onNavigate={onSiteMapNavigate} />}
       {activeTab === "user-guides" && (
         <UserGuidesHub activeGuide={activeGuide} onGuideChange={setActiveGuide} />
       )}

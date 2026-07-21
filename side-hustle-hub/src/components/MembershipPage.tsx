@@ -4,10 +4,11 @@ import {
   Bell,
   CalendarDays,
   ChartColumnIncreasing,
-  ChevronDown,
-  ChevronRight,
   Coins,
   Crown,
+  LayoutDashboard,
+  Link2,
+  Shield,
   Sparkles,
   UserPlus,
 } from "lucide-react";
@@ -16,19 +17,19 @@ import {
   AUDIENCE_LABELS,
   CREDIT_EARN_ACTIONS,
   CREDIT_PACKS,
-  MEMBER_PERKS_BY_TIER,
   MEMBERSHIP_FEATURES,
   MEMBERSHIP_TIERS,
+  MILITARY_VETERAN_CALLOUT,
   SCHEDULE_SUITE_FEATURE_IDS,
   SCHEDULE_SUITE_TIER,
-  kidCreditsFeatureLabel,
+  numberedTierPerks,
   oneOnOneFeatureLabel,
   formatUsd,
   tierPriceMonthlyUsd,
   tierPriceYearlyUsd,
   KID_TO_ADULT_CREDIT_RATIO,
   type AudienceGroup,
-  type MemberPerkAudience,
+  type NumberedTierPerk,
   type TierId,
 } from "../lib/membership";
 import {
@@ -38,106 +39,26 @@ import {
 } from "../lib/join-audience";
 import membershipHero from "../assets/membership-hero.png";
 
-const PREVIEW_BENEFIT_COUNT = 5;
-
-type BenefitRow = {
-  id: string;
-  title: string;
-  detail?: string;
-};
-
-function audienceToPerkKey(audience: AudienceGroup): MemberPerkAudience {
-  return audience;
-}
-
-function buildTierBenefits(tier: (typeof MEMBERSHIP_TIERS)[number], audience: AudienceGroup): BenefitRow[] {
-  const rows: BenefitRow[] = [];
-  const seen = new Set<string>();
-
-  for (const f of MEMBERSHIP_FEATURES) {
-    if (!tier.featureIds.includes(f.id)) continue;
-    if (audience === "kids" && f.id === "zip_timing") continue;
-    if (audience === "junior" && f.id === "story_time") continue;
-    if ((audience === "adult" || audience === "senior") && f.id === "story_time") continue;
-
-    let title =
-      f.id === "kid_credits"
-        ? kidCreditsFeatureLabel(tier.id)
-        : f.id === "one_on_one"
-          ? oneOnOneFeatureLabel(tier.id)
-          : f.label;
-    if (
-      SCHEDULE_SUITE_FEATURE_IDS.includes(f.id as (typeof SCHEDULE_SUITE_FEATURE_IDS)[number])
-    ) {
-      title = `${title} · schedule suite`;
-    }
-    if (f.id === "kid_credits") title = `${title} · kids or adults`;
-    if (f.id === "one_on_one" && tier.commitmentMonths && tier.commitmentMonths > 1) {
-      title = `${title} · ${tier.commitmentMonths}-mo commitment`;
-    }
-    if (f.id === "one_on_one") title = `${title} · all ages`;
-
-    const key = title.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    rows.push({ id: `feature-${f.id}`, title, detail: f.detail });
-  }
-
-  for (const perk of MEMBER_PERKS_BY_TIER[tier.id][audienceToPerkKey(audience)]) {
-    const key = perk.title.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    rows.push({ id: `perk-${perk.title}`, title: perk.title, detail: perk.detail });
-  }
-
-  return rows;
-}
-
 function TierBenefitsList({
   tierId,
   benefits,
 }: {
   tierId: TierId;
-  benefits: BenefitRow[];
+  benefits: NumberedTierPerk[];
 }) {
-  const [expanded, setExpanded] = useState(false);
-  const preview = benefits.slice(0, PREVIEW_BENEFIT_COUNT);
-  const rest = benefits.slice(PREVIEW_BENEFIT_COUNT);
-  const visible = expanded ? benefits : preview;
-  const moreCount = rest.length;
-
   return (
-    <div
-      className={`membership-tier-benefits${expanded ? " is-expanded" : ""}`}
-      data-testid={`membership-benefits-${tierId}`}
-    >
-      <ul className="membership-tier-features">
-        {visible.map((b) => (
-          <li key={b.id}>
+    <div className="membership-tier-benefits" data-testid={`membership-benefits-${tierId}`}>
+      <ol className="membership-tier-features" start={1}>
+        {benefits.map((b) => (
+          <li key={`perk-${b.n}-${b.title}`}>
             <BadgeCheck size={14} className="membership-check" aria-hidden />
             <span>
-              <strong>{b.title}</strong>
-              {expanded && b.detail ? (
-                <em className="membership-benefit-detail">{b.detail}</em>
-              ) : null}
+              <strong>{b.numberedTitle}</strong>
+              {b.detail ? <em className="membership-benefit-detail">{b.detail}</em> : null}
             </span>
           </li>
         ))}
-      </ul>
-      <button
-        type="button"
-        className="membership-tier-expand"
-        aria-expanded={expanded}
-        data-testid={`membership-benefits-expand-${tierId}`}
-        onClick={() => setExpanded((v) => !v)}
-      >
-        {expanded ? <ChevronDown size={16} aria-hidden /> : <ChevronRight size={16} aria-hidden />}
-        {expanded
-          ? "Show less"
-          : moreCount > 0
-            ? `Show ${moreCount} more`
-            : "Show details"}
-      </button>
+      </ol>
     </div>
   );
 }
@@ -164,10 +85,20 @@ export function MembershipPage({
   );
   const [highlightAudience, setHighlightAudience] = useState(Boolean(initialAudience));
   const audienceTabsRef = useRef<HTMLDivElement>(null);
+  const membershipPlansRef = useRef<HTMLElement>(null);
   const usesCredits = audience === "kids" || audience === "junior";
   const showKidCreditPool = audience === "adult" || audience === "senior";
+  const showMilitaryCallout = audience === "adult" || audience === "senior";
   const earnActions = CREDIT_EARN_ACTIONS.filter((a) => a.audiences.includes(audience));
   const alaCarte = ALA_CARTE_PRICE_LIST.filter((i) => i.audiences.includes(audience));
+
+  const scrollToMemberships = () => {
+    const el = membershipPlansRef.current;
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+    el.focus({ preventScroll: true });
+    setHighlightAudience(true);
+  };
 
   useEffect(() => {
     if (!initialAudience) return;
@@ -183,10 +114,6 @@ export function MembershipPage({
 
   useEffect(() => {
     if (!highlightAudience) return;
-    const el = audienceTabsRef.current;
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
     const t = window.setTimeout(() => setHighlightAudience(false), 2800);
     return () => window.clearTimeout(t);
   }, [highlightAudience, audience]);
@@ -196,6 +123,10 @@ export function MembershipPage({
     saveJoinAudience(next);
     setHighlightAudience(true);
   };
+
+  const audienceLabel = AUDIENCE_LABELS[audience];
+  const seeMembershipsLabel = `See Memberships — ${audienceLabel} pricing`;
+  const seeMembershipsHint = `Scrolls to Free–Elite pricing for ${audienceLabel}. Switch the lane below anytime.`;
 
   return (
     <div className="membership-page" data-testid="membership-page">
@@ -214,14 +145,41 @@ export function MembershipPage({
               <Crown size={13} /> Membership
             </span>
             <h2 className="membership-hero-heading">
-              Join GYSH!
-              <span className="membership-hero-heading-aside">(FREE PLANS AVAILABLE)</span>
+              Your Side Hustle deserves a real plan
+              <span className="membership-hero-heading-aside">(FREE TO START)</span>
             </h2>
             <p data-testid="membership-lead">
-              Start free with open guides — upgrade for schedules, trackers, progress reports, email
-              alerts, training, and monthly 1-on-1 consulting (30 / 60 / 90 min by plan).
+              GYSH membership turns “I should try this” into a weekly rhythm — age-right Match Wizard
+              matches, member guides, consulting time, and (on Pro+) a hustle schedule with tracker,
+              progress reports, and email nudges. Start free, then pick the lane that fits your life.
+            </p>
+            <p className="membership-hero-dashboard-note" data-testid="membership-hero-dashboard-note">
+              Members get a <strong>Member Dashboard</strong> (My Dashboard) to track progress, grab
+              workshop seats, and share a personal <strong>referral link</strong> that earns Kid Credits
+              when friends join.
             </p>
             <div className="membership-hero-actions">
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={scrollToMemberships}
+                style={{ gap: 6 }}
+                data-testid="membership-see-plans"
+                aria-describedby="membership-see-plans-hint"
+              >
+                <Crown size={16} aria-hidden /> {seeMembershipsLabel}
+              </button>
+              {onGoToJoin && (
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => onGoToJoin("free")}
+                  style={{ gap: 6 }}
+                  data-testid="membership-hero-join"
+                >
+                  <UserPlus size={16} /> Create account / Join
+                </button>
+              )}
               {onOpenFreeGuides && (
                 <button type="button" className="btn btn-outline" onClick={onOpenFreeGuides}>
                   Browse free guides
@@ -232,68 +190,40 @@ export function MembershipPage({
                   Sign in
                 </button>
               )}
-              {onGoToJoin && (
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={() => onGoToJoin("free")}
-                  style={{ gap: 6 }}
-                  data-testid="membership-hero-join"
-                >
-                  <UserPlus size={16} /> Create account / Join
-                </button>
-              )}
             </div>
+            <p id="membership-see-plans-hint" className="membership-see-plans-hint" data-testid="membership-see-plans-hint">
+              {seeMembershipsHint}
+            </p>
           </div>
           <ul className="membership-hero-pillars">
             <li>
               <BadgeCheck size={16} aria-hidden />
-              <span>Free plan to browse guides &amp; save progress</span>
+              <span>Free forever to explore guides — upgrade when you’re ready to launch</span>
             </li>
             <li>
-              <CalendarDays size={16} aria-hidden />
-              <span>Pro+ schedule suite, tracker &amp; email alerts</span>
+              <LayoutDashboard size={16} aria-hidden />
+              <span>Member Dashboard keeps your hustle, credits, and checklist in one place</span>
+            </li>
+            <li>
+              <Link2 size={16} aria-hidden />
+              <span>Referral link on your dashboard — friends join, you earn Kid Credits</span>
             </li>
             <li>
               <Sparkles size={16} aria-hidden />
-              <span>Monthly 1-on-1 consulting on paid plans</span>
-            </li>
-            <li>
-              <Coins size={16} aria-hidden />
-              <span>Same consulting rates for Kids, Teens, Adults &amp; Seniors</span>
+              <span>Paid plans add 1-on-1 consulting; Pro+ unlocks the schedule suite</span>
             </li>
           </ul>
         </div>
       </section>
 
-      <section className="glass membership-schedule-callout" data-testid="membership-schedule-suite">
-        <div className="membership-schedule-icons" aria-hidden>
-          <CalendarDays size={22} />
-          <ChartColumnIncreasing size={22} />
-          <Bell size={22} />
-        </div>
-        <div>
-          <h3>Proposed hustle schedule suite</h3>
-          <p>
-            Starting at <strong>Pro</strong>, members unlock a personalized weekly schedule from
-            their Get Your Side Hustle matches, a live hustle tracker, progress reports, and email
-            notifications for milestones and workshop seats. Every paid plan includes a monthly
-            1-on-1 consulting session (Starter 30 min, Pro 60 min, Elite 90 min) with a 3-month
-            commitment. Elite also adds the ZIP best-times scout for rideshare &amp; delivery.
-          </p>
-          <ul className="membership-schedule-list">
-            {SCHEDULE_SUITE_FEATURE_IDS.map((id) => {
-              const f = MEMBERSHIP_FEATURES.find((x) => x.id === id);
-              return f ? (
-                <li key={id}>
-                  <BadgeCheck size={14} aria-hidden /> <strong>{f.label}</strong> — {f.detail}
-                </li>
-              ) : null;
-            })}
-          </ul>
-        </div>
-      </section>
-
+      <section
+        id="gysh-membership-plans"
+        ref={membershipPlansRef}
+        tabIndex={-1}
+        className="membership-plans-section"
+        aria-labelledby="membership-audience-heading"
+        data-testid="membership-plans"
+      >
       <div
         ref={audienceTabsRef}
         className={`membership-audience-tabs${highlightAudience ? " is-spotlight" : ""}`}
@@ -302,7 +232,7 @@ export function MembershipPage({
         data-testid="membership-audience-tabs"
       >
         <p className="membership-audience-tabs__label" id="membership-audience-heading">
-          Membership for: <strong>{AUDIENCE_LABELS[audience]}</strong>
+          Membership for: <strong>{audienceLabel}</strong>
         </p>
         {AUDIENCE_TABS.map((a) => (
           <button
@@ -341,16 +271,21 @@ export function MembershipPage({
         {MEMBERSHIP_TIERS.map((tier) => {
           const monthly = tierPriceMonthlyUsd(tier, audience);
           const yearly = tierPriceYearlyUsd(tier, audience);
-          const benefits = buildTierBenefits(tier, audience);
+          const benefits = numberedTierPerks(tier.id, audience);
           return (
           <article
             key={tier.id}
-            className={`glass membership-tier-card${tier.highlight ? " is-featured" : ""}${tier.id === SCHEDULE_SUITE_TIER ? " unlocks-schedule" : ""}`}
+            className={`glass membership-tier-card${tier.highlight ? " is-featured" : ""}${tier.id === "free" ? " is-free-start" : ""}${tier.id === SCHEDULE_SUITE_TIER ? " unlocks-schedule" : ""}`}
             data-testid={`membership-tier-${tier.id}`}
           >
             <div className="membership-tier-card__top">
-              <h3>{tier.name}</h3>
+              <h3>{tier.id === "free" ? "Free — start here" : tier.name}</h3>
               <div className="membership-tier-badges">
+                {tier.id === "free" && (
+                  <span className="glow-badge free" data-testid="membership-free-start-badge">
+                    $0 forever · real value
+                  </span>
+                )}
                 {tier.highlight && <span className="glow-badge amber">Most popular</span>}
                 {tier.id === SCHEDULE_SUITE_TIER && (
                   <span className="glow-badge free">Unlocks schedule suite</span>
@@ -362,27 +297,32 @@ export function MembershipPage({
                 ) : null}
                 {tier.oneOnOneMinutes ? (
                   <span className="glow-badge free" data-testid={`membership-session-${tier.id}`}>
-                    1× {tier.oneOnOneMinutes}-min 1-on-1 / mo
+                    {oneOnOneFeatureLabel(tier.id)}
                   </span>
                 ) : null}
               </div>
               <p className="membership-tier-tagline">{tier.tagline}</p>
               <p className="membership-tier-price">
-                {usesCredits ? (
+                {tier.id === "free" ? (
+                  <>
+                    <strong>Free</strong>
+                    <span className="membership-tier-or">no card · upgrade when ready</span>
+                  </>
+                ) : usesCredits ? (
                   <>
                     <strong>{tier.creditsPerMonth ?? 0}</strong> credits / mo
-                    {tier.id !== "free" && <span className="membership-tier-or">or parent top-up</span>}
+                    <span className="membership-tier-or">or parent top-up</span>
                   </>
                 ) : (
                   <>
                     <strong>{formatUsd(monthly)}</strong>
-                    {tier.id !== "free" && "/ mo"}
+                    / mo
                     {yearly ? (
                       <span className="membership-tier-or">
                         or {formatUsd(yearly)} / yr
                       </span>
                     ) : null}
-                    {audience === "senior" && tier.id !== "free" && (tier.priceMonthlyUsd ?? 0) > monthly ? (
+                    {audience === "senior" && (tier.priceMonthlyUsd ?? 0) > monthly ? (
                       <span className="membership-tier-or">
                         Adult price {formatUsd(tier.priceMonthlyUsd ?? 0)} / mo
                       </span>
@@ -394,7 +334,7 @@ export function MembershipPage({
             <TierBenefitsList tierId={tier.id} benefits={benefits} />
             <button
               type="button"
-              className={`btn ${tier.id === "free" ? "btn-outline" : "btn-primary"}`}
+              className={`btn btn-primary${tier.id === "free" ? " membership-choose-free" : ""}`}
               onClick={() => {
                 if (tier.id === "free") {
                   onGoToJoin?.("free");
@@ -404,12 +344,60 @@ export function MembershipPage({
               }}
               data-testid={`membership-choose-${tier.id}`}
             >
-              {tier.id === "free" ? "Join Free" : `Choose ${tier.name}`}
+              {tier.id === "free" ? "Start Free" : `Choose ${tier.name}`}
             </button>
           </article>
           );
         })}
       </div>
+      </section>
+
+      {showMilitaryCallout && (
+        <aside
+          className="glass membership-military-callout"
+          data-testid="membership-military-veteran"
+          aria-label={MILITARY_VETERAN_CALLOUT.badge}
+        >
+          <div className="membership-military-callout__badge">
+            <Shield size={15} aria-hidden />
+            <span className="glow-badge free">{MILITARY_VETERAN_CALLOUT.badge}</span>
+            <span className="glow-badge amber">Veterans save even more</span>
+          </div>
+          <div>
+            <h3>{MILITARY_VETERAN_CALLOUT.title}</h3>
+            <p>{MILITARY_VETERAN_CALLOUT.body}</p>
+          </div>
+        </aside>
+      )}
+
+      <section className="glass membership-schedule-callout" data-testid="membership-schedule-suite">
+        <div className="membership-schedule-icons" aria-hidden>
+          <CalendarDays size={22} />
+          <ChartColumnIncreasing size={22} />
+          <Bell size={22} />
+        </div>
+        <div>
+          <h3>Proposed hustle schedule suite</h3>
+          <p>
+            Starting at <strong>Pro</strong>, members unlock a personalized weekly schedule from
+            their Get Your Side Hustle matches, a live hustle tracker, progress reports, and email
+            notifications for milestones and workshop seats. Every paid plan includes consulting
+            (Starter: one 1-hour session; Pro: three 60-minute sessions; Elite: three 90-minute
+            sessions) with a 3-month commitment. Elite also adds the ZIP best-times scout for
+            rideshare &amp; delivery.
+          </p>
+          <ul className="membership-schedule-list">
+            {SCHEDULE_SUITE_FEATURE_IDS.map((id) => {
+              const f = MEMBERSHIP_FEATURES.find((x) => x.id === id);
+              return f ? (
+                <li key={id}>
+                  <BadgeCheck size={14} aria-hidden /> <strong>{f.label}</strong> — {f.detail}
+                </li>
+              ) : null;
+            })}
+          </ul>
+        </div>
+      </section>
 
       {usesCredits && (
         <section className="glass membership-credit-packs" data-testid="membership-credit-packs">

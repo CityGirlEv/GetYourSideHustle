@@ -33,7 +33,14 @@ export function MemberUserGuide() {
             <button
               type="button"
               className="btn btn-primary"
-              onClick={() => void downloadMemberUserGuidePdf()}
+              onClick={() =>
+                void downloadMemberUserGuidePdf({
+                  kids: kidsHero,
+                  teens: teensHero,
+                  adult: adultHero,
+                  senior: seniorHero,
+                })
+              }
               data-testid="member-guide-pdf"
             >
               <Download size={16} /> Download PDF
@@ -66,16 +73,17 @@ export function MemberUserGuide() {
                   <span className="manual-section__num">{ch.number}</span>
                   {ch.title}
                 </h4>
-                <div className={`manual-section__body has-figure`}>
+                <div className={`manual-section__body has-figure has-figure--${align}`}>
                   <figure className={`manual-figure manual-figure--${align}`}>
                     <div className="manual-figure__frame">
                       <img src={ch.image} alt={ch.imageAlt} loading="lazy" decoding="async" />
                     </div>
                     <figcaption>{ch.imageAlt}</figcaption>
                   </figure>
-                  <p className="manual-lede">{ch.ages}</p>
-                  <GuideChecklist guideId={`member-${ch.id}`} items={ch.items} />
-                  <div className="manual-clear" />
+                  <div className="manual-section__copy">
+                    <p className="manual-lede">{ch.ages}</p>
+                    <GuideChecklist guideId={`member-${ch.id}`} items={ch.items} />
+                  </div>
                 </div>
               </section>
             );

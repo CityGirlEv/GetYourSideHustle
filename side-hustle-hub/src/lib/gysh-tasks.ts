@@ -7,6 +7,7 @@ import {
   guideReviewNotes,
   guideReviewTaskId,
 } from "./launch-guides";
+import { ensureTaskNotesPageLink } from "./qa-page-links";
 
 export type TaskStatus = "not_started" | "in_progress" | "blocked" | "done";
 export type TaskPriority = "P0" | "P1" | "P2" | "P3";
@@ -18,7 +19,7 @@ export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
   done: "Done",
 };
 
-/** Lightweight attachment metadata (blobs still local IndexedDB until R2 phase 2). */
+/** Attachment metadata. File bytes live in D1 (`content_base64`); IndexedDB is a local cache. */
 export type GyshTaskAttachment = {
   id: string;
   name: string;
@@ -27,6 +28,8 @@ export type GyshTaskAttachment = {
   storedId: string;
   r2Key?: string | null;
   addedAt: string;
+  /** True when D1 has downloadable file bytes. */
+  hasContent?: boolean;
 };
 
 /** T/E operational taxonomy for GYSH task backlog. */
@@ -84,6 +87,73 @@ export function categoryLabel(category: TaskCategory | string): string {
   return TASK_CATEGORY_LABELS[id];
 }
 
+/** Named people who can be assigned to tasks / plan items. */
+export type PartnerAssignee = "Tina" | "Evelyn" | "Lyriq";
+
+/**
+ * Stored assignee value.
+ * - Singles: Tina | Evelyn | Lyriq | Unassigned
+ * - Tina+Evelyn (legacy): Both
+ * - Other multi: Tina+Lyriq | Evelyn+Lyriq | Tina+Evelyn+Lyriq (sorted join with +)
+ */
+export type TaskAssignee = string;
+
+export const PARTNER_ASSIGNEES: PartnerAssignee[] = ["Tina", "Evelyn", "Lyriq"];
+
+const PARTNER_SET = new Set<string>(PARTNER_ASSIGNEES);
+
+/** Parse stored assignee into partner list (Both → Tina+Evelyn). */
+export function parseAssigneePeople(assignedTo: string | null | undefined): PartnerAssignee[] {
+  const raw = String(assignedTo ?? "").trim();
+  if (!raw || raw === "Unassigned") return [];
+  if (raw === "Both") return ["Tina", "Evelyn"];
+  const parts = raw
+    .split(/[+,&|/]/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  const people: PartnerAssignee[] = [];
+  for (const p of parts) {
+    if (p === "Both") {
+      if (!people.includes("Tina")) people.push("Tina");
+      if (!people.includes("Evelyn")) people.push("Evelyn");
+      continue;
+    }
+    if (PARTNER_SET.has(p) && !people.includes(p as PartnerAssignee)) {
+      people.push(p as PartnerAssignee);
+    }
+  }
+  return people;
+}
+
+/** Encode partner list for storage (Tina+Evelyn alone → Both for partner-done rules). */
+export function formatAssigneePeople(people: readonly PartnerAssignee[]): TaskAssignee {
+  const uniq = PARTNER_ASSIGNEES.filter((p) => people.includes(p));
+  if (uniq.length === 0) return "Unassigned";
+  if (uniq.length === 1) return uniq[0]!;
+  if (uniq.length === 2 && uniq[0] === "Tina" && uniq[1] === "Evelyn") return "Both";
+  return uniq.join("+");
+}
+
+/** Human label: "Tina + Evelyn", "Tina + Lyriq", etc. */
+export function assigneeDisplayLabel(assignedTo: string | null | undefined): string {
+  const people = parseAssigneePeople(assignedTo);
+  if (people.length === 0) return "Unassigned";
+  return people.join(" + ");
+}
+
+/** Tina+Evelyn pair (Both or Both+Lyriq) — partner Done checkboxes apply. */
+export function requiresPartnerDone(assignedTo: string | null | undefined): boolean {
+  const people = parseAssigneePeople(assignedTo);
+  return people.includes("Tina") && people.includes("Evelyn");
+}
+
+export function assigneeIncludes(
+  assignedTo: string | null | undefined,
+  person: PartnerAssignee,
+): boolean {
+  return parseAssigneePeople(assignedTo).includes(person);
+}
+
 export type GyshTask = {
   id: string;
   description: string;
@@ -91,7 +161,7 @@ export type GyshTask = {
   priority: TaskPriority;
   status: TaskStatus;
   assignBy: string;
-  assignedTo: "Tina" | "Evelyn" | "Lyriq" | "Both";
+  assignedTo: TaskAssignee;
   dateAssigned: string;
   dueDate: string;
   dateCompleted: string;
@@ -101,16 +171,22 @@ export type GyshTask = {
   /** Partner completion — Both tasks need both true before status can be Done. */
   tinaDone: boolean;
   evelynDone: boolean;
+  /** ISO timestamp of last content change (server). */
+  updatedAt?: string;
+  /** Display name or email of last editor (server). */
+  updatedBy?: string;
   attachments: GyshTaskAttachment[];
 };
 
 export const ACCEPT_ATTACHMENTS =
-  "image/*,application/pdf,.doc,.docx,video/mp4,video/webm,video/quicktime,.txt,.csv,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/csv";
+  "image/*,application/pdf,.doc,.docx,.xls,.xlsx,video/mp4,video/webm,video/quicktime,.txt,.csv,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain,text/csv";
 
 const DOC_MIME = new Set([
   "application/pdf",
   "application/msword",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "text/plain",
   "text/csv",
 ]);
@@ -125,7 +201,7 @@ export function isAcceptedAttachment(file: File): boolean {
   if (DOC_MIME.has(type)) return true;
   if (/\.(png|jpe?g|gif|webp|svg|bmp|heic)$/i.test(name)) return true;
   if (/\.(mp4|webm|mov)$/i.test(name)) return true;
-  if (/\.(pdf|doc|docx|txt|csv)$/i.test(name)) return true;
+  if (/\.(pdf|doc|docx|xls|xlsx|txt|csv)$/i.test(name)) return true;
   return false;
 }
 
@@ -147,35 +223,19 @@ function mapTask(t: GyshTask): GyshTask {
 }
 
 /**
- * For Both-assigned tasks: overall Done only when T + E have each marked done.
- * Single-assignee tasks: that partner's flag mirrors overall status.
+ * For Tina+Evelyn (Both) tasks: overall Done only when T + E have each marked done.
+ * Single-assignee / other multi (e.g. Tina+Lyriq): overall status is enough.
  */
 export function applyPartnerDone(task: GyshTask, patch: Partial<GyshTask> = {}): GyshTask {
   const next: GyshTask = { ...task, ...patch, attachments: patch.attachments ?? task.attachments };
+  const people = parseAssigneePeople(next.assignedTo);
 
-  if (next.assignedTo === "Tina") {
-    if (patch.status === "done") next.tinaDone = true;
-    if (patch.status && patch.status !== "done") next.tinaDone = false;
-    if (patch.tinaDone === true) next.status = "done";
-    if (patch.tinaDone === false && next.status === "done") next.status = "in_progress";
-    next.evelynDone = false;
-  } else if (next.assignedTo === "Evelyn") {
-    if (patch.status === "done") next.evelynDone = true;
-    if (patch.status && patch.status !== "done") next.evelynDone = false;
-    if (patch.evelynDone === true) next.status = "done";
-    if (patch.evelynDone === false && next.status === "done") next.status = "in_progress";
-    next.tinaDone = false;
-  } else if (next.assignedTo === "Lyriq") {
-    // Single QA assignee — overall status is enough; clear partner flags.
-    next.tinaDone = false;
-    next.evelynDone = false;
-  } else {
-    // Both — cannot force Done via status alone until both partners are done.
+  if (requiresPartnerDone(next.assignedTo)) {
+    // Tina+Evelyn (optionally +Lyriq) — cannot force Done via status alone until both partners are done.
     if (patch.status === "done" && !(next.tinaDone && next.evelynDone)) {
-      next.status = next.tinaDone || next.evelynDone ? "in_progress" : "in_progress";
+      next.status = "in_progress";
     }
     if (patch.status && patch.status !== "done") {
-      // leaving done / choosing blocked etc. clears partner checks unless explicitly set
       if (patch.tinaDone === undefined && patch.evelynDone === undefined && patch.status !== "in_progress") {
         if (patch.status === "not_started" || patch.status === "blocked") {
           next.tinaDone = false;
@@ -190,6 +250,22 @@ export function applyPartnerDone(task: GyshTask, patch: Partial<GyshTask> = {}):
     } else if ((next.tinaDone || next.evelynDone) && next.status === "not_started") {
       next.status = "in_progress";
     }
+  } else if (people.length === 1 && people[0] === "Tina") {
+    if (patch.status === "done") next.tinaDone = true;
+    if (patch.status && patch.status !== "done") next.tinaDone = false;
+    if (patch.tinaDone === true) next.status = "done";
+    if (patch.tinaDone === false && next.status === "done") next.status = "in_progress";
+    next.evelynDone = false;
+  } else if (people.length === 1 && people[0] === "Evelyn") {
+    if (patch.status === "done") next.evelynDone = true;
+    if (patch.status && patch.status !== "done") next.evelynDone = false;
+    if (patch.evelynDone === true) next.status = "done";
+    if (patch.evelynDone === false && next.status === "done") next.status = "in_progress";
+    next.tinaDone = false;
+  } else {
+    // Lyriq, Unassigned, or Tina+Lyriq / Evelyn+Lyriq — overall status is enough.
+    next.tinaDone = false;
+    next.evelynDone = false;
   }
 
   if (next.status === "done") {
@@ -201,14 +277,21 @@ export function applyPartnerDone(task: GyshTask, patch: Partial<GyshTask> = {}):
 }
 
 export function partnerDoneSummary(task: Pick<GyshTask, "assignedTo" | "tinaDone" | "evelynDone" | "status">): string {
-  if (task.assignedTo === "Both") {
+  const people = parseAssigneePeople(task.assignedTo);
+  if (requiresPartnerDone(task.assignedTo)) {
     const t = task.tinaDone ? "Tina✓" : "Tina○";
     const e = task.evelynDone ? "Evelyn✓" : "Evelyn○";
-    return `${t} ${e}`;
+    const extra = people.includes("Lyriq") ? " Lyriq·" : "";
+    return `${t} ${e}${extra}`;
   }
-  if (task.assignedTo === "Tina") return task.tinaDone || task.status === "done" ? "Tina✓" : "Tina○";
-  if (task.assignedTo === "Lyriq") return task.status === "done" ? "Lyriq✓" : "Lyriq○";
-  return task.evelynDone || task.status === "done" ? "Evelyn✓" : "Evelyn○";
+  if (people.length === 0) return task.status === "done" ? "Unassigned✓" : "Unassigned○";
+  if (people.length === 1) {
+    const p = people[0]!;
+    if (p === "Tina") return task.tinaDone || task.status === "done" ? "Tina✓" : "Tina○";
+    if (p === "Evelyn") return task.evelynDone || task.status === "done" ? "Evelyn✓" : "Evelyn○";
+    return task.status === "done" ? "Lyriq✓" : "Lyriq○";
+  }
+  return `${assigneeDisplayLabel(task.assignedTo)}${task.status === "done" ? "✓" : "○"}`;
 }
 
 export async function fetchTasks(): Promise<GyshTask[]> {
@@ -216,18 +299,100 @@ export async function fetchTasks(): Promise<GyshTask[]> {
   return (data.tasks ?? []).map(mapTask);
 }
 
-export async function persistTasks(tasks: GyshTask[]): Promise<GyshTask[]> {
+export async function persistTasks(
+  tasks: GyshTask[],
+  opts?: { removeIds?: string[] },
+): Promise<GyshTask[]> {
   // Last-write wins per id — avoids UNIQUE constraint if duplicates slipped into client state.
   const byId = new Map<string, GyshTask>();
   for (const t of tasks) byId.set(t.id, mapTask(t));
   const unique = Array.from(byId.values());
+  const removeIds = [...new Set((opts?.removeIds ?? []).filter(Boolean))].filter(
+    (id) => !byId.has(id),
+  );
   const data = await api<{ tasks: GyshTask[] }>("tasks", {
     method: "PUT",
     body: {
       tasks: unique.map((t) => ({ ...t, category: normalizeCategory(t.category) })),
+      ...(removeIds.length ? { removeIds } : {}),
     },
   });
   return (data.tasks ?? []).map(mapTask);
+}
+
+export function fileToBase64(file: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || "");
+      const i = result.indexOf(",");
+      resolve(i >= 0 ? result.slice(i + 1) : result);
+    };
+    reader.onerror = () => reject(reader.error || new Error("read failed"));
+    reader.readAsDataURL(file);
+  });
+}
+
+export function base64ToBlob(contentBase64: string, mimeType: string): Blob {
+  const cleaned = contentBase64.replace(/^data:[^;]+;base64,/, "").replace(/\s+/g, "");
+  const bin = atob(cleaned);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: mimeType || "application/octet-stream" });
+}
+
+export async function uploadTaskAttachment(input: {
+  taskId: string;
+  id?: string;
+  name: string;
+  mimeType: string;
+  contentBase64: string;
+  addedAt?: string;
+}): Promise<GyshTaskAttachment> {
+  const data = await api<{ attachment: GyshTaskAttachment }>("task-attachments", {
+    method: "POST",
+    body: input,
+  });
+  return data.attachment;
+}
+
+export async function fetchTaskAttachmentContent(id: string): Promise<{
+  name: string;
+  mimeType: string;
+  contentBase64: string;
+}> {
+  return api(`task-attachments?id=${encodeURIComponent(id)}`);
+}
+
+export async function deleteTaskAttachmentRemote(id: string): Promise<void> {
+  await api("task-attachments", { method: "DELETE", body: { id } });
+}
+
+export async function uploadPlanAttachment(input: {
+  planItemId: string;
+  id?: string;
+  name: string;
+  mimeType: string;
+  contentBase64: string;
+  addedAt?: string;
+}): Promise<GyshTaskAttachment> {
+  const data = await api<{ attachment: GyshTaskAttachment }>("plan-attachments", {
+    method: "POST",
+    body: input,
+  });
+  return data.attachment;
+}
+
+export async function fetchPlanAttachmentContent(id: string): Promise<{
+  name: string;
+  mimeType: string;
+  contentBase64: string;
+}> {
+  return api(`plan-attachments?id=${encodeURIComponent(id)}`);
+}
+
+export async function deletePlanAttachmentRemote(id: string): Promise<void> {
+  await api("plan-attachments", { method: "DELETE", body: { id } });
 }
 
 export function nextTaskId(tasks: GyshTask[]): string {
@@ -319,8 +484,6 @@ export function isTaskDueToday(task: Pick<GyshTask, "dueDate" | "status">, today
   return due.getTime() === today.getTime();
 }
 
-export type PartnerAssignee = "Tina" | "Evelyn" | "Lyriq";
-
 export function assigneeForAuthUser(user: { email?: string; name?: string } | null | undefined): PartnerAssignee | null {
   const email = String(user?.email || "").toLowerCase();
   if (email.includes("tina")) return "Tina";
@@ -334,9 +497,7 @@ export function assigneeForAuthUser(user: { email?: string; name?: string } | nu
 }
 
 export function taskMatchesAssignee(task: Pick<GyshTask, "assignedTo">, me: PartnerAssignee): boolean {
-  if (task.assignedTo === me) return true;
-  if (me === "Lyriq") return false;
-  return task.assignedTo === "Both";
+  return assigneeIncludes(task.assignedTo, me);
 }
 
 export function dueAttentionTasks(
@@ -355,7 +516,7 @@ export function dueAttentionTasks(
 function hasGuideReviewTask(tasks: GyshTask[], guideId: string, name: string): boolean {
   const id = guideReviewTaskId(guideId);
   const desc = guideReviewDescription(name);
-  const marker = guideReviewNotes(guideId);
+  const marker = `guide-review:${guideId}`;
   return tasks.some(
     (t) =>
       t.id === id ||
@@ -408,14 +569,14 @@ export function ensureGuideReviewTasks(existing: GyshTask[]): {
 
 export const SENIOR_PAGE_REVIEW_TASK_ID = "T-SENIOR-PAGE";
 export const SENIOR_PAGE_REVIEW_DESC = "Review Senior Side Hustles page & verbiage";
-export const SENIOR_PAGE_REVIEW_NOTES = "page-review:senior-side-hustles";
+export const SENIOR_PAGE_REVIEW_NOTES = "Open [Seniors Corner](/seniors)\npage-review:senior-side-hustles";
 
 function hasSeniorPageReviewTask(tasks: GyshTask[]): boolean {
   return tasks.some(
     (t) =>
       t.id === SENIOR_PAGE_REVIEW_TASK_ID ||
       t.description === SENIOR_PAGE_REVIEW_DESC ||
-      t.notes.includes(SENIOR_PAGE_REVIEW_NOTES),
+      t.notes.includes("page-review:senior-side-hustles"),
   );
 }
 
@@ -449,6 +610,22 @@ export function ensureSeniorPageReviewTask(existing: GyshTask[]): {
   return { tasks: [...existing, ...created], created };
 }
 
+/** Prepend Open [Page](/path) to notes when a task clearly targets a site page. */
+export function ensureTaskPageLinks(tasks: GyshTask[]): {
+  tasks: GyshTask[];
+  updated: GyshTask[];
+} {
+  const updated: GyshTask[] = [];
+  const next = tasks.map((t) => {
+    const notes = ensureTaskNotesPageLink(t.notes, t);
+    if (notes === t.notes) return t;
+    const patched = { ...t, notes };
+    updated.push(patched);
+    return patched;
+  });
+  return { tasks: next, updated };
+}
+
 /**
  * Fetch tasks, ensure guide-review + senior page review items exist, persist if any were created.
  * Prefer calling from AdminPortal and TaskList mount.
@@ -460,10 +637,11 @@ export async function syncGuideReviewTasks(): Promise<{
   const existing = await fetchTasks();
   const guide = ensureGuideReviewTasks(existing);
   const senior = ensureSeniorPageReviewTask(guide.tasks);
+  const linked = ensureTaskPageLinks(senior.tasks);
   const created = [...guide.created, ...senior.created];
-  if (created.length === 0) {
-    return { tasks: senior.tasks, createdCount: 0 };
+  if (created.length === 0 && linked.updated.length === 0) {
+    return { tasks: linked.tasks, createdCount: 0 };
   }
-  const saved = await persistTasks(senior.tasks);
+  const saved = await persistTasks(linked.tasks);
   return { tasks: saved, createdCount: created.length };
 }

@@ -158,7 +158,11 @@ export function writeTeamMembership(audience: KidsAudience, joined: boolean): vo
   }
 }
 
-/** Logged-in GYSH members, or lightweight Kids/Teens team join, unlock member guides. */
+/**
+ * Unlock Kids/Teens member guides when:
+ * - Caller passes member access (real member / Profile Switcher kids|teens — not staff-as-self), or
+ * - Lightweight team join is stored for this audience.
+ */
 export function isKidsCornerMember(audience: KidsAudience, isLoggedIn: boolean): boolean {
   return isLoggedIn || readTeamMembership(audience);
 }

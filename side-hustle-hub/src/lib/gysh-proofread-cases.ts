@@ -1,6 +1,7 @@
 /**
  * External proofread QA — every public page, each guide, and the Complete Guide.
- * Unassigned + Backlog by default (empty assignees; suggestedSprintForTest → backlog).
+ * Every logical proofread case is duplicated: one for Tina, one for Lyriq.
+ * Suggested / default sprint is Sprint 1 (public pages & launch content).
  */
 
 import type { TestCase } from "./gysh-test-plan";
@@ -31,24 +32,53 @@ const PROOF_STEPS_GUIDE = [
 const PROOF_EXPECTED_GUIDE =
   "Guide reads cleanly end-to-end — steps complete, tone fits the audience, no typos or placeholders";
 
+export const PROOFREAD_PAIR_SUFFIXES = ["TINA", "LYRIQ"] as const;
+export type ProofreadPairSuffix = (typeof PROOFREAD_PAIR_SUFFIXES)[number];
+
+/** Strip -TINA / -LYRIQ to get the logical case id. */
+export function proofreadLogicalId(caseId: string): string {
+  return caseId.replace(/-(TINA|LYRIQ)$/i, "");
+}
+
+export function isProofreadCaseId(caseId: string): boolean {
+  return caseId.toUpperCase().startsWith("PROOF-");
+}
+
+/** Expand one logical proofread into Tina + Lyriq sibling cases (identical content). */
+export function pairProofreadCase(
+  base: Omit<TestCase, "assignees" | "id"> & { id: string },
+): TestCase[] {
+  return [
+    {
+      ...base,
+      id: `${base.id}-TINA`,
+      assignees: ["tina"],
+    },
+    {
+      ...base,
+      id: `${base.id}-LYRIQ`,
+      assignees: ["lyriq"],
+    },
+  ];
+}
+
 function pageCase(
   id: string,
   title: string,
   path: string,
   roles: TestCase["roles"],
-): TestCase {
-  return {
+): TestCase[] {
+  return pairProofreadCase({
     id,
     area: "Proofread",
     title,
     priority: "P2",
     roles,
-    assignees: [],
     suite: "manual",
     steps: PROOF_STEPS_PAGE,
     expected: PROOF_EXPECTED_PAGE,
     path,
-  };
+  });
 }
 
 function guideCase(
@@ -57,46 +87,45 @@ function guideCase(
   path: string,
   roles: TestCase["roles"],
   openHint: string,
-): TestCase {
-  return {
+): TestCase[] {
+  return pairProofreadCase({
     id,
     area: "Proofread",
     title,
     priority: "P2",
     roles,
-    assignees: [],
     suite: "manual",
     steps: [openHint, ...PROOF_STEPS_GUIDE.slice(1)],
     expected: PROOF_EXPECTED_GUIDE,
     path,
-  };
+  });
 }
 
 /** Public pages members/guests see (External). */
 const PAGE_PROOFREAD_CASES: TestCase[] = [
-  pageCase("PROOF-PAGE-HOME", "Proofread: Home", "dashboard", ["all", "qa"]),
-  pageCase("PROOF-PAGE-FIND-MINE", "Proofread: Find Mine / Match Wizard selector", "quiz", ["all", "qa"]),
-  pageCase("PROOF-PAGE-GUIDES", "Proofread: Guides library hub", "guides", ["all", "qa"]),
-  pageCase("PROOF-PAGE-CHECKLIST", "Proofread: Side Hustle Checklist", "checklist", ["adult", "qa"]),
-  pageCase("PROOF-PAGE-WORKSHOPS", "Proofread: Workshops", "workshops", ["all", "qa"]),
-  pageCase("PROOF-PAGE-COMMUNITY", "Proofread: Community", "community", ["all", "qa"]),
-  pageCase("PROOF-PAGE-JOIN", "Proofread: Join / Membership", "join", ["all", "qa"]),
-  pageCase("PROOF-PAGE-ABOUT", "Proofread: About", "about", ["all", "qa"]),
-  pageCase("PROOF-PAGE-CONTACT", "Proofread: Contact", "contact", ["all", "qa"]),
-  pageCase("PROOF-PAGE-KIDS", "Proofread: Kids / Teens Corner (both age modes)", "kids", ["kid", "junior", "qa"]),
-  pageCase("PROOF-PAGE-SENIORS", "Proofread: Seniors Corner", "seniors", ["senior", "qa"]),
-  pageCase("PROOF-PAGE-LOGIN", "Proofread: Login", "login", ["all", "qa"]),
-  pageCase("PROOF-PAGE-PORTAL", "Proofread: Member Portal (signed-in member view)", "user_portal", ["adult", "qa"]),
-  pageCase(
+  ...pageCase("PROOF-PAGE-HOME", "Proofread: Home", "dashboard", ["all", "qa"]),
+  ...pageCase("PROOF-PAGE-FIND-MINE", "Proofread: GYSH Match Wizard age selector", "quiz", ["all", "qa"]),
+  ...pageCase("PROOF-PAGE-GUIDES", "Proofread: Guides library hub", "guides", ["all", "qa"]),
+  ...pageCase("PROOF-PAGE-CHECKLIST", "Proofread: Side Hustle Checklist", "checklist", ["adult", "qa"]),
+  ...pageCase("PROOF-PAGE-WORKSHOPS", "Proofread: Workshops", "workshops", ["all", "qa"]),
+  ...pageCase("PROOF-PAGE-COMMUNITY", "Proofread: Community", "community", ["all", "qa"]),
+  ...pageCase("PROOF-PAGE-JOIN", "Proofread: Join / Membership", "join", ["all", "qa"]),
+  ...pageCase("PROOF-PAGE-ABOUT", "Proofread: About", "about", ["all", "qa"]),
+  ...pageCase("PROOF-PAGE-CONTACT", "Proofread: Contact", "contact", ["all", "qa"]),
+  ...pageCase("PROOF-PAGE-KIDS", "Proofread: Kids / Teens Corner (both age modes)", "kids", ["kid", "junior", "qa"]),
+  ...pageCase("PROOF-PAGE-SENIORS", "Proofread: Seniors Corner", "seniors", ["senior", "qa"]),
+  ...pageCase("PROOF-PAGE-LOGIN", "Proofread: Login", "login", ["all", "qa"]),
+  ...pageCase("PROOF-PAGE-PORTAL", "Proofread: Member Portal (signed-in member view)", "user_portal", ["adult", "qa"]),
+  ...pageCase(
     "PROOF-PAGE-MEMBERSHIP-SIGNUP",
     "Proofread: Membership signup path",
     "membership_signup",
     ["adult", "qa"],
   ),
-  pageCase("PROOF-PAGE-FOOTER", "Proofread: Site footer + disclaimer links", "dashboard", ["all", "qa"]),
+  ...pageCase("PROOF-PAGE-FOOTER", "Proofread: Site footer + disclaimer links", "dashboard", ["all", "qa"]),
 ];
 
-const LAUNCH_GUIDE_PROOFREAD: TestCase[] = LAUNCH_GUIDES.map((g) =>
+const LAUNCH_GUIDE_PROOFREAD: TestCase[] = LAUNCH_GUIDES.flatMap((g) =>
   guideCase(
     `PROOF-LG-${g.id}`,
     `Proofread Launch Guide: ${g.name}`,
@@ -106,7 +135,7 @@ const LAUNCH_GUIDE_PROOFREAD: TestCase[] = LAUNCH_GUIDES.map((g) =>
   ),
 );
 
-const KIDS_GUIDE_PROOFREAD: TestCase[] = KIDS_GUIDES.map((g) =>
+const KIDS_GUIDE_PROOFREAD: TestCase[] = KIDS_GUIDES.flatMap((g) =>
   guideCase(
     `PROOF-KG-${g.id}`,
     `Proofread ${g.audience === "kids" ? "Kids" : "Teens"} Guide: ${g.title}`,
@@ -116,7 +145,7 @@ const KIDS_GUIDE_PROOFREAD: TestCase[] = KIDS_GUIDES.map((g) =>
   ),
 );
 
-const SENIOR_GUIDE_PROOFREAD: TestCase[] = SENIOR_GUIDE_TEASERS.map((g) =>
+const SENIOR_GUIDE_PROOFREAD: TestCase[] = SENIOR_GUIDE_TEASERS.flatMap((g) =>
   guideCase(
     `PROOF-SG-${g.id}`,
     `Proofread Senior Guide card: ${g.title}`,
@@ -126,7 +155,7 @@ const SENIOR_GUIDE_PROOFREAD: TestCase[] = SENIOR_GUIDE_TEASERS.map((g) =>
   ),
 );
 
-const MARKETING_GUIDE_PROOFREAD: TestCase[] = MARKETING_GUIDES.map((g) =>
+const MARKETING_GUIDE_PROOFREAD: TestCase[] = MARKETING_GUIDES.flatMap((g) =>
   guideCase(
     `PROOF-MG-${g.id}`,
     g.id === "master"
@@ -138,7 +167,7 @@ const MARKETING_GUIDE_PROOFREAD: TestCase[] = MARKETING_GUIDES.map((g) =>
   ),
 );
 
-/** All External proofread cases — Unassigned; sprint backlog via PROOF- prefix. */
+/** All External proofread cases — Tina + Lyriq pairs; land in Sprint 1 by default. */
 export const PROOFREAD_CASES: TestCase[] = [
   ...PAGE_PROOFREAD_CASES,
   ...LAUNCH_GUIDE_PROOFREAD,

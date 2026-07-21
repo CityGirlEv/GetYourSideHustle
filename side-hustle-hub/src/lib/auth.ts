@@ -58,7 +58,8 @@ export async function login(email: string, password: string): Promise<{
       data.isAdmin === true ||
       data.user.role === "admin" ||
       data.user.role === "qa" ||
-      (data.user.roles ?? []).some((r) => r === "admin" || r === "qa");
+      data.user.role === "dev" ||
+      (data.user.roles ?? []).some((r) => r === "admin" || r === "qa" || r === "dev");
     return { outcome: isAdmin ? "admin" : "member", user: data.user };
   } catch (e) {
     if (e instanceof ApiError) {

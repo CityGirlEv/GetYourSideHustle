@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Award, Download, RefreshCw, Save } from "lucide-react";
+import { BusyOverlay, WaitIndicator } from "../WaitFeedback";
 import { api, ApiError, getSessionToken } from "../../lib/api";
 
 type Template = {
@@ -147,6 +148,7 @@ export function CertificatesAdmin() {
 
   return (
     <div className="certificates-admin" data-testid="certificates-admin">
+      <BusyOverlay active={busy} message="Working on certificates…" />
       <header className="certificates-admin__head">
         <div>
           <h2>
@@ -170,7 +172,9 @@ export function CertificatesAdmin() {
           <h3>Certificate template</h3>
           <p className="certificates-admin__hint">
             Use placeholders: <code>{"{{name}}"}</code>, <code>{"{{date}}"}</code>,{" "}
-            <code>{"{{tier}}"}</code>, <code>{"{{audience}}"}</code>
+            <code>{"{{tier}}"}</code>, <code>{"{{audience}}"}</code>. Kids &amp; Teens
+            certificates automatically add a Glow Getter celebration line. Every certificate shows{" "}
+            <code>https://getyoursidehustle.com</code> in the footer.
           </p>
           <div className="certificates-admin__fields">
             <label>
@@ -293,7 +297,7 @@ export function CertificatesAdmin() {
                   dangerouslySetInnerHTML={{ __html: previewSvg }}
                 />
               ) : (
-                <p>Loading preview…</p>
+                <WaitIndicator message="Loading preview…" style={{ marginTop: 0 }} />
               )}
             </>
           ) : (

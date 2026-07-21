@@ -1,0 +1,20 @@
+# Companion Worker — Cloudflare Cron Trigger for GYSH daily digests.
+# Pages Functions cannot host [triggers] crons; this Worker calls the Pages API.
+#
+# Deploy (from this directory):
+#   node --use-system-ca ../../../../muntie-ev-ai-studio-main/node_modules/wrangler/bin/wrangler.js deploy
+# Set secret (same value on Pages project getyoursidehustle):
+#   … wrangler.js secret put CRON_SECRET
+#
+# Timezone: America/Chicago. UTC crons at 17:01 and 18:01 cover CDT/CST 12:01.
+# The API is idempotent per Chicago calendar day (digest_sends).
+
+name = "gysh-daily-digest"
+main = "index.ts"
+compatibility_date = "2024-09-23"
+
+[triggers]
+crons = ["1 17 * * *", "1 18 * * *"]
+
+[vars]
+DIGEST_API_URL = "https://getyoursidehustle.com/api/cron/daily-digest"

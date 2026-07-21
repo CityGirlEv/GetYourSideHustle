@@ -24,7 +24,7 @@ export const MEMBERSHIP_FEATURES: MembershipFeature[] = [
     id: "one_on_one",
     label: "1-on-1 consulting session",
     detail:
-      "Monthly live 1-on-1 with T / E — length grows by plan (30 / 60 / 90 min). Same consulting rates for every age.",
+      "Live 1-on-1 with T / E — Starter includes one 1-hour session; Pro includes three 60-minute sessions; Elite includes three 90-minute sessions. Same consulting rates for every age.",
   },
   { id: "schedule", label: "Proposed hustle schedule", detail: "Week-by-week plan matched to your Get Your Side Hustle results." },
   { id: "tracker", label: "Hustle tracker", detail: "Log hours, gigs, earnings, and checklist progress." },
@@ -53,7 +53,7 @@ export type MembershipTier = {
   creditsPerMonth?: number;
   /** Kid credits included on adult/senior USD plans (Pro+). */
   kidCreditsMonthly?: number;
-  /** Included monthly 1-on-1 consulting length (minutes). Paid tiers only. */
+  /** Included 1-on-1 consulting length (minutes). Starter = one 1-hour; Pro = three 60-min; Elite = three 90-min. */
   oneOnOneMinutes?: 30 | 60 | 90;
   /** Minimum paid commitment in months (all paid plans require 3). */
   commitmentMonths?: number;
@@ -66,24 +66,26 @@ export const MEMBERSHIP_TIERS: MembershipTier[] = [
   {
     id: "free",
     name: "Free",
-    tagline: "Explore GYSH and open every free guide.",
+    tagline:
+      "Free for every age — Kids, Teens, Adults & Seniors. Browse ideas, free guides, and your Corner at $0.",
     priceMonthlyUsd: 0,
     priceMonthlyUsdSenior: 0,
     creditsPerMonth: 0,
     audiences: ["kids", "junior", "adult", "senior"],
-    featureIds: ["free_guides"],
+    // Guide / browse access lives only in MEMBER_PERKS_BY_TIER.free (no generic “Free guides library” row).
+    featureIds: [],
   },
   {
     id: "starter",
     name: "Starter",
-    tagline: "Member guides, community, monthly 30-min 1-on-1, and Kid Credits — 3-month commitment.",
+    tagline: "Member guides, community, one 1-hour session, and Kid Credits — 3-month commitment.",
     priceMonthlyUsd: 39,
     priceYearlyUsd: 390,
     priceMonthlyUsdSenior: 34,
     priceYearlyUsdSenior: 340,
     creditsPerMonth: 60,
     kidCreditsMonthly: 30,
-    oneOnOneMinutes: 30,
+    oneOnOneMinutes: 60,
     commitmentMonths: 3,
     audiences: ["kids", "junior", "adult", "senior"],
     featureIds: [
@@ -99,7 +101,7 @@ export const MEMBERSHIP_TIERS: MembershipTier[] = [
   {
     id: "pro",
     name: "Pro",
-    tagline: "Hustle schedule suite plus a monthly 60-min 1-on-1 — 3-month commitment.",
+    tagline: "Hustle schedule suite plus three 60-minute sessions — 3-month commitment.",
     priceMonthlyUsd: 69,
     priceYearlyUsd: 690,
     priceMonthlyUsdSenior: 57,
@@ -129,7 +131,7 @@ export const MEMBERSHIP_TIERS: MembershipTier[] = [
   {
     id: "elite",
     name: "Elite",
-    tagline: "Monthly 90-min 1-on-1, ZIP timing scout, and priority support — 3-month commitment.",
+    tagline: "Three 90-minute sessions, ZIP timing scout, and priority support — 3-month commitment.",
     priceMonthlyUsd: 119,
     priceYearlyUsd: 1190,
     priceMonthlyUsdSenior: 94,
@@ -163,7 +165,7 @@ export const SCHEDULE_SUITE_TIER: TierId = "pro";
 
 export const SCHEDULE_SUITE_FEATURE_IDS = ["schedule", "tracker", "progress", "email"] as const;
 
-/** Team / audience perks shown inside each plan as collapsible Member Perks. */
+/** Team / audience perks shown under each plan (additive ladder — no cross-tier repeats). */
 export type MemberPerkAudience = "adult" | "kids" | "junior" | "senior";
 
 export type TierMemberPerk = {
@@ -180,55 +182,146 @@ export const MEMBER_PERK_AUDIENCE_LABELS: Record<MemberPerkAudience, string> = {
   senior: "Senior perks",
 };
 
+/** Free → Elite ladder used for additive perk copy. */
+export const TIER_LADDER: readonly TierId[] = ["free", "starter", "pro", "elite"] as const;
+
+export function previousTierId(tierId: TierId): TierId | null {
+  const idx = TIER_LADDER.indexOf(tierId);
+  return idx > 0 ? TIER_LADDER[idx - 1]! : null;
+}
+
+export function tierMemberPerks(tierId: TierId, audience: MemberPerkAudience): TierMemberPerk[] {
+  return MEMBER_PERKS_BY_TIER[tierId][audience];
+}
+
+export type NumberedTierPerk = TierMemberPerk & {
+  n: number;
+  numberedTitle: string;
+};
+
+/** Numbered perk rows for Membership / Join (1., 2., 3. …). */
+export function numberedTierPerks(tierId: TierId, audience: MemberPerkAudience): NumberedTierPerk[] {
+  return tierMemberPerks(tierId, audience).map((perk, index) => ({
+    ...perk,
+    n: index + 1,
+    numberedTitle: `${index + 1}. ${perk.title}`,
+  }));
+}
+
 /**
  * Spread Adult / Kids / Teens / Senior team benefits across Free → Elite.
+ * Paid tiers lead with “Everything in {lower tier}, plus:” and list only new additions.
  * Advanced items (AI games, ZIP scout, deep consulting) sit on Pro/Elite.
  */
 export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
   free: {
     adult: [
       {
-        title: "Browse free guides",
-        detail: "Open starter playbooks for Airbnb, POD, delivery, and more.",
+        title: "Free for every age group",
+        detail:
+          "Kids, Teens (Juniors), Adults, and Seniors each get free access — browse ideas, free guides, and age-right Corners at $0.",
       },
       {
-        title: "Try the GYSH Match Wizard",
-        detail: "Run the adult wizard and preview matches anytime.",
+        title: "Browse free guides & hustle ideas",
+        detail:
+          "Open free starter playbooks and Side Hustle ideas in your lane (Adults shown here; Kids, Teens & Seniors have their own free libraries too).",
+      },
+      {
+        title: "Adults Match Wizard + ranked ideas",
+        detail: "Run the adult wizard anytime and see matches with match % before you upgrade.",
+      },
+      {
+        title: "Browse Adults Corner (and every Corner)",
+        detail:
+          "Skim Adults Corner free tips and launch ideas — Kids Corner, Teens Corner, and Seniors Corner also have free browse areas.",
+      },
+      {
+        title: "Free account + Member Dashboard",
+        detail: "Create a Free account to bookmark guides, save wizard results, and pick up where you left off.",
       },
     ],
     kids: [
       {
-        title: "Kids Corner free tips",
-        detail: "Safe hustle ideas and Kevina Starr story previews with a parent.",
+        title: "Free for every age group",
+        detail:
+          "Kids, Teens (Juniors), Adults, and Seniors each get free access — browse ideas, free guides, and age-right Corners at $0.",
       },
       {
-        title: "Piggy Bank preview",
-        detail: "Try goal-setting tools before joining the Kids team.",
+        title: "Browse free guides & hustle ideas",
+        detail:
+          "Age-right free guides and safe Side Hustle ideas with a parent nearby — Teens, Adults & Seniors get free browse in their lanes too.",
+      },
+      {
+        title: "Kids Match Wizard + ranked ideas",
+        detail: "Try the Kids wizard and see ranked hustle ideas matched to your answers.",
+      },
+      {
+        title: "Browse Kids Corner (and every Corner)",
+        detail:
+          "Explore Kids Corner free areas — story teasers, ideas, and next steps. Teens, Adults & Seniors Corners have free browse too.",
+      },
+      {
+        title: "Free family account + Piggy Bank preview",
+        detail: "Parents create a Free account to save progress; try Piggy Bank goal-setting before paid plans or credit packs.",
       },
     ],
     junior: [
       {
-        title: "Teens free teasers",
-        detail: "Browse age-safe hustle ideas and My Bank basics.",
+        title: "Free for every age group",
+        detail:
+          "Kids, Teens (Juniors), Adults, and Seniors each get free access — browse ideas, free guides, and age-right Corners at $0.",
       },
       {
-        title: "GYSH Teens Match Wizard",
-        detail: "Run the teen wizard with parent awareness.",
+        title: "Browse free guides & hustle ideas",
+        detail:
+          "Age-safe free guides and Teens idea teasers with parent awareness — Kids, Adults & Seniors have free libraries in their lanes too.",
+      },
+      {
+        title: "Teens Match Wizard + ranked ideas",
+        detail: "Run the Teens wizard and see Side Hustle ideas that fit school schedules and skills.",
+      },
+      {
+        title: "Browse Teens Corner (and every Corner)",
+        detail:
+          "Explore free Teens content — My Bank basics, CEO tips, and wins. Kids, Adults & Seniors Corners also offer free browse.",
+      },
+      {
+        title: "Free account + My Bank preview",
+        detail: "Create a Free account (guardian OK) to save wizard results; practice savings goals before paid upgrades.",
       },
     ],
     senior: [
       {
-        title: "Senior lane preview",
-        detail: "Explore flexible 55+ hustle ideas at your own pace.",
+        title: "Free for every age group",
+        detail:
+          "Kids, Teens (Juniors), Adults, and Seniors each get free access — browse ideas, free guides, and age-right Corners at $0.",
       },
       {
-        title: "Join Senior interest list",
-        detail: "Flag interest for senior-focused updates (no paid plan required).",
+        title: "Browse free guides & hustle ideas",
+        detail:
+          "Flexible 55+ free guides and starter ideas at your pace — Kids, Teens & Adults have free browse in their lanes too.",
+      },
+      {
+        title: "Seniors Match Wizard + ranked ideas",
+        detail: "Run the Seniors wizard and browse Side Hustle ideas matched to energy, skills, and schedule.",
+      },
+      {
+        title: "Browse Seniors Corner (and every Corner)",
+        detail:
+          "Explore Seniors Corner free tips and gentle next steps — Kids, Teens & Adults Corners have free browse areas too.",
+      },
+      {
+        title: "Free account + interest list",
+        detail: "Save progress on your Member Dashboard and flag interest for senior-focused updates — still Free.",
       },
     ],
   },
   starter: {
     adult: [
+      {
+        title: "Everything in Free, plus:",
+        detail: "All Free benefits carry forward — here’s what’s new on Starter.",
+      },
       {
         title: "Full member guides",
         detail: "Unlock gated adult launch guides and bookmarks.",
@@ -238,15 +331,23 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
         detail: "Ask questions and share wins in member threads.",
       },
       {
-        title: "Monthly 30-min 1-on-1",
-        detail: "Consulting with T / E — 3-month commitment on all paid plans.",
+        title: "Workshop member pricing",
+        detail: "Member discounts on live labs and clinics.",
       },
       {
-        title: "Monthly Kid Credits",
-        detail: "30 Kid Credits / mo — redeem for workshops & 1-on-1s (kids or adults).",
+        title: "One 1-hour session",
+        detail: "One live consulting session with T / E — 3-month commitment on all paid plans.",
+      },
+      {
+        title: "30 Kid Credits / mo",
+        detail: "Redeem for workshops & 1-on-1s (kids or adults; 2 Kid Credits = 1 adult credit).",
       },
     ],
     kids: [
+      {
+        title: "Everything in Free, plus:",
+        detail: "All Free benefits carry forward — here’s what’s new on Starter for Kids.",
+      },
       {
         title: "Kids Corner team access",
         detail: "Join the Kids GYSH Team for member guides with a parent.",
@@ -256,15 +357,23 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
         detail: "Short, parent-friendly lessons on safe hustles and confidence.",
       },
       {
-        title: "Kevina Glow Getter extras",
-        detail: "Bonus story activities and kindness quests.",
+        title: "Kevina Glow Getter extras + story seats",
+        detail: "Bonus story activities, kindness quests, and Story Time seats.",
       },
       {
         title: "Piggy Bank challenges",
         detail: "Goal-setting missions that make saving feel like a game.",
       },
+      {
+        title: "One 1-hour family session",
+        detail: "Live consulting with a parent — same rates for every age; 3-month commitment.",
+      },
     ],
     junior: [
+      {
+        title: "Everything in Free, plus:",
+        detail: "All Free benefits carry forward — here’s what’s new on Starter for Teens.",
+      },
       {
         title: "Teens Side Hustle Team",
         detail: "Unlock Teens member guides with parent/guardian OK.",
@@ -281,8 +390,16 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
         title: "My Bank goals",
         detail: "Track savings targets and jobs completed.",
       },
+      {
+        title: "One 1-hour session",
+        detail: "Live consulting (guardian OK) — same rates for every age; 3-month commitment.",
+      },
     ],
     senior: [
+      {
+        title: "Everything in Free, plus:",
+        detail: "All Free benefits carry forward — here’s what’s new on Starter for Seniors.",
+      },
       {
         title: "Senior Side Hustle team",
         detail: "Early looks at senior-focused guides and workshop nights.",
@@ -292,13 +409,21 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
         detail: "Share skills, try gentle AI prompting, stay curious.",
       },
       {
-        title: "Monthly 30-min 1-on-1",
-        detail: "Senior-friendly consulting pacing — same rates as adults.",
+        title: "Workshop member pricing",
+        detail: "Member discounts on senior-friendly labs and clinics.",
+      },
+      {
+        title: "One 1-hour session",
+        detail: "Senior-friendly consulting pacing — same rates as adults; 3-month commitment.",
       },
     ],
   },
   pro: {
     adult: [
+      {
+        title: "Everything in Starter, plus:",
+        detail: "All Free + Starter benefits carry forward — here’s what’s new on Pro.",
+      },
       {
         title: "Hustle schedule suite",
         detail: "Weekly plan, tracker, progress reports, and email reminders.",
@@ -308,15 +433,23 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
         detail: "Monthly cohort training with T / E / guests.",
       },
       {
-        title: "Monthly 60-min 1-on-1",
-        detail: "Deeper consulting for launches, pricing, and ops — 3-month commitment.",
+        title: "Free workshop entry",
+        detail: "Complimentary seats to eligible Glow labs.",
       },
       {
-        title: "Monthly Kid Credits",
-        detail: "Use for kids or adults on workshops & 1-on-1s (2 Kid Credits = 1 adult credit).",
+        title: "Three 60-minute sessions",
+        detail: "Upgrade from Starter’s one 1-hour session — 3-month commitment.",
+      },
+      {
+        title: "60 Kid Credits / mo",
+        detail: "Double Starter’s pool — redeem for kids or adults (2 Kid Credits = 1 adult credit).",
       },
     ],
     kids: [
+      {
+        title: "Everything in Starter, plus:",
+        detail: "All Free + Starter benefits carry forward — here’s what’s new on Pro for Kids.",
+      },
       {
         title: "Craft hustle playbooks",
         detail: "Stickers, keychains, and fair-ready projects with family pricing tips.",
@@ -326,15 +459,23 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
         detail: "Step-by-step guides to invent tiny games with a parent — stories, characters, levels.",
       },
       {
-        title: "Workshop discounts",
-        detail: "Member pricing on Kids Glow labs and family sessions.",
-      },
-      {
         title: "Kids schedule & tracker",
         detail: "Parent-friendly weekly plan tied to Get Your Side Hustle matches.",
       },
+      {
+        title: "Workshop member seats",
+        detail: "Stronger member pricing on Kids Glow labs and family sessions.",
+      },
+      {
+        title: "Three 60-minute family sessions",
+        detail: "Upgrade from Starter’s one 1-hour session — parent joins; 3-month commitment.",
+      },
     ],
     junior: [
+      {
+        title: "Everything in Starter, plus:",
+        detail: "All Free + Starter benefits carry forward — here’s what’s new on Pro for Teens.",
+      },
       {
         title: "Game-making with AI",
         detail: "Concepts, sprites, dialogue, and simple prototypes (guardian OK).",
@@ -351,39 +492,51 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
         title: "Teens schedule suite",
         detail: "Week plan + tracker around school — earn, save, reinvest.",
       },
+      {
+        title: "Three 60-minute sessions",
+        detail: "Upgrade from Starter’s one 1-hour session — guardian OK; 3-month commitment.",
+      },
     ],
     senior: [
+      {
+        title: "Everything in Starter, plus:",
+        detail: "All Free + Starter benefits carry forward — here’s what’s new on Pro for Seniors.",
+      },
       {
         title: "Flexible hustle schedule",
         detail: "Gentle weekly plan matched to senior Get Your Side Hustle results.",
       },
       {
-        title: "Progress reports",
+        title: "Progress reports + email nudges",
         detail: "Clear scorecards without grind-culture pressure.",
-      },
-      {
-        title: "Monthly 60-min 1-on-1",
-        detail: "Strategy time for consulting, tutoring, or hosting pilots.",
       },
       {
         title: "Workshop member seats",
         detail: "Discounted or complimentary seats to eligible senior-friendly labs.",
+      },
+      {
+        title: "Three 60-minute sessions",
+        detail: "Upgrade from Starter’s one 1-hour — strategy for consulting, tutoring, or hosting.",
       },
     ],
   },
   elite: {
     adult: [
       {
-        title: "Monthly 90-min 1-on-1",
-        detail: "Priority consulting for scaling, ads, and multi-hustle ops — 3-month commitment.",
+        title: "Everything in Pro, plus:",
+        detail: "All Free + Starter + Pro benefits carry forward — here’s what’s new on Elite.",
+      },
+      {
+        title: "Three 90-minute sessions",
+        detail: "Upgrade from Pro’s 60-minute sessions — scaling, ads, and multi-hustle ops; 3-month commitment.",
       },
       {
         title: "Best-times ZIP scout",
         detail: "Peak windows for rideshare & delivery in your ZIP.",
       },
       {
-        title: "Larger Kid Credit pool",
-        detail: "More monthly credits for workshops & 1-on-1s (kids or adults).",
+        title: "120 Kid Credits / mo",
+        detail: "Largest monthly pool for workshops & 1-on-1s (kids or adults).",
       },
       {
         title: "Priority workshop access",
@@ -391,6 +544,10 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
       },
     ],
     kids: [
+      {
+        title: "Everything in Pro, plus:",
+        detail: "All Free + Starter + Pro benefits carry forward — here’s what’s new on Elite for Kids.",
+      },
       {
         title: "Advanced AI game studio",
         detail: "Deeper builds — levels, characters, and shareable mini-games with a parent.",
@@ -400,8 +557,8 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
         detail: "Early seats for Kids Glow nights and story + hustle combos.",
       },
       {
-        title: "Family coaching add-ons",
-        detail: "Longer 1-on-1 time parents can use for kid hustle planning.",
+        title: "Three 90-minute family sessions",
+        detail: "Upgrade from Pro’s 60-minute sessions — parents can use for kid hustle planning.",
       },
       {
         title: "Reinvest challenges",
@@ -409,6 +566,10 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
       },
     ],
     junior: [
+      {
+        title: "Everything in Pro, plus:",
+        detail: "All Free + Starter + Pro benefits carry forward — here’s what’s new on Elite for Teens.",
+      },
       {
         title: "Advanced AI game & app tracks",
         detail: "Prototype games and simple tools — parent consent required.",
@@ -422,14 +583,18 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
         detail: "First access to build nights and guest sessions when available.",
       },
       {
-        title: "Extended 1-on-1 support",
-        detail: "90-min monthly consulting parents/teens can use for launch plans.",
+        title: "Three 90-minute sessions",
+        detail: "Upgrade from Pro’s 60-minute sessions — launch plans with a guardian.",
       },
     ],
     senior: [
       {
-        title: "Monthly 90-min 1-on-1",
-        detail: "Deep dives on consulting offers, tutoring, or hosting.",
+        title: "Everything in Pro, plus:",
+        detail: "All Free + Starter + Pro benefits carry forward — here’s what’s new on Elite for Seniors.",
+      },
+      {
+        title: "Three 90-minute sessions",
+        detail: "Upgrade from Pro’s 60-minute sessions — deep dives on consulting, tutoring, or hosting.",
       },
       {
         title: "ZIP timing for flexible gigs",
@@ -670,8 +835,8 @@ export const ALA_CARTE_PRICE_LIST: AlaCarteItem[] = [
     priceUsd: 75,
     credits: 150,
     detail:
-      "Same consulting rate for every age — strategy for launches, pricing, or pivots. Included monthly on Starter+ (Kids/Teens with a parent).",
-    includedIn: ["starter", "pro", "elite"],
+      "Same consulting rate for every age — strategy for launches, pricing, or pivots. Buy a la carte anytime (Kids/Teens with a parent).",
+    includedIn: [],
   },
   {
     id: "consult-60",
@@ -681,8 +846,8 @@ export const ALA_CARTE_PRICE_LIST: AlaCarteItem[] = [
     priceUsd: 120,
     credits: 240,
     detail:
-      "Same consulting rate for every age — deeper planning session. Included monthly on Pro+ (Kids/Teens with a parent).",
-    includedIn: ["pro", "elite"],
+      "Same consulting rate for every age — deeper planning session. Included as one 1-hour session on Starter; three 60-minute sessions on Pro (Kids/Teens with a parent).",
+    includedIn: ["starter", "pro", "elite"],
   },
   {
     id: "consult-90",
@@ -692,7 +857,7 @@ export const ALA_CARTE_PRICE_LIST: AlaCarteItem[] = [
     priceUsd: 165,
     credits: 330,
     detail:
-      "Same consulting rate for every age — extended deep-dive. Included monthly on Elite (Kids/Teens with a parent).",
+      "Same consulting rate for every age — extended deep-dive. Included as three 90-minute sessions on Elite (Kids/Teens with a parent).",
     includedIn: ["elite"],
   },
   {
@@ -743,6 +908,18 @@ export const AUDIENCE_LABELS: Record<AudienceGroup, string> = {
   senior: "Seniors (55+)",
 };
 
+/**
+ * Adults & Seniors Join callout. No separate Stripe price IDs yet — copy only until
+ * veteran checkout pricing is wired; do not invent dollar amounts here.
+ */
+export const MILITARY_VETERAN_CALLOUT = {
+  badge: "Military & Veterans",
+  title: "Serving or served? You’re welcome here.",
+  body:
+    "Active-duty, Guard, Reserve, and Veterans belong in our Adults & Seniors lanes — GYSH was built with military grit in the family. Veterans save even more: mention your service at signup and we’ll apply the veteran rate before you pay (on top of Senior pricing when you’re 55+).",
+  audiences: ["adult", "senior"] as const satisfies readonly AudienceGroup[],
+};
+
 /** Kid credits redeem for adult consulting at 2:1 (2 kid credits = 1 adult credit). */
 export const KID_TO_ADULT_CREDIT_RATIO = 2;
 
@@ -762,7 +939,7 @@ export function kidCreditsFeatureLabel(tierId: TierId): string {
   return `${kidCredits} Kid Credits (${adultCredits} adult credits)`;
 }
 
-/** Monthly 1-on-1 consulting length by paid tier (Free has none). */
+/** Included 1-on-1 consulting length by paid tier (Free has none). Starter = one; Pro = three 60-min; Elite = three 90-min. */
 export function tierOneOnOneMinutes(tierId: TierId): 30 | 60 | 90 | 0 {
   const tier = MEMBERSHIP_TIERS.find((t) => t.id === tierId);
   return tier?.oneOnOneMinutes ?? 0;
@@ -771,7 +948,10 @@ export function tierOneOnOneMinutes(tierId: TierId): 30 | 60 | 90 | 0 {
 export function oneOnOneFeatureLabel(tierId: TierId): string {
   const minutes = tierOneOnOneMinutes(tierId);
   if (!minutes) return "1-on-1 consulting session";
-  return `1× ${minutes}-min 1-on-1 / mo`;
+  if (tierId === "starter") return "1× 1-hour session";
+  if (tierId === "pro") return "3× 60-minute sessions";
+  if (tierId === "elite") return "3× 90-minute sessions";
+  return `1× ${minutes}-minute session`;
 }
 
 export function oneOnOneFeatureDetail(tierId: TierId): string {
@@ -782,7 +962,16 @@ export function oneOnOneFeatureDetail(tierId: TierId): string {
     tier?.commitmentMonths && tier.commitmentMonths > 1
       ? ` ${tier.commitmentMonths}-month commitment required.`
       : "";
-  return `One live consulting session per month (${minutes} minutes). Same rates for Kids, Teens, Adults, and Seniors.${commit}`;
+  if (tierId === "starter") {
+    return `One 1-hour consulting session included. Same rates for Kids, Teens, Adults, and Seniors.${commit}`;
+  }
+  if (tierId === "pro") {
+    return `Three 60-minute consulting sessions included. Same rates for Kids, Teens, Adults, and Seniors.${commit}`;
+  }
+  if (tierId === "elite") {
+    return `Three 90-minute consulting sessions included. Same rates for Kids, Teens, Adults, and Seniors.${commit}`;
+  }
+  return `Live consulting session (${minutes} minutes). Same rates for Kids, Teens, Adults, and Seniors.${commit}`;
 }
 
 export function tierHasFeature(tierId: TierId, featureId: string): boolean {

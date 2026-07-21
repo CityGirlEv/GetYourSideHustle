@@ -2,7 +2,7 @@
  * Welcome-to-the-GYSH-Family certificates — SVG + simple PDF, D1 storage, admin CRUD.
  */
 import { error, json, type DbUser, type Env } from "./auth";
-import { escapeHtml, SITE_NAME, SITE_URL, LOGO_URL, ROOT_DOMAIN } from "./email-brand";
+import { escapeHtml, SITE_NAME, SITE_URL, LOGO_URL } from "./email-brand";
 
 export type CertificateTemplate = {
   id: string;
@@ -41,15 +41,39 @@ const DEFAULT_TEMPLATE: Omit<CertificateTemplate, "updatedAt" | "updatedBy"> = {
   body:
     "This certifies that {{name}} is a valued member of the Get Your Side Hustle family, welcomed on {{date}} as a {{tier}} member in the {{audience}} lane.",
   signoff: "T + E · Get Your Side Hustle",
-  footerLine: "Four wizards. One family adventure. · getyoursidehustle.com",
+  footerLine: `Four wizards. One family adventure. · ${SITE_URL}`,
 };
 
-function audienceLabel(raw: string): string {
+/** Celebratory Glow Getter line for Kids / Teens (junior) certificates only. */
+export const GLOW_GETTER_CERT_LINE =
+  "You're a proud Glow Getter — keep shining with kindness, courage, and hustle!";
+
+/** SVG/PDF logo box size (was 140). */
+export const CERT_LOGO_SIZE = 180;
+
+export function isGlowGetterAudience(raw: string | null | undefined): boolean {
+  const a = String(raw || "adult").toLowerCase();
+  return a === "kids" || a === "kid" || a === "junior" || a === "teen" || a === "teens";
+}
+
+export function audienceLabel(raw: string): string {
   const a = String(raw || "adult").toLowerCase();
   if (a === "kids" || a === "kid") return "Kids";
   if (a === "junior" || a === "teen" || a === "teens") return "Teens";
   if (a === "senior") return "Seniors";
   return "Adults";
+}
+
+/** Fill placeholders, then append Glow Getter copy for kids/teens audiences. */
+export function resolveCertificateBody(
+  templateBody: string,
+  vars: { name: string; date: string; tier: string; audience: string },
+  audienceRaw: string | null | undefined,
+): string {
+  const filled = fillTemplate(templateBody, vars).trim();
+  if (!isGlowGetterAudience(audienceRaw)) return filled;
+  if (filled.toLowerCase().includes("glow getter")) return filled;
+  return `${filled} ${GLOW_GETTER_CERT_LINE}`;
 }
 
 function tierLabel(raw: string): string {
@@ -187,10 +211,10 @@ function wrapSvgText(text: string, x: number, y: number, maxChars: number, fontS
   if (current) lines.push(current);
   const startY = y;
   return lines
-    .slice(0, 4)
+    .slice(0, 5)
     .map(
       (line, i) =>
-        `<text x="${x}" y="${startY + i * (fontSize + 6)}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="${fontSize}" fill="#3a342e">${line}</text>`,
+        `<text x="${x}" y="${startY + i * (fontSize + 5)}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="${fontSize}" fill="#3a342e">${line}</text>`,
     )
     .join("\n  ");
 }
@@ -210,6 +234,10 @@ export function buildCertificateSvg(input: {
   const dateLabel = formatIssuedDate(input.issuedAt);
   const w = 1100;
   const h = 780;
+  const logo = CERT_LOGO_SIZE;
+  const logoX = w / 2 - logo / 2;
+  const logoY = 56;
+  const tagline = input.footerLine || `${SITE_NAME} · ${SITE_URL}`;
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="${escapeHtml(input.title)}">
   <defs>
@@ -228,16 +256,17 @@ export function buildCertificateSvg(input: {
   <rect x="28" y="28" width="${w - 56}" height="${h - 56}" fill="none" stroke="#D7C697" stroke-width="4" rx="18"/>
   <rect x="44" y="44" width="${w - 88}" height="${h - 88}" fill="none" stroke="#9B2F28" stroke-width="1.5" rx="12"/>
   <rect x="44" y="44" width="${w - 88}" height="8" fill="url(#bar)"/>
-  <image href="${LOGO_URL}" x="${w / 2 - 70}" y="70" width="140" height="140" preserveAspectRatio="xMidYMid meet"/>
-  <text x="${w / 2}" y="240" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="22" fill="#9B2F28" letter-spacing="4" font-weight="700">${escapeHtml(input.subtitle.toUpperCase())}</text>
-  <text x="${w / 2}" y="300" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="42" fill="#2d2a26" font-weight="800">${escapeHtml(input.title)}</text>
-  <text x="${w / 2}" y="360" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="16" fill="#8a7a68">Presented with pride to</text>
-  <text x="${w / 2}" y="420" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="40" fill="#9B2F28" font-weight="800">${escapeHtml(input.memberName)}</text>
-  <line x1="280" y1="445" x2="820" y2="445" stroke="#D7C697" stroke-width="2"/>
-  ${wrapSvgText(escapeHtml(input.bodyText), w / 2, 480, 70, 17)}
-  <text x="${w / 2}" y="620" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="15" fill="#6b5344" font-weight="700">${escapeHtml(input.tierLabel)} · ${escapeHtml(input.audienceLabel)} · ${escapeHtml(dateLabel)}</text>
-  <text x="${w / 2}" y="670" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="18" fill="#2d2a26" font-weight="700">${escapeHtml(input.signoff)}</text>
-  <text x="${w / 2}" y="710" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#b09a7e">${escapeHtml(input.footerLine || `${SITE_NAME} · ${ROOT_DOMAIN}`)}</text>
+  <image href="${LOGO_URL}" x="${logoX}" y="${logoY}" width="${logo}" height="${logo}" preserveAspectRatio="xMidYMid meet"/>
+  <text x="${w / 2}" y="262" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="20" fill="#9B2F28" letter-spacing="4" font-weight="700">${escapeHtml(input.subtitle.toUpperCase())}</text>
+  <text x="${w / 2}" y="312" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="40" fill="#2d2a26" font-weight="800">${escapeHtml(input.title)}</text>
+  <text x="${w / 2}" y="360" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="15" fill="#8a7a68">Presented with pride to</text>
+  <text x="${w / 2}" y="412" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="38" fill="#9B2F28" font-weight="800">${escapeHtml(input.memberName)}</text>
+  <line x1="280" y1="432" x2="820" y2="432" stroke="#D7C697" stroke-width="2"/>
+  ${wrapSvgText(escapeHtml(input.bodyText), w / 2, 462, 72, 16)}
+  <text x="${w / 2}" y="590" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="14" fill="#6b5344" font-weight="700">${escapeHtml(input.tierLabel)} · ${escapeHtml(input.audienceLabel)} · ${escapeHtml(dateLabel)}</text>
+  <text x="${w / 2}" y="635" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="17" fill="#2d2a26" font-weight="700">${escapeHtml(input.signoff)}</text>
+  <text x="${w / 2}" y="675" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#b09a7e">${escapeHtml(tagline)}</text>
+  <text x="${w / 2}" y="708" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="14" fill="#9B2F28" font-weight="700">${escapeHtml(SITE_URL)}</text>
 </svg>`;
 }
 
@@ -262,7 +291,8 @@ export function buildCertificatePdfBase64(input: {
     input.bodyText,
     `${input.tierLabel} · ${input.audienceLabel} · ${dateLabel}`,
     input.signoff,
-    input.footerLine || `${SITE_NAME} · ${ROOT_DOMAIN}`,
+    input.footerLine || `${SITE_NAME} · ${SITE_URL}`,
+    SITE_URL,
   ];
 
   const pageW = 792;
@@ -275,19 +305,19 @@ export function buildCertificatePdfBase64(input: {
   content.push("0.84 0.78 0.59 RG 1 w 48 48 696 516 re S");
 
   let y = 520;
-  const sizes = [12, 22, 11, 20, 11, 11, 13, 9];
+  const sizes = [12, 22, 11, 20, 11, 11, 13, 9, 12];
   for (let i = 0; i < lines.length; i++) {
     const size = sizes[i] ?? 11;
     const text = escapePdf(lines[i].slice(0, 220));
     content.push("BT");
     content.push(`/F1 ${size} Tf`);
-    content.push(`0.18 0.16 0.15 rg`);
+    content.push(i === lines.length - 1 ? "0.61 0.18 0.16 rg" : "0.18 0.16 0.15 rg");
     // Rough center: use Td from left margin with approximate width
     const approx = Math.max(40, (pageW - text.length * size * 0.45) / 2);
     content.push(`${approx.toFixed(1)} ${y} Td`);
     content.push(`(${text}) Tj`);
     content.push("ET");
-    y -= i === 1 ? 36 : i === 3 ? 40 : 28;
+    y -= i === 1 ? 36 : i === 3 ? 40 : 26;
   }
 
   const stream = content.join("\n");
@@ -337,13 +367,18 @@ export async function issueMemberCertificate(
   const template = await getCertificateTemplate(env);
   const now = new Date().toISOString();
   const tier = tierLabel(input.membershipTier || "free");
-  const audience = audienceLabel(input.audience || "adult");
-  const bodyText = fillTemplate(template.body, {
-    name: input.name || "Side Hustler",
-    date: formatIssuedDate(now),
-    tier,
-    audience,
-  });
+  const audienceRaw = input.audience || "adult";
+  const audience = audienceLabel(audienceRaw);
+  const bodyText = resolveCertificateBody(
+    template.body,
+    {
+      name: input.name || "Side Hustler",
+      date: formatIssuedDate(now),
+      tier,
+      audience,
+    },
+    audienceRaw,
+  );
 
   const svgMarkup = buildCertificateSvg({
     title: template.title,

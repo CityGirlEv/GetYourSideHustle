@@ -36,6 +36,7 @@ function mapPlanItem(raw: Record<string, unknown>): PlanItem {
             storedId: String(att.storedId || att.stored_id || att.id || ""),
             r2Key: att.r2Key == null && att.r2_key == null ? null : String(att.r2Key ?? att.r2_key),
             addedAt: String(att.addedAt || att.added_at || ""),
+            hasContent: att.hasContent === true,
           };
         })
       : [],

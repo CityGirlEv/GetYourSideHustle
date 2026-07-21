@@ -57,18 +57,23 @@ function ManualFigure({
   caption,
   align,
   priority,
+  variant = "inline",
 }: {
   src: string;
   caption: string;
   align: "left" | "right";
   priority?: boolean;
+  /** masthead = large lead art; inline = wraps with section copy */
+  variant?: "inline" | "masthead";
 }) {
   return (
-    <figure className={`manual-figure manual-figure--${align}`}>
+    <figure
+      className={`manual-figure manual-figure--${align}${variant === "masthead" ? " manual-figure--masthead" : ""}`}
+    >
       <div className="manual-figure__frame">
         <img
           src={src}
-          alt=""
+          alt={caption}
           loading={priority ? "eager" : "lazy"}
           decoding="async"
         />
@@ -90,28 +95,33 @@ function SectionBody({
   align: "left" | "right";
 }) {
   const hasProse = Boolean(section.prose?.length);
-  const showInlineFigure = Boolean(img && (hasProse || section.intro || section.kind === "perks" || section.kind === "cta"));
+  const showInlineFigure = Boolean(
+    img && (hasProse || section.intro || section.kind === "perks" || section.kind === "cta"),
+  );
 
   return (
-    <div className={`manual-section__body${showInlineFigure ? " has-figure" : ""}`}>
+    <div
+      className={`manual-section__body${showInlineFigure ? ` has-figure has-figure--${align}` : ""}`}
+    >
       {showInlineFigure && img && caption && (
         <ManualFigure src={img} caption={caption} align={align} />
       )}
-      {section.intro && <p className="manual-lede">{section.intro}</p>}
-      {section.kind === "prose" && section.prose && (
-        <div className="manual-prose">
-          {section.prose.map((p, i) => (
-            <p key={`${section.id}-p-${i}`}>{p}</p>
-          ))}
-        </div>
-      )}
-      {section.callout && (
-        <aside className="manual-callout">
-          <strong>{section.callout.title}</strong>
-          <span>{section.callout.body}</span>
-        </aside>
-      )}
-      <div className="manual-clear" />
+      <div className="manual-section__copy">
+        {section.intro && <p className="manual-lede">{section.intro}</p>}
+        {section.kind === "prose" && section.prose && (
+          <div className="manual-prose">
+            {section.prose.map((p, i) => (
+              <p key={`${section.id}-p-${i}`}>{p}</p>
+            ))}
+          </div>
+        )}
+        {section.callout && (
+          <aside className="manual-callout">
+            <strong>{section.callout.title}</strong>
+            <span>{section.callout.body}</span>
+          </aside>
+        )}
+      </div>
     </div>
   );
 }
@@ -159,6 +169,7 @@ export function MarketingManual({
           src={cover}
           caption={IMAGE_CAPTIONS.hero}
           align="left"
+          variant="masthead"
           priority
         />
         <div className="manual-masthead__copy">
@@ -198,12 +209,7 @@ export function MarketingManual({
         </div>
       </header>
 
-      <GuideToc
-        entries={toc.map((e) => ({
-          id: e.id,
-          label: `${e.number}. ${e.label}`,
-        }))}
-      />
+      <GuideToc entries={toc} />
 
       {doc.sections.map((section, sectionIndex) => {
         const img = resolveImage(guideId, section.imageKey);

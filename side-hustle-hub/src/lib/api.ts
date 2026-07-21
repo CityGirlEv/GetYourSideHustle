@@ -63,18 +63,27 @@ export async function api<T>(path: string, opts: ApiOptions = {}): Promise<T> {
   }
 
   let res: Response;
+  const controller = new AbortController();
+  const timeoutMs = 20_000;
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     res = await fetch(`/api/${path.replace(/^\//, "")}`, {
       method: opts.method || (opts.body !== undefined ? "POST" : "GET"),
       headers,
       body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
       credentials: "include",
+      signal: controller.signal,
     });
-  } catch {
+  } catch (e) {
+    const aborted = e instanceof DOMException && e.name === "AbortError";
     throw new ApiError(
-      "Cannot reach the GYSH API. Database/API is unavailable — check deploy bindings and network.",
+      aborted
+        ? "GYSH API timed out. If you're on local Dev, restart `npm run dev` (Pages Functions on :8788 may be stuck)."
+        : "Cannot reach the GYSH API. Database/API is unavailable — check deploy bindings and network.",
       0,
     );
+  } finally {
+    clearTimeout(timer);
   }
 
   if (!res.ok) {

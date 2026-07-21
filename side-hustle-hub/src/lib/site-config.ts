@@ -5,7 +5,7 @@ export const SITE_NAME = "Get Your Side Hustle";
 export const SITE_SLUG = "getyoursidehustle";
 export const ADMIN_EMAIL = `info@${ROOT_DOMAIN}`;
 /** Official GYSH Facebook page */
-export const FACEBOOK_URL = "https://www.facebook.com/getyoursidehustle";
+export const FACEBOOK_URL = "https://www.facebook.com/getyoursidehustleofficial";
 export const FACEBOOK_HANDLE = "@getyoursidehustle";
 
 /** One-line site purpose for home and social CTAs */
@@ -30,3 +30,7 @@ export function siteUrl(): string {
     PRODUCTION_SITE_URL
   );
 }
+
+/** Open Graph / social share image (logo on branded card). */
+export const SHARE_IMAGE_URL = `${PRODUCTION_SITE_URL}/brand/gysh-og-share.png`;
+export const SHARE_LOGO_URL = `${PRODUCTION_SITE_URL}/brand/gysh-logo-rocket.png`;

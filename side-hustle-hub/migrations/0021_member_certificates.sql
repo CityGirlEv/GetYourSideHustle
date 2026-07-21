@@ -40,7 +40,7 @@ INSERT OR IGNORE INTO certificate_template (
   'Certificate of Membership',
   'This certifies that {{name}} is a valued member of the Get Your Side Hustle family, welcomed on {{date}} as a {{tier}} member in the {{audience}} lane.',
   'T + E · Get Your Side Hustle',
-  'Four wizards. One family adventure. · getyoursidehustle.com',
+  'Four wizards. One family adventure. · https://getyoursidehustle.com',
   datetime('now'),
   'system'
 );

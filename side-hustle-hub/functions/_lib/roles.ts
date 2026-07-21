@@ -59,6 +59,31 @@ export function canAccessAdminPortal(roles: GyshRole[]): boolean {
   return roles.includes("admin") || roles.includes("qa") || roles.includes("dev");
 }
 
+/**
+ * Testing Portal status updates (Pass / Fail / etc.).
+ * Same gate as Admin Studio — QA / Dev / admin. Blocked is gated by canSetTestBlocked.
+ */
+export function canChangeTestStatus(roles: GyshRole[]): boolean {
+  return canAccessAdminPortal(roles);
+}
+
+/** Canonical + known typo emails for Evelyn (Blocked status allowlist). */
+const EVELYN_BLOCKED_EMAILS = new Set(["evelyn3@cox.net", "evvelyn3@cox.net"]);
+
+/**
+ * Only Evelyn may set a test case to Blocked.
+ * Identified by seeded email and/or display name ("Evelyn" / "Evelyn Irving").
+ */
+export function canSetTestBlocked(
+  user: { email?: string; name?: string } | null | undefined,
+): boolean {
+  if (!user) return false;
+  const email = String(user.email || "").trim().toLowerCase();
+  if (EVELYN_BLOCKED_EMAILS.has(email)) return true;
+  const name = String(user.name || "").trim().toLowerCase();
+  return name === "evelyn" || name.startsWith("evelyn ");
+}
+
 export function hasRole(roles: GyshRole[], role: GyshRole): boolean {
   return roles.includes(role);
 }

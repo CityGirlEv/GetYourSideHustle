@@ -1,3 +1,8 @@
 # SPA fallback for client-side routes. /api/* is handled by Pages Functions
 # via public/_routes.json (include: /api/*) — do not rewrite API paths here.
-/*    /index.html   200
+#
+# Do NOT rewrite hashed static assets. If a deploy race or cache miss would
+# otherwise 404, Cloudflare's blanket /* → index.html rewrite can cache HTML
+# at /assets/*.js on the custom domain and break the site until purge.
+/assets/*  /assets/:splat  200
+/*         /index.html     200

@@ -87,11 +87,27 @@ export function userHasRole(u: Pick<GyshUser, "role" | "roles">, role: GyshRole)
   return userRoles(u).includes(role);
 }
 
+/** Admin Studio / partner tooling — admin, QA, or Dev (matches functions/_lib/roles.ts). */
+export function canAccessAdminPortal(
+  u: Pick<GyshUser, "role" | "roles"> | { role?: string; roles?: string[] } | null | undefined,
+): boolean {
+  if (!u) return false;
+  const roles = Array.isArray(u.roles) && u.roles.length > 0
+    ? u.roles
+    : u.role
+      ? [u.role]
+      : [];
+  return roles.includes("admin") || roles.includes("qa") || roles.includes("dev");
+}
+
 /** Human QA testers — Manual suite only (clickable bubbles). */
 export type QaTesterId = "tina" | "evelyn" | "lyriq";
 
-/** Failed Testing Portal cases are assigned to Evelyn (Dev). */
+/** Failed / newly created Testing Portal cases are assigned to Evelyn (not Lyriq). */
 export const FAILED_TEST_ASSIGNEE: QaTesterId = "evelyn";
+
+/** Default human owner when a new test case is created. */
+export const NEW_TEST_ASSIGNEE: QaTesterId = "evelyn";
 
 /** Automated suite owners — Vitest / Playwright runners (not D1 users). */
 export type AutomatedSuiteOwnerId = "vitest" | "playwright";
@@ -180,6 +196,10 @@ export type GyshUser = {
   joinedAt: string;
   notes: string;
   canLogin?: boolean;
+  /** Membership level: free | starter | pro | elite */
+  membershipTier?: string;
+  /** Audience lane: kids | junior | adult | senior */
+  audience?: string;
 };
 
 export async function fetchUsers(): Promise<GyshUser[]> {

@@ -24,17 +24,22 @@ describe("gysh-test-plan", () => {
     }
   });
 
-  it("keeps proofread cases Unassigned and in Backlog", async () => {
+  it("keeps proofread cases as Tina/Lyriq pairs in Sprint 1", async () => {
     const { suggestedSprintForTest } = await import("../gysh-sprint-board");
-    const { BACKLOG_SPRINT } = await import("../gysh-sprints");
+    const { proofreadLogicalId } = await import("../gysh-proofread-cases");
     const proof = TEST_CASES.filter((t) => t.id.startsWith("PROOF-"));
     expect(proof.length).toBeGreaterThan(20);
+    expect(proof.length % 2).toBe(0);
     for (const t of proof) {
-      expect(t.assignees).toEqual([]);
+      expect(t.id).toMatch(/-(TINA|LYRIQ)$/);
+      expect(t.assignees).toHaveLength(1);
+      expect(["tina", "lyriq"]).toContain(t.assignees[0]);
       expect(t.area).toBe("Proofread");
-      expect(suggestedSprintForTest(t)).toBe(BACKLOG_SPRINT);
+      expect(suggestedSprintForTest(t)).toBe(1);
       expect(facingForCase(t)).toBe("external");
     }
+    const logical = new Set(proof.map((t) => proofreadLogicalId(t.id)));
+    expect(logical.size).toBe(proof.length / 2);
   });
 
   it("splits manual cases across all three testers", () => {

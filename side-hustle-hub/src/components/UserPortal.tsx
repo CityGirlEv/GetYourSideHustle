@@ -11,10 +11,20 @@ import {
   Link2,
   Sparkles,
 } from "lucide-react";
+import { WaitIndicator } from "./WaitFeedback";
 import {
   CREDIT_EARN_ACTIONS,
   KID_TO_ADULT_CREDIT_RATIO,
+  MEMBERSHIP_TIERS,
 } from "../lib/membership";
+import {
+  fetchMemberCredits,
+  formatAdultCreditEquivalent,
+  formatKidCreditBalance,
+  formatLedgerDelta,
+  summarizeMemberCredits,
+  type MemberCreditsSummary,
+} from "../lib/member-credits";
 import { buildReferralUrl, getOrCreateReferralCode } from "../lib/referral";
 
 interface Goal {
@@ -41,6 +51,9 @@ export const UserPortal: React.FC = () => {
   const [referralCode, setReferralCode] = useState("GYSHHOME");
   const [referralUrl, setReferralUrl] = useState("");
   const [copied, setCopied] = useState(false);
+  const [credits, setCredits] = useState<MemberCreditsSummary | null>(null);
+  const [creditsError, setCreditsError] = useState<string | null>(null);
+  const [creditsLoading, setCreditsLoading] = useState(true);
 
   useEffect(() => {
     const code = getOrCreateReferralCode();
@@ -48,10 +61,36 @@ export const UserPortal: React.FC = () => {
     setReferralUrl(buildReferralUrl(code));
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    setCreditsLoading(true);
+    void fetchMemberCredits()
+      .then((payload) => {
+        if (cancelled) return;
+        setCredits(summarizeMemberCredits(payload));
+        setCreditsError(null);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setCredits(null);
+        setCreditsError(err instanceof Error ? err.message : "Could not load credits.");
+      })
+      .finally(() => {
+        if (!cancelled) setCreditsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const earnActions = useMemo(
     () => CREDIT_EARN_ACTIONS.filter((a) => a.audiences.includes("adult")),
     [],
   );
+
+  const tierLabel = credits
+    ? MEMBERSHIP_TIERS.find((t) => t.id === credits.membershipTier)?.name ?? "Free"
+    : null;
 
   const badges: Badge[] = [
     { name: "Scout Apprentice 🏷️", desc: "Searched product databases for profitable margins", icon: "🏷️", unlocked: true },
@@ -101,18 +140,93 @@ export const UserPortal: React.FC = () => {
           <div style={{ marginTop: "24px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.95rem", color: "var(--text-primary)", marginBottom: "8px" }}>
               <span>Overall Roadmap Completion</span>
-              <span style={{ fontWeight: 700, color: "var(--accent-purple)" }}>{progressPercent}% Complete</span>
+              <span style={{ fontWeight: 700, color: "var(--crimson)" }}>{progressPercent}% Complete</span>
             </div>
-            <div style={{ width: "100%", height: "8px", background: "rgba(124, 58, 237, 0.05)", borderRadius: "9999px", overflow: "hidden" }}>
+            <div style={{ width: "100%", height: "8px", background: "rgba(155, 47, 40, 0.08)", borderRadius: "9999px", overflow: "hidden" }}>
               <div style={{ 
                 width: `${progressPercent}%`, 
                 height: "100%", 
-                background: "var(--grad-primary)",
+                background: "var(--crimson)",
                 borderRadius: "9999px"
               }} />
             </div>
           </div>
         </div>
+
+        <section
+          className="glass user-portal-credits"
+          data-testid="user-portal-credits"
+          aria-labelledby="user-portal-credits-heading"
+        >
+          <h3 id="user-portal-credits-heading">
+            <Coins size={20} aria-hidden /> Your Kid Credits
+          </h3>
+          {creditsLoading && (
+            <WaitIndicator
+              className="user-portal-credits-muted"
+              data-testid="user-portal-credits-loading"
+              message="Loading your credit balance…"
+              style={{ marginTop: 0 }}
+            />
+          )}
+          {!creditsLoading && creditsError && (
+            <p className="user-portal-credits-error" data-testid="user-portal-credits-error">
+              {creditsError}
+            </p>
+          )}
+          {!creditsLoading && credits && (
+            <>
+              <div className="user-portal-credits-balance-row">
+                <div>
+                  <p className="user-portal-credits-label">Available balance</p>
+                  <p className="user-portal-credits-balance" data-testid="user-portal-credits-balance">
+                    {formatKidCreditBalance(credits.balance)}
+                  </p>
+                  <p className="user-portal-credits-equiv" data-testid="user-portal-credits-adult-equiv">
+                    ≈ {formatAdultCreditEquivalent(credits.balance)} for adult workshops &amp; 1-on-1s
+                  </p>
+                </div>
+                <div className="user-portal-credits-meta">
+                  <p data-testid="user-portal-credits-tier">
+                    Plan: <strong>{tierLabel}</strong>
+                  </p>
+                  {credits.monthlyAllowance > 0 ? (
+                    <p data-testid="user-portal-credits-allowance">
+                      Plan includes up to <strong>{credits.monthlyAllowance}</strong> Kid Credits / month
+                    </p>
+                  ) : (
+                    <p data-testid="user-portal-credits-allowance">
+                      Earn or purchase Kid Credits anytime — see packs on Join.
+                    </p>
+                  )}
+                  <p className="user-portal-credits-muted">{credits.ratioLabel}</p>
+                </div>
+              </div>
+              <div className="user-portal-credits-history">
+                <h4>Recent activity</h4>
+                {credits.recent.length === 0 ? (
+                  <p className="user-portal-credits-muted" data-testid="user-portal-credits-history-empty">
+                    No credit activity yet. Refer a friend or complete earn actions below to grow your balance.
+                  </p>
+                ) : (
+                  <ul data-testid="user-portal-credits-history">
+                    {credits.recent.map((entry) => (
+                      <li key={entry.id}>
+                        <strong className={entry.delta >= 0 ? "is-credit" : "is-debit"}>
+                          {formatLedgerDelta(entry.delta)}
+                        </strong>
+                        <span>{entry.reason}</span>
+                        <time dateTime={entry.createdAt}>
+                          {new Date(entry.createdAt).toLocaleDateString()}
+                        </time>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </>
+          )}
+        </section>
 
         <div className="glass user-portal-referral" data-testid="user-portal-referral" style={{ padding: "24px 28px", borderRadius: "16px" }}>
           <h3 style={{ fontSize: "1.15rem", color: "var(--text-primary)", marginBottom: "8px", display: "flex", alignItems: "center", gap: "8px" }}>

@@ -107,15 +107,15 @@ export const MEMBER_GUIDE_SECTIONS: GuideDocSection[] = [
       },
       {
         id: "tier-starter",
-        text: "Starter — Member guides, community, workshop discounts, monthly 30-min 1-on-1 (3-mo commit). Kids/Teens use credits.",
+        text: "Starter — Member guides, community, workshop discounts, one 1-hour session (3-mo commit). Kids/Teens use credits.",
       },
       {
         id: "tier-pro",
-        text: "Pro — Schedule suite (plan, tracker, reports, email) + monthly 60-min 1-on-1 + more credits.",
+        text: "Pro — Schedule suite (plan, tracker, reports, email) + three 60-minute sessions + more credits.",
       },
       {
         id: "tier-elite",
-        text: "Elite — Deepest support + monthly 90-min 1-on-1 + highest credit pool.",
+        text: "Elite — Deepest support + three 90-minute sessions + highest credit pool.",
       },
     ],
   },
@@ -322,13 +322,16 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
         items: [
           {
             id: "due-login",
-            text: "On fresh Admin login, overdue / due-today tasks for your assignee can open a modal.",
+            text: "On fresh Admin login, overdue / due-today tasks and overdue tests for your assignee can open a modal — with days left in the current sprint and a nudge to finish before Monday.",
           },
           {
             id: "due-daily",
-            text: "Optional once-per-day reminder when opening Admin if overdue items remain.",
+            text: "Optional once-per-day reminder when opening Admin if overdue tasks or tests remain.",
           },
-          { id: "due-jump", text: "Jump to Task List from the modal to work the items." },
+          {
+            id: "due-jump",
+            text: "Jump to Task List or Testing Portal from the modal to work the items.",
+          },
         ],
       },
     ],
@@ -366,7 +369,7 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
       },
       {
         id: "sch-plan",
-        text: "Add plan items, apply sprint schedule, and Reload from D1.",
+        text: "Add plan items, bulk-edit selected cards, and Reset to discard unsaved edits (Save / Save all write to D1).",
       },
     ],
   },
@@ -382,11 +385,11 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
       },
       {
         id: "tk-filter",
-        text: "Filter by assignee, category, and status; select rows for bulk delete.",
+        text: "Filter by assignee, category, and status; select rows for bulk assignee, sprint, status, priority, due date, or delete.",
       },
       {
         id: "tk-edit",
-        text: "Edit status, priority, due date, sprint, description; partner-done where applicable.",
+        text: "Edit status, priority, due date, sprint, description; partner-done where applicable. Each card shows last updated by and date.",
       },
       {
         id: "tk-attach",
@@ -418,11 +421,11 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
       },
       {
         id: "qa-assign",
-        text: "Assign manual cases to T / E / Lyriq; Vitest/Playwright cases stay on suite owners; set sprint; expand case detail.",
+        text: "Assign manual cases to T / E / Lyriq; Vitest/Playwright cases stay on suite owners; set sprint; expand case detail. Each card shows last updated by and date.",
       },
       {
         id: "qa-bulk",
-        text: "Bulk assign and bulk status updates on selected cases.",
+        text: "Select cases, then bulk-assign people, status, or sprint (including Backlog) — same idea as Task List multiselect.",
       },
       {
         id: "qa-auto",
@@ -581,7 +584,7 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
     items: [
       {
         id: "sm-views",
-        text: "Toggle Tree vs Org chart of public + Admin structure (read-only reference).",
+        text: "Toggle Tree vs Diagram of public menus/submenus + Admin structure (read-only reference). Diagram is top-down from Home.",
       },
     ],
   },
@@ -798,11 +801,11 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
           },
           {
             id: "eu-j2",
-            text: "Free — open free guides. Starter — member guides, community, workshop discount, monthly 30-min 1-on-1 (credits for Kids/Teens).",
+            text: "Free — open free guides. Starter — member guides, community, workshop discount, one 1-hour session (credits for Kids/Teens).",
           },
           {
             id: "eu-j3",
-            text: "Pro — schedule suite + 60-min 1-on-1 + more credits. Elite — deepest support + 90-min 1-on-1 + highest credit pool.",
+            text: "Pro — schedule suite + three 60-minute sessions + more credits. Elite — deepest support + three 90-minute sessions + highest credit pool.",
           },
           {
             id: "eu-j4",

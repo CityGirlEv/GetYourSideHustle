@@ -25,6 +25,8 @@ export type Env = {
   EMAIL_FROM?: string;
   /** Optional contact inbox override (defaults to info@getyoursidehustle.com) */
   CONTACT_TO?: string;
+  /** Shared secret for cron Worker → /api/cron/daily-digest */
+  CRON_SECRET?: string;
 };
 
 export type DbUser = {
@@ -39,19 +41,32 @@ export type DbUser = {
   notes: string;
   password_hash: string | null;
   password_salt: string | null;
+  membership_tier?: string | null;
+  audience?: string | null;
 };
 
 const USER_SELECT =
-  `id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt`;
+  `id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt, membership_tier, audience`;
 
 /** Legacy select for DBs where migration 0004 (roles column) has not run yet. */
 const USER_SELECT_LEGACY =
-  `id, name, email, role, NULL AS roles, status, joined_at, notes, password_hash, password_salt`;
+  `id, name, email, role, NULL AS roles, status, joined_at, notes, password_hash, password_salt, NULL AS membership_tier, NULL AS audience`;
 
 function isMissingRolesColumn(e: unknown): boolean {
   const msg = e instanceof Error ? e.message : String(e);
   return msg.includes("no such column") && msg.includes("roles");
 }
+
+function isMissingMembershipColumns(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message : String(e);
+  return (
+    msg.includes("no such column") &&
+    (msg.includes("membership_tier") || msg.includes("audience"))
+  );
+}
+
+const USER_SELECT_NO_MEMBERSHIP =
+  `id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt`;
 
 const SESSION_DAYS = 14;
 import { MIN_PASSWORD_LENGTH, passwordPolicyError } from "./password-policy";
@@ -79,6 +94,8 @@ export function publicUser(u: DbUser) {
     joinedAt: u.joined_at,
     notes: u.notes,
     canLogin: Boolean(u.password_hash && u.password_salt),
+    membershipTier: (u.membership_tier || "free").toLowerCase(),
+    audience: (u.audience || "adult").toLowerCase(),
   };
 }
 
@@ -92,6 +109,14 @@ export async function getUserByEmail(db: D1Database, email: string): Promise<DbU
         .first<DbUser>()) ?? null
     );
   } catch (e) {
+    if (isMissingMembershipColumns(e)) {
+      return (
+        (await db
+          .prepare(`SELECT ${USER_SELECT_NO_MEMBERSHIP} FROM users WHERE email = ?`)
+          .bind(primary)
+          .first<DbUser>()) ?? null
+      );
+    }
     if (!isMissingRolesColumn(e)) throw e;
     return (
       (await db
@@ -111,6 +136,14 @@ export async function getUserById(db: D1Database, id: string): Promise<DbUser | 
         .first<DbUser>()) ?? null
     );
   } catch (e) {
+    if (isMissingMembershipColumns(e)) {
+      return (
+        (await db
+          .prepare(`SELECT ${USER_SELECT_NO_MEMBERSHIP} FROM users WHERE id = ?`)
+          .bind(id)
+          .first<DbUser>()) ?? null
+      );
+    }
     if (!isMissingRolesColumn(e)) throw e;
     return (
       (await db

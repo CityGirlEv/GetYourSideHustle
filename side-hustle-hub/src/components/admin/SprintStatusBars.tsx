@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { fetchAgilePlan } from "../../lib/gysh-agile-plan";
 import { fetchTasks } from "../../lib/gysh-tasks";
 import {
@@ -17,7 +18,14 @@ import {
   testToBoardCard,
   type BoardCard,
 } from "../../lib/gysh-sprint-board";
-import { summarizeBoardProgress, type ProjectProgressSummary } from "../../lib/sprint-progress";
+import {
+  summarizeBoardProgress,
+  type ProjectProgressSummary,
+  type SprintProgressSlice,
+  type WorkBreakdown,
+} from "../../lib/sprint-progress";
+import { WaitIndicator } from "../WaitFeedback";
+import { RolloutScheduleSummary } from "./RolloutScheduleSummary";
 
 const ALL_TESTS = [
   ...withDefaultSuite(TEST_CASES),
@@ -25,55 +33,112 @@ const ALL_TESTS = [
   ...AUTOMATED_PLAYWRIGHT_CASES,
 ].filter((t) => !isWizardMatrixCaseId(t.id));
 
-function Meter({
+/** Sprint board selection from a progress row (Overall → all committed sprints). */
+export type SprintProgressSelection = number | "all";
+
+function TqLines({ row }: { row: Pick<WorkBreakdown, "tests" | "testsDone" | "tasks" | "tasksDone"> }) {
+  return (
+    <span className="sprint-status-row__tq" title={`Tests: ${row.testsDone}/${row.tests} · Tasks: ${row.tasksDone}/${row.tasks}`}>
+      <span>Tests: {row.testsDone}/{row.tests}</span>
+      <span>Tasks: {row.tasksDone}/{row.tasks}</span>
+    </span>
+  );
+}
+
+function SprintProgressRow({
   label,
   detail,
-  done,
-  total,
-  percent,
+  row,
   accent,
+  highlight,
+  selected,
+  onFilter,
 }: {
   label: string;
   detail?: string;
-  done: number;
-  total: number;
-  percent: number;
+  row: WorkBreakdown;
   accent: string;
+  highlight?: boolean;
+  selected?: boolean;
+  onFilter?: () => void;
 }) {
+  const filterable = Boolean(onFilter);
   return (
-    <div className="sprint-status-meter" data-testid="sprint-status-meter">
-      <div className="sprint-status-meter__head">
-        <div>
-          <strong>{label}</strong>
-          {detail && <span className="sprint-status-meter__detail">{detail}</span>}
+    <div
+      className={`sprint-status-row${highlight ? " sprint-status-row--current" : ""}${selected ? " sprint-status-row--selected" : ""}${filterable ? " sprint-status-row--filterable" : ""}`}
+      data-testid="sprint-status-meter"
+      data-selected={selected ? "true" : "false"}
+    >
+      <div className="sprint-status-row__main">
+        <div className="sprint-status-row__identity">
+          {filterable ? (
+            <button
+              type="button"
+              className="sprint-status-row__filter-btn"
+              onClick={onFilter}
+              title="Click to filter"
+              aria-label={`${label}. Click to filter`}
+            >
+              <strong className="sprint-status-row__name">{label}</strong>
+              <span className="sprint-status-row__click-hint">Click to filter</span>
+            </button>
+          ) : (
+            <strong className="sprint-status-row__name">{label}</strong>
+          )}
+          {detail && <span className="sprint-status-row__dates">{detail}</span>}
         </div>
-        <span className="sprint-status-meter__nums">
-          {done}/{total} · {percent}%
+        <TqLines row={row} />
+        <span className="sprint-status-row__pct">
+          {row.done}/{row.total} · {row.percent}%
         </span>
       </div>
       <div
-        className="sprint-status-meter__track"
+        className="sprint-status-row__track"
         role="progressbar"
         aria-label={label}
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-valuenow={percent}
+        aria-valuenow={row.percent}
       >
-        <div className="sprint-status-meter__fill" style={{ width: `${percent}%`, background: accent }} />
+        <div
+          className="sprint-status-row__fill"
+          style={{ width: `${row.percent}%`, background: accent }}
+        />
       </div>
     </div>
   );
+}
+
+function collapsedSummary(data: ProjectProgressSummary): string {
+  return `${data.current.label} ${data.current.percent}% · Overall ${data.overall.percent}%`;
+}
+
+function sprintRowLabel(s: SprintProgressSlice): string {
+  return s.isCurrent ? `${s.label} (current)` : s.label;
 }
 
 type SprintStatusBarsProps = {
   /** Optional prebuilt board cards — skips fetch when provided. */
   boardCards?: BoardCard[];
   className?: string;
+  /** Prefer collapsed to save vertical space (matches Rollout / Task·Tests filters). */
+  defaultOpen?: boolean;
+  /** Currently selected sprint on the parent board (highlights matching row). */
+  selectedSprint?: number | "all" | "backlog" | null;
+  /** Clicking a sprint / Overall label filters the parent board. */
+  onSelectSprint?: (selection: SprintProgressSelection) => void;
 };
 
-export function SprintStatusBars({ boardCards, className }: SprintStatusBarsProps) {
+export function SprintStatusBars({
+  boardCards,
+  className,
+  defaultOpen = false,
+  selectedSprint = null,
+  onSelectSprint,
+}: SprintStatusBarsProps) {
   const [summary, setSummary] = useState<ProjectProgressSummary | null>(null);
   const [error, setError] = useState("");
+  const [open, setOpen] = useState(defaultOpen);
 
   const fromProps = useMemo(
     () => (boardCards ? summarizeBoardProgress(boardCards) : null),
@@ -98,7 +163,10 @@ export function SprintStatusBars({ boardCards, className }: SprintStatusBarsProp
           ...plan.items.map(planToBoardCard),
           ...tasks.map(taskToBoardCard),
           ...ALL_TESTS.map((t) =>
-            testToBoardCard(t, tests.statuses[t.id], tests.sprints?.[t.id], tests.assignees?.[t.id]),
+            testToBoardCard(t, tests.statuses[t.id], tests.sprints?.[t.id], tests.assignees?.[t.id], {
+              updatedAt: tests.updatedAt?.[t.id],
+              updatedBy: tests.updatedBy?.[t.id],
+            }),
           ),
         ];
         setSummary(summarizeBoardProgress(cards));
@@ -113,39 +181,76 @@ export function SprintStatusBars({ boardCards, className }: SprintStatusBarsProp
   }, [boardCards, fromProps]);
 
   const data = boardCards ? fromProps : summary;
+  const hint = data ? collapsedSummary(data) : error ? "error" : "loading…";
+  const filterable = Boolean(onSelectSprint);
 
   return (
     <div
       className={`glass sprint-status-bars${className ? ` ${className}` : ""}`}
       data-testid="sprint-status-bars"
     >
-      <div className="sprint-status-bars__title">Sprint Status</div>
-      {error && <p className="sprint-status-bars__error">{error}</p>}
-      {!data && !error && <p className="sprint-status-bars__loading">Loading progress…</p>}
-      {data && (
-        <div className="sprint-status-bars__grid">
-          <Meter
-            label={`${data.current.label} (current)`}
-            detail={
-              data.current.theme
-                ? `${data.current.rangeLabel} · ${data.current.theme}`
-                : data.current.rangeLabel
-            }
-            done={data.current.done}
-            total={data.current.total}
-            percent={data.current.percent}
-            accent="#5f7a45"
-          />
-          <Meter
-            label="Overall project"
-            detail="All committed sprints (plan + tasks + passed tests)"
-            done={data.overall.done}
-            total={data.overall.total}
-            percent={data.overall.percent}
-            accent="#947D64"
-          />
-        </div>
-      )}
+      <div className="sprint-status-bars__top">
+        <button
+          type="button"
+          className="sprint-status-bars__toggle"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          data-testid="sprint-status-toggle"
+        >
+          {open ? <ChevronDown size={16} aria-hidden /> : <ChevronRight size={16} aria-hidden />}
+          <span className="sprint-status-bars__title">Sprint Progress</span>
+          {!open && <span className="sprint-status-bars__hint">{hint}</span>}
+          {open && filterable && (
+            <span className="sprint-status-bars__hint sprint-status-bars__hint--filter">
+              Click a sprint name to filter
+            </span>
+          )}
+        </button>
+        {open && (
+          <>
+            {error && <p className="sprint-status-bars__error">{error}</p>}
+            {!data && !error && (
+              <WaitIndicator
+                className="sprint-status-bars__loading"
+                message="Loading progress…"
+                style={{ marginTop: 0 }}
+              />
+            )}
+            {data && (
+              <div className="sprint-status-bars__list" data-testid="sprint-status-list">
+                <div className="sprint-status-bars__cols" aria-hidden>
+                  <span>Sprint</span>
+                  <span>Tests / Tasks</span>
+                  <span>Progress</span>
+                </div>
+                {data.sprints.map((s) => (
+                  <SprintProgressRow
+                    key={s.sprintIndex}
+                    label={sprintRowLabel(s)}
+                    detail={s.rangeLabel}
+                    row={s}
+                    accent={s.isCurrent ? "#5f7a45" : "#947D64"}
+                    highlight={s.isCurrent}
+                    selected={selectedSprint === s.sprintIndex}
+                    onFilter={
+                      onSelectSprint ? () => onSelectSprint(s.sprintIndex) : undefined
+                    }
+                  />
+                ))}
+                <SprintProgressRow
+                  label="Overall project"
+                  detail="Committed sprints (tasks + passed tests) · All Sprints"
+                  row={data.overall}
+                  accent="#6B5344"
+                  selected={selectedSprint === "all"}
+                  onFilter={onSelectSprint ? () => onSelectSprint("all") : undefined}
+                />
+              </div>
+            )}
+          </>
+        )}
+      </div>
+      <RolloutScheduleSummary />
     </div>
   );
 }

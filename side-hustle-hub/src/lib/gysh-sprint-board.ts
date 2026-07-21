@@ -7,19 +7,32 @@ import {
   BACKLOG_SPRINT,
   buildDefaultPlanItems,
   dayOffset,
+  dueDateForSprint,
   formatDisplayDate,
   getSprintWindow,
+  isBacklogSprint,
   KIND_LABELS,
   toISODate,
+  UNASSIGNED_OWNER,
   type PlanItem,
 } from "./gysh-sprints";
-import type { GyshTask } from "./gysh-tasks";
+import type { GyshTask, TaskStatus } from "./gysh-tasks";
 import type { TestCase, TestStatus } from "./gysh-test-plan";
 import { testOwnerLabel, type TestOwnerId } from "./gysh-roles";
 
+/** Incomplete tasks get sprint due heals; Done keeps its stored due until sprint moves. */
+export function taskStatusNeedsSprintDue(status: TaskStatus | string | undefined): boolean {
+  return status !== "done";
+}
+
+/** Incomplete tests get sprint due heals; Pass keeps its stored due until sprint moves. */
+export function testStatusNeedsSprintDue(status: TestStatus | string | undefined): boolean {
+  return status !== "pass";
+}
+
 /** Explicit task → sprint (everything else → heuristic / backlog). */
 export const TASK_SPRINT_MAP: Record<string, number> = {
-  // Sprint 0 — brand & public foundation (toward soft launch)
+  // Sprint 0 — Infrastructure (toward soft launch)
   "T-001": 0,
   "T-002": 0,
   "T-003": 0, // Facebook Page
@@ -29,18 +42,30 @@ export const TASK_SPRINT_MAP: Record<string, number> = {
   "T-012": 0,
   "T-013": 0,
   "T-019": 0, // Recurring sync
-  // Sprint 1 — public pages & launch content
+  "T-020": 0, // Gmail
+  "T-021": 0, // info@ email
+  "T-030": 0, // Group text
+  "T-031": 0, // FB follow link
+  // Sprint 1 — Brand & Content
   "T-005": 1, // Contact
   "T-008": 1, // Kevina episodes
   "T-014": 1, // Video review
   "T-017": 1, // Public hustle copy
-  // Sprint 2 — go public (soft launch week)
-  // (tasks mostly done earlier; launch is plan milestone + public QA)
-  // Sprint 3 — post-launch polish (conference dates, niche pages, deep content)
+  "T-028": 1, // Merch mockups
+  "T-029": 1, // About content
+  "T-032": 1, // Integrate About
+  // Sprint 2 — Soft Launch (~Aug 3)
+  "T-026": 2, // First FB post
+  "T-027": 2, // Kevina TikTok populate
+  // Sprint 3 — Polish (SEO, Senior page, workshops, first guides, ops polish)
   "T-006": 3, // Testing Portal (internal — after public launch)
   "T-009": 3, // SEO landings
   "T-010": 3, // Parent safety PDF
   "T-018": 3, // Workshops / conference dates
+  "T-022": 3, // Financials page
+  "T-023": 3, // Expense line items
+  "T-024": 3, // Legalities / LLC
+  "T-025": 3, // Delegation of responsibilities
   "T-SENIOR-PAGE": 3,
   "T-LG-airbnb": 3,
   "T-LG-pod": 3,
@@ -50,7 +75,7 @@ export const TASK_SPRINT_MAP: Record<string, number> = {
   "T-LG-affiliate": 3,
   "T-LG-social": 3,
   "T-LG-property-mgmt": 3,
-  // Sprint 4 — growth + remaining guides
+  // Sprint 4 — Kids GMSH sign-off + Growth
   "T-015": 4,
   "T-016": 4,
   "T-LG-rideshare": 4,
@@ -60,6 +85,10 @@ export const TASK_SPRINT_MAP: Record<string, number> = {
   "T-LG-web-leads": 4,
   "T-LG-ai-assets": 4,
   "T-LG-ai-timing": 4,
+  // Intentionally parked (not part of soft-launch path)
+  "T-033": BACKLOG_SPRINT, // KevinaStarr FB Page (separate)
+  "T-034": BACKLOG_SPRINT, // ETSY store
+  "T-035": BACKLOG_SPRINT, // Veterans section
 };
 
 /**
@@ -96,8 +125,30 @@ export function suggestedSprintForTask(task: Pick<GyshTask, "id" | "category" | 
 }
 
 /**
+ * Catalog tests that verify a Sprint 0 task (same feature/area).
+ * Only these may default to Sprint 0 — all other tests start at Sprint 1+.
+ */
+export const TEST_SPRINT_0_TASK_MATCH: Record<string, string> = {
+  "EMAIL-001": "T-020/T-021", // Resend / API email ops ↔ Gmail + info@ setup
+  "EMAIL-005": "T-020/T-021", // Verified From domain ↔ email ops
+  "BRAND-001": "T-001/T-011", // Antique Gold / Soft Ivory brand kit + layout
+  "ABOUT-001": "T-004", // About partnership story copy
+  "ADMIN-003": "T-007", // Content Factory cadence
+  "KIDS-001": "T-002", // Kevina Starr Stories in Kids Corner
+};
+
+export function testMatchesSprint0Task(
+  test: Pick<TestCase, "id"> | { id: string },
+): boolean {
+  return Object.prototype.hasOwnProperty.call(TEST_SPRINT_0_TASK_MATCH, test.id.toUpperCase());
+}
+
+/**
  * Test areas mapped to sprints. Wizard FMSH matrices are automated (Vitest)
  * but owned for sign-off in later sprints so the board stays balanced.
+ *
+ * Default band is Sprint 1+ (not Sprint 0). A test lands on Sprint 0 only when
+ * it clearly matches a Sprint 0 task (see TEST_SPRINT_0_TASK_MATCH).
  */
 export function suggestedSprintForTest(
   test: Pick<TestCase, "id" | "area" | "priority"> & { suite?: TestCase["suite"] },
@@ -105,14 +156,25 @@ export function suggestedSprintForTest(
   const id = test.id.toUpperCase();
   const area = test.area.toLowerCase();
 
-  // External proofread pool — stay in Backlog until claimed into a sprint
-  if (id.startsWith("PROOF-") || area === "proofread") {
+  // Generated failure cases — Backlog until claimed (create path may override Kids/Youth)
+  if (id.startsWith("VT-FAIL-") || id.startsWith("PW-FAIL-")) {
     return BACKLOG_SPRINT;
+  }
+
+  // Explicit Sprint 0 task linkage (exception to “tests default to Sprint 1+”)
+  if (Object.prototype.hasOwnProperty.call(TEST_SPRINT_0_TASK_MATCH, id)) {
+    return 0;
+  }
+
+  // External proofread (Tina/Lyriq pairs) — Sprint 1 public pages / launch content
+  if (id.startsWith("PROOF-") || area === "proofread") {
+    return 1;
   }
 
   if (
     area === "kids Get Your Side Hustle" ||
     id.includes("KIDS-FMSH") ||
+    id.includes("KIDS_FMSH") ||
     id.startsWith("K-FMSH")
   ) {
     return 4;
@@ -135,45 +197,59 @@ export function suggestedSprintForTest(
     return 4;
   }
 
+  // Soft-launch public smoke → Sprint 2 (includes login security smoke)
+  if (
+    id.startsWith("PW-SMOKE") ||
+    id.startsWith("PW-FIND") ||
+    id.startsWith("PW-FREE") ||
+    id.startsWith("PW-MEMBER") ||
+    id.startsWith("PW-JOIN") ||
+    id.startsWith("PW-AUTH") ||
+    id.startsWith("KIDS-") ||
+    id.startsWith("CHECK-") ||
+    id.startsWith("VT-MEMBER") ||
+    id.startsWith("VT-FIND")
+  ) {
+    return 2;
+  }
+
+  // Launch-prep auth + brand/content/registration/contact/nav/email product → Sprint 1
+  // (Former empty-S0 parking: VT-AUTH / VT-ROLE also land here — no S0 task match.)
   if (
     id.startsWith("AUTH-") ||
-    id.startsWith("EMAIL-") ||
-    id.startsWith("REG-") ||
-    id.startsWith("BP-") ||
-    id.startsWith("CONTACT-") ||
-    id.startsWith("BRAND-") ||
-    id.startsWith("ADMIN-") ||
-    id.startsWith("NAV-") ||
-    id.startsWith("HOME-") ||
-    id.startsWith("PW-SMOKE") ||
-    id.startsWith("VT-AUTH") ||
-    id.startsWith("VT-ROLE") ||
-    id.startsWith("VT-PLAN") ||
-    id.startsWith("VT-WIZARD")
-  ) {
-    return 0;
-  }
-  if (
     id.startsWith("JOIN-") ||
     id.startsWith("FACTORY-") ||
     id.startsWith("CONTENT-") ||
     id.startsWith("VT-WORK") ||
     id.startsWith("VT-JOIN") ||
+    id.startsWith("VT-AUTH") ||
+    id.startsWith("VT-ROLE") ||
     id.startsWith("TASK-") ||
-    id.startsWith("USERS-")
+    id.startsWith("USERS-") ||
+    id.startsWith("NAV-") ||
+    id.startsWith("HOME-") ||
+    id.startsWith("CONTACT-") ||
+    id.startsWith("COMM-") ||
+    id.startsWith("FB-") ||
+    id.startsWith("BRAND-") ||
+    id.startsWith("ABOUT-") ||
+    id.startsWith("REG-") ||
+    id.startsWith("BP-") ||
+    id.startsWith("EMAIL-") ||
+    id.startsWith("UX-") ||
+    id.startsWith("FAMILY-") ||
+    id.startsWith("MEMBER-") ||
+    id.startsWith("FREE-")
   ) {
     return 1;
   }
-  if (id.startsWith("WORK-")) {
-    return 3; // workshop/conference dates — post soft launch
-  }
-  if (id.startsWith("KIDS-") || id.startsWith("CHECK-")) {
-    return 2; // light public kids smoke before go-live
-  }
-  if (id.startsWith("ADULT-") || id.startsWith("SENIOR-")) {
-    return 3;
-  }
-  if (test.priority === "P0") return 0;
+
+  if (id.startsWith("VT-WIZARD")) return 4;
+  if (id.startsWith("WORK-")) return 3; // workshops — post soft launch
+  if (id.startsWith("ADULT-") || id.startsWith("SENIOR-")) return 3;
+  // Admin product / Testing Portal ops — with T-006 band (ADMIN-001/008 included)
+  if (id.startsWith("ADMIN-") || id.startsWith("VT-PLAN")) return 3;
+
   return 7;
 }
 
@@ -190,6 +266,8 @@ export type BoardCard = {
   status: string;
   kindLabel: string;
   kindColor: string;
+  updatedAt?: string;
+  updatedBy?: string;
 };
 
 export function taskStatusToBoard(status: GyshTask["status"]): string {
@@ -236,7 +314,7 @@ export function planToBoardCard(item: PlanItem): BoardCard {
     sourceId: item.id,
     title: item.title,
     notes: item.notes,
-    owner: item.owner,
+    owner: isBacklogSprint(item.sprint) ? UNASSIGNED_OWNER : item.owner,
     sprint: item.sprint,
     status: item.status === "done" ? "done" : item.status,
     kindLabel: KIND_LABELS[item.kind] ?? item.kind,
@@ -245,17 +323,20 @@ export function planToBoardCard(item: PlanItem): BoardCard {
 }
 
 export function taskToBoardCard(task: GyshTask): BoardCard {
+  const sprint = typeof task.sprint === "number" ? task.sprint : suggestedSprintForTask(task);
   return {
     key: `task:${task.id}`,
     source: "task",
     sourceId: task.id,
     title: `${task.id} · ${task.description}`,
     notes: task.notes || `Category: ${task.category}`,
-    owner: task.assignedTo,
-    sprint: typeof task.sprint === "number" ? task.sprint : suggestedSprintForTask(task),
+    owner: isBacklogSprint(sprint) ? UNASSIGNED_OWNER : task.assignedTo,
+    sprint,
     status: taskStatusToBoard(task.status),
     kindLabel: "Task",
     kindColor: "#5c4033",
+    updatedAt: task.updatedAt,
+    updatedBy: task.updatedBy,
   };
 }
 
@@ -264,12 +345,16 @@ export function testToBoardCard(
   status: TestStatus | undefined,
   sprintOverride: number | undefined,
   assigneeOverride?: string,
+  audit?: { updatedAt?: string; updatedBy?: string },
 ): BoardCard {
   const sprint =
     typeof sprintOverride === "number" ? sprintOverride : suggestedSprintForTest(test);
-  const owner = assigneeOverride
-    ? ownerFromAssignees([assigneeOverride])
-    : ownerFromAssignees(test.assignees);
+  // Backlog never shows a person (catalog defaults would otherwise look assigned).
+  const owner = isBacklogSprint(sprint)
+    ? UNASSIGNED_OWNER
+    : assigneeOverride
+      ? ownerFromAssignees([assigneeOverride])
+      : ownerFromAssignees(test.assignees);
   return {
     key: `test:${test.id}`,
     source: "test",
@@ -281,6 +366,8 @@ export function testToBoardCard(
     status: testStatusToBoard(status),
     kindLabel: "Test",
     kindColor: "#3b6ea5",
+    updatedAt: audit?.updatedAt,
+    updatedBy: audit?.updatedBy,
   };
 }
 
@@ -303,24 +390,101 @@ export function applySuggestedTaskSprints(tasks: GyshTask[]): { tasks: GyshTask[
   return { tasks: next, changed };
 }
 
-/** Force every task onto its schedule sprint (used by Apply sprint schedule). */
-export function commitTaskSprintPlan(tasks: GyshTask[]): { tasks: GyshTask[]; changed: boolean } {
+export type SprintPlanMode = "force" | "preserve";
+
+/**
+ * Align tasks to the rollout map.
+ * - force: overwrite every sprint (opt-in scripts only).
+ * - preserve (default): never move Sprint 0+ placements; only assign from Backlog,
+ *   and heal due dates for incomplete (not Done) items to match the kept sprint.
+ * Sprint moves always reset due (including Done). Backlog clears due.
+ */
+export function commitTaskSprintPlan(
+  tasks: GyshTask[],
+  mode: SprintPlanMode = "preserve",
+): { tasks: GyshTask[]; changed: boolean } {
   let changed = false;
   const next = tasks.map((t) => {
     const suggested = suggestedSprintForTask(t);
-    if (t.sprint !== suggested) {
+    const current = typeof t.sprint === "number" ? t.sprint : 0;
+    const nextSprint =
+      mode === "force" ? suggested : current === BACKLOG_SPRINT ? suggested : current;
+    const sprintChanged = t.sprint !== nextSprint;
+    const due = dueDateForSprint(nextSprint);
+    let nextDue = t.dueDate;
+    if (isBacklogSprint(nextSprint)) {
+      nextDue = "";
+    } else if (sprintChanged) {
+      nextDue = due || t.dueDate;
+    } else if (taskStatusNeedsSprintDue(t.status) && due && t.dueDate !== due) {
+      nextDue = due;
+    }
+    if (sprintChanged || t.dueDate !== nextDue) {
       changed = true;
-      return { ...t, sprint: suggested };
+      return {
+        ...t,
+        sprint: nextSprint,
+        dueDate: nextDue,
+        ...(isBacklogSprint(nextSprint)
+          ? { assignedTo: UNASSIGNED_OWNER as GyshTask["assignedTo"] }
+          : {}),
+      };
     }
     return t;
   });
   return { tasks: next, changed };
 }
 
-/** Move mapped plan items onto their sprint days; upsert soft-launch milestones if missing. */
+/** Heal incomplete task dues to sprintStart+2 (Sprint 0 → planning Sunday). No sprint moves. */
+export function healIncompleteTaskDueDates(tasks: GyshTask[]): {
+  tasks: GyshTask[];
+  changed: boolean;
+  updatedCount: number;
+} {
+  let changed = false;
+  let updatedCount = 0;
+  const next = tasks.map((t) => {
+    if (!taskStatusNeedsSprintDue(t.status)) return t;
+    const sprint = typeof t.sprint === "number" ? t.sprint : 0;
+    const due = isBacklogSprint(sprint) ? "" : dueDateForSprint(sprint);
+    if (String(t.dueDate ?? "").trim() === due) return t;
+    changed = true;
+    updatedCount += 1;
+    return { ...t, dueDate: due };
+  });
+  return { tasks: next, changed, updatedCount };
+}
+
+/** Heal incomplete test dues to sprintStart+2. No sprint moves. Pass is left alone. */
+export function healIncompleteTestDueDates(
+  sprints: Record<string, number>,
+  dueDates: Record<string, string>,
+  statuses: Record<string, TestStatus | string>,
+  caseIds: string[],
+): { dueDates: Record<string, string>; changedIds: string[] } {
+  const next = { ...dueDates };
+  const changedIds: string[] = [];
+  for (const id of caseIds) {
+    if (!testStatusNeedsSprintDue(statuses[id])) continue;
+    const sprint = sprints[id];
+    if (typeof sprint !== "number" || !Number.isFinite(sprint)) continue;
+    const due = isBacklogSprint(sprint) ? "" : dueDateForSprint(sprint);
+    if (String(next[id] ?? "").trim() === due) continue;
+    next[id] = due;
+    changedIds.push(id);
+  }
+  return { dueDates: next, changedIds };
+}
+
+/**
+ * Move mapped plan items onto their sprint days; upsert soft-launch milestones if missing.
+ * - force: remap every PLAN_ITEM_SPRINT_MAP entry.
+ * - preserve: only upsert missing soft-launch milestones (never move existing rows).
+ */
 export function commitPlanSprintPlan(
   items: PlanItem[],
   ref: Date = new Date(),
+  mode: SprintPlanMode = "preserve",
 ): { items: PlanItem[]; changed: boolean } {
   let changed = false;
   const byId = new Map(items.map((i) => [i.id, i]));
@@ -336,6 +500,10 @@ export function commitPlanSprintPlan(
         changed = true;
       }
     }
+  }
+
+  if (mode !== "force") {
+    return { items: Array.from(byId.values()), changed };
   }
 
   const next = Array.from(byId.values()).map((item) => {
@@ -363,19 +531,112 @@ export function commitPlanSprintPlan(
   return { items: next, changed };
 }
 
-/** Suggested sprint for every known test id (for board + bulk apply). */
+/**
+ * Align tests to the rollout map.
+ * - force: overwrite every sprint to suggested.
+ * - preserve (default): keep committed Sprint 1+ placements; fill missing ids;
+ *   always sync Sprint 0 task-matched tests onto Sprint 0; heal unmatched Sprint 0
+ *   rows out; re-home catalog rows parked on Backlog by the prior empty-S0 heal
+ *   (VT-FAIL / PW-FAIL stay Backlog via suggested).
+ *   Also heal due dates for incomplete (not Pass) items.
+ * Sprint moves always reset due (including Pass). Backlog clears due.
+ */
 export function commitTestSprintPlan(
   tests: Array<TestCase & { suite?: string }>,
   current: Record<string, number>,
-): { sprints: Record<string, number>; changedIds: string[] } {
+  currentDueDates: Record<string, string> = {},
+  mode: SprintPlanMode = "preserve",
+  currentStatuses: Record<string, TestStatus | string> = {},
+): {
+  sprints: Record<string, number>;
+  dueDates: Record<string, string>;
+  changedIds: string[];
+} {
   const sprints: Record<string, number> = { ...current };
+  const dueDates: Record<string, string> = { ...currentDueDates };
   const changedIds: string[] = [];
   for (const t of tests) {
     const suggested = suggestedSprintForTest(t);
-    if (sprints[t.id] !== suggested) {
-      sprints[t.id] = suggested;
-      changedIds.push(t.id);
+    const stored = sprints[t.id];
+    const hasStored = typeof stored === "number" && Number.isFinite(stored);
+    let nextSprint: number;
+    if (mode === "force" || !hasStored) {
+      nextSprint = suggested;
+    } else if (suggested === 0) {
+      // S0 task-matched tests always belong on Sprint 0
+      nextSprint = 0;
+    } else if (stored === 0) {
+      // Unmatched tests never remain on Sprint 0
+      nextSprint = suggested;
+    } else if (stored === BACKLOG_SPRINT && suggested !== BACKLOG_SPRINT) {
+      // Re-home catalog tests parked on Backlog by 2026-07-20-no-tests-in-s0
+      nextSprint = suggested;
+    } else {
+      nextSprint = stored;
     }
+    const due = dueDateForSprint(nextSprint);
+    const sprintChanged = sprints[t.id] !== nextSprint;
+    const status = currentStatuses[t.id];
+    const mayHealDue = sprintChanged || testStatusNeedsSprintDue(status);
+    const dueChanged =
+      mayHealDue && Boolean(due) && String(dueDates[t.id] ?? "").trim() !== due;
+    const clearDue =
+      isBacklogSprint(nextSprint) && Boolean(String(dueDates[t.id] ?? "").trim());
+    if (!sprintChanged && !dueChanged && !clearDue) continue;
+    sprints[t.id] = nextSprint;
+    if (due && (sprintChanged || testStatusNeedsSprintDue(status))) dueDates[t.id] = due;
+    else if (clearDue) dueDates[t.id] = "";
+    changedIds.push(t.id);
   }
-  return { sprints, changedIds };
+  return { sprints, dueDates, changedIds };
+}
+
+/**
+ * Bump to re-run Schedule soft heal (S0 task matches + re-home Backlog parking).
+ */
+export const ROLLOUT_SCHEDULE_VERSION = "2026-07-20-tests-match-s0-tasks";
+
+export type RolloutScheduleApplyResult = {
+  planItems: PlanItem[];
+  tasks: GyshTask[];
+  testSprints: Record<string, number>;
+  testDueDates: Record<string, string>;
+  planChanged: boolean;
+  tasksChanged: boolean;
+  testChangedIds: string[];
+};
+
+/**
+ * Apply rollout schedule. Default mode is preserve (safe for Schedule load).
+ * Pass mode: "force" only from opt-in scripts — never on every page open.
+ */
+export function applyRolloutSprintSchedule(input: {
+  planItems: PlanItem[];
+  tasks: GyshTask[];
+  tests: Array<TestCase & { suite?: string }>;
+  testSprints: Record<string, number>;
+  testDueDates?: Record<string, string>;
+  testStatuses?: Record<string, TestStatus | string>;
+  ref?: Date;
+  mode?: SprintPlanMode;
+}): RolloutScheduleApplyResult {
+  const mode = input.mode ?? "preserve";
+  const plan = commitPlanSprintPlan(input.planItems, input.ref ?? new Date(), mode);
+  const taskResult = commitTaskSprintPlan(input.tasks, mode);
+  const testResult = commitTestSprintPlan(
+    input.tests,
+    input.testSprints,
+    input.testDueDates ?? {},
+    mode,
+    input.testStatuses ?? {},
+  );
+  return {
+    planItems: plan.items,
+    tasks: taskResult.tasks,
+    testSprints: testResult.sprints,
+    testDueDates: testResult.dueDates,
+    planChanged: plan.changed,
+    tasksChanged: taskResult.changed,
+    testChangedIds: testResult.changedIds,
+  };
 }

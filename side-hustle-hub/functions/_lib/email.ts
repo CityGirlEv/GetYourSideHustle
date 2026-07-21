@@ -6,6 +6,7 @@
 import type { DbUser, Env } from "./auth";
 import {
   ADMIN_EMAIL,
+  ADMIN_NOTIFY_CC,
   EMAIL_SENDER_DOMAIN,
   SITE_NAME,
   SITE_URL,
@@ -20,6 +21,7 @@ import {
   type PerkAudience,
   type TierId,
 } from "./email-brand";
+import { PARTNER_ADMINS } from "./partners";
 
 export { ROOT_DOMAIN, SITE_NAME, EMAIL_SENDER_DOMAIN, ADMIN_EMAIL } from "./email-brand";
 export { SITE_URL };
@@ -116,18 +118,27 @@ export async function logEmail(
   }
 }
 
+async function logEmailToAll(
+  env: Env,
+  toList: string[],
+  row: Omit<Parameters<typeof logEmail>[1], "toEmail">,
+): Promise<void> {
+  const targets = toList.length ? toList : [""];
+  await Promise.all(targets.map((toEmail) => logEmail(env, { ...row, toEmail })));
+}
+
 export async function sendResendEmail(
   env: Env,
   payload: SendEmailInput,
 ): Promise<{ id: string | null }> {
   const apiKey = env.RESEND_API_KEY?.trim();
-  const toList = Array.isArray(payload.to) ? payload.to : [payload.to];
-  const toEmail = toList[0] || "";
+  const toList = (Array.isArray(payload.to) ? payload.to : [payload.to])
+    .map((e) => String(e || "").trim().toLowerCase())
+    .filter(Boolean);
 
   if (!apiKey || !apiKey.startsWith("re_")) {
-    await logEmail(env, {
+    await logEmailToAll(env, toList, {
       templateSlug: payload.templateSlug,
-      toEmail,
       userId: payload.userId,
       subject: payload.subject,
       status: "skipped",
@@ -173,9 +184,8 @@ export async function sendResendEmail(
     if (!res.ok) {
       const message =
         (typeof body.message === "string" && body.message) || `Resend API error (${res.status})`;
-      await logEmail(env, {
+      await logEmailToAll(env, toList, {
         templateSlug: payload.templateSlug,
-        toEmail,
         userId: payload.userId,
         subject: payload.subject,
         status: "failed",
@@ -186,9 +196,8 @@ export async function sendResendEmail(
     }
 
     const providerId = typeof body.id === "string" ? body.id : null;
-    await logEmail(env, {
+    await logEmailToAll(env, toList, {
       templateSlug: payload.templateSlug,
-      toEmail,
       userId: payload.userId,
       subject: payload.subject,
       status: "sent",
@@ -199,9 +208,8 @@ export async function sendResendEmail(
   } catch (e) {
     if (e instanceof EmailSendError) throw e;
     const message = e instanceof Error ? e.message : String(e);
-    await logEmail(env, {
+    await logEmailToAll(env, toList, {
       templateSlug: payload.templateSlug,
-      toEmail,
       userId: payload.userId,
       subject: payload.subject,
       status: "failed",
@@ -278,7 +286,7 @@ export async function sendContactMessage(
   const name = escapeHtml(input.name);
   const email = escapeHtml(input.email);
   const message = escapeHtml(input.message).replace(/\n/g, "<br/>");
-  const inbox = env.CONTACT_TO?.trim() || ADMIN_EMAIL;
+  const recipients = adminRecipients(env);
   const branded = wrapBrandedEmail({
     preheader: `New contact from ${input.name}`,
     eyebrow: "Inbox · Contact Us",
@@ -290,17 +298,21 @@ export async function sendContactMessage(
     ctaUrl: `mailto:${input.email}`,
   });
   return sendResendEmail(env, {
-    to: inbox,
+    to: recipients,
     subject: `[GYSH contact] ${input.name.slice(0, 60)}`,
     html: branded.html,
     text: branded.text,
     templateSlug: "contact_inbox",
-    meta: { from: input.email, name: input.name },
+    meta: { from: input.email, name: input.name, recipients },
   });
 }
 
-function adminInbox(env: Env): string {
-  return env.CONTACT_TO?.trim() || ADMIN_EMAIL;
+/** Ops inbox + partner admins (Tina, Evelyn, Lyriq) + ADMIN_NOTIFY_CC. */
+export function adminRecipients(env: Env): string[] {
+  const primary = (env.CONTACT_TO?.trim() || ADMIN_EMAIL).toLowerCase();
+  const partners = PARTNER_ADMINS.map((p) => p.email.trim().toLowerCase());
+  const cc = ADMIN_NOTIFY_CC.map((e) => e.trim().toLowerCase());
+  return [...new Set([primary, ...partners, ...cc].filter(Boolean))];
 }
 
 function audiencePretty(raw: string | null | undefined): string {
@@ -371,7 +383,7 @@ export async function sendAdminFormNotify(
   },
 ): Promise<boolean> {
   if (!emailConfigured(env)) return false;
-  const inbox = adminInbox(env);
+  const recipients = adminRecipients(env);
   const branded = wrapBrandedEmail({
     preheader: `GYSH form: ${input.formName}`,
     eyebrow: "Admin inbox · Form alert",
@@ -383,12 +395,12 @@ export async function sendAdminFormNotify(
     footerNote: "This alert was sent because a GYSH public form was completed.",
   });
   await sendResendEmail(env, {
-    to: inbox,
+    to: recipients,
     subject: `[GYSH ${input.formName}] ${input.summary.slice(0, 80)}`,
     html: branded.html,
     text: branded.text,
     templateSlug: "admin_form_notify",
-    meta: { formName: input.formName, ...(input.meta || {}) },
+    meta: { formName: input.formName, recipients, ...(input.meta || {}) },
   });
   return true;
 }
@@ -419,7 +431,7 @@ export async function sendRegistrationConfirmation(
     bodyHtml: `<p style="margin:0 0 12px;">We've saved your membership request. Here's what you unlocked on <strong>${escapeHtml(tierLabel(tier))}</strong>:</p>
       ${perkBulletsHtml(tier, audience)}
       ${cert?.certHtml || ""}
-      ${upgradesHtml(tier)}
+      ${upgradesHtml(tier, audience)}
       <p style="margin:16px 0 0;padding:12px 14px;background:#fff4e8;border-radius:12px;border-left:4px solid #9B2F28;">
         <strong>Next:</strong> A GYSH admin activates your account. You'll get a second email the moment you can sign in.
       </p>`,
@@ -481,7 +493,7 @@ export async function sendAccountActivatedWelcome(
       <p style="margin:0 0 8px;font-size:13px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#947d64;">Your ${escapeHtml(tierLabel(tier))} perks</p>
       ${perkBulletsHtml(tier, audience)}
       ${cert?.certHtml || ""}
-      ${upgradesHtml(tier)}
+      ${upgradesHtml(tier, audience)}
       <p style="margin:18px 0 0;">Ready for more guides, coaching, and the schedule suite? Tap below to review plans and upgrade.</p>`,
     ctaLabel: "See membership & upgrade",
     ctaUrl: joinUrl,
@@ -592,5 +604,12 @@ export const EMAIL_TEMPLATE_CATALOG: Array<{
     name: "Password changed",
     description: "Security notice after password update.",
     sampleSubject: `${SITE_NAME} — password updated`,
+  },
+  {
+    slug: "daily_admin_digest",
+    name: "Daily Admin/QA digest",
+    description:
+      "Personal sprint summary for each Admin/QA at ~12:01 America/Chicago — outstanding, recently updated, new, and reassigned-away items.",
+    sampleSubject: `${SITE_NAME} — daily digest for Evelyn (…)`,
   },
 ];

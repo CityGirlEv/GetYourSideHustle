@@ -9,6 +9,8 @@
 import type { DbUser, Env } from "./auth";
 import { error, json } from "./crypto";
 import { FAILED_TEST_ASSIGNEE } from "./roles";
+import { BACKLOG_SPRINT } from "./sprints";
+import { defaultsForNewTest } from "./new-test-defaults";
 
 export type AutomatedSuite = "vitest" | "playwright" | "all";
 /** all = full catalog; new = only not_run / missing statuses (default after baseline). */
@@ -20,6 +22,7 @@ type CaseResult = {
   note: string;
   assignee: string;
   sprint: number;
+  dueDate?: string;
 };
 
 /** Match src/lib/gysh-sprints.ts currentSprintIndex (Sprint 0 starts 2026-07-14). */
@@ -234,6 +237,9 @@ async function upsertCaseResults(env: Env, actor: DbUser, results: CaseResult[])
     ["note", `ALTER TABLE test_case_status ADD COLUMN note TEXT NOT NULL DEFAULT ''`],
     ["assignee", `ALTER TABLE test_case_status ADD COLUMN assignee TEXT NOT NULL DEFAULT ''`],
     ["sprint", `ALTER TABLE test_case_status ADD COLUMN sprint INTEGER NOT NULL DEFAULT 0`],
+    ["due_date", `ALTER TABLE test_case_status ADD COLUMN due_date TEXT NOT NULL DEFAULT ''`],
+    ["assigned_by", `ALTER TABLE test_case_status ADD COLUMN assigned_by TEXT NOT NULL DEFAULT 'System'`],
+    ["date_assigned", `ALTER TABLE test_case_status ADD COLUMN date_assigned TEXT NOT NULL DEFAULT ''`],
   ] as const) {
     try {
       await env.DB.prepare(col[1]).run();
@@ -243,13 +249,14 @@ async function upsertCaseResults(env: Env, actor: DbUser, results: CaseResult[])
   }
 
   const now = new Date().toISOString();
-  const sql = `INSERT INTO test_case_status (case_id, status, note, assignee, sprint, updated_at, updated_by)
-     VALUES (?, ?, ?, ?, ?, ?, ?)
+  // Do not overwrite due_date or sprint on conflict — suite runs must not wipe
+  // tester-set dues or manual Schedule sprint placements.
+  const sql = `INSERT INTO test_case_status (case_id, status, note, assignee, sprint, due_date, updated_at, updated_by)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(case_id) DO UPDATE SET
        status = excluded.status,
        note = excluded.note,
        assignee = excluded.assignee,
-       sprint = excluded.sprint,
        updated_at = excluded.updated_at,
        updated_by = excluded.updated_by`;
 
@@ -257,8 +264,24 @@ async function upsertCaseResults(env: Env, actor: DbUser, results: CaseResult[])
   for (let i = 0; i < results.length; i += CHUNK) {
     const slice = results.slice(i, i + CHUNK);
     const stmts = slice.map((r) => {
-      const assignee = r.status === "fail" ? FAILED_TEST_ASSIGNEE : r.assignee;
-      return env.DB.prepare(sql).bind(r.caseId, r.status, r.note, assignee, r.sprint, now, actor.email);
+      const sprint = Number.isFinite(r.sprint) ? r.sprint : BACKLOG_SPRINT;
+      let assignee = r.assignee;
+      if (sprint === BACKLOG_SPRINT) {
+        assignee = "";
+      } else if (r.status === "fail" && !String(assignee || "").trim()) {
+        assignee = FAILED_TEST_ASSIGNEE;
+      }
+      const dueDate = String(r.dueDate ?? "").trim();
+      return env.DB.prepare(sql).bind(
+        r.caseId,
+        r.status,
+        r.note,
+        assignee,
+        sprint,
+        dueDate,
+        now,
+        actor.email,
+      );
     });
     await env.DB.batch(stmts);
   }
@@ -277,12 +300,22 @@ async function createFailureTestCase(
     detail: string;
     sourceFile?: string;
     runId: string;
-    sprint: number;
+    /** Ignored — new failures use defaultsForNewTest (Backlog, or Kids/Youth rules). */
+    sprint?: number;
   },
 ): Promise<string> {
   await ensureGeneratedCasesTable(env);
   const id = `${args.suite === "vitest" ? "VT" : "PW"}-FAIL-${crypto.randomUUID().slice(0, 8)}`;
   const now = new Date().toISOString();
+  const area = args.suite === "vitest" ? "Vitest Failure" : "Playwright Failure";
+  const title = `FAIL: ${args.title}`.slice(0, 180);
+  const defaults = defaultsForNewTest({
+    id,
+    title: args.title,
+    area,
+    suite: args.suite,
+    tags: [args.why, args.detail, ...args.reproSteps].join(" "),
+  });
   const failureDetail = [
     `SEVERITY: ${args.severity}`,
     `WHY IT FAILED: ${args.why}`,
@@ -297,8 +330,8 @@ async function createFailureTestCase(
   )
     .bind(
       id,
-      args.suite === "vitest" ? "Vitest Failure" : "Playwright Failure",
-      `FAIL: ${args.title}`.slice(0, 180),
+      area,
+      title,
       args.severity,
       args.suite,
       JSON.stringify(args.reproSteps),
@@ -327,8 +360,9 @@ async function createFailureTestCase(
       caseId: id,
       status: "fail",
       note,
-      assignee: FAILED_TEST_ASSIGNEE,
-      sprint: args.sprint,
+      assignee: defaults.assignee,
+      sprint: defaults.sprint,
+      dueDate: defaults.dueDate,
     },
   ]);
   return id;
@@ -470,7 +504,7 @@ export async function runAutomatedTests(
         sprint,
       });
       createdFailureIds.push(failId);
-      allDetails.push(`Created failure case ${failId} (P0) in sprint ${sprint}`);
+      allDetails.push(`Created failure case ${failId} (P0) with new-test defaults`);
     }
 
     // Update existing wizard matrix rows only (avoid inserting ~972 empty sprint rows).
@@ -478,17 +512,18 @@ export async function runAutomatedTests(
     const wizardNote = vitest.ok
       ? "Covered by portal Vitest matrix runner (npm run test:unit equivalent checks)."
       : `Wizard matrix structural check failed: ${vitest.details.filter((d) => d.includes("!=")).join("; ") || "see run details"}`;
+    // Never rewrite sprint — Schedule / manual placement must stick across suite runs.
     if (mode === "all") {
       await env.DB.prepare(
         `UPDATE test_case_status
-         SET status = ?, note = ?, assignee = ?, sprint = ?, updated_at = ?, updated_by = ?
+         SET status = ?, note = ?, assignee = ?, updated_at = ?, updated_by = ?
          WHERE case_id LIKE 'KIDS-FMSH-%'
             OR case_id LIKE 'JR-FMSH-%'
             OR case_id LIKE 'ADULT-FMSH-%'
             OR case_id LIKE 'SENIOR-FMSH-%'
             OR case_id LIKE 'WIZARD-EDGE-%'`,
       )
-        .bind(status, wizardNote, "vitest", sprint, now, actor.email)
+        .bind(status, wizardNote, "vitest", now, actor.email)
         .run();
       allDetails.push(
         vitest.ok
@@ -498,7 +533,7 @@ export async function runAutomatedTests(
     } else {
       await env.DB.prepare(
         `UPDATE test_case_status
-         SET status = ?, note = ?, assignee = ?, sprint = ?, updated_at = ?, updated_by = ?
+         SET status = ?, note = ?, assignee = ?, updated_at = ?, updated_by = ?
          WHERE (status = 'not_run' OR status IS NULL OR status = '')
            AND (
              case_id LIKE 'KIDS-FMSH-%'
@@ -508,7 +543,7 @@ export async function runAutomatedTests(
              OR case_id LIKE 'WIZARD-EDGE-%'
            )`,
       )
-        .bind(status, wizardNote, "vitest", sprint, now, actor.email)
+        .bind(status, wizardNote, "vitest", now, actor.email)
         .run();
       allDetails.push("Updated only not_run wizard FMSH rows (mode=new)");
     }

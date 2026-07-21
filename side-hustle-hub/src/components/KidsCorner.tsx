@@ -95,8 +95,11 @@ type KidsCornerProps = {
   isLoggedIn?: boolean;
   /** Navigate to Join with Kids or Teens membership lane selected. */
   onGoToJoin?: (audience: "kids" | "junior") => void;
-  /** Deep-link from checklist / GYSH Match Wizard entry points. */
-  entryFocus?: { mode: AudienceMode; tab: "guides" | "wizard" } | null;
+  /** Deep-link from checklist / Match Wizard / Site Map entry points. */
+  entryFocus?: {
+    mode: AudienceMode;
+    tab: "stories" | "wizard" | "jobs" | "piggy" | "guides" | "join";
+  } | null;
 };
 
 const JR_HUSTLES: JrHustle[] = [
@@ -517,7 +520,7 @@ function JoinTeamTab({
                 </li>
               ))}
             </ul>
-            <div className="kids-join-cta-row">
+            <div className="kids-join-cta-row" data-testid="kids-join-cta-row">
               {!isMember ? (
                 <button type="button" className="btn btn-primary" onClick={() => setShowModal(true)} style={{ gap: 6 }}>
                   <BadgeCheck size={16} /> {copy.ctaLabel}
@@ -1639,7 +1642,9 @@ export const KidsCorner: React.FC<KidsCornerProps> = ({
     if (entryFocus.mode === "kids") {
       setKidsTab(entryFocus.tab);
     } else {
-      setJuniorTab(entryFocus.tab);
+      const juniorTabId: JuniorTab =
+        entryFocus.tab === "stories" ? "wizard" : entryFocus.tab;
+      setJuniorTab(juniorTabId);
     }
   }, [entryFocus]);
 

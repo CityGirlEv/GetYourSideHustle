@@ -25,6 +25,7 @@ import {
   listFinancials,
   listTasks,
   listTestStatuses,
+  listTestAttachments,
   listUsers,
   listWorkshops,
   createWorkshopRegistration,
@@ -41,14 +42,26 @@ import {
   saveTasks,
   saveWorkshops,
   setTestStatus,
+  uploadTestAttachment,
+  deleteTestAttachment,
+  handleTaskAttachments,
+  handlePlanAttachments,
   upsertUser,
 } from "../_lib/data";
+import { closeSprint, listClosedSprints, reopenSprint } from "../_lib/closed-sprints";
+import { getMemberCredits } from "../_lib/member-credits";
 import {
   listEmailLog,
   listEmailTemplates,
   previewEmailTemplate,
   sendTestEmail,
 } from "../_lib/email-admin";
+import {
+  handleAdminPreviewDigest,
+  handleAdminSendDigests,
+  handleCronDailyDigest,
+  handleSendEvelynTestDigest,
+} from "../_lib/daily-digest";
 import {
   getCertificatePdf,
   getCertificateSvg,
@@ -73,6 +86,11 @@ import {
   pauseTimeEntry,
   startTimeEntry,
 } from "../_lib/time-entries";
+import {
+  createDailyProgressReport,
+  getDailyProgressReportHtml,
+  listDailyProgressReports,
+} from "../_lib/daily-progress-audit";
 import { error, json } from "../_lib/crypto";
 
 function pathParts(params: { path?: string | string[] }): string[] {
@@ -141,6 +159,10 @@ export async function onRequest(context: {
     if (route === "contact" && method === "POST") {
       return withCors(request, await handleContact(env, request));
     }
+    // Cron Worker → daily digests (auth via CRON_SECRET; no session).
+    if (route === "cron/daily-digest" && (method === "GET" || method === "POST")) {
+      return withCors(request, await handleCronDailyDigest(env, request));
+    }
     if (route === "workshop-registrations" && method === "POST") {
       return withCors(request, await createWorkshopRegistration(env, request));
     }
@@ -176,6 +198,9 @@ export async function onRequest(context: {
     }
     if (route === "member-progress" && method === "PUT") {
       return withCors(request, await putMemberProgress(env, request, user));
+    }
+    if (route === "member-credits" && method === "GET") {
+      return withCors(request, await getMemberCredits(env, user));
     }
     if (route === "blueprints" && method === "GET") {
       return withCors(request, await listBlueprints(env, user));
@@ -213,7 +238,13 @@ export async function onRequest(context: {
       return withCors(request, await listTasks(env));
     }
     if (route === "tasks" && method === "PUT") {
-      return withCors(request, await saveTasks(env, request));
+      return withCors(request, await saveTasks(env, request, user));
+    }
+    if (route === "task-attachments") {
+      return withCors(request, await handleTaskAttachments(env, request, user));
+    }
+    if (route === "plan-attachments") {
+      return withCors(request, await handlePlanAttachments(env, request, user));
     }
     if (route === "test-statuses" && method === "GET") {
       return withCors(request, await listTestStatuses(env));
@@ -222,7 +253,16 @@ export async function onRequest(context: {
       return withCors(request, await setTestStatus(env, request, user));
     }
     if (route === "test-statuses" && method === "DELETE") {
-      return withCors(request, await resetTestStatuses(env));
+      return withCors(request, await resetTestStatuses(env, request));
+    }
+    if (route === "test-attachments" && method === "GET") {
+      return withCors(request, await listTestAttachments(env, request));
+    }
+    if (route === "test-attachments" && method === "POST") {
+      return withCors(request, await uploadTestAttachment(env, request, user));
+    }
+    if (route === "test-attachments" && method === "DELETE") {
+      return withCors(request, await deleteTestAttachment(env, request, user));
     }
     if (route === "automated-tests/run" && method === "POST") {
       return withCors(request, await runAutomatedTests(env, request, user));
@@ -254,6 +294,24 @@ export async function onRequest(context: {
     if (route === "agile-plan" && method === "PUT") {
       return withCors(request, await saveAgilePlan(env, request));
     }
+    if (route === "closed-sprints" && method === "GET") {
+      return withCors(request, await listClosedSprints(env));
+    }
+    if (route === "closed-sprints" && method === "POST") {
+      return withCors(request, await closeSprint(env, request, user));
+    }
+    if (route === "closed-sprints" && method === "DELETE") {
+      return withCors(request, await reopenSprint(env, request, user));
+    }
+    if (route === "daily-progress-reports" && method === "GET") {
+      return withCors(request, await listDailyProgressReports(env));
+    }
+    if (route === "daily-progress-reports" && method === "POST") {
+      return withCors(request, await createDailyProgressReport(env, request, user));
+    }
+    if (parts[0] === "daily-progress-reports" && parts[1] && method === "GET") {
+      return withCors(request, await getDailyProgressReportHtml(env, parts[1]));
+    }
     if (route === "time-entries" && method === "GET") {
       return withCors(request, await listTimeEntries(env, request, user));
     }
@@ -280,6 +338,15 @@ export async function onRequest(context: {
     }
     if (route === "email/test-send" && method === "POST") {
       return withCors(request, await sendTestEmail(env, request, user));
+    }
+    if (route === "email/digest/preview" && method === "GET") {
+      return withCors(request, await handleAdminPreviewDigest(env, request, user));
+    }
+    if (route === "email/digest/send" && method === "POST") {
+      return withCors(request, await handleAdminSendDigests(env, request, user));
+    }
+    if (route === "email/digest/send-evelyn-test" && method === "POST") {
+      return withCors(request, await handleSendEvelynTestDigest(env));
     }
     if (route === "certificates" && method === "GET") {
       return withCors(request, await listMemberCertificates(env));

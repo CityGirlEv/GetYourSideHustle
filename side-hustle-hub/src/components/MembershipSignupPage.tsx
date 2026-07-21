@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { ArrowLeft, CheckCircle2, CreditCard, UserPlus } from "lucide-react";
+import { BusyOverlay, WaitLabel } from "./WaitFeedback";
 import { PasswordField } from "./PasswordField";
 import { registerFreeMember } from "../lib/auth";
 import { passwordPolicyError } from "../lib/password-policy";
@@ -145,6 +146,10 @@ export function MembershipSignupPage({
 
   return (
     <div className="membership-signup-page" data-testid="membership-signup-page">
+      <BusyOverlay
+        active={busy}
+        message={step === "checkout" ? "Processing payment…" : "Creating account…"}
+      />
       <button type="button" className="btn btn-outline membership-signup-back" onClick={onBackToPlans}>
         <ArrowLeft size={16} aria-hidden /> Back to membership plans
       </button>
@@ -301,12 +306,14 @@ export function MembershipSignupPage({
                 disabled={busy}
                 data-testid="membership-signup-submit"
               >
-                <UserPlus size={16} aria-hidden />
-                {busy
-                  ? "Creating account…"
-                  : isPaid
-                    ? "Continue to checkout"
-                    : "Create free account"}
+                {busy ? (
+                  <WaitLabel>Creating account…</WaitLabel>
+                ) : (
+                  <>
+                    <UserPlus size={16} aria-hidden />
+                    {isPaid ? "Continue to checkout" : "Create free account"}
+                  </>
+                )}
               </button>
               <button type="button" className="btn btn-outline" onClick={onGoToLogin}>
                 Already a member? Sign in
@@ -396,8 +403,14 @@ export function MembershipSignupPage({
                 disabled={busy}
                 data-testid="membership-fake-pay"
               >
-                <CreditCard size={16} aria-hidden />
-                {busy ? "Processing…" : `Pay ${formatUsd(monthly)} (demo)`}
+                {busy ? (
+                  <WaitLabel>Processing…</WaitLabel>
+                ) : (
+                  <>
+                    <CreditCard size={16} aria-hidden />
+                    {`Pay ${formatUsd(monthly)} (demo)`}
+                  </>
+                )}
               </button>
             </div>
           </form>

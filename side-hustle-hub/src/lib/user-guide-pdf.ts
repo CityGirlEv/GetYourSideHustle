@@ -55,18 +55,46 @@ function drawPageChrome(doc: jsPDF) {
   doc.rect(0, PAGE_H - 4, PAGE_W, 4, "F");
 }
 
-/** Diagonal DRAFT stamp — applied to every PDF page before save. */
+/** One diagonal DRAFT stamp per page — applied before save. */
 function drawDraftWatermark(doc: jsPDF) {
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(78);
+  doc.setFontSize(86);
   doc.setTextColor(200, 150, 145);
-  const centers: Array<[number, number]> = [
-    [PAGE_W * 0.32, PAGE_H * 0.28],
-    [PAGE_W * 0.68, PAGE_H * 0.52],
-    [PAGE_W * 0.4, PAGE_H * 0.78],
-  ];
-  for (const [x, y] of centers) {
-    doc.text("DRAFT", x, y, { align: "center", baseline: "middle", angle: 32 });
+  doc.text("DRAFT", PAGE_W / 2, PAGE_H / 2, {
+    align: "center",
+    baseline: "middle",
+    angle: 32,
+  });
+}
+
+/** Centered image with reserved vertical space so text never draws on top of it. */
+function drawContainedImage(
+  ctx: PdfCtx,
+  dataUrl: string,
+  opts: { maxW?: number; maxH?: number; padBottom?: number } = {},
+): boolean {
+  try {
+    const maxW = opts.maxW ?? CONTENT_W;
+    const maxH = opts.maxH ?? 150;
+    const padBottom = opts.padBottom ?? 14;
+    const props = ctx.doc.getImageProperties(dataUrl);
+    const ratio = props.width / Math.max(1, props.height);
+    let imgW = maxW;
+    let imgH = imgW / ratio;
+    if (imgH > maxH) {
+      imgH = maxH;
+      imgW = imgH * ratio;
+    }
+    ensureSpace(ctx, imgH + padBottom + 4);
+    const x = MARGIN + (CONTENT_W - imgW) / 2;
+    ctx.doc.setDrawColor(...COLORS.line);
+    ctx.doc.setFillColor(...COLORS.soft);
+    ctx.doc.roundedRect(x - 4, ctx.y - 4, imgW + 8, imgH + 8, 4, 4, "FD");
+    ctx.doc.addImage(dataUrl, "PNG", x, ctx.y, imgW, imgH);
+    ctx.y += imgH + padBottom;
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -91,36 +119,34 @@ function drawCover(
   coverImageDataUrl?: string,
 ) {
   drawPageChrome(doc);
-  doc.setFillColor(...COLORS.soft);
-  doc.rect(MARGIN, 100, CONTENT_W, coverImageDataUrl ? 360 : 280, "F");
 
   doc.setDrawColor(...COLORS.bronze);
   doc.setLineWidth(1.25);
-  doc.line(MARGIN + 24, 128, MARGIN + 120, 128);
+  doc.line(MARGIN + 24, 112, MARGIN + 120, 112);
 
   doc.setTextColor(...COLORS.bronze);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
-  doc.text(meta.eyebrow.toUpperCase(), MARGIN + 24, 156);
+  doc.text(meta.eyebrow.toUpperCase(), MARGIN + 24, 140);
 
   doc.setTextColor(...COLORS.charcoal);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(26);
   const titleLines = doc.splitTextToSize(meta.title, CONTENT_W - 48);
-  doc.text(titleLines, MARGIN + 24, 188);
+  doc.text(titleLines, MARGIN + 24, 172);
 
-  let y = 188 + titleLines.length * 30 + 12;
+  let y = 172 + titleLines.length * 30 + 12;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
   doc.setTextColor(...COLORS.muted);
   const leadLines = doc.splitTextToSize(meta.lead, CONTENT_W - 48);
   doc.text(leadLines, MARGIN + 24, y);
-  y += leadLines.length * 14 + 16;
+  y += leadLines.length * 14 + 20;
 
   if (coverImageDataUrl) {
     try {
       const maxW = CONTENT_W - 48;
-      const maxH = 160;
+      const maxH = 170;
       const props = doc.getImageProperties(coverImageDataUrl);
       const ratio = props.width / Math.max(1, props.height);
       let imgW = maxW;
@@ -129,9 +155,21 @@ function drawCover(
         imgH = maxH;
         imgW = imgH * ratio;
       }
+      // Keep cover art below copy — never let labels land on the image.
+      if (y + imgH + 56 > PAGE_H - MARGIN) {
+        imgH = Math.max(80, PAGE_H - MARGIN - y - 56);
+        imgW = imgH * ratio;
+        if (imgW > maxW) {
+          imgW = maxW;
+          imgH = imgW / ratio;
+        }
+      }
       const x = MARGIN + 24 + (maxW - imgW) / 2;
+      doc.setDrawColor(...COLORS.line);
+      doc.setFillColor(...COLORS.soft);
+      doc.roundedRect(x - 4, y - 4, imgW + 8, imgH + 8, 4, 4, "FD");
       doc.addImage(coverImageDataUrl, "PNG", x, y, imgW, imgH);
-      y += imgH + 18;
+      y += imgH + 22;
     } catch {
       /* image optional */
     }
@@ -139,11 +177,11 @@ function drawCover(
 
   doc.setFontSize(10);
   doc.setTextColor(...COLORS.bronze);
-  doc.text(coverEditionLabel(kind), MARGIN + 24, Math.min(y, 430));
+  doc.text(coverEditionLabel(kind), MARGIN + 24, y);
 
   doc.setFontSize(9);
   doc.setTextColor(...COLORS.muted);
-  doc.text(`Get Your Side Hustle  ·  ${new Date().toLocaleDateString()}`, MARGIN + 24, Math.min(y + 18, 448));
+  doc.text(`Get Your Side Hustle  ·  ${new Date().toLocaleDateString()}`, MARGIN + 24, y + 18);
 }
 
 async function imageUrlToDataUrl(url: string): Promise<string | undefined> {
@@ -220,23 +258,8 @@ function drawMarketingSection(
         : undefined;
   const dataUrl = imgKey ? images[imgKey] : undefined;
   if (dataUrl && (section.kind === "prose" || section.kind === "perks" || section.kind === "cta")) {
-    try {
-      const props = ctx.doc.getImageProperties(dataUrl);
-      const ratio = props.width / Math.max(1, props.height);
-      let imgW = CONTENT_W;
-      let imgH = imgW / ratio;
-      const maxH = 140;
-      if (imgH > maxH) {
-        imgH = maxH;
-        imgW = imgH * ratio;
-      }
-      ensureSpace(ctx, imgH + 14);
-      const x = MARGIN + (CONTENT_W - imgW) / 2;
-      ctx.doc.addImage(dataUrl, "PNG", x, ctx.y, imgW, imgH);
-      ctx.y += imgH + 12;
-    } catch {
-      /* skip */
-    }
+    // Full-width block above copy so the image never sits on top of text.
+    drawContainedImage(ctx, dataUrl, { maxW: CONTENT_W * 0.88, maxH: 160, padBottom: 18 });
   }
 
   if (section.prose) {
@@ -292,7 +315,11 @@ function drawMarketingSection(
   ctx.y += 6;
 }
 
-function drawToc(doc: jsPDF, title: string, entries: { id: string; label: string }[]) {
+function drawToc(
+  doc: jsPDF,
+  title: string,
+  entries: { id: string; label: string; number?: string; level?: number }[],
+) {
   doc.addPage();
   drawPageChrome(doc);
   let y = MARGIN + 36;
@@ -307,18 +334,46 @@ function drawToc(doc: jsPDF, title: string, entries: { id: string; label: string
   doc.line(MARGIN, y, MARGIN + 80, y);
   y += 28;
 
+  // Two columns — use each entry's own section number (never invent a second one)
+  const colGap = 22;
+  const colW = (CONTENT_W - colGap) / 2;
+  const leftX = MARGIN;
+  const rightX = MARGIN + colW + colGap;
+  const mid = Math.ceil(entries.length / 2);
+  let leftY = y;
+  let rightY = y;
+  const rowH = 20;
+
   entries.forEach((entry, i) => {
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(11);
-    doc.setTextColor(...COLORS.charcoal);
-    const num = String(i + 1).padStart(2, "0");
-    doc.setTextColor(...COLORS.bronze);
+    const isLeft = i < mid;
+    let cy = isLeft ? leftY : rightY;
+    const cx = isLeft ? leftX : rightX;
+    const num = (entry.number || String(i + 1)).trim();
+    const indent = entry.level === 2 ? 8 : 0;
+    const labelMax = colW - 36 - indent;
+    const labelLines = doc.splitTextToSize(entry.label, labelMax) as string[];
+    const blockH = Math.max(rowH, labelLines.length * 13 + 4);
+
+    if (cy + blockH > PAGE_H - MARGIN) {
+      doc.addPage();
+      drawPageChrome(doc);
+      leftY = MARGIN + 28;
+      rightY = MARGIN + 28;
+      cy = isLeft ? leftY : rightY;
+    }
+
     doc.setFont("helvetica", "bold");
-    doc.text(num, MARGIN, y);
-    doc.setTextColor(...COLORS.charcoal);
+    doc.setFontSize(10);
+    doc.setTextColor(...COLORS.bronze);
+    doc.text(num, cx + indent, cy);
+
     doc.setFont("helvetica", "normal");
-    doc.text(entry.label, MARGIN + 28, y);
-    y += 22;
+    doc.setFontSize(10);
+    doc.setTextColor(...COLORS.charcoal);
+    doc.text(labelLines, cx + indent + 28, cy);
+
+    if (isLeft) leftY = cy + blockH;
+    else rightY = cy + blockH;
   });
 }
 
@@ -379,9 +434,22 @@ function addFooters(doc: jsPDF, label: string) {
   }
 }
 
-export function downloadMemberUserGuidePdf() {
+export type MemberPdfImages = {
+  kids?: string;
+  teens?: string;
+  adult?: string;
+  senior?: string;
+};
+
+export async function downloadMemberUserGuidePdf(imageUrls: MemberPdfImages = {}) {
+  const images: MemberPdfImages = {};
+  if (imageUrls.kids) images.kids = await imageUrlToDataUrl(imageUrls.kids);
+  if (imageUrls.teens) images.teens = await imageUrlToDataUrl(imageUrls.teens);
+  if (imageUrls.adult) images.adult = await imageUrlToDataUrl(imageUrls.adult);
+  if (imageUrls.senior) images.senior = await imageUrlToDataUrl(imageUrls.senior);
+
   const doc = new jsPDF({ unit: "pt", format: "letter" });
-  drawCover(doc, MEMBER_GUIDE_META, "member");
+  drawCover(doc, MEMBER_GUIDE_META, "member", images.adult);
   drawToc(doc, "Contents", MEMBER_TOC);
 
   const ctx: PdfCtx = { doc, y: 0 };
@@ -393,19 +461,40 @@ export function downloadMemberUserGuidePdf() {
   drawChecklist(ctx, MEMBER_BIG_PICTURE);
 
   drawSectionHeading(ctx, "2. Age chapters");
-  const chapters = memberChapters({ kids: "", teens: "", adult: "", senior: "" });
+  const chapters = memberChapters({
+    kids: imageUrls.kids || "",
+    teens: imageUrls.teens || "",
+    adult: imageUrls.adult || "",
+    senior: imageUrls.senior || "",
+  });
   for (const ch of chapters) {
     ensureSpace(ctx, 36);
     ctx.doc.setFont("helvetica", "bold");
     ctx.doc.setFontSize(12);
     ctx.doc.setTextColor(...COLORS.bronze);
-    ctx.doc.text(ch.title, MARGIN, ctx.y);
+    ctx.doc.text(`${ch.number}  ${ch.title}`, MARGIN, ctx.y);
     ctx.y += 14;
     ctx.doc.setFont("helvetica", "normal");
     ctx.doc.setFontSize(9);
     ctx.doc.setTextColor(...COLORS.muted);
     ctx.doc.text(ch.ages, MARGIN, ctx.y);
-    ctx.y += 16;
+    ctx.y += 14;
+
+    const chapterImg =
+      ch.id === "kids"
+        ? images.kids
+        : ch.id === "juniors"
+          ? images.teens
+          : ch.id === "adults"
+            ? images.adult
+            : ch.id === "seniors"
+              ? images.senior
+              : undefined;
+    // Image as its own block above checklist — never beside or over text
+    if (chapterImg) {
+      drawContainedImage(ctx, chapterImg, { maxW: CONTENT_W * 0.78, maxH: 140, padBottom: 16 });
+    }
+
     drawChecklist(ctx, ch.items);
     ctx.y += 6;
   }
@@ -472,11 +561,7 @@ export async function downloadMarketingGuidePdf(
     "marketing",
     images.hero,
   );
-  drawToc(
-    doc,
-    "Contents",
-    toc.map((e) => ({ id: e.id, label: `${e.number}. ${e.label}` })),
-  );
+  drawToc(doc, "Contents", toc);
 
   const ctx: PdfCtx = { doc, y: 0 };
   doc.addPage();

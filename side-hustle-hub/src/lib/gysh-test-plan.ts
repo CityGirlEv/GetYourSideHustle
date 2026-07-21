@@ -4,6 +4,7 @@ import type { TestOwnerId } from "./gysh-roles";
 import { api } from "./api";
 import { PROOFREAD_CASES } from "./gysh-proofread-cases";
 import { WIZARD_SCENARIO_CASES } from "./gysh-wizard-scenarios";
+import { withPageLinkInFirstStep } from "./qa-page-links";
 
 export type TestSuite = "manual" | "vitest" | "playwright";
 
@@ -31,6 +32,9 @@ export const STATUS_LABELS: Record<TestStatus, string> = {
   blocked: "Blocked",
 };
 
+/** Initial / default status for every test case until a tester changes it. */
+export const DEFAULT_TEST_STATUS: TestStatus = "not_run";
+
 /** Fail and Blocked require a short written note in the Testing Portal / API. */
 export const NOTE_REQUIRED_STATUSES: TestStatus[] = ["fail", "blocked"];
 export const NOTE_MIN_LENGTH = 8;
@@ -42,6 +46,26 @@ export function statusRequiresNote(status: TestStatus): boolean {
 export function noteMeetsRequirement(note: string): boolean {
   return note.trim().length >= NOTE_MIN_LENGTH;
 }
+
+export function allStepsChecked(checked: boolean[] | undefined, stepCount: number): boolean {
+  if (stepCount <= 0) return true;
+  if (!checked || checked.length < stepCount) return false;
+  return checked.slice(0, stepCount).every(Boolean);
+}
+
+export type TestAttachmentMeta = {
+  id: string;
+  name: string;
+  mimeType: string;
+  size: number;
+  scanStatus: string;
+  scanDetail: string;
+  addedAt: string;
+  addedBy: string;
+};
+
+export const TEST_EVIDENCE_ACCEPT =
+  "image/png,image/jpeg,image/gif,image/webp,application/pdf,.doc,.docx,.xls,.xlsx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
 export type TestCase = {
   id: string;
@@ -109,7 +133,12 @@ export type TestCategory =
   | "kids_junior"
   | "seniors"
   | "adult_hustles"
-  | "content_workshops"
+  | "proofread"
+  | "website"
+  | "facebook"
+  | "contact"
+  | "content"
+  | "workshops"
   | "admin_ops"
   | "wizard_kids"
   | "wizard_junior"
@@ -123,7 +152,12 @@ export const TEST_CATEGORY_LABELS: Record<TestCategory, string> = {
   kids_junior: "Kids & Junior",
   seniors: "Seniors",
   adult_hustles: "Adult Hub",
-  content_workshops: "Content & Workshops",
+  proofread: "ProofRead",
+  website: "Website",
+  facebook: "Facebook",
+  contact: "Contact",
+  content: "Content",
+  workshops: "Workshops",
   admin_ops: "Admin & Ops",
   wizard_kids: "Wizard · Kids FMSH",
   wizard_junior: "Wizard · Junior FMSH",
@@ -138,7 +172,12 @@ export const TEST_CATEGORIES: TestCategory[] = [
   "kids_junior",
   "seniors",
   "adult_hustles",
-  "content_workshops",
+  "proofread",
+  "website",
+  "facebook",
+  "contact",
+  "content",
+  "workshops",
   "admin_ops",
   "wizard_kids",
   "wizard_junior",
@@ -154,6 +193,10 @@ export function categoryForCase(t: Pick<TestCase, "area" | "suite" | "id">): Tes
     if (t.area === "Adult Get Your Side Hustle") return "wizard_adult";
     if (t.area === "Senior Get Your Side Hustle") return "wizard_senior";
     if (t.area === "Vitest" || t.area === "Playwright") return "automated";
+  }
+  // ProofRead cases are area Proofread (PROOF-* ids) — keep Workshops category separate.
+  if (t.area === "Proofread" || t.id.toUpperCase().startsWith("PROOF-")) {
+    return "proofread";
   }
   switch (t.area) {
     case "Auth":
@@ -175,18 +218,20 @@ export function categoryForCase(t: Pick<TestCase, "area" | "suite" | "id">): Tes
     case "Membership":
       return "adult_hustles";
     case "Workshops":
+      return "workshops";
+    case "Facebook":
+      return "facebook";
     case "Contact":
-      return "content_workshops";
+      return "contact";
+    case "Community":
+    case "About":
+    case "Family Coach":
+      return "website";
     case "Admin":
     case "Schedule":
     case "Accessibility":
     case "UX Visual":
       return "admin_ops";
-    case "Community":
-    case "About":
-    case "Family Coach":
-    case "Proofread":
-      return "content_workshops";
     case "Kids Get Your Side Hustle":
       return "wizard_kids";
     case "Junior Get Your Side Hustle":
@@ -205,7 +250,7 @@ export function categoryForCase(t: Pick<TestCase, "area" | "suite" | "id">): Tes
   }
 }
 
-export const TEST_CASES: TestCase[] = [
+const TEST_CASES_RAW: TestCase[] = [
   {
     id: "AUTH-001",
     area: "Auth",
@@ -257,7 +302,7 @@ export const TEST_CASES: TestCase[] = [
   {
     id: "AUTH-004",
     area: "Auth",
-    title: "Login page New here? link opens Join GYSH",
+    title: "Login page New here? link opens Membership Sign-up",
     priority: "P1",
     roles: ["all"],
     assignees: ["lyriq"],
@@ -266,7 +311,7 @@ export const TEST_CASES: TestCase[] = [
       "Open Login",
       "Click New here? → Join GYSH",
     ],
-    expected: "Page title becomes Join GYSH; Join hero and Create account / Sign in CTA visible",
+    expected: "Page title becomes GYSH Membership Sign-up; free-tier registration form is visible (not the Join plans hub)",
     path: "login",
   },
   {
@@ -289,32 +334,34 @@ export const TEST_CASES: TestCase[] = [
   {
     id: "JOIN-001",
     area: "Join",
-    title: "Join GYSH page shows member + Kids/Junior team paths",
+    title: "Join GYSH page shows membership plans + footer CTAs",
     priority: "P0",
     roles: ["all"],
     assignees: ["tina"],
     suite: "manual",
     steps: [
       "Open Join from header (or footer)",
-      "Confirm Join GYSH hero and Create account / Sign in CTA",
-      "Confirm Browse GYSH Community and Kids Corner teams CTAs",
-      "Confirm Kids Corner GYSH Team and Junior Side Hustle Team cards with ages + perk bullets",
+      "Confirm page title Join GYSH; membership hero sells membership (dashboard + referral) and GYSH Membership plans section",
+      "Confirm See Memberships CTA names the selected lane’s pricing and scrolls/focuses #gysh-membership-plans",
+      "Confirm footer CTAs: Create account / Join, Sign in, Browse GYSH Community, Kids / Teens Corner",
+      "Confirm no standalone Kids Corner GYSH Team / Teens Side Hustle Team cards on Join (team join lives in Kids & Teens → Join)",
     ],
-    expected: "Join page is the signup hub; kids/junior teams and adult portal paths are clear",
+    expected: "Join is the membership signup hub; Free→Elite plans and audience lanes are clear; Kids/Teens team signup is via Kids & Teens Corner",
     path: "join",
   },
   {
     id: "JOIN-002",
     area: "Join",
-    title: "Join CTAs open Login, Community, and Kids Corner",
+    title: "Join CTAs open Sign-up, Login, Community, and Kids & Teens",
     priority: "P0",
     roles: ["all"],
     assignees: ["lyriq"],
     suite: "manual",
     steps: [
-      "On Join: click Create account / Sign in → confirm Login / Portal Access view",
-      "Return to Join → Browse GYSH Community first → confirm Community hub",
-      "Return to Join → Kids Corner teams (or Open Kids Corner) → confirm Kids Corner",
+      "On Join: click Create account / Join → confirm GYSH Membership Sign-up registration view",
+      "Return to Join → Sign in → confirm GYSH Sign In",
+      "Return to Join → Browse GYSH Community → confirm Community hub",
+      "Return to Join → Kids / Teens Corner → confirm GYSH Kids & Teens Corner",
     ],
     expected: "Each Join CTA navigates to the correct view without errors",
     path: "join",
@@ -328,11 +375,14 @@ export const TEST_CASES: TestCase[] = [
     assignees: ["tina"],
     suite: "manual",
     steps: [
-      "Click Home, Find Mine, Kids/Juniors Corner, Seniors, Guides (Some Free banner), Workshops, Community, Join, About, Contact Us",
-      "Confirm each view title updates",
+      "Primary nav: click Home, GYSH Match Wizard, Kids & Teens, Seniors, Guides, Workshops, Community, Join",
+      "Secondary/meta nav: About, Contact Us (and Login when logged out)",
+      "Confirm each view title updates (Kids & Teens → GYSH Kids & Teens Corner; Match Wizard selector uses the family Match Wizard headline until an adult wizard starts)",
+      "Confirm Guides is a dropdown (Guides Library + marketing manuals), not a Some Free banner",
       "Confirm Membership is not a separate top-nav item (plans live on Join)",
     ],
-    expected: "Every top-nav item opens the correct page; Home is first; Guides then Workshops sit after Seniors; Join includes membership plans",
+    expected: "Every listed nav item opens the correct page; Home is first; Guides then Workshops sit after Seniors; Join includes membership plans",
+    path: "dashboard",
   },
   {
     id: "MEMBER-001",
@@ -344,28 +394,29 @@ export const TEST_CASES: TestCase[] = [
     suite: "manual",
     steps: [
       "Open Join from top nav",
-      "Confirm join CTAs and Kids/Junior team cards appear above membership plans",
-      "Confirm Free / Starter / Pro / Elite cards and schedule suite callout",
-      "Switch audience tabs: Adult, Senior, Kids, Juniors",
-      "On Kids and Juniors, confirm parent-funded credit packs and credit earn sections appear",
+      "Confirm membership plans/hero appear first; footer CTAs include Create account / Join, Sign in, Browse GYSH Community, Kids / Teens Corner (no Kids/Teens team cards above plans)",
+      "Confirm Free / Starter / Pro / Elite cards, then Proposed hustle schedule suite callout after the membership tier grid",
+      "On Adults and Seniors, confirm Military & Veterans callout (Veterans save even more) under membership options",
+      "Switch audience tabs: Kids (4–12), Teens (13–17), Adults (18–54), Seniors (55+)",
+      "On Kids and Teens, confirm parent-funded credit packs and credit earn sections appear; military callout is hidden",
       "Confirm credit packs list 25 / $5, 60 / $10, 140 / $20, and 300 / $40",
       "Scan a la carte price table for the selected audience",
     ],
-    expected: "Join loads with membership section; Kids/Juniors show credit funding and earning; Pro unlocks schedule suite messaging",
+    expected: "Join loads with membership section then schedule suite; Adults/Seniors show military/veteran savings callout; Kids/Teens show credit funding and earning; Pro unlocks schedule suite messaging",
     path: "join",
   },
   {
     id: "SENIOR-001",
     area: "Senior Side Hustles",
-    title: "Senior Side Hustles page shows opportunities, guides teaser, and join",
+    title: "Senior Side Hustles page shows Match Wizard, Ideas, Guides, and Join",
     priority: "P1",
     roles: ["adult", "admin", "qa"],
     assignees: ["evelyn", "tina"],
     suite: "manual",
     steps: [
-      "Open Seniors from top nav (or home Seniors bubble / CTA)",
+      "Open Seniors from top nav (or Home Seniors starting-point bubble)",
       "Confirm intro welcomes 55+ / retirees & flexible schedules without infantilizing tone",
-      "Browse Side Hustle Ideas, Guides, and Join Senior Team tabs",
+      "Browse tabs: GYSH Match Wizard, Ideas, Guides, Join",
     ],
     expected: "Page title is GYSH Seniors Corner; tabs work; Join can mark interest or link to Join",
     path: "seniors",
@@ -373,13 +424,13 @@ export const TEST_CASES: TestCase[] = [
   {
     id: "SENIOR-002",
     area: "Senior Side Hustles",
-    title: "Senior Join Team marks interest and offers Create free GYSH account",
+    title: "Senior Join tab marks interest and offers Create free GYSH account",
     priority: "P1",
     roles: ["adult", "admin", "qa"],
     assignees: ["lyriq"],
     suite: "manual",
     steps: [
-      "Open Seniors → Join Senior Team as guest",
+      "Open Seniors → Join as guest",
       "Click I'm interested",
       "Confirm You're on the Senior interest list",
       "Click Create free GYSH account",
@@ -396,7 +447,7 @@ export const TEST_CASES: TestCase[] = [
     assignees: ["lyriq"],
     suite: "manual",
     steps: [
-      "Open Side Hustle Checklist from top nav (after Launch Guides)",
+      "Open GYSH Side Hustle Guide / launch checklist view (path checklist) — it is not a primary top-nav item",
       "As guest: confirm first 2 steps visible and remaining steps blurred with Join / Sign in CTA",
       "Sign in as member (or admin) and reopen checklist",
       "Confirm all steps visible and checkboxes toggle complete",
@@ -407,36 +458,37 @@ export const TEST_CASES: TestCase[] = [
   {
     id: "KIDS-001",
     area: "Kids Corner",
-    title: "Kids Side Hustle Corner shows Kevina bio + YouTube embeds",
+    title: "Kids Stories tab shows Kevina bio + YouTube embeds",
     priority: "P0",
     roles: ["kid", "admin", "qa"],
     assignees: ["tina"],
     suite: "manual",
     steps: [
-      "Open Kids Corner",
-      "Select Kids Side Hustle Corner tab",
-      "Confirm Kevina Starr bio from YouTube About is visible",
+      "Open Kids & Teens from header",
+      "Stay on Kids mode → open Stories tab",
+      "Confirm About Kevina / channel bio is visible",
       "Play a featured story embed",
     ],
-    expected: "Bio matches channel About text; embeds play; Subscribe links open YouTube",
+    expected: "Page title is GYSH Kids & Teens Corner; bio matches channel About text; embeds play; Subscribe links open YouTube",
     path: "kids",
   },
   {
     id: "KIDS-002",
     area: "Kids Corner",
-    title: "Kids (4–12) + Junior (13–17) modes: Get Your Side Hustle, Side Hustle Ideas, Piggy Bank",
+    title: "Kids (4–12) + Teens (13–17) modes: Match Wizard, Ideas, Piggy Bank / My Bank",
     priority: "P1",
     roles: ["junior", "admin", "qa"],
     assignees: ["tina"],
     suite: "manual",
     steps: [
-      "Open Kids/Juniors Corner → Kids (Ages 4–12) → Stories bubble next to Ages scrolls down to Featured Stories",
-      "Confirm Get Your Side Hustle, Side Hustle Ideas, Piggy Bank, Guides, Join the Team tabs (Stories lives next to Ages, not in the tab bar)",
+      "Open Kids & Teens → confirm Kids / Teens mode toggles (Ages 4–12 / Ages 13–17) are separate from the page heading",
+      "On Kids: confirm heading GYSH Kid's Side Hustles + Ages 4–12 badge; tab bar shows Stories, GYSH Match Wizard, Ideas, Piggy Bank, Guides, Join",
+      "Open Stories tab → Featured Stories + Kevina embeds (Stories is a normal tab in the tab bar — not a red bubble next to Ages)",
       "Open Guides → free guides fully visible; member guides show preview + Join to unlock",
-      "Open Join the Team → Kids Corner GYSH Team copy + parental consent signup form",
-      "Switch to Juniors (Ages 13–17) → Get Your Side Hustle + Side Hustle Ideas + My Bank + Guides + Join the Team (no Welcome tab); Join button says Join Juniors",
+      "Open Join → Kids Corner GYSH Team copy + parental consent signup; CTA says Join Kids Corner GYSH Team",
+      "Switch to Teens → heading GYSH Teens Side Hustles + Ages 13–17; tabs are GYSH Match Wizard, Ideas, My Bank, Guides, Join (no Stories / no Welcome); Join CTA says Join Teens",
     ],
-    expected: "Age modes clear; Stories sits beside Ages 4–12; Guides free vs gated; Junior has no Welcome tab; Join uses parental consent signup",
+    expected: "Kids/Teens mode toggles clear; Ages badge is on the heading; Stories is a kids-tab-bar tab; Guides free vs gated; Teens has no Stories/Welcome; Join uses parental consent signup",
     path: "kids",
   },
   {
@@ -448,7 +500,7 @@ export const TEST_CASES: TestCase[] = [
     assignees: ["lyriq"],
     suite: "manual",
     steps: [
-      "Open Kids/Juniors Corner → Guides as guest → confirm free guides show all steps",
+      "Open Kids & Teens → Guides as guest → confirm free guides show all steps",
       "Open a Members guide → see steps 1–2 + lock overlay",
       "Complete parental consent signup OR sign in → confirm full guide unlocks when approved/member",
     ],
@@ -458,13 +510,13 @@ export const TEST_CASES: TestCase[] = [
   {
     id: "KIDS-004",
     area: "Kids Corner",
-    title: "Kids (4–12) Join the Team: parental consent signup",
+    title: "Kids (4–12) Join tab: parental consent signup",
     priority: "P0",
     roles: ["kid", "admin", "qa"],
     assignees: ["tina"],
     suite: "manual",
     steps: [
-      "Open Kids/Juniors Corner → Kids Side Hustle (Ages 4–12) → Join the Team (clear site data if already a member)",
+      "Open Kids & Teens → Kids mode → Join tab (clear site data if already a member)",
       "Click Join Kids Corner GYSH Team",
       "Confirm child first name + email + parent email form and safety copy (no address/phone from kids)",
       "Submit request → success message that parent must approve via email",
@@ -475,17 +527,18 @@ export const TEST_CASES: TestCase[] = [
   {
     id: "KIDS-005",
     area: "Kids Corner",
-    title: "Junior (13–17) Join the Team: parental consent signup",
+    title: "Teens (13–17) Join tab: parental consent signup",
     priority: "P0",
     roles: ["junior", "admin", "qa"],
     assignees: ["tina"],
     suite: "manual",
     steps: [
-      "Open Kids/Juniors Corner → Junior Side Hustle (Ages 13–17) → Join the Team",
+      "Open Kids & Teens → Teens mode (Ages 13–17) → Join tab",
+      "Click Join Teens",
       "Submit junior name + email + parent email",
       "Confirm pending-parent messaging",
     ],
-    expected: "Junior signup requires distinct parent email and stays inactive until parent grants permission",
+    expected: "Teens signup requires distinct parent email and stays inactive until parent grants permission",
     path: "kids",
   },
   {
@@ -541,34 +594,34 @@ export const TEST_CASES: TestCase[] = [
   {
     id: "ADULT-001",
     area: "Adult Hub",
-    title: "Find Mine age selector → Adult Side Hustle Wizard returns ranked matches",
+    title: "GYSH Match Wizard age selector → Adults wizard returns ranked matches",
     priority: "P1",
     roles: ["adult", "admin", "qa"],
     assignees: ["evelyn"],
     suite: "manual",
     steps: [
-      "Open Find Mine",
-      "Confirm age-group selector shows Kids / Junior / Adult / Senior Side Hustle Wizard cards",
-      "Click Adult Side Hustle Wizard",
+      "Open GYSH Match Wizard from top nav",
+      "Confirm age-group selector shows Kids / Teens / Adults / Seniors cards (titles: GYSH Kids/Teens/Adults/Seniors Match Wizard)",
+      "Click Adults",
       "Answer budget/time",
       "Select up to 2 ranked strengths",
       "Select 2+ ranked goals",
       "View ranked results",
     ],
-    expected: "Age selector first; Adult wizard then shows ranked list best→lower with match %",
+    expected: "Age selector first; Adults wizard then shows ranked list best→lower with match %; header becomes GYSH Adults Match Wizard",
     path: "quiz",
   },
   {
     id: "FREE-001",
     area: "Free Guides",
-    title: "Guides library filters All / Free / Adult-Senior / Kids / Junior (spot-check)",
+    title: "Guides library filters All / Free / Adult-Senior / Kids / Teens (spot-check)",
     priority: "P2",
     roles: ["all", "qa"],
     assignees: ["tina"],
     suite: "manual",
     steps: [
-      "Open Free in the header after deploy",
-      "Spot-check filter chips look correct on mobile + desktop",
+      "Open Guides from the header after deploy",
+      "Spot-check filter chips: All, Free, Adult / Senior, Kids, Teens — look correct on mobile + desktop",
     ],
     expected: "Visual/layout spot-check; automated coverage is PW-FREE-001",
     path: "guides",
@@ -599,6 +652,7 @@ export const TEST_CASES: TestCase[] = [
       "Set status to Pass then Fail",
     ],
     expected: "Status persists after refresh (D1 database)",
+    path: "admin",
   },
   {
     id: "ADMIN-002",
@@ -614,6 +668,7 @@ export const TEST_CASES: TestCase[] = [
       "Change a demo user status",
     ],
     expected: "Filters work; status changes save",
+    path: "admin",
   },
   {
     id: "ADMIN-003",
@@ -629,6 +684,7 @@ export const TEST_CASES: TestCase[] = [
       "Move a draft from draft → pending_review → approved",
     ],
     expected: "Drafts appear with type badges; status workflow works",
+    path: "admin",
   },
   {
     id: "ADMIN-004",
@@ -644,6 +700,7 @@ export const TEST_CASES: TestCase[] = [
       "Change status to In Progress then Done",
     ],
     expected: "Task persists; status colors update",
+    path: "admin",
   },
   {
     id: "BRAND-001",
@@ -655,6 +712,7 @@ export const TEST_CASES: TestCase[] = [
     suite: "manual",
     steps: ["Load homepage", "Confirm Soft Ivory background and Antique Gold CTAs"],
     expected: "Light luxury palette; gold primary buttons; readable charcoal text",
+    path: "dashboard",
   },
 
   // ——— Manual sample pool: judgment / UX / a11y / tone (automation blind spots) ———
@@ -673,6 +731,7 @@ export const TEST_CASES: TestCase[] = [
       "Repeat on Home demographic chips / Kids age mode if present",
     ],
     expected: "No black/gray numbers or labels fading into the gradient; counts inherit white",
+    path: "admin",
   },
   {
     id: "UX-002",
@@ -688,6 +747,7 @@ export const TEST_CASES: TestCase[] = [
       "Confirm footer logo matches and is not a black empty frame",
     ],
     expected: "Wordmark readable; cream logo cropped tight; no giant black padding",
+    path: "dashboard",
   },
   {
     id: "UX-003",
@@ -704,6 +764,7 @@ export const TEST_CASES: TestCase[] = [
       "Confirm Pick your starting point descriptions are charcoal, not pale gray",
     ],
     expected: "Lead and secondary copy pass a quick readability glance at arm's length",
+    path: "dashboard",
   },
   {
     id: "UX-004",
@@ -715,26 +776,28 @@ export const TEST_CASES: TestCase[] = [
     suite: "manual",
     steps: [
       "Resize to ~375px or use a phone",
-      "Open hamburger menu; navigate to Guides, Kids, Seniors, Join",
+      "Open hamburger menu; navigate to Guides, Kids & Teens, Seniors, Join",
       "Use page zoom + / − if shown; confirm layout does not clip primary CTAs",
     ],
     expected: "Menu opens/closes; navigation works; no unreadable overlapping controls",
+    path: "dashboard",
   },
   {
     id: "A11Y-001",
     area: "Accessibility",
-    title: "Keyboard-only path through Find Mine age selector into Adult wizard",
+    title: "Keyboard-only path through Match Wizard age selector into Adults wizard",
     priority: "P1",
     roles: ["adult", "qa"],
     assignees: ["evelyn"],
     suite: "manual",
     steps: [
-      "Click Home then Find Mine",
-      "Use Tab / Enter only (no mouse) to open Adult Side Hustle Wizard",
+      "Click Home then GYSH Match Wizard",
+      "Use Tab / Enter only (no mouse) to open Adults (GYSH Adults Match Wizard)",
       "Advance at least one question with keyboard",
       "Confirm focus ring is visible on interactive controls",
     ],
     expected: "Full keyboard path works; focus never disappears into a dead end",
+    path: "quiz",
   },
   {
     id: "A11Y-002",
@@ -749,34 +812,36 @@ export const TEST_CASES: TestCase[] = [
       "Inspect alt text (DevTools or screen reader) for empty/useless alts like 'image'",
     ],
     expected: "Promotional images describe the scene or brand; logo has Get Your Side Hustle alt",
+    path: "dashboard",
   },
   {
     id: "FAMILY-001",
     area: "Family Coach",
-    title: "Home / Find Mine copy positions parents as GYSH Coaches (consent through 12)",
+    title: "Home / Match Wizard copy positions parents as GYSH Coaches (consent through 12)",
     priority: "P0",
     roles: ["all", "qa"],
     assignees: ["tina"],
     suite: "manual",
     steps: [
-      "Read Home Match Wizard header lead",
-      "Open Find Mine → Kids card copy",
+      "Read Home lead under the family Match Wizards headline (GYSH Coaches + consent through 12)",
+      "Open GYSH Match Wizard → expand More about GYSH Match Wizard if needed → confirm Kids card/details mention GYSH Coaches and parental consent through age 12",
       "Confirm parental consent through age 12 is stated clearly",
       "Confirm tone is coaching/safety — not asking kids for address/phone",
     ],
     expected: "Coach language present; consent age clear; no child PII asks in marketing copy",
+    path: "dashboard",
   },
   {
     id: "FAMILY-002",
     area: "Family Coach",
-    title: "Kids Piggy Bank / Junior My Bank feels safe and age-appropriate",
+    title: "Kids Piggy Bank / Teens My Bank feels safe and age-appropriate",
     priority: "P1",
     roles: ["kid", "junior", "qa"],
     assignees: ["tina"],
     suite: "manual",
     steps: [
       "Kids mode → Piggy Bank: set a goal, confirm give-back / savings language",
-      "Juniors mode → My Bank: confirm teen-appropriate wording (no adult investment jargon)",
+      "Teens mode → My Bank: confirm teen-appropriate wording (no adult investment jargon)",
       "Confirm no payment card fields are shown to children",
     ],
     expected: "Playful money lessons only; no real payment capture on these tools",
@@ -808,7 +873,7 @@ export const TEST_CASES: TestCase[] = [
     assignees: ["tina"],
     suite: "manual",
     steps: [
-      "Kids Corner → Get Your Side Hustle (or Find Mine → Kids)",
+      "Kids & Teens → Kids → GYSH Match Wizard (or GYSH Match Wizard nav → Kids)",
       "Complete a short path with a parent/coach mindset",
       "Confirm results are kid-safe (lemonade, crafts, chores — not adult gig apps)",
     ],
@@ -824,7 +889,7 @@ export const TEST_CASES: TestCase[] = [
     assignees: ["evelyn"],
     suite: "manual",
     steps: [
-      "Open Seniors → Match Wizard / Find Mine Senior path",
+      "Open Seniors → GYSH Match Wizard (or GYSH Match Wizard nav → Seniors)",
       "Complete with limited hours / second-career intent",
       "Scan copy for ageist or infantilizing language",
       "Confirm top matches fit flexible schedules",
@@ -835,17 +900,17 @@ export const TEST_CASES: TestCase[] = [
   {
     id: "WIZ-UX-004",
     area: "Kids Corner",
-    title: "Teens (Junior) wizard: distinct from Kids and Adults",
+    title: "Teens wizard: distinct from Kids and Adults",
     priority: "P1",
     roles: ["junior", "qa"],
     assignees: ["lyriq"],
     suite: "manual",
     steps: [
-      "Juniors (13–17) → Get Your Side Hustle",
+      "Kids & Teens → Teens (13–17) → GYSH Match Wizard",
       "Complete wizard; compare vibe to Kids results you know",
       "Confirm teen-appropriate earning ideas (not preschool crafts, not Airbnb hosting)",
     ],
-    expected: "Junior path feels 13–17 specific",
+    expected: "Teens path feels 13–17 specific",
     path: "kids",
   },
   {
@@ -914,6 +979,71 @@ export const TEST_CASES: TestCase[] = [
     path: "about",
   },
   {
+    id: "FB-001",
+    area: "Facebook",
+    title: "Header Facebook link opens the official GYSH Page",
+    priority: "P1",
+    roles: ["all", "qa"],
+    assignees: ["tina"],
+    suite: "manual",
+    steps: [
+      "Load Home (logged out)",
+      "Find the Facebook icon/link in the site header",
+      "Confirm it points to facebook.com/getyoursidehustleofficial (opens in a new tab)",
+      "Confirm the control has a clear Follow/Facebook label or accessible name",
+    ],
+    expected: "Header Facebook control is visible and links to the official GYSH Facebook Page",
+    path: "dashboard",
+  },
+  {
+    id: "FB-002",
+    area: "Facebook",
+    title: "Footer Facebook link matches the official GYSH Page",
+    priority: "P1",
+    roles: ["all", "qa"],
+    assignees: ["lyriq"],
+    suite: "manual",
+    steps: [
+      "Scroll to the site footer on Home",
+      "Click / inspect the Facebook link",
+      "Confirm same official Page URL as header (getyoursidehustleofficial)",
+    ],
+    expected: "Footer Facebook link is present and consistent with the official Page",
+    path: "dashboard",
+  },
+  {
+    id: "FB-003",
+    area: "Facebook",
+    title: "About page Follow on Facebook CTA works",
+    priority: "P2",
+    roles: ["all", "qa"],
+    assignees: ["evelyn"],
+    suite: "manual",
+    steps: [
+      "Open About",
+      "Find Follow on Facebook (or equivalent CTA)",
+      "Confirm it opens the official GYSH Facebook Page",
+    ],
+    expected: "About social CTA promotes the live Facebook Page without a broken or placeholder URL",
+    path: "about",
+  },
+  {
+    id: "FB-004",
+    area: "Facebook",
+    title: "Home Join / Follow CTAs include Facebook follow path",
+    priority: "P2",
+    roles: ["all", "qa"],
+    assignees: ["tina"],
+    suite: "manual",
+    steps: [
+      "Load Home",
+      "Locate Join and Follow (Facebook) CTAs near the hero / purpose line",
+      "Confirm Follow opens the official Facebook Page; Join still goes to membership/signup",
+    ],
+    expected: "Home clearly offers both Join (site) and Follow (Facebook) without mixing the destinations",
+    path: "dashboard",
+  },
+  {
     id: "GUIDE-001",
     area: "Free Guides",
     title: "Free vs member guide gating is obvious to a human (not just API)",
@@ -944,6 +1074,7 @@ export const TEST_CASES: TestCase[] = [
       "If PDF export exists, generate and open — check headings not cut off",
     ],
     expected: "Guide content readable; export not blank/corrupt",
+    path: "guides",
   },
   {
     id: "ADMIN-005",
@@ -960,6 +1091,7 @@ export const TEST_CASES: TestCase[] = [
       "Confirm Sprint Status bars show done/total",
     ],
     expected: "No clipped dropdown values; saves persist after refresh",
+    path: "admin",
   },
   {
     id: "ADMIN-006",
@@ -976,6 +1108,7 @@ export const TEST_CASES: TestCase[] = [
       "Confirm passed/total summaries still visible when collapsed",
     ],
     expected: "Collapsibles work; counts remain visible on toggles",
+    path: "admin",
   },
   {
     id: "ADMIN-007",
@@ -991,6 +1124,7 @@ export const TEST_CASES: TestCase[] = [
       "Confirm card backgrounds match status colors at a glance",
     ],
     expected: "Status is obvious without reading the dropdown",
+    path: "admin",
   },
   {
     id: "ADMIN-008",
@@ -1007,6 +1141,7 @@ export const TEST_CASES: TestCase[] = [
       "If a failure is forced in a future run, confirm a VT-FAIL-* case appears with severity + repro notes",
     ],
     expected: "Mode=new skips already-run cases; failures create detailed fail cases in current sprint",
+    path: "admin",
   },
   {
     id: "CONTACT-003",
@@ -1054,6 +1189,7 @@ export const TEST_CASES: TestCase[] = [
       "Skim educational disclaimer — not investment advice",
     ],
     expected: "Footer nav works; disclaimer present and readable",
+    path: "dashboard",
   },
   {
     id: "HOWIT-001",
@@ -1064,11 +1200,12 @@ export const TEST_CASES: TestCase[] = [
     assignees: ["lyriq"],
     suite: "manual",
     steps: [
-      "On Find Mine / Kids / Seniors (where available), open How it works",
+      "On GYSH Match Wizard / Kids & Teens / Seniors (where available), open How it works",
       "Confirm numbered steps make sense to a first-time visitor",
       "Close panel; confirm page still usable",
     ],
     expected: "Helpful, non-empty guidance; toggle works",
+    path: "quiz",
   },
 
   /* ── Email + registration (Lyriq) — Resend, contact, free signup, consent ── */
@@ -1162,7 +1299,7 @@ export const TEST_CASES: TestCase[] = [
     assignees: ["lyriq"],
     suite: "manual",
     steps: [
-      "Kids Corner → Join Kids Team with a unique child + parent email you control",
+      "Kids & Teens → Kids → Join → Join Kids Corner GYSH Team with a unique child + parent email you control",
       "Submit → note pending-parent success copy",
       "Check parent inbox / Resend for consent email (or record if not yet implemented and file as blocked with note)",
       "If link arrives: open consent link → confirm grant success",
@@ -1173,17 +1310,17 @@ export const TEST_CASES: TestCase[] = [
   {
     id: "EMAIL-007",
     area: "Email",
-    title: "Junior parental-consent email path is documented / delivered",
+    title: "Teens parental-consent email path is documented / delivered",
     priority: "P0",
     roles: ["junior", "qa", "admin"],
     assignees: ["lyriq"],
     suite: "manual",
     steps: [
-      "Kids/Teens Corner → Teens mode → Join Team with junior email ≠ parent email",
+      "Kids & Teens → Teens mode → Join → Join Teens with junior email ≠ parent email",
       "Submit → pending-parent messaging",
       "Verify parent email / Resend for consent (or mark blocked with exact UI copy if missing)",
     ],
-    expected: "Junior consent email works end-to-end or is explicitly tracked as not-yet-shipped",
+    expected: "Teens consent email works end-to-end or is explicitly tracked as not-yet-shipped",
     path: "kids",
   },
   {
@@ -1262,7 +1399,7 @@ export const TEST_CASES: TestCase[] = [
     assignees: ["lyriq"],
     suite: "manual",
     steps: [
-      "Kids Join the Team with child nickname/first name + parent email (and child email if required)",
+      "Kids & Teens → Kids → Join → Join Kids Corner GYSH Team with child first name + parent email (and child email if required)",
       "Confirm kids are not asked for address/phone or a child password",
       "Confirm pending state until parent approves",
       "Admin: confirm signup row appears (Junior signups / Users) if available",
@@ -1273,13 +1410,13 @@ export const TEST_CASES: TestCase[] = [
   {
     id: "REG-005",
     area: "Registration",
-    title: "Junior registration requires distinct parent email",
+    title: "Teens registration requires distinct parent email",
     priority: "P0",
     roles: ["junior", "qa"],
     assignees: ["lyriq"],
     suite: "manual",
     steps: [
-      "Teens Join Team: submit with junior email === parent email → expect rejection",
+      "Kids & Teens → Teens → Join → Join Teens: submit with junior email === parent email → expect rejection",
       "Resubmit with distinct parent email → pending success",
     ],
     expected: "API/UI enforces distinct parent guardian email",
@@ -1288,18 +1425,18 @@ export const TEST_CASES: TestCase[] = [
   {
     id: "REG-006",
     area: "Registration",
-    title: "Join page Create account / Sign in reaches login or signup path",
+    title: "Join page Create account / Join and Sign in reach signup or login",
     priority: "P1",
     roles: ["all", "qa"],
     assignees: ["lyriq"],
     suite: "manual",
     steps: [
       "Open Join GYSH",
-      "Click Create account / Sign in",
-      "Confirm Login / portal access UI loads",
-      "From Login, use New here? → Join if present (round-trip)",
+      "Click Create account / Join → confirm Membership Sign-up UI loads",
+      "From Join, click Sign in → confirm Login loads",
+      "From Login, use New here? → Join GYSH if present (opens Membership Sign-up; round-trip via Back to plans / Join as available)",
     ],
-    expected: "Join ↔ Login navigation is clear for new members",
+    expected: "Join ↔ Sign-up ↔ Login navigation is clear for new members",
     path: "join",
   },
   {
@@ -1311,7 +1448,7 @@ export const TEST_CASES: TestCase[] = [
     assignees: ["lyriq"],
     suite: "manual",
     steps: [
-      "Open Join (and Membership / pricing if linked)",
+      "Open Join (membership plans are on this page — no separate Membership nav item)",
       "Confirm Free through Elite tiers visible with senior pricing note where applicable",
       "Confirm consulting / credits copy is readable",
     ],
@@ -1369,12 +1506,15 @@ export const TEST_CASES: TestCase[] = [
     path: "kids",
   },
 
-  // External proofread — pages + every guide + Complete Guide (Unassigned / Backlog)
+  // External proofread — pages + every guide + Complete Guide (Tina/Lyriq pairs → Backlog)
   ...PROOFREAD_CASES,
 
   // Exhaustive Get Your Side Hustle option paths (Vitest-owned matrix)
   ...WIZARD_SCENARIO_CASES,
 ];
+
+/** All catalog cases with Open [Page](/path) injected into step 1 when `path` is set. */
+export const TEST_CASES: TestCase[] = TEST_CASES_RAW.map(withPageLinkInFirstStep);
 
 export const SUITE_LABELS: Record<TestSuite, string> = {
   manual: "Manual QA",
@@ -1396,25 +1536,53 @@ export type GeneratedTestCase = {
   sourceFile: string;
 };
 
-export async function fetchTestStatuses(): Promise<{
+export type TestStatusesPayload = {
   statuses: Record<string, TestStatus>;
   notes: Record<string, string>;
   assignees: Record<string, string>;
   sprints: Record<string, number>;
+  /** MM/DD/YY per case */
+  dueDates: Record<string, string>;
+  checkedSteps: Record<string, boolean[]>;
+  failedStepIndex: Record<string, number | null>;
+  /** Who assigned the case (System until a human reassigns). */
+  assignedBy: Record<string, string>;
+  /** MM/DD/YY when Assigned By was set / last reassigned. */
+  dateAssigned: Record<string, string>;
+  updatedAt: Record<string, string>;
+  updatedBy: Record<string, string>;
+  attachments: Record<string, TestAttachmentMeta[]>;
   generatedCases: GeneratedTestCase[];
-}> {
-  const data = await api<{
-    statuses: Record<string, TestStatus>;
-    notes?: Record<string, string>;
-    assignees?: Record<string, string>;
-    sprints?: Record<string, number>;
-    generatedCases?: GeneratedTestCase[];
-  }>("test-statuses");
+};
+
+function mapStatusesResponse(data: {
+  statuses?: Record<string, TestStatus>;
+  notes?: Record<string, string>;
+  assignees?: Record<string, string>;
+  sprints?: Record<string, number>;
+  dueDates?: Record<string, string>;
+  checkedSteps?: Record<string, boolean[]>;
+  failedStepIndex?: Record<string, number | null>;
+  assignedBy?: Record<string, string>;
+  dateAssigned?: Record<string, string>;
+  updatedAt?: Record<string, string>;
+  updatedBy?: Record<string, string>;
+  attachments?: Record<string, TestAttachmentMeta[]>;
+  generatedCases?: GeneratedTestCase[];
+}): TestStatusesPayload {
   return {
     statuses: data.statuses ?? {},
     notes: data.notes ?? {},
     assignees: data.assignees ?? {},
     sprints: data.sprints ?? {},
+    dueDates: data.dueDates ?? {},
+    checkedSteps: data.checkedSteps ?? {},
+    failedStepIndex: data.failedStepIndex ?? {},
+    assignedBy: data.assignedBy ?? {},
+    dateAssigned: data.dateAssigned ?? {},
+    updatedAt: data.updatedAt ?? {},
+    updatedBy: data.updatedBy ?? {},
+    attachments: data.attachments ?? {},
     generatedCases: (data.generatedCases ?? []).map((c) => ({
       ...c,
       priority: (c.priority as Priority) || "P1",
@@ -1426,33 +1594,43 @@ export async function fetchTestStatuses(): Promise<{
   };
 }
 
+export async function fetchTestStatuses(): Promise<TestStatusesPayload> {
+  const data = await api<Parameters<typeof mapStatusesResponse>[0]>("test-statuses");
+  return mapStatusesResponse(data);
+}
+
 export async function saveTestStatus(
   id: string,
   status: TestStatus,
   note = "",
   assignee = "",
   sprint = 0,
-): Promise<{
-  statuses: Record<string, TestStatus>;
-  notes: Record<string, string>;
-  assignees: Record<string, string>;
-  sprints: Record<string, number>;
-}> {
-  const data = await api<{
-    statuses: Record<string, TestStatus>;
-    notes?: Record<string, string>;
-    assignees?: Record<string, string>;
-    sprints?: Record<string, number>;
-  }>("test-statuses", {
+  opts?: {
+    checkedSteps?: boolean[];
+    failedStepIndex?: number | null;
+    stepCount?: number;
+    dueDate?: string;
+    assignedBy?: string;
+    dateAssigned?: string;
+  },
+): Promise<TestStatusesPayload> {
+  const data = await api<Parameters<typeof mapStatusesResponse>[0]>("test-statuses", {
     method: "PUT",
-    body: { caseId: id, status, note, assignee, sprint },
+    body: {
+      caseId: id,
+      status,
+      note,
+      assignee,
+      sprint,
+      ...(opts?.dueDate !== undefined ? { dueDate: opts.dueDate } : {}),
+      ...(opts?.assignedBy !== undefined ? { assignedBy: opts.assignedBy } : {}),
+      ...(opts?.dateAssigned !== undefined ? { dateAssigned: opts.dateAssigned } : {}),
+      checkedSteps: opts?.checkedSteps,
+      failedStepIndex: opts?.failedStepIndex ?? null,
+      stepCount: opts?.stepCount ?? 0,
+    },
   });
-  return {
-    statuses: data.statuses ?? {},
-    notes: data.notes ?? {},
-    assignees: data.assignees ?? {},
-    sprints: data.sprints ?? {},
-  };
+  return mapStatusesResponse(data);
 }
 
 export async function saveTestStatusesBatch(
@@ -1462,35 +1640,67 @@ export async function saveTestStatusesBatch(
     note?: string;
     assignee?: string;
     sprint?: number;
+    dueDate?: string;
+    assignedBy?: string;
+    dateAssigned?: string;
+    checkedSteps?: boolean[];
+    failedStepIndex?: number | null;
+    stepCount?: number;
   }>,
-): Promise<{
-  statuses: Record<string, TestStatus>;
-  notes: Record<string, string>;
-  assignees: Record<string, string>;
-  sprints: Record<string, number>;
-}> {
+): Promise<TestStatusesPayload> {
   if (items.length === 0) {
     return fetchTestStatuses();
   }
-  const data = await api<{
-    statuses: Record<string, TestStatus>;
-    notes?: Record<string, string>;
-    assignees?: Record<string, string>;
-    sprints?: Record<string, number>;
-  }>("test-statuses", {
+  const data = await api<Parameters<typeof mapStatusesResponse>[0]>("test-statuses", {
     method: "PUT",
     body: { items },
   });
-  return {
-    statuses: data.statuses ?? {},
-    notes: data.notes ?? {},
-    assignees: data.assignees ?? {},
-    sprints: data.sprints ?? {},
-  };
+  return mapStatusesResponse(data);
 }
 
-export async function resetTestStatuses(): Promise<void> {
-  await api("test-statuses", { method: "DELETE" });
+export async function uploadTestEvidence(input: {
+  caseId: string;
+  name: string;
+  mimeType: string;
+  contentBase64: string;
+}): Promise<TestAttachmentMeta> {
+  const data = await api<{ attachment: TestAttachmentMeta }>("test-attachments", {
+    method: "POST",
+    body: input,
+  });
+  return data.attachment;
+}
+
+export async function deleteTestEvidence(id: string): Promise<void> {
+  await api("test-attachments", { method: "DELETE", body: { id } });
+}
+
+export async function fetchTestEvidenceContent(id: string): Promise<{
+  name: string;
+  mimeType: string;
+  contentBase64: string;
+}> {
+  return api(`test-attachments?id=${encodeURIComponent(id)}`);
+}
+
+export function fileToBase64(file: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || "");
+      const i = result.indexOf(",");
+      resolve(i >= 0 ? result.slice(i + 1) : result);
+    };
+    reader.onerror = () => reject(reader.error || new Error("read failed"));
+    reader.readAsDataURL(file);
+  });
+}
+
+export async function resetTestStatuses(confirmReset?: string): Promise<void> {
+  await api("test-statuses", {
+    method: "DELETE",
+    body: { confirmReset: confirmReset ?? "" },
+  });
 }
 
 export type AutomatedSuite = "vitest" | "playwright" | "all";

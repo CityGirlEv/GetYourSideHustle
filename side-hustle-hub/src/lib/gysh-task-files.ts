@@ -1,5 +1,5 @@
-/** IndexedDB blob store for GYSH task attachment binaries (phase 1 interim).
- * Metadata lives in D1. R2 upload is phase 2 — blobs are NOT shared across browsers yet.
+/** IndexedDB local cache for GYSH task / plan attachment binaries.
+ * Source of truth is D1 `content_base64` via /api/task-attachments and /api/plan-attachments.
  */
 
 const DB_NAME = "gysh_task_files";

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Mic2, Sparkles, Wand2 } from "lucide-react";
+import { BusyOverlay, WaitIndicator } from "../WaitFeedback";
 import {
   CONTENT_STATUS_LABELS,
   CONTENT_TYPE_LABELS,
@@ -127,6 +128,7 @@ export function ContentFactory() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+      <BusyOverlay active={loading} message="Loading content…" />
       <div className="glass" style={{ padding: "24px", borderRadius: "16px", background: "linear-gradient(135deg, rgba(215,198,151,0.55), #fff)" }}>
         <h2 style={{ fontSize: "1.5rem", color: "var(--charcoal)", display: "flex", alignItems: "center", gap: 8 }}>
           <Sparkles size={22} style={{ color: "var(--bronze)" }} /> Content Factory
@@ -183,7 +185,7 @@ export function ContentFactory() {
           </div>
 
           {loading ? (
-            <p style={{ color: "var(--text-primary)" }}>Loading content from database…</p>
+            <WaitIndicator message="Loading content from database…" style={{ marginTop: 0 }} />
           ) : drafts.length === 0 && !error ? (
             <div className="glass" style={{ padding: 28, textAlign: "center", color: "var(--text-primary)" }}>
               No drafts yet. Generate a weekly batch to get started.

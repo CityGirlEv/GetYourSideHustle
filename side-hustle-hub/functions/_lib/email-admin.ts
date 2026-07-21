@@ -20,6 +20,7 @@ import {
   SITE_NAME,
   SITE_URL,
 } from "./email-brand";
+import { buildSampleDigestPreview, DIGEST_TEMPLATE_SLUG } from "./daily-digest";
 
 async function ensureEmailTables(env: Env): Promise<void> {
   await env.DB.prepare(
@@ -85,7 +86,7 @@ export function buildTemplatePreview(slug: string): {
       subhead: `Your account is LIVE on the ${tierLabel(tier)} plan.`,
       bodyHtml: `<p style="margin:0 0 14px;">This is your official green light. Log in and use every perk that comes with <strong>${tierLabel(tier)}</strong>.</p>
         <p style="margin:0 0 8px;font-size:13px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#947d64;">Your ${tierLabel(tier)} perks</p>
-        ${perkBulletsHtml(tier, audience)}${upgradesHtml(tier)}`,
+        ${perkBulletsHtml(tier, audience)}${upgradesHtml(tier, audience)}`,
       ctaLabel: "See membership & upgrade",
       ctaUrl: joinUrl,
     });
@@ -133,6 +134,8 @@ export function buildTemplatePreview(slug: string): {
       ctaLabel: "Reply to sender",
       ctaUrl: "mailto:sample@example.com",
     });
+  } else if (slug === DIGEST_TEMPLATE_SLUG || slug === "daily_admin_digest") {
+    return buildSampleDigestPreview();
   } else {
     branded = wrapBrandedEmail({
       preheader: catalog.sampleSubject,
@@ -192,7 +195,8 @@ export async function listEmailTemplates(env: Env): Promise<Response> {
       enabled: Boolean(t.enabled),
       updatedAt: t.updated_at,
       updatedBy: t.updated_by,
-      sendCount: countMap.get(t.slug) ?? 0,
+      // Include legacy test_* rows plus current catalog-slug logs (tests now use the real slug).
+      sendCount: (countMap.get(t.slug) ?? 0) + (countMap.get(`test_${t.slug}`) ?? 0),
     })),
   });
 }
@@ -207,8 +211,9 @@ export async function listEmailLog(env: Env, request: Request): Promise<Response
              FROM email_log`;
   const binds: (string | number)[] = [];
   if (template) {
-    sql += ` WHERE template_slug = ?`;
-    binds.push(template);
+    // Match catalog slug and legacy test_<slug> rows so test sends appear under the template.
+    sql += ` WHERE template_slug = ? OR template_slug = ?`;
+    binds.push(template, `test_${template}`);
   }
   sql += ` ORDER BY created_at DESC LIMIT ?`;
   binds.push(limit);
@@ -296,12 +301,13 @@ export async function sendTestEmail(
   if (!preview) return error("Unknown template.", 404);
 
   try {
+    // Log under the real catalog slug (meta.test) so test sends show in that template’s history.
     const result = await sendResendEmail(env, {
       to,
       subject: `[TEST] ${preview.subject}`,
       html: preview.html,
       text: preview.text,
-      templateSlug: `test_${slug}`,
+      templateSlug: slug,
       userId: actor.id,
       meta: { test: true, slug, sentBy: actor.email },
     });
@@ -311,6 +317,7 @@ export async function sendTestEmail(
       to,
       slug,
       subject: `[TEST] ${preview.subject}`,
+      logged: true,
     });
   } catch (e) {
     if (e instanceof EmailSendError) return error(e.message, e.status);

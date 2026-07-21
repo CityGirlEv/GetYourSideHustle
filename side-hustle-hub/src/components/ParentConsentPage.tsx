@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { BadgeCheck, ShieldCheck, ShieldAlert, Loader2 } from "lucide-react";
+import { BadgeCheck, ShieldCheck, ShieldAlert } from "lucide-react";
+import { BusyOverlay, WaitIndicator, WaitLabel } from "./WaitFeedback";
 import { SITE_NAME } from "../lib/site-config";
 import {
   fetchConsent,
@@ -84,13 +85,15 @@ export function ParentConsentPage({ token, onClose }: ParentConsentPageProps) {
 
   return (
     <div className="consent-page">
+      <BusyOverlay
+        active={loading || submitting}
+        message={loading ? "Loading request…" : "Submitting consent…"}
+      />
       <div className="consent-card glass">
         <span className="flat-label flat-label--accent">{SITE_NAME} · Parental Consent</span>
 
         {loading && (
-          <p className="consent-loading">
-            <Loader2 size={18} className="consent-spin" /> Loading request…
-          </p>
+          <WaitIndicator className="consent-loading" message="Loading request…" style={{ marginTop: 0 }} />
         )}
 
         {!loading && loadError && (
@@ -181,7 +184,7 @@ export function ParentConsentPage({ token, onClose }: ParentConsentPageProps) {
                     Decline
                   </button>
                   <button type="submit" className="btn btn-primary" disabled={submitting || !approved}>
-                    {submitting ? "Submitting…" : "Grant permission & activate"}
+                    {submitting ? <WaitLabel>Submitting…</WaitLabel> : "Grant permission & activate"}
                   </button>
                 </div>
               </form>

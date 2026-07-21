@@ -104,5 +104,5 @@ export function guideReviewDescription(name: string): string {
 }
 
 export function guideReviewNotes(guideId: string): string {
-  return `guide-review:${guideId}`;
+  return `Open [Guides](/guides)\nguide-review:${guideId}`;
 }

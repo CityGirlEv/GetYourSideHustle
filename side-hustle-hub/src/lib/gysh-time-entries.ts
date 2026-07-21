@@ -126,6 +126,19 @@ export async function startTimeEntry(input: {
   return data.entry;
 }
 
+/** Start or resume a work timer; returns null on failure (offline / unauthorized). */
+export async function ensureWorkTimerStarted(input: {
+  source: TimeSource;
+  sourceId: string;
+  sourceLabel: string;
+}): Promise<TimeEntry | null> {
+  try {
+    return await startTimeEntry(input);
+  } catch {
+    return null;
+  }
+}
+
 export async function pauseTimeEntry(input?: {
   id?: string;
   source?: TimeSource;

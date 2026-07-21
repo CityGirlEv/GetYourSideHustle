@@ -96,13 +96,51 @@ test.describe("GYSH smoke", () => {
     await page.getByTestId("nav-membership").click();
     await expect(page.getByTestId("page-title")).toContainText("Membership");
     await expect(page.getByTestId("membership-page")).toBeVisible();
+    await expect(page.getByTestId("membership-hero-dashboard-note")).toContainText("Member Dashboard");
+    await expect(page.getByTestId("membership-hero-dashboard-note")).toContainText("referral");
+    await expect(page.getByTestId("membership-see-plans")).toContainText("See Memberships");
+    await expect(page.getByTestId("membership-see-plans")).toContainText("pricing");
+    await expect(page.getByTestId("membership-see-plans-hint")).toContainText("Scrolls to Free–Elite pricing");
+    await page.getByTestId("membership-see-plans").click();
+    await expect(page.getByTestId("membership-plans")).toBeFocused();
     await expect(page.getByTestId("membership-tier-free")).toBeVisible();
+    await expect(page.getByTestId("membership-tier-free")).toContainText("Free — start here");
+    await expect(page.getByTestId("membership-free-start-badge")).toBeVisible();
+    await expect(page.getByTestId("membership-benefits-free")).toContainText("Match Wizard");
+    await expect(page.getByTestId("membership-benefits-free")).not.toContainText("Browse free guides");
     await expect(page.getByTestId("membership-tier-starter")).toBeVisible();
     await expect(page.getByTestId("membership-tier-pro")).toBeVisible();
     await expect(page.getByTestId("membership-tier-elite")).toBeVisible();
     await expect(page.getByTestId("membership-schedule-suite")).toBeVisible();
+    await expect(page.getByTestId("membership-military-veteran")).toBeVisible();
+    await expect(page.getByTestId("membership-military-veteran")).toContainText("Veterans save even more");
+
+    // Membership plans section, then military callout (Adults default), then schedule suite.
+    const sectionOrder = await page.evaluate(() => {
+      const ids = [
+        "membership-plans",
+        "membership-military-veteran",
+        "membership-schedule-suite",
+      ];
+      return ids.map((id) => {
+        const el = document.querySelector(`[data-testid="${id}"]`);
+        if (!el) return -1;
+        let pos = 0;
+        let n: Element | null = el;
+        while (n && n.previousElementSibling) {
+          pos += 1;
+          n = n.previousElementSibling;
+        }
+        return pos;
+      });
+    });
+    expect(sectionOrder[0]).toBeGreaterThanOrEqual(0);
+    expect(sectionOrder[1]).toBeGreaterThan(sectionOrder[0]);
+    expect(sectionOrder[2]).toBeGreaterThan(sectionOrder[1]);
 
     await page.getByTestId("membership-audience-kids").click();
+    await expect(page.getByTestId("membership-see-plans")).toContainText("Kids");
+    await expect(page.getByTestId("membership-military-veteran")).toHaveCount(0);
     await expect(page.getByTestId("membership-credit-packs")).toBeVisible();
     await expect(page.getByTestId("membership-credit-pack-boost")).toContainText("25 credits");
     await expect(page.getByTestId("membership-credit-pack-family")).toContainText("300 credits");

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Users, Plus, Pencil, Check, X } from "lucide-react";
+import { BusyOverlay, WaitIndicator } from "../WaitFeedback";
 import {
   GYSH_ROLE_ACCENT,
   GYSH_ROLE_DESCRIPTIONS,
@@ -443,6 +444,10 @@ export function UsersArea() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+      <BusyOverlay
+        active={busy || loading || roleBusyId !== null}
+        message={loading ? "Loading users…" : "Saving user…"}
+      />
       <div className="glass" style={{ padding: "24px", borderRadius: "16px" }}>
         <h2 style={{ fontSize: "1.5rem", color: "var(--charcoal)", display: "flex", alignItems: "center", gap: "8px" }}>
           <Users size={22} style={{ color: "var(--bronze)" }} /> Users Area
@@ -526,7 +531,7 @@ export function UsersArea() {
       )}
 
       {loading ? (
-        <p style={{ color: "var(--text-primary)" }}>Loading users from database…</p>
+        <WaitIndicator message="Loading users from database…" style={{ marginTop: 0 }} />
       ) : filtered.length === 0 ? (
         <p style={{ color: "var(--text-primary)" }}>
           {roleFilter !== "all" || statusFilter !== "all"

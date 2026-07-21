@@ -16,12 +16,89 @@ import {
 } from "./auth";
 import { ensurePartnerAdmins } from "./partners";
 import {
+  canChangeTestStatus,
+  canSetTestBlocked,
   FAILED_TEST_ASSIGNEE,
   hasRole,
   normalizeRolesInput,
   primaryRole,
   serializeRoles,
 } from "./roles";
+import { resolveTestAssignedMeta, todayMMDDYY, SYSTEM_ASSIGNED_BY } from "./assignment";
+import { logTaskAssignmentChange, logTestAssignmentChange } from "./daily-digest";
+import { decodeBase64ToBytes, scanTestEvidence } from "./test-evidence";
+import { defaultsForNewTest } from "./new-test-defaults";
+import {
+  listClosedSprintIndexes,
+  rejectIfSprintLocked,
+  SPRINT_LOCKED_MESSAGE,
+} from "./closed-sprints";
+import { sprintLabel } from "./sprints";
+
+/** D1 string values max ~2MB; base64 expands ~4/3 — keep decoded payload under that. */
+const TASK_ATTACHMENT_MAX_BYTES = 1_500_000;
+const TASK_ATTACHMENT_EXT =
+  /\.(png|jpe?g|gif|webp|svg|bmp|heic|mp4|webm|mov|pdf|doc|docx|xls|xlsx|txt|csv)$/i;
+
+function cleanBase64(raw: string): string {
+  return String(raw || "")
+    .replace(/^data:[^;]+;base64,/, "")
+    .replace(/\s+/g, "");
+}
+
+function validateTaskAttachmentContent(input: {
+  name: string;
+  mimeType: string;
+  contentBase64: string;
+}): { ok: true; mime: string; cleaned: string; size: number } | { ok: false; error: string } {
+  const name = String(input.name || "").trim();
+  const mimeType = String(input.mimeType || "application/octet-stream").trim() || "application/octet-stream";
+  if (!name || !TASK_ATTACHMENT_EXT.test(name)) {
+    return {
+      ok: false,
+      error: "Unsupported file type. Use images, PDF, Word, Excel, video (mp4/webm/mov), txt, or csv.",
+    };
+  }
+  const cleaned = cleanBase64(input.contentBase64);
+  if (!cleaned) return { ok: false, error: "Missing file contents." };
+  const bytes = decodeBase64ToBytes(cleaned);
+  if (!bytes || bytes.length === 0) return { ok: false, error: "Could not read file contents." };
+  if (bytes.length > TASK_ATTACHMENT_MAX_BYTES) {
+    return {
+      ok: false,
+      error: `File too large (max ${Math.round(TASK_ATTACHMENT_MAX_BYTES / 1_000_000)}MB). Re-upload a smaller file.`,
+    };
+  }
+  return { ok: true, mime: mimeType, cleaned, size: bytes.length };
+}
+
+async function ensureAttachmentContentColumns(env: Env): Promise<void> {
+  await addColumnIfMissing(
+    env,
+    "task_attachments",
+    "content_base64",
+    `ALTER TABLE task_attachments ADD COLUMN content_base64 TEXT`,
+  );
+  await addColumnIfMissing(
+    env,
+    "plan_item_attachments",
+    "content_base64",
+    `ALTER TABLE plan_item_attachments ADD COLUMN content_base64 TEXT`,
+  );
+}
+
+/** Keep in sync with src/lib/gysh-sprints.ts BACKLOG_SPRINT / UNASSIGNED_OWNER. */
+const BACKLOG_SPRINT = -1;
+const UNASSIGNED_OWNER = "Unassigned";
+
+function isBacklogSprint(sprint: number): boolean {
+  return sprint === BACKLOG_SPRINT;
+}
+
+function isGeneratedFailureCaseId(caseId: string): boolean {
+  const id = caseId.toUpperCase();
+  return id.startsWith("VT-FAIL-") || id.startsWith("PW-FAIL-");
+}
 
 type TaskRow = {
   id: string;
@@ -37,10 +114,16 @@ type TaskRow = {
   notes: string;
   sort_order: number;
   updated_at: string;
+  updated_by?: string;
   sprint?: number;
   done_tina?: number;
   done_evelyn?: number;
 };
+
+function actorLabel(actor: DbUser): string {
+  const name = (actor.name || "").trim();
+  return name || actor.email;
+}
 
 type AttachmentRow = {
   id: string;
@@ -51,6 +134,7 @@ type AttachmentRow = {
   stored_id: string;
   r2_key: string | null;
   added_at: string;
+  content_base64?: string | null;
 };
 
 type PlanAttachmentRow = {
@@ -62,6 +146,7 @@ type PlanAttachmentRow = {
   stored_id: string;
   r2_key: string | null;
   added_at: string;
+  content_base64?: string | null;
 };
 
 function mapTask(row: TaskRow, attachments: AttachmentRow[]) {
@@ -80,6 +165,8 @@ function mapTask(row: TaskRow, attachments: AttachmentRow[]) {
     sprint: typeof row.sprint === "number" ? row.sprint : Number(row.sprint ?? 0) || 0,
     tinaDone: Number(row.done_tina ?? 0) === 1,
     evelynDone: Number(row.done_evelyn ?? 0) === 1,
+    updatedAt: row.updated_at || "",
+    updatedBy: (row.updated_by || "").trim(),
     attachments: attachments
       .filter((a) => a.task_id === row.id)
       .map((a) => ({
@@ -90,6 +177,7 @@ function mapTask(row: TaskRow, attachments: AttachmentRow[]) {
         storedId: a.stored_id,
         r2Key: a.r2_key,
         addedAt: a.added_at,
+        hasContent: Boolean(a.content_base64 && String(a.content_base64).length > 0),
       })),
   };
 }
@@ -144,15 +232,31 @@ async function ensureTaskColumns(env: Env): Promise<void> {
     "done_evelyn",
     `ALTER TABLE tasks ADD COLUMN done_evelyn INTEGER NOT NULL DEFAULT 0`,
   );
+  await addColumnIfMissing(
+    env,
+    "tasks",
+    "updated_by",
+    `ALTER TABLE tasks ADD COLUMN updated_by TEXT NOT NULL DEFAULT ''`,
+  );
+  await ensureAttachmentContentColumns(env);
 }
 
 export async function listUsers(env: Env): Promise<Response> {
   await ensurePartnerAdmins(env);
-  const { results } = await env.DB.prepare(
-    `SELECT id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt
-     FROM users ORDER BY joined_at DESC, name ASC`,
-  ).all<DbUser>();
-  return json({ users: (results ?? []).map(publicUser) });
+  try {
+    const { results } = await env.DB.prepare(
+      `SELECT id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt,
+              membership_tier, audience
+       FROM users ORDER BY joined_at DESC, name ASC`,
+    ).all<DbUser>();
+    return json({ users: (results ?? []).map(publicUser) });
+  } catch {
+    const { results } = await env.DB.prepare(
+      `SELECT id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt
+       FROM users ORDER BY joined_at DESC, name ASC`,
+    ).all<DbUser>();
+    return json({ users: (results ?? []).map(publicUser) });
+  }
 }
 
 export async function upsertUser(env: Env, request: Request, actor: DbUser): Promise<Response> {
@@ -330,12 +434,12 @@ export async function listTasks(env: Env): Promise<Response> {
   return json({
     tasks: (tasks.results ?? []).map((t) => mapTask(t, atts.results ?? [])),
     attachmentBlobsNote:
-      "File blobs remain in the browser IndexedDB until R2 is wired (phase 2). Metadata is in D1.",
+      "Attachment file bytes are stored in D1 (content_base64). Download via /api/task-attachments?id=…",
   });
 }
 
-export async function saveTasks(env: Env, request: Request): Promise<Response> {
-  let body: { tasks?: unknown[] };
+export async function saveTasks(env: Env, request: Request, actor: DbUser): Promise<Response> {
+  let body: { tasks?: unknown[]; removeIds?: unknown[] };
   try {
     body = await request.json();
   } catch {
@@ -346,6 +450,18 @@ export async function saveTasks(env: Env, request: Request): Promise<Response> {
   await ensureTaskColumns(env);
 
   const now = new Date().toISOString();
+  const byLabel = actorLabel(actor);
+  const closedSprints = new Set(await listClosedSprintIndexes(env));
+
+  // Preserve prior audit stamps when a task's content did not change.
+  const prior = await env.DB.prepare(
+    `SELECT id, description, category, priority, status, assign_by, assigned_to,
+            date_assigned, due_date, date_completed, notes, sprint, done_tina, done_evelyn,
+            updated_at, updated_by, sort_order
+     FROM tasks`,
+  ).all<TaskRow>();
+  const priorById = new Map((prior.results ?? []).map((r) => [r.id, r]));
+
   // Dedupe by id (last wins) — concurrent clients / double-submit must not insert the same PK twice.
   const byId = new Map<string, Record<string, unknown>>();
   for (const raw of body.tasks as Array<Record<string, unknown>>) {
@@ -353,52 +469,180 @@ export async function saveTasks(env: Env, request: Request): Promise<Response> {
     byId.set(id, { ...raw, id });
   }
   const incoming = Array.from(byId.values());
+  const removeIds = [
+    ...new Set(
+      (Array.isArray(body.removeIds) ? body.removeIds : [])
+        .map((id) => String(id || "").trim())
+        .filter(Boolean),
+    ),
+  ].filter((id) => !byId.has(id));
 
-  const statements = [
-    env.DB.prepare(`DELETE FROM task_attachments`),
-    env.DB.prepare(`DELETE FROM tasks`),
-  ];
+  for (const id of removeIds) {
+    const prev = priorById.get(id);
+    const prevSprint = Number(prev?.sprint ?? 0);
+    if (closedSprints.has(prevSprint)) {
+      return error(`${SPRINT_LOCKED_MESSAGE} (${sprintLabel(prevSprint)})`, 403);
+    }
+  }
+
+  // Safe merge: upsert only — never wipe the whole table. Missing ids stay in D1
+  // so concurrent users cannot clobber each other's new tasks. Explicit deletes via removeIds.
+  const statements: D1PreparedStatement[] = [];
+
+  for (const id of removeIds) {
+    statements.push(env.DB.prepare(`DELETE FROM task_attachments WHERE task_id = ?`).bind(id));
+    statements.push(env.DB.prepare(`DELETE FROM tasks WHERE id = ?`).bind(id));
+  }
 
   let order = 0;
   for (const t of incoming) {
     const id = String(t.id);
+    const description = String(t.description || "");
+    const category = String(t.category || "admin_ops");
+    const priority = String(t.priority || "P2");
+    const status = String(t.status || "not_started");
+    const assignBy = String(t.assignBy || "");
+    const dateAssigned = String(t.dateAssigned || "");
+    const dueDate = String(t.dueDate || "");
+    const dateCompleted = String(t.dateCompleted || "");
+    const notes = String(t.notes || "");
+    const sprintRaw = Number(t.sprint ?? 0);
+    const sprint = Number.isFinite(sprintRaw) ? sprintRaw : 0;
+    // Backlog tasks are always Unassigned (do not invent an owner when leaving backlog).
+    const assignedTo = isBacklogSprint(sprint)
+      ? UNASSIGNED_OWNER
+      : String(t.assignedTo || "Both");
+    const doneTina = t.tinaDone === true || t.tinaDone === 1 || t.done_tina === 1 ? 1 : 0;
+    const doneEvelyn = t.evelynDone === true || t.evelynDone === 1 || t.done_evelyn === 1 ? 1 : 0;
+
+    const prev = priorById.get(id);
+    const sortOrder =
+      typeof t.sortOrder === "number" && Number.isFinite(t.sortOrder)
+        ? Number(t.sortOrder)
+        : prev?.sort_order != null
+          ? Number(prev.sort_order)
+          : order;
+    order += 1;
+
+    const unchanged =
+      prev &&
+      prev.description === description &&
+      prev.category === category &&
+      prev.priority === priority &&
+      prev.status === status &&
+      prev.assign_by === assignBy &&
+      prev.assigned_to === assignedTo &&
+      prev.date_assigned === dateAssigned &&
+      prev.due_date === dueDate &&
+      prev.date_completed === dateCompleted &&
+      prev.notes === notes &&
+      Number(prev.sprint ?? 0) === sprint &&
+      Number(prev.done_tina ?? 0) === doneTina &&
+      Number(prev.done_evelyn ?? 0) === doneEvelyn;
+
+    const prevSprint = prev ? Number(prev.sprint ?? 0) : null;
+    // Locked sprint: reject real edits; leave unchanged rows alone so bulk saves of other tasks still work.
+    if (prevSprint !== null && closedSprints.has(prevSprint)) {
+      if (!unchanged) {
+        return error(`${SPRINT_LOCKED_MESSAGE} (${sprintLabel(prevSprint)})`, 403);
+      }
+      continue;
+    }
+    if (closedSprints.has(sprint)) {
+      return error(`${SPRINT_LOCKED_MESSAGE} (${sprintLabel(sprint)})`, 403);
+    }
+
+    const updatedAt = unchanged && prev?.updated_at ? prev.updated_at : now;
+    const updatedBy =
+      unchanged && (prev?.updated_by || "").trim()
+        ? String(prev!.updated_by)
+        : byLabel;
+
+    if (prev && prev.assigned_to !== assignedTo) {
+      await logTaskAssignmentChange(env, {
+        taskId: id,
+        fromAssignee: prev.assigned_to,
+        toAssignee: assignedTo,
+        changedBy: byLabel,
+      });
+    }
+
     statements.push(
       env.DB.prepare(
         `INSERT INTO tasks (
            id, description, category, priority, status, assign_by, assigned_to,
            date_assigned, due_date, date_completed, notes, sprint, done_tina, done_evelyn,
-           sort_order, updated_at
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           sort_order, updated_at, updated_by
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET
+           description = excluded.description,
+           category = excluded.category,
+           priority = excluded.priority,
+           status = excluded.status,
+           assign_by = excluded.assign_by,
+           assigned_to = excluded.assigned_to,
+           date_assigned = excluded.date_assigned,
+           due_date = excluded.due_date,
+           date_completed = excluded.date_completed,
+           notes = excluded.notes,
+           sprint = excluded.sprint,
+           done_tina = excluded.done_tina,
+           done_evelyn = excluded.done_evelyn,
+           sort_order = excluded.sort_order,
+           updated_at = excluded.updated_at,
+           updated_by = excluded.updated_by`,
       ).bind(
         id,
-        String(t.description || ""),
-        String(t.category || "admin_ops"),
-        String(t.priority || "P2"),
-        String(t.status || "not_started"),
-        String(t.assignBy || ""),
-        String(t.assignedTo || "Both"),
-        String(t.dateAssigned || ""),
-        String(t.dueDate || ""),
-        String(t.dateCompleted || ""),
-        String(t.notes || ""),
-        Number(t.sprint ?? 0),
-        t.tinaDone === true || t.tinaDone === 1 || t.done_tina === 1 ? 1 : 0,
-        t.evelynDone === true || t.evelynDone === 1 || t.done_evelyn === 1 ? 1 : 0,
-        order++,
-        now,
+        description,
+        category,
+        priority,
+        status,
+        assignBy,
+        assignedTo,
+        dateAssigned,
+        dueDate,
+        dateCompleted,
+        notes,
+        sprint,
+        doneTina,
+        doneEvelyn,
+        sortOrder,
+        updatedAt,
+        updatedBy,
       ),
     );
 
+    // Replace attachments only for this task — never wipe all attachment rows globally.
+    // Preserve content_base64 for ids that already have stored bytes (tasks PUT sends metadata only).
+    const priorAtts = await env.DB.prepare(
+      `SELECT id, content_base64 FROM task_attachments WHERE task_id = ?`,
+    )
+      .bind(id)
+      .all<{ id: string; content_base64: string | null }>();
+    const priorContent = new Map(
+      (priorAtts.results ?? []).map((r) => [r.id, r.content_base64 ?? null]),
+    );
+    statements.push(env.DB.prepare(`DELETE FROM task_attachments WHERE task_id = ?`).bind(id));
     const attachments = Array.isArray(t.attachments) ? t.attachments : [];
     const seenAtt = new Set<string>();
     for (const a of attachments as Array<Record<string, unknown>>) {
       let attId = String(a.id || crypto.randomUUID());
       if (seenAtt.has(attId)) attId = crypto.randomUUID();
       seenAtt.add(attId);
+      let content: string | null = priorContent.get(attId) ?? null;
+      if (typeof a.contentBase64 === "string" && a.contentBase64.trim()) {
+        const validated = validateTaskAttachmentContent({
+          name: String(a.name || ""),
+          mimeType: String(a.mimeType || "application/octet-stream"),
+          contentBase64: a.contentBase64,
+        });
+        if (validated.ok) content = validated.cleaned;
+      }
       statements.push(
         env.DB.prepare(
-          `INSERT INTO task_attachments (id, task_id, name, mime_type, size, stored_id, r2_key, added_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO task_attachments
+             (id, task_id, name, mime_type, size, stored_id, r2_key, added_at, content_base64)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         ).bind(
           attId,
           id,
@@ -408,25 +652,325 @@ export async function saveTasks(env: Env, request: Request): Promise<Response> {
           String(a.storedId || a.id || ""),
           a.r2Key ? String(a.r2Key) : null,
           String(a.addedAt || now),
+          content,
         ),
       );
     }
   }
 
   try {
-    await env.DB.batch(statements);
+    const CHUNK = 40;
+    for (let i = 0; i < statements.length; i += CHUNK) {
+      await env.DB.batch(statements.slice(i, i + CHUNK));
+    }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     if (isSchemaDriftError(msg)) {
-      // One more repair pass, then retry once.
       await ensureTaskColumns(env);
-      await env.DB.batch(statements);
+      const CHUNK = 40;
+      for (let i = 0; i < statements.length; i += CHUNK) {
+        await env.DB.batch(statements.slice(i, i + CHUNK));
+      }
       return listTasks(env);
     }
     throw e;
   }
 
   return listTasks(env);
+}
+
+export async function uploadTaskAttachment(
+  env: Env,
+  request: Request,
+  actor: DbUser,
+): Promise<Response> {
+  await ensureTaskColumns(env);
+  let body: {
+    taskId?: string;
+    id?: string;
+    name?: string;
+    mimeType?: string;
+    contentBase64?: string;
+    addedAt?: string;
+  };
+  try {
+    body = await request.json();
+  } catch {
+    return error("Invalid JSON body.");
+  }
+  const taskId = String(body.taskId || "").trim();
+  const name = String(body.name || "").trim();
+  const mimeType = String(body.mimeType || "application/octet-stream").trim();
+  const contentBase64 = String(body.contentBase64 || "").trim();
+  if (!taskId || !name || !contentBase64) {
+    return error("taskId, name, and contentBase64 are required.");
+  }
+  const task = await env.DB.prepare(`SELECT id, sprint FROM tasks WHERE id = ?`)
+    .bind(taskId)
+    .first<{ id: string; sprint: number }>();
+  if (!task) return error("Task not found.", 404);
+  const locked = await rejectIfSprintLocked(env, Number(task.sprint));
+  if (locked) return locked;
+
+  const validated = validateTaskAttachmentContent({ name, mimeType, contentBase64 });
+  if (!validated.ok) return error(validated.error, 400);
+
+  const id = String(body.id || "").trim() || crypto.randomUUID();
+  const addedAt = String(body.addedAt || "").trim() || todayMMDDYY();
+  const existing = await env.DB.prepare(`SELECT id FROM task_attachments WHERE id = ?`)
+    .bind(id)
+    .first<{ id: string }>();
+  if (existing) {
+    await env.DB.prepare(
+      `UPDATE task_attachments
+       SET task_id = ?, name = ?, mime_type = ?, size = ?, stored_id = ?, content_base64 = ?, added_at = ?
+       WHERE id = ?`,
+    )
+      .bind(taskId, name, validated.mime, validated.size, id, validated.cleaned, addedAt, id)
+      .run();
+  } else {
+    await env.DB.prepare(
+      `INSERT INTO task_attachments
+         (id, task_id, name, mime_type, size, stored_id, r2_key, added_at, content_base64)
+       VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
+    )
+      .bind(id, taskId, name, validated.mime, validated.size, id, addedAt, validated.cleaned)
+      .run();
+  }
+  await appendAudit(env.DB, "task_attachment_upload", actor.email, `${taskId}:${id}`);
+  return json({
+    ok: true,
+    attachment: {
+      id,
+      name,
+      mimeType: validated.mime,
+      size: validated.size,
+      storedId: id,
+      r2Key: null,
+      addedAt,
+      hasContent: true,
+    },
+  });
+}
+
+export async function getTaskAttachmentContent(env: Env, id: string): Promise<Response> {
+  await ensureTaskColumns(env);
+  const row = await env.DB.prepare(
+    `SELECT id, name, mime_type, content_base64 FROM task_attachments WHERE id = ?`,
+  )
+    .bind(id)
+    .first<{
+      id: string;
+      name: string;
+      mime_type: string;
+      content_base64: string | null;
+    }>();
+  if (!row) return error("Attachment not found.", 404);
+  if (!row.content_base64) {
+    return error(
+      "File bytes were never stored on the server (legacy IndexedDB-only upload). Please re-upload the file.",
+      404,
+    );
+  }
+  return json({
+    id: row.id,
+    name: row.name,
+    mimeType: row.mime_type,
+    contentBase64: row.content_base64,
+  });
+}
+
+export async function deleteTaskAttachmentRow(
+  env: Env,
+  request: Request,
+  actor: DbUser,
+): Promise<Response> {
+  await ensureTaskColumns(env);
+  let body: { id?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return error("Invalid JSON body.");
+  }
+  const id = String(body.id || "").trim();
+  if (!id) return error("id is required.");
+  const att = await env.DB.prepare(
+    `SELECT a.id, t.sprint FROM task_attachments a
+     JOIN tasks t ON t.id = a.task_id WHERE a.id = ?`,
+  )
+    .bind(id)
+    .first<{ id: string; sprint: number }>();
+  if (att) {
+    const locked = await rejectIfSprintLocked(env, Number(att.sprint));
+    if (locked) return locked;
+  }
+  await env.DB.prepare(`DELETE FROM task_attachments WHERE id = ?`).bind(id).run();
+  await appendAudit(env.DB, "task_attachment_delete", actor.email, id);
+  return json({ ok: true });
+}
+
+export async function handleTaskAttachments(
+  env: Env,
+  request: Request,
+  actor: DbUser,
+): Promise<Response> {
+  const method = request.method.toUpperCase();
+  if (method === "GET") {
+    const id = (new URL(request.url).searchParams.get("id") || "").trim();
+    if (!id) return error("id is required.");
+    return getTaskAttachmentContent(env, id);
+  }
+  if (method === "POST") return uploadTaskAttachment(env, request, actor);
+  if (method === "DELETE") return deleteTaskAttachmentRow(env, request, actor);
+  return error("Method not allowed.", 405);
+}
+
+export async function uploadPlanAttachment(
+  env: Env,
+  request: Request,
+  actor: DbUser,
+): Promise<Response> {
+  await ensureAgilePlanTables(env);
+  await ensureAttachmentContentColumns(env);
+  let body: {
+    planItemId?: string;
+    id?: string;
+    name?: string;
+    mimeType?: string;
+    contentBase64?: string;
+    addedAt?: string;
+  };
+  try {
+    body = await request.json();
+  } catch {
+    return error("Invalid JSON body.");
+  }
+  const planItemId = String(body.planItemId || "").trim();
+  const name = String(body.name || "").trim();
+  const mimeType = String(body.mimeType || "application/octet-stream").trim();
+  const contentBase64 = String(body.contentBase64 || "").trim();
+  if (!planItemId || !name || !contentBase64) {
+    return error("planItemId, name, and contentBase64 are required.");
+  }
+  const item = await env.DB.prepare(`SELECT id, sprint FROM plan_items WHERE id = ?`)
+    .bind(planItemId)
+    .first<{ id: string; sprint: number }>();
+  if (!item) return error("Plan item not found.", 404);
+  const planLocked = await rejectIfSprintLocked(env, Number(item.sprint));
+  if (planLocked) return planLocked;
+
+  const validated = validateTaskAttachmentContent({ name, mimeType, contentBase64 });
+  if (!validated.ok) return error(validated.error, 400);
+
+  const id = String(body.id || "").trim() || crypto.randomUUID();
+  const addedAt = String(body.addedAt || "").trim() || todayMMDDYY();
+  const existing = await env.DB.prepare(`SELECT id FROM plan_item_attachments WHERE id = ?`)
+    .bind(id)
+    .first<{ id: string }>();
+  if (existing) {
+    await env.DB.prepare(
+      `UPDATE plan_item_attachments
+       SET plan_item_id = ?, name = ?, mime_type = ?, size = ?, stored_id = ?, content_base64 = ?, added_at = ?
+       WHERE id = ?`,
+    )
+      .bind(planItemId, name, validated.mime, validated.size, id, validated.cleaned, addedAt, id)
+      .run();
+  } else {
+    await env.DB.prepare(
+      `INSERT INTO plan_item_attachments
+         (id, plan_item_id, name, mime_type, size, stored_id, r2_key, added_at, content_base64)
+       VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
+    )
+      .bind(id, planItemId, name, validated.mime, validated.size, id, addedAt, validated.cleaned)
+      .run();
+  }
+  await appendAudit(env.DB, "plan_attachment_upload", actor.email, `${planItemId}:${id}`);
+  return json({
+    ok: true,
+    attachment: {
+      id,
+      name,
+      mimeType: validated.mime,
+      size: validated.size,
+      storedId: id,
+      r2Key: null,
+      addedAt,
+      hasContent: true,
+    },
+  });
+}
+
+export async function getPlanAttachmentContent(env: Env, id: string): Promise<Response> {
+  await ensureAgilePlanTables(env);
+  await ensureAttachmentContentColumns(env);
+  const row = await env.DB.prepare(
+    `SELECT id, name, mime_type, content_base64 FROM plan_item_attachments WHERE id = ?`,
+  )
+    .bind(id)
+    .first<{
+      id: string;
+      name: string;
+      mime_type: string;
+      content_base64: string | null;
+    }>();
+  if (!row) return error("Attachment not found.", 404);
+  if (!row.content_base64) {
+    return error(
+      "File bytes were never stored on the server (legacy IndexedDB-only upload). Please re-upload the file.",
+      404,
+    );
+  }
+  return json({
+    id: row.id,
+    name: row.name,
+    mimeType: row.mime_type,
+    contentBase64: row.content_base64,
+  });
+}
+
+export async function deletePlanAttachmentRow(
+  env: Env,
+  request: Request,
+  actor: DbUser,
+): Promise<Response> {
+  await ensureAgilePlanTables(env);
+  let body: { id?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return error("Invalid JSON body.");
+  }
+  const id = String(body.id || "").trim();
+  if (!id) return error("id is required.");
+  const att = await env.DB.prepare(
+    `SELECT a.id, p.sprint FROM plan_item_attachments a
+     JOIN plan_items p ON p.id = a.plan_item_id WHERE a.id = ?`,
+  )
+    .bind(id)
+    .first<{ id: string; sprint: number }>();
+  if (att) {
+    const locked = await rejectIfSprintLocked(env, Number(att.sprint));
+    if (locked) return locked;
+  }
+  await env.DB.prepare(`DELETE FROM plan_item_attachments WHERE id = ?`).bind(id).run();
+  await appendAudit(env.DB, "plan_attachment_delete", actor.email, id);
+  return json({ ok: true });
+}
+
+export async function handlePlanAttachments(
+  env: Env,
+  request: Request,
+  actor: DbUser,
+): Promise<Response> {
+  const method = request.method.toUpperCase();
+  if (method === "GET") {
+    const id = (new URL(request.url).searchParams.get("id") || "").trim();
+    if (!id) return error("id is required.");
+    return getPlanAttachmentContent(env, id);
+  }
+  if (method === "POST") return uploadPlanAttachment(env, request, actor);
+  if (method === "DELETE") return deletePlanAttachmentRow(env, request, actor);
+  return error("Method not allowed.", 405);
 }
 
 /** Ensure test_case_status columns exist (handles Pages env / partial migration drift). */
@@ -457,6 +1001,104 @@ async function ensureTestCaseStatusColumns(env: Env): Promise<void> {
     "sprint",
     `ALTER TABLE test_case_status ADD COLUMN sprint INTEGER NOT NULL DEFAULT 0`,
   );
+  await addColumnIfMissing(
+    env,
+    "test_case_status",
+    "due_date",
+    `ALTER TABLE test_case_status ADD COLUMN due_date TEXT NOT NULL DEFAULT ''`,
+  );
+  await addColumnIfMissing(
+    env,
+    "test_case_status",
+    "checked_steps_json",
+    `ALTER TABLE test_case_status ADD COLUMN checked_steps_json TEXT NOT NULL DEFAULT '[]'`,
+  );
+  await addColumnIfMissing(
+    env,
+    "test_case_status",
+    "failed_step_index",
+    `ALTER TABLE test_case_status ADD COLUMN failed_step_index INTEGER`,
+  );
+  await addColumnIfMissing(
+    env,
+    "test_case_status",
+    "assigned_by",
+    `ALTER TABLE test_case_status ADD COLUMN assigned_by TEXT NOT NULL DEFAULT '${SYSTEM_ASSIGNED_BY}'`,
+  );
+  await addColumnIfMissing(
+    env,
+    "test_case_status",
+    "date_assigned",
+    `ALTER TABLE test_case_status ADD COLUMN date_assigned TEXT NOT NULL DEFAULT ''`,
+  );
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS test_case_attachments (
+      id TEXT PRIMARY KEY,
+      case_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      mime_type TEXT NOT NULL,
+      size INTEGER NOT NULL DEFAULT 0,
+      content_base64 TEXT NOT NULL,
+      scan_status TEXT NOT NULL DEFAULT 'clean',
+      scan_detail TEXT NOT NULL DEFAULT '',
+      added_at TEXT NOT NULL,
+      added_by TEXT NOT NULL DEFAULT ''
+    )`,
+  ).run();
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS test_case_status_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      case_id TEXT NOT NULL,
+      status TEXT NOT NULL,
+      note TEXT NOT NULL DEFAULT '',
+      assignee TEXT NOT NULL DEFAULT '',
+      sprint INTEGER NOT NULL DEFAULT 0,
+      due_date TEXT NOT NULL DEFAULT '',
+      checked_steps_json TEXT NOT NULL DEFAULT '[]',
+      failed_step_index INTEGER,
+      changed_at TEXT NOT NULL,
+      changed_by TEXT NOT NULL DEFAULT '',
+      reason TEXT NOT NULL DEFAULT 'upsert'
+    )`,
+  ).run();
+  try {
+    await env.DB.prepare(
+      `CREATE INDEX IF NOT EXISTS idx_test_case_status_history_case
+       ON test_case_status_history(case_id, changed_at DESC)`,
+    ).run();
+  } catch {
+    /* index may already exist */
+  }
+}
+
+function parseCheckedSteps(raw: unknown, stepCount: number): boolean[] {
+  const n = Math.max(0, stepCount);
+  const empty = () => Array.from({ length: n }, () => false);
+  if (n === 0) return [];
+  if (Array.isArray(raw)) {
+    if (raw.every((v) => typeof v === "boolean")) {
+      const arr = raw as boolean[];
+      if (arr.length === n) return arr;
+      return Array.from({ length: n }, (_, i) => Boolean(arr[i]));
+    }
+    if (raw.every((v) => typeof v === "number")) {
+      const set = new Set(raw as number[]);
+      return Array.from({ length: n }, (_, i) => set.has(i));
+    }
+  }
+  if (typeof raw === "string" && raw.trim()) {
+    try {
+      return parseCheckedSteps(JSON.parse(raw), n);
+    } catch {
+      return empty();
+    }
+  }
+  return empty();
+}
+
+function allStepsChecked(checked: boolean[], stepCount: number): boolean {
+  if (stepCount <= 0) return true;
+  return checked.length >= stepCount && checked.slice(0, stepCount).every(Boolean);
 }
 
 async function listGeneratedTestCases(env: Env): Promise<
@@ -544,68 +1186,144 @@ export async function listTestStatuses(env: Env): Promise<Response> {
   try {
     await ensureTestCaseStatusColumns(env);
     const { results } = await env.DB.prepare(
-      `SELECT case_id, status, note, assignee, sprint FROM test_case_status`,
-    ).all<{ case_id: string; status: string; note: string; assignee: string; sprint: number }>();
+      `SELECT case_id, status, note, assignee, sprint, due_date, checked_steps_json, failed_step_index,
+              assigned_by, date_assigned, updated_at, updated_by
+       FROM test_case_status`,
+    ).all<{
+      case_id: string;
+      status: string;
+      note: string;
+      assignee: string;
+      sprint: number;
+      due_date: string | null;
+      checked_steps_json: string | null;
+      failed_step_index: number | null;
+      assigned_by: string | null;
+      date_assigned: string | null;
+      updated_at: string | null;
+      updated_by: string | null;
+    }>();
     const statuses: Record<string, string> = {};
     const notes: Record<string, string> = {};
     const assignees: Record<string, string> = {};
     const sprints: Record<string, number> = {};
+    const dueDates: Record<string, string> = {};
+    const checkedSteps: Record<string, boolean[]> = {};
+    const failedStepIndex: Record<string, number | null> = {};
+    const assignedBy: Record<string, string> = {};
+    const dateAssigned: Record<string, string> = {};
+    const updatedAt: Record<string, string> = {};
+    const updatedBy: Record<string, string> = {};
+    const validStatuses = new Set(["not_run", "in_progress", "pass", "fail", "blocked"]);
     for (const row of results ?? []) {
-      statuses[row.case_id] = row.status;
+      statuses[row.case_id] = validStatuses.has(row.status) ? row.status : "not_run";
       if (row.note) notes[row.case_id] = row.note;
       if (row.assignee) assignees[row.case_id] = row.assignee;
-      sprints[row.case_id] = typeof row.sprint === "number" ? row.sprint : 0;
+      // D1 may return INTEGER as number or string — preserve Backlog (-1) and Sprint 0.
+      const sprintNum = Number(row.sprint);
+      sprints[row.case_id] = Number.isFinite(sprintNum) ? sprintNum : 0;
+      if (row.due_date) dueDates[row.case_id] = row.due_date;
+      try {
+        const parsed = JSON.parse(row.checked_steps_json || "[]");
+        if (Array.isArray(parsed)) checkedSteps[row.case_id] = parsed.map(Boolean);
+      } catch {
+        /* ignore */
+      }
+      failedStepIndex[row.case_id] =
+        typeof row.failed_step_index === "number" ? row.failed_step_index : null;
+      assignedBy[row.case_id] = (row.assigned_by || "").trim() || SYSTEM_ASSIGNED_BY;
+      if (row.date_assigned) dateAssigned[row.case_id] = row.date_assigned;
+      if (row.updated_at) updatedAt[row.case_id] = row.updated_at;
+      if (row.updated_by) updatedBy[row.case_id] = row.updated_by;
     }
+
+    const { results: attRows } = await env.DB.prepare(
+      `SELECT id, case_id, name, mime_type, size, scan_status, scan_detail, added_at, added_by
+       FROM test_case_attachments ORDER BY added_at DESC`,
+    ).all<{
+      id: string;
+      case_id: string;
+      name: string;
+      mime_type: string;
+      size: number;
+      scan_status: string;
+      scan_detail: string;
+      added_at: string;
+      added_by: string;
+    }>();
+    const attachments: Record<
+      string,
+      Array<{
+        id: string;
+        name: string;
+        mimeType: string;
+        size: number;
+        scanStatus: string;
+        scanDetail: string;
+        addedAt: string;
+        addedBy: string;
+      }>
+    > = {};
+    for (const a of attRows ?? []) {
+      if (!attachments[a.case_id]) attachments[a.case_id] = [];
+      attachments[a.case_id].push({
+        id: a.id,
+        name: a.name,
+        mimeType: a.mime_type,
+        size: a.size,
+        scanStatus: a.scan_status,
+        scanDetail: a.scan_detail,
+        addedAt: a.added_at,
+        addedBy: a.added_by,
+      });
+    }
+
     const generatedCases = await listGeneratedTestCases(env);
-    return json({ statuses, notes, assignees, sprints, generatedCases });
+    return json({
+      statuses,
+      notes,
+      assignees,
+      sprints,
+      dueDates,
+      checkedSteps,
+      failedStepIndex,
+      assignedBy,
+      dateAssigned,
+      updatedAt,
+      updatedBy,
+      attachments,
+      generatedCases,
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     if (isSchemaDriftError(msg)) {
-      try {
-        await ensureTestCaseStatusColumns(env);
-        const { results } = await env.DB.prepare(
-          `SELECT case_id, status, note, assignee, sprint FROM test_case_status`,
-        ).all<{ case_id: string; status: string; note: string; assignee: string; sprint: number }>();
-        const statuses: Record<string, string> = {};
-        const notes: Record<string, string> = {};
-        const assignees: Record<string, string> = {};
-        const sprints: Record<string, number> = {};
-        for (const row of results ?? []) {
-          statuses[row.case_id] = row.status;
-          if (row.note) notes[row.case_id] = row.note;
-          if (row.assignee) assignees[row.case_id] = row.assignee;
-          sprints[row.case_id] = typeof row.sprint === "number" ? row.sprint : 0;
-        }
-        return json({ statuses, notes, assignees, sprints });
-      } catch {
-        /* fall through to legacy */
-      }
-      const { results } = await env.DB.prepare(
-        `SELECT case_id, status FROM test_case_status`,
-      ).all<{ case_id: string; status: string }>();
-      const statuses: Record<string, string> = {};
-      for (const row of results ?? []) statuses[row.case_id] = row.status;
-      return json({ statuses, notes: {}, assignees: {}, sprints: {} });
+      await ensureTestCaseStatusColumns(env);
+      return listTestStatuses(env);
     }
     throw e;
   }
 }
 
 export async function setTestStatus(env: Env, request: Request, actor: DbUser): Promise<Response> {
-  let body: {
+  // Admin Studio actors (admin / QA / Dev) may change status; Blocked is Evelyn-only.
+  if (!canChangeTestStatus(userRoles(actor))) {
+    return error("QA or Admin access is required to change test status.", 403);
+  }
+
+  type Item = {
     caseId?: string;
     status?: string;
     note?: string;
     assignee?: string;
     sprint?: number;
-    items?: Array<{
-      caseId?: string;
-      status?: string;
-      note?: string;
-      assignee?: string;
-      sprint?: number;
-    }>;
+    dueDate?: string;
+    assignedBy?: string;
+    dateAssigned?: string;
+    checkedSteps?: boolean[] | number[];
+    failedStepIndex?: number | null;
+    stepCount?: number;
   };
+  let body: Item & { items?: Item[] };
   try {
     body = await request.json();
   } catch {
@@ -624,63 +1342,274 @@ export async function setTestStatus(env: Env, request: Request, actor: DbUser): 
             note: body.note,
             assignee: body.assignee,
             sprint: body.sprint,
+            dueDate: body.dueDate,
+            assignedBy: body.assignedBy,
+            dateAssigned: body.dateAssigned,
+            checkedSteps: body.checkedSteps,
+            failedStepIndex: body.failedStepIndex,
+            stepCount: body.stepCount,
           },
         ]
       : [];
 
   if (items.length === 0) return error("caseId and status required (or items[]).");
 
-  const upsertSql = `INSERT INTO test_case_status (case_id, status, note, assignee, sprint, updated_at, updated_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?)
+  const closedSprints = new Set(await listClosedSprintIndexes(env));
+
+  // Load existing rows so omitted fields (and concurrent partial updates) do not wipe data.
+  const caseIds = [
+    ...new Set(items.map((raw) => String(raw.caseId || "")).filter(Boolean)),
+  ];
+  type ExistingRow = {
+    case_id: string;
+    status: string;
+    note: string;
+    assignee: string;
+    sprint: number | string | null;
+    due_date: string | null;
+    checked_steps_json: string | null;
+    failed_step_index: number | null;
+    assigned_by: string | null;
+    date_assigned: string | null;
+  };
+  const existingByCase: Record<string, ExistingRow> = {};
+  if (caseIds.length > 0) {
+    const CHUNK = 80;
+    for (let i = 0; i < caseIds.length; i += CHUNK) {
+      const slice = caseIds.slice(i, i + CHUNK);
+      const placeholders = slice.map(() => "?").join(",");
+      const { results } = await env.DB.prepare(
+        `SELECT case_id, status, note, assignee, sprint, due_date, checked_steps_json, failed_step_index,
+                assigned_by, date_assigned
+         FROM test_case_status WHERE case_id IN (${placeholders})`,
+      )
+        .bind(...slice)
+        .all<ExistingRow>();
+      for (const row of results ?? []) existingByCase[row.case_id] = row;
+    }
+  }
+
+  const upsertSql = `INSERT INTO test_case_status
+         (case_id, status, note, assignee, sprint, due_date, checked_steps_json, failed_step_index,
+          assigned_by, date_assigned, updated_at, updated_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(case_id) DO UPDATE SET
            status = excluded.status,
            note = excluded.note,
            assignee = excluded.assignee,
            sprint = excluded.sprint,
+           due_date = excluded.due_date,
+           checked_steps_json = excluded.checked_steps_json,
+           failed_step_index = excluded.failed_step_index,
+           assigned_by = excluded.assigned_by,
+           date_assigned = excluded.date_assigned,
            updated_at = excluded.updated_at,
            updated_by = excluded.updated_by`;
 
   const now = new Date().toISOString();
-  const statements = [];
+  const assignedToday = todayMMDDYY();
+  const statements: D1PreparedStatement[] = [];
+  const historySql = `INSERT INTO test_case_status_history
+    (case_id, status, note, assignee, sprint, due_date, checked_steps_json, failed_step_index, changed_at, changed_by, reason)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
   for (const raw of items) {
     const caseId = String(raw.caseId || "");
-    const status = String(raw.status || "");
-    const note = String(raw.note ?? "").trim();
-    let assignee = String(raw.assignee ?? "").trim();
-    const sprint = Number(raw.sprint ?? 0);
+    const prev = existingByCase[caseId];
+    const isNewRow = !prev;
+    const prevSprintNum = Number(prev?.sprint);
+    const prevSprint = Number.isFinite(prevSprintNum) ? prevSprintNum : BACKLOG_SPRINT;
+
+    const status = String(raw.status ?? prev?.status ?? "");
+    const note =
+      raw.note !== undefined ? String(raw.note ?? "").trim() : String(prev?.note ?? "").trim();
+    let assignee =
+      raw.assignee !== undefined
+        ? String(raw.assignee ?? "").trim()
+        : String(prev?.assignee ?? "").trim();
+
+    let sprint = prevSprint;
+    if (raw.sprint !== undefined && raw.sprint !== null) {
+      const nextSprint = Number(raw.sprint);
+      if (Number.isFinite(nextSprint)) sprint = nextSprint;
+    }
+
+    let dueDate =
+      raw.dueDate !== undefined
+        ? String(raw.dueDate ?? "").trim()
+        : String(prev?.due_date ?? "").trim();
+
+    // New generated failures (and brand-new rows with no sprint) get create defaults:
+    // general → Backlog + Unassigned; Kevina/Kids/Youth → Tina + current/next sprint + due+1.
+    let createDefaultsAssignee = "";
+    if (isNewRow && (isGeneratedFailureCaseId(caseId) || raw.sprint === undefined || raw.sprint === null)) {
+      const defaults = defaultsForNewTest({
+        id: caseId,
+        title: note.slice(0, 180),
+        tags: note,
+      });
+      sprint = defaults.sprint;
+      createDefaultsAssignee = defaults.assignee;
+      if (raw.assignee === undefined) assignee = defaults.assignee;
+      if (raw.dueDate === undefined) dueDate = defaults.dueDate;
+    }
+
+    const stepCount = Math.max(0, Number(raw.stepCount ?? 0) || 0);
+    let checked: boolean[];
+    if (raw.checkedSteps !== undefined) {
+      checked = parseCheckedSteps(raw.checkedSteps, stepCount);
+    } else if (prev?.checked_steps_json) {
+      try {
+        const parsed = JSON.parse(prev.checked_steps_json);
+        checked = Array.isArray(parsed) ? parsed.map(Boolean) : parseCheckedSteps([], stepCount);
+      } catch {
+        checked = parseCheckedSteps([], stepCount);
+      }
+    } else {
+      checked = parseCheckedSteps([], stepCount);
+    }
+
+    let failedIdx: number | null;
+    if (raw.failedStepIndex !== undefined) {
+      failedIdx =
+        raw.failedStepIndex === null || raw.failedStepIndex === undefined
+          ? null
+          : Number(raw.failedStepIndex);
+    } else {
+      failedIdx =
+        typeof prev?.failed_step_index === "number" ? prev.failed_step_index : null;
+    }
+
     if (!caseId || !status) return error("Each item needs caseId and status.");
     if (!["not_run", "in_progress", "pass", "fail", "blocked"].includes(status)) {
       return error(`Invalid status for ${caseId}.`);
+    }
+
+    const prevStatus = String(prev?.status ?? "");
+    if (status === "blocked" && prevStatus !== "blocked" && !canSetTestBlocked(actor)) {
+      return error("Only Evelyn may set a test to Blocked.", 403);
     }
     if ((status === "fail" || status === "blocked") && note.length < 8) {
       return error(
         `A note is required for ${status} on ${caseId}. Describe what failed or what is blocking (at least a short sentence).`,
       );
     }
-    // Failed tests always go to Evelyn (Dev) for fix.
-    if (status === "fail") assignee = FAILED_TEST_ASSIGNEE;
-
-    if (status === "not_run" && !assignee && !note && !(sprint > 0)) {
-      // Never wipe a completed/in-progress row via accidental empty PUT (e.g. notes blur race).
-      // Also keep rows that only store a sprint assignment (common for Lyriq's large wizard matrix).
-      const existing = await env.DB.prepare(`SELECT status FROM test_case_status WHERE case_id = ?`)
-        .bind(caseId)
-        .first<{ status: string }>();
-      if (existing && existing.status !== "not_run") {
-        continue;
-      }
-      statements.push(env.DB.prepare(`DELETE FROM test_case_status WHERE case_id = ?`).bind(caseId));
-    } else {
-      statements.push(
-        env.DB.prepare(upsertSql).bind(caseId, status, note, assignee, Number.isFinite(sprint) ? sprint : 0, now, actor.email),
+    if (status === "pass" && stepCount > 0 && !allStepsChecked(checked, stepCount)) {
+      return error(
+        `All ${stepCount} steps must be checked before marking ${caseId} as Pass.`,
       );
     }
+    if (status === "fail") {
+      if (
+        stepCount > 0 &&
+        (failedIdx === null ||
+          !Number.isInteger(failedIdx) ||
+          failedIdx < 0 ||
+          failedIdx >= stepCount)
+      ) {
+        return error(`Select which step failed before marking ${caseId} as Fail.`);
+      }
+      // Kids/Youth new failures keep Tina; otherwise fails auto-assign to Evelyn.
+      assignee = createDefaultsAssignee === "tina" ? "tina" : FAILED_TEST_ASSIGNEE;
+    } else {
+      failedIdx = null;
+    }
+
+    // Backlog tests have no person assignment (empty assignee). Fail auto-owner still cleared here.
+    if (isBacklogSprint(sprint)) {
+      assignee = "";
+    }
+
+    const checkedJson = JSON.stringify(checked);
+
+    // Closed sprint lock — after field normalization, reject material changes on locked sprints.
+    const prevNote = String(prev?.note ?? "").trim();
+    const prevAssigneeVal = String(prev?.assignee ?? "").trim();
+    const prevDue = String(prev?.due_date ?? "").trim();
+    const prevChecked = String(prev?.checked_steps_json ?? "[]");
+    const prevFailed =
+      typeof prev?.failed_step_index === "number" ? prev.failed_step_index : null;
+    const materialChange =
+      isNewRow ||
+      status !== prevStatus ||
+      note !== prevNote ||
+      assignee !== prevAssigneeVal ||
+      sprint !== prevSprint ||
+      dueDate !== prevDue ||
+      checkedJson !== prevChecked ||
+      failedIdx !== prevFailed;
+    if (!isNewRow && closedSprints.has(prevSprint)) {
+      if (materialChange) {
+        return error(`${SPRINT_LOCKED_MESSAGE} (${sprintLabel(prevSprint)})`, 403);
+      }
+      continue; // no-op on locked sprint
+    }
+    if (closedSprints.has(sprint) && materialChange) {
+      return error(`${SPRINT_LOCKED_MESSAGE} (${sprintLabel(sprint)})`, 403);
+    }
+
+    // Always upsert — never auto-delete. Deleting not_run rows wiped Backlog/Sprint 0
+    // assignments (sprint <= 0 was treated as "empty") and dropped concurrent tester work.
+    const who = actorLabel(actor);
+    const prevAssignee = String(prev?.assignee ?? "").trim();
+    const { assignedBy, dateAssigned } = resolveTestAssignedMeta({
+      prevAssignee,
+      nextAssignee: assignee,
+      isNewRow,
+      prevAssignedBy: String(prev?.assigned_by ?? "").trim(),
+      prevDateAssigned: String(prev?.date_assigned ?? "").trim(),
+      actorLabel: who,
+      today: assignedToday,
+      ...(raw.assignedBy !== undefined ? { explicitAssignedBy: String(raw.assignedBy ?? "") } : {}),
+      ...(raw.dateAssigned !== undefined
+        ? { explicitDateAssigned: String(raw.dateAssigned ?? "") }
+        : {}),
+    });
+
+    if (prevAssignee !== assignee) {
+      await logTestAssignmentChange(env, {
+        caseId,
+        fromAssignee: prevAssignee,
+        toAssignee: assignee,
+        changedBy: who,
+      });
+    }
+
+    statements.push(
+      env.DB.prepare(upsertSql).bind(
+        caseId,
+        status,
+        note,
+        assignee,
+        sprint,
+        dueDate,
+        checkedJson,
+        failedIdx,
+        assignedBy,
+        dateAssigned,
+        now,
+        who,
+      ),
+    );
+    statements.push(
+      env.DB.prepare(historySql).bind(
+        caseId,
+        status,
+        note,
+        assignee,
+        sprint,
+        dueDate,
+        checkedJson,
+        failedIdx,
+        now,
+        who,
+        "upsert",
+      ),
+    );
   }
 
   if (statements.length > 0) {
     try {
-      // D1 batch max is typically 100–1000; chunk to stay safe.
       const CHUNK = 50;
       for (let i = 0; i < statements.length; i += CHUNK) {
         await env.DB.batch(statements.slice(i, i + CHUNK));
@@ -701,9 +1630,198 @@ export async function setTestStatus(env: Env, request: Request, actor: DbUser): 
   return listTestStatuses(env);
 }
 
-export async function resetTestStatuses(env: Env): Promise<Response> {
+export async function listTestAttachments(
+  env: Env,
+  request: Request,
+): Promise<Response> {
+  await ensureTestCaseStatusColumns(env);
+  const url = new URL(request.url);
+  const caseId = (url.searchParams.get("caseId") || "").trim();
+  const id = (url.searchParams.get("id") || "").trim();
+  const includeContent = url.searchParams.get("content") === "1";
+  if (!caseId && !id) return error("caseId or id is required.");
+
+  if (id) {
+    return getTestAttachmentContent(env, id);
+  }
+
+  const { results } = await env.DB.prepare(
+    includeContent
+      ? `SELECT id, case_id, name, mime_type, size, content_base64, scan_status, scan_detail, added_at, added_by
+         FROM test_case_attachments WHERE case_id = ? ORDER BY added_at DESC`
+      : `SELECT id, case_id, name, mime_type, size, scan_status, scan_detail, added_at, added_by
+         FROM test_case_attachments WHERE case_id = ? ORDER BY added_at DESC`,
+  )
+    .bind(caseId)
+    .all<Record<string, unknown>>();
+
+  return json({
+    attachments: (results ?? []).map((a) => ({
+      id: a.id,
+      caseId: a.case_id,
+      name: a.name,
+      mimeType: a.mime_type,
+      size: a.size,
+      scanStatus: a.scan_status,
+      scanDetail: a.scan_detail,
+      addedAt: a.added_at,
+      addedBy: a.added_by,
+      ...(includeContent && typeof a.content_base64 === "string"
+        ? { contentBase64: a.content_base64 }
+        : {}),
+    })),
+  });
+}
+
+export async function uploadTestAttachment(
+  env: Env,
+  request: Request,
+  actor: DbUser,
+): Promise<Response> {
+  await ensureTestCaseStatusColumns(env);
+  let body: { caseId?: string; name?: string; mimeType?: string; contentBase64?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return error("Invalid JSON body.");
+  }
+  const caseId = String(body.caseId || "").trim();
+  const name = String(body.name || "").trim();
+  const mimeType = String(body.mimeType || "").trim();
+  const contentBase64 = String(body.contentBase64 || "").trim();
+  if (!caseId || !name || !contentBase64) {
+    return error("caseId, name, and contentBase64 are required.");
+  }
+
+  const testRow = await env.DB.prepare(
+    `SELECT sprint FROM test_case_status WHERE case_id = ?`,
+  )
+    .bind(caseId)
+    .first<{ sprint: number }>();
+  if (testRow) {
+    const locked = await rejectIfSprintLocked(env, Number(testRow.sprint));
+    if (locked) return locked;
+  }
+
+  const scan = scanTestEvidence({ name, mimeType, contentBase64 });
+  if (!scan.ok) {
+    return error(scan.error, 400);
+  }
+
+  const cleaned = contentBase64.replace(/^data:[^;]+;base64,/, "").replace(/\s+/g, "");
+  const size = Math.floor((cleaned.length * 3) / 4);
+  const id = crypto.randomUUID();
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    `INSERT INTO test_case_attachments
+     (id, case_id, name, mime_type, size, content_base64, scan_status, scan_detail, added_at, added_by)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  )
+    .bind(id, caseId, name, scan.mime, size, cleaned, scan.scanStatus, scan.scanDetail, now, actor.email)
+    .run();
+
+  return json({
+    ok: true,
+    attachment: {
+      id,
+      caseId,
+      name,
+      mimeType: scan.mime,
+      size,
+      scanStatus: scan.scanStatus,
+      scanDetail: scan.scanDetail,
+      addedAt: now,
+      addedBy: actor.email,
+    },
+  });
+}
+
+export async function deleteTestAttachment(
+  env: Env,
+  request: Request,
+  actor: DbUser,
+): Promise<Response> {
+  await ensureTestCaseStatusColumns(env);
+  let body: { id?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return error("Invalid JSON body.");
+  }
+  const id = String(body.id || "").trim();
+  if (!id) return error("id is required.");
+  const att = await env.DB.prepare(
+    `SELECT a.id, s.sprint FROM test_case_attachments a
+     LEFT JOIN test_case_status s ON s.case_id = a.case_id
+     WHERE a.id = ?`,
+  )
+    .bind(id)
+    .first<{ id: string; sprint: number | null }>();
+  if (att && att.sprint !== null && att.sprint !== undefined) {
+    const locked = await rejectIfSprintLocked(env, Number(att.sprint));
+    if (locked) return locked;
+  }
+  await env.DB.prepare(`DELETE FROM test_case_attachments WHERE id = ?`).bind(id).run();
+  await appendAudit(env.DB, "test_attachment_delete", actor.email, id);
+  return json({ ok: true });
+}
+
+export async function getTestAttachmentContent(
+  env: Env,
+  id: string,
+): Promise<Response> {
+  await ensureTestCaseStatusColumns(env);
+  const row = await env.DB.prepare(
+    `SELECT id, name, mime_type, content_base64, scan_status FROM test_case_attachments WHERE id = ?`,
+  )
+    .bind(id)
+    .first<{
+      id: string;
+      name: string;
+      mime_type: string;
+      content_base64: string;
+      scan_status: string;
+    }>();
+  if (!row) return error("Attachment not found.", 404);
+  if (row.scan_status !== "clean") return error("Attachment failed safety scan.", 403);
+  return json({
+    id: row.id,
+    name: row.name,
+    mimeType: row.mime_type,
+    contentBase64: row.content_base64,
+  });
+}
+
+export async function resetTestStatuses(env: Env, request: Request): Promise<Response> {
+  await ensureTestCaseStatusColumns(env);
+  let body: { confirmReset?: string } = {};
+  try {
+    body = await request.json();
+  } catch {
+    /* empty body */
+  }
+  // Hard gate — accidental "Reset statuses" must never wipe live QA results.
+  if (body.confirmReset !== "DELETE_ALL_TEST_RESULTS") {
+    return error(
+      'Refusing to wipe test results. To confirm, send confirmReset: "DELETE_ALL_TEST_RESULTS".',
+      400,
+    );
+  }
+
+  const now = new Date().toISOString();
+  // Snapshot every row into history before delete so results can be restored.
+  await env.DB.prepare(
+    `INSERT INTO test_case_status_history
+      (case_id, status, note, assignee, sprint, due_date, checked_steps_json, failed_step_index, changed_at, changed_by, reason)
+     SELECT case_id, status, note, assignee, sprint, COALESCE(due_date,''), COALESCE(checked_steps_json,'[]'),
+            failed_step_index, ?, 'system', 'pre_reset_snapshot'
+     FROM test_case_status`,
+  )
+    .bind(now)
+    .run();
+
   await env.DB.prepare(`DELETE FROM test_case_status`).run();
-  return json({ statuses: {} });
+  return json({ statuses: {}, reset: true, snapshottedAt: now });
 }
 
 export async function listContent(env: Env): Promise<Response> {
@@ -1646,6 +2764,7 @@ async function ensureAgilePlanTables(env: Env): Promise<void> {
   if (!names.has("done_evelyn")) {
     await env.DB.prepare(`ALTER TABLE plan_items ADD COLUMN done_evelyn INTEGER NOT NULL DEFAULT 0`).run();
   }
+  await ensureAttachmentContentColumns(env);
 }
 
 export async function listAgilePlan(env: Env): Promise<Response> {
@@ -1684,7 +2803,7 @@ export async function listAgilePlan(env: Env): Promise<Response> {
     }>();
 
     const attachmentRes = await env.DB.prepare(
-      `SELECT id, plan_item_id, name, mime_type, size, stored_id, r2_key, added_at
+      `SELECT id, plan_item_id, name, mime_type, size, stored_id, r2_key, added_at, content_base64
        FROM plan_item_attachments ORDER BY added_at ASC, id ASC`,
     ).all<PlanAttachmentRow>();
     const attachments = attachmentRes.results ?? [];
@@ -1711,6 +2830,7 @@ export async function listAgilePlan(env: Env): Promise<Response> {
           storedId: a.stored_id,
           r2Key: a.r2_key,
           addedAt: a.added_at,
+          hasContent: Boolean(a.content_base64 && String(a.content_base64).length > 0),
         })),
     }));
 
@@ -1746,6 +2866,122 @@ export async function saveAgilePlan(env: Env, request: Request): Promise<Respons
   const now = new Date().toISOString();
   try {
     await ensureAgilePlanTables(env);
+    const closedSprints = new Set(await listClosedSprintIndexes(env));
+
+    const priorItemsRes = await env.DB.prepare(
+      `SELECT id, title, notes, owner, kind, sprint, status, date, date_label, done_tina, done_evelyn
+       FROM plan_items`,
+    ).all<{
+      id: string;
+      title: string;
+      notes: string;
+      owner: string;
+      kind: string;
+      sprint: number;
+      status: string;
+      date: string;
+      date_label: string;
+      done_tina: number;
+      done_evelyn: number;
+    }>();
+    const priorItems = new Map((priorItemsRes.results ?? []).map((r) => [r.id, r]));
+    const priorRetroRes = await env.DB.prepare(
+      `SELECT id, sprint, column_key, text, owner FROM retro_cards`,
+    ).all<{
+      id: string;
+      sprint: number;
+      column_key: string;
+      text: string;
+      owner: string;
+    }>();
+    const priorRetro = new Map((priorRetroRes.results ?? []).map((r) => [r.id, r]));
+
+    const incomingItems = body.items as Array<Record<string, unknown>>;
+    const incomingRetro = body.retro as Array<Record<string, unknown>>;
+    const incomingItemIds = new Set(
+      incomingItems.map((r) => String(r.id || "")).filter(Boolean),
+    );
+    const incomingRetroIds = new Set(
+      incomingRetro.map((r) => String(r.id || "")).filter(Boolean),
+    );
+
+    for (const prev of priorItems.values()) {
+      const prevSprint = Number(prev.sprint);
+      if (!closedSprints.has(prevSprint)) continue;
+      if (!incomingItemIds.has(prev.id)) {
+        return error(`${SPRINT_LOCKED_MESSAGE} (${sprintLabel(prevSprint)})`, 403);
+      }
+    }
+    for (const raw of incomingItems) {
+      const id = String(raw.id || "");
+      const sprint = Number(raw.sprint ?? -1);
+      const prev = id ? priorItems.get(id) : undefined;
+      const title = String(raw.title || "");
+      const notes = String(raw.notes || "");
+      const owner = isBacklogSprint(sprint)
+        ? UNASSIGNED_OWNER
+        : String(raw.owner || "Both");
+      const kind = String(raw.kind || "rollout");
+      const status = String(raw.status || "todo");
+      const date = String(raw.date || "");
+      const dateLabel = String(raw.dateLabel || raw.date_label || "");
+      const doneTina = raw.tinaDone === true || raw.tinaDone === 1 || raw.done_tina === 1 ? 1 : 0;
+      const doneEvelyn =
+        raw.evelynDone === true || raw.evelynDone === 1 || raw.done_evelyn === 1 ? 1 : 0;
+      const unchanged =
+        prev &&
+        prev.title === title &&
+        prev.notes === notes &&
+        prev.owner === owner &&
+        prev.kind === kind &&
+        Number(prev.sprint) === sprint &&
+        prev.status === status &&
+        prev.date === date &&
+        prev.date_label === dateLabel &&
+        Number(prev.done_tina ?? 0) === doneTina &&
+        Number(prev.done_evelyn ?? 0) === doneEvelyn;
+      if (prev && closedSprints.has(Number(prev.sprint)) && !unchanged) {
+        return error(`${SPRINT_LOCKED_MESSAGE} (${sprintLabel(Number(prev.sprint))})`, 403);
+      }
+      if (closedSprints.has(sprint) && !unchanged) {
+        return error(`${SPRINT_LOCKED_MESSAGE} (${sprintLabel(sprint)})`, 403);
+      }
+    }
+    for (const prev of priorRetro.values()) {
+      const prevSprint = Number(prev.sprint);
+      if (!closedSprints.has(prevSprint)) continue;
+      if (!incomingRetroIds.has(prev.id)) {
+        return error(`${SPRINT_LOCKED_MESSAGE} (${sprintLabel(prevSprint)})`, 403);
+      }
+    }
+    for (const raw of incomingRetro) {
+      const id = String(raw.id || "");
+      const sprint = Number(raw.sprint ?? 0);
+      const prev = id ? priorRetro.get(id) : undefined;
+      const column = String(raw.column || raw.column_key || "went_well");
+      const text = String(raw.text || "");
+      const owner = String(raw.owner || "Both");
+      const unchanged =
+        prev &&
+        Number(prev.sprint) === sprint &&
+        prev.column_key === column &&
+        prev.text === text &&
+        prev.owner === owner;
+      if (prev && closedSprints.has(Number(prev.sprint)) && !unchanged) {
+        return error(`${SPRINT_LOCKED_MESSAGE} (${sprintLabel(Number(prev.sprint))})`, 403);
+      }
+      if (closedSprints.has(sprint) && !unchanged) {
+        return error(`${SPRINT_LOCKED_MESSAGE} (${sprintLabel(sprint)})`, 403);
+      }
+    }
+
+    // Preserve file bytes across full plan rewrite (client sends metadata only).
+    const priorPlanAtts = await env.DB.prepare(
+      `SELECT id, content_base64 FROM plan_item_attachments`,
+    ).all<{ id: string; content_base64: string | null }>();
+    const priorPlanContent = new Map(
+      (priorPlanAtts.results ?? []).map((r) => [r.id, r.content_base64 ?? null]),
+    );
     await env.DB.prepare(`DELETE FROM plan_items`).run();
     await env.DB.prepare(`DELETE FROM plan_item_attachments`).run();
     await env.DB.prepare(`DELETE FROM retro_cards`).run();
@@ -1762,7 +2998,11 @@ export async function saveAgilePlan(env: Env, request: Request): Promise<Respons
           id,
           String(raw.title || ""),
           String(raw.notes || ""),
-          String(raw.owner || "Both"),
+          (() => {
+            const sprintNum = Number(raw.sprint ?? -1);
+            if (isBacklogSprint(sprintNum)) return UNASSIGNED_OWNER;
+            return String(raw.owner || "Both");
+          })(),
           String(raw.kind || "rollout"),
           Number(raw.sprint ?? -1),
           String(raw.status || "todo"),
@@ -1781,10 +3021,19 @@ export async function saveAgilePlan(env: Env, request: Request): Promise<Respons
         const attId = String(att.id || crypto.randomUUID());
         if (seenAtt.has(attId)) continue;
         seenAtt.add(attId);
+        let content: string | null = priorPlanContent.get(attId) ?? null;
+        if (typeof att.contentBase64 === "string" && String(att.contentBase64).trim()) {
+          const validated = validateTaskAttachmentContent({
+            name: String(att.name || ""),
+            mimeType: String(att.mimeType || att.mime_type || "application/octet-stream"),
+            contentBase64: String(att.contentBase64),
+          });
+          if (validated.ok) content = validated.cleaned;
+        }
         await env.DB.prepare(
           `INSERT INTO plan_item_attachments
-             (id, plan_item_id, name, mime_type, size, stored_id, r2_key, added_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+             (id, plan_item_id, name, mime_type, size, stored_id, r2_key, added_at, content_base64)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
           .bind(
             attId,
@@ -1795,6 +3044,7 @@ export async function saveAgilePlan(env: Env, request: Request): Promise<Respons
             String(att.storedId || att.stored_id || attId),
             att.r2Key || att.r2_key ? String(att.r2Key || att.r2_key) : null,
             String(att.addedAt || att.added_at || now),
+            content,
           )
           .run();
       }

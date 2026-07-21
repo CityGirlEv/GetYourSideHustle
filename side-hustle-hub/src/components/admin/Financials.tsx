@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   DollarSign,
   FileText,
-  Loader2,
   Paperclip,
   Plus,
   Receipt,
@@ -11,6 +10,7 @@ import {
   Upload,
   Wallet,
 } from "lucide-react";
+import { BusyOverlay, WaitIndicator, WaitLabel } from "../WaitFeedback";
 import {
   BUDGET_CATEGORIES,
   EXPENSE_CATEGORIES,
@@ -335,6 +335,10 @@ export const Financials: React.FC = () => {
 
   return (
     <div>
+      <BusyOverlay
+        active={loading || saving}
+        message={loading ? "Loading financials…" : "Saving financials…"}
+      />
       <div
         className="glass"
         style={{
@@ -354,8 +358,7 @@ export const Financials: React.FC = () => {
             </p>
           </div>
           <button type="button" className="btn btn-primary" disabled={saving || loading} onClick={() => void persist()} style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
-            {saving ? <Loader2 size={16} className="spin" /> : <Save size={16} />}
-            Save all
+            {saving ? <WaitLabel>Saving…</WaitLabel> : <><Save size={16} /> Save all</>}
           </button>
         </div>
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 16 }}>
@@ -406,9 +409,7 @@ export const Financials: React.FC = () => {
       )}
 
       {loading ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-primary)", padding: 24 }}>
-          <Loader2 size={18} className="spin" /> Loading financials…
-        </div>
+        <WaitIndicator message="Loading financials…" style={{ padding: 24, marginTop: 0 }} />
       ) : sub === "contract" ? (
         <div className="glass" style={{ padding: 24, borderRadius: 16 }}>
           <h3 style={{ marginTop: 0, marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>

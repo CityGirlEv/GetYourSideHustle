@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import type { TestStatus } from "../../lib/gysh-test-plan";
+import { DEFAULT_TEST_STATUS, type TestStatus } from "../../lib/gysh-test-plan";
 
 export type StatusTally = {
   not_run: number;
@@ -37,7 +37,7 @@ export function tallyStatuses(
 ): StatusTally {
   const t = emptyTally();
   for (const id of caseIds) {
-    const st = statuses[id] ?? "not_run";
+    const st = statuses[id] ?? DEFAULT_TEST_STATUS;
     t[st] += 1;
     t.total += 1;
   }

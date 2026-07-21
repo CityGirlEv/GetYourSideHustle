@@ -24,44 +24,57 @@ export const FIND_MINE_WIZARD_GROUPS = [
     label: "Kids",
     ages: "Ages 4–12",
     bands: "Matches for ages 4–8 and 9–12",
+    /** Two match bands — shown on one line on the card. */
+    bandAges: ["4–8", "9–12"] as const,
     title: "GYSH Kids Match Wizard",
     copy:
       "Parent-guided, safe first Side Hustles. Parents become GYSH Coaches — and parental consent is required through age 12.",
     icon: Smile,
-    accent: "pink",
+    accent: "orange",
+    cta: "Open",
+    ctaLabel: "Open Kids page",
   },
   {
     id: "junior",
     label: "Teens",
     ages: "Ages 13–17",
     bands: "Matches for ages 13–14 and 15–17",
+    bandAges: ["13–14", "15–17"] as const,
     title: "GYSH Teens Match Wizard",
     copy:
       "Teen-ready skills and safe earning, with parents still in the coach seat. Questions scale up for middle and older teens.",
     icon: Users,
     accent: "emerald",
+    cta: "Open",
+    ctaLabel: "Open Teens page",
   },
   {
     id: "adult",
     label: "Adults",
     ages: "Ages 18–54",
     bands: "Budget, hours, strengths & goals",
+    bandAges: null,
     title: "GYSH Adults Match Wizard",
     copy:
       "Ranked matches from your time, budget, strengths, and goals — built for real adult schedules and launch plans.",
     icon: BriefcaseBusiness,
     accent: "purple",
+    cta: "Open",
+    ctaLabel: "Open Adults page",
   },
   {
     id: "senior",
     label: "Seniors",
     ages: "Ages 55+",
     bands: "Flexible pace for 55+",
+    bandAges: null,
     title: "GYSH Seniors Match Wizard",
     copy:
       "Flexible matches for retirees, second careers, and 55+ earners who want experience-friendly pacing.",
     icon: Heart,
     accent: "amber",
+    cta: "Open",
+    ctaLabel: "Open Seniors page",
   },
 ] as const;
 
@@ -80,8 +93,7 @@ function AgeBubble({
 }) {
   const Icon = group.icon;
   return (
-    <button
-      type="button"
+    <div
       className={`find-mine-age-bubble find-mine-age-bubble--${group.id}`}
       data-testid={`find-mine-card-${group.id}`}
       onClick={onClick}
@@ -93,14 +105,36 @@ function AgeBubble({
           <Icon size={18} aria-hidden />
         </span>
         <span className="find-mine-age-bubble__text">
-          <strong>{group.label}</strong>
-          <em>{group.bands}</em>
-        </span>
-        <span className="find-mine-age-bubble__go" aria-hidden>
-          <ArrowRight size={16} />
+          <span className="find-mine-age-bubble__title-row">
+            <strong>{group.label}</strong>
+            <button
+              type="button"
+              className={`find-mine-age-bubble__cta find-mine-age-bubble__cta--${group.id}`}
+              data-testid={`find-mine-cta-${group.id}`}
+              aria-label={group.ctaLabel}
+              onClick={(e) => {
+                e.stopPropagation();
+                onClick();
+              }}
+            >
+              {group.cta}
+              <ArrowRight size={13} aria-hidden />
+            </button>
+          </span>
+          {group.bandAges ? (
+            <span className="find-mine-age-bubble__bands" aria-label={group.bands}>
+              {group.bandAges.map((band) => (
+                <span key={band} className="find-mine-age-bubble__band">
+                  {band}
+                </span>
+              ))}
+            </span>
+          ) : (
+            <em>{group.bands}</em>
+          )}
         </span>
       </span>
-    </button>
+    </div>
   );
 }
 

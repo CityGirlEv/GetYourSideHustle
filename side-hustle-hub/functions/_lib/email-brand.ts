@@ -7,8 +7,10 @@ export const SITE_NAME = "Get Your Side Hustle";
 export const SITE_URL = `https://${ROOT_DOMAIN}`;
 export const LOGO_URL = `${SITE_URL}/brand/gysh-logo-rocket.png`;
 export const ADMIN_EMAIL = `info@${ROOT_DOMAIN}`;
+/** Extra ops inbox CC’d on every admin/contact alert (with CONTACT_TO + partner admins). */
+export const ADMIN_NOTIFY_CC = ["getyoursidehustleoffial@gmail.com"] as const;
 /** Official GYSH Facebook page. */
-export const FACEBOOK_URL = "https://www.facebook.com/getyoursidehustle";
+export const FACEBOOK_URL = "https://www.facebook.com/getyoursidehustleofficial";
 /** Verified Resend sending domain (apex on Get Your Side Hustle account). */
 export const EMAIL_SENDER_DOMAIN = ROOT_DOMAIN;
 
@@ -38,22 +40,22 @@ const PERKS: Record<TierId, Record<PerkAudience, string[]>> = {
     senior: ["Senior lane preview", "Flexible Match Wizard pacing", "Interest-list updates"],
   },
   starter: {
-    adult: ["Full member guides", "GYSH Community", "Monthly 30-min 1-on-1 with T / E"],
+    adult: ["Full member guides", "GYSH Community", "One 1-hour session with T / E"],
     kids: ["Kids Team member guides", "Training videos", "Kevina Glow Getter extras", "Piggy Bank challenges"],
     junior: ["Teens Team guides", "Training videos", "CEO starter checklists", "My Bank goals"],
-    senior: ["Senior Side Hustle team", "Peer learning circle", "Monthly 30-min 1-on-1"],
+    senior: ["Senior Side Hustle team", "Peer learning circle", "One 1-hour session"],
   },
   pro: {
-    adult: ["Hustle schedule suite", "Group training", "Monthly 60-min 1-on-1", "Family kid-credit pool"],
+    adult: ["Hustle schedule suite", "Group training", "Three 60-minute sessions", "Family kid-credit pool"],
     kids: ["Craft hustle playbooks", "Make games with AI (parent nearby)", "Kids schedule & tracker", "Workshop discounts"],
     junior: ["AI game + content starters", "Teens schedule suite", "Workshop invites", "Earn · save · reinvest tools"],
-    senior: ["Flexible hustle schedule", "Progress reports", "Monthly 60-min 1-on-1", "Workshop member seats"],
+    senior: ["Flexible hustle schedule", "Progress reports", "Three 60-minute sessions", "Workshop member seats"],
   },
   elite: {
-    adult: ["Monthly 90-min 1-on-1", "ZIP timing scout", "Priority support", "Highest credit pool"],
+    adult: ["Three 90-minute sessions", "ZIP timing scout", "Priority support", "Highest credit pool"],
     kids: ["Max kid credits", "Priority family support", "All Pro kids perks"],
     junior: ["Max teen credits", "Priority support", "All Pro teens perks"],
-    senior: ["Monthly 90-min 1-on-1", "ZIP timing scout", "Priority senior support"],
+    senior: ["Three 90-minute sessions", "ZIP timing scout", "Priority senior support"],
   },
 };
 
@@ -223,34 +225,47 @@ export function perkBulletsHtml(tier: TierId, audience: PerkAudience): string {
     .join("")}</ul>`;
 }
 
-export function upgradesHtml(current: TierId): string {
+export function upgradesHtml(current: TierId, audience?: PerkAudience): string {
+  const membershipUrl = membershipDeepLink(audience);
   const next = UPGRADES[current];
   if (!next.length) {
     return `<p style="margin:0 0 12px;padding:12px 14px;background:#f7f0df;border-radius:12px;border:1px solid #e2d5bc;">
       You're on <strong>Elite</strong> — the deepest GYSH support tier. Keep crushing it.
+      <br /><a href="${membershipUrl}" style="color:#9B2F28;font-weight:700;text-decoration:underline;">View membership plans</a>
     </p>`;
   }
   const cards = next
     .map((t) => {
       const perks = PERKS[t].adult.slice(0, 3);
+      const tierUrl = membershipDeepLink(audience, t);
       return `<td width="50%" valign="top" style="padding:6px;">
-        <div style="border:1px solid #e2d5bc;border-radius:14px;padding:14px;background:#fff;">
+        <a href="${tierUrl}" style="display:block;text-decoration:none;color:inherit;border:1px solid #e2d5bc;border-radius:14px;padding:14px;background:#fff;">
           <p style="margin:0 0 4px;font-size:11px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:#9B2F28;">Upgrade</p>
           <p style="margin:0 0 6px;font-size:18px;font-weight:800;color:#2d2a26;">${TIER_LABEL[t]} · ${TIER_PRICE[t]}</p>
           <ul style="margin:0;padding:0 0 0 16px;font-size:13px;color:#5c4f42;">
             ${perks.map((p) => `<li style="margin:0 0 4px;">${escapeHtml(p)}</li>`).join("")}
           </ul>
-        </div>
+          <p style="margin:10px 0 0;font-size:12px;font-weight:800;color:#9B2F28;">View on membership page →</p>
+        </a>
       </td>`;
     })
     .join("");
-  return `<p style="margin:18px 0 8px;font-family:Helvetica,Arial,sans-serif;font-size:13px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#947d64;">Level up your hustle</p>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>${cards}</tr></table>`;
+  return `<p style="margin:18px 0 8px;font-family:Helvetica,Arial,sans-serif;font-size:13px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;">
+      <a href="${membershipUrl}" style="color:#947d64;text-decoration:none;">Level Up Your Side Hustle</a>
+    </p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>${cards}</tr></table>
+    <p style="margin:12px 0 0;font-size:13px;">
+      <a href="${membershipUrl}" style="color:#9B2F28;font-weight:700;text-decoration:underline;">See all membership plans</a>
+    </p>`;
 }
 
-export function membershipDeepLink(audience?: "kids" | "junior" | "adult" | "senior"): string {
+export function membershipDeepLink(
+  audience?: "kids" | "junior" | "adult" | "senior",
+  tier?: TierId,
+): string {
   const params = new URLSearchParams({ next: "join", from: "welcome" });
   if (audience) params.set("audience", audience);
+  if (tier) params.set("tier", tier);
   return `${SITE_URL}/?${params.toString()}`;
 }
 

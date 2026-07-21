@@ -83,7 +83,7 @@ function perkTiersFor(audience: MemberPerkAudience): MarketingPerkTier[] {
       tierId,
       name: tier.name,
       priceLine: priceLineFor(audience, tierId),
-      bullets: perks.map((p) => `${p.title} — ${p.detail}`),
+      bullets: perks.map((p, i) => `${i + 1}. ${p.title} — ${p.detail}`),
     };
   });
 }
@@ -174,7 +174,7 @@ function buildAdultGuide(): MarketingGuideDoc {
           {
             id: "j5",
             label: "Level up",
-            detail: "Join Starter for member guides + monthly 1-on-1, or Pro for the schedule suite.",
+            detail: "Join Starter for member guides + one 1-hour session, or Pro for the schedule suite.",
           },
         ],
       },
@@ -237,9 +237,9 @@ function buildAdultGuide(): MarketingGuideDoc {
           body: "Run the Match Wizard today. Unlock your Blueprint free. Upgrade when you want coaches, member guides, and a week-by-week plan.",
           bullets: [
             "Free account → full Blueprint",
-            "Starter → member guides + monthly 30-min 1-on-1",
-            "Pro → schedule suite + 60-min 1-on-1",
-            "Elite → 90-min 1-on-1 + ZIP timing scout",
+            "Starter → member guides + one 1-hour session",
+            "Pro → schedule suite + three 60-minute sessions",
+            "Elite → three 90-minute sessions + ZIP timing scout",
           ],
         },
       },
@@ -366,7 +366,7 @@ function buildKidsGuide(): MarketingGuideDoc {
           body: "Open Kids Corner tonight. Run the wizard. Set a Piggy Bank goal. Join free — upgrade when you want the full kids member library.",
           bullets: [
             "Free — stories preview + free guides",
-            "Starter — Kids Team + training videos + 30-min family consulting",
+            "Starter — Kids Team + training videos + one 1-hour family session",
             "Pro — schedule/tracker + more credits + AI game playbooks",
             "Elite — deepest credit pool + priority support",
           ],
@@ -493,7 +493,7 @@ function buildTeensGuide(): MarketingGuideDoc {
           body: "Run the Teens Match Wizard, set one My Bank goal, and join free. Upgrade for AI build guides, training videos, and the schedule suite.",
           bullets: [
             "Free — Match Wizard + free CEO / give-back guides",
-            "Starter — Teens Team + training + monthly consulting",
+            "Starter — Teens Team + training + one 1-hour session",
             "Pro — AI game + content starters + schedule suite",
             "Elite — max credits + priority support",
           ],
@@ -630,9 +630,9 @@ function buildSeniorsGuide(): MarketingGuideDoc {
           body: "Run the Seniors Match Wizard, preview opportunities, and join free. Upgrade when you want member seating, consulting, and a flexible plan.",
           bullets: [
             "Free — explore + interest list",
-            "Starter $34/mo senior — team + 30-min 1-on-1",
-            "Pro $57/mo senior — schedule suite + 60-min 1-on-1",
-            "Elite $94/mo senior — 90-min 1-on-1 + ZIP scout",
+            "Starter $34/mo senior — team + one 1-hour session",
+            "Pro $57/mo senior — schedule suite + three 60-minute sessions",
+            "Elite $94/mo senior — three 90-minute sessions + ZIP scout",
           ],
         },
       },
