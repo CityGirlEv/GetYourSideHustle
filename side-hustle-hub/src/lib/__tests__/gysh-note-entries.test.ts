@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
-  LEGACY_NOTE_AUTHOR,
+  LEGACY_EPOCH,
+  PRIOR_NOTE_AUTHOR,
   appendActorNote,
   applyNoteDrafts,
   authorsMatch,
   canEditNoteEntry,
   createNoteEntry,
+  formatNoteEntryStamp,
   mergeNoteEntries,
   noteEntriesPlainText,
   parseNoteEntries,
@@ -13,12 +15,44 @@ import {
 } from "../gysh-note-entries";
 
 describe("gysh-note-entries", () => {
-  it("parses legacy plain text as a read-only Legacy entry", () => {
-    const entries = parseNoteEntries("Old note from before");
+  it("parses prior plain text as a read-only note with author + date when known", () => {
+    const entries = parseNoteEntries("Old note from before", {
+      author: "Tina Marie",
+      at: "2026-06-15T18:00:00.000Z",
+    });
     expect(entries).toHaveLength(1);
-    expect(entries[0]!.author).toBe(LEGACY_NOTE_AUTHOR);
+    expect(entries[0]!.author).toBe("Tina Marie");
+    expect(entries[0]!.createdAt).toBe("2026-06-15T18:00:00.000Z");
     expect(entries[0]!.text).toBe("Old note from before");
-    expect(canEditNoteEntry(entries[0]!, "Tina")).toBe(false);
+    expect(canEditNoteEntry(entries[0]!, "Tina Marie")).toBe(false);
+    expect(formatNoteEntryStamp(entries[0]!)).toContain("Tina Marie · ");
+  });
+
+  it("does not show epoch Legacy stamp for unattributed prior notes", () => {
+    const entries = parseNoteEntries("Old note from before");
+    expect(entries[0]!.author).toBe(PRIOR_NOTE_AUTHOR);
+    expect(entries[0]!.createdAt).toBe("");
+    expect(formatNoteEntryStamp(entries[0]!)).toBe(PRIOR_NOTE_AUTHOR);
+    expect(formatNoteEntryStamp(entries[0]!)).not.toContain("1969");
+  });
+
+  it("heals stored Legacy + epoch JSON using task audit attribution", () => {
+    const stored = serializeNoteEntries([
+      {
+        id: "legacy",
+        author: "Legacy",
+        createdAt: LEGACY_EPOCH,
+        updatedAt: LEGACY_EPOCH,
+        text: "Previous note body",
+      },
+    ]);
+    const entries = parseNoteEntries(stored, {
+      author: "Evelyn Irving",
+      at: "2026-07-01T12:00:00.000Z",
+    });
+    expect(entries[0]!.author).toBe("Evelyn Irving");
+    expect(entries[0]!.updatedAt).toBe("2026-07-01T12:00:00.000Z");
+    expect(entries[0]!.text).toBe("Previous note body");
   });
 
   it("round-trips structured notes", () => {
@@ -63,6 +97,13 @@ describe("gysh-note-entries", () => {
     if (!merged.ok) return;
     const entries = parseNoteEntries(merged.notes);
     expect(entries.map((e) => e.text)).toEqual(["Keep me", "Brand new"]);
+  });
+
+  it("formats stamp as author name with date/time", () => {
+    const entry = createNoteEntry("Tina Marie", "Hello", "2026-07-21T14:30:00.000Z");
+    const stamp = formatNoteEntryStamp(entry);
+    expect(stamp.startsWith("Tina Marie · ")).toBe(true);
+    expect(stamp.length).toBeGreaterThan("Tina Marie · ".length);
   });
 
   it("appendActorNote skips duplicate of latest own text", () => {

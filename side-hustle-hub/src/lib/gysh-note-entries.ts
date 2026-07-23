@@ -1,7 +1,8 @@
 /**
  * Timestamped, author-attributed notes for Task List + Testing Portal.
  * Stored as a JSON array in the existing notes/note TEXT columns.
- * Legacy plain strings migrate to a single read-only "Legacy" entry on parse.
+ * Older plain-text notes become a read-only prior entry, stamped with the
+ * task/test last-updated author + date when available.
  */
 
 import { formatAuditUpdatedAt } from "./gysh-audit";
@@ -14,8 +15,17 @@ export type NoteEntry = {
   text: string;
 };
 
+/** @deprecated Prefer PRIOR_NOTE_AUTHOR — kept for stored rows still labeled "Legacy". */
 export const LEGACY_NOTE_AUTHOR = "Legacy";
+export const PRIOR_NOTE_AUTHOR = "Prior note";
 export const SYSTEM_NOTE_AUTHOR = "System";
+export const LEGACY_EPOCH = "1970-01-01T00:00:00.000Z";
+
+/** Best-known author/date for notes written before structured stamps existed. */
+export type PriorNoteAttribution = {
+  author?: string | null;
+  at?: string | null;
+};
 
 function newNoteId(): string {
   return `n-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -30,12 +40,28 @@ export function authorsMatch(
     .toLowerCase() === String(b ?? "").trim().toLowerCase();
 }
 
+export function isEpochNoteTime(iso: string | null | undefined): boolean {
+  const raw = String(iso ?? "").trim();
+  if (!raw) return true;
+  if (raw === LEGACY_EPOCH) return true;
+  const t = Date.parse(raw);
+  return Number.isNaN(t) || t <= 0;
+}
+
+export function isPriorNoteEntry(entry: NoteEntry): boolean {
+  return (
+    entry.id === "legacy" ||
+    authorsMatch(entry.author, LEGACY_NOTE_AUTHOR) ||
+    authorsMatch(entry.author, PRIOR_NOTE_AUTHOR)
+  );
+}
+
 export function canEditNoteEntry(
   entry: NoteEntry,
   actor: string | null | undefined,
 ): boolean {
   if (!actor?.trim()) return false;
-  if (authorsMatch(entry.author, LEGACY_NOTE_AUTHOR)) return false;
+  if (isPriorNoteEntry(entry)) return false;
   if (authorsMatch(entry.author, SYSTEM_NOTE_AUTHOR)) return false;
   return authorsMatch(entry.author, actor);
 }
@@ -52,8 +78,51 @@ function isNoteEntry(value: unknown): value is NoteEntry {
   );
 }
 
+function normalizePriorAttribution(attr?: PriorNoteAttribution): {
+  author: string;
+  at: string;
+} {
+  const author = String(attr?.author ?? "").trim();
+  const atRaw = String(attr?.at ?? "").trim();
+  return {
+    author: author || PRIOR_NOTE_AUTHOR,
+    at: atRaw && !isEpochNoteTime(atRaw) ? atRaw : "",
+  };
+}
+
+function healPriorEntry(entry: NoteEntry, attr?: PriorNoteAttribution): NoteEntry {
+  const placeholderAuthor =
+    authorsMatch(entry.author, LEGACY_NOTE_AUTHOR) ||
+    authorsMatch(entry.author, PRIOR_NOTE_AUTHOR) ||
+    !entry.author.trim();
+  const placeholderWhen =
+    isEpochNoteTime(entry.createdAt) && isEpochNoteTime(entry.updatedAt);
+  if (!placeholderAuthor && !placeholderWhen && entry.id !== "legacy") {
+    return entry;
+  }
+
+  const { author, at } = normalizePriorAttribution(attr);
+  const who = placeholderAuthor ? author : entry.author.trim();
+  const when = !isEpochNoteTime(entry.updatedAt)
+    ? entry.updatedAt
+    : !isEpochNoteTime(entry.createdAt)
+      ? entry.createdAt
+      : at;
+
+  return {
+    ...entry,
+    id: entry.id === "legacy" || placeholderAuthor ? "legacy" : entry.id,
+    author: who,
+    createdAt: when || entry.createdAt,
+    updatedAt: when || entry.updatedAt,
+  };
+}
+
 /** Parse stored notes (JSON array or legacy plain text). */
-export function parseNoteEntries(raw: string | null | undefined): NoteEntry[] {
+export function parseNoteEntries(
+  raw: string | null | undefined,
+  prior?: PriorNoteAttribution,
+): NoteEntry[] {
   const text = String(raw ?? "");
   const trimmed = text.trim();
   if (!trimmed) return [];
@@ -62,28 +131,42 @@ export function parseNoteEntries(raw: string | null | undefined): NoteEntry[] {
     try {
       const parsed = JSON.parse(trimmed) as unknown;
       if (Array.isArray(parsed) && parsed.every(isNoteEntry)) {
-        return parsed.map((e) => ({
-          id: e.id,
-          author: String(e.author || LEGACY_NOTE_AUTHOR).trim() || LEGACY_NOTE_AUTHOR,
-          createdAt: e.createdAt,
-          updatedAt: e.updatedAt || e.createdAt,
-          text: String(e.text ?? ""),
-        }));
+        return parsed.map((e) =>
+          healPriorEntry(
+            {
+              id: e.id,
+              author: String(e.author || LEGACY_NOTE_AUTHOR).trim() || LEGACY_NOTE_AUTHOR,
+              createdAt: e.createdAt,
+              updatedAt: e.updatedAt || e.createdAt,
+              text: String(e.text ?? ""),
+            },
+            prior,
+          ),
+        );
       }
     } catch {
-      /* fall through to legacy */
+      /* fall through to plain text */
     }
   }
 
+  const { author, at } = normalizePriorAttribution(prior);
   return [
     {
       id: "legacy",
-      author: LEGACY_NOTE_AUTHOR,
-      createdAt: "1970-01-01T00:00:00.000Z",
-      updatedAt: "1970-01-01T00:00:00.000Z",
+      author,
+      createdAt: at,
+      updatedAt: at,
       text,
     },
   ];
+}
+
+/** Re-serialize notes after stamping prior/plain-text rows with known author + date. */
+export function withPriorNoteAttribution(
+  raw: string | null | undefined,
+  prior?: PriorNoteAttribution,
+): string {
+  return serializeNoteEntries(parseNoteEntries(raw, prior));
 }
 
 export function serializeNoteEntries(entries: NoteEntry[]): string {
@@ -126,19 +209,40 @@ export function mergeNoteEntries(
   incomingRaw: string | null | undefined,
   actor: string,
   now = new Date().toISOString(),
+  prior?: PriorNoteAttribution,
 ): { ok: true; notes: string } | { ok: false; error: string } {
   const who = String(actor || "").trim();
   if (!who) return { ok: false, error: "Missing note author." };
 
-  const previous = parseNoteEntries(previousRaw);
-  const incoming = parseNoteEntries(incomingRaw);
+  const previous = parseNoteEntries(previousRaw, prior);
+  const incoming = parseNoteEntries(incomingRaw, prior);
   const incomingById = new Map(incoming.map((e) => [e.id, e]));
   const prevIds = new Set(previous.map((e) => e.id));
   const result: NoteEntry[] = [];
 
   for (const prev of previous) {
     if (!canEditNoteEntry(prev, who)) {
-      result.push(prev);
+      const next = incomingById.get(prev.id);
+      if (
+        next &&
+        isPriorNoteEntry(prev) &&
+        String(next.text ?? "").trim() === prev.text.trim()
+      ) {
+        // Keep prior text; prefer a better stamp from either side.
+        result.push(
+          healPriorEntry(
+            {
+              ...prev,
+              author: next.author || prev.author,
+              createdAt: next.createdAt || prev.createdAt,
+              updatedAt: next.updatedAt || prev.updatedAt,
+            },
+            prior,
+          ),
+        );
+      } else {
+        result.push(prev);
+      }
       continue;
     }
     const next = incomingById.get(prev.id);
@@ -157,6 +261,11 @@ export function mergeNoteEntries(
     const text = String(inc.text ?? "").trim();
     if (!text) continue;
     // New entries are always attributed to the actor (ignore spoofed author).
+    // Prior/legacy rows stay attributed as prior notes (not reassigned to actor).
+    if (isPriorNoteEntry(inc)) {
+      result.push(healPriorEntry(inc, prior));
+      continue;
+    }
     result.push({
       id: inc.id?.trim() || newNoteId(),
       author: who,
@@ -166,7 +275,10 @@ export function mergeNoteEntries(
     });
   }
 
-  result.sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
+  result.sort(
+    (a, b) =>
+      (a.createdAt || "").localeCompare(b.createdAt || "") || a.id.localeCompare(b.id),
+  );
   return { ok: true, notes: serializeNoteEntries(result) };
 }
 
@@ -176,12 +288,13 @@ export function appendActorNote(
   actor: string,
   text: string,
   now = new Date().toISOString(),
+  prior?: PriorNoteAttribution,
 ): string {
   const trimmed = text.trim();
   if (!trimmed) {
-    return serializeNoteEntries(parseNoteEntries(previousRaw));
+    return serializeNoteEntries(parseNoteEntries(previousRaw, prior));
   }
-  const entries = parseNoteEntries(previousRaw);
+  const entries = parseNoteEntries(previousRaw, prior);
   const lastOwn = [...entries].reverse().find((e) => authorsMatch(e.author, actor));
   if (lastOwn && lastOwn.text.trim() === trimmed) {
     return serializeNoteEntries(entries);
@@ -201,9 +314,10 @@ export function applyNoteDrafts(
   editDrafts: Record<string, string> | undefined,
   newText: string | undefined,
   now = new Date().toISOString(),
+  prior?: PriorNoteAttribution,
 ): string {
   const who = String(actor || "").trim();
-  let entries = parseNoteEntries(previousRaw);
+  let entries = parseNoteEntries(previousRaw, prior);
 
   if (editDrafts) {
     entries = entries
@@ -219,26 +333,29 @@ export function applyNoteDrafts(
 
   const serialized = serializeNoteEntries(entries);
   if (newText?.trim()) {
-    return appendActorNote(serialized, who, newText, now);
+    return appendActorNote(serialized, who, newText, now, prior);
   }
   return serialized;
 }
 
 /** e.g. "Tina Marie · Jul 21, 2026, 4:26 AM" */
 export function formatNoteEntryStamp(entry: NoteEntry): string {
-  const when = formatAuditUpdatedAt(entry.updatedAt || entry.createdAt);
-  const who = entry.author.trim() || "Unknown";
+  const iso = entry.updatedAt || entry.createdAt;
+  const when = isEpochNoteTime(iso) ? "" : formatAuditUpdatedAt(iso);
+  const who = entry.author.trim() || PRIOR_NOTE_AUTHOR;
   if (who && when) return `${who} · ${when}`;
   if (who) return who;
-  return when || "Unknown";
+  return when || PRIOR_NOTE_AUTHOR;
 }
 
 export function noteEntryAuthor(entry: NoteEntry): string {
-  return entry.author.trim() || "Unknown";
+  return entry.author.trim() || PRIOR_NOTE_AUTHOR;
 }
 
 export function noteEntryWhen(entry: NoteEntry): string {
-  return formatAuditUpdatedAt(entry.updatedAt || entry.createdAt);
+  const iso = entry.updatedAt || entry.createdAt;
+  if (isEpochNoteTime(iso)) return "";
+  return formatAuditUpdatedAt(iso);
 }
 
 export function notesHaveUnsavedDraft(

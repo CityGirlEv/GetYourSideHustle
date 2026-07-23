@@ -887,12 +887,19 @@ export function TaskList({
     });
   };
 
+  const priorNoteAttribution = (task: GyshTask) => ({
+    author: (task.updatedBy || task.assignBy || "").trim() || undefined,
+    at: (task.updatedAt || "").trim() || undefined,
+  });
+
   const composedNotesForTask = (task: GyshTask) =>
     applyNoteDrafts(
       task.notes,
       actingAssignBy,
       editNoteDrafts[task.id],
       newNoteDrafts[task.id],
+      undefined,
+      priorNoteAttribution(task),
     );
 
   const saveOneTask = async (id: string) => {
@@ -2213,6 +2220,7 @@ export function TaskList({
                 <NotesThread
                   rawNotes={t.notes}
                   actor={actingAssignBy}
+                  priorAttribution={priorNoteAttribution(t)}
                   editDrafts={editNoteDrafts[t.id]}
                   newDraft={newNoteDrafts[t.id] ?? ""}
                   onEditDraft={(noteId, text) => setEditNoteDraft(t.id, noteId, text)}

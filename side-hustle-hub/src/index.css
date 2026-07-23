@@ -5472,22 +5472,11 @@ h1, h2, h3, h4, h5, h6 {
   line-height: 1.3;
 }
 
-.notes-thread__author {
+.notes-thread__stamp {
   font-size: 0.95rem;
   font-weight: 800;
   color: var(--charcoal);
-}
-
-.notes-thread__when {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--bronze);
-}
-
-.notes-thread__when::before {
-  content: "·";
-  margin-right: 8px;
-  color: rgba(148, 125, 100, 0.7);
+  letter-spacing: 0.01em;
 }
 
 .notes-thread__body {
@@ -5752,19 +5741,26 @@ h1, h2, h3, h4, h5, h6 {
   background: rgba(215, 198, 151, 0.4);
 }
 
-/* QA section headings ? soft band (not button / chip fills) */
+/* QA section headings — same pink/wine band as Automated Testing */
 .qa-section-heading {
   display: block;
   margin: 0 0 10px;
   padding: 8px 12px;
-  border-radius: 8px;
-  border: 1px solid #8a7024;
-  background: linear-gradient(135deg, #d4b45a 0%, #c9a227 48%, #a68520 100%);
+  border-radius: 6px;
+  border: none;
+  border-left: 4px solid #9b2f28;
+  background: linear-gradient(
+    90deg,
+    rgba(155, 47, 40, 0.14) 0%,
+    rgba(155, 47, 40, 0.06) 55%,
+    rgba(155, 47, 40, 0.02) 100%
+  );
+  box-shadow: inset 0 0 0 1px rgba(155, 47, 40, 0.12);
   font-size: 0.9375rem;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #181718;
+  color: #7a241f;
   line-height: 1.35;
 }
 
@@ -13877,15 +13873,27 @@ button.launch-checklist-item {
   gap: 10px;
   padding: 12px 14px;
   border: none;
-  border-bottom: 1px solid #8a7024;
-  background: linear-gradient(135deg, #d4b45a 0%, #c9a227 48%, #a68520 100%);
+  border-bottom: 1px solid rgba(155, 47, 40, 0.22);
+  border-left: 4px solid #9b2f28;
+  background: linear-gradient(
+    90deg,
+    rgba(155, 47, 40, 0.14) 0%,
+    rgba(155, 47, 40, 0.06) 55%,
+    rgba(155, 47, 40, 0.02) 100%
+  );
+  box-shadow: inset 0 0 0 1px rgba(155, 47, 40, 0.12);
   cursor: pointer;
   text-align: left;
-  color: #181718;
+  color: #7a241f;
 }
 
 .qa-progress-bars__toggle:hover {
-  background: linear-gradient(135deg, #ddc06a 0%, #d4b45a 48%, #b8962e 100%);
+  background: linear-gradient(
+    90deg,
+    rgba(155, 47, 40, 0.2) 0%,
+    rgba(155, 47, 40, 0.1) 55%,
+    rgba(155, 47, 40, 0.04) 100%
+  );
 }
 
 .qa-progress-bars__toggle-title {
@@ -13893,7 +13901,7 @@ button.launch-checklist-item {
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #181718;
+  color: #7a241f;
 }
 
 .qa-progress-bars__toggle-summary {
@@ -13901,7 +13909,7 @@ button.launch-checklist-item {
   font-size: 0.95rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: #181718;
+  color: #7a241f;
 }
 
 .qa-progress-bars__body {
@@ -13910,15 +13918,22 @@ button.launch-checklist-item {
 
 .qa-progress-bars__title {
   font-size: 0.9375rem;
-  color: #181718;
+  color: #7a241f;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   margin-bottom: 14px;
   font-weight: 800;
   padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px solid #8a7024;
-  background: linear-gradient(135deg, #d4b45a 0%, #c9a227 48%, #a68520 100%);
+  border-radius: 6px;
+  border: none;
+  border-left: 4px solid #9b2f28;
+  background: linear-gradient(
+    90deg,
+    rgba(155, 47, 40, 0.14) 0%,
+    rgba(155, 47, 40, 0.06) 55%,
+    rgba(155, 47, 40, 0.02) 100%
+  );
+  box-shadow: inset 0 0 0 1px rgba(155, 47, 40, 0.12);
 }
 
 .qa-progress-bars__section + .qa-progress-bars__section {
@@ -13931,11 +13946,18 @@ button.launch-checklist-item {
   margin: 0 0 10px;
   font-size: 0.95rem;
   font-weight: 800;
-  color: #181718;
+  color: #7a241f;
   padding: 8px 12px;
-  border-radius: 8px;
-  border: 1px solid #8a7024;
-  background: linear-gradient(135deg, #d4b45a 0%, #c9a227 48%, #a68520 100%);
+  border-radius: 6px;
+  border: none;
+  border-left: 4px solid #9b2f28;
+  background: linear-gradient(
+    90deg,
+    rgba(155, 47, 40, 0.14) 0%,
+    rgba(155, 47, 40, 0.06) 55%,
+    rgba(155, 47, 40, 0.02) 100%
+  );
+  box-shadow: inset 0 0 0 1px rgba(155, 47, 40, 0.12);
 }
 
 .qa-progress-bars__section-toggle {
@@ -13945,23 +13967,38 @@ button.launch-checklist-item {
   gap: 8px;
   padding: 8px 10px;
   margin: 0;
-  border: 1px solid #8a7024;
-  background: linear-gradient(135deg, #d4b45a 0%, #c9a227 48%, #a68520 100%);
+  border: none;
+  border-left: 4px solid #9b2f28;
+  background: linear-gradient(
+    90deg,
+    rgba(155, 47, 40, 0.14) 0%,
+    rgba(155, 47, 40, 0.06) 55%,
+    rgba(155, 47, 40, 0.02) 100%
+  );
+  box-shadow: inset 0 0 0 1px rgba(155, 47, 40, 0.12);
   cursor: pointer;
   text-align: left;
-  color: #181718;
-  border-radius: 8px;
+  color: #7a241f;
+  border-radius: 6px;
 }
 
 .qa-progress-bars__section-toggle:hover {
-  background: linear-gradient(135deg, #ddc06a 0%, #d4b45a 48%, #b8962e 100%);
+  background: linear-gradient(
+    90deg,
+    rgba(155, 47, 40, 0.2) 0%,
+    rgba(155, 47, 40, 0.1) 55%,
+    rgba(155, 47, 40, 0.04) 100%
+  );
 }
 
 .qa-progress-bars__section-toggle .qa-progress-bars__heading {
   padding: 0;
   border: none;
+  border-left: none;
   background: none;
+  box-shadow: none;
   margin: 0;
+  color: inherit;
 }
 
 .qa-progress-bars__section-summary {
@@ -13969,7 +14006,7 @@ button.launch-checklist-item {
   font-size: 0.9375rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: #181718;
+  color: #7a241f;
 }
 
 .qa-progress-bars__section-body {

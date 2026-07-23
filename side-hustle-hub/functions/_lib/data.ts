@@ -507,8 +507,12 @@ export async function saveTasks(env: Env, request: Request, actor: DbUser): Prom
     const dueDate = String(t.dueDate || "");
     const dateCompleted = String(t.dateCompleted || "");
     const incomingNotes = String(t.notes || "");
-    const prevNotesForMerge = String(priorById.get(id)?.notes ?? "");
-    const notesMerged = mergeNoteEntries(prevNotesForMerge, incomingNotes, byLabel, now);
+    const prevRow = priorById.get(id);
+    const prevNotesForMerge = String(prevRow?.notes ?? "");
+    const notesMerged = mergeNoteEntries(prevNotesForMerge, incomingNotes, byLabel, now, {
+      author: (prevRow?.updated_by || prevRow?.assign_by || "").trim() || undefined,
+      at: (prevRow?.updated_at || "").trim() || undefined,
+    });
     if (!notesMerged.ok) return error(notesMerged.error, 400);
     const notes = notesMerged.notes;
     const sprintRaw = Number(t.sprint ?? 0);
@@ -1431,7 +1435,16 @@ export async function setTestStatus(env: Env, request: Request, actor: DbUser): 
     let note =
       raw.note !== undefined ? String(raw.note ?? "").trim() : prevNoteRaw.trim();
     if (raw.note !== undefined) {
-      const mergedNote = mergeNoteEntries(prevNoteRaw, String(raw.note ?? ""), whoForNotes, now);
+      const mergedNote = mergeNoteEntries(
+        prevNoteRaw,
+        String(raw.note ?? ""),
+        whoForNotes,
+        now,
+        {
+          author: (prev?.updated_by || prev?.assigned_by || "").trim() || undefined,
+          at: (prev?.updated_at || "").trim() || undefined,
+        },
+      );
       if (!mergedNote.ok) return error(mergedNote.error, 400);
       note = mergedNote.notes;
     }

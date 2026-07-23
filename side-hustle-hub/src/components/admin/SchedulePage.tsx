@@ -992,31 +992,34 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
       setClosedSprints(new Set(closedList));
 
       let planItems = planData.items;
+      let planRetro = planData.retro;
       if (planItems.length === 0) {
         planItems = buildDefaultPlanItems();
-        try {
-          const saved = await persistAgilePlan(planItems, planData.retro);
-          planItems = saved.items;
-          setRetro(saved.retro);
-        } catch {
-          setRetro(planData.retro);
-        }
-      } else {
-        setRetro(planData.retro);
       }
+
       // Versioned soft fill only — never force-overwrite stored sprints on Schedule load.
       // Manual sprint edits persist; opt-in scripts may still force via mode: "force".
       let workingPlan = planItems;
       let workingTasks = taskList;
       let workingTestSprints = { ...testData.sprints };
       let workingTestDueDates = { ...(testData.dueDates ?? {}) };
-      let appliedRollout = false;
-      try {
-        const seen =
-          typeof localStorage !== "undefined"
-            ? localStorage.getItem(ROLLOUT_HEAL_STORAGE_KEY)
-            : null;
-        if (seen !== ROLLOUT_SCHEDULE_VERSION) {
+      let needsRolloutPersist = false;
+      let rolledPlanChanged = false;
+      let rolledTasksChanged = false;
+      let rolledTestBatch: Array<{
+        caseId: string;
+        status: TestStatus;
+        note: string;
+        assignee: string;
+        sprint: number;
+        dueDate: string;
+      }> = [];
+      const seen =
+        typeof localStorage !== "undefined"
+          ? localStorage.getItem(ROLLOUT_HEAL_STORAGE_KEY)
+          : null;
+      if (seen !== ROLLOUT_SCHEDULE_VERSION) {
+        try {
           const rolled = applyRolloutSprintSchedule({
             planItems: workingPlan,
             tasks: workingTasks,
@@ -1027,20 +1030,14 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
             mode: "preserve",
           });
           if (rolled.planChanged || rolled.tasksChanged || rolled.testChangedIds.length > 0) {
-            if (rolled.planChanged) {
-              const saved = await persistAgilePlan(rolled.planItems, planData.retro);
-              workingPlan = saved.items;
-              setRetro(saved.retro);
-            } else {
-              workingPlan = rolled.planItems;
-            }
-            if (rolled.tasksChanged) {
-              workingTasks = await persistTasks(rolled.tasks);
-            } else {
-              workingTasks = rolled.tasks;
-            }
+            workingPlan = rolled.planItems;
+            workingTasks = rolled.tasks;
+            workingTestSprints = rolled.testSprints;
+            workingTestDueDates = rolled.testDueDates;
+            rolledPlanChanged = rolled.planChanged;
+            rolledTasksChanged = rolled.tasksChanged;
             if (rolled.testChangedIds.length > 0) {
-              const batch = rolled.testChangedIds.map((caseId) => ({
+              rolledTestBatch = rolled.testChangedIds.map((caseId) => ({
                 caseId,
                 status: (testData.statuses[caseId] ?? "not_run") as TestStatus,
                 note: (testData.notes[caseId] ?? "").trim(),
@@ -1048,27 +1045,18 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
                 sprint: rolled.testSprints[caseId] ?? BACKLOG_SPRINT,
                 dueDate: rolled.testDueDates[caseId] ?? "",
               }));
-              const data = await saveTestStatusesBatch(batch);
-              workingTestSprints = { ...rolled.testSprints, ...data.sprints };
-              workingTestDueDates = { ...rolled.testDueDates, ...data.dueDates };
-              setTestAssignees({ ...testData.assignees, ...data.assignees });
-              setTestStatuses(data.statuses);
-              setTestNotes(data.notes);
-              setTestAssignedBy((prev) => ({ ...prev, ...(data.assignedBy ?? {}) }));
-              applyTestAudit(data);
-            } else {
-              workingTestSprints = rolled.testSprints;
-              workingTestDueDates = rolled.testDueDates;
             }
-            appliedRollout = true;
+            needsRolloutPersist = true;
           }
-          // Gate even when nothing changed so later opens never re-run silently.
+        } catch {
+          /* keep loaded state */
+        } finally {
+          // Gate even when persist fails (e.g. locked Sprint 0 → 403) so login
+          // does not re-run a thousand-row heal and hang on "Loading sprint board…".
           if (typeof localStorage !== "undefined") {
             localStorage.setItem(ROLLOUT_HEAL_STORAGE_KEY, ROLLOUT_SCHEDULE_VERSION);
           }
         }
-      } catch {
-        /* keep loaded state; soft fill can retry next open */
       }
 
       // Heal stale backlog assignees so storage matches "backlog = Unassigned".
@@ -1085,58 +1073,109 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
         }
       }
 
+      setRetro(planRetro);
       setItems(healedPlan.items);
       setTasks(healedTasks.tasks);
-      if (!appliedRollout) {
-        setTestStatuses(testData.statuses);
-        setTestNotes(testData.notes);
-        setTestAssignedBy(testData.assignedBy ?? {});
-        applyTestAudit(testData);
-      }
+      setTestStatuses(testData.statuses);
+      setTestNotes(testData.notes);
+      setTestAssignedBy(testData.assignedBy ?? {});
+      applyTestAudit(testData);
       setTestAssignees(healedTests.assignees);
       setTestDueDates(workingTestDueDates);
       setTestSprints(nextSprints);
       // Fresh load is the new baseline — discard any staged card edits.
       setDrafts({});
+      // Show the board immediately; background heals must not block login.
+      setLoading(false);
 
-      if (healedPlan.changed) {
+      const persistSeedPlan = planData.items.length === 0;
+      void (async () => {
         try {
-          const saved = await persistAgilePlan(healedPlan.items, planData.retro);
-          setItems(saved.items);
-          setRetro(saved.retro);
+          if (persistSeedPlan) {
+            try {
+              const saved = await persistAgilePlan(healedPlan.items, planRetro);
+              setItems(saved.items);
+              setRetro(saved.retro);
+              planRetro = saved.retro;
+            } catch {
+              /* keep local seed */
+            }
+          }
+          if (needsRolloutPersist) {
+            if (rolledPlanChanged) {
+              try {
+                const saved = await persistAgilePlan(healedPlan.items, planRetro);
+                setItems(saved.items);
+                setRetro(saved.retro);
+                planRetro = saved.retro;
+              } catch {
+                /* locked / forbidden — UI already has in-memory heal */
+              }
+            }
+            if (rolledTasksChanged) {
+              try {
+                setTasks(await persistTasks(healedTasks.tasks));
+              } catch {
+                /* keep healed local state */
+              }
+            }
+            if (rolledTestBatch.length > 0) {
+              try {
+                const data = await saveTestStatusesBatch(rolledTestBatch);
+                setTestAssignees({ ...healedTests.assignees, ...data.assignees });
+                setTestStatuses(data.statuses);
+                setTestNotes(data.notes);
+                setTestSprints({ ...nextSprints, ...data.sprints });
+                setTestDueDates({ ...workingTestDueDates, ...data.dueDates });
+                setTestAssignedBy((prev) => ({ ...prev, ...(data.assignedBy ?? {}) }));
+                applyTestAudit(data);
+              } catch {
+                /* locked sprint rows often 403 — do not block the board */
+              }
+            }
+          }
+          if (healedPlan.changed && !rolledPlanChanged && !persistSeedPlan) {
+            try {
+              const saved = await persistAgilePlan(healedPlan.items, planRetro);
+              setItems(saved.items);
+              setRetro(saved.retro);
+            } catch {
+              /* keep healed local state */
+            }
+          }
+          if (healedTasks.changed && !rolledTasksChanged) {
+            try {
+              setTasks(await persistTasks(healedTasks.tasks));
+            } catch {
+              /* keep healed local state */
+            }
+          }
+          if (healedTests.changedIds.length > 0 && rolledTestBatch.length === 0) {
+            try {
+              const batch = healedTests.changedIds.map((caseId) => ({
+                caseId,
+                status: (testData.statuses[caseId] ?? "not_run") as TestStatus,
+                note: (testData.notes[caseId] ?? "").trim(),
+                assignee: "",
+                sprint: workingTestSprints[caseId] ?? BACKLOG_SPRINT,
+                dueDate: workingTestDueDates[caseId] ?? "",
+              }));
+              const data = await saveTestStatusesBatch(batch);
+              setTestStatuses(data.statuses);
+              setTestNotes(data.notes);
+              setTestAssignees({ ...healedTests.assignees, ...data.assignees });
+              setTestSprints({ ...nextSprints, ...data.sprints });
+              setTestDueDates({ ...workingTestDueDates, ...data.dueDates });
+              setTestAssignedBy((prev) => ({ ...prev, ...(data.assignedBy ?? {}) }));
+              applyTestAudit(data);
+            } catch {
+              /* keep healed local state */
+            }
+          }
         } catch {
-          /* keep healed local state */
+          /* never leave the board blocked on background sync */
         }
-      }
-      if (healedTasks.changed) {
-        try {
-          setTasks(await persistTasks(healedTasks.tasks));
-        } catch {
-          /* keep healed local state */
-        }
-      }
-      if (healedTests.changedIds.length > 0) {
-        try {
-          const batch = healedTests.changedIds.map((caseId) => ({
-            caseId,
-            status: (testData.statuses[caseId] ?? "not_run") as TestStatus,
-            note: (testData.notes[caseId] ?? "").trim(),
-            assignee: "",
-            sprint: workingTestSprints[caseId] ?? BACKLOG_SPRINT,
-            dueDate: workingTestDueDates[caseId] ?? "",
-          }));
-          const data = await saveTestStatusesBatch(batch);
-          setTestStatuses(data.statuses);
-          setTestNotes(data.notes);
-          setTestAssignees({ ...healedTests.assignees, ...data.assignees });
-          setTestSprints({ ...nextSprints, ...data.sprints });
-          setTestDueDates({ ...workingTestDueDates, ...data.dueDates });
-          setTestAssignedBy((prev) => ({ ...prev, ...(data.assignedBy ?? {}) }));
-          applyTestAudit(data);
-        } catch {
-          /* keep healed local state */
-        }
-      }
+      })();
     } catch (e) {
       setItems(buildDefaultPlanItems());
       setTasks([]);
@@ -1146,7 +1185,6 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
           ? e.message
           : "Failed to load sprint board. Showing local seed where possible.",
       );
-    } finally {
       setLoading(false);
     }
   };

@@ -1,16 +1,17 @@
 import {
   canEditNoteEntry,
   formatNoteEntryStamp,
-  noteEntryAuthor,
-  noteEntryWhen,
   parseNoteEntries,
   type NoteEntry,
+  type PriorNoteAttribution,
 } from "../../lib/gysh-note-entries";
 import { MarkdownLinkText } from "./MarkdownLinkText";
 
 type NotesThreadProps = {
   rawNotes: string;
   actor: string;
+  /** Author + date for older plain-text notes (usually last updated by / at). */
+  priorAttribution?: PriorNoteAttribution;
   /** noteId → draft text for own editable notes */
   editDrafts?: Record<string, string>;
   newDraft?: string;
@@ -27,6 +28,7 @@ type NotesThreadProps = {
 export function NotesThread({
   rawNotes,
   actor,
+  priorAttribution,
   editDrafts = {},
   newDraft = "",
   onEditDraft,
@@ -38,7 +40,7 @@ export function NotesThread({
   textareaId,
   invalid = false,
 }: NotesThreadProps) {
-  const entries = parseNoteEntries(rawNotes);
+  const entries = parseNoteEntries(rawNotes, priorAttribution);
 
   return (
     <div className="notes-thread">
@@ -118,7 +120,7 @@ function NoteEntryRow({
           rows={2}
           value={value}
           disabled={disabled}
-          aria-label={`Edit note by ${formatNoteEntryStamp(entry)}`}
+          aria-label={`Edit note by ${stamp}`}
           onChange={(e) => onEditDraft?.(entry.id, e.target.value)}
           style={{ resize: "vertical", width: "100%" }}
         />

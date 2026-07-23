@@ -19,6 +19,7 @@ import {
   KEVINA_TIKTOK_URL,
 } from "../lib/kevina-starr";
 import {
+  TRINITY_HOUSE_BLURB,
   TRINITY_HOUSE_CHANNEL_URL,
   TRINITY_HOUSE_HANDLE,
   TRINITY_HOUSE_NAME,
@@ -143,7 +144,7 @@ export function AboutPage({ onJoin, onOpenKids }: AboutPageProps) {
                       >
                         {TRINITY_HOUSE_NAME}
                       </a>
-                      , a San Diego nonprofit; technology professional and platform builder
+                      , {TRINITY_HOUSE_BLURB}; also a technology professional and GYSH platform builder
                     </span>
                   </span>
                 </span>
@@ -311,7 +312,7 @@ export function AboutPage({ onJoin, onOpenKids }: AboutPageProps) {
               />
             </a>
           </div>
-          <h3>Service, Stories &amp; Side Hustles</h3>
+          <h3>Service, Side Hustles &amp; Kevina Starr</h3>
           <div className="about-bio-card__body">
             <div className="about-bio-card__copy">
               <img
@@ -365,7 +366,7 @@ export function AboutPage({ onJoin, onOpenKids }: AboutPageProps) {
                   rel="noopener noreferrer"
                   className="about-inline-link"
                 >
-                  YouTube channel ({KEVINA_CHANNEL_HANDLE})
+                  YouTube Channel ({KEVINA_CHANNEL_HANDLE})
                 </a>{" "}
                 and{" "}
                 <a
@@ -374,7 +375,7 @@ export function AboutPage({ onJoin, onOpenKids }: AboutPageProps) {
                   rel="noopener noreferrer"
                   className="about-inline-link"
                 >
-                  TikTok ({KEVINA_TIKTOK_HANDLE})
+                  TikTok Profile ({KEVINA_TIKTOK_HANDLE})
                 </a>
                 . Through Kevina Starr, Kids Corner, children&apos;s books, and family workshops, she encourages
                 children to build confidence, embrace creativity, practice kindness, and learn age-appropriate
@@ -383,7 +384,7 @@ export function AboutPage({ onJoin, onOpenKids }: AboutPageProps) {
               <p>
                 Married for <strong>37 years</strong>, Tina Marie is the mother of <strong>one son</strong> and
                 grandmother of <strong>two boys</strong>. She believes side hustles can become a{" "}
-                <strong>family growth experience</strong> — helping adults, seniors, teens, and children discover
+                <strong>family growth experience</strong>—helping adults, seniors, teens, and children discover
                 new skills, build confidence, and create additional possibilities together.
               </p>
               <p>
@@ -470,7 +471,7 @@ export function AboutPage({ onJoin, onOpenKids }: AboutPageProps) {
               </p>
               <p>
                 Her entrepreneurial experience spans <strong>Shopify</strong>, ecommerce, real estate, and property
-                investing — including ownership and management of more than <strong>15 doors</strong>.
+                investing, including ownership and management of more than <strong>15 doors</strong>.
               </p>
               <p>
                 Evelyn also co-founded{" "}
@@ -481,8 +482,8 @@ export function AboutPage({ onJoin, onOpenKids }: AboutPageProps) {
                   className="about-inline-link"
                 >
                   {TRINITY_HOUSE_NAME}
-                </a>{" "}
-                in San Diego with her late husband, <strong>Glen Jackson</strong>, during their{" "}
+                </a>
+                , {TRINITY_HOUSE_BLURB}, with her late husband, <strong>Glen Jackson</strong>, during their{" "}
                 <strong>28 years</strong> together. Although that chapter has ended, she continues sharing its story
                 through{" "}
                 <a
@@ -497,14 +498,18 @@ export function AboutPage({ onJoin, onOpenKids }: AboutPageProps) {
               </p>
               <p>
                 As a mother of <strong>two daughters</strong> and grandmother of <strong>three</strong>, Evelyn brings
-                both technical expertise and family-centered purpose to {SITE_NAME}. She develops the systems that
-                help turn <strong className="about-em">Tina Marie</strong>&apos;s vision into a working platform —
-                including the GYSH Match Wizard, calculators, AI-agent playbooks, and practical business tools.
+                both technical expertise and family-centered purpose to <strong>Get Your Side Hustle</strong>. She
+                develops the systems that help turn <strong className="about-em">Tina Marie</strong>&apos;s vision
+                into a working platform, including the GYSH Match Wizard, calculators, AI-agent playbooks, and
+                practical business tools.
               </p>
               <p>
                 Her focus is simple: create clear resources, real next steps, and technology that helps people move
-                from idea to action with confidence. Evelyn turns complex technology into practical tools that
-                families can actually use, understand, and grow with.
+                from idea to action with confidence.
+              </p>
+              <p>
+                Evelyn turns complex technology into practical tools that families can actually use, understand, and
+                grow with.
               </p>
             </div>
           </div>

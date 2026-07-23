@@ -443,6 +443,21 @@ export function TestingPortal({
     return true;
   };
 
+  const priorNoteAttribution = (id: string) => ({
+    author: (updatedByByCase[id] || assignedByByCase[id] || "").trim() || undefined,
+    at: (updatedAtByCase[id] || "").trim() || undefined,
+  });
+
+  const composedNote = (id: string) =>
+    applyNoteDrafts(
+      notesRef.current[id] ?? "",
+      actingAssignBy,
+      editNoteDraftsRef.current[id],
+      newNoteDraftsRef.current[id],
+      undefined,
+      priorNoteAttribution(id),
+    );
+
   const saveOneCase = async (id: string) => {
     if (!assertCaseUnlocked(id)) return;
     const currentStatus = statusesRef.current[id] ?? DEFAULT_TEST_STATUS;
@@ -491,14 +506,6 @@ export function TestingPortal({
 
   const effectiveSprint = (t: TestCase) =>
     sprintByCase[t.id] ?? suggestedSprintForTest(t);
-
-  const composedNote = (id: string) =>
-    applyNoteDrafts(
-      notesRef.current[id] ?? "",
-      actingAssignBy,
-      editNoteDraftsRef.current[id],
-      newNoteDraftsRef.current[id],
-    );
 
   const applyServerData = (data: TestStatusesPayload, savedId?: string) => {
     if (savedId) {
@@ -801,7 +808,7 @@ export function TestingPortal({
         t.area.toLowerCase().includes(q) ||
         TEST_FACING_LABELS[facing].toLowerCase().includes(q) ||
         TEST_CATEGORY_LABELS[cat].toLowerCase().includes(q) ||
-        (notes[t.id] ?? "").toLowerCase().includes(q)
+        noteEntriesPlainText(notes[t.id]).toLowerCase().includes(q)
       );
     }
     return true;
@@ -964,11 +971,13 @@ export function TestingPortal({
     const base = COUNTABLE_CASES.filter(
       (t) => t.suite === "manual" && caseMatchesFilters(t, "tester"),
     );
-    return QA_TESTERS.map((tester) => {
+    const allDone = base.filter((t) => isCaseComplete(t.id)).length;
+    const testers = QA_TESTERS.map((tester) => {
       const cases = base.filter((t) => effectiveAssignees(t).includes(tester.id));
       const done = cases.filter((t) => isCaseComplete(t.id)).length;
       return { ...tester, total: cases.length, done };
     });
+    return { testers, allDone, allTotal: base.length };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- caseMatchesFilters closes over filter state
   }, filterDeps);
 
@@ -1462,7 +1471,7 @@ export function TestingPortal({
         const hasDirtySteps = dirtyStepsRef.current.has(id);
         if (
           currentStatus === "not_run" &&
-          !note &&
+          !noteEntriesPlainText(note) &&
           !hasDirtySteps &&
           !persistedAssignee(id) &&
           !(persistedSprint(id) > 0)
@@ -1856,8 +1865,8 @@ export function TestingPortal({
 
   const bulkSetDescription = async (raw: string) => {
     if (selectedIds.size === 0) return;
-    const note = raw.trim();
-    if (!note) {
+    const text = raw.trim();
+    if (!text) {
       setError("Enter a description/note to apply.");
       return;
     }
@@ -1867,6 +1876,7 @@ export function TestingPortal({
     try {
       const items = ids.map((id) => {
         const status = statusesRef.current[id] ?? DEFAULT_TEST_STATUS;
+        const note = appendActorNote(notesRef.current[id] ?? "", actingAssignBy, text);
         return {
           caseId: id,
           status,
@@ -1881,13 +1891,13 @@ export function TestingPortal({
       });
       setNotes((prev) => {
         const next = { ...prev };
-        for (const id of ids) next[id] = note;
+        for (const item of items) next[item.caseId] = item.note;
         return next;
       });
       const data = await saveTestStatusesBatch(items);
       applyServerData(data);
       setBulkDescription("");
-      setSaveFlash(`${ids.length} test(s) description/note updated`);
+      setSaveFlash(`${ids.length} test(s) note appended as ${actingAssignBy}`);
       window.setTimeout(() => setSaveFlash(""), 3500);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Bulk description update failed.");
@@ -2036,22 +2046,24 @@ export function TestingPortal({
                 >
                   All testers
                   <span className="qa-tester-meta">
-                    · {testerStats.reduce((n, t) => n + t.total, 0)}
+                    · {testerStats.allDone}/{testerStats.allTotal}
                   </span>
                 </FilterChip>
-                {testerStats.map((tester) => {
+                {testerStats.testers.map((tester) => {
                   const active = testerFilters.has(tester.id);
                   return (
                     <FilterChip
                       key={tester.id}
                       active={active}
                       accent={tester.accent}
-                      title={`${tester.name} — ${tester.total} assigned · ${tester.done} done — Shift+click to select a range`}
+                      title={`${tester.name} — ${tester.done}/${tester.total} done — Shift+click to select a range`}
                       onToggle={(e) => toggleTesterFilter(tester.id, e)}
                     >
                       <span className="qa-tester-dot" style={{ background: tester.accent }} />
                       {tester.shortName}
-                      <span className="qa-tester-meta">· {tester.total}</span>
+                      <span className="qa-tester-meta">
+                        · {tester.done}/{tester.total}
+                      </span>
                     </FilterChip>
                   );
                 })}
@@ -2614,11 +2626,18 @@ export function TestingPortal({
           >
             Lyriq
             <span style={{ fontWeight: 800, marginLeft: 6 }}>
-              ({testerStats.find((t) => t.id === "lyriq")?.total ?? 0})
+              (
+              {(() => {
+                const s = testerStats.testers.find((t) => t.id === "lyriq");
+                return `${s?.done ?? 0}/${s?.total ?? 0}`;
+              })()}
+              )
             </span>
           </button>
           {QA_TESTERS.filter((t) => t.id !== "lyriq").map((tester) => {
-            const assigned = testerStats.find((t) => t.id === tester.id)?.total ?? 0;
+            const stats = testerStats.testers.find((t) => t.id === tester.id);
+            const done = stats?.done ?? 0;
+            const assigned = stats?.total ?? 0;
             return (
               <button
                 key={tester.id}
@@ -2629,7 +2648,9 @@ export function TestingPortal({
                 onClick={() => void bulkAssign(tester.id)}
               >
                 {tester.shortName}
-                <span style={{ fontWeight: 800, marginLeft: 6 }}>({assigned})</span>
+                <span style={{ fontWeight: 800, marginLeft: 6 }}>
+                  ({done}/{assigned})
+                </span>
               </button>
             );
           })}
@@ -2969,8 +2990,8 @@ export function TestingPortal({
                     {effectiveSprint(t) === BACKLOG_SPRINT ? "Backlog" : sprintLabel(effectiveSprint(t))}
                   </span>
                   <span className="flat-label flat-label--area">{t.area}</span>
-                  {(notes[t.id] ?? "").trim() && (
-                    <span className="flat-label flat-label--id" title={(notes[t.id] ?? "").trim()}>
+                  {noteEntriesPlainText(notes[t.id]) && (
+                    <span className="flat-label flat-label--id" title={noteEntriesPlainText(notes[t.id])}>
                       Notes
                     </span>
                   )}
@@ -3289,37 +3310,45 @@ export function TestingPortal({
                   <p style={{ fontSize: "1rem", color: "var(--charcoal)" }}>
                     <strong>Expected:</strong> {t.expected}
                   </p>
-                  <label style={{ display: "grid", gap: 6, marginTop: 12, fontSize: "0.9375rem", color: "var(--text-primary)" }}>
-                    Notes{" "}
-                    {statusRequiresNote(st) || st === "fail" ? (
-                      <span style={{ color: "var(--crimson)" }}>
-                        (required for Fail / Blocked — explain the failure or blocker)
-                      </span>
-                    ) : (
-                      <span>(optional for Pass / In Progress / Not Started — use Save everything)</span>
-                    )}
-                    <textarea
-                      id={`test-note-${t.id}`}
-                      className="text-input"
-                      rows={3}
-                      value={notes[t.id] ?? ""}
-                      onChange={(e) => markNoteDirty(t.id, e.target.value)}
-                      placeholder={
+                  <div style={{ marginTop: 12 }}>
+                    <NotesThread
+                      rawNotes={notes[t.id] ?? ""}
+                      actor={actingAssignBy}
+                      priorAttribution={priorNoteAttribution(t.id)}
+                      editDrafts={editNoteDrafts[t.id]}
+                      newDraft={newNoteDrafts[t.id] ?? ""}
+                      onEditDraft={(noteId, text) => setEditNoteDraft(t.id, noteId, text)}
+                      onNewDraft={(text) => setNewNoteDraft(t.id, text)}
+                      disabled={savingIds.has(t.id) || isSprintLocked(closedSprints, effectiveSprint(t))}
+                      textareaId={`test-note-${t.id}`}
+                      invalid={
+                        Boolean(rowErrors[t.id]) ||
+                        (statusRequiresNote(st) && !noteMeetsRequirement(composedNote(t.id)))
+                      }
+                      label={
+                        notesHaveUnsavedDraft(
+                          notes[t.id],
+                          actingAssignBy,
+                          editNoteDrafts[t.id],
+                          newNoteDrafts[t.id],
+                        )
+                          ? "Notes (unsaved)"
+                          : "Notes"
+                      }
+                      requiredHint={
+                        statusRequiresNote(st) || st === "fail"
+                          ? "(required for Fail / Blocked — explain the failure or blocker)"
+                          : undefined
+                      }
+                      newPlaceholder={
                         st === "fail"
                           ? "Required: which step failed, what you saw, and expected vs actual."
                           : statusRequiresNote(st)
                             ? "Required: describe what failed or what is blocking."
-                            : "Optional notes for this test. Click Save everything in the toolbar to persist."
+                            : "Add your note… (name + date saved with it)"
                       }
-                      style={{
-                        resize: "vertical",
-                        width: "100%",
-                        borderColor: rowErrors[t.id] || (statusRequiresNote(st) && !noteMeetsRequirement(notes[t.id] ?? ""))
-                          ? "rgba(155,47,40,0.55)"
-                          : undefined,
-                      }}
                     />
-                  </label>
+                  </div>
 
                   <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
                     <p style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700 }}>
