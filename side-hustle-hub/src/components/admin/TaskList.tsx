@@ -88,47 +88,17 @@ import { formatAuditTrail } from "../../lib/gysh-audit";
 import {
   appendActorNote,
   applyNoteDrafts,
-  noteEntriesPlainText,
   notesHaveUnsavedDraft,
 } from "../../lib/gysh-note-entries";
 import { NotesThread } from "./NotesThread";
+import {
+  queryLooksLikeTaskId,
+  taskMatchesIdQuery,
+  taskMatchesSearch,
+} from "../../lib/gysh-task-search";
 
 type OwnerFilter = GyshTask["assignedTo"];
 type CategoryFilter = TaskCategory;
-
-/** Match Task # (T-042 / 42 / #42) plus description, notes, assignee, category, dates, sprint, files. */
-function taskMatchesSearch(task: GyshTask, rawQuery: string): boolean {
-  const q = rawQuery.trim().toLowerCase();
-  if (!q) return true;
-  const sprint = task.sprint ?? 0;
-  const sprintText = sprint === BACKLOG_SPRINT ? "backlog" : sprintLabel(sprint).toLowerCase();
-  const haystack = [
-    task.id,
-    task.description,
-    noteEntriesPlainText(task.notes),
-    categoryLabel(task.category),
-    isBacklogSprint(sprint) ? UNASSIGNED_OWNER : task.assignedTo,
-    task.assignBy,
-    TASK_STATUS_LABELS[task.status],
-    task.priority,
-    task.dueDate,
-    task.dateAssigned,
-    task.dateCompleted,
-    sprintText,
-    ...(task.attachments ?? []).map((a) => a.name),
-  ]
-    .join("\n")
-    .toLowerCase();
-  if (haystack.includes(q)) return true;
-  const digits = q.replace(/\D/g, "");
-  if (digits) {
-    const idDigits = (task.id.replace(/\D/g, "").replace(/^0+/, "") || "0");
-    const qDigits = digits.replace(/^0+/, "") || "0";
-    if (idDigits === qDigits) return true;
-    if (task.id.toLowerCase().includes(digits)) return true;
-  }
-  return false;
-}
 
 /** Columns so chips fill exactly 2 rows (row-major) — same as Schedule filters. */
 function chipColsForTwoRows(count: number): number {
@@ -724,16 +694,52 @@ export function TaskList({
 
   // No bulk due-date rewrite on load — that raced with live edits.
 
-  const filtered = tasks.filter((t) => {
-    if (ownerFilters.size > 0 && ![...ownerFilters].some((owner) => taskMatchesOwner(t, owner))) {
+  type TaskFilterFacet = "owner" | "category" | "status" | "sprint" | "search";
+
+  const taskMatchesFilters = (t: GyshTask, exclude?: TaskFilterFacet): boolean => {
+    // Task-# search always wins — "T-029" should find the task even if Tina/Done/Sprint filters hide it.
+    if (
+      exclude !== "search" &&
+      searchQuery.trim() &&
+      queryLooksLikeTaskId(searchQuery) &&
+      taskMatchesIdQuery(t, searchQuery)
+    ) {
+      return true;
+    }
+    if (
+      exclude !== "owner" &&
+      ownerFilters.size > 0 &&
+      ![...ownerFilters].some((owner) => taskMatchesOwner(t, owner))
+    ) {
       return false;
     }
-    if (categoryFilters.size > 0 && !categoryFilters.has(t.category)) return false;
-    if (statusFilters.size > 0 && !statusFilters.has(t.status)) return false;
-    if (sprintFilters.size > 0 && !sprintFilters.has(t.sprint ?? 0)) return false;
-    if (!taskMatchesSearch(t, searchQuery)) return false;
+    if (exclude !== "category" && categoryFilters.size > 0 && !categoryFilters.has(t.category)) {
+      return false;
+    }
+    if (exclude !== "status" && statusFilters.size > 0 && !statusFilters.has(t.status)) {
+      return false;
+    }
+    if (exclude !== "sprint" && sprintFilters.size > 0 && !sprintFilters.has(t.sprint ?? 0)) {
+      return false;
+    }
+    if (exclude !== "search" && !taskMatchesSearch(t, searchQuery)) return false;
     return true;
-  });
+  };
+
+  const filtered = tasks.filter((t) => taskMatchesFilters(t));
+  const otherFiltersActive =
+    ownerFilters.size > 0 ||
+    categoryFilters.size > 0 ||
+    statusFilters.size > 0 ||
+    sprintFilters.size > 0;
+  const idSearchBypassedFilters =
+    Boolean(searchQuery.trim()) &&
+    queryLooksLikeTaskId(searchQuery) &&
+    otherFiltersActive &&
+    filtered.some((t) => taskMatchesIdQuery(t, searchQuery));
+
+  const statusFacetTasks = tasks.filter((t) => taskMatchesFilters(t, "status"));
+  const categoryFacetTasks = tasks.filter((t) => taskMatchesFilters(t, "category"));
 
   const toggleInSet = <T,>(prev: Set<T>, value: T): Set<T> => {
     const next = new Set(prev);
@@ -1307,12 +1313,16 @@ export function TaskList({
                   className="qa-tester-bubble"
                   data-active={statusFilters.size === 0 ? "true" : "false"}
                   onClick={() => setStatusFilters(new Set())}
+                  title={`${statusFacetTasks.length} tasks match other filters`}
                 >
                   All statuses
+                  <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
+                    · {statusFacetTasks.length}
+                  </span>
                 </button>
                 {STATUS_LEGEND.map((s) => {
                   const active = statusFilters.has(s.id);
-                  const count = tasks.filter((t) => t.status === s.id).length;
+                  const count = statusFacetTasks.filter((t) => t.status === s.id).length;
                   return (
                     <button
                       key={s.id}
@@ -1320,6 +1330,7 @@ export function TaskList({
                       className="qa-tester-bubble"
                       data-active={active ? "true" : "false"}
                       onClick={() => toggleStatusFilter(s.id)}
+                      title={`Filter: ${s.label} (${count})`}
                       style={{
                         borderColor: active ? STATUS_ACCENT[s.id] : undefined,
                         boxShadow: active ? `0 0 0 1px ${STATUS_ACCENT[s.id]}` : undefined,
@@ -1327,7 +1338,9 @@ export function TaskList({
                     >
                       <span className="qa-tester-dot" style={{ background: STATUS_ACCENT[s.id] }} />
                       {s.label}
-                      <span className="qa-tester-meta">· {count}</span>
+                      <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
+                        · {count}
+                      </span>
                     </button>
                   );
                 })}
@@ -1411,12 +1424,16 @@ export function TaskList({
               className="qa-tester-bubble"
               data-active={categoryFilters.size === 0 ? "true" : "false"}
               onClick={() => setCategoryFilters(new Set())}
-              title="Show all categories"
+              title={`Show all categories (${categoryFacetTasks.length})`}
             >
               All
+              <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
+                · {categoryFacetTasks.length}
+              </span>
             </button>
             {CATEGORY_BUBBLES.map((b) => {
               const active = categoryFilters.has(b.id);
+              const count = categoryFacetTasks.filter((t) => t.category === b.id).length;
               return (
                 <button
                   key={b.id}
@@ -1424,9 +1441,12 @@ export function TaskList({
                   className="qa-tester-bubble"
                   data-active={active ? "true" : "false"}
                   onClick={() => toggleCategoryFilter(b.id)}
-                  title={`Filter: ${b.label}`}
+                  title={`Filter: ${b.label} (${count})`}
                 >
                   {b.label}
+                  <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
+                    · {count}
+                  </span>
                 </button>
               );
             })}
@@ -1721,12 +1741,17 @@ export function TaskList({
           />
           Select all{filteredIds.length ? ` (${filteredIds.length})` : ""}
         </label>
-        {!filtersAreAll && (
+        {(searchQuery.trim() || !filtersAreAll) && (
           <span style={{ fontSize: "0.95rem", color: "var(--text-primary)" }}>
             Showing {filtered.length} of {tasks.length}
             {searchQuery.trim() ? (
               <>
                 {" "}· search: <strong style={{ color: "var(--charcoal)" }}>{searchQuery.trim()}</strong>
+              </>
+            ) : null}
+            {idSearchBypassedFilters ? (
+              <>
+                {" "}· <span style={{ color: "var(--bronze)" }}>Task # match ignores other filters</span>
               </>
             ) : null}
           </span>
@@ -1740,7 +1765,7 @@ export function TaskList({
             {tasks.length === 0
               ? "No tasks yet."
               : searchQuery.trim() || !filtersAreAll
-                ? "No tasks match this search / filters."
+                ? "No tasks match this search / filters. Click Reset (or All assignees / All statuses / All sprints) and try again."
                 : "No tasks yet."}
           </div>
         )}

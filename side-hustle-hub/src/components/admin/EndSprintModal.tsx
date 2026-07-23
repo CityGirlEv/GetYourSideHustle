@@ -37,7 +37,7 @@ function isTaskIncomplete(status: GyshTask["status"]): boolean {
 }
 
 function isTestIncomplete(status: TestStatus | undefined): boolean {
-  return status !== "pass";
+  return status !== "pass" && status !== "conditional_approval";
 }
 
 /** Incomplete tasks + tests for a sprint (board face — excludes Plan). */

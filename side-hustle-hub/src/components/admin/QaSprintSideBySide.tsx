@@ -56,6 +56,7 @@ const HUMAN_STATUSES: TestStatus[] = [
   "not_run",
   "in_progress",
   "pass",
+  "conditional_approval",
   "fail",
   "blocked",
 ];
@@ -204,8 +205,8 @@ export function QaSprintSideBySide({
       .sort((a, b) => {
         const sa = testStatusDrafts[a.id] ?? testStatuses[a.id] ?? DEFAULT_TEST_STATUS;
         const sb = testStatusDrafts[b.id] ?? testStatuses[b.id] ?? DEFAULT_TEST_STATUS;
-        const aDone = sa === "pass";
-        const bDone = sb === "pass";
+        const aDone = sa === "pass" || sa === "conditional_approval";
+        const bDone = sb === "pass" || sb === "conditional_approval";
         if (aDone && !bDone) return 1;
         if (!aDone && bDone) return -1;
         return a.id.localeCompare(b.id);
@@ -213,7 +214,10 @@ export function QaSprintSideBySide({
   }, [allTests, testSprints, testAssignees, testStatuses, testStatusDrafts, sprint, scopeMine, me]);
 
   const taskOpen = myTasks.filter((t) => taskStatusValue(t) !== "done").length;
-  const testOpen = myTests.filter((t) => testStatusValue(t.id) !== "pass").length;
+  const testOpen = myTests.filter((t) => {
+    const st = testStatusValue(t.id);
+    return st !== "pass" && st !== "conditional_approval";
+  }).length;
 
   const saveAllDirty = async () => {
     const taskIds = Object.keys(taskStatusDrafts);
@@ -257,7 +261,11 @@ export function QaSprintSideBySide({
         const data = await saveTestStatus(
           testId,
           status,
-          status === "pass" && !note.trim() ? "Updated from sprint side-by-side" : note,
+          (status === "pass" || status === "conditional_approval") && !note.trim()
+            ? status === "conditional_approval"
+              ? "Conditional approval from sprint side-by-side — add conditions in Testing Portal"
+              : "Updated from sprint side-by-side"
+            : note,
           assignee,
           sprint,
           status === "pass" && stepCount > 0

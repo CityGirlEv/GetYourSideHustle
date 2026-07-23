@@ -66,6 +66,7 @@ export type ProgressStatusFilter =
   | "not_started"
   | "in_progress"
   | "done"
+  | "conditional_approval"
   | "fail"
   | "blocked";
 
@@ -94,6 +95,12 @@ export const PROGRESS_STATUS_FILTERS: {
     label: "Done/Pass",
     taskStatuses: ["done"],
     testStatuses: ["pass"],
+  },
+  {
+    id: "conditional_approval",
+    label: "Conditional Approval",
+    taskStatuses: [],
+    testStatuses: ["conditional_approval"],
   },
   {
     id: "fail",
@@ -127,7 +134,8 @@ const TEST_STATUS_SORT: Record<string, number> = {
   not_run: 1,
   fail: 2,
   blocked: 3,
-  pass: 4,
+  conditional_approval: 4,
+  pass: 5,
 };
 
 export type DailyProgressReport = {
@@ -388,7 +396,14 @@ function bucketTasks(lines: ProgressLine[]): StatusBucket[] {
 }
 
 function bucketTests(lines: ProgressLine[]): StatusBucket[] {
-  const order: TestStatus[] = ["pass", "fail", "in_progress", "blocked", "not_run"];
+  const order: TestStatus[] = [
+    "pass",
+    "conditional_approval",
+    "fail",
+    "in_progress",
+    "blocked",
+    "not_run",
+  ];
   const counts = new Map<string, number>();
   for (const line of lines) {
     counts.set(line.status, (counts.get(line.status) ?? 0) + 1);

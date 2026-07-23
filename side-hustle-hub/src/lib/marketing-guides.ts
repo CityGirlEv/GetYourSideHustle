@@ -123,7 +123,7 @@ function buildAdultGuide(): MarketingGuideDoc {
         kind: "prose",
         imageKey: "hero",
         prose: [
-          "Get Your Side Hustle (GYSH) is the family Side Hustle platform built by T + E — practical, age-right, and designed so matches feel doable, not generic.",
+          "Get Your Side Hustle (GYSH) is the family Side Hustle platform built by T + E — practical, age-appropriate, and designed so matches feel doable, not generic.",
           "This Adult Manual is your showcase piece: how the product works, why members stay, and the exact path from first question to first win.",
         ],
         callout: {
@@ -137,7 +137,7 @@ function buildAdultGuide(): MarketingGuideDoc {
         title: "The GYSH promise for adults",
         kind: "checklist",
         items: checklist("adult-promise", [
-          "Age-right Match Wizard — not a one-size quiz for every generation.",
+          "Age-appropriate Match Wizard — not a one-size quiz for every generation.",
           "Side Hustle Blueprint unlocks with a free account after you finish the wizard.",
           "Launch Guides with real steps, costs, and next actions.",
           "Workshops & Community for momentum — not lonely DIY forever.",
@@ -269,7 +269,7 @@ function buildKidsGuide(): MarketingGuideDoc {
         kind: "prose",
         imageKey: "hero",
         prose: [
-          "Kids don’t need a mini MBA — they need safe, age-right questions, a parent nearby, and small wins that teach earning, saving, and kindness.",
+          "Kids don’t need a mini MBA — they need safe, age-appropriate questions, a parent nearby, and small wins that teach earning, saving, and kindness.",
           "In GYSH, parents become GYSH Coaches: cheer, set boundaries, and help turn ideas into first wins. Parental consent is required through age 12.",
         ],
         callout: {
@@ -665,7 +665,7 @@ function buildMasterGuide(): MarketingGuideDoc {
       kind: "prose",
       imageKey: "hero",
       prose: [
-        "Get Your Side Hustle is one platform for four generations: Kids, Teens, Adults, and Seniors — each with an age-right Match Wizard, Guides, and membership path.",
+        "Get Your Side Hustle is one platform for four generations: Kids, Teens, Adults, and Seniors — each with an age-appropriate Match Wizard, Guides, and membership path.",
         "This Complete Guide is the master marketing piece: every audience chapter, membership perks, and the family adventure that makes GYSH different.",
       ],
       callout: {
@@ -694,7 +694,7 @@ function buildMasterGuide(): MarketingGuideDoc {
       kind: "journey",
       journey: [
         { id: "mj1", label: "Pick age", detail: "Choose the Match Wizard that fits the person starting today." },
-        { id: "mj2", label: "Match", detail: "Answer age-right questions — honest constraints beat wishful thinking." },
+        { id: "mj2", label: "Match", detail: "Answer age-appropriate questions — honest constraints beat wishful thinking." },
         { id: "mj3", label: "Unlock", detail: "Free account → Side Hustle Blueprint (and progress you can keep)." },
         { id: "mj4", label: "Guide", detail: "Open a playbook; check boxes; take one real-world step this week." },
         { id: "mj5", label: "Grow", detail: "Join a plan when you want coaches, member libraries, and Pro schedules." },

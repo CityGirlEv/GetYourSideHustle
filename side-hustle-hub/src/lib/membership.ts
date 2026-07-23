@@ -219,7 +219,7 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
       {
         title: "Free for every age group",
         detail:
-          "Kids, Teens (Juniors), Adults, and Seniors each get free access — browse ideas, free guides, and age-right Corners at $0.",
+          "Kids, Teens (Juniors), Adults, and Seniors each get free access — browse ideas, free guides, and age-appropriate Corners at $0.",
       },
       {
         title: "Browse free guides & hustle ideas",
@@ -244,12 +244,12 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
       {
         title: "Free for every age group",
         detail:
-          "Kids, Teens (Juniors), Adults, and Seniors each get free access — browse ideas, free guides, and age-right Corners at $0.",
+          "Kids, Teens (Juniors), Adults, and Seniors each get free access — browse ideas, free guides, and age-appropriate Corners at $0.",
       },
       {
         title: "Browse free guides & hustle ideas",
         detail:
-          "Age-right free guides and safe Side Hustle ideas with a parent nearby — Teens, Adults & Seniors get free browse in their lanes too.",
+          "Age-appropriate free guides and safe Side Hustle ideas with a parent nearby — Teens, Adults & Seniors get free browse in their lanes too.",
       },
       {
         title: "Kids Match Wizard + ranked ideas",
@@ -269,7 +269,7 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
       {
         title: "Free for every age group",
         detail:
-          "Kids, Teens (Juniors), Adults, and Seniors each get free access — browse ideas, free guides, and age-right Corners at $0.",
+          "Kids, Teens (Juniors), Adults, and Seniors each get free access — browse ideas, free guides, and age-appropriate Corners at $0.",
       },
       {
         title: "Browse free guides & hustle ideas",
@@ -294,7 +294,7 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
       {
         title: "Free for every age group",
         detail:
-          "Kids, Teens (Juniors), Adults, and Seniors each get free access — browse ideas, free guides, and age-right Corners at $0.",
+          "Kids, Teens (Juniors), Adults, and Seniors each get free access — browse ideas, free guides, and age-appropriate Corners at $0.",
       },
       {
         title: "Browse free guides & hustle ideas",

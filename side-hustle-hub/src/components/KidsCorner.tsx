@@ -1168,8 +1168,8 @@ function KidsHustleWizard({
 
                 <p className="kids-wizard-tip">
                   {mode === "junior"
-                    ? "Tip: Answer with a parent nearby. Matches stay age-right and safer to try."
-                    : "Tip: Pick what feels true — with a parent nearby. Matches stay safe and age-right."}
+                    ? "Tip: Answer with a parent nearby. Matches stay age-appropriate and safer to try."
+                    : "Tip: Pick what feels true — with a parent nearby. Matches stay safe and age-appropriate."}
                 </p>
 
                 <div className="kids-wizard-nav">

@@ -96,6 +96,7 @@ const STATUS_ACCENT: Record<ProgressStatusFilter, string> = {
   not_started: "#9ca3af",
   in_progress: "#ca8a04",
   done: "#16a34a",
+  conditional_approval: "#0f766e",
   fail: "#dc2626",
   blocked: "#ea580c",
 };

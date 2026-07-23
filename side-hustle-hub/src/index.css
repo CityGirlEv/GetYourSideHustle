@@ -4759,7 +4759,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .about-page .about-bio-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: start; /* Tina/Ev hug content ? no empty bottom strip */
+  align-items: start; /* hug content — no empty band under shorter bios */
 }
 
 @media (max-width: 900px) {
@@ -5017,7 +5017,7 @@ h1, h2, h3, h4, h5, h6 {
   width: 22px;
   height: 22px;
   vertical-align: -5px;
-  margin: 0 4px;
+  margin: 0 0 0 4px; /* space before icon only — no gap before the comma */
   border-radius: 6px;
 }
 
@@ -6778,29 +6778,27 @@ h1, h2, h3, h4, h5, h6 {
   display: grid;
   grid-template-columns: minmax(0, 1.55fr) minmax(260px, 0.85fr);
   gap: 14px;
-  align-items: stretch;
+  align-items: start;
   box-sizing: border-box;
   max-width: 100%;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .kids-wizard-side {
   min-width: 0;
-  height: 0;
-  min-height: 100%;
+  height: auto;
+  min-height: 0;
+  max-height: none;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  align-self: stretch;
+  align-self: start;
   box-sizing: border-box;
   padding: 0;
   border: none;
   background: transparent;
   box-shadow: none;
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
+  overflow: visible;
 }
 
 .kids-wizard-mode-row {
@@ -7029,10 +7027,10 @@ h1, h2, h3, h4, h5, h6 {
   display: grid;
   grid-template-columns: minmax(320px, min(58vw, 640px)) minmax(0, 1fr);
   gap: 20px 24px;
-  align-items: stretch;
+  align-items: start;
   box-sizing: border-box;
   max-width: 100%;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .match-finder-adult-media-pane {
@@ -7085,17 +7083,15 @@ h1, h2, h3, h4, h5, h6 {
   min-width: 0;
   padding: 20px 22px;
   border-radius: 20px;
-  /* Match image column height (image defines the row) */
-  height: 0;
-  min-height: 100%;
+  /* Grow with wizard content — no inner scrollbar (box may be taller than hero) */
+  height: auto;
+  min-height: 0;
+  max-height: none;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-  align-self: stretch;
+  overflow: visible;
+  align-self: start;
 }
 
 .match-finder-adult-progress-meta {
@@ -7181,7 +7177,7 @@ h1, h2, h3, h4, h5, h6 {
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 12px;
   margin: 20px 0 8px;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   min-height: 0;
   align-content: start;
 }
@@ -7227,10 +7223,13 @@ h1, h2, h3, h4, h5, h6 {
 .match-finder-adult-nav {
   display: flex;
   justify-content: space-between;
-  margin-top: auto;
+  margin-top: 16px;
   border-top: 1px solid var(--border-color);
   padding-top: 20px;
-  flex-shrink: 0;
+  flex: 0 0 auto;
+  position: relative;
+  z-index: 2;
+  background: #fff;
 }
 
 .match-finder-adult-result {
@@ -7316,8 +7315,10 @@ h1, h2, h3, h4, h5, h6 {
 
 .kids-wizard-card {
   min-width: 0;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
+  height: auto;
   min-height: 0;
+  max-height: none;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -7325,8 +7326,8 @@ h1, h2, h3, h4, h5, h6 {
   gap: 4px;
   padding: 8px 10px;
   border-radius: 12px;
-  overflow: hidden;
-  align-self: stretch;
+  overflow: visible;
+  align-self: start;
 }
 
 .kids-wizard-intro {
@@ -7349,7 +7350,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .kids-wizard-tip,
 .wizard-fill-tip {
-  margin: 0;
+  margin: 8px 0 0;
   padding: 5px 8px;
   border-radius: 8px;
   background: rgba(107, 79, 58, 0.06);
@@ -7359,11 +7360,13 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 600;
   color: var(--text-primary);
   flex: 0 0 auto;
+  position: relative;
+  z-index: 1;
 }
 
 .wizard-fill-tip {
   font-size: 0.9rem;
-  margin-top: 4px;
+  margin-top: 10px;
 }
 
 .kids-wizard-progress-meta {
@@ -9972,9 +9975,9 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .seniors-stage .match-finder-adult-card {
-  /* Grow with question content ? taller/longer so seniors never need an inner scrollbar */
+  /* Grow with question content — taller/longer so seniors never need an inner scrollbar */
   height: auto;
-  min-height: min(100%, 720px);
+  min-height: 0;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -16186,7 +16189,6 @@ small {
 .free-guides-hero-copy,
 .find-mine-promo__side,
 .workshops-hero,
-.match-finder-adult-card,
 .kids-jobs-side-panel,
 .kids-jobs-split--junior .kids-jobs-side-panel,
 .kids-piggy-card,
@@ -16194,7 +16196,6 @@ small {
 .kids-about-pane,
 .kids-join-pane,
 .kids-guides-side-panel,
-.kids-wizard-side,
 .seniors-guides-panel,
 .seniors-join,
 .seniors-guides-side,
@@ -16209,11 +16210,15 @@ small {
   -webkit-overflow-scrolling: touch;
 }
 
-/* Seniors quiz card must stay taller than the hero and never force an inner scrollbar */
+/* Match Wizards (Adults / Kids / Teens / Seniors): grow with content, never inner-scroll */
+.match-finder-adult-card,
+.kids-wizard-side,
+.kids-wizard-card,
 .seniors-stage .match-finder-adult-card,
 .seniors-stage .match-finder-adult-scroll {
-  overflow: visible;
-  height: auto;
+  overflow: visible !important;
+  height: auto !important;
+  max-height: none !important;
 }
 
 @media (max-width: 860px) {

@@ -187,6 +187,7 @@ const STATUS_COLORS: Record<string, string> = {
   in_progress: "#ca8a04",
   done: "#16a34a",
   pass: "#16a34a",
+  conditional_approval: "#0f766e",
   fail: "#dc2626",
   carried: "#dc2626",
   blocked: "#ea580c",
@@ -217,6 +218,7 @@ const BULK_STATUS_OPTIONS: { id: string; label: string }[] = [
   { id: "todo", label: "To do / Not run" },
   { id: "in_progress", label: "In progress" },
   { id: "done", label: "Done / Pass" },
+  { id: "conditional_approval", label: "Conditional Approval (tests)" },
   { id: "blocked", label: "Blocked" },
   { id: "fail", label: "Fail (tests)" },
   { id: "carried", label: "Carry over (plan)" },
@@ -235,12 +237,21 @@ function mapBulkStatusToSource(
   if (source === "task") {
     if (bulkStatus === "todo") return "not_started";
     if (bulkStatus === "done" || bulkStatus === "pass") return "done";
-    if (bulkStatus === "fail" || bulkStatus === "carried" || bulkStatus === "not_run") return null;
+    if (
+      bulkStatus === "fail" ||
+      bulkStatus === "carried" ||
+      bulkStatus === "not_run" ||
+      bulkStatus === "conditional_approval"
+    ) {
+      return null;
+    }
     return bulkStatus;
   }
   if (bulkStatus === "todo" || bulkStatus === "not_started" || bulkStatus === "not_run") return "todo";
   if (bulkStatus === "done" || bulkStatus === "pass") return "done";
-  if (bulkStatus === "fail" || bulkStatus === "blocked") return null;
+  if (bulkStatus === "fail" || bulkStatus === "blocked" || bulkStatus === "conditional_approval") {
+    return null;
+  }
   return bulkStatus;
 }
 
@@ -585,7 +596,7 @@ const WORK_STATUS_BUBBLES: { id: string; label: string }[] = [
 
 /** Test progress — same statuses as Testing Portal. */
 const TEST_STATUS_BUBBLES: { id: TestStatus; label: string }[] = (
-  ["not_run", "in_progress", "pass", "fail", "blocked"] as const
+  ["not_run", "in_progress", "pass", "conditional_approval", "fail", "blocked"] as const
 ).map((id) => ({ id, label: TEST_STATUS_LABELS[id] }));
 
 function cardSprintPlacement(card: BoardCard): SprintPlacementStatus {
@@ -1407,7 +1418,7 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
     if (!authUser) return;
     const terminal =
       card.source === "test"
-        ? ["pass", "fail", "blocked"].includes(cardStatusValue(card))
+        ? ["pass", "conditional_approval", "fail", "blocked"].includes(cardStatusValue(card))
         : cardStatusValue(card) === "done";
     if (terminal) return;
     const source = card.source;
@@ -3746,7 +3757,9 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
                             compact
                             disabled={
                               card.source === "test"
-                                ? ["pass", "fail", "blocked"].includes(String(statusVal))
+                                ? ["pass", "conditional_approval", "fail", "blocked"].includes(
+                                    String(statusVal),
+                                  )
                                 : statusVal === "done"
                             }
                           />

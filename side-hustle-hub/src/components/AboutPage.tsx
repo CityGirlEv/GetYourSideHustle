@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef, type RefObject } from "react";
 import {
   Banknote,
   GraduationCap,
@@ -39,7 +40,48 @@ type AboutPageProps = {
   onOpenKids?: () => void;
 };
 
+/** Keep Tina + Evelyn bio cards the same height (Gang in the middle stays independent). */
+function useEqualBioCardHeights(
+  leftRef: RefObject<HTMLElement | null>,
+  rightRef: RefObject<HTMLElement | null>,
+) {
+  useLayoutEffect(() => {
+    const left = leftRef.current;
+    const right = rightRef.current;
+    if (!left || !right) return;
+
+    let frame = 0;
+    const sync = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        left.style.minHeight = "";
+        right.style.minHeight = "";
+        const h = Math.max(left.offsetHeight, right.offsetHeight);
+        left.style.minHeight = `${h}px`;
+        right.style.minHeight = `${h}px`;
+      });
+    };
+
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(left);
+    ro.observe(right);
+    window.addEventListener("resize", sync);
+    return () => {
+      cancelAnimationFrame(frame);
+      ro.disconnect();
+      window.removeEventListener("resize", sync);
+      left.style.minHeight = "";
+      right.style.minHeight = "";
+    };
+  }, [leftRef, rightRef]);
+}
+
 export function AboutPage({ onJoin, onOpenKids }: AboutPageProps) {
+  const tinaBioRef = useRef<HTMLElement>(null);
+  const evelynBioRef = useRef<HTMLElement>(null);
+  useEqualBioCardHeights(tinaBioRef, evelynBioRef);
+
   return (
     <div className="about-page static-page">
       <section className="about-hero-row" aria-label="Meet the GYSH founders">
@@ -293,7 +335,10 @@ export function AboutPage({ onJoin, onOpenKids }: AboutPageProps) {
       </section>
 
       <div className="static-page-grid about-bio-grid">
-        <article className="glass static-page-card about-bio-card about-bio-card--wrap">
+        <article
+          ref={tinaBioRef}
+          className="glass static-page-card about-bio-card about-bio-card--wrap"
+        >
           <div className="about-bio-card__badge-row">
             <span className="glow-badge purple">Tina Marie</span>
             <a
@@ -312,7 +357,7 @@ export function AboutPage({ onJoin, onOpenKids }: AboutPageProps) {
               />
             </a>
           </div>
-          <h3>Service, Side Hustles &amp; Kevina Starr</h3>
+          <h3>Service, Side Hustles &amp; Inspiring the Next Generation</h3>
           <div className="about-bio-card__body">
             <div className="about-bio-card__copy">
               <img
@@ -334,22 +379,15 @@ export function AboutPage({ onJoin, onOpenKids }: AboutPageProps) {
               <p>
                 <strong className="about-em">Tina Marie Barham</strong> is a disabled{" "}
                 <strong>U.S. Navy veteran</strong>, retired <strong>Pentagon IT supervisor</strong>, educator,
-                author, and online entrepreneur with more than <strong>30 years</strong> of combined military and
-                federal information-technology experience.
+                author, and online entrepreneur helping others learn and grow at every stage of life.
               </p>
               <p>
-                During her double career as a Navy service member and federal civil servant, Tina Marie held a{" "}
-                <strong>Top Secret</strong> security clearance and developed the discipline, leadership, and
-                determination that now guide her work with <strong>Get Your Side Hustle</strong>.
+                After retiring from federal service, she built online businesses spanning <strong>Shopify</strong>,
+                ecommerce, digital products, publishing, content creation, and{" "}
+                <strong>AI-powered entrepreneurship</strong>.
               </p>
               <p>
-                After retiring from the Pentagon, she began building a new chapter through online entrepreneurship.
-                Her experience includes <strong>Shopify</strong>, ecommerce, dropshipping, print on demand, digital
-                products, affiliate marketing, publishing, content creation, and{" "}
-                <strong>AI-powered business systems</strong>.
-              </p>
-              <p>
-                Tina Marie is also the creator of{" "}
+                She created{" "}
                 <strong className="about-em">Kevina Starr</strong>
                 <img
                   src={kevinaStarrMark}
@@ -358,38 +396,33 @@ export function AboutPage({ onJoin, onOpenKids }: AboutPageProps) {
                   width={22}
                   height={22}
                   decoding="async"
-                />
-                , the Glow Getter character at the heart of her children&apos;s stories and{" "}
+                />, the Glow Getter whose stories help children build confidence, creativity, and kindness —{" "}
                 <a
                   href={KEVINA_CHANNEL_URL}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="about-inline-link"
                 >
-                  YouTube Channel ({KEVINA_CHANNEL_HANDLE})
-                </a>{" "}
-                and{" "}
+                  YouTube ({KEVINA_CHANNEL_HANDLE})
+                </a>
+                {" · "}
                 <a
                   href={KEVINA_TIKTOK_URL}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="about-inline-link"
                 >
-                  TikTok Profile ({KEVINA_TIKTOK_HANDLE})
+                  TikTok ({KEVINA_TIKTOK_HANDLE})
                 </a>
-                . Through Kevina Starr, Kids Corner, children&apos;s books, and family workshops, she encourages
-                children to build confidence, embrace creativity, practice kindness, and learn age-appropriate
-                entrepreneurship skills.
+                .
               </p>
               <p>
-                Married for <strong>37 years</strong>, Tina Marie is the mother of <strong>one son</strong> and
-                grandmother of <strong>two boys</strong>. She believes side hustles can become a{" "}
-                <strong>family growth experience</strong>—helping adults, seniors, teens, and children discover
-                new skills, build confidence, and create additional possibilities together.
+                As a wife, mother, and grandmother, she helps adults, seniors, teens, and children find practical
+                ways to build skills, confidence, and income through <strong>Get Your Side Hustle</strong>.
               </p>
               <p>
-                Tina Marie brings the service, stories, practical experience, and encouraging push that make
-                starting something new feel possible.
+                <strong>Her mission is simple:</strong> inspire every generation to believe, take action, and create
+                a future filled with possibility.
               </p>
             </div>
           </div>
@@ -439,13 +472,16 @@ export function AboutPage({ onJoin, onOpenKids }: AboutPageProps) {
           </div>
         </article>
 
-        <article className="glass static-page-card about-bio-card about-bio-card--wrap">
+        <article
+          ref={evelynBioRef}
+          className="glass static-page-card about-bio-card about-bio-card--wrap"
+        >
           <div className="about-bio-card__badge-row">
             <span className="glow-badge purple">
               <Rocket size={13} aria-hidden /> Evelyn
             </span>
           </div>
-          <h3>Software, Side Hustles &amp; Real Estate</h3>
+          <h3>Software, Side Hustles &amp; Building What Works</h3>
           <div className="about-bio-card__body">
             <div className="about-bio-card__copy">
               <img
@@ -466,15 +502,16 @@ export function AboutPage({ onJoin, onOpenKids }: AboutPageProps) {
               </div>
               <p>
                 <strong className="about-em">Evelyn Irving</strong> is a software professional, educator, real
-                estate investor, and serial side hustler with more than <strong>30 years</strong> of experience in
-                information technology and a lifelong passion for building practical solutions.
+                estate investor, and serial side hustler with more than <strong>30 years</strong> in information
+                technology, building practical solutions people can use.
               </p>
               <p>
-                Her entrepreneurial experience spans <strong>Shopify</strong>, ecommerce, real estate, and property
-                investing, including ownership and management of more than <strong>15 doors</strong>.
+                Her experience spans <strong>Shopify</strong>, ecommerce, digital products, and real-estate
+                investing — including more than <strong>15 doors</strong> — plus systems that turn ideas into
+                working businesses.
               </p>
               <p>
-                Evelyn also co-founded{" "}
+                She co-founded{" "}
                 <a
                   href={TRINITY_HOUSE_CHANNEL_URL}
                   target="_blank"
@@ -483,9 +520,8 @@ export function AboutPage({ onJoin, onOpenKids }: AboutPageProps) {
                 >
                   {TRINITY_HOUSE_NAME}
                 </a>
-                , {TRINITY_HOUSE_BLURB}, with her late husband, <strong>Glen Jackson</strong>, during their{" "}
-                <strong>28 years</strong> together. Although that chapter has ended, she continues sharing its story
-                through{" "}
+                , {TRINITY_HOUSE_BLURB}, with her late husband, <strong>Glen Jackson</strong>, and continues
+                sharing that story on YouTube —{" "}
                 <a
                   href={TRINITY_HOUSE_CHANNEL_URL}
                   target="_blank"
@@ -493,23 +529,18 @@ export function AboutPage({ onJoin, onOpenKids }: AboutPageProps) {
                   className="about-inline-link"
                 >
                   {TRINITY_HOUSE_HANDLE}
-                </a>{" "}
-                on YouTube.
+                </a>
+                .
               </p>
               <p>
-                As a mother of <strong>two daughters</strong> and grandmother of <strong>three</strong>, Evelyn brings
-                both technical expertise and family-centered purpose to <strong>Get Your Side Hustle</strong>. She
-                develops the systems that help turn <strong className="about-em">Tina Marie</strong>&apos;s vision
-                into a working platform, including the GYSH Match Wizard, calculators, AI-agent playbooks, and
-                practical business tools.
+                As a mother of <strong>two daughters</strong> and grandmother of <strong>three</strong>, she builds
+                Match Wizard, calculators, and AI-agent tools that turn{" "}
+                <strong className="about-em">Tina Marie</strong>&apos;s vision into a working{" "}
+                <strong>Get Your Side Hustle</strong> platform.
               </p>
               <p>
-                Her focus is simple: create clear resources, real next steps, and technology that helps people move
-                from idea to action with confidence.
-              </p>
-              <p>
-                Evelyn turns complex technology into practical tools that families can actually use, understand, and
-                grow with.
+                <strong>Her focus is simple:</strong> inspire every family to move from idea to action with clear
+                resources, real next steps, and confidence.
               </p>
             </div>
           </div>

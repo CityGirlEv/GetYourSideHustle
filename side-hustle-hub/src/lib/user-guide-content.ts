@@ -73,7 +73,7 @@ export const MEMBER_GUIDE_SECTIONS: GuideDocSection[] = [
     items: [
       {
         id: "bp-wizard",
-        text: "GYSH Match Wizard — four wizards (Kids, Teens, Adults, Seniors) with age-right questions.",
+        text: "GYSH Match Wizard — four wizards (Kids, Teens, Adults, Seniors) with age-appropriate questions.",
       },
       {
         id: "bp-families",
@@ -417,7 +417,7 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
       },
       {
         id: "qa-status",
-        text: "Set status: not started, in progress, pass, fail, blocked — notes required for fail/blocked. Untouched cases stay Not Started. Use Save everything to persist notes.",
+        text: "Set status: not started, in progress, pass, conditional approval, fail, blocked — notes required for fail/blocked/conditional approval. Untouched cases stay Not Started. Use Save everything to persist notes.",
       },
       {
         id: "qa-assign",

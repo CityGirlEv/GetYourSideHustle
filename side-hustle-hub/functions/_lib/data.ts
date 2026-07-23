@@ -1223,7 +1223,14 @@ export async function listTestStatuses(env: Env): Promise<Response> {
     const dateAssigned: Record<string, string> = {};
     const updatedAt: Record<string, string> = {};
     const updatedBy: Record<string, string> = {};
-    const validStatuses = new Set(["not_run", "in_progress", "pass", "fail", "blocked"]);
+    const validStatuses = new Set([
+      "not_run",
+      "in_progress",
+      "pass",
+      "conditional_approval",
+      "fail",
+      "blocked",
+    ]);
     for (const row of results ?? []) {
       statuses[row.case_id] = validStatuses.has(row.status) ? row.status : "not_run";
       if (row.note) notes[row.case_id] = row.note;
@@ -1507,7 +1514,11 @@ export async function setTestStatus(env: Env, request: Request, actor: DbUser): 
     }
 
     if (!caseId || !status) return error("Each item needs caseId and status.");
-    if (!["not_run", "in_progress", "pass", "fail", "blocked"].includes(status)) {
+    if (
+      !["not_run", "in_progress", "pass", "conditional_approval", "fail", "blocked"].includes(
+        status,
+      )
+    ) {
       return error(`Invalid status for ${caseId}.`);
     }
 
@@ -1515,9 +1526,14 @@ export async function setTestStatus(env: Env, request: Request, actor: DbUser): 
     if (status === "blocked" && prevStatus !== "blocked" && !canSetTestBlocked(actor)) {
       return error("Only Evelyn may set a test to Blocked.", 403);
     }
-    if ((status === "fail" || status === "blocked") && noteEntriesPlainText(note).length < 8) {
+    if (
+      (status === "fail" || status === "blocked" || status === "conditional_approval") &&
+      noteEntriesPlainText(note).length < 8
+    ) {
       return error(
-        `A note is required for ${status} on ${caseId}. Describe what failed or what is blocking (at least a short sentence).`,
+        status === "conditional_approval"
+          ? `A note is required for conditional approval on ${caseId}. Describe the conditions (at least a short sentence).`
+          : `A note is required for ${status} on ${caseId}. Describe what failed or what is blocking (at least a short sentence).`,
       );
     }
     if (status === "pass" && stepCount > 0 && !allStepsChecked(checked, stepCount)) {

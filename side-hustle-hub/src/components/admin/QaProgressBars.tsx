@@ -6,6 +6,7 @@ export type StatusTally = {
   not_run: number;
   in_progress: number;
   pass: number;
+  conditional_approval: number;
   fail: number;
   blocked: number;
   total: number;
@@ -21,6 +22,7 @@ export type QaProgressRow = {
 
 const SEGMENTS: Array<{ key: keyof StatusTally; color: string; label: string }> = [
   { key: "pass", color: "#3f6b2e", label: "Pass" },
+  { key: "conditional_approval", color: "#0f766e", label: "Conditional Approval" },
   { key: "fail", color: "#9B2F28", label: "Fail" },
   { key: "blocked", color: "#a16207", label: "Blocked" },
   { key: "in_progress", color: "#b8860b", label: "In progress" },
@@ -28,7 +30,15 @@ const SEGMENTS: Array<{ key: keyof StatusTally; color: string; label: string }> 
 ];
 
 export function emptyTally(): StatusTally {
-  return { not_run: 0, in_progress: 0, pass: 0, fail: 0, blocked: 0, total: 0 };
+  return {
+    not_run: 0,
+    in_progress: 0,
+    pass: 0,
+    conditional_approval: 0,
+    fail: 0,
+    blocked: 0,
+    total: 0,
+  };
 }
 
 export function tallyStatuses(
@@ -54,6 +64,7 @@ function aggregateTally(rows: QaProgressRow[]): StatusTally {
     t.not_run += row.tally.not_run;
     t.in_progress += row.tally.in_progress;
     t.pass += row.tally.pass;
+    t.conditional_approval += row.tally.conditional_approval;
     t.fail += row.tally.fail;
     t.blocked += row.tally.blocked;
     t.total += row.tally.total;
@@ -132,6 +143,7 @@ function SegmentedMeter({ row }: { row: QaProgressRow }) {
       </div>
       <div className="qa-progress-meter__legend">
         <span>Pass {tally.pass}</span>
+        <span>Cond. approval {tally.conditional_approval}</span>
         <span>Fail {tally.fail}</span>
         <span>Blocked {tally.blocked}</span>
         <span>In progress {tally.in_progress}</span>

@@ -15,6 +15,8 @@ import { MarkdownLinkText } from "./MarkdownLinkText";
 import {
   TEST_CASES,
   DEFAULT_TEST_STATUS,
+  TEST_STATUSES,
+  isTestStatusResolved,
   STATUS_LABELS,
   PRIORITY_LABELS,
   SUITE_LABELS,
@@ -107,7 +109,7 @@ import { QaProgressBars, emptyTally, tallyStatuses, type StatusTally } from "./Q
 import { WorkTimer } from "./WorkTimer";
 import { NotesThread } from "./NotesThread";
 
-const STATUSES: TestStatus[] = ["not_run", "in_progress", "pass", "fail", "blocked"];
+const STATUSES: TestStatus[] = TEST_STATUSES;
 
 function pctComplete(done: number, total: number): string {
   if (total <= 0) return "0%";
@@ -192,13 +194,15 @@ const STATUS_LIST_ORDER: Record<TestStatus, number> = {
   not_run: 1,
   fail: 2,
   blocked: 3,
-  pass: 4,
+  conditional_approval: 4,
+  pass: 5,
 };
 
 const STATUS_COLOR: Record<TestStatus, string> = {
   not_run: "#9ca3af",
   in_progress: "#ca8a04",
   pass: "#16a34a",
+  conditional_approval: "#0f766e",
   fail: "#dc2626",
   blocked: "#ea580c",
 };
@@ -408,7 +412,7 @@ export function TestingPortal({
 
   const maybeStartTestTimer = async (id: string) => {
     const st = statusesRef.current[id] ?? DEFAULT_TEST_STATUS;
-    if (st === "pass" || st === "fail" || st === "blocked") return;
+    if (isTestStatusResolved(st)) return;
     if (!authUser) return;
     const existing = timers.entryFor("test", id);
     if (existing?.status === "running" || existing?.status === "paused") return;
@@ -763,7 +767,7 @@ export function TestingPortal({
 
   const isCaseComplete = (id: string) => {
     const st = statuses[id] ?? DEFAULT_TEST_STATUS;
-    return st === "pass" || st === "fail" || st === "blocked";
+    return isTestStatusResolved(st);
   };
 
   /**
@@ -868,7 +872,7 @@ export function TestingPortal({
       const ids = COUNTABLE_CASES.filter((t) => t.suite === suite).map((t) => t.id);
       const tally = tallyStatuses(ids, statuses);
       counts[suite] = {
-        done: tally.pass + tally.fail + tally.blocked,
+        done: tally.pass + tally.conditional_approval + tally.fail + tally.blocked,
         total: tally.total,
         passed: tally.pass,
         tally,
@@ -881,6 +885,10 @@ export function TestingPortal({
     const overallTally: StatusTally = {
       ...emptyTally(),
       pass: suiteStats.manual.tally.pass + suiteStats.vitest.tally.pass + suiteStats.playwright.tally.pass,
+      conditional_approval:
+        suiteStats.manual.tally.conditional_approval +
+        suiteStats.vitest.tally.conditional_approval +
+        suiteStats.playwright.tally.conditional_approval,
       fail: suiteStats.manual.tally.fail + suiteStats.vitest.tally.fail + suiteStats.playwright.tally.fail,
       blocked:
         suiteStats.manual.tally.blocked +
@@ -992,7 +1000,7 @@ export function TestingPortal({
       const ids = base.filter((t) => (t.suite ?? "manual") === suite).map((t) => t.id);
       const tally = tallyStatuses(ids, statuses);
       counts[suite] = {
-        done: tally.pass + tally.fail + tally.blocked,
+        done: tally.pass + tally.conditional_approval + tally.fail + tally.blocked,
         total: tally.total,
         passed: tally.pass,
       };
@@ -1153,7 +1161,10 @@ export function TestingPortal({
       return;
     }
     if (statusRequiresNote(status) && !noteMeetsRequirement(note)) {
-      const msg = `A note is required for ${STATUS_LABELS[status]} (at least ${NOTE_MIN_LENGTH} characters). Describe what failed or what is blocking.`;
+      const msg =
+        status === "conditional_approval"
+          ? `A note is required for Conditional Approval (at least ${NOTE_MIN_LENGTH} characters). Describe the conditions.`
+          : `A note is required for ${STATUS_LABELS[status]} (at least ${NOTE_MIN_LENGTH} characters). Describe what failed or what is blocking.`;
       setRowErrors((prev) => ({ ...prev, [id]: msg }));
       setError(msg);
       setOpenIds((prev) => {
@@ -1194,7 +1205,7 @@ export function TestingPortal({
       if (!endSave(id, gen)) return;
       applyServerData(data, id);
       setSaveFlash(`${id} → ${STATUS_LABELS[status]} saved`);
-      if (status !== prev && (status === "pass" || status === "fail" || status === "blocked")) {
+      if (status !== prev && isTestStatusResolved(status)) {
         await stopTimerOnStatusChange("test", id);
         void timers.refresh();
       }
@@ -3084,7 +3095,7 @@ export function TestingPortal({
                     entry={timers.entryFor("test", t.id)}
                     onChanged={timers.onChanged}
                     compact
-                    disabled={st === "pass" || st === "fail" || st === "blocked"}
+                    disabled={isTestStatusResolved(st)}
                   />
                 </span>
               </div>
@@ -3418,13 +3429,15 @@ export function TestingPortal({
                         title={
                           s === "pass"
                             ? "All steps must be checked"
-                            : s === "fail"
-                              ? "Select failed step + write a note"
-                              : s === "blocked"
-                                ? canBlock
-                                  ? "Write a short note describing the blocker"
-                                  : "Only Evelyn may set Blocked"
-                                : undefined
+                            : s === "conditional_approval"
+                              ? "Write a note describing the conditions"
+                              : s === "fail"
+                                ? "Select failed step + write a note"
+                                : s === "blocked"
+                                  ? canBlock
+                                    ? "Write a short note describing the blocker"
+                                    : "Only Evelyn may set Blocked"
+                                  : undefined
                         }
                       >
                         {STATUS_LABELS[s]}

@@ -27,7 +27,7 @@ const HERO_BY_GUIDE: Record<MarketingGuideId, string> = {
 type ImageKey = "hero" | "secondary" | "membership" | "community";
 
 const IMAGE_CAPTIONS: Record<ImageKey, string> = {
-  hero: "Match Wizard — age-right questions, ranked Side Hustles you can start.",
+  hero: "Match Wizard — age-appropriate questions, ranked Side Hustles you can start.",
   secondary: "Product snapshot — the GYSH experience for this audience.",
   membership: "Membership ladder — Free through Elite with clear consulting time.",
   community: "Community & Workshops — momentum after the first match.",

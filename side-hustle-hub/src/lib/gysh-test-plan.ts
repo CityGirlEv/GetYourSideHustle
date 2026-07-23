@@ -13,6 +13,7 @@ export type TestStatus =
   | "not_run"
   | "in_progress"
   | "pass"
+  | "conditional_approval"
   | "fail"
   | "blocked";
 
@@ -29,16 +30,41 @@ export const STATUS_LABELS: Record<TestStatus, string> = {
   not_run: "Not Started",
   in_progress: "In Progress",
   pass: "Pass",
+  conditional_approval: "Conditional Approval",
   fail: "Fail",
   blocked: "Blocked",
 };
 
+/** All valid Testing Portal statuses (API + UI). */
+export const TEST_STATUSES: TestStatus[] = [
+  "not_run",
+  "in_progress",
+  "pass",
+  "conditional_approval",
+  "fail",
+  "blocked",
+];
+
 /** Initial / default status for every test case until a tester changes it. */
 export const DEFAULT_TEST_STATUS: TestStatus = "not_run";
 
-/** Fail and Blocked require a short written note in the Testing Portal / API. */
-export const NOTE_REQUIRED_STATUSES: TestStatus[] = ["fail", "blocked"];
+/** Fail, Blocked, and Conditional Approval require a short written note. */
+export const NOTE_REQUIRED_STATUSES: TestStatus[] = [
+  "fail",
+  "blocked",
+  "conditional_approval",
+];
 export const NOTE_MIN_LENGTH = 8;
+
+/** Resolved statuses (no longer open / not started). */
+export function isTestStatusResolved(status: TestStatus): boolean {
+  return (
+    status === "pass" ||
+    status === "conditional_approval" ||
+    status === "fail" ||
+    status === "blocked"
+  );
+}
 
 export function statusRequiresNote(status: TestStatus): boolean {
   return NOTE_REQUIRED_STATUSES.includes(status);

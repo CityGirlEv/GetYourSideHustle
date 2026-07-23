@@ -1921,7 +1921,7 @@ function App() {
                 className={`home-page-header__lead${homeHowOpen ? " is-open" : ""}`}
                 data-testid="home-how-panel"
               >
-                Each wizard asks age-right questions so matches feel doable—not generic. Parents become{" "}
+                Each wizard asks age-appropriate questions so matches feel doable—not generic. Parents become{" "}
                 <strong>GYSH Coaches</strong> for kids and teens: cheer, set boundaries, and help turn ideas into
                 safe first wins. Parental consent required through age 12.
               </p>

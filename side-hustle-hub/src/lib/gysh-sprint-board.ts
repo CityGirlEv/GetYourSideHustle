@@ -25,9 +25,9 @@ export function taskStatusNeedsSprintDue(status: TaskStatus | string | undefined
   return status !== "done";
 }
 
-/** Incomplete tests get sprint due heals; Pass keeps its stored due until sprint moves. */
+/** Incomplete tests get sprint due heals; Pass / Conditional Approval keep stored due until sprint moves. */
 export function testStatusNeedsSprintDue(status: TestStatus | string | undefined): boolean {
-  return status !== "pass";
+  return status !== "pass" && status !== "conditional_approval";
 }
 
 /** Explicit task → sprint (everything else → heuristic / backlog). */
@@ -278,7 +278,7 @@ export function taskStatusToBoard(status: GyshTask["status"]): string {
 }
 
 export function testStatusToBoard(status: TestStatus | undefined): string {
-  if (status === "pass") return "done";
+  if (status === "pass" || status === "conditional_approval") return "done";
   if (status === "in_progress") return "in_progress";
   if (status === "fail" || status === "blocked") return "blocked";
   return "todo";

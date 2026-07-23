@@ -149,7 +149,7 @@ export function MembershipPage({
               <span className="membership-hero-heading-aside">(FREE TO START)</span>
             </h2>
             <p data-testid="membership-lead">
-              GYSH membership turns “I should try this” into a weekly rhythm — age-right Match Wizard
+              GYSH membership turns “I should try this” into a weekly rhythm — age-appropriate Match Wizard
               matches, member guides, consulting time, and (on Pro+) a hustle schedule with tracker,
               progress reports, and email nudges. Start free, then pick the lane that fits your life.
             </p>
