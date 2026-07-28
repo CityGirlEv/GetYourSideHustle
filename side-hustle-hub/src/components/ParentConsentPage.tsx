@@ -115,8 +115,8 @@ export function ParentConsentPage({ token, onClose }: ParentConsentPageProps) {
             </h2>
             <p className="consent-intro">
               <strong>{signup.childName}</strong> asked to join the <strong>{signup.teamLabel}</strong> on{" "}
-              {SITE_NAME}. Because they are under 18, a parent or guardian must approve and complete
-              registration before the account is activated.
+              {SITE_NAME}. Parental consent is required through age 12 — please approve and complete
+              registration before the Kids account is activated.
             </p>
 
             <div className="consent-safety">

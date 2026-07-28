@@ -125,17 +125,23 @@ export function suggestedSprintForTask(task: Pick<GyshTask, "id" | "category" | 
 }
 
 /**
- * Catalog tests that verify a Sprint 0 task (same feature/area).
- * Only these may default to Sprint 0 — all other tests start at Sprint 1+.
+ * True when a backlog task has an explicit rollout placement (map / guide id / notes).
+ * User-created backlog tasks without this stay in Backlog (preserve mode must not yank them).
  */
-export const TEST_SPRINT_0_TASK_MATCH: Record<string, string> = {
-  "EMAIL-001": "T-020/T-021", // Resend / API email ops ↔ Gmail + info@ setup
-  "EMAIL-005": "T-020/T-021", // Verified From domain ↔ email ops
-  "BRAND-001": "T-001/T-011", // Antique Gold / Soft Ivory brand kit + layout
-  "ABOUT-001": "T-004", // About partnership story copy
-  "ADMIN-003": "T-007", // Content Factory cadence
-  "KIDS-001": "T-002", // Kevina Starr Stories in Kids Corner
-};
+export function taskHasExplicitSprintPlacement(
+  task: Pick<GyshTask, "id" | "notes">,
+): boolean {
+  if (Object.prototype.hasOwnProperty.call(TASK_SPRINT_MAP, task.id)) return true;
+  if (task.id.startsWith("T-LG-")) return true;
+  return /Sprint\s*\d/i.test(String(task.notes || ""));
+}
+
+/**
+ * Catalog tests that may default to Sprint 0 (same feature/area as an S0 task).
+ * Empty after Sprint 0 close — former pins (EMAIL/BRAND/ABOUT/KIDS/ADMIN-003)
+ * use their normal Sprint 1+ bands so the board heal cannot yank them back to S0.
+ */
+export const TEST_SPRINT_0_TASK_MATCH: Record<string, string> = {};
 
 export function testMatchesSprint0Task(
   test: Pick<TestCase, "id"> | { id: string },
@@ -147,8 +153,8 @@ export function testMatchesSprint0Task(
  * Test areas mapped to sprints. Wizard FMSH matrices are automated (Vitest)
  * but owned for sign-off in later sprints so the board stays balanced.
  *
- * Default band is Sprint 1+ (not Sprint 0). A test lands on Sprint 0 only when
- * it clearly matches a Sprint 0 task (see TEST_SPRINT_0_TASK_MATCH).
+ * Default band is Sprint 1+ (not Sprint 0). TEST_SPRINT_0_TASK_MATCH is empty
+ * after Sprint 0 closed — keep the hook for rare explicit S0 defaults only.
  */
 export function suggestedSprintForTest(
   test: Pick<TestCase, "id" | "area" | "priority"> & { suite?: TestCase["suite"] },
@@ -161,7 +167,7 @@ export function suggestedSprintForTest(
     return BACKLOG_SPRINT;
   }
 
-  // Explicit Sprint 0 task linkage (exception to “tests default to Sprint 1+”)
+  // Explicit Sprint 0 task linkage (unused while TEST_SPRINT_0_TASK_MATCH is empty)
   if (Object.prototype.hasOwnProperty.call(TEST_SPRINT_0_TASK_MATCH, id)) {
     return 0;
   }
@@ -247,6 +253,8 @@ export function suggestedSprintForTest(
   if (id.startsWith("VT-WIZARD")) return 4;
   if (id.startsWith("WORK-")) return 3; // workshops — post soft launch
   if (id.startsWith("ADULT-") || id.startsWith("SENIOR-")) return 3;
+  // Content Factory cadence — Sprint 1 (rest of Admin stays with T-006 band)
+  if (id === "ADMIN-003") return 1;
   // Admin product / Testing Portal ops — with T-006 band (ADMIN-001/008 included)
   if (id.startsWith("ADMIN-") || id.startsWith("VT-PLAN")) return 3;
 
@@ -278,10 +286,68 @@ export function taskStatusToBoard(status: GyshTask["status"]): string {
 }
 
 export function testStatusToBoard(status: TestStatus | undefined): string {
-  if (status === "pass" || status === "conditional_approval") return "done";
+  // Match Testing Portal “passed” for done counts — Conditional Pass stays open for rework.
+  if (status === "pass") return "done";
   if (status === "in_progress") return "in_progress";
+  if (status === "rolled_over") return "rolled_over";
   if (status === "fail" || status === "blocked") return "blocked";
+  if (status === "conditional_approval") return "conditional_approval";
+  if (status === "fixed_retest" || status === "failed_retest" || status === "fixed_cursor") {
+    return status;
+  }
   return "todo";
+}
+
+/**
+ * Tests currently on `sprintIndex` with status `rolled_over`
+ * (arrived from the prior sprint at End Sprint / rollover).
+ * Pass `knownCaseIds` (board/catalog) so orphan D1 rows from renamed IDs are ignored.
+ */
+export function countRolledIntoSprint(
+  statuses: Record<string, TestStatus | string | undefined>,
+  sprints: Record<string, number | undefined>,
+  sprintIndex: number,
+  knownCaseIds?: ReadonlySet<string>,
+): number {
+  let n = 0;
+  for (const [id, sprint] of Object.entries(sprints)) {
+    if (knownCaseIds && !knownCaseIds.has(id)) continue;
+    if (Number(sprint) !== sprintIndex) continue;
+    if (statuses[id] === "rolled_over") n += 1;
+  }
+  return n;
+}
+
+/** Short chip / banner copy for rollover relative to a focused sprint. */
+export function sprintRolloverSummary(
+  statuses: Record<string, TestStatus | string | undefined>,
+  sprints: Record<string, number | undefined>,
+  sprintIndex: number,
+  knownCaseIds?: ReadonlySet<string>,
+): { toNext: number; fromPrev: number; chipHint: string; banner: string } {
+  const toNext = countRolledIntoSprint(statuses, sprints, sprintIndex + 1, knownCaseIds);
+  const fromPrev = countRolledIntoSprint(statuses, sprints, sprintIndex, knownCaseIds);
+  const parts: string[] = [];
+  if (toNext > 0) parts.push(`${toNext} → S${sprintIndex + 1}`);
+  if (fromPrev > 0) parts.push(`${fromPrev} from S${sprintIndex - 1}`);
+  const chipHint = parts.join(" · ");
+  const bannerParts: string[] = [];
+  if (toNext > 0) {
+    bannerParts.push(
+      `${toNext} test${toNext === 1 ? "" : "s"} rolled over to Sprint ${sprintIndex + 1}`,
+    );
+  }
+  if (fromPrev > 0) {
+    bannerParts.push(
+      `${fromPrev} test${fromPrev === 1 ? "" : "s"} rolled over from Sprint ${sprintIndex - 1}`,
+    );
+  }
+  return {
+    toNext,
+    fromPrev,
+    chipHint,
+    banner: bannerParts.join(" · "),
+  };
 }
 
 export function ownerFromAssignees(assignees: TestOwnerId[] | string[]): string {
@@ -373,15 +439,20 @@ export function testToBoardCard(
 
 /**
  * Apply suggested sprints when a task is still on the migration default (Sprint 0)
- * or still in Backlog, and the suggestion is a committed sprint.
+ * or still in Backlog with an explicit placement, and the suggestion is a committed sprint.
  */
 export function applySuggestedTaskSprints(tasks: GyshTask[]): { tasks: GyshTask[]; changed: boolean } {
   let changed = false;
   const next = tasks.map((t) => {
     const current = typeof t.sprint === "number" ? t.sprint : 0;
     const suggested = suggestedSprintForTask(t);
-    const uncommitted = current === 0 || current === BACKLOG_SPRINT;
-    if (uncommitted && suggested !== current) {
+    const fromSprint0 = current === 0 && suggested !== current;
+    const fromBacklog =
+      current === BACKLOG_SPRINT &&
+      taskHasExplicitSprintPlacement(t) &&
+      suggested !== current &&
+      !isBacklogSprint(suggested);
+    if (fromSprint0 || fromBacklog) {
       changed = true;
       return { ...t, sprint: suggested };
     }
@@ -395,8 +466,9 @@ export type SprintPlanMode = "force" | "preserve";
 /**
  * Align tasks to the rollout map.
  * - force: overwrite every sprint (opt-in scripts only).
- * - preserve (default): never move Sprint 0+ placements; only assign from Backlog,
- *   and heal due dates for incomplete (not Done) items to match the kept sprint.
+ * - preserve (default): never move Sprint 0+ placements; only pull Backlog → sprint when
+ *   the task has an explicit placement (TASK_SPRINT_MAP / T-LG-* / notes). User-created
+ *   Backlog tasks stay in Backlog. Also heal due dates for incomplete items.
  * Sprint moves always reset due (including Done). Backlog clears due.
  */
 export function commitTaskSprintPlan(
@@ -408,7 +480,13 @@ export function commitTaskSprintPlan(
     const suggested = suggestedSprintForTask(t);
     const current = typeof t.sprint === "number" ? t.sprint : 0;
     const nextSprint =
-      mode === "force" ? suggested : current === BACKLOG_SPRINT ? suggested : current;
+      mode === "force"
+        ? suggested
+        : current === BACKLOG_SPRINT &&
+            taskHasExplicitSprintPlacement(t) &&
+            !isBacklogSprint(suggested)
+          ? suggested
+          : current;
     const sprintChanged = t.sprint !== nextSprint;
     const due = dueDateForSprint(nextSprint);
     let nextDue = t.dueDate;
@@ -563,8 +641,13 @@ export function commitTestSprintPlan(
     if (mode === "force" || !hasStored) {
       nextSprint = suggested;
     } else if (suggested === 0) {
-      // S0 task-matched tests always belong on Sprint 0
-      nextSprint = 0;
+      // S0 task-matched defaults: pin only when unset, still on S0, or parked on Backlog.
+      // Never yank a committed Sprint 1+ placement back to S0 (End Sprint / manual move wins).
+      if (stored === 0 || stored === BACKLOG_SPRINT) {
+        nextSprint = 0;
+      } else {
+        nextSprint = stored;
+      }
     } else if (stored === 0) {
       // Unmatched tests never remain on Sprint 0
       nextSprint = suggested;
@@ -594,7 +677,7 @@ export function commitTestSprintPlan(
 /**
  * Bump to re-run Schedule soft heal (S0 task matches + re-home Backlog parking).
  */
-export const ROLLOUT_SCHEDULE_VERSION = "2026-07-20-tests-match-s0-tasks";
+export const ROLLOUT_SCHEDULE_VERSION = "2026-07-25-no-tests-pinned-to-s0";
 
 export type RolloutScheduleApplyResult = {
   planItems: PlanItem[];

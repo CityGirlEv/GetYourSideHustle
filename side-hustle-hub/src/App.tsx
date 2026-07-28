@@ -78,6 +78,7 @@ import {
   syncUrlToView,
   titleForView,
 } from "./lib/app-routes";
+import { readAdminDeepLink } from "./lib/admin-deep-links";
 import {
   confirmPasswordReset,
   fetchMe,
@@ -90,15 +91,15 @@ import { clearResetTokenFromUrl, readResetTokenFromUrl } from "./lib/password-re
 import type { GuidePeekNav } from "./lib/launch-guide-peeks";
 import {
   ACT_AS_AUDIENCE_OPTIONS,
+  ACT_AS_GUEST_OPTION,
   actAsAudience,
   actAsLabel,
   clearActAsTarget,
   readActAsTarget,
-  toActAsUserTarget,
   writeActAsTarget,
   type ActAsTarget,
 } from "./lib/admin-act-as";
-import { canAccessAdminPortal, fetchUsers, type GyshUser } from "./lib/gysh-roles";
+import { canAccessAdminPortal } from "./lib/gysh-roles";
 import { hasFreeMemberSession } from "./lib/free-member-session";
 import { readPendingBlueprint } from "./lib/pending-blueprint";
 import type { BlueprintAgeGroup } from "./lib/gysh-analytics";
@@ -183,22 +184,43 @@ const HUSTLES_DATA: Hustle[] = [
     ]
   },
   {
+    id: "digital-products",
+    name: "Digital Products",
+    description:
+      "Create and sell your own digital downloads — ebooks, printables, planners, templates, and mini-courses. Book publishing is a classic Digital path (kids can publish stories too).",
+    startupCost: "Less than $100",
+    timeReq: "8 - 20 hrs/week",
+    difficulty: "Medium",
+    potentialIncome: "$200 - $10,000/mo",
+    type: "Passive / Product",
+    gradient: "purple",
+    category: "Digital",
+    iconName: "digital-products",
+    details: [
+      "No inventory — deliver PDFs, files, or course access instantly",
+      "Book publishing (KDP / print + ebook) is a flagship Digital example",
+      "Kids and teens can start with short storybooks and simple printables",
+    ],
+  },
+  {
     id: "affiliate",
     name: "Affiliate Marketing",
-    description: "Earn passive referral commissions by creating helpful reviews and tutorials promoting other brands' products.",
+    description:
+      "Earn a commission when someone buys through your unique link — Amazon, TikTok Shop, brand programs, software partners, and more. You promote other companies’ products; you don’t have to invent your own.",
     startupCost: "Less than $100",
     timeReq: "5 - 15 hrs/week",
     difficulty: "Medium",
     potentialIncome: "$100 - $15,000/mo",
     type: "Passive",
     gradient: "emerald",
-    category: "Digital",
+    category: "Marketing",
     iconName: "affiliate",
     details: [
-      "Focuses heavily on search SEO and value-first content hubs",
-      "Best with recurring software programs (SaaS affiliate fees)",
-      "Slow launch but creates long-term recurring profit"
-    ]
+      "Separate from Digital Products — you promote other brands, not your own downloads",
+      "Start with easy programs (Amazon, TikTok/Creator, brands you already use)",
+      "Honest reviews and demos beat bare link spam — always disclose affiliates",
+      "Recurring SaaS commissions are a later upgrade once you have traction",
+    ],
   },
   {
     id: "amazon",
@@ -267,10 +289,10 @@ const HUSTLES_DATA: Hustle[] = [
     category: "AI / Creative",
     iconName: "ai-assets",
     details: [
-      "Low overhead: Midjourney/Canva Pro + a clean delivery folder",
+      "Low overhead: any AI image tool + a simple editor + a clean delivery folder",
       "Productize kits (logo pack, launch creatives, 30-day social set)",
-      "Pairs perfectly with website lead-finder outreach"
-    ]
+      "Pairs perfectly with website lead-finder outreach",
+    ],
   },
   {
     id: "property-mgmt",
@@ -383,20 +405,22 @@ const HUSTLES_DATA: Hustle[] = [
   {
     id: "book-publishing",
     name: "Book Publishing",
-    description: "Write, publish, and market books (print + ebook + audiobook) — Tina's expertise lane, from manuscript to KDP/IngramSpark and launch funnels.",
+    description:
+      "Write, publish, and market books (print + ebook + audiobook) — a core Digital side hustle. Tina’s expertise lane from manuscript to KDP/IngramSpark; kids can publish storybooks too.",
     startupCost: "$100 - $1,000",
     timeReq: "10 - 20 hrs/week",
     difficulty: "Medium",
     potentialIncome: "$200 - $8,000/mo",
     type: "Active / Royalty",
     gradient: "amber",
-    category: "Publishing",
+    category: "Digital",
     iconName: "book-publishing",
     details: [
+      "A Digital Products path — your own content, not affiliate links",
       "KDP + wide distribution (IngramSpark) for print and ebook reach",
       "Royalties stack while you write the next title",
-      "Pairs with Kids Corner / Kevina Starr storytelling brand"
-    ]
+      "Kids & teens can start with short stories (see Kids / Teens Ideas)",
+    ],
   }
 ];
 
@@ -436,7 +460,7 @@ function App() {
   const [resetBusy, setResetBusy] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [adminSessionKey, setAdminSessionKey] = useState(0);
-  const [adminTab, setAdminTab] = useState<AdminTab>("schedule");
+  const [adminTab, setAdminTab] = useState<AdminTab>(() => readAdminDeepLink().tab ?? "schedule");
   const [adminUserGuide, setAdminUserGuide] = useState<UserGuideId>("master");
   const [adminMenuOpen, setAdminMenuOpen] = useState(false);
   const adminMenuRef = useRef<HTMLDivElement>(null);
@@ -445,7 +469,6 @@ function App() {
   const [actAsTarget, setActAsTarget] = useState<ActAsTarget>(() => readActAsTarget());
   const [actAsMenuOpen, setActAsMenuOpen] = useState(false);
   const actAsMenuRef = useRef<HTMLDivElement>(null);
-  const [profileUsers, setProfileUsers] = useState<GyshUser[]>([]);
   const [kidsEntryFocus, setKidsEntryFocus] = useState<{
     mode: "kids" | "junior";
     tab: "stories" | "wizard" | "jobs" | "piggy" | "guides" | "join";
@@ -454,6 +477,8 @@ function App() {
     "match" | "opportunities" | "guides" | "join" | null
   >(null);
   const [joinAudience, setJoinAudience] = useState<AudienceGroup | null>(null);
+  /** Optional: scroll Join to Free–Elite plans (in-page See Memberships CTAs only). */
+  const [joinScrollToPlans, setJoinScrollToPlans] = useState(false);
   const [signupTier, setSignupTier] = useState<TierId>("free");
   const [howOpen, setHowOpen] = useState(false);
   const [homeHowOpen, setHomeHowOpen] = useState(false);
@@ -467,6 +492,10 @@ function App() {
   void memberAccessTick;
   /** Portal login OR free Blueprint member session */
   const hasMemberAccess = isLoggedIn || hasFreeMemberSession();
+  const previewingAsGuest = actAsTarget.type === "guest";
+  /** Guest Profile Switcher pretends there is no member session. */
+  const effectiveMemberAccess = previewingAsGuest ? false : hasMemberAccess;
+  const effectivePortalLogin = previewingAsGuest ? false : isLoggedIn;
   const [pageZoom, setPageZoom] = useState(() => {
     try {
       const raw = Number(localStorage.getItem("gysh-page-zoom"));
@@ -492,8 +521,10 @@ function App() {
   const contentZoomStyle =
     pageZoom === 100 ? undefined : ({ zoom: `${pageZoom}%` } as React.CSSProperties);
 
-  // Keep the address bar in sync so pages are shareable deep links
+  // Keep the address bar in sync so pages are shareable deep links.
+  // Skip while a consent (or password-reset) deep link is active so we don't drop the token.
   useEffect(() => {
+    if (consentToken || resetToken) return;
     if (skipNextUrlSync.current) {
       skipNextUrlSync.current = false;
       return;
@@ -503,7 +534,7 @@ function App() {
       replace: !urlSyncReady.current,
     });
     urlSyncReady.current = true;
-  }, [activeView, guidesManualId]);
+  }, [activeView, guidesManualId, consentToken, resetToken]);
 
   useEffect(() => {
     const onPopState = () => {
@@ -545,9 +576,10 @@ function App() {
    * Staff (Tina/Evelyn/Lyriq admin|qa) browsing as themselves stay gated.
    */
   const kidsCornerMemberAccess =
-    actAsAudienceNow === "kids" ||
-    actAsAudienceNow === "junior" ||
-    (hasMemberAccess && !canUseAdminPortal);
+    !previewingAsGuest &&
+    (actAsAudienceNow === "kids" ||
+      actAsAudienceNow === "junior" ||
+      (hasMemberAccess && !canUseAdminPortal));
 
   // Restore partner/member session (cookie or sessionStorage token) before exposing /admin.
   useEffect(() => {
@@ -577,7 +609,7 @@ function App() {
     setActiveView("login");
   }, [authReady, activeView, canUseAdminPortal]);
 
-  const goTo = (view: AppView) => {
+  const goTo = (view: AppView, opts?: { scroll?: boolean }) => {
     setActiveView(view);
     setMobileMenuOpen(false);
     setAdminMenuOpen(false);
@@ -592,10 +624,15 @@ function App() {
     setHowOpen(false);
     if (view !== "dashboard") setHomeHowOpen(false);
     if (view === "quiz") setFindMineMode("select");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    if (opts?.scroll !== false) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   };
 
-  const openJoin = (audience?: AudienceGroup | null) => {
+  const openJoin = (
+    audience?: AudienceGroup | null,
+    opts?: { scrollToPlans?: boolean },
+  ) => {
     if (audience) {
       const next = audienceFromAgeGroup(audience);
       saveJoinAudience(next);
@@ -603,7 +640,9 @@ function App() {
     } else {
       setJoinAudience(null);
     }
-    goTo("join");
+    const scrollToPlans = opts?.scrollToPlans === true;
+    setJoinScrollToPlans(scrollToPlans);
+    goTo("join", { scroll: !scrollToPlans });
   };
 
   /** Membership registration + optional demo checkout for paid tiers. */
@@ -652,7 +691,7 @@ function App() {
           steps: [
             "Pick your age group — Kids, Teens, Adults, or Seniors — so we open the right wizard.",
             "Kids match ages 4–8 and 9–12; Teens match ages 13–14 and 15–17; Adult and Senior wizards use stage-fit questions.",
-            "Parents become GYSH Coaches for kids (parental consent required through age 12) and stay coach-friendly for teens.",
+            "Parents become GYSH Coaches for kids (parental consent required through age 12; not required for ages 13+) and stay coach-friendly for teens.",
             "See ranked matches, then take the next step with ideas, guides, and tools that fit your stage.",
           ],
         };
@@ -663,7 +702,7 @@ function App() {
             "Choose Kids (ages 4–12) or Teens (ages 13–17).",
             "Use the GYSH Match Wizard, Ideas, savings tools, Guides, and Join the Team.",
             "Kids can also watch Kevina Starr Stories for confidence and kindness.",
-            "Parents act as GYSH Coaches — consent is required through age 12; keep a parent nearby for safety.",
+            "Parents act as GYSH Coaches — consent is required through age 12 (not for ages 13+); keep a parent nearby for safety.",
           ],
         };
       case "seniors":
@@ -871,6 +910,10 @@ function App() {
       goToAdmin("schedule");
       return;
     }
+    if (audience === "guest") {
+      goTo("dashboard");
+      return;
+    }
     if (audience === "kids") {
       openKidsCorner({ mode: "kids", tab: "wizard" });
       return;
@@ -886,20 +929,13 @@ function App() {
     goTo("dashboard");
   };
 
-  const restoreBlueprintAfterUnlock = (ageGroup: BlueprintAgeGroup) => {
-    if (ageGroup === "adult") {
-      openAdultFindMine();
-      return;
-    }
-    if (ageGroup === "kids") {
-      openKidsCorner({ mode: "kids", tab: "wizard" });
-      return;
-    }
-    if (ageGroup === "junior") {
-      openKidsCorner({ mode: "junior", tab: "wizard" });
-      return;
-    }
-    openSeniors(null);
+  /** After free unlock / login claim — land on My Dashboard (Blueprint + credits). */
+  const restoreBlueprintAfterUnlock = (_ageGroup: BlueprintAgeGroup) => {
+    setActiveView("user_portal");
+    setMobileMenuOpen(false);
+    setAdminMenuOpen(false);
+    setActAsMenuOpen(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   useEffect(() => {
@@ -950,27 +986,16 @@ function App() {
     };
   }, [actAsMenuOpen]);
 
-  useEffect(() => {
-    if (!isLoggedIn || userRole !== "admin") {
-      setProfileUsers([]);
+  const handleFooterNav = (view: FooterNavView) => {
+    if (view === "join") {
+      openJoin();
       return;
     }
-    let cancelled = false;
-    void fetchUsers()
-      .then((users) => {
-        if (!cancelled) {
-          setProfileUsers(users.filter((u) => u.status === "active"));
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setProfileUsers([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [isLoggedIn, userRole, adminSessionKey]);
-
-  const handleFooterNav = (view: FooterNavView) => {
+    if (view === "memberships") {
+      // Differentiate from Join GYSH: land on Free–Elite pricing.
+      openJoin(null, { scrollToPlans: true });
+      return;
+    }
     goTo(view);
   };
 
@@ -1041,21 +1066,20 @@ function App() {
                   claimToken: pending.claimToken,
                 }),
               )
-              .finally(() => {
-                /* local restore still runs below */
+              .catch(() => {
+                /* portal still shows pending locally */
               }),
           );
         }
 
-        if (pending) {
-          restoreBlueprintAfterUnlock(pending.ageGroup);
-        } else if (outcome === "admin") {
+        if (outcome === "admin") {
           sessionStorage.setItem(DUE_POPUP_LOGIN_FLAG, "1");
           setAdminSessionKey((k) => k + 1);
           setAdminTab("schedule");
           setActiveView("admin");
         } else {
-          setActiveView("user_portal");
+          /* Members (incl. after Blueprint claim) land on My Dashboard first */
+          restoreBlueprintAfterUnlock(pending?.ageGroup ?? "adult");
         }
       } else if (outcome === "unavailable") {
         setLoginError(error || "Database unavailable. Try again after deploy/bindings are fixed.");
@@ -1187,8 +1211,8 @@ function App() {
     "E-Commerce",
     "Real Estate",
     "Digital",
+    "Marketing",
     "Creative",
-    "Publishing",
     "Local Services",
     "Gig Economy",
     "AI / Creative",
@@ -1215,11 +1239,11 @@ function App() {
       case "guides":
         if (guidesManualId) {
           const labels: Record<MarketingGuideId, string> = {
-            adult: "Adult Marketing Manual",
-            kids: "Kids Marketing Manual",
-            teens: "Teens Marketing Manual",
-            seniors: "Seniors Marketing Manual",
-            master: "Complete GYSH Guide",
+            adult: "GYSH Adult Guide",
+            kids: "GYSH Kids Guide",
+            teens: "GYSH Teens Guide",
+            seniors: "GYSH Seniors Guide",
+            master: "GYSH Complete Guide",
           };
           return labels[guidesManualId];
         }
@@ -1247,8 +1271,8 @@ function App() {
       case "calculators": return "Estimate cash flow, product margins, and affiliate returns.";
       case "guides":
         return guidesManualId
-          ? "Downloadable showcase manual with checklists, journey arrows, membership perks, and CTAs."
-          : "Browse Adult, Senior, Kids, and Teens guides — plus downloadable marketing manuals from the Guides menu.";
+          ? "Downloadable showcase guide with checklists, journey arrows, membership perks, and CTAs."
+          : "Browse Adult, Senior, Kids, and Teens guides — plus downloadable audience guides from the Guides menu.";
       case "checklist": return "Practical launch steps — preview is open; the full list unlocks when you sign in.";
       case "workshops": return "Live sessions and guest experts for adult Side Hustles, AI agents, and Kids Glow nights.";
       case "community": return "Ask questions, share updates, and exchange tips with other Side Hustlers.";
@@ -1692,6 +1716,20 @@ function App() {
                       <li className="profile-switch-heading" role="presentation">
                         Use app as
                       </li>
+                      <li role="none">
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className={`admin-nav-item${actAsTarget.type === "guest" ? " active" : ""}`}
+                          data-testid="admin-profile-switch-guest"
+                          onClick={() => applyActAsTarget({ type: "guest" })}
+                        >
+                          <span className="profile-switch-item-label">{ACT_AS_GUEST_OPTION.label}</span>
+                          <span className="profile-switch-item-desc">
+                            {ACT_AS_GUEST_OPTION.description}
+                          </span>
+                        </button>
+                      </li>
                       {ACT_AS_AUDIENCE_OPTIONS.map((opt) => (
                         <li key={opt.audience} role="none">
                           <button
@@ -1711,28 +1749,6 @@ function App() {
                           </button>
                         </li>
                       ))}
-                      {profileUsers.length > 0 && (
-                        <>
-                          <li className="profile-switch-heading" role="presentation">
-                            User profiles
-                          </li>
-                          {profileUsers.map((u) => (
-                            <li key={u.id} role="none">
-                              <button
-                                type="button"
-                                role="menuitem"
-                                className={`admin-nav-item${
-                                  actAsTarget.type === "user" && actAsTarget.id === u.id ? " active" : ""
-                                }`}
-                                onClick={() => applyActAsTarget(toActAsUserTarget(u))}
-                              >
-                                <span className="profile-switch-item-label">{u.name}</span>
-                                <span className="profile-switch-item-desc">{u.email}</span>
-                              </button>
-                            </li>
-                          ))}
-                        </>
-                      )}
                     </ul>
                   </div>
                 ) : (
@@ -1744,19 +1760,37 @@ function App() {
                     </div>
                   </div>
                 )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    handleLogout();
-                    setMobileMenuOpen(false);
-                    setAdminMenuOpen(false);
-                    setActAsMenuOpen(false);
-                  }}
-                  className="btn btn-outline"
-                  style={{ padding: "6px 12px", fontSize: "0.9375rem", gap: "6px" }}
-                >
-                  <LogOut size={12} /> Log Out
-                </button>
+                {previewingAsGuest ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      goTo("login");
+                      setMobileMenuOpen(false);
+                      setAdminMenuOpen(false);
+                      setActAsMenuOpen(false);
+                    }}
+                    className="btn btn-primary"
+                    style={{ padding: "8px 14px", fontSize: "0.95rem", gap: "6px" }}
+                    data-testid="guest-preview-login"
+                  >
+                    <LogIn size={14} />
+                    Login
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleLogout();
+                      setMobileMenuOpen(false);
+                      setAdminMenuOpen(false);
+                      setActAsMenuOpen(false);
+                    }}
+                    className="btn btn-outline"
+                    style={{ padding: "6px 12px", fontSize: "0.9375rem", gap: "6px" }}
+                  >
+                    <LogOut size={12} /> Log Out
+                  </button>
+                )}
               </>
             ) : (
               <button
@@ -1813,63 +1847,26 @@ function App() {
             >
               <div className="header-title-block">
                 <div className="header-title-top">
-                  {activeView === "guides" && !guidesManualId && !guidesDetailId ? (
-                    <>
-                      <div className="header-title-guides-main">
-                        <h1 data-testid="page-title">{getHeaderTitle()}</h1>
-                        <div className="free-guides-perk-banner free-guides-perk-banner--header" role="note">
-                          <button
-                            type="button"
-                            className="glow-badge free free-guides-perk-free-btn"
-                            onClick={() => openJoin("adult")}
-                            data-testid="guides-free-membership-btn"
-                            aria-label="Go to membership — free plans available"
-                          >
-                            Free
-                          </button>
-                          <div className="free-guides-perk-banner__copy">
-                            <strong>Free Membership Unlocks Perks</strong>
-                            <span>Join free for member guides &amp; saved progress.</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="header-title-guides-aside">
-                        <button
-                          type="button"
-                          className="match-finder-adult-how-toggle page-how-toggle"
-                          onClick={() => setHowOpen((o) => !o)}
-                          aria-expanded={howOpen}
-                          data-testid="page-how-it-works"
-                        >
-                          {howOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                          How it works
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <h1 data-testid="page-title">
-                        {getHeaderTitle()}
-                        {(activeView === "join" || activeView === "membership_signup") && (
-                          <span className="header-title-aside">(FREE PLANS AVAILABLE)</span>
-                        )}
-                      </h1>
-                      {activeView === "admin" && adminTab !== "daily-progress" && (
-                        <DailyProgressReport onOpen={() => goToAdmin("daily-progress")} />
-                      )}
-                      {!(activeView === "admin" && adminTab === "daily-progress") && (
-                        <button
-                          type="button"
-                          className="match-finder-adult-how-toggle page-how-toggle"
-                          onClick={() => setHowOpen((o) => !o)}
-                          aria-expanded={howOpen}
-                          data-testid="page-how-it-works"
-                        >
-                          {howOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                          How it works
-                        </button>
-                      )}
-                    </>
+                  <h1 data-testid="page-title">
+                    {getHeaderTitle()}
+                    {(activeView === "join" || activeView === "membership_signup") && (
+                      <span className="header-title-aside">(FREE PLANS AVAILABLE)</span>
+                    )}
+                  </h1>
+                  {activeView === "admin" && adminTab !== "daily-progress" && (
+                    <DailyProgressReport onOpen={() => goToAdmin("daily-progress")} />
+                  )}
+                  {!(activeView === "admin" && adminTab === "daily-progress") && (
+                    <button
+                      type="button"
+                      className="match-finder-adult-how-toggle page-how-toggle"
+                      onClick={() => setHowOpen((o) => !o)}
+                      aria-expanded={howOpen}
+                      data-testid="page-how-it-works"
+                    >
+                      {howOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                      How it works
+                    </button>
                   )}
                 </div>
                 {getHeaderDesc() ? (
@@ -1923,7 +1920,7 @@ function App() {
               >
                 Each wizard asks age-appropriate questions so matches feel doable—not generic. Parents become{" "}
                 <strong>GYSH Coaches</strong> for kids and teens: cheer, set boundaries, and help turn ideas into
-                safe first wins. Parental consent required through age 12.
+                safe first wins. Parental consent required through age 12 — not required for ages 13+.
               </p>
             </header>
 
@@ -2155,7 +2152,8 @@ function App() {
               <HustleQuiz
                 hustles={HUSTLES_DATA}
                 onSelectAction={handleSelectHustleAction}
-                isLoggedIn={hasMemberAccess}
+                isLoggedIn={effectiveMemberAccess}
+                previewAsGuest={previewingAsGuest}
                 onUnlockBlueprint={() => openJoin("adult")}
               />
             )}
@@ -2171,7 +2169,10 @@ function App() {
             initialActiveTab={
               selectedHustleId === "pod" || selectedHustleId === "dropshipping" || selectedHustleId === "amazon" 
                 ? "ecom" 
-                : selectedHustleId === "social" || selectedHustleId === "affiliate"
+                : selectedHustleId === "social" ||
+                    selectedHustleId === "affiliate" ||
+                    selectedHustleId === "digital-products" ||
+                    selectedHustleId === "book-publishing"
                 ? "social"
                 : "airbnb"
             }
@@ -2206,14 +2207,14 @@ function App() {
             <StepByStepGuides
               selectedHustleId={guidesDetailId}
               onGoToCalculator={handleGoToCalculatorFromGuide}
-              isLoggedIn={isLoggedIn}
+              isLoggedIn={effectivePortalLogin}
               onGoToJoin={() => openJoin("adult")}
               onGoToLogin={() => goTo("login")}
               onBackToCatalog={() => setGuidesDetailId(null)}
             />
           ) : (
             <FreeGuidesPage
-              isLoggedIn={isLoggedIn}
+              isLoggedIn={effectivePortalLogin}
               onGoToJoin={(audience) => openJoin(audience ?? "adult")}
               onGoToLogin={() => goTo("login")}
               onOpenAdultGuide={(id) => {
@@ -2231,7 +2232,7 @@ function App() {
 
         {activeView === "checklist" && (
           <LaunchChecklistPage
-            isLoggedIn={isLoggedIn}
+            isLoggedIn={effectivePortalLogin}
             onGoToJoin={() => openJoin("adult")}
             onGoToLogin={() => goTo("login")}
             onOpenGuide={handleOpenGuidePeek}
@@ -2249,6 +2250,7 @@ function App() {
         {activeView === "kids" && (
           <KidsCorner
             isLoggedIn={kidsCornerMemberAccess}
+            previewAsGuest={previewingAsGuest}
             onGoToJoin={(audience) => openJoin(audience)}
             entryFocus={kidsEntryFocus}
           />
@@ -2257,8 +2259,10 @@ function App() {
         {activeView === "seniors" && (
           <SeniorSideHustles
             isLoggedIn={
-              actAsAudienceNow === "senior" || (hasMemberAccess && !canUseAdminPortal)
+              !previewingAsGuest &&
+              (actAsAudienceNow === "senior" || (hasMemberAccess && !canUseAdminPortal))
             }
+            previewAsGuest={previewingAsGuest}
             onGoToJoin={() => openJoin("senior")}
             onOpenGuides={() => goTo("guides")}
             entryTab={seniorsEntryTab}
@@ -2510,6 +2514,8 @@ function App() {
               goTo("guides");
             }}
             membershipAudience={joinAudience}
+            scrollToPlans={joinScrollToPlans}
+            onScrolledToPlans={() => setJoinScrollToPlans(false)}
             onBlueprintUnlocked={(ageGroup) => {
               setMemberAccessTick((n) => n + 1);
               restoreBlueprintAfterUnlock(ageGroup);
@@ -2532,7 +2538,31 @@ function App() {
         )}
 
         {activeView === "user_portal" && (
-          <UserPortal />
+          <UserPortal
+            memberName={authUser?.name}
+            onOpenMatchWizard={() => {
+              setFindMineMode("select");
+              goTo("quiz");
+            }}
+            onOpenJoin={() => openJoin("adult")}
+            onOpenGuide={(ageGroup, hustleId) => {
+              if (ageGroup === "kids") {
+                openKidsCorner({ mode: "kids", tab: "guides" });
+                return;
+              }
+              if (ageGroup === "junior") {
+                openKidsCorner({ mode: "junior", tab: "guides" });
+                return;
+              }
+              if (ageGroup === "senior") {
+                openSeniors("guides");
+                return;
+              }
+              setSelectedHustleId(hustleId);
+              setGuidesDetailId(hustleId);
+              goTo("guides");
+            }}
+          />
         )}
 
         {activeView === "admin" && authReady && canUseAdminPortal && (

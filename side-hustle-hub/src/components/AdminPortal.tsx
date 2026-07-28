@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { ROOT_DOMAIN } from "../lib/site-config";
 import { TestingPortal } from "./admin/TestingPortal";
+import { QaTestingManualPage } from "./admin/QaTestingManualPage";
 import { UsersArea } from "./admin/UsersArea";
 import { ContentFactory } from "./admin/ContentFactory";
 import { TaskList } from "./admin/TaskList";
@@ -29,7 +30,7 @@ import { SprintCelebration } from "./admin/SprintCelebration";
 import { SiteMapPage } from "./admin/SiteMapPage";
 import type { SiteMapHref } from "../lib/site-map";
 import { TimesheetPage } from "./admin/TimesheetPage";
-import { UserGuidesHub, type UserGuideId } from "./admin/UserGuidesHub";
+import { UserGuidesHub } from "./admin/UserGuidesHub";
 import { CertificatesAdmin } from "./admin/CertificatesAdmin";
 import { EmailTemplates } from "./admin/EmailTemplates";
 import { DailyProgressPage } from "./admin/DailyProgressPage";
@@ -49,67 +50,19 @@ import {
   type SprintClearResult,
 } from "../lib/gysh-sprint-complete";
 import { fetchTestStatuses } from "../lib/gysh-test-plan";
+import {
+  ADMIN_MENU_GROUPS,
+  ADMIN_TABS,
+  ADMIN_USER_GUIDE_LINKS,
+  adminTabById,
+  type AdminTab,
+  type AdminTabDef,
+  type UserGuideId,
+} from "../lib/admin-nav";
+import { clearAdminFocusFromUrl, readAdminDeepLink } from "../lib/admin-deep-links";
 
-export type AdminTab =
-  | "studio"
-  | "schedule"
-  | "testing"
-  | "users"
-  | "memberships"
-  | "factory"
-  | "tasks"
-  | "timesheet"
-  | "daily-progress"
-  | "financials"
-  | "sitemap"
-  | "user-guides"
-  | "certificates"
-  | "email";
-
-export type AdminTabDef = { id: AdminTab; label: string; adminOnly?: boolean };
-
-export const ADMIN_TABS: AdminTabDef[] = [
-  { id: "schedule", label: "Schedule & Plan" },
-  { id: "tasks", label: "Task List" },
-  { id: "testing", label: "Testing Portal" },
-  { id: "timesheet", label: "Timesheet" },
-  { id: "daily-progress", label: "Daily Progress" },
-  { id: "users", label: "Users Area" },
-  { id: "memberships", label: "Memberships" },
-  { id: "certificates", label: "Certificates" },
-  { id: "email", label: "Email Templates" },
-  { id: "factory", label: "Content Factory" },
-  { id: "financials", label: "Financials", adminOnly: true },
-  { id: "studio", label: "Growth Studio" },
-  { id: "sitemap", label: "Site Map" },
-  { id: "user-guides", label: "User Guides" },
-];
-
-/** Grouped Admin header menu — keeps the long list scannable. */
-export const ADMIN_MENU_GROUPS: { id: string; label: string; tabs: AdminTab[] }[] = [
-  {
-    id: "delivery",
-    label: "Plan & delivery",
-    tabs: ["schedule", "tasks", "testing", "timesheet", "daily-progress"],
-  },
-  { id: "people", label: "People & access", tabs: ["users", "memberships", "certificates", "email"] },
-  { id: "content", label: "Content & growth", tabs: ["factory", "studio", "financials"] },
-  { id: "reference", label: "Reference", tabs: ["sitemap", "user-guides"] },
-];
-
-export const ADMIN_USER_GUIDE_LINKS: { id: UserGuideId; label: string }[] = [
-  { id: "master", label: "Complete Guide" },
-  { id: "adult", label: "Adult Manual" },
-  { id: "kids", label: "Kids Manual" },
-  { id: "teens", label: "Teens Manual" },
-  { id: "seniors", label: "Seniors Manual" },
-  { id: "member", label: "Member Tour" },
-  { id: "admin", label: "Admin User Guide" },
-];
-
-export function adminTabById(id: AdminTab): AdminTabDef | undefined {
-  return ADMIN_TABS.find((t) => t.id === id);
-}
+export type { AdminTab, AdminTabDef, UserGuideId };
+export { ADMIN_MENU_GROUPS, ADMIN_TABS, ADMIN_USER_GUIDE_LINKS, adminTabById };
 
 function userIsAdmin(user: AuthUser | null | undefined): boolean {
   if (!user) return false;
@@ -154,6 +107,7 @@ export const AdminPortal: React.FC<Props> = ({
   const [overdueTests, setOverdueTests] = useState<AttentionTest[]>([]);
   const [focusTaskId, setFocusTaskId] = useState<string | null>(null);
   const [focusTestId, setFocusTestId] = useState<string | null>(null);
+  const [showQaManual, setShowQaManual] = useState(false);
   const isAdmin = userIsAdmin(authUser);
   const activeGuide = onUserGuideChange ? userGuide : localGuide;
   const setActiveGuide = onUserGuideChange ?? setLocalGuide;
@@ -183,7 +137,21 @@ export const AdminPortal: React.FC<Props> = ({
 
   useEffect(() => {
     if (activeTab === "financials" && !isAdmin) onTabChange("tasks");
+    if (activeTab !== "testing") setShowQaManual(false);
   }, [activeTab, isAdmin, onTabChange]);
+
+  // Deep link: /admin?tab=testing&test=… or /admin?tab=tasks&task=…
+  useEffect(() => {
+    const link = readAdminDeepLink();
+    if (link.tab) onTabChange(link.tab);
+    if (link.testId) {
+      setShowQaManual(false);
+      setFocusTestId(link.testId);
+    }
+    if (link.taskId) setFocusTaskId(link.taskId);
+    if (link.testId || link.taskId) clearAdminFocusFromUrl();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- apply once on Admin Studio mount
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -316,30 +284,63 @@ export const AdminPortal: React.FC<Props> = ({
             >
               <p className="admin-portal-nav__label">{group.label}</p>
               <div className="admin-portal-nav__tabs">
-                {groupTabs.map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => onTabChange(t.id)}
-                    className={`nav-link-btn ${activeTab === t.id ? "active" : ""}`}
-                  >
-                    {t.icon}
-                    {t.label}
-                  </button>
-                ))}
+                {groupTabs.map((t) =>
+                  t.id === "testing" ? (
+                    <span
+                      key={t.id}
+                      className={`nav-link-btn admin-portal-nav__testing-bubble ${activeTab === t.id ? "active" : ""}`}
+                    >
+                      <button
+                        type="button"
+                        className="admin-portal-nav__testing-main"
+                        onClick={() => onTabChange(t.id)}
+                      >
+                        {t.icon}
+                        {t.label}
+                      </button>
+                      <button
+                        type="button"
+                        className="admin-portal-nav__manual-link"
+                        title="Open the QA testing manual"
+                        aria-pressed={showQaManual}
+                        onClick={() => {
+                          onTabChange("testing");
+                          setShowQaManual(true);
+                        }}
+                      >
+                        <BookOpen size={13} aria-hidden />
+                        Manual
+                      </button>
+                    </span>
+                  ) : (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => onTabChange(t.id)}
+                      className={`nav-link-btn ${activeTab === t.id ? "active" : ""}`}
+                    >
+                      {t.icon}
+                      {t.label}
+                    </button>
+                  ),
+                )}
               </div>
             </div>
           );
         })}
       </div>
 
-      {activeTab === "testing" && (
-        <TestingPortal
-          focusTestId={focusTestId}
-          onFocusConsumed={() => setFocusTestId(null)}
-          authUser={authUser}
-        />
-      )}
+      {activeTab === "testing" &&
+        (showQaManual ? (
+          <QaTestingManualPage onBack={() => setShowQaManual(false)} />
+        ) : (
+          <TestingPortal
+            focusTestId={focusTestId}
+            onFocusConsumed={() => setFocusTestId(null)}
+            authUser={authUser}
+            onOpenManual={() => setShowQaManual(true)}
+          />
+        ))}
       {activeTab === "schedule" && (
         <SchedulePage
           authUser={authUser}
@@ -348,6 +349,7 @@ export const AdminPortal: React.FC<Props> = ({
             onTabChange("tasks");
           }}
           onOpenTest={(id) => {
+            setShowQaManual(false);
             setFocusTestId(id);
             onTabChange("testing");
           }}

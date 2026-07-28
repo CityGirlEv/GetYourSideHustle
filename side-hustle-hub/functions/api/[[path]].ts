@@ -33,9 +33,9 @@ import {
   getJuniorConsent,
   grantJuniorConsent,
   listJuniorSignups,
+  listFamilyChildren,
   getMemberProgress,
   putMemberProgress,
-  resetTestStatuses,
   saveAgilePlan,
   saveContent,
   saveFinancials,
@@ -202,6 +202,9 @@ export async function onRequest(context: {
     if (route === "member-credits" && method === "GET") {
       return withCors(request, await getMemberCredits(env, user));
     }
+    if (route === "family/children" && method === "GET") {
+      return withCors(request, await listFamilyChildren(env, user));
+    }
     if (route === "blueprints" && method === "GET") {
       return withCors(request, await listBlueprints(env, user));
     }
@@ -253,7 +256,10 @@ export async function onRequest(context: {
       return withCors(request, await setTestStatus(env, request, user));
     }
     if (route === "test-statuses" && method === "DELETE") {
-      return withCors(request, await resetTestStatuses(env, request));
+      return withCors(
+        request,
+        error("Test results cannot be bulk-deleted. Update individual case statuses instead.", 405),
+      );
     }
     if (route === "test-attachments" && method === "GET") {
       return withCors(request, await listTestAttachments(env, request));
@@ -292,7 +298,7 @@ export async function onRequest(context: {
       return withCors(request, await listAgilePlan(env));
     }
     if (route === "agile-plan" && method === "PUT") {
-      return withCors(request, await saveAgilePlan(env, request));
+      return withCors(request, await saveAgilePlan(env, request, user));
     }
     if (route === "closed-sprints" && method === "GET") {
       return withCors(request, await listClosedSprints(env));

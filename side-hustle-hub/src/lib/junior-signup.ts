@@ -1,4 +1,4 @@
-/** Junior / Kids team signup with parental consent — client API. */
+/** Kids (4–12) team signup with parental consent; Teens (13+) join without consent. */
 
 import { api } from "./api";
 
@@ -8,7 +8,8 @@ export type JuniorSignupInput = {
   team: SignupTeam;
   childName: string;
   childEmail: string;
-  parentEmail: string;
+  /** Required for Kids (through age 12). Not used for Teens (13+). */
+  parentEmail?: string;
 };
 
 export type ConsentSignup = {
@@ -50,23 +51,41 @@ export async function submitParentConsent(
   });
 }
 
-/** Read the consent token from the current URL (?consent=...). */
+/** Normalize a consent token from a URL or pasted link (strip junk from email clients). */
+export function normalizeConsentToken(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const hex = raw.trim().replace(/[^a-fA-F0-9]/g, "");
+  return hex.length >= 32 ? hex : null;
+}
+
+/**
+ * Read the consent token from the current URL.
+ * Supports `?consent=…` and path `/consent/<token>` (preferred in emails — survives redirects).
+ */
 export function readConsentTokenFromUrl(): string | null {
   try {
     const params = new URLSearchParams(window.location.search);
-    const token = params.get("consent");
-    return token && token.trim() ? token.trim() : null;
+    const fromQuery = normalizeConsentToken(params.get("consent"));
+    if (fromQuery) return fromQuery;
+
+    const path = window.location.pathname || "";
+    const match = path.match(/^\/consent\/([a-fA-F0-9]+)\/?$/i);
+    if (match) return normalizeConsentToken(match[1]);
+    return null;
   } catch {
     return null;
   }
 }
 
-/** Remove the consent param from the URL without reloading. */
+/** Remove the consent param / path from the URL without reloading. */
 export function clearConsentTokenFromUrl(): void {
   try {
     const url = new URL(window.location.href);
     url.searchParams.delete("consent");
-    window.history.replaceState({}, "", url.pathname + url.search + url.hash);
+    if (/^\/consent\//i.test(url.pathname)) {
+      url.pathname = "/";
+    }
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
   } catch {
     /* ignore */
   }

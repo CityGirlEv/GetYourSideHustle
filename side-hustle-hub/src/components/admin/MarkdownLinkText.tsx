@@ -19,8 +19,8 @@ export function MarkdownLinkText({
           <a
             key={i}
             href={p.href}
-            target={p.href.startsWith("http") ? "_blank" : undefined}
-            rel={p.href.startsWith("http") ? "noreferrer" : undefined}
+            target="_blank"
+            rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
             style={{ fontWeight: 700, color: "var(--crimson, #9B2F28)", textDecoration: "underline" }}
           >

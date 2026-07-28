@@ -130,21 +130,59 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
       ]
     },
     {
+      id: "digital-products",
+      name: "Digital Products",
+      timeframe: "2 - 6 weeks",
+      estEarnings: "$200 - $10,000 / month",
+      bestFor: "Creators who want to sell their own downloads — ebooks, printables, templates, and courses (not affiliate links).",
+      proTip: "Ship one small product fast (a 10-page printable or short ebook) before building a big course. Book publishing is a flagship Digital example — kids can start with storybooks with a parent.",
+      pitfall: "Mixing Digital Products with Affiliate Marketing. Your own downloads are Digital; promoting other brands’ products for commissions is Affiliate — keep the lanes separate.",
+      steps: [
+        {
+          title: "Pick One Digital Offer",
+          desc: "Ebook, printable pack, planner, template kit, or mini-course. Write a one-sentence promise for the buyer — one clear line naming who it’s for and the result they get (e.g. “A 10-page budget planner that helps busy parents track spending in 10 minutes a week”).",
+        },
+        { title: "Create the Asset", desc: "Draft in Canva/Google Docs/Notion. For books, follow the Book Publishing guide (KDP / print + ebook)." },
+        { title: "Package & Price", desc: "Export clean PDFs or file packs. Price a starter offer ($7–$27) so buyers can say yes quickly." },
+        { title: "Set Up Delivery", desc: "Use Gumroad, Payhip, Stan, or Shopify digital downloads so purchase → instant delivery works without you emailing files." },
+        { title: "Landing Page & Proof", desc: "One clear page: who it’s for, what’s inside, a sample preview, and a buy button. Add 2–3 testimonials when you have them." },
+        { title: "Launch & Iterate", desc: "Share with your list/community, note what questions buyers ask, then improve the product or add a sequel pack." },
+      ],
+    },
+    {
       id: "affiliate",
       name: "Affiliate Marketing",
       timeframe: "3 - 6 weeks",
       estEarnings: "$100 - $15,000 / month",
-      bestFor: "Writers, bloggers, and review content creators.",
-      proTip: "Focus on promoting high-ticket SaaS tools (software with monthly subscriptions). They offer recurring commissions, meaning you get paid every month the user stays.",
-      pitfall: "Spamming links everywhere. Without providing genuine educational value or detailed tutorials, social platforms will block your posts and people won't buy.",
+      bestFor: "Creators who share products from other companies and earn a commission when someone buys through their unique link.",
+      proTip: "Start with programs that are easy to join (Amazon Associates, TikTok Shop / Creator, a brand you already use). Recurring SaaS commissions are a later upgrade — not day one.",
+      pitfall: "Spamming bare links. Platforms and buyers expect honest reviews, tutorials, or demos — and a clear affiliate disclosure.",
       steps: [
-        { title: "Choose a Domain / Industry Vertical", desc: "Pick a niche you understand (e.g., marketing tools, fitness tech, personal finance) to build credibility." },
-        { title: "Apply to Premium Networks", desc: "Join Amazon Associates, ClickBank, Impact.com, or individual SaaS partner programs directly." },
-        { title: "Launch Content Hubs", desc: "Establish a blog, YouTube channel, or email list to host your guides, comparison sheets, and tutorials." },
-        { title: "Create Comparison & Review Articles", desc: "Write exhaustive reviews (e.g., 'Tool A vs Tool B: The Honest Truth'). Focus on resolving user query search intent." },
-        { title: "Set Up Lead Magnets & Email Funnels", desc: "Collect emails using a free PDF guide. Follow up with value-first automated newsletters containing affiliate solutions." },
-        { title: "Monitor CTR & Conversion Analytics", desc: "Track which landing pages drive clicks. Optimize buttons and call-outs to increase affiliate link CTR." }
-      ]
+        {
+          title: "Pick Your Niche + Where You’ll Share",
+          desc: "Choose a topic you know (beauty, gadgets, home, software, etc.) and a place you’ll post — TikTok, YouTube, Instagram, a blog, or email.",
+        },
+        {
+          title: "Join 1–2 Beginner Programs & Get Your Links",
+          desc: "Sign up for programs that give you tracking links — Amazon Associates, TikTok Shop / Creator Marketplace, Shopify apps, POD suppliers, dropshipping brands, or software partners. You promote their products; they pay you a commission on clicks that convert.",
+        },
+        {
+          title: "Create Value-First Content",
+          desc: "Film or write honest reviews, demos, and how-tos. Mention the product naturally and include your affiliate link (same idea as creators on YouTube/TikTok).",
+        },
+        {
+          title: "Disclose & Comply",
+          desc: "Say clearly that links are affiliate links. Follow each platform’s and FTC disclosure rules so you stay in good standing.",
+        },
+        {
+          title: "Grow With Comparisons & Email (Optional)",
+          desc: "Add comparison posts (“A vs B”) and a simple freebie + email follow-up once you have a few wins.",
+        },
+        {
+          title: "Track What Converts",
+          desc: "Check which posts and links earn commissions. Double down on winners; pause weak ones.",
+        },
+      ],
     },
     {
       id: "amazon",
@@ -155,13 +193,31 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
       proTip: "Perform deep product differentiation. Don't sell the exact same item as 50 other listings. Bundle it, change the color, improve the packaging, or fix a common complaint found in negative competitor reviews.",
       pitfall: "Running out of stock during your launch phase. Amazon's organic ranking algorithm penalizes listings that go out of stock, destroying your PPC progress.",
       steps: [
-        { title: "Perform Junglescout/Helium10 Audits", desc: "Find high-volume, low-review niches with steady year-round demand." },
-        { title: "Source Suppliers & Request Samples", desc: "Contact gold-rated suppliers on Alibaba. Negotiate pricing, packaging customization, and order sample sets." },
-        { title: "Register Amazon Seller Central", desc: "Establish your business entity (LLC), apply for an Amazon Seller account, and register your trademark for brand registry." },
-        { title: "Arrange Freight Shipping (FOB/DDP)", desc: "Coordinate with a freight forwarder to ship goods from the manufacturer directly to Amazon fulfillment centers." },
-        { title: "Build Optimized Product Detail Pages", desc: "Create high-converting infographics, write bullet points explaining benefits, and upload 3D render images." },
-        { title: "Launch PPC & Review Campaigns", desc: "Run Sponsored Products ads targeting high-intent keywords. Use Amazon Vine to secure your first 5-10 trusted customer reviews." }
-      ]
+        {
+          title: "Understand Amazon FBA in Plain English",
+          desc: "You choose a product; a manufacturer makes it; Amazon stores, packs, ships, and handles returns. Plan for samples plus a small first inventory order (often $1,000+). This guide is for beginners — paid tools come later.",
+        },
+        {
+          title: "Validate a Simple Product Idea (Free First)",
+          desc: "Use Amazon search, Best Seller ranks, and customer reviews before paying for Jungle Scout or Helium 10. Look for steady demand that isn’t overcrowded with hundreds of near-identical listings.",
+        },
+        {
+          title: "Source Suppliers & Request Samples",
+          desc: "Contact reputable suppliers (often via Alibaba). Negotiate pricing and packaging, then order samples before a bulk shipment.",
+        },
+        {
+          title: "Open Seller Central & Prep Your Business Basics",
+          desc: "Create an Amazon Seller account. Set up a simple business structure (many start with an LLC) and gather tax/ID info Amazon asks for.",
+        },
+        {
+          title: "Ship Inventory to Amazon & Build Your Listing",
+          desc: "Use a freight forwarder or supplier DDP option to send goods to Amazon. Write clear title/bullets/photos that explain benefits, not just features.",
+        },
+        {
+          title: "Launch Ads & Early Reviews Carefully",
+          desc: "Start small Sponsored Products ads on your main keywords. Use Amazon Vine or ethical early-review paths for your first reviews — never buy fake ones.",
+        },
+      ],
     },
     {
       id: "social",
@@ -206,7 +262,10 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
       proTip: "Sell kits, not hours: Logo Pack, Launch Creative Pack, 30-Day Social Kit. Fixed prices beat hourly every time.",
       pitfall: "Delivering raw AI dumps with no brand polish. Clients pay for taste — always refine typography, spacing, and color consistency before handoff.",
       steps: [
-        { title: "Set Up Your AI Stack", desc: "Pick Midjourney/Flux + Canva Pro or Figma. Create a prompt library for logos, ads, and social templates." },
+        {
+          title: "Choose Your Design Tools",
+          desc: "Pick any AI image tool you can access (ChatGPT/Gemini image, Adobe Firefly, Midjourney, etc.) plus a free or paid editor (Canva, Photopea, or Figma). Build a small prompt library for logo concepts, ad creatives, and social templates. Save brand colors/fonts once so every kit looks consistent.",
+        },
         { title: "Define 3 Productized Kits", desc: "Write clear deliverables, turnaround (3–7 days), and prices ($150 / $450 / $900). Put them on a simple order form." },
         { title: "Build Portfolio Samples", desc: "Make 6 before/after or brand-kit mockups in niches you want (cafés, coaches, contractors)." },
         { title: "Find Clients", desc: "Pitch local website leads, Etsy sellers, and Instagram businesses. Offer a starter kit at a launch discount for testimonials." },
@@ -321,11 +380,14 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
       name: "Book Publishing",
       timeframe: "4 - 12 weeks",
       estEarnings: "$200 - $8,000 / month",
-      bestFor: "Writers and storytellers (Tina's lane) ready to turn manuscripts into royalty income.",
+      bestFor: "A Digital side hustle for writers and storytellers (Tina's lane); kids can publish storybooks with a parent.",
       proTip: "Ship a minimum viable book first — clean formatting, strong cover, and a clear reader promise — then iterate with ads and a series plan. Don't wait for perfect.",
       pitfall: "Spending months on a cover and zero weeks on distribution or launch. KDP + IngramSpark + a simple email/landing funnel beats a pretty unread manuscript.",
       steps: [
-        { title: "Choose Format & Audience", desc: "Kids picture book, chapter series, nonfiction guide, or memoir. Write a one-sentence promise and target reader age." },
+        {
+          title: "Choose Format & Audience",
+          desc: "Kids picture book, coloring books, journals, chapter series, nonfiction guide, or memoir. Write a one-sentence promise and target reader age — one clear line of who it’s for and the outcome (e.g. “A bedtime picture book that helps ages 3–6 feel brave about the first day of school”).",
+        },
         { title: "Manuscript & Edit Pass", desc: "Finish a draft, then do a structure edit + proofread (beta readers or a freelance editor for polish)." },
         { title: "Cover & Interior Layout", desc: "Commission or design a market-fit cover; format print + ebook interiors (Vellum, Atticus, or a formatter)." },
         { title: "Accounts & ISBNs", desc: "Set up KDP (and IngramSpark for wide print). Decide KDP Select vs wide ebook distribution." },

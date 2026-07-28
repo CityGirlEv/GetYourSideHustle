@@ -220,7 +220,13 @@ export function WorkshopsHub() {
               </div>
             </fieldset>
             <button type="submit" className="btn btn-primary" disabled={!isOpen || submittingRegistration}>
-              {isOpen ? (submittingRegistration ? "Registering…" : "Register for Workshop") : "Registration Disabled"}
+              {isOpen
+                ? submittingRegistration
+                  ? "Submitting…"
+                  : registeringFor.status === "waitlist"
+                    ? "Join Waitlist"
+                    : "Reserve Spot"
+                : "Registration Disabled"}
             </button>
           </form>
         </section>
@@ -274,29 +280,6 @@ export function WorkshopsHub() {
               <span>Formats</span>
             </div>
           </div>
-        </div>
-      </section>
-
-      <section className="workshops-speakers">
-        <h3>Guest Speakers & Hosts</h3>
-        <div className="workshops-speaker-grid">
-          {speakers.map((s) => (
-            <article key={s.id} className="workshops-speaker-card glass" style={{ borderTopColor: s.accent }}>
-              <div className="workshops-speaker-avatar" style={{ background: s.accent }}>
-                {s.initials}
-              </div>
-              <h4>{s.name}</h4>
-              <p className="workshops-speaker-title">{s.title}</p>
-              <p className="workshops-speaker-bio">{s.bio}</p>
-              <div className="workshops-tag-row">
-                {s.topics.map((t) => (
-                  <span key={t} className="glow-badge cyan">
-                    {t}
-                  </span>
-                ))}
-              </div>
-            </article>
-          ))}
         </div>
       </section>
 
@@ -394,7 +377,11 @@ export function WorkshopsHub() {
                     style={{ width: "100%", marginTop: 12 }}
                     onClick={() => openRegistration(w)}
                   >
-                    {w.registrationOpen ? (w.status === "waitlist" ? "Join Waitlist" : "Register") : "View Registration"}
+                    {w.registrationOpen
+                      ? w.status === "waitlist"
+                        ? "Join Waitlist"
+                        : "Reserve Spot"
+                      : "View Registration"}
                   </button>
                 )}
                 {w.status === "past" && (
@@ -417,6 +404,29 @@ export function WorkshopsHub() {
             <p style={{ color: "var(--text-primary)" }}>No workshops match those filters yet — check back soon.</p>
           </div>
         )}
+      </section>
+
+      <section className="workshops-speakers">
+        <h3>Guest Speakers & Hosts</h3>
+        <div className="workshops-speaker-grid">
+          {speakers.map((s) => (
+            <article key={s.id} className="workshops-speaker-card glass" style={{ borderTopColor: s.accent }}>
+              <div className="workshops-speaker-avatar" style={{ background: s.accent }}>
+                {s.initials}
+              </div>
+              <h4>{s.name}</h4>
+              <p className="workshops-speaker-title">{s.title}</p>
+              <p className="workshops-speaker-bio">{s.bio}</p>
+              <div className="workshops-tag-row">
+                {s.topics.map((t) => (
+                  <span key={t} className="glow-badge cyan">
+                    {t}
+                  </span>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
       </section>
 
       <section className="workshops-cta glass">

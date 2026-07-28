@@ -44,7 +44,10 @@ export type TimeEntryDto = {
   updatedAt: string;
 };
 
+let timeEntriesSchemaReady = false;
+
 async function ensureTimeEntriesTable(env: Env): Promise<void> {
+  if (timeEntriesSchemaReady) return;
   await env.DB.prepare(
     `CREATE TABLE IF NOT EXISTS time_entries (
       id TEXT PRIMARY KEY,
@@ -71,15 +74,26 @@ async function ensureTimeEntriesTable(env: Env): Promise<void> {
   } catch {
     /* exists */
   }
+  timeEntriesSchemaReady = true;
 }
 
+/** Partner timesheet calendar day (America/Chicago), not UTC. */
 function workDateFromIso(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso.slice(0, 10);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  try {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Chicago",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(d);
+  } catch {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }
 }
 
 function mapEntry(row: TimeEntryRow, nowMs = Date.now()): TimeEntryDto {
@@ -128,12 +142,16 @@ async function finalizeEntry(
   env: Env,
   row: TimeEntryRow,
   nowIso: string,
-  actor: DbUser,
+  _actor: DbUser,
+  ensureMinMs = 0,
 ): Promise<TimeEntryRow> {
   let accumulated = row.accumulated_ms || 0;
   if (row.status === "running" && row.running_since) {
     const start = Date.parse(row.running_since);
     if (!Number.isNaN(start)) accumulated += Math.max(0, Date.parse(nowIso) - start);
+  }
+  if (ensureMinMs > 0 && accumulated < ensureMinMs) {
+    accumulated = ensureMinMs;
   }
   await env.DB.prepare(
     `UPDATE time_entries
@@ -159,19 +177,29 @@ export async function listTimeEntries(env: Env, request: Request, actor: DbUser)
   const url = new URL(request.url);
   const from = url.searchParams.get("from") || "";
   const to = url.searchParams.get("to") || "";
-  const userId = url.searchParams.get("userId") || actor.id;
+  const userIdParam = (url.searchParams.get("userId") || "").trim();
   const activeOnly = url.searchParams.get("active") === "1";
 
-  // Admin Studio users (admin + QA) can view any partner timesheet
-  const scopedUserId = userId || actor.id;
+  // Admin Studio can pass userId=all (or team) to load every partner timesheet.
+  const wantAll =
+    userIdParam === "all" || userIdParam === "team" || userIdParam === "*";
+  const scopedUserId = wantAll ? "" : userIdParam || actor.id;
 
   if (activeOnly) {
+    if (wantAll) {
+      const { results } = await env.DB.prepare(
+        `SELECT * FROM time_entries WHERE status IN ('running', 'paused') ORDER BY updated_at DESC`,
+      ).all<TimeEntryRow>();
+      return json({ entries: (results ?? []).map((r) => mapEntry(r)) });
+    }
     const open = await getOpenEntries(env, scopedUserId);
     return json({ entries: open.map((r) => mapEntry(r)) });
   }
 
-  let sql = `SELECT * FROM time_entries WHERE user_id = ?`;
-  const binds: (string | number)[] = [scopedUserId];
+  let sql = wantAll
+    ? `SELECT * FROM time_entries WHERE 1=1`
+    : `SELECT * FROM time_entries WHERE user_id = ?`;
+  const binds: (string | number)[] = wantAll ? [] : [scopedUserId];
   if (from) {
     sql += ` AND work_date >= ?`;
     binds.push(from);
@@ -291,21 +319,63 @@ export async function endTimeEntry(env: Env, request: Request, actor: DbUser): P
     id?: string;
     source?: string;
     sourceId?: string;
+    sourceLabel?: string;
+    /** When true, create a stopped entry if none is open (QA Pass/Fail without In Progress). */
+    createIfMissing?: boolean;
+    /** Optional floor on elapsed ms when ending (default 0 — no floor). */
+    ensureMinMs?: number;
   };
+  const source = body.source === "test" ? "test" : body.source === "task" ? "task" : "";
+  const sourceId = String(body.sourceId || "").trim();
+  const sourceLabel = String(body.sourceLabel || sourceId).trim();
+  const ensureMinMs = Math.max(0, Number(body.ensureMinMs) || 0);
+  const createIfMissing = Boolean(body.createIfMissing);
+
   const open = await getOpenEntries(env, actor.id);
   let row =
     (body.id && (await getEntryById(env, body.id))) ||
-    (body.source && body.sourceId
-      ? open.find((r) => r.source === body.source && r.source_id === body.sourceId)
+    (source && sourceId
+      ? open.find((r) => r.source === source && r.source_id === sourceId)
       : undefined) ||
-    open[0];
+    (!createIfMissing ? open[0] : undefined);
+
+  const nowIso = new Date().toISOString();
+
+  if (!row && createIfMissing && source && sourceId) {
+    // Only invent an entry when a positive floor was requested; otherwise require a real timer.
+    if (ensureMinMs <= 0) return error("No timer to end.", 404);
+    const id = crypto.randomUUID();
+    await env.DB.prepare(
+      `INSERT INTO time_entries (
+        id, user_id, user_email, user_name, source, source_id, source_label,
+        status, started_at, ended_at, accumulated_ms, running_since, work_date, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'stopped', ?, ?, ?, NULL, ?, ?, ?)`,
+    )
+      .bind(
+        id,
+        actor.id,
+        actor.email,
+        actor.name || "",
+        source,
+        sourceId,
+        sourceLabel || sourceId,
+        nowIso,
+        nowIso,
+        ensureMinMs,
+        workDateFromIso(nowIso),
+        nowIso,
+        nowIso,
+      )
+      .run();
+    const created = await getEntryById(env, id);
+    return json({ entry: mapEntry(created!), created: true });
+  }
 
   if (!row) return error("No timer to end.", 404);
   if (row.user_id !== actor.id) return error("Forbidden.", 403);
   if (row.status === "stopped") return json({ entry: mapEntry(row), alreadyStopped: true });
 
-  const nowIso = new Date().toISOString();
-  const finalized = await finalizeEntry(env, row, nowIso, actor);
+  const finalized = await finalizeEntry(env, row, nowIso, actor, ensureMinMs);
   return json({ entry: mapEntry(finalized) });
 }
 
@@ -315,13 +385,42 @@ export async function stopTimeForSource(
   actor: DbUser,
   source: TimeSource,
   sourceId: string,
+  opts?: { sourceLabel?: string; ensureMinMs?: number; createIfMissing?: boolean },
 ): Promise<TimeEntryDto | null> {
   await ensureTimeEntriesTable(env);
   const open = await getOpenEntries(env, actor.id);
   const row = open.find((r) => r.source === source && r.source_id === sourceId);
-  if (!row) return null;
   const nowIso = new Date().toISOString();
-  const finalized = await finalizeEntry(env, row, nowIso, actor);
+  const ensureMinMs = Math.max(0, opts?.ensureMinMs ?? 0);
+  if (!row) {
+    if (!opts?.createIfMissing || ensureMinMs <= 0) return null;
+    const id = crypto.randomUUID();
+    const label = String(opts.sourceLabel || sourceId).trim() || sourceId;
+    await env.DB.prepare(
+      `INSERT INTO time_entries (
+        id, user_id, user_email, user_name, source, source_id, source_label,
+        status, started_at, ended_at, accumulated_ms, running_since, work_date, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'stopped', ?, ?, ?, NULL, ?, ?, ?)`,
+    )
+      .bind(
+        id,
+        actor.id,
+        actor.email,
+        actor.name || "",
+        source,
+        sourceId,
+        label,
+        nowIso,
+        nowIso,
+        ensureMinMs,
+        workDateFromIso(nowIso),
+        nowIso,
+        nowIso,
+      )
+      .run();
+    return mapEntry((await getEntryById(env, id))!);
+  }
+  const finalized = await finalizeEntry(env, row, nowIso, actor, ensureMinMs);
   return mapEntry(finalized);
 }
 

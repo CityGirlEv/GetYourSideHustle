@@ -86,7 +86,7 @@ describe("gysh-sprints", () => {
     expect(themeForSprint(1)?.goal).toMatch(/Brand|Content/i);
     expect(themeForSprint(2)?.goal).toMatch(/Soft Launch|Launch/i);
     expect(themeForSprint(4)?.goal).toMatch(/Kids|Growth/i);
-    expect(themeForSprint(5)?.goal).toMatch(/Junior|Adult|GMSH/i);
+    expect(themeForSprint(5)?.goal).toMatch(/Teen|Adult|GMSH/i);
   });
 
   it("lists a compact rollout schedule summary with soft launch + GMSH bands", async () => {
@@ -95,7 +95,7 @@ describe("gysh-sprints", () => {
     expect(rows).toHaveLength(8);
     expect(rows[2]!.focus).toMatch(/Soft launch/i);
     expect(rows[4]!.focus).toMatch(/Kids/i);
-    expect(rows[5]!.focus).toMatch(/Junior|Adult/i);
+    expect(rows[5]!.focus).toMatch(/Teen|Adult/i);
     expect(rows[6]!.focus).toMatch(/Senior/i);
   });
 

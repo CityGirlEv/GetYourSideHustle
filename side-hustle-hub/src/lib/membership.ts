@@ -219,7 +219,7 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
       {
         title: "Free for every age group",
         detail:
-          "Kids, Teens (Juniors), Adults, and Seniors each get free access — browse ideas, free guides, and age-appropriate Corners at $0.",
+          "Kids, Teens, Adults, and Seniors each get free access — browse ideas, free guides, and age-appropriate Corners at $0.",
       },
       {
         title: "Browse free guides & hustle ideas",
@@ -244,7 +244,7 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
       {
         title: "Free for every age group",
         detail:
-          "Kids, Teens (Juniors), Adults, and Seniors each get free access — browse ideas, free guides, and age-appropriate Corners at $0.",
+          "Kids, Teens, Adults, and Seniors each get free access — browse ideas, free guides, and age-appropriate Corners at $0.",
       },
       {
         title: "Browse free guides & hustle ideas",
@@ -269,7 +269,7 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
       {
         title: "Free for every age group",
         detail:
-          "Kids, Teens (Juniors), Adults, and Seniors each get free access — browse ideas, free guides, and age-appropriate Corners at $0.",
+          "Kids, Teens, Adults, and Seniors each get free access — browse ideas, free guides, and age-appropriate Corners at $0.",
       },
       {
         title: "Browse free guides & hustle ideas",
@@ -294,7 +294,7 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
       {
         title: "Free for every age group",
         detail:
-          "Kids, Teens (Juniors), Adults, and Seniors each get free access — browse ideas, free guides, and age-appropriate Corners at $0.",
+          "Kids, Teens, Adults, and Seniors each get free access — browse ideas, free guides, and age-appropriate Corners at $0.",
       },
       {
         title: "Browse free guides & hustle ideas",
@@ -987,7 +987,35 @@ export function featuresForTier(tierId: TierId): MembershipFeature[] {
 
 export function formatUsd(n: number): string {
   if (n === 0) return "Free";
-  return `$${n.toLocaleString()}`;
+  if (Number.isInteger(n)) return `$${n.toLocaleString()}`;
+  return `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+export type BillingPeriod = "monthly" | "yearly";
+
+/** Months charged when paying yearly in advance (2 months free ≈ 17% off). */
+export const YEARLY_MONTHS_CHARGED = 10;
+
+/** What 12 months would cost at the monthly rate (before yearly discount). */
+export function yearlyListPriceUsd(monthly: number): number {
+  return monthly * 12;
+}
+
+/** Dollars saved by paying yearly vs 12 × monthly. */
+export function yearlySavingsUsd(monthly: number, yearly: number): number {
+  return Math.max(0, yearlyListPriceUsd(monthly) - yearly);
+}
+
+/** Percent saved by paying yearly vs 12 × monthly (rounded). */
+export function yearlySavingsPercent(monthly: number, yearly: number): number {
+  const list = yearlyListPriceUsd(monthly);
+  if (list <= 0) return 0;
+  return Math.round((yearlySavingsUsd(monthly, yearly) / list) * 100);
+}
+
+/** Effective monthly rate when billed yearly. */
+export function equivalentMonthlyUsd(yearly: number): number {
+  return Math.round((yearly / 12) * 100) / 100;
 }
 
 /** USD monthly price for Adult vs Senior (Kids/Teens use credits). */
@@ -998,7 +1026,7 @@ export function tierPriceMonthlyUsd(tier: MembershipTier, audience: AudienceGrou
   return tier.priceMonthlyUsd ?? 0;
 }
 
-/** USD yearly price for Adult vs Senior. */
+/** USD yearly price for Adult vs Senior (pay YEARLY_MONTHS_CHARGED months up front). */
 export function tierPriceYearlyUsd(tier: MembershipTier, audience: AudienceGroup): number | undefined {
   if (audience === "senior") {
     return tier.priceYearlyUsdSenior ?? tier.priceYearlyUsd;

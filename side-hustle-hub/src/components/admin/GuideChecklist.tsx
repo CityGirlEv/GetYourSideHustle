@@ -67,8 +67,11 @@ export function GuideChecklist({
 
 export function GuideToc({
   entries,
+  onNavigate,
 }: {
   entries: { id: string; label: string; number?: string; level?: 1 | 2 }[];
+  /** Called when a contents link is clicked (e.g. expand a collapsed section). */
+  onNavigate?: (id: string) => void;
 }) {
   return (
     <nav className="user-guide-toc" aria-label="Table of contents">
@@ -79,7 +82,10 @@ export function GuideToc({
             key={entry.id}
             className={entry.level === 2 ? "user-guide-toc__item--sub" : undefined}
           >
-            <a href={`#guide-${entry.id}`}>
+            <a
+              href={`#guide-${entry.id}`}
+              onClick={() => onNavigate?.(entry.id)}
+            >
               {entry.number ? (
                 <span className="user-guide-toc__num">{entry.number}</span>
               ) : null}

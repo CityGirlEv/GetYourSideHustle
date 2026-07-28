@@ -24,29 +24,16 @@ type Props = {
 
 function TaskLine({ t, tone }: { t: GyshTask; tone: "overdue" | "today" }) {
   return (
-    <li
-      style={{
-        display: "grid",
-        gridTemplateColumns: "70px 1fr auto auto",
-        gap: 10,
-        alignItems: "start",
-        padding: "10px 0",
-        borderBottom: "1px solid var(--border-color)",
-        fontSize: "0.95rem",
-      }}
-    >
-      <span className="flat-label flat-label--id">{t.id}</span>
-      <span style={{ color: "var(--charcoal)", lineHeight: 1.35 }}>{t.description}</span>
+    <li className="due-tasks-line">
+      <span className="flat-label flat-label--id due-tasks-line__id">{t.id}</span>
+      <span className="due-tasks-line__title">{t.description}</span>
       <span
-        style={{
-          fontWeight: 700,
-          whiteSpace: "nowrap",
-          color: tone === "overdue" ? "#9B2F28" : "var(--bronze)",
-        }}
+        className="due-tasks-line__due"
+        data-tone={tone}
       >
         {t.dueDate || "—"}
       </span>
-      <span style={{ color: "var(--text-primary)", whiteSpace: "nowrap" }}>
+      <span className="due-tasks-line__status">
         {TASK_STATUS_LABELS[t.status]}
       </span>
     </li>
@@ -55,23 +42,13 @@ function TaskLine({ t, tone }: { t: GyshTask; tone: "overdue" | "today" }) {
 
 function TestLine({ t }: { t: AttentionTest }) {
   return (
-    <li
-      style={{
-        display: "grid",
-        gridTemplateColumns: "90px 1fr auto auto",
-        gap: 10,
-        alignItems: "start",
-        padding: "10px 0",
-        borderBottom: "1px solid var(--border-color)",
-        fontSize: "0.95rem",
-      }}
-    >
-      <span className="flat-label flat-label--id">{t.id}</span>
-      <span style={{ color: "var(--charcoal)", lineHeight: 1.35 }}>{t.title}</span>
-      <span style={{ fontWeight: 700, whiteSpace: "nowrap", color: "#9B2F28" }}>
+    <li className="due-tasks-line">
+      <span className="flat-label flat-label--id due-tasks-line__id">{t.id}</span>
+      <span className="due-tasks-line__title">{t.title}</span>
+      <span className="due-tasks-line__due" data-tone="overdue">
         {t.dueDate || "—"}
       </span>
-      <span style={{ color: "var(--text-primary)", whiteSpace: "nowrap" }}>
+      <span className="due-tasks-line__status">
         {STATUS_LABELS[t.status]}
       </span>
     </li>

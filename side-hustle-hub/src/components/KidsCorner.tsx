@@ -24,8 +24,6 @@ import {
   Unlock,
   BadgeCheck,
   BookMarked,
-  ChevronDown,
-  ChevronRight,
 } from "lucide-react";
 import {
   KEVINA_BIO,
@@ -87,12 +85,18 @@ interface JrHustle {
 }
 
 type AudienceMode = KidsAudience;
-type KidsTab = "stories" | "wizard" | "jobs" | "piggy" | "guides" | "join";
-type JuniorTab = "wizard" | "jobs" | "piggy" | "guides" | "join";
+import {
+  JUNIOR_CORNER_TABS,
+  KIDS_CORNER_TABS,
+  type JuniorTab,
+  type KidsTab,
+} from "../lib/audience-nav";
 
 type KidsCornerProps = {
   /** GYSH portal login — also unlocks member guides. */
   isLoggedIn?: boolean;
+  /** Profile Switcher → Unlogged in User */
+  previewAsGuest?: boolean;
   /** Navigate to Join with Kids or Teens membership lane selected. */
   onGoToJoin?: (audience: "kids" | "junior") => void;
   /** Deep-link from checklist / Match Wizard / Site Map entry points. */
@@ -206,6 +210,27 @@ const JR_HUSTLES: JrHustle[] = [
       interests: ["helping"],
       place: ["indoor", "either"],
       time: ["short", "medium"],
+    },
+  },
+  {
+    id: "book-publishing-kids",
+    name: "Book Publishing (Storybooks)",
+    desc: "Write and illustrate a short storybook — a Digital side hustle kids can do with a parent. Print copies for family, school fairs, or publish an ebook together (Amazon KDP with a guardian).",
+    pay: "Gifts · fair sales · ebook royalties (parent-managed)",
+    difficulty: "Medium",
+    icon: <BookMarked size={24} style={{ color: "var(--crimson)" }} />,
+    safety: "A parent or guardian must own any publishing account, payments, and online listings. Never share your real name, school, or photos with strangers.",
+    nextSteps: [
+      "Write a short story (one chapter or picture-book length) and sketch simple illustrations.",
+      "Ask a parent to help format pages and print a family edition or school-fair copies.",
+      "With a guardian, explore ebook publishing (KDP) — parents handle the account and money.",
+    ],
+    audiences: ["kids", "junior"],
+    tags: {
+      ages: ["young", "mid", "older"],
+      interests: ["creative"],
+      place: ["indoor", "either"],
+      time: ["medium", "long"],
     },
   },
   {
@@ -460,10 +485,10 @@ function JoinTeamTab({
         team: mode,
         childName: childName.trim(),
         childEmail: childEmail.trim(),
-        parentEmail: parentEmail.trim(),
+        ...(mode === "kids" ? { parentEmail: parentEmail.trim() } : {}),
       });
       setSignupResult({ kind: "success", message: res.message });
-      // Unlock a local preview once the request is in; full access follows parent consent.
+      // Kids: local preview until parent consents. Teens (13+): active immediately.
       writeTeamMembership(mode, true);
       if (isLoggedIn) {
         const kind = mode === "kids" ? "kids_team" : "junior_team";
@@ -505,9 +530,52 @@ function JoinTeamTab({
                 ? "Young minds, big ideas, bright futures — join the Kids Corner team and unlock the full journey."
                 : "Grow your skills. Earn money. Build your future — join the Teens Side Hustle Team and unlock the full journey."}
             </p>
+            <section
+              className="glass kids-join-values kids-join-values--under-media"
+              data-testid="kids-join-values"
+            >
+              <h3>{copy.valuesTitle}</h3>
+              <div className="kids-join-values-grid">
+                {copy.values.map((v) => (
+                  <article key={v.title} className="kids-join-value-card">
+                    <strong>{v.title}</strong>
+                    <p>{v.detail}</p>
+                  </article>
+                ))}
+              </div>
+            </section>
           </div>
 
           <div className="glass kids-join-pane">
+            <h2 className="kids-join-pane-title" data-testid="kids-join-pane-title">
+              <BadgeCheck size={20} style={{ color: "var(--crimson)" }} aria-hidden />
+              <span>{copy.headline}</span>
+              <span
+                className={`glow-badge ${mode === "kids" ? "pink" : "emerald"} kids-audience-age-badge`}
+              >
+                {copy.ages}
+              </span>
+            </h2>
+            {!isMember ? (
+              <div className="kids-join-cta-row kids-join-cta-row--top" data-testid="kids-join-cta-row">
+                <button
+                  type="button"
+                  className="btn btn-join-green"
+                  onClick={() => setShowModal(true)}
+                  style={{ gap: 6 }}
+                  data-testid="kids-join-cta-btn"
+                >
+                  <BadgeCheck size={16} /> {copy.ctaLabel}
+                </button>
+              </div>
+            ) : (
+              <p className="kids-member-banner" data-testid="kids-join-member-banner">
+                <Unlock size={16} /> You&apos;re on the <strong>{copy.teamName}</strong> — member
+                guides are unlocked.
+              </p>
+            )}
+            <p className="kids-join-pane-lead">{copy.lead}</p>
+            <p className="kids-join-parent-note">{copy.parentNote}</p>
             <h3 className="kids-join-perks-heading">
               <Sparkles size={18} /> Team perks
             </h3>
@@ -520,16 +588,16 @@ function JoinTeamTab({
                 </li>
               ))}
             </ul>
-            <div className="kids-join-cta-row" data-testid="kids-join-cta-row">
-              {!isMember ? (
-                <button type="button" className="btn btn-primary" onClick={() => setShowModal(true)} style={{ gap: 6 }}>
-                  <BadgeCheck size={16} /> {copy.ctaLabel}
-                </button>
-              ) : (
-                <button type="button" className="btn btn-primary" onClick={onOpenGuides} style={{ gap: 6 }}>
-                  <BookMarked size={16} /> Browse member guides
-                </button>
-              )}
+            <div className="kids-join-cta-row kids-join-cta-row--bottom" data-testid="kids-join-browse-row">
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={onOpenGuides}
+                style={{ gap: 6 }}
+                data-testid="kids-join-browse-btn"
+              >
+                <BookMarked size={16} /> Browse member guides
+              </button>
               {onGoToJoin && (
                 <button
                   type="button"
@@ -541,41 +609,7 @@ function JoinTeamTab({
                 </button>
               )}
             </div>
-            <p className="kids-join-parent-note">{copy.parentNote}</p>
           </div>
-        </div>
-      </section>
-
-      <section className="kids-intro-blurb glass">
-        <h2 className="kids-intro-title">
-          <BadgeCheck size={20} style={{ color: "var(--crimson)" }} /> {copy.headline}
-          <span
-            className={`glow-badge ${mode === "kids" ? "pink" : "emerald"} kids-audience-age-badge`}
-          >
-            {copy.ages}
-          </span>
-        </h2>
-        <p>{copy.lead}</p>
-        {isMember && (
-          <p className="kids-member-banner">
-            <Unlock size={16} /> You&apos;re on the <strong>{copy.teamName}</strong> — member guides
-            are unlocked.{" "}
-            <button type="button" className="inline-text-link" onClick={onOpenGuides}>
-              Open Guides
-            </button>
-          </p>
-        )}
-      </section>
-
-      <section className="kids-join-values glass">
-        <h3>{copy.valuesTitle}</h3>
-        <div className="kids-join-values-grid">
-          {copy.values.map((v) => (
-            <article key={v.title} className="kids-join-value-card">
-              <strong>{v.title}</strong>
-              <p>{v.detail}</p>
-            </article>
-          ))}
         </div>
       </section>
 
@@ -606,17 +640,26 @@ function JoinTeamTab({
               </>
             ) : (
               <form onSubmit={(e) => void submitSignup(e)}>
-                <p>
-                  Because members are under 18, a parent or guardian must approve. Enter your first
-                  name and email, plus your parent/guardian&apos;s email — we&apos;ll send them a
-                  permission link. Your account activates once they approve.
-                </p>
+                {mode === "kids" ? (
+                  <p>
+                    Parental consent is required through age 12. Enter your first name and email, plus
+                    your parent/guardian&apos;s email — we&apos;ll send them a permission link. Your
+                    Kids team access activates once they approve.
+                  </p>
+                ) : (
+                  <p>
+                    Ages 13+ can join with your own email — parental consent is not required. Enter
+                    your first name and email to activate Teens team access.
+                  </p>
+                )}
                 <div className="kids-safety-callout" style={{ marginTop: 4, marginBottom: 14 }}>
                   <ShieldAlert size={20} style={{ color: "var(--crimson)", flexShrink: 0, marginTop: 2 }} />
                   <div>
                     <strong>Safety first:</strong> Never share your address, phone number, school, or
-                    other private details. We only need a first name and email from you — your parent
-                    fills in the rest.
+                    other private details.
+                    {mode === "kids"
+                      ? " We only need a first name and email from you — your parent fills in the rest."
+                      : " Keep a trusted adult nearby when trying new hustles online."}
                   </div>
                 </div>
 
@@ -646,23 +689,26 @@ function JoinTeamTab({
                     onChange={(e) => setChildEmail(e.target.value)}
                   />
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Parent / guardian email</label>
-                  <input
-                    className="text-input"
-                    type="email"
-                    required
-                    value={parentEmail}
-                    onChange={(e) => setParentEmail(e.target.value)}
-                  />
-                </div>
+                {mode === "kids" && (
+                  <div className="form-group">
+                    <label className="form-label">Parent / guardian email</label>
+                    <input
+                      className="text-input"
+                      type="email"
+                      required
+                      value={parentEmail}
+                      onChange={(e) => setParentEmail(e.target.value)}
+                    />
+                  </div>
+                )}
 
                 <div className="kids-join-modal-actions">
                   <button type="button" className="btn btn-outline" onClick={closeModal}>
                     Cancel
                   </button>
                   <button type="submit" className="btn btn-primary" disabled={submitting} style={{ gap: 6 }}>
-                    <Unlock size={16} /> {submitting ? "Sending…" : "Request to join"}
+                    <Unlock size={16} />{" "}
+                    {submitting ? "Sending…" : mode === "kids" ? "Request to join" : "Join team"}
                   </button>
                 </div>
               </form>
@@ -713,7 +759,6 @@ function GuideCard({
         onClick={() => setStepsOpen((o) => !o)}
         aria-expanded={stepsOpen}
       >
-        {stepsOpen ? <ChevronDown size={16} aria-hidden /> : <ChevronRight size={16} aria-hidden />}
         {stepsOpen ? "Hide steps" : `Show ${visibleSteps.length} steps`}
       </button>
 
@@ -907,12 +952,14 @@ function KidsHustleWizard({
   onModeChange,
   onOpenPiggy,
   isLoggedIn = false,
+  previewAsGuest = false,
   onUnlockBlueprint,
 }: {
   mode: AudienceMode;
   onModeChange: (next: AudienceMode) => void;
   onOpenPiggy: () => void;
   isLoggedIn?: boolean;
+  previewAsGuest?: boolean;
   onUnlockBlueprint?: () => void;
 }) {
   const ageGroup = mode === "junior" ? "junior" : "kids";
@@ -920,6 +967,7 @@ function KidsHustleWizard({
     isLoggedIn,
     ageGroup,
     hasTeamMembership: isKidsCornerMember(mode, isLoggedIn),
+    previewAsGuest,
   });
 
   const [currentStep, setCurrentStep] = useState(0);
@@ -1624,6 +1672,7 @@ function JuniorBankTab() {
 
 export const KidsCorner: React.FC<KidsCornerProps> = ({
   isLoggedIn = false,
+  previewAsGuest = false,
   onGoToJoin,
   entryFocus = null,
 }) => {
@@ -1652,22 +1701,31 @@ export const KidsCorner: React.FC<KidsCornerProps> = ({
 
   const refreshMembership = () => setMemberVersion((n) => n + 1);
 
-  const kidsTabs: { id: KidsTab; label: string; icon: React.ReactNode }[] = [
-    { id: "stories", label: "Stories", icon: <Star size={16} /> },
-    { id: "wizard", label: "GYSH Match Wizard", icon: <Compass size={16} /> },
-    { id: "jobs", label: "Ideas", icon: <Smile size={16} /> },
-    { id: "piggy", label: "Piggy Bank", icon: <Coins size={16} /> },
-    { id: "guides", label: "Guides", icon: <BookMarked size={16} /> },
-    { id: "join", label: "Join", icon: <BadgeCheck size={16} /> },
-  ];
-
-  const juniorTabs: { id: JuniorTab; label: string; icon: React.ReactNode }[] = [
-    { id: "wizard", label: "GYSH Match Wizard", icon: <Compass size={16} /> },
-    { id: "jobs", label: "Ideas", icon: <Smile size={16} /> },
-    { id: "piggy", label: "My Bank", icon: <Coins size={16} /> },
-    { id: "guides", label: "Guides", icon: <BookMarked size={16} /> },
-    { id: "join", label: "Join", icon: <BadgeCheck size={16} /> },
-  ];
+  const kidsTabIcons: Record<KidsTab, React.ReactNode> = {
+    stories: <Star size={16} />,
+    wizard: <Compass size={16} />,
+    jobs: <Smile size={16} />,
+    piggy: <Coins size={16} />,
+    guides: <BookMarked size={16} />,
+    join: <BadgeCheck size={16} />,
+  };
+  const juniorTabIcons: Record<JuniorTab, React.ReactNode> = {
+    wizard: <Compass size={16} />,
+    jobs: <Smile size={16} />,
+    piggy: <Coins size={16} />,
+    guides: <BookMarked size={16} />,
+    join: <BadgeCheck size={16} />,
+  };
+  const kidsTabs = KIDS_CORNER_TABS.map((t) => ({
+    id: t.id,
+    label: t.label,
+    icon: kidsTabIcons[t.id],
+  }));
+  const juniorTabs = JUNIOR_CORNER_TABS.map((t) => ({
+    id: t.id,
+    label: t.label,
+    icon: juniorTabIcons[t.id],
+  }));
 
   const handleModeChange = (next: AudienceMode) => {
     if (next === mode) return;
@@ -1742,6 +1800,7 @@ export const KidsCorner: React.FC<KidsCornerProps> = ({
               onModeChange={handleModeChange}
               onOpenPiggy={() => setKidsTab("piggy")}
               isLoggedIn={isLoggedIn}
+              previewAsGuest={previewAsGuest}
               onUnlockBlueprint={onGoToJoin ? () => onGoToJoin("kids") : undefined}
             />
           )}
@@ -1783,6 +1842,7 @@ export const KidsCorner: React.FC<KidsCornerProps> = ({
               onModeChange={handleModeChange}
               onOpenPiggy={() => setJuniorTab("piggy")}
               isLoggedIn={isLoggedIn}
+              previewAsGuest={previewAsGuest}
               onUnlockBlueprint={onGoToJoin ? () => onGoToJoin("junior") : undefined}
             />
           )}

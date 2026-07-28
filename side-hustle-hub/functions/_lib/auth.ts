@@ -389,7 +389,7 @@ export async function handleRegister(env: Env, request: Request): Promise<Respon
     (isParent
       ? "GYSH Parent"
       : ageGroup === "junior"
-        ? "GYSH Junior"
+        ? "GYSH Teens"
         : ageGroup === "senior"
           ? "GYSH Senior"
           : "GYSH Member");

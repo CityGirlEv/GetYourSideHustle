@@ -11,12 +11,33 @@ export const ASSIGNED_BY_PRESETS = [
   "Lyriq",
 ] as const;
 
+/**
+ * Collapse full login names / aliases to short partner labels.
+ * "Tina Marie Barham" and "Tina" are the same person → "Tina".
+ */
+export function canonicalizePartnerLabel(raw: string | null | undefined): string {
+  const v = String(raw || "").trim();
+  if (!v) return "";
+  const lower = v.toLowerCase();
+  if (lower === "system") return SYSTEM_ASSIGNED_BY;
+  if (lower.includes("@")) {
+    if (lower.includes("tina")) return "Tina";
+    if (lower.includes("evelyn") || lower.includes("evvelyn")) return "Evelyn";
+    if (lower.includes("lyriq") || lower.includes("leegaulden")) return "Lyriq";
+    return v;
+  }
+  if (lower === "tina" || lower.startsWith("tina ")) return "Tina";
+  if (lower === "evelyn" || lower.startsWith("evelyn ")) return "Evelyn";
+  if (lower === "lyriq" || lower.startsWith("lyriq ")) return "Lyriq";
+  return v;
+}
+
 /** Options for an Assigned By select, keeping any custom current value selectable. */
 export function assignedBySelectOptions(...currentValues: Array<string | null | undefined>): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
   const push = (raw: string) => {
-    const v = raw.trim();
+    const v = canonicalizePartnerLabel(raw) || raw.trim();
     if (!v || seen.has(v)) return;
     seen.add(v);
     out.push(v);
@@ -66,15 +87,34 @@ export function canSetTestBlocked(
   return name === "evelyn" || name.startsWith("evelyn ");
 }
 
+/** Evelyn may edit items in a closed/locked sprint; everyone else is blocked. */
+export function canBypassSprintLock(
+  user: { email?: string; name?: string } | null | undefined,
+): boolean {
+  return canSetTestBlocked(user);
+}
+
+/**
+ * Fixed/Re-Test or Failed/Re-Test — any Dev-role user, or Evelyn (Lead Developer) by identity.
+ */
+export function canSetDevFixStatus(
+  user: { email?: string; name?: string; role?: string; roles?: string[] } | null | undefined,
+): boolean {
+  if (!user) return false;
+  const roles = user.roles?.length ? user.roles : user.role ? [user.role] : [];
+  if (roles.includes("dev")) return true;
+  return canSetTestBlocked(user);
+}
+
 /** Display label matching server `actorLabel` / audit trail (name, else email). */
 export function auditActorLabel(
   user: { name?: string; email?: string } | null | undefined,
 ): string {
   const name = (user?.name || "").trim();
-  if (name) return name;
   const email = (user?.email || "").trim();
-  if (email) return email;
-  return SYSTEM_ASSIGNED_BY;
+  const raw = name || email;
+  if (!raw) return SYSTEM_ASSIGNED_BY;
+  return canonicalizePartnerLabel(raw) || raw;
 }
 
 export function todayMMDDYY(d = new Date()): string {
@@ -112,11 +152,14 @@ export type ResolveTestAssignedMetaInput = {
 export function resolveTestAssignedMeta(
   input: ResolveTestAssignedMetaInput,
 ): { assignedBy: string; dateAssigned: string } {
+  const canonBy = (raw: string) =>
+    canonicalizePartnerLabel(raw) || String(raw || "").trim() || SYSTEM_ASSIGNED_BY;
+
   if (input.explicitAssignedBy !== undefined || input.explicitDateAssigned !== undefined) {
     const assignedBy =
       input.explicitAssignedBy !== undefined
-        ? String(input.explicitAssignedBy || "").trim() || SYSTEM_ASSIGNED_BY
-        : String(input.prevAssignedBy || "").trim() || SYSTEM_ASSIGNED_BY;
+        ? canonBy(String(input.explicitAssignedBy || ""))
+        : canonBy(String(input.prevAssignedBy || ""));
     const dateAssigned =
       input.explicitDateAssigned !== undefined
         ? String(input.explicitDateAssigned || "").trim()
@@ -132,7 +175,7 @@ export function resolveTestAssignedMeta(
   // Existing row reassigned (incl. fail auto-owner) → acting user.
   if (assigneeChanged && !input.isNewRow) {
     return {
-      assignedBy: String(input.actorLabel || "").trim() || SYSTEM_ASSIGNED_BY,
+      assignedBy: canonBy(String(input.actorLabel || "")),
       dateAssigned: input.today,
     };
   }
@@ -145,7 +188,7 @@ export function resolveTestAssignedMeta(
   }
 
   return {
-    assignedBy: String(input.prevAssignedBy || "").trim() || SYSTEM_ASSIGNED_BY,
+    assignedBy: canonBy(String(input.prevAssignedBy || "")),
     dateAssigned: String(input.prevDateAssigned || "").trim(),
   };
 }

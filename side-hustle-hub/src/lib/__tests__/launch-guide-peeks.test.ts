@@ -8,7 +8,7 @@ import { guidesForAudience } from "../kids-guides";
 import { SENIOR_GUIDE_TEASERS } from "../seniors-content";
 
 describe("launch guide peeks", () => {
-  it("organizes Kids, Junior, Senior, and Adult sections from real data", () => {
+  it("organizes Kids, Teens (junior id), Senior, and Adult sections from real data", () => {
     const sections = getLaunchGuidePeekSections();
     expect(sections.map((s) => s.id)).toEqual(["kids", "junior", "senior", "adult"]);
 

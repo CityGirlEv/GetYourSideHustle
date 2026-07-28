@@ -1,3 +1,4 @@
+import { Trash2 } from "lucide-react";
 import {
   canEditNoteEntry,
   formatNoteEntryStamp,
@@ -17,6 +18,8 @@ type NotesThreadProps = {
   newDraft?: string;
   onEditDraft?: (noteId: string, text: string) => void;
   onNewDraft?: (text: string) => void;
+  /** Delete own note (clears text; persists on Save). */
+  onDeleteNote?: (noteId: string) => void;
   disabled?: boolean;
   newPlaceholder?: string;
   label?: string;
@@ -33,6 +36,7 @@ export function NotesThread({
   newDraft = "",
   onEditDraft,
   onNewDraft,
+  onDeleteNote,
   disabled = false,
   newPlaceholder = "Add a note… (Save to persist)",
   label = "Notes",
@@ -59,6 +63,7 @@ export function NotesThread({
               draft={editDrafts[entry.id]}
               disabled={disabled}
               onEditDraft={onEditDraft}
+              onDeleteNote={onDeleteNote}
             />
           ))}
         </ul>
@@ -95,17 +100,20 @@ function NoteEntryRow({
   draft,
   disabled,
   onEditDraft,
+  onDeleteNote,
 }: {
   entry: NoteEntry;
   actor: string;
   draft?: string;
   disabled: boolean;
   onEditDraft?: (noteId: string, text: string) => void;
+  onDeleteNote?: (noteId: string) => void;
 }) {
   const editable = canEditNoteEntry(entry, actor) && !!onEditDraft;
   const value = draft !== undefined ? draft : entry.text;
   const stamp = formatNoteEntryStamp(entry);
   const whenIso = entry.updatedAt || entry.createdAt;
+  const canDelete = editable && !!onDeleteNote;
 
   return (
     <li className={`notes-thread__item${editable ? " notes-thread__item--mine" : ""}`}>
@@ -113,6 +121,19 @@ function NoteEntryRow({
         <time className="notes-thread__stamp" dateTime={whenIso} title={stamp}>
           {stamp}
         </time>
+        {canDelete && (
+          <button
+            type="button"
+            className="btn btn-outline notes-thread__delete"
+            style={{ padding: "2px 8px", fontSize: "0.8125rem" }}
+            disabled={disabled}
+            onClick={() => onDeleteNote?.(entry.id)}
+            title="Delete your note (Save to persist)"
+            aria-label={`Delete note by ${stamp}`}
+          >
+            <Trash2 size={12} /> Delete
+          </button>
+        )}
       </div>
       {editable ? (
         <textarea

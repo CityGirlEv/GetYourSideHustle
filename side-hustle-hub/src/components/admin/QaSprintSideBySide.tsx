@@ -391,7 +391,7 @@ export function QaSprintSideBySide({
                   : "Reset unavailable — nothing to clear"
               }
             >
-              <RotateCcw size={14} /> Reset
+              <RotateCcw size={14} /> Re-Set
             </button>
           </div>
         </div>

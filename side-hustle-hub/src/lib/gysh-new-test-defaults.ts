@@ -37,7 +37,7 @@ const KEVINA_RE = /kevina\s*starr|kevinastarr|kevina-starr|kevina_starr|\bkevina
 const KIDS_YOUTH_RE =
   /\bkids?\b|\byouth\b|\bteens?\b|\bjunior\b|\bjr\b|\bkids\s*corner\b|\bkids\s*&\s*teens\b/i;
 
-/** True when the case is KevinaStarr Kids / Youth / Teens / Junior related. */
+/** True when the case is KevinaStarr Kids / Youth / Teens related. */
 export function isKevinaKidsYouthTest(input: NewTestDefaultInput): boolean {
   const id = String(input.id ?? "").toUpperCase();
   if (

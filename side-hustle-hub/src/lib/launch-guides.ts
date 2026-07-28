@@ -32,6 +32,11 @@ export const LAUNCH_GUIDES: LaunchGuideRef[] = [
     peek: "Digital marketers ready to run paid advertisements.",
   },
   {
+    id: "digital-products",
+    name: "Digital Products",
+    peek: "Creators who want to sell ebooks, printables, templates, and courses — separate from affiliate links.",
+  },
+  {
     id: "affiliate",
     name: "Affiliate Marketing",
     peek: "Writers, bloggers, and review content creators.",
@@ -91,9 +96,13 @@ export const LAUNCH_GUIDES: LaunchGuideRef[] = [
   {
     id: "book-publishing",
     name: "Book Publishing",
-    peek: "Writers and storytellers (Tina's lane) ready to turn manuscripts into royalty income.",
+    peek: "A Digital path for writers and storytellers (Tina's lane) — manuscripts to royalty income; kids can publish too.",
   },
 ];
+
+export function hasLaunchGuide(guideId: string): boolean {
+  return LAUNCH_GUIDES.some((g) => g.id === guideId);
+}
 
 export function guideReviewTaskId(guideId: string): string {
   return `T-LG-${guideId}`;

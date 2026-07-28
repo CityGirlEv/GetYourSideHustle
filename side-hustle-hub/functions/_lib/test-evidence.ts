@@ -1,9 +1,10 @@
 /**
  * Testing Portal evidence: MIME/magic-byte allowlist + light malware heuristics.
- * Allowed: images, PDF, Word (.doc/.docx), Excel (.xls/.xlsx). Max ~3.5MB decoded.
+ * Allowed: images, PDF, Word (.doc/.docx), Excel (.xls/.xlsx).
+ * Max ~1.5MB decoded so base64 fits D1’s ~2MB string limit (avoids SQLITE_TOOBIG).
  */
 
-export const TEST_EVIDENCE_MAX_BYTES = 3_500_000;
+export const TEST_EVIDENCE_MAX_BYTES = 1_500_000;
 
 const ALLOWED_EXT = /\.(png|jpe?g|gif|webp|pdf|doc|docx|xls|xlsx)$/i;
 
@@ -73,9 +74,22 @@ export function scanTestEvidence(input: {
   if (bytes.length > TEST_EVIDENCE_MAX_BYTES) {
     return {
       ok: false,
-      error: `File too large (max ${Math.round(TEST_EVIDENCE_MAX_BYTES / 1_000_000)}MB).`,
+      error: `File too large (max ${Math.round(TEST_EVIDENCE_MAX_BYTES / 1_000_000)}MB decoded). Compress the image or attach a smaller PDF — D1 cannot store bigger blobs.`,
       scanStatus: "rejected",
       scanDetail: "too_large",
+    };
+  }
+  // Base64 expands ~4/3; keep encoded payload under D1’s ~2MB string ceiling.
+  const encodedLen = String(input.contentBase64 || "")
+    .replace(/^data:[^;]+;base64,/, "")
+    .replace(/\s+/g, "").length;
+  if (encodedLen > 1_900_000) {
+    return {
+      ok: false,
+      error:
+        "Attachment is too large for the database after encoding. Compress the file under ~1.5MB and try again.",
+      scanStatus: "rejected",
+      scanDetail: "too_large_encoded",
     };
   }
 

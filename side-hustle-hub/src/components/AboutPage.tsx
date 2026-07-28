@@ -1,4 +1,3 @@
-import { useLayoutEffect, useRef, type RefObject } from "react";
 import {
   Banknote,
   GraduationCap,
@@ -40,48 +39,7 @@ type AboutPageProps = {
   onOpenKids?: () => void;
 };
 
-/** Keep Tina + Evelyn bio cards the same height (Gang in the middle stays independent). */
-function useEqualBioCardHeights(
-  leftRef: RefObject<HTMLElement | null>,
-  rightRef: RefObject<HTMLElement | null>,
-) {
-  useLayoutEffect(() => {
-    const left = leftRef.current;
-    const right = rightRef.current;
-    if (!left || !right) return;
-
-    let frame = 0;
-    const sync = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        left.style.minHeight = "";
-        right.style.minHeight = "";
-        const h = Math.max(left.offsetHeight, right.offsetHeight);
-        left.style.minHeight = `${h}px`;
-        right.style.minHeight = `${h}px`;
-      });
-    };
-
-    sync();
-    const ro = new ResizeObserver(sync);
-    ro.observe(left);
-    ro.observe(right);
-    window.addEventListener("resize", sync);
-    return () => {
-      cancelAnimationFrame(frame);
-      ro.disconnect();
-      window.removeEventListener("resize", sync);
-      left.style.minHeight = "";
-      right.style.minHeight = "";
-    };
-  }, [leftRef, rightRef]);
-}
-
 export function AboutPage({ onJoin, onOpenKids }: AboutPageProps) {
-  const tinaBioRef = useRef<HTMLElement>(null);
-  const evelynBioRef = useRef<HTMLElement>(null);
-  useEqualBioCardHeights(tinaBioRef, evelynBioRef);
-
   return (
     <div className="about-page static-page">
       <section className="about-hero-row" aria-label="Meet the GYSH founders">
@@ -335,10 +293,7 @@ export function AboutPage({ onJoin, onOpenKids }: AboutPageProps) {
       </section>
 
       <div className="static-page-grid about-bio-grid">
-        <article
-          ref={tinaBioRef}
-          className="glass static-page-card about-bio-card about-bio-card--wrap"
-        >
+        <article className="glass static-page-card about-bio-card about-bio-card--wrap">
           <div className="about-bio-card__badge-row">
             <span className="glow-badge purple">Tina Marie</span>
             <a
@@ -472,10 +427,7 @@ export function AboutPage({ onJoin, onOpenKids }: AboutPageProps) {
           </div>
         </article>
 
-        <article
-          ref={evelynBioRef}
-          className="glass static-page-card about-bio-card about-bio-card--wrap"
-        >
+        <article className="glass static-page-card about-bio-card about-bio-card--wrap">
           <div className="about-bio-card__badge-row">
             <span className="glow-badge purple">
               <Rocket size={13} aria-hidden /> Evelyn

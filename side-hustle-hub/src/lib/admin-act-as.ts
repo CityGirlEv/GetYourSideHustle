@@ -4,11 +4,12 @@ import { getSessionStore } from "./browser-storage";
 export const ADMIN_ACT_AS_KEY = "gysh_admin_act_as_v1";
 
 /** Audience the admin is previewing the member app as. */
-export type ActAsAudience = "admin" | "adult" | "kids" | "junior" | "senior";
+export type ActAsAudience = "admin" | "guest" | "adult" | "kids" | "junior" | "senior";
 
 export type ActAsTarget =
   | { type: "self" }
-  | { type: "audience"; audience: Exclude<ActAsAudience, "admin"> }
+  | { type: "guest" }
+  | { type: "audience"; audience: Exclude<ActAsAudience, "admin" | "guest"> }
   | {
       type: "user";
       id: string;
@@ -17,8 +18,13 @@ export type ActAsTarget =
       roles: GyshRole[];
     };
 
+export const ACT_AS_GUEST_OPTION = {
+  label: "Unlogged in User",
+  description: "Guest experience — locked Blueprints, Login in the header",
+} as const;
+
 export const ACT_AS_AUDIENCE_OPTIONS: {
-  audience: Exclude<ActAsAudience, "admin">;
+  audience: Exclude<ActAsAudience, "admin" | "guest">;
   label: string;
   description: string;
 }[] = [
@@ -34,8 +40,14 @@ export function readActAsTarget(): ActAsTarget {
     if (!raw) return { type: "self" };
     const parsed = JSON.parse(raw) as ActAsTarget;
     if (parsed?.type === "self") return { type: "self" };
+    if (parsed?.type === "guest") return { type: "guest" };
     if (parsed?.type === "audience" && parsed.audience) return parsed;
-    if (parsed?.type === "user" && parsed.id && parsed.name) return parsed;
+    // Legacy per-user act-as: map to role audience (no individual user profiles in switcher).
+    if (parsed?.type === "user" && Array.isArray(parsed.roles)) {
+      const audience = audienceFromRoles(parsed.roles);
+      if (audience === "admin" || audience === "guest") return { type: "self" };
+      return { type: "audience", audience };
+    }
     return { type: "self" };
   } catch {
     return { type: "self" };
@@ -66,12 +78,14 @@ export function audienceFromRoles(roles: GyshRole[]): ActAsAudience {
 
 export function actAsAudience(target: ActAsTarget): ActAsAudience {
   if (target.type === "self") return "admin";
+  if (target.type === "guest") return "guest";
   if (target.type === "audience") return target.audience;
   return audienceFromRoles(target.roles);
 }
 
 export function actAsLabel(target: ActAsTarget): string {
   if (target.type === "self") return "Admin (me)";
+  if (target.type === "guest") return ACT_AS_GUEST_OPTION.label;
   if (target.type === "audience") {
     return ACT_AS_AUDIENCE_OPTIONS.find((o) => o.audience === target.audience)?.label ?? target.audience;
   }
@@ -82,6 +96,7 @@ export function actAsLabel(target: ActAsTarget): string {
 export function actAsHomeView(target: ActAsTarget): string {
   const audience = actAsAudience(target);
   if (audience === "admin") return "admin";
+  if (audience === "guest") return "dashboard";
   if (audience === "kids" || audience === "junior") return "kids";
   if (audience === "senior") return "seniors";
   return GYSH_ROLE_HOME.adult;

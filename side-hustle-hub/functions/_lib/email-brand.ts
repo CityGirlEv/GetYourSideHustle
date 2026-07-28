@@ -6,13 +6,26 @@ export const ROOT_DOMAIN = "getyoursidehustle.com";
 export const SITE_NAME = "Get Your Side Hustle";
 export const SITE_URL = `https://${ROOT_DOMAIN}`;
 export const LOGO_URL = `${SITE_URL}/brand/gysh-logo-rocket.png`;
+/** Hosted Facebook “f” mark for email clients (PNG — more reliable than inline SVG). */
+export const FACEBOOK_ICON_URL = `${SITE_URL}/brand/facebook-icon.png`;
 export const ADMIN_EMAIL = `info@${ROOT_DOMAIN}`;
 /** Extra ops inbox CC’d on every admin/contact alert (with CONTACT_TO + partner admins). */
 export const ADMIN_NOTIFY_CC = ["getyoursidehustleoffial@gmail.com"] as const;
 /** Official GYSH Facebook page. */
 export const FACEBOOK_URL = "https://www.facebook.com/getyoursidehustleofficial";
+export const MUNTIES_URL = "https://muntiesaiagents.com";
 /** Verified Resend sending domain (apex on Get Your Side Hustle account). */
 export const EMAIL_SENDER_DOMAIN = ROOT_DOMAIN;
+
+const SITE_PURPOSE =
+  "Get Your Side Hustle helps families — kids, teens, adults, and seniors — find safe, age-appropriate Side Hustles, and take the next learning and earning step together.";
+
+const FOOTER_LINKS: Array<{ label: string; href: string }> = [
+  { label: "About", href: `${SITE_URL}/about` },
+  { label: "Join", href: `${SITE_URL}/join` },
+  { label: "Community", href: `${SITE_URL}/community` },
+  { label: "Contact Us", href: `${SITE_URL}/contact` },
+];
 
 export type TierId = "free" | "starter" | "pro" | "elite";
 export type PerkAudience = "adult" | "kids" | "junior" | "senior";
@@ -127,32 +140,54 @@ export function wrapBrandedEmail(parts: BrandedEmailParts): { html: string; text
       : "";
 
   const year = new Date().getFullYear();
+  const navLinksHtml = FOOTER_LINKS.map(
+    (link, i) =>
+      `${i > 0 ? `&nbsp;·&nbsp;` : ""}<a href="${escapeHtml(link.href)}" target="_blank" rel="noopener noreferrer" style="color:#9B2F28;font-weight:700;text-decoration:underline;">${escapeHtml(link.label)}</a>`,
+  ).join("");
+
   const footerHtml = `
         <tr><td style="padding:0 32px 8px;font-family:Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5;color:#8a7a68;">
           ${parts.footerNote ? `<p style="margin:0 0 12px;">${escapeHtml(parts.footerNote)}</p>` : ""}
         </td></tr>
         <tr><td style="padding:0 24px 28px;">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #e2d5bc;background:#faf6ee;border-radius:0 0 14px 14px;">
-            <tr><td align="center" style="padding:20px 20px 8px;">
-              <a href="${SITE_URL}" style="text-decoration:none;">
-                <img src="${LOGO_URL}" width="120" alt="${escapeHtml(SITE_NAME)}" style="display:block;width:120px;max-width:50%;height:auto;margin:0 auto 10px;"/>
+            <tr><td align="center" style="padding:22px 20px 10px;">
+              <a href="${SITE_URL}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">
+                <img src="${LOGO_URL}" width="120" alt="${escapeHtml(SITE_NAME)}" style="display:block;width:120px;max-width:50%;height:auto;margin:0 auto 10px;border:0;"/>
               </a>
-              <p style="margin:0 0 10px;font-family:Georgia,'Times New Roman',serif;font-size:15px;font-weight:800;color:#2d2a26;">
+              <p style="margin:0 0 8px;font-family:Georgia,'Times New Roman',serif;font-size:15px;font-weight:800;color:#2d2a26;">
                 ${escapeHtml(SITE_NAME)}
               </p>
-              <p style="margin:0 0 12px;font-family:Helvetica,Arial,sans-serif;font-size:12px;line-height:1.5;color:#8a7a68;">
-                Four wizards. One family adventure.
+              <p style="margin:0 0 14px;font-family:Helvetica,Arial,sans-serif;font-size:12px;line-height:1.5;color:#8a7a68;max-width:420px;">
+                ${escapeHtml(SITE_PURPOSE)}
               </p>
+              <p style="margin:0 0 14px;font-family:Helvetica,Arial,sans-serif;font-size:13px;line-height:1.7;">
+                ${navLinksHtml}
+              </p>
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto 14px;">
+                <tr>
+                  <td align="center" bgcolor="#1877F2" style="background-color:#1877F2;border-radius:8px;">
+                    <a href="${FACEBOOK_URL}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background-color:#1877F2;color:#ffffff !important;font-family:Helvetica,Arial,sans-serif;font-weight:700;font-size:14px;line-height:1.2;text-decoration:none;padding:10px 16px;border-radius:8px;">
+                      <img src="${FACEBOOK_ICON_URL}" width="18" height="18" alt="" style="display:inline-block;width:18px;height:18px;border:0;vertical-align:middle;margin-right:8px;"/>
+                      <span style="color:#ffffff !important;text-decoration:none;vertical-align:middle;">Follow on Facebook</span>
+                    </a>
+                  </td>
+                </tr>
+              </table>
               <p style="margin:0 0 6px;font-family:Helvetica,Arial,sans-serif;font-size:13px;font-weight:700;">
-                <a href="${SITE_URL}" style="color:#9B2F28;text-decoration:none;">${ROOT_DOMAIN}</a>
+                <a href="${SITE_URL}" target="_blank" rel="noopener noreferrer" style="color:#9B2F28;text-decoration:underline;">${ROOT_DOMAIN}</a>
                 &nbsp;·&nbsp;
-                <a href="${FACEBOOK_URL}" style="color:#9B2F28;text-decoration:none;">Facebook</a>
+                <a href="mailto:${ADMIN_EMAIL}" style="color:#9B2F28;text-decoration:underline;">${ADMIN_EMAIL}</a>
               </p>
-              <p style="margin:0 0 10px;font-family:Helvetica,Arial,sans-serif;font-size:12px;">
-                <a href="mailto:${ADMIN_EMAIL}" style="color:#6b5344;text-decoration:underline;">${ADMIN_EMAIL}</a>
+              <p style="margin:10px 0 0;font-family:Helvetica,Arial,sans-serif;font-size:11px;line-height:1.5;color:#8a7a68;max-width:440px;">
+                <strong style="color:#6b5344;">Your hustle, your results.</strong>
+                Income examples and workshop takeaways are educational only — not guarantees.
+                ${escapeHtml(SITE_NAME)} does not provide financial, legal, tax, or investment advice.
               </p>
-              <p style="margin:0;font-family:Helvetica,Arial,sans-serif;font-size:11px;color:#b09a7e;">
+              <p style="margin:12px 0 0;font-family:Helvetica,Arial,sans-serif;font-size:11px;color:#b09a7e;">
                 © ${year} ${escapeHtml(SITE_NAME)}. All rights reserved.
+                &nbsp;·&nbsp;
+                <a href="${MUNTIES_URL}" target="_blank" rel="noopener noreferrer" style="color:#947d64;text-decoration:underline;">Powered by Muntie&apos;s AI Agents</a>
               </p>
             </td></tr>
           </table>
@@ -204,12 +239,20 @@ export function wrapBrandedEmail(parts: BrandedEmailParts): { html: string; text
     parts.ctaUrl ? `\n${parts.ctaLabel || "Open"}: ${parts.ctaUrl}` : "",
     "",
     parts.footerNote || "",
+    "",
+    "—",
+    SITE_PURPOSE,
+    `About: ${SITE_URL}/about`,
+    `Join: ${SITE_URL}/join`,
+    `Community: ${SITE_URL}/community`,
+    `Contact: ${SITE_URL}/contact`,
     `Website: ${SITE_URL}`,
     `Facebook: ${FACEBOOK_URL}`,
     `Email: ${ADMIN_EMAIL}`,
+    `Powered by Muntie's AI Agents: ${MUNTIES_URL}`,
     `© ${year} ${SITE_NAME}`,
   ]
-    .filter(Boolean)
+    .filter((line) => line !== undefined && line !== null)
     .join("\n");
 
   return { html, text };

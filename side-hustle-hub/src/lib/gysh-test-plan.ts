@@ -12,10 +12,14 @@ export type TestSuite = "manual" | "vitest" | "playwright";
 export type TestStatus =
   | "not_run"
   | "in_progress"
+  | "rolled_over"
   | "pass"
   | "conditional_approval"
   | "fail"
-  | "blocked";
+  | "blocked"
+  | "fixed_retest"
+  | "failed_retest"
+  | "fixed_cursor";
 
 export type Priority = "P0" | "P1" | "P2" | "P3";
 
@@ -29,40 +33,76 @@ export const PRIORITY_LABELS: Record<Priority, string> = {
 export const STATUS_LABELS: Record<TestStatus, string> = {
   not_run: "Not Started",
   in_progress: "In Progress",
+  /** Carried from a prior sprint at End Sprint / rollover. */
+  rolled_over: "Rolled Over",
   pass: "Pass",
-  conditional_approval: "Conditional Approval",
+  conditional_approval: "Conditional Pass",
   fail: "Fail",
   blocked: "Blocked",
+  /** Lead Dev fixed the bug — send back to tester to re-test. */
+  fixed_retest: "Fixed/Re-Test",
+  /** Not a real product failure — test was misunderstood/unclear; send back to tester. */
+  failed_retest: "Failed/Re-Test",
+  /** Cursor agent fixed the bug — send back to tester to re-test. */
+  fixed_cursor: "Fixed/Cursor",
 };
 
 /** All valid Testing Portal statuses (API + UI). */
 export const TEST_STATUSES: TestStatus[] = [
   "not_run",
   "in_progress",
+  "rolled_over",
   "pass",
   "conditional_approval",
   "fail",
   "blocked",
+  "fixed_retest",
+  "failed_retest",
+  "fixed_cursor",
+];
+
+/**
+ * Lead Developer (Evelyn) marks these after reviewing a failure — note required,
+ * then assignee returns to the original tester for re-test.
+ * - Fixed/Re-Test: bug was fixed
+ * - Failed/Re-Test: fail was invalid (misunderstood / unclear test)
+ * - Fixed/Cursor: Cursor fixed the bug
+ */
+export const DEV_FIX_STATUSES: TestStatus[] = [
+  "fixed_retest",
+  "failed_retest",
+  "fixed_cursor",
 ];
 
 /** Initial / default status for every test case until a tester changes it. */
 export const DEFAULT_TEST_STATUS: TestStatus = "not_run";
 
-/** Fail, Blocked, and Conditional Approval require a short written note. */
+/** Fail, Blocked, Conditional Pass, and Lead Dev retest statuses require a short written note. */
 export const NOTE_REQUIRED_STATUSES: TestStatus[] = [
   "fail",
   "blocked",
   "conditional_approval",
+  "fixed_retest",
+  "failed_retest",
+  "fixed_cursor",
 ];
 export const NOTE_MIN_LENGTH = 8;
 
-/** Resolved statuses (no longer open / not started). */
+/** Resolved statuses (no longer open / not started). ReTest statuses stay open until the tester re-tests. */
 export function isTestStatusResolved(status: TestStatus): boolean {
   return (
     status === "pass" ||
     status === "conditional_approval" ||
     status === "fail" ||
     status === "blocked"
+  );
+}
+
+export function isDevFixStatus(status: TestStatus | string): boolean {
+  return (
+    status === "fixed_retest" ||
+    status === "failed_retest" ||
+    status === "fixed_cursor"
   );
 }
 
@@ -177,7 +217,7 @@ export type TestCategory =
 export const TEST_CATEGORY_LABELS: Record<TestCategory, string> = {
   auth_access: "Auth & Access",
   navigation_brand: "Navigation & Brand",
-  kids_junior: "Kids & Junior",
+  kids_junior: "Kids & Teens",
   seniors: "Seniors",
   adult_hustles: "Adult Hub",
   proofread: "ProofRead",
@@ -188,7 +228,7 @@ export const TEST_CATEGORY_LABELS: Record<TestCategory, string> = {
   workshops: "Workshops",
   admin_ops: "Admin & Ops",
   wizard_kids: "Wizard · Kids FMSH",
-  wizard_junior: "Wizard · Junior FMSH",
+  wizard_junior: "Wizard · Teens FMSH",
   wizard_adult: "Wizard · Adult FMSH",
   wizard_senior: "Wizard · Senior FMSH",
   automated: "Automated suites",
@@ -217,7 +257,8 @@ export const TEST_CATEGORIES: TestCategory[] = [
 export function categoryForCase(t: Pick<TestCase, "area" | "suite" | "id">): TestCategory {
   if (t.suite === "vitest" || t.suite === "playwright") {
     if (t.area === "Kids Get Your Side Hustle") return "wizard_kids";
-    if (t.area === "Junior Get Your Side Hustle") return "wizard_junior";
+    if (t.area === "Teens Get Your Side Hustle" || t.area === "Junior Get Your Side Hustle")
+      return "wizard_junior";
     if (t.area === "Adult Get Your Side Hustle") return "wizard_adult";
     if (t.area === "Senior Get Your Side Hustle") return "wizard_senior";
     if (t.area === "Vitest" || t.area === "Playwright") return "automated";
@@ -262,6 +303,7 @@ export function categoryForCase(t: Pick<TestCase, "area" | "suite" | "id">): Tes
       return "admin_ops";
     case "Kids Get Your Side Hustle":
       return "wizard_kids";
+    case "Teens Get Your Side Hustle":
     case "Junior Get Your Side Hustle":
       return "wizard_junior";
     case "Adult Get Your Side Hustle":
@@ -406,7 +448,7 @@ const TEST_CASES_RAW: TestCase[] = [
       "Primary nav: click Home, GYSH Match Wizard, Kids & Teens, Seniors, Guides, Workshops, Community, Join",
       "Secondary/meta nav: About, Contact Us (and Login when logged out)",
       "Confirm each view title updates (Kids & Teens → GYSH Kids & Teens Corner; Match Wizard selector uses the family Match Wizard headline until an adult wizard starts)",
-      "Confirm Guides is a dropdown (Guides Library + marketing manuals), not a Some Free banner",
+      "Confirm Guides is a dropdown (Guides Library + audience guides), not a Some Free banner",
       "Confirm Membership is not a separate top-nav item (plans live on Join)",
     ],
     expected: "Every listed nav item opens the correct page; Home is first; Guides then Workshops sit after Seniors; Join includes membership plans",
@@ -514,9 +556,9 @@ const TEST_CASES_RAW: TestCase[] = [
       "Open Stories tab → Featured Stories + Kevina embeds (Stories is a normal tab in the tab bar — not a red bubble next to Ages)",
       "Open Guides → free guides fully visible; member guides show preview + Join to unlock",
       "Open Join → Kids Corner GYSH Team copy + parental consent signup; CTA says Join Kids Corner GYSH Team",
-      "Switch to Teens → heading GYSH Teens Side Hustles + Ages 13–17; tabs are GYSH Match Wizard, Ideas, My Bank, Guides, Join (no Stories / no Welcome); Join CTA says Join Teens",
+      "Switch to Teens → heading GYSH Teens Side Hustles + Ages 13–17; tabs are GYSH Match Wizard, Ideas, My Bank, Guides, Join (no Stories / no Welcome); Join CTA says Join Teens Side Hustle Team",
     ],
-    expected: "Kids/Teens mode toggles clear; Ages badge is on the heading; Stories is a kids-tab-bar tab; Guides free vs gated; Teens has no Stories/Welcome; Join uses parental consent signup",
+    expected: "Kids/Teens mode toggles clear; Ages badge is on the heading; Stories is a kids-tab-bar tab; Guides free vs gated; Teens has no Stories/Welcome; Kids Join uses parental consent; Teens Join does not",
     path: "kids",
   },
   {
@@ -555,18 +597,18 @@ const TEST_CASES_RAW: TestCase[] = [
   {
     id: "KIDS-005",
     area: "Kids Corner",
-    title: "Teens (13–17) Join tab: parental consent signup",
+    title: "Teens (13–17) Join tab: no parental consent required",
     priority: "P0",
     roles: ["junior", "admin", "qa"],
     assignees: ["tina"],
     suite: "manual",
     steps: [
       "Open Kids & Teens → Teens mode (Ages 13–17) → Join tab",
-      "Click Join Teens",
-      "Submit junior name + email + parent email",
-      "Confirm pending-parent messaging",
+      "Click Join Teens Side Hustle Team",
+      "Confirm form asks for first name + teen email only (no parent email field)",
+      "Submit → success messaging that access is active / consent not required for 13+",
     ],
-    expected: "Teens signup requires distinct parent email and stays inactive until parent grants permission",
+    expected: "Teens join activates without parent email or consent email",
     path: "kids",
   },
   {
@@ -685,14 +727,14 @@ const TEST_CASES_RAW: TestCase[] = [
   {
     id: "ADMIN-002",
     area: "Admin",
-    title: "Users Area filters by role (Admin / QA / Kid / Junior / Adult)",
+    title: "Users Area filters by role (Admin / QA / Kid / Teens / Adult)",
     priority: "P1",
     roles: ["admin", "qa"],
     assignees: ["lyriq"],
     suite: "manual",
     steps: [
       "Admin → Users Area",
-      "Filter by Kid, Junior, Adult, Admin, QA",
+      "Filter by Kid, Teens, Adult, Admin, QA",
       "Change a demo user status",
     ],
     expected: "Filters work; status changes save",
@@ -853,10 +895,10 @@ const TEST_CASES_RAW: TestCase[] = [
     steps: [
       "Read Home lead under the family Match Wizards headline (GYSH Coaches + consent through 12)",
       "Open GYSH Match Wizard → expand More about GYSH Match Wizard if needed → confirm Kids card/details mention GYSH Coaches and parental consent through age 12",
-      "Confirm parental consent through age 12 is stated clearly",
+      "Confirm parental consent through age 12 is stated clearly (not required for ages 13+)",
       "Confirm tone is coaching/safety — not asking kids for address/phone",
     ],
-    expected: "Coach language present; consent age clear; no child PII asks in marketing copy",
+    expected: "Coach language present; consent through 12 / not for 13+ is clear; no child PII asks in marketing copy",
     path: "dashboard",
   },
   {
@@ -1338,17 +1380,17 @@ const TEST_CASES_RAW: TestCase[] = [
   {
     id: "EMAIL-007",
     area: "Email",
-    title: "Teens parental-consent email path is documented / delivered",
+    title: "Teens Join does not send parental-consent email (13+)",
     priority: "P0",
     roles: ["junior", "qa", "admin"],
     assignees: ["lyriq"],
     suite: "manual",
     steps: [
-      "Kids & Teens → Teens mode → Join → Join Teens with junior email ≠ parent email",
-      "Submit → pending-parent messaging",
-      "Verify parent email / Resend for consent (or mark blocked with exact UI copy if missing)",
+      "Kids & Teens → Teens mode → Join → Join Teens with name + teen email only",
+      "Submit → confirm active / no-consent messaging",
+      "Confirm no parent consent email is required or sent for ages 13+",
     ],
-    expected: "Teens consent email works end-to-end or is explicitly tracked as not-yet-shipped",
+    expected: "Teens join succeeds without parental consent email; Kids (≤12) still use consent path",
     path: "kids",
   },
   {
@@ -1430,7 +1472,7 @@ const TEST_CASES_RAW: TestCase[] = [
       "Kids & Teens → Kids → Join → Join Kids Corner GYSH Team with child first name + parent email (and child email if required)",
       "Confirm kids are not asked for address/phone or a child password",
       "Confirm pending state until parent approves",
-      "Admin: confirm signup row appears (Junior signups / Users) if available",
+      "Admin: confirm signup row appears (Teens signups / Users) if available",
     ],
     expected: "Pending kids signup stored safely; parental gate required",
     path: "kids",
@@ -1577,6 +1619,8 @@ export type TestStatusesPayload = {
   assignedBy: Record<string, string>;
   /** MM/DD/YY when Assigned By was set / last reassigned. */
   dateAssigned: Record<string, string>;
+  /** Human tester to restore after Lead Dev marks Fixed/Re-Test or Failed/Re-Test. */
+  originalAssignees: Record<string, string>;
   updatedAt: Record<string, string>;
   updatedBy: Record<string, string>;
   attachments: Record<string, TestAttachmentMeta[]>;
@@ -1593,6 +1637,7 @@ function mapStatusesResponse(data: {
   failedStepIndex?: Record<string, number | null>;
   assignedBy?: Record<string, string>;
   dateAssigned?: Record<string, string>;
+  originalAssignees?: Record<string, string>;
   updatedAt?: Record<string, string>;
   updatedBy?: Record<string, string>;
   attachments?: Record<string, TestAttachmentMeta[]>;
@@ -1608,6 +1653,7 @@ function mapStatusesResponse(data: {
     failedStepIndex: data.failedStepIndex ?? {},
     assignedBy: data.assignedBy ?? {},
     dateAssigned: data.dateAssigned ?? {},
+    originalAssignees: data.originalAssignees ?? {},
     updatedAt: data.updatedAt ?? {},
     updatedBy: data.updatedBy ?? {},
     attachments: data.attachments ?? {},
@@ -1708,7 +1754,8 @@ export async function fetchTestEvidenceContent(id: string): Promise<{
   mimeType: string;
   contentBase64: string;
 }> {
-  return api(`test-attachments?id=${encodeURIComponent(id)}`);
+  // Screenshots can be ~1MB base64 — allow longer than the default API timeout.
+  return api(`test-attachments?id=${encodeURIComponent(id)}`, { timeoutMs: 90_000 });
 }
 
 export function fileToBase64(file: Blob): Promise<string> {
@@ -1721,13 +1768,6 @@ export function fileToBase64(file: Blob): Promise<string> {
     };
     reader.onerror = () => reject(reader.error || new Error("read failed"));
     reader.readAsDataURL(file);
-  });
-}
-
-export async function resetTestStatuses(confirmReset?: string): Promise<void> {
-  await api("test-statuses", {
-    method: "DELETE",
-    body: { confirmReset: confirmReset ?? "" },
   });
 }
 

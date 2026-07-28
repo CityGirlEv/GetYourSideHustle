@@ -2,8 +2,6 @@ import { useState } from "react";
 import {
   ArrowRight,
   BriefcaseBusiness,
-  ChevronDown,
-  ChevronRight,
   Heart,
   Smile,
   Users,
@@ -28,7 +26,7 @@ export const FIND_MINE_WIZARD_GROUPS = [
     bandAges: ["4–8", "9–12"] as const,
     title: "GYSH Kids Match Wizard",
     copy:
-      "Parent-guided, safe first Side Hustles. Parents become GYSH Coaches — and parental consent is required through age 12.",
+      "Parent-guided, safe first Side Hustles. Parents become GYSH Coaches — parental consent is required through age 12 (not required for ages 13+).",
     icon: Smile,
     accent: "orange",
     cta: "Open",
@@ -181,8 +179,7 @@ export function FindMineWizardSelector({
                 data-testid="find-mine-desc-toggle"
                 onClick={() => setDescOpen((o) => !o)}
               >
-                {descOpen ? <ChevronDown size={16} aria-hidden /> : <ChevronRight size={16} aria-hidden />}
-                {descOpen ? "Hide details" : "More about GYSH Match Wizard"}
+                {descOpen ? "Hide details" : "Show details"}
               </button>
 
               {descOpen && (
@@ -192,7 +189,7 @@ export function FindMineWizardSelector({
                     <li>
                       <strong>Kids (4–12):</strong> we match ages <strong>4–8</strong> and{" "}
                       <strong>9–12</strong>. Parents become <strong>GYSH Coaches</strong>; parental
-                      consent is required through age 12.
+                      consent is required through age 12 (ages 13+ join without consent).
                     </li>
                     <li>
                       <strong>Teens (13–17):</strong> we match ages <strong>13–14</strong> and{" "}

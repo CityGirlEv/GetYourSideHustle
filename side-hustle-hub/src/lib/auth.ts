@@ -22,6 +22,9 @@ export type AuthUser = {
   joinedAt: string;
   notes: string;
   canLogin: boolean;
+  membershipTier?: string;
+  /** adult | parent | kids | junior | senior */
+  audience?: string;
 };
 
 export function normalizeEmail(email: string): string {

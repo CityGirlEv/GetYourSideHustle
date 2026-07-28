@@ -6,8 +6,12 @@
 /index.html
   Cache-Control: public, max-age=0, must-revalidate
 
-# Fingerprinted Vite assets are immutable. Keep browser cache long, but never
-# let a mistaken SPA HTML rewrite sit here for hours (zone Browser Cache TTL).
+# Fingerprinted Vite assets are immutable — only safe because missing hashes
+# must 404 (see public/_redirects), never return index.html as text/css.
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
+  X-Content-Type-Options: nosniff
+
+/assets/404.html
+  Cache-Control: public, max-age=0, must-revalidate
   X-Content-Type-Options: nosniff

@@ -1,9 +1,11 @@
 /**
  * Closed / locked sprints — client helpers.
- * After End Sprint / Close, items still assigned to that sprint cannot be modified.
+ * After End Sprint / Close, items still assigned to that sprint cannot be modified
+ * (except Evelyn, who can bypass via canBypassSprintLock).
  */
 
 import { api } from "./api";
+import { canBypassSprintLock } from "./gysh-assignment";
 import { sprintLabel } from "./gysh-sprints";
 
 export const SPRINT_LOCKED_MESSAGE =
@@ -13,6 +15,7 @@ export function sprintLockedMessage(sprintIndex: number): string {
   return `${SPRINT_LOCKED_MESSAGE} (${sprintLabel(sprintIndex)})`;
 }
 
+/** True when the sprint is in the closed set (for badges / Re-open UI). */
 export function isSprintLocked(
   closed: Iterable<number> | null | undefined,
   sprint: number | null | undefined,
@@ -26,6 +29,19 @@ export function isSprintLocked(
     if (Number(n) === idx) return true;
   }
   return false;
+}
+
+/**
+ * True when edits to this sprint should be blocked for this actor.
+ * Evelyn can still modify closed sprints; others cannot.
+ */
+export function isSprintEditLocked(
+  closed: Iterable<number> | null | undefined,
+  sprint: number | null | undefined,
+  actor?: { email?: string; name?: string } | null,
+): boolean {
+  if (canBypassSprintLock(actor)) return false;
+  return isSprintLocked(closed, sprint);
 }
 
 export async function fetchClosedSprints(): Promise<number[]> {

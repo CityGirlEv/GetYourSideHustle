@@ -1,4 +1,12 @@
-import { BookOpen, Calculator, Lock, RotateCcw, Sparkles, Unlock } from "lucide-react";
+import {
+  BookOpen,
+  Calculator,
+  ChevronDown,
+  Lock,
+  RotateCcw,
+  Sparkles,
+  Unlock,
+} from "lucide-react";
 import type { BlueprintAgeGroup } from "../lib/gysh-analytics";
 
 export type BlueprintMatchCard = {
@@ -41,9 +49,8 @@ function blueprintTitle(ageGroup: BlueprintAgeGroup): string {
 }
 
 function unlockButtonLabel(ageGroup: BlueprintAgeGroup): string {
-  if (ageGroup === "kids") return "Ask a Parent to Unlock My Blueprint";
-  if (ageGroup === "junior") return "Unlock My Teens Blueprint";
-  return "Unlock My Free Blueprint";
+  if (ageGroup === "kids") return "Ask a Parent to Unlock My Full Blueprint";
+  return "Unlock My Full Blueprint";
 }
 
 const BLUEPRINT_INCLUDES = [
@@ -93,10 +100,12 @@ export function SideHustleBlueprintResults({
       data-unlocked={unlocked ? "true" : "false"}
     >
       <div className="side-hustle-blueprint-hero">
-        <div className="match-finder-adult-result-badge" aria-hidden="true">
-          <Sparkles size={28} />
-        </div>
-        <h2 data-testid="blueprint-headline">Your Side Hustle Blueprint Is Ready!</h2>
+        <h2 data-testid="blueprint-headline" className="side-hustle-blueprint-headline">
+          <span className="side-hustle-blueprint-headline-badge" aria-hidden="true">
+            <Sparkles size={20} />
+          </span>
+          Your Side Hustle Blueprint Is Ready!
+        </h2>
         <p className="side-hustle-blueprint-lead" data-testid="blueprint-lead">
           {unlocked
             ? `Here is your complete ${blueprintTitle(ageGroup)} — ranked Side Hustle ideas based on your answers.`
@@ -206,6 +215,85 @@ export function SideHustleBlueprintResults({
           </article>
         ))}
 
+        {!unlocked && (
+          <section
+            className="side-hustle-blueprint-gate glass"
+            data-testid="blueprint-unlock-gate"
+            aria-labelledby="blueprint-gate-title"
+          >
+            <div
+              className="side-hustle-blueprint-unlock-banner"
+              data-testid="blueprint-unlock-banner"
+              role="status"
+            >
+              <span className="side-hustle-blueprint-unlock-banner-pulse" aria-hidden="true" />
+              <p className="side-hustle-blueprint-unlock-banner-text">
+                <strong>
+                  <Lock size={18} aria-hidden />
+                  More matches are locked below
+                </strong>
+                <span className="side-hustle-blueprint-unlock-banner-sub">
+                  Unlock your full Side Hustle Blueprint to see them
+                </span>
+              </p>
+              <button
+                type="button"
+                className="btn btn-primary side-hustle-blueprint-unlock-banner-btn"
+                data-testid="blueprint-unlock-btn"
+                onClick={onUnlock}
+              >
+                <Unlock size={16} /> {unlockButtonLabel(ageGroup)}
+              </button>
+              <ChevronDown
+                className="side-hustle-blueprint-unlock-banner-arrow"
+                size={22}
+                aria-hidden
+              />
+            </div>
+
+            <h3 id="blueprint-gate-title" className="side-hustle-blueprint-gate-title">
+              <span className="side-hustle-blueprint-gate-highlight">
+                Create your free GYSH account
+              </span>{" "}
+              to unlock your complete Side Hustle Blueprint.
+            </h3>
+            {ageGroup === "kids" && (
+              <p
+                className="side-hustle-blueprint-parent-note"
+                data-testid="blueprint-kids-parent-note"
+              >
+                A parent or guardian must create the free family account to save and unlock this
+                child&apos;s complete Side Hustle Blueprint.
+              </p>
+            )}
+            <p className="side-hustle-blueprint-includes-label">Your full Blueprint includes:</p>
+            <ul className="side-hustle-blueprint-includes">
+              {BLUEPRINT_INCLUDES.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+            <div className="side-hustle-blueprint-gate-actions">
+              <button
+                type="button"
+                className="btn btn-primary side-hustle-blueprint-unlock-cta"
+                data-testid="blueprint-unlock-btn-secondary"
+                onClick={onUnlock}
+              >
+                <Unlock size={16} /> {unlockButtonLabel(ageGroup)}
+              </button>
+              <button
+                type="button"
+                className="btn btn-outline"
+                data-testid="blueprint-retake-btn"
+                onClick={onRetake}
+              >
+                <RotateCcw size={16} /> Retake the Quiz
+              </button>
+            </div>
+            <p className="side-hustle-blueprint-reassure">Free account. No credit card required.</p>
+          </section>
+        )}
+
         {!unlocked &&
           lockedMatches.map((row, index) => (
             <article
@@ -228,50 +316,6 @@ export function SideHustleBlueprintResults({
             </article>
           ))}
       </div>
-
-      {!unlocked && (
-        <section
-          className="side-hustle-blueprint-gate glass"
-          data-testid="blueprint-unlock-gate"
-          aria-labelledby="blueprint-gate-title"
-        >
-          <h3 id="blueprint-gate-title">
-            <Lock size={18} aria-hidden /> Create your free GYSH account to unlock your complete Side
-            Hustle Blueprint.
-          </h3>
-          {ageGroup === "kids" && (
-            <p className="side-hustle-blueprint-parent-note" data-testid="blueprint-kids-parent-note">
-              A parent or guardian must create the free family account to save and unlock this
-              child&apos;s complete Side Hustle Blueprint.
-            </p>
-          )}
-          <p className="side-hustle-blueprint-includes-label">Your full Blueprint includes:</p>
-          <ul className="side-hustle-blueprint-includes">
-            {BLUEPRINT_INCLUDES.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-          <div className="side-hustle-blueprint-gate-actions">
-            <button
-              type="button"
-              className="btn btn-primary"
-              data-testid="blueprint-unlock-btn"
-              onClick={onUnlock}
-            >
-              <Unlock size={16} /> {unlockButtonLabel(ageGroup)}
-            </button>
-            <button
-              type="button"
-              className="btn btn-outline"
-              data-testid="blueprint-retake-btn"
-              onClick={onRetake}
-            >
-              <RotateCcw size={16} /> Retake the Quiz
-            </button>
-          </div>
-          <p className="side-hustle-blueprint-reassure">Free account. No credit card required.</p>
-        </section>
-      )}
 
       {unlocked && (
         <div className="side-hustle-blueprint-unlocked-actions match-finder-adult-actions">

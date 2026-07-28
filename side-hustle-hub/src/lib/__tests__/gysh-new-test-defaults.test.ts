@@ -7,7 +7,7 @@ import {
 import { BACKLOG_SPRINT, dueDateForSprint, dueDatePlusDays } from "../gysh-sprints";
 
 describe("gysh-new-test-defaults", () => {
-  it("matches Kevina / Kids / Youth / Teens / Junior by id, area, path, category, title", () => {
+  it("matches Kevina / Kids / Youth / Teens by id, area, path, category, title", () => {
     expect(isKevinaKidsYouthTest({ id: "KIDS-001" })).toBe(true);
     expect(isKevinaKidsYouthTest({ id: "JR-FMSH-012" })).toBe(true);
     expect(isKevinaKidsYouthTest({ id: "VT-FAIL-abc", title: "KevinaStarr embed broken" })).toBe(
@@ -36,7 +36,7 @@ describe("gysh-new-test-defaults", () => {
     // Mid Sprint 0 (Thu Jul 16, 2026) — bump to Sprint 1 unless S0 task match
     const mid = new Date(2026, 6, 16);
     const d = defaultsForNewTest(
-      { id: "PW-FAIL-1", title: "Kids/Juniors Corner nav opens kids content" },
+      { id: "PW-FAIL-1", title: "Kids/Teens Corner nav opens kids content" },
       mid,
     );
     expect(d.assignee).toBe("tina");
@@ -45,16 +45,17 @@ describe("gysh-new-test-defaults", () => {
     expect(sprintForNewKidsYouthTest(mid)).toBe(1);
   });
 
-  it("allows Sprint 0 only when the new test matches a Sprint 0 task", () => {
+  it("does not pin former S0 catalog ids onto Sprint 0 at create", () => {
     const d = defaultsForNewTest({ id: "EMAIL-001", area: "Email", title: "API health" });
-    expect(d.sprint).toBe(0);
-    expect(d.dueDate).toBe(dueDateForSprint(0));
+    expect(d.sprint).toBe(BACKLOG_SPRINT);
+    expect(d.dueDate).toBe("");
     const kidsMatch = defaultsForNewTest({
       id: "KIDS-001",
       area: "Kids Corner",
       title: "Kevina Stories",
     });
-    expect(kidsMatch.sprint).toBe(0);
+    // Kids/Youth create path → Tina + current/next sprint (never S0)
+    expect(kidsMatch.sprint).toBeGreaterThanOrEqual(1);
     expect(kidsMatch.assignee).toBe("tina");
   });
 

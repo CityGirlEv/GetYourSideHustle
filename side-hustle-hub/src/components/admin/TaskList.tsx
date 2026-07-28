@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import {
   ListChecks,
   Lock,
@@ -36,7 +36,6 @@ import {
   isTaskDueToday,
   mmddyyToIso,
   isoToMmddyy,
-  todayIsoDate,
   applyPartnerDone,
   partnerDoneSummary,
   fileToBase64,
@@ -77,6 +76,7 @@ import {
   dueDateForSprint,
   dueDateIsoForSprint,
   withSprintDueDate,
+  currentSprintIndex,
 } from "../../lib/gysh-sprints";
 import {
   fetchClosedSprints,
@@ -100,9 +100,58 @@ import {
 type OwnerFilter = GyshTask["assignedTo"];
 type CategoryFilter = TaskCategory;
 
-/** Columns so chips fill exactly 2 rows (row-major) — same as Schedule filters. */
+/** Columns so chips fill exactly 2 equal rows (uniform bubble size). */
 function chipColsForTwoRows(count: number): number {
   return Math.max(1, Math.ceil(count / 2));
+}
+
+/** Collapsible filter facet — chevron by title; uniform chip grid when open. */
+function TaskFilterPanel({
+  title,
+  hint,
+  summary,
+  open,
+  onOpenChange,
+  testId,
+  children,
+}: {
+  title: string;
+  hint?: string;
+  /** Shown when collapsed so active filters stay visible. */
+  summary?: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  testId?: string;
+  children: ReactNode;
+}) {
+  const panelId = testId ? `${testId}-body` : undefined;
+  return (
+    <div
+      className={`task-list-filters__panel${open ? " is-open" : " is-collapsed"}`}
+      data-testid={testId}
+    >
+      <button
+        type="button"
+        className="task-list-filters__toggle"
+        aria-expanded={open}
+        aria-controls={panelId}
+        data-testid={testId ? `${testId}-toggle` : undefined}
+        onClick={() => onOpenChange(!open)}
+      >
+        {open ? <ChevronDown size={18} aria-hidden /> : <ChevronRight size={18} aria-hidden />}
+        <span className="task-list-filters__toggle-label">{title}</span>
+        {hint ? <span className="task-list-toolbar__label-hint">{hint}</span> : null}
+        {!open && summary ? (
+          <span className="task-list-filters__panel-summary">{summary}</span>
+        ) : null}
+      </button>
+      {open ? (
+        <div id={panelId} className="task-list-filters__panel-body">
+          {children}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 const OWNER_ACCENT: Record<GyshTask["assignedTo"], string> = {
@@ -529,9 +578,10 @@ export function TaskList({
   const actingAssignBy = taskAssignByForActor(authUser);
   const isAdmin = userHasAdminRole(authUser);
   const [desc, setDesc] = useState("");
-  const [assignee, setAssignee] = useState<GyshTask["assignedTo"]>(UNASSIGNED_OWNER);
-  const [newCategory, setNewCategory] = useState<TaskCategory>("admin_ops");
-  const [newDueDate, setNewDueDate] = useState(todayIsoDate());
+  /** Empty = "Select" placeholder so Add form never looks pre-filled. */
+  const [assignee, setAssignee] = useState<GyshTask["assignedTo"] | "">("");
+  const [newCategory, setNewCategory] = useState<TaskCategory | "">("");
+  const [newDueDate, setNewDueDate] = useState("");
   const [bulkDueDate, setBulkDueDate] = useState("");
   const [bulkDescription, setBulkDescription] = useState("");
   const [bulkNotes, setBulkNotes] = useState("");
@@ -542,9 +592,18 @@ export function TaskList({
   const [ownerFilters, setOwnerFilters] = useState<Set<OwnerFilter>>(() => new Set());
   const [categoryFilters, setCategoryFilters] = useState<Set<CategoryFilter>>(() => new Set());
   const [statusFilters, setStatusFilters] = useState<Set<TaskStatus>>(() => new Set());
-  const [sprintFilters, setSprintFilters] = useState<Set<number>>(() => new Set());
+  /** Open on the live sprint so the list matches what partners are working this week. */
+  const [sprintFilters, setSprintFilters] = useState<Set<number>>(
+    () => new Set([currentSprintIndex()]),
+  );
+  const [filterOpen, setFilterOpen] = useState({
+    sprint: true,
+    assignee: true,
+    status: true,
+    category: false,
+  });
   const [searchQuery, setSearchQuery] = useState("");
-  const [newSprint, setNewSprint] = useState(BACKLOG_SPRINT);
+  const [newSprint, setNewSprint] = useState<number | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [highlightId, setHighlightId] = useState<string | null>(null);
@@ -613,6 +672,14 @@ export function TaskList({
     sprintFilters.size === 0 &&
     !searchQuery.trim();
 
+  const resetNewTaskForm = () => {
+    setDesc("");
+    setAssignee("");
+    setNewCategory("");
+    setNewDueDate("");
+    setNewSprint(null);
+  };
+
   /** Discard unsaved note drafts / new-task form and set all filters to All — no server fetch. */
   const resetEdits = () => {
     const hadDrafts = dirtySaveCount > 0 || Boolean(desc.trim());
@@ -621,7 +688,7 @@ export function TaskList({
       setNewNoteDrafts({});
       setEditNoteDrafts({});
       setDirtyNoteIds(new Set());
-      setDesc("");
+      resetNewTaskForm();
     }
     setOwnerFilters(new Set());
     setCategoryFilters(new Set());
@@ -740,6 +807,9 @@ export function TaskList({
 
   const statusFacetTasks = tasks.filter((t) => taskMatchesFilters(t, "status"));
   const categoryFacetTasks = tasks.filter((t) => taskMatchesFilters(t, "category"));
+  const sprintFacetTasks = tasks.filter((t) => taskMatchesFilters(t, "sprint"));
+  const ownerFacetTasks = tasks.filter((t) => taskMatchesFilters(t, "owner"));
+  const liveSprintIndex = currentSprintIndex();
 
   const toggleInSet = <T,>(prev: Set<T>, value: T): Set<T> => {
     const next = new Set(prev);
@@ -776,15 +846,37 @@ export function TaskList({
   };
 
   const addTask = async () => {
-    if (!desc.trim()) return;
+    if (!desc.trim()) {
+      setError("Enter a task description.");
+      return;
+    }
+    if (!newCategory) {
+      setError("Select a category.");
+      return;
+    }
+    if (newSprint === null) {
+      setError("Select a sprint.");
+      return;
+    }
+    if (!isBacklogSprint(newSprint) && !assignee) {
+      setError("Select an assignee.");
+      return;
+    }
+    if (!isBacklogSprint(newSprint) && !newDueDate && !dueDateForSprint(newSprint)) {
+      setError("Select a due date.");
+      return;
+    }
     if (isSprintLocked(closedSprints, newSprint)) {
       setError(sprintLockedMessage(newSprint));
       return;
     }
     const sprintDue = dueDateForSprint(newSprint);
-    const assignedTo = isBacklogSprint(newSprint) ? UNASSIGNED_OWNER : assignee;
+    const assignedTo: GyshTask["assignedTo"] = isBacklogSprint(newSprint)
+      ? UNASSIGNED_OWNER
+      : assignee;
+    const newId = nextTaskId(tasksRef.current);
     const t: GyshTask = {
-      id: nextTaskId(tasks),
+      id: newId,
       description: desc.trim(),
       category: newCategory,
       priority: "P2",
@@ -792,7 +884,10 @@ export function TaskList({
       assignBy: actingAssignBy,
       assignedTo,
       dateAssigned: todayMMDDYY(),
-      dueDate: isoToMmddyy(newDueDate) || sprintDue || todayMMDDYY(),
+      // Backlog has no sprint due — keep blank so it doesn't look "scheduled".
+      dueDate: isBacklogSprint(newSprint)
+        ? ""
+        : isoToMmddyy(newDueDate) || sprintDue || todayMMDDYY(),
       dateCompleted: "",
       notes: "",
       sprint: newSprint,
@@ -802,8 +897,28 @@ export function TaskList({
     };
     try {
       await persist([t, ...tasksRef.current]);
-      setDesc("");
-      setNewDueDate(dueDateIsoForSprint(newSprint) || todayIsoDate());
+      resetNewTaskForm();
+      // Show the new task: clear hidey filters, focus its sprint lane, scroll to it.
+      setOwnerFilters(new Set());
+      setCategoryFilters(new Set());
+      setStatusFilters(new Set());
+      setSearchQuery("");
+      setSprintFilters(isBacklogSprint(newSprint) ? new Set([BACKLOG_SPRINT]) : new Set([newSprint]));
+      setExpanded((prev) => ({ ...prev, [newId]: true }));
+      setSelectedIds(new Set([newId]));
+      setHighlightId(newId);
+      setSaveFlash(
+        isBacklogSprint(newSprint)
+          ? `Added ${newId} to Backlog`
+          : `Added ${newId} to ${sprintLabel(newSprint)}`,
+      );
+      window.setTimeout(() => setSaveFlash(""), 2500);
+      requestAnimationFrame(() => {
+        document.getElementById(`task-row-${newId}`)?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      });
     } catch {
       /* error already set */
     }
@@ -1161,7 +1276,7 @@ export function TaskList({
                   : "Reset unavailable — nothing to clear"
               }
             >
-              <RotateCcw size={14} /> Reset
+              <RotateCcw size={14} /> Re-Set
             </button>
           </div>
         </div>
@@ -1185,7 +1300,14 @@ export function TaskList({
             </div>
             <div className="form-group" style={{ width: 180 }}>
               <label className="form-label">Category</label>
-              <select className="select-input" value={newCategory} onChange={(e) => setNewCategory(e.target.value as TaskCategory)}>
+              <select
+                className="select-input"
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value as TaskCategory | "")}
+              >
+                <option value="" disabled>
+                  Select
+                </option>
                 {TASK_CATEGORIES.map((c) => (
                   <option key={c.id} value={c.id}>{c.label}</option>
                 ))}
@@ -1195,11 +1317,22 @@ export function TaskList({
               <label className="form-label">Assign to</label>
               <select
                 className="select-input"
-                value={isBacklogSprint(newSprint) ? UNASSIGNED_OWNER : assignee}
-                onChange={(e) => setAssignee(e.target.value as GyshTask["assignedTo"])}
-                disabled={isBacklogSprint(newSprint)}
-                title={isBacklogSprint(newSprint) ? "Backlog tasks stay Unassigned until moved into a sprint" : undefined}
+                value={
+                  newSprint !== null && isBacklogSprint(newSprint)
+                    ? UNASSIGNED_OWNER
+                    : assignee
+                }
+                onChange={(e) => setAssignee(e.target.value as GyshTask["assignedTo"] | "")}
+                disabled={newSprint !== null && isBacklogSprint(newSprint)}
+                title={
+                  newSprint !== null && isBacklogSprint(newSprint)
+                    ? "Backlog tasks stay Unassigned until moved into a sprint"
+                    : undefined
+                }
               >
+                <option value="" disabled>
+                  Select
+                </option>
                 <option value={UNASSIGNED_OWNER}>Unassigned</option>
                 <option value="Tina">Tina</option>
                 <option value="Evelyn">Evelyn</option>
@@ -1221,15 +1354,28 @@ export function TaskList({
               <label className="form-label">Sprint</label>
               <select
                 className="select-input"
-                value={newSprint}
+                value={newSprint === null ? "" : newSprint}
                 onChange={(e) => {
-                  const sprint = Number(e.target.value);
+                  const raw = e.target.value;
+                  if (!raw) {
+                    setNewSprint(null);
+                    setNewDueDate("");
+                    return;
+                  }
+                  const sprint = Number(raw);
                   setNewSprint(sprint);
-                  if (isBacklogSprint(sprint)) setAssignee(UNASSIGNED_OWNER);
+                  if (isBacklogSprint(sprint)) {
+                    setAssignee(UNASSIGNED_OWNER);
+                    setNewDueDate("");
+                    return;
+                  }
                   const iso = dueDateIsoForSprint(sprint);
-                  if (iso) setNewDueDate(iso);
+                  setNewDueDate(iso || "");
                 }}
               >
+                <option value="" disabled>
+                  Select
+                </option>
                 <option value={BACKLOG_SPRINT}>Backlog</option>
                 {sprints.map((s) => (
                   <option key={s.index} value={s.index}>{s.label}</option>
@@ -1242,33 +1388,152 @@ export function TaskList({
           </div>
         </div>
 
-        <div className="task-list-toolbar__section">
-          <div className="task-list-toolbar__section-label">Filters</div>
-          <div className="task-list-toolbar__filters">
-            <div className="task-list-toolbar__filter-group">
-              <div className="task-list-toolbar__filter-label">
-                Assignees
-                <span className="task-list-toolbar__label-hint">multi-select</span>
+        <div className="task-list-toolbar__section task-list-filters" data-testid="task-list-filters">
+          <div className="task-list-toolbar__section-label">
+            Filters
+            <span className="task-list-toolbar__label-hint">
+              {filtered.length} shown · tap bubbles to multi-select
+            </span>
+          </div>
+
+          <div className="task-list-filters__stack">
+            <TaskFilterPanel
+              title="Sprint"
+              hint="primary · multi"
+              testId="task-list-filter-sprint"
+              open={filterOpen.sprint}
+              onOpenChange={(open) => setFilterOpen((p) => ({ ...p, sprint: open }))}
+              summary={
+                sprintFilters.size === 0
+                  ? "All sprints"
+                  : sprintFilters.size === 1
+                    ? sprintFilters.has(BACKLOG_SPRINT)
+                      ? "Backlog"
+                      : sprintLabel([...sprintFilters][0]!)
+                    : `${sprintFilters.size} sprints`
+              }
+            >
+              <div
+                className="task-list-toolbar__chips task-list-toolbar__chips--sprint"
+                style={
+                  {
+                    "--chip-cols": chipColsForTwoRows(2 + sprints.length),
+                  } as CSSProperties
+                }
+                role="group"
+                aria-label="Filter by sprint"
+              >
+                <button
+                  type="button"
+                  className="qa-tester-bubble"
+                  data-active={sprintFilters.size === 0 ? "true" : "false"}
+                  data-testid="task-list-sprint-all"
+                  onClick={() => setSprintFilters(new Set())}
+                  title={`${sprintFacetTasks.length} tasks match other filters`}
+                >
+                  All sprints
+                  <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
+                    · {sprintFacetTasks.length}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="qa-tester-bubble"
+                  data-active={sprintFilters.has(BACKLOG_SPRINT) ? "true" : "false"}
+                  data-testid="task-list-sprint-backlog"
+                  onClick={() => toggleSprintFilter(BACKLOG_SPRINT)}
+                  title="Backlog (unscheduled)"
+                  style={{
+                    borderColor: sprintFilters.has(BACKLOG_SPRINT) ? "#6B5344" : undefined,
+                    boxShadow: sprintFilters.has(BACKLOG_SPRINT) ? "0 0 0 1px #6B5344" : undefined,
+                  }}
+                >
+                  <span className="qa-tester-dot" style={{ background: "#6B5344" }} />
+                  Backlog
+                  <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
+                    ·{" "}
+                    {
+                      sprintFacetTasks.filter((t) => (t.sprint ?? 0) === BACKLOG_SPRINT)
+                        .length
+                    }
+                  </span>
+                </button>
+                {sprints.map((s) => {
+                  const active = sprintFilters.has(s.index);
+                  const count = sprintFacetTasks.filter((t) => (t.sprint ?? 0) === s.index).length;
+                  const isCurrent = s.index === liveSprintIndex;
+                  const accent = isCurrent ? "#5f7a45" : "#947D64";
+                  return (
+                    <button
+                      key={s.index}
+                      type="button"
+                      className="qa-tester-bubble"
+                      data-active={active ? "true" : "false"}
+                      data-current={isCurrent ? "true" : "false"}
+                      data-testid={`task-list-sprint-${s.index}`}
+                      onClick={() => toggleSprintFilter(s.index)}
+                      title={
+                        isCurrent
+                          ? `${s.label} (current) · ${s.rangeLabel} · ${count} tasks`
+                          : `${s.label} · ${s.rangeLabel} · ${count} tasks`
+                      }
+                      style={{
+                        borderColor: active ? accent : undefined,
+                        boxShadow: active ? `0 0 0 1px ${accent}` : undefined,
+                      }}
+                    >
+                      <span className="qa-tester-dot" style={{ background: accent }} />
+                      {s.label}
+                      {isCurrent ? (
+                        <span className="task-list-filters__current-tag">now</span>
+                      ) : null}
+                      <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
+                        · {count}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
+            </TaskFilterPanel>
+
+            <TaskFilterPanel
+              title="Assignee"
+              hint="multi"
+              testId="task-list-filter-assignee"
+              open={filterOpen.assignee}
+              onOpenChange={(open) => setFilterOpen((p) => ({ ...p, assignee: open }))}
+              summary={
+                ownerFilters.size === 0
+                  ? "All assignees"
+                  : [...ownerFilters].map((id) => OWNER_DISPLAY[id] ?? id).join(", ")
+              }
+            >
               <div
                 className="task-list-toolbar__chips"
-                style={{ "--chip-cols": chipColsForTwoRows(1 + OWNER_BUBBLES.length) } as CSSProperties}
+                style={
+                  {
+                    "--chip-cols": chipColsForTwoRows(1 + OWNER_BUBBLES.length),
+                  } as CSSProperties
+                }
+                role="group"
+                aria-label="Filter by assignee"
               >
                 <button
                   type="button"
                   className="qa-tester-bubble"
                   data-active={ownerFilters.size === 0 ? "true" : "false"}
                   onClick={() => setOwnerFilters(new Set())}
-                  title={`${tasks.length} total · ${tasks.filter((t) => t.status === "done").length} done`}
+                  title={`${ownerFacetTasks.length} match other filters · ${ownerFacetTasks.filter((t) => t.status === "done").length} done`}
                 >
                   All
                   <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
-                    {tasks.filter((t) => t.status === "done").length}✓ / {tasks.length}
+                    {ownerFacetTasks.filter((t) => t.status === "done").length}✓ /{" "}
+                    {ownerFacetTasks.length}
                   </span>
                 </button>
                 {OWNER_BUBBLES.map((b) => {
                   const active = ownerFilters.has(b.id);
-                  const { assigned, done } = ownerBubbleCounts(tasks, b.id);
+                  const { assigned, done } = ownerBubbleCounts(ownerFacetTasks, b.id);
                   const countTitle =
                     b.id === "Both"
                       ? `${assigned} assigned to Both · ${done} done`
@@ -1297,16 +1562,31 @@ export function TaskList({
                   );
                 })}
               </div>
-            </div>
+            </TaskFilterPanel>
 
-            <div className="task-list-toolbar__filter-group">
-              <div className="task-list-toolbar__filter-label">
-                Status
-                <span className="task-list-toolbar__label-hint">multi-select</span>
-              </div>
+            <TaskFilterPanel
+              title="Status"
+              hint="multi"
+              testId="task-list-filter-status"
+              open={filterOpen.status}
+              onOpenChange={(open) => setFilterOpen((p) => ({ ...p, status: open }))}
+              summary={
+                statusFilters.size === 0
+                  ? "All statuses"
+                  : [...statusFilters]
+                      .map((id) => STATUS_LEGEND.find((s) => s.id === id)?.label ?? id)
+                      .join(", ")
+              }
+            >
               <div
                 className="task-list-toolbar__chips"
-                style={{ "--chip-cols": chipColsForTwoRows(1 + STATUS_LEGEND.length) } as CSSProperties}
+                style={
+                  {
+                    "--chip-cols": chipColsForTwoRows(1 + STATUS_LEGEND.length),
+                  } as CSSProperties
+                }
+                role="group"
+                aria-label="Filter by status"
               >
                 <button
                   type="button"
@@ -1345,144 +1625,79 @@ export function TaskList({
                   );
                 })}
               </div>
-            </div>
+            </TaskFilterPanel>
 
-            <div className="task-list-toolbar__filter-group task-list-toolbar__filter-group--sprint">
-              <div className="task-list-toolbar__filter-label">
-                Sprints
-                <span className="task-list-toolbar__label-hint">multi-select</span>
-              </div>
-              <details className="task-list-sprint-filter">
-                <summary className="task-list-sprint-filter__summary">
-                  {sprintFilters.size === 0
-                    ? "All sprints"
-                    : sprintFilters.size === 1
-                      ? sprintFilters.has(BACKLOG_SPRINT)
-                        ? "Backlog"
-                        : (sprints.find((s) => sprintFilters.has(s.index))?.label ?? "1 sprint")
-                      : `${sprintFilters.size} sprints`}
-                </summary>
-                <div
-                  className="task-list-sprint-filter__panel"
-                  role="group"
-                  aria-label="Filter by sprint"
-                >
-                  <label className="task-list-sprint-filter__option">
-                    <input
-                      type="checkbox"
-                      checked={sprintFilters.size === 0}
-                      onChange={() => setSprintFilters(new Set())}
-                    />
-                    <span>All sprints</span>
-                  </label>
-                  <label className="task-list-sprint-filter__option">
-                    <input
-                      type="checkbox"
-                      checked={sprintFilters.has(BACKLOG_SPRINT)}
-                      onChange={() => toggleSprintFilter(BACKLOG_SPRINT)}
-                    />
-                    <span>Backlog</span>
-                    <span className="task-list-sprint-filter__count">
-                      {tasks.filter((t) => (t.sprint ?? 0) === BACKLOG_SPRINT).length}
-                    </span>
-                  </label>
-                  {sprints.map((s) => {
-                    const count = tasks.filter((t) => (t.sprint ?? 0) === s.index).length;
-                    return (
-                      <label key={s.index} className="task-list-sprint-filter__option">
-                        <input
-                          type="checkbox"
-                          checked={sprintFilters.has(s.index)}
-                          onChange={() => toggleSprintFilter(s.index)}
-                        />
-                        <span>{s.label}</span>
-                        <span className="task-list-sprint-filter__count">{count}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              </details>
-            </div>
-          </div>
-          <p className="task-list-toolbar__hint">
-            Select tasks with checkboxes, then bulk-assign (including Lyriq). Use Sprint checkboxes to
-            multi-filter; assignee and status bubbles still toggle multi-select.
-          </p>
-        </div>
-
-        <div className="task-list-toolbar__section">
-          <div className="task-list-toolbar__section-label">
-            Categories
-            <span className="task-list-toolbar__label-hint">multi-select</span>
-          </div>
-          <div
-            className="task-list-toolbar__chips"
-            style={{ "--chip-cols": chipColsForTwoRows(1 + CATEGORY_BUBBLES.length) } as CSSProperties}
-          >
-            <button
-              type="button"
-              className="qa-tester-bubble"
-              data-active={categoryFilters.size === 0 ? "true" : "false"}
-              onClick={() => setCategoryFilters(new Set())}
-              title={`Show all categories (${categoryFacetTasks.length})`}
+            <TaskFilterPanel
+              title="Category"
+              hint="multi"
+              testId="task-list-filter-category"
+              open={filterOpen.category}
+              onOpenChange={(open) => setFilterOpen((p) => ({ ...p, category: open }))}
+              summary={
+                categoryFilters.size === 0
+                  ? "All categories"
+                  : categoryFilters.size === 1
+                    ? categoryLabel([...categoryFilters][0]!)
+                    : `${categoryFilters.size} categories`
+              }
             >
-              All
-              <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
-                · {categoryFacetTasks.length}
-              </span>
-            </button>
-            {CATEGORY_BUBBLES.map((b) => {
-              const active = categoryFilters.has(b.id);
-              const count = categoryFacetTasks.filter((t) => t.category === b.id).length;
-              return (
+              <div
+                className="task-list-toolbar__chips"
+                style={
+                  {
+                    "--chip-cols": chipColsForTwoRows(1 + CATEGORY_BUBBLES.length),
+                  } as CSSProperties
+                }
+                role="group"
+                aria-label="Filter by category"
+              >
                 <button
-                  key={b.id}
                   type="button"
                   className="qa-tester-bubble"
-                  data-active={active ? "true" : "false"}
-                  onClick={() => toggleCategoryFilter(b.id)}
-                  title={`Filter: ${b.label} (${count})`}
+                  data-active={categoryFilters.size === 0 ? "true" : "false"}
+                  onClick={() => setCategoryFilters(new Set())}
+                  title={`Show all categories (${categoryFacetTasks.length})`}
                 >
-                  {b.label}
+                  All
                   <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
-                    · {count}
+                    · {categoryFacetTasks.length}
                   </span>
                 </button>
-              );
-            })}
+                {CATEGORY_BUBBLES.map((b) => {
+                  const active = categoryFilters.has(b.id);
+                  const count = categoryFacetTasks.filter((t) => t.category === b.id).length;
+                  return (
+                    <button
+                      key={b.id}
+                      type="button"
+                      className="qa-tester-bubble"
+                      data-active={active ? "true" : "false"}
+                      onClick={() => toggleCategoryFilter(b.id)}
+                      title={`Filter: ${b.label} (${count})`}
+                    >
+                      {b.label}
+                      <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
+                        · {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </TaskFilterPanel>
           </div>
-        </div>
 
-        <div className="task-list-toolbar__section">
-          <div className="task-list-toolbar__section-label">Legend</div>
-          <div className="task-legend" aria-label="Color legend" style={{ borderTop: "none", paddingTop: 0 }}>
-            <div className="task-legend__group">
-              <span className="task-legend__heading">Status</span>
-              {STATUS_LEGEND.map((s) => (
-                <span key={s.id} className="task-legend-item">
-                  <span className="task-legend-swatch" style={{ background: STATUS_ACCENT[s.id] }} />
-                  {s.label}
-                </span>
-              ))}
-            </div>
-            <div className="task-legend__group">
-              <span className="task-legend__heading">Assignee</span>
-              {(Object.keys(OWNER_SWATCH) as GyshTask["assignedTo"][]).map((name) => (
-                <span key={name} className="task-legend-item">
-                  <span className="task-legend-swatch" style={{ background: OWNER_SWATCH[name] }} />
-                  {OWNER_DISPLAY[name]}
-                </span>
-              ))}
-            </div>
-            <div className="task-legend__group">
-              <span className="task-legend__heading">Due</span>
+          <div className="task-list-filters__footer">
+            <p className="task-list-toolbar__hint">
+              Defaults to the current sprint. Use checkboxes below for bulk edits.
+            </p>
+            <div className="task-legend task-legend--compact" aria-label="Due date colors">
               <span className="task-legend-item">
                 <span className="task-legend-swatch" style={{ background: "#9B2F28" }} />
                 Overdue
               </span>
               <span className="task-legend-item">
                 <span className="task-legend-swatch" style={{ background: "#947D64" }} />
-                Today
+                Due today
               </span>
             </div>
           </div>
@@ -1765,7 +1980,7 @@ export function TaskList({
             {tasks.length === 0
               ? "No tasks yet."
               : searchQuery.trim() || !filtersAreAll
-                ? "No tasks match this search / filters. Click Reset (or All assignees / All statuses / All sprints) and try again."
+                ? "No tasks match this search / filters. Click Re-Set (or All assignees / All statuses / All sprints) and try again."
                 : "No tasks yet."}
           </div>
         )}
@@ -2250,13 +2465,14 @@ export function TaskList({
                   newDraft={newNoteDrafts[t.id] ?? ""}
                   onEditDraft={(noteId, text) => setEditNoteDraft(t.id, noteId, text)}
                   onNewDraft={(text) => setNewNoteDraft(t.id, text)}
+                  onDeleteNote={(noteId) => setEditNoteDraft(t.id, noteId, "")}
                   disabled={busy || locked}
                   label={
                     dirtyNoteIds.has(t.id)
                       ? "Notes (unsaved)"
                       : "Notes"
                   }
-                  newPlaceholder="Add your note… (only you can edit it later)"
+                  newPlaceholder="Add your note… (only you can edit or delete it later)"
                 />
                 <div
                   style={{

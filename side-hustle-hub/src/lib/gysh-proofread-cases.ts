@@ -45,6 +45,13 @@ export function isProofreadCaseId(caseId: string): boolean {
   return /^PROOF-\d+/i.test(caseId) || caseId.toUpperCase().startsWith("PROOF-");
 }
 
+/** Owner encoded in the case id (PROOF-001-TINA → tina). */
+export function proofreadOwnerFromId(caseId: string): "tina" | "lyriq" | null {
+  if (/-TINA$/i.test(caseId)) return "tina";
+  if (/-LYRIQ$/i.test(caseId)) return "lyriq";
+  return null;
+}
+
 /** True when the id includes a numeric segment (AUTH-001, PROOF-014-TINA, VT-AUTH-001). */
 export function testIdHasNumber(caseId: string): boolean {
   return /(?:^|-)(\d{3,})(?:-|$)/.test(caseId);
@@ -162,11 +169,11 @@ const SENIOR_GUIDE_PROOFREAD: TestCase[] = SENIOR_GUIDE_TEASERS.flatMap((g) =>
 const MARKETING_GUIDE_PROOFREAD: TestCase[] = MARKETING_GUIDES.flatMap((g) =>
   guideCase(
     g.id === "master"
-      ? "Proofread Complete Guide (master marketing manual)"
-      : `Proofread Marketing Manual: ${g.menuLabel}`,
+      ? "Proofread Complete Guide (master audience guide)"
+      : `Proofread audience guide: ${g.menuLabel}`,
     "guides",
     ["all", "qa"],
-    `Open Guides → Marketing manuals → “${g.menuLabel}” — read every section online (and PDF if downloaded)`,
+    `Open Guides → audience guides → “${g.menuLabel}” — read every section online (and PDF if downloaded)`,
   ),
 );
 

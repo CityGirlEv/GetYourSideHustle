@@ -1,8 +1,10 @@
-# SPA fallback for client-side routes. /api/* is handled by Pages Functions
-# via public/_routes.json (include: /api/*) — do not rewrite API paths here.
+# GYSH client routing uses Cloudflare Pages default SPA mode (no root 404.html).
+# /api/* is handled by Pages Functions via public/_routes.json.
 #
-# Do NOT rewrite hashed static assets. If a deploy race or cache miss would
-# otherwise 404, Cloudflare's blanket /* → index.html rewrite can cache HTML
-# at /assets/*.js on the custom domain and break the site until purge.
-/assets/*  /assets/:splat  200
-/*         /index.html     200
+# Missing hashed files under /assets/ return a real 404 via public/assets/404.html
+# (subdirectory 404). Do NOT add a catch-all `/* /index.html 200` here — that
+# rule overrides the assets 404 and can serve HTML for missing .css/.js, which
+# browsers then cache and break the site.
+#
+# Do NOT add `/assets/* … 404` rewrite rules: Pages _redirects ignores non-3xx
+# rewrite status codes.

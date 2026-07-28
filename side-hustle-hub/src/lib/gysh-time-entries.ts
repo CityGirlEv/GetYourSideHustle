@@ -80,6 +80,22 @@ export function formatDurationHours(ms: number): string {
   return `${hours.toFixed(2)}h`;
 }
 
+/** Clock time for timesheet rows (America/Chicago, matching work_date). */
+export function formatTimeOfDay(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  try {
+    return new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Chicago",
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(d);
+  } catch {
+    return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  }
+}
+
 /** Live elapsed from a server DTO, using client clock for the running segment. */
 export function liveElapsedMs(entry: TimeEntry, nowMs = Date.now()): number {
   let ms = entry.accumulatedMs || 0;
@@ -97,6 +113,7 @@ export async function fetchActiveTimeEntries(): Promise<TimeEntry[]> {
 }
 
 export async function fetchTimeEntries(opts: {
+  /** Pass a user id, or `"all"` / `"team"` for every partner (Daily Progress). */
   userId?: string;
   from: string;
   to: string;
@@ -155,6 +172,9 @@ export async function endTimeEntry(input?: {
   id?: string;
   source?: TimeSource;
   sourceId?: string;
+  sourceLabel?: string;
+  createIfMissing?: boolean;
+  ensureMinMs?: number;
 }): Promise<TimeEntry> {
   const data = await api<{ entry: TimeEntry }>("time-entries/end", {
     method: "POST",
@@ -172,6 +192,26 @@ export async function stopTimerOnStatusChange(
     await endTimeEntry({ source, sourceId });
   } catch {
     /* no open timer */
+  }
+}
+
+/**
+ * Stop/credit the open work timer when a test/task is completed.
+ * Records actual elapsed only — no minimum floor. If nothing was running, no entry.
+ */
+export async function completeWorkTimer(input: {
+  source: TimeSource;
+  sourceId: string;
+  sourceLabel?: string;
+}): Promise<TimeEntry | null> {
+  try {
+    return await endTimeEntry({
+      source: input.source,
+      sourceId: input.sourceId,
+      sourceLabel: input.sourceLabel,
+    });
+  } catch {
+    return null;
   }
 }
 
@@ -205,6 +245,28 @@ export function daysInWeekEndingFriday(weekEndingFri: string): string[] {
     const d = new Date(start);
     d.setDate(start.getDate() + i);
     days.push(toIsoDate(d));
+  }
+  return days;
+}
+
+/** Inclusive calendar days from `from` → `to` (YYYY-MM-DD), oldest first. Caps at `maxDays`. */
+export function daysInInclusiveRange(from: string, to: string, maxDays = 400): string[] {
+  let start = parseIsoDate(from);
+  let end = parseIsoDate(to);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return [];
+  if (start.getTime() > end.getTime()) {
+    const tmp = start;
+    start = end;
+    end = tmp;
+  }
+  const days: string[] = [];
+  const cursor = new Date(start);
+  let guard = 0;
+  const cap = Math.max(1, maxDays);
+  while (cursor.getTime() <= end.getTime() && guard < cap) {
+    days.push(toIsoDate(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+    guard += 1;
   }
   return days;
 }

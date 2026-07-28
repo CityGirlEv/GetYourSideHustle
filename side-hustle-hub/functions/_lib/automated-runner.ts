@@ -95,8 +95,8 @@ function runVitestChecks(): { ok: boolean; details: string[] } {
   }
   if (kids !== 108) details.push("Kids paths != 108");
   else details.push("Kids FMSH paths: 108");
-  if (junior !== 108) details.push("Junior paths != 108");
-  else details.push("Junior FMSH paths: 108");
+  if (junior !== 108) details.push("Teens paths != 108");
+  else details.push("Teens FMSH paths: 108");
   if (adult !== 378) details.push("Adult paths != 378");
   else details.push("Adult FMSH paths: 378");
   if (senior !== 378) details.push("Senior paths != 378");
@@ -495,7 +495,7 @@ export async function runAutomatedTests(
         ],
         fixSteps: [
           "Inspect gysh-wizard-scenarios / AUTOMATED_VITEST_CASES for size or id drift.",
-          "Align expected path counts (Kids/Junior 108, Adult/Senior 378) with the matrix generator.",
+          "Align expected path counts (Kids/Teens 108, Adult/Senior 378) with the matrix generator.",
           "Re-run Vitest; mark this failure case Pass when green.",
         ],
         detail: failBits.join("\n") || vitest.details.join("\n"),

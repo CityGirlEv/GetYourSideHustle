@@ -95,10 +95,14 @@ const SPRINT_FILTER_OPTIONS = listProgressSprintFilterOptions();
 const STATUS_ACCENT: Record<ProgressStatusFilter, string> = {
   not_started: "#9ca3af",
   in_progress: "#ca8a04",
+  rolled_over: "#0e7490",
   done: "#16a34a",
   conditional_approval: "#0f766e",
   fail: "#dc2626",
   blocked: "#ea580c",
+  fixed_retest: "#2563eb",
+  failed_retest: "#f97316",
+  fixed_cursor: "#7c3aed",
 };
 
 function formatAuditWhen(iso: string): string {
@@ -197,7 +201,8 @@ export function DailyProgressPage() {
       const [tasks, testPayload, timeEntries] = await Promise.all([
         fetchTasks(),
         fetchTestStatuses(),
-        fetchTimeEntries({ from: rangeFrom, to: rangeTo }),
+        // Load all partners — default API scope is only the signed-in user.
+        fetchTimeEntries({ userId: "all", from: rangeFrom, to: rangeTo }),
       ]);
       setRawTasks(tasks);
       setRawTests(testPayload);

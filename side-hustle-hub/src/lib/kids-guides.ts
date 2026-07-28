@@ -1,4 +1,4 @@
-/** Starter guides for Kids Corner (4–12) and Junior Side Hustle (13–17). */
+/** Starter guides for Kids Corner (4–12) and Teens Side Hustle (13–17). */
 
 import type { KidsAudience } from "./kids-team";
 
@@ -194,7 +194,7 @@ export const KIDS_GUIDES: KidsGuide[] = [
     ],
   },
 
-  // —— Junior (13–17) free ——
+  // —— Teens (13–17) free ——
   {
     id: "junior-savings-ceo",
     audience: "junior",
@@ -215,8 +215,8 @@ export const KIDS_GUIDES: KidsGuide[] = [
         body: "Divide total by weeks. That’s your minimum earn-per-week (adjust for exams).",
       },
       {
-        title: "Pick 1–2 junior jobs",
-        body: "Choose from Junior Jobs that fit your time — don’t overcommit.",
+        title: "Pick 1–2 teen hustles",
+        body: "Choose from Teens Ideas that fit your time — don’t overcommit.",
       },
       {
         title: "Log every payout",
@@ -261,7 +261,7 @@ export const KIDS_GUIDES: KidsGuide[] = [
       },
     ],
   },
-  // —— Junior (13–17) member ——
+  // —— Teens (13–17) member ——
   {
     id: "junior-games-ai",
     audience: "junior",
@@ -270,7 +270,7 @@ export const KIDS_GUIDES: KidsGuide[] = [
     free: false,
     previewCount: 2,
     summary:
-      "Use AI for concepts, art ideas, and dialogue, then build a small web/mobile prototype with guardian-approved tools. Full guide for Junior Team members.",
+      "Use AI for concepts, art ideas, and dialogue, then build a small web/mobile prototype with guardian-approved tools. Full guide for Teens Side Hustle Team members.",
     parentTip: "Approve accounts and publishing. No personal info or payment cards in AI chats.",
     steps: [
       {

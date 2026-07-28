@@ -263,12 +263,12 @@ ON CONFLICT(id) DO NOTHING;
 
   // Workshops defaults (dates TBD) — insert-if-missing
   const SPEAKERS = [
-    ["tina", "Tina Marie Barham", "GYSH Co-Founder · Kids Glow & Motivation", "IT educator and storyteller behind Kevina Starr Stories. Tina leads family-friendly workshops on confidence, kindness, and junior earning skills.", '["Kids Glow","Storytelling","Junior Hustles","Parent Coaching"]', "#9B2F28", "TB"],
+    ["tina", "Tina Marie Barham", "GYSH Co-Founder · Kids Glow & Motivation", "IT educator and storyteller behind Kevina Starr Stories. Tina leads family-friendly workshops on confidence, kindness, and teen earning skills.", '["Kids Glow","Storytelling","Teen Hustles","Parent Coaching"]', "#9B2F28", "TB"],
     ["evelyn", "Evelyn Irving", "GYSH Co-Founder · Tech & Adult Side Hustles", "Builds GYSH assets, AI agents, and launch systems. Evelyn hosts workshops on Airbnb ops, Meta+Shopify, apps, and automation pipelines.", '["Airbnb STR","AI Agents","Shopify","App Building"]', "#947D64", "EI"],
     ["kevina-voice", "Kevina Starr (Featured Series)", "Glow Getter Story Sessions", "Bedtime adventures from the Library of Light — paired with parent-led activity prompts after each GYSH kids workshop.", '["Confidence","Kindness","Creativity"]', "#9B2F28", "KS"],
     ["guest-str", "Marcus Hale", "STR Operations Consultant", "Guest speaker on furnishing budgets, dynamic pricing, and guest messaging systems for short-term rental side hustles.", '["Airbnb","Pricing","Ops"]', "#5c4033", "MH"],
     ["guest-ecom", "Priya Nandakumar", "E-Commerce Creative Director", "Runs Meta ad creative tests for Shopify brands. Guest sessions on hook writing, UGC briefs, and kill/hold/scale decisions.", '["Meta Ads","Creative Testing","POD"]', "#6b4f3a", "PN"],
-    ["lyriq", "Lyriq Gaulden", "Side Hustle Guest Speaker · Kids & Youth", "Guest speaker for Kids and Youth sessions — confidence, safe first hustles, and encouragement for young Glow Getters and junior earners (with parents nearby).", '["Kids & Youth","Confidence","Safe First Hustles","Junior Motivation"]', "#2E7D5A", "LG"],
+    ["lyriq", "Lyriq Gaulden", "Side Hustle Guest Speaker · Kids & Youth", "Guest speaker for Kids and Youth sessions — confidence, safe first hustles, and encouragement for young Glow Getters and teen earners (with parents nearby).", '["Kids & Youth","Confidence","Safe First Hustles","Teen Motivation"]', "#2E7D5A", "LG"],
   ];
 
   let spOrder = 0;
@@ -293,11 +293,11 @@ ON CONFLICT(id) DO NOTHING;
   }
 
   const WORKSHOPS = [
-    ["glow-getter-launch", "Glow Getter Launch Lab", "Story time + parent playbook: turn Kevina Starr episodes into weekly confidence and junior hustle routines.", "TBD", "6:30 PM EST", "Live Zoom", "family", "upcoming", '["tina","kevina-voice","lyriq"]', '["Kids","Kevina Starr","Parents","Youth"]'],
+    ["glow-getter-launch", "Glow Getter Launch Lab", "Story time + parent playbook: turn Kevina Starr episodes into weekly confidence and teen hustle routines.", "TBD", "6:30 PM EST", "Live Zoom", "family", "upcoming", '["tina","kevina-voice","lyriq"]', '["Kids","Kevina Starr","Parents","Youth"]'],
     ["airbnb-arbitrage-101", "Airbnb Arbitrage 101", "Lease math, furnishing on a budget, and listing optimization — without buying property first.", "TBD", "7:00 PM EST", "Hybrid", "adult", "upcoming", '["evelyn","guest-str"]', '["Airbnb","Real Estate"]'],
     ["agents-with-soul", "Building AI Agents with Soul", "Identity, memory, and plain-English orchestration — the Muntie Ev way, adapted for side hustle operators.", "TBD", "7:00 PM EST", "Live Zoom", "adult", "upcoming", '["evelyn"]', '["AI Agents","Automation"]'],
     ["meta-shopify-clinic", "Meta + Shopify Creative Clinic", "Live ad teardowns: what to kill, hold, or scale against real store P&L.", "TBD", "7:00 PM EST", "Live Zoom", "adult", "waitlist", '["evelyn","guest-ecom"]', '["Meta Ads","Shopify","POD"]'],
-    ["junior-earnings-fair", "Junior Earnings Fair (Kids Session)", "Safe micro-jobs, piggy bank goals, and parent safety checklists — after story time.", "TBD", "5:00 PM EST", "Replay", "kids", "past", '["tina","lyriq"]', '["Junior Hustles","Safety","Youth"]'],
+    ["junior-earnings-fair", "Teen Earnings Fair (Kids & Teens Session)", "Safe micro-jobs, piggy bank goals, and parent safety checklists — after story time.", "TBD", "5:00 PM EST", "Replay", "kids", "past", '["tina","lyriq"]', '["Teen Hustles","Safety","Youth"]'],
     ["pod-etsy-sprint", "POD → Etsy Listing Sprint", "Niche research, design briefs, and evergreen SEO tags in one focused working session.", "TBD", "7:00 PM EST", "Replay", "adult", "past", '["evelyn","guest-ecom"]', '["POD","Etsy"]'],
   ];
 

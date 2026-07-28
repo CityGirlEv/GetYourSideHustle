@@ -84,7 +84,7 @@ describe("gysh-wizard-scenarios", () => {
 
   it("covers every kids and junior full path (108 each)", () => {
     expect(stats.byWizard["Kids Get Your Side Hustle"]).toBe(108);
-    expect(stats.byWizard["Junior Get Your Side Hustle"]).toBe(108);
+    expect(stats.byWizard["Teens Get Your Side Hustle"]).toBe(108);
   });
 
   it("covers adult budget×time×skill×goal paths (378)", () => {

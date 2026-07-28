@@ -239,8 +239,8 @@ export const SPRINT_THEMES: SprintTheme[] = [
   },
   {
     index: 5,
-    goal: "Junior & Adult GMSH",
-    theme: "Junior/Teens + Adult Get My Side Hustle automated matrices (Vitest ownership)",
+    goal: "Teens & Adult GMSH",
+    theme: "Teens + Adult Get My Side Hustle automated matrices (Vitest ownership)",
   },
   {
     index: 6,
@@ -271,7 +271,7 @@ export function listRolloutScheduleSummary(ref: Date = new Date()): RolloutSched
     2: "Soft launch (~Aug 3) — public smoke; GMSH matrices not required",
     3: "Polish: SEO, guides, Senior page, workshops",
     4: "Kids Get My Side Hustle sign-off + Growth",
-    5: "Junior/Teens + Adult Get My Side Hustle",
+    5: "Teens + Adult Get My Side Hustle",
     6: "Senior Get My Side Hustle",
     7: "Buffer / deferred pull",
   };
@@ -773,7 +773,7 @@ export function buildDefaultPlanItems(ref: Date = new Date()): PlanItem[] {
       title: "Parent safety checklist PDF",
       owner: "Tina",
       kind: "launch",
-      notes: "Post-launch Junior safety asset (T-010)",
+      notes: "Post-launch Teens safety asset (T-010)",
     }, ref),
     planItemOnSprintDay(1, 2, {
       id: "bl-newsletter",

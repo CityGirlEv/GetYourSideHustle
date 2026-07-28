@@ -116,7 +116,14 @@ function isTaskOutstanding(status: string): boolean {
 }
 
 function isTestOutstanding(status: string): boolean {
-  return status === "not_run" || status === "in_progress" || status === "fixed_retest";
+  return (
+    status === "not_run" ||
+    status === "in_progress" ||
+    status === "rolled_over" ||
+    status === "fixed_retest" ||
+    status === "failed_retest" ||
+    status === "fixed_cursor"
+  );
 }
 
 function parseMmddyyToTime(mmddyy: string): number | null {

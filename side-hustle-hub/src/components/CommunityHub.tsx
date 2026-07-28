@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { 
   MessageSquare, 
   ThumbsUp, 
@@ -86,7 +86,43 @@ export const CommunityHub: React.FC = () => {
       likes: 73,
       replies: 28,
       timestamp: "3 days ago"
-    }
+    },
+    {
+      id: "6",
+      author: "Devon Vance",
+      avatarSeed: "DV",
+      roleBadge: "Affiliate Marketer",
+      hustleTag: "affiliate",
+      content:
+        "Just hit a milestone! Created 3 review posts using Pinterest boards and redirect links. Saw a commission check for $140 this morning. It takes time, but affiliate passive income is real!",
+      likes: 12,
+      replies: 2,
+      timestamp: "4 hours ago",
+    },
+    {
+      id: "7",
+      author: "Chloe King",
+      avatarSeed: "CK",
+      roleBadge: "POD Designer",
+      hustleTag: "pod",
+      content:
+        "Pro-tip: Halloween merchandise designs should start going live NOW. Don't wait until October. Search volume peaks in mid-August!",
+      likes: 9,
+      replies: 1,
+      timestamp: "6 hours ago",
+    },
+    {
+      id: "8",
+      author: "Ray Patel",
+      avatarSeed: "RP",
+      roleBadge: "Airbnb Co-Host",
+      hustleTag: "airbnb",
+      content:
+        "Co-hosting is an amazing way to start Airbnb with ZERO capital. I manage listings for local owners and split the profits 80/20. Doing this with 3 homes now!",
+      likes: 31,
+      replies: 8,
+      timestamp: "8 hours ago",
+    },
   ]);
 
   const tags = [
@@ -98,58 +134,6 @@ export const CommunityHub: React.FC = () => {
     { label: "Amazon FBA", value: "amazon" },
     { label: "Social Influencer", value: "social" }
   ];
-
-  // Periodic simulated post addition
-  useEffect(() => {
-    const mockPosts = [
-      {
-        author: "Devon Vance",
-        avatarSeed: "DV",
-        roleBadge: "Affiliate Marketer",
-        hustleTag: "affiliate",
-        content: "Just hit a milestone! Created 3 review posts using Pinterest boards and redirect links. Saw a commission check for $140 this morning. It takes time, but affiliate passive income is real!",
-        likes: 12,
-        replies: 2
-      },
-      {
-        author: "Chloe King",
-        avatarSeed: "CK",
-        roleBadge: "POD Designer",
-        hustleTag: "pod",
-        content: "Pro-tip: Halloween merchandise designs should start going live NOW. Don't wait until October. Search volume peaks in mid-August!",
-        likes: 9,
-        replies: 1
-      },
-      {
-        author: "Ray Patel",
-        avatarSeed: "RP",
-        roleBadge: "Airbnb Co-Host",
-        hustleTag: "airbnb",
-        content: "Co-hosting is an amazing way to start Airbnb with ZERO capital. I manage listings for local owners and split the profits 80/20. Doing this with 3 homes now!",
-        likes: 31,
-        replies: 8
-      }
-    ];
-
-    const timer = setInterval(() => {
-      const randomPost = mockPosts[Math.floor(Math.random() * mockPosts.length)];
-      const newComment: Comment = {
-        id: Date.now().toString(),
-        author: randomPost.author,
-        avatarSeed: randomPost.avatarSeed,
-        roleBadge: randomPost.roleBadge,
-        hustleTag: randomPost.hustleTag,
-        content: randomPost.content,
-        likes: randomPost.likes,
-        replies: randomPost.replies,
-        timestamp: "Just now"
-      };
-
-      setComments(prev => [newComment, ...prev]);
-    }, 25000); // add one every 25s
-
-    return () => clearInterval(timer);
-  }, []);
 
   const handleLike = (id: string) => {
     setComments(prev => prev.map(c => {

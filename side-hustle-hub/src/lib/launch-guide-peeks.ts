@@ -86,8 +86,8 @@ export function getLaunchGuidePeekSections(): GuidePeekSection[] {
     },
     {
       id: "junior",
-      label: "Junior",
-      subtitle: "Ages 13–17 — Junior Side Hustle guides",
+      label: "Teens",
+      subtitle: "Ages 13–17 — Teens Side Hustle guides",
       guides: junior,
     },
     {

@@ -7,12 +7,18 @@ import {
   MILITARY_VETERAN_CALLOUT,
   SCHEDULE_SUITE_FEATURE_IDS,
   SCHEDULE_SUITE_TIER,
+  YEARLY_MONTHS_CHARGED,
   numberedTierPerks,
   tierHasFeature,
   tierKidCredits,
   adultCreditsFromKidCredits,
   kidCreditsFeatureLabel,
   oneOnOneFeatureLabel,
+  tierPriceMonthlyUsd,
+  tierPriceYearlyUsd,
+  yearlySavingsUsd,
+  yearlySavingsPercent,
+  equivalentMonthlyUsd,
 } from "../membership";
 
 describe("membership catalog", () => {
@@ -30,7 +36,7 @@ describe("membership catalog", () => {
     }
   });
 
-  it("lists credit earn actions for Kids and Juniors", () => {
+  it("lists credit earn actions for Kids and Teens", () => {
     const kids = CREDIT_EARN_ACTIONS.filter((a) => a.audiences.includes("kids"));
     const juniors = CREDIT_EARN_ACTIONS.filter((a) => a.audiences.includes("junior"));
     expect(kids.length).toBeGreaterThan(3);
@@ -136,5 +142,30 @@ describe("membership catalog", () => {
     ]);
     expect(elite[0]?.numberedTitle).toBe("1. Everything in Pro, plus:");
     expect(elite.some((p) => /zip scout/i.test(p.title))).toBe(true);
+  });
+
+  it("discounts yearly billing (pay for 10 months, get 12)", () => {
+    expect(YEARLY_MONTHS_CHARGED).toBe(10);
+    for (const tier of MEMBERSHIP_TIERS.filter((t) => t.id !== "free")) {
+      for (const audience of ["adult", "senior"] as const) {
+        const monthly = tierPriceMonthlyUsd(tier, audience);
+        const yearly = tierPriceYearlyUsd(tier, audience);
+        expect(yearly).toBe(monthly * YEARLY_MONTHS_CHARGED);
+        expect(yearlySavingsUsd(monthly, yearly!)).toBe(monthly * 2);
+        expect(yearlySavingsPercent(monthly, yearly!)).toBe(17);
+        expect(equivalentMonthlyUsd(yearly!)).toBeCloseTo(yearly! / 12, 2);
+      }
+    }
+  });
+
+  it("uses age-appropriate (not age-right) in Free perk copy", () => {
+    for (const audience of ["adult", "kids", "junior", "senior"] as const) {
+      const blob = MEMBER_PERKS_BY_TIER.free[audience]
+        .map((p) => `${p.title} ${p.detail}`)
+        .join(" ")
+        .toLowerCase();
+      expect(blob).toMatch(/age-appropriate/);
+      expect(blob).not.toMatch(/age-right/);
+    }
   });
 });

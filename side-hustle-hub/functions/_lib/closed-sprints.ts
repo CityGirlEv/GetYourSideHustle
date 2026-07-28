@@ -1,12 +1,29 @@
 /**
  * Persist closed/locked sprint indexes in D1.
- * Once closed, items remaining in that sprint cannot be modified until an admin re-opens the sprint.
+ * Once closed, items remaining in that sprint cannot be modified until an admin
+ * re-opens the sprint — except Evelyn, who may bypass the lock.
  */
 import { error, json, type DbUser, type Env } from "./auth";
+import { canBypassSprintLock } from "./roles";
 import { sprintLabel } from "./sprints";
 
 export const SPRINT_LOCKED_MESSAGE =
   "This sprint is closed and locked. No further modifications can be made to items in it.";
+
+export { canBypassSprintLock };
+
+/** True when a closed sprint should block this actor (Evelyn bypasses). */
+export function closedSprintBlocksActor(
+  closed: Set<number> | readonly number[],
+  sprintIndex: number,
+  actor?: { email?: string; name?: string } | null,
+): boolean {
+  if (canBypassSprintLock(actor)) return false;
+  const idx = Math.floor(Number(sprintIndex));
+  if (!Number.isFinite(idx) || idx < 0) return false;
+  if (closed instanceof Set) return closed.has(idx);
+  return closed.includes(idx);
+}
 
 export async function ensureClosedSprintsTable(env: Env): Promise<void> {
   await env.DB.prepare(
@@ -39,14 +56,16 @@ export async function isSprintClosed(env: Env, sprintIndex: number): Promise<boo
   return Boolean(row);
 }
 
-/** Reject with 403 when sprint is closed/locked. */
+/** Reject with 403 when sprint is closed/locked (Evelyn may bypass). */
 export async function rejectIfSprintLocked(
   env: Env,
   sprintIndex: number | null | undefined,
+  actor?: DbUser | null,
 ): Promise<Response | null> {
   if (sprintIndex === null || sprintIndex === undefined) return null;
   const idx = Number(sprintIndex);
   if (!Number.isFinite(idx) || idx < 0) return null;
+  if (canBypassSprintLock(actor)) return null;
   if (await isSprintClosed(env, idx)) {
     return error(`${SPRINT_LOCKED_MESSAGE} (${sprintLabel(idx)})`, 403);
   }

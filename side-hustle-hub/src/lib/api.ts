@@ -35,7 +35,12 @@ type ApiOptions = {
   method?: string;
   body?: unknown;
   auth?: boolean;
+  /** Override default abort (e.g. large attachment downloads). */
+  timeoutMs?: number;
 };
+
+/** Local Pages Functions + D1 can need >20s on first parallel load after restart. */
+const DEFAULT_API_TIMEOUT_MS = 45_000;
 
 async function parseError(res: Response): Promise<string> {
   try {
@@ -64,7 +69,7 @@ export async function api<T>(path: string, opts: ApiOptions = {}): Promise<T> {
 
   let res: Response;
   const controller = new AbortController();
-  const timeoutMs = 20_000;
+  const timeoutMs = opts.timeoutMs ?? DEFAULT_API_TIMEOUT_MS;
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     res = await fetch(`/api/${path.replace(/^\//, "")}`, {

@@ -42,7 +42,7 @@ describe("sprint schedule assignments", () => {
       (c) => c.area === "Kids Get Your Side Hustle",
     )!;
     const jr = WIZARD_SCENARIO_CASES.find(
-      (c) => c.area === "Junior Get Your Side Hustle",
+      (c) => c.area === "Teens Get Your Side Hustle",
     )!;
     const adult = WIZARD_SCENARIO_CASES.find((c) => c.area === "Adult Get Your Side Hustle")!;
     const senior = WIZARD_SCENARIO_CASES.find((c) => c.area === "Senior Get Your Side Hustle")!;
@@ -52,14 +52,16 @@ describe("sprint schedule assignments", () => {
     expect(suggestedSprintForTest(senior)).toBe(6);
   });
 
-  it("places only Sprint 0 task-matched tests on Sprint 0", () => {
-    // Match S0 tasks → Sprint 0
-    expect(suggestedSprintForTest({ id: "EMAIL-001", area: "Email", priority: "P0" })).toBe(0);
-    expect(suggestedSprintForTest({ id: "EMAIL-005", area: "Email", priority: "P0" })).toBe(0);
-    expect(suggestedSprintForTest({ id: "BRAND-001", area: "Brand", priority: "P2" })).toBe(0);
-    expect(suggestedSprintForTest({ id: "ABOUT-001", area: "About", priority: "P2" })).toBe(0);
-    expect(suggestedSprintForTest({ id: "ADMIN-003", area: "Admin", priority: "P1" })).toBe(0);
-    expect(suggestedSprintForTest({ id: "KIDS-001", area: "Kids Corner", priority: "P0" })).toBe(0);
+  it("places former S0-pinned tests on Sprint 1+ bands (no Sprint 0 pins)", () => {
+    // Launch-prep product band → Sprint 1
+    expect(suggestedSprintForTest({ id: "EMAIL-001", area: "Email", priority: "P0" })).toBe(1);
+    expect(suggestedSprintForTest({ id: "EMAIL-005", area: "Email", priority: "P0" })).toBe(1);
+    expect(suggestedSprintForTest({ id: "BRAND-001", area: "Brand", priority: "P2" })).toBe(1);
+    expect(suggestedSprintForTest({ id: "ABOUT-001", area: "About", priority: "P2" })).toBe(1);
+    // Kids Corner product → Sprint 2
+    expect(suggestedSprintForTest({ id: "KIDS-001", area: "Kids Corner", priority: "P0" })).toBe(2);
+    // Content Factory — Sprint 1
+    expect(suggestedSprintForTest({ id: "ADMIN-003", area: "Admin", priority: "P1" })).toBe(1);
     // Former empty-S0 parking → Sprint 1 (or later band), not Backlog / not S0
     expect(suggestedSprintForTest({ id: "VT-AUTH-001", area: "Vitest", priority: "P0" })).toBe(1);
     expect(suggestedSprintForTest({ id: "VT-ROLE-001", area: "Vitest", priority: "P0" })).toBe(1);
@@ -110,7 +112,7 @@ describe("sprint schedule assignments", () => {
     expect(next.find((i) => i.id === "s0-workshops")?.sprint).toBe(0);
   });
 
-  it("commitTaskSprintPlan assigns backlog tasks", () => {
+  it("commitTaskSprintPlan assigns backlog tasks with explicit placement", () => {
     const tasks = [
       {
         id: "T-LG-airbnb",
@@ -134,6 +136,31 @@ describe("sprint schedule assignments", () => {
     expect(changed).toBe(true);
     expect(next[0]!.sprint).toBe(3);
     expect(next[0]!.dueDate).toBe(dueDateForSprint(3));
+  });
+
+  it("commitTaskSprintPlan preserve keeps user-created backlog tasks in Backlog", () => {
+    const tasks = [
+      {
+        id: "T-250",
+        description: "Brand-new ops task",
+        category: "admin_ops" as const,
+        priority: "P2" as const,
+        status: "not_started" as const,
+        assignBy: "Evelyn",
+        assignedTo: "Unassigned" as const,
+        dateAssigned: "",
+        dueDate: "",
+        dateCompleted: "",
+        notes: "",
+        sprint: BACKLOG_SPRINT,
+        tinaDone: false,
+        evelynDone: false,
+        attachments: [],
+      },
+    ];
+    const { tasks: next, changed } = commitTaskSprintPlan(tasks, "preserve");
+    expect(changed).toBe(false);
+    expect(next[0]!.sprint).toBe(BACKLOG_SPRINT);
   });
 
   it("commitTaskSprintPlan preserve does not overwrite Sprint 0 placements", () => {
@@ -259,44 +286,64 @@ describe("sprint schedule assignments", () => {
     expect(changedIds).toEqual([kids.id]);
   });
 
-  it("commitTestSprintPlan preserve keeps S0 task matches and re-homes Backlog parking", () => {
+  it("commitTestSprintPlan preserve heals stuck Sprint 0 / Backlog parking to bands", () => {
     const email = { id: "EMAIL-001", area: "Email", priority: "P0" as const };
     const auth = { id: "AUTH-001", area: "Auth", priority: "P0" as const };
     const vtAuth = { id: "VT-AUTH-001", area: "Vitest", priority: "P0" as const };
     const brand = { id: "BRAND-001", area: "Brand", priority: "P2" as const };
+    const about = { id: "ABOUT-001", area: "About", priority: "P2" as const };
     const { sprints, dueDates, changedIds } = commitTestSprintPlan(
-      [email, auth, vtAuth, brand],
+      [email, auth, vtAuth, brand, about],
       {
-        [email.id]: BACKLOG_SPRINT, // parked by prior empty-S0 heal
+        [email.id]: BACKLOG_SPRINT,
         [auth.id]: 0,
         [vtAuth.id]: BACKLOG_SPRINT,
-        [brand.id]: 1, // was S1; S0 task match pulls back
+        [brand.id]: 0,
+        [about.id]: 0,
       },
       {
         [email.id]: "",
         [auth.id]: dueDateForSprint(0) || "07/19/26",
         [vtAuth.id]: "",
-        [brand.id]: dueDateForSprint(1),
+        [brand.id]: dueDateForSprint(0) || "",
+        [about.id]: dueDateForSprint(0) || "",
       },
       "preserve",
       {
         [email.id]: "not_run",
         [auth.id]: "not_run",
         [vtAuth.id]: "not_run",
-        [brand.id]: "not_run",
+        [brand.id]: "pass",
+        [about.id]: "not_run",
       },
     );
-    expect(sprints[email.id]).toBe(0);
-    expect(dueDates[email.id]).toBe(dueDateForSprint(0));
+    expect(sprints[email.id]).toBe(1);
+    expect(dueDates[email.id]).toBe(dueDateForSprint(1));
     expect(sprints[auth.id]).toBe(1);
     expect(dueDates[auth.id]).toBe(dueDateForSprint(1));
     expect(sprints[vtAuth.id]).toBe(1);
     expect(dueDates[vtAuth.id]).toBe(dueDateForSprint(1));
-    expect(sprints[brand.id]).toBe(0);
-    expect(dueDates[brand.id]).toBe(dueDateForSprint(0));
+    expect(sprints[brand.id]).toBe(1);
+    expect(dueDates[brand.id]).toBe(dueDateForSprint(1));
+    expect(sprints[about.id]).toBe(1);
+    expect(dueDates[about.id]).toBe(dueDateForSprint(1));
     expect(changedIds).toEqual(
-      expect.arrayContaining([email.id, auth.id, vtAuth.id, brand.id]),
+      expect.arrayContaining([email.id, auth.id, vtAuth.id, brand.id, about.id]),
     );
+  });
+
+  it("commitTestSprintPlan preserve moves KIDS-001 off Sprint 0 to Kids band", () => {
+    const kids = { id: "KIDS-001", area: "Kids Corner", priority: "P0" as const };
+    const { sprints, dueDates, changedIds } = commitTestSprintPlan(
+      [kids],
+      { [kids.id]: 0 },
+      { [kids.id]: dueDateForSprint(0) || "" },
+      "preserve",
+      { [kids.id]: "pass" },
+    );
+    expect(sprints[kids.id]).toBe(2);
+    expect(dueDates[kids.id]).toBe(dueDateForSprint(2));
+    expect(changedIds).toEqual([kids.id]);
   });
 
   it("commitTestSprintPlan preserve keeps Sprint 1+ manual placements", () => {

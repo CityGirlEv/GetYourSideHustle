@@ -23,7 +23,7 @@ export const SENIOR_INTRO = {
   lead:
     "Get Your Side Hustle welcomes seniors, retirees, and anyone building a second chapter on a flexible schedule. Whether you want pocket income, purpose, or a lighter workweek — this lane is built for experience, not grind culture.",
   partnership:
-    "T + E built GYSH for adults, kids, juniors, and seniors — lifelong learners and second careers welcome. Kids Corner and Junior Side Hustle sit beside practical adult and senior pilots. Your know-how is an asset — consulting, teaching, hosting, and peer help all count.",
+    "Muntie's AI Agents built GYSH for adults, kids, teens, and seniors — lifelong learners and second careers welcome. Kids Corner and Teens Side Hustles sit beside practical adult and senior pilots. Your know-how is an asset — consulting, teaching, hosting, and peer help all count.",
 };
 
 export const SENIOR_OPPORTUNITIES: SeniorOpportunity[] = [

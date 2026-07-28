@@ -150,8 +150,8 @@ function buildKidsJuniorCases(): TestCase[] {
           jrN += 1;
           cases.push({
             id: `JR-FMSH-${pad(jrN)}`,
-            area: "Junior Get Your Side Hustle",
-            title: `[Junior FMSH] ${age.short} · ${interest.short} · ${place.short} · ${time.short}`,
+            area: "Teens Get Your Side Hustle",
+            title: `[Teens FMSH] ${age.short} · ${interest.short} · ${place.short} · ${time.short}`,
             priority: "P1",
             roles: ["junior", "qa", "admin"],
             assignees: ["vitest"],
@@ -162,7 +162,7 @@ function buildKidsJuniorCases(): TestCase[] {
               `Path: age=${age.value}, interest=${interest.value}, place=${place.value}, time=${time.value}`,
             ],
             expected:
-              "Junior wizard returns a ranked junior hustle match for every age × interest × place × time path",
+              "Teens wizard returns a ranked teen hustle match for every age × interest × place × time path",
           });
         }
       }
@@ -277,6 +277,7 @@ export function wizardScenarioStats(cases: TestCase[] = WIZARD_SCENARIO_CASES) {
     byWizard,
     kidsJunior:
       (byWizard["Kids Get Your Side Hustle"] ?? 0) +
+      (byWizard["Teens Get Your Side Hustle"] ?? 0) +
       (byWizard["Junior Get Your Side Hustle"] ?? 0),
     adult: byWizard["Adult Get Your Side Hustle"] ?? 0,
     senior: byWizard["Senior Get Your Side Hustle"] ?? 0,

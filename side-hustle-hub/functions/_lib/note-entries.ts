@@ -212,9 +212,16 @@ export function mergeNoteEntries(
       continue;
     }
     const next = incomingById.get(prev.id);
-    if (!next) continue;
+    // Never drop prior entries — omit from incoming = keep unchanged; empty text = keep.
+    if (!next) {
+      result.push(prev);
+      continue;
+    }
     const text = String(next.text ?? "").trim();
-    if (!text) continue;
+    if (!text) {
+      result.push(prev);
+      continue;
+    }
     if (text === prev.text.trim()) {
       result.push(prev);
     } else {

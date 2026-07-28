@@ -39,8 +39,7 @@ import seniorSideHustleHero from "../assets/senior-side-hustle-hero.png";
 import seniorSideHustleIdeasHero from "../assets/senior-side-hustle-ideas-hero.png";
 import seniorGuidesHero from "../assets/senior-guides-hero.png";
 import seniorJoinTeamHero from "../assets/senior-join-team-hero.png";
-
-type SeniorTab = "match" | "opportunities" | "guides" | "join";
+import { SENIOR_CORNER_TABS, type SeniorTab } from "../lib/audience-nav";
 
 function SeniorIdeaCard({ idea }: { idea: SeniorOpportunity }) {
   return (
@@ -63,6 +62,8 @@ function SeniorIdeaCard({ idea }: { idea: SeniorOpportunity }) {
 
 type SeniorSideHustlesProps = {
   isLoggedIn?: boolean;
+  /** Profile Switcher → Unlogged in User */
+  previewAsGuest?: boolean;
   onGoToJoin?: () => void;
   /** Open the main GYSH Guides library. */
   onOpenGuides?: () => void;
@@ -110,13 +111,19 @@ function tierForRank(index: number, pct: number): MatchTier {
 function SeniorMatchFinder({
   onBrowseOpportunities,
   isLoggedIn = false,
+  previewAsGuest = false,
   onUnlockBlueprint,
 }: {
   onBrowseOpportunities: () => void;
   isLoggedIn?: boolean;
+  previewAsGuest?: boolean;
   onUnlockBlueprint?: () => void;
 }) {
-  const unlocked = hasBlueprintAccess({ isLoggedIn, ageGroup: "senior" });
+  const unlocked = hasBlueprintAccess({
+    isLoggedIn,
+    ageGroup: "senior",
+    previewAsGuest,
+  });
   const startedRef = useRef(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<SeniorMatchAnswers>({
@@ -594,6 +601,7 @@ function SeniorTabHero({
 
 export function SeniorSideHustles({
   isLoggedIn = false,
+  previewAsGuest = false,
   onGoToJoin,
   onOpenGuides,
   entryTab = null,
@@ -632,54 +640,33 @@ export function SeniorSideHustles({
       </div>
 
       <div className="kids-tab-bar seniors-tab-bar" role="tablist" aria-label="GYSH Seniors Corner sections">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "match"}
-          className={`nav-link-btn${tab === "match" ? " active" : ""}`}
-          style={{ borderRadius: 10 }}
-          onClick={() => setTab("match")}
-          data-testid="seniors-tab-match"
-        >
-          <Compass size={16} aria-hidden="true" />
-          GYSH Match Wizard
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "opportunities"}
-          className={`nav-link-btn${tab === "opportunities" ? " active" : ""}`}
-          style={{ borderRadius: 10 }}
-          onClick={() => setTab("opportunities")}
-          data-testid="seniors-tab-opportunities"
-        >
-          <Briefcase size={16} aria-hidden="true" />
-          Ideas
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "guides"}
-          className={`nav-link-btn${tab === "guides" ? " active" : ""}`}
-          style={{ borderRadius: 10 }}
-          onClick={() => setTab("guides")}
-          data-testid="seniors-tab-guides"
-        >
-          <BookOpen size={16} aria-hidden="true" />
-          Guides
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "join"}
-          className={`nav-link-btn${tab === "join" ? " active" : ""}`}
-          style={{ borderRadius: 10 }}
-          onClick={() => setTab("join")}
-          data-testid="seniors-tab-join"
-        >
-          <Users size={16} aria-hidden="true" />
-          Join
-        </button>
+        {SENIOR_CORNER_TABS.map((t) => {
+          const icon =
+            t.id === "match" ? (
+              <Compass size={16} aria-hidden="true" />
+            ) : t.id === "opportunities" ? (
+              <Briefcase size={16} aria-hidden="true" />
+            ) : t.id === "guides" ? (
+              <BookOpen size={16} aria-hidden="true" />
+            ) : (
+              <Users size={16} aria-hidden="true" />
+            );
+          return (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={tab === t.id}
+              className={`nav-link-btn${tab === t.id ? " active" : ""}`}
+              style={{ borderRadius: 10 }}
+              onClick={() => setTab(t.id)}
+              data-testid={`seniors-tab-${t.id}`}
+            >
+              {icon}
+              {t.label}
+            </button>
+          );
+        })}
       </div>
 
       {tab === "match" && (
@@ -687,6 +674,7 @@ export function SeniorSideHustles({
           <SeniorMatchFinder
             onBrowseOpportunities={() => setTab("opportunities")}
             isLoggedIn={isLoggedIn}
+            previewAsGuest={previewAsGuest}
             onUnlockBlueprint={onGoToJoin}
           />
         </div>
@@ -773,12 +761,31 @@ export function SeniorSideHustles({
             />
             <div className="glass seniors-join">
               <div className="seniors-join-copy">
-                <h3 className="seniors-join-title">
-                  <Users size={22} aria-hidden="true" />
-                  Join the Senior Side Hustle team
+                <h3 className="seniors-join-title" data-testid="seniors-join-pane-title">
+                  <BadgeCheck size={22} aria-hidden="true" style={{ color: "var(--crimson)" }} />
+                  <span>Join the Senior Side Hustle Team</span>
+                  <span className="glow-badge amber kids-audience-age-badge">Ages 55+</span>
                 </h3>
+                {!interested ? (
+                  <div className="seniors-join-cta-row seniors-join-cta-row--top" data-testid="seniors-join-cta-row">
+                    <button
+                      type="button"
+                      className="btn btn-join-green seniors-btn"
+                      onClick={markInterest}
+                      data-testid="seniors-join-cta-btn"
+                    >
+                      <BadgeCheck size={16} /> Join Senior Side Hustle Team
+                    </button>
+                  </div>
+                ) : (
+                  <div className="seniors-join-done" role="status" data-testid="seniors-join-member-banner">
+                    <BadgeCheck size={20} aria-hidden="true" />
+                    You&apos;re on the Senior Side Hustle Team
+                    {isLoggedIn ? " (and signed in as a GYSH member)." : "."}
+                  </div>
+                )}
                 <p>
-                  A lightweight interest flag for senior-focused updates, workshops, and guides.
+                  A lightweight team join for senior-focused updates, workshops, and guides.
                   A full GYSH account unlocks bookmarks and launch guides sitewide.
                 </p>
               </div>
@@ -797,31 +804,14 @@ export function SeniorSideHustles({
                 </li>
               </ul>
 
-              {interested ? (
-                <div className="seniors-join-footer">
-                  <div className="seniors-join-done" role="status">
-                    <BadgeCheck size={20} aria-hidden="true" />
-                    You&apos;re on the Senior interest list
-                    {isLoggedIn ? " (and signed in as a GYSH member)." : "."}
-                  </div>
-                  {onGoToJoin && !isLoggedIn && (
-                    <button type="button" className="btn btn-outline seniors-btn" onClick={onGoToJoin}>
-                      Create free GYSH account <ArrowRight size={18} />
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <div className="seniors-join-actions">
-                  <button type="button" className="btn btn-primary seniors-btn" onClick={markInterest}>
-                    I&apos;m interested <Heart size={18} />
+              <div className="seniors-join-actions seniors-join-actions--bottom">
+                {onGoToJoin && (
+                  <button type="button" className="btn btn-outline seniors-btn" onClick={onGoToJoin}>
+                    {isLoggedIn || interested ? "Full GYSH Join page" : "Create free GYSH account"}{" "}
+                    <ArrowRight size={18} />
                   </button>
-                  {onGoToJoin && (
-                    <button type="button" className="btn btn-outline seniors-btn" onClick={onGoToJoin}>
-                      Create free GYSH account <ArrowRight size={18} />
-                    </button>
-                  )}
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </div>

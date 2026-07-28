@@ -40,7 +40,7 @@ export const MEMBER_GUIDE_META = {
   eyebrow: "GYSH Member Tour",
   title: "How Get Your Side Hustle works",
   lead:
-    "A concise tour for families and Side Hustlers — Match Wizards by age, Corners, Guides, and membership. For full showcase manuals (Adult, Kids, Teens, Seniors, Complete), open Guides → Marketing manuals.",
+    "A concise tour for families and Side Hustlers — Match Wizards by age, Corners, Guides, and membership. For full showcase guides (Adult, Kids, Teens, Seniors, Complete), open Guides → audience guides.",
   filename: "GYSH-Member-User-Guide.pdf",
 };
 
@@ -81,7 +81,7 @@ export const MEMBER_GUIDE_SECTIONS: GuideDocSection[] = [
       },
       {
         id: "bp-guides",
-        text: "Guides & Workshops — launch playbooks, live learning, plus downloadable Adult / Kids / Teens / Seniors / Complete marketing manuals.",
+        text: "Guides & Workshops — launch playbooks, live learning, plus downloadable Adult / Kids / Teens / Seniors / Complete guides.",
       },
       {
         id: "bp-join",
@@ -152,7 +152,7 @@ export function memberChapters(images: {
       items: [
         {
           id: "kids-coach",
-          text: "Parents act as GYSH Coaches; parental consent is required through age 12.",
+          text: "Parents act as GYSH Coaches; parental consent is required through age 12 (not required for ages 13+).",
         },
         {
           id: "kids-wizard",
@@ -305,12 +305,12 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
             text: "Admin (me) — return to your partner session; lands on Schedule & Plan.",
           },
           {
-            id: "ps-audience",
-            text: "Use app as Adult / Kids / Teens / Senior — preview that audience without changing the real login.",
+            id: "ps-guest",
+            text: "Unlogged in User — guest experience (locked Blueprints, Login in the header); return via Admin (me).",
           },
           {
-            id: "ps-users",
-            text: "Pick a stored user profile — navigate as that member’s roles dictate.",
+            id: "ps-audience",
+            text: "Use app as Adult / Kids / Teens / Senior — preview that audience without changing the real login.",
           },
           { id: "ps-logout", text: "Cleared on Log Out." },
         ],
@@ -429,7 +429,7 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
       },
       {
         id: "qa-auto",
-        text: "Run Vitest, Playwright, or both; Reset statuses when starting a fresh cycle.",
+        text: "Run Vitest, Playwright, or both from the Testing Portal. Test results are kept — update individual cases instead of wiping them.",
       },
       {
         id: "qa-bars",
@@ -599,7 +599,7 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
       },
       {
         id: "ug-pdf",
-        text: "Download PDF from each guide; online versions are checklist-style with linked TOC.",
+        text: "Open PDF from each guide (view in a new tab, then save if you want); online versions are checklist-style with linked TOC.",
       },
       {
         id: "ug-maintain",
@@ -891,7 +891,7 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
           },
           {
             id: "mw-c3",
-            text: "Parental consent required through age 12 for the Kids Coach path.",
+            text: "Parental consent required through age 12 for the Kids path; ages 13+ join without consent.",
           },
         ],
       },

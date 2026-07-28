@@ -27,6 +27,8 @@ interface HustleQuizProps {
   hustles: any[];
   onSelectAction: (hustleId: string, actionType: "calculator" | "guide") => void;
   isLoggedIn?: boolean;
+  /** Profile Switcher → Unlogged in User */
+  previewAsGuest?: boolean;
   /** Unlock → Join / free account handoff */
   onUnlockBlueprint?: () => void;
 }
@@ -79,6 +81,12 @@ const HUSTLE_PROFILES: Record<
     goals: { scale: 1, brand: 0.35, passive: 0.25 },
     budgets: ["medium", "high"],
     times: ["high", "medium"],
+  },
+  "digital-products": {
+    skills: { creative: 1, marketing: 0.55, tech: 0.35 },
+    goals: { passive: 1, brand: 0.7, scale: 0.4 },
+    budgets: ["low", "medium"],
+    times: ["very_low", "medium", "high"],
   },
   affiliate: {
     skills: { marketing: 1, creative: 0.45 },
@@ -239,6 +247,7 @@ export const HustleQuiz: React.FC<HustleQuizProps> = ({
   hustles,
   onSelectAction,
   isLoggedIn = false,
+  previewAsGuest = false,
   onUnlockBlueprint,
 }) => {
   const [currentStep, setCurrentStep] = useState(0);
@@ -253,7 +262,11 @@ export const HustleQuiz: React.FC<HustleQuizProps> = ({
   const startedRef = useRef(false);
   const partialViewedRef = useRef(false);
 
-  const unlocked = hasBlueprintAccess({ isLoggedIn, ageGroup: "adult" });
+  const unlocked = hasBlueprintAccess({
+    isLoggedIn,
+    ageGroup: "adult",
+    previewAsGuest,
+  });
 
   const buildResults = (nextAnswers: Answers): ScoredMatch[] => {
     const scored = hustles.map((h) => ({ hustle: h, score: scoreHustle(h.id, nextAnswers) }));

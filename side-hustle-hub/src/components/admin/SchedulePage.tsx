@@ -9,8 +9,6 @@ import {
 import {
   CalendarDays,
   CheckSquare,
-  ChevronDown,
-  ChevronRight,
   ClipboardList,
   Download,
   ExternalLink,
@@ -21,6 +19,7 @@ import {
   Plus,
   RotateCcw,
   Save,
+  Search,
   Square,
   Trash2,
   Users,
@@ -28,6 +27,7 @@ import {
 import { ApiError } from "../../lib/api";
 import type { AuthUser } from "../../lib/auth";
 import { fetchAgilePlan, persistAgilePlan } from "../../lib/gysh-agile-plan";
+import { ShowHideChevron, ShowHideToggle } from "../ShowHideToggle";
 import {
   closeSprint,
   fetchClosedSprints,
@@ -35,7 +35,11 @@ import {
   reopenSprint,
   sprintLockedMessage,
 } from "../../lib/gysh-closed-sprints";
-import { ensureWorkTimerStarted, stopTimerOnStatusChange } from "../../lib/gysh-time-entries";
+import {
+  completeWorkTimer,
+  ensureWorkTimerStarted,
+  stopTimerOnStatusChange,
+} from "../../lib/gysh-time-entries";
 import { useActiveTimers } from "../../lib/use-active-timers";
 import { WorkTimer } from "./WorkTimer";
 import { BusyOverlay, WaitIndicator, WaitLabel } from "../WaitFeedback";
@@ -44,6 +48,7 @@ import {
   applyRolloutSprintSchedule,
   planToBoardCard,
   ROLLOUT_SCHEDULE_VERSION,
+  sprintRolloverSummary,
   taskToBoardCard,
   testToBoardCard,
   type BoardCard,
@@ -85,10 +90,19 @@ import {
   SYSTEM_ASSIGNED_BY,
   assignedBySelectOptions,
   auditActorLabel,
+  canonicalizePartnerLabel,
   canSetTestBlocked,
   todayMMDDYY as assignmentToday,
   userHasAdminRole,
 } from "../../lib/gysh-assignment";
+import { queryLooksLikeTaskId } from "../../lib/gysh-task-search";
+import { normalizeProgressAssignee } from "../../lib/daily-progress-report";
+import {
+  appendActorNote,
+  applyNoteDrafts,
+  notesHaveUnsavedDraft,
+  type PriorNoteAttribution,
+} from "../../lib/gysh-note-entries";
 import {
   TEST_CASES,
   fetchTestStatuses,
@@ -101,6 +115,7 @@ import {
   type TestStatusesPayload,
   type TestStatus,
 } from "../../lib/gysh-test-plan";
+import { NotesThread } from "./NotesThread";
 import {
   AUTOMATED_PLAYWRIGHT_CASES,
   AUTOMATED_VITEST_CASES,
@@ -127,6 +142,7 @@ import {
   formatNumericDateRange,
   getSprintWindow,
   isBacklogSprint,
+  currentSprintIndex,
   listUpcomingSprints,
   newPlanItemId,
   newRetroCardId,
@@ -185,6 +201,7 @@ const STATUS_COLORS: Record<string, string> = {
   not_run: "#9ca3af",
   not_started: "#9ca3af",
   in_progress: "#ca8a04",
+  rolled_over: "#0e7490",
   done: "#16a34a",
   pass: "#16a34a",
   conditional_approval: "#0f766e",
@@ -193,6 +210,7 @@ const STATUS_COLORS: Record<string, string> = {
   blocked: "#ea580c",
   fixed_retest: "#2563eb",
   failed_retest: "#f97316",
+  fixed_cursor: "#7c3aed",
 };
 
 const CEREMONY_COLORS: Record<SprintCeremony["type"], string> = {
@@ -217,8 +235,9 @@ type CardDraft = {
 const BULK_STATUS_OPTIONS: { id: string; label: string }[] = [
   { id: "todo", label: "To do / Not run" },
   { id: "in_progress", label: "In progress" },
+  { id: "rolled_over", label: "Rolled Over (tests)" },
   { id: "done", label: "Done / Pass" },
-  { id: "conditional_approval", label: "Conditional Approval (tests)" },
+  { id: "conditional_approval", label: "Conditional Pass (tests)" },
   { id: "blocked", label: "Blocked" },
   { id: "fail", label: "Fail (tests)" },
   { id: "carried", label: "Carry over (plan)" },
@@ -277,7 +296,7 @@ function bulkAssigneeForSource(source: BoardCard["source"], value: string): stri
 }
 
 const OWNER_BUBBLES: { id: BoardOwnerFilter; label: string; accent?: string }[] = [
-  { id: "all", label: "All owners" },
+  { id: "all", label: "All assignees" },
   { id: "Tina", label: "Tina", accent: "#9B2F28" },
   { id: "Evelyn", label: "Evelyn", accent: "#947D64" },
   { id: "Lyriq", label: "Lyriq", accent: "#2e7d32" },
@@ -285,24 +304,71 @@ const OWNER_BUBBLES: { id: BoardOwnerFilter; label: string; accent?: string }[] 
   { id: "Unassigned", label: "Unassigned", accent: "#7a7064" },
 ];
 
+/** Assigned By filter sentinel for cards with no assignor set. */
+const ASSIGN_BY_UNSET = "__unset__";
+
 /** Columns so chips fill exactly 2 rows (row-major). */
 function chipColsForTwoRows(count: number): number {
   return Math.max(1, Math.ceil(count / 2));
 }
 
-/** Owner filter: Tina/Evelyn match any card that includes them (incl. Both / multi). */
-function cardMatchesOwner(card: BoardCard, owner: BoardOwnerFilter): boolean {
+/** Assignee filter: Tina/Evelyn match any card that includes them (incl. Both / multi).
+ *  Tests store lowercase ids (`evelyn`); tasks use display names (`Evelyn`) — normalize first. */
+function matchesAssigneeFilter(ownerValue: string, owner: BoardOwnerFilter): boolean {
   if (owner === "all") return true;
+  const v = normalizeProgressAssignee(ownerValue);
   if (owner === "Unassigned") {
-    return card.owner === "Unassigned" || !String(card.owner || "").trim();
+    return v === "Unassigned";
   }
   if (owner === "Both") {
-    return requiresPartnerDone(card.owner);
+    return requiresPartnerDone(v) || v === "Both";
   }
   if (owner === "Tina" || owner === "Evelyn" || owner === "Lyriq") {
-    return assigneeIncludes(card.owner, owner);
+    return v === owner || assigneeIncludes(v, owner);
   }
-  return card.owner === owner;
+  return v === owner;
+}
+
+/** Assignor (Assigned By) filter. */
+function matchesAssignByFilter(assignByValue: string, filter: string): boolean {
+  if (filter === "all") return true;
+  const v = String(assignByValue || "").trim();
+  if (filter === ASSIGN_BY_UNSET) return !v;
+  const canon = canonicalizePartnerLabel(v) || v;
+  return canon === filter || v === filter;
+}
+
+/** Sprint Board search — id, title, notes, assignee, assignor, status. */
+function boardCardMatchesSearch(
+  card: BoardCard,
+  rawQuery: string,
+  extras: { assignee: string; assignBy: string; status: string },
+): boolean {
+  const q = rawQuery.trim().toLowerCase();
+  if (!q) return true;
+  const id = String(card.sourceId || "").toLowerCase();
+  const qBare = q.replace(/^#/, "");
+  if (queryLooksLikeTaskId(rawQuery) || /^[a-z]{1,8}-[\w-]+$/i.test(qBare)) {
+    if (id === qBare || id === `t-${qBare}` || id.includes(qBare)) return true;
+    if (queryLooksLikeTaskId(rawQuery) && !id.includes(qBare)) {
+      // Pure id query should not match on title/date haystack.
+      return false;
+    }
+  }
+  if (id.includes(qBare)) return true;
+  const haystack = [
+    card.title,
+    card.notes,
+    card.sourceId,
+    card.kindLabel,
+    card.source,
+    extras.assignee,
+    extras.assignBy,
+    extras.status,
+  ]
+    .join("\n")
+    .toLowerCase();
+  return haystack.includes(q);
 }
 
 function isDone(card: BoardCard): boolean {
@@ -406,7 +472,7 @@ function CollapsibleFilterSection({
   hint?: string;
   defaultOpen?: boolean;
   testId?: string;
-  /** When set, the title label filters; chevron alone collapses. */
+  /** When set, the title label filters; Show/Hide controls visibility. */
   onFilterClick?: () => void;
   children: ReactNode;
 }) {
@@ -415,16 +481,6 @@ function CollapsibleFilterSection({
   return (
     <div className="schedule-board-filters__row" data-testid={testId}>
       <div className="schedule-board-filters__label schedule-board-filters__label--bar">
-        <button
-          type="button"
-          className="schedule-board-filters__chevron"
-          onClick={() => setOpen((o) => !o)}
-          aria-expanded={open}
-          aria-label={open ? `Collapse ${title}` : `Expand ${title}`}
-          data-testid={testId ? `${testId}-toggle` : undefined}
-        >
-          {open ? <ChevronDown size={16} aria-hidden /> : <ChevronRight size={16} aria-hidden />}
-        </button>
         {filterable ? (
           <button
             type="button"
@@ -434,6 +490,7 @@ function CollapsibleFilterSection({
             aria-label={`${title}. Click to filter`}
             data-testid={testId ? `${testId}-filter` : undefined}
           >
+            <ShowHideChevron open={open} />
             <span>{title}</span>
             <span className="schedule-board-filters__click-hint">Click to filter</span>
             {!open && hint ? (
@@ -441,18 +498,20 @@ function CollapsibleFilterSection({
             ) : null}
           </button>
         ) : (
-          <button
-            type="button"
-            className="schedule-board-filters__filter-title schedule-board-filters__filter-title--collapse"
-            onClick={() => setOpen((o) => !o)}
-            aria-expanded={open}
-          >
+          <div className="schedule-board-filters__filter-title schedule-board-filters__filter-title--static">
+            <ShowHideChevron open={open} />
             <span>{title}</span>
             {!open && hint ? (
               <span className="schedule-board-filters__label-hint">{hint}</span>
             ) : null}
-          </button>
+          </div>
         )}
+        <ShowHideToggle
+          open={open}
+          onOpenChange={setOpen}
+          label={title}
+          testId={testId ? `${testId}-toggle` : undefined}
+        />
       </div>
       {open ? children : null}
     </div>
@@ -596,7 +655,18 @@ const WORK_STATUS_BUBBLES: { id: string; label: string }[] = [
 
 /** Test progress — same statuses as Testing Portal. */
 const TEST_STATUS_BUBBLES: { id: TestStatus; label: string }[] = (
-  ["not_run", "in_progress", "pass", "conditional_approval", "fail", "blocked"] as const
+  [
+    "not_run",
+    "in_progress",
+    "rolled_over",
+    "pass",
+    "conditional_approval",
+    "fail",
+    "blocked",
+    "fixed_retest",
+    "failed_retest",
+    "fixed_cursor",
+  ] as const
 ).map((id) => ({ id, label: TEST_STATUS_LABELS[id] }));
 
 function cardSprintPlacement(card: BoardCard): SprintPlacementStatus {
@@ -844,7 +914,9 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
   const isAdmin = userHasAdminRole(authUser);
   const canBlockTests = canSetTestBlocked(authUser);
   const [tab, setTab] = useState<ScheduleTab>("board");
-  const [activeSprint, setActiveSprint] = useState<SprintBoardSelection>(0);
+  const [activeSprint, setActiveSprint] = useState<SprintBoardSelection>(() =>
+    currentSprintIndex(),
+  );
   const [items, setItems] = useState<PlanItem[]>([]);
   const [tasks, setTasks] = useState<GyshTask[]>([]);
   const [testStatuses, setTestStatuses] = useState<Record<string, TestStatus>>({});
@@ -863,6 +935,9 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
   const [newOwner, setNewOwner] = useState<PlanOwner>("Unassigned");
   const [sourceFilter, setSourceFilter] = useState<BoardSourceFilter>("all");
   const [ownerFilter, setOwnerFilter] = useState<BoardOwnerFilter>("all");
+  /** Assignor (Assigned By) — "all" | ASSIGN_BY_UNSET | partner label. */
+  const [assignByFilter, setAssignByFilter] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
   /** Sprint placement: empty = all (in sprint + carry over). */
   const [sprintStatusFilters, setSprintStatusFilters] = useState<Set<SprintPlacementStatus>>(
     () => new Set(),
@@ -879,6 +954,11 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
   const [bulkStatus, setBulkStatus] = useState("");
   const [bulkDueDate, setBulkDueDate] = useState("");
   const [bulkDescription, setBulkDescription] = useState("");
+  /** Structured notes drafts keyed by board card key (task:/test:…). */
+  const [editNoteDrafts, setEditNoteDrafts] = useState<Record<string, Record<string, string>>>(
+    {},
+  );
+  const [newNoteDrafts, setNewNoteDrafts] = useState<Record<string, string>>({});
   const assignByOptions = useMemo(
     () =>
       assignedBySelectOptions(
@@ -944,24 +1024,6 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
   const sprintScopedCards = sprintOnlyCards.filter((c) =>
     matchesSourceFilter(c.source, sourceFilter),
   );
-
-  const visibleCards = sprintScopedCards.filter((c) => {
-    // Backlog has no assignees — never filter by owner there.
-    if (activeSprint !== "backlog" && !cardMatchesOwner(c, ownerFilter)) return false;
-    if (sprintStatusFilters.size > 0 && !sprintStatusFilters.has(cardSprintPlacement(c))) {
-      return false;
-    }
-    if (c.source === "task" && workStatusFilters.size > 0) {
-      const work = cardWorkStatus(c);
-      // Carry-over has no work status — use Sprint status filter for those cards.
-      if (work === null || !workStatusFilters.has(work)) return false;
-    }
-    if (c.source === "test" && testStatusFilters.size > 0) {
-      const st = (testStatuses[c.sourceId] ?? "not_run") as TestStatus;
-      if (!testStatusFilters.has(st)) return false;
-    }
-    return true;
-  });
 
   const toggleSprintStatusFilter = (status: SprintPlacementStatus) => {
     setSprintStatusFilters((prev) => {
@@ -1274,6 +1336,7 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
     }
   };
 
+  /** Raw control value (tasks: display name; tests: lowercase QA id). */
   const cardAssigneeValue = (card: BoardCard): string => {
     const sprint = cardSprintValue(card);
     // Backlog never keeps a person — drafts cannot override this.
@@ -1285,6 +1348,17 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
     if (card.source === "test") {
       return testAssignees[card.sourceId] || TEST_DEFAULT_ASSIGNEES[card.sourceId] || "";
     }
+    return card.owner;
+  };
+
+  /** Display/filter assignee — uses board owner (Both/multi) when no draft override. */
+  const cardAssigneeFilterValue = (card: BoardCard): string => {
+    const sprint = cardSprintValue(card);
+    if (isBacklogSprint(sprint)) {
+      return card.source === "test" ? "" : UNASSIGNED_OWNER;
+    }
+    const draft = drafts[card.key]?.assignee;
+    if (draft !== undefined) return normalizeProgressAssignee(draft);
     return card.owner;
   };
 
@@ -1318,29 +1392,165 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
     return card.sprint;
   };
 
-  const cardNoteValue = (card: BoardCard): string => {
-    if (card.source !== "test") return "";
-    return drafts[card.key]?.note ?? testNotes[card.sourceId] ?? "";
+  /** Stored notes string (JSON thread for tasks/tests; plain for plan). */
+  const cardStoredNotes = (card: BoardCard): string => {
+    if (card.source === "test") return testNotes[card.sourceId] ?? "";
+    if (card.source === "task") {
+      return tasks.find((t) => t.id === card.sourceId)?.notes ?? "";
+    }
+    if (card.source === "plan") {
+      return items.find((i) => i.id === card.sourceId)?.notes ?? "";
+    }
+    return "";
   };
 
-  const isCardDirty = (key: string) => {
-    const d = drafts[key];
-    if (!d) return false;
-    return (
-      d.assignee !== undefined ||
-      d.status !== undefined ||
-      d.sprint !== undefined ||
-      d.note !== undefined ||
-      d.dueDate !== undefined ||
-      d.assignBy !== undefined
+  /** Plan-only plain note draft (tasks/tests use NotesThread drafts). */
+  const cardNoteValue = (card: BoardCard): string => {
+    const draft = drafts[card.key]?.note;
+    if (draft !== undefined) return draft;
+    return cardStoredNotes(card);
+  };
+
+  const priorNoteAttributionForCard = (card: BoardCard): PriorNoteAttribution => {
+    if (card.source === "task") {
+      const task = tasks.find((t) => t.id === card.sourceId);
+      return {
+        author: (task?.updatedBy || task?.assignBy || "").trim() || undefined,
+        at: (task?.updatedAt || "").trim() || undefined,
+      };
+    }
+    if (card.source === "test") {
+      return {
+        author: (testUpdatedBy[card.sourceId] || testAssignedBy[card.sourceId] || "").trim() || undefined,
+        at: (testUpdatedAt[card.sourceId] || "").trim() || undefined,
+      };
+    }
+    return {};
+  };
+
+  /** Compose task/test notes from stored + UI drafts (+ optional bulk draft.note base). */
+  const composedNotesForCard = (card: BoardCard, draftNote?: string): string => {
+    if (card.source === "plan") {
+      return draftNote !== undefined ? draftNote : cardNoteValue(card);
+    }
+    const base = draftNote !== undefined ? draftNote : cardStoredNotes(card);
+    return applyNoteDrafts(
+      base,
+      actingAssignBy,
+      editNoteDrafts[card.key],
+      newNoteDrafts[card.key],
+      undefined,
+      priorNoteAttributionForCard(card),
     );
   };
 
-  const patchDraft = (key: string, patch: CardDraft) => {
-    setDrafts((prev) => ({
+  const cardNotesDirty = (key: string, storedRaw: string): boolean =>
+    notesHaveUnsavedDraft(
+      storedRaw,
+      actingAssignBy,
+      editNoteDrafts[key],
+      newNoteDrafts[key],
+    );
+
+  const setBoardNewNoteDraft = (key: string, text: string) => {
+    setNewNoteDrafts((prev) => ({ ...prev, [key]: text }));
+  };
+
+  const setBoardEditNoteDraft = (key: string, noteId: string, text: string) => {
+    setEditNoteDrafts((prev) => ({
       ...prev,
-      [key]: { ...prev[key], ...patch },
+      [key]: { ...(prev[key] ?? {}), [noteId]: text },
     }));
+  };
+
+  const clearBoardNoteDrafts = (key: string) => {
+    setNewNoteDrafts((prev) => {
+      if (!(key in prev)) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+    setEditNoteDrafts((prev) => {
+      if (!(key in prev)) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
+  /** Due date as MM/DD/YY for drafts; empty when unset. */
+  const cardDueDateValue = (card: BoardCard): string => {
+    const draft = drafts[card.key]?.dueDate;
+    if (draft !== undefined) return draft;
+    if (card.source === "task") {
+      return tasks.find((t) => t.id === card.sourceId)?.dueDate ?? "";
+    }
+    if (card.source === "test") {
+      return testDueDates[card.sourceId] ?? "";
+    }
+    if (card.source === "plan") {
+      const item = items.find((i) => i.id === card.sourceId);
+      if (!item?.date) return "";
+      return isoToMmddyy(item.date) || "";
+    }
+    return "";
+  };
+
+  /**
+   * Status chip tallies follow the selected assignee (and type/sprint).
+   * Do not apply status filters here — otherwise other status chips would go to zero.
+   */
+  const statusCountCards = sprintScopedCards.filter((c) => {
+    if (activeSprint === "backlog") return true;
+    return matchesAssigneeFilter(cardAssigneeFilterValue(c), ownerFilter);
+  });
+
+  const visibleCards = sprintScopedCards.filter((c) => {
+    const assignee = cardAssigneeFilterValue(c);
+    const assignBy = cardAssignByValue(c);
+    const status = cardStatusValue(c);
+    // Backlog never has person assignees — skip assignee facet there.
+    if (activeSprint !== "backlog" && !matchesAssigneeFilter(assignee, ownerFilter)) return false;
+    if (!matchesAssignByFilter(assignBy, assignByFilter)) return false;
+    if (sprintStatusFilters.size > 0 && !sprintStatusFilters.has(cardSprintPlacement(c))) {
+      return false;
+    }
+    if (c.source === "task" && workStatusFilters.size > 0) {
+      const work = cardWorkStatus(c);
+      // Carry-over has no work status — use Sprint status filter for those cards.
+      if (work === null || !workStatusFilters.has(work)) return false;
+    }
+    if (c.source === "test" && testStatusFilters.size > 0) {
+      const st = (testStatuses[c.sourceId] ?? "not_run") as TestStatus;
+      if (!testStatusFilters.has(st)) return false;
+    }
+    if (
+      !boardCardMatchesSearch(c, searchQuery, {
+        assignee: assignee || UNASSIGNED_OWNER,
+        assignBy,
+        status,
+      })
+    ) {
+      return false;
+    }
+    return true;
+  });
+
+  const isCardDirty = (key: string) => {
+    const d = drafts[key];
+    const fieldDirty = Boolean(
+      d &&
+        (d.assignee !== undefined ||
+          d.status !== undefined ||
+          d.sprint !== undefined ||
+          d.note !== undefined ||
+          d.dueDate !== undefined ||
+          d.assignBy !== undefined),
+    );
+    if (fieldDirty) return true;
+    const card = boardCards.find((c) => c.key === key);
+    if (!card || card.source === "plan") return false;
+    return cardNotesDirty(key, cardStoredNotes(card));
   };
 
   /** Stage a field change as a dirty draft — persists only on Save / Save all. */
@@ -1366,13 +1576,16 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
       delete next[key];
       return next;
     });
+    clearBoardNoteDrafts(key);
   };
 
-  const dirtyCount = Object.keys(drafts).length;
+  const dirtyCount = boardCards.filter((c) => isCardDirty(c.key)).length;
 
   const filtersAreAll =
     sourceFilter === "all" &&
     ownerFilter === "all" &&
+    assignByFilter === "all" &&
+    !searchQuery.trim() &&
     sprintStatusFilters.size === 0 &&
     workStatusFilters.size === 0 &&
     testStatusFilters.size === 0;
@@ -1399,9 +1612,13 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
       setBulkStatus("");
       setBulkDueDate("");
       setBulkDescription("");
+      setEditNoteDrafts({});
+      setNewNoteDrafts({});
     }
     setSourceFilter("all");
     setOwnerFilter("all");
+    setAssignByFilter("all");
+    setSearchQuery("");
     setSprintStatusFilters(new Set());
     setWorkStatusFilters(new Set());
     setTestStatusFilters(new Set());
@@ -1474,7 +1691,17 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
       );
       return false;
     }
-    const note = draft.note !== undefined ? draft.note : cardNoteValue(card);
+    const note =
+      card.source === "plan"
+        ? draft.note !== undefined
+          ? draft.note
+          : cardNoteValue(card)
+        : composedNotesForCard(card, draft.note);
+    const notesChanged =
+      card.source === "plan"
+        ? draft.note !== undefined
+        : draft.note !== undefined ||
+          cardNotesDirty(card.key, cardStoredNotes(card));
     const requestedAssignee =
       draft.assignee !== undefined ? draft.assignee : cardAssigneeValue(card);
     // Automated suite owners stay locked in committed sprints — backlog clears person/suite display owners.
@@ -1527,6 +1754,7 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
                         dateLabel: sw ? sw.label : "Backlog",
                         date: sw ? sw.start.toISOString().slice(0, 10) : "",
                       }),
+                  ...(draft.note !== undefined ? { notes: draft.note } : {}),
                 },
                 { status: status as PlanItemStatus },
               )
@@ -1577,7 +1805,7 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
                   ...t,
                   ...taskPatch,
                   dueDate: nextDue,
-                  ...(draft.note !== undefined ? { notes: draft.note } : {}),
+                  ...(notesChanged ? { notes: note } : {}),
                 },
                 { status: status as TaskStatus },
               )
@@ -1607,8 +1835,21 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
         const prevAssignee = testAssignees[card.sourceId] || "";
         const assigneeChanged =
           String(resolvedAssignee || "").trim() !== String(prevAssignee || "").trim();
+        const stepCount = Array.isArray(
+          ALL_TESTS.find((t) => t.id === card.sourceId)?.steps,
+        )
+          ? (ALL_TESTS.find((t) => t.id === card.sourceId)?.steps.length ?? 0)
+          : 0;
+        const clearChecklist = st === "fixed_retest" || st === "failed_retest";
         const data = await saveTestStatus(card.sourceId, st, note.trim(), resolvedAssignee, sprint, {
           dueDate,
+          ...(clearChecklist && stepCount > 0
+            ? {
+                stepCount,
+                checkedSteps: Array.from({ length: stepCount }, () => false),
+                failedStepIndex: null,
+              }
+            : {}),
           ...(draft.assignBy !== undefined
             ? { assignedBy: draft.assignBy }
             : assigneeChanged
@@ -1629,7 +1870,26 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
         draft.status !== undefined &&
         draft.status !== card.status
       ) {
-        await stopTimerOnStatusChange(card.source, card.sourceId);
+        const nextStatus = String(draft.status);
+        const testDone =
+          card.source === "test" &&
+          ["pass", "conditional_approval", "fail", "blocked"].includes(nextStatus);
+        const taskDone = card.source === "task" && nextStatus === "done";
+        if (testDone || taskDone) {
+          await completeWorkTimer({
+            source: card.source,
+            sourceId: card.sourceId,
+            sourceLabel: card.title,
+          });
+        } else if (nextStatus !== "not_run" && nextStatus !== "todo" && nextStatus !== "not_started") {
+          await ensureWorkTimerStarted({
+            source: card.source,
+            sourceId: card.sourceId,
+            sourceLabel: card.title,
+          });
+        } else {
+          await stopTimerOnStatusChange(card.source, card.sourceId);
+        }
         void timers.refresh();
       }
       setSaveFlash(`Saved ${card.sourceId}`);
@@ -1646,15 +1906,18 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
   const persistDraftMap = async (draftMap: Record<string, CardDraft>) => {
     const dirtyCards = boardCards.filter((c) => {
       const d = draftMap[c.key];
-      return (
-        !!d &&
-        (d.assignee !== undefined ||
-          d.status !== undefined ||
-          d.sprint !== undefined ||
-          d.note !== undefined ||
-          d.dueDate !== undefined ||
-          d.assignBy !== undefined)
+      const fieldDirty = Boolean(
+        d &&
+          (d.assignee !== undefined ||
+            d.status !== undefined ||
+            d.sprint !== undefined ||
+            d.note !== undefined ||
+            d.dueDate !== undefined ||
+            d.assignBy !== undefined),
       );
+      if (fieldDirty) return true;
+      if (c.source === "plan") return false;
+      return cardNotesDirty(c.key, cardStoredNotes(c));
     });
     if (dirtyCards.length === 0) {
       setSaveFlash("Nothing to save");
@@ -1723,7 +1986,16 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
                       : "in_progress"
                 : card.status;
         const note =
-          draft.note !== undefined ? draft.note : (testNotes[card.sourceId] ?? "");
+          card.source === "plan"
+            ? draft.note !== undefined
+              ? draft.note
+              : cardNoteValue(card)
+            : composedNotesForCard(card, draft.note);
+        const notesChanged =
+          card.source === "plan"
+            ? draft.note !== undefined
+            : draft.note !== undefined ||
+              cardNotesDirty(card.key, cardStoredNotes(card));
         const sprintChanged = draft.sprint !== undefined && draft.sprint !== card.sprint;
 
         if (card.source === "plan") {
@@ -1751,7 +2023,7 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
                           dateLabel: sw ? sw.label : "Backlog",
                           date: sw ? sw.start.toISOString().slice(0, 10) : "",
                         }),
-                    ...(draft.note !== undefined ? { notes: draft.note } : {}),
+                    ...(notesChanged ? { notes: note } : {}),
                   },
                   { status: status as PlanItemStatus },
                 )
@@ -1789,7 +2061,7 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
                         : sprintChanged
                           ? dueDateForSprint(sprint) || t.dueDate
                           : t.dueDate,
-                    ...(draft.note !== undefined ? { notes: draft.note } : {}),
+                    ...(notesChanged ? { notes: note } : {}),
                   },
                   { status: status as TaskStatus },
                 )
@@ -1857,6 +2129,7 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
         for (const card of dirtyCards) delete next[card.key];
         return next;
       });
+      for (const card of dirtyCards) clearBoardNoteDrafts(card.key);
       setSaveFlash(`Saved ${dirtyCards.length} card${dirtyCards.length === 1 ? "" : "s"}`);
       window.setTimeout(() => setSaveFlash(""), 2500);
     } catch (e) {
@@ -1867,7 +2140,13 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
   };
 
   const saveAllDirty = async () => {
-    await persistDraftMap(drafts);
+    const map: Record<string, CardDraft> = { ...drafts };
+    for (const card of boardCards) {
+      if (isCardDirty(card.key) && map[card.key] === undefined) {
+        map[card.key] = {};
+      }
+    }
+    await persistDraftMap(map);
   };
 
   const applyBulkToSelected = (andSave: boolean) => {
@@ -1940,8 +2219,19 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
       if (dueNormalized) {
         mapped.dueDate = dueNormalized;
       }
-      if (desc && (card.source === "test" || card.source === "plan" || card.source === "task")) {
-        mapped.note = desc;
+      if (desc) {
+        if (card.source === "plan") {
+          mapped.note = desc;
+        } else if (card.source === "task" || card.source === "test") {
+          // Append as a new authored note — never overwrite the JSON thread with plain text.
+          mapped.note = appendActorNote(
+            cardStoredNotes(card),
+            actingAssignBy,
+            desc,
+            undefined,
+            priorNoteAttributionForCard(card),
+          );
+        }
       }
       nextDrafts[card.key] = mapped;
       changed += 1;
@@ -2127,7 +2417,7 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
         } else {
           testBatch.push({
             caseId: t.id,
-            status: st === "not_run" ? "in_progress" : st,
+            status: "rolled_over",
             note,
             assignee,
             sprint: nextSprint,
@@ -2440,6 +2730,7 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
             const locked = isSprintLocked(closedSprints, s.index);
             const showDone = !locked;
             const showReopen = locked;
+            const rollover = sprintRolloverSummary(testStatuses, testSprints, s.index);
             return (
               <div
                 key={s.index}
@@ -2460,8 +2751,8 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
                     locked
                       ? `${s.label} · Closed & locked · ${s.numericRangeLabel}`
                       : theme
-                        ? `${s.label} · Sprint Goal: ${theme.goal} · ${s.numericRangeLabel} — ${theme.theme} · ${workFace} · ${formatTQTitle(bySource)}`
-                        : `${s.label} · ${s.numericRangeLabel} · ${workFace} · ${formatTQTitle(bySource)}`
+                        ? `${s.label} · Sprint Goal: ${theme.goal} · ${s.numericRangeLabel} — ${theme.theme} · ${workFace} · ${formatTQTitle(bySource)}${rollover.banner ? ` · ${rollover.banner}` : ""}`
+                        : `${s.label} · ${s.numericRangeLabel} · ${workFace} · ${formatTQTitle(bySource)}${rollover.banner ? ` · ${rollover.banner}` : ""}`
                   }
                 >
                   <span style={{ display: "flex", gap: 6, alignItems: "baseline", flexWrap: "wrap" }}>
@@ -2515,6 +2806,20 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
                   >
                     {s.numericRangeLabel}
                   </span>
+                  {rollover.chipHint ? (
+                    <span
+                      className="qa-tester-meta"
+                      data-testid={`schedule-sprint-rollover-chip-${s.index}`}
+                      style={{
+                        fontSize: "0.8rem",
+                        fontWeight: 700,
+                        color: "#0e7490",
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      {rollover.chipHint}
+                    </span>
+                  ) : null}
                 </button>
                 {showDone ? (
                   <button
@@ -2558,6 +2863,29 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
             ) : null}
           </p>
         )}
+        {isSprintIndex(activeSprint) &&
+          (() => {
+            const roll = sprintRolloverSummary(testStatuses, testSprints, activeSprint);
+            if (!roll.banner) return null;
+            return (
+              <p
+                data-testid="schedule-sprint-rollover-banner"
+                style={{
+                  marginTop: 8,
+                  marginBottom: 0,
+                  padding: "8px 12px",
+                  borderRadius: 8,
+                  background: "rgba(14, 116, 144, 0.1)",
+                  border: "1px solid rgba(14, 116, 144, 0.35)",
+                  color: "#0e7490",
+                  fontSize: "0.95rem",
+                  fontWeight: 700,
+                }}
+              >
+                {roll.banner}
+              </p>
+            );
+          })()}
         {activeSprint === "all" && (
           <p style={{ marginTop: 12, fontSize: "0.95rem", color: "var(--text-primary)" }}>
             <strong style={{ color: "var(--charcoal)" }}>All Sprints</strong>
@@ -2662,7 +2990,6 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
             <CollapsibleFilterSection
               title="Type — tasks vs tests"
               hint={SOURCE_BUBBLES.find((b) => b.id === sourceFilter)?.label}
-              defaultOpen
               testId="schedule-filter-type"
               onFilterClick={() => setSourceFilter("all")}
             >
@@ -2675,6 +3002,13 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
                   const matched = sprintOnlyCards.filter((c) =>
                     matchesSourceFilter(c.source, b.id),
                   );
+                  const bySource = countBySource(matched);
+                  const face =
+                    b.id === "test"
+                      ? `${bySource.testsDone}/${bySource.tests}`
+                      : b.id === "task"
+                        ? `${bySource.tasksDone}/${bySource.tasks}`
+                        : formatWorkDoneTotal(bySource);
                   return (
                     <button
                       key={b.id}
@@ -2685,10 +3019,10 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
                       onClick={() => setSourceFilter(b.id)}
                       title={
                         b.id === "all"
-                          ? "Show tasks and tests"
+                          ? `Show tasks and tests · ${face} · ${formatTQTitle(bySource)}`
                           : b.id === "test"
-                            ? "QA tests only"
-                            : "Implementation tasks only"
+                            ? `QA tests only · ${face} passed`
+                            : `Implementation tasks only · ${face} done`
                       }
                       style={{
                         borderColor: active && b.accent ? b.accent : undefined,
@@ -2700,7 +3034,7 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
                       )}
                       {b.label}
                       <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
-                        · {matched.length}
+                        · {face}
                       </span>
                     </button>
                   );
@@ -2708,19 +3042,19 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
               </div>
             </CollapsibleFilterSection>
 
-            {/* Backlog never has assignees — hide owner/user bubbles. */}
+            {/* Backlog never has person assignees — hide assignee bubbles there. */}
             {activeSprint !== "backlog" && (
               <>
               <hr className="schedule-board-filters__divider" />
               <CollapsibleFilterSection
-                title="Owners & backlog"
+                title="Assignee"
                 hint={
                   ownerFilter === "all"
-                    ? "All owners"
+                    ? "All assignees"
                     : OWNER_BUBBLES.find((b) => b.id === ownerFilter)?.label
                 }
+                testId="schedule-filter-assignee"
                 defaultOpen
-                testId="schedule-filter-owners"
                 onFilterClick={() => setOwnerFilter("all")}
               >
                 <div
@@ -2749,7 +3083,9 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
                   </button>
                   {OWNER_BUBBLES.map((b) => {
                     const active = ownerFilter === b.id;
-                    const matched = sprintScopedCards.filter((c) => cardMatchesOwner(c, b.id));
+                    const matched = sprintScopedCards.filter((c) =>
+                      matchesAssigneeFilter(cardAssigneeFilterValue(c), b.id),
+                    );
                     const bySource = countBySource(matched);
                     const workFace = formatWorkDoneTotal(bySource);
                     return (
@@ -2758,6 +3094,7 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
                         type="button"
                         className="qa-tester-bubble"
                         data-active={active ? "true" : "false"}
+                        data-testid={`sprint-board-assignee-${b.id}`}
                         onClick={() => setOwnerFilter(b.id)}
                         title={
                           b.id === "all"
@@ -2785,6 +3122,98 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
               </CollapsibleFilterSection>
               </>
             )}
+
+            <hr className="schedule-board-filters__divider" />
+
+            <CollapsibleFilterSection
+              title="Assignor (Assigned By)"
+              hint={
+                assignByFilter === "all"
+                  ? "All assignors"
+                  : assignByFilter === ASSIGN_BY_UNSET
+                    ? "Unset"
+                    : assignByFilter
+              }
+              testId="schedule-filter-assignor"
+              defaultOpen
+              onFilterClick={() => setAssignByFilter("all")}
+            >
+              <div
+                className="schedule-board-filters__chips"
+                style={
+                  {
+                    "--chip-cols": chipColsForTwoRows(2 + assignByOptions.length),
+                  } as CSSProperties
+                }
+              >
+                <button
+                  type="button"
+                  className="qa-tester-bubble"
+                  data-active={assignByFilter === "all" ? "true" : "false"}
+                  data-testid="sprint-board-assignor-all"
+                  onClick={() => setAssignByFilter("all")}
+                  title="Show every assignor"
+                >
+                  All assignors
+                  <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
+                    · {sprintScopedCards.length}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="qa-tester-bubble"
+                  data-active={assignByFilter === ASSIGN_BY_UNSET ? "true" : "false"}
+                  data-testid="sprint-board-assignor-unset"
+                  onClick={() => setAssignByFilter(ASSIGN_BY_UNSET)}
+                  title="No Assigned By set"
+                >
+                  <span className="qa-tester-dot" style={{ background: "#7a7064" }} />
+                  Unset
+                  <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
+                    ·{" "}
+                    {
+                      sprintScopedCards.filter((c) =>
+                        matchesAssignByFilter(cardAssignByValue(c), ASSIGN_BY_UNSET),
+                      ).length
+                    }
+                  </span>
+                </button>
+                {assignByOptions.map((name) => {
+                  const active = assignByFilter === name;
+                  const count = sprintScopedCards.filter((c) =>
+                    matchesAssignByFilter(cardAssignByValue(c), name),
+                  ).length;
+                  const accent =
+                    name === "Tina"
+                      ? "#9B2F28"
+                      : name === "Evelyn"
+                        ? "#947D64"
+                        : name === "Lyriq"
+                          ? "#2e7d32"
+                          : "#6B5344";
+                  return (
+                    <button
+                      key={name}
+                      type="button"
+                      className="qa-tester-bubble"
+                      data-active={active ? "true" : "false"}
+                      data-testid={`sprint-board-assignor-${name.toLowerCase()}`}
+                      onClick={() => setAssignByFilter(name)}
+                      style={{
+                        borderColor: active ? accent : undefined,
+                        boxShadow: active ? `0 0 0 1px ${accent}` : undefined,
+                      }}
+                    >
+                      <span className="qa-tester-dot" style={{ background: accent }} />
+                      {name}
+                      <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
+                        · {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </CollapsibleFilterSection>
 
             <hr className="schedule-board-filters__divider" />
 
@@ -2870,13 +3299,20 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
                   data-active={testStatusFilters.size === 0 ? "true" : "false"}
                   data-testid="sprint-board-test-status-all"
                   onClick={() => setTestStatusFilters(new Set())}
-                  title="All test statuses (not started through blocked). Filters tests only."
+                  title={
+                    ownerFilter === "all"
+                      ? "All test statuses (not started through blocked). Filters tests only."
+                      : `All test statuses for ${ownerFilter}. Filters tests only.`
+                  }
                 >
                   All statuses
+                  <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
+                    · {statusCountCards.filter((c) => c.source === "test").length}
+                  </span>
                 </button>
                 {TEST_STATUS_BUBBLES.map((s) => {
                   const active = testStatusFilters.has(s.id);
-                  const count = sprintScopedCards.filter(
+                  const count = statusCountCards.filter(
                     (c) =>
                       c.source === "test" &&
                       (testStatuses[c.sourceId] ?? "not_run") === s.id,
@@ -2890,6 +3326,11 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
                       data-active={active ? "true" : "false"}
                       data-testid={`sprint-board-test-status-${s.id}`}
                       onClick={() => toggleTestStatusFilter(s.id)}
+                      title={
+                        ownerFilter === "all"
+                          ? `${s.label} · ${count}`
+                          : `${s.label} · ${count} for ${ownerFilter}`
+                      }
                       style={{
                         borderColor: active ? accent : undefined,
                         boxShadow: active ? `0 0 0 1px ${accent}` : undefined,
@@ -2897,7 +3338,9 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
                     >
                       <span className="qa-tester-dot" style={{ background: accent }} />
                       {s.label}
-                      <span className="qa-tester-meta">· {count}</span>
+                      <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
+                        · {count}
+                      </span>
                     </button>
                   );
                 })}
@@ -2930,13 +3373,20 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
                   data-active={workStatusFilters.size === 0 ? "true" : "false"}
                   data-testid="sprint-board-work-status-all"
                   onClick={() => setWorkStatusFilters(new Set())}
-                  title="All task statuses (to do through done). Filters tasks only. Carry-over uses Sprint status."
+                  title={
+                    ownerFilter === "all"
+                      ? "All task statuses (to do through done). Filters tasks only. Carry-over uses Sprint status."
+                      : `All task statuses for ${ownerFilter}. Filters tasks only.`
+                  }
                 >
                   All statuses
+                  <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
+                    · {statusCountCards.filter((c) => c.source === "task").length}
+                  </span>
                 </button>
                 {WORK_STATUS_BUBBLES.map((s) => {
                   const active = workStatusFilters.has(s.id);
-                  const count = sprintScopedCards.filter(
+                  const count = statusCountCards.filter(
                     (c) => c.source === "task" && cardWorkStatus(c) === s.id,
                   ).length;
                   const accent = STATUS_COLORS[s.id] || "#947D64";
@@ -2948,6 +3398,11 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
                       data-active={active ? "true" : "false"}
                       data-testid={`sprint-board-work-status-${s.id}`}
                       onClick={() => toggleWorkStatusFilter(s.id)}
+                      title={
+                        ownerFilter === "all"
+                          ? `${s.label} · ${count}`
+                          : `${s.label} · ${count} for ${ownerFilter}`
+                      }
                       style={{
                         borderColor: active ? accent : undefined,
                         boxShadow: active ? `0 0 0 1px ${accent}` : undefined,
@@ -2955,7 +3410,9 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
                     >
                       <span className="qa-tester-dot" style={{ background: accent }} />
                       {s.label}
-                      <span className="qa-tester-meta">· {count}</span>
+                      <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
+                        · {count}
+                      </span>
                     </button>
                   );
                 })}
@@ -2964,6 +3421,36 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
           </div>
 
           <div className="glass" style={{ padding: 16, borderRadius: 14 }}>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "end", marginBottom: 12 }}>
+              <div style={{ position: "relative", flex: "1 1 260px", minWidth: 220, maxWidth: 420 }}>
+                <label className="form-label" htmlFor="sprint-board-search">
+                  Search board
+                </label>
+                <div style={{ position: "relative" }}>
+                  <Search
+                    size={14}
+                    style={{
+                      position: "absolute",
+                      left: 12,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      color: "var(--text-primary)",
+                      pointerEvents: "none",
+                    }}
+                  />
+                  <input
+                    id="sprint-board-search"
+                    className="text-input"
+                    style={{ paddingLeft: 34, height: 40, width: "100%" }}
+                    placeholder="Search id, title, notes, assignee, assignor…"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    aria-label="Search sprint board by id, title, notes, assignee, or assignor"
+                    data-testid="sprint-board-search"
+                  />
+                </div>
+              </div>
+            </div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "end" }}>
               <div className="form-group" style={{ margin: 0, flex: "1 1 240px" }}>
                 <label className="form-label">
@@ -2989,9 +3476,16 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
                 <label className="form-label">Assignee</label>
                 <select
                   className="select-input"
-                  value={newOwner}
+                  value={activeSprint === "backlog" ? "Unassigned" : newOwner}
                   onChange={(e) => setNewOwner(e.target.value as PlanOwner)}
-                  disabled={activeSprint === "all"}
+                  disabled={activeSprint === "all" || activeSprint === "backlog"}
+                  title={
+                    activeSprint === "backlog"
+                      ? "Pick a sprint first — Backlog items stay Unassigned until moved into a sprint"
+                      : activeSprint === "all"
+                        ? "Pick a sprint above before adding"
+                        : undefined
+                  }
                 >
                   <option value="Unassigned">Unassigned</option>
                   <option value="Tina">Tina</option>
@@ -3071,7 +3565,7 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
                     : "Reset unavailable — nothing to clear"
                 }
               >
-                <RotateCcw size={14} /> Reset
+                <RotateCcw size={14} /> Re-Set
               </button>
             </div>
             {saveFlash && (
@@ -3096,6 +3590,7 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
               title="Bulk Edit"
               hint={`${selectedKeys.size} selected · Apply stages; Save / Save all persists`}
               testId="schedule-filter-bulk-edit"
+              defaultOpen
             >
             <div
               style={{
@@ -3266,9 +3761,13 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
               const statusVal = cardStatusValue(card);
               const sprintVal = cardSprintValue(card);
               const assigneeVal = cardAssigneeValue(card);
+              const assigneeFilterVal = cardAssigneeFilterValue(card);
               const assignByVal = cardAssignByValue(card);
               const noteVal = cardNoteValue(card);
+              const dueVal = cardDueDateValue(card);
               const showAssignBy = card.source === "task" || card.source === "test";
+              const noteRequired =
+                card.source === "test" && statusRequiresNote(statusVal as TestStatus);
               const cardLocked =
                 isSprintLocked(closedSprints, card.sprint) ||
                 isSprintLocked(closedSprints, sprintVal);
@@ -3364,14 +3863,20 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
                       <span
                         style={{
                           fontSize: "0.9375rem",
-                          color: card.owner === "Unassigned" ? "#9B2F28" : "var(--text-muted)",
-                          fontWeight: card.owner === "Unassigned" ? 700 : 500,
+                          color:
+                            assigneeFilterVal === "Unassigned" || !assigneeFilterVal
+                              ? "#9B2F28"
+                              : "var(--text-muted)",
+                          fontWeight:
+                            assigneeFilterVal === "Unassigned" || !assigneeFilterVal
+                              ? 700
+                              : 500,
                         }}
                       >
                         Assignee:{" "}
                         {isBacklogSprint(sprintVal)
                           ? "Unassigned"
-                          : assigneeDisplayLabel(assigneeVal || card.owner)}
+                          : assigneeDisplayLabel(assigneeFilterVal || "Unassigned")}
                       </span>
                       {showAssignBy && (
                         <span
@@ -3398,7 +3903,7 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
                         </span>
                       )}
                     </div>
-                    {card.notes && (
+                    {card.source === "plan" && card.notes && (
                       <p
                         style={{
                           margin: "6px 0 0",
@@ -3525,8 +4030,7 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
                           ))}
                       </label>
 
-                      {showAssignBy &&
-                        (isAdmin ? (
+                      {showAssignBy && (
                           <label
                             style={{
                               display: "grid",
@@ -3561,35 +4065,7 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
                               ))}
                             </select>
                           </label>
-                        ) : (
-                          <div
-                            style={{
-                              display: "grid",
-                              gridTemplateColumns: "88px minmax(0, 1fr)",
-                              gap: 10,
-                              alignItems: "center",
-                              fontSize: "0.9375rem",
-                              color: "var(--text-primary)",
-                              fontWeight: 600,
-                            }}
-                          >
-                            Assigned By
-                            <div
-                              className="text-input"
-                              style={{
-                                padding: "8px 12px",
-                                fontSize: "0.9375rem",
-                                fontWeight: 600,
-                                color: "var(--charcoal)",
-                                background: "transparent",
-                                border: "1px solid var(--border-color)",
-                              }}
-                              aria-label={`Assigned By for ${card.title}`}
-                            >
-                              {assignByVal || "—"}
-                            </div>
-                          </div>
-                        ))}
+                        )}
 
                       <label
                         style={{
@@ -3745,6 +4221,116 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
                           <Save size={14} /> Save
                         </button>
                       </label>
+
+                      <label
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "88px minmax(0, 1fr)",
+                          gap: 10,
+                          alignItems: "center",
+                          fontSize: "0.9375rem",
+                          color: "var(--text-primary)",
+                          fontWeight: 600,
+                        }}
+                      >
+                        Due
+                        <input
+                          className="text-input"
+                          type="date"
+                          style={{ width: "100%", minWidth: 0 }}
+                          value={mmddyyToIso(dueVal)}
+                          onChange={(e) => {
+                            const next = e.target.value
+                              ? isoToMmddyy(e.target.value) || ""
+                              : "";
+                            stageCardDraft(card, { dueDate: next });
+                          }}
+                          disabled={controlsDisabled || isBacklogSprint(sprintVal)}
+                          aria-label={`Due date for ${card.title}`}
+                          title={
+                            isBacklogSprint(sprintVal)
+                              ? "Backlog items have no due date until moved into a sprint"
+                              : undefined
+                          }
+                          data-testid={`sprint-card-due-${card.sourceId}`}
+                        />
+                      </label>
+
+                      {(card.source === "task" || card.source === "test") && (
+                        <div
+                          style={{ marginTop: 4 }}
+                          data-testid={`sprint-card-notes-${card.sourceId}`}
+                        >
+                          <NotesThread
+                            rawNotes={
+                              drafts[card.key]?.note !== undefined
+                                ? String(drafts[card.key]?.note ?? "")
+                                : cardStoredNotes(card)
+                            }
+                            actor={actingAssignBy}
+                            priorAttribution={priorNoteAttributionForCard(card)}
+                            editDrafts={editNoteDrafts[card.key]}
+                            newDraft={newNoteDrafts[card.key] ?? ""}
+                            onEditDraft={(noteId, text) =>
+                              setBoardEditNoteDraft(card.key, noteId, text)
+                            }
+                            onNewDraft={(text) => setBoardNewNoteDraft(card.key, text)}
+                            onDeleteNote={(noteId) =>
+                              setBoardEditNoteDraft(card.key, noteId, "")
+                            }
+                            disabled={controlsDisabled}
+                            label={
+                              cardNotesDirty(card.key, cardStoredNotes(card)) ||
+                              drafts[card.key]?.note !== undefined
+                                ? "Notes (unsaved)"
+                                : "Notes"
+                            }
+                            requiredHint={
+                              noteRequired
+                                ? "(required for Fail / Blocked)"
+                                : undefined
+                            }
+                            newPlaceholder={
+                              noteRequired
+                                ? "Required: what failed or what is blocking…"
+                                : "Add your note… (only you can edit or delete it)"
+                            }
+                            invalid={
+                              noteRequired &&
+                              !noteMeetsRequirement(composedNotesForCard(card))
+                            }
+                          />
+                        </div>
+                      )}
+                      {card.source === "plan" && (
+                        <label
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "88px minmax(0, 1fr)",
+                            gap: 10,
+                            alignItems: "start",
+                            fontSize: "0.9375rem",
+                            color: "var(--text-primary)",
+                            fontWeight: 600,
+                          }}
+                        >
+                          Notes
+                          <textarea
+                            className="text-input"
+                            rows={2}
+                            style={{ width: "100%", minWidth: 0, resize: "vertical" }}
+                            value={noteVal}
+                            onChange={(e) =>
+                              stageCardDraft(card, { note: e.target.value })
+                            }
+                            placeholder="Notes / description…"
+                            disabled={controlsDisabled}
+                            aria-label={`Notes for ${card.title}`}
+                            data-testid={`sprint-card-notes-${card.sourceId}`}
+                          />
+                        </label>
+                      )}
+
                       {(card.source === "test" || card.source === "task") && (
                         <div className="task-card-control task-card-control--timer" style={{ marginTop: 4 }}>
                           <span style={{ fontSize: "0.9375rem", fontWeight: 600 }}>Time</span>
@@ -3768,23 +4354,6 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
                     </div>
                   </div>
                 </div>
-                {card.source === "test" &&
-                  statusRequiresNote(statusVal as TestStatus) && (
-                    <div style={{ marginTop: 10 }}>
-                      <label className="form-label" htmlFor={`note-${card.sourceId}`}>
-                        Note (required for Fail / Blocked)
-                      </label>
-                      <textarea
-                        id={`note-${card.sourceId}`}
-                        className="text-input"
-                        rows={2}
-                        value={noteVal}
-                        onChange={(e) => patchDraft(card.key, { note: e.target.value })}
-                        placeholder="What failed or what is blocking…"
-                        disabled={controlsDisabled}
-                      />
-                    </div>
-                  )}
                 {card.source === "plan" &&
                   (() => {
                     const item = items.find((i) => i.id === card.sourceId);
@@ -3873,11 +4442,13 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
                 className="glass"
                 style={{ padding: 24, textAlign: "center", color: "var(--text-primary)" }}
               >
-                {activeSprint === "backlog"
-                  ? "Backlog is empty for this filter."
-                  : activeSprint === "all"
-                    ? "No sprint-assigned items for this filter."
-                    : "No items in this sprint for this filter — pull from the Backlog."}
+                {searchQuery.trim()
+                  ? `No cards match “${searchQuery.trim()}” with the current filters.`
+                  : activeSprint === "backlog"
+                    ? "Backlog is empty for this filter."
+                    : activeSprint === "all"
+                      ? "No sprint-assigned items for this filter."
+                      : "No items in this sprint for this filter — pull from the Backlog."}
               </div>
             )}
           </div>

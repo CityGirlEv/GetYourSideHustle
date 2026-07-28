@@ -2,7 +2,6 @@ import { useState } from "react";
 import {
   BadgeCheck,
   BookMarked,
-  ChevronDown,
   ChevronRight,
   Lock,
   LogIn,
@@ -78,7 +77,6 @@ function FreeKidsGuideCard({
         onClick={() => setStepsOpen((o) => !o)}
         aria-expanded={stepsOpen}
       >
-        {stepsOpen ? <ChevronDown size={16} aria-hidden /> : <ChevronRight size={16} aria-hidden />}
         {stepsOpen ? "Hide steps" : `Show ${visibleSteps.length} steps`}
       </button>
 
@@ -167,46 +165,82 @@ export function FreeGuidesPage({
             decoding="async"
           />
         </div>
-        <div className="free-guides-hero-copy glass">
-          <div className="free-guides-hero-intro">
-            <p>
-              Age-ready how-to playbooks for Kids, Teens, Adults, and Seniors. Browse free previews;
-              open a manual, or filter the library below.
-            </p>
-          </div>
-          <div className="free-guides-filters" role="tablist" aria-label="Filter guides" data-testid="free-guides-filters">
-            {FILTERS.map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                role="tab"
-                aria-selected={filter === f.id}
-                data-testid={`free-guides-filter-${f.id}`}
-                className={`glow-chip-btn free-guides-filter-btn${filter === f.id ? " is-active" : ""}${f.id === "free" ? " is-free-filter" : ""}`}
-                onClick={() => setFilter(f.id)}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-          {onOpenManual && manuals.length > 0 && (
-            <nav className="free-guides-hero-links" aria-label="Open GYSH manuals">
-              {manuals.map((g) => (
+        <div className="free-guides-hero-side">
+          <div className="free-guides-hero-copy glass">
+            {onGoToJoin && (
+              <div className="free-guides-perk-banner free-guides-perk-banner--panel" role="note">
                 <button
-                  key={g.id}
                   type="button"
-                  className={`free-guides-hero-link${g.id === "master" ? " is-master" : ""}`}
-                  onClick={() => onOpenManual(g.id)}
-                  data-testid={`hero-open-manual-${g.id}`}
+                  className="glow-badge free free-guides-perk-free-btn"
+                  onClick={() => onGoToJoin("adult")}
+                  data-testid="guides-free-membership-btn"
+                  aria-label="Go to membership — free plans available"
                 >
-                  <BookMarked size={16} aria-hidden />
-                  <span className="free-guides-hero-link__label">{g.menuLabel}</span>
-                  <ChevronRight size={16} className="free-guides-hero-link__chev" aria-hidden />
+                  Free
+                </button>
+                <div className="free-guides-perk-banner__copy">
+                  <strong>Free Membership Unlocks Perks</strong>
+                  <span>Join free for member guides &amp; saved progress.</span>
+                </div>
+              </div>
+            )}
+            <div className="free-guides-hero-intro">
+              <p>
+                Age-ready how-to playbooks for Kids, Teens, Adults, and Seniors. Browse free previews;
+                open a guide, or filter the library below.
+              </p>
+            </div>
+            <div
+              className="free-guides-filters"
+              role="tablist"
+              aria-label="Filter guides"
+              data-testid="free-guides-filters"
+            >
+              {FILTERS.map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={filter === f.id}
+                  data-testid={`free-guides-filter-${f.id}`}
+                  className={`glow-chip-btn free-guides-filter-btn${filter === f.id ? " is-active" : ""}${f.id === "free" ? " is-free-filter" : ""}`}
+                  onClick={() => setFilter(f.id)}
+                >
+                  {f.label}
                 </button>
               ))}
-            </nav>
-          )}
-          <div className="free-guides-hero-actions">
+            </div>
+            {onOpenManual && manuals.length > 0 && (
+              <nav className="free-guides-hero-links" aria-label="Open GYSH guides">
+                {manuals.map((g) => (
+                  <button
+                    key={g.id}
+                    type="button"
+                    className={`free-guides-hero-link${g.id === "master" ? " is-master" : ""}`}
+                    onClick={() => onOpenManual(g.id)}
+                    data-testid={`hero-open-manual-${g.id}`}
+                  >
+                    <BookMarked size={18} aria-hidden />
+                    <span className="free-guides-hero-link__text">
+                      <span className="free-guides-hero-link__label">{g.menuLabel}</span>
+                      <span className="free-guides-hero-link__meta">{g.audienceBadge}</span>
+                    </span>
+                    <ChevronRight size={16} className="free-guides-hero-link__chev" aria-hidden />
+                  </button>
+                ))}
+              </nav>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {(onGoToLogin || onGoToJoin) && (
+        <div className="free-guides-library-bar">
+          <p className="free-guides-library-bar__lead">
+            Browse launch playbooks below — free previews are open; open an audience guide above for
+            the full story.
+          </p>
+          <div className="free-guides-hero-actions free-guides-library-bar__actions">
             {onGoToLogin && (
               <button type="button" className="btn btn-outline" onClick={onGoToLogin}>
                 <LogIn size={16} /> Sign in
@@ -223,7 +257,7 @@ export function FreeGuidesPage({
             )}
           </div>
         </div>
-      </section>
+      )}
 
       {empty && (
         <div className="glass free-guides-empty">

@@ -18,6 +18,7 @@ import {
   Crosshair,
   Bot,
   BookMarked,
+  FileDown,
 } from "lucide-react";
 
 export interface Hustle {
@@ -45,6 +46,7 @@ const getIcon = (name: string) => {
     case "airbnb": return <Building2 size={20} />;
     case "pod": return <Printer size={20} />;
     case "dropshipping": return <ShoppingBag size={20} />;
+    case "digital-products": return <FileDown size={20} />;
     case "affiliate": return <LinkIcon size={20} />;
     case "amazon": return <Globe size={20} />;
     case "social": return <Users size={20} />;

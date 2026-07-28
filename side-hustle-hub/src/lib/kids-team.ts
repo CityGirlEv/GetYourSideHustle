@@ -78,7 +78,7 @@ export const KIDS_TEAM_JOIN: TeamJoinCopy = {
   ],
   ctaLabel: "Join Kids Corner GYSH Team",
   parentNote:
-    "Parents: this is a lightweight team join for Kids Corner content. You can also create a full GYSH account on the Join page for the adult portal.",
+    "Parents: through age 12, a parent/guardian must approve by email before the Kids team activates. You can also create a full GYSH family account on the Join page.",
 };
 
 export const JUNIOR_TEAM_JOIN: TeamJoinCopy = {
@@ -87,7 +87,7 @@ export const JUNIOR_TEAM_JOIN: TeamJoinCopy = {
   teamName: "GYSH Teens Side Hustle Team",
   headline: "Join the GYSH Teens Side Hustle Team",
   lead:
-    "Future CEO energy, parent-approved. Join the Teens Side Hustle Team for training, workshops, and guides that help you earn safely — while learning to give back, save, and reinvest like a real founder.",
+    "Future CEO energy. Join the Teens Side Hustle Team for training, workshops, and guides that help you earn safely — while learning to give back, save, and reinvest like a real founder. Ages 13+ — parental consent not required.",
   valuesTitle: "What every Teen teammate practices",
   values: [
     {
@@ -132,9 +132,9 @@ export const JUNIOR_TEAM_JOIN: TeamJoinCopy = {
       detail: "Free teasers for everyone — complete playbooks unlock for Teens Team members.",
     },
   ],
-  ctaLabel: "Join Teens",
+  ctaLabel: "Join Teens Side Hustle Team",
   parentNote:
-    "Parents/guardians: team join unlocks Teens guides in Kids Corner. A full GYSH member login also counts as membership across the site.",
+    "Ages 13+: you can join with your own email — parental consent is not required. Coaches nearby are still welcome for safety. A full GYSH member login also unlocks guides across the site.",
 };
 
 export function getTeamJoinCopy(audience: KidsAudience): TeamJoinCopy {

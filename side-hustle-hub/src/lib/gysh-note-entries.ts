@@ -35,9 +35,18 @@ export function authorsMatch(
   a: string | null | undefined,
   b: string | null | undefined,
 ): boolean {
-  return String(a ?? "")
-    .trim()
-    .toLowerCase() === String(b ?? "").trim().toLowerCase();
+  const left = String(a ?? "").trim().toLowerCase();
+  const right = String(b ?? "").trim().toLowerCase();
+  if (left === right) return true;
+  // Tina Marie Barham ≡ Tina (same for Evelyn / Lyriq full names).
+  const canon = (raw: string) => {
+    if (!raw) return "";
+    if (raw === "tina" || raw.startsWith("tina ")) return "tina";
+    if (raw === "evelyn" || raw.startsWith("evelyn ")) return "evelyn";
+    if (raw === "lyriq" || raw.startsWith("lyriq ")) return "lyriq";
+    return raw;
+  };
+  return canon(left) === canon(right) && canon(left) !== "";
 }
 
 export function isEpochNoteTime(iso: string | null | undefined): boolean {
@@ -246,9 +255,16 @@ export function mergeNoteEntries(
       continue;
     }
     const next = incomingById.get(prev.id);
-    if (!next) continue; // own note deleted
+    // Never drop prior entries — omit from incoming = keep unchanged; empty text = keep.
+    if (!next) {
+      result.push(prev);
+      continue;
+    }
     const text = String(next.text ?? "").trim();
-    if (!text) continue; // empty own note dropped
+    if (!text) {
+      result.push(prev);
+      continue;
+    }
     if (text === prev.text.trim()) {
       result.push(prev);
     } else {

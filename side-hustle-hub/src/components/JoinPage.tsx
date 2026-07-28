@@ -16,6 +16,9 @@ type JoinPageProps = {
   onBlueprintUnlocked?: (ageGroup: BlueprintAgeGroup) => void;
   /** Audience lane selected from the page that opened Join. */
   membershipAudience?: AudienceGroup | null;
+  /** Scroll to Free–Elite plans (in-page See Memberships CTAs only — not header/footer Join). */
+  scrollToPlans?: boolean;
+  onScrolledToPlans?: () => void;
 };
 
 export function JoinPage({
@@ -26,6 +29,8 @@ export function JoinPage({
   onOpenFreeGuides,
   onBlueprintUnlocked,
   membershipAudience = null,
+  scrollToPlans = false,
+  onScrolledToPlans,
 }: JoinPageProps) {
   return (
     <div className="join-page-combined" data-testid="join-page">
@@ -39,7 +44,7 @@ export function JoinPage({
         </h2>
         <p className="join-membership-lead">
           {membershipAudience
-            ? `Showing ${AUDIENCE_LABELS[membershipAudience]} membership options first — change the lane anytime below.`
+            ? `Showing ${AUDIENCE_LABELS[membershipAudience]} membership options first — change the lane under the picture anytime.`
             : "Pick the plan that fits your Side Hustle — Free through Elite — with audience options for Kids, Teens, Adults, and Seniors."}
         </p>
         <MembershipPage
@@ -47,6 +52,8 @@ export function JoinPage({
           onGoToLogin={onLogin}
           onOpenFreeGuides={onOpenFreeGuides}
           initialAudience={membershipAudience}
+          autoScrollToPlans={scrollToPlans}
+          onAutoScrolledToPlans={onScrolledToPlans}
         />
       </section>
 

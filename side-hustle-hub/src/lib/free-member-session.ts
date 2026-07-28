@@ -6,7 +6,7 @@ export const FREE_MEMBER_SESSION_KEY = "gysh_free_member_v1";
 
 export type FreeMemberSession = {
   version: 1;
-  /** Adult/Junior/Senior email, or parent email for Kids — never a child under 13. */
+  /** Adult/Teens/Senior email, or parent email for Kids — never a child under 13. */
   email: string;
   ageGroup: BlueprintAgeGroup;
   /** When ageGroup is kids, marks parent-owned family account. */
@@ -56,7 +56,10 @@ export function hasBlueprintAccess(options: {
   isLoggedIn?: boolean;
   ageGroup: BlueprintAgeGroup;
   hasTeamMembership?: boolean;
+  /** Profile Switcher → Unlogged in User: force locked Blueprint preview. */
+  previewAsGuest?: boolean;
 }): boolean {
+  if (options.previewAsGuest) return false;
   if (options.isLoggedIn) return true;
   if (hasFreeMemberSession()) return true;
   if (

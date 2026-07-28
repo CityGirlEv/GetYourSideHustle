@@ -91,6 +91,11 @@ export function normalizePath(pathname: string): string {
 export function parseAppRoute(pathname: string = typeof window !== "undefined" ? window.location.pathname : "/"): ParsedAppRoute {
   const path = normalizePath(pathname);
 
+  // /consent/<token> — parent approval deep link (handled in App via readConsentTokenFromUrl)
+  if (/^\/consent\/[a-f0-9]+$/.test(path)) {
+    return { view: "dashboard", guidesManualId: null };
+  }
+
   // /guides/adult | /guides/kids | …
   const guidesMatch = path.match(/^\/guides\/([a-z]+)$/);
   if (guidesMatch && GUIDE_MANUAL_SLUGS.has(guidesMatch[1])) {

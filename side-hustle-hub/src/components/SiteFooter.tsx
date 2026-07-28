@@ -4,7 +4,13 @@ import gyshLogo from "../assets/gysh-logo-rocket.png";
 import muntiesLogo from "../assets/munties-ai-agents-logo.png";
 import { FacebookIcon } from "./FacebookIcon";
 
-export type FooterNavView = "about" | "contact" | "join" | "login" | "community";
+export type FooterNavView =
+  | "about"
+  | "contact"
+  | "join"
+  | "memberships"
+  | "login"
+  | "community";
 
 type SiteFooterProps = {
   onNavigate: (view: FooterNavView) => void;
@@ -48,8 +54,13 @@ export function SiteFooter({ onNavigate }: SiteFooterProps) {
           <button type="button" className="site-footer-link" onClick={() => onNavigate("about")}>
             About
           </button>
-          <button type="button" className="site-footer-link" onClick={() => onNavigate("join")}>
-            Join
+          <button
+            type="button"
+            className="site-footer-link"
+            onClick={() => onNavigate("memberships")}
+            data-testid="footer-see-memberships"
+          >
+            See Memberships
           </button>
           <button type="button" className="site-footer-link" onClick={() => onNavigate("community")}>
             Community

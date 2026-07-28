@@ -4,6 +4,7 @@ import {
   assignedBySelectOptions,
   auditActorLabel,
   canSetTestBlocked,
+  canonicalizePartnerLabel,
   resolveTestAssignedMeta,
   taskAssignByForActor,
   todayMMDDYY,
@@ -35,11 +36,11 @@ describe("gysh-assignment", () => {
       isNewRow: false,
       prevAssignedBy: SYSTEM_ASSIGNED_BY,
       prevDateAssigned: "07/01/26",
-      actorLabel: "Evelyn Partner",
+      actorLabel: "Evelyn Irving",
       today: "07/19/26",
     });
     expect(meta).toEqual({
-      assignedBy: "Evelyn Partner",
+      assignedBy: "Evelyn",
       dateAssigned: "07/19/26",
     });
   });
@@ -49,9 +50,9 @@ describe("gysh-assignment", () => {
       prevAssignee: "evelyn",
       nextAssignee: "evelyn",
       isNewRow: false,
-      prevAssignedBy: "Tina",
+      prevAssignedBy: "Tina Marie Barham",
       prevDateAssigned: "07/10/26",
-      actorLabel: "Evelyn Partner",
+      actorLabel: "Evelyn Irving",
       today: "07/19/26",
     });
     expect(meta).toEqual({
@@ -80,9 +81,12 @@ describe("gysh-assignment", () => {
 
   it("uses name then email for audit actor labels", () => {
     expect(auditActorLabel({ name: "Tina", email: "tina@example.com" })).toBe("Tina");
-    expect(auditActorLabel({ name: "", email: "evelyn@example.com" })).toBe("evelyn@example.com");
+    expect(auditActorLabel({ name: "Tina Marie Barham", email: "tina@example.com" })).toBe("Tina");
+    expect(auditActorLabel({ name: "Evelyn Irving", email: "evelyn@example.com" })).toBe("Evelyn");
+    expect(auditActorLabel({ name: "", email: "evelyn@example.com" })).toBe("Evelyn");
     expect(auditActorLabel(null)).toBe(SYSTEM_ASSIGNED_BY);
     expect(taskAssignByForActor({ name: "Lyriq" })).toBe("Lyriq");
+    expect(canonicalizePartnerLabel("Tina Marie Barham")).toBe("Tina");
   });
 
   it("formats today as MM/DD/YY", () => {
@@ -90,12 +94,11 @@ describe("gysh-assignment", () => {
   });
 
   it("builds Assigned By select options with presets plus custom current values", () => {
-    expect(assignedBySelectOptions("Evelyn Partner", "System")).toEqual([
+    expect(assignedBySelectOptions("Tina Marie Barham", "Evelyn Irving", "System")).toEqual([
       SYSTEM_ASSIGNED_BY,
       "Tina",
       "Evelyn",
       "Lyriq",
-      "Evelyn Partner",
     ]);
   });
 

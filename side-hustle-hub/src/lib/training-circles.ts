@@ -112,8 +112,8 @@ export const TRAINING_CIRCLES: TrainingCircle[] = [
   },
   {
     id: "kids-glow",
-    name: "Kids Glow & Junior Earnings",
-    blurb: "Kevina Starr Stories + safe junior hustles — confidence first, then pocket money skills.",
+    name: "Kids Glow & Teen Earnings",
+    blurb: "Kevina Starr Stories + safe teen hustles — confidence first, then pocket money skills.",
     audience: "junior",
     level: "Beginner",
     icon: "🌟",

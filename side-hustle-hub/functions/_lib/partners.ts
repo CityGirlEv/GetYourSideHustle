@@ -33,7 +33,7 @@ export const PARTNER_ADMINS = [
     role: "admin" as const,
     roles: ["admin", "qa"] as GyshRole[],
     password: "Lyriq123",
-    notes: "Portal admin + QA — Testing Portal & schedule (Kids/Junior wizard matrix)",
+    notes: "Portal admin + QA — Testing Portal & schedule (Kids/Teens wizard matrix)",
     joinedAt: "2026-07-16",
   },
 ] as const;

@@ -10,7 +10,7 @@ export const FACEBOOK_HANDLE = "@getyoursidehustle";
 
 /** One-line site purpose for home and social CTAs */
 export const SITE_PURPOSE =
-  "Get Your Side Hustle helps families — kids, teens, adults, and seniors — find safe, age-appropriate Side Hustles and take the next learning and earning step together.";
+  "Get Your Side Hustle helps families — kids, teens, adults, and seniors — find safe, age-appropriate Side Hustles, and take the next learning and earning step together.";
 
 /** Resend verified sending host (DNS required). Prefer notify subdomain like Munties. */
 export const EMAIL_SENDER_DOMAIN = ROOT_DOMAIN;

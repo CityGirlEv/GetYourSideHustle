@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
 import { listRolloutScheduleSummary } from "../../lib/gysh-sprints";
+import { ShowHideChevron, ShowHideToggle } from "../ShowHideToggle";
 
 type RolloutScheduleSummaryProps = {
   className?: string;
@@ -26,17 +26,21 @@ export function RolloutScheduleSummary({
       className={`rollout-schedule${className ? ` ${className}` : ""}`}
       data-testid="rollout-schedule-summary"
     >
-      <button
-        type="button"
+      <div
         className="rollout-schedule__toggle"
-        onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         data-testid="rollout-schedule-toggle"
       >
-        {open ? <ChevronDown size={16} aria-hidden /> : <ChevronRight size={16} aria-hidden />}
+        <ShowHideChevron open={open} />
         <span className="rollout-schedule__title">Rollout schedule</span>
         {!open && <span className="rollout-schedule__lede">{LEDE}</span>}
-      </button>
+        <ShowHideToggle
+          open={open}
+          onOpenChange={setOpen}
+          label="Rollout schedule"
+          testId="rollout-schedule-show-hide"
+        />
+      </div>
       {open && (
         <>
           <p className="rollout-schedule__lede rollout-schedule__lede--open">{LEDE}</p>

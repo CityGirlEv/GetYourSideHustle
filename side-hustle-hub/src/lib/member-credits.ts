@@ -45,6 +45,8 @@ export function normalizeTierId(raw: string | null | undefined): TierId {
 
 export function normalizeAudience(raw: string | null | undefined): AudienceGroup {
   const a = String(raw || "adult").toLowerCase();
+  // User-facing label is Teens; stored audience id remains "junior".
+  if (a === "teen" || a === "teens") return "junior";
   return (AUDIENCES.has(a) ? a : "adult") as AudienceGroup;
 }
 

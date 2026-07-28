@@ -65,10 +65,14 @@ export type ProgressSprintFilter = number | "backlog";
 export type ProgressStatusFilter =
   | "not_started"
   | "in_progress"
+  | "rolled_over"
   | "done"
   | "conditional_approval"
   | "fail"
-  | "blocked";
+  | "blocked"
+  | "fixed_retest"
+  | "failed_retest"
+  | "fixed_cursor";
 
 export type ProgressSortBy = "id" | "sprint" | "status";
 
@@ -91,6 +95,12 @@ export const PROGRESS_STATUS_FILTERS: {
     testStatuses: ["in_progress"],
   },
   {
+    id: "rolled_over",
+    label: "Rolled Over",
+    taskStatuses: [],
+    testStatuses: ["rolled_over"],
+  },
+  {
     id: "done",
     label: "Done/Pass",
     taskStatuses: ["done"],
@@ -98,7 +108,7 @@ export const PROGRESS_STATUS_FILTERS: {
   },
   {
     id: "conditional_approval",
-    label: "Conditional Approval",
+    label: "Conditional Pass",
     taskStatuses: [],
     testStatuses: ["conditional_approval"],
   },
@@ -113,6 +123,24 @@ export const PROGRESS_STATUS_FILTERS: {
     label: "Blocked",
     taskStatuses: ["blocked"],
     testStatuses: ["blocked"],
+  },
+  {
+    id: "fixed_retest",
+    label: "Fixed/Re-Test",
+    taskStatuses: [],
+    testStatuses: ["fixed_retest"],
+  },
+  {
+    id: "failed_retest",
+    label: "Failed/Re-Test",
+    taskStatuses: [],
+    testStatuses: ["failed_retest"],
+  },
+  {
+    id: "fixed_cursor",
+    label: "Fixed/Cursor",
+    taskStatuses: [],
+    testStatuses: ["fixed_cursor"],
   },
 ];
 
@@ -130,12 +158,16 @@ const TASK_STATUS_SORT: Record<string, number> = {
 };
 
 const TEST_STATUS_SORT: Record<string, number> = {
-  in_progress: 0,
-  not_run: 1,
-  fail: 2,
-  blocked: 3,
-  conditional_approval: 4,
-  pass: 5,
+  rolled_over: 0,
+  in_progress: 1,
+  fixed_retest: 2,
+  failed_retest: 3,
+  fixed_cursor: 4,
+  not_run: 5,
+  fail: 6,
+  blocked: 7,
+  conditional_approval: 8,
+  pass: 9,
 };
 
 export type DailyProgressReport = {
@@ -346,6 +378,28 @@ function resolveTestAssigneeDisplay(
   return humans.map((h) => testOwnerLabel(h)).join(" + ");
 }
 
+/**
+ * Who actually touched the test today (updated_by). Cursor/system updates assigned
+ * to Lyriq must not look like Lyriq worked them for Daily Progress.
+ */
+export function resolveTestActivityPerson(
+  id: string,
+  testPayload: TestStatusesPayload,
+  caseById: Map<string, ProgressTestCaseRef>,
+): string {
+  const by = String(testPayload.updatedBy?.[id] ?? "").trim();
+  if (by) {
+    if (/^cursor$/i.test(by) || /^system$/i.test(by)) return "Cursor";
+    const asOwner = normalizeProgressAssignee(by);
+    if (asOwner !== "Unassigned" && asOwner !== by) return asOwner;
+    if (/lyriq/i.test(by)) return "Lyriq";
+    if (/tina/i.test(by)) return "Tina";
+    if (/evelyn/i.test(by)) return "Evelyn";
+    return by;
+  }
+  return resolveTestAssigneeDisplay(id, testPayload, caseById);
+}
+
 function timeEntryMatchesPeople(
   entry: TimeEntry,
   people: readonly ProgressReportPerson[],
@@ -502,8 +556,12 @@ export function buildDailyProgressReport(input: {
     const day = localDayFromIsoTimestamp(testPayload.updatedAt?.[id]);
     if (!dayInRange(day, from, to)) continue;
     const status = (testPayload.statuses?.[id] ?? "not_run") as TestStatus;
+    const activityPerson = resolveTestActivityPerson(id, testPayload, caseById);
+    // Person filter = who updated the row (not merely current assignee).
+    if (!assigneeMatchesPeople(activityPerson, people)) continue;
+    // Hide pure system/Cursor churn from partner daily lists unless explicitly filtered.
+    if (activityPerson === "Cursor" && people.length > 0) continue;
     const assignee = resolveTestAssigneeDisplay(id, testPayload, caseById);
-    if (!assigneeMatchesPeople(assignee, people)) continue;
     const sprint = resolveTestSprint(id, testPayload);
     if (!sprintMatchesFilters(sprint, sprints)) continue;
     if (!statusMatchesFilters("test", status, statuses)) continue;
@@ -512,7 +570,7 @@ export function buildDailyProgressReport(input: {
       title: titleById.get(id) ?? id,
       status,
       statusLabel: STATUS_LABELS[status] ?? status,
-      assignee,
+      assignee: activityPerson === assignee ? assignee : `${activityPerson} → ${assignee}`,
       when: formatWhen(day),
       sprint,
       sprintLabel: sprintLabel(sprint),

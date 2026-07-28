@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
 import { fetchAgilePlan } from "../../lib/gysh-agile-plan";
 import { fetchTasks } from "../../lib/gysh-tasks";
 import {
@@ -25,6 +24,7 @@ import {
   type WorkBreakdown,
 } from "../../lib/sprint-progress";
 import { WaitIndicator } from "../WaitFeedback";
+import { ShowHideChevron, ShowHideToggle } from "../ShowHideToggle";
 import { RolloutScheduleSummary } from "./RolloutScheduleSummary";
 
 const ALL_TESTS = [
@@ -190,14 +190,12 @@ export function SprintStatusBars({
       data-testid="sprint-status-bars"
     >
       <div className="sprint-status-bars__top">
-        <button
-          type="button"
+        <div
           className="sprint-status-bars__toggle"
-          onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
           data-testid="sprint-status-toggle"
         >
-          {open ? <ChevronDown size={16} aria-hidden /> : <ChevronRight size={16} aria-hidden />}
+          <ShowHideChevron open={open} />
           <span className="sprint-status-bars__title">Sprint Progress</span>
           {!open && <span className="sprint-status-bars__hint">{hint}</span>}
           {open && filterable && (
@@ -205,7 +203,13 @@ export function SprintStatusBars({
               Click a sprint name to filter
             </span>
           )}
-        </button>
+          <ShowHideToggle
+            open={open}
+            onOpenChange={setOpen}
+            label="Sprint Progress"
+            testId="sprint-status-show-hide"
+          />
+        </div>
         {open && (
           <>
             {error && <p className="sprint-status-bars__error">{error}</p>}

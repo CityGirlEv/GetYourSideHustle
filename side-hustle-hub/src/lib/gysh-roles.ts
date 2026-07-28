@@ -103,8 +103,12 @@ export function canAccessAdminPortal(
 /** Human QA testers — Manual suite only (clickable bubbles). */
 export type QaTesterId = "tina" | "evelyn" | "lyriq";
 
-/** Failed / newly created Testing Portal cases are assigned to Evelyn (not Lyriq). */
+/** Default Dev when a test is Failed (Lead Developer). */
 export const FAILED_TEST_ASSIGNEE: QaTesterId = "evelyn";
+
+/** Lead Developer — owns failed tests until Fixed/Re-Test or Failed/Re-Test. */
+export const LEAD_DEVELOPER_ASSIGNEE: QaTesterId = FAILED_TEST_ASSIGNEE;
+export const LEAD_DEVELOPER_LABEL = "Evelyn (Lead Developer)";
 
 /** Default human owner when a new test case is created. */
 export const NEW_TEST_ASSIGNEE: QaTesterId = "evelyn";
@@ -150,6 +154,55 @@ export const QA_TESTERS: QaTester[] = [
   },
 ];
 
+/** Map a Users Area person to a Testing Portal assignee id (tina / evelyn / lyriq). */
+export function qaTesterIdForUser(u: {
+  name?: string;
+  email?: string;
+}): QaTesterId | null {
+  const name = String(u.name || "")
+    .trim()
+    .toLowerCase();
+  const email = String(u.email || "")
+    .trim()
+    .toLowerCase();
+  for (const t of QA_TESTERS) {
+    const short = t.shortName.toLowerCase();
+    if (name === short || name.startsWith(`${short} `) || name === t.name.toLowerCase()) {
+      return t.id;
+    }
+  }
+  if (email.includes("evelyn") || email.includes("evvelyn")) return "evelyn";
+  if (email.includes("tina")) return "tina";
+  if (email.includes("lyriq") || email.includes("gaulden") || email.includes("leegaulden")) {
+    return "lyriq";
+  }
+  return null;
+}
+
+/**
+ * Active Users Area accounts with the Dev role, mapped to Testing Portal assignee ids.
+ * Used for the Fail → Dev Assignee dropdown (Dev-only).
+ */
+export function devAssigneesFromUsers(users: readonly GyshUser[]): QaTester[] {
+  const seen = new Set<QaTesterId>();
+  const out: QaTester[] = [];
+  for (const u of users) {
+    if (u.status !== "active") continue;
+    if (!userHasRole(u, "dev")) continue;
+    const id = qaTesterIdForUser(u);
+    if (!id || seen.has(id)) continue;
+    const base = QA_TESTERS.find((t) => t.id === id);
+    if (!base) continue;
+    seen.add(id);
+    out.push(base);
+  }
+  if (out.length === 0) {
+    const lead = QA_TESTERS.find((t) => t.id === FAILED_TEST_ASSIGNEE);
+    if (lead) out.push(lead);
+  }
+  return out;
+}
+
 /** System owners for automated suites — status tracked under these, not human testers. */
 export const AUTOMATED_SUITE_OWNERS: AutomatedSuiteOwner[] = [
   {
@@ -166,10 +219,21 @@ export const AUTOMATED_SUITE_OWNERS: AutomatedSuiteOwner[] = [
   },
 ];
 
-export const HUMAN_QA_TESTER_IDS: QaTesterId[] = QA_TESTERS.map((t) => t.id);
+export const HUMAN_QA_TESTER_IDS: readonly QaTesterId[] = QA_TESTERS.map((t) => t.id);
+
+export function isHumanQaTesterId(raw: string | null | undefined): raw is QaTesterId {
+  return HUMAN_QA_TESTER_IDS.includes(String(raw || "").trim().toLowerCase() as QaTesterId);
+}
 
 export function isHumanQaTester(id: string): id is QaTesterId {
-  return HUMAN_QA_TESTER_IDS.includes(id as QaTesterId);
+  return HUMAN_QA_TESTER_IDS.includes(String(id || "").trim().toLowerCase() as QaTesterId);
+}
+
+/** Normalize a stored Testing Portal assignee to a canonical lowercase id (or ""). */
+export function normalizeQaAssigneeId(raw: string | null | undefined): string {
+  return String(raw || "")
+    .trim()
+    .toLowerCase();
 }
 
 export function isAutomatedSuiteOwner(id: string): id is AutomatedSuiteOwnerId {

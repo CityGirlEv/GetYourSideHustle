@@ -21,6 +21,8 @@
     "db:seed": "node --use-system-ca scripts/seed-d1.mjs",
     "db:seed:local": "node --use-system-ca scripts/seed-d1.mjs --local",
     "db:setup:local": "npm run db:migrate:local && npm run db:seed:local",
+    "db:sync-test-statuses": "node --use-system-ca scripts/sync-test-statuses-from-remote.mjs",
+    "db:sync-from-prod": "node --use-system-ca scripts/sync-test-statuses-from-remote.mjs",
     "deploy:pages": "node --use-system-ca scripts/deploy-pages.mjs",
     "domains:attach": "node --use-system-ca scripts/attach-pages-domains.mjs"
   },

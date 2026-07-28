@@ -39,6 +39,8 @@ describe("member-credits helpers", () => {
     expect(normalizeTierId("PRO")).toBe("pro");
     expect(normalizeTierId("mystery")).toBe("free");
     expect(normalizeAudience("Junior")).toBe("junior");
+    expect(normalizeAudience("Teens")).toBe("junior");
+    expect(normalizeAudience("teen")).toBe("junior");
     expect(normalizeAudience("")).toBe("adult");
   });
 

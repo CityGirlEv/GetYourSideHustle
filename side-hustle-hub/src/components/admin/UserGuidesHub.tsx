@@ -3,23 +3,21 @@ import { MemberUserGuide } from "./MemberUserGuide";
 import { AdminUserGuide } from "./AdminUserGuide";
 import { MarketingManual } from "../MarketingManual";
 import { MARKETING_GUIDE_MENU, type MarketingGuideId } from "../../lib/marketing-guides";
+import { ADMIN_USER_GUIDE_LINKS, type UserGuideId } from "../../lib/admin-nav";
 
-export type UserGuideId = "member" | "admin" | MarketingGuideId;
+export type { UserGuideId };
 
 type UserGuidesHubProps = {
   activeGuide: UserGuideId;
   onGuideChange: (guide: UserGuideId) => void;
 };
 
-const TABS: { id: UserGuideId; label: string; icon: "book" | "shield" | "spark" }[] = [
-  { id: "master", label: "Complete Guide", icon: "spark" },
-  { id: "adult", label: "Adult Manual", icon: "book" },
-  { id: "kids", label: "Kids Manual", icon: "book" },
-  { id: "teens", label: "Teens Manual", icon: "book" },
-  { id: "seniors", label: "Seniors Manual", icon: "book" },
-  { id: "member", label: "Member Tour", icon: "book" },
-  { id: "admin", label: "Admin User Guide", icon: "shield" },
-];
+const TABS: { id: UserGuideId; label: string; icon: "book" | "shield" | "spark" }[] =
+  ADMIN_USER_GUIDE_LINKS.map((g) => ({
+    id: g.id,
+    label: g.label,
+    icon: g.id === "admin" ? "shield" : g.id === "master" ? "spark" : "book",
+  }));
 
 export function UserGuidesHub({ activeGuide, onGuideChange }: UserGuidesHubProps) {
   const marketingIds = new Set(MARKETING_GUIDE_MENU.map((g) => g.id));

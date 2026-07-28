@@ -2,26 +2,18 @@
  * Defaults for newly created test cases (mirrors src/lib/gysh-new-test-defaults.ts).
  * General → Backlog + Unassigned.
  * KevinaStarr Kids / Youth → Tina, current (or next) sprint, due = creation + 1 day.
- * Sprint 0 task-matched catalog ids → Sprint 0 (rare on create; never otherwise).
+ * Former Sprint 0 task-matched catalog ids are no longer pinned (Sprint 0 closed).
  */
 
 import {
   BACKLOG_SPRINT,
   DEFAULT_SPRINT_COUNT,
   currentSprintIndex,
-  dueDateForSprint,
   getSprintWindow,
 } from "./sprints";
 
-/** Keep in sync with src/lib/gysh-sprint-board.ts TEST_SPRINT_0_TASK_MATCH. */
-const TEST_SPRINT_0_TASK_MATCH = new Set([
-  "EMAIL-001",
-  "EMAIL-005",
-  "BRAND-001",
-  "ABOUT-001",
-  "ADMIN-003",
-  "KIDS-001",
-]);
+/** Keep in sync with src/lib/gysh-sprint-board.ts TEST_SPRINT_0_TASK_MATCH (empty). */
+const TEST_SPRINT_0_TASK_MATCH = new Set<string>([]);
 
 export type NewTestDefaultInput = {
   id?: string;
@@ -101,10 +93,7 @@ function dueDatePlusDays(days: number, ref: Date = new Date()): string {
   return `${mm}/${dd}/${yy}`;
 }
 
-/**
- * Never Sprint 0 for generic Kids/Youth creates — S0 task-matched ids are handled
- * in defaultsForNewTest first.
- */
+/** Never Sprint 0 for Kids/Youth creates. */
 export function sprintForNewKidsYouthTest(ref: Date = new Date()): number {
   let sprint = currentSprintIndex(ref);
   if (daysUntilSprintEnd(ref) <= 1) {
@@ -119,11 +108,12 @@ export function defaultsForNewTest(
   ref: Date = new Date(),
 ): NewTestDefaults {
   const id = String(input.id ?? "").toUpperCase();
+  // Reserved: only if TEST_SPRINT_0_TASK_MATCH is re-populated (currently empty).
   if (id && TEST_SPRINT_0_TASK_MATCH.has(id)) {
     return {
       sprint: 0,
       assignee: isKevinaKidsYouthTest(input) ? "tina" : "",
-      dueDate: dueDateForSprint(0),
+      dueDate: "",
     };
   }
   if (isKevinaKidsYouthTest(input)) {

@@ -97,6 +97,12 @@ describe("admin act-as profiles", () => {
     writeActAsTarget({ type: "audience", audience: "senior" });
     expect(actAsAudience(readActAsTarget())).toBe("senior");
     expect(actAsLabel(readActAsTarget())).toContain("Senior");
+    writeActAsTarget({ type: "guest" });
+    expect(actAsAudience(readActAsTarget())).toBe("guest");
+    expect(actAsLabel(readActAsTarget())).toContain("Unlogged");
+    expect(hasBlueprintAccess({ ageGroup: "adult", isLoggedIn: true, previewAsGuest: true })).toBe(
+      false,
+    );
     writeActAsTarget({ type: "self" });
     expect(actAsAudience(readActAsTarget())).toBe("admin");
   });

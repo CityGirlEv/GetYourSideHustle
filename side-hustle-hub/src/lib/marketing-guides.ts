@@ -1,5 +1,5 @@
 /**
- * GYSH marketing manuals — Adult, Kids, Teens, Seniors, and Complete Master.
+ * GYSH audience guides — Adult, Kids, Teens, Seniors, and Complete Master.
  * Shared by the online Guides viewer and downloadable PDF editions.
  */
 
@@ -42,7 +42,7 @@ export type MarketingSection = {
   callout?: { title: string; body: string };
   cta?: { headline: string; body: string; bullets: string[] };
   /** Optional chapter image key resolved by the viewer / PDF */
-  imageKey?: "hero" | "secondary" | "membership" | "community";
+  imageKey?: "hero" | "secondary" | "membership" | "community" | "guides";
 };
 
 export type MarketingGuideDoc = {
@@ -68,11 +68,11 @@ function priceLineFor(audience: MemberPerkAudience, tierId: TierId): string {
   if (audience === "senior") {
     const m = tier.priceMonthlyUsdSenior ?? tier.priceMonthlyUsd ?? 0;
     const y = tier.priceYearlyUsdSenior ?? tier.priceYearlyUsd;
-    return y != null ? `$${m}/mo · $${y}/yr` : `$${m}/mo`;
+    return y != null ? `$${m}/mo · $${y}/yr (save 2 months)` : `$${m}/mo`;
   }
   const m = tier.priceMonthlyUsd ?? 0;
   const y = tier.priceYearlyUsd;
-  return y != null ? `$${m}/mo · $${y}/yr` : `$${m}/mo`;
+  return y != null ? `$${m}/mo · $${y}/yr (save 2 months)` : `$${m}/mo`;
 }
 
 function perkTiersFor(audience: MemberPerkAudience): MarketingPerkTier[] {
@@ -107,12 +107,12 @@ function buildAdultGuide(): MarketingGuideDoc {
   const launchSample = LAUNCH_GUIDES.slice(0, 8);
   return {
     id: "adult",
-    menuLabel: "Adult Manual",
-    eyebrow: "GYSH Adult Marketing Manual",
+    menuLabel: "Adult Guide",
+    eyebrow: "GYSH Adult Guide",
     title: "Launch your Side Hustle with confidence",
     lead:
       "A polished field guide for adults 18–54 — Match Wizard, Side Hustle Blueprint, launch playbooks, Workshops, and membership perks that turn curiosity into cash-flow.",
-    filename: "GYSH-Adult-Marketing-Manual.pdf",
+    filename: "GYSH-Adult-Guide.pdf",
     audienceBadge: "Ages 18–54 · Side Hustlers & families",
     tagline: "Budget · Hours · Strengths · Goals → ranked matches you can actually start",
     sections: [
@@ -121,10 +121,9 @@ function buildAdultGuide(): MarketingGuideDoc {
         number: "1",
         title: "Welcome to Get Your Side Hustle",
         kind: "prose",
-        imageKey: "hero",
         prose: [
-          "Get Your Side Hustle (GYSH) is the family Side Hustle platform built by T + E — practical, age-appropriate, and designed so matches feel doable, not generic.",
-          "This Adult Manual is your showcase piece: how the product works, why members stay, and the exact path from first question to first win.",
+          "Get Your Side Hustle (GYSH) is the family Side Hustle platform built by Muntie's AI Agents — practical, age-appropriate, and designed so matches feel doable, not generic.",
+          "This Adult Guide is your showcase piece: how the product works, why members stay, and the exact path from first question to first win.",
         ],
         callout: {
           title: "Who this is for",
@@ -253,12 +252,12 @@ function buildKidsGuide(): MarketingGuideDoc {
   const kidsGuides = guidesForAudience("kids");
   return {
     id: "kids",
-    menuLabel: "Kids Manual",
-    eyebrow: "GYSH Kids Marketing Manual",
+    menuLabel: "Kids Guide",
+    eyebrow: "GYSH Kids Guide",
     title: "Safe first Side Hustles for kids — with GYSH Coaches",
     lead:
       "A parent-friendly showcase for ages 4–12: Match Wizard bands, Kids Corner stories, Piggy Bank goals, free + member guides, and membership perks that keep hustles kind, coached, and fun.",
-    filename: "GYSH-Kids-Marketing-Manual.pdf",
+    filename: "GYSH-Kids-Guide.pdf",
     audienceBadge: "Ages 4–12 · Parents as GYSH Coaches",
     tagline: "Cheer · Boundaries · Safe first wins · Parental consent through age 12",
     sections: [
@@ -270,7 +269,7 @@ function buildKidsGuide(): MarketingGuideDoc {
         imageKey: "hero",
         prose: [
           "Kids don’t need a mini MBA — they need safe, age-appropriate questions, a parent nearby, and small wins that teach earning, saving, and kindness.",
-          "In GYSH, parents become GYSH Coaches: cheer, set boundaries, and help turn ideas into first wins. Parental consent is required through age 12.",
+          "In GYSH, parents become GYSH Coaches: cheer, set boundaries, and help turn ideas into first wins. Parental consent is required through age 12 — not required for ages 13+.",
         ],
         callout: {
           title: "Coach mindset",
@@ -382,12 +381,12 @@ function buildTeensGuide(): MarketingGuideDoc {
   const juniorGuides = guidesForAudience("junior");
   return {
     id: "teens",
-    menuLabel: "Teens Manual",
-    eyebrow: "GYSH Teens Marketing Manual",
+    menuLabel: "Teens Guide",
+    eyebrow: "GYSH Teens Guide",
     title: "Teen Side Hustles that scale with skill",
     lead:
       "For ages 13–17: Match Wizard bands for 13–14 and 15–17, My Bank goals, AI game & content starters (with guardian OK), and membership perks that treat teens like emerging CEOs — responsibly.",
-    filename: "GYSH-Teens-Marketing-Manual.pdf",
+    filename: "GYSH-Teens-Guide.pdf",
     audienceBadge: "Ages 13–17 · Parent / guardian aware",
     tagline: "Skills · Safe earning · Save · Reinvest · Give back",
     sections: [
@@ -399,7 +398,7 @@ function buildTeensGuide(): MarketingGuideDoc {
         imageKey: "hero",
         prose: [
           "Teens aren’t little kids — and they aren’t full adults yet. GYSH Teens mode scales questions, hustle ideas, and money tools so middle and older teens can practice entrepreneurship with parents still in the loop.",
-          "This manual is the showcase for schools, families, and coaches who want a clean story: Match → Skills → Bank → Guides → Membership.",
+          "This guide is the showcase for schools, families, and coaches who want a clean story: Match → Skills → Bank → Guides → Membership.",
         ],
         callout: {
           title: "Guardian role",
@@ -508,12 +507,12 @@ function buildTeensGuide(): MarketingGuideDoc {
 function buildSeniorsGuide(): MarketingGuideDoc {
   return {
     id: "seniors",
-    menuLabel: "Seniors Manual",
-    eyebrow: "GYSH Seniors Marketing Manual",
+    menuLabel: "Seniors Guide",
+    eyebrow: "GYSH Seniors Guide",
     title: "A second chapter that fits your pace",
     lead:
       "For ages 55+: flexible Match Wizard pacing, purpose-forward opportunities, senior guide teasers, and intentionally lower membership pricing — built for experience, not grind culture.",
-    filename: "GYSH-Seniors-Marketing-Manual.pdf",
+    filename: "GYSH-Seniors-Guide.pdf",
     audienceBadge: "Ages 55+ · Retirees & flexible schedules",
     tagline: SENIOR_INTRO.headline,
     sections: [
@@ -522,15 +521,10 @@ function buildSeniorsGuide(): MarketingGuideDoc {
         number: "1",
         title: "Welcome to the senior lane",
         kind: "prose",
-        imageKey: "hero",
         prose: [
           SENIOR_INTRO.lead,
           SENIOR_INTRO.partnership,
         ],
-        callout: {
-          title: "No hustle-bro energy",
-          body: "GYSH Seniors favors flexible hours, trusted skills, and gentle tech adoption — consulting, tutoring, crafts, co-hosting, peer AI help, and more.",
-        },
       },
       {
         id: "promise",
@@ -682,7 +676,7 @@ function buildMasterGuide(): MarketingGuideDoc {
         "Home & GYSH Match Wizard — pick Kids, Teens, Adults, or Seniors.",
         "Kids/Teens Corner — stories, ideas, banks, guides, join team.",
         "Seniors Corner — flexible opportunities and senior pricing.",
-        "Guides — launch playbooks + these downloadable manuals.",
+        "Guides — launch playbooks + these downloadable audience guides.",
         "Workshops · Community · Join · About · Contact.",
         "Admin Studio (partners) — schedule, tasks, QA, users, content, financials.",
       ]),
@@ -728,12 +722,12 @@ function buildMasterGuide(): MarketingGuideDoc {
       imageKey: "community",
       cta: {
         headline: "Download this Complete Guide. Hand it to a family. Start a Match Wizard night.",
-        body: "GYSH is built to be shown — at kitchen tables, senior centers, classrooms, and coaching calls. Use each audience manual alone, or this Complete Guide when you want the whole story.",
+        body: "GYSH is built to be shown — at kitchen tables, senior centers, classrooms, and coaching calls. Use each audience guide alone, or this Complete Guide when you want the whole story.",
         bullets: [
-          "Adult Manual · Kids Manual · Teens Manual · Seniors Manual",
+          "Adult Guide · Kids Guide · Teens Guide · Seniors Guide",
           "Complete Guide (this document) for partners & showcases",
           "Always live at getyoursidehustle.com",
-          "Questions? Contact Us — T + E read every note",
+          "Questions? Contact Us — we read every note",
         ],
       },
     },
@@ -747,13 +741,13 @@ function buildMasterGuide(): MarketingGuideDoc {
   return {
     id: "master",
     menuLabel: "Complete Guide",
-    eyebrow: "GYSH Complete Marketing Manual",
+    eyebrow: "GYSH Complete Guide",
     title: "Four GYSH Match Wizards. One Family Adventure.",
     lead:
       "The master showcase: Adults, Kids, Teens, and Seniors — Match Wizards, Guides, membership perks, and the full path from first question to first win.",
-    filename: "GYSH-Complete-Marketing-Manual.pdf",
+    filename: "GYSH-Complete-Guide.pdf",
     audienceBadge: "All ages · Partners · Families · Coaches",
-    tagline: "The whole GYSH story in one beautifully downloadable manual",
+    tagline: "The whole GYSH story in one beautifully downloadable guide",
     sections,
   };
 }
@@ -767,10 +761,10 @@ export const MARKETING_GUIDES: MarketingGuideDoc[] = [
 ];
 
 export const MARKETING_GUIDE_MENU: { id: MarketingGuideId; label: string }[] = [
-  { id: "adult", label: "Adult Manual" },
-  { id: "kids", label: "Kids Manual" },
-  { id: "teens", label: "Teens Manual" },
-  { id: "seniors", label: "Seniors Manual" },
+  { id: "adult", label: "Adult Guide" },
+  { id: "kids", label: "Kids Guide" },
+  { id: "teens", label: "Teens Guide" },
+  { id: "seniors", label: "Seniors Guide" },
   { id: "master", label: "Complete Guide" },
 ];
 

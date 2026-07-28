@@ -1,4 +1,28 @@
-/** GYSH public + admin site map — hierarchical menus / submenus for Tree + Diagram views. */
+/**
+ * GYSH public + admin site map — Tree + Diagram views.
+ *
+ * Admin groups/tabs and User Guides are built from `admin-nav.ts`.
+ * Guides menu from `marketing-guides.ts`.
+ * Kids / Teens / Seniors tabs from `audience-nav.ts`.
+ * Keep those modules as the source of truth so the diagram stays current.
+ */
+import {
+  ADMIN_MENU_GROUPS,
+  ADMIN_TABS,
+  ADMIN_USER_GUIDE_LINKS,
+  adminGuideSiteMapId,
+  adminTabById,
+  adminTabSiteMapId,
+  type AdminTab,
+  type UserGuideId,
+} from "./admin-nav";
+import {
+  JUNIOR_CORNER_TABS,
+  KIDS_CORNER_TABS,
+  MATCH_WIZARD_AGES,
+  SENIOR_CORNER_TABS,
+} from "./audience-nav";
+import { MARKETING_GUIDE_MENU } from "./marketing-guides";
 
 export type SiteMapNode = {
   id: string;
@@ -9,195 +33,146 @@ export type SiteMapNode = {
   children?: SiteMapNode[];
 };
 
-/** Public site: Home at the root, then header menus and their submenus. */
-export const GYSH_PUBLIC_MAP: SiteMapNode = {
-  id: "home",
-  label: "Home",
-  kind: "page",
-  blurb: "Family start · hustle catalog · Match Wizard night",
-  children: [
-    {
-      id: "nav-match",
-      label: "GYSH Match Wizard",
-      kind: "menu",
-      blurb: "Age-group selector",
-      children: [
-        {
-          id: "match-kids",
-          label: "Kids (4–12)",
-          kind: "submenu",
-          blurb: "Bands 4–8 & 9–12 · GYSH Coaches · consent ≤12",
-        },
-        {
-          id: "match-teens",
-          label: "Teens (13–17)",
-          kind: "submenu",
-          blurb: "Bands 13–14 & 15–17",
-        },
-        {
-          id: "match-adult",
-          label: "Adults (18–54)",
-          kind: "submenu",
-          blurb: "Budget, hours, strengths, goals",
-        },
-        {
-          id: "match-senior",
-          label: "Seniors (55+)",
-          kind: "submenu",
-          blurb: "Flexible pace & second careers",
-        },
-      ],
-    },
-    {
-      id: "nav-kids",
-      label: "Kids & Teens",
-      kind: "menu",
-      blurb: "GYSH Kids & Teens Corner",
-      children: [
-        {
-          id: "kids-mode",
-          label: "Kids (Ages 4–12)",
-          kind: "submenu",
-          children: [
-            { id: "kids-stories", label: "Stories", kind: "page", blurb: "Kevina Starr" },
-            { id: "kids-wizard", label: "GYSH Match Wizard", kind: "page" },
-            { id: "kids-ideas", label: "Ideas", kind: "page" },
-            { id: "kids-piggy", label: "Piggy Bank", kind: "page" },
-            { id: "kids-guides", label: "Guides", kind: "page" },
-            { id: "kids-join", label: "Join", kind: "page", blurb: "Kids Corner GYSH Team" },
-          ],
-        },
-        {
-          id: "teens-mode",
-          label: "Teens (Ages 13–17)",
-          kind: "submenu",
-          children: [
-            { id: "teens-wizard", label: "GYSH Match Wizard", kind: "page" },
-            { id: "teens-ideas", label: "Ideas", kind: "page" },
-            { id: "teens-bank", label: "My Bank", kind: "page" },
-            { id: "teens-guides", label: "Guides", kind: "page" },
-            { id: "teens-join", label: "Join", kind: "page", blurb: "Join Teens" },
-          ],
-        },
-      ],
-    },
-    {
-      id: "nav-seniors",
-      label: "Seniors",
-      kind: "menu",
-      blurb: "GYSH Seniors Corner",
-      children: [
-        { id: "sen-wizard", label: "GYSH Match Wizard", kind: "submenu" },
-        { id: "sen-ideas", label: "Ideas", kind: "submenu" },
-        { id: "sen-guides", label: "Guides", kind: "submenu" },
-        { id: "sen-join", label: "Join", kind: "submenu" },
-      ],
-    },
-    {
-      id: "nav-guides",
-      label: "Guides",
-      kind: "menu",
-      blurb: "Dropdown menu",
-      children: [
-        { id: "guides-library", label: "Guides Library", kind: "submenu" },
-        { id: "guides-adult", label: "Adult Manual", kind: "submenu" },
-        { id: "guides-kids", label: "Kids Manual", kind: "submenu" },
-        { id: "guides-teens", label: "Teens Manual", kind: "submenu" },
-        { id: "guides-seniors", label: "Seniors Manual", kind: "submenu" },
-        { id: "guides-complete", label: "Complete Guide", kind: "submenu" },
-      ],
-    },
-    { id: "nav-workshops", label: "Workshops", kind: "menu" },
-    { id: "nav-community", label: "Community", kind: "menu" },
-    {
-      id: "nav-join",
-      label: "Join",
-      kind: "menu",
-      blurb: "Membership Free → Elite",
-      children: [
-        { id: "join-plans", label: "Membership plans", kind: "submenu" },
-        { id: "join-signup", label: "Membership Sign-up", kind: "submenu" },
-        { id: "join-signin", label: "Sign in", kind: "submenu" },
-      ],
-    },
-    {
-      id: "nav-meta",
-      label: "About & Contact",
-      kind: "menu",
-      blurb: "Secondary header",
-      children: [
-        { id: "nav-about", label: "About", kind: "submenu" },
-        { id: "nav-contact", label: "Contact Us", kind: "submenu" },
-        { id: "nav-login", label: "Login / Portal", kind: "submenu" },
-      ],
-    },
-  ],
-};
+function buildGuidesMenuChildren(): SiteMapNode[] {
+  const manuals = MARKETING_GUIDE_MENU.map((g) => ({
+    id: g.id === "master" ? "guides-complete" : `guides-${g.id}`,
+    label: g.label,
+    kind: "submenu" as const,
+  }));
+  return [{ id: "guides-library", label: "Guides Library", kind: "submenu" }, ...manuals];
+}
 
-/** Admin Studio menus grouped like the admin nav. */
-export const GYSH_ADMIN_MAP: SiteMapNode = {
-  id: "admin",
-  label: "Admin Studio",
-  kind: "section",
-  blurb: "Partner / admin tools",
-  children: [
-    {
-      id: "adm-delivery",
-      label: "Plan & delivery",
-      kind: "menu",
-      children: [
-        { id: "adm-schedule", label: "Schedule & Plan", kind: "submenu" },
-        { id: "adm-tasks", label: "Task List", kind: "submenu" },
-        { id: "adm-timesheet", label: "Timesheet", kind: "submenu" },
-        { id: "adm-testing", label: "Testing Portal", kind: "submenu" },
-        { id: "adm-daily-progress", label: "Daily Progress", kind: "submenu" },
-      ],
-    },
-    {
-      id: "adm-people",
-      label: "People & access",
-      kind: "menu",
-      children: [
-        { id: "adm-users", label: "Users Area", kind: "submenu" },
-        { id: "adm-memberships", label: "Memberships", kind: "submenu" },
-        { id: "adm-certificates", label: "Certificates", kind: "submenu" },
-        { id: "adm-email", label: "Email Templates", kind: "submenu" },
-      ],
-    },
-    {
-      id: "adm-content",
-      label: "Content & growth",
-      kind: "menu",
-      children: [
-        { id: "adm-factory", label: "Content Factory", kind: "submenu" },
-        { id: "adm-studio", label: "Growth Studio", kind: "submenu" },
-        { id: "adm-financials", label: "Financials", kind: "submenu", blurb: "Admin only" },
-      ],
-    },
-    {
-      id: "adm-reference",
-      label: "Reference",
-      kind: "menu",
-      children: [
-        { id: "adm-sitemap", label: "Site Map", kind: "submenu" },
-        {
-          id: "adm-guides",
-          label: "User Guides",
+function buildAdminMap(): SiteMapNode {
+  return {
+    id: "admin",
+    label: "Admin Studio",
+    kind: "section",
+    blurb: "Partner / admin tools",
+    children: ADMIN_MENU_GROUPS.map((group) => ({
+      id: `adm-${group.id}`,
+      label: group.label,
+      kind: "menu" as const,
+      children: group.tabs.map((tabId) => {
+        const tab = adminTabById(tabId);
+        const node: SiteMapNode = {
+          id: adminTabSiteMapId(tabId),
+          label: tab?.label ?? tabId,
           kind: "submenu",
-          children: [
-            { id: "adm-guide-complete", label: "Complete Guide", kind: "page" },
-            { id: "adm-guide-adult", label: "Adult Manual", kind: "page" },
-            { id: "adm-guide-kids", label: "Kids Manual", kind: "page" },
-            { id: "adm-guide-teens", label: "Teens Manual", kind: "page" },
-            { id: "adm-guide-seniors", label: "Seniors Manual", kind: "page" },
-            { id: "adm-guide-member", label: "Member Tour", kind: "page" },
-            { id: "adm-guide-admin", label: "Admin User Guide", kind: "page" },
-          ],
-        },
-      ],
-    },
-  ],
-};
+          ...(tab?.adminOnly ? { blurb: "Admin only" } : {}),
+        };
+        if (tabId === "user-guides") {
+          node.children = ADMIN_USER_GUIDE_LINKS.map((g) => ({
+            id: adminGuideSiteMapId(g.id),
+            label: g.label,
+            kind: "page" as const,
+          }));
+        }
+        return node;
+      }),
+    })),
+  };
+}
+
+function buildPublicMap(): SiteMapNode {
+  return {
+    id: "home",
+    label: "Home",
+    kind: "page",
+    blurb: "Family start · hustle catalog · Match Wizard night",
+    children: [
+      {
+        id: "nav-match",
+        label: "GYSH Match Wizard",
+        kind: "menu",
+        blurb: "Age-group selector",
+        children: MATCH_WIZARD_AGES.map((a) => ({
+          id: a.id,
+          label: a.label,
+          kind: "submenu" as const,
+          blurb: a.blurb,
+        })),
+      },
+      {
+        id: "nav-kids",
+        label: "Kids & Teens",
+        kind: "menu",
+        blurb: "GYSH Kids & Teens Corner",
+        children: [
+          {
+            id: "kids-mode",
+            label: "Kids (Ages 4–12)",
+            kind: "submenu",
+            children: KIDS_CORNER_TABS.map((t) => ({
+              id: t.siteMapId,
+              label: t.label,
+              kind: "page" as const,
+              ...(t.blurb ? { blurb: t.blurb } : {}),
+            })),
+          },
+          {
+            id: "teens-mode",
+            label: "Teens (Ages 13–17)",
+            kind: "submenu",
+            children: JUNIOR_CORNER_TABS.map((t) => ({
+              id: t.siteMapId,
+              label: t.label,
+              kind: "page" as const,
+              ...(t.blurb ? { blurb: t.blurb } : {}),
+            })),
+          },
+        ],
+      },
+      {
+        id: "nav-seniors",
+        label: "Seniors",
+        kind: "menu",
+        blurb: "GYSH Seniors Corner",
+        children: SENIOR_CORNER_TABS.map((t) => ({
+          id: t.siteMapId,
+          label: t.label,
+          kind: "submenu" as const,
+        })),
+      },
+      {
+        id: "nav-guides",
+        label: "Guides",
+        kind: "menu",
+        blurb: "Dropdown menu",
+        children: buildGuidesMenuChildren(),
+      },
+      { id: "nav-workshops", label: "Workshops", kind: "menu" },
+      { id: "nav-community", label: "Community", kind: "menu" },
+      {
+        id: "nav-join",
+        label: "Join",
+        kind: "menu",
+        blurb: "Membership Free → Elite",
+        children: [
+          { id: "join-plans", label: "Membership plans", kind: "submenu" },
+          { id: "join-signup", label: "Membership Sign-up", kind: "submenu" },
+          { id: "join-signin", label: "Sign in", kind: "submenu" },
+        ],
+      },
+      {
+        id: "nav-meta",
+        label: "About & Contact",
+        kind: "menu",
+        blurb: "Secondary header",
+        children: [
+          { id: "nav-about", label: "About", kind: "submenu" },
+          { id: "nav-contact", label: "Contact Us", kind: "submenu" },
+          { id: "nav-login", label: "Login / Portal", kind: "submenu" },
+        ],
+      },
+    ],
+  };
+}
+
+/** Public site: Home at the root, then header menus and their submenus. */
+export const GYSH_PUBLIC_MAP: SiteMapNode = buildPublicMap();
+
+/** Admin Studio menus grouped like the admin nav (derived from admin-nav). */
+export const GYSH_ADMIN_MAP: SiteMapNode = buildAdminMap();
 
 /** Full site root used by Tree view (Home + Admin). */
 export const GYSH_SITE_MAP: SiteMapNode = {
@@ -229,23 +204,30 @@ export type SiteMapHref =
   | { kind: "contact" }
   | {
       kind: "admin";
-      tab:
-        | "schedule"
-        | "tasks"
-        | "timesheet"
-        | "testing"
-        | "daily-progress"
-        | "users"
-        | "memberships"
-        | "certificates"
-        | "email"
-        | "factory"
-        | "studio"
-        | "financials"
-        | "sitemap"
-        | "user-guides";
-      guide?: "master" | "adult" | "kids" | "teens" | "seniors" | "member" | "admin";
+      tab: AdminTab;
+      guide?: UserGuideId;
     };
+
+function buildAdminHrefEntries(): Record<string, SiteMapHref> {
+  const out: Record<string, SiteMapHref> = {
+    admin: { kind: "admin", tab: "schedule" },
+  };
+  for (const group of ADMIN_MENU_GROUPS) {
+    const first = group.tabs[0] ?? "schedule";
+    out[`adm-${group.id}`] = { kind: "admin", tab: first };
+    for (const tab of group.tabs) {
+      out[adminTabSiteMapId(tab)] = { kind: "admin", tab };
+    }
+  }
+  for (const g of ADMIN_USER_GUIDE_LINKS) {
+    out[adminGuideSiteMapId(g.id)] = {
+      kind: "admin",
+      tab: "user-guides",
+      guide: g.id,
+    };
+  }
+  return out;
+}
 
 const SITE_MAP_HREFS: Record<string, SiteMapHref> = {
   home: { kind: "home" },
@@ -256,30 +238,31 @@ const SITE_MAP_HREFS: Record<string, SiteMapHref> = {
   "match-senior": { kind: "seniors", tab: "match" },
   "nav-kids": { kind: "kids", mode: "kids", tab: "wizard" },
   "kids-mode": { kind: "kids", mode: "kids", tab: "wizard" },
-  "kids-stories": { kind: "kids", mode: "kids", tab: "stories" },
-  "kids-wizard": { kind: "kids", mode: "kids", tab: "wizard" },
-  "kids-ideas": { kind: "kids", mode: "kids", tab: "jobs" },
-  "kids-piggy": { kind: "kids", mode: "kids", tab: "piggy" },
-  "kids-guides": { kind: "kids", mode: "kids", tab: "guides" },
-  "kids-join": { kind: "kids", mode: "kids", tab: "join" },
+  ...Object.fromEntries(
+    KIDS_CORNER_TABS.map((t) => [
+      t.siteMapId,
+      { kind: "kids" as const, mode: "kids" as const, tab: t.id },
+    ]),
+  ),
   "teens-mode": { kind: "kids", mode: "junior", tab: "wizard" },
-  "teens-wizard": { kind: "kids", mode: "junior", tab: "wizard" },
-  "teens-ideas": { kind: "kids", mode: "junior", tab: "jobs" },
-  "teens-bank": { kind: "kids", mode: "junior", tab: "piggy" },
-  "teens-guides": { kind: "kids", mode: "junior", tab: "guides" },
-  "teens-join": { kind: "kids", mode: "junior", tab: "join" },
+  ...Object.fromEntries(
+    JUNIOR_CORNER_TABS.map((t) => [
+      t.siteMapId,
+      { kind: "kids" as const, mode: "junior" as const, tab: t.id },
+    ]),
+  ),
   "nav-seniors": { kind: "seniors", tab: "match" },
-  "sen-wizard": { kind: "seniors", tab: "match" },
-  "sen-ideas": { kind: "seniors", tab: "opportunities" },
-  "sen-guides": { kind: "seniors", tab: "guides" },
-  "sen-join": { kind: "seniors", tab: "join" },
+  ...Object.fromEntries(
+    SENIOR_CORNER_TABS.map((t) => [t.siteMapId, { kind: "seniors" as const, tab: t.id }]),
+  ),
   "nav-guides": { kind: "guides" },
   "guides-library": { kind: "guides" },
-  "guides-adult": { kind: "guides", manual: "adult" },
-  "guides-kids": { kind: "guides", manual: "kids" },
-  "guides-teens": { kind: "guides", manual: "teens" },
-  "guides-seniors": { kind: "guides", manual: "seniors" },
-  "guides-complete": { kind: "guides", manual: "master" },
+  ...Object.fromEntries(
+    MARKETING_GUIDE_MENU.map((g) => [
+      g.id === "master" ? "guides-complete" : `guides-${g.id}`,
+      { kind: "guides" as const, manual: g.id },
+    ]),
+  ),
   "nav-workshops": { kind: "workshops" },
   "nav-community": { kind: "community" },
   "nav-join": { kind: "join" },
@@ -290,34 +273,25 @@ const SITE_MAP_HREFS: Record<string, SiteMapHref> = {
   "nav-about": { kind: "about" },
   "nav-contact": { kind: "contact" },
   "nav-login": { kind: "login" },
-  admin: { kind: "admin", tab: "schedule" },
-  "adm-delivery": { kind: "admin", tab: "schedule" },
-  "adm-schedule": { kind: "admin", tab: "schedule" },
-  "adm-tasks": { kind: "admin", tab: "tasks" },
-  "adm-timesheet": { kind: "admin", tab: "timesheet" },
-  "adm-testing": { kind: "admin", tab: "testing" },
-  "adm-daily-progress": { kind: "admin", tab: "daily-progress" },
-  "adm-people": { kind: "admin", tab: "users" },
-  "adm-users": { kind: "admin", tab: "users" },
-  "adm-memberships": { kind: "admin", tab: "memberships" },
-  "adm-certificates": { kind: "admin", tab: "certificates" },
-  "adm-email": { kind: "admin", tab: "email" },
-  "adm-content": { kind: "admin", tab: "factory" },
-  "adm-factory": { kind: "admin", tab: "factory" },
-  "adm-studio": { kind: "admin", tab: "studio" },
-  "adm-financials": { kind: "admin", tab: "financials" },
-  "adm-reference": { kind: "admin", tab: "sitemap" },
-  "adm-sitemap": { kind: "admin", tab: "sitemap" },
-  "adm-guides": { kind: "admin", tab: "user-guides" },
-  "adm-guide-complete": { kind: "admin", tab: "user-guides", guide: "master" },
-  "adm-guide-adult": { kind: "admin", tab: "user-guides", guide: "adult" },
-  "adm-guide-kids": { kind: "admin", tab: "user-guides", guide: "kids" },
-  "adm-guide-teens": { kind: "admin", tab: "user-guides", guide: "teens" },
-  "adm-guide-seniors": { kind: "admin", tab: "user-guides", guide: "seniors" },
-  "adm-guide-member": { kind: "admin", tab: "user-guides", guide: "member" },
-  "adm-guide-admin": { kind: "admin", tab: "user-guides", guide: "admin" },
+  ...buildAdminHrefEntries(),
 };
 
 export function hrefForSiteMapNode(id: string): SiteMapHref | null {
   return SITE_MAP_HREFS[id] ?? null;
 }
+
+/** Flatten every node id under a tree (for tests / diagnostics). */
+export function collectSiteMapIds(node: SiteMapNode): string[] {
+  const ids = [node.id];
+  for (const child of node.children ?? []) {
+    ids.push(...collectSiteMapIds(child));
+  }
+  return ids;
+}
+
+/** All admin tab ids that appear in menu groups (must match ADMIN_TABS coverage). */
+export function adminTabsInMenuGroups(): AdminTab[] {
+  return ADMIN_MENU_GROUPS.flatMap((g) => g.tabs);
+}
+
+export { ADMIN_TABS, ADMIN_MENU_GROUPS, ADMIN_USER_GUIDE_LINKS };

@@ -523,7 +523,7 @@ export async function sendParentConsentEmail(
     headline: "A young Side Hustler needs your yes!",
     subhead: `${input.childName} asked to join the GYSH ${label} team — with you as GYSH Coach.`,
     bodyHtml: `<p style="margin:0 0 12px;">You're the coach. Cheer, set boundaries, and help turn ideas into safe first wins.</p>
-      <p style="margin:0 0 12px;">Tap below to grant permission. Until you approve, the account stays pending.</p>`,
+      <p style="margin:0 0 12px;">Parental consent is required through age 12. Tap below to grant permission. Until you approve, the account stays pending.</p>`,
     ctaLabel: "Approve as parent / guardian",
     ctaUrl: input.consentUrl,
     footerNote: "If you didn't expect this, you can ignore this email.",
@@ -534,7 +534,11 @@ export async function sendParentConsentEmail(
     html: branded.html,
     text: branded.text,
     templateSlug: "parent_consent",
-    meta: { childName: input.childName, audience: input.audience },
+    meta: {
+      childName: input.childName,
+      audience: input.audience,
+      consentUrl: input.consentUrl,
+    },
   });
 }
 

@@ -108,6 +108,38 @@ describe("buildDailyProgressReport tests touched", () => {
     expect(evelyn.tests).toHaveLength(1);
     expect(evelyn.tests[0]?.id).toBe("QA-2");
   });
+
+  it("attributes tests to updated_by, not Cursor reassignment to Lyriq", () => {
+    const today = "2026-07-26";
+    const testPayload = emptyPayload({
+      statuses: {
+        "PROOF-046-LYRIQ": "fixed_cursor",
+        "PROOF-001": "pass",
+      },
+      assignees: {
+        "PROOF-046-LYRIQ": "lyriq",
+        "PROOF-001": "lyriq",
+      },
+      updatedAt: {
+        "PROOF-046-LYRIQ": `${today}T12:00:00.000Z`,
+        "PROOF-001": `${today}T13:00:00.000Z`,
+      },
+      updatedBy: {
+        "PROOF-046-LYRIQ": "Cursor",
+        "PROOF-001": "Lyriq",
+      },
+    });
+
+    const lyriq = buildDailyProgressReport({
+      from: today,
+      to: today,
+      tasks: [],
+      testPayload,
+      timeEntries: [],
+      people: ["Lyriq"],
+    });
+    expect(lyriq.tests.map((t) => t.id)).toEqual(["PROOF-001"]);
+  });
 });
 
 describe("buildDailyProgressReport sprint / status / sort", () => {

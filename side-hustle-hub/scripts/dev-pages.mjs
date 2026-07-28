@@ -7,7 +7,7 @@
  * Plain Vite alone does NOT serve functions/ — use this for login to work.
  * A Vite proxy with no worker on :8788 shows as HTTP 502 in the UI.
  */
-import { spawn, execSync } from "node:child_process";
+import { spawn, spawnSync, execSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import http from "node:http";
 import net from "node:net";
@@ -178,6 +178,40 @@ console.log(`  Functions + D1 → http://127.0.0.1:${API_PORT}`);
 console.log(`  Vite UI       → http://localhost:${VITE_PORT}  (open this; /api is proxied)`);
 console.log("");
 
+const syncScript = path.join(root, "scripts", "sync-test-statuses-from-remote.mjs");
+
+function runProdD1Sync({ quiet = false, force = false } = {}) {
+  const args = ["--use-system-ca", syncScript];
+  if (quiet) args.push("--quiet");
+  if (force) args.push("--force");
+  return spawnSync(process.execPath, args, {
+    cwd: root,
+    stdio: quiet ? "pipe" : "inherit",
+    env: process.env,
+    encoding: "utf8",
+  });
+}
+
+// Keep Testing Portal pass/fail counts aligned with production on startup.
+// Do NOT auto-overwrite time_entries (that was reverting local timesheet hours).
+// Background re-sync is OFF by default so mid-session local work is not wiped.
+if (process.env.GYSH_SKIP_D1_SYNC === "1") {
+  console.warn("⚠ GYSH_SKIP_D1_SYNC=1 — skipping prod→local D1 sync.");
+  console.warn("  Local pass/fail counts WILL diverge from production.");
+} else {
+  console.log("Syncing Testing Portal from prod D1 → local (startup)…");
+  const sync = runProdD1Sync({ quiet: false });
+  if (sync.status !== 0) {
+    console.error("✗ Prod→local D1 sync failed.");
+    console.error("  Fix network/wrangler auth, then: npm run db:sync-test-statuses");
+    console.error("  Or set GYSH_SKIP_D1_SYNC=1 only if you intentionally want a local-only DB.");
+    process.exit(sync.status ?? 1);
+  }
+  console.log("✓ Local Testing Portal statuses mirror production");
+  console.log("  (timesheet hours are not overwritten — use GYSH_SYNC_TIME_ENTRIES=1 to pull prod hours)");
+  console.log("");
+}
+
 freePort(API_PORT, "Pages Functions");
 freePort(VITE_PORT, "Vite");
 await new Promise((r) => setTimeout(r, 400));
@@ -223,3 +257,28 @@ try {
 
 spawnInherit("npx", ["vite", "--port", String(VITE_PORT), "--strictPort", "--host"], "vite");
 console.log(`✓ Vite starting on :${VITE_PORT} — login uses proxied /api/auth/login`);
+
+// Background re-sync OFF by default — periodic full replace was reverting local numbers
+// while browsing. Opt in: GYSH_D1_SYNC_INTERVAL_MS=600000 (statuses only; not time_entries).
+if (process.env.GYSH_SKIP_D1_SYNC !== "1") {
+  const rawInterval = Number(process.env.GYSH_D1_SYNC_INTERVAL_MS);
+  const intervalMs = Number.isFinite(rawInterval) ? rawInterval : 0;
+  if (intervalMs >= 60_000) {
+    console.log(
+      `✓ Re-syncing Testing Portal statuses from prod every ${Math.round(intervalMs / 1000)}s`,
+    );
+    const timer = setInterval(() => {
+      const sync = runProdD1Sync({ quiet: true });
+      if (sync.status === 0) {
+        const out = `${sync.stdout || ""}${sync.stderr || ""}`;
+        if (/Already in sync/i.test(out)) return;
+        console.log(`[d1-sync] Local Testing Portal refreshed from prod`);
+      } else {
+        console.warn(`[d1-sync] Background prod→local sync failed (status ${sync.status})`);
+      }
+    }, intervalMs);
+    timer.unref?.();
+  } else {
+    console.log("✓ Startup D1 sync only (no background overwrite while you work).");
+  }
+}

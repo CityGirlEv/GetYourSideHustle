@@ -18,17 +18,29 @@ import { ensurePartnerAdmins } from "./partners";
 import {
   canChangeTestStatus,
   canSetTestBlocked,
+  canSetDevFixStatus,
   FAILED_TEST_ASSIGNEE,
+  isHumanQaTesterId,
+  qaOwnerFromCaseId,
+  listDevAssigneeIds,
   hasRole,
   normalizeRolesInput,
   primaryRole,
+  qaTesterIdForIdentity,
   serializeRoles,
+  parseRoles,
 } from "./roles";
-import { resolveTestAssignedMeta, todayMMDDYY, SYSTEM_ASSIGNED_BY } from "./assignment";
+import {
+  canonicalizePartnerLabel,
+  resolveTestAssignedMeta,
+  todayMMDDYY,
+  SYSTEM_ASSIGNED_BY,
+} from "./assignment";
 import { logTaskAssignmentChange, logTestAssignmentChange } from "./daily-digest";
 import { decodeBase64ToBytes, scanTestEvidence } from "./test-evidence";
 import { defaultsForNewTest } from "./new-test-defaults";
 import {
+  closedSprintBlocksActor,
   listClosedSprintIndexes,
   rejectIfSprintLocked,
   SPRINT_LOCKED_MESSAGE,
@@ -123,7 +135,11 @@ type TaskRow = {
 
 function actorLabel(actor: DbUser): string {
   const name = (actor.name || "").trim();
-  return name || actor.email;
+  const email = (actor.email || "").trim();
+  const raw = name || email;
+  if (!raw) return SYSTEM_ASSIGNED_BY;
+  // Keep Assigned By / notes as short partner labels (Tina, not Tina Marie Barham).
+  return canonicalizePartnerLabel(raw) || raw;
 }
 
 type AttachmentRow = {
@@ -481,7 +497,7 @@ export async function saveTasks(env: Env, request: Request, actor: DbUser): Prom
   for (const id of removeIds) {
     const prev = priorById.get(id);
     const prevSprint = Number(prev?.sprint ?? 0);
-    if (closedSprints.has(prevSprint)) {
+    if (closedSprintBlocksActor(closedSprints, prevSprint, actor)) {
       return error(`${SPRINT_LOCKED_MESSAGE} (${sprintLabel(prevSprint)})`, 403);
     }
   }
@@ -551,13 +567,14 @@ export async function saveTasks(env: Env, request: Request, actor: DbUser): Prom
 
     const prevSprint = prev ? Number(prev.sprint ?? 0) : null;
     // Locked sprint: reject real edits; leave unchanged rows alone so bulk saves of other tasks still work.
-    if (prevSprint !== null && closedSprints.has(prevSprint)) {
+    // Evelyn may bypass (closedSprintBlocksActor).
+    if (prevSprint !== null && closedSprintBlocksActor(closedSprints, prevSprint, actor)) {
       if (!unchanged) {
         return error(`${SPRINT_LOCKED_MESSAGE} (${sprintLabel(prevSprint)})`, 403);
       }
       continue;
     }
-    if (closedSprints.has(sprint)) {
+    if (closedSprintBlocksActor(closedSprints, sprint, actor)) {
       return error(`${SPRINT_LOCKED_MESSAGE} (${sprintLabel(sprint)})`, 403);
     }
 
@@ -718,7 +735,7 @@ export async function uploadTaskAttachment(
     .bind(taskId)
     .first<{ id: string; sprint: number }>();
   if (!task) return error("Task not found.", 404);
-  const locked = await rejectIfSprintLocked(env, Number(task.sprint));
+  const locked = await rejectIfSprintLocked(env, Number(task.sprint), actor);
   if (locked) return locked;
 
   const validated = validateTaskAttachmentContent({ name, mimeType, contentBase64 });
@@ -810,7 +827,7 @@ export async function deleteTaskAttachmentRow(
     .bind(id)
     .first<{ id: string; sprint: number }>();
   if (att) {
-    const locked = await rejectIfSprintLocked(env, Number(att.sprint));
+    const locked = await rejectIfSprintLocked(env, Number(att.sprint), actor);
     if (locked) return locked;
   }
   await env.DB.prepare(`DELETE FROM task_attachments WHERE id = ?`).bind(id).run();
@@ -865,7 +882,7 @@ export async function uploadPlanAttachment(
     .bind(planItemId)
     .first<{ id: string; sprint: number }>();
   if (!item) return error("Plan item not found.", 404);
-  const planLocked = await rejectIfSprintLocked(env, Number(item.sprint));
+  const planLocked = await rejectIfSprintLocked(env, Number(item.sprint), actor);
   if (planLocked) return planLocked;
 
   const validated = validateTaskAttachmentContent({ name, mimeType, contentBase64 });
@@ -958,7 +975,7 @@ export async function deletePlanAttachmentRow(
     .bind(id)
     .first<{ id: string; sprint: number }>();
   if (att) {
-    const locked = await rejectIfSprintLocked(env, Number(att.sprint));
+    const locked = await rejectIfSprintLocked(env, Number(att.sprint), actor);
     if (locked) return locked;
   }
   await env.DB.prepare(`DELETE FROM plan_item_attachments WHERE id = ?`).bind(id).run();
@@ -982,8 +999,12 @@ export async function handlePlanAttachments(
   return error("Method not allowed.", 405);
 }
 
+/** One-shot per isolate — repeated CREATE/ALTER on every request stalls local D1 under load. */
+let testCaseSchemaReady = false;
+
 /** Ensure test_case_status columns exist (handles Pages env / partial migration drift). */
 async function ensureTestCaseStatusColumns(env: Env): Promise<void> {
+  if (testCaseSchemaReady) return;
   await env.DB.prepare(
     `CREATE TABLE IF NOT EXISTS test_case_status (
       case_id TEXT PRIMARY KEY,
@@ -1040,6 +1061,12 @@ async function ensureTestCaseStatusColumns(env: Env): Promise<void> {
     "date_assigned",
     `ALTER TABLE test_case_status ADD COLUMN date_assigned TEXT NOT NULL DEFAULT ''`,
   );
+  await addColumnIfMissing(
+    env,
+    "test_case_status",
+    "original_assignee",
+    `ALTER TABLE test_case_status ADD COLUMN original_assignee TEXT NOT NULL DEFAULT ''`,
+  );
   await env.DB.prepare(
     `CREATE TABLE IF NOT EXISTS test_case_attachments (
       id TEXT PRIMARY KEY,
@@ -1078,6 +1105,7 @@ async function ensureTestCaseStatusColumns(env: Env): Promise<void> {
   } catch {
     /* index may already exist */
   }
+  testCaseSchemaReady = true;
 }
 
 function parseCheckedSteps(raw: unknown, stepCount: number): boolean[] {
@@ -1196,7 +1224,7 @@ export async function listTestStatuses(env: Env): Promise<Response> {
     await ensureTestCaseStatusColumns(env);
     const { results } = await env.DB.prepare(
       `SELECT case_id, status, note, assignee, sprint, due_date, checked_steps_json, failed_step_index,
-              assigned_by, date_assigned, updated_at, updated_by
+              assigned_by, date_assigned, original_assignee, updated_at, updated_by
        FROM test_case_status`,
     ).all<{
       case_id: string;
@@ -1209,6 +1237,7 @@ export async function listTestStatuses(env: Env): Promise<Response> {
       failed_step_index: number | null;
       assigned_by: string | null;
       date_assigned: string | null;
+      original_assignee: string | null;
       updated_at: string | null;
       updated_by: string | null;
     }>();
@@ -1221,15 +1250,20 @@ export async function listTestStatuses(env: Env): Promise<Response> {
     const failedStepIndex: Record<string, number | null> = {};
     const assignedBy: Record<string, string> = {};
     const dateAssigned: Record<string, string> = {};
+    const originalAssignees: Record<string, string> = {};
     const updatedAt: Record<string, string> = {};
     const updatedBy: Record<string, string> = {};
     const validStatuses = new Set([
       "not_run",
       "in_progress",
+      "rolled_over",
       "pass",
       "conditional_approval",
       "fail",
       "blocked",
+      "fixed_retest",
+      "failed_retest",
+      "fixed_cursor",
     ]);
     for (const row of results ?? []) {
       statuses[row.case_id] = validStatuses.has(row.status) ? row.status : "not_run";
@@ -1249,6 +1283,7 @@ export async function listTestStatuses(env: Env): Promise<Response> {
         typeof row.failed_step_index === "number" ? row.failed_step_index : null;
       assignedBy[row.case_id] = (row.assigned_by || "").trim() || SYSTEM_ASSIGNED_BY;
       if (row.date_assigned) dateAssigned[row.case_id] = row.date_assigned;
+      if (row.original_assignee) originalAssignees[row.case_id] = row.original_assignee;
       if (row.updated_at) updatedAt[row.case_id] = row.updated_at;
       if (row.updated_by) updatedBy[row.case_id] = row.updated_by;
     }
@@ -1305,6 +1340,7 @@ export async function listTestStatuses(env: Env): Promise<Response> {
       failedStepIndex,
       assignedBy,
       dateAssigned,
+      originalAssignees,
       updatedAt,
       updatedBy,
       attachments,
@@ -1371,6 +1407,7 @@ export async function setTestStatus(env: Env, request: Request, actor: DbUser): 
   if (items.length === 0) return error("caseId and status required (or items[]).");
 
   const closedSprints = new Set(await listClosedSprintIndexes(env));
+  const devAssigneeIds = await listDevAssigneeIds(env);
 
   // Load existing rows so omitted fields (and concurrent partial updates) do not wipe data.
   const caseIds = [
@@ -1387,6 +1424,7 @@ export async function setTestStatus(env: Env, request: Request, actor: DbUser): 
     failed_step_index: number | null;
     assigned_by: string | null;
     date_assigned: string | null;
+    original_assignee: string | null;
   };
   const existingByCase: Record<string, ExistingRow> = {};
   if (caseIds.length > 0) {
@@ -1396,7 +1434,7 @@ export async function setTestStatus(env: Env, request: Request, actor: DbUser): 
       const placeholders = slice.map(() => "?").join(",");
       const { results } = await env.DB.prepare(
         `SELECT case_id, status, note, assignee, sprint, due_date, checked_steps_json, failed_step_index,
-                assigned_by, date_assigned
+                assigned_by, date_assigned, original_assignee
          FROM test_case_status WHERE case_id IN (${placeholders})`,
       )
         .bind(...slice)
@@ -1407,8 +1445,8 @@ export async function setTestStatus(env: Env, request: Request, actor: DbUser): 
 
   const upsertSql = `INSERT INTO test_case_status
          (case_id, status, note, assignee, sprint, due_date, checked_steps_json, failed_step_index,
-          assigned_by, date_assigned, updated_at, updated_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          assigned_by, date_assigned, original_assignee, updated_at, updated_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(case_id) DO UPDATE SET
            status = excluded.status,
            note = excluded.note,
@@ -1419,6 +1457,7 @@ export async function setTestStatus(env: Env, request: Request, actor: DbUser): 
            failed_step_index = excluded.failed_step_index,
            assigned_by = excluded.assigned_by,
            date_assigned = excluded.date_assigned,
+           original_assignee = excluded.original_assignee,
            updated_at = excluded.updated_at,
            updated_by = excluded.updated_by`;
 
@@ -1515,25 +1554,55 @@ export async function setTestStatus(env: Env, request: Request, actor: DbUser): 
 
     if (!caseId || !status) return error("Each item needs caseId and status.");
     if (
-      !["not_run", "in_progress", "pass", "conditional_approval", "fail", "blocked"].includes(
-        status,
-      )
+      ![
+        "not_run",
+        "in_progress",
+        "rolled_over",
+        "pass",
+        "conditional_approval",
+        "fail",
+        "blocked",
+        "fixed_retest",
+        "failed_retest",
+        "fixed_cursor",
+      ].includes(status)
     ) {
       return error(`Invalid status for ${caseId}.`);
     }
 
     const prevStatus = String(prev?.status ?? "");
+    const isDevRetest =
+      status === "fixed_retest" ||
+      status === "failed_retest" ||
+      status === "fixed_cursor";
+    let originalAssignee = String(prev?.original_assignee ?? "").trim();
+
     if (status === "blocked" && prevStatus !== "blocked" && !canSetTestBlocked(actor)) {
       return error("Only Evelyn may set a test to Blocked.", 403);
     }
+    if (isDevRetest && prevStatus !== status && !canSetDevFixStatus(actor)) {
+      return error(
+        "Only Evelyn (Lead Developer) may set Fixed/Re-Test, Failed/Re-Test, or Fixed/Cursor.",
+        403,
+      );
+    }
     if (
-      (status === "fail" || status === "blocked" || status === "conditional_approval") &&
+      (status === "fail" ||
+        status === "blocked" ||
+        status === "conditional_approval" ||
+        isDevRetest) &&
       noteEntriesPlainText(note).length < 8
     ) {
       return error(
         status === "conditional_approval"
-          ? `A note is required for conditional approval on ${caseId}. Describe the conditions (at least a short sentence).`
-          : `A note is required for ${status} on ${caseId}. Describe what failed or what is blocking (at least a short sentence).`,
+          ? `A note is required for Conditional Pass on ${caseId}. Describe the conditions (at least a short sentence).`
+          : status === "fixed_retest"
+            ? `A note is required for Fixed/Re-Test on ${caseId}. Describe what was fixed (at least a short sentence).`
+            : status === "failed_retest"
+              ? `A note is required for Failed/Re-Test on ${caseId}. Describe why this was not a real failure (misunderstood/unclear test).`
+              : status === "fixed_cursor"
+                ? `A note is required for Fixed/Cursor on ${caseId}. Describe what Cursor fixed (at least a short sentence).`
+              : `A note is required for ${status} on ${caseId}. Describe what failed or what is blocking (at least a short sentence).`,
       );
     }
     if (status === "pass" && stepCount > 0 && !allStepsChecked(checked, stepCount)) {
@@ -1551,8 +1620,45 @@ export async function setTestStatus(env: Env, request: Request, actor: DbUser): 
       ) {
         return error(`Select which step failed before marking ${caseId} as Fail.`);
       }
-      // Kids/Youth new failures keep Tina; otherwise fails auto-assign to Evelyn.
-      assignee = createDefaultsAssignee === "tina" ? "tina" : FAILED_TEST_ASSIGNEE;
+      // Remember the QA tester so Dev can assign back after Fixed/Failed Re-Test.
+      const testerBefore = String(prev?.assignee ?? "").trim().toLowerCase();
+      const requestedDev = String(assignee || "").trim().toLowerCase();
+      const fromCaseId = qaOwnerFromCaseId(caseId);
+      if (prevStatus !== "fail") {
+        if (isHumanQaTesterId(testerBefore) && !devAssigneeIds.has(testerBefore)) {
+          originalAssignee = testerBefore;
+        } else if (!originalAssignee && isHumanQaTesterId(testerBefore)) {
+          originalAssignee = testerBefore;
+        } else if (!originalAssignee && isHumanQaTesterId(fromCaseId)) {
+          // PROOF-*-TINA/LYRIQ often have empty assignee before Fail — keep the encoded owner.
+          originalAssignee = fromCaseId;
+        }
+      }
+      // Kids/Youth auto-generated failures keep Tina unless a Dev was explicitly chosen.
+      if (createDefaultsAssignee === "tina" && !devAssigneeIds.has(requestedDev)) {
+        assignee = "tina";
+        originalAssignee = "tina";
+      } else if (devAssigneeIds.has(requestedDev)) {
+        assignee = requestedDev;
+      } else {
+        assignee = FAILED_TEST_ASSIGNEE;
+      }
+    } else if (isDevRetest) {
+      failedIdx = null;
+      // QA will re-run from scratch — clear every step checkbox.
+      checked = Array.from({ length: stepCount }, () => false);
+      // Hand back to the original tester ONLY when entering Fixed/Failed Re-Test.
+      // Later Assign-to edits (Evelyn → Tina) must stick; due-date heals must not yank them.
+      if (prevStatus !== status) {
+        let handBack = originalAssignee;
+        if (!isHumanQaTesterId(handBack)) {
+          handBack = qaOwnerFromCaseId(caseId);
+        }
+        if (isHumanQaTesterId(handBack)) {
+          assignee = handBack;
+          originalAssignee = handBack;
+        }
+      }
     } else {
       failedIdx = null;
     }
@@ -1580,13 +1686,13 @@ export async function setTestStatus(env: Env, request: Request, actor: DbUser): 
       dueDate !== prevDue ||
       checkedJson !== prevChecked ||
       failedIdx !== prevFailed;
-    if (!isNewRow && closedSprints.has(prevSprint)) {
+    if (!isNewRow && closedSprintBlocksActor(closedSprints, prevSprint, actor)) {
       if (materialChange) {
         return error(`${SPRINT_LOCKED_MESSAGE} (${sprintLabel(prevSprint)})`, 403);
       }
       continue; // no-op on locked sprint
     }
-    if (closedSprints.has(sprint) && materialChange) {
+    if (closedSprintBlocksActor(closedSprints, sprint, actor) && materialChange) {
       return error(`${SPRINT_LOCKED_MESSAGE} (${sprintLabel(sprint)})`, 403);
     }
 
@@ -1629,6 +1735,7 @@ export async function setTestStatus(env: Env, request: Request, actor: DbUser): 
         failedIdx,
         assignedBy,
         dateAssigned,
+        originalAssignee,
         now,
         who,
       ),
@@ -1741,7 +1848,7 @@ export async function uploadTestAttachment(
     .bind(caseId)
     .first<{ sprint: number }>();
   if (testRow) {
-    const locked = await rejectIfSprintLocked(env, Number(testRow.sprint));
+    const locked = await rejectIfSprintLocked(env, Number(testRow.sprint), actor);
     if (locked) return locked;
   }
 
@@ -1800,7 +1907,7 @@ export async function deleteTestAttachment(
     .bind(id)
     .first<{ id: string; sprint: number | null }>();
   if (att && att.sprint !== null && att.sprint !== undefined) {
-    const locked = await rejectIfSprintLocked(env, Number(att.sprint));
+    const locked = await rejectIfSprintLocked(env, Number(att.sprint), actor);
     if (locked) return locked;
   }
   await env.DB.prepare(`DELETE FROM test_case_attachments WHERE id = ?`).bind(id).run();
@@ -1832,38 +1939,6 @@ export async function getTestAttachmentContent(
     mimeType: row.mime_type,
     contentBase64: row.content_base64,
   });
-}
-
-export async function resetTestStatuses(env: Env, request: Request): Promise<Response> {
-  await ensureTestCaseStatusColumns(env);
-  let body: { confirmReset?: string } = {};
-  try {
-    body = await request.json();
-  } catch {
-    /* empty body */
-  }
-  // Hard gate — accidental "Reset statuses" must never wipe live QA results.
-  if (body.confirmReset !== "DELETE_ALL_TEST_RESULTS") {
-    return error(
-      'Refusing to wipe test results. To confirm, send confirmReset: "DELETE_ALL_TEST_RESULTS".',
-      400,
-    );
-  }
-
-  const now = new Date().toISOString();
-  // Snapshot every row into history before delete so results can be restored.
-  await env.DB.prepare(
-    `INSERT INTO test_case_status_history
-      (case_id, status, note, assignee, sprint, due_date, checked_steps_json, failed_step_index, changed_at, changed_by, reason)
-     SELECT case_id, status, note, assignee, sprint, COALESCE(due_date,''), COALESCE(checked_steps_json,'[]'),
-            failed_step_index, ?, 'system', 'pre_reset_snapshot'
-     FROM test_case_status`,
-  )
-    .bind(now)
-    .run();
-
-  await env.DB.prepare(`DELETE FROM test_case_status`).run();
-  return json({ statuses: {}, reset: true, snapshottedAt: now });
 }
 
 export async function listContent(env: Env): Promise<Response> {
@@ -2216,7 +2291,7 @@ export async function createWorkshopRegistration(env: Env, request: Request): Pr
 }
 
 /* ————————————————————————————————————————————————————————————
- * Junior / Kids team signups with parental consent
+ * Teens / Kids team signups with parental consent (API ids keep junior_*)
  * ———————————————————————————————————————————————————————————— */
 
 type JuniorSignupRow = {
@@ -2264,7 +2339,7 @@ function newConsentToken(): string {
 }
 
 function teamLabel(team: string): string {
-  return team === "kids" ? "Kids Corner GYSH Team" : "Junior Side Hustle Team";
+  return team === "kids" ? "Kids Corner GYSH Team" : "Teens Side Hustle Team";
 }
 
 export async function createJuniorSignup(env: Env, request: Request): Promise<Response> {
@@ -2280,70 +2355,117 @@ export async function createJuniorSignup(env: Env, request: Request): Promise<Re
   const childName = String(body.childName || "").trim();
   const childEmail = canonicalizeEmail(String(body.childEmail || ""));
   const parentEmail = canonicalizeEmail(String(body.parentEmail || ""));
+  /** Parental consent required through age 12 (Kids). Ages 13+ (Teens) join without consent. */
+  const requiresParentConsent = team === "kids";
 
   if (!childName) return error("Your first name is required.");
   if (!childEmail || !childEmail.includes("@")) return error("A valid email is required.");
-  if (!parentEmail || !parentEmail.includes("@")) return error("A valid parent/guardian email is required.");
-  if (childEmail === parentEmail) return error("The child and parent emails must be different.");
+  if (requiresParentConsent) {
+    if (!parentEmail || !parentEmail.includes("@")) {
+      return error("A valid parent/guardian email is required.");
+    }
+    if (childEmail === parentEmail) {
+      return error("The child and parent emails must be different.");
+    }
+  }
 
   const token = newConsentToken();
   const now = new Date().toISOString();
   const id = `js-${crypto.randomUUID()}`;
+  const status = requiresParentConsent ? "pending_parent" : "active";
+  const storedParentEmail = requiresParentConsent ? parentEmail : "";
 
   await env.DB.prepare(
     `INSERT INTO junior_signups (id, team, child_name, child_email, parent_email, status, consent_token, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, 'pending_parent', ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
-    .bind(id, team, childName, childEmail, parentEmail, token, now, now)
+    .bind(id, team, childName, childEmail, storedParentEmail, status, token, now, now)
     .run();
 
-  await appendAudit(env, "junior_signup_created", parentEmail, `${teamLabel(team)} · child ${childName}`);
-
-  // Email the parent a consent link. Non-fatal if email is not configured.
   let emailSent = false;
   try {
     const { emailConfigured, sendParentConsentEmail, sendAdminFormNotify, ROOT_DOMAIN } =
       await import("./email");
     const { escapeHtml: esc } = await import("./email-brand");
     if (emailConfigured(env)) {
-      const consentUrl = `https://${ROOT_DOMAIN}/?consent=${token}`;
-      await sendParentConsentEmail(env, {
-        parentEmail,
-        childName,
-        consentUrl,
-        audience: team === "junior" ? "junior" : "kids",
-      });
-      emailSent = true;
+      if (requiresParentConsent) {
+        // Path-based link survives email client redirects better than ?consent=
+        const consentUrl = `https://${ROOT_DOMAIN}/consent/${token}`;
+        await sendParentConsentEmail(env, {
+          parentEmail,
+          childName,
+          consentUrl,
+          audience: "kids",
+        });
+        emailSent = true;
+      }
       await sendAdminFormNotify(env, {
-        formName: "Kids/Teens team signup",
-        summary: `${childName} · ${teamLabel(team)} · parent ${parentEmail}`,
+        formName: requiresParentConsent ? "Kids team signup" : "Teens team signup",
+        summary: requiresParentConsent
+          ? `${childName} · ${teamLabel(team)} · parent ${parentEmail}`
+          : `${childName} · ${teamLabel(team)} · ${childEmail}`,
         detailsHtml: `<p style="margin:0 0 8px;"><strong>Team:</strong> ${esc(teamLabel(team))}</p>
-          <p style="margin:0 0 8px;"><strong>Child:</strong> ${esc(childName)} (${esc(childEmail)})</p>
-          <p style="margin:0 0 8px;"><strong>Parent email:</strong> ${esc(parentEmail)}</p>
-          <p style="margin:0;">Status: pending parent consent${emailSent ? " · consent email sent" : ""}.</p>`,
-        replyTo: parentEmail,
-        meta: { team, childEmail, parentEmail },
+          <p style="margin:0 0 8px;"><strong>Member:</strong> ${esc(childName)} (${esc(childEmail)})</p>
+          ${
+            requiresParentConsent
+              ? `<p style="margin:0 0 8px;"><strong>Parent email:</strong> ${esc(parentEmail)}</p>
+          <p style="margin:0;">Status: pending parent consent${emailSent ? " · consent email sent" : ""}.</p>`
+              : `<p style="margin:0;">Status: <strong>active</strong> (parental consent not required for ages 13+).</p>`
+          }`,
+        replyTo: requiresParentConsent ? parentEmail : childEmail,
+        meta: { team, childEmail, parentEmail: storedParentEmail, consentToken: token, status },
       });
     }
   } catch {
     // Swallow email errors — signup is recorded; parent can be re-notified later.
   }
 
+  try {
+    await appendAudit(
+      env.DB,
+      "junior_signup_created",
+      requiresParentConsent ? parentEmail : childEmail,
+      `${teamLabel(team)} · ${childName} · ${status}`,
+    );
+  } catch {
+    /* audit must never block signup / consent email */
+  }
+
+  if (requiresParentConsent) {
+    return json({
+      ok: true,
+      emailSent,
+      status,
+      message: emailSent
+        ? "Almost there! We emailed your parent/guardian a permission link. Your account activates once they approve."
+        : "Your request was saved. Ask your parent/guardian to check their email for a permission link (or contact us if it doesn't arrive).",
+    });
+  }
+
   return json({
     ok: true,
-    emailSent,
-    message: emailSent
-      ? "Almost there! We emailed your parent/guardian a permission link. Your account activates once they approve."
-      : "Your request was saved. Ask your parent/guardian to check their email for a permission link (or contact us if it doesn't arrive).",
+    emailSent: false,
+    status,
+    message: `You're in! Welcome to the ${teamLabel(team)}. Parental consent is not required for ages 13+ — your team access is active.`,
   });
+}
+
+function cleanConsentToken(token: string): string {
+  return String(token || "")
+    .trim()
+    .replace(/[^a-fA-F0-9]/g, "");
 }
 
 export async function getJuniorConsent(env: Env, token: string): Promise<Response> {
   await ensureJuniorSignupSchema(env);
+  const cleaned = cleanConsentToken(token);
+  if (cleaned.length < 32) {
+    return error("This consent link is invalid or has expired.", 404);
+  }
   const row = await env.DB.prepare(
     `SELECT * FROM junior_signups WHERE consent_token = ?`,
   )
-    .bind(token)
+    .bind(cleaned)
     .first<JuniorSignupRow>();
   if (!row) return error("This consent link is invalid or has expired.", 404);
 
@@ -2368,10 +2490,15 @@ export async function grantJuniorConsent(env: Env, token: string, request: Reque
     return error("Invalid JSON body.");
   }
 
+  const cleaned = cleanConsentToken(token);
+  if (cleaned.length < 32) {
+    return error("This consent link is invalid or has expired.", 404);
+  }
+
   const row = await env.DB.prepare(
     `SELECT * FROM junior_signups WHERE consent_token = ?`,
   )
-    .bind(token)
+    .bind(cleaned)
     .first<JuniorSignupRow>();
   if (!row) return error("This consent link is invalid or has expired.", 404);
 
@@ -2382,9 +2509,13 @@ export async function grantJuniorConsent(env: Env, token: string, request: Reque
     await env.DB.prepare(
       `UPDATE junior_signups SET status = 'declined', declined_at = ?, updated_at = ? WHERE consent_token = ?`,
     )
-      .bind(now, now, token)
+      .bind(now, now, cleaned)
       .run();
-    await appendAudit(env, "junior_signup_declined", row.parent_email, `Child ${row.child_name}`);
+    try {
+      await appendAudit(env.DB, "junior_signup_declined", row.parent_email, `Child ${row.child_name}`);
+    } catch {
+      /* non-fatal */
+    }
     return json({ ok: true, status: "declined", message: "You declined this request. The account will not be activated." });
   }
 
@@ -2404,10 +2535,14 @@ export async function grantJuniorConsent(env: Env, token: string, request: Reque
            consent_granted_at = ?, updated_at = ?
      WHERE consent_token = ?`,
   )
-    .bind(parentName, parentPhone, parentAddress, parentRelationship, now, now, token)
+    .bind(parentName, parentPhone, parentAddress, parentRelationship, now, now, cleaned)
     .run();
 
-  await appendAudit(env, "junior_signup_activated", row.parent_email, `${teamLabel(row.team)} · child ${row.child_name}`);
+  try {
+    await appendAudit(env.DB, "junior_signup_activated", row.parent_email, `${teamLabel(row.team)} · child ${row.child_name}`);
+  } catch {
+    /* non-fatal */
+  }
 
   try {
     const { sendAdminFormNotify } = await import("./email");
@@ -2455,6 +2590,88 @@ export async function listJuniorSignups(env: Env): Promise<Response> {
       createdAt: r.created_at,
     })),
   });
+}
+
+/** Parent Coach: children linked to the logged-in parent only. */
+export async function listFamilyChildren(
+  env: Env,
+  user: { id: string; email: string },
+): Promise<Response> {
+  type ChildOut = {
+    id: string;
+    displayName: string;
+    ageBand: "kids" | "junior";
+    status: string;
+    source: "profile" | "signup";
+  };
+  const children: ChildOut[] = [];
+  const seen = new Set<string>();
+
+  try {
+    const profiles = await env.DB.prepare(
+      `SELECT id, display_name, age_band, COALESCE(status, 'active') AS status
+       FROM child_profiles
+       WHERE parent_user_id = ?
+       ORDER BY created_at ASC`,
+    )
+      .bind(user.id)
+      .all<{ id: string; display_name: string; age_band: string; status: string }>();
+    for (const row of profiles.results ?? []) {
+      const status = String(row.status || "active").toLowerCase();
+      if (status === "deactivated" || status === "inactive") continue;
+      const ageBand = row.age_band === "junior" ? "junior" : "kids";
+      const key = `${ageBand}:${row.display_name.trim().toLowerCase()}`;
+      seen.add(key);
+      seen.add(row.id);
+      children.push({
+        id: row.id,
+        displayName: row.display_name,
+        ageBand,
+        status,
+        source: "profile",
+      });
+    }
+  } catch {
+    /* child_profiles / status column may be missing pre-migration */
+  }
+
+  try {
+    await ensureJuniorSignupSchema(env);
+    const parentEmail = canonicalizeEmail(user.email);
+    const signups = await env.DB.prepare(
+      `SELECT id, team, child_name, status, child_profile_id
+       FROM junior_signups
+       WHERE parent_email = ?
+         AND status IN ('active', 'pending_parent')
+       ORDER BY created_at ASC`,
+    )
+      .bind(parentEmail)
+      .all<{
+        id: string;
+        team: string;
+        child_name: string;
+        status: string;
+        child_profile_id: string | null;
+      }>();
+    for (const row of signups.results ?? []) {
+      if (row.child_profile_id && seen.has(row.child_profile_id)) continue;
+      const ageBand = row.team === "junior" ? "junior" : "kids";
+      const key = `${ageBand}:${row.child_name.trim().toLowerCase()}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      children.push({
+        id: row.id,
+        displayName: row.child_name,
+        ageBand,
+        status: row.status,
+        source: "signup",
+      });
+    }
+  } catch {
+    /* junior_signups may be missing */
+  }
+
+  return json({ children });
 }
 
 export async function listAudit(env: Env): Promise<Response> {
@@ -2727,7 +2944,7 @@ export async function saveFinancials(
     }
 
     await appendAudit(
-      env,
+      env.DB,
       "financials_save",
       user.email,
       `${items.length} items, ${contracts.length} contracts`,
@@ -2894,7 +3111,11 @@ export async function listAgilePlan(env: Env): Promise<Response> {
   }
 }
 
-export async function saveAgilePlan(env: Env, request: Request): Promise<Response> {
+export async function saveAgilePlan(
+  env: Env,
+  request: Request,
+  actor: DbUser,
+): Promise<Response> {
   let body: { items?: unknown[]; retro?: unknown[] };
   try {
     body = await request.json();
@@ -2949,7 +3170,7 @@ export async function saveAgilePlan(env: Env, request: Request): Promise<Respons
 
     for (const prev of priorItems.values()) {
       const prevSprint = Number(prev.sprint);
-      if (!closedSprints.has(prevSprint)) continue;
+      if (!closedSprintBlocksActor(closedSprints, prevSprint, actor)) continue;
       if (!incomingItemIds.has(prev.id)) {
         return error(`${SPRINT_LOCKED_MESSAGE} (${sprintLabel(prevSprint)})`, 403);
       }
@@ -2982,16 +3203,16 @@ export async function saveAgilePlan(env: Env, request: Request): Promise<Respons
         prev.date_label === dateLabel &&
         Number(prev.done_tina ?? 0) === doneTina &&
         Number(prev.done_evelyn ?? 0) === doneEvelyn;
-      if (prev && closedSprints.has(Number(prev.sprint)) && !unchanged) {
+      if (prev && closedSprintBlocksActor(closedSprints, Number(prev.sprint), actor) && !unchanged) {
         return error(`${SPRINT_LOCKED_MESSAGE} (${sprintLabel(Number(prev.sprint))})`, 403);
       }
-      if (closedSprints.has(sprint) && !unchanged) {
+      if (closedSprintBlocksActor(closedSprints, sprint, actor) && !unchanged) {
         return error(`${SPRINT_LOCKED_MESSAGE} (${sprintLabel(sprint)})`, 403);
       }
     }
     for (const prev of priorRetro.values()) {
       const prevSprint = Number(prev.sprint);
-      if (!closedSprints.has(prevSprint)) continue;
+      if (!closedSprintBlocksActor(closedSprints, prevSprint, actor)) continue;
       if (!incomingRetroIds.has(prev.id)) {
         return error(`${SPRINT_LOCKED_MESSAGE} (${sprintLabel(prevSprint)})`, 403);
       }
@@ -3009,10 +3230,10 @@ export async function saveAgilePlan(env: Env, request: Request): Promise<Respons
         prev.column_key === column &&
         prev.text === text &&
         prev.owner === owner;
-      if (prev && closedSprints.has(Number(prev.sprint)) && !unchanged) {
+      if (prev && closedSprintBlocksActor(closedSprints, Number(prev.sprint), actor) && !unchanged) {
         return error(`${SPRINT_LOCKED_MESSAGE} (${sprintLabel(Number(prev.sprint))})`, 403);
       }
-      if (closedSprints.has(sprint) && !unchanged) {
+      if (closedSprintBlocksActor(closedSprints, sprint, actor) && !unchanged) {
         return error(`${SPRINT_LOCKED_MESSAGE} (${sprintLabel(sprint)})`, 403);
       }
     }
