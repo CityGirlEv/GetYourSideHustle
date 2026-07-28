@@ -12,18 +12,52 @@ type ShowHideToggleProps = {
   disabled?: boolean;
 };
 
+type ShowHideChevronProps = {
+  open: boolean;
+  size?: number;
+  /** When set, chevron is a button that toggles expand/collapse (same as Show/Hide). */
+  onOpenChange?: (open: boolean) => void;
+  label?: string;
+  testId?: string;
+  disabled?: boolean;
+};
+
 /** Chevron beside a collapsible heading (pairs with ShowHideToggle). */
 export function ShowHideChevron({
   open,
   size = 18,
-}: {
-  open: boolean;
-  size?: number;
-}) {
-  return open ? (
-    <ChevronDown size={size} className="show-hide-chevron" aria-hidden />
-  ) : (
-    <ChevronRight size={size} className="show-hide-chevron" aria-hidden />
+  onOpenChange,
+  label,
+  testId,
+  disabled = false,
+}: ShowHideChevronProps) {
+  const Icon = open ? ChevronDown : ChevronRight;
+  if (!onOpenChange) {
+    return <Icon size={size} className="show-hide-chevron" aria-hidden />;
+  }
+  return (
+    <button
+      type="button"
+      className="show-hide-chevron-btn"
+      aria-expanded={open}
+      aria-label={
+        label
+          ? open
+            ? `Collapse ${label}`
+            : `Expand ${label}`
+          : open
+            ? "Collapse"
+            : "Expand"
+      }
+      data-testid={testId}
+      disabled={disabled}
+      onClick={(e) => {
+        e.stopPropagation();
+        onOpenChange(!open);
+      }}
+    >
+      <Icon size={size} className="show-hide-chevron" aria-hidden />
+    </button>
   );
 }
 

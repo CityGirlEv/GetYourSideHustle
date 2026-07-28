@@ -298,9 +298,56 @@ export function testStatusToBoard(status: TestStatus | undefined): string {
   return "todo";
 }
 
+/** End Sprint appends this note while keeping the work status (Fail, Fixed/Cursor, …). */
+export const ROLLOVER_NOTE_RE = /Rolling over from Sprint\s*\d+/i;
+
+export function noteIndicatesRollover(note: string | null | undefined): boolean {
+  return ROLLOVER_NOTE_RE.test(String(note ?? ""));
+}
+
+/** True when the note says this item was rolled out of `fromSprint`. */
+export function noteRolledFromSprint(
+  note: string | null | undefined,
+  fromSprint: number,
+): boolean {
+  return new RegExp(`Rolling over from Sprint\\s*${fromSprint}\\b`, "i").test(
+    String(note ?? ""),
+  );
+}
+
+/** Rolled via status OR via End Sprint note (status kept as Fail / Fixed/Cursor / etc.). */
+export function testIsRolledOver(
+  status: TestStatus | string | undefined,
+  note?: string | null,
+): boolean {
+  return status === "rolled_over" || noteIndicatesRollover(note);
+}
+
 /**
- * Tests currently on `sprintIndex` with status `rolled_over`
- * (arrived from the prior sprint at End Sprint / rollover).
+ * Relative to a focused sprint on the Schedule board:
+ * - note says “Rolling over from Sprint {focus}” (may now live on the next sprint), or
+ * - currently on that sprint with rolled_over status / any rollover note.
+ */
+export function itemRolledRelativeToSprint(
+  currentSprint: number | undefined,
+  note: string | null | undefined,
+  focusSprint: number,
+  status?: TestStatus | string | null,
+): boolean {
+  if (noteRolledFromSprint(note, focusSprint)) return true;
+  if (Number(currentSprint) === focusSprint && testIsRolledOver(status ?? undefined, note)) {
+    return true;
+  }
+  return false;
+}
+
+export function rolloverNoteText(fromSprint: number): string {
+  return `Rolling over from Sprint ${fromSprint}`;
+}
+
+/**
+ * Tests currently on `sprintIndex` that were rolled in from the prior sprint.
+ * Counts `rolled_over` status OR End Sprint notes (“Rolling over from Sprint N”).
  * Pass `knownCaseIds` (board/catalog) so orphan D1 rows from renamed IDs are ignored.
  */
 export function countRolledIntoSprint(
@@ -308,43 +355,109 @@ export function countRolledIntoSprint(
   sprints: Record<string, number | undefined>,
   sprintIndex: number,
   knownCaseIds?: ReadonlySet<string>,
+  notes?: Record<string, string | undefined>,
 ): number {
   let n = 0;
   for (const [id, sprint] of Object.entries(sprints)) {
     if (knownCaseIds && !knownCaseIds.has(id)) continue;
     if (Number(sprint) !== sprintIndex) continue;
-    if (statuses[id] === "rolled_over") n += 1;
+    if (testIsRolledOver(statuses[id], notes?.[id])) n += 1;
   }
   return n;
 }
 
-/** Short chip / banner copy for rollover relative to a focused sprint. */
+export type SprintRolloverTask = {
+  sprint: number;
+  notes?: string | null;
+};
+
+/** Tasks on `sprintIndex` tagged with an End Sprint rollover note. */
+export function countTasksRolledIntoSprint(
+  tasks: readonly SprintRolloverTask[] | undefined,
+  sprintIndex: number,
+): number {
+  if (!tasks?.length) return 0;
+  let n = 0;
+  for (const t of tasks) {
+    if (Number(t.sprint) !== sprintIndex) continue;
+    if (noteIndicatesRollover(t.notes)) n += 1;
+  }
+  return n;
+}
+
+function formatRolloverBreakdown(tests: number, tasks: number): string {
+  return `${tests} test${tests === 1 ? "" : "s"} · ${tasks} task${tasks === 1 ? "" : "s"}`;
+}
+
+/** Short chip / banner copy for rollover relative to a focused sprint.
+ * Always includes the count (including 0) so sprint bubbles never hide the number.
+ * When `tasks` is passed, chip shows Tests + Tasks breakdown.
+ */
 export function sprintRolloverSummary(
   statuses: Record<string, TestStatus | string | undefined>,
   sprints: Record<string, number | undefined>,
   sprintIndex: number,
   knownCaseIds?: ReadonlySet<string>,
-): { toNext: number; fromPrev: number; chipHint: string; banner: string } {
-  const toNext = countRolledIntoSprint(statuses, sprints, sprintIndex + 1, knownCaseIds);
-  const fromPrev = countRolledIntoSprint(statuses, sprints, sprintIndex, knownCaseIds);
+  notes?: Record<string, string | undefined>,
+  tasks?: readonly SprintRolloverTask[],
+  /** Last sprint index in the schedule (default 6). Used to omit “→ S7”. */
+  lastSprintIndex = 6,
+): {
+  toNext: number;
+  fromPrev: number;
+  toNextTests: number;
+  toNextTasks: number;
+  fromPrevTests: number;
+  fromPrevTasks: number;
+  chipHint: string;
+  banner: string;
+} {
+  const toNextTests = countRolledIntoSprint(
+    statuses,
+    sprints,
+    sprintIndex + 1,
+    knownCaseIds,
+    notes,
+  );
+  const fromPrevTests = countRolledIntoSprint(
+    statuses,
+    sprints,
+    sprintIndex,
+    knownCaseIds,
+    notes,
+  );
+  const toNextTasks = countTasksRolledIntoSprint(tasks, sprintIndex + 1);
+  const fromPrevTasks = countTasksRolledIntoSprint(tasks, sprintIndex);
+  const toNext = toNextTests + toNextTasks;
+  const fromPrev = fromPrevTests + fromPrevTasks;
   const parts: string[] = [];
-  if (toNext > 0) parts.push(`${toNext} → S${sprintIndex + 1}`);
-  if (fromPrev > 0) parts.push(`${fromPrev} from S${sprintIndex - 1}`);
-  const chipHint = parts.join(" · ");
-  const bannerParts: string[] = [];
-  if (toNext > 0) {
-    bannerParts.push(
-      `${toNext} test${toNext === 1 ? "" : "s"} rolled over to Sprint ${sprintIndex + 1}`,
+  if (sprintIndex < lastSprintIndex) {
+    parts.push(`→ S${sprintIndex + 1}: ${formatRolloverBreakdown(toNextTests, toNextTasks)}`);
+  }
+  if (sprintIndex > 1) {
+    parts.push(
+      `from S${sprintIndex - 1}: ${formatRolloverBreakdown(fromPrevTests, fromPrevTasks)}`,
     );
   }
-  if (fromPrev > 0) {
+  const chipHint = parts.join(" · ");
+  const bannerParts: string[] = [];
+  if (sprintIndex < lastSprintIndex) {
     bannerParts.push(
-      `${fromPrev} test${fromPrev === 1 ? "" : "s"} rolled over from Sprint ${sprintIndex - 1}`,
+      `${formatRolloverBreakdown(toNextTests, toNextTasks)} rolled over to Sprint ${sprintIndex + 1}`,
+    );
+  }
+  if (sprintIndex > 1) {
+    bannerParts.push(
+      `${formatRolloverBreakdown(fromPrevTests, fromPrevTasks)} rolled over from Sprint ${sprintIndex - 1}`,
     );
   }
   return {
     toNext,
     fromPrev,
+    toNextTests,
+    toNextTasks,
+    fromPrevTests,
+    fromPrevTasks,
     chipHint,
     banner: bannerParts.join(" · "),
   };

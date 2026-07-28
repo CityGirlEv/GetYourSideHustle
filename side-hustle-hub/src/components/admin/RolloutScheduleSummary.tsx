@@ -31,9 +31,21 @@ export function RolloutScheduleSummary({
         aria-expanded={open}
         data-testid="rollout-schedule-toggle"
       >
-        <ShowHideChevron open={open} />
-        <span className="rollout-schedule__title">Rollout schedule</span>
-        {!open && <span className="rollout-schedule__lede">{LEDE}</span>}
+        <ShowHideChevron
+          open={open}
+          onOpenChange={setOpen}
+          label="Rollout schedule"
+          testId="rollout-schedule-chevron"
+        />
+        <button
+          type="button"
+          className="rollout-schedule__heading-btn"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+        >
+          <span className="rollout-schedule__title">Rollout schedule</span>
+          {!open && <span className="rollout-schedule__lede">{LEDE}</span>}
+        </button>
         <ShowHideToggle
           open={open}
           onOpenChange={setOpen}

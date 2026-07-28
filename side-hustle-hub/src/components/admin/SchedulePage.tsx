@@ -46,8 +46,10 @@ import { BusyOverlay, WaitIndicator, WaitLabel } from "../WaitFeedback";
 import { MarkdownLinkText } from "./MarkdownLinkText";
 import {
   applyRolloutSprintSchedule,
+  itemRolledRelativeToSprint,
   planToBoardCard,
   ROLLOUT_SCHEDULE_VERSION,
+  rolloverNoteText,
   sprintRolloverSummary,
   taskToBoardCard,
   testToBoardCard,
@@ -182,6 +184,9 @@ const ALL_TESTS = [
   ...AUTOMATED_VITEST_CASES,
   ...AUTOMATED_PLAYWRIGHT_CASES,
 ].filter((t) => !isWizardMatrixCaseId(t.id));
+
+/** Board/catalog IDs only — ignore orphan D1 rows from renamed case IDs. */
+const KNOWN_CASE_IDS = new Set(ALL_TESTS.map((t) => t.id));
 
 /** Includes FMSH wizard rows so one-shot rollout heal can place Kids/Jr/Adult/Senior bands. */
 const ROLLOUT_HEAL_TESTS = [
@@ -444,16 +449,46 @@ function formatTQTitle(c: TQCounts): string {
   return plan > 0 ? `${base} · Plan: ${planDone}/${plan}` : base;
 }
 
-/** Sprint bubble face: Tests on first line, Tasks stacked underneath. */
+/** Sprint bubble face: Tests then Tasks; optional rolled-over counts under each. */
 function TQBubbleLines({
   c,
+  rolledTests,
+  rolledTasks,
 }: {
   c: Pick<TQCounts, "tasks" | "tests" | "tasksDone" | "testsDone">;
+  /** Tests on this sprint that were rolled in from the prior sprint. */
+  rolledTests?: number;
+  /** Tasks on this sprint that were rolled in from the prior sprint. */
+  rolledTasks?: number;
 }) {
+  const showRoll = rolledTests !== undefined || rolledTasks !== undefined;
+  const testsRolled = rolledTests ?? 0;
+  const tasksRolled = rolledTasks ?? 0;
   return (
-    <span className="qa-tester-meta schedule-sprint-tq" title={formatTQ(c)}>
-      <span>Tests: {c.testsDone}/{c.tests}</span>
-      <span>Tasks: {c.tasksDone}/{c.tasks}</span>
+    <span
+      className="qa-tester-meta schedule-sprint-tq"
+      title={
+        showRoll
+          ? `${formatTQ(c)} · Rolled over — Tests: ${testsRolled} · Tasks: ${tasksRolled}`
+          : formatTQ(c)
+      }
+    >
+      <span>
+        Tests: {c.testsDone}/{c.tests}
+        {showRoll ? (
+          <span className="schedule-sprint-tq__rolled" data-testid="sprint-tq-rolled-tests">
+            Rolled over: {testsRolled}
+          </span>
+        ) : null}
+      </span>
+      <span>
+        Tasks: {c.tasksDone}/{c.tasks}
+        {showRoll ? (
+          <span className="schedule-sprint-tq__rolled" data-testid="sprint-tq-rolled-tasks">
+            Rolled over: {tasksRolled}
+          </span>
+        ) : null}
+      </span>
     </span>
   );
 }
@@ -481,6 +516,12 @@ function CollapsibleFilterSection({
   return (
     <div className="schedule-board-filters__row" data-testid={testId}>
       <div className="schedule-board-filters__label schedule-board-filters__label--bar">
+        <ShowHideChevron
+          open={open}
+          onOpenChange={setOpen}
+          label={title}
+          testId={testId ? `${testId}-chevron` : undefined}
+        />
         {filterable ? (
           <button
             type="button"
@@ -490,7 +531,6 @@ function CollapsibleFilterSection({
             aria-label={`${title}. Click to filter`}
             data-testid={testId ? `${testId}-filter` : undefined}
           >
-            <ShowHideChevron open={open} />
             <span>{title}</span>
             <span className="schedule-board-filters__click-hint">Click to filter</span>
             {!open && hint ? (
@@ -498,13 +538,19 @@ function CollapsibleFilterSection({
             ) : null}
           </button>
         ) : (
-          <div className="schedule-board-filters__filter-title schedule-board-filters__filter-title--static">
-            <ShowHideChevron open={open} />
+          <button
+            type="button"
+            className="schedule-board-filters__filter-title schedule-board-filters__filter-title--collapse"
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+            aria-label={`${title}. ${open ? "Collapse" : "Expand"}`}
+            data-testid={testId ? `${testId}-heading` : undefined}
+          >
             <span>{title}</span>
             {!open && hint ? (
               <span className="schedule-board-filters__label-hint">{hint}</span>
             ) : null}
-          </div>
+          </button>
         )}
         <ShowHideToggle
           open={open}
@@ -1505,7 +1551,48 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
     return matchesAssigneeFilter(cardAssigneeFilterValue(c), ownerFilter);
   });
 
-  const visibleCards = sprintScopedCards.filter((c) => {
+  /** Tests/tasks that rolled out of the focused sprint (may now sit on the next sprint). */
+  const rolledRelativeToActiveSprint = (c: BoardCard): boolean => {
+    if (typeof activeSprint !== "number") return false;
+    if (c.source === "test") {
+      return itemRolledRelativeToSprint(
+        testSprints[c.sourceId] ?? c.sprint,
+        testNotes[c.sourceId],
+        activeSprint,
+        testStatuses[c.sourceId],
+      );
+    }
+    if (c.source === "task") {
+      const task = tasks.find((t) => t.id === c.sourceId);
+      return itemRolledRelativeToSprint(
+        task?.sprint ?? c.sprint,
+        task?.notes,
+        activeSprint,
+      );
+    }
+    return false;
+  };
+
+  /** When filtering Rolled Over on a sprint, include outbound items that already moved forward. */
+  const boardCardsForView = (() => {
+    if (
+      typeof activeSprint !== "number" ||
+      !testStatusFilters.has("rolled_over") ||
+      !matchesSourceFilter("test", sourceFilter)
+    ) {
+      return sprintScopedCards;
+    }
+    const seen = new Set(sprintScopedCards.map((c) => c.key));
+    const extras = boardCards.filter((c) => {
+      if (c.source !== "test") return false;
+      if (seen.has(c.key)) return false;
+      if (!matchesSourceFilter(c.source, sourceFilter)) return false;
+      return rolledRelativeToActiveSprint(c);
+    });
+    return extras.length ? [...sprintScopedCards, ...extras] : sprintScopedCards;
+  })();
+
+  const visibleCards = boardCardsForView.filter((c) => {
     const assignee = cardAssigneeFilterValue(c);
     const assignBy = cardAssignByValue(c);
     const status = cardStatusValue(c);
@@ -1522,7 +1609,11 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
     }
     if (c.source === "test" && testStatusFilters.size > 0) {
       const st = (testStatuses[c.sourceId] ?? "not_run") as TestStatus;
-      if (!testStatusFilters.has(st)) return false;
+      const matchesStatus = testStatusFilters.has(st);
+      // Work status may still be Fail / Fixed/Cursor — Rolled Over is orthogonal via note.
+      const matchesRolled =
+        testStatusFilters.has("rolled_over") && rolledRelativeToActiveSprint(c);
+      if (!matchesStatus && !matchesRolled) return false;
     }
     if (
       !boardCardMatchesSearch(c, searchQuery, {
@@ -2377,6 +2468,7 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
           ...t,
           ...withSprintDueDate({ sprint: nextSprint }),
           status: t.status === "not_started" ? "in_progress" : t.status,
+          notes: appendActorNote(t.notes, actingAssignBy, rolloverNoteText(sprint)),
         };
       });
       if (tasksChanged) {
@@ -2415,10 +2507,12 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
               : {}),
           });
         } else {
+          // Keep work status (Fail / Fixed/Cursor / …); mark rollover via note for chips/filters.
+          const workStatus = st === "rolled_over" ? "not_run" : st;
           testBatch.push({
             caseId: t.id,
-            status: "rolled_over",
-            note,
+            status: workStatus,
+            note: appendActorNote(note, actingAssignBy, rolloverNoteText(sprint)),
             assignee,
             sprint: nextSprint,
             dueDate: nextDue || testDueDates[t.id],
@@ -2730,7 +2824,14 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
             const locked = isSprintLocked(closedSprints, s.index);
             const showDone = !locked;
             const showReopen = locked;
-            const rollover = sprintRolloverSummary(testStatuses, testSprints, s.index);
+            const rollover = sprintRolloverSummary(
+              testStatuses,
+              testSprints,
+              s.index,
+              KNOWN_CASE_IDS,
+              testNotes,
+              tasks,
+            );
             return (
               <div
                 key={s.index}
@@ -2793,7 +2894,11 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
                       {goal}
                     </span>
                   ) : null}
-                  <TQBubbleLines c={bySource} />
+                  <TQBubbleLines
+                    c={bySource}
+                    rolledTests={rollover.fromPrevTests}
+                    rolledTasks={rollover.fromPrevTasks}
+                  />
                   <span
                     className="qa-tester-meta"
                     style={{
@@ -2806,20 +2911,6 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
                   >
                     {s.numericRangeLabel}
                   </span>
-                  {rollover.chipHint ? (
-                    <span
-                      className="qa-tester-meta"
-                      data-testid={`schedule-sprint-rollover-chip-${s.index}`}
-                      style={{
-                        fontSize: "0.8rem",
-                        fontWeight: 700,
-                        color: "#0e7490",
-                        lineHeight: 1.2,
-                      }}
-                    >
-                      {rollover.chipHint}
-                    </span>
-                  ) : null}
                 </button>
                 {showDone ? (
                   <button
@@ -2865,7 +2956,14 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
         )}
         {isSprintIndex(activeSprint) &&
           (() => {
-            const roll = sprintRolloverSummary(testStatuses, testSprints, activeSprint);
+            const roll = sprintRolloverSummary(
+              testStatuses,
+              testSprints,
+              activeSprint,
+              KNOWN_CASE_IDS,
+              testNotes,
+              tasks,
+            );
             if (!roll.banner) return null;
             return (
               <p
@@ -3312,11 +3410,21 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
                 </button>
                 {TEST_STATUS_BUBBLES.map((s) => {
                   const active = testStatusFilters.has(s.id);
-                  const count = statusCountCards.filter(
-                    (c) =>
-                      c.source === "test" &&
-                      (testStatuses[c.sourceId] ?? "not_run") === s.id,
-                  ).length;
+                  const count =
+                    s.id === "rolled_over" && typeof activeSprint === "number"
+                      ? boardCards.filter((c) => {
+                          if (c.source !== "test") return false;
+                          if (!matchesSourceFilter("test", sourceFilter)) return false;
+                          if (!matchesAssigneeFilter(cardAssigneeFilterValue(c), ownerFilter)) {
+                            return false;
+                          }
+                          return rolledRelativeToActiveSprint(c);
+                        }).length
+                      : statusCountCards.filter(
+                          (c) =>
+                            c.source === "test" &&
+                            (testStatuses[c.sourceId] ?? "not_run") === s.id,
+                        ).length;
                   const accent = STATUS_COLORS[s.id] || "#947D64";
                   return (
                     <button
@@ -3327,9 +3435,13 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
                       data-testid={`sprint-board-test-status-${s.id}`}
                       onClick={() => toggleTestStatusFilter(s.id)}
                       title={
-                        ownerFilter === "all"
-                          ? `${s.label} · ${count}`
-                          : `${s.label} · ${count} for ${ownerFilter}`
+                        s.id === "rolled_over" && typeof activeSprint === "number"
+                          ? ownerFilter === "all"
+                            ? `${s.label} · ${count} rolled from ${sprintLabel(activeSprint)} (incl. moved to next sprint)`
+                            : `${s.label} · ${count} for ${ownerFilter}`
+                          : ownerFilter === "all"
+                            ? `${s.label} · ${count}`
+                            : `${s.label} · ${count} for ${ownerFilter}`
                       }
                       style={{
                         borderColor: active ? accent : undefined,

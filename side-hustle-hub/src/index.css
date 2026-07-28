@@ -6936,7 +6936,7 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0;
+  gap: 4px;
   font-size: 0.9375rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -6944,7 +6944,19 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .schedule-sprint-bubble-grid .schedule-sprint-tq > span {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+}
+
+.schedule-sprint-bubble-grid .schedule-sprint-tq__rolled {
   display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #0e7490;
+  line-height: 1.2;
+  margin-top: 1px;
 }
 
 /* Testing Portal: header reset + top filters + automated run panel */
@@ -14146,6 +14158,30 @@ details[open] > summary .collapse-show-hide::before {
 .show-hide-chevron {
   flex-shrink: 0;
   color: var(--bronze, #6b5344);
+}
+
+.show-hide-chevron-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 2px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  border-radius: 4px;
+  cursor: pointer;
+  line-height: 0;
+}
+
+.show-hide-chevron-btn:hover:not(:disabled) {
+  background: rgba(155, 47, 40, 0.1);
+}
+
+.show-hide-chevron-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 .show-hide-toggle {

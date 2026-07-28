@@ -195,14 +195,26 @@ export function SprintStatusBars({
           aria-expanded={open}
           data-testid="sprint-status-toggle"
         >
-          <ShowHideChevron open={open} />
-          <span className="sprint-status-bars__title">Sprint Progress</span>
-          {!open && <span className="sprint-status-bars__hint">{hint}</span>}
-          {open && filterable && (
-            <span className="sprint-status-bars__hint sprint-status-bars__hint--filter">
-              Click a sprint name to filter
-            </span>
-          )}
+          <ShowHideChevron
+            open={open}
+            onOpenChange={setOpen}
+            label="Sprint Progress"
+            testId="sprint-status-chevron"
+          />
+          <button
+            type="button"
+            className="sprint-status-bars__heading-btn"
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+          >
+            <span className="sprint-status-bars__title">Sprint Progress</span>
+            {!open && <span className="sprint-status-bars__hint">{hint}</span>}
+            {open && filterable && (
+              <span className="sprint-status-bars__hint sprint-status-bars__hint--filter">
+                Click a sprint name to filter
+              </span>
+            )}
+          </button>
           <ShowHideToggle
             open={open}
             onOpenChange={setOpen}

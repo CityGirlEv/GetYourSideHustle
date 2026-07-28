@@ -119,9 +119,16 @@ function CollapsibleSection({
   return (
     <section className="qa-progress-bars__section qa-progress-bars__section--collapsible">
       <div className="qa-progress-bars__section-toggle" aria-expanded={open}>
-        <ShowHideChevron open={open} />
-        <span className="qa-progress-bars__heading">{title}</span>
-        {summary && <span className="qa-progress-bars__section-summary">{summary}</span>}
+        <ShowHideChevron open={open} onOpenChange={setOpen} label={title} />
+        <button
+          type="button"
+          className="qa-progress-bars__heading-btn"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+        >
+          <span className="qa-progress-bars__heading">{title}</span>
+          {summary && <span className="qa-progress-bars__section-summary">{summary}</span>}
+        </button>
         <ShowHideToggle open={open} onOpenChange={setOpen} label={title} />
       </div>
       {open && <div className="qa-progress-bars__section-body">{children}</div>}
@@ -345,9 +352,16 @@ export function QaProgressBars({
   return (
     <div className={shellClass} data-testid="qa-progress-bars">
       <div className="qa-progress-bars__toggle" aria-expanded={open}>
-        <ShowHideChevron open={open} />
-        <span className="qa-progress-bars__toggle-title">{title}</span>
-        <span className="qa-progress-bars__toggle-summary">{summary}</span>
+        <ShowHideChevron open={open} onOpenChange={setOpen} label={title} />
+        <button
+          type="button"
+          className="qa-progress-bars__heading-btn"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+        >
+          <span className="qa-progress-bars__toggle-title">{title}</span>
+          <span className="qa-progress-bars__toggle-summary">{summary}</span>
+        </button>
         <ShowHideToggle open={open} onOpenChange={setOpen} label={title} />
       </div>
       {open && <div className="qa-progress-bars__body">{body}</div>}

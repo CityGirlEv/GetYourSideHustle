@@ -93,6 +93,7 @@ import {
 import {
   healIncompleteTestDueDates,
   sprintRolloverSummary,
+  testIsRolledOver,
 } from "../../lib/gysh-sprint-board";
 import { formatAuditTrail } from "../../lib/gysh-audit";
 import {
@@ -907,7 +908,12 @@ export function TestingPortal({
     if (exclude !== "facing" && facingFilters.size > 0 && !facingFilters.has(facing)) return false;
     if (exclude !== "category" && categoryFilters.size > 0 && !categoryFilters.has(cat)) return false;
     if (exclude !== "area" && areaFilter !== "all" && t.area !== areaFilter) return false;
-    if (exclude !== "status" && statusFilters.size > 0 && !statusFilters.has(st)) return false;
+    if (exclude !== "status" && statusFilters.size > 0) {
+      const rolled = testIsRolledOver(st, notes[t.id]);
+      const matchesStatus =
+        statusFilters.has(st) || (statusFilters.has("rolled_over") && rolled);
+      if (!matchesStatus) return false;
+    }
     // Same ownership rules as Evelyn/Tina/Lyriq progress bars (D1 → PROOF id → catalog).
     if (exclude !== "tester" && testerFilters.size > 0) {
       const owner = ownerForTesterStats(t);
@@ -1228,10 +1234,13 @@ export function TestingPortal({
   const sprintRolloverByIndex = useMemo(() => {
     const map = new Map<number, ReturnType<typeof sprintRolloverSummary>>();
     for (const s of sprints) {
-      map.set(s.index, sprintRolloverSummary(statuses, sprintByCase, s.index, knownCaseIds));
+      map.set(
+        s.index,
+        sprintRolloverSummary(statuses, sprintByCase, s.index, knownCaseIds, notes),
+      );
     }
     return map;
-  }, [statuses, sprintByCase, sprints, knownCaseIds]);
+  }, [statuses, sprintByCase, sprints, knownCaseIds, notes]);
 
   const selectedSprintRollover = useMemo(() => {
     if (sprintFilters.size !== 1) return null;
@@ -1239,16 +1248,23 @@ export function TestingPortal({
     if (typeof key !== "number") return null;
     return (
       sprintRolloverByIndex.get(key) ??
-      sprintRolloverSummary(statuses, sprintByCase, key, knownCaseIds)
+      sprintRolloverSummary(statuses, sprintByCase, key, knownCaseIds, notes)
     );
-  }, [sprintFilters, sprintRolloverByIndex, statuses, sprintByCase, knownCaseIds]);
+  }, [sprintFilters, sprintRolloverByIndex, statuses, sprintByCase, knownCaseIds, notes]);
 
   const counts = useMemo(() => {
     const acc = { total: 0 } as Record<string, number>;
     for (const t of COUNTABLE_CASES) {
       if (!caseMatchesFilters(t, "status")) continue;
       const st = statuses[t.id] ?? DEFAULT_TEST_STATUS;
-      acc[st] = (acc[st] ?? 0) + 1;
+      const rolled = testIsRolledOver(st, notes[t.id]);
+      // Work status stays primary; Rolled Over is also counted when noted (may overlap).
+      if (st === "rolled_over") {
+        acc.rolled_over = (acc.rolled_over ?? 0) + 1;
+      } else {
+        acc[st] = (acc[st] ?? 0) + 1;
+        if (rolled) acc.rolled_over = (acc.rolled_over ?? 0) + 1;
+      }
       acc.total += 1;
     }
     return acc;
@@ -2618,15 +2634,25 @@ export function TestingPortal({
             data-testid="qa-automated-testing"
           >
             <div className="schedule-board-filters__label schedule-board-filters__label--bar">
-              <div className="schedule-board-filters__filter-title schedule-board-filters__filter-title--static">
-                <ShowHideChevron open={automatedOpen} />
+              <ShowHideChevron
+                open={automatedOpen}
+                onOpenChange={setAutomatedOpen}
+                label="Automated Testing"
+                testId="qa-automated-testing-chevron"
+              />
+              <button
+                type="button"
+                className="schedule-board-filters__filter-title schedule-board-filters__filter-title--collapse"
+                onClick={() => setAutomatedOpen((v) => !v)}
+                aria-expanded={automatedOpen}
+              >
                 <span>Automated Testing</span>
                 {!automatedOpen ? (
                   <span className="schedule-board-filters__label-hint">
                     Manual · Automated · Vitest · Playwright · {countWithPct(autoPass, autoTotal, " passed")}
                   </span>
                 ) : null}
-              </div>
+              </button>
               <ShowHideToggle
                 open={automatedOpen}
                 onOpenChange={setAutomatedOpen}
@@ -2738,14 +2764,26 @@ export function TestingPortal({
               className="qa-section-heading qa-categories-panel__header"
               aria-expanded={sprintOpen}
             >
-              <ShowHideChevron open={sprintOpen} />
-              <span className="qa-categories-panel__title">Sprint</span>
-              <span className="qa-categories-panel__active">
-                — {sprintFilterSummary}
-                {sprintFilters.size === 1 && sprintFilters.has(activeSprintIndex)
-                  ? " · current"
-                  : ""}
-              </span>
+              <ShowHideChevron
+                open={sprintOpen}
+                onOpenChange={setSprintOpen}
+                label="Sprint"
+                testId="qa-sprint-chevron"
+              />
+              <button
+                type="button"
+                className="qa-categories-panel__heading-btn"
+                onClick={() => setSprintOpen((v) => !v)}
+                aria-expanded={sprintOpen}
+              >
+                <span className="qa-categories-panel__title">Sprint</span>
+                <span className="qa-categories-panel__active">
+                  — {sprintFilterSummary}
+                  {sprintFilters.size === 1 && sprintFilters.has(activeSprintIndex)
+                    ? " · current"
+                    : ""}
+                </span>
+              </button>
               <ShowHideToggle
                 open={sprintOpen}
                 onOpenChange={setSprintOpen}
@@ -3543,7 +3581,7 @@ export function TestingPortal({
                     {effectiveSprint(t) === BACKLOG_SPRINT ? "Backlog" : sprintLabel(effectiveSprint(t))}
                   </span>
                   <span className="flat-label flat-label--area">{t.area}</span>
-                  {st === "rolled_over" && (
+                  {testIsRolledOver(st, notes[t.id]) && (
                     <span
                       className="flat-label"
                       data-testid={`test-rolled-over-badge-${t.id}`}
@@ -3582,11 +3620,13 @@ export function TestingPortal({
                   Rolled Over{" "}
                   <span
                     style={{
-                      color: st === "rolled_over" ? STATUS_COLOR.rolled_over : "var(--charcoal)",
+                      color: testIsRolledOver(st, notes[t.id])
+                        ? STATUS_COLOR.rolled_over
+                        : "var(--charcoal)",
                       fontWeight: 700,
                     }}
                   >
-                    {st === "rolled_over" ? "Yes" : "No"}
+                    {testIsRolledOver(st, notes[t.id]) ? "Yes" : "No"}
                   </span>
                 </span>
                 <span>
