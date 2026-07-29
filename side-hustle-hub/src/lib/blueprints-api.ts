@@ -86,3 +86,10 @@ export async function listSavedBlueprints(): Promise<SavedBlueprint[]> {
   const data = await api<{ ok: boolean; blueprints: SavedBlueprint[] }>("blueprints");
   return data.blueprints ?? [];
 }
+
+export async function assignSavedBlueprint(input: {
+  blueprintId: string;
+  childProfileId: string | null;
+}): Promise<{ ok: boolean; blueprintId: string; childProfileId: string | null }> {
+  return api("blueprints/assign", { method: "POST", body: input });
+}

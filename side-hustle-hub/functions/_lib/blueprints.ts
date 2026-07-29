@@ -424,15 +424,35 @@ export async function listBlueprints(env: Env, user: DbUser): Promise<Response> 
   if (dbFail) return dbFail;
   await ensureBlueprintTables(env);
 
-  const { results } = await env.DB.prepare(
+  const { results: owned } = await env.DB.prepare(
     `SELECT * FROM side_hustle_blueprints WHERE user_id = ? ORDER BY updated_at DESC LIMIT 50`,
   )
     .bind(user.id)
     .all<BlueprintRow>();
 
+  let assigned: BlueprintRow[] = [];
+  try {
+    const { results } = await env.DB.prepare(
+      `SELECT b.* FROM side_hustle_blueprints b
+       INNER JOIN child_profiles c ON c.id = b.child_profile_id
+       WHERE c.linked_user_id = ?
+       ORDER BY b.updated_at DESC LIMIT 50`,
+    )
+      .bind(user.id)
+      .all<BlueprintRow>();
+    assigned = results ?? [];
+  } catch {
+    assigned = [];
+  }
+
+  const byId = new Map<string, BlueprintRow>();
+  for (const row of [...(owned ?? []), ...assigned]) {
+    byId.set(row.id, row);
+  }
+
   return json({
     ok: true,
-    blueprints: (results ?? []).map(publicBlueprint),
+    blueprints: [...byId.values()].map(publicBlueprint),
     user: publicUser(user),
   });
 }
@@ -442,11 +462,27 @@ export async function getBlueprint(env: Env, user: DbUser, id: string): Promise<
   if (dbFail) return dbFail;
   await ensureBlueprintTables(env);
 
-  const row = await env.DB.prepare(
+  let row = await env.DB.prepare(
     `SELECT * FROM side_hustle_blueprints WHERE id = ? AND user_id = ?`,
   )
     .bind(id, user.id)
     .first<BlueprintRow>();
+
+  if (!row) {
+    try {
+      row =
+        (await env.DB.prepare(
+          `SELECT b.* FROM side_hustle_blueprints b
+           INNER JOIN child_profiles c ON c.id = b.child_profile_id
+           WHERE b.id = ? AND c.linked_user_id = ?`,
+        )
+          .bind(id, user.id)
+          .first<BlueprintRow>()) ?? null;
+    } catch {
+      row = null;
+    }
+  }
+
   if (!row) return error("Side Hustle Blueprint not found.", 404);
   return json({ ok: true, blueprint: publicBlueprint(row) });
 }

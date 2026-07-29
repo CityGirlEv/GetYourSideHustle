@@ -9,6 +9,7 @@ const KIDS_JUNIOR_LABELS: Record<string, string> = {
   crafts: "Creative Sticker & Keychain Crafting",
   "tech-helper": "Senior Tech Helper",
   homework: "Homework Helper & Reader",
+  "book-publishing-kids": "Kids Book Publishing",
   "create-games-kids": "Create Games with AI",
   "create-games-junior": "Create Games with AI",
 };

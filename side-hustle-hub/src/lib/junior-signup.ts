@@ -28,6 +28,10 @@ export type ParentConsentInput = {
   parentPhone?: string;
   parentAddress?: string;
   parentRelationship?: string;
+  /** Required when the parent email has no GYSH account yet. */
+  parentPassword?: string;
+  /** Optional: create a linked kid login using the child's signup email. */
+  kidPassword?: string;
 };
 
 export async function submitJuniorSignup(

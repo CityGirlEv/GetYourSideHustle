@@ -167,6 +167,15 @@ export function suggestedSprintForTest(
     return BACKLOG_SPRINT;
   }
 
+  // New Family Coach functionality (parent/kid register, blueprint map, reports) → Backlog
+  if (
+    id.startsWith("FAMILY-") &&
+    id !== "FAMILY-001" &&
+    id !== "FAMILY-002"
+  ) {
+    return BACKLOG_SPRINT;
+  }
+
   // Explicit Sprint 0 task linkage (unused while TEST_SPRINT_0_TASK_MATCH is empty)
   if (Object.prototype.hasOwnProperty.call(TEST_SPRINT_0_TASK_MATCH, id)) {
     return 0;

@@ -70,6 +70,12 @@ import {
   updateCertificateTemplate,
 } from "../_lib/certificates";
 import {
+  assignBlueprintToChild,
+  createFamilyChild,
+  getFamilySettings,
+  updateFamilySettings,
+} from "../_lib/family";
+import {
   claimPendingBlueprint,
   createPendingBlueprint,
   getBlueprint,
@@ -205,11 +211,23 @@ export async function onRequest(context: {
     if (route === "family/children" && method === "GET") {
       return withCors(request, await listFamilyChildren(env, user));
     }
+    if (route === "family/children" && method === "POST") {
+      return withCors(request, await createFamilyChild(env, user, request));
+    }
+    if (route === "family/settings" && method === "GET") {
+      return withCors(request, await getFamilySettings(env, user));
+    }
+    if (route === "family/settings" && method === "PUT") {
+      return withCors(request, await updateFamilySettings(env, user, request));
+    }
     if (route === "blueprints" && method === "GET") {
       return withCors(request, await listBlueprints(env, user));
     }
     if (route === "blueprints" && method === "POST") {
       return withCors(request, await saveBlueprint(env, request, user));
+    }
+    if (route === "blueprints/assign" && method === "POST") {
+      return withCors(request, await assignBlueprintToChild(env, user, request));
     }
     if (route === "blueprints/claim" && method === "POST") {
       return withCors(request, await claimPendingBlueprint(env, request, user));

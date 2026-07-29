@@ -862,7 +862,14 @@ export async function handleCronDailyDigest(env: Env, request: Request): Promise
     onlyEmail: only || undefined,
     allowResend,
   });
-  return json(result);
+  let parentReports = { sent: 0 };
+  try {
+    const { sendDueParentProgressReports } = await import("./family");
+    parentReports = await sendDueParentProgressReports(env);
+  } catch {
+    parentReports = { sent: 0 };
+  }
+  return json({ ...result, parentProgressReports: parentReports });
 }
 
 export async function handleAdminSendDigests(

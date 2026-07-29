@@ -22,6 +22,9 @@ export function ParentConsentPage({ token, onClose }: ParentConsentPageProps) {
   const [parentRelationship, setParentRelationship] = useState("");
   const [parentPhone, setParentPhone] = useState("");
   const [parentAddress, setParentAddress] = useState("");
+  const [parentPassword, setParentPassword] = useState("");
+  const [parentPasswordConfirm, setParentPasswordConfirm] = useState("");
+  const [kidPassword, setKidPassword] = useState("");
   const [approved, setApproved] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ kind: "success" | "error"; message: string } | null>(null);
@@ -49,6 +52,13 @@ export function ParentConsentPage({ token, onClose }: ParentConsentPageProps) {
     e.preventDefault();
     setSubmitting(true);
     setResult(null);
+    if (parentPassword || parentPasswordConfirm) {
+      if (parentPassword !== parentPasswordConfirm) {
+        setResult({ kind: "error", message: "Parent passwords do not match." });
+        setSubmitting(false);
+        return;
+      }
+    }
     try {
       const res = await submitParentConsent(token, {
         decision: "approve",
@@ -57,6 +67,8 @@ export function ParentConsentPage({ token, onClose }: ParentConsentPageProps) {
         parentRelationship,
         parentPhone,
         parentAddress,
+        parentPassword: parentPassword || undefined,
+        kidPassword: kidPassword || undefined,
       });
       setResult({ kind: "success", message: res.message });
       setSignup((prev) => (prev ? { ...prev, status: "active" } : prev));
@@ -171,6 +183,46 @@ export function ParentConsentPage({ token, onClose }: ParentConsentPageProps) {
                     onChange={(e) => setParentAddress(e.target.value)}
                     style={{ resize: "vertical" }}
                   />
+                </div>
+                <div className="consent-account-block" data-testid="consent-parent-login">
+                  <p className="consent-account-lead">
+                    Parent login for <strong>{signup.parentEmail}</strong>. If you do not already have a
+                    GYSH account, create a password below so this kid profile links to you.
+                  </p>
+                  <div className="form-group">
+                    <label className="form-label">Parent password (required if you are new)</label>
+                    <input
+                      className="text-input"
+                      type="password"
+                      autoComplete="new-password"
+                      value={parentPassword}
+                      onChange={(e) => setParentPassword(e.target.value)}
+                      data-testid="consent-parent-password"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Confirm parent password</label>
+                    <input
+                      className="text-input"
+                      type="password"
+                      autoComplete="new-password"
+                      value={parentPasswordConfirm}
+                      onChange={(e) => setParentPasswordConfirm(e.target.value)}
+                      data-testid="consent-parent-password-confirm"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Optional kid login password</label>
+                    <input
+                      className="text-input"
+                      type="password"
+                      autoComplete="new-password"
+                      value={kidPassword}
+                      onChange={(e) => setKidPassword(e.target.value)}
+                      placeholder="Uses the kid email from the signup request"
+                      data-testid="consent-kid-password"
+                    />
+                  </div>
                 </div>
                 <label className="consent-check">
                   <input type="checkbox" checked={approved} onChange={(e) => setApproved(e.target.checked)} />

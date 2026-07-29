@@ -318,6 +318,23 @@ export async function handleLogin(env: Env, request: Request): Promise<Response>
   const isAdmin = canAccessAdminPortal(roles);
   const { token, cookie } = await createSession(env.DB, user.id);
   await appendAudit(env.DB, "login_ok", email, isAdmin ? "admin login success" : "member login success");
+
+  // Parent coach alert whenever a linked kid/teen account signs in.
+  try {
+    const audience = String(user.audience || "").toLowerCase();
+    const isYouth =
+      roles.includes("kid") ||
+      roles.includes("junior") ||
+      audience === "kids" ||
+      audience === "junior";
+    if (isYouth) {
+      const { notifyParentOfKidLogin } = await import("./family");
+      await notifyParentOfKidLogin(env, user);
+    }
+  } catch {
+    /* never block login */
+  }
+
   return json(
     { ok: true, user: publicUser(user), token, isAdmin },
     200,

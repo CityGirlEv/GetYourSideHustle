@@ -5,6 +5,7 @@ import {
   appendAudit,
   canonicalizeEmail,
   error,
+  getUserByEmail,
   hashPassword,
   json,
   MIN_PASSWORD_LENGTH,
@@ -113,7 +114,7 @@ function isGeneratedFailureCaseId(caseId: string): boolean {
   return id.startsWith("VT-FAIL-") || id.startsWith("PW-FAIL-");
 }
 
-/** Catalog VT-*/PW-* (not FAIL follow-ups) always belong to the suite runner. */
+/** Catalog VT-/PW- cases (not FAIL follow-ups) always belong to the suite runner. */
 function suiteOwnerForAutomatedCase(caseId: string): "vitest" | "playwright" | null {
   const id = String(caseId || "").trim();
   if (!id || isGeneratedFailureCaseId(id)) return null;
@@ -1487,7 +1488,7 @@ export async function setTestStatus(env: Env, request: Request, actor: DbUser): 
     const prevSprintNum = Number(prev?.sprint);
     const prevSprint = Number.isFinite(prevSprintNum) ? prevSprintNum : BACKLOG_SPRINT;
 
-    const status = String(raw.status ?? prev?.status ?? "");
+    let status = String(raw.status ?? prev?.status ?? "");
     const whoForNotes = actorLabel(actor);
     const prevNoteRaw = String(prev?.note ?? "");
     let note =
@@ -1512,7 +1513,11 @@ export async function setTestStatus(env: Env, request: Request, actor: DbUser): 
         : String(prev?.assignee ?? "").trim();
     // Catalog automated cases never belong to human QA — suite runner only.
     const lockedSuiteOwner = suiteOwnerForAutomatedCase(caseId);
-    if (lockedSuiteOwner) assignee = lockedSuiteOwner;
+    if (lockedSuiteOwner) {
+      assignee = lockedSuiteOwner;
+      // Suite runners are pass/fail/not_run — never human "In Progress".
+      if (status === "in_progress") status = "not_run";
+    }
 
     let sprint = prevSprint;
     if (raw.sprint !== undefined && raw.sprint !== null) {
@@ -2543,11 +2548,43 @@ export async function grantJuniorConsent(env: Env, token: string, request: Reque
   const parentPhone = String(body.parentPhone || "").trim();
   const parentAddress = String(body.parentAddress || "").trim();
   const parentRelationship = String(body.parentRelationship || "").trim();
+  const parentPassword = String(body.parentPassword || "");
+  const kidPassword = String(body.kidPassword || "");
   const approved = body.approved === true;
 
   if (!parentName) return error("Parent/guardian name is required.");
   if (!parentPhone) return error("A contact phone number is required.");
   if (!approved) return error("You must grant permission to activate the account.");
+
+  // If the parent has no GYSH login yet, consent must create username/password.
+  const existingParent = await getUserByEmail(env.DB, canonicalizeEmail(row.parent_email));
+  if (!existingParent) {
+    const { passwordPolicyError } = await import("./password-policy");
+    const pwErr = passwordPolicyError(parentPassword);
+    if (pwErr) {
+      return error(
+        "Create a parent username/password to finish approval: " + pwErr,
+      );
+    }
+  }
+
+  let provision: { parentUserId: string; childProfileId: string; parentCreated: boolean } | null =
+    null;
+  try {
+    const { provisionFamilyFromJuniorConsent } = await import("./family");
+    provision = await provisionFamilyFromJuniorConsent(env, {
+      parentEmail: row.parent_email,
+      parentName,
+      childName: row.child_name,
+      childEmail: row.child_email,
+      team: row.team,
+      juniorSignupId: row.id,
+      parentPassword: existingParent ? undefined : parentPassword,
+      kidPassword: kidPassword || undefined,
+    });
+  } catch (e) {
+    return error(e instanceof Error ? e.message : "Could not link the kid profile to a parent account.");
+  }
 
   await env.DB.prepare(
     `UPDATE junior_signups
@@ -2565,7 +2602,7 @@ export async function grantJuniorConsent(env: Env, token: string, request: Reque
   }
 
   try {
-    const { sendAdminFormNotify } = await import("./email");
+    const { sendAdminFormNotify, sendParentAccountReadyEmail } = await import("./email");
     const { escapeHtml: esc } = await import("./email-brand");
     await sendAdminFormNotify(env, {
       formName: "Parent consent granted",
@@ -2577,14 +2614,27 @@ export async function grantJuniorConsent(env: Env, token: string, request: Reque
       replyTo: row.parent_email,
       meta: { team: row.team, childEmail: row.child_email },
     });
+    if (provision?.parentCreated) {
+      await sendParentAccountReadyEmail(env, {
+        parentEmail: row.parent_email,
+        parentName,
+        childName: row.child_name,
+      });
+    }
   } catch {
     /* non-fatal */
   }
 
+  const loginHint = provision?.parentCreated
+    ? ` Your parent login is ready — sign in at getyoursidehustle.com with ${row.parent_email}.`
+    : "";
+
   return json({
     ok: true,
     status: "active",
-    message: `Thank you, ${parentName}. ${row.child_name}'s ${teamLabel(row.team)} account is now active.`,
+    parentCreated: Boolean(provision?.parentCreated),
+    childProfileId: provision?.childProfileId ?? null,
+    message: `Thank you, ${parentName}. ${row.child_name}'s ${teamLabel(row.team)} account is now active and linked to your parent coach profile.${loginHint}`,
   });
 }
 
@@ -2623,19 +2673,31 @@ export async function listFamilyChildren(
     ageBand: "kids" | "junior";
     status: string;
     source: "profile" | "signup";
+    hasLogin?: boolean;
+    /** True when the kid joined (junior_signups) but has no child_profiles row yet. */
+    needsRegistration?: boolean;
+    childEmail?: string | null;
+    juniorSignupId?: string | null;
   };
   const children: ChildOut[] = [];
   const seen = new Set<string>();
 
   try {
     const profiles = await env.DB.prepare(
-      `SELECT id, display_name, age_band, COALESCE(status, 'active') AS status
+      `SELECT id, display_name, age_band, COALESCE(status, 'active') AS status, linked_user_id, contact_email
        FROM child_profiles
        WHERE parent_user_id = ?
        ORDER BY created_at ASC`,
     )
       .bind(user.id)
-      .all<{ id: string; display_name: string; age_band: string; status: string }>();
+      .all<{
+        id: string;
+        display_name: string;
+        age_band: string;
+        status: string;
+        linked_user_id: string | null;
+        contact_email: string | null;
+      }>();
     for (const row of profiles.results ?? []) {
       const status = String(row.status || "active").toLowerCase();
       if (status === "deactivated" || status === "inactive") continue;
@@ -2649,6 +2711,10 @@ export async function listFamilyChildren(
         ageBand,
         status,
         source: "profile",
+        hasLogin: Boolean(row.linked_user_id),
+        needsRegistration: false,
+        childEmail: row.contact_email || null,
+        juniorSignupId: null,
       });
     }
   } catch {
@@ -2659,7 +2725,7 @@ export async function listFamilyChildren(
     await ensureJuniorSignupSchema(env);
     const parentEmail = canonicalizeEmail(user.email);
     const signups = await env.DB.prepare(
-      `SELECT id, team, child_name, status, child_profile_id
+      `SELECT id, team, child_name, child_email, status, child_profile_id
        FROM junior_signups
        WHERE parent_email = ?
          AND status IN ('active', 'pending_parent')
@@ -2670,6 +2736,7 @@ export async function listFamilyChildren(
         id: string;
         team: string;
         child_name: string;
+        child_email: string;
         status: string;
         child_profile_id: string | null;
       }>();
@@ -2685,6 +2752,9 @@ export async function listFamilyChildren(
         ageBand,
         status: row.status,
         source: "signup",
+        needsRegistration: true,
+        childEmail: row.child_email || null,
+        juniorSignupId: row.id,
       });
     }
   } catch {
@@ -2718,7 +2788,22 @@ export async function health(env: Env): Promise<Response> {
   }
 }
 
-/** Public contact form → Resend to admin inbox. */
+async function ensureContactSubmissionsTable(env: Env): Promise<void> {
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS contact_submissions (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      message TEXT NOT NULL,
+      email_status TEXT NOT NULL DEFAULT 'pending',
+      provider_id TEXT,
+      error TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL
+    )`,
+  ).run();
+}
+
+/** Public contact form → persist + Resend to admin inbox (DB win even if email blips). */
 export async function handleContact(env: Env, request: Request): Promise<Response> {
   let body: { name?: string; email?: string; message?: string };
   try {
@@ -2741,12 +2826,88 @@ export async function handleContact(env: Env, request: Request): Promise<Respons
   }
 
   const { emailConfigured, sendContactMessage, EmailSendError } = await import("./email");
+  const submissionId = crypto.randomUUID();
+  const now = new Date().toISOString();
+  let saved = false;
+  try {
+    await ensureContactSubmissionsTable(env);
+    await env.DB.prepare(
+      `INSERT INTO contact_submissions (id, name, email, message, email_status, created_at)
+       VALUES (?, ?, ?, ?, 'pending', ?)`,
+    )
+      .bind(submissionId, name, canonicalizeEmail(email), message, now)
+      .run();
+    saved = true;
+  } catch {
+    /* fall through — still try email if D1 write fails */
+  }
+
   if (!emailConfigured(env)) {
+    if (saved) {
+      return json({
+        ok: true,
+        message:
+          "Thanks — we received your message. Email delivery is temporarily unavailable; we will follow up from the GYSH inbox.",
+      });
+    }
     return error("Email is not configured on the server yet.", 503);
   }
 
-  try {
-    const result = await sendContactMessage(env, { name, email, message });
+  let lastError = "";
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const result = await sendContactMessage(env, { name, email, message });
+      if (saved) {
+        try {
+          await env.DB.prepare(
+            `UPDATE contact_submissions
+             SET email_status = 'sent', provider_id = ?, error = ''
+             WHERE id = ?`,
+          )
+            .bind(result.id ?? "", submissionId)
+            .run();
+        } catch {
+          /* ignore */
+        }
+      }
+      try {
+        await env.DB.prepare(
+          `INSERT INTO audit_events (at, action, email, detail) VALUES (?, ?, ?, ?)`,
+        )
+          .bind(
+            new Date().toISOString(),
+            "contact_form",
+            canonicalizeEmail(email),
+            `contact from ${name}${result.id ? ` resend:${result.id}` : ""}${saved ? ` saved:${submissionId}` : ""}`,
+          )
+          .run();
+      } catch {
+        /* audit optional */
+      }
+      return json({ ok: true, message: "Thanks — your message was sent." });
+    } catch (e) {
+      lastError =
+        e instanceof EmailSendError
+          ? e.message
+          : e instanceof Error
+            ? e.message
+            : String(e);
+      if (attempt === 0) continue;
+    }
+  }
+
+  if (saved) {
+    try {
+      await env.DB.prepare(
+        `UPDATE contact_submissions
+         SET email_status = 'failed', error = ?
+         WHERE id = ?`,
+      )
+        .bind(lastError.slice(0, 500), submissionId)
+        .run();
+    } catch {
+      /* ignore */
+    }
     try {
       await env.DB.prepare(
         `INSERT INTO audit_events (at, action, email, detail) VALUES (?, ?, ?, ?)`,
@@ -2755,24 +2916,28 @@ export async function handleContact(env: Env, request: Request): Promise<Respons
           new Date().toISOString(),
           "contact_form",
           canonicalizeEmail(email),
-          `contact from ${name}${result.id ? ` resend:${result.id}` : ""}`,
+          `contact saved:${submissionId} email_failed: ${lastError.slice(0, 180)}`,
         )
         .run();
     } catch {
-      /* audit optional if DB missing columns */
+      /* ignore */
     }
-    return json({ ok: true, message: "Thanks — your message was sent." });
-  } catch (e) {
-    if (e instanceof EmailSendError) {
-      return error(
-        e.status === 403 || e.message.toLowerCase().includes("domain")
-          ? "Email could not be sent (sending domain not verified in Resend yet). Please email info@getyoursidehustle.com directly."
-          : `Email could not be sent: ${e.message}`,
-        502,
-      );
-    }
-    return error(`Email could not be sent: ${e instanceof Error ? e.message : String(e)}`, 502);
+    // Do not 502 when the message is safely stored — UI stays green; ops can follow up from D1.
+    return json({
+      ok: true,
+      message:
+        "Thanks — we received your message. If you don't hear back within 2–3 business days, email info@getyoursidehustle.com.",
+    });
   }
+
+  const domainIssue =
+    lastError.toLowerCase().includes("domain") || lastError.toLowerCase().includes("403");
+  return error(
+    domainIssue
+      ? "Email could not be sent (sending domain not verified in Resend yet). Please email info@getyoursidehustle.com directly."
+      : `Email could not be sent: ${lastError || "unknown error"}`,
+    502,
+  );
 }
 
 /* ─── Admin Financials (admin role only) ─── */

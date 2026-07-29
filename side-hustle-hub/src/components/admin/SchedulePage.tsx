@@ -4357,12 +4357,20 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
                             disabled={controlsDisabled}
                           >
                             {(Object.keys(TEST_STATUS_LABELS) as TestStatus[])
-                              .filter(
-                                (s) =>
+                              .filter((s) => {
+                                if (
+                                  isAutomatedTestId(card.sourceId) &&
+                                  s === "in_progress" &&
+                                  String(statusVal) !== "in_progress"
+                                ) {
+                                  return false;
+                                }
+                                return (
                                   s !== "blocked" ||
                                   canBlockTests ||
-                                  String(statusVal) === "blocked",
-                              )
+                                  String(statusVal) === "blocked"
+                                );
+                              })
                               .map((s) => (
                                 <option
                                   key={s}

@@ -38,6 +38,8 @@ export type SendEmailInput = {
   html: string;
   text?: string;
   from?: string;
+  /** Resend reply_to — used for contact form so admins can reply to the sender. */
+  replyTo?: string | string[];
   templateSlug: string;
   userId?: string | null;
   meta?: Record<string, unknown>;
@@ -161,6 +163,7 @@ export async function sendResendEmail(
         subject: payload.subject,
         html: payload.html,
         text: payload.text,
+        ...(payload.replyTo ? { reply_to: payload.replyTo } : {}),
         ...(payload.attachments?.length
           ? {
               attachments: payload.attachments.map((a) => ({
@@ -299,6 +302,7 @@ export async function sendContactMessage(
   });
   return sendResendEmail(env, {
     to: recipients,
+    replyTo: input.email,
     subject: `[GYSH contact] ${input.name.slice(0, 60)}`,
     html: branded.html,
     text: branded.text,
@@ -523,7 +527,8 @@ export async function sendParentConsentEmail(
     headline: "A young Side Hustler needs your yes!",
     subhead: `${input.childName} asked to join the GYSH ${label} team — with you as GYSH Coach.`,
     bodyHtml: `<p style="margin:0 0 12px;">You're the coach. Cheer, set boundaries, and help turn ideas into safe first wins.</p>
-      <p style="margin:0 0 12px;">Parental consent is required through age 12. Tap below to grant permission. Until you approve, the account stays pending.</p>`,
+      <p style="margin:0 0 12px;">Parental consent is required through age 12. Tap below to grant permission. If you do not already have a GYSH login, you will create a username and password on that page so the kid profile links to you.</p>
+      <p style="margin:0 0 12px;">Until you approve, the account stays pending.</p>`,
     ctaLabel: "Approve as parent / guardian",
     ctaUrl: input.consentUrl,
     footerNote: "If you didn't expect this, you can ignore this email.",
@@ -539,6 +544,116 @@ export async function sendParentConsentEmail(
       audience: input.audience,
       consentUrl: input.consentUrl,
     },
+  });
+}
+
+export async function sendParentAccountReadyEmail(
+  env: Env,
+  input: { parentEmail: string; parentName: string; childName: string },
+): Promise<{ id: string | null }> {
+  const branded = wrapBrandedEmail({
+    preheader: `Your GYSH parent coach login is ready`,
+    eyebrow: `Family · Parent account`,
+    headline: "Your parent coach login is ready",
+    subhead: `${input.childName}'s profile is linked to you.`,
+    bodyHtml: `<p style="margin:0 0 12px;">Hi ${escapeHtml(input.parentName || "there")}, your GYSH parent account was created when you approved ${escapeHtml(input.childName)}.</p>
+      <p style="margin:0 0 12px;">Sign in with <strong>${escapeHtml(input.parentEmail)}</strong> and the password you just set. From your Dashboard you can register more kids, assign Match Wizard Blueprints, and choose daily or weekly progress emails.</p>`,
+    ctaLabel: "Open my Dashboard",
+    ctaUrl: `${SITE_URL}/`,
+    footerNote: "Keep your password private — kids should use their own kid login if you created one.",
+  });
+  return sendResendEmail(env, {
+    to: input.parentEmail,
+    subject: `${SITE_NAME} — parent coach login ready`,
+    html: branded.html,
+    text: branded.text,
+    templateSlug: "parent_account_ready",
+    meta: { childName: input.childName },
+  });
+}
+
+export async function sendKidLoginNotifyEmail(
+  env: Env,
+  input: { parentEmail: string; parentName: string; childName: string; loggedInAt: string },
+): Promise<{ id: string | null }> {
+  const when = new Date(input.loggedInAt);
+  const whenLabel = Number.isNaN(when.getTime())
+    ? input.loggedInAt
+    : when.toLocaleString("en-US", { timeZone: "America/Chicago" });
+  const branded = wrapBrandedEmail({
+    preheader: `${input.childName} just signed in to GYSH`,
+    eyebrow: `Family · Kid login alert`,
+    headline: `${escapeHtml(input.childName)} just signed in`,
+    subhead: "A quick heads-up for you as GYSH Coach.",
+    bodyHtml: `<p style="margin:0 0 12px;">Hi ${escapeHtml(input.parentName || "there")}, <strong>${escapeHtml(input.childName)}</strong> signed in around <strong>${escapeHtml(whenLabel)}</strong> (Central).</p>
+      <p style="margin:0 0 12px;">You can review their Blueprint and progress anytime from your member Dashboard. Prefer a digest instead of every login? Turn on daily or weekly kid progress reports there.</p>`,
+    ctaLabel: "Open my Dashboard",
+    ctaUrl: `${SITE_URL}/`,
+    footerNote: "You receive this because a kid/teen login is linked to your parent coach account.",
+  });
+  return sendResendEmail(env, {
+    to: input.parentEmail,
+    subject: `${SITE_NAME} — ${input.childName} signed in`,
+    html: branded.html,
+    text: branded.text,
+    templateSlug: "kid_login_notify",
+    meta: { childName: input.childName, loggedInAt: input.loggedInAt },
+  });
+}
+
+export async function sendParentKidProgressReportEmail(
+  env: Env,
+  input: {
+    parentEmail: string;
+    parentName: string;
+    cadence: "daily" | "weekly";
+    periodKey: string;
+    children: Array<{ name: string; ageBand: string; blueprintTop: string | null }>;
+    recentLogins: Array<{ childName: string; at: string }>;
+  },
+): Promise<{ id: string | null }> {
+  const cadenceLabel = input.cadence === "daily" ? "Daily" : "Weekly";
+  const kidsHtml = input.children
+    .map(
+      (c) =>
+        `<li style="margin:0 0 6px;"><strong>${escapeHtml(c.name)}</strong> (${escapeHtml(c.ageBand === "junior" ? "Teens" : "Kids")})${
+          c.blueprintTop ? ` · Blueprint top match: ${escapeHtml(c.blueprintTop)}` : " · No Blueprint assigned yet"
+        }</li>`,
+    )
+    .join("");
+  const loginsHtml =
+    input.recentLogins.length === 0
+      ? `<p style="margin:0;">No kid logins in this period.</p>`
+      : `<ul style="margin:0;padding-left:18px;">${input.recentLogins
+          .slice(0, 20)
+          .map(
+            (l) =>
+              `<li style="margin:0 0 4px;">${escapeHtml(l.childName)} · ${escapeHtml(
+                new Date(l.at).toLocaleString("en-US", { timeZone: "America/Chicago" }),
+              )}</li>`,
+          )
+          .join("")}</ul>`;
+  const branded = wrapBrandedEmail({
+    preheader: `${cadenceLabel} kid progress report`,
+    eyebrow: `Family · ${cadenceLabel} progress`,
+    headline: `${cadenceLabel} kid progress report`,
+    subhead: `Period ${input.periodKey}`,
+    bodyHtml: `<p style="margin:0 0 12px;">Hi ${escapeHtml(input.parentName || "there")}, here is your GYSH Coach update.</p>
+      <p style="margin:0 0 8px;"><strong>Linked kids</strong></p>
+      <ul style="margin:0 0 14px;padding-left:18px;">${kidsHtml}</ul>
+      <p style="margin:0 0 8px;"><strong>Recent logins</strong></p>
+      ${loginsHtml}`,
+    ctaLabel: "Open my Dashboard",
+    ctaUrl: `${SITE_URL}/`,
+    footerNote: "Change daily/weekly reports anytime under Dashboard → Family.",
+  });
+  return sendResendEmail(env, {
+    to: input.parentEmail,
+    subject: `${SITE_NAME} — ${cadenceLabel.toLowerCase()} kid progress (${input.periodKey})`,
+    html: branded.html,
+    text: branded.text,
+    templateSlug: `parent_kid_progress_${input.cadence}`,
+    meta: { cadence: input.cadence, periodKey: input.periodKey, childCount: input.children.length },
   });
 }
 
@@ -582,9 +697,34 @@ export const EMAIL_TEMPLATE_CATALOG: Array<{
   {
     slug: "parent_consent",
     name: "Parent consent",
-    description: "Kids/Teens team signup — parent must approve.",
+    description: "Kids/Teens team signup — parent must approve (and create login if needed).",
     sampleSubject: `${SITE_NAME} — approve a team request`,
   },
+  {
+    slug: "parent_account_ready",
+    name: "Parent account ready",
+    description: "Sent when consent creates a new parent coach login.",
+    sampleSubject: `${SITE_NAME} — parent coach login ready`,
+  },
+  {
+    slug: "kid_login_notify",
+    name: "Kid login notify",
+    description: "Alert parent every time a linked kid/teen signs in.",
+    sampleSubject: `${SITE_NAME} — kid signed in`,
+  },
+  {
+    slug: "parent_kid_progress_daily",
+    name: "Parent kid progress · Daily",
+    description: "Optional daily kid progress digest for parent coaches.",
+    sampleSubject: `${SITE_NAME} — daily kid progress`,
+  },
+  {
+    slug: "parent_kid_progress_weekly",
+    name: "Parent kid progress · Weekly",
+    description: "Optional weekly kid progress digest for parent coaches.",
+    sampleSubject: `${SITE_NAME} — weekly kid progress`,
+  },
+
   {
     slug: "contact_inbox",
     name: "Contact form → admin",

@@ -7222,7 +7222,7 @@ h1, h2, h3, h4, h5, h6 {
   justify-content: flex-start;
 }
 
-/* Vitest / Playwright on QA Testors — run suite on click */
+/* Vitest / Playwright under Automated Testing — run suite on click */
 .qa-suite-assignee-run {
   cursor: pointer;
   gap: 6px;
@@ -14060,6 +14060,25 @@ button.launch-checklist-item {
   color: #2e7d5a;
 }
 
+.membership-benefits-toggle {
+  margin-top: 10px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--crimson);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.membership-benefits-toggle:hover {
+  color: var(--bronze);
+}
+
 .membership-tier-card .btn {
   width: 100%;
   margin-top: auto;
@@ -14180,6 +14199,271 @@ button.launch-checklist-item {
   background: linear-gradient(135deg, rgba(155, 47, 40, 0.12), rgba(107, 79, 58, 0.1));
   color: #6b2f1a;
   box-shadow: inset 0 0 0 1px rgba(155, 47, 40, 0.12);
+}
+
+.user-portal-blueprint-assign {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 0 0 12px;
+  font-size: 0.9rem;
+}
+
+.user-portal-blueprint-assign select {
+  min-width: 180px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--text-primary) 18%, transparent);
+  background: var(--surface, #fff);
+  color: var(--text-primary);
+  font: inherit;
+}
+
+.user-portal-family .user-portal-panel-lead {
+  margin: 0 0 14px;
+}
+
+.user-portal-family-ok {
+  margin: 0 0 12px;
+  color: #2e7d5a;
+  font-weight: 600;
+}
+
+.user-portal-register-kid {
+  margin: 0 0 18px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent);
+  background: color-mix(in srgb, var(--crimson) 4%, transparent);
+}
+
+.user-portal-register-kid h4 {
+  margin: 0 0 10px;
+}
+
+.user-portal-register-kid-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.user-portal-family-list {
+  list-style: none;
+  margin: 0 0 18px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.user-portal-family-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--text-primary) 10%, transparent);
+}
+
+.user-portal-family-child-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.user-portal-family-child-name-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 14px;
+}
+
+.user-portal-family-child-name {
+  font-size: 1.05rem;
+}
+
+.user-portal-kid-register-link,
+.user-portal-kid-dashboard-link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--crimson);
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.user-portal-kid-register-link {
+  font-size: 1.05rem;
+}
+
+.user-portal-kid-dashboard-link {
+  font-size: 0.9rem;
+}
+
+.user-portal-kid-register-link:hover,
+.user-portal-kid-dashboard-link:hover {
+  color: var(--bronze);
+}
+
+.user-portal-family-blueprint-items .user-portal-blueprint-matches {
+  margin-top: 6px;
+}
+
+.user-portal-family-blueprints {
+  margin-top: 4px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--text-primary) 10%, transparent);
+  padding: 0 10px;
+}
+
+.user-portal-family-blueprints > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 0;
+  cursor: pointer;
+  list-style: none;
+  font-size: 0.92rem;
+}
+
+.user-portal-family-blueprints > summary::-webkit-details-marker {
+  display: none;
+}
+
+.user-portal-family-blueprints-empty {
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+  color: color-mix(in srgb, var(--text-primary) 72%, transparent);
+}
+
+.user-portal-family-blueprint-items {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.user-portal-family-blueprint-items > li {
+  padding: 0;
+  border: none;
+  border-radius: 0;
+}
+
+.user-portal-family-blueprint-items ol {
+  margin: 4px 0 8px;
+  padding-left: 1.2rem;
+  font-size: 0.9rem;
+}
+
+.user-portal-family-blueprint-open {
+  margin-top: 2px;
+  width: auto;
+  padding: 4px 10px;
+  font-size: 0.85rem;
+}
+
+.user-portal-family-list li span,
+.user-portal-family-list li em {
+  font-size: 0.9rem;
+  color: color-mix(in srgb, var(--text-primary) 72%, transparent);
+  font-style: normal;
+}
+
+.user-portal-family-reports {
+  margin-top: 8px;
+  padding-top: 14px;
+  border-top: 1px solid color-mix(in srgb, var(--text-primary) 10%, transparent);
+}
+
+.user-portal-family-reports h4 {
+  margin: 0 0 6px;
+}
+
+.user-portal-family-report-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 10px;
+}
+
+.user-portal-family-report-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.kids-assigned-blueprint {
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--crimson) 28%, transparent);
+  background: color-mix(in srgb, var(--crimson) 6%, transparent);
+}
+
+.kids-assigned-blueprint h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  font-size: 1.05rem;
+}
+
+.kids-assigned-blueprint p {
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+}
+
+.kids-assigned-blueprint-block {
+  margin-top: 8px;
+}
+
+.kids-assigned-blueprint-matches {
+  margin: 6px 0 0;
+  padding-left: 1.2rem;
+}
+
+.kids-assigned-blueprint-matches li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
+}
+
+.kids-assigned-blueprint-matches em {
+  font-style: normal;
+  font-size: 0.9rem;
+  color: color-mix(in srgb, var(--text-primary) 70%, transparent);
+}
+
+.kid-dashboard-explore-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.consent-account-block {
+  margin: 12px 0;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent);
+  background: color-mix(in srgb, var(--text-primary) 3%, transparent);
+}
+
+.consent-account-lead {
+  margin: 0 0 10px;
+  font-size: 0.95rem;
 }
 
 .user-portal-panel {

@@ -391,8 +391,8 @@ async function statusesForIds(
 
 function shouldUpdateCase(mode: AutomatedRunMode, current: string | undefined): boolean {
   if (mode === "all") return true;
-  // new = only missing or not_run
-  return !current || current === "not_run";
+  // new = missing / not_run / mistaken in_progress (suite cases should never stay in progress)
+  return !current || current === "not_run" || current === "in_progress";
 }
 
 function siteBase(request: Request): string {

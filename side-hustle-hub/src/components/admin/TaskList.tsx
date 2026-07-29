@@ -103,8 +103,6 @@ import {
 } from "../../lib/gysh-note-entries";
 import { NotesThread } from "./NotesThread";
 import {
-  queryLooksLikeTaskId,
-  taskMatchesIdQuery,
   taskMatchesSearch,
 } from "../../lib/gysh-task-search";
 
@@ -823,12 +821,11 @@ export function TaskList({
   type TaskFilterFacet = "owner" | "category" | "status" | "sprint" | "search" | "rolled";
 
   const taskMatchesFilters = (t: GyshTask, exclude?: TaskFilterFacet): boolean => {
-    // Task-# search always wins — "T-029" should find the task even if Tina/Done/Sprint filters hide it.
+    // Active search wins — find Task # / description / notes even when sprint/owner/status filters would hide it.
     if (
       exclude !== "search" &&
       searchQuery.trim() &&
-      queryLooksLikeTaskId(searchQuery) &&
-      taskMatchesIdQuery(t, searchQuery)
+      taskMatchesSearch(t, searchQuery)
     ) {
       return true;
     }
@@ -862,11 +859,10 @@ export function TaskList({
     statusFilters.size > 0 ||
     rolledOverOnly ||
     sprintFilters.size > 0;
-  const idSearchBypassedFilters =
+  const searchBypassedFilters =
     Boolean(searchQuery.trim()) &&
-    queryLooksLikeTaskId(searchQuery) &&
     otherFiltersActive &&
-    filtered.some((t) => taskMatchesIdQuery(t, searchQuery));
+    filtered.some((t) => taskMatchesSearch(t, searchQuery));
 
   const statusFacetTasks = tasks.filter((t) => taskMatchesFilters(t, "status"));
   const categoryFacetTasks = tasks.filter((t) => taskMatchesFilters(t, "category"));
@@ -1292,28 +1288,34 @@ export function TaskList({
               Older name-only attachments need a re-upload.
             </p>
           </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-            <div style={{ position: "relative", flex: "1 1 220px", minWidth: 200, maxWidth: 360 }}>
-              <Search
-                size={14}
-                style={{
-                  position: "absolute",
-                  left: 12,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  color: "var(--text-primary)",
-                  pointerEvents: "none",
-                }}
-              />
-              <input
-                className="text-input"
-                style={{ paddingLeft: 34, height: 40, width: "100%" }}
-                placeholder="Search Task #, description, notes…"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                aria-label="Search tasks by number, description, notes, and more"
-                data-testid="task-list-search"
-              />
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
+            <div style={{ flex: "1 1 240px", minWidth: 200, maxWidth: 400 }}>
+              <label className="form-label" htmlFor="task-list-search">
+                Search tasks
+              </label>
+              <div style={{ position: "relative" }}>
+                <Search
+                  size={14}
+                  style={{
+                    position: "absolute",
+                    left: 12,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: "var(--text-primary)",
+                    pointerEvents: "none",
+                  }}
+                />
+                <input
+                  id="task-list-search"
+                  className="text-input"
+                  style={{ paddingLeft: 34, height: 40, width: "100%" }}
+                  placeholder="Task #, description, notes, assignee…"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  aria-label="Search tasks by number, description, notes, and more"
+                  data-testid="task-list-search"
+                />
+              </div>
             </div>
             <button
               type="button"
@@ -2050,9 +2052,9 @@ export function TaskList({
                 {" "}· search: <strong style={{ color: "var(--charcoal)" }}>{searchQuery.trim()}</strong>
               </>
             ) : null}
-            {idSearchBypassedFilters ? (
+            {searchBypassedFilters ? (
               <>
-                {" "}· <span style={{ color: "var(--bronze)" }}>Task # match ignores other filters</span>
+                {" "}· <span style={{ color: "var(--bronze)" }}>Search ignores other filters</span>
               </>
             ) : null}
           </span>

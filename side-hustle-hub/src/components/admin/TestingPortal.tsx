@@ -184,18 +184,21 @@ function FilterChip({
   children,
   title,
   accent,
+  testId,
 }: {
   active: boolean;
   onToggle: (e: MouseEvent<HTMLButtonElement>) => void;
   children: ReactNode;
   title?: string;
   accent?: string;
+  testId?: string;
 }) {
   return (
     <button
       type="button"
       className="qa-tester-bubble qa-filter-chip"
       data-active={active ? "true" : "false"}
+      data-testid={testId}
       title={title}
       onClick={onToggle}
       style={
@@ -1167,30 +1170,33 @@ export function TestingPortal({
   }, filterDeps);
 
   /**
-   * Vitest / Playwright counts for QA Testors row — ignore suite chip so they stay
-   * visible even when Manual is selected (default). Sprint / status / etc. still apply.
+   * Vitest / Playwright counts for QA Testors chips — always the full catalog suite
+   * (not Sprint/Manual-filtered). Clicking the chip still filters the list; the badge
+   * stays the suite ownership total so numbers don't disappear under Manual/Sprint defaults.
    */
   const autoAssigneeStats = useMemo(() => {
-    const base = COUNTABLE_CASES.filter((t) => caseMatchesFilters(t, "suite"));
     const out: Record<
       "vitest" | "playwright",
-      { passed: number; total: number; rolled: number }
+      { passed: number; total: number; rolled: number; tally: StatusTally }
     > = {
-      vitest: { passed: 0, total: 0, rolled: 0 },
-      playwright: { passed: 0, total: 0, rolled: 0 },
+      vitest: { passed: 0, total: 0, rolled: 0, tally: emptyTally() },
+      playwright: { passed: 0, total: 0, rolled: 0, tally: emptyTally() },
     };
-    for (const t of base) {
-      if (isFailureGeneratedId(t.id)) continue;
-      const suite = t.suite ?? "manual";
-      if (suite !== "vitest" && suite !== "playwright") continue;
-      out[suite].total += 1;
-      const st = statuses[t.id] ?? DEFAULT_TEST_STATUS;
-      if (st === "pass") out[suite].passed += 1;
-      if (testIsRolledOver(st, notes[t.id])) out[suite].rolled += 1;
+    for (const suite of ["vitest", "playwright"] as const) {
+      const ids = COUNTABLE_CASES.filter((t) => {
+        if (isFailureGeneratedId(t.id)) return false;
+        return (t.suite ?? "manual") === suite;
+      }).map((t) => t.id);
+      const tally = tallyStatuses(ids, statuses);
+      out[suite] = {
+        passed: tally.pass,
+        total: tally.total,
+        rolled: ids.filter((id) => testIsRolledOver(statuses[id], notes[id])).length,
+        tally,
+      };
     }
     return out;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- caseMatchesFilters closes over filter state
-  }, filterDeps);
+  }, [COUNTABLE_CASES, statuses, notes]);
 
   const facetSuiteStats = useMemo(() => {
     const base = COUNTABLE_CASES.filter((t) => caseMatchesFilters(t, "suite"));
@@ -2666,33 +2672,29 @@ export function TestingPortal({
                 })}
                 {AUTOMATED_SUITE_OWNERS.map((owner) => {
                   const stats = autoAssigneeStats[owner.id];
-                  const running = suiteRunning === owner.id;
+                  const active = suiteFilters.has(owner.id);
                   return (
-                    <button
+                    <FilterChip
                       key={owner.id}
-                      type="button"
-                      className="qa-tester-bubble qa-filter-chip qa-suite-assignee-run"
-                      data-active={running ? "true" : "false"}
-                      data-testid={`qa-run-assignee-${owner.id}`}
-                      disabled={suiteRunning !== null || loading}
-                      title={`Run ${owner.name} (new / not-started only) · ${stats.passed}/${stats.total} passed in current filters (sprint, etc.)`}
-                      onClick={() => {
-                        setSuiteFilters(new Set([owner.id]));
+                      active={active}
+                      accent={owner.accent}
+                      title={`${owner.name} — filter list to this suite · ${stats.passed}/${stats.total} passed (full catalog). Run suites under Automated Testing.`}
+                      testId={`qa-filter-assignee-${owner.id}`}
+                      onToggle={(e) => {
                         setTesterFilters(new Set());
                         lastTesterIdx.current = null;
-                        void runSuite(owner.id, "new");
+                        toggleSuiteFilter(owner.id, e);
                       }}
                     >
-                      <Play size={14} aria-hidden />
                       <span className="qa-tester-dot" style={{ background: owner.accent }} />
                       {owner.shortName}
                       <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
-                        · {running ? <WaitLabel>Running…</WaitLabel> : `${stats.passed}/${stats.total} passed`}
+                        · {stats.passed}/{stats.total} passed
                         {stats.rolled > 0 ? (
                           <span className="status-bubble__rolled">Rolled over: {stats.rolled}</span>
                         ) : null}
                       </span>
-                    </button>
+                    </FilterChip>
                   );
                 })}
               </div>
@@ -2811,13 +2813,17 @@ export function TestingPortal({
                 {!testerBarsOpen ? (
                   <span className="qa-categories-panel__active">
                     —{" "}
-                    {testerStats.testers
-                      .map((t) => `${t.shortName} ${t.passed}/${t.total}`)
-                      .join(" · ")}
+                    {[
+                      ...testerStats.testers.map((t) => `${t.shortName} ${t.passed}/${t.total}`),
+                      ...AUTOMATED_SUITE_OWNERS.map(
+                        (o) =>
+                          `${o.shortName} ${autoAssigneeStats[o.id].passed}/${autoAssigneeStats[o.id].total}`,
+                      ),
+                    ].join(" · ")}
                   </span>
                 ) : (
                   <span className="qa-categories-panel__active">
-                    — same filters as status tiles
+                    — humans follow status tiles · Vitest/Playwright = full suite catalog
                   </span>
                 )}
               </button>
@@ -2831,9 +2837,9 @@ export function TestingPortal({
             {testerBarsOpen ? (
               <>
                 <p className="qa-testing-portal__tester-bars-note">
-                  Name bars use the same sprint / suite / category filters as the status tiles
-                  above (defaults: current sprint · Manual). Owner rules: database assignee, else
-                  PROOF-*-TINA / PROOF-*-LYRIQ, else catalog. Only Pass counts as passed.
+                  Human name bars use the same sprint / suite / category filters as the status tiles
+                  above (defaults: current sprint · Manual). Vitest / Playwright bars use the full
+                  automated catalog (not Sprint/Manual-filtered). Only Pass counts as passed.
                 </p>
                 {testerStats.testers.map((tester) => (
                   <TesterStatusRow
@@ -2842,6 +2848,15 @@ export function TestingPortal({
                     tally={tester.tally}
                     accent={tester.accent}
                     rolled={tester.rolled}
+                  />
+                ))}
+                {AUTOMATED_SUITE_OWNERS.map((owner) => (
+                  <TesterStatusRow
+                    key={owner.id}
+                    label={owner.shortName}
+                    tally={autoAssigneeStats[owner.id].tally}
+                    accent={owner.accent}
+                    rolled={autoAssigneeStats[owner.id].rolled}
                   />
                 ))}
               </>
@@ -2914,21 +2929,40 @@ export function TestingPortal({
             {automatedOpen ? (
               <div className="qa-automated-testing__body">
                 <div className="qa-automated-testing__actions">
-                  <button
-                    type="button"
-                    className="btn btn-primary suite-run-btn"
-                    disabled={suiteRunning !== null || loading}
-                    onClick={() => void runSuite("vitest", "new")}
-                    title="Run Vitest for new / not-run cases only. Failures create VT-FAIL-* in Backlog (Unassigned), or Tina + current/next sprint for Kids/Youth."
-                  >
-                    <Play size={14} />
-                    <span className="suite-run-btn__label">
-                      {suiteRunning === "vitest" ? <WaitLabel>Running Vitest…</WaitLabel> : "Run Vitest"}
-                      <span className="suite-run-btn__count">
-                        {countWithPct(vitestPass, vitestTotal, " passed")}
-                      </span>
-                    </span>
-                  </button>
+                  {AUTOMATED_SUITE_OWNERS.map((owner) => {
+                    const running = suiteRunning === owner.id;
+                    const pass = owner.id === "vitest" ? vitestPass : pwPass;
+                    const total = owner.id === "vitest" ? vitestTotal : pwTotal;
+                    return (
+                      <button
+                        key={owner.id}
+                        type="button"
+                        className="qa-tester-bubble qa-filter-chip qa-suite-assignee-run"
+                        data-active={running ? "true" : "false"}
+                        data-testid={`qa-run-assignee-${owner.id}`}
+                        disabled={suiteRunning !== null || loading}
+                        title={`Run ${owner.name} (new / not-started only). Failures create ${owner.id === "vitest" ? "VT" : "PW"}-FAIL-* cases.`}
+                        onClick={() => void runSuite(owner.id, "new")}
+                        style={
+                          running
+                            ? { borderColor: owner.accent, boxShadow: `0 0 0 1px ${owner.accent}` }
+                            : undefined
+                        }
+                      >
+                        <Play size={14} aria-hidden />
+                        <span className="qa-tester-dot" style={{ background: owner.accent }} />
+                        {owner.shortName}
+                        <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
+                          ·{" "}
+                          {running ? (
+                            <WaitLabel>Running…</WaitLabel>
+                          ) : (
+                            countWithPct(pass, total, " passed")
+                          )}
+                        </span>
+                      </button>
+                    );
+                  })}
                   <button
                     type="button"
                     className="btn btn-outline suite-run-btn"
@@ -2939,21 +2973,6 @@ export function TestingPortal({
                     <span className="suite-run-btn__label">
                       Run all Vitest
                       <span className="suite-run-btn__count">regression</span>
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-primary suite-run-btn"
-                    disabled={suiteRunning !== null || loading}
-                    onClick={() => void runSuite("playwright", "new")}
-                    title="Run Playwright for new / not-run cases only. Failures create PW-FAIL-* in Backlog (Unassigned), or Tina + current/next sprint for Kids/Youth."
-                  >
-                    <Play size={14} />
-                    <span className="suite-run-btn__label">
-                      {suiteRunning === "playwright" ? <WaitLabel>Running Playwright…</WaitLabel> : "Run Playwright"}
-                      <span className="suite-run-btn__count">
-                        {countWithPct(pwPass, pwTotal, " passed")}
-                      </span>
                     </span>
                   </button>
                   <button
@@ -3870,6 +3889,8 @@ export function TestingPortal({
                   }}
                 >
                   {STATUSES.filter((s) => {
+                    // Catalog Vitest/Playwright cases are suite-owned — never "In Progress".
+                    if (automated && s === "in_progress") return st === "in_progress";
                     if (s === "blocked") return canBlock || st === "blocked";
                     if (isDevFixStatus(s)) return canDevFix || st === s;
                     return true;

@@ -49,7 +49,8 @@ import {
   peekPendingBlueprintFor,
   savePendingBlueprintAsync,
 } from "../lib/pending-blueprint";
-import { saveBlueprintToAccount } from "../lib/blueprints-api";
+import { listSavedBlueprints, saveBlueprintToAccount, type SavedBlueprint } from "../lib/blueprints-api";
+import { blueprintAgeGroupTitle, blueprintMatchLabel } from "../lib/blueprint-match-labels";
 import { SideHustleBlueprintResults } from "./SideHustleBlueprintResults";
 import { WizardStartHereBanner } from "./WizardStartHereBanner";
 import juniorSideHustleTeam from "../assets/junior-side-hustle-team.png";
@@ -99,6 +100,8 @@ type KidsCornerProps = {
   previewAsGuest?: boolean;
   /** Navigate to Join with Kids or Teens membership lane selected. */
   onGoToJoin?: (audience: "kids" | "junior") => void;
+  /** Open the dedicated Kids/Teens Dashboard (youth login). */
+  onOpenDashboard?: () => void;
   /** Deep-link from checklist / Match Wizard / Site Map entry points. */
   entryFocus?: {
     mode: AudienceMode;
@@ -1670,10 +1673,86 @@ function JuniorBankTab() {
   );
 }
 
+function KidAssignedBlueprintCard({
+  mode,
+  isLoggedIn,
+  onOpenDashboard,
+}: {
+  mode: AudienceMode;
+  isLoggedIn: boolean;
+  onOpenDashboard?: () => void;
+}) {
+  const [rows, setRows] = useState<SavedBlueprint[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setRows([]);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    void listSavedBlueprints()
+      .then((list) => {
+        if (cancelled) return;
+        const age = mode === "junior" ? "junior" : "kids";
+        setRows(list.filter((bp) => bp.ageGroup === age && Boolean(bp.childProfileId)));
+      })
+      .catch(() => {
+        if (!cancelled) setRows([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoggedIn, mode]);
+
+  if (!isLoggedIn || loading || rows.length === 0) return null;
+
+  return (
+    <div className="kids-assigned-blueprint" data-testid="kids-assigned-blueprint">
+      <h3>
+        <Compass size={18} aria-hidden /> Your assigned Side Hustle Blueprint
+      </h3>
+      <p>Your parent coach mapped a Match Wizard result to this Kids page.</p>
+      {rows.map((bp) => (
+        <div key={bp.id} className="kids-assigned-blueprint-block">
+          <strong>{blueprintAgeGroupTitle(bp.ageGroup)}</strong>
+          <ol className="kids-assigned-blueprint-matches">
+            {(bp.resultIds ?? []).slice(0, 3).map((id) => {
+              const pct = bp.resultPcts?.[id];
+              return (
+                <li key={id}>
+                  <strong>{blueprintMatchLabel(bp.ageGroup, id)}</strong>
+                  {typeof pct === "number" ? <em>{pct}% match</em> : null}
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+      ))}
+      {onOpenDashboard ? (
+        <button
+          type="button"
+          className="btn btn-primary"
+          style={{ marginTop: 12 }}
+          data-testid="kids-assigned-open-dashboard"
+          onClick={onOpenDashboard}
+        >
+          Open my Dashboard
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 export const KidsCorner: React.FC<KidsCornerProps> = ({
   isLoggedIn = false,
   previewAsGuest = false,
   onGoToJoin,
+  onOpenDashboard,
   entryFocus = null,
 }) => {
   const [mode, setMode] = useState<AudienceMode>("kids");
@@ -1778,6 +1857,12 @@ export const KidsCorner: React.FC<KidsCornerProps> = ({
 
       {mode === "kids" ? (
         <>
+          <KidAssignedBlueprintCard
+            mode="kids"
+            isLoggedIn={isLoggedIn && !previewAsGuest}
+            onOpenDashboard={onOpenDashboard}
+          />
+
           <div className="kids-tab-bar">
             {kidsTabs.map((t) => (
               <button
@@ -1822,6 +1907,12 @@ export const KidsCorner: React.FC<KidsCornerProps> = ({
         </>
       ) : (
         <>
+          <KidAssignedBlueprintCard
+            mode="junior"
+            isLoggedIn={isLoggedIn && !previewAsGuest}
+            onOpenDashboard={onOpenDashboard}
+          />
+
           <div className="kids-tab-bar">
             {juniorTabs.map((t) => (
               <button

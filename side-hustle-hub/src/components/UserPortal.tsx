@@ -12,6 +12,7 @@ import {
   Copy,
   Link2,
   Sparkles,
+  Users,
 } from "lucide-react";
 import { WaitIndicator } from "./WaitFeedback";
 import {
@@ -29,7 +30,11 @@ import {
   type MemberCreditsSummary,
 } from "../lib/member-credits";
 import { buildReferralUrl, getOrCreateReferralCode } from "../lib/referral";
-import { listSavedBlueprints, type SavedBlueprint } from "../lib/blueprints-api";
+import {
+  assignSavedBlueprint,
+  listSavedBlueprints,
+  type SavedBlueprint,
+} from "../lib/blueprints-api";
 import { clearPendingBlueprint, readPendingBlueprint } from "../lib/pending-blueprint";
 import {
   blueprintAgeGroupTitle,
@@ -37,6 +42,14 @@ import {
 } from "../lib/blueprint-match-labels";
 import { hasLaunchGuide } from "../lib/launch-guides";
 import type { BlueprintAgeGroup } from "../lib/gysh-analytics";
+import {
+  fetchFamilyChildren,
+  fetchFamilySettings,
+  registerFamilyChild,
+  updateFamilySettings,
+  type FamilyChild,
+} from "../lib/family";
+import type { ProgressReportCadence } from "../lib/family-logic";
 
 interface Goal {
   id: string;
@@ -58,6 +71,7 @@ type PortalBlueprint = {
   resultPcts: Record<string, number>;
   completedAt: string;
   source: "saved" | "pending";
+  childProfileId: string | null;
 };
 
 type UserPortalProps = {
@@ -66,6 +80,8 @@ type UserPortalProps = {
   onOpenJoin?: () => void;
   /** Open the Launch Guide / Corner guides for a Blueprint match. */
   onOpenGuide?: (ageGroup: BlueprintAgeGroup, hustleId: string) => void;
+  /** Open that kid’s Kids / Teens dashboard (Corner). */
+  onOpenKidDashboard?: (ageBand: "kids" | "junior") => void;
 };
 
 function toPortalBlueprint(bp: SavedBlueprint): PortalBlueprint {
@@ -76,6 +92,7 @@ function toPortalBlueprint(bp: SavedBlueprint): PortalBlueprint {
     resultPcts: bp.resultPcts ?? {},
     completedAt: bp.completedAt || bp.updatedAt,
     source: "saved",
+    childProfileId: bp.childProfileId ?? null,
   };
 }
 
@@ -113,10 +130,11 @@ function MatchRow({
   );
 }
 
-type PortalTab = "blueprint" | "credits" | "earn" | "milestones" | "bookmarks";
+type PortalTab = "blueprint" | "family" | "credits" | "earn" | "milestones" | "bookmarks";
 
 const PORTAL_TABS: { id: PortalTab; label: string; icon: React.ReactNode }[] = [
   { id: "blueprint", label: "Blueprint", icon: <Compass size={15} aria-hidden /> },
+  { id: "family", label: "Family", icon: <Users size={15} aria-hidden /> },
   { id: "credits", label: "Credits", icon: <Coins size={15} aria-hidden /> },
   { id: "earn", label: "Ways to Earn", icon: <Sparkles size={15} aria-hidden /> },
   { id: "milestones", label: "Milestones", icon: <CheckSquare size={15} aria-hidden /> },
@@ -128,6 +146,7 @@ export const UserPortal: React.FC<UserPortalProps> = ({
   onOpenMatchWizard,
   onOpenJoin,
   onOpenGuide,
+  onOpenKidDashboard,
 }) => {
   const [portalTab, setPortalTab] = useState<PortalTab>("blueprint");
   const [goals, setGoals] = useState<Goal[]>([
@@ -146,6 +165,20 @@ export const UserPortal: React.FC<UserPortalProps> = ({
   const [blueprints, setBlueprints] = useState<PortalBlueprint[]>([]);
   const [blueprintsLoading, setBlueprintsLoading] = useState(true);
   const [blueprintsError, setBlueprintsError] = useState<string | null>(null);
+  const [familyChildren, setFamilyChildren] = useState<FamilyChild[]>([]);
+  const [familyLoading, setFamilyLoading] = useState(true);
+  const [familyError, setFamilyError] = useState<string | null>(null);
+  const [familyMessage, setFamilyMessage] = useState<string | null>(null);
+  const [registerOpen, setRegisterOpen] = useState(false);
+  const [kidName, setKidName] = useState("");
+  const [kidAgeBand, setKidAgeBand] = useState<"kids" | "junior">("kids");
+  const [kidLoginEmail, setKidLoginEmail] = useState("");
+  const [kidLoginPassword, setKidLoginPassword] = useState("");
+  const [juniorSignupId, setJuniorSignupId] = useState<string | null>(null);
+  const [registeringKid, setRegisteringKid] = useState(false);
+  const [pendingAssignBlueprintId, setPendingAssignBlueprintId] = useState<string | null>(null);
+  const [reportCadence, setReportCadence] = useState<ProgressReportCadence>("none");
+  const [assignBusyId, setAssignBusyId] = useState<string | null>(null);
 
   useEffect(() => {
     const code = getOrCreateReferralCode();
@@ -197,6 +230,7 @@ export const UserPortal: React.FC<UserPortalProps> = ({
               resultPcts: pending.resultPcts ?? {},
               completedAt: pending.completedAt,
               source: "pending",
+              childProfileId: null,
             },
           ]);
           setBlueprintsError(null);
@@ -217,6 +251,7 @@ export const UserPortal: React.FC<UserPortalProps> = ({
               resultPcts: pending.resultPcts ?? {},
               completedAt: pending.completedAt,
               source: "pending",
+              childProfileId: null,
             },
           ]);
           setBlueprintsError(null);
@@ -231,6 +266,24 @@ export const UserPortal: React.FC<UserPortalProps> = ({
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  const refreshFamily = async () => {
+    setFamilyLoading(true);
+    setFamilyError(null);
+    try {
+      const [kids, settings] = await Promise.all([fetchFamilyChildren(), fetchFamilySettings()]);
+      setFamilyChildren(kids);
+      setReportCadence(settings.progressReportCadence || "none");
+    } catch (err: unknown) {
+      setFamilyError(err instanceof Error ? err.message : "Could not load family profiles.");
+    } finally {
+      setFamilyLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void refreshFamily();
   }, []);
 
   const audience: AudienceGroup = credits?.audience ?? "adult";
@@ -276,6 +329,126 @@ export const UserPortal: React.FC<UserPortalProps> = ({
   const progressPercent = Math.round((completedGoalsCount / goals.length) * 100);
   const displayName = (memberName || "").trim() || "there";
 
+  const childNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of familyChildren) map.set(c.id, c.displayName);
+    return map;
+  }, [familyChildren]);
+
+  const resetRegisterForm = () => {
+    setKidName("");
+    setKidAgeBand("kids");
+    setKidLoginEmail("");
+    setKidLoginPassword("");
+    setJuniorSignupId(null);
+    setPendingAssignBlueprintId(null);
+    setRegisterOpen(false);
+  };
+
+  /** Open Register form — prefilled from kid Join data when available. */
+  const openRegisterForKid = (
+    child: FamilyChild,
+    opts?: { blueprintId?: string },
+  ) => {
+    setKidName(child.displayName || "");
+    setKidAgeBand(child.ageBand === "junior" ? "junior" : "kids");
+    setKidLoginEmail(child.childEmail || "");
+    setKidLoginPassword("");
+    setJuniorSignupId(
+      child.juniorSignupId || (child.source === "signup" ? child.id : null),
+    );
+    setPendingAssignBlueprintId(opts?.blueprintId ?? null);
+    setRegisterOpen(true);
+    setPortalTab("family");
+    setFamilyMessage(null);
+    setFamilyError(null);
+  };
+
+  const handleRegisterKid = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRegisteringKid(true);
+    setFamilyMessage(null);
+    setFamilyError(null);
+    try {
+      const child = await registerFamilyChild({
+        displayName: kidName,
+        ageBand: kidAgeBand,
+        loginEmail: kidLoginEmail || undefined,
+        loginPassword: kidLoginPassword || undefined,
+        juniorSignupId: juniorSignupId || undefined,
+      });
+      setFamilyChildren((prev) => {
+        const withoutSignup = prev.filter(
+          (c) =>
+            c.id !== juniorSignupId &&
+            c.juniorSignupId !== juniorSignupId &&
+            !(c.source === "signup" && c.displayName === child.displayName),
+        );
+        return [...withoutSignup, child];
+      });
+      const assignBpId = pendingAssignBlueprintId;
+      resetRegisterForm();
+      if (assignBpId) {
+        await assignSavedBlueprint({ blueprintId: assignBpId, childProfileId: child.id });
+        setBlueprints((prev) =>
+          prev.map((bp) =>
+            bp.id === assignBpId ? { ...bp, childProfileId: child.id } : bp,
+          ),
+        );
+        setFamilyMessage(
+          `${child.displayName} is registered and the Blueprint is assigned to them.`,
+        );
+        setPortalTab("blueprint");
+      } else {
+        setFamilyMessage(`${child.displayName} is linked to your parent coach profile.`);
+        setPortalTab("family");
+      }
+    } catch (err: unknown) {
+      setFamilyError(err instanceof Error ? err.message : "Could not register your kid.");
+    } finally {
+      setRegisteringKid(false);
+    }
+  };
+
+  const handleAssignBlueprint = async (blueprintId: string, childProfileId: string) => {
+    setAssignBusyId(blueprintId);
+    setFamilyMessage(null);
+    setFamilyError(null);
+    try {
+      const assignee = childProfileId === "self" ? null : childProfileId;
+      await assignSavedBlueprint({ blueprintId, childProfileId: assignee });
+      setBlueprints((prev) =>
+        prev.map((bp) =>
+          bp.id === blueprintId ? { ...bp, childProfileId: assignee } : bp,
+        ),
+      );
+      setFamilyMessage(
+        assignee
+          ? `Blueprint assigned to ${childNameById.get(assignee) || "your kid"}.`
+          : "Blueprint kept on your parent profile.",
+      );
+    } catch (err: unknown) {
+      setFamilyError(err instanceof Error ? err.message : "Could not assign Blueprint.");
+    } finally {
+      setAssignBusyId(null);
+    }
+  };
+
+  const handleReportCadence = async (cadence: ProgressReportCadence) => {
+    setReportCadence(cadence);
+    setFamilyError(null);
+    try {
+      await updateFamilySettings({ progressReportCadence: cadence });
+      setFamilyMessage(
+        cadence === "none"
+          ? "Progress report emails turned off."
+          : `${cadence === "daily" ? "Daily" : "Weekly"} kid progress emails enabled.`,
+      );
+    } catch (err: unknown) {
+      setFamilyError(err instanceof Error ? err.message : "Could not save report preference.");
+    }
+  };
+
   return (
     <div className="user-portal" data-testid="user-portal">
       <div className="user-portal-main">
@@ -284,8 +457,8 @@ export const UserPortal: React.FC<UserPortalProps> = ({
             <div className="user-portal-welcome-copy">
               <h2>Welcome back, {displayName}!</h2>
               <p>
-                Your Side Hustle Blueprint and credits live here — use the tabs below to review
-                matches, check balances, and earn more credits.
+                Your Side Hustle Blueprint, family coach tools, and credits live here — use the tabs
+                below to review matches, register kids, and earn more credits.
               </p>
             </div>
             <div className="user-portal-header-referral" data-testid="user-portal-referral">
@@ -413,8 +586,68 @@ export const UserPortal: React.FC<UserPortalProps> = ({
                           {bp.completedAt
                             ? ` · ${new Date(bp.completedAt).toLocaleDateString()}`
                             : ""}
+                          {bp.childProfileId
+                            ? ` · Assigned to ${childNameById.get(bp.childProfileId) || "kid"}`
+                            : " · Assigned to you"}
                         </span>
                       </div>
+                      {bp.source === "saved" && (
+                        <div className="user-portal-blueprint-assign-wrap">
+                          <label className="user-portal-blueprint-assign">
+                            <span>Map Blueprint to</span>
+                            <select
+                              value={bp.childProfileId || "self"}
+                              disabled={assignBusyId === bp.id}
+                              data-testid={`user-portal-blueprint-assign-${bp.id}`}
+                              onChange={(e) => void handleAssignBlueprint(bp.id, e.target.value)}
+                            >
+                              <option value="self">Myself (parent)</option>
+                              {familyChildren
+                                .filter((c) => c.source === "profile" && !c.needsRegistration)
+                                .map((c) => (
+                                  <option key={c.id} value={c.id}>
+                                    {c.displayName}
+                                    {c.ageBand === "junior" ? " · Teens" : " · Kids"}
+                                  </option>
+                                ))}
+                            </select>
+                          </label>
+                          {familyChildren.some(
+                            (c) => c.needsRegistration || c.source === "signup",
+                          ) && (
+                            <div
+                              className="user-portal-blueprint-register-kids"
+                              data-testid={`user-portal-blueprint-register-kids-${bp.id}`}
+                            >
+                              <span>Need to assign to a kid who joined but isn&apos;t registered?</span>
+                              <ul>
+                                {familyChildren
+                                  .filter((c) => c.needsRegistration || c.source === "signup")
+                                  .map((c) => (
+                                    <li key={c.id}>
+                                      <button
+                                        type="button"
+                                        className="user-portal-kid-register-link"
+                                        data-testid={`user-portal-blueprint-register-${bp.id}-${c.id}`}
+                                        onClick={() =>
+                                          openRegisterForKid(c, { blueprintId: bp.id })
+                                        }
+                                      >
+                                        Register {c.displayName}
+                                      </button>
+                                      {c.childEmail ? (
+                                        <span className="user-portal-kid-register-meta">
+                                          {" "}
+                                          ({c.childEmail})
+                                        </span>
+                                      ) : null}
+                                    </li>
+                                  ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      )}
                       <ol className="user-portal-blueprint-matches">
                         {topMatches.map((m) => (
                           <MatchRow
@@ -457,6 +690,350 @@ export const UserPortal: React.FC<UserPortalProps> = ({
                     </div>
                   );
                 })}
+            </section>
+          )}
+
+          {portalTab === "family" && (
+            <section
+              id="user-portal-panel-family"
+              role="tabpanel"
+              aria-labelledby="user-portal-tab-family"
+              className="user-portal-family"
+              data-testid="user-portal-family"
+            >
+              <div className="user-portal-blueprint-head">
+                <h3 id="user-portal-family-heading">
+                  <Users size={20} aria-hidden /> Family Coach
+                </h3>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  data-testid="user-portal-register-my-kid"
+                  onClick={() => {
+                    if (registerOpen) {
+                      resetRegisterForm();
+                    } else {
+                      setJuniorSignupId(null);
+                      setPendingAssignBlueprintId(null);
+                      setKidName("");
+                      setKidLoginEmail("");
+                      setKidLoginPassword("");
+                      setKidAgeBand("kids");
+                      setRegisterOpen(true);
+                    }
+                    setPortalTab("family");
+                  }}
+                >
+                  Register My Kid
+                </button>
+              </div>
+              <p className="user-portal-panel-lead">
+                Create a profile for each kid, link Match Wizard Blueprints to them or yourself, and
+                choose email progress reports. If a kid joined with your email, click their name to
+                register — the form fills with the info they entered.
+              </p>
+
+              {familyMessage && (
+                <p className="user-portal-family-ok" data-testid="user-portal-family-message">
+                  {familyMessage}
+                </p>
+              )}
+              {familyError && (
+                <p className="user-portal-credits-error" data-testid="user-portal-family-error">
+                  {familyError}
+                </p>
+              )}
+
+              {registerOpen && (
+                <form
+                  className="user-portal-register-kid"
+                  data-testid="user-portal-register-kid-form"
+                  onSubmit={(e) => void handleRegisterKid(e)}
+                >
+                  <h4>
+                    {juniorSignupId
+                      ? `Register ${kidName || "this kid"}`
+                      : "Register My Kid"}
+                  </h4>
+                  {juniorSignupId ? (
+                    <p className="user-portal-register-kid-prefill" data-testid="register-kid-prefill-note">
+                      Prefilled from their Kids Corner join
+                      {pendingAssignBlueprintId
+                        ? " — we will assign the Blueprint after you save."
+                        : "."}
+                    </p>
+                  ) : null}
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="register-kid-name">
+                      Kid first name / nickname
+                    </label>
+                    <input
+                      id="register-kid-name"
+                      className="text-input"
+                      required
+                      value={kidName}
+                      onChange={(e) => setKidName(e.target.value)}
+                      data-testid="register-kid-name"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="register-kid-age">
+                      Age band
+                    </label>
+                    <select
+                      id="register-kid-age"
+                      className="text-input"
+                      value={kidAgeBand}
+                      onChange={(e) => setKidAgeBand(e.target.value === "junior" ? "junior" : "kids")}
+                      data-testid="register-kid-age"
+                    >
+                      <option value="kids">Kids (4–12)</option>
+                      <option value="junior">Teens (13–17)</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="register-kid-email">
+                      Kid login email
+                      {juniorSignupId ? " (from their join)" : " (optional)"}
+                    </label>
+                    <input
+                      id="register-kid-email"
+                      className="text-input"
+                      type="email"
+                      value={kidLoginEmail}
+                      onChange={(e) => setKidLoginEmail(e.target.value)}
+                      data-testid="register-kid-email"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="register-kid-password">
+                      Kid login password (optional — set so they can sign in)
+                    </label>
+                    <input
+                      id="register-kid-password"
+                      className="text-input"
+                      type="password"
+                      value={kidLoginPassword}
+                      onChange={(e) => setKidLoginPassword(e.target.value)}
+                      data-testid="register-kid-password"
+                    />
+                  </div>
+                  <div className="user-portal-register-kid-actions">
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      onClick={() => resetRegisterForm()}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn btn-primary"
+                      disabled={registeringKid}
+                      data-testid="register-kid-submit"
+                    >
+                      {registeringKid
+                        ? "Saving…"
+                        : pendingAssignBlueprintId
+                          ? "Save & assign Blueprint"
+                          : "Save kid profile"}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {familyLoading && (
+                <WaitIndicator
+                  className="user-portal-credits-muted"
+                  data-testid="user-portal-family-loading"
+                  message="Loading linked kids…"
+                  style={{ marginTop: 0 }}
+                />
+              )}
+
+              {!familyLoading && familyChildren.length === 0 && (
+                <p className="user-portal-credits-muted" data-testid="user-portal-family-empty">
+                  No kids linked yet. Tap Register My Kid to create a profile, or approve a Kids
+                  Corner consent email if they signed up with your address.
+                </p>
+              )}
+
+              {!familyLoading && familyChildren.length > 0 && (
+                <ul className="user-portal-family-list" data-testid="user-portal-family-list">
+                  {familyChildren.map((c) => {
+                    const needsReg = Boolean(c.needsRegistration || c.source === "signup");
+                    const assigned = needsReg
+                      ? []
+                      : blueprints.filter((bp) => bp.childProfileId === c.id);
+                    const dashLabel =
+                      c.ageBand === "junior" ? "Teens dashboard" : "Kids dashboard";
+                    return (
+                      <li key={c.id} data-testid={`user-portal-family-child-${c.id}`}>
+                        <div className="user-portal-family-child-head">
+                          <div className="user-portal-family-child-name-row">
+                            {needsReg ? (
+                              <button
+                                type="button"
+                                className="user-portal-kid-register-link"
+                                data-testid={`user-portal-register-kid-link-${c.id}`}
+                                onClick={() => openRegisterForKid(c)}
+                              >
+                                Register {c.displayName}
+                              </button>
+                            ) : (
+                              <>
+                                <strong className="user-portal-family-child-name">
+                                  {c.displayName}
+                                </strong>
+                                {onOpenKidDashboard ? (
+                                  <button
+                                    type="button"
+                                    className="user-portal-kid-dashboard-link"
+                                    data-testid={`user-portal-kid-dashboard-${c.id}`}
+                                    onClick={() => onOpenKidDashboard(c.ageBand)}
+                                  >
+                                    {dashLabel}
+                                  </button>
+                                ) : null}
+                              </>
+                            )}
+                          </div>
+                          <span>
+                            {c.ageBand === "junior" ? "Teens" : "Kids"}
+                            {needsReg ? " · not registered yet" : ""}
+                            {c.status === "pending_parent" ? " · awaiting your consent" : ""}
+                            {c.hasLogin ? " · login enabled" : ""}
+                            {c.childEmail && needsReg ? ` · ${c.childEmail}` : ""}
+                          </span>
+                        </div>
+                        {needsReg ? (
+                          <em>
+                            Click Register to create their profile — we&apos;ll use the info they
+                            entered when they joined.
+                          </em>
+                        ) : (
+                          <details
+                            className="user-portal-family-blueprints"
+                            data-testid={`user-portal-family-blueprints-${c.id}`}
+                          >
+                            <summary>
+                              <span>
+                                Blueprints{" "}
+                                <strong>({assigned.length})</strong>
+                              </span>
+                              <span className="collapse-show-hide" aria-hidden="true" />
+                            </summary>
+                            {assigned.length === 0 ? (
+                              <p className="user-portal-family-blueprints-empty">
+                                No Blueprint assigned yet — map one under the Blueprint tab.
+                              </p>
+                            ) : (
+                              <ul className="user-portal-family-blueprint-items">
+                                {assigned.map((bp) => {
+                                  const matches = (bp.resultIds ?? []).map((id, i) => ({
+                                    id,
+                                    rank: i + 1,
+                                    label: blueprintMatchLabel(bp.ageGroup, id),
+                                    pct: bp.resultPcts[id],
+                                  }));
+                                  const topMatches = matches.slice(0, 3);
+                                  const moreMatches = matches.slice(3);
+                                  return (
+                                    <li key={bp.id}>
+                                      <div className="user-portal-blueprint-block-head">
+                                        <strong>{blueprintAgeGroupTitle(bp.ageGroup)}</strong>
+                                        <span className="user-portal-blueprint-summary-meta">
+                                          Top {Math.min(3, matches.length)} of {matches.length}
+                                          {bp.completedAt
+                                            ? ` · ${new Date(bp.completedAt).toLocaleDateString()}`
+                                            : ""}
+                                        </span>
+                                      </div>
+                                      <ol className="user-portal-blueprint-matches">
+                                        {topMatches.map((m) => (
+                                          <MatchRow
+                                            key={`${bp.id}-${m.id}`}
+                                            match={m}
+                                            ageGroup={bp.ageGroup}
+                                            onOpenGuide={onOpenGuide}
+                                          />
+                                        ))}
+                                      </ol>
+                                      {moreMatches.length > 0 ? (
+                                        <details className="user-portal-blueprint-details user-portal-blueprint-more">
+                                          <summary>
+                                            <span className="user-portal-blueprint-summary-main">
+                                              <strong>
+                                                {moreMatches.length} more match
+                                                {moreMatches.length === 1 ? "" : "es"}
+                                              </strong>
+                                            </span>
+                                            <span className="collapse-show-hide" aria-hidden="true" />
+                                          </summary>
+                                          <ol className="user-portal-blueprint-matches">
+                                            {moreMatches.map((m) => (
+                                              <MatchRow
+                                                key={`${bp.id}-${m.id}`}
+                                                match={m}
+                                                ageGroup={bp.ageGroup}
+                                                onOpenGuide={onOpenGuide}
+                                              />
+                                            ))}
+                                          </ol>
+                                        </details>
+                                      ) : null}
+                                      {onOpenKidDashboard ? (
+                                        <button
+                                          type="button"
+                                          className="btn btn-outline user-portal-family-blueprint-open"
+                                          onClick={() => onOpenKidDashboard(c.ageBand)}
+                                        >
+                                          Open {dashLabel}
+                                        </button>
+                                      ) : null}
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            )}
+                          </details>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+
+              <div
+                className="user-portal-family-reports"
+                data-testid="user-portal-family-reports"
+              >
+                <h4>Kid progress emails</h4>
+                <p>
+                  Get a digest of linked kids&apos; logins and assigned Blueprints. You also get an
+                  email every time a linked kid signs in.
+                </p>
+                <div className="user-portal-family-report-options">
+                  {(
+                    [
+                      ["none", "Off"],
+                      ["daily", "Daily"],
+                      ["weekly", "Weekly"],
+                    ] as const
+                  ).map(([value, label]) => (
+                    <label key={value}>
+                      <input
+                        type="radio"
+                        name="kid-progress-cadence"
+                        checked={reportCadence === value}
+                        onChange={() => void handleReportCadence(value)}
+                        data-testid={`user-portal-report-${value}`}
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+              </div>
             </section>
           )}
 

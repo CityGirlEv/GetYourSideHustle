@@ -4,7 +4,6 @@ import {
   Sparkles,
   Search,
   Flame,
-  User,
   Shield,
   LogIn,
   LogOut,
@@ -22,6 +21,7 @@ import {
   Heart,
   BookOpen,
   Home,
+  LayoutDashboard,
   Minus,
   Plus,
   ArrowRight,
@@ -44,6 +44,11 @@ import {
 import { KidsCorner } from "./components/KidsCorner";
 import { SeniorSideHustles } from "./components/SeniorSideHustles";
 import { UserPortal } from "./components/UserPortal";
+import {
+  KidDashboard,
+  isYouthDashboardUser,
+  youthAgeBand,
+} from "./components/KidDashboard";
 import {
   AdminPortal,
   ADMIN_MENU_GROUPS,
@@ -609,12 +614,24 @@ function App() {
     setActiveView("login");
   }, [authReady, activeView, canUseAdminPortal]);
 
-  const goTo = (view: AppView, opts?: { scroll?: boolean }) => {
+  const goTo = (
+    view: AppView,
+    opts?: {
+      scroll?: boolean;
+      /** Open a specific adult Launch Guide on /guides (clears marketing manuals). */
+      launchGuideId?: string | null;
+    },
+  ) => {
     setActiveView(view);
     setMobileMenuOpen(false);
     setAdminMenuOpen(false);
     setGuidesMenuOpen(false);
-    if (view !== "guides") {
+    if (view === "guides" && opts && "launchGuideId" in opts) {
+      const id = opts.launchGuideId ? String(opts.launchGuideId) : null;
+      setGuidesManualId(null);
+      setGuidesDetailId(id);
+      if (id) setSelectedHustleId(id);
+    } else if (view !== "guides") {
       setGuidesDetailId(null);
       setGuidesManualId(null);
     }
@@ -1004,8 +1021,7 @@ function App() {
     if (actionType === "calculator") {
       setActiveView("calculators");
     } else {
-      setGuidesDetailId(hustleId);
-      setActiveView("guides");
+      goTo("guides", { launchGuideId: hustleId });
     }
   };
 
@@ -1015,16 +1031,12 @@ function App() {
   };
 
   const handleGoToGuideFromCalculator = (hustleId: string) => {
-    setSelectedHustleId(hustleId);
-    setGuidesDetailId(hustleId);
-    setActiveView("guides");
+    goTo("guides", { launchGuideId: hustleId });
   };
 
   const handleOpenGuidePeek = (nav: GuidePeekNav) => {
     if (nav.view === "guides") {
-      setSelectedHustleId(nav.hustleId);
-      setGuidesDetailId(nav.hustleId);
-      goTo("guides");
+      goTo("guides", { launchGuideId: nav.hustleId });
       return;
     }
     if (nav.view === "kids") {
@@ -1258,7 +1270,12 @@ function App() {
       case "join": return "Join GYSH";
       case "membership_signup": return "GYSH Membership Sign-up";
       case "login": return "GYSH Sign In";
-      case "user_portal": return "GYSH My Dashboard";
+      case "user_portal":
+        return isYouthDashboardUser(authUser)
+          ? youthAgeBand(authUser) === "junior"
+            ? "GYSH Teens Dashboard"
+            : "GYSH Kids Dashboard"
+          : "GYSH My Dashboard";
       case "admin": return "GYSH Admin Studio";
       default: return SITE_NAME;
     }
@@ -1282,7 +1299,10 @@ function App() {
       case "contact": return "Questions, partnerships, or workshop inquiries — we’d love to hear from you.";
       case "join": return "Create an account, explore teams, and compare Free through Elite plans.";
       case "login": return "Sign in to save bookmarks, unlock badges, and track launch milestones.";
-      case "user_portal": return "Check guide progress, badges, and launch milestones.";
+      case "user_portal":
+        return isYouthDashboardUser(authUser)
+          ? "Your Blueprint, credits, and shortcuts into Kids & Teens Corner."
+          : "Check guide progress, badges, and launch milestones.";
       case "admin": return "Manage content calendars, growth guides, and monetization models.";
       default: return "";
     }
@@ -1398,6 +1418,19 @@ function App() {
           <div className="top-header-menus">
             <nav className="nav-primary" aria-label="Primary">
               <ul className="nav-links nav-links--primary">
+                {effectiveMemberAccess ? (
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => goTo("user_portal")}
+                      className={`nav-link-btn ${activeView === "user_portal" ? "active" : ""}`}
+                      data-testid="nav-dashboard"
+                    >
+                      <LayoutDashboard size={16} className="nav-icon nav-icon--portal" aria-hidden />
+                      Dashboard
+                    </button>
+                  </li>
+                ) : null}
                 <li>
                   <button
                     type="button"
@@ -1669,15 +1702,6 @@ function App() {
                       })}
                     </ul>
                   </div>
-                ) : userRole !== "admin" ? (
-                  <button
-                    type="button"
-                    onClick={() => goTo("user_portal")}
-                    className={`nav-link-btn ${activeView === "user_portal" ? "active" : ""}`}
-                  >
-                    <User size={16} className="nav-icon nav-icon--portal" aria-hidden />
-                    Portal
-                  </button>
                 ) : null}
                 {userRole === "admin" ? (
                   <div
@@ -2218,6 +2242,7 @@ function App() {
               onGoToJoin={(audience) => openJoin(audience ?? "adult")}
               onGoToLogin={() => goTo("login")}
               onOpenAdultGuide={(id) => {
+                setGuidesManualId(null);
                 setSelectedHustleId(id);
                 setGuidesDetailId(id);
                 window.scrollTo({ top: 0, behavior: "smooth" });
@@ -2252,6 +2277,9 @@ function App() {
             isLoggedIn={kidsCornerMemberAccess}
             previewAsGuest={previewingAsGuest}
             onGoToJoin={(audience) => openJoin(audience)}
+            onOpenDashboard={
+              isYouthDashboardUser(authUser) ? () => goTo("user_portal") : undefined
+            }
             entryFocus={kidsEntryFocus}
           />
         )}
@@ -2537,33 +2565,62 @@ function App() {
           />
         )}
 
-        {activeView === "user_portal" && (
-          <UserPortal
-            memberName={authUser?.name}
-            onOpenMatchWizard={() => {
-              setFindMineMode("select");
-              goTo("quiz");
-            }}
-            onOpenJoin={() => openJoin("adult")}
-            onOpenGuide={(ageGroup, hustleId) => {
-              if (ageGroup === "kids") {
-                openKidsCorner({ mode: "kids", tab: "guides" });
-                return;
+        {activeView === "user_portal" &&
+          (isYouthDashboardUser(authUser) ? (
+            <KidDashboard
+              memberName={authUser?.name}
+              ageBand={youthAgeBand(authUser)}
+              onOpenMatchWizard={() =>
+                openKidsCorner({
+                  mode: youthAgeBand(authUser),
+                  tab: "wizard",
+                })
               }
-              if (ageGroup === "junior") {
-                openKidsCorner({ mode: "junior", tab: "guides" });
-                return;
+              onOpenCorner={(tab) =>
+                openKidsCorner({
+                  mode: youthAgeBand(authUser),
+                  tab: tab ?? "wizard",
+                })
               }
-              if (ageGroup === "senior") {
-                openSeniors("guides");
-                return;
-              }
-              setSelectedHustleId(hustleId);
-              setGuidesDetailId(hustleId);
-              goTo("guides");
-            }}
-          />
-        )}
+              onOpenGuide={(ageGroup) => {
+                openKidsCorner({
+                  mode: ageGroup === "junior" ? "junior" : "kids",
+                  tab: "guides",
+                });
+              }}
+            />
+          ) : (
+            <UserPortal
+              memberName={authUser?.name}
+              onOpenMatchWizard={() => {
+                setFindMineMode("select");
+                goTo("quiz");
+              }}
+              onOpenJoin={() => openJoin("adult")}
+              onOpenKidDashboard={(ageBand) => {
+                openKidsCorner({
+                  mode: ageBand === "junior" ? "junior" : "kids",
+                  tab: "wizard",
+                });
+              }}
+              onOpenGuide={(ageGroup, hustleId) => {
+                if (ageGroup === "kids") {
+                  openKidsCorner({ mode: "kids", tab: "guides" });
+                  return;
+                }
+                if (ageGroup === "junior") {
+                  openKidsCorner({ mode: "junior", tab: "guides" });
+                  return;
+                }
+                if (ageGroup === "senior") {
+                  openSeniors("guides");
+                  return;
+                }
+                // Adult Blueprint matches share Launch Guide ids — open that guide detail.
+                goTo("guides", { launchGuideId: hustleId });
+              }}
+            />
+          ))}
 
         {activeView === "admin" && authReady && canUseAdminPortal && (
           <AdminPortal

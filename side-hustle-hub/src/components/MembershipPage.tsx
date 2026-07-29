@@ -44,6 +44,8 @@ import {
 } from "../lib/join-audience";
 import membershipHero from "../assets/membership-hero.png";
 
+const MEMBERSHIP_BENEFITS_PREVIEW = 2;
+
 function TierBenefitsList({
   tierId,
   benefits,
@@ -51,10 +53,16 @@ function TierBenefitsList({
   tierId: TierId;
   benefits: NumberedTierPerk[];
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const canCollapse = benefits.length > MEMBERSHIP_BENEFITS_PREVIEW;
+  const visible =
+    expanded || !canCollapse ? benefits : benefits.slice(0, MEMBERSHIP_BENEFITS_PREVIEW);
+  const hiddenCount = Math.max(0, benefits.length - MEMBERSHIP_BENEFITS_PREVIEW);
+
   return (
     <div className="membership-tier-benefits" data-testid={`membership-benefits-${tierId}`}>
       <ol className="membership-tier-features" start={1}>
-        {benefits.map((b) => (
+        {visible.map((b) => (
           <li key={`perk-${b.n}-${b.title}`}>
             <BadgeCheck size={14} className="membership-check" aria-hidden />
             <span>
@@ -64,6 +72,17 @@ function TierBenefitsList({
           </li>
         ))}
       </ol>
+      {canCollapse ? (
+        <button
+          type="button"
+          className="membership-benefits-toggle"
+          data-testid={`membership-benefits-toggle-${tierId}`}
+          aria-expanded={expanded}
+          onClick={() => setExpanded((v) => !v)}
+        >
+          {expanded ? "See less" : `See more (${hiddenCount})`}
+        </button>
+      ) : null}
     </div>
   );
 }
