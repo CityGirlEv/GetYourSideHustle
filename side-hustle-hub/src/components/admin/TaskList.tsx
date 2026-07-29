@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ListChecks,
   Lock,
@@ -12,6 +12,7 @@ import {
   FileSpreadsheet,
   File,
   Download,
+  ExternalLink,
   ChevronDown,
   ChevronRight,
   Upload,
@@ -64,6 +65,12 @@ import {
   newFileId,
   putTaskFile,
 } from "../../lib/gysh-task-files";
+import {
+  canViewAttachmentInline,
+  localAttachmentLooksComplete,
+  openAttachmentBlob,
+  type AttachmentOpenMode,
+} from "../../lib/gysh-attachments";
 import { ApiError } from "../../lib/api";
 import {
   listUpcomingSprints,
@@ -83,7 +90,11 @@ import {
   isSprintLocked,
   sprintLockedMessage,
 } from "../../lib/gysh-closed-sprints";
-import { healIncompleteTaskDueDates } from "../../lib/gysh-sprint-board";
+import {
+  countTasksRolledIntoSprint,
+  healIncompleteTaskDueDates,
+  noteIndicatesRollover,
+} from "../../lib/gysh-sprint-board";
 import { formatAuditTrail } from "../../lib/gysh-audit";
 import {
   appendActorNote,
@@ -100,12 +111,53 @@ import {
 type OwnerFilter = GyshTask["assignedTo"];
 type CategoryFilter = TaskCategory;
 
-/** Columns so chips fill exactly 2 equal rows (uniform bubble size). */
-function chipColsForTwoRows(count: number): number {
-  return Math.max(1, Math.ceil(count / 2));
+/** Same chip chrome as Testing Portal FilterChip. */
+function TaskFilterChip({
+  active,
+  onClick,
+  children,
+  title,
+  accent,
+  testId,
+  current,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: ReactNode;
+  title?: string;
+  accent?: string;
+  testId?: string;
+  current?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      className="qa-tester-bubble qa-filter-chip"
+      data-active={active ? "true" : "false"}
+      data-current={current ? "true" : undefined}
+      data-testid={testId}
+      title={title}
+      onClick={onClick}
+      style={
+        active && accent
+          ? { borderColor: accent, boxShadow: `0 0 0 1px ${accent}` }
+          : undefined
+      }
+    >
+      <input
+        type="checkbox"
+        className="qa-filter-chip__check"
+        checked={active}
+        readOnly
+        tabIndex={-1}
+        aria-hidden
+      />
+      {children}
+    </button>
+  );
 }
 
-/** Collapsible filter facet — chevron by title; uniform chip grid when open. */
+/** Collapsible filter facet — chevron by title; portal-style chips when open. */
 function TaskFilterPanel({
   title,
   hint,
@@ -223,6 +275,7 @@ function ownerBubbleCounts(tasks: GyshTask[], owner: OwnerFilter) {
   return {
     assigned: matched.length,
     done: matched.filter((t) => t.status === "done").length,
+    rolled: matched.filter((t) => noteIndicatesRollover(t.notes)).length,
   };
 }
 
@@ -271,84 +324,73 @@ function AttachmentRow({
   const Icon = attachmentIcon(att.mimeType, att.name);
   const isImage = att.mimeType.startsWith("image/") || /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(att.name);
 
+  const resolveBlob = async (): Promise<Blob> => {
+    const rec = await getTaskFile(taskId, att.storedId);
+    if (localAttachmentLooksComplete(rec, att.size)) return rec!.blob;
+    if (att.hasContent === false) {
+      throw new Error("File bytes were never stored on the server. Please re-upload the file.");
+    }
+    const remote = await fetchTaskAttachmentContent(att.id);
+    if (!remote.contentBase64?.trim()) {
+      throw new Error("Attachment file bytes are missing from the database.");
+    }
+    const blob = base64ToBlob(remote.contentBase64, remote.mimeType || att.mimeType);
+    if (blob.size < 1) {
+      throw new Error("Attachment decoded empty — re-upload the file.");
+    }
+    void putTaskFile({
+      taskId,
+      fileId: att.storedId,
+      name: att.name,
+      mimeType: att.mimeType,
+      size: att.size || blob.size,
+      blob,
+      addedAt: att.addedAt,
+    });
+    return blob;
+  };
+
   useEffect(() => {
     let revoked: string | null = null;
     let cancelled = false;
     if (!isImage) return;
     (async () => {
-      let blob: Blob | null = null;
-      const rec = await getTaskFile(taskId, att.storedId);
-      if (rec) blob = rec.blob;
-      else if (att.hasContent !== false) {
-        try {
-          const remote = await fetchTaskAttachmentContent(att.id);
-          blob = base64ToBlob(remote.contentBase64, remote.mimeType || att.mimeType);
-          void putTaskFile({
-            taskId,
-            fileId: att.storedId,
-            name: att.name,
-            mimeType: att.mimeType,
-            size: att.size,
-            blob,
-            addedAt: att.addedAt,
-          });
-        } catch {
-          /* preview optional */
-        }
+      try {
+        const blob = await resolveBlob();
+        if (cancelled || !blob) return;
+        const url = URL.createObjectURL(blob);
+        revoked = url;
+        setPreviewUrl(url);
+      } catch {
+        /* preview optional */
       }
-      if (cancelled || !blob) return;
-      const url = URL.createObjectURL(blob);
-      revoked = url;
-      setPreviewUrl(url);
     })();
     return () => {
       cancelled = true;
       if (revoked) URL.revokeObjectURL(revoked);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload when attachment identity/size changes
   }, [taskId, att.storedId, att.id, att.hasContent, att.name, att.mimeType, att.size, att.addedAt, isImage]);
 
-  const openOrDownload = async () => {
+  const canView = canViewAttachmentInline(att.mimeType, att.name);
+
+  const openAttachment = async (mode: AttachmentOpenMode) => {
     setBusy(true);
     try {
-      let blob: Blob | null = null;
-      const rec = await getTaskFile(taskId, att.storedId);
-      if (rec) blob = rec.blob;
-      else {
-        try {
-          const remote = await fetchTaskAttachmentContent(att.id);
-          blob = base64ToBlob(remote.contentBase64, remote.mimeType || att.mimeType);
-          void putTaskFile({
-            taskId,
-            fileId: att.storedId,
-            name: att.name,
-            mimeType: att.mimeType,
-            size: att.size,
-            blob,
-            addedAt: att.addedAt,
-          });
-        } catch (e) {
-          const msg =
-            e instanceof ApiError
-              ? e.message
-              : "File not found. If this was uploaded before server storage, please re-upload it.";
-          alert(msg);
-          return;
-        }
-      }
-      if (!blob) {
-        alert("File not found. Please re-upload the attachment.");
-        return;
-      }
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = att.name;
-      a.target = "_blank";
-      a.rel = "noopener";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 30_000);
+      const blob = await resolveBlob();
+      openAttachmentBlob(blob, {
+        name: att.name,
+        mimeType: att.mimeType,
+        mode: mode === "view" && !canView ? "download" : mode,
+      });
+    } catch (e) {
+      const msg =
+        e instanceof ApiError
+          ? e.message
+          : e instanceof Error
+            ? e.message
+            : "File not found. If this was uploaded before server storage, please re-upload it.";
+      alert(msg);
     } finally {
       setBusy(false);
     }
@@ -393,13 +435,25 @@ function AttachmentRow({
           {formatFileSize(att.size)} · {att.mimeType || "file"} · {att.addedAt}
         </div>
       </div>
+      {canView ? (
+        <button
+          type="button"
+          className="btn btn-outline"
+          style={{ padding: "4px 8px", fontSize: "0.9375rem" }}
+          onClick={() => void openAttachment("view")}
+          disabled={busy}
+          title="View in a new tab"
+        >
+          <ExternalLink size={14} />
+        </button>
+      ) : null}
       <button
         type="button"
         className="btn btn-outline"
         style={{ padding: "4px 8px", fontSize: "0.9375rem" }}
-        onClick={openOrDownload}
+        onClick={() => void openAttachment("download")}
         disabled={busy}
-        title="Download / open"
+        title="Download file"
       >
         <Download size={14} />
       </button>
@@ -592,6 +646,8 @@ export function TaskList({
   const [ownerFilters, setOwnerFilters] = useState<Set<OwnerFilter>>(() => new Set());
   const [categoryFilters, setCategoryFilters] = useState<Set<CategoryFilter>>(() => new Set());
   const [statusFilters, setStatusFilters] = useState<Set<TaskStatus>>(() => new Set());
+  /** Orthogonal to work status — End Sprint “Rolled over from Sprint N” note. */
+  const [rolledOverOnly, setRolledOverOnly] = useState(false);
   /** Open on the live sprint so the list matches what partners are working this week. */
   const [sprintFilters, setSprintFilters] = useState<Set<number>>(
     () => new Set([currentSprintIndex()]),
@@ -669,6 +725,7 @@ export function TaskList({
     ownerFilters.size === 0 &&
     categoryFilters.size === 0 &&
     statusFilters.size === 0 &&
+    !rolledOverOnly &&
     sprintFilters.size === 0 &&
     !searchQuery.trim();
 
@@ -694,6 +751,7 @@ export function TaskList({
     setCategoryFilters(new Set());
     setStatusFilters(new Set());
     setSprintFilters(new Set());
+    setRolledOverOnly(false);
     setSearchQuery("");
     setSaveFlash(
       hadDrafts
@@ -714,6 +772,7 @@ export function TaskList({
     setOwnerFilters(new Set());
     setCategoryFilters(new Set());
     setStatusFilters(new Set());
+    setRolledOverOnly(false);
     setSprintFilters(new Set());
     setSearchQuery("");
     setExpanded((prev) => ({ ...prev, [focusTaskId]: true }));
@@ -761,7 +820,7 @@ export function TaskList({
 
   // No bulk due-date rewrite on load — that raced with live edits.
 
-  type TaskFilterFacet = "owner" | "category" | "status" | "sprint" | "search";
+  type TaskFilterFacet = "owner" | "category" | "status" | "sprint" | "search" | "rolled";
 
   const taskMatchesFilters = (t: GyshTask, exclude?: TaskFilterFacet): boolean => {
     // Task-# search always wins — "T-029" should find the task even if Tina/Done/Sprint filters hide it.
@@ -786,6 +845,9 @@ export function TaskList({
     if (exclude !== "status" && statusFilters.size > 0 && !statusFilters.has(t.status)) {
       return false;
     }
+    if (exclude !== "rolled" && rolledOverOnly && !noteIndicatesRollover(t.notes)) {
+      return false;
+    }
     if (exclude !== "sprint" && sprintFilters.size > 0 && !sprintFilters.has(t.sprint ?? 0)) {
       return false;
     }
@@ -798,6 +860,7 @@ export function TaskList({
     ownerFilters.size > 0 ||
     categoryFilters.size > 0 ||
     statusFilters.size > 0 ||
+    rolledOverOnly ||
     sprintFilters.size > 0;
   const idSearchBypassedFilters =
     Boolean(searchQuery.trim()) &&
@@ -809,6 +872,11 @@ export function TaskList({
   const categoryFacetTasks = tasks.filter((t) => taskMatchesFilters(t, "category"));
   const sprintFacetTasks = tasks.filter((t) => taskMatchesFilters(t, "sprint"));
   const ownerFacetTasks = tasks.filter((t) => taskMatchesFilters(t, "owner"));
+  /** Rolled-over count for the Rolled Over chip (respects sprint/assignee/etc., not the rolled toggle). */
+  const rolledFacetTasks = tasks.filter((t) => taskMatchesFilters(t, "rolled"));
+  const rolledOverFacetCount = rolledFacetTasks.filter((t) =>
+    noteIndicatesRollover(t.notes),
+  ).length;
   const liveSprintIndex = currentSprintIndex();
 
   const toggleInSet = <T,>(prev: Set<T>, value: T): Set<T> => {
@@ -1404,95 +1472,125 @@ export function TaskList({
               open={filterOpen.sprint}
               onOpenChange={(open) => setFilterOpen((p) => ({ ...p, sprint: open }))}
               summary={
-                sprintFilters.size === 0
-                  ? "All sprints"
-                  : sprintFilters.size === 1
-                    ? sprintFilters.has(BACKLOG_SPRINT)
-                      ? "Backlog"
-                      : sprintLabel([...sprintFilters][0]!)
-                    : `${sprintFilters.size} sprints`
+                [
+                  sprintFilters.size === 0
+                    ? "All sprints"
+                    : sprintFilters.size === 1
+                      ? sprintFilters.has(BACKLOG_SPRINT)
+                        ? "Backlog"
+                        : sprintLabel([...sprintFilters][0]!)
+                      : `${sprintFilters.size} sprints`,
+                  rolledOverOnly ? "Rolled over only" : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")
               }
             >
               <div
                 className="task-list-toolbar__chips task-list-toolbar__chips--sprint"
-                style={
-                  {
-                    "--chip-cols": chipColsForTwoRows(2 + sprints.length),
-                  } as CSSProperties
-                }
                 role="group"
                 aria-label="Filter by sprint"
               >
-                <button
-                  type="button"
-                  className="qa-tester-bubble"
-                  data-active={sprintFilters.size === 0 ? "true" : "false"}
-                  data-testid="task-list-sprint-all"
+                <TaskFilterChip
+                  active={sprintFilters.size === 0}
+                  testId="task-list-sprint-all"
                   onClick={() => setSprintFilters(new Set())}
                   title={`${sprintFacetTasks.length} tasks match other filters`}
                 >
                   All sprints
-                  <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
-                    · {sprintFacetTasks.length}
+                  <span className="qa-tester-meta task-list-sprint__meta" style={{ fontVariantNumeric: "tabular-nums" }}>
+                    <span className="task-list-sprint__count">· {sprintFacetTasks.length}</span>
                   </span>
-                </button>
-                <button
-                  type="button"
-                  className="qa-tester-bubble"
-                  data-active={sprintFilters.has(BACKLOG_SPRINT) ? "true" : "false"}
-                  data-testid="task-list-sprint-backlog"
+                </TaskFilterChip>
+                <TaskFilterChip
+                  active={sprintFilters.has(BACKLOG_SPRINT)}
+                  testId="task-list-sprint-backlog"
                   onClick={() => toggleSprintFilter(BACKLOG_SPRINT)}
                   title="Backlog (unscheduled)"
-                  style={{
-                    borderColor: sprintFilters.has(BACKLOG_SPRINT) ? "#6B5344" : undefined,
-                    boxShadow: sprintFilters.has(BACKLOG_SPRINT) ? "0 0 0 1px #6B5344" : undefined,
-                  }}
+                  accent="#6B5344"
                 >
                   <span className="qa-tester-dot" style={{ background: "#6B5344" }} />
                   Backlog
-                  <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
-                    ·{" "}
-                    {
-                      sprintFacetTasks.filter((t) => (t.sprint ?? 0) === BACKLOG_SPRINT)
-                        .length
-                    }
+                  <span className="qa-tester-meta task-list-sprint__meta" style={{ fontVariantNumeric: "tabular-nums" }}>
+                    <span className="task-list-sprint__count">
+                      ·{" "}
+                      {
+                        sprintFacetTasks.filter((t) => (t.sprint ?? 0) === BACKLOG_SPRINT)
+                          .length
+                      }
+                    </span>
                   </span>
-                </button>
+                </TaskFilterChip>
                 {sprints.map((s) => {
                   const active = sprintFilters.has(s.index);
-                  const count = sprintFacetTasks.filter((t) => (t.sprint ?? 0) === s.index).length;
+                  const inSprint = sprintFacetTasks.filter((t) => (t.sprint ?? 0) === s.index);
+                  const count = inSprint.length;
+                  const doneCount = inSprint.filter((t) => t.status === "done").length;
+                  // Global rolled-in count (not narrowed by other filters) — same as Testing Portal.
+                  const rolledIn = countTasksRolledIntoSprint(
+                    tasks.filter((t) => (t.sprint ?? 0) === s.index),
+                    s.index,
+                  );
                   const isCurrent = s.index === liveSprintIndex;
                   const accent = isCurrent ? "#5f7a45" : "#947D64";
                   return (
-                    <button
+                    <TaskFilterChip
                       key={s.index}
-                      type="button"
-                      className="qa-tester-bubble"
-                      data-active={active ? "true" : "false"}
-                      data-current={isCurrent ? "true" : "false"}
-                      data-testid={`task-list-sprint-${s.index}`}
+                      active={active}
+                      current={isCurrent}
+                      testId={`task-list-sprint-${s.index}`}
                       onClick={() => toggleSprintFilter(s.index)}
                       title={
                         isCurrent
-                          ? `${s.label} (current) · ${s.rangeLabel} · ${count} tasks`
-                          : `${s.label} · ${s.rangeLabel} · ${count} tasks`
+                          ? `${s.label} (current) · ${s.rangeLabel} · ${doneCount}/${count} done · ${rolledIn} rolled over`
+                          : `${s.label} · ${s.rangeLabel} · ${doneCount}/${count} done · ${rolledIn} rolled over`
                       }
-                      style={{
-                        borderColor: active ? accent : undefined,
-                        boxShadow: active ? `0 0 0 1px ${accent}` : undefined,
-                      }}
+                      accent={accent}
                     >
                       <span className="qa-tester-dot" style={{ background: accent }} />
-                      {s.label}
-                      {isCurrent ? (
-                        <span className="task-list-filters__current-tag">now</span>
-                      ) : null}
-                      <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
-                        · {count}
+                      <span className="task-list-sprint__label-block">
+                        <span className="task-list-sprint__name">
+                          {s.label}
+                          {isCurrent ? " · current" : ""}
+                        </span>
+                        <span className="task-list-sprint__dates">{s.numericRangeLabel}</span>
                       </span>
-                    </button>
+                      <span
+                        className="qa-tester-meta task-list-sprint__meta"
+                        style={{ fontVariantNumeric: "tabular-nums" }}
+                      >
+                        <span className="task-list-sprint__count">
+                          · {doneCount}/{count}
+                        </span>
+                        {rolledIn > 0 ? (
+                          <span
+                            className="status-bubble__rolled"
+                            data-testid={`task-list-sprint-${s.index}-rolled`}
+                          >
+                            Rolled over: {rolledIn}
+                          </span>
+                        ) : null}
+                      </span>
+                    </TaskFilterChip>
                   );
                 })}
+                <TaskFilterChip
+                  active={rolledOverOnly}
+                  testId="task-list-rolled-over"
+                  onClick={() => setRolledOverOnly((v) => !v)}
+                  title={
+                    sprintFilters.size === 1 && !sprintFilters.has(BACKLOG_SPRINT)
+                      ? `Show only tasks rolled into ${sprintLabel([...sprintFilters][0]!)} (${rolledOverFacetCount})`
+                      : `Show only rolled-over tasks (${rolledOverFacetCount})`
+                  }
+                  accent="#0e7490"
+                >
+                  <span className="qa-tester-dot" style={{ background: "#0e7490" }} />
+                  Rolled Over
+                  <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
+                    · {rolledOverFacetCount}
+                  </span>
+                </TaskFilterChip>
               </div>
             </TaskFilterPanel>
 
@@ -1510,55 +1608,52 @@ export function TaskList({
             >
               <div
                 className="task-list-toolbar__chips"
-                style={
-                  {
-                    "--chip-cols": chipColsForTwoRows(1 + OWNER_BUBBLES.length),
-                  } as CSSProperties
-                }
                 role="group"
                 aria-label="Filter by assignee"
               >
-                <button
-                  type="button"
-                  className="qa-tester-bubble"
-                  data-active={ownerFilters.size === 0 ? "true" : "false"}
+                <TaskFilterChip
+                  active={ownerFilters.size === 0}
                   onClick={() => setOwnerFilters(new Set())}
-                  title={`${ownerFacetTasks.length} match other filters · ${ownerFacetTasks.filter((t) => t.status === "done").length} done`}
+                  title={`${ownerFacetTasks.length} match other filters · ${ownerFacetTasks.filter((t) => t.status === "done").length} done · ${ownerFacetTasks.filter((t) => noteIndicatesRollover(t.notes)).length} rolled over`}
                 >
                   All
                   <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
-                    {ownerFacetTasks.filter((t) => t.status === "done").length}✓ /{" "}
+                    · {ownerFacetTasks.filter((t) => t.status === "done").length}✓ /{" "}
                     {ownerFacetTasks.length}
+                    {ownerFacetTasks.filter((t) => noteIndicatesRollover(t.notes)).length > 0 ? (
+                      <span className="status-bubble__rolled">
+                        Rolled over:{" "}
+                        {ownerFacetTasks.filter((t) => noteIndicatesRollover(t.notes)).length}
+                      </span>
+                    ) : null}
                   </span>
-                </button>
+                </TaskFilterChip>
                 {OWNER_BUBBLES.map((b) => {
                   const active = ownerFilters.has(b.id);
-                  const { assigned, done } = ownerBubbleCounts(ownerFacetTasks, b.id);
+                  const { assigned, done, rolled } = ownerBubbleCounts(ownerFacetTasks, b.id);
                   const countTitle =
                     b.id === "Both"
-                      ? `${assigned} assigned to Both · ${done} done`
+                      ? `${assigned} assigned to Both · ${done} done · ${rolled} rolled over`
                       : b.id === "Lyriq" || b.id === "Unassigned"
-                        ? `${assigned} assigned to ${b.label} · ${done} done`
-                        : `${assigned} assigned to ${b.label} (incl. Both) · ${done} done`;
+                        ? `${assigned} assigned to ${b.label} · ${done} done · ${rolled} rolled over`
+                        : `${assigned} assigned to ${b.label} (incl. Both) · ${done} done · ${rolled} rolled over`;
                   return (
-                    <button
+                    <TaskFilterChip
                       key={b.id}
-                      type="button"
-                      className="qa-tester-bubble"
-                      data-active={active ? "true" : "false"}
+                      active={active}
                       onClick={() => toggleOwnerFilter(b.id)}
                       title={countTitle}
-                      style={{
-                        borderColor: active && b.accent ? b.accent : undefined,
-                        boxShadow: active && b.accent ? `0 0 0 1px ${b.accent}` : undefined,
-                      }}
+                      accent={b.accent}
                     >
                       {b.accent && <span className="qa-tester-dot" style={{ background: b.accent }} />}
                       {b.label}
                       <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
-                        {done}✓ / {assigned}
+                        · {done}✓ / {assigned}
+                        {rolled > 0 ? (
+                          <span className="status-bubble__rolled">Rolled over: {rolled}</span>
+                        ) : null}
                       </span>
-                    </button>
+                    </TaskFilterChip>
                   );
                 })}
               </div>
@@ -1579,49 +1674,48 @@ export function TaskList({
               }
             >
               <div
-                className="task-list-toolbar__chips"
-                style={
-                  {
-                    "--chip-cols": chipColsForTwoRows(1 + STATUS_LEGEND.length),
-                  } as CSSProperties
-                }
+                className="task-list-toolbar__chips task-list-toolbar__chips--status"
                 role="group"
                 aria-label="Filter by status"
               >
-                <button
-                  type="button"
-                  className="qa-tester-bubble"
-                  data-active={statusFilters.size === 0 ? "true" : "false"}
+                <TaskFilterChip
+                  active={statusFilters.size === 0}
                   onClick={() => setStatusFilters(new Set())}
                   title={`${statusFacetTasks.length} tasks match other filters`}
                 >
                   All statuses
                   <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
                     · {statusFacetTasks.length}
+                    {statusFacetTasks.filter((t) => noteIndicatesRollover(t.notes)).length > 0 ? (
+                      <span className="status-bubble__rolled">
+                        Rolled over:{" "}
+                        {statusFacetTasks.filter((t) => noteIndicatesRollover(t.notes)).length}
+                      </span>
+                    ) : null}
                   </span>
-                </button>
+                </TaskFilterChip>
                 {STATUS_LEGEND.map((s) => {
                   const active = statusFilters.has(s.id);
-                  const count = statusFacetTasks.filter((t) => t.status === s.id).length;
+                  const inStatus = statusFacetTasks.filter((t) => t.status === s.id);
+                  const count = inStatus.length;
+                  const rolled = inStatus.filter((t) => noteIndicatesRollover(t.notes)).length;
                   return (
-                    <button
+                    <TaskFilterChip
                       key={s.id}
-                      type="button"
-                      className="qa-tester-bubble"
-                      data-active={active ? "true" : "false"}
+                      active={active}
                       onClick={() => toggleStatusFilter(s.id)}
-                      title={`Filter: ${s.label} (${count})`}
-                      style={{
-                        borderColor: active ? STATUS_ACCENT[s.id] : undefined,
-                        boxShadow: active ? `0 0 0 1px ${STATUS_ACCENT[s.id]}` : undefined,
-                      }}
+                      title={`Filter: ${s.label} (${count}) · ${rolled} rolled over`}
+                      accent={STATUS_ACCENT[s.id]}
                     >
                       <span className="qa-tester-dot" style={{ background: STATUS_ACCENT[s.id] }} />
                       {s.label}
                       <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
                         · {count}
+                        {rolled > 0 ? (
+                          <span className="status-bubble__rolled">Rolled over: {rolled}</span>
+                        ) : null}
                       </span>
-                    </button>
+                    </TaskFilterChip>
                   );
                 })}
               </div>
@@ -1643,18 +1737,11 @@ export function TaskList({
             >
               <div
                 className="task-list-toolbar__chips"
-                style={
-                  {
-                    "--chip-cols": chipColsForTwoRows(1 + CATEGORY_BUBBLES.length),
-                  } as CSSProperties
-                }
                 role="group"
                 aria-label="Filter by category"
               >
-                <button
-                  type="button"
-                  className="qa-tester-bubble"
-                  data-active={categoryFilters.size === 0 ? "true" : "false"}
+                <TaskFilterChip
+                  active={categoryFilters.size === 0}
                   onClick={() => setCategoryFilters(new Set())}
                   title={`Show all categories (${categoryFacetTasks.length})`}
                 >
@@ -1662,16 +1749,14 @@ export function TaskList({
                   <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
                     · {categoryFacetTasks.length}
                   </span>
-                </button>
+                </TaskFilterChip>
                 {CATEGORY_BUBBLES.map((b) => {
                   const active = categoryFilters.has(b.id);
                   const count = categoryFacetTasks.filter((t) => t.category === b.id).length;
                   return (
-                    <button
+                    <TaskFilterChip
                       key={b.id}
-                      type="button"
-                      className="qa-tester-bubble"
-                      data-active={active ? "true" : "false"}
+                      active={active}
                       onClick={() => toggleCategoryFilter(b.id)}
                       title={`Filter: ${b.label} (${count})`}
                     >
@@ -1679,7 +1764,7 @@ export function TaskList({
                       <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
                         · {count}
                       </span>
-                    </button>
+                    </TaskFilterChip>
                   );
                 })}
               </div>
@@ -1688,7 +1773,8 @@ export function TaskList({
 
           <div className="task-list-filters__footer">
             <p className="task-list-toolbar__hint">
-              Defaults to the current sprint. Use checkboxes below for bulk edits.
+              Defaults to the current sprint. Each sprint bubble shows how many tasks rolled in.
+              Use Rolled Over to list only those. Checkboxes below for bulk edits.
             </p>
             <div className="task-legend task-legend--compact" aria-label="Due date colors">
               <span className="task-legend-item">
@@ -1992,11 +2078,12 @@ export function TaskList({
           const dueToday = isTaskDueToday(t);
           const dueColor = overdue ? "#9B2F28" : dueToday ? "var(--bronze)" : "var(--text-muted)";
           const locked = isSprintLocked(closedSprints, t.sprint);
+          const rolledIn = noteIndicatesRollover(t.notes);
           return (
             <div
               key={t.id}
               id={`task-row-${t.id}`}
-              className={`glass task-card task-card--${t.status}`}
+              className={`glass task-card task-card--${t.status}${rolledIn ? " task-card--rolled" : ""}`}
               style={{
                 padding: "14px 16px",
                 borderRadius: 12,
@@ -2008,7 +2095,11 @@ export function TaskList({
                       : undefined,
                 boxShadow:
                   highlightId === t.id ? "0 0 0 3px rgba(155,47,40,0.2)" : undefined,
-                borderLeft: overdue ? "3px solid #9B2F28" : undefined,
+                borderLeft: overdue
+                  ? "3px solid #9B2F28"
+                  : rolledIn
+                    ? "3px solid #0e7490"
+                    : undefined,
               }}
             >
               <div
@@ -2046,6 +2137,14 @@ export function TaskList({
                 <span className="flat-label flat-label--id" style={{ marginTop: 6 }}>{t.id}</span>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    {rolledIn ? (
+                      <span
+                        className="task-card__rolled-badge"
+                        title="Rolled over from a prior sprint"
+                      >
+                        Rolled over
+                      </span>
+                    ) : null}
                     <textarea
                       className="text-input"
                       defaultValue={t.description}

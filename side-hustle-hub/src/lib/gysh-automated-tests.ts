@@ -319,6 +319,39 @@ export function isAutomatedTestId(id: string): boolean {
   return isWizardMatrixCaseId(id) || /^(VT|PW)-FAIL-/i.test(id);
 }
 
+/**
+ * Locked suite runner for catalog automated cases.
+ * VT-FAIL-* / PW-FAIL-* are human QA follow-ups and return null.
+ */
+export function suiteOwnerForAutomatedCase(
+  caseId: string,
+): "vitest" | "playwright" | null {
+  const id = String(caseId || "").trim();
+  if (!id) return null;
+  if (/^(VT|PW)-FAIL-/i.test(id)) return null;
+  if (/^PW-/i.test(id)) return "playwright";
+  if (/^VT-/i.test(id) || isWizardMatrixCaseId(id)) return "vitest";
+  return null;
+}
+
+/** Force Vitest/Playwright catalog cases onto their suite runners (never human QA). */
+export function sanitizeAutomatedTestAssignees(
+  assignees: Record<string, string>,
+  caseIds?: Iterable<string>,
+): { assignees: Record<string, string>; changedIds: string[] } {
+  const next = { ...assignees };
+  const changedIds: string[] = [];
+  const ids = new Set<string>([...(caseIds ?? []), ...Object.keys(next)]);
+  for (const id of ids) {
+    const owner = suiteOwnerForAutomatedCase(id);
+    if (!owner) continue;
+    if (String(next[id] ?? "").trim().toLowerCase() === owner) continue;
+    next[id] = owner;
+    changedIds.push(id);
+  }
+  return { assignees: next, changedIds };
+}
+
 export function casesForTester(
   cases: GyshTestCase[],
   testerId: TestOwnerId | null,

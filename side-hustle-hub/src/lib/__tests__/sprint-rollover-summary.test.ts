@@ -26,21 +26,22 @@ describe("sprintRolloverSummary", () => {
   };
   const notes = {
     a: "",
-    b: '[{"id":"n1","author":"Evelyn","createdAt":"2026-07-28T07:17:21.474Z","updatedAt":"2026-07-28T07:17:21.474Z","text":"Rolling over from Sprint 1"}]',
+    b: '[{"id":"n1","author":"Evelyn","createdAt":"2026-07-28T07:17:21.474Z","updatedAt":"2026-07-28T07:17:21.474Z","text":"Rolled over from Sprint 1"}]',
     c: "",
     d: "",
     "PROOF-KG-ghost": "",
   };
   const known = new Set(["a", "b", "c", "d"]);
   const tasks = [
-    { sprint: 2, notes: '[{"text":"Rolling over from Sprint 1"}]' },
-    { sprint: 2, notes: '[{"text":"Rolling over from Sprint 1"}]' },
+    { sprint: 2, notes: '[{"text":"Rolled over from Sprint 1"}]' },
+    { sprint: 2, notes: '[{"text":"Rolling over from Sprint 1"}]' }, // legacy wording still counts
     { sprint: 2, notes: "no roll" },
     { sprint: 1, notes: "" },
   ];
 
   it("detects End Sprint rollover notes", () => {
     expect(noteIndicatesRollover(notes.b)).toBe(true);
+    expect(noteIndicatesRollover('[{"text":"Rolling over from Sprint 1"}]')).toBe(true);
     expect(testIsRolledOver("fixed_cursor", notes.b)).toBe(true);
     expect(testIsRolledOver("fail", "")).toBe(false);
     expect(testIsRolledOver("rolled_over", "")).toBe(true);

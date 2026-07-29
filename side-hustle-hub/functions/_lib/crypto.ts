@@ -85,9 +85,15 @@ export function parseCookies(header) {
   return out;
 }
 
+/**
+ * Auth cookie. Omit maxAgeSec (or pass 0/null) for a browser session cookie so
+ * closing the browser drops auth. Tab-close is handled client-side via sessionStorage.
+ */
 export function sessionCookie(token, maxAgeSec) {
   const secure = "; Secure";
-  return `gysh_session=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAgeSec}${secure}`;
+  const maxAge =
+    typeof maxAgeSec === "number" && maxAgeSec > 0 ? `; Max-Age=${Math.floor(maxAgeSec)}` : "";
+  return `gysh_session=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax${maxAge}${secure}`;
 }
 
 export function clearSessionCookie() {

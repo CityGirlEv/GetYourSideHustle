@@ -4,6 +4,7 @@
  * Sprint 0 is anchored to Jul 14–Jul 20, 2026 (assignments never drift).
  */
 
+import { suiteOwnerForAutomatedCase } from "./gysh-automated-tests";
 import { parseAssigneePeople, requiresPartnerDone } from "./gysh-tasks";
 
 export type SprintWindow = {
@@ -507,6 +508,8 @@ export function sanitizeBacklogTestAssignees(
   const next = { ...assignees };
   const changedIds: string[] = [];
   for (const [id, sprint] of Object.entries(sprints)) {
+    // Catalog Vitest/Playwright cases keep their suite runner even on backlog.
+    if (suiteOwnerForAutomatedCase(id)) continue;
     if (!isBacklogSprint(sprint)) continue;
     if (!String(next[id] ?? "").trim()) continue;
     next[id] = "";

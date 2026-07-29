@@ -3,6 +3,33 @@
 import { api, ApiError, setSessionToken } from "./api";
 import type { BlueprintAgeGroup } from "./gysh-analytics";
 
+/** Marks this browser tab as an active signed-in session (dies when the tab closes). */
+const TAB_ALIVE_KEY = "gysh_tab_alive";
+
+function markTabAlive(): void {
+  try {
+    sessionStorage.setItem(TAB_ALIVE_KEY, "1");
+  } catch {
+    /* ignore */
+  }
+}
+
+function clearTabAlive(): void {
+  try {
+    sessionStorage.removeItem(TAB_ALIVE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+function tabIsAlive(): boolean {
+  try {
+    return sessionStorage.getItem(TAB_ALIVE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 export type LoginOutcome = "admin" | "member" | "invalid" | "unavailable";
 
 export type AuthAuditEntry = {
@@ -57,6 +84,7 @@ export async function login(email: string, password: string): Promise<{
       auth: false,
     });
     setSessionToken(data.token ?? null);
+    markTabAlive();
     const isAdmin =
       data.isAdmin === true ||
       data.user.role === "admin" ||
@@ -115,6 +143,7 @@ export async function registerFreeMember(input: {
       },
     });
     setSessionToken(data.token ?? null);
+    markTabAlive();
     return {
       ok: true,
       user: data.user,
@@ -136,11 +165,27 @@ export async function logout(): Promise<void> {
     /* still clear local session marker */
   }
   setSessionToken(null);
+  clearTabAlive();
+}
+
+/**
+ * Restore auth for this tab only. Closing the tab/page clears sessionStorage, so the
+ * next open must sign in again — even if a leftover httpOnly cookie is still present.
+ * Refresh keeps you signed in (same tab sessionStorage survives).
+ */
+export async function restoreSession(): Promise<AuthUser | null> {
+  if (!tabIsAlive()) {
+    await logout();
+  } else {
+    markTabAlive();
+  }
+  return fetchMe();
 }
 
 export async function fetchMe(): Promise<AuthUser | null> {
   try {
     const data = await api<{ user: AuthUser }>("auth/me");
+    if (data.user) markTabAlive();
     return data.user;
   } catch {
     return null;

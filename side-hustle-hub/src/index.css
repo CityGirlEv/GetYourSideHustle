@@ -6510,46 +6510,81 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 0.9rem;
 }
 
-/* Uniform bubbles in equal columns (2 rows via --chip-cols) */
+/* Task List filter chips — match Testing Portal (qa-testing-portal__top-filters) */
 .task-list-toolbar__chips {
-  display: grid;
-  grid-template-columns: repeat(var(--chip-cols, 3), minmax(0, 1fr));
-  grid-auto-rows: 1fr;
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  align-items: stretch;
+  align-items: center;
+  justify-content: flex-start;
   width: 100%;
   max-width: 100%;
 }
 
-.task-list-toolbar__chips .qa-tester-bubble {
-  width: 100%;
-  min-width: 0;
-  min-height: 3.25rem;
-  height: 100%;
-  justify-content: center;
+.task-list-toolbar__chips .qa-filter-chip {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.task-list-toolbar__chips--sprint .qa-filter-chip {
   align-items: center;
-  flex-direction: column;
-  gap: 2px;
-  box-sizing: border-box;
+  flex-wrap: wrap;
   white-space: normal;
-  text-align: center;
-  line-height: 1.2;
-  padding: 8px 10px;
+  min-height: 3.25rem;
+  max-width: 14rem;
 }
 
-.task-list-toolbar__chips .qa-tester-bubble .qa-tester-dot {
-  display: none;
-}
-
-.task-list-toolbar__chips .qa-tester-bubble .qa-tester-meta {
-  display: block;
-  flex-shrink: 0;
-  overflow: visible;
-  text-overflow: unset;
-  font-variant-numeric: tabular-nums;
-  font-size: 0.9375rem;
-  font-weight: 800;
+.task-list-sprint__label-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
   line-height: 1.15;
+  min-width: 0;
+}
+
+.task-list-sprint__name {
+  font-weight: 800;
+  color: inherit;
+  -webkit-text-fill-color: inherit;
+}
+
+.task-list-sprint__dates {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 650;
+  opacity: 0.85;
+  color: inherit;
+  -webkit-text-fill-color: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.task-list-sprint__meta,
+.task-list-toolbar__chips .qa-tester-meta:has(.status-bubble__rolled),
+.task-list-toolbar__chips .qa-tester-meta:has(.task-list-sprint__rolled) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1px;
+  line-height: 1.15;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: inherit;
+  -webkit-text-fill-color: inherit;
+}
+
+.task-list-sprint__count {
+  display: block;
+  font-variant-numeric: tabular-nums;
+  color: inherit;
+  -webkit-text-fill-color: inherit;
+}
+
+.task-list-toolbar__chips .qa-filter-chip:has(.status-bubble__rolled),
+.task-list-toolbar__chips .qa-filter-chip:has(.task-list-sprint__rolled) {
+  align-items: center;
+  min-height: 3.5rem;
 }
 
 .task-list-toolbar__hint {
@@ -6659,6 +6694,87 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 750;
 }
 
+.task-list-sprint__rolled,
+.status-bubble__rolled {
+  display: block;
+  width: 100%;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #0e7490;
+  line-height: 1.2;
+  margin-top: 2px;
+  text-align: center;
+}
+
+.schedule-board-filters__chips--status .qa-tester-bubble {
+  min-height: 3.25rem;
+}
+
+.schedule-board-filters__chips .qa-tester-meta:has(.status-bubble__rolled),
+.qa-testing-portal__top-filters .qa-tester-meta:has(.status-bubble__rolled) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1px;
+  line-height: 1.15;
+}
+
+.qa-categories-panel__bubbles .qa-filter-chip,
+.qa-testing-portal__top-filters .qa-filter-chip:has(.status-bubble__rolled) {
+  align-items: center;
+  min-height: 3.5rem;
+}
+
+.qa-categories-panel__bubbles .qa-tester-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1px;
+  line-height: 1.15;
+}
+
+.qa-categories-panel__bubbles .status-bubble__rolled,
+.qa-status-tile__rolled {
+  display: block;
+  width: 100%;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #0e7490;
+  line-height: 1.2;
+  margin-top: 2px;
+  text-align: center;
+}
+
+.qa-tester-bubble[data-active="true"] .status-bubble__rolled,
+.qa-tester-bubble[data-active="true"] .task-list-sprint__rolled,
+.qa-filter-chip[data-active="true"] .status-bubble__rolled,
+.qa-filter-chip[data-active="true"] .task-list-sprint__rolled,
+.qa-status-tile--active .qa-status-tile__rolled {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.schedule-board-filters__chips--status .qa-tester-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+.task-card__rolled-badge {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(14, 116, 144, 0.45);
+  background: rgba(14, 116, 144, 0.12);
+  color: #0e7490;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
 @media (max-width: 720px) {
   .task-list-toolbar__filter-group {
     flex: 1 1 100%;
@@ -6673,10 +6789,6 @@ h1, h2, h3, h4, h5, h6 {
   .task-list-toolbar__filter-group:not(:first-child) {
     border-left: none;
     border-top: 1px solid rgba(148, 125, 100, 0.3);
-  }
-
-  .task-list-toolbar__chips {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -6935,7 +7047,8 @@ h1, h2, h3, h4, h5, h6 {
 .schedule-sprint-bubble-grid .schedule-sprint-tq {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
+  text-align: center;
   gap: 4px;
   font-size: 0.9375rem;
   font-weight: 700;
@@ -6946,17 +7059,20 @@ h1, h2, h3, h4, h5, h6 {
 .schedule-sprint-bubble-grid .schedule-sprint-tq > span {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
+  text-align: center;
   gap: 0;
 }
 
 .schedule-sprint-bubble-grid .schedule-sprint-tq__rolled {
   display: block;
+  width: 100%;
   font-size: 0.8rem;
   font-weight: 700;
   color: #0e7490;
   line-height: 1.2;
   margin-top: 1px;
+  text-align: center;
 }
 
 /* Testing Portal: header reset + top filters + automated run panel */
@@ -7029,6 +7145,12 @@ h1, h2, h3, h4, h5, h6 {
   box-sizing: border-box;
 }
 
+.qa-testing-portal__tester-bars-header {
+  margin: 0;
+  padding: 0;
+  min-height: 0;
+}
+
 .qa-testing-portal__tester-bars-note {
   margin: 0;
   font-size: 0.8125rem;
@@ -7062,6 +7184,11 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 1rem;
 }
 
+.qa-tester-status-row__rolled {
+  color: #0e7490;
+  font-weight: 800;
+}
+
 .qa-tester-status-row__equals {
   margin: 0;
   font-size: 0.8125rem;
@@ -7093,6 +7220,22 @@ h1, h2, h3, h4, h5, h6 {
   gap: 8px;
   align-items: center;
   justify-content: flex-start;
+}
+
+/* Vitest / Playwright on QA Testors — run suite on click */
+.qa-suite-assignee-run {
+  cursor: pointer;
+  gap: 6px;
+}
+
+.qa-suite-assignee-run:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.qa-suite-assignee-run svg {
+  flex: 0 0 auto;
+  color: inherit;
 }
 
 .qa-testing-portal__suite-filters {

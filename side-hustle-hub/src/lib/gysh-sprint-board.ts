@@ -298,8 +298,11 @@ export function testStatusToBoard(status: TestStatus | undefined): string {
   return "todo";
 }
 
-/** End Sprint appends this note while keeping the work status (Fail, Fixed/Cursor, …). */
-export const ROLLOVER_NOTE_RE = /Rolling over from Sprint\s*\d+/i;
+/**
+ * End Sprint appends this note while keeping the work status (Fail, Fixed/Cursor, …).
+ * Accepts both “Rolled over” (current) and legacy “Rolling over”.
+ */
+export const ROLLOVER_NOTE_RE = /Roll(?:ed|ing) over from Sprint\s*\d+/i;
 
 export function noteIndicatesRollover(note: string | null | undefined): boolean {
   return ROLLOVER_NOTE_RE.test(String(note ?? ""));
@@ -310,7 +313,7 @@ export function noteRolledFromSprint(
   note: string | null | undefined,
   fromSprint: number,
 ): boolean {
-  return new RegExp(`Rolling over from Sprint\\s*${fromSprint}\\b`, "i").test(
+  return new RegExp(`Roll(?:ed|ing) over from Sprint\\s*${fromSprint}\\b`, "i").test(
     String(note ?? ""),
   );
 }
@@ -325,7 +328,7 @@ export function testIsRolledOver(
 
 /**
  * Relative to a focused sprint on the Schedule board:
- * - note says “Rolling over from Sprint {focus}” (may now live on the next sprint), or
+ * - note says “Rolled over from Sprint {focus}” (may now live on the next sprint), or
  * - currently on that sprint with rolled_over status / any rollover note.
  */
 export function itemRolledRelativeToSprint(
@@ -341,13 +344,14 @@ export function itemRolledRelativeToSprint(
   return false;
 }
 
+/** Canonical End Sprint note — only for items still open when the sprint closed. */
 export function rolloverNoteText(fromSprint: number): string {
-  return `Rolling over from Sprint ${fromSprint}`;
+  return `Rolled over from Sprint ${fromSprint}`;
 }
 
 /**
  * Tests currently on `sprintIndex` that were rolled in from the prior sprint.
- * Counts `rolled_over` status OR End Sprint notes (“Rolling over from Sprint N”).
+ * Counts `rolled_over` status OR End Sprint notes (“Rolled over from Sprint N”).
  * Pass `knownCaseIds` (board/catalog) so orphan D1 rows from renamed IDs are ignored.
  */
 export function countRolledIntoSprint(

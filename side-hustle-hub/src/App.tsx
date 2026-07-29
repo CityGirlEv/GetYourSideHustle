@@ -81,7 +81,7 @@ import {
 import { readAdminDeepLink } from "./lib/admin-deep-links";
 import {
   confirmPasswordReset,
-  fetchMe,
+  restoreSession,
   login,
   logout,
   requestPasswordReset,
@@ -581,10 +581,10 @@ function App() {
       actAsAudienceNow === "junior" ||
       (hasMemberAccess && !canUseAdminPortal));
 
-  // Restore partner/member session (cookie or sessionStorage token) before exposing /admin.
+  // Restore session for this tab only — closing the page requires a fresh login.
   useEffect(() => {
     let cancelled = false;
-    void fetchMe()
+    void restoreSession()
       .then((user) => {
         if (cancelled) return;
         if (user) {

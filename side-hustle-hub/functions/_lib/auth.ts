@@ -178,7 +178,9 @@ export async function createSession(db: D1Database, userId: string): Promise<{ t
     )
     .bind(id, userId, tokenHash, expires.toISOString(), now.toISOString())
     .run();
-  return { token, cookie: sessionCookie(token, SESSION_DAYS * 24 * 60 * 60) };
+  // Session cookie (no Max-Age): browser close clears it. Tab close is enforced
+  // client-side so a leftover cookie cannot reopen /admin after the page was closed.
+  return { token, cookie: sessionCookie(token) };
 }
 
 export async function destroySession(db: D1Database, request: Request): Promise<string> {

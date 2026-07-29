@@ -179,6 +179,7 @@ console.log(`  Vite UI       → http://localhost:${VITE_PORT}  (open this; /api
 console.log("");
 
 const syncScript = path.join(root, "scripts", "sync-test-statuses-from-remote.mjs");
+const syncTasksScript = path.join(root, "scripts", "sync-tasks-from-remote.mjs");
 
 function runProdD1Sync({ quiet = false, force = false } = {}) {
   const args = ["--use-system-ca", syncScript];
@@ -192,7 +193,16 @@ function runProdD1Sync({ quiet = false, force = false } = {}) {
   });
 }
 
-// Keep Testing Portal pass/fail counts aligned with production on startup.
+function runProdTasksSync({ quiet = false } = {}) {
+  return spawnSync(process.execPath, ["--use-system-ca", syncTasksScript], {
+    cwd: root,
+    stdio: quiet ? "pipe" : "inherit",
+    env: process.env,
+    encoding: "utf8",
+  });
+}
+
+// Keep Testing Portal + Task List aligned with production on startup.
 // Do NOT auto-overwrite time_entries (that was reverting local timesheet hours).
 // Background re-sync is OFF by default so mid-session local work is not wiped.
 if (process.env.GYSH_SKIP_D1_SYNC === "1") {
@@ -208,6 +218,14 @@ if (process.env.GYSH_SKIP_D1_SYNC === "1") {
     process.exit(sync.status ?? 1);
   }
   console.log("✓ Local Testing Portal statuses mirror production");
+  console.log("Syncing tasks from prod D1 → local (startup)…");
+  const taskSync = runProdTasksSync({ quiet: false });
+  if (taskSync.status !== 0) {
+    console.error("✗ Prod→local tasks sync failed.");
+    console.error("  Fix network/wrangler auth, then: npm run db:sync-tasks");
+    process.exit(taskSync.status ?? 1);
+  }
+  console.log("✓ Local tasks (incl. rollover notes) mirror production");
   console.log("  (timesheet hours are not overwritten — use GYSH_SYNC_TIME_ENTRIES=1 to pull prod hours)");
   console.log("");
 }

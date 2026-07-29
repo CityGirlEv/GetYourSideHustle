@@ -3,7 +3,7 @@
  * Keep these surfaces in lockstep so passed/total matches.
  */
 
-import { isAutomatedTestId } from "./gysh-automated-tests";
+import { isAutomatedTestId, suiteOwnerForAutomatedCase } from "./gysh-automated-tests";
 import { proofreadOwnerFromId } from "./gysh-proofread-cases";
 import {
   isHumanQaTester,
@@ -43,6 +43,8 @@ export function effectiveTestAssignee(
   t: OwnerStatsCase,
   dbAssignee: string | null | undefined,
 ): string {
+  const suiteOwner = suiteOwnerForAutomatedCase(t.id);
+  if (suiteOwner) return suiteOwner;
   if (isFailureGeneratedId(t.id)) {
     const override = normalizeQaAssigneeId(dbAssignee);
     if (override && isHumanQaTester(override)) return override;

@@ -113,6 +113,18 @@ function isGeneratedFailureCaseId(caseId: string): boolean {
   return id.startsWith("VT-FAIL-") || id.startsWith("PW-FAIL-");
 }
 
+/** Catalog VT-*/PW-* (not FAIL follow-ups) always belong to the suite runner. */
+function suiteOwnerForAutomatedCase(caseId: string): "vitest" | "playwright" | null {
+  const id = String(caseId || "").trim();
+  if (!id || isGeneratedFailureCaseId(id)) return null;
+  if (/^PW-/i.test(id)) return "playwright";
+  if (/^VT-/i.test(id)) return "vitest";
+  if (/^(KIDS|JR|ADULT|SENIOR)-FMSH-\d+$/i.test(id) || /^WIZARD-EDGE-\d+$/i.test(id)) {
+    return "vitest";
+  }
+  return null;
+}
+
 type TaskRow = {
   id: string;
   description: string;
@@ -1498,6 +1510,9 @@ export async function setTestStatus(env: Env, request: Request, actor: DbUser): 
       raw.assignee !== undefined
         ? String(raw.assignee ?? "").trim()
         : String(prev?.assignee ?? "").trim();
+    // Catalog automated cases never belong to human QA — suite runner only.
+    const lockedSuiteOwner = suiteOwnerForAutomatedCase(caseId);
+    if (lockedSuiteOwner) assignee = lockedSuiteOwner;
 
     let sprint = prevSprint;
     if (raw.sprint !== undefined && raw.sprint !== null) {
@@ -1634,12 +1649,15 @@ export async function setTestStatus(env: Env, request: Request, actor: DbUser): 
           originalAssignee = fromCaseId;
         }
       }
-      // Kids/Youth auto-generated failures keep Tina unless a Dev was explicitly chosen.
-      if (createDefaultsAssignee === "tina" && !devAssigneeIds.has(requestedDev)) {
+      // Kids/Youth auto-generated failures keep Tina unless a human was explicitly chosen.
+      // Fail defaults to Lead Dev, but partners may reassign to any QA tester (Tina/Evelyn/Lyriq).
+      if (createDefaultsAssignee === "tina" && !isHumanQaTesterId(requestedDev)) {
         assignee = "tina";
         originalAssignee = "tina";
-      } else if (devAssigneeIds.has(requestedDev)) {
+      } else if (isHumanQaTesterId(requestedDev)) {
         assignee = requestedDev;
+      } else if (prevStatus === "fail" && isHumanQaTesterId(testerBefore)) {
+        assignee = testerBefore;
       } else {
         assignee = FAILED_TEST_ASSIGNEE;
       }
@@ -1667,6 +1685,8 @@ export async function setTestStatus(env: Env, request: Request, actor: DbUser): 
     if (isBacklogSprint(sprint)) {
       assignee = "";
     }
+    // Catalog automated cases always stay on the suite runner (wins over Fail→Dev and backlog clear).
+    if (lockedSuiteOwner) assignee = lockedSuiteOwner;
 
     const checkedJson = JSON.stringify(checked);
 

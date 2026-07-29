@@ -361,7 +361,8 @@ export async function fetchTaskAttachmentContent(id: string): Promise<{
   mimeType: string;
   contentBase64: string;
 }> {
-  return api(`task-attachments?id=${encodeURIComponent(id)}`);
+  // Office / PDF payloads can be large — match test evidence timeout.
+  return api(`task-attachments?id=${encodeURIComponent(id)}`, { timeoutMs: 90_000 });
 }
 
 export async function deleteTaskAttachmentRemote(id: string): Promise<void> {
@@ -388,7 +389,7 @@ export async function fetchPlanAttachmentContent(id: string): Promise<{
   mimeType: string;
   contentBase64: string;
 }> {
-  return api(`plan-attachments?id=${encodeURIComponent(id)}`);
+  return api(`plan-attachments?id=${encodeURIComponent(id)}`, { timeoutMs: 90_000 });
 }
 
 export async function deletePlanAttachmentRemote(id: string): Promise<void> {

@@ -113,6 +113,11 @@ import {
   userHasAdminRole,
 } from "../../lib/gysh-assignment";
 import { base64ToBlob, isoToMmddyy, mmddyyToIso } from "../../lib/gysh-tasks";
+import {
+  canViewAttachmentInline,
+  openAttachmentBlob,
+  type AttachmentOpenMode,
+} from "../../lib/gysh-attachments";
 import { ApiError } from "../../lib/api";
 import type { AuthUser } from "../../lib/auth";
 import { suggestedSprintForTest } from "../../lib/gysh-sprint-board";
@@ -326,7 +331,10 @@ export function TestingPortal({
   const [categoryFilters, setCategoryFilters] = useState<Set<TestCategory>>(() => new Set());
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [statusFilters, setStatusFilters] = useState<Set<TestStatus>>(() => new Set());
-  const [statusOpen, setStatusOpen] = useState(false);
+  /** Status filter chips — expanded on load (with QA Testors). */
+  const [statusOpen, setStatusOpen] = useState(true);
+  /** QA Testor name/status bars — collapsed on load. */
+  const [testerBarsOpen, setTesterBarsOpen] = useState(false);
   const [testerFilters, setTesterFilters] = useState<Set<QaTesterId>>(() => new Set());
   /** Empty = all suites. Default manual to match prior portal focus. */
   const [suiteFilters, setSuiteFilters] = useState<Set<TestSuite>>(() => new Set(["manual"]));
@@ -1132,6 +1140,8 @@ export function TestingPortal({
       ownedCases.map((t) => t.id),
       statuses,
     );
+    const countRolled = (cases: typeof ownedCases) =>
+      cases.filter((t) => testIsRolledOver(statuses[t.id], notes[t.id])).length;
     const testers = QA_TESTERS.map((tester) => {
       const cases = ownedCases.filter((t) => ownerForTesterStats(t) === tester.id);
       const tally = tallyStatuses(
@@ -1142,6 +1152,7 @@ export function TestingPortal({
         ...tester,
         total: tally.total,
         passed: tally.pass,
+        rolled: countRolled(cases),
         tally,
       };
     });
@@ -1149,8 +1160,35 @@ export function TestingPortal({
       testers,
       allPassed: allTally.pass,
       allTotal: allTally.total,
+      allRolled: countRolled(ownedCases),
       allTally,
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- caseMatchesFilters closes over filter state
+  }, filterDeps);
+
+  /**
+   * Vitest / Playwright counts for QA Testors row — ignore suite chip so they stay
+   * visible even when Manual is selected (default). Sprint / status / etc. still apply.
+   */
+  const autoAssigneeStats = useMemo(() => {
+    const base = COUNTABLE_CASES.filter((t) => caseMatchesFilters(t, "suite"));
+    const out: Record<
+      "vitest" | "playwright",
+      { passed: number; total: number; rolled: number }
+    > = {
+      vitest: { passed: 0, total: 0, rolled: 0 },
+      playwright: { passed: 0, total: 0, rolled: 0 },
+    };
+    for (const t of base) {
+      if (isFailureGeneratedId(t.id)) continue;
+      const suite = t.suite ?? "manual";
+      if (suite !== "vitest" && suite !== "playwright") continue;
+      out[suite].total += 1;
+      const st = statuses[t.id] ?? DEFAULT_TEST_STATUS;
+      if (st === "pass") out[suite].passed += 1;
+      if (testIsRolledOver(st, notes[t.id])) out[suite].rolled += 1;
+    }
+    return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps -- caseMatchesFilters closes over filter state
   }, filterDeps);
 
@@ -1252,8 +1290,10 @@ export function TestingPortal({
     );
   }, [sprintFilters, sprintRolloverByIndex, statuses, sprintByCase, knownCaseIds, notes]);
 
-  const counts = useMemo(() => {
+  const { counts, rolledWithinStatus } = useMemo(() => {
     const acc = { total: 0 } as Record<string, number>;
+    /** Within each work status, how many also have a rollover note / rolled_over status. */
+    const rolledWithin = {} as Record<string, number>;
     for (const t of COUNTABLE_CASES) {
       if (!caseMatchesFilters(t, "status")) continue;
       const st = statuses[t.id] ?? DEFAULT_TEST_STATUS;
@@ -1263,11 +1303,14 @@ export function TestingPortal({
         acc.rolled_over = (acc.rolled_over ?? 0) + 1;
       } else {
         acc[st] = (acc[st] ?? 0) + 1;
-        if (rolled) acc.rolled_over = (acc.rolled_over ?? 0) + 1;
+        if (rolled) {
+          acc.rolled_over = (acc.rolled_over ?? 0) + 1;
+          rolledWithin[st] = (rolledWithin[st] ?? 0) + 1;
+        }
       }
       acc.total += 1;
     }
-    return acc;
+    return { counts: acc, rolledWithinStatus: rolledWithin };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- caseMatchesFilters closes over filter state
   }, filterDeps);
 
@@ -1680,7 +1723,11 @@ export function TestingPortal({
     }
   };
 
-  const openEvidence = async (caseId: string, att: TestAttachmentMeta) => {
+  const openEvidence = async (
+    caseId: string,
+    att: TestAttachmentMeta,
+    mode: AttachmentOpenMode = "view",
+  ) => {
     setError("");
     setOpeningAttachmentId(att.id);
     try {
@@ -1690,27 +1737,10 @@ export function TestingPortal({
       }
       const mime = remote.mimeType || att.mimeType || "application/octet-stream";
       const blob = base64ToBlob(remote.contentBase64, mime);
-      if (blob.size < 1) {
-        throw new Error("Attachment decoded empty — re-upload the file.");
-      }
-      const url = URL.createObjectURL(blob);
       const fileName = remote.name || att.name || "evidence";
-      const isImage =
-        mime.startsWith("image/") || /\.(png|jpe?g|gif|webp|bmp)$/i.test(fileName);
-
-      // Prefer an <a> click — window.open(blob, noopener) often opens a blank tab.
-      const a = document.createElement("a");
-      a.href = url;
-      a.rel = "noopener";
-      if (isImage) {
-        a.target = "_blank";
-      } else {
-        a.download = fileName;
-      }
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.setTimeout(() => URL.revokeObjectURL(url), 120_000);
+      const resolvedMode =
+        mode === "view" && !canViewAttachmentInline(mime, fileName) ? "download" : mode;
+      openAttachmentBlob(blob, { name: fileName, mimeType: mime, mode: resolvedMode });
     } catch (e) {
       const msg = e instanceof ApiError ? e.message : e instanceof Error ? e.message : "Could not open attachment.";
       setError(msg);
@@ -2504,6 +2534,12 @@ export function TestingPortal({
           const active = isTotal ? statusFilters.size === 0 : statusFilters.has(k);
           const statusCount = isTotal ? completedCases : (counts[k] ?? 0);
           const statusPct = pctComplete(statusCount, counts.total);
+          const rolledIn =
+            isTotal
+              ? counts.rolled_over ?? 0
+              : k === "rolled_over"
+                ? statusCount
+                : rolledWithinStatus[k] ?? 0;
           return (
             <button
               key={k}
@@ -2517,6 +2553,13 @@ export function TestingPortal({
                   toggleStatusFilter(k, e);
                 }
               }}
+              title={
+                isTotal
+                  ? `${completedCases}/${counts.total} complete · ${rolledIn} rolled over`
+                  : k === "rolled_over"
+                    ? `${STATUS_LABELS[k]} · ${statusCount}`
+                    : `${STATUS_LABELS[k]} · ${statusCount} · ${rolledIn} rolled over`
+              }
             >
               <div className="qa-status-tile__label">
                 {isTotal ? "Complete / Total" : STATUS_LABELS[k]}
@@ -2530,6 +2573,9 @@ export function TestingPortal({
                 </span>
                 <span className="qa-status-tile__pct">{statusPct}</span>
               </div>
+              {k !== "rolled_over" && rolledIn > 0 ? (
+                <div className="qa-status-tile__rolled">Rolled over: {rolledIn}</div>
+              ) : null}
             </button>
           );
         })}
@@ -2585,11 +2631,16 @@ export function TestingPortal({
                     setTesterFilters(new Set());
                     lastTesterIdx.current = null;
                   }}
-                  title="Clear tester filter"
+                  title={`Clear tester filter · ${testerStats.allRolled} rolled over`}
                 >
                   All testers
                   <span className="qa-tester-meta">
                     · {testerStats.allPassed}/{testerStats.allTotal} passed
+                    {testerStats.allRolled > 0 ? (
+                      <span className="status-bubble__rolled">
+                        Rolled over: {testerStats.allRolled}
+                      </span>
+                    ) : null}
                   </span>
                 </FilterChip>
                 {testerStats.testers.map((tester) => {
@@ -2599,34 +2650,202 @@ export function TestingPortal({
                       key={tester.id}
                       active={active}
                       accent={tester.accent}
-                      title={`${tester.name} — ${tester.passed}/${tester.total} passed — Shift+click to select a range`}
+                      title={`${tester.name} — ${tester.passed}/${tester.total} passed · ${tester.rolled} rolled over — Shift+click to select a range`}
                       onToggle={(e) => toggleTesterFilter(tester.id, e)}
                     >
                       <span className="qa-tester-dot" style={{ background: tester.accent }} />
                       {tester.shortName}
                       <span className="qa-tester-meta">
                         · {tester.passed}/{tester.total} passed
+                        {tester.rolled > 0 ? (
+                          <span className="status-bubble__rolled">Rolled over: {tester.rolled}</span>
+                        ) : null}
+                      </span>
+                    </FilterChip>
+                  );
+                })}
+                {AUTOMATED_SUITE_OWNERS.map((owner) => {
+                  const stats = autoAssigneeStats[owner.id];
+                  const running = suiteRunning === owner.id;
+                  return (
+                    <button
+                      key={owner.id}
+                      type="button"
+                      className="qa-tester-bubble qa-filter-chip qa-suite-assignee-run"
+                      data-active={running ? "true" : "false"}
+                      data-testid={`qa-run-assignee-${owner.id}`}
+                      disabled={suiteRunning !== null || loading}
+                      title={`Run ${owner.name} (new / not-started only) · ${stats.passed}/${stats.total} passed in current filters (sprint, etc.)`}
+                      onClick={() => {
+                        setSuiteFilters(new Set([owner.id]));
+                        setTesterFilters(new Set());
+                        lastTesterIdx.current = null;
+                        void runSuite(owner.id, "new");
+                      }}
+                    >
+                      <Play size={14} aria-hidden />
+                      <span className="qa-tester-dot" style={{ background: owner.accent }} />
+                      {owner.shortName}
+                      <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
+                        · {running ? <WaitLabel>Running…</WaitLabel> : `${stats.passed}/${stats.total} passed`}
+                        {stats.rolled > 0 ? (
+                          <span className="status-bubble__rolled">Rolled over: {stats.rolled}</span>
+                        ) : null}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          <div
+            className="schedule-board-filters__row qa-testing-portal__testers-row"
+            data-testid="qa-status-panel"
+            style={{ marginTop: 16 }}
+          >
+            <div
+              className="schedule-board-filters__label schedule-board-filters__label--bar qa-testing-portal__testers-bar"
+              aria-expanded={statusOpen}
+            >
+              <ShowHideChevron
+                open={statusOpen}
+                onOpenChange={setStatusOpen}
+                label="Status"
+                testId="qa-status-chevron"
+              />
+              <button
+                type="button"
+                className="schedule-board-filters__filter-title schedule-board-filters__filter-title--collapse"
+                onClick={() => setStatusOpen((v) => !v)}
+                aria-expanded={statusOpen}
+              >
+                <span className="qa-testing-portal__testers-title">Status</span>
+                {!statusOpen ? (
+                  <span className="schedule-board-filters__label-hint">
+                    — {statusFilterSummary}
+                  </span>
+                ) : null}
+              </button>
+              <ShowHideToggle
+                open={statusOpen}
+                onOpenChange={setStatusOpen}
+                label="Status"
+                testId="qa-status-toggle"
+              />
+            </div>
+            {statusOpen ? (
+              <div className="qa-testing-portal__top-filters" style={{ marginTop: 10 }}>
+                <FilterChip
+                  active={statusFilters.size === 0}
+                  onToggle={() => {
+                    setStatusFilters(new Set());
+                    lastStatusIdx.current = null;
+                  }}
+                  title="Clear status filter"
+                >
+                  All statuses
+                  <span className="qa-tester-meta">
+                    · {countWithPct(completedCases, counts.total)}
+                    {(counts.rolled_over ?? 0) > 0 ? (
+                      <span className="status-bubble__rolled">
+                        Rolled over: {counts.rolled_over ?? 0}
+                      </span>
+                    ) : null}
+                  </span>
+                </FilterChip>
+                {STATUSES.map((s) => {
+                  const active = statusFilters.has(s);
+                  const n = counts[s] ?? 0;
+                  const rolled =
+                    s === "rolled_over" ? n : rolledWithinStatus[s] ?? 0;
+                  return (
+                    <FilterChip
+                      key={s}
+                      active={active}
+                      accent={STATUS_COLOR[s]}
+                      title={
+                        s === "rolled_over"
+                          ? `${STATUS_LABELS[s]} — ${n} tests — Shift+click to select a range`
+                          : `${STATUS_LABELS[s]} — ${n} tests · ${rolled} rolled over — Shift+click to select a range`
+                      }
+                      onToggle={(e) => toggleStatusFilter(s, e)}
+                    >
+                      <span className="qa-tester-dot" style={{ background: STATUS_COLOR[s] }} />
+                      {STATUS_LABELS[s]}
+                      <span className="qa-tester-meta">
+                        · {n}
+                        {s !== "rolled_over" && rolled > 0 ? (
+                          <span className="status-bubble__rolled">Rolled over: {rolled}</span>
+                        ) : null}
                       </span>
                     </FilterChip>
                   );
                 })}
               </div>
+            ) : null}
+          </div>
+
+          <div
+            className="qa-testing-portal__tester-bars"
+            data-testid="qa-tester-status-bars"
+            style={{ marginTop: 12 }}
+          >
+            <div
+              className="qa-section-heading qa-categories-panel__header qa-testing-portal__tester-bars-header"
+              aria-expanded={testerBarsOpen}
+            >
+              <ShowHideChevron
+                open={testerBarsOpen}
+                onOpenChange={setTesterBarsOpen}
+                label="Status bars"
+                testId="qa-tester-bars-chevron"
+              />
+              <button
+                type="button"
+                className="qa-categories-panel__heading-btn"
+                onClick={() => setTesterBarsOpen((v) => !v)}
+                aria-expanded={testerBarsOpen}
+              >
+                <span className="qa-categories-panel__title">Status bars</span>
+                {!testerBarsOpen ? (
+                  <span className="qa-categories-panel__active">
+                    —{" "}
+                    {testerStats.testers
+                      .map((t) => `${t.shortName} ${t.passed}/${t.total}`)
+                      .join(" · ")}
+                  </span>
+                ) : (
+                  <span className="qa-categories-panel__active">
+                    — same filters as status tiles
+                  </span>
+                )}
+              </button>
+              <ShowHideToggle
+                open={testerBarsOpen}
+                onOpenChange={setTesterBarsOpen}
+                label="Status bars"
+                testId="qa-tester-bars-toggle"
+              />
             </div>
-            <div className="qa-testing-portal__tester-bars" data-testid="qa-tester-status-bars">
-              <p className="qa-testing-portal__tester-bars-note">
-                Name bars use the same sprint / suite / category filters as the status tiles
-                above (defaults: current sprint · Manual). Owner rules: database assignee, else
-                PROOF-*-TINA / PROOF-*-LYRIQ, else catalog. Only Pass counts as passed.
-              </p>
-              {testerStats.testers.map((tester) => (
-                <TesterStatusRow
-                  key={tester.id}
-                  label={tester.shortName}
-                  tally={tester.tally}
-                  accent={tester.accent}
-                />
-              ))}
-            </div>
+            {testerBarsOpen ? (
+              <>
+                <p className="qa-testing-portal__tester-bars-note">
+                  Name bars use the same sprint / suite / category filters as the status tiles
+                  above (defaults: current sprint · Manual). Owner rules: database assignee, else
+                  PROOF-*-TINA / PROOF-*-LYRIQ, else catalog. Only Pass counts as passed.
+                </p>
+                {testerStats.testers.map((tester) => (
+                  <TesterStatusRow
+                    key={tester.id}
+                    label={tester.shortName}
+                    tally={tester.tally}
+                    accent={tester.accent}
+                    rolled={tester.rolled}
+                  />
+                ))}
+              </>
+            ) : null}
           </div>
 
           <div
@@ -3029,56 +3248,6 @@ export function TestingPortal({
                 inventory rows (~972) are excluded from all portal totals. Vitest shows real it() counts (
                 {countWithPct(vitestReal.passed, vitestReal.total)}).
               </p>
-            </div>
-          )}
-        </div>
-
-        <div className="qa-categories-panel" data-testid="qa-status-panel" style={{ marginTop: 16 }}>
-          <div
-            className="qa-section-heading qa-categories-panel__header"
-            aria-expanded={statusOpen}
-          >
-            <span className="qa-categories-panel__title">Status</span>
-            <span className="qa-categories-panel__active">— {statusFilterSummary}</span>
-            <ShowHideToggle
-              open={statusOpen}
-              onOpenChange={setStatusOpen}
-              label="Status"
-              testId="qa-status-toggle"
-            />
-          </div>
-          {statusOpen && (
-            <div className="qa-categories-panel__bubbles">
-              <FilterChip
-                active={statusFilters.size === 0}
-                onToggle={() => {
-                  setStatusFilters(new Set());
-                  lastStatusIdx.current = null;
-                }}
-                title="Clear status filter"
-              >
-                All statuses
-                <span className="qa-tester-meta">
-                  · {countWithPct(completedCases, counts.total)}
-                </span>
-              </FilterChip>
-              {STATUSES.map((s) => {
-                const active = statusFilters.has(s);
-                const n = counts[s] ?? 0;
-                return (
-                  <FilterChip
-                    key={s}
-                    active={active}
-                    accent={STATUS_COLOR[s]}
-                    title={`${STATUS_LABELS[s]} — ${n} tests — Shift+click to select a range`}
-                    onToggle={(e) => toggleStatusFilter(s, e)}
-                  >
-                    <span className="qa-tester-dot" style={{ background: STATUS_COLOR[s] }} />
-                    {STATUS_LABELS[s]}
-                    <span className="qa-tester-meta">· {n}</span>
-                  </FilterChip>
-                );
-              })}
             </div>
           )}
         </div>
@@ -3637,11 +3806,10 @@ export function TestingPortal({
                 </span>
                 {st === "fail" && (
                   <span data-testid={`test-dev-assignee-label-${t.id}`}>
-                    Dev Assignee{" "}
+                    Assignee{" "}
                     <span style={{ color: STATUS_COLOR.fail }}>
                       {testOwnerLabel(
-                        (isHumanQaTester(persistedAssignee(t.id)) &&
-                        devAssigneeIds.has(persistedAssignee(t.id) as QaTesterId)
+                        (isHumanQaTester(persistedAssignee(t.id))
                           ? persistedAssignee(t.id)
                           : FAILED_TEST_ASSIGNEE) as string,
                       )}
@@ -3734,14 +3902,13 @@ export function TestingPortal({
                 )}
                 {st === "fail" && (
                   <>
-                    <span style={{ whiteSpace: "nowrap" }}>Dev Assignee</span>
+                    <span style={{ whiteSpace: "nowrap" }}>Assign to</span>
                     <select
                       className="text-input"
-                      aria-label={`Dev Assignee for ${t.id}`}
+                      aria-label={`Assignee for ${t.id}`}
                       data-testid={`test-dev-assignee-${t.id}`}
                       value={
-                        isHumanQaTester(persistedAssignee(t.id)) &&
-                        devAssigneeIds.has(persistedAssignee(t.id) as QaTesterId)
+                        isHumanQaTester(persistedAssignee(t.id))
                           ? persistedAssignee(t.id)
                           : FAILED_TEST_ASSIGNEE
                       }
@@ -3758,9 +3925,9 @@ export function TestingPortal({
                         color: STATUS_COLOR.fail,
                       }}
                     >
-                      {devAssignees.map((dev) => (
-                        <option key={dev.id} value={dev.id}>
-                          {dev.shortName}
+                      {QA_TESTERS.map((tester) => (
+                        <option key={tester.id} value={tester.id}>
+                          {tester.shortName}
                         </option>
                       ))}
                     </select>
@@ -3793,50 +3960,7 @@ export function TestingPortal({
                       marginTop: 8,
                     }}
                   >
-                    {!automated && st === "fail" && (
-                      <label
-                        style={{
-                          display: "flex",
-                          gap: 8,
-                          alignItems: "center",
-                          flex: "1 1 220px",
-                          minWidth: 200,
-                          fontSize: "0.9375rem",
-                          color: "var(--text-primary)",
-                          fontWeight: 600,
-                        }}
-                      >
-                        <span style={{ whiteSpace: "nowrap" }}>Dev Assignee</span>
-                        <select
-                          className="text-input"
-                          style={{
-                            flex: 1,
-                            minWidth: 0,
-                            padding: "8px 12px",
-                            fontSize: "1rem",
-                            color: STATUS_COLOR.fail,
-                            fontWeight: 600,
-                          }}
-                          aria-label={`Dev Assignee for ${t.id}`}
-                          data-testid={`test-dev-assignee-expanded-${t.id}`}
-                          value={
-                            isHumanQaTester(persistedAssignee(t.id)) &&
-                            devAssigneeIds.has(persistedAssignee(t.id) as QaTesterId)
-                              ? persistedAssignee(t.id)
-                              : FAILED_TEST_ASSIGNEE
-                          }
-                          disabled={isSaving(t.id) || !canChangeStatus}
-                          onChange={(e) => void reassign(t.id, e.target.value)}
-                        >
-                          {devAssignees.map((dev) => (
-                            <option key={dev.id} value={dev.id}>
-                              {dev.shortName}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    )}
-                    {!automated && st !== "fail" && (
+                    {!automated && (
                       <label
                         style={{
                           display: "flex",
@@ -3852,11 +3976,33 @@ export function TestingPortal({
                         <span style={{ whiteSpace: "nowrap" }}>Assign to</span>
                         <select
                           className="text-input"
-                          style={{ flex: 1, minWidth: 0, padding: "8px 12px", fontSize: "1rem" }}
-                          value={assigneeOverrides[t.id] ?? ""}
+                          style={{
+                            flex: 1,
+                            minWidth: 0,
+                            padding: "8px 12px",
+                            fontSize: "1rem",
+                            color: st === "fail" ? STATUS_COLOR.fail : undefined,
+                            fontWeight: st === "fail" ? 600 : undefined,
+                          }}
+                          aria-label={`Assignee for ${t.id}`}
+                          data-testid={
+                            st === "fail"
+                              ? `test-dev-assignee-expanded-${t.id}`
+                              : `test-assignee-expanded-${t.id}`
+                          }
+                          value={
+                            st === "fail"
+                              ? isHumanQaTester(persistedAssignee(t.id))
+                                ? persistedAssignee(t.id)
+                                : FAILED_TEST_ASSIGNEE
+                              : (assigneeOverrides[t.id] ?? "")
+                          }
+                          disabled={isSaving(t.id) || !canChangeStatus}
                           onChange={(e) => void reassign(t.id, e.target.value)}
                         >
-                          <option value="">Default ({testerLabel(t.assignees)})</option>
+                          {st !== "fail" ? (
+                            <option value="">Default ({testerLabel(t.assignees)})</option>
+                          ) : null}
                           {QA_TESTERS.map((tester) => (
                             <option key={tester.id} value={tester.id}>
                               {tester.shortName}

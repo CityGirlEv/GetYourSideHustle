@@ -177,19 +177,32 @@ export function TesterStatusRow({
   label,
   tally,
   accent,
+  /** End Sprint note-based rollover count (orthogonal to work status). */
+  rolled,
 }: {
   label: string;
   tally: StatusTally;
   accent?: string;
+  rolled?: number;
 }) {
   const pct = passPercent(tally);
-  const statusLine = formatStatusEqualsLine(tally);
+  const rolledCount = rolled ?? tally.rolled_over;
+  const statusLine =
+    rolledCount > 0
+      ? `${formatStatusEqualsLine(tally)} · Rolled over: ${rolledCount}`
+      : formatStatusEqualsLine(tally);
   return (
     <div className="qa-tester-status-row" data-testid="qa-tester-status-row">
       <div className="qa-tester-status-row__head">
         <strong style={accent ? { color: accent } : undefined}>{label}</strong>
         <span className="qa-progress-meter__nums">
           {tally.pass}/{tally.total} passed · {pct}%
+          {rolledCount > 0 ? (
+            <span className="qa-tester-status-row__rolled" data-testid="qa-tester-status-row-rolled">
+              {" "}
+              · Rolled over: {rolledCount}
+            </span>
+          ) : null}
         </span>
       </div>
       <StatusTrack label={label} tally={tally} />
@@ -198,7 +211,7 @@ export function TesterStatusRow({
           <span key={seg.key} className="qa-tester-status-row__part">
             {i > 0 && <span className="qa-tester-status-row__sep" aria-hidden> | </span>}
             <span style={{ color: seg.color }}>
-              {seg.label} = {tally[seg.key]}
+              {seg.label} = {seg.key === "rolled_over" ? rolledCount : tally[seg.key]}
             </span>
           </span>
         ))}
