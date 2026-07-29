@@ -1074,7 +1074,15 @@ function App() {
         if (outcome === "admin") {
           sessionStorage.setItem(DUE_POPUP_LOGIN_FLAG, "1");
           setAdminSessionKey((k) => k + 1);
-          setAdminTab("schedule");
+          const email = String(user?.email || "").toLowerCase();
+          const name = String(user?.name || "").toLowerCase();
+          const forceAgenda =
+            email.includes("tina") ||
+            name.includes("tina") ||
+            email.includes("lyriq") ||
+            email.includes("leegaulden") ||
+            name.includes("lyriq");
+          setAdminTab(forceAgenda ? "agenda" : "schedule");
           setActiveView("admin");
         } else {
           /* Members (incl. after Blueprint claim) land on My Dashboard first */

@@ -70,6 +70,15 @@ import {
   updateCertificateTemplate,
 } from "../_lib/certificates";
 import {
+  createPartnerAgenda,
+  deleteAgendaItem,
+  getPartnerAgenda,
+  linkAgendaItems,
+  saveAgendaTimePicks,
+  sendAgendaInviteEmail,
+  upsertAgendaItem,
+} from "../_lib/partner-agenda";
+import {
   assignBlueprintMatchToChild,
   assignBlueprintToChild,
   createFamilyChild,
@@ -390,6 +399,27 @@ export async function onRequest(context: {
     }
     if (parts[0] === "certificates" && parts[1] && parts[2] === "regenerate" && method === "POST") {
       return withCors(request, await regenerateOneCertificate(env, parts[1]));
+    }
+    if (route === "partner-agenda" && method === "GET") {
+      return withCors(request, await getPartnerAgenda(env, user));
+    }
+    if (route === "partner-agenda" && method === "POST") {
+      return withCors(request, await createPartnerAgenda(env, user));
+    }
+    if (route === "partner-agenda/items" && method === "PUT") {
+      return withCors(request, await upsertAgendaItem(env, request, user));
+    }
+    if (route === "partner-agenda/items/link" && method === "POST") {
+      return withCors(request, await linkAgendaItems(env, request, user));
+    }
+    if (parts[0] === "partner-agenda" && parts[1] === "items" && parts[2] && method === "DELETE") {
+      return withCors(request, await deleteAgendaItem(env, user, parts[2]));
+    }
+    if (route === "partner-agenda/time-picks" && method === "PUT") {
+      return withCors(request, await saveAgendaTimePicks(env, request, user));
+    }
+    if (route === "partner-agenda/invite" && method === "POST") {
+      return withCors(request, await sendAgendaInviteEmail(env, user));
     }
 
     const dbFail = requireDb(env);

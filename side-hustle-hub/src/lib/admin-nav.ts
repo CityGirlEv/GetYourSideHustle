@@ -7,6 +7,7 @@ import type { MarketingGuideId } from "./marketing-guides";
 export type AdminTab =
   | "studio"
   | "schedule"
+  | "agenda"
   | "testing"
   | "users"
   | "memberships"
@@ -26,6 +27,7 @@ export type UserGuideId = "member" | "admin" | MarketingGuideId;
 
 export const ADMIN_TABS: AdminTabDef[] = [
   { id: "schedule", label: "Schedule & Plan" },
+  { id: "agenda", label: "Agenda" },
   { id: "tasks", label: "Task List" },
   { id: "testing", label: "Testing Portal" },
   { id: "timesheet", label: "Timesheet" },
@@ -46,7 +48,7 @@ export const ADMIN_MENU_GROUPS: { id: string; label: string; tabs: AdminTab[] }[
   {
     id: "delivery",
     label: "Plan & delivery",
-    tabs: ["schedule", "tasks", "testing", "timesheet", "daily-progress"],
+    tabs: ["schedule", "agenda", "tasks", "testing", "timesheet", "daily-progress"],
   },
   { id: "people", label: "People & access", tabs: ["users", "memberships", "certificates", "email"] },
   { id: "content", label: "Content & growth", tabs: ["factory", "studio", "financials"] },

@@ -13,7 +13,9 @@ import {
   Download,
   ExternalLink,
   FileText,
+  ListPlus,
   Lock,
+  Mail,
   MessageSquare,
   Paperclip,
   Plus,
@@ -27,6 +29,10 @@ import {
 import { ApiError } from "../../lib/api";
 import type { AuthUser } from "../../lib/auth";
 import { fetchAgilePlan, persistAgilePlan } from "../../lib/gysh-agile-plan";
+import {
+  createPartnerAgenda,
+  sendPartnerAgendaInvite,
+} from "../../lib/gysh-partner-agenda";
 import { ShowHideChevron, ShowHideToggle } from "../ShowHideToggle";
 import {
   closeSprint,
@@ -955,10 +961,19 @@ function PlanItemAttachments({
 type SchedulePageProps = {
   onOpenTask?: (taskId: string) => void;
   onOpenTest?: (testId: string) => void;
+  /** Open Admin Agenda tab after creating / when navigating. */
+  onOpenAgenda?: () => void;
   authUser?: AuthUser | null;
 };
 
-export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: SchedulePageProps = {}) {
+export function SchedulePage({
+  onOpenTask,
+  onOpenTest,
+  onOpenAgenda,
+  authUser = null,
+}: SchedulePageProps = {}) {
+  const [agendaBusy, setAgendaBusy] = useState(false);
+  const [agendaMsg, setAgendaMsg] = useState("");
   const actingAssignBy = auditActorLabel(authUser);
   const isAdmin = userHasAdminRole(authUser);
   const canBlockTests = canSetTestBlocked(authUser);
@@ -2768,7 +2783,64 @@ export function SchedulePage({ onOpenTask, onOpenTest, authUser = null }: Schedu
               {label}
             </button>
           ))}
+          <button
+            type="button"
+            className="btn btn-primary"
+            style={{ gap: 6 }}
+            disabled={agendaBusy}
+            data-testid="schedule-create-agenda"
+            onClick={() => {
+              void (async () => {
+                setAgendaBusy(true);
+                setAgendaMsg("");
+                try {
+                  await createPartnerAgenda();
+                  setAgendaMsg("Interactive agenda ready.");
+                  onOpenAgenda?.();
+                } catch (e) {
+                  setAgendaMsg(e instanceof ApiError ? e.message : "Could not create agenda.");
+                } finally {
+                  setAgendaBusy(false);
+                }
+              })();
+            }}
+          >
+            <ListPlus size={14} /> Create interactive agenda
+          </button>
+          <button
+            type="button"
+            className="btn btn-outline"
+            style={{ gap: 6 }}
+            disabled={agendaBusy}
+            data-testid="schedule-email-agenda"
+            onClick={() => {
+              void (async () => {
+                setAgendaBusy(true);
+                setAgendaMsg("");
+                try {
+                  const res = await sendPartnerAgendaInvite();
+                  const fails = (res.results || []).filter((r) => !r.ok);
+                  setAgendaMsg(
+                    fails.length
+                      ? `Invite errors: ${fails.map((f) => f.email).join(", ")}`
+                      : "Email sent to Tina & Lyriq with the agenda link.",
+                  );
+                } catch (e) {
+                  setAgendaMsg(e instanceof ApiError ? e.message : "Could not send agenda email.");
+                } finally {
+                  setAgendaBusy(false);
+                }
+              })();
+            }}
+          >
+            <Mail size={14} /> Email agenda to Tina &amp; Lyriq
+          </button>
         </div>
+        {agendaMsg && (
+          <p style={{ margin: "10px 0 0", color: "var(--charcoal)", fontSize: "0.95rem" }}>
+            {agendaMsg}
+          </p>
+        )}
       </div>
 
       <SprintStatusBars

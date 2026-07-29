@@ -43,14 +43,15 @@ export type DbUser = {
   password_salt: string | null;
   membership_tier?: string | null;
   audience?: string | null;
+  parent_user_id?: string | null;
 };
 
 const USER_SELECT =
-  `id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt, membership_tier, audience`;
+  `id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt, membership_tier, audience, parent_user_id`;
 
 /** Legacy select for DBs where migration 0004 (roles column) has not run yet. */
 const USER_SELECT_LEGACY =
-  `id, name, email, role, NULL AS roles, status, joined_at, notes, password_hash, password_salt, NULL AS membership_tier, NULL AS audience`;
+  `id, name, email, role, NULL AS roles, status, joined_at, notes, password_hash, password_salt, NULL AS membership_tier, NULL AS audience, NULL AS parent_user_id`;
 
 function isMissingRolesColumn(e: unknown): boolean {
   const msg = e instanceof Error ? e.message : String(e);
@@ -66,7 +67,7 @@ function isMissingMembershipColumns(e: unknown): boolean {
 }
 
 const USER_SELECT_NO_MEMBERSHIP =
-  `id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt`;
+  `id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt, NULL AS parent_user_id`;
 
 const SESSION_DAYS = 14;
 import { MIN_PASSWORD_LENGTH, passwordPolicyError } from "./password-policy";

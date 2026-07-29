@@ -9,6 +9,7 @@ import {
   ListChecks,
   Megaphone,
   CalendarRange,
+  ClipboardList,
   Map,
   BookOpen,
   Clock,
@@ -25,6 +26,7 @@ import { ContentFactory } from "./admin/ContentFactory";
 import { TaskList } from "./admin/TaskList";
 import { Financials } from "./admin/Financials";
 import { SchedulePage } from "./admin/SchedulePage";
+import { AgendaPage } from "./admin/AgendaPage";
 import { DueTasksModal } from "./admin/DueTasksModal";
 import { SprintCelebration } from "./admin/SprintCelebration";
 import { SiteMapPage } from "./admin/SiteMapPage";
@@ -60,6 +62,10 @@ import {
   type UserGuideId,
 } from "../lib/admin-nav";
 import { clearAdminFocusFromUrl, readAdminDeepLink } from "../lib/admin-deep-links";
+import {
+  fetchPartnerAgenda,
+  mustPickAgendaTimes,
+} from "../lib/gysh-partner-agenda";
 
 export type { AdminTab, AdminTabDef, UserGuideId };
 export { ADMIN_MENU_GROUPS, ADMIN_TABS, ADMIN_USER_GUIDE_LINKS, adminTabById };
@@ -108,6 +114,7 @@ export const AdminPortal: React.FC<Props> = ({
   const [focusTaskId, setFocusTaskId] = useState<string | null>(null);
   const [focusTestId, setFocusTestId] = useState<string | null>(null);
   const [showQaManual, setShowQaManual] = useState(false);
+  const [agendaGateActive, setAgendaGateActive] = useState(false);
   const isAdmin = userIsAdmin(authUser);
   const activeGuide = onUserGuideChange ? userGuide : localGuide;
   const setActiveGuide = onUserGuideChange ?? setLocalGuide;
@@ -118,6 +125,7 @@ export const AdminPortal: React.FC<Props> = ({
 
   const tabs: { id: AdminTab; label: string; icon: React.ReactNode }[] = [
     { id: "schedule", label: "Schedule & Plan", icon: <CalendarRange size={16} /> },
+    { id: "agenda", label: "Agenda", icon: <ClipboardList size={16} /> },
     { id: "tasks", label: "Task List", icon: <ListChecks size={16} /> },
     { id: "testing", label: "Testing Portal", icon: <FlaskConical size={16} /> },
     { id: "timesheet", label: "Timesheet", icon: <Clock size={16} /> },
@@ -136,9 +144,40 @@ export const AdminPortal: React.FC<Props> = ({
   ];
 
   useEffect(() => {
-    if (activeTab === "financials" && !isAdmin) onTabChange("tasks");
+    if (!mustPickAgendaTimes(authUser)) {
+      setAgendaGateActive(false);
+      return;
+    }
+    let cancelled = false;
+    void fetchPartnerAgenda()
+      .then((payload) => {
+        if (cancelled) return;
+        setAgendaGateActive(Boolean(payload.needsTimePicks));
+        if (payload.needsTimePicks && activeTab !== "agenda") {
+          onTabChange("agenda");
+        }
+      })
+      .catch(() => {
+        /* agenda may not exist yet; Schedule create step covers that */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [authUser, activeTab, onTabChange]);
+
+  const requestTabChange = (tab: AdminTab) => {
+    if (agendaGateActive && tab !== "agenda") {
+      onTabChange("agenda");
+      return;
+    }
+    onTabChange(tab);
+  };
+
+  useEffect(() => {
+    if (activeTab === "financials" && !isAdmin) requestTabChange("tasks");
     if (activeTab !== "testing") setShowQaManual(false);
-  }, [activeTab, isAdmin, onTabChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, isAdmin]);
 
   // Deep link: /admin?tab=testing&test=… or /admin?tab=tasks&task=…
   useEffect(() => {
@@ -259,8 +298,8 @@ export const AdminPortal: React.FC<Props> = ({
         dueToday={dueToday}
         overdueTests={overdueTests}
         onClose={() => setDueModalOpen(false)}
-        onOpenTaskList={() => onTabChange("tasks")}
-        onOpenTesting={() => onTabChange("testing")}
+        onOpenTaskList={() => requestTabChange("tasks")}
+        onOpenTesting={() => requestTabChange("testing")}
       />
       {celebClear ? (
         <SprintCelebration
@@ -293,7 +332,7 @@ export const AdminPortal: React.FC<Props> = ({
                       <button
                         type="button"
                         className="admin-portal-nav__testing-main"
-                        onClick={() => onTabChange(t.id)}
+                        onClick={() => requestTabChange(t.id)}
                       >
                         {t.icon}
                         {t.label}
@@ -304,7 +343,7 @@ export const AdminPortal: React.FC<Props> = ({
                         title="Open the QA testing manual"
                         aria-pressed={showQaManual}
                         onClick={() => {
-                          onTabChange("testing");
+                          requestTabChange("testing");
                           setShowQaManual(true);
                         }}
                       >
@@ -316,7 +355,7 @@ export const AdminPortal: React.FC<Props> = ({
                     <button
                       key={t.id}
                       type="button"
-                      onClick={() => onTabChange(t.id)}
+                      onClick={() => requestTabChange(t.id)}
                       className={`nav-link-btn ${activeTab === t.id ? "active" : ""}`}
                     >
                       {t.icon}
@@ -329,6 +368,23 @@ export const AdminPortal: React.FC<Props> = ({
           );
         })}
       </div>
+
+      {agendaGateActive && activeTab === "agenda" && (
+        <div
+          className="glass"
+          style={{
+            marginBottom: 12,
+            padding: "10px 14px",
+            borderRadius: 10,
+            border: "1px solid rgba(155,47,40,0.3)",
+            background: "rgba(155,47,40,0.08)",
+            color: "var(--charcoal)",
+            fontSize: "0.95rem",
+          }}
+        >
+          Finish picking {3}–{5} meeting times on Agenda before opening other Admin tabs.
+        </div>
+      )}
 
       {activeTab === "testing" &&
         (showQaManual ? (
@@ -346,12 +402,29 @@ export const AdminPortal: React.FC<Props> = ({
           authUser={authUser}
           onOpenTask={(id) => {
             setFocusTaskId(id);
-            onTabChange("tasks");
+            requestTabChange("tasks");
           }}
           onOpenTest={(id) => {
             setShowQaManual(false);
             setFocusTestId(id);
-            onTabChange("testing");
+            requestTabChange("testing");
+          }}
+          onOpenAgenda={() => requestTabChange("agenda")}
+        />
+      )}
+      {activeTab === "agenda" && (
+        <AgendaPage
+          authUser={authUser}
+          forceTimePicks={agendaGateActive}
+          onTimePicksSatisfied={() => setAgendaGateActive(false)}
+          onOpenTask={(id) => {
+            setFocusTaskId(id);
+            requestTabChange("tasks");
+          }}
+          onOpenTest={(id) => {
+            setShowQaManual(false);
+            setFocusTestId(id);
+            requestTabChange("testing");
           }}
         />
       )}
