@@ -166,7 +166,22 @@ export async function appendAudit(
     .run();
 }
 
-export async function createSession(db: D1Database, userId: string): Promise<{ token: string; cookie: string }> {
+function requestWantsSecureCookie(request: Request): boolean {
+  const proto = (request.headers.get("x-forwarded-proto") || "").split(",")[0]?.trim();
+  if (proto === "https") return true;
+  if (proto === "http") return false;
+  try {
+    return new URL(request.url).protocol === "https:";
+  } catch {
+    return true;
+  }
+}
+
+export async function createSession(
+  db: D1Database,
+  userId: string,
+  opts?: { secureCookie?: boolean },
+): Promise<{ token: string; cookie: string }> {
   const token = randomToken();
   const tokenHash = await sha256Hex(token);
   const id = `s-${crypto.randomUUID()}`;
@@ -180,19 +195,47 @@ export async function createSession(db: D1Database, userId: string): Promise<{ t
     .run();
   // Session cookie (no Max-Age): browser close clears it. Tab close is enforced
   // client-side so a leftover cookie cannot reopen /admin after the page was closed.
-  return { token, cookie: sessionCookie(token) };
+  const secureCookie = opts?.secureCookie !== false;
+  return { token, cookie: sessionCookie(token, undefined, secureCookie) };
 }
 
 export async function destroySession(db: D1Database, request: Request): Promise<string> {
   const cookies = parseCookies(request.headers.get("cookie"));
   const auth = request.headers.get("authorization");
   const bearer = auth?.startsWith("Bearer ") ? auth.slice(7).trim() : "";
-  const token = bearer || cookies.gysh_session || "";
-  if (token) {
+  const cookieToken = cookies.gysh_session || "";
+  const tokens = [bearer, cookieToken].filter(Boolean);
+  const seen = new Set<string>();
+  for (const token of tokens) {
+    if (seen.has(token)) continue;
+    seen.add(token);
     const tokenHash = await sha256Hex(token);
     await db.prepare(`DELETE FROM sessions WHERE token_hash = ?`).bind(tokenHash).run();
   }
-  return clearSessionCookie();
+  return clearSessionCookie(requestWantsSecureCookie(request));
+}
+
+async function loadSessionRow(
+  env: Env,
+  token: string,
+): Promise<(DbUser & { user_id: string; expires_at: string }) | null> {
+  const tokenHash = await sha256Hex(token);
+  const sessionQuery = (rolesExpr: string) =>
+    `SELECT s.user_id, s.expires_at,
+            u.id, u.name, u.email, u.role, ${rolesExpr}, u.status, u.joined_at, u.notes, u.password_hash, u.password_salt
+     FROM sessions s
+     JOIN users u ON u.id = s.user_id
+     WHERE s.token_hash = ?`;
+  try {
+    return await env.DB.prepare(sessionQuery("u.roles"))
+      .bind(tokenHash)
+      .first<DbUser & { user_id: string; expires_at: string }>();
+  } catch (e) {
+    if (!isMissingRolesColumn(e)) throw e;
+    return await env.DB.prepare(sessionQuery("NULL AS roles"))
+      .bind(tokenHash)
+      .first<DbUser & { user_id: string; expires_at: string }>();
+  }
 }
 
 export async function requireSession(
@@ -205,49 +248,42 @@ export async function requireSession(
   const cookies = parseCookies(request.headers.get("cookie"));
   const auth = request.headers.get("authorization");
   const bearer = auth?.startsWith("Bearer ") ? auth.slice(7).trim() : "";
-  const token = bearer || cookies.gysh_session || "";
-  if (!token) return error("Not authenticated.", 401);
+  const cookieToken = cookies.gysh_session || "";
+  // Prefer bearer, but fall back to cookie when bearer is stale (common after tab churn).
+  const candidates = [bearer, cookieToken].filter(Boolean);
+  if (candidates.length === 0) return error("Not authenticated.", 401);
 
-  const tokenHash = await sha256Hex(token);
-  const sessionQuery = (rolesExpr: string) =>
-    `SELECT s.user_id, s.expires_at,
-            u.id, u.name, u.email, u.role, ${rolesExpr}, u.status, u.joined_at, u.notes, u.password_hash, u.password_salt
-     FROM sessions s
-     JOIN users u ON u.id = s.user_id
-     WHERE s.token_hash = ?`;
-  let row: (DbUser & { user_id: string; expires_at: string }) | null;
-  try {
-    row = await env.DB.prepare(sessionQuery("u.roles"))
-      .bind(tokenHash)
-      .first<DbUser & { user_id: string; expires_at: string }>();
-  } catch (e) {
-    if (!isMissingRolesColumn(e)) throw e;
-    row = await env.DB.prepare(sessionQuery("NULL AS roles"))
-      .bind(tokenHash)
-      .first<DbUser & { user_id: string; expires_at: string }>();
+  let sawExpired = false;
+  const tried = new Set<string>();
+  for (const token of candidates) {
+    if (tried.has(token)) continue;
+    tried.add(token);
+    const row = await loadSessionRow(env, token);
+    if (!row) continue;
+    if (new Date(row.expires_at).getTime() < Date.now()) {
+      sawExpired = true;
+      const tokenHash = await sha256Hex(token);
+      await env.DB.prepare(`DELETE FROM sessions WHERE token_hash = ?`).bind(tokenHash).run();
+      continue;
+    }
+    if (row.status !== "active") return error("Account is not active.", 403);
+    return {
+      user: {
+        id: row.id,
+        name: row.name,
+        email: row.email,
+        role: row.role,
+        roles: row.roles,
+        status: row.status,
+        joined_at: row.joined_at,
+        notes: row.notes,
+        password_hash: row.password_hash,
+        password_salt: row.password_salt,
+      },
+    };
   }
 
-  if (!row) return error("Session invalid or expired.", 401);
-  if (new Date(row.expires_at).getTime() < Date.now()) {
-    await env.DB.prepare(`DELETE FROM sessions WHERE token_hash = ?`).bind(tokenHash).run();
-    return error("Session expired.", 401);
-  }
-  if (row.status !== "active") return error("Account is not active.", 403);
-
-  return {
-    user: {
-      id: row.id,
-      name: row.name,
-      email: row.email,
-      role: row.role,
-      roles: row.roles,
-      status: row.status,
-      joined_at: row.joined_at,
-      notes: row.notes,
-      password_hash: row.password_hash,
-      password_salt: row.password_salt,
-    },
-  };
+  return error(sawExpired ? "Session expired." : "Session invalid or expired.", 401);
 }
 
 /** Admin Studio + partner tooling — admin or QA only. */
@@ -316,7 +352,9 @@ export async function handleLogin(env: Env, request: Request): Promise<Response>
 
   const roles = userRoles(user);
   const isAdmin = canAccessAdminPortal(roles);
-  const { token, cookie } = await createSession(env.DB, user.id);
+  const { token, cookie } = await createSession(env.DB, user.id, {
+    secureCookie: requestWantsSecureCookie(request),
+  });
   await appendAudit(env.DB, "login_ok", email, isAdmin ? "admin login success" : "member login success");
 
   // Parent coach alert whenever a linked kid/teen account signs in.

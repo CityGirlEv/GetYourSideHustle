@@ -72,9 +72,7 @@ export function validateRegisterKidInput(input: {
   if (!isFamilyAgeBand(input.ageBand)) return "Choose Kids (4–12) or Teens (13–17).";
   const loginEmail = String(input.loginEmail || "").trim();
   const loginPassword = String(input.loginPassword || "");
-  if (loginEmail || loginPassword) {
-    if (!loginEmail.includes("@")) return "Kid login needs a valid email.";
-    if (loginPassword.length < 8) return "Kid login password must be at least 8 characters.";
-  }
+  if (!loginEmail.includes("@")) return "Kid login needs a valid email.";
+  if (loginPassword.length < 8) return "Kid login password must be at least 8 characters.";
   return null;
 }

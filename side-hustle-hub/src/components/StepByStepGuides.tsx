@@ -48,12 +48,14 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
 }) => {
   const [activeGuideId, setActiveGuideId] = useState<string>(selectedHustleId);
   const [completedSteps, setCompletedSteps] = useState<Record<string, boolean>>({});
+  const [stepsOpen, setStepsOpen] = useState(false);
   const freeGuideIds = new Set(LAUNCH_GUIDES.filter((g) => g.free).map((g) => g.id));
   const guideIsFree = freeGuideIds.has(activeGuideId);
   const unlocked = isLoggedIn || guideIsFree;
 
   useEffect(() => {
     setActiveGuideId(selectedHustleId);
+    setStepsOpen(false);
   }, [selectedHustleId]);
 
   useEffect(() => {
@@ -478,7 +480,10 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
           <button
             key={g.id}
             type="button"
-            onClick={() => setActiveGuideId(g.id)}
+            onClick={() => {
+              setActiveGuideId(g.id);
+              setStepsOpen(false);
+            }}
             className={`nav-link-btn ${activeGuideId === g.id ? "active" : ""}`}
             style={{ padding: "10px 14px", fontSize: "1rem", opacity: gUnlocked ? 1 : 0.7 }}
           >
@@ -544,30 +549,57 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
           </div>
         </div>
 
-        {/* Checklist Steps */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "32px" }}>
-          {activeGuide.steps.map((step, idx) => {
-            const isDone = !!completedSteps[`${activeGuide.id}-${idx}`];
-            return (
-              <div 
-                key={idx} 
-                onClick={() => toggleStep(idx)}
-                className={`checklist-item ${isDone ? "completed" : ""}`}
-              >
-                <div className="checklist-checkbox">
-                  {isDone && <Check size={12} />}
-                </div>
-                <div className="checklist-text">
-                  <strong style={{ color: isDone ? "var(--text-muted)" : "var(--charcoal)", fontSize: "0.95rem", display: "block", marginBottom: "4px" }}>
-                    {idx + 1}. {step.title}
-                  </strong>
-                  <span style={{ color: isDone ? "var(--text-muted)" : "var(--text-secondary)", fontSize: "0.95rem" }}>
-                    {step.desc}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
+        {/* Checklist Steps — collapsed by default */}
+        <div style={{ marginBottom: "32px" }}>
+          <button
+            type="button"
+            className="kids-guide-steps-toggle"
+            onClick={() => setStepsOpen((o) => !o)}
+            aria-expanded={stepsOpen}
+            data-testid="launch-guide-steps-toggle"
+          >
+            {stepsOpen
+              ? "Hide steps"
+              : `Show ${activeStepsCount} step${activeStepsCount === 1 ? "" : "s"}`}
+          </button>
+          {stepsOpen && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: 12 }}>
+              {activeGuide.steps.map((step, idx) => {
+                const isDone = !!completedSteps[`${activeGuide.id}-${idx}`];
+                return (
+                  <div
+                    key={idx}
+                    onClick={() => toggleStep(idx)}
+                    className={`checklist-item ${isDone ? "completed" : ""}`}
+                  >
+                    <div className="checklist-checkbox">
+                      {isDone && <Check size={12} />}
+                    </div>
+                    <div className="checklist-text">
+                      <strong
+                        style={{
+                          color: isDone ? "var(--text-muted)" : "var(--charcoal)",
+                          fontSize: "0.95rem",
+                          display: "block",
+                          marginBottom: "4px",
+                        }}
+                      >
+                        {idx + 1}. {step.title}
+                      </strong>
+                      <span
+                        style={{
+                          color: isDone ? "var(--text-muted)" : "var(--text-secondary)",
+                          fontSize: "0.95rem",
+                        }}
+                      >
+                        {step.desc}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Pro Tip & Pitfall callouts */}

@@ -11,6 +11,8 @@ export type SavedBlueprint = {
   answers: Record<string, unknown>;
   resultIds: string[];
   resultPcts: Record<string, number>;
+  /** hustleId → child profile id, or "self" for parent */
+  matchAssignees?: Record<string, string>;
   topResultId: string | null;
   unlocked: boolean;
   source: string;
@@ -92,4 +94,18 @@ export async function assignSavedBlueprint(input: {
   childProfileId: string | null;
 }): Promise<{ ok: boolean; blueprintId: string; childProfileId: string | null }> {
   return api("blueprints/assign", { method: "POST", body: input });
+}
+
+export async function assignBlueprintMatch(input: {
+  blueprintId: string;
+  hustleId: string;
+  childProfileId: string | null;
+}): Promise<{
+  ok: boolean;
+  blueprintId: string;
+  hustleId: string;
+  childProfileId: string | null;
+  matchAssignees: Record<string, string>;
+}> {
+  return api("blueprints/assign-match", { method: "POST", body: input });
 }

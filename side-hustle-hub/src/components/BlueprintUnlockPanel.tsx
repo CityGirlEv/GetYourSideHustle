@@ -5,6 +5,7 @@ import { grantFreeMemberSession } from "../lib/free-member-session";
 import { clearPendingBlueprint, readPendingBlueprint } from "../lib/pending-blueprint";
 import { registerFreeMember } from "../lib/auth";
 import { claimBlueprint, saveBlueprintToAccount } from "../lib/blueprints-api";
+import { PasswordField } from "./PasswordField";
 
 type BlueprintUnlockPanelProps = {
   onUnlocked: (ageGroup: BlueprintAgeGroup) => void;
@@ -168,16 +169,16 @@ export function BlueprintUnlockPanel({ onUnlocked, onSignIn }: BlueprintUnlockPa
           required
           data-testid="blueprint-unlock-email"
         />
-        <label htmlFor="blueprint-unlock-password">Password</label>
-        <input
+        <PasswordField
           id="blueprint-unlock-password"
-          type="password"
+          label="Password"
           autoComplete="new-password"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={setPassword}
           placeholder="At least 5 characters"
           required
           minLength={5}
+          showStrength
           data-testid="blueprint-unlock-password"
         />
         {error && (

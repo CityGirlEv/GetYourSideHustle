@@ -6,10 +6,12 @@ import {
   ChartColumnIncreasing,
   Coins,
   Crown,
+  HeartHandshake,
   LayoutDashboard,
   Link2,
   Shield,
   Sparkles,
+  Users,
 } from "lucide-react";
 import {
   ALA_CARTE_PRICE_LIST,
@@ -21,14 +23,12 @@ import {
   MILITARY_VETERAN_CALLOUT,
   SCHEDULE_SUITE_FEATURE_IDS,
   SCHEDULE_SUITE_TIER,
-  YEARLY_MONTHS_CHARGED,
   numberedTierPerks,
   oneOnOneFeatureLabel,
   formatUsd,
   tierPriceMonthlyUsd,
   tierPriceYearlyUsd,
   yearlyListPriceUsd,
-  yearlySavingsPercent,
   yearlySavingsUsd,
   equivalentMonthlyUsd,
   KID_TO_ADULT_CREDIT_RATIO,
@@ -88,8 +88,8 @@ function TierBenefitsList({
 }
 
 type MembershipPageProps = {
-  /** Open membership sign-up; optional tier from a plan card (free / starter / pro / elite). */
-  onGoToJoin?: (tier?: TierId) => void;
+  /** Open membership sign-up; optional tier + the audience lane in focus when the button was clicked. */
+  onGoToJoin?: (tier?: TierId, audience?: AudienceGroup) => void;
   onGoToLogin?: () => void;
   onOpenFreeGuides?: () => void;
   /** Pre-select membership lane from the page that linked here (kids / teens / adult / senior). */
@@ -186,31 +186,6 @@ export function MembershipPage({
             />
           </div>
 
-          <div
-            ref={audienceTabsRef}
-            className={`membership-audience-tabs membership-audience-tabs--under-media${highlightAudience ? " is-spotlight" : ""}`}
-            role="tablist"
-            aria-label="Membership audience"
-            data-testid="membership-audience-tabs"
-          >
-            <p className="membership-audience-tabs__label" id="membership-audience-heading">
-              Membership for: <strong>{audienceLabel}</strong>
-            </p>
-            {AUDIENCE_TABS.map((a) => (
-              <button
-                key={a}
-                type="button"
-                role="tab"
-                aria-selected={audience === a}
-                data-testid={`membership-audience-${a}`}
-                className={`glow-chip-btn membership-audience-tab${audience === a ? " is-active" : ""}`}
-                onClick={() => selectAudience(a)}
-              >
-                {AUDIENCE_LABELS[a]}
-              </button>
-            ))}
-          </div>
-
           <aside
             className="membership-savings-card glass"
             data-testid="membership-kid-credit-pool-note"
@@ -249,28 +224,47 @@ export function MembershipPage({
             </ul>
           </aside>
 
-          {usesCredits && (
-            <p className="membership-credit-note membership-credit-note--under-media glass">
-              <span className="membership-credit-note__icon" aria-hidden>
+          <p
+            className="membership-credit-note membership-credit-note--under-media glass"
+            data-testid={`membership-audience-blurb-${audience}`}
+          >
+            <span className="membership-credit-note__icon" aria-hidden>
+              {usesCredits ? (
                 <Coins size={16} />
-              </span>
-              <span className="membership-credit-note__body">
-                Kids and Teens can also spend parent-funded packs — or earn Kid Credits by learning,
-                launching, and sharing your referral link.
-              </span>
-            </p>
-          )}
+              ) : audience === "senior" ? (
+                <HeartHandshake size={16} />
+              ) : (
+                <Users size={16} />
+              )}
+            </span>
+            <span className="membership-credit-note__body">
+              {usesCredits ? (
+                <>
+                  Kids and Teens can also spend parent-funded packs — or earn Kid Credits by learning,
+                  launching, and sharing your referral link.
+                </>
+              ) : audience === "senior" ? (
+                <>
+                  <strong>Senior special pricing</strong> on every paid plan — Starter $34 · Pro $57 ·
+                  Elite $94 / mo (Adult: $39 · $69 · $119). Same member tools, lower monthly cost.
+                </>
+              ) : (
+                <>
+                  Adults become <strong>GYSH Coaches</strong> for their kids — guide Match Wizard picks,
+                  fund Kid Credits, and cheer on launches with parental consent through age 12.
+                </>
+              )}
+            </span>
+          </p>
         </div>
 
         <div className="glass membership-hero-copy">
           <div className="membership-hero-intro">
-            <span className="glow-badge free">
-              <Crown size={13} /> Membership
+            <span className="glow-badge free membership-hero-badge">
+              <Crown size={13} aria-hidden /> Membership
+              <span className="membership-hero-badge-aside">(FREE TO START)</span>
             </span>
-            <h2 className="membership-hero-heading">
-              Your Side Hustle deserves a real plan
-              <span className="membership-hero-heading-aside">(FREE TO START)</span>
-            </h2>
+            <h2 className="membership-hero-heading">Your Side Hustle deserves a real plan</h2>
             <div className="membership-hero-actions membership-hero-actions--top">
               <button
                 type="button"
@@ -358,40 +352,60 @@ export function MembershipPage({
         aria-label="Membership plans"
         data-testid="membership-plans"
       >
-      {showBillingToggle && (
+      <div
+        className={`membership-plans-toolbar${highlightAudience ? " is-spotlight" : ""}`}
+        data-testid="membership-plans-toolbar"
+      >
         <div
-          className="membership-billing-toggle"
-          role="group"
-          aria-label="Billing period"
-          data-testid="membership-billing-toggle"
+          ref={audienceTabsRef}
+          className="membership-audience-tabs membership-audience-tabs--toolbar"
+          role="tablist"
+          aria-label="Membership audience"
+          data-testid="membership-audience-tabs"
         >
-          <span className="membership-billing-toggle__label">Billing:</span>
-          <button
-            type="button"
-            className={`glow-chip-btn membership-billing-tab${billingPeriod === "monthly" ? " is-active" : ""}`}
-            aria-pressed={billingPeriod === "monthly"}
-            data-testid="membership-billing-monthly"
-            onClick={() => setBillingPeriod("monthly")}
-          >
-            Monthly
-          </button>
-          <button
-            type="button"
-            className={`glow-chip-btn membership-billing-tab${billingPeriod === "yearly" ? " is-active" : ""}`}
-            aria-pressed={billingPeriod === "yearly"}
-            data-testid="membership-billing-yearly"
-            onClick={() => setBillingPeriod("yearly")}
-          >
-            Yearly
-            <span className="membership-billing-save-pill">Save ~17%</span>
-          </button>
-          <p className="membership-billing-toggle__hint" data-testid="membership-billing-hint">
-            {billingPeriod === "yearly"
-              ? `Pay ${YEARLY_MONTHS_CHARGED} months up front — get 12 months (2 months free).`
-              : "Switch to Yearly to see prepaid annual pricing and how much you save."}
-          </p>
+          <span className="membership-audience-tabs__label" id="membership-audience-heading">
+            Membership for: <strong>{audienceLabel}</strong>
+          </span>
+          {AUDIENCE_TABS.map((a) => (
+            <button
+              key={a}
+              type="button"
+              role="tab"
+              aria-selected={audience === a}
+              data-testid={`membership-audience-${a}`}
+              className={`glow-chip-btn membership-audience-tab${audience === a ? " is-active" : ""}`}
+              onClick={() => selectAudience(a)}
+            >
+              {AUDIENCE_LABELS[a]}
+            </button>
+          ))}
         </div>
-      )}
+        {showBillingToggle ? (
+          <label
+            className={`membership-yearly-check${billingPeriod === "yearly" ? " is-on" : ""}`}
+            data-testid="membership-billing-toggle"
+          >
+            <input
+              type="checkbox"
+              checked={billingPeriod === "yearly"}
+              onChange={(e) => setBillingPeriod(e.target.checked ? "yearly" : "monthly")}
+              data-testid="membership-billing-yearly"
+              aria-label="Pay yearly and save about 17 percent"
+            />
+            <span className="membership-yearly-check__text">
+              Yearly
+              <em className="membership-yearly-check__save">Save ~17%</em>
+            </span>
+          </label>
+        ) : (
+          <span
+            className="membership-billing-toggle__hint membership-billing-toggle__hint--inline"
+            data-testid="membership-billing-hint"
+          >
+            Kid Credits · monthly
+          </span>
+        )}
+      </div>
 
       <div className="membership-tier-grid" data-testid="membership-tier-grid">
         {MEMBERSHIP_TIERS.map((tier) => {
@@ -400,7 +414,6 @@ export function MembershipPage({
           const benefits = numberedTierPerks(tier.id, audience);
           const listYearly = yearlyListPriceUsd(monthly);
           const saveUsd = yearly != null ? yearlySavingsUsd(monthly, yearly) : 0;
-          const savePct = yearly != null ? yearlySavingsPercent(monthly, yearly) : 0;
           const equivMonthly = yearly != null ? equivalentMonthlyUsd(yearly) : 0;
           return (
           <article
@@ -409,7 +422,51 @@ export function MembershipPage({
             data-testid={`membership-tier-${tier.id}`}
           >
             <div className="membership-tier-card__top">
-              <h3>{tier.id === "free" ? "Free — start here" : tier.name}</h3>
+              <div className="membership-tier-title-row">
+                <h3>{tier.id === "free" ? "Free — start here" : tier.name}</h3>
+                <p
+                  className={`membership-tier-price membership-tier-price--inline${
+                    !usesCredits && tier.id !== "free" && yearly != null ? " has-yearly" : ""
+                  }${
+                    billingPeriod === "yearly" && !usesCredits && tier.id !== "free"
+                      ? " is-yearly"
+                      : ""
+                  }`}
+                >
+                  {tier.id === "free" ? (
+                    <strong>Free</strong>
+                  ) : usesCredits ? (
+                    <>
+                      <strong>{tier.creditsPerMonth ?? 0}</strong>
+                      <span className="membership-tier-price-unit"> credits/mo</span>
+                    </>
+                  ) : (
+                    <>
+                      <strong data-testid={`membership-monthly-price-${tier.id}`}>
+                        {formatUsd(monthly)}
+                      </strong>
+                      <span className="membership-tier-price-unit">/mo</span>
+                      {yearly != null ? (
+                        <>
+                          <span className="membership-tier-price-sep" aria-hidden>
+                            ·
+                          </span>
+                          <strong data-testid={`membership-yearly-price-${tier.id}`}>
+                            {formatUsd(yearly)}
+                          </strong>
+                          <span className="membership-tier-price-unit">/yr</span>
+                          <span
+                            className="membership-tier-save"
+                            data-testid={`membership-save-${tier.id}`}
+                          >
+                            Save {formatUsd(saveUsd)}
+                          </span>
+                        </>
+                      ) : null}
+                    </>
+                  )}
+                </p>
+              </div>
               <div className="membership-tier-badges">
                 {tier.id === "free" && (
                   <span className="glow-badge free" data-testid="membership-free-start-badge">
@@ -432,61 +489,22 @@ export function MembershipPage({
                 ) : null}
               </div>
               <p className="membership-tier-tagline">{tier.tagline}</p>
-              <p className="membership-tier-price">
-                {tier.id === "free" ? (
-                  <>
-                    <strong>Free</strong>
-                    <span className="membership-tier-or">no card · upgrade when ready</span>
-                  </>
-                ) : usesCredits ? (
-                  <>
-                    <strong>{tier.creditsPerMonth ?? 0}</strong> credits / mo
-                    <span className="membership-tier-or">or parent top-up</span>
-                  </>
-                ) : billingPeriod === "yearly" && yearly != null ? (
-                  <>
-                    <strong>{formatUsd(yearly)}</strong>
-                    / yr
-                    <span className="membership-tier-or">
-                      {formatUsd(equivMonthly)} / mo equivalent
-                    </span>
-                    <span className="membership-tier-or membership-tier-save" data-testid={`membership-save-${tier.id}`}>
-                      Save {formatUsd(saveUsd)} ({savePct}%) vs {formatUsd(listYearly)} / yr monthly
-                    </span>
-                    {audience === "senior" && (tier.priceMonthlyUsd ?? 0) > monthly ? (
-                      <span className="membership-tier-or">
-                        Adult yearly {formatUsd(tier.priceYearlyUsd ?? listYearly)}
-                      </span>
-                    ) : null}
-                  </>
-                ) : (
-                  <>
-                    <strong>{formatUsd(monthly)}</strong>
-                    / mo
-                    {yearly ? (
-                      <span className="membership-tier-or">
-                        or {formatUsd(yearly)} / yr — save {formatUsd(saveUsd)}
-                      </span>
-                    ) : null}
-                    {audience === "senior" && (tier.priceMonthlyUsd ?? 0) > monthly ? (
-                      <span className="membership-tier-or">
-                        Adult price {formatUsd(tier.priceMonthlyUsd ?? 0)} / mo
-                      </span>
-                    ) : null}
-                  </>
-                )}
-              </p>
+              {tier.id !== "free" && !usesCredits && yearly != null ? (
+                <p className="membership-tier-or membership-tier-yearly-note">
+                  Yearly = {formatUsd(equivMonthly)}/mo
+                  {audience === "senior" && (tier.priceMonthlyUsd ?? 0) > monthly
+                    ? ` · Adult ${formatUsd(tier.priceMonthlyUsd ?? 0)}/mo or ${formatUsd(tier.priceYearlyUsd ?? listYearly)}/yr`
+                    : ""}
+                </p>
+              ) : null}
             </div>
             <TierBenefitsList tierId={tier.id} benefits={benefits} />
             <button
               type="button"
               className={`btn btn-primary${tier.id === "free" ? " membership-choose-free" : ""}`}
               onClick={() => {
-                if (tier.id === "free") {
-                  onGoToJoin?.("free");
-                  return;
-                }
-                onGoToJoin?.(tier.id);
+                saveJoinAudience(audience);
+                onGoToJoin?.(tier.id === "free" ? "free" : tier.id, audience);
               }}
               data-testid={`membership-choose-${tier.id}`}
             >

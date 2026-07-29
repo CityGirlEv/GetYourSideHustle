@@ -560,7 +560,7 @@ export async function sendParentAccountReadyEmail(
       <p style="margin:0 0 12px;">Sign in with <strong>${escapeHtml(input.parentEmail)}</strong> and the password you just set. From your Dashboard you can register more kids, assign Match Wizard Blueprints, and choose daily or weekly progress emails.</p>`,
     ctaLabel: "Open my Dashboard",
     ctaUrl: `${SITE_URL}/`,
-    footerNote: "Keep your password private — kids should use their own kid login if you created one.",
+    footerNote: "Keep your password private — kids should use their own kid login.",
   });
   return sendResendEmail(env, {
     to: input.parentEmail,
@@ -569,6 +569,61 @@ export async function sendParentAccountReadyEmail(
     text: branded.text,
     templateSlug: "parent_account_ready",
     meta: { childName: input.childName },
+  });
+}
+
+/** Tell the kid (and parent) that the kid login is ready to use. */
+export async function sendKidLoginReadyEmails(
+  env: Env,
+  input: {
+    childName: string;
+    childEmail: string;
+    parentEmail: string;
+    parentName?: string;
+  },
+): Promise<void> {
+  const childEmail = String(input.childEmail || "").trim();
+  const parentEmail = String(input.parentEmail || "").trim();
+  if (!childEmail.includes("@") || !parentEmail.includes("@")) return;
+
+  const kidBranded = wrapBrandedEmail({
+    preheader: `You can sign in to GYSH`,
+    eyebrow: `Family · Kid login ready`,
+    headline: "You can sign in now!",
+    subhead: `Hi ${escapeHtml(input.childName)}, your GYSH login is ready.`,
+    bodyHtml: `<p style="margin:0 0 12px;">Use this email: <strong>${escapeHtml(childEmail)}</strong> and the password your parent/guardian just set.</p>
+      <p style="margin:0 0 12px;">Tap below to open GYSH and sign in. Your parent coach can see your progress from their Dashboard.</p>`,
+    ctaLabel: "Sign in to GYSH",
+    ctaUrl: `${SITE_URL}/`,
+    footerNote: "Keep your password private. Ask a parent if you need a reset.",
+  });
+  await sendResendEmail(env, {
+    to: childEmail,
+    subject: `${SITE_NAME} — you can log in, ${input.childName}!`,
+    html: kidBranded.html,
+    text: kidBranded.text,
+    templateSlug: "kid_login_ready",
+    meta: { childName: input.childName, role: "kid" },
+  });
+
+  const parentBranded = wrapBrandedEmail({
+    preheader: `${input.childName} can log in to GYSH`,
+    eyebrow: `Family · Kid login ready`,
+    headline: `${escapeHtml(input.childName)} can log in now`,
+    subhead: "Their kid login was created successfully.",
+    bodyHtml: `<p style="margin:0 0 12px;">Hi ${escapeHtml(input.parentName || "there")}, <strong>${escapeHtml(input.childName)}</strong> can sign in with <strong>${escapeHtml(childEmail)}</strong> and the password you set.</p>
+      <p style="margin:0 0 12px;">We also emailed them these details. From your Dashboard you can assign Blueprints and choose progress report emails.</p>`,
+    ctaLabel: "Open my Dashboard",
+    ctaUrl: `${SITE_URL}/`,
+    footerNote: "You receive this because you registered or approved this kid on GYSH.",
+  });
+  await sendResendEmail(env, {
+    to: parentEmail,
+    subject: `${SITE_NAME} — ${input.childName} can log in`,
+    html: parentBranded.html,
+    text: parentBranded.text,
+    templateSlug: "kid_login_ready_parent",
+    meta: { childName: input.childName, childEmail, role: "parent" },
   });
 }
 
@@ -705,6 +760,18 @@ export const EMAIL_TEMPLATE_CATALOG: Array<{
     name: "Parent account ready",
     description: "Sent when consent creates a new parent coach login.",
     sampleSubject: `${SITE_NAME} — parent coach login ready`,
+  },
+  {
+    slug: "kid_login_ready",
+    name: "Kid login ready",
+    description: "Sent to the kid when their login password is created.",
+    sampleSubject: `${SITE_NAME} — you can log in!`,
+  },
+  {
+    slug: "kid_login_ready_parent",
+    name: "Kid login ready · Parent",
+    description: "Sent to the parent when a kid login is created.",
+    sampleSubject: `${SITE_NAME} — kid can log in`,
   },
   {
     slug: "kid_login_notify",

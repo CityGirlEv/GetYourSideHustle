@@ -169,17 +169,24 @@ export async function logout(): Promise<void> {
 }
 
 /**
- * Restore auth for this tab only. Closing the tab/page clears sessionStorage, so the
- * next open must sign in again — even if a leftover httpOnly cookie is still present.
- * Refresh keeps you signed in (same tab sessionStorage survives).
+ * Restore auth for this tab. Refresh keeps you signed in (sessionStorage survives).
+ * A brand-new tab without a local marker must sign in again — but we do NOT call
+ * logout() here, because that would wipe the server session used by other open tabs
+ * and cause "Session invalid or expired" on Register My Kid / Dashboard actions.
  */
 export async function restoreSession(): Promise<AuthUser | null> {
   if (!tabIsAlive()) {
-    await logout();
-  } else {
-    markTabAlive();
+    setSessionToken(null);
+    clearTabAlive();
+    return null;
   }
-  return fetchMe();
+  markTabAlive();
+  const user = await fetchMe();
+  if (!user) {
+    setSessionToken(null);
+    clearTabAlive();
+  }
+  return user;
 }
 
 export async function fetchMe(): Promise<AuthUser | null> {

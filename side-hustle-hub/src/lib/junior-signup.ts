@@ -14,6 +14,7 @@ export type JuniorSignupInput = {
 
 export type ConsentSignup = {
   childName: string;
+  childEmail: string;
   team: SignupTeam;
   teamLabel: string;
   status: "pending_parent" | "active" | "declined";
@@ -30,7 +31,7 @@ export type ParentConsentInput = {
   parentRelationship?: string;
   /** Required when the parent email has no GYSH account yet. */
   parentPassword?: string;
-  /** Optional: create a linked kid login using the child's signup email. */
+  /** Required: create a linked kid login using the child's signup email. */
   kidPassword?: string;
 };
 

@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { BadgeCheck, ShieldCheck, ShieldAlert } from "lucide-react";
 import { BusyOverlay, WaitIndicator, WaitLabel } from "./WaitFeedback";
+import { PasswordField } from "./PasswordField";
 import { SITE_NAME } from "../lib/site-config";
 import {
   fetchConsent,
@@ -25,6 +26,7 @@ export function ParentConsentPage({ token, onClose }: ParentConsentPageProps) {
   const [parentPassword, setParentPassword] = useState("");
   const [parentPasswordConfirm, setParentPasswordConfirm] = useState("");
   const [kidPassword, setKidPassword] = useState("");
+  const [kidPasswordConfirm, setKidPasswordConfirm] = useState("");
   const [approved, setApproved] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ kind: "success" | "error"; message: string } | null>(null);
@@ -59,6 +61,16 @@ export function ParentConsentPage({ token, onClose }: ParentConsentPageProps) {
         return;
       }
     }
+    if (!kidPassword.trim()) {
+      setResult({ kind: "error", message: "Create a kid login password so they can sign in." });
+      setSubmitting(false);
+      return;
+    }
+    if (kidPassword !== kidPasswordConfirm) {
+      setResult({ kind: "error", message: "Kid passwords do not match." });
+      setSubmitting(false);
+      return;
+    }
     try {
       const res = await submitParentConsent(token, {
         decision: "approve",
@@ -68,7 +80,7 @@ export function ParentConsentPage({ token, onClose }: ParentConsentPageProps) {
         parentPhone,
         parentAddress,
         parentPassword: parentPassword || undefined,
-        kidPassword: kidPassword || undefined,
+        kidPassword,
       });
       setResult({ kind: "success", message: res.message });
       setSignup((prev) => (prev ? { ...prev, status: "active" } : prev));
@@ -189,40 +201,45 @@ export function ParentConsentPage({ token, onClose }: ParentConsentPageProps) {
                     Parent login for <strong>{signup.parentEmail}</strong>. If you do not already have a
                     GYSH account, create a password below so this kid profile links to you.
                   </p>
-                  <div className="form-group">
-                    <label className="form-label">Parent password (required if you are new)</label>
-                    <input
-                      className="text-input"
-                      type="password"
-                      autoComplete="new-password"
-                      value={parentPassword}
-                      onChange={(e) => setParentPassword(e.target.value)}
-                      data-testid="consent-parent-password"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Confirm parent password</label>
-                    <input
-                      className="text-input"
-                      type="password"
-                      autoComplete="new-password"
-                      value={parentPasswordConfirm}
-                      onChange={(e) => setParentPasswordConfirm(e.target.value)}
-                      data-testid="consent-parent-password-confirm"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Optional kid login password</label>
-                    <input
-                      className="text-input"
-                      type="password"
-                      autoComplete="new-password"
-                      value={kidPassword}
-                      onChange={(e) => setKidPassword(e.target.value)}
-                      placeholder="Uses the kid email from the signup request"
-                      data-testid="consent-kid-password"
-                    />
-                  </div>
+                  <PasswordField
+                    label="Parent password (required if you are new)"
+                    autoComplete="new-password"
+                    value={parentPassword}
+                    onChange={setParentPassword}
+                    showStrength
+                    data-testid="consent-parent-password"
+                  />
+                  <PasswordField
+                    label="Confirm parent password"
+                    autoComplete="new-password"
+                    value={parentPasswordConfirm}
+                    onChange={setParentPasswordConfirm}
+                    data-testid="consent-parent-password-confirm"
+                  />
+                  <PasswordField
+                    label={`Kid login password (required — ${signup.childName} signs in with this)`}
+                    autoComplete="new-password"
+                    required
+                    minLength={8}
+                    value={kidPassword}
+                    onChange={setKidPassword}
+                    placeholder="At least 8 characters"
+                    showStrength
+                    data-testid="consent-kid-password"
+                  />
+                  <PasswordField
+                    label="Confirm kid login password"
+                    autoComplete="new-password"
+                    required
+                    minLength={8}
+                    value={kidPasswordConfirm}
+                    onChange={setKidPasswordConfirm}
+                    data-testid="consent-kid-password-confirm"
+                  />
+                  <p className="consent-account-lead" style={{ marginTop: 6 }}>
+                    Login email: <strong>{signup.childEmail}</strong>. We&apos;ll email both of you
+                    when {signup.childName} can sign in.
+                  </p>
                 </div>
                 <label className="consent-check">
                   <input type="checkbox" checked={approved} onChange={(e) => setApproved(e.target.checked)} />

@@ -23,8 +23,13 @@ import type { BlueprintAgeGroup } from "../lib/gysh-analytics";
 
 type KidDashboardProps = {
   memberName?: string | null;
-  /** kids | junior — from the logged-in youth account */
+  /** kids | junior — from the logged-in youth account (or parent coach preview) */
   ageBand: "kids" | "junior";
+  /** When a parent coach opens a specific kid’s dashboard, filter to that child profile. */
+  childProfileId?: string | null;
+  /** Parent is viewing a linked kid’s dashboard (shows coach copy + back). */
+  parentCoachView?: boolean;
+  onBack?: () => void;
   onOpenMatchWizard?: () => void;
   onOpenCorner?: (tab?: "wizard" | "piggy" | "guides" | "jobs") => void;
   onOpenGuide?: (ageGroup: BlueprintAgeGroup, hustleId: string) => void;
@@ -41,6 +46,9 @@ const TABS: { id: DashTab; label: string; icon: React.ReactNode }[] = [
 export function KidDashboard({
   memberName,
   ageBand,
+  childProfileId = null,
+  parentCoachView = false,
+  onBack,
   onOpenMatchWizard,
   onOpenCorner,
   onOpenGuide,
@@ -55,6 +63,7 @@ export function KidDashboard({
 
   const displayName = (memberName || "").trim() || (ageBand === "junior" ? "teen Side Hustler" : "Side Hustler");
   const cornerLabel = ageBand === "junior" ? "Teens Corner" : "Kids Corner";
+  const bandLabel = ageBand === "junior" ? "Teens" : "Kids";
 
   useEffect(() => {
     let cancelled = false;
@@ -62,12 +71,14 @@ export function KidDashboard({
     void listSavedBlueprints()
       .then((rows) => {
         if (cancelled) return;
-        // Youth sessions receive blueprints assigned to their child profile (and any they own).
-        const assigned = rows.filter(
-          (bp) => bp.ageGroup === ageBand && Boolean(bp.childProfileId),
-        );
         const ageRows = rows.filter((bp) => bp.ageGroup === ageBand);
-        setBlueprints(assigned.length > 0 ? assigned : ageRows);
+        if (childProfileId) {
+          setBlueprints(ageRows.filter((bp) => bp.childProfileId === childProfileId));
+        } else {
+          // Youth sessions: prefer blueprints assigned to their child profile.
+          const assigned = ageRows.filter((bp) => Boolean(bp.childProfileId));
+          setBlueprints(assigned.length > 0 ? assigned : ageRows);
+        }
         setBlueprintsError(null);
       })
       .catch((err: unknown) => {
@@ -81,7 +92,7 @@ export function KidDashboard({
     return () => {
       cancelled = true;
     };
-  }, [ageBand]);
+  }, [ageBand, childProfileId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -109,14 +120,30 @@ export function KidDashboard({
     <div className="user-portal kid-dashboard" data-testid="kid-dashboard">
       <div className="user-portal-main">
         <div className="glass user-portal-welcome">
-          <div className="user-portal-welcome-copy">
-            <h2 data-testid="kid-dashboard-welcome">
-              <LayoutDashboard size={22} aria-hidden /> Welcome, {displayName}!
-            </h2>
-            <p>
-              This is your {ageBand === "junior" ? "Teens" : "Kids"} dashboard — see Blueprints your
-              parent coach assigned, check credits, and jump into {cornerLabel}.
-            </p>
+          <div className="user-portal-welcome-row">
+            <div className="user-portal-welcome-copy">
+              <h2 data-testid="kid-dashboard-welcome">
+                <LayoutDashboard size={22} aria-hidden />{" "}
+                {parentCoachView
+                  ? `${displayName}'s ${bandLabel} dashboard`
+                  : `Welcome, ${displayName}!`}
+              </h2>
+              <p>
+                {parentCoachView
+                  ? `Parent coach view — Blueprints assigned to ${displayName}, credits, and shortcuts into ${cornerLabel}.`
+                  : `This is your ${bandLabel} dashboard — see Blueprints your parent coach assigned, check credits, and jump into ${cornerLabel}.`}
+              </p>
+            </div>
+            {parentCoachView && onBack ? (
+              <button
+                type="button"
+                className="btn btn-outline"
+                data-testid="kid-dashboard-back-to-family"
+                onClick={onBack}
+              >
+                Back to Family Coach
+              </button>
+            ) : null}
           </div>
         </div>
 

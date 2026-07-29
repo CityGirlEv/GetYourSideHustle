@@ -19,7 +19,6 @@ import {
   ChevronRight,
   Star,
   Heart,
-  BookOpen,
   Home,
   LayoutDashboard,
   Minus,
@@ -37,10 +36,7 @@ import { StepByStepGuides } from "./components/StepByStepGuides";
 import { FreeGuidesPage } from "./components/FreeGuidesPage";
 import { MarketingManual } from "./components/MarketingManual";
 import { CommunityHub } from "./components/CommunityHub";
-import {
-  MARKETING_GUIDE_MENU,
-  type MarketingGuideId,
-} from "./lib/marketing-guides";
+import { type MarketingGuideId } from "./lib/marketing-guides";
 import { KidsCorner } from "./components/KidsCorner";
 import { SeniorSideHustles } from "./components/SeniorSideHustles";
 import { UserPortal } from "./components/UserPortal";
@@ -469,14 +465,18 @@ function App() {
   const [adminUserGuide, setAdminUserGuide] = useState<UserGuideId>("master");
   const [adminMenuOpen, setAdminMenuOpen] = useState(false);
   const adminMenuRef = useRef<HTMLDivElement>(null);
-  const [guidesMenuOpen, setGuidesMenuOpen] = useState(false);
-  const guidesMenuRef = useRef<HTMLDivElement>(null);
   const [actAsTarget, setActAsTarget] = useState<ActAsTarget>(() => readActAsTarget());
   const [actAsMenuOpen, setActAsMenuOpen] = useState(false);
   const actAsMenuRef = useRef<HTMLDivElement>(null);
   const [kidsEntryFocus, setKidsEntryFocus] = useState<{
     mode: "kids" | "junior";
     tab: "stories" | "wizard" | "jobs" | "piggy" | "guides" | "join";
+  } | null>(null);
+  /** Parent coach viewing a linked kid’s dedicated dashboard (not Match Wizard). */
+  const [parentKidDashboard, setParentKidDashboard] = useState<{
+    id: string;
+    displayName: string;
+    ageBand: "kids" | "junior";
   } | null>(null);
   const [seniorsEntryTab, setSeniorsEntryTab] = useState<
     "match" | "opportunities" | "guides" | "join" | null
@@ -623,9 +623,10 @@ function App() {
     },
   ) => {
     setActiveView(view);
+    // Kid dashboard is opened in-place (no goTo); any nav clears the parent coach preview.
+    setParentKidDashboard(null);
     setMobileMenuOpen(false);
     setAdminMenuOpen(false);
-    setGuidesMenuOpen(false);
     if (view === "guides" && opts && "launchGuideId" in opts) {
       const id = opts.launchGuideId ? String(opts.launchGuideId) : null;
       setGuidesManualId(null);
@@ -685,7 +686,6 @@ function App() {
     setGuidesManualId(id);
     setActiveView("guides");
     setMobileMenuOpen(false);
-    setGuidesMenuOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -972,22 +972,6 @@ function App() {
   }, [adminMenuOpen]);
 
   useEffect(() => {
-    if (!guidesMenuOpen) return;
-    const onPointerDown = (e: MouseEvent | TouchEvent) => {
-      const el = guidesMenuRef.current;
-      if (el && !el.contains(e.target as Node)) {
-        setGuidesMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", onPointerDown);
-    document.addEventListener("touchstart", onPointerDown);
-    return () => {
-      document.removeEventListener("mousedown", onPointerDown);
-      document.removeEventListener("touchstart", onPointerDown);
-    };
-  }, [guidesMenuOpen]);
-
-  useEffect(() => {
     if (!actAsMenuOpen) return;
     const onPointerDown = (e: MouseEvent | TouchEvent) => {
       const el = actAsMenuRef.current;
@@ -1067,8 +1051,10 @@ function App() {
 
         const pending = readPendingBlueprint();
         if (pending?.claimToken) {
+          // Kids/Teens pending claims land on the parent/family profile (childProfileId null).
+          // Parents can assign to a linked kid later from My Dashboard.
           void import("./lib/blueprints-api").then(({ claimBlueprint, saveBlueprintToAccount }) =>
-            claimBlueprint(pending.claimToken!)
+            claimBlueprint(pending.claimToken!, null)
               .catch(() =>
                 saveBlueprintToAccount({
                   ageGroup: pending.ageGroup,
@@ -1076,6 +1062,7 @@ function App() {
                   resultIds: pending.resultIds,
                   resultPcts: pending.resultPcts,
                   claimToken: pending.claimToken,
+                  childProfileId: null,
                 }),
               )
               .catch(() => {
@@ -1289,7 +1276,7 @@ function App() {
       case "guides":
         return guidesManualId
           ? "Downloadable showcase guide with checklists, journey arrows, membership perks, and CTAs."
-          : "Browse Adult, Senior, Kids, and Teens guides — plus downloadable audience guides from the Guides menu.";
+          : "Browse Adult, Senior, Kids, and Teens guides — plus downloadable audience guides from each Corner.";
       case "checklist": return "Practical launch steps — preview is open; the full list unlocks when you sign in.";
       case "workshops": return "Live sessions and guest experts for adult Side Hustles, AI agents, and Kids Glow nights.";
       case "community": return "Ask questions, share updates, and exchange tips with other Side Hustlers.";
@@ -1418,19 +1405,6 @@ function App() {
           <div className="top-header-menus">
             <nav className="nav-primary" aria-label="Primary">
               <ul className="nav-links nav-links--primary">
-                {effectiveMemberAccess ? (
-                  <li>
-                    <button
-                      type="button"
-                      onClick={() => goTo("user_portal")}
-                      className={`nav-link-btn ${activeView === "user_portal" ? "active" : ""}`}
-                      data-testid="nav-dashboard"
-                    >
-                      <LayoutDashboard size={16} className="nav-icon nav-icon--portal" aria-hidden />
-                      Dashboard
-                    </button>
-                  </li>
-                ) : null}
                 <li>
                   <button
                     type="button"
@@ -1480,57 +1454,6 @@ function App() {
                     <Heart size={16} className="nav-icon nav-icon--seniors" aria-hidden />
                     Seniors
                   </button>
-                </li>
-                <li>
-                  <div
-                    ref={guidesMenuRef}
-                    className={`admin-nav-dropdown guides-nav-dropdown${guidesMenuOpen ? " open" : ""}`}
-                    onMouseEnter={() => setGuidesMenuOpen(true)}
-                    onMouseLeave={() => setGuidesMenuOpen(false)}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => openGuidesLibrary()}
-                      className={`nav-link-btn admin-nav-trigger${activeView === "guides" ? " active" : ""}`}
-                      data-testid="nav-free-guides"
-                      aria-label="Guides"
-                      aria-expanded={guidesMenuOpen}
-                      aria-haspopup="menu"
-                    >
-                      <BookOpen size={16} className="nav-icon nav-icon--guides" aria-hidden />
-                      Guides
-                      <ChevronDown size={14} className="admin-nav-chevron" aria-hidden />
-                    </button>
-                    <ul className="admin-nav-menu" role="menu" hidden={!guidesMenuOpen}>
-                      <li role="none">
-                        <button
-                          type="button"
-                          role="menuitem"
-                          className={`admin-nav-item${
-                            activeView === "guides" && !guidesManualId && !guidesDetailId ? " active" : ""
-                          }`}
-                          onClick={openGuidesLibrary}
-                        >
-                          Guides Library
-                        </button>
-                      </li>
-                      {MARKETING_GUIDE_MENU.map((guide) => (
-                        <li key={guide.id} role="none">
-                          <button
-                            type="button"
-                            role="menuitem"
-                            className={`admin-nav-item${
-                              activeView === "guides" && guidesManualId === guide.id ? " active" : ""
-                            }`}
-                            onClick={() => openGuidesManual(guide.id)}
-                            data-testid={`nav-guide-manual-${guide.id}`}
-                          >
-                            {guide.label}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
                 </li>
                 <li>
                   <button
@@ -1776,11 +1699,29 @@ function App() {
                     </ul>
                   </div>
                 ) : (
-                  <div className="user-profile">
+                  <div className="user-profile" data-testid="header-member-profile">
                     <div className="avatar" style={{ background: "var(--grad-pink)" }} />
                     <div className="user-info">
-                      <span className="user-name">Guest</span>
-                      <span className="user-role">Member</span>
+                      <span className="user-name" data-testid="header-member-name">
+                        {(authUser?.name || "").trim() ||
+                          (authUser?.email || "").split("@")[0] ||
+                          "Member"}
+                      </span>
+                      <span className="user-role" data-testid="header-member-role">
+                        {(() => {
+                          const roles = authUser?.roles?.length
+                            ? authUser.roles
+                            : authUser?.role
+                              ? [authUser.role]
+                              : [];
+                          const audience = String(authUser?.audience || "").toLowerCase();
+                          if (roles.includes("junior") || audience === "junior") return "Teen member";
+                          if (roles.includes("kid") || audience === "kids") return "Kid member";
+                          if (audience === "parent") return "Parent coach";
+                          if (audience === "senior" || roles.includes("senior")) return "Senior member";
+                          return "Member";
+                        })()}
+                      </span>
                     </div>
                   </div>
                 )}
@@ -1811,6 +1752,7 @@ function App() {
                     }}
                     className="btn btn-outline"
                     style={{ padding: "6px 12px", fontSize: "0.9375rem", gap: "6px" }}
+                    data-testid="header-logout"
                   >
                     <LogOut size={12} /> Log Out
                   </button>
@@ -1822,6 +1764,7 @@ function App() {
                 onClick={() => goTo("login")}
                 className={`btn btn-primary ${activeView === "login" ? "" : ""}`}
                 style={{ padding: "8px 14px", fontSize: "0.95rem", gap: "6px" }}
+                data-testid="header-login"
               >
                 <LogIn size={14} />
                 Login
@@ -1876,6 +1819,21 @@ function App() {
                     {(activeView === "join" || activeView === "membership_signup") && (
                       <span className="header-title-aside">(FREE PLANS AVAILABLE)</span>
                     )}
+                    {effectivePortalLogin ? (
+                      <button
+                        type="button"
+                        className={`header-title-dashboard-badge${
+                          activeView === "user_portal" ? " is-active" : ""
+                        }`}
+                        onClick={() => goTo("user_portal")}
+                        data-testid="header-dashboard"
+                        aria-current={activeView === "user_portal" ? "page" : undefined}
+                      >
+                        <span className="header-title-dashboard-badge__glow" aria-hidden />
+                        <LayoutDashboard size={16} aria-hidden />
+                        <span>My Dashboard</span>
+                      </button>
+                    ) : null}
                   </h1>
                   {activeView === "admin" && adminTab !== "daily-progress" && (
                     <DailyProgressReport onOpen={() => goToAdmin("daily-progress")} />
@@ -1919,9 +1877,23 @@ function App() {
           <div className="dashboard-home">
             <header className="home-page-header" data-testid="home-page-header">
               <h1 className="home-page-header__title" data-testid="page-title">
-                Four{" "}
-                <em className="home-page-header__brand">&ldquo;Get Your Side Hustle&rdquo;</em> Match
-                Wizards. One Family Adventure.
+                <span className="home-page-header__title-text">
+                  Four{" "}
+                  <em className="home-page-header__brand">&ldquo;Get Your Side Hustle&rdquo;</em> Match
+                  Wizards. One Family Adventure.
+                </span>
+                {effectivePortalLogin ? (
+                  <button
+                    type="button"
+                    className="header-title-dashboard-badge"
+                    onClick={() => goTo("user_portal")}
+                    data-testid="header-dashboard"
+                  >
+                    <span className="header-title-dashboard-badge__glow" aria-hidden />
+                    <LayoutDashboard size={16} aria-hidden />
+                    <span>My Dashboard</span>
+                  </button>
+                ) : null}
               </h1>
               <p className="home-page-header__purpose" data-testid="home-site-purpose">
                 {SITE_PURPOSE}
@@ -2275,10 +2247,11 @@ function App() {
         {activeView === "kids" && (
           <KidsCorner
             isLoggedIn={kidsCornerMemberAccess}
+            hasAccountLogin={effectivePortalLogin}
             previewAsGuest={previewingAsGuest}
             onGoToJoin={(audience) => openJoin(audience)}
             onOpenDashboard={
-              isYouthDashboardUser(authUser) ? () => goTo("user_portal") : undefined
+              isLoggedIn && !previewingAsGuest ? () => goTo("user_portal") : undefined
             }
             entryFocus={kidsEntryFocus}
           />
@@ -2534,7 +2507,9 @@ function App() {
           <JoinPage
             key={joinAudience ? `join-${joinAudience}` : "join-saved"}
             onLogin={() => goTo("login")}
-            onSignup={(tier) => openMembershipSignup(tier ?? "free")}
+            onSignup={(tier, audience) =>
+              openMembershipSignup(tier ?? "free", audience ?? joinAudience)
+            }
             onCommunity={() => goTo("community")}
             onKidsCorner={() => openKidsCorner()}
             onOpenFreeGuides={() => {
@@ -2589,6 +2564,33 @@ function App() {
                 });
               }}
             />
+          ) : parentKidDashboard ? (
+            <KidDashboard
+              key={parentKidDashboard.id}
+              memberName={parentKidDashboard.displayName}
+              ageBand={parentKidDashboard.ageBand}
+              childProfileId={parentKidDashboard.id}
+              parentCoachView
+              onBack={() => setParentKidDashboard(null)}
+              onOpenMatchWizard={() =>
+                openKidsCorner({
+                  mode: parentKidDashboard.ageBand,
+                  tab: "wizard",
+                })
+              }
+              onOpenCorner={(tab) =>
+                openKidsCorner({
+                  mode: parentKidDashboard.ageBand,
+                  tab: tab ?? "wizard",
+                })
+              }
+              onOpenGuide={(ageGroup) => {
+                openKidsCorner({
+                  mode: ageGroup === "junior" ? "junior" : "kids",
+                  tab: "guides",
+                });
+              }}
+            />
           ) : (
             <UserPortal
               memberName={authUser?.name}
@@ -2597,11 +2599,8 @@ function App() {
                 goTo("quiz");
               }}
               onOpenJoin={() => openJoin("adult")}
-              onOpenKidDashboard={(ageBand) => {
-                openKidsCorner({
-                  mode: ageBand === "junior" ? "junior" : "kids",
-                  tab: "wizard",
-                });
+              onOpenKidDashboard={(kid) => {
+                setParentKidDashboard(kid);
               }}
               onOpenGuide={(ageGroup, hustleId) => {
                 if (ageGroup === "kids") {

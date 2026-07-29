@@ -11,11 +11,51 @@ export type CreditLedgerRow = {
   created_at: string;
 };
 
+let creditTablesReady: Promise<void> | null = null;
+
+/** Self-heal if migration 0026 was skipped on an environment. */
+export async function ensureMemberCreditTables(env: Env): Promise<void> {
+  if (!env.DB) return;
+  if (!creditTablesReady) {
+    creditTablesReady = (async () => {
+      await env.DB.batch([
+        env.DB.prepare(`
+          CREATE TABLE IF NOT EXISTS member_credit_wallets (
+            user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+            balance INTEGER NOT NULL DEFAULT 0 CHECK (balance >= 0),
+            updated_at TEXT NOT NULL
+          )
+        `),
+        env.DB.prepare(`
+          CREATE TABLE IF NOT EXISTS member_credit_ledger (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            delta INTEGER NOT NULL,
+            reason TEXT NOT NULL,
+            balance_after INTEGER NOT NULL,
+            created_at TEXT NOT NULL
+          )
+        `),
+        env.DB.prepare(`
+          CREATE INDEX IF NOT EXISTS idx_member_credit_ledger_user
+            ON member_credit_ledger(user_id, created_at DESC)
+        `),
+      ]);
+    })().catch((err) => {
+      creditTablesReady = null;
+      throw err;
+    });
+  }
+  await creditTablesReady;
+}
+
 function newId(prefix: string): string {
   return `${prefix}-${crypto.randomUUID()}`;
 }
 
 async function ensureWallet(env: Env, userId: string): Promise<{ balance: number; updated_at: string }> {
+  await ensureMemberCreditTables(env);
+
   const existing = await env.DB.prepare(
     `SELECT balance, updated_at FROM member_credit_wallets WHERE user_id = ?`,
   )

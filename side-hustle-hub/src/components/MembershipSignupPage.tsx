@@ -10,12 +10,14 @@ import {
   MEMBERSHIP_TIERS,
   formatUsd,
   tierPriceMonthlyUsd,
+  tierPriceYearlyUsd,
+  yearlySavingsUsd,
   type AudienceGroup,
   type TierId,
 } from "../lib/membership";
 import { saveJoinAudience } from "../lib/join-audience";
 
-type SignupStep = "register" | "checkout" | "done";
+type SignupStep = "register" | "checkout" | "done" | "kids_consent_sent";
 
 type MembershipSignupPageProps = {
   initialAudience?: AudienceGroup | null;
@@ -57,7 +59,17 @@ export function MembershipSignupPage({
   const isKids = audience === "kids";
   const usesCredits = audience === "kids" || audience === "junior";
   const monthly = tierPriceMonthlyUsd(tier, audience);
+  const yearly = tierPriceYearlyUsd(tier, audience);
+  const yearlySave = yearly != null ? yearlySavingsUsd(monthly, yearly) : 0;
   const isPaid = tier.id !== "free";
+
+  const usdPriceLabel = (t: (typeof MEMBERSHIP_TIERS)[number]) => {
+    const mo = tierPriceMonthlyUsd(t, audience);
+    const yr = tierPriceYearlyUsd(t, audience);
+    if (yr == null) return `${formatUsd(mo)} / mo`;
+    const save = yearlySavingsUsd(mo, yr);
+    return `${formatUsd(mo)} / mo · ${formatUsd(yr)} / yr (save ${formatUsd(save)})`;
+  };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -208,7 +220,7 @@ export function MembershipSignupPage({
                       ? " — Free"
                       : usesCredits && t.creditsPerMonth
                         ? ` — ${t.creditsPerMonth} credits / mo`
-                        : ` — ${formatUsd(tierPriceMonthlyUsd(t, audience))} / mo`}
+                        : ` — ${usdPriceLabel(t)}`}
                   </option>
                 ))}
               </select>
@@ -217,7 +229,9 @@ export function MembershipSignupPage({
                 {isPaid
                   ? usesCredits && tier.creditsPerMonth
                     ? ` · ${tier.creditsPerMonth} credits / mo`
-                    : ` · ${formatUsd(monthly)} / mo`
+                    : yearly != null
+                      ? ` · ${formatUsd(monthly)} / mo · ${formatUsd(yearly)} / yr (save ${formatUsd(yearlySave)})`
+                      : ` · ${formatUsd(monthly)} / mo`
                   : " · no payment required"}
               </p>
             </div>
@@ -335,7 +349,9 @@ export function MembershipSignupPage({
               Charging (simulated): <strong>{tier.name}</strong> · {AUDIENCE_LABELS[audience]} ·{" "}
               {usesCredits && tier.creditsPerMonth
                 ? `${tier.creditsPerMonth} credits / mo`
-                : `${formatUsd(monthly)} / mo`}
+                : yearly != null
+                  ? `${formatUsd(monthly)} / mo · ${formatUsd(yearly)} / yr (save ${formatUsd(yearlySave)})`
+                  : `${formatUsd(monthly)} / mo`}
             </p>
 
             <label htmlFor="fake-card-name">Name on card</label>

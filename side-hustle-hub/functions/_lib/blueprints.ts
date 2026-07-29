@@ -36,6 +36,8 @@ type BlueprintRow = {
   answers_json: string;
   result_ids_json: string;
   result_pcts_json: string;
+  /** hustleId → child_profile id, or "self" for parent */
+  match_assignees_json?: string | null;
   top_result_id: string | null;
   unlocked: number;
   source: string;
@@ -45,6 +47,18 @@ type BlueprintRow = {
   created_at: string;
   updated_at: string;
 };
+
+function parseMatchAssignees(raw: string | null | undefined): Record<string, string> {
+  const obj = parseJsonObject(raw || "{}");
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(obj)) {
+    const id = String(k || "").trim();
+    const assignee = String(v ?? "").trim();
+    if (!id || !assignee) continue;
+    out[id] = assignee;
+  }
+  return out;
+}
 
 function parseJsonArray(raw: string): string[] {
   try {
@@ -74,6 +88,7 @@ function publicBlueprint(row: BlueprintRow) {
     answers: parseJsonObject(row.answers_json),
     resultIds,
     resultPcts: parseJsonObject(row.result_pcts_json) as Record<string, number>,
+    matchAssignees: parseMatchAssignees(row.match_assignees_json),
     topResultId: row.top_result_id ?? resultIds[0] ?? null,
     unlocked: Boolean(row.unlocked),
     source: row.source,
@@ -142,6 +157,13 @@ export async function ensureBlueprintTables(env: Env): Promise<void> {
       PRIMARY KEY (user_id, blueprint_id, hustle_id)
     )`),
   ]);
+  try {
+    await env.DB.prepare(
+      `ALTER TABLE side_hustle_blueprints ADD COLUMN match_assignees_json TEXT NOT NULL DEFAULT '{}'`,
+    ).run();
+  } catch {
+    /* column already exists */
+  }
 }
 
 function isAgeGroup(v: unknown): v is BlueprintAgeGroup {
@@ -432,17 +454,45 @@ export async function listBlueprints(env: Env, user: DbUser): Promise<Response> 
 
   let assigned: BlueprintRow[] = [];
   try {
+    // Prefer linked login id; also match contact_email so assignments show before link is set.
     const { results } = await env.DB.prepare(
       `SELECT b.* FROM side_hustle_blueprints b
        INNER JOIN child_profiles c ON c.id = b.child_profile_id
        WHERE c.linked_user_id = ?
+          OR lower(trim(coalesce(c.contact_email, ''))) = lower(trim(?))
        ORDER BY b.updated_at DESC LIMIT 50`,
     )
-      .bind(user.id)
+      .bind(user.id, user.email)
       .all<BlueprintRow>();
     assigned = results ?? [];
   } catch {
-    assigned = [];
+    try {
+      const { results } = await env.DB.prepare(
+        `SELECT b.* FROM side_hustle_blueprints b
+         INNER JOIN child_profiles c ON c.id = b.child_profile_id
+         WHERE c.linked_user_id = ?
+         ORDER BY b.updated_at DESC LIMIT 50`,
+      )
+        .bind(user.id)
+        .all<BlueprintRow>();
+      assigned = results ?? [];
+    } catch {
+      assigned = [];
+    }
+  }
+
+  // If email matched a profile without linked_user_id, attach the login for next time.
+  try {
+    await env.DB.prepare(
+      `UPDATE child_profiles
+       SET linked_user_id = ?, updated_at = ?
+       WHERE linked_user_id IS NULL
+         AND lower(trim(coalesce(contact_email, ''))) = lower(trim(?))`,
+    )
+      .bind(user.id, new Date().toISOString(), user.email)
+      .run();
+  } catch {
+    /* non-fatal */
   }
 
   const byId = new Map<string, BlueprintRow>();

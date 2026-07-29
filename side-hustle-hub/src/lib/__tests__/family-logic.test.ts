@@ -22,9 +22,17 @@ describe("family-logic", () => {
 
   it("validates register-kid input", () => {
     expect(
-      validateRegisterKidInput({ displayName: "Ava", ageBand: "kids" }),
+      validateRegisterKidInput({
+        displayName: "Ava",
+        ageBand: "kids",
+        loginEmail: "ava@example.com",
+        loginPassword: "SecureKid1!",
+      }),
     ).toBeNull();
     expect(validateRegisterKidInput({ displayName: "", ageBand: "kids" })).toMatch(/first name/i);
+    expect(
+      validateRegisterKidInput({ displayName: "Ava", ageBand: "kids" }),
+    ).toMatch(/valid email/i);
     expect(
       validateRegisterKidInput({
         displayName: "Ava",

@@ -46,6 +46,7 @@ function FreeKidsGuideCard({
 }: {
   guide: KidsGuide;
   isMember: boolean;
+  /** Join membership for this guide’s audience (kids / teens). */
   onJoinCta?: () => void;
 }) {
   const unlocked = guide.free || isMember;
@@ -172,15 +173,15 @@ export function FreeGuidesPage({
                 <button
                   type="button"
                   className="glow-badge free free-guides-perk-free-btn"
-                  onClick={() => onGoToJoin("adult")}
+                  onClick={() => onGoToJoin(joinAudience)}
                   data-testid="guides-free-membership-btn"
                   aria-label="Go to membership — free plans available"
                 >
                   Free
                 </button>
                 <div className="free-guides-perk-banner__copy">
-                  <strong>Free Membership Unlocks Perks</strong>
-                  <span>Join free for member guides &amp; saved progress.</span>
+                  <strong>Join to unlock more guides</strong>
+                  <span>Free membership opens member guides &amp; saved progress.</span>
                 </div>
               </div>
             )}
@@ -371,7 +372,12 @@ export function FreeGuidesPage({
           </header>
           <div className="free-guides-grid">
             {kidsGuides.map((g) => (
-              <FreeKidsGuideCard key={g.id} guide={g} isMember={false} onJoinCta={onOpenKidsGuides} />
+              <FreeKidsGuideCard
+                key={g.id}
+                guide={g}
+                isMember={isLoggedIn}
+                onJoinCta={onGoToJoin ? () => onGoToJoin("kids") : undefined}
+              />
             ))}
           </div>
           <button type="button" className="btn btn-outline free-guides-section-link" onClick={onOpenKidsGuides}>
@@ -394,7 +400,12 @@ export function FreeGuidesPage({
           </header>
           <div className="free-guides-grid">
             {juniorGuides.map((g) => (
-              <FreeKidsGuideCard key={g.id} guide={g} isMember={false} onJoinCta={onOpenJuniorGuides} />
+              <FreeKidsGuideCard
+                key={g.id}
+                guide={g}
+                isMember={isLoggedIn}
+                onJoinCta={onGoToJoin ? () => onGoToJoin("junior") : undefined}
+              />
             ))}
           </div>
           <button type="button" className="btn btn-outline free-guides-section-link" onClick={onOpenJuniorGuides}>

@@ -70,6 +70,7 @@ import {
   updateCertificateTemplate,
 } from "../_lib/certificates";
 import {
+  assignBlueprintMatchToChild,
   assignBlueprintToChild,
   createFamilyChild,
   getFamilySettings,
@@ -228,6 +229,9 @@ export async function onRequest(context: {
     }
     if (route === "blueprints/assign" && method === "POST") {
       return withCors(request, await assignBlueprintToChild(env, user, request));
+    }
+    if (route === "blueprints/assign-match" && method === "POST") {
+      return withCors(request, await assignBlueprintMatchToChild(env, user, request));
     }
     if (route === "blueprints/claim" && method === "POST") {
       return withCors(request, await claimPendingBlueprint(env, request, user));

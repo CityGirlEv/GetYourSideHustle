@@ -2140,10 +2140,15 @@ h1, h2, h3, h4, h5, h6 {
   min-width: 0;
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   gap: 8px 12px;
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+.header-title-top h1 .header-title-dashboard-badge {
+  align-self: center;
+  flex: 0 0 auto;
 }
 
 .header-title-aside {
@@ -2153,6 +2158,81 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--accent-emerald, #2e7d5a);
   white-space: nowrap;
 }
+
+/* Fancy Dashboard chip — sits left of the page title (not in primary nav) */
+.header-title-dashboard-badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 8px 16px 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(92, 64, 51, 0.22);
+  background: linear-gradient(135deg, #6b4f3a 0%, #9b2f28 55%, #c45c3a 100%);
+  color: #fffaf4;
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  line-height: 1.15;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.22) inset,
+    0 8px 18px -10px rgba(80, 40, 30, 0.55);
+  overflow: hidden;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+
+.header-title-dashboard-badge__glow {
+  position: absolute;
+  inset: -40% auto -40% -20%;
+  width: 45%;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.28) 45%,
+    transparent 70%
+  );
+  transform: translateX(-120%) skewX(-18deg);
+  pointer-events: none;
+  animation: header-dashboard-shine 3.6s ease-in-out infinite;
+}
+
+@keyframes header-dashboard-shine {
+  0%,
+  55% {
+    transform: translateX(-120%) skewX(-18deg);
+  }
+  75%,
+  100% {
+    transform: translateX(320%) skewX(-18deg);
+  }
+}
+
+.header-title-dashboard-badge:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.28) inset,
+    0 12px 22px -10px rgba(80, 40, 30, 0.6);
+}
+
+.header-title-dashboard-badge:active {
+  transform: translateY(0);
+}
+
+.header-title-dashboard-badge.is-active {
+  outline: 2px solid rgba(155, 47, 40, 0.35);
+  outline-offset: 2px;
+}
+
+.header-title-dashboard-badge svg {
+  flex-shrink: 0;
+}
+
 
 .header-title-desc,
 .header-title-section p {
@@ -8018,18 +8098,28 @@ h1, h2, h3, h4, h5, h6 {
   line-height: 1.5;
 }
 
-/* Kids/Teens Match Wizard: image | (bubbles + card) side by side */
+/* Kids/Teens Match Wizard: welcome above; large hero | clear question card (like Adult) */
 .kids-wizard-wrap {
   max-width: min(100%, 1280px);
   margin: 0;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.kids-wizard-top {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
 }
 
 .kids-wizard-inline {
   display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(260px, 0.85fr);
-  gap: 14px;
-  align-items: start;
+  grid-template-columns: minmax(320px, min(56vw, 620px)) minmax(0, 1fr);
+  gap: 20px 24px;
+  align-items: stretch;
   box-sizing: border-box;
   max-width: 100%;
   overflow: visible;
@@ -8042,8 +8132,8 @@ h1, h2, h3, h4, h5, h6 {
   max-height: none;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  align-self: start;
+  gap: 0;
+  align-self: stretch;
   box-sizing: border-box;
   padding: 0;
   border: none;
@@ -8566,33 +8656,39 @@ h1, h2, h3, h4, h5, h6 {
 
 .kids-wizard-card {
   min-width: 0;
-  flex: 0 0 auto;
-  height: auto;
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
   min-height: 0;
   max-height: none;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  gap: 4px;
-  padding: 8px 10px;
-  border-radius: 12px;
+  gap: 0;
+  padding: 22px 24px;
+  border-radius: 20px;
   overflow: visible;
-  align-self: start;
+  align-self: stretch;
 }
 
+/* Welcome sits above the image + card row */
 .kids-wizard-intro {
   margin: 0;
-  padding: 0 0 2px;
-  border-bottom: 1px solid rgba(92, 64, 51, 0.12);
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
   flex: 0 0 auto;
 }
 
 .kids-wizard-intro p {
   margin: 0;
-  font-size: var(--fs-caption);
-  line-height: 1.4;
+  font-size: 1rem;
+  line-height: 1.5;
   color: var(--text-primary);
+  font-weight: 600;
+  max-width: 52rem;
 }
 
 .kids-wizard-intro p:last-child {
@@ -8601,18 +8697,31 @@ h1, h2, h3, h4, h5, h6 {
 
 .kids-wizard-tip,
 .wizard-fill-tip {
-  margin: 8px 0 0;
-  padding: 5px 8px;
-  border-radius: 8px;
+  margin: 12px 0 0;
+  padding: 8px 12px;
+  border-radius: 10px;
   background: rgba(107, 79, 58, 0.06);
   border: 1px solid rgba(92, 64, 51, 0.14);
-  font-size: var(--fs-caption);
+  font-size: 0.9rem;
   line-height: 1.4;
   font-weight: 600;
   color: var(--text-primary);
   flex: 0 0 auto;
   position: relative;
   z-index: 1;
+}
+
+.kids-wizard-saved-note {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(16, 120, 80, 0.08);
+  border: 1px solid rgba(16, 120, 80, 0.22);
+  font-size: var(--fs-caption);
+  line-height: 1.4;
+  font-weight: 600;
+  color: var(--text-primary);
+  width: 100%;
 }
 
 .wizard-fill-tip {
@@ -8625,9 +8734,9 @@ h1, h2, h3, h4, h5, h6 {
   justify-content: space-between;
   align-items: baseline;
   gap: 8px;
-  font-size: var(--fs-caption);
+  font-size: 0.9375rem;
   color: var(--text-primary);
-  margin: 0;
+  margin: 0 0 8px;
   font-weight: 600;
 }
 
@@ -8638,11 +8747,11 @@ h1, h2, h3, h4, h5, h6 {
 
 .kids-wizard-progress-bar {
   width: 100%;
-  height: 4px;
+  height: 6px;
   background: rgba(92, 64, 51, 0.12);
   border-radius: 9999px;
   overflow: hidden;
-  margin: 0;
+  margin: 0 0 20px;
 }
 
 .kids-wizard-progress-fill {
@@ -8670,32 +8779,8 @@ h1, h2, h3, h4, h5, h6 {
 .kids-wizard-card .wizard-start-here {
   display: inline-flex;
   align-self: flex-start;
-  margin: 0;
-  gap: 2px;
-}
-
-.kids-wizard-card .wizard-start-here__chip {
-  padding: 1px 6px 1px 4px;
-  gap: 2px;
-  background: rgba(155, 47, 40, 0.1);
-  border: 1px solid rgba(155, 47, 40, 0.28);
-  box-shadow: none;
-}
-
-.kids-wizard-card .wizard-start-here__label {
-  font-size: 0.58rem;
-  letter-spacing: 0.05em;
-  line-height: 1.1;
-}
-
-.kids-wizard-card .wizard-start-here__spark {
-  width: 9px;
-  height: 9px;
-}
-
-.kids-wizard-card .wizard-start-here__arrow {
-  width: 10px;
-  height: 10px;
+  margin: 0 0 12px;
+  gap: 4px;
 }
 
 .wizard-start-here__chip {
@@ -8747,20 +8832,25 @@ h1, h2, h3, h4, h5, h6 {
 .kids-wizard-header {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin: 0;
-  padding: 4px 8px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, rgba(155, 47, 40, 0.12) 0%, rgba(107, 79, 58, 0.08) 100%);
-  border: 1px solid rgba(155, 47, 40, 0.28);
+  gap: 12px;
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(155, 47, 40, 0.1) 0%, rgba(107, 79, 58, 0.08) 100%);
+  border: 1px solid rgba(155, 47, 40, 0.22);
   box-sizing: border-box;
   flex: 0 0 auto;
 }
 
+.kids-wizard-header-copy {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
 .kids-wizard-icon {
-  width: 26px;
-  height: 26px;
-  border-radius: 7px;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
   background: rgba(155, 47, 40, 0.12);
   border: 1px solid rgba(155, 47, 40, 0.28);
   color: var(--crimson);
@@ -8771,21 +8861,22 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .kids-wizard-icon svg {
-  width: 14px;
-  height: 14px;
+  width: 24px;
+  height: 24px;
 }
 
 .kids-wizard-header h2 {
-  font-size: 0.95rem;
+  font-size: 1.4rem;
   font-weight: 800;
-  color: var(--crimson);
-  margin: 0 0 1px;
+  color: var(--charcoal);
+  margin: 0 0 4px;
   letter-spacing: -0.01em;
+  line-height: 1.2;
 }
 
 .kids-wizard-header p {
   color: var(--text-primary);
-  font-size: var(--fs-caption);
+  font-size: 0.9375rem;
   margin: 0;
   line-height: 1.4;
   font-weight: 600;
@@ -8793,22 +8884,25 @@ h1, h2, h3, h4, h5, h6 {
 
 .kids-wizard-options {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-  gap: 4px;
-  margin: 0;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin: 4px 0 8px;
+  flex: 0 0 auto;
+  min-height: 0;
+  align-content: start;
 }
 
 .kids-wizard-option {
-  padding: 6px 8px;
-  border-radius: 8px;
+  padding: 16px 14px;
+  border-radius: 12px;
   border: 1px solid var(--border-color);
   background: #fff;
   cursor: pointer;
   text-align: center;
-  font-size: var(--fs-caption);
+  font-size: 0.98rem;
   font-weight: 600;
   color: var(--charcoal);
-  box-shadow: none;
+  box-shadow: var(--shadow-sm);
   transition: border-color var(--transition-fast), background var(--transition-fast),
     transform var(--transition-fast);
 }
@@ -8829,16 +8923,16 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 0;
+  margin-top: 16px;
   border-top: 1px solid var(--border-color);
-  padding-top: 5px;
+  padding-top: 14px;
   flex: 0 0 auto;
 }
 
 .kids-wizard-nav .btn {
-  min-height: 30px;
-  padding: 4px 10px;
-  font-size: 0.9rem;
+  min-height: 42px;
+  padding: 8px 16px;
+  font-size: 0.98rem;
 }
 
 .kids-wizard-result {
@@ -9691,6 +9785,10 @@ h1, h2, h3, h4, h5, h6 {
 
   .match-finder-wizard-hero-img {
     max-height: var(--page-hero-img-max-mobile);
+  }
+
+  .kids-wizard-header h2 {
+    font-size: 1.25rem;
   }
 
   .kids-wizard-card,
@@ -12611,6 +12709,20 @@ h1, h2, h3, h4, h5, h6 {
   line-height: 1.25;
   letter-spacing: -0.01em;
   color: var(--text-primary);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+}
+
+.home-page-header__title-text {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.home-page-header__title .header-title-dashboard-badge {
+  flex: 0 0 auto;
+  align-self: center;
 }
 
 .home-page-header__brand {
@@ -13550,6 +13662,23 @@ button.launch-checklist-item {
   white-space: nowrap;
 }
 
+.membership-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.membership-hero-badge-aside {
+  font-size: 0.82em;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  opacity: 0.95;
+  white-space: nowrap;
+}
+
 .join-hero-heading {
   display: flex;
   flex-wrap: wrap;
@@ -13861,6 +13990,114 @@ button.launch-checklist-item {
   line-height: 1.4;
 }
 
+.membership-plans-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 125, 100, 0.28);
+  background: rgba(255, 252, 247, 0.9);
+}
+
+.membership-plans-toolbar.is-spotlight {
+  border-color: rgba(155, 47, 40, 0.45);
+  box-shadow: 0 0 0 3px rgba(155, 47, 40, 0.18);
+  animation: membership-audience-pulse 1.2s ease-in-out 2;
+}
+
+.membership-audience-tabs--toolbar {
+  flex: 1 1 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  min-width: 0;
+}
+
+.membership-audience-tabs--toolbar .membership-audience-tabs__label {
+  flex: 0 1 auto;
+  margin: 0;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.membership-billing-toggle--toolbar {
+  flex: 0 1 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  margin-left: auto;
+}
+
+.membership-yearly-check {
+  flex: 0 0 auto;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 125, 100, 0.35);
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.membership-yearly-check input {
+  width: 1.05rem;
+  height: 1.05rem;
+  accent-color: #2e7d5a;
+  margin: 0;
+  cursor: pointer;
+}
+
+.membership-yearly-check__text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--charcoal);
+}
+
+.membership-yearly-check__save {
+  font-style: normal;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(46, 125, 90, 0.16);
+  color: #1f4d38;
+}
+
+.membership-yearly-check.is-on {
+  border-color: rgba(46, 125, 90, 0.55);
+  background: rgba(46, 125, 90, 0.12);
+}
+
+.membership-yearly-check.is-on .membership-yearly-check__save {
+  background: #2e7d5a;
+  color: #fff;
+}
+
+.membership-billing-toggle__hint--inline {
+  flex: 0 1 auto;
+  margin: 0 0 0 auto;
+  font-size: 0.85rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
 .membership-billing-toggle {
   display: flex;
   flex-wrap: wrap;
@@ -13940,11 +14177,76 @@ button.launch-checklist-item {
   min-height: 520px;
 }
 
+.membership-tier-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 10px;
+}
+
+.membership-tier-title-row h3 {
+  margin: 0;
+}
+
+.membership-tier-price--inline {
+  margin: 0;
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 6px;
+  font-size: 0.95rem;
+  line-height: 1.2;
+}
+
+.membership-tier-price--inline.has-yearly {
+  max-width: 16rem;
+  justify-content: flex-end;
+}
+
+.membership-tier-price--inline strong {
+  font-size: 1.15rem;
+  font-weight: 850;
+  color: var(--charcoal);
+}
+
+.membership-tier-price--inline.is-yearly strong[data-testid^="membership-yearly-price-"] {
+  color: #1f4d38;
+  background: rgba(46, 125, 90, 0.14);
+  padding: 2px 8px;
+  border-radius: 8px;
+}
+
+.membership-tier-price-unit {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.membership-tier-price-sep {
+  color: var(--text-muted, #6b635a);
+  font-weight: 700;
+}
+
+.membership-tier-price--inline .membership-tier-save {
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(46, 125, 90, 0.16);
+  color: #1f4d38;
+  white-space: nowrap;
+}
+
+.membership-tier-yearly-note {
+  margin: 0;
+}
+
 .membership-tier-card__top {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  min-height: 168px;
+  min-height: 148px;
 }
 
 .membership-tier-badges {
@@ -14409,6 +14711,11 @@ button.launch-checklist-item {
   border-radius: 14px;
   border: 1px solid color-mix(in srgb, var(--crimson) 28%, transparent);
   background: color-mix(in srgb, var(--crimson) 6%, transparent);
+}
+
+.kids-assigned-blueprint--compact {
+  margin: 12px 0 16px;
+  padding: 12px 14px;
 }
 
 .kids-assigned-blueprint h3 {

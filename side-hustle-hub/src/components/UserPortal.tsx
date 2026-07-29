@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
-import {
-  Award,
-  CheckSquare,
-  Bookmark,
+import { 
+  Award, 
+  CheckSquare, 
+  Bookmark, 
   Star,
   Zap,
   Check,
@@ -15,6 +15,7 @@ import {
   Users,
 } from "lucide-react";
 import { WaitIndicator } from "./WaitFeedback";
+import { PasswordField } from "./PasswordField";
 import {
   CREDIT_EARN_ACTIONS,
   KID_TO_ADULT_CREDIT_RATIO,
@@ -80,8 +81,12 @@ type UserPortalProps = {
   onOpenJoin?: () => void;
   /** Open the Launch Guide / Corner guides for a Blueprint match. */
   onOpenGuide?: (ageGroup: BlueprintAgeGroup, hustleId: string) => void;
-  /** Open that kid’s Kids / Teens dashboard (Corner). */
-  onOpenKidDashboard?: (ageBand: "kids" | "junior") => void;
+  /** Open that kid’s dedicated Kids / Teens dashboard. */
+  onOpenKidDashboard?: (kid: {
+    id: string;
+    displayName: string;
+    ageBand: "kids" | "junior";
+  }) => void;
 };
 
 function toPortalBlueprint(bp: SavedBlueprint): PortalBlueprint {
@@ -174,6 +179,7 @@ export const UserPortal: React.FC<UserPortalProps> = ({
   const [kidAgeBand, setKidAgeBand] = useState<"kids" | "junior">("kids");
   const [kidLoginEmail, setKidLoginEmail] = useState("");
   const [kidLoginPassword, setKidLoginPassword] = useState("");
+  const [kidLoginPasswordConfirm, setKidLoginPasswordConfirm] = useState("");
   const [juniorSignupId, setJuniorSignupId] = useState<string | null>(null);
   const [registeringKid, setRegisteringKid] = useState(false);
   const [pendingAssignBlueprintId, setPendingAssignBlueprintId] = useState<string | null>(null);
@@ -308,8 +314,8 @@ export const UserPortal: React.FC<UserPortalProps> = ({
   const toggleGoal = (id: string) => {
     setGoals((prev) =>
       prev.map((g) => {
-        if (g.id === id) return { ...g, done: !g.done };
-        return g;
+      if (g.id === id) return { ...g, done: !g.done };
+      return g;
       }),
     );
   };
@@ -340,6 +346,7 @@ export const UserPortal: React.FC<UserPortalProps> = ({
     setKidAgeBand("kids");
     setKidLoginEmail("");
     setKidLoginPassword("");
+    setKidLoginPasswordConfirm("");
     setJuniorSignupId(null);
     setPendingAssignBlueprintId(null);
     setRegisterOpen(false);
@@ -354,6 +361,7 @@ export const UserPortal: React.FC<UserPortalProps> = ({
     setKidAgeBand(child.ageBand === "junior" ? "junior" : "kids");
     setKidLoginEmail(child.childEmail || "");
     setKidLoginPassword("");
+    setKidLoginPasswordConfirm("");
     setJuniorSignupId(
       child.juniorSignupId || (child.source === "signup" ? child.id : null),
     );
@@ -369,12 +377,27 @@ export const UserPortal: React.FC<UserPortalProps> = ({
     setRegisteringKid(true);
     setFamilyMessage(null);
     setFamilyError(null);
+    if (!kidLoginEmail.trim().includes("@")) {
+      setFamilyError("Kid login needs a valid email.");
+      setRegisteringKid(false);
+      return;
+    }
+    if (kidLoginPassword.length < 8) {
+      setFamilyError("Kid login password must be at least 8 characters.");
+      setRegisteringKid(false);
+      return;
+    }
+    if (kidLoginPassword !== kidLoginPasswordConfirm) {
+      setFamilyError("Kid passwords do not match.");
+      setRegisteringKid(false);
+      return;
+    }
     try {
       const child = await registerFamilyChild({
         displayName: kidName,
         ageBand: kidAgeBand,
-        loginEmail: kidLoginEmail || undefined,
-        loginPassword: kidLoginPassword || undefined,
+        loginEmail: kidLoginEmail.trim(),
+        loginPassword: kidLoginPassword,
         juniorSignupId: juniorSignupId || undefined,
       });
       setFamilyChildren((prev) => {
@@ -404,7 +427,12 @@ export const UserPortal: React.FC<UserPortalProps> = ({
         setPortalTab("family");
       }
     } catch (err: unknown) {
-      setFamilyError(err instanceof Error ? err.message : "Could not register your kid.");
+      const msg = err instanceof Error ? err.message : "Could not register your kid.";
+      setFamilyError(
+        /session invalid|session expired|not authenticated/i.test(msg)
+          ? "Your sign-in expired. Log out, log back in, then save the kid profile again."
+          : msg,
+      );
     } finally {
       setRegisteringKid(false);
     }
@@ -718,6 +746,7 @@ export const UserPortal: React.FC<UserPortalProps> = ({
                       setKidName("");
                       setKidLoginEmail("");
                       setKidLoginPassword("");
+                      setKidLoginPasswordConfirm("");
                       setKidAgeBand("kids");
                       setRegisterOpen(true);
                     }
@@ -794,30 +823,42 @@ export const UserPortal: React.FC<UserPortalProps> = ({
                   <div className="form-group">
                     <label className="form-label" htmlFor="register-kid-email">
                       Kid login email
-                      {juniorSignupId ? " (from their join)" : " (optional)"}
+                      {juniorSignupId ? " (from their join)" : " (required)"}
                     </label>
                     <input
                       id="register-kid-email"
                       className="text-input"
                       type="email"
+                      required
                       value={kidLoginEmail}
                       onChange={(e) => setKidLoginEmail(e.target.value)}
                       data-testid="register-kid-email"
                     />
                   </div>
-                  <div className="form-group">
-                    <label className="form-label" htmlFor="register-kid-password">
-                      Kid login password (optional — set so they can sign in)
-                    </label>
-                    <input
-                      id="register-kid-password"
-                      className="text-input"
-                      type="password"
-                      value={kidLoginPassword}
-                      onChange={(e) => setKidLoginPassword(e.target.value)}
-                      data-testid="register-kid-password"
-                    />
-                  </div>
+                  <PasswordField
+                    id="register-kid-password"
+                    label="Kid login password (required — they sign in with this)"
+                    required
+                    minLength={8}
+                    autoComplete="new-password"
+                    value={kidLoginPassword}
+                    onChange={setKidLoginPassword}
+                    showStrength
+                    data-testid="register-kid-password"
+                  />
+                  <PasswordField
+                    id="register-kid-password-confirm"
+                    label="Confirm kid login password"
+                    required
+                    minLength={8}
+                    autoComplete="new-password"
+                    value={kidLoginPasswordConfirm}
+                    onChange={setKidLoginPasswordConfirm}
+                    data-testid="register-kid-password-confirm"
+                  />
+                  <p className="user-portal-credits-muted" style={{ marginTop: 6 }}>
+                    We email the kid and you when their login is ready.
+                  </p>
                   <div className="user-portal-register-kid-actions">
                     <button
                       type="button"
@@ -890,7 +931,13 @@ export const UserPortal: React.FC<UserPortalProps> = ({
                                     type="button"
                                     className="user-portal-kid-dashboard-link"
                                     data-testid={`user-portal-kid-dashboard-${c.id}`}
-                                    onClick={() => onOpenKidDashboard(c.ageBand)}
+                                    onClick={() =>
+                                      onOpenKidDashboard({
+                                        id: c.id,
+                                        displayName: c.displayName,
+                                        ageBand: c.ageBand === "junior" ? "junior" : "kids",
+                                      })
+                                    }
                                   >
                                     {dashLabel}
                                   </button>
@@ -986,7 +1033,13 @@ export const UserPortal: React.FC<UserPortalProps> = ({
                                         <button
                                           type="button"
                                           className="btn btn-outline user-portal-family-blueprint-open"
-                                          onClick={() => onOpenKidDashboard(c.ageBand)}
+                                          onClick={() =>
+                                            onOpenKidDashboard({
+                                              id: c.id,
+                                              displayName: c.displayName,
+                                              ageBand: c.ageBand === "junior" ? "junior" : "kids",
+                                            })
+                                          }
                                         >
                                           Open {dashLabel}
                                         </button>
@@ -1162,7 +1215,7 @@ export const UserPortal: React.FC<UserPortalProps> = ({
             >
               <h3>
                 <Sparkles size={20} aria-hidden /> Ways to Earn Credits
-              </h3>
+          </h3>
               <p className="user-portal-panel-lead">
                 Treat this like an earnings checklist — learn, launch, refer, and check in weekly.
                 Earn actions grow your Kid Credit balance (and adult credit equivalent).
@@ -1194,18 +1247,18 @@ export const UserPortal: React.FC<UserPortalProps> = ({
               </h3>
               <div className="user-portal-goal-list">
                 {goals.map((g) => (
-                  <div
-                    key={g.id}
-                    onClick={() => toggleGoal(g.id)}
-                    className={`checklist-item ${g.done ? "completed" : ""}`}
-                    style={{ margin: 0 }}
-                  >
+              <div 
+                key={g.id} 
+                onClick={() => toggleGoal(g.id)}
+                className={`checklist-item ${g.done ? "completed" : ""}`}
+                style={{ margin: 0 }}
+              >
                     <div className="checklist-checkbox">{g.done && <Check size={12} />}</div>
-                    <div className="checklist-text">
-                      <span style={{ fontSize: "0.925rem" }}>{g.title}</span>
-                    </div>
-                  </div>
-                ))}
+                <div className="checklist-text">
+                  <span style={{ fontSize: "0.925rem" }}>{g.title}</span>
+                </div>
+              </div>
+            ))}
               </div>
               <div className="user-portal-progress">
                 <div className="user-portal-progress-labels">
@@ -1217,8 +1270,8 @@ export const UserPortal: React.FC<UserPortalProps> = ({
                     className="user-portal-progress-fill"
                     style={{ width: `${progressPercent}%` }}
                   />
-                </div>
-              </div>
+          </div>
+        </div>
             </section>
           )}
 
@@ -1230,20 +1283,20 @@ export const UserPortal: React.FC<UserPortalProps> = ({
               data-testid="user-portal-bookmarks"
             >
               <h3>
-                <Bookmark size={20} style={{ color: "var(--accent-pink)" }} /> Bookmarked Hustles
-              </h3>
+            <Bookmark size={20} style={{ color: "var(--accent-pink)" }} /> Bookmarked Hustles
+          </h3>
               <div className="user-portal-bookmarks">
                 <div className="user-portal-bookmark-card">
                   <span className="glow-badge pink">Real Estate</span>
                   <h4>Airbnb Hosting</h4>
                   <p>Active guide progress: 33%</p>
-                </div>
+            </div>
                 <div className="user-portal-bookmark-card">
                   <span className="glow-badge purple">E-Commerce</span>
                   <h4>Print-on-Demand</h4>
                   <p>Active guide progress: 50%</p>
-                </div>
-              </div>
+            </div>
+          </div>
             </section>
           )}
         </div>

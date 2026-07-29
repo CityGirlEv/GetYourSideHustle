@@ -7,8 +7,8 @@ import { AUDIENCE_LABELS } from "../lib/membership";
 
 type JoinPageProps = {
   onLogin: () => void;
-  /** Open membership registration / sign-up (optional tier from plan cards). */
-  onSignup: (tier?: TierId) => void;
+  /** Open membership registration / sign-up (tier + audience lane in focus). */
+  onSignup: (tier?: TierId, audience?: AudienceGroup) => void;
   onCommunity: () => void;
   onKidsCorner?: () => void;
   onOpenFreeGuides?: () => void;
@@ -48,7 +48,7 @@ export function JoinPage({
             : "Pick the plan that fits your Side Hustle — Free through Elite — with audience options for Kids, Teens, Adults, and Seniors."}
         </p>
         <MembershipPage
-          onGoToJoin={onSignup}
+          onGoToJoin={(tier, audience) => onSignup(tier, audience ?? membershipAudience ?? undefined)}
           onGoToLogin={onLogin}
           onOpenFreeGuides={onOpenFreeGuides}
           initialAudience={membershipAudience}
@@ -58,7 +58,11 @@ export function JoinPage({
       </section>
 
       <div className="join-cta-row join-cta-row--footer">
-        <button type="button" className="btn btn-primary" onClick={() => onSignup("free")}>
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={() => onSignup("free", membershipAudience ?? undefined)}
+        >
           <UserPlus size={16} /> Create account / Join
         </button>
         <button type="button" className="btn btn-outline" onClick={onLogin}>

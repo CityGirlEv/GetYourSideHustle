@@ -19,6 +19,7 @@ import {
   SENIOR_GUIDE_TEASERS,
   SENIOR_INTRO,
   SENIOR_OPPORTUNITIES,
+  type SeniorGuideTeaser,
   type SeniorOpportunity,
   readSeniorTeamInterest,
   writeSeniorTeamInterest,
@@ -40,6 +41,21 @@ import seniorSideHustleIdeasHero from "../assets/senior-side-hustle-ideas-hero.p
 import seniorGuidesHero from "../assets/senior-guides-hero.png";
 import seniorJoinTeamHero from "../assets/senior-join-team-hero.png";
 import { SENIOR_CORNER_TABS, type SeniorTab } from "../lib/audience-nav";
+
+function SeniorGuideCard({ guide }: { guide: SeniorGuideTeaser }) {
+  return (
+    <article className="glass seniors-guide-card" data-testid={`seniors-guide-card-${guide.id}`}>
+      <div className="seniors-guide-card-top">
+        <Sparkles size={20} style={{ color: "var(--bronze)" }} aria-hidden="true" />
+        <span className={`seniors-guide-badge seniors-guide-badge--${guide.status}`}>
+          {guide.status === "preview" ? "Preview" : "Coming soon"}
+        </span>
+      </div>
+      <h3>{guide.title}</h3>
+      <p>{guide.blurb}</p>
+    </article>
+  );
+}
 
 function SeniorIdeaCard({ idea }: { idea: SeniorOpportunity }) {
   return (
@@ -610,6 +626,8 @@ export function SeniorSideHustles({
   const [interested, setInterested] = useState(() => readSeniorTeamInterest() || isLoggedIn);
   const sideIdeas = SENIOR_OPPORTUNITIES.slice(0, 3);
   const belowIdeas = SENIOR_OPPORTUNITIES.slice(3);
+  const sideGuides = SENIOR_GUIDE_TEASERS.slice(0, 3);
+  const belowGuides = SENIOR_GUIDE_TEASERS.slice(3);
 
   useEffect(() => {
     if (entryTab) setTab(entryTab);
@@ -635,6 +653,12 @@ export function SeniorSideHustles({
           <p className="seniors-lead-ideas">
             Ideas suited to experience, flexible hours, and lower physical intensity — pick what
             matches your energy and interests.
+          </p>
+        )}
+        {tab === "guides" && (
+          <p className="seniors-lead-ideas">
+            Step-by-step Senior guides are on the way. Here&apos;s a preview of what we&apos;re drafting —
+            full Launch Guides still cover many of these hustles for all adults.
           </p>
         )}
       </div>
@@ -704,50 +728,37 @@ export function SeniorSideHustles({
 
       {tab === "guides" && (
         <div className="seniors-guides-stage" role="tabpanel">
-          <div className="seniors-guides-split">
+          <div className="seniors-guides-layout">
             <SeniorTabHero
               banner
               src={seniorGuidesHero}
               alt="Get Your Side Hustle Senior Guides — smart, flexible side hustles for seniors who want extra income, purpose, and freedom on your terms."
             />
-            <div className="glass seniors-guides-panel">
-              <div className="seniors-guides-panel-copy">
-                <h3 className="seniors-guides-panel-title">
-                  <BookOpen size={22} aria-hidden="true" />
-                  Senior Guides preview
-                </h3>
-                <p>
-                  Step-by-step Senior guides are on the way. Here&apos;s what we&apos;re drafting —
-                  full Launch Guides still cover many of these hustles for all adults.
-                </p>
-              </div>
-              <ul className="seniors-guides-panel-list">
-                {SENIOR_GUIDE_TEASERS.map((g) => (
-                  <li key={g.id}>
-                    <span className={`seniors-guide-badge seniors-guide-badge--${g.status}`}>
-                      {g.status === "preview" ? "Preview" : "Coming soon"}
-                    </span>
-                    <div>
-                      <strong>{g.title}</strong>
-                      <span>{g.blurb}</span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-              <div className="seniors-guides-panel-actions">
-                {onOpenGuides && (
-                  <button type="button" className="btn btn-primary seniors-btn" onClick={onOpenGuides}>
-                    Browse GYSH Guides <ArrowRight size={18} />
-                  </button>
-                )}
-                {onGoToJoin && (
-                  <button type="button" className="btn btn-outline seniors-btn" onClick={onGoToJoin}>
-                    Join for full member guides
-                  </button>
-                )}
-              </div>
+            <div className="seniors-guides-side" aria-label="Senior guides beside banner">
+              {sideGuides.map((g) => (
+                <SeniorGuideCard key={g.id} guide={g} />
+              ))}
+            </div>
+            <div className="seniors-guides-below" aria-label="More senior guides">
+              {belowGuides.map((g) => (
+                <SeniorGuideCard key={g.id} guide={g} />
+              ))}
             </div>
           </div>
+          {(onOpenGuides || onGoToJoin) && (
+            <div className="seniors-guides-panel-actions" style={{ marginTop: 20 }}>
+              {onOpenGuides && (
+                <button type="button" className="btn btn-primary seniors-btn" onClick={onOpenGuides}>
+                  Browse GYSH Guides <ArrowRight size={18} />
+                </button>
+              )}
+              {onGoToJoin && (
+                <button type="button" className="btn btn-outline seniors-btn" onClick={onGoToJoin}>
+                  Join for full member guides
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
 

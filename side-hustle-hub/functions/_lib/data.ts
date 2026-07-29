@@ -2497,6 +2497,7 @@ export async function getJuniorConsent(env: Env, token: string): Promise<Respons
   return json({
     signup: {
       childName: row.child_name,
+      childEmail: row.child_email,
       team: row.team,
       teamLabel: teamLabel(row.team),
       status: row.status,
@@ -2567,9 +2568,16 @@ export async function grantJuniorConsent(env: Env, token: string, request: Reque
       );
     }
   }
+  if (kidPassword.length < 8) {
+    return error("Create a kid login password (at least 8 characters) so they can sign in.");
+  }
 
-  let provision: { parentUserId: string; childProfileId: string; parentCreated: boolean } | null =
-    null;
+  let provision: {
+    parentUserId: string;
+    childProfileId: string;
+    parentCreated: boolean;
+    kidLoginCreated: boolean;
+  } | null = null;
   try {
     const { provisionFamilyFromJuniorConsent } = await import("./family");
     provision = await provisionFamilyFromJuniorConsent(env, {
@@ -2580,7 +2588,7 @@ export async function grantJuniorConsent(env: Env, token: string, request: Reque
       team: row.team,
       juniorSignupId: row.id,
       parentPassword: existingParent ? undefined : parentPassword,
-      kidPassword: kidPassword || undefined,
+      kidPassword,
     });
   } catch (e) {
     return error(e instanceof Error ? e.message : "Could not link the kid profile to a parent account.");
@@ -2602,7 +2610,11 @@ export async function grantJuniorConsent(env: Env, token: string, request: Reque
   }
 
   try {
-    const { sendAdminFormNotify, sendParentAccountReadyEmail } = await import("./email");
+    const {
+      sendAdminFormNotify,
+      sendParentAccountReadyEmail,
+      sendKidLoginReadyEmails,
+    } = await import("./email");
     const { escapeHtml: esc } = await import("./email-brand");
     await sendAdminFormNotify(env, {
       formName: "Parent consent granted",
@@ -2621,6 +2633,14 @@ export async function grantJuniorConsent(env: Env, token: string, request: Reque
         childName: row.child_name,
       });
     }
+    if (provision?.kidLoginCreated) {
+      await sendKidLoginReadyEmails(env, {
+        childName: row.child_name,
+        childEmail: row.child_email,
+        parentEmail: row.parent_email,
+        parentName,
+      });
+    }
   } catch {
     /* non-fatal */
   }
@@ -2628,13 +2648,17 @@ export async function grantJuniorConsent(env: Env, token: string, request: Reque
   const loginHint = provision?.parentCreated
     ? ` Your parent login is ready — sign in at getyoursidehustle.com with ${row.parent_email}.`
     : "";
+  const kidHint = provision?.kidLoginCreated
+    ? ` ${row.child_name} can sign in with ${row.child_email} — we emailed both of you.`
+    : "";
 
   return json({
     ok: true,
     status: "active",
     parentCreated: Boolean(provision?.parentCreated),
+    kidLoginCreated: Boolean(provision?.kidLoginCreated),
     childProfileId: provision?.childProfileId ?? null,
-    message: `Thank you, ${parentName}. ${row.child_name}'s ${teamLabel(row.team)} account is now active and linked to your parent coach profile.${loginHint}`,
+    message: `Thank you, ${parentName}. ${row.child_name}'s ${teamLabel(row.team)} account is now active and linked to your parent coach profile.${loginHint}${kidHint}`,
   });
 }
 

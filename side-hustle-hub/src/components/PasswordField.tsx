@@ -10,6 +10,7 @@ type PasswordFieldProps = {
   placeholder?: string;
   autoComplete?: string;
   required?: boolean;
+  minLength?: number;
   disabled?: boolean;
   /** Show strength meter + checklist (for new passwords). */
   showStrength?: boolean;
@@ -25,6 +26,7 @@ export function PasswordField({
   placeholder,
   autoComplete = "current-password",
   required,
+  minLength,
   disabled,
   showStrength = false,
   className,
@@ -49,6 +51,7 @@ export function PasswordField({
           className="text-input"
           placeholder={placeholder}
           required={required}
+          minLength={minLength}
           disabled={disabled}
           autoComplete={autoComplete}
           data-testid={testId}

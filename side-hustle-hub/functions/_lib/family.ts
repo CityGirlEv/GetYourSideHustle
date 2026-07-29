@@ -223,7 +223,7 @@ export async function createFamilyChild(
   }
 
   if (!displayName) return error("Enter a first name or nickname for your kid.");
-  if ((loginEmail || loginPassword) && (!loginEmail.includes("@") || loginPassword.length < 8)) {
+  if (!loginEmail.includes("@") || loginPassword.length < 8) {
     return error("Kid login needs a valid email and a password of at least 8 characters.");
   }
 
@@ -231,22 +231,18 @@ export async function createFamilyChild(
   const now = new Date().toISOString();
   const childId = `child-${crypto.randomUUID()}`;
   let linkedUserId: string | null = null;
+  const contactEmail = loginEmail;
 
-  // Store the kid email from signup even when login password is set later.
-  const contactEmail = loginEmail || null;
-
-  if (loginEmail && loginPassword) {
-    try {
-      linkedUserId = await createLinkedKidUser(env, {
-        parentUserId: parent.id,
-        displayName,
-        ageBand,
-        email: loginEmail,
-        password: loginPassword,
-      });
-    } catch (e) {
-      return error(e instanceof Error ? e.message : "Could not create kid login.", 409);
-    }
+  try {
+    linkedUserId = await createLinkedKidUser(env, {
+      parentUserId: parent.id,
+      displayName,
+      ageBand,
+      email: loginEmail,
+      password: loginPassword,
+    });
+  } catch (e) {
+    return error(e instanceof Error ? e.message : "Could not create kid login.", 409);
   }
 
   await env.DB.prepare(
@@ -295,6 +291,19 @@ export async function createFamilyChild(
     parent.email,
     `${displayName} · ${ageBand}${linkedSignupId ? ` · signup ${linkedSignupId}` : ""}`,
   );
+
+  try {
+    const { sendKidLoginReadyEmails } = await import("./email");
+    await sendKidLoginReadyEmails(env, {
+      childName: displayName,
+      childEmail: loginEmail,
+      parentEmail: parent.email,
+      parentName: parent.name || undefined,
+    });
+  } catch {
+    /* non-fatal */
+  }
+
   return json({
     ok: true,
     child: {
@@ -413,7 +422,107 @@ export async function assignBlueprintToChild(
   return json({ ok: true, blueprintId, childProfileId });
 }
 
-/** After consent: create/link parent account + child profile (+ optional kid login). */
+/** Assign one hustle match inside a Blueprint to self or a linked kid. */
+export async function assignBlueprintMatchToChild(
+  env: Env,
+  parent: DbUser,
+  request: Request,
+): Promise<Response> {
+  await ensureBlueprintTables(env);
+  await ensureFamilyTables(env);
+  let body: { blueprintId?: string; hustleId?: string; childProfileId?: string | null };
+  try {
+    body = (await request.json()) as typeof body;
+  } catch {
+    return error("Invalid JSON body.");
+  }
+
+  const blueprintId = String(body.blueprintId || "").trim();
+  const hustleId = String(body.hustleId || "").trim();
+  if (!blueprintId || !hustleId) return error("blueprintId and hustleId are required.");
+
+  const rawAssignee = body.childProfileId;
+  const assignSelf =
+    rawAssignee == null ||
+    String(rawAssignee).trim() === "" ||
+    String(rawAssignee).trim().toLowerCase() === "self";
+  let childProfileId: string | null = null;
+
+  if (!assignSelf) {
+    childProfileId = String(rawAssignee).trim();
+    const child = await env.DB.prepare(
+      `SELECT id FROM child_profiles WHERE id = ? AND parent_user_id = ?`,
+    )
+      .bind(childProfileId, parent.id)
+      .first<{ id: string }>();
+    if (!child) return error("That kid is not linked to your parent account.", 404);
+  }
+
+  const owned = await env.DB.prepare(
+    `SELECT id, match_assignees_json, result_ids_json FROM side_hustle_blueprints WHERE id = ? AND user_id = ?`,
+  )
+    .bind(blueprintId, parent.id)
+    .first<{ id: string; match_assignees_json: string | null; result_ids_json: string }>();
+  if (!owned) return error("Blueprint not found on your account.", 404);
+
+  let resultIds: string[] = [];
+  try {
+    const parsed = JSON.parse(owned.result_ids_json || "[]");
+    resultIds = Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch {
+    resultIds = [];
+  }
+  if (resultIds.length > 0 && !resultIds.includes(hustleId)) {
+    return error("That match is not part of this Blueprint.", 400);
+  }
+
+  let assignees: Record<string, string> = {};
+  try {
+    const parsed = JSON.parse(owned.match_assignees_json || "{}");
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      assignees = parsed as Record<string, string>;
+    }
+  } catch {
+    assignees = {};
+  }
+
+  if (assignSelf) {
+    assignees[hustleId] = "self";
+  } else if (childProfileId) {
+    assignees[hustleId] = childProfileId;
+  }
+
+  const now = new Date().toISOString();
+  try {
+    await env.DB.prepare(
+      `UPDATE side_hustle_blueprints SET match_assignees_json = ?, updated_at = ? WHERE id = ? AND user_id = ?`,
+    )
+      .bind(JSON.stringify(assignees), now, blueprintId, parent.id)
+      .run();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes("no such column")) {
+      return error("Match assignment needs a quick database refresh — try again after deploy.", 503);
+    }
+    throw e;
+  }
+
+  await appendAudit(
+    env.DB,
+    "blueprint_match_assigned",
+    parent.email,
+    `${blueprintId} · ${hustleId} → ${childProfileId ?? "self"}`,
+  );
+  return json({
+    ok: true,
+    blueprintId,
+    hustleId,
+    childProfileId: childProfileId ?? "self",
+    matchAssignees: assignees,
+  });
+}
+
+/** After consent: create/link parent account + child profile + required kid login. */
 export async function provisionFamilyFromJuniorConsent(
   env: Env,
   opts: {
@@ -424,13 +533,26 @@ export async function provisionFamilyFromJuniorConsent(
     team: string;
     juniorSignupId: string;
     parentPassword?: string;
-    kidPassword?: string;
+    kidPassword: string;
   },
-): Promise<{ parentUserId: string; childProfileId: string; parentCreated: boolean }> {
+): Promise<{
+  parentUserId: string;
+  childProfileId: string;
+  parentCreated: boolean;
+  kidLoginCreated: boolean;
+}> {
   await ensureFamilyTables(env);
   const parentEmail = canonicalizeEmail(opts.parentEmail);
+  const childEmail = canonicalizeEmail(opts.childEmail);
+  const kidPassword = String(opts.kidPassword || "");
+  if (!childEmail.includes("@")) throw new Error("Kid signup is missing a valid login email.");
+  if (kidPassword.length < 8) {
+    throw new Error("Kid login password must be at least 8 characters.");
+  }
+
   let parent = await getUserByEmail(env.DB, parentEmail);
   let parentCreated = false;
+  let kidLoginCreated = false;
   const now = new Date().toISOString();
 
   if (!parent) {
@@ -490,21 +612,30 @@ export async function provisionFamilyFromJuniorConsent(
   if (existingChild) {
     childProfileId = existingChild.id;
     linkedUserId = existingChild.linked_user_id;
-  } else {
-    const kidPassword = String(opts.kidPassword || "");
-    if (opts.childEmail && kidPassword.length >= 8) {
-      try {
-        linkedUserId = await createLinkedKidUser(env, {
-          parentUserId: parent.id,
-          displayName: opts.childName,
-          ageBand,
-          email: opts.childEmail,
-          password: kidPassword,
-        });
-      } catch {
-        linkedUserId = null;
-      }
+    if (!linkedUserId) {
+      linkedUserId = await createLinkedKidUser(env, {
+        parentUserId: parent.id,
+        displayName: opts.childName,
+        ageBand,
+        email: childEmail,
+        password: kidPassword,
+      });
+      kidLoginCreated = true;
+      await env.DB.prepare(
+        `UPDATE child_profiles SET linked_user_id = ?, contact_email = ?, updated_at = ? WHERE id = ?`,
+      )
+        .bind(linkedUserId, childEmail, now, childProfileId)
+        .run();
     }
+  } else {
+    linkedUserId = await createLinkedKidUser(env, {
+      parentUserId: parent.id,
+      displayName: opts.childName,
+      ageBand,
+      email: childEmail,
+      password: kidPassword,
+    });
+    kidLoginCreated = true;
     await env.DB.prepare(
       `INSERT INTO child_profiles (id, family_id, parent_user_id, display_name, age_band, contact_email, linked_user_id, status, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`,
@@ -515,7 +646,7 @@ export async function provisionFamilyFromJuniorConsent(
         parent.id,
         opts.childName,
         ageBand,
-        opts.childEmail || null,
+        childEmail,
         linkedUserId,
         now,
         now,
@@ -533,7 +664,7 @@ export async function provisionFamilyFromJuniorConsent(
     /* column may be missing */
   }
 
-  return { parentUserId: parent.id, childProfileId, parentCreated };
+  return { parentUserId: parent.id, childProfileId, parentCreated, kidLoginCreated };
 }
 
 export async function notifyParentOfKidLogin(env: Env, childUser: DbUser): Promise<void> {

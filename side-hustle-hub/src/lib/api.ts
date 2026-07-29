@@ -92,7 +92,18 @@ export async function api<T>(path: string, opts: ApiOptions = {}): Promise<T> {
   }
 
   if (!res.ok) {
-    throw new ApiError(await parseError(res), res.status);
+    const message = await parseError(res);
+    // Stale Bearer in sessionStorage can override a still-valid cookie — clear and retry once.
+    if (
+      auth &&
+      res.status === 401 &&
+      /session invalid|session expired|not authenticated/i.test(message) &&
+      getSessionToken()
+    ) {
+      setSessionToken(null);
+      return api<T>(path, { ...opts, auth: true });
+    }
+    throw new ApiError(message, res.status);
   }
 
   return (await res.json()) as T;

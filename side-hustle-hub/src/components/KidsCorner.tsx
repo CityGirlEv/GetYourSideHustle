@@ -96,6 +96,8 @@ import {
 type KidsCornerProps = {
   /** GYSH portal login — also unlocks member guides. */
   isLoggedIn?: boolean;
+  /** Real signed-in account (loads assigned Blueprints even for parent coaches / admins). */
+  hasAccountLogin?: boolean;
   /** Profile Switcher → Unlogged in User */
   previewAsGuest?: boolean;
   /** Navigate to Join with Kids or Teens membership lane selected. */
@@ -564,7 +566,13 @@ function JoinTeamTab({
                 <button
                   type="button"
                   className="btn btn-join-green"
-                  onClick={() => setShowModal(true)}
+                  onClick={() => {
+                    if (onGoToJoin) {
+                      onGoToJoin(mode === "junior" ? "junior" : "kids");
+                      return;
+                    }
+                    setShowModal(true);
+                  }}
                   style={{ gap: 6 }}
                   data-testid="kids-join-cta-btn"
                 >
@@ -727,12 +735,12 @@ function GuideCard({
   guide,
   isMember,
   onJoinCta,
-  collapseSteps = false,
+  collapseSteps = true,
 }: {
   guide: KidsGuide;
   isMember: boolean;
   onJoinCta: () => void;
-  /** Start with steps collapsed to keep the layout compact beside a hero image. */
+  /** Start with steps collapsed (default). Use false only if a deep-link should expand. */
   collapseSteps?: boolean;
 }) {
   const unlocked = guide.free || isMember;
@@ -870,13 +878,7 @@ function GuidesTab({
           <h3 className="kids-guides-section-title">Free guides</h3>
           <div className="kids-guides-grid kids-guides-grid--beside">
             {free.map((g) => (
-              <GuideCard
-                key={g.id}
-                guide={g}
-                isMember={isMember}
-                onJoinCta={onJoinCta}
-                collapseSteps
-              />
+              <GuideCard key={g.id} guide={g} isMember={isMember} onJoinCta={onJoinCta} />
             ))}
           </div>
         </div>
@@ -955,23 +957,32 @@ function KidsHustleWizard({
   onModeChange,
   onOpenPiggy,
   isLoggedIn = false,
+  hasAccountLogin = false,
   previewAsGuest = false,
   onUnlockBlueprint,
+  onOpenDashboard,
 }: {
   mode: AudienceMode;
   onModeChange: (next: AudienceMode) => void;
   onOpenPiggy: () => void;
   isLoggedIn?: boolean;
+  /** Real portal session (parent/family account) — not lightweight team join. */
+  hasAccountLogin?: boolean;
   previewAsGuest?: boolean;
   onUnlockBlueprint?: () => void;
+  onOpenDashboard?: () => void;
 }) {
   const ageGroup = mode === "junior" ? "junior" : "kids";
-  const unlocked = hasBlueprintAccess({
-    isLoggedIn,
-    ageGroup,
-    hasTeamMembership: isKidsCornerMember(mode, isLoggedIn),
-    previewAsGuest,
-  });
+  /** Parent sitting with their kid: portal login unlocks + owns the Blueprint. */
+  const parentOwnsSave = hasAccountLogin && !previewAsGuest;
+  const unlocked =
+    parentOwnsSave ||
+    hasBlueprintAccess({
+      isLoggedIn,
+      ageGroup,
+      hasTeamMembership: isKidsCornerMember(mode, isLoggedIn),
+      previewAsGuest,
+    });
 
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({
@@ -981,6 +992,26 @@ function KidsHustleWizard({
     time: "",
   });
   const [rankedIds, setRankedIds] = useState<string[] | null>(null);
+  const [rankedPcts, setRankedPcts] = useState<Record<string, number>>({});
+  const [savedToFamily, setSavedToFamily] = useState(false);
+
+  /** Kids/Teens wizard runs by a logged-in parent save to the parent profile (not a kid login). */
+  const saveToParentProfile = (
+    nextAnswers: Record<string, string>,
+    nextIds: string[],
+    nextPcts: Record<string, number> = {},
+  ) => {
+    if (!parentOwnsSave) return;
+    void saveBlueprintToAccount({
+      ageGroup,
+      answers: nextAnswers,
+      resultIds: nextIds,
+      resultPcts: nextPcts,
+      childProfileId: null,
+    }).then((bp) => {
+      if (bp) setSavedToFamily(true);
+    });
+  };
 
   useEffect(() => {
     trackGyshEvent("find_side_hustle_started", { age_group: ageGroup });
@@ -995,8 +1026,40 @@ function KidsHustleWizard({
     if (!restored.age || !restored.interest) return;
     setAnswers(restored);
     setRankedIds(pending.resultIds.length ? pending.resultIds : null);
+    let restoredPcts =
+      pending.resultPcts && typeof pending.resultPcts === "object"
+        ? { ...pending.resultPcts }
+        : {};
+    // Older pending kids runs had no % — rebuild from answers when possible.
+    if (!Object.keys(restoredPcts).length && pending.resultIds.length) {
+      const pool = hustlesForMode(mode);
+      const scored = pool
+        .map((h) => {
+          let score = 0;
+          const age = restored.age as "young" | "mid" | "older";
+          const interest = restored.interest as JrHustle["tags"]["interests"][number];
+          const place = restored.place as "outdoor" | "indoor" | "either";
+          const time = restored.time as "short" | "medium" | "long";
+          if (h.tags.ages.includes(age)) score += 3;
+          if (h.tags.interests.includes(interest)) score += 4;
+          if (place === "either" || h.tags.place.includes(place) || h.tags.place.includes("either")) {
+            score += 2;
+          }
+          if (h.tags.time.includes(time)) score += 2;
+          return { id: h.id, score };
+        })
+        .sort((a, b) => b.score - a.score);
+      const maxScore = Math.max(scored[0]?.score ?? 1, 1);
+      restoredPcts = Object.fromEntries(
+        scored.map((row) => [row.id, Math.round((row.score / maxScore) * 100)]),
+      );
+    }
+    setRankedPcts(restoredPcts);
     trackGyshEvent("blueprint_unlocked", { age_group: ageGroup });
     trackGyshEvent("blueprint_saved", { age_group: ageGroup });
+    if (parentOwnsSave && pending.resultIds.length) {
+      saveToParentProfile(restored, pending.resultIds, restoredPcts);
+    }
     clearPendingBlueprint();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1062,12 +1125,12 @@ function KidsHustleWizard({
     setAnswers((prev) => ({ ...prev, [steps[currentStep].key]: value }));
   };
 
-  const scoreHustle = (h: JrHustle) => {
+  const scoreHustle = (h: JrHustle, ans: Record<string, string> = answers) => {
     let score = 0;
-    const age = answers.age as "young" | "mid" | "older";
-    const interest = answers.interest as JrHustle["tags"]["interests"][number];
-    const place = answers.place as "outdoor" | "indoor" | "either";
-    const time = answers.time as "short" | "medium" | "long";
+    const age = ans.age as "young" | "mid" | "older";
+    const interest = ans.interest as JrHustle["tags"]["interests"][number];
+    const place = ans.place as "outdoor" | "indoor" | "either";
+    const time = ans.time as "short" | "medium" | "long";
 
     if (h.tags.ages.includes(age)) score += 3;
     if (h.tags.interests.includes(interest)) score += 4;
@@ -1078,17 +1141,40 @@ function KidsHustleWizard({
     return score;
   };
 
-  const calculateResult = () => {
+  /** Relative match % — same approach as Adult/Senior (top score = 100%). */
+  const buildRankedMatches = (ans: Record<string, string>) => {
     const pool = hustlesForMode(mode);
-    const ranked = [...pool].sort((a, b) => scoreHustle(b) - scoreHustle(a));
-    const ids = ranked.map((h) => h.id);
+    const scored = pool
+      .map((h) => ({ hustle: h, score: scoreHustle(h, ans) }))
+      .sort((a, b) => b.score - a.score);
+    const maxScore = Math.max(scored[0]?.score ?? 1, 1);
     const fallback = mode === "kids" ? "crafts" : "tech-helper";
-    const nextIds = ids.length ? ids : [fallback];
+    if (!scored.length) {
+      return { ids: [fallback], pcts: { [fallback]: 100 } as Record<string, number> };
+    }
+    const pcts: Record<string, number> = {};
+    const ids = scored.map((row) => {
+      pcts[row.hustle.id] = Math.round((row.score / maxScore) * 100);
+      return row.hustle.id;
+    });
+    return { ids, pcts };
+  };
+
+  const tierForKidRank = (index: number, pct: number) => {
+    if (index === 0) return "Best match";
+    if (pct >= 70 || index === 1) return "Strong match";
+    return "Good fit";
+  };
+
+  const calculateResult = () => {
+    const { ids: nextIds, pcts: nextPcts } = buildRankedMatches(answers);
     setRankedIds(nextIds);
+    setRankedPcts(nextPcts);
     void savePendingBlueprintAsync({
       ageGroup,
       answers,
       resultIds: nextIds,
+      resultPcts: nextPcts,
       returnView: "kids",
       returnTab: "wizard",
     });
@@ -1104,13 +1190,15 @@ function KidsHustleWizard({
       });
     } else {
       trackGyshEvent("blueprint_unlocked", { age_group: ageGroup, match_count: nextIds.length });
-      trackGyshEvent("blueprint_saved", { age_group: ageGroup, match_count: nextIds.length });
-      void saveBlueprintToAccount({
-        ageGroup,
-        answers,
-        resultIds: nextIds,
-      });
-      clearPendingBlueprint();
+      if (parentOwnsSave) {
+        trackGyshEvent("blueprint_saved", {
+          age_group: ageGroup,
+          match_count: nextIds.length,
+          source: "parent_coach",
+        });
+        saveToParentProfile(answers, nextIds, nextPcts);
+        clearPendingBlueprint();
+      }
     }
   };
 
@@ -1130,6 +1218,8 @@ function KidsHustleWizard({
     setCurrentStep(0);
     setAnswers({ age: "", interest: "", place: "", time: "" });
     setRankedIds(null);
+    setRankedPcts({});
+    setSavedToFamily(false);
     clearPendingBlueprint();
     trackGyshEvent("wizard_retaken", { age_group: ageGroup });
   };
@@ -1140,6 +1230,7 @@ function KidsHustleWizard({
         ageGroup,
         answers,
         resultIds: rankedIds,
+        resultPcts: rankedPcts,
         returnView: "kids",
         returnTab: "wizard",
       });
@@ -1158,33 +1249,44 @@ function KidsHustleWizard({
 
   return (
     <div className="kids-wizard-wrap">
+      <div className="kids-wizard-top">
+        <div className="kids-wizard-mode-row">
+          <KidsAudienceHeading mode={mode} compact />
+          <KidsModeToggles mode={mode} onModeChange={onModeChange} />
+        </div>
+        {rankedIds === null ? (
+          <div className="kids-wizard-intro" data-testid="kids-wizard-welcome">
+            {mode === "junior" ? (
+              <p>
+                Welcome! Try the <strong>GYSH Match Wizard</strong>, browse safe <strong>Ideas</strong>, set savings
+                goals in <strong>My Bank</strong>, and explore <strong>Guides</strong> — with a parent nearby.
+              </p>
+            ) : (
+              <p>
+                Welcome! Try the <strong>GYSH Match Wizard</strong>, browse <strong>Ideas</strong>, save in the{" "}
+                <strong>Piggy Bank</strong>, and explore <strong>Guides</strong> — with a parent nearby.
+              </p>
+            )}
+          </div>
+        ) : null}
+        {rankedIds === null ? (
+          <KidAssignedBlueprintCard
+            mode={mode}
+            canLoad={hasAccountLogin && !previewAsGuest}
+            compact
+            onOpenDashboard={onOpenDashboard}
+          />
+        ) : null}
+      </div>
+
       <div className="kids-wizard-inline">
         <div className="kids-wizard-media-pane">
           <MatchFinderWizardHero mode={mode} />
         </div>
         <div className="kids-wizard-side">
-          <div className="kids-wizard-mode-row">
-            <KidsAudienceHeading mode={mode} compact />
-            <KidsModeToggles mode={mode} onModeChange={onModeChange} />
-          </div>
           <div className="kids-wizard-card glass">
             {rankedIds === null ? (
               <>
-                <div className="kids-wizard-intro">
-                  {mode === "junior" ? (
-                    <p>
-                      Welcome! Try the <strong>GYSH Match Wizard</strong>, browse safe <strong>Ideas</strong>, set
-                      savings goals in <strong>My Bank</strong>, and explore <strong>Guides</strong> — with a parent
-                      nearby.
-                    </p>
-                  ) : (
-                    <p>
-                      Welcome! Try the <strong>GYSH Match Wizard</strong>, browse <strong>Ideas</strong>, save in the{" "}
-                      <strong>Piggy Bank</strong>, and explore <strong>Guides</strong> — with a parent nearby.
-                    </p>
-                  )}
-                </div>
-
                 <div className="kids-wizard-progress-meta">
                   <span>{mode === "junior" ? "GYSH Teens Match Wizard" : "GYSH Kids Match Wizard"}</span>
                   <span>
@@ -1198,7 +1300,7 @@ function KidsHustleWizard({
                 {currentStep === 0 && <WizardStartHereBanner />}
                 <div className="kids-wizard-header">
                   <div className="kids-wizard-icon">{step.icon}</div>
-                  <div>
+                  <div className="kids-wizard-header-copy">
                     <h2>{step.title}</h2>
                     <p>{step.subtitle}</p>
                   </div>
@@ -1255,30 +1357,43 @@ function KidsHustleWizard({
             ) : (
               <SideHustleBlueprintResults
                 ageGroup={ageGroup}
-                matches={rankedHustles.map((h, index) => ({
-                  id: h.id,
-                  title: h.name,
-                  description: h.desc,
-                  tier: index === 0 ? "Best match" : index === 1 ? "Strong match" : "Good fit",
-                  badge: h.difficulty,
-                  icon: h.icon,
-                  whyFits:
-                    "This Side Hustle fits your age, interests, place, and time answers — a safe place to start earning and learning.",
-                  benefits: h.nextSteps.slice(0, 3),
-                  safetyNote: h.safety,
-                  meta: [
-                    { label: "Est. pay", value: h.pay },
-                    { label: "Difficulty", value: h.difficulty },
-                  ],
-                }))}
+                matches={rankedHustles.map((h, index) => {
+                  const pct = rankedPcts[h.id];
+                  const tier = tierForKidRank(index, typeof pct === "number" ? pct : 0);
+                  return {
+                    id: h.id,
+                    title: h.name,
+                    description: h.desc,
+                    pct,
+                    tier,
+                    badge: h.difficulty,
+                    icon: h.icon,
+                    whyFits: `${tier} for your age, interests, place, and time — a safe Side Hustle to start earning and learning.`,
+                    benefits: h.nextSteps.slice(0, 3),
+                    safetyNote: h.safety,
+                    meta: [
+                      { label: "Est. pay", value: h.pay },
+                      { label: "Difficulty", value: h.difficulty },
+                    ],
+                  };
+                })}
                 unlocked={unlocked}
                 onUnlock={handleUnlock}
                 onRetake={resetQuiz}
                 extraActions={
                   unlocked ? (
-                    <button type="button" onClick={onOpenPiggy} className="btn btn-primary" style={{ gap: 6 }}>
-                      <Coins size={16} /> Set a Piggy Bank goal
-                    </button>
+                    <>
+                      {parentOwnsSave ? (
+                        <p className="kids-wizard-saved-note" data-testid="kids-wizard-saved-to-parent">
+                          {savedToFamily
+                            ? "Saved to your family Dashboard — you can assign it to a kid anytime."
+                            : "Saving to your family Dashboard…"}
+                        </p>
+                      ) : null}
+                      <button type="button" onClick={onOpenPiggy} className="btn btn-primary" style={{ gap: 6 }}>
+                        <Coins size={16} /> Set a Piggy Bank goal
+                      </button>
+                    </>
                   ) : undefined
                 }
               >
@@ -1675,18 +1790,22 @@ function JuniorBankTab() {
 
 function KidAssignedBlueprintCard({
   mode,
-  isLoggedIn,
+  canLoad,
+  compact = false,
   onOpenDashboard,
 }: {
   mode: AudienceMode;
-  isLoggedIn: boolean;
+  /** Signed-in account that can call /api/blueprints */
+  canLoad: boolean;
+  /** Tighter card for inside the Match Wizard panel */
+  compact?: boolean;
   onOpenDashboard?: () => void;
 }) {
   const [rows, setRows] = useState<SavedBlueprint[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!isLoggedIn) {
+    if (!canLoad) {
       setRows([]);
       return;
     }
@@ -1696,7 +1815,13 @@ function KidAssignedBlueprintCard({
       .then((list) => {
         if (cancelled) return;
         const age = mode === "junior" ? "junior" : "kids";
-        setRows(list.filter((bp) => bp.ageGroup === age && Boolean(bp.childProfileId)));
+        // Show age-matching Blueprints, plus anything explicitly assigned to this kid
+        // (parent may have mapped an adult/teen result onto their profile).
+        const matched = list.filter(
+          (bp) => bp.ageGroup === age || Boolean(bp.childProfileId),
+        );
+        const assigned = matched.filter((bp) => Boolean(bp.childProfileId));
+        setRows(assigned.length > 0 ? assigned : matched.filter((bp) => bp.ageGroup === age));
       })
       .catch(() => {
         if (!cancelled) setRows([]);
@@ -1707,16 +1832,32 @@ function KidAssignedBlueprintCard({
     return () => {
       cancelled = true;
     };
-  }, [isLoggedIn, mode]);
+  }, [canLoad, mode]);
 
-  if (!isLoggedIn || loading || rows.length === 0) return null;
+  if (!canLoad || loading || rows.length === 0) return null;
+
+  const bandLabel = mode === "junior" ? "Teens" : "Kids";
 
   return (
-    <div className="kids-assigned-blueprint" data-testid="kids-assigned-blueprint">
+    <div
+      className={`kids-assigned-blueprint${compact ? " kids-assigned-blueprint--compact" : ""}`}
+      data-testid="kids-assigned-blueprint"
+    >
       <h3>
-        <Compass size={18} aria-hidden /> Your assigned Side Hustle Blueprint
+        <Compass size={18} aria-hidden />{" "}
+        {rows.some((bp) => bp.childProfileId)
+          ? "Your assigned Side Hustle Blueprint"
+          : "Saved Side Hustle Blueprint"}
       </h3>
-      <p>Your parent coach mapped a Match Wizard result to this Kids page.</p>
+      <p>
+        {compact
+          ? rows.some((bp) => bp.childProfileId)
+            ? `Saved matches for this ${bandLabel} profile — from your parent coach or a wizard you already finished.`
+            : `Parent-coached ${bandLabel} Match Wizard results saved on your family Dashboard.`
+          : rows.some((bp) => bp.childProfileId)
+            ? `Your parent coach mapped a Match Wizard result to this ${bandLabel} page.`
+            : `These ${bandLabel} matches are saved on the parent/family account (run together, then assign to a kid anytime).`}
+      </p>
       {rows.map((bp) => (
         <div key={bp.id} className="kids-assigned-blueprint-block">
           <strong>{blueprintAgeGroupTitle(bp.ageGroup)}</strong>
@@ -1736,8 +1877,8 @@ function KidAssignedBlueprintCard({
       {onOpenDashboard ? (
         <button
           type="button"
-          className="btn btn-primary"
-          style={{ marginTop: 12 }}
+          className="btn btn-outline"
+          style={{ marginTop: 10 }}
           data-testid="kids-assigned-open-dashboard"
           onClick={onOpenDashboard}
         >
@@ -1750,11 +1891,14 @@ function KidAssignedBlueprintCard({
 
 export const KidsCorner: React.FC<KidsCornerProps> = ({
   isLoggedIn = false,
+  hasAccountLogin = false,
   previewAsGuest = false,
   onGoToJoin,
   onOpenDashboard,
   entryFocus = null,
 }) => {
+  /** Only a real portal session can load/save Blueprints on the parent/family account. */
+  const canLoadBlueprints = hasAccountLogin && !previewAsGuest;
   const [mode, setMode] = useState<AudienceMode>("kids");
   const [kidsTab, setKidsTab] = useState<KidsTab>("wizard");
   const [juniorTab, setJuniorTab] = useState<JuniorTab>("join");
@@ -1857,17 +2001,21 @@ export const KidsCorner: React.FC<KidsCornerProps> = ({
 
       {mode === "kids" ? (
         <>
-          <KidAssignedBlueprintCard
-            mode="kids"
-            isLoggedIn={isLoggedIn && !previewAsGuest}
-            onOpenDashboard={onOpenDashboard}
-          />
+          {kidsTab !== "wizard" ? (
+            <KidAssignedBlueprintCard
+              mode="kids"
+              canLoad={canLoadBlueprints}
+              onOpenDashboard={onOpenDashboard}
+            />
+          ) : null}
 
-          <div className="kids-tab-bar">
+          <div className="kids-tab-bar" role="tablist" aria-label="Kids Corner sections">
             {kidsTabs.map((t) => (
               <button
                 key={t.id}
                 type="button"
+                role="tab"
+                aria-selected={kidsTab === t.id}
                 onClick={() => setKidsTab(t.id)}
                 className={`nav-link-btn ${kidsTab === t.id ? "active" : ""}`}
                 style={{ borderRadius: 10 }}
@@ -1885,14 +2033,22 @@ export const KidsCorner: React.FC<KidsCornerProps> = ({
               onModeChange={handleModeChange}
               onOpenPiggy={() => setKidsTab("piggy")}
               isLoggedIn={isLoggedIn}
+              hasAccountLogin={hasAccountLogin}
               previewAsGuest={previewAsGuest}
               onUnlockBlueprint={onGoToJoin ? () => onGoToJoin("kids") : undefined}
+              onOpenDashboard={onOpenDashboard}
             />
           )}
           {kidsTab === "jobs" && <JobsTab mode="kids" />}
           {kidsTab === "piggy" && <PiggyBankTab />}
           {kidsTab === "guides" && (
-            <GuidesTab mode="kids" isMember={isMember} onJoinCta={() => setKidsTab("join")} />
+            <GuidesTab
+              mode="kids"
+              isMember={isMember}
+              onJoinCta={() =>
+                onGoToJoin ? onGoToJoin("kids") : setKidsTab("join")
+              }
+            />
           )}
           {kidsTab === "join" && (
             <JoinTeamTab
@@ -1907,17 +2063,21 @@ export const KidsCorner: React.FC<KidsCornerProps> = ({
         </>
       ) : (
         <>
-          <KidAssignedBlueprintCard
-            mode="junior"
-            isLoggedIn={isLoggedIn && !previewAsGuest}
-            onOpenDashboard={onOpenDashboard}
-          />
+          {juniorTab !== "wizard" ? (
+            <KidAssignedBlueprintCard
+              mode="junior"
+              canLoad={canLoadBlueprints}
+              onOpenDashboard={onOpenDashboard}
+            />
+          ) : null}
 
-          <div className="kids-tab-bar">
+          <div className="kids-tab-bar" role="tablist" aria-label="Teens Corner sections">
             {juniorTabs.map((t) => (
               <button
                 key={t.id}
                 type="button"
+                role="tab"
+                aria-selected={juniorTab === t.id}
                 onClick={() => setJuniorTab(t.id)}
                 className={`nav-link-btn ${juniorTab === t.id ? "active" : ""}`}
                 style={{ borderRadius: 10 }}
@@ -1933,14 +2093,22 @@ export const KidsCorner: React.FC<KidsCornerProps> = ({
               onModeChange={handleModeChange}
               onOpenPiggy={() => setJuniorTab("piggy")}
               isLoggedIn={isLoggedIn}
+              hasAccountLogin={hasAccountLogin}
               previewAsGuest={previewAsGuest}
               onUnlockBlueprint={onGoToJoin ? () => onGoToJoin("junior") : undefined}
+              onOpenDashboard={onOpenDashboard}
             />
           )}
           {juniorTab === "jobs" && <JobsTab mode="junior" />}
           {juniorTab === "piggy" && <JuniorBankTab />}
           {juniorTab === "guides" && (
-            <GuidesTab mode="junior" isMember={isMember} onJoinCta={() => setJuniorTab("join")} />
+            <GuidesTab
+              mode="junior"
+              isMember={isMember}
+              onJoinCta={() =>
+                onGoToJoin ? onGoToJoin("junior") : setJuniorTab("join")
+              }
+            />
           )}
           {juniorTab === "join" && (
             <JoinTeamTab

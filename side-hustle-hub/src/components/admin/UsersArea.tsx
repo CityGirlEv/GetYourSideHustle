@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Users, Plus, Pencil, Check, X } from "lucide-react";
 import { BusyOverlay, WaitIndicator } from "../WaitFeedback";
+import { PasswordField } from "../PasswordField";
 import {
   GYSH_ROLE_ACCENT,
   GYSH_ROLE_DESCRIPTIONS,
@@ -604,17 +605,13 @@ export function UsersArea() {
                           <option value="disabled">Disabled</option>
                         </select>
                       </div>
-                      <div className="form-group" style={{ margin: 0 }}>
-                        <label className="form-label">Password (login)</label>
-                        <input
-                          className="text-input"
-                          type="password"
-                          value={draft.password}
-                          onChange={(e) => setDraft({ ...draft, password: e.target.value })}
-                          placeholder="Leave blank to keep current"
-                          autoComplete="new-password"
-                        />
-                      </div>
+                      <PasswordField
+                        label="Password (login)"
+                        value={draft.password}
+                        onChange={(value) => setDraft({ ...draft, password: value })}
+                        placeholder="Leave blank to keep current"
+                        autoComplete="new-password"
+                      />
                     </div>
                     <div className="form-group" style={{ margin: 0 }}>
                       <label className="form-label">Roles</label>
