@@ -74,8 +74,10 @@ import {
   deleteAgendaItem,
   getPartnerAgenda,
   linkAgendaItems,
+  saveAgendaPreview,
   saveAgendaTimePicks,
   sendAgendaInviteEmail,
+  updateAgendaMeta,
   upsertAgendaItem,
 } from "../_lib/partner-agenda";
 import {
@@ -406,6 +408,12 @@ export async function onRequest(context: {
     if (route === "partner-agenda" && method === "POST") {
       return withCors(request, await createPartnerAgenda(env, user));
     }
+    if (route === "partner-agenda/meta" && method === "PUT") {
+      return withCors(request, await updateAgendaMeta(env, request, user));
+    }
+    if (route === "partner-agenda/preview" && method === "PUT") {
+      return withCors(request, await saveAgendaPreview(env, request, user));
+    }
     if (route === "partner-agenda/items" && method === "PUT") {
       return withCors(request, await upsertAgendaItem(env, request, user));
     }
@@ -419,7 +427,7 @@ export async function onRequest(context: {
       return withCors(request, await saveAgendaTimePicks(env, request, user));
     }
     if (route === "partner-agenda/invite" && method === "POST") {
-      return withCors(request, await sendAgendaInviteEmail(env, user));
+      return withCors(request, await sendAgendaInviteEmail(env, request, user));
     }
 
     const dbFail = requireDb(env);

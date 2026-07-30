@@ -154,9 +154,9 @@ export function CertificatesAdmin() {
           <h2>
             <Award size={20} aria-hidden /> GYSH Family Certificates
           </h2>
-          <p>
-            Every member gets a Welcome to the GYSH Family certificate (PDF + SVG) attached to their
-            membership emails. Edit the wording below, then regenerate as needed.
+          <p className="admin-page-lede">
+            Welcome certificates (PDF + SVG) attach to membership emails. Edit wording below, then
+            regenerate as needed.
           </p>
         </div>
         <button type="button" className="btn btn-outline" onClick={() => void load()} disabled={busy}>

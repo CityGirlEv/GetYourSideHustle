@@ -18564,6 +18564,12 @@ small {
   align-items: flex-start;
   flex-wrap: wrap;
 }
+.certificates-admin__head > div:first-child,
+.email-templates-admin__head > div:first-child {
+  flex: 0 1 34rem;
+  max-width: min(34rem, 100%);
+  min-width: 0;
+}
 .certificates-admin__head h2,
 .email-templates-admin__head h2 {
   display: flex;
@@ -18576,8 +18582,26 @@ small {
 .certificates-admin__head p,
 .email-templates-admin__head p {
   margin: 0;
-  max-width: 62ch;
+  max-width: 34rem;
   color: var(--text-primary);
+  text-align: left;
+  text-wrap: pretty;
+  word-spacing: normal;
+  letter-spacing: normal;
+  line-height: 1.45;
+}
+
+/* Compact page intro copy — don't stretch short blurbs across the full admin width */
+.admin-page-lede {
+  margin: 8px 0 0;
+  max-width: 34rem;
+  color: var(--text-primary);
+  font-size: 0.98rem;
+  line-height: 1.45;
+  text-align: left;
+  text-wrap: pretty;
+  word-spacing: normal;
+  letter-spacing: normal;
 }
 .certificates-admin__template {
   padding: 18px 20px;
@@ -18841,9 +18865,14 @@ small {
 
 .sitemap-page__head p {
   margin: 6px 0 0;
+  max-width: 34rem;
   color: var(--text-primary);
-  font-size: 1rem;
+  font-size: 0.98rem;
   line-height: 1.45;
+  text-align: left;
+  text-wrap: pretty;
+  word-spacing: normal;
+  letter-spacing: normal;
 }
 
 .sitemap-page__toggles {

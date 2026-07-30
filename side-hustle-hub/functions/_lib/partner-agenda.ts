@@ -26,8 +26,15 @@ type AgendaRow = {
   updated_at: string;
   meeting_date?: string | null;
   meeting_time?: string | null;
+  meeting_timezone?: string | null;
   invited_json?: string | null;
   attended_json?: string | null;
+  meeting_notes?: string | null;
+  meeting_action_items_json?: string | null;
+  finalized_at?: string | null;
+  updated_by_name?: string | null;
+  invite_subject?: string | null;
+  invite_body?: string | null;
 };
 
 type ItemRow = {
@@ -45,6 +52,7 @@ type ItemRow = {
   discussion_notes?: string | null;
   action_items_json?: string | null;
   questions_json?: string | null;
+  sort_order?: number | null;
 };
 
 export type AgendaCategory = "website" | "financial" | "process" | "other";
@@ -104,17 +112,26 @@ function parseActionItems(raw: string | null | undefined): Array<{
   text: string;
   owner: string;
   done: boolean;
+  backlogTaskId?: string;
 }> {
   try {
     const parsed = JSON.parse(String(raw || "[]"));
     if (!Array.isArray(parsed)) return [];
     return parsed
-      .map((a) => ({
-        id: String((a as { id?: string }).id || newId("act")),
-        text: String((a as { text?: string }).text || "").trim(),
-        owner: String((a as { owner?: string }).owner || "").trim(),
-        done: Boolean((a as { done?: boolean }).done),
-      }))
+      .map((a) => {
+        const backlogTaskId = String(
+          (a as { backlogTaskId?: string; backlog_task_id?: string }).backlogTaskId ||
+            (a as { backlog_task_id?: string }).backlog_task_id ||
+            "",
+        ).trim();
+        return {
+          id: String((a as { id?: string }).id || newId("act")),
+          text: String((a as { text?: string }).text || "").trim(),
+          owner: String((a as { owner?: string }).owner || "").trim(),
+          done: Boolean((a as { done?: boolean }).done),
+          ...(backlogTaskId ? { backlogTaskId } : {}),
+        };
+      })
       .filter((a) => a.text);
   } catch {
     return [];
@@ -206,6 +223,7 @@ async function ensureAgendaTables(env: Env): Promise<void> {
     `ALTER TABLE partner_agenda_items ADD COLUMN source_id TEXT NOT NULL DEFAULT ''`,
     `ALTER TABLE partner_agenda ADD COLUMN meeting_date TEXT NOT NULL DEFAULT ''`,
     `ALTER TABLE partner_agenda ADD COLUMN meeting_time TEXT NOT NULL DEFAULT ''`,
+    `ALTER TABLE partner_agenda ADD COLUMN meeting_timezone TEXT NOT NULL DEFAULT 'America/Chicago'`,
     `ALTER TABLE partner_agenda ADD COLUMN invited_json TEXT NOT NULL DEFAULT '[]'`,
     `ALTER TABLE partner_agenda ADD COLUMN attended_json TEXT NOT NULL DEFAULT '[]'`,
     `ALTER TABLE partner_agenda_items ADD COLUMN category TEXT NOT NULL DEFAULT 'other'`,
@@ -213,6 +231,13 @@ async function ensureAgendaTables(env: Env): Promise<void> {
     `ALTER TABLE partner_agenda_items ADD COLUMN discussion_notes TEXT NOT NULL DEFAULT ''`,
     `ALTER TABLE partner_agenda_items ADD COLUMN action_items_json TEXT NOT NULL DEFAULT '[]'`,
     `ALTER TABLE partner_agenda_items ADD COLUMN questions_json TEXT NOT NULL DEFAULT '[]'`,
+    `ALTER TABLE partner_agenda_items ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE partner_agenda ADD COLUMN meeting_notes TEXT NOT NULL DEFAULT ''`,
+    `ALTER TABLE partner_agenda ADD COLUMN meeting_action_items_json TEXT NOT NULL DEFAULT '[]'`,
+    `ALTER TABLE partner_agenda ADD COLUMN finalized_at TEXT`,
+    `ALTER TABLE partner_agenda ADD COLUMN updated_by_name TEXT NOT NULL DEFAULT ''`,
+    `ALTER TABLE partner_agenda ADD COLUMN invite_subject TEXT NOT NULL DEFAULT ''`,
+    `ALTER TABLE partner_agenda ADD COLUMN invite_body TEXT NOT NULL DEFAULT ''`,
   ]) {
     try {
       await env.DB.prepare(sql).run();
@@ -236,8 +261,8 @@ async function ensureSeedDiscussionItems(env: Env, agendaId: string, user: DbUse
     await env.DB.prepare(
       `INSERT INTO partner_agenda_items
         (id, agenda_id, body, author_user_id, author_name, created_at, updated_at,
-         source_kind, source_id, category, importance, discussion_notes, action_items_json, questions_json)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'user', ?, ?, ?, '', '[]', '[]')`,
+         source_kind, source_id, category, importance, discussion_notes, action_items_json, questions_json, sort_order)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'user', ?, ?, ?, '', '[]', '[]', ?)`,
     )
       .bind(
         newId("ai"),
@@ -250,6 +275,7 @@ async function ensureSeedDiscussionItems(env: Env, agendaId: string, user: DbUse
         seed.sourceId,
         seed.category,
         seed.importance,
+        seed.importance,
       )
       .run();
   }
@@ -257,6 +283,16 @@ async function ensureSeedDiscussionItems(env: Env, agendaId: string, user: DbUse
 
 function displayName(user: DbUser): string {
   return String(user.name || user.email || "Partner").trim() || "Partner";
+}
+
+/** Bump agenda updated_at + who changed it (PDF footer). */
+async function touchAgenda(env: Env, agendaId: string, user: DbUser, at?: string): Promise<void> {
+  const now = at || nowIso();
+  await env.DB.prepare(
+    `UPDATE partner_agenda SET updated_at = ?, updated_by_name = ? WHERE id = ?`,
+  )
+    .bind(now, displayName(user), agendaId)
+    .run();
 }
 
 function isTinaOrLyriq(user: { email?: string; name?: string }): boolean {
@@ -303,17 +339,22 @@ async function loadSuggestedTaskItems(env: Env): Promise<
       suggested: true;
     }> = [];
     for (const t of rows.results ?? []) {
-      const desc = String(t.description || "");
-      const notes = String(t.notes || "");
+      const desc = String(t.description || "").trim();
+      const notes = String(t.notes || "").trim();
       if (!AGENDA_WORD_RE.test(desc) && !AGENDA_WORD_RE.test(notes)) continue;
       const id = String(t.id || "").trim();
       if (!id) continue;
-      const body = AGENDA_WORD_RE.test(notes)
-        ? `${desc.trim()}${desc.trim() && notes.trim() ? "\n" : ""}${notes.trim()}`.trim()
-        : desc.trim();
+      let body = desc;
+      if (notes && notes !== desc) {
+        if (notes.includes(desc) && desc.length >= 12) body = notes;
+        else if (desc.includes(notes) && notes.length >= 12) body = desc;
+        else if (AGENDA_WORD_RE.test(notes)) body = desc ? `${desc}\n${notes}` : notes;
+      } else if (!desc) {
+        body = notes;
+      }
       out.push({
         id: `suggest-task:${id}`,
-        body: body || desc.trim() || notes.trim(),
+        body: body || desc || notes || id,
         source: "task",
         sourceId: id,
         authorName: String(t.assigned_to || t.updated_by || "Task List").trim() || "Task List",
@@ -346,6 +387,7 @@ function mapItem(it: ItemRow, userId: string) {
     discussionNotes: String(it.discussion_notes || ""),
     actionItems: parseActionItems(it.action_items_json),
     questions: parseQuestions(it.questions_json),
+    sortOrder: Number.isFinite(Number(it.sort_order)) ? Number(it.sort_order) : 0,
     canEdit: it.author_user_id === userId,
     canEditMeetingFields: true,
     suggested: false as const,
@@ -358,8 +400,77 @@ async function getOrNullAgenda(env: Env): Promise<AgendaRow | null> {
     .first<AgendaRow>();
 }
 
+/** Ensure the shared agenda row exists (auto-create for forced time-pick flow). */
+async function ensureActiveAgenda(env: Env, user: DbUser): Promise<AgendaRow> {
+  const existing = await getOrNullAgenda(env);
+  const now = nowIso();
+  const invitedJson = JSON.stringify(
+    PARTNER_ADMINS.map((p) => p.name.split(" ")[0] || p.name),
+  );
+  if (existing) {
+    if (existing.active !== 1) {
+      const by = displayName(user);
+      await env.DB.prepare(
+        `UPDATE partner_agenda SET active = 1, updated_at = ?, updated_by_name = ? WHERE id = ?`,
+      )
+        .bind(now, by, existing.id)
+        .run();
+      existing.active = 1;
+      existing.updated_at = now;
+      existing.updated_by_name = by;
+    }
+    // Backfill default 3:30 PM Central when meeting time was never set.
+    if (!String(existing.meeting_time || "").trim()) {
+      await env.DB.prepare(
+        `UPDATE partner_agenda SET
+           meeting_time = '15:30',
+           meeting_timezone = CASE
+             WHEN meeting_timezone IS NULL OR TRIM(meeting_timezone) = '' THEN 'America/Chicago'
+             ELSE meeting_timezone
+           END,
+           updated_at = ?
+         WHERE id = ?`,
+      )
+        .bind(now, existing.id)
+        .run();
+      existing.meeting_time = "15:30";
+      if (!String(existing.meeting_timezone || "").trim()) {
+        existing.meeting_timezone = "America/Chicago";
+      }
+    }
+    await ensureSeedDiscussionItems(env, existing.id, user);
+    return existing;
+  }
+  const by = displayName(user);
+  await env.DB.prepare(
+    `INSERT INTO partner_agenda
+      (id, title, active, created_by_user_id, created_by_name, invite_sent_at,
+       meeting_date, meeting_time, meeting_timezone, invited_json, attended_json, created_at, updated_at, updated_by_name)
+     VALUES (?, ?, 1, ?, ?, NULL, '', '15:30', 'America/Chicago', ?, '[]', ?, ?, ?)`,
+  )
+    .bind(
+      DEFAULT_AGENDA_ID,
+      "Partner Meeting Agenda",
+      user.id,
+      by,
+      invitedJson,
+      now,
+      now,
+      by,
+    )
+    .run();
+  await ensureSeedDiscussionItems(env, DEFAULT_AGENDA_ID, user);
+  const created = await getOrNullAgenda(env);
+  if (!created) throw new Error("Failed to create partner agenda");
+  return created;
+}
+
 async function buildPayload(env: Env, user: DbUser) {
-  const agenda = await getOrNullAgenda(env);
+  let agenda = await getOrNullAgenda(env);
+  // Tina / Lyriq must always be able to submit times — create agenda if missing.
+  if ((!agenda || agenda.active !== 1) && isTinaOrLyriq(user)) {
+    agenda = await ensureActiveAgenda(env, user);
+  }
   const suggested = await loadSuggestedTaskItems(env);
   if (!agenda) {
     return {
@@ -370,7 +481,7 @@ async function buildPayload(env: Env, user: DbUser) {
       taskItems: suggested,
       timePicks: [] as unknown[],
       myPickCount: 0,
-      needsTimePicks: false,
+      needsTimePicks: isTinaOrLyriq(user),
       minPicks: MIN_TIME_PICKS,
       maxPicks: MAX_TIME_PICKS,
       minDurationMinutes: MIN_DURATION_MINUTES,
@@ -383,7 +494,7 @@ async function buildPayload(env: Env, user: DbUser) {
     await env.DB.prepare(
       `SELECT * FROM partner_agenda_items
        WHERE agenda_id = ?
-       ORDER BY importance ASC, created_at ASC`,
+       ORDER BY sort_order ASC, importance ASC, created_at ASC`,
     )
       .bind(agenda.id)
       .all<ItemRow>()
@@ -422,10 +533,19 @@ async function buildPayload(env: Env, user: DbUser) {
       inviteSentAt: agenda.invite_sent_at,
       createdAt: agenda.created_at,
       updatedAt: agenda.updated_at,
+      updatedByName:
+        String(agenda.updated_by_name || "").trim() || agenda.created_by_name || "",
       meetingDate: String(agenda.meeting_date || ""),
-      meetingTime: String(agenda.meeting_time || ""),
+      meetingTime: String(agenda.meeting_time || "").trim() || "15:30",
+      meetingTimezone: String(agenda.meeting_timezone || "America/Chicago") || "America/Chicago",
       invited: invited.length ? invited : defaultInvited,
       attended,
+      meetingNotes: String(agenda.meeting_notes || ""),
+      meetingActionItems: parseActionItems(agenda.meeting_action_items_json),
+      finalizedAt: agenda.finalized_at ? String(agenda.finalized_at) : null,
+      finalized: Boolean(agenda.finalized_at),
+      inviteSubject: String(agenda.invite_subject || ""),
+      inviteBody: String(agenda.invite_body || ""),
     },
     categories: [
       { id: "website", label: "Website Stuff" },
@@ -472,36 +592,7 @@ export async function createPartnerAgenda(env: Env, user: DbUser): Promise<Respo
   try {
     await ensureAgendaTables(env);
     const existing = await getOrNullAgenda(env);
-    const now = nowIso();
-    const invitedJson = JSON.stringify(
-      PARTNER_ADMINS.map((p) => p.name.split(" ")[0] || p.name),
-    );
-    if (existing) {
-      await env.DB.prepare(
-        `UPDATE partner_agenda SET active = 1, updated_at = ? WHERE id = ?`,
-      )
-        .bind(now, existing.id)
-        .run();
-      await ensureSeedDiscussionItems(env, existing.id, user);
-    } else {
-      await env.DB.prepare(
-        `INSERT INTO partner_agenda
-          (id, title, active, created_by_user_id, created_by_name, invite_sent_at,
-           meeting_date, meeting_time, invited_json, attended_json, created_at, updated_at)
-         VALUES (?, ?, 1, ?, ?, NULL, '', '', ?, '[]', ?, ?)`,
-      )
-        .bind(
-          DEFAULT_AGENDA_ID,
-          "Partner Meeting Agenda",
-          user.id,
-          displayName(user),
-          invitedJson,
-          now,
-          now,
-        )
-        .run();
-      await ensureSeedDiscussionItems(env, DEFAULT_AGENDA_ID, user);
-    }
+    await ensureActiveAgenda(env, user);
     return json({ ok: true, created: !existing, ...(await buildPayload(env, user)) });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -527,8 +618,12 @@ export async function updateAgendaMeta(
     title?: string;
     meetingDate?: string;
     meetingTime?: string;
+    meetingTimezone?: string;
     invited?: string[];
     attended?: string[];
+    finalized?: boolean;
+    inviteSubject?: string;
+    inviteBody?: string;
   };
   try {
     body = await request.json();
@@ -539,27 +634,56 @@ export async function updateAgendaMeta(
   const title = String(body.title ?? agenda.title).trim() || agenda.title;
   const meetingDate = String(body.meetingDate ?? agenda.meeting_date ?? "").trim();
   const meetingTime = String(body.meetingTime ?? agenda.meeting_time ?? "").trim();
+  const meetingTimezone =
+    String(body.meetingTimezone ?? agenda.meeting_timezone ?? "America/Chicago").trim() ||
+    "America/Chicago";
   const invited = Array.isArray(body.invited)
     ? body.invited.map((n) => String(n || "").trim()).filter(Boolean)
     : parseNameList(agenda.invited_json);
   const attended = Array.isArray(body.attended)
     ? body.attended.map((n) => String(n || "").trim()).filter(Boolean)
     : parseNameList(agenda.attended_json);
+  const inviteSubject =
+    body.inviteSubject !== undefined
+      ? String(body.inviteSubject || "").trim()
+      : String(agenda.invite_subject || "");
+  const inviteBody =
+    body.inviteBody !== undefined
+      ? String(body.inviteBody || "")
+      : String(agenda.invite_body || "");
+  if (body.inviteSubject !== undefined && !inviteSubject) {
+    return error("Email subject is required.");
+  }
+  if (body.inviteBody !== undefined && !inviteBody.trim()) {
+    return error("Email message is required.");
+  }
+  if (inviteSubject.length > 300) return error("Email subject is too long (max 300 characters).");
+  if (inviteBody.length > 20000) return error("Email message is too long (max 20000 characters).");
   const now = nowIso();
+  let finalizedAt = agenda.finalized_at ? String(agenda.finalized_at) : null;
+  if (body.finalized === true) finalizedAt = now;
+  if (body.finalized === false) finalizedAt = null;
 
   await env.DB.prepare(
     `UPDATE partner_agenda SET
-       title = ?, meeting_date = ?, meeting_time = ?,
-       invited_json = ?, attended_json = ?, updated_at = ?
+       title = ?, meeting_date = ?, meeting_time = ?, meeting_timezone = ?,
+       invited_json = ?, attended_json = ?, finalized_at = ?,
+       invite_subject = ?, invite_body = ?,
+       updated_at = ?, updated_by_name = ?
      WHERE id = ?`,
   )
     .bind(
       title,
       meetingDate,
       meetingTime,
+      meetingTimezone,
       JSON.stringify(invited),
       JSON.stringify(attended),
+      finalizedAt,
+      inviteSubject,
+      inviteBody,
       now,
+      displayName(user),
       agenda.id,
     )
     .run();
@@ -578,15 +702,22 @@ export async function upsertAgendaItem(
     return error("Create the agenda from Schedule & Plan first.", 400);
   }
 
-  let body: { id?: string; body?: string; sourceKind?: string; sourceId?: string };
+  let body: {
+    id?: string;
+    body?: string;
+    sourceKind?: string;
+    sourceId?: string;
+    category?: string;
+    importance?: number;
+    discussionNotes?: string;
+    actionItems?: Array<{ id?: string; text?: string; owner?: string; done?: boolean }>;
+    questions?: Array<{ id?: string; text?: string }>;
+  };
   try {
     body = await request.json();
   } catch {
     return error("Invalid JSON body.");
   }
-  const text = String(body.body || "").trim();
-  if (!text) return error("Agenda item text is required.");
-  if (text.length > 2000) return error("Agenda item is too long (max 2000 characters).");
 
   const now = nowIso();
   const id = String(body.id || "").trim();
@@ -594,6 +725,12 @@ export async function upsertAgendaItem(
   const sourceKind =
     sourceKindRaw === "task" || sourceKindRaw === "test" ? sourceKindRaw : "user";
   const sourceId = sourceKind === "user" ? "" : String(body.sourceId || "").trim();
+  const hasMeetingFields =
+    body.category !== undefined ||
+    body.importance !== undefined ||
+    body.discussionNotes !== undefined ||
+    body.actionItems !== undefined ||
+    body.questions !== undefined;
 
   if (id) {
     const existing = await env.DB.prepare(
@@ -602,15 +739,59 @@ export async function upsertAgendaItem(
       .bind(id, agenda.id)
       .first<ItemRow>();
     if (!existing) return error("Agenda item not found.", 404);
-    if (existing.author_user_id !== user.id) {
+
+    const isAuthor = existing.author_user_id === user.id;
+    const textProvided = body.body !== undefined;
+    const text = textProvided ? String(body.body || "").trim() : String(existing.body || "").trim();
+    if (textProvided) {
+      if (!isAuthor) return error("You can only edit your own agenda items.", 403);
+      if (!text) return error("Agenda item text is required.");
+      if (text.length > 2000) return error("Agenda item is too long (max 2000 characters).");
+    }
+    if (!isAuthor && !hasMeetingFields) {
       return error("You can only edit your own agenda items.", 403);
     }
+
+    const category = normalizeCategory(
+      body.category !== undefined ? body.category : existing.category,
+    );
+    const importance = normalizeImportance(
+      body.importance !== undefined ? body.importance : existing.importance,
+    );
+    const discussionNotes =
+      body.discussionNotes !== undefined
+        ? String(body.discussionNotes || "")
+        : String(existing.discussion_notes || "");
+    const actionItemsJson =
+      body.actionItems !== undefined
+        ? JSON.stringify(parseActionItems(JSON.stringify(body.actionItems)))
+        : String(existing.action_items_json || "[]");
+    const questionsJson =
+      body.questions !== undefined
+        ? JSON.stringify(parseQuestions(JSON.stringify(body.questions)))
+        : String(existing.questions_json || "[]");
+
     await env.DB.prepare(
-      `UPDATE partner_agenda_items SET body = ?, updated_at = ? WHERE id = ?`,
+      `UPDATE partner_agenda_items SET
+         body = ?, category = ?, importance = ?, discussion_notes = ?,
+         action_items_json = ?, questions_json = ?, updated_at = ?
+       WHERE id = ?`,
     )
-      .bind(text, now, id)
+      .bind(
+        text,
+        category,
+        importance,
+        discussionNotes,
+        actionItemsJson,
+        questionsJson,
+        now,
+        id,
+      )
       .run();
   } else {
+    const text = String(body.body || "").trim();
+    if (!text) return error("Agenda item text is required.");
+    if (text.length > 2000) return error("Agenda item is too long (max 2000 characters).");
     if (sourceKind !== "user" && sourceId) {
       const dup = await env.DB.prepare(
         `SELECT id FROM partner_agenda_items
@@ -623,10 +804,13 @@ export async function upsertAgendaItem(
       }
     }
     const newItemId = newId("ai");
+    const category = normalizeCategory(body.category);
+    const importance = normalizeImportance(body.importance);
     await env.DB.prepare(
       `INSERT INTO partner_agenda_items
-        (id, agenda_id, body, author_user_id, author_name, created_at, updated_at, source_kind, source_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (id, agenda_id, body, author_user_id, author_name, created_at, updated_at,
+         source_kind, source_id, category, importance, discussion_notes, action_items_json, questions_json)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '[]', '[]')`,
     )
       .bind(
         newItemId,
@@ -638,13 +822,14 @@ export async function upsertAgendaItem(
         now,
         sourceKind,
         sourceId,
+        category,
+        importance,
+        String(body.discussionNotes || ""),
       )
       .run();
   }
 
-  await env.DB.prepare(`UPDATE partner_agenda SET updated_at = ? WHERE id = ?`)
-    .bind(now, agenda.id)
-    .run();
+  await touchAgenda(env, agenda.id, user, now);
 
   return json({ ok: true, ...(await buildPayload(env, user)) });
 }
@@ -704,9 +889,7 @@ export async function linkAgendaItems(
     added += 1;
   }
 
-  await env.DB.prepare(`UPDATE partner_agenda SET updated_at = ? WHERE id = ?`)
-    .bind(now, agenda.id)
-    .run();
+  await touchAgenda(env, agenda.id, user, now);
 
   return json({ ok: true, added, ...(await buildPayload(env, user)) });
 }
@@ -732,9 +915,7 @@ export async function deleteAgendaItem(
   }
 
   await env.DB.prepare(`DELETE FROM partner_agenda_items WHERE id = ?`).bind(id).run();
-  await env.DB.prepare(`UPDATE partner_agenda SET updated_at = ? WHERE id = ?`)
-    .bind(nowIso(), existing.agenda_id)
-    .run();
+  await touchAgenda(env, existing.agenda_id, user);
 
   return json({ ok: true, ...(await buildPayload(env, user)) });
 }
@@ -745,10 +926,7 @@ export async function saveAgendaTimePicks(
   user: DbUser,
 ): Promise<Response> {
   await ensureAgendaTables(env);
-  const agenda = await getOrNullAgenda(env);
-  if (!agenda || agenda.active !== 1) {
-    return error("Create the agenda from Schedule & Plan first.", 400);
-  }
+  const agenda = await ensureActiveAgenda(env, user);
 
   let body: { startsAt?: string[]; durationMinutes?: number };
   try {
@@ -798,15 +976,167 @@ export async function saveAgendaTimePicks(
       .run();
   }
 
-  await env.DB.prepare(`UPDATE partner_agenda SET updated_at = ? WHERE id = ?`)
-    .bind(now, agenda.id)
-    .run();
+  await touchAgenda(env, agenda.id, user, now);
 
   return json({ ok: true, ...(await buildPayload(env, user)) });
 }
 
+/** Save meeting header + all preview item fields / order in one request. */
+export async function saveAgendaPreview(
+  env: Env,
+  request: Request,
+  user: DbUser,
+): Promise<Response> {
+  await ensureAgendaTables(env);
+  const agenda = await ensureActiveAgenda(env, user);
+
+  let body: {
+    meetingDate?: string;
+    meetingTime?: string;
+    meetingTimezone?: string;
+    invited?: string[];
+    attended?: string[];
+    meetingNotes?: string;
+    meetingActionItems?: Array<{
+      id?: string;
+      text?: string;
+      owner?: string;
+      done?: boolean;
+      backlogTaskId?: string;
+    }>;
+    items?: Array<{
+      id?: string;
+      category?: string;
+      importance?: number;
+      discussionNotes?: string;
+      actionItems?: Array<{
+        id?: string;
+        text?: string;
+        owner?: string;
+        done?: boolean;
+        backlogTaskId?: string;
+      }>;
+      questions?: Array<{ id?: string; text?: string }>;
+      sortOrder?: number;
+    }>;
+  };
+  try {
+    body = await request.json();
+  } catch {
+    return error("Invalid JSON body.");
+  }
+
+  const now = nowIso();
+  const meetingDate = String(body.meetingDate ?? agenda.meeting_date ?? "").trim();
+  const meetingTime = String(body.meetingTime ?? agenda.meeting_time ?? "").trim();
+  const meetingTimezone =
+    String(body.meetingTimezone ?? agenda.meeting_timezone ?? "America/Chicago").trim() ||
+    "America/Chicago";
+  const invited = Array.isArray(body.invited)
+    ? body.invited.map((n) => String(n || "").trim()).filter(Boolean)
+    : parseNameList(agenda.invited_json);
+  const attended = Array.isArray(body.attended)
+    ? body.attended.map((n) => String(n || "").trim()).filter(Boolean)
+    : parseNameList(agenda.attended_json);
+  const meetingNotes =
+    body.meetingNotes !== undefined
+      ? String(body.meetingNotes || "")
+      : String(agenda.meeting_notes || "");
+  const meetingActionItemsJson =
+    body.meetingActionItems !== undefined
+      ? JSON.stringify(parseActionItems(JSON.stringify(body.meetingActionItems)))
+      : String(agenda.meeting_action_items_json || "[]");
+
+  await env.DB.prepare(
+    `UPDATE partner_agenda SET
+       meeting_date = ?, meeting_time = ?, meeting_timezone = ?,
+       invited_json = ?, attended_json = ?,
+       meeting_notes = ?, meeting_action_items_json = ?,
+       updated_at = ?, updated_by_name = ?
+     WHERE id = ?`,
+  )
+    .bind(
+      meetingDate,
+      meetingTime,
+      meetingTimezone,
+      JSON.stringify(invited),
+      JSON.stringify(attended),
+      meetingNotes,
+      meetingActionItemsJson,
+      now,
+      displayName(user),
+      agenda.id,
+    )
+    .run();
+
+  for (const raw of body.items || []) {
+    const id = String(raw.id || "").trim();
+    if (!id) continue;
+    const existing = await env.DB.prepare(
+      `SELECT * FROM partner_agenda_items WHERE id = ? AND agenda_id = ?`,
+    )
+      .bind(id, agenda.id)
+      .first<ItemRow>();
+    if (!existing) continue;
+
+    const category = normalizeCategory(raw.category ?? existing.category);
+    const importance = normalizeImportance(raw.importance ?? existing.importance);
+    const discussionNotes =
+      raw.discussionNotes !== undefined
+        ? String(raw.discussionNotes || "")
+        : String(existing.discussion_notes || "");
+    const actionItemsJson =
+      raw.actionItems !== undefined
+        ? JSON.stringify(parseActionItems(JSON.stringify(raw.actionItems)))
+        : String(existing.action_items_json || "[]");
+    const questionsJson =
+      raw.questions !== undefined
+        ? JSON.stringify(parseQuestions(JSON.stringify(raw.questions)))
+        : String(existing.questions_json || "[]");
+    const sortOrder = Number.isFinite(Number(raw.sortOrder))
+      ? Math.max(0, Math.round(Number(raw.sortOrder)))
+      : Number(existing.sort_order || 0);
+
+    await env.DB.prepare(
+      `UPDATE partner_agenda_items SET
+         category = ?, importance = ?, discussion_notes = ?,
+         action_items_json = ?, questions_json = ?, sort_order = ?, updated_at = ?
+       WHERE id = ?`,
+    )
+      .bind(
+        category,
+        importance,
+        discussionNotes,
+        actionItemsJson,
+        questionsJson,
+        sortOrder,
+        now,
+        id,
+      )
+      .run();
+  }
+
+  return json({ ok: true, ...(await buildPayload(env, user)) });
+}
+
+function plainTextToHtmlParagraphs(text: string): string {
+  const blocks = String(text || "")
+    .replace(/\r\n/g, "\n")
+    .split(/\n{2,}/)
+    .map((b) => b.trim())
+    .filter(Boolean);
+  if (blocks.length === 0) return "<p></p>";
+  return blocks
+    .map((block) => {
+      const withBreaks = escapeHtml(block).replace(/\n/g, "<br/>");
+      return `<p>${withBreaks}</p>`;
+    })
+    .join("\n");
+}
+
 export async function sendAgendaInviteEmail(
   env: Env,
+  request: Request,
   user: DbUser,
 ): Promise<Response> {
   await ensureAgendaTables(env);
@@ -819,32 +1149,101 @@ export async function sendAgendaInviteEmail(
     return error("Create the agenda from Schedule & Plan first.", 400);
   }
 
+  let body: {
+    subject?: string;
+    bodyText?: string;
+    headline?: string;
+    subhead?: string;
+    pdfBase64?: string;
+    pdfFilename?: string;
+    testOnly?: boolean;
+    testTo?: string;
+  } = {};
+  try {
+    const raw = await request.text();
+    if (raw.trim()) body = JSON.parse(raw);
+  } catch {
+    return error("Invalid JSON body.");
+  }
+
   const agendaUrl = `${SITE_URL.replace(/\/$/, "")}/admin?tab=agenda`;
-  const recipients = PARTNER_ADMINS.filter((p) => {
-    const email = p.email.toLowerCase();
-    return email.includes("tina") || email.includes("lyriq") || email.includes("leegaulden");
-  });
+  const testOnly = Boolean(body.testOnly);
+  // Test sends always go only to the signed-in admin — ignore client-supplied addresses.
+  const testTo = String(user.email || "")
+    .trim()
+    .toLowerCase();
+  const recipients = testOnly
+    ? testTo
+      ? [{ name: displayName(user), email: testTo }]
+      : []
+    : PARTNER_ADMINS.filter((p) => {
+        const email = p.email.toLowerCase();
+        return (
+          email.includes("tina") ||
+          email.includes("lyriq") ||
+          email.includes("leegaulden") ||
+          email.includes("evelyn")
+        );
+      });
 
   if (recipients.length === 0) {
-    return error("Tina and Lyriq partner emails were not found.", 500);
+    return error(
+      testOnly
+        ? "No test recipient email on your signed-in account."
+        : "Admin partner emails were not found.",
+      testOnly ? 400 : 500,
+    );
   }
 
   const fromName = displayName(user);
+  const baseSubject =
+    String(body.subject || "").trim() ||
+    `${SITE_NAME}: Partner Agenda — it's about time we meet`;
+  const subject = testOnly
+    ? baseSubject.startsWith("[TEST]")
+      ? baseSubject
+      : `[TEST] ${baseSubject}`
+    : baseSubject;
+  const customBody = String(body.bodyText || "").trim();
+  const headline = String(body.headline || "").trim() || "It's about time we meet";
+  const subhead =
+    String(body.subhead || "").trim() ||
+    "Tentative agenda attached — add your items before we sync.";
+
+  const pdfRaw = String(body.pdfBase64 || "").replace(/^data:application\/pdf;base64,/i, "").trim();
+  const pdfFilename =
+    String(body.pdfFilename || "").trim() ||
+    `tentative-agenda-${String(agenda.meeting_date || "draft").replace(/\W+/g, "-")}.pdf`;
+  if (pdfRaw.length < 40) {
+    return error("Tentative agenda PDF attachment is required.", 400);
+  }
+  const attachments = [
+    {
+      filename: pdfFilename.endsWith(".pdf") ? pdfFilename : `${pdfFilename}.pdf`,
+      content: pdfRaw,
+      contentType: "application/pdf",
+    },
+  ];
+
   const results: Array<{ email: string; ok: boolean; error?: string }> = [];
 
   for (const partner of recipients) {
-    const htmlBody = `
-      <p>Hi ${escapeHtml(partner.name.split(" ")[0] || partner.name)},</p>
+    const first = partner.name.split(" ")[0] || partner.name;
+    // Custom body already includes the team greeting — don't prepend "Hi First,".
+    const htmlBody = customBody
+      ? plainTextToHtmlParagraphs(customBody)
+      : `
+      <p>Hi ${escapeHtml(first)},</p>
       <p><strong>${escapeHtml(fromName)}</strong> set up our shared online partner agenda.</p>
       <p>Please open the Agenda, add any items you want on the meeting, and pick
       <strong>${MIN_TIME_PICKS}–${MAX_TIME_PICKS}</strong> meeting times that work for you
       (each meeting block is at least <strong>${MIN_DURATION_MINUTES} minutes</strong>).</p>
     `;
     const branded = wrapBrandedEmail({
-      preheader: "Pick 3–5 meeting times and add your agenda items",
-      eyebrow: "Partner sync",
-      headline: "Partner Agenda is ready",
-      subhead: "Add items and choose meeting times that work for you.",
+      preheader: subject.slice(0, 90),
+      eyebrow: testOnly ? "Partner sync (test)" : "Partner sync",
+      headline: testOnly ? `[TEST] ${headline}` : headline,
+      subhead,
       bodyHtml: htmlBody,
       ctaLabel: "Open Partner Agenda",
       ctaUrl: agendaUrl,
@@ -853,12 +1252,18 @@ export async function sendAgendaInviteEmail(
     try {
       await sendResendEmail(env, {
         to: partner.email,
-        subject: `${SITE_NAME}: Partner Agenda — pick meeting times`,
+        subject,
         html: branded.html,
         text: branded.text,
         templateSlug: "partner_agenda_invite",
         userId: user.id,
-        meta: { agendaId: agenda.id, toPartner: partner.email },
+        meta: {
+          agendaId: agenda.id,
+          toPartner: partner.email,
+          hasPdf: true,
+          testOnly,
+        },
+        attachments,
       });
       results.push({ email: partner.email, ok: true });
     } catch (e) {
@@ -873,16 +1278,27 @@ export async function sendAgendaInviteEmail(
   }
 
   const allOk = results.every((r) => r.ok);
-  if (allOk) {
+  if (allOk && !testOnly) {
+    const sentAt = nowIso();
     await env.DB.prepare(
-      `UPDATE partner_agenda SET invite_sent_at = ?, updated_at = ? WHERE id = ?`,
+      `UPDATE partner_agenda SET invite_sent_at = ?, updated_at = ?, updated_by_name = ? WHERE id = ?`,
     )
-      .bind(nowIso(), nowIso(), agenda.id)
+      .bind(sentAt, sentAt, displayName(user), agenda.id)
       .run();
   }
 
+  if (!allOk) {
+    const detail =
+      results
+        .filter((r) => !r.ok)
+        .map((r) => `${r.email}: ${r.error || "failed"}`)
+        .join(" · ") || "Email send failed.";
+    return error(detail, 502);
+  }
+
   return json({
-    ok: allOk,
+    ok: true,
+    testOnly,
     results,
     agendaUrl,
     ...(await buildPayload(env, user)),

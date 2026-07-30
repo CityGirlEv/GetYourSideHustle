@@ -21,7 +21,7 @@ export type Env = {
   DB: D1Database;
   /** Cloudflare Pages secret / .dev.vars — never expose to client */
   RESEND_API_KEY?: string;
-  /** Optional From override, e.g. `GYSH <noreply@getyoursidehustle.com>` */
+  /** Optional From override, e.g. `GYSH <info@getyoursidehustle.com>` */
   EMAIL_FROM?: string;
   /** Optional contact inbox override (defaults to info@getyoursidehustle.com) */
   CONTACT_TO?: string;

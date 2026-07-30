@@ -93,6 +93,8 @@ type Props = {
   userGuide?: UserGuideId;
   onUserGuideChange?: (guide: UserGuideId) => void;
   onSiteMapNavigate?: (href: SiteMapHref) => void;
+  /** Notify App so site-wide nav can lock until Tina/Lyriq submit meeting times. */
+  onMeetingGateChange?: (locked: boolean) => void;
 };
 
 export const AdminPortal: React.FC<Props> = ({
@@ -102,6 +104,7 @@ export const AdminPortal: React.FC<Props> = ({
   userGuide = "member",
   onUserGuideChange,
   onSiteMapNavigate,
+  onMeetingGateChange,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<"calendar" | "monetize" | "growth">("calendar");
   const [localGuide, setLocalGuide] = useState<UserGuideId>(userGuide);
@@ -143,33 +146,47 @@ export const AdminPortal: React.FC<Props> = ({
     { id: "user-guides", label: "User Guides", icon: <BookOpen size={16} /> },
   ];
 
+  const setGate = (locked: boolean) => {
+    setAgendaGateActive(locked);
+    onMeetingGateChange?.(locked);
+  };
+
   useEffect(() => {
     if (!mustPickAgendaTimes(authUser)) {
-      setAgendaGateActive(false);
+      setGate(false);
       return;
     }
     let cancelled = false;
     void fetchPartnerAgenda()
       .then((payload) => {
         if (cancelled) return;
-        setAgendaGateActive(Boolean(payload.needsTimePicks));
-        if (payload.needsTimePicks && activeTab !== "agenda") {
+        const locked = Boolean(payload.needsTimePicks);
+        setGate(locked);
+        if (locked && activeTab !== "agenda") {
           onTabChange("agenda");
         }
       })
       .catch(() => {
-        /* agenda may not exist yet; Schedule create step covers that */
+        // Fail closed for Tina/Lyriq — keep them on Agenda until API works.
+        if (!cancelled) {
+          setGate(true);
+          if (activeTab !== "agenda") onTabChange("agenda");
+        }
       });
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- gate check on auth / tab
   }, [authUser, activeTab, onTabChange]);
 
-  const requestTabChange = (tab: AdminTab) => {
-    if (agendaGateActive && tab !== "agenda") {
+  useEffect(() => {
+    if (agendaGateActive && activeTab !== "agenda") {
       onTabChange("agenda");
-      return;
     }
+  }, [agendaGateActive, activeTab, onTabChange]);
+
+  const requestTabChange = (tab: AdminTab) => {
+    if (agendaGateActive && tab !== "agenda") return;
     onTabChange(tab);
   };
 
@@ -242,6 +259,21 @@ export const AdminPortal: React.FC<Props> = ({
           localStorage.removeItem(celebDoneKey);
         }
 
+        // Meeting-date gate first — no other modals until Tina/Lyriq submit times.
+        if (mustPickAgendaTimes(authUser)) {
+          try {
+            const agenda = await fetchPartnerAgenda();
+            if (cancelled) return;
+            if (agenda.needsTimePicks) {
+              if (forceFromLogin) sessionStorage.removeItem(LOGIN_POPUP_FLAG);
+              return;
+            }
+          } catch {
+            if (forceFromLogin) sessionStorage.removeItem(LOGIN_POPUP_FLAG);
+            return;
+          }
+        }
+
         // Fresh login: due/overdue first; else celebrate a clear sprint board.
         if (forceFromLogin) {
           sessionStorage.removeItem(LOGIN_POPUP_FLAG);
@@ -310,7 +342,12 @@ export const AdminPortal: React.FC<Props> = ({
         />
       ) : null}
 
-      <div className="admin-portal-nav" aria-label="Admin sections">
+      <div
+        className="admin-portal-nav"
+        aria-label="Admin sections"
+        aria-disabled={agendaGateActive || undefined}
+        style={agendaGateActive ? { opacity: 0.45, pointerEvents: "none" } : undefined}
+      >
         {ADMIN_MENU_GROUPS.map((group) => {
           const groupTabs = group.tabs
             .map((id) => tabs.find((t) => t.id === id))
@@ -332,6 +369,7 @@ export const AdminPortal: React.FC<Props> = ({
                       <button
                         type="button"
                         className="admin-portal-nav__testing-main"
+                        disabled={agendaGateActive}
                         onClick={() => requestTabChange(t.id)}
                       >
                         {t.icon}
@@ -342,6 +380,7 @@ export const AdminPortal: React.FC<Props> = ({
                         className="admin-portal-nav__manual-link"
                         title="Open the QA testing manual"
                         aria-pressed={showQaManual}
+                        disabled={agendaGateActive}
                         onClick={() => {
                           requestTabChange("testing");
                           setShowQaManual(true);
@@ -355,6 +394,7 @@ export const AdminPortal: React.FC<Props> = ({
                     <button
                       key={t.id}
                       type="button"
+                      disabled={agendaGateActive && t.id !== "agenda"}
                       onClick={() => requestTabChange(t.id)}
                       className={`nav-link-btn ${activeTab === t.id ? "active" : ""}`}
                     >
@@ -369,20 +409,23 @@ export const AdminPortal: React.FC<Props> = ({
         })}
       </div>
 
-      {agendaGateActive && activeTab === "agenda" && (
+      {agendaGateActive && (
         <div
           className="glass"
+          data-testid="agenda-meeting-gate-banner"
           style={{
             marginBottom: 12,
-            padding: "10px 14px",
+            padding: "14px 16px",
             borderRadius: 10,
-            border: "1px solid rgba(155,47,40,0.3)",
-            background: "rgba(155,47,40,0.08)",
+            border: "1px solid rgba(155,47,40,0.35)",
+            background: "rgba(155,47,40,0.1)",
             color: "var(--charcoal)",
-            fontSize: "0.95rem",
+            fontSize: "1rem",
           }}
         >
-          Finish picking {3}–{5} meeting times on Agenda before opening other Admin tabs.
+          <strong style={{ color: "#9B2F28" }}>It&apos;s time we meet.</strong>{" "}
+          I need you to give me at least 3 suggested meeting dates below before anything else in
+          the app unlocks. Navigation is locked until those dates are saved.
         </div>
       )}
 
@@ -416,7 +459,7 @@ export const AdminPortal: React.FC<Props> = ({
         <AgendaPage
           authUser={authUser}
           forceTimePicks={agendaGateActive}
-          onTimePicksSatisfied={() => setAgendaGateActive(false)}
+          onTimePicksSatisfied={() => setGate(false)}
           onOpenTask={(id) => {
             setFocusTaskId(id);
             requestTabChange("tasks");

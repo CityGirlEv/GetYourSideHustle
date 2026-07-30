@@ -497,18 +497,23 @@ export function applyPdfPageBranding(
   label: string,
   logoDataUrl?: string,
   updatedAt: Date = new Date(),
+  opts?: { draft?: boolean; updatedBy?: string },
 ) {
+  const showDraft = opts?.draft !== false;
   const pages = doc.getNumberOfPages();
-  const updatedLabel = `Last updated: ${formatPdfUpdatedAt(updatedAt)}`;
+  const by = String(opts?.updatedBy || "").trim();
+  const updatedLabel = by
+    ? `Last updated: ${formatPdfUpdatedAt(updatedAt)} · by ${by}`
+    : `Last updated: ${formatPdfUpdatedAt(updatedAt)}`;
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i);
-    drawPdfDraftWatermark(doc);
+    if (showDraft) drawPdfDraftWatermark(doc);
     drawPdfBrandedHeader(doc, label, logoDataUrl);
     drawFooterChrome(doc);
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
-    // Left: website · Last updated …   Right: Page n of m
+    // Left: website · Last updated … [· by Name]   Right: Page n of m
     let fx = PDF_MARGIN;
     fx +=
       drawLabeledLink(
@@ -521,7 +526,9 @@ export function applyPdfPageBranding(
         PDF_BRAND_COLORS.link,
       ) + 10;
     doc.setTextColor(...PDF_BRAND_COLORS.muted);
-    doc.text(`·  ${updatedLabel}`, fx, PDF_FOOTER_BASELINE);
+    const maxUpdatedW = PDF_PAGE_W - PDF_MARGIN - fx - 72;
+    const updatedLines = doc.splitTextToSize(`·  ${updatedLabel}`, Math.max(120, maxUpdatedW)) as string[];
+    doc.text(updatedLines[0] || `·  ${updatedLabel}`, fx, PDF_FOOTER_BASELINE);
     doc.text(`Page ${i} of ${pages}`, PDF_PAGE_W - PDF_MARGIN, PDF_FOOTER_BASELINE, {
       align: "right",
     });

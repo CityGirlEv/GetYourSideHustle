@@ -16,7 +16,7 @@ Optional secrets/vars on the same Pages project:
 | Name | Purpose |
 |------|---------|
 | `RESEND_API_KEY` | Required. Resend API key (`re_…`) |
-| `EMAIL_FROM` | Optional. Full From header, default `Get Your Side Hustle <noreply@getyoursidehustle.com>` |
+| `EMAIL_FROM` | Optional. Full From header, default `Get Your Side Hustle <info@getyoursidehustle.com>` |
 | `CONTACT_TO` | Optional. Ops inbox (plus partner admins Tina / Evelyn / Lyriq always get form + signup alerts). Default `info@getyoursidehustle.com` |
 
 ## 2. Local development
@@ -37,7 +37,7 @@ Intended sender: **`getyoursidehustle.com`** (verified on the Get Your Side Hust
 
 1. Open [Resend → Domains](https://resend.com/domains) on the **Get Your Side Hustle** account.
 2. Confirm apex `getyoursidehustle.com` is **Verified** (sending enabled).
-3. Production secrets: `RESEND_API_KEY` + `EMAIL_FROM=Get Your Side Hustle <noreply@getyoursidehustle.com>`.
+3. Production secrets: `RESEND_API_KEY` + `EMAIL_FROM=Get Your Side Hustle <info@getyoursidehustle.com>`.
 
 Use a **separate** Resend account/key from Munties (free plans are one domain per account).
 

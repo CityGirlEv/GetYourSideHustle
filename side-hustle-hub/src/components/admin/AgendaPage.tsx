@@ -1,26 +1,42 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   CalendarClock,
+  ChevronDown,
+  ChevronUp,
   ClipboardList,
   ExternalLink,
+  Eye,
+  EyeOff,
+  FileText,
   FlaskConical,
   ListChecks,
   ListPlus,
   Lock,
+  Mail,
   Pencil,
+  Play,
   Plus,
   Save,
   Search,
+  Square,
   Trash2,
   Users,
+  X,
 } from "lucide-react";
 import { ApiError } from "../../lib/api";
 import type { AuthUser } from "../../lib/auth";
 import { BusyOverlay } from "../WaitFeedback";
 import {
+  AGENDA_CATEGORY_LABELS,
+  AGENDA_CATEGORY_ORDER,
+  AGENDA_TIMEZONES,
+  DEFAULT_AGENDA_MEETING_TIME,
+  DEFAULT_AGENDA_TIMEZONE,
+  formatAgendaMeetingWindow,
   MAX_AGENDA_TIME_PICKS,
   MIN_AGENDA_DURATION_MINUTES,
   MIN_AGENDA_TIME_PICKS,
+  buildPartnerAgendaEmailDraft,
   createPartnerAgenda,
   deleteAgendaItem,
   fetchPartnerAgenda,
@@ -29,14 +45,52 @@ import {
   linkAgendaItems,
   localInputToIso,
   mustPickAgendaTimes,
+  agendaItemSourceLabel,
+  agendaItemSourceRef,
+  newAgendaActionId,
+  notesToActionItems,
   saveAgendaItem,
+  saveAgendaMeta,
+  saveAgendaPreview,
   saveAgendaTimePicks,
+  sendPartnerAgendaInvite,
+  type AgendaActionItem,
+  type AgendaCategory,
   type AgendaItem,
   type AgendaTimePick,
   type PartnerAgendaPayload,
 } from "../../lib/gysh-partner-agenda";
-import { fetchTasks, type GyshTask } from "../../lib/gysh-tasks";
+import {
+  fetchTasks,
+  nextTaskId,
+  PARTNER_ASSIGNEES,
+  persistTasks,
+  todayMMDDYY,
+  type GyshTask,
+  type PartnerAssignee,
+} from "../../lib/gysh-tasks";
+import { BACKLOG_SPRINT, UNASSIGNED_OWNER } from "../../lib/gysh-sprints";
+
+type PreviewDraft = {
+  category: AgendaCategory;
+  importance: number;
+  discussionNotes: string;
+  questionsText: string;
+  actionItemsText: string;
+  sortOrder: number;
+};
 import { TEST_CASES } from "../../lib/gysh-test-plan";
+import {
+  AGENDA_MEETING_MINUTES,
+  AGENDA_QA_MINUTES,
+  AGENDA_TINA_PLACEHOLDER_COUNT,
+  AGENDA_TINA_PLACEHOLDER_MINUTES,
+  buildAgendaSchedule,
+  isTinaAgendaAuthor,
+  openPartnerAgendaPdf,
+  partnerAgendaPdfBase64,
+} from "../../lib/partner-agenda-pdf";
+import { reservePdfTab } from "../../lib/open-pdf";
 
 type Props = {
   authUser?: AuthUser | null;
@@ -49,6 +103,103 @@ type Props = {
 
 function emptyPickInputs(count = MIN_AGENDA_TIME_PICKS): string[] {
   return Array.from({ length: count }, () => "");
+}
+
+/** Build agenda body from a task without duplicating identical description/notes. */
+function agendaBodyFromTask(description: string, notes: string, fallbackId: string): string {
+  const desc = String(description || "").trim();
+  const note = String(notes || "").trim();
+  if (!desc && !note) return fallbackId;
+  if (!desc) return note;
+  if (!note) return desc;
+  if (desc === note) return desc;
+  if (note.includes(desc) && desc.length >= 12) return note;
+  if (desc.includes(note) && note.length >= 12) return desc;
+  return `${desc}\n${note}`;
+}
+
+/** Collapse consecutive duplicate lines (fixes older picker saves that joined desc+notes twice). */
+function displayAgendaBody(body: string): string {
+  const lines = String(body || "")
+    .split(/\r?\n/)
+    .map((l) => l.trimEnd());
+  const out: string[] = [];
+  for (const line of lines) {
+    if (out.length && out[out.length - 1].trim() === line.trim() && line.trim()) continue;
+    out.push(line);
+  }
+  return out.join("\n").trim();
+}
+
+type AmPmParts = { hour12: number; minute: number; ampm: "AM" | "PM" };
+
+function parseHhMm(value: string): AmPmParts {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(value || "").trim());
+  // Empty → 3:30 PM (default partner meeting start).
+  if (!m) return { hour12: 3, minute: 30, ampm: "PM" };
+  const hour24 = Math.min(23, Math.max(0, Number(m[1])));
+  const minute = Math.min(59, Math.max(0, Number(m[2])));
+  const ampm: "AM" | "PM" = hour24 >= 12 ? "PM" : "AM";
+  const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
+  return { hour12, minute, ampm };
+}
+
+function toHhMm(hour12: number, minute: number, ampm: "AM" | "PM"): string {
+  const h12 = Math.min(12, Math.max(1, hour12));
+  let h = h12 % 12;
+  if (ampm === "PM") h += 12;
+  const mm = Math.min(59, Math.max(0, minute));
+  return `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+}
+
+function AmPmTimeSelect({
+  value,
+  onChange,
+  testId,
+}: {
+  /** `HH:mm` 24-hour */
+  value: string;
+  onChange: (hhmm: string) => void;
+  testId?: string;
+}) {
+  const parts = parseHhMm(value);
+  return (
+    <div className="agenda-ampm-time" data-testid={testId}>
+      <select
+        aria-label="Hour"
+        value={parts.hour12}
+        onChange={(e) => onChange(toHhMm(Number(e.target.value), parts.minute, parts.ampm))}
+      >
+        {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => (
+          <option key={h} value={h}>
+            {h}
+          </option>
+        ))}
+      </select>
+      <span aria-hidden>:</span>
+      <select
+        aria-label="Minute"
+        value={parts.minute}
+        onChange={(e) => onChange(toHhMm(parts.hour12, Number(e.target.value), parts.ampm))}
+      >
+        {Array.from({ length: 60 }, (_, m) => m).map((m) => (
+          <option key={m} value={m}>
+            {String(m).padStart(2, "0")}
+          </option>
+        ))}
+      </select>
+      <select
+        aria-label="AM or PM"
+        value={parts.ampm}
+        onChange={(e) =>
+          onChange(toHhMm(parts.hour12, parts.minute, e.target.value as "AM" | "PM"))
+        }
+      >
+        <option value="AM">AM</option>
+        <option value="PM">PM</option>
+      </select>
+    </div>
+  );
 }
 
 export function AgendaPage({
@@ -72,12 +223,68 @@ export function AgendaPage({
   const [pickerQuery, setPickerQuery] = useState("");
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [allTasks, setAllTasks] = useState<GyshTask[]>([]);
+  const [previewMode, setPreviewMode] = useState(false);
+  const [meetingLive, setMeetingLive] = useState(false);
+  const [meetingDate, setMeetingDate] = useState("");
+  const [meetingTime, setMeetingTime] = useState(DEFAULT_AGENDA_MEETING_TIME);
+  const [meetingTimezone, setMeetingTimezone] = useState(DEFAULT_AGENDA_TIMEZONE);
+  const [invitedText, setInvitedText] = useState("Tina, Evelyn, Lyriq");
+  const [attendedText, setAttendedText] = useState("");
+  const [previewDrafts, setPreviewDrafts] = useState<Record<string, PreviewDraft>>({});
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [emailTo, setEmailTo] = useState("");
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailBody, setEmailBody] = useState("");
+  const [emailModalError, setEmailModalError] = useState("");
+  const [emailModalNotice, setEmailModalNotice] = useState("");
+  const [emailSending, setEmailSending] = useState(false);
+  const [meetingNotes, setMeetingNotes] = useState("");
+  const [meetingActionItems, setMeetingActionItems] = useState<AgendaActionItem[]>([]);
 
   const mustPick = mustPickAgendaTimes(authUser);
+
+  const syncMeetingFields = (payload: PartnerAgendaPayload) => {
+    const a = payload.agenda;
+    if (!a) return;
+    setMeetingDate(String(a.meetingDate || ""));
+    setMeetingTime(String(a.meetingTime || "").trim() || DEFAULT_AGENDA_MEETING_TIME);
+    setMeetingTimezone(String(a.meetingTimezone || DEFAULT_AGENDA_TIMEZONE) || DEFAULT_AGENDA_TIMEZONE);
+    setInvitedText((a.invited || []).join(", ") || "Tina, Evelyn, Lyriq");
+    setAttendedText((a.attended || []).join(", "));
+    setMeetingNotes(String(a.meetingNotes || ""));
+    setMeetingActionItems(
+      Array.isArray(a.meetingActionItems)
+        ? a.meetingActionItems.map((x) => ({
+            id: x.id || newAgendaActionId(),
+            text: x.text || "",
+            owner: x.owner || "",
+            done: Boolean(x.done),
+            ...(x.backlogTaskId ? { backlogTaskId: x.backlogTaskId } : {}),
+          }))
+        : [],
+    );
+  };
+
+  const syncPreviewDrafts = (payload: PartnerAgendaPayload) => {
+    const next: Record<string, PreviewDraft> = {};
+    for (const it of payload.items || []) {
+      next[it.id] = {
+        category: (it.category || "other") as AgendaCategory,
+        importance: it.importance ?? 3,
+        discussionNotes: it.discussionNotes || "",
+        questionsText: (it.questions || []).map((q) => q.text).join("\n"),
+        actionItemsText: (it.actionItems || []).map((a) => a.text).join("\n"),
+        sortOrder: it.sortOrder ?? 0,
+      };
+    }
+    setPreviewDrafts(next);
+  };
 
   const reload = async () => {
     const payload = await fetchPartnerAgenda();
     setData(payload);
+    syncMeetingFields(payload);
+    syncPreviewDrafts(payload);
     const mine = (payload.timePicks || []).filter((p) => p.isMine);
     if (mine.length > 0) {
       setPickInputs(mine.map((p) => isoToLocalInput(p.startsAt)));
@@ -100,6 +307,8 @@ export function AgendaPage({
         ]);
         if (cancelled) return;
         setData(payload);
+        syncMeetingFields(payload);
+        syncPreviewDrafts(payload);
         setAllTasks(tasks);
         const mine = (payload.timePicks || []).filter((p) => p.isMine);
         if (mine.length > 0) {
@@ -146,13 +355,21 @@ export function AgendaPage({
           );
         })
         .slice(0, 80)
-        .map((t) => ({
-          key: `task:${t.id}`,
-          sourceKind: "task" as const,
-          sourceId: t.id,
-          label: t.id,
-          body: [t.description, t.notes].filter(Boolean).join("\n").trim() || t.id,
-        }));
+        .map((t) => {
+          const body = agendaBodyFromTask(t.description, t.notes, t.id);
+          const label =
+            String(t.description || "")
+              .trim()
+              .split("\n")[0]
+              ?.slice(0, 80) || t.id;
+          return {
+            key: `task:${t.id}`,
+            sourceKind: "task" as const,
+            sourceId: t.id,
+            label,
+            body,
+          };
+        });
     }
     return TEST_CASES.filter((t) => !linkedKeys.has(`test:${t.id}`))
       .filter((t) => {
@@ -192,6 +409,8 @@ export function AgendaPage({
     try {
       const payload = await fn();
       setData(payload);
+      syncMeetingFields(payload);
+      syncPreviewDrafts(payload);
       const mine = (payload.timePicks || []).filter((p) => p.isMine);
       if (mine.length > 0) setPickInputs(mine.map((p) => isoToLocalInput(p.startsAt)));
       if (!payload.needsTimePicks) onTimePicksSatisfied?.();
@@ -284,14 +503,565 @@ export function AgendaPage({
     if (it.source === "test" && it.sourceId) onOpenTest?.(it.sourceId);
   };
 
+  const parseNameCsv = (raw: string) =>
+    [...new Set(raw.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean))];
+
+  const handleSaveMeetingHeader = () => {
+    void run(
+      () =>
+        saveAgendaMeta({
+          meetingDate,
+          meetingTime,
+          meetingTimezone,
+          invited: parseNameCsv(invitedText),
+          attended: parseNameCsv(attendedText),
+        }),
+      "Meeting header saved.",
+    );
+  };
+
+  const updateDraft = (id: string, patch: Partial<PreviewDraft>) => {
+    setPreviewDrafts((prev) => {
+      const base = prev[id];
+      if (!base) return prev;
+      return { ...prev, [id]: { ...base, ...patch } };
+    });
+  };
+
+  const handleSavePreviewProgress = () => {
+    const items = Object.entries(previewDrafts).map(([id, d]) => ({
+      id,
+      category: d.category,
+      importance: d.importance,
+      discussionNotes: d.discussionNotes,
+      questions: d.questionsText
+        .split("\n")
+        .map((t) => t.trim())
+        .filter(Boolean)
+        .map((text, i) => ({ id: `q-${id}-${i}`, text })),
+      actionItems: d.actionItemsText
+        .split("\n")
+        .map((t) => t.trim())
+        .filter(Boolean)
+        .map((text, i) => ({ id: `a-${id}-${i}`, text, owner: "", done: false })),
+      sortOrder: d.sortOrder,
+    }));
+    void run(
+      () =>
+        saveAgendaPreview({
+          meetingDate,
+          meetingTime,
+          meetingTimezone,
+          invited: parseNameCsv(invitedText),
+          attended: parseNameCsv(attendedText),
+          meetingNotes,
+          meetingActionItems: meetingActionItems.filter((a) => a.text.trim()),
+          items,
+        }),
+      "Preview progress saved.",
+    );
+  };
+
+  const topicCaptureText = (drafts: Record<string, PreviewDraft>) =>
+    Object.values(drafts)
+      .flatMap((d) => [
+        d.discussionNotes.trim(),
+        d.questionsText.trim(),
+        d.actionItemsText.trim(),
+      ])
+      .filter(Boolean)
+      .join("\n");
+
+  const handleTranslateNotesToActions = () => {
+    const combined = [meetingNotes.trim(), topicCaptureText(previewDrafts)]
+      .filter(Boolean)
+      .join("\n");
+    if (!combined.trim()) {
+      setError("Add discussion notes, questions, or action lines on topics first, then translate.");
+      return;
+    }
+    setError("");
+    const next = notesToActionItems(combined, meetingActionItems);
+    const added = next.length - meetingActionItems.length;
+    setMeetingActionItems(next);
+    setNotice(
+      added > 0
+        ? `Translated ${added} note line${added === 1 ? "" : "s"} into action items. Assign owners, then save or send to backlog.`
+        : "No new action items found — notes may already be translated.",
+    );
+  };
+
+  const updateMeetingAction = (id: string, patch: Partial<AgendaActionItem>) => {
+    setMeetingActionItems((prev) => prev.map((a) => (a.id === id ? { ...a, ...patch } : a)));
+  };
+
+  const addBlankMeetingAction = () => {
+    setMeetingActionItems((prev) => [
+      ...prev,
+      { id: newAgendaActionId(), text: "", owner: "", done: false },
+    ]);
+  };
+
+  const removeMeetingAction = (id: string) => {
+    setMeetingActionItems((prev) => prev.filter((a) => a.id !== id));
+  };
+
+  const handlePushActionsToBacklog = () => {
+    const pending = meetingActionItems.filter((a) => a.text.trim() && !a.backlogTaskId);
+    if (pending.length === 0) {
+      setError("No new action items to push — add items or they may already be in the backlog.");
+      return;
+    }
+    void run(async () => {
+      const existing = await fetchTasks();
+      let working = [...existing];
+      const idByAction = new Map<string, string>();
+      for (const action of pending) {
+        const id = nextTaskId(working);
+        const owner = PARTNER_ASSIGNEES.includes(action.owner as PartnerAssignee)
+          ? action.owner
+          : "";
+        const task: GyshTask = {
+          id,
+          description: action.text.trim(),
+          category: "admin_ops",
+          priority: "P2",
+          status: "not_started",
+          assignBy: authUser?.name || "Partner Agenda",
+          assignedTo: UNASSIGNED_OWNER,
+          dateAssigned: todayMMDDYY(),
+          dueDate: "",
+          dateCompleted: "",
+          notes: [
+            "From Partner Agenda",
+            meetingDate ? `Meeting ${meetingDate}` : "",
+            owner ? `Suggested owner: ${owner}` : "",
+            "(Backlog stays Unassigned until moved into a sprint)",
+          ]
+            .filter(Boolean)
+            .join(" · "),
+          sprint: BACKLOG_SPRINT,
+          tinaDone: false,
+          evelynDone: false,
+          attachments: [],
+        };
+        working = [...working, task];
+        idByAction.set(action.id, id);
+      }
+      await persistTasks(working);
+      const nextActions = meetingActionItems.map((a) => {
+        const tid = idByAction.get(a.id);
+        return tid ? { ...a, backlogTaskId: tid } : a;
+      });
+      setMeetingActionItems(nextActions);
+      return saveAgendaPreview({
+        meetingDate,
+        meetingTime,
+        meetingTimezone,
+        invited: parseNameCsv(invitedText),
+        attended: parseNameCsv(attendedText),
+        meetingNotes,
+        meetingActionItems: nextActions.filter((a) => a.text.trim()),
+      });
+    }, `Added ${pending.length} backlog task${pending.length === 1 ? "" : "s"} (suggested owners in notes).`);
+  };
+
+  const assignGlobalSortOrders = (
+    drafts: Record<string, PreviewDraft>,
+    orderedIdsByCategory: Partial<Record<AgendaCategory, string[]>>,
+  ): Record<string, PreviewDraft> => {
+    const next = { ...drafts };
+    let order = 1;
+    for (const cat of AGENDA_CATEGORY_ORDER) {
+      const ids =
+        orderedIdsByCategory[cat] ||
+        Object.entries(next)
+          .filter(([, d]) => d.category === cat)
+          .sort((a, b) => a[1].sortOrder - b[1].sortOrder || a[0].localeCompare(b[0]))
+          .map(([id]) => id);
+      for (const id of ids) {
+        if (!next[id]) continue;
+        next[id] = { ...next[id], sortOrder: order++ };
+      }
+    }
+    return next;
+  };
+
+  const moveItemInCategory = (category: AgendaCategory, itemId: string, delta: -1 | 1) => {
+    setPreviewDrafts((prev) => {
+      const ids = Object.entries(prev)
+        .filter(([, d]) => d.category === category)
+        .sort((a, b) => a[1].sortOrder - b[1].sortOrder || a[0].localeCompare(b[0]))
+        .map(([id]) => id);
+      const fromIdx = ids.indexOf(itemId);
+      const toIdx = fromIdx + delta;
+      if (fromIdx < 0 || toIdx < 0 || toIdx >= ids.length) return prev;
+      const nextIds = [...ids];
+      const [moved] = nextIds.splice(fromIdx, 1);
+      nextIds.splice(toIdx, 0, moved);
+      return assignGlobalSortOrders(prev, { [category]: nextIds });
+    });
+  };
+
+  const openEmailComposer = () => {
+    if (!data) return;
+    const draft = buildPartnerAgendaEmailDraft(data);
+    setEmailTo(draft.to.join(", "));
+    setEmailSubject(draft.subject);
+    setEmailBody(draft.bodyText);
+    setEmailModalError("");
+    setEmailModalNotice("");
+    setEmailOpen(true);
+  };
+
+  const handleSaveEmailDraft = () => {
+    const subject = emailSubject.trim();
+    const bodyText = emailBody.trim();
+    if (!subject || !bodyText) {
+      setEmailModalError("Subject and message are required to save.");
+      return;
+    }
+    setEmailModalError("");
+    setEmailModalNotice("");
+    setBusy(true);
+    void (async () => {
+      try {
+        const payload = await saveAgendaMeta({
+          inviteSubject: subject,
+          inviteBody: bodyText,
+        });
+        setData(payload);
+        syncMeetingFields(payload);
+        setEmailModalNotice("Email subject and message saved.");
+        setNotice("Email subject and message saved.");
+      } catch (e) {
+        const msg = e instanceof ApiError ? e.message : "Could not save email draft.";
+        setEmailModalError(msg);
+        setError(msg);
+      } finally {
+        setBusy(false);
+      }
+    })();
+  };
+
+  const buildInvitePdfAttachment = async () => {
+    if (!data?.agenda) throw new Error("Agenda is not ready.");
+    return partnerAgendaPdfBase64({
+      agenda: {
+        ...data.agenda,
+        meetingNotes,
+        meetingActionItems: meetingActionItems.filter((a) => a.text.trim()),
+        updatedByName:
+          String(data.agenda.updatedByName || "").trim() ||
+          String(authUser?.name || authUser?.email || "").trim() ||
+          data.agenda.createdByName,
+      },
+      items: data.items || [],
+      drafts: previewDrafts,
+      meetingDate,
+      meetingTime,
+      meetingTimezone,
+      invitedText,
+      attendedText,
+      meetingMinutes: AGENDA_MEETING_MINUTES,
+      finalized: false,
+    });
+  };
+
+  const handleSendEmail = (opts?: { testOnly?: boolean }) => {
+    const testOnly = Boolean(opts?.testOnly);
+    const testTo = String(authUser?.email || "").trim();
+    if (testOnly && !testTo) {
+      setEmailModalError("Sign in with an email address to send a test.");
+      return;
+    }
+    if (!emailSubject.trim() || !emailBody.trim()) {
+      setEmailModalError("Subject and message are required.");
+      return;
+    }
+
+    setEmailModalError("");
+    setEmailModalNotice("");
+    setEmailSending(true);
+    setBusy(true);
+    void (async () => {
+      try {
+        setEmailModalNotice(
+          testOnly ? "Building PDF and sending test email to you…" : "Building PDF and sending to admins…",
+        );
+        const pdf = await buildInvitePdfAttachment();
+        if (!pdf.base64 || pdf.base64.length < 40) {
+          throw new Error("Could not build the agenda PDF attachment.");
+        }
+        const payload = await sendPartnerAgendaInvite({
+          subject: emailSubject.trim(),
+          bodyText: emailBody.trim(),
+          headline: "Partner Agenda",
+          subhead: "Tentative agenda attached — add your items before we sync.",
+          pdfBase64: pdf.base64,
+          pdfFilename: pdf.filename,
+          testOnly,
+          testTo: testOnly ? testTo : undefined,
+        });
+        setData(payload);
+        syncMeetingFields(payload);
+        syncPreviewDrafts(payload);
+
+        const results = Array.isArray(payload.results) ? payload.results : [];
+        const failed = results.filter((r) => !r.ok);
+        if (payload.ok === false || failed.length > 0) {
+          const detail =
+            failed.map((r) => `${r.email}: ${r.error || "failed"}`).join(" · ") ||
+            "Email send failed.";
+          throw new Error(detail);
+        }
+        const delivered = results.map((r) => r.email).filter(Boolean).join(", ") || testTo;
+        const okMsg = testOnly
+          ? `Test email sent only to you (${delivered}) with PDF attached.`
+          : `Email sent to admins (${delivered}) with PDF attached.`;
+        setEmailModalNotice(okMsg);
+        setNotice(okMsg);
+        if (!testOnly) setEmailOpen(false);
+      } catch (e) {
+        const msg =
+          e instanceof ApiError
+            ? e.message
+            : e instanceof Error
+              ? e.message
+              : "Could not send email.";
+        setEmailModalError(msg);
+        setError(msg);
+      } finally {
+        setEmailSending(false);
+        setBusy(false);
+      }
+    })();
+  };
+
   const agendaItems: AgendaItem[] = data?.items || [];
+  /** Same global order as Configure Agenda (previewDrafts.sortOrder). */
+  const sortedAgendaItems = useMemo(
+    () =>
+      agendaItems
+        .slice()
+        .sort(
+          (a, b) =>
+            (previewDrafts[a.id]?.sortOrder ?? a.sortOrder ?? 0) -
+              (previewDrafts[b.id]?.sortOrder ?? b.sortOrder ?? 0) ||
+            String(a.createdAt || a.id).localeCompare(String(b.createdAt || b.id)),
+        ),
+    [agendaItems, previewDrafts],
+  );
   const suggestedItems: AgendaItem[] = data?.suggestedItems || data?.taskItems || [];
   const agendaReady = Boolean(data?.agenda?.active);
   const showForceBanner = (forceTimePicks || data?.needsTimePicks) && mustPick;
 
+  const moveAgendaListItem = (itemId: string, delta: -1 | 1) => {
+    if (meetingLive) return;
+    const ids = sortedAgendaItems.map((it) => it.id);
+    const fromIdx = ids.indexOf(itemId);
+    const toIdx = fromIdx + delta;
+    if (fromIdx < 0 || toIdx < 0 || toIdx >= ids.length) return;
+    const nextIds = [...ids];
+    const [moved] = nextIds.splice(fromIdx, 1);
+    nextIds.splice(toIdx, 0, moved);
+    const items = nextIds.map((id, idx) => ({ id, sortOrder: idx + 1 }));
+    setPreviewDrafts((prev) => {
+      if (Object.keys(prev).length === 0) return prev;
+      const next = { ...prev };
+      nextIds.forEach((id, idx) => {
+        if (next[id]) next[id] = { ...next[id], sortOrder: idx + 1 };
+      });
+      return next;
+    });
+    void run(() => saveAgendaPreview({ items }), "Agenda order updated.");
+  };
+
+  const previewSections = useMemo(() => {
+    const labels =
+      data?.categories?.reduce(
+        (acc, c) => {
+          acc[c.id] = c.label;
+          return acc;
+        },
+        {} as Record<string, string>,
+      ) || AGENDA_CATEGORY_LABELS;
+    // Tina's first N items (agenda order) live in reserved Tina slots — keep them out of category lists.
+    const tinaSlotIds = new Set(
+      agendaItems
+        .slice()
+        .sort(
+          (a, b) =>
+            (previewDrafts[a.id]?.sortOrder ?? a.sortOrder ?? 0) -
+              (previewDrafts[b.id]?.sortOrder ?? b.sortOrder ?? 0) ||
+            String(a.createdAt || a.id).localeCompare(String(b.createdAt || b.id)),
+        )
+        .filter((it) => isTinaAgendaAuthor(it.authorName))
+        .slice(0, AGENDA_TINA_PLACEHOLDER_COUNT)
+        .map((it) => it.id),
+    );
+    return AGENDA_CATEGORY_ORDER.map((cat) => {
+      const items = agendaItems
+        .filter(
+          (it) =>
+            !tinaSlotIds.has(it.id) &&
+            (previewDrafts[it.id]?.category || it.category || "other") === cat,
+        )
+        .slice()
+        .sort((a, b) => {
+          const da = previewDrafts[a.id]?.sortOrder ?? a.sortOrder ?? 0;
+          const db = previewDrafts[b.id]?.sortOrder ?? b.sortOrder ?? 0;
+          if (da !== db) return da - db;
+          return (a.importance ?? 3) - (b.importance ?? 3);
+        });
+      return {
+        id: cat,
+        label: labels[cat] || AGENDA_CATEGORY_LABELS[cat],
+        items,
+      };
+    }).filter((s) => s.items.length > 0);
+  }, [agendaItems, data?.categories, previewDrafts]);
+
+  const agendaSchedule = useMemo(() => {
+    if (!data?.agenda) return null;
+    return buildAgendaSchedule({
+      agenda: data.agenda,
+      items: agendaItems,
+      drafts: previewDrafts,
+      meetingDate,
+      meetingTime,
+      meetingTimezone,
+      invitedText,
+      attendedText,
+      meetingMinutes: AGENDA_MEETING_MINUTES,
+    });
+  }, [
+    data?.agenda,
+    agendaItems,
+    previewDrafts,
+    meetingDate,
+    meetingTime,
+    meetingTimezone,
+    invitedText,
+    attendedText,
+  ]);
+  const timedSlots = agendaSchedule?.itemSlots ?? new Map();
+
+  /** Agenda items in timed schedule order (matches Configure / PDF). */
+  const scheduleOrderedItems = useMemo(() => {
+    return sortedAgendaItems
+      .slice()
+      .sort((a, b) => {
+        const sa = timedSlots.get(a.id);
+        const sb = timedSlots.get(b.id);
+        if (sa && sb && sa.startMin !== sb.startMin) return sa.startMin - sb.startMin;
+        if (sa && !sb) return -1;
+        if (!sa && sb) return 1;
+        return (
+          (previewDrafts[a.id]?.sortOrder ?? a.sortOrder ?? 0) -
+            (previewDrafts[b.id]?.sortOrder ?? b.sortOrder ?? 0) ||
+          a.id.localeCompare(b.id)
+        );
+      });
+  }, [sortedAgendaItems, timedSlots, previewDrafts]);
+
+  const meetingWindowLabel = formatAgendaMeetingWindow({
+    meetingDate,
+    meetingTime: meetingTime || DEFAULT_AGENDA_MEETING_TIME,
+    durationMinutes: AGENDA_MEETING_MINUTES,
+  });
+
+  // During a live meeting, keep the assignable action list built from topic capture fields.
+  useEffect(() => {
+    if (!meetingLive) return;
+    const timer = window.setTimeout(() => {
+      const combined = [meetingNotes.trim(), topicCaptureText(previewDrafts)]
+        .filter(Boolean)
+        .join("\n");
+      if (!combined.trim()) return;
+      setMeetingActionItems((prev) => notesToActionItems(combined, prev));
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [meetingLive, meetingNotes, previewDrafts]);
+
+  const handleStartMeeting = () => {
+    setMeetingLive(true);
+    setNotice("Meeting started — add notes under each topic; action items update as you type.");
+    setError("");
+    // Persist header time so Configure / PDF stay in sync at 3:30 CST (or current).
+    void run(
+      () =>
+        saveAgendaMeta({
+          meetingDate,
+          meetingTime: meetingTime || DEFAULT_AGENDA_MEETING_TIME,
+          meetingTimezone: meetingTimezone || DEFAULT_AGENDA_TIMEZONE,
+          invited: parseNameCsv(invitedText),
+          attended: parseNameCsv(attendedText),
+        }),
+      undefined,
+    );
+  };
+
+  const handleEndMeeting = () => {
+    setMeetingLive(false);
+    handleSavePreviewProgress();
+    setNotice("Meeting ended — notes and action items saved.");
+  };
+
+  const handleOpenAgendaPdf = () => {
+    if (!data?.agenda) return;
+    setError("");
+    // Reserve the tab in the click gesture so the branded viewer (Close + Print) opens reliably.
+    const reservedTab = reservePdfTab();
+    void (async () => {
+      try {
+        const viewerName = String(authUser?.name || authUser?.email || "").trim();
+        await openPartnerAgendaPdf(
+          {
+            agenda: {
+              ...data.agenda!,
+              meetingNotes,
+              meetingActionItems: meetingActionItems.filter((a) => a.text.trim()),
+              // Prefer saved last editor; fall back to current viewer for draft PDF.
+              updatedByName:
+                String(data.agenda!.updatedByName || "").trim() ||
+                viewerName ||
+                data.agenda!.createdByName,
+            },
+            items: agendaItems,
+            drafts: previewDrafts,
+            meetingDate,
+            meetingTime,
+            meetingTimezone,
+            invitedText,
+            attendedText,
+            meetingMinutes: AGENDA_MEETING_MINUTES,
+          },
+          reservedTab,
+        );
+      } catch (e) {
+        try {
+          reservedTab?.close();
+        } catch {
+          /* ignore */
+        }
+        setError(e instanceof ApiError ? e.message : e instanceof Error ? e.message : "Could not open PDF.");
+      }
+    })();
+  };
+
   return (
     <div className="agenda-page" data-testid="admin-agenda-page">
-      <BusyOverlay active={busy || loading} message={loading ? "Loading agenda…" : "Saving…"} />
+      <BusyOverlay
+        active={busy || loading || emailSending}
+        message={
+          loading
+            ? "Loading agenda…"
+            : emailSending
+              ? "Sending email…"
+              : "Saving…"
+        }
+      />
 
       <div
         className="glass"
@@ -301,51 +1071,140 @@ export function AgendaPage({
           background: "linear-gradient(135deg, rgba(215,198,151,0.55), #fff)",
         }}
       >
-        <h2
+        <div
           style={{
-            fontSize: "1.5rem",
-            color: "var(--charcoal)",
             display: "flex",
-            alignItems: "center",
-            gap: 8,
-            margin: 0,
+            justifyContent: "space-between",
+            gap: 12,
+            flexWrap: "wrap",
+            alignItems: "flex-start",
           }}
         >
-          <ClipboardList size={22} style={{ color: "var(--bronze)" }} />
-          Partner Agenda
-        </h2>
-        <p style={{ color: "var(--text-primary)", fontSize: "1rem", marginTop: 8 }}>
-          Shared meeting agenda for the partners. Add, edit, or delete <strong>your own</strong>{" "}
-          items. Tasks with &quot;Agenda&quot; in the description <strong>or Notes</strong> appear
-          here automatically (read-only). Meeting blocks are at least{" "}
-          {MIN_AGENDA_DURATION_MINUTES} minutes.
-        </p>
-        {data?.agenda && (
-          <p style={{ color: "var(--text-primary)", fontSize: "0.95rem", marginTop: 6 }}>
-            Created by {data.agenda.createdByName}
-            {data.agenda.inviteSentAt
-              ? ` · Invite emailed ${new Date(data.agenda.inviteSentAt).toLocaleString()}`
-              : ""}
-          </p>
-        )}
+          <div style={{ flex: 1, minWidth: 220 }}>
+            <h2
+              style={{
+                fontSize: "1.5rem",
+                color: "var(--charcoal)",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                margin: 0,
+              }}
+            >
+              <ClipboardList size={22} style={{ color: "var(--bronze)" }} />
+              Partner Agenda
+            </h2>
+            <p className="admin-page-lede">
+              Add, edit, or delete <strong>your own</strong> items. Tasks/tests with &quot;Agenda&quot; in
+              the description or Notes appear automatically (read-only). Blocks are at least{" "}
+              {MIN_AGENDA_DURATION_MINUTES} minutes.
+            </p>
+            {data?.agenda && (
+              <p className="admin-page-lede" style={{ marginTop: 6, fontSize: "0.92rem" }}>
+                Created by {data.agenda.createdByName}
+                {data.agenda.inviteSentAt
+                  ? ` · Invite emailed ${new Date(data.agenda.inviteSentAt).toLocaleString()}`
+                  : ""}
+              </p>
+            )}
+          </div>
+          {agendaReady && !showForceBanner && (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button
+                type="button"
+                className="btn btn-outline"
+                data-testid="agenda-email-admins"
+                onClick={openEmailComposer}
+                style={{ gap: 8 }}
+              >
+                <Mail size={16} /> Email Admins Agenda
+              </button>
+              <button
+                type="button"
+                className="btn btn-outline"
+                data-testid="agenda-open-pdf"
+                onClick={handleOpenAgendaPdf}
+                style={{ gap: 8 }}
+              >
+                <FileText size={16} /> View/Print Agenda
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                data-testid="agenda-preview-toggle"
+                onClick={() => setPreviewMode((v) => !v)}
+                style={{ gap: 8 }}
+              >
+                {previewMode ? <EyeOff size={16} /> : <Eye size={16} />}
+                {previewMode ? "Order Agenda" : "Configure Agenda"}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
+
+      {agendaReady && !showForceBanner && (
+        <section
+          className="glass"
+          data-testid="agenda-add-item"
+          style={{ padding: 18, borderRadius: 14 }}
+        >
+          <h3
+            style={{
+              margin: "0 0 8px",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              color: "var(--charcoal)",
+            }}
+          >
+            <Plus size={18} style={{ color: "var(--crimson)" }} /> Add Agenda Item
+          </h3>
+          <p style={{ margin: "0 0 10px", color: "var(--text-primary)", fontSize: "0.95rem" }}>
+            Type your topic and add it to the shared agenda. Items from Tina fill her{" "}
+            {AGENDA_TINA_PLACEHOLDER_COUNT} reserved {AGENDA_TINA_PLACEHOLDER_MINUTES}-minute slots.
+          </p>
+          <div className="agenda-add-row">
+            <textarea
+              value={draftBody}
+              onChange={(e) => setDraftBody(e.target.value)}
+              placeholder="Add your agenda item…"
+              rows={3}
+              data-testid="agenda-new-item"
+            />
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleAddItem}
+              disabled={!draftBody.trim()}
+              style={{ gap: 8 }}
+              data-testid="agenda-add-item-btn"
+            >
+              <Plus size={16} /> Add Agenda Item
+            </button>
+          </div>
+        </section>
+      )}
 
       {showForceBanner && (
         <div
           className="glass"
           data-testid="agenda-force-time-picks"
           style={{
-            padding: 16,
+            padding: 18,
             borderRadius: 14,
             border: "1px solid rgba(155,47,40,0.35)",
             background: "rgba(155,47,40,0.08)",
           }}
         >
-          <strong style={{ color: "#9B2F28" }}>Action required</strong>
-          <p style={{ margin: "6px 0 0", color: "var(--charcoal)" }}>
-            Pick {MIN_AGENDA_TIME_PICKS}–{MAX_AGENDA_TIME_PICKS} meeting times that work for you
-            before leaving this page. Each meeting is expected to last at least{" "}
-            {MIN_AGENDA_DURATION_MINUTES} minutes.
+          <strong style={{ color: "#9B2F28", fontSize: "1.15rem" }}>
+            It&apos;s time we meet.
+          </strong>
+          <p style={{ margin: "8px 0 0", color: "var(--charcoal)", fontSize: "1.05rem" }}>
+            I need you to give me at least {MIN_AGENDA_TIME_PICKS} suggested meeting dates
+            (up to {MAX_AGENDA_TIME_PICKS}) before you can use anything else in the app. Each
+            meeting block should be at least {MIN_AGENDA_DURATION_MINUTES} minutes. Save your
+            times below — the rest of the site stays locked until you do.
           </p>
         </div>
       )}
@@ -377,7 +1236,7 @@ export function AgendaPage({
         </div>
       )}
 
-      {!agendaReady && !loading && (
+      {!agendaReady && !loading && !showForceBanner && (
         <div className="glass" style={{ padding: 20, borderRadius: 14 }}>
           <p style={{ marginTop: 0 }}>
             No interactive agenda yet. Create one from here or use{" "}
@@ -389,17 +1248,511 @@ export function AgendaPage({
         </div>
       )}
 
-      {agendaReady && (
-        <>
-          <section className="glass" style={{ padding: 20, borderRadius: 14 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center", marginBottom: 12 }}>
-              <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: 8, color: "var(--charcoal)" }}>
-                <ListPlus size={18} style={{ color: "var(--crimson)" }} /> Agenda items
-              </h3>
-              <button type="button" className="btn btn-outline" data-testid="agenda-open-picker" onClick={() => setPickerOpen((o) => !o)} style={{ gap: 8 }}>
-                <ListChecks size={16} />
-                {pickerOpen ? "Hide task/test picker" : "Select tasks or tests"}
+      {agendaReady && previewMode && !showForceBanner && (
+        <section className="glass agenda-preview" data-testid="agenda-preview" style={{ padding: 22, borderRadius: 14 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center", marginBottom: 14 }}>
+            <h3 style={{ margin: 0, color: "var(--charcoal)" }}>Meeting preview</h3>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button
+                type="button"
+                className="btn btn-outline"
+                data-testid="agenda-preview-open-pdf"
+                onClick={handleOpenAgendaPdf}
+                style={{ gap: 8 }}
+              >
+                <FileText size={14} /> View/Print Agenda
               </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                data-testid="agenda-save-preview-progress"
+                onClick={handleSavePreviewProgress}
+                style={{ gap: 8 }}
+              >
+                <Save size={14} /> Save preview progress
+              </button>
+              <button type="button" className="btn btn-outline" onClick={handleSaveMeetingHeader} style={{ gap: 8 }}>
+                <Save size={14} /> Save header only
+              </button>
+            </div>
+          </div>
+          <p style={{ marginTop: 0, color: "var(--text-primary)" }}>
+            Set meeting header, categories, importance, and order here. Capture discussion notes,
+            questions, and action items on the main Agenda page during{" "}
+            <strong>Start Meeting</strong>. Timing: {AGENDA_MEETING_MINUTES}-minute meeting · topics
+            share{" "}
+            {agendaSchedule?.discussionMinutes ??
+              AGENDA_MEETING_MINUTES -
+                AGENDA_QA_MINUTES -
+                AGENDA_TINA_PLACEHOLDER_COUNT * AGENDA_TINA_PLACEHOLDER_MINUTES}{" "}
+            min, then {AGENDA_TINA_PLACEHOLDER_COUNT}×{AGENDA_TINA_PLACEHOLDER_MINUTES}-minute Tina
+            slots, then {AGENDA_QA_MINUTES} min Q&amp;A.
+          </p>
+          <div className="agenda-preview-header">
+            <label>
+              <span>Date</span>
+              <input type="date" value={meetingDate} onChange={(e) => setMeetingDate(e.target.value)} />
+            </label>
+            <label>
+              <span>Time</span>
+              <AmPmTimeSelect
+                value={meetingTime}
+                onChange={setMeetingTime}
+                testId="agenda-meeting-time-ampm"
+              />
+            </label>
+            <label>
+              <span>Time zone</span>
+              <select
+                value={meetingTimezone}
+                onChange={(e) => setMeetingTimezone(e.target.value)}
+                data-testid="agenda-meeting-timezone"
+              >
+                {AGENDA_TIMEZONES.map((z) => (
+                  <option key={z.id} value={z.id}>
+                    {z.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label style={{ gridColumn: "1 / -1" }}>
+              <span>Invited</span>
+              <input
+                type="text"
+                value={invitedText}
+                onChange={(e) => setInvitedText(e.target.value)}
+                placeholder="Tina, Evelyn, Lyriq"
+              />
+            </label>
+            <label style={{ gridColumn: "1 / -1" }}>
+              <span>Attended</span>
+              <input
+                type="text"
+                value={attendedText}
+                onChange={(e) => setAttendedText(e.target.value)}
+                placeholder="Who showed up…"
+              />
+            </label>
+          </div>
+
+          {previewSections.length === 0 ? (
+            <p style={{ color: "var(--text-primary)" }}>No agenda items yet — add some, then preview.</p>
+          ) : (
+            previewSections.map((section) => (
+              <div key={section.id} className="agenda-preview-section">
+                <h4>{section.label}</h4>
+                <ul className="agenda-item-list">
+                  {section.items.map((it, idx) => {
+                    const draft = previewDrafts[it.id];
+                    if (!draft) return null;
+                    const canMoveUp = idx > 0;
+                    const canMoveDown = idx < section.items.length - 1;
+                    return (
+                      <li key={it.id} className="agenda-item agenda-preview-item">
+                        <div className="agenda-reorder-btns">
+                          <button
+                            type="button"
+                            className="btn btn-outline agenda-reorder-btn"
+                            aria-label="Move up"
+                            title="Move up"
+                            disabled={!canMoveUp}
+                            onClick={() => moveItemInCategory(section.id, it.id, -1)}
+                          >
+                            <ChevronUp size={18} />
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-outline agenda-reorder-btn"
+                            aria-label="Move down"
+                            title="Move down"
+                            disabled={!canMoveDown}
+                            onClick={() => moveItemInCategory(section.id, it.id, 1)}
+                          >
+                            <ChevronDown size={18} />
+                          </button>
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 10 }}>
+                          <div>
+                            {timedSlots.get(it.id) && (
+                              <div className="agenda-item-time" data-testid={`agenda-item-time-${it.id}`}>
+                                <CalendarClock size={14} aria-hidden />
+                                <span>{timedSlots.get(it.id)!.rangeLabel}</span>
+                              </div>
+                            )}
+                            {agendaItemSourceRef(it) && (
+                              <span className="agenda-source-badge" data-testid={`agenda-source-${it.id}`}>
+                                {agendaItemSourceLabel(it)}
+                              </span>
+                            )}
+                            <p style={{ whiteSpace: "pre-wrap", margin: 0 }}>{displayAgendaBody(it.body)}</p>
+                            <span className="agenda-item-meta">
+                              {agendaItemSourceLabel(it) || it.authorName}
+                            </span>
+                          </div>
+                          <div className="agenda-preview-fields">
+                            <label>
+                              <span>Category</span>
+                              <select
+                                value={draft.category}
+                                onChange={(e) =>
+                                  updateDraft(it.id, {
+                                    category: e.target.value as AgendaCategory,
+                                  })
+                                }
+                              >
+                                {AGENDA_CATEGORY_ORDER.map((c) => (
+                                  <option key={c} value={c}>
+                                    {AGENDA_CATEGORY_LABELS[c]}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                            <label>
+                              <span>Importance (1 = highest)</span>
+                              <select
+                                value={String(draft.importance)}
+                                onChange={(e) =>
+                                  updateDraft(it.id, { importance: Number(e.target.value) })
+                                }
+                              >
+                                {[1, 2, 3, 4, 5].map((n) => (
+                                  <option key={n} value={n}>
+                                    {n}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          </div>
+                          <p className="agenda-item-meta" style={{ margin: 0 }}>
+                            Capture discussion notes, questions, and action items on the main Agenda
+                            page during the meeting (Start Meeting).
+                          </p>
+                        </div>
+                        {(it.source === "task" || it.source === "test") && it.sourceId && (
+                          <div className="agenda-item-actions">
+                            <button type="button" className="btn btn-outline" onClick={() => openSource(it)}>
+                              <ExternalLink size={14} /> Open
+                            </button>
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ))
+          )}
+
+          {agendaSchedule && agendaSchedule.reserved.length > 0 && (
+            <div className="agenda-preview-section" data-testid="agenda-reserved-slots">
+              <h4>Tina slots &amp; Q&amp;A</h4>
+              <ul className="agenda-item-list">
+                {agendaSchedule.reserved.map((slot) => {
+                  const filledItem =
+                    slot.kind === "tina-placeholder" && slot.filled
+                      ? agendaItems.find((it) => it.id === slot.id)
+                      : undefined;
+                  return (
+                    <li key={slot.id} className="agenda-item agenda-reserved-item">
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="agenda-item-time">
+                          <CalendarClock size={14} aria-hidden />
+                          <span>{slot.rangeLabel}</span>
+                        </div>
+                        {slot.kind === "tina-placeholder" && slot.filled ? (
+                          <>
+                            <span className="agenda-source-badge">Tina slot</span>
+                            <p
+                              style={{
+                                margin: "0 0 4px",
+                                fontWeight: 650,
+                                color: "var(--charcoal)",
+                                whiteSpace: "pre-wrap",
+                              }}
+                            >
+                              {filledItem ? displayAgendaBody(filledItem.body) : slot.title}
+                            </p>
+                            <span className="agenda-item-meta">
+                              {filledItem?.authorName || "Tina"} · fills reserved placeholder
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <p style={{ margin: "0 0 4px", fontWeight: 650, color: "var(--charcoal)" }}>
+                              {slot.title}
+                            </p>
+                            <span className="agenda-item-meta">
+                              {slot.kind === "tina-placeholder"
+                                ? "Empty 4-minute slot — waiting for Tina to add an agenda item"
+                                : "Last 7 minutes — closing Q & A"}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+
+        </section>
+      )}
+
+      {emailOpen && (
+        <div className="agenda-email-modal" role="dialog" aria-modal="true" aria-labelledby="agenda-email-title">
+          <div className="agenda-email-modal__panel glass">
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+              <h3 id="agenda-email-title" style={{ margin: 0, color: "var(--charcoal)" }}>
+                Email Admins Agenda
+              </h3>
+              <button type="button" className="btn btn-outline" onClick={() => setEmailOpen(false)} aria-label="Close">
+                <X size={16} />
+              </button>
+            </div>
+            <p style={{ color: "var(--text-primary)", marginBottom: 0 }}>
+              Edit the subject and message, then <strong>Save</strong> to keep your draft. The
+              tentative agenda PDF is attached automatically when you send.{" "}
+              <strong>Send test email</strong> goes only to{" "}
+              <strong>{authUser?.email || "your signed-in account"}</strong>.
+            </p>
+            {emailModalError ? (
+              <div
+                data-testid="agenda-email-error"
+                style={{
+                  padding: "10px 12px",
+                  borderRadius: 8,
+                  background: "rgba(155,47,40,0.1)",
+                  border: "1px solid rgba(155,47,40,0.35)",
+                  color: "#9B2F28",
+                }}
+              >
+                {emailModalError}
+              </div>
+            ) : null}
+            {emailModalNotice ? (
+              <div
+                data-testid="agenda-email-notice"
+                style={{
+                  padding: "10px 12px",
+                  borderRadius: 8,
+                  background: "rgba(16,185,129,0.1)",
+                  border: "1px solid rgba(16,185,129,0.35)",
+                  color: "var(--charcoal)",
+                }}
+              >
+                {emailModalNotice}
+              </div>
+            ) : null}
+            <label className="agenda-email-field">
+              <span>To (live send)</span>
+              <input type="text" value={emailTo} readOnly />
+            </label>
+            <label className="agenda-email-field">
+              <span>Test send goes to</span>
+              <input type="text" value={authUser?.email || "(not signed in)"} readOnly />
+            </label>
+            <label className="agenda-email-field">
+              <span>Subject</span>
+              <input
+                type="text"
+                value={emailSubject}
+                onChange={(e) => setEmailSubject(e.target.value)}
+                data-testid="agenda-email-subject"
+                disabled={emailSending}
+              />
+            </label>
+            <label className="agenda-email-field">
+              <span>Message</span>
+              <textarea
+                value={emailBody}
+                onChange={(e) => setEmailBody(e.target.value)}
+                rows={16}
+                data-testid="agenda-email-body"
+                disabled={emailSending}
+              />
+            </label>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={() => setEmailOpen(false)}
+                disabled={emailSending}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={handleSaveEmailDraft}
+                disabled={!emailSubject.trim() || !emailBody.trim() || emailSending}
+                style={{ gap: 8 }}
+                data-testid="agenda-email-save"
+              >
+                <Save size={16} /> Save
+              </button>
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={() => handleSendEmail({ testOnly: true })}
+                disabled={
+                  !emailSubject.trim() || !emailBody.trim() || !authUser?.email || emailSending
+                }
+                style={{ gap: 8 }}
+                data-testid="agenda-email-send-test"
+                title={authUser?.email ? `Send test only to ${authUser.email}` : "Sign in required"}
+              >
+                <Mail size={16} /> {emailSending ? "Sending…" : "Send test email"}
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => handleSendEmail()}
+                disabled={!emailSubject.trim() || !emailBody.trim() || emailSending}
+                style={{ gap: 8 }}
+                data-testid="agenda-email-send"
+              >
+                <Mail size={16} /> Send to Admins
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* While locked for meeting dates, show only the time-pick form first. */}
+      {(agendaReady || showForceBanner) && showForceBanner && (
+        <section
+          className="glass"
+          style={{ padding: 20, borderRadius: 14, border: "2px solid rgba(155,47,40,0.35)" }}
+          data-testid="agenda-time-picks"
+        >
+          <h3
+            style={{
+              margin: "0 0 8px",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              color: "var(--charcoal)",
+            }}
+          >
+            <CalendarClock size={18} style={{ color: "var(--bronze)" }} /> Your meeting times
+          </h3>
+          <p style={{ marginTop: 0, color: "var(--text-primary)" }}>
+            Choose {MIN_AGENDA_TIME_PICKS}–{MAX_AGENDA_TIME_PICKS} start times. Each meeting is
+            expected to last at least {MIN_AGENDA_DURATION_MINUTES} minutes.
+          </p>
+          <div className="agenda-pick-grid">
+            {pickInputs.map((value, idx) => (
+              <label key={idx} className="agenda-pick-field">
+                <span>Option {idx + 1}</span>
+                <input
+                  type="datetime-local"
+                  value={value}
+                  onChange={(e) => {
+                    const next = [...pickInputs];
+                    next[idx] = e.target.value;
+                    setPickInputs(next);
+                  }}
+                  data-testid={`agenda-pick-${idx}`}
+                />
+              </label>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+            {pickInputs.length < MAX_AGENDA_TIME_PICKS && (
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={() => setPickInputs((prev) => [...prev, ""])}
+              >
+                <Plus size={14} /> Add another option
+              </button>
+            )}
+            {pickInputs.length > MIN_AGENDA_TIME_PICKS && (
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={() => setPickInputs((prev) => prev.slice(0, -1))}
+              >
+                Remove last
+              </button>
+            )}
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleSavePicks}
+              style={{ gap: 8 }}
+              data-testid="agenda-save-picks"
+            >
+              <Save size={16} /> Save my times
+            </button>
+          </div>
+        </section>
+      )}
+
+      {agendaReady && !showForceBanner && !previewMode && (
+        <>
+          <section
+            className="glass"
+            style={{
+              padding: 20,
+              borderRadius: 14,
+              border: meetingLive ? "2px solid rgba(155,47,40,0.45)" : undefined,
+              background: meetingLive ? "rgba(155,47,40,0.04)" : undefined,
+            }}
+            data-testid="agenda-run-meeting"
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center", marginBottom: 12 }}>
+              <div>
+                <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: 8, color: "var(--charcoal)" }}>
+                  <ListPlus size={18} style={{ color: "var(--crimson)" }} /> Agenda items
+                </h3>
+                <p style={{ margin: "6px 0 0", color: "var(--text-primary)", fontSize: "0.95rem" }}>
+                  Meeting: <strong>{meetingWindowLabel}</strong>
+                  {meetingLive ? " · LIVE" : ""}
+                </p>
+                <p style={{ margin: "4px 0 0", color: "var(--text-primary)", fontSize: "0.9rem" }}>
+                  Order and times match Configure Agenda (start {meetingTime || DEFAULT_AGENDA_MEETING_TIME}{" "}
+                  {meetingTimezone || DEFAULT_AGENDA_TIMEZONE}).
+                </p>
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {!meetingLive ? (
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    data-testid="agenda-start-meeting"
+                    onClick={handleStartMeeting}
+                    style={{ gap: 8 }}
+                  >
+                    <Play size={16} /> Start Meeting
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      onClick={handleSavePreviewProgress}
+                      style={{ gap: 8 }}
+                    >
+                      <Save size={16} /> Save notes
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      data-testid="agenda-end-meeting"
+                      onClick={handleEndMeeting}
+                      style={{ gap: 8 }}
+                    >
+                      <Square size={16} /> End Meeting
+                    </button>
+                  </>
+                )}
+                <button type="button" className="btn btn-outline" data-testid="agenda-open-picker" onClick={() => setPickerOpen((o) => !o)} style={{ gap: 8 }} disabled={meetingLive}>
+                  <ListChecks size={16} />
+                  {pickerOpen ? "Hide task/test picker" : "Select tasks or tests"}
+                </button>
+              </div>
             </div>
 
             {pickerOpen && (
@@ -448,8 +1801,11 @@ export function AgendaPage({
                       <li key={it.id} className="agenda-item agenda-item--task">
                         <Lock size={14} aria-hidden />
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ whiteSpace: "pre-wrap" }}>{it.body}</p>
-                          <span className="agenda-item-meta">Task {taskId} · {it.authorName}</span>
+                          <span className="agenda-source-badge">
+                            {agendaItemSourceLabel({ source: "task", sourceId: taskId }) || `Task ${taskId}`}
+                          </span>
+                          <p style={{ whiteSpace: "pre-wrap", margin: "0 0 4px" }}>{displayAgendaBody(it.body)}</p>
+                          <span className="agenda-item-meta">{it.authorName}</span>
                         </div>
                         <div className="agenda-item-actions">
                           {onOpenTask && (
@@ -478,13 +1834,16 @@ export function AgendaPage({
             )}
 
             <ul className="agenda-item-list">
-              {agendaItems.length === 0 && (
+              {scheduleOrderedItems.length === 0 && (
                 <li className="agenda-item agenda-item--empty">No partner-added items yet.</li>
               )}
-              {agendaItems.map((it) => (
-                <li key={it.id} className="agenda-item">
-                  {editingId === it.id ? (
-                    <div className="agenda-item-edit">
+              {scheduleOrderedItems.map((it, idx) => {
+                const slot = timedSlots.get(it.id);
+                const draft = previewDrafts[it.id];
+                return (
+                <li key={it.id} className={`agenda-item${meetingLive ? " agenda-item--live" : ""}`}>
+                  {editingId === it.id && !meetingLive ? (
+                    <div className="agenda-item-edit" style={{ flex: 1 }}>
                       <textarea value={editBody} onChange={(e) => setEditBody(e.target.value)} rows={3} style={{ width: "100%" }} />
                       <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                         <button type="button" className="btn btn-primary" onClick={handleSaveEdit}><Save size={14} /> Save</button>
@@ -493,43 +1852,264 @@ export function AgendaPage({
                     </div>
                   ) : (
                     <>
+                      {!meetingLive && (
+                        <div className="agenda-reorder-btns">
+                          <button
+                            type="button"
+                            className="btn btn-outline agenda-reorder-btn"
+                            aria-label="Move up"
+                            title="Move up"
+                            disabled={idx === 0}
+                            onClick={() => moveAgendaListItem(it.id, -1)}
+                          >
+                            <ChevronUp size={18} />
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-outline agenda-reorder-btn"
+                            aria-label="Move down"
+                            title="Move down"
+                            disabled={idx >= scheduleOrderedItems.length - 1}
+                            onClick={() => moveAgendaListItem(it.id, 1)}
+                          >
+                            <ChevronDown size={18} />
+                          </button>
+                        </div>
+                      )}
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ whiteSpace: "pre-wrap" }}>{it.body}</p>
+                        {slot && (
+                          <div className="agenda-item-time">
+                            <CalendarClock size={14} aria-hidden />
+                            <span>{slot.rangeLabel}</span>
+                          </div>
+                        )}
+                        {agendaItemSourceRef(it) && (
+                          <span className="agenda-source-badge">{agendaItemSourceLabel(it)}</span>
+                        )}
+                        {slot?.kind === "tina-placeholder" && (
+                          <span className="agenda-source-badge">Tina slot</span>
+                        )}
+                        <p
+                          style={{
+                            whiteSpace: "pre-wrap",
+                            margin:
+                              slot ||
+                              agendaItemSourceRef(it) ||
+                              isTinaAgendaAuthor(it.authorName)
+                                ? "0 0 4px"
+                                : undefined,
+                          }}
+                        >
+                          {displayAgendaBody(it.body)}
+                        </p>
                         <span className="agenda-item-meta">
-                          {it.source === "task" ? `Task ${it.sourceId}` : it.source === "test" ? `Test ${it.sourceId}` : it.authorName}
+                          {agendaItemSourceLabel(it) || it.authorName}
+                          {slot?.kind === "tina-placeholder" ? " · Tina placeholder" : ""}
                           {it.updatedAt ? ` · ${new Date(it.updatedAt).toLocaleString()}` : ""}
                           {it.canEdit ? "" : " · view only"}
                         </span>
+                        {draft && (
+                          <div
+                            className="agenda-preview-fields"
+                            style={{ marginTop: 10 }}
+                            data-testid={`agenda-topic-capture-${it.id}`}
+                          >
+                            <label style={{ gridColumn: "1 / -1" }}>
+                              <span>Discussion notes{meetingLive ? " (live)" : ""}</span>
+                              <textarea
+                                value={draft.discussionNotes}
+                                rows={meetingLive ? 3 : 2}
+                                placeholder="Notes while this topic is discussed…"
+                                onChange={(e) =>
+                                  updateDraft(it.id, { discussionNotes: e.target.value })
+                                }
+                                data-testid={`agenda-topic-notes-${it.id}`}
+                              />
+                            </label>
+                            <label style={{ gridColumn: "1 / -1" }}>
+                              <span>Questions (one per line)</span>
+                              <textarea
+                                value={draft.questionsText}
+                                rows={2}
+                                placeholder="Questions that come up…"
+                                onChange={(e) =>
+                                  updateDraft(it.id, { questionsText: e.target.value })
+                                }
+                                data-testid={`agenda-topic-questions-${it.id}`}
+                              />
+                            </label>
+                            <label style={{ gridColumn: "1 / -1" }}>
+                              <span>Action items (one per line)</span>
+                              <textarea
+                                value={draft.actionItemsText}
+                                rows={2}
+                                placeholder="Action items from this topic…"
+                                onChange={(e) =>
+                                  updateDraft(it.id, { actionItemsText: e.target.value })
+                                }
+                                data-testid={`agenda-topic-actions-${it.id}`}
+                              />
+                            </label>
+                          </div>
+                        )}
                       </div>
-                      <div className="agenda-item-actions">
-                        {(it.source === "task" || it.source === "test") && it.sourceId && (
-                          <button type="button" className="btn btn-outline" onClick={() => openSource(it)}>
-                            <ExternalLink size={14} /> Open
-                          </button>
-                        )}
-                        {it.canEdit && it.source === "user" && (
-                          <button type="button" className="btn btn-outline" onClick={() => { setEditingId(it.id); setEditBody(it.body); }} aria-label="Edit agenda item">
-                            <Pencil size={14} />
-                          </button>
-                        )}
-                        {it.canEdit && (
-                          <button type="button" className="btn btn-outline" onClick={() => handleDelete(it.id)} aria-label="Delete agenda item">
-                            <Trash2 size={14} />
-                          </button>
-                        )}
-                      </div>
+                      {!meetingLive && (
+                        <div className="agenda-item-actions">
+                          {(it.source === "task" || it.source === "test") && it.sourceId && (
+                            <button type="button" className="btn btn-outline" onClick={() => openSource(it)}>
+                              <ExternalLink size={14} /> Open
+                            </button>
+                          )}
+                          {it.canEdit && it.source === "user" && (
+                            <button type="button" className="btn btn-outline" onClick={() => { setEditingId(it.id); setEditBody(it.body); }} aria-label="Edit agenda item">
+                              <Pencil size={14} />
+                            </button>
+                          )}
+                          {it.canEdit && (
+                            <button type="button" className="btn btn-outline" onClick={() => handleDelete(it.id)} aria-label="Delete agenda item">
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </>
                   )}
                 </li>
-              ))}
+                );
+              })}
             </ul>
 
-            <div className="agenda-add-row">
-              <textarea value={draftBody} onChange={(e) => setDraftBody(e.target.value)} placeholder="Add your agenda item…" rows={3} data-testid="agenda-new-item" />
-              <button type="button" className="btn btn-primary" onClick={handleAddItem} disabled={!draftBody.trim()} style={{ gap: 8 }}>
-                <Plus size={16} /> Add my item
-              </button>
-            </div>
+            {agendaSchedule && agendaSchedule.reserved.length > 0 && (
+              <div style={{ marginTop: 16 }} data-testid="agenda-run-reserved">
+                <h4 style={{ margin: "0 0 8px", color: "var(--bronze)" }}>Tina slots &amp; Q&amp;A</h4>
+                <ul className="agenda-item-list">
+                  {agendaSchedule.reserved.map((slot) => (
+                    <li key={slot.id} className="agenda-item agenda-reserved-item">
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="agenda-item-time">
+                          <CalendarClock size={14} aria-hidden />
+                          <span>{slot.rangeLabel}</span>
+                        </div>
+                        <p style={{ margin: "0 0 4px", fontWeight: 650 }}>
+                          {slot.kind === "qa"
+                            ? "Q & A"
+                            : slot.filled
+                              ? `Tina: ${slot.title}`
+                              : slot.title}
+                        </p>
+                        <span className="agenda-item-meta">
+                          {slot.kind === "qa"
+                            ? "Closing questions and wrap-up"
+                            : slot.filled
+                              ? "Filled from Tina’s agenda items"
+                              : "Waiting for Tina to add a topic"}
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {(meetingLive || meetingActionItems.length > 0) && (
+              <div className="agenda-preview-section" style={{ marginTop: 20 }} data-testid="agenda-run-actions">
+                <h4 style={{ margin: "0 0 8px", color: "var(--bronze)" }}>Action items (from notes)</h4>
+                <p style={{ marginTop: 0, color: "var(--text-primary)" }}>
+                  Built automatically from topic notes while the meeting is live. Assign owners, then
+                  send to backlog when ready.
+                </p>
+                {meetingLive && (
+                  <label className="agenda-meeting-notes-label" style={{ display: "block", marginBottom: 12 }}>
+                    <span>General meeting notes</span>
+                    <textarea
+                      value={meetingNotes}
+                      rows={3}
+                      placeholder="Overall notes — one thought per line…"
+                      onChange={(e) => setMeetingNotes(e.target.value)}
+                      data-testid="agenda-run-meeting-notes"
+                      style={{ width: "100%" }}
+                    />
+                  </label>
+                )}
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={handleTranslateNotesToActions}
+                    style={{ gap: 8 }}
+                  >
+                    <ListChecks size={14} /> Refresh from notes
+                  </button>
+                  <button type="button" className="btn btn-outline" onClick={addBlankMeetingAction} style={{ gap: 8 }}>
+                    <Plus size={14} /> Add action item
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={handlePushActionsToBacklog}
+                    style={{ gap: 8 }}
+                  >
+                    <ListPlus size={14} /> Send to backlog
+                  </button>
+                </div>
+                <div className="agenda-action-list">
+                  <div className="agenda-action-list__head">
+                    <span>Action item</span>
+                    <span>Assign to</span>
+                    <span>Done</span>
+                    <span />
+                  </div>
+                  {meetingActionItems.length === 0 ? (
+                    <p className="agenda-item-meta" style={{ margin: "8px 0 0" }}>
+                      No action items yet — add topic notes above.
+                    </p>
+                  ) : (
+                    meetingActionItems.map((action) => (
+                      <div key={action.id} className="agenda-action-row">
+                        <input
+                          type="text"
+                          value={action.text}
+                          placeholder="Action item…"
+                          onChange={(e) => updateMeetingAction(action.id, { text: e.target.value })}
+                        />
+                        <select
+                          value={action.owner || ""}
+                          onChange={(e) => updateMeetingAction(action.id, { owner: e.target.value })}
+                          aria-label="Assign action item"
+                        >
+                          <option value="">Unassigned</option>
+                          {PARTNER_ASSIGNEES.map((p) => (
+                            <option key={p} value={p}>
+                              {p}
+                            </option>
+                          ))}
+                        </select>
+                        <label className="agenda-action-done">
+                          <input
+                            type="checkbox"
+                            checked={action.done}
+                            onChange={(e) => updateMeetingAction(action.id, { done: e.target.checked })}
+                          />
+                        </label>
+                        <div className="agenda-action-row__meta">
+                          {action.backlogTaskId ? (
+                            <span className="agenda-item-meta">{action.backlogTaskId}</span>
+                          ) : null}
+                          <button
+                            type="button"
+                            className="btn btn-outline"
+                            aria-label="Remove action item"
+                            onClick={() => removeMeetingAction(action.id)}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
           </section>
 
           <section
@@ -679,6 +2259,115 @@ export function AgendaPage({
         }
         .agenda-picks-person ul { margin: 8px 0 0; padding-left: 18px; color: var(--charcoal); }
         .agenda-picks-person li { margin-bottom: 4px; }
+        .agenda-preview-header {
+          display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;
+          margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border-color);
+        }
+        .agenda-preview-header label, .agenda-preview-fields label {
+          display: flex; flex-direction: column; gap: 6px; font-size: 0.9rem; color: var(--charcoal);
+        }
+        .agenda-preview-header input, .agenda-preview-header select,
+        .agenda-preview-fields textarea, .agenda-preview-fields select {
+          border-radius: 10px; border: 1px solid var(--border-color); padding: 8px 10px; font: inherit;
+          background: #fff; color: var(--charcoal);
+        }
+        .agenda-ampm-time {
+          display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+        }
+        .agenda-ampm-time select {
+          border-radius: 10px; border: 1px solid var(--border-color); padding: 8px 10px; font: inherit;
+          background: #fff; color: var(--charcoal);
+        }
+        .agenda-preview-section { margin-top: 18px; }
+        .agenda-preview-section h4 {
+          margin: 0 0 10px; font-size: 1.1rem; color: var(--bronze);
+          border-bottom: 1px solid rgba(155,47,40,0.2); padding-bottom: 6px;
+        }
+        .agenda-preview-item { flex-direction: row; align-items: flex-start; }
+        .agenda-item { align-items: flex-start; }
+        .agenda-item-time {
+          display: inline-flex; align-items: center; gap: 6px;
+          margin-bottom: 6px; padding: 4px 10px; border-radius: 999px;
+          background: rgba(155,47,40,0.1); color: #9B2F28;
+          font-size: 0.85rem; font-weight: 600; width: fit-content;
+        }
+        .agenda-source-badge {
+          display: inline-flex; align-items: center;
+          margin: 0 0 6px; padding: 3px 10px; border-radius: 8px;
+          background: rgba(45,42,38,0.08); color: var(--charcoal);
+          font-size: 0.85rem; font-weight: 750; letter-spacing: 0.02em;
+          width: fit-content;
+        }
+        .agenda-reserved-item {
+          border: 1px dashed rgba(155,47,40,0.35);
+          background: rgba(215,198,151,0.2);
+        }
+        .agenda-meeting-notes-label {
+          display: flex; flex-direction: column; gap: 6px;
+          font-size: 0.9rem; color: var(--charcoal);
+        }
+        .agenda-meeting-notes-label textarea {
+          border-radius: 10px; border: 1px solid var(--border-color);
+          padding: 10px 12px; font: inherit; background: #fff; color: var(--charcoal);
+          width: 100%;
+        }
+        .agenda-action-list { margin-top: 8px; }
+        .agenda-action-list__head, .agenda-action-row {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) 140px 52px auto;
+          gap: 8px;
+          align-items: center;
+        }
+        .agenda-action-list__head {
+          font-size: 0.8rem; font-weight: 700; color: var(--bronze);
+          margin-bottom: 6px;
+        }
+        .agenda-action-row {
+          margin-bottom: 8px;
+        }
+        .agenda-action-row input[type="text"],
+        .agenda-action-row select {
+          border-radius: 10px; border: 1px solid var(--border-color);
+          padding: 8px 10px; font: inherit; background: #fff; color: var(--charcoal);
+          width: 100%;
+        }
+        .agenda-action-done {
+          display: flex; justify-content: center; align-items: center;
+        }
+        .agenda-action-row__meta {
+          display: flex; align-items: center; gap: 6px; justify-content: flex-end;
+        }
+        @media (max-width: 720px) {
+          .agenda-action-list__head { display: none; }
+          .agenda-action-row {
+            grid-template-columns: 1fr;
+            padding: 10px; border: 1px solid var(--border-color); border-radius: 12px;
+            background: rgba(255,255,255,0.55);
+          }
+        }
+        .agenda-reorder-btns {
+          display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; margin-top: 2px;
+        }
+        .agenda-reorder-btn {
+          padding: 4px 6px !important; min-width: 0; line-height: 1;
+        }
+        .agenda-reorder-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+        .agenda-preview-fields {
+          display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;
+        }
+        .agenda-email-modal {
+          position: fixed; inset: 0; z-index: 220; background: rgba(20, 16, 12, 0.45);
+          display: flex; align-items: center; justify-content: center; padding: 16px;
+        }
+        .agenda-email-modal__panel {
+          width: min(720px, 100%); max-height: min(90vh, 900px); overflow: auto;
+          padding: 20px; border-radius: 14px; display: flex; flex-direction: column; gap: 12px;
+        }
+        .agenda-email-field { display: flex; flex-direction: column; gap: 6px; font-size: 0.9rem; color: var(--charcoal); }
+        .agenda-email-field input, .agenda-email-field textarea {
+          border-radius: 10px; border: 1px solid var(--border-color); padding: 8px 10px; font: inherit;
+          background: #fff; color: var(--charcoal);
+        }
       `}</style>
     </div>
   );

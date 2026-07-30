@@ -23,7 +23,8 @@
     "db:setup:local": "npm run db:migrate:local && npm run db:seed:local",
     "db:sync-test-statuses": "node --use-system-ca scripts/sync-test-statuses-from-remote.mjs",
     "db:sync-tasks": "node --use-system-ca scripts/sync-tasks-from-remote.mjs",
-    "db:sync-from-prod": "node --use-system-ca scripts/sync-test-statuses-from-remote.mjs && node --use-system-ca scripts/sync-tasks-from-remote.mjs",
+    "db:sync-agenda": "node --use-system-ca scripts/sync-agenda-from-remote.mjs",
+    "db:sync-from-prod": "node --use-system-ca scripts/sync-test-statuses-from-remote.mjs && node --use-system-ca scripts/sync-tasks-from-remote.mjs && node --use-system-ca scripts/sync-agenda-from-remote.mjs",
     "deploy:pages": "node --use-system-ca scripts/deploy-pages.mjs",
     "domains:attach": "node --use-system-ca scripts/attach-pages-domains.mjs"
   },

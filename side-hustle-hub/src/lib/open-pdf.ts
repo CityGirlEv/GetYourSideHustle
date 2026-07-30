@@ -46,7 +46,7 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
-/** Viewer chrome: Close + Print over an embedded PDF. */
+/** Viewer chrome: fixed Close + Print bar over an embedded PDF. */
 function buildPdfViewerHtml(blobUrl: string, filename: string): string {
   const title = escapeHtml(filename.replace(/\.pdf$/i, "") || "PDF");
   const safeUrl = blobUrl.replace(/"/g, "&quot;");
@@ -61,7 +61,7 @@ function buildPdfViewerHtml(blobUrl: string, filename: string): string {
       --cream: #f7f3ed;
       --wine: #9b2f28;
       --charcoal: #2d2a26;
-      --line: rgba(148, 125, 100, 0.35);
+      --bar-h: 56px;
     }
     * { box-sizing: border-box; }
     html, body {
@@ -70,16 +70,19 @@ function buildPdfViewerHtml(blobUrl: string, filename: string): string {
       background: #1a1816;
       font-family: Inter, system-ui, Segoe UI, sans-serif;
       color: var(--charcoal);
+      overflow: hidden;
     }
     .pdf-viewer-bar {
-      position: sticky;
+      position: fixed;
       top: 0;
-      z-index: 2;
+      left: 0;
+      right: 0;
+      z-index: 2147483647;
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       gap: 10px 12px;
-      min-height: 52px;
+      min-height: var(--bar-h);
       padding: 8px 14px;
       background: linear-gradient(180deg, var(--cream), #ebe3d6);
       border-bottom: 2px solid var(--wine);
@@ -99,6 +102,7 @@ function buildPdfViewerHtml(blobUrl: string, filename: string): string {
       display: flex;
       gap: 8px;
       flex-shrink: 0;
+      margin-left: auto;
     }
     .pdf-viewer-btn {
       appearance: none;
@@ -106,12 +110,13 @@ function buildPdfViewerHtml(blobUrl: string, filename: string): string {
       background: #fff;
       color: var(--wine);
       font: inherit;
-      font-size: 0.875rem;
+      font-size: 0.95rem;
       font-weight: 700;
-      padding: 8px 14px;
+      padding: 10px 18px;
       border-radius: 8px;
       cursor: pointer;
       line-height: 1.2;
+      min-width: 96px;
     }
     .pdf-viewer-btn:hover {
       background: rgba(155, 47, 40, 0.08);
@@ -130,22 +135,24 @@ function buildPdfViewerHtml(blobUrl: string, filename: string): string {
     .pdf-viewer-frame {
       display: block;
       width: 100%;
-      height: calc(100% - 52px);
+      height: 100%;
       border: 0;
       background: #525659;
+      margin-top: var(--bar-h);
+      height: calc(100% - var(--bar-h));
     }
     @media print {
       .pdf-viewer-bar { display: none !important; }
-      .pdf-viewer-frame { height: 100% !important; }
+      .pdf-viewer-frame { margin-top: 0 !important; height: 100% !important; }
     }
   </style>
 </head>
 <body>
-  <header class="pdf-viewer-bar">
+  <header class="pdf-viewer-bar" role="toolbar" aria-label="PDF actions">
     <div class="pdf-viewer-bar__title">${title}</div>
     <div class="pdf-viewer-bar__actions">
-      <button type="button" class="pdf-viewer-btn" id="pdf-close">Close</button>
-      <button type="button" class="pdf-viewer-btn pdf-viewer-btn--primary" id="pdf-print">Print</button>
+      <button type="button" class="pdf-viewer-btn" id="pdf-close" aria-label="Close PDF">Close</button>
+      <button type="button" class="pdf-viewer-btn pdf-viewer-btn--primary" id="pdf-print" aria-label="Print PDF">Print</button>
     </div>
   </header>
   <iframe class="pdf-viewer-frame" id="pdf-frame" title="${title}" src="${safeUrl}"></iframe>
@@ -159,7 +166,6 @@ function buildPdfViewerHtml(blobUrl: string, filename: string): string {
         try {
           window.close();
         } catch (e) {}
-        // Same-window / popup-blocked overlay fallbacks
         if (!window.closed) {
           try {
             if (window.history.length > 1) {
@@ -174,8 +180,15 @@ function buildPdfViewerHtml(blobUrl: string, filename: string): string {
       }
 
       function printViewer() {
-        // Print the PDF blob directly so the viewer chrome can’t clip the page
-        // (logo at the top of each PDF page stays fully visible).
+        // Prefer printing the embedded PDF so Close/Print stay on this viewer tab.
+        try {
+          var win = frame && frame.contentWindow;
+          if (win) {
+            win.focus();
+            win.print();
+            return;
+          }
+        } catch (e1) {}
         try {
           var printTab = window.open("${safeUrl}", "_blank");
           if (printTab) {
@@ -186,7 +199,7 @@ function buildPdfViewerHtml(blobUrl: string, filename: string): string {
               try {
                 printTab.focus();
                 printTab.print();
-              } catch (e1) {}
+              } catch (e2) {}
             };
             printTab.addEventListener("load", function () {
               setTimeout(doPrint, 250);
@@ -194,20 +207,12 @@ function buildPdfViewerHtml(blobUrl: string, filename: string): string {
             setTimeout(doPrint, 1200);
             return;
           }
-        } catch (e2) {}
-        try {
-          var win = frame && frame.contentWindow;
-          if (win) {
-            win.focus();
-            win.print();
-            return;
-          }
         } catch (e3) {}
         window.print();
       }
 
-      closeBtn.addEventListener("click", closeViewer);
-      printBtn.addEventListener("click", printViewer);
+      if (closeBtn) closeBtn.addEventListener("click", closeViewer);
+      if (printBtn) printBtn.addEventListener("click", printViewer);
       document.addEventListener("keydown", function (ev) {
         if (ev.key === "Escape") closeViewer();
       });
@@ -254,17 +259,21 @@ function showInlinePdfOverlay(blobUrl: string, filename: string): void {
   } as CSSStyleDeclaration);
 
   const bar = document.createElement("div");
+  bar.setAttribute("role", "toolbar");
+  bar.setAttribute("aria-label", "PDF actions");
   Object.assign(bar.style, {
     display: "flex",
     flexWrap: "wrap",
     alignItems: "center",
     gap: "10px 12px",
-    minHeight: "52px",
+    minHeight: "56px",
     padding: "8px 14px",
     background: "linear-gradient(180deg, #f7f3ed, #ebe3d6)",
     borderBottom: "2px solid #9b2f28",
     color: "#2d2a26",
     fontFamily: "Inter, system-ui, sans-serif",
+    flexShrink: "0",
+    zIndex: "1",
   } as CSSStyleDeclaration);
 
   const title = document.createElement("div");
@@ -286,17 +295,19 @@ function showInlinePdfOverlay(blobUrl: string, filename: string): void {
     const b = document.createElement("button");
     b.type = "button";
     b.textContent = label;
+    b.setAttribute("aria-label", `${label} PDF`);
     Object.assign(b.style, {
       appearance: "none",
       border: primary ? "1px solid #9b2f28" : "1px solid rgba(155, 47, 40, 0.35)",
       background: primary ? "#9b2f28" : "#fff",
       color: primary ? "#fff" : "#9b2f28",
       font: "inherit",
-      fontSize: "0.875rem",
+      fontSize: "0.95rem",
       fontWeight: "700",
-      padding: "8px 14px",
+      padding: "10px 18px",
       borderRadius: "8px",
       cursor: "pointer",
+      minWidth: "96px",
     } as CSSStyleDeclaration);
     return b;
   };

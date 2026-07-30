@@ -415,8 +415,9 @@ export const Financials: React.FC = () => {
           <h3 style={{ marginTop: 0, marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
             <FileText size={18} style={{ color: "var(--bronze)" }} /> Partnership contract
           </h3>
-          <p style={{ color: "var(--text-primary)", fontSize: "1rem", marginTop: 0 }}>
-            Store the signed agreement between <strong>Tina Marie Barham</strong> and <strong>Evelyn Irving</strong>. Upload PDF or image copies here (admin only).
+          <p className="admin-page-lede" style={{ marginTop: 0 }}>
+            Store the signed agreement between <strong>Tina Marie Barham</strong> and{" "}
+            <strong>Evelyn Irving</strong>. Upload PDF or image copies here (admin only).
           </p>
           <button
             type="button"

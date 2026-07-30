@@ -180,9 +180,9 @@ export function EmailTemplates() {
           <h2>
             <Mail size={20} aria-hidden /> Email templates
           </h2>
-          <p>
-            Every template uses the GYSH logo header plus website / Facebook footer. Preview here, then send a
-            test through Resend. Send history is logged under each template.
+          <p className="admin-page-lede">
+            GYSH logo header + website / Facebook footer. Preview here, send a Resend test, and check send
+            history under each template.
           </p>
         </div>
         <div className="email-templates-admin__head-actions">

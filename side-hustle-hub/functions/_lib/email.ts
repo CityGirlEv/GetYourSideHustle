@@ -63,7 +63,8 @@ export function emailConfigured(env: Env): boolean {
 export function defaultFromAddress(env: Env): string {
   const override = env.EMAIL_FROM?.trim();
   if (override) return override;
-  return `${SITE_NAME} <noreply@${EMAIL_SENDER_DOMAIN}>`;
+  // Match contact / ops mail — same From used across GYSH transactional email.
+  return `${SITE_NAME} <${ADMIN_EMAIL}>`;
 }
 
 async function ensureEmailLog(env: Env): Promise<void> {

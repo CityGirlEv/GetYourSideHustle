@@ -2730,11 +2730,11 @@ export function SchedulePage({
             <CalendarDays size={22} style={{ color: "var(--bronze)" }} /> Schedule &amp;
             Implementation Plan
           </h2>
-          <p style={{ color: "var(--text-primary)", fontSize: "1rem", marginTop: 6 }}>
+          <p className="admin-page-lede">
             Sprint board shows <strong>tasks</strong> and <strong>tests</strong> only. Backlog is
             scheduled into themed sprints (Tue–Mon) via the implementation plan.
           </p>
-          <p style={{ color: "var(--text-primary)", fontSize: "0.9375rem", marginTop: 4 }}>
+          <p className="admin-page-lede" style={{ marginTop: 4, fontSize: "0.92rem" }}>
             {sprint0.label}: {sprint0.rangeLabel} · Board cards:{" "}
             {tasks.length + ALL_TESTS.length} (tests {ALL_TESTS.length} · tasks {tasks.length})
           </p>
@@ -2833,7 +2833,7 @@ export function SchedulePage({
               })();
             }}
           >
-            <Mail size={14} /> Email agenda to Tina &amp; Lyriq
+            <Mail size={14} /> Email Admins Agenda
           </button>
         </div>
         {agendaMsg && (

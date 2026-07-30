@@ -180,6 +180,7 @@ console.log("");
 
 const syncScript = path.join(root, "scripts", "sync-test-statuses-from-remote.mjs");
 const syncTasksScript = path.join(root, "scripts", "sync-tasks-from-remote.mjs");
+const syncAgendaScript = path.join(root, "scripts", "sync-agenda-from-remote.mjs");
 
 function runProdD1Sync({ quiet = false, force = false } = {}) {
   const args = ["--use-system-ca", syncScript];
@@ -195,6 +196,15 @@ function runProdD1Sync({ quiet = false, force = false } = {}) {
 
 function runProdTasksSync({ quiet = false } = {}) {
   return spawnSync(process.execPath, ["--use-system-ca", syncTasksScript], {
+    cwd: root,
+    stdio: quiet ? "pipe" : "inherit",
+    env: process.env,
+    encoding: "utf8",
+  });
+}
+
+function runProdAgendaSync({ quiet = false } = {}) {
+  return spawnSync(process.execPath, ["--use-system-ca", syncAgendaScript], {
     cwd: root,
     stdio: quiet ? "pipe" : "inherit",
     env: process.env,
@@ -226,6 +236,14 @@ if (process.env.GYSH_SKIP_D1_SYNC === "1") {
     process.exit(taskSync.status ?? 1);
   }
   console.log("✓ Local tasks (incl. rollover notes) mirror production");
+  console.log("Syncing partner agenda from prod D1 → local (startup)…");
+  const agendaSync = runProdAgendaSync({ quiet: false });
+  if (agendaSync.status !== 0) {
+    console.error("✗ Prod→local agenda sync failed.");
+    console.error("  Fix network/wrangler auth, then: npm run db:sync-agenda");
+    process.exit(agendaSync.status ?? 1);
+  }
+  console.log("✓ Local Agenda mirrors production");
   console.log("  (timesheet hours are not overwritten — use GYSH_SYNC_TIME_ENTRIES=1 to pull prod hours)");
   console.log("");
 }

@@ -101,6 +101,10 @@ import {
   type ActAsTarget,
 } from "./lib/admin-act-as";
 import { canAccessAdminPortal } from "./lib/gysh-roles";
+import {
+  fetchPartnerAgenda,
+  mustPickAgendaTimes,
+} from "./lib/gysh-partner-agenda";
 import { hasFreeMemberSession } from "./lib/free-member-session";
 import { readPendingBlueprint } from "./lib/pending-blueprint";
 import type { BlueprintAgeGroup } from "./lib/gysh-analytics";
@@ -462,6 +466,8 @@ function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [adminSessionKey, setAdminSessionKey] = useState(0);
   const [adminTab, setAdminTab] = useState<AdminTab>(() => readAdminDeepLink().tab ?? "schedule");
+  /** Tina / Lyriq must submit ≥3 meeting dates before any other navigation. */
+  const [meetingGateLocked, setMeetingGateLocked] = useState(false);
   const [adminUserGuide, setAdminUserGuide] = useState<UserGuideId>("master");
   const [adminMenuOpen, setAdminMenuOpen] = useState(false);
   const adminMenuRef = useRef<HTMLDivElement>(null);
@@ -614,6 +620,42 @@ function App() {
     setActiveView("login");
   }, [authReady, activeView, canUseAdminPortal]);
 
+  // Tina / Lyriq: on login or app open, lock to Agenda until ≥3 meeting dates are saved.
+  useEffect(() => {
+    if (!authReady || !authUser || !mustPickAgendaTimes(authUser)) {
+      setMeetingGateLocked(false);
+      return;
+    }
+    let cancelled = false;
+    void fetchPartnerAgenda()
+      .then((payload) => {
+        if (cancelled) return;
+        const locked = Boolean(payload.needsTimePicks);
+        setMeetingGateLocked(locked);
+        if (locked) {
+          setAdminTab("agenda");
+          setActiveView("admin");
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setMeetingGateLocked(true);
+        setAdminTab("agenda");
+        setActiveView("admin");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [authReady, authUser]);
+
+  useEffect(() => {
+    if (!meetingGateLocked) return;
+    if (activeView !== "admin" || adminTab !== "agenda") {
+      setAdminTab("agenda");
+      setActiveView("admin");
+    }
+  }, [meetingGateLocked, activeView, adminTab]);
+
   const goTo = (
     view: AppView,
     opts?: {
@@ -622,6 +664,7 @@ function App() {
       launchGuideId?: string | null;
     },
   ) => {
+    if (meetingGateLocked && view !== "admin") return;
     setActiveView(view);
     // Kid dashboard is opened in-place (no goTo); any nav clears the parent coach preview.
     setParentKidDashboard(null);
@@ -843,6 +886,14 @@ function App() {
   const goToAdmin = (tab: AdminTab, guide?: UserGuideId) => {
     if (!canUseAdminPortal) {
       setActiveView("login");
+      setAdminMenuOpen(false);
+      setMobileMenuOpen(false);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    if (meetingGateLocked && tab !== "agenda") {
+      setAdminTab("agenda");
+      setActiveView("admin");
       setAdminMenuOpen(false);
       setMobileMenuOpen(false);
       window.scrollTo({ top: 0, behavior: "smooth" });
