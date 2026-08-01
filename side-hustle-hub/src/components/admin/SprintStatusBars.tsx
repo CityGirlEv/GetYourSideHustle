@@ -23,9 +23,11 @@ import {
   type SprintProgressSlice,
   type WorkBreakdown,
 } from "../../lib/sprint-progress";
+import { fetchClosedSprints, isSprintLocked } from "../../lib/gysh-closed-sprints";
 import { WaitIndicator } from "../WaitFeedback";
 import { ShowHideChevron, ShowHideToggle } from "../ShowHideToggle";
 import { RolloutScheduleSummary } from "./RolloutScheduleSummary";
+import { SprintLockedBanner } from "./SprintLockedBanner";
 
 const ALL_TESTS = [
   ...withDefaultSuite(TEST_CASES),
@@ -52,6 +54,7 @@ function SprintProgressRow({
   accent,
   highlight,
   selected,
+  locked,
   onFilter,
 }: {
   label: string;
@@ -60,14 +63,16 @@ function SprintProgressRow({
   accent: string;
   highlight?: boolean;
   selected?: boolean;
+  locked?: boolean;
   onFilter?: () => void;
 }) {
   const filterable = Boolean(onFilter);
   return (
     <div
-      className={`sprint-status-row${highlight ? " sprint-status-row--current" : ""}${selected ? " sprint-status-row--selected" : ""}${filterable ? " sprint-status-row--filterable" : ""}`}
+      className={`sprint-status-row${highlight ? " sprint-status-row--current" : ""}${selected ? " sprint-status-row--selected" : ""}${filterable ? " sprint-status-row--filterable" : ""}${locked ? " sprint-status-row--locked" : ""}`}
       data-testid="sprint-status-meter"
       data-selected={selected ? "true" : "false"}
+      data-locked={locked ? "true" : "false"}
     >
       <div className="sprint-status-row__main">
         <div className="sprint-status-row__identity">
@@ -76,14 +81,18 @@ function SprintProgressRow({
               type="button"
               className="sprint-status-row__filter-btn"
               onClick={onFilter}
-              title="Click to filter"
-              aria-label={`${label}. Click to filter`}
+              title={locked ? `${label} · Closed & locked` : "Click to filter"}
+              aria-label={`${label}${locked ? " · Locked" : ""}. Click to filter`}
             >
               <strong className="sprint-status-row__name">{label}</strong>
+              {locked ? <SprintLockedBanner /> : null}
               <span className="sprint-status-row__click-hint">Click to filter</span>
             </button>
           ) : (
-            <strong className="sprint-status-row__name">{label}</strong>
+            <>
+              <strong className="sprint-status-row__name">{label}</strong>
+              {locked ? <SprintLockedBanner /> : null}
+            </>
           )}
           {detail && <span className="sprint-status-row__dates">{detail}</span>}
         </div>
@@ -139,11 +148,26 @@ export function SprintStatusBars({
   const [summary, setSummary] = useState<ProjectProgressSummary | null>(null);
   const [error, setError] = useState("");
   const [open, setOpen] = useState(defaultOpen);
+  const [closedSprints, setClosedSprints] = useState<Set<number>>(() => new Set());
 
   const fromProps = useMemo(
     () => (boardCards ? summarizeBoardProgress(boardCards) : null),
     [boardCards],
   );
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchClosedSprints()
+      .then((closed) => {
+        if (!cancelled) setClosedSprints(new Set(closed));
+      })
+      .catch(() => {
+        /* keep empty — banners optional */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (boardCards) {
@@ -161,7 +185,7 @@ export function SprintStatusBars({
         if (cancelled) return;
         const cards: BoardCard[] = [
           ...plan.items.map(planToBoardCard),
-          ...tasks.map(taskToBoardCard),
+          ...tasks.filter((t) => !String(t.parentId || "").trim()).map(taskToBoardCard),
           ...ALL_TESTS.map((t) =>
             testToBoardCard(t, tests.statuses[t.id], tests.sprints?.[t.id], tests.assignees?.[t.id], {
               updatedAt: tests.updatedAt?.[t.id],
@@ -248,6 +272,7 @@ export function SprintStatusBars({
                     accent={s.isCurrent ? "#5f7a45" : "#947D64"}
                     highlight={s.isCurrent}
                     selected={selectedSprint === s.sprintIndex}
+                    locked={isSprintLocked(closedSprints, s.sprintIndex)}
                     onFilter={
                       onSelectSprint ? () => onSelectSprint(s.sprintIndex) : undefined
                     }

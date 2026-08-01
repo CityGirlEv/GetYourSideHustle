@@ -90,6 +90,7 @@ describe("qa-page-links", () => {
       "VT-WIZARD-001",
       "VT-WORK-001",
       "VT-FIND-001",
+      "VT-LH-001",
     ]);
     expect(seed.tasks.every((t) => /^Open\s+\[/.test(t.notes))).toBe(true);
   });

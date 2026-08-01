@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   BadgeCheck,
   BookMarked,
@@ -17,6 +17,7 @@ import {
 } from "../lib/marketing-guides";
 import type { AudienceGroup } from "../lib/membership";
 import guidesLibraryHero from "../assets/guides-library-hero.png";
+import { ShowHideChevron } from "./ShowHideToggle";
 
 type GuideFilter = "all" | "free" | "adult" | "kids" | "junior";
 
@@ -34,10 +35,81 @@ type FreeGuidesPageProps = {
 const FILTERS: { id: GuideFilter; label: string }[] = [
   { id: "all", label: "All" },
   { id: "free", label: "Free" },
-  { id: "adult", label: "Adult / Senior" },
+  { id: "adult", label: "Adults" },
   { id: "kids", label: "Kids" },
   { id: "junior", label: "Teens" },
 ];
+
+/** Free guides first when browsing a filter (stable relative order otherwise). */
+function freeGuidesFirst<T>(guides: T[], isFree: (g: T) => boolean): T[] {
+  return [...guides].sort((a, b) => Number(isFree(b)) - Number(isFree(a)));
+}
+
+function partitionFree<T>(guides: T[], isFree: (g: T) => boolean): { free: T[]; gated: T[] } {
+  const free: T[] = [];
+  const gated: T[] = [];
+  for (const g of guides) {
+    if (isFree(g)) free.push(g);
+    else gated.push(g);
+  }
+  return { free, gated };
+}
+
+type GuideSectionKey = "free" | "adult" | "kids" | "junior";
+
+function GuideLibrarySection({
+  sectionKey,
+  title,
+  blurb,
+  collapsible,
+  open,
+  onOpenChange,
+  testId,
+  children,
+}: {
+  sectionKey: GuideSectionKey;
+  title: string;
+  blurb: string;
+  collapsible: boolean;
+  open: boolean;
+  onOpenChange: (key: GuideSectionKey, open: boolean) => void;
+  testId?: string;
+  children: ReactNode;
+}) {
+  const panelId = `free-guides-section-panel-${sectionKey}`;
+  return (
+    <section className="free-guides-section" data-testid={testId}>
+      <header className="free-guides-section-head">
+        {collapsible ? (
+          <button
+            type="button"
+            className="free-guides-section-toggle"
+            aria-expanded={open}
+            aria-controls={panelId}
+            onClick={() => onOpenChange(sectionKey, !open)}
+            data-testid={`free-guides-section-toggle-${sectionKey}`}
+          >
+            <ShowHideChevron open={open} size={20} />
+            <span className="free-guides-section-toggle__title">
+              <BookMarked size={20} aria-hidden />
+              {title}
+            </span>
+          </button>
+        ) : (
+          <h3>
+            <BookMarked size={20} /> {title}
+          </h3>
+        )}
+        <p>{blurb}</p>
+      </header>
+      {(!collapsible || open) && (
+        <div id={panelId} className="free-guides-section-body">
+          {children}
+        </div>
+      )}
+    </section>
+  );
+}
 
 function FreeKidsGuideCard({
   guide,
@@ -126,16 +198,59 @@ export function FreeGuidesPage({
   onOpenManual,
 }: FreeGuidesPageProps) {
   const [filter, setFilter] = useState<GuideFilter>("all");
+  const [sectionOpen, setSectionOpen] = useState<Record<GuideSectionKey, boolean>>({
+    free: true,
+    adult: false,
+    kids: false,
+    junior: false,
+  });
   const freeOnly = filter === "free";
+  const showAll = filter === "all";
+  const sectionsCollapsible = showAll;
 
-  const kidsGuides = guidesForAudience("kids").filter((g) => !freeOnly || g.free);
-  const juniorGuides = guidesForAudience("junior").filter((g) => !freeOnly || g.free);
-  const adultGuides = LAUNCH_GUIDES.filter((g) => !freeOnly || g.free);
-  const seniorGuides = SENIOR_GUIDE_TEASERS.filter((g) => !freeOnly || g.status === "preview");
+  const setSection = (key: GuideSectionKey, open: boolean) => {
+    setSectionOpen((prev) => ({ ...prev, [key]: open }));
+  };
+
+  const kidsAll = guidesForAudience("kids");
+  const juniorAll = guidesForAudience("junior");
+  const adultAll = LAUNCH_GUIDES;
+  const seniorAll = SENIOR_GUIDE_TEASERS;
+
+  const kidsParts = partitionFree(kidsAll, (g) => g.free);
+  const juniorParts = partitionFree(juniorAll, (g) => g.free);
+  const adultParts = partitionFree(adultAll, (g) => !!g.free);
+  const seniorParts = partitionFree(seniorAll, (g) => g.status === "preview");
 
   const showAdult = filter === "all" || filter === "free" || filter === "adult";
   const showKids = filter === "all" || filter === "free" || filter === "kids";
   const showJunior = filter === "all" || filter === "free" || filter === "junior";
+
+  /**
+   * All + Free: one “Free guides” block first (every audience).
+   * On All, free guides also repeat inside each audience section when expanded.
+   * Audience filters: free cards still sort first within that audience list.
+   */
+  const showFreeBundle = showAll || freeOnly;
+  const freeFirstBundle = {
+    adult: showFreeBundle && showAdult ? adultParts.free : [],
+    senior: showFreeBundle && showAdult ? seniorParts.free : [],
+    kids: showFreeBundle && showKids ? kidsParts.free : [],
+    junior: showFreeBundle && showJunior ? juniorParts.free : [],
+  };
+  const freeFirstCount =
+    freeFirstBundle.adult.length +
+    freeFirstBundle.senior.length +
+    freeFirstBundle.kids.length +
+    freeFirstBundle.junior.length;
+
+  // Free filter: only the Free Guides bundle. All / audience: full list, free first.
+  const kidsGuides = freeOnly ? [] : freeGuidesFirst(kidsAll, (g) => g.free);
+  const juniorGuides = freeOnly ? [] : freeGuidesFirst(juniorAll, (g) => g.free);
+  const adultGuides = freeOnly ? [] : freeGuidesFirst(adultAll, (g) => !!g.free);
+  const seniorGuides = freeOnly
+    ? []
+    : freeGuidesFirst(seniorAll, (g) => g.status === "preview");
 
   const manuals = MARKETING_GUIDES.filter((g) => {
     if (filter === "all" || filter === "free") return true;
@@ -148,6 +263,7 @@ export function FreeGuidesPage({
 
   const empty =
     manuals.length === 0 &&
+    freeFirstCount === 0 &&
     (!showAdult || (adultGuides.length === 0 && seniorGuides.length === 0)) &&
     (!showKids || kidsGuides.length === 0) &&
     (!showJunior || juniorGuides.length === 0);
@@ -266,19 +382,80 @@ export function FreeGuidesPage({
         </div>
       )}
 
-      {showAdult && (adultGuides.length > 0 || seniorGuides.length > 0) && (
-        <section className="free-guides-section">
-          <header className="free-guides-section-head">
-            <h3>
-              <BookMarked size={20} /> GYSH Adult / Senior Guides
-            </h3>
-            <p>
-              {freeOnly
-                ? "Free adult launch guides and senior previews."
-                : "Launch guides for adults, plus senior-friendly guide teasers."}
-            </p>
-          </header>
+      {showFreeBundle && freeFirstCount > 0 && (
+        <GuideLibrarySection
+          sectionKey="free"
+          title="Free Guides"
+          blurb="Open these first — no membership required."
+          collapsible={sectionsCollapsible}
+          open={sectionOpen.free}
+          onOpenChange={setSection}
+          testId="free-guides-first"
+        >
+          <div className="free-guides-grid">
+            {freeFirstBundle.adult.map((g) => (
+              <article key={`free-adult-${g.id}`} className="glass free-guide-card is-free">
+                <div className="free-guide-card-head">
+                  <div>
+                    <span className="glow-badge free">Free guide</span>
+                    <h3>{g.name}</h3>
+                  </div>
+                  <Unlock size={18} style={{ color: "var(--accent-emerald)", flexShrink: 0 }} />
+                </div>
+                <p className="free-guide-summary">{g.peek}</p>
+                <button type="button" className="glow-chip-btn" onClick={() => onOpenAdultGuide(g.id)}>
+                  Open guide
+                </button>
+              </article>
+            ))}
+            {freeFirstBundle.senior.map((g) => (
+              <article key={`free-senior-${g.id}`} className="glass free-guide-card is-free">
+                <div className="free-guide-card-head">
+                  <div>
+                    <span className="glow-badge free">Free preview</span>
+                    <h3>{g.title}</h3>
+                  </div>
+                  <Unlock size={18} style={{ color: "var(--accent-emerald)", flexShrink: 0 }} />
+                </div>
+                <p className="free-guide-summary">{g.blurb}</p>
+                <button type="button" className="glow-chip-btn" onClick={onOpenSeniorsGuides}>
+                  View in Seniors
+                </button>
+              </article>
+            ))}
+            {freeFirstBundle.kids.map((g) => (
+              <FreeKidsGuideCard
+                key={`free-kids-${g.id}`}
+                guide={g}
+                isMember={isLoggedIn}
+                onJoinCta={onGoToJoin ? () => onGoToJoin("kids") : undefined}
+              />
+            ))}
+            {freeFirstBundle.junior.map((g) => (
+              <FreeKidsGuideCard
+                key={`free-junior-${g.id}`}
+                guide={g}
+                isMember={isLoggedIn}
+                onJoinCta={onGoToJoin ? () => onGoToJoin("junior") : undefined}
+              />
+            ))}
+          </div>
+        </GuideLibrarySection>
+      )}
 
+      {showAdult && (adultGuides.length > 0 || seniorGuides.length > 0) && (
+        <GuideLibrarySection
+          sectionKey="adult"
+          title="GYSH Adult / Senior Guides"
+          blurb={
+            freeOnly
+              ? "Free adult launch guides and senior previews."
+              : "Launch guides for adults, plus senior-friendly guide teasers."
+          }
+          collapsible={sectionsCollapsible}
+          open={sectionOpen.adult}
+          onOpenChange={setSection}
+        >
           {adultGuides.length > 0 && (
             <>
               <h4 className="free-guides-subsection">Adult launch guides</h4>
@@ -355,21 +532,22 @@ export function FreeGuidesPage({
               </div>
             </>
           )}
-        </section>
+        </GuideLibrarySection>
       )}
 
       {showKids && kidsGuides.length > 0 && (
-        <section className="free-guides-section">
-          <header className="free-guides-section-head">
-            <h3>
-              <BookMarked size={20} /> GYSH Kids Guides
-            </h3>
-            <p>
-              {freeOnly
-                ? "Free starter playbooks for ages 4–12."
-                : "Ages 4–12 — free starter playbooks and member team guides."}
-            </p>
-          </header>
+        <GuideLibrarySection
+          sectionKey="kids"
+          title="GYSH Kids Guides"
+          blurb={
+            freeOnly
+              ? "Free starter playbooks for ages 4–12."
+              : "Ages 4–12 — free starter playbooks and member team guides."
+          }
+          collapsible={sectionsCollapsible}
+          open={sectionOpen.kids}
+          onOpenChange={setSection}
+        >
           <div className="free-guides-grid">
             {kidsGuides.map((g) => (
               <FreeKidsGuideCard
@@ -383,21 +561,22 @@ export function FreeGuidesPage({
           <button type="button" className="btn btn-outline free-guides-section-link" onClick={onOpenKidsGuides}>
             Open Kids Corner Guides
           </button>
-        </section>
+        </GuideLibrarySection>
       )}
 
       {showJunior && juniorGuides.length > 0 && (
-        <section className="free-guides-section">
-          <header className="free-guides-section-head">
-            <h3>
-              <BookMarked size={20} /> GYSH Teens Guides
-            </h3>
-            <p>
-              {freeOnly
-                ? "Free teen playbooks for ages 13–17."
-                : "Ages 13–17 — free teen playbooks and member team guides."}
-            </p>
-          </header>
+        <GuideLibrarySection
+          sectionKey="junior"
+          title="GYSH Teens Guides"
+          blurb={
+            freeOnly
+              ? "Free teen playbooks for ages 13–17."
+              : "Ages 13–17 — free teen playbooks and member team guides."
+          }
+          collapsible={sectionsCollapsible}
+          open={sectionOpen.junior}
+          onOpenChange={setSection}
+        >
           <div className="free-guides-grid">
             {juniorGuides.map((g) => (
               <FreeKidsGuideCard
@@ -411,7 +590,7 @@ export function FreeGuidesPage({
           <button type="button" className="btn btn-outline free-guides-section-link" onClick={onOpenJuniorGuides}>
             Open Teens Side Hustle Guides
           </button>
-        </section>
+        </GuideLibrarySection>
       )}
     </div>
   );

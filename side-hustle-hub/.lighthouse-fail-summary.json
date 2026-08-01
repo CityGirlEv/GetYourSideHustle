@@ -1,0 +1,2135 @@
+{
+  "url": "http://localhost:5173/",
+  "fetchTime": "2026-07-30T21:37:18.572Z",
+  "scores": {
+    "performance": 47,
+    "accessibility": 96,
+    "seo": 92
+  },
+  "audits": {
+    "first-contentful-paint": {
+      "id": "first-contentful-paint",
+      "title": "First Contentful Paint",
+      "score": 0,
+      "displayValue": "33.7 s",
+      "numericValue": 33690.761700000025,
+      "sample": []
+    },
+    "largest-contentful-paint": {
+      "id": "largest-contentful-paint",
+      "title": "Largest Contentful Paint",
+      "score": 0,
+      "displayValue": "73.8 s",
+      "numericValue": 73781.79300000003,
+      "sample": []
+    },
+    "speed-index": {
+      "id": "speed-index",
+      "title": "Speed Index",
+      "score": 0,
+      "displayValue": "33.7 s",
+      "numericValue": 33690.761700000025,
+      "sample": []
+    },
+    "interactive": {
+      "id": "interactive",
+      "title": "Time to Interactive",
+      "score": 0,
+      "displayValue": "74.1 s",
+      "numericValue": 74089.90350000004,
+      "sample": []
+    },
+    "total-blocking-time": {
+      "id": "total-blocking-time",
+      "title": "Total Blocking Time",
+      "score": 0.73,
+      "displayValue": "350 ms",
+      "numericValue": 349.0000000000018,
+      "sample": []
+    },
+    "max-potential-fid": {
+      "id": "max-potential-fid",
+      "title": "Max Potential First Input Delay",
+      "score": 0.69,
+      "displayValue": "190 ms",
+      "numericValue": 193.00000000000182,
+      "sample": []
+    },
+    "image-delivery-insight": {
+      "id": "image-delivery-insight",
+      "title": "Improve image delivery",
+      "score": 0,
+      "displayValue": "Est savings of 1,202 KiB",
+      "numericValue": null,
+      "sample": [
+        {
+          "sel": "div.home-promo-hero__band > div.home-promo-hero__layout > div.home-promo-hero__frame > img.home-promo-hero__img",
+          "label": "Get Your Side Hustle — Ideas, Action, Income, Freedom. For Kids, Teens, Adults …",
+          "snip": "<img alt=\"Get Your Side Hustle — Ideas, Action, Income, Freedom. For Kids, Teens, Ad…\" class=\"home-promo-hero__img\" width=\"1600\" height=\"900\" decoding=\"async\" f"
+        },
+        {
+          "sel": "header.top-header > div.top-header-inner > button.brand-section > img.brand-header-logo",
+          "label": "Get Your Side Hustle",
+          "snip": "<img alt=\"Get Your Side Hustle\" class=\"brand-header-logo\" src=\"/src/assets/gysh-logo-rocket.png\">"
+        }
+      ]
+    },
+    "lcp-discovery-insight": {
+      "id": "lcp-discovery-insight",
+      "title": "LCP request discovery",
+      "score": 0,
+      "displayValue": null,
+      "numericValue": null,
+      "sample": [
+        {
+          "type": "checklist",
+          "items": {
+            "priorityHinted": {
+              "label": "fetchpriority=high applied",
+              "value": true
+            },
+            "requestDiscoverable": {
+              "label": "Request is discoverable in initial document",
+              "value": false
+            },
+            "eagerlyLoaded": {
+              "label": "LCP resources should not use loading=lazy",
+              "value": true
+            }
+          }
+        },
+        {
+          "type": "node",
+          "lhId": "page-0-IMG",
+          "path": "1,HTML,1,BODY,0,DIV,0,DIV,1,DIV,0,MAIN,0,DIV,1,SECTION,0,DIV,0,DIV,0,DIV,0,IMG",
+          "selector": "div.home-promo-hero__band > div.home-promo-hero__layout > div.home-promo-hero__frame > img.home-promo-hero__img",
+          "boundingRect": {
+            "top": 291,
+            "bottom": 551,
+            "left": 6,
+            "right": 406,
+            "width": 400,
+            "height": 260
+          },
+          "snippet": "<img alt=\"Get Your Side Hustle — Ideas, Action, Income, Freedom. For Kids, Teens, Ad…\" class=\"home-promo-hero__img\" width=\"1600\" height=\"900\" decoding=\"async\" fetchpriority=\"high\" src=\"/src/assets/gysh-home-hero.png\">",
+          "nodeLabel": "Get Your Side Hustle — Ideas, Action, Income, Freedom. For Kids, Teens, Adults …"
+        }
+      ]
+    },
+    "render-blocking-insight": {
+      "id": "render-blocking-insight",
+      "title": "Render-blocking requests",
+      "score": 0,
+      "displayValue": "Est savings of 1,210 ms",
+      "numericValue": null,
+      "sample": [
+        {
+          "url": "/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght",
+          "totalBytes": 1671,
+          "wastedMs": 950
+        }
+      ]
+    },
+    "unminified-javascript": {
+      "id": "unminified-javascript",
+      "title": "Minify JavaScript",
+      "score": 0,
+      "displayValue": "Est savings of 5,992 KiB",
+      "numericValue": 34720,
+      "sample": [
+        {
+          "url": "/src/components/admin/SchedulePage.tsx",
+          "wastedBytes": 445311,
+          "totalBytes": 583844
+        },
+        {
+          "url": "/node_modules/.vite/deps/lucide-react.js?v=b6268a98",
+          "wastedBytes": 425603,
+          "totalBytes": 1125829
+        },
+        {
+          "url": "/src/components/admin/TestingPortal.tsx",
+          "wastedBytes": 422607,
+          "totalBytes": 555864
+        },
+        {
+          "url": "/src/components/admin/AgendaPage.tsx",
+          "wastedBytes": 284863,
+          "totalBytes": 390850
+        },
+        {
+          "url": "/src/App.tsx",
+          "wastedBytes": 259756,
+          "totalBytes": 358561
+        },
+        {
+          "url": "/src/components/admin/TaskList.tsx",
+          "wastedBytes": 253623,
+          "totalBytes": 340176
+        },
+        {
+          "url": "/node_modules/.vite/deps/jspdf.js?v=b6268a98",
+          "wastedBytes": 197351,
+          "totalBytes": 633423
+        },
+        {
+          "url": "/src/components/KidsCorner.tsx",
+          "wastedBytes": 194071,
+          "totalBytes": 282016
+        },
+        {
+          "url": "/@vite/client",
+          "wastedBytes": 177651,
+          "totalBytes": 209913
+        },
+        {
+          "url": "/src/components/UserPortal.tsx",
+          "wastedBytes": 134567,
+          "totalBytes": 186452
+        },
+        {
+          "url": "/src/lib/gysh-test-plan.ts",
+          "wastedBytes": 131790,
+          "totalBytes": 182113
+        },
+        {
+          "url": "/node_modules/.vite/deps/react-dom_client.js?v=b6268a98",
+          "wastedBytes": 128316,
+          "totalBytes": 820982
+        },
+        {
+          "url": "/@react-refresh",
+          "wastedBytes": 101665,
+          "totalBytes": 111894
+        },
+        {
+          "url": "/src/components/admin/TimesheetPage.tsx",
+          "wastedBytes": 96771,
+          "totalBytes": 133945
+        },
+        {
+          "url": "/src/components/StepByStepGuides.tsx",
+          "wastedBytes": 81338,
+          "totalBytes": 120324
+        },
+        {
+          "url": "/src/components/admin/DailyProgressPage.tsx",
+          "wastedBytes": 76652,
+          "totalBytes": 108813
+        },
+        {
+          "url": "/src/components/SeniorSideHustles.tsx",
+          "wastedBytes": 74697,
+          "totalBytes": 107254
+        },
+        {
+          "url": "/src/lib/membership.ts",
+          "wastedBytes": 70216,
+          "totalBytes": 94618
+        },
+        {
+          "url": "/src/components/MembershipPage.tsx",
+          "wastedBytes": 69187,
+          "totalBytes": 104090
+        },
+        {
+          "url": "/src/components/CalculatorSection.tsx",
+          "wastedBytes": 67253,
+          "totalBytes": 97926
+        }
+      ]
+    },
+    "unused-javascript": {
+      "id": "unused-javascript",
+      "title": "Reduce unused JavaScript",
+      "score": 0,
+      "displayValue": "Est savings of 2,531 KiB",
+      "numericValue": 15130,
+      "sample": [
+        {
+          "url": "/node_modules/.vite/deps/jspdf.js?v=b6268a98",
+          "wastedBytes": 534485,
+          "totalBytes": 633346
+        },
+        {
+          "url": "/node_modules/.vite/deps/react-dom_client.js?v=b6268a98",
+          "wastedBytes": 371773,
+          "totalBytes": 820938
+        },
+        {
+          "url": "/src/components/admin/SchedulePage.tsx",
+          "wastedBytes": 197181,
+          "totalBytes": 583583
+        },
+        {
+          "url": "/src/components/admin/TestingPortal.tsx",
+          "wastedBytes": 195416,
+          "totalBytes": 555583
+        },
+        {
+          "url": "/src/components/admin/AgendaPage.tsx",
+          "wastedBytes": 152709,
+          "totalBytes": 390737
+        },
+        {
+          "url": "/src/components/admin/TaskList.tsx",
+          "wastedBytes": 129879,
+          "totalBytes": 340054
+        },
+        {
+          "url": "/src/components/KidsCorner.tsx",
+          "wastedBytes": 111813,
+          "totalBytes": 281860
+        },
+        {
+          "url": "/src/components/UserPortal.tsx",
+          "wastedBytes": 76048,
+          "totalBytes": 186383
+        },
+        {
+          "url": "/src/components/AboutPage.tsx",
+          "wastedBytes": 53923,
+          "totalBytes": 101368
+        },
+        {
+          "url": "/src/components/admin/TimesheetPage.tsx",
+          "wastedBytes": 50067,
+          "totalBytes": 133919
+        },
+        {
+          "url": "/src/components/MembershipPage.tsx",
+          "wastedBytes": 48819,
+          "totalBytes": 104034
+        },
+        {
+          "url": "/src/components/StepByStepGuides.tsx",
+          "wastedBytes": 47898,
+          "totalBytes": 120207
+        },
+        {
+          "url": "/src/components/CalculatorSection.tsx",
+          "wastedBytes": 46383,
+          "totalBytes": 97896
+        },
+        {
+          "url": "/src/components/admin/DailyProgressPage.tsx",
+          "wastedBytes": 43662,
+          "totalBytes": 108792
+        },
+        {
+          "url": "/src/components/SeniorSideHustles.tsx",
+          "wastedBytes": 42045,
+          "totalBytes": 107214
+        },
+        {
+          "url": "/src/components/admin/QaTestingManualPage.tsx",
+          "wastedBytes": 36602,
+          "totalBytes": 72575
+        },
+        {
+          "url": "/src/components/admin/UsersArea.tsx",
+          "wastedBytes": 33651,
+          "totalBytes": 86035
+        },
+        {
+          "url": "/src/components/WorkshopsHub.tsx",
+          "wastedBytes": 32358,
+          "totalBytes": 69861
+        },
+        {
+          "url": "/src/App.tsx",
+          "wastedBytes": 31060,
+          "totalBytes": 358361
+        },
+        {
+          "url": "/src/components/CommunityHub.tsx",
+          "wastedBytes": 30817,
+          "totalBytes": 62995
+        }
+      ]
+    },
+    "unminified-css": {
+      "id": "unminified-css",
+      "title": "Minify CSS",
+      "score": 0.5,
+      "displayValue": "Est savings of 15 KiB",
+      "numericValue": 0,
+      "sample": [
+        {
+          "url": ":root {\n  /* GYSH Brand ? Light theme that POPS (Antique Gold primary) */\n  --onyx: #050407;\n  --ch…",
+          "wastedBytes": 15156,
+          "totalBytes": 76718
+        }
+      ]
+    },
+    "unused-css-rules": {
+      "id": "unused-css-rules",
+      "title": "Reduce unused CSS",
+      "score": 0.5,
+      "displayValue": "Est savings of 69 KiB",
+      "numericValue": 0,
+      "sample": [
+        {
+          "url": ":root {\n  /* GYSH Brand ? Light theme that POPS (Antique Gold primary) */\n  --onyx: #050407;\n  --ch…",
+          "wastedBytes": 70883,
+          "totalBytes": 76718
+        }
+      ]
+    },
+    "total-byte-weight": {
+      "id": "total-byte-weight",
+      "title": "Avoid enormous network payloads",
+      "score": 0.5,
+      "displayValue": "Total size was 12,891 KiB",
+      "numericValue": 13200401,
+      "sample": [
+        {
+          "url": "/src/assets/munties-ai-agents-logo.png",
+          "totalBytes": 1250773
+        },
+        {
+          "url": "/node_modules/.vite/deps/lucide-react.js?v=b6268a98",
+          "totalBytes": 1126143
+        },
+        {
+          "url": "/src/assets/gysh-home-hero.png",
+          "totalBytes": 1119885
+        },
+        {
+          "url": "/node_modules/.vite/deps/react-dom_client.js?v=b6268a98",
+          "totalBytes": 821294
+        },
+        {
+          "url": "/node_modules/.vite/deps/jspdf.js?v=b6268a98",
+          "totalBytes": 633735
+        },
+        {
+          "url": "/src/components/admin/SchedulePage.tsx",
+          "totalBytes": 584138
+        },
+        {
+          "url": "/src/components/admin/TestingPortal.tsx",
+          "totalBytes": 556158
+        },
+        {
+          "url": "/src/index.css",
+          "totalBytes": 404401
+        },
+        {
+          "url": "/src/components/admin/AgendaPage.tsx",
+          "totalBytes": 391144
+        },
+        {
+          "url": "/src/App.tsx",
+          "totalBytes": 358855
+        }
+      ]
+    },
+    "unsized-images": {
+      "id": "unsized-images",
+      "title": "Image elements do not have explicit `width` and `height`",
+      "score": 0.5,
+      "displayValue": null,
+      "numericValue": null,
+      "sample": [
+        {
+          "sel": "footer.site-footer > div.site-footer-meta > a.site-footer-built-by > img.site-footer-muntie-logo",
+          "label": "Muntie's AI Agents",
+          "snip": "<img alt=\"Muntie's AI Agents\" class=\"site-footer-muntie-logo\" src=\"/src/assets/munties-ai-agents-logo.png\">"
+        },
+        {
+          "sel": "header.top-header > div.top-header-inner > button.brand-section > img.brand-header-logo",
+          "label": "Get Your Side Hustle",
+          "snip": "<img alt=\"Get Your Side Hustle\" class=\"brand-header-logo\" src=\"/src/assets/gysh-logo-rocket.png\">"
+        },
+        {
+          "sel": "footer.site-footer > div.site-footer-inner > div.site-footer-brand > img.site-footer-logo",
+          "label": "Get Your Side Hustle",
+          "snip": "<img alt=\"Get Your Side Hustle\" class=\"site-footer-logo\" src=\"/src/assets/gysh-logo-rocket.png\">"
+        }
+      ]
+    },
+    "mainthread-work-breakdown": {
+      "id": "mainthread-work-breakdown",
+      "title": "Minimize main-thread work",
+      "score": 0,
+      "displayValue": "2.8 s",
+      "numericValue": 2759.695999999998,
+      "sample": [
+        {
+          "group": "other",
+          "duration": 1105.2919999999942
+        },
+        {
+          "group": "scriptEvaluation",
+          "duration": 954.4600000000032
+        },
+        {
+          "group": "styleLayout",
+          "duration": 608.3599999999999
+        },
+        {
+          "group": "scriptParseCompile",
+          "duration": 45.90799999999997
+        },
+        {
+          "group": "paintCompositeRender",
+          "duration": 31.227999999999998
+        },
+        {
+          "group": "garbageCollection",
+          "duration": 11.571999999999996
+        },
+        {
+          "group": "parseHTML",
+          "duration": 2.8760000000000003
+        }
+      ]
+    },
+    "bf-cache": {
+      "id": "bf-cache",
+      "title": "Page prevented back/forward cache restoration",
+      "score": 0,
+      "displayValue": "1 failure reason",
+      "numericValue": null,
+      "sample": [
+        {
+          "reason": "Pages with WebSocket cannot enter back/forward cache."
+        }
+      ]
+    },
+    "document-latency-insight": {
+      "id": "document-latency-insight",
+      "title": "Document request latency",
+      "score": 0.5,
+      "displayValue": "Est savings of 2 KiB",
+      "numericValue": null,
+      "sample": []
+    },
+    "network-dependency-tree-insight": {
+      "id": "network-dependency-tree-insight",
+      "title": "Network dependency tree",
+      "score": 0,
+      "displayValue": null,
+      "numericValue": null,
+      "sample": [
+        {
+          "type": "list-section",
+          "value": {
+            "type": "network-tree",
+            "chains": {
+              "470B85C57F93D2F130557CD6794DC722": {
+                "url": "http://localhost:5173/",
+                "navStartToEndTime": 37,
+                "transferSize": 2990,
+                "isLongest": true,
+                "children": {
+                  "47560.3": {
+                    "url": "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap",
+                    "navStartToEndTime": 298,
+                    "transferSize": 1671,
+                    "isLongest": true,
+                    "children": {
+                      "47560.212": {
+                        "url": "https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2",
+                        "navStartToEndTime": 1123,
+                        "transferSize": 48464,
+                        "isLongest": true,
+                        "children": {}
+                      },
+                      "47560.195": {
+                        "url": "https://fonts.gstatic.com/s/cormorantgaramond/v21/co3bmX5slCNuHLi8bLeY9MK7whWMhyjYqXtKky2F7g.woff2",
+                        "navStartToEndTime": 1118,
+                        "transferSize": 37808,
+                        "children": {}
+                      }
+                    }
+                  },
+                  "47560.4": {
+                    "url": "http://localhost:5173/src/main.tsx",
+                    "navStartToEndTime": 67,
+                    "transferSize": 1938,
+                    "children": {
+                      "47560.12": {
+                        "url": "http://localhost:5173/src/App.tsx",
+                        "navStartToEndTime": 123,
+                        "transferSize": 358855,
+                        "children": {
+                          "47560.32": {
+                            "url": "http://localhost:5173/src/components/AdminPortal.tsx",
+                            "navStartToEndTime": 226,
+                            "transferSize": 84110,
+                            "children": {
+                              "47560.100": {
+                                "url": "http://localhost:5173/src/components/admin/TestingPortal.tsx",
+                                "navStartToEndTime": 379,
+                                "transferSize": 556158,
+                                "children": {
+                                  "47560.162": {
+                                    "url": "http://localhost:5173/src/components/admin/SprintStatusBars.tsx",
+                                    "navStartToEndTime": 513,
+                                    "transferSize": 32535,
+                                    "children": {
+                                      "47560.190": {
+                                        "url": "http://localhost:5173/src/components/admin/RolloutScheduleSummary.tsx",
+                                        "navStartToEndTime": 554,
+                                        "transferSize": 15082,
+                                        "children": {}
+                                      },
+                                      "47560.189": {
+                                        "url": "http://localhost:5173/src/lib/sprint-progress.ts",
+                                        "navStartToEndTime": 554,
+                                        "transferSize": 9859,
+                                        "children": {}
+                                      }
+                                    }
+                                  },
+                                  "47560.164": {
+                                    "url": "http://localhost:5173/src/components/admin/WorkTimer.tsx",
+                                    "navStartToEndTime": 518,
+                                    "transferSize": 15455,
+                                    "children": {}
+                                  },
+                                  "47560.165": {
+                                    "url": "http://localhost:5173/src/components/admin/NotesThread.tsx",
+                                    "navStartToEndTime": 517,
+                                    "transferSize": 17039,
+                                    "children": {}
+                                  },
+                                  "47560.163": {
+                                    "url": "http://localhost:5173/src/components/admin/QaProgressBars.tsx",
+                                    "navStartToEndTime": 513,
+                                    "transferSize": 43195,
+                                    "children": {}
+                                  },
+                                  "47560.161": {
+                                    "url": "http://localhost:5173/src/components/ShowHideToggle.tsx",
+                                    "navStartToEndTime": 508,
+                                    "transferSize": 10739,
+                                    "children": {}
+                                  },
+                                  "47560.159": {
+                                    "url": "http://localhost:5173/src/lib/gysh-time-entries.ts",
+                                    "navStartToEndTime": 505,
+                                    "transferSize": 22933,
+                                    "children": {}
+                                  },
+                                  "47560.158": {
+                                    "url": "http://localhost:5173/src/lib/gysh-attachments.ts",
+                                    "navStartToEndTime": 505,
+                                    "transferSize": 7165,
+                                    "children": {}
+                                  },
+                                  "47560.160": {
+                                    "url": "http://localhost:5173/src/lib/use-active-timers.ts",
+                                    "navStartToEndTime": 505,
+                                    "transferSize": 3718,
+                                    "children": {}
+                                  },
+                                  "47560.157": {
+                                    "url": "http://localhost:5173/src/lib/gysh-assignment.ts",
+                                    "navStartToEndTime": 500,
+                                    "transferSize": 20478,
+                                    "children": {}
+                                  },
+                                  "47560.156": {
+                                    "url": "http://localhost:5173/src/lib/gysh-note-entries.ts",
+                                    "navStartToEndTime": 500,
+                                    "transferSize": 36645,
+                                    "children": {}
+                                  },
+                                  "47560.155": {
+                                    "url": "http://localhost:5173/src/lib/gysh-audit.ts",
+                                    "navStartToEndTime": 496,
+                                    "transferSize": 3606,
+                                    "children": {}
+                                  },
+                                  "47560.154": {
+                                    "url": "http://localhost:5173/src/lib/gysh-sprint-board.ts",
+                                    "navStartToEndTime": 492,
+                                    "transferSize": 80103,
+                                    "children": {}
+                                  },
+                                  "47560.153": {
+                                    "url": "http://localhost:5173/src/lib/gysh-closed-sprints.ts",
+                                    "navStartToEndTime": 492,
+                                    "transferSize": 7430,
+                                    "children": {}
+                                  },
+                                  "47560.152": {
+                                    "url": "http://localhost:5173/src/lib/gysh-sprints.ts",
+                                    "navStartToEndTime": 489,
+                                    "transferSize": 80594,
+                                    "children": {}
+                                  },
+                                  "47560.151": {
+                                    "url": "http://localhost:5173/src/lib/gysh-tester-ownership.ts",
+                                    "navStartToEndTime": 487,
+                                    "transferSize": 6222,
+                                    "children": {}
+                                  },
+                                  "47560.150": {
+                                    "url": "http://localhost:5173/src/lib/gysh-proofread-cases.ts",
+                                    "navStartToEndTime": 486,
+                                    "transferSize": 19345,
+                                    "children": {}
+                                  },
+                                  "47560.148": {
+                                    "url": "http://localhost:5173/src/lib/gysh-automated-tests.ts",
+                                    "navStartToEndTime": 483,
+                                    "transferSize": 35149,
+                                    "children": {}
+                                  },
+                                  "47560.149": {
+                                    "url": "http://localhost:5173/src/lib/vitest-last-run.json?import",
+                                    "navStartToEndTime": 482,
+                                    "transferSize": 1743,
+                                    "children": {}
+                                  },
+                                  "47560.147": {
+                                    "url": "http://localhost:5173/src/components/admin/MarkdownLinkText.tsx",
+                                    "navStartToEndTime": 478,
+                                    "transferSize": 5127,
+                                    "children": {}
+                                  }
+                                }
+                              },
+                              "47560.120": {
+                                "url": "http://localhost:5173/src/lib/gysh-test-plan.ts",
+                                "navStartToEndTime": 445,
+                                "transferSize": 182406,
+                                "children": {
+                                  "47560.186": {
+                                    "url": "http://localhost:5173/src/lib/gysh-wizard-scenarios.ts",
+                                    "navStartToEndTime": 548,
+                                    "transferSize": 33467,
+                                    "children": {}
+                                  }
+                                }
+                              },
+                              "47560.115": {
+                                "url": "http://localhost:5173/src/components/admin/DailyProgressPage.tsx",
+                                "navStartToEndTime": 423,
+                                "transferSize": 109106,
+                                "children": {
+                                  "47560.184": {
+                                    "url": "http://localhost:5173/src/lib/daily-progress-export.ts",
+                                    "navStartToEndTime": 548,
+                                    "transferSize": 50938,
+                                    "children": {}
+                                  },
+                                  "47560.185": {
+                                    "url": "http://localhost:5173/src/lib/daily-progress-audit.ts",
+                                    "navStartToEndTime": 548,
+                                    "transferSize": 3477,
+                                    "children": {}
+                                  }
+                                }
+                              },
+                              "47560.112": {
+                                "url": "http://localhost:5173/src/components/admin/UserGuidesHub.tsx",
+                                "navStartToEndTime": 421,
+                                "transferSize": 9334,
+                                "children": {
+                                  "47560.183": {
+                                    "url": "http://localhost:5173/src/components/admin/AdminUserGuide.tsx",
+                                    "navStartToEndTime": 546,
+                                    "transferSize": 18437,
+                                    "children": {}
+                                  },
+                                  "47560.182": {
+                                    "url": "http://localhost:5173/src/components/admin/MemberUserGuide.tsx",
+                                    "navStartToEndTime": 545,
+                                    "transferSize": 43501,
+                                    "children": {}
+                                  }
+                                }
+                              },
+                              "47560.106": {
+                                "url": "http://localhost:5173/src/components/admin/SchedulePage.tsx",
+                                "navStartToEndTime": 414,
+                                "transferSize": 584138,
+                                "children": {
+                                  "47560.181": {
+                                    "url": "http://localhost:5173/src/lib/daily-progress-report.ts",
+                                    "navStartToEndTime": 543,
+                                    "transferSize": 56920,
+                                    "children": {}
+                                  },
+                                  "47560.179": {
+                                    "url": "http://localhost:5173/src/components/admin/EndSprintModal.tsx",
+                                    "navStartToEndTime": 539,
+                                    "transferSize": 43774,
+                                    "children": {}
+                                  },
+                                  "47560.180": {
+                                    "url": "http://localhost:5173/src/components/admin/AssigneeMultiSelect.tsx",
+                                    "navStartToEndTime": 539,
+                                    "transferSize": 9395,
+                                    "children": {}
+                                  },
+                                  "47560.178": {
+                                    "url": "http://localhost:5173/src/lib/gysh-agile-plan.ts",
+                                    "navStartToEndTime": 536,
+                                    "transferSize": 8635,
+                                    "children": {}
+                                  }
+                                }
+                              },
+                              "47560.107": {
+                                "url": "http://localhost:5173/src/components/admin/AgendaPage.tsx",
+                                "navStartToEndTime": 410,
+                                "transferSize": 391144,
+                                "children": {
+                                  "47560.177": {
+                                    "url": "http://localhost:5173/src/lib/partner-agenda-pdf.ts",
+                                    "navStartToEndTime": 536,
+                                    "transferSize": 73730,
+                                    "children": {}
+                                  },
+                                  "47560.176": {
+                                    "url": "http://localhost:5173/src/lib/email-html.ts",
+                                    "navStartToEndTime": 533,
+                                    "transferSize": 16360,
+                                    "children": {}
+                                  },
+                                  "47560.175": {
+                                    "url": "http://localhost:5173/src/components/admin/RichTextEmailEditor.tsx",
+                                    "navStartToEndTime": 533,
+                                    "transferSize": 45670,
+                                    "children": {}
+                                  }
+                                }
+                              },
+                              "47560.110": {
+                                "url": "http://localhost:5173/src/components/admin/SiteMapPage.tsx",
+                                "navStartToEndTime": 405,
+                                "transferSize": 61998,
+                                "children": {
+                                  "47560.174": {
+                                    "url": "http://localhost:5173/src/lib/site-map.ts",
+                                    "navStartToEndTime": 530,
+                                    "transferSize": 26022,
+                                    "children": {}
+                                  }
+                                }
+                              },
+                              "47560.109": {
+                                "url": "http://localhost:5173/src/components/admin/SprintCelebration.tsx",
+                                "navStartToEndTime": 395,
+                                "transferSize": 12604,
+                                "children": {
+                                  "47560.173": {
+                                    "url": "http://localhost:5173/src/lib/gysh-fireworks.ts",
+                                    "navStartToEndTime": 529,
+                                    "transferSize": 12953,
+                                    "children": {}
+                                  }
+                                }
+                              },
+                              "47560.104": {
+                                "url": "http://localhost:5173/src/components/admin/TaskList.tsx",
+                                "navStartToEndTime": 391,
+                                "transferSize": 340470,
+                                "children": {
+                                  "47560.172": {
+                                    "url": "http://localhost:5173/src/lib/gysh-task-search.ts",
+                                    "navStartToEndTime": 526,
+                                    "transferSize": 8564,
+                                    "children": {}
+                                  },
+                                  "47560.170": {
+                                    "url": "http://localhost:5173/src/lib/qa-page-links.ts",
+                                    "navStartToEndTime": 525,
+                                    "transferSize": 29064,
+                                    "children": {}
+                                  },
+                                  "47560.171": {
+                                    "url": "http://localhost:5173/src/lib/gysh-task-files.ts",
+                                    "navStartToEndTime": 524,
+                                    "transferSize": 11456,
+                                    "children": {}
+                                  }
+                                }
+                              },
+                              "47560.105": {
+                                "url": "http://localhost:5173/src/components/admin/Financials.tsx",
+                                "navStartToEndTime": 384,
+                                "transferSize": 72302,
+                                "children": {
+                                  "47560.168": {
+                                    "url": "http://localhost:5173/src/lib/gysh-financials.ts",
+                                    "navStartToEndTime": 522,
+                                    "transferSize": 4536,
+                                    "children": {}
+                                  },
+                                  "47560.169": {
+                                    "url": "http://localhost:5173/src/lib/gysh-financial-files.ts",
+                                    "navStartToEndTime": 521,
+                                    "transferSize": 8156,
+                                    "children": {}
+                                  }
+                                }
+                              },
+                              "47560.103": {
+                                "url": "http://localhost:5173/src/components/admin/ContentFactory.tsx",
+                                "navStartToEndTime": 383,
+                                "transferSize": 43988,
+                                "children": {
+                                  "47560.167": {
+                                    "url": "http://localhost:5173/src/components/admin/WorkshopsAdmin.tsx",
+                                    "navStartToEndTime": 518,
+                                    "transferSize": 51532,
+                                    "children": {}
+                                  },
+                                  "47560.166": {
+                                    "url": "http://localhost:5173/src/lib/gysh-content-factory.ts",
+                                    "navStartToEndTime": 517,
+                                    "transferSize": 13053,
+                                    "children": {}
+                                  }
+                                }
+                              },
+                              "47560.101": {
+                                "url": "http://localhost:5173/src/components/admin/QaTestingManualPage.tsx",
+                                "navStartToEndTime": 369,
+                                "transferSize": 72882,
+                                "children": {
+                                  "47560.145": {
+                                    "url": "http://localhost:5173/src/lib/qa-testing-manual.ts",
+                                    "navStartToEndTime": 478,
+                                    "transferSize": 43533,
+                                    "children": {}
+                                  },
+                                  "47560.146": {
+                                    "url": "http://localhost:5173/src/lib/qa-testing-manual-pdf.ts",
+                                    "navStartToEndTime": 478,
+                                    "transferSize": 24470,
+                                    "children": {}
+                                  }
+                                }
+                              },
+                              "47560.121": {
+                                "url": "http://localhost:5173/src/lib/admin-nav.ts",
+                                "navStartToEndTime": 441,
+                                "transferSize": 8467,
+                                "children": {}
+                              },
+                              "47560.119": {
+                                "url": "http://localhost:5173/src/lib/gysh-sprint-complete.ts",
+                                "navStartToEndTime": 435,
+                                "transferSize": 14488,
+                                "children": {}
+                              },
+                              "47560.117": {
+                                "url": "http://localhost:5173/src/lib/gysh-tasks.ts",
+                                "navStartToEndTime": 429,
+                                "transferSize": 67699,
+                                "children": {}
+                              },
+                              "47560.116": {
+                                "url": "http://localhost:5173/src/components/admin/MembershipsPage.tsx",
+                                "navStartToEndTime": 428,
+                                "transferSize": 41723,
+                                "children": {}
+                              },
+                              "47560.118": {
+                                "url": "http://localhost:5173/src/lib/gysh-due-attention.ts",
+                                "navStartToEndTime": 428,
+                                "transferSize": 12935,
+                                "children": {}
+                              },
+                              "47560.114": {
+                                "url": "http://localhost:5173/src/components/admin/EmailTemplates.tsx",
+                                "navStartToEndTime": 420,
+                                "transferSize": 51152,
+                                "children": {}
+                              },
+                              "47560.113": {
+                                "url": "http://localhost:5173/src/components/admin/CertificatesAdmin.tsx",
+                                "navStartToEndTime": 412,
+                                "transferSize": 40094,
+                                "children": {}
+                              },
+                              "47560.111": {
+                                "url": "http://localhost:5173/src/components/admin/TimesheetPage.tsx",
+                                "navStartToEndTime": 410,
+                                "transferSize": 134238,
+                                "children": {}
+                              },
+                              "47560.102": {
+                                "url": "http://localhost:5173/src/components/admin/UsersArea.tsx",
+                                "navStartToEndTime": 398,
+                                "transferSize": 86342,
+                                "children": {}
+                              },
+                              "47560.108": {
+                                "url": "http://localhost:5173/src/components/admin/DueTasksModal.tsx",
+                                "navStartToEndTime": 395,
+                                "transferSize": 31361,
+                                "children": {}
+                              }
+                            }
+                          },
+                          "47560.25": {
+                            "url": "http://localhost:5173/src/components/MarketingManual.tsx",
+                            "navStartToEndTime": 182,
+                            "transferSize": 51097,
+                            "children": {
+                              "47560.76": {
+                                "url": "http://localhost:5173/src/lib/user-guide-pdf.ts",
+                                "navStartToEndTime": 325,
+                                "transferSize": 83361,
+                                "children": {
+                                  "47560.142": {
+                                    "url": "http://localhost:5173/node_modules/.vite/deps/jspdf.js?v=b6268a98",
+                                    "navStartToEndTime": 501,
+                                    "transferSize": 633735,
+                                    "children": {
+                                      "47560.188": {
+                                        "url": "http://localhost:5173/node_modules/.vite/deps/typeof-KEtdrNHU.js?v=b6268a98",
+                                        "navStartToEndTime": 552,
+                                        "transferSize": 774,
+                                        "children": {}
+                                      }
+                                    }
+                                  },
+                                  "47560.144": {
+                                    "url": "http://localhost:5173/src/lib/pdf-branding.ts",
+                                    "navStartToEndTime": 472,
+                                    "transferSize": 53457,
+                                    "children": {
+                                      "47560.187": {
+                                        "url": "http://localhost:5173/src/assets/gysh-logo-pdf.png?import",
+                                        "navStartToEndTime": 552,
+                                        "transferSize": 701,
+                                        "children": {}
+                                      }
+                                    }
+                                  },
+                                  "47560.143": {
+                                    "url": "http://localhost:5173/src/lib/user-guide-content.ts",
+                                    "navStartToEndTime": 474,
+                                    "transferSize": 78253,
+                                    "children": {}
+                                  }
+                                }
+                              },
+                              "47560.77": {
+                                "url": "http://localhost:5173/src/components/admin/GuideChecklist.tsx",
+                                "navStartToEndTime": 328,
+                                "transferSize": 12442,
+                                "children": {}
+                              },
+                              "47560.75": {
+                                "url": "http://localhost:5173/src/lib/open-pdf.ts",
+                                "navStartToEndTime": 323,
+                                "transferSize": 34699,
+                                "children": {}
+                              },
+                              "47560.73": {
+                                "url": "http://localhost:5173/src/assets/senior-side-hustle-hero.png?import",
+                                "navStartToEndTime": 322,
+                                "transferSize": 751,
+                                "children": {}
+                              },
+                              "47560.74": {
+                                "url": "http://localhost:5173/src/assets/gysh-community-hero.png?import",
+                                "navStartToEndTime": 319,
+                                "transferSize": 723,
+                                "children": {}
+                              },
+                              "47560.72": {
+                                "url": "http://localhost:5173/src/assets/junior-find-my-side-hustle-hero.png?import",
+                                "navStartToEndTime": 315,
+                                "transferSize": 807,
+                                "children": {}
+                              },
+                              "47560.71": {
+                                "url": "http://localhost:5173/src/assets/kids-find-my-hustle-hero.png?import",
+                                "navStartToEndTime": 315,
+                                "transferSize": 768,
+                                "children": {}
+                              }
+                            }
+                          },
+                          "47560.50": {
+                            "url": "http://localhost:5173/src/lib/admin-act-as.ts",
+                            "navStartToEndTime": 271,
+                            "transferSize": 12506,
+                            "children": {
+                              "47560.140": {
+                                "url": "http://localhost:5173/src/lib/browser-storage.ts",
+                                "navStartToEndTime": 469,
+                                "transferSize": 4494,
+                                "children": {}
+                              }
+                            }
+                          },
+                          "47560.42": {
+                            "url": "http://localhost:5173/src/components/LaunchChecklistPage.tsx",
+                            "navStartToEndTime": 263,
+                            "transferSize": 38837,
+                            "children": {
+                              "47560.139": {
+                                "url": "http://localhost:5173/src/lib/launch-guide-peeks.ts",
+                                "navStartToEndTime": 469,
+                                "transferSize": 8503,
+                                "children": {}
+                              },
+                              "47560.138": {
+                                "url": "http://localhost:5173/src/lib/launch-checklist.ts",
+                                "navStartToEndTime": 463,
+                                "transferSize": 9010,
+                                "children": {}
+                              }
+                            }
+                          },
+                          "47560.39": {
+                            "url": "http://localhost:5173/src/components/JoinPage.tsx",
+                            "navStartToEndTime": 257,
+                            "transferSize": 12660,
+                            "children": {
+                              "47560.136": {
+                                "url": "http://localhost:5173/src/components/MembershipPage.tsx",
+                                "navStartToEndTime": 467,
+                                "transferSize": 104383,
+                                "children": {}
+                              },
+                              "47560.137": {
+                                "url": "http://localhost:5173/src/components/BlueprintUnlockPanel.tsx",
+                                "navStartToEndTime": 463,
+                                "transferSize": 26139,
+                                "children": {}
+                              }
+                            }
+                          },
+                          "47560.40": {
+                            "url": "http://localhost:5173/src/components/MembershipSignupPage.tsx",
+                            "navStartToEndTime": 256,
+                            "transferSize": 61341,
+                            "children": {
+                              "47560.135": {
+                                "url": "http://localhost:5173/src/lib/password-policy.ts",
+                                "navStartToEndTime": 458,
+                                "transferSize": 9304,
+                                "children": {}
+                              }
+                            }
+                          },
+                          "47560.36": {
+                            "url": "http://localhost:5173/src/components/SiteFooter.tsx",
+                            "navStartToEndTime": 254,
+                            "transferSize": 19430,
+                            "children": {
+                              "47560.134": {
+                                "url": "http://localhost:5173/src/assets/munties-ai-agents-logo.png?import",
+                                "navStartToEndTime": 457,
+                                "transferSize": 746,
+                                "children": {}
+                              }
+                            }
+                          },
+                          "47560.37": {
+                            "url": "http://localhost:5173/src/components/AboutPage.tsx",
+                            "navStartToEndTime": 246,
+                            "transferSize": 101714,
+                            "children": {
+                              "47560.133": {
+                                "url": "http://localhost:5173/src/assets/about-gysh-gang-tees.png?import",
+                                "navStartToEndTime": 455,
+                                "transferSize": 740,
+                                "children": {}
+                              },
+                              "47560.132": {
+                                "url": "http://localhost:5173/src/assets/about-gysh-tees-collage.png?import",
+                                "navStartToEndTime": 455,
+                                "transferSize": 751,
+                                "children": {}
+                              },
+                              "47560.130": {
+                                "url": "http://localhost:5173/src/assets/about-gysh-tees.png?import",
+                                "navStartToEndTime": 453,
+                                "transferSize": 707,
+                                "children": {}
+                              },
+                              "47560.131": {
+                                "url": "http://localhost:5173/src/assets/about-gysh-tees-closeup.png?import",
+                                "navStartToEndTime": 452,
+                                "transferSize": 751,
+                                "children": {}
+                              },
+                              "47560.128": {
+                                "url": "http://localhost:5173/src/assets/about-tina-headshot.png?import",
+                                "navStartToEndTime": 450,
+                                "transferSize": 723,
+                                "children": {}
+                              },
+                              "47560.129": {
+                                "url": "http://localhost:5173/src/assets/about-evelyn-headshot.png?import",
+                                "navStartToEndTime": 449,
+                                "transferSize": 729,
+                                "children": {}
+                              },
+                              "47560.126": {
+                                "url": "http://localhost:5173/src/lib/trinity-house.ts",
+                                "navStartToEndTime": 448,
+                                "transferSize": 1672,
+                                "children": {}
+                              },
+                              "47560.127": {
+                                "url": "http://localhost:5173/src/assets/about-founders-back2back.png?import",
+                                "navStartToEndTime": 444,
+                                "transferSize": 740,
+                                "children": {}
+                              }
+                            }
+                          },
+                          "47560.35": {
+                            "url": "http://localhost:5173/src/components/WorkshopsHub.tsx",
+                            "navStartToEndTime": 246,
+                            "transferSize": 70169,
+                            "children": {
+                              "47560.125": {
+                                "url": "http://localhost:5173/src/assets/workshops-hero.png?import",
+                                "navStartToEndTime": 450,
+                                "transferSize": 690,
+                                "children": {}
+                              },
+                              "47560.124": {
+                                "url": "http://localhost:5173/src/lib/workshops.ts",
+                                "navStartToEndTime": 439,
+                                "transferSize": 26416,
+                                "children": {}
+                              }
+                            }
+                          },
+                          "47560.38": {
+                            "url": "http://localhost:5173/src/components/ContactPage.tsx",
+                            "navStartToEndTime": 244,
+                            "transferSize": 20139,
+                            "children": {
+                              "47560.123": {
+                                "url": "http://localhost:5173/src/lib/api.ts",
+                                "navStartToEndTime": 438,
+                                "transferSize": 9665,
+                                "children": {}
+                              }
+                            }
+                          },
+                          "47560.34": {
+                            "url": "http://localhost:5173/src/components/TrainingCircles.tsx",
+                            "navStartToEndTime": 244,
+                            "transferSize": 12419,
+                            "children": {
+                              "47560.122": {
+                                "url": "http://localhost:5173/src/lib/training-circles.ts",
+                                "navStartToEndTime": 436,
+                                "transferSize": 13789,
+                                "children": {}
+                              }
+                            }
+                          },
+                          "47560.28": {
+                            "url": "http://localhost:5173/src/components/KidsCorner.tsx",
+                            "navStartToEndTime": 216,
+                            "transferSize": 282310,
+                            "children": {
+                              "47560.99": {
+                                "url": "http://localhost:5173/src/assets/junior-my-bank-hero.png?import",
+                                "navStartToEndTime": 365,
+                                "transferSize": 735,
+                                "children": {}
+                              },
+                              "47560.96": {
+                                "url": "http://localhost:5173/src/assets/kids-hustle-ideas-hero.png?import",
+                                "navStartToEndTime": 359,
+                                "transferSize": 746,
+                                "children": {}
+                              },
+                              "47560.98": {
+                                "url": "http://localhost:5173/src/assets/junior-guides-hero.png?import",
+                                "navStartToEndTime": 359,
+                                "transferSize": 718,
+                                "children": {}
+                              },
+                              "47560.97": {
+                                "url": "http://localhost:5173/src/assets/kids-guides-hero.png?import",
+                                "navStartToEndTime": 358,
+                                "transferSize": 712,
+                                "children": {}
+                              },
+                              "47560.93": {
+                                "url": "http://localhost:5173/src/assets/kids-join-team-hero.png?import",
+                                "navStartToEndTime": 358,
+                                "transferSize": 735,
+                                "children": {}
+                              },
+                              "47560.95": {
+                                "url": "http://localhost:5173/src/assets/piggy-bank-savings-hero.png?import",
+                                "navStartToEndTime": 354,
+                                "transferSize": 751,
+                                "children": {}
+                              },
+                              "47560.94": {
+                                "url": "http://localhost:5173/src/assets/junior-side-hustle-hero.png?import",
+                                "navStartToEndTime": 352,
+                                "transferSize": 751,
+                                "children": {}
+                              },
+                              "47560.90": {
+                                "url": "http://localhost:5173/src/lib/kids-team.ts",
+                                "navStartToEndTime": 351,
+                                "transferSize": 15038,
+                                "children": {}
+                              },
+                              "47560.91": {
+                                "url": "http://localhost:5173/src/assets/junior-side-hustle-team.png?import",
+                                "navStartToEndTime": 351,
+                                "transferSize": 751,
+                                "children": {}
+                              },
+                              "47560.92": {
+                                "url": "http://localhost:5173/src/assets/junior-join-team-hero.png?import",
+                                "navStartToEndTime": 349,
+                                "transferSize": 745,
+                                "children": {}
+                              },
+                              "47560.89": {
+                                "url": "http://localhost:5173/src/lib/kevina-starr.ts",
+                                "navStartToEndTime": 347,
+                                "transferSize": 7868,
+                                "children": {}
+                              }
+                            }
+                          },
+                          "47560.30": {
+                            "url": "http://localhost:5173/src/components/UserPortal.tsx",
+                            "navStartToEndTime": 208,
+                            "transferSize": 186746,
+                            "children": {
+                              "47560.88": {
+                                "url": "http://localhost:5173/src/lib/family.ts",
+                                "navStartToEndTime": 345,
+                                "transferSize": 5098,
+                                "children": {}
+                              },
+                              "47560.84": {
+                                "url": "http://localhost:5173/src/components/PasswordField.tsx",
+                                "navStartToEndTime": 343,
+                                "transferSize": 12733,
+                                "children": {}
+                              },
+                              "47560.86": {
+                                "url": "http://localhost:5173/src/lib/referral.ts",
+                                "navStartToEndTime": 343,
+                                "transferSize": 3904,
+                                "children": {}
+                              },
+                              "47560.87": {
+                                "url": "http://localhost:5173/src/lib/blueprint-match-labels.ts",
+                                "navStartToEndTime": 340,
+                                "transferSize": 4607,
+                                "children": {}
+                              },
+                              "47560.85": {
+                                "url": "http://localhost:5173/src/lib/member-credits.ts",
+                                "navStartToEndTime": 340,
+                                "transferSize": 9194,
+                                "children": {}
+                              }
+                            }
+                          },
+                          "47560.27": {
+                            "url": "http://localhost:5173/src/lib/marketing-guides.ts",
+                            "navStartToEndTime": 205,
+                            "transferSize": 80095,
+                            "children": {
+                              "47560.83": {
+                                "url": "http://localhost:5173/src/lib/membership.ts",
+                                "navStartToEndTime": 344,
+                                "transferSize": 94910,
+                                "children": {}
+                              }
+                            }
+                          },
+                          "47560.29": {
+                            "url": "http://localhost:5173/src/components/SeniorSideHustles.tsx",
+                            "navStartToEndTime": 202,
+                            "transferSize": 107547,
+                            "children": {
+                              "47560.81": {
+                                "url": "http://localhost:5173/src/assets/senior-join-team-hero.png?import",
+                                "navStartToEndTime": 334,
+                                "transferSize": 745,
+                                "children": {}
+                              },
+                              "47560.82": {
+                                "url": "http://localhost:5173/src/lib/audience-nav.ts",
+                                "navStartToEndTime": 332,
+                                "transferSize": 6989,
+                                "children": {}
+                              },
+                              "47560.80": {
+                                "url": "http://localhost:5173/src/assets/senior-guides-hero.png?import",
+                                "navStartToEndTime": 331,
+                                "transferSize": 718,
+                                "children": {}
+                              },
+                              "47560.79": {
+                                "url": "http://localhost:5173/src/assets/senior-side-hustle-ideas-hero.png?import",
+                                "navStartToEndTime": 328,
+                                "transferSize": 785,
+                                "children": {}
+                              }
+                            }
+                          },
+                          "47560.23": {
+                            "url": "http://localhost:5173/src/components/StepByStepGuides.tsx",
+                            "navStartToEndTime": 195,
+                            "transferSize": 120617,
+                            "children": {
+                              "47560.78": {
+                                "url": "http://localhost:5173/src/lib/gysh-member-progress.ts",
+                                "navStartToEndTime": 329,
+                                "transferSize": 2328,
+                                "children": {}
+                              }
+                            }
+                          },
+                          "47560.21": {
+                            "url": "http://localhost:5173/src/components/HustleQuiz.tsx",
+                            "navStartToEndTime": 156,
+                            "transferSize": 83532,
+                            "children": {
+                              "47560.63": {
+                                "url": "http://localhost:5173/src/components/SideHustleBlueprintResults.tsx",
+                                "navStartToEndTime": 318,
+                                "transferSize": 44351,
+                                "children": {}
+                              },
+                              "47560.64": {
+                                "url": "http://localhost:5173/src/components/WizardStartHereBanner.tsx",
+                                "navStartToEndTime": 313,
+                                "transferSize": 4784,
+                                "children": {}
+                              },
+                              "47560.62": {
+                                "url": "http://localhost:5173/src/lib/blueprints-api.ts",
+                                "navStartToEndTime": 297,
+                                "transferSize": 7988,
+                                "children": {}
+                              },
+                              "47560.61": {
+                                "url": "http://localhost:5173/src/lib/gysh-analytics.ts",
+                                "navStartToEndTime": 296,
+                                "transferSize": 4699,
+                                "children": {}
+                              },
+                              "47560.60": {
+                                "url": "http://localhost:5173/src/assets/match-finder-adult-hero.png?import",
+                                "navStartToEndTime": 289,
+                                "transferSize": 751,
+                                "children": {}
+                              }
+                            }
+                          },
+                          "47560.26": {
+                            "url": "http://localhost:5173/src/components/CommunityHub.tsx",
+                            "navStartToEndTime": 182,
+                            "transferSize": 63293,
+                            "children": {
+                              "47560.69": {
+                                "url": "http://localhost:5173/src/assets/membership-hero.png?import",
+                                "navStartToEndTime": 312,
+                                "transferSize": 695,
+                                "children": {}
+                              }
+                            }
+                          },
+                          "47560.22": {
+                            "url": "http://localhost:5173/src/components/FindMineWizardSelector.tsx",
+                            "navStartToEndTime": 182,
+                            "transferSize": 30435,
+                            "children": {
+                              "47560.70": {
+                                "url": "http://localhost:5173/src/assets/match-finder-wizard-hero.png?import",
+                                "navStartToEndTime": 312,
+                                "transferSize": 756,
+                                "children": {}
+                              }
+                            }
+                          },
+                          "47560.24": {
+                            "url": "http://localhost:5173/src/components/FreeGuidesPage.tsx",
+                            "navStartToEndTime": 182,
+                            "transferSize": 62272,
+                            "children": {
+                              "47560.67": {
+                                "url": "http://localhost:5173/src/lib/seniors-content.ts",
+                                "navStartToEndTime": 309,
+                                "transferSize": 29545,
+                                "children": {}
+                              },
+                              "47560.68": {
+                                "url": "http://localhost:5173/src/assets/guides-library-hero.png?import",
+                                "navStartToEndTime": 307,
+                                "transferSize": 723,
+                                "children": {}
+                              },
+                              "47560.65": {
+                                "url": "http://localhost:5173/src/lib/kids-guides.ts",
+                                "navStartToEndTime": 304,
+                                "transferSize": 35590,
+                                "children": {}
+                              },
+                              "47560.66": {
+                                "url": "http://localhost:5173/src/lib/launch-guides.ts",
+                                "navStartToEndTime": 303,
+                                "transferSize": 9411,
+                                "children": {}
+                              }
+                            }
+                          },
+                          "47560.58": {
+                            "url": "http://localhost:5173/src/App.css",
+                            "navStartToEndTime": 296,
+                            "transferSize": 811,
+                            "children": {}
+                          },
+                          "47560.57": {
+                            "url": "http://localhost:5173/src/assets/gysh-logo-rocket.png?import",
+                            "navStartToEndTime": 289,
+                            "transferSize": 712,
+                            "children": {}
+                          },
+                          "47560.52": {
+                            "url": "http://localhost:5173/src/lib/gysh-partner-agenda.ts",
+                            "navStartToEndTime": 288,
+                            "transferSize": 37496,
+                            "children": {}
+                          },
+                          "47560.53": {
+                            "url": "http://localhost:5173/src/lib/free-member-session.ts",
+                            "navStartToEndTime": 283,
+                            "transferSize": 5994,
+                            "children": {}
+                          },
+                          "47560.54": {
+                            "url": "http://localhost:5173/src/lib/pending-blueprint.ts",
+                            "navStartToEndTime": 281,
+                            "transferSize": 8458,
+                            "children": {}
+                          },
+                          "47560.56": {
+                            "url": "http://localhost:5173/src/assets/gysh-home-hero.png?import",
+                            "navStartToEndTime": 281,
+                            "transferSize": 706,
+                            "children": {}
+                          },
+                          "47560.55": {
+                            "url": "http://localhost:5173/src/assets/kevina-starr-logo.png?import",
+                            "navStartToEndTime": 281,
+                            "transferSize": 717,
+                            "children": {}
+                          },
+                          "47560.51": {
+                            "url": "http://localhost:5173/src/lib/gysh-roles.ts",
+                            "navStartToEndTime": 279,
+                            "transferSize": 24850,
+                            "children": {}
+                          },
+                          "47560.48": {
+                            "url": "http://localhost:5173/src/lib/auth.ts",
+                            "navStartToEndTime": 277,
+                            "transferSize": 20555,
+                            "children": {}
+                          },
+                          "47560.46": {
+                            "url": "http://localhost:5173/src/lib/app-routes.ts",
+                            "navStartToEndTime": 270,
+                            "transferSize": 17097,
+                            "children": {}
+                          },
+                          "47560.49": {
+                            "url": "http://localhost:5173/src/lib/password-reset-url.ts",
+                            "navStartToEndTime": 270,
+                            "transferSize": 2418,
+                            "children": {}
+                          },
+                          "47560.47": {
+                            "url": "http://localhost:5173/src/lib/admin-deep-links.ts",
+                            "navStartToEndTime": 270,
+                            "transferSize": 8820,
+                            "children": {}
+                          },
+                          "47560.43": {
+                            "url": "http://localhost:5173/src/components/ParentConsentPage.tsx",
+                            "navStartToEndTime": 263,
+                            "transferSize": 42972,
+                            "children": {}
+                          },
+                          "47560.44": {
+                            "url": "http://localhost:5173/src/lib/junior-signup.ts",
+                            "navStartToEndTime": 262,
+                            "transferSize": 7756,
+                            "children": {}
+                          },
+                          "47560.45": {
+                            "url": "http://localhost:5173/src/lib/site-config.ts",
+                            "navStartToEndTime": 262,
+                            "transferSize": 5004,
+                            "children": {}
+                          },
+                          "47560.41": {
+                            "url": "http://localhost:5173/src/lib/join-audience.ts",
+                            "navStartToEndTime": 254,
+                            "transferSize": 3498,
+                            "children": {}
+                          },
+                          "47560.33": {
+                            "url": "http://localhost:5173/src/components/admin/DailyProgressReport.tsx",
+                            "navStartToEndTime": 244,
+                            "transferSize": 5006,
+                            "children": {}
+                          },
+                          "47560.16": {
+                            "url": "http://localhost:5173/node_modules/.vite/deps/lucide-react.js?v=b6268a98",
+                            "navStartToEndTime": 239,
+                            "transferSize": 1126143,
+                            "children": {}
+                          },
+                          "47560.31": {
+                            "url": "http://localhost:5173/src/components/KidDashboard.tsx",
+                            "navStartToEndTime": 221,
+                            "transferSize": 58311,
+                            "children": {}
+                          },
+                          "47560.20": {
+                            "url": "http://localhost:5173/src/components/CalculatorSection.tsx",
+                            "navStartToEndTime": 158,
+                            "transferSize": 98218,
+                            "children": {}
+                          },
+                          "47560.18": {
+                            "url": "http://localhost:5173/src/components/WaitFeedback.tsx",
+                            "navStartToEndTime": 156,
+                            "transferSize": 22884,
+                            "children": {}
+                          },
+                          "47560.19": {
+                            "url": "http://localhost:5173/src/components/HustleCard.tsx",
+                            "navStartToEndTime": 156,
+                            "transferSize": 24662,
+                            "children": {}
+                          },
+                          "47560.17": {
+                            "url": "http://localhost:5173/src/components/FacebookIcon.tsx",
+                            "navStartToEndTime": 156,
+                            "transferSize": 4592,
+                            "children": {}
+                          }
+                        }
+                      },
+                      "47560.10": {
+                        "url": "http://localhost:5173/node_modules/.vite/deps/react-dom_client.js?v=b6268a98",
+                        "navStartToEndTime": 148,
+                        "transferSize": 821294,
+                        "children": {
+                          "47560.59": {
+                            "url": "http://localhost:5173/node_modules/.vite/deps/react-dom.js?v=b6268a98",
+                            "navStartToEndTime": 295,
+                            "transferSize": 14940,
+                            "children": {}
+                          }
+                        }
+                      },
+                      "47560.9": {
+                        "url": "http://localhost:5173/node_modules/.vite/deps/react.js?v=b6268a98",
+                        "navStartToEndTime": 101,
+                        "transferSize": 38613,
+                        "children": {
+                          "47560.15": {
+                            "url": "http://localhost:5173/node_modules/.vite/deps/chunk-B-1-B7_t.js?v=b6268a98",
+                            "navStartToEndTime": 123,
+                            "transferSize": 7922,
+                            "children": {}
+                          }
+                        }
+                      },
+                      "47560.11": {
+                        "url": "http://localhost:5173/src/index.css",
+                        "navStartToEndTime": 121,
+                        "transferSize": 404401,
+                        "children": {}
+                      },
+                      "47560.13": {
+                        "url": "http://localhost:5173/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=b6268a98",
+                        "navStartToEndTime": 101,
+                        "transferSize": 10883,
+                        "children": {}
+                      }
+                    }
+                  },
+                  "47560.2": {
+                    "url": "http://localhost:5173/@vite/client",
+                    "navStartToEndTime": 69,
+                    "transferSize": 210206,
+                    "children": {
+                      "47560.14": {
+                        "url": "http://localhost:5173/node_modules/vite/dist/client/env.mjs",
+                        "navStartToEndTime": 114,
+                        "transferSize": 3768,
+                        "children": {}
+                      }
+                    }
+                  },
+                  "47560.8": {
+                    "url": "http://localhost:5173/@react-refresh",
+                    "navStartToEndTime": 91,
+                    "transferSize": 112187,
+                    "children": {}
+                  }
+                }
+              }
+            },
+            "longestChain": {
+              "duration": 1123
+            }
+          }
+        },
+        {
+          "type": "list-section",
+          "title": "Preconnected origins",
+          "description": "[preconnect](https://developer.chrome.com/docs/lighthouse/performance/uses-rel-preconnect/) hints help the browser establish a connection earlier in the page load, saving time when the first request for that origin is made. The following are the origins that the page preconnected to.",
+          "value": {
+            "type": "table",
+            "headings": [
+              {
+                "key": "origin",
+                "valueType": "text",
+                "subItemsHeading": {
+                  "key": "warning"
+                },
+                "label": "Origin"
+              },
+              {
+                "key": "source",
+                "valueType": "node",
+                "label": "Source"
+              }
+            ],
+            "items": [
+              {
+                "origin": "https://fonts.googleapis.com/",
+                "source": {
+                  "type": "node",
+                  "lhId": "page-2-LINK",
+                  "path": "1,HTML,0,HEAD,27,LINK",
+                  "selector": "head > link",
+                  "boundingRect": {
+                    "top": 0,
+                    "bottom": 0,
+                    "left": 0,
+                    "right": 0,
+                    "width": 0,
+                    "height": 0
+                  },
+                  "snippet": "<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">",
+                  "nodeLabel": "head > link"
+                },
+                "subItems": {
+                  "type": "subitems",
+                  "items": []
+                }
+              },
+              {
+                "origin": "https://fonts.gstatic.com/",
+                "source": {
+                  "type": "node",
+                  "lhId": "page-3-LINK",
+                  "path": "1,HTML,0,HEAD,28,LINK",
+                  "selector": "head > link",
+                  "boundingRect": {
+                    "top": 0,
+                    "bottom": 0,
+                    "left": 0,
+                    "right": 0,
+                    "width": 0,
+                    "height": 0
+                  },
+                  "snippet": "<link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin=\"\">",
+                  "nodeLabel": "head > link"
+                },
+                "subItems": {
+                  "type": "subitems",
+                  "items": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "list-section",
+          "title": "Preconnect candidates",
+          "description": "Add [preconnect](https://developer.chrome.com/docs/lighthouse/performance/uses-rel-preconnect/) hints to your most important origins, but try to use no more than 4.",
+          "value": {
+            "type": "text",
+            "value": "No additional origins are good candidates for preconnecting"
+          }
+        }
+      ]
+    },
+    "color-contrast": {
+      "id": "color-contrast",
+      "title": "Background and foreground colors do not have a sufficient contrast ratio.",
+      "score": 0,
+      "displayValue": null,
+      "numericValue": null,
+      "sample": [
+        {
+          "sel": "div.glass-card > div > div > strong",
+          "label": "$1,500 - $8,000/mo",
+          "snip": "<strong style=\"color: var(--accent-pink); font-size: 1rem;\">"
+        },
+        {
+          "sel": "div.dashboard-home > div.hustle-grid > div.glass-card > span",
+          "label": "E-COMMERCE",
+          "snip": "<span style=\"font-size: 0.9375rem; font-weight: 600; color: var(--accent-purple);\">"
+        },
+        {
+          "sel": "div.glass-card > div > div > strong",
+          "label": "$200 - $3,000/mo",
+          "snip": "<strong style=\"color: var(--accent-purple); font-size: 1rem;\">"
+        },
+        {
+          "sel": "div.glass-card > div > div > strong",
+          "label": "$500 - $10,000/mo",
+          "snip": "<strong style=\"color: var(--accent-cyan); font-size: 1rem;\">"
+        },
+        {
+          "sel": "div.dashboard-home > div.hustle-grid > div.glass-card > span",
+          "label": "DIGITAL",
+          "snip": "<span style=\"font-size: 0.9375rem; font-weight: 600; color: var(--accent-purple);\">"
+        },
+        {
+          "sel": "div.glass-card > div > div > strong",
+          "label": "$200 - $10,000/mo",
+          "snip": "<strong style=\"color: var(--accent-purple); font-size: 1rem;\">"
+        },
+        {
+          "sel": "div.glass-card > div > div > strong",
+          "label": "$100 - $15,000/mo",
+          "snip": "<strong style=\"color: var(--accent-emerald); font-size: 1rem;\">"
+        },
+        {
+          "sel": "div.dashboard-home > div.hustle-grid > div.glass-card > span",
+          "label": "E-COMMERCE",
+          "snip": "<span style=\"font-size: 0.9375rem; font-weight: 600; color: var(--accent-amber);\">"
+        },
+        {
+          "sel": "div.glass-card > div > div > strong",
+          "label": "$1,000 - $25,000/mo",
+          "snip": "<strong style=\"color: var(--accent-amber); font-size: 1rem;\">"
+        },
+        {
+          "sel": "div.glass-card > div > div > strong",
+          "label": "$500 - $20,000/mo",
+          "snip": "<strong style=\"color: var(--accent-pink); font-size: 1rem;\">"
+        },
+        {
+          "sel": "div.glass-card > div > div > strong",
+          "label": "$800 - $6,000/mo",
+          "snip": "<strong style=\"color: var(--accent-cyan); font-size: 1rem;\">"
+        },
+        {
+          "sel": "div.dashboard-home > div.hustle-grid > div.glass-card > span",
+          "label": "AI / CREATIVE",
+          "snip": "<span style=\"font-size: 0.9375rem; font-weight: 600; color: var(--accent-purple);\">"
+        },
+        {
+          "sel": "div.glass-card > div > div > strong",
+          "label": "$500 - $5,000/mo",
+          "snip": "<strong style=\"color: var(--accent-purple); font-size: 1rem;\">"
+        },
+        {
+          "sel": "div.dashboard-home > div.hustle-grid > div.glass-card > span",
+          "label": "REAL ESTATE",
+          "snip": "<span style=\"font-size: 0.9375rem; font-weight: 600; color: var(--accent-amber);\">"
+        },
+        {
+          "sel": "div.glass-card > div > div > strong",
+          "label": "$1,000 - $8,000/mo",
+          "snip": "<strong style=\"color: var(--accent-amber); font-size: 1rem;\">"
+        },
+        {
+          "sel": "div.glass-card > div > div > strong",
+          "label": "$800 - $5,000/mo",
+          "snip": "<strong style=\"color: var(--accent-emerald); font-size: 1rem;\">"
+        },
+        {
+          "sel": "div.glass-card > div > div > strong",
+          "label": "$600 - $3,500/mo",
+          "snip": "<strong style=\"color: var(--accent-pink); font-size: 1rem;\">"
+        },
+        {
+          "sel": "div.dashboard-home > div.hustle-grid > div.glass-card > span",
+          "label": "GIG ECONOMY",
+          "snip": "<span style=\"font-size: 0.9375rem; font-weight: 600; color: var(--accent-amber);\">"
+        },
+        {
+          "sel": "div.glass-card > div > div > strong",
+          "label": "$400 - $2,500/mo",
+          "snip": "<strong style=\"color: var(--accent-amber); font-size: 1rem;\">"
+        },
+        {
+          "sel": "div.glass-card > div > div > strong",
+          "label": "$300 - $3,000/mo",
+          "snip": "<strong style=\"color: var(--accent-cyan); font-size: 1rem;\">"
+        }
+      ]
+    },
+    "label-content-name-mismatch": {
+      "id": "label-content-name-mismatch",
+      "title": "Elements with visible text labels do not have matching accessible names.",
+      "score": 0,
+      "displayValue": null,
+      "numericValue": null,
+      "sample": [
+        {
+          "sel": "div.dashboard-home > section.glass > div.home-match-family__section-head > a.btn",
+          "label": "Follow on Facebook",
+          "snip": "<a href=\"https://www.facebook.com/getyoursidehustleofficial\" class=\"btn btn-outline home-match-family__side-cta home-match-family__facebook\" target=\"_blank\" rel"
+        },
+        {
+          "sel": "div.site-footer-inner > div.site-footer-brand > div.site-footer-social > a.site-footer-social-link",
+          "label": "Follow on Facebook",
+          "snip": "<a href=\"https://www.facebook.com/getyoursidehustleofficial\" class=\"site-footer-social-link\" target=\"_blank\" rel=\"noopener noreferrer\" aria-label=\"Follow Get Yo"
+        }
+      ]
+    },
+    "robots-txt": {
+      "id": "robots-txt",
+      "title": "robots.txt is not valid",
+      "score": 0,
+      "displayValue": "42 errors found",
+      "numericValue": null,
+      "sample": [
+        {
+          "message": "Syntax not understood",
+          "line": "<!doctype html>"
+        },
+        {
+          "message": "Syntax not understood",
+          "line": "<html lang=\"en\">"
+        },
+        {
+          "message": "Syntax not understood",
+          "line": "  <head>"
+        },
+        {
+          "message": "Syntax not understood",
+          "line": "    <script type=\"module\">import { injectIntoGlobalHook } from \"/@react-refresh\";"
+        },
+        {
+          "message": "Syntax not understood",
+          "line": "injectIntoGlobalHook(window);"
+        },
+        {
+          "message": "Syntax not understood",
+          "line": "window.$RefreshReg$ = () => {};"
+        },
+        {
+          "message": "Syntax not understood",
+          "line": "window.$RefreshSig$ = () => (type) => type;</script>"
+        },
+        {
+          "message": "Syntax not understood",
+          "line": "    <script type=\"module\" src=\"/@vite/client\"></script>"
+        },
+        {
+          "message": "Syntax not understood",
+          "line": "    <meta charset=\"UTF-8\" />"
+        },
+        {
+          "message": "Syntax not understood",
+          "line": "    <link rel=\"icon\" type=\"image/png\" href=\"/favicon.png\" />"
+        },
+        {
+          "message": "Syntax not understood",
+          "line": "    <link rel=\"shortcut icon\" type=\"image/png\" href=\"/favicon.png\" />"
+        },
+        {
+          "message": "Syntax not understood",
+          "line": "    <link rel=\"apple-touch-icon\" href=\"/apple-touch-icon.png\" />"
+        },
+        {
+          "message": "Syntax not understood",
+          "line": "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />"
+        },
+        {
+          "message": "Syntax not understood",
+          "line": "    <title>Get Your Side Hustle — Learn, Calculate, and Connect</title>"
+        },
+        {
+          "message": "Syntax not understood",
+          "line": "    <meta name=\"description\" content=\"Discover modern side hustles with interactive tools, margin calculators, and community support at GetYourSideHustle.com.\" />"
+        },
+        {
+          "message": "Unknown directive",
+          "line": "    <link rel=\"canonical\" href=\"https://getyoursidehustle.com/\" />"
+        },
+        {
+          "message": "Unknown directive",
+          "line": "    <meta property=\"og:title\" content=\"Get Your Side Hustle\" />"
+        },
+        {
+          "message": "Unknown directive",
+          "line": "    <meta property=\"og:description\" content=\"Discover modern side hustles with interactive tools, margin calculators, and community support.\" />"
+        },
+        {
+          "message": "Unknown directive",
+          "line": "    <meta property=\"og:url\" content=\"https://getyoursidehustle.com/\" />"
+        },
+        {
+          "message": "Unknown directive",
+          "line": "    <meta property=\"og:type\" content=\"website\" />"
+        }
+      ]
+    }
+  },
+  "allFails": [
+    {
+      "id": "bf-cache",
+      "score": 0,
+      "title": "Page prevented back/forward cache restoration",
+      "displayValue": "1 failure reason"
+    },
+    {
+      "id": "color-contrast",
+      "score": 0,
+      "title": "Background and foreground colors do not have a sufficient contrast ratio.",
+      "displayValue": null
+    },
+    {
+      "id": "first-contentful-paint",
+      "score": 0,
+      "title": "First Contentful Paint",
+      "displayValue": "33.7 s"
+    },
+    {
+      "id": "image-delivery-insight",
+      "score": 0,
+      "title": "Improve image delivery",
+      "displayValue": "Est savings of 1,202 KiB"
+    },
+    {
+      "id": "interactive",
+      "score": 0,
+      "title": "Time to Interactive",
+      "displayValue": "74.1 s"
+    },
+    {
+      "id": "label-content-name-mismatch",
+      "score": 0,
+      "title": "Elements with visible text labels do not have matching accessible names.",
+      "displayValue": null
+    },
+    {
+      "id": "largest-contentful-paint",
+      "score": 0,
+      "title": "Largest Contentful Paint",
+      "displayValue": "73.8 s"
+    },
+    {
+      "id": "lcp-discovery-insight",
+      "score": 0,
+      "title": "LCP request discovery",
+      "displayValue": null
+    },
+    {
+      "id": "mainthread-work-breakdown",
+      "score": 0,
+      "title": "Minimize main-thread work",
+      "displayValue": "2.8 s"
+    },
+    {
+      "id": "network-dependency-tree-insight",
+      "score": 0,
+      "title": "Network dependency tree",
+      "displayValue": null
+    },
+    {
+      "id": "render-blocking-insight",
+      "score": 0,
+      "title": "Render-blocking requests",
+      "displayValue": "Est savings of 1,210 ms"
+    },
+    {
+      "id": "robots-txt",
+      "score": 0,
+      "title": "robots.txt is not valid",
+      "displayValue": "42 errors found"
+    },
+    {
+      "id": "speed-index",
+      "score": 0,
+      "title": "Speed Index",
+      "displayValue": "33.7 s"
+    },
+    {
+      "id": "unminified-javascript",
+      "score": 0,
+      "title": "Minify JavaScript",
+      "displayValue": "Est savings of 5,992 KiB"
+    },
+    {
+      "id": "unused-javascript",
+      "score": 0,
+      "title": "Reduce unused JavaScript",
+      "displayValue": "Est savings of 2,531 KiB"
+    },
+    {
+      "id": "document-latency-insight",
+      "score": 0.5,
+      "title": "Document request latency",
+      "displayValue": "Est savings of 2 KiB"
+    },
+    {
+      "id": "total-byte-weight",
+      "score": 0.5,
+      "title": "Avoid enormous network payloads",
+      "displayValue": "Total size was 12,891 KiB"
+    },
+    {
+      "id": "unminified-css",
+      "score": 0.5,
+      "title": "Minify CSS",
+      "displayValue": "Est savings of 15 KiB"
+    },
+    {
+      "id": "unsized-images",
+      "score": 0.5,
+      "title": "Image elements do not have explicit `width` and `height`",
+      "displayValue": null
+    },
+    {
+      "id": "unused-css-rules",
+      "score": 0.5,
+      "title": "Reduce unused CSS",
+      "displayValue": "Est savings of 69 KiB"
+    },
+    {
+      "id": "max-potential-fid",
+      "score": 0.69,
+      "title": "Max Potential First Input Delay",
+      "displayValue": "190 ms"
+    },
+    {
+      "id": "total-blocking-time",
+      "score": 0.73,
+      "title": "Total Blocking Time",
+      "displayValue": "350 ms"
+    }
+  ]
+}

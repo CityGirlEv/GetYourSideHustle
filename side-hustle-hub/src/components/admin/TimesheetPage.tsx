@@ -19,6 +19,8 @@ import {
   currentSprintIndex,
   sprintLabel,
 } from "../../lib/gysh-sprints";
+import { fetchClosedSprints, isSprintLocked } from "../../lib/gysh-closed-sprints";
+import { SprintLockedBanner } from "./SprintLockedBanner";
 import {
   fetchTestStatuses,
   TEST_CASES,
@@ -270,6 +272,7 @@ export function TimesheetPage(_props: TimesheetPageProps = {}) {
   const [sprintFilters, setSprintFilters] = useState<Set<number>>(() => new Set());
   /** `${source}:${sourceId}` → sprint index (incl. BACKLOG_SPRINT). */
   const [sprintByEntryKey, setSprintByEntryKey] = useState<Map<string, number>>(() => new Map());
+  const [closedSprints, setClosedSprints] = useState<Set<number>>(() => new Set());
   const pickerRef = useRef<HTMLDivElement>(null);
   const typedId = useId();
 
@@ -362,6 +365,20 @@ export function TimesheetPage(_props: TimesheetPageProps = {}) {
     void reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reload when range changes
   }, [from, to]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchClosedSprints()
+      .then((closed) => {
+        if (!cancelled) setClosedSprints(new Set(closed));
+      })
+      .catch(() => {
+        /* optional */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!pickerOpen) return;
@@ -775,6 +792,7 @@ export function TimesheetPage(_props: TimesheetPageProps = {}) {
             </button>
             {sprintFilterOptions.map((sprint) => {
               const active = sprintFilters.has(sprint);
+              const locked = isSprintLocked(closedSprints, sprint);
               return (
                 <button
                   key={sprint}
@@ -783,13 +801,16 @@ export function TimesheetPage(_props: TimesheetPageProps = {}) {
                   aria-selected={active}
                   className="qa-tester-bubble"
                   data-active={active ? "true" : "false"}
+                  data-locked={locked ? "true" : "false"}
                   data-testid={`timesheet-sprint-${sprint === BACKLOG_SPRINT ? "backlog" : sprint}`}
+                  title={locked ? `${sprintLabel(sprint)} · Closed & locked` : sprintLabel(sprint)}
                   onClick={() => setSprintFilters((prev) => toggleSprintFilter(prev, sprint))}
                 >
                   <span className="qa-filter-chip__check" aria-hidden>
                     {active ? "✓" : ""}
                   </span>
                   {sprintLabel(sprint)}
+                  {locked ? <SprintLockedBanner /> : null}
                 </button>
               );
             })}

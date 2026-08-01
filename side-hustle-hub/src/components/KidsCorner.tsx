@@ -382,7 +382,8 @@ function KidsStoriesTab() {
                 <img
                   className="kids-story-thumb"
                   src={`https://img.youtube.com/vi/${ep.videoId}/hqdefault.jpg`}
-                  alt=""
+                  alt={`${ep.title} — Kevina Starr story thumbnail`}
+                  aria-hidden="true"
                   loading="lazy"
                 />
                 <div className="kids-story-body">

@@ -34,7 +34,15 @@ export function taskMatchesIdQuery(task: GyshTask, rawQuery: string): boolean {
   if (id === q || id === `t-${q}`) return true;
 
   const qWithoutPrefix = q.replace(/^t-/, "");
-  // Slug ids (t-lg-airbnb): require full id match
+  // Letter-suffix subtasks (t-041t / t-041e): exact id only — not siblings.
+  const subMatch = /^(\d+)([a-z]+)$/i.exec(qWithoutPrefix);
+  if (subMatch) {
+    const want = `t-${Number(subMatch[1])}${subMatch[2]}`.toLowerCase();
+    const wantPadded = `t-${subMatch[1]}${subMatch[2]}`.toLowerCase();
+    return id === want || id === wantPadded;
+  }
+
+  // Slug ids (t-lg-airbnb): require full id match (not bare digits).
   if (/[a-z]/i.test(qWithoutPrefix.replace(/\d/g, ""))) {
     return id === q || id === `t-${qWithoutPrefix}`;
   }
@@ -42,7 +50,8 @@ export function taskMatchesIdQuery(task: GyshTask, rawQuery: string): boolean {
   const qDigits = qWithoutPrefix.replace(/\D/g, "").replace(/^0+/, "") || "";
   if (!qDigits) return false;
 
-  const idNum = /^t-(\d+)$/i.exec(task.id);
+  // T-041 / 41 matches T-041 and letter children T-041T / T-041E.
+  const idNum = /^t-(\d+)([a-z]*)$/i.exec(task.id);
   if (!idNum) return false;
   const idDigits = idNum[1]!.replace(/^0+/, "") || "0";
   return idDigits === qDigits;

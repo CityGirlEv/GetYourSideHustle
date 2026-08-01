@@ -14,7 +14,6 @@ import {
   ExternalLink,
   FileText,
   ListPlus,
-  Lock,
   Mail,
   MessageSquare,
   Paperclip,
@@ -41,6 +40,7 @@ import {
   reopenSprint,
   sprintLockedMessage,
 } from "../../lib/gysh-closed-sprints";
+import { SprintLockedBanner } from "./SprintLockedBanner";
 import {
   completeWorkTimer,
   ensureWorkTimerStarted,
@@ -224,6 +224,8 @@ const STATUS_COLORS: Record<string, string> = {
   fixed_retest: "#2563eb",
   failed_retest: "#f97316",
   fixed_cursor: "#7c3aed",
+  fixed_lighthouse: "#0891b2",
+  fixed_foresight: "#b45309",
 };
 
 const CEREMONY_COLORS: Record<SprintCeremony["type"], string> = {
@@ -1064,7 +1066,7 @@ export function SchedulePage({
 
   const boardCards = useMemo(() => {
     const planCards = items.map(planToBoardCard);
-    const taskCards = tasks.map(taskToBoardCard);
+    const taskCards = tasks.filter((t) => !String(t.parentId || "").trim()).map(taskToBoardCard);
     const testCards = ALL_TESTS.map((t) =>
       testToBoardCard(t, testStatuses[t.id], testSprints[t.id], testAssignees[t.id], {
         updatedAt: testUpdatedAt[t.id],
@@ -1196,7 +1198,7 @@ export function SchedulePage({
         }
       }
 
-      // Heal stale backlog assignees so storage matches "backlog = Unassigned".
+      // Heal stale backlog task/plan owners (tests may keep a person assignee).
       const healedPlan = sanitizeBacklogPlanOwners(workingPlan);
       const healedTasks = sanitizeBacklogTaskAssignees(workingTasks);
       const healedTests = sanitizeBacklogTestAssignees(
@@ -1403,12 +1405,12 @@ export function SchedulePage({
   /** Raw control value (tasks: display name; tests: lowercase QA id). */
   const cardAssigneeValue = (card: BoardCard): string => {
     const sprint = cardSprintValue(card);
-    // Backlog never keeps a person — drafts cannot override this.
-    if (isBacklogSprint(sprint)) {
-      return card.source === "test" ? "" : UNASSIGNED_OWNER;
-    }
     const draft = drafts[card.key]?.assignee;
     if (draft !== undefined) return draft;
+    // Tasks/plan on backlog are always Unassigned. Tests may keep a person.
+    if (isBacklogSprint(sprint) && card.source !== "test") {
+      return UNASSIGNED_OWNER;
+    }
     if (card.source === "test") {
       return testAssignees[card.sourceId] || TEST_DEFAULT_ASSIGNEES[card.sourceId] || "";
     }
@@ -1418,11 +1420,15 @@ export function SchedulePage({
   /** Display/filter assignee — uses board owner (Both/multi) when no draft override. */
   const cardAssigneeFilterValue = (card: BoardCard): string => {
     const sprint = cardSprintValue(card);
-    if (isBacklogSprint(sprint)) {
-      return card.source === "test" ? "" : UNASSIGNED_OWNER;
-    }
     const draft = drafts[card.key]?.assignee;
     if (draft !== undefined) return normalizeProgressAssignee(draft);
+    if (isBacklogSprint(sprint) && card.source !== "test") {
+      return UNASSIGNED_OWNER;
+    }
+    if (isBacklogSprint(sprint) && card.source === "test") {
+      const raw = testAssignees[card.sourceId] || "";
+      return raw ? normalizeProgressAssignee(raw) : UNASSIGNED_OWNER;
+    }
     return card.owner;
   };
 
@@ -1699,12 +1705,14 @@ export function SchedulePage({
   /** Stage a field change as a dirty draft — persists only on Save / Save all. */
   const stageCardDraft = (card: BoardCard, patch: CardDraft) => {
     const nextPatch: CardDraft = { ...patch };
+    // Tasks/plan on backlog are always Unassigned. Tests may keep a person assignee.
     if (
       nextPatch.sprint !== undefined &&
       isBacklogSprint(nextPatch.sprint) &&
-      nextPatch.assignee === undefined
+      nextPatch.assignee === undefined &&
+      card.source !== "test"
     ) {
-      nextPatch.assignee = card.source === "test" ? "" : UNASSIGNED_OWNER;
+      nextPatch.assignee = UNASSIGNED_OWNER;
     }
     setDrafts((prev) => ({
       ...prev,
@@ -1847,7 +1855,7 @@ export function SchedulePage({
           cardNotesDirty(card.key, cardStoredNotes(card));
     const requestedAssignee =
       draft.assignee !== undefined ? draft.assignee : cardAssigneeValue(card);
-    // Automated suite owners stay locked in committed sprints — backlog clears person/suite display owners.
+    // Automated suite owners stay locked in committed sprints.
     let assignee =
       card.source === "test" &&
       isAutomatedTestId(card.sourceId) &&
@@ -1856,7 +1864,11 @@ export function SchedulePage({
           (card.sourceId.startsWith("PW-") ? "playwright" : "vitest")
         : requestedAssignee;
     if (isBacklogSprint(sprint)) {
-      assignee = assigneeForBacklogSprint(sprint, card.source === "test" ? "test" : card.source === "plan" ? "plan" : "task", assignee);
+      assignee = assigneeForBacklogSprint(
+        sprint,
+        card.source === "test" ? "test" : card.source === "plan" ? "plan" : "task",
+        assignee,
+      );
     }
 
     setBusy(true);
@@ -2334,14 +2346,17 @@ export function SchedulePage({
       }
       const resultingSprint =
         mapped.sprint !== undefined ? mapped.sprint : card.sprint;
-      if (bulkAssignee && !isBacklogSprint(resultingSprint)) {
-        const a = bulkAssigneeForSource(card.source, bulkAssignee);
-        // Empty string is valid for clearing test assignees (Unassigned).
-        if (a !== null) mapped.assignee = a;
+      if (bulkAssignee) {
+        // Tasks/plan on backlog stay Unassigned; tests may be assigned in backlog.
+        if (!isBacklogSprint(resultingSprint) || card.source === "test") {
+          const a = bulkAssigneeForSource(card.source, bulkAssignee);
+          // Empty string is valid for clearing test assignees (Unassigned).
+          if (a !== null) mapped.assignee = a;
+        }
       }
-      // Backlog always wins — never store a person on backlog cards.
-      if (isBacklogSprint(resultingSprint)) {
-        mapped.assignee = card.source === "test" ? "" : UNASSIGNED_OWNER;
+      // Backlog tasks/plan always Unassigned. Tests keep the staged/bulk assignee.
+      if (isBacklogSprint(resultingSprint) && card.source !== "test") {
+        mapped.assignee = UNASSIGNED_OWNER;
       }
       if (bulkAssignBy && (card.source === "task" || card.source === "test")) {
         mapped.assignBy = bulkAssignBy;
@@ -2968,21 +2983,7 @@ export function SchedulePage({
                 >
                   <span style={{ display: "flex", gap: 6, alignItems: "baseline", flexWrap: "wrap" }}>
                     <strong>{s.label}</strong>
-                    {locked ? (
-                      <span
-                        className="glow-badge"
-                        style={{
-                          fontSize: "0.75rem",
-                          background: "#475569",
-                          color: "#fff",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 4,
-                        }}
-                      >
-                        <Lock size={11} /> Locked
-                      </span>
-                    ) : null}
+                    {locked ? <SprintLockedBanner /> : null}
                     <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
                       · {workFace}
                     </span>
@@ -3958,8 +3959,13 @@ export function SchedulePage({
                   <option value="">— keep —</option>
                   <option value={BACKLOG_SPRINT}>Backlog</option>
                   {sprints.map((s) => (
-                    <option key={s.index} value={s.index}>
+                    <option
+                      key={s.index}
+                      value={s.index}
+                      disabled={isSprintLocked(closedSprints, s.index)}
+                    >
                       {s.label}
+                      {isSprintLocked(closedSprints, s.index) ? " · Locked" : ""}
                     </option>
                   ))}
                 </select>
@@ -4121,22 +4127,7 @@ export function SchedulePage({
                       >
                         {card.kindLabel}
                       </span>
-                      {cardLocked && (
-                        <span
-                          className="glow-badge"
-                          style={{
-                            fontSize: "0.8125rem",
-                            background: "#475569",
-                            color: "#fff",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: 4,
-                          }}
-                          title={sprintLockedMessage(card.sprint)}
-                        >
-                          <Lock size={12} /> Locked
-                        </span>
-                      )}
+                      {cardLocked && <SprintLockedBanner size={12} />}
                       {dirty && (
                         <span
                           className="glow-badge amber"
@@ -4297,12 +4288,10 @@ export function SchedulePage({
                               onChange={(e) =>
                                 stageCardDraft(card, { assignee: e.target.value })
                               }
-                              disabled={controlsDisabled || isBacklogSprint(sprintVal)}
+                              disabled={controlsDisabled}
                               title={
                                 cardLocked
                                   ? sprintLockedMessage(card.sprint)
-                                  : isBacklogSprint(sprintVal)
-                                  ? "Backlog items stay Unassigned until moved into a sprint"
                                   : undefined
                               }
                             >

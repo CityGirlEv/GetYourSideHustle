@@ -6,12 +6,23 @@
 import { error, json, type DbUser, type Env } from "./auth";
 import { EmailSendError, emailConfigured, sendResendEmail } from "./email";
 import { escapeHtml, SITE_NAME, SITE_URL, wrapBrandedEmail } from "./email-brand";
+import { noteEntriesPlainText } from "./note-entries";
 import { PARTNER_ADMINS } from "./partners";
 
 export const DEFAULT_AGENDA_ID = "partner-agenda-main";
 export const MIN_TIME_PICKS = 3;
 export const MAX_TIME_PICKS = 5;
 export const MIN_DURATION_MINUTES = 60;
+/** Default / clamp bounds for partner meeting length (timed agenda). */
+export const DEFAULT_MEETING_MINUTES = 90;
+export const MIN_MEETING_MINUTES = 20;
+export const MAX_MEETING_MINUTES = 180;
+
+function clampMeetingMinutes(value: unknown): number {
+  const n = Math.round(Number(value));
+  if (!Number.isFinite(n)) return DEFAULT_MEETING_MINUTES;
+  return Math.min(MAX_MEETING_MINUTES, Math.max(MIN_MEETING_MINUTES, n));
+}
 
 const AGENDA_WORD_RE = /\bagenda\b/i;
 
@@ -27,6 +38,7 @@ type AgendaRow = {
   meeting_date?: string | null;
   meeting_time?: string | null;
   meeting_timezone?: string | null;
+  meeting_minutes?: number | null;
   invited_json?: string | null;
   attended_json?: string | null;
   meeting_notes?: string | null;
@@ -238,6 +250,7 @@ async function ensureAgendaTables(env: Env): Promise<void> {
     `ALTER TABLE partner_agenda ADD COLUMN updated_by_name TEXT NOT NULL DEFAULT ''`,
     `ALTER TABLE partner_agenda ADD COLUMN invite_subject TEXT NOT NULL DEFAULT ''`,
     `ALTER TABLE partner_agenda ADD COLUMN invite_body TEXT NOT NULL DEFAULT ''`,
+    `ALTER TABLE partner_agenda ADD COLUMN meeting_minutes INTEGER NOT NULL DEFAULT 60`,
   ]) {
     try {
       await env.DB.prepare(sql).run();
@@ -340,7 +353,8 @@ async function loadSuggestedTaskItems(env: Env): Promise<
     }> = [];
     for (const t of rows.results ?? []) {
       const desc = String(t.description || "").trim();
-      const notes = String(t.notes || "").trim();
+      // Task notes may be JSON note threads — show plain text only in the Agenda UI.
+      const notes = noteEntriesPlainText(t.notes || "").trim();
       if (!AGENDA_WORD_RE.test(desc) && !AGENDA_WORD_RE.test(notes)) continue;
       const id = String(t.id || "").trim();
       if (!id) continue;
@@ -349,6 +363,7 @@ async function loadSuggestedTaskItems(env: Env): Promise<
         if (notes.includes(desc) && desc.length >= 12) body = notes;
         else if (desc.includes(notes) && notes.length >= 12) body = desc;
         else if (AGENDA_WORD_RE.test(notes)) body = desc ? `${desc}\n${notes}` : notes;
+        else body = `${desc}\n${notes}`;
       } else if (!desc) {
         body = notes;
       }
@@ -419,11 +434,11 @@ async function ensureActiveAgenda(env: Env, user: DbUser): Promise<AgendaRow> {
       existing.updated_at = now;
       existing.updated_by_name = by;
     }
-    // Backfill default 3:30 PM Central when meeting time was never set.
+    // Backfill default 1:30 PM Central (11:30 AM Vegas) when meeting time was never set.
     if (!String(existing.meeting_time || "").trim()) {
       await env.DB.prepare(
         `UPDATE partner_agenda SET
-           meeting_time = '15:30',
+           meeting_time = '13:30',
            meeting_timezone = CASE
              WHEN meeting_timezone IS NULL OR TRIM(meeting_timezone) = '' THEN 'America/Chicago'
              ELSE meeting_timezone
@@ -433,7 +448,7 @@ async function ensureActiveAgenda(env: Env, user: DbUser): Promise<AgendaRow> {
       )
         .bind(now, existing.id)
         .run();
-      existing.meeting_time = "15:30";
+      existing.meeting_time = "13:30";
       if (!String(existing.meeting_timezone || "").trim()) {
         existing.meeting_timezone = "America/Chicago";
       }
@@ -446,7 +461,7 @@ async function ensureActiveAgenda(env: Env, user: DbUser): Promise<AgendaRow> {
     `INSERT INTO partner_agenda
       (id, title, active, created_by_user_id, created_by_name, invite_sent_at,
        meeting_date, meeting_time, meeting_timezone, invited_json, attended_json, created_at, updated_at, updated_by_name)
-     VALUES (?, ?, 1, ?, ?, NULL, '', '15:30', 'America/Chicago', ?, '[]', ?, ?, ?)`,
+     VALUES (?, ?, 1, ?, ?, NULL, '', '13:30', 'America/Chicago', ?, '[]', ?, ?, ?)`,
   )
     .bind(
       DEFAULT_AGENDA_ID,
@@ -536,8 +551,9 @@ async function buildPayload(env: Env, user: DbUser) {
       updatedByName:
         String(agenda.updated_by_name || "").trim() || agenda.created_by_name || "",
       meetingDate: String(agenda.meeting_date || ""),
-      meetingTime: String(agenda.meeting_time || "").trim() || "15:30",
+      meetingTime: String(agenda.meeting_time || "").trim() || "13:30",
       meetingTimezone: String(agenda.meeting_timezone || "America/Chicago") || "America/Chicago",
+      meetingMinutes: clampMeetingMinutes(agenda.meeting_minutes ?? DEFAULT_MEETING_MINUTES),
       invited: invited.length ? invited : defaultInvited,
       attended,
       meetingNotes: String(agenda.meeting_notes || ""),
@@ -619,6 +635,7 @@ export async function updateAgendaMeta(
     meetingDate?: string;
     meetingTime?: string;
     meetingTimezone?: string;
+    meetingMinutes?: number;
     invited?: string[];
     attended?: string[];
     finalized?: boolean;
@@ -637,6 +654,11 @@ export async function updateAgendaMeta(
   const meetingTimezone =
     String(body.meetingTimezone ?? agenda.meeting_timezone ?? "America/Chicago").trim() ||
     "America/Chicago";
+  const meetingMinutes = clampMeetingMinutes(
+    body.meetingMinutes !== undefined
+      ? body.meetingMinutes
+      : agenda.meeting_minutes ?? DEFAULT_MEETING_MINUTES,
+  );
   const invited = Array.isArray(body.invited)
     ? body.invited.map((n) => String(n || "").trim()).filter(Boolean)
     : parseNameList(agenda.invited_json);
@@ -654,11 +676,17 @@ export async function updateAgendaMeta(
   if (body.inviteSubject !== undefined && !inviteSubject) {
     return error("Email subject is required.");
   }
-  if (body.inviteBody !== undefined && !inviteBody.trim()) {
-    return error("Email message is required.");
+  if (body.inviteBody !== undefined) {
+    const plain = inviteBody
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/p>/gi, "\n")
+      .replace(/<[^>]+>/g, "")
+      .replace(/&nbsp;/gi, " ")
+      .trim();
+    if (!plain) return error("Email message is required.");
   }
   if (inviteSubject.length > 300) return error("Email subject is too long (max 300 characters).");
-  if (inviteBody.length > 20000) return error("Email message is too long (max 20000 characters).");
+  if (inviteBody.length > 50000) return error("Email message is too long (max 50000 characters).");
   const now = nowIso();
   let finalizedAt = agenda.finalized_at ? String(agenda.finalized_at) : null;
   if (body.finalized === true) finalizedAt = now;
@@ -667,6 +695,7 @@ export async function updateAgendaMeta(
   await env.DB.prepare(
     `UPDATE partner_agenda SET
        title = ?, meeting_date = ?, meeting_time = ?, meeting_timezone = ?,
+       meeting_minutes = ?,
        invited_json = ?, attended_json = ?, finalized_at = ?,
        invite_subject = ?, invite_body = ?,
        updated_at = ?, updated_by_name = ?
@@ -677,6 +706,7 @@ export async function updateAgendaMeta(
       meetingDate,
       meetingTime,
       meetingTimezone,
+      meetingMinutes,
       JSON.stringify(invited),
       JSON.stringify(attended),
       finalizedAt,
@@ -994,6 +1024,7 @@ export async function saveAgendaPreview(
     meetingDate?: string;
     meetingTime?: string;
     meetingTimezone?: string;
+    meetingMinutes?: number;
     invited?: string[];
     attended?: string[];
     meetingNotes?: string;
@@ -1032,6 +1063,11 @@ export async function saveAgendaPreview(
   const meetingTimezone =
     String(body.meetingTimezone ?? agenda.meeting_timezone ?? "America/Chicago").trim() ||
     "America/Chicago";
+  const meetingMinutes = clampMeetingMinutes(
+    body.meetingMinutes !== undefined
+      ? body.meetingMinutes
+      : agenda.meeting_minutes ?? DEFAULT_MEETING_MINUTES,
+  );
   const invited = Array.isArray(body.invited)
     ? body.invited.map((n) => String(n || "").trim()).filter(Boolean)
     : parseNameList(agenda.invited_json);
@@ -1050,6 +1086,7 @@ export async function saveAgendaPreview(
   await env.DB.prepare(
     `UPDATE partner_agenda SET
        meeting_date = ?, meeting_time = ?, meeting_timezone = ?,
+       meeting_minutes = ?,
        invited_json = ?, attended_json = ?,
        meeting_notes = ?, meeting_action_items_json = ?,
        updated_at = ?, updated_by_name = ?
@@ -1059,6 +1096,7 @@ export async function saveAgendaPreview(
       meetingDate,
       meetingTime,
       meetingTimezone,
+      meetingMinutes,
       JSON.stringify(invited),
       JSON.stringify(attended),
       meetingNotes,
@@ -1119,6 +1157,52 @@ export async function saveAgendaPreview(
   return json({ ok: true, ...(await buildPayload(env, user)) });
 }
 
+function unescapeBasicHtmlEntities(s: string): string {
+  return String(s || "")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"');
+}
+
+/** Turn bare http(s) URLs into clickable anchors (text may already be HTML-escaped). */
+function linkifyBareUrls(text: string): string {
+  return String(text || "").replace(/(https?:\/\/[^\s<]+)/gi, (raw) => {
+    let url = raw;
+    let trailing = "";
+    // Peel common trailing punctuation that is not part of the URL.
+    while (url.length > 0) {
+      const last = url.slice(-1);
+      if (/[.,;:!?]$/.test(last)) {
+        trailing = last + trailing;
+        url = url.slice(0, -1);
+        continue;
+      }
+      if (last === ")") {
+        const opens = (url.match(/\(/g) || []).length;
+        const closes = (url.match(/\)/g) || []).length;
+        if (closes > opens) {
+          trailing = ")" + trailing;
+          url = url.slice(0, -1);
+          continue;
+        }
+      }
+      break;
+    }
+    if (!/^https?:\/\//i.test(url)) return raw;
+    const href = escapeHtml(unescapeBasicHtmlEntities(url));
+    return `<a href="${href}" target="_blank" rel="noopener noreferrer" style="color:#9B2F28;font-weight:700;text-decoration:underline;word-break:break-all;">${url}</a>${trailing}`;
+  });
+}
+
+/** Linkify URLs in HTML without touching existing <a>…</a> blocks. */
+function linkifyBareUrlsInHtml(html: string): string {
+  const parts = String(html || "").split(/(<a\b[^>]*>[\s\S]*?<\/a>)/gi);
+  return parts
+    .map((part) => (/^<a\b/i.test(part) ? part : linkifyBareUrls(part)))
+    .join("");
+}
+
 function plainTextToHtmlParagraphs(text: string): string {
   const blocks = String(text || "")
     .replace(/\r\n/g, "\n")
@@ -1128,10 +1212,39 @@ function plainTextToHtmlParagraphs(text: string): string {
   if (blocks.length === 0) return "<p></p>";
   return blocks
     .map((block) => {
-      const withBreaks = escapeHtml(block).replace(/\n/g, "<br/>");
+      const withBreaks = linkifyBareUrls(escapeHtml(block).replace(/\n/g, "<br/>"));
       return `<p>${withBreaks}</p>`;
     })
     .join("\n");
+}
+
+function looksLikeHtml(raw: string): boolean {
+  return /<\/?(?:p|div|br|b|strong|i|em|u|span|font|ul|ol|li|a|h[1-6])\b/i.test(String(raw || ""));
+}
+
+/** Allowlist-ish cleanup for admin-authored rich email HTML (no scripts / handlers). */
+function sanitizeEmailHtml(html: string): string {
+  let s = String(html || "");
+  s = s.replace(/<\/?(script|style|iframe|object|embed|form|input|button|link|meta|svg|math|video|audio)[^>]*>/gi, "");
+  s = s.replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "");
+  s = s.replace(/\s(href|src)\s*=\s*(['"])\s*javascript:[^'"]*\2/gi, ' $1="#"');
+  s = s.replace(/\s(href|src)\s*=\s*javascript:[^\s>]*/gi, ' $1="#"');
+  // Drop tags outside a safe allowlist (keep their text).
+  s = s.replace(
+    /<\/?(?!\/?(?:p|div|br|b|strong|i|em|u|span|font|ul|ol|li|a|h[1-6]|blockquote|hr)\b)[a-zA-Z][^>]*>/gi,
+    "",
+  );
+  return s;
+}
+
+function customBodyToHtml(customBody: string): string {
+  const raw = String(customBody || "").trim();
+  if (!raw) return "";
+  // Never escape existing markup — that turns real <a href> links into plain text in Resend.
+  if (looksLikeHtml(raw) || /<a\b/i.test(raw)) {
+    return linkifyBareUrlsInHtml(sanitizeEmailHtml(raw));
+  }
+  return plainTextToHtmlParagraphs(raw);
 }
 
 export async function sendAgendaInviteEmail(
@@ -1230,8 +1343,9 @@ export async function sendAgendaInviteEmail(
   for (const partner of recipients) {
     const first = partner.name.split(" ")[0] || partner.name;
     // Custom body already includes the team greeting — don't prepend "Hi First,".
+    // Rich HTML from the editor is preserved; plain-text drafts still convert to paragraphs.
     const htmlBody = customBody
-      ? plainTextToHtmlParagraphs(customBody)
+      ? customBodyToHtml(customBody)
       : `
       <p>Hi ${escapeHtml(first)},</p>
       <p><strong>${escapeHtml(fromName)}</strong> set up our shared online partner agenda.</p>

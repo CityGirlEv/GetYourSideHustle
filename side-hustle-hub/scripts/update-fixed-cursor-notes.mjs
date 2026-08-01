@@ -1,8 +1,8 @@
 /**
  * Append Fixed/Cursor notes + update statuses. NEVER replaces/drops existing QA notes.
  * Note format for new Cursor entries:
- *   Previously Failed. <fix>. Please re-test. <QA Name>
- *   Previously Conditional Pass. <fix>. Please re-test. <QA Name>
+ *   Previously Failed. <fix> <QA Name>. please re-test.
+ *   Previously Conditional Pass. <fix> <QA Name>. please re-test.
  *
  * IMPORTANT: On Windows, wrangler --file + --json does NOT return SELECT row data.
  * Always read notes via d1Select / loadNotesWithHistory (--command).
@@ -133,7 +133,8 @@ function noteId() {
 }
 
 function cursorNoteText(prefix, fix, qa) {
-  return `${prefix}. ${fix} Please re-test. ${qa}`;
+  const body = String(fix || "").trim().replace(/[.!?]+$/, "");
+  return `${prefix}. ${body}. ${qa}. please re-test.`;
 }
 
 /** Append or refresh ONLY the latest Cursor "Previously…" note — keep every other entry. */

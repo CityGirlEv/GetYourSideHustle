@@ -36,6 +36,8 @@ export type AgendaMeta = {
   meetingDate?: string;
   meetingTime?: string;
   meetingTimezone?: string;
+  /** Total meeting length in minutes (timed slots / PDF / live timer). */
+  meetingMinutes?: number;
   invited?: string[];
   attended?: string[];
   /** Free-form notes taken during the meeting. */
@@ -64,8 +66,8 @@ export const AGENDA_TIMEZONES: Array<{ id: string; label: string }> = [
 ];
 
 export const DEFAULT_AGENDA_TIMEZONE = "America/Chicago";
-/** Default partner meeting start (3:30 PM Central). */
-export const DEFAULT_AGENDA_MEETING_TIME = "15:30";
+/** Default partner meeting start (1:30 PM Central / 11:30 AM Vegas–Pacific). */
+export const DEFAULT_AGENDA_MEETING_TIME = "13:30";
 
 export type AgendaItemSource = "user" | "task" | "test";
 
@@ -184,6 +186,7 @@ export async function saveAgendaMeta(input: {
   meetingDate?: string;
   meetingTime?: string;
   meetingTimezone?: string;
+  meetingMinutes?: number;
   invited?: string[];
   attended?: string[];
   finalized?: boolean;
@@ -200,6 +203,7 @@ export async function saveAgendaPreview(input: {
   meetingDate?: string;
   meetingTime?: string;
   meetingTimezone?: string;
+  meetingMinutes?: number;
   invited?: string[];
   attended?: string[];
   meetingNotes?: string;
@@ -339,7 +343,7 @@ function formatClock12(totalMin: number): string {
   return `${h}:${String(minute).padStart(2, "0")}${ampm}`;
 }
 
-/** Fri, Jul 31, 3:30PM - 4:30PM CST/ 1:30PM - 2:30PM PST. (60m) */
+/** Fri, Jul 31, 1:30PM - 2:30PM CST/ 11:30AM - 12:30PM PST. (60m) */
 export function formatAgendaMeetingWindow(opts: {
   meetingDate?: string;
   meetingTime?: string;
@@ -397,7 +401,7 @@ export function buildPartnerAgendaEmailDraft(payload: PartnerAgendaPayload): {
     "",
     `Tina, thank you for submitting your 3 meeting options.  As per our text, we have scheduled the meeting for ${windowLabel}.  The Zoom invite link is at the end of this email.`,
     "",
-    "I have created an online interactive agenda that we can all add Agenda Items to.  I have already created the 1st draft and I have left two 4 minute placeholders for Tina to add items she may want to talk about, and a 7 minute Q & A placeholder at the end.",
+    "I have created an online interactive agenda that we can all add Agenda Items to.  I have already created the 1st draft and I have left two 2 minute placeholders for Tina to add items she may want to talk about, and a 4 minute Q & A placeholder at the end.",
     "",
     "A copy of the tentative Agenda is attached to this email.",
     "",

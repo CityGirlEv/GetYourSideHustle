@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { 
   MessageSquare, 
   Sparkles,
@@ -20,6 +20,7 @@ import {
   Star,
   Heart,
   Home,
+  BookOpen,
   LayoutDashboard,
   Minus,
   Plus,
@@ -34,26 +35,20 @@ import { HustleQuiz } from "./components/HustleQuiz";
 import { FindMineWizardSelector } from "./components/FindMineWizardSelector";
 import { StepByStepGuides } from "./components/StepByStepGuides";
 import { FreeGuidesPage } from "./components/FreeGuidesPage";
-import { MarketingManual } from "./components/MarketingManual";
 import { CommunityHub } from "./components/CommunityHub";
 import { type MarketingGuideId } from "./lib/marketing-guides";
 import { KidsCorner } from "./components/KidsCorner";
 import { SeniorSideHustles } from "./components/SeniorSideHustles";
 import { UserPortal } from "./components/UserPortal";
+import { KidDashboard } from "./components/KidDashboard";
 import {
-  KidDashboard,
-  isYouthDashboardUser,
-  youthAgeBand,
-} from "./components/KidDashboard";
-import {
-  AdminPortal,
   ADMIN_MENU_GROUPS,
   ADMIN_USER_GUIDE_LINKS,
   adminTabById,
   type AdminTab,
-} from "./components/AdminPortal";
+  type UserGuideId,
+} from "./lib/admin-nav";
 import { DailyProgressReport } from "./components/admin/DailyProgressReport";
-import type { UserGuideId } from "./components/admin/UserGuidesHub";
 import type { SiteMapHref } from "./lib/site-map";
 import { TrainingCircles } from "./components/TrainingCircles";
 import { WorkshopsHub } from "./components/WorkshopsHub";
@@ -73,7 +68,13 @@ import {
 import { LaunchChecklistPage } from "./components/LaunchChecklistPage";
 import { ParentConsentPage } from "./components/ParentConsentPage";
 import { clearConsentTokenFromUrl, readConsentTokenFromUrl } from "./lib/junior-signup";
-import { FACEBOOK_URL, SITE_NAME, SITE_PURPOSE } from "./lib/site-config";
+import {
+  FACEBOOK_URL,
+  HOME_HEADLINE_OUTCOME,
+  SITE_NAME,
+  SITE_PURPOSE,
+} from "./lib/site-config";
+import { HomeForesightBlocks } from "./components/HomeForesightBlocks";
 import {
   parseAppRoute,
   syncUrlToView,
@@ -108,10 +109,18 @@ import {
 import { hasFreeMemberSession } from "./lib/free-member-session";
 import { readPendingBlueprint } from "./lib/pending-blueprint";
 import type { BlueprintAgeGroup } from "./lib/gysh-analytics";
+import { isYouthDashboardUser, youthAgeBand } from "./lib/youth-dashboard";
 import kevinaNavMark from "./assets/kevina-starr-logo.png";
-import gyshHomeHero from "./assets/gysh-home-hero.png";
 import gyshLogo from "./assets/gysh-logo-rocket.png";
 import "./App.css";
+
+/** Heavy admin/PDF-only bundles — keep off the public home path. */
+const AdminPortal = lazy(() =>
+  import("./components/AdminPortal").then((m) => ({ default: m.AdminPortal })),
+);
+const MarketingManual = lazy(() =>
+  import("./components/MarketingManual").then((m) => ({ default: m.MarketingManual })),
+);
 
 const DUE_POPUP_LOGIN_FLAG = "gysh_due_popup_login";
 
@@ -1288,7 +1297,8 @@ function App() {
 
   const getHeaderTitle = () => {
     switch (activeView) {
-      case "dashboard": return "Four “Get Your Side Hustle” Match Wizards. One Family Adventure.";
+      case "dashboard":
+        return `Get Your Side Hustle — ${HOME_HEADLINE_OUTCOME}`;
       case "quiz":
         return findMineMode === "adult"
           ? "GYSH Adults Match Wizard"
@@ -1369,13 +1379,13 @@ function App() {
   const renderHomeHowSteps = (titleId: string) => (
     <aside className="home-promo-hero__steps" aria-labelledby={titleId}>
       <h2 id={titleId} className="home-promo-hero__steps-heading">
-        <span className="home-promo-hero__steps-eyebrow">Start here</span>
-        <span className="home-promo-hero__steps-title">Pick your starting point</span>
+        <span className="home-promo-hero__steps-title">Who is GYSH for?</span>
       </h2>
       <p className="home-promo-hero__steps-note">
-        Kids, Teens, Adults, and Seniors each get a GYSH Match Wizard matched to their age and pace.
+        Building with family or going solo — WE GOT YOU! Pick the path that matches your stage, then
+        run the wizard built for you.
       </p>
-      <ol className="home-promo-hero__bubbles">
+      <ol className="home-promo-hero__bubbles" aria-label="Ways to start with GYSH">
         <li>
           <button type="button" className="home-step-bubble" onClick={() => goTo("quiz")}>
             <span className="home-step-bubble__num" aria-hidden="true">
@@ -1449,7 +1459,13 @@ function App() {
       <header className={`top-header${mobileMenuOpen ? " open" : ""}`}>
         <div className="top-header-inner">
           <button type="button" className="brand-section" onClick={() => goTo("dashboard")} aria-label="Home">
-            <img src={gyshLogo} alt="Get Your Side Hustle" className="brand-header-logo" />
+            <img
+              src={gyshLogo}
+              alt="Get Your Side Hustle"
+              className="brand-header-logo"
+              width={584}
+              height={280}
+            />
           </button>
 
           <button
@@ -1495,7 +1511,8 @@ function App() {
                   >
                     <img
                       src={kevinaNavMark}
-                      alt=""
+                      alt="Kevina Starr"
+                      aria-hidden="true"
                       className="nav-kevina-mark"
                       width={28}
                       height={28}
@@ -1512,6 +1529,17 @@ function App() {
                   >
                     <Heart size={16} className="nav-icon nav-icon--seniors" aria-hidden />
                     Seniors
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => openGuidesLibrary()}
+                    className={`nav-link-btn ${activeView === "guides" ? "active" : ""}`}
+                    data-testid="nav-guides"
+                  >
+                    <BookOpen size={16} className="nav-icon nav-icon--guides" aria-hidden />
+                    Guides
                   </button>
                 </li>
                 <li>
@@ -1580,11 +1608,11 @@ function App() {
                 className="header-social-link header-social-link--icon"
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="Follow Get Your Side Hustle on Facebook"
+                aria-label="Facebook"
                 data-testid="header-facebook"
-                title="Follow us on Facebook — facebook.com/getyoursidehustleofficial"
+                title="Follow Get Your Side Hustle on Facebook — facebook.com/getyoursidehustleofficial"
               >
-                <FacebookIcon size={24} />
+                <FacebookIcon size={24} aria-hidden />
                 <span className="header-social-link__label">Facebook</span>
               </a>
             </nav>
@@ -1936,23 +1964,22 @@ function App() {
           <div className="dashboard-home">
             <header className="home-page-header" data-testid="home-page-header">
               <h1 className="home-page-header__title" data-testid="page-title">
-                <span className="home-page-header__title-text">
-                  Four{" "}
-                  <em className="home-page-header__brand">&ldquo;Get Your Side Hustle&rdquo;</em> Match
-                  Wizards. One Family Adventure.
+                <span className="home-page-header__brand-block">
+                  <em className="home-page-header__brand">Get Your Side Hustle</em>
+                  {effectivePortalLogin ? (
+                    <button
+                      type="button"
+                      className="header-title-dashboard-badge"
+                      onClick={() => goTo("user_portal")}
+                      data-testid="header-dashboard"
+                    >
+                      <span className="header-title-dashboard-badge__glow" aria-hidden />
+                      <LayoutDashboard size={16} aria-hidden />
+                      <span>My Dashboard</span>
+                    </button>
+                  ) : null}
                 </span>
-                {effectivePortalLogin ? (
-                  <button
-                    type="button"
-                    className="header-title-dashboard-badge"
-                    onClick={() => goTo("user_portal")}
-                    data-testid="header-dashboard"
-                  >
-                    <span className="header-title-dashboard-badge__glow" aria-hidden />
-                    <LayoutDashboard size={16} aria-hidden />
-                    <span>My Dashboard</span>
-                  </button>
-                ) : null}
+                <span className="home-page-header__headline">{HOME_HEADLINE_OUTCOME}</span>
               </h1>
               <p className="home-page-header__purpose" data-testid="home-site-purpose">
                 {SITE_PURPOSE}
@@ -1983,15 +2010,18 @@ function App() {
               <div className="home-promo-hero__band">
                 <div className="home-promo-hero__layout">
                   <div className="home-promo-hero__frame">
-                    <img
-                      src={gyshHomeHero}
-                      alt="Get Your Side Hustle — Ideas, Action, Income, Freedom. For Kids, Teens, Adults & Seniors. Start your journey today."
-                      className="home-promo-hero__img"
-                      width={1600}
-                      height={900}
-                      decoding="async"
-                      fetchPriority="high"
-                    />
+                    <picture>
+                      <source srcSet="/brand/gysh-home-hero.webp" type="image/webp" />
+                      <img
+                        src="/brand/gysh-home-hero.png"
+                        alt="Get Your Side Hustle — Ideas, Action, Income, Freedom. For Kids, Teens, Adults & Seniors. Start your journey today."
+                        className="home-promo-hero__img"
+                        width={960}
+                        height={639}
+                        decoding="async"
+                        fetchPriority="high"
+                      />
+                    </picture>
                   </div>
                   <div className="home-promo-hero__steps--desktop">
                     {renderHomeHowSteps("home-steps-title")}
@@ -2006,22 +2036,31 @@ function App() {
               aria-labelledby="home-match-family-title"
             >
               <div className="home-match-family__section-head">
-                <button
-                  type="button"
-                  className="btn btn-primary home-match-family__side-cta"
-                  onClick={() => openJoin()}
-                >
-                  <UserPlus size={16} aria-hidden /> Join GYSH free
-                </button>
+                <div className="home-match-family__cta-stack">
+                  <button
+                    type="button"
+                    className="btn btn-primary home-match-family__side-cta"
+                    onClick={() => openJoin()}
+                    data-testid="home-join-cta"
+                  >
+                    <UserPlus size={16} aria-hidden /> Join GYSH free
+                  </button>
+                  <p className="home-match-family__cta-expect" data-testid="home-join-expectation">
+                    Start free — explore tools and join in under 2 minutes.
+                  </p>
+                </div>
                 <div className="home-match-family__section-copy">
                   <span className="glow-badge free home-match-family__eyebrow">
                     <Sparkles size={13} /> Your age · Your wizard
                   </span>
                   <h2 id="home-match-family-title" className="home-match-family__section-title">
-                    Pick Your Path — Kids · Teens · Adults · Seniors
+                    Pick Your Path
+                    <br />
+                    Kids · Teens · Adults · Seniors
                   </h2>
                   <p className="home-match-family__section-sub">
-                    Four demographic lanes. One family adventure. Choose the wizard built for your stage of life.
+                    Four demographic lanes. One family adventure. Choose the wizard built for your stage of
+                    life — then validate with margin calculators before you spend.
                   </p>
                 </div>
                 <a
@@ -2029,11 +2068,11 @@ function App() {
                   className="btn btn-outline home-match-family__side-cta home-match-family__facebook"
                   target="_blank"
                   rel="noopener noreferrer"
-                  aria-label="Follow Get Your Side Hustle on Facebook"
+                  aria-label="Follow on Facebook"
                   data-testid="home-facebook"
-                  title="Follow us on Facebook — facebook.com/getyoursidehustleofficial"
+                  title="Follow Get Your Side Hustle on Facebook — facebook.com/getyoursidehustleofficial"
                 >
-                  <FacebookIcon size={22} />
+                  <FacebookIcon size={22} aria-hidden />
                   <span>Follow on Facebook</span>
                 </a>
               </div>
@@ -2191,6 +2230,8 @@ function App() {
               onOpenGuides={() => setActiveView("guides")}
               onOpenKids={() => openKidsCorner()}
             />
+
+            <HomeForesightBlocks onJoin={() => openJoin()} />
           </div>
         )}
 
@@ -2237,27 +2278,35 @@ function App() {
 
         {activeView === "guides" && (
           guidesManualId ? (
-            <MarketingManual
-              guideId={guidesManualId}
-              onBack={openGuidesLibrary}
-              onGoToJoin={() =>
-                openJoin(
-                  guidesManualId === "kids"
-                    ? "kids"
-                    : guidesManualId === "teens"
-                      ? "junior"
-                      : guidesManualId === "seniors"
-                        ? "senior"
-                        : "adult",
-                )
+            <Suspense
+              fallback={
+                <div className="glass" style={{ padding: 32, textAlign: "center" }}>
+                  <WaitLabel>Loading…</WaitLabel>
+                </div>
               }
-              onOpenMatchWizard={() => {
-                if (guidesManualId === "kids") openKidsCorner({ mode: "kids", tab: "wizard" });
-                else if (guidesManualId === "teens") openKidsCorner({ mode: "junior", tab: "wizard" });
-                else if (guidesManualId === "seniors") openSeniors(null);
-                else goTo("quiz");
-              }}
-            />
+            >
+              <MarketingManual
+                guideId={guidesManualId}
+                onBack={openGuidesLibrary}
+                onGoToJoin={() =>
+                  openJoin(
+                    guidesManualId === "kids"
+                      ? "kids"
+                      : guidesManualId === "teens"
+                        ? "junior"
+                        : guidesManualId === "seniors"
+                          ? "senior"
+                          : "adult",
+                  )
+                }
+                onOpenMatchWizard={() => {
+                  if (guidesManualId === "kids") openKidsCorner({ mode: "kids", tab: "wizard" });
+                  else if (guidesManualId === "teens") openKidsCorner({ mode: "junior", tab: "wizard" });
+                  else if (guidesManualId === "seniors") openSeniors(null);
+                  else goTo("quiz");
+                }}
+              />
+            </Suspense>
           ) : guidesDetailId ? (
             <StepByStepGuides
               selectedHustleId={guidesDetailId}
@@ -2681,15 +2730,23 @@ function App() {
           ))}
 
         {activeView === "admin" && authReady && canUseAdminPortal && (
-          <AdminPortal
-            key={adminSessionKey}
-            authUser={authUser}
-            activeTab={adminTab}
-            onTabChange={setAdminTab}
-            userGuide={adminUserGuide}
-            onUserGuideChange={setAdminUserGuide}
-            onSiteMapNavigate={navigateFromSiteMap}
-          />
+          <Suspense
+            fallback={
+              <div className="glass" style={{ padding: 32, textAlign: "center" }}>
+                <WaitLabel>Loading…</WaitLabel>
+              </div>
+            }
+          >
+            <AdminPortal
+              key={adminSessionKey}
+              authUser={authUser}
+              activeTab={adminTab}
+              onTabChange={setAdminTab}
+              userGuide={adminUserGuide}
+              onUserGuideChange={setAdminUserGuide}
+              onSiteMapNavigate={navigateFromSiteMap}
+            />
+          </Suspense>
         )}
       </main>
 

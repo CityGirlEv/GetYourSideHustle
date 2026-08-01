@@ -12,9 +12,37 @@ import { FAILED_TEST_ASSIGNEE } from "./roles";
 import { BACKLOG_SPRINT } from "./sprints";
 import { defaultsForNewTest } from "./new-test-defaults";
 
-export type AutomatedSuite = "vitest" | "playwright" | "all";
+export type AutomatedSuite = "vitest" | "playwright" | "lighthouse" | "foresight" | "all";
 /** all = full catalog; new = only not_run / missing statuses (default after baseline). */
 export type AutomatedRunMode = "all" | "new";
+
+const LIGHTHOUSE_CATALOG: Array<{ id: string; assignee: string; check: string }> = [
+  { id: "VT-LH-001", assignee: "vitest", check: "robots" },
+  { id: "A11Y-002", assignee: "tina", check: "alts" },
+  { id: "LH-001", assignee: "evelyn", check: "robots" },
+  { id: "LH-002", assignee: "tina", check: "facebook" },
+  { id: "LH-003", assignee: "tina", check: "logos" },
+  { id: "LH-004", assignee: "tina", check: "contrast" },
+  { id: "LH-005", assignee: "evelyn", check: "preload" },
+];
+
+/** Automated Foresight cases only — FS-011 / FS-013 stay manual. */
+const FORESIGHT_CATALOG: Array<{ id: string; assignee: string; check: string }> = [
+  { id: "PW-FS-001", assignee: "playwright", check: "h1_outcome" },
+  { id: "PW-FS-002", assignee: "playwright", check: "h1_tools" },
+  { id: "PW-FS-003", assignee: "playwright", check: "purpose" },
+  { id: "PW-FS-004", assignee: "playwright", check: "cta_access" },
+  { id: "PW-FS-005", assignee: "playwright", check: "cta_expect" },
+  { id: "PW-FS-006", assignee: "playwright", check: "differentiator" },
+  { id: "PW-FS-007", assignee: "playwright", check: "faq" },
+  { id: "PW-FS-008", assignee: "playwright", check: "positioning" },
+  { id: "PW-FS-009", assignee: "playwright", check: "method" },
+  { id: "PW-FS-010", assignee: "playwright", check: "differentiator" },
+  { id: "PW-FS-012", assignee: "playwright", check: "method" },
+  { id: "PW-FS-014", assignee: "playwright", check: "icp" },
+  { id: "PW-FS-015", assignee: "playwright", check: "h1_intent" },
+  { id: "PW-FS-016", assignee: "playwright", check: "schema" },
+];
 
 type CaseResult = {
   caseId: string;
@@ -124,6 +152,246 @@ async function fetchText(url: string): Promise<{ ok: boolean; status: number; te
   } catch (e) {
     return { ok: false, status: 0, text: e instanceof Error ? e.message : String(e) };
   }
+}
+
+/** Fetch homepage HTML plus linked /assets/*.js (SPA copy lives in the bundle). */
+async function fetchSiteBundle(baseUrl: string): Promise<{
+  ok: boolean;
+  html: string;
+  bundle: string;
+  details: string[];
+}> {
+  const origin = baseUrl.replace(/\/$/, "");
+  const details: string[] = [];
+  const home = await fetchText(`${origin}/`);
+  if (!home.ok) {
+    details.push(`Homepage fetch failed (${home.status})`);
+    return { ok: false, html: home.text, bundle: "", details };
+  }
+  details.push("Homepage HTTP 200");
+  const scriptSrcs = [...home.text.matchAll(/src=["'](\/assets\/[^"']+\.js)["']/g)].map((m) => m[1]);
+  let bundle = home.text;
+  let fetched = 0;
+  for (const src of scriptSrcs.slice(0, 10)) {
+    const part = await fetchText(`${origin}${src}`);
+    if (part.ok) {
+      bundle += `\n${part.text}`;
+      fetched += 1;
+    }
+  }
+  details.push(`Loaded ${fetched}/${Math.min(scriptSrcs.length, 10)} asset JS files for SPA checks`);
+  return { ok: true, html: home.text, bundle, details };
+}
+
+function hasAll(hay: string, needles: string[]): boolean {
+  return needles.every((n) => hay.includes(n));
+}
+
+async function runLighthousePortal(baseUrl: string): Promise<{
+  ok: boolean;
+  details: string[];
+  byCheck: Record<string, { ok: boolean; note: string }>;
+}> {
+  const origin = baseUrl.replace(/\/$/, "");
+  const details: string[] = [];
+  const byCheck: Record<string, { ok: boolean; note: string }> = {};
+  const site = await fetchSiteBundle(origin);
+  details.push(...site.details);
+  const src = `${site.html}\n${site.bundle}`;
+
+  const robots = await fetchText(`${origin}/robots.txt`);
+  const robotsOk =
+    robots.ok &&
+    !/<!doctype html/i.test(robots.text) &&
+    !/<html/i.test(robots.text) &&
+    /User-agent:\s*\*/i.test(robots.text) &&
+    /Disallow:\s*\/api\//i.test(robots.text);
+  details.push(robotsOk ? "robots.txt plain text OK" : `robots.txt check failed (${robots.status})`);
+  byCheck.robots = {
+    ok: robotsOk,
+    note: robotsOk
+      ? "robots.txt is crawlable plain text (User-agent / Disallow /api/)"
+      : `robots.txt invalid or HTML (${robots.status})`,
+  };
+
+  const facebookOk =
+    /data-testid=["']home-facebook["']/.test(src) &&
+    /data-testid=["']footer-facebook["']/.test(src) &&
+    /aria-label=["']Follow on Facebook["']/.test(src);
+  details.push(facebookOk ? "Facebook CTA labels present" : "Facebook CTA label markers missing");
+  byCheck.facebook = {
+    ok: facebookOk,
+    note: facebookOk
+      ? "Facebook CTAs present with matching Follow on Facebook accessible name"
+      : "Missing home/footer Facebook test ids or aria-label",
+  };
+
+  const logosOk =
+    /brand-header-logo/.test(src) &&
+    /site-footer-logo/.test(src) &&
+    /width=\{?\d+/.test(src) &&
+    /height=\{?\d+/.test(src);
+  details.push(logosOk ? "Logo size attributes present in source" : "Logo width/height markers weak/missing");
+  byCheck.logos = {
+    ok: logosOk,
+    note: logosOk
+      ? "Header/footer logo width/height declared in source"
+      : "Could not confirm logo width/height in HTML/JS",
+  };
+
+  // Contrast: ink tokens / card classes shipped (full WCAG needs a browser).
+  const contrastOk =
+    /hustle-card-category/.test(src) &&
+    /hustle-card-income/.test(src) &&
+    (/--ink|--text-ink|color-contrast|4\.5/.test(src) || /hustle-card/.test(src));
+  details.push(contrastOk ? "Hustle card contrast classes present" : "Hustle card contrast markers missing");
+  byCheck.contrast = {
+    ok: contrastOk,
+    note: contrastOk
+      ? "Hustle card category/income classes present (portal structural; full WCAG needs npm run test:e2e)"
+      : "Missing hustle card contrast-related classes in source",
+  };
+
+  const preloadOk = /rel=["']preload["'][^>]*as=["']image["'][^>]*gysh-home-hero/i.test(site.html);
+  details.push(preloadOk ? "LCP hero preload present" : "LCP hero preload missing");
+  byCheck.preload = {
+    ok: preloadOk,
+    note: preloadOk
+      ? "Home HTML preloads gysh-home-hero LCP image"
+      : "Missing link rel=preload as=image for gysh-home-hero",
+  };
+
+  const altsOk =
+    /alt=["']Get Your Side Hustle["']/i.test(src) ||
+    (/alt=["'][^"']+["']/.test(src) && /brand-header-logo/.test(src));
+  details.push(altsOk ? "Brand/logo alt text present" : "Brand alt markers missing");
+  byCheck.alts = {
+    ok: altsOk,
+    note: altsOk
+      ? "Meaningful brand/logo alt text present in source"
+      : "Could not confirm meaningful logo alt text",
+  };
+
+  const ok = Object.values(byCheck).every((c) => c.ok) && site.ok;
+  return { ok, details, byCheck };
+}
+
+async function runForesightPortal(baseUrl: string): Promise<{
+  ok: boolean;
+  details: string[];
+  byCheck: Record<string, { ok: boolean; note: string }>;
+}> {
+  const origin = baseUrl.replace(/\/$/, "");
+  const details: string[] = [];
+  const byCheck: Record<string, { ok: boolean; note: string }> = {};
+  const site = await fetchSiteBundle(origin);
+  details.push(...site.details);
+  const src = `${site.html}\n${site.bundle}`;
+
+  const h1Outcome =
+    hasAll(src, ["page-title", "Get Your Side Hustle"]) &&
+    /family|solo|Find and launch|We Got You|validate|faster/i.test(src);
+  byCheck.h1_outcome = {
+    ok: h1Outcome,
+    note: h1Outcome ? "Outcome-led H1 / brand copy present" : "Missing outcome-led H1 markers",
+  };
+
+  const h1Tools = /side hustle|Match Wizards|margin calculators|Margin Match/i.test(src);
+  byCheck.h1_tools = {
+    ok: h1Tools,
+    note: h1Tools ? "H1/tool naming present" : "Missing Match Wizards / calculators in copy",
+  };
+
+  const purpose = /home-site-purpose/.test(src) && /validate|profit|calculators/i.test(src);
+  byCheck.purpose = {
+    ok: purpose,
+    note: purpose ? "Purpose line present" : "Missing home-site-purpose / outcome language",
+  };
+
+  const ctaAccess =
+    /home-join-expectation/.test(src) && /Free tools|membership|Start free/i.test(src);
+  byCheck.cta_access = {
+    ok: ctaAccess,
+    note: ctaAccess ? "CTA access explainer present" : "Missing CTA access/pricing explainer",
+  };
+
+  const ctaExpect =
+    /home-join-cta/.test(src) && /under 2 minutes|Start free/i.test(src);
+  byCheck.cta_expect = {
+    ok: ctaExpect,
+    note: ctaExpect ? "CTA expectation line present" : "Missing CTA expectation markers",
+  };
+
+  const differentiator = /Unlike generic idea lists/i.test(src) && /home-differentiator/.test(src);
+  byCheck.differentiator = {
+    ok: differentiator,
+    note: differentiator ? "Differentiator line present" : "Missing differentiator copy",
+  };
+
+  const faq = /home-faq/.test(src) && /Margin Match/i.test(src) && /free/i.test(src);
+  byCheck.faq = {
+    ok: faq,
+    note: faq ? "FAQ markers + Margin Match / free present" : "Missing FAQ profitability/access markers",
+  };
+
+  const positioning = /home-positioning/.test(src) && /Margin Match/i.test(src);
+  byCheck.positioning = {
+    ok: positioning,
+    note: positioning ? "Positioning block + method present" : "Missing positioning block",
+  };
+
+  const method = /home-method-name/.test(src) && /Margin Match/i.test(src);
+  byCheck.method = {
+    ok: method,
+    note: method ? "Named Margin Match method present" : "Missing home-method-name / Margin Match",
+  };
+
+  const icp =
+    /home-icp-kids/.test(src) && /home-icp-teens/.test(src) && /home-icp-adults/.test(src);
+  byCheck.icp = {
+    ok: icp,
+    note: icp ? "ICP kids/teens/adults markers present" : "Missing ICP section markers",
+  };
+
+  const h1Intent = /family|solo|Find and launch|validate|faster|We Got You|ready to start/i.test(src);
+  byCheck.h1_intent = {
+    ok: h1Intent,
+    note: h1Intent ? "Headline intent language present" : "Missing searcher-intent headline language",
+  };
+
+  let schemaOk = false;
+  try {
+    const m = site.html.match(
+      /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/i,
+    );
+    if (m?.[1]) {
+      const data = JSON.parse(m[1]) as { "@graph"?: Array<{ "@type"?: string | string[] }> } & {
+        "@type"?: string | string[];
+      };
+      const nodes = Array.isArray(data["@graph"]) ? data["@graph"] : [data];
+      const types = new Set(
+        nodes.flatMap((n) => {
+          const t = n?.["@type"];
+          return Array.isArray(t) ? t : t ? [t] : [];
+        }),
+      );
+      schemaOk = types.has("Organization") && types.has("WebPage") && types.has("FAQPage");
+    }
+  } catch {
+    schemaOk = false;
+  }
+  byCheck.schema = {
+    ok: schemaOk,
+    note: schemaOk
+      ? "Organization + WebPage + FAQPage JSON-LD present"
+      : "Missing Organization/WebPage/FAQPage JSON-LD",
+  };
+
+  for (const [k, v] of Object.entries(byCheck)) {
+    details.push(`${v.ok ? "✓" : "✗"} ${k}: ${v.note}`);
+  }
+  const ok = Object.values(byCheck).every((c) => c.ok) && site.ok;
+  return { ok, details, byCheck };
 }
 
 async function runPlaywrightSmoke(baseUrl: string): Promise<{
@@ -266,9 +534,7 @@ async function upsertCaseResults(env: Env, actor: DbUser, results: CaseResult[])
     const stmts = slice.map((r) => {
       const sprint = Number.isFinite(r.sprint) ? r.sprint : BACKLOG_SPRINT;
       let assignee = r.assignee;
-      if (sprint === BACKLOG_SPRINT) {
-        assignee = "";
-      } else if (r.status === "fail" && !String(assignee || "").trim()) {
+      if (r.status === "fail" && !String(assignee || "").trim()) {
         assignee = FAILED_TEST_ASSIGNEE;
       }
       const dueDate = String(r.dueDate ?? "").trim();
@@ -417,8 +683,8 @@ export async function runAutomatedTests(
     return error("Invalid JSON body.");
   }
   const suite = String(body.suite || "all") as AutomatedSuite;
-  if (!["vitest", "playwright", "all"].includes(suite)) {
-    return error("suite must be vitest, playwright, or all.");
+  if (!["vitest", "playwright", "lighthouse", "foresight", "all"].includes(suite)) {
+    return error("suite must be vitest, playwright, lighthouse, foresight, or all.");
   }
   const mode = (body.mode === "all" ? "all" : "new") as AutomatedRunMode;
   const sprint = currentSprintIndex();
@@ -594,6 +860,46 @@ export async function runAutomatedTests(
     }
   }
 
+  if (suite === "lighthouse" || suite === "all") {
+    const base = siteBase(request);
+    const lh = await runLighthousePortal(base);
+    allDetails.push(`=== Lighthouse portal checks (${base}) ===`, ...lh.details);
+    overallOk = overallOk && lh.ok;
+    const ids = LIGHTHOUSE_CATALOG.map((c) => c.id);
+    const existing = await statusesForIds(env, ids);
+    for (const c of LIGHTHOUSE_CATALOG) {
+      if (!shouldUpdateCase(mode, existing[c.id])) continue;
+      const check = lh.byCheck[c.check] ?? { ok: false, note: `Unknown check ${c.check}` };
+      caseResults.push({
+        caseId: c.id,
+        status: check.ok ? "pass" : "fail",
+        note: `${check.note} Full browser: npx playwright test e2e/lighthouse-a11y.spec.ts`,
+        assignee: c.assignee,
+        sprint,
+      });
+    }
+  }
+
+  if (suite === "foresight" || suite === "all") {
+    const base = siteBase(request);
+    const fs = await runForesightPortal(base);
+    allDetails.push(`=== Foresight portal checks (${base}) ===`, ...fs.details);
+    overallOk = overallOk && fs.ok;
+    const ids = FORESIGHT_CATALOG.map((c) => c.id);
+    const existing = await statusesForIds(env, ids);
+    for (const c of FORESIGHT_CATALOG) {
+      if (!shouldUpdateCase(mode, existing[c.id])) continue;
+      const check = fs.byCheck[c.check] ?? { ok: false, note: `Unknown check ${c.check}` };
+      caseResults.push({
+        caseId: c.id,
+        status: check.ok ? "pass" : "fail",
+        note: `${check.note} Full browser: npx playwright test tests/foresight-homepage.spec.ts`,
+        assignee: c.assignee,
+        sprint,
+      });
+    }
+  }
+
   await upsertCaseResults(env, actor, caseResults);
 
   const finishedAt = new Date().toISOString();
@@ -621,6 +927,8 @@ export async function runAutomatedTests(
       vitest: "npm run test:unit",
       playwright: "npm run test:e2e",
       report: "node --use-system-ca scripts/report-vitest-to-d1.mjs",
+      lighthouse: "npx playwright test e2e/lighthouse-a11y.spec.ts",
+      foresight: "npx playwright test tests/foresight-homepage.spec.ts",
     },
   });
 }

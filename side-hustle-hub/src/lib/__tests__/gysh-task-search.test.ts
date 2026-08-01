@@ -23,6 +23,7 @@ function task(over: Partial<GyshTask> & Pick<GyshTask, "id">): GyshTask {
     attachments: over.attachments ?? [],
     tinaDone: over.tinaDone ?? false,
     evelynDone: over.evelynDone ?? false,
+    parentId: over.parentId,
     updatedAt: over.updatedAt ?? "",
     updatedBy: over.updatedBy ?? "",
     sortOrder: over.sortOrder ?? 0,
@@ -53,6 +54,19 @@ describe("task id search", () => {
     const slug = task({ id: "T-LG-airbnb" });
     expect(taskMatchesSearch(slug, "29")).toBe(false);
     expect(taskMatchesSearch(slug, "T-LG-airbnb")).toBe(true);
+  });
+
+  it("matches letter subtasks under the same number", () => {
+    const parent = task({ id: "T-041" });
+    const tina = task({ id: "T-041T", parentId: "T-041" });
+    const evelyn = task({ id: "T-041E", parentId: "T-041" });
+    for (const q of ["41", "041", "T-041", "t-041"]) {
+      expect(taskMatchesIdQuery(parent, q)).toBe(true);
+      expect(taskMatchesIdQuery(tina, q)).toBe(true);
+      expect(taskMatchesIdQuery(evelyn, q)).toBe(true);
+    }
+    expect(taskMatchesIdQuery(tina, "T-041T")).toBe(true);
+    expect(taskMatchesIdQuery(evelyn, "T-041T")).toBe(false);
   });
 
   it("still allows text search in description", () => {

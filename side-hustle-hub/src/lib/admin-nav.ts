@@ -36,7 +36,7 @@ export const ADMIN_TABS: AdminTabDef[] = [
   { id: "memberships", label: "Memberships" },
   { id: "certificates", label: "Certificates" },
   { id: "email", label: "Email Templates" },
-  { id: "factory", label: "Content Factory" },
+  { id: "factory", label: "Content Factory", adminOnly: true },
   { id: "financials", label: "Financials", adminOnly: true },
   { id: "studio", label: "Growth Studio" },
   { id: "sitemap", label: "Site Map" },

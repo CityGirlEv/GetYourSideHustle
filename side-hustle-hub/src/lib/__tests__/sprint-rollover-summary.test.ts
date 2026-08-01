@@ -78,4 +78,18 @@ describe("sprintRolloverSummary", () => {
     expect(s1.fromPrevTests).toBe(0);
     expect(s1.fromPrevTasks).toBe(0);
   });
+
+  it("Sprint 1 chip shows from S0 (not gated off for index 1)", () => {
+    const s1 = sprintRolloverSummary(statuses, sprints, 1, known, notes, tasks);
+    expect(s1.chipHint).toContain("from S0:");
+    expect(s1.banner).toContain("rolled over from Sprint 0");
+  });
+
+  it("includes task rollover counts when tasks are passed (not forced to 0)", () => {
+    const s1 = sprintRolloverSummary(statuses, sprints, 1, known, notes, tasks);
+    expect(s1.toNextTasks).toBe(2);
+    expect(s1.chipHint).toContain("2 tasks");
+    const withoutTasks = sprintRolloverSummary(statuses, sprints, 1, known, notes);
+    expect(withoutTasks.toNextTasks).toBe(0);
+  });
 });

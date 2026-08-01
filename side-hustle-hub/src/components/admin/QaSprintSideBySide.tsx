@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Columns2, FlaskConical, ListChecks, Lock, RotateCcw, Save } from "lucide-react";
+import { Columns2, FlaskConical, ListChecks, RotateCcw, Save } from "lucide-react";
 import type { AuthUser } from "../../lib/auth";
 import { ApiError } from "../../lib/api";
 import { BusyOverlay, WaitIndicator, WaitLabel } from "../WaitFeedback";
@@ -35,6 +35,7 @@ import {
   isSprintLocked,
   sprintLockedMessage,
 } from "../../lib/gysh-closed-sprints";
+import { SprintLockedBanner } from "./SprintLockedBanner";
 import {
   DEFAULT_TEST_STATUS,
   STATUS_LABELS as TEST_STATUS_LABELS,
@@ -328,21 +329,7 @@ export function QaSprintSideBySide({
             </p>
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-            {sprintLocked ? (
-              <span
-                className="glow-badge"
-                style={{
-                  fontSize: "0.8125rem",
-                  background: "#475569",
-                  color: "#fff",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 4,
-                }}
-              >
-                <Lock size={12} /> Locked
-              </span>
-            ) : null}
+            {sprintLocked ? <SprintLockedBanner size={12} /> : null}
             <button type="button" className="btn btn-outline" onClick={onOpenTestingPortal}>
               <FlaskConical size={14} /> Testing Portal
             </button>

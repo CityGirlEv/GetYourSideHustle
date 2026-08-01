@@ -19,7 +19,9 @@ export type TestStatus =
   | "blocked"
   | "fixed_retest"
   | "failed_retest"
-  | "fixed_cursor";
+  | "fixed_cursor"
+  | "fixed_lighthouse"
+  | "fixed_foresight";
 
 export type Priority = "P0" | "P1" | "P2" | "P3";
 
@@ -45,6 +47,10 @@ export const STATUS_LABELS: Record<TestStatus, string> = {
   failed_retest: "Failed/Re-Test",
   /** Cursor agent fixed the bug — send back to tester to re-test. */
   fixed_cursor: "Fixed/Cursor",
+  /** Lighthouse audit item fixed — send back to tester to re-test. */
+  fixed_lighthouse: "Fixed/Lighthouse",
+  /** Foresight audit item fixed — send back to tester to re-test. */
+  fixed_foresight: "Fixed/Foresight",
 };
 
 /** All valid Testing Portal statuses (API + UI). */
@@ -59,6 +65,9 @@ export const TEST_STATUSES: TestStatus[] = [
   "fixed_retest",
   "failed_retest",
   "fixed_cursor",
+  // fixed_lighthouse / fixed_foresight kept for legacy D1 rows only — UI counts live under Test Suites
+  "fixed_lighthouse",
+  "fixed_foresight",
 ];
 
 /**
@@ -67,6 +76,7 @@ export const TEST_STATUSES: TestStatus[] = [
  * - Fixed/Re-Test: bug was fixed
  * - Failed/Re-Test: fail was invalid (misunderstood / unclear test)
  * - Fixed/Cursor: Cursor fixed the bug
+ * Fixed/Lighthouse & Fixed/Foresight are audit-area counts under Test Suites (not settable statuses).
  */
 export const DEV_FIX_STATUSES: TestStatus[] = [
   "fixed_retest",
@@ -261,7 +271,14 @@ export function categoryForCase(t: Pick<TestCase, "area" | "suite" | "id">): Tes
       return "wizard_junior";
     if (t.area === "Adult Get Your Side Hustle") return "wizard_adult";
     if (t.area === "Senior Get Your Side Hustle") return "wizard_senior";
-    if (t.area === "Vitest" || t.area === "Playwright") return "automated";
+    if (
+      t.area === "Vitest" ||
+      t.area === "Playwright" ||
+      t.area === "Lighthouse" ||
+      t.area === "Foresight"
+    ) {
+      return "automated";
+    }
   }
   // ProofRead cases are area Proofread (PROOF-* ids) — keep Workshops category separate.
   if (t.area === "Proofread" || t.id.toUpperCase().startsWith("PROOF-")) {
@@ -314,6 +331,8 @@ export function categoryForCase(t: Pick<TestCase, "area" | "suite" | "id">): Tes
     case "Playwright":
     case "Vitest Failure":
     case "Playwright Failure":
+    case "Lighthouse":
+    case "Foresight":
       return "automated";
     default:
       return "admin_ops";
@@ -871,8 +890,8 @@ const TEST_CASES_RAW: TestCase[] = [
   },
   {
     id: "A11Y-002",
-    area: "Accessibility",
-    title: "Images and key icons have meaningful alt / aria labels",
+    area: "Lighthouse",
+    title: "[Lighthouse] Images and key icons have meaningful alt / aria labels",
     priority: "P2",
     roles: ["qa"],
     assignees: ["tina"],
@@ -880,8 +899,123 @@ const TEST_CASES_RAW: TestCase[] = [
     steps: [
       "Spot-check Home hero, Guides hero, Kids Corner hero, logo in header",
       "Inspect alt text (DevTools or screen reader) for empty/useless alts like 'image'",
+      "Related checks: LH-001…LH-005 under Area → Lighthouse",
     ],
     expected: "Promotional images describe the scene or brand; logo has Get Your Side Hustle alt",
+    path: "dashboard",
+  },
+  {
+    id: "LH-001",
+    area: "Lighthouse",
+    title: "[Lighthouse] robots.txt is valid plain text (not SPA HTML)",
+    priority: "P0",
+    roles: ["qa", "admin"],
+    assignees: ["evelyn"],
+    suite: "manual",
+    path: "dashboard",
+    steps: [
+      "Open https://getyoursidehustle.com/robots.txt (or local /robots.txt)",
+      "Confirm plain-text User-agent / Disallow / Sitemap — not <!doctype html>",
+      "Optional: npx playwright test e2e/lighthouse-a11y.spec.ts -g robots",
+    ],
+    expected: "robots.txt is crawlable plain text (Lighthouse SEO robots-txt)",
+  },
+  {
+    id: "LH-002",
+    area: "Lighthouse",
+    title: "[Lighthouse] Facebook CTA visible text matches accessible name",
+    priority: "P1",
+    roles: ["qa"],
+    assignees: ["tina"],
+    suite: "manual",
+    path: "dashboard",
+    steps: [
+      "On Home, inspect Follow on Facebook (home + footer)",
+      "Confirm aria-label matches the visible link text exactly",
+      "Optional: npx playwright test e2e/lighthouse-a11y.spec.ts -g Facebook",
+    ],
+    expected: "No label-content-name-mismatch on Facebook CTAs",
+  },
+  {
+    id: "LH-003",
+    area: "Lighthouse",
+    title: "[Lighthouse] Header/footer logos declare width and height",
+    priority: "P1",
+    roles: ["qa"],
+    assignees: ["tina"],
+    suite: "manual",
+    path: "dashboard",
+    steps: [
+      "Inspect header brand logo + footer GYSH logo + Muntie logo",
+      "Confirm each img has positive width and height attributes",
+      "Optional: npx playwright test e2e/lighthouse-a11y.spec.ts -g logos",
+    ],
+    expected: "No unsized-images on primary logos",
+  },
+  {
+    id: "LH-004",
+    area: "Lighthouse",
+    title: "[Lighthouse] Hustle card category/income meet 4.5:1 contrast",
+    priority: "P0",
+    roles: ["qa"],
+    assignees: ["tina"],
+    suite: "manual",
+    path: "dashboard",
+    steps: [
+      "On Home hustle cards, check category + income text colors on card backgrounds",
+      "Confirm readable contrast (ink tokens; WCAG AA 4.5:1)",
+      "Optional: npx playwright test e2e/lighthouse-a11y.spec.ts -g contrast",
+    ],
+    expected: "color-contrast passes for hustle card accents",
+  },
+  {
+    id: "LH-005",
+    area: "Lighthouse",
+    title: "[Lighthouse] Home HTML preloads LCP hero image",
+    priority: "P1",
+    roles: ["qa", "admin"],
+    assignees: ["evelyn"],
+    suite: "manual",
+    path: "dashboard",
+    steps: [
+      "View page source for / — find link rel=preload as=image for gysh-home-hero",
+      "Optional: npx playwright test e2e/lighthouse-a11y.spec.ts -g preload",
+    ],
+    expected: "LCP discovery preload present for home hero",
+  },
+  {
+    id: "FS-011",
+    area: "Foresight",
+    title: "[Foresight] One primary audience stated on homepage",
+    priority: "P1",
+    roles: ["qa", "all"],
+    assignees: ["evelyn"],
+    suite: "manual",
+    steps: [
+      "Background — ICP means Ideal Customer Profile: the main type of person the site is built for. Flow Ninja asked for ONE primary audience in the lead messaging. GYSH’s intended primary is families; solo starters are explicitly welcomed in the same lead copy so they don’t feel excluded.",
+      "Open the homepage (https://getyoursidehustle.com/ or local /).",
+      "Read the hero H1. Confirm it names families as the primary audience and still includes solo / “anyone ready to start” (or similar) so single people know it’s for them too.",
+      "Read the purpose line under the H1. Confirm it says you can start on your own or with family, and still mentions Match Wizards / calculators / validate or profit.",
+      "Below the hero, confirm “Who GYSH is for?” and the three subgroup cards (Kids & parents, Teens, Adults). They do not replace the primary “families” lead in the H1.",
+      "Pass if lead copy clearly centers families as #1 and includes solo starters. Fail if families (or equivalent primary) is missing from the H1 / purpose, or if only a three-way list appears with no primary lead.",
+    ],
+    expected:
+      "Lead homepage copy names families as the primary audience and welcomes solo starters; subgroup ICP cards may remain as secondary paths (Differentiation #3)",
+    path: "dashboard",
+  },
+  {
+    id: "FS-013",
+    area: "Foresight",
+    title: "[Foresight] Differentiator reinforced in title / meta (ongoing content)",
+    priority: "P2",
+    roles: ["qa", "admin"],
+    assignees: ["evelyn"],
+    suite: "manual",
+    steps: [
+      "Check document title + meta description mention calculators / Margin Match / validate",
+      "Spot-check that future content keeps the owned differentiator (ongoing)",
+    ],
+    expected: "Owned differentiator reinforced beyond one homepage line (Differentiation #5)",
     path: "dashboard",
   },
   {
@@ -1942,7 +2076,7 @@ export function fileToBase64(file: Blob): Promise<string> {
   });
 }
 
-export type AutomatedSuite = "vitest" | "playwright" | "all";
+export type AutomatedSuite = "vitest" | "playwright" | "lighthouse" | "foresight" | "all";
 
 export type AutomatedRunMode = "all" | "new";
 
@@ -1956,7 +2090,13 @@ export type AutomatedTestRunResult = {
   details: string[];
   updatedCases: number;
   createdFailureCases?: string[];
-  commands: { vitest: string; playwright: string; report?: string };
+  commands: {
+    vitest: string;
+    playwright: string;
+    report?: string;
+    lighthouse?: string;
+    foresight?: string;
+  };
 };
 
 export async function runAutomatedSuite(

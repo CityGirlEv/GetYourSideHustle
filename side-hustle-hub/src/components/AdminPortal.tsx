@@ -137,9 +137,11 @@ export const AdminPortal: React.FC<Props> = ({
     { id: "memberships", label: "Memberships", icon: <BadgeCheck size={16} /> },
     { id: "certificates", label: "Certificates", icon: <Award size={16} /> },
     { id: "email", label: "Email Templates", icon: <Mail size={16} /> },
-    { id: "factory", label: "Content Factory", icon: <Sparkles size={16} /> },
     ...(isAdmin
-      ? [{ id: "financials" as const, label: "Financials", icon: <DollarSign size={16} /> }]
+      ? [
+          { id: "factory" as const, label: "Content Factory", icon: <Sparkles size={16} /> },
+          { id: "financials" as const, label: "Financials", icon: <DollarSign size={16} /> },
+        ]
       : []),
     { id: "studio", label: "Growth Studio", icon: <Megaphone size={16} /> },
     { id: "sitemap", label: "Site Map", icon: <Map size={16} /> },
@@ -191,7 +193,9 @@ export const AdminPortal: React.FC<Props> = ({
   };
 
   useEffect(() => {
-    if (activeTab === "financials" && !isAdmin) requestTabChange("tasks");
+    if ((activeTab === "financials" || activeTab === "factory") && !isAdmin) {
+      requestTabChange("tasks");
+    }
     if (activeTab !== "testing") setShowQaManual(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, isAdmin]);
@@ -199,7 +203,13 @@ export const AdminPortal: React.FC<Props> = ({
   // Deep link: /admin?tab=testing&test=… or /admin?tab=tasks&task=…
   useEffect(() => {
     const link = readAdminDeepLink();
-    if (link.tab) onTabChange(link.tab);
+    if (link.tab) {
+      if ((link.tab === "factory" || link.tab === "financials") && !userIsAdmin(authUser)) {
+        onTabChange("tasks");
+      } else {
+        onTabChange(link.tab);
+      }
+    }
     if (link.testId) {
       setShowQaManual(false);
       setFocusTestId(link.testId);
@@ -475,7 +485,7 @@ export const AdminPortal: React.FC<Props> = ({
       {activeTab === "memberships" && <MembershipsPage />}
       {activeTab === "certificates" && <CertificatesAdmin />}
       {activeTab === "email" && <EmailTemplates />}
-      {activeTab === "factory" && <ContentFactory />}
+      {activeTab === "factory" && isAdmin && <ContentFactory />}
       {activeTab === "tasks" && (
         <TaskList
           focusTaskId={focusTaskId}

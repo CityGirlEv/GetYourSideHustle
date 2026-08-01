@@ -1,0 +1,19 @@
+﻿node : [eval]:16
+At C:\Users\evely\AppData\Local\Temp\ps-script-5a7e4d5e-e9d3-4ec8-9835-1486401a622e.ps1:85 char:1
++ node --use-system-ca -e "
++ ~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([eval]:16:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+    if (id==='unminified-javascript' || id==='unused-javascript') return { url: 
+(x.url||'').replace(/^.*\\//,'').slice(0,60), wastedBytes: x.wastedBytes, totalBytes: x.totalBytes };
+                                                                                                            ^
+Expression expected
+
+SyntaxError: Unexpected token ','
+    at makeContextifyScript (node:internal/vm:194:14)
+    at compileScript (node:internal/process/execution:388:10)
+    at evalTypeScript (node:internal/process/execution:260:22)
+    at node:internal/main/eval_string:71:3
+
+Node.js v24.16.0

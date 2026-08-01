@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarClock,
   ChevronDown,
@@ -16,9 +16,11 @@ import {
   Pencil,
   Play,
   Plus,
+  RotateCcw,
   Save,
   Search,
   Square,
+  Timer,
   Trash2,
   Users,
   X,
@@ -26,6 +28,14 @@ import {
 import { ApiError } from "../../lib/api";
 import type { AuthUser } from "../../lib/auth";
 import { BusyOverlay } from "../WaitFeedback";
+import { RichTextEmailEditor } from "./RichTextEmailEditor";
+import {
+  extractHttpUrls,
+  htmlForVisualEmailPreview,
+  isEmptyEmailHtml,
+  linkifyEmailHtml,
+  toEditorHtml,
+} from "../../lib/email-html";
 import {
   AGENDA_CATEGORY_LABELS,
   AGENDA_CATEGORY_ORDER,
@@ -70,6 +80,29 @@ import {
   type PartnerAssignee,
 } from "../../lib/gysh-tasks";
 import { BACKLOG_SPRINT, UNASSIGNED_OWNER } from "../../lib/gysh-sprints";
+import { noteEntriesPlainText } from "../../lib/gysh-note-entries";
+
+const HIDDEN_SUGGEST_TASKS_KEY = "gysh-agenda-hidden-suggest-tasks";
+
+function loadHiddenSuggestTaskIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(HIDDEN_SUGGEST_TASKS_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return new Set();
+    return new Set(parsed.map((id) => String(id || "").trim()).filter(Boolean));
+  } catch {
+    return new Set();
+  }
+}
+
+function persistHiddenSuggestTaskIds(ids: Set<string>) {
+  try {
+    localStorage.setItem(HIDDEN_SUGGEST_TASKS_KEY, JSON.stringify([...ids]));
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
 
 type PreviewDraft = {
   category: AgendaCategory;
@@ -85,7 +118,10 @@ import {
   AGENDA_QA_MINUTES,
   AGENDA_TINA_PLACEHOLDER_COUNT,
   AGENDA_TINA_PLACEHOLDER_MINUTES,
+  MAX_AGENDA_MEETING_MINUTES,
+  MIN_AGENDA_MEETING_MINUTES,
   buildAgendaSchedule,
+  clampAgendaMeetingMinutes,
   isTinaAgendaAuthor,
   openPartnerAgendaPdf,
   partnerAgendaPdfBase64,
@@ -105,10 +141,26 @@ function emptyPickInputs(count = MIN_AGENDA_TIME_PICKS): string[] {
   return Array.from({ length: count }, () => "");
 }
 
+function formatTimerMmSs(totalSec: number): string {
+  const s = Math.max(0, Math.floor(totalSec));
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${m}:${String(r).padStart(2, "0")}`;
+}
+
+type MeetingTimelineEntry = {
+  id: string;
+  title: string;
+  startOffsetSec: number;
+  endOffsetSec: number;
+  durationSec: number;
+  kind: "item" | "tina-placeholder" | "qa";
+};
+
 /** Build agenda body from a task without duplicating identical description/notes. */
 function agendaBodyFromTask(description: string, notes: string, fallbackId: string): string {
   const desc = String(description || "").trim();
-  const note = String(notes || "").trim();
+  const note = noteEntriesPlainText(notes || "").trim();
   if (!desc && !note) return fallbackId;
   if (!desc) return note;
   if (!note) return desc;
@@ -120,9 +172,19 @@ function agendaBodyFromTask(description: string, notes: string, fallbackId: stri
 
 /** Collapse consecutive duplicate lines (fixes older picker saves that joined desc+notes twice). */
 function displayAgendaBody(body: string): string {
-  const lines = String(body || "")
+  // Suggestions may still arrive with JSON note threads mixed into the body — unwrap to plain text.
+  const plain = noteEntriesPlainText(String(body || "")).trim() || String(body || "").trim();
+  const lines = plain
     .split(/\r?\n/)
-    .map((l) => l.trimEnd());
+    .map((l) => l.trimEnd())
+    .map((l) => {
+      const t = l.trim();
+      if (t.startsWith("[") && t.includes('"text"')) {
+        const unwrapped = noteEntriesPlainText(t).trim();
+        return unwrapped || l;
+      }
+      return l;
+    });
   const out: string[] = [];
   for (const line of lines) {
     if (out.length && out[out.length - 1].trim() === line.trim() && line.trim()) continue;
@@ -135,7 +197,7 @@ type AmPmParts = { hour12: number; minute: number; ampm: "AM" | "PM" };
 
 function parseHhMm(value: string): AmPmParts {
   const m = /^(\d{1,2}):(\d{2})$/.exec(String(value || "").trim());
-  // Empty → 3:30 PM (default partner meeting start).
+  // Empty → 1:30 PM Central / 11:30 AM Vegas (default partner meeting start).
   if (!m) return { hour12: 3, minute: 30, ampm: "PM" };
   const hour24 = Math.min(23, Math.max(0, Number(m[1])));
   const minute = Math.min(59, Math.max(0, Number(m[2])));
@@ -225,13 +287,20 @@ export function AgendaPage({
   const [allTasks, setAllTasks] = useState<GyshTask[]>([]);
   const [previewMode, setPreviewMode] = useState(false);
   const [meetingLive, setMeetingLive] = useState(false);
+  /** Epoch ms when Start/Restart was pressed — drives the live section timer. */
+  const [meetingStartedAt, setMeetingStartedAt] = useState<number | null>(null);
+  const [meetingNow, setMeetingNow] = useState(() => Date.now());
+  const sectionWarnRef = useRef<Record<string, { warned45?: boolean; warned15?: boolean }>>({});
   const [meetingDate, setMeetingDate] = useState("");
   const [meetingTime, setMeetingTime] = useState(DEFAULT_AGENDA_MEETING_TIME);
   const [meetingTimezone, setMeetingTimezone] = useState(DEFAULT_AGENDA_TIMEZONE);
+  const [meetingMinutes, setMeetingMinutes] = useState(AGENDA_MEETING_MINUTES);
   const [invitedText, setInvitedText] = useState("Tina, Evelyn, Lyriq");
   const [attendedText, setAttendedText] = useState("");
   const [previewDrafts, setPreviewDrafts] = useState<Record<string, PreviewDraft>>({});
   const [emailOpen, setEmailOpen] = useState(false);
+  /** Bumps only when the email modal opens — keeps the editor from remounting each keystroke. */
+  const [emailEditorKey, setEmailEditorKey] = useState(0);
   const [emailTo, setEmailTo] = useState("");
   const [emailSubject, setEmailSubject] = useState("");
   const [emailBody, setEmailBody] = useState("");
@@ -240,6 +309,9 @@ export function AgendaPage({
   const [emailSending, setEmailSending] = useState(false);
   const [meetingNotes, setMeetingNotes] = useState("");
   const [meetingActionItems, setMeetingActionItems] = useState<AgendaActionItem[]>([]);
+  const [hiddenSuggestTaskIds, setHiddenSuggestTaskIds] = useState<Set<string>>(
+    () => loadHiddenSuggestTaskIds(),
+  );
 
   const mustPick = mustPickAgendaTimes(authUser);
 
@@ -249,6 +321,7 @@ export function AgendaPage({
     setMeetingDate(String(a.meetingDate || ""));
     setMeetingTime(String(a.meetingTime || "").trim() || DEFAULT_AGENDA_MEETING_TIME);
     setMeetingTimezone(String(a.meetingTimezone || DEFAULT_AGENDA_TIMEZONE) || DEFAULT_AGENDA_TIMEZONE);
+    setMeetingMinutes(clampAgendaMeetingMinutes(a.meetingMinutes ?? AGENDA_MEETING_MINUTES));
     setInvitedText((a.invited || []).join(", ") || "Tina, Evelyn, Lyriq");
     setAttendedText((a.attended || []).join(", "));
     setMeetingNotes(String(a.meetingNotes || ""));
@@ -513,6 +586,7 @@ export function AgendaPage({
           meetingDate,
           meetingTime,
           meetingTimezone,
+          meetingMinutes: clampAgendaMeetingMinutes(meetingMinutes),
           invited: parseNameCsv(invitedText),
           attended: parseNameCsv(attendedText),
         }),
@@ -552,13 +626,14 @@ export function AgendaPage({
           meetingDate,
           meetingTime,
           meetingTimezone,
+          meetingMinutes: clampAgendaMeetingMinutes(meetingMinutes),
           invited: parseNameCsv(invitedText),
           attended: parseNameCsv(attendedText),
           meetingNotes,
           meetingActionItems: meetingActionItems.filter((a) => a.text.trim()),
           items,
         }),
-      "Preview progress saved.",
+      "Discussion notes, questions, and action items saved.",
     );
   };
 
@@ -708,19 +783,22 @@ export function AgendaPage({
     const draft = buildPartnerAgendaEmailDraft(data);
     setEmailTo(draft.to.join(", "));
     setEmailSubject(draft.subject);
-    setEmailBody(draft.bodyText);
+    // Always convert bare https://… text into real <a href> anchors for editor + send.
+    setEmailBody(toEditorHtml(draft.bodyText));
     setEmailModalError("");
     setEmailModalNotice("");
+    setEmailEditorKey((k) => k + 1);
     setEmailOpen(true);
   };
 
   const handleSaveEmailDraft = () => {
     const subject = emailSubject.trim();
-    const bodyText = emailBody.trim();
-    if (!subject || !bodyText) {
+    const bodyText = linkifyEmailHtml(emailBody.trim());
+    if (!subject || isEmptyEmailHtml(bodyText)) {
       setEmailModalError("Subject and message are required to save.");
       return;
     }
+    setEmailBody(bodyText);
     setEmailModalError("");
     setEmailModalNotice("");
     setBusy(true);
@@ -732,7 +810,7 @@ export function AgendaPage({
         });
         setData(payload);
         syncMeetingFields(payload);
-        setEmailModalNotice("Email subject and message saved.");
+        setEmailModalNotice("Email subject and message saved (links clickable).");
         setNotice("Email subject and message saved.");
       } catch (e) {
         const msg = e instanceof ApiError ? e.message : "Could not save email draft.";
@@ -763,7 +841,7 @@ export function AgendaPage({
       meetingTimezone,
       invitedText,
       attendedText,
-      meetingMinutes: AGENDA_MEETING_MINUTES,
+      meetingMinutes: clampAgendaMeetingMinutes(meetingMinutes),
       finalized: false,
     });
   };
@@ -775,7 +853,7 @@ export function AgendaPage({
       setEmailModalError("Sign in with an email address to send a test.");
       return;
     }
-    if (!emailSubject.trim() || !emailBody.trim()) {
+    if (!emailSubject.trim() || isEmptyEmailHtml(emailBody)) {
       setEmailModalError("Subject and message are required.");
       return;
     }
@@ -787,15 +865,19 @@ export function AgendaPage({
     void (async () => {
       try {
         setEmailModalNotice(
-          testOnly ? "Building PDF and sending test email to you…" : "Building PDF and sending to admins…",
+          testOnly
+            ? "Building draft agenda PDF and sending test email to you…"
+            : "Building draft agenda PDF and sending to admins…",
         );
         const pdf = await buildInvitePdfAttachment();
         if (!pdf.base64 || pdf.base64.length < 40) {
           throw new Error("Could not build the agenda PDF attachment.");
         }
+        const linkedBody = linkifyEmailHtml(emailBody.trim());
+        setEmailBody(linkedBody);
         const payload = await sendPartnerAgendaInvite({
           subject: emailSubject.trim(),
-          bodyText: emailBody.trim(),
+          bodyText: linkedBody,
           headline: "Partner Agenda",
           subhead: "Tentative agenda attached — add your items before we sync.",
           pdfBase64: pdf.base64,
@@ -817,8 +899,8 @@ export function AgendaPage({
         }
         const delivered = results.map((r) => r.email).filter(Boolean).join(", ") || testTo;
         const okMsg = testOnly
-          ? `Test email sent only to you (${delivered}) with PDF attached.`
-          : `Email sent to admins (${delivered}) with PDF attached.`;
+          ? `Test email sent only to you (${delivered}) with draft agenda PDF attached.`
+          : `Email sent to admins (${delivered}) with draft agenda PDF attached.`;
         setEmailModalNotice(okMsg);
         setNotice(okMsg);
         if (!testOnly) setEmailOpen(false);
@@ -852,7 +934,32 @@ export function AgendaPage({
         ),
     [agendaItems, previewDrafts],
   );
-  const suggestedItems: AgendaItem[] = data?.suggestedItems || data?.taskItems || [];
+  const suggestedItems: AgendaItem[] = (data?.suggestedItems || data?.taskItems || []).filter(
+    (it) => {
+      const taskId = it.sourceId || it.id.replace(/^suggest-task:/, "");
+      return !hiddenSuggestTaskIds.has(taskId);
+    },
+  );
+  const hiddenSuggestCount = (data?.suggestedItems || data?.taskItems || []).filter((it) => {
+    const taskId = it.sourceId || it.id.replace(/^suggest-task:/, "");
+    return hiddenSuggestTaskIds.has(taskId);
+  }).length;
+
+  const hideSuggestTask = (taskId: string) => {
+    setHiddenSuggestTaskIds((prev) => {
+      const next = new Set(prev);
+      next.add(taskId);
+      persistHiddenSuggestTaskIds(next);
+      return next;
+    });
+    setNotice(`Hidden Task ${taskId} from Agenda suggestions.`);
+  };
+
+  const clearHiddenSuggestTasks = () => {
+    setHiddenSuggestTaskIds(new Set());
+    persistHiddenSuggestTaskIds(new Set());
+    setNotice("Restored hidden Task List suggestions.");
+  };
   const agendaReady = Boolean(data?.agenda?.active);
   const showForceBanner = (forceTimePicks || data?.needsTimePicks) && mustPick;
 
@@ -933,7 +1040,7 @@ export function AgendaPage({
       meetingTimezone,
       invitedText,
       attendedText,
-      meetingMinutes: AGENDA_MEETING_MINUTES,
+      meetingMinutes: clampAgendaMeetingMinutes(meetingMinutes),
     });
   }, [
     data?.agenda,
@@ -942,6 +1049,7 @@ export function AgendaPage({
     meetingDate,
     meetingTime,
     meetingTimezone,
+    meetingMinutes,
     invitedText,
     attendedText,
   ]);
@@ -968,8 +1076,115 @@ export function AgendaPage({
   const meetingWindowLabel = formatAgendaMeetingWindow({
     meetingDate,
     meetingTime: meetingTime || DEFAULT_AGENDA_MEETING_TIME,
-    durationMinutes: AGENDA_MEETING_MINUTES,
+    durationMinutes: clampAgendaMeetingMinutes(meetingMinutes),
   });
+
+  /** Ordered sections for the live timer (discussion topics + Tina slots + Q&A). */
+  const meetingTimeline = useMemo((): MeetingTimelineEntry[] => {
+    if (!agendaSchedule) return [];
+    const byId = new Map<
+      string,
+      { id: string; title: string; startMin: number; endMin: number; durationMin: number; kind: MeetingTimelineEntry["kind"] }
+    >();
+    for (const it of scheduleOrderedItems) {
+      const slot = timedSlots.get(it.id);
+      if (!slot) continue;
+      const title =
+        displayAgendaBody(it.body)
+          .split(/\r?\n/)
+          .map((l) => l.trim())
+          .find(Boolean) || "Topic";
+      byId.set(it.id, {
+        id: it.id,
+        title: title.length > 72 ? `${title.slice(0, 69)}…` : title,
+        startMin: slot.startMin,
+        endMin: slot.endMin,
+        durationMin: slot.durationMin,
+        kind: slot.kind || "item",
+      });
+    }
+    for (const slot of agendaSchedule.reserved) {
+      if (byId.has(slot.id)) continue;
+      byId.set(slot.id, {
+        id: slot.id,
+        title:
+          slot.title ||
+          (slot.kind === "qa" ? "Q & A" : "Tina slot"),
+        startMin: slot.startMin,
+        endMin: slot.endMin,
+        durationMin: slot.durationMin,
+        kind: slot.kind || "tina-placeholder",
+      });
+    }
+    const ordered = [...byId.values()].sort((a, b) => a.startMin - b.startMin);
+    const base = ordered[0]?.startMin ?? 0;
+    return ordered.map((s) => ({
+      id: s.id,
+      title: s.title,
+      kind: s.kind,
+      startOffsetSec: (s.startMin - base) * 60,
+      endOffsetSec: (s.endMin - base) * 60,
+      durationSec: Math.max(1, s.durationMin) * 60,
+    }));
+  }, [agendaSchedule, scheduleOrderedItems, timedSlots]);
+
+  const meetingElapsedSec =
+    meetingLive && meetingStartedAt != null
+      ? Math.max(0, (meetingNow - meetingStartedAt) / 1000)
+      : 0;
+  const meetingTotalSec =
+    meetingTimeline.length > 0
+      ? meetingTimeline[meetingTimeline.length - 1]!.endOffsetSec
+      : clampAgendaMeetingMinutes(meetingMinutes) * 60;
+
+  const currentSection = useMemo(() => {
+    if (!meetingTimeline.length) return null;
+    if (meetingElapsedSec < meetingTimeline[0]!.startOffsetSec) return meetingTimeline[0]!;
+    for (const s of meetingTimeline) {
+      if (meetingElapsedSec < s.endOffsetSec) return s;
+    }
+    return meetingTimeline[meetingTimeline.length - 1]!;
+  }, [meetingTimeline, meetingElapsedSec]);
+
+  const sectionRemainingSec = currentSection
+    ? Math.max(0, currentSection.endOffsetSec - meetingElapsedSec)
+    : 0;
+  const sectionWarnLevel =
+    meetingLive && currentSection
+      ? sectionRemainingSec <= 15
+        ? "15"
+        : sectionRemainingSec <= 45
+          ? "45"
+          : null
+      : null;
+
+  // Tick the live clock while the meeting is running.
+  useEffect(() => {
+    if (!meetingLive || meetingStartedAt == null) return;
+    const id = window.setInterval(() => setMeetingNow(Date.now()), 250);
+    return () => window.clearInterval(id);
+  }, [meetingLive, meetingStartedAt]);
+
+  // 45s / 15s warnings before the next section.
+  useEffect(() => {
+    if (!meetingLive || !currentSection) return;
+    const key = currentSection.id;
+    const w = sectionWarnRef.current[key] || {};
+    if (sectionRemainingSec <= 45 && sectionRemainingSec > 15 && !w.warned45) {
+      w.warned45 = true;
+      sectionWarnRef.current[key] = w;
+      setNotice(
+        `45 seconds left in “${currentSection.title}” — wrap up and get ready for the next section.`,
+      );
+    }
+    if (sectionRemainingSec <= 15 && sectionRemainingSec > 0 && !w.warned15) {
+      w.warned15 = true;
+      sectionWarnRef.current[key] = w;
+      setNotice(
+        `15 seconds left in “${currentSection.title}” — move to the next section now.`,
+      );
+    }
+  }, [meetingLive, currentSection, sectionRemainingSec]);
 
   // During a live meeting, keep the assignable action list built from topic capture fields.
   useEffect(() => {
@@ -984,11 +1199,18 @@ export function AgendaPage({
     return () => window.clearTimeout(timer);
   }, [meetingLive, meetingNotes, previewDrafts]);
 
-  const handleStartMeeting = () => {
+  const beginMeetingClock = (mode: "start" | "restart") => {
+    const now = Date.now();
     setMeetingLive(true);
-    setNotice("Meeting started — add notes under each topic; action items update as you type.");
+    setMeetingStartedAt(now);
+    setMeetingNow(now);
+    sectionWarnRef.current = {};
     setError("");
-    // Persist header time so Configure / PDF stay in sync at 3:30 CST (or current).
+    setNotice(
+      mode === "restart"
+        ? "Meeting restarted — timer reset to the first section. Your notes are kept; use Save notes anytime."
+        : "Meeting started — timer running. Add notes under each topic and click Save notes anytime.",
+    );
     void run(
       () =>
         saveAgendaMeta({
@@ -1002,10 +1224,24 @@ export function AgendaPage({
     );
   };
 
+  const handleStartMeeting = () => beginMeetingClock("start");
+
+  const handleRestartMeeting = () => {
+    if (
+      !window.confirm(
+        "Restart the meeting timer from the first section? Discussion notes, questions, and action items will be kept.",
+      )
+    ) {
+      return;
+    }
+    beginMeetingClock("restart");
+  };
+
   const handleEndMeeting = () => {
     setMeetingLive(false);
+    setMeetingStartedAt(null);
     handleSavePreviewProgress();
-    setNotice("Meeting ended — notes and action items saved.");
+    setNotice("Meeting ended — notes, questions, and action items saved.");
   };
 
   const handleOpenAgendaPdf = () => {
@@ -1035,7 +1271,7 @@ export function AgendaPage({
             meetingTimezone,
             invitedText,
             attendedText,
-            meetingMinutes: AGENDA_MEETING_MINUTES,
+            meetingMinutes: clampAgendaMeetingMinutes(meetingMinutes),
           },
           reservedTab,
         );
@@ -1279,10 +1515,10 @@ export function AgendaPage({
           <p style={{ marginTop: 0, color: "var(--text-primary)" }}>
             Set meeting header, categories, importance, and order here. Capture discussion notes,
             questions, and action items on the main Agenda page during{" "}
-            <strong>Start Meeting</strong>. Timing: {AGENDA_MEETING_MINUTES}-minute meeting · topics
-            share{" "}
+            <strong>Start Meeting</strong>. Timing: {clampAgendaMeetingMinutes(meetingMinutes)}-minute
+            meeting · topics share{" "}
             {agendaSchedule?.discussionMinutes ??
-              AGENDA_MEETING_MINUTES -
+              clampAgendaMeetingMinutes(meetingMinutes) -
                 AGENDA_QA_MINUTES -
                 AGENDA_TINA_PLACEHOLDER_COUNT * AGENDA_TINA_PLACEHOLDER_MINUTES}{" "}
             min, then {AGENDA_TINA_PLACEHOLDER_COUNT}×{AGENDA_TINA_PLACEHOLDER_MINUTES}-minute Tina
@@ -1299,6 +1535,26 @@ export function AgendaPage({
                 value={meetingTime}
                 onChange={setMeetingTime}
                 testId="agenda-meeting-time-ampm"
+              />
+            </label>
+            <label>
+              <span>Duration (minutes)</span>
+              <input
+                type="number"
+                min={MIN_AGENDA_MEETING_MINUTES}
+                max={MAX_AGENDA_MEETING_MINUTES}
+                step={5}
+                value={meetingMinutes}
+                onChange={(e) =>
+                  setMeetingMinutes(
+                    clampAgendaMeetingMinutes(
+                      e.target.value === "" ? AGENDA_MEETING_MINUTES : e.target.value,
+                    ),
+                  )
+                }
+                onBlur={() => setMeetingMinutes((m) => clampAgendaMeetingMinutes(m))}
+                data-testid="agenda-meeting-minutes"
+                aria-label="Meeting duration in minutes"
               />
             </label>
             <label>
@@ -1484,7 +1740,7 @@ export function AgendaPage({
                             <span className="agenda-item-meta">
                               {slot.kind === "tina-placeholder"
                                 ? "Empty 4-minute slot — waiting for Tina to add an agenda item"
-                                : "Last 7 minutes — closing Q & A"}
+                                : `Last ${AGENDA_QA_MINUTES} minutes — closing Q & A`}
                             </span>
                           </>
                         )}
@@ -1562,16 +1818,84 @@ export function AgendaPage({
                 disabled={emailSending}
               />
             </label>
-            <label className="agenda-email-field">
+            <div className="agenda-email-field">
               <span>Message</span>
-              <textarea
+              <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--text-primary)" }}>
+                Format with bold, italic, font, size, color, lists, and links. Use{" "}
+                <strong>Auto-link</strong> so URLs show in red. In this admin preview, browser
+                security may block clicks — copy/paste the URLs from{" "}
+                <strong>Links in this email</strong> (or from the preview text) into a new tab. In
+                the real inbox, recipients can click the links normally.
+              </p>
+              <RichTextEmailEditor
+                key={`agenda-email-editor-${emailEditorKey}`}
                 value={emailBody}
-                onChange={(e) => setEmailBody(e.target.value)}
-                rows={16}
-                data-testid="agenda-email-body"
+                onChange={setEmailBody}
                 disabled={emailSending}
+                testId="agenda-email-body"
+                placeholder="Write your agenda email…"
               />
-            </label>
+              {!isEmptyEmailHtml(emailBody) && (
+                <div className="agenda-email-preview" data-testid="agenda-email-preview">
+                  {extractHttpUrls(emailBody).length > 0 && (
+                    <div className="agenda-email-link-list" data-testid="agenda-email-link-list">
+                      <div className="agenda-email-preview__label">
+                        Links in this email — copy/paste if Open is blocked
+                      </div>
+                      <p
+                        style={{
+                          margin: "0 14px 8px",
+                          fontSize: "0.85rem",
+                          color: "var(--text-primary)",
+                        }}
+                      >
+                        Select a URL below and copy it (Ctrl+C), then paste into your browser address
+                        bar. Recipients of the sent email can click links normally.
+                      </p>
+                      <ul>
+                        {extractHttpUrls(emailBody).map((url) => (
+                          <li key={url}>
+                            <button
+                              type="button"
+                              className="btn btn-outline agenda-email-open-link"
+                              onClick={() => {
+                                void navigator.clipboard?.writeText(url).then(
+                                  () => setEmailModalNotice(`Copied: ${url}`),
+                                  () => window.location.assign(url),
+                                );
+                              }}
+                            >
+                              Copy
+                            </button>
+                            <span className="agenda-email-open-url" title="Select and copy">
+                              {url}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  <div className="agenda-email-preview__label">
+                    Email preview (look only — copy URLs from the list above)
+                  </div>
+                  <div
+                    className="agenda-email-preview__body"
+                    dangerouslySetInnerHTML={{ __html: htmlForVisualEmailPreview(emailBody) }}
+                    onClick={(e) => {
+                      const t = e.target;
+                      const el =
+                        t instanceof Element ? t : t instanceof Node ? t.parentElement : null;
+                      const hit = el?.closest?.("[data-href]") as HTMLElement | null;
+                      const href = hit?.getAttribute("data-href")?.trim();
+                      if (!href || !/^https?:\/\//i.test(href)) return;
+                      e.preventDefault();
+                      e.stopPropagation();
+                      window.location.assign(href);
+                    }}
+                  />
+                </div>
+              )}
+            </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
               <button
                 type="button"
@@ -1585,7 +1909,7 @@ export function AgendaPage({
                 type="button"
                 className="btn btn-outline"
                 onClick={handleSaveEmailDraft}
-                disabled={!emailSubject.trim() || !emailBody.trim() || emailSending}
+                disabled={!emailSubject.trim() || isEmptyEmailHtml(emailBody) || emailSending}
                 style={{ gap: 8 }}
                 data-testid="agenda-email-save"
               >
@@ -1596,7 +1920,10 @@ export function AgendaPage({
                 className="btn btn-outline"
                 onClick={() => handleSendEmail({ testOnly: true })}
                 disabled={
-                  !emailSubject.trim() || !emailBody.trim() || !authUser?.email || emailSending
+                  !emailSubject.trim() ||
+                  isEmptyEmailHtml(emailBody) ||
+                  !authUser?.email ||
+                  emailSending
                 }
                 style={{ gap: 8 }}
                 data-testid="agenda-email-send-test"
@@ -1608,7 +1935,7 @@ export function AgendaPage({
                 type="button"
                 className="btn btn-primary"
                 onClick={() => handleSendEmail()}
-                disabled={!emailSubject.trim() || !emailBody.trim() || emailSending}
+                disabled={!emailSubject.trim() || isEmptyEmailHtml(emailBody) || emailSending}
                 style={{ gap: 8 }}
                 data-testid="agenda-email-send"
               >
@@ -1713,10 +2040,54 @@ export function AgendaPage({
                 </p>
                 <p style={{ margin: "4px 0 0", color: "var(--text-primary)", fontSize: "0.9rem" }}>
                   Order and times match Configure Agenda (start {meetingTime || DEFAULT_AGENDA_MEETING_TIME}{" "}
-                  {meetingTimezone || DEFAULT_AGENDA_TIMEZONE}).
+                  {meetingTimezone || DEFAULT_AGENDA_TIMEZONE} ·{" "}
+                  {clampAgendaMeetingMinutes(meetingMinutes)} min).
                 </p>
+                <label
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                    marginTop: 8,
+                    fontSize: "0.95rem",
+                    fontWeight: 600,
+                    color: "var(--text-primary)",
+                  }}
+                >
+                  Duration
+                  <input
+                    type="number"
+                    min={MIN_AGENDA_MEETING_MINUTES}
+                    max={MAX_AGENDA_MEETING_MINUTES}
+                    step={5}
+                    value={meetingMinutes}
+                    onChange={(e) =>
+                      setMeetingMinutes(
+                        clampAgendaMeetingMinutes(
+                          e.target.value === "" ? AGENDA_MEETING_MINUTES : e.target.value,
+                        ),
+                      )
+                    }
+                    onBlur={() => setMeetingMinutes((m) => clampAgendaMeetingMinutes(m))}
+                    disabled={meetingLive}
+                    data-testid="agenda-meeting-minutes-run"
+                    aria-label="Meeting duration in minutes"
+                    style={{ width: 88 }}
+                  />
+                  <span style={{ fontWeight: 500 }}>min</span>
+                </label>
               </div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  data-testid="agenda-save-notes"
+                  onClick={handleSavePreviewProgress}
+                  style={{ gap: 8 }}
+                  title="Save discussion notes, questions, and action items"
+                >
+                  <Save size={16} /> Save notes
+                </button>
                 {!meetingLive ? (
                   <button
                     type="button"
@@ -1732,10 +2103,11 @@ export function AgendaPage({
                     <button
                       type="button"
                       className="btn btn-outline"
-                      onClick={handleSavePreviewProgress}
+                      data-testid="agenda-restart-meeting"
+                      onClick={handleRestartMeeting}
                       style={{ gap: 8 }}
                     >
-                      <Save size={16} /> Save notes
+                      <RotateCcw size={16} /> Restart Meeting
                     </button>
                     <button
                       type="button"
@@ -1754,6 +2126,43 @@ export function AgendaPage({
                 </button>
               </div>
             </div>
+
+            {meetingLive && currentSection && (
+              <div
+                className={`agenda-meeting-timer${sectionWarnLevel ? ` agenda-meeting-timer--warn-${sectionWarnLevel}` : ""}`}
+                data-testid="agenda-meeting-timer"
+                role="status"
+                aria-live="polite"
+              >
+                <div className="agenda-meeting-timer__main">
+                  <Timer size={18} aria-hidden />
+                  <div>
+                    <div className="agenda-meeting-timer__label">Now discussing</div>
+                    <div className="agenda-meeting-timer__title">{currentSection.title}</div>
+                  </div>
+                </div>
+                <div className="agenda-meeting-timer__stats">
+                  <div>
+                    <span className="agenda-meeting-timer__label">Section left</span>
+                    <strong data-testid="agenda-section-remaining">
+                      {formatTimerMmSs(sectionRemainingSec)}
+                    </strong>
+                    {sectionWarnLevel === "45" && (
+                      <em data-testid="agenda-warn-45">45s warning</em>
+                    )}
+                    {sectionWarnLevel === "15" && (
+                      <em data-testid="agenda-warn-15">15s — move on</em>
+                    )}
+                  </div>
+                  <div>
+                    <span className="agenda-meeting-timer__label">Meeting elapsed</span>
+                    <strong data-testid="agenda-meeting-elapsed">
+                      {formatTimerMmSs(meetingElapsedSec)} / {formatTimerMmSs(meetingTotalSec)}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {pickerOpen && (
               <div className="agenda-picker" data-testid="agenda-picker" style={{ marginBottom: 16, padding: 12, borderRadius: 12, border: "1px solid var(--border-color)" }}>
@@ -1789,47 +2198,106 @@ export function AgendaPage({
               </div>
             )}
 
-            {suggestedItems.length > 0 && (
+            {(suggestedItems.length > 0 || hiddenSuggestCount > 0) && (
               <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: "0.85rem", textTransform: "uppercase", letterSpacing: "0.04em", color: "var(--text-primary)", marginBottom: 8 }}>
-                  From Task List (description or Notes contain &quot;Agenda&quot;)
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 8,
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: 8,
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: "0.85rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.04em",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    From Task List (description or Notes contain &quot;Agenda&quot;)
+                  </div>
+                  {hiddenSuggestCount > 0 && (
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      onClick={clearHiddenSuggestTasks}
+                      style={{ gap: 6, fontSize: "0.85rem" }}
+                      data-testid="agenda-restore-hidden-suggest"
+                    >
+                      <Eye size={14} /> Show {hiddenSuggestCount} hidden
+                    </button>
+                  )}
                 </div>
-                <ul className="agenda-item-list">
-                  {suggestedItems.map((it) => {
-                    const taskId = it.sourceId || it.id.replace(/^suggest-task:/, "");
-                    return (
-                      <li key={it.id} className="agenda-item agenda-item--task">
-                        <Lock size={14} aria-hidden />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <span className="agenda-source-badge">
-                            {agendaItemSourceLabel({ source: "task", sourceId: taskId }) || `Task ${taskId}`}
-                          </span>
-                          <p style={{ whiteSpace: "pre-wrap", margin: "0 0 4px" }}>{displayAgendaBody(it.body)}</p>
-                          <span className="agenda-item-meta">{it.authorName}</span>
-                        </div>
-                        <div className="agenda-item-actions">
-                          {onOpenTask && (
-                            <button type="button" className="btn btn-outline" onClick={() => onOpenTask(taskId)}>
-                              <ExternalLink size={14} /> Open
+                {suggestedItems.length === 0 ? (
+                  <p style={{ margin: 0, color: "var(--text-primary)", fontSize: "0.9rem" }}>
+                    All matching Task List suggestions are hidden.
+                  </p>
+                ) : (
+                  <ul className="agenda-item-list">
+                    {suggestedItems.map((it) => {
+                      const taskId = it.sourceId || it.id.replace(/^suggest-task:/, "");
+                      return (
+                        <li key={it.id} className="agenda-item agenda-item--task">
+                          <Lock size={14} aria-hidden />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <span className="agenda-source-badge">
+                              {agendaItemSourceLabel({ source: "task", sourceId: taskId }) ||
+                                `Task ${taskId}`}
+                            </span>
+                            <p style={{ whiteSpace: "pre-wrap", margin: "0 0 4px" }}>
+                              {displayAgendaBody(it.body)}
+                            </p>
+                            <span className="agenda-item-meta">{it.authorName}</span>
+                          </div>
+                          <div className="agenda-item-actions agenda-item-actions--suggest">
+                            {onOpenTask && (
+                              <button
+                                type="button"
+                                className="btn btn-outline"
+                                onClick={() => onOpenTask(taskId)}
+                              >
+                                <ExternalLink size={14} /> Open
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              className="btn btn-primary"
+                              onClick={() =>
+                                void run(
+                                  () =>
+                                    linkAgendaItems([
+                                      {
+                                        sourceKind: "task",
+                                        sourceId: taskId,
+                                        body: displayAgendaBody(it.body),
+                                      },
+                                    ]),
+                                  "Added task to agenda.",
+                                )
+                              }
+                            >
+                              <Plus size={14} /> Add
                             </button>
-                          )}
-                          <button
-                            type="button"
-                            className="btn btn-primary"
-                            onClick={() =>
-                              void run(
-                                () => linkAgendaItems([{ sourceKind: "task", sourceId: taskId, body: it.body }]),
-                                "Added task to agenda.",
-                              )
-                            }
-                          >
-                            <Plus size={14} /> Add
-                          </button>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
+                            <button
+                              type="button"
+                              className="btn btn-outline"
+                              onClick={() => hideSuggestTask(taskId)}
+                              title="Remove from this list — will not be suggested for the Agenda"
+                              aria-label={`Remove Task ${taskId} from Agenda suggestions`}
+                              data-testid={`agenda-hide-suggest-${taskId}`}
+                            >
+                              <Trash2 size={14} /> Remove
+                            </button>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
               </div>
             )}
 
@@ -1840,8 +2308,13 @@ export function AgendaPage({
               {scheduleOrderedItems.map((it, idx) => {
                 const slot = timedSlots.get(it.id);
                 const draft = previewDrafts[it.id];
+                const isCurrent = meetingLive && currentSection?.id === it.id;
                 return (
-                <li key={it.id} className={`agenda-item${meetingLive ? " agenda-item--live" : ""}`}>
+                <li
+                  key={it.id}
+                  className={`agenda-item${meetingLive ? " agenda-item--live" : ""}${isCurrent ? " agenda-item--current" : ""}`}
+                  data-current-section={isCurrent ? "true" : undefined}
+                >
                   {editingId === it.id && !meetingLive ? (
                     <div className="agenda-item-edit" style={{ flex: 1 }}>
                       <textarea value={editBody} onChange={(e) => setEditBody(e.target.value)} rows={3} style={{ width: "100%" }} />
@@ -1950,6 +2423,17 @@ export function AgendaPage({
                                 data-testid={`agenda-topic-actions-${it.id}`}
                               />
                             </label>
+                            <div style={{ gridColumn: "1 / -1", display: "flex", gap: 8, flexWrap: "wrap" }}>
+                              <button
+                                type="button"
+                                className="btn btn-primary"
+                                style={{ gap: 8 }}
+                                onClick={handleSavePreviewProgress}
+                                data-testid={`agenda-topic-save-${it.id}`}
+                              >
+                                <Save size={14} /> Save notes
+                              </button>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -1984,7 +2468,10 @@ export function AgendaPage({
                 <h4 style={{ margin: "0 0 8px", color: "var(--bronze)" }}>Tina slots &amp; Q&amp;A</h4>
                 <ul className="agenda-item-list">
                   {agendaSchedule.reserved.map((slot) => (
-                    <li key={slot.id} className="agenda-item agenda-reserved-item">
+                    <li
+                      key={slot.id}
+                      className={`agenda-item agenda-reserved-item${meetingLive && currentSection?.id === slot.id ? " agenda-item--current" : ""}`}
+                    >
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div className="agenda-item-time">
                           <CalendarClock size={14} aria-hidden />
@@ -2236,7 +2723,8 @@ export function AgendaPage({
         .agenda-item--task svg { margin-top: 3px; color: var(--bronze); flex-shrink: 0; }
         .agenda-item p { margin: 0 0 4px; color: var(--charcoal); white-space: pre-wrap; }
         .agenda-item-meta { font-size: 0.85rem; color: var(--text-primary); }
-        .agenda-item-actions { display: flex; gap: 6px; flex-shrink: 0; }
+        .agenda-item-actions { display: flex; gap: 6px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+        .agenda-item-actions--suggest { max-width: 100%; }
         .agenda-item--empty { color: var(--text-primary); border-style: dashed; }
         .agenda-add-row { margin-top: 16px; display: flex; flex-direction: column; gap: 10px; }
         .agenda-add-row textarea, .agenda-item-edit textarea {
@@ -2367,6 +2855,76 @@ export function AgendaPage({
         .agenda-email-field input, .agenda-email-field textarea {
           border-radius: 10px; border: 1px solid var(--border-color); padding: 8px 10px; font: inherit;
           background: #fff; color: var(--charcoal);
+        }
+        .agenda-email-preview {
+          margin-top: 8px; border: 1px solid var(--border-color); border-radius: 10px;
+          background: #fffdf8; overflow: hidden;
+        }
+        .agenda-email-preview__label {
+          padding: 8px 12px; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.04em;
+          text-transform: uppercase; color: var(--text-primary);
+          border-bottom: 1px solid var(--border-color); background: #faf6ee;
+        }
+        .agenda-email-preview__body {
+          padding: 12px 14px; font-size: 0.95rem; line-height: 1.55; color: var(--charcoal);
+          max-height: 220px; overflow: auto;
+        }
+        .agenda-email-preview__body a,
+        .agenda-email-preview-linkish {
+          color: #9B2F28 !important; font-weight: 700; text-decoration: underline !important;
+          word-break: break-all;
+        }
+        .agenda-email-link-list ul {
+          list-style: none; margin: 0; padding: 10px 14px 14px;
+        }
+        .agenda-email-link-list li {
+          display: flex; gap: 10px; align-items: flex-start; margin: 0 0 10px;
+        }
+        .agenda-email-open-link {
+          flex-shrink: 0; padding: 4px 10px !important; font-size: 0.85rem;
+        }
+        .agenda-email-open-url {
+          color: #9B2F28; font-weight: 650; word-break: break-all; font-size: 0.9rem; padding-top: 4px;
+        }
+        .agenda-email-preview-linkish { cursor: pointer; }
+        .agenda-meeting-timer {
+          display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; align-items: center;
+          margin: 0 0 16px; padding: 14px 16px; border-radius: 12px;
+          border: 1px solid rgba(155,47,40,0.28); background: rgba(155,47,40,0.07);
+        }
+        .agenda-meeting-timer--warn-45 {
+          border-color: rgba(180,120,20,0.55); background: rgba(255,196,0,0.16);
+        }
+        .agenda-meeting-timer--warn-15 {
+          border-color: rgba(155,47,40,0.65); background: rgba(155,47,40,0.16);
+          animation: agenda-timer-pulse 1s ease-in-out infinite;
+        }
+        @keyframes agenda-timer-pulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(155,47,40,0.25); }
+          50% { box-shadow: 0 0 0 6px rgba(155,47,40,0.08); }
+        }
+        .agenda-meeting-timer__main { display: flex; gap: 10px; align-items: flex-start; min-width: 0; }
+        .agenda-meeting-timer__label {
+          display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em;
+          color: var(--text-primary); margin-bottom: 2px;
+        }
+        .agenda-meeting-timer__title {
+          font-weight: 700; color: var(--charcoal); line-height: 1.3;
+        }
+        .agenda-meeting-timer__stats {
+          display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start;
+        }
+        .agenda-meeting-timer__stats strong {
+          display: block; font-size: 1.35rem; font-variant-numeric: tabular-nums; color: var(--charcoal);
+        }
+        .agenda-meeting-timer__stats em {
+          display: block; margin-top: 2px; font-style: normal; font-size: 0.85rem; font-weight: 700;
+          color: #9B2F28;
+        }
+        .agenda-item--current {
+          outline: 2px solid rgba(155,47,40,0.55);
+          background: rgba(155,47,40,0.06);
+          border-radius: 12px;
         }
       `}</style>
     </div>

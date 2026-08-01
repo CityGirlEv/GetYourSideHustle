@@ -112,9 +112,15 @@ export function sprintWorkClearForPartner(
 ): SprintClearResult {
   const sprintIndex = currentSprintIndex(ref);
 
-  const myTasks = tasks.filter(
-    (t) => Number(t.sprint) === sprintIndex && taskMatchesAssignee(t, me),
+  const parentsWithChildren = new Set(
+    tasks.map((t) => String(t.parentId || "").trim()).filter(Boolean),
   );
+  const myTasks = tasks.filter((t) => {
+    if (Number(t.sprint) !== sprintIndex || !taskMatchesAssignee(t, me)) return false;
+    // Count personal subtasks; skip umbrella parents that have children.
+    if (!String(t.parentId || "").trim() && parentsWithChildren.has(t.id)) return false;
+    return true;
+  });
   const taskDone = myTasks.filter((t) => t.status === "done").length;
   const tasksClear = myTasks.length === 0 || taskDone === myTasks.length;
 

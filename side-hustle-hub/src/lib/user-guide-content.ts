@@ -469,21 +469,29 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
     id: "factory",
     number: "6",
     title: "Content Factory",
-    intro: "Draft marketing content and manage workshops that power the public Workshops hub.",
+    intro:
+      "Admin-only: GYSH Marketing/Launch Plan (soft-launch calendar, copy, prompts, artifacts) and Workshops for the public hub.",
     subsections: [
       {
-        id: "factory-drafts",
+        id: "factory-launch-plan",
         number: "6.1",
-        title: "Drafts & batches",
+        title: "GYSH Marketing/Launch Plan",
         items: [
-          { id: "cf-gen", text: "Enter a weekly topic → Generate weekly batch." },
           {
-            id: "cf-edit",
-            text: "Filter by type/status; edit title and body.",
+            id: "cf-open",
+            text: "Open Admin → Content Factory (or /admin?tab=factory&panel=launch-plan).",
           },
           {
-            id: "cf-flow",
-            text: "Advance status: draft → pending review → approved → scheduled → published (or Reject).",
+            id: "cf-howto",
+            text: "Read How the Content Factory works + Definitions (cadence, cadence locked, artifacts, channels, projections).",
+          },
+          {
+            id: "cf-filter",
+            text: "Filter by sprint and channel; each calendar item has copy, image/video prompts, website actions, and an A→Z artifact checklist.",
+          },
+          {
+            id: "cf-publish",
+            text: "Publish on the named channel at the suggested time; attach finished asset links on related tasks when ready.",
           },
         ],
       },

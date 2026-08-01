@@ -310,10 +310,10 @@ export async function onRequest(context: {
       return withCors(request, await listAutomatedTestRuns(env));
     }
     if (route === "content" && method === "GET") {
-      return withCors(request, await listContent(env));
+      return withCors(request, await listContent(env, user));
     }
     if (route === "content" && method === "PUT") {
-      return withCors(request, await saveContent(env, request));
+      return withCors(request, await saveContent(env, request, user));
     }
     if (route === "workshops" && method === "PUT") {
       return withCors(request, await saveWorkshops(env, request));

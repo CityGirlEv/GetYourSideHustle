@@ -90,6 +90,7 @@ import {
   isSprintLocked,
   sprintLockedMessage,
 } from "../../lib/gysh-closed-sprints";
+import { SprintLockedBanner } from "./SprintLockedBanner";
 import {
   healIncompleteTestDueDates,
   sprintRolloverSummary,
@@ -112,7 +113,13 @@ import {
   userCanChangeTestStatus,
   userHasAdminRole,
 } from "../../lib/gysh-assignment";
-import { base64ToBlob, isoToMmddyy, mmddyyToIso } from "../../lib/gysh-tasks";
+import {
+  base64ToBlob,
+  fetchTasks,
+  isoToMmddyy,
+  mmddyyToIso,
+  type GyshTask,
+} from "../../lib/gysh-tasks";
 import {
   canViewAttachmentInline,
   openAttachmentBlob,
@@ -138,7 +145,10 @@ import {
 import { WorkTimer } from "./WorkTimer";
 import { NotesThread } from "./NotesThread";
 
-const STATUSES: TestStatus[] = TEST_STATUSES;
+/** Status tiles / filters / set-buttons — audit Fixed/* are counts under Test Suites, not statuses. */
+const STATUSES: TestStatus[] = TEST_STATUSES.filter(
+  (s) => s !== "fixed_lighthouse" && s !== "fixed_foresight",
+);
 
 function pctComplete(done: number, total: number): string {
   if (total <= 0) return "0%";
@@ -151,6 +161,10 @@ function countWithPct(done: number, total: number, suffix = ""): string {
 }
 
 type SprintFilterKey = number | "backlog";
+/** Human QA chips + Unassigned (no Tina/Evelyn/Lyriq owner). */
+type TesterFilterKey = QaTesterId | "unassigned";
+
+const UNASSIGNED_TESTER_ACCENT = "#7a7064";
 
 function toggleSetValue<T>(prev: Set<T>, value: T): Set<T> {
   const next = new Set(prev);
@@ -185,6 +199,7 @@ function FilterChip({
   title,
   accent,
   testId,
+  locked,
 }: {
   active: boolean;
   onToggle: (e: MouseEvent<HTMLButtonElement>) => void;
@@ -192,12 +207,14 @@ function FilterChip({
   title?: string;
   accent?: string;
   testId?: string;
+  locked?: boolean;
 }) {
   return (
     <button
       type="button"
       className="qa-tester-bubble qa-filter-chip"
       data-active={active ? "true" : "false"}
+      data-locked={locked ? "true" : "false"}
       data-testid={testId}
       title={title}
       onClick={onToggle}
@@ -227,11 +244,13 @@ const STATUS_LIST_ORDER: Record<TestStatus, number> = {
   fixed_retest: 2,
   failed_retest: 3,
   fixed_cursor: 4,
-  not_run: 5,
-  fail: 6,
-  blocked: 7,
-  conditional_approval: 8,
-  pass: 9,
+  fixed_lighthouse: 5,
+  fixed_foresight: 6,
+  not_run: 7,
+  fail: 8,
+  blocked: 9,
+  conditional_approval: 10,
+  pass: 11,
 };
 
 const STATUS_COLOR: Record<TestStatus, string> = {
@@ -245,6 +264,8 @@ const STATUS_COLOR: Record<TestStatus, string> = {
   fixed_retest: "#2563eb",
   failed_retest: "#f97316",
   fixed_cursor: "#7c3aed",
+  fixed_lighthouse: "#0891b2",
+  fixed_foresight: "#b45309",
 };
 
 const BASE_CASES: TestCase[] = [
@@ -304,6 +325,8 @@ export function TestingPortal({
   const [attachBusyId, setAttachBusyId] = useState<string | null>(null);
   const [openingAttachmentId, setOpeningAttachmentId] = useState<string | null>(null);
   const [generatedCases, setGeneratedCases] = useState<GeneratedTestCase[]>([]);
+  /** Task List rows — used for sprint chip Task counts + rollover hints. */
+  const [tasks, setTasks] = useState<GyshTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [closedSprints, setClosedSprints] = useState<Set<number>>(() => new Set());
@@ -338,11 +361,10 @@ export function TestingPortal({
   const [statusOpen, setStatusOpen] = useState(true);
   /** QA Testor name/status bars — collapsed on load. */
   const [testerBarsOpen, setTesterBarsOpen] = useState(false);
-  const [testerFilters, setTesterFilters] = useState<Set<QaTesterId>>(() => new Set());
+  const [testerFilters, setTesterFilters] = useState<Set<TesterFilterKey>>(() => new Set());
   /** Empty = all suites. Default manual to match prior portal focus. */
   const [suiteFilters, setSuiteFilters] = useState<Set<TestSuite>>(() => new Set(["manual"]));
-  const [suitesOpen, setSuitesOpen] = useState(false);
-  /** Run Vitest / Playwright controls — collapsed by default. */
+  /** Test Suites run controls — collapsed by default. */
   const [automatedOpen, setAutomatedOpen] = useState(false);
   /** Default to the sprint containing today. */
   const [sprintFilters, setSprintFilters] = useState<Set<SprintFilterKey>>(
@@ -387,11 +409,6 @@ export function TestingPortal({
     if (statusFilters.size === 0) return "All statuses";
     return [...statusFilters].map((s) => STATUS_LABELS[s]).join(", ");
   }, [statusFilters]);
-
-  const suiteFilterSummary = useMemo(() => {
-    if (suiteFilters.size === 0) return "All suites";
-    return [...suiteFilters].map((s) => SUITE_LABELS[s]).join(", ");
-  }, [suiteFilters]);
 
   const categoryFilterSummary = useMemo(() => {
     if (categoryFilters.size === 0) return "All categories";
@@ -696,13 +713,15 @@ export function TestingPortal({
     setLoading(true);
     setError("");
     try {
-      const [closedList, fetched, users] = await Promise.all([
+      const [closedList, fetched, users, fetchedTasks] = await Promise.all([
         fetchClosedSprints().catch(() => [] as number[]),
         fetchTestStatuses(),
         fetchUsers().catch(() => [] as Awaited<ReturnType<typeof fetchUsers>>),
+        fetchTasks().catch(() => [] as GyshTask[]),
       ]);
       setDevAssignees(devAssigneesFromUsers(users));
       setClosedSprints(new Set(closedList));
+      setTasks(fetchedTasks);
       let data = fetched;
       // Due-only heal for incomplete cases (not Pass). Uses freshly fetched rows so we
       // do not race stale notes/status from a prior session. Skip locked sprints.
@@ -760,6 +779,7 @@ export function TestingPortal({
       setCheckedStepsByCase({});
       setFailedStepByCase({});
       setAttachmentsByCase({});
+      setTasks([]);
       setError(e instanceof ApiError ? e.message : "Failed to load test statuses from database.");
     } finally {
       setLoading(false);
@@ -809,9 +829,31 @@ export function TestingPortal({
   }, [focusTestId, loading, onFocusConsumed, sprintByCase]);
 
   const areas = useMemo(
-    () => ["all", ...Array.from(new Set(COUNTABLE_CASES.map((t) => t.area)))],
+    () => ["all", ...Array.from(new Set(COUNTABLE_CASES.map((t) => t.area))).sort((a, b) => a.localeCompare(b))],
     [COUNTABLE_CASES],
   );
+
+  const areaCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const t of COUNTABLE_CASES) {
+      map.set(t.area, (map.get(t.area) ?? 0) + 1);
+    }
+    return map;
+  }, [COUNTABLE_CASES]);
+
+  /** Lighthouse / Foresight: Pass = fixed; everything else = outstanding. */
+  const AUDIT_AREAS = ["Lighthouse", "Foresight"] as const;
+  const auditAreaStats = useMemo(() => {
+    return AUDIT_AREAS.map((area) => {
+      const cases = COUNTABLE_CASES.filter((t) => t.area === area);
+      let fixed = 0;
+      for (const t of cases) {
+        if ((statuses[t.id] ?? DEFAULT_TEST_STATUS) === "pass") fixed += 1;
+      }
+      const total = cases.length;
+      return { area, fixed, outstanding: total - fixed, total };
+    });
+  }, [COUNTABLE_CASES, statuses]);
 
   const isFailureGeneratedId = (id: string) => /^(VT|PW)-FAIL-/i.test(id);
 
@@ -928,7 +970,12 @@ export function TestingPortal({
     // Same ownership rules as Evelyn/Tina/Lyriq progress bars (D1 → PROOF id → catalog).
     if (exclude !== "tester" && testerFilters.size > 0) {
       const owner = ownerForTesterStats(t);
-      if (!owner || !testerFilters.has(owner)) return false;
+      const key: TesterFilterKey | null = owner
+        ? owner
+        : (t.suite ?? "manual") === "manual" || isFailureGeneratedId(t.id)
+          ? "unassigned"
+          : null;
+      if (!key || !testerFilters.has(key)) return false;
     }
     if (exclude !== "suite" && suiteFilters.size > 0) {
       const suite = t.suite ?? "manual";
@@ -1045,6 +1092,14 @@ export function TestingPortal({
         suiteStats.manual.tally.fixed_cursor +
         suiteStats.vitest.tally.fixed_cursor +
         suiteStats.playwright.tally.fixed_cursor,
+      fixed_lighthouse:
+        suiteStats.manual.tally.fixed_lighthouse +
+        suiteStats.vitest.tally.fixed_lighthouse +
+        suiteStats.playwright.tally.fixed_lighthouse,
+      fixed_foresight:
+        suiteStats.manual.tally.fixed_foresight +
+        suiteStats.vitest.tally.fixed_foresight +
+        suiteStats.playwright.tally.fixed_foresight,
       rolled_over:
         suiteStats.manual.tally.rolled_over +
         suiteStats.vitest.tally.rolled_over +
@@ -1138,12 +1193,17 @@ export function TestingPortal({
    */
   const testerStats = useMemo(() => {
     const inFilterContext = COUNTABLE_CASES.filter((t) => caseMatchesFilters(t, "tester"));
-    const ownedCases = inFilterContext.filter((t) => Boolean(ownerForTesterStats(t)));
+    // Manual / failure cases only (ownerForTesterStats is "" for automated suites).
+    const humanCases = inFilterContext.filter(
+      (t) => (t.suite ?? "manual") === "manual" || isFailureGeneratedId(t.id),
+    );
+    const ownedCases = humanCases.filter((t) => Boolean(ownerForTesterStats(t)));
+    const unassignedCases = humanCases.filter((t) => !ownerForTesterStats(t));
     const allTally = tallyStatuses(
-      ownedCases.map((t) => t.id),
+      humanCases.map((t) => t.id),
       statuses,
     );
-    const countRolled = (cases: typeof ownedCases) =>
+    const countRolled = (cases: typeof humanCases) =>
       cases.filter((t) => testIsRolledOver(statuses[t.id], notes[t.id])).length;
     const testers = QA_TESTERS.map((tester) => {
       const cases = ownedCases.filter((t) => ownerForTesterStats(t) === tester.id);
@@ -1159,11 +1219,21 @@ export function TestingPortal({
         tally,
       };
     });
+    const unassignedTally = tallyStatuses(
+      unassignedCases.map((t) => t.id),
+      statuses,
+    );
     return {
       testers,
+      unassigned: {
+        total: unassignedTally.total,
+        passed: unassignedTally.pass,
+        rolled: countRolled(unassignedCases),
+        tally: unassignedTally,
+      },
       allPassed: allTally.pass,
       allTotal: allTally.total,
-      allRolled: countRolled(ownedCases),
+      allRolled: countRolled(humanCases),
       allTally,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- caseMatchesFilters closes over filter state
@@ -1254,25 +1324,53 @@ export function TestingPortal({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- caseMatchesFilters closes over filter state
   }, filterDeps);
 
+  /**
+   * Sprint chip Test counts — global catalog by sprint (not suite/tester/status filtered).
+   * Done = Pass only, same as Schedule sprint bubbles (testStatusToBoard → done).
+   */
   const sprintStats = useMemo(() => {
     const bySprint = new Map<number, { done: number; total: number }>();
     let backlog = { done: 0, total: 0 };
     for (const t of COUNTABLE_CASES) {
-      if (!caseMatchesFilters(t, "sprint")) continue;
       const sprint = effectiveSprint(t);
+      const st = statuses[t.id] ?? DEFAULT_TEST_STATUS;
+      const done = st === "pass" ? 1 : 0;
       if (sprint === BACKLOG_SPRINT) {
         backlog.total += 1;
-        if (isCaseComplete(t.id)) backlog.done += 1;
+        backlog.done += done;
         continue;
       }
       const cur = bySprint.get(sprint) ?? { done: 0, total: 0 };
       cur.total += 1;
-      if (isCaseComplete(t.id)) cur.done += 1;
+      cur.done += done;
       bySprint.set(sprint, cur);
     }
     return { bySprint, backlog };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- caseMatchesFilters closes over filter state
-  }, filterDeps);
+  }, [COUNTABLE_CASES, statuses, sprintByCase]);
+
+  /** Task List counts by sprint (matches Schedule / Sprint Progress — not suite-filtered). */
+  const taskSprintStats = useMemo(() => {
+    const bySprint = new Map<number, { done: number; total: number }>();
+    let backlog = { done: 0, total: 0 };
+    for (const t of tasks) {
+      // Subtasks nest under a parent — count the parent once.
+      if (String(t.parentId || "").trim()) continue;
+      const sprint = Number(t.sprint);
+      const done = t.status === "done" ? 1 : 0;
+      if (!Number.isFinite(sprint) || sprint === BACKLOG_SPRINT) {
+        backlog.total += 1;
+        backlog.done += done;
+        continue;
+      }
+      const cur = bySprint.get(sprint) ?? { done: 0, total: 0 };
+      cur.total += 1;
+      cur.done += done;
+      bySprint.set(sprint, cur);
+    }
+    return { bySprint, backlog };
+  }, [tasks]);
+
+  const lastSprintIndex = sprints.length > 0 ? sprints[sprints.length - 1]!.index : 7;
 
   /** Global rollover counts (not narrowed by other filters) for sprint chips / banners. */
   const sprintRolloverByIndex = useMemo(() => {
@@ -1280,11 +1378,19 @@ export function TestingPortal({
     for (const s of sprints) {
       map.set(
         s.index,
-        sprintRolloverSummary(statuses, sprintByCase, s.index, knownCaseIds, notes),
+        sprintRolloverSummary(
+          statuses,
+          sprintByCase,
+          s.index,
+          knownCaseIds,
+          notes,
+          tasks,
+          lastSprintIndex,
+        ),
       );
     }
     return map;
-  }, [statuses, sprintByCase, sprints, knownCaseIds, notes]);
+  }, [statuses, sprintByCase, sprints, knownCaseIds, notes, tasks, lastSprintIndex]);
 
   const selectedSprintRollover = useMemo(() => {
     if (sprintFilters.size !== 1) return null;
@@ -1292,9 +1398,26 @@ export function TestingPortal({
     if (typeof key !== "number") return null;
     return (
       sprintRolloverByIndex.get(key) ??
-      sprintRolloverSummary(statuses, sprintByCase, key, knownCaseIds, notes)
+      sprintRolloverSummary(
+        statuses,
+        sprintByCase,
+        key,
+        knownCaseIds,
+        notes,
+        tasks,
+        lastSprintIndex,
+      )
     );
-  }, [sprintFilters, sprintRolloverByIndex, statuses, sprintByCase, knownCaseIds, notes]);
+  }, [
+    sprintFilters,
+    sprintRolloverByIndex,
+    statuses,
+    sprintByCase,
+    knownCaseIds,
+    notes,
+    tasks,
+    lastSprintIndex,
+  ]);
 
   const { counts, rolledWithinStatus } = useMemo(() => {
     const acc = { total: 0 } as Record<string, number>;
@@ -1335,7 +1458,10 @@ export function TestingPortal({
     [sprints],
   );
   const suiteFilterOrder = useMemo<TestSuite[]>(() => ["manual", "vitest", "playwright"], []);
-  const testerFilterOrder = useMemo(() => QA_TESTERS.map((t) => t.id), []);
+  const testerFilterOrder = useMemo<TesterFilterKey[]>(
+    () => [...QA_TESTERS.map((t) => t.id), "unassigned"],
+    [],
+  );
 
   // Drop status pins when the user changes filters (not when statuses update).
   useEffect(() => {
@@ -1477,6 +1603,10 @@ export function TestingPortal({
               ? `A note is required for Failed/Re-Test (at least ${NOTE_MIN_LENGTH} characters). Describe why this was not a real failure (misunderstood/unclear test).`
               : status === "fixed_cursor"
                 ? `A note is required for Fixed/Cursor (at least ${NOTE_MIN_LENGTH} characters). Describe what Cursor fixed.`
+              : status === "fixed_lighthouse"
+                ? `A note is required for Fixed/Lighthouse (at least ${NOTE_MIN_LENGTH} characters). Describe which Lighthouse audit was fixed.`
+              : status === "fixed_foresight"
+                ? `A note is required for Fixed/Foresight (at least ${NOTE_MIN_LENGTH} characters). Describe which Foresight audit was fixed.`
               : `A note is required for ${STATUS_LABELS[status]} (at least ${NOTE_MIN_LENGTH} characters). Describe what failed or what is blocking.`;
       setRowErrors((prev) => ({ ...prev, [id]: msg }));
       setError(msg);
@@ -1999,7 +2129,7 @@ export function TestingPortal({
     setStatusFilters(next);
   };
 
-  const toggleTesterFilter = (id: QaTesterId, e?: MouseEvent) => {
+  const toggleTesterFilter = (id: TesterFilterKey, e?: MouseEvent) => {
     const { next, lastIndex } = applyMultiSelectClick(
       testerFilters,
       id,
@@ -2362,13 +2492,6 @@ export function TestingPortal({
         for (const id of ids) next[id] = due;
         return next;
       });
-      if (isBacklogSprint(sprint)) {
-        setAssigneeOverrides((prev) => {
-          const next = { ...prev };
-          for (const id of ids) next[id] = "";
-          return next;
-        });
-      }
       const data = await saveTestStatusesBatch(items);
       applyServerData(data);
       const label = sprint === BACKLOG_SPRINT ? "Backlog" : sprintLabel(sprint);
@@ -2471,8 +2594,16 @@ export function TestingPortal({
   const runSuite = async (suite: AutomatedSuite, mode: AutomatedRunMode = "new") => {
     setSuiteRunning(suite);
     setError("");
+    const suiteLabel =
+      suite === "all"
+        ? "Vitest + Playwright + Lighthouse + Foresight"
+        : suite === "lighthouse"
+          ? "Lighthouse"
+          : suite === "foresight"
+            ? "Foresight"
+            : suite;
     setRunLog(
-      `Running ${suite === "all" ? "Vitest + Playwright" : suite} (${mode === "new" ? "new / not-started only" : "full regression"})…`,
+      `Running ${suiteLabel} (${mode === "new" ? "new / not-started only" : "full regression"})…`,
     );
     try {
       const result = await runAutomatedSuite(suite, mode);
@@ -2510,13 +2641,6 @@ export function TestingPortal({
   const testerLabel = (ids: TestOwnerId[]) =>
     ids.length === 0 ? "Unassigned" : ids.map((id) => testOwnerLabel(id)).join(", ");
 
-  const vitestPass = vitestReal.passed;
-  const vitestTotal = vitestReal.total;
-  const pwPass = suiteStats.playwright.passed;
-  const pwTotal = suiteStats.playwright.total;
-  const autoPass = vitestPass + pwPass;
-  const autoTotal = vitestTotal + pwTotal;
-
   const portalBusy =
     loading || savingAll || savingIds.size > 0 || suiteRunning !== null;
   const portalBusyMessage = loading
@@ -2525,11 +2649,15 @@ export function TestingPortal({
       ? "Running Vitest…"
       : suiteRunning === "playwright"
         ? "Running Playwright…"
-        : suiteRunning === "all"
-          ? "Running test suites…"
-          : savingAll || savingIds.size > 0
-            ? "Saving test updates…"
-            : "Please wait…";
+        : suiteRunning === "lighthouse"
+          ? "Running Lighthouse…"
+          : suiteRunning === "foresight"
+            ? "Running Foresight…"
+            : suiteRunning === "all"
+              ? "Running test suites…"
+              : savingAll || savingIds.size > 0
+                ? "Saving test updates…"
+                : "Please wait…";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
@@ -2586,6 +2714,7 @@ export function TestingPortal({
           );
         })}
       </div>
+
       <SprintStatusBars
         selectedSprint={
           sprintFilters.size === 0
@@ -2670,6 +2799,24 @@ export function TestingPortal({
                     </FilterChip>
                   );
                 })}
+                <FilterChip
+                  active={testerFilters.has("unassigned")}
+                  accent={UNASSIGNED_TESTER_ACCENT}
+                  title={`Unassigned — no Tina/Evelyn/Lyriq owner · ${testerStats.unassigned.passed}/${testerStats.unassigned.total} passed · ${testerStats.unassigned.rolled} rolled over — Shift+click to select a range`}
+                  testId="qa-filter-assignee-unassigned"
+                  onToggle={(e) => toggleTesterFilter("unassigned", e)}
+                >
+                  <span className="qa-tester-dot" style={{ background: UNASSIGNED_TESTER_ACCENT }} />
+                  Unassigned
+                  <span className="qa-tester-meta">
+                    · {testerStats.unassigned.passed}/{testerStats.unassigned.total} passed
+                    {testerStats.unassigned.rolled > 0 ? (
+                      <span className="status-bubble__rolled">
+                        Rolled over: {testerStats.unassigned.rolled}
+                      </span>
+                    ) : null}
+                  </span>
+                </FilterChip>
                 {AUTOMATED_SUITE_OWNERS.map((owner) => {
                   const stats = autoAssigneeStats[owner.id];
                   const active = suiteFilters.has(owner.id);
@@ -2678,7 +2825,7 @@ export function TestingPortal({
                       key={owner.id}
                       active={active}
                       accent={owner.accent}
-                      title={`${owner.name} — filter list to this suite · ${stats.passed}/${stats.total} passed (full catalog). Run suites under Automated Testing.`}
+                      title={`${owner.name} — filter list to this suite · ${stats.passed}/${stats.total} passed (full catalog). Run suites under Test Suites.`}
                       testId={`qa-filter-assignee-${owner.id}`}
                       onToggle={(e) => {
                         setTesterFilters(new Set());
@@ -2815,6 +2962,7 @@ export function TestingPortal({
                     —{" "}
                     {[
                       ...testerStats.testers.map((t) => `${t.shortName} ${t.passed}/${t.total}`),
+                      `Unassigned ${testerStats.unassigned.passed}/${testerStats.unassigned.total}`,
                       ...AUTOMATED_SUITE_OWNERS.map(
                         (o) =>
                           `${o.shortName} ${autoAssigneeStats[o.id].passed}/${autoAssigneeStats[o.id].total}`,
@@ -2850,6 +2998,12 @@ export function TestingPortal({
                     rolled={tester.rolled}
                   />
                 ))}
+                <TesterStatusRow
+                  label="Unassigned"
+                  tally={testerStats.unassigned.tally}
+                  accent={UNASSIGNED_TESTER_ACCENT}
+                  rolled={testerStats.unassigned.rolled}
+                />
                 {AUTOMATED_SUITE_OWNERS.map((owner) => (
                   <TesterStatusRow
                     key={owner.id}
@@ -2865,14 +3019,14 @@ export function TestingPortal({
 
           <div
             className="schedule-board-filters__row qa-testing-portal__category"
-            data-testid="qa-automated-testing"
+            data-testid="qa-test-suites"
           >
             <div className="schedule-board-filters__label schedule-board-filters__label--bar">
               <ShowHideChevron
                 open={automatedOpen}
                 onOpenChange={setAutomatedOpen}
-                label="Automated Testing"
-                testId="qa-automated-testing-chevron"
+                label="Test Suites"
+                testId="qa-test-suites-chevron"
               />
               <button
                 type="button"
@@ -2880,89 +3034,189 @@ export function TestingPortal({
                 onClick={() => setAutomatedOpen((v) => !v)}
                 aria-expanded={automatedOpen}
               >
-                <span>Automated Testing</span>
+                <span>Test Suites</span>
                 {!automatedOpen ? (
                   <span className="schedule-board-filters__label-hint">
-                    Manual · Automated · Vitest · Playwright · {countWithPct(autoPass, autoTotal, " passed")}
+                    Manual{" "}
+                    {countWithPct(
+                      facetSuiteStats.manual.passed,
+                      facetSuiteStats.manual.total,
+                      " passed",
+                    )}{" "}
+                    · Automated{" "}
+                    {countWithPct(
+                      autoAssigneeStats.vitest.passed + autoAssigneeStats.playwright.passed,
+                      autoAssigneeStats.vitest.total + autoAssigneeStats.playwright.total,
+                      " passed",
+                    )}
+                    {auditAreaStats.map(
+                      (r) =>
+                        ` · ${r.area} ${countWithPct(r.fixed, r.total, " passed")}`,
+                    )}
                   </span>
                 ) : null}
               </button>
               <ShowHideToggle
                 open={automatedOpen}
                 onOpenChange={setAutomatedOpen}
-                label="Automated Testing"
-                testId="qa-automated-testing-toggle"
+                label="Test Suites"
+                testId="qa-test-suites-toggle"
               />
             </div>
-            <div className="qa-testing-portal__top-filters qa-testing-portal__suite-filters">
-              <FilterChip
-                active={suiteFilters.has("manual")}
-                onToggle={(e) => toggleSuiteFilter("manual", e)}
-                title="Manual QA suite — Shift+click to select a range with other suite chips"
-              >
-                Manual
-                <span className="qa-tester-meta">
-                  ·{" "}
-                  {countWithPct(
-                    facetSuiteStats.manual.passed,
-                    facetSuiteStats.manual.total,
-                    " passed",
-                  )}
-                </span>
-              </FilterChip>
-              <FilterChip
-                active={automatedSuiteActive}
-                onToggle={() => toggleAutomatedSuiteFilter()}
-                title="Vitest + Playwright automated suites"
-              >
-                Automated
-                <span className="qa-tester-meta">
-                  ·{" "}
-                  {countWithPct(
-                    facetSuiteStats.vitest.passed + facetSuiteStats.playwright.passed,
-                    facetSuiteStats.vitest.total + facetSuiteStats.playwright.total,
-                    " passed",
-                  )}
-                </span>
-              </FilterChip>
-            </div>
+
             {automatedOpen ? (
-              <div className="qa-automated-testing__body">
-                <div className="qa-automated-testing__actions">
+              <div className="qa-test-suites__layout" data-testid="qa-test-suites-body">
+                <div className="qa-test-suites__chips">
+                  <FilterChip
+                    active={suiteFilters.has("manual") && !automatedSuiteActive}
+                    onToggle={(e) => {
+                      setAreaFilter("all");
+                      toggleSuiteFilter("manual", e);
+                    }}
+                    title="Manual QA — human-owned cases"
+                  >
+                    Manual
+                    <span className="qa-tester-meta">
+                      ·{" "}
+                      {countWithPct(
+                        facetSuiteStats.manual.passed,
+                        facetSuiteStats.manual.total,
+                        " passed",
+                      )}
+                    </span>
+                  </FilterChip>
+
+                  <div className="qa-test-suites__child">
+                    <FilterChip
+                      active={automatedSuiteActive && areaFilter === "all"}
+                      onToggle={() => {
+                        setAreaFilter("all");
+                        toggleAutomatedSuiteFilter();
+                      }}
+                      title="All automated = Vitest + Playwright"
+                    >
+                      Automated
+                      <span className="qa-tester-meta">
+                        ·{" "}
+                        {countWithPct(
+                          autoAssigneeStats.vitest.passed + autoAssigneeStats.playwright.passed,
+                          autoAssigneeStats.vitest.total + autoAssigneeStats.playwright.total,
+                          " passed",
+                        )}
+                      </span>
+                    </FilterChip>
+                    <button
+                      type="button"
+                      className="qa-tester-bubble qa-filter-chip qa-suite-assignee-run"
+                      data-active={suiteRunning === "all" ? "true" : "false"}
+                      data-testid="qa-run-assignee-all"
+                      disabled={suiteRunning !== null || loading}
+                      title="Run Vitest + Playwright + Lighthouse + Foresight (new / not-run only)"
+                      onClick={() => void runSuite("all", "new")}
+                    >
+                      <Play size={14} aria-hidden />
+                      {suiteRunning === "all" ? <WaitLabel>Running…</WaitLabel> : "Run"}
+                    </button>
+                  </div>
+
                   {AUTOMATED_SUITE_OWNERS.map((owner) => {
                     const running = suiteRunning === owner.id;
-                    const pass = owner.id === "vitest" ? vitestPass : pwPass;
-                    const total = owner.id === "vitest" ? vitestTotal : pwTotal;
+                    const stats = autoAssigneeStats[owner.id];
+                    const suiteActive =
+                      suiteFilters.has(owner.id) &&
+                      !suiteFilters.has(owner.id === "vitest" ? "playwright" : "vitest") &&
+                      !suiteFilters.has("manual");
                     return (
-                      <button
-                        key={owner.id}
-                        type="button"
-                        className="qa-tester-bubble qa-filter-chip qa-suite-assignee-run"
-                        data-active={running ? "true" : "false"}
-                        data-testid={`qa-run-assignee-${owner.id}`}
-                        disabled={suiteRunning !== null || loading}
-                        title={`Run ${owner.name} (new / not-started only). Failures create ${owner.id === "vitest" ? "VT" : "PW"}-FAIL-* cases.`}
-                        onClick={() => void runSuite(owner.id, "new")}
-                        style={
-                          running
-                            ? { borderColor: owner.accent, boxShadow: `0 0 0 1px ${owner.accent}` }
-                            : undefined
-                        }
-                      >
-                        <Play size={14} aria-hidden />
-                        <span className="qa-tester-dot" style={{ background: owner.accent }} />
-                        {owner.shortName}
-                        <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
-                          ·{" "}
-                          {running ? (
-                            <WaitLabel>Running…</WaitLabel>
-                          ) : (
-                            countWithPct(pass, total, " passed")
-                          )}
-                        </span>
-                      </button>
+                      <div key={owner.id} className="qa-test-suites__child">
+                        <FilterChip
+                          active={suiteActive}
+                          accent={owner.accent}
+                          title={`${owner.name} — part of Automated (${stats.passed}/${stats.total}). Click to filter.`}
+                          onToggle={() => {
+                            setAreaFilter("all");
+                            setSuiteFilters(new Set([owner.id]));
+                            lastSuiteIdx.current = null;
+                          }}
+                        >
+                          <span className="qa-tester-dot" style={{ background: owner.accent }} />
+                          {owner.shortName}
+                          <span className="qa-tester-meta">
+                            · {countWithPct(stats.passed, stats.total, " passed")}
+                          </span>
+                        </FilterChip>
+                        <button
+                          type="button"
+                          className="qa-tester-bubble qa-filter-chip qa-suite-assignee-run"
+                          data-active={running ? "true" : "false"}
+                          data-testid={`qa-run-assignee-${owner.id}`}
+                          disabled={suiteRunning !== null || loading}
+                          title={`Run ${owner.name} (new / not-started only)`}
+                          onClick={() => void runSuite(owner.id, "new")}
+                          style={
+                            running
+                              ? { borderColor: owner.accent, boxShadow: `0 0 0 1px ${owner.accent}` }
+                              : undefined
+                          }
+                        >
+                          <Play size={14} aria-hidden />
+                          {running ? <WaitLabel>Running…</WaitLabel> : "Run"}
+                        </button>
+                      </div>
                     );
                   })}
+
+                  {auditAreaStats.map((row) => {
+                    const suiteId = row.area === "Foresight" ? "foresight" : "lighthouse";
+                    const running = suiteRunning === suiteId;
+                    const accent = row.area === "Foresight" ? "#b45309" : "#0891b2";
+                    const active = areaFilter === row.area;
+                    return (
+                      <div key={row.area} className="qa-test-suites__child">
+                        <FilterChip
+                          active={active}
+                          accent={accent}
+                          title={`${row.area} audit cases — ${countWithPct(row.fixed, row.total, " passed")}. Click to filter Area → ${row.area}.`}
+                          onToggle={() => {
+                            if (active) {
+                              setAreaFilter("all");
+                              return;
+                            }
+                            setAreaFilter(row.area);
+                            setSuiteFilters(new Set());
+                          }}
+                        >
+                          <span className="qa-tester-dot" style={{ background: accent }} />
+                          {row.area}
+                          <span
+                            className="qa-tester-meta"
+                            data-testid={`qa-audit-count-${row.area.toLowerCase()}`}
+                          >
+                            · {countWithPct(row.fixed, row.total, " passed")}
+                          </span>
+                        </FilterChip>
+                        <button
+                          type="button"
+                          className="qa-tester-bubble qa-filter-chip qa-suite-assignee-run"
+                          data-active={running ? "true" : "false"}
+                          data-testid={`qa-run-assignee-${suiteId}`}
+                          disabled={suiteRunning !== null || loading}
+                          title={`Run ${row.area} portal checks (new / not-started only)`}
+                          onClick={() => void runSuite(suiteId, "new")}
+                          style={
+                            running
+                              ? { borderColor: accent, boxShadow: `0 0 0 1px ${accent}` }
+                              : undefined
+                          }
+                        >
+                          <Play size={14} aria-hidden />
+                          {running ? <WaitLabel>Running…</WaitLabel> : "Run"}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="qa-automated-testing__actions">
                   <button
                     type="button"
                     className="btn btn-outline suite-run-btn"
@@ -2975,24 +3229,8 @@ export function TestingPortal({
                       <span className="suite-run-btn__count">regression</span>
                     </span>
                   </button>
-                  <button
-                    type="button"
-                    className="btn btn-outline suite-run-btn"
-                    disabled={suiteRunning !== null || loading}
-                    onClick={() => void runSuite("all", "new")}
-                    title="Run Vitest + Playwright for new / not-run cases only"
-                  >
-                    <span className="suite-run-btn__label">
-                      {suiteRunning === "all" ? <WaitLabel>Running both…</WaitLabel> : "Run both"}
-                      <span className="suite-run-btn__count">
-                        {countWithPct(autoPass, autoTotal, " passed")}
-                      </span>
-                    </span>
-                  </button>
                 </div>
-                {runLog ? (
-                  <pre className="qa-automated-testing__log">{runLog}</pre>
-                ) : null}
+                {runLog ? <pre className="qa-automated-testing__log">{runLog}</pre> : null}
               </div>
             ) : null}
           </div>
@@ -3041,12 +3279,19 @@ export function TestingPortal({
                 >
                   All sprints
                   <span className="qa-tester-meta">
-                    ·{" "}
+                    · Tests{" "}
                     {countWithPct(
                       sprintStats.backlog.done +
                         [...sprintStats.bySprint.values()].reduce((n, s) => n + s.done, 0),
                       sprintStats.backlog.total +
                         [...sprintStats.bySprint.values()].reduce((n, s) => n + s.total, 0),
+                    )}
+                    {" · Tasks "}
+                    {countWithPct(
+                      taskSprintStats.backlog.done +
+                        [...taskSprintStats.bySprint.values()].reduce((n, s) => n + s.done, 0),
+                      taskSprintStats.backlog.total +
+                        [...taskSprintStats.bySprint.values()].reduce((n, s) => n + s.total, 0),
                     )}
                   </span>
                 </FilterChip>
@@ -3057,28 +3302,44 @@ export function TestingPortal({
                 >
                   Backlog
                   <span className="qa-tester-meta">
-                    · {countWithPct(sprintStats.backlog.done, sprintStats.backlog.total)}
+                    · Tests {countWithPct(sprintStats.backlog.done, sprintStats.backlog.total)}
+                    {" · Tasks "}
+                    {countWithPct(taskSprintStats.backlog.done, taskSprintStats.backlog.total)}
                   </span>
                 </FilterChip>
                 {sprints.map((s) => {
                   const stats = sprintStats.bySprint.get(s.index) ?? { done: 0, total: 0 };
+                  const taskStats = taskSprintStats.bySprint.get(s.index) ?? {
+                    done: 0,
+                    total: 0,
+                  };
                   const isCurrent = s.index === activeSprintIndex;
+                  const locked = isSprintLocked(closedSprints, s.index);
                   const rollover = sprintRolloverByIndex.get(s.index);
                   const rolloverHint = rollover?.chipHint ?? "";
                   return (
                     <FilterChip
                       key={s.index}
                       active={sprintFilters.has(s.index)}
-                      title={`${s.rangeLabel}${isCurrent ? " · current sprint" : ""}${
-                        rollover?.banner ? ` · ${rollover.banner}` : ""
-                      } — Shift+click to select a range`}
+                      locked={locked}
+                      testId={`qa-sprint-chip-${s.index}`}
+                      title={
+                        locked
+                          ? `${s.label} · Closed & locked · ${s.rangeLabel} · Tests ${stats.done}/${stats.total} (Pass) · Tasks ${taskStats.done}/${taskStats.total} — full sprint totals`
+                          : `${s.rangeLabel}${isCurrent ? " · current sprint" : ""} · Tests ${stats.done}/${stats.total} (Pass) · Tasks ${taskStats.done}/${taskStats.total}${
+                              rollover?.banner ? ` · ${rollover.banner}` : ""
+                            } — full sprint totals (not suite-filtered) · Shift+click for range`
+                      }
                       onToggle={(e) => toggleSprintFilter(s.index, e)}
                       accent={isCurrent ? "#2e7d32" : undefined}
                     >
                       {s.label}
                       {isCurrent ? " · current" : ""}
+                      {locked ? <SprintLockedBanner /> : null}
                       <span className="qa-tester-meta">
-                        · {countWithPct(stats.done, stats.total)}
+                        · Tests {countWithPct(stats.done, stats.total)}
+                        {" · Tasks "}
+                        {countWithPct(taskStats.done, taskStats.total)}
                         {rolloverHint ? (
                           <span
                             data-testid={`sprint-rollover-chip-${s.index}`}
@@ -3149,16 +3410,30 @@ export function TestingPortal({
             className="qa-section-heading qa-categories-panel__header"
             aria-expanded={facingOpen}
           >
-            <span className="qa-categories-panel__title">External vs Internal</span>
-            {facingFilters.size > 0 ? (
-              <span className="qa-categories-panel__active">
-                — {[...facingFilters].map((f) => TEST_FACING_LABELS[f]).join(", ")}
-              </span>
-            ) : (
-              <span className="qa-categories-panel__hint">
-                — top-level · External = live site · Internal = admin / QA
-              </span>
-            )}
+            <ShowHideChevron
+              open={facingOpen}
+              onOpenChange={setFacingOpen}
+              label="External vs Internal"
+              testId="qa-facing-chevron"
+              size={20}
+            />
+            <button
+              type="button"
+              className="qa-categories-panel__heading-btn"
+              onClick={() => setFacingOpen((v) => !v)}
+              aria-expanded={facingOpen}
+            >
+              <span className="qa-categories-panel__title">External vs Internal</span>
+              {facingFilters.size > 0 ? (
+                <span className="qa-categories-panel__active">
+                  — {[...facingFilters].map((f) => TEST_FACING_LABELS[f]).join(", ")}
+                </span>
+              ) : (
+                <span className="qa-categories-panel__hint">
+                  — top-level · External = live site · Internal = admin / QA
+                </span>
+              )}
+            </button>
             <ShowHideToggle
               open={facingOpen}
               onOpenChange={setFacingOpen}
@@ -3215,8 +3490,22 @@ export function TestingPortal({
             className="qa-section-heading qa-categories-panel__header"
             aria-expanded={categoriesOpen}
           >
-            <span className="qa-categories-panel__title">Categories</span>
-            <span className="qa-categories-panel__active">— {categoryFilterSummary}</span>
+            <ShowHideChevron
+              open={categoriesOpen}
+              onOpenChange={setCategoriesOpen}
+              label="Categories"
+              testId="qa-categories-chevron"
+              size={20}
+            />
+            <button
+              type="button"
+              className="qa-categories-panel__heading-btn"
+              onClick={() => setCategoriesOpen((v) => !v)}
+              aria-expanded={categoriesOpen}
+            >
+              <span className="qa-categories-panel__title">Categories</span>
+              <span className="qa-categories-panel__active">— {categoryFilterSummary}</span>
+            </button>
             <ShowHideToggle
               open={categoriesOpen}
               onOpenChange={setCategoriesOpen}
@@ -3271,66 +3560,6 @@ export function TestingPortal({
           )}
         </div>
 
-        <div className="qa-categories-panel" data-testid="qa-suites-panel" style={{ marginTop: 16 }}>
-          <div
-            className="qa-section-heading qa-categories-panel__header"
-            aria-expanded={suitesOpen}
-          >
-            <span className="qa-categories-panel__title">Test suites</span>
-            <span className="qa-categories-panel__active">— {suiteFilterSummary}</span>
-            <ShowHideToggle
-              open={suitesOpen}
-              onOpenChange={setSuitesOpen}
-              label="Test suites"
-              testId="qa-suites-toggle"
-            />
-          </div>
-          {suitesOpen && (
-            <div className="qa-categories-panel__bubbles">
-              {(() => {
-                const allPassed =
-                  facetSuiteStats.manual.passed +
-                  facetSuiteStats.vitest.passed +
-                  facetSuiteStats.playwright.passed;
-                const allTotal =
-                  facetSuiteStats.manual.total +
-                  facetSuiteStats.vitest.total +
-                  facetSuiteStats.playwright.total;
-                return (
-                  <FilterChip
-                    active={suiteFilters.size === 0}
-                    onToggle={() => {
-                      setSuiteFilters(new Set());
-                      lastSuiteIdx.current = null;
-                    }}
-                    title="Clear suite filter"
-                  >
-                    All suites
-                    <span className="qa-tester-meta">
-                      · {countWithPct(allPassed, allTotal, " passed")}
-                    </span>
-                  </FilterChip>
-                );
-              })()}
-              {suiteFilterOrder.map((suite) => {
-                const stats = facetSuiteStats[suite];
-                return (
-                  <FilterChip
-                    key={suite}
-                    active={suiteFilters.has(suite)}
-                    title={`${SUITE_LABELS[suite]} — Shift+click to select a range`}
-                    onToggle={(e) => toggleSuiteFilter(suite, e)}
-                  >
-                    {SUITE_LABELS[suite]}
-                    <span className="qa-tester-meta">
-                      · {countWithPct(stats.passed, stats.total, " passed")}
-                    </span>
-                  </FilterChip>
-                );
-              })}
-            </div>
-          )}
-        </div>
       </div>
 
       {someSelected && (
@@ -3467,8 +3696,9 @@ export function TestingPortal({
             </option>
             <option value={BACKLOG_SPRINT}>Backlog</option>
             {sprints.map((s) => (
-              <option key={s.index} value={s.index}>
+              <option key={s.index} value={s.index} disabled={isSprintLocked(closedSprints, s.index)}>
                 {s.label}
+                {isSprintLocked(closedSprints, s.index) ? " · Locked" : ""}
               </option>
             ))}
           </select>
@@ -3620,10 +3850,26 @@ export function TestingPortal({
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
-        <select className="select-input" style={{ width: 280, minWidth: 220, height: 40 }} value={areaFilter} onChange={(e) => setAreaFilter(e.target.value)}>
-          {areas.map((a) => (
-            <option key={a} value={a}>{a === "all" ? "All areas" : a}</option>
-          ))}
+        <select className="select-input" style={{ width: 320, minWidth: 240, height: 40 }} value={areaFilter} onChange={(e) => setAreaFilter(e.target.value)}>
+          {areas.map((a) => {
+            if (a === "all") {
+              return (
+                <option key={a} value={a}>
+                  All areas ({COUNTABLE_CASES.length})
+                </option>
+              );
+            }
+            const audit = auditAreaStats.find((r) => r.area === a);
+            const total = areaCounts.get(a) ?? 0;
+            const label = audit
+              ? `${a} (${countWithPct(audit.fixed, audit.total, " passed")})`
+              : `${a} (${total})`;
+            return (
+              <option key={a} value={a}>
+                {label}
+              </option>
+            );
+          })}
         </select>
       </div>
 
@@ -3648,7 +3894,11 @@ export function TestingPortal({
               {" "}· testers:{" "}
               <strong style={{ color: "var(--charcoal)" }}>
                 {[...testerFilters]
-                  .map((id) => QA_TESTERS.find((t) => t.id === id)?.shortName ?? id)
+                  .map((id) =>
+                    id === "unassigned"
+                      ? "Unassigned"
+                      : (QA_TESTERS.find((t) => t.id === id)?.shortName ?? id),
+                  )
                   .join(", ")}
               </strong>
             </>
@@ -4404,7 +4654,15 @@ export function TestingPortal({
                                           ? canDevFix
                                             ? "Cursor fixed — note required; assigns back to tester"
                                             : "Only Lead Developer may set Fixed/Cursor"
-                                          : undefined
+                                          : s === "fixed_lighthouse"
+                                            ? canDevFix
+                                              ? "Lighthouse fix — note required; assigns back to tester"
+                                              : "Only Lead Developer may set Fixed/Lighthouse"
+                                            : s === "fixed_foresight"
+                                              ? canDevFix
+                                                ? "Foresight fix — note required; assigns back to tester"
+                                                : "Only Lead Developer may set Fixed/Foresight"
+                                              : undefined
                         }
                       >
                         {STATUS_LABELS[s]}

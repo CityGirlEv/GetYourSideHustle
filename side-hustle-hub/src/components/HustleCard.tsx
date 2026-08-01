@@ -89,8 +89,19 @@ export const HustleCard: React.FC<HustleCardProps> = ({ hustle, onSelectAction }
         </span>
       </div>
 
-      {/* Category */}
-      <span style={{ fontSize: "0.9375rem", fontWeight: 600, color: `var(--accent-${hustle.gradient})`, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "6px", display: "block" }}>
+      {/* Category — ink tokens meet contrast on light cards */}
+      <span
+        className="hustle-card-category"
+        style={{
+          fontSize: "0.9375rem",
+          fontWeight: 600,
+          color: `var(--accent-${hustle.gradient}-ink)`,
+          textTransform: "uppercase",
+          letterSpacing: "0.05em",
+          marginBottom: "6px",
+          display: "block",
+        }}
+      >
         {hustle.category}
       </span>
 
@@ -124,7 +135,12 @@ export const HustleCard: React.FC<HustleCardProps> = ({ hustle, onSelectAction }
         </div>
         <div>
           <span style={{ color: "var(--text-primary)", display: "block" }}>Potential Profit</span>
-          <strong style={{ color: `var(--accent-${hustle.gradient})`, fontSize: "1rem" }}>{hustle.potentialIncome}</strong>
+          <strong
+            className="hustle-card-income"
+            style={{ color: `var(--accent-${hustle.gradient}-ink)`, fontSize: "1rem" }}
+          >
+            {hustle.potentialIncome}
+          </strong>
         </div>
       </div>
 

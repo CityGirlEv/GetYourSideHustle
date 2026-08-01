@@ -1,8 +1,12 @@
 /**
- * Local full-stack GYSH: Vite (HMR) + Wrangler Pages Functions + local D1.
+ * Local full-stack GYSH: Vite (HMR) + Wrangler Pages Functions + production D1.
  *
  * Browser: http://localhost:5173  (Vite proxies /api → Functions on :8788)
  * Direct API: http://127.0.0.1:8788/api/...
+ *
+ * By default wrangler.toml binds DB with remote = true so localhost and
+ * getyoursidehustle.com share the same D1. Set remote = false only for an
+ * isolated .wrangler/state sandbox.
  *
  * Plain Vite alone does NOT serve functions/ — use this for login to work.
  * A Vite proxy with no worker on :8788 shows as HTTP 502 in the UI.
@@ -144,7 +148,10 @@ function spawnInherit(cmd, args, label, extraEnv = {}) {
   return child;
 }
 
-function waitForHealth(timeoutMs = 90_000) {
+function waitForHealth(timeoutMs = useRemoteD1 ? 180_000 : 90_000) {
+  // Remote D1 cold-start can take 30–60s before the first query succeeds.
+  const reqTimeoutMs = useRemoteD1 ? 60_000 : 2_000;
+  const retryMs = useRemoteD1 ? 2_000 : 500;
   const started = Date.now();
   return new Promise((resolve, reject) => {
     const tick = () => {
@@ -157,7 +164,7 @@ function waitForHealth(timeoutMs = 90_000) {
         retry();
       });
       req.on("error", retry);
-      req.setTimeout(2000, () => {
+      req.setTimeout(reqTimeoutMs, () => {
         req.destroy();
         retry();
       });
@@ -167,15 +174,36 @@ function waitForHealth(timeoutMs = 90_000) {
         reject(new Error(`Timed out waiting for http://127.0.0.1:${API_PORT}/api/health`));
         return;
       }
-      setTimeout(tick, 500);
+      setTimeout(tick, retryMs);
     };
     tick();
   });
 }
 
+/** True when wrangler.toml binds D1 with remote = true (shared prod database). */
+function d1BindingIsRemote() {
+  try {
+    const toml = readFileSync(path.join(root, "wrangler.toml"), "utf8");
+    const block = toml.match(/\[\[d1_databases\]\][\s\S]*?(?=\n\[\[|\n\[vars\]|\n\[triggers\]|$)/);
+    const text = block?.[0] ?? toml;
+    return /^\s*remote\s*=\s*true\s*$/m.test(text);
+  } catch {
+    return false;
+  }
+}
+
+const useRemoteD1 = d1BindingIsRemote();
+
 console.log("GYSH local full-stack");
 console.log(`  Functions + D1 → http://127.0.0.1:${API_PORT}`);
 console.log(`  Vite UI       → http://localhost:${VITE_PORT}  (open this; /api is proxied)`);
+if (useRemoteD1) {
+  console.log("  D1           → production (remote = true) — same DB as live site");
+  console.warn("  ⚠ Local API writes update production D1.");
+} else {
+  console.log("  D1           → local .wrangler/state (sandbox)");
+  console.log("  Tip: set remote = true in wrangler.toml to share prod D1.");
+}
 console.log("");
 
 const syncScript = path.join(root, "scripts", "sync-test-statuses-from-remote.mjs");
@@ -212,10 +240,12 @@ function runProdAgendaSync({ quiet = false } = {}) {
   });
 }
 
-// Keep Testing Portal + Task List aligned with production on startup.
-// Do NOT auto-overwrite time_entries (that was reverting local timesheet hours).
-// Background re-sync is OFF by default so mid-session local work is not wiped.
-if (process.env.GYSH_SKIP_D1_SYNC === "1") {
+// When DB is already the production D1, prod→local sync is unnecessary (and wrong).
+// Local-sandbox mode: mirror prod into .wrangler/state on startup.
+if (useRemoteD1) {
+  console.log("✓ Using production D1 directly — skipping prod→local sync.");
+  console.log("");
+} else if (process.env.GYSH_SKIP_D1_SYNC === "1") {
   console.warn("⚠ GYSH_SKIP_D1_SYNC=1 — skipping prod→local D1 sync.");
   console.warn("  Local pass/fail counts WILL diverge from production.");
 } else {
@@ -228,7 +258,8 @@ if (process.env.GYSH_SKIP_D1_SYNC === "1") {
     process.exit(sync.status ?? 1);
   }
   console.log("✓ Local Testing Portal statuses mirror production");
-  console.log("Syncing tasks from prod D1 → local (startup)…");
+  // Always pull tasks in sandbox mode so sprint/status match prod.
+  console.log("Syncing tasks from prod D1 → local…");
   const taskSync = runProdTasksSync({ quiet: false });
   if (taskSync.status !== 0) {
     console.error("✗ Prod→local tasks sync failed.");
@@ -294,9 +325,8 @@ try {
 spawnInherit("npx", ["vite", "--port", String(VITE_PORT), "--strictPort", "--host"], "vite");
 console.log(`✓ Vite starting on :${VITE_PORT} — login uses proxied /api/auth/login`);
 
-// Background re-sync OFF by default — periodic full replace was reverting local numbers
-// while browsing. Opt in: GYSH_D1_SYNC_INTERVAL_MS=600000 (statuses only; not time_entries).
-if (process.env.GYSH_SKIP_D1_SYNC !== "1") {
+// Background prod→local re-sync only applies to sandbox (local D1) mode.
+if (!useRemoteD1 && process.env.GYSH_SKIP_D1_SYNC !== "1") {
   const rawInterval = Number(process.env.GYSH_D1_SYNC_INTERVAL_MS);
   const intervalMs = Number.isFinite(rawInterval) ? rawInterval : 0;
   if (intervalMs >= 60_000) {

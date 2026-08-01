@@ -1,7 +1,6 @@
 import { UserPlus } from "lucide-react";
 import { SITE_NAME, ROOT_DOMAIN, ADMIN_EMAIL, FACEBOOK_URL, SITE_PURPOSE } from "../lib/site-config";
 import gyshLogo from "../assets/gysh-logo-rocket.png";
-import muntiesLogo from "../assets/munties-ai-agents-logo.png";
 import { FacebookIcon } from "./FacebookIcon";
 
 export type FooterNavView =
@@ -25,7 +24,13 @@ export function SiteFooter({ onNavigate }: SiteFooterProps) {
     <footer className="site-footer" role="contentinfo">
       <div className="site-footer-inner">
         <div className="site-footer-brand">
-          <img src={gyshLogo} alt={SITE_NAME} className="site-footer-logo" />
+          <img
+            src={gyshLogo}
+            alt={SITE_NAME}
+            className="site-footer-logo"
+            width={584}
+            height={280}
+          />
           <p className="site-footer-tagline">{SITE_PURPOSE}</p>
           <div className="site-footer-social">
             <a
@@ -33,10 +38,10 @@ export function SiteFooter({ onNavigate }: SiteFooterProps) {
               className="site-footer-social-link"
               target="_blank"
               rel="noopener noreferrer"
-              aria-label="Follow Get Your Side Hustle on Facebook"
+              aria-label="Follow on Facebook"
               data-testid="footer-facebook"
             >
-              <FacebookIcon size={18} />
+              <FacebookIcon size={18} aria-hidden />
               <span>Follow on Facebook</span>
             </a>
             <button
@@ -73,9 +78,9 @@ export function SiteFooter({ onNavigate }: SiteFooterProps) {
             className="site-footer-link site-footer-link--facebook"
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="GYSH on Facebook"
+            aria-label="Facebook"
           >
-            <FacebookIcon size={16} />
+            <FacebookIcon size={16} aria-hidden />
             Facebook
           </a>
         </nav>
@@ -117,7 +122,18 @@ export function SiteFooter({ onNavigate }: SiteFooterProps) {
           title="Muntie's AI Agents"
         >
           <span>Powered by</span>
-          <img src={muntiesLogo} alt="Muntie's AI Agents" className="site-footer-muntie-logo" />
+          <picture>
+            <source srcSet="/brand/munties-ai-agents-logo.webp" type="image/webp" />
+            <img
+              src="/brand/munties-ai-agents-logo.png"
+              alt="Muntie's AI Agents"
+              className="site-footer-muntie-logo"
+              width={256}
+              height={256}
+              loading="lazy"
+              decoding="async"
+            />
+          </picture>
         </a>
       </div>
     </footer>

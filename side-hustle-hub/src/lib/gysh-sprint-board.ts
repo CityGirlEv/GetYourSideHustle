@@ -5,6 +5,7 @@
 
 import {
   BACKLOG_SPRINT,
+  DEFAULT_SPRINT_COUNT,
   buildDefaultPlanItems,
   dayOffset,
   dueDateForSprint,
@@ -57,6 +58,25 @@ export const TASK_SPRINT_MAP: Record<string, number> = {
   // Sprint 2 — Soft Launch (~Aug 3)
   "T-026": 2, // First FB post
   "T-027": 2, // Kevina TikTok populate
+  "T-SL-S2-FB-WELCOME": 2,
+  "T-SL-S2-YT-CREATE": 2,
+  // Sprint 3 — Polish + soft-launch marketing cadence
+  "T-SL-S3-CHANNELS-TIKTOK": 3,
+  "T-SL-S3-CHANNELS-IG": 3,
+  "T-SL-S3-WEB-SOFT-LAUNCH": 3,
+  "T-SL-S3-FB-WHY-GYSH": 3,
+  "T-SL-S3-KEVINA-1": 3,
+  "T-SL-S3-FB-MATCH-WIZARD": 3,
+  "T-SL-S3-YT-FIRST-SHORT": 3,
+  "T-SL-S3-FB-FREE-GUIDES": 3,
+  "T-SL-S3-NEWSLETTER-1": 3,
+  "T-SL-S3-KEVINA-2": 3,
+  "T-SL-S3-FB-SENIORS": 3,
+  "T-SL-S3-WEB-SEO-SNIPPETS": 3,
+  "T-SL-S3-FB-TEENS": 3,
+  "T-SL-S3-KEVINA-3": 3,
+  "T-SL-S3-FB-WEEK-WRAP": 3,
+  "T-SL-S3-ADS-BRIEF": 3,
   // Sprint 3 — Polish (SEO, Senior page, workshops, first guides, ops polish)
   "T-006": 3, // Testing Portal (internal — after public launch)
   "T-009": 3, // SEO landings
@@ -75,7 +95,16 @@ export const TASK_SPRINT_MAP: Record<string, number> = {
   "T-LG-affiliate": 3,
   "T-LG-social": 3,
   "T-LG-property-mgmt": 3,
-  // Sprint 4 — Kids GMSH sign-off + Growth
+  // Sprint 4 — Kids GMSH + Growth + ads / IG / TikTok
+  "T-SL-S4-IG-LAUNCH": 4,
+  "T-SL-S4-TIKTOK-1": 4,
+  "T-SL-S4-ADS-LIVE": 4,
+  "T-SL-S4-NEWSLETTER-2": 4,
+  "T-SL-S4-KEVINA-CADENCE": 4,
+  "T-SL-S4-FB-CADENCE": 4,
+  "T-SL-S4-WEB-BLOG-OR-UPDATE": 4,
+  "T-SL-S4-YT-SHORT-2": 4,
+  "T-SL-S4-ADS-RETRO": 4,
   "T-015": 4,
   "T-016": 4,
   "T-LG-rideshare": 4,
@@ -85,10 +114,20 @@ export const TASK_SPRINT_MAP: Record<string, number> = {
   "T-LG-web-leads": 4,
   "T-LG-ai-assets": 4,
   "T-LG-ai-timing": 4,
-  // Intentionally parked (not part of soft-launch path)
-  "T-033": BACKLOG_SPRINT, // KevinaStarr FB Page (separate)
-  "T-034": BACKLOG_SPRINT, // ETSY store
-  "T-035": BACKLOG_SPRINT, // Veterans section
+  // Sprint 5 — Teens/Adult GMSH + soft-launch systems
+  "T-SL-S5-CADENCE-SYSTEM": 5,
+  "T-SL-S5-NEWSLETTER-3": 5,
+  "T-SL-S5-ADS-ITERATE": 5,
+  "T-SL-S5-KEVINA-CADENCE": 5,
+  "T-SL-S5-FB-UGC-ASK": 5,
+  "T-SL-S5-MULTI-CHANNEL-REPOST": 5,
+  "T-SL-S5-RETRO": 5,
+  // Intentionally parked (not part of soft-launch path).
+  // Use literal -1 (BACKLOG_SPRINT) — module init can run before gysh-sprints finishes
+  // loading because of the gysh-tasks ↔ gysh-sprint-board import cycle.
+  "T-033": -1, // KevinaStarr FB Page (separate)
+  "T-034": -1, // ETSY store
+  "T-035": -1, // Veterans section
 };
 
 /**
@@ -114,6 +153,10 @@ export function suggestedSprintForTask(task: Pick<GyshTask, "id" | "category" | 
     return TASK_SPRINT_MAP[task.id]!;
   }
   if (task.id.startsWith("T-LG-")) return 3;
+  if (task.id.startsWith("T-SL-S2")) return 2;
+  if (task.id.startsWith("T-SL-S3")) return 3;
+  if (task.id.startsWith("T-SL-S4")) return 4;
+  if (task.id.startsWith("T-SL-S5")) return 5;
   if (task.notes.includes("Sprint 0")) return 0;
   if (task.notes.includes("Sprint 1")) return 1;
   if (task.notes.includes("Sprint 2")) return 2;
@@ -133,6 +176,7 @@ export function taskHasExplicitSprintPlacement(
 ): boolean {
   if (Object.prototype.hasOwnProperty.call(TASK_SPRINT_MAP, task.id)) return true;
   if (task.id.startsWith("T-LG-")) return true;
+  if (task.id.startsWith("T-SL-")) return true;
   return /Sprint\s*\d/i.test(String(task.notes || ""));
 }
 
@@ -220,10 +264,16 @@ export function suggestedSprintForTest(
     id.startsWith("PW-MEMBER") ||
     id.startsWith("PW-JOIN") ||
     id.startsWith("PW-AUTH") ||
+    id.startsWith("PW-FS") ||
+    id.startsWith("FS-") ||
+    id.startsWith("LH-") ||
     id.startsWith("KIDS-") ||
     id.startsWith("CHECK-") ||
     id.startsWith("VT-MEMBER") ||
-    id.startsWith("VT-FIND")
+    id.startsWith("VT-FIND") ||
+    id.startsWith("VT-LH") ||
+    area === "foresight" ||
+    area === "lighthouse"
   ) {
     return 2;
   }
@@ -413,8 +463,8 @@ export function sprintRolloverSummary(
   knownCaseIds?: ReadonlySet<string>,
   notes?: Record<string, string | undefined>,
   tasks?: readonly SprintRolloverTask[],
-  /** Last sprint index in the schedule (default 6). Used to omit “→ S7”. */
-  lastSprintIndex = 6,
+  /** Last sprint index in the schedule. Used to omit “→ S{n+1}” past the plan. */
+  lastSprintIndex = DEFAULT_SPRINT_COUNT - 1,
 ): {
   toNext: number;
   fromPrev: number;
@@ -447,7 +497,8 @@ export function sprintRolloverSummary(
   if (sprintIndex < lastSprintIndex) {
     parts.push(`→ S${sprintIndex + 1}: ${formatRolloverBreakdown(toNextTests, toNextTasks)}`);
   }
-  if (sprintIndex > 1) {
+  // Sprint 1 must show “from S0”; only Sprint 0 has no prior sprint.
+  if (sprintIndex > 0) {
     parts.push(
       `from S${sprintIndex - 1}: ${formatRolloverBreakdown(fromPrevTests, fromPrevTasks)}`,
     );
@@ -459,7 +510,7 @@ export function sprintRolloverSummary(
       `${formatRolloverBreakdown(toNextTests, toNextTasks)} rolled over to Sprint ${sprintIndex + 1}`,
     );
   }
-  if (sprintIndex > 1) {
+  if (sprintIndex > 0) {
     bannerParts.push(
       `${formatRolloverBreakdown(fromPrevTests, fromPrevTasks)} rolled over from Sprint ${sprintIndex - 1}`,
     );
@@ -515,7 +566,8 @@ export function planToBoardCard(item: PlanItem): BoardCard {
 }
 
 export function taskToBoardCard(task: GyshTask): BoardCard {
-  const sprint = typeof task.sprint === "number" ? task.sprint : suggestedSprintForTask(task);
+  const sprintNum = Number(task.sprint);
+  const sprint = Number.isFinite(sprintNum) ? sprintNum : suggestedSprintForTask(task);
   return {
     key: `task:${task.id}`,
     source: "task",
@@ -541,11 +593,11 @@ export function testToBoardCard(
 ): BoardCard {
   const sprint =
     typeof sprintOverride === "number" ? sprintOverride : suggestedSprintForTest(test);
-  // Backlog never shows a person (catalog defaults would otherwise look assigned).
-  const owner = isBacklogSprint(sprint)
-    ? UNASSIGNED_OWNER
-    : assigneeOverride
-      ? ownerFromAssignees([assigneeOverride])
+  // D1 override wins. Backlog without override stays Unassigned (catalog defaults would look assigned).
+  const owner = assigneeOverride?.trim()
+    ? ownerFromAssignees([assigneeOverride])
+    : isBacklogSprint(sprint)
+      ? UNASSIGNED_OWNER
       : ownerFromAssignees(test.assignees);
   return {
     key: `test:${test.id}`,

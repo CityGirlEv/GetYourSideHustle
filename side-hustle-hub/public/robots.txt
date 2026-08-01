@@ -1,0 +1,9 @@
+# https://getyoursidehustle.com/robots.txt
+User-agent: *
+Allow: /
+
+# App / API surfaces (not for indexing)
+Disallow: /api/
+Disallow: /admin
+
+Sitemap: https://getyoursidehustle.com/sitemap.xml

@@ -499,7 +499,8 @@ export function applyPdfPageBranding(
   updatedAt: Date = new Date(),
   opts?: { draft?: boolean; updatedBy?: string },
 ) {
-  const showDraft = opts?.draft !== false;
+  // Opt-in only — marketing/member/audience guide PDFs must not show DRAFT by default.
+  const showDraft = opts?.draft === true;
   const pages = doc.getNumberOfPages();
   const by = String(opts?.updatedBy || "").trim();
   const updatedLabel = by

@@ -1,6 +1,11 @@
 /** GYSH Content Factory — generator + D1 persistence (no client seed drafts). */
 
 import { api } from "./api";
+import {
+  SOFT_LAUNCH_ROLLOUT,
+  rolloutItemToDraftFields,
+  type SoftLaunchItem,
+} from "./gysh-soft-launch-rollout";
 
 export type ContentAssetType =
   | "youtube_script"
@@ -169,5 +174,60 @@ export function generateWeeklyBatch(
   return {
     batches: [batch, ...existing.batches],
     drafts: [...newDrafts, ...existing.drafts],
+  };
+}
+
+/**
+ * Seed Content Factory drafts from the Soft Launch rollout calendar.
+ * Skips items already present (title starts with matching `[S#]` title).
+ */
+export function seedSoftLaunchDrafts(
+  existing: { batches: ContentBatch[]; drafts: ContentDraft[] },
+  opts?: { sprint?: number; items?: SoftLaunchItem[] },
+): { batches: ContentBatch[]; drafts: ContentDraft[]; added: number } {
+  const source =
+    opts?.items ??
+    (opts?.sprint != null
+      ? SOFT_LAUNCH_ROLLOUT.filter((i) => i.sprint === opts.sprint)
+      : SOFT_LAUNCH_ROLLOUT.filter((i) => i.sprint >= 2 && i.sprint <= 5));
+
+  const existingTitles = new Set(existing.drafts.map((d) => d.title));
+  const createdAt = new Date().toISOString();
+  const batchId = `BATCH-SL-${Date.now()}`;
+  const newDrafts: ContentDraft[] = [];
+
+  for (const item of source) {
+    const fields = rolloutItemToDraftFields(item);
+    if (existingTitles.has(fields.title)) continue;
+    newDrafts.push({
+      id: `D-SL-${item.id}-${Date.now()}-${newDrafts.length}`,
+      batchId,
+      type: fields.type,
+      title: fields.title,
+      excerpt: fields.excerpt,
+      body: fields.body,
+      audience: fields.audience,
+      status: "draft",
+      owner: fields.owner,
+      createdAt,
+    });
+  }
+
+  if (newDrafts.length === 0) {
+    return { batches: existing.batches, drafts: existing.drafts, added: 0 };
+  }
+
+  const batch: ContentBatch = {
+    id: batchId,
+    name: opts?.sprint != null ? `Soft Launch — Sprint ${opts.sprint}` : "Soft Launch — S2–S5",
+    topic: "GYSH soft launch marketing rollout",
+    createdAt,
+    draftIds: newDrafts.map((d) => d.id),
+  };
+
+  return {
+    batches: [batch, ...existing.batches],
+    drafts: [...newDrafts, ...existing.drafts],
+    added: newDrafts.length,
   };
 }

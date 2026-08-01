@@ -19,18 +19,35 @@ import {
 } from "./pdf-branding";
 import { openPdfInBrowser, reservePdfTab } from "./open-pdf";
 
-/** Partner meeting length used for timed agenda slots. */
-export const AGENDA_MEETING_MINUTES = 60;
+/** Partner meeting length used for timed agenda slots (default 90 — room for report reviews). */
+export const AGENDA_MEETING_MINUTES = 90;
 /** Closing Q&A block (always last). */
-export const AGENDA_QA_MINUTES = 7;
-/** Two empty agenda slots Tina can fill if needed (4 & 4). */
+export const AGENDA_QA_MINUTES = 5;
+/** Two empty agenda slots Tina can fill if needed (2 & 2). */
 export const AGENDA_TINA_PLACEHOLDER_COUNT = 2;
-export const AGENDA_TINA_PLACEHOLDER_MINUTES = 4;
+export const AGENDA_TINA_PLACEHOLDER_MINUTES = 2;
+/** Reserved blocks that must fit inside the meeting. */
+export const AGENDA_RESERVED_MINUTES =
+  AGENDA_QA_MINUTES + AGENDA_TINA_PLACEHOLDER_COUNT * AGENDA_TINA_PLACEHOLDER_MINUTES;
+export const MIN_AGENDA_MEETING_MINUTES = AGENDA_RESERVED_MINUTES + 5;
+export const MAX_AGENDA_MEETING_MINUTES = 180;
+
+/** Clamp/sanitize total meeting minutes for schedule + persistence. */
+export function clampAgendaMeetingMinutes(value: unknown): number {
+  const n = Math.round(Number(value));
+  if (!Number.isFinite(n)) return AGENDA_MEETING_MINUTES;
+  return Math.min(
+    MAX_AGENDA_MEETING_MINUTES,
+    Math.max(MIN_AGENDA_MEETING_MINUTES, n),
+  );
+}
 /** @deprecated use AGENDA_TINA_PLACEHOLDER_* */
 export const AGENDA_TINA_BUFFER_MINUTES =
   AGENDA_TINA_PLACEHOLDER_COUNT * AGENDA_TINA_PLACEHOLDER_MINUTES;
 /** Do not shave Monies spent below this when packing more items. */
-export const AGENDA_MONIES_FLOOR_MINUTES = 5;
+export const AGENDA_MONIES_FLOOR_MINUTES = 6;
+/** Deep-dive topics (reports, audits) keep at least this many minutes. */
+export const AGENDA_DEEP_DIVE_FLOOR_MINUTES = 8;
 
 export const AGENDA_RESERVED_QA_ID = "__agenda_qa__";
 export function agendaTinaPlaceholderId(index: number): string {
@@ -65,7 +82,7 @@ export type PartnerAgendaPdfInput = {
   meetingTimezone?: string;
   invitedText?: string;
   attendedText?: string;
-  /** Total meeting length in minutes (default 60). */
+  /** Total meeting length in minutes (default 90). */
   meetingMinutes?: number;
   /** When true, omit DRAFT watermark (Finalize Agenda). */
   finalized?: boolean;
@@ -151,7 +168,9 @@ function formatMeetingWhen(input: PartnerAgendaPdfInput): string {
   const date = (input.meetingDate ?? input.agenda.meetingDate)?.trim() || "Date TBD";
   const timeRaw = input.meetingTime ?? input.agenda.meetingTime;
   const startMins = parseHhMmToMinutes(timeRaw);
-  const meetingMinutes = input.meetingMinutes ?? AGENDA_MEETING_MINUTES;
+  const meetingMinutes = clampAgendaMeetingMinutes(
+    input.meetingMinutes ?? input.agenda.meetingMinutes ?? AGENDA_MEETING_MINUTES,
+  );
   const tz =
     (input.meetingTimezone ?? input.agenda.meetingTimezone)?.trim() || DEFAULT_AGENDA_TIMEZONE;
   if (startMins == null) return `${date} · Time TBD · ${tz} · ${meetingMinutes} min`;
@@ -214,9 +233,9 @@ function resolveItems(input: PartnerAgendaPdfInput): ResolvedItem[] {
   });
 }
 
-/** Rough discussion weight before scaling into the meeting hour. */
+/** Rough discussion weight before scaling into the meeting. */
 function estimateRawMinutes(item: ResolvedItem): number {
-  const importanceBase: Record<number, number> = { 1: 10, 2: 8, 3: 6, 4: 5, 5: 4 };
+  const importanceBase: Record<number, number> = { 1: 12, 2: 9, 3: 6, 4: 5, 5: 4 };
   let mins = importanceBase[item.importance] ?? 6;
 
   const categoryBoost: Record<AgendaCategory, number> = {
@@ -231,22 +250,41 @@ function estimateRawMinutes(item: ResolvedItem): number {
   // Monies spent starts generous so we can shave it first when the agenda grows.
   if (isMoniesSpentItem(item)) mins += 4;
   else if (/(monies|money|spent|receipt|expense|budget)/.test(text)) mins += 2;
+  // Report / audit reviews need real airtime (Lighthouse, Foresight, Content Factory, etc.).
+  if (isDeepDiveItem(item)) mins += 7;
+  else if (/(report|audit|lighthouse|foresight|analyze|analysis)/.test(text)) mins += 4;
+  if (/(content factory|content calendar|batch)/.test(text)) mins += 3;
   if (/(percent|split|allocation|equity)/.test(text)) mins += 2;
-  if (/(legal|llc|contract|responsib)/.test(text)) mins += 2;
-  if (/(sprint|testing process)/.test(text)) mins += 1.5;
-  if (/(stripe|payment method)/.test(text)) mins += 1;
-  if (/(signup|walk through|coach)/.test(text)) mins += 1.5;
-  if (/(free member|guides)/.test(text)) mins += 0.5;
+  if (/(legal|llc|contract|responsib|delegation)/.test(text)) mins += 3;
+  if (/(sprint process|testing process)/.test(text)) mins += 2;
+  else if (/(sprint|testing)/.test(text)) mins += 1;
+  if (/(stripe|payment method)/.test(text)) mins += 2;
+  if (/(signup|walk through|walkthrough|coach)/.test(text)) mins += 2;
+  if (/(free member|guides)/.test(text)) mins += 1;
   if (item.questions.split("\n").filter(Boolean).length >= 2) mins += 1;
   if (item.actions.split("\n").filter(Boolean).length >= 2) mins += 1;
-  if (item.body.length > 160) mins += 1;
+  if (item.body.length > 160) mins += 1.5;
+  if (item.body.length > 400) mins += 1.5;
 
-  return Math.max(3, mins);
+  return Math.max(4, mins);
 }
 
 function isMoniesSpentItem(item: Pick<ResolvedItem, "title" | "body">): boolean {
   const text = `${item.title}\n${item.body}`.toLowerCase();
   return /monies\s*spent|money\s*spent|what has been spent/.test(text);
+}
+
+/** Topics that need a longer block (report walkthroughs, audits). */
+function isDeepDiveItem(item: Pick<ResolvedItem, "title" | "body" | "notes">): boolean {
+  const text = `${item.title}\n${item.body}\n${item.notes}`.toLowerCase();
+  return (
+    /(lighthouse|foresight)/.test(text) ||
+    /(analyze|analysis).{0,40}(report|audit)/.test(text) ||
+    /(review|walk through|walkthrough).{0,40}(report|audit|lighthouse|foresight|content factory)/.test(
+      text,
+    ) ||
+    /(report|audit).{0,40}(review|analyze|analysis|walk)/.test(text)
+  );
 }
 
 function makeSlot(
@@ -281,25 +319,28 @@ function makeSlot(
 /**
  * Pack discussion items into `totalMinutes`.
  * When over budget, shave Monies spent first (down to AGENDA_MONIES_FLOOR_MINUTES),
- * then trim other lowest-weight items.
+ * protect deep-dive report reviews, then trim other lowest-weight items.
  */
 function scaleDurations(
   raw: number[],
   totalMinutes: number,
   shaveFirst: boolean[],
+  protectFloor: boolean[] = [],
 ): number[] {
   if (raw.length === 0) return [];
-  const minEach = Math.max(3, Math.floor(totalMinutes / (raw.length * 3)) || 3);
+  const minEach = Math.max(4, Math.floor(totalMinutes / (raw.length * 2.5)) || 4);
   const cappedMin = Math.min(minEach, Math.floor(totalMinutes / raw.length));
-  const floor = Math.max(3, cappedMin);
+  const floor = Math.max(4, cappedMin);
 
   let minFloor = floor;
-  while (minFloor > 1 && minFloor * raw.length > totalMinutes) minFloor -= 1;
+  while (minFloor > 2 && minFloor * raw.length > totalMinutes) minFloor -= 1;
 
   const weights = raw.map((r) => Math.max(minFloor, r));
   const weightSum = weights.reduce((a, b) => a + b, 0) || 1;
   const ideal = weights.map((w) => (w / weightSum) * totalMinutes);
-  const durations = ideal.map((v) => Math.max(minFloor, Math.floor(v)));
+  const durations = ideal.map((v, i) =>
+    Math.max(protectFloor[i] ? AGENDA_DEEP_DIVE_FLOOR_MINUTES : minFloor, Math.floor(v)),
+  );
 
   let used = durations.reduce((a, b) => a + b, 0);
   let guard = 0;
@@ -313,8 +354,11 @@ function scaleDurations(
     guard += 1;
   }
 
-  const floorFor = (i: number) =>
-    shaveFirst[i] ? Math.max(AGENDA_MONIES_FLOOR_MINUTES, minFloor) : minFloor;
+  const floorFor = (i: number) => {
+    if (shaveFirst[i]) return Math.max(AGENDA_MONIES_FLOOR_MINUTES, minFloor);
+    if (protectFloor[i]) return Math.max(AGENDA_DEEP_DIVE_FLOOR_MINUTES, minFloor);
+    return minFloor;
+  };
 
   guard = 0;
   while (used > totalMinutes && guard < 500) {
@@ -329,13 +373,24 @@ function scaleDurations(
       guard += 1;
       continue;
     }
-    // 2) Then trim other items.
+    // 2) Then trim other non–deep-dive items.
     const order = durations
       .map((d, i) => ({ i, d, w: weights[i] }))
-      .filter((x) => !shaveFirst[x.i] && x.d > floorFor(x.i))
+      .filter((x) => !shaveFirst[x.i] && !protectFloor[x.i] && x.d > floorFor(x.i))
       .sort((a, b) => a.w - b.w || b.d - a.d);
-    if (!order.length) break;
-    durations[order[0].i] -= 1;
+    if (order.length) {
+      durations[order[0].i] -= 1;
+      used -= 1;
+      guard += 1;
+      continue;
+    }
+    // 3) Last resort: trim deep dives above their floor.
+    const deep = durations
+      .map((d, i) => ({ i, d, w: weights[i] }))
+      .filter((x) => protectFloor[x.i] && x.d > floorFor(x.i))
+      .sort((a, b) => a.w - b.w || b.d - a.d);
+    if (!deep.length) break;
+    durations[deep[0].i] -= 1;
     used -= 1;
     guard += 1;
   }
@@ -377,9 +432,9 @@ function resolvePartialItems(
 }
 
 /**
- * Build a 60-min schedule:
- * discussion items → 2×4 min Tina placeholders (filled by Tina's items) → 7 min Q&A.
- * Extra items pull time from Monies spent first.
+ * Build a timed schedule (default 90 min):
+ * discussion items → 2×2 min Tina placeholders (filled by Tina's items) → closing Q&A.
+ * Extra items pull time from Monies spent first; report/audit deep-dives keep a floor.
  * Tina-authored items (up to placeholder count) occupy the Tina slots; extras stay in discussion.
  */
 export function allocateAgendaSchedule(input: {
@@ -390,14 +445,16 @@ export function allocateAgendaSchedule(input: {
   tinaPlaceholderCount?: number;
   tinaPlaceholderMinutes?: number;
 }): AgendaSchedule {
-  const meetingMinutes = input.meetingMinutes ?? AGENDA_MEETING_MINUTES;
+  const meetingMinutes = clampAgendaMeetingMinutes(
+    input.meetingMinutes ?? AGENDA_MEETING_MINUTES,
+  );
   const qaMinutes = input.qaMinutes ?? AGENDA_QA_MINUTES;
   const tinaCount = input.tinaPlaceholderCount ?? AGENDA_TINA_PLACEHOLDER_COUNT;
   const tinaEach = input.tinaPlaceholderMinutes ?? AGENDA_TINA_PLACEHOLDER_MINUTES;
   const tinaTotal = tinaCount * tinaEach;
   const discussionMinutes = Math.max(0, meetingMinutes - qaMinutes - tinaTotal);
-  // Default 3:30 PM Central when meeting time is unset (matches Agenda Configure).
-  const startMins = parseHhMmToMinutes(input.meetingTime) ?? 15 * 60 + 30;
+  // Default 1:30 PM Central (11:30 AM Vegas) when meeting time is unset.
+  const startMins = parseHhMmToMinutes(input.meetingTime) ?? 13 * 60 + 30;
 
   const resolved = resolvePartialItems(input.items);
   const tinaCandidates = resolved.filter((item) => isTinaAgendaAuthor(item.authorName));
@@ -407,7 +464,8 @@ export function allocateAgendaSchedule(input: {
 
   const raw = discussion.map(estimateRawMinutes);
   const shaveFirst = discussion.map(isMoniesSpentItem);
-  const durations = scaleDurations(raw, discussionMinutes, shaveFirst);
+  const protectFloor = discussion.map(isDeepDiveItem);
+  const durations = scaleDurations(raw, discussionMinutes, shaveFirst, protectFloor);
 
   const itemSlots = new Map<string, AgendaTimedSlot>();
   let cursor = startMins;
@@ -471,7 +529,9 @@ export function buildAgendaSchedule(input: PartnerAgendaPdfInput): AgendaSchedul
   return allocateAgendaSchedule({
     items,
     meetingTime: input.meetingTime ?? input.agenda.meetingTime,
-    meetingMinutes: input.meetingMinutes ?? AGENDA_MEETING_MINUTES,
+    meetingMinutes: clampAgendaMeetingMinutes(
+      input.meetingMinutes ?? input.agenda.meetingMinutes ?? AGENDA_MEETING_MINUTES,
+    ),
   });
 }
 
@@ -578,7 +638,9 @@ export async function buildPartnerAgendaPdf(input: PartnerAgendaPdfInput): Promi
     (input.agenda.attended || []).join(", ").trim() ||
     "—";
 
-  const meetingMinutes = input.meetingMinutes ?? AGENDA_MEETING_MINUTES;
+  const meetingMinutes = clampAgendaMeetingMinutes(
+    input.meetingMinutes ?? input.agenda.meetingMinutes ?? AGENDA_MEETING_MINUTES,
+  );
   const finalized = Boolean(input.finalized ?? input.agenda.finalized ?? input.agenda.finalizedAt);
   const items = resolveItems(input).sort((a, b) => {
     if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
@@ -658,7 +720,7 @@ export async function buildPartnerAgendaPdf(input: PartnerAgendaPdfInput): Promi
         });
       }
     } else if (slot.kind === "qa") {
-      para(ctx, "Last 7 minutes — closing questions and wrap-up.", {
+      para(ctx, `Last ${AGENDA_QA_MINUTES} minutes — closing questions and wrap-up.`, {
         size: 9,
         color: COLORS.muted,
         gap: 8,

@@ -163,11 +163,13 @@ const TEST_STATUS_SORT: Record<string, number> = {
   fixed_retest: 2,
   failed_retest: 3,
   fixed_cursor: 4,
-  not_run: 5,
-  fail: 6,
-  blocked: 7,
-  conditional_approval: 8,
-  pass: 9,
+  fixed_lighthouse: 5,
+  fixed_foresight: 6,
+  not_run: 7,
+  fail: 8,
+  blocked: 9,
+  conditional_approval: 10,
+  pass: 11,
 };
 
 export type DailyProgressReport = {

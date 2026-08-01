@@ -4,7 +4,6 @@
  * Sprint 0 is anchored to Jul 14–Jul 20, 2026 (assignments never drift).
  */
 
-import { suiteOwnerForAutomatedCase } from "./gysh-automated-tests";
 import { parseAssigneePeople, requiresPartnerDone } from "./gysh-tasks";
 
 export type SprintWindow = {
@@ -30,18 +29,20 @@ export function isBacklogSprint(sprint: number | null | undefined): boolean {
 }
 
 /**
- * Backlog items have no person assignment.
- * - Tasks / plan: "Unassigned"
- * - Tests (D1): empty string (board shows Unassigned)
- * Leaving backlog does not invent an assignee — caller keeps the cleared value until set.
+ * Backlog ownership rules:
+ * - Tasks / plan: always "Unassigned"
+ * - Tests: may keep a person (QA can assign before committing to a sprint)
+ * Leaving backlog does not invent an assignee — caller keeps the prior value until set.
  */
 export function assigneeForBacklogSprint(
   sprint: number,
   kind: "task" | "plan" | "test",
   current?: string | null,
 ): string {
-  if (!isBacklogSprint(sprint)) return String(current ?? "").trim();
-  return kind === "test" ? "" : UNASSIGNED_OWNER;
+  const cur = String(current ?? "").trim();
+  if (!isBacklogSprint(sprint)) return cur;
+  if (kind === "test") return cur;
+  return UNASSIGNED_OWNER;
 }
 
 export type PlanItemKind =
@@ -230,18 +231,21 @@ export const SPRINT_THEMES: SprintTheme[] = [
   },
   {
     index: 3,
-    goal: "Polish",
-    theme: "Post-launch: workshop/conference dates, Senior page, safety PDF, SEO landings, first guides, QA cycle",
+    goal: "Polish + Soft Launch Cadence",
+    theme:
+      "Post-launch polish + daily marketing: FB/Kevina/YouTube, TikTok+IG accounts, newsletter #1, website checklist, ads brief",
   },
   {
     index: 4,
-    goal: "Kids GMSH + Growth",
-    theme: "Kids Get My Side Hustle sign-off, plus AI brainstorm, mentors, and remaining guides",
+    goal: "Kids GMSH + Growth Ads",
+    theme:
+      "Kids GMSH sign-off, IG/TikTok first posts, Meta ads test week, newsletter #2, mentors/guides growth",
   },
   {
     index: 5,
-    goal: "Teens & Adult GMSH",
-    theme: "Teens + Adult Get My Side Hustle automated matrices (Vitest ownership)",
+    goal: "Teens & Adult GMSH + Systems",
+    theme:
+      "Teens + Adult GMSH matrices; lock Content Factory cadence, newsletter #3, ads iterate, soft-launch retro",
   },
   {
     index: 6,
@@ -270,9 +274,9 @@ export function listRolloutScheduleSummary(ref: Date = new Date()): RolloutSched
     0: "Infra & accounts — foundations only",
     1: "Brand & public content ready",
     2: "Soft launch (~Aug 3) — public smoke; GMSH matrices not required",
-    3: "Polish: SEO, guides, Senior page, workshops",
-    4: "Kids Get My Side Hustle sign-off + Growth",
-    5: "Teens + Adult Get My Side Hustle",
+    3: "Polish + soft-launch cadence (FB/Kevina/YT/newsletter)",
+    4: "Kids GMSH + IG/TikTok + first Meta ads",
+    5: "Teens/Adult GMSH + marketing systems",
     6: "Senior Get My Side Hustle",
     7: "Buffer / deferred pull",
   };
@@ -500,22 +504,16 @@ export function sanitizeBacklogPlanOwners<T extends { sprint?: number; owner?: s
   return { items: next, changed };
 }
 
-/** Clear stored test assignees for cases parked in backlog (persistence heal). */
+/**
+ * Formerly cleared person assignees on backlog tests. Tests may stay assigned in backlog
+ * (QA parks work before a sprint), so this is now a no-op kept for call-site compatibility.
+ */
 export function sanitizeBacklogTestAssignees(
   sprints: Record<string, number>,
   assignees: Record<string, string>,
 ): { assignees: Record<string, string>; changedIds: string[] } {
-  const next = { ...assignees };
-  const changedIds: string[] = [];
-  for (const [id, sprint] of Object.entries(sprints)) {
-    // Catalog Vitest/Playwright cases keep their suite runner even on backlog.
-    if (suiteOwnerForAutomatedCase(id)) continue;
-    if (!isBacklogSprint(sprint)) continue;
-    if (!String(next[id] ?? "").trim()) continue;
-    next[id] = "";
-    changedIds.push(id);
-  }
-  return { assignees: next, changedIds };
+  void sprints;
+  return { assignees: { ...assignees }, changedIds: [] };
 }
 
 export function dayOffset(sprint: SprintWindow, offset: number): Date {

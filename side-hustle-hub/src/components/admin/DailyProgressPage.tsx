@@ -25,6 +25,8 @@ import {
   type ProgressStatusFilter,
 } from "../../lib/daily-progress-report";
 import { currentSprintIndex } from "../../lib/gysh-sprints";
+import { fetchClosedSprints, isSprintLocked } from "../../lib/gysh-closed-sprints";
+import { SprintLockedBanner } from "./SprintLockedBanner";
 import {
   downloadDailyProgressExcel,
   downloadDailyProgressPdf,
@@ -140,6 +142,7 @@ export function DailyProgressPage() {
   const [audit, setAudit] = useState<DailyProgressAuditEntry[]>([]);
   const [auditError, setAuditError] = useState<string | null>(null);
   const [exporting, setExporting] = useState<ProgressExportFormat | null>(null);
+  const [closedSprints, setClosedSprints] = useState<Set<number>>(() => new Set());
   const pickerRef = useRef<HTMLDivElement>(null);
   const typedId = useId();
 
@@ -154,6 +157,20 @@ export function DailyProgressPage() {
 
   useEffect(() => {
     void refreshAudit();
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchClosedSprints()
+      .then((closed) => {
+        if (!cancelled) setClosedSprints(new Set(closed));
+      })
+      .catch(() => {
+        /* optional */
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -543,6 +560,8 @@ export function DailyProgressPage() {
               {SPRINT_FILTER_OPTIONS.map((opt) => {
                 const active = selectedSprints.includes(opt.key);
                 const isCurrent = opt.key === activeSprintIndex;
+                const locked =
+                  typeof opt.key === "number" && isSprintLocked(closedSprints, opt.key);
                 return (
                   <button
                     key={String(opt.key)}
@@ -551,8 +570,15 @@ export function DailyProgressPage() {
                     aria-selected={active}
                     className="qa-tester-bubble"
                     data-active={active ? "true" : "false"}
+                    data-locked={locked ? "true" : "false"}
                     data-testid={`daily-progress-sprints-${opt.key}`}
-                    title={isCurrent ? `${opt.label} · current` : opt.label}
+                    title={
+                      locked
+                        ? `${opt.label} · Closed & locked`
+                        : isCurrent
+                          ? `${opt.label} · current`
+                          : opt.label
+                    }
                     onClick={() =>
                       setSelectedSprints((prev) => toggleSprintFilter(prev, opt.key))
                     }
@@ -563,6 +589,7 @@ export function DailyProgressPage() {
                     }
                   >
                     {opt.shortLabel}
+                    {locked ? <SprintLockedBanner /> : null}
                   </button>
                 );
               })}

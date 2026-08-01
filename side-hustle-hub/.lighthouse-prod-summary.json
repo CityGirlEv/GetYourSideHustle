@@ -1,0 +1,493 @@
+{
+  "url": "https://getyoursidehustle.com/",
+  "scores": {
+    "performance": 63,
+    "accessibility": 96,
+    "seo": 92
+  },
+  "fails": [
+    {
+      "id": "color-contrast",
+      "score": 0,
+      "title": "Background and foreground colors do not have a sufficient contrast ratio.",
+      "displayValue": null
+    },
+    {
+      "id": "image-delivery-insight",
+      "score": 0,
+      "title": "Improve image delivery",
+      "displayValue": "Est savings of 1,202 KiB"
+    },
+    {
+      "id": "label-content-name-mismatch",
+      "score": 0,
+      "title": "Elements with visible text labels do not have matching accessible names.",
+      "displayValue": null
+    },
+    {
+      "id": "largest-contentful-paint",
+      "score": 0,
+      "title": "Largest Contentful Paint",
+      "displayValue": "10.8 s"
+    },
+    {
+      "id": "lcp-discovery-insight",
+      "score": 0,
+      "title": "LCP request discovery",
+      "displayValue": null
+    },
+    {
+      "id": "network-dependency-tree-insight",
+      "score": 0,
+      "title": "Network dependency tree",
+      "displayValue": null
+    },
+    {
+      "id": "render-blocking-insight",
+      "score": 0,
+      "title": "Render-blocking requests",
+      "displayValue": "Est savings of 430 ms"
+    },
+    {
+      "id": "robots-txt",
+      "score": 0,
+      "title": "robots.txt is not valid",
+      "displayValue": "38 errors found"
+    },
+    {
+      "id": "unused-css-rules",
+      "score": 0,
+      "title": "Reduce unused CSS",
+      "displayValue": "Est savings of 36 KiB"
+    },
+    {
+      "id": "unused-javascript",
+      "score": 0,
+      "title": "Reduce unused JavaScript",
+      "displayValue": "Est savings of 344 KiB"
+    },
+    {
+      "id": "first-contentful-paint",
+      "score": 0.15,
+      "title": "First Contentful Paint",
+      "displayValue": "4.5 s"
+    },
+    {
+      "id": "interactive",
+      "score": 0.22,
+      "title": "Time to Interactive",
+      "displayValue": "10.8 s"
+    },
+    {
+      "id": "cache-insight",
+      "score": 0.5,
+      "title": "Use efficient cache lifetimes",
+      "displayValue": "Est savings of 5 KiB"
+    },
+    {
+      "id": "total-byte-weight",
+      "score": 0.5,
+      "title": "Avoid enormous network payloads",
+      "displayValue": "Total size was 3,192 KiB"
+    },
+    {
+      "id": "unsized-images",
+      "score": 0.5,
+      "title": "Image elements do not have explicit `width` and `height`",
+      "displayValue": null
+    },
+    {
+      "id": "speed-index",
+      "score": 0.72,
+      "title": "Speed Index",
+      "displayValue": "4.5 s"
+    },
+    {
+      "id": "max-potential-fid",
+      "score": 0.98,
+      "title": "Max Potential First Input Delay",
+      "displayValue": "80 ms"
+    },
+    {
+      "id": "total-blocking-time",
+      "score": 0.99,
+      "title": "Total Blocking Time",
+      "displayValue": "90 ms"
+    }
+  ],
+  "details": {
+    "color-contrast": {
+      "id": "color-contrast",
+      "title": "Background and foreground colors do not have a sufficient contrast ratio.",
+      "score": 0,
+      "displayValue": null,
+      "sample": [
+        {
+          "sel": "div.glass-card > div > div > strong",
+          "label": "$1,500 - $8,000/mo",
+          "snip": "<strong style=\"color: var(--accent-pink); font-size: 1rem;\">"
+        },
+        {
+          "sel": "div.dashboard-home > div.hustle-grid > div.glass-card > span",
+          "label": "E-COMMERCE",
+          "snip": "<span style=\"font-size: 0.9375rem; font-weight: 600; color: var(--accent-purple);\">"
+        },
+        {
+          "sel": "div.glass-card > div > div > strong",
+          "label": "$200 - $3,000/mo",
+          "snip": "<strong style=\"color: var(--accent-purple); font-size: 1rem;\">"
+        },
+        {
+          "sel": "div.glass-card > div > div > strong",
+          "label": "$500 - $10,000/mo",
+          "snip": "<strong style=\"color: var(--accent-cyan); font-size: 1rem;\">"
+        },
+        {
+          "sel": "div.dashboard-home > div.hustle-grid > div.glass-card > span",
+          "label": "DIGITAL",
+          "snip": "<span style=\"font-size: 0.9375rem; font-weight: 600; color: var(--accent-purple);\">"
+        },
+        {
+          "sel": "div.glass-card > div > div > strong",
+          "label": "$200 - $10,000/mo",
+          "snip": "<strong style=\"color: var(--accent-purple); font-size: 1rem;\">"
+        },
+        {
+          "sel": "div.glass-card > div > div > strong",
+          "label": "$100 - $15,000/mo",
+          "snip": "<strong style=\"color: var(--accent-emerald); font-size: 1rem;\">"
+        },
+        {
+          "sel": "div.dashboard-home > div.hustle-grid > div.glass-card > span",
+          "label": "E-COMMERCE",
+          "snip": "<span style=\"font-size: 0.9375rem; font-weight: 600; color: var(--accent-amber);\">"
+        },
+        {
+          "sel": "div.glass-card > div > div > strong",
+          "label": "$1,000 - $25,000/mo",
+          "snip": "<strong style=\"color: var(--accent-amber); font-size: 1rem;\">"
+        },
+        {
+          "sel": "div.glass-card > div > div > strong",
+          "label": "$500 - $20,000/mo",
+          "snip": "<strong style=\"color: var(--accent-pink); font-size: 1rem;\">"
+        },
+        {
+          "sel": "div.glass-card > div > div > strong",
+          "label": "$800 - $6,000/mo",
+          "snip": "<strong style=\"color: var(--accent-cyan); font-size: 1rem;\">"
+        },
+        {
+          "sel": "div.dashboard-home > div.hustle-grid > div.glass-card > span",
+          "label": "AI / CREATIVE",
+          "snip": "<span style=\"font-size: 0.9375rem; font-weight: 600; color: var(--accent-purple);\">"
+        },
+        {
+          "sel": "div.glass-card > div > div > strong",
+          "label": "$500 - $5,000/mo",
+          "snip": "<strong style=\"color: var(--accent-purple); font-size: 1rem;\">"
+        },
+        {
+          "sel": "div.dashboard-home > div.hustle-grid > div.glass-card > span",
+          "label": "REAL ESTATE",
+          "snip": "<span style=\"font-size: 0.9375rem; font-weight: 600; color: var(--accent-amber);\">"
+        },
+        {
+          "sel": "div.glass-card > div > div > strong",
+          "label": "$1,000 - $8,000/mo",
+          "snip": "<strong style=\"color: var(--accent-amber); font-size: 1rem;\">"
+        }
+      ]
+    },
+    "label-content-name-mismatch": {
+      "id": "label-content-name-mismatch",
+      "title": "Elements with visible text labels do not have matching accessible names.",
+      "score": 0,
+      "displayValue": null,
+      "sample": [
+        {
+          "sel": "div.dashboard-home > section.glass > div.home-match-family__section-head > a.btn",
+          "label": "Follow on Facebook",
+          "snip": "<a href=\"https://www.facebook.com/getyoursidehustleofficial\" class=\"btn btn-outline home-match-family__side-cta home-match-family__facebook\" target=\"_blank\" rel=\"noopener noreferre"
+        },
+        {
+          "sel": "div.site-footer-inner > div.site-footer-brand > div.site-footer-social > a.site-footer-social-link",
+          "label": "Follow on Facebook",
+          "snip": "<a href=\"https://www.facebook.com/getyoursidehustleofficial\" class=\"site-footer-social-link\" target=\"_blank\" rel=\"noopener noreferrer\" aria-label=\"Follow Get Your Side Hustle on Fa"
+        }
+      ]
+    },
+    "robots-txt": {
+      "id": "robots-txt",
+      "title": "robots.txt is not valid",
+      "score": 0,
+      "displayValue": "38 errors found",
+      "sample": [
+        {
+          "message": "Syntax not understood",
+          "line": "<!doctype html>"
+        },
+        {
+          "message": "Syntax not understood",
+          "line": "<html lang=\"en\">"
+        },
+        {
+          "message": "Syntax not understood",
+          "line": "  <head>"
+        },
+        {
+          "message": "Syntax not understood",
+          "line": "    <meta charset=\"UTF-8\" />"
+        },
+        {
+          "message": "Syntax not understood",
+          "line": "    <link rel=\"icon\" type=\"image/png\" href=\"/favicon.png\" />"
+        },
+        {
+          "message": "Syntax not understood",
+          "line": "    <link rel=\"shortcut icon\" type=\"image/png\" href=\"/favicon.png\" />"
+        },
+        {
+          "message": "Syntax not understood",
+          "line": "    <link rel=\"apple-touch-icon\" href=\"/apple-touch-icon.png\" />"
+        },
+        {
+          "message": "Syntax not understood",
+          "line": "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />"
+        },
+        {
+          "message": "Syntax not understood",
+          "line": "    <title>Get Your Side Hustle — Learn, Calculate, and Connect</title>"
+        },
+        {
+          "message": "Syntax not understood",
+          "line": "    <meta name=\"description\" content=\"Discover modern side hustles with interact"
+        },
+        {
+          "message": "Unknown directive",
+          "line": "    <link rel=\"canonical\" href=\"https://getyoursidehustle.com/\" />"
+        },
+        {
+          "message": "Unknown directive",
+          "line": "    <meta property=\"og:title\" content=\"Get Your Side Hustle\" />"
+        },
+        {
+          "message": "Unknown directive",
+          "line": "    <meta property=\"og:description\" content=\"Discover modern side hustles with i"
+        },
+        {
+          "message": "Unknown directive",
+          "line": "    <meta property=\"og:url\" content=\"https://getyoursidehustle.com/\" />"
+        },
+        {
+          "message": "Unknown directive",
+          "line": "    <meta property=\"og:type\" content=\"website\" />"
+        }
+      ]
+    },
+    "image-delivery-insight": {
+      "id": "image-delivery-insight",
+      "title": "Improve image delivery",
+      "score": 0,
+      "displayValue": "Est savings of 1,202 KiB",
+      "sample": [
+        {
+          "sel": "div.home-promo-hero__band > div.home-promo-hero__layout > div.home-promo-hero__frame > img.home-promo-hero__img",
+          "label": "Get Your Side Hustle — Ideas, Action, Income, Freedom. For Kids, Teens, Adults …",
+          "snip": "<img alt=\"Get Your Side Hustle — Ideas, Action, Income, Freedom. For Kids, Teens, Ad…\" class=\"home-promo-hero__img\" width=\"1600\" height=\"900\" decoding=\"async\" fetchpriority=\"high\" "
+        },
+        {
+          "sel": "header.top-header > div.top-header-inner > button.brand-section > img.brand-header-logo",
+          "label": "Get Your Side Hustle",
+          "snip": "<img alt=\"Get Your Side Hustle\" class=\"brand-header-logo\" src=\"/assets/gysh-logo-rocket-sAGZ75m2.png\">"
+        }
+      ]
+    },
+    "unsized-images": {
+      "id": "unsized-images",
+      "title": "Image elements do not have explicit `width` and `height`",
+      "score": 0.5,
+      "displayValue": null,
+      "sample": [
+        {
+          "sel": "footer.site-footer > div.site-footer-meta > a.site-footer-built-by > img.site-footer-muntie-logo",
+          "label": "Muntie's AI Agents",
+          "snip": "<img alt=\"Muntie's AI Agents\" class=\"site-footer-muntie-logo\" src=\"/assets/munties-ai-agents-logo-Buk9_20Q.png\">"
+        },
+        {
+          "sel": "header.top-header > div.top-header-inner > button.brand-section > img.brand-header-logo",
+          "label": "Get Your Side Hustle",
+          "snip": "<img alt=\"Get Your Side Hustle\" class=\"brand-header-logo\" src=\"/assets/gysh-logo-rocket-sAGZ75m2.png\">"
+        },
+        {
+          "sel": "footer.site-footer > div.site-footer-inner > div.site-footer-brand > img.site-footer-logo",
+          "label": "Get Your Side Hustle",
+          "snip": "<img alt=\"Get Your Side Hustle\" class=\"site-footer-logo\" src=\"/assets/gysh-logo-rocket-sAGZ75m2.png\">"
+        }
+      ]
+    },
+    "render-blocking-insight": {
+      "id": "render-blocking-insight",
+      "title": "Render-blocking requests",
+      "score": 0,
+      "displayValue": "Est savings of 430 ms",
+      "sample": [
+        {
+          "url": "/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght",
+          "totalBytes": 1671,
+          "wastedMs": 946
+        },
+        {
+          "url": "/assets/index-DcoSI9Ia.css",
+          "totalBytes": 51527,
+          "wastedMs": 867
+        }
+      ]
+    },
+    "unused-javascript": {
+      "id": "unused-javascript",
+      "title": "Reduce unused JavaScript",
+      "score": 0,
+      "displayValue": "Est savings of 344 KiB",
+      "sample": [
+        {
+          "url": "/assets/index-D7OkA7DS.js",
+          "wastedBytes": 352213,
+          "totalBytes": 475165
+        }
+      ]
+    },
+    "lcp-discovery-insight": {
+      "id": "lcp-discovery-insight",
+      "title": "LCP request discovery",
+      "score": 0,
+      "displayValue": null,
+      "sample": [
+        {
+          "type": "checklist",
+          "items": {
+            "priorityHinted": {
+              "label": "fetchpriority=high applied",
+              "value": true
+            },
+            "requestDiscoverable": {
+              "label": "Request is discoverable in initial document",
+              "value": false
+            },
+            "eagerlyLoaded": {
+              "label": "LCP resources should not use loading=lazy",
+              "value": true
+            }
+          }
+        },
+        {
+          "type": "node",
+          "lhId": "page-0-IMG",
+          "path": "1,HTML,1,BODY,0,DIV,0,DIV,1,DIV,0,MAIN,0,DIV,1,SECTION,0,DIV,0,DIV,0,DIV,0,IMG",
+          "selector": "div.home-promo-hero__band > div.home-promo-hero__layout > div.home-promo-hero__frame > img.home-promo-hero__img",
+          "boundingRect": {
+            "top": 291,
+            "bottom": 551,
+            "left": 6,
+            "right": 406,
+            "width": 400,
+            "height": 260
+          },
+          "snippet": "<img alt=\"Get Your Side Hustle — Ideas, Action, Income, Freedom. For Kids, Teens, Ad…\" class=\"home-promo-hero__img\" width=\"1600\" height=\"900\" decoding=\"async\" fetchpriority=\"high\" src=\"/assets/gysh-home-hero-dCVACjHl.png\">",
+          "nodeLabel": "Get Your Side Hustle — Ideas, Action, Income, Freedom. For Kids, Teens, Adults …"
+        }
+      ]
+    },
+    "total-byte-weight": {
+      "id": "total-byte-weight",
+      "title": "Avoid enormous network payloads",
+      "score": 0.5,
+      "displayValue": "Total size was 3,192 KiB",
+      "sample": [
+        {
+          "url": "/assets/munties-ai-agents-logo-Buk9_20Q.png",
+          "totalBytes": 1252233
+        },
+        {
+          "url": "/assets/gysh-home-hero-dCVACjHl.png",
+          "totalBytes": 1121204
+        },
+        {
+          "url": "/assets/index-D7OkA7DS.js",
+          "totalBytes": 484924
+        },
+        {
+          "url": "/assets/gysh-logo-rocket-sAGZ75m2.png",
+          "totalBytes": 170344
+        },
+        {
+          "url": "/assets/kevina-starr-logo-DM2wrJqv.png",
+          "totalBytes": 68914
+        },
+        {
+          "url": "/assets/index-DcoSI9Ia.css",
+          "totalBytes": 51527
+        },
+        {
+          "url": "/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2",
+          "totalBytes": 48464
+        },
+        {
+          "url": "/s/cormorantgaramond/v21/co3bmX5slCNuHLi8bLeY9MK7whWMhyjYqXtKky2F7g.woff2",
+          "totalBytes": 37808
+        },
+        {
+          "url": "/favicon.png",
+          "totalBytes": 17959
+        },
+        {
+          "url": "/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496",
+          "totalBytes": 11577
+        }
+      ]
+    },
+    "bf-cache": {
+      "id": "bf-cache",
+      "title": "Page didn't prevent back/forward cache restoration",
+      "score": 1,
+      "displayValue": null,
+      "sample": []
+    },
+    "crawlable-anchors": {
+      "id": "crawlable-anchors",
+      "title": "Links are crawlable",
+      "score": 1,
+      "displayValue": null,
+      "sample": []
+    },
+    "meta-description": {
+      "id": "meta-description",
+      "title": "Document has a meta description",
+      "score": 1,
+      "displayValue": null,
+      "sample": []
+    },
+    "document-title": {
+      "id": "document-title",
+      "title": "Document has a `<title>` element",
+      "score": 1,
+      "displayValue": null,
+      "sample": []
+    },
+    "link-text": {
+      "id": "link-text",
+      "title": "Links have descriptive text",
+      "score": 1,
+      "displayValue": null,
+      "sample": []
+    },
+    "is-crawlable": {
+      "id": "is-crawlable",
+      "title": "Page isn’t blocked from indexing",
+      "score": 1,
+      "displayValue": null,
+      "sample": []
+    },
+    "viewport": null
+  }
+}

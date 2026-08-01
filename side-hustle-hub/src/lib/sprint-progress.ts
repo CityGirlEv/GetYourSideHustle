@@ -103,7 +103,7 @@ export function summarizeBoardProgress(
   const windows = listUpcomingSprints(DEFAULT_SPRINT_COUNT, ref);
 
   const sprints: SprintProgressSlice[] = windows.map((window) => {
-    const sprintCards = committed.filter((c) => c.sprint === window.index);
+    const sprintCards = committed.filter((c) => Number(c.sprint) === window.index);
     const theme = themeForSprint(window.index);
     const breakdown = tallyWork(sprintCards);
     return {

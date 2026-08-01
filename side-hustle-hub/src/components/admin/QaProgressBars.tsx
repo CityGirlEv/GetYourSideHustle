@@ -13,6 +13,8 @@ export type StatusTally = {
   fixed_retest: number;
   failed_retest: number;
   fixed_cursor: number;
+  fixed_lighthouse: number;
+  fixed_foresight: number;
   total: number;
 };
 
@@ -49,6 +51,8 @@ export function emptyTally(): StatusTally {
     fixed_retest: 0,
     failed_retest: 0,
     fixed_cursor: 0,
+    fixed_lighthouse: 0,
+    fixed_foresight: 0,
     total: 0,
   };
 }
@@ -71,6 +75,8 @@ export function tallyStatuses(
       case "fixed_retest":
       case "failed_retest":
       case "fixed_cursor":
+      case "fixed_lighthouse":
+      case "fixed_foresight":
         t[st] += 1;
         break;
       default:
@@ -99,6 +105,8 @@ function aggregateTally(rows: QaProgressRow[]): StatusTally {
     t.fixed_retest += row.tally.fixed_retest;
     t.failed_retest += row.tally.failed_retest;
     t.fixed_cursor += row.tally.fixed_cursor;
+    t.fixed_lighthouse += row.tally.fixed_lighthouse;
+    t.fixed_foresight += row.tally.fixed_foresight;
     t.total += row.tally.total;
   }
   return t;

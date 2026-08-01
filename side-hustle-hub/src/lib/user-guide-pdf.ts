@@ -135,6 +135,10 @@ function marketingSectionStartsNewPage(guideId: MarketingGuideId, n: number): bo
     // §1–2 · §3–4 · §5 with §6–7 (no membership photo on §5)
     return n === 3 || n === 5;
   }
+  if (guideId === "teens") {
+    // §1–2 · §3–4 together · §5 Membership alone · §6 with §7
+    return n === 3 || n === 5 || n === 6;
+  }
   // Adult (and similar): §1–3 · §4–5 · §6 with §7–8 continuing
   return n === 4 || n === 6;
 }
@@ -240,6 +244,7 @@ function drawCoverAndToc(
   tocEntries: { id: string; label: string; number?: string; level?: number }[],
   coverImageDataUrl?: string,
   _updatedAt: Date = new Date(),
+  opts?: { guideId?: MarketingGuideId },
 ): TocHotspot[] {
   drawPdfPageChrome(doc);
 
@@ -267,10 +272,17 @@ function drawCoverAndToc(
   y += editionLines.length * 11 + 10;
   // "Last updated" is drawn in the page footer (applyPdfPageBranding).
 
+  const isMaster = opts?.guideId === "master";
+  // Complete Guide: keep a 2-column TOC on page 1 — cap the hero so Contents fits.
+  const tocReserve = isMaster
+    ? Math.max(210, 36 + Math.ceil(tocEntries.length / 2) * 16)
+    : 140;
+
   if (coverImageDataUrl) {
     // Large hero under the intro (not inline). Leave room for Contents below.
-    const room = Math.max(180, PDF_CONTENT_BOTTOM - y - 140);
-    const sized = sizeContentImage(doc, coverImageDataUrl, CONTENT_W, Math.min(300, room));
+    const room = Math.max(isMaster ? 120 : 180, PDF_CONTENT_BOTTOM - y - tocReserve);
+    const maxHero = isMaster ? Math.min(200, room) : Math.min(300, room);
+    const sized = sizeContentImage(doc, coverImageDataUrl, CONTENT_W, maxHero);
     if (sized) {
       const x = MARGIN + (CONTENT_W - sized.w) / 2;
       doc.setDrawColor(...COLORS.line);
@@ -278,19 +290,24 @@ function drawCoverAndToc(
       doc.roundedRect(x - 2, y - 2, sized.w + 4, sized.h + 4, 3, 3, "FD");
       doc.addImage(coverImageDataUrl, "PNG", x, y, sized.w, sized.h);
       // Clear gap before Contents — first page has room; don’t pack the TOC against the image.
-      y += sized.h + 40;
+      y += sized.h + (isMaster ? 18 : 40);
     }
   } else {
     y += 12;
   }
 
-  if (y > PDF_CONTENT_BOTTOM - 90) {
+  // Master Complete Guide: never bump Contents off page 1.
+  if (!isMaster && y > PDF_CONTENT_BOTTOM - 90) {
     doc.addPage();
     drawPdfPageChrome(doc);
     y = PDF_CONTENT_TOP;
   }
 
-  return drawToc(doc, "Contents", tocEntries, { startY: y, newPage: false });
+  return drawToc(doc, "Contents", tocEntries, {
+    startY: y,
+    newPage: false,
+    compact: isMaster,
+  });
 }
 
 async function imageUrlToDataUrl(url: string): Promise<string | undefined> {
@@ -447,7 +464,7 @@ function drawToc(
   doc: jsPDF,
   title: string,
   entries: { id: string; label: string; number?: string; level?: number }[],
-  opts?: { startY?: number; newPage?: boolean },
+  opts?: { startY?: number; newPage?: boolean; compact?: boolean },
 ): TocHotspot[] {
   if (opts?.newPage !== false && opts?.startY === undefined) {
     doc.addPage();
@@ -460,26 +477,26 @@ function drawToc(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(FONT.h2);
   doc.text(title, MARGIN, y);
-  y += 6;
+  y += opts?.compact ? 4 : 6;
   doc.setDrawColor(...COLORS.bronze);
   doc.setLineWidth(1.2);
   doc.line(MARGIN, y, MARGIN + 64, y);
-  y += 12;
+  y += opts?.compact ? 8 : 12;
   doc.setFont("helvetica", "italic");
   doc.setFontSize(FONT.micro);
   doc.setTextColor(...COLORS.muted);
   doc.text("Click a title to jump to that section", MARGIN, y);
-  y += 14;
+  y += opts?.compact ? 10 : 14;
 
   // Two columns — use each entry's own section number (never invent a second one)
-  const colGap = 22;
+  const colGap = opts?.compact ? 16 : 22;
   const colW = (CONTENT_W - colGap) / 2;
   const leftX = MARGIN;
   const rightX = MARGIN + colW + colGap;
   const mid = Math.ceil(entries.length / 2);
   let leftY = y;
   let rightY = y;
-  const rowH = 20;
+  const rowH = opts?.compact ? 15 : 20;
 
   entries.forEach((entry, i) => {
     const isLeft = i < mid;
@@ -801,6 +818,7 @@ export async function downloadMarketingGuidePdf(
     toc,
     images.hero,
     updatedAt,
+    { guideId },
   );
 
   const destinations = new Map<string, { page: number; top: number }>();

@@ -8,6 +8,7 @@ import {
   guideReviewTaskId,
 } from "./launch-guides";
 import { ensureTaskNotesPageLink } from "./qa-page-links";
+import { suggestedSprintForTask } from "./gysh-sprint-board";
 
 export type TaskStatus = "not_started" | "in_progress" | "blocked" | "done";
 export type TaskPriority = "P0" | "P1" | "P2" | "P3";
@@ -171,6 +172,8 @@ export type GyshTask = {
   /** Partner completion — Both tasks need both true before status can be Done. */
   tinaDone: boolean;
   evelynDone: boolean;
+  /** Parent task id when this row is a subtask (e.g. T-041T → T-041). Empty = root. */
+  parentId?: string;
   /** ISO timestamp of last content change (server). */
   updatedAt?: string;
   /** Display name or email of last editor (server). */
@@ -211,13 +214,22 @@ export function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function coerceSprint(value: unknown, fallback = 0): number {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
 function mapTask(t: GyshTask): GyshTask {
+  const parentId = String((t as { parentId?: unknown }).parentId ?? "").trim();
   return {
     ...t,
     category: normalizeCategory(t.category),
-    sprint: typeof t.sprint === "number" ? t.sprint : Number((t as { sprint?: unknown }).sprint ?? 0) || 0,
+    // Do not use `|| 0` — BACKLOG_SPRINT is -1 and must stay -1.
+    sprint: coerceSprint((t as { sprint?: unknown }).sprint, 0),
     tinaDone: Boolean(t.tinaDone),
     evelynDone: Boolean(t.evelynDone),
+    parentId: parentId || undefined,
     attachments: Array.isArray(t.attachments) ? t.attachments : [],
   };
 }
@@ -397,7 +409,11 @@ export async function deletePlanAttachmentRemote(id: string): Promise<void> {
 }
 
 export function nextTaskId(tasks: GyshTask[]): string {
-  const nums = tasks.map((t) => Number(t.id.replace(/\D/g, "")) || 0);
+  // Only root-style T-### ids advance the counter (ignore T-041T / T-LG-* suffixes).
+  const nums = tasks.map((t) => {
+    const m = /^T-(\d+)$/i.exec(t.id);
+    return m ? Number(m[1]) : 0;
+  });
   const n = Math.max(0, ...nums) + 1;
   return `T-${String(n).padStart(3, "0")}`;
 }
@@ -506,7 +522,15 @@ export function dueAttentionTasks(
   me: PartnerAssignee,
 ): { overdue: GyshTask[]; dueToday: GyshTask[] } {
   const today = startOfToday();
-  const mine = tasks.filter((t) => taskMatchesAssignee(t, me) && t.status !== "done");
+  const parentIdsWithChildren = new Set(
+    tasks.map((t) => String(t.parentId || "").trim()).filter(Boolean),
+  );
+  const mine = tasks.filter((t) => {
+    if (!taskMatchesAssignee(t, me) || t.status === "done") return false;
+    // Umbrella parents are containers — due work lives on subtasks.
+    if (!String(t.parentId || "").trim() && parentIdsWithChildren.has(t.id)) return false;
+    return true;
+  });
   const overdue = mine.filter((t) => isTaskOverdue(t, today)).sort((a, b) => (a.dueDate || "").localeCompare(b.dueDate || ""));
   const dueToday = mine
     .filter((t) => isTaskDueToday(t, today))
@@ -543,12 +567,12 @@ export function ensureGuideReviewTasks(existing: GyshTask[]): {
     if (hasGuideReviewTask(existing, guide.id, guide.name) || hasGuideReviewTask(created, guide.id, guide.name)) {
       continue;
     }
-    created.push({
+    const draft = {
       id: guideReviewTaskId(guide.id),
       description: guideReviewDescription(guide.name),
-      category: "content",
-      priority: "P1",
-      status: "not_started",
+      category: "content" as const,
+      priority: "P1" as const,
+      status: "not_started" as const,
       assignBy: "Auto-sync",
       assignedTo: "Both",
       dateAssigned: today,
@@ -558,8 +582,10 @@ export function ensureGuideReviewTasks(existing: GyshTask[]): {
       sprint: 0,
       tinaDone: false,
       evelynDone: false,
-      attachments: [],
-    });
+      attachments: [] as GyshTaskAttachment[],
+    };
+    draft.sprint = suggestedSprintForTask(draft);
+    created.push(draft);
   }
 
   if (created.length === 0) {
@@ -589,25 +615,25 @@ export function ensureSeniorPageReviewTask(existing: GyshTask[]): {
   if (hasSeniorPageReviewTask(existing)) {
     return { tasks: existing, created: [] };
   }
-  const created: GyshTask[] = [
-    {
-      id: SENIOR_PAGE_REVIEW_TASK_ID,
-      description: SENIOR_PAGE_REVIEW_DESC,
-      category: "senior_side_hustles",
-      priority: "P1",
-      status: "not_started",
-      assignBy: "Auto-sync",
-      assignedTo: "Both",
-      dateAssigned: todayMMDDYY(),
-      dueDate: "",
-      dateCompleted: "",
-      notes: SENIOR_PAGE_REVIEW_NOTES,
-      sprint: 0,
-      tinaDone: false,
-      evelynDone: false,
-      attachments: [],
-    },
-  ];
+  const draft: GyshTask = {
+    id: SENIOR_PAGE_REVIEW_TASK_ID,
+    description: SENIOR_PAGE_REVIEW_DESC,
+    category: "senior_side_hustles",
+    priority: "P1",
+    status: "not_started",
+    assignBy: "Auto-sync",
+    assignedTo: "Both",
+    dateAssigned: todayMMDDYY(),
+    dueDate: "",
+    dateCompleted: "",
+    notes: SENIOR_PAGE_REVIEW_NOTES,
+    sprint: 0,
+    tinaDone: false,
+    evelynDone: false,
+    attachments: [],
+  };
+  draft.sprint = suggestedSprintForTask(draft);
+  const created: GyshTask[] = [draft];
   return { tasks: [...existing, ...created], created };
 }
 

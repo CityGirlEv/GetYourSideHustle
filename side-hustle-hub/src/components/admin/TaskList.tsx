@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ListChecks,
-  Lock,
   Plus,
   RotateCcw,
   Paperclip,
@@ -105,6 +104,14 @@ import { NotesThread } from "./NotesThread";
 import {
   taskMatchesSearch,
 } from "../../lib/gysh-task-search";
+import {
+  isTaskCountHead,
+  normalizeParentId,
+  orderTasksWithSubtasks,
+  rollupFamilyParents,
+  syncNotesAcrossFamily,
+} from "../../lib/gysh-task-family";
+import { SprintLockedBanner } from "./SprintLockedBanner";
 
 type OwnerFilter = GyshTask["assignedTo"];
 type CategoryFilter = TaskCategory;
@@ -118,6 +125,7 @@ function TaskFilterChip({
   accent,
   testId,
   current,
+  locked,
 }: {
   active: boolean;
   onClick: () => void;
@@ -126,6 +134,7 @@ function TaskFilterChip({
   accent?: string;
   testId?: string;
   current?: boolean;
+  locked?: boolean;
 }) {
   return (
     <button
@@ -133,6 +142,7 @@ function TaskFilterChip({
       className="qa-tester-bubble qa-filter-chip"
       data-active={active ? "true" : "false"}
       data-current={current ? "true" : undefined}
+      data-locked={locked ? "true" : "false"}
       data-testid={testId}
       title={title}
       onClick={onClick}
@@ -719,6 +729,21 @@ export function TaskList({
     void loadTasks();
   }, []);
 
+  // Load closed/locked sprints independently so chip banners don't depend on task sync.
+  useEffect(() => {
+    let cancelled = false;
+    void fetchClosedSprints()
+      .then((closed) => {
+        if (!cancelled) setClosedSprints(new Set(closed));
+      })
+      .catch(() => {
+        /* keep empty */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const filtersAreAll =
     ownerFilters.size === 0 &&
     categoryFilters.size === 0 &&
@@ -852,7 +877,7 @@ export function TaskList({
     return true;
   };
 
-  const filtered = tasks.filter((t) => taskMatchesFilters(t));
+  const filtered = orderTasksWithSubtasks(tasks.filter((t) => taskMatchesFilters(t)));
   const otherFiltersActive =
     ownerFilters.size > 0 ||
     categoryFilters.size > 0 ||
@@ -1155,10 +1180,15 @@ export function TaskList({
       withSprintDueDate(withAssignMeta(prev, updates)),
       prev?.sprint,
     );
-    const next = tasksRef.current.map((t) => {
+    let next = tasksRef.current.map((t) => {
       if (t.id !== id) return t;
       return applyPartnerDone(t, applied);
     });
+    // Shared notes: anything saved on parent or a subtask mirrors to the whole family.
+    if (updates.notes !== undefined) {
+      next = syncNotesAcrossFamily(next, id, String(updates.notes ?? ""));
+    }
+    next = rollupFamilyParents(next, id);
     try {
       await persist(next);
       if (updates.status != null && prev && updates.status !== prev.status) {
@@ -1525,7 +1555,9 @@ export function TaskList({
                 </TaskFilterChip>
                 {sprints.map((s) => {
                   const active = sprintFilters.has(s.index);
-                  const inSprint = sprintFacetTasks.filter((t) => (t.sprint ?? 0) === s.index);
+                  const inSprint = sprintFacetTasks.filter(
+                    (t) => (t.sprint ?? 0) === s.index && isTaskCountHead(t),
+                  );
                   const count = inSprint.length;
                   const doneCount = inSprint.filter((t) => t.status === "done").length;
                   // Global rolled-in count (not narrowed by other filters) — same as Testing Portal.
@@ -1534,18 +1566,22 @@ export function TaskList({
                     s.index,
                   );
                   const isCurrent = s.index === liveSprintIndex;
+                  const locked = isSprintLocked(closedSprints, s.index);
                   const accent = isCurrent ? "#5f7a45" : "#947D64";
                   return (
                     <TaskFilterChip
                       key={s.index}
                       active={active}
                       current={isCurrent}
+                      locked={locked}
                       testId={`task-list-sprint-${s.index}`}
                       onClick={() => toggleSprintFilter(s.index)}
                       title={
-                        isCurrent
-                          ? `${s.label} (current) · ${s.rangeLabel} · ${doneCount}/${count} done · ${rolledIn} rolled over`
-                          : `${s.label} · ${s.rangeLabel} · ${doneCount}/${count} done · ${rolledIn} rolled over`
+                        locked
+                          ? `${s.label} · Closed & locked · ${s.rangeLabel} · ${doneCount}/${count} done`
+                          : isCurrent
+                            ? `${s.label} (current) · ${s.rangeLabel} · ${doneCount}/${count} done · ${rolledIn} rolled over`
+                            : `${s.label} · ${s.rangeLabel} · ${doneCount}/${count} done · ${rolledIn} rolled over`
                       }
                       accent={accent}
                     >
@@ -1556,6 +1592,11 @@ export function TaskList({
                           {isCurrent ? " · current" : ""}
                         </span>
                         <span className="task-list-sprint__dates">{s.numericRangeLabel}</span>
+                        {locked ? (
+                          <span className="task-list-sprint__locked-row">
+                            <SprintLockedBanner />
+                          </span>
+                        ) : null}
                       </span>
                       <span
                         className="qa-tester-meta task-list-sprint__meta"
@@ -1871,7 +1912,10 @@ export function TaskList({
             </option>
             <option value={BACKLOG_SPRINT}>Backlog</option>
             {sprints.map((s) => (
-              <option key={s.index} value={s.index}>{s.label}</option>
+              <option key={s.index} value={s.index} disabled={isSprintLocked(closedSprints, s.index)}>
+                {s.label}
+                {isSprintLocked(closedSprints, s.index) ? " · Locked" : ""}
+              </option>
             ))}
           </select>
           <label className="form-label" style={{ margin: 0, fontSize: "0.9375rem" }}>Status</label>
@@ -2085,10 +2129,11 @@ export function TaskList({
             <div
               key={t.id}
               id={`task-row-${t.id}`}
-              className={`glass task-card task-card--${t.status}${rolledIn ? " task-card--rolled" : ""}`}
+              className={`glass task-card task-card--${t.status}${rolledIn ? " task-card--rolled" : ""}${normalizeParentId(t.parentId) ? " task-card--subtask" : ""}`}
               style={{
                 padding: "14px 16px",
                 borderRadius: 12,
+                marginLeft: normalizeParentId(t.parentId) ? 28 : 0,
                 outline:
                   highlightId === t.id
                     ? "2px solid #9B2F28"
@@ -2101,14 +2146,16 @@ export function TaskList({
                   ? "3px solid #9B2F28"
                   : rolledIn
                     ? "3px solid #0e7490"
-                    : undefined,
+                    : normalizeParentId(t.parentId)
+                      ? "3px solid var(--bronze)"
+                      : undefined,
               }}
             >
               <div
                 className="task-row"
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "28px 28px 70px minmax(0, 1fr)",
+                  gridTemplateColumns: "28px 28px 78px minmax(0, 1fr)",
                   gap: 10,
                   alignItems: "start",
                 }}
@@ -2136,9 +2183,20 @@ export function TaskList({
                 >
                   {open ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                 </button>
-                <span className="flat-label flat-label--id" style={{ marginTop: 6 }}>{t.id}</span>
+                <span className="flat-label flat-label--id" style={{ marginTop: 6 }} title={normalizeParentId(t.parentId) ? `Subtask of ${t.parentId}` : undefined}>
+                  {normalizeParentId(t.parentId) ? `↳ ${t.id}` : t.id}
+                </span>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    {normalizeParentId(t.parentId) ? (
+                      <span
+                        className="task-card__rolled-badge"
+                        title={`Linked under ${t.parentId}`}
+                        style={{ background: "rgba(148,125,100,0.18)", color: "var(--bronze)" }}
+                      >
+                        under {t.parentId}
+                      </span>
+                    ) : null}
                     {rolledIn ? (
                       <span
                         className="task-card__rolled-badge"
@@ -2211,22 +2269,7 @@ export function TaskList({
                       <span className={`task-status-dot task-status-dot--${t.status}`} />
                       {TASK_STATUS_LABELS[t.status]}
                     </span>
-                    {locked && (
-                      <span
-                        className="glow-badge"
-                        style={{
-                          fontSize: "0.8125rem",
-                          background: "#475569",
-                          color: "#fff",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 4,
-                        }}
-                        title={sprintLockedMessage(Number(t.sprint))}
-                      >
-                        <Lock size={12} /> Locked
-                      </span>
-                    )}
+                    {locked && <SprintLockedBanner size={12} />}
                     {overdue && (
                       <span style={{ fontSize: "0.9375rem", fontWeight: 700, color: "#9B2F28", textTransform: "uppercase" }}>
                         Overdue

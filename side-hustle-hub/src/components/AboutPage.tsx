@@ -346,7 +346,8 @@ export function AboutPage({ onJoin, onOpenKids }: AboutPageProps) {
                 <strong className="about-em">Kevina Starr</strong>
                 <img
                   src={kevinaStarrMark}
-                  alt=""
+                  alt="Kevina Starr"
+                  aria-hidden="true"
                   className="about-kevina-mark about-kevina-mark--inline"
                   width={22}
                   height={22}

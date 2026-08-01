@@ -126,7 +126,9 @@ describe("gysh-sprints", () => {
     expect(isBacklogSprint(0)).toBe(false);
     expect(assigneeForBacklogSprint(BACKLOG_SPRINT, "task", "Evelyn")).toBe(UNASSIGNED_OWNER);
     expect(assigneeForBacklogSprint(BACKLOG_SPRINT, "plan", "Both")).toBe(UNASSIGNED_OWNER);
-    expect(assigneeForBacklogSprint(BACKLOG_SPRINT, "test", "evelyn")).toBe("");
+    // Tests may stay assigned while parked in backlog.
+    expect(assigneeForBacklogSprint(BACKLOG_SPRINT, "test", "evelyn")).toBe("evelyn");
+    expect(assigneeForBacklogSprint(BACKLOG_SPRINT, "test", "")).toBe("");
     expect(assigneeForBacklogSprint(2, "task", "Evelyn")).toBe("Evelyn");
     expect(assigneeForBacklogSprint(2, "test", "evelyn")).toBe("evelyn");
     expect(withBacklogTaskUnassigned({ sprint: BACKLOG_SPRINT, assignedTo: "Tina" })).toEqual({
@@ -167,12 +169,13 @@ describe("gysh-sprints", () => {
     expect(plan.changed).toBe(true);
     expect(plan.items[0]!.owner).toBe(UNASSIGNED_OWNER);
 
+    // Backlog tests keep person assignees (no sanitize wipe).
     const tests = sanitizeBacklogTestAssignees(
       { a: BACKLOG_SPRINT, b: 2, c: BACKLOG_SPRINT },
       { a: "evelyn", b: "tina", c: "" },
     );
-    expect(tests.changedIds).toEqual(["a"]);
-    expect(tests.assignees.a).toBe("");
+    expect(tests.changedIds).toEqual([]);
+    expect(tests.assignees.a).toBe("evelyn");
     expect(tests.assignees.b).toBe("tina");
   });
 });

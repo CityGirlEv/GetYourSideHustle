@@ -1,0 +1,542 @@
+%PDF-1.3
+%ºß¬à
+3 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 612. 792.]
+/Contents 4 0 R
+>>
+endobj
+4 0 obj
+<<
+/Length 4317
+>>
+stream
+0.200025 w
+0 G
+BT
+/F2 18 Tf
+20.6999999999999993 TL
+0.094 0.09 0.094 rg
+48. 744. Td
+(GYSH Lighthouse — Final Report) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.157 g
+48. 716. Td
+(URL: https://getyoursidehustle.com/) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.353 g
+48. 697. Td
+(Fetched: 2026-07-30T22:13:31.450Z) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.353 g
+48. 679. Td
+(Lighthouse 13.4.1) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.353 g
+48. 661. Td
+(Generated for task attachment · 2026-07-30T22:16:26.002Z) Tj
+ET
+BT
+/F2 14 Tf
+16.0999999999999979 TL
+0.094 0.09 0.094 rg
+48. 639. Td
+(Category scores) Tj
+ET
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.392 g
+48. 615. Td
+(Scores below are from the post-fix re-run against production.) Tj
+ET
+BT
+/F2 12 Tf
+13.7999999999999989 TL
+0.086 0.639 0.29 rg
+48. 598. Td
+(Performance: 91) Tj
+ET
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.275 g
+48. 580. Td
+(How quickly the page loads and becomes usable. Factors include First Contentful Paint \(FCP\), Largest Contentful Paint \(LCP\), Speed Index, Total) Tj
+T* (Blocking Time, and overall payload size. Lower scores usually mean heavy images/JS, render-blocking resources, or slow server responses.) Tj
+ET
+BT
+/F2 12 Tf
+13.7999999999999989 TL
+0.086 0.639 0.29 rg
+48. 548. Td
+(Accessibility: 100) Tj
+ET
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.275 g
+48. 530. Td
+(Whether people can use the page with assistive tech and clear UI. Checks things like color contrast, image alt text, form labels, and accessible) Tj
+T* (names that match visible text. A high score means fewer barriers for screen readers and keyboard users.) Tj
+ET
+BT
+/F2 12 Tf
+13.7999999999999989 TL
+0.086 0.639 0.29 rg
+48. 498. Td
+(SEO: 100) Tj
+ET
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.275 g
+48. 480. Td
+(Search-engine readiness basics: valid robots.txt, crawlable links, document title/meta description, viewport, and similar signals. This is not a full) Tj
+T* (SEO audit—only Lighthouse’s automated checks that help crawlers find and understand the page.) Tj
+ET
+BT
+/F2 14 Tf
+16.0999999999999979 TL
+0.094 0.09 0.094 rg
+48. 442. Td
+(Failing / partial audits \(11\)) Tj
+ET
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.392 g
+48. 418. Td
+(Score 0 = fail; scores between 0 and 1 are partial. Dev/Vite runs inflate Performance — this file uses the saved JSON report path below.) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.094 0.09 0.094 rg
+48. 401. Td
+([0] Improve image delivery) Tj
+ET
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.314 g
+48. 387. Td
+(id: image-delivery-insight · performance · Est savings of 204 KiB) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.094 0.09 0.094 rg
+48. 367. Td
+([0] Network dependency tree) Tj
+ET
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.314 g
+48. 353. Td
+(id: network-dependency-tree-insight · performance) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.094 0.09 0.094 rg
+48. 333. Td
+([0] Render-blocking requests) Tj
+ET
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.314 g
+48. 319. Td
+(id: render-blocking-insight · performance · Est savings of 300 ms) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.094 0.09 0.094 rg
+48. 299. Td
+([0] Reduce unused CSS) Tj
+ET
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.314 g
+48. 285. Td
+(id: unused-css-rules · performance · Est savings of 24 KiB) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.094 0.09 0.094 rg
+48. 265. Td
+([0] Reduce unused JavaScript) Tj
+ET
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.314 g
+48. 251. Td
+(id: unused-javascript · performance · Est savings of 36 KiB) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.094 0.09 0.094 rg
+48. 231. Td
+([50] Use efficient cache lifetimes) Tj
+ET
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.314 g
+48. 217. Td
+(id: cache-insight · performance · Est savings of 5 KiB) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.094 0.09 0.094 rg
+48. 197. Td
+([66] First Contentful Paint) Tj
+ET
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.314 g
+48. 183. Td
+(id: first-contentful-paint · performance · 2.5 s) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.094 0.09 0.094 rg
+48. 163. Td
+([79] Largest Contentful Paint) Tj
+ET
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.314 g
+48. 149. Td
+(id: largest-contentful-paint · performance · 3.0 s) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.094 0.09 0.094 rg
+48. 129. Td
+([91] Time to Interactive) Tj
+ET
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.314 g
+48. 115. Td
+(id: interactive · performance · 3.6 s) Tj
+ET
+BT
+/F2 10 Tf
+11.5 TL
+0.094 0.09 0.094 rg
+48. 95. Td
+([98] Speed Index) Tj
+ET
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.314 g
+48. 81. Td
+(id: speed-index · performance · 2.5 s) Tj
+ET
+endstream
+endobj
+5 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 612. 792.]
+/Contents 6 0 R
+>>
+endobj
+6 0 obj
+<<
+/Length 736
+>>
+stream
+0.200025 w
+0 G
+BT
+/F2 10 Tf
+11.5 TL
+0.094 0.09 0.094 rg
+48. 744. Td
+([99] Max Potential First Input Delay) Tj
+ET
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.314 g
+48. 730. Td
+(id: max-potential-fid · performance · 80 ms) Tj
+ET
+BT
+/F2 12 Tf
+13.7999999999999989 TL
+0.094 0.09 0.094 rg
+48. 702. Td
+(Notes) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.157 g
+48. 680. Td
+(• Report source file: lighthouse-report-final.json) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.157 g
+48. 662. Td
+(• Automated coverage: Playwright @lighthouse suite \(PW-LH-*\) and Vitest VT-LH-001 \(robots.txt\).) Tj
+ET
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.157 g
+48. 644. Td
+(• Remaining high-impact items typically include image compression and unused JS code-splitting.) Tj
+ET
+endstream
+endobj
+1 0 obj
+<</Type /Pages
+/Kids [3 0 R 5 0 R ]
+/Count 2
+>>
+endobj
+7 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+8 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica-Bold
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+9 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica-Oblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+10 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica-BoldOblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+11 0 obj
+<<
+/Type /Font
+/BaseFont /Courier
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+12 0 obj
+<<
+/Type /Font
+/BaseFont /Courier-Bold
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+13 0 obj
+<<
+/Type /Font
+/BaseFont /Courier-Oblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+14 0 obj
+<<
+/Type /Font
+/BaseFont /Courier-BoldOblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+15 0 obj
+<<
+/Type /Font
+/BaseFont /Times-Roman
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+16 0 obj
+<<
+/Type /Font
+/BaseFont /Times-Bold
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+17 0 obj
+<<
+/Type /Font
+/BaseFont /Times-Italic
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+18 0 obj
+<<
+/Type /Font
+/BaseFont /Times-BoldItalic
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+19 0 obj
+<<
+/Type /Font
+/BaseFont /ZapfDingbats
+/Subtype /Type1
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+20 0 obj
+<<
+/Type /Font
+/BaseFont /Symbol
+/Subtype /Type1
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+2 0 obj
+<<
+/ProcSet [/PDF /Text /ImageB /ImageC /ImageI]
+/Font <<
+/F1 7 0 R
+/F2 8 0 R
+/F3 9 0 R
+/F4 10 0 R
+/F5 11 0 R
+/F6 12 0 R
+/F7 13 0 R
+/F8 14 0 R
+/F9 15 0 R
+/F10 16 0 R
+/F11 17 0 R
+/F12 18 0 R
+/F13 19 0 R
+/F14 20 0 R
+>>
+/XObject <<
+>>
+>>
+endobj
+21 0 obj
+<<
+/Producer (jsPDF 4.2.1)
+/CreationDate (D:20260730171625-05'00')
+>>
+endobj
+22 0 obj
+<<
+/Type /Catalog
+/Pages 1 0 R
+/OpenAction [3 0 R /FitH null]
+/PageLayout /OneColumn
+>>
+endobj
+xref
+0 23
+0000000000 65535 f 
+0000005381 00000 n 
+0000007206 00000 n 
+0000000015 00000 n 
+0000000120 00000 n 
+0000004489 00000 n 
+0000004594 00000 n 
+0000005444 00000 n 
+0000005569 00000 n 
+0000005699 00000 n 
+0000005832 00000 n 
+0000005970 00000 n 
+0000006094 00000 n 
+0000006223 00000 n 
+0000006355 00000 n 
+0000006491 00000 n 
+0000006619 00000 n 
+0000006746 00000 n 
+0000006875 00000 n 
+0000007008 00000 n 
+0000007110 00000 n 
+0000007456 00000 n 
+0000007542 00000 n 
+trailer
+<<
+/Size 23
+/Root 22 0 R
+/Info 21 0 R
+/ID [ <DE7F12851BFE1834329A1CCFF78B57A7> <DE7F12851BFE1834329A1CCFF78B57A7> ]
+>>
+startxref
+7646
+%%EOF

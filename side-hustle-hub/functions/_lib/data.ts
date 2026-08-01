@@ -144,6 +144,7 @@ type TaskRow = {
   sprint?: number;
   done_tina?: number;
   done_evelyn?: number;
+  parent_id?: string;
 };
 
 function actorLabel(actor: DbUser): string {
@@ -192,9 +193,14 @@ function mapTask(row: TaskRow, attachments: AttachmentRow[]) {
     dueDate: row.due_date,
     dateCompleted: row.date_completed,
     notes: row.notes,
-    sprint: typeof row.sprint === "number" ? row.sprint : Number(row.sprint ?? 0) || 0,
+    sprint: (() => {
+      if (typeof row.sprint === "number" && Number.isFinite(row.sprint)) return row.sprint;
+      const n = Number(row.sprint);
+      return Number.isFinite(n) ? n : 0;
+    })(),
     tinaDone: Number(row.done_tina ?? 0) === 1,
     evelynDone: Number(row.done_evelyn ?? 0) === 1,
+    parentId: String(row.parent_id || "").trim(),
     updatedAt: row.updated_at || "",
     updatedBy: (row.updated_by || "").trim(),
     attachments: attachments
@@ -267,6 +273,12 @@ async function ensureTaskColumns(env: Env): Promise<void> {
     "tasks",
     "updated_by",
     `ALTER TABLE tasks ADD COLUMN updated_by TEXT NOT NULL DEFAULT ''`,
+  );
+  await addColumnIfMissing(
+    env,
+    "tasks",
+    "parent_id",
+    `ALTER TABLE tasks ADD COLUMN parent_id TEXT NOT NULL DEFAULT ''`,
   );
   await ensureAttachmentContentColumns(env);
 }
@@ -487,7 +499,7 @@ export async function saveTasks(env: Env, request: Request, actor: DbUser): Prom
   const prior = await env.DB.prepare(
     `SELECT id, description, category, priority, status, assign_by, assigned_to,
             date_assigned, due_date, date_completed, notes, sprint, done_tina, done_evelyn,
-            updated_at, updated_by, sort_order
+            parent_id, updated_at, updated_by, sort_order
      FROM tasks`,
   ).all<TaskRow>();
   const priorById = new Map((prior.results ?? []).map((r) => [r.id, r]));
@@ -544,14 +556,21 @@ export async function saveTasks(env: Env, request: Request, actor: DbUser): Prom
     });
     if (!notesMerged.ok) return error(notesMerged.error, 400);
     const notes = notesMerged.notes;
-    const sprintRaw = Number(t.sprint ?? 0);
-    const sprint = Number.isFinite(sprintRaw) ? sprintRaw : 0;
+    // Never invent Sprint 0 when the client omits sprint — keep the stored value.
+    // (Missing/undefined used to become 0 and looked like sprints "reverting to zero" in local.)
+    const hasSprintField = t.sprint !== undefined && t.sprint !== null && t.sprint !== "";
+    const sprintRaw = hasSprintField ? Number(t.sprint) : Number(prevRow?.sprint ?? 0);
+    const sprint = Number.isFinite(sprintRaw) ? sprintRaw : Number(prevRow?.sprint ?? 0) || 0;
     // Backlog tasks are always Unassigned (do not invent an owner when leaving backlog).
     const assignedTo = isBacklogSprint(sprint)
       ? UNASSIGNED_OWNER
       : String(t.assignedTo || "Both");
     const doneTina = t.tinaDone === true || t.tinaDone === 1 || t.done_tina === 1 ? 1 : 0;
     const doneEvelyn = t.evelynDone === true || t.evelynDone === 1 || t.done_evelyn === 1 ? 1 : 0;
+    const parentId =
+      t.parentId !== undefined && t.parentId !== null
+        ? String(t.parentId || "").trim()
+        : String(prevRow?.parent_id || "").trim();
 
     const prev = priorById.get(id);
     const sortOrder =
@@ -576,7 +595,8 @@ export async function saveTasks(env: Env, request: Request, actor: DbUser): Prom
       prev.notes === notes &&
       Number(prev.sprint ?? 0) === sprint &&
       Number(prev.done_tina ?? 0) === doneTina &&
-      Number(prev.done_evelyn ?? 0) === doneEvelyn;
+      Number(prev.done_evelyn ?? 0) === doneEvelyn &&
+      String(prev.parent_id || "").trim() === parentId;
 
     const prevSprint = prev ? Number(prev.sprint ?? 0) : null;
     // Locked sprint: reject real edits; leave unchanged rows alone so bulk saves of other tasks still work.
@@ -611,8 +631,8 @@ export async function saveTasks(env: Env, request: Request, actor: DbUser): Prom
         `INSERT INTO tasks (
            id, description, category, priority, status, assign_by, assigned_to,
            date_assigned, due_date, date_completed, notes, sprint, done_tina, done_evelyn,
-           sort_order, updated_at, updated_by
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           parent_id, sort_order, updated_at, updated_by
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(id) DO UPDATE SET
            description = excluded.description,
            category = excluded.category,
@@ -627,6 +647,7 @@ export async function saveTasks(env: Env, request: Request, actor: DbUser): Prom
            sprint = excluded.sprint,
            done_tina = excluded.done_tina,
            done_evelyn = excluded.done_evelyn,
+           parent_id = excluded.parent_id,
            sort_order = excluded.sort_order,
            updated_at = excluded.updated_at,
            updated_by = excluded.updated_by`,
@@ -645,6 +666,7 @@ export async function saveTasks(env: Env, request: Request, actor: DbUser): Prom
         sprint,
         doneTina,
         doneEvelyn,
+        parentId,
         sortOrder,
         updatedAt,
         updatedBy,
@@ -710,12 +732,78 @@ export async function saveTasks(env: Env, request: Request, actor: DbUser): Prom
       for (let i = 0; i < statements.length; i += CHUNK) {
         await env.DB.batch(statements.slice(i, i + CHUNK));
       }
-      return listTasks(env);
+      // fall through to shared-notes sync + list
+    } else {
+      throw e;
     }
-    throw e;
   }
 
+  // Shared notes across parent + letter subtasks (T-041 / T-041T / T-041E).
+  await syncTaskFamilyNotes(env, incoming, priorById);
+
   return listTasks(env);
+}
+
+/** Mirror notes to every sibling/parent in a task family when any member was saved. */
+async function syncTaskFamilyNotes(
+  env: Env,
+  incoming: Array<Record<string, unknown>>,
+  priorById: Map<string, TaskRow>,
+): Promise<void> {
+  if (incoming.length === 0) return;
+  const all = await env.DB.prepare(
+    `SELECT id, parent_id, notes FROM tasks`,
+  ).all<{ id: string; parent_id: string | null; notes: string }>();
+  const rows = all.results ?? [];
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  const childrenByParent = new Map<string, string[]>();
+  for (const r of rows) {
+    const pid = String(r.parent_id || "").trim();
+    if (!pid) continue;
+    const list = childrenByParent.get(pid) ?? [];
+    list.push(r.id);
+    childrenByParent.set(pid, list);
+  }
+
+  const touchedRoots = new Set<string>();
+  for (const t of incoming) {
+    const id = String(t.id || "").trim();
+    if (!id) continue;
+    const row = byId.get(id);
+    const parent = String(row?.parent_id || t.parentId || priorById.get(id)?.parent_id || "").trim();
+    touchedRoots.add(parent || id);
+  }
+
+  const syncStatements: D1PreparedStatement[] = [];
+  for (const rootId of touchedRoots) {
+    const family = [rootId, ...(childrenByParent.get(rootId) ?? [])];
+    if (family.length < 2) continue;
+    // Prefer notes from an incoming member; else longest family notes string.
+    let shared = "";
+    for (const t of incoming) {
+      const id = String(t.id || "").trim();
+      if (!family.includes(id)) continue;
+      const n = String(t.notes || "");
+      if (n.length >= shared.length) shared = n;
+    }
+    if (!shared) {
+      for (const id of family) {
+        const n = String(byId.get(id)?.notes || "");
+        if (n.length >= shared.length) shared = n;
+      }
+    }
+    for (const id of family) {
+      if (String(byId.get(id)?.notes || "") === shared) continue;
+      syncStatements.push(
+        env.DB.prepare(`UPDATE tasks SET notes = ? WHERE id = ?`).bind(shared, id),
+      );
+    }
+  }
+  if (syncStatements.length === 0) return;
+  const CHUNK = 40;
+  for (let i = 0; i < syncStatements.length; i += CHUNK) {
+    await env.DB.batch(syncStatements.slice(i, i + CHUNK));
+  }
 }
 
 export async function uploadTaskAttachment(
@@ -1277,6 +1365,8 @@ export async function listTestStatuses(env: Env): Promise<Response> {
       "fixed_retest",
       "failed_retest",
       "fixed_cursor",
+      "fixed_lighthouse",
+      "fixed_foresight",
     ]);
     for (const row of results ?? []) {
       statuses[row.case_id] = validStatuses.has(row.status) ? row.status : "not_run";
@@ -1585,12 +1675,20 @@ export async function setTestStatus(env: Env, request: Request, actor: DbUser): 
         "fixed_retest",
         "failed_retest",
         "fixed_cursor",
+        "fixed_lighthouse",
+        "fixed_foresight",
       ].includes(status)
     ) {
       return error(`Invalid status for ${caseId}.`);
     }
 
     const prevStatus = String(prev?.status ?? "");
+    if (status === "fixed_lighthouse" || status === "fixed_foresight") {
+      return error(
+        "Lighthouse and Foresight are audit counts under Test Suites → Automated, not settable statuses. Use Pass when an audit case is verified.",
+      );
+    }
+
     const isDevRetest =
       status === "fixed_retest" ||
       status === "failed_retest" ||
@@ -1686,11 +1784,8 @@ export async function setTestStatus(env: Env, request: Request, actor: DbUser): 
       failedIdx = null;
     }
 
-    // Backlog tests have no person assignment (empty assignee). Fail auto-owner still cleared here.
-    if (isBacklogSprint(sprint)) {
-      assignee = "";
-    }
-    // Catalog automated cases always stay on the suite runner (wins over Fail→Dev and backlog clear).
+    // Backlog tests may keep a person assignee (QA parks work before committing a sprint).
+    // Catalog automated cases always stay on the suite runner (wins over Fail→Dev).
     if (lockedSuiteOwner) assignee = lockedSuiteOwner;
 
     const checkedJson = JSON.stringify(checked);
@@ -1966,7 +2061,10 @@ export async function getTestAttachmentContent(
   });
 }
 
-export async function listContent(env: Env): Promise<Response> {
+export async function listContent(env: Env, user: DbUser): Promise<Response> {
+  const denied = requireAdminUser(user, "Content Factory / Marketing Launch Plan");
+  if (denied) return denied;
+
   const batches = await env.DB.prepare(`SELECT * FROM content_batches ORDER BY created_at DESC`).all<{
     id: string;
     name: string;
@@ -2016,7 +2114,10 @@ export async function listContent(env: Env): Promise<Response> {
   });
 }
 
-export async function saveContent(env: Env, request: Request): Promise<Response> {
+export async function saveContent(env: Env, request: Request, user: DbUser): Promise<Response> {
+  const denied = requireAdminUser(user, "Content Factory / Marketing Launch Plan");
+  if (denied) return denied;
+
   let body: { batches?: unknown[]; drafts?: unknown[] };
   try {
     body = await request.json();
@@ -2992,9 +3093,9 @@ type FinancialFileRow = {
   added_at: string;
 };
 
-function requireAdminUser(user: DbUser): Response | null {
+function requireAdminUser(user: DbUser, feature = "This area"): Response | null {
   if (!hasRole(userRoles(user), "admin")) {
-    return error("Financials are restricted to Admin accounts.", 403);
+    return error(`${feature} is restricted to Admin accounts.`, 403);
   }
   return null;
 }
@@ -3033,7 +3134,7 @@ function mapFinancialItem(item: FinancialItemRow, files: FinancialFileRow[]) {
 }
 
 export async function listFinancials(env: Env, user: DbUser): Promise<Response> {
-  const denied = requireAdminUser(user);
+  const denied = requireAdminUser(user, "Financials");
   if (denied) return denied;
 
   try {
@@ -3067,7 +3168,7 @@ export async function saveFinancials(
   request: Request,
   user: DbUser,
 ): Promise<Response> {
-  const denied = requireAdminUser(user);
+  const denied = requireAdminUser(user, "Financials");
   if (denied) return denied;
 
   let body: { items?: unknown[]; contracts?: unknown[] };

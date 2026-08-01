@@ -68,11 +68,15 @@ function priceLineFor(audience: MemberPerkAudience, tierId: TierId): string {
   if (audience === "senior") {
     const m = tier.priceMonthlyUsdSenior ?? tier.priceMonthlyUsd ?? 0;
     const y = tier.priceYearlyUsdSenior ?? tier.priceYearlyUsd;
-    return y != null ? `$${m}/mo · $${y}/yr (save 2 months)` : `$${m}/mo`;
+    return y != null
+      ? `$${m}/mo · $${y}/yr (2 Months Free w/Annual Payment)`
+      : `$${m}/mo`;
   }
   const m = tier.priceMonthlyUsd ?? 0;
   const y = tier.priceYearlyUsd;
-  return y != null ? `$${m}/mo · $${y}/yr (save 2 months)` : `$${m}/mo`;
+  return y != null
+    ? `$${m}/mo · $${y}/yr (2 Months Free w/Annual Payment)`
+    : `$${m}/mo`;
 }
 
 function perkTiersFor(audience: MemberPerkAudience): MarketingPerkTier[] {
@@ -229,7 +233,7 @@ function buildAdultGuide(): MarketingGuideDoc {
       {
         id: "cta",
         number: "8",
-        title: "Join the adult Side Hustle movement",
+        title: "Join the Adult Side Hustle movement",
         kind: "cta",
         cta: {
           headline: "Your next income chapter starts with one honest quiz.",
@@ -285,7 +289,7 @@ function buildKidsGuide(): MarketingGuideDoc {
           "Kid-friendly Match Wizard with bands for 4–8 and 9–12.",
           "Kids Corner: Kevina Starr Stories, Ideas, Piggy Bank, and Guides.",
           "Free guides open now; member guides unlock with Kids Team or a GYSH plan.",
-          "Credits on paid plans fund activities — adults can redeem the pool for consulting at half rate.",
+          "Credits on paid plans fund activities — adults can redeem the credit pool for consulting at half rate.",
           "Safety first: parent-nearby AI tools, privacy, and kindness quests.",
         ]),
       },
