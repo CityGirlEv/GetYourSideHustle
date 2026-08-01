@@ -308,6 +308,9 @@ export function AgendaPage({
   const [emailModalNotice, setEmailModalNotice] = useState("");
   const [emailSending, setEmailSending] = useState(false);
   const [meetingNotes, setMeetingNotes] = useState("");
+  const [meetingMinutesUrl, setMeetingMinutesUrl] = useState("");
+  /** Run-mode sub-tab: agenda items vs meeting notes / minutes link. */
+  const [agendaRunTab, setAgendaRunTab] = useState<"agenda" | "notes">("agenda");
   const [meetingActionItems, setMeetingActionItems] = useState<AgendaActionItem[]>([]);
   const [hiddenSuggestTaskIds, setHiddenSuggestTaskIds] = useState<Set<string>>(
     () => loadHiddenSuggestTaskIds(),
@@ -325,6 +328,7 @@ export function AgendaPage({
     setInvitedText((a.invited || []).join(", ") || "Tina, Evelyn, Lyriq");
     setAttendedText((a.attended || []).join(", "));
     setMeetingNotes(String(a.meetingNotes || ""));
+    setMeetingMinutesUrl(String(a.meetingMinutesUrl || ""));
     setMeetingActionItems(
       Array.isArray(a.meetingActionItems)
         ? a.meetingActionItems.map((x) => ({
@@ -630,6 +634,7 @@ export function AgendaPage({
           invited: parseNameCsv(invitedText),
           attended: parseNameCsv(attendedText),
           meetingNotes,
+          meetingMinutesUrl: meetingMinutesUrl.trim(),
           meetingActionItems: meetingActionItems.filter((a) => a.text.trim()),
           items,
         }),
@@ -736,6 +741,7 @@ export function AgendaPage({
         invited: parseNameCsv(invitedText),
         attended: parseNameCsv(attendedText),
         meetingNotes,
+        meetingMinutesUrl: meetingMinutesUrl.trim(),
         meetingActionItems: nextActions.filter((a) => a.text.trim()),
       });
     }, `Added ${pending.length} backlog task${pending.length === 1 ? "" : "s"} (suggested owners in notes).`);
@@ -2198,7 +2204,102 @@ export function AgendaPage({
               </div>
             )}
 
-            {(suggestedItems.length > 0 || hiddenSuggestCount > 0) && (
+            <div
+              className="agenda-run-tabs"
+              role="tablist"
+              aria-label="Agenda views"
+              style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "4px 0 16px" }}
+              data-testid="agenda-run-tabs"
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={agendaRunTab === "agenda"}
+                className={`btn ${agendaRunTab === "agenda" ? "btn-primary" : "btn-outline"}`}
+                onClick={() => setAgendaRunTab("agenda")}
+                data-testid="agenda-run-tab-agenda"
+                style={{ gap: 8 }}
+              >
+                <ClipboardList size={14} /> Agenda
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={agendaRunTab === "notes"}
+                className={`btn ${agendaRunTab === "notes" ? "btn-primary" : "btn-outline"}`}
+                onClick={() => setAgendaRunTab("notes")}
+                data-testid="agenda-run-tab-notes"
+                style={{ gap: 8 }}
+              >
+                <FileText size={14} /> Meeting notes
+              </button>
+            </div>
+
+            {agendaRunTab === "notes" && (
+              <div
+                className="agenda-preview-section"
+                data-testid="agenda-run-notes-panel"
+                role="tabpanel"
+                style={{ marginBottom: 16 }}
+              >
+                <h4 style={{ margin: "0 0 8px", color: "var(--bronze)" }}>Meeting notes</h4>
+                <p style={{ marginTop: 0, color: "var(--text-primary)" }}>
+                  Capture general notes here during the meeting. Topic-level notes stay on each Agenda
+                  item. Paste a link to the formal minutes below when you have one.
+                </p>
+                <label className="agenda-meeting-notes-label" style={{ display: "block", marginBottom: 14 }}>
+                  <span>General meeting notes</span>
+                  <textarea
+                    value={meetingNotes}
+                    rows={8}
+                    placeholder="Overall notes — one thought per line…"
+                    onChange={(e) => setMeetingNotes(e.target.value)}
+                    data-testid="agenda-run-meeting-notes"
+                    style={{ width: "100%" }}
+                  />
+                </label>
+                <label
+                  className="agenda-meeting-notes-label"
+                  style={{ display: "block", marginBottom: 12 }}
+                  data-testid="agenda-meeting-minutes-link-box"
+                >
+                  <span>Link to meeting minutes</span>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                    <input
+                      type="url"
+                      value={meetingMinutesUrl}
+                      onChange={(e) => setMeetingMinutesUrl(e.target.value)}
+                      placeholder="https://… (Google Doc, Notion, etc.)"
+                      data-testid="agenda-meeting-minutes-url"
+                      style={{ flex: "1 1 240px", minWidth: 200 }}
+                    />
+                    {/^https?:\/\//i.test(meetingMinutesUrl.trim()) && (
+                      <a
+                        href={meetingMinutesUrl.trim()}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn btn-outline"
+                        data-testid="agenda-open-meeting-minutes"
+                        style={{ gap: 8, textDecoration: "none" }}
+                      >
+                        <ExternalLink size={14} /> Open minutes
+                      </a>
+                    )}
+                  </div>
+                </label>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleSavePreviewProgress}
+                  style={{ gap: 8 }}
+                  data-testid="agenda-save-meeting-notes-tab"
+                >
+                  <Save size={14} /> Save notes &amp; minutes link
+                </button>
+              </div>
+            )}
+
+            {agendaRunTab === "agenda" && (suggestedItems.length > 0 || hiddenSuggestCount > 0) && (
               <div style={{ marginBottom: 16 }}>
                 <div
                   style={{
@@ -2301,6 +2402,8 @@ export function AgendaPage({
               </div>
             )}
 
+            {agendaRunTab === "agenda" && (
+            <>
             <ul className="agenda-item-list">
               {scheduleOrderedItems.length === 0 && (
                 <li className="agenda-item agenda-item--empty">No partner-added items yet.</li>
@@ -2502,22 +2605,9 @@ export function AgendaPage({
               <div className="agenda-preview-section" style={{ marginTop: 20 }} data-testid="agenda-run-actions">
                 <h4 style={{ margin: "0 0 8px", color: "var(--bronze)" }}>Action items (from notes)</h4>
                 <p style={{ marginTop: 0, color: "var(--text-primary)" }}>
-                  Built automatically from topic notes while the meeting is live. Assign owners, then
-                  send to backlog when ready.
+                  Built from topic notes and the Meeting notes tab. Assign owners, then send to backlog
+                  when ready.
                 </p>
-                {meetingLive && (
-                  <label className="agenda-meeting-notes-label" style={{ display: "block", marginBottom: 12 }}>
-                    <span>General meeting notes</span>
-                    <textarea
-                      value={meetingNotes}
-                      rows={3}
-                      placeholder="Overall notes — one thought per line…"
-                      onChange={(e) => setMeetingNotes(e.target.value)}
-                      data-testid="agenda-run-meeting-notes"
-                      style={{ width: "100%" }}
-                    />
-                  </label>
-                )}
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
                   <button
                     type="button"
@@ -2596,6 +2686,8 @@ export function AgendaPage({
                   )}
                 </div>
               </div>
+            )}
+            </>
             )}
           </section>
 

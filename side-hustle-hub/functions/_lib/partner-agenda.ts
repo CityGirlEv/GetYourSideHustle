@@ -42,6 +42,8 @@ type AgendaRow = {
   invited_json?: string | null;
   attended_json?: string | null;
   meeting_notes?: string | null;
+  /** External URL to formal meeting minutes (Google Doc, Notion, etc.). */
+  meeting_minutes_url?: string | null;
   meeting_action_items_json?: string | null;
   finalized_at?: string | null;
   updated_by_name?: string | null;
@@ -245,6 +247,7 @@ async function ensureAgendaTables(env: Env): Promise<void> {
     `ALTER TABLE partner_agenda_items ADD COLUMN questions_json TEXT NOT NULL DEFAULT '[]'`,
     `ALTER TABLE partner_agenda_items ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0`,
     `ALTER TABLE partner_agenda ADD COLUMN meeting_notes TEXT NOT NULL DEFAULT ''`,
+    `ALTER TABLE partner_agenda ADD COLUMN meeting_minutes_url TEXT NOT NULL DEFAULT ''`,
     `ALTER TABLE partner_agenda ADD COLUMN meeting_action_items_json TEXT NOT NULL DEFAULT '[]'`,
     `ALTER TABLE partner_agenda ADD COLUMN finalized_at TEXT`,
     `ALTER TABLE partner_agenda ADD COLUMN updated_by_name TEXT NOT NULL DEFAULT ''`,
@@ -557,6 +560,7 @@ async function buildPayload(env: Env, user: DbUser) {
       invited: invited.length ? invited : defaultInvited,
       attended,
       meetingNotes: String(agenda.meeting_notes || ""),
+      meetingMinutesUrl: String(agenda.meeting_minutes_url || ""),
       meetingActionItems: parseActionItems(agenda.meeting_action_items_json),
       finalizedAt: agenda.finalized_at ? String(agenda.finalized_at) : null,
       finalized: Boolean(agenda.finalized_at),
@@ -1028,6 +1032,7 @@ export async function saveAgendaPreview(
     invited?: string[];
     attended?: string[];
     meetingNotes?: string;
+    meetingMinutesUrl?: string;
     meetingActionItems?: Array<{
       id?: string;
       text?: string;
@@ -1078,6 +1083,16 @@ export async function saveAgendaPreview(
     body.meetingNotes !== undefined
       ? String(body.meetingNotes || "")
       : String(agenda.meeting_notes || "");
+  const meetingMinutesUrl =
+    body.meetingMinutesUrl !== undefined
+      ? String(body.meetingMinutesUrl || "").trim()
+      : String(agenda.meeting_minutes_url || "").trim();
+  if (meetingMinutesUrl && !/^https?:\/\//i.test(meetingMinutesUrl)) {
+    return error("Meeting minutes link must start with http:// or https://");
+  }
+  if (meetingMinutesUrl.length > 2000) {
+    return error("Meeting minutes link is too long (max 2000 characters).");
+  }
   const meetingActionItemsJson =
     body.meetingActionItems !== undefined
       ? JSON.stringify(parseActionItems(JSON.stringify(body.meetingActionItems)))
@@ -1088,7 +1103,7 @@ export async function saveAgendaPreview(
        meeting_date = ?, meeting_time = ?, meeting_timezone = ?,
        meeting_minutes = ?,
        invited_json = ?, attended_json = ?,
-       meeting_notes = ?, meeting_action_items_json = ?,
+       meeting_notes = ?, meeting_minutes_url = ?, meeting_action_items_json = ?,
        updated_at = ?, updated_by_name = ?
      WHERE id = ?`,
   )
@@ -1100,6 +1115,7 @@ export async function saveAgendaPreview(
       JSON.stringify(invited),
       JSON.stringify(attended),
       meetingNotes,
+      meetingMinutesUrl,
       meetingActionItemsJson,
       now,
       displayName(user),

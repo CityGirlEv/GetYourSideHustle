@@ -42,6 +42,8 @@ export type AgendaMeta = {
   attended?: string[];
   /** Free-form notes taken during the meeting. */
   meetingNotes?: string;
+  /** Link to formal meeting minutes (Google Doc, etc.). */
+  meetingMinutesUrl?: string;
   /** Action items derived from meeting notes (assignable; can push to backlog). */
   meetingActionItems?: AgendaActionItem[];
   /** When set, PDF prints without DRAFT watermark. */
@@ -207,6 +209,7 @@ export async function saveAgendaPreview(input: {
   invited?: string[];
   attended?: string[];
   meetingNotes?: string;
+  meetingMinutesUrl?: string;
   meetingActionItems?: AgendaActionItem[];
   items?: Array<{
     id: string;
