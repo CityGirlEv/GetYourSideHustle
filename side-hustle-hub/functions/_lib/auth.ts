@@ -511,6 +511,8 @@ export async function handleRegister(env: Env, request: Request): Promise<Respon
   }
 
   let childProfileId: string | null = null;
+  let kidUserId: string | null = null;
+  let kidLoginEmail: string | null = null;
   if (isParent) {
     try {
       const familyId = `fam-${crypto.randomUUID()}`;
@@ -527,11 +529,38 @@ export async function handleRegister(env: Env, request: Request): Promise<Respon
       )
         .bind(childProfileId, familyId, userId, childDisplayName, now, now)
         .run();
+
+      // Create kid login user linked to this parent (parent_user_id + child_profiles.linked_user_id).
+      try {
+        const { provisionLinkedKidOnParentRegister } = await import("./family");
+        const linked = await provisionLinkedKidOnParentRegister(env, {
+          parentUserId: userId,
+          familyId,
+          childProfileId,
+          childDisplayName,
+          parentEmail: email,
+          parentPassword: password,
+        });
+        if (linked) {
+          kidUserId = linked.kidUserId;
+          kidLoginEmail = linked.kidLoginEmail;
+        }
+      } catch (linkErr) {
+        /* Parent + profile still created; Dashboard Register My Kid can finish linking. */
+        await appendAudit(
+          env.DB,
+          "register_ok",
+          email,
+          `kid link deferred: ${linkErr instanceof Error ? linkErr.message : String(linkErr)}`,
+        );
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       if (!msg.includes("no such table")) throw e;
       /* migration 0016 not applied yet — account still usable */
       childProfileId = null;
+      kidUserId = null;
+      kidLoginEmail = null;
     }
   }
 
@@ -572,6 +601,11 @@ export async function handleRegister(env: Env, request: Request): Promise<Respon
     emailSent = false;
   }
 
+  const kidsLinkedMsg =
+    isParent && kidUserId
+      ? ` Child account for ${childDisplayName} was created and linked to your parent account.`
+      : "";
+
   return json(
     {
       ok: true,
@@ -582,11 +616,13 @@ export async function handleRegister(env: Env, request: Request): Promise<Respon
       token: null,
       isAdmin: false,
       childProfileId,
+      kidUserId,
+      kidLoginEmail,
       claimedBlueprintId: null,
       message:
         membershipTier === "free"
-          ? "Account created and awaiting admin activation. Check your email for confirmation — we'll send a welcome with your perks once you're activated."
-          : `Account created for the ${membershipTier} plan and awaiting admin activation. Demo checkout may follow — real billing will replace it later.`,
+          ? `Account created and awaiting admin activation.${kidsLinkedMsg} Check your email for confirmation — we'll send a welcome with your perks once you're activated.`
+          : `Account created for the ${membershipTier} plan and awaiting admin activation.${kidsLinkedMsg} Demo checkout may follow — real billing will replace it later.`,
     },
     201,
   );

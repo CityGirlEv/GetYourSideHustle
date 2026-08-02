@@ -116,6 +116,8 @@ export async function registerFreeMember(input: {
   ok: boolean;
   user?: AuthUser;
   childProfileId?: string | null;
+  kidUserId?: string | null;
+  kidLoginEmail?: string | null;
   claimedBlueprintId?: string | null;
   error?: string;
 }> {
@@ -128,6 +130,8 @@ export async function registerFreeMember(input: {
       user: AuthUser;
       token?: string;
       childProfileId?: string | null;
+      kidUserId?: string | null;
+      kidLoginEmail?: string | null;
       claimedBlueprintId?: string | null;
     }>("auth/register", {
       method: "POST",
@@ -148,6 +152,8 @@ export async function registerFreeMember(input: {
       ok: true,
       user: data.user,
       childProfileId: data.childProfileId,
+      kidUserId: data.kidUserId,
+      kidLoginEmail: data.kidLoginEmail,
       claimedBlueprintId: data.claimedBlueprintId,
     };
   } catch (e) {

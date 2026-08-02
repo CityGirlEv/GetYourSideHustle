@@ -13,6 +13,40 @@ import {
 import { canonicalizeEmail, error, json } from "./crypto";
 import { ensureBlueprintTables } from "./blueprints";
 
+/** Keep in sync with src/lib/family-logic.ts `derivedKidLoginEmail`. */
+function derivedKidLoginEmail(
+  parentEmail: string,
+  childDisplayName: string,
+  childProfileId: string,
+): string {
+  const email = String(parentEmail || "").trim().toLowerCase();
+  const at = email.lastIndexOf("@");
+  if (at < 1 || !email.slice(at + 1).includes(".")) {
+    throw new Error("Invalid parent email for kid login derivation.");
+  }
+  const local = email.slice(0, at);
+  const domain = email.slice(at + 1);
+  const baseLocal = (local.split("+")[0] || local).replace(/[^a-z0-9._-]/gi, "") || "parent";
+  const slug =
+    String(childDisplayName || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "")
+      .slice(0, 12) || "kid";
+  const short = String(childProfileId || "")
+    .replace(/^child-/i, "")
+    .replace(/-/g, "")
+    .slice(0, 8);
+  return `${baseLocal}+${slug}${short ? `-${short}` : ""}@${domain}`;
+}
+
+function normalizeChildDisplayName(raw: unknown): string {
+  return String(raw || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .slice(0, 80);
+}
+
 export type ProgressReportCadence = "none" | "daily" | "weekly";
 
 type ChildProfileRow = {
@@ -95,7 +129,7 @@ export async function ensureFamilyForParent(
   return familyId;
 }
 
-async function createLinkedKidUser(
+export async function createLinkedKidUser(
   env: Env,
   opts: {
     parentUserId: string;
@@ -103,6 +137,8 @@ async function createLinkedKidUser(
     ageBand: "kids" | "junior";
     email: string;
     password: string;
+    /** Default active (Dashboard Register My Kid). Parent signup uses pending. */
+    status?: "active" | "pending";
   },
 ): Promise<string> {
   const email = canonicalizeEmail(opts.email);
@@ -116,10 +152,11 @@ async function createLinkedKidUser(
   const hash = await hashPassword(opts.password, salt);
   const role = opts.ageBand === "junior" ? "junior" : "kid";
   const audience = opts.ageBand === "junior" ? "junior" : "kids";
+  const status = opts.status === "pending" ? "pending" : "active";
   try {
     await env.DB.prepare(
       `INSERT INTO users (id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt, membership_tier, audience, parent_user_id, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, 'free', ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'free', ?, ?, ?, ?)`,
     )
       .bind(
         userId,
@@ -127,6 +164,7 @@ async function createLinkedKidUser(
         email,
         role,
         JSON.stringify([role]),
+        status,
         now.slice(0, 10),
         "Child profile login linked to parent coach",
         hash,
@@ -142,7 +180,7 @@ async function createLinkedKidUser(
     if (msg.includes("no such column")) {
       await env.DB.prepare(
         `INSERT INTO users (id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
         .bind(
           userId,
@@ -150,6 +188,7 @@ async function createLinkedKidUser(
           email,
           role,
           JSON.stringify([role]),
+          status,
           now.slice(0, 10),
           "Child profile login linked to parent coach",
           hash,
@@ -163,6 +202,117 @@ async function createLinkedKidUser(
     }
   }
   return userId;
+}
+
+/**
+ * After parent Kids membership register: create kid login user + link child_profiles.
+ * Kid login email is derived from the parent email (plus-address); password matches parent
+ * until the parent changes it via Dashboard → Register My Kid / settings.
+ */
+export async function provisionLinkedKidOnParentRegister(
+  env: Env,
+  opts: {
+    parentUserId: string;
+    familyId: string;
+    childProfileId: string;
+    childDisplayName: string;
+    parentEmail: string;
+    parentPassword: string;
+  },
+): Promise<{ kidUserId: string; kidLoginEmail: string } | null> {
+  await ensureFamilyTables(env);
+  const displayName = normalizeChildDisplayName(opts.childDisplayName);
+  if (!displayName) return null;
+
+  let kidLoginEmail = derivedKidLoginEmail(
+    opts.parentEmail,
+    displayName,
+    opts.childProfileId,
+  );
+  // Collision fallback (rare): append more of the profile id.
+  if (await getUserByEmail(env.DB, kidLoginEmail)) {
+    kidLoginEmail = derivedKidLoginEmail(
+      opts.parentEmail,
+      `${displayName}x`,
+      `${opts.childProfileId}-2`,
+    );
+  }
+  if (await getUserByEmail(env.DB, kidLoginEmail)) {
+    throw new Error("Could not allocate a unique kid login email. Try a different child nickname.");
+  }
+
+  const kidUserId = await createLinkedKidUser(env, {
+    parentUserId: opts.parentUserId,
+    displayName,
+    ageBand: "kids",
+    email: kidLoginEmail,
+    password: opts.parentPassword,
+    status: "pending",
+  });
+
+  const now = new Date().toISOString();
+  try {
+    await env.DB.prepare(
+      `UPDATE child_profiles
+       SET linked_user_id = ?, contact_email = ?, status = 'pending', updated_at = ?
+       WHERE id = ? AND parent_user_id = ?`,
+    )
+      .bind(kidUserId, canonicalizeEmail(kidLoginEmail), now, opts.childProfileId, opts.parentUserId)
+      .run();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes("no such column") && msg.includes("status")) {
+      await env.DB.prepare(
+        `UPDATE child_profiles
+         SET linked_user_id = ?, contact_email = ?, updated_at = ?
+         WHERE id = ? AND parent_user_id = ?`,
+      )
+        .bind(kidUserId, canonicalizeEmail(kidLoginEmail), now, opts.childProfileId, opts.parentUserId)
+        .run();
+    } else {
+      throw e;
+    }
+  }
+
+  await appendAudit(
+    env.DB,
+    "register_ok",
+    kidLoginEmail,
+    `linked kid user for parent ${opts.parentUserId} · profile ${opts.childProfileId}`,
+  );
+
+  return { kidUserId, kidLoginEmail: canonicalizeEmail(kidLoginEmail) };
+}
+
+/** When a parent account is activated, activate linked kid logins too. */
+export async function activateLinkedKidsForParent(
+  env: Env,
+  parentUserId: string,
+): Promise<number> {
+  const now = new Date().toISOString();
+  try {
+    const result = await env.DB.prepare(
+      `UPDATE users
+       SET status = 'active', updated_at = ?
+       WHERE parent_user_id = ? AND status = 'pending'`,
+    )
+      .bind(now, parentUserId)
+      .run();
+    try {
+      await env.DB.prepare(
+        `UPDATE child_profiles
+         SET status = 'active', updated_at = ?
+         WHERE parent_user_id = ? AND status = 'pending'`,
+      )
+        .bind(now, parentUserId)
+        .run();
+    } catch {
+      /* status column optional */
+    }
+    return Number(result.meta?.changes ?? 0);
+  } catch {
+    return 0;
+  }
 }
 
 export async function createFamilyChild(

@@ -395,6 +395,12 @@ export async function upsertUser(env: Env, request: Request, actor: DbUser): Pro
     } catch {
       /* columns from migration 0019 */
     }
+    try {
+      const { activateLinkedKidsForParent } = await import("./family");
+      await activateLinkedKidsForParent(env, id);
+    } catch {
+      /* family tables optional */
+    }
   }
   if (status === "disabled" && prevStatus !== "disabled") {
     try {

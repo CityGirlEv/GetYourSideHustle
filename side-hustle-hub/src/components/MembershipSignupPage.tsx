@@ -257,6 +257,10 @@ export function MembershipSignupPage({
                   required
                   data-testid="membership-signup-child-name"
                 />
+                <p className="membership-signup-plan-note">
+                  We’ll create a linked Kids account for them under your parent login (no separate
+                  child email required at signup).
+                </p>
               </>
             ) : (
               <>

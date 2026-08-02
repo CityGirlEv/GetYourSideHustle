@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   dailyPeriodKey,
+  derivedKidLoginEmail,
   isFamilyAgeBand,
   isProgressReportCadence,
   normalizeChildDisplayName,
@@ -18,6 +19,15 @@ describe("family-logic", () => {
   it("normalizes kid display names", () => {
     expect(normalizeChildDisplayName("  Ava   Rose ")).toBe("Ava Rose");
     expect(normalizeChildDisplayName("")).toBe("");
+  });
+
+  it("derives a unique kid login email from the parent email + child name", () => {
+    expect(
+      derivedKidLoginEmail("Parent.Name@Gmail.com", "Ava Rose", "child-ab12cd34-ffff"),
+    ).toBe("parent.name+avarose-ab12cd34@gmail.com");
+    expect(
+      derivedKidLoginEmail("parent+tag@example.com", "Jo", "child-99"),
+    ).toBe("parent+jo-99@example.com");
   });
 
   it("validates register-kid input", () => {

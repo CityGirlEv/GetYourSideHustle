@@ -20,6 +20,35 @@ export function normalizeChildDisplayName(raw: unknown): string {
 }
 
 /**
+ * Login email for a kid account when signup only collected a display name.
+ * Uses parent plus-addressing: parent+kidslug-id@domain (unique per child profile).
+ */
+export function derivedKidLoginEmail(
+  parentEmail: string,
+  childDisplayName: string,
+  childProfileId: string,
+): string {
+  const email = String(parentEmail || "").trim().toLowerCase();
+  const at = email.lastIndexOf("@");
+  if (at < 1 || !email.slice(at + 1).includes(".")) {
+    throw new Error("Invalid parent email for kid login derivation.");
+  }
+  const local = email.slice(0, at);
+  const domain = email.slice(at + 1);
+  const baseLocal = (local.split("+")[0] || local).replace(/[^a-z0-9._-]/gi, "") || "parent";
+  const slug =
+    normalizeChildDisplayName(childDisplayName)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "")
+      .slice(0, 12) || "kid";
+  const short = String(childProfileId || "")
+    .replace(/^child-/i, "")
+    .replace(/-/g, "")
+    .slice(0, 8);
+  return `${baseLocal}+${slug}${short ? `-${short}` : ""}@${domain}`;
+}
+
+/**
  * Blueprint assignment target:
  * - null / "" / "self" → parent (unassigned from kids)
  * - child profile id → that kid
