@@ -1,18 +1,18 @@
 /**
- * Local full-stack GYSH: Vite (HMR) + Wrangler Pages Functions + production D1.
+ * Local full-stack GYSH: Vite (HMR) + Wrangler Pages Functions + D1.
  *
  * Browser: http://localhost:5173  (Vite proxies /api → Functions on :8788)
  * Direct API: http://127.0.0.1:8788/api/...
  *
- * By default wrangler.toml binds DB with remote = true so localhost and
- * getyoursidehustle.com share the same D1. Set remote = false only for an
- * isolated .wrangler/state sandbox.
+ * Default (`npm run dev`): production D1 — localhost writes update live data.
+ * Fast sandbox (`npm run dev:local` / --local / GYSH_D1_LOCAL=1): isolated
+ * .wrangler/state; startup syncs tests/tasks/agenda from prod.
  *
  * Plain Vite alone does NOT serve functions/ — use this for login to work.
  * A Vite proxy with no worker on :8788 shows as HTTP 502 in the UI.
  */
 import { spawn, spawnSync, execSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import http from "node:http";
 import net from "node:net";
 import path from "node:path";
@@ -23,6 +23,40 @@ const wrangler = path.resolve(
   root,
   "../../muntie-ev-ai-studio-main/node_modules/wrangler/bin/wrangler.js",
 );
+const wranglerConfig = path.join(root, "wrangler.toml");
+
+const wantLocalD1 =
+  process.env.GYSH_D1_LOCAL === "1" ||
+  process.argv.includes("--local") ||
+  process.argv.includes("--d1-local");
+
+/**
+ * Pages `wrangler pages dev` ignores --config; only project-root wrangler.toml
+ * is used. Flip the D1 `remote` flag in-place for this session.
+ */
+function ensureD1RemoteFlag(wantRemote) {
+  if (!existsSync(wranglerConfig)) {
+    console.error(`Missing ${wranglerConfig}`);
+    process.exit(1);
+  }
+  const before = readFileSync(wranglerConfig, "utf8");
+  if (!/^\s*remote\s*=\s*(true|false)\s*$/m.test(before)) {
+    console.error("wrangler.toml [[d1_databases]] is missing a remote = true|false line.");
+    process.exit(1);
+  }
+  const after = before.replace(
+    /^\s*remote\s*=\s*(true|false)\s*$/m,
+    `remote = ${wantRemote ? "true" : "false"}`,
+  );
+  if (after !== before) {
+    writeFileSync(wranglerConfig, after, "utf8");
+    console.log(
+      `✓ Set wrangler.toml D1 remote = ${wantRemote ? "true" : "false"} (${wantRemote ? "prod writes" : "local sandbox"})`,
+    );
+  }
+}
+
+ensureD1RemoteFlag(!wantLocalD1);
 
 /** Load `.dev.vars` into the child env so Wrangler picks up Resend secrets even if a long-lived session is restarted. */
 function loadDevVars() {
@@ -180,10 +214,10 @@ function waitForHealth(timeoutMs = useRemoteD1 ? 180_000 : 90_000) {
   });
 }
 
-/** True when wrangler.toml binds D1 with remote = true (shared prod database). */
-function d1BindingIsRemote() {
+/** True when the active wrangler config binds D1 with remote = true. */
+function d1BindingIsRemote(configPath) {
   try {
-    const toml = readFileSync(path.join(root, "wrangler.toml"), "utf8");
+    const toml = readFileSync(configPath, "utf8");
     const block = toml.match(/\[\[d1_databases\]\][\s\S]*?(?=\n\[\[|\n\[vars\]|\n\[triggers\]|$)/);
     const text = block?.[0] ?? toml;
     return /^\s*remote\s*=\s*true\s*$/m.test(text);
@@ -192,7 +226,7 @@ function d1BindingIsRemote() {
   }
 }
 
-const useRemoteD1 = d1BindingIsRemote();
+const useRemoteD1 = d1BindingIsRemote(wranglerConfig);
 
 console.log("GYSH local full-stack");
 console.log(`  Functions + D1 → http://127.0.0.1:${API_PORT}`);
@@ -200,9 +234,10 @@ console.log(`  Vite UI       → http://localhost:${VITE_PORT}  (open this; /api
 if (useRemoteD1) {
   console.log("  D1           → production (remote = true) — same DB as live site");
   console.warn("  ⚠ Local API writes update production D1.");
+  console.log("  Tip: npm run dev:local for a fast sandbox (writes stay local).");
 } else {
   console.log("  D1           → local .wrangler/state (sandbox)");
-  console.log("  Tip: set remote = true in wrangler.toml to share prod D1.");
+  console.log("  Tip: npm run dev to write to production D1.");
 }
 console.log("");
 
@@ -293,6 +328,7 @@ if (await portInUse(VITE_PORT)) {
 }
 
 // Serve public/ as static assets so Pages Functions load; Vite owns the real UI on 5173.
+// (Pages does not support --config; D1 remote flag is set on wrangler.toml above.)
 spawnInherit(
   "node",
   [

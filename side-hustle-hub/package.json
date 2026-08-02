@@ -8,6 +8,8 @@
     "dev:vite": "vite",
     "dev:full": "node --use-system-ca scripts/dev-pages.mjs",
     "dev:pages": "node --use-system-ca scripts/dev-pages.mjs",
+    "dev:local": "node --use-system-ca scripts/dev-pages.mjs --local",
+    "dev:remote": "node --use-system-ca scripts/dev-pages.mjs",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
