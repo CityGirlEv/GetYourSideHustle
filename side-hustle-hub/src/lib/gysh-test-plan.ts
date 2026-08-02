@@ -3,6 +3,7 @@
 import type { TestOwnerId } from "./gysh-roles";
 import { api } from "./api";
 import { PROOFREAD_CASES } from "./gysh-proofread-cases";
+import { VIDEO_MARKETING_CASES } from "./gysh-video-marketing-cases";
 import { WIZARD_SCENARIO_CASES } from "./gysh-wizard-scenarios";
 import { withPageLinkInFirstStep } from "./qa-page-links";
 import { noteEntriesPlainText } from "./gysh-note-entries";
@@ -162,6 +163,8 @@ export type TestCase = {
   steps: string[];
   expected: string;
   path?: string;
+  /** Task List ids this case QA’s (e.g. T-SL-S3-YT-FIRST-SHORT). */
+  relatedTaskIds?: string[];
 };
 
 /**
@@ -186,6 +189,7 @@ const INTERNAL_AREAS = new Set([
   "Playwright",
   "Vitest Failure",
   "Playwright Failure",
+  "Video Marketing",
 ]);
 
 /** Edge cases whose area is shared but the subject under test is internal. */
@@ -313,6 +317,8 @@ export function categoryForCase(t: Pick<TestCase, "area" | "suite" | "id">): Tes
     case "About":
     case "Family Coach":
       return "website";
+    case "Video Marketing":
+      return "content";
     case "Admin":
     case "Schedule":
     case "Accessibility":
@@ -1883,6 +1889,9 @@ const TEST_CASES_RAW: TestCase[] = [
 
   // External proofread — pages + every guide + Complete Guide (Tina/Lyriq pairs → Backlog)
   ...PROOFREAD_CASES,
+
+  // Soft-launch / Hedra video QA (cross-linked to T-SL-* tasks)
+  ...VIDEO_MARKETING_CASES,
 
   // Exhaustive Get Your Side Hustle option paths (Vitest-owned matrix)
   ...WIZARD_SCENARIO_CASES,

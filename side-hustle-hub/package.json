@@ -4,10 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node --use-system-ca scripts/dev-pages.mjs --local",
+    "dev": "node --use-system-ca scripts/dev-pages.mjs --remote",
     "dev:vite": "vite",
-    "dev:full": "node --use-system-ca scripts/dev-pages.mjs --local",
-    "dev:pages": "node --use-system-ca scripts/dev-pages.mjs --local",
+    "dev:full": "node --use-system-ca scripts/dev-pages.mjs --remote",
+    "dev:pages": "node --use-system-ca scripts/dev-pages.mjs --remote",
     "dev:local": "node --use-system-ca scripts/dev-pages.mjs --local",
     "dev:remote": "node --use-system-ca scripts/dev-pages.mjs --remote",
     "build": "tsc -b && vite build",

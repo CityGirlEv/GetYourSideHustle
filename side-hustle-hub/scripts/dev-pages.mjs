@@ -4,11 +4,13 @@
  * Browser: http://localhost:5173  (Vite proxies /api → Functions on :8788)
  * Direct API: http://127.0.0.1:8788/api/...
  *
- * Default (`npm run dev` / --local): fast local D1 sandbox (.wrangler/state).
- * Startup syncs tests/tasks/agenda from prod so admin data is usable offline.
+ * Default (`npm run dev` / --remote): ONE database — production D1 (gysh-db),
+ * same users/passwords/tasks as https://getyoursidehustle.com. Localhost writes
+ * update live data. API calls are slower (~2–4s) because they hit Cloudflare.
  *
- * Slow prod DB (`npm run dev:remote` / --remote): every /api call hits remote D1
- * (~2–4s each) — only use when you must write live production data.
+ * Optional sandbox (`npm run dev:local` / --local): isolated .wrangler/state D1.
+ * Startup syncs tests/tasks/agenda from prod, but member accounts created only
+ * on prod (e.g. tinamariebarham@verizon.net) will NOT exist until re-synced/seeded.
  *
  * Plain Vite alone does NOT serve functions/ — use this for login to work.
  * A Vite proxy with no worker on :8788 shows as HTTP 502 in the UI.
@@ -27,12 +29,20 @@ const wrangler = path.resolve(
 );
 const wranglerConfig = path.join(root, "wrangler.toml");
 
+const wantLocalD1Flag =
+  process.env.GYSH_D1_LOCAL === "1" ||
+  process.argv.includes("--local") ||
+  process.argv.includes("--d1-local");
 const wantRemoteD1Flag =
   process.env.GYSH_D1_REMOTE === "1" ||
   process.argv.includes("--remote") ||
   process.argv.includes("--d1-remote");
-/** Default local (fast). Opt into prod D1 with --remote / GYSH_D1_REMOTE=1 / GYSH_D1_LOCAL=0. */
-const wantLocalD1 = !wantRemoteD1Flag && process.env.GYSH_D1_LOCAL !== "0";
+/**
+ * Default = production D1 (one DB with the live site).
+ * Opt into sandbox with --local / GYSH_D1_LOCAL=1 / npm run dev:local.
+ * --remote wins if both flags are passed.
+ */
+const wantLocalD1 = wantLocalD1Flag && !wantRemoteD1Flag && process.env.GYSH_D1_REMOTE !== "1";
 
 /**
  * Pages `wrangler pages dev` ignores --config; only project-root wrangler.toml
@@ -236,12 +246,12 @@ console.log("GYSH local full-stack");
 console.log(`  Functions + D1 → http://127.0.0.1:${API_PORT}`);
 console.log(`  Vite UI       → http://localhost:${VITE_PORT}  (open this; /api is proxied)`);
 if (useRemoteD1) {
-  console.log("  D1           → production (remote = true) — same DB as live site");
-  console.warn("  ⚠ SLOW: each /api call hits remote D1 (~2–4s). Prefer npm run dev.");
-  console.warn("  ⚠ Local API writes update production D1.");
+  console.log("  D1           → production gysh-db (SAME as getyoursidehustle.com)");
+  console.warn("  ⚠ Each /api call hits remote D1 (~2–4s). Writes update live data.");
 } else {
-  console.log("  D1           → local .wrangler/state (fast sandbox)");
-  console.log("  Tip: npm run dev:remote only when you must write production D1.");
+  console.log("  D1           → local .wrangler/state SANDBOX (not prod)");
+  console.warn("  ⚠ Prod-only accounts (e.g. new parent signups) will not log in here.");
+  console.log("  Tip: use npm run dev (default) for the real shared database.");
 }
 console.log("");
 

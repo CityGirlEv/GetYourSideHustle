@@ -21,7 +21,7 @@ binding = "DB"
 database_name = "gysh-db"
 database_id = "f0e2620f-e5dd-41a4-b2b7-b3f2ca2d8c9e"
 migrations_dir = "migrations"
-# Local `npm run dev` uses production D1 so localhost writes update live data.
-# `npm run dev:local` flips this to false for a fast .wrangler/state sandbox
-# (see scripts/dev-pages.mjs — Pages cannot use a separate --config file).
-remote = false
+# ONE database: production gysh-db (same as getyoursidehustle.com).
+# `npm run dev` keeps remote = true. Only `npm run dev:local` flips this to false
+# for an isolated .wrangler/state sandbox (see scripts/dev-pages.mjs).
+remote = true

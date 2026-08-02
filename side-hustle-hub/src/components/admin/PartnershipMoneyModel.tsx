@@ -1,8 +1,10 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, Download, ListTree } from "lucide-react";
 import {
-  MONEY_MODEL_SECTIONS,
-  PARTNERSHIP_MONEY_MODEL_META,
+  getMoneyModelDraft,
+  MONEY_MODEL_DRAFTS,
+  normalizeMoneyModelDraftId,
+  type MoneyModelDraftId,
   type MoneyModelSection,
   type MoneyModelSectionId,
 } from "../../lib/partnership-money-model";
@@ -161,9 +163,31 @@ function CardSection({
   );
 }
 
-const ALL_IDS = MONEY_MODEL_SECTIONS.map((s) => s.id);
+function readDraftFromUrl(): MoneyModelDraftId {
+  if (typeof window === "undefined") return "draft2";
+  return normalizeMoneyModelDraftId(new URLSearchParams(window.location.search).get("draft"));
+}
+
+function syncDraftToUrl(draft: MoneyModelDraftId) {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  url.searchParams.set("draft", draft);
+  window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+}
 
 export const PartnershipMoneyModel: React.FC = () => {
+  const [draftId, setDraftId] = useState<MoneyModelDraftId>(() => {
+    const fromUrl = readDraftFromUrl();
+    // Default new visits to Draft 2 (current Tina-agreed working copy); URL can force Draft 1.
+    if (typeof window !== "undefined" && !new URLSearchParams(window.location.search).has("draft")) {
+      return "draft2";
+    }
+    return fromUrl;
+  });
+  const draft = useMemo(() => getMoneyModelDraft(draftId), [draftId]);
+  const sections = draft.sections;
+  const sectionIds = useMemo(() => sections.map((s) => s.id), [sections]);
+
   const [openIds, setOpenIds] = useState<Set<MoneyModelSectionId>>(
     () => new Set<MoneyModelSectionId>(["core"]),
   );
@@ -171,9 +195,19 @@ export const PartnershipMoneyModel: React.FC = () => {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
+  useEffect(() => {
+    syncDraftToUrl(draftId);
+  }, [draftId]);
+
+  useEffect(() => {
+    setOpenIds(new Set<MoneyModelSectionId>(["core"]));
+    setMessage("");
+    setError("");
+  }, [draftId]);
+
   const documentMode = useMemo(
-    () => ALL_IDS.every((id) => openIds.has(id)),
-    [openIds],
+    () => sectionIds.every((id) => openIds.has(id)),
+    [openIds, sectionIds],
   );
 
   const toggle = (id: MoneyModelSectionId) => {
@@ -185,13 +219,12 @@ export const PartnershipMoneyModel: React.FC = () => {
     });
   };
 
-  const expandAll = () => setOpenIds(new Set(ALL_IDS));
+  const expandAll = () => setOpenIds(new Set(sectionIds));
   const collapseAll = () => setOpenIds(new Set());
 
   const jumpTo = (id: MoneyModelSectionId) => {
     setOpenIds((prev) => {
-      // Keep document mode if already fully expanded; otherwise open the target.
-      if (ALL_IDS.every((x) => prev.has(x))) return prev;
+      if (sectionIds.every((x) => prev.has(x))) return prev;
       return new Set(prev).add(id);
     });
     requestAnimationFrame(() => {
@@ -206,8 +239,8 @@ export const PartnershipMoneyModel: React.FC = () => {
     const tab = reservePdfTab();
     setPdfBusy(true);
     setError("");
-    void downloadPartnershipMoneyModelPdf(tab)
-      .then(() => setMessage("Partnership money model PDF opened."))
+    void downloadPartnershipMoneyModelPdf(tab, draftId)
+      .then(() => setMessage(`${draft.meta.tabLabel} PDF opened.`))
       .catch((e: unknown) => {
         try {
           tab?.close();
@@ -219,11 +252,45 @@ export const PartnershipMoneyModel: React.FC = () => {
       .finally(() => setPdfBusy(false));
   };
 
-  const meta = PARTNERSHIP_MONEY_MODEL_META;
-  const pageUrl = financialsMoneyModelUrl();
+  const meta = draft.meta;
+  const pageUrl = (() => {
+    const base = financialsMoneyModelUrl();
+    const u = new URL(base, "https://getyoursidehustle.com");
+    u.searchParams.set("draft", draftId);
+    return `${u.pathname}${u.search}`;
+  })();
 
   return (
     <div className="glass" style={{ padding: 24, borderRadius: 16 }}>
+      <div
+        role="tablist"
+        aria-label="Money model drafts"
+        style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}
+      >
+        {MONEY_MODEL_DRAFTS.map((d) => {
+          const active = d.meta.id === draftId;
+          return (
+            <button
+              key={d.meta.id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              data-testid={`money-model-${d.meta.id}`}
+              className="btn"
+              onClick={() => setDraftId(d.meta.id)}
+              style={{
+                border: active ? "1.5px solid var(--bronze)" : "1px solid var(--border-color)",
+                background: active ? "rgba(148, 125, 100, 0.18)" : "#fff",
+                fontWeight: active ? 700 : 500,
+              }}
+            >
+              {d.meta.tabLabel}
+              {d.meta.id === "draft2" ? " (current)" : ""}
+            </button>
+          );
+        })}
+      </div>
+
       <div
         style={{
           display: "flex",
@@ -266,6 +333,27 @@ export const PartnershipMoneyModel: React.FC = () => {
             >
               Task {meta.taskNumber}
             </a>
+            {draftId === "draft2" ? (
+              <a
+                href={adminStudioUrl({ tab: "tasks", taskId: "T-052" })}
+                title="Open T-052 Navy Federal banking task"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  padding: "3px 10px",
+                  borderRadius: 999,
+                  border: "1px solid var(--border-color)",
+                  background: "rgba(148, 125, 100, 0.08)",
+                  color: "var(--bronze, #947d64)",
+                  fontSize: "0.85rem",
+                  fontWeight: 700,
+                  textDecoration: "none",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Task T-052
+              </a>
+            ) : null}
           </h3>
           <p className="admin-page-lede" style={{ margin: 0 }}>
             {meta.subtitle}. Working summary for partners - not the signed contract.
@@ -284,7 +372,7 @@ export const PartnershipMoneyModel: React.FC = () => {
           onClick={openPdf}
           style={{ display: "inline-flex", gap: 6, alignItems: "center" }}
         >
-          <Download size={16} /> {pdfBusy ? "Opening PDF…" : "Download PDF"}
+          <Download size={16} /> {pdfBusy ? "Opening PDF…" : `Download ${meta.tabLabel} PDF`}
         </button>
       </div>
 
@@ -364,7 +452,7 @@ export const PartnershipMoneyModel: React.FC = () => {
             : "Expand individual sections, or use Expand all (document) to read everything as one page."}
         </p>
         <ol style={{ margin: 0, paddingLeft: 20, display: "grid", gap: 6 }}>
-          {MONEY_MODEL_SECTIONS.map((s, i) => (
+          {sections.map((s, i) => (
             <li key={s.id}>
               <button
                 type="button"
@@ -423,23 +511,21 @@ export const PartnershipMoneyModel: React.FC = () => {
                   fontWeight: 700,
                 }}
               >
-                Task {meta.taskNumber}
+                {meta.tabLabel} · Task {meta.taskNumber}
               </span>
             </h2>
             <p style={{ margin: 0, color: "var(--text-primary)", lineHeight: 1.5 }}>{meta.subtitle}</p>
           </header>
 
-          {MONEY_MODEL_SECTIONS.map((section, idx) => (
+          {sections.map((section, idx) => (
             <section
               key={section.id}
               id={`money-model-${section.id}`}
               style={{
-                marginBottom: idx === MONEY_MODEL_SECTIONS.length - 1 ? 0 : 28,
-                paddingBottom: idx === MONEY_MODEL_SECTIONS.length - 1 ? 0 : 28,
+                marginBottom: idx === sections.length - 1 ? 0 : 28,
+                paddingBottom: idx === sections.length - 1 ? 0 : 28,
                 borderBottom:
-                  idx === MONEY_MODEL_SECTIONS.length - 1
-                    ? "none"
-                    : "1px solid var(--border-color)",
+                  idx === sections.length - 1 ? "none" : "1px solid var(--border-color)",
               }}
             >
               <button
@@ -473,7 +559,7 @@ export const PartnershipMoneyModel: React.FC = () => {
         </article>
       ) : (
         <div style={{ display: "grid", gap: 10 }}>
-          {MONEY_MODEL_SECTIONS.map((section) => (
+          {sections.map((section) => (
             <CardSection
               key={section.id}
               id={`money-model-${section.id}`}

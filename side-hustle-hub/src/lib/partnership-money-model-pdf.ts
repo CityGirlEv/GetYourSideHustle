@@ -5,8 +5,8 @@
 import { jsPDF } from "jspdf";
 import { openPdfInBrowser } from "./open-pdf";
 import {
-  MONEY_MODEL_SECTIONS,
-  PARTNERSHIP_MONEY_MODEL_META,
+  getMoneyModelDraft,
+  type MoneyModelDraftId,
   type MoneyModelSection,
 } from "./partnership-money-model";
 import {
@@ -183,8 +183,11 @@ function writeSection(ctx: Ctx, section: MoneyModelSection, startOnNewPage: bool
 
 export async function downloadPartnershipMoneyModelPdf(
   reservedTab?: Window | null,
+  draftId: MoneyModelDraftId | string = "draft1",
 ): Promise<void> {
-  const m = PARTNERSHIP_MONEY_MODEL_META;
+  const draft = getMoneyModelDraft(draftId);
+  const m = draft.meta;
+  const sections = draft.sections;
   const logoDataUrl = await loadPdfLogoDataUrl();
   const doc = new jsPDF({ unit: "pt", format: "letter" });
   drawPdfPageChrome(doc);
@@ -204,7 +207,7 @@ export async function downloadPartnershipMoneyModelPdf(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.setTextColor(...COLORS.wine);
-  doc.text(`Task ${m.taskNumber}`, MARGIN, ctx.y);
+  doc.text(`${m.tabLabel} · Task ${m.taskNumber}`, MARGIN, ctx.y);
   ctx.y += 16;
 
   doc.setFont("helvetica", "normal");
@@ -220,7 +223,7 @@ export async function downloadPartnershipMoneyModelPdf(
   para(ctx, m.lead, { size: 9, color: COLORS.muted });
 
   heading(ctx, "Contents");
-  MONEY_MODEL_SECTIONS.forEach((s, i) => {
+  sections.forEach((s, i) => {
     ensureSpace(ctx, LINE + 4);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(11);
@@ -232,9 +235,9 @@ export async function downloadPartnershipMoneyModelPdf(
   para(ctx, `Where to find this: ${m.where}`, { size: 9, color: COLORS.muted });
 
   // Pack sections continuously — avoid sparse one-section-per-page blank space.
-  MONEY_MODEL_SECTIONS.forEach((section, idx) => {
+  sections.forEach((section, idx) => {
     writeSection(ctx, section, false);
-    if (idx === MONEY_MODEL_SECTIONS.length - 1) {
+    if (idx === sections.length - 1) {
       ctx.y += 6;
       para(
         ctx,

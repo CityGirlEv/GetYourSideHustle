@@ -459,13 +459,43 @@ export function UsersArea() {
           Passwords are never shown — only set or reset from Edit.
         </p>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "12px", marginTop: "18px" }}>
+        <div
+          style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "12px", marginTop: "18px" }}
+          role="group"
+          aria-label="Filter users by role"
+        >
+          <button
+            type="button"
+            className="glass"
+            onClick={() => setRoleFilter("all")}
+            aria-pressed={roleFilter === "all"}
+            data-testid="users-filter-all"
+            style={{
+              padding: "14px",
+              textAlign: "left",
+              cursor: "pointer",
+              border: roleFilter === "all" ? "1.5px solid var(--bronze)" : "1px solid var(--border-color)",
+              background: roleFilter === "all" ? "rgba(215,198,151,0.45)" : "#fff",
+            }}
+          >
+            <div style={{ fontWeight: 700, color: "var(--charcoal)", display: "flex", alignItems: "center", gap: 8 }}>
+              <span
+                aria-hidden
+                style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--bronze)" }}
+              />
+              All
+            </div>
+            <div style={{ fontSize: "1.4rem", fontWeight: 800, color: "var(--bronze)" }}>{users.length}</div>
+            <div style={{ fontSize: "1rem", color: "var(--text-primary)", marginTop: 4 }}>All users</div>
+          </button>
           {GYSH_ROLES.map((r) => (
             <button
               key={r}
               type="button"
               className="glass"
-              onClick={() => setRoleFilter(roleFilter === r ? "all" : r)}
+              onClick={() => setRoleFilter(r)}
+              aria-pressed={roleFilter === r}
+              data-testid={`users-filter-${r}`}
               style={{
                 padding: "14px",
                 textAlign: "left",
@@ -536,7 +566,7 @@ export function UsersArea() {
       ) : filtered.length === 0 ? (
         <p style={{ color: "var(--text-primary)" }}>
           {roleFilter !== "all" || statusFilter !== "all"
-            ? "No users match the current filters. Clear role/status filters to see everyone."
+            ? "No users match the current filters. Choose All users (and All statuses) to see everyone."
             : "No users yet."}
         </p>
       ) : (

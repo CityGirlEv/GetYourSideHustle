@@ -629,9 +629,10 @@ function App() {
     setActiveView("login");
   }, [authReady, activeView, canUseAdminPortal]);
 
-  // Tina / Lyriq: on login or app open, lock to Agenda until ≥3 meeting dates are saved.
+  // Tina / Lyriq admins: lock to Agenda until ≥3 meeting dates are saved.
+  // Never run for member/parent accounts (even if name/email looks like "Tina").
   useEffect(() => {
-    if (!authReady || !authUser || !mustPickAgendaTimes(authUser)) {
+    if (!authReady || !authUser || !canUseAdminPortal || !mustPickAgendaTimes(authUser)) {
       setMeetingGateLocked(false);
       return;
     }
@@ -655,15 +656,19 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [authReady, authUser]);
+  }, [authReady, authUser, canUseAdminPortal]);
 
   useEffect(() => {
     if (!meetingGateLocked) return;
+    if (!canUseAdminPortal) {
+      setMeetingGateLocked(false);
+      return;
+    }
     if (activeView !== "admin" || adminTab !== "agenda") {
       setAdminTab("agenda");
       setActiveView("admin");
     }
-  }, [meetingGateLocked, activeView, adminTab]);
+  }, [meetingGateLocked, activeView, adminTab, canUseAdminPortal]);
 
   const goTo = (
     view: AppView,

@@ -1,6 +1,6 @@
 /** Client for interactive partner agenda + meeting time picks. */
 import { api } from "./api";
-import { qaTesterIdForUser } from "./gysh-roles";
+import { canAccessAdminPortal, qaTesterIdForUser } from "./gysh-roles";
 
 export const MIN_AGENDA_TIME_PICKS = 3;
 export const MAX_AGENDA_TIME_PICKS = 5;
@@ -169,8 +169,19 @@ export type PartnerAgendaPayload = {
   results?: Array<{ email: string; ok: boolean; error?: string }>;
 };
 
-export function mustPickAgendaTimes(user: { name?: string; email?: string } | null | undefined): boolean {
+/**
+ * Tina / Lyriq must pick ≥3 agenda times before leaving Agenda.
+ * Only real Admin Studio accounts — never parent/member logins whose name/email
+ * merely contains "tina" (that used to force /admin ↔ /login and freeze the tab).
+ */
+export function mustPickAgendaTimes(
+  user:
+    | { name?: string; email?: string; role?: string; roles?: string[] }
+    | null
+    | undefined,
+): boolean {
   if (!user) return false;
+  if (!canAccessAdminPortal(user)) return false;
   const id = qaTesterIdForUser(user);
   return id === "tina" || id === "lyriq";
 }

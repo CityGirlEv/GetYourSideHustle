@@ -83,6 +83,7 @@ export const TASK_SPRINT_MAP: Record<string, number> = {
   "T-010": 3, // Parent safety PDF
   "T-018": 3, // Workshops / conference dates
   "T-022": 3, // Financials page
+  "T-052": 3, // Navy Federal business account explore
   "T-023": 3, // Expense line items
   "T-024": 3, // Legalities / LLC
   "T-025": 3, // Delegation of responsibilities
@@ -310,6 +311,12 @@ export function suggestedSprintForTest(
   }
 
   if (id.startsWith("VT-WIZARD")) return 4;
+  // Soft-launch Hedra video QA — align with the linked T-SL-* sprint
+  if (id === "VIDEO-001" || id === "VIDEO-007") return 2;
+  if (id === "VIDEO-002" || id === "VIDEO-003") return 3;
+  if (id === "VIDEO-004" || id === "VIDEO-005") return 4;
+  if (id === "VIDEO-006") return 5;
+  if (id.startsWith("VIDEO-") || area === "video marketing") return 3;
   if (id.startsWith("WORK-")) return 3; // workshops — post soft launch
   if (id.startsWith("ADULT-") || id.startsWith("SENIOR-")) return 3;
   // Content Factory cadence — Sprint 1 (rest of Admin stays with T-006 band)
