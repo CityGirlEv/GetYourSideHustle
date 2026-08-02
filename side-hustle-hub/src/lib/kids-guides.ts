@@ -12,10 +12,10 @@ export type KidsGuide = {
   audience: KidsAudience;
   title: string;
   theme: "games-ai" | "savings" | "give-back" | "reinvest";
-  /** Free guides show every step; member guides show a teaser then lock. */
+  /** Free-plan guides (still require membership to open steps). */
   free: boolean;
   summary: string;
-  /** How many steps guests can preview on gated guides (default 2). */
+  /** Kept for content/tests; guests do not see step previews. */
   previewCount: number;
   steps: KidsGuideStep[];
   parentTip: string;
@@ -25,10 +25,10 @@ export const KIDS_GUIDES: KidsGuide[] = [
   // —— Kids (4–12) free ——
   {
     id: "kids-piggy-first-goal",
+    free: true,
     audience: "kids",
     title: "Piggy Bank: Set Your First Savings Goal",
     theme: "savings",
-    free: true,
     previewCount: 2,
     summary:
       "Name something you want, pick a simple price, and count how many little jobs it might take — with a parent helping.",
@@ -58,10 +58,10 @@ export const KIDS_GUIDES: KidsGuide[] = [
   },
   {
     id: "kids-kindness-share",
+    free: true,
     audience: "kids",
     title: "Give Back: Share a Skill for Free",
     theme: "give-back",
-    free: true,
     previewCount: 2,
     summary:
       "Earning is great — kindness is part of the GYSH team too. Practice giving back with a tiny free gift of help.",
@@ -92,13 +92,13 @@ export const KIDS_GUIDES: KidsGuide[] = [
   // —— Kids (4–12) member ——
   {
     id: "kids-games-ai",
+    free: false,
     audience: "kids",
     title: "Make a Tiny Game with AI (Parent Nearby)",
     theme: "games-ai",
-    free: false,
     previewCount: 2,
     summary:
-      "Invent a mini maze, quiz, or story-game using kid-friendly AI tools — always with a parent. Preview the first steps free; join the Kids Corner GYSH Team for the full guide.",
+      "Invent a mini maze, quiz, or story-game using kid-friendly AI tools — always with a parent. Join the Kids Corner GYSH Team for the full step-by-step guide.",
     parentTip: "Stay in the room. Never share real names, school, address, or photos with tools or strangers.",
     steps: [
       {
@@ -129,10 +129,10 @@ export const KIDS_GUIDES: KidsGuide[] = [
   },
   {
     id: "kids-reinvest-jar",
+    free: false,
     audience: "kids",
     title: "Grow Your Hustle: Put Some Earnings Back",
     theme: "reinvest",
-    free: false,
     previewCount: 2,
     summary:
       "When you earn coins, spend a little on fun, save a little, and put a little back into your hustle supplies — kid-friendly “investing.”",
@@ -162,10 +162,10 @@ export const KIDS_GUIDES: KidsGuide[] = [
   },
   {
     id: "kids-craft-hustle",
+    free: false,
     audience: "kids",
     title: "Craft Hustle Starter + Kevina Kindness Extra",
     theme: "give-back",
-    free: false,
     previewCount: 2,
     summary:
       "Make a tiny sticker or charm set, price it with a parent, and add a Glow Getter kindness extra inspired by Kevina Starr.",
@@ -197,10 +197,10 @@ export const KIDS_GUIDES: KidsGuide[] = [
   // —— Teens (13–17) free ——
   {
     id: "junior-savings-ceo",
+    free: true,
     audience: "junior",
     title: "Savings Goals for Future CEOs",
     theme: "savings",
-    free: true,
     previewCount: 2,
     summary:
       "Treat savings like a mini business plan: clear target, timeline, and weekly job count — tracked in the Piggy Bank.",
@@ -230,10 +230,10 @@ export const KIDS_GUIDES: KidsGuide[] = [
   },
   {
     id: "junior-give-back-teach",
+    free: true,
     audience: "junior",
     title: "Give Back: Teach What You Know",
     theme: "give-back",
-    free: true,
     previewCount: 2,
     summary:
       "Turn a skill into community value — one free teaching session builds reputation and kindness muscle.",
@@ -264,10 +264,10 @@ export const KIDS_GUIDES: KidsGuide[] = [
   // —— Teens (13–17) member ——
   {
     id: "junior-games-ai",
+    free: false,
     audience: "junior",
     title: "Build a Game with AI — From Idea to Prototype",
     theme: "games-ai",
-    free: false,
     previewCount: 2,
     summary:
       "Use AI for concepts, art ideas, and dialogue, then build a small web/mobile prototype with guardian-approved tools. Full guide for Teens Side Hustle Team members.",
@@ -301,10 +301,10 @@ export const KIDS_GUIDES: KidsGuide[] = [
   },
   {
     id: "junior-reinvest-ceo",
+    free: false,
     audience: "junior",
     title: "Reinvest Like a CEO (Age-Appropriate)",
     theme: "reinvest",
-    free: false,
     previewCount: 2,
     summary:
       "Don’t spend every dollar you earn. Split income into save, enjoy, and grow-the-business buckets.",
@@ -334,10 +334,10 @@ export const KIDS_GUIDES: KidsGuide[] = [
   },
   {
     id: "junior-content-create",
+    free: false,
     audience: "junior",
     title: "Content Creation Starter (Parent-Friendly)",
     theme: "games-ai",
-    free: false,
     previewCount: 2,
     summary:
       "Practice wholesome content for school, portfolio, or family brand — privacy-first, no stranger DMs.",
@@ -383,3 +383,4 @@ export function themeLabel(theme: KidsGuide["theme"]): string {
       return "Reinvest";
   }
 }
+

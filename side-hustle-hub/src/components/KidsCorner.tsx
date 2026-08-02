@@ -40,6 +40,14 @@ import {
   type KidsAudience,
 } from "../lib/kids-team";
 import { guidesForAudience, themeLabel, type KidsGuide } from "../lib/kids-guides";
+import {
+  FREE_GUIDE_SIGNUP_NOTE,
+  guideTierBadgeLabel,
+  guideTierMembershipNote,
+  kidsGuideMinTier,
+  resolveGuideAccess,
+} from "../lib/guide-access";
+import { JoinToUnlockCta } from "./JoinToUnlockCta";
 import { submitJuniorSignup } from "../lib/junior-signup";
 import { saveMemberProgress } from "../lib/gysh-member-progress";
 import { trackGyshEvent } from "../lib/gysh-analytics";
@@ -100,10 +108,16 @@ type KidsCornerProps = {
   hasAccountLogin?: boolean;
   /** Profile Switcher → Unlogged in User */
   previewAsGuest?: boolean;
+  /** Account plan (free / starter / pro / elite). Team join without account → free. */
+  membershipTier?: string | null;
   /** Navigate to Join with Kids or Teens membership lane selected. */
   onGoToJoin?: (audience: "kids" | "junior") => void;
   /** Open the dedicated Kids/Teens Dashboard (youth login). */
   onOpenDashboard?: () => void;
+  /** Open the full Guides library. */
+  onOpenGuidesLibrary?: () => void;
+  /** Open Seniors guides / corner. */
+  onOpenSeniors?: () => void;
   /** Deep-link from checklist / Match Wizard / Site Map entry points. */
   entryFocus?: {
     mode: AudienceMode;
@@ -735,90 +749,75 @@ function JoinTeamTab({
 function GuideCard({
   guide,
   isMember,
+  membershipTier,
   onJoinCta,
   collapseSteps = true,
 }: {
   guide: KidsGuide;
   isMember: boolean;
+  membershipTier?: string | null;
   onJoinCta: () => void;
   /** Start with steps collapsed (default). Use false only if a deep-link should expand. */
   collapseSteps?: boolean;
 }) {
-  const unlocked = guide.free || isMember;
-  const previewCount = guide.previewCount;
-  const visibleSteps = unlocked ? guide.steps : guide.steps.slice(0, previewCount);
-  const lockedSteps = unlocked ? [] : guide.steps.slice(previewCount);
+  const minTier = kidsGuideMinTier(guide.id);
+  const access = resolveGuideAccess({ isMember, membershipTier, minTier });
   const [stepsOpen, setStepsOpen] = useState(!collapseSteps);
+  const isFreePlan = minTier === "free";
 
   return (
-    <article className={`glass kids-guide-card ${guide.free ? "is-free" : "is-gated"}`}>
+    <article className={`glass kids-guide-card ${access.unlocked ? "is-free" : "is-gated"}`}>
       <div className="kids-guide-card-head">
         <div>
-          <span className={`glow-badge ${guide.free ? "free" : "pink"}`} style={{ fontSize: "0.9375rem" }}>
-            {guide.free ? "Free guide" : "Members"}
+          <span className={`glow-badge ${isFreePlan ? "free" : "pink"}`} style={{ fontSize: "0.9375rem" }}>
+            {guideTierBadgeLabel(minTier)}
           </span>
           <span className="kids-guide-theme">{themeLabel(guide.theme)}</span>
           <h3>{guide.title}</h3>
+          <p className="kids-guide-tier-note">{guideTierMembershipNote(minTier)}</p>
         </div>
-        {!guide.free && !isMember && <Lock size={18} style={{ color: "var(--crimson)", flexShrink: 0 }} />}
-        {(guide.free || isMember) && <Unlock size={18} style={{ color: "var(--accent-emerald)", flexShrink: 0 }} />}
+        {access.unlocked ? (
+          <Unlock size={18} style={{ color: "var(--accent-emerald)", flexShrink: 0 }} />
+        ) : (
+          <Lock size={18} style={{ color: "var(--crimson)", flexShrink: 0 }} />
+        )}
       </div>
       <p className="kids-guide-summary">{guide.summary}</p>
 
-      <button
-        type="button"
-        className="kids-guide-steps-toggle"
-        onClick={() => setStepsOpen((o) => !o)}
-        aria-expanded={stepsOpen}
-      >
-        {stepsOpen ? "Hide steps" : `Show ${visibleSteps.length} steps`}
-      </button>
-
-      {stepsOpen && (
+      {access.unlocked ? (
         <>
-          <ol className="kids-guide-steps">
-            {visibleSteps.map((step, i) => (
-              <li key={step.title}>
-                <strong>
-                  Step {i + 1}: {step.title}
-                </strong>
-                <span>{step.body}</span>
-              </li>
-            ))}
-          </ol>
+          <button
+            type="button"
+            className="kids-guide-steps-toggle"
+            onClick={() => setStepsOpen((o) => !o)}
+            aria-expanded={stepsOpen}
+          >
+            {stepsOpen ? "Hide steps" : `Show ${guide.steps.length} steps`}
+          </button>
 
-          {!unlocked && lockedSteps.length > 0 && (
-            <div className="kids-guide-lock">
-              <div className="kids-guide-lock-overlay">
-                <Lock size={20} />
-                <strong>Join to unlock the rest</strong>
-                <p>
-                  {lockedSteps.length} more step{lockedSteps.length === 1 ? "" : "s"} waiting — plus
-                  parent tips for the full playbook.
-                </p>
-                <button type="button" className="btn btn-primary" onClick={onJoinCta} style={{ gap: 6 }}>
-                  <BadgeCheck size={16} /> Join the team
-                </button>
-              </div>
-              <ol className="kids-guide-steps kids-guide-steps--blurred" aria-hidden="true">
-                {lockedSteps.map((step, i) => (
+          {stepsOpen && (
+            <>
+              <ol className="kids-guide-steps">
+                {guide.steps.map((step, i) => (
                   <li key={step.title}>
                     <strong>
-                      Step {previewCount + i + 1}: {step.title}
+                      Step {i + 1}: {step.title}
                     </strong>
                     <span>{step.body}</span>
                   </li>
                 ))}
               </ol>
-            </div>
-          )}
-
-          {unlocked && (
-            <p className="kids-guide-parent-tip">
-              <strong>Parent tip:</strong> {guide.parentTip}
-            </p>
+              <p className="kids-guide-parent-tip">
+                <strong>Parent tip:</strong> {guide.parentTip}
+              </p>
+            </>
           )}
         </>
+      ) : (
+        <div className="kids-guide-lock kids-guide-lock--desc-only">
+          <Lock size={18} aria-hidden />
+          <JoinToUnlockCta access={access} onJoin={onJoinCta} onUpgrade={onJoinCta} />
+        </div>
       )}
     </article>
   );
@@ -827,33 +826,59 @@ function GuideCard({
 function GuidesTab({
   mode,
   isMember,
+  membershipTier,
   onJoinCta,
+  onOpenGuidesLibrary,
+  onSwitchAudience,
+  onOpenSeniors,
 }: {
   mode: AudienceMode;
   isMember: boolean;
+  membershipTier?: string | null;
   onJoinCta: () => void;
+  onOpenGuidesLibrary?: () => void;
+  onSwitchAudience?: (next: AudienceMode) => void;
+  onOpenSeniors?: () => void;
 }) {
   const guides = guidesForAudience(mode);
-  const free = guides.filter((g) => g.free);
-  const members = guides.filter((g) => !g.free);
+  const freePlan = guides.filter((g) => kidsGuideMinTier(g.id) === "free");
+  const members = guides.filter((g) => kidsGuideMinTier(g.id) !== "free");
   const isKids = mode === "kids";
 
   return (
     <div className="kids-guides-wrap">
       <div className="kids-guides-hero-row">
-        <div className="kids-guides-media-pane">
-          <img
-            src={isKids ? kidsGuidesHero : juniorGuidesHero}
-            alt={
-              isKids
-                ? "Kids Corner Guides — Explore. Learn. Create. Earn. Fun guides to help kids discover skills, build confidence, and earn money."
-                : "Teens Side Hustle Guides — Simple steps to big ideas."
-            }
-            className="kids-guides-hero-img"
-            width={1024}
-            height={682}
-            decoding="async"
-          />
+        <div className="kids-guides-left">
+          <div className="kids-guides-media-pane">
+            <img
+              src={isKids ? kidsGuidesHero : juniorGuidesHero}
+              alt={
+                isKids
+                  ? "Kids Corner Guides — Explore. Learn. Create. Earn. Fun guides to help kids discover skills, build confidence, and earn money."
+                  : "Teens Side Hustle Guides — Simple steps to big ideas."
+              }
+              className="kids-guides-hero-img"
+              width={1024}
+              height={682}
+              decoding="async"
+            />
+          </div>
+
+          <div className="kids-guides-under-picture">
+            <h3 className="kids-guides-section-title">Starter, Pro &amp; Elite guides</h3>
+            <div className="kids-guides-grid kids-guides-grid--under-picture">
+              {members.map((g) => (
+                <GuideCard
+                  key={g.id}
+                  guide={g}
+                  isMember={isMember}
+                  membershipTier={membershipTier}
+                  onJoinCta={onJoinCta}
+                />
+              ))}
+            </div>
+            <SafetyCallout />
+          </div>
         </div>
 
         <div className="glass kids-junior-intro kids-guides-side-panel">
@@ -867,31 +892,79 @@ function GuidesTab({
             </span>
           </h2>
           <p>
-            Some guides are <strong>free</strong> for everyone. Most are for{" "}
-            <strong>{isKids ? "Kids Corner GYSH Team" : "Teens Side Hustle Team"}</strong> members —
-            you&apos;ll see the first steps as a teaser, then join to unlock the full guide.
+            Every guide unlocks with a membership level. Free Guides need{" "}
+            <strong>Free Membership</strong> ({FREE_GUIDE_SIGNUP_NOTE}); others show Starter, Pro, or Elite
+            on the card. Join the{" "}
+            <strong>{isKids ? "Kids Corner GYSH Team" : "Teens Side Hustle Team"}</strong> to get started.
           </p>
           {!isMember && (
-            <button type="button" className="btn btn-primary" onClick={onJoinCta} style={{ gap: 6, marginTop: 8 }}>
-              <BadgeCheck size={16} /> Join to unlock member guides
-            </button>
+            <div style={{ marginTop: 8 }}>
+              <JoinToUnlockCta
+                access={resolveGuideAccess({ isMember: false, minTier: "free" })}
+                onJoin={onJoinCta}
+              />
+            </div>
           )}
-          <h3 className="kids-guides-section-title">Free guides</h3>
+
+          <h3 className="kids-guides-section-title">Free with Free Membership</h3>
           <div className="kids-guides-grid kids-guides-grid--beside">
-            {free.map((g) => (
-              <GuideCard key={g.id} guide={g} isMember={isMember} onJoinCta={onJoinCta} />
+            {freePlan.map((g) => (
+              <GuideCard
+                key={g.id}
+                guide={g}
+                isMember={isMember}
+                membershipTier={membershipTier}
+                onJoinCta={onJoinCta}
+              />
             ))}
           </div>
+
+          {(onOpenGuidesLibrary || onSwitchAudience || onOpenSeniors) && (
+            <nav className="kids-guides-more-links" aria-label="More GYSH guides">
+              <h3 className="kids-guides-section-title">More guides</h3>
+              <div className="kids-guides-more-links__row">
+                {onSwitchAudience && (
+                  <button
+                    type="button"
+                    className="kids-guides-more-link"
+                    onClick={() => onSwitchAudience(isKids ? "junior" : "kids")}
+                  >
+                    <BookMarked size={16} aria-hidden />
+                    <span>
+                      {isKids ? "Teens guides" : "Kids guides"}
+                      <small>{isKids ? "Ages 13–17" : "Ages 4–12"}</small>
+                    </span>
+                    <ArrowRight size={14} aria-hidden />
+                  </button>
+                )}
+                {onOpenSeniors && (
+                  <button type="button" className="kids-guides-more-link" onClick={onOpenSeniors}>
+                    <BookMarked size={16} aria-hidden />
+                    <span>
+                      Seniors guides
+                      <small>Ages 55+</small>
+                    </span>
+                    <ArrowRight size={14} aria-hidden />
+                  </button>
+                )}
+                {onOpenGuidesLibrary && (
+                  <button
+                    type="button"
+                    className="kids-guides-more-link is-master"
+                    onClick={onOpenGuidesLibrary}
+                  >
+                    <BookOpen size={16} aria-hidden />
+                    <span>
+                      All GYSH Guides
+                      <small>Adults · Kids · Teens · Seniors</small>
+                    </span>
+                    <ArrowRight size={14} aria-hidden />
+                  </button>
+                )}
+              </div>
+            </nav>
+          )}
         </div>
-      </div>
-
-      <SafetyCallout />
-
-      <h3 className="kids-guides-section-title">Member guides</h3>
-      <div className="kids-guides-grid">
-        {members.map((g) => (
-          <GuideCard key={g.id} guide={g} isMember={isMember} onJoinCta={onJoinCta} />
-        ))}
       </div>
     </div>
   );
@@ -1894,8 +1967,11 @@ export const KidsCorner: React.FC<KidsCornerProps> = ({
   isLoggedIn = false,
   hasAccountLogin = false,
   previewAsGuest = false,
+  membershipTier = null,
   onGoToJoin,
   onOpenDashboard,
+  onOpenGuidesLibrary,
+  onOpenSeniors,
   entryFocus = null,
 }) => {
   /** Only a real portal session can load/save Blueprints on the parent/family account. */
@@ -1920,8 +1996,14 @@ export const KidsCorner: React.FC<KidsCornerProps> = ({
 
   const isMember = (() => {
     void memberVersion;
+    // Profile Switcher → Unlogged in User must see the locked guest experience,
+    // even if a lightweight team join is still in localStorage.
+    if (previewAsGuest) return false;
     return isKidsCornerMember(mode, isLoggedIn);
   })();
+
+  /** Team join / free session without a paid plan → Free Membership tier for guide gates. */
+  const effectiveGuideTier = membershipTier ?? (isMember ? "free" : null);
 
   const refreshMembership = () => setMemberVersion((n) => n + 1);
 
@@ -2046,9 +2128,13 @@ export const KidsCorner: React.FC<KidsCornerProps> = ({
             <GuidesTab
               mode="kids"
               isMember={isMember}
+              membershipTier={effectiveGuideTier}
               onJoinCta={() =>
                 onGoToJoin ? onGoToJoin("kids") : setKidsTab("join")
               }
+              onOpenGuidesLibrary={onOpenGuidesLibrary}
+              onSwitchAudience={handleModeChange}
+              onOpenSeniors={onOpenSeniors}
             />
           )}
           {kidsTab === "join" && (
@@ -2106,9 +2192,13 @@ export const KidsCorner: React.FC<KidsCornerProps> = ({
             <GuidesTab
               mode="junior"
               isMember={isMember}
+              membershipTier={effectiveGuideTier}
               onJoinCta={() =>
                 onGoToJoin ? onGoToJoin("junior") : setJuniorTab("join")
               }
+              onOpenGuidesLibrary={onOpenGuidesLibrary}
+              onSwitchAudience={handleModeChange}
+              onOpenSeniors={onOpenSeniors}
             />
           )}
           {juniorTab === "join" && (

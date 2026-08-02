@@ -309,11 +309,12 @@ if (useRemoteD1) {
   console.log("Syncing partner agenda from prod D1 → local (startup)…");
   const agendaSync = runProdAgendaSync({ quiet: false });
   if (agendaSync.status !== 0) {
-    console.error("✗ Prod→local agenda sync failed.");
-    console.error("  Fix network/wrangler auth, then: npm run db:sync-agenda");
-    process.exit(agendaSync.status ?? 1);
+    // Do not block Vite + API — login must still work if agenda schema/sync lags.
+    console.warn("⚠ Prod→local agenda sync failed (continuing so login/API can start).");
+    console.warn("  Later: npm run db:sync-agenda");
+  } else {
+    console.log("✓ Local Agenda mirrors production");
   }
-  console.log("✓ Local Agenda mirrors production");
   console.log("  (timesheet hours are not overwritten — use GYSH_SYNC_TIME_ENTRIES=1 to pull prod hours)");
   console.log("");
 }

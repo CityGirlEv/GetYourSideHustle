@@ -11,7 +11,7 @@ export type LaunchGuideRef = {
   name: string;
   /** Short sneak-peek blurb for browse lists (not the full guide). */
   peek: string;
-  /** Free guides unlock without a member login. */
+  /** @deprecated Prefer guide-access minTier; kept for catalog badges during transition. */
   free?: boolean;
 };
 

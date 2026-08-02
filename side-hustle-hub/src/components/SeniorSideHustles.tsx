@@ -16,9 +16,9 @@ import {
 } from "lucide-react";
 import {
   SENIOR_AUDIENCE_LABEL,
-  SENIOR_GUIDE_TEASERS,
   SENIOR_INTRO,
   SENIOR_OPPORTUNITIES,
+  orderedSeniorGuides,
   type SeniorGuideTeaser,
   type SeniorOpportunity,
   readSeniorTeamInterest,
@@ -26,6 +26,13 @@ import {
   scoreSeniorMatch,
   type SeniorMatchAnswers,
 } from "../lib/seniors-content";
+import {
+  guideTierBadgeLabel,
+  guideTierMembershipNote,
+  resolveGuideAccess,
+  seniorGuideMinTier,
+} from "../lib/guide-access";
+import { JoinToUnlockCta } from "./JoinToUnlockCta";
 import { trackGyshEvent } from "../lib/gysh-analytics";
 import { hasBlueprintAccess } from "../lib/free-member-session";
 import {
@@ -42,17 +49,64 @@ import seniorGuidesHero from "../assets/senior-guides-hero.png";
 import seniorJoinTeamHero from "../assets/senior-join-team-hero.png";
 import { SENIOR_CORNER_TABS, type SeniorTab } from "../lib/audience-nav";
 
-function SeniorGuideCard({ guide }: { guide: SeniorGuideTeaser }) {
+function SeniorGuideCard({
+  guide,
+  isMember,
+  membershipTier,
+  onJoinCta,
+  onOpenLaunchGuide,
+}: {
+  guide: SeniorGuideTeaser;
+  isMember: boolean;
+  membershipTier?: string | null;
+  onJoinCta?: () => void;
+  onOpenLaunchGuide?: (launchGuideId: string) => void;
+}) {
+  const comingSoon = guide.status === "coming_soon";
+  const minTier = seniorGuideMinTier(guide.id, guide.launchGuideId);
+  const access = resolveGuideAccess({
+    isMember: comingSoon ? false : isMember,
+    membershipTier,
+    minTier,
+  });
+  const canOpen =
+    !comingSoon &&
+    access.unlocked &&
+    guide.status === "live" &&
+    !!guide.launchGuideId &&
+    !!onOpenLaunchGuide;
+  const badgeClass = comingSoon
+    ? "coming_soon"
+    : minTier === "free"
+      ? "preview"
+      : "live";
+
   return (
     <article className="glass seniors-guide-card" data-testid={`seniors-guide-card-${guide.id}`}>
       <div className="seniors-guide-card-top">
         <Sparkles size={20} style={{ color: "var(--bronze)" }} aria-hidden="true" />
-        <span className={`seniors-guide-badge seniors-guide-badge--${guide.status}`}>
-          {guide.status === "preview" ? "Preview" : "Coming soon"}
+        <span className={`seniors-guide-badge seniors-guide-badge--${badgeClass}`}>
+          {comingSoon ? "Coming soon" : guideTierBadgeLabel(minTier)}
         </span>
       </div>
       <h3>{guide.title}</h3>
+      {!comingSoon && (
+        <p className="seniors-guide-tier-note">{guideTierMembershipNote(minTier)}</p>
+      )}
       <p>{guide.blurb}</p>
+      {comingSoon ? null : canOpen ? (
+        <button
+          type="button"
+          className="glow-chip-btn seniors-guide-open-btn"
+          onClick={() => onOpenLaunchGuide!(guide.launchGuideId!)}
+        >
+          Open guide <ArrowRight size={16} aria-hidden />
+        </button>
+      ) : (
+        <div className="seniors-guide-lock">
+          <JoinToUnlockCta access={access} onJoin={onJoinCta} onUpgrade={onJoinCta} />
+        </div>
+      )}
     </article>
   );
 }
@@ -80,9 +134,13 @@ type SeniorSideHustlesProps = {
   isLoggedIn?: boolean;
   /** Profile Switcher → Unlogged in User */
   previewAsGuest?: boolean;
+  /** Account plan for guide gates. */
+  membershipTier?: string | null;
   onGoToJoin?: () => void;
   /** Open the main GYSH Guides library. */
   onOpenGuides?: () => void;
+  /** Open a member adult Launch Guide from a senior card (only when unlocked). */
+  onOpenLaunchGuide?: (launchGuideId: string) => void;
   /** Deep-link from checklist Launch Guide peeks. */
   entryTab?: SeniorTab | null;
 };
@@ -618,16 +676,21 @@ function SeniorTabHero({
 export function SeniorSideHustles({
   isLoggedIn = false,
   previewAsGuest = false,
+  membershipTier = null,
   onGoToJoin,
   onOpenGuides,
+  onOpenLaunchGuide,
   entryTab = null,
 }: SeniorSideHustlesProps) {
   const [tab, setTab] = useState<SeniorTab>("match");
   const [interested, setInterested] = useState(() => readSeniorTeamInterest() || isLoggedIn);
   const sideIdeas = SENIOR_OPPORTUNITIES.slice(0, 3);
   const belowIdeas = SENIOR_OPPORTUNITIES.slice(3);
-  const sideGuides = SENIOR_GUIDE_TEASERS.slice(0, 3);
-  const belowGuides = SENIOR_GUIDE_TEASERS.slice(3);
+  const seniorGuides = orderedSeniorGuides();
+  const sideGuides = seniorGuides.slice(0, 3);
+  const belowGuides = seniorGuides.slice(3);
+  const isGuideMember = !previewAsGuest && (isLoggedIn || interested);
+  const effectiveGuideTier = membershipTier ?? (isGuideMember ? "free" : null);
 
   useEffect(() => {
     if (entryTab) setTab(entryTab);
@@ -657,8 +720,9 @@ export function SeniorSideHustles({
         )}
         {tab === "guides" && (
           <p className="seniors-lead-ideas">
-            Step-by-step Senior guides are on the way. Here&apos;s a preview of what we&apos;re drafting —
-            full Launch Guides still cover many of these hustles for all adults.
+            Guides stay locked until you have a Free Membership (or higher). Free-plan guides unlock
+            with Free Membership; Starter+ guides need those plans. A few senior-specific playbooks
+            are still coming soon.
           </p>
         )}
       </div>
@@ -736,12 +800,26 @@ export function SeniorSideHustles({
             />
             <div className="seniors-guides-side" aria-label="Senior guides beside banner">
               {sideGuides.map((g) => (
-                <SeniorGuideCard key={g.id} guide={g} />
+                <SeniorGuideCard
+                  key={g.id}
+                  guide={g}
+                  isMember={isGuideMember}
+                  membershipTier={effectiveGuideTier}
+                  onJoinCta={onGoToJoin}
+                  onOpenLaunchGuide={onOpenLaunchGuide}
+                />
               ))}
             </div>
             <div className="seniors-guides-below" aria-label="More senior guides">
               {belowGuides.map((g) => (
-                <SeniorGuideCard key={g.id} guide={g} />
+                <SeniorGuideCard
+                  key={g.id}
+                  guide={g}
+                  isMember={isGuideMember}
+                  membershipTier={effectiveGuideTier}
+                  onJoinCta={onGoToJoin}
+                  onOpenLaunchGuide={onOpenLaunchGuide}
+                />
               ))}
             </div>
           </div>
@@ -752,10 +830,11 @@ export function SeniorSideHustles({
                   Browse GYSH Guides <ArrowRight size={18} />
                 </button>
               )}
-              {onGoToJoin && (
-                <button type="button" className="btn btn-outline seniors-btn" onClick={onGoToJoin}>
-                  Join for full member guides
-                </button>
+              {onGoToJoin && !isGuideMember && (
+                <JoinToUnlockCta
+                  access={resolveGuideAccess({ isMember: false, minTier: "free" })}
+                  onJoin={onGoToJoin}
+                />
               )}
             </div>
           )}

@@ -8,10 +8,17 @@ import {
   Coins,
   Lock,
   LogIn,
-  UserPlus,
 } from "lucide-react";
 import { fetchMemberProgress, saveMemberProgress } from "../lib/gysh-member-progress";
-import { LAUNCH_GUIDES } from "../lib/launch-guides";
+import {
+  adultGuideMinTier,
+  FREE_GUIDE_SIGNUP_NOTE,
+  guideTierBadgeLabel,
+  guideTierMembershipNote,
+  guideTierShortLabel,
+  resolveGuideAccess,
+} from "../lib/guide-access";
+import { JoinToUnlockCta } from "./JoinToUnlockCta";
 
 interface GuideStep {
   title: string;
@@ -33,6 +40,7 @@ interface StepByStepGuidesProps {
   selectedHustleId?: string;
   onGoToCalculator: (hustleId: string) => void;
   isLoggedIn?: boolean;
+  membershipTier?: string | null;
   onGoToJoin?: () => void;
   onGoToLogin?: () => void;
   onBackToCatalog?: () => void;
@@ -42,6 +50,7 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
   selectedHustleId = "airbnb",
   onGoToCalculator,
   isLoggedIn = false,
+  membershipTier = null,
   onGoToJoin,
   onGoToLogin,
   onBackToCatalog,
@@ -49,9 +58,15 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
   const [activeGuideId, setActiveGuideId] = useState<string>(selectedHustleId);
   const [completedSteps, setCompletedSteps] = useState<Record<string, boolean>>({});
   const [stepsOpen, setStepsOpen] = useState(false);
-  const freeGuideIds = new Set(LAUNCH_GUIDES.filter((g) => g.free).map((g) => g.id));
-  const guideIsFree = freeGuideIds.has(activeGuideId);
-  const unlocked = isLoggedIn || guideIsFree;
+  const effectiveTier = membershipTier ?? (isLoggedIn ? "free" : null);
+  const activeMinTier = adultGuideMinTier(activeGuideId);
+  const activeAccess = resolveGuideAccess({
+    isMember: isLoggedIn,
+    membershipTier: effectiveTier,
+    minTier: activeMinTier,
+  });
+  const guideIsFree = activeMinTier === "free";
+  const unlocked = activeAccess.unlocked;
 
   useEffect(() => {
     setActiveGuideId(selectedHustleId);
@@ -433,12 +448,15 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
         )}
         <section className="glass launch-guides-catalog-banner">
           <div>
-            <span className="glow-badge pink" style={{ marginBottom: 8 }}>Members only</span>
+            <span className={`glow-badge ${guideIsFree ? "free" : "pink"}`} style={{ marginBottom: 8 }}>
+              {guideTierBadgeLabel(activeMinTier)}
+            </span>
             <h2 style={{ fontSize: "1.35rem", color: "var(--charcoal)", margin: "0 0 6px" }}>
               {activeGuide.name} guide
             </h2>
             <p style={{ margin: 0, color: "var(--text-primary)", fontSize: "1rem", maxWidth: 560 }}>
-              {activeGuide.bestFor} Full step-by-step details unlock when you sign in as a member.
+              {activeGuide.bestFor} {guideTierMembershipNote(activeMinTier)}.
+              {guideIsFree ? ` ${FREE_GUIDE_SIGNUP_NOTE}.` : ""}
             </p>
           </div>
           <div className="launch-guides-catalog-actions">
@@ -447,11 +465,7 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
                 <LogIn size={16} /> Sign in
               </button>
             )}
-            {onGoToJoin && (
-              <button type="button" className="btn btn-primary" onClick={onGoToJoin}>
-                <UserPlus size={16} /> Join GYSH
-              </button>
-            )}
+            <JoinToUnlockCta access={activeAccess} onJoin={onGoToJoin} onUpgrade={onGoToJoin} />
           </div>
         </section>
       </div>
@@ -459,50 +473,57 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
   }
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "250px 1fr", gap: "32px" }}>
+    <div className="launch-guide-detail" data-testid="launch-guide-detail">
       {onBackToCatalog && (
-        <div style={{ gridColumn: "1 / -1" }}>
-          <button type="button" className="btn btn-outline" onClick={onBackToCatalog} style={{ width: "fit-content" }}>
+        <div className="launch-guide-detail__back">
+          <button type="button" className="btn btn-outline" onClick={onBackToCatalog}>
             ← Back to all guides
           </button>
         </div>
       )}
-      
+
       {/* Sidebar Selector */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-        <span style={{ fontSize: "0.9375rem", color: "var(--text-primary)", textTransform: "uppercase", fontWeight: 700, letterSpacing: "0.05em", paddingLeft: "8px" }}>
-          Select Guide
-        </span>
+      <nav className="launch-guide-detail__sidebar" aria-label="Select guide">
+        <span className="launch-guide-detail__sidebar-label">Select Guide</span>
         {guides.map((g) => {
-          const gFree = freeGuideIds.has(g.id);
-          const gUnlocked = isLoggedIn || gFree;
+          const gMin = adultGuideMinTier(g.id);
+          const gAccess = resolveGuideAccess({
+            isMember: isLoggedIn,
+            membershipTier: effectiveTier,
+            minTier: gMin,
+          });
+          const gFree = gMin === "free";
           return (
-          <button
-            key={g.id}
-            type="button"
-            onClick={() => {
-              setActiveGuideId(g.id);
-              setStepsOpen(false);
-            }}
-            className={`nav-link-btn ${activeGuideId === g.id ? "active" : ""}`}
-            style={{ padding: "10px 14px", fontSize: "1rem", opacity: gUnlocked ? 1 : 0.7 }}
-          >
-            {g.name}
-            {gFree && <span className="glow-badge free" style={{ marginLeft: 6, fontSize: "0.9375rem", padding: "2px 8px" }}>Free</span>}
-            {!gUnlocked && <Lock size={12} style={{ marginLeft: 6, flexShrink: 0 }} />}
-          </button>
+            <button
+              key={g.id}
+              type="button"
+              onClick={() => {
+                setActiveGuideId(g.id);
+                setStepsOpen(false);
+              }}
+              className={`nav-link-btn launch-guide-detail__nav-btn${activeGuideId === g.id ? " active" : ""}`}
+              style={{ opacity: gAccess.unlocked ? 1 : 0.75 }}
+            >
+              <span className="launch-guide-detail__nav-name">{g.name}</span>
+              <span className="launch-guide-detail__nav-meta">
+                <span className={`glow-badge ${gFree ? "free" : "pink"} launch-guide-detail__tier`}>
+                  {guideTierShortLabel(gMin)}
+                </span>
+                {!gAccess.unlocked && <Lock size={12} aria-hidden />}
+              </span>
+            </button>
           );
         })}
-      </div>
+      </nav>
 
       {/* Main Guide Content */}
-      <div className="glass" style={{ padding: "32px", borderRadius: "20px" }}>
+      <div className="glass launch-guide-detail__main">
         {/* Header summary */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "16px", marginBottom: "28px", borderBottom: "1px solid var(--border-color)", paddingBottom: "24px" }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "10px 12px", marginBottom: "6px" }}>
               <span className={`glow-badge ${guideIsFree ? "free" : "purple"}`} style={{ marginBottom: 0 }}>
-                {guideIsFree ? "Free guide" : "Launch Guide"}
+                {guideTierBadgeLabel(activeMinTier)}
               </span>
               <h2 style={{ fontSize: "1.75rem", color: "var(--charcoal)", margin: 0, lineHeight: 1.2 }}>
                 {activeGuide.name} Setup

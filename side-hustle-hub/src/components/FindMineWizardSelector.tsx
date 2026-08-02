@@ -100,7 +100,7 @@ function AgeBubble({
       <span className={`glow-badge ${group.accent}`}>{group.ages}</span>
       <span className="find-mine-age-bubble__main">
         <span className="find-mine-selector-icon">
-          <Icon size={18} aria-hidden />
+          <Icon size={26} aria-hidden />
         </span>
         <span className="find-mine-age-bubble__text">
           <span className="find-mine-age-bubble__title-row">
@@ -116,7 +116,7 @@ function AgeBubble({
               }}
             >
               {group.cta}
-              <ArrowRight size={13} aria-hidden />
+              <ArrowRight size={16} aria-hidden />
             </button>
           </span>
           {group.bandAges ? (

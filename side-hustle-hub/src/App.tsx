@@ -2312,6 +2312,9 @@ function App() {
               selectedHustleId={guidesDetailId}
               onGoToCalculator={handleGoToCalculatorFromGuide}
               isLoggedIn={effectivePortalLogin}
+              membershipTier={
+                authUser?.membershipTier ?? (effectivePortalLogin ? "free" : null)
+              }
               onGoToJoin={() => openJoin("adult")}
               onGoToLogin={() => goTo("login")}
               onBackToCatalog={() => setGuidesDetailId(null)}
@@ -2319,6 +2322,9 @@ function App() {
           ) : (
             <FreeGuidesPage
               isLoggedIn={effectivePortalLogin}
+              membershipTier={
+                authUser?.membershipTier ?? (effectivePortalLogin ? "free" : null)
+              }
               onGoToJoin={(audience) => openJoin(audience ?? "adult")}
               onGoToLogin={() => goTo("login")}
               onOpenAdultGuide={(id) => {
@@ -2357,10 +2363,15 @@ function App() {
             isLoggedIn={kidsCornerMemberAccess}
             hasAccountLogin={effectivePortalLogin}
             previewAsGuest={previewingAsGuest}
+            membershipTier={
+              authUser?.membershipTier ?? (kidsCornerMemberAccess ? "free" : null)
+            }
             onGoToJoin={(audience) => openJoin(audience)}
             onOpenDashboard={
               isLoggedIn && !previewingAsGuest ? () => goTo("user_portal") : undefined
             }
+            onOpenGuidesLibrary={() => goTo("guides")}
+            onOpenSeniors={() => openSeniors("guides")}
             entryFocus={kidsEntryFocus}
           />
         )}
@@ -2372,8 +2383,16 @@ function App() {
               (actAsAudienceNow === "senior" || (hasMemberAccess && !canUseAdminPortal))
             }
             previewAsGuest={previewingAsGuest}
+            membershipTier={
+              authUser?.membershipTier ??
+              (!previewingAsGuest &&
+              (actAsAudienceNow === "senior" || (hasMemberAccess && !canUseAdminPortal))
+                ? "free"
+                : null)
+            }
             onGoToJoin={() => openJoin("senior")}
             onOpenGuides={() => goTo("guides")}
+            onOpenLaunchGuide={(launchGuideId) => goTo("guides", { launchGuideId })}
             entryTab={seniorsEntryTab}
           />
         )}

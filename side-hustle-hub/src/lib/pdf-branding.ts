@@ -76,6 +76,10 @@ export const PDF_PATH_LINKS: { label: string; url: string }[] = [
   { label: "Content Factory", url: `${PRODUCTION_SITE_URL}/admin?tab=factory` },
   { label: "Admin Studio", url: `${PRODUCTION_SITE_URL}/admin` },
   { label: "User Guides", url: `${PRODUCTION_SITE_URL}/admin?tab=user-guides` },
+  {
+    label: "Money model",
+    url: `${PRODUCTION_SITE_URL}/admin?tab=financials&sub=money-model`,
+  },
   { label: "getyoursidehustle.com", url: PRODUCTION_SITE_URL },
 ];
 

@@ -121,11 +121,21 @@ CREATE TABLE IF NOT EXISTS partner_agenda_availability (
   PRIMARY KEY (agenda_id, user_id)
 );
 `);
+  // Keep in sync with functions/_lib/partner-agenda.ts ensurePartnerAgendaSchema ALTERs.
   for (const sql of [
     `ALTER TABLE partner_agenda ADD COLUMN meeting_date TEXT NOT NULL DEFAULT ''`,
     `ALTER TABLE partner_agenda ADD COLUMN meeting_time TEXT NOT NULL DEFAULT ''`,
+    `ALTER TABLE partner_agenda ADD COLUMN meeting_timezone TEXT NOT NULL DEFAULT 'America/Chicago'`,
     `ALTER TABLE partner_agenda ADD COLUMN invited_json TEXT NOT NULL DEFAULT '[]'`,
     `ALTER TABLE partner_agenda ADD COLUMN attended_json TEXT NOT NULL DEFAULT '[]'`,
+    `ALTER TABLE partner_agenda ADD COLUMN meeting_notes TEXT NOT NULL DEFAULT ''`,
+    `ALTER TABLE partner_agenda ADD COLUMN meeting_minutes_url TEXT NOT NULL DEFAULT ''`,
+    `ALTER TABLE partner_agenda ADD COLUMN meeting_action_items_json TEXT NOT NULL DEFAULT '[]'`,
+    `ALTER TABLE partner_agenda ADD COLUMN finalized_at TEXT`,
+    `ALTER TABLE partner_agenda ADD COLUMN updated_by_name TEXT NOT NULL DEFAULT ''`,
+    `ALTER TABLE partner_agenda ADD COLUMN invite_subject TEXT NOT NULL DEFAULT ''`,
+    `ALTER TABLE partner_agenda ADD COLUMN invite_body TEXT NOT NULL DEFAULT ''`,
+    `ALTER TABLE partner_agenda ADD COLUMN meeting_minutes INTEGER NOT NULL DEFAULT 60`,
     `ALTER TABLE partner_agenda_items ADD COLUMN source_kind TEXT NOT NULL DEFAULT 'user'`,
     `ALTER TABLE partner_agenda_items ADD COLUMN source_id TEXT NOT NULL DEFAULT ''`,
     `ALTER TABLE partner_agenda_items ADD COLUMN category TEXT NOT NULL DEFAULT 'other'`,
@@ -133,6 +143,7 @@ CREATE TABLE IF NOT EXISTS partner_agenda_availability (
     `ALTER TABLE partner_agenda_items ADD COLUMN discussion_notes TEXT NOT NULL DEFAULT ''`,
     `ALTER TABLE partner_agenda_items ADD COLUMN action_items_json TEXT NOT NULL DEFAULT '[]'`,
     `ALTER TABLE partner_agenda_items ADD COLUMN questions_json TEXT NOT NULL DEFAULT '[]'`,
+    `ALTER TABLE partner_agenda_items ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0`,
   ]) {
     localD1(["--command", sql], { allowFail: true });
   }

@@ -24,4 +24,4 @@ migrations_dir = "migrations"
 # Local `npm run dev` uses production D1 so localhost writes update live data.
 # `npm run dev:local` flips this to false for a fast .wrangler/state sandbox
 # (see scripts/dev-pages.mjs — Pages cannot use a separate --config file).
-remote = true
+remote = false

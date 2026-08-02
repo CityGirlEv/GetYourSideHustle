@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   DollarSign,
   FileText,
+  ListTree,
   Paperclip,
   Plus,
   Receipt,
@@ -28,8 +29,26 @@ import {
   openFinancialBlob,
   putFinancialFile,
 } from "../../lib/gysh-financial-files";
+import {
+  normalizeFinancialsSub,
+  type FinancialsSubId,
+} from "../../lib/admin-deep-links";
+import { PartnershipMoneyModel } from "./PartnershipMoneyModel";
 
-type SubTab = "budget" | "expenses" | "contract";
+type SubTab = FinancialsSubId;
+
+function readFinancialsSubFromUrl(): SubTab {
+  if (typeof window === "undefined") return "budget";
+  return normalizeFinancialsSub(new URLSearchParams(window.location.search).get("sub")) ?? "budget";
+}
+
+function syncFinancialsSubToUrl(sub: SubTab) {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  url.searchParams.set("tab", "financials");
+  url.searchParams.set("sub", sub);
+  window.history.replaceState(window.history.state, "", url.toString());
+}
 
 function todayIso(): string {
   const d = new Date();
@@ -202,7 +221,7 @@ function LineItemEditor({
 }
 
 export const Financials: React.FC = () => {
-  const [sub, setSub] = useState<SubTab>("budget");
+  const [sub, setSub] = useState<SubTab>(() => readFinancialsSubFromUrl());
   const [items, setItems] = useState<FinancialItem[]>([]);
   const [contracts, setContracts] = useState<FinancialFileMeta[]>([]);
   const [loading, setLoading] = useState(true);
@@ -210,6 +229,15 @@ export const Financials: React.FC = () => {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const contractInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    syncFinancialsSubToUrl(sub);
+  }, [sub]);
+
+  const selectSub = (id: SubTab) => {
+    setSub(id);
+    syncFinancialsSubToUrl(id);
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -354,23 +382,31 @@ export const Financials: React.FC = () => {
               <DollarSign size={22} /> Financials
             </h2>
             <p style={{ color: "var(--text-primary)", margin: 0, fontSize: "0.92rem" }}>
-              Admin-only budget, expenses, receipts, and the T + E partnership contract.
+              Admin-only budget, expenses, money model, receipts, and the T + E partnership contract.
             </p>
           </div>
           <button type="button" className="btn btn-primary" disabled={saving || loading} onClick={() => void persist()} style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
             {saving ? <WaitLabel>Saving…</WaitLabel> : <><Save size={16} /> Save all</>}
           </button>
         </div>
-        <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 16 }}>
-          <div style={{ padding: "10px 14px", borderRadius: 12, background: "rgba(45,106,79,0.08)", minWidth: 140 }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+            gap: 12,
+            marginTop: 14,
+            width: "100%",
+          }}
+        >
+          <div style={{ padding: "10px 14px", borderRadius: 12, background: "rgba(45,106,79,0.08)" }}>
             <div style={{ fontSize: "0.9375rem", color: "var(--text-primary)" }}>Budget total</div>
             <strong style={{ color: "var(--text-primary)" }}>{formatMoney(budgetTotal)}</strong>
           </div>
-          <div style={{ padding: "10px 14px", borderRadius: 12, background: "rgba(185,28,28,0.08)", minWidth: 140 }}>
+          <div style={{ padding: "10px 14px", borderRadius: 12, background: "rgba(185,28,28,0.08)" }}>
             <div style={{ fontSize: "0.9375rem", color: "var(--text-primary)" }}>Expenses total</div>
             <strong style={{ color: "var(--text-primary)" }}>{formatMoney(expenseTotal)}</strong>
           </div>
-          <div style={{ padding: "10px 14px", borderRadius: 12, background: "rgba(215,198,151,0.45)", minWidth: 140 }}>
+          <div style={{ padding: "10px 14px", borderRadius: 12, background: "rgba(215,198,151,0.45)" }}>
             <div style={{ fontSize: "0.9375rem", color: "var(--text-primary)" }}>Net (budget − expenses)</div>
             <strong style={{ color: "var(--text-primary)" }}>{formatMoney(budgetTotal - expenseTotal)}</strong>
           </div>
@@ -382,6 +418,7 @@ export const Financials: React.FC = () => {
           [
             ["budget", "Budget", <Wallet size={16} key="b" />],
             ["expenses", "Expenses", <Receipt size={16} key="e" />],
+            ["money-model", "Money model", <ListTree size={16} key="m" />],
             ["contract", "Contract", <FileText size={16} key="c" />],
           ] as const
         ).map(([id, label, icon]) => (
@@ -389,7 +426,7 @@ export const Financials: React.FC = () => {
             key={id}
             type="button"
             className={`nav-link-btn ${sub === id ? "active" : ""}`}
-            onClick={() => setSub(id)}
+            onClick={() => selectSub(id)}
           >
             {icon}
             {label}
@@ -410,6 +447,8 @@ export const Financials: React.FC = () => {
 
       {loading ? (
         <WaitIndicator message="Loading financials…" style={{ padding: 24, marginTop: 0 }} />
+      ) : sub === "money-model" ? (
+        <PartnershipMoneyModel />
       ) : sub === "contract" ? (
         <div className="glass" style={{ padding: 24, borderRadius: 16 }}>
           <h3 style={{ marginTop: 0, marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
@@ -417,7 +456,8 @@ export const Financials: React.FC = () => {
           </h3>
           <p className="admin-page-lede" style={{ marginTop: 0 }}>
             Store the signed agreement between <strong>Tina Marie Barham</strong> and{" "}
-            <strong>Evelyn Irving</strong>. Upload PDF or image copies here (admin only).
+            <strong>Evelyn Irving</strong>. Upload PDF or image copies here (admin only). For the working
+            money model (stipends, Events, waterfall), use the <strong>Money model</strong> tab.
           </p>
           <button
             type="button"
@@ -425,7 +465,7 @@ export const Financials: React.FC = () => {
             onClick={() => contractInputRef.current?.click()}
             style={{ display: "inline-flex", gap: 6, alignItems: "center", marginBottom: 16 }}
           >
-            <Upload size={16} /> Upload contract
+            <Upload size={16} /> Upload signed contract
           </button>
           <input
             ref={contractInputRef}

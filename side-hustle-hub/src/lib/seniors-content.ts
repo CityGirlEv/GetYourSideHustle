@@ -13,7 +13,14 @@ export type SeniorGuideTeaser = {
   id: string;
   title: string;
   blurb: string;
-  status: "coming_soon" | "preview";
+  /**
+   * live = opens an existing adult Launch Guide (ready now; still membership-gated).
+   * coming_soon = senior-specific draft not published yet.
+   * preview = senior opener card (membership-gated Free plan).
+   */
+  status: "coming_soon" | "preview" | "live";
+  /** Adult Launch Guide id when status is "live". */
+  launchGuideId?: string;
 };
 
 export const SENIOR_AUDIENCE_LABEL = "55+ · Retirees & flexible schedules";
@@ -119,22 +126,44 @@ export const SENIOR_OPPORTUNITIES: SeniorOpportunity[] = [
 
 export const SENIOR_GUIDE_TEASERS: SeniorGuideTeaser[] = [
   {
-    id: "start-consulting",
-    title: "Start a consulting pilot in 7 days",
-    blurb: "Define your niche, set a simple rate card, and land your first discovery call.",
-    status: "coming_soon",
+    id: "ai-peer-class",
+    title: "Host an AI-for-peers coffee chat",
+    blurb: "A friendly agenda for teaching neighbors ChatGPT basics — including scam red flags.",
+    status: "preview",
   },
   {
     id: "safe-cohost",
     title: "Co-host a short-term rental without owning",
     blurb: "Roles, guest messaging templates, and how to partner with a host you trust.",
-    status: "coming_soon",
+    status: "live",
+    launchGuideId: "property-mgmt",
   },
   {
-    id: "ai-peer-class",
-    title: "Host an AI-for-peers coffee chat",
-    blurb: "A friendly agenda for teaching neighbors ChatGPT basics — including scam red flags.",
-    status: "preview",
+    id: "senior-rideshare",
+    title: "Part-time rideshare on your schedule",
+    blurb: "Peak hours only — airport runs, evenings, or weekends — on your terms.",
+    status: "live",
+    launchGuideId: "rideshare",
+  },
+  {
+    id: "senior-handyman",
+    title: "Light handyman & home help",
+    blurb: "Furniture assembly, punch lists, and paced local jobs.",
+    status: "live",
+    launchGuideId: "handyman",
+  },
+  {
+    id: "senior-affiliate",
+    title: "Affiliate & helpful recommendations",
+    blurb: "Share products you actually use and earn commissions when neighbors buy.",
+    status: "live",
+    launchGuideId: "affiliate",
+  },
+  {
+    id: "start-consulting",
+    title: "Start a consulting pilot in 7 days",
+    blurb: "Define your niche, set a simple rate card, and land your first discovery call.",
+    status: "coming_soon",
   },
   {
     id: "pricing-crafts",
@@ -149,6 +178,24 @@ export const SENIOR_GUIDE_TEASERS: SeniorGuideTeaser[] = [
     status: "coming_soon",
   },
 ];
+
+/** Sort: Free-plan openers → live launch links → coming soon. */
+export function orderedSeniorGuides(guides: SeniorGuideTeaser[] = SENIOR_GUIDE_TEASERS): SeniorGuideTeaser[] {
+  const rank = (g: SeniorGuideTeaser) =>
+    g.status === "preview" ? 0 : g.status === "live" ? 1 : 2;
+  return [...guides].sort((a, b) => rank(a) - rank(b));
+}
+
+/** Free-plan senior openers (preview or live link to a free adult launch guide). */
+export function isSeniorGuideFree(
+  guide: SeniorGuideTeaser,
+  freeLaunchIds: ReadonlySet<string> | readonly string[],
+): boolean {
+  if (guide.status === "preview") return true;
+  if (guide.status !== "live" || !guide.launchGuideId) return false;
+  const set = freeLaunchIds instanceof Set ? freeLaunchIds : new Set(freeLaunchIds);
+  return set.has(guide.launchGuideId);
+}
 
 /** Senior Get Your Side Hustle answers — lifestyle, ranked skills/goals, availability. */
 export type SeniorMatchAnswers = {
