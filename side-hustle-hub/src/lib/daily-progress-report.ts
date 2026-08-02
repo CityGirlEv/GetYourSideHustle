@@ -18,6 +18,7 @@ import {
 } from "./gysh-tasks";
 import {
   isHumanQaTester,
+  qaTesterIdForUser,
   testOwnerLabel,
 } from "./gysh-roles";
 import {
@@ -213,7 +214,10 @@ export function normalizeProgressAssignee(
   return raw;
 }
 
-/** Match Task List / Schedule owner filters (Tina/Evelyn include Both). */
+/**
+ * Match current assignee for open-count style filters.
+ * Tina/Evelyn still include shared "Both" ownership here (current workload).
+ */
 export function assigneeMatchesPeople(
   assignedTo: string | null | undefined,
   people: readonly ProgressReportPerson[],
@@ -233,6 +237,47 @@ export function assigneeMatchesPeople(
     // Tina/Evelyn: include task "Both" and composites via assigneeIncludes
     return raw === person || assigneeIncludes(raw, person);
   });
+}
+
+/**
+ * Match who actually touched a row (updated_by). Used for Daily Progress activity lists.
+ * Tina filter = Tina only (not Both-assigned work she didn't touch). Same for Evelyn.
+ */
+export function activityPersonMatchesPeople(
+  activityPerson: string | null | undefined,
+  people: readonly ProgressReportPerson[],
+): boolean {
+  if (people.length === 0) return true;
+  const person = normalizeProgressAssignee(activityPerson);
+  if (person === "Cursor") return false;
+  return people.some((filter) => {
+    if (filter === "Unassigned") return person === "Unassigned";
+    if (filter === "Both") {
+      // Partner filter: work touched by Tina or Evelyn (not shared-assignee guesswork).
+      return person === "Tina" || person === "Evelyn" || person === "Both";
+    }
+    return person === filter;
+  });
+}
+
+/** Who last edited a task — never invent Tina/Evelyn from a Both assignee. */
+export function resolveTaskActivityPerson(task: GyshTask): string {
+  const by = String(task.updatedBy ?? "").trim();
+  if (by) {
+    if (/^cursor$/i.test(by) || /^system$/i.test(by)) return "Cursor";
+    const normalized = normalizeProgressAssignee(by);
+    if (normalized !== "Unassigned" && normalized !== by) return normalized;
+    if (/lyriq/i.test(by)) return "Lyriq";
+    if (/tina/i.test(by)) return "Tina";
+    if (/evelyn/i.test(by)) return "Evelyn";
+    return by;
+  }
+  // Legacy rows with no updated_by: only attribute singly-owned tasks.
+  const assignee = normalizeProgressAssignee(task.assignedTo || "Unassigned");
+  if (assignee === "Both") return "Unassigned";
+  const parts = parseAssigneePeople(assignee);
+  if (parts.length > 1) return "Unassigned";
+  return assignee;
 }
 
 export function progressSprintKey(sprint: number): ProgressSprintFilter {
@@ -402,15 +447,48 @@ export function resolveTestActivityPerson(
   return resolveTestAssigneeDisplay(id, testPayload, caseById);
 }
 
-function timeEntryMatchesPeople(
+/**
+ * Resolve a timesheet row to a Daily Progress person chip.
+ * Uses the same identity rules as Testing Portal (name/email → Tina/Evelyn/Lyriq).
+ */
+export function progressPersonFromTimeEntry(
+  entry: Pick<TimeEntry, "userName" | "userEmail">,
+): ProgressReportPerson | null {
+  const id = qaTesterIdForUser({
+    name: entry.userName,
+    email: entry.userEmail,
+  });
+  if (id === "tina") return "Tina";
+  if (id === "evelyn") return "Evelyn";
+  if (id === "lyriq") return "Lyriq";
+
+  const hay = `${entry.userName ?? ""} ${entry.userEmail ?? ""}`.toLowerCase();
+  if (!hay.trim()) return null;
+  // Extra aliases — admin accounts / display names that omit "Evelyn"
+  if (
+    hay.includes("evelyn") ||
+    hay.includes("evvelyn") ||
+    hay.includes("irving") ||
+    hay.includes("muntie") ||
+    hay.includes("evely")
+  ) {
+    return "Evelyn";
+  }
+  if (hay.includes("tina") || hay.includes("barham")) return "Tina";
+  if (hay.includes("lyriq") || hay.includes("gaulden")) return "Lyriq";
+  return null;
+}
+
+export function timeEntryMatchesPeople(
   entry: TimeEntry,
   people: readonly ProgressReportPerson[],
 ): boolean {
   if (people.length === 0) return true;
-  const hay = `${entry.userName ?? ""} ${entry.userEmail ?? ""}`.toLowerCase();
+  const who = progressPersonFromTimeEntry(entry);
   return people.some((person) => {
-    if (person === "Unassigned" || person === "Both") return false;
-    return hay.includes(person.toLowerCase());
+    if (person === "Unassigned") return who == null;
+    if (person === "Both") return who === "Tina" || who === "Evelyn";
+    return who === person;
   });
 }
 
@@ -531,8 +609,11 @@ export function buildDailyProgressReport(input: {
   for (const task of tasks) {
     const day = taskActivityDay(task);
     if (!dayInRange(day, from, to)) continue;
+    const activityPerson = resolveTaskActivityPerson(task);
+    // Person filter = who updated the row (not shared Both assignee).
+    if (!activityPersonMatchesPeople(activityPerson, people)) continue;
+    if (activityPerson === "Cursor" && people.length > 0) continue;
     const assignee = normalizeProgressAssignee(task.assignedTo || "Unassigned");
-    if (!assigneeMatchesPeople(assignee, people)) continue;
     const sprint = resolveTaskSprint(task);
     if (!sprintMatchesFilters(sprint, sprints)) continue;
     if (!statusMatchesFilters("task", task.status, statuses)) continue;
@@ -541,7 +622,8 @@ export function buildDailyProgressReport(input: {
       title: task.description,
       status: task.status,
       statusLabel: TASK_STATUS_LABELS[task.status],
-      assignee,
+      assignee:
+        activityPerson === assignee ? activityPerson : `${activityPerson} → ${assignee}`,
       when: formatWhen(day),
       sprint,
       sprintLabel: sprintLabel(sprint),
@@ -560,7 +642,7 @@ export function buildDailyProgressReport(input: {
     const status = (testPayload.statuses?.[id] ?? "not_run") as TestStatus;
     const activityPerson = resolveTestActivityPerson(id, testPayload, caseById);
     // Person filter = who updated the row (not merely current assignee).
-    if (!assigneeMatchesPeople(activityPerson, people)) continue;
+    if (!activityPersonMatchesPeople(activityPerson, people)) continue;
     // Hide pure system/Cursor churn from partner daily lists unless explicitly filtered.
     if (activityPerson === "Cursor" && people.length > 0) continue;
     const assignee = resolveTestAssigneeDisplay(id, testPayload, caseById);
@@ -608,8 +690,13 @@ export function buildDailyProgressReport(input: {
     if (!dayInRange(entry.workDate, from, to)) continue;
     if (!timeEntryMatchesPeople(entry, people)) continue;
     const ms = liveElapsedMs(entry);
+    if (ms <= 0) continue;
     timeMs += ms;
-    const name = entry.userName || entry.userEmail || "Unknown";
+    const who = progressPersonFromTimeEntry(entry);
+    const name =
+      who && who !== "Both" && who !== "Unassigned"
+        ? who
+        : entry.userName || entry.userEmail || "Unknown";
     byPerson.set(name, (byPerson.get(name) ?? 0) + ms);
   }
 

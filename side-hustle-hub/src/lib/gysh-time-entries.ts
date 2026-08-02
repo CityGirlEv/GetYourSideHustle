@@ -54,6 +54,22 @@ export function parseIsoDate(iso: string): Date {
   return new Date(y, (m || 1) - 1, d || 1);
 }
 
+/** Shift an ISO calendar day by `delta` days (local). */
+export function addDaysIso(iso: string, delta: number): string {
+  const d = parseIsoDate(iso);
+  d.setDate(d.getDate() + delta);
+  return toIsoDate(d);
+}
+
+/** Earliest/latest of ISO dates (YYYY-MM-DD). */
+export function minIsoDate(...dates: string[]): string {
+  return dates.filter(Boolean).sort()[0] ?? "";
+}
+
+export function maxIsoDate(...dates: string[]): string {
+  return dates.filter(Boolean).sort().at(-1) ?? "";
+}
+
 /** List of week-ending Fridays (most recent first). */
 export function recentWeekEndings(count = 12): string[] {
   const out: string[] = [];

@@ -4,9 +4,11 @@
  * Browser: http://localhost:5173  (Vite proxies /api → Functions on :8788)
  * Direct API: http://127.0.0.1:8788/api/...
  *
- * Default (`npm run dev`): production D1 — localhost writes update live data.
- * Fast sandbox (`npm run dev:local` / --local / GYSH_D1_LOCAL=1): isolated
- * .wrangler/state; startup syncs tests/tasks/agenda from prod.
+ * Default (`npm run dev` / --local): fast local D1 sandbox (.wrangler/state).
+ * Startup syncs tests/tasks/agenda from prod so admin data is usable offline.
+ *
+ * Slow prod DB (`npm run dev:remote` / --remote): every /api call hits remote D1
+ * (~2–4s each) — only use when you must write live production data.
  *
  * Plain Vite alone does NOT serve functions/ — use this for login to work.
  * A Vite proxy with no worker on :8788 shows as HTTP 502 in the UI.
@@ -25,10 +27,12 @@ const wrangler = path.resolve(
 );
 const wranglerConfig = path.join(root, "wrangler.toml");
 
-const wantLocalD1 =
-  process.env.GYSH_D1_LOCAL === "1" ||
-  process.argv.includes("--local") ||
-  process.argv.includes("--d1-local");
+const wantRemoteD1Flag =
+  process.env.GYSH_D1_REMOTE === "1" ||
+  process.argv.includes("--remote") ||
+  process.argv.includes("--d1-remote");
+/** Default local (fast). Opt into prod D1 with --remote / GYSH_D1_REMOTE=1 / GYSH_D1_LOCAL=0. */
+const wantLocalD1 = !wantRemoteD1Flag && process.env.GYSH_D1_LOCAL !== "0";
 
 /**
  * Pages `wrangler pages dev` ignores --config; only project-root wrangler.toml
@@ -233,11 +237,11 @@ console.log(`  Functions + D1 → http://127.0.0.1:${API_PORT}`);
 console.log(`  Vite UI       → http://localhost:${VITE_PORT}  (open this; /api is proxied)`);
 if (useRemoteD1) {
   console.log("  D1           → production (remote = true) — same DB as live site");
+  console.warn("  ⚠ SLOW: each /api call hits remote D1 (~2–4s). Prefer npm run dev.");
   console.warn("  ⚠ Local API writes update production D1.");
-  console.log("  Tip: npm run dev:local for a fast sandbox (writes stay local).");
 } else {
-  console.log("  D1           → local .wrangler/state (sandbox)");
-  console.log("  Tip: npm run dev to write to production D1.");
+  console.log("  D1           → local .wrangler/state (fast sandbox)");
+  console.log("  Tip: npm run dev:remote only when you must write production D1.");
 }
 console.log("");
 

@@ -46,7 +46,17 @@ import {
   type GyshTask,
 } from "../../lib/gysh-tasks";
 import { fetchTestStatuses, type TestStatusesPayload } from "../../lib/gysh-test-plan";
-import { fetchTimeEntries, toIsoDate, type TimeEntry } from "../../lib/gysh-time-entries";
+import {
+  addDaysIso,
+  fetchTimeEntries,
+  maxIsoDate,
+  minIsoDate,
+  toIsoDate,
+  type TimeEntry,
+} from "../../lib/gysh-time-entries";
+
+/** Always keep ~3 weeks of timesheet rows so week views / history chips see logged hours. */
+const TIME_LOOKBACK_DAYS = 21;
 
 function todayIso(): string {
   return toIsoDate(new Date());
@@ -215,11 +225,17 @@ export function DailyProgressPage() {
     setLoading(true);
     setError(null);
     try {
+      const today = todayIso();
+      // Fetch a wider timesheet window than the report range so:
+      // - last-week ranges still include hours when you open a single day first
+      // - history chips include days that only have timer activity
+      const timeFrom = minIsoDate(addDaysIso(today, -TIME_LOOKBACK_DAYS), rangeFrom);
+      const timeTo = maxIsoDate(today, rangeTo);
       const [tasks, testPayload, timeEntries] = await Promise.all([
         fetchTasks(),
         fetchTestStatuses(),
         // Load all partners — default API scope is only the signed-in user.
-        fetchTimeEntries({ userId: "all", from: rangeFrom, to: rangeTo }),
+        fetchTimeEntries({ userId: "all", from: timeFrom, to: timeTo }),
       ]);
       setRawTasks(tasks);
       setRawTests(testPayload);
@@ -530,7 +546,9 @@ export function DailyProgressPage() {
                 );
               })}
             </div>
-            <p className="daily-progress-report__users-hint">Multi-select · All = everyone</p>
+            <p className="daily-progress-report__users-hint">
+              Multi-select · filters by who updated the item (not Both assignee)
+            </p>
           </div>
 
           <div

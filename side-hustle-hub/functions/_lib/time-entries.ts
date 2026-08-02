@@ -455,6 +455,59 @@ export async function listTimeEntryUsers(env: Env, actor: DbUser): Promise<Respo
   } catch {
     /* ignore */
   }
-  users.sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email));
-  return json({ users });
+  // Collapse duplicate partner logins (e.g. two Evelyn user_ids) to one roster row.
+  const partnerRank = (email: string, name: string, id: string): string => {
+    const hay = `${name} ${email} ${id}`.toLowerCase();
+    if (hay.includes("tina") || email.includes("tinamariebarham") || id === "u-tina") return "tina";
+    if (
+      hay.includes("evelyn") ||
+      hay.includes("evvelyn") ||
+      hay.includes("irving") ||
+      hay.includes("muntie") ||
+      email.includes("evelyn3") ||
+      id === "u-ev"
+    ) {
+      return "evelyn";
+    }
+    if (hay.includes("lyriq") || hay.includes("gaulden") || id === "u-lyriq") return "lyriq";
+    return `other:${email.toLowerCase() || id}`;
+  };
+  const preferredId = (rank: string) =>
+    rank === "tina" ? "u-tina" : rank === "evelyn" ? "u-ev" : rank === "lyriq" ? "u-lyriq" : "";
+  const preferredName = (rank: string, fallback: string) =>
+    rank === "tina"
+      ? "Tina"
+      : rank === "evelyn"
+        ? "Evelyn"
+        : rank === "lyriq"
+          ? "Lyriq"
+          : fallback;
+
+  const merged = new Map<string, { id: string; email: string; name: string }>();
+  for (const u of users) {
+    const rank = partnerRank(u.email || "", u.name || "", u.id || "");
+    const prev = merged.get(rank);
+    if (!prev) {
+      merged.set(rank, {
+        id: preferredId(rank) || u.id,
+        email: u.email,
+        name: preferredName(rank, u.name || u.email),
+      });
+      continue;
+    }
+    // Prefer canonical partner ids / cleaner emails when merging.
+    const prefer =
+      u.id === preferredId(rank) ||
+      (!prev.id.startsWith("u-") && Boolean(preferredId(rank)));
+    if (prefer) {
+      prev.id = preferredId(rank) || u.id;
+      prev.email = u.email || prev.email;
+    }
+    prev.name = preferredName(rank, prev.name);
+  }
+
+  const deduped = [...merged.values()].sort((a, b) =>
+    (a.name || a.email).localeCompare(b.name || b.email),
+  );
+  return json({ users: deduped });
 }

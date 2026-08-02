@@ -26,6 +26,7 @@ import {
   TEST_CASES,
   withDefaultSuite,
 } from "../../lib/gysh-test-plan";
+import { progressPersonFromTimeEntry } from "../../lib/daily-progress-report";
 import {
   bucketByDay,
   daysInInclusiveRange,
@@ -41,6 +42,71 @@ import {
   type TimeEntry,
   type TimeEntryUser,
 } from "../../lib/gysh-time-entries";
+
+const PARTNER_CHIP_ORDER = ["Tina", "Evelyn", "Lyriq"] as const;
+
+type PartnerChip = {
+  key: string;
+  label: string;
+  userIds: string[];
+};
+
+function partnerKeyFromIdentity(name: string, email: string, fallbackId: string): string {
+  const who = progressPersonFromTimeEntry({ userName: name, userEmail: email });
+  if (who === "Tina" || who === "Evelyn" || who === "Lyriq") return who;
+  return `other:${(email || fallbackId).toLowerCase()}`;
+}
+
+function partnerLabelFromIdentity(name: string, email: string, fallbackId: string): string {
+  const who = progressPersonFromTimeEntry({ userName: name, userEmail: email });
+  if (who === "Tina" || who === "Evelyn" || who === "Lyriq") return who;
+  return (name || email || fallbackId).trim() || "Unknown";
+}
+
+function partnerKeyFromUser(u: TimeEntryUser): string {
+  return partnerKeyFromIdentity(u.name || "", u.email || "", u.id);
+}
+
+function partnerLabelFromUser(u: TimeEntryUser): string {
+  return partnerLabelFromIdentity(u.name || "", u.email || "", u.id);
+}
+
+function partnerKeyFromEntry(e: TimeEntry): string {
+  return partnerKeyFromIdentity(e.userName || "", e.userEmail || "", e.userId);
+}
+
+function partnerLabelFromEntry(e: TimeEntry): string {
+  return partnerLabelFromIdentity(e.userName || "", e.userEmail || "", e.userId);
+}
+
+/** One chip per partner (merges duplicate Evelyn/Tina accounts). */
+function buildPartnerChips(users: TimeEntryUser[]): PartnerChip[] {
+  const map = new Map<string, PartnerChip>();
+  for (const u of users) {
+    const key = partnerKeyFromUser(u);
+    const label = partnerLabelFromUser(u);
+    const prev = map.get(key);
+    if (prev) {
+      if (!prev.userIds.includes(u.id)) prev.userIds.push(u.id);
+    } else {
+      map.set(key, { key, label, userIds: [u.id] });
+    }
+  }
+  return [...map.values()].sort((a, b) => {
+    const ai = PARTNER_CHIP_ORDER.indexOf(a.key as (typeof PARTNER_CHIP_ORDER)[number]);
+    const bi = PARTNER_CHIP_ORDER.indexOf(b.key as (typeof PARTNER_CHIP_ORDER)[number]);
+    if (ai >= 0 || bi >= 0) return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi);
+    return a.label.localeCompare(b.label);
+  });
+}
+
+function accentForPartner(key: string, index: number): string {
+  if (key === "Tina") return "var(--crimson)";
+  if (key === "Evelyn") return "var(--bronze)";
+  if (key === "Lyriq") return "var(--accent-emerald)";
+  const palette = ["var(--crimson)", "var(--bronze)", "var(--accent-emerald)", "#0e7490", "#7c3aed"];
+  return palette[index % palette.length]!;
+}
 
 const TEST_CASE_BY_ID = new Map(withDefaultSuite(TEST_CASES).map((t) => [t.id, t]));
 
@@ -58,8 +124,6 @@ function toggleSprintFilter(prev: Set<number>, sprint: number): Set<number> {
 type TimesheetPageProps = {
   authUser?: AuthUser | null;
 };
-
-const MEMBER_ACCENTS = ["#9B2F28", "#947D64", "#3f6b2e", "#2563eb", "#7c3aed", "#0f766e"];
 
 /** Show empty day rows only for short ranges; longer presets list logged days only. */
 const EXPAND_EMPTY_DAYS_MAX = 45;
@@ -187,27 +251,19 @@ function periodLabel(from: string, to: string): string {
   return `${weekdayLabel(from)} – ${weekdayLabel(to)}`;
 }
 
-function memberLabel(u: TimeEntryUser): string {
-  const name = (u.name || u.email || u.id).trim();
-  if (/lyriq/i.test(name) || /leegaulden/i.test(u.email)) return "Lyriq";
-  if (/tina/i.test(name)) return "Tina";
-  if (/evelyn/i.test(name)) return "Evelyn";
-  return name;
-}
-
-function membersSummary(users: TimeEntryUser[], selectedIds: Set<string>): string {
-  if (selectedIds.size === 0 || selectedIds.size === users.length) return "All team members";
-  if (selectedIds.size === 1) {
-    const u = users.find((x) => selectedIds.has(x.id));
-    return u ? memberLabel(u) : "1 member";
+function membersSummary(chips: PartnerChip[], selectedKeys: Set<string>): string {
+  if (selectedKeys.size === 0 || selectedKeys.size === chips.length) return "All team members";
+  if (selectedKeys.size === 1) {
+    const chip = chips.find((c) => selectedKeys.has(c.key));
+    return chip?.label ?? "1 member";
   }
-  return `${selectedIds.size} members`;
+  return `${selectedKeys.size} members`;
 }
 
-function toggleMember(prev: Set<string>, id: string): Set<string> {
+function togglePartner(prev: Set<string>, key: string): Set<string> {
   const next = new Set(prev);
-  if (next.has(id)) next.delete(id);
-  else next.add(id);
+  if (next.has(key)) next.delete(key);
+  else next.add(key);
   return next;
 }
 
@@ -256,9 +312,10 @@ export function TimesheetPage(_props: TimesheetPageProps = {}) {
   const [rangeMode, setRangeMode] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [users, setUsers] = useState<TimeEntryUser[]>([]);
-  /** Empty set = all team members. */
-  const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(() => new Set());
+  /** Empty set = all partners. Keys are Tina/Evelyn/Lyriq (or other:email). */
+  const [selectedPartners, setSelectedPartners] = useState<Set<string>>(() => new Set());
   const [entries, setEntries] = useState<TimeEntry[]>([]);
+  const partnerChips = useMemo(() => buildPartnerChips(users), [users]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   /** Sort rows inside each day block (Start time default; Duration clickable). */
@@ -346,10 +403,11 @@ export function TimesheetPage(_props: TimesheetPageProps = {}) {
       }
       setSprintByEntryKey(sprintMap);
 
-      // Drop selections for users who disappeared from the roster.
-      setSelectedUserIds((prev) => {
+      // Drop partner selections that no longer exist after roster merge.
+      const chipKeys = new Set(buildPartnerChips(u).map((c) => c.key));
+      setSelectedPartners((prev) => {
         if (prev.size === 0) return prev;
-        const next = new Set([...prev].filter((id) => u.some((x) => x.id === id)));
+        const next = new Set([...prev].filter((key) => chipKeys.has(key)));
         return next.size === prev.size ? prev : next;
       });
     } catch (e) {
@@ -418,7 +476,9 @@ export function TimesheetPage(_props: TimesheetPageProps = {}) {
 
   const filteredEntries = useMemo(() => {
     return entries.filter((e) => {
-      if (selectedUserIds.size > 0 && !selectedUserIds.has(e.userId)) return false;
+      if (selectedPartners.size > 0 && !selectedPartners.has(partnerKeyFromEntry(e))) {
+        return false;
+      }
       if (sourceFilters.size > 0 && !sourceFilters.has(e.source)) return false;
       if (sprintFilters.size > 0) {
         const sprint = sprintByEntryKey.get(entrySprintKey(e)) ?? BACKLOG_SPRINT;
@@ -426,7 +486,7 @@ export function TimesheetPage(_props: TimesheetPageProps = {}) {
       }
       return true;
     });
-  }, [entries, selectedUserIds, sourceFilters, sprintFilters, sprintByEntryKey]);
+  }, [entries, selectedPartners, sourceFilters, sprintFilters, sprintByEntryKey]);
 
   const sprintFilterOptions = useMemo(() => {
     const set = new Set<number>([currentSprintIndex(), BACKLOG_SPRINT]);
@@ -466,55 +526,55 @@ export function TimesheetPage(_props: TimesheetPageProps = {}) {
     .filter((e) => e.source === "test")
     .reduce((sum, e) => sum + liveElapsedMs(e), 0);
   const label = periodLabel(from, to);
-  const showMemberCol = selectedUserIds.size !== 1;
-  const usersLabel = membersSummary(users, selectedUserIds);
-  const allSelected = selectedUserIds.size === 0;
+  const showMemberCol = selectedPartners.size !== 1;
+  const usersLabel = membersSummary(partnerChips, selectedPartners);
+  const allSelected = selectedPartners.size === 0;
   const allSourcesSelected = sourceFilters.size === 0;
   const showTasks = allSourcesSelected || sourceFilters.has("task");
   const showTests = allSourcesSelected || sourceFilters.has("test");
   const showSourceSplit = showTasks && showTests;
 
   const memberTotals = useMemo(() => {
-    const byId = new Map<
+    const byKey = new Map<
       string,
-      { userId: string; name: string; ms: number; taskMs: number; testMs: number }
+      { key: string; name: string; ms: number; taskMs: number; testMs: number }
     >();
     for (const e of filteredEntries) {
       const ms = liveElapsedMs(e);
-      const prev = byId.get(e.userId);
+      if (ms <= 0) continue;
+      const key = partnerKeyFromEntry(e);
+      const name = partnerLabelFromEntry(e);
+      const prev = byKey.get(key);
       if (prev) {
         prev.ms += ms;
         if (e.source === "task") prev.taskMs += ms;
         else prev.testMs += ms;
       } else {
-        const roster = users.find((u) => u.id === e.userId);
-        byId.set(e.userId, {
-          userId: e.userId,
-          name: roster
-            ? memberLabel(roster)
-            : e.userName || e.userEmail || e.userId,
+        byKey.set(key, {
+          key,
+          name,
           ms,
           taskMs: e.source === "task" ? ms : 0,
           testMs: e.source === "test" ? ms : 0,
         });
       }
     }
-    // Include selected members with zero time so multi-select stays clear.
-    if (selectedUserIds.size > 0) {
-      for (const id of selectedUserIds) {
-        if (byId.has(id)) continue;
-        const roster = users.find((u) => u.id === id);
-        byId.set(id, {
-          userId: id,
-          name: roster ? memberLabel(roster) : id,
+    // Include selected partners with zero time so multi-select stays clear.
+    if (selectedPartners.size > 0) {
+      for (const key of selectedPartners) {
+        if (byKey.has(key)) continue;
+        const chip = partnerChips.find((c) => c.key === key);
+        byKey.set(key, {
+          key,
+          name: chip?.label ?? key,
           ms: 0,
           taskMs: 0,
           testMs: 0,
         });
       }
     }
-    return [...byId.values()].sort((a, b) => b.ms - a.ms || a.name.localeCompare(b.name));
-  }, [filteredEntries, selectedUserIds, users]);
+    return [...byKey.values()].sort((a, b) => b.ms - a.ms || a.name.localeCompare(b.name));
+  }, [filteredEntries, selectedPartners, partnerChips]);
 
   const durationSortActive = dayRowSort.startsWith("duration");
 
@@ -577,7 +637,7 @@ export function TimesheetPage(_props: TimesheetPageProps = {}) {
           <tbody>
             {rows.map((e) => (
               <tr key={e.id}>
-                {showMemberCol && <td>{e.userName || e.userEmail || e.userId}</td>}
+                {showMemberCol && <td>{partnerLabelFromEntry(e)}</td>}
                 <td>
                   {kind === "test" ? (
                     <button
@@ -625,17 +685,6 @@ export function TimesheetPage(_props: TimesheetPageProps = {}) {
     );
   };
 
-  const accentFor = (id: string, index: number) => {
-    if (/lyriq/i.test(id) || users.find((u) => u.id === id && /lyriq|leegaulden/i.test(`${u.name} ${u.email}`))) {
-      return "#3f6b2e";
-    }
-    if (/tina/i.test(id) || users.find((u) => u.id === id && /tina/i.test(u.name))) return "#9B2F28";
-    if (/ev|evelyn/i.test(id) || users.find((u) => u.id === id && /evelyn/i.test(u.name))) {
-      return "#947D64";
-    }
-    return MEMBER_ACCENTS[index % MEMBER_ACCENTS.length]!;
-  };
-
   return (
     <div className="timesheet-page" data-testid="timesheet-page">
       <BusyOverlay active={loading} message="Loading timesheet…" />
@@ -667,36 +716,38 @@ export function TimesheetPage(_props: TimesheetPageProps = {}) {
               className="qa-tester-bubble"
               data-active={allSelected ? "true" : "false"}
               data-testid="timesheet-user-all"
-              onClick={() => setSelectedUserIds(new Set())}
+              onClick={() => setSelectedPartners(new Set())}
             >
               All
             </button>
-            {users.map((u, i) => {
-              const active = selectedUserIds.has(u.id);
-              const accent = accentFor(u.id, i);
+            {partnerChips.map((chip, i) => {
+              const active = selectedPartners.has(chip.key);
+              const accent = accentForPartner(chip.key, i);
               return (
                 <button
-                  key={u.id}
+                  key={chip.key}
                   type="button"
                   role="option"
                   aria-selected={active}
                   className="qa-tester-bubble"
                   data-active={active ? "true" : "false"}
-                  data-testid={`timesheet-user-${u.id}`}
-                  title={u.email}
-                  onClick={() => setSelectedUserIds((prev) => toggleMember(prev, u.id))}
+                  data-testid={`timesheet-user-${chip.key}`}
+                  title={chip.userIds.length > 1 ? `${chip.userIds.length} linked logins` : undefined}
+                  onClick={() => setSelectedPartners((prev) => togglePartner(prev, chip.key))}
                   style={{
                     borderColor: active ? accent : undefined,
                     boxShadow: active ? `0 0 0 1px ${accent}` : undefined,
                   }}
                 >
-                  <span className="qa-tester-dot" style={{ background: accent }} />
-                  {memberLabel(u)}
+                  <span className="qa-tester-dot" style={{ background: accent }} aria-hidden />
+                  {chip.label}
                 </button>
               );
             })}
           </div>
-          <p className="timesheet-page__members-hint">Multi-select · All = entire team</p>
+          <p className="timesheet-page__members-hint">
+            Multi-select · All = entire team · duplicate logins merged
+          </p>
         </div>
 
         <div className="timesheet-page__source-filter" data-testid="timesheet-source-filter">
@@ -963,9 +1014,9 @@ export function TimesheetPage(_props: TimesheetPageProps = {}) {
           </header>
           <ul className="timesheet-page__member-totals-list">
             {memberTotals.map((row, i) => {
-              const accent = accentFor(row.userId, i);
+              const accent = accentForPartner(row.key, i);
               return (
-                <li key={row.userId} data-testid={`timesheet-member-total-${row.userId}`}>
+                <li key={row.key} data-testid={`timesheet-member-total-${row.key}`}>
                   <span className="timesheet-page__member-totals-name">
                     <span className="qa-tester-dot" style={{ background: accent }} aria-hidden />
                     {row.name}
