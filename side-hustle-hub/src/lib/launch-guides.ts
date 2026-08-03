@@ -75,13 +75,11 @@ export const LAUNCH_GUIDES: LaunchGuideRef[] = [
     id: "rideshare",
     name: "Rideshare (Uber / Lyft)",
     peek: "Drivers who want flexible hours and immediate payouts.",
-    free: true,
   },
   {
     id: "food-delivery",
     name: "DoorDash / Uber Eats",
     peek: "Anyone needing low-barrier income with a bike, scooter, or car.",
-    free: true,
   },
   {
     id: "ai-timing",

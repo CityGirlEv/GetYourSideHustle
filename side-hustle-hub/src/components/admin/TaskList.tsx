@@ -2552,7 +2552,7 @@ export function TaskList({
                   </span>
                   <button
                     type="button"
-                    className={`btn ${t.tinaDone ? "btn-primary" : "btn-outline"}`}
+                    className={`btn ${t.tinaDone ? "btn-partner-done" : "btn-outline"}`}
                     style={{
                       padding: "4px 10px",
                       fontSize: "0.9375rem",
@@ -2570,13 +2570,13 @@ export function TaskList({
                   </button>
                   <button
                     type="button"
-                    className={`btn ${t.evelynDone ? "btn-primary" : "btn-outline"}`}
+                    className={`btn ${t.evelynDone ? "btn-partner-done" : "btn-outline"}`}
                     style={{
                       padding: "4px 10px",
                       fontSize: "0.9375rem",
                       borderColor: OWNER_SWATCH.Evelyn,
                       background: t.evelynDone ? OWNER_SWATCH.Evelyn : undefined,
-                      color: t.evelynDone ? "#fff" : undefined,
+                      color: t.evelynDone ? "#fff" : OWNER_SWATCH.Evelyn,
                     }}
                     onClick={() => {
                       const next = !t.evelynDone;

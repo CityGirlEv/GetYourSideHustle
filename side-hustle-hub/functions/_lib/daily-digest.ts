@@ -544,10 +544,10 @@ function digestItemsTableHtml(
   </table>`;
 }
 
-export function buildDigestEmail(payload: DigestPayload): {
-  subject: string;
-  html: string;
-  text: string;
+export function buildDigestBodyHtml(payload: DigestPayload): {
+  first: string;
+  outstandingTotal: number;
+  bodyHtml: string;
 } {
   const first = payload.name.split(/\s+/)[0] || payload.partner;
   const outstandingTotal = payload.bySprint.reduce((n, s) => n + s.outstanding.length, 0);
@@ -591,6 +591,16 @@ export function buildDigestEmail(payload: DigestPayload): {
     ${awayBlock}
   `;
 
+  return { first, outstandingTotal, bodyHtml };
+}
+
+export function buildDigestEmail(payload: DigestPayload): {
+  subject: string;
+  html: string;
+  text: string;
+} {
+  const { first, outstandingTotal, bodyHtml } = buildDigestBodyHtml(payload);
+
   const branded = wrapBrandedEmail({
     preheader: `${first}: ${outstandingTotal} outstanding · ${payload.newlyAssigned.length} new assignments`,
     eyebrow: "Daily digest · Admin & QA",
@@ -607,6 +617,31 @@ export function buildDigestEmail(payload: DigestPayload): {
     html: branded.html,
     text: branded.text,
   };
+}
+
+/** Live digests use saved Admin → Email templates content when available. */
+export async function buildDigestEmailEditable(
+  env: Env,
+  payload: DigestPayload,
+): Promise<{ subject: string; html: string; text: string }> {
+  const { first, bodyHtml } = buildDigestBodyHtml(payload);
+  try {
+    const { renderCatalogEmail } = await import("./email-admin");
+    const rendered = await renderCatalogEmail(env, DIGEST_TEMPLATE_SLUG, {
+      name: first,
+      digestBodyHtml: bodyHtml,
+    });
+    if (rendered) {
+      // Keep date in subject for uniqueness when template subject omits it.
+      const subject = rendered.subject.includes(payload.chicagoDate)
+        ? rendered.subject
+        : `${rendered.subject} (${payload.chicagoDate})`;
+      return { ...rendered, subject };
+    }
+  } catch {
+    /* fall through to hardcoded shell */
+  }
+  return buildDigestEmail(payload);
 }
 
 /** Sample digest for Email Templates preview. */
@@ -690,7 +725,7 @@ export async function buildLiveDigestForEmail(
   const recipient = recipients.find((r) => r.email.toLowerCase() === email.toLowerCase());
   if (!recipient) return null;
   const payload = await loadDigestPayload(env, recipient);
-  const built = buildDigestEmail(payload);
+  const built = await buildDigestEmailEditable(env, payload);
   return { ...built, payload };
 }
 
@@ -792,7 +827,7 @@ export async function sendDailyDigests(
 
     try {
       const payload = await loadDigestPayload(env, recipient);
-      const built = buildDigestEmail(payload);
+      const built = await buildDigestEmailEditable(env, payload);
       const result = await sendResendEmail(env, {
         to: recipient.email,
         subject: built.subject,

@@ -13,10 +13,19 @@ describe("partnership money model PDF smoke", () => {
     vi.mocked(openPdfInBrowser).mockClear();
   });
 
-  it("builds partnership money model PDF without throwing", async () => {
-    await downloadPartnershipMoneyModelPdf();
+  it("builds Draft 1 partnership money model PDF without throwing", async () => {
+    await downloadPartnershipMoneyModelPdf(null, "draft1");
     expect(openPdfInBrowser).toHaveBeenCalledTimes(1);
     const doc = vi.mocked(openPdfInBrowser).mock.calls[0]![0] as { getNumberOfPages: () => number };
-    expect(doc.getNumberOfPages()).toBeGreaterThanOrEqual(6);
+    expect(doc.getNumberOfPages()).toBeGreaterThanOrEqual(2);
+    expect(String(vi.mocked(openPdfInBrowser).mock.calls[0]![1])).toMatch(/Draft-1/i);
+  });
+
+  it("builds Draft 2 partnership money model PDF without throwing", async () => {
+    await downloadPartnershipMoneyModelPdf(null, "draft2");
+    expect(openPdfInBrowser).toHaveBeenCalledTimes(1);
+    const doc = vi.mocked(openPdfInBrowser).mock.calls[0]![0] as { getNumberOfPages: () => number };
+    expect(doc.getNumberOfPages()).toBeGreaterThanOrEqual(2);
+    expect(String(vi.mocked(openPdfInBrowser).mock.calls[0]![1])).toMatch(/Draft-2/i);
   });
 });

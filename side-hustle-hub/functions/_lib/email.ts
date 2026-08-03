@@ -17,9 +17,7 @@ import {
   perkBulletsHtml,
   tierLabel,
   upgradesHtml,
-  wrapBrandedEmail,
   type PerkAudience,
-  type TierId,
 } from "./email-brand";
 import { PARTNER_ADMINS } from "./partners";
 
@@ -229,22 +227,18 @@ export async function sendPasswordResetEmail(
   input: { to: string; name: string; resetUrl: string; userId?: string },
 ): Promise<boolean> {
   if (!emailConfigured(env)) return false;
-  const branded = wrapBrandedEmail({
-    preheader: "Reset your Get Your Side Hustle password.",
-    eyebrow: "Account security",
-    headline: "Reset your password",
-    subhead: `Hi ${input.name || "Side Hustler"}, we received a request to reset a GYSH password for this email.`,
-    bodyHtml: `<p style="margin:0 0 12px;">If an account exists for this email address, tap the button below to choose a new password. This link expires in <strong>1 hour</strong> and can only be used once.</p>
-      <p style="margin:0 0 12px;">If you didn’t ask for this, you can ignore this email — your password stays the same.</p>`,
-    ctaLabel: "Reset my password",
+  const { renderCatalogEmail } = await import("./email-admin");
+  const rendered = await renderCatalogEmail(env, "password_reset", {
+    name: input.name || "Side Hustler",
+    resetUrl: input.resetUrl,
     ctaUrl: input.resetUrl,
-    footerNote: "Never share this link. GYSH will never ask for your password by email.",
   });
+  if (!rendered) return false;
   await sendResendEmail(env, {
     to: input.to,
-    subject: `${SITE_NAME} — reset your password`,
-    html: branded.html,
-    text: branded.text,
+    subject: rendered.subject,
+    html: rendered.html,
+    text: rendered.text,
     templateSlug: "password_reset",
     userId: input.userId,
     meta: { resetUrl: input.resetUrl },
@@ -260,22 +254,16 @@ export async function sendPasswordChangedNotice(
 ): Promise<boolean> {
   if (!emailConfigured(env)) return false;
   const safeName = escapeHtml(name || "there");
-  const branded = wrapBrandedEmail({
-    preheader: "Your GYSH password was just updated.",
-    eyebrow: "Account security",
-    headline: "Password updated — you're locked in.",
-    subhead: `Hi ${name || "there"}, your Get Your Side Hustle password changed successfully.`,
-    bodyHtml: `<p style="margin:0 0 12px;">If <strong>you</strong> made this change, you're all set — keep building that Side Hustle momentum.</p>
-      <p style="margin:0 0 12px;">If you <em>didn't</em> change it, contact us immediately at <a href="mailto:${ADMIN_EMAIL}" style="color:#9B2F28;">${ADMIN_EMAIL}</a>.</p>`,
-    ctaLabel: "Open GYSH",
-    ctaUrl: SITE_URL,
-    footerNote: "Security tip: use a unique password you don't reuse elsewhere.",
+  const { renderCatalogEmail } = await import("./email-admin");
+  const rendered = await renderCatalogEmail(env, "password_changed", {
+    name: name || "there",
   });
+  if (!rendered) return false;
   await sendResendEmail(env, {
     to,
-    subject: `${SITE_NAME} — password updated`,
-    html: branded.html,
-    text: branded.text,
+    subject: rendered.subject,
+    html: rendered.html,
+    text: rendered.text,
     templateSlug: "password_changed",
     userId,
     meta: { name: safeName },
@@ -291,22 +279,29 @@ export async function sendContactMessage(
   const email = escapeHtml(input.email);
   const message = escapeHtml(input.message).replace(/\n/g, "<br/>");
   const recipients = adminRecipients(env);
-  const branded = wrapBrandedEmail({
-    preheader: `New contact from ${input.name}`,
-    eyebrow: "Inbox · Contact Us",
-    headline: "New message just landed!",
-    subhead: `${input.name} wrote in from the GYSH Contact form.`,
-    bodyHtml: `<p style="margin:0 0 8px;"><strong>From:</strong> ${name} &lt;<a href="mailto:${email}" style="color:#9B2F28;">${email}</a>&gt;</p>
-      <div style="margin:16px 0;padding:16px;border-radius:12px;background:#f7f0df;border:1px solid #e2d5bc;">${message}</div>`,
-    ctaLabel: "Reply to sender",
-    ctaUrl: `mailto:${input.email}`,
+  const { renderCatalogEmail } = await import("./email-admin");
+  const rendered = await renderCatalogEmail(env, "contact_inbox", {
+    name: input.name.slice(0, 60),
+    email: input.email,
+    message,
   });
+  if (!rendered) {
+    return sendResendEmail(env, {
+      to: recipients,
+      replyTo: input.email,
+      subject: `[GYSH contact] ${input.name.slice(0, 60)}`,
+      html: `<p>${name} &lt;${email}&gt;</p><p>${message}</p>`,
+      text: `${input.name} <${input.email}>\n\n${input.message}`,
+      templateSlug: "contact_inbox",
+      meta: { from: input.email, name: input.name, recipients },
+    });
+  }
   return sendResendEmail(env, {
     to: recipients,
     replyTo: input.email,
-    subject: `[GYSH contact] ${input.name.slice(0, 60)}`,
-    html: branded.html,
-    text: branded.text,
+    subject: rendered.subject,
+    html: rendered.html,
+    text: rendered.text,
     templateSlug: "contact_inbox",
     meta: { from: input.email, name: input.name, recipients },
   });
@@ -389,21 +384,21 @@ export async function sendAdminFormNotify(
 ): Promise<boolean> {
   if (!emailConfigured(env)) return false;
   const recipients = adminRecipients(env);
-  const branded = wrapBrandedEmail({
-    preheader: `GYSH form: ${input.formName}`,
-    eyebrow: "Admin inbox · Form alert",
-    headline: `New ${input.formName}`,
-    subhead: input.summary,
-    bodyHtml: input.detailsHtml,
-    ctaLabel: input.replyTo ? "Reply to sender" : "Open GYSH Admin",
+  const { renderCatalogEmail } = await import("./email-admin");
+  const rendered = await renderCatalogEmail(env, "admin_form_notify", {
+    name: input.formName,
+    message: input.detailsHtml,
+    email: input.replyTo || "",
     ctaUrl: input.replyTo ? `mailto:${input.replyTo}` : `${SITE_URL}/?next=admin`,
-    footerNote: "This alert was sent because a GYSH public form was completed.",
   });
+  const subject = rendered
+    ? `${rendered.subject} ${input.summary.slice(0, 80)}`.trim()
+    : `[GYSH ${input.formName}] ${input.summary.slice(0, 80)}`;
   await sendResendEmail(env, {
     to: recipients,
-    subject: `[GYSH ${input.formName}] ${input.summary.slice(0, 80)}`,
-    html: branded.html,
-    text: branded.text,
+    subject,
+    html: rendered?.html || input.detailsHtml,
+    text: rendered?.text || input.summary,
     templateSlug: "admin_form_notify",
     meta: { formName: input.formName, recipients, ...(input.meta || {}) },
   });
@@ -428,27 +423,22 @@ export async function sendRegistrationConfirmation(
     membership_tier: tier,
     audience,
   });
-  const branded = wrapBrandedEmail({
-    preheader: "Welcome to the GYSH family — your membership details inside!",
-    eyebrow: "Membership · Pending activation",
-    headline: `${user.name || "Side Hustler"}, welcome to the GYSH family!`,
-    subhead: `You're on the ${tierLabel(tier)} plan (${audiencePretty(audience)} lane). An admin will activate your login soon.`,
-    bodyHtml: `<p style="margin:0 0 12px;">We've saved your membership request. Here's what you unlocked on <strong>${escapeHtml(tierLabel(tier))}</strong>:</p>
-      ${perkBulletsHtml(tier, audience)}
-      ${cert?.certHtml || ""}
-      ${upgradesHtml(tier, audience)}
-      <p style="margin:16px 0 0;padding:12px 14px;background:#fff4e8;border-radius:12px;border-left:4px solid #9B2F28;">
-        <strong>Next:</strong> A GYSH admin activates your account. You'll get a second email the moment you can sign in.
-      </p>`,
-    ctaLabel: "Explore membership upgrades",
+  const { renderCatalogEmail } = await import("./email-admin");
+  const rendered = await renderCatalogEmail(env, "registration_confirmation", {
+    name: user.name || "Side Hustler",
+    tier: tierLabel(tier),
+    audience: audiencePretty(audience),
+    perksHtml: perkBulletsHtml(tier, audience),
+    upgradesHtml: upgradesHtml(tier, audience),
+    certHtml: cert?.certHtml || "",
     ctaUrl: joinUrl,
-    footerNote: "Pending accounts can't sign in until an admin activates them.",
   });
+  if (!rendered) return false;
   await sendResendEmail(env, {
     to: user.email,
-    subject: `${SITE_NAME} — welcome to the GYSH family!`,
-    html: branded.html,
-    text: branded.text,
+    subject: rendered.subject,
+    html: rendered.html,
+    text: rendered.text,
     templateSlug: "registration_confirmation",
     userId: user.id,
     attachments: cert?.attachments,
@@ -489,27 +479,23 @@ export async function sendAccountActivatedWelcome(
   const audience = normalizeAudience(user.audience) as PerkAudience;
   const joinUrl = membershipDeepLink();
   const cert = await certificateAttachment(env, user);
-  const branded = wrapBrandedEmail({
-    preheader: `You're activated on ${tierLabel(tier)} — certificate attached!`,
-    eyebrow: "You're in · Account activated",
-    headline: `${user.name || "Side Hustler"}, your GYSH account is LIVE!`,
-    subhead: `Welcome to the hustle family on the ${tierLabel(tier)} plan. Your Welcome Certificate is attached.`,
-    bodyHtml: `<p style="margin:0 0 14px;">This is your official green light. Log in, claim your Blueprint, and use every perk that comes with <strong>${tierLabel(tier)}</strong>.</p>
-      <p style="margin:0 0 8px;font-size:13px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#947d64;">Your ${escapeHtml(tierLabel(tier))} perks</p>
-      ${perkBulletsHtml(tier, audience)}
-      ${cert?.certHtml || ""}
-      ${upgradesHtml(tier, audience)}
-      <p style="margin:18px 0 0;">Ready for more guides, coaching, and the schedule suite? Tap below to review plans and upgrade.</p>`,
-    ctaLabel: "See membership & upgrade",
+  const slug = `welcome_${tier}`;
+  const { renderCatalogEmail } = await import("./email-admin");
+  const rendered = await renderCatalogEmail(env, slug, {
+    name: user.name || "Side Hustler",
+    tier: tierLabel(tier),
+    perksHtml: perkBulletsHtml(tier, audience),
+    upgradesHtml: upgradesHtml(tier, audience),
+    certHtml: cert?.certHtml || "",
     ctaUrl: joinUrl,
-    footerNote: "Sign in anytime at getyoursidehustle.com — your certificate is attached to this email.",
   });
+  if (!rendered) return false;
   await sendResendEmail(env, {
     to: user.email,
-    subject: `${SITE_NAME} — you're activated! Welcome aboard 🚀`,
-    html: branded.html,
-    text: branded.text,
-    templateSlug: `welcome_${tier}`,
+    subject: rendered.subject,
+    html: rendered.html,
+    text: rendered.text,
+    templateSlug: slug,
     userId: user.id,
     attachments: cert?.attachments,
     meta: { tier, audience, joinUrl, certificateAttached: Boolean(cert) },
@@ -522,23 +508,21 @@ export async function sendParentConsentEmail(
   input: { parentEmail: string; childName: string; consentUrl: string; audience: "kids" | "junior" },
 ): Promise<{ id: string | null }> {
   const label = input.audience === "junior" ? "Teens" : "Kids";
-  const branded = wrapBrandedEmail({
-    preheader: `Approve ${input.childName}'s GYSH ${label} team request`,
-    eyebrow: `${label} Corner · Parent consent`,
-    headline: "A young Side Hustler needs your yes!",
-    subhead: `${input.childName} asked to join the GYSH ${label} team — with you as GYSH Coach.`,
-    bodyHtml: `<p style="margin:0 0 12px;">You're the coach. Cheer, set boundaries, and help turn ideas into safe first wins.</p>
-      <p style="margin:0 0 12px;">Parental consent is required through age 12. Tap below to grant permission. If you do not already have a GYSH login, you will create a username and password on that page so the kid profile links to you.</p>
-      <p style="margin:0 0 12px;">Until you approve, the account stays pending.</p>`,
-    ctaLabel: "Approve as parent / guardian",
+  const { renderCatalogEmail } = await import("./email-admin");
+  const rendered = await renderCatalogEmail(env, "parent_consent", {
+    childName: input.childName,
+    audienceLabel: label,
+    consentUrl: input.consentUrl,
     ctaUrl: input.consentUrl,
-    footerNote: "If you didn't expect this, you can ignore this email.",
   });
+  if (!rendered) {
+    return { id: null };
+  }
   return sendResendEmail(env, {
     to: input.parentEmail,
-    subject: `${SITE_NAME} — approve ${input.childName}'s ${label} team request`,
-    html: branded.html,
-    text: branded.text,
+    subject: rendered.subject,
+    html: rendered.html,
+    text: rendered.text,
     templateSlug: "parent_consent",
     meta: {
       childName: input.childName,
@@ -552,22 +536,18 @@ export async function sendParentAccountReadyEmail(
   env: Env,
   input: { parentEmail: string; parentName: string; childName: string },
 ): Promise<{ id: string | null }> {
-  const branded = wrapBrandedEmail({
-    preheader: `Your GYSH parent coach login is ready`,
-    eyebrow: `Family · Parent account`,
-    headline: "Your parent coach login is ready",
-    subhead: `${input.childName}'s profile is linked to you.`,
-    bodyHtml: `<p style="margin:0 0 12px;">Hi ${escapeHtml(input.parentName || "there")}, your GYSH parent account was created when you approved ${escapeHtml(input.childName)}.</p>
-      <p style="margin:0 0 12px;">Sign in with <strong>${escapeHtml(input.parentEmail)}</strong> and the password you just set. From your Dashboard you can register more kids, assign Match Wizard Blueprints, and choose daily or weekly progress emails.</p>`,
-    ctaLabel: "Open my Dashboard",
-    ctaUrl: `${SITE_URL}/`,
-    footerNote: "Keep your password private — kids should use their own kid login.",
+  const { renderCatalogEmail } = await import("./email-admin");
+  const rendered = await renderCatalogEmail(env, "parent_account_ready", {
+    name: input.parentName || "there",
+    email: input.parentEmail,
+    childName: input.childName,
   });
+  if (!rendered) return { id: null };
   return sendResendEmail(env, {
     to: input.parentEmail,
-    subject: `${SITE_NAME} — parent coach login ready`,
-    html: branded.html,
-    text: branded.text,
+    subject: rendered.subject,
+    html: rendered.html,
+    text: rendered.text,
     templateSlug: "parent_account_ready",
     meta: { childName: input.childName },
   });
@@ -587,45 +567,38 @@ export async function sendKidLoginReadyEmails(
   const parentEmail = String(input.parentEmail || "").trim();
   if (!childEmail.includes("@") || !parentEmail.includes("@")) return;
 
-  const kidBranded = wrapBrandedEmail({
-    preheader: `You can sign in to GYSH`,
-    eyebrow: `Family · Kid login ready`,
-    headline: "You can sign in now!",
-    subhead: `Hi ${escapeHtml(input.childName)}, your GYSH login is ready.`,
-    bodyHtml: `<p style="margin:0 0 12px;">Use this email: <strong>${escapeHtml(childEmail)}</strong> and the password your parent/guardian just set.</p>
-      <p style="margin:0 0 12px;">Tap below to open GYSH and sign in. Your parent coach can see your progress from their Dashboard.</p>`,
-    ctaLabel: "Sign in to GYSH",
-    ctaUrl: `${SITE_URL}/`,
-    footerNote: "Keep your password private. Ask a parent if you need a reset.",
+  const { renderCatalogEmail } = await import("./email-admin");
+  const kidRendered = await renderCatalogEmail(env, "kid_login_ready", {
+    name: input.childName,
+    email: childEmail,
+    childName: input.childName,
   });
-  await sendResendEmail(env, {
-    to: childEmail,
-    subject: `${SITE_NAME} — you can log in, ${input.childName}!`,
-    html: kidBranded.html,
-    text: kidBranded.text,
-    templateSlug: "kid_login_ready",
-    meta: { childName: input.childName, role: "kid" },
-  });
+  if (kidRendered) {
+    await sendResendEmail(env, {
+      to: childEmail,
+      subject: kidRendered.subject,
+      html: kidRendered.html,
+      text: kidRendered.text,
+      templateSlug: "kid_login_ready",
+      meta: { childName: input.childName, role: "kid" },
+    });
+  }
 
-  const parentBranded = wrapBrandedEmail({
-    preheader: `${input.childName} can log in to GYSH`,
-    eyebrow: `Family · Kid login ready`,
-    headline: `${escapeHtml(input.childName)} can log in now`,
-    subhead: "Their kid login was created successfully.",
-    bodyHtml: `<p style="margin:0 0 12px;">Hi ${escapeHtml(input.parentName || "there")}, <strong>${escapeHtml(input.childName)}</strong> can sign in with <strong>${escapeHtml(childEmail)}</strong> and the password you set.</p>
-      <p style="margin:0 0 12px;">We also emailed them these details. From your Dashboard you can assign Blueprints and choose progress report emails.</p>`,
-    ctaLabel: "Open my Dashboard",
-    ctaUrl: `${SITE_URL}/`,
-    footerNote: "You receive this because you registered or approved this kid on GYSH.",
+  const parentRendered = await renderCatalogEmail(env, "kid_login_ready_parent", {
+    name: input.parentName || "there",
+    email: childEmail,
+    childName: input.childName,
   });
-  await sendResendEmail(env, {
-    to: parentEmail,
-    subject: `${SITE_NAME} — ${input.childName} can log in`,
-    html: parentBranded.html,
-    text: parentBranded.text,
-    templateSlug: "kid_login_ready_parent",
-    meta: { childName: input.childName, childEmail, role: "parent" },
-  });
+  if (parentRendered) {
+    await sendResendEmail(env, {
+      to: parentEmail,
+      subject: parentRendered.subject,
+      html: parentRendered.html,
+      text: parentRendered.text,
+      templateSlug: "kid_login_ready_parent",
+      meta: { childName: input.childName, childEmail, role: "parent" },
+    });
+  }
 }
 
 export async function sendKidLoginNotifyEmail(
@@ -636,22 +609,18 @@ export async function sendKidLoginNotifyEmail(
   const whenLabel = Number.isNaN(when.getTime())
     ? input.loggedInAt
     : when.toLocaleString("en-US", { timeZone: "America/Chicago" });
-  const branded = wrapBrandedEmail({
-    preheader: `${input.childName} just signed in to GYSH`,
-    eyebrow: `Family · Kid login alert`,
-    headline: `${escapeHtml(input.childName)} just signed in`,
-    subhead: "A quick heads-up for you as GYSH Coach.",
-    bodyHtml: `<p style="margin:0 0 12px;">Hi ${escapeHtml(input.parentName || "there")}, <strong>${escapeHtml(input.childName)}</strong> signed in around <strong>${escapeHtml(whenLabel)}</strong> (Central).</p>
-      <p style="margin:0 0 12px;">You can review their Blueprint and progress anytime from your member Dashboard. Prefer a digest instead of every login? Turn on daily or weekly kid progress reports there.</p>`,
-    ctaLabel: "Open my Dashboard",
-    ctaUrl: `${SITE_URL}/`,
-    footerNote: "You receive this because a kid/teen login is linked to your parent coach account.",
+  const { renderCatalogEmail } = await import("./email-admin");
+  const rendered = await renderCatalogEmail(env, "kid_login_notify", {
+    name: input.parentName || "there",
+    childName: input.childName,
+    message: `Signed in around ${whenLabel} (Central).`,
   });
+  if (!rendered) return { id: null };
   return sendResendEmail(env, {
     to: input.parentEmail,
-    subject: `${SITE_NAME} — ${input.childName} signed in`,
-    html: branded.html,
-    text: branded.text,
+    subject: rendered.subject,
+    html: rendered.html,
+    text: rendered.text,
     templateSlug: "kid_login_notify",
     meta: { childName: input.childName, loggedInAt: input.loggedInAt },
   });
@@ -689,139 +658,27 @@ export async function sendParentKidProgressReportEmail(
               )}</li>`,
           )
           .join("")}</ul>`;
-  const branded = wrapBrandedEmail({
-    preheader: `${cadenceLabel} kid progress report`,
-    eyebrow: `Family · ${cadenceLabel} progress`,
-    headline: `${cadenceLabel} kid progress report`,
-    subhead: `Period ${input.periodKey}`,
-    bodyHtml: `<p style="margin:0 0 12px;">Hi ${escapeHtml(input.parentName || "there")}, here is your GYSH Coach update.</p>
-      <p style="margin:0 0 8px;"><strong>Linked kids</strong></p>
+  const digestBodyHtml = `<p style="margin:0 0 8px;"><strong>Linked kids</strong></p>
       <ul style="margin:0 0 14px;padding-left:18px;">${kidsHtml}</ul>
       <p style="margin:0 0 8px;"><strong>Recent logins</strong></p>
-      ${loginsHtml}`,
-    ctaLabel: "Open my Dashboard",
-    ctaUrl: `${SITE_URL}/`,
-    footerNote: "Change daily/weekly reports anytime under Dashboard → Family.",
+      ${loginsHtml}`;
+  const slug = `parent_kid_progress_${input.cadence}`;
+  const { renderCatalogEmail } = await import("./email-admin");
+  const rendered = await renderCatalogEmail(env, slug, {
+    name: input.parentName || "there",
+    periodKey: input.periodKey,
+    cadence: cadenceLabel,
+    digestBodyHtml,
   });
+  if (!rendered) return { id: null };
   return sendResendEmail(env, {
     to: input.parentEmail,
-    subject: `${SITE_NAME} — ${cadenceLabel.toLowerCase()} kid progress (${input.periodKey})`,
-    html: branded.html,
-    text: branded.text,
-    templateSlug: `parent_kid_progress_${input.cadence}`,
+    subject: rendered.subject,
+    html: rendered.html,
+    text: rendered.text,
+    templateSlug: slug,
     meta: { cadence: input.cadence, periodKey: input.periodKey, childCount: input.children.length },
   });
 }
 
-/** Catalog of template slugs for the admin Email Templates page. */
-export const EMAIL_TEMPLATE_CATALOG: Array<{
-  slug: string;
-  name: string;
-  description: string;
-  sampleSubject: string;
-}> = [
-  {
-    slug: "registration_confirmation",
-    name: "Registration confirmation",
-    description: "Sent when someone registers — pending admin activation.",
-    sampleSubject: `${SITE_NAME} — we got your signup!`,
-  },
-  {
-    slug: "welcome_free",
-    name: "Welcome · Free",
-    description: "Sent when an admin activates a Free member.",
-    sampleSubject: `${SITE_NAME} — you're activated! Welcome aboard`,
-  },
-  {
-    slug: "welcome_starter",
-    name: "Welcome · Starter",
-    description: "Activation welcome framed for Starter perks + upgrades.",
-    sampleSubject: `${SITE_NAME} — you're activated! Welcome aboard`,
-  },
-  {
-    slug: "welcome_pro",
-    name: "Welcome · Pro",
-    description: "Activation welcome framed for Pro perks + Elite upgrade.",
-    sampleSubject: `${SITE_NAME} — you're activated! Welcome aboard`,
-  },
-  {
-    slug: "welcome_elite",
-    name: "Welcome · Elite",
-    description: "Activation welcome for Elite members.",
-    sampleSubject: `${SITE_NAME} — you're activated! Welcome aboard`,
-  },
-  {
-    slug: "parent_consent",
-    name: "Parent consent",
-    description: "Kids/Teens team signup — parent must approve (and create login if needed).",
-    sampleSubject: `${SITE_NAME} — approve a team request`,
-  },
-  {
-    slug: "parent_account_ready",
-    name: "Parent account ready",
-    description: "Sent when consent creates a new parent coach login.",
-    sampleSubject: `${SITE_NAME} — parent coach login ready`,
-  },
-  {
-    slug: "kid_login_ready",
-    name: "Kid login ready",
-    description: "Sent to the kid when their login password is created.",
-    sampleSubject: `${SITE_NAME} — you can log in!`,
-  },
-  {
-    slug: "kid_login_ready_parent",
-    name: "Kid login ready · Parent",
-    description: "Sent to the parent when a kid login is created.",
-    sampleSubject: `${SITE_NAME} — kid can log in`,
-  },
-  {
-    slug: "kid_login_notify",
-    name: "Kid login notify",
-    description: "Alert parent every time a linked kid/teen signs in.",
-    sampleSubject: `${SITE_NAME} — kid signed in`,
-  },
-  {
-    slug: "parent_kid_progress_daily",
-    name: "Parent kid progress · Daily",
-    description: "Optional daily kid progress digest for parent coaches.",
-    sampleSubject: `${SITE_NAME} — daily kid progress`,
-  },
-  {
-    slug: "parent_kid_progress_weekly",
-    name: "Parent kid progress · Weekly",
-    description: "Optional weekly kid progress digest for parent coaches.",
-    sampleSubject: `${SITE_NAME} — weekly kid progress`,
-  },
-
-  {
-    slug: "contact_inbox",
-    name: "Contact form → admin",
-    description: "Internal alert when Contact Us is submitted.",
-    sampleSubject: `[GYSH contact] …`,
-  },
-  {
-    slug: "admin_form_notify",
-    name: "Admin form notify",
-    description: "Alert to admins whenever a public form is completed.",
-    sampleSubject: `[GYSH …] …`,
-  },
-  {
-    slug: "password_reset",
-    name: "Password reset link",
-    description: "Forgot-password email with one-time reset link.",
-    sampleSubject: `${SITE_NAME} — reset your password`,
-  },
-  {
-    slug: "password_changed",
-    name: "Password changed",
-    description: "Security notice after password update.",
-    sampleSubject: `${SITE_NAME} — password updated`,
-  },
-  {
-    slug: "daily_admin_digest",
-    name: "Daily Admin/QA digest",
-    description:
-      "Personal sprint summary for each Admin/QA at ~12:01 America/Chicago — outstanding, recently updated, new, and reassigned-away items.",
-    sampleSubject: `${SITE_NAME} — daily digest for Evelyn (…)`,
-  },
-];
+export { EMAIL_TEMPLATE_CATALOG } from "./email-template-content";

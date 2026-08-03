@@ -55,6 +55,7 @@ import {
   listEmailTemplates,
   previewEmailTemplate,
   sendTestEmail,
+  updateEmailTemplate,
 } from "../_lib/email-admin";
 import {
   handleAdminPreviewDigest,
@@ -368,6 +369,9 @@ export async function onRequest(context: {
     }
     if (route === "email/templates" && method === "GET") {
       return withCors(request, await listEmailTemplates(env));
+    }
+    if (route === "email/templates" && method === "PUT") {
+      return withCors(request, await updateEmailTemplate(env, request, user));
     }
     if (route === "email/log" && method === "GET") {
       return withCors(request, await listEmailLog(env, request));

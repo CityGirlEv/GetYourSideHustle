@@ -318,7 +318,7 @@ export function categoryForCase(t: Pick<TestCase, "area" | "suite" | "id">): Tes
     case "Family Coach":
       return "website";
     case "Video Marketing":
-      return "content";
+      return "admin_ops";
     case "Admin":
     case "Schedule":
     case "Accessibility":
@@ -814,18 +814,76 @@ const TEST_CASES_RAW: TestCase[] = [
   {
     id: "UX-001",
     area: "UX Visual",
-    title: "Active filter bubbles: white text readable on gold gradient",
+    title: "Active chips / primary buttons: white text on deep forest green; white on red/dark fills",
     priority: "P0",
     roles: ["admin", "qa"],
     assignees: ["evelyn"],
     suite: "manual",
     steps: [
-      "Admin → Testing Portal",
-      "Click several filter bubbles (Status, Suite, Sprint, QA tester) until selected",
-      "Confirm label AND count numbers (e.g. · 12/40) are clearly white on the dark gold fill",
-      "Repeat on Home demographic chips / Kids age mode if present",
+      "Admin → Testing Portal (or Financials sub-tabs)",
+      "Select an active nav/filter chip (deep forest green fill — not pale mint)",
+      "Confirm label text is clearly white on the green",
+      "Admin → Task List: mark Tina Done on a Both-assigned task (crimson fill)",
+      "Confirm Tina Done label is clearly white on the red button",
+      "Mark Evelyn Done (bronze fill) and confirm white label",
     ],
-    expected: "No black/gray numbers or labels fading into the gradient; counts inherit white",
+    expected: "Forest-green actives use white ink; crimson/bronze partner-done buttons use white text",
+    path: "admin",
+  },
+  {
+    id: "UX-005",
+    area: "UX Visual",
+    title: "Partner-done buttons stay white-on-red/bronze after refresh",
+    priority: "P1",
+    roles: ["admin", "qa"],
+    assignees: ["tina"],
+    suite: "manual",
+    steps: [
+      "Admin → Task List (or Schedule card with partner-done controls)",
+      "Toggle Tina Done on → red fill + white “Tina ✓ Done”",
+      "Toggle Evelyn Done on → bronze fill + white “Evelyn ✓ Done”",
+      "Refresh the page; confirm fills and white labels still match",
+    ],
+    expected: "No dark/green primary text bleeding onto red or bronze done buttons",
+    path: "admin",
+  },
+  {
+    id: "ADMIN-009",
+    area: "Admin",
+    title: "Financials Money model Draft 1 / Draft 2 + T-052 banking cross-ref",
+    priority: "P1",
+    roles: ["admin", "qa"],
+    assignees: ["evelyn", "tina"],
+    suite: "manual",
+    steps: [
+      "Admin → Financials → Money model",
+      "Open Draft 1 and Draft 2 tabs; confirm both render sections",
+      "On Draft 2: confirm Build Credit $10,000 first, Kevina under Tina, Platform maintain $50 revenue-months only",
+      "Confirm Task T-022 and Task T-052 links open Task List focus",
+      "Task List → open T-022 notes (Draft 2 + Navy Fed cross-ref) and T-052 (Explore Navy Federal…)",
+      "Optional: Download Draft 2 PDF opens without error",
+    ],
+    expected: "Draft tabs work; Draft 2 terms match Tina Aug agreement; T-022 ↔ T-052 cross-linked",
+    path: "admin",
+    relatedTaskIds: ["T-022", "T-052"],
+  },
+  {
+    id: "ADMIN-010",
+    area: "Admin",
+    title: "Email templates are editable and persist (subject + body)",
+    priority: "P0",
+    roles: ["admin", "qa"],
+    assignees: ["evelyn", "lyriq"],
+    suite: "manual",
+    steps: [
+      "Admin → Email templates",
+      "Select each template — editor fields appear; Body uses Visual WYSIWYG (bold/italic/font/size/color/lists/links) plus HTML source toggle",
+      "Change subject + headline + body formatting on Password reset → Save template → Refresh → confirm values persist",
+      "Confirm live preview iframe updates after edits (sample placeholders like {{name}})",
+      "Reset to default restores code defaults",
+      "Optional: Send test to a controlled inbox and confirm Resend delivers edited subject",
+    ],
+    expected: "Every catalog template is editable with WYSIWYG body; Save persists to D1; preview/test use saved content",
     path: "admin",
   },
   {
@@ -1063,7 +1121,7 @@ const TEST_CASES_RAW: TestCase[] = [
     title: "Adult Dashboard shows Register My Kid and creates a linked kid profile",
     priority: "P0",
     roles: ["adult", "qa"],
-    assignees: [],
+    assignees: ["lyriq"],
     suite: "manual",
     steps: [
       "Sign in as an adult/parent member → open My Dashboard",
@@ -1080,7 +1138,7 @@ const TEST_CASES_RAW: TestCase[] = [
     title: "Register My Kid requires kid login password and emails kid + parent",
     priority: "P1",
     roles: ["adult", "qa"],
-    assignees: [],
+    assignees: ["lyriq"],
     suite: "manual",
     steps: [
       "Dashboard → Family → Register My Kid",
@@ -1098,7 +1156,7 @@ const TEST_CASES_RAW: TestCase[] = [
     title: "Parent maps a completed Match Wizard Blueprint to self or a linked kid",
     priority: "P0",
     roles: ["adult", "qa"],
-    assignees: [],
+    assignees: ["lyriq"],
     suite: "manual",
     steps: [
       "Complete (or use existing) Match Wizard Blueprint on the parent account",
@@ -1115,7 +1173,7 @@ const TEST_CASES_RAW: TestCase[] = [
     title: "Assigned Blueprint appears on the Kids / Teens page",
     priority: "P0",
     roles: ["adult", "kid", "qa"],
-    assignees: [],
+    assignees: ["lyriq"],
     suite: "manual",
     steps: [
       "As parent, assign a Kids-age Blueprint to a linked kid",
@@ -1132,7 +1190,7 @@ const TEST_CASES_RAW: TestCase[] = [
     title: "Kid Join with parent email emails consent and creates parent login + linked profile",
     priority: "P0",
     roles: ["kid", "adult", "qa"],
-    assignees: [],
+    assignees: ["lyriq"],
     suite: "manual",
     steps: [
       "Kids Corner → Join team as a kid (≤12) with parent email that has no GYSH account",
@@ -1149,7 +1207,7 @@ const TEST_CASES_RAW: TestCase[] = [
     title: "Parent is emailed every time a linked kid logs in",
     priority: "P0",
     roles: ["adult", "kid", "qa"],
-    assignees: [],
+    assignees: ["lyriq"],
     suite: "manual",
     steps: [
       "Ensure a kid login is linked to a parent coach account",
@@ -1166,7 +1224,7 @@ const TEST_CASES_RAW: TestCase[] = [
     title: "Parent can choose daily or weekly kid progress report emails",
     priority: "P1",
     roles: ["adult", "qa"],
-    assignees: [],
+    assignees: ["lyriq"],
     suite: "manual",
     steps: [
       "Dashboard → Family → Kid progress emails",
@@ -1183,7 +1241,7 @@ const TEST_CASES_RAW: TestCase[] = [
     title: "Existing parent approving kid Join links profile without forcing a new password",
     priority: "P1",
     roles: ["adult", "qa"],
-    assignees: [],
+    assignees: ["lyriq"],
     suite: "manual",
     steps: [
       "Use a parent email that already has an active GYSH account",
@@ -1200,7 +1258,7 @@ const TEST_CASES_RAW: TestCase[] = [
     title: "Family list: kid dashboard link + collapsible Blueprints with % match",
     priority: "P0",
     roles: ["adult", "qa"],
-    assignees: [],
+    assignees: ["lyriq"],
     suite: "manual",
     steps: [
       "Sign in as parent with at least one registered kid who has an assigned Blueprint",
@@ -1217,7 +1275,7 @@ const TEST_CASES_RAW: TestCase[] = [
     title: "Kid/teen login opens a dedicated Dashboard (not only Kids Corner)",
     priority: "P0",
     roles: ["kid", "junior", "qa"],
-    assignees: [],
+    assignees: ["lyriq"],
     suite: "manual",
     steps: [
       "Sign in with a linked kid or teen login",

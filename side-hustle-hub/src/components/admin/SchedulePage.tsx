@@ -4684,7 +4684,7 @@ export function SchedulePage({
                         <>
                           <button
                             type="button"
-                            className={`btn ${tinaDone ? "btn-primary" : "btn-outline"}`}
+                            className={`btn ${tinaDone ? "btn-partner-done" : "btn-outline"}`}
                             style={{
                               padding: "4px 10px",
                               fontSize: "0.9375rem",
@@ -4699,7 +4699,7 @@ export function SchedulePage({
                           </button>
                           <button
                             type="button"
-                            className={`btn ${evelynDone ? "btn-primary" : "btn-outline"}`}
+                            className={`btn ${evelynDone ? "btn-partner-done" : "btn-outline"}`}
                             style={{
                               padding: "4px 10px",
                               fontSize: "0.9375rem",

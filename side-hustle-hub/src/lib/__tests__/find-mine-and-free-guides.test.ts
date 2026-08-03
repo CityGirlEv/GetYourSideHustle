@@ -40,9 +40,16 @@ describe("GYSH Match Wizard age selector", () => {
 });
 
 describe("Free Guides library data", () => {
-  it("marks rideshare and food-delivery as free adult launch guides", () => {
+  it("does not mark rideshare or food-delivery as free adult launch guides", () => {
     const free = LAUNCH_GUIDES.filter((g) => g.free);
-    expect(free.map((g) => g.id).sort()).toEqual(["food-delivery", "rideshare"]);
+    expect(free.map((g) => g.id)).not.toContain("rideshare");
+    expect(free.map((g) => g.id)).not.toContain("food-delivery");
+  });
+
+  it("gates rideshare and food-delivery at Starter via guide-access", async () => {
+    const { adultGuideMinTier } = await import("../guide-access");
+    expect(adultGuideMinTier("rideshare")).toBe("starter");
+    expect(adultGuideMinTier("food-delivery")).toBe("starter");
   });
 
   it("has free kids and junior guides for the Free filter", () => {

@@ -207,46 +207,89 @@ export function MembershipsPage() {
       )}
 
       <div
-        className="glass"
+        className="glass memberships-page__filters"
         style={{
           padding: 18,
           borderRadius: 14,
           display: "flex",
-          gap: 10,
-          flexWrap: "wrap",
-          alignItems: "end",
+          flexDirection: "column",
+          gap: 14,
         }}
       >
-        <div className="form-group" style={{ margin: 0 }}>
-          <label className="form-label">Level</label>
-          <select
-            className="select-input"
-            style={{ width: 160 }}
-            value={tierFilter}
-            onChange={(e) => setTierFilter(e.target.value as "all" | TierId)}
+        <div className="memberships-page__filter-group">
+          <span className="form-label memberships-page__filter-label">Level</span>
+          <div
+            className="memberships-page__bubbles"
+            role="group"
+            aria-label="Filter by membership level"
           >
-            <option value="all">All levels</option>
+            <button
+              type="button"
+              className="qa-tester-bubble qa-filter-chip"
+              data-active={tierFilter === "all" ? "true" : "false"}
+              data-testid="memberships-level-all"
+              onClick={() => setTierFilter("all")}
+            >
+              All levels
+            </button>
             {TIER_LADDER.map((id) => (
-              <option key={id} value={id}>
+              <button
+                key={id}
+                type="button"
+                className="qa-tester-bubble qa-filter-chip"
+                data-active={tierFilter === id ? "true" : "false"}
+                data-testid={`memberships-level-${id}`}
+                onClick={() => setTierFilter(tierFilter === id ? "all" : id)}
+              >
                 {tierName(id)}
-              </option>
+                <span className="qa-tester-meta">{byTier.get(id)?.length ?? 0}</span>
+              </button>
             ))}
-          </select>
+          </div>
         </div>
-        <div className="form-group" style={{ margin: 0 }}>
-          <label className="form-label">Status</label>
-          <select
-            className="select-input"
-            style={{ width: 140 }}
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as "all" | GyshUser["status"])}
+
+        <div className="memberships-page__filter-group">
+          <span className="form-label memberships-page__filter-label">Status</span>
+          <div
+            className="memberships-page__bubbles"
+            role="group"
+            aria-label="Filter by account status"
           >
-            <option value="all">All statuses</option>
-            <option value="active">Active</option>
-            <option value="pending">Pending</option>
-            <option value="disabled">Disabled</option>
-          </select>
+            {(
+              [
+                { id: "all", label: "All statuses" },
+                { id: "active", label: "Active" },
+                { id: "pending", label: "Pending" },
+                { id: "disabled", label: "Disabled" },
+              ] as const
+            ).map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                className="qa-tester-bubble qa-filter-chip"
+                data-active={statusFilter === opt.id ? "true" : "false"}
+                data-testid={`memberships-status-${opt.id}`}
+                onClick={() =>
+                  setStatusFilter(
+                    opt.id === "all"
+                      ? "all"
+                      : statusFilter === opt.id
+                        ? "all"
+                        : opt.id,
+                  )
+                }
+              >
+                {opt.label}
+                {opt.id !== "all" ? (
+                  <span className="qa-tester-meta">
+                    {users.filter((u) => u.status === opt.id).length}
+                  </span>
+                ) : null}
+              </button>
+            ))}
+          </div>
         </div>
+
         <p style={{ margin: 0, fontSize: "0.9rem", color: "var(--bronze)", fontWeight: 600 }}>
           Showing {filtered.length} of {users.length} members
         </p>
@@ -289,8 +332,10 @@ export function MembershipsPage() {
                         {u.email}
                       </div>
                     </div>
-                    <span className="memberships-page__pill">{audienceLabel}</span>
-                    <span className="memberships-page__pill memberships-page__pill--status">
+                    <span className="glow-badge memberships-page__pill">{audienceLabel}</span>
+                    <span
+                      className={`glow-badge memberships-page__pill memberships-page__pill--status memberships-page__pill--${u.status}`}
+                    >
                       {u.status}
                     </span>
                     <span style={{ fontSize: "0.85rem", color: "var(--bronze)" }}>

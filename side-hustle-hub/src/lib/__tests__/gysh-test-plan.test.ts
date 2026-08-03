@@ -67,6 +67,7 @@ describe("gysh-test-plan", () => {
     for (const id of [
       "UX-001",
       "UX-003",
+      "UX-005",
       "A11Y-001",
       "FAMILY-001",
       "WIZ-UX-001",
@@ -75,6 +76,8 @@ describe("gysh-test-plan", () => {
       "CONTACT-003",
       "AUTH-006",
       "ADMIN-008",
+      "ADMIN-009",
+      "ADMIN-010",
       "EMAIL-001",
       "EMAIL-002",
       "EMAIL-004",

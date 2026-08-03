@@ -166,6 +166,9 @@ function GuidesMembershipTable({
   onOpenSeniorsGuides: () => void;
 }) {
   const [demoTab, setDemoTab] = useState<MatrixDemoTab>("all");
+  const [tierTab, setTierTab] = useState<GuideMinTier | "all">("all");
+  const [open, setOpen] = useState(true);
+  const panelId = "guides-membership-panel";
 
   const filteredRows = useMemo(() => {
     if (demoTab === "all") return rows;
@@ -183,7 +186,33 @@ function GuidesMembershipTable({
     return map;
   }, [filteredRows]);
 
-  const showAudienceCol = demoTab === "all";
+  const tierTabs = useMemo(() => {
+    const levels = guideTierLadder().map((tier) => ({
+      id: tier as GuideMinTier | "all",
+      label: tier === "free" ? "Free" : tierDisplayName(tier as TierId),
+      count: (byTier.get(tier) ?? []).length,
+    }));
+    return [{ id: "all" as const, label: "All", count: filteredRows.length }, ...levels];
+  }, [byTier, filteredRows.length]);
+
+  const selectDemo = (id: MatrixDemoTab) => {
+    setDemoTab(id);
+    // Keep "All" membership; otherwise ensure the selected tier still has guides.
+    if (tierTab === "all") return;
+    const nextRows = id === "all" ? rows : rows.filter((row) => row.audience === id);
+    const count = nextRows.filter((row) => row.minTier === tierTab).length;
+    if (count === 0) setTierTab("all");
+  };
+
+  const guides = useMemo(() => {
+    const list = tierTab === "all" ? filteredRows : (byTier.get(tierTab) ?? []);
+    if (tierTab !== "all") return list;
+    return [...list].sort((a, b) => {
+      const tr = guideTierSortRank(a.minTier) - guideTierSortRank(b.minTier);
+      if (tr !== 0) return tr;
+      return a.title.localeCompare(b.title);
+    });
+  }, [tierTab, filteredRows, byTier]);
 
   const openRow = (row: GuideCatalogRow) => {
     if (row.audience === "Adults" && row.openId) {
@@ -199,90 +228,159 @@ function GuidesMembershipTable({
     else onOpenJuniorGuides();
   };
 
+  const panelLabel =
+    tierTab === "all"
+      ? "All memberships"
+      : tierTab === "free"
+        ? "Free Membership"
+        : `${tierDisplayName(tierTab as TierId)} Membership`;
+
+  const panelNote =
+    tierTab === "all"
+      ? "Guides grouped by unlock level — tap a membership tab to focus one plan."
+      : tierTab === "free"
+        ? FREE_GUIDE_SIGNUP_NOTE
+        : `Included with ${tierDisplayName(tierTab as TierId)} plan`;
+
   return (
     <section className="glass free-guides-matrix" data-testid="guides-membership-table">
       <header className="free-guides-matrix__head">
-        <h3>Guides by membership level</h3>
+        <button
+          type="button"
+          className="free-guides-section-toggle free-guides-matrix__toggle"
+          aria-expanded={open}
+          aria-controls={panelId}
+          onClick={() => setOpen((v) => !v)}
+          data-testid="guides-membership-toggle"
+        >
+          <ShowHideChevron open={open} size={20} />
+          <span className="free-guides-section-toggle__title">
+            <BookMarked size={20} aria-hidden />
+            Guides by membership level
+          </span>
+        </button>
         <p>
           Free Guides unlock with Free Membership ({FREE_GUIDE_SIGNUP_NOTE}). Higher plans unlock
           Starter, Pro, and Elite guides.
         </p>
-        <div
-          className="free-guides-matrix__tabs"
-          role="tablist"
-          aria-label="Filter by demographic"
-          data-testid="guides-matrix-demo-tabs"
-        >
-          {MATRIX_DEMO_TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              role="tab"
-              aria-selected={demoTab === tab.id}
-              data-testid={`guides-matrix-tab-${tab.id}`}
-              className={`glow-chip-btn free-guides-matrix__tab${demoTab === tab.id ? " is-active" : ""}`}
-              onClick={() => setDemoTab(tab.id)}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
       </header>
-      {filteredRows.length === 0 ? (
-        <div className="free-guides-matrix__empty">
-          <p>No guides for this demographic yet.</p>
-        </div>
-      ) : (
-        <div className="free-guides-matrix__scroll">
-          <table className="free-guides-matrix__table">
-            <thead>
-              <tr>
-                <th scope="col">Membership</th>
-                {showAudienceCol ? <th scope="col">Audience</th> : null}
-                <th scope="col">Guide</th>
-              </tr>
-            </thead>
-            <tbody>
-              {guideTierLadder().map((tier) => {
-                const tierRows = byTier.get(tier) ?? [];
-                if (tierRows.length === 0) return null;
-                const levelLabel =
-                  tier === "free"
-                    ? "Free Membership"
-                    : `${tierDisplayName(tier as TierId)} Membership`;
-                return tierRows.map((row, i) => (
-                  <tr key={`${tier}-${row.id}`} data-tier={tier}>
-                    {i === 0 ? (
-                      <th rowSpan={tierRows.length} className="free-guides-matrix__tier">
-                        <span className={`glow-badge ${tier === "free" ? "free" : "pink"}`}>
-                          {tier === "free" ? "Free Guide" : guideTierBadgeLabel(tier)}
+
+      {open ? (
+        <div id={panelId} className="free-guides-matrix__body">
+          <div className="free-guides-matrix__filter-block">
+            <span className="free-guides-matrix__filter-label" id="guides-matrix-demo-label">
+              Audience
+            </span>
+            <div
+              className="free-guides-matrix__tabs"
+              role="tablist"
+              aria-labelledby="guides-matrix-demo-label"
+              data-testid="guides-matrix-demo-tabs"
+            >
+              {MATRIX_DEMO_TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={demoTab === tab.id}
+                  data-testid={`guides-matrix-tab-${tab.id}`}
+                  className={`glow-chip-btn free-guides-matrix__tab${demoTab === tab.id ? " is-active" : ""}`}
+                  onClick={() => selectDemo(tab.id)}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="free-guides-matrix__filter-block">
+            <span className="free-guides-matrix__filter-label" id="guides-matrix-tier-label">
+              Membership
+            </span>
+            <div
+              className="free-guides-matrix__tabs free-guides-matrix__tabs--tiers"
+              role="tablist"
+              aria-labelledby="guides-matrix-tier-label"
+              data-testid="guides-matrix-tier-tabs"
+            >
+              {tierTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={tierTab === tab.id}
+                  disabled={tab.count === 0 && tab.id !== "all"}
+                  data-testid={`guides-matrix-tier-${tab.id}`}
+                  className={`glow-chip-btn free-guides-matrix__tab${tierTab === tab.id ? " is-active" : ""}`}
+                  onClick={() => {
+                    if (tab.count === 0 && tab.id !== "all") return;
+                    setTierTab(tab.id);
+                  }}
+                >
+                  {tab.label}
+                  <span className="free-guides-matrix__tab-count">{tab.count}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {filteredRows.length === 0 ? (
+            <div className="free-guides-matrix__empty">
+              <p>No guides for this demographic yet.</p>
+            </div>
+          ) : guides.length === 0 ? (
+            <div className="free-guides-matrix__empty">
+              <p>No guides at this membership level for the selected audience.</p>
+            </div>
+          ) : (
+            <div
+              className="free-guides-matrix__panel"
+              data-testid={`guides-matrix-panel-${tierTab}`}
+            >
+              <div className="free-guides-matrix__panel-head">
+                <span
+                  className={`glow-badge ${tierTab === "all" || tierTab === "free" ? "free" : "pink"}`}
+                >
+                  {tierTab === "all"
+                    ? "All levels"
+                    : tierTab === "free"
+                      ? "Free Guide"
+                      : guideTierBadgeLabel(tierTab)}
+                </span>
+                <div>
+                  <strong>{panelLabel}</strong>
+                  <small>{panelNote}</small>
+                </div>
+              </div>
+              <ul className="free-guides-matrix__list">
+                {guides.map((row) => (
+                  <li key={row.id} className="free-guides-matrix__list-item">
+                    <button
+                      type="button"
+                      className="free-guides-matrix__guide-btn"
+                      onClick={() => openRow(row)}
+                      data-testid={`guides-matrix-guide-${row.id}`}
+                    >
+                      <span className="free-guides-matrix__guide-title">{row.title}</span>
+                      {tierTab === "all" ? (
+                        <span className="free-guides-matrix__guide-tier">
+                          {row.minTier === "free"
+                            ? "Free"
+                            : tierDisplayName(row.minTier as TierId)}
                         </span>
-                        <strong>{levelLabel}</strong>
-                        {tier === "free" ? (
-                          <small>{FREE_GUIDE_SIGNUP_NOTE}</small>
-                        ) : (
-                          <small>Included with {tierDisplayName(tier)} plan</small>
-                        )}
-                      </th>
-                    ) : null}
-                    {showAudienceCol ? <td>{row.audience}</td> : null}
-                    <td>
-                      <button
-                        type="button"
-                        className="free-guides-matrix__guide-btn"
-                        onClick={() => openRow(row)}
-                      >
-                        {row.title}
-                        <ChevronRight size={14} aria-hidden />
-                      </button>
-                    </td>
-                  </tr>
-                ));
-              })}
-            </tbody>
-          </table>
+                      ) : null}
+                      {demoTab === "all" ? (
+                        <span className="free-guides-matrix__guide-audience">{row.audience}</span>
+                      ) : null}
+                      <ChevronRight size={16} aria-hidden />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
-      )}
+      ) : null}
     </section>
   );
 }

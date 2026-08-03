@@ -378,6 +378,7 @@ export const MONEY_MODEL_SECTIONS_DRAFT_2: MoneyModelSection[] = [
       "Platform maintain is $50, only in months with GYSH revenue, and never accrues for skipped months.",
       "Membership admin can be either partner - whoever does the work that month gets paid.",
       "Events pay stays per-session to whoever ran the work; speakers unpaid.",
+      "Tentative banking follow-up: Evelyn explores another Navy Federal business account (Task T-052); cross-ref Task T-022.",
       "Logged on Task T-022; Financials Money model Draft 2 tab is the living copy.",
     ],
     note: "Working partner summary - not a signed contract. Revisit when Build Credit clears or membership scale changes.",

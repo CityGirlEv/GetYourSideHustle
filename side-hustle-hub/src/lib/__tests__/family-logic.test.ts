@@ -109,7 +109,7 @@ describe("Family Coach backlog tests", () => {
     for (const t of familyNew) {
       expect(t.area).toBe("Family Coach");
       expect(t.suite).toBe("manual");
-      expect(t.assignees).toEqual([]);
+      expect(t.assignees).toContain("lyriq");
       expect(suggestedSprintForTest(t)).toBe(BACKLOG_SPRINT);
     }
   });

@@ -118,6 +118,35 @@ const AUTOMATED_VITEST_CASES_RAW: GyshTestCase[] = [
     ],
     expected: "robots.txt unit tests pass; file is not SPA HTML",
   },
+  {
+    id: "VT-UI-001",
+    area: "Vitest",
+    title: "Button contrast: white on deep forest-green primary; white on red/dark partner-done",
+    priority: "P0",
+    roles: ["qa", "admin"],
+    assignees: ["vitest"],
+    suite: "vitest",
+    steps: [
+      "Run: npm run test:unit -- src/lib/__tests__/button-contrast.test.ts",
+      "Confirm CSS rules + Task List / Schedule use btn-partner-done",
+    ],
+    expected: "White chip-active-text on forest green CTAs; #fff on btn-partner-done / crimson fills",
+  },
+  {
+    id: "VT-FIN-001",
+    area: "Vitest",
+    title: "Partnership money model Draft 1 + Draft 2 content and T-052 cross-ref",
+    priority: "P1",
+    roles: ["qa", "admin"],
+    assignees: ["vitest"],
+    suite: "vitest",
+    steps: [
+      "Run: npm run test:unit -- src/lib/__tests__/partnership-money-model.test.ts",
+      "Run PDF smoke: partnership-money-model-pdf-smoke.test.ts (Draft 1 + Draft 2)",
+    ],
+    expected: "Draft 2 has $10k Build Credit, Kevina, $50 revenue-only fee; notes cite T-052",
+    relatedTaskIds: ["T-022", "T-052"],
+  },
 ];
 
 const AUTOMATED_PLAYWRIGHT_CASES_RAW: GyshTestCase[] = [
