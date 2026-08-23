@@ -19,18 +19,24 @@ export const MEMBERSHIP_FEATURES: MembershipFeature[] = [
   { id: "community", label: "GYSH Community access", detail: "Ask questions and share wins in member threads." },
   { id: "workshop_discount", label: "Workshop discounts", detail: "Member pricing on live labs and clinics." },
   { id: "workshop_free", label: "Free workshop entry", detail: "Complimentary seats to eligible Glow labs." },
-  { id: "training", label: "Group training sessions", detail: "Monthly cohort training with T / E / guests." },
+  { id: "training", label: "Group training sessions", detail: "Monthly cohort training with Tina & Evelyn and/or Tina & Evelyn Guest Speakers." },
   {
     id: "one_on_one",
     label: "1-on-1 consulting session",
     detail:
-      "Live 1-on-1 with T / E — Starter includes one 1-hour session; Pro includes three 60-minute sessions; Elite includes three 90-minute sessions. Same consulting rates for every age.",
+      "Live 1-on-1 with Tina & Evelyn — Starter includes one 45-minute session; Pro includes three 60-minute sessions; Elite includes three 90-minute sessions. Same consulting rates for every age.",
   },
   { id: "schedule", label: "Proposed hustle schedule", detail: "Week-by-week plan matched to your Get Your Side Hustle results." },
   { id: "tracker", label: "Hustle tracker", detail: "Log hours, gigs, earnings, and checklist progress." },
   { id: "progress", label: "Progress reports", detail: "Weekly/monthly scorecards with next-step recommendations." },
   { id: "email", label: "Email notifications", detail: "Reminders for schedule blocks, milestones, and workshop seats." },
-  { id: "zip_timing", label: "Best-times ZIP scout", detail: "Cross-app peak hours for rideshare & delivery in your ZIP." },
+  {
+    id: "pnl",
+    label: "Profit & Loss calculator",
+    detail:
+      "Log dated sales and expense line items (Admin, Overhead, Advertising, and more) with daily, weekly, and monthly rollups in Schedule Suite.",
+  },
+  { id: "zip_timing", label: "Best-times ZipCode scout", detail: "Cross-app peak hours for rideshare & delivery in your ZipCode." },
   { id: "story_time", label: "Story time seats", detail: "Kevina Starr / Glow Getter story sessions for kids." },
   {
     id: "kid_credits",
@@ -53,8 +59,8 @@ export type MembershipTier = {
   creditsPerMonth?: number;
   /** Kid credits included on adult/senior USD plans (Pro+). */
   kidCreditsMonthly?: number;
-  /** Included 1-on-1 consulting length (minutes). Starter = one 1-hour; Pro = three 60-min; Elite = three 90-min. */
-  oneOnOneMinutes?: 30 | 60 | 90;
+  /** Included 1-on-1 consulting length (minutes). Starter = one 45-min; Pro = three 60-min; Elite = three 90-min. */
+  oneOnOneMinutes?: 30 | 45 | 60 | 90;
   /** Minimum paid commitment in months (all paid plans require 3). */
   commitmentMonths?: number;
   audiences: AudienceGroup[];
@@ -78,14 +84,14 @@ export const MEMBERSHIP_TIERS: MembershipTier[] = [
   {
     id: "starter",
     name: "Starter",
-    tagline: "Member guides, community, one 1-hour session, and Kid Credits — 3-month commitment.",
+    tagline: "Member guides, community, one 45-minute session, and Kid Credits — 3-month commitment.",
     priceMonthlyUsd: 39,
     priceYearlyUsd: 390,
     priceMonthlyUsdSenior: 34,
     priceYearlyUsdSenior: 340,
     creditsPerMonth: 60,
     kidCreditsMonthly: 30,
-    oneOnOneMinutes: 60,
+    oneOnOneMinutes: 45,
     commitmentMonths: 3,
     audiences: ["kids", "junior", "adult", "senior"],
     featureIds: [
@@ -122,6 +128,7 @@ export const MEMBERSHIP_TIERS: MembershipTier[] = [
       "tracker",
       "progress",
       "email",
+      "pnl",
       "story_time",
       "kid_credits",
     ],
@@ -131,7 +138,7 @@ export const MEMBERSHIP_TIERS: MembershipTier[] = [
   {
     id: "elite",
     name: "Elite",
-    tagline: "Three 90-minute sessions, ZIP timing scout, and priority support — 3-month commitment.",
+    tagline: "Three 90-minute sessions, ZipCode timing scout, and priority support — 3-month commitment.",
     priceMonthlyUsd: 119,
     priceYearlyUsd: 1190,
     priceMonthlyUsdSenior: 94,
@@ -152,6 +159,7 @@ export const MEMBERSHIP_TIERS: MembershipTier[] = [
       "tracker",
       "progress",
       "email",
+      "pnl",
       "zip_timing",
       "story_time",
       "kid_credits",
@@ -163,7 +171,13 @@ export const MEMBERSHIP_TIERS: MembershipTier[] = [
 /** Pro is the first tier that unlocks the schedule / tracker / progress / email suite. */
 export const SCHEDULE_SUITE_TIER: TierId = "pro";
 
-export const SCHEDULE_SUITE_FEATURE_IDS = ["schedule", "tracker", "progress", "email"] as const;
+export const SCHEDULE_SUITE_FEATURE_IDS = [
+  "schedule",
+  "tracker",
+  "progress",
+  "email",
+  "pnl",
+] as const;
 
 /** Team / audience perks shown under each plan (additive ladder — no cross-tier repeats). */
 export type MemberPerkAudience = "adult" | "kids" | "junior" | "senior";
@@ -190,6 +204,16 @@ export function previousTierId(tierId: TierId): TierId | null {
   return idx > 0 ? TIER_LADDER[idx - 1]! : null;
 }
 
+export function nextTierId(tierId: TierId): TierId | null {
+  const idx = TIER_LADDER.indexOf(tierId);
+  return idx >= 0 && idx < TIER_LADDER.length - 1 ? TIER_LADDER[idx + 1]! : null;
+}
+
+/** Paid Starter / Pro / Elite — a subscribed member, not Free. */
+export function isMembershipSubscriber(tierId: TierId | null | undefined): boolean {
+  return tierId === "starter" || tierId === "pro" || tierId === "elite";
+}
+
 export function tierMemberPerks(tierId: TierId, audience: MemberPerkAudience): TierMemberPerk[] {
   return MEMBER_PERKS_BY_TIER[tierId][audience];
 }
@@ -211,7 +235,7 @@ export function numberedTierPerks(tierId: TierId, audience: MemberPerkAudience):
 /**
  * Spread Adult / Kids / Teens / Senior team benefits across Free → Elite.
  * Paid tiers lead with “Everything in {lower tier}, plus:” and list only new additions.
- * Advanced items (AI games, ZIP scout, deep consulting) sit on Pro/Elite.
+ * Advanced items (AI games, ZipCode scout, deep consulting) sit on Pro/Elite.
  */
 export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
   free: {
@@ -335,8 +359,8 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
         detail: "Member discounts on live labs and clinics.",
       },
       {
-        title: "One 1-hour session",
-        detail: "One live consulting session with T / E — 3-month commitment on all paid plans.",
+        title: "One 45-minute session",
+        detail: "One live consulting session with Tina & Evelyn — 3-month commitment on all paid plans.",
       },
       {
         title: "30 Kid Credits / mo",
@@ -365,7 +389,7 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
         detail: "Goal-setting missions that make saving feel like a game.",
       },
       {
-        title: "One 1-hour family session",
+        title: "One 45-minute family session",
         detail: "Live consulting with a parent — same rates for every age; 3-month commitment.",
       },
     ],
@@ -391,7 +415,7 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
         detail: "Track savings targets and jobs completed.",
       },
       {
-        title: "One 1-hour session",
+        title: "One 45-minute session",
         detail: "Live consulting (guardian OK) — same rates for every age; 3-month commitment.",
       },
     ],
@@ -413,7 +437,7 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
         detail: "Member discounts on senior-friendly labs and clinics.",
       },
       {
-        title: "One 1-hour session",
+        title: "One 45-minute session",
         detail: "Senior-friendly consulting pacing — same rates as adults; 3-month commitment.",
       },
     ],
@@ -426,11 +450,17 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
       },
       {
         title: "Hustle schedule suite",
-        detail: "Weekly plan, tracker, progress reports, and email reminders.",
+        detail:
+          "Weekly plan, tracker, progress reports, email reminders, and Profit & Loss calculator.",
+      },
+      {
+        title: "Profit & Loss calculator",
+        detail:
+          "Add dated sales and expense line items (Admin, Overhead, Advertising, and more) with daily, weekly, and monthly rollups.",
       },
       {
         title: "Group training sessions",
-        detail: "Monthly cohort training with T / E / guests.",
+        detail: "Monthly cohort training with Tina & Evelyn and/or Tina & Evelyn Guest Speakers.",
       },
       {
         title: "Free workshop entry",
@@ -438,7 +468,7 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
       },
       {
         title: "Three 60-minute sessions",
-        detail: "Upgrade from Starter’s one 1-hour session — 3-month commitment.",
+        detail: "Upgrade from Starter’s one 45-minute session — 3-month commitment.",
       },
       {
         title: "60 Kid Credits / mo",
@@ -460,7 +490,12 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
       },
       {
         title: "Kids schedule & tracker",
-        detail: "Parent-friendly weekly plan tied to Get Your Side Hustle matches.",
+        detail:
+          "Parent-friendly weekly plan tied to Get Your Side Hustle matches — includes Profit & Loss for kid hustles.",
+      },
+      {
+        title: "Profit & Loss calculator",
+        detail: "Simple sales and expense tracking with categories and weekly/monthly rollups.",
       },
       {
         title: "Workshop member seats",
@@ -468,7 +503,7 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
       },
       {
         title: "Three 60-minute family sessions",
-        detail: "Upgrade from Starter’s one 1-hour session — parent joins; 3-month commitment.",
+        detail: "Upgrade from Starter’s one 45-minute session — parent joins; 3-month commitment.",
       },
     ],
     junior: [
@@ -490,11 +525,16 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
       },
       {
         title: "Teens schedule suite",
-        detail: "Week plan + tracker around school — earn, save, reinvest.",
+        detail:
+          "Week plan + tracker around school — earn, save, reinvest — plus Profit & Loss calculator.",
+      },
+      {
+        title: "Profit & Loss calculator",
+        detail: "Track sales and categorized expenses; see daily, weekly, and monthly totals.",
       },
       {
         title: "Three 60-minute sessions",
-        detail: "Upgrade from Starter’s one 1-hour session — guardian OK; 3-month commitment.",
+        detail: "Upgrade from Starter’s one 45-minute session — guardian OK; 3-month commitment.",
       },
     ],
     senior: [
@@ -507,6 +547,10 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
         detail: "Gentle weekly plan matched to senior Get Your Side Hustle results.",
       },
       {
+        title: "Profit & Loss calculator",
+        detail: "Easy sales and expense line items with clear weekly and monthly rollups.",
+      },
+      {
         title: "Progress reports + email nudges",
         detail: "Clear scorecards without grind-culture pressure.",
       },
@@ -516,7 +560,7 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
       },
       {
         title: "Three 60-minute sessions",
-        detail: "Upgrade from Starter’s one 1-hour — strategy for consulting, tutoring, or hosting.",
+        detail: "Upgrade from Starter’s one 45-minute session — strategy for consulting, tutoring, or hosting.",
       },
     ],
   },
@@ -531,8 +575,8 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
         detail: "Upgrade from Pro’s 60-minute sessions — scaling, ads, and multi-hustle ops; 3-month commitment.",
       },
       {
-        title: "Best-times ZIP scout",
-        detail: "Peak windows for rideshare & delivery in your ZIP.",
+        title: "Best-times ZipCode scout",
+        detail: "Peak windows for rideshare & delivery in your ZipCode.",
       },
       {
         title: "120 Kid Credits / mo",
@@ -597,7 +641,7 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
         detail: "Upgrade from Pro’s 60-minute sessions — deep dives on consulting, tutoring, or hosting.",
       },
       {
-        title: "ZIP timing for flexible gigs",
+        title: "ZipCode timing for flexible gigs",
         detail: "Optional peak-hour scout if you try rideshare/delivery at your pace.",
       },
       {
@@ -846,7 +890,7 @@ export const ALA_CARTE_PRICE_LIST: AlaCarteItem[] = [
     priceUsd: 120,
     credits: 240,
     detail:
-      "Same consulting rate for every age — deeper planning session. Included as one 1-hour session on Starter; three 60-minute sessions on Pro (Kids/Teens with a parent).",
+      "Same consulting rate for every age — deeper planning session. Included as one 45-minute session on Starter; three 60-minute sessions on Pro (Kids/Teens with a parent).",
     includedIn: ["starter", "pro", "elite"],
   },
   {
@@ -882,11 +926,11 @@ export const ALA_CARTE_PRICE_LIST: AlaCarteItem[] = [
   },
   {
     id: "zip-timing",
-    name: "Best-times ZIP scout (month)",
+    name: "Best-times ZipCode scout (month)",
     category: "digital",
     audiences: ["adult", "senior"],
     priceUsd: 29,
-    detail: "Peak hours across rideshare & delivery apps for your ZIP.",
+    detail: "Peak hours across rideshare & delivery apps for your ZipCode.",
     includedIn: ["elite"],
   },
   {
@@ -911,7 +955,12 @@ export const AUDIENCE_LABELS: Record<AudienceGroup, string> = {
 /**
  * Adults & Seniors Join callout. No separate Stripe price IDs yet — copy only until
  * veteran checkout pricing is wired; do not invent dollar amounts here.
+ *
+ * Hidden on Join until Task T-MEM-MILITARY (Sprint 6) re-enables it with the Military membership discount.
+ * Flip {@link SHOW_MILITARY_VETERAN_CALLOUT} to true when that sprint ships.
  */
+export const SHOW_MILITARY_VETERAN_CALLOUT = false;
+
 export const MILITARY_VETERAN_CALLOUT = {
   badge: "Military & Veterans",
   title: "Serving or served? You’re welcome here.",
@@ -939,8 +988,8 @@ export function kidCreditsFeatureLabel(tierId: TierId): string {
   return `${kidCredits} Kid Credits (${adultCredits} adult credits)`;
 }
 
-/** Included 1-on-1 consulting length by paid tier (Free has none). Starter = one; Pro = three 60-min; Elite = three 90-min. */
-export function tierOneOnOneMinutes(tierId: TierId): 30 | 60 | 90 | 0 {
+/** Included 1-on-1 consulting length by paid tier (Free has none). Starter = one 45-min; Pro = three 60-min; Elite = three 90-min. */
+export function tierOneOnOneMinutes(tierId: TierId): 30 | 45 | 60 | 90 | 0 {
   const tier = MEMBERSHIP_TIERS.find((t) => t.id === tierId);
   return tier?.oneOnOneMinutes ?? 0;
 }
@@ -948,7 +997,7 @@ export function tierOneOnOneMinutes(tierId: TierId): 30 | 60 | 90 | 0 {
 export function oneOnOneFeatureLabel(tierId: TierId): string {
   const minutes = tierOneOnOneMinutes(tierId);
   if (!minutes) return "1-on-1 consulting session";
-  if (tierId === "starter") return "1× 1-hour session";
+  if (tierId === "starter") return "1× 45-minute session";
   if (tierId === "pro") return "3× 60-minute sessions";
   if (tierId === "elite") return "3× 90-minute sessions";
   return `1× ${minutes}-minute session`;
@@ -963,7 +1012,7 @@ export function oneOnOneFeatureDetail(tierId: TierId): string {
       ? ` ${tier.commitmentMonths}-month commitment required.`
       : "";
   if (tierId === "starter") {
-    return `One 1-hour consulting session included. Same rates for Kids, Teens, Adults, and Seniors.${commit}`;
+    return `One 45-minute consulting session included. Same rates for Kids, Teens, Adults, and Seniors.${commit}`;
   }
   if (tierId === "pro") {
     return `Three 60-minute consulting sessions included. Same rates for Kids, Teens, Adults, and Seniors.${commit}`;

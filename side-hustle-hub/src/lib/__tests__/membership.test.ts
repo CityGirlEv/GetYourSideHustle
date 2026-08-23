@@ -5,10 +5,14 @@ import {
   MEMBER_PERKS_BY_TIER,
   MEMBERSHIP_TIERS,
   MILITARY_VETERAN_CALLOUT,
+  SHOW_MILITARY_VETERAN_CALLOUT,
   SCHEDULE_SUITE_FEATURE_IDS,
   SCHEDULE_SUITE_TIER,
   YEARLY_MONTHS_CHARGED,
+  isMembershipSubscriber,
+  nextTierId,
   numberedTierPerks,
+  previousTierId,
   tierHasFeature,
   tierKidCredits,
   adultCreditsFromKidCredits,
@@ -24,6 +28,14 @@ import {
 describe("membership catalog", () => {
   it("defines Free, Starter, Pro, and Elite", () => {
     expect(MEMBERSHIP_TIERS.map((t) => t.id)).toEqual(["free", "starter", "pro", "elite"]);
+  });
+
+  it("walks the plan ladder for switch and upgrade", () => {
+    expect(previousTierId("pro")).toBe("starter");
+    expect(nextTierId("starter")).toBe("pro");
+    expect(nextTierId("elite")).toBeNull();
+    expect(isMembershipSubscriber("free")).toBe(false);
+    expect(isMembershipSubscriber("starter")).toBe(true);
   });
 
   it("unlocks the schedule suite at Pro", () => {
@@ -74,12 +86,13 @@ describe("membership catalog", () => {
   });
 
   it("labels included consulting sessions by tier", () => {
-    expect(oneOnOneFeatureLabel("starter")).toBe("1× 1-hour session");
+    expect(oneOnOneFeatureLabel("starter")).toBe("1× 45-minute session");
     expect(oneOnOneFeatureLabel("pro")).toBe("3× 60-minute sessions");
     expect(oneOnOneFeatureLabel("elite")).toBe("3× 90-minute sessions");
   });
 
   it("surfaces military and veteran messaging for Adults and Seniors only", () => {
+    expect(SHOW_MILITARY_VETERAN_CALLOUT).toBe(false);
     expect(MILITARY_VETERAN_CALLOUT.audiences).toEqual(["adult", "senior"]);
     expect(MILITARY_VETERAN_CALLOUT.badge).toMatch(/Military/i);
     expect(MILITARY_VETERAN_CALLOUT.body).toMatch(/Veterans save even more/i);
@@ -141,7 +154,7 @@ describe("membership catalog", () => {
       "5. Free account + Member Dashboard",
     ]);
     expect(elite[0]?.numberedTitle).toBe("1. Everything in Pro, plus:");
-    expect(elite.some((p) => /zip scout/i.test(p.title))).toBe(true);
+    expect(elite.some((p) => /zip.?code.?scout|zip scout/i.test(p.title))).toBe(true);
   });
 
   it("discounts yearly billing (pay for 10 months, get 12)", () => {
@@ -167,5 +180,18 @@ describe("membership catalog", () => {
       expect(blob).toMatch(/age-appropriate/);
       expect(blob).not.toMatch(/age-right/);
     }
+  });
+
+  it("names Tina & Evelyn in consulting/training copy (not T / E or T & E)", () => {
+    const blob = [
+      ...Object.values(MEMBER_PERKS_BY_TIER).flatMap((byAudience) =>
+        Object.values(byAudience).flatMap((perks) =>
+          perks.map((p) => `${p.title} ${p.detail}`),
+        ),
+      ),
+    ].join("\n");
+    expect(blob).toMatch(/Tina & Evelyn/);
+    expect(blob).not.toMatch(/\bT & E\b/);
+    expect(blob).not.toMatch(/\bT \/ E\b/);
   });
 });

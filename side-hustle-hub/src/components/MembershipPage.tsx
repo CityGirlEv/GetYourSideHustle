@@ -5,12 +5,15 @@ import {
   CalendarDays,
   ChartColumnIncreasing,
   Coins,
+  CreditCard,
   Crown,
   HeartHandshake,
   LayoutDashboard,
   Link2,
+  ShoppingCart,
   Shield,
   Sparkles,
+  Trash2,
   Users,
 } from "lucide-react";
 import {
@@ -21,11 +24,13 @@ import {
   MEMBERSHIP_FEATURES,
   MEMBERSHIP_TIERS,
   MILITARY_VETERAN_CALLOUT,
+  SHOW_MILITARY_VETERAN_CALLOUT,
   SCHEDULE_SUITE_FEATURE_IDS,
   SCHEDULE_SUITE_TIER,
   numberedTierPerks,
   oneOnOneFeatureLabel,
   formatUsd,
+  isMembershipSubscriber,
   tierPriceMonthlyUsd,
   tierPriceYearlyUsd,
   yearlyListPriceUsd,
@@ -42,6 +47,27 @@ import {
   readSavedJoinAudience,
   saveJoinAudience,
 } from "../lib/join-audience";
+import {
+  browseGuidesButtonLabel,
+  membershipPlanBubbles,
+  membershipPlanChooseLabel,
+} from "../lib/membership-signup-labels";
+import {
+  addAlaCarteToCart,
+  alacarteCartItemCount,
+  alacarteCartTotalUsd,
+  clearAlaCarteCart,
+  readAlaCarteCart,
+  removeAlaCarteFromCart,
+  resolveAlaCarteCartLines,
+  setAlaCarteCartQuantity,
+  subscribeAlaCarteCart,
+  supportsAlaCarteStripeCheckout,
+  type AlaCarteCart,
+} from "../lib/alacarte-cart";
+import { startAlaCarteCartCheckout } from "../lib/stripe-checkout";
+import { ApiError } from "../lib/api";
+import { WaitLabel } from "./WaitFeedback";
 import membershipHero from "../assets/membership-hero.png";
 
 const MEMBERSHIP_BENEFITS_PREVIEW = 2;
@@ -55,22 +81,25 @@ function TierBenefitsList({
 }) {
   const [expanded, setExpanded] = useState(false);
   const canCollapse = benefits.length > MEMBERSHIP_BENEFITS_PREVIEW;
-  const visible =
-    expanded || !canCollapse ? benefits : benefits.slice(0, MEMBERSHIP_BENEFITS_PREVIEW);
+  const preview = benefits.slice(0, MEMBERSHIP_BENEFITS_PREVIEW);
+  const rest = canCollapse ? benefits.slice(MEMBERSHIP_BENEFITS_PREVIEW) : [];
+  const showRest = !canCollapse || expanded;
   const hiddenCount = Math.max(0, benefits.length - MEMBERSHIP_BENEFITS_PREVIEW);
+
+  const renderPerk = (b: NumberedTierPerk) => (
+    <li key={`perk-${b.n}-${b.title}`}>
+      <BadgeCheck size={14} className="membership-check" aria-hidden />
+      <span>
+        <strong>{b.numberedTitle}</strong>
+        {b.detail ? <em className="membership-benefit-detail">{b.detail}</em> : null}
+      </span>
+    </li>
+  );
 
   return (
     <div className="membership-tier-benefits" data-testid={`membership-benefits-${tierId}`}>
       <ol className="membership-tier-features" start={1}>
-        {visible.map((b) => (
-          <li key={`perk-${b.n}-${b.title}`}>
-            <BadgeCheck size={14} className="membership-check" aria-hidden />
-            <span>
-              <strong>{b.numberedTitle}</strong>
-              {b.detail ? <em className="membership-benefit-detail">{b.detail}</em> : null}
-            </span>
-          </li>
-        ))}
+        {(canCollapse ? preview : benefits).map(renderPerk)}
       </ol>
       {canCollapse ? (
         <button
@@ -83,6 +112,14 @@ function TierBenefitsList({
           {expanded ? "See less" : `See more (${hiddenCount})`}
         </button>
       ) : null}
+      {showRest && rest.length > 0 ? (
+        <ol
+          className="membership-tier-features membership-tier-features--rest"
+          start={MEMBERSHIP_BENEFITS_PREVIEW + 1}
+        >
+          {rest.map(renderPerk)}
+        </ol>
+      ) : null}
     </div>
   );
 }
@@ -92,11 +129,20 @@ type MembershipPageProps = {
   onGoToJoin?: (tier?: TierId, audience?: AudienceGroup) => void;
   onGoToLogin?: () => void;
   onOpenFreeGuides?: () => void;
-  /** Pre-select membership lane from the page that linked here (kids / teens / adult / senior). */
+  /** Prefill membership lane from the page that linked here (kids / teens / adult / senior). */
   initialAudience?: AudienceGroup | null;
   /** Scroll to Free–Elite plans once mounted (main-nav See Memberships). */
   autoScrollToPlans?: boolean;
   onAutoScrolledToPlans?: () => void;
+  /** Scroll to a-la-carte cart / checkout once mounted (header Cart). */
+  autoScrollToCart?: boolean;
+  onAutoScrolledToCart?: () => void;
+  /** Logged-in member — plan cards show Upgrade / Current plan. */
+  isLoggedIn?: boolean;
+  /** Current membership tier on the logged-in profile. */
+  currentTier?: TierId | null;
+  /** Prefill a-la-carte checkout email when signed in. */
+  checkoutEmail?: string | null;
 };
 
 const AUDIENCE_TABS: AudienceGroup[] = ["kids", "junior", "adult", "senior"];
@@ -108,6 +154,11 @@ export function MembershipPage({
   initialAudience = null,
   autoScrollToPlans = false,
   onAutoScrolledToPlans,
+  autoScrollToCart = false,
+  onAutoScrolledToCart,
+  isLoggedIn = false,
+  currentTier = null,
+  checkoutEmail = null,
 }: MembershipPageProps) {
   const [audience, setAudience] = useState<AudienceGroup>(() =>
     normalizeAudienceGroup(initialAudience, readSavedJoinAudience("adult")),
@@ -116,12 +167,24 @@ export function MembershipPage({
   const [highlightAudience, setHighlightAudience] = useState(Boolean(initialAudience));
   const audienceTabsRef = useRef<HTMLDivElement>(null);
   const membershipPlansRef = useRef<HTMLElement>(null);
+  const cartPanelRef = useRef<HTMLDivElement>(null);
+  const [cart, setCart] = useState<AlaCarteCart>(() => readAlaCarteCart());
+  const [cartEmail, setCartEmail] = useState(() => String(checkoutEmail || "").trim());
+  const [cartBusy, setCartBusy] = useState(false);
+  const [cartError, setCartError] = useState("");
+  const [justAddedId, setJustAddedId] = useState<string | null>(null);
   const usesCredits = audience === "kids" || audience === "junior";
   const showKidCreditPool = audience === "adult" || audience === "senior";
-  const showMilitaryCallout = audience === "adult" || audience === "senior";
+  const showMilitaryCallout =
+    SHOW_MILITARY_VETERAN_CALLOUT && (audience === "adult" || audience === "senior");
   const showBillingToggle = !usesCredits;
   const earnActions = CREDIT_EARN_ACTIONS.filter((a) => a.audiences.includes(audience));
   const alaCarte = ALA_CARTE_PRICE_LIST.filter((i) => i.audiences.includes(audience));
+  const cartLines = resolveAlaCarteCartLines(cart);
+  const cartCount = alacarteCartItemCount(cart);
+  const cartTotal = alacarteCartTotalUsd(cart);
+  const cartStripeReady =
+    cartLines.length > 0 && cartLines.every((l) => l.stripeReady);
 
   const scrollToMemberships = () => {
     const el = membershipPlansRef.current ?? document.getElementById("gysh-membership-plans");
@@ -135,6 +198,19 @@ export function MembershipPage({
     setHighlightAudience(true);
   };
 
+  const scrollToCart = () => {
+    const el =
+      cartPanelRef.current ??
+      (document.getElementById("gysh-alacarte-cart") as HTMLElement | null);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+    try {
+      el.focus({ preventScroll: true });
+    } catch {
+      /* ignore */
+    }
+  };
+
   useEffect(() => {
     if (!autoScrollToPlans) return;
     const t = window.setTimeout(() => {
@@ -144,6 +220,18 @@ export function MembershipPage({
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once when nav asks to focus plans
   }, [autoScrollToPlans]);
+
+  useEffect(() => {
+    if (!autoScrollToCart) return;
+    const t = window.setTimeout(() => {
+      scrollToCart();
+      onAutoScrolledToCart?.();
+    }, 120);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once when header Cart opens checkout
+  }, [autoScrollToCart]);
+
+  useEffect(() => subscribeAlaCarteCart(setCart), []);
 
   useEffect(() => {
     if (!initialAudience) return;
@@ -163,10 +251,54 @@ export function MembershipPage({
     return () => window.clearTimeout(t);
   }, [highlightAudience, audience]);
 
+  useEffect(() => {
+    const next = String(checkoutEmail || "").trim();
+    if (next) setCartEmail(next);
+  }, [checkoutEmail]);
+
   const selectAudience = (next: AudienceGroup) => {
     setAudience(next);
     saveJoinAudience(next);
     setHighlightAudience(true);
+  };
+
+  const handleAddToCart = (itemId: string) => {
+    setCartError("");
+    const next = addAlaCarteToCart(itemId, 1);
+    setCart(next);
+    setJustAddedId(itemId);
+    window.setTimeout(() => setJustAddedId((cur) => (cur === itemId ? null : cur)), 1200);
+  };
+
+  const handleCartCheckout = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (cartBusy) return;
+    setCartError("");
+    const email = cartEmail.trim().toLowerCase();
+    if (!email.includes("@")) {
+      setCartError("Enter a valid email for Stripe checkout.");
+      return;
+    }
+    if (!cartStripeReady) {
+      setCartError("One or more cart items are not available for Stripe checkout yet.");
+      return;
+    }
+    setCartBusy(true);
+    try {
+      const session = await startAlaCarteCartCheckout({
+        email,
+        items: cart.lines.map((l) => ({ itemId: l.itemId, quantity: l.quantity })),
+      });
+      if (!session?.url) {
+        setCartError("Stripe did not return a checkout link.");
+        return;
+      }
+      window.location.assign(session.url);
+    } catch (err) {
+      setCartError(err instanceof ApiError ? err.message : "Could not start Stripe checkout.");
+    } finally {
+      setCartBusy(false);
+    }
   };
 
   const audienceLabel = AUDIENCE_LABELS[audience];
@@ -205,7 +337,7 @@ export function MembershipPage({
               </li>
               <li>
                 <strong>Pay yearly — save ~17%</strong>
-                <span>That’s 2 months free</span>
+                <span>That’s 2 months free · billed in advance</span>
               </li>
               <li>
                 <strong>Paid plans include monthly Kid Credits</strong>
@@ -325,10 +457,10 @@ export function MembershipPage({
                 onClick={onOpenFreeGuides}
                 data-testid="membership-browse-guides"
               >
-                Browse free guides
+                {browseGuidesButtonLabel(isLoggedIn && isMembershipSubscriber(currentTier))}
               </button>
             )}
-            {onGoToLogin && (
+            {onGoToLogin && !isLoggedIn && (
               <button type="button" className="btn btn-outline" onClick={onGoToLogin}>
                 Sign in
               </button>
@@ -353,9 +485,21 @@ export function MembershipPage({
         data-testid="membership-plans"
       >
       <div
-        className={`membership-plans-toolbar${highlightAudience ? " is-spotlight" : ""}`}
+        className={`membership-plans-toolbar membership-plans-toolbar--stacked${highlightAudience ? " is-spotlight" : ""}`}
         data-testid="membership-plans-toolbar"
       >
+        <div className="membership-plans-toolbar__heading-row">
+          <span className="membership-audience-tabs__label" id="membership-audience-heading">
+            Membership for: <strong>{audienceLabel}</strong>
+          </span>
+          <p
+            className="membership-intro-rate-banner"
+            role="status"
+            data-testid="membership-intro-rate-banner"
+          >
+            Introductory rate ends Sept 30!
+          </p>
+        </div>
         <div
           ref={audienceTabsRef}
           className="membership-audience-tabs membership-audience-tabs--toolbar"
@@ -363,9 +507,6 @@ export function MembershipPage({
           aria-label="Membership audience"
           data-testid="membership-audience-tabs"
         >
-          <span className="membership-audience-tabs__label" id="membership-audience-heading">
-            Membership for: <strong>{audienceLabel}</strong>
-          </span>
           {AUDIENCE_TABS.map((a) => (
             <button
               key={a}
@@ -380,31 +521,47 @@ export function MembershipPage({
             </button>
           ))}
         </div>
-        {showBillingToggle ? (
-          <label
-            className={`membership-yearly-check${billingPeriod === "yearly" ? " is-on" : ""}`}
-            data-testid="membership-billing-toggle"
-          >
-            <input
-              type="checkbox"
-              checked={billingPeriod === "yearly"}
-              onChange={(e) => setBillingPeriod(e.target.checked ? "yearly" : "monthly")}
-              data-testid="membership-billing-yearly"
-              aria-label="Pay yearly and save about 17 percent"
-            />
-            <span className="membership-yearly-check__text">
-              Yearly
-              <em className="membership-yearly-check__save">Save ~17%</em>
-            </span>
-          </label>
-        ) : (
+        {usesCredits ? (
           <span
             className="membership-billing-toggle__hint membership-billing-toggle__hint--inline"
             data-testid="membership-billing-hint"
           >
             Kid Credits · monthly
           </span>
+        ) : (
+          <p
+            className="membership-advance-billing-note"
+            data-testid="membership-advance-billing-note"
+          >
+            All membership amounts shown are collected in advance.
+          </p>
         )}
+        {isLoggedIn ? (
+          <div
+            className="membership-plan-bubbles"
+            role="group"
+            aria-label="Switch or upgrade your membership plan"
+            data-testid="membership-plan-bubbles"
+          >
+            {membershipPlanBubbles(currentTier).map((bubble) => (
+              <button
+                key={bubble.tierId}
+                type="button"
+                className={`glow-chip-btn membership-plan-bubble${
+                  bubble.kind === "current" ? " is-active" : ""
+                }${bubble.kind === "upgrade" ? " is-upgrade" : ""}`}
+                disabled={bubble.kind === "current"}
+                onClick={() => {
+                  saveJoinAudience(audience);
+                  onGoToJoin?.(bubble.tierId, audience);
+                }}
+                data-testid={`membership-plan-bubble-${bubble.tierId}`}
+              >
+                {bubble.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       <div className="membership-tier-grid" data-testid="membership-tier-grid">
@@ -415,10 +572,12 @@ export function MembershipPage({
           const listYearly = yearlyListPriceUsd(monthly);
           const saveUsd = yearly != null ? yearlySavingsUsd(monthly, yearly) : 0;
           const equivMonthly = yearly != null ? equivalentMonthlyUsd(yearly) : 0;
+          const showYearlyOption = showBillingToggle && tier.id !== "free" && yearly != null;
+          const yearlyOn = showYearlyOption && billingPeriod === "yearly";
           return (
           <article
             key={tier.id}
-            className={`glass membership-tier-card${tier.highlight ? " is-featured" : ""}${tier.id === "free" ? " is-free-start" : ""}${tier.id === SCHEDULE_SUITE_TIER ? " unlocks-schedule" : ""}`}
+            className={`glass membership-tier-card${tier.highlight ? " is-featured" : ""}${tier.id === "free" ? " is-free-start" : ""}${tier.id === SCHEDULE_SUITE_TIER ? " unlocks-schedule" : ""}${yearlyOn ? " is-yearly-billing" : ""}`}
             data-testid={`membership-tier-${tier.id}`}
           >
             <div className="membership-tier-card__top">
@@ -426,12 +585,8 @@ export function MembershipPage({
                 <h3>{tier.id === "free" ? "Free — start here" : tier.name}</h3>
                 <p
                   className={`membership-tier-price membership-tier-price--inline${
-                    !usesCredits && tier.id !== "free" && yearly != null ? " has-yearly" : ""
-                  }${
-                    billingPeriod === "yearly" && !usesCredits && tier.id !== "free"
-                      ? " is-yearly"
-                      : ""
-                  }`}
+                    showYearlyOption ? " has-yearly" : ""
+                  }${yearlyOn ? " is-yearly" : ""}`}
                 >
                   {tier.id === "free" ? (
                     <strong>Free</strong>
@@ -440,8 +595,30 @@ export function MembershipPage({
                       <strong>{tier.creditsPerMonth ?? 0}</strong>
                       <span className="membership-tier-price-unit"> credits/mo</span>
                     </>
+                  ) : yearlyOn ? (
+                    <>
+                      <span className="membership-tier-rate-tag">Membership rate</span>
+                      <strong data-testid={`membership-yearly-equiv-${tier.id}`}>
+                        {formatUsd(equivMonthly)}
+                      </strong>
+                      <span className="membership-tier-price-unit">/mo</span>
+                      <span className="membership-tier-price-sep" aria-hidden>
+                        ·
+                      </span>
+                      <strong data-testid={`membership-yearly-price-${tier.id}`}>
+                        {formatUsd(yearly)}
+                      </strong>
+                      <span className="membership-tier-price-unit">/yr</span>
+                      <span
+                        className="membership-tier-save"
+                        data-testid={`membership-save-${tier.id}`}
+                      >
+                        Save {formatUsd(saveUsd)}
+                      </span>
+                    </>
                   ) : (
                     <>
+                      <span className="membership-tier-rate-tag">Membership rate</span>
                       <strong data-testid={`membership-monthly-price-${tier.id}`}>
                         {formatUsd(monthly)}
                       </strong>
@@ -455,18 +632,40 @@ export function MembershipPage({
                             {formatUsd(yearly)}
                           </strong>
                           <span className="membership-tier-price-unit">/yr</span>
-                          <span
-                            className="membership-tier-save"
-                            data-testid={`membership-save-${tier.id}`}
-                          >
-                            Save {formatUsd(saveUsd)}
-                          </span>
                         </>
                       ) : null}
                     </>
                   )}
                 </p>
               </div>
+              {showYearlyOption ? (
+                <label
+                  className={`membership-yearly-check membership-yearly-check--card${yearlyOn ? " is-on" : ""}`}
+                  data-testid={
+                    tier.id === "starter"
+                      ? "membership-billing-toggle"
+                      : `membership-billing-toggle-${tier.id}`
+                  }
+                >
+                  <input
+                    type="checkbox"
+                    checked={billingPeriod === "yearly"}
+                    onChange={(e) => setBillingPeriod(e.target.checked ? "yearly" : "monthly")}
+                    data-testid={
+                      tier.id === "starter"
+                        ? "membership-billing-yearly"
+                        : `membership-billing-yearly-${tier.id}`
+                    }
+                    aria-label={`Pay yearly for ${tier.name} and save ${formatUsd(saveUsd)}`}
+                  />
+                  <span className="membership-yearly-check__text">
+                    Yearly
+                    <em className="membership-yearly-check__save">
+                      Save {formatUsd(saveUsd)}
+                    </em>
+                  </span>
+                </label>
+              ) : null}
               <div className="membership-tier-badges">
                 {tier.id === "free" && (
                   <span className="glow-badge free" data-testid="membership-free-start-badge">
@@ -489,12 +688,11 @@ export function MembershipPage({
                 ) : null}
               </div>
               <p className="membership-tier-tagline">{tier.tagline}</p>
-              {tier.id !== "free" && !usesCredits && yearly != null ? (
+              {showYearlyOption &&
+              audience === "senior" &&
+              (tier.priceMonthlyUsd ?? 0) > monthly ? (
                 <p className="membership-tier-or membership-tier-yearly-note">
-                  Yearly = {formatUsd(equivMonthly)}/mo
-                  {audience === "senior" && (tier.priceMonthlyUsd ?? 0) > monthly
-                    ? ` · Adult ${formatUsd(tier.priceMonthlyUsd ?? 0)}/mo or ${formatUsd(tier.priceYearlyUsd ?? listYearly)}/yr`
-                    : ""}
+                  {`Adult ${formatUsd(tier.priceMonthlyUsd ?? 0)}/mo or ${formatUsd(tier.priceYearlyUsd ?? listYearly)}/yr`}
                 </p>
               ) : null}
             </div>
@@ -506,9 +704,14 @@ export function MembershipPage({
                 saveJoinAudience(audience);
                 onGoToJoin?.(tier.id === "free" ? "free" : tier.id, audience);
               }}
+              disabled={isLoggedIn && (currentTier ?? "free") === tier.id}
               data-testid={`membership-choose-${tier.id}`}
             >
-              {tier.id === "free" ? "Start Free" : `Choose ${tier.name}`}
+              {membershipPlanChooseLabel(tier.name, {
+                tierId: tier.id,
+                isLoggedIn,
+                currentTier,
+              })}
             </button>
           </article>
           );
@@ -541,14 +744,14 @@ export function MembershipPage({
           <Bell size={22} />
         </div>
         <div>
-          <h3>Proposed hustle schedule suite</h3>
+          <h3>Hustle schedule suite</h3>
           <p>
-            Starting at <strong>Pro</strong>, members unlock a personalized weekly schedule from
-            their Get Your Side Hustle matches, a live hustle tracker, progress reports, and email
-            notifications for milestones and workshop seats. Every paid plan includes consulting
-            (Starter: one 1-hour session; Pro: three 60-minute sessions; Elite: three 90-minute
-            sessions) with a 3-month commitment. Elite also adds the ZIP best-times scout for
-            rideshare &amp; delivery.
+            Starting at <strong>Pro</strong>, open <strong>My Dashboard → Schedule Suite</strong> for a
+            weekly plan tied to your Blueprint hustle, a live tracker, progress %, Profit &amp; Loss
+            calculator, and email reminder prefs. Free and Starter see it grayed out with an upgrade
+            path. Every paid plan includes consulting (Starter: one 45-minute session; Pro: three
+            60-minute sessions; Elite: three 90-minute sessions) with a 3-month commitment. Elite also
+            adds the ZipCode best-times scout for rideshare &amp; delivery.
           </p>
           <ul className="membership-schedule-list">
             {SCHEDULE_SUITE_FEATURE_IDS.map((id) => {
@@ -620,11 +823,36 @@ export function MembershipPage({
       </section>
 
       <section className="glass membership-alacarte" data-testid="membership-alacarte">
-        <h3>A la carte price list — {AUDIENCE_LABELS[audience]}</h3>
+        <h3>
+          <ShoppingCart size={18} aria-hidden /> A la carte price list — {AUDIENCE_LABELS[audience]}
+          {cartCount > 0 ? (
+            <span className="membership-alacarte-cart-badge" data-testid="membership-alacarte-cart-count">
+              {cartCount} in cart
+            </span>
+          ) : null}
+        </h3>
         <p>
-          Buy single sessions anytime. Items marked included are covered by the listed membership
-          tier.
+          Buy single sessions anytime. Add items to your cart, then check out with Stripe. Items marked
+          included are covered by the listed membership tier.
         </p>
+        {cartCount > 0 ? (
+          <div className="membership-alacarte-cart-jump" data-testid="membership-alacarte-cart-jump">
+            <button type="button" className="btn btn-primary" onClick={scrollToCart}>
+              <ShoppingCart size={16} aria-hidden /> Go to cart · {formatUsd(cartTotal)} ({cartCount})
+            </button>
+            <button
+              type="button"
+              className="btn btn-outline"
+              data-testid="membership-alacarte-cart-clear-jump"
+              onClick={() => {
+                setCart(clearAlaCarteCart());
+                setCartError("");
+              }}
+            >
+              <Trash2 size={14} aria-hidden /> Clear cart
+            </button>
+          </div>
+        ) : null}
         <div className="membership-price-table-wrap">
           <table className="membership-price-table">
             <thead>
@@ -634,35 +862,188 @@ export function MembershipPage({
                 {(usesCredits || showKidCreditPool) && <th>Kid credits</th>}
                 {(usesCredits || showKidCreditPool) && <th>Adult credits</th>}
                 <th>Included in</th>
+                <th>Cart</th>
               </tr>
             </thead>
             <tbody>
-              {alaCarte.map((item) => (
-                <tr key={item.id}>
-                  <td>
-                    <strong>{item.name}</strong>
-                    <span className="membership-price-detail">{item.detail}</span>
-                  </td>
-                  <td>{formatUsd(item.priceUsd)}</td>
-                  {(usesCredits || showKidCreditPool) && (
-                    <td>{item.credits ?? "—"}</td>
-                  )}
-                  {(usesCredits || showKidCreditPool) && (
+              {alaCarte.map((item) => {
+                const inCartQty = cart.lines.find((l) => l.itemId === item.id)?.quantity ?? 0;
+                const stripeReady = supportsAlaCarteStripeCheckout(item.id);
+                const justAdded = justAddedId === item.id;
+                return (
+                  <tr key={item.id} data-testid={`membership-alacarte-row-${item.id}`}>
                     <td>
-                      {item.credits
-                        ? Math.floor(item.credits / KID_TO_ADULT_CREDIT_RATIO)
+                      <strong>{item.name}</strong>
+                      <span className="membership-price-detail">{item.detail}</span>
+                    </td>
+                    <td>{formatUsd(item.priceUsd)}</td>
+                    {(usesCredits || showKidCreditPool) && (
+                      <td>{item.credits ?? "—"}</td>
+                    )}
+                    {(usesCredits || showKidCreditPool) && (
+                      <td>
+                        {item.credits
+                          ? Math.floor(item.credits / KID_TO_ADULT_CREDIT_RATIO)
+                          : "—"}
+                      </td>
+                    )}
+                    <td>
+                      {item.includedIn?.length
+                        ? item.includedIn.map((t) => t.charAt(0).toUpperCase() + t.slice(1)).join(", ")
                         : "—"}
                     </td>
-                  )}
-                  <td>
-                    {item.includedIn?.length
-                      ? item.includedIn.map((t) => t.charAt(0).toUpperCase() + t.slice(1)).join(", ")
-                      : "—"}
-                  </td>
-                </tr>
-              ))}
+                    <td>
+                      <button
+                        type="button"
+                        className="btn btn-outline membership-alacarte-add"
+                        data-testid={`membership-alacarte-add-${item.id}`}
+                        disabled={!stripeReady}
+                        title={
+                          stripeReady
+                            ? `Add ${item.name} to cart`
+                            : "Stripe checkout not configured for this item yet"
+                        }
+                        onClick={() => handleAddToCart(item.id)}
+                      >
+                        {justAdded
+                          ? "Added"
+                          : inCartQty > 0
+                            ? `Add again (${inCartQty})`
+                            : "Add to cart"}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
+        </div>
+
+        <div
+          id="gysh-alacarte-cart"
+          className="membership-alacarte-cart"
+          data-testid="membership-alacarte-cart"
+          ref={cartPanelRef}
+          tabIndex={-1}
+        >
+          <div className="membership-alacarte-cart-heading">
+            <h4>
+              <ShoppingCart size={16} aria-hidden /> Your a-la-carte cart
+            </h4>
+            {cartCount > 0 ? (
+              <button
+                type="button"
+                className="btn btn-outline membership-alacarte-cart-clear-top"
+                data-testid="membership-alacarte-cart-clear-top"
+                disabled={cartBusy}
+                onClick={() => {
+                  setCart(clearAlaCarteCart());
+                  setCartError("");
+                }}
+              >
+                <Trash2 size={14} aria-hidden /> Clear cart
+              </button>
+            ) : null}
+          </div>
+          {cartLines.length === 0 ? (
+            <p className="membership-alacarte-cart-empty" data-testid="membership-alacarte-cart-empty">
+              Cart is empty — add a service above to check out.
+            </p>
+          ) : (
+            <form className="membership-alacarte-cart-form" onSubmit={handleCartCheckout}>
+              <ul className="membership-alacarte-cart-lines">
+                {cartLines.map(({ item, quantity, lineTotalUsd }) => (
+                  <li key={item.id} data-testid={`membership-alacarte-cart-line-${item.id}`}>
+                    <div className="membership-alacarte-cart-line-main">
+                      <strong>{item.name}</strong>
+                      <span>{formatUsd(lineTotalUsd)}</span>
+                    </div>
+                    <div className="membership-alacarte-cart-line-actions">
+                      <label>
+                        Qty
+                        <input
+                          type="number"
+                          min={1}
+                          max={99}
+                          value={quantity}
+                          aria-label={`Quantity for ${item.name}`}
+                          data-testid={`membership-alacarte-qty-${item.id}`}
+                          onChange={(e) => {
+                            setCart(setAlaCarteCartQuantity(item.id, Number(e.target.value)));
+                            setCartError("");
+                          }}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        className="btn btn-ghost membership-alacarte-remove"
+                        data-testid={`membership-alacarte-remove-${item.id}`}
+                        aria-label={`Remove ${item.name}`}
+                        onClick={() => {
+                          setCart(removeAlaCarteFromCart(item.id));
+                          setCartError("");
+                        }}
+                      >
+                        <Trash2 size={14} aria-hidden /> Remove
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              <div className="membership-alacarte-cart-total" data-testid="membership-alacarte-cart-total">
+                <span>Total</span>
+                <strong>{formatUsd(cartTotal)}</strong>
+              </div>
+              <label className="membership-alacarte-cart-email">
+                Email for receipt
+                <input
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={cartEmail}
+                  data-testid="membership-alacarte-cart-email"
+                  placeholder="you@example.com"
+                  onChange={(e) => setCartEmail(e.target.value)}
+                />
+              </label>
+              {cartError ? (
+                <p className="membership-alacarte-cart-error" role="alert" data-testid="membership-alacarte-cart-error">
+                  {cartError}
+                </p>
+              ) : null}
+              <div className="membership-alacarte-cart-actions">
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  data-testid="membership-alacarte-cart-clear"
+                  disabled={cartBusy}
+                  onClick={() => {
+                    setCart(clearAlaCarteCart());
+                    setCartError("");
+                  }}
+                >
+                  Clear cart
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  data-testid="membership-alacarte-cart-checkout"
+                  disabled={cartBusy || !cartStripeReady}
+                >
+                  {cartBusy ? (
+                    <WaitLabel>Opening Stripe…</WaitLabel>
+                  ) : (
+                    <>
+                      <CreditCard size={16} aria-hidden /> Checkout {formatUsd(cartTotal)}
+                    </>
+                  )}
+                </button>
+              </div>
+              <p className="membership-alacarte-cart-note">
+                Secure Stripe Checkout. In test mode use card <code>4242 4242 4242 4242</code>.
+              </p>
+            </form>
+          )}
         </div>
       </section>
     </div>

@@ -5783,6 +5783,9 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 1rem;
   text-decoration: none;
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  flex: 0 0 auto;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .site-footer-built-by:hover {
@@ -5791,12 +5794,49 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--charcoal);
 }
 
+.site-footer-built-by picture {
+  display: flex;
+  align-items: center;
+  line-height: 0;
+  flex: 0 0 auto;
+}
+
 .site-footer-muntie-logo {
-  height: 56px;
+  height: 32px;
   width: auto;
-  max-width: 220px;
+  max-height: 32px;
+  max-width: 96px;
   display: block;
   object-fit: contain;
+}
+
+@media (max-width: 720px) {
+  .site-footer-meta {
+    align-items: center;
+    row-gap: 6px;
+  }
+
+  .site-footer-meta .site-footer-built-by {
+    margin-left: 0;
+  }
+
+  .site-footer-built-by {
+    gap: 4px;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    font-size: 0.75rem;
+    line-height: 1.2;
+  }
+
+  .site-footer-muntie-logo {
+    height: 16px !important;
+    max-height: 16px !important;
+    width: auto !important;
+    max-width: 44px !important;
+  }
 }
 
 /* ??? Static pages (About / Contact / Join) ??? */
@@ -15564,6 +15604,36 @@ button.launch-checklist-item {
   font-weight: 700;
 }
 
+.membership-plan-bubbles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.membership-plan-bubble {
+  min-height: 40px;
+  padding: 8px 14px;
+  font-size: 0.92rem;
+  font-weight: 750;
+}
+
+.membership-plan-bubble.is-active {
+  background: var(--grad-chip-active) !important;
+  border-color: var(--chip-active-border) !important;
+  color: var(--chip-active-text) !important;
+  -webkit-text-fill-color: var(--chip-active-text) !important;
+  box-shadow: 0 3px 12px rgba(47, 90, 52, 0.35);
+  cursor: default;
+}
+
+.membership-plan-bubble.is-upgrade {
+  border-color: rgba(46, 125, 90, 0.55);
+  box-shadow: 0 2px 8px rgba(46, 125, 90, 0.2);
+}
+
 .membership-tier-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -17560,6 +17630,14 @@ details[open] > summary .collapse-show-hide::before {
 
 .membership-signup-actions .btn {
   gap: 6px;
+}
+
+.membership-signup-plan-buttons {
+  width: 100%;
+}
+
+.membership-signup-plan-buttons .btn {
+  flex: 1 1 11rem;
 }
 
 .membership-fake-checkout-banner {

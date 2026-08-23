@@ -128,8 +128,8 @@ export function SiteFooter({ onNavigate }: SiteFooterProps) {
               src="/brand/munties-ai-agents-logo.png"
               alt="Muntie's AI Agents"
               className="site-footer-muntie-logo"
-              width={256}
-              height={256}
+              width={32}
+              height={32}
               loading="lazy"
               decoding="async"
             />
