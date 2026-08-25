@@ -33,6 +33,7 @@ import {
   seniorGuideMinTier,
 } from "../lib/guide-access";
 import { JoinToUnlockCta } from "./JoinToUnlockCta";
+import { MembershipLockBadge } from "./MembershipLockBadge";
 import { trackGyshEvent } from "../lib/gysh-analytics";
 import { hasBlueprintAccess } from "../lib/free-member-session";
 import {
@@ -85,9 +86,18 @@ function SeniorGuideCard({
     <article className="glass seniors-guide-card" data-testid={`seniors-guide-card-${guide.id}`}>
       <div className="seniors-guide-card-top">
         <Sparkles size={20} style={{ color: "var(--bronze)" }} aria-hidden="true" />
-        <span className={`seniors-guide-badge seniors-guide-badge--${badgeClass}`}>
-          {comingSoon ? "Coming soon" : guideTierBadgeLabel(minTier)}
-        </span>
+        <div className="free-guide-card-badges">
+          <span className={`seniors-guide-badge seniors-guide-badge--${badgeClass}`}>
+            {comingSoon ? "Coming soon" : guideTierBadgeLabel(minTier)}
+          </span>
+          {!comingSoon ? (
+            <MembershipLockBadge
+              minTier={minTier}
+              unlocked={access.unlocked}
+              data-testid={`guide-lock-badge-${guide.id}`}
+            />
+          ) : null}
+        </div>
       </div>
       <h3>{guide.title}</h3>
       {!comingSoon && (

@@ -9,6 +9,7 @@ import {
   ListChecks,
   Megaphone,
   CalendarRange,
+  CalendarDays,
   ClipboardList,
   Map,
   BookOpen,
@@ -37,12 +38,13 @@ import { CertificatesAdmin } from "./admin/CertificatesAdmin";
 import { EmailTemplates } from "./admin/EmailTemplates";
 import { DailyProgressPage } from "./admin/DailyProgressPage";
 import { MembershipsPage } from "./admin/MembershipsPage";
+import { AdminHustleSchedulesPage } from "./admin/AdminHustleSchedulesPage";
 import type { AuthUser } from "../lib/auth";
 import { canAccessAdminPortal } from "../lib/gysh-roles";
 import {
   assigneeForAuthUser,
   dueAttentionTasks,
-  syncGuideReviewTasks,
+  fetchTasks,
   type GyshTask,
 } from "../lib/gysh-tasks";
 import { dueAttentionTests, type AttentionTest } from "../lib/gysh-due-attention";
@@ -61,7 +63,11 @@ import {
   type AdminTabDef,
   type UserGuideId,
 } from "../lib/admin-nav";
-import { clearAdminFocusFromUrl, readAdminDeepLink } from "../lib/admin-deep-links";
+import {
+  ADMIN_DEEPLINK_EVENT,
+  clearAdminFocusFromUrl,
+  readAdminDeepLink,
+} from "../lib/admin-deep-links";
 import {
   fetchPartnerAgenda,
   mustPickAgendaTimes,
@@ -116,6 +122,8 @@ export const AdminPortal: React.FC<Props> = ({
   const [overdueTests, setOverdueTests] = useState<AttentionTest[]>([]);
   const [focusTaskId, setFocusTaskId] = useState<string | null>(null);
   const [focusTestId, setFocusTestId] = useState<string | null>(null);
+  const [focusItemId, setFocusItemId] = useState<string | null>(null);
+  const [focusEmailTemplate, setFocusEmailTemplate] = useState<string | null>(null);
   const [showQaManual, setShowQaManual] = useState(false);
   const [agendaGateActive, setAgendaGateActive] = useState(false);
   const isAdmin = userIsAdmin(authUser);
@@ -135,6 +143,7 @@ export const AdminPortal: React.FC<Props> = ({
     { id: "daily-progress", label: "Daily Progress", icon: <FileText size={16} /> },
     { id: "users", label: "Users Area", icon: <Users size={16} /> },
     { id: "memberships", label: "Memberships", icon: <BadgeCheck size={16} /> },
+    { id: "hustle-schedules", label: "Schedule Suites", icon: <CalendarDays size={16} /> },
     { id: "certificates", label: "Certificates", icon: <Award size={16} /> },
     { id: "email", label: "Email Templates", icon: <Mail size={16} /> },
     ...(isAdmin
@@ -200,24 +209,44 @@ export const AdminPortal: React.FC<Props> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, isAdmin]);
 
-  // Deep link: /admin?tab=testing&test=… or /admin?tab=tasks&task=…
+  // Deep link: /admin?tab=testing&test=… / tasks&task=… / factory&item=…
+  // Re-apply on mount, browser history, and SPA navigateAdminDeepLink / markdown clicks.
   useEffect(() => {
-    const link = readAdminDeepLink();
-    if (link.tab) {
-      if ((link.tab === "factory" || link.tab === "financials") && !userIsAdmin(authUser)) {
-        onTabChange("tasks");
-      } else {
-        onTabChange(link.tab);
+    const applyDeepLink = (ev?: Event) => {
+      const detail =
+        ev && "detail" in ev && ev.detail && typeof ev.detail === "object"
+          ? (ev.detail as ReturnType<typeof readAdminDeepLink>)
+          : null;
+      const link =
+        detail &&
+        (detail.tab || detail.testId || detail.taskId || detail.itemId || detail.template)
+          ? detail
+          : readAdminDeepLink();
+      if (link.tab) {
+        if ((link.tab === "factory" || link.tab === "financials") && !userIsAdmin(authUser)) {
+          onTabChange("tasks");
+        } else {
+          onTabChange(link.tab);
+        }
       }
-    }
-    if (link.testId) {
-      setShowQaManual(false);
-      setFocusTestId(link.testId);
-    }
-    if (link.taskId) setFocusTaskId(link.taskId);
-    if (link.testId || link.taskId) clearAdminFocusFromUrl();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- apply once on Admin Studio mount
-  }, []);
+      if (link.testId) {
+        setShowQaManual(false);
+        setFocusTestId(link.testId);
+      }
+      if (link.taskId) setFocusTaskId(link.taskId);
+      if (link.itemId) setFocusItemId(link.itemId);
+      if (link.template) setFocusEmailTemplate(link.template);
+      if (link.testId || link.taskId || link.itemId) clearAdminFocusFromUrl();
+    };
+    applyDeepLink();
+    window.addEventListener("popstate", applyDeepLink);
+    window.addEventListener(ADMIN_DEEPLINK_EVENT, applyDeepLink);
+    return () => {
+      window.removeEventListener("popstate", applyDeepLink);
+      window.removeEventListener(ADMIN_DEEPLINK_EVENT, applyDeepLink);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- authUser for gate; listeners own re-apply
+  }, [authUser]);
 
   useEffect(() => {
     let cancelled = false;
@@ -230,9 +259,9 @@ export const AdminPortal: React.FC<Props> = ({
 
     (async () => {
       try {
-        // Keep Task List in sync: one review item per launch guide (D1).
-        const [{ tasks }, testStatuses] = await Promise.all([
-          syncGuideReviewTasks(),
+        // Due popup only needs current tasks/tests — avoid heavy CF seed sync here.
+        const [tasks, testStatuses] = await Promise.all([
+          fetchTasks(),
           fetchTestStatuses(),
         ]);
         if (cancelled) return;
@@ -483,9 +512,15 @@ export const AdminPortal: React.FC<Props> = ({
       )}
       {activeTab === "users" && <UsersArea />}
       {activeTab === "memberships" && <MembershipsPage />}
+      {activeTab === "hustle-schedules" && <AdminHustleSchedulesPage />}
       {activeTab === "certificates" && <CertificatesAdmin />}
-      {activeTab === "email" && <EmailTemplates />}
-      {activeTab === "factory" && isAdmin && <ContentFactory />}
+      {activeTab === "email" && <EmailTemplates focusSlug={focusEmailTemplate} />}
+      {activeTab === "factory" && isAdmin && (
+        <ContentFactory
+          focusItemId={focusItemId}
+          onFocusConsumed={() => setFocusItemId(null)}
+        />
+      )}
       {activeTab === "tasks" && (
         <TaskList
           focusTaskId={focusTaskId}

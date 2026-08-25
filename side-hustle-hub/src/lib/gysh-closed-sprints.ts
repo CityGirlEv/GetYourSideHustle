@@ -6,7 +6,11 @@
 
 import { api } from "./api";
 import { canBypassSprintLock } from "./gysh-assignment";
-import { sprintLabel } from "./gysh-sprints";
+import {
+  currentSprintIndex,
+  DEFAULT_SPRINT_COUNT,
+  sprintLabel,
+} from "./gysh-sprints";
 
 export const SPRINT_LOCKED_MESSAGE =
   "This sprint is closed and locked. No further modifications can be made to items in it.";
@@ -42,6 +46,81 @@ export function isSprintEditLocked(
 ): boolean {
   if (canBypassSprintLock(actor)) return false;
   return isSprintLocked(closed, sprint);
+}
+
+/**
+ * True when a save is only pulling an item out of a closed sprint into an
+ * open sprint / backlog. Anyone may do this — it does not reopen the sprint.
+ */
+export function isUnlockMoveToOpenSprint(
+  closed: Iterable<number> | null | undefined,
+  fromSprint: number | null | undefined,
+  toSprint: number | null | undefined,
+): boolean {
+  if (fromSprint === null || fromSprint === undefined) return false;
+  if (toSprint === null || toSprint === undefined) return false;
+  const from = Number(fromSprint);
+  const to = Number(toSprint);
+  if (!Number.isFinite(from) || !Number.isFinite(to) || from === to) return false;
+  return isSprintLocked(closed, from) && !isSprintLocked(closed, to);
+}
+
+/**
+ * Sprint for a newly created test: the current sprint if it is open,
+ * otherwise the next open sprint. Never a closed sprint.
+ */
+export function sprintForNewTest(
+  closed?: Iterable<number> | null,
+  ref: Date = new Date(),
+): number {
+  return firstUnlockedSprint(closed, ref) ?? Math.max(1, currentSprintIndex(ref));
+}
+
+/**
+ * First placement when a test has no stored sprint.
+ * Backlog stays backlog. Closed or already-ended sprints redirect to the
+ * current open sprint. Future/open suggested bands are kept.
+ */
+export function placeUnstoredTestSprint(
+  suggested: number,
+  closed?: Iterable<number> | null,
+  ref: Date = new Date(),
+): number {
+  if (!Number.isFinite(suggested) || suggested < 0) return suggested;
+  const current = currentSprintIndex(ref);
+  if (isSprintLocked(closed, suggested) || suggested < current) {
+    return sprintForNewTest(closed, ref);
+  }
+  return suggested;
+}
+
+/** Current sprint if unlocked, else the next open sprint. Null if none are open. */
+export function firstUnlockedSprint(
+  closed: Iterable<number> | null | undefined,
+  ref: Date = new Date(),
+): number | null {
+  const current = currentSprintIndex(ref);
+  for (let i = current; i < DEFAULT_SPRINT_COUNT; i++) {
+    if (!isSprintLocked(closed, i)) return i;
+  }
+  for (let i = 0; i < current; i++) {
+    if (!isSprintLocked(closed, i)) return i;
+  }
+  return null;
+}
+
+/** First open sprint after `fromSprint` (walks past other closed sprints). */
+export function nextUnlockedSprint(
+  closed: Iterable<number> | null | undefined,
+  fromSprint: number | null | undefined,
+  ref: Date = new Date(),
+): number | null {
+  const from = Number(fromSprint);
+  const start = Number.isFinite(from) ? from + 1 : currentSprintIndex(ref);
+  for (let i = Math.max(0, start); i < DEFAULT_SPRINT_COUNT; i++) {
+    if (!isSprintLocked(closed, i)) return i;
+  }
+  return firstUnlockedSprint(closed, ref);
 }
 
 export async function fetchClosedSprints(): Promise<number[]> {

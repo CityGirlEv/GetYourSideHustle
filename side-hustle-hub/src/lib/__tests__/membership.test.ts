@@ -9,6 +9,7 @@ import {
   SCHEDULE_SUITE_FEATURE_IDS,
   SCHEDULE_SUITE_TIER,
   YEARLY_MONTHS_CHARGED,
+  canAccessNewsletter,
   isMembershipSubscriber,
   nextTierId,
   numberedTierPerks,
@@ -36,6 +37,19 @@ describe("membership catalog", () => {
     expect(nextTierId("elite")).toBeNull();
     expect(isMembershipSubscriber("free")).toBe(false);
     expect(isMembershipSubscriber("starter")).toBe(true);
+  });
+
+  it("unlocks the weekly newsletter at Starter", () => {
+    expect(canAccessNewsletter("free")).toBe(false);
+    expect(canAccessNewsletter("starter")).toBe(true);
+    expect(canAccessNewsletter("pro")).toBe(true);
+    expect(canAccessNewsletter("elite")).toBe(true);
+    expect(canAccessNewsletter("free", { isAdmin: true })).toBe(true);
+    for (const audience of ["adult", "kids", "junior", "senior"] as const) {
+      expect(MEMBER_PERKS_BY_TIER.starter[audience].some((p) => /weekly newsletter/i.test(p.title))).toBe(
+        true,
+      );
+    }
   });
 
   it("unlocks the schedule suite at Pro", () => {

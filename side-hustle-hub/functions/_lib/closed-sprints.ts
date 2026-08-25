@@ -12,6 +12,16 @@ export const SPRINT_LOCKED_MESSAGE =
 
 export { canBypassSprintLock };
 
+function sprintIndexIsClosed(
+  closed: Set<number> | readonly number[],
+  sprintIndex: number,
+): boolean {
+  const idx = Math.floor(Number(sprintIndex));
+  if (!Number.isFinite(idx) || idx < 0) return false;
+  if (closed instanceof Set) return closed.has(idx);
+  return closed.includes(idx);
+}
+
 /** True when a closed sprint should block this actor (Evelyn bypasses). */
 export function closedSprintBlocksActor(
   closed: Set<number> | readonly number[],
@@ -19,10 +29,21 @@ export function closedSprintBlocksActor(
   actor?: { email?: string; name?: string } | null,
 ): boolean {
   if (canBypassSprintLock(actor)) return false;
-  const idx = Math.floor(Number(sprintIndex));
-  if (!Number.isFinite(idx) || idx < 0) return false;
-  if (closed instanceof Set) return closed.has(idx);
-  return closed.includes(idx);
+  return sprintIndexIsClosed(closed, sprintIndex);
+}
+
+/**
+ * Moving a task out of a closed sprint into an open sprint / backlog.
+ * Allowed for every actor — does not reopen the closed sprint.
+ */
+export function isUnlockMoveToOpenSprint(
+  closed: Set<number> | readonly number[],
+  fromSprint: number,
+  toSprint: number,
+): boolean {
+  if (!Number.isFinite(fromSprint) || !Number.isFinite(toSprint)) return false;
+  if (fromSprint === toSprint) return false;
+  return sprintIndexIsClosed(closed, fromSprint) && !sprintIndexIsClosed(closed, toSprint);
 }
 
 export async function ensureClosedSprintsTable(env: Env): Promise<void> {

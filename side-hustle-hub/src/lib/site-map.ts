@@ -142,6 +142,7 @@ function buildPublicMap(): SiteMapNode {
       },
       { id: "nav-workshops", label: "Workshops", kind: "menu" },
       { id: "nav-community", label: "Community", kind: "menu" },
+      { id: "nav-newsletter", label: "Newsletter", kind: "menu", blurb: "Members only · Weekly Friday issue" },
       {
         id: "nav-join",
         label: "Join",
@@ -161,6 +162,9 @@ function buildPublicMap(): SiteMapNode {
         children: [
           { id: "nav-about", label: "About", kind: "submenu" },
           { id: "nav-contact", label: "Contact Us", kind: "submenu" },
+          { id: "nav-privacy", label: "Privacy Policy", kind: "submenu" },
+          { id: "nav-beta-nda", label: "Beta Tester NDA", kind: "submenu" },
+          { id: "nav-beta-testing", label: "Beta Tester Dashboard", kind: "submenu" },
           { id: "nav-login", label: "Login / Portal", kind: "submenu" },
         ],
       },
@@ -197,11 +201,15 @@ export type SiteMapHref =
   | { kind: "guides"; manual?: "adult" | "kids" | "teens" | "seniors" | "master" }
   | { kind: "workshops" }
   | { kind: "community" }
+  | { kind: "newsletter" }
   | { kind: "join" }
   | { kind: "join-signup" }
   | { kind: "login" }
   | { kind: "about" }
   | { kind: "contact" }
+  | { kind: "privacy" }
+  | { kind: "beta_nda" }
+  | { kind: "beta_testing" }
   | {
       kind: "admin";
       tab: AdminTab;
@@ -265,6 +273,7 @@ const SITE_MAP_HREFS: Record<string, SiteMapHref> = {
   ),
   "nav-workshops": { kind: "workshops" },
   "nav-community": { kind: "community" },
+  "nav-newsletter": { kind: "newsletter" },
   "nav-join": { kind: "join" },
   "join-plans": { kind: "join" },
   "join-signup": { kind: "join-signup" },
@@ -272,6 +281,9 @@ const SITE_MAP_HREFS: Record<string, SiteMapHref> = {
   "nav-meta": { kind: "about" },
   "nav-about": { kind: "about" },
   "nav-contact": { kind: "contact" },
+  "nav-privacy": { kind: "privacy" },
+  "nav-beta-nda": { kind: "beta_nda" },
+  "nav-beta-testing": { kind: "beta_testing" },
   "nav-login": { kind: "login" },
   ...buildAdminHrefEntries(),
 };

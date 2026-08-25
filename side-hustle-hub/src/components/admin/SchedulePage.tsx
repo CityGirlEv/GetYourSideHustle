@@ -4,6 +4,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type MouseEvent,
   type ReactNode,
 } from "react";
 import {
@@ -23,6 +24,7 @@ import {
   Search,
   Square,
   Trash2,
+  Unlock,
   Users,
 } from "lucide-react";
 import { ApiError } from "../../lib/api";
@@ -36,6 +38,8 @@ import { ShowHideChevron, ShowHideToggle } from "../ShowHideToggle";
 import {
   closeSprint,
   fetchClosedSprints,
+  firstUnlockedSprint,
+  isUnlockMoveToOpenSprint,
   isSprintLocked,
   reopenSprint,
   sprintLockedMessage,
@@ -52,17 +56,23 @@ import { BusyOverlay, WaitIndicator, WaitLabel } from "../WaitFeedback";
 import { MarkdownLinkText } from "./MarkdownLinkText";
 import {
   applyRolloutSprintSchedule,
+  buildUnlockTaskPatch,
+  healClosedSprintTaskLeftovers,
+  healClosedSprintTestLeftovers,
   itemRolledRelativeToSprint,
   noteIndicatesRollover,
   planToBoardCard,
   ROLLOUT_SCHEDULE_VERSION,
-  rolloverNoteText,
   sprintRolloverSummary,
   taskToBoardCard,
   testIsRolledOver,
   testToBoardCard,
   type BoardCard,
 } from "../../lib/gysh-sprint-board";
+import {
+  applyFilterChipClick,
+  boardSourceAllowedByStatusFacets,
+} from "../../lib/gysh-filter-chips";
 import { SprintStatusBars } from "./SprintStatusBars";
 import {
   EndSprintModal,
@@ -70,6 +80,7 @@ import {
   listIncompleteSprintWork,
   type EndSprintAction,
 } from "./EndSprintModal";
+import { applyEndSprintActions } from "../../lib/gysh-end-sprint";
 import {
   ACCEPT_ATTACHMENTS,
   applyPartnerDone,
@@ -87,11 +98,13 @@ import {
   parseAssigneePeople,
   parseMMDDYY,
   persistTasks,
+  PARTNER_ASSIGNEES,
   requiresPartnerDone,
   TASK_STATUS_LABELS,
   todayMMDDYY,
   uploadPlanAttachment,
   type GyshTask,
+  type PartnerAssignee,
   type TaskStatus,
 } from "../../lib/gysh-tasks";
 import { AssigneeMultiSelect } from "./AssigneeMultiSelect";
@@ -134,7 +147,11 @@ import {
 } from "../../lib/gysh-automated-tests";
 import {
   AUTOMATED_SUITE_OWNERS,
+  fetchUsers,
+  isHumanQaTester,
   QA_TESTERS,
+  qaTestersFromUsers,
+  type QaTester,
   type QaTesterId,
 } from "../../lib/gysh-roles";
 import {
@@ -234,7 +251,7 @@ const CEREMONY_COLORS: Record<SprintCeremony["type"], string> = {
   retrospective: "#9B2F28",
 };
 
-type BoardOwnerFilter = "all" | "Tina" | "Evelyn" | "Lyriq" | "Both" | "Unassigned";
+type BoardOwnerFilter = "all" | PartnerAssignee | "Both" | "Unassigned";
 
 type CardDraft = {
   assignee?: string;
@@ -289,24 +306,28 @@ function mapBulkStatusToSource(
   return bulkStatus;
 }
 
-function bulkAssigneeForSource(source: BoardCard["source"], value: string): string | null {
+function bulkAssigneeForSource(
+  source: BoardCard["source"],
+  value: string,
+  qaTesters: readonly QaTester[] = QA_TESTERS,
+): string | null {
   if (!value) return null;
   if (value === UNASSIGNED_OWNER || value === "unassigned") {
     return source === "test" ? "" : UNASSIGNED_OWNER;
   }
   // Tasks/plans store multi-assignee strings (Both, Tina+Lyriq, …).
   if (source !== "test") {
-    if (value === "tina" || value === "evelyn" || value === "lyriq") {
-      return QA_TESTERS.find((t) => t.id === value)?.shortName ?? null;
+    if (isHumanQaTester(value)) {
+      return qaTesters.find((t) => t.id === value)?.shortName ?? null;
     }
     return value;
   }
   // Tests use a single QA tester id — only apply when exactly one person is staged.
   const people = parseAssigneePeople(value);
   if (people.length === 1) {
-    return QA_TESTERS.find((t) => t.shortName === people[0])?.id ?? null;
+    return qaTesters.find((t) => t.shortName === people[0])?.id ?? null;
   }
-  const id = QA_TESTERS.find((t) => t.id === value || t.shortName === value)?.id;
+  const id = qaTesters.find((t) => t.id === value || t.shortName === value)?.id;
   return id ?? null;
 }
 
@@ -315,6 +336,7 @@ const OWNER_BUBBLES: { id: BoardOwnerFilter; label: string; accent?: string }[] 
   { id: "Tina", label: "Tina", accent: "#9B2F28" },
   { id: "Evelyn", label: "Evelyn", accent: "#947D64" },
   { id: "Lyriq", label: "Lyriq", accent: "#2e7d32" },
+  { id: "Candace", label: "Candace", accent: "#3d6b8c" },
   { id: "Both", label: "Both", accent: "#181718" },
   { id: "Unassigned", label: "Unassigned", accent: "#7a7064" },
 ];
@@ -338,8 +360,8 @@ function matchesAssigneeFilter(ownerValue: string, owner: BoardOwnerFilter): boo
   if (owner === "Both") {
     return requiresPartnerDone(v) || v === "Both";
   }
-  if (owner === "Tina" || owner === "Evelyn" || owner === "Lyriq") {
-    return v === owner || assigneeIncludes(v, owner);
+  if ((PARTNER_ASSIGNEES as readonly string[]).includes(owner)) {
+    return v === owner || assigneeIncludes(v, owner as PartnerAssignee);
   }
   return v === owner;
 }
@@ -1012,6 +1034,9 @@ export function SchedulePage({
   const [workStatusFilters, setWorkStatusFilters] = useState<Set<string>>(() => new Set());
   /** Test progress: empty = all. Applies to test cards only. */
   const [testStatusFilters, setTestStatusFilters] = useState<Set<TestStatus>>(() => new Set());
+  const lastSprintStatusIdx = useRef<number | null>(null);
+  const lastWorkStatusIdx = useRef<number | null>(null);
+  const lastTestStatusIdx = useRef<number | null>(null);
   const [drafts, setDrafts] = useState<Record<string, CardDraft>>({});
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(() => new Set());
   const [bulkAssignee, setBulkAssignee] = useState("");
@@ -1020,6 +1045,8 @@ export function SchedulePage({
   const [bulkStatus, setBulkStatus] = useState("");
   const [bulkDueDate, setBulkDueDate] = useState("");
   const [bulkDescription, setBulkDescription] = useState("");
+  /** Active Users with QA role — test assignee dropdowns. */
+  const [qaTesters, setQaTesters] = useState<QaTester[]>(() => [...QA_TESTERS]);
   /** Structured notes drafts keyed by board card key (task:/test:…). */
   const [editNoteDrafts, setEditNoteDrafts] = useState<Record<string, Record<string, string>>>(
     {},
@@ -1029,10 +1056,11 @@ export function SchedulePage({
     () =>
       assignedBySelectOptions(
         actingAssignBy,
+        ...qaTesters.map((t) => t.shortName),
         ...tasks.map((t) => t.assignBy),
         ...Object.values(testAssignedBy),
       ),
-    [actingAssignBy, tasks, testAssignedBy],
+    [actingAssignBy, qaTesters, tasks, testAssignedBy],
   );
   const [saveFlash, setSaveFlash] = useState("");
   const [endSprintOpen, setEndSprintOpen] = useState(false);
@@ -1091,44 +1119,55 @@ export function SchedulePage({
     matchesSourceFilter(c.source, sourceFilter),
   );
 
-  const toggleSprintStatusFilter = (status: SprintPlacementStatus) => {
-    setSprintStatusFilters((prev) => {
-      const next = new Set(prev);
-      if (next.has(status)) next.delete(status);
-      else next.add(status);
-      return next;
+  const toggleSprintStatusFilter = (status: SprintPlacementStatus, e?: MouseEvent) => {
+    const { next, lastIndex } = applyFilterChipClick(sprintStatusFilters, status, {
+      shiftKey: e?.shiftKey,
+      ctrlKey: e?.ctrlKey,
+      metaKey: e?.metaKey,
+      ordered: SPRINT_STATUS_BUBBLES.map((s) => s.id),
+      lastIndex: lastSprintStatusIdx.current,
     });
+    lastSprintStatusIdx.current = lastIndex;
+    setSprintStatusFilters(next);
   };
 
-  const toggleWorkStatusFilter = (status: string) => {
-    setWorkStatusFilters((prev) => {
-      const next = new Set(prev);
-      if (next.has(status)) next.delete(status);
-      else next.add(status);
-      return next;
+  const toggleWorkStatusFilter = (status: string, e?: MouseEvent) => {
+    const { next, lastIndex } = applyFilterChipClick(workStatusFilters, status, {
+      shiftKey: e?.shiftKey,
+      ctrlKey: e?.ctrlKey,
+      metaKey: e?.metaKey,
+      ordered: WORK_STATUS_BUBBLES.map((s) => s.id),
+      lastIndex: lastWorkStatusIdx.current,
     });
+    lastWorkStatusIdx.current = lastIndex;
+    setWorkStatusFilters(next);
   };
 
-  const toggleTestStatusFilter = (status: TestStatus) => {
-    setTestStatusFilters((prev) => {
-      const next = new Set(prev);
-      if (next.has(status)) next.delete(status);
-      else next.add(status);
-      return next;
+  const toggleTestStatusFilter = (status: TestStatus, e?: MouseEvent) => {
+    const { next, lastIndex } = applyFilterChipClick(testStatusFilters, status, {
+      shiftKey: e?.shiftKey,
+      ctrlKey: e?.ctrlKey,
+      metaKey: e?.metaKey,
+      ordered: TEST_STATUS_BUBBLES.map((s) => s.id),
+      lastIndex: lastTestStatusIdx.current,
     });
+    lastTestStatusIdx.current = lastIndex;
+    setTestStatusFilters(next);
   };
 
   const reload = async () => {
     setLoading(true);
     setError("");
     try {
-      const [planData, taskList, testData, closedList] = await Promise.all([
+      const [planData, taskList, testData, closedList, users] = await Promise.all([
         fetchAgilePlan(),
         fetchTasks(),
         fetchTestStatuses(),
         fetchClosedSprints().catch(() => [] as number[]),
+        fetchUsers().catch(() => [] as Awaited<ReturnType<typeof fetchUsers>>),
       ]);
       setClosedSprints(new Set(closedList));
+      setQaTesters(qaTestersFromUsers(users));
 
       let planItems = planData.items;
       let planRetro = planData.retro;
@@ -1167,6 +1206,7 @@ export function SchedulePage({
             testDueDates: workingTestDueDates,
             testStatuses: testData.statuses,
             mode: "preserve",
+            closedSprints,
           });
           if (rolled.planChanged || rolled.tasksChanged || rolled.testChangedIds.length > 0) {
             workingPlan = rolled.planItems;
@@ -1212,11 +1252,32 @@ export function SchedulePage({
         }
       }
 
+      const leftoverTasks = healClosedSprintTaskLeftovers(
+        healedTasks.tasks,
+        closedList,
+        actingAssignBy,
+      );
+      const leftoverTests = healClosedSprintTestLeftovers({
+        sprints: nextSprints,
+        statuses: testData.statuses,
+        notes: testData.notes,
+        dueDates: workingTestDueDates,
+        closed: closedList,
+        actorLabel: actingAssignBy,
+      });
+      const boardTasks = leftoverTasks.changed.length > 0 ? leftoverTasks.tasks : healedTasks.tasks;
+      if (leftoverTests.changedIds.length > 0) {
+        Object.assign(nextSprints, leftoverTests.sprints);
+        workingTestDueDates = { ...workingTestDueDates, ...leftoverTests.dueDates };
+      }
+      const boardTestNotes =
+        leftoverTests.changedIds.length > 0 ? leftoverTests.notes : testData.notes;
+
       setRetro(planRetro);
       setItems(healedPlan.items);
-      setTasks(healedTasks.tasks);
+      setTasks(boardTasks);
       setTestStatuses(testData.statuses);
-      setTestNotes(testData.notes);
+      setTestNotes(boardTestNotes);
       setTestAssignedBy(testData.assignedBy ?? {});
       applyTestAudit(testData);
       setTestAssignees(healedTests.assignees);
@@ -1282,14 +1343,54 @@ export function SchedulePage({
               /* keep healed local state */
             }
           }
-          if (healedTasks.changed && !rolledTasksChanged) {
+          if (leftoverTasks.changed.length > 0) {
+            try {
+              setTasks(await persistTasks(leftoverTasks.changed));
+              const dest = leftoverTasks.changed[0]?.sprint;
+              setSaveFlash(
+                `Rolled ${leftoverTasks.changed.length} leftover task${
+                  leftoverTasks.changed.length === 1 ? "" : "s"
+                } from closed sprints${dest != null ? ` → ${sprintLabel(dest)}` : ""}`,
+              );
+              window.setTimeout(() => setSaveFlash(""), 4000);
+            } catch {
+              /* keep healed local state */
+            }
+          } else if (healedTasks.changed && !rolledTasksChanged) {
             try {
               setTasks(await persistTasks(healedTasks.tasks));
             } catch {
               /* keep healed local state */
             }
           }
-          if (healedTests.changedIds.length > 0 && rolledTestBatch.length === 0) {
+          if (leftoverTests.changedIds.length > 0) {
+            try {
+              const data = await saveTestStatusesBatch(
+                leftoverTests.changedIds.map((caseId) => ({
+                  caseId,
+                  status: (testData.statuses[caseId] ?? "not_run") as TestStatus,
+                  note: leftoverTests.notes[caseId] ?? "",
+                  assignee: healedTests.assignees[caseId] ?? "",
+                  sprint: leftoverTests.sprints[caseId] ?? BACKLOG_SPRINT,
+                  dueDate: leftoverTests.dueDates[caseId] ?? "",
+                })),
+              );
+              setTestStatuses(data.statuses);
+              setTestNotes(data.notes);
+              setTestAssignees({ ...healedTests.assignees, ...data.assignees });
+              setTestSprints({ ...nextSprints, ...data.sprints });
+              setTestDueDates({ ...workingTestDueDates, ...data.dueDates });
+              setTestAssignedBy((prev) => ({ ...prev, ...(data.assignedBy ?? {}) }));
+              applyTestAudit(data);
+            } catch {
+              /* keep healed local state */
+            }
+          }
+          if (
+            healedTests.changedIds.length > 0 &&
+            rolledTestBatch.length === 0 &&
+            leftoverTests.changedIds.length === 0
+          ) {
             try {
               const batch = healedTests.changedIds.map((caseId) => ({
                 caseId,
@@ -1650,6 +1751,12 @@ export function SchedulePage({
     // Backlog never has person assignees — skip assignee facet there.
     if (activeSprint !== "backlog" && !matchesAssigneeFilter(assignee, ownerFilter)) return false;
     if (!matchesAssignByFilter(assignBy, assignByFilter)) return false;
+    if (
+      sourceFilter === "all" &&
+      !boardSourceAllowedByStatusFacets(c.source, testStatusFilters.size, workStatusFilters.size)
+    ) {
+      return false;
+    }
     if (sprintStatusFilters.size > 0 && !sprintStatusFilters.has(cardSprintPlacement(c))) {
       return false;
     }
@@ -1773,6 +1880,9 @@ export function SchedulePage({
     setSprintStatusFilters(new Set());
     setWorkStatusFilters(new Set());
     setTestStatusFilters(new Set());
+    lastSprintStatusIdx.current = null;
+    lastWorkStatusIdx.current = null;
+    lastTestStatusIdx.current = null;
     setSaveFlash(
       hadDrafts
         ? "Reset — unsaved edits discarded; filters set to All"
@@ -1835,12 +1945,15 @@ export function SchedulePage({
     const status = draft.status !== undefined ? draft.status : cardStatusValue(card);
     const sprint = draft.sprint !== undefined ? draft.sprint : cardSprintValue(card);
     if (isSprintLocked(closedSprints, card.sprint) || isSprintLocked(closedSprints, sprint)) {
-      setError(
-        sprintLockedMessage(
-          isSprintLocked(closedSprints, card.sprint) ? card.sprint : sprint,
-        ),
-      );
-      return false;
+      const unlocking = isUnlockMoveToOpenSprint(closedSprints, card.sprint, sprint);
+      if (!unlocking) {
+        setError(
+          sprintLockedMessage(
+            isSprintLocked(closedSprints, card.sprint) ? card.sprint : sprint,
+          ),
+        );
+        return false;
+      }
     }
     const note =
       card.source === "plan"
@@ -2349,7 +2462,7 @@ export function SchedulePage({
       if (bulkAssignee) {
         // Tasks/plan on backlog stay Unassigned; tests may be assigned in backlog.
         if (!isBacklogSprint(resultingSprint) || card.source === "test") {
-          const a = bulkAssigneeForSource(card.source, bulkAssignee);
+          const a = bulkAssigneeForSource(card.source, bulkAssignee, qaTesters);
           // Empty string is valid for clearing test assignees (Unassigned).
           if (a !== null) mapped.assignee = a;
         }
@@ -2486,6 +2599,35 @@ export function SchedulePage({
     }
   };
 
+  const unlockTargetSprint = firstUnlockedSprint(closedSprints);
+
+  const unlockTaskCard = async (card: BoardCard) => {
+    if (card.source !== "task") return;
+    const task = tasks.find((t) => t.id === card.sourceId);
+    if (!task || !isSprintLocked(closedSprints, task.sprint)) return;
+    if (unlockTargetSprint == null) {
+      setError("No open sprint to unlock into. Re-open a sprint first.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      const next = applyPartnerDone(task, buildUnlockTaskPatch(task, unlockTargetSprint, actingAssignBy));
+      setTasks(await persistTasks([next]));
+      setDrafts((prev) => {
+        const nextDrafts = { ...prev };
+        delete nextDrafts[card.key];
+        return nextDrafts;
+      });
+      setSaveFlash(`Unlocked ${task.id} → ${sprintLabel(unlockTargetSprint)}`);
+      window.setTimeout(() => setSaveFlash(""), 3500);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Unlock task failed.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   /** Apply End Sprint choices: rollover → next sprint, complete → done/pass. Also carries open plan items. */
   const confirmEndSprint = async (actions: Record<string, EndSprintAction>) => {
     if (endingSprintIndex === null) return;
@@ -2496,17 +2638,29 @@ export function SchedulePage({
       return;
     }
     const sprint = endingSprintIndex;
-    const nextSprint = sprint + 1;
-    const nextDue = dueDateForSprint(nextSprint);
 
     setBusy(true);
     setError("");
     try {
+      const applied = applyEndSprintActions({
+        sprint,
+        actions,
+        tasks,
+        tests: ALL_TESTS,
+        testStatuses,
+        testSprints,
+        testNotes,
+        testAssignees,
+        testDueDates,
+        defaultAssignees: TEST_DEFAULT_ASSIGNEES,
+        actorLabel: actingAssignBy,
+      });
+      const { nextSprint, taskDelta, testBatch } = applied;
+
       // Plan milestones: always roll incomplete forward (not in the task/test modal).
       const incompletePlan = listIncompletePlanItems(items, sprint);
-      let nextPlan = items;
       if (incompletePlan.length > 0) {
-        nextPlan = items.map((i) => {
+        const nextPlan = items.map((i) => {
           if (i.sprint !== sprint || i.status === "done") return i;
           return {
             ...i,
@@ -2518,75 +2672,12 @@ export function SchedulePage({
         await persistPlan(nextPlan, retro);
       }
 
-      let tasksChanged = false;
-      const nextTasks = tasks.map((t) => {
-        if (Number(t.sprint) !== sprint || t.status === "done") return t;
-        tasksChanged = true;
-        const action = actions[`task:${t.id}`] ?? "rollover";
-        if (action === "complete") {
-          return applyPartnerDone(t, {
-            status: "done",
-            ...(requiresPartnerDone(t.assignedTo)
-              ? { tinaDone: true, evelynDone: true }
-              : {}),
-          });
-        }
-        return {
-          ...t,
-          ...withSprintDueDate({ sprint: nextSprint }),
-          status: t.status === "not_started" ? "in_progress" : t.status,
-          notes: appendActorNote(t.notes, actingAssignBy, rolloverNoteText(sprint)),
-        };
-      });
-      if (tasksChanged) {
-        setTasks(await persistTasks(nextTasks));
+      // Delta-only task PUT — a full-board save 403s when locked sprints still have
+      // plain-text notes that re-serialize to JSON (legacy heal ≠ real edit).
+      if (taskDelta.length > 0) {
+        setTasks(await persistTasks(taskDelta));
       }
 
-      const testBatch: Array<{
-        caseId: string;
-        status: TestStatus;
-        note?: string;
-        assignee?: string;
-        sprint?: number;
-        dueDate?: string;
-        checkedSteps?: boolean[];
-        stepCount?: number;
-      }> = [];
-      for (const t of ALL_TESTS) {
-        const rowSprint = Number(testSprints[t.id]);
-        if (rowSprint !== sprint) continue;
-        const st = testStatuses[t.id] ?? "not_run";
-        // Match End Sprint modal: Pass + Conditional Pass stay on the closed sprint.
-        if (st === "pass" || st === "conditional_approval") continue;
-        const action = actions[`test:${t.id}`] ?? "rollover";
-        const assignee = testAssignees[t.id] || TEST_DEFAULT_ASSIGNEES[t.id] || "";
-        const note = testNotes[t.id] ?? "";
-        if (action === "complete") {
-          const stepCount = Array.isArray(t.steps) ? t.steps.length : 0;
-          testBatch.push({
-            caseId: t.id,
-            status: "pass",
-            note: note.trim() || "Completed at sprint end",
-            assignee,
-            sprint,
-            dueDate: testDueDates[t.id],
-            ...(stepCount > 0
-              ? { stepCount, checkedSteps: Array.from({ length: stepCount }, () => true) }
-              : {}),
-          });
-        } else {
-          // Keep work status (Fail / Fixed/Cursor / …); mark rollover via note for chips/filters.
-          const workStatus = st === "rolled_over" ? "not_run" : st;
-          testBatch.push({
-            caseId: t.id,
-            status: workStatus,
-            note: appendActorNote(note, actingAssignBy, rolloverNoteText(sprint)),
-            assignee,
-            sprint: nextSprint,
-            dueDate: nextDue || testDueDates[t.id],
-          });
-        }
-      }
       if (testBatch.length > 0) {
         const data = await saveTestStatusesBatch(testBatch);
         setTestStatuses(data.statuses);
@@ -2678,6 +2769,7 @@ export function SchedulePage({
     { label: "Tina", accent: "#9B2F28" },
     { label: "Evelyn", accent: "#947D64" },
     { label: "Lyriq", accent: "#2e7d32" },
+    { label: "Candace", accent: "#3d6b8c" },
     { label: "Both", accent: "#181718" },
     { label: "Unassigned", accent: "#7a7064" },
   ].map(({ label, accent }) => {
@@ -2686,8 +2778,8 @@ export function SchedulePage({
         return card.owner === "Unassigned" || !String(card.owner || "").trim();
       }
       if (label === "Both") return requiresPartnerDone(card.owner);
-      if (label === "Tina" || label === "Evelyn" || label === "Lyriq") {
-        return assigneeIncludes(card.owner, label);
+      if ((PARTNER_ASSIGNEES as readonly string[]).includes(label)) {
+        return assigneeIncludes(card.owner, label as PartnerAssignee);
       }
       return card.owner === label;
     });
@@ -3405,7 +3497,9 @@ export function SchedulePage({
                         ? "#947D64"
                         : name === "Lyriq"
                           ? "#2e7d32"
-                          : "#6B5344";
+                          : name === "Candace"
+                            ? "#3d6b8c"
+                            : "#6B5344";
                   return (
                     <button
                       key={name}
@@ -3433,7 +3527,7 @@ export function SchedulePage({
             <hr className="schedule-board-filters__divider" />
 
             <CollapsibleFilterSection
-              title="Sprint status — placement (multi)"
+              title="Sprint status — placement"
               hint={
                 sprintStatusFilters.size === 0
                   ? "All in sprint"
@@ -3455,7 +3549,10 @@ export function SchedulePage({
                   className="qa-tester-bubble"
                   data-active={sprintStatusFilters.size === 0 ? "true" : "false"}
                   data-testid="sprint-board-sprint-status-all"
-                  onClick={() => setSprintStatusFilters(new Set())}
+                  onClick={() => {
+                    lastSprintStatusIdx.current = null;
+                    setSprintStatusFilters(new Set());
+                  }}
                   title="Show every item in this sprint, including carry-over"
                 >
                   All in sprint
@@ -3473,7 +3570,7 @@ export function SchedulePage({
                       className="qa-tester-bubble"
                       data-active={active ? "true" : "false"}
                       data-testid={`sprint-board-sprint-status-${s.id}`}
-                      onClick={() => toggleSprintStatusFilter(s.id)}
+                      onClick={(e) => toggleSprintStatusFilter(s.id, e)}
                       style={{
                         borderColor: active ? accent : undefined,
                         boxShadow: active ? `0 0 0 1px ${accent}` : undefined,
@@ -3491,7 +3588,7 @@ export function SchedulePage({
             <hr className="schedule-board-filters__divider" />
 
             <CollapsibleFilterSection
-              title="Tests status — QA progress (multi)"
+              title="Tests status — QA progress"
               hint={
                 testStatusFilters.size === 0
                   ? "All statuses"
@@ -3513,7 +3610,10 @@ export function SchedulePage({
                   className="qa-tester-bubble"
                   data-active={testStatusFilters.size === 0 ? "true" : "false"}
                   data-testid="sprint-board-test-status-all"
-                  onClick={() => setTestStatusFilters(new Set())}
+                  onClick={() => {
+                    lastTestStatusIdx.current = null;
+                    setTestStatusFilters(new Set());
+                  }}
                   title={
                     ownerFilter === "all"
                       ? `All test statuses · ${statusCountCards.filter((c) => c.source === "test").length} · ${statusCountCards.filter((c) => c.source === "test" && cardIsRolledOver(c)).length} rolled over`
@@ -3570,7 +3670,7 @@ export function SchedulePage({
                       className="qa-tester-bubble"
                       data-active={active ? "true" : "false"}
                       data-testid={`sprint-board-test-status-${s.id}`}
-                      onClick={() => toggleTestStatusFilter(s.id)}
+                      onClick={(e) => toggleTestStatusFilter(s.id, e)}
                       title={
                         s.id === "rolled_over" && typeof activeSprint === "number"
                           ? ownerFilter === "all"
@@ -3602,7 +3702,7 @@ export function SchedulePage({
             <hr className="schedule-board-filters__divider" />
 
             <CollapsibleFilterSection
-              title="Task status — work progress (multi)"
+              title="Task status — work progress"
               hint={
                 workStatusFilters.size === 0
                   ? "All statuses"
@@ -3624,7 +3724,10 @@ export function SchedulePage({
                   className="qa-tester-bubble"
                   data-active={workStatusFilters.size === 0 ? "true" : "false"}
                   data-testid="sprint-board-work-status-all"
-                  onClick={() => setWorkStatusFilters(new Set())}
+                  onClick={() => {
+                    lastWorkStatusIdx.current = null;
+                    setWorkStatusFilters(new Set());
+                  }}
                   title={
                     ownerFilter === "all"
                       ? `All task statuses · ${statusCountCards.filter((c) => c.source === "task").length} · ${statusCountCards.filter((c) => c.source === "task" && cardIsRolledOver(c)).length} rolled over`
@@ -3677,7 +3780,7 @@ export function SchedulePage({
                       className="qa-tester-bubble"
                       data-active={active ? "true" : "false"}
                       data-testid={`sprint-board-work-status-${s.id}`}
-                      onClick={() => toggleWorkStatusFilter(s.id)}
+                      onClick={(e) => toggleWorkStatusFilter(s.id, e)}
                       title={
                         s.id === "rolled_over" && typeof activeSprint === "number"
                           ? ownerFilter === "all"
@@ -3775,9 +3878,11 @@ export function SchedulePage({
                   }
                 >
                   <option value="Unassigned">Unassigned</option>
-                  <option value="Tina">Tina</option>
-                  <option value="Evelyn">Evelyn</option>
-                  <option value="Lyriq">Lyriq</option>
+                  {PARTNER_ASSIGNEES.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
                   <option value="Both">Both</option>
                 </select>
               </div>
@@ -4128,6 +4233,19 @@ export function SchedulePage({
                         {card.kindLabel}
                       </span>
                       {cardLocked && <SprintLockedBanner size={12} />}
+                      {cardLocked && card.source === "task" && unlockTargetSprint != null && (
+                        <button
+                          type="button"
+                          className="btn btn-outline"
+                          data-testid={`schedule-unlock-${card.sourceId}`}
+                          disabled={busy}
+                          title={`Unlock ${card.sourceId} into ${sprintLabel(unlockTargetSprint)}`}
+                          onClick={() => void unlockTaskCard(card)}
+                          style={{ padding: "4px 10px", fontSize: "0.875rem" }}
+                        >
+                          <Unlock size={14} /> Unlock
+                        </button>
+                      )}
                       {dirty && (
                         <span
                           className="glow-badge amber"
@@ -4296,7 +4414,7 @@ export function SchedulePage({
                               }
                             >
                               <option value="">Unassigned</option>
-                              {QA_TESTERS.map((tester) => (
+                              {qaTesters.map((tester) => (
                                 <option key={tester.id} value={tester.id}>
                                   {tester.shortName}
                                 </option>

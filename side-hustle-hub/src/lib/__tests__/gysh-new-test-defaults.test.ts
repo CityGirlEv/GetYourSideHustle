@@ -4,7 +4,13 @@ import {
   isKevinaKidsYouthTest,
   sprintForNewKidsYouthTest,
 } from "../gysh-new-test-defaults";
-import { BACKLOG_SPRINT, dueDateForSprint, dueDatePlusDays } from "../gysh-sprints";
+import { currentSprintIndex, dueDateForSprint, dueDatePlusDays } from "../gysh-sprints";
+import { suggestedSprintForTest } from "../gysh-sprint-board";
+import {
+  EMAIL_TEMPLATE_REVIEW_CASES,
+  emailTemplateReviewDueDate,
+  emailTemplateReviewSprint,
+} from "../gysh-email-template-review-cases";
 
 describe("gysh-new-test-defaults", () => {
   it("matches Kevina / Kids / Youth / Teens by id, area, path, category, title", () => {
@@ -24,12 +30,15 @@ describe("gysh-new-test-defaults", () => {
     expect(isKevinaKidsYouthTest({ id: "PW-SMOKE-001", title: "Homepage loads" })).toBe(false);
   });
 
-  it("defaults general new tests to Backlog + Unassigned with no due", () => {
-    expect(defaultsForNewTest({ id: "VT-FAIL-xyz", title: "Portal Vitest structural" })).toEqual({
-      sprint: BACKLOG_SPRINT,
-      assignee: "",
-      dueDate: "",
-    });
+  it("defaults general new tests to the current sprint + due today", () => {
+    const midS3 = new Date(2026, 7, 22); // Sat in Sprint 3
+    const d = defaultsForNewTest(
+      { id: "VT-FAIL-xyz", title: "Portal Vitest structural" },
+      midS3,
+    );
+    expect(d.sprint).toBe(currentSprintIndex(midS3));
+    expect(d.assignee).toBe("");
+    expect(d.dueDate).toBe(dueDatePlusDays(0, midS3));
   });
 
   it("defaults Kids/Youth new tests to Tina, skips Sprint 0, due = creation + 1", () => {
@@ -46,9 +55,13 @@ describe("gysh-new-test-defaults", () => {
   });
 
   it("does not pin former S0 catalog ids onto Sprint 0 at create", () => {
-    const d = defaultsForNewTest({ id: "EMAIL-001", area: "Email", title: "API health" });
-    expect(d.sprint).toBe(BACKLOG_SPRINT);
-    expect(d.dueDate).toBe("");
+    const midS3 = new Date(2026, 7, 22);
+    const d = defaultsForNewTest(
+      { id: "EMAIL-001", area: "Email", title: "API health" },
+      midS3,
+    );
+    expect(d.sprint).toBe(currentSprintIndex(midS3));
+    expect(d.dueDate).toBe(dueDatePlusDays(0, midS3));
     const kidsMatch = defaultsForNewTest({
       id: "KIDS-001",
       area: "Kids Corner",
@@ -75,5 +88,48 @@ describe("gysh-new-test-defaults", () => {
     expect(sprintForNewKidsYouthTest(midS1)).toBe(1);
     const midS2 = new Date(2026, 6, 30); // Thu in Sprint 2
     expect(sprintForNewKidsYouthTest(midS2)).toBe(2);
+  });
+
+  it("never assigns a new test onto a closed sprint", () => {
+    const now = new Date(2026, 7, 23); // Sun in Sprint 3
+    const closed = [0, 1, 2];
+    const general = defaultsForNewTest(
+      { id: "PROOF-NEW-TINA", title: "Proofread: Privacy Policy", area: "Proofread" },
+      now,
+      closed,
+    );
+    expect(general.sprint).toBe(3);
+    const kids = defaultsForNewTest(
+      { id: "PW-FAIL-kids", title: "Kids Corner regression", area: "Kids Corner" },
+      now,
+      closed,
+    );
+    expect(closed).not.toContain(kids.sprint);
+    expect(kids.sprint).toBeGreaterThanOrEqual(3);
+    expect(closed).not.toContain(sprintForNewKidsYouthTest(now, closed));
+  });
+});
+
+describe("email template review sprint / dues", () => {
+  it("maps EMAIL-TPL cases to the current sprint", () => {
+    const midS3 = new Date(2026, 7, 22);
+    expect(emailTemplateReviewSprint(midS3)).toBe(3);
+    expect(
+      suggestedSprintForTest({
+        id: "EMAIL-TPL-password_reset",
+        area: "Email",
+        priority: "P1",
+      }),
+    ).toBe(currentSprintIndex());
+  });
+
+  it("spreads template review dues half today / half tomorrow", () => {
+    const ref = new Date(2026, 7, 22);
+    const today = dueDatePlusDays(0, ref);
+    const tomorrow = dueDatePlusDays(1, ref);
+    const dues = EMAIL_TEMPLATE_REVIEW_CASES.map((c) => emailTemplateReviewDueDate(c.id, ref));
+    expect(dues.filter((d) => d === today)).toHaveLength(9);
+    expect(dues.filter((d) => d === tomorrow)).toHaveLength(9);
+    expect(dues).not.toContain(dueDateForSprint(3));
   });
 });

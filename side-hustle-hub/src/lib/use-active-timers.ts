@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   fetchActiveTimeEntries,
   type TimeEntry,
@@ -8,20 +8,24 @@ import {
 /** Polls / refreshes the current user's open timers (running + paused). */
 export function useActiveTimers(enabled = true) {
   const [entries, setEntries] = useState<TimeEntry[]>([]);
+  const inflight = useRef(false);
 
   const refresh = useCallback(async () => {
-    if (!enabled) return;
+    if (!enabled || inflight.current) return;
+    inflight.current = true;
     try {
       setEntries(await fetchActiveTimeEntries());
     } catch {
-      /* ignore offline */
+      /* ignore offline / transient D1 */
+    } finally {
+      inflight.current = false;
     }
   }, [enabled]);
 
   useEffect(() => {
     void refresh();
     if (!enabled) return;
-    const id = window.setInterval(() => void refresh(), 15_000);
+    const id = window.setInterval(() => void refresh(), 30_000);
     return () => window.clearInterval(id);
   }, [enabled, refresh]);
 

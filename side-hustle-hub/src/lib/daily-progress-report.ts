@@ -234,6 +234,7 @@ export function assigneeMatchesPeople(
       return parts.includes("Tina") && parts.includes("Evelyn") && parts.length === 2;
     }
     if (person === "Lyriq") return raw === "Lyriq" || assigneeIncludes(raw, "Lyriq");
+    if (person === "Candace") return raw === "Candace" || assigneeIncludes(raw, "Candace");
     // Tina/Evelyn: include task "Both" and composites via assigneeIncludes
     return raw === person || assigneeIncludes(raw, person);
   });
@@ -461,6 +462,7 @@ export function progressPersonFromTimeEntry(
   if (id === "tina") return "Tina";
   if (id === "evelyn") return "Evelyn";
   if (id === "lyriq") return "Lyriq";
+  if (id === "candace") return "Candace";
 
   const hay = `${entry.userName ?? ""} ${entry.userEmail ?? ""}`.toLowerCase();
   if (!hay.trim()) return null;
@@ -476,6 +478,7 @@ export function progressPersonFromTimeEntry(
   }
   if (hay.includes("tina") || hay.includes("barham")) return "Tina";
   if (hay.includes("lyriq") || hay.includes("gaulden")) return "Lyriq";
+  if (hay.includes("candace")) return "Candace";
   return null;
 }
 

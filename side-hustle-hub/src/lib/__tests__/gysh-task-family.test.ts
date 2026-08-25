@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
+  completeFamilyOnExplicitDone,
   isPersonalWorkTask,
   isTaskCountHead,
   orderTasksWithSubtasks,
+  rollupFamilyParents,
   rollupParentFromChildren,
   syncNotesAcrossFamily,
   taskFamilyIds,
 } from "../gysh-task-family";
+import { applyPartnerDone } from "../gysh-tasks";
 import type { GyshTask } from "../gysh-tasks";
 
 function task(over: Partial<GyshTask> & Pick<GyshTask, "id">): GyshTask {
@@ -76,5 +79,16 @@ describe("task family", () => {
     );
     const rolled = rollupParentFromChildren(bothDone, "T-041");
     expect(rolled.find((t) => t.id === "T-041")!.status).toBe("done");
+  });
+
+  it("explicit Done on the parent completes leftover children so it stays Done", () => {
+    const next = completeFamilyOnExplicitDone(family, "T-041", (t) =>
+      applyPartnerDone(t, { status: "done" }),
+    );
+    const rolled = rollupFamilyParents(next, "T-041");
+    expect(rolled.find((t) => t.id === "T-041")!.status).toBe("done");
+    expect(rolled.find((t) => t.id === "T-041T")!.status).toBe("done");
+    expect(rolled.find((t) => t.id === "T-041E")!.status).toBe("done");
+    expect(rolled.find((t) => t.id === "T-042")!.status).toBe("not_started");
   });
 });

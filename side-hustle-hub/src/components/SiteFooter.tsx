@@ -6,10 +6,13 @@ import { FacebookIcon } from "./FacebookIcon";
 export type FooterNavView =
   | "about"
   | "contact"
+  | "privacy"
+  | "beta_nda"
   | "join"
   | "memberships"
   | "login"
-  | "community";
+  | "community"
+  | "newsletter";
 
 type SiteFooterProps = {
   onNavigate: (view: FooterNavView) => void;
@@ -70,8 +73,32 @@ export function SiteFooter({ onNavigate }: SiteFooterProps) {
           <button type="button" className="site-footer-link" onClick={() => onNavigate("community")}>
             Community
           </button>
+          <button
+            type="button"
+            className="site-footer-link"
+            onClick={() => onNavigate("newsletter")}
+            data-testid="footer-newsletter"
+          >
+            Newsletter
+          </button>
           <button type="button" className="site-footer-link" onClick={() => onNavigate("contact")}>
             Contact Us
+          </button>
+          <button
+            type="button"
+            className="site-footer-link"
+            onClick={() => onNavigate("privacy")}
+            data-testid="footer-privacy"
+          >
+            Privacy Policy
+          </button>
+          <button
+            type="button"
+            className="site-footer-link"
+            onClick={() => onNavigate("beta_nda")}
+            data-testid="footer-beta-nda"
+          >
+            Beta Tester NDA
           </button>
           <a
             href={FACEBOOK_URL}
@@ -111,6 +138,28 @@ export function SiteFooter({ onNavigate }: SiteFooterProps) {
         <a href={`mailto:${ADMIN_EMAIL}`} className="site-footer-meta-link">
           {ADMIN_EMAIL}
         </a>
+        <span className="site-footer-dot" aria-hidden>
+          ·
+        </span>
+        <button
+          type="button"
+          className="site-footer-meta-link"
+          onClick={() => onNavigate("privacy")}
+          data-testid="footer-privacy-meta"
+        >
+          Privacy Policy
+        </button>
+        <span className="site-footer-dot" aria-hidden>
+          ·
+        </span>
+        <button
+          type="button"
+          className="site-footer-meta-link"
+          onClick={() => onNavigate("beta_nda")}
+          data-testid="footer-beta-nda-meta"
+        >
+          Beta Tester NDA
+        </button>
         <span className="site-footer-dot" aria-hidden>
           ·
         </span>

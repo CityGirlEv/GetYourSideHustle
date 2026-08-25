@@ -17,6 +17,12 @@ export const MEMBERSHIP_FEATURES: MembershipFeature[] = [
   { id: "free_guides", label: "Free guides library", detail: "Open starter playbooks for every age group." },
   { id: "member_guides", label: "Full member guides", detail: "Unlock gated launch and team guides." },
   { id: "community", label: "GYSH Community access", detail: "Ask questions and share wins in member threads." },
+  {
+    id: "newsletter",
+    label: "Weekly Newsletter",
+    detail:
+      "Friday dual-audience issue — kids glow story + adult hustle tip — in your inbox and on the members-only Newsletter page.",
+  },
   { id: "workshop_discount", label: "Workshop discounts", detail: "Member pricing on live labs and clinics." },
   { id: "workshop_free", label: "Free workshop entry", detail: "Complimentary seats to eligible Glow labs." },
   { id: "training", label: "Group training sessions", detail: "Monthly cohort training with Tina & Evelyn and/or Tina & Evelyn Guest Speakers." },
@@ -84,7 +90,7 @@ export const MEMBERSHIP_TIERS: MembershipTier[] = [
   {
     id: "starter",
     name: "Starter",
-    tagline: "Member guides, community, one 45-minute session, and Kid Credits — 3-month commitment.",
+    tagline: "Member guides, community, weekly newsletter, one 45-minute session, and Kid Credits — 3-month commitment.",
     priceMonthlyUsd: 39,
     priceYearlyUsd: 390,
     priceMonthlyUsdSenior: 34,
@@ -98,6 +104,7 @@ export const MEMBERSHIP_TIERS: MembershipTier[] = [
       "free_guides",
       "member_guides",
       "community",
+      "newsletter",
       "workshop_discount",
       "one_on_one",
       "story_time",
@@ -120,6 +127,7 @@ export const MEMBERSHIP_TIERS: MembershipTier[] = [
       "free_guides",
       "member_guides",
       "community",
+      "newsletter",
       "workshop_discount",
       "workshop_free",
       "training",
@@ -151,6 +159,7 @@ export const MEMBERSHIP_TIERS: MembershipTier[] = [
       "free_guides",
       "member_guides",
       "community",
+      "newsletter",
       "workshop_discount",
       "workshop_free",
       "training",
@@ -212,6 +221,15 @@ export function nextTierId(tierId: TierId): TierId | null {
 /** Paid Starter / Pro / Elite — a subscribed member, not Free. */
 export function isMembershipSubscriber(tierId: TierId | null | undefined): boolean {
   return tierId === "starter" || tierId === "pro" || tierId === "elite";
+}
+
+/** Weekly Newsletter archive + inbox — Starter+ (admins / QA / Dev bypass). */
+export function canAccessNewsletter(
+  tierId: TierId | null | undefined,
+  opts?: { isAdmin?: boolean },
+): boolean {
+  if (opts?.isAdmin) return true;
+  return tierHasFeature((tierId ?? "free") as TierId, "newsletter");
 }
 
 export function tierMemberPerks(tierId: TierId, audience: MemberPerkAudience): TierMemberPerk[] {
@@ -355,6 +373,11 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
         detail: "Ask questions and share wins in member threads.",
       },
       {
+        title: "Weekly Newsletter",
+        detail:
+          "Friday dual-audience issue — kids glow story + adult hustle tip — in your inbox and on the members-only Newsletter page.",
+      },
+      {
         title: "Workshop member pricing",
         detail: "Member discounts on live labs and clinics.",
       },
@@ -375,6 +398,11 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
       {
         title: "Kids Corner team access",
         detail: "Join the Kids GYSH Team for member guides with a parent.",
+      },
+      {
+        title: "Weekly Newsletter",
+        detail:
+          "Friday family issue — kids glow story + a parent coach tip — in your inbox and on the Newsletter page.",
       },
       {
         title: "Training videos for kids",
@@ -403,6 +431,11 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
         detail: "Unlock Teens member guides with parent/guardian OK.",
       },
       {
+        title: "Weekly Newsletter",
+        detail:
+          "Friday teen-founder issue — skill tip + next step — in your inbox and on the Newsletter page.",
+      },
+      {
         title: "Teens training videos",
         detail: "Skill clips on safe earning, pricing, and customer care.",
       },
@@ -427,6 +460,11 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
       {
         title: "Senior Side Hustle team",
         detail: "Early looks at senior-focused guides and workshop nights.",
+      },
+      {
+        title: "Weekly Newsletter",
+        detail:
+          "Friday senior issue — one flexible hustle tip at your pace — in your inbox and on the Newsletter page.",
       },
       {
         title: "Peer learning circle",

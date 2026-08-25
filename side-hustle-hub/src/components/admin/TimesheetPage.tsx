@@ -43,7 +43,7 @@ import {
   type TimeEntryUser,
 } from "../../lib/gysh-time-entries";
 
-const PARTNER_CHIP_ORDER = ["Tina", "Evelyn", "Lyriq"] as const;
+const PARTNER_CHIP_ORDER = ["Tina", "Evelyn", "Lyriq", "Candace"] as const;
 
 type PartnerChip = {
   key: string;
@@ -53,13 +53,13 @@ type PartnerChip = {
 
 function partnerKeyFromIdentity(name: string, email: string, fallbackId: string): string {
   const who = progressPersonFromTimeEntry({ userName: name, userEmail: email });
-  if (who === "Tina" || who === "Evelyn" || who === "Lyriq") return who;
+  if (who === "Tina" || who === "Evelyn" || who === "Lyriq" || who === "Candace") return who;
   return `other:${(email || fallbackId).toLowerCase()}`;
 }
 
 function partnerLabelFromIdentity(name: string, email: string, fallbackId: string): string {
   const who = progressPersonFromTimeEntry({ userName: name, userEmail: email });
-  if (who === "Tina" || who === "Evelyn" || who === "Lyriq") return who;
+  if (who === "Tina" || who === "Evelyn" || who === "Lyriq" || who === "Candace") return who;
   return (name || email || fallbackId).trim() || "Unknown";
 }
 
@@ -104,6 +104,7 @@ function accentForPartner(key: string, index: number): string {
   if (key === "Tina") return "var(--crimson)";
   if (key === "Evelyn") return "var(--bronze)";
   if (key === "Lyriq") return "var(--accent-emerald)";
+  if (key === "Candace") return "#3d6b8c";
   const palette = ["var(--crimson)", "var(--bronze)", "var(--accent-emerald)", "#0e7490", "#7c3aed"];
   return palette[index % palette.length]!;
 }

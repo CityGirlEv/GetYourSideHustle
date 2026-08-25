@@ -3,6 +3,8 @@
  */
 
 import { pathForView, type AppRouteView } from "./app-routes";
+import { adminTabById, type AdminTab } from "./admin-nav";
+import { readAdminDeepLink } from "./admin-deep-links";
 
 /** Short labels used in “Open [Label](href)” steps. */
 export const QA_PAGE_LABELS: Record<AppRouteView, string> = {
@@ -12,6 +14,7 @@ export const QA_PAGE_LABELS: Record<AppRouteView, string> = {
   guides: "Guides",
   checklist: "Side Hustle Checklist",
   community: "Community",
+  newsletter: "Newsletter",
   workshops: "Workshops",
   kids: "Kids & Teens Corner",
   seniors: "Seniors Corner",
@@ -20,6 +23,9 @@ export const QA_PAGE_LABELS: Record<AppRouteView, string> = {
   admin: "Admin Studio",
   about: "About",
   contact: "Contact Us",
+  privacy: "Privacy Policy",
+  beta_nda: "Beta Tester NDA",
+  beta_testing: "Beta Tester Dashboard",
   join: "Join",
   membership_signup: "Membership Sign-up",
 };
@@ -32,6 +38,7 @@ const VIEW_ALIASES: Partial<Record<AppRouteView, string[]>> = {
   guides: ["Guides", "Guides library", "Free Guides"],
   checklist: ["Side Hustle Checklist", "Checklist"],
   community: ["Community", "GYSH Community"],
+  newsletter: ["Newsletter", "Weekly Newsletter", "GYSH Newsletter"],
   workshops: ["Workshops"],
   kids: ["Kids & Teens Corner", "Kids/Teens Corner", "Kids / Teens Corner", "Kids Corner", "Kids & Teens", "Kids/Juniors Corner"],
   seniors: ["Seniors Corner", "Seniors", "Senior Side Hustles"],
@@ -40,6 +47,9 @@ const VIEW_ALIASES: Partial<Record<AppRouteView, string[]>> = {
   admin: ["Admin Studio", "Admin", "GYSH Admin Studio"],
   about: ["About"],
   contact: ["Contact Us", "Contact"],
+  privacy: ["Privacy Policy", "Privacy"],
+  beta_nda: ["Beta Tester NDA", "Beta NDA", "NDA"],
+  beta_testing: ["Beta Tester Dashboard", "Beta Testing"],
   join: ["Join", "Join GYSH", "Membership"],
   membership_signup: ["Membership Sign-up", "Membership Signup", "Sign-up"],
 };
@@ -68,6 +78,22 @@ export function resolveQaPage(path: string | undefined | null): QaPageRef | null
   }
 
   if (raw.startsWith("/")) {
+    // Admin Studio deep links: /admin?tab=email&template=… → Email Templates (or tab label)
+    if (raw === "/admin" || raw.startsWith("/admin?")) {
+      const q = raw.includes("?") ? raw.slice(raw.indexOf("?")) : "";
+      const link = readAdminDeepLink(q);
+      if (link.tab === "email") {
+        const label = link.template
+          ? `Email Templates · ${link.template}`
+          : "Email Templates";
+        return { href: raw, label, view: "admin" };
+      }
+      if (link.tab) {
+        const tabLabel = adminTabById(link.tab)?.label ?? QA_PAGE_LABELS.admin;
+        return { href: raw, label: tabLabel, view: "admin" };
+      }
+      return { href: pathForView("admin"), label: QA_PAGE_LABELS.admin, view: "admin" };
+    }
     for (const [key, label] of Object.entries(QA_PAGE_LABELS) as [AppRouteView, string][]) {
       if (pathForView(key) === raw) {
         return { href: pathForView(key), label, view: key };
@@ -76,8 +102,32 @@ export function resolveQaPage(path: string | undefined | null): QaPageRef | null
     return { href: raw, label: raw === "/" ? "Home" : raw };
   }
 
-  // admin:testing → /admin (tabs are SPA state, not URL deep links)
+  // admin:email[:slug] | admin:testing | admin → deep Admin Studio targets
   if (raw === "admin" || raw.startsWith("admin:") || raw.startsWith("admin/")) {
+    const rest = raw.replace(/^admin[/:]?/i, "").trim();
+    if (!rest) {
+      return { href: pathForView("admin"), label: QA_PAGE_LABELS.admin, view: "admin" };
+    }
+    const [tabRaw, templateRaw] = rest.split(/[/:]/).filter(Boolean);
+    const tab = (tabRaw || "").toLowerCase() as AdminTab;
+    if (tab === "email") {
+      const template = (templateRaw || "").trim();
+      const href = template
+        ? `/admin?tab=email&template=${encodeURIComponent(template)}`
+        : "/admin?tab=email";
+      return {
+        href,
+        label: template ? `Email Templates · ${template}` : "Email Templates",
+        view: "admin",
+      };
+    }
+    if (adminTabById(tab)) {
+      return {
+        href: `/admin?tab=${encodeURIComponent(tab)}`,
+        label: adminTabById(tab)!.label,
+        view: "admin",
+      };
+    }
     return { href: pathForView("admin"), label: QA_PAGE_LABELS.admin, view: "admin" };
   }
 
@@ -152,6 +202,31 @@ export function withPageLinkInFirstStep<T extends { steps: string[]; path?: stri
 
 const MD_LINK_RE = /\[([^\]]+)\]\(([^)\s]+)\)/g;
 
+/**
+ * True for off-site / non-app targets that should open in a new tab.
+ * Same-origin app paths must stay in this tab — GYSH auth is sessionStorage-scoped
+ * per tab, so target=_blank looks like a logout (/admin → login).
+ */
+export function isExternalHref(
+  href: string,
+  pageOrigin: string = typeof window !== "undefined" ? window.location.origin : "",
+): boolean {
+  const raw = String(href || "").trim();
+  if (!raw) return false;
+  if (/^https?:\/\//i.test(raw)) {
+    try {
+      const u = new URL(raw);
+      if (!pageOrigin) return true;
+      return u.origin !== pageOrigin;
+    } catch {
+      return true;
+    }
+  }
+  // mailto:, tel:, javascript:, etc.
+  if (/^[a-z][a-z0-9+.-]*:/i.test(raw)) return true;
+  return false;
+}
+
 /** Split text into plain runs and markdown links for React rendering. */
 export function parseMarkdownLinks(
   text: string,
@@ -195,6 +270,13 @@ export function pageRefForTask(task: {
   if (id.startsWith("T-LG-") || notes.includes("guide-review:") || /^Review Launch Guide:/i.test(desc)) {
     return resolveQaPage("guides");
   }
+  if (
+    id.startsWith("T-MEM-") ||
+    notes.includes("membership-tier-review:") ||
+    /^Review Membership level:/i.test(desc)
+  ) {
+    return resolveQaPage("join");
+  }
   if (category === "kids_corner" || /\bkids\b.*\b(corner|page)\b/i.test(desc)) {
     return resolveQaPage("kids");
   }
@@ -213,6 +295,12 @@ export function pageRefForTask(task: {
   if (/\babout\b.*\bpage\b/i.test(desc)) {
     return resolveQaPage("about");
   }
+  if (/\bprivacy policy\b/i.test(desc) || /\bprivacy\b.*\bpage\b/i.test(desc)) {
+    return resolveQaPage("privacy");
+  }
+  if (/\bbeta tester nda\b/i.test(desc) || /\bnda\b.*\bpage\b/i.test(desc)) {
+    return resolveQaPage("beta_nda");
+  }
   if (/\b(home|homepage|landing)\b/i.test(desc) && /\b(page|review|verbiage)\b/i.test(desc)) {
     return resolveQaPage("dashboard");
   }
@@ -227,6 +315,9 @@ export function pageRefForTask(task: {
   }
   if (/\bcommunity\b.*\bpage\b/i.test(desc)) {
     return resolveQaPage("community");
+  }
+  if (/\bnewsletter\b/i.test(desc)) {
+    return resolveQaPage("newsletter");
   }
   if (/\b(admin studio|testing portal|task list|schedule)\b/i.test(desc)) {
     return resolveQaPage("admin");

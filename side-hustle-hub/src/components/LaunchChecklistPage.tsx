@@ -15,6 +15,7 @@ import {
 } from "../lib/launch-guide-peeks";
 import { fetchMemberProgress, saveMemberProgress } from "../lib/gysh-member-progress";
 import { ApiError } from "../lib/api";
+import { MembershipLockBadge } from "./MembershipLockBadge";
 
 type LaunchChecklistPageProps = {
   isLoggedIn: boolean;
@@ -110,9 +111,16 @@ export function LaunchChecklistPage({
                 : `Showing ${CHECKLIST_PREVIEW_COUNT} of ${LAUNCH_CHECKLIST_ITEMS.length} steps.`}
             </p>
           </div>
-          <span className={`glow-badge ${unlocked ? "emerald" : "pink"}`} style={{ fontSize: "0.9375rem" }}>
-            {unlocked ? "Members" : "Locked"}
-          </span>
+          <div className="free-guide-card-badges">
+            <span className={`glow-badge ${unlocked ? "emerald" : "free"}`} style={{ fontSize: "0.9375rem" }}>
+              {unlocked ? "Members" : "Free Membership"}
+            </span>
+            <MembershipLockBadge
+              minTier="free"
+              unlocked={unlocked}
+              data-testid="launch-checklist-lock-badge"
+            />
+          </div>
         </div>
 
         <ul className="launch-checklist-list">

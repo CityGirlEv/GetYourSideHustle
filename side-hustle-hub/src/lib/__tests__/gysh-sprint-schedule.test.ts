@@ -7,7 +7,12 @@ import {
   suggestedSprintForTask,
   suggestedSprintForTest,
 } from "../gysh-sprint-board";
-import { BACKLOG_SPRINT, buildDefaultPlanItems, dueDateForSprint } from "../gysh-sprints";
+import {
+  BACKLOG_SPRINT,
+  buildDefaultPlanItems,
+  currentSprintIndex,
+  dueDateForSprint,
+} from "../gysh-sprints";
 import { WIZARD_SCENARIO_CASES } from "../gysh-wizard-scenarios";
 
 describe("sprint schedule assignments", () => {
@@ -56,6 +61,9 @@ describe("sprint schedule assignments", () => {
     // Launch-prep product band → Sprint 1
     expect(suggestedSprintForTest({ id: "EMAIL-001", area: "Email", priority: "P0" })).toBe(1);
     expect(suggestedSprintForTest({ id: "EMAIL-005", area: "Email", priority: "P0" })).toBe(1);
+    expect(
+      suggestedSprintForTest({ id: "EMAIL-TPL-welcome_free", area: "Email", priority: "P1" }),
+    ).toBeGreaterThanOrEqual(3);
     expect(suggestedSprintForTest({ id: "BRAND-001", area: "Brand", priority: "P2" })).toBe(1);
     expect(suggestedSprintForTest({ id: "ABOUT-001", area: "About", priority: "P2" })).toBe(1);
     // Kids Corner product → Sprint 2
@@ -81,6 +89,25 @@ describe("sprint schedule assignments", () => {
     expect(suggestedSprintForTest({ id: "ADMIN-002", area: "Admin", priority: "P1" })).toBe(3);
     expect(suggestedSprintForTest({ id: "KIDS-002", area: "Kids Corner", priority: "P1" })).toBe(2);
     expect(suggestedSprintForTest({ id: "VT-WIZARD-001", area: "Vitest", priority: "P0" })).toBe(4);
+    // Schedule Suite QA → Sprint 3
+    expect(suggestedSprintForTest({ id: "SCHED-STATUS-001", area: "Membership", priority: "P1" })).toBe(3);
+    expect(suggestedSprintForTest({ id: "SCHED-PNL-001", area: "Membership", priority: "P1" })).toBe(3);
+    expect(suggestedSprintForTest({ id: "SCHED-PNL-001-EVELYN", area: "Membership", priority: "P1" })).toBe(3);
+    expect(suggestedSprintForTest({ id: "VT-BETA-NDA-001", area: "Vitest", priority: "P0" })).toBe(
+      currentSprintIndex(),
+    );
+    expect(suggestedSprintForTest({ id: "PW-BETA-NDA-001", area: "Playwright", priority: "P0" })).toBe(
+      currentSprintIndex(),
+    );
+    expect(suggestedSprintForTest({ id: "LEGAL-DISC-001", area: "Legal", priority: "P1" })).toBe(
+      currentSprintIndex(),
+    );
+    expect(suggestedSprintForTest({ id: "LEGAL-NDA-001", area: "Legal", priority: "P1" })).toBe(
+      currentSprintIndex(),
+    );
+    expect(suggestedSprintForTest({ id: "LEGAL-SIGNUP-001", area: "Registration", priority: "P0" })).toBe(
+      currentSprintIndex(),
+    );
   });
 
   it("commitPlanSprintPlan force moves workshops and upserts soft-launch milestones", () => {
@@ -344,6 +371,21 @@ describe("sprint schedule assignments", () => {
     expect(sprints[kids.id]).toBe(2);
     expect(dueDates[kids.id]).toBe(dueDateForSprint(2));
     expect(changedIds).toEqual([kids.id]);
+  });
+
+  it("commitTestSprintPlan places unstored tests on the current open sprint", () => {
+    const now = new Date(2026, 7, 23);
+    const proof = { id: "PROOF-016-TINA", area: "Proofread", priority: "P2" as const };
+    const { sprints } = commitTestSprintPlan(
+      [proof],
+      {},
+      {},
+      "preserve",
+      {},
+      { closedSprints: [0, 1, 2], ref: now },
+    );
+    expect(sprints[proof.id]).toBe(currentSprintIndex(now));
+    expect(sprints[proof.id]).not.toBe(1);
   });
 
   it("commitTestSprintPlan preserve keeps Sprint 1+ manual placements", () => {

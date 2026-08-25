@@ -3,8 +3,10 @@
 import { api } from "./api";
 import {
   SOFT_LAUNCH_ROLLOUT,
+  draftBelongsToSoftLaunchItem,
   rolloutItemToDraftFields,
   type SoftLaunchItem,
+  type SoftLaunchItemCompletion,
 } from "./gysh-soft-launch-rollout";
 
 export type ContentAssetType =
@@ -61,6 +63,24 @@ export type ContentBatch = {
   createdAt: string;
   draftIds: string[];
 };
+
+/** When task+test are done, advance matching seeded drafts to published. */
+export function draftsMarkedPublishedForDoneItems(
+  drafts: ContentDraft[],
+  completionByItemId: Map<string, SoftLaunchItemCompletion>,
+): { drafts: ContentDraft[]; changed: boolean } {
+  let changed = false;
+  const next = drafts.map((d) => {
+    const item = SOFT_LAUNCH_ROLLOUT.find((i) => draftBelongsToSoftLaunchItem(d.id, i.id));
+    if (!item) return d;
+    const c = completionByItemId.get(item.id);
+    if (!c?.itemDone) return d;
+    if (d.status === "published" || d.status === "rejected") return d;
+    changed = true;
+    return { ...d, status: "published" as const };
+  });
+  return { drafts: next, changed };
+}
 
 export async function fetchContentState(): Promise<{ batches: ContentBatch[]; drafts: ContentDraft[] }> {
   const data = await api<{ batches: ContentBatch[]; drafts: ContentDraft[] }>("content");

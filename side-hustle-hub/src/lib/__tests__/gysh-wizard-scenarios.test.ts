@@ -16,21 +16,25 @@ import { isAutomatedTestId } from "../gysh-automated-tests";
 describe("gysh-test-plan", () => {
   const manualCases = TEST_CASES.filter((t) => (t.suite ?? "manual") === "manual");
 
-  it("assigns every manual case to T / E / Lyriq, or leaves Unassigned (empty)", () => {
+  it("assigns every manual case to Tina, Evelyn, Lyriq, or Candace, or leaves Unassigned (empty)", () => {
     for (const t of manualCases) {
       for (const a of t.assignees) {
-        expect(["tina", "evelyn", "lyriq"]).toContain(a);
+        expect(["tina", "evelyn", "lyriq", "candace"]).toContain(a);
       }
     }
   });
 
-  it("keeps proofread cases as Tina/Lyriq pairs in Sprint 1", async () => {
+  it("keeps launch proofread cases as Tina/Lyriq pairs in Sprint 1", async () => {
     const { suggestedSprintForTest } = await import("../gysh-sprint-board");
-    const { proofreadLogicalId } = await import("../gysh-proofread-cases");
+    const { isPrivacyPolicyProofreadCase, proofreadLogicalId } = await import(
+      "../gysh-proofread-cases"
+    );
     const proof = TEST_CASES.filter((t) => t.id.startsWith("PROOF-"));
-    expect(proof.length).toBeGreaterThan(20);
-    expect(proof.length % 2).toBe(0);
-    for (const t of proof) {
+    const launch = proof.filter((t) => !isPrivacyPolicyProofreadCase(t));
+    const privacy = proof.filter((t) => isPrivacyPolicyProofreadCase(t));
+    expect(launch.length).toBeGreaterThan(20);
+    expect(launch.length % 2).toBe(0);
+    for (const t of launch) {
       expect(t.id).toMatch(/^PROOF-\d{3}-(TINA|LYRIQ)$/);
       expect(t.assignees).toHaveLength(1);
       expect(["tina", "lyriq"]).toContain(t.assignees[0]);
@@ -38,8 +42,13 @@ describe("gysh-test-plan", () => {
       expect(suggestedSprintForTest(t)).toBe(1);
       expect(facingForCase(t)).toBe("external");
     }
-    const logical = new Set(proof.map((t) => proofreadLogicalId(t.id)));
-    expect(logical.size).toBe(proof.length / 2);
+    const logical = new Set(launch.map((t) => proofreadLogicalId(t.id)));
+    expect(logical.size).toBe(launch.length / 2);
+    expect(privacy.map((t) => t.assignees[0]).sort()).toEqual(["candace", "evelyn", "tina"]);
+    for (const t of privacy) {
+      expect(suggestedSprintForTest(t)).toBe(3);
+      expect(facingForCase(t)).toBe("external");
+    }
   });
 
   it("splits manual cases across all three testers", () => {

@@ -1,12 +1,30 @@
 /**
  * Testing Portal evidence: MIME/magic-byte allowlist + light malware heuristics.
- * Allowed: images, PDF, Word (.doc/.docx), Excel (.xls/.xlsx).
- * Max ~1.5MB decoded so base64 fits D1’s ~2MB string limit (avoids SQLITE_TOOBIG).
+ * Allowed: images, short video (mp4/webm/mov), PDF, Word (.doc/.docx), Excel (.xls/.xlsx).
+ * Images/docs up to 8MB; videos up to 20MB (chunked across D1 rows).
  */
 
-export const TEST_EVIDENCE_MAX_BYTES = 1_500_000;
+import {
+  VIDEO_ATTACHMENT_MAX_BYTES,
+  attachmentMaxMbLabel,
+  maxBytesForAttachment,
+} from "./attachment-limits";
 
-const ALLOWED_EXT = /\.(png|jpe?g|gif|webp|pdf|doc|docx|xls|xlsx)$/i;
+/** @deprecated Prefer {@link maxBytesForAttachment} — kept for callers expecting a single ceiling. */
+export const TEST_EVIDENCE_MAX_BYTES = VIDEO_ATTACHMENT_MAX_BYTES;
+
+const ALLOWED_EXT = /\.(png|jpe?g|gif|webp|mp4|webm|mov|pdf|doc|docx|xls|xlsx)$/i;
+
+function looksLikeIsoBmff(bytes: Uint8Array): boolean {
+  // ....ftyp at offset 4
+  return (
+    bytes.length >= 8 &&
+    bytes[4] === 0x66 &&
+    bytes[5] === 0x74 &&
+    bytes[6] === 0x79 &&
+    bytes[7] === 0x70
+  );
+}
 
 export type EvidenceScanResult =
   | { ok: true; mime: string; scanStatus: "clean"; scanDetail: string }
@@ -56,7 +74,8 @@ export function scanTestEvidence(input: {
   if (!name || !ALLOWED_EXT.test(name)) {
     return {
       ok: false,
-      error: "Only image, PDF, Word (.doc/.docx), or Excel (.xls/.xlsx) files are allowed.",
+      error:
+        "Only image, video (mp4/webm/mov), PDF, Word (.doc/.docx), or Excel (.xls/.xlsx) files are allowed.",
       scanStatus: "rejected",
       scanDetail: "extension_blocked",
     };
@@ -71,23 +90,25 @@ export function scanTestEvidence(input: {
       scanDetail: "decode_failed",
     };
   }
-  if (bytes.length > TEST_EVIDENCE_MAX_BYTES) {
+  if (bytes.length > maxBytesForAttachment(name, declared)) {
+    const maxBytes = maxBytesForAttachment(name, declared);
     return {
       ok: false,
-      error: `File too large (max ${Math.round(TEST_EVIDENCE_MAX_BYTES / 1_000_000)}MB decoded). Compress the image or attach a smaller PDF — D1 cannot store bigger blobs.`,
+      error: `File too large (max ${attachmentMaxMbLabel(maxBytes)}MB decoded). Compress the image/video or attach a smaller file.`,
       scanStatus: "rejected",
       scanDetail: "too_large",
     };
   }
-  // Base64 expands ~4/3; keep encoded payload under D1’s ~2MB string ceiling.
+  // Encoded size is stored via D1 chunking when needed (see attachment-limits.ts).
   const encodedLen = String(input.contentBase64 || "")
     .replace(/^data:[^;]+;base64,/, "")
     .replace(/\s+/g, "").length;
-  if (encodedLen > 1_900_000) {
+  const maxBytes = maxBytesForAttachment(name, declared);
+  const maxEncoded = Math.ceil((maxBytes * 4) / 3) + 64;
+  if (encodedLen > maxEncoded) {
     return {
       ok: false,
-      error:
-        "Attachment is too large for the database after encoding. Compress the file under ~1.5MB and try again.",
+      error: `Attachment is too large for the database after encoding. Compress the file under ~${attachmentMaxMbLabel(maxBytes)}MB and try again.`,
       scanStatus: "rejected",
       scanDetail: "too_large_encoded",
     };
@@ -116,6 +137,21 @@ export function scanTestEvidence(input: {
       return { ok: false, error: "WEBP signature mismatch.", scanStatus: "rejected", scanDetail: "bad_webp" };
     }
     mime = "image/webp";
+  } else if (/\.mp4$/i.test(lower)) {
+    if (!looksLikeIsoBmff(bytes)) {
+      return { ok: false, error: "MP4 signature mismatch.", scanStatus: "rejected", scanDetail: "bad_mp4" };
+    }
+    mime = "video/mp4";
+  } else if (/\.mov$/i.test(lower)) {
+    if (!looksLikeIsoBmff(bytes)) {
+      return { ok: false, error: "MOV signature mismatch.", scanStatus: "rejected", scanDetail: "bad_mov" };
+    }
+    mime = "video/quicktime";
+  } else if (/\.webm$/i.test(lower)) {
+    if (!bytesStartWith(bytes, [0x1a, 0x45, 0xdf, 0xa3])) {
+      return { ok: false, error: "WEBM signature mismatch.", scanStatus: "rejected", scanDetail: "bad_webm" };
+    }
+    mime = "video/webm";
   } else if (/\.pdf$/i.test(lower)) {
     if (!bytesStartWith(bytes, [0x25, 0x50, 0x44, 0x46])) {
       return { ok: false, error: "PDF signature mismatch.", scanStatus: "rejected", scanDetail: "bad_pdf" };

@@ -4,6 +4,33 @@
  * Dates aligned to sprint windows (Tue–Mon) from gysh-sprints.
  */
 
+import { adminMarkdownLink } from "./admin-deep-links";
+import { currentSprintIndex } from "./gysh-sprints";
+
+/** Soft-launch calendar covers Sprints 2–5 in Content Factory. */
+export const SOFT_LAUNCH_FACTORY_SPRINTS = [2, 3, 4, 5] as const;
+
+/**
+ * Default Sprint filter for Content Factory — live sprint,
+ * clamped to the soft-launch calendar range (2–5).
+ */
+export function softLaunchFactoryDefaultSprint(ref: Date = new Date()): number {
+  const cur = currentSprintIndex(ref);
+  if (cur < 2) return 2;
+  if (cur > 5) return 5;
+  return cur;
+}
+
+/**
+ * Default multi-select Sprint filters: current + next (both clamped to 2–5).
+ * When already on Sprint 5, returns only [5].
+ */
+export function softLaunchFactoryDefaultSprints(ref: Date = new Date()): number[] {
+  const cur = softLaunchFactoryDefaultSprint(ref);
+  const next = Math.min(5, cur + 1);
+  return next === cur ? [cur] : [cur, next];
+}
+
 /** How Content Factory works + glossary for the Marketing/Launch Plan report. */
 export const CONTENT_FACTORY_HOWTO = {
   title: "How the Content Factory works",
@@ -14,12 +41,28 @@ export const CONTENT_FACTORY_HOWTO = {
     "Filter by sprint and channel to see this week’s calendar.",
     "For each item: use the copy, Hedra starting-image + video prompts (when listed), website actions, and artifact checklist.",
     "Publish on the named channel at the suggested time (America/Chicago).",
+    "Follow the Personal amplify growth cadence (S3→S5): Tina and Evelyn each have their own Task on scheduled post days — filter Content Factory by Personal amplify.",
     "Save finished asset links (Drive / upload paths) back into the related task notes when available.",
     "Use Content Factory → Workshops to edit public workshop titles, dates, and registration.",
   ],
 };
 
 export const MARKETING_PLAN_DEFINITIONS: { term: string; definition: string }[] = [
+  {
+    term: "Copy",
+    definition:
+      "The words you publish — Facebook caption, YouTube description, newsletter body, etc. Not a private note.",
+  },
+  {
+    term: "Image prompt",
+    definition:
+      "Instructions for AI/image tools (or a designer) to create the still graphic for this item. Not the place for partner comments.",
+  },
+  {
+    term: "Working notes",
+    definition:
+      "Private partner notes on the calendar item — decisions, blockers, links, reminders. Works with or without uploaded images.",
+  },
   {
     term: "GYSH Marketing/Launch Plan",
     definition:
@@ -28,7 +71,7 @@ export const MARKETING_PLAN_DEFINITIONS: { term: string; definition: string }[] 
   {
     term: "Cadence",
     definition:
-      "The repeating weekly marketing rhythm — who posts where and when (e.g. Tina on GYSH FB + Kevina Starr; Evelyn on YouTube / TikTok / Instagram / ads / site).",
+      "The repeating weekly marketing rhythm — who posts where and when (e.g. Tina on GYSH FB + Kevina Starr; Evelyn on YouTube / TikTok / Instagram / ads / site; both amplify to personal Facebook the same day).",
   },
   {
     term: "Cadence locked",
@@ -48,7 +91,12 @@ export const MARKETING_PLAN_DEFINITIONS: { term: string; definition: string }[] 
   {
     term: "Channel",
     definition:
-      "Where the item goes live: Facebook (GYSH or Kevina Starr), YouTube, TikTok, Instagram, website, newsletter, or paid ads.",
+      "Where the item goes live: Facebook (GYSH or Kevina Starr), YouTube, TikTok, Instagram, website, newsletter, paid ads, or Personal amplify (Tina & Evelyn personal accounts).",
+  },
+  {
+    term: "Personal amplify",
+    definition:
+      "Tina and Evelyn each share selected brand posts from GYSH / Kevina Starr (and later IG/TikTok/YT) to their personal Facebook timelines — and other personal networks when the cadence lists them. Not a second brand Page post: a personal reshare with a short authentic caption + getyoursidehustle.com. Growth cadence (~3–4 nights/week, prefer 6–9 PM CT) is PERSONAL_AMPLIFY_CADENCE in Content Factory — not every brand post.",
   },
   {
     term: "Projections",
@@ -70,9 +118,40 @@ export type RolloutChannel =
   | "instagram_gysh"
   | "website"
   | "newsletter"
-  | "ads";
+  | "ads"
+  /** Tina + Evelyn personal accounts (esp. Facebook) — amplify brand posts. */
+  | "personal_amplify";
 
 export type RolloutOwner = "Tina" | "Evelyn" | "Both";
+
+/**
+ * Content Factory calendar item status — same values as Task List.
+ * Persisted via D1 soft-launch overrides.
+ */
+export type SoftLaunchItemStatus = "not_started" | "in_progress" | "blocked" | "done";
+
+export const SOFT_LAUNCH_ITEM_STATUSES: SoftLaunchItemStatus[] = [
+  "not_started",
+  "in_progress",
+  "blocked",
+  "done",
+];
+
+export const SOFT_LAUNCH_ITEM_STATUS_LABELS: Record<SoftLaunchItemStatus, string> = {
+  not_started: "Not Started",
+  in_progress: "In Progress",
+  blocked: "Blocked",
+  done: "Done",
+};
+
+/** Task List–matching card class so CF items tint the same as task-card--status. */
+export function contentFactoryItemStatusClass(status: SoftLaunchItemStatus | string): string {
+  const key = isSoftLaunchItemStatus(status) ? status : "not_started";
+  return `content-factory__item--${key}`;
+}
+
+/** @deprecated Use SoftLaunchItemStatus */
+export type SoftLaunchCfStatus = SoftLaunchItemStatus;
 
 export type SoftLaunchItem = {
   id: string;
@@ -106,6 +185,11 @@ export type SoftLaunchItem = {
   artifacts: string[];
   websiteActions?: string[];
   notes?: string;
+  /**
+   * Explicit Content Factory status (D1 override).
+   * Same set as Task List. When omitted, status is derived from linked task/tests.
+   */
+  status?: SoftLaunchItemStatus;
 };
 
 export type SprintProjection = {
@@ -116,6 +200,11 @@ export type SprintProjection = {
   expectedOutcomes: string[];
   metrics: { label: string; low: string; high: string }[];
   revenue: { label: string; lowUsd: number; highUsd: number; note: string }[];
+  /**
+   * When set, this projection is the same record as that Content Factory calendar item
+   * (shown on the item — not as a separate summary card).
+   */
+  opsItemId?: string;
 };
 
 export const ROLLOUT_CHANNEL_LABELS: Record<RolloutChannel, string> = {
@@ -127,7 +216,96 @@ export const ROLLOUT_CHANNEL_LABELS: Record<RolloutChannel, string> = {
   website: "Website",
   newsletter: "Newsletter",
   ads: "Paid Ads",
+  personal_amplify: "Personal amplify",
 };
+
+/** How / when each partner shares brand posts from their personal accounts. */
+export const PERSONAL_AMPLIFY_PLAYBOOK = `PERSONAL AMPLIFY — your own Task (Tina or Evelyn)
+
+CADENCE (growth schedule — do not amplify every brand post)
+• Goal: followers + site visits without personal-feed fatigue. Cap ≈ 3–4 personal shares / week.
+• Always same calendar day as the named brand posts (within ~2 hours). Prefer 6–9 PM CT.
+• Facebook personal timeline is primary. Add IG Story / TikTok / YT→FB only when those brand posts shipped that day (see SAME-DAY TARGETS).
+• Sprint map: S3 foundation (3 days) → S4 new-platform push (4 days) → S5 UGC + montage (3 days). Filter Content Factory by Personal amplify.
+
+WHEN (America/Chicago)
+• Same calendar day as the brand post on GYSH FB, Kevina Starr FB, or (later) IG / TikTok / YouTube.
+• Target window: within ~2 hours of the brand post. Prefer 6–9 PM CT for personal Facebook reach.
+• If you miss the window: share next morning before 10 AM CT and note it on the Task.
+
+HOW — Facebook (primary)
+1. Open the live GYSH or Kevina Starr Page post (do not create a competing original).
+2. Share → your personal timeline (or Story if the post is visual-first).
+3. Add 1–3 authentic lines in your own voice (why this helps families / your age lane). Do not paste the full brand caption.
+4. Keep the link: getyoursidehustle.com (append ?utm_source=personal_fb&utm_medium=social&utm_campaign=soft_launch when easy).
+5. Optional: tag Get Your Side Hustle Page; do not mass-tag friends.
+6. Optional: one relevant Facebook Group only if group rules allow + you are an active member — never spam.
+
+HOW — other platforms (when the brand post exists that day)
+• Instagram: reshare GYSH Reel/post to your Story with Start free sticker / link in bio reminder.
+• TikTok: Duet/Stitch or Story share only if comfortable; otherwise skip.
+• YouTube: like + comment + share Short to Facebook personal (counts as amplify).
+
+DONE means
+• You shared from your personal account (this Task is yours alone — mark Done when you finish).
+• Screenshot or URL of your personal share pasted into Task notes.
+• Brand post already live before personal share.`;
+
+/** Stable order for Content Factory channel filter bubbles. */
+export const ROLLOUT_CHANNELS: RolloutChannel[] = [
+  "facebook_gysh",
+  "facebook_kevina",
+  "personal_amplify",
+  "youtube_gysh",
+  "instagram_gysh",
+  "tiktok_gysh",
+  "website",
+  "newsletter",
+  "ads",
+];
+
+/** Stable order for Content Factory assignee filter bubbles. */
+export const ROLLOUT_OWNERS: RolloutOwner[] = ["Tina", "Evelyn", "Both"];
+
+/** Counts of calendar items per channel (optionally scoped to a sprint). */
+export function rolloutChannelCounts(sprint?: number): Record<RolloutChannel | "all", number> {
+  const items = sprint == null ? SOFT_LAUNCH_ROLLOUT : rolloutItemsForSprint(sprint);
+  const counts = Object.fromEntries(ROLLOUT_CHANNELS.map((c) => [c, 0])) as Record<
+    RolloutChannel | "all",
+    number
+  >;
+  counts.all = items.length;
+  for (const item of items) {
+    counts[item.channel] = (counts[item.channel] ?? 0) + 1;
+  }
+  return counts;
+}
+
+/** Counts of calendar items per assignee (owner) within a given item list. */
+export function rolloutOwnerCounts(
+  items: SoftLaunchItem[],
+): Record<RolloutOwner | "all", number> {
+  const counts = Object.fromEntries(ROLLOUT_OWNERS.map((o) => [o, 0])) as Record<
+    RolloutOwner | "all",
+    number
+  >;
+  counts.all = items.length;
+  for (const item of items) {
+    counts[item.owner] = (counts[item.owner] ?? 0) + 1;
+  }
+  return counts;
+}
+
+/** Empty set / "all" = every owner; otherwise keep items whose owner is selected. */
+export function filterSoftLaunchByOwner(
+  items: SoftLaunchItem[],
+  owners: ReadonlySet<RolloutOwner> | readonly RolloutOwner[] | "all",
+): SoftLaunchItem[] {
+  if (owners === "all") return items;
+  const set = owners instanceof Set ? owners : new Set(owners);
+  if (set.size === 0) return items;
+  return items.filter((i) => set.has(i.owner));
+}
 
 const BRAND_IMAGE =
   "Soft Ivory background (#F7F1E3), Antique Gold (#947D64) accents, Crimson (#9B2F28) CTA. Warm luxury, family-friendly, no clutter. Include GetYourSideHustle.com. No stock-photo watermarks.";
@@ -145,6 +323,213 @@ export function softLaunchTaskId(itemId: string): string {
   return `T-${itemId.toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
 }
 
+/** Content Factory cross-ref number (CF-001 …) from calendar order. */
+export function softLaunchItemNumber(itemId: string): number {
+  const want = String(itemId || "").trim();
+  if (!want) return 0;
+  const idx = SOFT_LAUNCH_ROLLOUT.findIndex((i) => i.id === want);
+  return idx >= 0 ? idx + 1 : 0;
+}
+
+/** Display / deep-link ref like CF-009. */
+export function softLaunchItemRef(itemId: string): string {
+  const n = softLaunchItemNumber(itemId);
+  return n > 0 ? `CF-${String(n).padStart(3, "0")}` : "";
+}
+
+/** Parse CF-009 → SoftLaunchItem (also accepts slug ids via softLaunchItemById). */
+export function softLaunchItemFromRef(ref: string): SoftLaunchItem | undefined {
+  const raw = String(ref || "").trim();
+  const m = /^CF-(\d{1,4})$/i.exec(raw);
+  if (!m) return undefined;
+  const n = Number(m[1]);
+  if (!Number.isFinite(n) || n < 1) return undefined;
+  return SOFT_LAUNCH_ROLLOUT[n - 1];
+}
+
+/** Task List id + Testing Portal case ids for a Content Factory calendar item. */
+export function softLaunchCrossLinks(item: Pick<SoftLaunchItem, "id" | "relatedTestIds">): {
+  taskId: string;
+  testIds: string[];
+  /** Content Factory number, e.g. CF-009. */
+  itemRef: string;
+} {
+  return {
+    taskId: softLaunchTaskId(item.id),
+    testIds: (item.relatedTestIds ?? []).map((id) => String(id).trim()).filter(Boolean),
+    itemRef: softLaunchItemRef(item.id),
+  };
+}
+
+/**
+ * Optional live overlay (D1 overrides) applied on top of the code catalog.
+ * Registered by soft-launch-item-overrides when Admin surfaces load patches.
+ */
+let softLaunchItemOverlay: ((item: SoftLaunchItem) => SoftLaunchItem) | null = null;
+
+export function registerSoftLaunchItemOverlay(
+  fn: ((item: SoftLaunchItem) => SoftLaunchItem) | null,
+): void {
+  softLaunchItemOverlay = fn;
+}
+
+function resolveSoftLaunchItem(item: SoftLaunchItem): SoftLaunchItem {
+  return softLaunchItemOverlay ? softLaunchItemOverlay(item) : item;
+}
+
+/** Catalog items with any live D1 overrides applied. */
+export function softLaunchRolloutItems(): SoftLaunchItem[] {
+  return SOFT_LAUNCH_ROLLOUT.map(resolveSoftLaunchItem);
+}
+
+export function softLaunchItemById(itemId: string): SoftLaunchItem | undefined {
+  const want = String(itemId || "").trim();
+  if (!want) return undefined;
+  const byRef = softLaunchItemFromRef(want);
+  if (byRef) return resolveSoftLaunchItem(byRef);
+  const base = SOFT_LAUNCH_ROLLOUT.find((i) => i.id === want);
+  return base ? resolveSoftLaunchItem(base) : undefined;
+}
+
+/** Reverse-map Task List id (T-SL-…) → Content Factory calendar item. */
+export function softLaunchItemFromTaskId(taskId: string): SoftLaunchItem | undefined {
+  const want = String(taskId || "").trim().toUpperCase();
+  if (!want) return undefined;
+  const base = SOFT_LAUNCH_ROLLOUT.find((i) => softLaunchTaskId(i.id) === want);
+  return base ? resolveSoftLaunchItem(base) : undefined;
+}
+
+/** Reverse-map Testing Portal case id (VIDEO-…) → Content Factory calendar item. */
+export function softLaunchItemFromTestId(testId: string): SoftLaunchItem | undefined {
+  const want = String(testId || "").trim().toUpperCase();
+  if (!want) return undefined;
+  const wantLogical = want.replace(/-(TINA|EVELYN|LYRIQ)$/i, "");
+  return softLaunchRolloutItems().find((i) =>
+    (i.relatedTestIds ?? []).some((t) => {
+      const tid = String(t).trim().toUpperCase();
+      const logical = tid.replace(/-(TINA|EVELYN|LYRIQ)$/i, "");
+      return tid === want || logical === wantLogical || logical === want || tid === wantLogical;
+    }),
+  );
+}
+
+/** Projection folded into a Content Factory calendar item (same record). */
+export function softLaunchProjectionForItem(itemId: string): SprintProjection | undefined {
+  const want = String(itemId || "").trim();
+  if (!want) return undefined;
+  return SOFT_LAUNCH_PROJECTIONS.find((p) => p.opsItemId === want);
+}
+
+/** Standalone projection cards (not already represented by a calendar ops item). */
+export function softLaunchStandaloneProjections(sprint?: number | "all"): SprintProjection[] {
+  return SOFT_LAUNCH_PROJECTIONS.filter((p) => {
+    if (p.opsItemId) return false;
+    if (sprint == null || sprint === "all") return true;
+    return p.sprint === sprint;
+  });
+}
+
+export type SoftLaunchItemCompletion = {
+  taskId: string;
+  testIds: string[];
+  /** Raw Task List status (`not_started` when unknown / missing). */
+  taskStatus: string;
+  /** Raw Testing Portal status per linked test id (`not_run` when unknown / missing). */
+  testStatusById: Record<string, string>;
+  /** Task List row is status `done`. */
+  taskDone: boolean;
+  /** Every linked test is `pass` (vacuously true when no tests). */
+  testsDone: boolean;
+  testDoneById: Record<string, boolean>;
+  /** Linked task+tests imply done (before CF status override). */
+  linkedDone: boolean;
+  /** True when status came from an explicit CF override (not auto-derived). */
+  statusIsExplicit: boolean;
+  /** Effective CF item status (explicit override or derived from links). */
+  itemStatus: SoftLaunchItemStatus;
+  /** Content Factory item is done when effective status is `done`. */
+  itemDone: boolean;
+};
+
+function isSoftLaunchItemStatus(value: unknown): value is SoftLaunchItemStatus {
+  return (
+    value === "not_started" ||
+    value === "in_progress" ||
+    value === "blocked" ||
+    value === "done"
+  );
+}
+
+/** Auto status when the CF item has no explicit D1 status override. */
+export function deriveSoftLaunchItemStatus(opts: {
+  taskStatus: string;
+  taskDone: boolean;
+  testsDone: boolean;
+}): SoftLaunchItemStatus {
+  if (opts.taskDone && opts.testsDone) return "done";
+  if (opts.taskStatus === "blocked") return "blocked";
+  if (opts.taskStatus === "in_progress" || opts.taskStatus === "done") return "in_progress";
+  return "not_started";
+}
+
+/**
+ * Derive Content Factory calendar completion from Task List + Testing Portal,
+ * with optional explicit CF status (same values as Task List).
+ */
+export function softLaunchItemCompletion(
+  item: Pick<SoftLaunchItem, "id" | "relatedTestIds" | "status">,
+  opts: {
+    taskStatusById?: Record<string, string | undefined>;
+    testStatusById?: Record<string, string | undefined>;
+    /** Explicit CF status; wins over item.status / auto. */
+    status?: SoftLaunchItemStatus | null;
+  } = {},
+): SoftLaunchItemCompletion {
+  const links = softLaunchCrossLinks(item);
+  const taskStatus = String(opts.taskStatusById?.[links.taskId] || "not_started").trim() || "not_started";
+  const taskDone = taskStatus === "done";
+  const testStatusById: Record<string, string> = {};
+  const testDoneById: Record<string, boolean> = {};
+  for (const id of links.testIds) {
+    const st = String(opts.testStatusById?.[id] || "not_run").trim() || "not_run";
+    testStatusById[id] = st;
+    testDoneById[id] = st === "pass";
+  }
+  const testsDone =
+    links.testIds.length === 0 || links.testIds.every((id) => testDoneById[id] === true);
+  const linkedDone = taskDone && testsDone;
+  const explicit =
+    opts.status !== undefined && opts.status !== null
+      ? opts.status
+      : isSoftLaunchItemStatus(item.status)
+        ? item.status
+        : null;
+  const itemStatus =
+    explicit ??
+    deriveSoftLaunchItemStatus({ taskStatus, taskDone, testsDone });
+  return {
+    taskId: links.taskId,
+    testIds: links.testIds,
+    taskStatus,
+    testStatusById,
+    taskDone,
+    testsDone,
+    testDoneById,
+    linkedDone,
+    statusIsExplicit: explicit != null,
+    itemStatus,
+    itemDone: itemStatus === "done",
+  };
+}
+
+/** True when a seeded draft id belongs to a soft-launch calendar item. */
+export function draftBelongsToSoftLaunchItem(draftId: string, itemId: string): boolean {
+  const id = String(draftId || "");
+  const item = String(itemId || "");
+  if (!id || !item) return false;
+  return id.includes(`D-SL-${item}-`) || id.includes(`-${item}-`);
+}
+
 /** True when this calendar item is expected to ship a video creative. */
 export function softLaunchItemRequiresVideo(item: SoftLaunchItem): boolean {
   return Boolean(item.hedraVideoPrompt || item.videoPrompt);
@@ -153,6 +538,209 @@ export function softLaunchItemRequiresVideo(item: SoftLaunchItem): boolean {
 /** All soft-launch items that require video creatives (Hedra path). */
 export function softLaunchVideoItems(): SoftLaunchItem[] {
   return SOFT_LAUNCH_ROLLOUT.filter(softLaunchItemRequiresVideo);
+}
+
+/**
+ * Soft-launch personal amplify posting schedule (one Task per owner per day).
+ * Tuned for growth: evening CT, high-value brand days only, platform mix when new channels launch.
+ */
+export const PERSONAL_AMPLIFY_CADENCE = [
+  {
+    sprint: 3 as const,
+    day: "2026-08-18",
+    idBase: "sl-s3-personal-amplify-why",
+    title: "Personal amplify — Why GYSH (+ Welcome catch-up)",
+    postTime: "7:00 PM CT",
+    amplifyTargets:
+      "Platforms today: Facebook (personal timeline)\n" +
+      "• GYSH FB — Why we built GYSH (sl-s3-fb-why-gysh)\n" +
+      "• Catch-up if needed: Soft Launch Welcome (sl-s2-fb-welcome)\n" +
+      "Why tonight: origin story + soft-launch kickoff — best early-follower magnet.",
+  },
+  {
+    sprint: 3 as const,
+    day: "2026-08-20",
+    idBase: "sl-s3-personal-amplify-guides",
+    title: "Personal amplify — Free Guides + first YouTube Short",
+    postTime: "7:00 PM CT",
+    amplifyTargets:
+      "Platforms today: Facebook personal + YouTube Short → personal FB\n" +
+      "• GYSH FB — Free Guides (sl-s3-fb-free-guides)\n" +
+      "• YouTube — first Short (sl-s3-yt-first-short): like/comment + share Short to personal Facebook\n" +
+      "Why tonight: value post + video — dual format lifts reach.",
+  },
+  {
+    sprint: 3 as const,
+    day: "2026-08-24",
+    idBase: "sl-s3-personal-amplify-wrap",
+    title: "Personal amplify — Soft launch week wrap",
+    postTime: "6:00 PM CT",
+    amplifyTargets:
+      "Platforms today: Facebook personal\n" +
+      "• GYSH FB — Soft launch week wrap (sl-s3-fb-week-wrap)\n" +
+      "• Best Kevina Starr post from this week (sl-s3-kevina-1 / 2 / 3) if not yet shared\n" +
+      "Why tonight: week close + ask engagement; seeds Sprint 4 habit.",
+  },
+  {
+    sprint: 4 as const,
+    day: "2026-08-25",
+    idBase: "sl-s4-personal-amplify-ig-tt",
+    title: "Personal amplify — IG grid + TikTok launch day",
+    postTime: "7:00 PM CT",
+    amplifyTargets:
+      "Platforms today: Facebook personal + Instagram Story + TikTok (optional)\n" +
+      "• Instagram — Grid launch 3 posts (sl-s4-ig-launch) → Story reshare + link-in-bio nudge\n" +
+      "• TikTok — First video Pick Your Path (sl-s4-tiktok-1) → share/Duet if comfortable, else skip\n" +
+      "• Also share one GYSH FB or Kevina link on personal Facebook pointing people to IG/TikTok\n" +
+      "Why tonight: new-channel launch day — personal graphs seed first followers on IG/TT.",
+  },
+  {
+    sprint: 4 as const,
+    day: "2026-08-26",
+    idBase: "sl-s4-personal-amplify-kevina",
+    title: "Personal amplify — Kevina Tuesday bridge",
+    postTime: "7:30 PM CT",
+    amplifyTargets:
+      "Platforms today: Facebook personal\n" +
+      "• Kevina Starr FB cadence (sl-s4-kevina-cadence)\n" +
+      "Why tonight: Kids-path trust voice → parents in personal network.",
+  },
+  {
+    sprint: 4 as const,
+    day: "2026-08-28",
+    idBase: "sl-s4-personal-amplify-fb",
+    title: "Personal amplify — Mid-sprint GYSH FB tip",
+    postTime: "7:00 PM CT",
+    amplifyTargets:
+      "Platforms today: Facebook personal\n" +
+      "• GYSH FB mid-sprint cadence (sl-s4-fb-cadence)\n" +
+      "Why tonight: mid-week consistency — algorithm rewards steady personal shares.",
+  },
+  {
+    sprint: 4 as const,
+    day: "2026-08-30",
+    idBase: "sl-s4-personal-amplify-yt2",
+    title: "Personal amplify — YouTube Short #2",
+    postTime: "6:00 PM CT",
+    amplifyTargets:
+      "Platforms today: Facebook personal + Instagram Story (if Reel cross-posted)\n" +
+      "• YouTube Short #2 Free Blueprint in 60s (sl-s4-yt-short-2) → share to personal Facebook\n" +
+      "• Optional: IG Story if the Short was also posted as a Reel\n" +
+      "Why tonight: weekend video share — high watch + subscribe path.",
+  },
+  {
+    sprint: 5 as const,
+    day: "2026-09-02",
+    idBase: "sl-s5-personal-amplify-kevina",
+    title: "Personal amplify — Kevina bridge posts",
+    postTime: "7:30 PM CT",
+    amplifyTargets:
+      "Platforms today: Facebook personal\n" +
+      "• Kevina Starr — story + GYSH bridge (sl-s5-kevina-cadence)\n" +
+      "Why tonight: trust bridge into Kids Corner for personal network parents.",
+  },
+  {
+    sprint: 5 as const,
+    day: "2026-09-04",
+    idBase: "sl-s5-personal-amplify-ugc",
+    title: "Personal amplify — UGC ask",
+    postTime: "7:00 PM CT",
+    amplifyTargets:
+      "Platforms today: Facebook personal\n" +
+      "• GYSH FB — UGC ask: share your Blueprint win (sl-s5-fb-ugc-ask)\n" +
+      "• Add a personal line inviting friends to comment their age path\n" +
+      "Why tonight: UGC posts need personal graph comments to take off.",
+  },
+  {
+    sprint: 5 as const,
+    day: "2026-09-05",
+    idBase: "sl-s5-personal-amplify-montage",
+    title: "Personal amplify — Soft-launch montage",
+    postTime: "7:00 PM CT",
+    amplifyTargets:
+      "Platforms today: Facebook personal + Instagram Story + TikTok (optional)\n" +
+      "• IG + TikTok + YT best-of montage (sl-s5-multi-channel-repost)\n" +
+      "• Personal FB: share the strongest cut + link to getyoursidehustle.com\n" +
+      "• IG Story reshare; TikTok only if comfortable\n" +
+      "Why tonight: highlight reel — best single day for follower conversion across platforms.",
+  },
+] as const;
+
+const PERSONAL_AMPLIFY_ARTIFACTS_FOR = (owner: "Tina" | "Evelyn") => [
+  "Brand post(s) live before your personal share",
+  `${owner}: personal Facebook share (timeline or Story) + 1–3 authentic lines + getyoursidehustle.com`,
+  "Optional same day: IG Story / TikTok / YouTube Short → personal FB if those brand posts shipped",
+  "Paste personal share URL or screenshot into your Task notes",
+  "Mark this Task Done when you have shared (partner has their own Task)",
+];
+
+/** Calendar row: one partner’s personal amplify for a brand-post day. */
+export function personalAmplifyItem(p: {
+  id: string;
+  sprint: 2 | 3 | 4 | 5;
+  day: string;
+  title: string;
+  owner: "Tina" | "Evelyn";
+  /** What brand posts to share today (GYSH FB / Kevina / IG / etc.). */
+  amplifyTargets: string;
+  postTime?: string;
+}): SoftLaunchItem {
+  return {
+    id: p.id,
+    sprint: p.sprint,
+    day: p.day,
+    channel: "personal_amplify",
+    title: p.title,
+    owner: p.owner,
+    postTime: p.postTime ?? "Within ~2h of brand post · prefer 6–9 PM CT",
+    copy: `SAME-DAY TARGETS\n${p.amplifyTargets}\n\n${PERSONAL_AMPLIFY_PLAYBOOK}`,
+    artifacts: PERSONAL_AMPLIFY_ARTIFACTS_FOR(p.owner),
+    notes:
+      "Required content-delivery step: personal amplify on the growth cadence day (not every brand post). Facebook first. Each partner has their own Task.",
+  };
+}
+
+/** Tina + Evelyn Tasks for one amplify calendar day. */
+export function personalAmplifyPair(p: {
+  idBase: string;
+  sprint: 2 | 3 | 4 | 5;
+  day: string;
+  title: string;
+  amplifyTargets: string;
+  postTime?: string;
+}): SoftLaunchItem[] {
+  return (["Tina", "Evelyn"] as const).map((owner) =>
+    personalAmplifyItem({
+      id: `${p.idBase}-${owner.toLowerCase()}`,
+      sprint: p.sprint,
+      day: p.day,
+      owner,
+      title: `${p.title} (${owner})`,
+      amplifyTargets: p.amplifyTargets,
+      postTime: p.postTime,
+    }),
+  );
+}
+
+/** Expand a PERSONAL_AMPLIFY_CADENCE row into Tina + Evelyn calendar items. */
+export function personalAmplifyFromCadence(
+  idBase: (typeof PERSONAL_AMPLIFY_CADENCE)[number]["idBase"],
+): SoftLaunchItem[] {
+  const row = PERSONAL_AMPLIFY_CADENCE.find((r) => r.idBase === idBase);
+  if (!row) throw new Error(`Unknown personal amplify cadence id: ${idBase}`);
+  return personalAmplifyPair({
+    idBase: row.idBase,
+    sprint: row.sprint,
+    day: row.day,
+    title: row.title,
+    amplifyTargets: row.amplifyTargets,
+    postTime: row.postTime,
+  });
+}
+
+/** All Personal amplify calendar items from the growth cadence. */
+export function personalAmplifyCadenceItems(): SoftLaunchItem[] {
+  return PERSONAL_AMPLIFY_CADENCE.flatMap((row) => personalAmplifyFromCadence(row.idBase));
 }
 
 /** Soft-launch marketing calendar — Sprint 3 kickoff through Sprint 5. */
@@ -203,6 +791,25 @@ Drop a ✨ if you're building with family — or going solo. We're here either w
     title: "Create GYSH YouTube channel + About",
     owner: "Evelyn",
     postTime: "Afternoon CT",
+    copy: `CHANNEL NAME
+Get Your Side Hustle (GYSH)
+
+ABOUT (paste into YouTube → Customize channel → About)
+Get Your Side Hustle helps Kids, Teens, Adults, and Seniors find a side hustle that fits their life — without the overwhelm.
+
+Take the free Match Wizard → unlock your Side Hustle Blueprint → open Launch Guides built for your age path.
+
+We are Tina & Evelyn. One platform. Four generations. Start free at getyoursidehustle.com
+
+Keywords: side hustle, kids entrepreneurship, teens earn money, adult side hustle, senior side hustle, family business, Match Wizard, Side Hustle Blueprint
+
+LINKS
+Website: https://getyoursidehustle.com
+Facebook: Get Your Side Hustle Page
+
+OPTIONAL TRAILER (if you upload the Hedra trailer)
+Title: Welcome to Get Your Side Hustle
+Description: Side hustles for Kids · Teens · Adults · Seniors. Free Match Wizard + Blueprint → https://getyoursidehustle.com`,
     videoPrompt:
       "Optional 20–30s channel trailer / Community welcome: logo open → four age chips → URL end card. Can ship later with first Short if needed.",
     hedraStartImagePrompt: `${HEDRA_START} 1920×1080 YouTube-safe frame. Soft Ivory studio backdrop, centered GYSH wordmark "Get Your Side Hustle", four Antique Gold pills underneath labeled Kids / Teens / Adults / Seniors, crimson underline, getyoursidehustle.com bottom-center. Plenty of margin for 2560×1440 channel art crop.`,
@@ -221,14 +828,59 @@ Drop a ✨ if you're building with family — or going solo. We're here either w
     notes: "May launch empty with Community post; first short can land Sprint 3. Hedra prompts ready when you make the trailer.",
   },
 
-  /* ───────────── Sprint 3 — Polish + daily cadence (Aug 4–10) ───────────── */
+  /* ───────────── Sprint 3 — Polish + daily cadence (Aug 18–24) ───────────── */
+  {
+    id: "sl-s3-polish-cadence",
+    sprint: 3,
+    day: "2026-08-18",
+    channel: "website",
+    title: "Sprint 3 — Polish + cadence",
+    owner: "Both",
+    postTime: "Anytime",
+    copy: `Sprint 3 Marketing/Launch Plan — polish + daily cadence (8/18–8/24).
+
+Theme: Welcome the world: FB + YT live, daily organic, Kevina bridge, newsletter #1, channels created.
+
+This is the week umbrella (projections + checklist). Each calendar row below is a shippable piece with its own Task + (when listed) Test.`,
+    websiteActions: [
+      "Open Content Factory → GYSH Marketing/Launch Plan · Sprint 3 filter",
+      "Walk every Sprint 3 CF item; owners clear blockers daily",
+      "Green the website soft-launch checklist before week wrap",
+    ],
+    artifacts: [
+      "GYSH Facebook welcome + ≥5 organic posts shipped or scheduled",
+      "Kevina Starr Page: 3 soft CTAs into Kids Corner",
+      "Tina + Evelyn personal amplify on the growth cadence (3 days in Sprint 3 — filter Personal amplify)",
+      "YouTube channel + first Short live (or staged with VIDEO QA)",
+      "TikTok + Instagram accounts created (ready to post Sprint 4)",
+      "Newsletter #1 sent (even to a small list)",
+      "Website soft-launch checklist green",
+      "Ads brief ready — no required spend yet",
+      "All Sprint 3 CF items have Task statuses current",
+    ],
+    notes:
+      "Sprint 3 — Polish + cadence (combined projection + calendar item). Linked Task tracks week health; other CF rows keep their own tasks/tests.",
+  },
   {
     id: "sl-s3-channels-tiktok",
     sprint: 3,
-    day: "2026-08-04",
+    day: "2026-08-18",
     channel: "tiktok_gysh",
     title: "Create GYSH TikTok account",
     owner: "Evelyn",
+    copy: `HANDLE
+@getyoursidehustle (or approved alternate)
+
+BIO (paste into TikTok profile)
+Side hustles for Kids · Teens · Adults · Seniors
+Free Match Wizard → your Blueprint
+Start free ↓
+
+LINK IN BIO
+https://getyoursidehustle.com
+
+OPTIONAL FIRST PIN / COMMUNITY NOTE (if you post a welcome before Sprint 4)
+We’re live. One platform. Four generations. Free Match Wizard + Side Hustle Blueprint → getyoursidehustle.com`,
     artifacts: [
       "TikTok @getyoursidehustle (or approved handle)",
       "Bio + link in bio (Linktree or direct site)",
@@ -240,10 +892,29 @@ Drop a ✨ if you're building with family — or going solo. We're here either w
   {
     id: "sl-s3-channels-ig",
     sprint: 3,
-    day: "2026-08-04",
+    day: "2026-08-18",
     channel: "instagram_gysh",
     title: "Create GYSH Instagram account",
     owner: "Evelyn",
+    copy: `HANDLE
+@getyoursidehustle
+
+NAME
+Get Your Side Hustle
+
+BIO (paste into Instagram)
+Kids · Teens · Adults · Seniors
+Free Match Wizard → Side Hustle Blueprint
+Start free ↓ link in bio
+
+CATEGORY
+Education / Entrepreneur (or closest Business category)
+
+LINK
+https://getyoursidehustle.com
+
+OPTIONAL FIRST STORY / PINNED POST (channel warm-up)
+Welcome to GYSH — side hustles that fit your life, your age, your pace. Match Wizard is free. getyoursidehustle.com`,
     artifacts: [
       "IG Business/Creator @getyoursidehustle",
       "Bio, category, link, contact",
@@ -255,7 +926,7 @@ Drop a ✨ if you're building with family — or going solo. We're here either w
   {
     id: "sl-s3-web-soft-launch",
     sprint: 3,
-    day: "2026-08-04",
+    day: "2026-08-18",
     channel: "website",
     title: "Website soft-launch checklist",
     owner: "Evelyn",
@@ -276,7 +947,7 @@ Drop a ✨ if you're building with family — or going solo. We're here either w
   {
     id: "sl-s3-fb-why-gysh",
     sprint: 3,
-    day: "2026-08-04",
+    day: "2026-08-18",
     channel: "facebook_gysh",
     title: "FB — Why we built GYSH (founders story)",
     owner: "Tina",
@@ -296,10 +967,11 @@ Soft launch is live. Come take the free Match Wizard → getyoursidehustle.com`,
     imagePrompt: `${BRAND_IMAGE} Dual portrait placeholders for Tina & Evelyn (tasteful silhouettes OK). Headline: "Built by a partnership." Sub: "Four generations. One adventure."`,
     artifacts: ["Approved founders photo or brand graphic", "Post + first-comment with URL", "Engage first 10 comments same day"],
   },
+  ...personalAmplifyFromCadence("sl-s3-personal-amplify-why"),
   {
     id: "sl-s3-kevina-1",
     sprint: 3,
-    day: "2026-08-05",
+    day: "2026-08-19",
     channel: "facebook_kevina",
     title: "Kevina Starr FB — Soft invite to Kids Corner",
     owner: "Tina",
@@ -319,7 +991,7 @@ getyoursidehustle.com → Kids
   {
     id: "sl-s3-fb-match-wizard",
     sprint: 3,
-    day: "2026-08-05",
+    day: "2026-08-19",
     channel: "facebook_gysh",
     title: "FB — Match Wizard walkthrough CTA",
     owner: "Evelyn",
@@ -347,7 +1019,7 @@ Start here → getyoursidehustle.com`,
   {
     id: "sl-s3-yt-first-short",
     sprint: 3,
-    day: "2026-08-06",
+    day: "2026-08-20",
     channel: "youtube_gysh",
     title: "YouTube — First Short: What is GYSH?",
     owner: "Both",
@@ -359,22 +1031,24 @@ Tags: side hustle, family business, kids entrepreneurship, teens earn money, sen
     videoPrompt:
       "YouTube Short 9:16, 25–35s. Hook text on screen: “Side hustles for every age?” Quick montage Home → Pick Your Path → Wizard → Blueprint tease. End card: Start free · getyoursidehustle.com. Warm brand colors.",
     hedraStartImagePrompt: `${HEDRA_START} 1080×1920 (9:16). Bold hook text upper third, perfectly sharp: "Side hustles for every age?" Soft Ivory field with four vertical age lanes (Kids / Teens / Adults / Seniors) in Antique Gold frames, tiny friendly icons only (no messy faces). Mid: crimson "Start free" pill. Lower third clear space for motion. Footer: getyoursidehustle.com.`,
-    hedraVideoPrompt: `${HEDRA_MOTION} YouTube Short 9:16, 25–35s. Beat 1 (0–3s): hook text snaps in, soft gold glow. Beat 2 (3–12s): camera drifts across Kids→Teens→Adults→Seniors lanes; each lane brightens briefly. Beat 3 (12–22s): transition to Match Wizard card + Blueprint scroll tease (readable, not gibberish). Beat 4 (22–35s): end card hold — Start free · getyoursidehustle.com, subtle zoom stop. High clarity captions; no face morphing.`,
-    relatedTestIds: ["VIDEO-003"],
+    hedraVideoPrompt: `${HEDRA_MOTION} YouTube Short 9:16, 25–35s. Hook text on screen (0–3s): "Side hustles for every age?" with soft gold glow. Quick montage: Home hero → Pick Your Path age lanes → Match Wizard question card → Blueprint summary tease (readable UI, no gibberish). End card hold 1.5–2s: Start free · getyoursidehustle.com. Warm brand colors (Soft Ivory / Antique Gold / Crimson). High clarity captions; no face morphing.`,
+    relatedTestIds: ["VIDEO-003-EVELYN", "VIDEO-003-TINA"],
     artifacts: [
+      "[Task T-SL-S3-YT-FIRST-SHORT](/admin?tab=tasks&task=T-SL-S3-YT-FIRST-SHORT) (Task List — same id as Content Factory calendar item sl-s3-yt-first-short)",
+      "[Test VIDEO-003-EVELYN](/admin?tab=testing&test=VIDEO-003-EVELYN) / [VIDEO-003-TINA](/admin?tab=testing&test=VIDEO-003-TINA) (Testing Portal — Hedra QA for this Short)",
       "Hedra start image from hedraStartImagePrompt",
-      "Hedra video from hedraVideoPrompt (export 9:16)",
+      "Hedra video from hedraVideoPrompt (export 9:16) — montage Home → Pick Your Path → Wizard → Blueprint; end card Start free · getyoursidehustle.com",
       "Uploaded Short on GYSH YouTube",
       "Thumbnail (brand frame — can use start image crop)",
       "End screen + cards pointing to site",
       "Share Short URL to GYSH FB same day",
-      "QA with VIDEO-003 (attach Short URL + export)",
+      "Mark [Task T-SL-S3-YT-FIRST-SHORT](/admin?tab=tasks&task=T-SL-S3-YT-FIRST-SHORT) ready/done and attach Short URL + export on VIDEO-003-EVELYN / VIDEO-003-TINA",
     ],
   },
   {
     id: "sl-s3-fb-free-guides",
     sprint: 3,
-    day: "2026-08-06",
+    day: "2026-08-20",
     channel: "facebook_gysh",
     title: "FB — Free Guides library",
     owner: "Tina",
@@ -389,10 +1063,11 @@ Filter Free on the Guides page, then join when you're ready for member libraries
     imagePrompt: `${BRAND_IMAGE} Stack of guide covers / book icons in gold + ivory. Badge: "Free guides".`,
     artifacts: ["Confirm Guides Free filter on prod", "Post + first comment with deep link"],
   },
+  ...personalAmplifyFromCadence("sl-s3-personal-amplify-guides"),
   {
     id: "sl-s3-newsletter-1",
     sprint: 3,
-    day: "2026-08-07",
+    day: "2026-08-21",
     channel: "newsletter",
     title: "Newsletter #1 — Soft launch welcome",
     owner: "Both",
@@ -426,7 +1101,7 @@ Start → https://getyoursidehustle.com
   {
     id: "sl-s3-kevina-2",
     sprint: 3,
-    day: "2026-08-07",
+    day: "2026-08-21",
     channel: "facebook_kevina",
     title: "Kevina Starr FB — Kindness + first earn",
     owner: "Tina",
@@ -444,7 +1119,7 @@ getyoursidehustle.com`,
   {
     id: "sl-s3-fb-seniors",
     sprint: 3,
-    day: "2026-08-08",
+    day: "2026-08-22",
     channel: "facebook_gysh",
     title: "FB — Seniors path (pace that fits)",
     owner: "Evelyn",
@@ -460,7 +1135,7 @@ Explore Seniors → getyoursidehustle.com`,
   {
     id: "sl-s3-web-seo-snippets",
     sprint: 3,
-    day: "2026-08-08",
+    day: "2026-08-22",
     channel: "website",
     title: "Website — SEO snippets for soft launch pages",
     owner: "Evelyn",
@@ -474,7 +1149,7 @@ Explore Seniors → getyoursidehustle.com`,
   {
     id: "sl-s3-fb-teens",
     sprint: 3,
-    day: "2026-08-09",
+    day: "2026-08-23",
     channel: "facebook_gysh",
     title: "FB — Teens: real skills, real practice",
     owner: "Tina",
@@ -490,7 +1165,7 @@ Teens path → getyoursidehustle.com`,
   {
     id: "sl-s3-kevina-3",
     sprint: 3,
-    day: "2026-08-09",
+    day: "2026-08-23",
     channel: "facebook_kevina",
     title: "Kevina Starr FB — Weekend family Match night",
     owner: "Tina",
@@ -508,7 +1183,7 @@ getyoursidehustle.com`,
   {
     id: "sl-s3-fb-week-wrap",
     sprint: 3,
-    day: "2026-08-10",
+    day: "2026-08-24",
     channel: "facebook_gysh",
     title: "FB — Soft launch week wrap + ask",
     owner: "Both",
@@ -527,10 +1202,11 @@ Keep exploring → getyoursidehustle.com`,
     imagePrompt: `${BRAND_IMAGE} Poll-style graphic with A–D chips in gold/crimson.`,
     artifacts: ["Post", "Tally replies into Agenda / Content Factory note"],
   },
+  ...personalAmplifyFromCadence("sl-s3-personal-amplify-wrap"),
   {
     id: "sl-s3-ads-brief",
     sprint: 3,
-    day: "2026-08-10",
+    day: "2026-08-24",
     channel: "ads",
     title: "Ads — Sprint 4 test brief (prepare, don’t spend yet)",
     owner: "Evelyn",
@@ -545,11 +1221,11 @@ Keep exploring → getyoursidehustle.com`,
     notes: "No spend until Sprint 4 go/no-go with Tina.",
   },
 
-  /* ───────────── Sprint 4 — Growth + first ads (Aug 11–17) ───────────── */
+  /* ───────────── Sprint 4 — Growth + first ads (Aug 25–31) ───────────── */
   {
     id: "sl-s4-ig-launch",
     sprint: 4,
-    day: "2026-08-11",
+    day: "2026-08-25",
     channel: "instagram_gysh",
     title: "IG — Grid launch (3 posts)",
     owner: "Tina",
@@ -564,7 +1240,7 @@ Captions mirror FB; use #GetYourSideHustle #SideHustle #FamilyBusiness`,
   {
     id: "sl-s4-tiktok-1",
     sprint: 4,
-    day: "2026-08-11",
+    day: "2026-08-25",
     channel: "tiktok_gysh",
     title: "TikTok — First video: Pick Your Path",
     owner: "Evelyn",
@@ -583,10 +1259,11 @@ Captions mirror FB; use #GetYourSideHustle #SideHustle #FamilyBusiness`,
       "QA with VIDEO-004",
     ],
   },
+  ...personalAmplifyFromCadence("sl-s4-personal-amplify-ig-tt"),
   {
     id: "sl-s4-ads-live",
     sprint: 4,
-    day: "2026-08-12",
+    day: "2026-08-26",
     channel: "ads",
     title: "Ads — Meta traffic test week 1",
     owner: "Evelyn",
@@ -598,14 +1275,14 @@ Landing: getyoursidehustle.com?utm_source=meta&utm_medium=paid&utm_campaign=s4_s
     artifacts: [
       "Campaign live ($5–15/day)",
       "Daily check: spend, CTR, CPC, landing clicks",
-      "Kill/scale note by Fri Aug 15",
+      "Kill/scale note by Fri Aug 29",
       "Screenshot report for Agenda",
     ],
   },
   {
     id: "sl-s4-newsletter-2",
     sprint: 4,
-    day: "2026-08-13",
+    day: "2026-08-27",
     channel: "newsletter",
     title: "Newsletter #2 — One hustle, 30 days",
     owner: "Both",
@@ -626,7 +1303,7 @@ Need a nudge? Reply to this email — we read them.
   {
     id: "sl-s4-kevina-cadence",
     sprint: 4,
-    day: "2026-08-12",
+    day: "2026-08-26",
     channel: "facebook_kevina",
     title: "Kevina Starr — 2 posts this sprint (Tue + Sat)",
     owner: "Tina",
@@ -636,10 +1313,11 @@ Sat: Family Match Wizard night reminder`,
     imagePrompt: `${BRAND_IMAGE} Two kid-safe story stills / kindness cards.`,
     artifacts: ["Tue post", "Sat post", "GYSH Page shares one of them"],
   },
+  ...personalAmplifyFromCadence("sl-s4-personal-amplify-kevina"),
   {
     id: "sl-s4-fb-cadence",
     sprint: 4,
-    day: "2026-08-14",
+    day: "2026-08-28",
     channel: "facebook_gysh",
     title: "FB — Mid-sprint value post (adult tip)",
     owner: "Evelyn",
@@ -656,10 +1334,11 @@ getyoursidehustle.com`,
     imagePrompt: `${BRAND_IMAGE} Simple 3-step diagram: Match → Blueprint → Guide.`,
     artifacts: ["Post", "Boost top organic if ads paused"],
   },
+  ...personalAmplifyFromCadence("sl-s4-personal-amplify-fb"),
   {
     id: "sl-s4-web-blog-or-update",
     sprint: 4,
-    day: "2026-08-15",
+    day: "2026-08-29",
     channel: "website",
     title: "Website — Soft launch update block / About polish",
     owner: "Evelyn",
@@ -673,10 +1352,19 @@ getyoursidehustle.com`,
   {
     id: "sl-s4-yt-short-2",
     sprint: 4,
-    day: "2026-08-16",
+    day: "2026-08-30",
     channel: "youtube_gysh",
     title: "YouTube Short — Free Blueprint in 60s",
     owner: "Evelyn",
+    copy: `Title: Free Side Hustle Blueprint in 60 Seconds
+Description: Watch the GYSH path: pick your age → answer a few questions → unlock your free Side Hustle Blueprint.
+
+Kids · Teens · Adults · Seniors — one platform, four generations.
+
+Start free → https://getyoursidehustle.com
+
+#Shorts #SideHustle #Blueprint #KidsEntrepreneurship #TeensEarnMoney
+Tags: side hustle, free blueprint, match wizard, kids entrepreneurship, teens make money, adult side hustle, senior side hustle, get your side hustle`,
     imagePrompt: `${BRAND_IMAGE} 9:16 storyboard still: Home → age pick → Wizard → Unlock Blueprint, with caption bar "Free Blueprint in 60s".`,
     videoPrompt:
       "Screen + Hedra hybrid Short: click path Home → age → wizard tease → unlock CTA. Captions burned in. ≤60s.",
@@ -690,10 +1378,11 @@ getyoursidehustle.com`,
       "QA with VIDEO-005",
     ],
   },
+  ...personalAmplifyFromCadence("sl-s4-personal-amplify-yt2"),
   {
     id: "sl-s4-ads-retro",
     sprint: 4,
-    day: "2026-08-17",
+    day: "2026-08-31",
     channel: "ads",
     title: "Ads — Week 1 retro + Sprint 5 decision",
     owner: "Both",
@@ -704,25 +1393,26 @@ getyoursidehustle.com`,
     ],
   },
 
-  /* ───────────── Sprint 5 — Scale & systems (Aug 18–24) ───────────── */
+  /* ───────────── Sprint 5 — Scale & systems (Sep 1–7) ───────────── */
   {
     id: "sl-s5-cadence-system",
     sprint: 5,
-    day: "2026-08-18",
+    day: "2026-09-01",
     channel: "website",
     title: "Lock weekly Content Factory cadence (ops)",
     owner: "Both",
     artifacts: [
       "Standing: Tina = Kevina + GYSH FB voice; Evelyn = YT/TikTok/ads/tech",
+      "Standing: follow PERSONAL_AMPLIFY_CADENCE (Tina + Evelyn each Task) — Personal amplify filter in Content Factory",
       "Weekly batch generate every Tuesday in Content Factory",
-      "Shared calendar invites for post times",
+      "Shared calendar invites for brand post times + amplify windows (prefer 6–9 PM CT)",
     ],
-    notes: "Turns soft launch into a machine.",
+    notes: "Turns soft launch into a machine — brand post + personal amplify growth cadence across Sprints 3–5.",
   },
   {
     id: "sl-s5-newsletter-3",
     sprint: 5,
-    day: "2026-08-20",
+    day: "2026-09-03",
     channel: "newsletter",
     title: "Newsletter #3 — Workshops teaser + guides",
     owner: "Both",
@@ -738,7 +1428,7 @@ getyoursidehustle.com`,
   {
     id: "sl-s5-ads-iterate",
     sprint: 5,
-    day: "2026-08-19",
+    day: "2026-09-02",
     channel: "ads",
     title: "Ads — Iterate winners or pause",
     owner: "Evelyn",
@@ -751,18 +1441,35 @@ getyoursidehustle.com`,
   {
     id: "sl-s5-kevina-cadence",
     sprint: 5,
-    day: "2026-08-19",
+    day: "2026-09-02",
     channel: "facebook_kevina",
     title: "Kevina Starr — 2 posts (story + GYSH bridge)",
     owner: "Tina",
     postTime: "6:30 PM CT",
-    copy: `Keep bridging story → Kids Corner without hard sell. Soft CTA every post.`,
+    copy: `POST 1 — STORY (Kevina Starr Page)
+A quiet win from Kids Corner this week: a child who finished one small step and felt proud.
+
+That’s the pace I trust — curiosity first, pressure never.
+
+If you’re coaching a kid ages 4–12, Kids Corner on Get Your Side Hustle meets you there.
+
+getyoursidehustle.com (Kids path)
+
+POST 2 — GYSH BRIDGE (same day or next evening)
+When a family asks “where do we start?” I point them to the free Match Wizard — then Kids Corner Launch Guides.
+
+No hard sell. Just a clear next step.
+
+Start free → getyoursidehustle.com
+
+(Optional: cross-share Post 2 to GYSH Facebook with one warm line from Tina.)`,
     artifacts: ["2 posts", "One cross-share on GYSH"],
   },
+  ...personalAmplifyFromCadence("sl-s5-personal-amplify-kevina"),
   {
     id: "sl-s5-fb-ugc-ask",
     sprint: 5,
-    day: "2026-08-21",
+    day: "2026-09-04",
     channel: "facebook_gysh",
     title: "FB — UGC ask: share your Blueprint win",
     owner: "Tina",
@@ -774,13 +1481,31 @@ Comment your age path (Kids/Teens/Adults/Seniors) + one word about how it felt.
 We'll feature kindness (with permission).`,
     artifacts: ["Post", "Request permission before resharing names"],
   },
+  ...personalAmplifyFromCadence("sl-s5-personal-amplify-ugc"),
   {
     id: "sl-s5-multi-channel-repost",
     sprint: 5,
-    day: "2026-08-22",
+    day: "2026-09-05",
     channel: "instagram_gysh",
     title: "IG + TikTok — Best-of soft launch montage",
     owner: "Evelyn",
+    copy: `INSTAGRAM REEL / CAPTION
+Soft launch highlights — Get Your Side Hustle is live.
+
+Kids · Teens · Adults · Seniors
+Free Match Wizard → your Side Hustle Blueprint
+
+Start free → link in bio
+getyoursidehustle.com
+
+#GetYourSideHustle #SideHustle #FamilyBusiness #KidsEntrepreneurship #MatchWizard
+
+TIKTOK CAPTION
+Best of our soft launch ✨ Side hustles for every age. Free Match Wizard + Blueprint → getyoursidehustle.com
+
+YOUTUBE SHORTS CROSS-POST
+Title: GYSH Soft Launch — Best Moments
+Description: Highlights from the Get Your Side Hustle soft launch. Free Match Wizard + Blueprint for Kids, Teens, Adults & Seniors. https://getyoursidehustle.com`,
     imagePrompt: `${BRAND_IMAGE} 9:16 collage still of best soft-launch creatives in a gold grid + URL end card space.`,
     videoPrompt: "15–25s montage of best creatives + URL end card.",
     hedraStartImagePrompt: `${HEDRA_START} 1080×1920. Premium collage: 4–6 soft-launch stills in a gold-ruled grid (welcome hero, Match Wizard, Guides, age chips), Soft Ivory gutters, centered title "GYSH Soft Launch", crimson accent, bottom reserved for URL end card.`,
@@ -794,10 +1519,11 @@ We'll feature kindness (with permission).`,
       "QA with VIDEO-006",
     ],
   },
+  ...personalAmplifyFromCadence("sl-s5-personal-amplify-montage"),
   {
     id: "sl-s5-retro",
     sprint: 5,
-    day: "2026-08-24",
+    day: "2026-09-07",
     channel: "website",
     title: "Soft launch marketing retro (Agenda input)",
     owner: "Both",
@@ -814,10 +1540,14 @@ export const SOFT_LAUNCH_PROJECTIONS: SprintProjection[] = [
   {
     sprint: 3,
     label: "Sprint 3 — Polish + cadence",
-    rangeLabel: "8/4/26–8/10/26",
-    theme: "Welcome the world: FB + YT live, daily organic, Kevina bridge, newsletter #1, channels created",
+    rangeLabel: "8/18/26–8/24/26",
+    theme:
+      "Welcome the world: FB + YT live, daily organic, Kevina bridge, newsletter #1, channels created; personal amplify growth cadence (3 days)",
+    /** Same as Content Factory item sl-s3-polish-cadence (not a separate card). */
+    opsItemId: "sl-s3-polish-cadence",
     expectedOutcomes: [
       "GYSH Facebook welcome + ≥5 organic posts",
+      "Tina + Evelyn personal amplify on cadence days (Why / Guides+YT / Week wrap)",
       "Kevina Starr Page: 3 soft CTAs into Kids Corner",
       "YouTube channel + first Short",
       "TikTok + Instagram accounts created (ready to post Sprint 4)",
@@ -850,10 +1580,11 @@ export const SOFT_LAUNCH_PROJECTIONS: SprintProjection[] = [
   {
     sprint: 4,
     label: "Sprint 4 — Growth + first ads",
-    rangeLabel: "8/11/26–8/17/26",
-    theme: "IG/TikTok first content, Meta test budget, newsletter #2, tighter funnel",
+    rangeLabel: "8/25/26–8/31/26",
+    theme: "IG/TikTok first content, Meta test budget, newsletter #2, personal amplify on new platforms",
     expectedOutcomes: [
       "IG grid live (3 posts) + TikTok #1",
+      "Personal amplify cadence: IG/TT launch, Kevina, GYSH tip, YT Short #2 (Tina + Evelyn each)",
       "Meta ads test $5–15/day with daily monitoring",
       "Newsletter #2 — “one hustle / 30 days”",
       "Kevina 2× + GYSH mid-week value post",
@@ -884,10 +1615,11 @@ export const SOFT_LAUNCH_PROJECTIONS: SprintProjection[] = [
   {
     sprint: 5,
     label: "Sprint 5 — Systems + iterate",
-    rangeLabel: "8/18/26–8/24/26",
-    theme: "Cadence locked, newsletter #3, ads iterate or pause, UGC, multi-channel best-of",
+    rangeLabel: "9/1/26–9/7/26",
+    theme: "Cadence locked, newsletter #3, ads iterate or pause, UGC, multi-channel best-of + personal amplify",
     expectedOutcomes: [
       "Standing weekly Content Factory ritual",
+      "Personal amplify cadence: Kevina bridge, UGC ask, soft-launch montage (Tina + Evelyn each)",
       "Newsletter #3 + workshops teaser",
       "Ads decision executed",
       "UGC ask + montage across IG/TikTok/YT",
@@ -920,17 +1652,53 @@ export function rolloutItemsForSprint(sprint: number): SoftLaunchItem[] {
   return SOFT_LAUNCH_ROLLOUT.filter((i) => i.sprint === sprint);
 }
 
-export function rolloutItemsByDay(sprint?: number): { day: string; items: SoftLaunchItem[] }[] {
-  const items = sprint == null ? SOFT_LAUNCH_ROLLOUT : rolloutItemsForSprint(sprint);
+export type SoftLaunchDueSort = "asc" | "desc";
+
+/** Unique calendar due days (ISO) for filter chips, ascending. */
+export function softLaunchDueDates(items: SoftLaunchItem[]): string[] {
+  return [...new Set(items.map((i) => i.day).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+}
+
+export function filterSoftLaunchByDueDay(
+  items: SoftLaunchItem[],
+  dueDay: string | "all",
+): SoftLaunchItem[] {
+  if (!dueDay || dueDay === "all") return items;
+  return items.filter((i) => i.day === dueDay);
+}
+
+export function sortSoftLaunchByDueDay(
+  items: SoftLaunchItem[],
+  sort: SoftLaunchDueSort = "asc",
+): SoftLaunchItem[] {
+  const dir = sort === "desc" ? -1 : 1;
+  return [...items].sort((a, b) => {
+    const byDay = a.day.localeCompare(b.day);
+    if (byDay !== 0) return byDay * dir;
+    return a.title.localeCompare(b.title);
+  });
+}
+
+/** Group items by due day after optional channel/due filters; days ordered by sort. */
+export function groupSoftLaunchByDay(
+  items: SoftLaunchItem[],
+  sort: SoftLaunchDueSort = "asc",
+): { day: string; items: SoftLaunchItem[] }[] {
   const map = new Map<string, SoftLaunchItem[]>();
-  for (const item of items) {
+  for (const item of sortSoftLaunchByDueDay(items, sort)) {
     const list = map.get(item.day) ?? [];
     list.push(item);
     map.set(item.day, list);
   }
-  return [...map.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([day, dayItems]) => ({ day, items: dayItems }));
+  const days = [...map.keys()].sort((a, b) =>
+    sort === "desc" ? b.localeCompare(a) : a.localeCompare(b),
+  );
+  return days.map((day) => ({ day, items: map.get(day) ?? [] }));
+}
+
+export function rolloutItemsByDay(sprint?: number): { day: string; items: SoftLaunchItem[] }[] {
+  const items = sprint == null ? SOFT_LAUNCH_ROLLOUT : rolloutItemsForSprint(sprint);
+  return groupSoftLaunchByDay(items, "asc");
 }
 
 /** Convert a rollout item into Content Factory draft fields. */
@@ -943,14 +1711,35 @@ export function rolloutItemToDraftFields(item: SoftLaunchItem): {
   owner: RolloutOwner;
 } {
   const channel = ROLLOUT_CHANNEL_LABELS[item.channel];
+  const links = softLaunchCrossLinks(item);
+  const taskMd = adminMarkdownLink(`Task ${links.taskId}`, {
+    tab: "tasks",
+    taskId: links.taskId,
+  });
+  const factoryMd = adminMarkdownLink(
+    `Content Factory ${links.itemRef}`,
+    {
+      tab: "factory",
+      panel: "launch-plan",
+      itemId: item.id,
+    },
+  );
+  const testsMd = links.testIds
+    .map((testId) =>
+      adminMarkdownLink(`Test ${testId}`, { tab: "testing", testId }),
+    )
+    .join(", ");
   const bodyParts = [
+    `CF: ${links.itemRef}`,
     `CHANNEL: ${channel}`,
     `WHEN: ${item.day}${item.postTime ? ` · ${item.postTime}` : ""}`,
     `OWNER: ${item.owner}`,
-    item.relatedTestIds?.length
-      ? `QA TESTS: ${item.relatedTestIds.join(", ")} (Testing Portal)`
-      : "",
+    `TASK: ${taskMd} · ${factoryMd}`,
+    links.testIds.length ? `QA TESTS: ${testsMd}` : "",
     item.copy ? `\n--- COPY ---\n${item.copy}` : "",
+    item.channel === "personal_amplify" && !item.copy?.includes("PERSONAL AMPLIFY")
+      ? `\n--- HOW / WHEN (PERSONAL AMPLIFY) ---\n${PERSONAL_AMPLIFY_PLAYBOOK}`
+      : "",
     item.hedraStartImagePrompt
       ? `\n--- HEDRA · STARTING IMAGE (generate/upload this still first) ---\n${item.hedraStartImagePrompt}`
       : item.imagePrompt
@@ -1010,20 +1799,63 @@ function mmddyyFromIso(iso: string): string {
   return `${String(m).padStart(2, "0")}/${String(d).padStart(2, "0")}/${String(y).slice(-2)}`;
 }
 
-export function softLaunchTaskSeeds(): SoftLaunchTaskSeed[] {
-  return SOFT_LAUNCH_ROLLOUT.filter((i) => i.sprint >= 3 || i.id.startsWith("sl-s2")).map((item) => {
-    const fields = rolloutItemToDraftFields(item);
+export type SoftLaunchTaskSeedOpts = {
+  /** When true, return only task ids (cheap — used to find missing rows). */
+  idsOnly?: boolean;
+  /** Only build seeds for these task ids. */
+  onlyIds?: string[];
+  /**
+   * Short notes (CF deep link only). Prefer for bulk sync so we do not
+   * serialize every Hedra prompt into D1 on admin mount.
+   */
+  lightNotes?: boolean;
+};
+
+/** Soft-launch calendar items that get a Task List row. */
+export function softLaunchSeedItems(): SoftLaunchItem[] {
+  return SOFT_LAUNCH_ROLLOUT.filter((i) => i.sprint >= 3 || i.id.startsWith("sl-s2"));
+}
+
+export function softLaunchTaskSeeds(): SoftLaunchTaskSeed[];
+export function softLaunchTaskSeeds(opts: { idsOnly: true }): string[];
+export function softLaunchTaskSeeds(opts: SoftLaunchTaskSeedOpts): SoftLaunchTaskSeed[];
+export function softLaunchTaskSeeds(
+  opts: SoftLaunchTaskSeedOpts = {},
+): SoftLaunchTaskSeed[] | string[] {
+  let items = softLaunchSeedItems();
+  if (opts.onlyIds?.length) {
+    const want = new Set(opts.onlyIds.map((id) => id.toUpperCase()));
+    items = items.filter((i) => want.has(softLaunchTaskId(i.id)));
+  }
+  if (opts.idsOnly) {
+    return items.map((i) => softLaunchTaskId(i.id));
+  }
+  return items.map((item) => {
+    const ref = softLaunchItemRef(item.id);
+    const taskId = softLaunchTaskId(item.id);
+    const factoryLink = adminMarkdownLink(`Content Factory ${ref}`, {
+      tab: "factory",
+      panel: "launch-plan",
+      itemId: item.id,
+    });
+    const notes = opts.lightNotes
+      ? `CF: ${ref}\n${factoryLink}\nOpen Content Factory for full copy / Hedra prompts / artifacts.`
+      : rolloutItemToDraftFields(item).body.slice(0, 8000);
     return {
-      id: softLaunchTaskId(item.id),
-      description: `${ROLLOUT_CHANNEL_LABELS[item.channel]}: ${item.title}`,
+      id: taskId,
+      description: `${ref} · ${ROLLOUT_CHANNEL_LABELS[item.channel]}: ${item.title}`,
       category: "launch_marketing",
-      priority: item.id.includes("welcome") || item.id.includes("yt-create") ? "P0" : "P1",
+      priority:
+        item.id.includes("welcome") ||
+        item.id.includes("yt-create") ||
+        item.id.includes("polish-cadence")
+          ? "P0"
+          : "P1",
       assignedTo: item.owner === "Both" ? "Both" : item.owner,
       assignBy: "Evelyn",
       sprint: item.sprint === 2 ? 2 : item.sprint,
       dueDate: mmddyyFromIso(item.day),
-      // Keep Hedra prompts intact in Task List notes (D1 TEXT).
-      notes: fields.body.slice(0, 8000),
+      notes,
     };
   });
 }

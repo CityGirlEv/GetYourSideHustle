@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Branded GYSH email shell + membership perk copy for transactional mail.
  */
 
@@ -24,7 +24,9 @@ const FOOTER_LINKS: Array<{ label: string; href: string }> = [
   { label: "About", href: `${SITE_URL}/about` },
   { label: "Join", href: `${SITE_URL}/join` },
   { label: "Community", href: `${SITE_URL}/community` },
+  { label: "Newsletter", href: `${SITE_URL}/newsletter` },
   { label: "Contact Us", href: `${SITE_URL}/contact` },
+  { label: "Privacy Policy", href: `${SITE_URL}/privacy` },
 ];
 
 export type TierId = "free" | "starter" | "pro" | "elite";
@@ -53,10 +55,10 @@ const PERKS: Record<TierId, Record<PerkAudience, string[]>> = {
     senior: ["Senior lane preview", "Flexible Match Wizard pacing", "Interest-list updates"],
   },
   starter: {
-    adult: ["Full member guides", "GYSH Community", "One 1-hour session with T / E"],
-    kids: ["Kids Team member guides", "Training videos", "Kevina Glow Getter extras", "Piggy Bank challenges"],
-    junior: ["Teens Team guides", "Training videos", "CEO starter checklists", "My Bank goals"],
-    senior: ["Senior Side Hustle team", "Peer learning circle", "One 1-hour session"],
+    adult: ["Full member guides", "GYSH Community", "Weekly Newsletter", "One 45-minute session with Tina & Evelyn"],
+    kids: ["Kids Team member guides", "Weekly Newsletter", "Training videos", "Kevina Glow Getter extras", "Piggy Bank challenges"],
+    junior: ["Teens Team guides", "Weekly Newsletter", "Training videos", "CEO starter checklists", "My Bank goals"],
+    senior: ["Senior Side Hustle team", "Weekly Newsletter", "Peer learning circle", "One 45-minute session"],
   },
   pro: {
     adult: ["Hustle schedule suite", "Group training", "Three 60-minute sessions", "Family kid-credit pool"],
@@ -65,10 +67,10 @@ const PERKS: Record<TierId, Record<PerkAudience, string[]>> = {
     senior: ["Flexible hustle schedule", "Progress reports", "Three 60-minute sessions", "Workshop member seats"],
   },
   elite: {
-    adult: ["Three 90-minute sessions", "ZIP timing scout", "Priority support", "Highest credit pool"],
+    adult: ["Three 90-minute sessions", "ZipCode timing scout", "Priority support", "Highest credit pool"],
     kids: ["Max kid credits", "Priority family support", "All Pro kids perks"],
     junior: ["Max teen credits", "Priority support", "All Pro teens perks"],
-    senior: ["Three 90-minute sessions", "ZIP timing scout", "Priority senior support"],
+    senior: ["Three 90-minute sessions", "ZipCode timing scout", "Priority senior support"],
   },
 };
 
@@ -185,7 +187,7 @@ export function wrapBrandedEmail(parts: BrandedEmailParts): { html: string; text
                 ${escapeHtml(SITE_NAME)} does not provide financial, legal, tax, or investment advice.
               </p>
               <p style="margin:12px 0 0;font-family:Helvetica,Arial,sans-serif;font-size:11px;color:#b09a7e;">
-                © ${year} ${escapeHtml(SITE_NAME)}. All rights reserved.
+                Â© ${year} ${escapeHtml(SITE_NAME)}. All rights reserved.
                 &nbsp;·&nbsp;
                 <a href="${MUNTIES_URL}" target="_blank" rel="noopener noreferrer" style="color:#947d64;text-decoration:underline;">Powered by Muntie&apos;s AI Agents</a>
               </p>
@@ -245,12 +247,14 @@ export function wrapBrandedEmail(parts: BrandedEmailParts): { html: string; text
     `About: ${SITE_URL}/about`,
     `Join: ${SITE_URL}/join`,
     `Community: ${SITE_URL}/community`,
+    `Newsletter: ${SITE_URL}/newsletter`,
     `Contact: ${SITE_URL}/contact`,
+    `Privacy Policy: ${SITE_URL}/privacy`,
     `Website: ${SITE_URL}`,
     `Facebook: ${FACEBOOK_URL}`,
     `Email: ${ADMIN_EMAIL}`,
     `Powered by Muntie's AI Agents: ${MUNTIES_URL}`,
-    `© ${year} ${SITE_NAME}`,
+    `Â© ${year} ${SITE_NAME}`,
   ]
     .filter((line) => line !== undefined && line !== null)
     .join("\n");

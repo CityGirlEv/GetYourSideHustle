@@ -11,6 +11,19 @@ export type CreditLedgerRow = {
   created_at: string;
 };
 
+/** Mirrors src/lib/membership MEMBERSHIP_TIERS credit fields. */
+const PLAN_KID_CREDITS: Record<
+  string,
+  { youthMonthly: number; adultPoolMonthly: number }
+> = {
+  free: { youthMonthly: 0, adultPoolMonthly: 0 },
+  starter: { youthMonthly: 60, adultPoolMonthly: 30 },
+  pro: { youthMonthly: 140, adultPoolMonthly: 60 },
+  elite: { youthMonthly: 280, adultPoolMonthly: 120 },
+};
+
+const PLAN_CREDIT_REASON_PREFIX = "Membership plan credits";
+
 let creditTablesReady: Promise<void> | null = null;
 
 /** Self-heal if migration 0026 was skipped on an environment. */
@@ -98,6 +111,67 @@ async function membershipContext(
   }
 }
 
+/** Monthly Kid Credits included with a plan (youth lane vs Adult/Senior family pool). */
+export function planKidCreditAllowance(
+  membershipTier: string | null | undefined,
+  audience: string | null | undefined,
+): number {
+  const tier = String(membershipTier || "free").toLowerCase();
+  const lane = String(audience || "adult").toLowerCase();
+  const row = PLAN_KID_CREDITS[tier] ?? PLAN_KID_CREDITS.free!;
+  if (lane === "kids" || lane === "junior" || lane === "parent" || lane === "teen" || lane === "teens") {
+    return row.youthMonthly;
+  }
+  return row.adultPoolMonthly;
+}
+
+async function sumPlanCreditGrants(env: Env, userId: string): Promise<number> {
+  await ensureMemberCreditTables(env);
+  try {
+    const row = await env.DB.prepare(
+      `SELECT COALESCE(SUM(delta), 0) AS total
+       FROM member_credit_ledger
+       WHERE user_id = ? AND delta > 0 AND reason LIKE ?`,
+    )
+      .bind(userId, `${PLAN_CREDIT_REASON_PREFIX}%`)
+      .first<{ total: number }>();
+    return Math.max(0, Math.floor(Number(row?.total) || 0));
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Grant (or top up) Kid Credits included with the membership plan.
+ * Idempotent across upgrades: only grants the difference vs prior plan credit grants.
+ */
+export async function grantMembershipPlanCredits(
+  env: Env,
+  userId: string,
+  membershipTier: string,
+  audience: string,
+): Promise<{ granted: number; balance: number; allowance: number }> {
+  const allowance = planKidCreditAllowance(membershipTier, audience);
+  if (allowance <= 0) {
+    const wallet = await ensureWallet(env, userId);
+    return { granted: 0, balance: wallet.balance, allowance: 0 };
+  }
+  const prior = await sumPlanCreditGrants(env, userId);
+  const need = allowance - prior;
+  if (need <= 0) {
+    const wallet = await ensureWallet(env, userId);
+    return { granted: 0, balance: wallet.balance, allowance };
+  }
+  const tierName = String(membershipTier || "free");
+  const result = await applyMemberCreditDelta(
+    env,
+    userId,
+    need,
+    `${PLAN_CREDIT_REASON_PREFIX}: ${tierName}`,
+  );
+  return { granted: need, balance: result.balance, allowance };
+}
+
 export async function getMemberCredits(env: Env, user: DbUser): Promise<Response> {
   try {
     const wallet = await ensureWallet(env, user.id);
@@ -106,17 +180,45 @@ export async function getMemberCredits(env: Env, user: DbUser): Promise<Response
        FROM member_credit_ledger
        WHERE user_id = ?
        ORDER BY created_at DESC
-       LIMIT 10`,
+       LIMIT 25`,
     )
       .bind(user.id)
       .all<CreditLedgerRow>();
 
     const membership = await membershipContext(env, user.id);
+    const monthlyAllowance = planKidCreditAllowance(
+      membership.membershipTier,
+      membership.audience,
+    );
+
+    let earned = 0;
+    let spent = 0;
+    try {
+      const totals = await env.DB.prepare(
+        `SELECT
+           COALESCE(SUM(CASE WHEN delta > 0 THEN delta ELSE 0 END), 0) AS earned,
+           COALESCE(SUM(CASE WHEN delta < 0 THEN -delta ELSE 0 END), 0) AS spent
+         FROM member_credit_ledger
+         WHERE user_id = ?`,
+      )
+        .bind(user.id)
+        .first<{ earned: number; spent: number }>();
+      earned = Math.max(0, Math.floor(Number(totals?.earned) || 0));
+      spent = Math.max(0, Math.floor(Number(totals?.spent) || 0));
+    } catch {
+      /* empty ledger */
+    }
 
     return json({
       balance: wallet.balance ?? 0,
       membershipTier: membership.membershipTier,
       audience: membership.audience,
+      monthlyAllowance,
+      totals: {
+        earned,
+        spent,
+        balance: wallet.balance ?? 0,
+      },
       updatedAt: wallet.updated_at,
       recent: (results ?? []).map((r) => ({
         id: r.id,

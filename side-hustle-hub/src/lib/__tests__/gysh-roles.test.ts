@@ -5,10 +5,13 @@ import {
   GYSH_ROLE_LABELS,
   GYSH_ROLES,
   QA_TESTERS,
+  rolesForPublicRegister,
   canAccessAdminPortal,
   formatRoles,
   isAutomatedSuiteOwner,
   isHumanQaTester,
+  qaTesterIdForUser,
+  qaTestersFromUsers,
   userHasRole,
   userRoles,
   type GyshUser,
@@ -25,9 +28,65 @@ describe("gysh-roles", () => {
     expect(FAILED_TEST_ASSIGNEE).toBe("evelyn");
   });
 
-  it("defines QA tester bubbles for Tina, Evelyn, and Lyriq", () => {
-    expect(QA_TESTERS.map((t) => t.id)).toEqual(["tina", "evelyn", "lyriq"]);
-    expect(QA_TESTERS.map((t) => t.shortName)).toEqual(["Tina", "Evelyn", "Lyriq"]);
+  it("defines a seed QA catalog (live lists come from Users with QA role)", () => {
+    expect(QA_TESTERS.map((t) => t.id)).toEqual(["tina", "evelyn", "lyriq", "candace"]);
+    expect(QA_TESTERS.map((t) => t.shortName)).toEqual(["Tina", "Evelyn", "Lyriq", "Candace"]);
+  });
+
+  it("builds QA tester list from active Users with the QA role", () => {
+    const list = qaTestersFromUsers([
+      {
+        id: "u-c",
+        name: "Candace Jackson",
+        email: "candacejackson1@icloud.com",
+        role: "admin",
+        roles: ["admin", "qa"],
+        status: "active",
+        joinedAt: "2026-08-01",
+        notes: "",
+      },
+      {
+        id: "u-new",
+        name: "Jordan Lee",
+        email: "jordan@example.com",
+        role: "qa",
+        roles: ["qa"],
+        status: "active",
+        joinedAt: "2026-08-01",
+        notes: "",
+      },
+      {
+        id: "u-adult",
+        name: "Member",
+        email: "m@example.com",
+        role: "adult",
+        roles: ["adult"],
+        status: "active",
+        joinedAt: "2026-08-01",
+        notes: "",
+      },
+      {
+        id: "u-pending",
+        name: "Pending QA",
+        email: "p@example.com",
+        role: "qa",
+        roles: ["qa"],
+        status: "pending",
+        joinedAt: "2026-08-01",
+        notes: "",
+      },
+    ]);
+    expect(list.map((t) => t.id)).toContain("candace");
+    expect(list.map((t) => t.id)).toContain("jordan");
+    expect(list.map((t) => t.shortName)).toContain("Jordan");
+    expect(list.every((t) => t.id !== "member")).toBe(true);
+  });
+
+  it("treats any non-automated assignee id as a human QA tester", () => {
+    expect(isHumanQaTester("candace")).toBe(true);
+    expect(isHumanQaTester("jordan")).toBe(true);
+    expect(isHumanQaTester("vitest")).toBe(false);
+    expect(isHumanQaTester("")).toBe(false);
   });
 
   it("defines Vitest and Playwright suite owners (not human testers)", () => {
@@ -43,6 +102,18 @@ describe("gysh-roles", () => {
 
   it("includes Senior role for Seniors Corner login", () => {
     expect(GYSH_ROLE_LABELS.senior).toContain("55");
+  });
+
+  it("offers Beta Tester as a self-select role at public register", () => {
+    expect(GYSH_ROLES).toContain("beta");
+    expect(GYSH_ROLE_LABELS.beta).toBe("Beta Tester");
+    expect(rolesForPublicRegister("adult", false)).toEqual(["adult"]);
+    expect(rolesForPublicRegister("adult", true)).toEqual(["adult", "beta"]);
+    expect(rolesForPublicRegister("senior", true)).toEqual(["senior", "beta"]);
+    expect(rolesForPublicRegister("junior", true)).toEqual(["junior", "beta"]);
+    expect(rolesForPublicRegister("kids", true)).toEqual(["adult", "beta"]);
+    expect(rolesForPublicRegister("adult", true)).not.toContain("qa");
+    expect(rolesForPublicRegister("adult", true)).not.toContain("admin");
   });
 
   it("supports multi-role admin + QA", () => {
@@ -99,5 +170,13 @@ describe("gysh-roles", () => {
     expect(canAccessAdminPortal({ role: "qa" })).toBe(true);
     expect(canAccessAdminPortal({ role: "dev" })).toBe(true);
     expect(canAccessAdminPortal({ role: "adult", roles: ["qa"] })).toBe(true);
+    expect(canAccessAdminPortal({ role: "adult", roles: ["adult", "beta"] })).toBe(false);
+  });
+
+  it("maps Candace Jackson to the candace QA tester id", () => {
+    expect(
+      qaTesterIdForUser({ name: "Candace Jackson", email: "candacejackson1@icloud.com" }),
+    ).toBe("candace");
+    expect(qaTesterIdForUser({ name: "Candace", email: "other@example.com" })).toBe("candace");
   });
 });

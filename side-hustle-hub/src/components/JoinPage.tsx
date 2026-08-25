@@ -2,6 +2,7 @@ import { LogIn, MessageSquare, Smile, UserPlus } from "lucide-react";
 import { MembershipPage } from "./MembershipPage";
 import { BlueprintUnlockPanel } from "./BlueprintUnlockPanel";
 import type { BlueprintAgeGroup } from "../lib/gysh-analytics";
+import type { BetaNdaReceipt } from "../lib/beta-tester-dashboard";
 import {
   AUDIENCE_LABELS,
   nextTierId,
@@ -19,6 +20,8 @@ type JoinPageProps = {
   onOpenFreeGuides?: () => void;
   /** After free Blueprint signup, restore the wizard results. */
   onBlueprintUnlocked?: (ageGroup: BlueprintAgeGroup) => void;
+  onOpenBetaNda?: () => void;
+  onBetaTestingUnlocked?: (receipt: BetaNdaReceipt) => void;
   /** Audience lane selected from the page that opened Join. */
   membershipAudience?: AudienceGroup | null;
   /** Scroll to Free–Elite plans (in-page See Memberships CTAs only — not header/footer Join). */
@@ -41,6 +44,8 @@ export function JoinPage({
   onKidsCorner,
   onOpenFreeGuides,
   onBlueprintUnlocked,
+  onOpenBetaNda,
+  onBetaTestingUnlocked,
   membershipAudience = null,
   scrollToPlans = false,
   onScrolledToPlans,
@@ -53,7 +58,12 @@ export function JoinPage({
   return (
     <div className="join-page-combined" data-testid="join-page">
       {onBlueprintUnlocked && (
-        <BlueprintUnlockPanel onUnlocked={onBlueprintUnlocked} onSignIn={onLogin} />
+        <BlueprintUnlockPanel
+          onUnlocked={onBlueprintUnlocked}
+          onSignIn={onLogin}
+          onOpenBetaNda={onOpenBetaNda}
+          onBetaTestingUnlocked={onBetaTestingUnlocked}
+        />
       )}
 
       <section className="join-membership-section" aria-labelledby="join-membership-heading">

@@ -118,7 +118,33 @@ describe("gysh-sprints", () => {
     expect(dueDateIsoForSprint(1)).toBe("2026-07-23");
     expect(dueDateForSprint(2)).toBe("07/30/26");
     expect(dueDateIsoForSprint(2)).toBe("2026-07-30");
+    // Sprint 3 resumes Tue Aug 18 after 2-week pause → due Thu Aug 20
+    expect(dueDateForSprint(3)).toBe("08/20/26");
+    expect(dueDateIsoForSprint(3)).toBe("2026-08-20");
+    expect(dueDateForSprint(4)).toBe("08/27/26");
     expect(dueDateForSprint(BACKLOG_SPRINT)).toBe("");
+  });
+
+  it("keeps Sprint 0–2 historical and resumes Sprint 3 on Tue Aug 18 after pause", () => {
+    const s2 = getSprintWindow(2);
+    expect(s2.numericRangeLabel).toBe("7/28/26–8/3/26");
+    const s3 = getSprintWindow(3);
+    expect(s3.numericRangeLabel).toBe("8/18/26–8/24/26");
+    const s4 = getSprintWindow(4);
+    expect(s4.numericRangeLabel).toBe("8/25/26–8/31/26");
+    // Pause weeks (Aug 4 / Aug 11) map to Sprint 3 as the resume focus
+    expect(currentSprintIndex(new Date(2026, 7, 5))).toBe(3);
+    expect(currentSprintIndex(new Date(2026, 7, 12))).toBe(3);
+    expect(currentSprintIndex(new Date(2026, 7, 18))).toBe(3);
+    expect(currentSprintIndex(new Date(2026, 7, 25))).toBe(4);
+  });
+
+  it("shifts dues +14 days only when not already past-due before the pause", async () => {
+    const { shiftDueAfterSprintPause } = await import("../gysh-sprints");
+    expect(shiftDueAfterSprintPause("08/03/26")).toBe("08/03/26"); // already due/past as of 8/4
+    expect(shiftDueAfterSprintPause("08/04/26")).toBe("08/18/26");
+    expect(shiftDueAfterSprintPause("08/10/26")).toBe("08/24/26");
+    expect(shiftDueAfterSprintPause("")).toBe("");
   });
 
   it("clears person assignment when moving into backlog (not when leaving)", () => {

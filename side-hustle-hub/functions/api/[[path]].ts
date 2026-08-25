@@ -10,6 +10,7 @@ import {
   handleMe,
   handleRegister,
   handleResetPassword,
+  handleUpdateMembershipPlan,
   requireAdminSession,
   requireDb,
   requireSession,
@@ -98,6 +99,9 @@ import {
   saveBlueprintFavorite,
 } from "../_lib/blueprints";
 import { listAutomatedTestRuns, runAutomatedTests } from "../_lib/automated-runner";
+import { handleAdminEntityLinks } from "../_lib/admin-entity-links";
+import { handleSoftLaunchOverrides } from "../_lib/soft-launch-overrides";
+import { handleSoftLaunchAttachments } from "../_lib/soft-launch-attachments";
 import {
   endTimeEntry,
   listTimeEntries,
@@ -178,6 +182,14 @@ export async function onRequest(context: {
     if (route === "contact" && method === "POST") {
       return withCors(request, await handleContact(env, request));
     }
+    if (route === "stripe/checkout" && method === "POST") {
+      const { handleStripeCheckoutCreate } = await import("../_lib/stripe-checkout");
+      return withCors(request, await handleStripeCheckoutCreate(env, request));
+    }
+    if (route === "stripe/confirm" && method === "POST") {
+      const { handleStripeCheckoutConfirm } = await import("../_lib/stripe-checkout");
+      return withCors(request, await handleStripeCheckoutConfirm(env, request));
+    }
     // Cron Worker → daily digests (auth via CRON_SECRET; no session).
     if (route === "cron/daily-digest" && (method === "GET" || method === "POST")) {
       return withCors(request, await handleCronDailyDigest(env, request));
@@ -200,6 +212,10 @@ export async function onRequest(context: {
     if (parts[0] === "blueprints" && parts[1] === "pending" && parts[2] && method === "GET") {
       return withCors(request, await getPendingBlueprint(env, parts[2]));
     }
+    if (route === "beta-nda" && method === "GET") {
+      const { currentBetaNdaVersionResponse } = await import("../_lib/beta-nda-store");
+      return withCors(request, currentBetaNdaVersionResponse());
+    }
 
     // ——— Any logged-in member (free or admin) ———
     const memberAuth = await requireSession(env, request);
@@ -212,6 +228,17 @@ export async function onRequest(context: {
     if (route === "auth/me" && method === "GET") {
       return withCors(request, await handleMe(env, request));
     }
+    if (route === "beta-nda" && method === "POST") {
+      const { handleAcceptBetaNda } = await import("../_lib/beta-nda-store");
+      return withCors(request, await handleAcceptBetaNda(env.DB, request, user));
+    }
+    if (route === "beta-testing/dashboard" && method === "GET") {
+      const { handleBetaTestingDashboard } = await import("../_lib/beta-nda-store");
+      return withCors(request, await handleBetaTestingDashboard(env.DB, user));
+    }
+    if (route === "auth/membership-plan" && method === "POST") {
+      return withCors(request, await handleUpdateMembershipPlan(env, request, user));
+    }
     if (parts[0] === "member-progress" && parts[1] && method === "GET") {
       return withCors(request, await getMemberProgress(env, user, parts[1]));
     }
@@ -220,6 +247,14 @@ export async function onRequest(context: {
     }
     if (route === "member-credits" && method === "GET") {
       return withCors(request, await getMemberCredits(env, user));
+    }
+    if (route === "newsletters" && method === "GET") {
+      const { listMemberNewsletters } = await import("../_lib/newsletters");
+      return withCors(request, await listMemberNewsletters(env, user));
+    }
+    if (route === "member-purchases" && method === "GET") {
+      const { handleMyPurchases } = await import("../_lib/stripe-payments");
+      return withCors(request, await handleMyPurchases(env, user));
     }
     if (route === "family/children" && method === "GET") {
       return withCors(request, await listFamilyChildren(env, user));
@@ -264,6 +299,10 @@ export async function onRequest(context: {
     }
     if (route === "users" && method === "GET") {
       return withCors(request, await listUsers(env));
+    }
+    if (route === "admin/hustle-schedules" && method === "GET") {
+      const { listAllHustleSchedules } = await import("../_lib/schedule-reminders");
+      return withCors(request, await listAllHustleSchedules(env));
     }
     if (route === "users" && (method === "POST" || method === "PUT")) {
       return withCors(request, await upsertUser(env, request, user));
@@ -316,6 +355,15 @@ export async function onRequest(context: {
     if (route === "content" && method === "PUT") {
       return withCors(request, await saveContent(env, request, user));
     }
+    if (route === "admin-entity-links") {
+      return withCors(request, await handleAdminEntityLinks(env, request, user));
+    }
+    if (route === "soft-launch-overrides") {
+      return withCors(request, await handleSoftLaunchOverrides(env, request, user));
+    }
+    if (route === "soft-launch-attachments") {
+      return withCors(request, await handleSoftLaunchAttachments(env, request, user));
+    }
     if (route === "workshops" && method === "PUT") {
       return withCors(request, await saveWorkshops(env, request));
     }
@@ -327,6 +375,10 @@ export async function onRequest(context: {
     }
     if (route === "financials" && method === "PUT") {
       return withCors(request, await saveFinancials(env, request, user));
+    }
+    if (route === "financials/payments" && method === "GET") {
+      const { handleListPayments } = await import("../_lib/stripe-payments");
+      return withCors(request, await handleListPayments(env, request));
     }
     if (route === "agile-plan" && method === "GET") {
       return withCors(request, await listAgilePlan(env));

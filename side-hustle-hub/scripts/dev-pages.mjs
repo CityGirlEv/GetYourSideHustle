@@ -93,6 +93,12 @@ function loadDevVars() {
   } else {
     console.warn("⚠ .dev.vars has no usable RESEND_API_KEY — reset emails will fail locally.");
   }
+  const stripe = (out.STRIPE_SECRET_KEY || "").trim();
+  if (stripe.startsWith("sk_test_") || stripe.startsWith("sk_live_")) {
+    console.log(`✓ .dev.vars STRIPE_SECRET_KEY loaded (${stripe.slice(0, 8)}… len ${stripe.length})`);
+  } else {
+    console.warn("⚠ .dev.vars has no usable STRIPE_SECRET_KEY — Stripe checkout will return 503.");
+  }
   return out;
 }
 

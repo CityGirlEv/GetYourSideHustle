@@ -3,6 +3,7 @@ import {
   Award, 
   CheckSquare, 
   Bookmark, 
+  CalendarDays,
   Star,
   Zap,
   Check,
@@ -11,6 +12,7 @@ import {
   Compass,
   Copy,
   Link2,
+  Receipt,
   Sparkles,
   Users,
 } from "lucide-react";
@@ -30,6 +32,18 @@ import {
   summarizeMemberCredits,
   type MemberCreditsSummary,
 } from "../lib/member-credits";
+import {
+  buildMemberAccessSummary,
+  fetchMemberPurchases,
+  formatBillingUsd,
+  formatPurchaseAmount,
+  formatPurchasePaidAt,
+  purchaseKindLabel,
+  summarizeMemberBilling,
+  type MemberAccessSummary,
+  type MemberBillingTotals,
+  type MemberPurchase,
+} from "../lib/member-purchases";
 import { buildReferralUrl, getOrCreateReferralCode } from "../lib/referral";
 import {
   assignSavedBlueprint,
@@ -51,6 +65,7 @@ import {
   type FamilyChild,
 } from "../lib/family";
 import type { ProgressReportCadence } from "../lib/family-logic";
+import { HustleScheduleSuite } from "./HustleScheduleSuite";
 
 interface Goal {
   id: string;
@@ -70,6 +85,7 @@ type PortalBlueprint = {
   ageGroup: BlueprintAgeGroup;
   resultIds: string[];
   resultPcts: Record<string, number>;
+  topResultId: string | null;
   completedAt: string;
   source: "saved" | "pending";
   childProfileId: string | null;
@@ -77,6 +93,12 @@ type PortalBlueprint = {
 
 type UserPortalProps = {
   memberName?: string | null;
+  membershipTier?: string | null;
+  isAdmin?: boolean;
+  /** Open Schedule Suite tab on mount / when set. */
+  initialPortalTab?: "blueprint" | "schedule" | "family" | "credits" | "purchases" | "earn" | "milestones" | "bookmarks";
+  focusScheduleId?: string | null;
+  onFocusScheduleConsumed?: () => void;
   onOpenMatchWizard?: () => void;
   onOpenJoin?: () => void;
   /** Open the Launch Guide / Corner guides for a Blueprint match. */
@@ -95,6 +117,7 @@ function toPortalBlueprint(bp: SavedBlueprint): PortalBlueprint {
     ageGroup: bp.ageGroup,
     resultIds: bp.resultIds ?? [],
     resultPcts: bp.resultPcts ?? {},
+    topResultId: bp.topResultId ?? null,
     completedAt: bp.completedAt || bp.updatedAt,
     source: "saved",
     childProfileId: bp.childProfileId ?? null,
@@ -135,12 +158,22 @@ function MatchRow({
   );
 }
 
-type PortalTab = "blueprint" | "family" | "credits" | "earn" | "milestones" | "bookmarks";
+type PortalTab =
+  | "blueprint"
+  | "schedule"
+  | "family"
+  | "credits"
+  | "purchases"
+  | "earn"
+  | "milestones"
+  | "bookmarks";
 
 const PORTAL_TABS: { id: PortalTab; label: string; icon: React.ReactNode }[] = [
   { id: "blueprint", label: "Blueprint", icon: <Compass size={15} aria-hidden /> },
+  { id: "schedule", label: "Schedule Suite", icon: <CalendarDays size={15} aria-hidden /> },
   { id: "family", label: "Family", icon: <Users size={15} aria-hidden /> },
   { id: "credits", label: "Credits", icon: <Coins size={15} aria-hidden /> },
+  { id: "purchases", label: "Billing/Access", icon: <Receipt size={15} aria-hidden /> },
   { id: "earn", label: "Ways to Earn", icon: <Sparkles size={15} aria-hidden /> },
   { id: "milestones", label: "Milestones", icon: <CheckSquare size={15} aria-hidden /> },
   { id: "bookmarks", label: "Bookmarks", icon: <Bookmark size={15} aria-hidden /> },
@@ -148,12 +181,17 @@ const PORTAL_TABS: { id: PortalTab; label: string; icon: React.ReactNode }[] = [
 
 export const UserPortal: React.FC<UserPortalProps> = ({
   memberName,
+  membershipTier: membershipTierProp,
+  isAdmin = false,
+  initialPortalTab,
+  focusScheduleId,
+  onFocusScheduleConsumed,
   onOpenMatchWizard,
   onOpenJoin,
   onOpenGuide,
   onOpenKidDashboard,
 }) => {
-  const [portalTab, setPortalTab] = useState<PortalTab>("blueprint");
+  const [portalTab, setPortalTab] = useState<PortalTab>(initialPortalTab ?? "blueprint");
   const [goals, setGoals] = useState<Goal[]>([
     { id: "1", title: "Complete the GYSH Match Wizard", done: true },
     { id: "2", title: "Run profit estimates on two side hustles", done: true },
@@ -167,6 +205,12 @@ export const UserPortal: React.FC<UserPortalProps> = ({
   const [credits, setCredits] = useState<MemberCreditsSummary | null>(null);
   const [creditsError, setCreditsError] = useState<string | null>(null);
   const [creditsLoading, setCreditsLoading] = useState(true);
+  const [purchases, setPurchases] = useState<MemberPurchase[]>([]);
+  const [purchasesAccess, setPurchasesAccess] = useState<MemberAccessSummary | null>(null);
+  const [purchasesBilling, setPurchasesBilling] = useState<MemberBillingTotals | null>(null);
+  const [purchasesError, setPurchasesError] = useState<string | null>(null);
+  const [purchasesLoading, setPurchasesLoading] = useState(false);
+  const [purchasesLoaded, setPurchasesLoaded] = useState(false);
   const [blueprints, setBlueprints] = useState<PortalBlueprint[]>([]);
   const [blueprintsLoading, setBlueprintsLoading] = useState(true);
   const [blueprintsError, setBlueprintsError] = useState<string | null>(null);
@@ -185,6 +229,14 @@ export const UserPortal: React.FC<UserPortalProps> = ({
   const [pendingAssignBlueprintId, setPendingAssignBlueprintId] = useState<string | null>(null);
   const [reportCadence, setReportCadence] = useState<ProgressReportCadence>("none");
   const [assignBusyId, setAssignBusyId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialPortalTab) setPortalTab(initialPortalTab);
+  }, [initialPortalTab]);
+
+  useEffect(() => {
+    if (focusScheduleId) setPortalTab("schedule");
+  }, [focusScheduleId]);
 
   useEffect(() => {
     const code = getOrCreateReferralCode();
@@ -215,6 +267,48 @@ export const UserPortal: React.FC<UserPortalProps> = ({
   }, []);
 
   useEffect(() => {
+    if (portalTab !== "purchases" || purchasesLoaded) return;
+    let cancelled = false;
+    setPurchasesLoading(true);
+    void fetchMemberPurchases()
+      .then((payload) => {
+        if (cancelled) return;
+        const list = Array.isArray(payload.purchases) ? payload.purchases : [];
+        setPurchases(list);
+        setPurchasesBilling(summarizeMemberBilling(list));
+        setPurchasesAccess(
+          buildMemberAccessSummary({
+            membershipTier: payload.membershipTier ?? membershipTierProp,
+            audience: payload.audience,
+            purchases: list,
+          }),
+        );
+        setPurchasesError(null);
+        setPurchasesLoaded(true);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setPurchases([]);
+        setPurchasesBilling(null);
+        setPurchasesAccess(
+          buildMemberAccessSummary({
+            membershipTier: membershipTierProp,
+            audience: credits?.audience ?? "adult",
+            purchases: [],
+          }),
+        );
+        setPurchasesError(err instanceof Error ? err.message : "Could not load purchase history.");
+        setPurchasesLoaded(true);
+      })
+      .finally(() => {
+        if (!cancelled) setPurchasesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [portalTab, purchasesLoaded, membershipTierProp, credits?.audience]);
+
+  useEffect(() => {
     let cancelled = false;
     setBlueprintsLoading(true);
     void listSavedBlueprints()
@@ -234,6 +328,7 @@ export const UserPortal: React.FC<UserPortalProps> = ({
               ageGroup: pending.ageGroup,
               resultIds: pending.resultIds,
               resultPcts: pending.resultPcts ?? {},
+              topResultId: pending.resultIds[0] ?? null,
               completedAt: pending.completedAt,
               source: "pending",
               childProfileId: null,
@@ -255,6 +350,7 @@ export const UserPortal: React.FC<UserPortalProps> = ({
               ageGroup: pending.ageGroup,
               resultIds: pending.resultIds,
               resultPcts: pending.resultPcts ?? {},
+              topResultId: pending.resultIds[0] ?? null,
               completedAt: pending.completedAt,
               source: "pending",
               childProfileId: null,
@@ -300,8 +396,10 @@ export const UserPortal: React.FC<UserPortalProps> = ({
   );
 
   const tierLabel = credits
-    ? MEMBERSHIP_TIERS.find((t) => t.id === credits.membershipTier)?.name ?? "Free"
-    : null;
+    ? credits.enrolledLabel
+    : membershipTierProp
+      ? MEMBERSHIP_TIERS.find((t) => t.id === membershipTierProp)?.name ?? "Free"
+      : null;
 
   const badges: Badge[] = [
     { name: "Scout Apprentice 🏷️", desc: "Searched product databases for profitable margins", icon: "🏷️", unlocked: true },
@@ -487,6 +585,25 @@ export const UserPortal: React.FC<UserPortalProps> = ({
               <p>
                 Your Side Hustle Blueprint, family coach tools, and credits live here — use the tabs
                 below to review matches, register kids, and earn more credits.
+              </p>
+              <p className="user-portal-welcome-links">
+                <button
+                  type="button"
+                  className="user-portal-inline-link"
+                  data-testid="user-portal-open-purchases"
+                  onClick={() => setPortalTab("purchases")}
+                >
+                  <Receipt size={14} aria-hidden /> View billing &amp; access
+                </button>
+                {" · "}
+                <button
+                  type="button"
+                  className="user-portal-inline-link"
+                  data-testid="user-portal-open-credits"
+                  onClick={() => setPortalTab("credits")}
+                >
+                  <Coins size={14} aria-hidden /> Credits &amp; enrollment
+                </button>
               </p>
             </div>
             <div className="user-portal-header-referral" data-testid="user-portal-referral">
@@ -719,6 +836,23 @@ export const UserPortal: React.FC<UserPortalProps> = ({
                   );
                 })}
             </section>
+          )}
+
+          {portalTab === "schedule" && (
+            <HustleScheduleSuite
+              membershipTier={membershipTierProp ?? credits?.membershipTier}
+              isAdmin={isAdmin}
+              tierLoading={creditsLoading && !membershipTierProp && !isAdmin}
+              memberName={memberName}
+              familyChildren={familyChildren}
+              blueprints={blueprints}
+              blueprintsLoading={blueprintsLoading}
+              focusScheduleId={focusScheduleId}
+              onFocusScheduleConsumed={onFocusScheduleConsumed}
+              onOpenJoin={onOpenJoin}
+              onOpenMatchWizard={onOpenMatchWizard}
+              onOpenGuide={onOpenGuide}
+            />
           )}
 
           {portalTab === "family" && (
@@ -1116,6 +1250,38 @@ export const UserPortal: React.FC<UserPortalProps> = ({
               )}
               {!creditsLoading && credits && (
                 <>
+                  <div
+                    className="user-portal-credits-enrolled"
+                    data-testid="user-portal-credits-enrolled"
+                  >
+                    <p className="user-portal-credits-label">Enrolled in</p>
+                    <p
+                      className="user-portal-credits-enrolled-plan"
+                      data-testid="user-portal-credits-enrolled-plan"
+                    >
+                      {credits.enrolledLabel}
+                    </p>
+                    <p className="user-portal-credits-muted">
+                      {credits.monthlyAllowance > 0
+                        ? `Plan includes ${credits.monthlyAllowance} Kid Credits / month`
+                        : "Free plan — earn or purchase credits anytime"}
+                      {onOpenJoin ? (
+                        <>
+                          {" "}
+                          —{" "}
+                          <button
+                            type="button"
+                            className="user-portal-inline-link"
+                            onClick={onOpenJoin}
+                            data-testid="user-portal-upgrade-membership"
+                          >
+                            Upgrade membership
+                          </button>
+                        </>
+                      ) : null}
+                    </p>
+                  </div>
+
                   <div className="user-portal-credits-dual" data-testid="user-portal-credits-dual">
                     <div className="user-portal-credit-card" data-testid="user-portal-kid-credits">
                       <p className="user-portal-credits-label">Kid Credits available</p>
@@ -1143,6 +1309,26 @@ export const UserPortal: React.FC<UserPortalProps> = ({
                       </p>
                     </div>
                   </div>
+
+                  <div className="user-portal-credits-totals" data-testid="user-portal-credits-totals">
+                    <h4>Totals</h4>
+                    <ul>
+                      <li data-testid="user-portal-credits-total-earned">
+                        <span>Earned (all time)</span>
+                        <strong>{formatKidCreditBalance(credits.totals.earned)}</strong>
+                      </li>
+                      <li data-testid="user-portal-credits-total-spent">
+                        <span>Spent (all time)</span>
+                        <strong>{formatKidCreditBalance(credits.totals.spent)}</strong>
+                      </li>
+                      <li data-testid="user-portal-credits-total-balance">
+                        <span>Current balance</span>
+                        <strong>{formatKidCreditBalance(credits.totals.balance)}</strong>
+                      </li>
+                    </ul>
+                    <p className="user-portal-credits-muted">{credits.ratioLabel}</p>
+                  </div>
+
                   <div className="user-portal-credits-meta">
                     <p data-testid="user-portal-credits-tier">
                       Plan: <strong>{tierLabel}</strong>
@@ -1173,7 +1359,6 @@ export const UserPortal: React.FC<UserPortalProps> = ({
                         )}
                       </p>
                     )}
-                    <p className="user-portal-credits-muted">{credits.ratioLabel}</p>
                   </div>
                   <div className="user-portal-credits-history">
                     <h4>Recent activity</h4>
@@ -1202,6 +1387,163 @@ export const UserPortal: React.FC<UserPortalProps> = ({
                     )}
                   </div>
                 </>
+              )}
+            </section>
+          )}
+
+          {portalTab === "purchases" && (
+            <section
+              id="user-portal-panel-purchases"
+              role="tabpanel"
+              aria-labelledby="user-portal-tab-purchases"
+              className="user-portal-purchases"
+              data-testid="user-portal-purchases"
+            >
+              <h3 id="user-portal-purchases-heading">
+                <Receipt size={20} aria-hidden /> Billing / Access
+              </h3>
+              <p className="user-portal-panel-lead">
+                Your membership access, paid sessions, and Stripe billing history in one place.
+              </p>
+
+              {purchasesLoading && (
+                <WaitIndicator
+                  className="user-portal-credits-muted"
+                  data-testid="user-portal-purchases-loading"
+                  message="Loading billing history…"
+                  style={{ marginTop: 0 }}
+                />
+              )}
+
+              {!purchasesLoading && purchasesError && (
+                <p className="user-portal-credits-error" data-testid="user-portal-purchases-error">
+                  {purchasesError}
+                </p>
+              )}
+
+              {!purchasesLoading && purchasesAccess && (
+                <div
+                  className="user-portal-purchases-access"
+                  data-testid="user-portal-purchases-access"
+                >
+                  <h4>What you have access to</h4>
+                  <p data-testid="user-portal-purchases-enrolled">
+                    Enrolled in <strong>{purchasesAccess.enrolledLabel}</strong>
+                    {purchasesAccess.scheduleSuite ? " · Schedule Suite unlocked" : ""}
+                  </p>
+                  {purchasesAccess.features.length > 0 ? (
+                    <ul className="user-portal-purchases-features" data-testid="user-portal-purchases-features">
+                      {purchasesAccess.features.map((f) => (
+                        <li key={f.id}>
+                          <strong>{f.label}</strong>
+                          <span>{f.detail}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  {purchasesAccess.purchasedSessions.length > 0 ? (
+                    <div data-testid="user-portal-purchases-sessions">
+                      <h5>A-la-carte sessions purchased</h5>
+                      <ul>
+                        {purchasesAccess.purchasedSessions.map((label) => (
+                          <li key={label}>{label}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                  {purchasesAccess.creditPacks.length > 0 ? (
+                    <div data-testid="user-portal-purchases-packs">
+                      <h5>Credit packs purchased</h5>
+                      <ul>
+                        {purchasesAccess.creditPacks.map((label) => (
+                          <li key={label}>{label}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                  {onOpenJoin ? (
+                    <p>
+                      <button
+                        type="button"
+                        className="user-portal-inline-link"
+                        onClick={onOpenJoin}
+                        data-testid="user-portal-purchases-upgrade"
+                      >
+                        Upgrade membership or buy a-la-carte
+                      </button>
+                    </p>
+                  ) : null}
+                </div>
+              )}
+
+              {!purchasesLoading && purchasesBilling && (
+                <div
+                  className="user-portal-purchases-totals"
+                  data-testid="user-portal-purchases-totals"
+                >
+                  <h4>Billing totals</h4>
+                  <ul>
+                    <li>
+                      <span>Payments recorded</span>
+                      <strong>{purchasesBilling.count}</strong>
+                    </li>
+                    <li>
+                      <span>Total paid</span>
+                      <strong>{formatBillingUsd(purchasesBilling.amountUsd)}</strong>
+                    </li>
+                    {Object.entries(purchasesBilling.byKind).map(([kind, row]) => (
+                      <li key={kind}>
+                        <span>{purchaseKindLabel(kind)}</span>
+                        <strong>
+                          {row.count} · {formatBillingUsd(row.amountUsd)}
+                        </strong>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {!purchasesLoading && (
+                <div
+                  className="user-portal-purchases-history"
+                  data-testid="user-portal-purchases-history"
+                >
+                  <h4>Billing history</h4>
+                  {purchases.length === 0 ? (
+                    <p
+                      className="user-portal-credits-muted"
+                      data-testid="user-portal-purchases-empty"
+                    >
+                      No Stripe purchases yet. Membership checkouts, a-la-carte sessions, and credit
+                      packs will show up here after payment.
+                    </p>
+                  ) : (
+                    <div className="user-portal-purchases-table-wrap">
+                      <table className="user-portal-purchases-table">
+                        <thead>
+                          <tr>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                            <th>Amount</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {purchases.map((p) => (
+                            <tr key={p.id} data-testid={`user-portal-purchase-row-${p.id}`}>
+                              <td>
+                                <time dateTime={p.paidAt}>{formatPurchasePaidAt(p.paidAt)}</time>
+                              </td>
+                              <td>{purchaseKindLabel(p.kind)}</td>
+                              <td>{p.label || "—"}</td>
+                              <td>{formatPurchaseAmount(p)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
               )}
             </section>
           )}

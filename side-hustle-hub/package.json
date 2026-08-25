@@ -28,7 +28,8 @@
     "db:sync-agenda": "node --use-system-ca scripts/sync-agenda-from-remote.mjs",
     "db:sync-from-prod": "node --use-system-ca scripts/sync-test-statuses-from-remote.mjs && node --use-system-ca scripts/sync-tasks-from-remote.mjs && node --use-system-ca scripts/sync-agenda-from-remote.mjs",
     "deploy:pages": "node --use-system-ca scripts/deploy-pages.mjs",
-    "domains:attach": "node --use-system-ca scripts/attach-pages-domains.mjs"
+    "domains:attach": "node --use-system-ca scripts/attach-pages-domains.mjs",
+    "stripe:sync": "node --use-system-ca scripts/sync-stripe-catalog.mjs"
   },
   "dependencies": {
     "jspdf": "^4.2.1",

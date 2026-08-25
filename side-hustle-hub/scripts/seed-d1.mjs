@@ -4,8 +4,8 @@
  *   npm run db:migrate && npm run db:seed           # production (remote)
  *   npm run db:setup:local                          # local Pages Functions + D1
  *
- * Seeds T + E + Lyriq portal login accounts and the initial ops task backlog.
- * Safe to re-run (ON CONFLICT upserts users; tasks insert-if-missing).
+ * Seeds T + E + Lyriq + Candace portal login accounts and the initial ops task backlog.
+ * Safe to re-run (ON CONFLICT upserts users; passwords preserved if already set; tasks insert-if-missing).
  */
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -50,6 +50,15 @@ const ADMINS = [
     roles: ["admin", "qa"],
     password: "Lyriq123",
     notes: "Portal admin + QA — Kids/Youth side hustle guest speaker",
+  },
+  {
+    id: "u-68587a47-82b7-4dbd-8672-3880e770254f",
+    name: "Candace Jackson",
+    email: "candacejackson1@icloud.com",
+    role: "qa",
+    roles: ["qa"],
+    password: "Candace123",
+    notes: "QA — Testing Portal (roles managed in Users Area)",
   },
 ];
 
@@ -222,12 +231,10 @@ VALUES (
 ON CONFLICT(id) DO UPDATE SET
   name = excluded.name,
   email = excluded.email,
-  role = excluded.role,
-  roles = excluded.roles,
-  status = 'active',
   notes = excluded.notes,
-  password_hash = excluded.password_hash,
-  password_salt = excluded.password_salt,
+  status = 'active',
+  password_hash = COALESCE(users.password_hash, excluded.password_hash),
+  password_salt = COALESCE(users.password_salt, excluded.password_salt),
   updated_at = excluded.updated_at;
 `.trim());
     console.log(`  · preparing user ${admin.email}`);
@@ -235,6 +242,9 @@ ON CONFLICT(id) DO UPDATE SET
 
   statements.push(`DELETE FROM users WHERE email = 'evvelyn3@cox.net';`);
   statements.push(`DELETE FROM users WHERE email = 'leegaulden1222@icloud.com' AND id != 'u-lyriq';`);
+  statements.push(
+    `DELETE FROM users WHERE email = 'candacejackson1@icloud.com' AND id != 'u-68587a47-82b7-4dbd-8672-3880e770254f';`,
+  );
 
   let order = 0;
   for (const t of TASKS) {
@@ -333,11 +343,68 @@ ON CONFLICT(id) DO NOTHING;
   console.log(`  ✓ ${TASKS.length} tasks (insert-if-missing)`);
   console.log(`  ✓ ${SPEAKERS.length} speakers + ${WORKSHOPS.length} workshops (dates TBD)`);
 
+  if (isLocal) {
+    syncPartnerPasswordsFromRemote();
+  }
+
   console.log("\nSeed complete. Portal logins against D1:");
-  console.log("Default passwords (change after first login):");
+  if (isLocal) {
+    console.log("Local sandbox: partner passwords match production when remote sync succeeds.");
+    console.log("Fallback seed passwords (only if prod has no hash yet):");
+  } else {
+    console.log("Default passwords (change after first login; existing hashes are preserved):");
+  }
   console.log("  tinamariebarham@gmail.com / Admin123");
   console.log("  evelyn3@cox.net / Admin");
   console.log("  leegaulden1222@icloud.com / Lyriq123 (Admin + QA)");
+  console.log("  candacejackson1@icloud.com / Candace123 (Admin + QA) — fallback only");
+}
+
+/** Copy partner password hashes from production D1 into the local sandbox. */
+function syncPartnerPasswordsFromRemote() {
+  console.log("  · syncing partner passwords from production D1…");
+  const updates = [];
+  for (const admin of ADMINS) {
+    const remote = spawnSync(
+      process.execPath,
+      [
+        "--use-system-ca",
+        wrangler,
+        "d1",
+        "execute",
+        "gysh-db",
+        "--remote",
+        "--json",
+        "--command",
+        `SELECT email, password_hash, password_salt FROM users WHERE email = '${sqlEscape(admin.email)}' AND password_hash IS NOT NULL AND password_salt IS NOT NULL`,
+      ],
+      { cwd: root, encoding: "utf8" },
+    );
+    if (remote.status !== 0) {
+      console.warn(`  ⚠ could not read prod password for ${admin.email}`);
+      if (remote.stderr) console.warn(String(remote.stderr).slice(0, 300));
+      continue;
+    }
+    const text = (remote.stdout || "").trim();
+    const start = text.indexOf("[");
+    if (start < 0) continue;
+    let row = null;
+    try {
+      row = JSON.parse(text.slice(start))[0]?.results?.[0] ?? null;
+    } catch {
+      continue;
+    }
+    if (!row?.password_hash || !row?.password_salt) continue;
+    updates.push(
+      `UPDATE users SET password_hash = '${sqlEscape(row.password_hash)}', password_salt = '${sqlEscape(row.password_salt)}', updated_at = '${now}' WHERE email = '${sqlEscape(admin.email)}';`,
+    );
+  }
+  if (!updates.length) {
+    console.warn("  ⚠ no partner password hashes copied from prod — local seed passwords remain");
+    return;
+  }
+  runSqlFile(updates.join("\n"));
+  console.log(`  ✓ ${updates.length} partner password(s) copied from production`);
 }
 
 main();

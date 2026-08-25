@@ -7,6 +7,9 @@ import { VIDEO_MARKETING_CASES } from "./gysh-video-marketing-cases";
 import { WIZARD_SCENARIO_CASES } from "./gysh-wizard-scenarios";
 import { withPageLinkInFirstStep } from "./qa-page-links";
 import { noteEntriesPlainText } from "./gysh-note-entries";
+import { expandCatalogCasesForSingleAssignees, testCaseLogicalId } from "./gysh-test-case-dupes";
+import { EMAIL_TEMPLATE_REVIEW_CASES } from "./gysh-email-template-review-cases";
+import { LEGAL_REVIEW_CASES } from "./gysh-legal-review-cases";
 
 export type TestSuite = "manual" | "vitest" | "playwright";
 
@@ -144,7 +147,7 @@ export type TestAttachmentMeta = {
 };
 
 export const TEST_EVIDENCE_ACCEPT =
-  "image/png,image/jpeg,image/gif,image/webp,application/pdf,.doc,.docx,.xls,.xlsx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+  "image/png,image/jpeg,image/gif,image/webp,video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,application/pdf,.pdf,.doc,.docx,.xls,.xlsx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
 export type TestCase = {
   id: string;
@@ -196,14 +199,16 @@ const INTERNAL_AREAS = new Set([
 const INTERNAL_CASE_IDS = new Set([
   "AUTH-001", // Admin Studio login
   "AUTH-006", // Log out clears Admin Studio
-  "AUTH-007", // Testing Portal access for T / E / Lyriq
+  "AUTH-007", // Testing Portal access for Tina, Evelyn / Lyriq
   "EMAIL-001", // API health / Resend configured
   "EMAIL-005", // Resend From domain ops check
 ]);
 
 /** Map every case to External (user-facing) or Internal (admin / QA). */
 export function facingForCase(t: Pick<TestCase, "area" | "id" | "suite">): TestFacing {
-  if (INTERNAL_CASE_IDS.has(t.id)) return "internal";
+  const logicalId = testCaseLogicalId(t.id);
+  if (logicalId.startsWith("EMAIL-TPL-")) return "internal";
+  if (INTERNAL_CASE_IDS.has(t.id) || INTERNAL_CASE_IDS.has(logicalId)) return "internal";
   if (INTERNAL_AREAS.has(t.area)) return "internal";
   return "external";
 }
@@ -218,6 +223,9 @@ export type TestCategory =
   | "proofread"
   | "website"
   | "facebook"
+  | "youtube"
+  | "instagram"
+  | "tiktok"
   | "contact"
   | "content"
   | "workshops"
@@ -237,6 +245,9 @@ export const TEST_CATEGORY_LABELS: Record<TestCategory, string> = {
   proofread: "ProofRead",
   website: "Website",
   facebook: "Facebook",
+  youtube: "YouTube",
+  instagram: "Instagram",
+  tiktok: "TikTok",
   contact: "Contact",
   content: "Content",
   workshops: "Workshops",
@@ -257,6 +268,9 @@ export const TEST_CATEGORIES: TestCategory[] = [
   "proofread",
   "website",
   "facebook",
+  "youtube",
+  "instagram",
+  "tiktok",
   "contact",
   "content",
   "workshops",
@@ -268,7 +282,16 @@ export const TEST_CATEGORIES: TestCategory[] = [
   "automated",
 ];
 
-export function categoryForCase(t: Pick<TestCase, "area" | "suite" | "id">): TestCategory {
+/** Social platform categories shown as their own Socials group + in Categories. */
+export const SOCIAL_TEST_CATEGORIES: TestCategory[] = [
+  "facebook",
+  "youtube",
+  "instagram",
+  "tiktok",
+  "website",
+];
+
+export function categoryForCase(t: Pick<TestCase, "area" | "suite" | "id" | "title">): TestCategory {
   if (t.suite === "vitest" || t.suite === "playwright") {
     if (t.area === "Kids Get Your Side Hustle") return "wizard_kids";
     if (t.area === "Teens Get Your Side Hustle" || t.area === "Junior Get Your Side Hustle")
@@ -288,12 +311,14 @@ export function categoryForCase(t: Pick<TestCase, "area" | "suite" | "id">): Tes
   if (t.area === "Proofread" || t.id.toUpperCase().startsWith("PROOF-")) {
     return "proofread";
   }
+  if (t.id.toUpperCase() === "LEGAL-DISC-001") return "navigation_brand";
   switch (t.area) {
     case "Auth":
     case "Join":
     case "Registration":
     case "Email":
     case "Blueprint":
+    case "Legal":
       return "auth_access";
     case "Navigation":
     case "Brand":
@@ -345,7 +370,7 @@ export function categoryForCase(t: Pick<TestCase, "area" | "suite" | "id">): Tes
   }
 }
 
-const TEST_CASES_RAW: TestCase[] = [
+const TEST_CASES_RAW_BASE: TestCase[] = [
   {
     id: "AUTH-001",
     area: "Auth",
@@ -490,15 +515,190 @@ const TEST_CASES_RAW: TestCase[] = [
     steps: [
       "Open Join from top nav",
       "Confirm membership plans/hero appear first; footer CTAs include Create account / Join, Sign in, Browse GYSH Community, Kids / Teens Corner (no Kids/Teens team cards above plans)",
-      "Confirm Free / Starter / Pro / Elite cards, then Proposed hustle schedule suite callout after the membership tier grid",
-      "On Adults and Seniors, confirm Military & Veterans callout (Veterans save even more) under membership options",
+      "Confirm Free / Starter / Pro / Elite cards, then hustle schedule suite callout after the membership tier grid (points to My Dashboard → Schedule Suite)",
+      "On Adults/Seniors: confirm note that all membership amounts are collected in advance; check Yearly on a paid card and confirm both equivalent monthly rate and yearly amount show",
+      "Military & Veterans callout is deferred (hidden) until Sprint 6 / Task T-MEM-MILITARY (Military Membership discount) — do not expect it on Adults/Seniors yet",
       "Switch audience tabs: Kids (4–12), Teens (13–17), Adults (18–54), Seniors (55+)",
-      "On Kids and Teens, confirm parent-funded credit packs and credit earn sections appear; military callout is hidden",
+      "On Kids and Teens, confirm parent-funded credit packs and credit earn sections appear",
       "Confirm credit packs list 25 / $5, 60 / $10, 140 / $20, and 300 / $40",
       "Scan a la carte price table for the selected audience",
     ],
-    expected: "Join loads with membership section then schedule suite; Adults/Seniors show military/veteran savings callout; Kids/Teens show credit funding and earning; Pro unlocks schedule suite messaging",
+    expected: "Join loads with membership section then schedule suite; advance-billing note on Adults/Seniors; yearly shows monthly equiv + yearly amount; military/veteran callout stays hidden until T-MEM-MILITARY; Kids/Teens show credit funding and earning; Pro unlocks schedule suite on My Dashboard",
     path: "join",
+  },
+  {
+    id: "MEMBER-STRIPE-001",
+    area: "Membership",
+    title: "Adult/Senior paid signup opens Stripe Checkout (test mode)",
+    priority: "P0",
+    roles: ["all", "qa"],
+    assignees: ["evelyn", "candace"],
+    suite: "manual",
+    steps: [
+      "Open Join → pick Adults → Starter (or Pro/Elite) → Create account / Continue to checkout",
+      "Complete registration with a unique email",
+      "On Secure checkout, choose Monthly or Yearly, then Pay with Stripe",
+      "Confirm redirect to checkout.stripe.com (or Stripe test checkout)",
+      "In Stripe Test/Sandbox, pay with 4242 4242 4242 4242, any future expiry, any CVC",
+      "Confirm return to /membership?checkout=success and Payment complete message",
+    ],
+    expected: "Paid Adult/Senior plans use real Stripe Checkout; test card succeeds; return URL confirms payment",
+    path: "membership_signup",
+  },
+  {
+    id: "MEMBER-STRIPE-002",
+    area: "Membership",
+    title: "Kids/Teens paid plans do not use USD Stripe membership Checkout",
+    priority: "P1",
+    roles: ["qa"],
+    assignees: ["candace"],
+    suite: "manual",
+    steps: [
+      "Open membership signup with audience Kids or Teens and tier Starter",
+      "Create account",
+      "Confirm you land on Account created (no Stripe card / Pay with Stripe step)",
+      "Confirm copy mentions credit plan / admin activation",
+    ],
+    expected: "Kids/Teens memberships stay credit-based; Stripe USD membership checkout is Adults/Seniors only",
+    path: "membership_signup",
+  },
+  {
+    id: "SCHED-STATUS-001",
+    area: "Membership",
+    title: "Schedule Suite day blocks support Not Started, In Progress, Done, and Blocked",
+    priority: "P1",
+    roles: ["adult", "admin", "qa"],
+    assignees: ["lyriq"],
+    suite: "manual",
+    steps: [
+      "Sign in as Pro+ (or admin) and open My Dashboard → Schedule Suite",
+      "Create or open a schedule; stay on Plan tracker (no Weekly plan tab)",
+      "Check a day checkbox → Status becomes Done automatically",
+      "Uncheck the same checkbox → Status becomes Not Started",
+      "Also change Status via the dropdown (In Progress / Blocked) without relying on the checkbox",
+      "Confirm Hours (*) is required on every day before Save",
+    ],
+    expected:
+      "Checkbox checked → Done; unchecked → Not Started; hours required to Save; Progress view labels match",
+    path: "dashboard",
+  },
+  {
+    id: "SCHED-STATUS-002",
+    area: "Membership",
+    title: "Schedule Suite Done strikethrough, status colors, family bubbles, weekly downloads",
+    priority: "P1",
+    roles: ["adult", "admin", "qa"],
+    assignees: ["lyriq"],
+    suite: "manual",
+    steps: [
+      "Confirm family member bubbles at top (All family members + each name) with Saved schedules under them",
+      "Filter by All vs an individual member and confirm tabs update",
+      "In Plan tracker, set mixed statuses; confirm Done strikethrough and status colors",
+      "Use Weekly plan download PDF and Word links on Plan tracker",
+    ],
+    expected:
+      "Member bubbles filter Saved schedules; Done is struck through; PDF/Word weekly plan links work; no Weekly plan subtab",
+    path: "dashboard",
+  },
+  {
+    id: "SCHED-STATUS-003",
+    area: "Membership",
+    title: "Schedule Suite status persists after Save; Done is not past-due",
+    priority: "P1",
+    roles: ["adult", "admin", "qa"],
+    assignees: ["lyriq"],
+    suite: "manual",
+    steps: [
+      "Keep required hours on all days, set mixed statuses including Done and Blocked",
+      "Click Save, refresh / re-open Schedule Suite",
+      "Confirm statuses and hours reload correctly",
+      "If a past-due Done day exists, confirm it does not appear in the login past-due popup as incomplete",
+    ],
+    expected: "Statuses and hours persist after Save; Done blocks are excluded from overdue / past-due incomplete lists",
+    path: "dashboard",
+  },
+  {
+    id: "SCHED-REMINDER-001",
+    area: "Membership",
+    title: "Schedule Suite email reminders (cadence + branded email content)",
+    priority: "P1",
+    roles: ["adult", "admin", "qa"],
+    assignees: ["lyriq"],
+    suite: "manual",
+    steps: [
+      "Sign in as Pro+ (or admin) and open My Dashboard → Schedule Suite",
+      "Open or create a schedule tab; confirm Email reminders control (None / Daily / Weekly / Bi-weekly / Monthly)",
+      "Confirm Email Me on the Plan tracker / Blueprint row scrolls to the Email reminders section",
+      "Set cadence to Weekly (or Daily for a same-day check), fill required hours, and Save",
+      "Confirm the saved cadence still shows after reload",
+      "Trigger or wait for the reminder send path (admin digest/cron or next cadence window); open the reminder email",
+      "In the email: confirm weekly plan table (days, focus, due, status) and Kid Credits balance appear",
+    ],
+    expected:
+      "Email Me jumps to the Email reminders block; cadence saves on the schedule; reminder email is branded and includes the plan table plus Kid Credits; changing cadence to None stops further reminder sends",
+    path: "dashboard",
+  },
+  {
+    id: "SCHED-ROUNDUP-001",
+    area: "Membership",
+    title: "Schedule Suite Blueprint plan, Weekly Roundup, and Grade Me",
+    priority: "P1",
+    roles: ["adult", "admin", "qa"],
+    assignees: ["lyriq"],
+    suite: "manual",
+    steps: [
+      "Open Schedule Suite → Blueprint plan: enter Marketing plan and Target sales; Save",
+      "Open Weekly roundup: fill I killed it here, I need improvement here, Action items for upcoming week",
+      "From Plan tracker, click Grade me → lands on Weekly Roundup with the grade shown; confirm only one Grade me button on that view (not duplicated in the stats bar)",
+      "Mark some day blocks Done, click Grade me again; confirm letter + % score updates",
+      "See SCHED-GRADE-001 for the full grading scale and each letter mark",
+    ],
+    expected:
+      "Blueprint + roundup persist after Save; Grade me opens Weekly Roundup with a single Grade me control; score = % of day blocks Done (see SCHED-GRADE-001)",
+    path: "dashboard",
+  },
+  {
+    id: "SCHED-GRADE-001",
+    area: "Membership",
+    title: "Schedule Suite Grade Me — scale and each letter (A+ through F)",
+    priority: "P1",
+    roles: ["adult", "admin", "qa"],
+    assignees: ["lyriq"],
+    suite: "manual",
+    steps: [
+      "GRADING SCALE (how the score is calculated): Score = % of the 7 day blocks marked Done (Not Started / In Progress / Blocked do not count). Hours, sales, and roundup are context only — they do not change the letter. Marks: A+ = 97–100%, A = 90–96%, B+ = 87–89%, B = 80–86%, C+ = 77–79%, C = 70–76%, D = 60–69%, F = 0–59%. With 7 days: 7 Done ≈ 100% (A+), 6 Done ≈ 86% (B), 5 Done ≈ 71% (C), 4 Done ≈ 57% (F), 0 Done = 0% (F).",
+      "Sign in as Pro+ (or admin) → My Dashboard → Schedule Suite → open a schedule on Plan tracker",
+      "F: leave all days Not Started → Grade me → expect F (~0%) on Weekly Roundup",
+      "D: mark enough days Done for ~60–69% (e.g. ~4–5 of 7 depending on rounding) → Grade me → expect D",
+      "C / C+: mark days for ~70–79% → Grade me → expect C or C+",
+      "B / B+: mark days for ~80–89% → Grade me → expect B or B+",
+      "A / A+: mark 7/7 Done → Grade me → expect A or A+ (~100%) and celebration for A/A+",
+      "Confirm Grade me from Plan tracker is the green primary button and switches to Weekly Roundup; Roundup shows only one Grade me (stats-bar Grade me hidden); re-grade after changing Done counts updates the score",
+    ],
+    expected:
+      "Each mark matches the % Done scale above; Grade me opens Roundup without a duplicate Grade me; A/A+ shows celebration; score is completion % only (not hours/sales/roundup)",
+    path: "dashboard",
+  },
+  {
+    id: "SCHED-PNL-001",
+    area: "Membership",
+    title: "Schedule Suite Profit & Loss calculator (Pro+)",
+    priority: "P1",
+    roles: ["adult", "admin", "qa"],
+    assignees: ["lyriq"],
+    suite: "manual",
+    steps: [
+      "Confirm Membership / Join lists Profit & Loss calculator on Pro and Elite",
+      "Sign in as Pro+ (or admin) → My Dashboard → Schedule Suite → open a schedule → P&L calculator tab",
+      "Confirm Blueprint window shows days (≤10 target), week count, and plan tracker % complete",
+      "Add line item: Type Sale, Date, Description, Amount → Add; confirm Sales + Net profit update",
+      "Add line item: Type Expense, Category (Admin/Overhead/Advertising/etc.), Amount → Add; confirm Expenses + Net update",
+      "Confirm Weekly outcomes row shows Sales / Exp / Net for the week",
+      "Save, reload Schedule Suite, confirm line items and totals persist",
+    ],
+    expected:
+      "P&L tab lets you add dated sales and categorized expenses; net profit = sales − expenses; weekly outcomes and blueprint day/week count show; data persists after Save",
+    path: "dashboard",
   },
   {
     id: "SENIOR-001",
@@ -876,7 +1076,7 @@ const TEST_CASES_RAW: TestCase[] = [
     assignees: ["evelyn", "lyriq"],
     suite: "manual",
     steps: [
-      "Admin → Email templates",
+      "Open [Email Templates](/admin?tab=email)",
       "Select each template — editor fields appear; Body uses Visual WYSIWYG (bold/italic/font/size/color/lists/links) plus HTML source toggle",
       "Change subject + headline + body formatting on Password reset → Save template → Refresh → confirm values persist",
       "Confirm live preview iframe updates after edits (sample placeholders like {{name}})",
@@ -884,7 +1084,7 @@ const TEST_CASES_RAW: TestCase[] = [
       "Optional: Send test to a controlled inbox and confirm Resend delivers edited subject",
     ],
     expected: "Every catalog template is editable with WYSIWYG body; Save persists to D1; preview/test use saved content",
-    path: "admin",
+    path: "/admin?tab=email",
   },
   {
     id: "UX-002",
@@ -1372,17 +1572,18 @@ const TEST_CASES_RAW: TestCase[] = [
   {
     id: "AUTH-007",
     area: "Auth",
-    title: "Lyriq / Tina / Evelyn can each reach Testing Portal after login",
+    title: "Admin / QA login opens Testing Portal",
     priority: "P0",
     roles: ["admin", "qa"],
     assignees: ["lyriq", "tina", "evelyn"],
     suite: "manual",
     steps: [
-      "Log in as each portal QA (Tina, Evelyn, Lyriq) in turn (or verify with known accounts)",
-      "Confirm Admin Studio → Testing Portal loads",
-      "Confirm suite filters Manual / Vitest / Playwright appear",
+      "Log in as each portal QA (Tina, Evelyn, Lyriq, Candace) in turn (or verify with known accounts)",
+      "Confirm Admin Studio opens on Testing Portal (Tina/Lyriq may land on Agenda first if meeting times are still required)",
+      "Confirm suite filters Manual / Vitest / Playwright appear on Testing Portal",
     ],
-    expected: "All three QA accounts can access Testing Portal without 403/blank screen",
+    expected:
+      "Admin/QA accounts reach Testing Portal after login (or Agenda when the Tina/Lyriq meeting gate applies) without 403/blank screen",
     path: "login",
   },
   {
@@ -1624,7 +1825,7 @@ const TEST_CASES_RAW: TestCase[] = [
     suite: "manual",
     steps: [
       "Scroll to footer on Home",
-      "Click About, Join, Contact",
+      "Click About, Join, Contact, Privacy Policy",
       "Skim educational disclaimer — not investment advice",
     ],
     expected: "Footer nav works; disclaimer present and readable",
@@ -1953,7 +2154,16 @@ const TEST_CASES_RAW: TestCase[] = [
 
   // Exhaustive Get Your Side Hustle option paths (Vitest-owned matrix)
   ...WIZARD_SCENARIO_CASES,
+
+  // One review case per Admin → Email Templates catalog entry (Candace)
+  ...EMAIL_TEMPLATE_REVIEW_CASES,
+
+  // Candace legal review — disclaimer, Beta Tester NDA, signup confirmation email
+  ...LEGAL_REVIEW_CASES,
 ];
+
+/** Expand shared-assignee + calculator triples before page-link injection. */
+const TEST_CASES_RAW: TestCase[] = expandCatalogCasesForSingleAssignees(TEST_CASES_RAW_BASE);
 
 /** All catalog cases with Open [Page](/path) injected into step 1 when `path` is set. */
 export const TEST_CASES: TestCase[] = TEST_CASES_RAW.map(withPageLinkInFirstStep);
@@ -2113,6 +2323,7 @@ export async function uploadTestEvidence(input: {
   const data = await api<{ attachment: TestAttachmentMeta }>("test-attachments", {
     method: "POST",
     body: input,
+    timeoutMs: 180_000,
   });
   return data.attachment;
 }
@@ -2127,7 +2338,7 @@ export async function fetchTestEvidenceContent(id: string): Promise<{
   contentBase64: string;
 }> {
   // Screenshots can be ~1MB base64 — allow longer than the default API timeout.
-  return api(`test-attachments?id=${encodeURIComponent(id)}`, { timeoutMs: 90_000 });
+  return api(`test-attachments?id=${encodeURIComponent(id)}`, { timeoutMs: 180_000 });
 }
 
 export function fileToBase64(file: Blob): Promise<string> {

@@ -1,10 +1,41 @@
 /** Shared role helpers for GYSH D1 users (single primary + optional multi-role JSON). */
 
-export const ALL_ROLES = ["admin", "qa", "dev", "kid", "junior", "adult", "senior"] as const;
+export const ALL_ROLES = [
+  "admin",
+  "qa",
+  "dev",
+  "kid",
+  "junior",
+  "adult",
+  "senior",
+  "beta",
+] as const;
 export type GyshRole = (typeof ALL_ROLES)[number];
 
 /** Privilege order — first match becomes the stored primary `role`. */
-const ROLE_PRIORITY: GyshRole[] = ["admin", "qa", "dev", "adult", "senior", "junior", "kid"];
+const ROLE_PRIORITY: GyshRole[] = [
+  "admin",
+  "qa",
+  "dev",
+  "adult",
+  "senior",
+  "junior",
+  "kid",
+  "beta",
+];
+
+/**
+ * Public signup roles: age-band (parent/kids → adult) plus optional Beta Tester.
+ * Never includes admin / QA / Dev — those stay admin-assigned.
+ */
+export function rolesForPublicRegister(
+  ageGroup: "kids" | "junior" | "adult" | "senior" | string,
+  applyBetaTester: boolean,
+): GyshRole[] {
+  const primary: GyshRole =
+    ageGroup === "junior" ? "junior" : ageGroup === "senior" ? "senior" : "adult";
+  return sortRoles(applyBetaTester ? [primary, "beta"] : [primary]);
+}
 
 export function isGyshRole(value: unknown): value is GyshRole {
   return typeof value === "string" && (ALL_ROLES as readonly string[]).includes(value);
@@ -123,6 +154,13 @@ export function qaTesterIdForIdentity(name: string, email: string): string | nul
   ) {
     return "lyriq";
   }
+  if (n === "candace" || n.startsWith("candace ") || e.includes("candace")) {
+    return "candace";
+  }
+  const first = n.split(/\s+/)[0]?.replace(/[^a-z0-9]/g, "") || "";
+  if (first.length >= 2 && first !== "vitest" && first !== "playwright") return first;
+  const local = e.split("@")[0]?.replace(/[^a-z0-9]+/g, "") || "";
+  if (local && local !== "vitest" && local !== "playwright") return local;
   return null;
 }
 
@@ -134,10 +172,17 @@ export function hasRole(roles: GyshRole[], role: GyshRole): boolean {
 export const FAILED_TEST_ASSIGNEE = "evelyn";
 export const LEAD_DEVELOPER_ASSIGNEE = FAILED_TEST_ASSIGNEE;
 
-const HUMAN_QA_IDS = new Set(["tina", "evelyn", "lyriq"]);
+export function isAutomatedSuiteOwnerId(raw: string): boolean {
+  return raw === "vitest" || raw === "playwright";
+}
 
+/** Any non-empty assignee that is not an automated suite runner. */
 export function isHumanQaTesterId(raw: string | null | undefined): boolean {
-  return HUMAN_QA_IDS.has(String(raw || "").trim().toLowerCase());
+  const n = String(raw || "")
+    .trim()
+    .toLowerCase();
+  if (!n || n === "unassigned") return false;
+  return !isAutomatedSuiteOwnerId(n);
 }
 
 /** Owner encoded in proofread case ids (PROOF-002-TINA → tina). */
@@ -145,6 +190,8 @@ export function qaOwnerFromCaseId(caseId: string): string {
   const id = String(caseId || "").trim();
   if (/-TINA$/i.test(id)) return "tina";
   if (/-LYRIQ$/i.test(id)) return "lyriq";
+  if (/-EVELYN$/i.test(id)) return "evelyn";
+  if (/-CANDACE$/i.test(id)) return "candace";
   return "";
 }
 

@@ -147,10 +147,29 @@ export function resolveGuideAccess(input: GuideAccessInput): GuideAccessResult {
   };
 }
 
-/** Short badge on guide cards. */
+/** Short badge on guide cards when unlocked / catalog. */
 export function guideTierBadgeLabel(minTier: GuideMinTier): string {
   if (minTier === "free") return "Free Guide";
   return `${tierDisplayName(minTier)} Membership`;
+}
+
+/**
+ * Badge when content is locked — always names the required membership level.
+ * e.g. "Locked · Needs Starter", "Locked · Join Free"
+ */
+export function membershipLockedBadgeLabel(minTier: GuideMinTier): string {
+  if (minTier === "free") return "Locked · Join Free";
+  return `Locked · Needs ${tierDisplayName(minTier)}`;
+}
+
+/** Minimum tier for Schedule Suite features (tracker, P&L, progress, email). */
+export const SCHEDULE_SUITE_MIN_TIER: GuideMinTier = "pro";
+
+export function membershipFeatureLockedBadgeLabel(
+  feature: "schedule_suite" | "pnl" | "tracker" | "progress",
+): string {
+  void feature;
+  return membershipLockedBadgeLabel(SCHEDULE_SUITE_MIN_TIER);
 }
 
 /** Compact label for narrow sidebars / chips (Free, Starter, Pro, Elite). */

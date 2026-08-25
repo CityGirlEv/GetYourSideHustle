@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   ensureFirstStepHasPageLink,
   ensureTaskNotesPageLink,
+  isExternalHref,
   openPageStepMarkdown,
   pageRefForTask,
   parseMarkdownLinks,
@@ -9,7 +10,7 @@ import {
 } from "../qa-page-links";
 import { TEST_CASES } from "../gysh-test-plan";
 import { AUTOMATED_PLAYWRIGHT_CASES, AUTOMATED_VITEST_CASES } from "../gysh-automated-tests";
-import { ensureGuideReviewTasks, ensureSeniorPageReviewTask, ensureTaskPageLinks } from "../gysh-tasks";
+import { ensureGuideReviewTasks, ensureSeniorPageReviewTask, ensureMembershipTierReviewTasks, ensureTaskPageLinks } from "../gysh-tasks";
 
 describe("qa-page-links", () => {
   it("resolves view keys to site paths", () => {
@@ -18,6 +19,21 @@ describe("qa-page-links", () => {
     expect(resolveQaPage("admin")).toEqual({
       href: "/admin",
       label: "Admin Studio",
+      view: "admin",
+    });
+    expect(resolveQaPage("admin:email")).toEqual({
+      href: "/admin?tab=email",
+      label: "Email Templates",
+      view: "admin",
+    });
+    expect(resolveQaPage("admin:email:welcome_free")).toEqual({
+      href: "/admin?tab=email&template=welcome_free",
+      label: "Email Templates · welcome_free",
+      view: "admin",
+    });
+    expect(resolveQaPage("/admin?tab=email&template=password_reset")).toEqual({
+      href: "/admin?tab=email&template=password_reset",
+      label: "Email Templates · password_reset",
       view: "admin",
     });
   });
@@ -42,6 +58,16 @@ describe("qa-page-links", () => {
       { type: "link", label: "Guides", href: "/guides" },
       { type: "text", value: " now" },
     ]);
+  });
+
+  it("treats app paths as internal so QA step links do not open a logged-out tab", () => {
+    expect(isExternalHref("/admin", "http://localhost:5173")).toBe(false);
+    expect(isExternalHref("/guides", "http://localhost:5173")).toBe(false);
+    expect(isExternalHref("http://localhost:5173/admin", "http://localhost:5173")).toBe(false);
+    expect(isExternalHref("https://getyoursidehustle.com/admin", "http://localhost:5173")).toBe(
+      true,
+    );
+    expect(isExternalHref("mailto:hi@example.com")).toBe(true);
   });
 
   it("infers page refs for guide/senior review tasks", () => {
@@ -91,6 +117,8 @@ describe("qa-page-links", () => {
       "VT-WORK-001",
       "VT-FIND-001",
       "VT-LH-001",
+      "VT-UI-001",
+      "VT-FIN-001",
     ]);
     expect(seed.tasks.every((t) => /^Open\s+\[/.test(t.notes))).toBe(true);
   });

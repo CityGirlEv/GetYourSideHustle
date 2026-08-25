@@ -2,7 +2,7 @@
 
 export type AttachmentOpenMode = "view" | "download";
 
-/** Images, PDFs, and plain text can open in a browser tab; Office files download. */
+/** Images, videos, PDFs, and plain text can open in a browser tab; Office files download. */
 export function canViewAttachmentInline(
   mimeType: string | null | undefined,
   fileName: string | null | undefined,
@@ -10,6 +10,7 @@ export function canViewAttachmentInline(
   const mime = String(mimeType || "").toLowerCase();
   const name = String(fileName || "").toLowerCase();
   if (mime.startsWith("image/") || /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(name)) return true;
+  if (mime.startsWith("video/") || /\.(mp4|webm|mov)$/i.test(name)) return true;
   if (mime === "application/pdf" || name.endsWith(".pdf")) return true;
   if (
     mime.startsWith("text/") ||

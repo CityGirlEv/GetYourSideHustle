@@ -454,7 +454,7 @@ export function UsersArea() {
           <Users size={22} style={{ color: "var(--bronze)" }} /> Users Area
         </h2>
         <p style={{ color: "var(--text-primary)", marginTop: "6px", fontSize: "1rem" }}>
-          GYSH audiences in production D1 — Admin, QA, Dev, Kids, Teens, Adult, and Senior. Assigned roles show as
+          GYSH audiences in production D1 — Admin, QA, Dev, Kids, Teens, Adult, Senior, and Beta Tester. Assigned roles show as
           highlighted bubbles; click a bubble to toggle, or use + to add a role. Failed tests assign to Evelyn (Dev).
           Passwords are never shown — only set or reset from Edit.
         </p>

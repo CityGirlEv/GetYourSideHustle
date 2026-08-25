@@ -21,10 +21,12 @@ import {
   Heart,
   Home,
   BookOpen,
+  Newspaper,
   LayoutDashboard,
   Minus,
   Plus,
   ArrowRight,
+  ShoppingCart,
 } from "lucide-react";
 import { FacebookIcon } from "./components/FacebookIcon";
 import { BusyOverlay, WaitLabel } from "./components/WaitFeedback";
@@ -36,11 +38,28 @@ import { FindMineWizardSelector } from "./components/FindMineWizardSelector";
 import { StepByStepGuides } from "./components/StepByStepGuides";
 import { FreeGuidesPage } from "./components/FreeGuidesPage";
 import { CommunityHub } from "./components/CommunityHub";
+import { NewsletterPage } from "./components/NewsletterPage";
 import { type MarketingGuideId } from "./lib/marketing-guides";
 import { KidsCorner } from "./components/KidsCorner";
 import { SeniorSideHustles } from "./components/SeniorSideHustles";
 import { UserPortal } from "./components/UserPortal";
 import { KidDashboard } from "./components/KidDashboard";
+import { ScheduleDuePopup } from "./components/ScheduleDuePopup";
+import { BetaPhasePopup } from "./components/BetaPhasePopup";
+import {
+  betaNoticePreviewRequested,
+  shouldOpenBetaNoticeAfterLogin,
+} from "./lib/beta-phase-notice";
+import {
+  canAccessScheduleSuite,
+  collectOverdueScheduleItems,
+  normalizeHustleScheduleStore,
+  summarizeScheduleSuites,
+  type OverdueScheduleItem,
+  type ScheduleSuiteSummary,
+} from "./lib/hustle-schedule";
+import { fetchMemberProgress } from "./lib/gysh-member-progress";
+import { userHasAdminRole } from "./lib/gysh-assignment";
 import {
   ADMIN_MENU_GROUPS,
   ADMIN_USER_GUIDE_LINKS,
@@ -56,6 +75,8 @@ import { SiteFooter } from "./components/SiteFooter";
 import type { FooterNavView } from "./components/SiteFooter";
 import { AboutPage } from "./components/AboutPage";
 import { ContactPage } from "./components/ContactPage";
+import { PrivacyPolicyPage } from "./components/PrivacyPolicyPage";
+import { BetaNdaPage } from "./components/BetaNdaPage";
 import { JoinPage } from "./components/JoinPage";
 import { MembershipSignupPage } from "./components/MembershipSignupPage";
 import type { AudienceGroup, TierId } from "./lib/membership";
@@ -65,6 +86,14 @@ import {
   readSavedJoinAudience,
   saveJoinAudience,
 } from "./lib/join-audience";
+import {
+  clearPendingMembershipCheckout,
+  readPendingMembershipCheckout,
+} from "./lib/pending-membership-checkout";
+import {
+  alacarteCartItemCount,
+  subscribeAlaCarteCart,
+} from "./lib/alacarte-cart";
 import { LaunchChecklistPage } from "./components/LaunchChecklistPage";
 import { ParentConsentPage } from "./components/ParentConsentPage";
 import { clearConsentTokenFromUrl, readConsentTokenFromUrl } from "./lib/junior-signup";
@@ -102,6 +131,9 @@ import {
   type ActAsTarget,
 } from "./lib/admin-act-as";
 import { canAccessAdminPortal } from "./lib/gysh-roles";
+import { BetaTesterDashboard } from "./components/BetaTesterDashboard";
+import type { BetaNdaReceipt } from "./lib/beta-tester-dashboard";
+import { adminLandingTabAfterLogin } from "./lib/admin-login-landing";
 import {
   fetchPartnerAgenda,
   mustPickAgendaTimes,
@@ -123,6 +155,7 @@ const MarketingManual = lazy(() =>
 );
 
 const DUE_POPUP_LOGIN_FLAG = "gysh_due_popup_login";
+const SCHEDULE_DUE_POPUP_LOGIN_FLAG = "gysh_schedule_due_popup_login";
 
 export type AppView =
   | "dashboard"
@@ -131,6 +164,7 @@ export type AppView =
   | "guides"
   | "checklist"
   | "community"
+  | "newsletter"
   | "workshops"
   | "kids"
   | "seniors"
@@ -139,6 +173,9 @@ export type AppView =
   | "admin"
   | "about"
   | "contact"
+  | "privacy"
+  | "beta_nda"
+  | "beta_testing"
   | "join"
   | "membership_signup";
 
@@ -377,13 +414,13 @@ const HUSTLES_DATA: Hustle[] = [
     details: [
       "Lowest barrier: bike, scooter, or car + insulated bag",
       "Peak dinner + weekend lunch windows pay best",
-      "Use AI Timing Scout to pick ZIP/time blocks before you drive"
+      "Use AI Timing Scout to pick ZipCode/time blocks before you drive"
     ]
   },
   {
     id: "ai-timing",
     name: "AI Timing Scout",
-    description: "Use AI plus local ZIP data to map the best hours and areas for rideshare and delivery — then sell the playbooks (or use them yourself) for higher $/hour.",
+    description: "Use AI plus local ZipCode data to map the best hours and areas for rideshare and delivery — then sell the playbooks (or use them yourself) for higher $/hour.",
     startupCost: "Less than $100",
     timeReq: "5 - 12 hrs/week",
     difficulty: "Medium",
@@ -453,6 +490,7 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<"user" | "admin">("user");
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [betaUnlockPreview, setBetaUnlockPreview] = useState<BetaNdaReceipt | null>(null);
   /** False until /auth/me finishes so /admin never flashes Schedule to anonymous visitors. */
   const [authReady, setAuthReady] = useState(false);
   const [emailInput, setEmailInput] = useState("");
@@ -477,6 +515,14 @@ function App() {
   const [adminTab, setAdminTab] = useState<AdminTab>(() => readAdminDeepLink().tab ?? "schedule");
   /** Tina / Lyriq must submit ≥3 meeting dates before any other navigation. */
   const [meetingGateLocked, setMeetingGateLocked] = useState(false);
+  const [scheduleDueOpen, setScheduleDueOpen] = useState(false);
+  const [betaNoticeOpen, setBetaNoticeOpen] = useState(false);
+  const [scheduleDueSummaries, setScheduleDueSummaries] = useState<ScheduleSuiteSummary[]>([]);
+  const [scheduleDueOverdue, setScheduleDueOverdue] = useState<OverdueScheduleItem[]>([]);
+  const [focusScheduleId, setFocusScheduleId] = useState<string | null>(null);
+  const [portalInitialTab, setPortalInitialTab] = useState<
+    "blueprint" | "schedule" | null
+  >(null);
   const [adminUserGuide, setAdminUserGuide] = useState<UserGuideId>("master");
   const [adminMenuOpen, setAdminMenuOpen] = useState(false);
   const adminMenuRef = useRef<HTMLDivElement>(null);
@@ -499,7 +545,11 @@ function App() {
   const [joinAudience, setJoinAudience] = useState<AudienceGroup | null>(null);
   /** Optional: scroll Join to Free–Elite plans (in-page See Memberships CTAs only). */
   const [joinScrollToPlans, setJoinScrollToPlans] = useState(false);
+  /** Optional: scroll Join to a-la-carte cart checkout (header Cart). */
+  const [joinScrollToCart, setJoinScrollToCart] = useState(false);
+  const [headerCartCount, setHeaderCartCount] = useState(() => alacarteCartItemCount());
   const [signupTier, setSignupTier] = useState<TierId>("free");
+  const [signupResumeCheckout, setSignupResumeCheckout] = useState(false);
   const [howOpen, setHowOpen] = useState(false);
   const [homeHowOpen, setHomeHowOpen] = useState(false);
   const [guidesDetailId, setGuidesDetailId] = useState<string | null>(null);
@@ -526,6 +576,26 @@ function App() {
     return 100;
   });
 
+  /** Narrow phones: persisted 110–150% zoom overflows bubbles/chips — force 100%. */
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const mq = window.matchMedia("(max-width: 768px)");
+    const sync = () => {
+      if (mq.matches) setPageZoom(100);
+    };
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  useEffect(
+    () =>
+      subscribeAlaCarteCart((cart) => {
+        setHeaderCartCount(alacarteCartItemCount(cart));
+      }),
+    [],
+  );
+
   useEffect(() => {
     // Never set zoom on <html> — Chromium CSS zoom breaks sticky-header hit-testing,
     // so Login/nav clicks miss when zoom ≠ 100% (value is persisted per-origin).
@@ -538,8 +608,26 @@ function App() {
     }
   }, [pageZoom]);
 
-  const contentZoomStyle =
-    pageZoom === 100 ? undefined : ({ zoom: `${pageZoom}%` } as React.CSSProperties);
+  const contentZoomStyle = (() => {
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 768px)").matches) {
+      return undefined;
+    }
+    if (pageZoom === 100) return undefined;
+    const scale = pageZoom / 100;
+    const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+    // iPhone/iPad/Safari: CSS zoom is flaky — use transform so +/- controls work.
+    const preferTransformZoom =
+      /iP(hone|ad|od)/i.test(ua) ||
+      (/Safari/i.test(ua) && !/Chrome|Chromium|Edg|Android/i.test(ua));
+    if (!preferTransformZoom) {
+      return { zoom: `${pageZoom}%` } as React.CSSProperties;
+    }
+    return {
+      transform: `scale(${scale})`,
+      transformOrigin: "top left",
+      width: `${100 / scale}%`,
+    } as React.CSSProperties;
+  })();
 
   // Keep the address bar in sync so pages are shareable deep links.
   // Skip while a consent (or password-reset) deep link is active so we don't drop the token.
@@ -565,9 +653,19 @@ function App() {
       if (parsed.view !== "guides") {
         setGuidesDetailId(null);
       }
+      const adminDeepLink =
+        parsed.view === "admin" &&
+        Boolean((window.history.state as { adminDeepLink?: boolean } | null)?.adminDeepLink);
+      if (parsed.view === "admin") {
+        const link = readAdminDeepLink();
+        if (link.tab) setAdminTab(link.tab);
+      }
       setHowOpen(false);
       setHomeHowOpen(false);
-      window.scrollTo(0, 0);
+      // Admin deep links scroll the focused task/test/item into view — don't jump to top.
+      if (!adminDeepLink) {
+        window.scrollTo(0, 0);
+      }
     };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
@@ -620,6 +718,54 @@ function App() {
       cancelled = true;
     };
   }, []);
+
+  // Mobile menu: lock page scroll so content cannot slide behind the drawer.
+  useEffect(() => {
+    const root = document.documentElement;
+    if (!mobileMenuOpen) {
+      root.classList.remove("gysh-mobile-menu-open");
+      return;
+    }
+    root.classList.add("gysh-mobile-menu-open");
+    const prevBody = document.body.style.overflow;
+    const prevHtml = root.style.overflow;
+    document.body.style.overflow = "hidden";
+    root.style.overflow = "hidden";
+    return () => {
+      root.classList.remove("gysh-mobile-menu-open");
+      document.body.style.overflow = prevBody;
+      root.style.overflow = prevHtml;
+    };
+  }, [mobileMenuOpen]);
+
+  // After login: show Schedule Suite overview + past-due items (Pro+ / admin).
+  useEffect(() => {
+    if (!authReady || !isLoggedIn || !authUser) return;
+    if (sessionStorage.getItem(SCHEDULE_DUE_POPUP_LOGIN_FLAG) !== "1") return;
+    const isAdmin = userHasAdminRole(authUser);
+    if (!canAccessScheduleSuite(authUser.membershipTier, { isAdmin })) {
+      sessionStorage.removeItem(SCHEDULE_DUE_POPUP_LOGIN_FLAG);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const raw = await fetchMemberProgress("hustle_schedule");
+        if (cancelled) return;
+        const store = normalizeHustleScheduleStore(raw);
+        sessionStorage.removeItem(SCHEDULE_DUE_POPUP_LOGIN_FLAG);
+        if (store.schedules.length === 0) return;
+        setScheduleDueSummaries(summarizeScheduleSuites(store));
+        setScheduleDueOverdue(collectOverdueScheduleItems(store));
+        setScheduleDueOpen(true);
+      } catch {
+        if (!cancelled) sessionStorage.removeItem(SCHEDULE_DUE_POPUP_LOGIN_FLAG);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [authReady, isLoggedIn, authUser]);
 
   // Deep link /admin must not render Admin Studio (Schedule) without portal roles.
   useEffect(() => {
@@ -693,7 +839,8 @@ function App() {
       setGuidesDetailId(null);
       setGuidesManualId(null);
     }
-    if (view !== "join") {
+    // Keep lane when opening membership signup from a plan card (Choose Starter, etc.).
+    if (view !== "join" && view !== "membership_signup") {
       setJoinAudience(null);
     }
     setHowOpen(false);
@@ -706,7 +853,7 @@ function App() {
 
   const openJoin = (
     audience?: AudienceGroup | null,
-    opts?: { scrollToPlans?: boolean },
+    opts?: { scrollToPlans?: boolean; scrollToCart?: boolean },
   ) => {
     if (audience) {
       const next = audienceFromAgeGroup(audience);
@@ -716,12 +863,18 @@ function App() {
       setJoinAudience(null);
     }
     const scrollToPlans = opts?.scrollToPlans === true;
-    setJoinScrollToPlans(scrollToPlans);
-    goTo("join", { scroll: !scrollToPlans });
+    const scrollToCart = opts?.scrollToCart === true;
+    setJoinScrollToPlans(scrollToPlans && !scrollToCart);
+    setJoinScrollToCart(scrollToCart);
+    goTo("join", { scroll: !scrollToPlans && !scrollToCart });
   };
 
-  /** Membership registration + optional demo checkout for paid tiers. */
-  const openMembershipSignup = (tier: TierId = "free", audience?: AudienceGroup | null) => {
+  /** Membership registration + Stripe checkout for paid tiers. */
+  const openMembershipSignup = (
+    tier: TierId = "free",
+    audience?: AudienceGroup | null,
+    opts?: { resumeCheckout?: boolean },
+  ) => {
     const next =
       audience != null
         ? audienceFromAgeGroup(audience)
@@ -729,6 +882,7 @@ function App() {
     saveJoinAudience(next);
     setJoinAudience(next);
     setSignupTier(tier);
+    setSignupResumeCheckout(opts?.resumeCheckout === true);
     goTo("membership_signup");
   };
 
@@ -829,6 +983,16 @@ function App() {
             "Bring workshop and guide questions here when you get stuck.",
           ],
         };
+      case "newsletter":
+        return {
+          title: "How the GYSH Weekly Newsletter works",
+          steps: [
+            "Starter+ members get a Friday dual-audience issue — kids glow + adult hustle tip.",
+            "Read the archive on this page; the same issue lands in your inbox.",
+            "Content Factory drafts appear here after they are marked Published.",
+            "Free accounts can browse titles, then upgrade to unlock the full issue.",
+          ],
+        };
       case "about":
         return {
           title: "About GYSH",
@@ -847,6 +1011,36 @@ function App() {
             "Include your age group if you want Kids, Teens, Adult, or Senior help.",
             "We read messages through the GYSH inbox.",
             "For account help, try Login or Join first.",
+          ],
+        };
+      case "privacy":
+        return {
+          title: "How GYSH Privacy Policy works",
+          steps: [
+            "Read how GYSH may collect, use, and share information.",
+            "Families: review Children’s Privacy and Teen Users before a child or teen joins.",
+            "Use Contact Us for privacy requests or parental requests.",
+            "We update this page when our practices or legal requirements change.",
+          ],
+        };
+      case "beta_nda":
+        return {
+          title: "How the GYSH Beta Tester NDA works",
+          steps: [
+            "Create your tester profile on membership signup.",
+            "Read the NDA, type your full legal name, and check I have read and agree.",
+            "GYSH stores the NDA version, timestamp, IP, and your user ID.",
+            "Testing unlocks on your Beta Tester dashboard.",
+          ],
+        };
+      case "beta_testing":
+        return {
+          title: "How the Beta Tester dashboard works",
+          steps: [
+            "Accept GYSH-BETA-NDA-v1.0 to unlock testing.",
+            "Track completed tests and recorded testing time.",
+            "Reward level starts at Not yet qualified.",
+            "Keep beta features and bugs confidential.",
           ],
         };
       case "calculators":
@@ -949,6 +1143,9 @@ function App() {
       case "community":
         goTo("community");
         break;
+      case "newsletter":
+        goTo("newsletter");
+        break;
       case "join":
         openJoin();
         break;
@@ -963,6 +1160,15 @@ function App() {
         break;
       case "contact":
         goTo("contact");
+        break;
+      case "privacy":
+        goTo("privacy");
+        break;
+      case "beta_nda":
+        goTo("beta_nda");
+        break;
+      case "beta_testing":
+        goTo("beta_testing");
         break;
       case "admin":
         goToAdmin(href.tab, href.guide);
@@ -1109,6 +1315,9 @@ function App() {
         setIsLoggedIn(true);
         setUserRole(outcome === "admin" ? "admin" : "user");
         setAuthUser(user ?? null);
+        if (shouldOpenBetaNoticeAfterLogin(outcome)) {
+          setBetaNoticeOpen(true);
+        }
         setEmailInput("");
         setPassInput("");
         setShowPassword(false);
@@ -1137,21 +1346,31 @@ function App() {
         }
 
         if (outcome === "admin") {
-          sessionStorage.setItem(DUE_POPUP_LOGIN_FLAG, "1");
-          setAdminSessionKey((k) => k + 1);
-          const email = String(user?.email || "").toLowerCase();
-          const name = String(user?.name || "").toLowerCase();
-          const forceAgenda =
-            email.includes("tina") ||
-            name.includes("tina") ||
-            email.includes("lyriq") ||
-            email.includes("leegaulden") ||
-            name.includes("lyriq");
-          setAdminTab(forceAgenda ? "agenda" : "schedule");
-          setActiveView("admin");
+          const pendingMembership = readPendingMembershipCheckout();
+          if (pendingMembership) {
+            clearPendingMembershipCheckout();
+            openMembershipSignup(pendingMembership.tierId, pendingMembership.audience, {
+              resumeCheckout: pendingMembership.resumeCheckout,
+            });
+          } else {
+            sessionStorage.setItem(DUE_POPUP_LOGIN_FLAG, "1");
+            sessionStorage.setItem(SCHEDULE_DUE_POPUP_LOGIN_FLAG, "1");
+            setAdminSessionKey((k) => k + 1);
+            setAdminTab(adminLandingTabAfterLogin(user));
+            setActiveView("admin");
+          }
         } else {
-          /* Members (incl. after Blueprint claim) land on My Dashboard first */
-          restoreBlueprintAfterUnlock(pending?.ageGroup ?? "adult");
+          /* Members: resume membership checkout if they left signup to Sign in */
+          const pendingMembership = readPendingMembershipCheckout();
+          if (pendingMembership) {
+            clearPendingMembershipCheckout();
+            openMembershipSignup(pendingMembership.tierId, pendingMembership.audience, {
+              resumeCheckout: pendingMembership.resumeCheckout,
+            });
+          } else {
+            sessionStorage.setItem(SCHEDULE_DUE_POPUP_LOGIN_FLAG, "1");
+            restoreBlueprintAfterUnlock(pending?.ageGroup ?? "adult");
+          }
         }
       } else if (outcome === "unavailable") {
         setLoginError(error || "Database unavailable. Try again after deploy/bindings are fixed.");
@@ -1231,6 +1450,16 @@ function App() {
   };
 
   useEffect(() => {
+    try {
+      if (betaNoticePreviewRequested(window.location.search)) {
+        setBetaNoticeOpen(true);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
     const token = readResetTokenFromUrl();
     if (!token) return;
     setResetToken(token);
@@ -1270,6 +1499,7 @@ function App() {
     setIsLoggedIn(false);
     setUserRole("user");
     setAuthUser(null);
+    setBetaNoticeOpen(false);
     clearActAsTarget();
     setActAsTarget({ type: "self" });
     sessionStorage.removeItem(DUE_POPUP_LOGIN_FLAG);
@@ -1323,11 +1553,15 @@ function App() {
         return "GYSH Guides";
       case "checklist": return "GYSH Side Hustle Guide";
       case "community": return "GYSH Community";
+      case "newsletter": return "GYSH Weekly Newsletter";
       case "workshops": return "GYSH Workshops & Speakers";
       case "kids": return "GYSH Kids & Teens Corner";
       case "seniors": return "GYSH Seniors Corner";
       case "about": return "About GYSH";
       case "contact": return "GYSH Contact Us";
+      case "privacy": return "GYSH Privacy Policy";
+      case "beta_nda": return "GYSH Beta Tester NDA";
+      case "beta_testing": return "GYSH Beta Tester Dashboard";
       case "join": return "Join GYSH";
       case "membership_signup": return "GYSH Membership Sign-up";
       case "login": return "GYSH Sign In";
@@ -1354,10 +1588,14 @@ function App() {
       case "checklist": return "Practical launch steps — preview is open; the full list unlocks when you sign in.";
       case "workshops": return "Live sessions and guest experts for adult Side Hustles, AI agents, and Kids Glow nights.";
       case "community": return "Ask questions, share updates, and exchange tips with other Side Hustlers.";
+      case "newsletter": return "Friday dual-audience issue for members — kids glow story + adult hustle tip.";
       case "kids": return "Stories, GYSH Match Wizard, ideas, savings, and guides for Kids and Teens — parents coach the journey.";
       case "seniors": return "GYSH Match Wizard and flexible Side Hustles for 55+, retirees, and second careers.";
       case "about": return "Meet Tina Marie Barham and Evelyn Irving — the partnership behind Get Your Side Hustle.";
       case "contact": return "Questions, partnerships, or workshop inquiries — we’d love to hear from you.";
+      case "privacy": return "How Get Your Side Hustle collects, uses, stores, and protects your information.";
+      case "beta_nda": return "Confidentiality terms for the GYSH beta testing program.";
+      case "beta_testing": return "Your beta testing progress, recorded time, and reward level.";
       case "join": return "Create an account, explore teams, and compare Free through Elite plans.";
       case "login": return "Sign in to save bookmarks, unlock badges, and track launch milestones.";
       case "user_portal":
@@ -1381,16 +1619,17 @@ function App() {
     );
   }
 
-  const renderHomeHowSteps = (titleId: string) => (
-    <aside className="home-promo-hero__steps" aria-labelledby={titleId}>
-      <h2 id={titleId} className="home-promo-hero__steps-heading">
-        <span className="home-promo-hero__steps-title">Who is GYSH for?</span>
+  /** Audience list — full-width below hero (was beside the poster). */
+  const renderHomeAudience = (titleId: string) => (
+    <aside className="home-audience__inner" aria-labelledby={titleId}>
+      <h2 id={titleId} className="home-audience__heading">
+        <span className="home-audience__title">Who is GYSH for?</span>
       </h2>
-      <p className="home-promo-hero__steps-note">
+      <p className="home-audience__note">
         Building with family or going solo — WE GOT YOU! Pick the path that matches your stage, then
         run the wizard built for you.
       </p>
-      <ol className="home-promo-hero__bubbles" aria-label="Ways to start with GYSH">
+      <ol className="home-audience__bubbles" aria-label="Ways to start with GYSH">
         <li>
           <button type="button" className="home-step-bubble" onClick={() => goTo("quiz")}>
             <span className="home-step-bubble__num" aria-hidden="true">
@@ -1457,6 +1696,146 @@ function App() {
         </li>
       </ol>
     </aside>
+  );
+
+  /** Age-lane wizards — sits beside the hero poster so “what you do” is first. */
+  const renderHomePickYourPath = () => (
+    <div
+      className="home-match-family home-match-family--hero"
+      data-testid="home-match-family"
+      aria-labelledby="home-match-family-title"
+    >
+      <div className="home-match-family__section-head">
+        <div className="home-match-family__cta-stack">
+          <button
+            type="button"
+            className="btn btn-primary home-match-family__side-cta"
+            onClick={() => openJoin()}
+            data-testid="home-join-cta"
+          >
+            <UserPlus size={16} aria-hidden /> Join GYSH free
+          </button>
+          <p className="home-match-family__cta-expect" data-testid="home-join-expectation">
+            Start free — explore tools and join in under 2 minutes.
+          </p>
+        </div>
+        <div className="home-match-family__section-copy">
+          <span className="glow-badge free home-match-family__eyebrow">
+            <Sparkles size={13} /> Your age · Your wizard
+          </span>
+          <h2 id="home-match-family-title" className="home-match-family__section-title">
+            Pick Your Path
+            <br />
+            Kids · Teens · Adults · Seniors
+          </h2>
+          <p className="home-match-family__section-sub">
+            Four demographic lanes. One family adventure. Choose the wizard built for your stage of
+            life — then validate with margin calculators before you spend.
+          </p>
+        </div>
+      </div>
+      <ul className="home-match-family__grid">
+        <li className="home-match-family__card home-match-family__card--kids">
+          <div className="home-match-family__title-row">
+            <strong>Kids (4–12)</strong>
+            <button
+              type="button"
+              className="home-match-family__card-cta home-match-family__card-cta--kids"
+              data-testid="home-path-cta-kids"
+              aria-label="Open Kids page"
+              onClick={() => openKidsCorner({ mode: "kids", tab: "wizard" })}
+            >
+              Open <ArrowRight size={14} aria-hidden />
+            </button>
+          </div>
+          <span className="home-match-family__bands" aria-label="Match ages 4–8 and 9–12">
+            <span className="home-match-family__band">4–8</span>
+            <span className="home-match-family__band">9–12</span>
+          </span>
+          <span className="home-match-family__desc">
+            Confidence, kindness, and parent-guided first hustles.
+          </span>
+        </li>
+        <li className="home-match-family__card home-match-family__card--teens">
+          <div className="home-match-family__title-row">
+            <strong>Teens (13–17)</strong>
+            <button
+              type="button"
+              className="home-match-family__card-cta home-match-family__card-cta--teens"
+              data-testid="home-path-cta-teens"
+              aria-label="Open Teens page"
+              onClick={() => openKidsCorner({ mode: "junior", tab: "wizard" })}
+            >
+              Open <ArrowRight size={14} aria-hidden />
+            </button>
+          </div>
+          <span className="home-match-family__bands" aria-label="Match ages 13–14 and 15–17">
+            <span className="home-match-family__band">13–14</span>
+            <span className="home-match-family__band">15–17</span>
+          </span>
+          <span className="home-match-family__desc">
+            Bigger skills, safer independence, still coach-friendly.
+          </span>
+        </li>
+        <li className="home-match-family__card home-match-family__card--adult">
+          <div className="home-match-family__title-row">
+            <strong>Adult (18–54)</strong>
+            <button
+              type="button"
+              className="home-match-family__card-cta home-match-family__card-cta--adult"
+              data-testid="home-path-cta-adult"
+              aria-label="Open Adults page"
+              onClick={openAdultFindMine}
+            >
+              Open <ArrowRight size={14} aria-hidden />
+            </button>
+          </div>
+          <span className="home-match-family__desc">
+            Ranked matches from budget, hours, strengths, and goals — built for real adult schedules.
+          </span>
+        </li>
+        <li className="home-match-family__card home-match-family__card--senior">
+          <div className="home-match-family__title-row">
+            <strong>Senior (55+)</strong>
+            <button
+              type="button"
+              className="home-match-family__card-cta home-match-family__card-cta--senior"
+              data-testid="home-path-cta-senior"
+              aria-label="Open Seniors page"
+              onClick={() => openSeniors(null)}
+            >
+              Open <ArrowRight size={14} aria-hidden />
+            </button>
+          </div>
+          <span className="home-match-family__desc">
+            Flexible pacing for retirees, second careers, and experience-powered side hustles.
+          </span>
+        </li>
+      </ul>
+      <p className="home-match-family__note">
+        Make GYSH Match Wizard night a family ritual: kids and teens take their path with a GYSH Coach
+        nearby, while adults and seniors run theirs — then compare results and celebrate together.
+      </p>
+      <button
+        type="button"
+        className="btn btn-primary home-match-family__cta"
+        onClick={() => goTo("quiz")}
+      >
+        Choose your GYSH Match Wizard <Sparkles size={16} />
+      </button>
+      <a
+        href={FACEBOOK_URL}
+        className="btn btn-outline home-match-family__side-cta home-match-family__facebook"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Follow on Facebook"
+        data-testid="home-facebook"
+        title="Follow Get Your Side Hustle on Facebook — facebook.com/getyoursidehustleofficial"
+      >
+        <FacebookIcon size={22} aria-hidden />
+        <span>Follow on Facebook</span>
+      </a>
+    </div>
   );
 
   return (
@@ -1571,6 +1950,17 @@ function App() {
                 <li>
                   <button
                     type="button"
+                    onClick={() => goTo("newsletter")}
+                    className={`nav-link-btn ${activeView === "newsletter" ? "active" : ""}`}
+                    data-testid="nav-newsletter"
+                  >
+                    <Newspaper size={16} className="nav-icon nav-icon--newsletter" aria-hidden />
+                    Newsletter
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
                     onClick={() => openJoin()}
                     className={`nav-link-btn ${activeView === "join" ? "active" : ""}`}
                     data-testid="nav-join"
@@ -1623,6 +2013,29 @@ function App() {
             </nav>
 
             <div className="header-actions">
+            <button
+              type="button"
+              className={`header-cart-btn${headerCartCount > 0 ? " has-items" : ""}`}
+              data-testid="header-cart"
+              aria-label={
+                headerCartCount > 0
+                  ? `Shopping cart, ${headerCartCount} item${headerCartCount === 1 ? "" : "s"}`
+                  : "Shopping cart"
+              }
+              title="A-la-carte cart & checkout"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                openJoin(null, { scrollToCart: true });
+              }}
+            >
+              <ShoppingCart size={18} aria-hidden />
+              <span className="header-cart-btn__label">Cart</span>
+              {headerCartCount > 0 ? (
+                <span className="header-cart-btn__badge" data-testid="header-cart-count">
+                  {headerCartCount > 99 ? "99+" : headerCartCount}
+                </span>
+              ) : null}
+            </button>
             {isLoggedIn ? (
               <>
                 {userRole === "admin" && !previewingAsMember ? (
@@ -1926,6 +2339,21 @@ function App() {
                         <span>My Dashboard</span>
                       </button>
                     ) : null}
+                    {isLoggedIn &&
+                    authUser &&
+                    (authUser.role === "beta" || (authUser.roles ?? []).includes("beta")) ? (
+                      <button
+                        type="button"
+                        className={`header-title-dashboard-badge${
+                          activeView === "beta_testing" ? " is-active" : ""
+                        }`}
+                        onClick={() => goTo("beta_testing")}
+                        data-testid="header-beta-testing"
+                        aria-current={activeView === "beta_testing" ? "page" : undefined}
+                      >
+                        <span>Beta Testing</span>
+                      </button>
+                    ) : null}
                   </h1>
                   {activeView === "admin" && adminTab !== "daily-progress" && (
                     <DailyProgressReport onOpen={() => goToAdmin("daily-progress")} />
@@ -2028,148 +2456,19 @@ function App() {
                       />
                     </picture>
                   </div>
-                  <div className="home-promo-hero__steps--desktop">
-                    {renderHomeHowSteps("home-steps-title")}
+                  <div className="home-promo-hero__path--desktop">
+                    {renderHomePickYourPath()}
                   </div>
                 </div>
               </div>
             </section>
 
             <section
-              className="glass home-match-family"
-              data-testid="home-match-family"
-              aria-labelledby="home-match-family-title"
+              className="glass home-audience"
+              data-testid="home-audience"
+              aria-labelledby="home-audience-title"
             >
-              <div className="home-match-family__section-head">
-                <div className="home-match-family__cta-stack">
-                  <button
-                    type="button"
-                    className="btn btn-primary home-match-family__side-cta"
-                    onClick={() => openJoin()}
-                    data-testid="home-join-cta"
-                  >
-                    <UserPlus size={16} aria-hidden /> Join GYSH free
-                  </button>
-                  <p className="home-match-family__cta-expect" data-testid="home-join-expectation">
-                    Start free — explore tools and join in under 2 minutes.
-                  </p>
-                </div>
-                <div className="home-match-family__section-copy">
-                  <span className="glow-badge free home-match-family__eyebrow">
-                    <Sparkles size={13} /> Your age · Your wizard
-                  </span>
-                  <h2 id="home-match-family-title" className="home-match-family__section-title">
-                    Pick Your Path
-                    <br />
-                    Kids · Teens · Adults · Seniors
-                  </h2>
-                  <p className="home-match-family__section-sub">
-                    Four demographic lanes. One family adventure. Choose the wizard built for your stage of
-                    life — then validate with margin calculators before you spend.
-                  </p>
-                </div>
-                <a
-                  href={FACEBOOK_URL}
-                  className="btn btn-outline home-match-family__side-cta home-match-family__facebook"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="Follow on Facebook"
-                  data-testid="home-facebook"
-                  title="Follow Get Your Side Hustle on Facebook — facebook.com/getyoursidehustleofficial"
-                >
-                  <FacebookIcon size={22} aria-hidden />
-                  <span>Follow on Facebook</span>
-                </a>
-              </div>
-              <ul className="home-match-family__grid">
-                <li className="home-match-family__card home-match-family__card--kids">
-                  <div className="home-match-family__title-row">
-                    <strong>Kids (4–12)</strong>
-                    <button
-                      type="button"
-                      className="home-match-family__card-cta home-match-family__card-cta--kids"
-                      data-testid="home-path-cta-kids"
-                      aria-label="Open Kids page"
-                      onClick={() => openKidsCorner({ mode: "kids", tab: "wizard" })}
-                    >
-                      Open <ArrowRight size={14} aria-hidden />
-                    </button>
-                  </div>
-                  <span className="home-match-family__bands" aria-label="Match ages 4–8 and 9–12">
-                    <span className="home-match-family__band">4–8</span>
-                    <span className="home-match-family__band">9–12</span>
-                  </span>
-                  <span className="home-match-family__desc">
-                    Confidence, kindness, and parent-guided first hustles.
-                  </span>
-                </li>
-                <li className="home-match-family__card home-match-family__card--teens">
-                  <div className="home-match-family__title-row">
-                    <strong>Teens (13–17)</strong>
-                    <button
-                      type="button"
-                      className="home-match-family__card-cta home-match-family__card-cta--teens"
-                      data-testid="home-path-cta-teens"
-                      aria-label="Open Teens page"
-                      onClick={() => openKidsCorner({ mode: "junior", tab: "wizard" })}
-                    >
-                      Open <ArrowRight size={14} aria-hidden />
-                    </button>
-                  </div>
-                  <span className="home-match-family__bands" aria-label="Match ages 13–14 and 15–17">
-                    <span className="home-match-family__band">13–14</span>
-                    <span className="home-match-family__band">15–17</span>
-                  </span>
-                  <span className="home-match-family__desc">
-                    Bigger skills, safer independence, still coach-friendly.
-                  </span>
-                </li>
-                <li className="home-match-family__card home-match-family__card--adult">
-                  <div className="home-match-family__title-row">
-                    <strong>Adult (18–54)</strong>
-                    <button
-                      type="button"
-                      className="home-match-family__card-cta home-match-family__card-cta--adult"
-                      data-testid="home-path-cta-adult"
-                      aria-label="Open Adults page"
-                      onClick={openAdultFindMine}
-                    >
-                      Open <ArrowRight size={14} aria-hidden />
-                    </button>
-                  </div>
-                  <span className="home-match-family__desc">
-                    Ranked matches from budget, hours, strengths, and goals — built for real adult schedules.
-                  </span>
-                </li>
-                <li className="home-match-family__card home-match-family__card--senior">
-                  <div className="home-match-family__title-row">
-                    <strong>Senior (55+)</strong>
-                    <button
-                      type="button"
-                      className="home-match-family__card-cta home-match-family__card-cta--senior"
-                      data-testid="home-path-cta-senior"
-                      aria-label="Open Seniors page"
-                      onClick={() => openSeniors(null)}
-                    >
-                      Open <ArrowRight size={14} aria-hidden />
-                    </button>
-                  </div>
-                  <span className="home-match-family__desc">
-                    Flexible pacing for retirees, second careers, and experience-powered side hustles.
-                  </span>
-                </li>
-              </ul>
-              <p className="home-match-family__note">
-                Make GYSH Match Wizard night a family ritual: kids and teens take their path with a GYSH Coach
-                nearby, while adults and seniors run theirs — then compare results and celebrate together.
-              </p>
-              <button
-                type="button"
-                className="btn btn-primary home-match-family__cta"
-                onClick={() => goTo("quiz")}
-              >
-                Choose your GYSH Match Wizard <Sparkles size={16} />
-              </button>
+              {renderHomeAudience("home-audience-title")}
             </section>
 
             {/* Filter & Search — [logo] [All Hustles] [categories…] */}
@@ -2223,7 +2522,7 @@ function App() {
                 ))}
               </div>
             ) : (
-              <div className="glass" style={{ padding: "48px", textAlign: "center", borderRadius: "16px" }}>
+              <div className="glass empty-state-panel" style={{ textAlign: "center", borderRadius: "16px" }}>
                 <p style={{ color: "var(--text-primary)", marginBottom: "16px" }}>No side hustles match your search criteria.</p>
                 <button onClick={() => { setSearchQuery(""); setFilterCategory("all"); }} className="btn btn-outline">
                   Clear Filters
@@ -2363,6 +2662,23 @@ function App() {
           <CommunityHub />
         )}
 
+        {activeView === "newsletter" && (
+          <NewsletterPage
+            isLoggedIn={effectivePortalLogin}
+            isAdmin={canAccessAdminPortal(authUser)}
+            membershipTier={
+              authUser?.membershipTier === "starter" ||
+              authUser?.membershipTier === "pro" ||
+              authUser?.membershipTier === "elite" ||
+              authUser?.membershipTier === "free"
+                ? authUser.membershipTier
+                : null
+            }
+            onLogin={() => goTo("login")}
+            onJoin={() => openJoin(null, { scrollToPlans: true })}
+          />
+        )}
+
         {activeView === "kids" && (
           <KidsCorner
             isLoggedIn={kidsCornerMemberAccess}
@@ -2404,8 +2720,8 @@ function App() {
 
         {/* View: User / Admin Login form */}
         {activeView === "login" && (
-          <div style={{ maxWidth: "420px", margin: "40px auto" }} className="glass" data-testid="login-page">
-            <div style={{ padding: "32px", borderRadius: "16px" }}>
+          <div className="glass login-page-shell" data-testid="login-page">
+            <div className="login-page-shell__inner">
               <div style={{ textAlign: "center", marginBottom: "28px" }}>
                 <img
                   src={gyshLogo}
@@ -2635,6 +2951,12 @@ function App() {
 
         {activeView === "contact" && <ContactPage />}
 
+        {activeView === "privacy" && <PrivacyPolicyPage onContact={() => goTo("contact")} />}
+
+        {activeView === "beta_nda" && (
+          <BetaNdaPage onContact={() => goTo("contact")} onJoin={() => openMembershipSignup("free")} />
+        )}
+
         {activeView === "join" && (
           <JoinPage
             key={joinAudience ? `join-${joinAudience}` : "join-saved"}
@@ -2651,6 +2973,23 @@ function App() {
             membershipAudience={joinAudience}
             scrollToPlans={joinScrollToPlans}
             onScrolledToPlans={() => setJoinScrollToPlans(false)}
+            scrollToCart={joinScrollToCart}
+            onScrolledToCart={() => setJoinScrollToCart(false)}
+            isLoggedIn={isLoggedIn && Boolean(authUser)}
+            currentTier={
+              authUser?.membershipTier === "starter" ||
+              authUser?.membershipTier === "pro" ||
+              authUser?.membershipTier === "elite" ||
+              authUser?.membershipTier === "free"
+                ? authUser.membershipTier
+                : "free"
+            }
+            checkoutEmail={authUser?.email ?? null}
+            onOpenBetaNda={() => goTo("beta_nda")}
+            onBetaTestingUnlocked={(receipt) => {
+              setBetaUnlockPreview(receipt);
+              goTo("beta_testing");
+            }}
             onBlueprintUnlocked={(ageGroup) => {
               setMemberAccessTick((n) => n + 1);
               restoreBlueprintAfterUnlock(ageGroup);
@@ -2660,15 +2999,48 @@ function App() {
 
         {activeView === "membership_signup" && (
           <MembershipSignupPage
-            key={`signup-${joinAudience ?? "adult"}-${signupTier}`}
+            key={`signup-${joinAudience ?? "adult"}-${signupTier}-${signupResumeCheckout ? "resume" : "new"}-${isLoggedIn ? "in" : "out"}`}
             initialAudience={joinAudience ?? readSavedJoinAudience("adult")}
             initialTier={signupTier}
-            onBackToPlans={() => openJoin(joinAudience)}
+            resumeCheckout={signupResumeCheckout}
+            loggedInEmail={authUser?.email ?? null}
+            isLoggedIn={isLoggedIn && Boolean(authUser)}
+            currentTier={
+              authUser?.membershipTier === "starter" ||
+              authUser?.membershipTier === "pro" ||
+              authUser?.membershipTier === "elite" ||
+              authUser?.membershipTier === "free"
+                ? authUser.membershipTier
+                : null
+            }
+            onProfileUpdated={(user) => {
+              setAuthUser(user);
+              setMemberAccessTick((n) => n + 1);
+            }}
+            onBackToPlans={() => {
+              setSignupResumeCheckout(false);
+              openJoin(joinAudience);
+            }}
             onGoToLogin={() => goTo("login")}
             onOpenFreeGuides={() => {
               setGuidesDetailId(null);
               goTo("guides");
             }}
+            onOpenBetaNda={() => goTo("beta_nda")}
+            onBetaTestingUnlocked={(receipt) => {
+              setBetaUnlockPreview(receipt);
+              goTo("beta_testing");
+            }}
+          />
+        )}
+
+        {activeView === "beta_testing" && (
+          <BetaTesterDashboard
+            preview={betaUnlockPreview}
+            memberName={authUser?.name ?? betaUnlockPreview?.legalName ?? ""}
+            memberEmail={authUser?.email ?? ""}
+            onOpenNda={() => goTo("beta_nda")}
+            onJoin={() => openMembershipSignup("free")}
           />
         )}
 
@@ -2726,11 +3098,19 @@ function App() {
           ) : (
             <UserPortal
               memberName={authUser?.name}
+              membershipTier={authUser?.membershipTier}
+              isAdmin={userHasAdminRole(authUser)}
+              initialPortalTab={portalInitialTab ?? undefined}
+              focusScheduleId={focusScheduleId}
+              onFocusScheduleConsumed={() => {
+                setFocusScheduleId(null);
+                setPortalInitialTab(null);
+              }}
               onOpenMatchWizard={() => {
                 setFindMineMode("select");
                 goTo("quiz");
               }}
-              onOpenJoin={() => openJoin("adult")}
+              onOpenJoin={() => openJoin("adult", { scrollToPlans: true })}
               onOpenKidDashboard={(kid) => {
                 setParentKidDashboard(kid);
               }}
@@ -2752,6 +3132,24 @@ function App() {
               }}
             />
           ))}
+
+        <BetaPhasePopup
+          open={betaNoticeOpen}
+          onClose={() => setBetaNoticeOpen(false)}
+        />
+
+        <ScheduleDuePopup
+          open={scheduleDueOpen}
+          summaries={scheduleDueSummaries}
+          overdue={scheduleDueOverdue}
+          onClose={() => setScheduleDueOpen(false)}
+          onOpenSchedule={(scheduleId) => {
+            setScheduleDueOpen(false);
+            setFocusScheduleId(scheduleId);
+            setPortalInitialTab("schedule");
+            goTo("user_portal");
+          }}
+        />
 
         {activeView === "admin" && authReady && canUseAdminPortal && (
           <Suspense

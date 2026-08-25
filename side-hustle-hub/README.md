@@ -79,7 +79,7 @@ Plain `vite` does **not** serve `functions/` — that is why `/api/auth/login` r
 Use the default script (Vite UI + Wrangler Pages Functions + local D1):
 
 ```bash
-npm run db:setup:local   # once: apply migrations + seed T/E
+npm run db:setup:local   # once: apply migrations + seed Tina & Evelyn
 npm run dev              # http://localhost:5173  (/api proxied to :8788)
 ```
 

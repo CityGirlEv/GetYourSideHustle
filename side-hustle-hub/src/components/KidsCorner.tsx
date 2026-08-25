@@ -48,6 +48,7 @@ import {
   resolveGuideAccess,
 } from "../lib/guide-access";
 import { JoinToUnlockCta } from "./JoinToUnlockCta";
+import { MembershipLockBadge } from "./MembershipLockBadge";
 import { submitJuniorSignup } from "../lib/junior-signup";
 import { saveMemberProgress } from "../lib/gysh-member-progress";
 import { trackGyshEvent } from "../lib/gysh-analytics";
@@ -769,9 +770,16 @@ function GuideCard({
     <article className={`glass kids-guide-card ${access.unlocked ? "is-free" : "is-gated"}`}>
       <div className="kids-guide-card-head">
         <div>
-          <span className={`glow-badge ${isFreePlan ? "free" : "pink"}`} style={{ fontSize: "0.9375rem" }}>
-            {guideTierBadgeLabel(minTier)}
-          </span>
+          <div className="free-guide-card-badges">
+            <span className={`glow-badge ${isFreePlan ? "free" : "pink"}`} style={{ fontSize: "0.9375rem" }}>
+              {guideTierBadgeLabel(minTier)}
+            </span>
+            <MembershipLockBadge
+              minTier={minTier}
+              unlocked={access.unlocked}
+              data-testid={`guide-lock-badge-${guide.id}`}
+            />
+          </div>
           <span className="kids-guide-theme">{themeLabel(guide.theme)}</span>
           <h3>{guide.title}</h3>
           <p className="kids-guide-tier-note">{guideTierMembershipNote(minTier)}</p>

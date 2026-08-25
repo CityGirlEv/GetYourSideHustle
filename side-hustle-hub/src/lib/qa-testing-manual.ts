@@ -158,7 +158,7 @@ export const QA_TESTING_MANUAL = {
       title: "Fail path",
       steps: [
         { title: "Mark Fail", detail: "Select which step failed." },
-        { title: "Write a note", detail: "Describe what broke. Attach evidence if helpful (under ~1.5MB)." },
+        { title: "Write a note", detail: "Describe what broke. Attach evidence if helpful (under ~8MB; videos up to ~20MB)." },
         { title: "System remembers you", detail: "You stay the original tester." },
         { title: "Assigned to Evelyn", detail: "Shows in the Fail count for triage." },
         {
@@ -323,7 +323,7 @@ export const QA_TESTING_MANUAL = {
       bullets: [
         "Select which step failed.",
         "Always write a note describing the failure.",
-        "Optional attachment under ~1.5MB.",
+        "Optional attachment under ~8MB (videos up to ~20MB).",
         "System saves you as original tester, assigns Evelyn, counts under Fail.",
       ],
     },

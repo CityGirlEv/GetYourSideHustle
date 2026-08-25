@@ -9,7 +9,7 @@ import {
   isWizardMatrixCaseId,
 } from "./gysh-automated-tests";
 import { isHumanQaTester, type QaTesterId } from "./gysh-roles";
-import { suggestedSprintForTest } from "./gysh-sprint-board";
+import { sprintForUnstoredTest } from "./gysh-sprint-board";
 import { dueDateForSprint } from "./gysh-sprints";
 import {
   DEFAULT_TEST_STATUS,
@@ -106,7 +106,7 @@ function resolvedDueDate(
 ): string {
   const existing = String(dueDates[id] || "").trim();
   if (existing) return existing;
-  const sprint = sprints[id] ?? suggestedSprintForTest(t);
+  const sprint = sprints[id] ?? sprintForUnstoredTest(t);
   return dueDateForSprint(sprint);
 }
 

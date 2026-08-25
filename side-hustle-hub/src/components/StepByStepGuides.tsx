@@ -6,7 +6,6 @@ import {
   ArrowRight,
   TrendingUp,
   Coins,
-  Lock,
   LogIn,
 } from "lucide-react";
 import { fetchMemberProgress, saveMemberProgress } from "../lib/gysh-member-progress";
@@ -19,6 +18,7 @@ import {
   resolveGuideAccess,
 } from "../lib/guide-access";
 import { JoinToUnlockCta } from "./JoinToUnlockCta";
+import { MembershipLockBadge } from "./MembershipLockBadge";
 
 interface GuideStep {
   title: string;
@@ -104,7 +104,7 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
       proTip: "Invest in a high-quality smart lock (e.g., Yale or Schlage) that integrates with Airbnb to auto-generate keypad codes for guests upon check-in. It saves hours of manual work.",
       pitfall: "Not checking local regulations or HOA rules. Many cities require short-term rental (STR) permits, and violating HOAs can result in major fines.",
       steps: [
-        { title: "Market & Feasibility Audit", desc: "Use tools like AirDNA to check average occupancy, nightly rates, and municipal regulations in your ZIP code." },
+        { title: "Market & Feasibility Audit", desc: "Use tools like AirDNA to check average occupancy, nightly rates, and municipal regulations in your ZipCode." },
         { title: "Secure STR Permits & Insurance", desc: "Apply for local city licenses and purchase short-term rental-specific liability insurance." },
         { title: "Furnish & Style (Cozy Aesthetic)", desc: "Buy durable, photogenic furniture. Focus on comfortable mattresses, high-speed WiFi, and guest amenities (coffee, shampoo)." },
         { title: "Professional Photography & Copy", desc: "Hire a real estate photographer. Write an engaging title focusing on unique features (e.g., 'Cozy Oasis with Hot Tub')." },
@@ -262,7 +262,7 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
       proTip: "Lead with a free 60-second screen recording of their broken mobile site or missing Google Business Profile. Shame-free proof closes faster than a generic sales pitch.",
       pitfall: "Building a full site before a signed deposit. Scope creep kills margins — sell a fixed package (audit → 5-page site → hosting) with clear revision limits.",
       steps: [
-        { title: "Pick a ZIP + Niche Lane", desc: "Choose 1–2 niches (dentists, HVAC, salons, contractors) within a 20-mile radius so your samples and outreach feel local." },
+        { title: "Pick a ZipCode + Niche Lane", desc: "Choose 1–2 niches (dentists, HVAC, salons, contractors) within a 20-mile radius so your samples and outreach feel local." },
         { title: "Build a Lead List", desc: "Use Google Maps / Bing Places to find businesses with no site, a 2015 WordPress theme, or no mobile layout. Log name, phone, URL, and pain notes." },
         { title: "Run Quick Website Audits", desc: "Score speed, mobile, contact CTA, and booking path. Turn each into a 1-page PDF or Loom with 3 fixes and a package price." },
         { title: "Outreach Cadence", desc: "Call, text, or drop by with the audit. Aim for 20 touches/day. Offer a low-ticket audit ($150–$400) as the door opener." },
@@ -336,7 +336,7 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
         { title: "Eligibility & Vehicle Check", desc: "Confirm year/model requirements, insurance, background check, and required docs for Uber/Lyft in your city." },
         { title: "App Onboarding", desc: "Complete signup, vehicle inspection if needed, and set up instant pay / tax info." },
         { title: "Cost Baseline", desc: "Calculate break-even $/hour including gas and wear. Decide your minimum acceptable net." },
-        { title: "Peak Window Plan", desc: "Map your first 4 weeks of shifts (airport, nightlife, stadium). Use AI Timing Scout ideas for ZIP blocks." },
+        { title: "Peak Window Plan", desc: "Map your first 4 weeks of shifts (airport, nightlife, stadium). Use AI Timing Scout ideas for ZipCode blocks." },
         { title: "Safety & Ratings Ops", desc: "Keep car clean, water optional, navigation ready. Protect a 4.9+ rating — it unlocks better quests." },
         { title: "Optimize & Stack", desc: "Compare Uber vs Lyft quests weekly; consider food delivery as a filler between ride lulls." }
       ]
@@ -364,12 +364,12 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
       timeframe: "1 - 2 weeks",
       estEarnings: "$300 - $3,000 / month",
       bestFor: "Research-minded Side Hustlers who want to boost gig earnings or sell hotspot playbooks.",
-      proTip: "Publish a weekly ZIP brief (Fri for weekend, Sun for weekdays). Drivers pay for timely, local specificity — not generic national tips.",
+      proTip: "Publish a weekly ZipCode brief (Fri for weekend, Sun for weekdays). Drivers pay for timely, local specificity — not generic national tips.",
       pitfall: "Overpromising guaranteed earnings. Frame guides as strategy + data, not income promises, and update them when markets shift.",
       steps: [
-        { title: "Pick a Market", desc: "Choose your metro or a nearby city with dense rideshare/delivery. Define 5–8 ZIP clusters." },
+        { title: "Pick a Market", desc: "Choose your metro or a nearby city with dense rideshare/delivery. Define 5–8 ZipCode clusters." },
         { title: "Data Inputs", desc: "Pull events calendars, airport schedules, weather, sports, concerts, and payday patterns. Feed into ChatGPT/Claude with a fixed prompt template." },
-        { title: "Build the Playbook Template", desc: "For each daypart: best ZIPs, avoid zones, expected surge windows, and parking notes." },
+        { title: "Build the Playbook Template", desc: "For each daypart: best ZipCodes, avoid zones, expected surge windows, and parking notes." },
         { title: "Validate Live", desc: "Drive or deliver 2 weeks while logging actual $/hour vs predictions. Refine the model." },
         { title: "Monetize Path A (Personal)", desc: "Use the scout privately to raise your own gig hourly rate." },
         { title: "Monetize Path B (Sell)", desc: "Sell weekly PDF/Telegram briefs to local drivers ($15–$49). Collect testimonials and iterate." }
@@ -448,9 +448,16 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
         )}
         <section className="glass launch-guides-catalog-banner">
           <div>
-            <span className={`glow-badge ${guideIsFree ? "free" : "pink"}`} style={{ marginBottom: 8 }}>
-              {guideTierBadgeLabel(activeMinTier)}
-            </span>
+            <div className="free-guide-card-badges" style={{ marginBottom: 8 }}>
+              <span className={`glow-badge ${guideIsFree ? "free" : "pink"}`}>
+                {guideTierBadgeLabel(activeMinTier)}
+              </span>
+              <MembershipLockBadge
+                minTier={activeMinTier}
+                unlocked={false}
+                data-testid={`guide-lock-badge-${activeGuide.id}`}
+              />
+            </div>
             <h2 style={{ fontSize: "1.35rem", color: "var(--charcoal)", margin: "0 0 6px" }}>
               {activeGuide.name} guide
             </h2>
@@ -509,7 +516,13 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
                 <span className={`glow-badge ${gFree ? "free" : "pink"} launch-guide-detail__tier`}>
                   {guideTierShortLabel(gMin)}
                 </span>
-                {!gAccess.unlocked && <Lock size={12} aria-hidden />}
+                {!gAccess.unlocked && (
+                  <MembershipLockBadge
+                    minTier={gMin}
+                    unlocked={false}
+                    data-testid={`guide-lock-badge-nav-${g.id}`}
+                  />
+                )}
               </span>
             </button>
           );

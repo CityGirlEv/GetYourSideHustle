@@ -18,7 +18,7 @@ type Props = {
 };
 
 /**
- * Multi-select for Tina / Evelyn / Lyriq.
+ * Multi-select for Tina / Evelyn / Lyriq / Candace.
  * Tina+Evelyn alone still stores as "Both" (partner-done rules).
  */
 export function AssigneeMultiSelect({

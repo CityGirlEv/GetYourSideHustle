@@ -66,6 +66,7 @@ const PERSON_ACCENT: Record<ProgressReportPerson, string> = {
   Tina: "var(--crimson)",
   Evelyn: "var(--bronze)",
   Lyriq: "var(--accent-emerald)",
+  Candace: "#3d6b8c",
   Both: "var(--charcoal)",
   Unassigned: "#7a7064",
 };

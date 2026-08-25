@@ -13,6 +13,10 @@ export default defineConfig({
       '/api': {
         target: 'http://127.0.0.1:8788',
         changeOrigin: true,
+        // Remote D1 via wrangler pages dev often needs 10–30s per call; default
+        // proxy timeouts look like "Cannot reach the GYSH API" in the browser.
+        timeout: 120_000,
+        proxyTimeout: 120_000,
         configure: (proxy) => {
           proxy.on('error', (_err, _req, res) => {
             const out = res as { headersSent?: boolean; writeHead?: (code: number, headers: Record<string, string>) => void; end?: (body: string) => void }

@@ -14,8 +14,16 @@ import {
   sha256Hex,
   verifyPassword,
 } from "./crypto";
-import { canAccessAdminPortal, parseRoles, type GyshRole } from "./roles";
-// GyshRole used by handleRegister role assignment
+import {
+  canAccessAdminPortal,
+  parseRoles,
+  primaryRole,
+  rolesForPublicRegister,
+  serializeRoles,
+  type GyshRole,
+} from "./roles";
+import { BETA_NDA_VERSION, betaNdaRegisterError, formatBetaNdaAcceptanceNote } from "./beta-tester-nda";
+import { acceptBetaNdaForUser } from "./beta-nda-store";
 
 export type Env = {
   DB: D1Database;
@@ -27,6 +35,8 @@ export type Env = {
   CONTACT_TO?: string;
   /** Shared secret for cron Worker → /api/cron/daily-digest */
   CRON_SECRET?: string;
+  /** Stripe secret key (sk_test_… or sk_live_…) for Checkout */
+  STRIPE_SECRET_KEY?: string;
 };
 
 export type DbUser = {
@@ -399,6 +409,16 @@ export async function handleRegister(env: Env, request: Request): Promise<Respon
     childDisplayName?: string;
     claimToken?: string;
     membershipTier?: string;
+    /** Public applicants may add the Beta Tester role; admin/QA/Dev stay admin-assigned. */
+    applyBetaTester?: boolean;
+    betaNda?: {
+      agreed?: boolean;
+      legalName?: string;
+      email?: string;
+      signature?: string;
+      acceptedAt?: string;
+      ndaVersion?: string;
+    };
   };
   try {
     body = (await request.json()) as typeof body;
@@ -416,6 +436,9 @@ export async function handleRegister(env: Env, request: Request): Promise<Respon
   const membershipTier = ["free", "starter", "pro", "elite"].includes(requestedTier)
     ? requestedTier
     : "free";
+  const applyBetaTester = body.applyBetaTester === true;
+  const ndaErr = betaNdaRegisterError(applyBetaTester, body.betaNda, email);
+  if (ndaErr) return error(ndaErr);
 
   if (!email || !email.includes("@")) return error("A valid email is required.");
   {
@@ -438,9 +461,9 @@ export async function handleRegister(env: Env, request: Request): Promise<Respon
   const hash = await hashPassword(password, salt);
 
   const isParent = ageGroup === "kids";
-  const primaryRole: GyshRole =
-    ageGroup === "junior" ? "junior" : ageGroup === "senior" ? "senior" : "adult";
-  const rolesJson = JSON.stringify([primaryRole]);
+  const assignedRoles = rolesForPublicRegister(ageGroup, applyBetaTester);
+  const assignedPrimary = primaryRole(assignedRoles);
+  const rolesJson = serializeRoles(assignedRoles);
   const audience = isParent ? "parent" : ageGroup === "senior" ? "senior" : ageGroup;
   const displayName =
     name ||
@@ -452,15 +475,18 @@ export async function handleRegister(env: Env, request: Request): Promise<Respon
           ? "GYSH Senior"
           : "GYSH Member");
 
-  const notes =
+  const notesBase =
     membershipTier === "free"
       ? isParent
         ? "Parent family account (Kids Side Hustle Blueprint)"
         : "Free GYSH member"
-      : `Requested ${membershipTier} plan · demo checkout pending real Stripe · ${ageGroup}`;
+      : `Requested ${membershipTier} plan · Stripe checkout for Adult/Senior · ${ageGroup}`;
+  const notes = applyBetaTester
+    ? `${notesBase} · Applied as Beta Tester · ${BETA_NDA_VERSION}`
+    : notesBase;
 
   // New members start pending — admins must activate before login.
-  // Store requested tier; paid activation still happens after admin review (demo checkout is client-side).
+  // Paid Adult/Senior plans continue to Stripe Checkout; activation still needs admin review.
   try {
     await env.DB.prepare(
       `INSERT INTO users (id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt, membership_tier, audience, created_at, updated_at)
@@ -470,7 +496,7 @@ export async function handleRegister(env: Env, request: Request): Promise<Respon
         userId,
         displayName,
         email,
-        primaryRole,
+        assignedPrimary,
         rolesJson,
         now.slice(0, 10),
         notes,
@@ -493,7 +519,7 @@ export async function handleRegister(env: Env, request: Request): Promise<Respon
           userId,
           displayName,
           email,
-          primaryRole,
+          assignedPrimary,
           rolesJson,
           now.slice(0, 10),
           notes,
@@ -567,12 +593,59 @@ export async function handleRegister(env: Env, request: Request): Promise<Respon
   const user = await getUserByEmail(env.DB, email);
   if (!user) return error("Registration failed.", 500);
 
+  let betaNdaReceipt: {
+    version: string;
+    acceptedAt: string;
+    legalName: string;
+    userId: string;
+  } | null = null;
+  if (applyBetaTester && body.betaNda) {
+    const accepted = await acceptBetaNdaForUser(env.DB, request, user, {
+      ...body.betaNda,
+      ndaVersion: BETA_NDA_VERSION,
+    });
+    if ("error" in accepted) return error(accepted.error);
+    betaNdaReceipt = {
+      version: accepted.record.ndaVersion,
+      acceptedAt: accepted.record.acceptedAt,
+      legalName: accepted.record.legalName,
+      userId: accepted.record.userId,
+    };
+    const ndaNote = formatBetaNdaAcceptanceNote({
+      legalName: accepted.record.legalName,
+      email: accepted.record.email,
+      acceptedAt: accepted.record.acceptedAt,
+    });
+    try {
+      await env.DB.prepare(`UPDATE users SET notes = ?, updated_at = ? WHERE id = ?`)
+        .bind(`${notes} · ${ndaNote}`, now, userId)
+        .run();
+    } catch {
+      /* notes already include NDA version */
+    }
+  }
+
   await appendAudit(
     env.DB,
     "register_ok",
     email,
-    `${membershipTier} register pending · ${ageGroup}`,
+    `${membershipTier} register pending · ${ageGroup}${applyBetaTester ? ` · beta · NDA ${BETA_NDA_VERSION}` : ""}`,
   );
+
+  // Kids/Teens (and Kids parent) paid plans: seed plan Kid Credits on signup.
+  // Adult/Senior paid plans wait for Stripe confirm before granting the family pool.
+  if (
+    membershipTier !== "free" &&
+    (ageGroup === "kids" || ageGroup === "junior")
+  ) {
+    try {
+      const { grantMembershipPlanCredits } = await import("./member-credits");
+      const creditAudience = ageGroup === "kids" ? "parent" : "junior";
+      await grantMembershipPlanCredits(env, userId, membershipTier, creditAudience);
+    } catch {
+      /* credits are best-effort; wallet can be topped up later */
+    }
+  }
 
   // Keep pending Blueprint claimable after admin activation
   if (claimToken) {
@@ -613,6 +686,8 @@ export async function handleRegister(env: Env, request: Request): Promise<Respon
       emailSent,
       membershipTier,
       user: publicUser(user),
+      betaNda: betaNdaReceipt,
+      testingUnlocked: Boolean(betaNdaReceipt),
       token: null,
       isAdmin: false,
       childProfileId,
@@ -622,7 +697,7 @@ export async function handleRegister(env: Env, request: Request): Promise<Respon
       message:
         membershipTier === "free"
           ? `Account created and awaiting admin activation.${kidsLinkedMsg} Check your email for confirmation — we'll send a welcome with your perks once you're activated.`
-          : `Account created for the ${membershipTier} plan and awaiting admin activation.${kidsLinkedMsg} Demo checkout may follow — real billing will replace it later.`,
+          : `Account created for the ${membershipTier} plan and awaiting admin activation.${kidsLinkedMsg} Adult/Senior paid plans continue to Stripe Checkout.`,
     },
     201,
   );
@@ -639,6 +714,133 @@ export async function handleMe(env: Env, request: Request): Promise<Response> {
   const auth = await requireSession(env, request);
   if (auth instanceof Response) return auth;
   return json({ user: publicUser(auth.user) });
+}
+
+const MEMBERSHIP_TIERS = ["free", "starter", "pro", "elite"] as const;
+const MEMBERSHIP_AUDIENCES = ["kids", "junior", "adult", "senior"] as const;
+
+export function parseMembershipPlanUpdate(body: {
+  membershipTier?: string;
+  audience?: string;
+}):
+  | { ok: true; membershipTier: string; audience: string }
+  | { ok: false; error: string } {
+  const membershipTier = String(body.membershipTier || "").toLowerCase().trim();
+  const audience = String(body.audience || "").toLowerCase().trim();
+  if (!(MEMBERSHIP_TIERS as readonly string[]).includes(membershipTier)) {
+    return { ok: false, error: "Choose Free, Starter, Pro, or Elite." };
+  }
+  if (!(MEMBERSHIP_AUDIENCES as readonly string[]).includes(audience)) {
+    return { ok: false, error: "Choose Kids, Teens, Adults, or Seniors." };
+  }
+  return { ok: true, membershipTier, audience };
+}
+
+/** Logged-in member adds / changes membership plan on their profile. */
+export async function handleUpdateMembershipPlan(
+  env: Env,
+  request: Request,
+  actor: DbUser,
+): Promise<Response> {
+  const dbFail = requireDb(env);
+  if (dbFail) return dbFail;
+
+  let body: { membershipTier?: string; audience?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return error("Invalid JSON body.");
+  }
+
+  const parsed = parseMembershipPlanUpdate(body);
+  if (!parsed.ok) return error(parsed.error, 400);
+
+  const before = (await getUserById(env.DB, actor.id)) ?? actor;
+  const previousTier = String(before.membership_tier || "free").toLowerCase();
+  const previousAudience = String(before.audience || "adult").toLowerCase();
+
+  const stamp = `Membership set to ${parsed.membershipTier} (${parsed.audience}) ${new Date().toISOString()}`;
+  const prev = String(before.notes || "");
+  const notes = `${prev}${prev ? " · " : ""}${stamp}`.slice(0, 1900);
+  const now = new Date().toISOString();
+
+  try {
+    await env.DB.prepare(
+      `UPDATE users SET membership_tier = ?, audience = ?, notes = ?, updated_at = ? WHERE id = ?`,
+    )
+      .bind(parsed.membershipTier, parsed.audience, notes, now, actor.id)
+      .run();
+  } catch (e) {
+    if (isMissingMembershipColumns(e)) {
+      return error("Membership columns are not available on this database yet.", 503);
+    }
+    throw e;
+  }
+
+  await appendAudit(
+    env.DB,
+    "membership_plan_update",
+    actor.email,
+    `${parsed.membershipTier}:${parsed.audience}`,
+  );
+
+  const updated = await getUserById(env.DB, actor.id);
+  const publicUpdated = publicUser(
+    updated ?? {
+      ...before,
+      membership_tier: parsed.membershipTier,
+      audience: parsed.audience,
+      notes,
+    },
+  );
+
+  // Adult/Senior paid plans email + credits after Stripe; Kids/Teens credit plans here.
+  const planChanged =
+    previousTier !== parsed.membershipTier || previousAudience !== parsed.audience;
+  if (planChanged && parsed.membershipTier !== "free") {
+    try {
+      const {
+        defersMembershipEmailUntilStripe,
+        sendMembershipSubscriptionEmails,
+      } = await import("./email");
+      const waitForStripe = defersMembershipEmailUntilStripe(
+        parsed.membershipTier,
+        parsed.audience,
+      );
+      if (!waitForStripe) {
+        try {
+          const { grantMembershipPlanCredits } = await import("./member-credits");
+          await grantMembershipPlanCredits(
+            env,
+            actor.id,
+            parsed.membershipTier,
+            parsed.audience,
+          );
+        } catch {
+          /* credits best-effort */
+        }
+        await sendMembershipSubscriptionEmails(env, {
+          user: {
+            id: publicUpdated.id,
+            email: publicUpdated.email,
+            name: publicUpdated.name,
+            membership_tier: publicUpdated.membershipTier,
+            audience: publicUpdated.audience,
+          },
+          previousTier,
+          source: "profile",
+        });
+      }
+    } catch {
+      /* email is best-effort */
+    }
+  }
+
+  return json({
+    ok: true,
+    user: publicUpdated,
+    message: `Your profile is now on the ${parsed.membershipTier} plan.`,
+  });
 }
 
 const RESET_TOKEN_HOURS = 1;

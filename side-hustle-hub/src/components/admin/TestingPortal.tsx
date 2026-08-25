@@ -12,6 +12,18 @@ import {
 } from "lucide-react";
 import { BusyOverlay, WaitIndicator, WaitLabel } from "../WaitFeedback";
 import { MarkdownLinkText } from "./MarkdownLinkText";
+import { AdminCrossLinks, crossLinksForTestId } from "./AdminCrossLinks";
+import { useAdminEntityLinks } from "../../hooks/useAdminEntityLinks";
+import {
+  buildAdminEntityTitleMap,
+  buildAdminLinkCandidates,
+} from "../../lib/admin-link-candidates";
+import { softLaunchRolloutItems } from "../../lib/gysh-soft-launch-rollout";
+import {
+  activateSoftLaunchOverrides,
+  fetchSoftLaunchOverrides,
+} from "../../lib/soft-launch-item-overrides";
+import { scrollAdminFocusIntoView } from "../../lib/admin-focus-scroll";
 import {
   TEST_CASES,
   DEFAULT_TEST_STATUS,
@@ -65,6 +77,7 @@ import {
   normalizeQaAssigneeId,
   LEAD_DEVELOPER_LABEL,
   QA_TESTERS,
+  qaTestersFromUsers,
   devAssigneesFromUsers,
   fetchUsers,
   isHumanQaTester,
@@ -92,6 +105,7 @@ import {
 } from "../../lib/gysh-closed-sprints";
 import { SprintLockedBanner } from "./SprintLockedBanner";
 import {
+  healClosedSprintTestLeftovers,
   healIncompleteTestDueDates,
   sprintRolloverSummary,
   testIsRolledOver,
@@ -127,7 +141,20 @@ import {
 } from "../../lib/gysh-attachments";
 import { ApiError } from "../../lib/api";
 import type { AuthUser } from "../../lib/auth";
-import { suggestedSprintForTest } from "../../lib/gysh-sprint-board";
+import { sprintForUnstoredTest } from "../../lib/gysh-sprint-board";
+import { applyFilterChipClick } from "../../lib/gysh-filter-chips";
+import {
+  EMAIL_TEMPLATE_REVIEW_CASES,
+  emailTemplateReviewDueDate,
+  emailTemplateReviewSprint,
+  isEmailTemplateReviewCaseId,
+} from "../../lib/gysh-email-template-review-cases";
+import {
+  LEGAL_REVIEW_CASES,
+  isLegalReviewCaseId,
+  legalReviewDueDate,
+  legalReviewSprint,
+} from "../../lib/gysh-legal-review-cases";
 import {
   completeWorkTimer,
   ensureWorkTimerStarted,
@@ -166,30 +193,20 @@ type TesterFilterKey = QaTesterId | "unassigned";
 
 const UNASSIGNED_TESTER_ACCENT = "#7a7064";
 
-function toggleSetValue<T>(prev: Set<T>, value: T): Set<T> {
-  const next = new Set(prev);
-  if (next.has(value)) next.delete(value);
-  else next.add(value);
-  return next;
-}
-
-/** Multi-select toggle with Shift+click range select (like Categories). */
-function applyMultiSelectClick<T>(
+function chipClick<T>(
   prev: Set<T>,
   value: T,
   ordered: readonly T[],
   lastIndex: number | null,
-  shiftKey: boolean,
-): { next: Set<T>; lastIndex: number | null } {
-  const idx = ordered.indexOf(value);
-  if (shiftKey && lastIndex != null && idx >= 0) {
-    const lo = Math.min(lastIndex, idx);
-    const hi = Math.max(lastIndex, idx);
-    const next = new Set(prev);
-    for (let i = lo; i <= hi; i++) next.add(ordered[i]!);
-    return { next, lastIndex: idx };
-  }
-  return { next: toggleSetValue(prev, value), lastIndex: idx >= 0 ? idx : lastIndex };
+  e?: MouseEvent,
+) {
+  return applyFilterChipClick(prev, value, {
+    shiftKey: e?.shiftKey,
+    ctrlKey: e?.ctrlKey,
+    metaKey: e?.metaKey,
+    ordered,
+    lastIndex,
+  });
 }
 
 function FilterChip({
@@ -330,6 +347,12 @@ export function TestingPortal({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [closedSprints, setClosedSprints] = useState<Set<number>>(() => new Set());
+  const [, setCfTitleTick] = useState(0);
+  const {
+    edges: entityEdges,
+    link: linkEntities,
+    unlink: unlinkEntities,
+  } = useAdminEntityLinks();
   const timers = useActiveTimers(Boolean(authUser));
   const actingAssignBy = auditActorLabel(authUser);
   const isAdmin = userHasAdminRole(authUser);
@@ -341,13 +364,20 @@ export function TestingPortal({
   const [devAssignees, setDevAssignees] = useState<QaTester[]>(() =>
     QA_TESTERS.filter((t) => t.id === FAILED_TEST_ASSIGNEE),
   );
+  /** Active Users with QA role — chips + assignee dropdowns. */
+  const [qaTesters, setQaTesters] = useState<QaTester[]>(() => [...QA_TESTERS]);
   const devAssigneeIds = useMemo(
     () => new Set(devAssignees.map((d) => d.id)),
     [devAssignees],
   );
   const assignByOptions = useMemo(
-    () => assignedBySelectOptions(actingAssignBy, ...Object.values(assignedByByCase)),
-    [actingAssignBy, assignedByByCase],
+    () =>
+      assignedBySelectOptions(
+        actingAssignBy,
+        ...qaTesters.map((t) => t.shortName),
+        ...Object.values(assignedByByCase),
+      ),
+    [actingAssignBy, assignedByByCase, qaTesters],
   );
   const [query, setQuery] = useState("");
   const [areaFilter, setAreaFilter] = useState("all");
@@ -471,6 +501,21 @@ export function TestingPortal({
       .map(generatedToCase);
     return [...BASE_CASES, ...extras];
   }, [generatedCases]);
+
+  const entityTitles = buildAdminEntityTitleMap({
+    tasks,
+    tests: ALL_CASES.map((t) => ({ id: t.id, title: t.title })),
+    cfItems: softLaunchRolloutItems(),
+  });
+  const linkCandidates = useMemo(
+    () =>
+      buildAdminLinkCandidates({
+        tasks,
+        tests: ALL_CASES.map((t) => ({ id: t.id, title: t.title })),
+        cfItems: softLaunchRolloutItems(),
+      }),
+    [tasks, ALL_CASES],
+  );
 
   /** Portal totals never include FMSH wizard inventory (~972 rows). */
   const COUNTABLE_CASES = useMemo(
@@ -618,7 +663,7 @@ export function TestingPortal({
   };
 
   const effectiveSprint = (t: TestCase) =>
-    sprintByCase[t.id] ?? suggestedSprintForTest(t);
+    sprintByCase[t.id] ?? sprintForUnstoredTest(t, closedSprints);
 
   const applyServerData = (data: TestStatusesPayload, savedId?: string) => {
     if (savedId) {
@@ -720,13 +765,75 @@ export function TestingPortal({
         fetchTasks().catch(() => [] as GyshTask[]),
       ]);
       setDevAssignees(devAssigneesFromUsers(users));
+      setQaTesters(qaTestersFromUsers(users));
       setClosedSprints(new Set(closedList));
       setTasks(fetchedTasks);
+      void fetchSoftLaunchOverrides()
+        .then((overrides) => {
+          activateSoftLaunchOverrides(overrides);
+          setCfTitleTick((n) => n + 1);
+        })
+        .catch(() => {
+          /* catalog titles remain */
+        });
       let data = fetched;
+      // Place Candace email-template review cases on the current sprint with staggered dues.
+      const tplSprint = emailTemplateReviewSprint();
+      const tplHeal = EMAIL_TEMPLATE_REVIEW_CASES.filter((c) => {
+        const sprint = data.sprints[c.id];
+        const due = String(data.dueDates?.[c.id] ?? "").trim();
+        const wantDue = emailTemplateReviewDueDate(c.id);
+        const assignee = String(data.assignees?.[c.id] ?? "").trim();
+        return sprint !== tplSprint || due !== wantDue || assignee.toLowerCase() !== "candace";
+      });
+      if (tplHeal.length > 0) {
+        try {
+          data = await saveTestStatusesBatch(
+            tplHeal.map((c) => ({
+              caseId: c.id,
+              status: (data.statuses[c.id] ?? DEFAULT_TEST_STATUS) as TestStatus,
+              note: (data.notes[c.id] ?? "").trim(),
+              assignee: "candace",
+              sprint: tplSprint,
+              dueDate: emailTemplateReviewDueDate(c.id),
+            })),
+          );
+        } catch {
+          /* soft-fail — UI still shows suggested sprint/dues */
+        }
+      }
+      // Place Candace legal-review cases on the current sprint, due today.
+      const legalSprint = legalReviewSprint();
+      const legalHeal = LEGAL_REVIEW_CASES.filter((c) => {
+        const sprint = data.sprints[c.id];
+        const due = String(data.dueDates?.[c.id] ?? "").trim();
+        const wantDue = legalReviewDueDate(c.id);
+        const assignee = String(data.assignees?.[c.id] ?? "").trim();
+        return sprint !== legalSprint || due !== wantDue || assignee.toLowerCase() !== "candace";
+      });
+      if (legalHeal.length > 0) {
+        try {
+          data = await saveTestStatusesBatch(
+            legalHeal.map((c) => ({
+              caseId: c.id,
+              status: (data.statuses[c.id] ?? DEFAULT_TEST_STATUS) as TestStatus,
+              note: (data.notes[c.id] ?? "").trim(),
+              assignee: "candace",
+              sprint: legalSprint,
+              dueDate: legalReviewDueDate(c.id),
+            })),
+          );
+        } catch {
+          /* soft-fail — UI still shows suggested sprint/dues */
+        }
+      }
       // Due-only heal for incomplete cases (not Pass). Uses freshly fetched rows so we
       // do not race stale notes/status from a prior session. Skip locked sprints.
       const healIds = Object.keys(data.sprints).filter(
-        (id) => !isSprintLocked(closedList, data.sprints[id]),
+        (id) =>
+          !isSprintLocked(closedList, data.sprints[id]) &&
+          !isEmailTemplateReviewCaseId(id) &&
+          !isLegalReviewCaseId(id),
       );
       const healed = healIncompleteTestDueDates(
         data.sprints,
@@ -750,6 +857,35 @@ export function TestingPortal({
           data = {
             ...data,
             dueDates: healed.dueDates,
+          };
+        }
+      }
+      const leftover = healClosedSprintTestLeftovers({
+        sprints: data.sprints,
+        statuses: data.statuses,
+        notes: data.notes,
+        dueDates: data.dueDates ?? {},
+        closed: closedList,
+        actorLabel: actingAssignBy,
+      });
+      if (leftover.changedIds.length > 0) {
+        try {
+          data = await saveTestStatusesBatch(
+            leftover.changedIds.map((caseId) => ({
+              caseId,
+              status: (data.statuses[caseId] ?? DEFAULT_TEST_STATUS) as TestStatus,
+              note: leftover.notes[caseId] ?? (data.notes[caseId] ?? "").trim(),
+              assignee: data.assignees?.[caseId] ?? "",
+              sprint: leftover.sprints[caseId] ?? BACKLOG_SPRINT,
+              dueDate: leftover.dueDates[caseId] ?? "",
+            })),
+          );
+        } catch {
+          data = {
+            ...data,
+            sprints: leftover.sprints,
+            notes: leftover.notes,
+            dueDates: leftover.dueDates,
           };
         }
       }
@@ -798,7 +934,7 @@ export function TestingPortal({
       return;
     }
     const sprint =
-      sprintByCase[focusTestId] ?? suggestedSprintForTest(caseDef);
+      sprintByCase[focusTestId] ?? sprintForUnstoredTest(caseDef, closedSprints);
     const sprintKey: SprintFilterKey = sprint === BACKLOG_SPRINT ? "backlog" : sprint;
     setQuery(focusTestId);
     setAreaFilter("all");
@@ -806,6 +942,7 @@ export function TestingPortal({
     setStatusFilters(new Set());
     setTesterFilters(new Set());
     setSuiteFilters(new Set());
+    setFacingFilters(new Set());
     // Keep the focused test visible under its sprint (not "All sprints").
     setSprintFilters(new Set([sprintKey]));
     lastCategoryIdx.current = null;
@@ -820,12 +957,7 @@ export function TestingPortal({
     });
     setHighlightId(focusTestId);
     onFocusConsumed?.();
-    requestAnimationFrame(() => {
-      document.getElementById(`test-row-${focusTestId}`)?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-    });
+    scrollAdminFocusIntoView(`test-row-${focusTestId}`);
   }, [focusTestId, loading, onFocusConsumed, sprintByCase]);
 
   const areas = useMemo(
@@ -907,13 +1039,15 @@ export function TestingPortal({
     const t = ALL_CASES.find((c) => c.id === id);
     return (
       sprintByCase[id] ??
-      suggestedSprintForTest(t ?? { id, area: "", priority: "P2", suite: "manual" })
+      sprintForUnstoredTest(t ?? { id, area: "", priority: "P2", suite: "manual" }, closedSprints)
     );
   };
 
   const persistedDueDate = (id: string, sprint?: number): string => {
     const existing = (dueDatesByCase[id] ?? "").trim();
     if (existing) return existing;
+    if (isEmailTemplateReviewCaseId(id)) return emailTemplateReviewDueDate(id);
+    if (isLegalReviewCaseId(id)) return legalReviewDueDate(id);
     return dueDateForSprint(sprint ?? persistedSprint(id));
   };
 
@@ -1018,6 +1152,7 @@ export function TestingPortal({
     notes,
     sprintByCase,
     assigneeOverrides,
+    qaTesters,
   ] as const;
 
   /** Real Vitest `it()` counts from last `npm test` / report-vitest-to-d1 run (not FMSH inventory). */
@@ -1149,7 +1284,7 @@ export function TestingPortal({
     ].filter((row) => row.tally.total > 0);
 
     const resources = [
-      ...QA_TESTERS.map((tester) => {
+      ...qaTesters.map((tester) => {
         const ids = COUNTABLE_CASES.filter((t) => {
           if (t.suite !== "manual" && !isFailureGeneratedId(t.id)) return false;
           return ownerForTesterStats(t) === tester.id;
@@ -1158,7 +1293,7 @@ export function TestingPortal({
           id: tester.id,
           label: tester.name,
           detail: "Manual QA (DB + proofread owners)",
-          accent: tester.id === "tina" ? "#9B2F28" : tester.id === "evelyn" ? "#947D64" : "#3f6b2e",
+          accent: tester.accent,
           tally: tallyStatuses(ids, statuses),
         };
       }),
@@ -1205,7 +1340,7 @@ export function TestingPortal({
     );
     const countRolled = (cases: typeof humanCases) =>
       cases.filter((t) => testIsRolledOver(statuses[t.id], notes[t.id])).length;
-    const testers = QA_TESTERS.map((tester) => {
+    const testers = qaTesters.map((tester) => {
       const cases = ownedCases.filter((t) => ownerForTesterStats(t) === tester.id);
       const tally = tallyStatuses(
         cases.map((t) => t.id),
@@ -1459,8 +1594,8 @@ export function TestingPortal({
   );
   const suiteFilterOrder = useMemo<TestSuite[]>(() => ["manual", "vitest", "playwright"], []);
   const testerFilterOrder = useMemo<TesterFilterKey[]>(
-    () => [...QA_TESTERS.map((t) => t.id), "unassigned"],
-    [],
+    () => [...qaTesters.map((t) => t.id), "unassigned"],
+    [qaTesters],
   );
 
   // Drop status pins when the user changes filters (not when statuses update).
@@ -1505,24 +1640,24 @@ export function TestingPortal({
   }, [loading, preferExpanded, filteredIds]);
 
   const toggleFacingFilter = (facing: TestFacing, e?: MouseEvent) => {
-    const { next, lastIndex } = applyMultiSelectClick(
+    const { next, lastIndex } = chipClick(
       facingFilters,
       facing,
       TEST_FACINGS,
       lastFacingIdx.current,
-      Boolean(e?.shiftKey),
+      e,
     );
     lastFacingIdx.current = lastIndex;
     setFacingFilters(next);
   };
 
   const toggleCategoryFilter = (cat: TestCategory, e?: MouseEvent) => {
-    const { next, lastIndex } = applyMultiSelectClick(
+    const { next, lastIndex } = chipClick(
       categoryFilters,
       cat,
       TEST_CATEGORIES,
       lastCategoryIdx.current,
-      Boolean(e?.shiftKey),
+      e,
     );
     lastCategoryIdx.current = lastIndex;
     setCategoryFilters(next);
@@ -1959,7 +2094,7 @@ export function TestingPortal({
       const items = ids.map((id) => {
         const status = statusesRef.current[id] ?? DEFAULT_TEST_STATUS;
         const caseDef = ALL_CASES.find((c) => c.id === id);
-        const sprint = sprintByCase[id] ?? (caseDef ? suggestedSprintForTest(caseDef) : BACKLOG_SPRINT);
+        const sprint = sprintByCase[id] ?? (caseDef ? sprintForUnstoredTest(caseDef, closedSprints) : BACKLOG_SPRINT);
         return {
           caseId: id,
           status,
@@ -2118,24 +2253,24 @@ export function TestingPortal({
   };
 
   const toggleStatusFilter = (status: TestStatus, e?: MouseEvent) => {
-    const { next, lastIndex } = applyMultiSelectClick(
+    const { next, lastIndex } = chipClick(
       statusFilters,
       status,
       STATUSES,
       lastStatusIdx.current,
-      Boolean(e?.shiftKey),
+      e,
     );
     lastStatusIdx.current = lastIndex;
     setStatusFilters(next);
   };
 
   const toggleTesterFilter = (id: TesterFilterKey, e?: MouseEvent) => {
-    const { next, lastIndex } = applyMultiSelectClick(
+    const { next, lastIndex } = chipClick(
       testerFilters,
       id,
       testerFilterOrder,
       lastTesterIdx.current,
-      Boolean(e?.shiftKey),
+      e,
     );
     lastTesterIdx.current = lastIndex;
     setTesterFilters(next);
@@ -2155,12 +2290,12 @@ export function TestingPortal({
   };
 
   const toggleSuiteFilter = (suite: TestSuite, e?: MouseEvent) => {
-    const { next, lastIndex } = applyMultiSelectClick(
+    const { next, lastIndex } = chipClick(
       suiteFilters,
       suite,
       suiteFilterOrder,
       lastSuiteIdx.current,
-      Boolean(e?.shiftKey),
+      e,
     );
     lastSuiteIdx.current = lastIndex;
     setSuiteFilters(next);
@@ -2187,12 +2322,12 @@ export function TestingPortal({
   };
 
   const toggleSprintFilter = (key: SprintFilterKey, e?: MouseEvent) => {
-    const { next, lastIndex } = applyMultiSelectClick(
+    const { next, lastIndex } = chipClick(
       sprintFilters,
       key,
       sprintFilterOrder,
       lastSprintIdx.current,
-      Boolean(e?.shiftKey),
+      e,
     );
     lastSprintIdx.current = lastIndex;
     setSprintFilters(next);
@@ -2241,7 +2376,7 @@ export function TestingPortal({
       const items = ids.map((id) => {
         const status = statusesRef.current[id] ?? DEFAULT_TEST_STATUS;
         const caseDef = ALL_CASES.find((c) => c.id === id);
-        const sprint = sprintByCase[id] ?? (caseDef ? suggestedSprintForTest(caseDef) : BACKLOG_SPRINT);
+        const sprint = sprintByCase[id] ?? (caseDef ? sprintForUnstoredTest(caseDef, closedSprints) : BACKLOG_SPRINT);
         return {
           caseId: id,
           status,
@@ -2273,7 +2408,7 @@ export function TestingPortal({
       });
       const data = await saveTestStatusesBatch(items);
       applyServerData(data);
-      setSaveFlash(`${ids.length} test(s) assigned to ${testOwnerLabel(assignee)}`);
+      setSaveFlash(`${ids.length} test(s) assigned to ${testOwnerLabel(assignee, qaTesters)}`);
       window.setTimeout(() => setSaveFlash(""), 3500);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Bulk assign failed.");
@@ -2639,7 +2774,7 @@ export function TestingPortal({
   };
 
   const testerLabel = (ids: TestOwnerId[]) =>
-    ids.length === 0 ? "Unassigned" : ids.map((id) => testOwnerLabel(id)).join(", ");
+    ids.length === 0 ? "Unassigned" : ids.map((id) => testOwnerLabel(id, qaTesters)).join(", ");
 
   const portalBusy =
     loading || savingAll || savingIds.size > 0 || suiteRunning !== null;
@@ -3588,6 +3723,7 @@ export function TestingPortal({
             </span>
           </div>
           <div
+            className="qa-bulk-edit-bar"
             style={{
               display: "flex",
               flexWrap: "wrap",
@@ -3625,34 +3761,24 @@ export function TestingPortal({
             aria-hidden
           />
           <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text-primary)" }}>Assign:</span>
-          <button
-            type="button"
-            className="btn btn-primary"
-            disabled={bulkBusy}
-            style={{ padding: "6px 12px", fontSize: "0.9375rem", background: "#2e7d32", borderColor: "#2e7d32" }}
-            onClick={() => void bulkAssign("lyriq")}
-          >
-            Lyriq
-            <span style={{ fontWeight: 800, marginLeft: 6 }}>
-              (
-              {(() => {
-                const s = testerStats.testers.find((t) => t.id === "lyriq");
-                return `${s?.passed ?? 0}/${s?.total ?? 0}`;
-              })()}
-              )
-            </span>
-          </button>
-          {QA_TESTERS.filter((t) => t.id !== "lyriq").map((tester) => {
+          {qaTesters.map((tester) => {
             const stats = testerStats.testers.find((t) => t.id === tester.id);
             const passed = stats?.passed ?? 0;
             const assigned = stats?.total ?? 0;
+            const isPrimary = tester.id === "lyriq";
             return (
               <button
                 key={tester.id}
                 type="button"
-                className="btn btn-outline"
+                className={isPrimary ? "btn btn-primary" : "btn btn-outline"}
                 disabled={bulkBusy}
-                style={{ padding: "6px 12px", fontSize: "0.9375rem" }}
+                style={{
+                  padding: "6px 12px",
+                  fontSize: "0.9375rem",
+                  ...(isPrimary
+                    ? { background: "#2e7d32", borderColor: "#2e7d32" }
+                    : null),
+                }}
                 onClick={() => void bulkAssign(tester.id)}
               >
                 {tester.shortName}
@@ -3681,7 +3807,7 @@ export function TestingPortal({
           <select
             id="qa-bulk-sprint"
             className="select-input"
-            style={{ width: 150 }}
+            style={{ width: "100%", maxWidth: 160, minWidth: 0 }}
             defaultValue=""
             disabled={bulkBusy}
             aria-label={`Assign sprint to ${selectedIds.size} selected tests`}
@@ -3714,7 +3840,7 @@ export function TestingPortal({
               <select
                 id="qa-bulk-assigned-by"
                 className="select-input"
-                style={{ width: 150 }}
+                style={{ width: "100%", maxWidth: 160, minWidth: 0 }}
                 defaultValue=""
                 disabled={bulkBusy}
                 aria-label={`Assigned By for ${selectedIds.size} selected tests`}
@@ -3746,7 +3872,7 @@ export function TestingPortal({
             id="qa-bulk-due"
             className="text-input"
             type="date"
-            style={{ width: 150 }}
+            style={{ width: "100%", maxWidth: 160, minWidth: 0 }}
             value={bulkDueDate}
             disabled={bulkBusy}
             onChange={(e) => setBulkDueDate(e.target.value)}
@@ -3770,7 +3896,7 @@ export function TestingPortal({
           <input
             id="qa-bulk-desc"
             className="text-input"
-            style={{ width: 220 }}
+            style={{ width: "100%", maxWidth: 240, minWidth: 0 }}
             value={bulkDescription}
             disabled={bulkBusy}
             placeholder="Note / description…"
@@ -3850,7 +3976,7 @@ export function TestingPortal({
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
-        <select className="select-input" style={{ width: 320, minWidth: 240, height: 40 }} value={areaFilter} onChange={(e) => setAreaFilter(e.target.value)}>
+        <select className="select-input" style={{ width: "100%", maxWidth: 320, minWidth: 0, height: 44 }} value={areaFilter} onChange={(e) => setAreaFilter(e.target.value)}>
           {areas.map((a) => {
             if (a === "all") {
               return (
@@ -3897,7 +4023,7 @@ export function TestingPortal({
                   .map((id) =>
                     id === "unassigned"
                       ? "Unassigned"
-                      : (QA_TESTERS.find((t) => t.id === id)?.shortName ?? id),
+                      : (qaTesters.find((t) => t.id === id)?.shortName ?? id),
                   )
                   .join(", ")}
               </strong>
@@ -4041,6 +4167,22 @@ export function TestingPortal({
                   )}
                 </button>
               </div>
+              <AdminCrossLinks
+                entity={{ kind: "test", id: t.id }}
+                links={crossLinksForTestId(t.id, t.relatedTaskIds)}
+                edges={entityEdges}
+                titles={entityTitles}
+                editable
+                candidates={linkCandidates}
+                onLink={(target) =>
+                  linkEntities({ kind: "test", id: t.id }, target)
+                }
+                onUnlink={(target) =>
+                  unlinkEntities({ kind: "test", id: t.id }, target)
+                }
+                testId={`test-crosslinks-${t.id}`}
+                style={{ padding: "6px 14px 0" }}
+              />
               <div
                 style={{
                   padding: "6px 14px 0",
@@ -4081,6 +4223,7 @@ export function TestingPortal({
                         (isHumanQaTester(persistedAssignee(t.id))
                           ? persistedAssignee(t.id)
                           : FAILED_TEST_ASSIGNEE) as string,
+                        qaTesters,
                       )}
                     </span>
                   </span>
@@ -4196,7 +4339,7 @@ export function TestingPortal({
                         color: STATUS_COLOR.fail,
                       }}
                     >
-                      {QA_TESTERS.map((tester) => (
+                      {qaTesters.map((tester) => (
                         <option key={tester.id} value={tester.id}>
                           {tester.shortName}
                         </option>
@@ -4274,7 +4417,7 @@ export function TestingPortal({
                           {st !== "fail" ? (
                             <option value="">Default ({testerLabel(t.assignees)})</option>
                           ) : null}
-                          {QA_TESTERS.map((tester) => (
+                          {qaTesters.map((tester) => (
                             <option key={tester.id} value={tester.id}>
                               {tester.shortName}
                             </option>
@@ -4503,7 +4646,10 @@ export function TestingPortal({
 
                   <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
                     <p style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700 }}>
-                      Evidence <span style={{ fontWeight: 500 }}>(image, PDF, Word, or Excel — safety scanned)</span>
+                      Evidence{" "}
+                      <span style={{ fontWeight: 500 }}>
+                        (image, video mp4/webm/mov, PDF, Word, or Excel — safety scanned, max ~8MB / videos ~20MB)
+                      </span>
                     </p>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
                       <label className="btn btn-outline" style={{ padding: "6px 12px", fontSize: "0.9375rem", cursor: "pointer" }}>

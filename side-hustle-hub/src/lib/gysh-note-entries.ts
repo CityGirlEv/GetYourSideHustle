@@ -38,12 +38,13 @@ export function authorsMatch(
   const left = String(a ?? "").trim().toLowerCase();
   const right = String(b ?? "").trim().toLowerCase();
   if (left === right) return true;
-  // Tina Marie Barham ≡ Tina (same for Evelyn / Lyriq full names).
+  // Tina Marie Barham ≡ Tina (same for Evelyn / Lyriq / Candace full names).
   const canon = (raw: string) => {
     if (!raw) return "";
     if (raw === "tina" || raw.startsWith("tina ")) return "tina";
     if (raw === "evelyn" || raw.startsWith("evelyn ")) return "evelyn";
     if (raw === "lyriq" || raw.startsWith("lyriq ")) return "lyriq";
+    if (raw === "candace" || raw.startsWith("candace ")) return "candace";
     return raw;
   };
   return canon(left) === canon(right) && canon(left) !== "";
@@ -197,6 +198,18 @@ export function noteEntriesPlainText(raw: string | null | undefined): string {
     .map((e) => e.text)
     .join("\n")
     .trim();
+}
+
+/**
+ * True when two note payloads carry the same readable content.
+ * Used so locked-sprint saves ignore plain-text → JSON note heals (not real edits).
+ */
+export function notesEffectivelyEqual(
+  a: string | null | undefined,
+  b: string | null | undefined,
+): boolean {
+  if (String(a ?? "") === String(b ?? "")) return true;
+  return noteEntriesPlainText(a) === noteEntriesPlainText(b);
 }
 
 export function createNoteEntry(author: string, text: string, at = new Date().toISOString()): NoteEntry {

@@ -1,13 +1,22 @@
 /**
  * Minimal sprint window helpers for Pages Functions (mirrors src/lib/gysh-sprints.ts).
  * Sprint 0 anchors Tue Jul 14 – Mon Jul 20, 2026.
+ * Sprint 3+ include a 2-week pause after Soft Launch (Sprint 2 ended Mon Aug 3).
  */
 
 export const BACKLOG_SPRINT = -1;
 export const SPRINT_ZERO_START = new Date(2026, 6, 14);
 export const DEFAULT_SPRINT_COUNT = 8;
+export const SPRINT_PAUSE_WEEKS_AFTER_S2 = 2;
+export const SPRINT_PAUSE_AFTER_INDEX = 2;
 
 const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function sprintCalendarWeekOffset(index: number): number {
+  const idx = Math.floor(index);
+  if (!Number.isFinite(idx) || idx <= SPRINT_PAUSE_AFTER_INDEX) return 0;
+  return SPRINT_PAUSE_WEEKS_AFTER_S2;
+}
 
 function sprintStartTuesday(ref: Date): Date {
   const d = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate());
@@ -38,7 +47,8 @@ export function getSprintWindow(index: number): {
 } {
   const baseStart = new Date(SPRINT_ZERO_START);
   const start = new Date(baseStart);
-  start.setDate(baseStart.getDate() + index * 7);
+  const weeks = Math.floor(index) + sprintCalendarWeekOffset(index);
+  start.setDate(baseStart.getDate() + weeks * 7);
   const end = sprintEndMonday(start);
   const label = index === 0 ? "Sprint 0" : `Sprint ${index}`;
   return {
@@ -55,8 +65,16 @@ export function currentSprintIndex(ref: Date = new Date()): number {
   const base = new Date(SPRINT_ZERO_START);
   base.setHours(0, 0, 0, 0);
   const msPerWeek = 7 * 24 * 60 * 60 * 1000;
-  const idx = Math.floor((tue.getTime() - base.getTime()) / msPerWeek);
-  if (!Number.isFinite(idx)) return 0;
+  const weeks = Math.floor((tue.getTime() - base.getTime()) / msPerWeek);
+  if (!Number.isFinite(weeks)) return 0;
+  let idx: number;
+  if (weeks <= SPRINT_PAUSE_AFTER_INDEX) {
+    idx = weeks;
+  } else if (weeks <= SPRINT_PAUSE_AFTER_INDEX + SPRINT_PAUSE_WEEKS_AFTER_S2) {
+    idx = SPRINT_PAUSE_AFTER_INDEX + 1;
+  } else {
+    idx = weeks - SPRINT_PAUSE_WEEKS_AFTER_S2;
+  }
   return Math.max(0, Math.min(DEFAULT_SPRINT_COUNT - 1, idx));
 }
 

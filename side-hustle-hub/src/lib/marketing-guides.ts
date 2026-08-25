@@ -1,4 +1,4 @@
-/**
+﻿/**
  * GYSH audience guides — Adult, Kids, Teens, Seniors, and Complete Master.
  * Shared by the online Guides viewer and downloadable PDF editions.
  */
@@ -105,7 +105,7 @@ function tocFromMarketing(sections: MarketingSection[]): GuideTocEntry[] {
   }));
 }
 
-/* ───────────────────────────────────────── Adult ───────────────────────────────────────── */
+/* ---------- Adult ---------- */
 
 function buildAdultGuide(): MarketingGuideDoc {
   const launchSample = LAUNCH_GUIDES.slice(0, 8);
@@ -177,7 +177,7 @@ function buildAdultGuide(): MarketingGuideDoc {
           {
             id: "j5",
             label: "Level up",
-            detail: "Join Starter for member guides + one 1-hour session, or Pro for the schedule suite.",
+            detail: "Join Starter for member guides + one 45-minute session, or Pro for the schedule suite.",
           },
         ],
       },
@@ -190,7 +190,7 @@ function buildAdultGuide(): MarketingGuideDoc {
           "GYSH Match Wizard (Adults) — the starting line for every serious Side Hustler.",
           "Guides library — free openers (rideshare, delivery) plus member launch playbooks.",
           "Profit Estimator & calculators — sanity-check income math before you commit.",
-          "Workshops — live labs with T / E and guest coaches.",
+          "Workshops — live labs with Tina & Evelyn and guest coaches.",
           "Community — ask questions, share wins, stay accountable.",
           "Join — Free through Elite with clear consulting time on paid plans.",
         ]),
@@ -240,9 +240,9 @@ function buildAdultGuide(): MarketingGuideDoc {
           body: "Run the Match Wizard today. Unlock your Blueprint free. Upgrade when you want coaches, member guides, and a week-by-week plan.",
           bullets: [
             "Free account → full Blueprint",
-            "Starter → member guides + one 1-hour session",
+            "Starter → member guides + one 45-minute session",
             "Pro → schedule suite + three 60-minute sessions",
-            "Elite → three 90-minute sessions + ZIP timing scout",
+            "Elite → three 90-minute sessions + ZipCode timing scout",
           ],
         },
       },
@@ -250,7 +250,7 @@ function buildAdultGuide(): MarketingGuideDoc {
   };
 }
 
-/* ───────────────────────────────────────── Kids ───────────────────────────────────────── */
+/* ---------- Kids ---------- */
 
 function buildKidsGuide(): MarketingGuideDoc {
   const kidsGuides = guidesForAudience("kids");
@@ -369,7 +369,7 @@ function buildKidsGuide(): MarketingGuideDoc {
           body: "Open Kids Corner tonight. Run the wizard. Set a Piggy Bank goal. Join free — upgrade when you want the full kids member library.",
           bullets: [
             "Free — stories preview + free guides",
-            "Starter — Kids Team + training videos + one 1-hour family session",
+            "Starter — Kids Team + training videos + one 45-minute family session",
             "Pro — schedule/tracker + more credits + AI game playbooks",
             "Elite — deepest credit pool + priority support",
           ],
@@ -379,7 +379,7 @@ function buildKidsGuide(): MarketingGuideDoc {
   };
 }
 
-/* ───────────────────────────────────────── Teens ───────────────────────────────────────── */
+/* ---------- Teens ---------- */
 
 function buildTeensGuide(): MarketingGuideDoc {
   const juniorGuides = guidesForAudience("junior");
@@ -496,7 +496,7 @@ function buildTeensGuide(): MarketingGuideDoc {
           body: "Run the Teens Match Wizard, set one My Bank goal, and join free. Upgrade for AI build guides, training videos, and the schedule suite.",
           bullets: [
             "Free — Match Wizard + free CEO / give-back guides",
-            "Starter — Teens Team + training + one 1-hour session",
+            "Starter — Teens Team + training + one 45-minute session",
             "Pro — AI game + content starters + schedule suite",
             "Elite — max credits + priority support",
           ],
@@ -506,7 +506,7 @@ function buildTeensGuide(): MarketingGuideDoc {
   };
 }
 
-/* ───────────────────────────────────────── Seniors ───────────────────────────────────────── */
+/* ---------- Seniors ---------- */
 
 function buildSeniorsGuide(): MarketingGuideDoc {
   return {
@@ -628,9 +628,9 @@ function buildSeniorsGuide(): MarketingGuideDoc {
           body: "Run the Seniors Match Wizard, preview opportunities, and join free. Upgrade when you want member seating, consulting, and a flexible plan.",
           bullets: [
             "Free — explore + interest list",
-            "Starter $34/mo senior — team + one 1-hour session",
+            "Starter $34/mo senior — team + one 45-minute session",
             "Pro $57/mo senior — schedule suite + three 60-minute sessions",
-            "Elite $94/mo senior — three 90-minute sessions + ZIP scout",
+            "Elite $94/mo senior — three 90-minute sessions + ZipCode scout",
           ],
         },
       },
@@ -638,7 +638,7 @@ function buildSeniorsGuide(): MarketingGuideDoc {
   };
 }
 
-/* ───────────────────────────────────────── Master ───────────────────────────────────────── */
+/* ---------- Master ---------- */
 
 function buildMasterGuide(): MarketingGuideDoc {
   const adult = buildAdultGuide();

@@ -91,83 +91,59 @@ export function DueTasksModal({
   const sprint = sprintCountdownCopy();
   const hasTasks = overdue.length > 0 || dueToday.length > 0;
   const hasTests = overdueTests.length > 0;
+  const itemCount = overdue.length + dueToday.length + overdueTests.length;
 
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-labelledby="due-tasks-modal-title"
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 400,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 16,
-        background: "rgba(24, 23, 24, 0.45)",
-      }}
+      className="due-tasks-modal"
+      data-testid="due-tasks-modal"
+      data-item-count={itemCount}
       onClick={onClose}
       onKeyDown={(e) => {
         if (e.key === "Escape") onClose();
       }}
     >
       <div
-        className="glass"
-        style={{
-          width: "min(680px, 100%)",
-          maxHeight: "85vh",
-          overflow: "auto",
-          borderRadius: 16,
-          padding: "22px 24px",
-          background: "#fff",
-          border: "1px solid var(--border-color)",
-          boxShadow: "0 18px 48px rgba(24,23,24,0.18)",
-        }}
+        className="glass due-tasks-modal__card"
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
+        <div className="due-tasks-modal__head">
           <div>
-            <h3 id="due-tasks-modal-title" style={{ margin: 0, fontSize: "1.25rem", color: "var(--charcoal)" }}>
+            <h3 id="due-tasks-modal-title">
               Work needing attention
             </h3>
-            <p style={{ margin: "6px 0 0", fontSize: "0.95rem", color: "var(--text-primary)" }}>
+            <p>
               Past-due tasks &amp; tests for {assigneeLabel}
               {assigneeLabel !== "Lyriq" ? " (tasks include Both)" : ""}.
             </p>
-            <p
-              style={{
-                margin: "10px 0 0",
-                fontSize: "0.95rem",
-                color: "var(--bronze)",
-                fontWeight: 600,
-                lineHeight: 1.4,
-              }}
-            >
+            <p className="due-tasks-modal__sprint">
               {sprint.headline}. {sprint.nudge}
             </p>
           </div>
           <button
             type="button"
-            className="btn btn-outline"
-            style={{ padding: "6px 8px" }}
+            className="btn btn-outline due-tasks-modal__x"
             onClick={onClose}
             aria-label="Close"
+            data-testid="due-tasks-modal-close"
           >
             <X size={16} />
           </button>
         </div>
 
         {empty ? (
-          <p style={{ marginTop: 20, color: "var(--text-primary)" }}>Nothing overdue. Nice work.</p>
+          <p className="due-tasks-modal__empty">Nothing overdue. Nice work.</p>
         ) : (
-          <div style={{ marginTop: 16 }}>
+          <div className="due-tasks-modal__body">
             {overdueTests.length > 0 && (
-              <section style={{ marginBottom: overdue.length > 0 || dueToday.length > 0 ? 18 : 0 }}>
-                <h4 style={{ margin: "0 0 4px", fontSize: "0.9375rem", color: "#9B2F28", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              <section className="due-tasks-modal__section">
+                <h4 className="due-tasks-modal__h4 due-tasks-modal__h4--overdue">
                   Past-due tests ({overdueTests.length})
                 </h4>
-                <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+                <ul className="due-tasks-modal__list">
                   {overdueTests.map((t) => (
                     <TestLine key={t.id} t={t} />
                   ))}
@@ -175,11 +151,11 @@ export function DueTasksModal({
               </section>
             )}
             {overdue.length > 0 && (
-              <section style={{ marginBottom: dueToday.length > 0 ? 18 : 0 }}>
-                <h4 style={{ margin: "0 0 4px", fontSize: "0.9375rem", color: "#9B2F28", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              <section className="due-tasks-modal__section">
+                <h4 className="due-tasks-modal__h4 due-tasks-modal__h4--overdue">
                   Past-due tasks ({overdue.length})
                 </h4>
-                <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+                <ul className="due-tasks-modal__list">
                   {overdue.map((t) => (
                     <TaskLine key={t.id} t={t} tone="overdue" />
                   ))}
@@ -187,11 +163,11 @@ export function DueTasksModal({
               </section>
             )}
             {dueToday.length > 0 && (
-              <section>
-                <h4 style={{ margin: "0 0 4px", fontSize: "0.9375rem", color: "var(--bronze)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              <section className="due-tasks-modal__section">
+                <h4 className="due-tasks-modal__h4">
                   Due today — tasks ({dueToday.length})
                 </h4>
-                <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+                <ul className="due-tasks-modal__list">
                   {dueToday.map((t) => (
                     <TaskLine key={t.id} t={t} tone="today" />
                   ))}
@@ -201,7 +177,7 @@ export function DueTasksModal({
           </div>
         )}
 
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 22, justifyContent: "flex-end" }}>
+        <div className="due-tasks-modal__actions">
           <button type="button" className="btn btn-outline" onClick={onClose}>
             Got it
           </button>

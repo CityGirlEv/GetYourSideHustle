@@ -1,13 +1,13 @@
 /**
  * Defaults for newly created test cases (generated failures, first D1 rows).
- * General → Backlog + Unassigned.
+ * Always land in the current sprint (never Backlog) unless a rare Sprint 0 task match applies.
  * KevinaStarr Kids / Youth → Tina, current (or next) sprint, due = creation + 1 day.
- * Sprint 0 task-matched catalog ids → Sprint 0 (rare on create; never otherwise).
+ * General → current sprint, Unassigned, due = today.
  */
 
 import { suggestedSprintForTest, testMatchesSprint0Task } from "./gysh-sprint-board";
+import { placeUnstoredTestSprint, sprintForNewTest } from "./gysh-closed-sprints";
 import {
-  BACKLOG_SPRINT,
   DEFAULT_SPRINT_COUNT,
   currentSprintIndex,
   daysUntilSprintEnd,
@@ -84,27 +84,36 @@ export function isKevinaKidsYouthTest(input: NewTestDefaultInput): boolean {
  * is in the last 2 calendar days of the current sprint (Sun–Mon end).
  * Never Sprint 0 unless the case matches a Sprint 0 task (handled in defaultsForNewTest).
  */
-export function sprintForNewKidsYouthTest(ref: Date = new Date()): number {
+export function sprintForNewKidsYouthTest(
+  ref: Date = new Date(),
+  closed?: Iterable<number> | null,
+): number {
   let sprint = currentSprintIndex(ref);
   if (daysUntilSprintEnd(ref) <= 1) {
     sprint = Math.min(DEFAULT_SPRINT_COUNT - 1, sprint + 1);
   }
   if (sprint === 0) sprint = 1;
-  return sprint;
+  return placeUnstoredTestSprint(sprint, closed, ref);
 }
 
 /** Assignment defaults for a newly created test case. */
 export function defaultsForNewTest(
   input: NewTestDefaultInput,
   ref: Date = new Date(),
+  closed?: Iterable<number> | null,
 ): NewTestDefaults {
-  // Catalog-style ids that verify a Sprint 0 task may land on Sprint 0 at create.
+  // Catalog-style ids that verify a Sprint 0 task may land on Sprint 0 at create —
+  // still never persist onto a closed sprint.
   if (input.id && testMatchesSprint0Task({ id: input.id })) {
-    const sprint = suggestedSprintForTest({
-      id: input.id,
-      area: input.area ?? "",
-      priority: "P2",
-    });
+    const sprint = placeUnstoredTestSprint(
+      suggestedSprintForTest({
+        id: input.id,
+        area: input.area ?? "",
+        priority: "P2",
+      }),
+      closed,
+      ref,
+    );
     return {
       sprint,
       assignee: isKevinaKidsYouthTest(input) ? "tina" : "",
@@ -113,14 +122,15 @@ export function defaultsForNewTest(
   }
   if (isKevinaKidsYouthTest(input)) {
     return {
-      sprint: sprintForNewKidsYouthTest(ref),
+      sprint: sprintForNewKidsYouthTest(ref, closed),
       assignee: "tina",
       dueDate: dueDatePlusDays(1, ref),
     };
   }
+  const sprint = sprintForNewTest(closed, ref);
   return {
-    sprint: BACKLOG_SPRINT,
+    sprint,
     assignee: "",
-    dueDate: "",
+    dueDate: dueDatePlusDays(0, ref),
   };
 }

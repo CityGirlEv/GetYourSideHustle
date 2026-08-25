@@ -171,6 +171,15 @@ export function noteEntriesPlainText(raw: string | null | undefined): string {
     .trim();
 }
 
+/** Same readable content — ignore plain-text → JSON note heals for lock checks. */
+export function notesEffectivelyEqual(
+  a: string | null | undefined,
+  b: string | null | undefined,
+): boolean {
+  if (String(a ?? "") === String(b ?? "")) return true;
+  return noteEntriesPlainText(a) === noteEntriesPlainText(b);
+}
+
 export function mergeNoteEntries(
   previousRaw: string | null | undefined,
   incomingRaw: string | null | undefined,

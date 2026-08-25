@@ -1,0 +1,190 @@
+{
+  "mode": "test",
+  "syncedAt": "2026-08-22T20:24:13.294Z",
+  "memberships": {
+    "starter": {
+      "adult": {
+        "month": {
+          "productId": "prod_V7advE2qCfrJw4",
+          "priceId": "price_1U7LSdJOsDH7RgBd1Ee6yKI7",
+          "amountUsd": 39,
+          "label": "Starter Adults Monthly"
+        },
+        "year": {
+          "productId": "prod_V7ad784LWPDWY8",
+          "priceId": "price_1U7LSdJOsDH7RgBdiUvOl0F2",
+          "amountUsd": 390,
+          "label": "Starter Adults Yearly"
+        }
+      },
+      "senior": {
+        "month": {
+          "productId": "prod_V7adJVQKJCcJIv",
+          "priceId": "price_1U7LSeJOsDH7RgBdRJlS8Wuw",
+          "amountUsd": 34,
+          "label": "Starter Seniors (55+) Monthly"
+        },
+        "year": {
+          "productId": "prod_V7ad2HG0POmK7C",
+          "priceId": "price_1U7LSfJOsDH7RgBd22nfMNMC",
+          "amountUsd": 340,
+          "label": "Starter Seniors (55+) Yearly"
+        }
+      }
+    },
+    "pro": {
+      "adult": {
+        "month": {
+          "productId": "prod_V7adeDxQMvYCCl",
+          "priceId": "price_1U7LSgJOsDH7RgBdgGIJIIRK",
+          "amountUsd": 69,
+          "label": "Pro Adults Monthly"
+        },
+        "year": {
+          "productId": "prod_V7adOBpWag7Y4O",
+          "priceId": "price_1U7LShJOsDH7RgBd69JXPK2R",
+          "amountUsd": 690,
+          "label": "Pro Adults Yearly"
+        }
+      },
+      "senior": {
+        "month": {
+          "productId": "prod_V7advBhQHdx2nN",
+          "priceId": "price_1U7LSiJOsDH7RgBdpFx29R9N",
+          "amountUsd": 57,
+          "label": "Pro Seniors (55+) Monthly"
+        },
+        "year": {
+          "productId": "prod_V7aeqIhsIMPBCv",
+          "priceId": "price_1U7LSiJOsDH7RgBd1z3Ne9z2",
+          "amountUsd": 570,
+          "label": "Pro Seniors (55+) Yearly"
+        }
+      }
+    },
+    "elite": {
+      "adult": {
+        "month": {
+          "productId": "prod_V7aezskFjdfTWn",
+          "priceId": "price_1U7LSjJOsDH7RgBdvInDXNle",
+          "amountUsd": 119,
+          "label": "Elite Adults Monthly"
+        },
+        "year": {
+          "productId": "prod_V7aeEMeruyg3TD",
+          "priceId": "price_1U7LSkJOsDH7RgBdkfeELCQr",
+          "amountUsd": 1190,
+          "label": "Elite Adults Yearly"
+        }
+      },
+      "senior": {
+        "month": {
+          "productId": "prod_V7ae2Esioxhg6y",
+          "priceId": "price_1U7LSlJOsDH7RgBdMg0emLYk",
+          "amountUsd": 94,
+          "label": "Elite Seniors (55+) Monthly"
+        },
+        "year": {
+          "productId": "prod_V7aejcgw2idRV6",
+          "priceId": "price_1U7LSlJOsDH7RgBdyf3aDegx",
+          "amountUsd": 940,
+          "label": "Elite Seniors (55+) Yearly"
+        }
+      }
+    }
+  },
+  "alaCarte": {
+    "story-time": {
+      "productId": "prod_V7aerBh6YkoKAW",
+      "priceId": "price_1U7LSmJOsDH7RgBdaw7rUdZi",
+      "amountUsd": 15,
+      "label": "Kevina Starr Story Time (1 session)"
+    },
+    "junior-lab": {
+      "productId": "prod_V7aeQHfcXbIQ7a",
+      "priceId": "price_1U7LSnJOsDH7RgBd5Jrlx8CZ",
+      "amountUsd": 25,
+      "label": "Teens Glow Lab seat"
+    },
+    "workshop-general": {
+      "productId": "prod_V7aenO03MolPWR",
+      "priceId": "price_1U7LSoJOsDH7RgBdqMKfVdcs",
+      "amountUsd": 35,
+      "label": "Adult / Senior workshop ticket"
+    },
+    "training-group": {
+      "productId": "prod_V7aeMOT5sbz2fA",
+      "priceId": "price_1U7LSpJOsDH7RgBdEiHPT6s0",
+      "amountUsd": 45,
+      "label": "Group training session"
+    },
+    "consult-30": {
+      "productId": "prod_V7aeVw8PLqbt89",
+      "priceId": "price_1U7LSpJOsDH7RgBdz9Abuiu3",
+      "amountUsd": 75,
+      "label": "1-on-1 consulting (30 min)"
+    },
+    "consult-60": {
+      "productId": "prod_V7aeNy7Jw3cQBi",
+      "priceId": "price_1U7LSqJOsDH7RgBdirrAB4II",
+      "amountUsd": 120,
+      "label": "1-on-1 consulting (60 min)"
+    },
+    "consult-90": {
+      "productId": "prod_V7aeWgWclVGtZ0",
+      "priceId": "price_1U7LSrJOsDH7RgBdbo3nZIIJ",
+      "amountUsd": 165,
+      "label": "1-on-1 consulting (90 min)"
+    },
+    "custom-schedule": {
+      "productId": "prod_V7aeYLAh8S0X9g",
+      "priceId": "price_1U7LSsJOsDH7RgBdrQhgIaaQ",
+      "amountUsd": 45,
+      "label": "Custom hustle schedule build"
+    },
+    "progress-pdf": {
+      "productId": "prod_V7aeVG1FnIwGZb",
+      "priceId": "price_1U7LSsJOsDH7RgBdwmnpmEkK",
+      "amountUsd": 12,
+      "label": "Progress report PDF (one-off)"
+    },
+    "zip-timing": {
+      "productId": "prod_V7aeTrnlif0mzo",
+      "priceId": "price_1U7LStJOsDH7RgBdsQJHHLRD",
+      "amountUsd": 29,
+      "label": "Best-times ZipCode scout (month)"
+    },
+    "parent-brief": {
+      "productId": "prod_V7aeApmRB8MaGN",
+      "priceId": "price_1U7LSuJOsDH7RgBd53YVrXpe",
+      "amountUsd": 10,
+      "label": "Parent safety brief"
+    }
+  },
+  "creditPacks": {
+    "boost": {
+      "productId": "prod_V7aegapUKtGG0g",
+      "priceId": "price_1U7LSvJOsDH7RgBdwfk8ELzK",
+      "amountUsd": 5,
+      "label": "Boost Pack (25 credits)"
+    },
+    "builder": {
+      "productId": "prod_V7aePsgdfHw6ia",
+      "priceId": "price_1U7LSvJOsDH7RgBdZkvGizCh",
+      "amountUsd": 10,
+      "label": "Builder Pack (60 credits)"
+    },
+    "launcher": {
+      "productId": "prod_V7aect9YcyERH2",
+      "priceId": "price_1U7LSwJOsDH7RgBdrlijLA0r",
+      "amountUsd": 20,
+      "label": "Launcher Pack (140 credits)"
+    },
+    "family": {
+      "productId": "prod_V7aeKi1Twm3FAN",
+      "priceId": "price_1U7LSxJOsDH7RgBdoEH80Qww",
+      "amountUsd": 40,
+      "label": "Family Pack (300 credits)"
+    }
+  }
+}

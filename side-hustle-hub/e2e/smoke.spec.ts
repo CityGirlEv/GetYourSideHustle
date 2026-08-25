@@ -275,7 +275,7 @@ test.describe("GYSH smoke", () => {
     expect(bodyText).not.toMatch(/Testing Credentials/i);
   });
 
-  test("footer links navigate About, Join, and Contact", async ({ page }) => {
+  test("footer links navigate About, Join, Contact, and Privacy Policy", async ({ page }) => {
     await page.goto("/");
     const footer = page.getByRole("contentinfo");
     await footer.getByRole("button", { name: "About" }).click();
@@ -284,6 +284,38 @@ test.describe("GYSH smoke", () => {
     await expect(page.getByTestId("page-title")).toContainText("Join GYSH");
     await footer.getByRole("button", { name: "Contact Us" }).click();
     await expect(page.getByTestId("page-title")).toContainText("Contact Us");
+    await footer.getByTestId("footer-privacy").click();
+    await expect(page.getByTestId("page-title")).toContainText("Privacy Policy");
+    await expect(page.getByTestId("privacy-page")).toBeVisible();
+    await expect(page).toHaveURL(/\/privacy$/);
+  });
+
+  test("Privacy Policy page shows published policy from footer and /privacy", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByRole("contentinfo").getByTestId("footer-privacy")).toBeVisible();
+    await page.goto("/privacy");
+    await expect(page.getByTestId("page-title")).toContainText("Privacy Policy");
+    await expect(page.getByTestId("privacy-page")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Get Your Side Hustle Privacy Policy" })).toBeVisible();
+    await expect(page.getByTestId("privacy-effective-date")).toContainText("August 23, 2026");
+    await expect(page.getByRole("heading", { name: /Children’s Privacy/i })).toBeVisible();
+    await expect(page.getByText(/Children’s Online Privacy Protection Act/)).toBeVisible();
+    await page.getByTestId("privacy-contact").click();
+    await expect(page.getByTestId("contact-page")).toBeVisible();
+  });
+
+  test("Newsletter page is members-only from header, footer, and /newsletter", async ({ page }) => {
+    await page.goto("/newsletter");
+    await expect(page).toHaveURL(/\/newsletter$/);
+    await expect(page.getByTestId("page-title")).toContainText("Newsletter");
+    await expect(page.getByTestId("newsletter-page")).toBeVisible();
+    await expect(page.getByTestId("nav-newsletter")).toBeVisible();
+    await expect(page.getByTestId("newsletter-lock")).toBeVisible();
+    await expect(page.getByTestId("newsletter-join")).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Newsletter #1/i })).toBeVisible();
+    await expect(page.locator('[data-testid^="newsletter-body-"]')).toHaveCount(0);
+    await page.getByRole("contentinfo").getByTestId("footer-newsletter").click();
+    await expect(page.getByTestId("newsletter-page")).toBeVisible();
   });
 
   test("header nav opens About, Join, and Contact", async ({ page }) => {
@@ -313,6 +345,35 @@ test.describe("GYSH smoke", () => {
     await expect(page.getByRole("heading", { name: /Create your GYSH Membership/i })).toBeVisible();
     await expect(page.getByTestId("membership-signup-tier")).toHaveValue("starter");
     await expect(page.getByTestId("membership-signup-submit")).toContainText(/Starter/i);
+    await expect(page.getByTestId("membership-signup-beta-role")).toBeVisible();
+    await expect(page.getByLabel(/Apply as a Beta Tester/i)).toBeVisible();
+  });
+
+  test("Beta Tester NDA page shows GYSH-BETA-NDA-v1.0 from footer and /beta-nda", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("contentinfo").getByTestId("footer-beta-nda").click();
+    await expect(page.getByTestId("page-title")).toContainText("Beta Tester NDA");
+    await expect(page.getByTestId("beta-nda-page")).toBeVisible();
+    await expect(page.getByTestId("beta-nda-version")).toContainText("GYSH-BETA-NDA-v1.0");
+    await page.goto("/beta-nda");
+    await expect(page.getByRole("heading", { name: /Confidentiality and Non-Disclosure/i })).toBeVisible();
+  });
+
+  test("Apply as Beta Tester shows NDA fields on membership signup", async ({ page }) => {
+    await page.goto("/membership");
+    await expect(page.getByTestId("membership-signup-page")).toBeVisible();
+    await page.getByTestId("membership-signup-beta-role").check();
+    await expect(page.getByTestId("membership-signup-nda-panel")).toBeVisible();
+    await expect(page.getByTestId("membership-signup-nda-legal-name")).toBeVisible();
+    await expect(page.getByTestId("membership-signup-nda-agree")).toBeVisible();
+    await expect(page.getByLabel(/I have read and agree/i)).toBeVisible();
+  });
+
+  test("Beta testing dashboard asks guests to create a tester profile", async ({ page }) => {
+    await page.goto("/beta-testing");
+    await expect(page.getByTestId("beta-tester-dashboard")).toBeVisible();
+    await expect(page.getByTestId("page-title")).toContainText("Beta Tester");
+    await expect(page.getByTestId("beta-dash-create-profile")).toBeVisible();
   });
 
   test("Membership signup shows Stripe checkout for Adult Starter", async ({ page }) => {
@@ -341,6 +402,11 @@ test.describe("GYSH smoke", () => {
     await expect(page.getByRole("heading", { name: /Join the Senior Side Hustle team/i })).toBeVisible();
     await expect(page.getByTestId("seniors-join-cta-btn")).toBeVisible();
     await expect(page.getByRole("button", { name: /Create free GYSH account/i })).toBeVisible();
+  });
+
+  test("homepage does not show the beta notice until login or preview", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByTestId("beta-phase-popup")).toHaveCount(0);
   });
 
   test("Login form requires email and password", async ({ page }) => {

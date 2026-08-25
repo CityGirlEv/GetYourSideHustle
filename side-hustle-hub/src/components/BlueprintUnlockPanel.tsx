@@ -5,20 +5,37 @@ import { grantFreeMemberSession } from "../lib/free-member-session";
 import { clearPendingBlueprint, readPendingBlueprint } from "../lib/pending-blueprint";
 import { registerFreeMember } from "../lib/auth";
 import { claimBlueprint, saveBlueprintToAccount } from "../lib/blueprints-api";
+import { BETA_NDA_VERSION, betaNdaRegisterError, betaNdaTodayDate } from "../lib/beta-tester-nda";
+import type { BetaNdaReceipt } from "../lib/beta-tester-dashboard";
+import { BetaNdaAcceptancePanel, type BetaNdaAcceptanceValue } from "./BetaNdaAcceptancePanel";
 import { PasswordField } from "./PasswordField";
 
 type BlueprintUnlockPanelProps = {
   onUnlocked: (ageGroup: BlueprintAgeGroup) => void;
   onSignIn: () => void;
+  onOpenBetaNda?: () => void;
+  onBetaTestingUnlocked?: (receipt: BetaNdaReceipt) => void;
 };
 
-export function BlueprintUnlockPanel({ onUnlocked, onSignIn }: BlueprintUnlockPanelProps) {
+export function BlueprintUnlockPanel({
+  onUnlocked,
+  onSignIn,
+  onOpenBetaNda,
+  onBetaTestingUnlocked,
+}: BlueprintUnlockPanelProps) {
   const pending = readPendingBlueprint();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [childDisplayName, setChildDisplayName] = useState("");
   const [error, setError] = useState("");
+  const [applyBetaTester, setApplyBetaTester] = useState(false);
+  const [betaNda, setBetaNda] = useState<BetaNdaAcceptanceValue>({
+    legalName: "",
+    email: "",
+    signature: "",
+    agreed: false,
+  });
   const [busy, setBusy] = useState(false);
 
   if (!pending) return null;
@@ -50,6 +67,20 @@ export function BlueprintUnlockPanel({ onUnlocked, onSignIn }: BlueprintUnlockPa
       setError("Enter a first name or nickname for the child (we do not collect a child email).");
       return;
     }
+    const ndaPayload = {
+      agreed: betaNda.agreed,
+      legalName: betaNda.legalName.trim() || name.trim(),
+      email: betaNda.email.trim() || trimmed,
+      signature: betaNda.signature,
+      ndaVersion: BETA_NDA_VERSION,
+    };
+    if (applyBetaTester) {
+      const ndaErr = betaNdaRegisterError(true, ndaPayload, trimmed);
+      if (ndaErr) {
+        setError(ndaErr);
+        return;
+      }
+    }
 
     setBusy(true);
     try {
@@ -60,6 +91,8 @@ export function BlueprintUnlockPanel({ onUnlocked, onSignIn }: BlueprintUnlockPa
         ageGroup,
         childDisplayName: isKids ? childDisplayName.trim() : undefined,
         claimToken: pending.claimToken,
+        applyBetaTester,
+        betaNda: applyBetaTester ? ndaPayload : undefined,
       });
 
       if (!result.ok) {
@@ -101,6 +134,9 @@ export function BlueprintUnlockPanel({ onUnlocked, onSignIn }: BlueprintUnlockPa
       clearPendingBlueprint();
       trackGyshEvent("blueprint_unlocked", { age_group: ageGroup, source: "free_signup" });
       trackGyshEvent("blueprint_saved", { age_group: ageGroup, source: "free_signup" });
+      if (applyBetaTester && result.testingUnlocked && result.betaNda && onBetaTestingUnlocked) {
+        onBetaTestingUnlocked(result.betaNda);
+      }
       onUnlocked(ageGroup);
     } catch {
       setError("Registration unavailable. Check that the database migration has been applied.");
@@ -181,6 +217,36 @@ export function BlueprintUnlockPanel({ onUnlocked, onSignIn }: BlueprintUnlockPa
           showStrength
           data-testid="blueprint-unlock-password"
         />
+        <label className="membership-signup-role-opt" htmlFor="blueprint-unlock-beta">
+          <input
+            id="blueprint-unlock-beta"
+            type="checkbox"
+            checked={applyBetaTester}
+            onChange={(e) => setApplyBetaTester(e.target.checked)}
+            data-testid="blueprint-unlock-beta-role"
+          />
+          <span>
+            <strong>Apply as a Beta Tester</strong>
+            <span className="membership-signup-role-opt__hint">
+              Select this role if you want to try GYSH before launch. You must read and
+              accept {BETA_NDA_VERSION} — this does not grant QA or Admin access.
+            </span>
+          </span>
+        </label>
+        {applyBetaTester ? (
+          <BetaNdaAcceptancePanel
+            idPrefix="blueprint-unlock-nda"
+            value={{
+              legalName: betaNda.legalName || name,
+              email: betaNda.email || email,
+              signature: betaNda.signature,
+              agreed: betaNda.agreed,
+            }}
+            acceptedAt={betaNdaTodayDate()}
+            onChange={setBetaNda}
+            onOpenFullNda={onOpenBetaNda}
+          />
+        ) : null}
         {error && (
           <p className="blueprint-unlock-error" role="alert">
             {error}

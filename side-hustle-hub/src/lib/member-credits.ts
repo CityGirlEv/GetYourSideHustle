@@ -4,6 +4,7 @@
 import { api } from "./api";
 import {
   adultCreditsFromKidCredits,
+  AUDIENCE_LABELS,
   KID_TO_ADULT_CREDIT_RATIO,
   MEMBERSHIP_TIERS,
   type AudienceGroup,
@@ -18,10 +19,18 @@ export type MemberCreditLedgerEntry = {
   createdAt: string;
 };
 
+export type MemberCreditTotals = {
+  earned: number;
+  spent: number;
+  balance: number;
+};
+
 export type MemberCreditsPayload = {
   balance: number;
   membershipTier: string;
   audience: string;
+  monthlyAllowance?: number;
+  totals?: MemberCreditTotals;
   recent: MemberCreditLedgerEntry[];
 };
 
@@ -30,7 +39,11 @@ export type MemberCreditsSummary = {
   adultEquivalent: number;
   membershipTier: TierId;
   audience: AudienceGroup;
+  audienceLabel: string;
+  planLabel: string;
+  enrolledLabel: string;
   monthlyAllowance: number;
+  totals: MemberCreditTotals;
   recent: MemberCreditLedgerEntry[];
   ratioLabel: string;
 };
@@ -45,6 +58,8 @@ export function normalizeTierId(raw: string | null | undefined): TierId {
 
 export function normalizeAudience(raw: string | null | undefined): AudienceGroup {
   const a = String(raw || "adult").toLowerCase();
+  // Parent family accounts use the Kids credit pool.
+  if (a === "parent") return "kids";
   // User-facing label is Teens; stored audience id remains "junior".
   if (a === "teen" || a === "teens") return "junior";
   return (AUDIENCES.has(a) ? a : "adult") as AudienceGroup;
@@ -79,16 +94,38 @@ export function formatLedgerDelta(delta: number): string {
   return String(delta);
 }
 
+export function enrolledPlanLabel(tierId: TierId, audience: AudienceGroup): string {
+  const tier = MEMBERSHIP_TIERS.find((t) => t.id === tierId);
+  const plan = tier?.name ?? "Free";
+  const lane = AUDIENCE_LABELS[audience] ?? audience;
+  return `${plan} · ${lane}`;
+}
+
 export function summarizeMemberCredits(payload: MemberCreditsPayload): MemberCreditsSummary {
   const balance = Number.isFinite(payload.balance) ? Math.max(0, Math.floor(payload.balance)) : 0;
   const membershipTier = normalizeTierId(payload.membershipTier);
   const audience = normalizeAudience(payload.audience);
+  const monthlyAllowance =
+    typeof payload.monthlyAllowance === "number"
+      ? Math.max(0, Math.floor(payload.monthlyAllowance))
+      : monthlyKidCreditAllowance(membershipTier, audience);
+  const totalsRaw = payload.totals;
+  const totals: MemberCreditTotals = {
+    earned: Math.max(0, Math.floor(Number(totalsRaw?.earned) || 0)),
+    spent: Math.max(0, Math.floor(Number(totalsRaw?.spent) || 0)),
+    balance: Math.max(0, Math.floor(Number(totalsRaw?.balance ?? balance) || 0)),
+  };
+  const planLabel = MEMBERSHIP_TIERS.find((t) => t.id === membershipTier)?.name ?? "Free";
   return {
     balance,
     adultEquivalent: adultCreditsFromKidCredits(balance),
     membershipTier,
     audience,
-    monthlyAllowance: monthlyKidCreditAllowance(membershipTier, audience),
+    audienceLabel: AUDIENCE_LABELS[audience],
+    planLabel,
+    enrolledLabel: enrolledPlanLabel(membershipTier, audience),
+    monthlyAllowance,
+    totals,
     recent: Array.isArray(payload.recent) ? payload.recent : [],
     ratioLabel: creditRatioLabel(),
   };

@@ -38,6 +38,7 @@ import {
 import guidesLibraryHero from "../assets/guides-library-hero.png";
 import { ShowHideChevron } from "./ShowHideToggle";
 import { JoinToUnlockCta } from "./JoinToUnlockCta";
+import { MembershipLockBadge } from "./MembershipLockBadge";
 
 type LibraryView = "cards" | "table";
 
@@ -406,9 +407,16 @@ function FreeKidsGuideCard({
     <article className={`glass free-guide-card ${isFreePlan ? "is-free" : "is-gated"}`}>
       <div className="free-guide-card-head">
         <div>
-          <span className={`glow-badge ${isFreePlan ? "free" : "pink"}`}>
-            {guideTierBadgeLabel(minTier)}
-          </span>
+          <div className="free-guide-card-badges">
+            <span className={`glow-badge ${isFreePlan ? "free" : "pink"}`}>
+              {guideTierBadgeLabel(minTier)}
+            </span>
+            <MembershipLockBadge
+              minTier={minTier}
+              unlocked={access.unlocked}
+              data-testid={`guide-lock-badge-${guide.id}`}
+            />
+          </div>
           <span className="kids-guide-theme">{themeLabel(guide.theme)}</span>
           <h3>{guide.title}</h3>
           <p className="free-guide-tier-note">{guideTierMembershipNote(minTier)}</p>
@@ -810,7 +818,14 @@ export function FreeGuidesPage({
                     <article key={`free-adult-${g.id}`} className="glass free-guide-card is-free">
                       <div className="free-guide-card-head">
                         <div>
-                          <span className="glow-badge free">Free Guide</span>
+                          <div className="free-guide-card-badges">
+                            <span className="glow-badge free">Free Guide</span>
+                            <MembershipLockBadge
+                              minTier={minTier}
+                              unlocked={access.unlocked}
+                              data-testid={`guide-lock-badge-${g.id}`}
+                            />
+                          </div>
                           <h3>{g.name}</h3>
                           <p className="free-guide-tier-note">{guideTierMembershipNote(minTier)}</p>
                         </div>
@@ -854,7 +869,14 @@ export function FreeGuidesPage({
                     <article key={`free-senior-${g.id}`} className="glass free-guide-card is-free">
                       <div className="free-guide-card-head">
                         <div>
-                          <span className="glow-badge free">Free Guide</span>
+                          <div className="free-guide-card-badges">
+                            <span className="glow-badge free">Free Guide</span>
+                            <MembershipLockBadge
+                              minTier={minTier}
+                              unlocked={access.unlocked}
+                              data-testid={`guide-lock-badge-${g.id}`}
+                            />
+                          </div>
                           <h3>{g.title}</h3>
                           <p className="free-guide-tier-note">{guideTierMembershipNote(minTier)}</p>
                         </div>
@@ -938,9 +960,16 @@ export function FreeGuidesPage({
                         >
                           <div className="free-guide-card-head">
                             <div>
-                              <span className={`glow-badge ${isFreePlan ? "free" : "pink"}`}>
-                                {guideTierBadgeLabel(minTier)}
-                              </span>
+                              <div className="free-guide-card-badges">
+                                <span className={`glow-badge ${isFreePlan ? "free" : "pink"}`}>
+                                  {guideTierBadgeLabel(minTier)}
+                                </span>
+                                <MembershipLockBadge
+                                  minTier={minTier}
+                                  unlocked={access.unlocked}
+                                  data-testid={`guide-lock-badge-${g.id}`}
+                                />
+                              </div>
                               <h3>{g.name}</h3>
                               <p className="free-guide-tier-note">
                                 {guideTierMembershipNote(minTier)}
@@ -1003,13 +1032,22 @@ export function FreeGuidesPage({
                         >
                           <div className="free-guide-card-head">
                             <div>
-                              <span
-                                className={`glow-badge ${
-                                  comingSoon ? "amber" : isFreePlan ? "free" : "pink"
-                                }`}
-                              >
-                                {comingSoon ? "Coming soon" : guideTierBadgeLabel(minTier)}
-                              </span>
+                              <div className="free-guide-card-badges">
+                                <span
+                                  className={`glow-badge ${
+                                    comingSoon ? "amber" : isFreePlan ? "free" : "pink"
+                                  }`}
+                                >
+                                  {comingSoon ? "Coming soon" : guideTierBadgeLabel(minTier)}
+                                </span>
+                                {!comingSoon ? (
+                                  <MembershipLockBadge
+                                    minTier={minTier}
+                                    unlocked={access.unlocked}
+                                    data-testid={`guide-lock-badge-${g.id}`}
+                                  />
+                                ) : null}
+                              </div>
                               <h3>{g.title}</h3>
                               {!comingSoon && (
                                 <p className="free-guide-tier-note">

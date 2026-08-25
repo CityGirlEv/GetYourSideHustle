@@ -12,6 +12,7 @@ export type AppRouteView =
   | "guides"
   | "checklist"
   | "community"
+  | "newsletter"
   | "workshops"
   | "kids"
   | "seniors"
@@ -20,6 +21,9 @@ export type AppRouteView =
   | "admin"
   | "about"
   | "contact"
+  | "privacy"
+  | "beta_nda"
+  | "beta_testing"
   | "join"
   | "membership_signup";
 
@@ -31,6 +35,7 @@ export const VIEW_PATH: Record<AppRouteView, string> = {
   guides: "/guides",
   checklist: "/checklist",
   community: "/community",
+  newsletter: "/newsletter",
   workshops: "/workshops",
   kids: "/kids",
   seniors: "/seniors",
@@ -39,6 +44,9 @@ export const VIEW_PATH: Record<AppRouteView, string> = {
   admin: "/admin",
   about: "/about",
   contact: "/contact",
+  privacy: "/privacy",
+  beta_nda: "/beta-nda",
+  beta_testing: "/beta-testing",
   join: "/join",
   membership_signup: "/membership",
 };
@@ -53,6 +61,8 @@ const PATH_ALIASES: Record<string, AppRouteView> = {
   "/guides": "guides",
   "/checklist": "checklist",
   "/community": "community",
+  "/newsletter": "newsletter",
+  "/newsletters": "newsletter",
   "/workshops": "workshops",
   "/kids": "kids",
   "/seniors": "seniors",
@@ -65,6 +75,12 @@ const PATH_ALIASES: Record<string, AppRouteView> = {
   "/admin": "admin",
   "/about": "about",
   "/contact": "contact",
+  "/privacy": "privacy",
+  "/privacy-policy": "privacy",
+  "/beta-nda": "beta_nda",
+  "/beta-tester-nda": "beta_nda",
+  "/beta-testing": "beta_testing",
+  "/beta-tester": "beta_testing",
   "/join": "join",
   "/membership": "membership_signup",
   "/membership-signup": "membership_signup",
@@ -141,6 +157,7 @@ export function titleForView(view: AppRouteView, pageTitle?: string): string {
     guides: "GYSH Guides",
     checklist: "GYSH Side Hustle Guide",
     community: "GYSH Community",
+    newsletter: "GYSH Newsletter",
     workshops: "GYSH Workshops",
     kids: "GYSH Kids & Teens Corner",
     seniors: "GYSH Seniors Corner",
@@ -149,6 +166,9 @@ export function titleForView(view: AppRouteView, pageTitle?: string): string {
     admin: "Admin Studio",
     about: "About GYSH",
     contact: "Contact Us",
+    privacy: "Privacy Policy",
+    beta_nda: "Beta Tester NDA",
+    beta_testing: "Beta Tester Dashboard",
     join: "Join GYSH",
     membership_signup: "Membership Sign-up",
   };

@@ -57,6 +57,8 @@ describe("member-credits helpers", () => {
       balance: 41,
       membershipTier: "elite",
       audience: "kids",
+      monthlyAllowance: 280,
+      totals: { earned: 280, spent: 239, balance: 41 },
       recent: [
         {
           id: "mcl-1",
@@ -73,8 +75,22 @@ describe("member-credits helpers", () => {
     expect(summary.membershipTier).toBe("elite");
     expect(summary.audience).toBe("kids");
     expect(summary.monthlyAllowance).toBe(280);
+    expect(summary.enrolledLabel).toMatch(/Elite/);
+    expect(summary.totals).toEqual({ earned: 280, spent: 239, balance: 41 });
     expect(summary.recent).toHaveLength(1);
     expect(summary.ratioLabel).toContain("Kid Credits");
+  });
+
+  it("maps parent audience to Kids credit pool", () => {
+    const summary = summarizeMemberCredits({
+      balance: 60,
+      membershipTier: "starter",
+      audience: "parent",
+      recent: [],
+    });
+    expect(summary.audience).toBe("kids");
+    expect(summary.monthlyAllowance).toBe(60);
+    expect(summary.enrolledLabel).toMatch(/Starter/);
   });
 
   it("clamps invalid balances and empty recent lists", () => {

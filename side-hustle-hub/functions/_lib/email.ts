@@ -464,6 +464,123 @@ export async function sendRegistrationConfirmation(
   return true;
 }
 
+/** True when Adult/Senior paid plans finish email after Stripe (not on profile-only save). */
+export function defersMembershipEmailUntilStripe(tier: string, audience: string): boolean {
+  const t = normalizeTier(tier);
+  const a = normalizeAudience(audience);
+  return t !== "free" && (a === "adult" || a === "senior");
+}
+
+/** Subscribe vs upgrade copy for paid membership emails. */
+export function membershipEmailKind(
+  previousTier: string | null | undefined,
+  nextTier: string,
+): "subscribe" | "upgrade" {
+  const prev = normalizeTier(previousTier);
+  const next = normalizeTier(nextTier);
+  if (next === "free") return "subscribe";
+  // Plan changed (including Free → paid) → upgrade email; same tier confirm → subscribe.
+  if (prev !== next) return "upgrade";
+  return "subscribe";
+}
+
+/**
+ * Member confirmation + admin alert after a paid subscribe / upgrade.
+ * Call after Stripe payment confirm, or after profile plan update when Stripe is not used.
+ */
+export async function sendMembershipSubscriptionEmails(
+  env: Env,
+  input: {
+    user: Pick<DbUser, "id" | "email" | "name"> & {
+      audience?: string | null;
+      membership_tier?: string | null;
+    };
+    previousTier?: string | null;
+    source: "stripe" | "profile";
+    amountLabel?: string;
+  },
+): Promise<boolean> {
+  if (!emailConfigured(env)) return false;
+  const tier = normalizeTier(input.user.membership_tier);
+  if (tier === "free") return false;
+  const audience = normalizeAudience(input.user.audience) as PerkAudience;
+  const previousTier = normalizeTier(input.previousTier);
+  const kind = membershipEmailKind(previousTier, tier);
+  const slug = kind === "upgrade" ? "membership_upgraded" : "membership_subscribed";
+  const joinUrl = membershipDeepLink();
+  const cert = await certificateAttachment(env, {
+    id: input.user.id,
+    email: input.user.email,
+    name: input.user.name,
+    membership_tier: tier,
+    audience,
+  });
+  const { renderCatalogEmail } = await import("./email-admin");
+  const rendered = await renderCatalogEmail(env, slug, {
+    name: input.user.name || "Side Hustler",
+    tier: tierLabel(tier),
+    previousTier: tierLabel(previousTier),
+    audience: audiencePretty(audience),
+    perksHtml: perkBulletsHtml(tier, audience),
+    upgradesHtml: upgradesHtml(tier, audience),
+    certHtml: cert?.certHtml || "",
+    ctaUrl: joinUrl,
+  });
+  if (rendered) {
+    await sendResendEmail(env, {
+      to: input.user.email,
+      subject: rendered.subject,
+      html: rendered.html,
+      text: rendered.text,
+      templateSlug: slug,
+      userId: input.user.id,
+      attachments: cert?.attachments,
+      meta: {
+        tier,
+        previousTier,
+        audience,
+        source: input.source,
+        kind,
+        certificateAttached: Boolean(cert),
+      },
+    });
+  }
+
+  const formName = kind === "upgrade" ? "Membership upgrade" : "Membership subscription";
+  const amountLine = input.amountLabel
+    ? `<p style="margin:0 0 8px;"><strong>Amount:</strong> ${escapeHtml(input.amountLabel)}</p>`
+    : "";
+  const sourceLine =
+    input.source === "stripe"
+      ? `<p style="margin:0 0 8px;"><strong>Payment:</strong> Stripe Checkout confirmed</p>`
+      : `<p style="margin:0 0 8px;"><strong>Payment:</strong> Profile plan update (credits / non-Stripe lane)</p>`;
+
+  try {
+    await sendAdminFormNotify(env, {
+      formName,
+      summary: `${input.user.name} · ${input.user.email} · ${tierLabel(previousTier)} → ${tierLabel(tier)} / ${audiencePretty(audience)}`,
+      detailsHtml: `<p style="margin:0 0 8px;"><strong>Name:</strong> ${escapeHtml(input.user.name || "")}</p>
+        <p style="margin:0 0 8px;"><strong>Email:</strong> <a href="mailto:${escapeHtml(input.user.email)}" style="color:#9B2F28;">${escapeHtml(input.user.email)}</a></p>
+        <p style="margin:0 0 8px;"><strong>Plan:</strong> ${escapeHtml(tierLabel(previousTier))} → <strong>${escapeHtml(tierLabel(tier))}</strong></p>
+        <p style="margin:0 0 8px;"><strong>Lane:</strong> ${escapeHtml(audiencePretty(audience))}</p>
+        ${amountLine}${sourceLine}
+        <p style="margin:12px 0 0;padding:12px;background:#fff4e8;border-radius:10px;">Open Admin → Users / Memberships if activation or follow-up is needed.</p>`,
+      replyTo: input.user.email,
+      meta: {
+        userId: input.user.id,
+        tier,
+        previousTier,
+        audience,
+        source: input.source,
+        kind,
+      },
+    });
+  } catch {
+    /* non-fatal */
+  }
+  return Boolean(rendered);
+}
+
 export async function sendAccountActivatedWelcome(
   env: Env,
   user: {
@@ -678,6 +795,148 @@ export async function sendParentKidProgressReportEmail(
     text: rendered.text,
     templateSlug: slug,
     meta: { cadence: input.cadence, periodKey: input.periodKey, childCount: input.children.length },
+  });
+}
+
+export async function sendScheduleReminderEmail(
+  env: Env,
+  input: {
+    to: string;
+    memberName: string;
+    cadence: "daily" | "weekly" | "biweekly" | "monthly";
+    periodKey: string;
+    plan: {
+      id: string;
+      ownerLabel: string;
+      hustleLabel: string;
+      dueDate: string;
+      weekStart: string;
+      blocks: Array<{
+        dayLabel: string;
+        focus: string;
+        done: boolean;
+        status?: string;
+        hoursLogged: number;
+        dueDate: string;
+      }>;
+    };
+    kidCredits: number;
+    membershipTier: string;
+  },
+): Promise<{ id: string | null }> {
+  const cadenceLabel =
+    input.cadence === "daily"
+      ? "Daily"
+      : input.cadence === "weekly"
+        ? "Weekly"
+        : input.cadence === "biweekly"
+          ? "Bi-weekly"
+          : "Monthly";
+  const doneCount = input.plan.blocks.filter(
+    (b) => b.done || String(b.status ?? "").toLowerCase() === "done",
+  ).length;
+  const pct = input.plan.blocks.length
+    ? Math.round((doneCount / input.plan.blocks.length) * 100)
+    : 0;
+  const hours = input.plan.blocks.reduce((s, b) => s + (b.hoursLogged || 0), 0);
+  const statusLabel = (b: { done: boolean; status?: string }) => {
+    const s = String(b.status ?? "")
+      .trim()
+      .toLowerCase()
+      .replace(/[\s-]+/g, "_");
+    if (s === "done" || b.done) return "✓ Done";
+    if (s === "in_progress") return "In Progress";
+    if (s === "blocked") return "Blocked";
+    return "Not Started";
+  };
+  const rows = input.plan.blocks
+    .map(
+      (b) =>
+        `<tr>
+          <td style="padding:8px 10px;border-bottom:1px solid #e8dfd0;font-weight:700;">${escapeHtml(b.dayLabel)}</td>
+          <td style="padding:8px 10px;border-bottom:1px solid #e8dfd0;">${escapeHtml(b.focus)}</td>
+          <td style="padding:8px 10px;border-bottom:1px solid #e8dfd0;">${escapeHtml(b.dueDate || "—")}</td>
+          <td style="padding:8px 10px;border-bottom:1px solid #e8dfd0;">${statusLabel(b)}${
+            b.hoursLogged > 0 ? ` · ${b.hoursLogged}h` : ""
+          }</td>
+        </tr>`,
+    )
+    .join("");
+  const digestBodyHtml = `
+    <p style="margin:0 0 12px;"><strong>${escapeHtml(input.plan.ownerLabel)}</strong> · ${escapeHtml(
+      input.plan.hustleLabel,
+    )}</p>
+    <p style="margin:0 0 12px;">Week of <strong>${escapeHtml(input.plan.weekStart || "—")}</strong> · Schedule due <strong>${escapeHtml(
+      input.plan.dueDate || "—",
+    )}</strong> · Progress <strong>${pct}%</strong> (${doneCount}/${input.plan.blocks.length}) · Hours logged <strong>${hours}</strong></p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:0 0 16px;background:#fffaf3;border:1px solid #e2d5bc;border-radius:12px;overflow:hidden;">
+      <thead>
+        <tr style="background:#f0e6d4;">
+          <th align="left" style="padding:8px 10px;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;">Day</th>
+          <th align="left" style="padding:8px 10px;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;">Focus</th>
+          <th align="left" style="padding:8px 10px;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;">Due</th>
+          <th align="left" style="padding:8px 10px;font-size:12px;text-transform:uppercase;letter-spacing:0.04em;">Status</th>
+        </tr>
+      </thead>
+      <tbody>${rows || `<tr><td colspan="4" style="padding:12px;">No plan blocks yet.</td></tr>`}</tbody>
+    </table>
+    <div style="margin:0 0 8px;padding:14px 16px;border-radius:12px;background:#f7f0df;border:1px solid #e2d5bc;">
+      <p style="margin:0 0 4px;font-size:13px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#947d64;">Kid Credits</p>
+      <p style="margin:0;font-size:1.15rem;font-weight:800;color:#5c4033;">${input.kidCredits} Kid Credit${
+        input.kidCredits === 1 ? "" : "s"
+      }</p>
+      <p style="margin:6px 0 0;font-size:0.9rem;color:#6b635a;">Plan: ${escapeHtml(
+        String(input.membershipTier || "pro").toUpperCase(),
+      )} · Redeem toward workshops &amp; 1-on-1s from My Dashboard.</p>
+    </div>`;
+
+  const { renderCatalogEmail } = await import("./email-admin");
+  const rendered = await renderCatalogEmail(env, "schedule_suite_reminder", {
+    name: input.memberName || "there",
+    periodKey: input.periodKey,
+    cadence: cadenceLabel,
+    hustleLabel: input.plan.hustleLabel,
+    digestBodyHtml,
+  });
+  if (!rendered) {
+    // Fallback branded shell if catalog missing
+    const { wrapBrandedEmail } = await import("./email-brand");
+    const wrapped = wrapBrandedEmail({
+      preheader: `${cadenceLabel} schedule reminder for ${input.plan.hustleLabel}`,
+      eyebrow: `Schedule Suite · ${cadenceLabel}`,
+      headline: `Your ${cadenceLabel.toLowerCase()} hustle plan`,
+      subhead: `Hi ${input.memberName || "there"}, here's your Schedule Suite for ${input.periodKey}.`,
+      bodyHtml: digestBodyHtml,
+      ctaLabel: "Open Schedule Suite",
+      ctaUrl: `${SITE_URL}/my-dashboard`,
+      footerNote: "Change reminder cadence anytime under My Dashboard → Schedule Suite.",
+    });
+    return sendResendEmail(env, {
+      to: input.to,
+      subject: `${SITE_NAME} — ${cadenceLabel.toLowerCase()} schedule: ${input.plan.hustleLabel}`,
+      html: wrapped.html,
+      text: wrapped.text,
+      templateSlug: "schedule_suite_reminder",
+      meta: {
+        cadence: input.cadence,
+        periodKey: input.periodKey,
+        scheduleId: input.plan.id,
+        kidCredits: input.kidCredits,
+      },
+    });
+  }
+  return sendResendEmail(env, {
+    to: input.to,
+    subject: rendered.subject,
+    html: rendered.html,
+    text: rendered.text,
+    templateSlug: "schedule_suite_reminder",
+    meta: {
+      cadence: input.cadence,
+      periodKey: input.periodKey,
+      scheduleId: input.plan.id,
+      kidCredits: input.kidCredits,
+    },
   });
 }
 

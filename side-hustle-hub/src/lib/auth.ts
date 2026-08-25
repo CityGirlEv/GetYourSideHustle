@@ -61,6 +61,8 @@ export function normalizeEmail(email: string): string {
 export function canonicalizeEmail(email: string): string {
   const normalized = normalizeEmail(email);
   if (normalized === "evvelyn3@cox.net") return "evelyn3@cox.net";
+  // Common misspelling of Candace's login
+  if (normalized === "candicejackson1@icloud.com") return "candacejackson1@icloud.com";
   return normalized;
 }
 
@@ -112,9 +114,25 @@ export async function registerFreeMember(input: {
   claimToken?: string;
   /** Requested membership plan (free / starter / pro / elite). Paid plans still need activation. */
   membershipTier?: "free" | "starter" | "pro" | "elite";
+  /** Applicant selected the Beta Tester role at signup. */
+  applyBetaTester?: boolean;
+  betaNda?: {
+    agreed: boolean;
+    legalName: string;
+    email: string;
+    signature: string;
+    ndaVersion?: string;
+  };
 }): Promise<{
   ok: boolean;
   user?: AuthUser;
+  betaNda?: {
+    version: string;
+    acceptedAt: string;
+    legalName: string;
+    userId: string;
+  } | null;
+  testingUnlocked?: boolean;
   childProfileId?: string | null;
   kidUserId?: string | null;
   kidLoginEmail?: string | null;
@@ -133,6 +151,13 @@ export async function registerFreeMember(input: {
       kidUserId?: string | null;
       kidLoginEmail?: string | null;
       claimedBlueprintId?: string | null;
+      betaNda?: {
+        version: string;
+        acceptedAt: string;
+        legalName: string;
+        userId: string;
+      } | null;
+      testingUnlocked?: boolean;
     }>("auth/register", {
       method: "POST",
       auth: false,
@@ -144,6 +169,8 @@ export async function registerFreeMember(input: {
         childDisplayName: input.childDisplayName,
         claimToken: input.claimToken,
         membershipTier: input.membershipTier ?? "free",
+        applyBetaTester: input.applyBetaTester === true,
+        betaNda: input.applyBetaTester === true ? input.betaNda : undefined,
       },
     });
     setSessionToken(data.token ?? null);
@@ -155,6 +182,8 @@ export async function registerFreeMember(input: {
       kidUserId: data.kidUserId,
       kidLoginEmail: data.kidLoginEmail,
       claimedBlueprintId: data.claimedBlueprintId,
+      betaNda: data.betaNda ?? null,
+      testingUnlocked: data.testingUnlocked === true,
     };
   } catch (e) {
     if (e instanceof ApiError) {
@@ -202,6 +231,29 @@ export async function fetchMe(): Promise<AuthUser | null> {
     return data.user;
   } catch {
     return null;
+  }
+}
+
+/** Add / change membership plan on the logged-in member's profile. */
+export async function updateMembershipPlan(input: {
+  membershipTier: "free" | "starter" | "pro" | "elite";
+  audience: "kids" | "junior" | "adult" | "senior";
+}): Promise<{ ok: boolean; user?: AuthUser; error?: string; message?: string }> {
+  try {
+    const data = await api<{ ok: boolean; user: AuthUser; message?: string }>(
+      "auth/membership-plan",
+      {
+        method: "POST",
+        body: {
+          membershipTier: input.membershipTier,
+          audience: input.audience,
+        },
+      },
+    );
+    return { ok: true, user: data.user, message: data.message };
+  } catch (e) {
+    if (e instanceof ApiError) return { ok: false, error: e.message };
+    return { ok: false, error: "Could not update membership plan." };
   }
 }
 

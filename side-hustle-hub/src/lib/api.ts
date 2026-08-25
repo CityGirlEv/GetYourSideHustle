@@ -3,6 +3,8 @@
  * No localStorage fallback: failures surface clearly to the UI.
  */
 
+import { isRetryableD1ApiError } from "./d1-errors";
+
 export class ApiError extends Error {
   status: number;
   constructor(message: string, status: number) {
@@ -37,6 +39,10 @@ type ApiOptions = {
   auth?: boolean;
   /** Override default abort (e.g. large attachment downloads). */
   timeoutMs?: number;
+  /** Internal: already retried a transient D1 timeout. */
+  _d1Retried?: boolean;
+  /** Internal: already retried a local Vite→:8788 proxy blip. */
+  _proxyRetried?: boolean;
 };
 
 /** Local Pages Functions + D1 can need >20s on first parallel load after restart. */
@@ -81,10 +87,15 @@ export async function api<T>(path: string, opts: ApiOptions = {}): Promise<T> {
     });
   } catch (e) {
     const aborted = e instanceof DOMException && e.name === "AbortError";
+    const onLocalhost =
+      typeof window !== "undefined" &&
+      /^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname);
     throw new ApiError(
       aborted
         ? "GYSH API timed out. If you're on local Dev, restart `npm run dev` (Pages Functions on :8788 may be stuck)."
-        : "Cannot reach the GYSH API. Database/API is unavailable — check deploy bindings and network.",
+        : onLocalhost
+          ? "Cannot reach the GYSH API on localhost. Open http://localhost:5173 and run `npm run dev` (not plain Vite) so :8788 is up — first calls to remote D1 can take 10–20s."
+          : "Cannot reach the GYSH API. Database/API is unavailable — check deploy bindings and network.",
       0,
     );
   } finally {
@@ -93,6 +104,15 @@ export async function api<T>(path: string, opts: ApiOptions = {}): Promise<T> {
 
   if (!res.ok) {
     const message = await parseError(res);
+    // Local Vite proxy → :8788 can blip while wrangler remote D1 is cold-starting.
+    if (
+      res.status === 502 &&
+      !opts._proxyRetried &&
+      /Local API worker not running|:8788/i.test(message)
+    ) {
+      await new Promise((r) => setTimeout(r, 1_500));
+      return api<T>(path, { ...opts, _proxyRetried: true });
+    }
     // Stale Bearer in sessionStorage can override a still-valid cookie — clear and retry once.
     if (
       auth &&
@@ -102,6 +122,15 @@ export async function api<T>(path: string, opts: ApiOptions = {}): Promise<T> {
     ) {
       setSessionToken(null);
       return api<T>(path, { ...opts, auth: true });
+    }
+    const method = (opts.method || (opts.body !== undefined ? "POST" : "GET")).toUpperCase();
+    if (
+      method === "GET" &&
+      res.status >= 500 &&
+      !opts._d1Retried &&
+      isRetryableD1ApiError(message)
+    ) {
+      return api<T>(path, { ...opts, _d1Retried: true });
     }
     throw new ApiError(message, res.status);
   }

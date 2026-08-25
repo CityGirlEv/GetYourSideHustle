@@ -128,3 +128,17 @@ export function rollupFamilyParents(tasks: readonly GyshTask[], touchedId: strin
   const rootId = normalizeParentId(self.parentId) || self.id;
   return rollupParentFromChildren(tasks, rootId);
 }
+
+/**
+ * Explicit Done on a parent (or any family member) completes every open child
+ * so rollup cannot snap the parent back to In Progress.
+ */
+export function completeFamilyOnExplicitDone(
+  tasks: readonly GyshTask[],
+  touchedId: string,
+  applyDone: (task: GyshTask) => GyshTask,
+): GyshTask[] {
+  const family = new Set(taskFamilyIds(tasks, touchedId));
+  if (family.size <= 1) return [...tasks];
+  return tasks.map((t) => (family.has(t.id) ? applyDone(t) : t));
+}

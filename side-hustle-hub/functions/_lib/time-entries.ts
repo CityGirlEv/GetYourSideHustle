@@ -2,6 +2,7 @@
  * Partner work timers — start / pause / resume / end for tasks & tests.
  */
 import { error, json, type DbUser, type Env } from "./auth";
+import { withD1Retry } from "./d1-retry";
 
 export type TimeSource = "task" | "test";
 export type TimeEntryStatus = "running" | "paused" | "stopped";
@@ -48,6 +49,16 @@ let timeEntriesSchemaReady = false;
 
 async function ensureTimeEntriesTable(env: Env): Promise<void> {
   if (timeEntriesSchemaReady) return;
+  try {
+    // Table + indexes come from migration 0018. A cheap probe avoids
+    // CREATE INDEX writes on every wrangler isolate recycle (those can
+    // timeout remote D1 and reset the storage object).
+    await env.DB.prepare(`SELECT 1 FROM time_entries LIMIT 0`).all();
+    timeEntriesSchemaReady = true;
+    return;
+  } catch {
+    /* first local sandbox — create below */
+  }
   await env.DB.prepare(
     `CREATE TABLE IF NOT EXISTS time_entries (
       id TEXT PRIMARY KEY,
@@ -123,11 +134,13 @@ function mapEntry(row: TimeEntryRow, nowMs = Date.now()): TimeEntryDto {
 }
 
 async function getOpenEntries(env: Env, userId: string): Promise<TimeEntryRow[]> {
-  const { results } = await env.DB.prepare(
-    `SELECT * FROM time_entries WHERE user_id = ? AND status IN ('running', 'paused') ORDER BY updated_at DESC`,
-  )
-    .bind(userId)
-    .all<TimeEntryRow>();
+  const { results } = await withD1Retry(() =>
+    env.DB.prepare(
+      `SELECT * FROM time_entries WHERE user_id = ? AND status IN ('running', 'paused') ORDER BY updated_at DESC`,
+    )
+      .bind(userId)
+      .all<TimeEntryRow>(),
+  );
   return results ?? [];
 }
 
@@ -187,9 +200,11 @@ export async function listTimeEntries(env: Env, request: Request, actor: DbUser)
 
   if (activeOnly) {
     if (wantAll) {
-      const { results } = await env.DB.prepare(
-        `SELECT * FROM time_entries WHERE status IN ('running', 'paused') ORDER BY updated_at DESC`,
-      ).all<TimeEntryRow>();
+      const { results } = await withD1Retry(() =>
+        env.DB.prepare(
+          `SELECT * FROM time_entries WHERE status IN ('running', 'paused') ORDER BY updated_at DESC`,
+        ).all<TimeEntryRow>(),
+      );
       return json({ entries: (results ?? []).map((r) => mapEntry(r)) });
     }
     const open = await getOpenEntries(env, scopedUserId);
@@ -210,9 +225,11 @@ export async function listTimeEntries(env: Env, request: Request, actor: DbUser)
   }
   sql += ` ORDER BY work_date DESC, started_at DESC`;
 
-  const { results } = await env.DB.prepare(sql)
-    .bind(...binds)
-    .all<TimeEntryRow>();
+  const { results } = await withD1Retry(() =>
+    env.DB.prepare(sql)
+      .bind(...binds)
+      .all<TimeEntryRow>(),
+  );
   return json({ entries: (results ?? []).map((r) => mapEntry(r)) });
 }
 

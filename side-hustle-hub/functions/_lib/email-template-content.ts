@@ -105,6 +105,13 @@ export const EMAIL_TEMPLATE_CATALOG: Array<{
     sampleSubject: `${SITE_NAME} — weekly kid progress`,
   },
   {
+    slug: "schedule_suite_reminder",
+    name: "Schedule Suite reminder",
+    description:
+      "Pro+ hustle schedule reminder (daily / weekly / bi-weekly / monthly) with plan table and Kid Credits.",
+    sampleSubject: `${SITE_NAME} — weekly schedule reminder`,
+  },
+  {
     slug: "contact_inbox",
     name: "Contact form → admin",
     description: "Internal alert when Contact Us is submitted.",
@@ -115,6 +122,18 @@ export const EMAIL_TEMPLATE_CATALOG: Array<{
     name: "Admin form notify",
     description: "Alert to admins whenever a public form is completed.",
     sampleSubject: `[GYSH …] …`,
+  },
+  {
+    slug: "membership_subscribed",
+    name: "Membership subscribed",
+    description: "Sent to the member when they pay for / join a paid plan (Stripe or credit plan).",
+    sampleSubject: `${SITE_NAME} — you're subscribed to Starter!`,
+  },
+  {
+    slug: "membership_upgraded",
+    name: "Membership upgraded",
+    description: "Sent to the member when they upgrade from one paid plan to another (or Free → paid).",
+    sampleSubject: `${SITE_NAME} — you're upgraded to Pro!`,
   },
   {
     slug: "password_reset",
@@ -152,6 +171,8 @@ export const PREVIEW_SAMPLE_VARS: EmailTemplateVars = {
     "<ul style=\"margin:0;padding-left:18px;\"><li>Open free launch guides</li><li>Run the Adult Match Wizard anytime</li><li>Preview your Side Hustle Blueprint</li></ul>",
   upgradesHtml: "",
   certHtml: "",
+  previousTier: "Free",
+  audience: "Adults",
   childName: "Alex",
   audienceLabel: "Kids",
   periodKey: "2026-08-02",
@@ -326,6 +347,21 @@ export function defaultContentForSlug(slug: string): EmailTemplateContent | null
         dynamicBody: true,
       };
     }
+    case "schedule_suite_reminder":
+      return {
+        subject: `${SITE_NAME} — {{cadence}} schedule: {{hustleLabel}}`,
+        preheader: "{{cadence}} Schedule Suite reminder for {{hustleLabel}}",
+        eyebrow: "Schedule Suite · {{cadence}}",
+        headline: "Your hustle plan is waiting",
+        subhead:
+          "Hi {{name}}, here's your {{cadence}} reminder for {{periodKey}} — plan, progress, and Kid Credits.",
+        bodyHtml: `{{digestBodyHtml}}`,
+        ctaLabel: "Open Schedule Suite",
+        ctaUrl: `${SITE_URL}/my-dashboard`,
+        footerNote:
+          "Change daily / weekly / bi-weekly / monthly reminders under My Dashboard → Schedule Suite.",
+        dynamicBody: true,
+      };
     case "contact_inbox":
       return {
         subject: `[GYSH contact] {{name}}`,
@@ -353,6 +389,38 @@ export function defaultContentForSlug(slug: string): EmailTemplateContent | null
         ctaLabel: "Open GYSH Admin",
         ctaUrl: "{{ctaUrl}}",
         footerNote: "This alert was sent because a GYSH public form was completed.",
+      };
+    case "membership_subscribed":
+      return {
+        subject: `${SITE_NAME} — you're subscribed to {{tier}}!`,
+        preheader: "Your {{tier}} membership is confirmed",
+        eyebrow: "Membership · Subscribed",
+        headline: "{{name}}, you're subscribed!",
+        subhead: "Welcome to the {{tier}} plan · {{audience}} lane.",
+        bodyHtml: `<p style="margin:0 0 12px;">We've confirmed your <strong>{{tier}}</strong> membership. Here's what you unlocked:</p>
+        {{perksHtml}}{{certHtml}}{{upgradesHtml}}
+        <p style="margin:16px 0 0;padding:12px 14px;background:#fff4e8;border-radius:12px;border-left:4px solid #9B2F28;">
+          <strong>Next:</strong> Sign in anytime to use your perks. If your login is still pending activation, you'll get a welcome email the moment you're cleared.
+        </p>`,
+        ctaLabel: "Open my membership",
+        ctaUrl: membershipDeepLink(),
+        footerNote: "Questions? Reply to this email or use Contact Us on getyoursidehustle.com.",
+      };
+    case "membership_upgraded":
+      return {
+        subject: `${SITE_NAME} — you're upgraded to {{tier}}!`,
+        preheader: "Your membership is now {{tier}}",
+        eyebrow: "Membership · Upgraded",
+        headline: "{{name}}, you're upgraded!",
+        subhead: "You moved from {{previousTier}} to {{tier}} · {{audience}} lane.",
+        bodyHtml: `<p style="margin:0 0 12px;">Your GYSH membership is now <strong>{{tier}}</strong>. Here's what's included:</p>
+        {{perksHtml}}{{certHtml}}{{upgradesHtml}}
+        <p style="margin:16px 0 0;padding:12px 14px;background:#fff4e8;border-radius:12px;border-left:4px solid #9B2F28;">
+          <strong>Tip:</strong> Open Join anytime to compare plans or switch lanes (Kids, Teens, Adults, Seniors).
+        </p>`,
+        ctaLabel: "See my plan & perks",
+        ctaUrl: membershipDeepLink(),
+        footerNote: "Questions? Reply to this email or use Contact Us on getyoursidehustle.com.",
       };
     case "password_reset":
       return {

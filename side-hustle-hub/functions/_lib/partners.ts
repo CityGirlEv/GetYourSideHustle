@@ -1,9 +1,12 @@
 /**
- * Co-founder partner accounts — always present in D1 Users Area.
- * Passwords match production login (Tina Admin123, Evelyn Admin).
+ * Co-founder / partner accounts — insert if missing in D1 Users Area.
+ * Existing rows keep roles/status/passwords from Users Area (never force-reset).
  */
 import { hashPassword, randomSaltHex, type DbUser, type Env } from "./auth";
+import { partnerEnsurePlan } from "./partner-ensure-plan";
 import { serializeRoles, type GyshRole } from "./roles";
+
+export { partnerEnsurePlan } from "./partner-ensure-plan";
 
 export const PARTNER_ADMINS = [
   {
@@ -36,9 +39,20 @@ export const PARTNER_ADMINS = [
     notes: "Portal admin + QA — Testing Portal & schedule (Kids/Teens wizard matrix)",
     joinedAt: "2026-07-16",
   },
+  {
+    // Prod D1 id (Users Area). Keep stable so ensure never creates a duplicate email row.
+    id: "u-68587a47-82b7-4dbd-8672-3880e770254f",
+    name: "Candace Jackson",
+    email: "candacejackson1@icloud.com",
+    role: "qa" as const,
+    roles: ["qa"] as GyshRole[],
+    password: "Candace123",
+    notes: "QA — Testing Portal (roles managed in Users Area)",
+    joinedAt: "2026-08-01",
+  },
 ] as const;
 
-/** Insert T/E/Lyriq if missing. Does not overwrite existing password hashes. */
+/** Insert partner accounts if missing. Does not overwrite roles, status, or passwords. */
 export async function ensurePartnerAdmins(env: Env): Promise<void> {
   const now = new Date().toISOString();
 
@@ -46,35 +60,42 @@ export async function ensurePartnerAdmins(env: Env): Promise<void> {
     const byId = await env.DB.prepare(`SELECT id, email, password_hash FROM users WHERE id = ?`)
       .bind(partner.id)
       .first<{ id: string; email: string; password_hash: string | null }>();
-    const byEmail = await env.DB.prepare(`SELECT id FROM users WHERE email = ?`)
+    const byEmail = await env.DB.prepare(`SELECT id, password_hash FROM users WHERE email = ?`)
       .bind(partner.email)
-      .first<{ id: string }>();
+      .first<{ id: string; password_hash: string | null }>();
 
-    const rolesJson = serializeRoles([...partner.roles]);
+    const existing = byEmail ?? byId ?? null;
+    const plan = partnerEnsurePlan(existing);
 
-    if (byId || byEmail) {
-      // Keep identity + roles/status fresh; leave passwords alone if already set.
-      const id = byId?.id ?? byEmail!.id;
+    if (plan.action === "noop") {
+      continue;
+    }
+
+    if (plan.action === "backfill-password" && existing) {
+      const id = existing.id;
+      const salt = randomSaltHex();
+      const hash = await hashPassword(partner.password, salt);
       await env.DB.prepare(
-        `UPDATE users SET
-           name = ?, email = ?, role = 'admin', roles = ?, status = 'active', notes = ?, updated_at = ?
-         WHERE id = ?`,
+        `UPDATE users SET password_hash = ?, password_salt = ?, updated_at = ? WHERE id = ?`,
       )
-        .bind(partner.name, partner.email, rolesJson, partner.notes, now, id)
+        .bind(hash, salt, now, id)
         .run();
       continue;
     }
 
+    // insert
+    const rolesJson = serializeRoles([...partner.roles]);
     const salt = randomSaltHex();
     const hash = await hashPassword(partner.password, salt);
     await env.DB.prepare(
       `INSERT INTO users (id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt, created_at, updated_at)
-       VALUES (?, ?, ?, 'admin', ?, 'active', ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?)`,
     )
       .bind(
         partner.id,
         partner.name,
         partner.email,
+        partner.role,
         rolesJson,
         partner.joinedAt,
         partner.notes,

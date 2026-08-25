@@ -898,13 +898,24 @@ export async function handleCronDailyDigest(env: Env, request: Request): Promise
     allowResend,
   });
   let parentReports = { sent: 0 };
+  let scheduleReminders = { sent: 0 };
   try {
     const { sendDueParentProgressReports } = await import("./family");
     parentReports = await sendDueParentProgressReports(env);
   } catch {
     parentReports = { sent: 0 };
   }
-  return json({ ...result, parentProgressReports: parentReports });
+  try {
+    const { sendDueScheduleReminders } = await import("./schedule-reminders");
+    scheduleReminders = await sendDueScheduleReminders(env);
+  } catch {
+    scheduleReminders = { sent: 0 };
+  }
+  return json({
+    ...result,
+    parentProgressReports: parentReports,
+    scheduleReminders,
+  });
 }
 
 export async function handleAdminSendDigests(

@@ -1,11 +1,11 @@
 /**
  * External proofread QA — every public page, each guide, and the Complete Guide.
- * Every logical proofread case is duplicated: one for Tina, one for Lyriq.
- * IDs are numbered like the rest of the catalog: PROOF-001-TINA / PROOF-001-LYRIQ.
- * Suggested / default sprint is Sprint 1 (public pages & launch content).
+ * Launch-content cases are Tina + Lyriq pairs (PROOF-001-TINA / PROOF-001-LYRIQ) in Sprint 1.
+ * Privacy Policy is a Tina + Evelyn + Candace triple in Sprint 3.
  */
 
 import type { TestCase } from "./gysh-test-plan";
+import type { QaTesterId } from "./gysh-roles";
 import { KIDS_GUIDES } from "./kids-guides";
 import { LAUNCH_GUIDES } from "./launch-guides";
 import { MARKETING_GUIDES } from "./marketing-guides";
@@ -36,9 +36,13 @@ const PROOF_EXPECTED_GUIDE =
 export const PROOFREAD_PAIR_SUFFIXES = ["TINA", "LYRIQ"] as const;
 export type ProofreadPairSuffix = (typeof PROOFREAD_PAIR_SUFFIXES)[number];
 
-/** Strip -TINA / -LYRIQ to get the logical case id (e.g. PROOF-001). */
+export const PRIVACY_POLICY_PROOFREAD_REVIEWERS = ["tina", "evelyn", "candace"] as const;
+export const PRIVACY_POLICY_PROOFREAD_TITLE = "Proofread: Privacy Policy";
+export const PRIVACY_POLICY_PROOFREAD_SPRINT = 3;
+
+/** Strip -TINA / -LYRIQ / -EVELYN / -CANDACE to get the logical case id (e.g. PROOF-001). */
 export function proofreadLogicalId(caseId: string): string {
-  return caseId.replace(/-(TINA|LYRIQ)$/i, "");
+  return caseId.replace(/-(TINA|LYRIQ|EVELYN|CANDACE)$/i, "");
 }
 
 export function isProofreadCaseId(caseId: string): boolean {
@@ -46,10 +50,18 @@ export function isProofreadCaseId(caseId: string): boolean {
 }
 
 /** Owner encoded in the case id (PROOF-001-TINA → tina). */
-export function proofreadOwnerFromId(caseId: string): "tina" | "lyriq" | null {
+export function proofreadOwnerFromId(caseId: string): QaTesterId | null {
   if (/-TINA$/i.test(caseId)) return "tina";
   if (/-LYRIQ$/i.test(caseId)) return "lyriq";
+  if (/-EVELYN$/i.test(caseId)) return "evelyn";
+  if (/-CANDACE$/i.test(caseId)) return "candace";
   return null;
+}
+
+export function isPrivacyPolicyProofreadCase(test: { id: string; title?: string; path?: string }): boolean {
+  if (proofreadLogicalId(test.id) === PRIVACY_POLICY_PROOFREAD_LOGICAL_ID) return true;
+  if (test.path === "privacy") return isProofreadCaseId(test.id);
+  return (test.title ?? "").trim() === PRIVACY_POLICY_PROOFREAD_TITLE;
 }
 
 /** True when the id includes a numeric segment (AUTH-001, PROOF-014-TINA, VT-AUTH-001). */
@@ -69,18 +81,19 @@ function nextProofId(): string {
 export function pairProofreadCase(
   base: Omit<TestCase, "assignees" | "id"> & { id: string },
 ): TestCase[] {
-  return [
-    {
-      ...base,
-      id: `${base.id}-TINA`,
-      assignees: ["tina"],
-    },
-    {
-      ...base,
-      id: `${base.id}-LYRIQ`,
-      assignees: ["lyriq"],
-    },
-  ];
+  return assignProofreadCase(base, ["tina", "lyriq"]);
+}
+
+/** Expand one logical proofread into one Testing Portal row per reviewer. */
+export function assignProofreadCase(
+  base: Omit<TestCase, "assignees" | "id"> & { id: string },
+  reviewers: readonly QaTesterId[],
+): TestCase[] {
+  return reviewers.map((owner) => ({
+    ...base,
+    id: `${base.id}-${owner.toUpperCase()}`,
+    assignees: [owner],
+  }));
 }
 
 function pageCase(
@@ -177,11 +190,37 @@ const MARKETING_GUIDE_PROOFREAD: TestCase[] = MARKETING_GUIDES.flatMap((g) =>
   ),
 );
 
-/** All External proofread cases — Tina + Lyriq pairs; land in Sprint 1 by default. */
+export const PRIVACY_POLICY_PROOFREAD_LOGICAL_ID = nextProofId();
+
+const PRIVACY_POLICY_PROOFREAD: TestCase[] = assignProofreadCase(
+  {
+    id: PRIVACY_POLICY_PROOFREAD_LOGICAL_ID,
+    area: "Proofread",
+    title: PRIVACY_POLICY_PROOFREAD_TITLE,
+    priority: "P1",
+    roles: ["all", "qa"],
+    suite: "manual",
+    steps: [
+      "Open the Privacy Policy from the site footer (or go to /privacy)",
+      "Read the effective date and every numbered section (1–15)",
+      "Check spelling, grammar, capitalization, and brand names (GYSH / Get Your Side Hustle)",
+      "Confirm Children’s Privacy (COPPA), Teen Users, Payments, California rights, and Contact Us are complete and clear",
+      "Flag awkward, duplicated, placeholder, or legally confusing copy",
+      "Confirm the Contact Us CTA and contact instructions match the live site",
+    ],
+    expected:
+      "Privacy Policy is publish-ready — no typos, placeholders, or confusing claims; family/COPPA language is clear",
+    path: "privacy",
+  },
+  PRIVACY_POLICY_PROOFREAD_REVIEWERS,
+);
+
+/** All External proofread cases — Tina + Lyriq pairs in Sprint 1; Privacy Policy triple in Sprint 3. */
 export const PROOFREAD_CASES: TestCase[] = [
   ...PAGE_PROOFREAD_CASES,
   ...LAUNCH_GUIDE_PROOFREAD,
   ...KIDS_GUIDE_PROOFREAD,
   ...SENIOR_GUIDE_PROOFREAD,
   ...MARKETING_GUIDE_PROOFREAD,
+  ...PRIVACY_POLICY_PROOFREAD,
 ];

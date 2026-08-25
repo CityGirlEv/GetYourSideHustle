@@ -12,7 +12,7 @@
  *   npm run db:migrate
  *   npm run db:seed
  */
-import { existsSync } from "node:fs";
+import { existsSync, renameSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -65,17 +65,41 @@ if (!existsSync(routesInDist)) {
   process.exit(1);
 }
 
-// cwd = side-hustle-hub root so Wrangler packs ./functions and reads wrangler.toml D1.
-run("node", [
-  "--use-system-ca",
-  wrangler,
-  "pages",
-  "deploy",
-  "dist",
-  "--project-name=getyoursidehustle",
-  "--commit-dirty=true",
-  "--branch=main",
-]);
+// Parent monorepo (eager-hypatia / mypartb) may leave ..\.wrangler\deploy\config.json,
+// which makes Wrangler refuse to use this project's wrangler.toml. Park it for deploy.
+const parentDeployConfig = path.resolve(root, "../.wrangler/deploy/config.json");
+const parentDeployBackup = `${parentDeployConfig}.gysh-deploy-bak`;
+let parkedParentConfig = false;
+if (existsSync(parentDeployConfig) && !existsSync(parentDeployBackup)) {
+  try {
+    renameSync(parentDeployConfig, parentDeployBackup);
+    parkedParentConfig = true;
+  } catch (e) {
+    console.warn("Could not park parent .wrangler deploy config:", e);
+  }
+}
+
+try {
+  // cwd = side-hustle-hub root so Wrangler packs ./functions and reads wrangler.toml D1.
+  run("node", [
+    "--use-system-ca",
+    wrangler,
+    "pages",
+    "deploy",
+    "dist",
+    "--project-name=getyoursidehustle",
+    "--commit-dirty=true",
+    "--branch=main",
+  ]);
+} finally {
+  if (parkedParentConfig && existsSync(parentDeployBackup)) {
+    try {
+      renameSync(parentDeployBackup, parentDeployConfig);
+    } catch (e) {
+      console.warn("Could not restore parent .wrangler deploy config:", e);
+    }
+  }
+}
 
 console.log("\nDeployed to https://getyoursidehustle.pages.dev (custom domain: https://getyoursidehustle.com)");
 console.log("API: /api/health  |  Auth: /api/auth/login  |  D1 binding: DB (gysh-db)");

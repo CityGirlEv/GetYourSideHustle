@@ -10,7 +10,7 @@ export const FACEBOOK_HANDLE = "@getyoursidehustle";
 
 /** One-line site purpose for home and social CTAs */
 export const SITE_PURPOSE =
-  "Start on your own or with family. Age-ready Match Wizards and calculators for kids through seniors—so you validate the idea and estimate profit before you spend.";
+  "What is GYSH? It's a family-friendly platform that helps people of every age find and launch a side hustle—with age-ready Match Wizards and calculators so you validate the idea and estimate profit before you invest your time and/or money.";
 
 /** Branded evaluation method (Foresight differentiation). */
 export const GYSH_METHOD_NAME = "Margin Match";

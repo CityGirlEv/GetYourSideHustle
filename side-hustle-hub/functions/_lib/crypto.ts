@@ -8,6 +8,8 @@ const KEYLEN = 32;
 export function canonicalizeEmail(email) {
   const normalized = String(email || "").trim().toLowerCase();
   if (normalized === "evvelyn3@cox.net") return "evelyn3@cox.net";
+  // Common misspelling of Candace's login
+  if (normalized === "candicejackson1@icloud.com") return "candacejackson1@icloud.com";
   return normalized;
 }
 

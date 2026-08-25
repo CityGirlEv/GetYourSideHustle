@@ -129,5 +129,24 @@ for (const t of seeds) {
 }
 
 runFile(statements.join("\n"));
+
+// Supersede orphan Personal amplify Task rows (old Both / date-stamped / single week-end copies).
+const catalogAmplify = new Set(
+  seeds.filter((s) => String(s.id).includes("PERSONAL-AMPLIFY")).map((s) => s.id),
+);
+const orphanSql = `UPDATE tasks SET
+  status = 'done',
+  notes = CASE
+    WHEN instr(COALESCE(notes,''), 'Superseded: Personal amplify growth cadence') > 0 THEN notes
+    ELSE trim(COALESCE(notes,'') || char(10) || 'Superseded: Personal amplify growth cadence — use Content Factory Personal amplify Tasks (Tina/Evelyn per post day).')
+  END,
+  updated_at = '${esc(now)}',
+  updated_by = 'seed-soft-launch'
+WHERE id LIKE '%PERSONAL-AMPLIFY%'
+  AND status != 'done'
+  AND id NOT IN (${[...catalogAmplify].map((id) => `'${esc(id)}'`).join(",") || "''"});`;
+runFile(orphanSql);
+
 console.log(`Soft launch tasks: inserted ${inserted}, updated ${updated} (${isRemote ? "remote" : "local"}).`);
+console.log(`Personal amplify catalog tasks: ${[...catalogAmplify].sort().join(", ")}`);
 console.log(ids.join("\n"));

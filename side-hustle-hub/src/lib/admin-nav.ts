@@ -11,6 +11,7 @@ export type AdminTab =
   | "testing"
   | "users"
   | "memberships"
+  | "hustle-schedules"
   | "factory"
   | "tasks"
   | "timesheet"
@@ -34,6 +35,7 @@ export const ADMIN_TABS: AdminTabDef[] = [
   { id: "daily-progress", label: "Daily Progress" },
   { id: "users", label: "Users Area" },
   { id: "memberships", label: "Memberships" },
+  { id: "hustle-schedules", label: "Schedule Suites" },
   { id: "certificates", label: "Certificates" },
   { id: "email", label: "Email Templates" },
   { id: "factory", label: "Content Factory", adminOnly: true },
@@ -50,7 +52,7 @@ export const ADMIN_MENU_GROUPS: { id: string; label: string; tabs: AdminTab[] }[
     label: "Plan & delivery",
     tabs: ["schedule", "agenda", "tasks", "testing", "timesheet", "daily-progress"],
   },
-  { id: "people", label: "People & access", tabs: ["users", "memberships", "certificates", "email"] },
+  { id: "people", label: "People & access", tabs: ["users", "memberships", "hustle-schedules", "certificates", "email"] },
   { id: "content", label: "Content & growth", tabs: ["factory", "studio", "financials"] },
   { id: "reference", label: "Reference", tabs: ["sitemap", "user-guides"] },
 ];

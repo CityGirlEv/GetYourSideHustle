@@ -109,7 +109,7 @@ function draftsEqual(a: TemplateContent, b: TemplateContent): boolean {
   );
 }
 
-export function EmailTemplates() {
+export function EmailTemplates({ focusSlug = null }: { focusSlug?: string | null }) {
   const [emailConfigured, setEmailConfigured] = useState<boolean | null>(null);
   const [logoUrl, setLogoUrl] = useState("");
   const [placeholders, setPlaceholders] = useState<string[]>([]);
@@ -142,6 +142,16 @@ export function EmailTemplates() {
     setDraftReady(true);
   };
 
+  const selectSlug = useCallback(
+    (slug: string, list: TemplateRow[] = templates) => {
+      if (!slug) return;
+      setSelected(slug);
+      setShowAllLogs(false);
+      applyRowToDraft(list.find((t) => t.slug === slug));
+    },
+    [templates],
+  );
+
   const load = async () => {
     setErr("");
     try {
@@ -156,14 +166,27 @@ export function EmailTemplates() {
       setPlaceholders(data.placeholders || []);
       const list = data.templates || [];
       setTemplates(list);
-      const nextSlug = selected || list[0]?.slug || "";
-      if (!selected && nextSlug) setSelected(nextSlug);
-      const row = list.find((t) => t.slug === (selected || nextSlug));
-      applyRowToDraft(row);
+      const preferred =
+        (focusSlug && list.some((t) => t.slug === focusSlug) ? focusSlug : "") ||
+        selected ||
+        list[0]?.slug ||
+        "";
+      if (preferred) {
+        setSelected(preferred);
+        applyRowToDraft(list.find((t) => t.slug === preferred));
+      }
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : "Could not load email templates.");
     }
   };
+
+  // Deep link / Testing Portal step → select that catalog template.
+  useEffect(() => {
+    if (!focusSlug || !templates.length) return;
+    if (!templates.some((t) => t.slug === focusSlug)) return;
+    if (selected === focusSlug) return;
+    selectSlug(focusSlug);
+  }, [focusSlug, templates, selected, selectSlug]);
 
   const loadLogs = useCallback(async (slug: string, all: boolean) => {
     setLogsBusy(true);

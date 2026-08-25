@@ -105,6 +105,7 @@ const PLAYWRIGHT_CATALOG: Array<{ id: string; assignee: string; check: string }>
   { id: "PW-JOIN-002", assignee: "playwright", check: "shell" },
   { id: "PW-JOIN-003", assignee: "playwright", check: "shell" },
   { id: "PW-AUTH-001", assignee: "playwright", check: "login" },
+  { id: "PW-SCHED-001", assignee: "playwright", check: "shell" },
 ];
 
 function runVitestChecks(): { ok: boolean; details: string[] } {
@@ -566,7 +567,7 @@ async function createFailureTestCase(
     detail: string;
     sourceFile?: string;
     runId: string;
-    /** Ignored — new failures use defaultsForNewTest (Backlog, or Kids/Youth rules). */
+    /** Ignored — new failures use defaultsForNewTest (current sprint, or Kids/Youth rules). */
     sprint?: number;
   },
 ): Promise<string> {

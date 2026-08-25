@@ -2,6 +2,10 @@
  * GYSH Agile sprint cadence + implementation plan helpers.
  * Sprint rules: start Tuesday, end Monday night.
  * Sprint 0 is anchored to Jul 14–Jul 20, 2026 (assignments never drift).
+ *
+ * After Soft Launch (Sprint 2 ended Mon Aug 3), partners took a 2-week pause
+ * (Tue Aug 4 – Mon Aug 17). Sprint 3+ resume Tue Aug 18 — see
+ * {@link SPRINT_PAUSE_WEEKS_AFTER_S2}.
  */
 
 import { parseAssigneePeople, requiresPartnerDone } from "./gysh-tasks";
@@ -202,6 +206,22 @@ export const SPRINT_ZERO_START = new Date(2026, 6, 14);
 export const DEFAULT_SPRINT_COUNT = 8;
 
 /**
+ * Weeks of no sprint activity after Sprint 2 (Soft Launch) ended Mon Aug 3, 2026.
+ * Sprint 3 therefore starts Tue Aug 18 (not Tue Aug 4).
+ */
+export const SPRINT_PAUSE_WEEKS_AFTER_S2 = 2;
+
+/** Last sprint index that stays on the original Jul 14 cadence (no pause offset). */
+export const SPRINT_PAUSE_AFTER_INDEX = 2;
+
+/** Extra calendar weeks to add when computing windows for Sprint 3+. */
+export function sprintCalendarWeekOffset(index: number): number {
+  const idx = Math.floor(index);
+  if (!Number.isFinite(idx) || idx <= SPRINT_PAUSE_AFTER_INDEX) return 0;
+  return SPRINT_PAUSE_WEEKS_AFTER_S2;
+}
+
+/**
  * Sprint Goals — each sprint is a milestone.
  * `goal` is the short label on schedule pills; `theme` is the longer outcome detail.
  */
@@ -233,7 +253,7 @@ export const SPRINT_THEMES: SprintTheme[] = [
     index: 3,
     goal: "Polish + Soft Launch Cadence",
     theme:
-      "Post-launch polish + daily marketing: FB/Kevina/YouTube, TikTok+IG accounts, newsletter #1, website checklist, ads brief",
+      "Resume Aug 18 after 2-week pause: post-launch polish + daily marketing (FB/Kevina/YouTube, TikTok+IG, newsletter #1, website checklist, ads brief)",
   },
   {
     index: 4,
@@ -274,7 +294,7 @@ export function listRolloutScheduleSummary(ref: Date = new Date()): RolloutSched
     0: "Infra & accounts — foundations only",
     1: "Brand & public content ready",
     2: "Soft launch (~Aug 3) — public smoke; GMSH matrices not required",
-    3: "Polish + soft-launch cadence (FB/Kevina/YT/newsletter)",
+    3: "Polish + soft-launch cadence from Aug 18 (after 2-week pause)",
     4: "Kids GMSH + IG/TikTok + first Meta ads",
     5: "Teens/Adult GMSH + marketing systems",
     6: "Senior Get My Side Hustle",
@@ -342,12 +362,13 @@ export function sprintEndMonday(startTue: Date): Date {
 
 /**
  * Sprint numbers are anchored so persisted assignments never drift.
- * Sprint 0 is Jul 14–Jul 20, 2026.
+ * Sprint 0 is Jul 14–Jul 20, 2026. Sprint 3+ include a 2-week pause after Sprint 2.
  */
 export function getSprintWindow(index: number, _ref?: Date): SprintWindow {
   const baseStart = new Date(SPRINT_ZERO_START);
   const start = new Date(baseStart);
-  start.setDate(baseStart.getDate() + index * 7);
+  const weeks = Math.floor(index) + sprintCalendarWeekOffset(index);
+  start.setDate(baseStart.getDate() + weeks * 7);
   const end = sprintEndMonday(start);
   const label = index === 0 ? "Sprint 0" : `Sprint ${index}`;
   return {
@@ -366,14 +387,27 @@ export function listUpcomingSprints(count = DEFAULT_SPRINT_COUNT, ref?: Date): S
   return Array.from({ length: count }, (_, i) => getSprintWindow(i, ref));
 }
 
-/** Sprint index containing `ref` (clamped to Sprint 0 … DEFAULT_SPRINT_COUNT-1). */
+/**
+ * Sprint index containing `ref` (clamped to Sprint 0 … DEFAULT_SPRINT_COUNT-1).
+ * During the Aug 4–17 pause (calendar weeks after Sprint 2, before Sprint 3),
+ * returns Sprint 3 so the board focuses on the resume sprint.
+ */
 export function currentSprintIndex(ref: Date = new Date()): number {
   const tue = sprintStartTuesday(ref);
   const base = new Date(SPRINT_ZERO_START);
   base.setHours(0, 0, 0, 0);
   const msPerWeek = 7 * 24 * 60 * 60 * 1000;
-  const idx = Math.floor((tue.getTime() - base.getTime()) / msPerWeek);
-  if (!Number.isFinite(idx)) return 0;
+  const weeks = Math.floor((tue.getTime() - base.getTime()) / msPerWeek);
+  if (!Number.isFinite(weeks)) return 0;
+  let idx: number;
+  if (weeks <= SPRINT_PAUSE_AFTER_INDEX) {
+    idx = weeks;
+  } else if (weeks <= SPRINT_PAUSE_AFTER_INDEX + SPRINT_PAUSE_WEEKS_AFTER_S2) {
+    // Pause weeks map to the upcoming resume sprint (Sprint 3).
+    idx = SPRINT_PAUSE_AFTER_INDEX + 1;
+  } else {
+    idx = weeks - SPRINT_PAUSE_WEEKS_AFTER_S2;
+  }
   return Math.max(0, Math.min(DEFAULT_SPRINT_COUNT - 1, idx));
 }
 
@@ -440,6 +474,55 @@ export function dueDatePlusDays(days: number, ref: Date = new Date()): string {
   const dd = String(d.getDate()).padStart(2, "0");
   const yy = String(d.getFullYear()).slice(-2);
   return `${mm}/${dd}/${yy}`;
+}
+
+/** Parse MM/DD/YY (or M/D/YY) into a local Date at midnight, or null. */
+export function parseMmddyyDue(raw: string | null | undefined): Date | null {
+  const m = String(raw || "")
+    .trim()
+    .match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/);
+  if (!m) return null;
+  const month = Number(m[1]);
+  const day = Number(m[2]);
+  let year = Number(m[3]);
+  if (year < 100) year += 2000;
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  const d = new Date(year, month - 1, day);
+  d.setHours(0, 0, 0, 0);
+  if (d.getMonth() !== month - 1 || d.getDate() !== day) return null;
+  return d;
+}
+
+function formatMmddyy(d: Date): string {
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const yy = String(d.getFullYear()).slice(-2);
+  return `${mm}/${dd}/${yy}`;
+}
+
+/**
+ * After the Aug 4–17 pause: bump dues that were not already past-due as of the pause start.
+ * - due &lt; pauseStart → leave (was already overdue / due before the break)
+ * - due ≥ pauseStart → add `shiftDays` (default 14)
+ * Empty / unparseable dues are left unchanged.
+ */
+export function shiftDueAfterSprintPause(
+  dueMmddyy: string | null | undefined,
+  opts?: { pauseStartIso?: string; shiftDays?: number },
+): string {
+  const raw = String(dueMmddyy || "").trim();
+  if (!raw) return raw;
+  const due = parseMmddyyDue(raw);
+  if (!due) return raw;
+  const pauseIso = opts?.pauseStartIso ?? "2026-08-04";
+  const [py, pm, pd] = pauseIso.split("-").map(Number);
+  const pauseStart = new Date(py!, pm! - 1, pd!);
+  pauseStart.setHours(0, 0, 0, 0);
+  if (due.getTime() < pauseStart.getTime()) return raw;
+  const shiftDays = opts?.shiftDays ?? 14;
+  const next = new Date(due);
+  next.setDate(due.getDate() + shiftDays);
+  return formatMmddyy(next);
 }
 
 /** When sprint is in a patch, also set dueDate to the sprint default. */

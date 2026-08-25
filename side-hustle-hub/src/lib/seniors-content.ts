@@ -1,5 +1,7 @@
 /** Senior Side Hustles — opportunities & guide teasers for 55+ / flexible schedules. */
 
+import { seniorGuideMinTier } from "./guide-access";
+
 export type SeniorOpportunity = {
   id: string;
   name: string;
@@ -16,7 +18,7 @@ export type SeniorGuideTeaser = {
   /**
    * live = opens an existing adult Launch Guide (ready now; still membership-gated).
    * coming_soon = senior-specific draft not published yet.
-   * preview = senior opener card (membership-gated Free plan).
+   * preview = senior opener card (still membership-gated by min tier).
    */
   status: "coming_soon" | "preview" | "live";
   /** Adult Launch Guide id when status is "live". */
@@ -186,15 +188,14 @@ export function orderedSeniorGuides(guides: SeniorGuideTeaser[] = SENIOR_GUIDE_T
   return [...guides].sort((a, b) => rank(a) - rank(b));
 }
 
-/** Free-plan senior openers (preview or live link to a free adult launch guide). */
+/** True when this senior teaser belongs in the Free Membership guides bundle. */
 export function isSeniorGuideFree(
   guide: SeniorGuideTeaser,
-  freeLaunchIds: ReadonlySet<string> | readonly string[],
+  _freeLaunchIds?: ReadonlySet<string> | readonly string[],
 ): boolean {
-  if (guide.status === "preview") return true;
-  if (guide.status !== "live" || !guide.launchGuideId) return false;
-  const set = freeLaunchIds instanceof Set ? freeLaunchIds : new Set(freeLaunchIds);
-  return set.has(guide.launchGuideId);
+  void _freeLaunchIds;
+  if (guide.status === "coming_soon") return false;
+  return seniorGuideMinTier(guide.id, guide.launchGuideId) === "free";
 }
 
 /** Senior Get Your Side Hustle answers — lifestyle, ranked skills/goals, availability. */

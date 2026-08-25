@@ -4,9 +4,15 @@
  */
 
 import {
+  isSprintLocked,
+  nextUnlockedSprint,
+  placeUnstoredTestSprint,
+} from "./gysh-closed-sprints";
+import {
   BACKLOG_SPRINT,
   DEFAULT_SPRINT_COUNT,
   buildDefaultPlanItems,
+  currentSprintIndex,
   dayOffset,
   dueDateForSprint,
   formatDisplayDate,
@@ -17,9 +23,15 @@ import {
   UNASSIGNED_OWNER,
   type PlanItem,
 } from "./gysh-sprints";
+import { appendActorNote } from "./gysh-note-entries";
 import type { GyshTask, TaskStatus } from "./gysh-tasks";
 import type { TestCase, TestStatus } from "./gysh-test-plan";
 import { testOwnerLabel, type TestOwnerId } from "./gysh-roles";
+import {
+  emailTemplateReviewDueDate,
+  isEmailTemplateReviewCaseId,
+} from "./gysh-email-template-review-cases";
+import { isPrivacyPolicyProofreadCase } from "./gysh-proofread-cases";
 
 /** Incomplete tasks get sprint due heals; Done keeps its stored due until sprint moves. */
 export function taskStatusNeedsSprintDue(status: TaskStatus | string | undefined): boolean {
@@ -61,6 +73,7 @@ export const TASK_SPRINT_MAP: Record<string, number> = {
   "T-SL-S2-FB-WELCOME": 2,
   "T-SL-S2-YT-CREATE": 2,
   // Sprint 3 — Polish + soft-launch marketing cadence
+  "T-SL-S3-POLISH-CADENCE": 3,
   "T-SL-S3-CHANNELS-TIKTOK": 3,
   "T-SL-S3-CHANNELS-IG": 3,
   "T-SL-S3-WEB-SOFT-LAUNCH": 3,
@@ -76,6 +89,12 @@ export const TASK_SPRINT_MAP: Record<string, number> = {
   "T-SL-S3-FB-TEENS": 3,
   "T-SL-S3-KEVINA-3": 3,
   "T-SL-S3-FB-WEEK-WRAP": 3,
+  "T-SL-S3-PERSONAL-AMPLIFY-WHY-TINA": 3,
+  "T-SL-S3-PERSONAL-AMPLIFY-WHY-EVELYN": 3,
+  "T-SL-S3-PERSONAL-AMPLIFY-GUIDES-TINA": 3,
+  "T-SL-S3-PERSONAL-AMPLIFY-GUIDES-EVELYN": 3,
+  "T-SL-S3-PERSONAL-AMPLIFY-WRAP-TINA": 3,
+  "T-SL-S3-PERSONAL-AMPLIFY-WRAP-EVELYN": 3,
   "T-SL-S3-ADS-BRIEF": 3,
   // Sprint 3 — Polish (SEO, Senior page, workshops, first guides, ops polish)
   "T-006": 3, // Testing Portal (internal — after public launch)
@@ -98,6 +117,14 @@ export const TASK_SPRINT_MAP: Record<string, number> = {
   "T-LG-property-mgmt": 3,
   // Sprint 4 — Kids GMSH + Growth + ads / IG / TikTok
   "T-SL-S4-IG-LAUNCH": 4,
+  "T-SL-S4-PERSONAL-AMPLIFY-IG-TT-TINA": 4,
+  "T-SL-S4-PERSONAL-AMPLIFY-IG-TT-EVELYN": 4,
+  "T-SL-S4-PERSONAL-AMPLIFY-KEVINA-TINA": 4,
+  "T-SL-S4-PERSONAL-AMPLIFY-KEVINA-EVELYN": 4,
+  "T-SL-S4-PERSONAL-AMPLIFY-FB-TINA": 4,
+  "T-SL-S4-PERSONAL-AMPLIFY-FB-EVELYN": 4,
+  "T-SL-S4-PERSONAL-AMPLIFY-YT2-TINA": 4,
+  "T-SL-S4-PERSONAL-AMPLIFY-YT2-EVELYN": 4,
   "T-SL-S4-TIKTOK-1": 4,
   "T-SL-S4-ADS-LIVE": 4,
   "T-SL-S4-NEWSLETTER-2": 4,
@@ -120,15 +147,22 @@ export const TASK_SPRINT_MAP: Record<string, number> = {
   "T-SL-S5-NEWSLETTER-3": 5,
   "T-SL-S5-ADS-ITERATE": 5,
   "T-SL-S5-KEVINA-CADENCE": 5,
+  "T-SL-S5-PERSONAL-AMPLIFY-KEVINA-TINA": 5,
+  "T-SL-S5-PERSONAL-AMPLIFY-KEVINA-EVELYN": 5,
   "T-SL-S5-FB-UGC-ASK": 5,
+  "T-SL-S5-PERSONAL-AMPLIFY-UGC-TINA": 5,
+  "T-SL-S5-PERSONAL-AMPLIFY-UGC-EVELYN": 5,
   "T-SL-S5-MULTI-CHANNEL-REPOST": 5,
+  "T-SL-S5-PERSONAL-AMPLIFY-MONTAGE-TINA": 5,
+  "T-SL-S5-PERSONAL-AMPLIFY-MONTAGE-EVELYN": 5,
   "T-SL-S5-RETRO": 5,
   // Intentionally parked (not part of soft-launch path).
   // Use literal -1 (BACKLOG_SPRINT) — module init can run before gysh-sprints finishes
   // loading because of the gysh-tasks ↔ gysh-sprint-board import cycle.
   "T-033": -1, // KevinaStarr FB Page (separate)
   "T-034": -1, // ETSY store
-  "T-035": -1, // Veterans section
+  "T-035": 5, // Veterans section — deferred 2 sprints from S3 (was backlog)
+  "T-MEM-MILITARY": 6, // Military Membership discount + Join callout (Sprint 6)
 };
 
 /**
@@ -202,7 +236,11 @@ export function testMatchesSprint0Task(
  * after Sprint 0 closed — keep the hook for rare explicit S0 defaults only.
  */
 export function suggestedSprintForTest(
-  test: Pick<TestCase, "id" | "area" | "priority"> & { suite?: TestCase["suite"] },
+  test: Pick<TestCase, "id" | "area" | "priority"> & {
+    suite?: TestCase["suite"];
+    title?: string;
+    path?: string;
+  },
 ): number {
   const id = test.id.toUpperCase();
   const area = test.area.toLowerCase();
@@ -226,7 +264,13 @@ export function suggestedSprintForTest(
     return 0;
   }
 
-  // External proofread (Tina/Lyriq pairs) — Sprint 1 public pages / launch content
+  // Privacy Policy proofread (Tina + Evelyn + Candace) — current launch sprint
+  if (isPrivacyPolicyProofreadCase(test)) {
+    return currentSprintIndex();
+  }
+
+  // External proofread (Tina/Lyriq pairs) — historical Sprint 1 band
+  // New / unstored proofreads are redirected to the current open sprint.
   if (id.startsWith("PROOF-") || area === "proofread") {
     return 1;
   }
@@ -279,6 +323,32 @@ export function suggestedSprintForTest(
     return 2;
   }
 
+  // Schedule Suite QA (status / reminder / roundup / grade / P&L) → Sprint 3
+  if (
+    id.startsWith("SCHED-STATUS") ||
+    id.startsWith("SCHED-REMINDER") ||
+    id.startsWith("SCHED-ROUNDUP") ||
+    id.startsWith("SCHED-GRADE") ||
+    id.startsWith("SCHED-PNL")
+  ) {
+    return 3;
+  }
+
+  // Per-template email review cases (Candace) → always the live current sprint
+  if (id.startsWith("EMAIL-TPL-")) {
+    return currentSprintIndex();
+  }
+
+  // Candace legal review (disclaimer / NDA / signup email) — current open sprint
+  if (id.startsWith("LEGAL-")) {
+    return currentSprintIndex();
+  }
+
+  // Beta Tester NDA + dashboard — current open sprint (never closed 0–2)
+  if (id.startsWith("VT-BETA-NDA") || id.startsWith("PW-BETA-NDA") || id.startsWith("BETA-NDA")) {
+    return currentSprintIndex();
+  }
+
   // Launch-prep auth + brand/content/registration/contact/nav/email product → Sprint 1
   // (Former empty-S0 parking: VT-AUTH / VT-ROLE also land here — no S0 task match.)
   if (
@@ -313,7 +383,7 @@ export function suggestedSprintForTest(
   if (id.startsWith("VT-WIZARD")) return 4;
   // Soft-launch Hedra video QA — align with the linked T-SL-* sprint
   if (id === "VIDEO-001" || id === "VIDEO-007") return 2;
-  if (id === "VIDEO-002" || id === "VIDEO-003") return 3;
+  if (id === "VIDEO-002" || id === "VIDEO-003" || id.startsWith("VIDEO-003-")) return 3;
   if (id === "VIDEO-004" || id === "VIDEO-005") return 4;
   if (id === "VIDEO-006") return 5;
   if (id.startsWith("VIDEO-") || area === "video marketing") return 3;
@@ -325,6 +395,19 @@ export function suggestedSprintForTest(
   if (id.startsWith("ADMIN-") || id.startsWith("VT-PLAN")) return 3;
 
   return 7;
+}
+
+/** Sprint to use when a test has no D1 row yet — current open sprint, never a closed one. */
+export function sprintForUnstoredTest(
+  test: Pick<TestCase, "id" | "area" | "priority"> & {
+    suite?: TestCase["suite"];
+    title?: string;
+    path?: string;
+  },
+  closed?: Iterable<number> | null,
+  ref: Date = new Date(),
+): number {
+  return placeUnstoredTestSprint(suggestedSprintForTest(test), closed, ref);
 }
 
 export type BoardSource = "plan" | "task" | "test";
@@ -413,6 +496,103 @@ export function itemRolledRelativeToSprint(
 /** Canonical End Sprint note — only for items still open when the sprint closed. */
 export function rolloverNoteText(fromSprint: number): string {
   return `Rolled over from Sprint ${fromSprint}`;
+}
+
+/** Unlock a locked-sprint task into an open sprint (due date + rollover note). */
+export function buildUnlockTaskPatch(
+  task: Pick<GyshTask, "sprint" | "notes">,
+  targetSprint: number,
+  actorLabel: string,
+): Pick<GyshTask, "sprint" | "dueDate" | "notes"> {
+  const fromSprint = Number(task.sprint);
+  const due = dueDateForSprint(targetSprint) ?? "";
+  const alreadyNoted = noteRolledFromSprint(task.notes, fromSprint);
+  return {
+    sprint: targetSprint,
+    dueDate: due,
+    notes: alreadyNoted
+      ? String(task.notes ?? "")
+      : appendActorNote(task.notes, actorLabel, rolloverNoteText(fromSprint)),
+  };
+}
+
+export function buildUnlockTestPatch(
+  fromSprint: number,
+  note: string | null | undefined,
+  targetSprint: number,
+  actorLabel: string,
+): { sprint: number; dueDate: string; note: string } {
+  const alreadyNoted = noteRolledFromSprint(note, fromSprint);
+  return {
+    sprint: targetSprint,
+    dueDate: dueDateForSprint(targetSprint) ?? "",
+    note: alreadyNoted
+      ? String(note ?? "")
+      : appendActorNote(note, actorLabel, rolloverNoteText(fromSprint)),
+  };
+}
+
+/**
+ * Incomplete work still sitting in a closed sprint → next open sprint.
+ * Done / Pass stay on the closed sprint as historical record.
+ */
+export function healClosedSprintTaskLeftovers(
+  tasks: GyshTask[],
+  closed: Iterable<number> | null | undefined,
+  actorLabel: string,
+  ref: Date = new Date(),
+): { tasks: GyshTask[]; changed: GyshTask[] } {
+  const changed: GyshTask[] = [];
+  const next = tasks.map((t) => {
+    if (!isSprintLocked(closed, t.sprint)) return t;
+    if (!taskStatusNeedsSprintDue(t.status)) return t;
+    const target = nextUnlockedSprint(closed, t.sprint, ref);
+    if (target == null || target === Number(t.sprint)) return t;
+    const patched = { ...t, ...buildUnlockTaskPatch(t, target, actorLabel) };
+    changed.push(patched);
+    return patched;
+  });
+  return { tasks: next, changed };
+}
+
+export function healClosedSprintTestLeftovers(input: {
+  sprints: Record<string, number | undefined>;
+  statuses: Record<string, TestStatus | string | undefined>;
+  notes: Record<string, string | undefined>;
+  dueDates: Record<string, string | undefined>;
+  closed: Iterable<number> | null | undefined;
+  actorLabel: string;
+  caseIds?: string[];
+  ref?: Date;
+}): {
+  sprints: Record<string, number>;
+  notes: Record<string, string>;
+  dueDates: Record<string, string>;
+  changedIds: string[];
+} {
+  const sprints = { ...input.sprints } as Record<string, number>;
+  const notes = { ...input.notes } as Record<string, string>;
+  const dueDates = { ...input.dueDates } as Record<string, string>;
+  const changedIds: string[] = [];
+  const ids = input.caseIds ?? Object.keys(input.sprints);
+  for (const id of ids) {
+    const fromSprint = Number(input.sprints[id]);
+    if (!isSprintLocked(input.closed, fromSprint)) continue;
+    if (!testStatusNeedsSprintDue(input.statuses[id])) continue;
+    const target = nextUnlockedSprint(input.closed, fromSprint, input.ref);
+    if (target == null || target === fromSprint) continue;
+    const patch = buildUnlockTestPatch(
+      fromSprint,
+      input.notes[id],
+      target,
+      input.actorLabel,
+    );
+    sprints[id] = patch.sprint;
+    notes[id] = patch.note;
+    dueDates[id] = patch.dueDate;
+    changedIds.push(id);
+  }
+  return { sprints, notes, dueDates, changedIds };
 }
 
 /**
@@ -599,7 +779,7 @@ export function testToBoardCard(
   audit?: { updatedAt?: string; updatedBy?: string },
 ): BoardCard {
   const sprint =
-    typeof sprintOverride === "number" ? sprintOverride : suggestedSprintForTest(test);
+    typeof sprintOverride === "number" ? sprintOverride : sprintForUnstoredTest(test);
   // D1 override wins. Backlog without override stays Unassigned (catalog defaults would look assigned).
   const owner = assigneeOverride?.trim()
     ? ownerFromAssignees([assigneeOverride])
@@ -810,6 +990,7 @@ export function commitTestSprintPlan(
   currentDueDates: Record<string, string> = {},
   mode: SprintPlanMode = "preserve",
   currentStatuses: Record<string, TestStatus | string> = {},
+  opts?: { closedSprints?: Iterable<number> | null; ref?: Date },
 ): {
   sprints: Record<string, number>;
   dueDates: Record<string, string>;
@@ -818,12 +999,16 @@ export function commitTestSprintPlan(
   const sprints: Record<string, number> = { ...current };
   const dueDates: Record<string, string> = { ...currentDueDates };
   const changedIds: string[] = [];
+  const ref = opts?.ref ?? new Date();
+  const closed = opts?.closedSprints;
   for (const t of tests) {
     const suggested = suggestedSprintForTest(t);
     const stored = sprints[t.id];
     const hasStored = typeof stored === "number" && Number.isFinite(stored);
     let nextSprint: number;
-    if (mode === "force" || !hasStored) {
+    if (!hasStored) {
+      nextSprint = placeUnstoredTestSprint(suggested, closed, ref);
+    } else if (mode === "force") {
       nextSprint = suggested;
     } else if (suggested === 0) {
       // S0 task-matched defaults: pin only when unset, still on S0, or parked on Backlog.
@@ -842,7 +1027,9 @@ export function commitTestSprintPlan(
     } else {
       nextSprint = stored;
     }
-    const due = dueDateForSprint(nextSprint);
+    const due = isEmailTemplateReviewCaseId(t.id)
+      ? emailTemplateReviewDueDate(t.id)
+      : dueDateForSprint(nextSprint);
     const sprintChanged = sprints[t.id] !== nextSprint;
     const status = currentStatuses[t.id];
     const mayHealDue = sprintChanged || testStatusNeedsSprintDue(status);
@@ -862,7 +1049,7 @@ export function commitTestSprintPlan(
 /**
  * Bump to re-run Schedule soft heal (S0 task matches + re-home Backlog parking).
  */
-export const ROLLOUT_SCHEDULE_VERSION = "2026-07-25-no-tests-pinned-to-s0";
+export const ROLLOUT_SCHEDULE_VERSION = "2026-08-20-pause-s3-aug18";
 
 export type RolloutScheduleApplyResult = {
   planItems: PlanItem[];
@@ -887,6 +1074,7 @@ export function applyRolloutSprintSchedule(input: {
   testStatuses?: Record<string, TestStatus | string>;
   ref?: Date;
   mode?: SprintPlanMode;
+  closedSprints?: Iterable<number> | null;
 }): RolloutScheduleApplyResult {
   const mode = input.mode ?? "preserve";
   const plan = commitPlanSprintPlan(input.planItems, input.ref ?? new Date(), mode);
@@ -897,6 +1085,7 @@ export function applyRolloutSprintSchedule(input: {
     input.testDueDates ?? {},
     mode,
     input.testStatuses ?? {},
+    { closedSprints: input.closedSprints, ref: input.ref },
   );
   return {
     planItems: plan.items,

@@ -10,6 +10,7 @@ pages_build_output_dir = "dist"
 # Secrets (NOT in this file — use dashboard or wrangler):
 #   wrangler pages secret put RESEND_API_KEY --project-name=getyoursidehustle
 #   wrangler pages secret put CRON_SECRET --project-name=getyoursidehustle
+#   wrangler pages secret put STRIPE_SECRET_KEY --project-name=getyoursidehustle
 # Optional plain vars: EMAIL_FROM, CONTACT_TO
 # Local: copy into .dev.vars (gitignored)
 #

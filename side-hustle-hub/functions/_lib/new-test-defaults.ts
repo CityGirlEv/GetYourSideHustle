@@ -1,12 +1,11 @@
 /**
  * Defaults for newly created test cases (mirrors src/lib/gysh-new-test-defaults.ts).
- * General → Backlog + Unassigned.
+ * Always land in the current sprint (never Backlog) unless a rare Sprint 0 task match applies.
  * KevinaStarr Kids / Youth → Tina, current (or next) sprint, due = creation + 1 day.
- * Former Sprint 0 task-matched catalog ids are no longer pinned (Sprint 0 closed).
+ * General → current sprint, Unassigned, due = today.
  */
 
 import {
-  BACKLOG_SPRINT,
   DEFAULT_SPRINT_COUNT,
   currentSprintIndex,
   getSprintWindow,
@@ -93,39 +92,70 @@ function dueDatePlusDays(days: number, ref: Date = new Date()): string {
   return `${mm}/${dd}/${yy}`;
 }
 
-/** Never Sprint 0 for Kids/Youth creates. */
-export function sprintForNewKidsYouthTest(ref: Date = new Date()): number {
+function isClosedSprint(closed: Iterable<number> | null | undefined, sprint: number): boolean {
+  if (!closed) return false;
+  if (closed instanceof Set) return closed.has(sprint);
+  for (const n of closed) {
+    if (Number(n) === sprint) return true;
+  }
+  return false;
+}
+
+/** Current sprint if open; otherwise the next open sprint. Never a closed sprint. */
+export function sprintForNewTest(
+  ref: Date = new Date(),
+  closed?: Iterable<number> | null,
+): number {
+  const current = currentSprintIndex(ref);
+  for (let i = current; i < DEFAULT_SPRINT_COUNT; i++) {
+    if (!isClosedSprint(closed, i)) return Math.max(1, i);
+  }
+  for (let i = 0; i < current; i++) {
+    if (!isClosedSprint(closed, i)) return Math.max(1, i);
+  }
+  return Math.max(1, current);
+}
+
+/** Never a closed sprint for Kids/Youth creates. */
+export function sprintForNewKidsYouthTest(
+  ref: Date = new Date(),
+  closed?: Iterable<number> | null,
+): number {
   let sprint = currentSprintIndex(ref);
   if (daysUntilSprintEnd(ref) <= 1) {
     sprint = Math.min(DEFAULT_SPRINT_COUNT - 1, sprint + 1);
   }
   if (sprint === 0) sprint = 1;
+  if (isClosedSprint(closed, sprint) || sprint < currentSprintIndex(ref)) {
+    return sprintForNewTest(ref, closed);
+  }
   return sprint;
 }
 
 export function defaultsForNewTest(
   input: NewTestDefaultInput,
   ref: Date = new Date(),
+  closed?: Iterable<number> | null,
 ): NewTestDefaults {
   const id = String(input.id ?? "").toUpperCase();
   // Reserved: only if TEST_SPRINT_0_TASK_MATCH is re-populated (currently empty).
   if (id && TEST_SPRINT_0_TASK_MATCH.has(id)) {
     return {
-      sprint: 0,
+      sprint: sprintForNewTest(ref, closed),
       assignee: isKevinaKidsYouthTest(input) ? "tina" : "",
       dueDate: "",
     };
   }
   if (isKevinaKidsYouthTest(input)) {
     return {
-      sprint: sprintForNewKidsYouthTest(ref),
+      sprint: sprintForNewKidsYouthTest(ref, closed),
       assignee: "tina",
       dueDate: dueDatePlusDays(1, ref),
     };
   }
   return {
-    sprint: BACKLOG_SPRINT,
+    sprint: sprintForNewTest(ref, closed),
     assignee: "",
-    dueDate: "",
+    dueDate: dueDatePlusDays(0, ref),
   };
 }

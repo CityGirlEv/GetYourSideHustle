@@ -1,4 +1,4 @@
-/** Shared copy for online User Guides + PDF export. Always say Side Hustle / Side Hustler. */
+﻿/** Shared copy for online User Guides + PDF export. Always say Side Hustle / Side Hustler. */
 
 export type GuideCheckItem = { id: string; text: string };
 
@@ -63,7 +63,7 @@ export function tocFromSections(sections: GuideDocSection[]): GuideTocEntry[] {
   return entries;
 }
 
-/* ───────────────────────────────────────── Member guide ───────────────────────────────────────── */
+/* ---------- Member guide ---------- */
 
 export const MEMBER_GUIDE_SECTIONS: GuideDocSection[] = [
   {
@@ -107,7 +107,7 @@ export const MEMBER_GUIDE_SECTIONS: GuideDocSection[] = [
       },
       {
         id: "tier-starter",
-        text: "Starter — Member guides, community, workshop discounts, one 1-hour session (3-mo commit). Kids/Teens use credits.",
+        text: "Starter — Member guides, community, workshop discounts, one 45-minute session (3-mo commit). Kids/Teens use credits.",
       },
       {
         id: "tier-pro",
@@ -267,7 +267,7 @@ export const MEMBER_MEMBERSHIP = MEMBER_GUIDE_SECTIONS[2].items!;
 /** @deprecated use MEMBER_GUIDE_SECTIONS[3].items */
 export const MEMBER_QUICK_START = MEMBER_GUIDE_SECTIONS[3].items!;
 
-/* ───────────────────────────────────────── Admin guide ───────────────────────────────────────── */
+/* ---------- Admin guide ---------- */
 
 export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
   {
@@ -349,7 +349,7 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
       },
       {
         id: "sch-filter",
-        text: "Filter cards by owner (T / E / Lyriq / Both / Unassigned).",
+        text: "Filter cards by owner (Tina, Evelyn / Lyriq / Both / Unassigned).",
       },
       {
         id: "sch-edit",
@@ -393,7 +393,7 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
       },
       {
         id: "tk-attach",
-        text: "Upload, download, and remove attachments on a task.",
+        text: "Upload, download, and remove attachments on a task (images, PDF, Office, video).",
       },
       {
         id: "tk-guides",
@@ -421,7 +421,7 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
       },
       {
         id: "qa-assign",
-        text: "Assign manual cases to T / E / Lyriq; Vitest/Playwright cases stay on suite owners; set sprint; expand case detail. Each card shows last updated by and date.",
+        text: "Assign manual cases to Tina, Evelyn / Lyriq; Vitest/Playwright cases stay on suite owners; set sprint; expand case detail. Each card shows last updated by and date.",
       },
       {
         id: "qa-bulk",
@@ -430,6 +430,10 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
       {
         id: "qa-auto",
         text: "Run Vitest, Playwright, or both from the Testing Portal. Test results are kept — update individual cases instead of wiping them.",
+      },
+      {
+        id: "qa-evidence",
+        text: "Attach evidence on a case: image, video, PDF, Word, or Excel (safety scanned).",
       },
       {
         id: "qa-bars",
@@ -491,7 +495,7 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
           },
           {
             id: "cf-publish",
-            text: "Publish on the named channel at the suggested time; attach finished asset links on related tasks when ready.",
+            text: "Publish on the named channel at the suggested time; attach images, short videos, or PDFs on the calendar item (and on related tasks when ready).",
           },
         ],
       },
@@ -646,7 +650,7 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
         items: [
           {
             id: "wf-a1",
-            text: "Use Profile Switcher (§1.2) to QA the member experience; return via Admin (me).",
+            text: "Use Profile Switcher (Â§1.2) to QA the member experience; return via Admin (me).",
           },
         ],
       },
@@ -679,7 +683,7 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
     number: "12",
     title: "End-user site",
     intro:
-      "Public GYSH experience. Primary header: Home · GYSH Match Wizard · Kids/Teens Corner · Seniors · Guides · Workshops · Community · Join · About · Contact · Login (or Admin/Portal + Log Out). Calculators and Launch checklist are in-app views (not always in the primary header).",
+      "Public GYSH experience. Primary header: Home · GYSH Match Wizard · Kids/Teens Corner · Seniors · Guides · Workshops · Community · Newsletter · Join · About · Contact · Login (or Admin/Portal + Log Out). Calculators and Launch checklist are in-app views (not always in the primary header).",
     subsections: [
       {
         id: "eu-home",
@@ -799,8 +803,23 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
         ],
       },
       {
-        id: "eu-join",
+        id: "eu-newsletter",
         number: "12.9",
+        title: "Newsletter",
+        items: [
+          {
+            id: "eu-nl1",
+            text: "Members-only Weekly Newsletter page at /newsletter — Friday dual-audience issue (kids glow + adult hustle tip).",
+          },
+          {
+            id: "eu-nl2",
+            text: "Starter+ perk. Guests and Free accounts see titles; published Content Factory newsletter drafts unlock in the archive.",
+          },
+        ],
+      },
+      {
+        id: "eu-join",
+        number: "12.10",
         title: "Join / Membership",
         items: [
           {
@@ -809,7 +828,7 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
           },
           {
             id: "eu-j2",
-            text: "Free — open free guides. Starter — member guides, community, workshop discount, one 1-hour session (credits for Kids/Teens).",
+            text: "Free — open free guides. Starter — member guides, community, weekly newsletter, workshop discount, one 45-minute session (credits for Kids/Teens).",
           },
           {
             id: "eu-j3",
@@ -823,7 +842,7 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
       },
       {
         id: "eu-calc",
-        number: "12.10",
+        number: "12.11",
         title: "Profit Estimator",
         items: [
           {
@@ -834,7 +853,7 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
       },
       {
         id: "eu-about",
-        number: "12.11",
+        number: "12.12",
         title: "About & Contact",
         items: [
           {
@@ -849,7 +868,7 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
       },
       {
         id: "eu-portal",
-        number: "12.12",
+        number: "12.13",
         title: "Login, register & Portal",
         items: [
           {

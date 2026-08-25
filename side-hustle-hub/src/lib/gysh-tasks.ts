@@ -7,18 +7,60 @@ import {
   guideReviewNotes,
   guideReviewTaskId,
 } from "./launch-guides";
+import { MEMBERSHIP_TIERS, type TierId } from "./membership";
+import { currentSprintIndex, dueDateForSprint } from "./gysh-sprints";
 import { ensureTaskNotesPageLink } from "./qa-page-links";
 import { suggestedSprintForTask } from "./gysh-sprint-board";
 
-export type TaskStatus = "not_started" | "in_progress" | "blocked" | "done";
+export type TaskStatus =
+  | "not_started"
+  | "in_progress"
+  | "blocked"
+  | "failed"
+  | "fixed_retest"
+  | "failed_retest"
+  | "done";
 export type TaskPriority = "P0" | "P1" | "P2" | "P3";
 
 export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
   not_started: "Not Started",
   in_progress: "In Progress",
   blocked: "Blocked",
+  failed: "Failed",
+  fixed_retest: "Fixed/Re-Test",
+  failed_retest: "Failed/Re-Test",
   done: "Done",
 };
+
+/** Lead Dev (Evelyn) marks these after reviewing a Failed task — send back to original assignee. */
+export const TASK_DEV_FIX_STATUSES: TaskStatus[] = ["fixed_retest", "failed_retest"];
+
+/** Statuses that require a short written note (same idea as Testing Portal). */
+export const TASK_NOTE_REQUIRED_STATUSES: TaskStatus[] = [
+  "failed",
+  "fixed_retest",
+  "failed_retest",
+];
+
+export function isTaskDevFixStatus(status: TaskStatus): boolean {
+  return TASK_DEV_FIX_STATUSES.includes(status);
+}
+
+export function taskStatusRequiresNote(status: TaskStatus): boolean {
+  return TASK_NOTE_REQUIRED_STATUSES.includes(status);
+}
+
+const TASK_STATUS_SET = new Set<string>(Object.keys(TASK_STATUS_LABELS));
+
+export function normalizeTaskStatus(raw: unknown): TaskStatus {
+  const v = String(raw ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
+  if (v === "fail") return "failed";
+  if (TASK_STATUS_SET.has(v)) return v as TaskStatus;
+  return "not_started";
+}
 
 /** Attachment metadata. File bytes live in D1 (`content_base64`); IndexedDB is a local cache. */
 export type GyshTaskAttachment = {
@@ -33,7 +75,7 @@ export type GyshTaskAttachment = {
   hasContent?: boolean;
 };
 
-/** T/E operational taxonomy for GYSH task backlog. */
+/** Tina & Evelyn operational taxonomy for GYSH task backlog. */
 export type TaskCategory =
   | "website"
   | "facebook_social"
@@ -89,17 +131,17 @@ export function categoryLabel(category: TaskCategory | string): string {
 }
 
 /** Named people who can be assigned to tasks / plan items. */
-export type PartnerAssignee = "Tina" | "Evelyn" | "Lyriq";
+export type PartnerAssignee = "Tina" | "Evelyn" | "Lyriq" | "Candace";
 
 /**
  * Stored assignee value.
- * - Singles: Tina | Evelyn | Lyriq | Unassigned
+ * - Singles: Tina | Evelyn | Lyriq | Candace | Unassigned
  * - Tina+Evelyn (legacy): Both
- * - Other multi: Tina+Lyriq | Evelyn+Lyriq | Tina+Evelyn+Lyriq (sorted join with +)
+ * - Other multi: Tina+Lyriq | Evelyn+Candace | … (sorted join with +)
  */
 export type TaskAssignee = string;
 
-export const PARTNER_ASSIGNEES: PartnerAssignee[] = ["Tina", "Evelyn", "Lyriq"];
+export const PARTNER_ASSIGNEES: PartnerAssignee[] = ["Tina", "Evelyn", "Lyriq", "Candace"];
 
 const PARTNER_SET = new Set<string>(PARTNER_ASSIGNEES);
 
@@ -119,8 +161,18 @@ export function parseAssigneePeople(assignedTo: string | null | undefined): Part
       if (!people.includes("Evelyn")) people.push("Evelyn");
       continue;
     }
-    if (PARTNER_SET.has(p) && !people.includes(p as PartnerAssignee)) {
-      people.push(p as PartnerAssignee);
+    const canon =
+      p === "Candace" || /^candace\b/i.test(p)
+        ? "Candace"
+        : p === "Tina" || /^tina\b/i.test(p)
+          ? "Tina"
+          : p === "Evelyn" || /^evelyn\b/i.test(p)
+            ? "Evelyn"
+            : p === "Lyriq" || /^lyriq\b/i.test(p)
+              ? "Lyriq"
+              : p;
+    if (PARTNER_SET.has(canon) && !people.includes(canon as PartnerAssignee)) {
+      people.push(canon as PartnerAssignee);
     }
   }
   return people;
@@ -172,6 +224,11 @@ export type GyshTask = {
   /** Partner completion — Both tasks need both true before status can be Done. */
   tinaDone: boolean;
   evelynDone: boolean;
+  /**
+   * Human assignee to restore after Lead Dev marks Fixed/Re-Test or Failed/Re-Test
+   * (set when status becomes Failed and task is reassigned to Evelyn).
+   */
+  originalAssignee?: string;
   /** Parent task id when this row is a subtask (e.g. T-041T → T-041). Empty = root. */
   parentId?: string;
   /** ISO timestamp of last content change (server). */
@@ -182,7 +239,7 @@ export type GyshTask = {
 };
 
 export const ACCEPT_ATTACHMENTS =
-  "image/*,application/pdf,.doc,.docx,.xls,.xlsx,video/mp4,video/webm,video/quicktime,.txt,.csv,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain,text/csv";
+  "image/*,application/pdf,.pdf,.doc,.docx,.xls,.xlsx,video/mp4,video/webm,video/quicktime,.txt,.csv,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain,text/csv";
 
 const DOC_MIME = new Set([
   "application/pdf",
@@ -222,16 +279,93 @@ function coerceSprint(value: unknown, fallback = 0): number {
 
 function mapTask(t: GyshTask): GyshTask {
   const parentId = String((t as { parentId?: unknown }).parentId ?? "").trim();
+  const originalAssignee = String(
+    (t as { originalAssignee?: unknown }).originalAssignee ?? "",
+  ).trim();
   return {
     ...t,
     category: normalizeCategory(t.category),
+    status: normalizeTaskStatus(t.status),
     // Do not use `|| 0` — BACKLOG_SPRINT is -1 and must stay -1.
     sprint: coerceSprint((t as { sprint?: unknown }).sprint, 0),
     tinaDone: Boolean(t.tinaDone),
     evelynDone: Boolean(t.evelynDone),
+    originalAssignee: originalAssignee || undefined,
     parentId: parentId || undefined,
     attachments: Array.isArray(t.attachments) ? t.attachments : [],
   };
+}
+
+/**
+ * Fail → Lead Dev (Evelyn) → Fixed/Re-Test or Failed/Re-Test → original assignee.
+ * Mirrors Testing Portal’s fail / Fixed/Re-Test cycle.
+ */
+export function applyTaskFailDevCycle(
+  task: GyshTask,
+  patch: Partial<GyshTask>,
+  opts?: { actor?: string | null; hasNote?: boolean },
+): { task: GyshTask; error?: string } {
+  const nextStatus =
+    patch.status !== undefined ? normalizeTaskStatus(patch.status) : task.status;
+  const actor = String(opts?.actor ?? "").trim();
+  const isLeadDev = actor === "Evelyn" || actor.toLowerCase().includes("evelyn");
+
+  if (isTaskDevFixStatus(nextStatus) && !isLeadDev) {
+    return {
+      task,
+      error: "Only Lead Dev (Evelyn) may set Fixed/Re-Test or Failed/Re-Test.",
+    };
+  }
+
+  if (
+    patch.status !== undefined &&
+    taskStatusRequiresNote(nextStatus) &&
+    opts?.hasNote === false
+  ) {
+    return {
+      task,
+      error: `${TASK_STATUS_LABELS[nextStatus]} requires a short note explaining why.`,
+    };
+  }
+
+  let next: GyshTask = {
+    ...task,
+    ...patch,
+    status: nextStatus,
+    attachments: patch.attachments ?? task.attachments,
+  };
+
+  if (patch.status === "failed") {
+    const current = String(task.assignedTo || "").trim();
+    if (current && current !== "Evelyn" && current !== "Unassigned") {
+      next.originalAssignee = task.originalAssignee || current;
+    } else if (!next.originalAssignee && task.originalAssignee) {
+      next.originalAssignee = task.originalAssignee;
+    }
+    next.assignedTo = "Evelyn";
+    next.tinaDone = false;
+    next.evelynDone = false;
+    next.dateCompleted = "";
+  }
+
+  if (isTaskDevFixStatus(nextStatus)) {
+    const restore = String(next.originalAssignee || task.originalAssignee || "").trim();
+    if (restore) {
+      next.assignedTo = restore;
+    }
+    next.tinaDone = false;
+    next.evelynDone = false;
+    next.dateCompleted = "";
+  }
+
+  if (nextStatus === "done" || nextStatus === "not_started" || nextStatus === "in_progress") {
+    // Keep originalAssignee while in retest until Done, so Fail again still works.
+    if (nextStatus === "done") {
+      next.originalAssignee = undefined;
+    }
+  }
+
+  return { task: next };
 }
 
 /**
@@ -239,17 +373,50 @@ function mapTask(t: GyshTask): GyshTask {
  * Single-assignee / other multi (e.g. Tina+Lyriq): overall status is enough.
  */
 export function applyPartnerDone(task: GyshTask, patch: Partial<GyshTask> = {}): GyshTask {
-  const next: GyshTask = { ...task, ...patch, attachments: patch.attachments ?? task.attachments };
+  const statusIn =
+    patch.status !== undefined ? normalizeTaskStatus(patch.status) : undefined;
+  const patchNorm: Partial<GyshTask> =
+    statusIn !== undefined ? { ...patch, status: statusIn } : { ...patch };
+
+  // Fail / Fixed/Re-Test / Failed/Re-Test are not partner-done states.
+  if (
+    statusIn &&
+    (statusIn === "failed" ||
+      statusIn === "fixed_retest" ||
+      statusIn === "failed_retest" ||
+      statusIn === "blocked")
+  ) {
+    const next: GyshTask = {
+      ...task,
+      ...patchNorm,
+      status: statusIn,
+      attachments: patchNorm.attachments ?? task.attachments,
+      tinaDone: false,
+      evelynDone: false,
+      dateCompleted: "",
+    };
+    return next;
+  }
+
+  const next: GyshTask = {
+    ...task,
+    ...patchNorm,
+    attachments: patchNorm.attachments ?? task.attachments,
+  };
   const people = parseAssigneePeople(next.assignedTo);
 
   if (requiresPartnerDone(next.assignedTo)) {
     // Tina+Evelyn (optionally +Lyriq) — cannot force Done via status alone until both partners are done.
-    if (patch.status === "done" && !(next.tinaDone && next.evelynDone)) {
+    if (patchNorm.status === "done" && !(next.tinaDone && next.evelynDone)) {
       next.status = "in_progress";
     }
-    if (patch.status && patch.status !== "done") {
-      if (patch.tinaDone === undefined && patch.evelynDone === undefined && patch.status !== "in_progress") {
-        if (patch.status === "not_started" || patch.status === "blocked") {
+    if (patchNorm.status && patchNorm.status !== "done") {
+      if (
+        patchNorm.tinaDone === undefined &&
+        patchNorm.evelynDone === undefined &&
+        patchNorm.status !== "in_progress"
+      ) {
+        if (patchNorm.status === "not_started" || patchNorm.status === "blocked") {
           next.tinaDone = false;
           next.evelynDone = false;
         }
@@ -263,16 +430,16 @@ export function applyPartnerDone(task: GyshTask, patch: Partial<GyshTask> = {}):
       next.status = "in_progress";
     }
   } else if (people.length === 1 && people[0] === "Tina") {
-    if (patch.status === "done") next.tinaDone = true;
-    if (patch.status && patch.status !== "done") next.tinaDone = false;
-    if (patch.tinaDone === true) next.status = "done";
-    if (patch.tinaDone === false && next.status === "done") next.status = "in_progress";
+    if (patchNorm.status === "done") next.tinaDone = true;
+    if (patchNorm.status && patchNorm.status !== "done") next.tinaDone = false;
+    if (patchNorm.tinaDone === true) next.status = "done";
+    if (patchNorm.tinaDone === false && next.status === "done") next.status = "in_progress";
     next.evelynDone = false;
   } else if (people.length === 1 && people[0] === "Evelyn") {
-    if (patch.status === "done") next.evelynDone = true;
-    if (patch.status && patch.status !== "done") next.evelynDone = false;
-    if (patch.evelynDone === true) next.status = "done";
-    if (patch.evelynDone === false && next.status === "done") next.status = "in_progress";
+    if (patchNorm.status === "done") next.evelynDone = true;
+    if (patchNorm.status && patchNorm.status !== "done") next.evelynDone = false;
+    if (patchNorm.evelynDone === true) next.status = "done";
+    if (patchNorm.evelynDone === false && next.status === "done") next.status = "in_progress";
     next.tinaDone = false;
   } else {
     // Lyriq, Unassigned, or Tina+Lyriq / Evelyn+Lyriq — overall status is enough.
@@ -282,7 +449,8 @@ export function applyPartnerDone(task: GyshTask, patch: Partial<GyshTask> = {}):
 
   if (next.status === "done") {
     if (!next.dateCompleted) next.dateCompleted = todayMMDDYY();
-  } else {
+    next.originalAssignee = undefined;
+  } else if (next.status !== "failed" && next.status !== "fixed_retest" && next.status !== "failed_retest") {
     next.dateCompleted = "";
   }
   return next;
@@ -316,12 +484,20 @@ export async function persistTasks(
   opts?: { removeIds?: string[] },
 ): Promise<GyshTask[]> {
   // Last-write wins per id — avoids UNIQUE constraint if duplicates slipped into client state.
+  // Schedule Suite QA belongs in Testing Portal (SCHED-*) — never re-upsert T-SCHED-* Task rows.
   const byId = new Map<string, GyshTask>();
-  for (const t of tasks) byId.set(t.id, mapTask(t));
+  const scrubbedSched: string[] = [];
+  for (const t of tasks) {
+    if (t.id.startsWith("T-SCHED-")) {
+      scrubbedSched.push(t.id);
+      continue;
+    }
+    byId.set(t.id, mapTask(t));
+  }
   const unique = Array.from(byId.values());
-  const removeIds = [...new Set((opts?.removeIds ?? []).filter(Boolean))].filter(
-    (id) => !byId.has(id),
-  );
+  const removeIds = [
+    ...new Set([...(opts?.removeIds ?? []), ...scrubbedSched].filter(Boolean)),
+  ].filter((id) => !byId.has(id));
   const data = await api<{ tasks: GyshTask[] }>("tasks", {
     method: "PUT",
     body: {
@@ -364,6 +540,7 @@ export async function uploadTaskAttachment(input: {
   const data = await api<{ attachment: GyshTaskAttachment }>("task-attachments", {
     method: "POST",
     body: input,
+    timeoutMs: 180_000,
   });
   return data.attachment;
 }
@@ -374,7 +551,7 @@ export async function fetchTaskAttachmentContent(id: string): Promise<{
   contentBase64: string;
 }> {
   // Office / PDF payloads can be large — match test evidence timeout.
-  return api(`task-attachments?id=${encodeURIComponent(id)}`, { timeoutMs: 90_000 });
+  return api(`task-attachments?id=${encodeURIComponent(id)}`, { timeoutMs: 180_000 });
 }
 
 export async function deleteTaskAttachmentRemote(id: string): Promise<void> {
@@ -392,6 +569,7 @@ export async function uploadPlanAttachment(input: {
   const data = await api<{ attachment: GyshTaskAttachment }>("plan-attachments", {
     method: "POST",
     body: input,
+    timeoutMs: 180_000,
   });
   return data.attachment;
 }
@@ -401,7 +579,7 @@ export async function fetchPlanAttachmentContent(id: string): Promise<{
   mimeType: string;
   contentBase64: string;
 }> {
-  return api(`plan-attachments?id=${encodeURIComponent(id)}`, { timeoutMs: 90_000 });
+  return api(`plan-attachments?id=${encodeURIComponent(id)}`, { timeoutMs: 180_000 });
 }
 
 export async function deletePlanAttachmentRemote(id: string): Promise<void> {
@@ -424,6 +602,19 @@ export function todayMMDDYY(): string {
   const dd = String(d.getDate()).padStart(2, "0");
   const yy = String(d.getFullYear()).slice(-2);
   return `${mm}/${dd}/${yy}`;
+}
+
+/** Calendar day offset from today as MM/DD/YY (local). */
+export function offsetMMDDYY(days: number, ref: Date = new Date()): string {
+  const d = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate() + days);
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const yy = String(d.getFullYear()).slice(-2);
+  return `${mm}/${dd}/${yy}`;
+}
+
+export function tomorrowMMDDYY(ref: Date = new Date()): string {
+  return offsetMMDDYY(1, ref);
 }
 
 /** Parse MM/DD/YY (or M/D/YY) to local midnight; null if invalid. */
@@ -637,6 +828,309 @@ export function ensureSeniorPageReviewTask(existing: GyshTask[]): {
   return { tasks: [...existing, ...created], created };
 }
 
+/** Stable Task List id for Tina’s membership-tier review (Free / Starter / Pro / Elite). */
+export function membershipTierReviewTaskId(tierId: TierId): string {
+  return `T-MEM-${tierId.toUpperCase()}`;
+}
+
+export function membershipTierReviewDescription(name: string): string {
+  return `Review Membership level: ${name} — pricing, perks, audience lanes; note issues or Fail & send for revisions`;
+}
+
+export function membershipTierReviewNotes(tierId: TierId, name: string): string {
+  return [
+    "Open [Join / Membership plans](/join)",
+    `membership-tier-review:${tierId}`,
+    "",
+    `Tina review checklist for **${name}**:`,
+    "1. Open Join → Membership plans; check Adults, Kids, Teens, and Seniors audience lanes.",
+    `2. Read the ${name} card: tagline, monthly/yearly price, commitment, Kid Credits, consulting.`,
+    "3. Verify the perk list / “Everything in …” ladder is accurate and clear for each lane.",
+    "4. If OK: add notes (what you checked) and mark Done.",
+    "5. If not OK: set status Blocked, write revision notes (what’s wrong / what to change), and assign/notify Evelyn for revisions.",
+  ].join("\n");
+}
+
+function hasMembershipTierReviewTask(tasks: GyshTask[], tierId: TierId, name: string): boolean {
+  const id = membershipTierReviewTaskId(tierId);
+  const desc = membershipTierReviewDescription(name);
+  const marker = `membership-tier-review:${tierId}`;
+  return tasks.some(
+    (t) =>
+      t.id === id ||
+      t.description === desc ||
+      t.notes.includes(marker) ||
+      (t.description.startsWith("Review Membership level:") && t.description.includes(name)),
+  );
+}
+
+/**
+ * Ensures one Tina-assigned Task List review item per membership tier (Free→Elite).
+ * Idempotent — safe on every Task List mount / sync.
+ */
+export function ensureMembershipTierReviewTasks(existing: GyshTask[]): {
+  tasks: GyshTask[];
+  created: GyshTask[];
+} {
+  const created: GyshTask[] = [];
+  const today = todayMMDDYY();
+  const sprint = currentSprintIndex();
+  const dueDate = dueDateForSprint(sprint);
+
+  for (const tier of MEMBERSHIP_TIERS) {
+    if (
+      hasMembershipTierReviewTask(existing, tier.id, tier.name) ||
+      hasMembershipTierReviewTask(created, tier.id, tier.name)
+    ) {
+      continue;
+    }
+    created.push({
+      id: membershipTierReviewTaskId(tier.id),
+      description: membershipTierReviewDescription(tier.name),
+      category: "website",
+      priority: "P1",
+      status: "not_started",
+      assignBy: "Evelyn",
+      assignedTo: "Tina",
+      dateAssigned: today,
+      dueDate,
+      dateCompleted: "",
+      notes: membershipTierReviewNotes(tier.id, tier.name),
+      sprint,
+      tinaDone: false,
+      evelynDone: false,
+      attachments: [],
+    });
+  }
+
+  if (created.length === 0) {
+    return { tasks: existing, created };
+  }
+  return { tasks: [...existing, ...created], created };
+}
+
+/** Stable id for Military & Veterans membership discount + Join callout. */
+export const MILITARY_VETERAN_CALLOUT_TASK_ID = "T-MEM-MILITARY";
+
+/** Sprint that ships Military membership discount + Join callout re-enable. */
+export const MILITARY_MEMBERSHIP_DISCOUNT_SPRINT = 6;
+
+/**
+ * @deprecated Prefer {@link MILITARY_MEMBERSHIP_DISCOUNT_SPRINT} (fixed Sprint 6).
+ * Kept so older tests that reference offset still compile.
+ */
+export const MILITARY_VETERAN_CALLOUT_SPRINT_OFFSET = 3;
+
+export function militaryVeteranCalloutTaskNotes(): string {
+  return [
+    "Open [Join / Membership plans](/join)",
+    "membership-military-callout:discount-sprint-6",
+    "",
+    "Sprint 6 — Military Membership discount (Adults/Seniors).",
+    "Callout is currently hidden (SHOW_MILITARY_VETERAN_CALLOUT = false).",
+    "",
+    "1. Confirm Military/Veteran discount amounts with Tina & Evelyn (do not invent $ in copy).",
+    "2. Wire veteran/military checkout pricing on Join for Adults & Seniors (and Senior stack when 55+).",
+    "3. Update MILITARY_VETERAN_CALLOUT copy in membership.ts to match the approved discount.",
+    "4. Set SHOW_MILITARY_VETERAN_CALLOUT = true; restore MEMBER-001 + e2e military assertions.",
+    "5. Confirm Adults & Seniors show the callout + discounted path; Kids & Teens stay hidden.",
+  ].join("\n");
+}
+
+/**
+ * Ensures Task List row for Military Membership discount + Join callout (Sprint 6).
+ * Heals sprint/due/description when the row already exists.
+ */
+export function ensureMilitaryVeteranCalloutTask(existing: GyshTask[]): {
+  tasks: GyshTask[];
+  created: GyshTask[];
+} {
+  const id = MILITARY_VETERAN_CALLOUT_TASK_ID;
+  const sprint = MILITARY_MEMBERSHIP_DISCOUNT_SPRINT;
+  const dueDate = dueDateForSprint(sprint);
+  const description =
+    "Add Military Membership discount (Adults/Seniors) + re-enable Join callout";
+  const notes = militaryVeteranCalloutTaskNotes();
+  const today = todayMMDDYY();
+
+  const idx = existing.findIndex(
+    (t) => t.id === id || t.notes.includes("membership-military-callout:"),
+  );
+  if (idx >= 0) {
+    const prev = existing[idx]!;
+    const needsHeal =
+      prev.sprint !== sprint ||
+      prev.dueDate !== dueDate ||
+      prev.description !== description ||
+      !prev.notes.includes("discount-sprint-6");
+    if (!needsHeal) {
+      return { tasks: existing, created: [] };
+    }
+    const healed: GyshTask = {
+      ...prev,
+      id,
+      description,
+      notes,
+      sprint,
+      dueDate,
+      assignedTo: prev.assignedTo || "Both",
+    };
+    const next = [...existing];
+    next[idx] = healed;
+    return { tasks: next, created: [healed] };
+  }
+
+  const created: GyshTask[] = [
+    {
+      id,
+      description,
+      category: "website",
+      priority: "P1",
+      status: "not_started",
+      assignBy: "Evelyn",
+      assignedTo: "Both",
+      dateAssigned: today,
+      dueDate,
+      dateCompleted: "",
+      notes,
+      sprint,
+      tinaDone: false,
+      evelynDone: false,
+      attachments: [],
+    },
+  ];
+  return { tasks: [...existing, ...created], created };
+}
+
+/**
+ * Schedule Suite QA lives in Testing Portal (SCHED-*), not Task List.
+ * Kept as case-id seeds for status/due assignment scripts only.
+ */
+export const SCHEDULE_SUITE_QA_CASE_IDS = [
+  "SCHED-STATUS-001",
+  "SCHED-STATUS-002",
+  "SCHED-STATUS-003",
+  "SCHED-REMINDER-001",
+  "SCHED-ROUNDUP-001",
+  "SCHED-GRADE-001",
+  "SCHED-PNL-001",
+] as const;
+
+/** @deprecated Prefer SCHEDULE_SUITE_QA_CASE_IDS — Schedule QA is tests, not tasks. */
+export const SCHEDULE_BLOCK_STATUS_QA_TASKS = [
+  { id: "T-SCHED-STATUS-01", description: "deprecated", relatedCaseId: "SCHED-STATUS-001", assignedTo: "Lyriq" as const },
+  { id: "T-SCHED-STATUS-02", description: "deprecated", relatedCaseId: "SCHED-STATUS-002", assignedTo: "Lyriq" as const },
+  { id: "T-SCHED-STATUS-03", description: "deprecated", relatedCaseId: "SCHED-STATUS-003", assignedTo: "Lyriq" as const },
+  { id: "T-SCHED-REMINDER-01", description: "deprecated", relatedCaseId: "SCHED-REMINDER-001", assignedTo: "Lyriq" as const },
+  { id: "T-SCHED-ROUNDUP-01", description: "deprecated", relatedCaseId: "SCHED-ROUNDUP-001", assignedTo: "Lyriq" as const },
+  { id: "T-SCHED-GRADE-01", description: "deprecated", relatedCaseId: "SCHED-GRADE-001", assignedTo: "Lyriq" as const },
+  { id: "T-SCHED-PNL-01", description: "deprecated", relatedCaseId: "SCHED-PNL-001", assignedTo: "Lyriq" as const },
+] as const;
+
+export function scheduleBlockStatusQaNotes(relatedCaseId: string): string {
+  const logical =
+    relatedCaseId === "SCHED-PNL-001-EVELYN" || relatedCaseId === "SCHED-PNL-001-TINA"
+      ? "SCHED-PNL-001"
+      : relatedCaseId;
+  if (logical === "SCHED-REMINDER-001") {
+    return [
+      "Open [My Dashboard → Schedule Suite](/dashboard)",
+      `schedule-suite-qa:${relatedCaseId}`,
+      "",
+      "Pro+ (or admin) account required.",
+      "1. Open a schedule tab → use Email Me on the view row to jump to Email reminders.",
+      "2. Set Daily / Weekly / Bi-weekly / Monthly and Save; reload to confirm cadence stuck.",
+      "3. Confirm reminder email (when sent) includes weekly plan table + Kid Credits.",
+      "4. Set cadence to None and Save — no further reminders expected for that suite.",
+      `Testing Portal case: ${relatedCaseId}`,
+    ].join("\n");
+  }
+  if (logical === "SCHED-ROUNDUP-001") {
+    return [
+      "Open [My Dashboard → Schedule Suite](/dashboard)",
+      `schedule-suite-qa:${relatedCaseId}`,
+      "",
+      "Pro+ (or admin) account required.",
+      "1. Blueprint plan → Marketing + Target sales → Save.",
+      "2. Weekly roundup → I killed it / Need improvement / Action items.",
+      "3. From Plan tracker → Grade me → lands on Weekly Roundup; only one Grade me button on that view.",
+      "4. Mark some days Done → Grade me → % score updates.",
+      "5. Full scale + each letter: see SCHED-GRADE-001.",
+      `Testing Portal case: ${relatedCaseId}`,
+    ].join("\n");
+  }
+  if (logical === "SCHED-GRADE-001") {
+    return [
+      "Open [My Dashboard → Schedule Suite](/dashboard)",
+      `schedule-suite-qa:${relatedCaseId}`,
+      "",
+      "Pro+ (or admin) account required.",
+      "",
+      "GRADING SCALE (how score is calculated):",
+      "• Score = % of the 7 day blocks marked Done.",
+      "• Not Started / In Progress / Blocked do NOT count.",
+      "• Hours, sales, and roundup are context only (do not change the letter).",
+      "• Marks: A+ 97–100% | A 90–96% | B+ 87–89% | B 80–86% | C+ 77–79% | C 70–76% | D 60–69% | F 0–59%.",
+      "• With 7 days: 7 Done≈100% A+; 6≈86% B; 5≈71% C; 4≈57% F; 0=0% F.",
+      "",
+      "1. F: 0 Done → Grade me → F on Weekly Roundup.",
+      "2. Walk Done counts to hit D, C/C+, B/B+, then A/A+ (7/7).",
+      "3. Confirm Grade me switches to Roundup and does not show Grade me twice; re-grade updates after Done changes.",
+      "4. A/A+ should show celebration.",
+      `Testing Portal case: ${relatedCaseId}`,
+    ].join("\n");
+  }
+  if (logical === "SCHED-PNL-001") {
+    return [
+      "Open [My Dashboard → Schedule Suite](/dashboard)",
+      `schedule-suite-qa:${relatedCaseId}`,
+      "",
+      "Pro+ (or admin) account required. P&L is a Pro/Elite Schedule Suite feature.",
+      "1. Confirm Membership/Join lists Profit & Loss calculator on Pro+.",
+      "2. Schedule Suite → P&L calculator tab.",
+      "3. Check Blueprint window: days (≤10 target), weeks, tracker % complete.",
+      "4. Add Sale line (date, description, amount) → Sales + Net update.",
+      "5. Add Expense line with category → Expenses + Net update.",
+      "6. Confirm Weekly outcomes row (Sales / Exp / Net).",
+      "7. Save, reload, confirm lines persist.",
+      `Testing Portal case: ${relatedCaseId}`,
+    ].join("\n");
+  }
+  return [
+    "Open [My Dashboard → Schedule Suite](/dashboard)",
+    `schedule-suite-qa:${relatedCaseId}`,
+    "",
+    "Pro+ (or admin) account required.",
+    "1. Open Tracker for a schedule tab.",
+    "2. Set each status: Not Started, In Progress, Done, Blocked.",
+    "3. Confirm Done crosses out the day focus and uses green styling.",
+    "4. Confirm In Progress (blue) and Blocked (red) color coding.",
+    "5. Save, reload dashboard, confirm statuses persist.",
+    `Testing Portal case: ${relatedCaseId}`,
+  ].join("\n");
+}
+
+/**
+ * No-op create: Schedule Suite QA is Testing Portal cases (SCHED-*), not Task List rows.
+ * Returns removeIds for any leftover T-SCHED-* so sync can delete them.
+ */
+export function ensureScheduleBlockStatusQaTasks(existing: GyshTask[]): {
+  tasks: GyshTask[];
+  created: GyshTask[];
+  removeIds: string[];
+} {
+  const removeIds = existing.filter((t) => t.id.startsWith("T-SCHED-")).map((t) => t.id);
+  if (removeIds.length === 0) {
+    return { tasks: existing, created: [], removeIds: [] };
+  }
+  const drop = new Set(removeIds);
+  return {
+    tasks: existing.filter((t) => !drop.has(t.id)),
+    created: [],
+    removeIds,
+  };
+}
+
 /** Prepend Open [Page](/path) to notes when a task clearly targets a site page. */
 export function ensureTaskPageLinks(tasks: GyshTask[]): {
   tasks: GyshTask[];
@@ -654,21 +1148,98 @@ export function ensureTaskPageLinks(tasks: GyshTask[]): {
 }
 
 /**
- * Fetch tasks, ensure guide-review + senior page review items exist, persist if any were created.
- * Prefer calling from AdminPortal and TaskList mount.
+ * Fetch tasks, ensure guide-review + senior page + membership-tier review items exist, persist if created.
+ * Prefer calling from Task List after a fast fetch+paint (pass `existing` to skip a second GET).
+ * Soft-launch CF tasks are synced separately (heavy) — see syncSoftLaunchTasks.
  */
-export async function syncGuideReviewTasks(): Promise<{
+export async function syncGuideReviewTasks(existing?: GyshTask[]): Promise<{
   tasks: GyshTask[];
   createdCount: number;
 }> {
-  const existing = await fetchTasks();
-  const guide = ensureGuideReviewTasks(existing);
+  const base = existing ?? (await fetchTasks());
+  const guide = ensureGuideReviewTasks(base);
   const senior = ensureSeniorPageReviewTask(guide.tasks);
-  const linked = ensureTaskPageLinks(senior.tasks);
-  const created = [...guide.created, ...senior.created];
-  if (created.length === 0 && linked.updated.length === 0) {
+  const membership = ensureMembershipTierReviewTasks(senior.tasks);
+  const military = ensureMilitaryVeteranCalloutTask(membership.tasks);
+  const scheduleStatus = ensureScheduleBlockStatusQaTasks(military.tasks);
+  const linked = ensureTaskPageLinks(scheduleStatus.tasks);
+  const created = [
+    ...guide.created,
+    ...senior.created,
+    ...membership.created,
+    ...military.created,
+    ...scheduleStatus.created,
+  ];
+  if (
+    created.length === 0 &&
+    linked.updated.length === 0 &&
+    scheduleStatus.removeIds.length === 0
+  ) {
     return { tasks: linked.tasks, createdCount: 0 };
   }
-  const saved = await persistTasks(linked.tasks);
+  // Delta PUT only — full-board saves are extremely slow on remote D1.
+  const delta = [...created, ...linked.updated];
+  const saved = await persistTasks(delta, { removeIds: scheduleStatus.removeIds });
+  return { tasks: saved, createdCount: created.length };
+}
+
+const SOFT_LAUNCH_SYNC_FLAG = "gysh_soft_launch_tasks_synced";
+
+/**
+ * Ensures Content Factory soft-launch Task List rows exist.
+ * Dynamic-imports the rollout catalog so the home/admin shell stays light.
+ * Skips repeat work in the same browser tab after a successful sync.
+ */
+export async function syncSoftLaunchTasks(
+  existing?: GyshTask[],
+  opts?: { force?: boolean },
+): Promise<{ tasks: GyshTask[]; createdCount: number }> {
+  if (
+    !opts?.force &&
+    typeof sessionStorage !== "undefined" &&
+    sessionStorage.getItem(SOFT_LAUNCH_SYNC_FLAG) === "1"
+  ) {
+    const tasks = existing ?? (await fetchTasks());
+    return { tasks, createdCount: 0 };
+  }
+
+  const { softLaunchTaskSeeds } = await import("./gysh-soft-launch-rollout");
+  const base = existing ?? (await fetchTasks());
+  const have = new Set(base.map((t) => t.id));
+  const missingIds = softLaunchTaskSeeds({ idsOnly: true }).filter((id) => !have.has(id));
+  if (missingIds.length === 0) {
+    if (typeof sessionStorage !== "undefined") {
+      sessionStorage.setItem(SOFT_LAUNCH_SYNC_FLAG, "1");
+    }
+    return { tasks: base, createdCount: 0 };
+  }
+
+  const today = todayMMDDYY();
+  const seeds = softLaunchTaskSeeds({ onlyIds: missingIds, lightNotes: true });
+  const created: GyshTask[] = seeds.map((seed) => ({
+    id: seed.id,
+    description: seed.description,
+    category: normalizeCategory(seed.category),
+    priority: (["P0", "P1", "P2", "P3"].includes(seed.priority)
+      ? seed.priority
+      : "P1") as TaskPriority,
+    status: "not_started" as const,
+    assignBy: seed.assignBy || "Auto-sync",
+    assignedTo: seed.assignedTo || "Both",
+    dateAssigned: today,
+    dueDate: seed.dueDate || "",
+    dateCompleted: "",
+    notes: seed.notes,
+    sprint: seed.sprint,
+    tinaDone: false,
+    evelynDone: false,
+    attachments: [],
+  }));
+
+  // Upsert only the new CF rows — never re-PUT the whole Task List on seed.
+  const saved = await persistTasks(created);
+  if (typeof sessionStorage !== "undefined") {
+    sessionStorage.setItem(SOFT_LAUNCH_SYNC_FLAG, "1");
+  }
   return { tasks: saved, createdCount: created.length };
 }

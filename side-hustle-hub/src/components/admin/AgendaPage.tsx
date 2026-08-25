@@ -295,7 +295,7 @@ export function AgendaPage({
   const [meetingTime, setMeetingTime] = useState(DEFAULT_AGENDA_MEETING_TIME);
   const [meetingTimezone, setMeetingTimezone] = useState(DEFAULT_AGENDA_TIMEZONE);
   const [meetingMinutes, setMeetingMinutes] = useState(AGENDA_MEETING_MINUTES);
-  const [invitedText, setInvitedText] = useState("Tina, Evelyn, Lyriq");
+  const [invitedText, setInvitedText] = useState("Tina, Evelyn, Lyriq, Candace");
   const [attendedText, setAttendedText] = useState("");
   const [previewDrafts, setPreviewDrafts] = useState<Record<string, PreviewDraft>>({});
   const [emailOpen, setEmailOpen] = useState(false);
@@ -325,7 +325,7 @@ export function AgendaPage({
     setMeetingTime(String(a.meetingTime || "").trim() || DEFAULT_AGENDA_MEETING_TIME);
     setMeetingTimezone(String(a.meetingTimezone || DEFAULT_AGENDA_TIMEZONE) || DEFAULT_AGENDA_TIMEZONE);
     setMeetingMinutes(clampAgendaMeetingMinutes(a.meetingMinutes ?? AGENDA_MEETING_MINUTES));
-    setInvitedText((a.invited || []).join(", ") || "Tina, Evelyn, Lyriq");
+    setInvitedText((a.invited || []).join(", ") || "Tina, Evelyn, Lyriq, Candace");
     setAttendedText((a.attended || []).join(", "));
     setMeetingNotes(String(a.meetingNotes || ""));
     setMeetingMinutesUrl(String(a.meetingMinutesUrl || ""));
@@ -1583,7 +1583,7 @@ export function AgendaPage({
                 type="text"
                 value={invitedText}
                 onChange={(e) => setInvitedText(e.target.value)}
-                placeholder="Tina, Evelyn, Lyriq"
+                placeholder="Tina, Evelyn, Lyriq, Candace"
               />
             </label>
             <label style={{ gridColumn: "1 / -1" }}>

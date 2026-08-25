@@ -34,6 +34,9 @@ import {
   membershipSignupSubmitLabel,
   membershipUpgradeActionBubbles,
 } from "../lib/membership-signup-labels";
+import { BETA_NDA_VERSION, betaNdaRegisterError, betaNdaTodayDate } from "../lib/beta-tester-nda";
+import { BetaNdaAcceptancePanel, type BetaNdaAcceptanceValue } from "./BetaNdaAcceptancePanel";
+import type { BetaNdaReceipt } from "../lib/beta-tester-dashboard";
 
 export { membershipSignupSubmitLabel, membershipPlanChooseLabel } from "../lib/membership-signup-labels";
 
@@ -55,6 +58,8 @@ type MembershipSignupPageProps = {
   onBackToPlans: () => void;
   onGoToLogin: () => void;
   onOpenFreeGuides?: () => void;
+  onOpenBetaNda?: () => void;
+  onBetaTestingUnlocked?: (receipt: BetaNdaReceipt) => void;
 };
 
 const AUDIENCE_OPTIONS: AudienceGroup[] = ["kids", "junior", "adult", "senior"];
@@ -95,6 +100,8 @@ export function MembershipSignupPage({
   onBackToPlans,
   onGoToLogin,
   onOpenFreeGuides,
+  onOpenBetaNda,
+  onBetaTestingUnlocked,
 }: MembershipSignupPageProps) {
   const startingAudience = initialAudience ?? "adult";
   const startingTier = initialTier ?? "free";
@@ -113,6 +120,13 @@ export function MembershipSignupPage({
   const [email, setEmail] = useState(() => String(loggedInEmail || "").trim());
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [applyBetaTester, setApplyBetaTester] = useState(false);
+  const [betaNda, setBetaNda] = useState<BetaNdaAcceptanceValue>({
+    legalName: "",
+    email: "",
+    signature: "",
+    agreed: false,
+  });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [stripePaid, setStripePaid] = useState(false);
@@ -296,6 +310,20 @@ export function MembershipSignupPage({
       setError("Enter a first name or nickname for the child.");
       return;
     }
+    const ndaPayload = {
+      agreed: betaNda.agreed,
+      legalName: betaNda.legalName.trim() || name.trim(),
+      email: betaNda.email.trim() || trimmed,
+      signature: betaNda.signature,
+      ndaVersion: BETA_NDA_VERSION,
+    };
+    if (applyBetaTester) {
+      const ndaErr = betaNdaRegisterError(true, ndaPayload, trimmed);
+      if (ndaErr) {
+        setError(ndaErr);
+        return;
+      }
+    }
 
     setBusy(true);
     try {
@@ -306,6 +334,8 @@ export function MembershipSignupPage({
         ageGroup: audience,
         childDisplayName: isKids ? childDisplayName.trim() : undefined,
         membershipTier: tier.id,
+        applyBetaTester,
+        betaNda: applyBetaTester ? ndaPayload : undefined,
       });
       if (!result.ok) {
         const msg = result.error || "Could not create account.";
@@ -328,6 +358,10 @@ export function MembershipSignupPage({
       });
       saveJoinAudience(audience);
 
+      if (applyBetaTester && result.testingUnlocked && result.betaNda && onBetaTestingUnlocked) {
+        onBetaTestingUnlocked(result.betaNda);
+        return;
+      }
       if (isPaid && stripeReady) {
         setStep("checkout");
       } else {
@@ -469,6 +503,37 @@ export function MembershipSignupPage({
                   </option>
                 ))}
               </select>
+
+              <label className="membership-signup-role-opt" htmlFor="membership-signup-beta">
+                <input
+                  id="membership-signup-beta"
+                  type="checkbox"
+                  checked={applyBetaTester}
+                  onChange={(e) => setApplyBetaTester(e.target.checked)}
+                  data-testid="membership-signup-beta-role"
+                />
+                <span>
+                  <strong>Apply as a Beta Tester</strong>
+                  <span className="membership-signup-role-opt__hint">
+                    Select this role if you want to try GYSH before launch. You must read and
+                    accept {BETA_NDA_VERSION} — this does not grant QA or Admin access.
+                  </span>
+                </span>
+              </label>
+              {applyBetaTester ? (
+                <BetaNdaAcceptancePanel
+                  idPrefix="membership-signup-nda"
+                  value={{
+                    legalName: betaNda.legalName || name,
+                    email: betaNda.email || email,
+                    signature: betaNda.signature,
+                    agreed: betaNda.agreed,
+                  }}
+                  acceptedAt={betaNdaTodayDate()}
+                  onChange={setBetaNda}
+                  onOpenFullNda={onOpenBetaNda}
+                />
+              ) : null}
             </div>
 
             <label htmlFor="membership-signup-name">{isKids ? "Parent / guardian name" : "Name"}</label>

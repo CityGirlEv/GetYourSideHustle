@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import {
   ListChecks,
   Plus,
@@ -16,10 +16,24 @@ import {
   ChevronRight,
   Upload,
   Search,
+  Unlock,
 } from "lucide-react";
 import { BusyOverlay, WaitIndicator, WaitLabel } from "../WaitFeedback";
 import { MarkdownLinkText } from "./MarkdownLinkText";
+import { AdminCrossLinks, crossLinksForTaskId } from "./AdminCrossLinks";
+import { useAdminEntityLinks } from "../../hooks/useAdminEntityLinks";
+import {
+  buildAdminEntityTitleMap,
+  buildAdminLinkCandidates,
+} from "../../lib/admin-link-candidates";
+import { softLaunchRolloutItems } from "../../lib/gysh-soft-launch-rollout";
+import {
+  activateSoftLaunchOverrides,
+  fetchSoftLaunchOverrides,
+} from "../../lib/soft-launch-item-overrides";
+import { TEST_CASES } from "../../lib/gysh-test-plan";
 import { taskOpenPageStep } from "../../lib/qa-page-links";
+import { scrollAdminFocusIntoView } from "../../lib/admin-focus-scroll";
 import {
   TASK_STATUS_LABELS,
   TASK_CATEGORIES,
@@ -27,6 +41,7 @@ import {
   fetchTasks,
   persistTasks,
   syncGuideReviewTasks,
+  syncSoftLaunchTasks,
   nextTaskId,
   todayMMDDYY,
   isAcceptedAttachment,
@@ -43,6 +58,7 @@ import {
   uploadTaskAttachment,
   fetchTaskAttachmentContent,
   deleteTaskAttachmentRemote,
+  PARTNER_ASSIGNEES,
   type GyshTask,
   type GyshTaskAttachment,
   type TaskStatus,
@@ -86,11 +102,16 @@ import {
 } from "../../lib/gysh-sprints";
 import {
   fetchClosedSprints,
+  firstUnlockedSprint,
+  isSprintEditLocked,
   isSprintLocked,
+  isUnlockMoveToOpenSprint,
   sprintLockedMessage,
 } from "../../lib/gysh-closed-sprints";
 import {
+  buildUnlockTaskPatch,
   countTasksRolledIntoSprint,
+  healClosedSprintTaskLeftovers,
   healIncompleteTaskDueDates,
   noteIndicatesRollover,
 } from "../../lib/gysh-sprint-board";
@@ -105,12 +126,14 @@ import {
   taskMatchesSearch,
 } from "../../lib/gysh-task-search";
 import {
+  completeFamilyOnExplicitDone,
   isTaskCountHead,
   normalizeParentId,
   orderTasksWithSubtasks,
   rollupFamilyParents,
   syncNotesAcrossFamily,
 } from "../../lib/gysh-task-family";
+import { applyFilterChipClick } from "../../lib/gysh-filter-chips";
 import { SprintLockedBanner } from "./SprintLockedBanner";
 
 type OwnerFilter = GyshTask["assignedTo"];
@@ -128,7 +151,7 @@ function TaskFilterChip({
   locked,
 }: {
   active: boolean;
-  onClick: () => void;
+  onClick: (e: MouseEvent<HTMLButtonElement>) => void;
   children: ReactNode;
   title?: string;
   accent?: string;
@@ -214,27 +237,30 @@ function TaskFilterPanel({
   );
 }
 
-const OWNER_ACCENT: Record<GyshTask["assignedTo"], string> = {
+const OWNER_ACCENT: Record<string, string> = {
   Tina: "var(--crimson)",
   Evelyn: "var(--bronze)",
   Lyriq: "var(--accent-emerald)",
+  Candace: "#3d6b8c",
   Both: "var(--charcoal)",
   Unassigned: "#7a7064",
 };
 
 /** Solid hex for legend swatches / select accents (CSS vars don't paint well as inline swatches). */
-const OWNER_SWATCH: Record<GyshTask["assignedTo"], string> = {
+const OWNER_SWATCH: Record<string, string> = {
   Tina: "#9B2F28",
   Evelyn: "#947D64",
   Lyriq: "#2e7d32",
+  Candace: "#3d6b8c",
   Both: "#181718",
   Unassigned: "#7a7064",
 };
 
-const OWNER_LABEL_CLASS: Record<GyshTask["assignedTo"], string> = {
+const OWNER_LABEL_CLASS: Record<string, string> = {
   Tina: "flat-label flat-label--assignee-tina",
   Evelyn: "flat-label flat-label--assignee-evelyn",
   Lyriq: "flat-label flat-label--assignee-lyriq",
+  Candace: "flat-label flat-label--assignee-candace",
   Both: "flat-label flat-label--assignee-both",
   Unassigned: "flat-label",
 };
@@ -243,13 +269,17 @@ const STATUS_ACCENT: Record<TaskStatus, string> = {
   not_started: "#9ca3af",
   in_progress: "#ca8a04",
   blocked: "#dc2626",
+  failed: "#b91c1c",
+  fixed_retest: "#2563eb",
+  failed_retest: "#7c3aed",
   done: "#16a34a",
 };
 
-const OWNER_DISPLAY: Record<GyshTask["assignedTo"], string> = {
+const OWNER_DISPLAY: Record<string, string> = {
   Tina: "Tina",
   Evelyn: "Evelyn",
   Lyriq: "Lyriq",
+  Candace: "Candace",
   Both: "Both",
   Unassigned: "UnAssgnd",
 };
@@ -258,16 +288,19 @@ const OWNER_BUBBLES: { id: OwnerFilter; label: string; accent?: string }[] = [
   { id: "Tina", label: OWNER_DISPLAY.Tina, accent: OWNER_ACCENT.Tina },
   { id: "Evelyn", label: OWNER_DISPLAY.Evelyn, accent: OWNER_ACCENT.Evelyn },
   { id: "Lyriq", label: OWNER_DISPLAY.Lyriq, accent: OWNER_ACCENT.Lyriq },
+  { id: "Candace", label: OWNER_DISPLAY.Candace, accent: OWNER_ACCENT.Candace },
   { id: "Both", label: OWNER_DISPLAY.Both, accent: OWNER_ACCENT.Both },
   { id: "Unassigned", label: OWNER_DISPLAY.Unassigned, accent: OWNER_ACCENT.Unassigned },
 ];
 
-/** Same assignee matching as the owner filter (T/E include Both; backlog counts as Unassigned). */
+/** Same assignee matching as the owner filter (Tina & Evelyn include Both; backlog counts as Unassigned). */
 function taskMatchesOwner(task: GyshTask, owner: OwnerFilter): boolean {
   const effective = isBacklogSprint(task.sprint) ? UNASSIGNED_OWNER : task.assignedTo;
   if (owner === "Unassigned") return effective === "Unassigned" || !String(effective || "").trim();
   if (owner === "Both") return effective === "Both";
-  if (owner === "Lyriq") return effective === "Lyriq" || effective.includes("Lyriq");
+  if (owner === "Lyriq" || owner === "Candace") {
+    return effective === owner || String(effective).includes(owner);
+  }
   // Tina / Evelyn: exact, Both, or multi like Tina+Lyriq
   if (effective === owner || effective === "Both") return true;
   return effective.split(/[+,&|/]/).map((p) => p.trim()).includes(owner);
@@ -291,6 +324,9 @@ const STATUS_LEGEND: { id: TaskStatus; label: string }[] = [
   { id: "not_started", label: "Not started" },
   { id: "in_progress", label: "In progress" },
   { id: "blocked", label: "Blocked" },
+  { id: "failed", label: "Failed" },
+  { id: "fixed_retest", label: "Fixed/Re-Test" },
+  { id: "failed_retest", label: "Failed/Re-Test" },
   { id: "done", label: "Done" },
 ];
 
@@ -639,6 +675,26 @@ export function TaskList({
   const timers = useActiveTimers(Boolean(authUser));
   const actingAssignBy = taskAssignByForActor(authUser);
   const isAdmin = userHasAdminRole(authUser);
+  const {
+    edges: entityEdges,
+    link: linkEntities,
+    unlink: unlinkEntities,
+  } = useAdminEntityLinks();
+  /** Rebuild each render so renamed tasks / CF overlay titles show on link chips immediately. */
+  const entityTitles = buildAdminEntityTitleMap({
+    tasks,
+    tests: TEST_CASES.map((t) => ({ id: t.id, title: t.title })),
+    cfItems: softLaunchRolloutItems(),
+  });
+  const linkCandidates = useMemo(
+    () =>
+      buildAdminLinkCandidates({
+        tasks,
+        tests: TEST_CASES.map((t) => ({ id: t.id, title: t.title })),
+        cfItems: softLaunchRolloutItems(),
+      }),
+    [tasks],
+  );
   const [desc, setDesc] = useState("");
   /** Empty = "Select" placeholder so Add form never looks pre-filled. */
   const [assignee, setAssignee] = useState<GyshTask["assignedTo"] | "">("");
@@ -678,49 +734,50 @@ export function TaskList({
   const [savingAll, setSavingAll] = useState(false);
   const [saveFlash, setSaveFlash] = useState("");
   const [closedSprints, setClosedSprints] = useState<Set<number>>(() => new Set());
+  const [closedReady, setClosedReady] = useState(false);
+  const leftoverHealRan = useRef(false);
   const startingTimersRef = useRef(new Set<string>());
+  const lastOwnerIdx = useRef<number | null>(null);
+  const lastStatusIdx = useRef<number | null>(null);
+  const lastCategoryIdx = useRef<number | null>(null);
+  const lastSprintIdx = useRef<number | null>(null);
   const sprints = listUpcomingSprints();
   const dirtySaveCount = dirtyNoteIds.size;
+
+  const applyHealedTasks = (list: GyshTask[]) => {
+    const backlogHealed = sanitizeBacklogTaskAssignees(list);
+    const dueHealed = healIncompleteTaskDueDates(backlogHealed.tasks);
+    setTasks(dueHealed.tasks);
+    return { backlogHealed, dueHealed };
+  };
 
   const loadTasks = async () => {
     setLoading(true);
     setError("");
     try {
-      const closedList = await fetchClosedSprints().catch(() => [] as number[]);
-      setClosedSprints(new Set(closedList));
-      // Ensure a review task exists for every launch guide (idempotent; persists to D1).
-      const synced = await syncGuideReviewTasks();
-      const backlogHealed = sanitizeBacklogTaskAssignees(synced.tasks);
-      const dueHealed = healIncompleteTaskDueDates(backlogHealed.tasks);
-      setTasks(dueHealed.tasks);
+      // Fast path: one GET + paint. Never PUT the full board on mount (remote D1 stalls).
+      const list = await fetchTasks();
+      const { dueHealed } = applyHealedTasks(list);
       setNewNoteDrafts({});
       setEditNoteDrafts({});
       setDirtyNoteIds(new Set());
-      if (backlogHealed.changed || dueHealed.changed) {
+      setLoading(false);
+
+      // Background: seed missing guide / CF rows via small delta PUTs only.
+      void (async () => {
         try {
-          setTasks(await persistTasks(dueHealed.tasks));
-        } catch {
-          /* keep healed local state */
-        }
-      }
-    } catch (e) {
-      try {
-        const list = await fetchTasks();
-        const backlogHealed = sanitizeBacklogTaskAssignees(list);
-        const dueHealed = healIncompleteTaskDueDates(backlogHealed.tasks);
-        setTasks(dueHealed.tasks);
-        if (backlogHealed.changed || dueHealed.changed) {
-          try {
-            setTasks(await persistTasks(dueHealed.tasks));
-          } catch {
-            /* keep healed local state */
+          const synced = await syncGuideReviewTasks(dueHealed.tasks);
+          const withSoft = await syncSoftLaunchTasks(synced.tasks);
+          if (synced.createdCount > 0 || withSoft.createdCount > 0) {
+            applyHealedTasks(withSoft.tasks);
           }
+        } catch {
+          /* list already painted */
         }
-      } catch {
-        setTasks([]);
-      }
+      })();
+    } catch (e) {
+      setTasks([]);
       setError(e instanceof ApiError ? e.message : "Failed to load tasks from database.");
-    } finally {
       setLoading(false);
     }
   };
@@ -729,20 +786,68 @@ export function TaskList({
     void loadTasks();
   }, []);
 
-  // Load closed/locked sprints independently so chip banners don't depend on task sync.
+  const [, setCfTitleTick] = useState(0);
+  // CF item title overrides so task↔factory link chips stay current.
   useEffect(() => {
     let cancelled = false;
-    void fetchClosedSprints()
-      .then((closed) => {
-        if (!cancelled) setClosedSprints(new Set(closed));
+    void fetchSoftLaunchOverrides()
+      .then((overrides) => {
+        if (cancelled) return;
+        activateSoftLaunchOverrides(overrides);
+        setCfTitleTick((n) => n + 1);
       })
       .catch(() => {
-        /* keep empty */
+        /* catalog titles remain */
       });
     return () => {
       cancelled = true;
     };
   }, []);
+
+  // Load closed/locked sprints independently so chip banners don't depend on task sync.
+  useEffect(() => {
+    let cancelled = false;
+    void fetchClosedSprints()
+      .then((closed) => {
+        if (cancelled) return;
+        setClosedSprints(new Set(closed));
+        setClosedReady(true);
+      })
+      .catch(() => {
+        if (!cancelled) setClosedReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Leftover incomplete work in a closed sprint → next open sprint (counts as rolled over).
+  useEffect(() => {
+    if (leftoverHealRan.current || loading || !closedReady) return;
+    const healed = healClosedSprintTaskLeftovers(
+      tasksRef.current,
+      closedSprints,
+      actingAssignBy,
+    );
+    leftoverHealRan.current = true;
+    if (healed.changed.length === 0) return;
+    void (async () => {
+      try {
+        const saved = await persistTasks(healed.changed);
+        applyHealedTasks(saved);
+        const dest = healed.changed[0]?.sprint;
+        setSaveFlash(
+          `Rolled ${healed.changed.length} leftover task${healed.changed.length === 1 ? "" : "s"} from closed sprints${
+            dest != null ? ` → ${sprintLabel(dest)}` : ""
+          }`,
+        );
+        window.setTimeout(() => setSaveFlash(""), 4000);
+      } catch (e) {
+        leftoverHealRan.current = false;
+        setError(e instanceof ApiError ? e.message : "Failed to roll leftover closed-sprint tasks.");
+      }
+    })();
+  }, [actingAssignBy, closedReady, closedSprints, loading]);
 
   const filtersAreAll =
     ownerFilters.size === 0 &&
@@ -774,6 +879,10 @@ export function TaskList({
     setCategoryFilters(new Set());
     setStatusFilters(new Set());
     setSprintFilters(new Set());
+    lastOwnerIdx.current = null;
+    lastStatusIdx.current = null;
+    lastCategoryIdx.current = null;
+    lastSprintIdx.current = null;
     setRolledOverOnly(false);
     setSearchQuery("");
     setSaveFlash(
@@ -802,27 +911,31 @@ export function TaskList({
     setSelectedIds(new Set([focusTaskId]));
     setHighlightId(focusTaskId);
     onFocusConsumed?.();
-    requestAnimationFrame(() => {
-      document.getElementById(`task-row-${focusTaskId}`)?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-    });
+    scrollAdminFocusIntoView(`task-row-${focusTaskId}`);
   }, [focusTaskId, loading, tasks, onFocusConsumed]);
 
   const tasksRef = useRef(tasks);
   tasksRef.current = tasks;
   const persistQueue = useRef(Promise.resolve());
 
-  const persist = async (next: GyshTask[], opts?: { removeIds?: string[] }) => {
+  const persist = async (next: GyshTask[], opts?: { removeIds?: string[]; onlyIds?: string[] }) => {
     tasksRef.current = next;
     setTasks(next);
     setBusy(true);
     setError("");
     const removeIds = opts?.removeIds;
+    const onlyIds = opts?.onlyIds;
+    if (onlyIds && onlyIds.length === 0 && !removeIds?.length) {
+      setBusy(false);
+      return;
+    }
     const run = async () => {
       try {
-        const saved = await persistTasks(tasksRef.current, { removeIds });
+        const payload =
+          onlyIds && onlyIds.length > 0
+            ? next.filter((t) => onlyIds.includes(t.id))
+            : tasksRef.current;
+        const saved = await persistTasks(payload, { removeIds });
         tasksRef.current = saved;
         setTasks(saved);
       } catch (e) {
@@ -832,7 +945,7 @@ export function TaskList({
         setBusy(false);
       }
     };
-    // Serialize writes so rapid edits from T/E/Lyriq don't clobber each other mid-flight.
+    // Serialize writes so rapid edits from Tina, Evelyn / Lyriq don't clobber each other mid-flight.
     const queued = persistQueue.current.then(run, run);
     persistQueue.current = queued.then(
       () => undefined,
@@ -900,27 +1013,57 @@ export function TaskList({
   ).length;
   const liveSprintIndex = currentSprintIndex();
 
-  const toggleInSet = <T,>(prev: Set<T>, value: T): Set<T> => {
-    const next = new Set(prev);
-    if (next.has(value)) next.delete(value);
-    else next.add(value);
-    return next;
+  const ownerFilterOrder = OWNER_BUBBLES.map((b) => b.id);
+  const statusFilterOrder = STATUS_LEGEND.map((s) => s.id);
+  const categoryFilterOrder = CATEGORY_BUBBLES.map((b) => b.id);
+  const sprintFilterOrder = [BACKLOG_SPRINT, ...sprints.map((s) => s.index)];
+
+  const toggleOwnerFilter = (owner: OwnerFilter, e?: MouseEvent) => {
+    const { next, lastIndex } = applyFilterChipClick(ownerFilters, owner, {
+      shiftKey: e?.shiftKey,
+      ctrlKey: e?.ctrlKey,
+      metaKey: e?.metaKey,
+      ordered: ownerFilterOrder,
+      lastIndex: lastOwnerIdx.current,
+    });
+    lastOwnerIdx.current = lastIndex;
+    setOwnerFilters(next);
   };
 
-  const toggleOwnerFilter = (owner: OwnerFilter) => {
-    setOwnerFilters((prev) => toggleInSet(prev, owner));
+  const toggleCategoryFilter = (category: CategoryFilter, e?: MouseEvent) => {
+    const { next, lastIndex } = applyFilterChipClick(categoryFilters, category, {
+      shiftKey: e?.shiftKey,
+      ctrlKey: e?.ctrlKey,
+      metaKey: e?.metaKey,
+      ordered: categoryFilterOrder,
+      lastIndex: lastCategoryIdx.current,
+    });
+    lastCategoryIdx.current = lastIndex;
+    setCategoryFilters(next);
   };
 
-  const toggleCategoryFilter = (category: CategoryFilter) => {
-    setCategoryFilters((prev) => toggleInSet(prev, category));
+  const toggleStatusFilter = (status: TaskStatus, e?: MouseEvent) => {
+    const { next, lastIndex } = applyFilterChipClick(statusFilters, status, {
+      shiftKey: e?.shiftKey,
+      ctrlKey: e?.ctrlKey,
+      metaKey: e?.metaKey,
+      ordered: statusFilterOrder,
+      lastIndex: lastStatusIdx.current,
+    });
+    lastStatusIdx.current = lastIndex;
+    setStatusFilters(next);
   };
 
-  const toggleStatusFilter = (status: TaskStatus) => {
-    setStatusFilters((prev) => toggleInSet(prev, status));
-  };
-
-  const toggleSprintFilter = (sprint: number) => {
-    setSprintFilters((prev) => toggleInSet(prev, sprint));
+  const toggleSprintFilter = (sprint: number, e?: MouseEvent) => {
+    const { next, lastIndex } = applyFilterChipClick(sprintFilters, sprint, {
+      shiftKey: e?.shiftKey,
+      ctrlKey: e?.ctrlKey,
+      metaKey: e?.metaKey,
+      ordered: sprintFilterOrder,
+      lastIndex: lastSprintIdx.current,
+    });
+    lastSprintIdx.current = lastIndex;
+    setSprintFilters(next);
   };
 
   const filteredIds = filtered.map((t) => t.id);
@@ -955,7 +1098,7 @@ export function TaskList({
       setError("Select a due date.");
       return;
     }
-    if (isSprintLocked(closedSprints, newSprint)) {
+    if (isSprintEditLocked(closedSprints, newSprint, authUser)) {
       setError(sprintLockedMessage(newSprint));
       return;
     }
@@ -1166,13 +1309,15 @@ export function TaskList({
 
   const patch = async (id: string, updates: Partial<GyshTask>) => {
     const prev = tasksRef.current.find((t) => t.id === id);
-    if (prev && isSprintLocked(closedSprints, prev.sprint)) {
+    const nextSprint =
+      updates.sprint !== undefined ? Number(updates.sprint) : Number(prev?.sprint ?? 0);
+    const unlocking =
+      !!prev && isUnlockMoveToOpenSprint(closedSprints, prev.sprint, nextSprint);
+    if (prev && isSprintEditLocked(closedSprints, prev.sprint, authUser) && !unlocking) {
       setError(sprintLockedMessage(Number(prev.sprint)));
       return;
     }
-    const nextSprint =
-      updates.sprint !== undefined ? Number(updates.sprint) : Number(prev?.sprint ?? 0);
-    if (isSprintLocked(closedSprints, nextSprint)) {
+    if (isSprintEditLocked(closedSprints, nextSprint, authUser) && !unlocking) {
       setError(sprintLockedMessage(nextSprint));
       return;
     }
@@ -1180,17 +1325,39 @@ export function TaskList({
       withSprintDueDate(withAssignMeta(prev, updates)),
       prev?.sprint,
     );
+    const before = new Map(tasksRef.current.map((t) => [t.id, t]));
     let next = tasksRef.current.map((t) => {
       if (t.id !== id) return t;
       return applyPartnerDone(t, applied);
     });
+    // Marking a parent Done must finish open children, or rollup snaps it back.
+    if (updates.status === "done") {
+      next = completeFamilyOnExplicitDone(next, id, (t) => applyPartnerDone(t, { status: "done" }));
+    }
     // Shared notes: anything saved on parent or a subtask mirrors to the whole family.
     if (updates.notes !== undefined) {
       next = syncNotesAcrossFamily(next, id, String(updates.notes ?? ""));
     }
     next = rollupFamilyParents(next, id);
+    const changedIds = next
+      .filter((t) => {
+        const prevRow = before.get(t.id);
+        if (!prevRow) return true;
+        return (
+          prevRow.status !== t.status ||
+          prevRow.sprint !== t.sprint ||
+          prevRow.dueDate !== t.dueDate ||
+          prevRow.notes !== t.notes ||
+          prevRow.assignedTo !== t.assignedTo ||
+          prevRow.tinaDone !== t.tinaDone ||
+          prevRow.evelynDone !== t.evelynDone ||
+          prevRow.dateCompleted !== t.dateCompleted ||
+          prevRow.description !== t.description
+        );
+      })
+      .map((t) => t.id);
     try {
-      await persist(next);
+      await persist(next, { onlyIds: changedIds });
       if (updates.status != null && prev && updates.status !== prev.status) {
         await stopTimerOnStatusChange("task", id);
         void timers.refresh();
@@ -1200,16 +1367,55 @@ export function TaskList({
     }
   };
 
+  const unlockTargetSprint = firstUnlockedSprint(closedSprints);
+
+  const unlockTask = async (id: string) => {
+    const prev = tasksRef.current.find((t) => t.id === id);
+    if (!prev || !isSprintLocked(closedSprints, prev.sprint)) return;
+    if (unlockTargetSprint == null) {
+      setError("No open sprint to unlock into. Re-open a sprint from Schedule first.");
+      return;
+    }
+    await patch(id, buildUnlockTaskPatch(prev, unlockTargetSprint, actingAssignBy));
+    setSaveFlash(`Unlocked ${id} → ${sprintLabel(unlockTargetSprint)}`);
+    window.setTimeout(() => setSaveFlash(""), 2500);
+  };
+
+  const unlockSelected = async () => {
+    const lockedIds = [...selectedIds].filter((id) => {
+      const t = tasksRef.current.find((x) => x.id === id);
+      return t && isSprintLocked(closedSprints, t.sprint);
+    });
+    if (lockedIds.length === 0) return;
+    if (unlockTargetSprint == null) {
+      setError("No open sprint to unlock into. Re-open a sprint from Schedule first.");
+      return;
+    }
+    try {
+      for (const id of lockedIds) {
+        const prev = tasksRef.current.find((t) => t.id === id);
+        if (!prev) continue;
+        await patch(id, buildUnlockTaskPatch(prev, unlockTargetSprint, actingAssignBy));
+      }
+      setSaveFlash(
+        `Unlocked ${lockedIds.length} task${lockedIds.length === 1 ? "" : "s"} → ${sprintLabel(unlockTargetSprint)}`,
+      );
+      window.setTimeout(() => setSaveFlash(""), 2500);
+    } catch {
+      /* error already set */
+    }
+  };
+
   const patchSelected = async (updates: Partial<GyshTask>) => {
     if (selectedIds.size === 0) return;
     const targetSprint =
       updates.sprint !== undefined ? Number(updates.sprint) : undefined;
-    if (targetSprint !== undefined && isSprintLocked(closedSprints, targetSprint)) {
+    if (targetSprint !== undefined && isSprintEditLocked(closedSprints, targetSprint, authUser)) {
       setError(sprintLockedMessage(targetSprint));
       return;
     }
     const lockedSelected = tasksRef.current.filter(
-      (t) => selectedIds.has(t.id) && isSprintLocked(closedSprints, t.sprint),
+      (t) => selectedIds.has(t.id) && isSprintEditLocked(closedSprints, t.sprint, authUser),
     );
     if (lockedSelected.length > 0 && lockedSelected.length === selectedIds.size) {
       setError(sprintLockedMessage(Number(lockedSelected[0]!.sprint)));
@@ -1217,7 +1423,7 @@ export function TaskList({
     }
     const ids = [...selectedIds].filter((id) => {
       const t = tasksRef.current.find((x) => x.id === id);
-      return t && !isSprintLocked(closedSprints, t.sprint);
+      return t && !isSprintEditLocked(closedSprints, t.sprint, authUser);
     });
     if (ids.length === 0) return;
     const idSet = new Set(ids);
@@ -1314,7 +1520,7 @@ export function TaskList({
               T + E operational tracker — saved in production D1.
             </p>
             <p style={{ color: "var(--text-primary)", marginTop: 6, fontSize: "1rem", lineHeight: 1.5 }}>
-              Attachments are saved to the database and can be downloaded from any browser. Max ~1.5MB per file.
+              Attachments are saved to the database and can be downloaded from any browser. Max ~8MB per file (videos up to ~20MB).
               Older name-only attachments need a re-upload.
             </p>
           </div>
@@ -1434,9 +1640,11 @@ export function TaskList({
                   Select
                 </option>
                 <option value={UNASSIGNED_OWNER}>Unassigned</option>
-                <option value="Tina">Tina</option>
-                <option value="Evelyn">Evelyn</option>
-                <option value="Lyriq">Lyriq</option>
+                {PARTNER_ASSIGNEES.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
                 <option value="Both">Both</option>
               </select>
             </div>
@@ -1492,14 +1700,14 @@ export function TaskList({
           <div className="task-list-toolbar__section-label">
             Filters
             <span className="task-list-toolbar__label-hint">
-              {filtered.length} shown · tap bubbles to multi-select
+              {filtered.length} shown · tap a bubble to filter · Ctrl/Shift+click for more
             </span>
           </div>
 
           <div className="task-list-filters__stack">
             <TaskFilterPanel
               title="Sprint"
-              hint="primary · multi"
+              hint="primary · tap to filter"
               testId="task-list-filter-sprint"
               open={filterOpen.sprint}
               onOpenChange={(open) => setFilterOpen((p) => ({ ...p, sprint: open }))}
@@ -1526,7 +1734,10 @@ export function TaskList({
                 <TaskFilterChip
                   active={sprintFilters.size === 0}
                   testId="task-list-sprint-all"
-                  onClick={() => setSprintFilters(new Set())}
+                  onClick={() => {
+                    lastSprintIdx.current = null;
+                    setSprintFilters(new Set());
+                  }}
                   title={`${sprintFacetTasks.length} tasks match other filters`}
                 >
                   All sprints
@@ -1537,7 +1748,7 @@ export function TaskList({
                 <TaskFilterChip
                   active={sprintFilters.has(BACKLOG_SPRINT)}
                   testId="task-list-sprint-backlog"
-                  onClick={() => toggleSprintFilter(BACKLOG_SPRINT)}
+                  onClick={(e) => toggleSprintFilter(BACKLOG_SPRINT, e)}
                   title="Backlog (unscheduled)"
                   accent="#6B5344"
                 >
@@ -1575,7 +1786,7 @@ export function TaskList({
                       current={isCurrent}
                       locked={locked}
                       testId={`task-list-sprint-${s.index}`}
-                      onClick={() => toggleSprintFilter(s.index)}
+                      onClick={(e) => toggleSprintFilter(s.index, e)}
                       title={
                         locked
                           ? `${s.label} · Closed & locked · ${s.rangeLabel} · ${doneCount}/${count} done`
@@ -1639,7 +1850,7 @@ export function TaskList({
 
             <TaskFilterPanel
               title="Assignee"
-              hint="multi"
+              hint="tap to filter"
               testId="task-list-filter-assignee"
               open={filterOpen.assignee}
               onOpenChange={(open) => setFilterOpen((p) => ({ ...p, assignee: open }))}
@@ -1656,7 +1867,10 @@ export function TaskList({
               >
                 <TaskFilterChip
                   active={ownerFilters.size === 0}
-                  onClick={() => setOwnerFilters(new Set())}
+                  onClick={() => {
+                    lastOwnerIdx.current = null;
+                    setOwnerFilters(new Set());
+                  }}
                   title={`${ownerFacetTasks.length} match other filters · ${ownerFacetTasks.filter((t) => t.status === "done").length} done · ${ownerFacetTasks.filter((t) => noteIndicatesRollover(t.notes)).length} rolled over`}
                 >
                   All
@@ -1684,7 +1898,7 @@ export function TaskList({
                     <TaskFilterChip
                       key={b.id}
                       active={active}
-                      onClick={() => toggleOwnerFilter(b.id)}
+                      onClick={(e) => toggleOwnerFilter(b.id, e)}
                       title={countTitle}
                       accent={b.accent}
                     >
@@ -1704,7 +1918,7 @@ export function TaskList({
 
             <TaskFilterPanel
               title="Status"
-              hint="multi"
+              hint="tap to filter"
               testId="task-list-filter-status"
               open={filterOpen.status}
               onOpenChange={(open) => setFilterOpen((p) => ({ ...p, status: open }))}
@@ -1723,7 +1937,10 @@ export function TaskList({
               >
                 <TaskFilterChip
                   active={statusFilters.size === 0}
-                  onClick={() => setStatusFilters(new Set())}
+                  onClick={() => {
+                    lastStatusIdx.current = null;
+                    setStatusFilters(new Set());
+                  }}
                   title={`${statusFacetTasks.length} tasks match other filters`}
                 >
                   All statuses
@@ -1746,7 +1963,7 @@ export function TaskList({
                     <TaskFilterChip
                       key={s.id}
                       active={active}
-                      onClick={() => toggleStatusFilter(s.id)}
+                      onClick={(e) => toggleStatusFilter(s.id, e)}
                       title={`Filter: ${s.label} (${count}) · ${rolled} rolled over`}
                       accent={STATUS_ACCENT[s.id]}
                     >
@@ -1766,7 +1983,7 @@ export function TaskList({
 
             <TaskFilterPanel
               title="Category"
-              hint="multi"
+              hint="tap to filter"
               testId="task-list-filter-category"
               open={filterOpen.category}
               onOpenChange={(open) => setFilterOpen((p) => ({ ...p, category: open }))}
@@ -1785,7 +2002,10 @@ export function TaskList({
               >
                 <TaskFilterChip
                   active={categoryFilters.size === 0}
-                  onClick={() => setCategoryFilters(new Set())}
+                  onClick={() => {
+                    lastCategoryIdx.current = null;
+                    setCategoryFilters(new Set());
+                  }}
                   title={`Show all categories (${categoryFacetTasks.length})`}
                 >
                   All
@@ -1800,7 +2020,7 @@ export function TaskList({
                     <TaskFilterChip
                       key={b.id}
                       active={active}
-                      onClick={() => toggleCategoryFilter(b.id)}
+                      onClick={(e) => toggleCategoryFilter(b.id, e)}
                       title={`Filter: ${b.label} (${count})`}
                     >
                       {b.label}
@@ -1891,9 +2111,11 @@ export function TaskList({
               Change…
             </option>
             <option value={UNASSIGNED_OWNER}>Unassigned</option>
-            <option value="Tina">Tina</option>
-            <option value="Evelyn">Evelyn</option>
-            <option value="Lyriq">Lyriq</option>
+            {PARTNER_ASSIGNEES.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
             <option value="Both">Both</option>
           </select>
           <label className="form-label" style={{ margin: 0, fontSize: "0.9375rem" }}>Sprint</label>
@@ -2068,6 +2290,27 @@ export function TaskList({
           >
             Append notes
           </button>
+          <button
+            type="button"
+            className="btn btn-outline"
+            data-testid="task-list-unlock-selected"
+            disabled={
+              busy ||
+              unlockTargetSprint == null ||
+              ![...selectedIds].some((id) => {
+                const t = tasksRef.current.find((x) => x.id === id);
+                return t && isSprintLocked(closedSprints, t.sprint);
+              })
+            }
+            title={
+              unlockTargetSprint == null
+                ? "No open sprint to unlock into"
+                : `Move locked selected tasks to ${sprintLabel(unlockTargetSprint)}`
+            }
+            onClick={() => void unlockSelected()}
+          >
+            <Unlock size={14} /> Unlock
+          </button>
           <button type="button" className="btn btn-outline" style={{ color: "#9B2F28" }} onClick={deleteSelected}>
             <Trash2 size={14} /> Delete
           </button>
@@ -2123,7 +2366,8 @@ export function TaskList({
           const overdue = isTaskOverdue(t);
           const dueToday = isTaskDueToday(t);
           const dueColor = overdue ? "#9B2F28" : dueToday ? "var(--bronze)" : "var(--text-muted)";
-          const locked = isSprintLocked(closedSprints, t.sprint);
+          const sprintClosed = isSprintLocked(closedSprints, t.sprint);
+          const editLocked = isSprintEditLocked(closedSprints, t.sprint, authUser);
           const rolledIn = noteIndicatesRollover(t.notes);
           return (
             <div
@@ -2155,7 +2399,7 @@ export function TaskList({
                 className="task-row"
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "28px 28px 78px minmax(0, 1fr)",
+                  gridTemplateColumns: "28px 28px minmax(5.5rem, max-content) minmax(0, 1fr)",
                   gap: 10,
                   alignItems: "start",
                 }}
@@ -2183,7 +2427,11 @@ export function TaskList({
                 >
                   {open ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                 </button>
-                <span className="flat-label flat-label--id" style={{ marginTop: 6 }} title={normalizeParentId(t.parentId) ? `Subtask of ${t.parentId}` : undefined}>
+                <span
+                  className="flat-label flat-label--id task-row__id"
+                  style={{ marginTop: 6 }}
+                  title={normalizeParentId(t.parentId) ? `Subtask of ${t.parentId}` : t.id}
+                >
                   {normalizeParentId(t.parentId) ? `↳ ${t.id}` : t.id}
                 </span>
                 <div style={{ minWidth: 0 }}>
@@ -2222,6 +2470,8 @@ export function TaskList({
                         resize: "vertical",
                         padding: "6px 8px",
                       }}
+                      disabled={editLocked}
+                      title={editLocked ? sprintLockedMessage(Number(t.sprint)) : undefined}
                       onBlur={(e) => void commitDescription(t.id, e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" && !e.shiftKey) {
@@ -2269,7 +2519,20 @@ export function TaskList({
                       <span className={`task-status-dot task-status-dot--${t.status}`} />
                       {TASK_STATUS_LABELS[t.status]}
                     </span>
-                    {locked && <SprintLockedBanner size={12} />}
+                    {sprintClosed && <SprintLockedBanner size={12} />}
+                    {sprintClosed && unlockTargetSprint != null && (
+                      <button
+                        type="button"
+                        className="btn btn-outline"
+                        data-testid={`task-unlock-${t.id}`}
+                        disabled={busy}
+                        title={`Unlock ${t.id} into ${sprintLabel(unlockTargetSprint)}`}
+                        onClick={() => void unlockTask(t.id)}
+                        style={{ padding: "4px 10px", fontSize: "0.875rem" }}
+                      >
+                        <Unlock size={14} /> Unlock
+                      </button>
+                    )}
                     {overdue && (
                       <span style={{ fontSize: "0.9375rem", fontWeight: 700, color: "#9B2F28", textTransform: "uppercase" }}>
                         Overdue
@@ -2286,6 +2549,23 @@ export function TaskList({
                     {count > 0 ? ` · ${count} file${count === 1 ? "" : "s"}` : ""}
                     {t.dateCompleted ? ` · Completed ${t.dateCompleted}` : ""}
                   </div>
+                  <AdminCrossLinks
+                    entity={{ kind: "task", id: t.id }}
+                    links={crossLinksForTaskId(t.id)}
+                    edges={entityEdges}
+                    titles={entityTitles}
+                    editable
+                    candidates={linkCandidates}
+                    busy={busy}
+                    onLink={(target) =>
+                      linkEntities({ kind: "task", id: t.id }, target)
+                    }
+                    onUnlink={(target) =>
+                      unlinkEntities({ kind: "task", id: t.id }, target)
+                    }
+                    testId={`task-crosslinks-${t.id}`}
+                    style={{ marginTop: 6 }}
+                  />
                   <div
                     style={{
                       fontSize: "0.875rem",
@@ -2332,8 +2612,8 @@ export function TaskList({
                         value={t.category}
                         onChange={(e) => void patch(t.id, { category: e.target.value as TaskCategory })}
                         aria-label={`Category for ${t.id}`}
-                        disabled={locked}
-                        title={locked ? sprintLockedMessage(Number(t.sprint)) : undefined}
+                        disabled={editLocked}
+                        title={editLocked ? sprintLockedMessage(Number(t.sprint)) : undefined}
                       >
                         {TASK_CATEGORIES.map((c) => (
                           <option key={c.id} value={c.id}>{c.label}</option>
@@ -2352,9 +2632,9 @@ export function TaskList({
                             assignedTo: e.target.value as GyshTask["assignedTo"],
                           })
                         }
-                        disabled={locked || isBacklogSprint(t.sprint)}
+                        disabled={editLocked || isBacklogSprint(t.sprint)}
                         title={
-                          locked
+                          editLocked
                             ? sprintLockedMessage(Number(t.sprint))
                             : isBacklogSprint(t.sprint)
                             ? "Backlog tasks stay Unassigned until moved into a sprint"
@@ -2370,9 +2650,11 @@ export function TaskList({
                         aria-label={`Assignee for ${t.id}`}
                       >
                         <option value={UNASSIGNED_OWNER}>Unassigned</option>
-                        <option value="Tina">Tina</option>
-                        <option value="Evelyn">Evelyn</option>
-                        <option value="Lyriq">Lyriq</option>
+                        {PARTNER_ASSIGNEES.map((p) => (
+                          <option key={p} value={p}>
+                            {p}
+                          </option>
+                        ))}
                         <option value="Both">Both</option>
                       </select>
                     </label>
@@ -2440,8 +2722,8 @@ export function TaskList({
                         value={t.sprint ?? 0}
                         onChange={(e) => void patch(t.id, { sprint: Number(e.target.value) })}
                         aria-label={`Sprint for ${t.id}`}
-                        disabled={locked}
-                        title={locked ? sprintLockedMessage(Number(t.sprint)) : undefined}
+                        disabled={editLocked}
+                        title={editLocked ? sprintLockedMessage(Number(t.sprint)) : undefined}
                       >
                         <option value={BACKLOG_SPRINT}>Backlog</option>
                         {sprints.map((s) => (
@@ -2463,8 +2745,8 @@ export function TaskList({
                         value={t.priority}
                         onChange={(e) => void patch(t.id, { priority: e.target.value as TaskPriority })}
                         aria-label={`Priority for ${t.id}`}
-                        disabled={locked}
-                        title={locked ? sprintLockedMessage(Number(t.sprint)) : undefined}
+                        disabled={editLocked}
+                        title={editLocked ? sprintLockedMessage(Number(t.sprint)) : undefined}
                       >
                         <option value="P0">P0 Severe</option>
                         <option value="P1">P1 High</option>
@@ -2487,7 +2769,7 @@ export function TaskList({
                           borderColor: overdue ? "rgba(155,47,40,0.45)" : undefined,
                         }}
                         onChange={(e) => void commitDueDate(t.id, e.target.value)}
-                        disabled={locked}
+                        disabled={editLocked}
                       />
                     </label>
                     <label className="task-card-control">
@@ -2510,8 +2792,8 @@ export function TaskList({
                         }}
                         style={{ borderLeft: `3px solid ${STATUS_ACCENT[t.status]}` }}
                         aria-label={`Status for ${t.id}`}
-                        disabled={locked}
-                        title={locked ? sprintLockedMessage(Number(t.sprint)) : undefined}
+                        disabled={editLocked}
+                        title={editLocked ? sprintLockedMessage(Number(t.sprint)) : undefined}
                       >
                         {(Object.keys(TASK_STATUS_LABELS) as TaskStatus[]).map((s) => (
                           <option key={s} value={s} disabled={t.assignedTo === "Both" && s === "done" && !(t.tinaDone && t.evelynDone)}>
@@ -2610,7 +2892,7 @@ export function TaskList({
                   onEditDraft={(noteId, text) => setEditNoteDraft(t.id, noteId, text)}
                   onNewDraft={(text) => setNewNoteDraft(t.id, text)}
                   onDeleteNote={(noteId) => setEditNoteDraft(t.id, noteId, "")}
-                  disabled={busy || locked}
+                  disabled={busy || editLocked}
                   label={
                     dirtyNoteIds.has(t.id)
                       ? "Notes (unsaved)"
@@ -2631,16 +2913,16 @@ export function TaskList({
                     type="button"
                     className="btn btn-primary qa-save-btn--ready"
                     style={{ padding: "6px 14px", fontSize: "0.9375rem" }}
-                    disabled={busy || locked || !dirtyNoteIds.has(t.id)}
+                    disabled={busy || editLocked || !dirtyNoteIds.has(t.id)}
                     onClick={() => {
-                      if (locked) {
+                      if (editLocked) {
                         setError(sprintLockedMessage(Number(t.sprint)));
                         return;
                       }
                       void saveOneTask(t.id);
                     }}
                     title={
-                      locked
+                      editLocked
                         ? sprintLockedMessage(Number(t.sprint))
                         : "Save notes for this task"
                     }

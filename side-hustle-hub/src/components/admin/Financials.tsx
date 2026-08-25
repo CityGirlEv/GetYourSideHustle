@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   DollarSign,
+  CreditCard,
   FileText,
   ListTree,
   Paperclip,
@@ -34,6 +35,7 @@ import {
   type FinancialsSubId,
 } from "../../lib/admin-deep-links";
 import { PartnershipMoneyModel } from "./PartnershipMoneyModel";
+import { FinancialPaymentsPanel } from "./FinancialPaymentsPanel";
 
 type SubTab = FinancialsSubId;
 
@@ -382,7 +384,8 @@ export const Financials: React.FC = () => {
               <DollarSign size={22} /> Financials
             </h2>
             <p style={{ color: "var(--text-primary)", margin: 0, fontSize: "0.92rem" }}>
-              Admin-only budget, expenses, money model, receipts, and the T + E partnership contract.
+              Admin-only budget, expenses, Stripe payments, money model, receipts, and the T + E partnership
+              contract.
             </p>
           </div>
           <button type="button" className="btn btn-primary" disabled={saving || loading} onClick={() => void persist()} style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
@@ -418,6 +421,7 @@ export const Financials: React.FC = () => {
           [
             ["budget", "Budget", <Wallet size={16} key="b" />],
             ["expenses", "Expenses", <Receipt size={16} key="e" />],
+            ["payments", "Payments", <CreditCard size={16} key="p" />],
             ["money-model", "Money model", <ListTree size={16} key="m" />],
             ["contract", "Contract", <FileText size={16} key="c" />],
           ] as const
@@ -445,7 +449,9 @@ export const Financials: React.FC = () => {
         </div>
       )}
 
-      {loading ? (
+      {sub === "payments" ? (
+        <FinancialPaymentsPanel />
+      ) : loading ? (
         <WaitIndicator message="Loading financials…" style={{ padding: 24, marginTop: 0 }} />
       ) : sub === "money-model" ? (
         <PartnershipMoneyModel />

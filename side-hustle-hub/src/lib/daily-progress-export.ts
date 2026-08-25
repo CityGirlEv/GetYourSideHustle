@@ -4,6 +4,14 @@ import { jsPDF } from "jspdf";
 import gyshLogoUrl from "../assets/gysh-logo-rocket.png";
 import { PRODUCTION_SITE_URL, ROOT_DOMAIN, SITE_NAME } from "./site-config";
 import type { DailyProgressReport } from "./daily-progress-report";
+import {
+  PDF_CONTENT_BOTTOM,
+  PDF_CONTENT_TOP,
+  PDF_MARGIN,
+  applyPdfPageBranding,
+  drawPdfPageChrome,
+  loadPdfLogoDataUrl,
+} from "./pdf-branding";
 
 export type ProgressExportFormat = "pdf" | "excel" | "word";
 
@@ -15,7 +23,6 @@ export type ProgressExportResult = {
 
 const SITE_URL = PRODUCTION_SITE_URL;
 const SITE_HOST = ROOT_DOMAIN;
-const FOOTER_LINE = `${SITE_NAME}  ·  ${SITE_HOST}`;
 
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -249,62 +256,6 @@ export function buildDailyProgressSnapshotHtml(
 </html>`;
 }
 
-const PDF_HEADER_H = 52;
-const PDF_FOOTER_H = 40;
-
-function drawPdfChrome(
-  doc: jsPDF,
-  report: DailyProgressReport,
-  usersLabel: string,
-  page: number,
-  total: number,
-  logoDataUrl: string | undefined,
-  margin: number,
-  pageW: number,
-  pageH: number,
-) {
-  // Header band
-  doc.setDrawColor(155, 47, 40);
-  doc.setLineWidth(1.5);
-  doc.line(margin, margin + PDF_HEADER_H - 8, pageW - margin, margin + PDF_HEADER_H - 8);
-
-  let textX = margin;
-  if (logoDataUrl) {
-    try {
-      const props = doc.getImageProperties(logoDataUrl);
-      const ratio = props.width / Math.max(1, props.height);
-      const imgH = 28;
-      const imgW = imgH * ratio;
-      doc.addImage(logoDataUrl, "PNG", margin, margin - 2, imgW, imgH);
-      textX = margin + imgW + 10;
-    } catch {
-      /* logo optional */
-    }
-  }
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.setTextColor(155, 47, 40);
-  doc.text("GYSH Daily Progress Report", textX, margin + 12);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.setTextColor(107, 83, 68);
-  const meta = `${report.label} · ${usersLabel}`;
-  doc.text(meta, textX, margin + 26, { maxWidth: pageW - textX - margin });
-
-  // Footer band
-  const footerY = pageH - margin;
-  doc.setDrawColor(215, 198, 151);
-  doc.setLineWidth(1);
-  doc.line(margin, footerY - 16, pageW - margin, footerY - 16);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.setTextColor(107, 83, 68);
-  doc.text(SITE_HOST, margin, footerY);
-  doc.text(FOOTER_LINE, pageW / 2, footerY, { align: "center" });
-  doc.text(`Page ${page} of ${total}`, pageW - margin, footerY, { align: "right" });
-}
-
 function drawPdfTable(
   doc: jsPDF,
   section: TableSection,
@@ -400,18 +351,19 @@ export async function downloadDailyProgressPdf(
   report: DailyProgressReport,
   usersLabel: string,
 ): Promise<ProgressExportResult> {
-  const logoDataUrl = await loadLogoDataUrl();
+  const logoDataUrl = await loadPdfLogoDataUrl();
   const snapshotHtml = buildDailyProgressSnapshotHtml(report, usersLabel, {
     logoDataUrl,
     formatNote: "PDF",
   });
 
   const doc = new jsPDF({ unit: "pt", format: "letter" });
-  const margin = 40;
+  drawPdfPageChrome(doc);
+  const margin = PDF_MARGIN;
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
-  const contentTop = margin + PDF_HEADER_H;
-  const contentBottom = pageH - margin - PDF_FOOTER_H;
+  const contentTop = PDF_CONTENT_TOP;
+  const contentBottom = PDF_CONTENT_BOTTOM;
   let y = contentTop;
 
   for (const section of reportTables(report, usersLabel)) {
@@ -424,16 +376,12 @@ export async function downloadDailyProgressPdf(
       y,
       onNewPage: () => {
         doc.addPage();
+        drawPdfPageChrome(doc);
       },
     });
   }
 
-  const total = doc.getNumberOfPages();
-  for (let i = 1; i <= total; i += 1) {
-    doc.setPage(i);
-    drawPdfChrome(doc, report, usersLabel, i, total, logoDataUrl, margin, pageW, pageH);
-  }
-
+  applyPdfPageBranding(doc, "Daily Progress Report", logoDataUrl);
   doc.save(`${fileStem(report, usersLabel)}.pdf`);
   return { format: "pdf", snapshotHtml };
 }
