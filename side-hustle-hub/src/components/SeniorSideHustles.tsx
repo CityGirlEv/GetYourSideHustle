@@ -27,6 +27,7 @@ import {
   type SeniorMatchAnswers,
 } from "../lib/seniors-content";
 import {
+  COMING_SOON_NOT_UNLOCKED_NOTE,
   guideTierBadgeLabel,
   guideTierMembershipNote,
   resolveGuideAccess,
@@ -100,7 +101,9 @@ function SeniorGuideCard({
         </div>
       </div>
       <h3>{guide.title}</h3>
-      {!comingSoon && (
+      {comingSoon ? (
+        <p className="seniors-guide-tier-note">{COMING_SOON_NOT_UNLOCKED_NOTE}</p>
+      ) : (
         <p className="seniors-guide-tier-note">{guideTierMembershipNote(minTier)}</p>
       )}
       <p>{guide.blurb}</p>
@@ -731,7 +734,7 @@ export function SeniorSideHustles({
         {tab === "guides" && (
           <p className="seniors-lead-ideas">
             Guides stay locked until you have a Free Membership (or higher). Free-plan guides unlock
-            with Free Membership; Starter+ guides need those plans. A few senior-specific playbooks
+            with Free Membership; Starter or higher guides need those plans. A few senior-specific playbooks
             are still coming soon.
           </p>
         )}
@@ -864,7 +867,7 @@ export function SeniorSideHustles({
                 <h3 className="seniors-join-title" data-testid="seniors-join-pane-title">
                   <BadgeCheck size={22} aria-hidden="true" style={{ color: "var(--crimson)" }} />
                   <span>Join the Senior Side Hustle Team</span>
-                  <span className="glow-badge amber kids-audience-age-badge">Ages 55+</span>
+                  <span className="glow-badge amber kids-audience-age-badge">Ages 50+</span>
                 </h3>
                 {!interested ? (
                   <div className="seniors-join-cta-row seniors-join-cta-row--top" data-testid="seniors-join-cta-row">

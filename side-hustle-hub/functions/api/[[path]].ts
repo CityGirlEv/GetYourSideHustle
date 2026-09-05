@@ -12,6 +12,7 @@ import {
   handleResetPassword,
   handleUpdateMembershipPlan,
   requireAdminSession,
+  requireTestingPortalSession,
   requireDb,
   requireSession,
   type Env,
@@ -236,6 +237,10 @@ export async function onRequest(context: {
       const { handleBetaTestingDashboard } = await import("../_lib/beta-nda-store");
       return withCors(request, await handleBetaTestingDashboard(env.DB, user));
     }
+    if (route === "beta-testing/points" && method === "GET") {
+      const { handleBetaTesterPoints } = await import("../_lib/beta-points");
+      return withCors(request, await handleBetaTesterPoints(env, user));
+    }
     if (route === "auth/membership-plan" && method === "POST") {
       return withCors(request, await handleUpdateMembershipPlan(env, request, user));
     }
@@ -290,15 +295,89 @@ export async function onRequest(context: {
       return withCors(request, await getBlueprint(env, user, parts[1]));
     }
 
-    // ——— Admin / QA only ———
+    // ——— Testing Portal (Admin or QA) ———
+    const isTestingPortalRoute =
+      route === "test-statuses" ||
+      route === "test-attachments" ||
+      (route === "closed-sprints" && method === "GET") ||
+      route === "soft-launch-overrides" ||
+      route === "time-entries" ||
+      route === "time-entries/start" ||
+      route === "time-entries/pause" ||
+      route === "time-entries/end" ||
+      route === "automated-tests/run" ||
+      route === "automated-tests/runs" ||
+      (route === "users" && method === "GET") ||
+      (route === "tasks" && method === "GET") ||
+      (route === "email/log" && method === "GET");
+
+    if (isTestingPortalRoute) {
+      const testingAuth = await requireTestingPortalSession(env, request);
+      if (testingAuth instanceof Response) return withCors(request, testingAuth);
+      const tester = testingAuth.user;
+
+      if (route === "users" && method === "GET") {
+        return withCors(request, await listUsers(env));
+      }
+      if (route === "tasks" && method === "GET") {
+        return withCors(request, await listTasks(env));
+      }
+      if (route === "test-statuses" && method === "GET") {
+        return withCors(request, await listTestStatuses(env));
+      }
+      if (route === "test-statuses" && method === "PUT") {
+        return withCors(request, await setTestStatus(env, request, tester));
+      }
+      if (route === "test-statuses" && method === "DELETE") {
+        return withCors(
+          request,
+          error("Test results cannot be bulk-deleted. Update individual case statuses instead.", 405),
+        );
+      }
+      if (route === "test-attachments" && method === "GET") {
+        return withCors(request, await listTestAttachments(env, request));
+      }
+      if (route === "test-attachments" && method === "POST") {
+        return withCors(request, await uploadTestAttachment(env, request, tester));
+      }
+      if (route === "test-attachments" && method === "DELETE") {
+        return withCors(request, await deleteTestAttachment(env, request, tester));
+      }
+      if (route === "closed-sprints" && method === "GET") {
+        return withCors(request, await listClosedSprints(env));
+      }
+      if (route === "soft-launch-overrides") {
+        return withCors(request, await handleSoftLaunchOverrides(env, request, tester));
+      }
+      if (route === "time-entries" && method === "GET") {
+        return withCors(request, await listTimeEntries(env, request, tester));
+      }
+      if (route === "time-entries/start" && method === "POST") {
+        return withCors(request, await startTimeEntry(env, request, tester));
+      }
+      if (route === "time-entries/pause" && method === "POST") {
+        return withCors(request, await pauseTimeEntry(env, request, tester));
+      }
+      if (route === "time-entries/end" && method === "POST") {
+        return withCors(request, await endTimeEntry(env, request, tester));
+      }
+      if (route === "automated-tests/run" && method === "POST") {
+        return withCors(request, await runAutomatedTests(env, request, tester));
+      }
+      if (route === "automated-tests/runs" && method === "GET") {
+        return withCors(request, await listAutomatedTestRuns(env));
+      }
+      if (route === "email/log" && method === "GET") {
+        return withCors(request, await listEmailLog(env, request));
+      }
+    }
+
+    // ——— Admin only ———
     const adminAuth = await requireAdminSession(env, request);
     if (adminAuth instanceof Response) return withCors(request, adminAuth);
 
     if (route === "audit" && method === "GET") {
-      return withCors(request, await listAudit(env));
-    }
-    if (route === "users" && method === "GET") {
-      return withCors(request, await listUsers(env));
+      return withCors(request, await listAudit(env, request));
     }
     if (route === "admin/hustle-schedules" && method === "GET") {
       const { listAllHustleSchedules } = await import("../_lib/schedule-reminders");
@@ -310,9 +389,6 @@ export async function onRequest(context: {
     if (parts[0] === "users" && parts[1] && method === "DELETE") {
       return withCors(request, await deleteUser(env, parts[1]));
     }
-    if (route === "tasks" && method === "GET") {
-      return withCors(request, await listTasks(env));
-    }
     if (route === "tasks" && method === "PUT") {
       return withCors(request, await saveTasks(env, request, user));
     }
@@ -321,33 +397,6 @@ export async function onRequest(context: {
     }
     if (route === "plan-attachments") {
       return withCors(request, await handlePlanAttachments(env, request, user));
-    }
-    if (route === "test-statuses" && method === "GET") {
-      return withCors(request, await listTestStatuses(env));
-    }
-    if (route === "test-statuses" && method === "PUT") {
-      return withCors(request, await setTestStatus(env, request, user));
-    }
-    if (route === "test-statuses" && method === "DELETE") {
-      return withCors(
-        request,
-        error("Test results cannot be bulk-deleted. Update individual case statuses instead.", 405),
-      );
-    }
-    if (route === "test-attachments" && method === "GET") {
-      return withCors(request, await listTestAttachments(env, request));
-    }
-    if (route === "test-attachments" && method === "POST") {
-      return withCors(request, await uploadTestAttachment(env, request, user));
-    }
-    if (route === "test-attachments" && method === "DELETE") {
-      return withCors(request, await deleteTestAttachment(env, request, user));
-    }
-    if (route === "automated-tests/run" && method === "POST") {
-      return withCors(request, await runAutomatedTests(env, request, user));
-    }
-    if (route === "automated-tests/runs" && method === "GET") {
-      return withCors(request, await listAutomatedTestRuns(env));
     }
     if (route === "content" && method === "GET") {
       return withCors(request, await listContent(env, user));

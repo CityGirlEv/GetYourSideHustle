@@ -31,4 +31,13 @@ describe("AdminCrossLinks helpers", () => {
     expect(links.some((l) => l.opts.itemId === "sl-s3-yt-first-short")).toBe(true);
     expect(links.some((l) => l.opts.taskId === "T-SL-S3-YT-FIRST-SHORT")).toBe(true);
   });
+
+  it("links sibling owner copies of the same test", () => {
+    const links = crossLinksForTestId("PROOF-001-TINA");
+    expect(links.some((l) => l.opts.testId === "PROOF-001-LYRIQ")).toBe(true);
+    expect(links.some((l) => /^Same test · /i.test(l.label))).toBe(true);
+
+    const stripe = crossLinksForTestId("MEMBER-STRIPE-001-EVELYN");
+    expect(stripe.some((l) => l.opts.testId === "MEMBER-STRIPE-001-CANDACE")).toBe(true);
+  });
 });

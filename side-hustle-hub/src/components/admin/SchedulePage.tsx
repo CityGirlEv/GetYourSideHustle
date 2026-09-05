@@ -59,6 +59,8 @@ import {
   buildUnlockTaskPatch,
   healClosedSprintTaskLeftovers,
   healClosedSprintTestLeftovers,
+  healClosedSprintPlanLeftovers,
+  itemBelongsToSprintFilter,
   itemRolledRelativeToSprint,
   noteIndicatesRollover,
   planToBoardCard,
@@ -85,7 +87,6 @@ import {
   ACCEPT_ATTACHMENTS,
   applyPartnerDone,
   assigneeDisplayLabel,
-  assigneeIncludes,
   base64ToBlob,
   deletePlanAttachmentRemote,
   fetchPlanAttachmentContent,
@@ -98,16 +99,31 @@ import {
   parseAssigneePeople,
   parseMMDDYY,
   persistTasks,
-  PARTNER_ASSIGNEES,
+  partnerAssigneesWithExtras,
   requiresPartnerDone,
   TASK_STATUS_LABELS,
   todayMMDDYY,
   uploadPlanAttachment,
   type GyshTask,
-  type PartnerAssignee,
   type TaskStatus,
 } from "../../lib/gysh-tasks";
+import {
+  matchesScheduleAssigneeFilter,
+  scheduleAssigneeProgressPeople,
+  scheduleOwnerBubbles,
+  scheduleTestOwnerLabels,
+  type ScheduleOwnerFilter,
+} from "../../lib/gysh-schedule-assignees";
 import { AssigneeMultiSelect } from "./AssigneeMultiSelect";
+import {
+  TesterChipStatusCounts,
+  TesterStatusAbbrevLegend,
+  formatTesterResultMeta,
+  tallyStatuses,
+  testStatusAbbrev,
+  testStatusTooltip,
+  type StatusTally,
+} from "./QaProgressBars";
 import { formatAuditTrail } from "../../lib/gysh-audit";
 import {
   SYSTEM_ASSIGNED_BY,
@@ -137,6 +153,7 @@ import {
   noteMeetsRequirement,
   type TestStatusesPayload,
   type TestStatus,
+  nextKeyedMap,
 } from "../../lib/gysh-test-plan";
 import { NotesThread } from "./NotesThread";
 import {
@@ -154,6 +171,7 @@ import {
   type QaTester,
   type QaTesterId,
 } from "../../lib/gysh-roles";
+import { leadDevAssigneeForStatusChange, statusAssignsToLeadDev } from "../../lib/gysh-fail-assignee";
 import {
   BACKLOG_SPRINT,
   CEREMONY_LABELS,
@@ -251,7 +269,7 @@ const CEREMONY_COLORS: Record<SprintCeremony["type"], string> = {
   retrospective: "#9B2F28",
 };
 
-type BoardOwnerFilter = "all" | PartnerAssignee | "Both" | "Unassigned";
+type BoardOwnerFilter = ScheduleOwnerFilter;
 
 type CardDraft = {
   assignee?: string;
@@ -323,7 +341,10 @@ function bulkAssigneeForSource(
     return value;
   }
   // Tests use a single QA tester id — only apply when exactly one person is staged.
-  const people = parseAssigneePeople(value);
+  const people = parseAssigneePeople(
+    value,
+    qaTesters.map((t) => t.shortName),
+  );
   if (people.length === 1) {
     return qaTesters.find((t) => t.shortName === people[0])?.id ?? null;
   }
@@ -331,39 +352,14 @@ function bulkAssigneeForSource(
   return id ?? null;
 }
 
-const OWNER_BUBBLES: { id: BoardOwnerFilter; label: string; accent?: string }[] = [
-  { id: "all", label: "All assignees" },
-  { id: "Tina", label: "Tina", accent: "#9B2F28" },
-  { id: "Evelyn", label: "Evelyn", accent: "#947D64" },
-  { id: "Lyriq", label: "Lyriq", accent: "#2e7d32" },
-  { id: "Candace", label: "Candace", accent: "#3d6b8c" },
-  { id: "Both", label: "Both", accent: "#181718" },
-  { id: "Unassigned", label: "Unassigned", accent: "#7a7064" },
-];
-
 /** Assigned By filter sentinel for cards with no assignor set. */
 const ASSIGN_BY_UNSET = "__unset__";
+
+const ALL_TESTS_BY_ID = new Map(ALL_TESTS.map((t) => [t.id, t]));
 
 /** Columns so chips fill exactly 2 rows (row-major). */
 function chipColsForTwoRows(count: number): number {
   return Math.max(1, Math.ceil(count / 2));
-}
-
-/** Assignee filter: Tina/Evelyn match any card that includes them (incl. Both / multi).
- *  Tests store lowercase ids (`evelyn`); tasks use display names (`Evelyn`) — normalize first. */
-function matchesAssigneeFilter(ownerValue: string, owner: BoardOwnerFilter): boolean {
-  if (owner === "all") return true;
-  const v = normalizeProgressAssignee(ownerValue);
-  if (owner === "Unassigned") {
-    return v === "Unassigned";
-  }
-  if (owner === "Both") {
-    return requiresPartnerDone(v) || v === "Both";
-  }
-  if ((PARTNER_ASSIGNEES as readonly string[]).includes(owner)) {
-    return v === owner || assigneeIncludes(v, owner as PartnerAssignee);
-  }
-  return v === owner;
 }
 
 /** Assignor (Assigned By) filter. */
@@ -609,6 +605,7 @@ function ProgressMeter({
   tests,
   tasksDone,
   testsDone,
+  testTally,
   onFilterClick,
   selected,
 }: {
@@ -620,6 +617,8 @@ function ProgressMeter({
   tests?: number;
   tasksDone?: number;
   testsDone?: number;
+  /** When set, show Testing Portal status abbrevs for tests instead of Tests: done/total. */
+  testTally?: StatusTally;
   onFilterClick?: () => void;
   selected?: boolean;
 }) {
@@ -661,7 +660,20 @@ function ProgressMeter({
         )}
         <span style={{ color: "var(--text-primary)", fontVariantNumeric: "tabular-nums", textAlign: "right" }}>
           {done}/{total} · {value}%
-          {tq && (
+          {testTally ? (
+            <span
+              className="schedule-sprint-tq"
+              style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", fontSize: "0.85rem", marginTop: 1 }}
+              title={formatTesterResultMeta(testTally)}
+            >
+              <TesterChipStatusCounts tally={testTally} />
+              {tq ? (
+                <span>
+                  Tasks: {tq.tasksDone}/{tq.tasks}
+                </span>
+              ) : null}
+            </span>
+          ) : tq ? (
             <span
               className="schedule-sprint-tq"
               style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", fontSize: "0.85rem", marginTop: 1 }}
@@ -670,7 +682,7 @@ function ProgressMeter({
               <span>Tests: {tq.testsDone}/{tq.tests}</span>
               <span>Tasks: {tq.tasksDone}/{tq.tasks}</span>
             </span>
-          )}
+          ) : null}
         </span>
       </div>
       <div
@@ -733,7 +745,7 @@ const WORK_STATUS_BUBBLES: { id: string; label: string }[] = [
 ];
 
 /** Test progress — same statuses as Testing Portal. */
-const TEST_STATUS_BUBBLES: { id: TestStatus; label: string }[] = (
+const TEST_STATUS_BUBBLES: { id: TestStatus; label: string; abbrev: string }[] = (
   [
     "not_run",
     "in_progress",
@@ -746,7 +758,11 @@ const TEST_STATUS_BUBBLES: { id: TestStatus; label: string }[] = (
     "failed_retest",
     "fixed_cursor",
   ] as const
-).map((id) => ({ id, label: TEST_STATUS_LABELS[id] }));
+).map((id) => ({
+  id,
+  label: TEST_STATUS_LABELS[id],
+  abbrev: testStatusAbbrev(id),
+}));
 
 function cardSprintPlacement(card: BoardCard): SprintPlacementStatus {
   return card.status === "carried" ? "carried" : "active";
@@ -1010,6 +1026,7 @@ export function SchedulePage({
   const [testStatuses, setTestStatuses] = useState<Record<string, TestStatus>>({});
   const [testNotes, setTestNotes] = useState<Record<string, string>>({});
   const [testAssignees, setTestAssignees] = useState<Record<string, string>>({});
+  const [testOriginalAssignees, setTestOriginalAssignees] = useState<Record<string, string>>({});
   const [testSprints, setTestSprints] = useState<Record<string, number>>({});
   const [testDueDates, setTestDueDates] = useState<Record<string, string>>({});
   const [testAssignedBy, setTestAssignedBy] = useState<Record<string, string>>({});
@@ -1045,8 +1062,13 @@ export function SchedulePage({
   const [bulkStatus, setBulkStatus] = useState("");
   const [bulkDueDate, setBulkDueDate] = useState("");
   const [bulkDescription, setBulkDescription] = useState("");
-  /** Active Users with QA role — test assignee dropdowns. */
+  /** Users with QA role (active or pending) — test assignee dropdowns + Schedule chips. */
   const [qaTesters, setQaTesters] = useState<QaTester[]>(() => [...QA_TESTERS]);
+  const knownAssignees = useMemo(
+    () => partnerAssigneesWithExtras(qaTesters.map((t) => t.shortName)),
+    [qaTesters],
+  );
+  const ownerBubbles = useMemo(() => scheduleOwnerBubbles(qaTesters), [qaTesters]);
   /** Structured notes drafts keyed by board card key (task:/test:…). */
   const [editNoteDrafts, setEditNoteDrafts] = useState<Record<string, Record<string, string>>>(
     {},
@@ -1075,9 +1097,9 @@ export function SchedulePage({
   const timers = useActiveTimers(Boolean(authUser));
   const startingTimersRef = useRef(new Set<string>());
 
-  const applyTestAudit = (data: Pick<TestStatusesPayload, "updatedAt" | "updatedBy">) => {
-    setTestUpdatedAt(data.updatedAt ?? {});
-    setTestUpdatedBy(data.updatedBy ?? {});
+  const applyTestAudit = (data: Pick<TestStatusesPayload, "updatedAt" | "updatedBy" | "partial">) => {
+    setTestUpdatedAt((prev) => nextKeyedMap(prev, data.updatedAt, data.partial));
+    setTestUpdatedBy((prev) => nextKeyedMap(prev, data.updatedBy, data.partial));
   };
 
   const sprints = useMemo(() => listUpcomingSprints(), []);
@@ -1112,7 +1134,19 @@ export function SchedulePage({
   const sprintOnlyCards = boardCards.filter((c) => {
     if (activeSprint === "backlog") return c.sprint === BACKLOG_SPRINT;
     if (activeSprint === "all") return !isBacklogSprint(c.sprint);
-    return c.sprint === activeSprint;
+    // Keep outbound rollovers on the source sprint so assignee counts don't vanish.
+    if (c.source === "test") {
+      return itemBelongsToSprintFilter(
+        testSprints[c.sourceId] ?? c.sprint,
+        testNotes[c.sourceId],
+        activeSprint,
+      );
+    }
+    if (c.source === "task") {
+      const task = tasks.find((t) => t.id === c.sourceId);
+      return itemBelongsToSprintFilter(task?.sprint ?? c.sprint, task?.notes, activeSprint);
+    }
+    return itemBelongsToSprintFilter(c.sprint, undefined, activeSprint);
   });
 
   const sprintScopedCards = sprintOnlyCards.filter((c) =>
@@ -1265,7 +1299,10 @@ export function SchedulePage({
         closed: closedList,
         actorLabel: actingAssignBy,
       });
+      const leftoverPlan = healClosedSprintPlanLeftovers(healedPlan.items, closedList);
       const boardTasks = leftoverTasks.changed.length > 0 ? leftoverTasks.tasks : healedTasks.tasks;
+      const boardPlan =
+        leftoverPlan.changed.length > 0 ? leftoverPlan.items : healedPlan.items;
       if (leftoverTests.changedIds.length > 0) {
         Object.assign(nextSprints, leftoverTests.sprints);
         workingTestDueDates = { ...workingTestDueDates, ...leftoverTests.dueDates };
@@ -1274,13 +1311,14 @@ export function SchedulePage({
         leftoverTests.changedIds.length > 0 ? leftoverTests.notes : testData.notes;
 
       setRetro(planRetro);
-      setItems(healedPlan.items);
+      setItems(boardPlan);
       setTasks(boardTasks);
       setTestStatuses(testData.statuses);
       setTestNotes(boardTestNotes);
       setTestAssignedBy(testData.assignedBy ?? {});
       applyTestAudit(testData);
       setTestAssignees(healedTests.assignees);
+      setTestOriginalAssignees(testData.originalAssignees ?? {});
       setTestDueDates(workingTestDueDates);
       setTestSprints(nextSprints);
       // Fresh load is the new baseline — discard any staged card edits.
@@ -1323,8 +1361,11 @@ export function SchedulePage({
               try {
                 const data = await saveTestStatusesBatch(rolledTestBatch);
                 setTestAssignees({ ...healedTests.assignees, ...data.assignees });
-                setTestStatuses(data.statuses);
-                setTestNotes(data.notes);
+                if (data.originalAssignees) {
+                  setTestOriginalAssignees((prev) => ({ ...prev, ...data.originalAssignees }));
+                }
+                setTestStatuses((prev) => nextKeyedMap(prev, data.statuses, data.partial));
+                setTestNotes((prev) => nextKeyedMap(prev, data.notes, data.partial));
                 setTestSprints({ ...nextSprints, ...data.sprints });
                 setTestDueDates({ ...workingTestDueDates, ...data.dueDates });
                 setTestAssignedBy((prev) => ({ ...prev, ...(data.assignedBy ?? {}) }));
@@ -1363,6 +1404,15 @@ export function SchedulePage({
               /* keep healed local state */
             }
           }
+          if (leftoverPlan.changed.length > 0) {
+            try {
+              const saved = await persistAgilePlan(boardPlan, planRetro);
+              setItems(saved.items);
+              setRetro(saved.retro);
+            } catch {
+              /* keep healed local state */
+            }
+          }
           if (leftoverTests.changedIds.length > 0) {
             try {
               const data = await saveTestStatusesBatch(
@@ -1375,8 +1425,8 @@ export function SchedulePage({
                   dueDate: leftoverTests.dueDates[caseId] ?? "",
                 })),
               );
-              setTestStatuses(data.statuses);
-              setTestNotes(data.notes);
+              setTestStatuses((prev) => nextKeyedMap(prev, data.statuses, data.partial));
+              setTestNotes((prev) => nextKeyedMap(prev, data.notes, data.partial));
               setTestAssignees({ ...healedTests.assignees, ...data.assignees });
               setTestSprints({ ...nextSprints, ...data.sprints });
               setTestDueDates({ ...workingTestDueDates, ...data.dueDates });
@@ -1396,13 +1446,14 @@ export function SchedulePage({
                 caseId,
                 status: (testData.statuses[caseId] ?? "not_run") as TestStatus,
                 note: (testData.notes[caseId] ?? "").trim(),
-                assignee: "",
+                // Preserve D1 owners — never blank assignees on schedule heals.
+                assignee: healedTests.assignees[caseId] ?? testData.assignees?.[caseId] ?? "",
                 sprint: workingTestSprints[caseId] ?? BACKLOG_SPRINT,
                 dueDate: workingTestDueDates[caseId] ?? "",
               }));
               const data = await saveTestStatusesBatch(batch);
-              setTestStatuses(data.statuses);
-              setTestNotes(data.notes);
+              setTestStatuses((prev) => nextKeyedMap(prev, data.statuses, data.partial));
+              setTestNotes((prev) => nextKeyedMap(prev, data.notes, data.partial));
               setTestAssignees({ ...healedTests.assignees, ...data.assignees });
               setTestSprints({ ...nextSprints, ...data.sprints });
               setTestDueDates({ ...workingTestDueDates, ...data.dueDates });
@@ -1526,11 +1577,51 @@ export function SchedulePage({
     if (isBacklogSprint(sprint) && card.source !== "test") {
       return UNASSIGNED_OWNER;
     }
-    if (isBacklogSprint(sprint) && card.source === "test") {
-      const raw = testAssignees[card.sourceId] || "";
-      return raw ? normalizeProgressAssignee(raw) : UNASSIGNED_OWNER;
+    if (card.source === "test") {
+      const test = ALL_TESTS_BY_ID.get(card.sourceId);
+      const db = testAssignees[card.sourceId] || "";
+      if (test) {
+        const labels = scheduleTestOwnerLabels(
+          test,
+          db,
+          testOriginalAssignees[card.sourceId],
+          testStatuses[card.sourceId],
+          qaTesters,
+        );
+        // Primary label for display; Fail→Dev still lists the QA finder via cardMatchesOwnerFilter.
+        return labels[0] ?? UNASSIGNED_OWNER;
+      }
+      return db ? normalizeProgressAssignee(db) : UNASSIGNED_OWNER;
     }
     return card.owner;
+  };
+
+  /** Same ownership rules as Testing Portal chips (catalog + Fail original). */
+  const cardMatchesOwnerFilter = (card: BoardCard, owner: BoardOwnerFilter): boolean => {
+    if (owner === "all") return true;
+    if (card.source === "test") {
+      const test = ALL_TESTS_BY_ID.get(card.sourceId);
+      const owners = test
+        ? scheduleTestOwnerLabels(
+            test,
+            testAssignees[card.sourceId],
+            testOriginalAssignees[card.sourceId],
+            testStatuses[card.sourceId],
+            qaTesters,
+          )
+        : [cardAssigneeFilterValue(card)];
+      return matchesScheduleAssigneeFilter(
+        cardAssigneeFilterValue(card),
+        owner,
+        knownAssignees,
+        owners,
+      );
+    }
+    return matchesScheduleAssigneeFilter(
+      cardAssigneeFilterValue(card),
+      owner,
+      knownAssignees,
+    );
   };
 
   /** Tasks: assignBy · Tests: assignedBy. Empty for plan cards. */
@@ -1673,7 +1764,7 @@ export function SchedulePage({
    */
   const statusCountCards = sprintScopedCards.filter((c) => {
     if (activeSprint === "backlog") return true;
-    return matchesAssigneeFilter(cardAssigneeFilterValue(c), ownerFilter);
+    return cardMatchesOwnerFilter(c, ownerFilter);
   });
 
   /** Tests/tasks that rolled out of the focused sprint (may now sit on the next sprint). */
@@ -1749,7 +1840,7 @@ export function SchedulePage({
     const assignBy = cardAssignByValue(c);
     const status = cardStatusValue(c);
     // Backlog never has person assignees — skip assignee facet there.
-    if (activeSprint !== "backlog" && !matchesAssigneeFilter(assignee, ownerFilter)) return false;
+    if (activeSprint !== "backlog" && !cardMatchesOwnerFilter(c, ownerFilter)) return false;
     if (!matchesAssignByFilter(assignBy, assignByFilter)) return false;
     if (
       sourceFilter === "all" &&
@@ -1993,7 +2084,8 @@ export function SchedulePage({
         if (requiresPartnerDone(assignee) || requiresPartnerDone(item.owner)) {
           const tinaDone = item.tinaDone;
           const evelynDone = item.evelynDone;
-          if (status === "done" && !(tinaDone && evelynDone) && requiresPartnerDone(item.owner)) {
+          // Gate on the assignee being saved (draft), not the stale committed owner.
+          if (status === "done" && !(tinaDone && evelynDone) && requiresPartnerDone(assignee)) {
             setError("Both T + E must mark Done before this plan item can be Done.");
             return false;
           }
@@ -2032,21 +2124,21 @@ export function SchedulePage({
       } else if (card.source === "task") {
         const task = tasks.find((t) => t.id === card.sourceId);
         if (!task) return false;
-        if (
-          (requiresPartnerDone(assignee) || requiresPartnerDone(task.assignedTo)) &&
-          status === "done" &&
-          !(task.tinaDone && task.evelynDone) &&
-          requiresPartnerDone(task.assignedTo)
-        ) {
-          setError("Both T + E must mark Done before this task can be Done.");
-          return false;
-        }
         const sprintChanged = draft.sprint !== undefined && draft.sprint !== card.sprint;
         const resolvedAssignee = assigneeForBacklogSprint(
           sprint,
           "task",
           assignee,
         ) as GyshTask["assignedTo"];
+        // Gate on the assignee being saved (draft), not the stale committed owner.
+        if (
+          requiresPartnerDone(resolvedAssignee) &&
+          status === "done" &&
+          !(task.tinaDone && task.evelynDone)
+        ) {
+          setError("Both T + E must mark Done before this task can be Done.");
+          return false;
+        }
         const assigneeChanged = task.assignedTo !== resolvedAssignee;
         const taskPatch = withBacklogTaskUnassigned(
           withSprintDueDate({
@@ -2099,7 +2191,9 @@ export function SchedulePage({
             : sprintChanged
               ? dueDateForSprint(sprint)
               : (testDueDates[card.sourceId] ?? dueDateForSprint(sprint));
-        const resolvedAssignee = assigneeForBacklogSprint(sprint, "test", assignee);
+        const resolvedAssignee = statusAssignsToLeadDev(st)
+          ? leadDevAssigneeForStatusChange(st, assignee)
+          : assigneeForBacklogSprint(sprint, "test", assignee);
         const prevAssignee = testAssignees[card.sourceId] || "";
         const assigneeChanged =
           String(resolvedAssignee || "").trim() !== String(prevAssignee || "").trim();
@@ -2124,8 +2218,8 @@ export function SchedulePage({
               ? { assignedBy: actingAssignBy, dateAssigned: assignmentToday() }
               : {}),
         });
-        setTestStatuses(data.statuses);
-        setTestNotes(data.notes);
+        setTestStatuses((prev) => nextKeyedMap(prev, data.statuses, data.partial));
+        setTestNotes((prev) => nextKeyedMap(prev, data.notes, data.partial));
         setTestAssignees({ ...testAssignees, ...data.assignees, [card.sourceId]: resolvedAssignee });
         setTestSprints({ ...testSprints, ...data.sprints, [card.sourceId]: sprint });
         setTestDueDates({ ...testDueDates, ...data.dueDates, [card.sourceId]: dueDate });
@@ -2351,7 +2445,9 @@ export function SchedulePage({
               : sprintChanged
                 ? dueDateForSprint(sprint)
                 : (testDueDates[card.sourceId] ?? dueDateForSprint(sprint));
-          const resolvedAssignee = assigneeForBacklogSprint(sprint, "test", assignee);
+          const resolvedAssignee = statusAssignsToLeadDev(st)
+            ? leadDevAssigneeForStatusChange(st, assignee)
+            : assigneeForBacklogSprint(sprint, "test", assignee);
           const prevAssignee = testAssignees[card.sourceId] || nextAssignees[card.sourceId] || "";
           const assigneeChanged =
             String(resolvedAssignee || "").trim() !== String(prevAssignee || "").trim();
@@ -2383,8 +2479,8 @@ export function SchedulePage({
       if (tasksChanged) setTasks(await persistTasks(nextTasks));
       if (testBatch.length > 0) {
         const data = await saveTestStatusesBatch(testBatch);
-        setTestStatuses(data.statuses);
-        setTestNotes(data.notes);
+        setTestStatuses((prev) => nextKeyedMap(prev, data.statuses, data.partial));
+        setTestNotes((prev) => nextKeyedMap(prev, data.notes, data.partial));
         setTestAssignees({ ...nextAssignees, ...data.assignees });
         setTestSprints({ ...nextSprints, ...data.sprints });
         setTestDueDates({ ...nextDueDates, ...data.dueDates });
@@ -2657,8 +2753,27 @@ export function SchedulePage({
       });
       const { nextSprint, taskDelta, testBatch } = applied;
 
-      // Plan milestones: always roll incomplete forward (not in the task/test modal).
+      // Tasks + tests first — never let plan/retro full-rewrite 403s block rollover/close.
+      // (Locked leftovers on older sprints used to abort before anything moved.)
+      if (taskDelta.length > 0) {
+        setTasks(await persistTasks(taskDelta));
+      }
+
+      if (testBatch.length > 0) {
+        const data = await saveTestStatusesBatch(testBatch);
+        setTestStatuses((prev) => nextKeyedMap(prev, data.statuses, data.partial));
+        setTestNotes((prev) => nextKeyedMap(prev, data.notes, data.partial));
+        setTestAssignees((prev) => nextKeyedMap(prev, data.assignees, data.partial));
+        setTestSprints((prev) => nextKeyedMap(prev, data.sprints, data.partial));
+        setTestDueDates((prev) => nextKeyedMap(prev, data.dueDates, data.partial));
+        setTestAssignedBy((prev) => nextKeyedMap(prev, data.assignedBy, data.partial));
+        applyTestAudit(data);
+      }
+
+      // Plan milestones: carry incomplete forward (not in the task/test modal).
+      // Best-effort — failure must not undo task/test rollover or block close.
       const incompletePlan = listIncompletePlanItems(items, sprint);
+      let planWarn = "";
       if (incompletePlan.length > 0) {
         const nextPlan = items.map((i) => {
           if (i.sprint !== sprint || i.status === "done") return i;
@@ -2669,27 +2784,18 @@ export function SchedulePage({
             dateLabel: sprintLabel(nextSprint),
           };
         });
-        await persistPlan(nextPlan, retro);
+        try {
+          const saved = await persistAgilePlan(nextPlan, retro);
+          setItems(saved.items);
+          setRetro(saved.retro);
+        } catch (e) {
+          planWarn =
+            e instanceof ApiError
+              ? ` Plan carry skipped: ${e.message}`
+              : " Plan carry skipped — use Unlock / reload to heal leftovers.";
+        }
       }
 
-      // Delta-only task PUT — a full-board save 403s when locked sprints still have
-      // plain-text notes that re-serialize to JSON (legacy heal ≠ real edit).
-      if (taskDelta.length > 0) {
-        setTasks(await persistTasks(taskDelta));
-      }
-
-      if (testBatch.length > 0) {
-        const data = await saveTestStatusesBatch(testBatch);
-        setTestStatuses(data.statuses);
-        setTestNotes(data.notes);
-        setTestAssignees(data.assignees);
-        setTestSprints(data.sprints);
-        setTestDueDates(data.dueDates);
-        setTestAssignedBy(data.assignedBy);
-        applyTestAudit(data);
-      }
-
-      // Persist closed/locked state after unfinished work has been moved or completed.
       const closedList = await closeSprint(sprint);
       setClosedSprints(new Set(closedList));
 
@@ -2699,8 +2805,9 @@ export function SchedulePage({
       setEndSprintTarget(null);
       setActiveSprint(nextSprint);
       setSaveFlash(
-        `${sprintLabel(sprint)} closed & locked → ${sprintLabel(nextSprint)}. Open items rolled or completed.`,
+        `${sprintLabel(sprint)} closed & locked → ${sprintLabel(nextSprint)}. Open items rolled or completed.${planWarn}`,
       );
+      if (planWarn) setError(planWarn.trim());
       window.setTimeout(() => setSaveFlash(""), 3500);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "End sprint failed.");
@@ -2765,25 +2872,13 @@ export function SchedulePage({
   const scopeCards =
     activeSprint === "backlog" ? backlogFilterCards : sprintScopedCards;
   const scopeBySource = countBySource(scopeCards);
-  const assigneeProgress = [
-    { label: "Tina", accent: "#9B2F28" },
-    { label: "Evelyn", accent: "#947D64" },
-    { label: "Lyriq", accent: "#2e7d32" },
-    { label: "Candace", accent: "#3d6b8c" },
-    { label: "Both", accent: "#181718" },
-    { label: "Unassigned", accent: "#7a7064" },
-  ].map(({ label, accent }) => {
-    const cards = activeSprintCards.filter((card) => {
-      if (label === "Unassigned") {
-        return card.owner === "Unassigned" || !String(card.owner || "").trim();
-      }
-      if (label === "Both") return requiresPartnerDone(card.owner);
-      if ((PARTNER_ASSIGNEES as readonly string[]).includes(label)) {
-        return assigneeIncludes(card.owner, label as PartnerAssignee);
-      }
-      return card.owner === label;
-    });
+  const assigneeProgress = scheduleAssigneeProgressPeople(qaTesters).map(({ label, accent }) => {
+    const cards = activeSprintCards.filter((card) => cardMatchesOwnerFilter(card, label));
     const bySource = countBySource(cards);
+    const testTally = tallyStatuses(
+      cards.filter((c) => c.source === "test").map((c) => c.sourceId),
+      testStatuses,
+    );
     return {
       label,
       accent,
@@ -2793,8 +2888,13 @@ export function SchedulePage({
       tests: bySource.tests,
       tasksDone: bySource.tasksDone,
       testsDone: bySource.testsDone,
+      testTally,
     };
   });
+  const overallTestTally = tallyStatuses(
+    activeSprintCards.filter((c) => c.source === "test").map((c) => c.sourceId),
+    testStatuses,
+  );
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -3240,6 +3340,7 @@ export function SchedulePage({
                 tests={activeSprintBySource.tests}
                 tasksDone={activeSprintBySource.tasksDone}
                 testsDone={activeSprintBySource.testsDone}
+                testTally={overallTestTally}
                 selected={ownerFilter === "all"}
                 onFilterClick={() => setOwnerFilter("all")}
               />
@@ -3352,17 +3453,16 @@ export function SchedulePage({
                 hint={
                   ownerFilter === "all"
                     ? "All assignees"
-                    : OWNER_BUBBLES.find((b) => b.id === ownerFilter)?.label
+                    : ownerBubbles.find((b) => b.id === ownerFilter)?.label
                 }
                 testId="schedule-filter-assignee"
                 defaultOpen
                 onFilterClick={() => setOwnerFilter("all")}
               >
+                <TesterStatusAbbrevLegend testId="schedule-tester-status-legend" />
                 <div
-                  className="schedule-board-filters__chips"
-                  style={
-                    { "--chip-cols": chipColsForTwoRows(1 + OWNER_BUBBLES.length) } as CSSProperties
-                  }
+                  className="qa-testing-portal__top-filters qa-testing-portal__tester-chips schedule-assignee-chips"
+                  data-testid="schedule-assignee-chips"
                 >
                   <button
                     type="button"
@@ -3382,14 +3482,18 @@ export function SchedulePage({
                       {formatWorkDoneTotal(backlogFilterBySource)}
                     </span>
                   </button>
-                  {OWNER_BUBBLES.map((b) => {
+                  {ownerBubbles.map((b) => {
                     const active = ownerFilter === b.id;
                     const matched = sprintScopedCards.filter((c) =>
-                      matchesAssigneeFilter(cardAssigneeFilterValue(c), b.id),
+                      cardMatchesOwnerFilter(c, b.id),
                     );
                     const bySource = countBySource(matched);
                     const workFace = formatWorkDoneTotal(bySource);
                     const rolled = rolledBreakdown(matched);
+                    const testTally = tallyStatuses(
+                      matched.filter((c) => c.source === "test").map((c) => c.sourceId),
+                      testStatuses,
+                    );
                     return (
                       <button
                         key={b.id}
@@ -3400,8 +3504,8 @@ export function SchedulePage({
                         onClick={() => setOwnerFilter(b.id)}
                         title={
                           b.id === "all"
-                            ? `${workFace} · ${formatTQTitle(bySource)} · Rolled over — Tests: ${rolled.testsRolled} · Tasks: ${rolled.tasksRolled}`
-                            : `${b.label}: ${formatTQTitle(bySource)} · ${workFace} · Rolled over — Tests: ${rolled.testsRolled} · Tasks: ${rolled.tasksRolled}`
+                            ? `${workFace} · ${formatTesterResultMeta(testTally)} · Tasks ${bySource.tasksDone}/${bySource.tasks} · Rolled over — Tests: ${rolled.testsRolled} · Tasks: ${rolled.tasksRolled}`
+                            : `${b.label}: ${formatTesterResultMeta(testTally)} · Tasks ${bySource.tasksDone}/${bySource.tasks} · ${workFace} · Rolled over — Tests: ${rolled.testsRolled} · Tasks: ${rolled.tasksRolled}`
                         }
                         style={{
                           borderColor: active && b.accent ? b.accent : undefined,
@@ -3412,13 +3516,22 @@ export function SchedulePage({
                           <span className="qa-tester-dot" style={{ background: b.accent }} />
                         )}
                         {b.label}
-                        <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
-                          {formatTQ(bySource)}
-                          {" · "}
-                          {workFace}
-                          {rolled.total > 0 ? (
+                        <TesterChipStatusCounts
+                          tally={testTally}
+                          rolled={rolled.testsRolled > 0 ? rolled.testsRolled : undefined}
+                        />
+                        <span
+                          className="qa-tester-meta schedule-assignee-chip__work"
+                          style={{ fontVariantNumeric: "tabular-nums" }}
+                        >
+                          <span>
+                            Tasks: {bySource.tasksDone}/{bySource.tasks}
+                            {" · "}
+                            {workFace}
+                          </span>
+                          {rolled.tasksRolled > 0 ? (
                             <span className="status-bubble__rolled">
-                              Rolled over: Tests {rolled.testsRolled} · Tasks {rolled.tasksRolled}
+                              Rolled over tasks: {rolled.tasksRolled}
                             </span>
                           ) : null}
                         </span>
@@ -3642,7 +3755,7 @@ export function SchedulePage({
                       ? boardCards.filter((c) => {
                           if (c.source !== "test") return false;
                           if (!matchesSourceFilter("test", sourceFilter)) return false;
-                          if (!matchesAssigneeFilter(cardAssigneeFilterValue(c), ownerFilter)) {
+                          if (!cardMatchesOwnerFilter(c, ownerFilter)) {
                             return false;
                           }
                           return rolledRelativeToActiveSprint(c);
@@ -3674,11 +3787,11 @@ export function SchedulePage({
                       title={
                         s.id === "rolled_over" && typeof activeSprint === "number"
                           ? ownerFilter === "all"
-                            ? `${s.label} · ${count} rolled from ${sprintLabel(activeSprint)} (incl. moved to next sprint)`
-                            : `${s.label} · ${count} for ${ownerFilter}`
+                            ? `${testStatusTooltip(s.id, count)} — rolled from ${sprintLabel(activeSprint)} (incl. moved to next sprint)`
+                            : `${testStatusTooltip(s.id, count)} for ${ownerFilter}`
                           : ownerFilter === "all"
-                            ? `${s.label} · ${count} · ${rolledWithin} rolled over`
-                            : `${s.label} · ${count} for ${ownerFilter} · ${rolledWithin} rolled over`
+                            ? `${testStatusTooltip(s.id, count)} · ${rolledWithin} rolled over`
+                            : `${testStatusTooltip(s.id, count)} for ${ownerFilter} · ${rolledWithin} rolled over`
                       }
                       style={{
                         borderColor: active ? accent : undefined,
@@ -3686,7 +3799,7 @@ export function SchedulePage({
                       }}
                     >
                       <span className="qa-tester-dot" style={{ background: accent }} />
-                      {s.label}
+                      {s.abbrev}
                       <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
                         · {count}
                         {s.id !== "rolled_over" && rolledWithin > 0 ? (
@@ -3756,7 +3869,7 @@ export function SchedulePage({
                       ? boardCards.filter((c) => {
                           if (c.source !== "task") return false;
                           if (!matchesSourceFilter("task", sourceFilter)) return false;
-                          if (!matchesAssigneeFilter(cardAssigneeFilterValue(c), ownerFilter)) {
+                          if (!cardMatchesOwnerFilter(c, ownerFilter)) {
                             return false;
                           }
                           return rolledRelativeToActiveSprint(c);
@@ -3878,7 +3991,7 @@ export function SchedulePage({
                   }
                 >
                   <option value="Unassigned">Unassigned</option>
-                  {PARTNER_ASSIGNEES.map((p) => (
+                  {knownAssignees.map((p) => (
                     <option key={p} value={p}>
                       {p}
                     </option>
@@ -4020,6 +4133,7 @@ export function SchedulePage({
                     setBulkAssignee(next === "Unassigned" && !bulkAssignee ? "" : next)
                   }
                   disabled={busy}
+                  people={knownAssignees}
                 />
                 <button
                   type="button"
@@ -4379,6 +4493,7 @@ export function SchedulePage({
                               stageCardDraft(card, { assignee: next })
                             }
                             disabled={controlsDisabled || isBacklogSprint(sprintVal)}
+                            people={knownAssignees}
                           />
                         )}
                         {card.source === "test" &&
@@ -4485,9 +4600,10 @@ export function SchedulePage({
                           >
                             {(Object.keys(STATUS_LABELS) as PlanItemStatus[]).map((s) => {
                               const plan = items.find((i) => i.id === card.sourceId);
+                              // Use draft assignee so changing Both → Tina/Evelyn unlocks Done immediately.
                               const bothBlocked =
                                 !!plan &&
-                                requiresPartnerDone(plan.owner) &&
+                                requiresPartnerDone(assigneeVal) &&
                                 s === "done" &&
                                 !(plan.tinaDone && plan.evelynDone);
                               return (
@@ -4511,9 +4627,10 @@ export function SchedulePage({
                           >
                             {(Object.keys(TASK_STATUS_LABELS) as TaskStatus[]).map((s) => {
                               const task = tasks.find((t) => t.id === card.sourceId);
+                              // Use draft assignee so changing Both → a person unlocks Done before Save.
                               const bothBlocked =
                                 !!task &&
-                                requiresPartnerDone(task.assignedTo) &&
+                                requiresPartnerDone(assigneeVal) &&
                                 s === "done" &&
                                 !(task.tinaDone && task.evelynDone);
                               return (

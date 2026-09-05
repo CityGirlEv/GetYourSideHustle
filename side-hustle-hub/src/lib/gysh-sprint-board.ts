@@ -19,6 +19,7 @@ import {
   getSprintWindow,
   isBacklogSprint,
   KIND_LABELS,
+  sprintLabel,
   toISODate,
   UNASSIGNED_OWNER,
   type PlanItem,
@@ -89,12 +90,6 @@ export const TASK_SPRINT_MAP: Record<string, number> = {
   "T-SL-S3-FB-TEENS": 3,
   "T-SL-S3-KEVINA-3": 3,
   "T-SL-S3-FB-WEEK-WRAP": 3,
-  "T-SL-S3-PERSONAL-AMPLIFY-WHY-TINA": 3,
-  "T-SL-S3-PERSONAL-AMPLIFY-WHY-EVELYN": 3,
-  "T-SL-S3-PERSONAL-AMPLIFY-GUIDES-TINA": 3,
-  "T-SL-S3-PERSONAL-AMPLIFY-GUIDES-EVELYN": 3,
-  "T-SL-S3-PERSONAL-AMPLIFY-WRAP-TINA": 3,
-  "T-SL-S3-PERSONAL-AMPLIFY-WRAP-EVELYN": 3,
   "T-SL-S3-ADS-BRIEF": 3,
   // Sprint 3 — Polish (SEO, Senior page, workshops, first guides, ops polish)
   "T-006": 3, // Testing Portal (internal — after public launch)
@@ -117,14 +112,6 @@ export const TASK_SPRINT_MAP: Record<string, number> = {
   "T-LG-property-mgmt": 3,
   // Sprint 4 — Kids GMSH + Growth + ads / IG / TikTok
   "T-SL-S4-IG-LAUNCH": 4,
-  "T-SL-S4-PERSONAL-AMPLIFY-IG-TT-TINA": 4,
-  "T-SL-S4-PERSONAL-AMPLIFY-IG-TT-EVELYN": 4,
-  "T-SL-S4-PERSONAL-AMPLIFY-KEVINA-TINA": 4,
-  "T-SL-S4-PERSONAL-AMPLIFY-KEVINA-EVELYN": 4,
-  "T-SL-S4-PERSONAL-AMPLIFY-FB-TINA": 4,
-  "T-SL-S4-PERSONAL-AMPLIFY-FB-EVELYN": 4,
-  "T-SL-S4-PERSONAL-AMPLIFY-YT2-TINA": 4,
-  "T-SL-S4-PERSONAL-AMPLIFY-YT2-EVELYN": 4,
   "T-SL-S4-TIKTOK-1": 4,
   "T-SL-S4-ADS-LIVE": 4,
   "T-SL-S4-NEWSLETTER-2": 4,
@@ -147,6 +134,20 @@ export const TASK_SPRINT_MAP: Record<string, number> = {
   "T-SL-S5-NEWSLETTER-3": 5,
   "T-SL-S5-ADS-ITERATE": 5,
   "T-SL-S5-KEVINA-CADENCE": 5,
+  "T-SL-S3-PERSONAL-AMPLIFY-WHY-TINA": 5,
+  "T-SL-S3-PERSONAL-AMPLIFY-WHY-EVELYN": 5,
+  "T-SL-S3-PERSONAL-AMPLIFY-GUIDES-TINA": 5,
+  "T-SL-S3-PERSONAL-AMPLIFY-GUIDES-EVELYN": 5,
+  "T-SL-S3-PERSONAL-AMPLIFY-WRAP-TINA": 5,
+  "T-SL-S3-PERSONAL-AMPLIFY-WRAP-EVELYN": 5,
+  "T-SL-S4-PERSONAL-AMPLIFY-IG-TT-TINA": 5,
+  "T-SL-S4-PERSONAL-AMPLIFY-IG-TT-EVELYN": 5,
+  "T-SL-S4-PERSONAL-AMPLIFY-KEVINA-TINA": 5,
+  "T-SL-S4-PERSONAL-AMPLIFY-KEVINA-EVELYN": 5,
+  "T-SL-S4-PERSONAL-AMPLIFY-FB-TINA": 5,
+  "T-SL-S4-PERSONAL-AMPLIFY-FB-EVELYN": 5,
+  "T-SL-S4-PERSONAL-AMPLIFY-YT2-TINA": 5,
+  "T-SL-S4-PERSONAL-AMPLIFY-YT2-EVELYN": 5,
   "T-SL-S5-PERSONAL-AMPLIFY-KEVINA-TINA": 5,
   "T-SL-S5-PERSONAL-AMPLIFY-KEVINA-EVELYN": 5,
   "T-SL-S5-FB-UGC-ASK": 5,
@@ -183,7 +184,13 @@ export const PLAN_ITEM_SPRINT_MAP: Record<string, { sprint: number; day: number 
   "s2-public-qa": { sprint: 2, day: 3 },
 };
 
-export function suggestedSprintForTask(task: Pick<GyshTask, "id" | "category" | "notes">): number {
+export function suggestedSprintForTask(
+  task: Pick<GyshTask, "id" | "category" | "notes"> & { description?: string },
+): number {
+  const haystack = `${task.id} ${task.notes} ${task.description ?? ""}`;
+  if (/PERSONAL-AMPLIFY|personal\s+ampl[iy]/i.test(haystack)) {
+    return 5;
+  }
   if (Object.prototype.hasOwnProperty.call(TASK_SPRINT_MAP, task.id)) {
     return TASK_SPRINT_MAP[task.id]!;
   }
@@ -244,6 +251,12 @@ export function suggestedSprintForTest(
 ): number {
   const id = test.id.toUpperCase();
   const area = test.area.toLowerCase();
+  const title = String(test.title ?? "");
+
+  // Personal amplify share QA — stacked on Sprint 5 / Sep 2 with the matching Tasks
+  if (/personal\s+ampl[iy]/i.test(title) || id.includes("PERSONAL-AMPLIFY")) {
+    return 5;
+  }
 
   // Generated failure cases — Backlog until claimed (create path may override Kids/Youth)
   if (id.startsWith("VT-FAIL-") || id.startsWith("PW-FAIL-")) {
@@ -301,6 +314,11 @@ export function suggestedSprintForTest(
     return 4;
   }
 
+  // Stripe Checkout matrix (membership / a-la-carte / credit packs) → Sprint 4
+  if (id.startsWith("STRIPE-MEM-") || id.startsWith("STRIPE-ALC-") || id.startsWith("STRIPE-CRED-")) {
+    return 4;
+  }
+
   // Soft-launch public smoke → Sprint 2 (includes login security smoke)
   if (
     id.startsWith("PW-SMOKE") ||
@@ -341,6 +359,11 @@ export function suggestedSprintForTest(
 
   // Candace legal review (disclaimer / NDA / signup email) — current open sprint
   if (id.startsWith("LEGAL-")) {
+    return currentSprintIndex();
+  }
+
+  // Beta Tester Member Credits guide review (Milford/Tina/Brenda/Lyriq/Evelyn)
+  if (id.startsWith("BETA-CRED-")) {
     return currentSprintIndex();
   }
 
@@ -493,6 +516,102 @@ export function itemRolledRelativeToSprint(
   return false;
 }
 
+/**
+ * Sprint filter membership for Task List / Testing Portal / Schedule / CF:
+ * items currently on the focus sprint, plus items that rolled *out of* that sprint
+ * into a later one (so Sprint N tester counts still include work moved to N+1).
+ */
+export function itemBelongsToSprintFilter(
+  currentSprint: number | undefined,
+  note: string | null | undefined,
+  focusSprint: number,
+): boolean {
+  if (Number(currentSprint) === focusSprint) return true;
+  return noteRolledFromSprint(note, focusSprint);
+}
+
+/** True when the item belongs to any selected numeric sprint filter (outbound rollovers included). */
+export function itemMatchesSprintFilterSet(
+  currentSprint: number | undefined,
+  note: string | null | undefined,
+  filters: ReadonlySet<number>,
+): boolean {
+  if (filters.size === 0) return true;
+  if (filters.has(Number(currentSprint))) return true;
+  for (const focus of filters) {
+    if (noteRolledFromSprint(note, focus)) return true;
+  }
+  return false;
+}
+
+export type SprintRolloverDirectionCounts = {
+  /** On a focus sprint with a rollover note (carried in from a prior sprint). */
+  fromPrev: number;
+  /** Note says rolled out of a focus sprint (now usually on the next sprint). */
+  toNext: number;
+};
+
+/**
+ * From/to rollover counts relative to selected sprint focus(es).
+ * Empty `focusSprints` = no sprint filter: count every rollover note as fromPrev.
+ */
+export function countItemRolloversForSprintFocus(
+  items: readonly { sprint?: number; notes?: string | null }[],
+  focusSprints: ReadonlySet<number>,
+): SprintRolloverDirectionCounts {
+  let fromPrev = 0;
+  let toNext = 0;
+  for (const item of items) {
+    const sprint = Number(item.sprint ?? 0);
+    const notes = item.notes;
+    if (focusSprints.size === 0) {
+      if (noteIndicatesRollover(notes)) fromPrev += 1;
+      continue;
+    }
+    let outbound = false;
+    for (const focus of focusSprints) {
+      if (!Number.isFinite(focus) || focus < 0) continue;
+      if (noteRolledFromSprint(notes, focus)) {
+        outbound = true;
+        break;
+      }
+    }
+    if (outbound) {
+      toNext += 1;
+      continue;
+    }
+    if (focusSprints.has(sprint) && noteIndicatesRollover(notes)) {
+      fromPrev += 1;
+    }
+  }
+  return { fromPrev, toNext };
+}
+
+/** Chip label: `from S3: 2 · → S5: 1` when a single focus sprint is known. */
+export function formatRolloverFromToLabel(
+  counts: SprintRolloverDirectionCounts,
+  focusSprint?: number | null,
+): string {
+  const { fromPrev, toNext } = counts;
+  if (fromPrev <= 0 && toNext <= 0) return "";
+  const parts: string[] = [];
+  if (fromPrev > 0) {
+    parts.push(
+      focusSprint != null && Number.isFinite(focusSprint) && focusSprint > 0
+        ? `from S${focusSprint - 1}: ${fromPrev}`
+        : `from prev: ${fromPrev}`,
+    );
+  }
+  if (toNext > 0) {
+    parts.push(
+      focusSprint != null && Number.isFinite(focusSprint)
+        ? `→ S${focusSprint + 1}: ${toNext}`
+        : `→ next: ${toNext}`,
+    );
+  }
+  return parts.join(" · ");
+}
+
 /** Canonical End Sprint note — only for items still open when the sprint closed. */
 export function rolloverNoteText(fromSprint: number): string {
   return `Rolled over from Sprint ${fromSprint}`;
@@ -553,6 +672,33 @@ export function healClosedSprintTaskLeftovers(
     return patched;
   });
   return { tasks: next, changed };
+}
+
+/**
+ * Incomplete plan milestones still sitting in a closed sprint → next open sprint.
+ * Done items stay on the closed sprint as historical record.
+ */
+export function healClosedSprintPlanLeftovers(
+  items: PlanItem[],
+  closed: Iterable<number> | null | undefined,
+  ref: Date = new Date(),
+): { items: PlanItem[]; changed: PlanItem[] } {
+  const changed: PlanItem[] = [];
+  const next = items.map((item) => {
+    if (!isSprintLocked(closed, item.sprint)) return item;
+    if (item.status === "done") return item;
+    const target = nextUnlockedSprint(closed, item.sprint, ref);
+    if (target == null || target === Number(item.sprint)) return item;
+    const patched: PlanItem = {
+      ...item,
+      sprint: target,
+      status: "carried",
+      dateLabel: sprintLabel(target),
+    };
+    changed.push(patched);
+    return patched;
+  });
+  return { items: next, changed };
 }
 
 export function healClosedSprintTestLeftovers(input: {
@@ -681,23 +827,23 @@ export function sprintRolloverSummary(
   const toNext = toNextTests + toNextTasks;
   const fromPrev = fromPrevTests + fromPrevTasks;
   const parts: string[] = [];
-  if (sprintIndex < lastSprintIndex) {
+  if (sprintIndex < lastSprintIndex && toNext > 0) {
     parts.push(`→ S${sprintIndex + 1}: ${formatRolloverBreakdown(toNextTests, toNextTasks)}`);
   }
   // Sprint 1 must show “from S0”; only Sprint 0 has no prior sprint.
-  if (sprintIndex > 0) {
+  if (sprintIndex > 0 && fromPrev > 0) {
     parts.push(
       `from S${sprintIndex - 1}: ${formatRolloverBreakdown(fromPrevTests, fromPrevTasks)}`,
     );
   }
   const chipHint = parts.join(" · ");
   const bannerParts: string[] = [];
-  if (sprintIndex < lastSprintIndex) {
+  if (sprintIndex < lastSprintIndex && toNext > 0) {
     bannerParts.push(
       `${formatRolloverBreakdown(toNextTests, toNextTasks)} rolled over to Sprint ${sprintIndex + 1}`,
     );
   }
-  if (sprintIndex > 0) {
+  if (sprintIndex > 0 && fromPrev > 0) {
     bannerParts.push(
       `${formatRolloverBreakdown(fromPrevTests, fromPrevTasks)} rolled over from Sprint ${sprintIndex - 1}`,
     );

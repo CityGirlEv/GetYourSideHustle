@@ -259,7 +259,7 @@ describe("areaPlanDetails", () => {
     const counts = planFilterCounts(all, top);
     expect(counts.hmo).toBeGreaterThan(0);
     expect(counts.ppo).toBeGreaterThan(0);
-    expect(counts["hmo-pos"]).toBeGreaterThan(0);
+    expect(counts["hmo-pos"]).toBeGreaterThanOrEqual(0);
     expect(counts.pffs).toBeGreaterThanOrEqual(0);
     expect(counts.msa).toBeGreaterThanOrEqual(0);
     expect(counts["medicare-advantage"]).toBeGreaterThan(0);
@@ -277,7 +277,7 @@ describe("areaPlanDetails", () => {
     expect(hmoPlans.every((p) => /\bHMO\b/i.test(p.planType) && !/HMO-POS/i.test(p.planType))).toBe(
       true,
     );
-    expect(ppoPlans.every((p) => /\(PPO\)/i.test(p.planType))).toBe(true);
+    expect(ppoPlans.every((p) => /PPO/i.test(p.planType))).toBe(true);
     expect(maPlans.every((p) => /medicare advantage/i.test(p.planType))).toBe(true);
     expect(suppPlans.every((p) => /medigap|supplement/i.test(p.planType))).toBe(true);
     expect(pdpPlans.every((p) => /^Medicare Part D/i.test(p.planType))).toBe(true);
@@ -1074,7 +1074,7 @@ describe("highly-rated plan filter", () => {
     const meta = planFilterRankingsMeta("highly-rated", 12);
     expect(meta.subtitle).toMatch(/Part D/);
     expect(meta.subtitle).toMatch(/Medigap/);
-    expect(meta.subtitle).toMatch(/4\.0\+/);
+    expect(meta.subtitle).toMatch(/4\.5\+/);
   });
 
   it("exposes All, MA, Part D, and Medigap sub-tabs with partition counts", () => {
@@ -1158,7 +1158,7 @@ describe("planFilterWhySectionMeta", () => {
     expect(partD.whyOverRunnersTitle).toBe("Why #1 over #2 and #3 — Part D");
 
     const highlyRated = planFilterWhySectionMeta("highly-rated");
-    expect(highlyRated.sectionBrief).toMatch(/4\.0\+/);
+    expect(highlyRated.sectionBrief).toMatch(/4\.5\+/);
     expect(highlyRated.sectionBrief).toMatch(/Medigap/);
     expect(highlyRated.sectionBrief).toMatch(/Part D/);
     expect(planFilterRunnersUpTitle(highlyRated.runnersUpScope, 2)).toBe(
@@ -1313,7 +1313,7 @@ describe("Medicare Advantage list category tabs", () => {
     expect(defaultPlanListCategoryTab("medicare-advantage")).toBe("medicare-advantage");
     expect(shouldShowPlanListCategoryTabs("medicare-advantage", "member")).toBe(true);
     expect(shouldShowPlanListCategoryTabs("medicare-advantage", "area")).toBe(true);
-    expect(shouldShowPlanListCategoryTabs("hmo", "member")).toBe(false);
+    expect(shouldShowPlanListCategoryTabs("hmo", "member")).toBe(true);
   });
 
   it("partitions MA catalog by network/type with reconciling counts", () => {

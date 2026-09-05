@@ -1,6 +1,6 @@
 /**
  * GYSH membership tiers, credit economy (Kids/Teens), and a-la-carte price list.
- * Pro+ unlocks proposed hustle schedules, trackers, progress reports, and email alerts.
+ * Pro & Above unlocks proposed hustle schedules, trackers, progress reports, and email alerts.
  */
 
 export type AudienceGroup = "kids" | "junior" | "adult" | "senior";
@@ -59,11 +59,11 @@ export type MembershipTier = {
   /** Adult USD monthly; Kids/Teens use creditsPerMonth instead. */
   priceMonthlyUsd?: number;
   priceYearlyUsd?: number;
-  /** Senior (55+) USD pricing — intentionally lower than adult. */
+  /** Senior (50+) USD pricing — intentionally lower than adult. */
   priceMonthlyUsdSenior?: number;
   priceYearlyUsdSenior?: number;
   creditsPerMonth?: number;
-  /** Kid credits included on adult/senior USD plans (Pro+). */
+  /** Kid credits included on adult/senior USD plans (Pro & Above). */
   kidCreditsMonthly?: number;
   /** Included 1-on-1 consulting length (minutes). Starter = one 45-min; Pro = three 60-min; Elite = three 90-min. */
   oneOnOneMinutes?: 30 | 45 | 60 | 90;
@@ -223,7 +223,7 @@ export function isMembershipSubscriber(tierId: TierId | null | undefined): boole
   return tierId === "starter" || tierId === "pro" || tierId === "elite";
 }
 
-/** Weekly Newsletter archive + inbox — Starter+ (admins / QA / Dev bypass). */
+/** Weekly Newsletter archive + inbox — Starter & Above (admins / QA / Dev bypass). */
 export function canAccessNewsletter(
   tierId: TierId | null | undefined,
   opts?: { isAdmin?: boolean },
@@ -341,7 +341,7 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
       {
         title: "Browse free guides & hustle ideas",
         detail:
-          "Flexible 55+ free guides and starter ideas at your pace — Kids, Teens & Adults have free browse in their lanes too.",
+          "Flexible 50+ free guides and starter ideas at your pace — Kids, Teens & Adults have free browse in their lanes too.",
       },
       {
         title: "Seniors Match Wizard + ranked ideas",
@@ -959,7 +959,7 @@ export const ALA_CARTE_PRICE_LIST: AlaCarteItem[] = [
     audiences: ["kids", "junior", "adult", "senior"],
     priceUsd: 12,
     credits: 15,
-    detail: "Downloadable scorecard — included automatically on Pro+.",
+    detail: "Downloadable scorecard — included automatically on Pro or higher.",
     includedIn: ["pro", "elite"],
   },
   {
@@ -986,8 +986,8 @@ export const ALA_CARTE_PRICE_LIST: AlaCarteItem[] = [
 export const AUDIENCE_LABELS: Record<AudienceGroup, string> = {
   kids: "Kids (4–12)",
   junior: "Teens (13–17)",
-  adult: "Adults (18–54)",
-  senior: "Seniors (55+)",
+  adult: "Adults (18–49)",
+  senior: "Seniors (50+)",
 };
 
 /**
@@ -1003,7 +1003,7 @@ export const MILITARY_VETERAN_CALLOUT = {
   badge: "Military & Veterans",
   title: "Serving or served? You’re welcome here.",
   body:
-    "Active-duty, Guard, Reserve, and Veterans belong in our Adults & Seniors lanes — GYSH was built with military grit in the family. Veterans save even more: mention your service at signup and we’ll apply the veteran rate before you pay (on top of Senior pricing when you’re 55+).",
+    "Active-duty, Guard, Reserve, and Veterans belong in our Adults & Seniors lanes — GYSH was built with military grit in the family. Veterans save even more: mention your service at signup and we’ll apply the veteran rate before you pay (on top of Senior pricing when you’re 50+).",
   audiences: ["adult", "senior"] as const satisfies readonly AudienceGroup[],
 };
 
@@ -1065,6 +1065,80 @@ export function tierHasFeature(tierId: TierId, featureId: string): boolean {
   const tier = MEMBERSHIP_TIERS.find((t) => t.id === tierId);
   return !!tier?.featureIds.includes(featureId);
 }
+
+/**
+ * Compact Join comparison — what’s included vs locked per plan.
+ * Cells: "Yes" | "—" | short note (consulting counts, etc.).
+ */
+export type MembershipCompareRow = {
+  id: string;
+  label: string;
+  whyUpgrade?: string;
+  cells: Record<TierId, string>;
+};
+
+export const MEMBERSHIP_COMPARE_ROWS: readonly MembershipCompareRow[] = [
+  {
+    id: "browse",
+    label: "Browse ideas & free guides",
+    cells: { free: "Yes", starter: "Yes", pro: "Yes", elite: "Yes" },
+  },
+  {
+    id: "member_guides",
+    label: "Full member guides (gated)",
+    whyUpgrade: "Upgrade when you’re ready for paid playbooks",
+    cells: { free: "—", starter: "Yes", pro: "Yes", elite: "Yes" },
+  },
+  {
+    id: "newsletter",
+    label: "Weekly Newsletter archive",
+    cells: { free: "—", starter: "Yes", pro: "Yes", elite: "Yes" },
+  },
+  {
+    id: "consulting",
+    label: "1-on-1 consulting included",
+    whyUpgrade: "More / longer sessions as you move up",
+    cells: {
+      free: "—",
+      starter: "1 × 45 min",
+      pro: "3 × 60 min",
+      elite: "3 × 90 min",
+    },
+  },
+  {
+    id: "schedule",
+    label: "Hustle Schedule Suite + P&L",
+    whyUpgrade: "Pro and Elite unlock the weekly plan toolkit",
+    cells: { free: "—", starter: "—", pro: "Yes", elite: "Yes" },
+  },
+  {
+    id: "credits",
+    label: "Monthly Kid Credits",
+    cells: {
+      free: "—",
+      starter: "Included",
+      pro: "Included",
+      elite: "Included",
+    },
+  },
+  {
+    id: "packs",
+    label: "Optional credit packs",
+    whyUpgrade: "Top up only when monthly credits aren’t enough",
+    cells: { free: "Buy any time", starter: "Buy any time", pro: "Buy any time", elite: "Buy any time" },
+  },
+  {
+    id: "coming_soon",
+    label: "Coming soon content",
+    whyUpgrade: "Not unlocked by membership — still building",
+    cells: {
+      free: "Marked Coming soon",
+      starter: "Marked Coming soon",
+      pro: "Marked Coming soon",
+      elite: "Marked Coming soon",
+    },
+  },
+];
 
 export function featuresForTier(tierId: TierId): MembershipFeature[] {
   const tier = MEMBERSHIP_TIERS.find((t) => t.id === tierId);

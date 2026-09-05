@@ -16,7 +16,7 @@
  * A Vite proxy with no worker on :8788 shows as HTTP 502 in the UI.
  */
 import { spawn, spawnSync, execSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import http from "node:http";
 import net from "node:net";
 import path from "node:path";
@@ -71,6 +71,23 @@ function ensureD1RemoteFlag(wantRemote) {
 }
 
 ensureD1RemoteFlag(!wantLocalD1);
+
+/**
+ * Wrangler walks up for `.wrangler/deploy/config.json`. A leftover file in the
+ * monorepo parent (eager-hypatia) points at mypartb and blocks `pages dev`.
+ * Write a GYSH-local redirect so wrangler.toml and deploy config share a base path.
+ */
+function ensureGyshDeployConfig() {
+  const deployDir = path.join(root, ".wrangler", "deploy");
+  mkdirSync(deployDir, { recursive: true });
+  const deployConfig = path.join(deployDir, "config.json");
+  const desired = `${JSON.stringify({ configPath: "../../wrangler.toml" })}\n`;
+  if (!existsSync(deployConfig) || readFileSync(deployConfig, "utf8") !== desired) {
+    writeFileSync(deployConfig, desired);
+  }
+}
+
+ensureGyshDeployConfig();
 
 /** Load `.dev.vars` into the child env so Wrangler picks up Resend secrets even if a long-lived session is restarted. */
 function loadDevVars() {

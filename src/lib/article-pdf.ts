@@ -113,6 +113,7 @@ export function drawArticlePageHeader(
   pageW: number,
   margin: number,
   logoDataUrl?: string | null,
+  isCoverPage?: boolean,
 ): void {
   const headerTop = PAGE_TOP_MARGIN;
   const headerBottom = headerTop + HEADER_HEIGHT;
@@ -130,10 +131,11 @@ export function drawArticlePageHeader(
     align: "right",
   });
 
-  const logoW = 200;
+  const isCover = isCoverPage ?? (doc.getNumberOfPages() <= 1);
+  const logoW = isCover ? 180 : 115;
   const logoH = Math.round(logoW * (308 / 1024));
   const logoX = margin;
-  const logoY = headerTop + 8;
+  const logoY = isCover ? headerTop + 8 : headerTop + 14;
 
   if (logoDataUrl) {
     try {

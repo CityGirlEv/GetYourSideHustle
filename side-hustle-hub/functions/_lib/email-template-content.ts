@@ -108,7 +108,7 @@ export const EMAIL_TEMPLATE_CATALOG: Array<{
     slug: "schedule_suite_reminder",
     name: "Schedule Suite reminder",
     description:
-      "Pro+ hustle schedule reminder (daily / weekly / bi-weekly / monthly) with plan table and Kid Credits.",
+      "Pro or higher hustle schedule reminder (daily / weekly / bi-weekly / monthly) with plan table and Kid Credits.",
     sampleSubject: `${SITE_NAME} — weekly schedule reminder`,
   },
   {
@@ -289,8 +289,9 @@ export function defaultContentForSlug(slug: string): EmailTemplateContent | null
         preheader: "Your GYSH parent coach login is ready",
         eyebrow: "Family · Parent coach",
         headline: "Your parent coach login is ready",
-        subhead: "Hi {{name}}, you can sign in and manage linked kids from your Dashboard.",
-        bodyHtml: `<p style="margin:0;">Use the email and password you set during consent approval.</p>`,
+        subhead: "Hi {{name}}.",
+        bodyHtml: `<p style="margin:0 0 12px;">You can sign in and manage linked kids from your Dashboard.</p>
+        <p style="margin:0;">Use the email and password you set during consent approval.</p>`,
         ctaLabel: "Open my Dashboard",
         ctaUrl: SITE_URL,
         footerNote: "",
@@ -301,8 +302,9 @@ export function defaultContentForSlug(slug: string): EmailTemplateContent | null
         preheader: "Your GYSH kid login is ready",
         eyebrow: "Kids Corner",
         headline: "You're cleared to log in!",
-        subhead: "Hi {{name}}, your Get Your Side Hustle login is ready.",
-        bodyHtml: `<p style="margin:0;">Use the email and password your parent set up for you.</p>`,
+        subhead: "Hi {{name}}.",
+        bodyHtml: `<p style="margin:0 0 12px;">Your Get Your Side Hustle login is ready.</p>
+        <p style="margin:0;">Use the email and password your parent set up for you.</p>`,
         ctaLabel: "Log in to GYSH",
         ctaUrl: SITE_URL,
         footerNote: "",
@@ -313,8 +315,9 @@ export function defaultContentForSlug(slug: string): EmailTemplateContent | null
         preheader: "A linked kid login is ready",
         eyebrow: "Family · Parent coach",
         headline: "{{childName}} can log in",
-        subhead: "Hi {{name}}, a kid login is ready on your family account.",
-        bodyHtml: `<p style="margin:0;">They can sign in with the kid email and password you created.</p>`,
+        subhead: "Hi {{name}}.",
+        bodyHtml: `<p style="margin:0 0 12px;">A kid login is ready on your family account.</p>
+        <p style="margin:0;">They can sign in with the kid email and password you created.</p>`,
         ctaLabel: "Open Family Dashboard",
         ctaUrl: SITE_URL,
         footerNote: "",
@@ -325,8 +328,9 @@ export function defaultContentForSlug(slug: string): EmailTemplateContent | null
         preheader: "{{childName}} just signed in to GYSH",
         eyebrow: "Family · Login alert",
         headline: "{{childName}} signed in",
-        subhead: "Hi {{name}}, a linked kid/teen just signed in.",
-        bodyHtml: `<p style="margin:0;">Open your Dashboard anytime to review progress and Blueprints.</p>`,
+        subhead: "Hi {{name}}.",
+        bodyHtml: `<p style="margin:0 0 12px;">A linked kid/teen just signed in.</p>
+        <p style="margin:0;">Open your Dashboard anytime to review progress and Blueprints.</p>`,
         ctaLabel: "Open my Dashboard",
         ctaUrl: SITE_URL,
         footerNote: "",
@@ -339,8 +343,9 @@ export function defaultContentForSlug(slug: string): EmailTemplateContent | null
         preheader: `${cadence} kid progress for your family`,
         eyebrow: `Family · ${cadence} progress`,
         headline: `${cadence} kid progress`,
-        subhead: "Hi {{name}}, here's a quick look at linked kids for {{periodKey}}.",
-        bodyHtml: `{{digestBodyHtml}}`,
+        subhead: "Hi {{name}}.",
+        bodyHtml: `<p style="margin:0 0 12px;">Here's a quick look at linked kids for {{periodKey}}.</p>
+        {{digestBodyHtml}}`,
         ctaLabel: "Open my Dashboard",
         ctaUrl: SITE_URL,
         footerNote: "Change daily/weekly reports anytime under Dashboard → Family.",
@@ -353,9 +358,9 @@ export function defaultContentForSlug(slug: string): EmailTemplateContent | null
         preheader: "{{cadence}} Schedule Suite reminder for {{hustleLabel}}",
         eyebrow: "Schedule Suite · {{cadence}}",
         headline: "Your hustle plan is waiting",
-        subhead:
-          "Hi {{name}}, here's your {{cadence}} reminder for {{periodKey}} — plan, progress, and Kid Credits.",
-        bodyHtml: `{{digestBodyHtml}}`,
+        subhead: "Hi {{name}}.",
+        bodyHtml: `<p style="margin:0 0 12px;">Here's your {{cadence}} reminder for {{periodKey}} — plan, progress, and Kid Credits.</p>
+        {{digestBodyHtml}}`,
         ctaLabel: "Open Schedule Suite",
         ctaUrl: `${SITE_URL}/my-dashboard`,
         footerNote:
@@ -387,7 +392,7 @@ export function defaultContentForSlug(slug: string): EmailTemplateContent | null
         <div style="margin:0 0 12px;padding:16px;border-radius:12px;background:#f7f0df;border:1px solid #e2d5bc;">{{message}}</div>
         <p style="margin:0;">Open Admin to follow up, or reply if a sender email is included.</p>`,
         ctaLabel: "Open GYSH Admin",
-        ctaUrl: "{{ctaUrl}}",
+        ctaUrl: `${SITE_URL}/admin?tab=users`,
         footerNote: "This alert was sent because a GYSH public form was completed.",
       };
     case "membership_subscribed":
@@ -428,9 +433,9 @@ export function defaultContentForSlug(slug: string): EmailTemplateContent | null
         preheader: "Reset your Get Your Side Hustle password.",
         eyebrow: "Account security",
         headline: "Reset your password",
-        subhead:
-          "Hi {{name}}, we received a request to reset a GYSH password for this email.",
-        bodyHtml: `<p style="margin:0 0 12px;">If an account exists for this email address, tap the button below to choose a new password. This link expires in <strong>1 hour</strong> and can only be used once.</p>
+        subhead: "Hi {{name}}.",
+        bodyHtml: `<p style="margin:0 0 12px;">We received a request to reset a GYSH password for this email.</p>
+        <p style="margin:0 0 12px;">If an account exists for this email address, tap the button below to choose a new password. This link expires in <strong>1 hour</strong> and can only be used once.</p>
         <p style="margin:0 0 12px;">If you didn’t ask for this, you can ignore this email — your password stays the same.</p>`,
         ctaLabel: "Reset my password",
         ctaUrl: "{{resetUrl}}",
@@ -442,8 +447,9 @@ export function defaultContentForSlug(slug: string): EmailTemplateContent | null
         preheader: "Your GYSH password was just updated.",
         eyebrow: "Account security",
         headline: "Password updated — you're locked in.",
-        subhead: "Hi {{name}}, your Get Your Side Hustle password changed successfully.",
-        bodyHtml: `<p style="margin:0 0 12px;">If <strong>you</strong> made this change, you're all set — keep building that Side Hustle momentum.</p>
+        subhead: "Hi {{name}}.",
+        bodyHtml: `<p style="margin:0 0 12px;">Your Get Your Side Hustle password changed successfully.</p>
+        <p style="margin:0 0 12px;">If <strong>you</strong> made this change, you're all set — keep building that Side Hustle momentum.</p>
         <p style="margin:0 0 12px;">If you <em>didn't</em> change it, contact us immediately at <a href="mailto:${ADMIN_EMAIL}" style="color:#9B2F28;">${ADMIN_EMAIL}</a>.</p>`,
         ctaLabel: "Open GYSH",
         ctaUrl: SITE_URL,

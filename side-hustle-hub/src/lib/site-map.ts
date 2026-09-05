@@ -164,6 +164,8 @@ function buildPublicMap(): SiteMapNode {
           { id: "nav-contact", label: "Contact Us", kind: "submenu" },
           { id: "nav-privacy", label: "Privacy Policy", kind: "submenu" },
           { id: "nav-beta-nda", label: "Beta Tester NDA", kind: "submenu" },
+          { id: "nav-beta-credits", label: "Beta Tester Credit Guide", kind: "submenu" },
+          { id: "nav-beta-points", label: "Beta Tester Points", kind: "submenu" },
           { id: "nav-beta-testing", label: "Beta Tester Dashboard", kind: "submenu" },
           { id: "nav-login", label: "Login / Portal", kind: "submenu" },
         ],
@@ -210,6 +212,8 @@ export type SiteMapHref =
   | { kind: "privacy" }
   | { kind: "beta_nda" }
   | { kind: "beta_testing" }
+  | { kind: "beta_credits" }
+  | { kind: "beta_points" }
   | {
       kind: "admin";
       tab: AdminTab;
@@ -284,6 +288,8 @@ const SITE_MAP_HREFS: Record<string, SiteMapHref> = {
   "nav-privacy": { kind: "privacy" },
   "nav-beta-nda": { kind: "beta_nda" },
   "nav-beta-testing": { kind: "beta_testing" },
+  "nav-beta-credits": { kind: "beta_credits" },
+  "nav-beta-points": { kind: "beta_points" },
   "nav-login": { kind: "login" },
   ...buildAdminHrefEntries(),
 };

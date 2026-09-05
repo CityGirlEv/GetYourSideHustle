@@ -4,6 +4,10 @@ import {
   TEST_CATEGORIES,
   categoryForCase,
   facingForCase,
+  healNotStartedTouchedTests,
+  nextKeyedMap,
+  notStartedTestAlreadyTouched,
+  shouldAutoStartTestOnFirstTouch,
   testerCaseCount,
 } from "../gysh-test-plan";
 
@@ -15,8 +19,26 @@ describe("gysh-test-plan", () => {
     expect(TEST_CATEGORIES).toContain("proofread");
     expect(TEST_CATEGORIES).toContain("website");
     expect(TEST_CATEGORIES).toContain("facebook");
+    expect(TEST_CATEGORIES).toContain("personal_amplify");
     expect(TEST_CATEGORIES).toContain("contact");
     expect(TEST_CATEGORIES).not.toContain("content_workshops");
+
+    expect(
+      categoryForCase({
+        id: "GEN-AMPLIFY-TINA",
+        area: "Facebook",
+        suite: "manual",
+        title: "Personal amplify — Why GYSH (Tina)",
+      }),
+    ).toBe("personal_amplify");
+    expect(
+      categoryForCase({
+        id: "SL-PERSONAL-AMPLIFY-001",
+        area: "Content",
+        suite: "manual",
+        title: "Confirm personal share URL",
+      }),
+    ).toBe("personal_amplify");
 
     const workshopCases = TEST_CASES.filter((t) => t.area === "Workshops");
     expect(workshopCases.length).toBeGreaterThan(0);
@@ -46,10 +68,14 @@ describe("gysh-test-plan", () => {
     expect(residualContent).toHaveLength(0);
   });
 
-  it("assigns every manual case to a human QA tester", () => {
+  it("assigns every manual case to a human QA tester or leaves Unassigned", () => {
     for (const t of manualCases) {
-      expect(t.assignees.length).toBeGreaterThan(0);
       expect(t.suite).toBe("manual");
+      if (t.assignees.length === 0) {
+        expect(t.id.startsWith("STRIPE-")).toBe(true);
+        continue;
+      }
+      expect(t.assignees.length).toBeGreaterThan(0);
       for (const a of t.assignees) {
         expect(["tina", "evelyn", "lyriq", "candace"]).toContain(a);
       }
@@ -125,7 +151,7 @@ describe("gysh-test-plan", () => {
     const tplCases = TEST_CASES.filter(
       (t) => (t.suite ?? "manual") === "manual" && t.id.startsWith("EMAIL-TPL-"),
     );
-    expect(tplCases.length).toBe(18);
+    expect(tplCases.length).toBe(20);
     for (const t of tplCases) {
       expect(t.assignees).toEqual(["candace"]);
       expect(t.area).toBe("Email");
@@ -148,5 +174,97 @@ describe("gysh-test-plan", () => {
     expect(grade?.steps.join(" ")).toMatch(/only one Grade me|stats-bar Grade me hidden/i);
     expect(roundup?.steps.join(" ")).toMatch(/only one Grade me/i);
     expect(reminder?.steps.join(" ")).toMatch(/Email Me/i);
+  });
+
+  it("merges partial PUT maps and replaces full GET maps", () => {
+    const prev = { A: "not_run", B: "pass" };
+    expect(nextKeyedMap(prev, { A: "fail" }, true)).toEqual({ A: "fail", B: "pass" });
+    expect(nextKeyedMap(prev, { A: "fail" }, false)).toEqual({ A: "fail" });
+  });
+
+  it("auto-starts Not Started tests only on checklist or notes (not status/assignee)", () => {
+    expect(
+      shouldAutoStartTestOnFirstTouch({
+        prevStatus: "not_run",
+        nextStatus: "not_run",
+        stepsChanged: true,
+      }),
+    ).toBe(true);
+    expect(
+      shouldAutoStartTestOnFirstTouch({
+        prevStatus: "not_run",
+        nextStatus: "not_run",
+        notesChanged: true,
+      }),
+    ).toBe(true);
+    expect(
+      shouldAutoStartTestOnFirstTouch({
+        prevStatus: "not_run",
+        nextStatus: "pass",
+        stepsChanged: true,
+      }),
+    ).toBe(false);
+    expect(
+      shouldAutoStartTestOnFirstTouch({
+        prevStatus: "in_progress",
+        nextStatus: "in_progress",
+        stepsChanged: true,
+      }),
+    ).toBe(false);
+    expect(
+      shouldAutoStartTestOnFirstTouch({
+        prevStatus: "not_run",
+        nextStatus: "not_run",
+        lockedSuiteOwner: "vitest",
+        stepsChanged: true,
+      }),
+    ).toBe(false);
+    expect(
+      shouldAutoStartTestOnFirstTouch({
+        prevStatus: "not_run",
+        nextStatus: "not_run",
+      }),
+    ).toBe(false);
+  });
+
+  it("detects and heals Not Started tests already touched", () => {
+    expect(
+      notStartedTestAlreadyTouched({
+        status: "not_run",
+        note: "started looking",
+        checkedSteps: [],
+      }),
+    ).toBe(true);
+    expect(
+      notStartedTestAlreadyTouched({
+        status: "not_run",
+        note: "",
+        checkedSteps: [false, true],
+      }),
+    ).toBe(true);
+    expect(
+      notStartedTestAlreadyTouched({
+        status: "not_run",
+        note: "",
+        checkedSteps: [false, false],
+      }),
+    ).toBe(false);
+    expect(
+      notStartedTestAlreadyTouched({
+        status: "in_progress",
+        note: "x",
+        checkedSteps: [true],
+      }),
+    ).toBe(false);
+
+    const healed = healNotStartedTouchedTests({
+      statuses: { A: "not_run", B: "not_run", C: "pass" },
+      notes: { A: "touched", B: "", C: "done" },
+      checkedSteps: { A: [], B: [true], C: [] },
+    });
+    expect(healed.changedIds.sort()).toEqual(["A", "B"]);
+    expect(healed.statuses.A).toBe("in_progress");
+    expect(healed.statuses.B).toBe("in_progress");
+    expect(healed.statuses.C).toBe("pass");
   });
 });

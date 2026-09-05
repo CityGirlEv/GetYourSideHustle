@@ -18,10 +18,12 @@ import {
   Mail,
   FileText,
   BadgeCheck,
+  FileWarning,
 } from "lucide-react";
 import { ROOT_DOMAIN } from "../lib/site-config";
 import { TestingPortal } from "./admin/TestingPortal";
 import { QaTestingManualPage } from "./admin/QaTestingManualPage";
+import { FailureReportPage } from "./admin/FailureReportPage";
 import { UsersArea } from "./admin/UsersArea";
 import { ContentFactory } from "./admin/ContentFactory";
 import { TaskList } from "./admin/TaskList";
@@ -40,7 +42,7 @@ import { DailyProgressPage } from "./admin/DailyProgressPage";
 import { MembershipsPage } from "./admin/MembershipsPage";
 import { AdminHustleSchedulesPage } from "./admin/AdminHustleSchedulesPage";
 import type { AuthUser } from "../lib/auth";
-import { canAccessAdminPortal } from "../lib/gysh-roles";
+import { canAccessAdminPortal, canAccessTestingPortal, isQaOnlyPortalUser } from "../lib/gysh-roles";
 import {
   assigneeForAuthUser,
   dueAttentionTasks,
@@ -125,8 +127,10 @@ export const AdminPortal: React.FC<Props> = ({
   const [focusItemId, setFocusItemId] = useState<string | null>(null);
   const [focusEmailTemplate, setFocusEmailTemplate] = useState<string | null>(null);
   const [showQaManual, setShowQaManual] = useState(false);
+  const [showFailureReport, setShowFailureReport] = useState(false);
   const [agendaGateActive, setAgendaGateActive] = useState(false);
   const isAdmin = userIsAdmin(authUser);
+  const qaOnly = isQaOnlyPortalUser(authUser);
   const activeGuide = onUserGuideChange ? userGuide : localGuide;
   const setActiveGuide = onUserGuideChange ?? setLocalGuide;
 
@@ -134,7 +138,15 @@ export const AdminPortal: React.FC<Props> = ({
     if (onUserGuideChange) setLocalGuide(userGuide);
   }, [userGuide, onUserGuideChange]);
 
-  const tabs: { id: AdminTab; label: string; icon: React.ReactNode }[] = [
+  // QA-only accounts stay on Testing Portal (no Admin Studio tabs).
+  useEffect(() => {
+    if (!qaOnly) return;
+    if (activeTab !== "testing") onTabChange("testing");
+  }, [qaOnly, activeTab, onTabChange]);
+
+  const tabs: { id: AdminTab; label: string; icon: React.ReactNode }[] = qaOnly
+    ? [{ id: "testing", label: "Testing Portal", icon: <FlaskConical size={16} /> }]
+    : [
     { id: "schedule", label: "Schedule & Plan", icon: <CalendarRange size={16} /> },
     { id: "agenda", label: "Agenda", icon: <ClipboardList size={16} /> },
     { id: "tasks", label: "Task List", icon: <ListChecks size={16} /> },
@@ -205,7 +217,10 @@ export const AdminPortal: React.FC<Props> = ({
     if ((activeTab === "financials" || activeTab === "factory") && !isAdmin) {
       requestTabChange("tasks");
     }
-    if (activeTab !== "testing") setShowQaManual(false);
+    if (activeTab !== "testing") {
+      setShowQaManual(false);
+      setShowFailureReport(false);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, isAdmin]);
 
@@ -231,6 +246,7 @@ export const AdminPortal: React.FC<Props> = ({
       }
       if (link.testId) {
         setShowQaManual(false);
+        setShowFailureReport(false);
         setFocusTestId(link.testId);
       }
       if (link.taskId) setFocusTaskId(link.taskId);
@@ -345,16 +361,16 @@ export const AdminPortal: React.FC<Props> = ({
 
   const assigneeLabel = assigneeForAuthUser(authUser) ?? "you";
 
-  // Defense in depth: never render Schedule / partner tools without portal roles.
-  if (!canAccessAdminPortal(authUser)) {
+  // Defense in depth: Admin Studio for admins; Testing Portal for Admin or QA.
+  if (!canAccessAdminPortal(authUser) && !canAccessTestingPortal(authUser)) {
     return (
       <div className="glass" style={{ padding: 28, borderRadius: 14, color: "var(--text-primary)" }}>
         <h2 style={{ fontSize: "1.4rem", color: "var(--bronze)", marginBottom: 8 }}>
-          Admin sign-in required
+          Sign-in required
         </h2>
         <p style={{ margin: 0 }}>
-          Schedule &amp; Plan and other Admin Studio tools are only available to signed-in Admin, QA,
-          or Dev accounts.
+          Testing Portal is available to signed-in Admin or QA accounts. Full Admin Studio requires
+          Admin.
         </p>
       </div>
     );
@@ -409,7 +425,12 @@ export const AdminPortal: React.FC<Props> = ({
                         type="button"
                         className="admin-portal-nav__testing-main"
                         disabled={agendaGateActive}
-                        onClick={() => requestTabChange(t.id)}
+                        aria-pressed={activeTab === "testing" && !showQaManual && !showFailureReport}
+                        onClick={() => {
+                          requestTabChange("testing");
+                          setShowQaManual(false);
+                          setShowFailureReport(false);
+                        }}
                       >
                         {t.icon}
                         {t.label}
@@ -422,11 +443,28 @@ export const AdminPortal: React.FC<Props> = ({
                         disabled={agendaGateActive}
                         onClick={() => {
                           requestTabChange("testing");
+                          setShowFailureReport(false);
                           setShowQaManual(true);
                         }}
                       >
                         <BookOpen size={13} aria-hidden />
                         Manual
+                      </button>
+                      <button
+                        type="button"
+                        className="admin-portal-nav__manual-link"
+                        title="Open Failure Report"
+                        aria-pressed={showFailureReport}
+                        disabled={agendaGateActive}
+                        data-testid="admin-nav-failure-report"
+                        onClick={() => {
+                          requestTabChange("testing");
+                          setShowQaManual(false);
+                          setShowFailureReport(true);
+                        }}
+                      >
+                        <FileWarning size={13} aria-hidden />
+                        Failure Report
                       </button>
                     </span>
                   ) : (
@@ -470,13 +508,37 @@ export const AdminPortal: React.FC<Props> = ({
 
       {activeTab === "testing" &&
         (showQaManual ? (
-          <QaTestingManualPage onBack={() => setShowQaManual(false)} />
+          <QaTestingManualPage
+            onBack={() => {
+              setShowQaManual(false);
+              setShowFailureReport(false);
+            }}
+          />
+        ) : showFailureReport ? (
+          <FailureReportPage
+            onBack={() => {
+              setShowFailureReport(false);
+              setShowQaManual(false);
+            }}
+            onOpenTest={(id) => {
+              setShowQaManual(false);
+              setShowFailureReport(false);
+              setFocusTestId(id);
+            }}
+          />
         ) : (
           <TestingPortal
             focusTestId={focusTestId}
             onFocusConsumed={() => setFocusTestId(null)}
             authUser={authUser}
-            onOpenManual={() => setShowQaManual(true)}
+            onOpenManual={() => {
+              setShowFailureReport(false);
+              setShowQaManual(true);
+            }}
+            onOpenFailureReport={() => {
+              setShowQaManual(false);
+              setShowFailureReport(true);
+            }}
           />
         ))}
       {activeTab === "schedule" && (
@@ -488,6 +550,7 @@ export const AdminPortal: React.FC<Props> = ({
           }}
           onOpenTest={(id) => {
             setShowQaManual(false);
+            setShowFailureReport(false);
             setFocusTestId(id);
             requestTabChange("testing");
           }}
@@ -505,6 +568,7 @@ export const AdminPortal: React.FC<Props> = ({
           }}
           onOpenTest={(id) => {
             setShowQaManual(false);
+            setShowFailureReport(false);
             setFocusTestId(id);
             requestTabChange("testing");
           }}

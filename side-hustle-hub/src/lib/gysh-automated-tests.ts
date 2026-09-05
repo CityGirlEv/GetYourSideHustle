@@ -648,8 +648,8 @@ export function isWizardMatrixCaseId(id: string): boolean {
 export function isAutomatedTestId(id: string): boolean {
   if (AUTOMATED_TEST_IDS.has(id)) return true;
   // Wizard matrix paths are Vitest-covered — treat as automated in the portal.
-  // VT-FAIL-* / PW-FAIL-* are generated from suite failures.
-  return isWizardMatrixCaseId(id) || /^(VT|PW)-FAIL-/i.test(id);
+  // VT-FAIL-* / PW-FAIL-* are human QA follow-ups (assignable) — not suite-locked.
+  return isWizardMatrixCaseId(id);
 }
 
 /**

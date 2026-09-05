@@ -15,10 +15,12 @@ type Props = {
   "aria-label"?: string;
   className?: string;
   style?: CSSProperties;
+  /** People chips (defaults to core partners; pass live QA short names to include Milford, etc.). */
+  people?: readonly string[];
 };
 
 /**
- * Multi-select for Tina / Evelyn / Lyriq / Candace.
+ * Multi-select for schedule / task assignees.
  * Tina+Evelyn alone still stores as "Both" (partner-done rules).
  */
 export function AssigneeMultiSelect({
@@ -28,15 +30,17 @@ export function AssigneeMultiSelect({
   "aria-label": ariaLabel = "Assignees",
   className,
   style,
+  people = PARTNER_ASSIGNEES,
 }: Props) {
-  const selected = parseAssigneePeople(value);
+  const roster = people.length > 0 ? people : PARTNER_ASSIGNEES;
+  const selected = parseAssigneePeople(value, roster);
 
   const toggle = (person: PartnerAssignee) => {
     if (disabled) return;
     const next = selected.includes(person)
       ? selected.filter((p) => p !== person)
       : [...selected, person];
-    onChange(formatAssigneePeople(next));
+    onChange(formatAssigneePeople(next, roster));
   };
 
   const clear = () => {
@@ -68,8 +72,8 @@ export function AssigneeMultiSelect({
       >
         Unassigned
       </button>
-      {PARTNER_ASSIGNEES.map((person) => {
-        const on = selected.includes(person);
+      {roster.map((person) => {
+        const on = selected.some((p) => p.toLowerCase() === person.toLowerCase());
         return (
           <button
             type="button"
@@ -93,7 +97,7 @@ export function AssigneeMultiSelect({
             marginLeft: 2,
           }}
         >
-          {assigneeDisplayLabel(value)}
+          {assigneeDisplayLabel(value, roster)}
         </span>
       )}
     </div>

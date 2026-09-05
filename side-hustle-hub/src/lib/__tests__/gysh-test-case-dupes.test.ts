@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   addAssigneeCopies,
   expandCatalogCasesForSingleAssignees,
+  siblingTestCases,
   splitSharedAssignees,
   testCaseLogicalId,
 } from "../gysh-test-case-dupes";
@@ -74,5 +75,43 @@ describe("gysh-test-case-dupes", () => {
     ]);
     const twice = expandCatalogCasesForSingleAssignees(once);
     expect(twice.map((c) => c.id)).toEqual(once.map((c) => c.id));
+  });
+
+  it("siblingTestCases links owner copies of the same logical case", () => {
+    const stripe = TEST_CASES.filter((t) => testCaseLogicalId(t.id) === "MEMBER-STRIPE-001");
+    expect(stripe.length).toBeGreaterThanOrEqual(2);
+    const first = stripe[0]!;
+    const sibs = siblingTestCases(first.id, TEST_CASES);
+    expect(sibs.map((s) => s.id).sort()).toEqual(
+      stripe.filter((t) => t.id !== first.id).map((t) => t.id).sort(),
+    );
+    expect(sibs.every((s) => s.via === "logical_id")).toBe(true);
+
+    const proof = siblingTestCases("PROOF-001-TINA", TEST_CASES);
+    expect(proof.some((s) => s.id === "PROOF-001-LYRIQ")).toBe(true);
+  });
+
+  it("siblingTestCases matches identical titles/expected across different ids", () => {
+    const a = sample({
+      id: "DEMO-AAA",
+      title: "Stripe checkout smoke (Tina)",
+      assignees: ["tina"],
+      expected: "Checkout succeeds",
+    });
+    const b = sample({
+      id: "DEMO-BBB",
+      title: "Stripe checkout smoke (Candace)",
+      assignees: ["candace"],
+      expected: "Checkout succeeds",
+    });
+    const c = sample({
+      id: "DEMO-CCC",
+      title: "Stripe checkout smoke (Lyriq)",
+      assignees: ["lyriq"],
+      expected: "Something else",
+    });
+    const sibs = siblingTestCases("DEMO-AAA", [a, b, c]);
+    expect(sibs.map((s) => s.id)).toEqual(["DEMO-BBB"]);
+    expect(sibs[0]?.via).toBe("title");
   });
 });

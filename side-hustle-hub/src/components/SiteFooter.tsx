@@ -8,6 +8,8 @@ export type FooterNavView =
   | "contact"
   | "privacy"
   | "beta_nda"
+  | "beta_credits"
+  | "beta_points"
   | "join"
   | "memberships"
   | "login"
@@ -99,6 +101,22 @@ export function SiteFooter({ onNavigate }: SiteFooterProps) {
             data-testid="footer-beta-nda"
           >
             Beta Tester NDA
+          </button>
+          <button
+            type="button"
+            className="site-footer-link"
+            onClick={() => onNavigate("beta_credits")}
+            data-testid="footer-beta-credits"
+          >
+            Beta Credits
+          </button>
+          <button
+            type="button"
+            className="site-footer-link"
+            onClick={() => onNavigate("beta_points")}
+            data-testid="footer-beta-points"
+          >
+            Beta Points
           </button>
           <a
             href={FACEBOOK_URL}

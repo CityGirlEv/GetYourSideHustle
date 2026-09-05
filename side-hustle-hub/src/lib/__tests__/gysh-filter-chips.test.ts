@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   applyFilterChipClick,
   boardSourceAllowedByStatusFacets,
+  defaultTestingPortalSprintFilters,
+  isAllSprintsFilter,
   toggleFilterValue,
 } from "../gysh-filter-chips";
 
@@ -64,5 +66,14 @@ describe("boardSourceAllowedByStatusFacets", () => {
   it("keeps both sources when both facets are active or neither is", () => {
     expect(boardSourceAllowedByStatusFacets("test", 0, 0)).toBe(true);
     expect(boardSourceAllowedByStatusFacets("task", 2, 1)).toBe(true);
+  });
+});
+
+describe("Testing Portal sprint default", () => {
+  it("opens with All sprints (empty filter set)", () => {
+    const filters = defaultTestingPortalSprintFilters<number | "backlog">();
+    expect(filters.size).toBe(0);
+    expect(isAllSprintsFilter(filters)).toBe(true);
+    expect(isAllSprintsFilter(new Set([5]))).toBe(false);
   });
 });

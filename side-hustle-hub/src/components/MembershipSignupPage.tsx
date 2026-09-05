@@ -59,6 +59,8 @@ type MembershipSignupPageProps = {
   onGoToLogin: () => void;
   onOpenFreeGuides?: () => void;
   onOpenBetaNda?: () => void;
+  /** Fired after a successful signup that applied as a Beta Tester (pending activation). */
+  onBetaTesterRegistered?: () => void;
   onBetaTestingUnlocked?: (receipt: BetaNdaReceipt) => void;
 };
 
@@ -101,6 +103,7 @@ export function MembershipSignupPage({
   onGoToLogin,
   onOpenFreeGuides,
   onOpenBetaNda,
+  onBetaTesterRegistered,
   onBetaTestingUnlocked,
 }: MembershipSignupPageProps) {
   const startingAudience = initialAudience ?? "adult";
@@ -358,6 +361,9 @@ export function MembershipSignupPage({
       });
       saveJoinAudience(audience);
 
+      if (applyBetaTester) {
+        onBetaTesterRegistered?.();
+      }
       if (applyBetaTester && result.testingUnlocked && result.betaNda && onBetaTestingUnlocked) {
         onBetaTestingUnlocked(result.betaNda);
         return;
@@ -464,7 +470,9 @@ export function MembershipSignupPage({
                   : "Account created and payment received. An admin still activates logins; you'll get email when you're ready."
                 : profileApplied || isLoggedIn
                   ? "Your membership plan is saved on your profile."
-                  : "Account created and awaiting admin activation. Check your email for confirmation.")}
+                  : applyBetaTester
+                    ? "Beta Tester application received. Stand by for admin activation — check your email for confirmation and next steps."
+                    : "Account created and awaiting admin activation. Check your email for confirmation.")}
           </p>
         </header>
 
@@ -809,9 +817,11 @@ export function MembershipSignupPage({
                   : `Your ${tier.name} payment is recorded. We'll email you when your login is activated.`
                 : profileApplied || isLoggedIn
                   ? `Your profile is now on the ${tier.name} plan.`
-                  : usesCredits && isPaid
-                    ? `Your ${tier.name} credit plan request is saved for admin activation. Kid Credit packs can be purchased after you're approved.`
-                    : "You can browse free guides while you wait for activation."}
+                  : applyBetaTester
+                    ? "Please stand by for account activation. Check your email for confirmation; you'll get a welcome message with next steps once an admin clears you to sign in. Then open the Beta Tester dashboard to start testing."
+                    : usesCredits && isPaid
+                      ? `Your ${tier.name} credit plan request is saved for admin activation. Kid Credit packs can be purchased after you're approved.`
+                      : "You can browse free guides while you wait for activation."}
             </p>
             <div className="membership-signup-actions">
               {onOpenFreeGuides && (

@@ -21,6 +21,7 @@ type JoinPageProps = {
   /** After free Blueprint signup, restore the wizard results. */
   onBlueprintUnlocked?: (ageGroup: BlueprintAgeGroup) => void;
   onOpenBetaNda?: () => void;
+  onBetaTesterRegistered?: () => void;
   onBetaTestingUnlocked?: (receipt: BetaNdaReceipt) => void;
   /** Audience lane selected from the page that opened Join. */
   membershipAudience?: AudienceGroup | null;
@@ -45,6 +46,7 @@ export function JoinPage({
   onOpenFreeGuides,
   onBlueprintUnlocked,
   onOpenBetaNda,
+  onBetaTesterRegistered,
   onBetaTestingUnlocked,
   membershipAudience = null,
   scrollToPlans = false,
@@ -62,6 +64,7 @@ export function JoinPage({
           onUnlocked={onBlueprintUnlocked}
           onSignIn={onLogin}
           onOpenBetaNda={onOpenBetaNda}
+          onBetaTesterRegistered={onBetaTesterRegistered}
           onBetaTestingUnlocked={onBetaTestingUnlocked}
         />
       )}
@@ -75,7 +78,7 @@ export function JoinPage({
             ? "You're signed in — pick a higher plan to upgrade your membership, or switch plans anytime."
             : membershipAudience
               ? `Showing ${AUDIENCE_LABELS[membershipAudience]} membership options first — change the lane under the picture anytime.`
-              : "Pick the plan that fits your Side Hustle — Free through Elite — with audience options for Kids, Teens, Adults, and Seniors."}
+              : "Four plans — Free, Starter, Pro, and Elite. Pick the plan that fits your Side Hustle, with audience options for Kids, Teens, Adults, and Seniors."}
         </p>
         <MembershipPage
           onGoToJoin={(tier, audience) => onSignup(tier, audience ?? membershipAudience ?? undefined)}

@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import {
   BookMarked,
   ChevronRight,
+  Clock,
   LayoutGrid,
   List,
   Lock,
@@ -21,6 +22,7 @@ import {
 } from "../lib/marketing-guides";
 import type { AudienceGroup, TierId } from "../lib/membership";
 import {
+  COMING_SOON_NOT_UNLOCKED_NOTE,
   FREE_GUIDE_SIGNUP_NOTE,
   adultGuideMinTier,
   buildGuideCatalogRows,
@@ -1055,7 +1057,13 @@ export function FreeGuidesPage({
                                 </p>
                               )}
                             </div>
-                            {!comingSoon && access.unlocked ? (
+                            {comingSoon ? (
+                              <Clock
+                                size={18}
+                                style={{ color: "var(--amber, #c9a227)", flexShrink: 0 }}
+                                aria-hidden
+                              />
+                            ) : access.unlocked ? (
                               <Unlock
                                 size={18}
                                 style={{ color: "var(--accent-emerald)", flexShrink: 0 }}
@@ -1065,6 +1073,9 @@ export function FreeGuidesPage({
                             )}
                           </div>
                           <p className="free-guide-summary">{g.blurb}</p>
+                          {comingSoon ? (
+                            <p className="free-guide-tier-note">{COMING_SOON_NOT_UNLOCKED_NOTE}</p>
+                          ) : null}
                           {comingSoon ? (
                             <button
                               type="button"

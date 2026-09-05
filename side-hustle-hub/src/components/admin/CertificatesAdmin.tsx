@@ -172,9 +172,13 @@ export function CertificatesAdmin() {
           <h3>Certificate template</h3>
           <p className="certificates-admin__hint">
             Use placeholders: <code>{"{{name}}"}</code>, <code>{"{{date}}"}</code>,{" "}
-            <code>{"{{tier}}"}</code>, <code>{"{{audience}}"}</code>. Kids &amp; Teens
-            certificates automatically add a Glow Getter celebration line. Every certificate shows{" "}
-            <code>https://getyoursidehustle.com</code> in the footer.
+            <code>{"{{tier}}"}</code>, <code>{"{{audience}}"}</code>. Each certificate is styled for
+            the member’s age group (Kids Glow Getter, Teens Young CEO, Adults, or Seniors Corner)
+            with their name on the front. Title and subtitle on this form apply to Adult
+            certificates; Kids, Teens, and Seniors use their own headings. Kids &amp; Teens also
+            add a Glow Getter celebration line. Every certificate shows{" "}
+            <code>https://getyoursidehustle.com</code> in the footer. Regenerate to refresh older
+            files with the new design.
           </p>
           <div className="certificates-admin__fields">
             <label>
@@ -262,8 +266,8 @@ export function CertificatesAdmin() {
                 <strong>{c.memberName}</strong>
                 <span>{c.memberEmail}</span>
                 <em>
-                  {c.membershipTier} · {c.audience} ·{" "}
-                  {c.issuedAt ? new Date(c.issuedAt).toLocaleDateString() : ""}
+                  {c.membershipTier} · {c.audience} · {c.title}
+                  {c.issuedAt ? ` · ${new Date(c.issuedAt).toLocaleDateString()}` : ""}
                   {c.emailSentAt ? " · emailed" : ""}
                 </em>
               </button>

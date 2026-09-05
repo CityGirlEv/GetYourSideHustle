@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode }
 import {
   Camera,
   ExternalLink,
+  FileWarning,
   FlaskConical,
   Paperclip,
   Search,
@@ -52,6 +53,8 @@ import {
   uploadTestEvidence,
   deleteTestEvidence,
   fetchTestEvidenceContent,
+  shouldAutoStartTestOnFirstTouch,
+  healNotStartedTouchedTests,
   fileToBase64,
   type TestStatus,
   type TestSuite,
@@ -63,6 +66,7 @@ import {
   type TestCase,
   type TestAttachmentMeta,
   type TestStatusesPayload,
+  nextKeyedMap,
 } from "../../lib/gysh-test-plan";
 import {
   AUTOMATED_VITEST_CASES,
@@ -86,8 +90,15 @@ import {
   type QaTesterId,
   type TestOwnerId,
 } from "../../lib/gysh-roles";
+import {
+  leadDevAssigneeForStatusChange,
+  statusAssignsToLeadDev,
+} from "../../lib/gysh-fail-assignee";
 import { proofreadOwnerFromId } from "../../lib/gysh-proofread-cases";
-import { manualQaOwnerForStats } from "../../lib/gysh-tester-ownership";
+import {
+  manualQaOwnerForStats,
+  testerFilterOwnersForCase,
+} from "../../lib/gysh-tester-ownership";
 import {
   listUpcomingSprints,
   sprintLabel,
@@ -105,13 +116,17 @@ import {
 } from "../../lib/gysh-closed-sprints";
 import { SprintLockedBanner } from "./SprintLockedBanner";
 import {
+  countItemRolloversForSprintFocus,
+  formatRolloverFromToLabel,
   healClosedSprintTestLeftovers,
   healIncompleteTestDueDates,
+  itemBelongsToSprintFilter,
   sprintRolloverSummary,
   testIsRolledOver,
 } from "../../lib/gysh-sprint-board";
 import { formatAuditTrail } from "../../lib/gysh-audit";
 import {
+  CURSOR_NOTE_AUTHOR,
   appendActorNote,
   applyNoteDrafts,
   noteEntriesPlainText,
@@ -142,19 +157,39 @@ import {
 import { ApiError } from "../../lib/api";
 import type { AuthUser } from "../../lib/auth";
 import { sprintForUnstoredTest } from "../../lib/gysh-sprint-board";
-import { applyFilterChipClick } from "../../lib/gysh-filter-chips";
+import {
+  applyFilterChipClick,
+  defaultTestingPortalSprintFilters,
+  isAllSprintsFilter,
+} from "../../lib/gysh-filter-chips";
 import {
   EMAIL_TEMPLATE_REVIEW_CASES,
   emailTemplateReviewDueDate,
   emailTemplateReviewSprint,
   isEmailTemplateReviewCaseId,
+  needsEmailTemplatePlacementHeal,
 } from "../../lib/gysh-email-template-review-cases";
 import {
   LEGAL_REVIEW_CASES,
   isLegalReviewCaseId,
   legalReviewDueDate,
   legalReviewSprint,
+  needsLegalReviewPlacementHeal,
 } from "../../lib/gysh-legal-review-cases";
+import {
+  STRIPE_CHECKOUT_CASES,
+  STRIPE_CHECKOUT_SPRINT,
+  isStripeCheckoutCaseId,
+  needsStripeCheckoutPlacementHeal,
+  stripeCheckoutDueDate,
+} from "../../lib/gysh-stripe-checkout-cases";
+import {
+  BETA_CREDITS_REVIEW_CASES,
+  betaCreditsReviewDueDate,
+  betaCreditsReviewSprint,
+  isBetaCreditsReviewCaseId,
+  needsBetaCreditsReviewPlacementHeal,
+} from "../../lib/gysh-beta-credits-review-cases";
 import {
   completeWorkTimer,
   ensureWorkTimerStarted,
@@ -164,9 +199,15 @@ import { ShowHideChevron, ShowHideToggle } from "../ShowHideToggle";
 import { SprintStatusBars } from "./SprintStatusBars";
 import {
   QaProgressBars,
+  TesterChipStatusCounts,
+  TesterStatusAbbrevLegend,
   TesterStatusRow,
   emptyTally,
+  formatTesterResultMeta,
   tallyStatuses,
+  testerPassedCount,
+  testStatusAbbrev,
+  testStatusTooltip,
   type StatusTally,
 } from "./QaProgressBars";
 import { WorkTimer } from "./WorkTimer";
@@ -199,6 +240,7 @@ function chipClick<T>(
   ordered: readonly T[],
   lastIndex: number | null,
   e?: MouseEvent,
+  multiToggle = false,
 ) {
   return applyFilterChipClick(prev, value, {
     shiftKey: e?.shiftKey,
@@ -206,6 +248,7 @@ function chipClick<T>(
     metaKey: e?.metaKey,
     ordered,
     lastIndex,
+    multiToggle,
   });
 }
 
@@ -316,11 +359,13 @@ export function TestingPortal({
   onFocusConsumed,
   authUser = null,
   onOpenManual,
+  onOpenFailureReport,
 }: {
   focusTestId?: string | null;
   onFocusConsumed?: () => void;
   authUser?: AuthUser | null;
   onOpenManual?: () => void;
+  onOpenFailureReport?: () => void;
 } = {}) {
   const [statuses, setStatuses] = useState<Record<string, TestStatus>>({});
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -364,7 +409,7 @@ export function TestingPortal({
   const [devAssignees, setDevAssignees] = useState<QaTester[]>(() =>
     QA_TESTERS.filter((t) => t.id === FAILED_TEST_ASSIGNEE),
   );
-  /** Active Users with QA role — chips + assignee dropdowns. */
+  /** Users with QA role (active or pending) — chips + assignee dropdowns. */
   const [qaTesters, setQaTesters] = useState<QaTester[]>(() => [...QA_TESTERS]);
   const devAssigneeIds = useMemo(
     () => new Set(devAssignees.map((d) => d.id)),
@@ -396,9 +441,9 @@ export function TestingPortal({
   const [suiteFilters, setSuiteFilters] = useState<Set<TestSuite>>(() => new Set(["manual"]));
   /** Test Suites run controls — collapsed by default. */
   const [automatedOpen, setAutomatedOpen] = useState(false);
-  /** Default to the sprint containing today. */
+  /** Empty = All sprints (Pass / CP from prior sprints stay visible). */
   const [sprintFilters, setSprintFilters] = useState<Set<SprintFilterKey>>(
-    () => new Set([currentSprintIndex()]),
+    () => defaultTestingPortalSprintFilters<SprintFilterKey>(),
   );
   const [sprintOpen, setSprintOpen] = useState(false);
   const lastFacingIdx = useRef<number | null>(null);
@@ -429,7 +474,7 @@ export function TestingPortal({
   const activeSprintIndex = useMemo(() => currentSprintIndex(), []);
 
   const sprintFilterSummary = useMemo(() => {
-    if (sprintFilters.size === 0) return "All sprints";
+    if (isAllSprintsFilter(sprintFilters)) return "All sprints";
     return [...sprintFilters]
       .map((k) => (k === "backlog" ? "Backlog" : sprintLabel(k)))
       .join(", ");
@@ -437,7 +482,7 @@ export function TestingPortal({
 
   const statusFilterSummary = useMemo(() => {
     if (statusFilters.size === 0) return "All statuses";
-    return [...statusFilters].map((s) => STATUS_LABELS[s]).join(", ");
+    return [...statusFilters].map((s) => testStatusAbbrev(s)).join(", ");
   }, [statusFilters]);
 
   const categoryFilterSummary = useMemo(() => {
@@ -534,7 +579,7 @@ export function TestingPortal({
 
   const checkedFor = (id: string): boolean[] => {
     const steps = stepsFor(id);
-    const raw = checkedStepsByCase[id];
+    const raw = checkedStepsRef.current[id] ?? checkedStepsByCase[id];
     if (!raw || raw.length !== steps.length) {
       return Array.from({ length: steps.length }, (_, i) => Boolean(raw?.[i]));
     }
@@ -623,7 +668,19 @@ export function TestingPortal({
     }
     setError("");
     setSaveFlash("");
-    if (!isTestStatusResolved(currentStatus) && currentStatus !== "not_run") {
+    const statusToSave =
+      shouldAutoStartTestOnFirstTouch({
+        prevStatus: currentStatus,
+        nextStatus: currentStatus,
+        notesChanged: dirtyNotesRef.current.has(id),
+        stepsChanged: dirtyStepsRef.current.has(id),
+      })
+        ? "in_progress"
+        : currentStatus;
+    if (statusToSave === "in_progress" && currentStatus === "not_run") {
+      setStatuses((s) => ({ ...s, [id]: "in_progress" }));
+    }
+    if (!isTestStatusResolved(statusToSave) && statusToSave !== "not_run") {
       await maybeStartTestTimer(id, { force: true });
     } else if (currentStatus === "not_run" && (dirtyNotesRef.current.has(id) || dirtyStepsRef.current.has(id))) {
       // Saving notes/steps on a Not Started case — start the clock.
@@ -633,11 +690,11 @@ export function TestingPortal({
     try {
       const data = await saveTestStatus(
         id,
-        currentStatus,
+        statusToSave,
         note,
         persistedAssignee(id),
         persistedSprint(id),
-        evidenceOpts(id, currentStatus),
+        evidenceOpts(id, statusToSave),
       );
       if (!endSave(id, gen)) return;
       applyServerData(data, id);
@@ -656,10 +713,24 @@ export function TestingPortal({
     const nextVal = !cur[index];
     const next = cur.length === steps.length ? [...cur] : Array.from({ length: steps.length }, (_, i) => Boolean(cur[i]));
     next[index] = nextVal;
+    checkedStepsRef.current = { ...checkedStepsRef.current, [id]: next };
     setCheckedStepsByCase((prev) => ({ ...prev, [id]: next }));
     dirtyStepsRef.current.add(id);
     syncDirtySaveCount();
     if (nextVal) void maybeStartTestTimer(id);
+    const st = statusesRef.current[id] ?? DEFAULT_TEST_STATUS;
+    if (
+      shouldAutoStartTestOnFirstTouch({
+        prevStatus: st,
+        nextStatus: st,
+        stepsChanged: true,
+      })
+    ) {
+      statusesRef.current = { ...statusesRef.current, [id]: "in_progress" };
+      setStatuses((s) => ({ ...s, [id]: "in_progress" }));
+      // Persist first-touch In Progress + checklist so the status sticks immediately.
+      void saveOneCase(id);
+    }
   };
 
   const effectiveSprint = (t: TestCase) =>
@@ -670,29 +741,29 @@ export function TestingPortal({
       clearDirtyNote(savedId);
       clearDirtySteps(savedId);
     }
-    // Full test-statuses payloads are absolute from D1 — replace maps so cleared
-    // assignees / status changes cannot leave stale client overrides.
-    setStatuses(data.statuses ?? {});
-    // Server notes are source of truth; unsaved drafts live in new/edit draft maps.
+    const partial = data.partial === true;
+    // Full GET payloads replace maps; PUT returns only changed cases (partial).
+    setStatuses((prev) => nextKeyedMap(prev, data.statuses, partial));
     setNotes((prev) => ({ ...prev, ...data.notes }));
-    setAssigneeOverrides(
-      Object.fromEntries(
+    setAssigneeOverrides((prev) => {
+      const incoming = Object.fromEntries(
         Object.entries(data.assignees ?? {}).map(([caseId, assignee]) => [
           caseId,
           normalizeQaAssigneeId(assignee),
         ]),
-      ),
-    );
+      );
+      return nextKeyedMap(prev, incoming, partial);
+    });
     setSprintByCase((prev) => ({ ...prev, ...data.sprints }));
     setDueDatesByCase((prev) => ({ ...prev, ...(data.dueDates ?? {}) }));
-    setAssignedByByCase(data.assignedBy ?? {});
-    setDateAssignedByCase(data.dateAssigned ?? {});
-    setOriginalAssigneesByCase(data.originalAssignees ?? {});
-    setUpdatedAtByCase(data.updatedAt ?? {});
-    setUpdatedByByCase(data.updatedBy ?? {});
+    setAssignedByByCase((prev) => nextKeyedMap(prev, data.assignedBy, partial));
+    setDateAssignedByCase((prev) => nextKeyedMap(prev, data.dateAssigned, partial));
+    setOriginalAssigneesByCase((prev) => nextKeyedMap(prev, data.originalAssignees, partial));
+    setUpdatedAtByCase((prev) => nextKeyedMap(prev, data.updatedAt, partial));
+    setUpdatedByByCase((prev) => nextKeyedMap(prev, data.updatedBy, partial));
     if (data.checkedSteps) {
       setCheckedStepsByCase((prev) => {
-        const next = { ...data.checkedSteps };
+        const next = nextKeyedMap(prev, data.checkedSteps, partial);
         for (const id of dirtyStepsRef.current) {
           if (prev[id]) next[id] = prev[id];
         }
@@ -702,8 +773,10 @@ export function TestingPortal({
     if (data.failedStepIndex) {
       setFailedStepByCase((prev) => ({ ...prev, ...data.failedStepIndex }));
     }
-    if (data.attachments) setAttachmentsByCase(data.attachments);
-    if (data.generatedCases) setGeneratedCases(data.generatedCases);
+    if (data.attachments && Object.keys(data.attachments).length > 0) {
+      setAttachmentsByCase((prev) => nextKeyedMap(prev, data.attachments, partial));
+    }
+    if (!partial && data.generatedCases) setGeneratedCases(data.generatedCases);
     if (savedId) {
       setRowErrors((prev) => {
         if (!prev[savedId]) return prev;
@@ -754,7 +827,31 @@ export function TestingPortal({
     syncDirtySaveCount();
   };
 
+  const reloadGenRef = useRef(0);
+
+  const applyFetchedPayload = (data: TestStatusesPayload, fetchedTasks: GyshTask[]) => {
+    const partial = data.partial === true;
+    setStatuses((prev) => nextKeyedMap(prev, data.statuses, partial));
+    setNotes((prev) => nextKeyedMap(prev, data.notes, partial));
+    setAssigneeOverrides((prev) => nextKeyedMap(prev, data.assignees, partial));
+    setSprintByCase((prev) => nextKeyedMap(prev, data.sprints, partial));
+    setDueDatesByCase((prev) => nextKeyedMap(prev, data.dueDates, partial));
+    setAssignedByByCase((prev) => nextKeyedMap(prev, data.assignedBy, partial));
+    setDateAssignedByCase((prev) => nextKeyedMap(prev, data.dateAssigned, partial));
+    setUpdatedAtByCase((prev) => nextKeyedMap(prev, data.updatedAt, partial));
+    setUpdatedByByCase((prev) => nextKeyedMap(prev, data.updatedBy, partial));
+    setCheckedStepsByCase((prev) => nextKeyedMap(prev, data.checkedSteps, partial));
+    setFailedStepByCase((prev) => nextKeyedMap(prev, data.failedStepIndex, partial));
+    if (!partial || Object.keys(data.attachments ?? {}).length > 0) {
+      setAttachmentsByCase((prev) => nextKeyedMap(prev, data.attachments, partial));
+    }
+    if (!partial) setGeneratedCases(data.generatedCases ?? []);
+    setOriginalAssigneesByCase((prev) => nextKeyedMap(prev, data.originalAssignees, partial));
+    setTasks(fetchedTasks);
+  };
+
   const reload = async () => {
+    const gen = ++reloadGenRef.current;
     setLoading(true);
     setError("");
     try {
@@ -762,30 +859,41 @@ export function TestingPortal({
         fetchClosedSprints().catch(() => [] as number[]),
         fetchTestStatuses(),
         fetchUsers().catch(() => [] as Awaited<ReturnType<typeof fetchUsers>>),
-        fetchTasks().catch(() => [] as GyshTask[]),
+        fetchTasks(),
       ]);
+      if (gen !== reloadGenRef.current) return;
+
       setDevAssignees(devAssigneesFromUsers(users));
       setQaTesters(qaTestersFromUsers(users));
       setClosedSprints(new Set(closedList));
-      setTasks(fetchedTasks);
+      // Paint Pass/Task chip counts immediately — heals below must not leave zeros on screen.
+      let data = fetched;
+      applyFetchedPayload(data, fetchedTasks);
+
       void fetchSoftLaunchOverrides()
         .then((overrides) => {
+          if (gen !== reloadGenRef.current) return;
           activateSoftLaunchOverrides(overrides);
           setCfTitleTick((n) => n + 1);
         })
         .catch(() => {
           /* catalog titles remain */
         });
-      let data = fetched;
-      // Place Candace email-template review cases on the current sprint with staggered dues.
+
+      // Place ungraded Candace email-template review cases on the current sprint
+      // with staggered dues. Never rewrite Fail/Pass/Cond — that hid results under
+      // Evelyn (Fail→Dev) and stole Daily Progress updated_by from Candace.
       const tplSprint = emailTemplateReviewSprint();
-      const tplHeal = EMAIL_TEMPLATE_REVIEW_CASES.filter((c) => {
-        const sprint = data.sprints[c.id];
-        const due = String(data.dueDates?.[c.id] ?? "").trim();
-        const wantDue = emailTemplateReviewDueDate(c.id);
-        const assignee = String(data.assignees?.[c.id] ?? "").trim();
-        return sprint !== tplSprint || due !== wantDue || assignee.toLowerCase() !== "candace";
-      });
+      const tplHeal = EMAIL_TEMPLATE_REVIEW_CASES.filter((c) =>
+        needsEmailTemplatePlacementHeal({
+          status: data.statuses[c.id],
+          sprint: data.sprints[c.id],
+          due: data.dueDates?.[c.id],
+          assignee: data.assignees?.[c.id],
+          wantSprint: tplSprint,
+          wantDue: emailTemplateReviewDueDate(c.id),
+        }),
+      );
       if (tplHeal.length > 0) {
         try {
           data = await saveTestStatusesBatch(
@@ -798,19 +906,23 @@ export function TestingPortal({
               dueDate: emailTemplateReviewDueDate(c.id),
             })),
           );
+          if (gen === reloadGenRef.current) applyFetchedPayload(data, fetchedTasks);
         } catch {
           /* soft-fail — UI still shows suggested sprint/dues */
         }
       }
-      // Place Candace legal-review cases on the current sprint, due today.
+      // Place ungraded Candace legal-review cases on the current sprint, due today.
       const legalSprint = legalReviewSprint();
-      const legalHeal = LEGAL_REVIEW_CASES.filter((c) => {
-        const sprint = data.sprints[c.id];
-        const due = String(data.dueDates?.[c.id] ?? "").trim();
-        const wantDue = legalReviewDueDate(c.id);
-        const assignee = String(data.assignees?.[c.id] ?? "").trim();
-        return sprint !== legalSprint || due !== wantDue || assignee.toLowerCase() !== "candace";
-      });
+      const legalHeal = LEGAL_REVIEW_CASES.filter((c) =>
+        needsLegalReviewPlacementHeal({
+          status: data.statuses[c.id],
+          sprint: data.sprints[c.id],
+          due: data.dueDates?.[c.id],
+          assignee: data.assignees?.[c.id],
+          wantSprint: legalSprint,
+          wantDue: legalReviewDueDate(c.id),
+        }),
+      );
       if (legalHeal.length > 0) {
         try {
           data = await saveTestStatusesBatch(
@@ -823,6 +935,65 @@ export function TestingPortal({
               dueDate: legalReviewDueDate(c.id),
             })),
           );
+          if (gen === reloadGenRef.current) applyFetchedPayload(data, fetchedTasks);
+        } catch {
+          /* soft-fail — UI still shows suggested sprint/dues */
+        }
+      }
+      // Place ungraded Stripe Checkout cases on Sprint 4 (preserve any human assignee).
+      const stripeHeal = STRIPE_CHECKOUT_CASES.filter((c) =>
+        needsStripeCheckoutPlacementHeal({
+          status: data.statuses[c.id],
+          sprint: data.sprints[c.id],
+          due: data.dueDates?.[c.id],
+          assignee: data.assignees?.[c.id],
+          wantSprint: STRIPE_CHECKOUT_SPRINT,
+          wantDue: stripeCheckoutDueDate(c.id),
+        }),
+      );
+      if (stripeHeal.length > 0) {
+        try {
+          data = await saveTestStatusesBatch(
+            stripeHeal.map((c) => ({
+              caseId: c.id,
+              status: (data.statuses[c.id] ?? DEFAULT_TEST_STATUS) as TestStatus,
+              note: (data.notes[c.id] ?? "").trim(),
+              assignee: data.assignees?.[c.id] ?? "",
+              sprint: STRIPE_CHECKOUT_SPRINT,
+              dueDate: stripeCheckoutDueDate(c.id),
+            })),
+          );
+          if (gen === reloadGenRef.current) applyFetchedPayload(data, fetchedTasks);
+        } catch {
+          /* soft-fail — UI still shows suggested sprint/dues */
+        }
+      }
+      // Place ungraded Beta Credits guide reviews on the current sprint for each reviewer.
+      const betaCreditsSprint = betaCreditsReviewSprint();
+      const betaCreditsHeal = BETA_CREDITS_REVIEW_CASES.filter((c) =>
+        needsBetaCreditsReviewPlacementHeal({
+          status: data.statuses[c.id],
+          sprint: data.sprints[c.id],
+          due: data.dueDates?.[c.id],
+          assignee: data.assignees?.[c.id],
+          wantSprint: betaCreditsSprint,
+          wantDue: betaCreditsReviewDueDate(c.id),
+          wantAssignee: c.assignees[0] ?? "",
+        }),
+      );
+      if (betaCreditsHeal.length > 0) {
+        try {
+          data = await saveTestStatusesBatch(
+            betaCreditsHeal.map((c) => ({
+              caseId: c.id,
+              status: (data.statuses[c.id] ?? DEFAULT_TEST_STATUS) as TestStatus,
+              note: (data.notes[c.id] ?? "").trim(),
+              assignee: c.assignees[0] ?? "",
+              sprint: betaCreditsSprint,
+              dueDate: betaCreditsReviewDueDate(c.id),
+            })),
+          );
+          if (gen === reloadGenRef.current) applyFetchedPayload(data, fetchedTasks);
         } catch {
           /* soft-fail — UI still shows suggested sprint/dues */
         }
@@ -833,7 +1004,9 @@ export function TestingPortal({
         (id) =>
           !isSprintLocked(closedList, data.sprints[id]) &&
           !isEmailTemplateReviewCaseId(id) &&
-          !isLegalReviewCaseId(id),
+          !isLegalReviewCaseId(id) &&
+          !isStripeCheckoutCaseId(id) &&
+          !isBetaCreditsReviewCaseId(id),
       );
       const healed = healIncompleteTestDueDates(
         data.sprints,
@@ -853,11 +1026,53 @@ export function TestingPortal({
               dueDate: healed.dueDates[caseId] ?? "",
             })),
           );
+          if (gen === reloadGenRef.current) applyFetchedPayload(data, fetchedTasks);
         } catch {
           data = {
             ...data,
             dueDates: healed.dueDates,
           };
+          if (gen === reloadGenRef.current) {
+            setDueDatesByCase(data.dueDates ?? {});
+          }
+        }
+      }
+      // NS tests already touched (notes or checked steps) → In Progress.
+      const touchedHeal = healNotStartedTouchedTests({
+        statuses: data.statuses,
+        notes: data.notes,
+        checkedSteps: data.checkedSteps,
+      });
+      if (touchedHeal.changedIds.length > 0) {
+        try {
+          data = await saveTestStatusesBatch(
+            touchedHeal.changedIds.map((caseId) => ({
+              caseId,
+              status: "in_progress" as TestStatus,
+              note: (data.notes[caseId] ?? "").trim(),
+              assignee: data.assignees?.[caseId] ?? "",
+              sprint: data.sprints[caseId] ?? BACKLOG_SPRINT,
+              dueDate: data.dueDates?.[caseId] ?? "",
+              checkedSteps: data.checkedSteps?.[caseId],
+              failedStepIndex: data.failedStepIndex?.[caseId] ?? null,
+            })),
+          );
+          if (gen === reloadGenRef.current) applyFetchedPayload(data, fetchedTasks);
+        } catch {
+          data = {
+            ...data,
+            statuses: {
+              ...data.statuses,
+              ...Object.fromEntries(
+                touchedHeal.changedIds.map((id) => [id, "in_progress" as TestStatus]),
+              ),
+            },
+          };
+          if (gen === reloadGenRef.current) {
+            setStatuses((prev) => ({ ...prev, ...Object.fromEntries(
+              touchedHeal.changedIds.map((id) => [id, "in_progress" as TestStatus]),
+            ) }));
+          }
         }
       }
       const leftover = healClosedSprintTestLeftovers({
@@ -866,7 +1081,7 @@ export function TestingPortal({
         notes: data.notes,
         dueDates: data.dueDates ?? {},
         closed: closedList,
-        actorLabel: actingAssignBy,
+        actorLabel: actingAssignBy || "System",
       });
       if (leftover.changedIds.length > 0) {
         try {
@@ -880,6 +1095,7 @@ export function TestingPortal({
               dueDate: leftover.dueDates[caseId] ?? "",
             })),
           );
+          if (gen === reloadGenRef.current) applyFetchedPayload(data, fetchedTasks);
         } catch {
           data = {
             ...data,
@@ -887,44 +1103,36 @@ export function TestingPortal({
             notes: leftover.notes,
             dueDates: leftover.dueDates,
           };
+          if (gen === reloadGenRef.current) {
+            setSprintByCase(data.sprints ?? {});
+            setNotes(data.notes ?? {});
+            setDueDatesByCase(data.dueDates ?? {});
+          }
         }
       }
-      setStatuses(data.statuses);
-      setNotes(data.notes);
-      setAssigneeOverrides(data.assignees);
-      setSprintByCase(data.sprints);
-      setDueDatesByCase(data.dueDates ?? {});
-      setAssignedByByCase(data.assignedBy ?? {});
-      setDateAssignedByCase(data.dateAssigned ?? {});
-      setUpdatedAtByCase(data.updatedAt ?? {});
-      setUpdatedByByCase(data.updatedBy ?? {});
-      setCheckedStepsByCase(data.checkedSteps);
-      setFailedStepByCase(data.failedStepIndex);
-      setAttachmentsByCase(data.attachments);
-      setGeneratedCases(data.generatedCases);
     } catch (e) {
-      setStatuses({});
-      setNotes({});
-      setAssigneeOverrides({});
-      setSprintByCase({});
-      setDueDatesByCase({});
-      setAssignedByByCase({});
-      setDateAssignedByCase({});
-      setUpdatedAtByCase({});
-      setUpdatedByByCase({});
-      setCheckedStepsByCase({});
-      setFailedStepByCase({});
-      setAttachmentsByCase({});
-      setTasks([]);
+      if (gen !== reloadGenRef.current) return;
+      // Keep any previously painted data — only clear when we have nothing to show.
       setError(e instanceof ApiError ? e.message : "Failed to load test statuses from database.");
+      setStatuses((prev) => {
+        if (Object.keys(prev).length > 0) return prev;
+        return {};
+      });
+      setSprintByCase((prev) => {
+        if (Object.keys(prev).length > 0) return prev;
+        return {};
+      });
+      setTasks((prev) => (prev.length > 0 ? prev : []));
     } finally {
-      setLoading(false);
+      if (gen === reloadGenRef.current) setLoading(false);
     }
   };
 
   useEffect(() => {
     void reload();
-  }, []);
+    // Re-fetch when auth identity is ready / changes (avoids first-paint 401 wiping chips).
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional mount + auth reload
+  }, [authUser?.id, authUser?.email]);
 
   useEffect(() => {
     if (!focusTestId || loading) return;
@@ -1002,6 +1210,15 @@ export function TestingPortal({
   const ownerForTesterStats = (t: TestCase): QaTesterId | "" =>
     manualQaOwnerForStats(t, dbAssigneeOf(t.id));
 
+  /** Current assignee + Fail/Blocked original tester (so findings stay under the QA who filed them). */
+  const ownersForTesterFilter = (t: TestCase): QaTesterId[] =>
+    testerFilterOwnersForCase(
+      t,
+      dbAssigneeOf(t.id),
+      originalAssigneesByCase[t.id],
+      statuses[t.id],
+    );
+
   /** Effective assignees: humans for manual + failure cases; suite owners for other automated. */
   const effectiveAssignees = (t: TestCase): TestOwnerId[] => {
     if (isFailureGeneratedId(t.id)) {
@@ -1048,6 +1265,7 @@ export function TestingPortal({
     if (existing) return existing;
     if (isEmailTemplateReviewCaseId(id)) return emailTemplateReviewDueDate(id);
     if (isLegalReviewCaseId(id)) return legalReviewDueDate(id);
+    if (isStripeCheckoutCaseId(id)) return stripeCheckoutDueDate(id);
     return dueDateForSprint(sprint ?? persistedSprint(id));
   };
 
@@ -1101,15 +1319,19 @@ export function TestingPortal({
         statusFilters.has(st) || (statusFilters.has("rolled_over") && rolled);
       if (!matchesStatus) return false;
     }
-    // Same ownership rules as Evelyn/Tina/Lyriq progress bars (D1 → PROOF id → catalog).
+    // Current assignee + Fail/Blocked original tester (findings stay with the QA who filed them).
     if (exclude !== "tester" && testerFilters.size > 0) {
-      const owner = ownerForTesterStats(t);
-      const key: TesterFilterKey | null = owner
-        ? owner
-        : (t.suite ?? "manual") === "manual" || isFailureGeneratedId(t.id)
-          ? "unassigned"
-          : null;
-      if (!key || !testerFilters.has(key)) return false;
+      const owners = ownersForTesterFilter(t);
+      if (owners.some((o) => testerFilters.has(o))) {
+        /* matched */
+      } else {
+        const key: TesterFilterKey | null =
+          owners.length === 0 &&
+          ((t.suite ?? "manual") === "manual" || isFailureGeneratedId(t.id))
+            ? "unassigned"
+            : null;
+        if (!key || !testerFilters.has(key)) return false;
+      }
     }
     if (exclude !== "suite" && suiteFilters.size > 0) {
       const suite = t.suite ?? "manual";
@@ -1121,8 +1343,15 @@ export function TestingPortal({
     }
     if (exclude !== "sprint" && sprintFilters.size > 0) {
       const sprint = effectiveSprint(t);
-      const key: SprintFilterKey = sprint === BACKLOG_SPRINT ? "backlog" : sprint;
-      if (!sprintFilters.has(key)) return false;
+      if (sprint === BACKLOG_SPRINT) {
+        if (!sprintFilters.has("backlog")) return false;
+      } else {
+        const matches = [...sprintFilters].some((key) => {
+          if (key === "backlog") return false;
+          return itemBelongsToSprintFilter(sprint, notes[t.id], key);
+        });
+        if (!matches) return false;
+      }
     }
     if (exclude !== "query" && query.trim()) {
       const q = query.toLowerCase();
@@ -1152,6 +1381,7 @@ export function TestingPortal({
     notes,
     sprintByCase,
     assigneeOverrides,
+    originalAssigneesByCase,
     qaTesters,
   ] as const;
 
@@ -1332,25 +1562,43 @@ export function TestingPortal({
     const humanCases = inFilterContext.filter(
       (t) => (t.suite ?? "manual") === "manual" || isFailureGeneratedId(t.id),
     );
-    const ownedCases = humanCases.filter((t) => Boolean(ownerForTesterStats(t)));
-    const unassignedCases = humanCases.filter((t) => !ownerForTesterStats(t));
+    const ownedCases = humanCases.filter((t) => ownersForTesterFilter(t).length > 0);
+    const unassignedCases = humanCases.filter((t) => ownersForTesterFilter(t).length === 0);
     const allTally = tallyStatuses(
       humanCases.map((t) => t.id),
       statuses,
     );
-    const countRolled = (cases: typeof humanCases) =>
-      cases.filter((t) => testIsRolledOver(statuses[t.id], notes[t.id])).length;
+    const sprintFocus = new Set(
+      [...sprintFilters].filter((k): k is number => typeof k === "number"),
+    );
+    const focusSprint = sprintFocus.size === 1 ? [...sprintFocus][0]! : null;
+    const rolloverFor = (cases: typeof humanCases) => {
+      const items = cases.map((t) => ({
+        sprint: effectiveSprint(t),
+        notes: notes[t.id],
+      }));
+      const counts = countItemRolloversForSprintFocus(items, sprintFocus);
+      return {
+        ...counts,
+        rolled: counts.fromPrev + counts.toNext,
+        label: formatRolloverFromToLabel(counts, focusSprint),
+      };
+    };
     const testers = qaTesters.map((tester) => {
-      const cases = ownedCases.filter((t) => ownerForTesterStats(t) === tester.id);
+      const cases = ownedCases.filter((t) => ownersForTesterFilter(t).includes(tester.id));
       const tally = tallyStatuses(
         cases.map((t) => t.id),
         statuses,
       );
+      const roll = rolloverFor(cases);
       return {
         ...tester,
         total: tally.total,
-        passed: tally.pass,
-        rolled: countRolled(cases),
+        passed: testerPassedCount(tally),
+        rolled: roll.rolled,
+        rolledFrom: roll.fromPrev,
+        rolledTo: roll.toNext,
+        rolloverLabel: roll.label,
         tally,
       };
     });
@@ -1358,17 +1606,25 @@ export function TestingPortal({
       unassignedCases.map((t) => t.id),
       statuses,
     );
+    const unassignedRoll = rolloverFor(unassignedCases);
+    const allRoll = rolloverFor(humanCases);
     return {
       testers,
       unassigned: {
         total: unassignedTally.total,
-        passed: unassignedTally.pass,
-        rolled: countRolled(unassignedCases),
+        passed: testerPassedCount(unassignedTally),
+        rolled: unassignedRoll.rolled,
+        rolledFrom: unassignedRoll.fromPrev,
+        rolledTo: unassignedRoll.toNext,
+        rolloverLabel: unassignedRoll.label,
         tally: unassignedTally,
       },
-      allPassed: allTally.pass,
+      allPassed: testerPassedCount(allTally),
       allTotal: allTally.total,
-      allRolled: countRolled(humanCases),
+      allRolled: allRoll.rolled,
+      allRolledFrom: allRoll.fromPrev,
+      allRolledTo: allRoll.toNext,
+      allRolloverLabel: allRoll.label,
       allTally,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- caseMatchesFilters closes over filter state
@@ -1771,12 +2027,8 @@ export function TestingPortal({
     const gen = beginSave(id);
     const currentAssignee = persistedAssignee(id);
     let assignee = currentAssignee;
-    if (status === "fail") {
-      const keepDev =
-        isHumanQaTester(currentAssignee) && devAssigneeIds.has(currentAssignee as QaTesterId)
-          ? (currentAssignee as QaTesterId)
-          : FAILED_TEST_ASSIGNEE;
-      assignee = keepDev;
+    if (statusAssignsToLeadDev(status)) {
+      assignee = leadDevAssigneeForStatusChange(status, currentAssignee, devAssigneeIds);
       if (
         isHumanQaTester(currentAssignee) &&
         !devAssigneeIds.has(currentAssignee as QaTesterId)
@@ -1804,7 +2056,7 @@ export function TestingPortal({
       [id]: prevSort[id] ?? STATUS_LIST_ORDER[prev],
     }));
     setStatuses((s) => ({ ...s, [id]: status }));
-    if (status === "fail") {
+    if (statusAssignsToLeadDev(status)) {
       setAssigneeOverrides((prevAssignees) => ({ ...prevAssignees, [id]: assignee }));
     } else if (isDevFixStatus(status) && assignee) {
       setAssigneeOverrides((prevAssignees) => ({ ...prevAssignees, [id]: assignee }));
@@ -1823,7 +2075,10 @@ export function TestingPortal({
         note,
         assignee,
         persistedSprint(id),
-        evidenceOpts(id, status, undefined, checked),
+        {
+          ...evidenceOpts(id, status, undefined, checked),
+          ...(status === "fixed_cursor" ? { noteAuthor: CURSOR_NOTE_AUTHOR } : {}),
+        },
       );
       if (!endSave(id, gen)) return;
       applyServerData(data, id);
@@ -2183,7 +2438,7 @@ export function TestingPortal({
     }
   };
 
-  /** Persist all dirty notes/steps (and current status/assignee/sprint) — does not auto-start Not Started cases. */
+  /** Persist all dirty notes/steps (and current status/assignee/sprint). First touch → In Progress. */
   const saveEverything = async () => {
     const ids = [...new Set([...dirtyNotesRef.current, ...dirtyStepsRef.current])];
     if (ids.length === 0) {
@@ -2217,15 +2472,27 @@ export function TestingPortal({
           clearDirtySteps(id);
           continue;
         }
+        const statusToSave = shouldAutoStartTestOnFirstTouch({
+          prevStatus: currentStatus,
+          nextStatus: currentStatus,
+          notesChanged: dirtyNotesRef.current.has(id),
+          stepsChanged: hasDirtySteps,
+        })
+          ? "in_progress"
+          : currentStatus;
+        if (statusToSave === "in_progress" && currentStatus === "not_run") {
+          statusesRef.current = { ...statusesRef.current, [id]: "in_progress" };
+          setStatuses((s) => ({ ...s, [id]: "in_progress" }));
+        }
         const gen = beginSave(id);
         try {
           const data = await saveTestStatus(
             id,
-            currentStatus,
+            statusToSave,
             note,
             persistedAssignee(id),
             persistedSprint(id),
-            evidenceOpts(id, currentStatus),
+            evidenceOpts(id, statusToSave),
           );
           if (!endSave(id, gen)) continue;
           applyServerData(data, id);
@@ -2271,12 +2538,13 @@ export function TestingPortal({
       testerFilterOrder,
       lastTesterIdx.current,
       e,
+      true,
     );
     lastTesterIdx.current = lastIndex;
     setTesterFilters(next);
     if (next.size > 0) {
-      // Narrow to that tester within the current sprint filter (portal defaults to
-      // today's sprint). Clear other facets so Status chips stay useful.
+      // Narrow to that tester; keep the current sprint selection (All sprints on
+      // open). Clear other facets so Status chips stay useful.
       setSuiteFilters(new Set(["manual"]));
       setStatusFilters(new Set());
       setCategoryFilters(new Set());
@@ -2463,11 +2731,8 @@ export function TestingPortal({
       const items = ids.map((id) => {
         const currentAssignee = persistedAssignee(id);
         let assignee = currentAssignee;
-        if (status === "fail") {
-          assignee =
-            isHumanQaTester(currentAssignee) && devAssigneeIds.has(currentAssignee as QaTesterId)
-              ? currentAssignee
-              : FAILED_TEST_ASSIGNEE;
+        if (statusAssignsToLeadDev(status)) {
+          assignee = leadDevAssigneeForStatusChange(status, currentAssignee, devAssigneeIds);
         } else if (isDevFixStatus(status)) {
           const prevSt = prevStatuses[id] ?? DEFAULT_TEST_STATUS;
           if (prevSt !== status) {
@@ -2523,7 +2788,7 @@ export function TestingPortal({
           return next;
         });
       }
-      if (status === "fail") {
+      if (statusAssignsToLeadDev(status)) {
         setAssigneeOverrides((prev) => {
           const next = { ...prev };
           for (const id of ids) {
@@ -2531,10 +2796,7 @@ export function TestingPortal({
             if (isHumanQaTester(cur) && !devAssigneeIds.has(cur as QaTesterId)) {
               setOriginalAssigneesByCase((prevOrig) => ({ ...prevOrig, [id]: cur }));
             }
-            next[id] =
-              isHumanQaTester(cur) && devAssigneeIds.has(cur as QaTesterId)
-                ? cur
-                : FAILED_TEST_ASSIGNEE;
+            next[id] = leadDevAssigneeForStatusChange(status, cur, devAssigneeIds);
           }
           return next;
         });
@@ -2798,7 +3060,9 @@ export function TestingPortal({
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
       <BusyOverlay active={portalBusy} message={portalBusyMessage} />
       <div className="qa-status-tiles" data-testid="qa-status-tiles">
-        {(["total", ...STATUSES] as const).map((k) => {
+        {(["total", ...STATUSES] as const)
+          .filter((k) => k === "total" || (counts[k] ?? 0) > 0)
+          .map((k) => {
           const isTotal = k === "total";
           const active = isTotal ? statusFilters.size === 0 : statusFilters.has(k);
           const statusCount = isTotal ? completedCases : (counts[k] ?? 0);
@@ -2826,12 +3090,12 @@ export function TestingPortal({
                 isTotal
                   ? `${completedCases}/${counts.total} complete · ${rolledIn} rolled over`
                   : k === "rolled_over"
-                    ? `${STATUS_LABELS[k]} · ${statusCount}`
-                    : `${STATUS_LABELS[k]} · ${statusCount} · ${rolledIn} rolled over`
+                    ? `${testStatusTooltip(k, statusCount)} — Shift+click to select a range`
+                    : `${testStatusTooltip(k, statusCount)} · ${rolledIn} rolled over — Shift+click to select a range`
               }
             >
               <div className="qa-status-tile__label">
-                {isTotal ? "Complete / Total" : STATUS_LABELS[k]}
+                {isTotal ? "Done / Tot" : testStatusAbbrev(k)}
               </div>
               <div
                 className="qa-status-tile__num"
@@ -2852,7 +3116,7 @@ export function TestingPortal({
 
       <SprintStatusBars
         selectedSprint={
-          sprintFilters.size === 0
+          isAllSprintsFilter(sprintFilters)
             ? "all"
             : sprintFilters.size === 1
               ? ([...sprintFilters][0] ?? null)
@@ -2860,7 +3124,7 @@ export function TestingPortal({
         }
         onSelectSprint={(selection) => {
           if (selection === "all") {
-            setSprintFilters(new Set());
+            setSprintFilters(defaultTestingPortalSprintFilters());
             lastSprintIdx.current = null;
             return;
           }
@@ -2883,6 +3147,18 @@ export function TestingPortal({
                   Testing manual
                 </button>
               )}
+              {onOpenFailureReport && (
+                <button
+                  type="button"
+                  className="btn btn-secondary qa-testing-portal__failure-report-btn"
+                  title="Open the Failure Report (Failed, Conditional, then Pass)"
+                  onClick={onOpenFailureReport}
+                  data-testid="testing-portal-failure-report-link"
+                >
+                  <FileWarning size={16} aria-hidden />
+                  Failure Report
+                </button>
+              )}
             </h2>
             <p style={{ color: "var(--text-primary)", marginTop: "6px", fontSize: "1rem" }}>
               Select tests with checkboxes to bulk-assign or bulk-update status. Use status buttons to filter.
@@ -2894,24 +3170,26 @@ export function TestingPortal({
           <div className="schedule-board-filters__row qa-testing-portal__testers-row">
             <div className="schedule-board-filters__label schedule-board-filters__label--bar qa-testing-portal__testers-bar">
               <span className="qa-testing-portal__testers-title">QA Testors</span>
-              <div className="qa-testing-portal__top-filters">
+              <TesterStatusAbbrevLegend />
+              <span className="schedule-board-filters__label-hint">
+                tap to multi-select · Shift+click for a range
+              </span>
+              <div className="qa-testing-portal__top-filters qa-testing-portal__tester-chips">
                 <FilterChip
                   active={testerFilters.size === 0}
                   onToggle={() => {
                     setTesterFilters(new Set());
                     lastTesterIdx.current = null;
                   }}
-                  title={`Clear tester filter · ${testerStats.allRolled} rolled over`}
+                  title={`Clear tester filter · ${formatTesterResultMeta(testerStats.allTally)} · ${testerStats.allRolloverLabel || "no rollovers"}`}
                 >
                   All testers
-                  <span className="qa-tester-meta">
-                    · {testerStats.allPassed}/{testerStats.allTotal} passed
-                    {testerStats.allRolled > 0 ? (
-                      <span className="status-bubble__rolled">
-                        Rolled over: {testerStats.allRolled}
-                      </span>
-                    ) : null}
-                  </span>
+                  <TesterChipStatusCounts
+                    tally={testerStats.allTally}
+                    rolledFrom={testerStats.allRolledFrom}
+                    rolledTo={testerStats.allRolledTo}
+                    rolloverLabel={testerStats.allRolloverLabel}
+                  />
                 </FilterChip>
                 {testerStats.testers.map((tester) => {
                   const active = testerFilters.has(tester.id);
@@ -2920,37 +3198,35 @@ export function TestingPortal({
                       key={tester.id}
                       active={active}
                       accent={tester.accent}
-                      title={`${tester.name} — ${tester.passed}/${tester.total} passed · ${tester.rolled} rolled over — Shift+click to select a range`}
+                      title={`${tester.name} — ${formatTesterResultMeta(tester.tally)} · ${tester.rolloverLabel || "no rollovers"} — tap to multi-select · Shift+click for a range`}
                       onToggle={(e) => toggleTesterFilter(tester.id, e)}
                     >
                       <span className="qa-tester-dot" style={{ background: tester.accent }} />
                       {tester.shortName}
-                      <span className="qa-tester-meta">
-                        · {tester.passed}/{tester.total} passed
-                        {tester.rolled > 0 ? (
-                          <span className="status-bubble__rolled">Rolled over: {tester.rolled}</span>
-                        ) : null}
-                      </span>
+                      <TesterChipStatusCounts
+                        tally={tester.tally}
+                        rolledFrom={tester.rolledFrom}
+                        rolledTo={tester.rolledTo}
+                        rolloverLabel={tester.rolloverLabel}
+                      />
                     </FilterChip>
                   );
                 })}
                 <FilterChip
                   active={testerFilters.has("unassigned")}
                   accent={UNASSIGNED_TESTER_ACCENT}
-                  title={`Unassigned — no Tina/Evelyn/Lyriq owner · ${testerStats.unassigned.passed}/${testerStats.unassigned.total} passed · ${testerStats.unassigned.rolled} rolled over — Shift+click to select a range`}
+                  title={`Unassigned — no QA owner · ${formatTesterResultMeta(testerStats.unassigned.tally)} · ${testerStats.unassigned.rolloverLabel || "no rollovers"} — tap to multi-select · Shift+click for a range`}
                   testId="qa-filter-assignee-unassigned"
                   onToggle={(e) => toggleTesterFilter("unassigned", e)}
                 >
                   <span className="qa-tester-dot" style={{ background: UNASSIGNED_TESTER_ACCENT }} />
                   Unassigned
-                  <span className="qa-tester-meta">
-                    · {testerStats.unassigned.passed}/{testerStats.unassigned.total} passed
-                    {testerStats.unassigned.rolled > 0 ? (
-                      <span className="status-bubble__rolled">
-                        Rolled over: {testerStats.unassigned.rolled}
-                      </span>
-                    ) : null}
-                  </span>
+                  <TesterChipStatusCounts
+                    tally={testerStats.unassigned.tally}
+                    rolledFrom={testerStats.unassigned.rolledFrom}
+                    rolledTo={testerStats.unassigned.rolledTo}
+                    rolloverLabel={testerStats.unassigned.rolloverLabel}
+                  />
                 </FilterChip>
                 {AUTOMATED_SUITE_OWNERS.map((owner) => {
                   const stats = autoAssigneeStats[owner.id];
@@ -2960,7 +3236,7 @@ export function TestingPortal({
                       key={owner.id}
                       active={active}
                       accent={owner.accent}
-                      title={`${owner.name} — filter list to this suite · ${stats.passed}/${stats.total} passed (full catalog). Run suites under Test Suites.`}
+                      title={`${owner.name} — filter list to this suite · ${formatTesterResultMeta(stats.tally)} (full catalog). Run suites under Test Suites.`}
                       testId={`qa-filter-assignee-${owner.id}`}
                       onToggle={(e) => {
                         setTesterFilters(new Set());
@@ -2970,12 +3246,7 @@ export function TestingPortal({
                     >
                       <span className="qa-tester-dot" style={{ background: owner.accent }} />
                       {owner.shortName}
-                      <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
-                        · {stats.passed}/{stats.total} passed
-                        {stats.rolled > 0 ? (
-                          <span className="status-bubble__rolled">Rolled over: {stats.rolled}</span>
-                        ) : null}
-                      </span>
+                      <TesterChipStatusCounts tally={stats.tally} rolled={stats.rolled} />
                     </FilterChip>
                   );
                 })}
@@ -3050,13 +3321,13 @@ export function TestingPortal({
                       accent={STATUS_COLOR[s]}
                       title={
                         s === "rolled_over"
-                          ? `${STATUS_LABELS[s]} — ${n} tests — Shift+click to select a range`
-                          : `${STATUS_LABELS[s]} — ${n} tests · ${rolled} rolled over — Shift+click to select a range`
+                          ? `${testStatusTooltip(s, n)} — Shift+click to select a range`
+                          : `${testStatusTooltip(s, n)} · ${rolled} rolled over — Shift+click to select a range`
                       }
                       onToggle={(e) => toggleStatusFilter(s, e)}
                     >
                       <span className="qa-tester-dot" style={{ background: STATUS_COLOR[s] }} />
-                      {STATUS_LABELS[s]}
+                      {testStatusAbbrev(s)}
                       <span className="qa-tester-meta">
                         · {n}
                         {s !== "rolled_over" && rolled > 0 ? (
@@ -3092,23 +3363,12 @@ export function TestingPortal({
                 aria-expanded={testerBarsOpen}
               >
                 <span className="qa-categories-panel__title">Status bars</span>
-                {!testerBarsOpen ? (
-                  <span className="qa-categories-panel__active">
-                    —{" "}
-                    {[
-                      ...testerStats.testers.map((t) => `${t.shortName} ${t.passed}/${t.total}`),
-                      `Unassigned ${testerStats.unassigned.passed}/${testerStats.unassigned.total}`,
-                      ...AUTOMATED_SUITE_OWNERS.map(
-                        (o) =>
-                          `${o.shortName} ${autoAssigneeStats[o.id].passed}/${autoAssigneeStats[o.id].total}`,
-                      ),
-                    ].join(" · ")}
-                  </span>
-                ) : (
-                  <span className="qa-categories-panel__active">
-                    — humans follow status tiles · Vitest/Playwright = full suite catalog
-                  </span>
-                )}
+                <span className="qa-categories-panel__active">
+                  —{" "}
+                  {testerBarsOpen
+                    ? "humans follow status tiles · Vitest/Playwright = full suite catalog"
+                    : "collapsed"}
+                </span>
               </button>
               <ShowHideToggle
                 open={testerBarsOpen}
@@ -3121,7 +3381,7 @@ export function TestingPortal({
               <>
                 <p className="qa-testing-portal__tester-bars-note">
                   Human name bars use the same sprint / suite / category filters as the status tiles
-                  above (defaults: current sprint · Manual). Vitest / Playwright bars use the full
+                  above (defaults: All sprints · Manual). Vitest / Playwright bars use the full
                   automated catalog (not Sprint/Manual-filtered). Only Pass counts as passed.
                 </p>
                 {testerStats.testers.map((tester) => (
@@ -3405,9 +3665,9 @@ export function TestingPortal({
             {sprintOpen && (
               <div className="qa-categories-panel__bubbles">
                 <FilterChip
-                  active={sprintFilters.size === 0}
+                  active={isAllSprintsFilter(sprintFilters)}
                   onToggle={() => {
-                    setSprintFilters(new Set());
+                    setSprintFilters(defaultTestingPortalSprintFilters());
                     lastSprintIdx.current = null;
                   }}
                   title="Clear sprint filter"
@@ -3744,10 +4004,10 @@ export function TestingPortal({
                 borderColor: STATUS_COLOR[s],
                 color: STATUS_COLOR[s],
               }}
-              title={`Set ${selectedIds.size} selected to ${STATUS_LABELS[s]} (${counts[s] ?? 0} currently)`}
+              title={`${testStatusTooltip(s)} — set ${selectedIds.size} selected (${counts[s] ?? 0} currently)`}
               onClick={() => void bulkSetStatus(s)}
             >
-              {STATUS_LABELS[s]}
+              {testStatusAbbrev(s)}
               <span style={{ fontWeight: 800, marginLeft: 6 }}>({counts[s] ?? 0})</span>
             </button>
           ))}
@@ -3763,8 +4023,6 @@ export function TestingPortal({
           <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text-primary)" }}>Assign:</span>
           {qaTesters.map((tester) => {
             const stats = testerStats.testers.find((t) => t.id === tester.id);
-            const passed = stats?.passed ?? 0;
-            const assigned = stats?.total ?? 0;
             const isPrimary = tester.id === "lyriq";
             return (
               <button
@@ -3779,12 +4037,19 @@ export function TestingPortal({
                     ? { background: "#2e7d32", borderColor: "#2e7d32" }
                     : null),
                 }}
+                title={
+                  stats
+                    ? `${tester.name} — ${formatTesterResultMeta(stats.tally)}`
+                    : tester.name
+                }
                 onClick={() => void bulkAssign(tester.id)}
               >
                 {tester.shortName}
-                <span style={{ fontWeight: 800, marginLeft: 6 }}>
-                  ({passed}/{assigned})
-                </span>
+                {stats ? (
+                  <TesterChipStatusCounts tally={stats.tally} rolled={stats.rolled} />
+                ) : (
+                  <span style={{ fontWeight: 800, marginLeft: 6 }}>(0)</span>
+                )}
               </button>
             );
           })}
@@ -4169,7 +4434,7 @@ export function TestingPortal({
               </div>
               <AdminCrossLinks
                 entity={{ kind: "test", id: t.id }}
-                links={crossLinksForTestId(t.id, t.relatedTaskIds)}
+                links={crossLinksForTestId(t.id, t.relatedTaskIds, { catalog: COUNTABLE_CASES })}
                 edges={entityEdges}
                 titles={entityTitles}
                 editable
@@ -4215,16 +4480,18 @@ export function TestingPortal({
                     {assignedByByCase[t.id]?.trim() || SYSTEM_ASSIGNED_BY}
                   </span>
                 </span>
-                {st === "fail" && (
+                {statusAssignsToLeadDev(st) && (
                   <span data-testid={`test-dev-assignee-label-${t.id}`}>
                     Assignee{" "}
-                    <span style={{ color: STATUS_COLOR.fail }}>
+                    <span style={{ color: STATUS_COLOR[st] }}>
                       {testOwnerLabel(
-                        (isHumanQaTester(persistedAssignee(t.id))
+                        (isHumanQaTester(persistedAssignee(t.id)) &&
+                        devAssigneeIds.has(persistedAssignee(t.id) as QaTesterId)
                           ? persistedAssignee(t.id)
                           : FAILED_TEST_ASSIGNEE) as string,
                         qaTesters,
-                      )}
+                      )}{" "}
+                      (Lead Developer)
                     </span>
                   </span>
                 )}
@@ -4314,15 +4581,16 @@ export function TestingPortal({
                     {rowErrors[t.id]}
                   </p>
                 )}
-                {st === "fail" && (
+                {statusAssignsToLeadDev(st) && (
                   <>
                     <span style={{ whiteSpace: "nowrap" }}>Assign to</span>
                     <select
                       className="text-input"
-                      aria-label={`Assignee for ${t.id}`}
+                      aria-label={`Developer assignee for ${t.id}`}
                       data-testid={`test-dev-assignee-${t.id}`}
                       value={
-                        isHumanQaTester(persistedAssignee(t.id))
+                        isHumanQaTester(persistedAssignee(t.id)) &&
+                        devAssigneeIds.has(persistedAssignee(t.id) as QaTesterId)
                           ? persistedAssignee(t.id)
                           : FAILED_TEST_ASSIGNEE
                       }
@@ -4336,10 +4604,10 @@ export function TestingPortal({
                         padding: "8px 12px",
                         fontSize: "1rem",
                         fontWeight: 600,
-                        color: STATUS_COLOR.fail,
+                        color: STATUS_COLOR[st],
                       }}
                     >
-                      {qaTesters.map((tester) => (
+                      {devAssignees.map((tester) => (
                         <option key={tester.id} value={tester.id}>
                           {tester.shortName}
                         </option>
@@ -4395,18 +4663,23 @@ export function TestingPortal({
                             minWidth: 0,
                             padding: "8px 12px",
                             fontSize: "1rem",
-                            color: st === "fail" ? STATUS_COLOR.fail : undefined,
-                            fontWeight: st === "fail" ? 600 : undefined,
+                            color: statusAssignsToLeadDev(st) ? STATUS_COLOR[st] : undefined,
+                            fontWeight: statusAssignsToLeadDev(st) ? 600 : undefined,
                           }}
-                          aria-label={`Assignee for ${t.id}`}
+                          aria-label={
+                            statusAssignsToLeadDev(st)
+                              ? `Developer assignee for ${t.id}`
+                              : `Assignee for ${t.id}`
+                          }
                           data-testid={
-                            st === "fail"
+                            statusAssignsToLeadDev(st)
                               ? `test-dev-assignee-expanded-${t.id}`
                               : `test-assignee-expanded-${t.id}`
                           }
                           value={
-                            st === "fail"
-                              ? isHumanQaTester(persistedAssignee(t.id))
+                            statusAssignsToLeadDev(st)
+                              ? isHumanQaTester(persistedAssignee(t.id)) &&
+                                devAssigneeIds.has(persistedAssignee(t.id) as QaTesterId)
                                 ? persistedAssignee(t.id)
                                 : FAILED_TEST_ASSIGNEE
                               : (assigneeOverrides[t.id] ?? "")
@@ -4414,10 +4687,10 @@ export function TestingPortal({
                           disabled={isSaving(t.id) || !canChangeStatus}
                           onChange={(e) => void reassign(t.id, e.target.value)}
                         >
-                          {st !== "fail" ? (
+                          {statusAssignsToLeadDev(st) ? null : (
                             <option value="">Default ({testerLabel(t.assignees)})</option>
-                          ) : null}
-                          {qaTesters.map((tester) => (
+                          )}
+                          {(statusAssignsToLeadDev(st) ? devAssignees : qaTesters).map((tester) => (
                             <option key={tester.id} value={tester.id}>
                               {tester.shortName}
                             </option>

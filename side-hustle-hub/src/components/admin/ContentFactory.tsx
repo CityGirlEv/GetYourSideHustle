@@ -29,8 +29,11 @@ import {
   softLaunchItemById,
   softLaunchItemCompletion,
   softLaunchItemRef,
+  softLaunchItemShowsRollover,
   softLaunchProjectionForItem,
   softLaunchRolloutItems,
+  planSoftLaunchSprintRollovers,
+  withSoftLaunchRolloverNote,
   SOFT_LAUNCH_FACTORY_SPRINTS,
   SOFT_LAUNCH_ITEM_STATUSES,
   SOFT_LAUNCH_ITEM_STATUS_LABELS,
@@ -42,15 +45,25 @@ import {
   type RolloutChannel,
   type RolloutOwner,
 } from "../../lib/gysh-soft-launch-rollout";
-import { currentSprintIndex, getSprintWindow } from "../../lib/gysh-sprints";
-import { fetchTasks, isoToMmddyy, TASK_STATUS_LABELS, type TaskStatus } from "../../lib/gysh-tasks";
+import { currentSprintIndex, getSprintWindow, withSprintDueDate } from "../../lib/gysh-sprints";
+import {
+  fetchTasks,
+  isoToMmddyy,
+  persistTasks,
+  TASK_STATUS_LABELS,
+  type GyshTask,
+  type TaskStatus,
+} from "../../lib/gysh-tasks";
 import {
   DEFAULT_TEST_STATUS,
   STATUS_LABELS as TEST_STATUS_LABELS,
   TEST_CASES,
   fetchTestStatuses,
+  saveTestStatusesBatch,
   type TestStatus,
 } from "../../lib/gysh-test-plan";
+import { appendActorNote } from "../../lib/gysh-note-entries";
+import { noteRolledFromSprint, rolloverNoteText, itemMatchesSprintFilterSet } from "../../lib/gysh-sprint-board";
 import { ApiError } from "../../lib/api";
 import {
   adminStudioPath,
@@ -376,17 +389,132 @@ export function ContentFactory({
       const [data, tasks, testPayload, overrides, attachments] = await Promise.all([
         fetchContentState(),
         fetchTasks().catch(() => [] as Awaited<ReturnType<typeof fetchTasks>>),
-        fetchTestStatuses().catch(() => ({ statuses: {} as Record<string, string> })),
+        fetchTestStatuses().catch(() => ({
+          statuses: {} as Record<string, string>,
+          notes: {} as Record<string, string>,
+          assignees: {} as Record<string, string>,
+          sprints: {} as Record<string, number>,
+          dueDates: {} as Record<string, string>,
+        })),
         fetchSoftLaunchOverrides().catch(() => ({} as Record<string, SoftLaunchOverrideEntry>)),
         fetchSoftLaunchAttachments().catch(() => [] as SoftLaunchItemAttachment[]),
       ]);
-      setItemOverrides(overrides);
-      activateSoftLaunchOverrides(overrides);
+      let nextOverrides = { ...overrides };
+      activateSoftLaunchOverrides(nextOverrides);
       setAttachmentsByItem(groupSoftLaunchAttachmentsByItem(attachments));
-      setLinkTasks(tasks.map((t) => ({ id: t.id, description: t.description })));
-      const taskMap: Record<string, string> = {};
-      for (const t of tasks) taskMap[t.id] = t.status;
-      const testMap: Record<string, string> = { ...(testPayload.statuses ?? {}) };
+
+      let workingTasks = tasks;
+      let taskMap: Record<string, string> = {};
+      for (const t of workingTasks) taskMap[t.id] = t.status;
+      let testMap: Record<string, string> = { ...(testPayload.statuses ?? {}) };
+      let testSprints: Record<string, number> = { ...(testPayload.sprints ?? {}) };
+      let testNotes: Record<string, string> = { ...(testPayload.notes ?? {}) };
+      let testAssignees: Record<string, string> = { ...(testPayload.assignees ?? {}) };
+      let testDueDates: Record<string, string> = { ...(testPayload.dueDates ?? {}) };
+
+      const targetSprint = softLaunchFactoryDefaultSprints()[0] ?? currentSprintIndex();
+      const planned = planSoftLaunchSprintRollovers({
+        items: softLaunchRolloutItems(),
+        targetSprint,
+        taskStatusById: taskMap,
+        testStatusById: testMap,
+      });
+
+      if (planned.length > 0) {
+        const taskById = new Map(workingTasks.map((t) => [t.id, t]));
+        const taskDelta: GyshTask[] = [];
+        const testBatch: Array<{
+          caseId: string;
+          status: TestStatus;
+          note?: string;
+          assignee?: string;
+          sprint?: number;
+          dueDate?: string;
+        }> = [];
+
+        for (const plan of planned) {
+          const prevNotes = String(nextOverrides[plan.itemId]?.patch?.notes ?? "").trim();
+          const catalogNotes = softLaunchItemById(plan.itemId)?.notes ?? "";
+          const baseNotes = prevNotes || catalogNotes;
+          try {
+            const saved = await saveSoftLaunchItemOverride(plan.itemId, {
+              sprint: targetSprint as 2 | 3 | 4 | 5,
+              notes: withSoftLaunchRolloverNote(baseNotes, plan.fromSprint),
+            });
+            nextOverrides = { ...nextOverrides, [plan.itemId]: saved };
+          } catch {
+            /* keep going — task roll still helps Task List */
+          }
+
+          const task = taskById.get(plan.taskId);
+          if (task && Number(task.sprint) !== targetSprint && task.status !== "done") {
+            const already = noteRolledFromSprint(task.notes, plan.fromSprint);
+            taskDelta.push({
+              ...task,
+              ...withSprintDueDate({ sprint: targetSprint }),
+              status: task.status === "not_started" ? "in_progress" : task.status,
+              notes: already
+                ? task.notes
+                : appendActorNote(task.notes, "System", rolloverNoteText(plan.fromSprint)),
+            });
+          }
+
+          for (const caseId of plan.relatedTestIds) {
+            const st = (testMap[caseId] ?? DEFAULT_TEST_STATUS) as TestStatus;
+            if (st === "pass" || st === "conditional_approval") continue;
+            if (Number(testSprints[caseId]) === targetSprint) continue;
+            const from = Number(testSprints[caseId]);
+            const fromSprint = Number.isFinite(from) ? from : plan.fromSprint;
+            const note = testNotes[caseId] ?? "";
+            testBatch.push({
+              caseId,
+              status: st === "rolled_over" ? "not_run" : st,
+              note: noteRolledFromSprint(note, fromSprint)
+                ? note
+                : appendActorNote(note, "System", rolloverNoteText(fromSprint)),
+              assignee: testAssignees[caseId] ?? "",
+              sprint: targetSprint,
+              dueDate: testDueDates[caseId],
+            });
+          }
+        }
+
+        activateSoftLaunchOverrides(nextOverrides);
+        setItemOverrides(nextOverrides);
+
+        if (taskDelta.length > 0) {
+          try {
+            workingTasks = await persistTasks(taskDelta);
+            taskMap = {};
+            for (const t of workingTasks) taskMap[t.id] = t.status;
+          } catch {
+            /* keep prior tasks */
+          }
+        }
+        if (testBatch.length > 0) {
+          try {
+            const savedTests = await saveTestStatusesBatch(testBatch);
+            testMap = { ...testMap, ...(savedTests.statuses ?? {}) };
+            testSprints = { ...testSprints, ...(savedTests.sprints ?? {}) };
+            testNotes = { ...testNotes, ...(savedTests.notes ?? {}) };
+            testAssignees = { ...testAssignees, ...(savedTests.assignees ?? {}) };
+            testDueDates = { ...testDueDates, ...(savedTests.dueDates ?? {}) };
+          } catch {
+            /* keep prior tests */
+          }
+        }
+
+        const refs = planned.map((p) => p.itemRef || p.itemId);
+        setSeedMsg(
+          `Rolled ${planned.length} incomplete Content Factory item${
+            planned.length === 1 ? "" : "s"
+          } → Sprint ${targetSprint}: ${refs.join(", ")}`,
+        );
+      } else {
+        setItemOverrides(nextOverrides);
+      }
+
+      setLinkTasks(workingTasks.map((t) => ({ id: t.id, description: t.description })));
       setTaskStatusById(taskMap);
       setTestStatusById(testMap);
 
@@ -485,7 +613,9 @@ export function ContentFactory({
 
   const sprintScopedItems = useMemo(() => {
     if (sprintFilters.size === 0) return rolloutItems;
-    return rolloutItems.filter((i) => sprintFilters.has(i.sprint));
+    return rolloutItems.filter((i) =>
+      itemMatchesSprintFilterSet(i.sprint, i.notes, sprintFilters),
+    );
   }, [sprintFilters, rolloutItems]);
 
   const sprintCounts = useMemo(() => {
@@ -1156,7 +1286,21 @@ export function ContentFactory({
             </div>
 
             {seedMsg && (
-              <p style={{ marginTop: 12, color: "var(--text-primary)", fontSize: "0.95rem" }}>{seedMsg}</p>
+              <p
+                data-testid="factory-rollover-flash"
+                style={{
+                  marginTop: 12,
+                  padding: "10px 12px",
+                  borderRadius: 8,
+                  background: "rgba(14, 116, 144, 0.1)",
+                  border: "1px solid rgba(14, 116, 144, 0.35)",
+                  color: "#0e7490",
+                  fontSize: "0.95rem",
+                  fontWeight: 700,
+                }}
+              >
+                {seedMsg}
+              </p>
             )}
             <p style={{ marginTop: 12, color: "var(--text-primary)", fontSize: "0.95rem" }}>
               <CalendarRange size={14} style={{ verticalAlign: -2, marginRight: 6 }} />
@@ -1356,6 +1500,22 @@ export function ContentFactory({
                           >
                             {item.title}
                           </span>
+                          {softLaunchItemShowsRollover(item) ? (
+                            <span
+                              className="flat-label"
+                              data-testid={`factory-item-rolled-${item.id}`}
+                              title={item.notes || "Rolled over from a prior sprint"}
+                              style={{
+                                background: "rgba(14, 116, 144, 0.12)",
+                                color: "#0e7490",
+                                border: "1px solid rgba(14, 116, 144, 0.35)",
+                                fontWeight: 800,
+                                fontSize: "0.75rem",
+                              }}
+                            >
+                              Rolled over
+                            </span>
+                          ) : null}
                           <span
                             className="content-factory__item-due"
                             data-testid={`factory-item-due-${item.id}`}

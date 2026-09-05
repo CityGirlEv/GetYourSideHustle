@@ -17,7 +17,7 @@ export const SCOUTING_AD_CMS_CREATIVE_RULES = `CMS/Meta safe creative rules (42 
 
 /** Shared visual language — same family as the home page before/after hero ad. */
 export const SCOUTING_CARTOON_STYLE_BASE = `Visual style — match mypartb.com home cover hero (before/after Medicare education cartoon):
-• Friendly semi-flat vector cartoon illustration — warm, approachable, NOT photorealistic and NOT glossy insurance stock art.
+• Friendly semi-flat vector cartoon illustration — warm, approachable, NOT camera-realistic photography and NOT glossy insurance stock art.
 • Palette: soft blues, sage greens, warm cream backgrounds, subtle purple accents (brand-adjacent).
 • Characters: simplified cartoon proportions, expressive faces, casual everyday clothing — diverse, dignified, age-appropriate (55–72).
 • Part B Optimizer branding: circular blue PB+ logo on laptop lid only — no readable URL, no full wordmark text burned into the image.

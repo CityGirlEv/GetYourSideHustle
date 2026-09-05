@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { WaitIndicator } from "./WaitFeedback";
 import { MembershipFeatureLockBadge } from "./MembershipLockBadge";
+import { membershipLockedBadgeLabel } from "../lib/guide-access";
 import {
   SCHEDULE_BLOCK_STATUS_OPTIONS,
   SCHEDULE_DELETE_WARNING,
@@ -78,6 +79,7 @@ import {
   newPnLLineId,
   pnlExpenseCategoryLabel,
   removePnLLine,
+  salesVsTarget,
   summarizePnLLines,
   upsertPnLLine,
   weeklyOutcomesForBlueprint,
@@ -419,7 +421,7 @@ export function HustleScheduleSuite({
         {!unlocked ? (
           <>
             {" "}
-            <strong>Requires Pro Membership</strong> (includes P&amp;L calculator, tracker, and
+            <strong>Requires Pro or higher</strong> (includes P&amp;L calculator, tracker, and
             progress).
           </>
         ) : null}
@@ -1490,7 +1492,7 @@ function ScheduleDetail({
             ))}
           </select>
           <em>
-            We email your weekly plan table plus Kid Credit balance on this cadence (Pro+). Save after
+            We email your weekly plan table plus Kid Credit balance on this cadence (Pro or higher). Save after
             changing.
           </em>
         </label>
@@ -1521,6 +1523,8 @@ function SchedulePnLPanel({
   const totals = summarizePnLLines(ledger.lines);
   const weeks = weeklyOutcomesForBlueprint(ledger.lines, plan.weekStart, plan.dueDate);
   const blockPct = scheduleProgressPercent(plan.blocks);
+  const targetSalesUsd = plan.blueprintGoals?.targetSalesUsd ?? 0;
+  const vsTarget = salesVsTarget(totals.salesUsd, targetSalesUsd);
   const today = new Date().toISOString().slice(0, 10);
 
   const [kind, setKind] = useState<PnLLineKind>("sale");
@@ -1557,13 +1561,14 @@ function SchedulePnLPanel({
         />
       </div>
       <p className="hustle-schedule-suite__hint">
-        Add dated <strong>sales</strong> and <strong>expense</strong> line items. Net profit updates
-        live. Keep this blueprint sprint to about <strong>{BLUEPRINT_MAX_DAYS} days</strong> or less.
-        Save when done.
+        Add dated <strong>sales</strong> and <strong>expense</strong> line items. Edit{" "}
+        <strong>Target sales</strong> anytime — remaining / % of target update live. Net profit
+        updates from line items. Keep this blueprint sprint to about{" "}
+        <strong>{BLUEPRINT_MAX_DAYS} days</strong> or less. Save when done.
         {!unlocked ? (
           <>
             {" "}
-            <strong>Locked · Needs Pro</strong> membership (Schedule Suite).
+            <strong>{membershipLockedBadgeLabel("pro")}</strong> membership (Schedule Suite).
           </>
         ) : null}
       </p>
@@ -1610,9 +1615,34 @@ function SchedulePnLPanel({
           <strong data-testid="schedule-pnl-blueprint-pct">{blockPct}% complete</strong>
           <em>Day blocks Done toward finishing this blueprint</em>
         </div>
-        <div>
-          <span>Target sales</span>
-          <strong>${plan.blueprintGoals?.targetSalesUsd ?? 0}</strong>
+        <div className="hustle-schedule-suite__pnl-target">
+          <label>
+            <span>Target sales ($)</span>
+            <input
+              type="number"
+              min={0}
+              step={1}
+              value={targetSalesUsd || ""}
+              disabled={!unlocked}
+              data-testid="schedule-pnl-target-sales"
+              aria-label="Target sales USD"
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                onPatch((p) =>
+                  patchBlueprintGoals(p, {
+                    targetSalesUsd: Number.isFinite(v) ? v : 0,
+                  }),
+                );
+              }}
+            />
+          </label>
+          <em data-testid="schedule-pnl-target-progress">
+            {vsTarget.targetUsd <= 0
+              ? "Set a target to track progress"
+              : vsTarget.overTargetUsd > 0
+                ? `${vsTarget.progressPct}% of target · ${moneyLabel(vsTarget.overTargetUsd)} over`
+                : `${vsTarget.progressPct}% of target · ${moneyLabel(vsTarget.remainingUsd)} remaining`}
+          </em>
         </div>
       </div>
 
@@ -1628,6 +1658,12 @@ function SchedulePnLPanel({
         <div className={totals.profitUsd >= 0 ? "is-profit" : "is-loss"}>
           <span>Net profit</span>
           <strong data-testid="schedule-pnl-result">{moneyLabel(totals.profitUsd)}</strong>
+        </div>
+        <div data-testid="schedule-pnl-vs-target">
+          <span>{vsTarget.overTargetUsd > 0 ? "Over target" : "To target"}</span>
+          <strong data-testid="schedule-pnl-remaining">
+            {moneyLabel(vsTarget.overTargetUsd > 0 ? vsTarget.overTargetUsd : vsTarget.remainingUsd)}
+          </strong>
         </div>
       </div>
 

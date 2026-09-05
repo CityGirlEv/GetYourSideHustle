@@ -10,6 +10,8 @@ import { noteEntriesPlainText } from "./gysh-note-entries";
 import { expandCatalogCasesForSingleAssignees, testCaseLogicalId } from "./gysh-test-case-dupes";
 import { EMAIL_TEMPLATE_REVIEW_CASES } from "./gysh-email-template-review-cases";
 import { LEGAL_REVIEW_CASES } from "./gysh-legal-review-cases";
+import { STRIPE_CHECKOUT_CASES } from "./gysh-stripe-checkout-cases";
+import { BETA_CREDITS_REVIEW_CASES } from "./gysh-beta-credits-review-cases";
 
 export type TestSuite = "manual" | "vitest" | "playwright";
 
@@ -90,6 +92,73 @@ export const DEV_FIX_STATUSES: TestStatus[] = [
 
 /** Initial / default status for every test case until a tester changes it. */
 export const DEFAULT_TEST_STATUS: TestStatus = "not_run";
+
+/**
+ * First time a Not Started test is touched via checklist or notes,
+ * auto-promote to In Progress. Never when only status/assignee change,
+ * and never for automated suite-owned cases.
+ */
+export function shouldAutoStartTestOnFirstTouch(input: {
+  prevStatus: string | null | undefined;
+  nextStatus: string | null | undefined;
+  lockedSuiteOwner?: string | null;
+  notesChanged?: boolean;
+  stepsChanged?: boolean;
+}): boolean {
+  if (input.lockedSuiteOwner) return false;
+  const prev = String(input.prevStatus || DEFAULT_TEST_STATUS);
+  if (prev !== "not_run") return false;
+  const next = String(input.nextStatus || prev);
+  // Explicit status change away from Not Started — leave it alone.
+  if (next !== "not_run") return false;
+  return Boolean(input.notesChanged || input.stepsChanged);
+}
+
+/** True when a Not Started test already has notes or checked steps (needs heal → In Progress). */
+export function notStartedTestAlreadyTouched(input: {
+  status: string | null | undefined;
+  note?: string | null;
+  checkedSteps?: boolean[] | null;
+}): boolean {
+  if (String(input.status || DEFAULT_TEST_STATUS) !== "not_run") return false;
+  if (noteEntriesPlainText(String(input.note ?? "")).trim()) return true;
+  if ((input.checkedSteps ?? []).some(Boolean)) return true;
+  return false;
+}
+
+/** Sweep Not Started tests that already have notes or checked steps → In Progress. */
+export function healNotStartedTouchedTests(input: {
+  statuses: Record<string, string | undefined>;
+  notes: Record<string, string | undefined>;
+  checkedSteps?: Record<string, boolean[] | undefined>;
+  caseIds?: string[];
+}): { statuses: Record<string, string>; changedIds: string[] } {
+  const statuses = { ...input.statuses } as Record<string, string>;
+  const changedIds: string[] = [];
+  const ids =
+    input.caseIds ??
+    Array.from(
+      new Set([
+        ...Object.keys(input.statuses),
+        ...Object.keys(input.notes),
+        ...Object.keys(input.checkedSteps ?? {}),
+      ]),
+    );
+  for (const id of ids) {
+    if (
+      !notStartedTestAlreadyTouched({
+        status: statuses[id],
+        note: input.notes[id],
+        checkedSteps: input.checkedSteps?.[id],
+      })
+    ) {
+      continue;
+    }
+    statuses[id] = "in_progress";
+    changedIds.push(id);
+  }
+  return { statuses, changedIds };
+}
 
 /** Fail, Blocked, Conditional Pass, and Lead Dev retest statuses require a short written note. */
 export const NOTE_REQUIRED_STATUSES: TestStatus[] = [
@@ -226,6 +295,7 @@ export type TestCategory =
   | "youtube"
   | "instagram"
   | "tiktok"
+  | "personal_amplify"
   | "contact"
   | "content"
   | "workshops"
@@ -248,6 +318,7 @@ export const TEST_CATEGORY_LABELS: Record<TestCategory, string> = {
   youtube: "YouTube",
   instagram: "Instagram",
   tiktok: "TikTok",
+  personal_amplify: "Personal Amplify",
   contact: "Contact",
   content: "Content",
   workshops: "Workshops",
@@ -271,6 +342,7 @@ export const TEST_CATEGORIES: TestCategory[] = [
   "youtube",
   "instagram",
   "tiktok",
+  "personal_amplify",
   "contact",
   "content",
   "workshops",
@@ -292,6 +364,12 @@ export const SOCIAL_TEST_CATEGORIES: TestCategory[] = [
 ];
 
 export function categoryForCase(t: Pick<TestCase, "area" | "suite" | "id" | "title">): TestCategory {
+  const id = String(t.id || "").toUpperCase();
+  const title = String(t.title || "");
+  // Personal amplify share QA (Tina/Evelyn personal reshare cadence)
+  if (id.includes("PERSONAL-AMPLIFY") || /personal\s+ampl[iy]/i.test(title)) {
+    return "personal_amplify";
+  }
   if (t.suite === "vitest" || t.suite === "playwright") {
     if (t.area === "Kids Get Your Side Hustle") return "wizard_kids";
     if (t.area === "Teens Get Your Side Hustle" || t.area === "Junior Get Your Side Hustle")
@@ -518,7 +596,7 @@ const TEST_CASES_RAW_BASE: TestCase[] = [
       "Confirm Free / Starter / Pro / Elite cards, then hustle schedule suite callout after the membership tier grid (points to My Dashboard → Schedule Suite)",
       "On Adults/Seniors: confirm note that all membership amounts are collected in advance; check Yearly on a paid card and confirm both equivalent monthly rate and yearly amount show",
       "Military & Veterans callout is deferred (hidden) until Sprint 6 / Task T-MEM-MILITARY (Military Membership discount) — do not expect it on Adults/Seniors yet",
-      "Switch audience tabs: Kids (4–12), Teens (13–17), Adults (18–54), Seniors (55+)",
+      "Switch audience tabs: Kids (4–12), Teens (13–17), Adults (18–49), Seniors (50+)",
       "On Kids and Teens, confirm parent-funded credit packs and credit earn sections appear",
       "Confirm credit packs list 25 / $5, 60 / $10, 140 / $20, and 300 / $40",
       "Scan a la carte price table for the selected audience",
@@ -571,7 +649,7 @@ const TEST_CASES_RAW_BASE: TestCase[] = [
     assignees: ["lyriq"],
     suite: "manual",
     steps: [
-      "Sign in as Pro+ (or admin) and open My Dashboard → Schedule Suite",
+      "Sign in as Pro or higher (or admin) and open My Dashboard → Schedule Suite",
       "Create or open a schedule; stay on Plan tracker (no Weekly plan tab)",
       "Check a day checkbox → Status becomes Done automatically",
       "Uncheck the same checkbox → Status becomes Not Started",
@@ -626,7 +704,7 @@ const TEST_CASES_RAW_BASE: TestCase[] = [
     assignees: ["lyriq"],
     suite: "manual",
     steps: [
-      "Sign in as Pro+ (or admin) and open My Dashboard → Schedule Suite",
+      "Sign in as Pro or higher (or admin) and open My Dashboard → Schedule Suite",
       "Open or create a schedule tab; confirm Email reminders control (None / Daily / Weekly / Bi-weekly / Monthly)",
       "Confirm Email Me on the Plan tracker / Blueprint row scrolls to the Email reminders section",
       "Set cadence to Weekly (or Daily for a same-day check), fill required hours, and Save",
@@ -667,7 +745,7 @@ const TEST_CASES_RAW_BASE: TestCase[] = [
     suite: "manual",
     steps: [
       "GRADING SCALE (how the score is calculated): Score = % of the 7 day blocks marked Done (Not Started / In Progress / Blocked do not count). Hours, sales, and roundup are context only — they do not change the letter. Marks: A+ = 97–100%, A = 90–96%, B+ = 87–89%, B = 80–86%, C+ = 77–79%, C = 70–76%, D = 60–69%, F = 0–59%. With 7 days: 7 Done ≈ 100% (A+), 6 Done ≈ 86% (B), 5 Done ≈ 71% (C), 4 Done ≈ 57% (F), 0 Done = 0% (F).",
-      "Sign in as Pro+ (or admin) → My Dashboard → Schedule Suite → open a schedule on Plan tracker",
+      "Sign in as Pro or higher (or admin) → My Dashboard → Schedule Suite → open a schedule on Plan tracker",
       "F: leave all days Not Started → Grade me → expect F (~0%) on Weekly Roundup",
       "D: mark enough days Done for ~60–69% (e.g. ~4–5 of 7 depending on rounding) → Grade me → expect D",
       "C / C+: mark days for ~70–79% → Grade me → expect C or C+",
@@ -682,14 +760,14 @@ const TEST_CASES_RAW_BASE: TestCase[] = [
   {
     id: "SCHED-PNL-001",
     area: "Membership",
-    title: "Schedule Suite Profit & Loss calculator (Pro+)",
+    title: "Schedule Suite Profit & Loss calculator (Pro or higher)",
     priority: "P1",
     roles: ["adult", "admin", "qa"],
     assignees: ["lyriq"],
     suite: "manual",
     steps: [
       "Confirm Membership / Join lists Profit & Loss calculator on Pro and Elite",
-      "Sign in as Pro+ (or admin) → My Dashboard → Schedule Suite → open a schedule → P&L calculator tab",
+      "Sign in as Pro or higher (or admin) → My Dashboard → Schedule Suite → open a schedule → P&L calculator tab",
       "Confirm Blueprint window shows days (≤10 target), week count, and plan tracker % complete",
       "Add line item: Type Sale, Date, Description, Amount → Add; confirm Sales + Net profit update",
       "Add line item: Type Expense, Category (Admin/Overhead/Advertising/etc.), Amount → Add; confirm Expenses + Net update",
@@ -710,7 +788,7 @@ const TEST_CASES_RAW_BASE: TestCase[] = [
     suite: "manual",
     steps: [
       "Open Seniors from top nav (or Home Seniors starting-point bubble)",
-      "Confirm intro welcomes 55+ / retirees & flexible schedules without infantilizing tone",
+      "Confirm intro welcomes 50+ / retirees & flexible schedules without infantilizing tone",
       "Browse tabs: GYSH Match Wizard, Ideas, Guides, Join",
     ],
     expected: "Page title is GYSH Seniors Corner; tabs work; Join can mark interest or link to Join",
@@ -1533,7 +1611,7 @@ const TEST_CASES_RAW_BASE: TestCase[] = [
       "Scan copy for ageist or infantilizing language",
       "Confirm top matches fit flexible schedules",
     ],
-    expected: "Tone respectful; hustles fit 55+ energy/time constraints",
+    expected: "Tone respectful; hustles fit 50+ energy/time constraints",
     path: "seniors",
   },
   {
@@ -2160,6 +2238,12 @@ const TEST_CASES_RAW_BASE: TestCase[] = [
 
   // Candace legal review — disclaimer, Beta Tester NDA, signup confirmation email
   ...LEGAL_REVIEW_CASES,
+
+  // Stripe Checkout — every paid membership SKU, a-la-carte item, credit pack (Sprint 4 · Unassigned)
+  ...STRIPE_CHECKOUT_CASES,
+
+  // Beta Tester Member Credits guide — Milford / Tina / Brenda / Lyriq / Evelyn
+  ...BETA_CREDITS_REVIEW_CASES,
 ];
 
 /** Expand shared-assignee + calculator triples before page-link injection. */
@@ -2207,7 +2291,18 @@ export type TestStatusesPayload = {
   updatedBy: Record<string, string>;
   attachments: Record<string, TestAttachmentMeta[]>;
   generatedCases: GeneratedTestCase[];
+  /** PUT returns only changed cases — merge into existing maps instead of replacing. */
+  partial?: boolean;
 };
+
+export function nextKeyedMap<T>(
+  prev: Record<string, T>,
+  incoming: Record<string, T> | undefined,
+  partial?: boolean,
+): Record<string, T> {
+  const next = incoming ?? {};
+  return partial ? { ...prev, ...next } : next;
+}
 
 function mapStatusesResponse(data: {
   statuses?: Record<string, TestStatus>;
@@ -2224,6 +2319,7 @@ function mapStatusesResponse(data: {
   updatedBy?: Record<string, string>;
   attachments?: Record<string, TestAttachmentMeta[]>;
   generatedCases?: GeneratedTestCase[];
+  partial?: boolean;
 }): TestStatusesPayload {
   return {
     statuses: data.statuses ?? {},
@@ -2239,6 +2335,7 @@ function mapStatusesResponse(data: {
     updatedAt: data.updatedAt ?? {},
     updatedBy: data.updatedBy ?? {},
     attachments: data.attachments ?? {},
+    partial: data.partial === true,
     generatedCases: (data.generatedCases ?? []).map((c) => ({
       ...c,
       priority: (c.priority as Priority) || "P1",
@@ -2268,6 +2365,8 @@ export async function saveTestStatus(
     dueDate?: string;
     assignedBy?: string;
     dateAssigned?: string;
+    /** Trusted allow-list only (Cursor / System). */
+    noteAuthor?: string;
   },
 ): Promise<TestStatusesPayload> {
   const data = await api<Parameters<typeof mapStatusesResponse>[0]>("test-statuses", {
@@ -2281,6 +2380,7 @@ export async function saveTestStatus(
       ...(opts?.dueDate !== undefined ? { dueDate: opts.dueDate } : {}),
       ...(opts?.assignedBy !== undefined ? { assignedBy: opts.assignedBy } : {}),
       ...(opts?.dateAssigned !== undefined ? { dateAssigned: opts.dateAssigned } : {}),
+      ...(opts?.noteAuthor !== undefined ? { noteAuthor: opts.noteAuthor } : {}),
       checkedSteps: opts?.checkedSteps,
       failedStepIndex: opts?.failedStepIndex ?? null,
       stepCount: opts?.stepCount ?? 0,
@@ -2294,6 +2394,8 @@ export async function saveTestStatusesBatch(
     caseId: string;
     status: TestStatus;
     note?: string;
+    /** Trusted allow-list only (Cursor / System) — see setTestStatus. */
+    noteAuthor?: string;
     assignee?: string;
     sprint?: number;
     dueDate?: string;

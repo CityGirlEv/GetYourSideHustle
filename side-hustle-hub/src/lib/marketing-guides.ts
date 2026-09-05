@@ -1,4 +1,4 @@
-﻿/**
+/**
  * GYSH audience guides — Adult, Kids, Teens, Seniors, and Complete Master.
  * Shared by the online Guides viewer and downloadable PDF editions.
  */
@@ -115,9 +115,9 @@ function buildAdultGuide(): MarketingGuideDoc {
     eyebrow: "GYSH Adult Guide",
     title: "Launch your Side Hustle with confidence",
     lead:
-      "A polished field guide for adults 18–54 — Match Wizard, Side Hustle Blueprint, launch playbooks, Workshops, and membership perks that turn curiosity into cash-flow.",
+      "A polished field guide for adults 18–49 — Match Wizard, Side Hustle Blueprint, launch playbooks, Workshops, and membership perks that turn curiosity into cash-flow.",
     filename: "GYSH-Adult-Guide.pdf",
-    audienceBadge: "Ages 18–54 · Side Hustlers & families",
+    audienceBadge: "Ages 18–49 · Side Hustlers & families",
     tagline: "Budget · Hours · Strengths · Goals → ranked matches you can actually start",
     sections: [
       {
@@ -144,7 +144,7 @@ function buildAdultGuide(): MarketingGuideDoc {
           "Side Hustle Blueprint unlocks with a free account after you finish the wizard.",
           "Launch Guides with real steps, costs, and next actions.",
           "Workshops & Community for momentum — not lonely DIY forever.",
-          "Membership Free → Elite: guides, consulting, and (Pro+) the schedule suite.",
+          "Membership Free → Elite: guides, consulting, and (Pro or higher) the schedule suite.",
         ]),
       },
       {
@@ -515,9 +515,9 @@ function buildSeniorsGuide(): MarketingGuideDoc {
     eyebrow: "GYSH Seniors Guide",
     title: "A second chapter that fits your pace",
     lead:
-      "For ages 55+: flexible Match Wizard pacing, purpose-forward opportunities, senior guide teasers, and intentionally lower membership pricing — built for experience, not grind culture.",
+      "For ages 50+: flexible Match Wizard pacing, purpose-forward opportunities, senior guide teasers, and intentionally lower membership pricing — built for experience, not grind culture.",
     filename: "GYSH-Seniors-Guide.pdf",
-    audienceBadge: "Ages 55+ · Retirees & flexible schedules",
+    audienceBadge: "Ages 50+ · Retirees & flexible schedules",
     tagline: SENIOR_INTRO.headline,
     sections: [
       {
@@ -611,7 +611,7 @@ function buildSeniorsGuide(): MarketingGuideDoc {
         title: "Pacing checklist",
         kind: "checklist",
         items: checklist("senior-pace", [
-          "Protect energy — schedule peaks you enjoy, not every peak that pays.",
+          "Protect your energy — schedule work in your peak-energy hours, not just because a slot pays more.",
           "Start with one discovery call or one market day.",
           "Use Pro’s schedule suite for gentle weekly structure if you want reminders.",
           "Invite a peer for AI coffee chats — learning is better together.",

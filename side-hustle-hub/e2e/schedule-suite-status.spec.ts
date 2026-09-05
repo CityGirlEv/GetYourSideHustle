@@ -101,7 +101,7 @@ test.describe("Schedule Suite checkbox, hours, exports", () => {
     expect(html).toContain("Airbnb");
   });
 
-  test("Join page still advertises Schedule Suite for Pro+", async ({ page }) => {
+  test("Join page still advertises Schedule Suite for Pro & Above", async ({ page }) => {
     await page.goto("/");
     await page.getByTestId("nav-join").click();
     await expect(page.getByTestId("membership-schedule-suite")).toBeVisible();

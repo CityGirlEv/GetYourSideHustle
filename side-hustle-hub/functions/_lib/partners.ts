@@ -53,62 +53,67 @@ export const PARTNER_ADMINS = [
 ] as const;
 
 /** Insert partner accounts if missing. Does not overwrite roles, status, or passwords. */
+let partnerAdminsReady = false;
+
 export async function ensurePartnerAdmins(env: Env): Promise<void> {
+  if (partnerAdminsReady) return;
+  const { withD1Retry } = await import("./d1-retry");
   const now = new Date().toISOString();
 
-  for (const partner of PARTNER_ADMINS) {
-    const byId = await env.DB.prepare(`SELECT id, email, password_hash FROM users WHERE id = ?`)
-      .bind(partner.id)
-      .first<{ id: string; email: string; password_hash: string | null }>();
-    const byEmail = await env.DB.prepare(`SELECT id, password_hash FROM users WHERE email = ?`)
-      .bind(partner.email)
-      .first<{ id: string; password_hash: string | null }>();
+  await withD1Retry(async () => {
+    for (const partner of PARTNER_ADMINS) {
+      const byId = await env.DB.prepare(`SELECT id, email, password_hash FROM users WHERE id = ?`)
+        .bind(partner.id)
+        .first<{ id: string; email: string; password_hash: string | null }>();
+      const byEmail = await env.DB.prepare(`SELECT id, password_hash FROM users WHERE email = ?`)
+        .bind(partner.email)
+        .first<{ id: string; password_hash: string | null }>();
 
-    const existing = byEmail ?? byId ?? null;
-    const plan = partnerEnsurePlan(existing);
+      const existing = byEmail ?? byId ?? null;
+      const plan = partnerEnsurePlan(existing);
 
-    if (plan.action === "noop") {
-      continue;
-    }
+      if (plan.action === "noop") {
+        continue;
+      }
 
-    if (plan.action === "backfill-password" && existing) {
-      const id = existing.id;
+      if (plan.action === "backfill-password" && existing) {
+        const id = existing.id;
+        const salt = randomSaltHex();
+        const hash = await hashPassword(partner.password, salt);
+        await env.DB.prepare(
+          `UPDATE users SET password_hash = ?, password_salt = ?, updated_at = ? WHERE id = ?`,
+        )
+          .bind(hash, salt, now, id)
+          .run();
+        continue;
+      }
+
+      // insert
+      const rolesJson = serializeRoles([...partner.roles]);
       const salt = randomSaltHex();
       const hash = await hashPassword(partner.password, salt);
       await env.DB.prepare(
-        `UPDATE users SET password_hash = ?, password_salt = ?, updated_at = ? WHERE id = ?`,
+        `INSERT INTO users (id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?)`,
       )
-        .bind(hash, salt, now, id)
+        .bind(
+          partner.id,
+          partner.name,
+          partner.email,
+          partner.role,
+          rolesJson,
+          partner.joinedAt,
+          partner.notes,
+          hash,
+          salt,
+          now,
+          now,
+        )
         .run();
-      continue;
     }
+  });
 
-    // insert
-    const rolesJson = serializeRoles([...partner.roles]);
-    const salt = randomSaltHex();
-    const hash = await hashPassword(partner.password, salt);
-    await env.DB.prepare(
-      `INSERT INTO users (id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?)`,
-    )
-      .bind(
-        partner.id,
-        partner.name,
-        partner.email,
-        partner.role,
-        rolesJson,
-        partner.joinedAt,
-        partner.notes,
-        hash,
-        salt,
-        now,
-        now,
-      )
-      .run();
-  }
-
-  // Prevent duplicate alias account
-  await env.DB.prepare(`DELETE FROM users WHERE email = 'evvelyn3@cox.net'`).run();
+  partnerAdminsReady = true;
 }
 
 export type { DbUser };

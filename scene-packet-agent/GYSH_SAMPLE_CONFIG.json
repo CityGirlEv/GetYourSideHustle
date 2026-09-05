@@ -1,0 +1,21 @@
+{
+  "brand": {
+    "name": "Get Your Side Hustle",
+    "short_name": "GYSH",
+    "website": "https://getyoursidehustle.com"
+  },
+  "defaults": {
+    "task_reference": "T-SL-S3-FB-TEENS",
+    "content_factory_reference": "CF-020",
+    "audience": "Teens 13-17",
+    "aspect_ratio": "9:16"
+  },
+  "coach_duke": {
+    "name": "Delbert",
+    "nickname": "Coach Duke",
+    "age": 17,
+    "role": "Teen Side Hustle Coach",
+    "wardrobe": "Black/blue/yellow GYSH streetwear. FRONT: Coach Duke on front shoulder/chest. BACK: GYSH logo + TEENS CLUB.",
+    "continuity_rules": "Preserve face, age, proportions, silhouette, cap, gear and wardrobe."
+  }
+}

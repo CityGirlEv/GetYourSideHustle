@@ -7,11 +7,76 @@
 import { isHumanQaTester, type QaTesterId } from "./gysh-roles";
 import type { TestCase } from "./gysh-test-plan";
 
-const OWNER_SUFFIX_RE = /-(TINA|EVELYN|LYRIQ|CANDACE)$/i;
+const OWNER_SUFFIX_RE = /-(TINA|EVELYN|LYRIQ|CANDACE|MILFORD|BRENDA)$/i;
+const OWNER_NAME_IN_TITLE_RE =
+  /\b(tina|evelyn|lyriq|candace|milford|brenda)\b/gi;
 
 /** Strip -TINA / -EVELYN / -LYRIQ to get the logical catalog id. */
 export function testCaseLogicalId(caseId: string): string {
   return caseId.replace(OWNER_SUFFIX_RE, "");
+}
+
+/** Normalize titles so “Proofread: Home (Tina)” matches “Proofread: Home (Lyriq)”. */
+export function normalizeTestTitleForMatch(title: string): string {
+  return String(title || "")
+    .toLowerCase()
+    .replace(OWNER_NAME_IN_TITLE_RE, "")
+    .replace(/[()[\]{}·|/_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export type SiblingTestRef = {
+  id: string;
+  title: string;
+  assignees: string[];
+  /** How this sibling was matched. */
+  via: "logical_id" | "title";
+};
+
+/**
+ * Other catalog cases that are the same work under a different owner/name
+ * (e.g. MEMBER-STRIPE-001-EVELYN ↔ MEMBER-STRIPE-001-CANDACE, PROOF-001-TINA ↔ PROOF-001-LYRIQ).
+ */
+export function siblingTestCases(
+  caseId: string,
+  catalog: ReadonlyArray<Pick<TestCase, "id" | "title" | "assignees" | "expected">>,
+): SiblingTestRef[] {
+  const id = String(caseId || "").trim();
+  if (!id) return [];
+  const self = catalog.find((c) => c.id === id);
+  const logical = testCaseLogicalId(id);
+  const byLogical = catalog
+    .filter((c) => c.id !== id && testCaseLogicalId(c.id) === logical)
+    .map((c) => ({
+      id: c.id,
+      title: c.title,
+      assignees: [...c.assignees],
+      via: "logical_id" as const,
+    }));
+  if (byLogical.length > 0) {
+    return byLogical.sort((a, b) => a.id.localeCompare(b.id));
+  }
+
+  if (!self) return [];
+  const titleKey = normalizeTestTitleForMatch(self.title);
+  if (titleKey.length < 10) return [];
+  const expected = String(self.expected || "").trim();
+  return catalog
+    .filter((c) => {
+      if (c.id === id) return false;
+      if (normalizeTestTitleForMatch(c.title) !== titleKey) return false;
+      // Same expected outcome = same procedure with a different owner/name.
+      if (expected && String(c.expected || "").trim() !== expected) return false;
+      return true;
+    })
+    .map((c) => ({
+      id: c.id,
+      title: c.title,
+      assignees: [...c.assignees],
+      via: "title" as const,
+    }))
+    .sort((a, b) => a.id.localeCompare(b.id));
 }
 
 export function ownerSuffix(owner: QaTesterId): string {

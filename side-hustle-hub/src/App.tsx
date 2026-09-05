@@ -5,6 +5,7 @@ import {
   Search,
   Flame,
   Shield,
+  FlaskConical,
   LogIn,
   LogOut,
   Menu,
@@ -47,8 +48,11 @@ import { KidDashboard } from "./components/KidDashboard";
 import { ScheduleDuePopup } from "./components/ScheduleDuePopup";
 import { BetaPhasePopup } from "./components/BetaPhasePopup";
 import {
+  BETA_PHASE_NOTICE,
+  BETA_TESTER_SIGNUP_NOTICE,
   betaNoticePreviewRequested,
   shouldOpenBetaNoticeAfterLogin,
+  type BetaPhaseNoticeCopy,
 } from "./lib/beta-phase-notice";
 import {
   canAccessScheduleSuite,
@@ -77,6 +81,8 @@ import { AboutPage } from "./components/AboutPage";
 import { ContactPage } from "./components/ContactPage";
 import { PrivacyPolicyPage } from "./components/PrivacyPolicyPage";
 import { BetaNdaPage } from "./components/BetaNdaPage";
+import { BetaCreditsGuidePage } from "./components/BetaCreditsGuidePage";
+import { BetaPointsPage } from "./components/BetaPointsPage";
 import { JoinPage } from "./components/JoinPage";
 import { MembershipSignupPage } from "./components/MembershipSignupPage";
 import type { AudienceGroup, TierId } from "./lib/membership";
@@ -130,7 +136,7 @@ import {
   writeActAsTarget,
   type ActAsTarget,
 } from "./lib/admin-act-as";
-import { canAccessAdminPortal } from "./lib/gysh-roles";
+import { canAccessAdminPortal, canAccessTestingPortal, isQaOnlyPortalUser } from "./lib/gysh-roles";
 import { BetaTesterDashboard } from "./components/BetaTesterDashboard";
 import type { BetaNdaReceipt } from "./lib/beta-tester-dashboard";
 import { adminLandingTabAfterLogin } from "./lib/admin-login-landing";
@@ -176,6 +182,8 @@ export type AppView =
   | "privacy"
   | "beta_nda"
   | "beta_testing"
+  | "beta_credits"
+  | "beta_points"
   | "join"
   | "membership_signup";
 
@@ -488,7 +496,6 @@ function App() {
 
   // Auth states
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userRole, setUserRole] = useState<"user" | "admin">("user");
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [betaUnlockPreview, setBetaUnlockPreview] = useState<BetaNdaReceipt | null>(null);
   /** False until /auth/me finishes so /admin never flashes Schedule to anonymous visitors. */
@@ -517,6 +524,8 @@ function App() {
   const [meetingGateLocked, setMeetingGateLocked] = useState(false);
   const [scheduleDueOpen, setScheduleDueOpen] = useState(false);
   const [betaNoticeOpen, setBetaNoticeOpen] = useState(false);
+  const [betaNoticeCopy, setBetaNoticeCopy] =
+    useState<BetaPhaseNoticeCopy>(BETA_PHASE_NOTICE);
   const [scheduleDueSummaries, setScheduleDueSummaries] = useState<ScheduleSuiteSummary[]>([]);
   const [scheduleDueOverdue, setScheduleDueOverdue] = useState<OverdueScheduleItem[]>([]);
   const [focusScheduleId, setFocusScheduleId] = useState<string | null>(null);
@@ -681,8 +690,9 @@ function App() {
     }
   }, [activeView, guidesManualId]);
 
-  const canUseAdminPortal =
-    isLoggedIn && (userRole === "admin" || canAccessAdminPortal(authUser));
+  const canUseAdminPortal = isLoggedIn && canAccessAdminPortal(authUser);
+  const canUseTestingPortal = isLoggedIn && canAccessTestingPortal(authUser);
+  const qaOnlyPortal = isLoggedIn && isQaOnlyPortalUser(authUser);
   /** Profile Switcher is previewing a member audience (hide Admin chrome). */
   const previewingAsMember = actAsTarget.type !== "self";
   const actAsAudienceNow = actAsAudience(actAsTarget);
@@ -691,13 +701,13 @@ function App() {
    * - Profile Switcher → Kids/Teens Member
    * - Real non-staff members (or free Blueprint session)
    * - Lightweight team join (handled inside KidsCorner via localStorage)
-   * Staff (Tina/Evelyn/Lyriq admin|qa) browsing as themselves stay gated.
+   * Staff (admin/QA) browsing as themselves stay gated.
    */
   const kidsCornerMemberAccess =
     !previewingAsGuest &&
     (actAsAudienceNow === "kids" ||
       actAsAudienceNow === "junior" ||
-      (hasMemberAccess && !canUseAdminPortal));
+      (hasMemberAccess && !canUseAdminPortal && !canUseTestingPortal));
 
   // Restore session for this tab only — closing the page requires a fresh login.
   useEffect(() => {
@@ -708,7 +718,6 @@ function App() {
         if (user) {
           setIsLoggedIn(true);
           setAuthUser(user);
-          setUserRole(canAccessAdminPortal(user) ? "admin" : "user");
         }
       })
       .finally(() => {
@@ -738,7 +747,7 @@ function App() {
     };
   }, [mobileMenuOpen]);
 
-  // After login: show Schedule Suite overview + past-due items (Pro+ / admin).
+  // After login: show Schedule Suite overview + past-due items (Pro & Above / admin).
   useEffect(() => {
     if (!authReady || !isLoggedIn || !authUser) return;
     if (sessionStorage.getItem(SCHEDULE_DUE_POPUP_LOGIN_FLAG) !== "1") return;
@@ -767,13 +776,17 @@ function App() {
     };
   }, [authReady, isLoggedIn, authUser]);
 
-  // Deep link /admin must not render Admin Studio (Schedule) without portal roles.
+  // Deep link /admin: Admin Studio for admins; Testing Portal for QA-only.
   useEffect(() => {
     if (!authReady) return;
     if (activeView !== "admin") return;
     if (canUseAdminPortal) return;
+    if (canUseTestingPortal) {
+      if (adminTab !== "testing") setAdminTab("testing");
+      return;
+    }
     setActiveView("login");
-  }, [authReady, activeView, canUseAdminPortal]);
+  }, [authReady, activeView, canUseAdminPortal, canUseTestingPortal, adminTab]);
 
   // Tina / Lyriq admins: lock to Agenda until ≥3 meeting dates are saved.
   // Never run for member/parent accounts (even if name/email looks like "Tina").
@@ -940,7 +953,7 @@ function App() {
             "Choose a pace that fits your life — gentle, balanced, or active.",
             "Rank your strengths — teaching, crafts, hosting, tech, and more.",
             "Share how much time you can give and what you want most.",
-            "Get hustles ranked for 55+ / flexible schedules — best match first.",
+            "Get hustles ranked for 50+ / flexible schedules — best match first.",
           ],
         };
       case "guides":
@@ -987,7 +1000,7 @@ function App() {
         return {
           title: "How the GYSH Weekly Newsletter works",
           steps: [
-            "Starter+ members get a Friday dual-audience issue — kids glow + adult hustle tip.",
+            "Starter or higher members get a Friday dual-audience issue — kids glow + adult hustle tip.",
             "Read the archive on this page; the same issue lands in your inbox.",
             "Content Factory drafts appear here after they are marked Published.",
             "Free accounts can browse titles, then upgrade to unlock the full issue.",
@@ -1039,8 +1052,28 @@ function App() {
           steps: [
             "Accept GYSH-BETA-NDA-v1.0 to unlock testing.",
             "Track completed tests and recorded testing time.",
-            "Reward level starts at Not yet qualified.",
-            "Keep beta features and bugs confidential.",
+            "Reward level grows as you complete eligible cases.",
+            "Open the Credit Guide to see how Kid Credits are earned and spent.",
+          ],
+        };
+      case "beta_credits":
+        return {
+          title: "How Beta Tester credits work",
+          steps: [
+            "Earn Kid Credits for Pass, Conditional Pass, or documented Fail.",
+            "Priority sets the payout: P0 = 15, P1 = 10, P2 = 5, P3 = 3. Re-tests add +5.",
+            "Download the PDF or Word program briefing, or open Points earned.",
+            "Not Run and Blocked earn 0 — fair-play rules still apply.",
+          ],
+        };
+      case "beta_points":
+        return {
+          title: "How Beta Tester points work",
+          steps: [
+            "Each passed or documented Fail pays the case priority.",
+            "A required re-test adds five more points.",
+            "Open a tester’s name to see the cases that produced the total.",
+            "Download the program briefing from the Credit Guide.",
           ],
         };
       case "calculators":
@@ -1091,7 +1124,26 @@ function App() {
     goTo("seniors");
   };
 
+  const goToTestingPortal = () => {
+    if (!canUseTestingPortal) {
+      setActiveView("login");
+      setAdminMenuOpen(false);
+      setMobileMenuOpen(false);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    setAdminTab("testing");
+    setActiveView("admin");
+    setAdminMenuOpen(false);
+    setMobileMenuOpen(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const goToAdmin = (tab: AdminTab, guide?: UserGuideId) => {
+    if (qaOnlyPortal || (!canUseAdminPortal && canUseTestingPortal)) {
+      goToTestingPortal();
+      return;
+    }
     if (!canUseAdminPortal) {
       setActiveView("login");
       setAdminMenuOpen(false);
@@ -1169,6 +1221,12 @@ function App() {
         break;
       case "beta_testing":
         goTo("beta_testing");
+        break;
+      case "beta_credits":
+        goTo("beta_credits");
+        break;
+      case "beta_points":
+        goTo("beta_points");
         break;
       case "admin":
         goToAdmin(href.tab, href.guide);
@@ -1313,9 +1371,9 @@ function App() {
 
       if (outcome === "admin" || outcome === "member") {
         setIsLoggedIn(true);
-        setUserRole(outcome === "admin" ? "admin" : "user");
         setAuthUser(user ?? null);
         if (shouldOpenBetaNoticeAfterLogin(outcome)) {
+          setBetaNoticeCopy(BETA_PHASE_NOTICE);
           setBetaNoticeOpen(true);
         }
         setEmailInput("");
@@ -1357,6 +1415,19 @@ function App() {
             sessionStorage.setItem(SCHEDULE_DUE_POPUP_LOGIN_FLAG, "1");
             setAdminSessionKey((k) => k + 1);
             setAdminTab(adminLandingTabAfterLogin(user));
+            setActiveView("admin");
+          }
+        } else if (user && canAccessTestingPortal(user)) {
+          /* QA testers (no Admin role) → Testing Portal */
+          const pendingMembership = readPendingMembershipCheckout();
+          if (pendingMembership) {
+            clearPendingMembershipCheckout();
+            openMembershipSignup(pendingMembership.tierId, pendingMembership.audience, {
+              resumeCheckout: pendingMembership.resumeCheckout,
+            });
+          } else {
+            setAdminSessionKey((k) => k + 1);
+            setAdminTab("testing");
             setActiveView("admin");
           }
         } else {
@@ -1452,6 +1523,7 @@ function App() {
   useEffect(() => {
     try {
       if (betaNoticePreviewRequested(window.location.search)) {
+        setBetaNoticeCopy(BETA_PHASE_NOTICE);
         setBetaNoticeOpen(true);
       }
     } catch {
@@ -1497,7 +1569,6 @@ function App() {
   const handleLogout = async () => {
     await logout();
     setIsLoggedIn(false);
-    setUserRole("user");
     setAuthUser(null);
     setBetaNoticeOpen(false);
     clearActAsTarget();
@@ -1562,6 +1633,8 @@ function App() {
       case "privacy": return "GYSH Privacy Policy";
       case "beta_nda": return "GYSH Beta Tester NDA";
       case "beta_testing": return "GYSH Beta Tester Dashboard";
+      case "beta_credits": return "GYSH Beta Tester Credit Guide";
+      case "beta_points": return "GYSH Beta Tester Points";
       case "join": return "Join GYSH";
       case "membership_signup": return "GYSH Membership Sign-up";
       case "login": return "GYSH Sign In";
@@ -1590,12 +1663,14 @@ function App() {
       case "community": return "Ask questions, share updates, and exchange tips with other Side Hustlers.";
       case "newsletter": return "Friday dual-audience issue for members — kids glow story + adult hustle tip.";
       case "kids": return "Stories, GYSH Match Wizard, ideas, savings, and guides for Kids and Teens — parents coach the journey.";
-      case "seniors": return "GYSH Match Wizard and flexible Side Hustles for 55+, retirees, and second careers.";
+      case "seniors": return "GYSH Match Wizard and flexible Side Hustles for 50+, retirees, and second careers.";
       case "about": return "Meet Tina Marie Barham and Evelyn Irving — the partnership behind Get Your Side Hustle.";
       case "contact": return "Questions, partnerships, or workshop inquiries — we’d love to hear from you.";
       case "privacy": return "How Get Your Side Hustle collects, uses, stores, and protects your information.";
       case "beta_nda": return "Confidentiality terms for the GYSH beta testing program.";
       case "beta_testing": return "Your beta testing progress, recorded time, and reward level.";
+      case "beta_credits": return "How Beta Testers earn and spend Kid Credits for testing.";
+      case "beta_points": return "Live points board for Beta Testers — passes, re-tests, and totals.";
       case "join": return "Create an account, explore teams, and compare Free through Elite plans.";
       case "login": return "Sign in to save bookmarks, unlock badges, and track launch milestones.";
       case "user_portal":
@@ -1661,7 +1736,7 @@ function App() {
             </span>
             <span className="home-step-bubble__body">
               <strong>Seniors</strong>
-              <span>Flexible hustles for 55+, retirees, and second careers.</span>
+              <span>Flexible hustles for 50+, retirees, and second careers.</span>
             </span>
             <Heart size={16} className="home-step-bubble__icon" aria-hidden="true" />
           </button>
@@ -1779,7 +1854,7 @@ function App() {
         </li>
         <li className="home-match-family__card home-match-family__card--adult">
           <div className="home-match-family__title-row">
-            <strong>Adult (18–54)</strong>
+            <strong>Adult (18–49)</strong>
             <button
               type="button"
               className="home-match-family__card-cta home-match-family__card-cta--adult"
@@ -1796,7 +1871,7 @@ function App() {
         </li>
         <li className="home-match-family__card home-match-family__card--senior">
           <div className="home-match-family__title-row">
-            <strong>Senior (55+)</strong>
+            <strong>Senior (50+)</strong>
             <button
               type="button"
               className="home-match-family__card-cta home-match-family__card-cta--senior"
@@ -2038,7 +2113,23 @@ function App() {
             </button>
             {isLoggedIn ? (
               <>
-                {userRole === "admin" && !previewingAsMember ? (
+                {canUseTestingPortal && !previewingAsMember ? (
+                  <button
+                    type="button"
+                    className={`nav-link-btn${
+                      activeView === "admin" && adminTab === "testing" ? " active" : ""
+                    }`}
+                    onClick={() => goToTestingPortal()}
+                    data-testid="nav-testing-portal"
+                    aria-current={
+                      activeView === "admin" && adminTab === "testing" ? "page" : undefined
+                    }
+                  >
+                    <FlaskConical size={16} className="nav-icon" aria-hidden />
+                    Testing Portal
+                  </button>
+                ) : null}
+                {canUseAdminPortal && !previewingAsMember ? (
                   <div
                     ref={adminMenuRef}
                     className={`admin-nav-dropdown${adminMenuOpen ? " open" : ""}`}
@@ -2131,7 +2222,7 @@ function App() {
                     </ul>
                   </div>
                 ) : null}
-                {userRole === "admin" ? (
+                {canUseAdminPortal ? (
                   <div
                     ref={actAsMenuRef}
                     className={`admin-nav-dropdown profile-switch-dropdown${actAsMenuOpen ? " open" : ""}`}
@@ -2957,6 +3048,19 @@ function App() {
           <BetaNdaPage onContact={() => goTo("contact")} onJoin={() => openMembershipSignup("free")} />
         )}
 
+        {activeView === "beta_credits" && (
+          <BetaCreditsGuidePage
+            onOpenDashboard={() => goTo("beta_testing")}
+            onOpenNda={() => goTo("beta_nda")}
+            onOpenJoin={() => goTo("join")}
+            onOpenPoints={() => goTo("beta_points")}
+          />
+        )}
+
+        {activeView === "beta_points" && (
+          <BetaPointsPage onOpenProgram={() => goTo("beta_credits")} />
+        )}
+
         {activeView === "join" && (
           <JoinPage
             key={joinAudience ? `join-${joinAudience}` : "join-saved"}
@@ -2986,6 +3090,10 @@ function App() {
             }
             checkoutEmail={authUser?.email ?? null}
             onOpenBetaNda={() => goTo("beta_nda")}
+            onBetaTesterRegistered={() => {
+              setBetaNoticeCopy(BETA_TESTER_SIGNUP_NOTICE);
+              setBetaNoticeOpen(true);
+            }}
             onBetaTestingUnlocked={(receipt) => {
               setBetaUnlockPreview(receipt);
               goTo("beta_testing");
@@ -3027,6 +3135,10 @@ function App() {
               goTo("guides");
             }}
             onOpenBetaNda={() => goTo("beta_nda")}
+            onBetaTesterRegistered={() => {
+              setBetaNoticeCopy(BETA_TESTER_SIGNUP_NOTICE);
+              setBetaNoticeOpen(true);
+            }}
             onBetaTestingUnlocked={(receipt) => {
               setBetaUnlockPreview(receipt);
               goTo("beta_testing");
@@ -3040,6 +3152,8 @@ function App() {
             memberName={authUser?.name ?? betaUnlockPreview?.legalName ?? ""}
             memberEmail={authUser?.email ?? ""}
             onOpenNda={() => goTo("beta_nda")}
+            onOpenCredits={() => goTo("beta_credits")}
+            onOpenPoints={() => goTo("beta_points")}
             onJoin={() => openMembershipSignup("free")}
           />
         )}
@@ -3135,6 +3249,7 @@ function App() {
 
         <BetaPhasePopup
           open={betaNoticeOpen}
+          notice={betaNoticeCopy}
           onClose={() => setBetaNoticeOpen(false)}
         />
 
@@ -3151,7 +3266,7 @@ function App() {
           }}
         />
 
-        {activeView === "admin" && authReady && canUseAdminPortal && (
+        {activeView === "admin" && authReady && (canUseAdminPortal || canUseTestingPortal) && (
           <Suspense
             fallback={
               <div className="glass" style={{ padding: 32, textAlign: "center" }}>

@@ -1,0 +1,10 @@
+# Cloudflare Pages + D1 for nonnegotiation.com
+name = "my-plan-not-my-mood"
+compatibility_date = "2025-03-01"
+pages_build_output_dir = "dist"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "my-plan-agenda"
+database_id = "3bf8ecdd-012e-47d2-ba5f-7160ac968080"
+migrations_dir = "migrations"

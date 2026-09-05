@@ -1,0 +1,40 @@
+{
+  "name": "my-plan-not-my-mood",
+  "private": true,
+  "version": "1.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --use-system-ca ./node_modules/vite/bin/vite.js --port 3001 --host",
+    "dev:api": "node --use-system-ca ../node_modules/wrangler/bin/wrangler.js pages dev dist --compatibility-date=2025-03-01 --port 8788",
+    "build": "tsc && vite build",
+    "preview": "vite preview --port 3001",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "e2e": "playwright test",
+    "test:e2e": "playwright test",
+    "e2e:install": "playwright install chromium",
+    "db:migrate": "node --use-system-ca ../node_modules/wrangler/bin/wrangler.js d1 migrations apply my-plan-agenda --remote",
+    "deploy": "node --use-system-ca scripts/deploy-pages.mjs"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.475.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwind-merge": "^3.0.1",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.51.0",
+    "@types/node": "^22.13.4",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.5.2",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.3",
+    "vite": "^6.1.0",
+    "vitest": "^3.0.5"
+  }
+}

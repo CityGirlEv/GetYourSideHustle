@@ -53,6 +53,7 @@ import {
   isoToMmddyy,
   applyPartnerDone,
   partnerDoneSummary,
+  healNotStartedTouchedTasks,
   fileToBase64,
   base64ToBlob,
   uploadTaskAttachment,
@@ -110,9 +111,12 @@ import {
 } from "../../lib/gysh-closed-sprints";
 import {
   buildUnlockTaskPatch,
+  countItemRolloversForSprintFocus,
   countTasksRolledIntoSprint,
+  formatRolloverFromToLabel,
   healClosedSprintTaskLeftovers,
   healIncompleteTaskDueDates,
+  itemMatchesSprintFilterSet,
   noteIndicatesRollover,
 } from "../../lib/gysh-sprint-board";
 import { formatAuditTrail } from "../../lib/gysh-audit";
@@ -311,12 +315,23 @@ function tasksForOwner(tasks: GyshTask[], owner: OwnerFilter | "all"): GyshTask[
   return tasks.filter((t) => taskMatchesOwner(t, owner));
 }
 
-function ownerBubbleCounts(tasks: GyshTask[], owner: OwnerFilter) {
+function ownerBubbleCounts(
+  tasks: GyshTask[],
+  owner: OwnerFilter,
+  sprintFocus: ReadonlySet<number>,
+) {
   const matched = tasksForOwner(tasks, owner);
+  const rollover = countItemRolloversForSprintFocus(matched, sprintFocus);
   return {
     assigned: matched.length,
     done: matched.filter((t) => t.status === "done").length,
-    rolled: matched.filter((t) => noteIndicatesRollover(t.notes)).length,
+    rolled: rollover.fromPrev + rollover.toNext,
+    rolledFrom: rollover.fromPrev,
+    rolledTo: rollover.toNext,
+    rolloverLabel: formatRolloverFromToLabel(
+      rollover,
+      sprintFocus.size === 1 ? [...sprintFocus][0]! : null,
+    ),
   };
 }
 
@@ -736,6 +751,7 @@ export function TaskList({
   const [closedSprints, setClosedSprints] = useState<Set<number>>(() => new Set());
   const [closedReady, setClosedReady] = useState(false);
   const leftoverHealRan = useRef(false);
+  const touchedHealRan = useRef(false);
   const startingTimersRef = useRef(new Set<string>());
   const lastOwnerIdx = useRef<number | null>(null);
   const lastStatusIdx = useRef<number | null>(null);
@@ -747,8 +763,9 @@ export function TaskList({
   const applyHealedTasks = (list: GyshTask[]) => {
     const backlogHealed = sanitizeBacklogTaskAssignees(list);
     const dueHealed = healIncompleteTaskDueDates(backlogHealed.tasks);
-    setTasks(dueHealed.tasks);
-    return { backlogHealed, dueHealed };
+    const touchedHealed = healNotStartedTouchedTasks(dueHealed.tasks);
+    setTasks(touchedHealed.tasks);
+    return { backlogHealed, dueHealed, touchedHealed };
   };
 
   const loadTasks = async () => {
@@ -757,16 +774,29 @@ export function TaskList({
     try {
       // Fast path: one GET + paint. Never PUT the full board on mount (remote D1 stalls).
       const list = await fetchTasks();
-      const { dueHealed } = applyHealedTasks(list);
+      const { touchedHealed } = applyHealedTasks(list);
       setNewNoteDrafts({});
       setEditNoteDrafts({});
       setDirtyNoteIds(new Set());
       setLoading(false);
 
+      // Persist NS→IP heal for tasks already touched (notes / partner boxes).
+      if (touchedHealed.changed && !touchedHealRan.current) {
+        touchedHealRan.current = true;
+        void (async () => {
+          try {
+            const saved = await persistTasks(touchedHealed.changedTasks);
+            applyHealedTasks(saved);
+          } catch {
+            touchedHealRan.current = false;
+          }
+        })();
+      }
+
       // Background: seed missing guide / CF rows via small delta PUTs only.
       void (async () => {
         try {
-          const synced = await syncGuideReviewTasks(dueHealed.tasks);
+          const synced = await syncGuideReviewTasks(touchedHealed.tasks);
           const withSoft = await syncSoftLaunchTasks(synced.tasks);
           if (synced.createdCount > 0 || withSoft.createdCount > 0) {
             applyHealedTasks(withSoft.tasks);
@@ -983,7 +1013,11 @@ export function TaskList({
     if (exclude !== "rolled" && rolledOverOnly && !noteIndicatesRollover(t.notes)) {
       return false;
     }
-    if (exclude !== "sprint" && sprintFilters.size > 0 && !sprintFilters.has(t.sprint ?? 0)) {
+    if (
+      exclude !== "sprint" &&
+      sprintFilters.size > 0 &&
+      !itemMatchesSprintFilterSet(t.sprint ?? 0, t.notes, sprintFilters)
+    ) {
       return false;
     }
     if (exclude !== "search" && !taskMatchesSearch(t, searchQuery)) return false;
@@ -1025,6 +1059,7 @@ export function TaskList({
       metaKey: e?.metaKey,
       ordered: ownerFilterOrder,
       lastIndex: lastOwnerIdx.current,
+      multiToggle: true,
     });
     lastOwnerIdx.current = lastIndex;
     setOwnerFilters(next);
@@ -1850,7 +1885,7 @@ export function TaskList({
 
             <TaskFilterPanel
               title="Assignee"
-              hint="tap to filter"
+              hint="tap to multi-select · Shift+click for a range"
               testId="task-list-filter-assignee"
               open={filterOpen.assignee}
               onOpenChange={(open) => setFilterOpen((p) => ({ ...p, assignee: open }))}
@@ -1871,29 +1906,40 @@ export function TaskList({
                     lastOwnerIdx.current = null;
                     setOwnerFilters(new Set());
                   }}
-                  title={`${ownerFacetTasks.length} match other filters · ${ownerFacetTasks.filter((t) => t.status === "done").length} done · ${ownerFacetTasks.filter((t) => noteIndicatesRollover(t.notes)).length} rolled over`}
+                  title={`${ownerFacetTasks.length} match other filters · ${ownerFacetTasks.filter((t) => t.status === "done").length} done · ${formatRolloverFromToLabel(countItemRolloversForSprintFocus(ownerFacetTasks, sprintFilters), sprintFilters.size === 1 ? [...sprintFilters][0]! : null) || "no rollovers"}`}
                 >
                   All
                   <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
                     · {ownerFacetTasks.filter((t) => t.status === "done").length}✓ /{" "}
                     {ownerFacetTasks.length}
-                    {ownerFacetTasks.filter((t) => noteIndicatesRollover(t.notes)).length > 0 ? (
-                      <span className="status-bubble__rolled">
-                        Rolled over:{" "}
-                        {ownerFacetTasks.filter((t) => noteIndicatesRollover(t.notes)).length}
-                      </span>
-                    ) : null}
+                    {(() => {
+                      const allRoll = countItemRolloversForSprintFocus(
+                        ownerFacetTasks,
+                        sprintFilters,
+                      );
+                      const label = formatRolloverFromToLabel(
+                        allRoll,
+                        sprintFilters.size === 1 ? [...sprintFilters][0]! : null,
+                      );
+                      return label ? (
+                        <span className="status-bubble__rolled">{label}</span>
+                      ) : null;
+                    })()}
                   </span>
                 </TaskFilterChip>
                 {OWNER_BUBBLES.map((b) => {
                   const active = ownerFilters.has(b.id);
-                  const { assigned, done, rolled } = ownerBubbleCounts(ownerFacetTasks, b.id);
+                  const { assigned, done, rolloverLabel } = ownerBubbleCounts(
+                    ownerFacetTasks,
+                    b.id,
+                    sprintFilters,
+                  );
                   const countTitle =
                     b.id === "Both"
-                      ? `${assigned} assigned to Both · ${done} done · ${rolled} rolled over`
+                      ? `${assigned} assigned to Both · ${done} done · ${rolloverLabel || "no rollovers"}`
                       : b.id === "Lyriq" || b.id === "Unassigned"
-                        ? `${assigned} assigned to ${b.label} · ${done} done · ${rolled} rolled over`
-                        : `${assigned} assigned to ${b.label} (incl. Both) · ${done} done · ${rolled} rolled over`;
+                        ? `${assigned} assigned to ${b.label} · ${done} done · ${rolloverLabel || "no rollovers"}`
+                        : `${assigned} assigned to ${b.label} (incl. Both) · ${done} done · ${rolloverLabel || "no rollovers"}`;
                   return (
                     <TaskFilterChip
                       key={b.id}
@@ -1906,8 +1952,8 @@ export function TaskList({
                       {b.label}
                       <span className="qa-tester-meta" style={{ fontVariantNumeric: "tabular-nums" }}>
                         · {done}✓ / {assigned}
-                        {rolled > 0 ? (
-                          <span className="status-bubble__rolled">Rolled over: {rolled}</span>
+                        {rolloverLabel ? (
+                          <span className="status-bubble__rolled">{rolloverLabel}</span>
                         ) : null}
                       </span>
                     </TaskFilterChip>

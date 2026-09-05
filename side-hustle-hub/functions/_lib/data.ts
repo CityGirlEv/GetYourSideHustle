@@ -20,7 +20,6 @@ import {
   canChangeTestStatus,
   canSetTestBlocked,
   canSetDevFixStatus,
-  FAILED_TEST_ASSIGNEE,
   isHumanQaTesterId,
   qaOwnerFromCaseId,
   listDevAssigneeIds,
@@ -48,7 +47,68 @@ import {
   SPRINT_LOCKED_MESSAGE,
 } from "./closed-sprints";
 import { sprintLabel } from "./sprints";
-import { mergeNoteEntries, noteEntriesPlainText, notesEffectivelyEqual } from "./note-entries";
+import { resolveLeadDevAssignment, statusAssignsToLeadDev } from "../../src/lib/gysh-fail-assignee";
+import { withD1Retry } from "./d1-retry";
+
+/** Keep Worker free of gysh-test-plan / gysh-tasks (huge catalogs). Mirror client helpers. */
+function shouldAutoStartTestOnFirstTouch(input: {
+  prevStatus: string | null | undefined;
+  nextStatus: string | null | undefined;
+  lockedSuiteOwner?: string | null;
+  notesChanged?: boolean;
+  stepsChanged?: boolean;
+}): boolean {
+  if (input.lockedSuiteOwner) return false;
+  const prev = String(input.prevStatus || "not_run");
+  if (prev !== "not_run") return false;
+  const next = String(input.nextStatus || prev);
+  if (next !== "not_run") return false;
+  return Boolean(input.notesChanged || input.stepsChanged);
+}
+
+function shouldAutoStartTaskOnFirstTouch(input: {
+  prevStatus: string | null | undefined;
+  nextStatus: string | null | undefined;
+  notesChanged?: boolean;
+  partnerBoxChanged?: boolean;
+}): boolean {
+  const norm = (raw: unknown) => {
+    const v = String(raw ?? "")
+      .trim()
+      .toLowerCase()
+      .replace(/[\s-]+/g, "_");
+    if (v === "fail") return "failed";
+    if (
+      v === "not_started" ||
+      v === "in_progress" ||
+      v === "blocked" ||
+      v === "failed" ||
+      v === "fixed_retest" ||
+      v === "failed_retest" ||
+      v === "done"
+    ) {
+      return v;
+    }
+    return "not_started";
+  };
+  const prev = norm(input.prevStatus);
+  if (prev !== "not_started") return false;
+  const next = norm(input.nextStatus);
+  if (next !== "not_started") return false;
+  return Boolean(input.notesChanged || input.partnerBoxChanged);
+}
+import {
+  attachmentMetaHasContent,
+  PLAN_ATTACHMENT_LIST_COLUMNS,
+  TASK_ATTACHMENT_LIST_COLUMNS,
+} from "./attachment-meta";
+import {
+  CURSOR_NOTE_AUTHOR,
+  looksLikeCursorAuthoredNote,
+  mergeNoteEntries,
+  noteEntriesPlainText,
+  notesEffectivelyEqual,
+} from "./note-entries";
 import {
   attachmentMaxMbLabel,
   deleteAttachmentChunks,
@@ -57,6 +117,10 @@ import {
   persistAttachmentBase64,
   resolveAttachmentBase64,
 } from "./attachment-limits";
+import {
+  deleteSoftLaunchMirrorsForTaskAtt,
+  mirrorTaskUploadToSoftLaunch,
+} from "./attachment-cross-ref";
 
 const TASK_ATTACHMENT_EXT =
   /\.(png|jpe?g|gif|webp|svg|bmp|heic|mp4|webm|mov|pdf|doc|docx|xls|xlsx|txt|csv)$/i;
@@ -229,7 +293,7 @@ function mapTask(row: TaskRow, attachments: AttachmentRow[]) {
         r2Key: a.r2_key,
         addedAt: a.added_at,
         note: normalizeAttachmentNote(a.note),
-        hasContent: Boolean(a.content_base64 && String(a.content_base64).length > 0),
+        hasContent: attachmentMetaHasContent(a),
       })),
   };
 }
@@ -311,21 +375,35 @@ async function ensureTaskColumns(env: Env): Promise<void> {
   );
 }
 
+type DbUserWithLogin = DbUser & { last_login_at?: string | null };
+
+const LAST_LOGIN_SUBQUERY = `(SELECT MAX(a.at) FROM audit_events a WHERE a.email = users.email AND a.action = 'login_ok') AS last_login_at`;
+
 export async function listUsers(env: Env): Promise<Response> {
   await ensurePartnerAdmins(env);
   try {
     const { results } = await env.DB.prepare(
       `SELECT id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt,
-              membership_tier, audience
+              membership_tier, audience,
+              ${LAST_LOGIN_SUBQUERY}
        FROM users ORDER BY joined_at DESC, name ASC`,
-    ).all<DbUser>();
+    ).all<DbUserWithLogin>();
     return json({ users: (results ?? []).map(publicUser) });
   } catch {
-    const { results } = await env.DB.prepare(
-      `SELECT id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt
-       FROM users ORDER BY joined_at DESC, name ASC`,
-    ).all<DbUser>();
-    return json({ users: (results ?? []).map(publicUser) });
+    try {
+      const { results } = await env.DB.prepare(
+        `SELECT id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt,
+                ${LAST_LOGIN_SUBQUERY}
+         FROM users ORDER BY joined_at DESC, name ASC`,
+      ).all<DbUserWithLogin>();
+      return json({ users: (results ?? []).map(publicUser) });
+    } catch {
+      const { results } = await env.DB.prepare(
+        `SELECT id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt
+         FROM users ORDER BY joined_at DESC, name ASC`,
+      ).all<DbUser>();
+      return json({ users: (results ?? []).map(publicUser) });
+    }
   }
 }
 
@@ -503,10 +581,12 @@ export async function deleteUser(env: Env, id: string): Promise<Response> {
 
 export async function listTasks(env: Env): Promise<Response> {
   await ensureTaskColumns(env);
-  const tasks = await env.DB.prepare(
-    `SELECT * FROM tasks ORDER BY sort_order ASC, id ASC`,
-  ).all<TaskRow>();
-  const atts = await env.DB.prepare(`SELECT * FROM task_attachments`).all<AttachmentRow>();
+  const tasks = await withD1Retry(() =>
+    env.DB.prepare(`SELECT * FROM tasks ORDER BY sort_order ASC, id ASC`).all<TaskRow>(),
+  );
+  const atts = await withD1Retry(() =>
+    env.DB.prepare(`SELECT ${TASK_ATTACHMENT_LIST_COLUMNS} FROM task_attachments`).all<AttachmentRow>(),
+  );
   return json({
     tasks: (tasks.results ?? []).map((t) => mapTask(t, atts.results ?? [])),
     attachmentBlobsNote:
@@ -579,9 +659,37 @@ export async function saveTasks(env: Env, request: Request, actor: DbUser): Prom
 
   // One read for all attachment blobs — never N remote round-trips per task (dev --remote).
   const allPriorAtts = await env.DB.prepare(
-    `SELECT id, task_id, content_base64 FROM task_attachments`,
-  ).all<{ id: string; task_id: string; content_base64: string | null }>();
+    `SELECT id, task_id, name, mime_type, size, stored_id, r2_key, added_at, note, content_base64
+     FROM task_attachments`,
+  ).all<{
+    id: string;
+    task_id: string;
+    name: string;
+    mime_type: string;
+    size: number;
+    stored_id: string | null;
+    r2_key: string | null;
+    added_at: string;
+    note: string | null;
+    content_base64: string | null;
+  }>();
   const priorContentByTask = new Map<string, Map<string, string | null>>();
+  const priorMetaByTask = new Map<
+    string,
+    Map<
+      string,
+      {
+        name: string;
+        mimeType: string;
+        size: number;
+        storedId: string;
+        r2Key: string | null;
+        addedAt: string;
+        note: string;
+        content: string | null;
+      }
+    >
+  >();
   for (const row of allPriorAtts.results ?? []) {
     const tid = String(row.task_id || "");
     if (!tid) continue;
@@ -591,6 +699,21 @@ export async function saveTasks(env: Env, request: Request, actor: DbUser): Prom
       priorContentByTask.set(tid, map);
     }
     map.set(row.id, row.content_base64 ?? null);
+    let meta = priorMetaByTask.get(tid);
+    if (!meta) {
+      meta = new Map();
+      priorMetaByTask.set(tid, meta);
+    }
+    meta.set(row.id, {
+      name: String(row.name || ""),
+      mimeType: String(row.mime_type || "application/octet-stream"),
+      size: Number(row.size) || 0,
+      storedId: String(row.stored_id || row.id || ""),
+      r2Key: row.r2_key ? String(row.r2_key) : null,
+      addedAt: String(row.added_at || now),
+      note: normalizeAttachmentNote(row.note),
+      content: row.content_base64 ?? null,
+    });
   }
 
   const assignmentLogs: Array<{
@@ -617,7 +740,7 @@ export async function saveTasks(env: Env, request: Request, actor: DbUser): Prom
     const description = String(t.description || "");
     const category = String(t.category || "admin_ops");
     const priority = String(t.priority || "P2");
-    const status = String(t.status || "not_started");
+    let status = String(t.status || "not_started");
     const assignBy = String(t.assignBy || "");
     const dateAssigned = String(t.dateAssigned || "");
     const dueDate = String(t.dueDate || "");
@@ -642,6 +765,19 @@ export async function saveTasks(env: Env, request: Request, actor: DbUser): Prom
       : String(t.assignedTo || "Both");
     const doneTina = t.tinaDone === true || t.tinaDone === 1 || t.done_tina === 1 ? 1 : 0;
     const doneEvelyn = t.evelynDone === true || t.evelynDone === 1 || t.done_evelyn === 1 ? 1 : 0;
+    // First touch via notes or partner checkboxes only: Not Started → In Progress.
+    if (
+      shouldAutoStartTaskOnFirstTouch({
+        prevStatus: prevRow?.status ?? "not_started",
+        nextStatus: status,
+        notesChanged: !notesEffectivelyEqual(prevNotesForMerge, notes),
+        partnerBoxChanged:
+          Number(prevRow?.done_tina ?? 0) !== doneTina ||
+          Number(prevRow?.done_evelyn ?? 0) !== doneEvelyn,
+      })
+    ) {
+      status = "in_progress";
+    }
     const parentId =
       t.parentId !== undefined && t.parentId !== null
         ? String(t.parentId || "").trim()
@@ -801,6 +937,32 @@ export async function saveTasks(env: Env, request: Request, actor: DbUser): Prom
           normalizeAttachmentNote(a.note),
         ),
       );
+    }
+    // Keep CF→task mirrors that a stale Task List payload omitted (upload cross-ref).
+    const priorMeta = priorMetaByTask.get(id);
+    if (priorMeta) {
+      for (const [attId, meta] of priorMeta) {
+        if (!attId.startsWith("xref-sla-") || seenAtt.has(attId)) continue;
+        seenAtt.add(attId);
+        statements.push(
+          env.DB.prepare(
+            `INSERT INTO task_attachments
+               (id, task_id, name, mime_type, size, stored_id, r2_key, added_at, content_base64, note)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ).bind(
+            attId,
+            id,
+            meta.name,
+            meta.mimeType,
+            meta.size,
+            meta.storedId || attId,
+            meta.r2Key,
+            meta.addedAt,
+            meta.content,
+            meta.note,
+          ),
+        );
+      }
     }
     for (const oldAttId of priorContent.keys()) {
       if (!seenAtt.has(oldAttId)) {
@@ -969,6 +1131,19 @@ export async function uploadTaskAttachment(
       .bind(id, taskId, name, validated.mime, validated.size, id, addedAt, storedContent, note)
       .run();
   }
+  try {
+    await mirrorTaskUploadToSoftLaunch(env, taskId, {
+      sourceId: id,
+      name,
+      mimeType: validated.mime,
+      size: validated.size,
+      contentBase64: validated.cleaned,
+      addedAt,
+      addedBy: actor.email || actor.name || "",
+    });
+  } catch {
+    /* cross-ref is best-effort — primary upload already succeeded */
+  }
   await appendAudit(env.DB, "task_attachment_upload", actor.email, `${taskId}:${id}`);
   return json({
     ok: true,
@@ -1038,6 +1213,11 @@ export async function deleteTaskAttachmentRow(
   if (att) {
     const locked = await rejectIfSprintLocked(env, Number(att.sprint), actor);
     if (locked) return locked;
+  }
+  try {
+    await deleteSoftLaunchMirrorsForTaskAtt(env, id);
+  } catch {
+    /* best-effort peer cleanup */
   }
   await ensureAttachmentContentChunksTable(env.DB);
   await deleteAttachmentChunks(env.DB, id);
@@ -1442,28 +1622,81 @@ async function listGeneratedTestCases(env: Env): Promise<
   }
 }
 
-export async function listTestStatuses(env: Env): Promise<Response> {
+const TEST_STATUS_LIST_SQL = `SELECT case_id, status, note, assignee, sprint, due_date, checked_steps_json, failed_step_index,
+              assigned_by, date_assigned, original_assignee, updated_at, updated_by
+       FROM test_case_status`;
+
+type TestStatusListRow = {
+  case_id: string;
+  status: string;
+  note: string;
+  assignee: string;
+  sprint: number;
+  due_date: string | null;
+  checked_steps_json: string | null;
+  failed_step_index: number | null;
+  assigned_by: string | null;
+  date_assigned: string | null;
+  original_assignee: string | null;
+  updated_at: string | null;
+  updated_by: string | null;
+};
+
+async function loadTestStatusRows(env: Env, caseIds?: string[]): Promise<TestStatusListRow[]> {
+  if (caseIds && caseIds.length > 0) {
+    const rows: TestStatusListRow[] = [];
+    const CHUNK = 80;
+    for (let i = 0; i < caseIds.length; i += CHUNK) {
+      const slice = caseIds.slice(i, i + CHUNK);
+      const placeholders = slice.map(() => "?").join(",");
+      const { results } = await env.DB.prepare(
+        `${TEST_STATUS_LIST_SQL} WHERE case_id IN (${placeholders})`,
+      )
+        .bind(...slice)
+        .all<TestStatusListRow>();
+      rows.push(...(results ?? []));
+    }
+    return rows;
+  }
+  const { results } = await env.DB.prepare(TEST_STATUS_LIST_SQL).all<TestStatusListRow>();
+  return results ?? [];
+}
+
+/** Snap leftover Fail / Conditional Pass rows to Evelyn (Lead Developer). */
+async function healFailedTestsToLeadDev(env: Env): Promise<void> {
+  const { results } = await env.DB.prepare(
+    `SELECT case_id FROM test_case_status
+     WHERE status IN ('fail', 'conditional_approval')
+       AND lower(trim(assignee)) NOT IN ('evelyn', 'vitest', 'playwright')`,
+  ).all<{ case_id: string }>();
+  if (!results?.length) return;
+  await env.DB.prepare(
+    `UPDATE test_case_status
+     SET original_assignee = CASE
+           WHEN trim(original_assignee) = ''
+            AND trim(assignee) != ''
+            AND lower(trim(assignee)) NOT IN ('evelyn', 'vitest', 'playwright')
+           THEN trim(assignee)
+           ELSE original_assignee
+         END,
+         assignee = 'evelyn'
+     WHERE status IN ('fail', 'conditional_approval')
+       AND lower(trim(assignee)) NOT IN ('evelyn', 'vitest', 'playwright')`,
+  ).run();
+}
+
+export async function listTestStatuses(
+  env: Env,
+  opts?: { caseIds?: string[] },
+): Promise<Response> {
+  const caseIds = opts?.caseIds?.filter(Boolean);
+  const partial = Boolean(caseIds && caseIds.length > 0);
   try {
     await ensureTestCaseStatusColumns(env);
-    const { results } = await env.DB.prepare(
-      `SELECT case_id, status, note, assignee, sprint, due_date, checked_steps_json, failed_step_index,
-              assigned_by, date_assigned, original_assignee, updated_at, updated_by
-       FROM test_case_status`,
-    ).all<{
-      case_id: string;
-      status: string;
-      note: string;
-      assignee: string;
-      sprint: number;
-      due_date: string | null;
-      checked_steps_json: string | null;
-      failed_step_index: number | null;
-      assigned_by: string | null;
-      date_assigned: string | null;
-      original_assignee: string | null;
-      updated_at: string | null;
-      updated_by: string | null;
-    }>();
+    if (!partial) {
+      await withD1Retry(() => healFailedTestsToLeadDev(env));
+    }
+    const results = await withD1Retry(() => loadTestStatusRows(env, caseIds));
     const statuses: Record<string, string> = {};
     const notes: Record<string, string> = {};
     const assignees: Record<string, string> = {};
@@ -1492,8 +1725,8 @@ export async function listTestStatuses(env: Env): Promise<Response> {
     ]);
     for (const row of results ?? []) {
       statuses[row.case_id] = validStatuses.has(row.status) ? row.status : "not_run";
-      if (row.note) notes[row.case_id] = row.note;
-      if (row.assignee) assignees[row.case_id] = row.assignee;
+      notes[row.case_id] = row.note || "";
+      assignees[row.case_id] = row.assignee || "";
       // D1 may return INTEGER as number or string — preserve Backlog (-1) and Sprint 0.
       const sprintNum = Number(row.sprint);
       sprints[row.case_id] = Number.isFinite(sprintNum) ? sprintNum : 0;
@@ -1513,20 +1746,6 @@ export async function listTestStatuses(env: Env): Promise<Response> {
       if (row.updated_by) updatedBy[row.case_id] = row.updated_by;
     }
 
-    const { results: attRows } = await env.DB.prepare(
-      `SELECT id, case_id, name, mime_type, size, scan_status, scan_detail, added_at, added_by
-       FROM test_case_attachments ORDER BY added_at DESC`,
-    ).all<{
-      id: string;
-      case_id: string;
-      name: string;
-      mime_type: string;
-      size: number;
-      scan_status: string;
-      scan_detail: string;
-      added_at: string;
-      added_by: string;
-    }>();
     const attachments: Record<
       string,
       Array<{
@@ -1540,21 +1759,40 @@ export async function listTestStatuses(env: Env): Promise<Response> {
         addedBy: string;
       }>
     > = {};
-    for (const a of attRows ?? []) {
-      if (!attachments[a.case_id]) attachments[a.case_id] = [];
-      attachments[a.case_id].push({
-        id: a.id,
-        name: a.name,
-        mimeType: a.mime_type,
-        size: a.size,
-        scanStatus: a.scan_status,
-        scanDetail: a.scan_detail,
-        addedAt: a.added_at,
-        addedBy: a.added_by,
-      });
+    // PUT returns only changed rows — skip the full attachment/catalog reload (remote D1 10–30s).
+    if (!partial) {
+      const { results: attRows } = await withD1Retry(() =>
+        env.DB.prepare(
+          `SELECT id, case_id, name, mime_type, size, scan_status, scan_detail, added_at, added_by
+           FROM test_case_attachments ORDER BY added_at DESC`,
+        ).all<{
+          id: string;
+          case_id: string;
+          name: string;
+          mime_type: string;
+          size: number;
+          scan_status: string;
+          scan_detail: string;
+          added_at: string;
+          added_by: string;
+        }>(),
+      );
+      for (const a of attRows ?? []) {
+        if (!attachments[a.case_id]) attachments[a.case_id] = [];
+        attachments[a.case_id].push({
+          id: a.id,
+          name: a.name,
+          mimeType: a.mime_type,
+          size: a.size,
+          scanStatus: a.scan_status,
+          scanDetail: a.scan_detail,
+          addedAt: a.added_at,
+          addedBy: a.added_by,
+        });
+      }
     }
 
-    const generatedCases = await listGeneratedTestCases(env);
+    const generatedCases = partial ? [] : await withD1Retry(() => listGeneratedTestCases(env));
     return json({
       statuses,
       notes,
@@ -1570,12 +1808,13 @@ export async function listTestStatuses(env: Env): Promise<Response> {
       updatedBy,
       attachments,
       generatedCases,
+      partial,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     if (isSchemaDriftError(msg)) {
       await ensureTestCaseStatusColumns(env);
-      return listTestStatuses(env);
+      return listTestStatuses(env, opts);
     }
     throw e;
   }
@@ -1591,6 +1830,8 @@ export async function setTestStatus(env: Env, request: Request, actor: DbUser): 
     caseId?: string;
     status?: string;
     note?: string;
+    /** Trusted system authors only (e.g. Cursor) — otherwise note author is the signed-in actor. */
+    noteAuthor?: string;
     assignee?: string;
     sprint?: number;
     dueDate?: string;
@@ -1617,6 +1858,7 @@ export async function setTestStatus(env: Env, request: Request, actor: DbUser): 
             caseId: body.caseId,
             status: body.status,
             note: body.note,
+            noteAuthor: body.noteAuthor,
             assignee: body.assignee,
             sprint: body.sprint,
             dueDate: body.dueDate,
@@ -1701,7 +1943,20 @@ export async function setTestStatus(env: Env, request: Request, actor: DbUser): 
     const prevSprint = Number.isFinite(prevSprintNum) ? prevSprintNum : BACKLOG_SPRINT;
 
     let status = String(raw.status ?? prev?.status ?? "");
-    const whoForNotes = actorLabel(actor);
+    const actorWho = actorLabel(actor);
+    const noteAuthorRaw = String(raw.noteAuthor || "").trim();
+    const noteTextForAuthor = String(raw.note ?? "");
+    // Fixed/Cursor + Cursor/Execute Fixes note bodies always stamp as Cursor (never the signed-in tester).
+    const forceCursorAuthor =
+      status === "fixed_cursor" ||
+      /^cursor$/i.test(noteAuthorRaw) ||
+      looksLikeCursorAuthoredNote(noteTextForAuthor);
+    // Only allow a short allow-list so clients cannot spoof arbitrary authors.
+    const whoForNotes = forceCursorAuthor
+      ? CURSOR_NOTE_AUTHOR
+      : /^system$/i.test(noteAuthorRaw)
+        ? "System"
+        : actorWho;
     const prevNoteRaw = String(prev?.note ?? "");
     let note =
       raw.note !== undefined ? String(raw.note ?? "").trim() : prevNoteRaw.trim();
@@ -1864,32 +2119,22 @@ export async function setTestStatus(env: Env, request: Request, actor: DbUser): 
       ) {
         return error(`Select which step failed before marking ${caseId} as Fail.`);
       }
-      // Remember the QA tester so Dev can assign back after Fixed/Failed Re-Test.
+    }
+    if (statusAssignsToLeadDev(status)) {
       const testerBefore = String(prev?.assignee ?? "").trim().toLowerCase();
-      const requestedDev = String(assignee || "").trim().toLowerCase();
       const fromCaseId = qaOwnerFromCaseId(caseId);
-      if (prevStatus !== "fail") {
-        if (isHumanQaTesterId(testerBefore) && !devAssigneeIds.has(testerBefore)) {
-          originalAssignee = testerBefore;
-        } else if (!originalAssignee && isHumanQaTesterId(testerBefore)) {
-          originalAssignee = testerBefore;
-        } else if (!originalAssignee && isHumanQaTesterId(fromCaseId)) {
-          // PROOF-*-TINA/LYRIQ often have empty assignee before Fail — keep the encoded owner.
-          originalAssignee = fromCaseId;
-        }
-      }
-      // Kids/Youth auto-generated failures keep Tina unless a human was explicitly chosen.
-      // Fail defaults to Lead Dev, but partners may reassign to any QA tester (Tina/Evelyn/Lyriq).
-      if (createDefaultsAssignee === "tina" && !isHumanQaTesterId(requestedDev)) {
-        assignee = "tina";
-        originalAssignee = "tina";
-      } else if (isHumanQaTesterId(requestedDev)) {
-        assignee = requestedDev;
-      } else if (prevStatus === "fail" && isHumanQaTesterId(testerBefore)) {
-        assignee = testerBefore;
-      } else {
-        assignee = FAILED_TEST_ASSIGNEE;
-      }
+      const resolved = resolveLeadDevAssignment({
+        status,
+        prevStatus,
+        currentAssignee: testerBefore,
+        requestedAssignee: assignee,
+        originalAssignee,
+        lockedSuiteOwner,
+        encodedOwner: fromCaseId,
+        devAssigneeIds,
+      });
+      assignee = resolved.assignee;
+      originalAssignee = resolved.originalAssignee;
     } else if (isDevRetest) {
       failedIdx = null;
       // QA will re-run from scratch — clear every step checkbox.
@@ -1915,14 +2160,29 @@ export async function setTestStatus(env: Env, request: Request, actor: DbUser): 
     if (lockedSuiteOwner) assignee = lockedSuiteOwner;
 
     const checkedJson = JSON.stringify(checked);
-
-    // Closed sprint lock — after field normalization, reject material changes on locked sprints.
     const prevNote = String(prev?.note ?? "").trim();
     const prevAssigneeVal = String(prev?.assignee ?? "").trim();
     const prevDue = String(prev?.due_date ?? "").trim();
     const prevChecked = String(prev?.checked_steps_json ?? "[]");
     const prevFailed =
       typeof prev?.failed_step_index === "number" ? prev.failed_step_index : null;
+
+    // First touch via notes or checklist only: Not Started → In Progress.
+    // Do not bump on assignee-only or explicit status changes.
+    if (
+      shouldAutoStartTestOnFirstTouch({
+        prevStatus: prevStatus || "not_run",
+        nextStatus: status,
+        lockedSuiteOwner,
+        notesChanged:
+          raw.note !== undefined && !notesEffectivelyEqual(note, prevNote),
+        stepsChanged: raw.checkedSteps !== undefined && checkedJson !== prevChecked,
+      })
+    ) {
+      status = "in_progress";
+    }
+
+    // Closed sprint lock — after field normalization, reject material changes on locked sprints.
     const materialChange =
       isNewRow ||
       status !== prevStatus ||
@@ -1945,7 +2205,7 @@ export async function setTestStatus(env: Env, request: Request, actor: DbUser): 
 
     // Always upsert — never auto-delete. Deleting not_run rows wiped Backlog/Sprint 0
     // assignments (sprint <= 0 was treated as "empty") and dropped concurrent tester work.
-    const who = actorLabel(actor);
+    const who = whoForNotes === "Cursor" || whoForNotes === "System" ? whoForNotes : actorLabel(actor);
     const prevAssignee = String(prev?.assignee ?? "").trim();
     const { assignedBy, dateAssigned } = resolveTestAssignedMeta({
       prevAssignee,
@@ -1953,7 +2213,7 @@ export async function setTestStatus(env: Env, request: Request, actor: DbUser): 
       isNewRow,
       prevAssignedBy: String(prev?.assigned_by ?? "").trim(),
       prevDateAssigned: String(prev?.date_assigned ?? "").trim(),
-      actorLabel: who,
+      actorLabel: who === "Cursor" || who === "System" ? actorLabel(actor) : who,
       today: assignedToday,
       ...(raw.assignedBy !== undefined ? { explicitAssignedBy: String(raw.assignedBy ?? "") } : {}),
       ...(raw.dateAssigned !== undefined
@@ -2006,10 +2266,12 @@ export async function setTestStatus(env: Env, request: Request, actor: DbUser): 
 
   if (statements.length > 0) {
     try {
-      const CHUNK = 50;
-      for (let i = 0; i < statements.length; i += CHUNK) {
-        await env.DB.batch(statements.slice(i, i + CHUNK));
-      }
+      await withD1Retry(async () => {
+        const CHUNK = 50;
+        for (let i = 0; i < statements.length; i += CHUNK) {
+          await env.DB.batch(statements.slice(i, i + CHUNK));
+        }
+      });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       if (isSchemaDriftError(msg)) {
@@ -2023,7 +2285,7 @@ export async function setTestStatus(env: Env, request: Request, actor: DbUser): 
       }
     }
   }
-  return listTestStatuses(env);
+  return listTestStatuses(env, { caseIds });
 }
 
 export async function listTestAttachments(
@@ -3044,18 +3306,35 @@ export async function listFamilyChildren(
   return json({ children });
 }
 
-export async function listAudit(env: Env): Promise<Response> {
+export async function listAudit(env: Env, request?: Request): Promise<Response> {
+  const url = request ? new URL(request.url) : null;
+  const emailFilter = canonicalizeEmail(String(url?.searchParams.get("email") || ""));
+  const rawLimit = Number(url?.searchParams.get("limit") || 500);
+  const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(Math.floor(rawLimit), 1), 2000) : 500;
+
+  if (emailFilter) {
+    const { results } = await env.DB.prepare(
+      `SELECT at, action, email, detail FROM audit_events WHERE email = ? ORDER BY id DESC LIMIT ?`,
+    )
+      .bind(emailFilter, limit)
+      .all<{ at: string; action: string; email: string; detail: string }>();
+    return json({ events: results ?? [], email: emailFilter, limit });
+  }
+
   const { results } = await env.DB.prepare(
-    `SELECT at, action, email, detail FROM audit_events ORDER BY id DESC LIMIT 100`,
-  ).all<{ at: string; action: string; email: string; detail: string }>();
-  return json({ events: results ?? [] });
+    `SELECT at, action, email, detail FROM audit_events ORDER BY id DESC LIMIT ?`,
+  )
+    .bind(limit)
+    .all<{ at: string; action: string; email: string; detail: string }>();
+  return json({ events: results ?? [], limit });
 }
 
 export async function health(env: Env): Promise<Response> {
   if (!env?.DB) return error("Database unavailable.", 503);
   try {
-    await ensurePartnerAdmins(env);
-    const row = await env.DB.prepare(`SELECT COUNT(*) AS c FROM users`).first<{ c: number }>();
+    const row = await withD1Retry(() =>
+      env.DB.prepare(`SELECT COUNT(*) AS c FROM users`).first<{ c: number }>(),
+    );
     const { emailConfigured } = await import("./email");
     return json({
       ok: true,
@@ -3527,7 +3806,7 @@ export async function listAgilePlan(env: Env): Promise<Response> {
     }>();
 
     const attachmentRes = await env.DB.prepare(
-      `SELECT id, plan_item_id, name, mime_type, size, stored_id, r2_key, added_at, content_base64
+      `SELECT ${PLAN_ATTACHMENT_LIST_COLUMNS}
        FROM plan_item_attachments ORDER BY added_at ASC, id ASC`,
     ).all<PlanAttachmentRow>();
     const attachments = attachmentRes.results ?? [];
@@ -3554,7 +3833,7 @@ export async function listAgilePlan(env: Env): Promise<Response> {
           storedId: a.stored_id,
           r2Key: a.r2_key,
           addedAt: a.added_at,
-          hasContent: Boolean(a.content_base64 && String(a.content_base64).length > 0),
+          hasContent: attachmentMetaHasContent(a),
         })),
     }));
 
@@ -3668,10 +3947,19 @@ export async function saveAgilePlan(
         prev.date_label === dateLabel &&
         Number(prev.done_tina ?? 0) === doneTina &&
         Number(prev.done_evelyn ?? 0) === doneEvelyn;
-      if (prev && closedSprintBlocksActor(closedSprints, Number(prev.sprint), actor) && !unchanged) {
-        return error(`${SPRINT_LOCKED_MESSAGE} (${sprintLabel(Number(prev.sprint))})`, 403);
-      }
-      if (closedSprintBlocksActor(closedSprints, sprint, actor) && !unchanged) {
+      const prevSprint = prev ? Number(prev.sprint) : null;
+      const unlocking =
+        prevSprint !== null && isUnlockMoveToOpenSprint(closedSprints, prevSprint, sprint);
+      // Locked sprint: reject real edits; unlock-to-open (End Sprint / heal) is allowed for everyone.
+      if (prevSprint !== null && closedSprintBlocksActor(closedSprints, prevSprint, actor)) {
+        if (!unchanged && !unlocking) {
+          return error(`${SPRINT_LOCKED_MESSAGE} (${sprintLabel(prevSprint)})`, 403);
+        }
+      } else if (
+        !unlocking &&
+        closedSprintBlocksActor(closedSprints, sprint, actor) &&
+        !unchanged
+      ) {
         return error(`${SPRINT_LOCKED_MESSAGE} (${sprintLabel(sprint)})`, 403);
       }
     }

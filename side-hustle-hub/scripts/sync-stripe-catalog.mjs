@@ -193,7 +193,7 @@ for (const tier of MEMBERSHIP_TIERS) {
           : interval === "month"
             ? tier.priceMonthlyUsd
             : tier.priceYearlyUsd;
-      const audienceLabel = audience === "senior" ? "Seniors (55+)" : "Adults";
+      const audienceLabel = audience === "senior" ? "Seniors (50+)" : "Adults";
       const intervalLabel = interval === "month" ? "Monthly" : "Yearly";
       const productLookup = `gysh_membership_${tier.id}_${audience}`;
       const priceLookup = `gysh_membership_${tier.id}_${audience}_${interval}`;

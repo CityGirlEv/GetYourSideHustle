@@ -14,6 +14,7 @@ type BlueprintUnlockPanelProps = {
   onUnlocked: (ageGroup: BlueprintAgeGroup) => void;
   onSignIn: () => void;
   onOpenBetaNda?: () => void;
+  onBetaTesterRegistered?: () => void;
   onBetaTestingUnlocked?: (receipt: BetaNdaReceipt) => void;
 };
 
@@ -21,6 +22,7 @@ export function BlueprintUnlockPanel({
   onUnlocked,
   onSignIn,
   onOpenBetaNda,
+  onBetaTesterRegistered,
   onBetaTestingUnlocked,
 }: BlueprintUnlockPanelProps) {
   const pending = readPendingBlueprint();
@@ -134,6 +136,9 @@ export function BlueprintUnlockPanel({
       clearPendingBlueprint();
       trackGyshEvent("blueprint_unlocked", { age_group: ageGroup, source: "free_signup" });
       trackGyshEvent("blueprint_saved", { age_group: ageGroup, source: "free_signup" });
+      if (applyBetaTester) {
+        onBetaTesterRegistered?.();
+      }
       if (applyBetaTester && result.testingUnlocked && result.betaNda && onBetaTestingUnlocked) {
         onBetaTestingUnlocked(result.betaNda);
       }

@@ -359,6 +359,31 @@ test.describe("GYSH smoke", () => {
     await expect(page.getByRole("heading", { name: /Confidentiality and Non-Disclosure/i })).toBeVisible();
   });
 
+  test("Beta Tester Credit Guide shows earn rules from footer and /beta-credits", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("contentinfo").getByTestId("footer-beta-credits").click();
+    await expect(page.getByTestId("page-title")).toContainText("Credit Guide");
+    await expect(page.getByTestId("beta-credits-page")).toBeVisible();
+    await expect(page.getByTestId("beta-credits-reward-table")).toContainText("P0");
+    await expect(page.getByTestId("beta-credits-zero-note")).toContainText("0");
+    await expect(page.getByTestId("beta-program-pdf")).toBeVisible();
+    await expect(page.getByTestId("beta-program-word")).toBeVisible();
+    await expect(page.getByTestId("beta-credits-open-points")).toBeVisible();
+    await expect(page.getByTestId("beta-credits-membership-glossary")).toContainText(/four plans only/i);
+    await expect(page.getByTestId("beta-credits-membership-glossary")).toContainText(/no Starter\+ or Pro\+/i);
+    await page.goto("/beta-credits");
+    await expect(page.getByRole("heading", { name: /Beta Tester Credit Guide/i })).toBeVisible();
+  });
+
+  test("Beta Tester Points page is reachable from footer and /beta-points", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("contentinfo").getByTestId("footer-beta-points").click();
+    await expect(page.getByTestId("page-title")).toContainText("Beta Tester Points");
+    await expect(page.getByTestId("beta-points-page")).toBeVisible();
+    await page.goto("/beta-points");
+    await expect(page.getByRole("heading", { name: /Beta Tester Points/i })).toBeVisible();
+  });
+
   test("Apply as Beta Tester shows NDA fields on membership signup", async ({ page }) => {
     await page.goto("/membership");
     await expect(page.getByTestId("membership-signup-page")).toBeVisible();

@@ -2,7 +2,21 @@
  * Welcome-to-the-GYSH-Family certificates — SVG + simple PDF, D1 storage, admin CRUD.
  */
 import { error, json, type DbUser, type Env } from "./auth";
-import { escapeHtml, SITE_NAME, SITE_URL, LOGO_URL } from "./email-brand";
+import { SITE_URL } from "./email-brand";
+import {
+  buildCertificatePdfBase64,
+  buildCertificateSvg,
+  resolveCertificateHeadings,
+} from "./certificate-art";
+
+export {
+  CERT_LOGO_SIZE,
+  buildCertificatePdfBase64,
+  buildCertificateSvg,
+  certAudienceKey,
+  certificateThemeFor,
+  resolveCertificateHeadings,
+} from "./certificate-art";
 
 export type CertificateTemplate = {
   id: string;
@@ -47,9 +61,6 @@ const DEFAULT_TEMPLATE: Omit<CertificateTemplate, "updatedAt" | "updatedBy"> = {
 /** Celebratory Glow Getter line for Kids / Teens (junior) certificates only. */
 export const GLOW_GETTER_CERT_LINE =
   "You're a proud Glow Getter — keep shining with kindness, courage, and hustle!";
-
-/** SVG/PDF logo box size (was 140). */
-export const CERT_LOGO_SIZE = 180;
 
 export function isGlowGetterAudience(raw: string | null | undefined): boolean {
   const a = String(raw || "adult").toLowerCase();
@@ -195,164 +206,6 @@ function fillTemplate(
     .replace(/\{\{audience\}\}/gi, vars.audience);
 }
 
-function wrapSvgText(text: string, x: number, y: number, maxChars: number, fontSize: number): string {
-  const words = text.split(/\s+/).filter(Boolean);
-  const lines: string[] = [];
-  let current = "";
-  for (const word of words) {
-    const next = current ? `${current} ${word}` : word;
-    if (next.length > maxChars && current) {
-      lines.push(current);
-      current = word;
-    } else {
-      current = next;
-    }
-  }
-  if (current) lines.push(current);
-  const startY = y;
-  return lines
-    .slice(0, 5)
-    .map(
-      (line, i) =>
-        `<text x="${x}" y="${startY + i * (fontSize + 5)}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="${fontSize}" fill="#3a342e">${line}</text>`,
-    )
-    .join("\n  ");
-}
-
-/** Landscape SVG certificate — email-friendly and admin-previewable. */
-export function buildCertificateSvg(input: {
-  title: string;
-  subtitle: string;
-  memberName: string;
-  bodyText: string;
-  signoff: string;
-  footerLine: string;
-  tierLabel: string;
-  audienceLabel: string;
-  issuedAt: string;
-}): string {
-  const dateLabel = formatIssuedDate(input.issuedAt);
-  const w = 1100;
-  const h = 780;
-  const logo = CERT_LOGO_SIZE;
-  const logoX = w / 2 - logo / 2;
-  const logoY = 56;
-  const tagline = input.footerLine || `${SITE_NAME} · ${SITE_URL}`;
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="${escapeHtml(input.title)}">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#fffdf8"/>
-      <stop offset="55%" stop-color="#fff8e8"/>
-      <stop offset="100%" stop-color="#f3efe6"/>
-    </linearGradient>
-    <linearGradient id="bar" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#9B2F28"/>
-      <stop offset="50%" stop-color="#D7C697"/>
-      <stop offset="100%" stop-color="#9B2F28"/>
-    </linearGradient>
-  </defs>
-  <rect width="${w}" height="${h}" fill="url(#bg)"/>
-  <rect x="28" y="28" width="${w - 56}" height="${h - 56}" fill="none" stroke="#D7C697" stroke-width="4" rx="18"/>
-  <rect x="44" y="44" width="${w - 88}" height="${h - 88}" fill="none" stroke="#9B2F28" stroke-width="1.5" rx="12"/>
-  <rect x="44" y="44" width="${w - 88}" height="8" fill="url(#bar)"/>
-  <image href="${LOGO_URL}" x="${logoX}" y="${logoY}" width="${logo}" height="${logo}" preserveAspectRatio="xMidYMid meet"/>
-  <text x="${w / 2}" y="262" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="20" fill="#9B2F28" letter-spacing="4" font-weight="700">${escapeHtml(input.subtitle.toUpperCase())}</text>
-  <text x="${w / 2}" y="312" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="40" fill="#2d2a26" font-weight="800">${escapeHtml(input.title)}</text>
-  <text x="${w / 2}" y="360" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="15" fill="#8a7a68">Presented with pride to</text>
-  <text x="${w / 2}" y="412" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="38" fill="#9B2F28" font-weight="800">${escapeHtml(input.memberName)}</text>
-  <line x1="280" y1="432" x2="820" y2="432" stroke="#D7C697" stroke-width="2"/>
-  ${wrapSvgText(escapeHtml(input.bodyText), w / 2, 462, 72, 16)}
-  <text x="${w / 2}" y="590" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="14" fill="#6b5344" font-weight="700">${escapeHtml(input.tierLabel)} · ${escapeHtml(input.audienceLabel)} · ${escapeHtml(dateLabel)}</text>
-  <text x="${w / 2}" y="635" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="17" fill="#2d2a26" font-weight="700">${escapeHtml(input.signoff)}</text>
-  <text x="${w / 2}" y="675" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#b09a7e">${escapeHtml(tagline)}</text>
-  <text x="${w / 2}" y="708" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="14" fill="#9B2F28" font-weight="700">${escapeHtml(SITE_URL)}</text>
-</svg>`;
-}
-
-/** Minimal landscape PDF (Helvetica) — works in Workers with no deps. */
-export function buildCertificatePdfBase64(input: {
-  title: string;
-  subtitle: string;
-  memberName: string;
-  bodyText: string;
-  signoff: string;
-  footerLine: string;
-  tierLabel: string;
-  audienceLabel: string;
-  issuedAt: string;
-}): string {
-  const dateLabel = formatIssuedDate(input.issuedAt);
-  const lines = [
-    input.subtitle.toUpperCase(),
-    input.title,
-    "Presented with pride to",
-    input.memberName,
-    input.bodyText,
-    `${input.tierLabel} · ${input.audienceLabel} · ${dateLabel}`,
-    input.signoff,
-    input.footerLine || `${SITE_NAME} · ${SITE_URL}`,
-    SITE_URL,
-  ];
-
-  const pageW = 792;
-  const pageH = 612;
-  const escapePdf = (s: string) =>
-    s.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
-
-  const content: string[] = [];
-  content.push("0.61 0.18 0.16 RG 2 w 36 36 720 540 re S");
-  content.push("0.84 0.78 0.59 RG 1 w 48 48 696 516 re S");
-
-  let y = 520;
-  const sizes = [12, 22, 11, 20, 11, 11, 13, 9, 12];
-  for (let i = 0; i < lines.length; i++) {
-    const size = sizes[i] ?? 11;
-    const text = escapePdf(lines[i].slice(0, 220));
-    content.push("BT");
-    content.push(`/F1 ${size} Tf`);
-    content.push(i === lines.length - 1 ? "0.61 0.18 0.16 rg" : "0.18 0.16 0.15 rg");
-    // Rough center: use Td from left margin with approximate width
-    const approx = Math.max(40, (pageW - text.length * size * 0.45) / 2);
-    content.push(`${approx.toFixed(1)} ${y} Td`);
-    content.push(`(${text}) Tj`);
-    content.push("ET");
-    y -= i === 1 ? 36 : i === 3 ? 40 : 26;
-  }
-
-  const stream = content.join("\n");
-  const objects: string[] = [];
-  objects.push("1 0 obj<< /Type /Catalog /Pages 2 0 R >>endobj\n");
-  objects.push("2 0 obj<< /Type /Pages /Kids [3 0 R] /Count 1 >>endobj\n");
-  objects.push(
-    `3 0 obj<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>endobj\n`,
-  );
-  objects.push(
-    `4 0 obj<< /Length ${stream.length} >>stream\n${stream}\nendstream\nendobj\n`,
-  );
-  objects.push("5 0 obj<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>endobj\n");
-
-  let pdf = "%PDF-1.4\n";
-  const offsets = [0];
-  for (const obj of objects) {
-    offsets.push(pdf.length);
-    pdf += obj;
-  }
-  const xrefStart = pdf.length;
-  pdf += `xref\n0 ${objects.length + 1}\n`;
-  pdf += "0000000000 65535 f \n";
-  for (let i = 1; i <= objects.length; i++) {
-    pdf += `${String(offsets[i]).padStart(10, "0")} 00000 n \n`;
-  }
-  pdf += `trailer<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF`;
-
-  // btoa for binary-ish latin1
-  const bytes = new TextEncoder().encode(pdf);
-  let bin = "";
-  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-  return btoa(bin);
-}
-
 export async function issueMemberCertificate(
   env: Env,
   input: {
@@ -369,6 +222,7 @@ export async function issueMemberCertificate(
   const tier = tierLabel(input.membershipTier || "free");
   const audienceRaw = input.audience || "adult";
   const audience = audienceLabel(audienceRaw);
+  const headings = resolveCertificateHeadings(audienceRaw, template);
   const bodyText = resolveCertificateBody(
     template.body,
     {
@@ -380,9 +234,9 @@ export async function issueMemberCertificate(
     audienceRaw,
   );
 
-  const svgMarkup = buildCertificateSvg({
-    title: template.title,
-    subtitle: template.subtitle,
+  const artInput = {
+    title: headings.title,
+    subtitle: headings.subtitle,
     memberName: input.name || "Side Hustler",
     bodyText,
     signoff: template.signoff,
@@ -390,18 +244,10 @@ export async function issueMemberCertificate(
     tierLabel: tier,
     audienceLabel: audience,
     issuedAt: now,
-  });
-  const pdfBase64 = buildCertificatePdfBase64({
-    title: template.title,
-    subtitle: template.subtitle,
-    memberName: input.name || "Side Hustler",
-    bodyText,
-    signoff: template.signoff,
-    footerLine: template.footerLine,
-    tierLabel: tier,
-    audienceLabel: audience,
-    issuedAt: now,
-  });
+    audienceRaw,
+  };
+  const svgMarkup = buildCertificateSvg(artInput);
+  const pdfBase64 = buildCertificatePdfBase64(artInput);
 
   const existing = await env.DB.prepare(
     `SELECT id, created_at, email_sent_at FROM member_certificates WHERE user_id = ?`,
@@ -430,8 +276,8 @@ export async function issueMemberCertificate(
       (input.membershipTier || "free").toLowerCase(),
       (input.audience || "adult").toLowerCase(),
       now,
-      template.title,
-      template.subtitle,
+      headings.title,
+      headings.subtitle,
       bodyText,
       template.signoff,
       svgMarkup,

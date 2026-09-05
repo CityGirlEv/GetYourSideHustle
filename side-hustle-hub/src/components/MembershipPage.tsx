@@ -21,6 +21,7 @@ import {
   AUDIENCE_LABELS,
   CREDIT_EARN_ACTIONS,
   CREDIT_PACKS,
+  MEMBERSHIP_COMPARE_ROWS,
   MEMBERSHIP_FEATURES,
   MEMBERSHIP_TIERS,
   MILITARY_VETERAN_CALLOUT,
@@ -42,6 +43,7 @@ import {
   type NumberedTierPerk,
   type TierId,
 } from "../lib/membership";
+import { MembershipModelExplainer } from "./MembershipModelExplainer";
 import {
   normalizeAudienceGroup,
   readSavedJoinAudience,
@@ -411,7 +413,7 @@ export function MembershipPage({
             </div>
             <p data-testid="membership-lead">
               GYSH membership turns “I should try this” into a weekly rhythm — age-appropriate Match Wizard
-              matches, member guides, consulting time, and (on Pro+) a hustle schedule with tracker,
+              matches, member guides, consulting time, and (on Pro or higher) a hustle schedule with tracker,
               progress reports, and email nudges. Start free, then pick the lane that fits your life.
             </p>
             <p className="membership-hero-dashboard-note" data-testid="membership-hero-dashboard-note">
@@ -435,7 +437,7 @@ export function MembershipPage({
             </li>
             <li>
               <Sparkles size={16} aria-hidden />
-              <span>Paid plans add 1-on-1 consulting; Pro+ unlocks the schedule suite</span>
+              <span>Paid plans add 1-on-1 consulting; Pro or higher unlocks the schedule suite</span>
             </li>
           </ul>
 
@@ -562,6 +564,57 @@ export function MembershipPage({
             ))}
           </div>
         ) : null}
+      </div>
+
+      <MembershipModelExplainer showCompareTable={false} />
+
+      <div className="membership-compare-wrap" data-testid="membership-compare">
+        <h3 className="membership-compare__title">What each plan includes</h3>
+        <p className="membership-compare__lead">
+          Four plans only — what each includes, what stays locked, and why you’d upgrade. Coming soon
+          items are labeled separately and are not unlocked by paying.
+        </p>
+        <div className="membership-compare-scroll">
+          <table className="membership-compare-table">
+            <colgroup>
+              <col className="membership-compare-table__col-feature" />
+              <col className="membership-compare-table__col-plan" />
+              <col className="membership-compare-table__col-plan" />
+              <col className="membership-compare-table__col-plan" />
+              <col className="membership-compare-table__col-plan" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th scope="col">Feature</th>
+                <th scope="col">Free</th>
+                <th scope="col">Starter</th>
+                <th scope="col">Pro</th>
+                <th scope="col">Elite</th>
+              </tr>
+            </thead>
+            <tbody>
+              {MEMBERSHIP_COMPARE_ROWS.map((row) => (
+                <tr key={row.id}>
+                  <th scope="row" className="membership-compare-table__feature">
+                    <span className="membership-compare-table__feature-label">
+                      <span className="membership-compare-table__bullet" aria-hidden>
+                        •
+                      </span>
+                      {row.label}
+                    </span>
+                    {row.whyUpgrade ? (
+                      <span className="membership-compare__why">{row.whyUpgrade}</span>
+                    ) : null}
+                  </th>
+                  <td>{row.cells.free}</td>
+                  <td>{row.cells.starter}</td>
+                  <td>{row.cells.pro}</td>
+                  <td>{row.cells.elite}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div className="membership-tier-grid" data-testid="membership-tier-grid">
@@ -773,7 +826,9 @@ export function MembershipPage({
           </h3>
           <p>
             Parents and guardians can add Kid Credits anytime. Members can also earn credits below,
-            so purchasing a pack is always optional.
+            so purchasing a pack is always optional — use packs when your monthly plan balance isn’t
+            enough for workshops or extra consulting. Included plan sessions are separate from
+            a-la-carte consulting below.
           </p>
           <div className="membership-credit-pack-grid">
             {CREDIT_PACKS.map((pack) => (

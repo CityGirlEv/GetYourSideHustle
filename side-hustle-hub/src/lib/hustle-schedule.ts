@@ -1,5 +1,5 @@
 /**
- * Member Hustle Schedule Suite — Pro+ multi-schedule plans by family member + hustle.
+ * Member Hustle Schedule Suite — Pro & Above multi-schedule plans by family member + hustle.
  * Due dates drive / promote the weekly plan blocks.
  */
 import { SCHEDULE_SUITE_FEATURE_IDS, tierHasFeature, type TierId } from "./membership";
@@ -191,7 +191,7 @@ export type HustleSchedulePlan = {
   blocks: ScheduleBlock[];
   /** Blueprint execution plan: marketing + sales targets. */
   blueprintGoals: ScheduleBlueprintGoals;
-  /** Profit & Loss ledger (dated sales/expense lines) — Pro+. */
+  /** Profit & Loss ledger (dated sales/expense lines) — Pro & Above. */
   pnl: SchedulePnLLedger;
   /** Weekly roundups keyed by weekStart (Monday). */
   roundups: ScheduleWeekRoundup[];
@@ -350,9 +350,9 @@ export function suiteViewAfterGradeMe(): ScheduleSuiteView {
 
 export function scheduleSuiteLockedReason(tier: TierId): string {
   if (tier === "free" || tier === "starter") {
-    return "Schedule Suite unlocks on Pro and Elite. Upgrade to plan weekly work for each family member’s hustle.";
+    return "Schedule Suite unlocks on Pro or higher (Pro and Elite). Upgrade to plan weekly work for each family member’s hustle.";
   }
-  return "Schedule Suite is included with Pro and Elite.";
+  return "Schedule Suite is included with Pro or higher.";
 }
 
 export function schedulePlanId(ownerId: ScheduleOwnerId, hustleId: string): string {

@@ -127,6 +127,11 @@ export const ADMIN_STAFF_GROUP: AdminNavGroup = {
 
 export const ADMIN_OPERATION_LINKS: AdminNavLink[] = [
   {
+    label: "Proposals -> MyPlan",
+    to: "/admin/pricing",
+    icon: DollarSign,
+  },
+  {
     label: "Compliance Checklist",
     to: "/admin/submission-checklist",
     icon: ClipboardList,

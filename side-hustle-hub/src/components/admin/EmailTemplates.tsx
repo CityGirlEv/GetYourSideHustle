@@ -154,13 +154,14 @@ export function EmailTemplates({ focusSlug = null }: { focusSlug?: string | null
 
   const load = async () => {
     setErr("");
+    setBusy(true);
     try {
       const data = await api<{
         emailConfigured: boolean;
         logoUrl: string;
         placeholders?: string[];
         templates: TemplateRow[];
-      }>("email/templates");
+      }>("email/templates", { timeoutMs: 120_000 });
       setEmailConfigured(data.emailConfigured);
       setLogoUrl(data.logoUrl || "");
       setPlaceholders(data.placeholders || []);
@@ -177,6 +178,8 @@ export function EmailTemplates({ focusSlug = null }: { focusSlug?: string | null
       }
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : "Could not load email templates.");
+    } finally {
+      setBusy(false);
     }
   };
 

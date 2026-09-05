@@ -5,8 +5,17 @@ import {
   normalizeGuideTier,
   membershipLockedBadgeLabel,
   membershipFeatureLockedBadgeLabel,
+  unlockCtaTierPill,
+  tierAndAboveLabel,
+  tierAndAbovePlans,
+  TIER_LADDER_GLOSSARY,
+  CREDITS_AND_CONSULTING_BLURB,
+  NOW_VS_COMING_SOON_BLURB,
+  COMING_SOON_NOT_UNLOCKED_NOTE,
+  NO_PLUS_PLAN_NOTE,
   ADULT_GUIDE_MIN_TIER,
   SCHEDULE_SUITE_MIN_TIER,
+  type GuideMinTier,
 } from "../guide-access";
 import { canAccessScheduleSuite } from "../hustle-schedule";
 import { tierHasFeature } from "../membership";
@@ -83,15 +92,43 @@ describe("guide access gatekeeping", () => {
 
   it("names the required tier on lock badges", () => {
     expect(membershipLockedBadgeLabel("free")).toBe("Locked · Join Free");
-    expect(membershipLockedBadgeLabel("starter")).toBe("Locked · Needs Starter");
-    expect(membershipLockedBadgeLabel("pro")).toBe("Locked · Needs Pro");
+    expect(membershipLockedBadgeLabel("starter")).toBe("Locked · Needs Starter or higher");
+    expect(membershipLockedBadgeLabel("pro")).toBe("Locked · Needs Pro or higher");
     expect(membershipLockedBadgeLabel("elite")).toBe("Locked · Needs Elite");
-    expect(membershipFeatureLockedBadgeLabel("pnl")).toBe("Locked · Needs Pro");
-    expect(membershipFeatureLockedBadgeLabel("schedule_suite")).toBe("Locked · Needs Pro");
+    expect(membershipFeatureLockedBadgeLabel("pnl")).toBe("Locked · Needs Pro or higher");
+    expect(membershipFeatureLockedBadgeLabel("schedule_suite")).toBe("Locked · Needs Pro or higher");
     expect(SCHEDULE_SUITE_MIN_TIER).toBe("pro");
   });
 
-  it("aligns Schedule Suite + P&L feature gates with Pro+", () => {
+  it("keeps unlock CTA pills aligned with lock badges (or higher, never Starter+/Pro+)", () => {
+    expect(unlockCtaTierPill("free")).toBe("(FREE)");
+    expect(unlockCtaTierPill("starter")).toBe("Starter or higher");
+    expect(unlockCtaTierPill("pro")).toBe("Pro or higher");
+    expect(unlockCtaTierPill("elite")).toBe("Elite");
+    expect(tierAndAboveLabel("starter")).toBe("Starter or higher");
+    expect(tierAndAbovePlans("starter")).toBe("Starter, Pro, or Elite");
+    expect(tierAndAbovePlans("pro")).toBe("Pro or Elite");
+    const paidTiers: GuideMinTier[] = ["starter", "pro", "elite"];
+    for (const t of paidTiers) {
+      expect(membershipLockedBadgeLabel(t)).toBe(`Locked · Needs ${unlockCtaTierPill(t)}`);
+    }
+  });
+
+  it("explains four plans only, credits vs packs, and coming soon vs available now", () => {
+    expect(TIER_LADDER_GLOSSARY).toMatch(/exactly four plans/i);
+    expect(TIER_LADDER_GLOSSARY).toMatch(/Starter or higher/i);
+    expect(TIER_LADDER_GLOSSARY).toMatch(/not a fifth plan/i);
+    expect(TIER_LADDER_GLOSSARY).not.toMatch(/& Above/);
+    expect(NO_PLUS_PLAN_NOTE).toMatch(/no Starter\+ or Pro\+/i);
+    expect(CREDITS_AND_CONSULTING_BLURB).toMatch(/credit pack/i);
+    expect(CREDITS_AND_CONSULTING_BLURB).toMatch(/consulting/i);
+    expect(NOW_VS_COMING_SOON_BLURB).toMatch(/Available now/i);
+    expect(NOW_VS_COMING_SOON_BLURB).toMatch(/Coming soon/i);
+    expect(NOW_VS_COMING_SOON_BLURB).toMatch(/does not unlock/i);
+    expect(COMING_SOON_NOT_UNLOCKED_NOTE).toMatch(/not unlocked by membership/i);
+  });
+
+  it("aligns Schedule Suite + P&L feature gates with Pro or higher", () => {
     expect(canAccessScheduleSuite("starter")).toBe(false);
     expect(canAccessScheduleSuite("pro")).toBe(true);
     expect(tierHasFeature("starter", "pnl")).toBe(false);

@@ -4,13 +4,15 @@ import {
   GLOW_GETTER_CERT_LINE,
   buildCertificatePdfBase64,
   buildCertificateSvg,
+  certificateThemeFor,
   isGlowGetterAudience,
   resolveCertificateBody,
+  resolveCertificateHeadings,
 } from "./certificates";
 
 const baseSvgInput = {
-  title: "Welcome to the GYSH Family",
-  subtitle: "Certificate of Membership",
+  title: "You're a Glow Getter!",
+  subtitle: "Kids Certificate of Belonging",
   memberName: "Jordan Glow",
   bodyText: "Sample body text for the certificate.",
   signoff: "T + E · Get Your Side Hustle",
@@ -18,6 +20,7 @@ const baseSvgInput = {
   tierLabel: "Free",
   audienceLabel: "Kids",
   issuedAt: "2026-07-19T12:00:00.000Z",
+  audienceRaw: "kids",
 };
 
 describe("certificate logo + site URL", () => {
@@ -70,5 +73,58 @@ describe("Glow Getter body copy", () => {
     expect(teens).toContain(GLOW_GETTER_CERT_LINE);
     expect(adult).not.toContain("Glow Getter");
     expect(GLOW_GETTER_CERT_LINE).toMatch(/Glow Getter/i);
+  });
+});
+
+describe("age-group specific certificates", () => {
+  it("maps each audience to its own corner, honor, and colors", () => {
+    expect(certificateThemeFor("kids").corner).toBe("Kids Side Hustle Corner");
+    expect(certificateThemeFor("kids").honor).toBe("Glow Getter");
+    expect(certificateThemeFor("junior").corner).toBe("Teens Side Hustle Corner");
+    expect(certificateThemeFor("teen").honor).toBe("Young CEO");
+    expect(certificateThemeFor("senior").corner).toBe("Seniors Corner");
+    expect(certificateThemeFor("adult").honor).toBe("GYSH Family Member");
+    expect(certificateThemeFor("kids").accent).not.toBe(certificateThemeFor("teens").accent);
+    expect(certificateThemeFor("seniors").gold).not.toBe(certificateThemeFor("kids").gold);
+  });
+
+  it("uses age-group headings for kids/teens/seniors and the adult template for adults", () => {
+    const adultTpl = { title: "Custom Adult Title", subtitle: "Custom Adult Subtitle" };
+    expect(resolveCertificateHeadings("adult", adultTpl)).toEqual(adultTpl);
+    expect(resolveCertificateHeadings("kids", adultTpl).title).toMatch(/Glow Getter/i);
+    expect(resolveCertificateHeadings("teens", adultTpl).title).toMatch(/Young Hustler/i);
+    expect(resolveCertificateHeadings("senior", adultTpl).title).toMatch(/Seniors Corner/i);
+  });
+
+  it("prints the member name and age-group ribbon on SVG and PDF", () => {
+    const kids = buildCertificateSvg(baseSvgInput);
+    expect(kids).toContain("Jordan Glow");
+    expect(kids).toContain("KIDS");
+    expect(kids).toContain("Glow Getter");
+    expect(kids).toContain("Kids Side Hustle Corner");
+
+    const seniors = buildCertificateSvg({
+      ...baseSvgInput,
+      title: "Welcome to Seniors Corner",
+      subtitle: "Certificate of Membership",
+      memberName: "Evelyn Irving",
+      audienceLabel: "Seniors",
+      audienceRaw: "senior",
+      tierLabel: "Pro",
+    });
+    expect(seniors).toContain("Evelyn Irving");
+    expect(seniors).toContain("Seniors Corner");
+    expect(seniors).toContain("WISE");
+    expect(seniors).not.toContain("Glow Getter");
+
+    const pdf = atob(
+      buildCertificatePdfBase64({
+        ...baseSvgInput,
+        memberName: "Jordan Glow",
+        audienceRaw: "kids",
+      }),
+    );
+    expect(pdf).toContain("Jordan Glow");
+    expect(pdf).toContain("Kids Side Hustle Corner");
   });
 });

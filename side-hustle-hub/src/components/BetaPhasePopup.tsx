@@ -1,12 +1,17 @@
 import { FlaskConical, X } from "lucide-react";
-import { BETA_PHASE_NOTICE } from "../lib/beta-phase-notice";
+import {
+  BETA_PHASE_NOTICE,
+  type BetaPhaseNoticeCopy,
+} from "../lib/beta-phase-notice";
 
 type Props = {
   open: boolean;
   onClose: () => void;
+  /** Defaults to the post-login beta phase notice. */
+  notice?: BetaPhaseNoticeCopy;
 };
 
-export function BetaPhasePopup({ open, onClose }: Props) {
+export function BetaPhasePopup({ open, onClose, notice = BETA_PHASE_NOTICE }: Props) {
   if (!open) return null;
 
   return (
@@ -33,7 +38,7 @@ export function BetaPhasePopup({ open, onClose }: Props) {
         <div className="beta-phase-popup__head">
           <div>
             <p className="beta-phase-popup__eyebrow">Get Your Side Hustle</p>
-            <h3 id="beta-phase-popup-title">{BETA_PHASE_NOTICE.title}</h3>
+            <h3 id="beta-phase-popup-title">{notice.title}</h3>
           </div>
           <button
             type="button"
@@ -45,7 +50,9 @@ export function BetaPhasePopup({ open, onClose }: Props) {
             <X size={16} />
           </button>
         </div>
-        <p className="beta-phase-popup__body">{BETA_PHASE_NOTICE.body}</p>
+        <p className="beta-phase-popup__body" data-testid="beta-phase-popup-body">
+          {notice.body}
+        </p>
         <div className="beta-phase-popup__actions">
           <button
             type="button"
@@ -53,7 +60,7 @@ export function BetaPhasePopup({ open, onClose }: Props) {
             onClick={onClose}
             data-testid="beta-phase-popup-got-it"
           >
-            {BETA_PHASE_NOTICE.confirmLabel}
+            {notice.confirmLabel}
           </button>
         </div>
       </div>

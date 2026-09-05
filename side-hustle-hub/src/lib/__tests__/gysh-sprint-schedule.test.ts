@@ -42,6 +42,41 @@ describe("sprint schedule assignments", () => {
     expect(suggestedSprintForTask({ id: "T-016", category: "content", notes: "" })).toBe(4);
   });
 
+  it("places Personal amplify tasks and titled tests on Sprint 5", () => {
+    const amplifyTasks = Object.entries(TASK_SPRINT_MAP).filter(([id]) =>
+      id.includes("PERSONAL-AMPLIFY"),
+    );
+    expect(amplifyTasks.length).toBeGreaterThan(0);
+    for (const [id, sprint] of amplifyTasks) {
+      expect(sprint).toBe(5);
+      expect(suggestedSprintForTask({ id, category: "launch_marketing", notes: "" })).toBe(5);
+    }
+    expect(
+      suggestedSprintForTest({
+        id: "GEN-AMPLIFY-TINA",
+        area: "Content Factory",
+        priority: "P1",
+        title: "Personal amplify — Why GYSH (Tina)",
+      }),
+    ).toBe(5);
+    expect(
+      suggestedSprintForTest({
+        id: "GEN-AMPLY-EVELYN",
+        area: "Content Factory",
+        priority: "P1",
+        title: "Personal Amply share for Soft launch week wrap",
+      }),
+    ).toBe(5);
+    expect(
+      suggestedSprintForTask({
+        id: "T-SL-S3-PERSONAL-AMPLIFY-0804",
+        category: "launch_marketing",
+        notes: "",
+        description: "Personal amplify — Why we built GYSH",
+      }),
+    ).toBe(5);
+  });
+
   it("spreads wizard FMSH matrices across sprints 4–6", () => {
     const kids = WIZARD_SCENARIO_CASES.find(
       (c) => c.area === "Kids Get Your Side Hustle",

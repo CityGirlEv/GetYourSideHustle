@@ -28,6 +28,25 @@ export function legalReviewDueDate(_caseId: string, ref: Date = new Date()): str
   return dueDatePlusDays(0, ref);
 }
 
+/**
+ * Whether Testing Portal should (re)place a LEGAL-* case onto the live sprint/due/Candace.
+ * Skip graded work so placement heals do not rewrite Fail/Pass or Daily Progress attribution.
+ */
+export function needsLegalReviewPlacementHeal(input: {
+  status: string | null | undefined;
+  sprint: number | null | undefined;
+  due: string | null | undefined;
+  assignee: string | null | undefined;
+  wantSprint: number;
+  wantDue: string;
+}): boolean {
+  const st = String(input.status || "not_run").trim() || "not_run";
+  if (st !== "not_run") return false;
+  const due = String(input.due ?? "").trim();
+  const assignee = String(input.assignee ?? "").trim().toLowerCase();
+  return input.sprint !== input.wantSprint || due !== input.wantDue || assignee !== "candace";
+}
+
 export const LEGAL_REVIEW_CASES: TestCase[] = [
   {
     id: "LEGAL-DISC-001",

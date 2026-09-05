@@ -10,6 +10,8 @@ export const ASSIGNED_BY_PRESETS = [
   "Evelyn",
   "Lyriq",
   "Candace",
+  "Milford",
+  "Brenda",
 ] as const;
 
 /**
@@ -26,12 +28,16 @@ export function canonicalizePartnerLabel(raw: string | null | undefined): string
     if (lower.includes("evelyn") || lower.includes("evvelyn")) return "Evelyn";
     if (lower.includes("lyriq") || lower.includes("leegaulden")) return "Lyriq";
     if (lower.includes("candace")) return "Candace";
+    if (lower.includes("milford") || lower.includes("hutsell")) return "Milford";
+    if (lower.includes("brenda")) return "Brenda";
     return v;
   }
   if (lower === "tina" || lower.startsWith("tina ")) return "Tina";
   if (lower === "evelyn" || lower.startsWith("evelyn ")) return "Evelyn";
   if (lower === "lyriq" || lower.startsWith("lyriq ")) return "Lyriq";
   if (lower === "candace" || lower.startsWith("candace ")) return "Candace";
+  if (lower === "milford" || lower.startsWith("milford ")) return "Milford";
+  if (lower === "brenda" || lower.startsWith("brenda ")) return "Brenda";
   return v;
 }
 

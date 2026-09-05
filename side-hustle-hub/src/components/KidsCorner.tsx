@@ -950,7 +950,7 @@ function GuidesTab({
                     <BookMarked size={16} aria-hidden />
                     <span>
                       Seniors guides
-                      <small>Ages 55+</small>
+                      <small>Ages 50+</small>
                     </span>
                     <ArrowRight size={14} aria-hidden />
                   </button>

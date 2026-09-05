@@ -68,7 +68,7 @@ describe("beta tester NDA acceptance", () => {
 });
 
 describe("beta tester routes", () => {
-  it("maps /beta-nda and /beta-testing", () => {
+  it("maps /beta-nda, /beta-testing, /beta-credits, and /beta-points", () => {
     expect(parseAppRoute("/beta-nda")).toEqual({ view: "beta_nda", guidesManualId: null });
     expect(parseAppRoute("/beta-tester-nda")).toEqual({ view: "beta_nda", guidesManualId: null });
     expect(pathForView("beta_nda")).toBe("/beta-nda");
@@ -76,5 +76,10 @@ describe("beta tester routes", () => {
     expect(parseAppRoute("/beta-testing")).toEqual({ view: "beta_testing", guidesManualId: null });
     expect(pathForView("beta_testing")).toBe("/beta-testing");
     expect(titleForView("beta_testing")).toBe("Beta Tester Dashboard | Get Your Side Hustle");
+    expect(parseAppRoute("/beta-credits")).toEqual({ view: "beta_credits", guidesManualId: null });
+    expect(pathForView("beta_credits")).toBe("/beta-credits");
+    expect(titleForView("beta_credits")).toBe("Beta Tester Credit Guide | Get Your Side Hustle");
+    expect(parseAppRoute("/beta-points")).toEqual({ view: "beta_points", guidesManualId: null });
+    expect(pathForView("beta_points")).toBe("/beta-points");
   });
 });

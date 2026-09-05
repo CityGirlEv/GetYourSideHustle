@@ -24,6 +24,8 @@ export type AppRouteView =
   | "privacy"
   | "beta_nda"
   | "beta_testing"
+  | "beta_credits"
+  | "beta_points"
   | "join"
   | "membership_signup";
 
@@ -47,6 +49,8 @@ export const VIEW_PATH: Record<AppRouteView, string> = {
   privacy: "/privacy",
   beta_nda: "/beta-nda",
   beta_testing: "/beta-testing",
+  beta_credits: "/beta-credits",
+  beta_points: "/beta-points",
   join: "/join",
   membership_signup: "/membership",
 };
@@ -81,6 +85,10 @@ const PATH_ALIASES: Record<string, AppRouteView> = {
   "/beta-tester-nda": "beta_nda",
   "/beta-testing": "beta_testing",
   "/beta-tester": "beta_testing",
+  "/beta-credits": "beta_credits",
+  "/beta-tester-credits": "beta_credits",
+  "/beta-points": "beta_points",
+  "/beta-tester-points": "beta_points",
   "/join": "join",
   "/membership": "membership_signup",
   "/membership-signup": "membership_signup",
@@ -169,6 +177,8 @@ export function titleForView(view: AppRouteView, pageTitle?: string): string {
     privacy: "Privacy Policy",
     beta_nda: "Beta Tester NDA",
     beta_testing: "Beta Tester Dashboard",
+    beta_credits: "Beta Tester Credit Guide",
+    beta_points: "Beta Tester Points",
     join: "Join GYSH",
     membership_signup: "Membership Sign-up",
   };

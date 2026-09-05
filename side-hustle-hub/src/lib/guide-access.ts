@@ -48,6 +48,66 @@ export function tierDisplayName(tier: TierId): string {
   }
 }
 
+/**
+ * Ladder shorthand for gates — NOT a separate product.
+ * “Starter or higher” = Starter, Pro, or Elite (there is no Starter+ plan).
+ */
+export function tierAndAboveLabel(minTier: GuideMinTier): string {
+  switch (minTier) {
+    case "starter":
+      return "Starter or higher";
+    case "pro":
+      return "Pro or higher";
+    case "elite":
+      return "Elite";
+    default:
+      return "Free";
+  }
+}
+
+/** Spelled-out plans included in a gate — never a “+” product. */
+export function tierAndAbovePlans(minTier: GuideMinTier): string {
+  switch (minTier) {
+    case "starter":
+      return "Starter, Pro, or Elite";
+    case "pro":
+      return "Pro or Elite";
+    case "elite":
+      return "Elite";
+    default:
+      return "Free";
+  }
+}
+
+/** Pill on Join / Upgrade unlock buttons — same phrase as the lock badge after “Needs”. */
+export function unlockCtaTierPill(minTier: GuideMinTier): string {
+  if (minTier === "free") return JOIN_TO_UNLOCK_SUB;
+  return tierAndAboveLabel(minTier);
+}
+
+/**
+ * One-line glossary for Join / Membership / Beta Credits.
+ * “Or higher” means this plan and every plan above it — not a separate “+” product.
+ */
+export const TIER_LADDER_GLOSSARY =
+  "GYSH has exactly four plans: Free, Starter, Pro, and Elite. Each higher plan includes everything below it. When you see “Starter or higher,” that means Starter, Pro, or Elite — not a fifth plan. “Pro or higher” means Pro or Elite. Lock badges and unlock buttons always use the same phrase.";
+
+/** How monthly credits, packs, and consulting fit together. */
+export const CREDITS_AND_CONSULTING_BLURB =
+  "Free starts with no credit card. Paid plans include monthly Kid Credits plus plan consulting (Starter: one 45-min; Pro: three 60-min; Elite: three 90-min). Spend those monthly credits on workshops and extra sessions. Buy a credit pack only when the monthly balance is not enough. Consulting on the plan is included; a-la-carte consulting is extra time if you want more. Adult redemptions use half value (2 Kid Credits = 1 adult credit).";
+
+/** Live vs not-built-yet — paywalls unlock live content only. */
+export const NOW_VS_COMING_SOON_BLURB =
+  "Available now: Free browse plus membership-gated guides and tools that already ship. Coming soon: items marked Coming soon are not live yet — upgrading does not unlock them.";
+
+/** Explicit denial for reviewers who misread “or higher” as Starter+/Pro+. */
+export const NO_PLUS_PLAN_NOTE =
+  "There is no Starter+ or Pro+ plan — “or higher” is ladder shorthand only.";
+
+/** Card-level note so Coming soon never looks like a membership lock. */
+export const COMING_SOON_NOT_UNLOCKED_NOTE =
+  "Coming soon — not unlocked by membership yet.";
+
 /** Adult Launch Guide ids → minimum membership tier. */
 export const ADULT_GUIDE_MIN_TIER: Record<string, GuideMinTier> = {
   rideshare: "starter",
@@ -155,11 +215,12 @@ export function guideTierBadgeLabel(minTier: GuideMinTier): string {
 
 /**
  * Badge when content is locked — always names the required membership level.
- * e.g. "Locked · Needs Starter", "Locked · Join Free"
+ * Uses “Starter or higher” / “Pro or higher” so badges match unlock buttons
+ * (ladder shorthand — not separate products like Starter+ / Pro+).
  */
 export function membershipLockedBadgeLabel(minTier: GuideMinTier): string {
   if (minTier === "free") return "Locked · Join Free";
-  return `Locked · Needs ${tierDisplayName(minTier)}`;
+  return `Locked · Needs ${tierAndAboveLabel(minTier)}`;
 }
 
 /** Minimum tier for Schedule Suite features (tracker, P&L, progress, email). */
@@ -186,7 +247,7 @@ export function guideTierMembershipNote(minTier: GuideMinTier): string {
   if (minTier === "free") {
     return `Free with Free Membership — ${FREE_GUIDE_SIGNUP_NOTE}`;
   }
-  return `Included with ${tierDisplayName(minTier)} Membership`;
+  return `Included with ${tierAndAboveLabel(minTier)}`;
 }
 
 /** All tier ids in ladder order (for filters / docs). */

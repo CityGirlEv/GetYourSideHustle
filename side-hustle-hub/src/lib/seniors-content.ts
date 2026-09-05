@@ -1,4 +1,4 @@
-/** Senior Side Hustles — opportunities & guide teasers for 55+ / flexible schedules. */
+/** Senior Side Hustles — opportunities & guide teasers for 50+ / flexible schedules. */
 
 import { seniorGuideMinTier } from "./guide-access";
 
@@ -25,7 +25,7 @@ export type SeniorGuideTeaser = {
   launchGuideId?: string;
 };
 
-export const SENIOR_AUDIENCE_LABEL = "55+ · Retirees & flexible schedules";
+export const SENIOR_AUDIENCE_LABEL = "50+ · Retirees & flexible schedules";
 
 export const SENIOR_INTRO = {
   headline: "GYSH side hustles that fit your pace",

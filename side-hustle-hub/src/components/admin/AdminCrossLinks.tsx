@@ -20,6 +20,9 @@ import {
   softLaunchItemRef,
   type SoftLaunchItem,
 } from "../../lib/gysh-soft-launch-rollout";
+import { siblingTestCases } from "../../lib/gysh-test-case-dupes";
+import { testOwnerLabel } from "../../lib/gysh-roles";
+import { TEST_CASES, type TestCase } from "../../lib/gysh-test-plan";
 
 export type { AdminLinkCandidate };
 
@@ -30,10 +33,13 @@ export type AdminCrossLink = {
 
 function CrossLinkButton({ link }: { link: AdminCrossLink }) {
   const href = adminStudioPath(link.opts);
+  const sameTest = Boolean(link.opts.testId) && /^Same test\b/i.test(link.label);
   return (
     <a
       href={href}
       className="admin-cross-link"
+      data-same-test={sameTest ? "true" : undefined}
+      title={sameTest && link.opts.testId ? `Open sibling test ${link.opts.testId}` : undefined}
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -286,6 +292,10 @@ export function crossLinksForTaskId(taskId: string): AdminCrossLink[] {
 export function crossLinksForTestId(
   testId: string,
   relatedTaskIds?: string[] | null,
+  opts?: {
+    /** Full portal catalog (includes generated cases). Defaults to TEST_CASES. */
+    catalog?: ReadonlyArray<Pick<TestCase, "id" | "title" | "assignees" | "expected">>;
+  },
 ): AdminCrossLink[] {
   const out: AdminCrossLink[] = [];
   const item = softLaunchItemFromTestId(testId);
@@ -315,6 +325,18 @@ export function crossLinksForTestId(
         opts: { tab: "factory", panel: "launch-plan", itemId: fromTask.id },
       });
     }
+  }
+
+  const catalog = opts?.catalog ?? TEST_CASES;
+  for (const sib of siblingTestCases(testId, catalog)) {
+    if (out.some((l) => l.opts.testId === sib.id)) continue;
+    const who =
+      sib.assignees.map((a) => testOwnerLabel(a)).filter(Boolean).join("/") ||
+      sib.id.replace(/^.*-/, "");
+    out.push({
+      label: `Same test · ${who}`,
+      opts: { tab: "testing", testId: sib.id },
+    });
   }
   return out;
 }

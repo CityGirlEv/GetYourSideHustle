@@ -11,7 +11,7 @@ import { currentSprintIndex } from "./gysh-sprints";
 export const SOFT_LAUNCH_FACTORY_SPRINTS = [2, 3, 4, 5] as const;
 
 /**
- * Default Sprint filter for Content Factory — live sprint,
+ * Default Sprint filter for Content Factory — live sprint only,
  * clamped to the soft-launch calendar range (2–5).
  */
 export function softLaunchFactoryDefaultSprint(ref: Date = new Date()): number {
@@ -22,13 +22,11 @@ export function softLaunchFactoryDefaultSprint(ref: Date = new Date()): number {
 }
 
 /**
- * Default multi-select Sprint filters: current + next (both clamped to 2–5).
- * When already on Sprint 5, returns only [5].
+ * Default multi-select Sprint filters: current sprint only (clamped to 2–5).
+ * Kept as an array for Set(...)/chip init callers.
  */
 export function softLaunchFactoryDefaultSprints(ref: Date = new Date()): number[] {
-  const cur = softLaunchFactoryDefaultSprint(ref);
-  const next = Math.min(5, cur + 1);
-  return next === cur ? [cur] : [cur, next];
+  return [softLaunchFactoryDefaultSprint(ref)];
 }
 
 /** How Content Factory works + glossary for the Marketing/Launch Plan report. */
@@ -522,6 +520,80 @@ export function softLaunchItemCompletion(
   };
 }
 
+/** Incomplete CF calendar rows still assigned outside `targetSprint`. */
+export type SoftLaunchSprintRolloverPlan = {
+  itemId: string;
+  itemRef: string;
+  title: string;
+  fromSprint: number;
+  taskId: string;
+  relatedTestIds: string[];
+};
+
+/**
+ * Plan Content Factory sprint carry: incomplete (not done) items whose calendar
+ * sprint is not `targetSprint`. Callers persist task/test moves + CF overrides.
+ */
+export function planSoftLaunchSprintRollovers(input: {
+  items: readonly SoftLaunchItem[];
+  targetSprint: number;
+  taskStatusById?: Record<string, string | undefined>;
+  testStatusById?: Record<string, string | undefined>;
+}): SoftLaunchSprintRolloverPlan[] {
+  const target = Math.floor(Number(input.targetSprint));
+  if (!Number.isFinite(target)) return [];
+  const out: SoftLaunchSprintRolloverPlan[] = [];
+  for (const item of input.items) {
+    const fromSprint = Number(item.sprint);
+    if (!Number.isFinite(fromSprint) || fromSprint === target) continue;
+    const completion = softLaunchItemCompletion(item, {
+      taskStatusById: input.taskStatusById,
+      testStatusById: input.testStatusById,
+    });
+    if (completion.itemDone) continue;
+    const links = softLaunchCrossLinks(item);
+    out.push({
+      itemId: item.id,
+      itemRef: links.itemRef || item.id,
+      title: item.title,
+      fromSprint,
+      taskId: links.taskId,
+      relatedTestIds: links.testIds,
+    });
+  }
+  return out;
+}
+
+/** True when a CF item notes field already records a rollover from `fromSprint`. */
+export function softLaunchNotesIndicateRollover(
+  notes: string | null | undefined,
+  fromSprint: number,
+): boolean {
+  return new RegExp(`Roll(?:ed|ing) over from Sprint\\s*${fromSprint}\\b`, "i").test(
+    String(notes ?? ""),
+  );
+}
+
+/** Append (or keep) a CF calendar rollover marker in free-text notes. */
+export function withSoftLaunchRolloverNote(
+  notes: string | null | undefined,
+  fromSprint: number,
+): string {
+  const text = `Rolled over from Sprint ${fromSprint}`;
+  const prev = String(notes ?? "").trim();
+  if (softLaunchNotesIndicateRollover(prev, fromSprint)) return prev;
+  return prev ? `${prev}\n\n${text}` : text;
+}
+
+/** True when a CF calendar item notes field already records a rollover from `fromSprint`. */
+export function softLaunchItemShowsRollover(
+  item: Pick<SoftLaunchItem, "notes" | "sprint">,
+  fromSprint?: number,
+): boolean {
+  if (fromSprint != null) return softLaunchNotesIndicateRollover(item.notes, fromSprint);
+  return /Roll(?:ed|ing) over from Sprint\s*\d+/i.test(String(item.notes ?? ""));
+}
+
 /** True when a seeded draft id belongs to a soft-launch calendar item. */
 export function draftBelongsToSoftLaunchItem(draftId: string, itemId: string): boolean {
   const id = String(draftId || "");
@@ -546,8 +618,8 @@ export function softLaunchVideoItems(): SoftLaunchItem[] {
  */
 export const PERSONAL_AMPLIFY_CADENCE = [
   {
-    sprint: 3 as const,
-    day: "2026-08-18",
+    sprint: 5 as const,
+    day: "2026-09-02",
     idBase: "sl-s3-personal-amplify-why",
     title: "Personal amplify — Why GYSH (+ Welcome catch-up)",
     postTime: "7:00 PM CT",
@@ -558,8 +630,8 @@ export const PERSONAL_AMPLIFY_CADENCE = [
       "Why tonight: origin story + soft-launch kickoff — best early-follower magnet.",
   },
   {
-    sprint: 3 as const,
-    day: "2026-08-20",
+    sprint: 5 as const,
+    day: "2026-09-02",
     idBase: "sl-s3-personal-amplify-guides",
     title: "Personal amplify — Free Guides + first YouTube Short",
     postTime: "7:00 PM CT",
@@ -570,8 +642,8 @@ export const PERSONAL_AMPLIFY_CADENCE = [
       "Why tonight: value post + video — dual format lifts reach.",
   },
   {
-    sprint: 3 as const,
-    day: "2026-08-24",
+    sprint: 5 as const,
+    day: "2026-09-02",
     idBase: "sl-s3-personal-amplify-wrap",
     title: "Personal amplify — Soft launch week wrap",
     postTime: "6:00 PM CT",
@@ -582,8 +654,8 @@ export const PERSONAL_AMPLIFY_CADENCE = [
       "Why tonight: week close + ask engagement; seeds Sprint 4 habit.",
   },
   {
-    sprint: 4 as const,
-    day: "2026-08-25",
+    sprint: 5 as const,
+    day: "2026-09-02",
     idBase: "sl-s4-personal-amplify-ig-tt",
     title: "Personal amplify — IG grid + TikTok launch day",
     postTime: "7:00 PM CT",
@@ -595,8 +667,8 @@ export const PERSONAL_AMPLIFY_CADENCE = [
       "Why tonight: new-channel launch day — personal graphs seed first followers on IG/TT.",
   },
   {
-    sprint: 4 as const,
-    day: "2026-08-26",
+    sprint: 5 as const,
+    day: "2026-09-02",
     idBase: "sl-s4-personal-amplify-kevina",
     title: "Personal amplify — Kevina Tuesday bridge",
     postTime: "7:30 PM CT",
@@ -606,8 +678,8 @@ export const PERSONAL_AMPLIFY_CADENCE = [
       "Why tonight: Kids-path trust voice → parents in personal network.",
   },
   {
-    sprint: 4 as const,
-    day: "2026-08-28",
+    sprint: 5 as const,
+    day: "2026-09-02",
     idBase: "sl-s4-personal-amplify-fb",
     title: "Personal amplify — Mid-sprint GYSH FB tip",
     postTime: "7:00 PM CT",
@@ -617,8 +689,8 @@ export const PERSONAL_AMPLIFY_CADENCE = [
       "Why tonight: mid-week consistency — algorithm rewards steady personal shares.",
   },
   {
-    sprint: 4 as const,
-    day: "2026-08-30",
+    sprint: 5 as const,
+    day: "2026-09-02",
     idBase: "sl-s4-personal-amplify-yt2",
     title: "Personal amplify — YouTube Short #2",
     postTime: "6:00 PM CT",
@@ -641,7 +713,7 @@ export const PERSONAL_AMPLIFY_CADENCE = [
   },
   {
     sprint: 5 as const,
-    day: "2026-09-04",
+    day: "2026-09-02",
     idBase: "sl-s5-personal-amplify-ugc",
     title: "Personal amplify — UGC ask",
     postTime: "7:00 PM CT",
@@ -653,7 +725,7 @@ export const PERSONAL_AMPLIFY_CADENCE = [
   },
   {
     sprint: 5 as const,
-    day: "2026-09-05",
+    day: "2026-09-02",
     idBase: "sl-s5-personal-amplify-montage",
     title: "Personal amplify — Soft-launch montage",
     postTime: "7:00 PM CT",
@@ -1844,7 +1916,7 @@ export function softLaunchTaskSeeds(
     return {
       id: taskId,
       description: `${ref} · ${ROLLOUT_CHANNEL_LABELS[item.channel]}: ${item.title}`,
-      category: "launch_marketing",
+      category: item.channel === "personal_amplify" ? "personal_amplify" : "launch_marketing",
       priority:
         item.id.includes("welcome") ||
         item.id.includes("yt-create") ||

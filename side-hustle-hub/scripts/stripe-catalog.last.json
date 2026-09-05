@@ -22,13 +22,13 @@
           "productId": "prod_V7adJVQKJCcJIv",
           "priceId": "price_1U7LSeJOsDH7RgBdRJlS8Wuw",
           "amountUsd": 34,
-          "label": "Starter Seniors (55+) Monthly"
+          "label": "Starter Seniors (50+) Monthly"
         },
         "year": {
           "productId": "prod_V7ad2HG0POmK7C",
           "priceId": "price_1U7LSfJOsDH7RgBd22nfMNMC",
           "amountUsd": 340,
-          "label": "Starter Seniors (55+) Yearly"
+          "label": "Starter Seniors (50+) Yearly"
         }
       }
     },
@@ -52,13 +52,13 @@
           "productId": "prod_V7advBhQHdx2nN",
           "priceId": "price_1U7LSiJOsDH7RgBdpFx29R9N",
           "amountUsd": 57,
-          "label": "Pro Seniors (55+) Monthly"
+          "label": "Pro Seniors (50+) Monthly"
         },
         "year": {
           "productId": "prod_V7aeqIhsIMPBCv",
           "priceId": "price_1U7LSiJOsDH7RgBd1z3Ne9z2",
           "amountUsd": 570,
-          "label": "Pro Seniors (55+) Yearly"
+          "label": "Pro Seniors (50+) Yearly"
         }
       }
     },
@@ -82,13 +82,13 @@
           "productId": "prod_V7ae2Esioxhg6y",
           "priceId": "price_1U7LSlJOsDH7RgBdMg0emLYk",
           "amountUsd": 94,
-          "label": "Elite Seniors (55+) Monthly"
+          "label": "Elite Seniors (50+) Monthly"
         },
         "year": {
           "productId": "prod_V7aejcgw2idRV6",
           "priceId": "price_1U7LSlJOsDH7RgBdyf3aDegx",
           "amountUsd": 940,
-          "label": "Elite Seniors (55+) Yearly"
+          "label": "Elite Seniors (50+) Yearly"
         }
       }
     }

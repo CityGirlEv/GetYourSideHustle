@@ -316,6 +316,16 @@ export function membershipDeepLink(
   return `${SITE_URL}/?${params.toString()}`;
 }
 
+/**
+ * Admin form-alert CTA: open Users Area (never mailto).
+ * Sender email stays in the body + Resend reply_to when provided.
+ */
+export function adminFormNotifyCtaUrl(override?: string | null): string {
+  const trimmed = String(override ?? "").trim();
+  if (trimmed && !/^mailto:/i.test(trimmed)) return trimmed;
+  return `${SITE_URL}/admin?tab=users`;
+}
+
 export function tierLabel(tier: TierId): string {
   return TIER_LABEL[tier];
 }

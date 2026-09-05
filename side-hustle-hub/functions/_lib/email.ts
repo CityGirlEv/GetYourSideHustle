@@ -12,6 +12,7 @@ import {
   SITE_URL,
   escapeHtml,
   membershipDeepLink,
+  adminFormNotifyCtaUrl,
   normalizeAudience,
   normalizeTier,
   perkBulletsHtml,
@@ -378,18 +379,22 @@ export async function sendAdminFormNotify(
     formName: string;
     summary: string;
     detailsHtml: string;
+    /** Sets Resend reply_to so Reply opens the sender — not the CTA button. */
     replyTo?: string;
+    /** Optional Admin deep link; defaults to Users Area (never mailto). */
+    ctaUrl?: string;
     meta?: Record<string, unknown>;
   },
 ): Promise<boolean> {
   if (!emailConfigured(env)) return false;
   const recipients = adminRecipients(env);
+  const ctaUrl = adminFormNotifyCtaUrl(input.ctaUrl);
   const { renderCatalogEmail } = await import("./email-admin");
   const rendered = await renderCatalogEmail(env, "admin_form_notify", {
     name: input.formName,
     message: input.detailsHtml,
     email: input.replyTo || "",
-    ctaUrl: input.replyTo ? `mailto:${input.replyTo}` : `${SITE_URL}/?next=admin`,
+    ctaUrl,
   });
   const subject = rendered
     ? `${rendered.subject} ${input.summary.slice(0, 80)}`.trim()
@@ -400,6 +405,7 @@ export async function sendAdminFormNotify(
     html: rendered?.html || input.detailsHtml,
     text: rendered?.text || input.summary,
     templateSlug: "admin_form_notify",
+    replyTo: input.replyTo,
     meta: { formName: input.formName, recipients, ...(input.meta || {}) },
   });
   return true;
@@ -905,8 +911,8 @@ export async function sendScheduleReminderEmail(
       preheader: `${cadenceLabel} schedule reminder for ${input.plan.hustleLabel}`,
       eyebrow: `Schedule Suite · ${cadenceLabel}`,
       headline: `Your ${cadenceLabel.toLowerCase()} hustle plan`,
-      subhead: `Hi ${input.memberName || "there"}, here's your Schedule Suite for ${input.periodKey}.`,
-      bodyHtml: digestBodyHtml,
+      subhead: `Hi ${input.memberName || "there"}.`,
+      bodyHtml: `<p style="margin:0 0 12px;">Here's your Schedule Suite for ${input.periodKey}.</p>${digestBodyHtml}`,
       ctaLabel: "Open Schedule Suite",
       ctaUrl: `${SITE_URL}/my-dashboard`,
       footerNote: "Change reminder cadence anytime under My Dashboard → Schedule Suite.",

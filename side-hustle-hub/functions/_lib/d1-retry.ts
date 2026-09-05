@@ -10,11 +10,12 @@ export function isTransientD1Error(error: unknown): boolean {
     /storage operation exceeded timeout/i.test(msg) ||
     /object to be reset/i.test(msg) ||
     /Network connection lost/i.test(msg) ||
-    /internal error while starting up D1/i.test(msg)
+    /internal error while starting up D1/i.test(msg) ||
+    /internal error;\s*reference\s*=/i.test(msg)
   );
 }
 
-export async function withD1Retry<T>(fn: () => Promise<T>, attempts = 2): Promise<T> {
+export async function withD1Retry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
   let last: unknown;
   for (let i = 0; i < attempts; i++) {
     try {
@@ -22,7 +23,7 @@ export async function withD1Retry<T>(fn: () => Promise<T>, attempts = 2): Promis
     } catch (error) {
       last = error;
       if (i === attempts - 1 || !isTransientD1Error(error)) throw error;
-      await new Promise((resolve) => setTimeout(resolve, 300 * (i + 1)));
+      await new Promise((resolve) => setTimeout(resolve, 400 * (i + 1)));
     }
   }
   throw last;

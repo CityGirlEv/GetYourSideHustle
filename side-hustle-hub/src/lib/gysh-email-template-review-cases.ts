@@ -75,7 +75,7 @@ export const EMAIL_TEMPLATE_REVIEW_CATALOG = [
     slug: "schedule_suite_reminder",
     name: "Schedule Suite reminder",
     description:
-      "Pro+ hustle schedule reminder (daily / weekly / bi-weekly / monthly) with plan table and Kid Credits.",
+      "Pro or higher hustle schedule reminder (daily / weekly / bi-weekly / monthly) with plan table and Kid Credits.",
   },
   {
     slug: "contact_inbox",
@@ -86,6 +86,16 @@ export const EMAIL_TEMPLATE_REVIEW_CATALOG = [
     slug: "admin_form_notify",
     name: "Admin form notify",
     description: "Alert to admins whenever a public form is completed.",
+  },
+  {
+    slug: "membership_subscribed",
+    name: "Membership subscribed",
+    description: "Confirmation after a paid membership checkout completes.",
+  },
+  {
+    slug: "membership_upgraded",
+    name: "Membership upgraded",
+    description: "Notice when a member upgrades to a higher paid plan.",
   },
   {
     slug: "password_reset",
@@ -133,6 +143,26 @@ export function isEmailTemplateReviewCaseId(caseId: string): boolean {
   return String(caseId || "")
     .toUpperCase()
     .startsWith("EMAIL-TPL-");
+}
+
+/**
+ * Whether Testing Portal should (re)place an EMAIL-TPL case onto the live sprint/due/Candace.
+ * Never rewrite graded work — that stole Daily Progress attribution and fought Fail→Dev.
+ */
+export function needsEmailTemplatePlacementHeal(input: {
+  status: string | null | undefined;
+  sprint: number | null | undefined;
+  due: string | null | undefined;
+  assignee: string | null | undefined;
+  wantSprint: number;
+  wantDue: string;
+}): boolean {
+  const st = String(input.status || "not_run").trim() || "not_run";
+  if (st !== "not_run") return false;
+  const sprint = input.sprint;
+  const due = String(input.due ?? "").trim();
+  const assignee = String(input.assignee ?? "").trim().toLowerCase();
+  return sprint !== input.wantSprint || due !== input.wantDue || assignee !== "candace";
 }
 
 /** Manual QA: one case per email template, owned by Candace. */

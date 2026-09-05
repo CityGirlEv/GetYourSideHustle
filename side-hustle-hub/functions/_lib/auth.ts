@@ -16,6 +16,7 @@ import {
 } from "./crypto";
 import {
   canAccessAdminPortal,
+  canAccessTestingPortal,
   parseRoles,
   primaryRole,
   rolesForPublicRegister,
@@ -24,6 +25,8 @@ import {
 } from "./roles";
 import { BETA_NDA_VERSION, betaNdaRegisterError, formatBetaNdaAcceptanceNote } from "./beta-tester-nda";
 import { acceptBetaNdaForUser } from "./beta-nda-store";
+import { ensureUsersRoleCheckAllowsAllRoles } from "./ensure-users-role-check";
+import { withD1Retry } from "./d1-retry";
 
 export type Env = {
   DB: D1Database;
@@ -93,8 +96,9 @@ export function userRoles(u: Pick<DbUser, "role" | "roles">): GyshRole[] {
   return parseRoles(u.role, u.roles);
 }
 
-export function publicUser(u: DbUser) {
+export function publicUser(u: DbUser & { last_login_at?: string | null }) {
   const roles = userRoles(u);
+  const lastLoginAt = u.last_login_at ? String(u.last_login_at).trim() : "";
   return {
     id: u.id,
     name: u.name,
@@ -107,6 +111,7 @@ export function publicUser(u: DbUser) {
     canLogin: Boolean(u.password_hash && u.password_salt),
     membershipTier: (u.membership_tier || "free").toLowerCase(),
     audience: (u.audience || "adult").toLowerCase(),
+    lastLoginAt: lastLoginAt || null,
   };
 }
 
@@ -297,7 +302,7 @@ export async function requireSession(
   return error(sawExpired ? "Session expired." : "Session invalid or expired.", 401);
 }
 
-/** Admin Studio + partner tooling — admin or QA only. */
+/** Admin Studio + Admin menu — admin role only. */
 export async function requireAdminSession(
   env: Env,
   request: Request,
@@ -310,17 +315,22 @@ export async function requireAdminSession(
   return auth;
 }
 
+/** Testing Portal APIs — Admin or QA. */
+export async function requireTestingPortalSession(
+  env: Env,
+  request: Request,
+): Promise<{ user: DbUser } | Response> {
+  const auth = await requireSession(env, request);
+  if (auth instanceof Response) return auth;
+  if (!canAccessTestingPortal(userRoles(auth.user))) {
+    return error("Testing Portal access required.", 403);
+  }
+  return auth;
+}
+
 export async function handleLogin(env: Env, request: Request): Promise<Response> {
   const dbFail = requireDb(env);
   if (dbFail) return dbFail;
-
-  // Ensure partner admins exist before auth lookup (idempotent).
-  try {
-    const { ensurePartnerAdmins } = await import("./partners");
-    await ensurePartnerAdmins(env);
-  } catch {
-    /* table may not exist yet — migrate first */
-  }
 
   let body: { email?: string; password?: string };
   try {
@@ -336,7 +346,7 @@ export async function handleLogin(env: Env, request: Request): Promise<Response>
     return error("Email and password are required.", 400);
   }
 
-  const user = await getUserByEmail(env.DB, email);
+  const user = await withD1Retry(() => getUserByEmail(env.DB, email));
   if (!user || !user.password_hash || !user.password_salt) {
     await appendAudit(env.DB, "login_failed", email, "unknown account");
     return error("Invalid email or password.", 401);
@@ -363,10 +373,18 @@ export async function handleLogin(env: Env, request: Request): Promise<Response>
 
   const roles = userRoles(user);
   const isAdmin = canAccessAdminPortal(roles);
-  const { token, cookie } = await createSession(env.DB, user.id, {
-    secureCookie: requestWantsSecureCookie(request),
-  });
-  await appendAudit(env.DB, "login_ok", email, isAdmin ? "admin login success" : "member login success");
+  const { token, cookie } = await withD1Retry(() =>
+    createSession(env.DB, user.id, {
+      secureCookie: requestWantsSecureCookie(request),
+    }),
+  );
+  try {
+    await withD1Retry(() =>
+      appendAudit(env.DB, "login_ok", email, isAdmin ? "admin login success" : "member login success"),
+    );
+  } catch {
+    /* never block a successful login on audit write */
+  }
 
   // Parent coach alert whenever a linked kid/teen account signs in.
   try {
@@ -400,6 +418,12 @@ type RegisterAgeGroup = "kids" | "junior" | "adult" | "senior";
 export async function handleRegister(env: Env, request: Request): Promise<Response> {
   const dbFail = requireDb(env);
   if (dbFail) return dbFail;
+
+  try {
+    await ensureUsersRoleCheckAllowsAllRoles(env.DB);
+  } catch {
+    /* best-effort — insert may still succeed if already migrated */
+  }
 
   let body: {
     email?: string;

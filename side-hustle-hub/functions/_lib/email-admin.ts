@@ -5,6 +5,9 @@ import { error, json, type DbUser, type Env } from "./auth";
 import { EmailSendError, emailConfigured, sendResendEmail } from "./email";
 import { SITE_URL } from "./email-brand";
 import { buildSampleDigestPreview, DIGEST_TEMPLATE_SLUG } from "./daily-digest";
+import { PARTNER_ADMINS } from "./partners";
+import { parseRoles } from "./roles";
+import { withD1Retry } from "./d1-retry";
 import {
   applyContentVars,
   defaultContentForSlug,
@@ -34,9 +37,13 @@ type TemplateRow = {
   content_seeded: number;
 };
 
+let emailTablesEnsured = false;
+
 async function ensureEmailTables(env: Env): Promise<void> {
-  await env.DB.prepare(
-    `CREATE TABLE IF NOT EXISTS email_log (
+  if (emailTablesEnsured) return;
+  await withD1Retry(() =>
+    env.DB.prepare(
+      `CREATE TABLE IF NOT EXISTS email_log (
       id TEXT PRIMARY KEY,
       template_slug TEXT NOT NULL,
       to_email TEXT NOT NULL,
@@ -48,9 +55,11 @@ async function ensureEmailTables(env: Env): Promise<void> {
       meta_json TEXT NOT NULL DEFAULT '{}',
       created_at TEXT NOT NULL
     )`,
-  ).run();
-  await env.DB.prepare(
-    `CREATE TABLE IF NOT EXISTS email_templates (
+    ).run(),
+  );
+  await withD1Retry(() =>
+    env.DB.prepare(
+      `CREATE TABLE IF NOT EXISTS email_templates (
       slug TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       description TEXT NOT NULL DEFAULT '',
@@ -68,7 +77,8 @@ async function ensureEmailTables(env: Env): Promise<void> {
       footer_note TEXT NOT NULL DEFAULT '',
       content_seeded INTEGER NOT NULL DEFAULT 0
     )`,
-  ).run();
+    ).run(),
+  );
 
   // Older DBs created before content columns — add them if missing.
   const alters = [
@@ -89,6 +99,7 @@ async function ensureEmailTables(env: Env): Promise<void> {
       /* column already exists */
     }
   }
+  emailTablesEnsured = true;
 }
 
 function rowToContent(row: TemplateRow): EmailTemplateContent {
@@ -109,62 +120,71 @@ function rowToContent(row: TemplateRow): EmailTemplateContent {
 
 async function seedCatalogRows(env: Env): Promise<void> {
   const now = new Date().toISOString();
+  // One read of existing rows — avoid per-slug INSERT+SELECT on every list (remote D1 is ~2–4s each).
+  const existing = await withD1Retry(() =>
+    env.DB.prepare(
+      `SELECT slug, content_seeded, body_html FROM email_templates`,
+    ).all<{ slug: string; content_seeded: number; body_html: string }>(),
+  );
+  const bySlug = new Map((existing.results ?? []).map((r) => [r.slug, r]));
+
   for (const t of EMAIL_TEMPLATE_CATALOG) {
     const defaults = defaultContentForSlug(t.slug);
-    await env.DB.prepare(
-      `INSERT INTO email_templates (
-         slug, name, description, subject, enabled, updated_at, updated_by,
-         preheader, eyebrow, headline, subhead, body_html, cta_label, cta_url, footer_note, content_seeded
-       ) VALUES (?, ?, ?, ?, 1, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, 1)
-       ON CONFLICT(slug) DO NOTHING`,
-    )
-      .bind(
-        t.slug,
-        t.name,
-        t.description,
-        defaults?.subject || t.sampleSubject,
-        now,
-        defaults?.preheader || "",
-        defaults?.eyebrow || "",
-        defaults?.headline || "",
-        defaults?.subhead || "",
-        defaults?.bodyHtml || "",
-        defaults?.ctaLabel || "",
-        defaults?.ctaUrl || "",
-        defaults?.footerNote || "",
-      )
-      .run();
-
-    // Backfill content for rows inserted before editable fields existed.
-    const row = await env.DB.prepare(
-      `SELECT content_seeded, body_html FROM email_templates WHERE slug = ?`,
-    )
-      .bind(t.slug)
-      .first<{ content_seeded: number; body_html: string }>();
-    if (!row || !defaults) continue;
-    if (Number(row.content_seeded) === 0) {
-      await env.DB.prepare(
-        `UPDATE email_templates SET
-           subject = ?, preheader = ?, eyebrow = ?, headline = ?, subhead = ?,
-           body_html = ?, cta_label = ?, cta_url = ?, footer_note = ?,
-           content_seeded = 1, name = ?, description = ?
-         WHERE slug = ?`,
-      )
-        .bind(
-          defaults.subject,
-          defaults.preheader,
-          defaults.eyebrow,
-          defaults.headline,
-          defaults.subhead,
-          defaults.bodyHtml,
-          defaults.ctaLabel,
-          defaults.ctaUrl,
-          defaults.footerNote,
-          t.name,
-          t.description,
-          t.slug,
+    const row = bySlug.get(t.slug);
+    if (!row) {
+      await withD1Retry(() =>
+        env.DB.prepare(
+          `INSERT INTO email_templates (
+             slug, name, description, subject, enabled, updated_at, updated_by,
+             preheader, eyebrow, headline, subhead, body_html, cta_label, cta_url, footer_note, content_seeded
+           ) VALUES (?, ?, ?, ?, 1, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, 1)
+           ON CONFLICT(slug) DO NOTHING`,
         )
-        .run();
+          .bind(
+            t.slug,
+            t.name,
+            t.description,
+            defaults?.subject || t.sampleSubject,
+            now,
+            defaults?.preheader || "",
+            defaults?.eyebrow || "",
+            defaults?.headline || "",
+            defaults?.subhead || "",
+            defaults?.bodyHtml || "",
+            defaults?.ctaLabel || "",
+            defaults?.ctaUrl || "",
+            defaults?.footerNote || "",
+          )
+          .run(),
+      );
+      continue;
+    }
+    if (!defaults) continue;
+    if (Number(row.content_seeded) === 0) {
+      await withD1Retry(() =>
+        env.DB.prepare(
+          `UPDATE email_templates SET
+             subject = ?, preheader = ?, eyebrow = ?, headline = ?, subhead = ?,
+             body_html = ?, cta_label = ?, cta_url = ?, footer_note = ?,
+             content_seeded = 1, name = ?, description = ?
+           WHERE slug = ?`,
+        )
+          .bind(
+            defaults.subject,
+            defaults.preheader,
+            defaults.eyebrow,
+            defaults.headline,
+            defaults.subhead,
+            defaults.bodyHtml,
+            defaults.ctaLabel,
+            defaults.ctaUrl,
+            defaults.footerNote,
+            t.name,
+            t.description,
+            t.slug,
+          )
+          .run(),
+      );
       continue;
     }
     // Upgrade bare {{message}} bodies (look empty in the WYSIWYG) without wiping other fields.
@@ -172,9 +192,11 @@ async function seedCatalogRows(env: Env): Promise<void> {
     const thinMessageBody =
       body === "{{message}}" || /^<p>\{\{\s*message\s*\}\}<\/p>$/i.test(body);
     if (thinMessageBody && defaults.bodyHtml.includes("{{message}}")) {
-      await env.DB.prepare(`UPDATE email_templates SET body_html = ? WHERE slug = ?`)
-        .bind(defaults.bodyHtml, t.slug)
-        .run();
+      await withD1Retry(() =>
+        env.DB.prepare(`UPDATE email_templates SET body_html = ? WHERE slug = ?`)
+          .bind(defaults.bodyHtml, t.slug)
+          .run(),
+      );
     }
   }
 }
@@ -234,15 +256,19 @@ export async function listEmailTemplates(env: Env): Promise<Response> {
   await ensureEmailTables(env);
   await seedCatalogRows(env);
 
-  const { results } = await env.DB.prepare(
-    `SELECT slug, name, description, subject, enabled, updated_at, updated_by,
+  const { results } = await withD1Retry(() =>
+    env.DB.prepare(
+      `SELECT slug, name, description, subject, enabled, updated_at, updated_by,
             preheader, eyebrow, headline, subhead, body_html, cta_label, cta_url, footer_note, content_seeded
      FROM email_templates ORDER BY name`,
-  ).all<TemplateRow>();
+    ).all<TemplateRow>(),
+  );
 
-  const counts = await env.DB.prepare(
-    `SELECT template_slug as slug, COUNT(*) as n FROM email_log GROUP BY template_slug`,
-  ).all<{ slug: string; n: number }>();
+  const counts = await withD1Retry(() =>
+    env.DB.prepare(
+      `SELECT template_slug as slug, COUNT(*) as n FROM email_log GROUP BY template_slug`,
+    ).all<{ slug: string; n: number }>(),
+  );
   const countMap = new Map((counts.results ?? []).map((r) => [r.slug, r.n]));
 
   return json({
@@ -403,11 +429,33 @@ export async function updateEmailTemplate(
   });
 }
 
+async function qaRecipientEmails(env: Env): Promise<Set<string>> {
+  const emails = new Set<string>([
+    ...PARTNER_ADMINS.map((p) => p.email.toLowerCase()),
+    "evvelyn3@cox.net",
+  ]);
+  try {
+    const { results } = await env.DB.prepare(
+      `SELECT email, role, roles, status FROM users WHERE status IN ('active', 'pending')`,
+    ).all<{ email: string; role: string; roles: string | null; status: string }>();
+    for (const row of results ?? []) {
+      const roles = parseRoles(row.role, row.roles);
+      if (!roles.includes("qa") && !roles.includes("admin")) continue;
+      const email = String(row.email || "").trim().toLowerCase();
+      if (email) emails.add(email);
+    }
+  } catch {
+    /* users table may be missing columns on older envs */
+  }
+  return emails;
+}
+
 export async function listEmailLog(env: Env, request: Request): Promise<Response> {
   await ensureEmailTables(env);
   const url = new URL(request.url);
   const template = (url.searchParams.get("template") || "").trim();
-  const limit = Math.min(200, Math.max(1, Number(url.searchParams.get("limit") || 80)));
+  const qaOnly = url.searchParams.get("qa") === "1";
+  const limit = Math.min(400, Math.max(1, Number(url.searchParams.get("limit") || 80)));
 
   let sql = `SELECT id, template_slug, to_email, user_id, subject, status, provider_id, error, meta_json, created_at
              FROM email_log`;
@@ -417,25 +465,33 @@ export async function listEmailLog(env: Env, request: Request): Promise<Response
     binds.push(template, `test_${template}`);
   }
   sql += ` ORDER BY created_at DESC LIMIT ?`;
-  binds.push(limit);
+  binds.push(qaOnly ? Math.max(limit, 200) : limit);
 
-  const { results } = await env.DB.prepare(sql)
-    .bind(...binds)
-    .all<{
-      id: string;
-      template_slug: string;
-      to_email: string;
-      user_id: string | null;
-      subject: string;
-      status: string;
-      provider_id: string | null;
-      error: string;
-      meta_json: string;
-      created_at: string;
-    }>();
+  const { results } = await withD1Retry(() =>
+    env.DB.prepare(sql)
+      .bind(...binds)
+      .all<{
+        id: string;
+        template_slug: string;
+        to_email: string;
+        user_id: string | null;
+        subject: string;
+        status: string;
+        provider_id: string | null;
+        error: string;
+        meta_json: string;
+        created_at: string;
+      }>(),
+  );
+
+  const qaEmails = qaOnly ? await qaRecipientEmails(env) : null;
+  const rows = (results ?? []).filter((r) => {
+    if (!qaEmails) return true;
+    return qaEmails.has(String(r.to_email || "").trim().toLowerCase());
+  });
 
   return json({
-    entries: (results ?? []).map((r) => ({
+    entries: rows.map((r) => ({
       id: r.id,
       templateSlug: r.template_slug,
       toEmail: r.to_email,

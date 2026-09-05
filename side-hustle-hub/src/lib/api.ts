@@ -3,7 +3,8 @@
  * No localStorage fallback: failures surface clearly to the UI.
  */
 
-import { isRetryableD1ApiError } from "./d1-errors";
+import { isRetryableD1ApiError, shouldRetryD1ApiCall } from "./d1-errors";
+import { apiGetCoalesceKey, coalesceInFlight } from "./in-flight";
 
 export class ApiError extends Error {
   status: number;
@@ -58,10 +59,25 @@ async function parseError(res: Response): Promise<string> {
   return `Request failed (${res.status})`;
 }
 
+const getInflight = new Map<string, Promise<unknown>>();
+
 /**
  * Call /api/*. credentials:include for httpOnly cookie; Bearer from sessionStorage as backup.
+ * Concurrent identical GETs share one request (Admin + Testing + sprint bars all load tasks).
  */
 export async function api<T>(path: string, opts: ApiOptions = {}): Promise<T> {
+  const method = (opts.method || (opts.body !== undefined ? "POST" : "GET")).toUpperCase();
+  const key =
+    !opts._d1Retried && !opts._proxyRetried
+      ? apiGetCoalesceKey(path, method, opts.auth === false ? null : getSessionToken())
+      : null;
+  if (key) {
+    return coalesceInFlight(getInflight, key, () => requestApi<T>(path, opts));
+  }
+  return requestApi<T>(path, opts);
+}
+
+async function requestApi<T>(path: string, opts: ApiOptions = {}): Promise<T> {
   const headers: Record<string, string> = {
     accept: "application/json",
   };
@@ -111,7 +127,7 @@ export async function api<T>(path: string, opts: ApiOptions = {}): Promise<T> {
       /Local API worker not running|:8788/i.test(message)
     ) {
       await new Promise((r) => setTimeout(r, 1_500));
-      return api<T>(path, { ...opts, _proxyRetried: true });
+      return requestApi<T>(path, { ...opts, _proxyRetried: true });
     }
     // Stale Bearer in sessionStorage can override a still-valid cookie — clear and retry once.
     if (
@@ -121,16 +137,17 @@ export async function api<T>(path: string, opts: ApiOptions = {}): Promise<T> {
       getSessionToken()
     ) {
       setSessionToken(null);
-      return api<T>(path, { ...opts, auth: true });
+      return requestApi<T>(path, { ...opts, auth: true });
     }
     const method = (opts.method || (opts.body !== undefined ? "POST" : "GET")).toUpperCase();
     if (
-      method === "GET" &&
+      shouldRetryD1ApiCall(method, path) &&
       res.status >= 500 &&
       !opts._d1Retried &&
       isRetryableD1ApiError(message)
     ) {
-      return api<T>(path, { ...opts, _d1Retried: true });
+      await new Promise((r) => setTimeout(r, 700));
+      return requestApi<T>(path, { ...opts, _d1Retried: true });
     }
     throw new ApiError(message, res.status);
   }

@@ -90,9 +90,7 @@ export async function login(email: string, password: string): Promise<{
     const isAdmin =
       data.isAdmin === true ||
       data.user.role === "admin" ||
-      data.user.role === "qa" ||
-      data.user.role === "dev" ||
-      (data.user.roles ?? []).some((r) => r === "admin" || r === "qa" || r === "dev");
+      (data.user.roles ?? []).includes("admin");
     return { outcome: isAdmin ? "admin" : "member", user: data.user };
   } catch (e) {
     if (e instanceof ApiError) {

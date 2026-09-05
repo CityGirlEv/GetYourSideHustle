@@ -26,6 +26,8 @@ export const QA_PAGE_LABELS: Record<AppRouteView, string> = {
   privacy: "Privacy Policy",
   beta_nda: "Beta Tester NDA",
   beta_testing: "Beta Tester Dashboard",
+  beta_credits: "Beta Tester Credit Guide",
+  beta_points: "Beta Tester Points",
   join: "Join",
   membership_signup: "Membership Sign-up",
 };
@@ -50,6 +52,8 @@ const VIEW_ALIASES: Partial<Record<AppRouteView, string[]>> = {
   privacy: ["Privacy Policy", "Privacy"],
   beta_nda: ["Beta Tester NDA", "Beta NDA", "NDA"],
   beta_testing: ["Beta Tester Dashboard", "Beta Testing"],
+  beta_credits: ["Beta Tester Credit Guide", "Beta Credits", "Credit Guide"],
+  beta_points: ["Beta Tester Points", "Beta Points"],
   join: ["Join", "Join GYSH", "Membership"],
   membership_signup: ["Membership Sign-up", "Membership Signup", "Sign-up"],
 };

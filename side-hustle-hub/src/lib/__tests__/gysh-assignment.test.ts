@@ -100,6 +100,8 @@ describe("gysh-assignment", () => {
       "Evelyn",
       "Lyriq",
       "Candace",
+      "Milford",
+      "Brenda",
     ]);
   });
 

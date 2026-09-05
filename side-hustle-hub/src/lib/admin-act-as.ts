@@ -31,7 +31,7 @@ export const ACT_AS_AUDIENCE_OPTIONS: {
   { audience: "adult", label: "Adult Member", description: "Adult hub, Match Wizard, guides" },
   { audience: "kids", label: "Kids Member (4–12)", description: "Kids Side Hustle Corner" },
   { audience: "junior", label: "Teens Member (13–17)", description: "GYSH Teens Corner" },
-  { audience: "senior", label: "Senior Member (55+)", description: "GYSH Seniors Corner" },
+  { audience: "senior", label: "Senior Member (50+)", description: "GYSH Seniors Corner" },
 ];
 
 export function readActAsTarget(): ActAsTarget {

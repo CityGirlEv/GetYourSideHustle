@@ -1,0 +1,58 @@
+{
+  "project": {
+    "name": "string",
+    "task_reference": "string|null",
+    "content_factory_reference": "string|null",
+    "audience": "string",
+    "aspect_ratio": "9:16",
+    "brain_dump": "text",
+    "overall_concept": "text"
+  },
+  "brand": {
+    "name": "string",
+    "website": "string|null",
+    "logo_asset_id": "uuid|null",
+    "colors": [
+      "string"
+    ],
+    "visual_style": "text|null"
+  },
+  "characters": [
+    {
+      "name": "string",
+      "nickname": "string|null",
+      "age": 17,
+      "role": "string",
+      "appearance": "text",
+      "personality": "text",
+      "voice": "text",
+      "wardrobe": "text",
+      "continuity_rules": "text",
+      "reference_asset_ids": [
+        "uuid"
+      ]
+    }
+  ],
+  "scenes": [
+    {
+      "number": 1,
+      "title": "string",
+      "duration_seconds": 10,
+      "dialogue": "text",
+      "action": "text",
+      "camera_direction": "text",
+      "animation_direction": "text",
+      "screen_reference_asset_id": "uuid|null",
+      "reference_asset_ids": [
+        "uuid"
+      ],
+      "start_image_asset_id": "uuid|null",
+      "end_image_asset_id": "uuid|null",
+      "transition": "text",
+      "canonical_scene_spec": {},
+      "provider_prompts": {
+        "hedra": "text"
+      }
+    }
+  ]
+}

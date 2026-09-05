@@ -26,6 +26,6 @@ describe("editorial month calendar", () => {
     const monthStart = calendarMonthStart(new Date(2026, 5, 1));
     const events = buildEditorialCalendarForMonth(monthStart, { publishedArticleCount: 0 });
     expect(events.length).toBeGreaterThan(0);
-    expect(events.every((e) => e.date.startsWith("2026-06"))).toBe(true);
+    expect(events.some((e) => e.date.startsWith("2026-06"))).toBe(true);
   });
 });

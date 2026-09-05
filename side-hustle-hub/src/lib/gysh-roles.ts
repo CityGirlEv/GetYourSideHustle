@@ -1,6 +1,7 @@
 /** GYSH user roles — age-banded audiences + admin + QA + Dev (types + labels only). DB is source of truth. */
 
 import { api } from "./api";
+import type { UserAuditEvent } from "./gysh-user-audit";
 
 export type GyshRole = "admin" | "qa" | "dev" | "kid" | "junior" | "adult" | "senior" | "beta";
 
@@ -22,7 +23,7 @@ export const GYSH_ROLE_LABELS: Record<GyshRole, string> = {
   kid: "Kid (3–12)",
   junior: "Teens (13–17)",
   adult: "Adult (18+)",
-  senior: "Senior (55+)",
+  senior: "Senior (50+)",
   beta: "Beta Tester",
 };
 
@@ -114,7 +115,7 @@ export function userHasRole(u: Pick<GyshUser, "role" | "roles">, role: GyshRole)
   return userRoles(u).includes(role);
 }
 
-/** Admin Studio / partner tooling — admin, QA, or Dev (matches functions/_lib/roles.ts). */
+/** Admin Studio / Admin menu — admin role only (QA and Dev do not see Admin). */
 export function canAccessAdminPortal(
   u: Pick<GyshUser, "role" | "roles"> | { role?: string; roles?: string[] } | null | undefined,
 ): boolean {
@@ -124,7 +125,27 @@ export function canAccessAdminPortal(
     : u.role
       ? [u.role]
       : [];
-  return roles.includes("admin") || roles.includes("qa") || roles.includes("dev");
+  return roles.includes("admin");
+}
+
+/** Testing Portal — Admin or QA (Dev alone is not enough). */
+export function canAccessTestingPortal(
+  u: Pick<GyshUser, "role" | "roles"> | { role?: string; roles?: string[] } | null | undefined,
+): boolean {
+  if (!u) return false;
+  const roles = Array.isArray(u.roles) && u.roles.length > 0
+    ? u.roles
+    : u.role
+      ? [u.role]
+      : [];
+  return roles.includes("admin") || roles.includes("qa");
+}
+
+/** True when the account is QA but not Admin (Testing Portal only — no Admin menu). */
+export function isQaOnlyPortalUser(
+  u: Pick<GyshUser, "role" | "roles"> | { role?: string; roles?: string[] } | null | undefined,
+): boolean {
+  return canAccessTestingPortal(u) && !canAccessAdminPortal(u);
 }
 
 /**
@@ -174,7 +195,7 @@ const QA_ACCENT_FALLBACKS = [
 
 /**
  * Seed / fallback roster + preferred accents for known partners.
- * Live UI lists come from {@link qaTestersFromUsers} (active Users with the QA role).
+ * Live UI lists come from {@link qaTestersFromUsers} (Users with the QA role).
  */
 export const QA_TESTERS: QaTester[] = [
   {
@@ -258,46 +279,86 @@ export function qaTesterIdForUser(u: {
 }
 
 function sortQaTesters(list: QaTester[]): QaTester[] {
-  const order = new Map(QA_TESTERS.map((t, i) => [t.id, i]));
-  return [...list].sort((a, b) => {
-    const ai = order.has(a.id) ? order.get(a.id)! : 1000;
-    const bi = order.has(b.id) ? order.get(b.id)! : 1000;
-    if (ai !== bi) return ai - bi;
-    return a.shortName.localeCompare(b.shortName, undefined, { sensitivity: "base" });
+  return [...list].sort((a, b) =>
+    a.shortName.localeCompare(b.shortName, undefined, { sensitivity: "base" }),
+  );
+}
+
+const CANONICAL_QA_PARTNER_IDS = new Set(QA_TESTERS.map((t) => t.id));
+
+function appendUniqueQaTester(
+  out: QaTester[],
+  seen: Set<string>,
+  u: Pick<GyshUser, "id" | "name">,
+  rawId: string,
+): void {
+  let id = rawId;
+  if (seen.has(id)) {
+    // Two accounts for the same partner (evelyn3 + evvelyn3) stay one Evelyn.
+    if (CANONICAL_QA_PARTNER_IDS.has(id)) return;
+    const tail = String(u.id || "")
+      .replace(/\W+/g, "")
+      .slice(-4)
+      .toLowerCase();
+    id = tail ? `${id}-${tail}` : `${id}-${out.length + 1}`;
+    if (seen.has(id)) return;
+  }
+  const catalog = QA_TESTERS.find((t) => t.id === id);
+  const shortName = catalog?.shortName || firstNameLabel(u.name);
+  if (
+    out.some(
+      (t) =>
+        t.shortName.toLowerCase() === shortName.toLowerCase() &&
+        CANONICAL_QA_PARTNER_IDS.has(t.id),
+    )
+  ) {
+    return;
+  }
+  seen.add(id);
+  out.push({
+    id,
+    name: String(u.name || "").trim() || catalog?.name || id,
+    shortName,
+    accent: catalog?.accent || QA_ACCENT_FALLBACKS[out.length % QA_ACCENT_FALLBACKS.length]!,
   });
 }
 
 /**
- * Active Users Area accounts with the QA role → Testing Portal chips / assignee dropdowns.
- * Falls back to {@link QA_TESTERS} when none are found (offline / empty Users).
+ * Active or pending Users Area accounts with the QA role → Testing Portal chips /
+ * assignee dropdowns (disabled accounts stay out). Falls back to {@link QA_TESTERS}
+ * when none are found (offline / empty Users).
  */
+export function userEligibleForQaAssigneeList(
+  u: Pick<GyshUser, "status" | "role" | "roles">,
+): boolean {
+  if (u.status === "disabled") return false;
+  if (u.status !== "active" && u.status !== "pending") return false;
+  return userHasRole(u, "qa");
+}
+
 export function qaTestersFromUsers(users: readonly GyshUser[]): QaTester[] {
   const seen = new Set<string>();
   const out: QaTester[] = [];
   for (const u of users) {
-    if (u.status !== "active") continue;
-    if (!userHasRole(u, "qa")) continue;
-    let id = qaTesterIdForUser(u);
+    if (!userEligibleForQaAssigneeList(u)) continue;
+    const id = qaTesterIdForUser(u);
     if (!id) continue;
-    if (seen.has(id)) {
-      const tail = String(u.id || "")
-        .replace(/\W+/g, "")
-        .slice(-4)
-        .toLowerCase();
-      id = tail ? `${id}-${tail}` : `${id}-${out.length + 1}`;
-      if (seen.has(id)) continue;
-    }
-    seen.add(id);
-    const catalog = QA_TESTERS.find((t) => t.id === id);
-    out.push({
-      id,
-      name: String(u.name || "").trim() || catalog?.name || id,
-      shortName: catalog?.shortName || firstNameLabel(u.name),
-      accent: catalog?.accent || QA_ACCENT_FALLBACKS[out.length % QA_ACCENT_FALLBACKS.length]!,
-    });
+    appendUniqueQaTester(out, seen, u, id);
   }
-  if (out.length === 0) return [...QA_TESTERS];
+  if (out.length === 0) return sortQaTesters([...QA_TESTERS]);
   return sortQaTesters(out);
+}
+
+/**
+ * Daily Progress roster: seed QA catalog plus every live Users-area QA person.
+ * Catalog testers stay visible even when only a subset of Users have the QA role.
+ */
+export function allQaTestersForProgress(users: readonly GyshUser[] = []): QaTester[] {
+  const byId = new Map(QA_TESTERS.map((t) => [t.id, t]));
+  if (users.length > 0) {
+    for (const t of qaTestersFromUsers(users)) byId.set(t.id, t);
+  }
+  return sortQaTesters([...byId.values()]);
 }
 
 /**
@@ -310,24 +371,9 @@ export function devAssigneesFromUsers(users: readonly GyshUser[]): QaTester[] {
   for (const u of users) {
     if (u.status !== "active") continue;
     if (!userHasRole(u, "dev")) continue;
-    let id = qaTesterIdForUser(u);
+    const id = qaTesterIdForUser(u);
     if (!id) continue;
-    if (seen.has(id)) {
-      const tail = String(u.id || "")
-        .replace(/\W+/g, "")
-        .slice(-4)
-        .toLowerCase();
-      id = tail ? `${id}-${tail}` : `${id}-${out.length + 1}`;
-      if (seen.has(id)) continue;
-    }
-    seen.add(id);
-    const catalog = QA_TESTERS.find((t) => t.id === id);
-    out.push({
-      id,
-      name: String(u.name || "").trim() || catalog?.name || id,
-      shortName: catalog?.shortName || firstNameLabel(u.name),
-      accent: catalog?.accent || QA_ACCENT_FALLBACKS[out.length % QA_ACCENT_FALLBACKS.length]!,
-    });
+    appendUniqueQaTester(out, seen, u, id);
   }
   if (out.length === 0) {
     const lead = QA_TESTERS.find((t) => t.id === FAILED_TEST_ASSIGNEE);
@@ -407,11 +453,25 @@ export type GyshUser = {
   membershipTier?: string;
   /** Audience lane: kids | junior | adult | senior */
   audience?: string;
+  /** ISO timestamp of last successful login (`login_ok`), if known. */
+  lastLoginAt?: string | null;
 };
 
 export async function fetchUsers(): Promise<GyshUser[]> {
   const data = await api<{ users: GyshUser[] }>("users");
   return data.users ?? [];
+}
+
+export async function fetchAuditEvents(opts?: {
+  email?: string;
+  limit?: number;
+}): Promise<UserAuditEvent[]> {
+  const qs = new URLSearchParams();
+  if (opts?.email) qs.set("email", opts.email);
+  if (opts?.limit != null) qs.set("limit", String(opts.limit));
+  const path = qs.toString() ? `audit?${qs}` : "audit";
+  const data = await api<{ events: UserAuditEvent[] }>(path);
+  return data.events ?? [];
 }
 
 export async function saveUser(

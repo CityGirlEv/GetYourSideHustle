@@ -24,10 +24,13 @@ import {
   softLaunchItemFromTaskId,
   softLaunchItemFromTestId,
   softLaunchItemRef,
+  softLaunchItemShowsRollover,
   softLaunchProjectionForItem,
   softLaunchStandaloneProjections,
   softLaunchTaskId,
   softLaunchTaskSeeds,
+  planSoftLaunchSprintRollovers,
+  withSoftLaunchRolloverNote,
 } from "../gysh-soft-launch-rollout";
 
 describe("gysh-soft-launch-rollout", () => {
@@ -47,12 +50,31 @@ describe("gysh-soft-launch-rollout", () => {
     );
   });
 
-  it("defaults Content Factory to current and next soft-launch sprint", () => {
-    expect(softLaunchFactoryDefaultSprints(new Date(2026, 7, 3))).toEqual([2, 3]);
-    expect(softLaunchFactoryDefaultSprints(new Date(2026, 7, 5))).toEqual([3, 4]);
-    expect(softLaunchFactoryDefaultSprints(new Date(2026, 7, 18))).toEqual([3, 4]);
+  it("defaults Content Factory to the current soft-launch sprint only", () => {
+    expect(softLaunchFactoryDefaultSprints(new Date(2026, 7, 3))).toEqual([2]);
+    expect(softLaunchFactoryDefaultSprints(new Date(2026, 7, 5))).toEqual([3]);
+    expect(softLaunchFactoryDefaultSprints(new Date(2026, 7, 18))).toEqual([3]);
     expect(softLaunchFactoryDefaultSprints(new Date(2026, 8, 2))).toEqual([5]); // Sep 2 → Sprint 5
-    expect(softLaunchFactoryDefaultSprints(new Date(2026, 5, 1))).toEqual([2, 3]);
+    expect(softLaunchFactoryDefaultSprints(new Date(2026, 5, 1))).toEqual([2]);
+  });
+
+  it("plans incomplete CF items outside the target sprint for rollover", () => {
+    const s5 = SOFT_LAUNCH_ROLLOUT.filter((i) => i.sprint === 5);
+    expect(s5.length).toBeGreaterThan(0);
+    const items = s5.map((item, i) => (i === 0 ? { ...item, status: "done" as const } : item));
+    const planned = planSoftLaunchSprintRollovers({
+      items,
+      targetSprint: 4,
+      taskStatusById: {},
+      testStatusById: {},
+    });
+    expect(planned.every((p) => p.fromSprint === 5)).toBe(true);
+    expect(planned.some((p) => p.itemId === s5[0]!.id)).toBe(false);
+    expect(planned.length).toBe(s5.length - 1);
+    expect(withSoftLaunchRolloverNote("", 5)).toMatch(/Rolled over from Sprint 5/);
+    expect(softLaunchItemShowsRollover({ notes: withSoftLaunchRolloverNote("Keep", 3), sprint: 4 })).toBe(
+      true,
+    );
   });
 
   it("filters and counts calendar items by assignee", () => {
@@ -175,17 +197,20 @@ describe("gysh-soft-launch-rollout", () => {
     expect(ROLLOUT_CHANNELS).toContain("personal_amplify");
   });
 
-  it("schedules Personal amplify across Sprints 3–5 on the growth cadence", () => {
+  it("schedules Personal amplify on Sprint 5 / Sep 2 (Tina + Evelyn each)", () => {
     const amplify = SOFT_LAUNCH_ROLLOUT.filter((i) => i.channel === "personal_amplify");
     expect(amplify).toHaveLength(PERSONAL_AMPLIFY_CADENCE.length * 2);
     expect(amplify.every((i) => i.owner === "Tina" || i.owner === "Evelyn")).toBe(true);
-    expect(amplify.filter((i) => i.sprint === 3)).toHaveLength(6);
-    expect(amplify.filter((i) => i.sprint === 4)).toHaveLength(8);
-    expect(amplify.filter((i) => i.sprint === 5)).toHaveLength(6);
+    expect(amplify.every((i) => i.sprint === 5)).toBe(true);
+    expect(amplify.every((i) => i.day === "2026-09-02")).toBe(true);
+    expect(PERSONAL_AMPLIFY_CADENCE.every((r) => r.sprint === 5 && r.day === "2026-09-02")).toBe(
+      true,
+    );
 
     const wrapTina = softLaunchItemById("sl-s3-personal-amplify-wrap-tina");
     const wrapEvelyn = softLaunchItemById("sl-s3-personal-amplify-wrap-evelyn");
-    expect(wrapTina?.day).toBe("2026-08-24");
+    expect(wrapTina?.day).toBe("2026-09-02");
+    expect(wrapTina?.sprint).toBe(5);
     expect(wrapTina?.owner).toBe("Tina");
     expect(wrapEvelyn?.owner).toBe("Evelyn");
     expect(softLaunchTaskId(wrapTina!.id)).toBe("T-SL-S3-PERSONAL-AMPLIFY-WRAP-TINA");
@@ -193,21 +218,13 @@ describe("gysh-soft-launch-rollout", () => {
     expect(wrapTina!.copy).toMatch(/week wrap/i);
     expect(PERSONAL_AMPLIFY_PLAYBOOK).toMatch(/prefer 6–9 PM CT/i);
     expect(PERSONAL_AMPLIFY_PLAYBOOK).toMatch(/3–4 personal shares/i);
-    expect(PERSONAL_AMPLIFY_CADENCE.map((r) => r.day)).toEqual([
-      "2026-08-18",
-      "2026-08-20",
-      "2026-08-24",
-      "2026-08-25",
-      "2026-08-26",
-      "2026-08-28",
-      "2026-08-30",
-      "2026-09-02",
-      "2026-09-04",
-      "2026-09-05",
-    ]);
+    expect(PERSONAL_AMPLIFY_CADENCE.map((r) => r.day)).toEqual(
+      Array(PERSONAL_AMPLIFY_CADENCE.length).fill("2026-09-02"),
+    );
 
     const igTt = softLaunchItemById("sl-s4-personal-amplify-ig-tt-tina");
-    expect(igTt?.sprint).toBe(4);
+    expect(igTt?.sprint).toBe(5);
+    expect(igTt?.day).toBe("2026-09-02");
     expect(igTt?.copy).toMatch(/Instagram/i);
     expect(igTt?.copy).toMatch(/TikTok/i);
 
@@ -215,8 +232,9 @@ describe("gysh-soft-launch-rollout", () => {
       onlyIds: ["T-SL-S3-PERSONAL-AMPLIFY-WRAP-TINA"],
     })[0];
     expect(wrapSeed?.assignedTo).toBe("Tina");
-    expect(wrapSeed?.dueDate).toBe("08/24/26");
-    expect(wrapSeed?.sprint).toBe(3);
+    expect(wrapSeed?.dueDate).toBe("09/02/26");
+    expect(wrapSeed?.sprint).toBe(5);
+    expect(wrapSeed?.category).toBe("personal_amplify");
 
     const fields = rolloutItemToDraftFields(wrapTina!);
     expect(fields.body).toMatch(/Share → your personal timeline/i);

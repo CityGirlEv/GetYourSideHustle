@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Users, Plus, Pencil, Check, X } from "lucide-react";
+import { Users, Plus, Pencil, Check, X, ChevronDown, ScrollText } from "lucide-react";
 import { BusyOverlay, WaitIndicator } from "../WaitFeedback";
 import { PasswordField } from "../PasswordField";
 import {
@@ -9,6 +9,7 @@ import {
   GYSH_ROLE_SHORT,
   GYSH_ROLES,
   contrastTextForBg,
+  fetchAuditEvents,
   fetchUsers,
   saveUser,
   userHasRole,
@@ -16,7 +17,16 @@ import {
   type GyshRole,
   type GyshUser,
 } from "../../lib/gysh-roles";
+import {
+  auditEventsForEmail,
+  formatLastLoginLabel,
+  formatUserAuditAt,
+  userAuditActionLabel,
+  type UserAuditEvent,
+} from "../../lib/gysh-user-audit";
 import { ApiError } from "../../lib/api";
+
+type UsersAreaTab = "users" | "audit";
 
 type EditDraft = {
   name: string;
@@ -269,10 +279,99 @@ function RoleBubbles({
   );
 }
 
+function UserAuditTrail({
+  email,
+  events,
+  open,
+  onToggle,
+  testId,
+}: {
+  email: string;
+  events: UserAuditEvent[];
+  open: boolean;
+  onToggle: () => void;
+  testId?: string;
+}) {
+  const mine = auditEventsForEmail(events, email);
+  return (
+    <div style={{ marginTop: 6 }}>
+      <button
+        type="button"
+        className="btn btn-outline"
+        onClick={onToggle}
+        aria-expanded={open}
+        data-testid={testId}
+        style={{
+          padding: "6px 10px",
+          fontSize: "0.875rem",
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+        }}
+      >
+        <ChevronDown
+          size={14}
+          style={{
+            transform: open ? "rotate(0deg)" : "rotate(-90deg)",
+            transition: "transform 0.15s ease",
+          }}
+          aria-hidden
+        />
+        Audit log ({mine.length})
+      </button>
+      {open && (
+        <ul
+          data-testid={testId ? `${testId}-list` : undefined}
+          style={{
+            listStyle: "none",
+            margin: "8px 0 0",
+            padding: 0,
+            maxHeight: 220,
+            overflowY: "auto",
+            border: "1px solid var(--border-color)",
+            borderRadius: 10,
+            background: "#fff",
+          }}
+        >
+          {mine.length === 0 ? (
+            <li style={{ padding: "10px 12px", fontSize: "0.9rem", color: "var(--text-primary)" }}>
+              No audit events for this user yet.
+            </li>
+          ) : (
+            mine.map((ev, i) => (
+              <li
+                key={`${ev.at}-${ev.action}-${i}`}
+                style={{
+                  padding: "8px 12px",
+                  borderTop: i === 0 ? "none" : "1px solid var(--border-color)",
+                  fontSize: "0.875rem",
+                  color: "var(--charcoal)",
+                }}
+              >
+                <div style={{ fontWeight: 600 }}>{userAuditActionLabel(ev.action)}</div>
+                <div style={{ color: "var(--text-primary)", marginTop: 2 }}>
+                  {formatUserAuditAt(ev.at)}
+                  {ev.detail ? ` · ${ev.detail}` : ""}
+                </div>
+              </li>
+            ))
+          )}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export function UsersArea() {
   const [users, setUsers] = useState<GyshUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [areaTab, setAreaTab] = useState<UsersAreaTab>("users");
+  const [auditEvents, setAuditEvents] = useState<UserAuditEvent[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditError, setAuditError] = useState("");
+  const [auditFilterEmail, setAuditFilterEmail] = useState("");
+  const [expandedAuditId, setExpandedAuditId] = useState<string | null>(null);
   const [roleFilter, setRoleFilter] = useState<"all" | GyshRole>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | GyshUser["status"]>("all");
   const [name, setName] = useState("");
@@ -284,6 +383,19 @@ export function UsersArea() {
   const [busy, setBusy] = useState(false);
   const [roleBusyId, setRoleBusyId] = useState<string | null>(null);
   const [roleMenuUserId, setRoleMenuUserId] = useState<string | null>(null);
+
+  const reloadAudit = async () => {
+    setAuditLoading(true);
+    setAuditError("");
+    try {
+      setAuditEvents(await fetchAuditEvents({ limit: 500 }));
+    } catch (e) {
+      setAuditEvents([]);
+      setAuditError(e instanceof ApiError ? e.message : "Failed to load audit log.");
+    } finally {
+      setAuditLoading(false);
+    }
+  };
 
   const reload = async () => {
     setLoading(true);
@@ -300,6 +412,7 @@ export function UsersArea() {
 
   useEffect(() => {
     void reload();
+    void reloadAudit();
   }, []);
 
   const filtered = users.filter((u) => {
@@ -307,6 +420,17 @@ export function UsersArea() {
     if (statusFilter !== "all" && u.status !== statusFilter) return false;
     return true;
   });
+
+  const auditFiltered = useMemo(() => {
+    const q = auditFilterEmail.trim().toLowerCase();
+    if (!q) return auditEvents;
+    return auditEvents.filter(
+      (e) =>
+        e.email.toLowerCase().includes(q) ||
+        e.action.toLowerCase().includes(q) ||
+        e.detail.toLowerCase().includes(q),
+    );
+  }, [auditEvents, auditFilterEmail]);
 
   const counts = useMemo(() => {
     return GYSH_ROLES.reduce(
@@ -337,6 +461,7 @@ export function UsersArea() {
       setName("");
       setEmail("");
       await reload();
+      void reloadAudit();
       setSaveMsg(
         roleFilter !== "all"
           ? `User added with ${GYSH_ROLE_SHORT[roleFilter]} role. Adjust roles on their card if needed.`
@@ -353,6 +478,7 @@ export function UsersArea() {
     setEditingId(u.id);
     setDraft(blankDraft(u));
     setSaveMsg("");
+    setExpandedAuditId(u.id);
   };
 
   const cancelEdit = () => {
@@ -387,8 +513,18 @@ export function UsersArea() {
         notes: u.notes,
         joinedAt: u.joinedAt,
       });
-      setUsers((list) => list.map((row) => (row.id === u.id ? saved : row)));
-      setSaveMsg(`Roles updated for ${u.name}.`);
+      setUsers((list) =>
+        list.map((row) =>
+          row.id === u.id ? { ...saved, lastLoginAt: saved.lastLoginAt ?? row.lastLoginAt } : row,
+        ),
+      );
+      void reloadAudit();
+      const gainedQa = !prev.includes("qa") && nextRoles.includes("qa");
+      setSaveMsg(
+        gainedQa
+          ? `Roles updated for ${u.name}. They now appear on Testing Portal / Schedule test assignee lists.`
+          : `Roles updated for ${u.name}.`,
+      );
     } catch (e) {
       setUsers((list) => list.map((row) => (row.id === u.id ? u : row)));
       setError(e instanceof ApiError ? e.message : "Failed to update roles.");
@@ -435,6 +571,7 @@ export function UsersArea() {
       setEditingId(null);
       setDraft(null);
       await reload();
+      void reloadAudit();
       setSaveMsg(draft.password.trim() ? "User saved. Login password updated." : "User saved.");
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Failed to save user.");
@@ -446,8 +583,14 @@ export function UsersArea() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
       <BusyOverlay
-        active={busy || loading || roleBusyId !== null}
-        message={loading ? "Loading users…" : "Saving user…"}
+        active={busy || loading || roleBusyId !== null || (areaTab === "audit" && auditLoading)}
+        message={
+          loading
+            ? "Loading users…"
+            : areaTab === "audit" && auditLoading
+              ? "Loading audit log…"
+              : "Saving user…"
+        }
       />
       <div className="glass" style={{ padding: "24px", borderRadius: "16px" }}>
         <h2 style={{ fontSize: "1.5rem", color: "var(--charcoal)", display: "flex", alignItems: "center", gap: "8px" }}>
@@ -455,67 +598,118 @@ export function UsersArea() {
         </h2>
         <p style={{ color: "var(--text-primary)", marginTop: "6px", fontSize: "1rem" }}>
           GYSH audiences in production D1 — Admin, QA, Dev, Kids, Teens, Adult, Senior, and Beta Tester. Assigned roles show as
-          highlighted bubbles; click a bubble to toggle, or use + to add a role. Failed tests assign to Evelyn (Dev).
-          Passwords are never shown — only set or reset from Edit.
+          highlighted bubbles; click a bubble to toggle, or use + to add a role. Anyone with the QA role (active or pending)
+          appears on Testing Portal and Schedule test assignee lists. Failed and Conditionally Passed
+          tests assign to Evelyn (Lead Developer).
+          Passwords are never shown — only set or reset from Edit. Last signed-in time comes from the login audit trail.
         </p>
 
         <div
-          style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "12px", marginTop: "18px" }}
-          role="group"
-          aria-label="Filter users by role"
+          role="tablist"
+          aria-label="Users Area sections"
+          style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap" }}
         >
           <button
             type="button"
-            className="glass"
-            onClick={() => setRoleFilter("all")}
-            aria-pressed={roleFilter === "all"}
-            data-testid="users-filter-all"
+            role="tab"
+            aria-selected={areaTab === "users"}
+            data-testid="users-area-tab-users"
+            className="btn"
+            onClick={() => setAreaTab("users")}
             style={{
-              padding: "14px",
-              textAlign: "left",
-              cursor: "pointer",
-              border: roleFilter === "all" ? "1.5px solid var(--bronze)" : "1px solid var(--border-color)",
-              background: roleFilter === "all" ? "rgba(215,198,151,0.45)" : "#fff",
+              padding: "8px 14px",
+              background: areaTab === "users" ? "rgba(215,198,151,0.55)" : "#fff",
+              border: areaTab === "users" ? "1.5px solid var(--bronze)" : "1px solid var(--border-color)",
+              color: "var(--charcoal)",
+              fontWeight: 700,
             }}
           >
-            <div style={{ fontWeight: 700, color: "var(--charcoal)", display: "flex", alignItems: "center", gap: 8 }}>
-              <span
-                aria-hidden
-                style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--bronze)" }}
-              />
-              All
-            </div>
-            <div style={{ fontSize: "1.4rem", fontWeight: 800, color: "var(--bronze)" }}>{users.length}</div>
-            <div style={{ fontSize: "1rem", color: "var(--text-primary)", marginTop: 4 }}>All users</div>
+            <Users size={14} /> Users
           </button>
-          {GYSH_ROLES.map((r) => (
+          <button
+            type="button"
+            role="tab"
+            aria-selected={areaTab === "audit"}
+            data-testid="users-area-tab-audit"
+            className="btn"
+            onClick={() => {
+              setAreaTab("audit");
+              if (auditEvents.length === 0 && !auditLoading) void reloadAudit();
+            }}
+            style={{
+              padding: "8px 14px",
+              background: areaTab === "audit" ? "rgba(215,198,151,0.55)" : "#fff",
+              border: areaTab === "audit" ? "1.5px solid var(--bronze)" : "1px solid var(--border-color)",
+              color: "var(--charcoal)",
+              fontWeight: 700,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <ScrollText size={14} /> Audit Log
+          </button>
+        </div>
+
+        {areaTab === "users" && (
+          <div
+            style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "12px", marginTop: "18px" }}
+            role="group"
+            aria-label="Filter users by role"
+          >
             <button
-              key={r}
               type="button"
               className="glass"
-              onClick={() => setRoleFilter(r)}
-              aria-pressed={roleFilter === r}
-              data-testid={`users-filter-${r}`}
+              onClick={() => setRoleFilter("all")}
+              aria-pressed={roleFilter === "all"}
+              data-testid="users-filter-all"
               style={{
                 padding: "14px",
                 textAlign: "left",
                 cursor: "pointer",
-                border: roleFilter === r ? `1.5px solid ${GYSH_ROLE_ACCENT[r]}` : "1px solid var(--border-color)",
-                background: roleFilter === r ? "rgba(215,198,151,0.45)" : "#fff",
+                border: roleFilter === "all" ? "1.5px solid var(--bronze)" : "1px solid var(--border-color)",
+                background: roleFilter === "all" ? "rgba(215,198,151,0.45)" : "#fff",
               }}
             >
               <div style={{ fontWeight: 700, color: "var(--charcoal)", display: "flex", alignItems: "center", gap: 8 }}>
                 <span
                   aria-hidden
-                  style={{ width: 8, height: 8, borderRadius: "50%", background: GYSH_ROLE_ACCENT[r] }}
+                  style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--bronze)" }}
                 />
-                {GYSH_ROLE_SHORT[r]}
+                All
               </div>
-              <div style={{ fontSize: "1.4rem", fontWeight: 800, color: GYSH_ROLE_ACCENT[r] }}>{counts[r]}</div>
-              <div style={{ fontSize: "1rem", color: "var(--text-primary)", marginTop: 4 }}>{GYSH_ROLE_LABELS[r]}</div>
+              <div style={{ fontSize: "1.4rem", fontWeight: 800, color: "var(--bronze)" }}>{users.length}</div>
+              <div style={{ fontSize: "1rem", color: "var(--text-primary)", marginTop: 4 }}>All users</div>
             </button>
-          ))}
-        </div>
+            {GYSH_ROLES.map((r) => (
+              <button
+                key={r}
+                type="button"
+                className="glass"
+                onClick={() => setRoleFilter(r)}
+                aria-pressed={roleFilter === r}
+                data-testid={`users-filter-${r}`}
+                style={{
+                  padding: "14px",
+                  textAlign: "left",
+                  cursor: "pointer",
+                  border: roleFilter === r ? `1.5px solid ${GYSH_ROLE_ACCENT[r]}` : "1px solid var(--border-color)",
+                  background: roleFilter === r ? "rgba(215,198,151,0.45)" : "#fff",
+                }}
+              >
+                <div style={{ fontWeight: 700, color: "var(--charcoal)", display: "flex", alignItems: "center", gap: 8 }}>
+                  <span
+                    aria-hidden
+                    style={{ width: 8, height: 8, borderRadius: "50%", background: GYSH_ROLE_ACCENT[r] }}
+                  />
+                  {GYSH_ROLE_SHORT[r]}
+                </div>
+                <div style={{ fontSize: "1.4rem", fontWeight: 800, color: GYSH_ROLE_ACCENT[r] }}>{counts[r]}</div>
+                <div style={{ fontSize: "1rem", color: "var(--text-primary)", marginTop: 4 }}>{GYSH_ROLE_LABELS[r]}</div>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {error && (
@@ -524,153 +718,267 @@ export function UsersArea() {
         </div>
       )}
 
-      <div className="glass" style={{ padding: "18px", borderRadius: "14px", display: "flex", flexDirection: "column", gap: 14 }}>
-        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "end" }}>
-          <div className="form-group" style={{ margin: 0, flex: "1 1 160px" }}>
-            <label className="form-label">Name</label>
-            <input className="text-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name" />
+      {areaTab === "audit" ? (
+        <div className="glass" style={{ padding: "18px", borderRadius: "14px" }} data-testid="users-area-audit-panel">
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "end", marginBottom: 14 }}>
+            <div className="form-group" style={{ margin: 0, flex: "1 1 220px" }}>
+              <label className="form-label" htmlFor="users-audit-filter">
+                Filter audit log
+              </label>
+              <input
+                id="users-audit-filter"
+                className="text-input"
+                value={auditFilterEmail}
+                onChange={(e) => setAuditFilterEmail(e.target.value)}
+                placeholder="Email, action, or detail…"
+                data-testid="users-audit-filter"
+              />
+            </div>
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={() => void reloadAudit()}
+              disabled={auditLoading}
+              data-testid="users-audit-refresh"
+            >
+              Refresh
+            </button>
           </div>
-          <div className="form-group" style={{ margin: 0, flex: "1 1 180px" }}>
-            <label className="form-label">Email</label>
-            <input className="text-input" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@…" />
-          </div>
-          <button type="button" className="btn btn-primary" onClick={() => void addUser()} disabled={busy || Boolean(error && loading)}>
-            <Plus size={14} /> Add user
-          </button>
-          <select
-            className="select-input"
-            style={{ width: 140 }}
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as "all" | GyshUser["status"])}
-          >
-            <option value="all">All statuses</option>
-            <option value="active">Active</option>
-            <option value="pending">Pending</option>
-            <option value="disabled">Disabled</option>
-          </select>
-        </div>
-        <div className="form-group" style={{ margin: 0 }}>
-          <label className="form-label">Roles</label>
-          <RoleBubbles value={newRoles} onChange={setNewRoles} showAll disabled={busy} />
-        </div>
-      </div>
-
-      {saveMsg && (
-        <div style={{ padding: "10px 14px", borderRadius: 8, background: "rgba(95,122,69,0.12)", border: "1px solid rgba(95,122,69,0.35)", color: "#3f5230", fontSize: "0.95rem" }}>
-          {saveMsg}
-        </div>
-      )}
-
-      {loading ? (
-        <WaitIndicator message="Loading users from database…" style={{ marginTop: 0 }} />
-      ) : filtered.length === 0 ? (
-        <p style={{ color: "var(--text-primary)" }}>
-          {roleFilter !== "all" || statusFilter !== "all"
-            ? "No users match the current filters. Choose All users (and All statuses) to see everyone."
-            : "No users yet."}
-        </p>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-          {filtered.map((u) => {
-            const isEditing = editingId === u.id && draft;
-            const currentRoles = userRoles(u);
-            const menuOpenHere = roleMenuUserId === u.id;
-            return (
-              <div
-                key={u.id}
-                className="glass"
-                style={{
-                  padding: "16px",
-                  borderRadius: "12px",
-                  position: "relative",
-                  zIndex: menuOpenHere ? 40 : "auto",
-                }}
+          {auditError && (
+            <p style={{ color: "#9B2F28", marginBottom: 12 }} data-testid="users-audit-error">
+              {auditError}
+            </p>
+          )}
+          {auditLoading && auditEvents.length === 0 ? (
+            <WaitIndicator message="Loading audit log…" style={{ marginTop: 0 }} />
+          ) : auditFiltered.length === 0 ? (
+            <p style={{ color: "var(--text-primary)" }}>No audit events match.</p>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table
+                data-testid="users-audit-table"
+                style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}
               >
-                {!isEditing ? (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "1.4fr 0.9fr auto", gap: "12px", alignItems: "start" }}>
-                      <div>
-                        <strong style={{ color: "var(--charcoal)" }}>{u.name}</strong>
-                        <div style={{ fontSize: "0.9375rem", color: "var(--text-primary)" }}>{u.email}</div>
-                        <div style={{ fontSize: "0.9375rem", color: "var(--text-primary)", marginTop: 4 }}>{u.notes || "—"}</div>
-                        {u.canLogin && (
-                          <div style={{ fontSize: "0.9375rem", color: "var(--bronze)", marginTop: 4 }}>Portal login account</div>
-                        )}
-                      </div>
-                      <div style={{ fontSize: "0.95rem", color: "var(--text-primary)" }}>
-                        {u.status} · Joined {u.joinedAt}
-                      </div>
-                      <button type="button" className="btn btn-outline" onClick={() => startEdit(u)} style={{ padding: "8px 12px" }}>
-                        <Pencil size={14} /> Edit
-                      </button>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: "1rem", color: "var(--text-primary)", marginBottom: 6, fontWeight: 600 }}>
-                        Roles
-                      </div>
-                      <RoleBubbles
-                        value={currentRoles}
-                        onChange={(next) => void persistRoles(u, next)}
-                        disabled={busy || roleBusyId === u.id}
-                        onMenuOpenChange={(open) => setRoleMenuUserId(open ? u.id : null)}
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
-                      <div className="form-group" style={{ margin: 0 }}>
-                        <label className="form-label">Name</label>
-                        <input className="text-input" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
-                      </div>
-                      <div className="form-group" style={{ margin: 0 }}>
-                        <label className="form-label">Email</label>
-                        <input className="text-input" type="email" value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} />
-                      </div>
-                      <div className="form-group" style={{ margin: 0 }}>
-                        <label className="form-label">Status</label>
-                        <select className="select-input" value={draft.status} onChange={(e) => setDraft({ ...draft, status: e.target.value as GyshUser["status"] })}>
-                          <option value="active">Active</option>
-                          <option value="pending">Pending</option>
-                          <option value="disabled">Disabled</option>
-                        </select>
-                      </div>
-                      <PasswordField
-                        label="Password (login)"
-                        value={draft.password}
-                        onChange={(value) => setDraft({ ...draft, password: value })}
-                        placeholder="Leave blank to keep current"
-                        autoComplete="new-password"
-                      />
-                    </div>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label className="form-label">Roles</label>
-                      <RoleBubbles
-                        value={draft.roles}
-                        onChange={(next) => setDraft({ ...draft, roles: next })}
-                        showAll
-                        disabled={busy}
-                        onMenuOpenChange={(open) => setRoleMenuUserId(open ? u.id : null)}
-                      />
-                    </div>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label className="form-label">Notes</label>
-                      <textarea className="text-input" rows={2} value={draft.notes} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} style={{ resize: "vertical" }} />
-                    </div>
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <button type="button" className="btn btn-primary" onClick={() => void saveEdit(u.id)} disabled={busy}>
-                        <Check size={14} /> Save
-                      </button>
-                      <button type="button" className="btn btn-outline" onClick={cancelEdit}>
-                        <X size={14} /> Cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                <thead>
+                  <tr style={{ textAlign: "left", borderBottom: "2px solid var(--border-color)" }}>
+                    <th style={{ padding: "8px 10px" }}>When</th>
+                    <th style={{ padding: "8px 10px" }}>Action</th>
+                    <th style={{ padding: "8px 10px" }}>Email</th>
+                    <th style={{ padding: "8px 10px" }}>Detail</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {auditFiltered.map((ev, i) => (
+                    <tr key={`${ev.at}-${ev.email}-${ev.action}-${i}`} style={{ borderBottom: "1px solid var(--border-color)" }}>
+                      <td style={{ padding: "8px 10px", whiteSpace: "nowrap", color: "var(--text-primary)" }}>
+                        {formatUserAuditAt(ev.at)}
+                      </td>
+                      <td style={{ padding: "8px 10px", fontWeight: 600, color: "var(--charcoal)" }}>
+                        {userAuditActionLabel(ev.action)}
+                      </td>
+                      <td style={{ padding: "8px 10px", color: "var(--charcoal)" }}>{ev.email}</td>
+                      <td style={{ padding: "8px 10px", color: "var(--text-primary)" }}>{ev.detail || "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
+      ) : (
+        <>
+          <div className="glass" style={{ padding: "18px", borderRadius: "14px", display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "end" }}>
+              <div className="form-group" style={{ margin: 0, flex: "1 1 160px" }}>
+                <label className="form-label">Name</label>
+                <input className="text-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name" />
+              </div>
+              <div className="form-group" style={{ margin: 0, flex: "1 1 180px" }}>
+                <label className="form-label">Email</label>
+                <input className="text-input" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@…" />
+              </div>
+              <button type="button" className="btn btn-primary" onClick={() => void addUser()} disabled={busy || Boolean(error && loading)}>
+                <Plus size={14} /> Add user
+              </button>
+              <select
+                className="select-input"
+                style={{ width: 140 }}
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as "all" | GyshUser["status"])}
+              >
+                <option value="all">All statuses</option>
+                <option value="active">Active</option>
+                <option value="pending">Pending</option>
+                <option value="disabled">Disabled</option>
+              </select>
+            </div>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label className="form-label">Roles</label>
+              <RoleBubbles value={newRoles} onChange={setNewRoles} showAll disabled={busy} />
+            </div>
+          </div>
+
+          {saveMsg && (
+            <div style={{ padding: "10px 14px", borderRadius: 8, background: "rgba(95,122,69,0.12)", border: "1px solid rgba(95,122,69,0.35)", color: "#3f5230", fontSize: "0.95rem" }}>
+              {saveMsg}
+            </div>
+          )}
+
+          {loading ? (
+            <WaitIndicator message="Loading users from database…" style={{ marginTop: 0 }} />
+          ) : filtered.length === 0 ? (
+            <p style={{ color: "var(--text-primary)" }}>
+              {roleFilter !== "all" || statusFilter !== "all"
+                ? "No users match the current filters. Choose All users (and All statuses) to see everyone."
+                : "No users yet."}
+            </p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              {filtered.map((u) => {
+                const isEditing = editingId === u.id && draft;
+                const currentRoles = userRoles(u);
+                const menuOpenHere = roleMenuUserId === u.id;
+                const lastLogin = formatLastLoginLabel(u.lastLoginAt);
+                return (
+                  <div
+                    key={u.id}
+                    className="glass"
+                    style={{
+                      padding: "16px",
+                      borderRadius: "12px",
+                      position: "relative",
+                      zIndex: menuOpenHere || expandedAuditId === u.id ? 40 : "auto",
+                    }}
+                    data-testid={`users-card-${u.id}`}
+                  >
+                    {!isEditing ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "1.4fr 0.9fr auto", gap: "12px", alignItems: "start" }}>
+                          <div>
+                            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: "8px 12px" }}>
+                              <strong style={{ color: "var(--charcoal)" }}>{u.name}</strong>
+                              <span
+                                data-testid={`users-last-login-${u.id}`}
+                                style={{ fontSize: "0.875rem", color: "var(--bronze)", fontWeight: 600 }}
+                                title="Last successful sign-in"
+                              >
+                                Last logged in: {lastLogin}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: "0.9375rem", color: "var(--text-primary)" }}>{u.email}</div>
+                            <div style={{ fontSize: "0.9375rem", color: "var(--text-primary)", marginTop: 4 }}>{u.notes || "—"}</div>
+                            {u.canLogin && (
+                              <div style={{ fontSize: "0.9375rem", color: "var(--bronze)", marginTop: 4 }}>Portal login account</div>
+                            )}
+                            <UserAuditTrail
+                              email={u.email}
+                              events={auditEvents}
+                              open={expandedAuditId === u.id}
+                              onToggle={() =>
+                                setExpandedAuditId((cur) => (cur === u.id ? null : u.id))
+                              }
+                              testId={`users-audit-dropdown-${u.id}`}
+                            />
+                          </div>
+                          <div style={{ fontSize: "0.95rem", color: "var(--text-primary)" }}>
+                            {u.status} · Joined {u.joinedAt}
+                          </div>
+                          <button type="button" className="btn btn-outline" onClick={() => startEdit(u)} style={{ padding: "8px 12px" }}>
+                            <Pencil size={14} /> Edit
+                          </button>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: "1rem", color: "var(--text-primary)", marginBottom: 6, fontWeight: 600 }}>
+                            Roles
+                          </div>
+                          <RoleBubbles
+                            value={currentRoles}
+                            onChange={(next) => void persistRoles(u, next)}
+                            disabled={busy || roleBusyId === u.id}
+                            onMenuOpenChange={(open) => setRoleMenuUserId(open ? u.id : null)}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: "8px 12px" }}>
+                          <strong style={{ color: "var(--charcoal)" }}>Edit · {u.name}</strong>
+                          <span
+                            data-testid={`users-last-login-edit-${u.id}`}
+                            style={{ fontSize: "0.875rem", color: "var(--bronze)", fontWeight: 600 }}
+                          >
+                            Last logged in: {lastLogin}
+                          </span>
+                        </div>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label className="form-label">Name</label>
+                            <input className="text-input" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
+                          </div>
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label className="form-label">Email</label>
+                            <input className="text-input" type="email" value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} />
+                          </div>
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label className="form-label">Status</label>
+                            <select className="select-input" value={draft.status} onChange={(e) => setDraft({ ...draft, status: e.target.value as GyshUser["status"] })}>
+                              <option value="active">Active</option>
+                              <option value="pending">Pending</option>
+                              <option value="disabled">Disabled</option>
+                            </select>
+                          </div>
+                          <PasswordField
+                            label="Password (login)"
+                            value={draft.password}
+                            onChange={(value) => setDraft({ ...draft, password: value })}
+                            placeholder="Leave blank to keep current"
+                            autoComplete="new-password"
+                          />
+                        </div>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label className="form-label">Roles</label>
+                          <RoleBubbles
+                            value={draft.roles}
+                            onChange={(next) => setDraft({ ...draft, roles: next })}
+                            showAll
+                            disabled={busy}
+                            onMenuOpenChange={(open) => setRoleMenuUserId(open ? u.id : null)}
+                          />
+                        </div>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label className="form-label">Notes</label>
+                          <textarea className="text-input" rows={2} value={draft.notes} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} style={{ resize: "vertical" }} />
+                        </div>
+                        <div>
+                          <div style={{ fontSize: "1rem", color: "var(--text-primary)", marginBottom: 6, fontWeight: 600 }}>
+                            User audit trail
+                          </div>
+                          <UserAuditTrail
+                            email={draft.email || u.email}
+                            events={auditEvents}
+                            open={expandedAuditId === u.id}
+                            onToggle={() =>
+                              setExpandedAuditId((cur) => (cur === u.id ? null : u.id))
+                            }
+                            testId={`users-audit-edit-${u.id}`}
+                          />
+                        </div>
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          <button type="button" className="btn btn-primary" onClick={() => void saveEdit(u.id)} disabled={busy}>
+                            <Check size={14} /> Save
+                          </button>
+                          <button type="button" className="btn btn-outline" onClick={cancelEdit}>
+                            <X size={14} /> Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

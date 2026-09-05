@@ -77,8 +77,8 @@ export function NewsletterPage({
       {!unlocked ? (
         <section className="glass static-page-card newsletter-page__lock" data-testid="newsletter-lock">
           <p>
-            <Lock size={16} aria-hidden /> The archive and inbox send are a Starter+ membership perk.
-            {!isLoggedIn ? " Sign in if you already subscribe, or join to unlock." : " Upgrade to Starter to read every issue."}
+            <Lock size={16} aria-hidden /> The archive and inbox send are a Starter or higher membership perk.
+            {!isLoggedIn ? " Sign in if you already subscribe, or join to unlock." : " Upgrade to Starter or higher to read every issue."}
           </p>
           <div className="newsletter-page__actions">
             {!isLoggedIn ? (

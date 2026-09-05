@@ -14,9 +14,11 @@ import {
   countTasksRolledIntoSprint,
   healClosedSprintTaskLeftovers,
   healClosedSprintTestLeftovers,
+  healClosedSprintPlanLeftovers,
   noteIndicatesRollover,
 } from "../gysh-sprint-board";
 import type { GyshTask } from "../gysh-tasks";
+import type { PlanItem } from "../gysh-sprints";
 
 describe("isSprintLocked", () => {
   it("returns false for backlog and missing sets", () => {
@@ -153,6 +155,32 @@ describe("healClosedSprint leftovers", () => {
     expect(healed.sprints["QA-S2"]).toBe(3);
     expect(healed.sprints["QA-PASS"]).toBe(2);
     expect(noteIndicatesRollover(healed.notes["QA-S2"])).toBe(true);
+  });
+
+  it("rolls incomplete closed-sprint plan items to the next open sprint", () => {
+    const base = {
+      title: "Milestone",
+      notes: "",
+      owner: "Both" as const,
+      kind: "rollout" as const,
+      date: "2026-07-21",
+      dateLabel: "Sprint 1",
+      tinaDone: false,
+      evelynDone: false,
+      attachments: [],
+    };
+    const { items, changed } = healClosedSprintPlanLeftovers(
+      [
+        { ...base, id: "s1-open", sprint: 1, status: "todo" },
+        { ...base, id: "s1-done", sprint: 1, status: "done", dateLabel: "Sprint 1" },
+        { ...base, id: "s3-open", sprint: 3, status: "todo", dateLabel: "Sprint 3" },
+      ] satisfies PlanItem[],
+      closed,
+    );
+    expect(changed.map((i) => i.id)).toEqual(["s1-open"]);
+    expect(items.find((i) => i.id === "s1-open")?.sprint).toBe(3);
+    expect(items.find((i) => i.id === "s1-open")?.status).toBe("carried");
+    expect(items.find((i) => i.id === "s1-done")?.sprint).toBe(1);
   });
 });
 

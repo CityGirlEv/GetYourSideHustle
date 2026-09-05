@@ -93,7 +93,7 @@ export function getLaunchGuidePeekSections(): GuidePeekSection[] {
     {
       id: "senior",
       label: "Senior",
-      subtitle: "55+ · flexible schedules — Senior guide teasers",
+      subtitle: "50+ · flexible schedules — Senior guide teasers",
       guides: senior,
     },
     {

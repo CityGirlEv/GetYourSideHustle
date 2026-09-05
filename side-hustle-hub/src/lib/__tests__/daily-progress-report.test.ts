@@ -5,6 +5,7 @@ import {
   buildDailyProgressReport,
   normalizeProgressAssignee,
   progressPersonFromTimeEntry,
+  progressReportPeople,
   resolveTaskActivityPerson,
   timeEntryMatchesPeople,
 } from "../daily-progress-report";
@@ -59,6 +60,7 @@ describe("normalizeProgressAssignee", () => {
     expect(normalizeProgressAssignee("tina")).toBe("Tina");
     expect(normalizeProgressAssignee("evelyn")).toBe("Evelyn");
     expect(normalizeProgressAssignee("lyriq")).toBe("Lyriq");
+    expect(normalizeProgressAssignee("candace")).toBe("Candace");
   });
 
   it("keeps task-style labels", () => {
@@ -439,5 +441,63 @@ describe("buildDailyProgressReport sprint / status / sort", () => {
     });
     expect(byStatus.tasks.map((t) => t.id)).toEqual(["T-002", "T-003", "T-010"]);
     expect(byStatus.tests.map((t) => t.id)).toEqual(["QA-1", "QA-2", "QA-9"]);
+  });
+});
+
+describe("live QA people (Brenda / Milford)", () => {
+  it("includes Brenda and Milford on the progress user roster", () => {
+    const roster = progressReportPeople(["Brenda", "Milford", "Isaiah"]);
+    expect(roster).toEqual([
+      "Tina",
+      "Evelyn",
+      "Lyriq",
+      "Candace",
+      "Brenda",
+      "Milford",
+      "Isaiah",
+      "Both",
+      "Unassigned",
+    ]);
+  });
+
+  it("normalizes Brenda full name and owner id", () => {
+    expect(normalizeProgressAssignee("brenda")).toBe("Brenda");
+    expect(normalizeProgressAssignee("Brenda Marene Russell")).toBe("Brenda");
+    expect(normalizeProgressAssignee("milford")).toBe("Milford");
+    expect(normalizeProgressAssignee("Milford Hutsell")).toBe("Milford");
+  });
+
+  it("attributes timesheet and activity filters to Brenda / Milford", () => {
+    expect(
+      progressPersonFromTimeEntry({
+        userName: "Brenda Marene Russell",
+        userEmail: "bremar00@comcast.net",
+      }),
+    ).toBe("Brenda");
+    expect(
+      progressPersonFromTimeEntry({
+        userName: "Milford Hutsell",
+        userEmail: "milford.hutsell@gmail.com",
+      }),
+    ).toBe("Milford");
+
+    const entry = {
+      id: "te-b",
+      userId: "u-brenda",
+      userName: "Brenda Marene Russell",
+      userEmail: "bremar00@comcast.net",
+      workDate: "2026-08-26",
+      accumulatedMs: 1_800_000,
+      elapsedMs: 1_800_000,
+      startedAt: null,
+      pausedAt: null,
+      createdAt: "2026-08-26T12:00:00.000Z",
+      updatedAt: "2026-08-26T12:00:00.000Z",
+    } as TimeEntry;
+
+    expect(timeEntryMatchesPeople(entry, ["Brenda"])).toBe(true);
+    expect(timeEntryMatchesPeople(entry, ["Milford"])).toBe(false);
+    expect(activityPersonMatchesPeople("Brenda Marene Russell", ["Brenda"])).toBe(true);
+    expect(assigneeMatchesPeople("brenda", ["Brenda"])).toBe(true);
   });
 });

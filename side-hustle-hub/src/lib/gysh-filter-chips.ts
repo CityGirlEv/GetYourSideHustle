@@ -21,15 +21,28 @@ export function toggleFilterValue<T>(prev: Set<T>, value: T): Set<T> {
 }
 
 /**
+ * Testing Portal sprint chips: empty set = All sprints.
+ * Open with this so Pass / Conditional Pass from prior sprints stay visible.
+ */
+export function defaultTestingPortalSprintFilters<T = never>(): Set<T> {
+  return new Set();
+}
+
+export function isAllSprintsFilter(selected: Set<unknown>): boolean {
+  return selected.size === 0;
+}
+
+/**
  * Apply a filter-bubble click.
  * - Plain click: select only this value (or clear if it was the only selection).
  * - Ctrl/Cmd+click: add/remove this value (multi-select).
  * - Shift+click: add every value between the last click and this one.
+ * - `multiToggle`: plain click also toggles (assignee / tester chips).
  */
 export function applyFilterChipClick<T>(
   prev: Set<T>,
   value: T,
-  opts: FilterChipClickOpts<T> = {},
+  opts: FilterChipClickOpts<T> & { multiToggle?: boolean } = {},
 ): { next: Set<T>; lastIndex: number | null } {
   const ordered = opts.ordered ?? [];
   const idx = ordered.indexOf(value);
@@ -43,7 +56,7 @@ export function applyFilterChipClick<T>(
     return { next, lastIndex: idx };
   }
 
-  if (opts.ctrlKey || opts.metaKey) {
+  if (opts.ctrlKey || opts.metaKey || opts.multiToggle) {
     return { next: toggleFilterValue(prev, value), lastIndex };
   }
 

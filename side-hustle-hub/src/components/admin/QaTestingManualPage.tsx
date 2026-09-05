@@ -235,6 +235,9 @@ export function QaTestingManualPage({ onBack }: QaTestingManualPageProps) {
             <a href="#qa-manual-quick">Quick start</a>
           </li>
           <li>
+            <a href="#qa-manual-access">Access & assignees</a>
+          </li>
+          <li>
             <a href="#qa-manual-flowcharts">Testing paths</a>
           </li>
           <li>
@@ -262,6 +265,15 @@ export function QaTestingManualPage({ onBack }: QaTestingManualPageProps) {
             <li key={step}>{step}</li>
           ))}
         </ol>
+      </section>
+
+      <section id="qa-manual-access" className="qa-manual__section">
+        <h2>Access & assignees</h2>
+        <ul className="qa-manual__checklist">
+          {m.access.map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+        </ul>
       </section>
 
       <section id="qa-manual-flowcharts" className="qa-manual__section">
@@ -372,7 +384,7 @@ export function QaTestingManualPage({ onBack }: QaTestingManualPageProps) {
       </section>
 
       <section id="qa-manual-progress" className="qa-manual__section">
-        <h2>Progress counts (Tina chip)</h2>
+        <h2>Progress counts (your QA chip)</h2>
         <ul className="qa-manual__legend">
           {m.progressColors.map((c) => {
             const emphasize = "emphasize" in c && Boolean(c.emphasize);
@@ -421,7 +433,7 @@ export function QaTestingManualPage({ onBack }: QaTestingManualPageProps) {
       </section>
 
       <section id="qa-manual-checklist" className="qa-manual__section">
-        <h2>Checklist for Tina</h2>
+        <h2>Checklist for QA testers</h2>
         <ul className="qa-manual__checklist">
           {m.checklist.map((c) => (
             <li key={c}>{c}</li>
