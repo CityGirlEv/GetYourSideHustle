@@ -22,23 +22,77 @@ test.describe("GYSH smoke", () => {
     expect(pathBeforeAudience).toBe(true);
   });
 
-  test("mobile viewport: no horizontal overflow and header logo fits", async ({ page }) => {
-    await page.setViewportSize({ width: 390, height: 844 }); // iPhone 14-ish
+  test("mobile viewport: public pages do not overflow horizontally", async ({ page }) => {
+    test.setTimeout(120_000);
+    await page.setViewportSize({ width: 390, height: 844 });
+    const paths = [
+      "/",
+      "/join",
+      "/membership",
+      "/kids",
+      "/seniors",
+      "/guides",
+      "/workshops",
+      "/community",
+      "/about",
+      "/login",
+      "/match",
+      "/calculators",
+      "/newsletter",
+      "/contact",
+      "/privacy",
+    ];
+    const leaks: string[] = [];
+    for (const path of paths) {
+      await page.goto(path);
+      const extra = await page.evaluate(() => {
+        const doc = document.documentElement;
+        return Math.ceil(doc.scrollWidth - doc.clientWidth);
+      });
+      if (extra > 2) leaks.push(`${path} +${extra}px`);
+    }
+    expect(leaks).toEqual([]);
+  });
+
+  test("mobile viewport: header logo fits", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/");
-    const metrics = await page.evaluate(() => {
-      const doc = document.documentElement;
-      const logo = document.querySelector(".brand-header-logo") as HTMLImageElement | null;
+    const logo = await page.evaluate(() => {
+      const el = document.querySelector(".brand-header-logo") as HTMLImageElement | null;
+      const r = el?.getBoundingClientRect();
+      return { height: r?.height ?? 0, width: r?.width ?? 0 };
+    });
+    expect(logo.height).toBeGreaterThan(40);
+    expect(logo.height).toBeLessThanOrEqual(80);
+    expect(logo.width).toBeLessThanOrEqual(280);
+  });
+
+  test("mobile viewport: Join page community graphic and plans fit portrait", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/join");
+    await expect(page.getByTestId("join-page")).toBeVisible();
+    await expect(page.getByTestId("membership-page")).toBeVisible();
+    const layout = await page.evaluate(() => {
+      const vw = document.documentElement.clientWidth;
+      const img = document.querySelector(".membership-hero-media img");
+      const pageEl = document.querySelector('[data-testid="membership-page"]');
+      const hero = document.querySelector(".membership-hero");
+      const ir = img?.getBoundingClientRect();
+      const pr = pageEl?.getBoundingClientRect();
+      const hr = hero?.getBoundingClientRect();
       return {
-        scrollWidth: doc.scrollWidth,
-        clientWidth: doc.clientWidth,
-        logoHeight: logo?.getBoundingClientRect().height ?? 0,
-        logoWidth: logo?.getBoundingClientRect().width ?? 0,
+        vw,
+        imgW: Math.round(ir?.width ?? 0),
+        pageW: Math.round(pr?.width ?? 0),
+        heroW: Math.round(hr?.width ?? 0),
+        extra: Math.ceil(document.documentElement.scrollWidth - vw),
       };
     });
-    expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth + 2);
-    expect(metrics.logoHeight).toBeGreaterThan(40);
-    expect(metrics.logoHeight).toBeLessThanOrEqual(80);
-    expect(metrics.logoWidth).toBeLessThanOrEqual(280);
+    expect(layout.imgW).toBeGreaterThan(240);
+    expect(layout.imgW).toBeLessThanOrEqual(layout.vw);
+    expect(layout.pageW).toBeLessThanOrEqual(layout.vw);
+    expect(layout.heroW).toBeLessThanOrEqual(layout.vw);
+    expect(layout.extra).toBeLessThanOrEqual(2);
   });
 
   test("mobile menu: Login stays visible and page scroll is locked", async ({ page }) => {
@@ -73,16 +127,23 @@ test.describe("GYSH smoke", () => {
     await expect(page.getByTestId("login-page")).toBeVisible();
   });
 
-  test("tablet viewport: homepage sections remain usable", async ({ page }) => {
+  test("tablet viewport: public pages stay in portrait width", async ({ page }) => {
+    test.setTimeout(90_000);
     await page.setViewportSize({ width: 768, height: 1024 }); // iPad portrait
+    const paths = ["/", "/join", "/membership", "/kids", "/seniors", "/guides", "/workshops", "/community"];
+    const leaks: string[] = [];
+    for (const path of paths) {
+      await page.goto(path);
+      const extra = await page.evaluate(() => {
+        const doc = document.documentElement;
+        return Math.ceil(doc.scrollWidth - doc.clientWidth);
+      });
+      if (extra > 2) leaks.push(`${path} +${extra}px`);
+    }
+    expect(leaks).toEqual([]);
     await page.goto("/");
     await expect(page.getByTestId("home-match-family")).toBeVisible();
     await expect(page.getByTestId("home-audience")).toBeVisible();
-    const overflow = await page.evaluate(() => {
-      const doc = document.documentElement;
-      return doc.scrollWidth - doc.clientWidth;
-    });
-    expect(overflow).toBeLessThanOrEqual(2);
   });
 
   test("Home nav returns to home headline", async ({ page }) => {
@@ -181,8 +242,8 @@ test.describe("GYSH smoke", () => {
 
   test("Membership nav opens tiers and Kids credits", async ({ page }) => {
     await page.goto("/");
-    await page.getByTestId("nav-membership").click();
-    await expect(page.getByTestId("page-title")).toContainText("Membership");
+    await page.getByTestId("nav-join").click();
+    await expect(page.getByTestId("page-title")).toContainText("Join GYSH");
     await expect(page.getByTestId("membership-page")).toBeVisible();
     await expect(page.getByTestId("membership-hero-dashboard-note")).toContainText("Member Dashboard");
     await expect(page.getByTestId("membership-hero-dashboard-note")).toContainText("referral");
@@ -194,8 +255,8 @@ test.describe("GYSH smoke", () => {
     await expect(page.getByTestId("membership-tier-free")).toBeVisible();
     await expect(page.getByTestId("membership-tier-free")).toContainText("Free — start here");
     await expect(page.getByTestId("membership-free-start-badge")).toBeVisible();
+    await page.getByTestId("membership-benefits-toggle-free").click();
     await expect(page.getByTestId("membership-benefits-free")).toContainText("Match Wizard");
-    await expect(page.getByTestId("membership-benefits-free")).not.toContainText("Browse free guides");
     await expect(page.getByTestId("membership-tier-starter")).toBeVisible();
     await expect(page.getByTestId("membership-tier-pro")).toBeVisible();
     await expect(page.getByTestId("membership-tier-elite")).toBeVisible();
@@ -207,6 +268,14 @@ test.describe("GYSH smoke", () => {
     await expect(page.getByTestId("membership-yearly-price-starter")).toBeVisible();
     await expect(page.getByTestId("membership-schedule-suite")).toBeVisible();
     await expect(page.getByTestId("membership-schedule-suite")).toContainText(/Pro/i);
+    await expect(page.getByTestId("membership-schedule-suite")).toHaveJSProperty("open", true);
+    await expect(page.getByTestId("membership-compare")).toHaveJSProperty("open", false);
+    await expect(page.getByTestId("membership-tier-glossary")).toHaveJSProperty("open", false);
+    await page.getByTestId("membership-tier-glossary").locator("summary").click();
+    await expect(page.getByTestId("membership-tier-glossary")).toHaveJSProperty("open", true);
+    await page.getByTestId("membership-compare").locator("summary").click();
+    await expect(page.getByTestId("membership-compare")).toHaveJSProperty("open", true);
+    await expect(page.getByTestId("membership-compare")).toContainText("Feature");
     // Military & Veterans callout deferred to Sprint 6 (T-MEM-MILITARY discount).
     await expect(page.getByTestId("membership-military-veteran")).toHaveCount(0);
 
@@ -242,6 +311,48 @@ test.describe("GYSH smoke", () => {
     await expect(page.getByTestId("membership-alacarte-cart-count")).toContainText("1");
     await expect(page.getByTestId("membership-alacarte-cart-line-consult-30")).toBeVisible();
     await expect(page.getByTestId("membership-alacarte-cart-checkout")).toBeVisible();
+  });
+
+  test("Join parent-funded packs checkout before a la carte and link Schedule Suite", async ({ page }) => {
+    await page.goto("/join");
+    await expect(page.getByTestId("membership-page")).toBeVisible();
+    await expect(page.getByTestId("membership-schedule-suite-dashboard-link")).toHaveAttribute(
+      "href",
+      "/my-dashboard#schedule",
+    );
+    await expect(page.getByTestId("membership-pillar-schedule-link")).toHaveAttribute(
+      "href",
+      "#gysh-schedule-suite",
+    );
+    await expect(page.getByTestId("membership-credit-packs")).toBeVisible();
+    await expect(page.getByTestId("membership-alacarte")).toBeVisible();
+    await expect(page.getByTestId("membership-schedule-suite")).toBeVisible();
+    const priceOrder = await page.evaluate(() => {
+      const ids = ["membership-credit-packs", "membership-alacarte", "membership-schedule-suite"];
+      return ids.map((id) => {
+        const el = document.querySelector(`[data-testid="${id}"]`);
+        if (!el) return -1;
+        let pos = 0;
+        let n: Element | null = el;
+        while (n && n.previousElementSibling) {
+          pos += 1;
+          n = n.previousElementSibling;
+        }
+        return pos;
+      });
+    });
+    expect(priceOrder[0]).toBeGreaterThanOrEqual(0);
+    expect(priceOrder[1]).toBeGreaterThan(priceOrder[0]!);
+    expect(priceOrder[2]).toBeGreaterThan(priceOrder[1]!);
+
+    await expect(page.getByTestId("membership-credit-pack-boost")).toContainText("25 credits");
+    await expect(page.getByTestId("membership-credit-pack-family")).toContainText("300 credits");
+    await page.getByTestId("membership-credit-pack-add-boost").click();
+    await expect(page.getByTestId("membership-alacarte-cart-line-boost")).toBeVisible();
+    await expect(page.getByTestId("membership-alacarte-cart-count")).toContainText("1");
+    await expect(page.getByTestId("membership-alacarte-cart-checkout")).toContainText("$5");
+    await page.getByTestId("membership-alacarte-cart-clear-top").click();
+    await expect(page.getByTestId("membership-alacarte-cart-empty")).toBeVisible();
   });
 
   test("header Cart opens a-la-carte checkout panel", async ({ page }) => {
@@ -349,12 +460,12 @@ test.describe("GYSH smoke", () => {
     await expect(page.getByLabel(/Apply as a Beta Tester/i)).toBeVisible();
   });
 
-  test("Beta Tester NDA page shows GYSH-BETA-NDA-v1.0 from footer and /beta-nda", async ({ page }) => {
+  test("Beta Tester NDA page shows GYSH-BETA-NDA-v1.1 from footer and /beta-nda", async ({ page }) => {
     await page.goto("/");
     await page.getByRole("contentinfo").getByTestId("footer-beta-nda").click();
     await expect(page.getByTestId("page-title")).toContainText("Beta Tester NDA");
     await expect(page.getByTestId("beta-nda-page")).toBeVisible();
-    await expect(page.getByTestId("beta-nda-version")).toContainText("GYSH-BETA-NDA-v1.0");
+    await expect(page.getByTestId("beta-nda-version")).toContainText("GYSH-BETA-NDA-v1.1");
     await page.goto("/beta-nda");
     await expect(page.getByRole("heading", { name: /Confidentiality and Non-Disclosure/i })).toBeVisible();
   });

@@ -1,9 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MutableRefObject, type ReactNode } from "react";
 import {
   BadgeCheck,
-  Bell,
   CalendarDays,
-  ChartColumnIncreasing,
+  ChevronRight,
   Coins,
   CreditCard,
   Crown,
@@ -43,6 +42,7 @@ import {
   type NumberedTierPerk,
   type TierId,
 } from "../lib/membership";
+import { SCHEDULE_SUITE_DASHBOARD_HREF } from "../lib/hustle-schedule";
 import { MembershipModelExplainer } from "./MembershipModelExplainer";
 import {
   normalizeAudienceGroup,
@@ -73,6 +73,55 @@ import { WaitLabel } from "./WaitFeedback";
 import membershipHero from "../assets/membership-hero.png";
 
 const MEMBERSHIP_BENEFITS_PREVIEW = 2;
+
+function MembershipCollapse({
+  title,
+  testId,
+  className,
+  defaultOpen = true,
+  icon,
+  children,
+  detailsRef,
+  id,
+}: {
+  title: ReactNode;
+  testId: string;
+  className?: string;
+  defaultOpen?: boolean;
+  icon?: ReactNode;
+  children: ReactNode;
+  detailsRef?: React.RefObject<HTMLDetailsElement | null>;
+  id?: string;
+}) {
+  const appliedDefaultOpen = useRef(false);
+  const setDetailsRef = (el: HTMLDetailsElement | null) => {
+    if (detailsRef) {
+      (detailsRef as MutableRefObject<HTMLDetailsElement | null>).current = el;
+    }
+    if (el && defaultOpen && !appliedDefaultOpen.current) {
+      el.open = true;
+      appliedDefaultOpen.current = true;
+    }
+  };
+  return (
+    <details
+      id={id}
+      ref={setDetailsRef}
+      className={`glass membership-collapse${className ? ` ${className}` : ""}`}
+      data-testid={testId}
+    >
+      <summary className="membership-collapse__summary">
+        <h3 className="membership-collapse__title">
+          {icon}
+          {title}
+          <ChevronRight size={20} className="membership-collapse__arrow" aria-hidden />
+        </h3>
+        <span className="collapse-show-hide" aria-hidden="true" />
+      </summary>
+      <div className="membership-collapse__body">{children}</div>
+    </details>
+  );
+}
 
 function TierBenefitsList({
   tierId,
@@ -145,7 +194,38 @@ type MembershipPageProps = {
   currentTier?: TierId | null;
   /** Prefill a-la-carte checkout email when signed in. */
   checkoutEmail?: string | null;
+  /** Open My Dashboard → Schedule Suite (Join Schedule Suite links). */
+  onOpenScheduleSuite?: () => void;
 };
+
+function ScheduleSuiteLink({
+  href,
+  children,
+  testId,
+  onOpen,
+  className,
+}: {
+  href: string;
+  children: ReactNode;
+  testId?: string;
+  onOpen?: () => void;
+  className?: string;
+}) {
+  return (
+    <a
+      href={href}
+      className={className ?? "membership-schedule-link"}
+      data-testid={testId}
+      onClick={(e) => {
+        if (href.startsWith("#") || !onOpen) return;
+        e.preventDefault();
+        onOpen();
+      }}
+    >
+      {children}
+    </a>
+  );
+}
 
 const AUDIENCE_TABS: AudienceGroup[] = ["kids", "junior", "adult", "senior"];
 
@@ -161,6 +241,7 @@ export function MembershipPage({
   isLoggedIn = false,
   currentTier = null,
   checkoutEmail = null,
+  onOpenScheduleSuite,
 }: MembershipPageProps) {
   const [audience, setAudience] = useState<AudienceGroup>(() =>
     normalizeAudienceGroup(initialAudience, readSavedJoinAudience("adult")),
@@ -170,6 +251,7 @@ export function MembershipPage({
   const audienceTabsRef = useRef<HTMLDivElement>(null);
   const membershipPlansRef = useRef<HTMLElement>(null);
   const cartPanelRef = useRef<HTMLDivElement>(null);
+  const alacarteDetailsRef = useRef<HTMLDetailsElement>(null);
   const [cart, setCart] = useState<AlaCarteCart>(() => readAlaCarteCart());
   const [cartEmail, setCartEmail] = useState(() => String(checkoutEmail || "").trim());
   const [cartBusy, setCartBusy] = useState(false);
@@ -201,6 +283,9 @@ export function MembershipPage({
   };
 
   const scrollToCart = () => {
+    if (alacarteDetailsRef.current) {
+      alacarteDetailsRef.current.open = true;
+    }
     const el =
       cartPanelRef.current ??
       (document.getElementById("gysh-alacarte-cart") as HTMLElement | null);
@@ -413,8 +498,11 @@ export function MembershipPage({
             </div>
             <p data-testid="membership-lead">
               GYSH membership turns “I should try this” into a weekly rhythm — age-appropriate Match Wizard
-              matches, member guides, consulting time, and (on Pro or higher) a hustle schedule with tracker,
-              progress reports, and email nudges. Start free, then pick the lane that fits your life.
+              matches, member guides, consulting time, and (on Pro or higher) a{" "}
+              <ScheduleSuiteLink href="#gysh-schedule-suite" testId="membership-lead-schedule-link">
+                hustle schedule
+              </ScheduleSuiteLink>{" "}
+              with tracker, progress reports, and email nudges. Start free, then pick the lane that fits your life.
             </p>
             <p className="membership-hero-dashboard-note" data-testid="membership-hero-dashboard-note">
               Members get a <strong>Member Dashboard</strong> (My Dashboard) to track progress, grab
@@ -437,7 +525,12 @@ export function MembershipPage({
             </li>
             <li>
               <Sparkles size={16} aria-hidden />
-              <span>Paid plans add 1-on-1 consulting; Pro or higher unlocks the schedule suite</span>
+              <span>
+                Paid plans add 1-on-1 consulting; Pro or higher unlocks the{" "}
+                <ScheduleSuiteLink href="#gysh-schedule-suite" testId="membership-pillar-schedule-link">
+                  schedule suite
+                </ScheduleSuiteLink>
+              </span>
             </li>
           </ul>
 
@@ -566,10 +659,14 @@ export function MembershipPage({
         ) : null}
       </div>
 
-      <MembershipModelExplainer showCompareTable={false} />
+      <MembershipModelExplainer showCompareTable={false} collapsible />
 
-      <div className="membership-compare-wrap" data-testid="membership-compare">
-        <h3 className="membership-compare__title">What each plan includes</h3>
+      <MembershipCollapse
+        testId="membership-compare"
+        className="membership-compare-wrap membership-collapse--standout"
+        title="What each plan includes"
+        defaultOpen={false}
+      >
         <p className="membership-compare__lead">
           Four plans only — what each includes, what stays locked, and why you’d upgrade. Coming soon
           items are labeled separately and are not unlocked by paying.
@@ -600,7 +697,13 @@ export function MembershipPage({
                       <span className="membership-compare-table__bullet" aria-hidden>
                         •
                       </span>
-                      {row.label}
+                      {row.id === "schedule" ? (
+                        <ScheduleSuiteLink href="#gysh-schedule-suite" testId="membership-compare-schedule-link">
+                          {row.label}
+                        </ScheduleSuiteLink>
+                      ) : (
+                        row.label
+                      )}
                     </span>
                     {row.whyUpgrade ? (
                       <span className="membership-compare__why">{row.whyUpgrade}</span>
@@ -615,7 +718,7 @@ export function MembershipPage({
             </tbody>
           </table>
         </div>
-      </div>
+      </MembershipCollapse>
 
       <div className="membership-tier-grid" data-testid="membership-tier-grid">
         {MEMBERSHIP_TIERS.map((tier) => {
@@ -727,7 +830,13 @@ export function MembershipPage({
                 )}
                 {tier.highlight && <span className="glow-badge amber">Most popular</span>}
                 {tier.id === SCHEDULE_SUITE_TIER && (
-                  <span className="glow-badge free">Unlocks schedule suite</span>
+                  <ScheduleSuiteLink
+                    href="#gysh-schedule-suite"
+                    className="glow-badge free membership-schedule-link"
+                    testId="membership-tier-schedule-badge"
+                  >
+                    Unlocks schedule suite
+                  </ScheduleSuiteLink>
                 )}
                 {tier.commitmentMonths && tier.commitmentMonths > 1 ? (
                   <span className="glow-badge amber" data-testid={`membership-commitment-${tier.id}`}>
@@ -790,105 +899,111 @@ export function MembershipPage({
         </aside>
       )}
 
-      <section className="glass membership-schedule-callout" data-testid="membership-schedule-suite">
-        <div className="membership-schedule-icons" aria-hidden>
-          <CalendarDays size={22} />
-          <ChartColumnIncreasing size={22} />
-          <Bell size={22} />
-        </div>
-        <div>
-          <h3>Hustle schedule suite</h3>
-          <p>
-            Starting at <strong>Pro</strong>, open <strong>My Dashboard → Schedule Suite</strong> for a
-            weekly plan tied to your Blueprint hustle, a live tracker, progress %, Profit &amp; Loss
-            calculator, and email reminder prefs. Free and Starter see it grayed out with an upgrade
-            path. Every paid plan includes consulting (Starter: one 45-minute session; Pro: three
-            60-minute sessions; Elite: three 90-minute sessions) with a 3-month commitment. Elite also
-            adds the ZipCode best-times scout for rideshare &amp; delivery.
-          </p>
-          <ul className="membership-schedule-list">
-            {SCHEDULE_SUITE_FEATURE_IDS.map((id) => {
-              const f = MEMBERSHIP_FEATURES.find((x) => x.id === id);
-              return f ? (
-                <li key={id}>
-                  <BadgeCheck size={14} aria-hidden /> <strong>{f.label}</strong> — {f.detail}
-                </li>
-              ) : null;
-            })}
-          </ul>
-        </div>
-      </section>
-
-      {usesCredits && (
-        <section className="glass membership-credit-packs" data-testid="membership-credit-packs">
-          <h3>
-            <Coins size={18} /> Parent-funded credit packs
-          </h3>
-          <p>
-            Parents and guardians can add Kid Credits anytime. Members can also earn credits below,
-            so purchasing a pack is always optional — use packs when your monthly plan balance isn’t
-            enough for workshops or extra consulting. Included plan sessions are separate from
-            a-la-carte consulting below.
-          </p>
-          <div className="membership-credit-pack-grid">
-            {CREDIT_PACKS.map((pack) => (
-              <article
-                key={pack.id}
-                className={`membership-credit-pack-card${pack.popular ? " is-popular" : ""}`}
-                data-testid={`membership-credit-pack-${pack.id}`}
-              >
-                {pack.popular && <span className="glow-badge amber">Most popular</span>}
-                <h4>{pack.name}</h4>
-                <strong>{pack.credits} Kid Credits</strong>
-                <span>{formatUsd(pack.priceUsd)}</span>
-                <p>{pack.detail}</p>
-              </article>
-            ))}
-          </div>
-          <small>
-            Credit purchases require parent or guardian approval. Credits have no cash value and
-            cannot be transferred or withdrawn.
-          </small>
-        </section>
-      )}
-
-      <section className="glass membership-credits" data-testid="membership-credits">
-        <h3>
-          <Sparkles size={18} />{" "}
-          {audience === "kids" || audience === "junior"
-            ? `Ways to earn Kid Credits — ${AUDIENCE_LABELS[audience]}`
-            : `Ways to Earn Credits — ${AUDIENCE_LABELS[audience]}`}
-        </h3>
-        <p>
-          {audience === "kids" || audience === "junior"
-            ? "Use Kid Credits for workshops and 1-on-1s. Adult redemptions spend at half rate ("
-            : "Earn credits for workshops and 1-on-1s (Kid Credits + adult credit equivalent). Adult redemptions spend at half rate ("}
-          {KID_TO_ADULT_CREDIT_RATIO} Kid Credits = 1 adult credit). Your personal referral link lives
-          on the member dashboard.
+      <MembershipCollapse
+        testId="membership-credit-packs"
+        className="membership-credit-packs membership-price-list"
+        title={
+          <>
+            Parent-funded Kid Credit packs
+            {cartCount > 0 ? (
+              <span className="membership-alacarte-cart-badge" data-testid="membership-credit-packs-cart-count">
+                {cartCount} in cart
+              </span>
+            ) : null}
+          </>
+        }
+        icon={<Coins size={18} aria-hidden />}
+      >
+        <p className="membership-price-list__lead">
+          Optional top-ups when monthly Kid Credits aren’t enough. Add a pack to the same cart as a la
+          carte, then check out with Stripe.
         </p>
-        <div className="membership-credits-grid">
-          {earnActions.map((a) => (
-            <article key={a.id} className="membership-credit-card" data-testid={`membership-earn-${a.id}`}>
-              <strong>+{a.credits}</strong>
-              <span>{a.label}</span>
-              <p>{a.detail}</p>
-            </article>
-          ))}
+        {cartCount > 0 ? (
+          <div className="membership-alacarte-cart-jump" data-testid="membership-credit-packs-cart-jump">
+            <button type="button" className="btn btn-primary" onClick={scrollToCart}>
+              <ShoppingCart size={16} aria-hidden /> Go to cart · {formatUsd(cartTotal)} ({cartCount})
+            </button>
+          </div>
+        ) : null}
+        <div className="membership-price-table-wrap">
+          <table className="membership-price-table membership-price-table--compact">
+            <thead>
+              <tr>
+                <th>Pack</th>
+                <th>Kid credits</th>
+                <th>Price</th>
+                <th>Cart</th>
+              </tr>
+            </thead>
+            <tbody>
+              {CREDIT_PACKS.map((pack) => {
+                const inCartQty = cart.lines.find((l) => l.itemId === pack.id)?.quantity ?? 0;
+                const stripeReady = supportsAlaCarteStripeCheckout(pack.id);
+                const justAdded = justAddedId === pack.id;
+                return (
+                  <tr
+                    key={pack.id}
+                    className={pack.popular ? "is-popular" : undefined}
+                    data-testid={`membership-credit-pack-${pack.id}`}
+                  >
+                    <td>
+                      <strong>{pack.name}</strong>
+                      {pack.popular ? <span className="glow-badge amber">Most popular</span> : null}
+                    </td>
+                    <td>{pack.credits} credits</td>
+                    <td>{formatUsd(pack.priceUsd)}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="btn btn-outline membership-alacarte-add"
+                        data-testid={`membership-credit-pack-add-${pack.id}`}
+                        disabled={!stripeReady}
+                        title={
+                          stripeReady
+                            ? `Add ${pack.name} to cart`
+                            : "Stripe checkout not configured for this pack yet"
+                        }
+                        onClick={() => handleAddToCart(pack.id)}
+                      >
+                        {justAdded
+                          ? "Added"
+                          : inCartQty > 0
+                            ? `Add again (${inCartQty})`
+                            : "Add to cart"}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
-      </section>
+        <small>
+          Parent or guardian approval required. Credits have no cash value and cannot be transferred
+          or withdrawn.
+        </small>
+      </MembershipCollapse>
 
-      <section className="glass membership-alacarte" data-testid="membership-alacarte">
-        <h3>
-          <ShoppingCart size={18} aria-hidden /> A la carte price list — {AUDIENCE_LABELS[audience]}
-          {cartCount > 0 ? (
-            <span className="membership-alacarte-cart-badge" data-testid="membership-alacarte-cart-count">
-              {cartCount} in cart
-            </span>
-          ) : null}
-        </h3>
-        <p>
-          Buy single sessions anytime. Add items to your cart, then check out with Stripe. Items marked
-          included are covered by the listed membership tier.
+      <MembershipCollapse
+        testId="membership-alacarte"
+        className="membership-alacarte membership-price-list"
+        defaultOpen
+        detailsRef={alacarteDetailsRef}
+        icon={<ShoppingCart size={18} aria-hidden />}
+        title={
+          <>
+            A la carte — {AUDIENCE_LABELS[audience]}
+            {cartCount > 0 ? (
+              <span className="membership-alacarte-cart-badge" data-testid="membership-alacarte-cart-count">
+                {cartCount} in cart
+              </span>
+            ) : null}
+          </>
+        }
+      >
+        <p className="membership-price-list__lead">
+          Single sessions and extras. Add to cart, then Stripe checkout. Included = covered by that
+          membership tier.
         </p>
         {cartCount > 0 ? (
           <div className="membership-alacarte-cart-jump" data-testid="membership-alacarte-cart-jump">
@@ -909,7 +1024,7 @@ export function MembershipPage({
           </div>
         ) : null}
         <div className="membership-price-table-wrap">
-          <table className="membership-price-table">
+          <table className="membership-price-table membership-price-table--compact">
             <thead>
               <tr>
                 <th>Service</th>
@@ -983,7 +1098,7 @@ export function MembershipPage({
         >
           <div className="membership-alacarte-cart-heading">
             <h4>
-              <ShoppingCart size={16} aria-hidden /> Your a-la-carte cart
+              <ShoppingCart size={16} aria-hidden /> Your cart
             </h4>
             {cartCount > 0 ? (
               <button
@@ -1002,7 +1117,7 @@ export function MembershipPage({
           </div>
           {cartLines.length === 0 ? (
             <p className="membership-alacarte-cart-empty" data-testid="membership-alacarte-cart-empty">
-              Cart is empty — add a service above to check out.
+              Cart is empty — add a pack or service above to check out.
             </p>
           ) : (
             <form className="membership-alacarte-cart-form" onSubmit={handleCartCheckout}>
@@ -1050,7 +1165,7 @@ export function MembershipPage({
                 <strong>{formatUsd(cartTotal)}</strong>
               </div>
               <label className="membership-alacarte-cart-email">
-                Email for receipt
+                Email for confirmation
                 <input
                   type="email"
                   autoComplete="email"
@@ -1095,12 +1210,68 @@ export function MembershipPage({
                 </button>
               </div>
               <p className="membership-alacarte-cart-note">
-                Secure Stripe Checkout. In test mode use card <code>4242 4242 4242 4242</code>.
+                We’ll email a GYSH confirmation to this address after Stripe Checkout. In test mode use
+                card <code>4242 4242 4242 4242</code>.
               </p>
             </form>
           )}
         </div>
-      </section>
+      </MembershipCollapse>
+
+      <MembershipCollapse
+        id="gysh-schedule-suite"
+        testId="membership-schedule-suite"
+        className="membership-schedule-callout membership-schedule-callout--compact"
+        title="Hustle schedule suite"
+        icon={<CalendarDays size={18} aria-hidden />}
+      >
+        <p>
+          Starting at <strong>Pro</strong>, open{" "}
+          <ScheduleSuiteLink
+            href={SCHEDULE_SUITE_DASHBOARD_HREF}
+            onOpen={onOpenScheduleSuite}
+            testId="membership-schedule-suite-dashboard-link"
+          >
+            My Dashboard → Schedule Suite
+          </ScheduleSuiteLink>{" "}
+          for a weekly Blueprint plan, tracker, P&amp;L, and email reminders. Free and Starter see it
+          locked with an upgrade path.
+        </p>
+        <ul className="membership-schedule-options">
+          {SCHEDULE_SUITE_FEATURE_IDS.map((id) => {
+            const f = MEMBERSHIP_FEATURES.find((x) => x.id === id);
+            return f ? (
+              <li key={id}>
+                <BadgeCheck size={14} aria-hidden /> {f.label}
+              </li>
+            ) : null;
+          })}
+        </ul>
+      </MembershipCollapse>
+
+      <MembershipCollapse
+        testId="membership-credits"
+        className="membership-credits membership-price-list"
+        title={
+          audience === "kids" || audience === "junior"
+            ? `Ways to earn Kid Credits — ${AUDIENCE_LABELS[audience]}`
+            : `Ways to Earn Credits — ${AUDIENCE_LABELS[audience]}`
+        }
+        icon={<Sparkles size={18} aria-hidden />}
+      >
+        <p className="membership-price-list__lead">
+          {KID_TO_ADULT_CREDIT_RATIO} Kid Credits = 1 adult credit. Referral link lives on the member
+          dashboard.
+        </p>
+        <div className="membership-credits-grid membership-credits-grid--compact">
+          {earnActions.map((a) => (
+            <article key={a.id} className="membership-credit-card" data-testid={`membership-earn-${a.id}`}>
+              <strong>+{a.credits}</strong>
+              <span>{a.label}</span>
+            </article>
+          ))}
+        </div>
+      </MembershipCollapse>
     </div>
   );
 }

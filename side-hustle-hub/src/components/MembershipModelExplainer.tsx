@@ -1,3 +1,5 @@
+import { useRef } from "react";
+import { ChevronRight } from "lucide-react";
 import {
   CREDITS_AND_CONSULTING_BLURB,
   NO_PLUS_PLAN_NOTE,
@@ -11,6 +13,10 @@ type MembershipModelExplainerProps = {
   heading?: string;
   /** When true, show the compact includes/locked comparison table (Beta Credits + Join). */
   showCompareTable?: boolean;
+  /** Join / Membership: collapse the glossary behind Show / Hide. */
+  collapsible?: boolean;
+  /** When collapsible, start expanded. Join starts collapsed. */
+  defaultOpen?: boolean;
 };
 
 /**
@@ -21,14 +27,12 @@ export function MembershipModelExplainer({
   "data-testid": testId = "membership-tier-glossary",
   heading = "Four plans: Free, Starter, Pro, Elite",
   showCompareTable = true,
+  collapsible = false,
+  defaultOpen = false,
 }: MembershipModelExplainerProps) {
-  return (
-    <aside
-      className="glass membership-tier-glossary"
-      data-testid={testId}
-      aria-label="How membership tiers work"
-    >
-      <h3 className="membership-tier-glossary__title">{heading}</h3>
+  const appliedDefaultOpen = useRef(false);
+  const body = (
+    <>
       <p>{TIER_LADDER_GLOSSARY}</p>
       <p className="membership-tier-glossary__plus-note" data-testid={`${testId}-no-plus`}>
         {NO_PLUS_PLAN_NOTE}
@@ -79,6 +83,42 @@ export function MembershipModelExplainer({
           </div>
         </div>
       ) : null}
+    </>
+  );
+
+  if (collapsible) {
+    return (
+      <details
+        className="glass membership-tier-glossary membership-collapse membership-collapse--standout"
+        data-testid={testId}
+        aria-label="How membership tiers work"
+        ref={(el) => {
+          if (el && defaultOpen && !appliedDefaultOpen.current) {
+            el.open = true;
+            appliedDefaultOpen.current = true;
+          }
+        }}
+      >
+        <summary className="membership-collapse__summary">
+          <h3 className="membership-tier-glossary__title membership-collapse__title">
+            {heading}
+            <ChevronRight size={20} className="membership-collapse__arrow" aria-hidden />
+          </h3>
+          <span className="collapse-show-hide" aria-hidden="true" />
+        </summary>
+        <div className="membership-collapse__body">{body}</div>
+      </details>
+    );
+  }
+
+  return (
+    <aside
+      className="glass membership-tier-glossary"
+      data-testid={testId}
+      aria-label="How membership tiers work"
+    >
+      <h3 className="membership-tier-glossary__title">{heading}</h3>
+      {body}
     </aside>
   );
 }

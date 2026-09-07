@@ -934,12 +934,18 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   flex-direction: column;
   gap: 28px;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
 }
 
 .join-membership-section {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
 }
 
 .join-membership-heading {
@@ -2939,9 +2945,19 @@ html.gysh-mobile-menu-open body {
   word-break: break-word;
 }
 
-.header-title-top h1 .header-title-dashboard-badge {
+.header-title-top h1 .header-title-dashboard-badge,
+.header-title-top h1 .header-title-referral-badge {
   align-self: center;
   flex: 0 0 auto;
+}
+
+.header-title-badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-left: 8px;
+  vertical-align: middle;
 }
 
 .header-title-aside {
@@ -3026,6 +3042,41 @@ html.gysh-mobile-menu-open body {
   flex-shrink: 0;
 }
 
+.header-title-referral-badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 8px 16px 8px 12px;
+  border-radius: 999px;
+  border: 2px solid #2e7d5a;
+  background: #fffdf8;
+  color: #1f4d38;
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  line-height: 1.15;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 0 0 3px rgba(46, 125, 90, 0.16);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.header-title-referral-badge:hover {
+  background: rgba(46, 125, 90, 0.1);
+  transform: translateY(-1px);
+}
+
+.header-title-referral-badge:active {
+  transform: translateY(0);
+}
+
+.header-title-referral-badge svg {
+  flex-shrink: 0;
+}
 
 .header-title-desc,
 .header-title-section p {
@@ -6540,6 +6591,10 @@ html.gysh-mobile-menu-open body {
   margin: 0;
 }
 
+.site-footer-disclaimer p + p {
+  margin-top: 8px;
+}
+
 .site-footer-disclaimer strong {
   color: var(--charcoal);
 }
@@ -8511,7 +8566,20 @@ html.gysh-mobile-menu-open body {
 .qa-categories-panel__bubbles .qa-filter-chip,
 .qa-testing-portal__top-filters .qa-filter-chip:has(.status-bubble__rolled) {
   align-items: center;
-  min-height: 3.5rem;
+  flex-wrap: wrap;
+  white-space: normal;
+  min-height: 3.75rem;
+}
+
+.qa-categories-panel__bubbles .qa-filter-chip:has(.task-list-sprint__dates) {
+  border-radius: 16px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.qa-categories-panel__bubbles .task-list-sprint__label-block {
+  align-items: center;
+  text-align: center;
 }
 
 .qa-categories-panel__bubbles .qa-tester-meta {
@@ -8806,6 +8874,133 @@ html.gysh-mobile-menu-open body {
   font-weight: 600;
   color: #181718;
   background: #fff;
+}
+
+.content-factory__seeded-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.content-factory__projection-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 12px;
+}
+
+.workshops-admin__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: 14px;
+}
+
+@media (max-width: 720px) {
+  .content-factory__seeded-grid,
+  .workshops-admin__layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.content-factory__item,
+.content-factory__item-header,
+.content-factory__item-toggle,
+.content-factory__item-title,
+.content-factory__item-status-cluster {
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.content-factory__item-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.content-factory__item-due,
+.content-factory__item-assignee {
+  white-space: normal;
+}
+
+.content-factory__item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.content-factory__status-badge {
+  max-width: 100%;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  height: auto;
+  line-height: 1.3;
+  box-sizing: border-box;
+}
+
+@media (max-width: 1024px) {
+  .content-factory__item {
+    overflow: hidden;
+  }
+
+  .content-factory__item-header {
+    align-items: flex-start;
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .content-factory__item-toggle {
+    flex: 1 1 100%;
+    align-items: flex-start;
+  }
+
+  .content-factory__item-title {
+    flex: 1 1 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .content-factory__item-status-cluster {
+    width: 100%;
+  }
+
+  .content-factory__item-status-label {
+    flex: 1 1 calc(50% - 6px);
+    min-width: 0;
+  }
+
+  .content-factory__item-status {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .task-card-controls {
+    grid-template-columns: 1fr !important;
+  }
+
+  .glass.task-card,
+  .task-row__id {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .task-status-chip {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .content-factory__seeded-grid,
+  .workshops-admin__layout {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Bidirectional Admin Studio deep links (task ↔ test ↔ Content Factory) */
@@ -9140,6 +9335,13 @@ html.gysh-mobile-menu-open body {
   color: inherit;
 }
 
+.qa-heading-title-case,
+.schedule-board-filters__label .qa-heading-title-case,
+.qa-section-heading .qa-heading-title-case {
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+
 .qa-categories-panel__active {
   font-size: inherit;
   font-weight: 700;
@@ -9360,6 +9562,13 @@ html.gysh-mobile-menu-open body {
 .qa-testing-portal__testers-title {
   flex: 0 0 auto;
   white-space: nowrap;
+}
+
+.qa-testing-portal__other-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 10px;
 }
 
 .qa-testing-portal__testers-bar > .qa-testing-portal__top-filters {
@@ -15538,7 +15747,8 @@ html.gysh-mobile-menu-open body {
   color: #181718;
 }
 
-.home-page-header__brand-block .header-title-dashboard-badge {
+.home-page-header__brand-block .header-title-dashboard-badge,
+.home-page-header__brand-block .header-title-badges {
   flex: 0 0 auto;
 }
 
@@ -16720,6 +16930,9 @@ button.launch-checklist-item {
   max-width: 1180px;
   margin: 0 auto;
   padding-bottom: 20px;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .membership-hero {
@@ -16734,6 +16947,7 @@ button.launch-checklist-item {
   overflow: hidden;
   width: 100%;
   max-width: 100%;
+  min-width: 0;
   box-sizing: border-box;
 }
 
@@ -17006,8 +17220,105 @@ button.launch-checklist-item {
   font-size: 0.9rem;
 }
 
+.membership-collapse {
+  padding: 12px 16px 14px;
+  box-sizing: border-box;
+  text-align: left;
+}
+
+.membership-collapse > .membership-collapse__summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  margin: 0;
+  padding: 2px 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.membership-collapse > .membership-collapse__summary::-webkit-details-marker,
+.membership-collapse > .membership-collapse__summary::marker {
+  display: none;
+  content: "";
+}
+
+.membership-collapse[open] > .membership-collapse__summary {
+  margin-bottom: 8px;
+}
+
+.membership-collapse__title {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  font-size: 1.1rem;
+  text-align: left;
+}
+
+.membership-collapse__arrow {
+  flex-shrink: 0;
+  color: var(--crimson, #9b2f28);
+  transition: transform 0.15s ease;
+}
+
+.membership-collapse[open] > .membership-collapse__summary .membership-collapse__arrow {
+  transform: rotate(90deg);
+}
+
+.membership-collapse__body {
+  min-width: 0;
+}
+
+.membership-collapse.membership-collapse--standout {
+  padding: 0;
+  overflow: hidden;
+}
+
+.membership-collapse--standout > .membership-collapse__summary {
+  margin: 0;
+  padding: 12px 14px 12px 12px;
+  min-height: 52px;
+  background: linear-gradient(135deg, #e8d4a0 0%, #d7c697 38%, #b08958 100%);
+  border-bottom: 1px solid rgba(116, 90, 58, 0.45);
+  border-left: 5px solid var(--crimson);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 3px 10px rgba(116, 90, 58, 0.28);
+}
+
+.membership-collapse--standout > .membership-collapse__summary:hover {
+  filter: brightness(1.04);
+}
+
+.membership-collapse--standout .membership-collapse__title {
+  margin: 0;
+  font-size: 1.18rem;
+  font-weight: 800;
+  color: #2a2016;
+  letter-spacing: 0.01em;
+}
+
+.membership-collapse--standout .collapse-show-hide {
+  background: rgba(255, 252, 247, 0.9);
+  border-color: rgba(148, 125, 100, 0.55);
+  color: #4a3a28;
+  font-weight: 800;
+}
+
+.membership-collapse--standout[open] > .membership-collapse__summary {
+  margin-bottom: 0;
+}
+
+.membership-tier-glossary.membership-collapse--standout .membership-tier-glossary__title {
+  margin: 0;
+}
+
 .membership-compare-wrap {
-  padding: 4px 20px 0;
+  padding: 12px 16px 14px;
   box-sizing: border-box;
   text-align: left;
 }
@@ -17026,6 +17337,8 @@ button.launch-checklist-item {
 .membership-compare-scroll {
   overflow-x: auto;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .membership-compare-table {
@@ -17181,11 +17494,13 @@ button.launch-checklist-item {
 }
 
 .membership-schedule-callout {
+  display: block;
+  padding: 12px 16px 14px;
+}
+
+.membership-schedule-callout.membership-collapse .membership-collapse__body {
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 16px 20px;
-  align-items: start;
-  padding: 18px 20px;
+  gap: 10px;
 }
 
 .membership-schedule-icons {
@@ -17233,7 +17548,7 @@ button.launch-checklist-item {
 .membership-audience-tabs {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 4px;
   align-items: center;
   padding: 12px 14px;
   border-radius: 14px;
@@ -17279,14 +17594,19 @@ button.launch-checklist-item {
 
 .membership-audience-tab {
   min-height: 44px;
-  padding: 10px 16px;
+  padding: 8px 12px;
   font-size: 0.98rem;
   font-weight: 750;
+  border: 2px solid #6b5344;
+  outline: 2px solid #6b5344;
+  outline-offset: 0;
+  box-shadow: none;
 }
 
 .membership-audience-tab.is-active {
   background: var(--grad-chip-active) !important;
-  border-color: var(--chip-active-border) !important;
+  border-color: #2e7d5a !important;
+  outline-color: #2e7d5a;
   color: var(--chip-active-text) !important;
   -webkit-text-fill-color: var(--chip-active-text) !important;
   box-shadow: 0 3px 12px rgba(47, 90, 52, 0.35);
@@ -17358,7 +17678,7 @@ button.launch-checklist-item {
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 4px;
   padding: 0;
   border: none;
   background: transparent;
@@ -18077,6 +18397,15 @@ button.launch-checklist-item {
   gap: 6px;
 }
 
+.hustle-schedule-suite__grade-me.is-letter-a {
+  border-color: rgba(46, 125, 90, 0.55);
+}
+
+.hustle-schedule-suite__grade-me.is-letter-d,
+.hustle-schedule-suite__grade-me.is-letter-f {
+  border-color: rgba(155, 47, 40, 0.45);
+}
+
 .hustle-schedule-suite__saving {
   font-size: 0.85rem;
   color: var(--text-muted, #6b635a);
@@ -18095,6 +18424,30 @@ button.launch-checklist-item {
 .hustle-schedule-suite__roundup h4 {
   margin: 0 0 6px;
   font-size: 1.05rem;
+}
+
+.hustle-schedule-suite__blueprint-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 14px;
+  margin: 0 0 6px;
+}
+
+.hustle-schedule-suite__blueprint-head h4 {
+  margin: 0;
+}
+
+.hustle-schedule-suite__task-count {
+  margin: 0;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(107, 79, 58, 0.22);
+  background: rgba(255, 255, 255, 0.78);
+  color: #5c4a38;
+  font-size: 0.88rem;
+  font-weight: 700;
 }
 
 .hustle-schedule-suite__field {
@@ -18406,6 +18759,76 @@ button.launch-checklist-item {
   margin-bottom: 12px;
 }
 
+.hustle-schedule-suite__collapse-field,
+.hustle-schedule-suite__day-notes {
+  margin: 0 0 10px;
+  border: 1px solid rgba(148, 125, 100, 0.28);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.hustle-schedule-suite__day-notes {
+  margin: 4px 0 0;
+}
+
+.hustle-schedule-suite__collapse-summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 44px;
+  padding: 8px 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.hustle-schedule-suite__collapse-summary::-webkit-details-marker,
+.hustle-schedule-suite__collapse-summary::marker {
+  display: none;
+  content: "";
+}
+
+.hustle-schedule-suite__collapse-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  text-align: left;
+}
+
+.hustle-schedule-suite__collapse-title strong {
+  font-size: 0.92rem;
+}
+
+.hustle-schedule-suite__collapse-preview {
+  font-style: normal;
+  font-weight: 550;
+  font-size: 0.8rem;
+  color: var(--text-muted, #6b635a);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: min(100%, 28rem);
+}
+
+.hustle-schedule-suite__collapse-body {
+  padding: 0 12px 12px;
+}
+
+.hustle-schedule-suite__collapse-body textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-weight: 500;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 125, 100, 0.35);
+  background: #fff;
+  color: var(--charcoal);
+  resize: vertical;
+}
+
 .hustle-schedule-suite__grade {
   display: flex;
   gap: 14px;
@@ -18641,6 +19064,14 @@ button.launch-checklist-item {
   background: rgba(255, 252, 247, 0.9);
 }
 
+.hustle-schedule-suite__create-heading {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--charcoal);
+}
+
 .hustle-schedule-suite__create label {
   display: flex;
   flex-direction: column;
@@ -18685,7 +19116,7 @@ button.launch-checklist-item {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin: 0 0 10px;
+  margin: 0 0 12px;
 }
 
 .hustle-schedule-suite__member-bubble {
@@ -18711,14 +19142,25 @@ button.launch-checklist-item {
 }
 
 .hustle-schedule-suite__saved {
-  margin-bottom: 14px;
+  margin-bottom: 16px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  border: 2px solid #2e7d5a;
+  background: rgba(46, 125, 90, 0.08);
 }
 
 .hustle-schedule-suite__saved-heading {
-  margin: 0 0 8px;
-  font-size: 0.95rem;
-  font-weight: 750;
-  color: var(--bronze, #947d64);
+  margin: 0 0 4px;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--charcoal);
+}
+
+.hustle-schedule-suite__saved-lead {
+  margin: 0 0 12px;
+  font-size: 0.92rem;
+  line-height: 1.4;
+  color: var(--text-muted, #6b635a);
 }
 
 .hustle-schedule-suite__weekly-download {
@@ -18781,11 +19223,20 @@ button.launch-checklist-item {
   background: rgba(0, 0, 0, 0.08);
 }
 
+.hustle-schedule-suite__view-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+  margin-bottom: 12px;
+}
+
 .hustle-schedule-suite__subtabs {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 12px;
+  margin-bottom: 0;
+  flex: 1 1 16rem;
 }
 
 .hustle-schedule-suite__subtab {
@@ -18855,11 +19306,27 @@ button.launch-checklist-item {
   color: var(--text-muted, #6b635a);
 }
 
-.hustle-schedule-suite__hustle-actions {
+.hustle-schedule-suite__view-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+}
+
+.hustle-schedule-suite__save-detail {
+  min-height: 44px;
+  padding: 10px 18px;
+  font-weight: 800;
+}
+
+.hustle-schedule-suite__save-detail.is-ready {
+  box-shadow: 0 0 0 3px rgba(46, 125, 90, 0.28);
+}
+
+.hustle-schedule-suite__save-hint,
+.hustle-schedule-suite__view-actions .hustle-schedule-suite__dirty {
+  flex: 1 1 100%;
+  margin: 2px 0 0;
 }
 
 .hustle-schedule-suite__focus-input {
@@ -19053,10 +19520,6 @@ button.launch-checklist-item {
   font-weight: 550;
   font-size: 0.82rem;
   color: var(--text-muted, #6b635a);
-}
-
-.hustle-schedule-suite__save {
-  margin-left: auto;
 }
 
 .hustle-schedule-suite__dirty,
@@ -20077,6 +20540,13 @@ details[open] > summary .collapse-show-hide::before {
   margin-top: 8px;
 }
 
+.user-portal-referral .invite-friend-steps {
+  margin: 12px 0 0;
+  padding-left: 1.3rem;
+  color: #5c4a38;
+  line-height: 1.45;
+}
+
 .user-portal-referral-row .flat-input {
   flex: 1 1 220px;
   min-width: 0;
@@ -20593,6 +21063,75 @@ details[open] > summary .collapse-show-hide::before {
   line-height: 1.35;
 }
 
+.membership-price-list__lead {
+  margin: 0 0 8px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.membership-price-table--compact th,
+.membership-price-table--compact td {
+  padding: 6px 8px;
+  font-size: 0.9rem;
+  vertical-align: middle;
+}
+
+.membership-price-table--compact .membership-price-detail {
+  display: none;
+}
+
+.membership-price-table--compact .glow-badge {
+  margin-left: 6px;
+  font-size: 0.7rem;
+}
+
+.membership-schedule-link {
+  color: var(--crimson);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+a.glow-badge.membership-schedule-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.membership-schedule-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.membership-schedule-options li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(92, 64, 51, 0.16);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.membership-schedule-options li svg {
+  flex-shrink: 0;
+  color: #2e7d5a;
+}
+
+.membership-credits-grid--compact .membership-credit-card p {
+  display: none;
+}
+
+.membership-schedule-callout--compact.membership-collapse .membership-collapse__body {
+  gap: 8px;
+}
+
 .membership-alacarte-cart-badge {
   margin-left: 8px;
   font-size: 0.8rem;
@@ -20842,19 +21381,28 @@ details[open] > summary .collapse-show-hide::before {
     flex-direction: column;
     grid-template-columns: none;
     gap: 12px;
+    overflow: visible;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
   }
 
   .membership-hero-left {
     order: -1;
     width: 100%;
+    max-width: 100%;
+    min-width: 0;
   }
 
   .membership-hero-media {
-    max-width: none;
+    max-width: 100%;
     width: 100%;
+    min-width: 0;
   }
 
   .membership-hero-media img {
+    width: 100%;
+    max-width: 100%;
     max-height: none;
     height: auto;
     object-fit: contain;
@@ -22136,8 +22684,8 @@ details[open] > summary .collapse-show-hide::before {
 .qa-progress-bars__toggle-title {
   font-size: 0.95rem;
   font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  text-transform: none;
   color: #7a241f;
 }
 
@@ -22155,8 +22703,8 @@ details[open] > summary .collapse-show-hide::before {
 .qa-progress-bars__title {
   font-size: 0.9375rem;
   color: #7a241f;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  text-transform: none;
+  letter-spacing: 0.02em;
   margin-bottom: 14px;
   font-weight: 800;
   padding: 10px 12px;
@@ -22546,6 +23094,14 @@ details[open] > summary .collapse-show-hide::before {
   font-size: 0.92rem;
   line-height: 1.45;
   color: var(--charcoal);
+}
+
+.user-guide-checklist--static .user-guide-checklist__item {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 125, 100, 0.2);
+  background: rgba(255, 255, 255, 0.78);
+  cursor: default;
 }
 
 .user-guide-checklist__item.is-checked .user-guide-checklist__text {
@@ -23059,8 +23615,12 @@ details[open] > summary .collapse-show-hide::before {
 .manual-perks {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr));
-  gap: 0.75rem;
+  gap: 1.5rem;
   margin-top: 0.35rem;
+}
+
+.manual-perks--stack {
+  grid-template-columns: 1fr;
 }
 
 .manual-perk {
@@ -23068,6 +23628,8 @@ details[open] > summary .collapse-show-hide::before {
   border-radius: 12px;
   border: 1px solid rgba(148, 125, 100, 0.22);
   background: rgba(255, 255, 255, 0.84);
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .manual-perk.is-highlight {
@@ -24337,6 +24899,7 @@ small {
   display: block;
   width: 100%;
   height: auto;
+  min-height: 280px;
 }
 .email-templates-admin__status {
   display: flex;
@@ -25692,7 +26255,8 @@ small {
     display: inline;
   }
 
-  .header-title-dashboard-badge {
+  .header-title-dashboard-badge,
+  .header-title-referral-badge {
     max-width: 100%;
   }
 
@@ -25987,5 +26551,237 @@ small {
   .brand-header-logo {
     height: clamp(56px, 8vw, 80px);
     max-width: min(320px, 42vw);
+  }
+
+  .content-factory__projection-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Phones + iPad portrait: stack layouts, wrap chips, keep cards on-screen. */
+@media (max-width: 1024px) {
+  html,
+  body,
+  #root {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .main-content,
+  .glass,
+  .glass-card,
+  .user-portal-card,
+  .qa-testing-portal,
+  .schedule-board,
+  .task-list-toolbar,
+  .membership-compare-scroll,
+  .static-page,
+  .login-page-shell,
+  .content-factory__item,
+  .content-factory__item-header,
+  .content-factory__item-toggle,
+  .content-factory__item-title,
+  .content-factory__item-status-cluster {
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .kids-wizard-inline,
+  .kids-kevina-inline.junior-team-hero,
+  .kids-earth-layout,
+  .seniors-hero-layout,
+  .community-layout,
+  .workshops-layout,
+  .qa-manual__status-grid,
+  .qa-manual__flows,
+  .task-card-controls,
+  .content-factory__seeded-grid,
+  .workshops-admin__layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  [style*="minmax(200px"],
+  [style*="minmax(220px"],
+  [style*="minmax(240px"],
+  [style*="minmax(260px"],
+  [style*="minmax(280px"],
+  [style*="minmax(300px"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  .flat-label,
+  .glow-chip-btn,
+  .glow-badge,
+  .task-status-chip,
+  .qa-filter-chip,
+  .qa-tester-bubble,
+  .admin-cross-link,
+  .content-factory__status-badge,
+  .task-list-sprint__rolled,
+  .status-bubble__rolled,
+  .hustle-filter-badge {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: break-word;
+    box-sizing: border-box;
+  }
+
+  .task-list-toolbar__filter-group,
+  .task-list-toolbar__fields .form-group,
+  .hustle-filter-bar__search {
+    min-width: 0 !important;
+    flex: 1 1 100%;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .task-list-toolbar__chips,
+  .qa-testing-portal__top-filters,
+  .qa-categories-panel__bubbles,
+  .memberships-page__bubbles,
+  .community-bubbles {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    gap: 8px;
+  }
+
+  table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .membership-compare-table {
+    display: table;
+    max-width: none;
+  }
+}
+
+/* Phone: tighter wrapping so long IDs don't clip. */
+@media (max-width: 720px) {
+  h1,
+  h2,
+  h3,
+  h4,
+  p,
+  li,
+  .content-factory__item-name,
+  .content-factory__item-due,
+  .content-factory__item-assignee {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .content-factory__projection-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .home-audience__bubbles,
+  .home-match-family--hero .home-match-family__grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Join / membership: portrait phone — keep the community graphic and plan cards
+   inside the screen instead of clipping a desktop-width intrinsic image. */
+@media (max-width: 720px) {
+  .join-page-combined {
+    gap: 16px;
+  }
+
+  .join-membership-heading {
+    font-size: 1.25rem;
+    line-height: 1.25;
+  }
+
+  .join-membership-lead {
+    font-size: 0.98rem;
+    line-height: 1.4;
+  }
+
+  .membership-page,
+  .membership-hero,
+  .membership-hero-left,
+  .membership-hero-media,
+  .membership-hero-copy,
+  .membership-savings-card,
+  .membership-credit-note,
+  .membership-audience-tabs,
+  .membership-plans-toolbar,
+  .membership-tier-grid,
+  .membership-compare-wrap,
+  .membership-compare-scroll {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .membership-hero-media img {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  .membership-hero-copy {
+    padding: 16px 14px;
+  }
+
+  .membership-hero-actions,
+  .join-cta-row--footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .membership-hero-actions .btn,
+  .join-cta-row--footer .btn {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+    box-sizing: border-box;
+  }
+
+  .membership-audience-tabs,
+  .membership-plan-bubbles {
+    justify-content: flex-start;
+  }
+
+  .membership-audience-tab,
+  .membership-plan-bubble {
+    flex: 1 1 auto;
+    min-height: 44px;
+  }
+
+  .membership-tier-card {
+    min-height: 0;
+    padding: 14px 12px;
+  }
+
+  .membership-billing-toggle--toolbar,
+  .membership-yearly-check {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .membership-signup-card {
+    padding: 16px 14px;
+  }
+
+  .membership-signup-actions,
+  .membership-signup-plan-buttons {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .membership-signup-actions .btn,
+  .membership-signup-plan-buttons .btn {
+    width: 100%;
+    min-height: 44px;
   }
 }
