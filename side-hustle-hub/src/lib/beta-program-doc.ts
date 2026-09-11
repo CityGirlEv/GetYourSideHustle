@@ -51,7 +51,7 @@ export const BETA_PROGRAM_SECTIONS: BetaProgramSection[] = [
       {
         type: "list",
         items: [
-          "Applicants who select Beta Tester at registration and accept the current Beta Tester NDA (GYSH-BETA-NDA-v1.0).",
+          "Applicants who select Beta Tester at registration and accept the current Beta Tester NDA (GYSH-BETA-NDA-v1.1).",
           "QA partners and staff assigned cases in Testing Portal.",
           "Admin activation is required before a public Beta Tester can sign in. The Beta Tester role alone does not grant Admin Studio.",
         ],

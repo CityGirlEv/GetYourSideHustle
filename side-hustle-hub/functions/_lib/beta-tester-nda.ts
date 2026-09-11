@@ -1,6 +1,6 @@
 /** Server-side Beta Tester NDA acceptance checks (keep in sync with src/lib/beta-tester-nda.ts). */
 
-export const BETA_NDA_VERSION = "GYSH-BETA-NDA-v1.0";
+export const BETA_NDA_VERSION = "GYSH-BETA-NDA-v1.1";
 
 export type BetaNdaAcceptanceInput = {
   agreed?: unknown;

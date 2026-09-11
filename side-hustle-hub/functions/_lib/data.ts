@@ -6,6 +6,7 @@ import {
   canonicalizeEmail,
   error,
   getUserByEmail,
+  getUserById,
   hashPassword,
   json,
   MIN_PASSWORD_LENGTH,
@@ -29,6 +30,7 @@ import {
   qaTesterIdForIdentity,
   serializeRoles,
   parseRoles,
+  type GyshRole,
 } from "./roles";
 import {
   canonicalizePartnerLabel,
@@ -38,6 +40,24 @@ import {
 } from "./assignment";
 import { logTaskAssignmentChange, logTestAssignmentChange } from "./daily-digest";
 import { decodeBase64ToBytes, scanTestEvidence } from "./test-evidence";
+import {
+  gyshMembershipClearBlockReason,
+  gyshUserDeleteBlockReason,
+  gyshUserDeletedEmailTombstone,
+  isGyshUserDeletedEmail,
+  isGyshUserDeletedStatus,
+} from "../../src/lib/gysh-user-delete";
+import {
+  applyBulkRolesChange,
+  gyshBulkDeleteEligibleIds,
+  gyshBulkUpdateBlockReason,
+  normalizeBulkUserIds,
+  parseBulkRoles,
+  parseBulkRolesMode,
+  parseBulkUserStatus,
+  type GyshBulkRolesMode,
+} from "../../src/lib/gysh-user-bulk";
+import { ensureUsersStatusAllowsDeleted } from "./ensure-users-status-deleted";
 import { defaultsForNewTest } from "./new-test-defaults";
 import {
   closedSprintBlocksActor,
@@ -379,6 +399,8 @@ type DbUserWithLogin = DbUser & { last_login_at?: string | null };
 
 const LAST_LOGIN_SUBQUERY = `(SELECT MAX(a.at) FROM audit_events a WHERE a.email = users.email AND a.action = 'login_ok') AS last_login_at`;
 
+const LIST_USERS_NOT_DELETED = `LOWER(COALESCE(status, '')) != 'deleted'`;
+
 export async function listUsers(env: Env): Promise<Response> {
   await ensurePartnerAdmins(env);
   try {
@@ -386,23 +408,35 @@ export async function listUsers(env: Env): Promise<Response> {
       `SELECT id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt,
               membership_tier, audience,
               ${LAST_LOGIN_SUBQUERY}
-       FROM users ORDER BY joined_at DESC, name ASC`,
+       FROM users
+       WHERE ${LIST_USERS_NOT_DELETED}
+       ORDER BY joined_at DESC, name ASC`,
     ).all<DbUserWithLogin>();
-    return json({ users: (results ?? []).map(publicUser) });
+    return json({
+      users: (results ?? []).filter((u) => !isGyshUserDeletedEmail(u.email)).map(publicUser),
+    });
   } catch {
     try {
       const { results } = await env.DB.prepare(
         `SELECT id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt,
                 ${LAST_LOGIN_SUBQUERY}
-         FROM users ORDER BY joined_at DESC, name ASC`,
+         FROM users
+         WHERE ${LIST_USERS_NOT_DELETED}
+         ORDER BY joined_at DESC, name ASC`,
       ).all<DbUserWithLogin>();
-      return json({ users: (results ?? []).map(publicUser) });
+      return json({
+        users: (results ?? []).filter((u) => !isGyshUserDeletedEmail(u.email)).map(publicUser),
+      });
     } catch {
       const { results } = await env.DB.prepare(
         `SELECT id, name, email, role, roles, status, joined_at, notes, password_hash, password_salt
-         FROM users ORDER BY joined_at DESC, name ASC`,
+         FROM users
+         WHERE ${LIST_USERS_NOT_DELETED}
+         ORDER BY joined_at DESC, name ASC`,
       ).all<DbUser>();
-      return json({ users: (results ?? []).map(publicUser) });
+      return json({
+        users: (results ?? []).filter((u) => !isGyshUserDeletedEmail(u.email)).map(publicUser),
+      });
     }
   }
 }
@@ -570,13 +604,303 @@ export async function upsertUser(env: Env, request: Request, actor: DbUser): Pro
   });
 }
 
-export async function deleteUser(env: Env, id: string): Promise<Response> {
-  if (id === "u-tina" || id === "u-ev") {
-    return error("Cannot delete co-founder admin accounts.", 403);
+export async function softDeleteUserRecord(
+  env: Env,
+  existing: DbUser,
+  actor: DbUser,
+): Promise<{ ok: true; alreadyDeleted?: boolean } | { ok: false; message: string }> {
+  if (isGyshUserDeletedStatus(existing.status) || isGyshUserDeletedEmail(existing.email)) {
+    return { ok: true, alreadyDeleted: true };
   }
-  await env.DB.prepare(`DELETE FROM sessions WHERE user_id = ?`).bind(id).run();
-  await env.DB.prepare(`DELETE FROM users WHERE id = ?`).bind(id).run();
-  return json({ ok: true });
+
+  await ensureUsersStatusAllowsDeleted(env.DB);
+
+  const targetId = existing.id;
+  const originalEmail = canonicalizeEmail(existing.email);
+  const tombstone = gyshUserDeletedEmailTombstone(targetId);
+  const now = new Date().toISOString();
+  const stamp = `soft-deleted ${now} by ${actor.email}; was ${originalEmail}`;
+  const prev = String(existing.notes || "").trim();
+  const notes = `${prev}${prev ? " · " : ""}${stamp}`.slice(0, 1900);
+
+  await env.DB.prepare(`DELETE FROM sessions WHERE user_id = ?`).bind(targetId).run();
+  for (const sql of [`DELETE FROM password_reset_tokens WHERE user_id = ?`]) {
+    try {
+      await env.DB.prepare(sql).bind(targetId).run();
+    } catch {
+      /* older schema */
+    }
+  }
+
+  try {
+    await env.DB.prepare(
+      `UPDATE users
+       SET status = 'deleted',
+           email = ?,
+           password_hash = NULL,
+           password_salt = NULL,
+           notes = ?,
+           updated_at = ?,
+           deactivated_at = ?,
+           deactivated_by = ?
+       WHERE id = ?`,
+    )
+      .bind(tombstone, notes, now, now, actor.email, targetId)
+      .run();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (/check/i.test(msg) || /constraint/i.test(msg)) {
+      await env.DB.prepare(
+        `UPDATE users
+         SET status = 'disabled',
+             email = ?,
+             password_hash = NULL,
+             password_salt = NULL,
+             notes = ?,
+             updated_at = ?
+         WHERE id = ?`,
+      )
+        .bind(tombstone, notes, now, targetId)
+        .run();
+    } else {
+      return { ok: false, message: `Failed to delete user: ${msg}` };
+    }
+  }
+
+  await appendAudit(
+    env.DB,
+    "user_deleted",
+    originalEmail,
+    `soft-deleted ${existing.name} by ${actor.email}; email freed for re-signup`,
+  );
+  return { ok: true };
+}
+
+export async function deleteUser(env: Env, id: string, actor: DbUser): Promise<Response> {
+  const targetId = String(id || "").trim();
+  const blocked = gyshUserDeleteBlockReason({ targetId, actorId: actor.id });
+  if (blocked) return error(blocked, 403);
+
+  const existing = await getUserById(env.DB, targetId);
+  if (!existing) return error("User not found.", 404);
+
+  const result = await softDeleteUserRecord(env, existing, actor);
+  if (!result.ok) return error(result.message, 500);
+  return json({ ok: true, alreadyDeleted: result.alreadyDeleted === true });
+}
+
+export async function bulkDeleteUsers(env: Env, request: Request, actor: DbUser): Promise<Response> {
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return error("Invalid JSON body.");
+  }
+
+  const ids = normalizeBulkUserIds(body.ids);
+  if (ids.length === 0) return error("Select at least one user.", 400);
+
+  const { eligible, skipped } = gyshBulkDeleteEligibleIds({ ids, actorId: actor.id });
+  let deleted = 0;
+  const failures: { id: string; reason: string }[] = [...skipped];
+
+  for (const targetId of eligible) {
+    const existing = await getUserById(env.DB, targetId);
+    if (!existing) {
+      failures.push({ id: targetId, reason: "User not found." });
+      continue;
+    }
+    const result = await softDeleteUserRecord(env, existing, actor);
+    if (!result.ok) {
+      failures.push({ id: targetId, reason: result.message });
+      continue;
+    }
+    deleted += 1;
+  }
+
+  return json({
+    ok: failures.length === 0,
+    deleted,
+    skipped: failures.length,
+    failures,
+  });
+}
+
+export async function bulkUpdateUsers(env: Env, request: Request, actor: DbUser): Promise<Response> {
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return error("Invalid JSON body.");
+  }
+
+  const blocked = gyshBulkUpdateBlockReason({
+    ids: body.ids,
+    status: body.status,
+    roles: body.roles,
+    rolesMode: body.rolesMode,
+  });
+  if (blocked) return error(blocked, 400);
+
+  const ids = normalizeBulkUserIds(body.ids);
+  const nextStatus = body.status != null && String(body.status).trim() !== ""
+    ? parseBulkUserStatus(body.status)
+    : null;
+  const rolesInput = parseBulkRoles(body.roles);
+  const rolesMode: GyshBulkRolesMode = parseBulkRolesMode(body.rolesMode);
+  const hasRoles = rolesInput.length > 0;
+  const now = new Date().toISOString();
+
+  let updated = 0;
+  const failures: { id: string; reason: string }[] = [];
+
+  for (const targetId of ids) {
+    const existing = await getUserById(env.DB, targetId);
+    if (!existing) {
+      failures.push({ id: targetId, reason: "User not found." });
+      continue;
+    }
+    if (isGyshUserDeletedStatus(existing.status) || isGyshUserDeletedEmail(existing.email)) {
+      failures.push({ id: targetId, reason: "User is deleted." });
+      continue;
+    }
+
+    let rolesJson: string | null = null;
+    let primary: string | null = null;
+    if (hasRoles) {
+      const current = userRoles(existing) as GyshRole[];
+      const nextRoles = applyBulkRolesChange(current, rolesInput, rolesMode);
+      if (!nextRoles) {
+        failures.push({
+          id: targetId,
+          reason: "Each user must keep at least one role.",
+        });
+        continue;
+      }
+      primary = primaryRole(nextRoles);
+      rolesJson = serializeRoles(nextRoles);
+    }
+
+    try {
+      if (nextStatus && rolesJson && primary) {
+        await env.DB.prepare(
+          `UPDATE users SET status = ?, role = ?, roles = ?, updated_at = ? WHERE id = ?`,
+        )
+          .bind(nextStatus, primary, rolesJson, now, targetId)
+          .run();
+      } else if (nextStatus) {
+        await env.DB.prepare(`UPDATE users SET status = ?, updated_at = ? WHERE id = ?`)
+          .bind(nextStatus, now, targetId)
+          .run();
+      } else if (rolesJson && primary) {
+        await env.DB.prepare(
+          `UPDATE users SET role = ?, roles = ?, updated_at = ? WHERE id = ?`,
+        )
+          .bind(primary, rolesJson, now, targetId)
+          .run();
+      }
+
+      if (nextStatus === "active" && existing.status !== "active") {
+        try {
+          await env.DB.prepare(
+            `UPDATE users SET activated_at = ?, activated_by = ? WHERE id = ?`,
+          )
+            .bind(now, actor.email, targetId)
+            .run();
+        } catch {
+          /* optional columns */
+        }
+      }
+      if (nextStatus === "disabled" && existing.status !== "disabled") {
+        try {
+          await env.DB.prepare(
+            `UPDATE users SET deactivated_at = ?, deactivated_by = ? WHERE id = ?`,
+          )
+            .bind(now, actor.email, targetId)
+            .run();
+        } catch {
+          /* optional columns */
+        }
+      }
+
+      const detailParts = [
+        nextStatus ? `status→${nextStatus}` : "",
+        hasRoles ? `roles ${rolesMode} ${rolesInput.join("+")}` : "",
+      ].filter(Boolean);
+      await appendAudit(
+        env.DB,
+        "user_bulk_updated",
+        existing.email,
+        `bulk update by ${actor.email}: ${detailParts.join("; ")}`,
+      );
+      updated += 1;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      failures.push({ id: targetId, reason: msg });
+    }
+  }
+
+  return json({
+    ok: failures.length === 0,
+    updated,
+    skipped: failures.length,
+    failures,
+  });
+}
+
+export async function clearUserMembership(
+  env: Env,
+  id: string,
+  actor: DbUser,
+): Promise<Response> {
+  const targetId = String(id || "").trim();
+  const existing = await getUserById(env.DB, targetId);
+  if (!existing) return error("User not found.", 404);
+
+  const blocked = gyshMembershipClearBlockReason({
+    targetId,
+    currentTier: existing.membership_tier,
+  });
+  if (blocked) return error(blocked, 400);
+
+  const previousTier = String(existing.membership_tier || "free").toLowerCase();
+  const stamp = `Membership cleared to free by ${actor.email} ${new Date().toISOString()} (was ${previousTier})`;
+  const prev = String(existing.notes || "");
+  const notes = `${prev}${prev ? " · " : ""}${stamp}`.slice(0, 1900);
+  const now = new Date().toISOString();
+
+  try {
+    await env.DB.prepare(
+      `UPDATE users SET membership_tier = ?, notes = ?, updated_at = ? WHERE id = ?`,
+    )
+      .bind("free", notes, now, targetId)
+      .run();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.toLowerCase().includes("no such column") && msg.toLowerCase().includes("membership")) {
+      return error("Membership columns are not available on this database yet.", 503);
+    }
+    throw e;
+  }
+
+  await appendAudit(
+    env.DB,
+    "membership_cleared",
+    existing.email,
+    `${previousTier} → free by ${actor.email}`,
+  );
+
+  const updated = await getUserById(env.DB, targetId);
+  return json({
+    ok: true,
+    user: publicUser(
+      updated ?? {
+        ...existing,
+        membership_tier: "free",
+        notes,
+      },
+    ),
+  });
 }
 
 export async function listTasks(env: Env): Promise<Response> {
@@ -1402,6 +1726,7 @@ let testCaseSchemaReady = false;
 /** Ensure test_case_status columns exist (handles Pages env / partial migration drift). */
 async function ensureTestCaseStatusColumns(env: Env): Promise<void> {
   if (testCaseSchemaReady) return;
+  await withD1Retry(async () => {
   await env.DB.prepare(
     `CREATE TABLE IF NOT EXISTS test_case_status (
       case_id TEXT PRIMARY KEY,
@@ -1509,6 +1834,7 @@ async function ensureTestCaseStatusColumns(env: Env): Promise<void> {
     /* index may already exist */
   }
   testCaseSchemaReady = true;
+  });
 }
 
 function parseCheckedSteps(raw: unknown, stepCount: number): boolean[] {
@@ -3312,34 +3638,55 @@ export async function listAudit(env: Env, request?: Request): Promise<Response> 
   const rawLimit = Number(url?.searchParams.get("limit") || 500);
   const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(Math.floor(rawLimit), 1), 2000) : 500;
 
+  let events: Array<{ at: string; action: string; email: string; detail: string }> = [];
   if (emailFilter) {
     const { results } = await env.DB.prepare(
       `SELECT at, action, email, detail FROM audit_events WHERE email = ? ORDER BY id DESC LIMIT ?`,
     )
       .bind(emailFilter, limit)
       .all<{ at: string; action: string; email: string; detail: string }>();
-    return json({ events: results ?? [], email: emailFilter, limit });
+    events = results ?? [];
+  } else {
+    const { results } = await env.DB.prepare(
+      `SELECT at, action, email, detail FROM audit_events ORDER BY id DESC LIMIT ?`,
+    )
+      .bind(limit)
+      .all<{ at: string; action: string; email: string; detail: string }>();
+    events = results ?? [];
   }
 
-  const { results } = await env.DB.prepare(
-    `SELECT at, action, email, detail FROM audit_events ORDER BY id DESC LIMIT ?`,
-  )
-    .bind(limit)
-    .all<{ at: string; action: string; email: string; detail: string }>();
-  return json({ events: results ?? [], limit });
+  try {
+    const { listGyshPaymentsForAudit } = await import("./stripe-payments");
+    const {
+      auditEventsFromPayments,
+      mergeAuditEventsWithPurchases,
+    } = await import("../../src/lib/credit-pack-purchase");
+    const payments = await listGyshPaymentsForAudit(env, {
+      email: emailFilter || undefined,
+      limit,
+    });
+    events = mergeAuditEventsWithPurchases(events, auditEventsFromPayments(payments));
+  } catch {
+    /* payments ledger optional */
+  }
+
+  return json({
+    events: events.slice(0, limit),
+    email: emailFilter || undefined,
+    limit,
+  });
 }
 
 export async function health(env: Env): Promise<Response> {
   if (!env?.DB) return error("Database unavailable.", 503);
   try {
     const row = await withD1Retry(() =>
-      env.DB.prepare(`SELECT COUNT(*) AS c FROM users`).first<{ c: number }>(),
+      env.DB.prepare(`SELECT 1 AS ok`).first<{ ok: number }>(),
     );
     const { emailConfigured } = await import("./email");
     return json({
-      ok: true,
+      ok: row?.ok === 1,
       db: "d1",
-      users: row?.c ?? 0,
       email: emailConfigured(env) ? "configured" : "missing",
     });
   } catch (e) {
@@ -4112,6 +4459,7 @@ const PROGRESS_KINDS = new Set([
   "junior_team",
   "senior_team",
   "hustle_schedule",
+  "wizard_comp_guides",
 ]);
 
 export async function getMemberProgress(env: Env, user: DbUser, kind: string): Promise<Response> {

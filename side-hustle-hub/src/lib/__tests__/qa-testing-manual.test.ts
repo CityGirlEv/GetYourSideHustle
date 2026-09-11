@@ -12,6 +12,12 @@ describe("QA testing manual", () => {
 
     const quick = QA_TESTING_MANUAL.quickStart.join(" ");
     expect(quick).toMatch(/All sprints/i);
+    expect(quick).toMatch(/Sprint 10/i);
+    expect(quick).toMatch(/date/i);
+    expect(quick).toMatch(/Assignees is expanded/i);
+    expect(quick).toMatch(/Sprint and Other start collapsed/i);
+    expect(quick).toMatch(/Test Suites/i);
+    expect(quick).toMatch(/All Test Cases/i);
     expect(quick).toMatch(/QA Testors|your name/i);
 
     const board = QA_TESTING_MANUAL.boardVsPortal.join(" ");
@@ -44,8 +50,20 @@ describe("Admin User Guide — testing reference", () => {
     ].join(" ");
     expect(text).toMatch(/QA role/i);
     expect(text).toMatch(/All sprints/i);
+    expect(text).toMatch(/Assignees \(expanded\)/i);
+    expect(text).toMatch(/Other \(collapsed\)/i);
+    expect(text).toMatch(/date range/i);
     expect(text).toMatch(/Testing Manual/i);
     expect(text).toMatch(/Fixed\/Lighthouse|Fixed\/Foresight|Rolled Over/i);
+    expect(text).toMatch(/status buttons at the bottom/i);
+    expect(text).toMatch(/not a dropdown/i);
+  });
+
+  it("tells testers to change status with card buttons, not a dropdown", () => {
+    const main = QA_TESTING_MANUAL.flows.find((f) => f.id === "main");
+    const outcome = main?.steps.find((s) => s.title === "Choose an outcome");
+    expect(outcome?.detail).toMatch(/status buttons at the bottom/i);
+    expect(outcome?.detail).toMatch(/not a dropdown/i);
   });
 
   it("documents QA role → assignee lists in Users Area", () => {

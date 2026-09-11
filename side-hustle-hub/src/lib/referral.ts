@@ -32,3 +32,10 @@ export function buildReferralUrl(code?: string): string {
   const origin = window.location.origin.replace(/\/$/, "");
   return `${origin}/?ref=${encodeURIComponent(ref)}`;
 }
+
+/** My Dashboard → Referral tab. */
+export const REFERRAL_DASHBOARD_HREF = "/my-dashboard#referral";
+
+export function isReferralDashboardHash(hash: string): boolean {
+  return String(hash || "").replace(/^#/, "").toLowerCase() === "referral";
+}

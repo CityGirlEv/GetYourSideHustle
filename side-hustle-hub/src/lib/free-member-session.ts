@@ -51,22 +51,23 @@ export function clearFreeMemberSession(): void {
   getLocalStore().removeItem(FREE_MEMBER_SESSION_KEY);
 }
 
-/** Blueprint unlock = portal login OR free member session OR kids/junior team membership. */
+/**
+ * Ranked wizard matches require a signed-in GYSH account (Free or higher).
+ * Guests, localStorage “free session” markers, and Kids/Teens team join do not unlock results.
+ */
 export function hasBlueprintAccess(options: {
   isLoggedIn?: boolean;
   ageGroup: BlueprintAgeGroup;
+  /** @deprecated Lightweight Kids/Teens team join does not unlock wizard results. */
   hasTeamMembership?: boolean;
   /** Profile Switcher → Unlogged in User: force locked Blueprint preview. */
   previewAsGuest?: boolean;
 }): boolean {
   if (options.previewAsGuest) return false;
-  if (options.isLoggedIn) return true;
-  if (hasFreeMemberSession()) return true;
-  if (
-    (options.ageGroup === "kids" || options.ageGroup === "junior") &&
-    options.hasTeamMembership
-  ) {
-    return true;
-  }
-  return false;
+  return Boolean(options.isLoggedIn);
+}
+
+/** Guests see zero ranked cards. Free (or higher) members see the full ranked list. */
+export function visibleBlueprintMatches<T>(matches: T[], unlocked: boolean): T[] {
+  return unlocked ? matches : [];
 }

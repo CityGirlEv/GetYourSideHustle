@@ -12,6 +12,7 @@ import {
   formatUsdAmount,
   type ComplimentaryWorkItem,
 } from './gearSalesPlan';
+import { GEAR_SALES_SPLIT_NOTE } from './gearSalesSplit';
 
 export const HOSTING_AGREEMENT_PATH = '/admin/plan';
 export const HOSTING_AGREEMENT_DOM_ID = 'ip-hosting-agreement';
@@ -22,6 +23,9 @@ export const HOST_STUDIO = "Muntie Ev's AI Studio";
 export const HOST_ROLE = 'Host / Technical Execution Partner';
 export const HOSTED_STOREFRONT = 'nonnegotiation.com';
 export const ORDER_OPS_SITE = 'SnatchVault.com';
+export const ORDER_OPS_STORE_URL = 'https://snatchvault.com/collections/my-plan-gear';
+export const ORDER_OPS_MENU = 'Non-Negotiable';
+export const ORDER_OPS_SUBMENUS = 'Tees, Hoodies, Hats';
 export const BRAND_NAME = 'MY PLAN, NOT MY MOOD';
 
 export const HOSTING_TERM_LABEL = 'Phase 1 (Aug 24 – Sep 27, 2026) plus the 90-day data window';
@@ -61,12 +65,12 @@ export const HOSTING_CLAUSES: HostingClause[] = [
   {
     id: 'purpose',
     heading: '1. Purpose',
-    body: `This agreement lets ${HOST_NAME} host ${CLIENT_NAME}’s first gear drop — tees, hoodie, and hat — on ${HOST_NAME}’s Phase 1 storefront (${HOSTED_STOREFRONT}) while ${CLIENT_NAME} keeps the brand, artwork, and merchandise. It covers Phase 1 only. Any later revenue share, Shopify collection link, or paid hosting is a separate written addendum.`,
+    body: `This agreement lets ${HOST_NAME} host ${CLIENT_NAME}’s first gear drop — tees, hoodie, and hat — on SnatchVault (${ORDER_OPS_STORE_URL}) while ${CLIENT_NAME} keeps the brand, artwork, and merchandise. Shoppers open ${ORDER_OPS_MENU} on the SnatchVault home page, then ${ORDER_OPS_SUBMENUS}. The brand site (${HOSTED_STOREFRONT}) still presents the drop. It covers Phase 1 only. Gear sales split 70/30 as written here. A change to that split is a separate written addendum.`,
   },
   {
     id: 'hosted-property',
     heading: '2. What is hosted',
-    body: `Shop Gear catalog pages, product mockups, checkout for Angela’s drop, and the launch pages on ${HOSTED_STOREFRONT}. Order confirmation and fulfillment mail during Phase 1 go through ${ORDER_OPS_SITE} from Angela’s domain. The Host operates the storefront for Phase 1; Angela owns the goods.`,
+    body: `Orders and checkout for Angela’s drop are hosted on SnatchVault at ${ORDER_OPS_STORE_URL} (SnatchVault’s domain, not Angela’s). The SnatchVault home menu is ${ORDER_OPS_MENU}, with submenus for ${ORDER_OPS_SUBMENUS}. Product mockups and launch pages also live on ${HOSTED_STOREFRONT}. The Host operates the storefront for Phase 1; Angela owns the goods.`,
   },
   {
     id: 'term',
@@ -86,12 +90,12 @@ export const HOSTING_CLAUSES: HostingClause[] = [
   {
     id: 'fees',
     heading: '6. Fees',
-    body: `Phase 1 hosting, the brand logo, and the apparel mockup set are complimentary — charged $0 — and are not part of the $10,000 sprint budget. Each line shows the retail price if the Host were selling that work separately. The $10,000 still covers the five paid sprints only.`,
+    body: `The brand logo and apparel mockup set are complimentary — charged $0 — and are not part of the $10,000 sprint budget. Phase 1 hosting is not a separate invoice: Evelyn’s 30% of gear sales covers hosting, processing sales, administrative fees, and application fees. Each complimentary line shows the retail price if the Host were selling that work separately. The $10,000 still covers the five paid sprints only.`,
   },
   {
     id: 'merch-orders',
     heading: '7. Merchandise and orders',
-    body: `Money from Angela’s shirts is Angela’s. Phase 1 does not assign the Host a merch revenue share. Returns, reprints, and chargebacks sit with the Brand Owner. The Host may pause a listing that breaks the site, law, or the brand line.`,
+    body: `${GEAR_SALES_SPLIT_NOTE} Returns, reprints, and chargebacks sit with the Brand Owner. The Host may pause a listing that breaks the site, law, or the brand line.`,
   },
   {
     id: 'ip',
@@ -101,7 +105,7 @@ export const HOSTING_CLAUSES: HostingClause[] = [
   {
     id: 'data',
     heading: '9. Data',
-    body: `The storefront stays de-identified at the scenario layer (year of birth and ZIP3 only). Scenario data decays after 90 days. Order records needed for fulfillment live with the shop / ${ORDER_OPS_SITE} and follow that store’s rules, not this site’s 90-day scenario window.`,
+    body: `The storefront stays de-identified at the scenario layer (year of birth and ZIP3 only). Scenario data decays after 90 days. Order records needed for fulfillment live with the shop / ${ORDER_OPS_STORE_URL} and follow that store’s rules, not this site’s 90-day scenario window.`,
   },
   {
     id: 'ending',
@@ -111,7 +115,7 @@ export const HOSTING_CLAUSES: HostingClause[] = [
   {
     id: 'acceptance',
     heading: '11. Acceptance',
-    body: `This is the working Phase 1 hosting agreement on the Implementation Plan. Angela reviews it (task t-34). Evelyn keeps it current (task t-33). Signing or written “agreed” in the kickoff notes is enough to run Phase 1. Outside counsel can replace this if the parties later add paid hosting or a revenue share.`,
+    body: `This is the working Phase 1 hosting agreement on the Implementation Plan. Angela reviews it (task t-34). Evelyn keeps it current (task t-33). Signing or written “agreed” in the kickoff notes is enough to run Phase 1. Outside counsel can replace this if the parties later change the 70/30 sales split or paid hosting.`,
   },
 ];
 
@@ -136,6 +140,8 @@ export function hostingAgreementSearchBlob(): string {
     BRAND_NAME,
     HOSTED_STOREFRONT,
     ORDER_OPS_SITE,
+    ORDER_OPS_STORE_URL,
+    GEAR_SALES_SPLIT_NOTE,
     ...HOSTING_CLAUSES.map((clause) => `${clause.heading} ${clause.body}`),
     ...hostingFeeSchedule().map((item) => `${item.name} ${item.retailAmount}`),
   ]
@@ -266,7 +272,7 @@ export function buildHostingAgreementPlanHtml(): string {
   return `<div class="overview-box" id="doc-hosting-agreement">
     <div class="kicker">Hosting Agreement</div>
     <h2 class="plain">${escapeHtml(HOSTING_AGREEMENT_TITLE)}</h2>
-    <p class="lede">${HOST_NAME} (${HOST_STUDIO}) hosts ${CLIENT_NAME}’s shirts on ${HOSTED_STOREFRONT}. Logo, mockups, and Phase 1 hosting are complimentary. Retail if sold: ${formatUsdAmount(hostingRetailTotal())}. Charged: $0. The $10,000 sprint budget does not include these lines.</p>
+    <p class="lede">${HOST_NAME} (${HOST_STUDIO}) hosts ${CLIENT_NAME}’s shirts on SnatchVault (${ORDER_OPS_STORE_URL}). Home menu: ${ORDER_OPS_MENU}; submenus: ${ORDER_OPS_SUBMENUS}. ${GEAR_SALES_SPLIT_NOTE} Logo and mockups are complimentary. Retail if sold: ${formatUsdAmount(hostingRetailTotal())}. Charged: $0. The $10,000 sprint budget does not include these lines.</p>
     <ul class="deliverable-list">${fees}</ul>
     ${clauses}
   </div>`;

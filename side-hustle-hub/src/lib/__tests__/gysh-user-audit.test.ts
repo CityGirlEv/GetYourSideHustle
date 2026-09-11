@@ -33,6 +33,9 @@ describe("gysh-user-audit", () => {
   it("labels common audit actions", () => {
     expect(userAuditActionLabel("login_ok")).toBe("Signed in");
     expect(userAuditActionLabel("login_failed")).toBe("Sign-in failed");
+    expect(userAuditActionLabel("user_deleted")).toBe("Account deleted");
+    expect(userAuditActionLabel("purchase_credit_pack")).toBe("Kid Credit pack purchased");
+    expect(userAuditActionLabel("credits_granted")).toBe("Kid Credits granted");
     expect(userAuditActionLabel("custom_event")).toBe("custom event");
   });
 

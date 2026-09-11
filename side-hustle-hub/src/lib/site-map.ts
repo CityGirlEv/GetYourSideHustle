@@ -81,6 +81,12 @@ function buildPublicMap(): SiteMapNode {
     blurb: "Family start · hustle catalog · Match Wizard night",
     children: [
       {
+        id: "nav-guides",
+        label: "Side Hustle Guides",
+        kind: "menu",
+        children: buildGuidesMenuChildren(),
+      },
+      {
         id: "nav-match",
         label: "GYSH Match Wizard",
         kind: "menu",
@@ -134,34 +140,38 @@ function buildPublicMap(): SiteMapNode {
         })),
       },
       {
-        id: "nav-guides",
-        label: "Guides",
+        id: "nav-community",
+        label: "Community",
         kind: "menu",
-        blurb: "Dropdown menu",
-        children: buildGuidesMenuChildren(),
+        children: [
+          { id: "nav-community-blog", label: "Blog", kind: "submenu" },
+          { id: "nav-workshops", label: "Workshops", kind: "submenu" },
+          { id: "nav-newsletter", label: "Newsletter", kind: "submenu", blurb: "Members only · Weekly Friday issue" },
+          { id: "nav-community-gear", label: "GEAR", kind: "submenu", blurb: "GYSH merch shop" },
+        ],
       },
-      { id: "nav-workshops", label: "Workshops", kind: "menu" },
-      { id: "nav-community", label: "Community", kind: "menu" },
-      { id: "nav-newsletter", label: "Newsletter", kind: "menu", blurb: "Members only · Weekly Friday issue" },
+      { id: "nav-memberships", label: "Memberships", kind: "menu", blurb: "Free → Elite plans" },
+      { id: "nav-gear", label: "Gear", kind: "menu", blurb: "GYSH merch shop" },
       {
         id: "nav-join",
-        label: "Join",
+        label: "Join Free",
         kind: "menu",
-        blurb: "Membership Free → Elite",
+        blurb: "Free account signup",
         children: [
           { id: "join-plans", label: "Membership plans", kind: "submenu" },
           { id: "join-signup", label: "Membership Sign-up", kind: "submenu" },
-          { id: "join-signin", label: "Sign in", kind: "submenu" },
+          { id: "join-signin", label: "Log in", kind: "submenu" },
         ],
       },
+      { id: "nav-about", label: "About", kind: "menu" },
+      { id: "nav-contact", label: "Contact Us", kind: "menu" },
       {
         id: "nav-meta",
-        label: "About & Contact",
+        label: "Account & policies",
         kind: "menu",
-        blurb: "Secondary header",
+        blurb: "Member links and policies",
         children: [
-          { id: "nav-about", label: "About", kind: "submenu" },
-          { id: "nav-contact", label: "Contact Us", kind: "submenu" },
+          { id: "nav-dashboard", label: "My Dashboard", kind: "submenu", blurb: "Logged-in members" },
           { id: "nav-privacy", label: "Privacy Policy", kind: "submenu" },
           { id: "nav-beta-nda", label: "Beta Tester NDA", kind: "submenu" },
           { id: "nav-beta-credits", label: "Beta Tester Credit Guide", kind: "submenu" },
@@ -200,13 +210,15 @@ export type SiteMapHref =
       tab?: "stories" | "wizard" | "jobs" | "piggy" | "guides" | "join";
     }
   | { kind: "seniors"; tab?: "match" | "opportunities" | "guides" | "join" }
-  | { kind: "guides"; manual?: "adult" | "kids" | "teens" | "seniors" | "master" }
+  | { kind: "guides"; manual?: "adult" | "kids" | "teens" | "seniors" | "master"; age?: "kids" | "junior" | "adult" | "senior" }
   | { kind: "workshops" }
   | { kind: "community" }
   | { kind: "newsletter" }
+  | { kind: "shop" }
   | { kind: "join" }
   | { kind: "join-signup" }
   | { kind: "login" }
+  | { kind: "user_portal" }
   | { kind: "about" }
   | { kind: "contact" }
   | { kind: "privacy" }
@@ -267,8 +279,13 @@ const SITE_MAP_HREFS: Record<string, SiteMapHref> = {
   ...Object.fromEntries(
     SENIOR_CORNER_TABS.map((t) => [t.siteMapId, { kind: "seniors" as const, tab: t.id }]),
   ),
+  "nav-community": { kind: "community" },
+  "nav-community-blog": { kind: "community" },
   "nav-guides": { kind: "guides" },
   "guides-library": { kind: "guides" },
+  "kids-guides": { kind: "guides", age: "kids" },
+  "teens-guides": { kind: "guides", age: "junior" },
+  "sen-guides": { kind: "guides", age: "senior" },
   ...Object.fromEntries(
     MARKETING_GUIDE_MENU.map((g) => [
       g.id === "master" ? "guides-complete" : `guides-${g.id}`,
@@ -276,8 +293,10 @@ const SITE_MAP_HREFS: Record<string, SiteMapHref> = {
     ]),
   ),
   "nav-workshops": { kind: "workshops" },
-  "nav-community": { kind: "community" },
   "nav-newsletter": { kind: "newsletter" },
+  "nav-community-gear": { kind: "shop" },
+  "nav-gear": { kind: "shop" },
+  "nav-memberships": { kind: "join" },
   "nav-join": { kind: "join" },
   "join-plans": { kind: "join" },
   "join-signup": { kind: "join-signup" },
@@ -291,6 +310,7 @@ const SITE_MAP_HREFS: Record<string, SiteMapHref> = {
   "nav-beta-credits": { kind: "beta_credits" },
   "nav-beta-points": { kind: "beta_points" },
   "nav-login": { kind: "login" },
+  "nav-dashboard": { kind: "user_portal" },
   ...buildAdminHrefEntries(),
 };
 

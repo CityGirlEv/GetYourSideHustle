@@ -15,6 +15,7 @@ describe("gysh-test-plan", () => {
   const manualCases = TEST_CASES.filter((t) => (t.suite ?? "manual") === "manual");
 
   it("splits former Content into ProofRead / Website / Facebook / Contact (Workshops stays separate)", () => {
+    expect(TEST_CATEGORIES).toContain("guides");
     expect(TEST_CATEGORIES).toContain("workshops");
     expect(TEST_CATEGORIES).toContain("proofread");
     expect(TEST_CATEGORIES).toContain("website");
@@ -53,6 +54,21 @@ describe("gysh-test-plan", () => {
     }
 
     expect(categoryForCase({ area: "Contact", suite: "manual", id: "CONTACT-001" })).toBe("contact");
+    expect(categoryForCase({ area: "Guides", suite: "manual", id: "GUIDE-001" })).toBe("guides");
+    expect(
+      categoryForCase({
+        area: "Guides",
+        suite: "manual",
+        id: "GUIDE-REV-launch-handyman",
+      }),
+    ).toBe("guides");
+    expect(
+      categoryForCase({
+        area: "Guides",
+        suite: "vitest",
+        id: "VT-GUIDES-REVIEW",
+      }),
+    ).toBe("guides");
     expect(categoryForCase({ area: "About", suite: "manual", id: "ABOUT-001" })).toBe("website");
     expect(categoryForCase({ area: "Community", suite: "manual", id: "COMM-001" })).toBe("website");
     expect(categoryForCase({ area: "Family Coach", suite: "manual", id: "FAMILY-001" })).toBe(
@@ -151,7 +167,7 @@ describe("gysh-test-plan", () => {
     const tplCases = TEST_CASES.filter(
       (t) => (t.suite ?? "manual") === "manual" && t.id.startsWith("EMAIL-TPL-"),
     );
-    expect(tplCases.length).toBe(20);
+    expect(tplCases.length).toBe(22);
     for (const t of tplCases) {
       expect(t.assignees).toEqual(["candace"]);
       expect(t.area).toBe("Email");
@@ -171,8 +187,8 @@ describe("gysh-test-plan", () => {
     const roundup = TEST_CASES.find((t) => t.id === "SCHED-ROUNDUP-001");
     const reminder = TEST_CASES.find((t) => t.id === "SCHED-REMINDER-001");
     expect(grade?.steps.join(" ")).toMatch(/Weekly Roundup/i);
-    expect(grade?.steps.join(" ")).toMatch(/only one Grade me|stats-bar Grade me hidden/i);
-    expect(roundup?.steps.join(" ")).toMatch(/only one Grade me/i);
+    expect(grade?.steps.join(" ")).toMatch(/Current Grade plus the letter/i);
+    expect(roundup?.steps.join(" ")).toMatch(/Current Grade|updates live/i);
     expect(reminder?.steps.join(" ")).toMatch(/Email Me/i);
   });
 

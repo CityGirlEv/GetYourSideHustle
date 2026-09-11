@@ -13,6 +13,7 @@ import {
   type SiteTreeNode,
 } from '../lib/siteMap';
 import type { StoreRoute } from '../lib/storeRoutes';
+import { storeRouteFromSitePath } from '../lib/storeRoutes';
 import { Logo } from './Logo';
 
 const BRANCH_TONE: Record<SiteBranch, { fill: string; text: string; border: string; chip: string }> = {
@@ -35,14 +36,7 @@ interface SiteMapPageProps {
 }
 
 function storeRouteFromPath(path?: string): StoreRoute | null {
-  if (!path) return null;
-  if (path === '/' || path.startsWith('/#')) return 'home';
-  if (path.startsWith('/gear')) return 'gear';
-  if (path.startsWith('/planners')) return 'planners';
-  if (path.startsWith('/join')) return 'join';
-  if (path.startsWith('/pay')) return 'pay';
-  if (path.startsWith('/sitemap')) return 'sitemap';
-  return null;
+  return storeRouteFromSitePath(path);
 }
 
 export const SiteMapPage: React.FC<SiteMapPageProps> = ({ onNavigate, canSeeMemberships = false, embedded = false }) => {

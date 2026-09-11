@@ -15,6 +15,8 @@ import { DailyAffirmationsWidget } from './components/DailyAffirmationsWidget';
 import { JoinPage } from './components/JoinPage';
 import { MakePaymentPage } from './components/MakePaymentPage';
 import { SiteMapPage } from './components/SiteMapPage';
+import { LaunchPage } from './components/LaunchPage';
+import { WebsiteIntroSection } from './components/WebsiteIntroSection';
 import { SessionType } from './data/affirmations';
 import { AppUser, getCurrentUserSession, logoutUserAsync, canAccessAdminPortal, hasRole, hydrateAuthFromServer } from './lib/userAuth';
 import { shouldShowBetaWelcome } from './lib/betaWelcome';
@@ -27,7 +29,7 @@ import {
   parseAdminPortalTab,
   shouldOpenAdminPortal,
 } from './lib/planPage';
-import { parseStoreRoute, routePath, StoreRoute } from './lib/storeRoutes';
+import { isLaunchStoreRoute, parseStoreRoute, routePath, StoreRoute } from './lib/storeRoutes';
 import { canSeeMemberships, hasMembershipAccess, markMembershipJoined, MembershipTier } from './lib/membership';
 import { parseGearKindFromPath, parseGearProductHandle } from './lib/heroCarouselProducts';
 import { shopifyGearSitePath } from './lib/shopifyStore';
@@ -338,6 +340,8 @@ export default function App() {
             onNavigate={navigateToStore}
             canSeeMemberships={canSeeMemberships(currentUser)}
           />
+        ) : isLaunchStoreRoute(storeRoute) ? (
+          <LaunchPage pageId={storeRoute} />
         ) : storeRoute === 'pay' ? (
           <MakePaymentPage />
         ) : storeRoute === 'join' && canSeeMemberships(currentUser) ? (
@@ -374,6 +378,7 @@ export default function App() {
               onOpenJoin={handleOpenJoin}
               membershipsVisible={canSeeMemberships(currentUser)}
             />
+            <WebsiteIntroSection onNavigate={navigateToStore} />
             <ReceiptBuilder />
           </>
         )}

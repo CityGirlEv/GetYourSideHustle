@@ -26,7 +26,7 @@ export async function ensureUsersRoleCheckAllowsAllRoles(db: D1Database): Promis
         name TEXT NOT NULL,
         email TEXT NOT NULL UNIQUE,
         role TEXT NOT NULL CHECK (role IN ('admin', 'qa', 'dev', 'kid', 'junior', 'adult', 'senior', 'beta')),
-        status TEXT NOT NULL CHECK (status IN ('active', 'pending', 'disabled')),
+        status TEXT NOT NULL CHECK (status IN ('active', 'pending', 'disabled', 'deleted')),
         joined_at TEXT NOT NULL,
         notes TEXT NOT NULL DEFAULT '',
         password_hash TEXT,

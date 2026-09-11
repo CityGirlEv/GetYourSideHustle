@@ -120,6 +120,13 @@ export function canSetTestBlocked(
   return name === "evelyn" || name.startsWith("evelyn ");
 }
 
+/** Only Evelyn may mark a guide Reviewed by Dev (her approval). */
+export function canSetGuideReviewedByDev(
+  user: { email?: string; name?: string } | null | undefined,
+): boolean {
+  return canSetTestBlocked(user);
+}
+
 /** Evelyn may edit items in a closed/locked sprint; everyone else is blocked. */
 export function canBypassSprintLock(
   user: { email?: string; name?: string } | null | undefined,

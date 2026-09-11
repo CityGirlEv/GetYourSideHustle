@@ -16,6 +16,7 @@ import {
 import { fetchMemberProgress, saveMemberProgress } from "../lib/gysh-member-progress";
 import { ApiError } from "../lib/api";
 import { MembershipLockBadge } from "./MembershipLockBadge";
+import { openGuideFreeBadgeLabel } from "../lib/guide-access";
 
 type LaunchChecklistPageProps = {
   isLoggedIn: boolean;
@@ -150,7 +151,7 @@ export function LaunchChecklistPage({
                   <UserPlus size={16} /> Join GYSH
                 </button>
                 <button type="button" className="btn btn-secondary" onClick={onGoToLogin} style={{ gap: 6 }}>
-                  <LogIn size={16} /> Sign in
+                  <LogIn size={16} /> Log in
                 </button>
               </div>
             </div>
@@ -221,10 +222,12 @@ function GuidePeekRow({ guide, onOpen }: { guide: GuidePeek; onOpen: () => void 
       >
         <span className="launch-guide-peek-item-text">
           <span className="launch-guide-peek-item-meta">
-            {guide.memberGuide ? (
-              <span className="flat-label flat-label--area">Member guide</span>
+            {openGuideFreeBadgeLabel(guide.minTier) ? (
+              <span className="glow-badge free" data-testid="open-guide-free-badge">
+                Free
+              </span>
             ) : (
-              <span className="flat-label flat-label--accent">Open</span>
+              <span className="flat-label flat-label--area">Member guide</span>
             )}
           </span>
           <strong>{guide.title}</strong>

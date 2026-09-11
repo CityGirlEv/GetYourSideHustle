@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { 
   MessageSquare, 
   Sparkles,
@@ -21,32 +21,29 @@ import {
   Star,
   Heart,
   Home,
-  BookOpen,
-  Newspaper,
   LayoutDashboard,
   Minus,
   Plus,
   ArrowRight,
   ShoppingCart,
+  ShoppingBag,
+  Crown,
+  BookOpen,
+  Users,
 } from "lucide-react";
 import { FacebookIcon } from "./components/FacebookIcon";
+import { HeaderReferralBadge } from "./components/HeaderReferralBadge";
 import { BusyOverlay, WaitLabel } from "./components/WaitFeedback";
 import { HustleCard } from "./components/HustleCard";
-import type { Hustle } from "./components/HustleCard";
-import { CalculatorSection } from "./components/CalculatorSection";
-import { HustleQuiz } from "./components/HustleQuiz";
-import { FindMineWizardSelector } from "./components/FindMineWizardSelector";
-import { StepByStepGuides } from "./components/StepByStepGuides";
-import { FreeGuidesPage } from "./components/FreeGuidesPage";
-import { CommunityHub } from "./components/CommunityHub";
-import { NewsletterPage } from "./components/NewsletterPage";
 import { type MarketingGuideId } from "./lib/marketing-guides";
-import { KidsCorner } from "./components/KidsCorner";
-import { SeniorSideHustles } from "./components/SeniorSideHustles";
-import { UserPortal } from "./components/UserPortal";
-import { KidDashboard } from "./components/KidDashboard";
-import { ScheduleDuePopup } from "./components/ScheduleDuePopup";
-import { BetaPhasePopup } from "./components/BetaPhasePopup";
+import {
+  filterSideHustles,
+  toHustleCard,
+  wizardPoolForMembership,
+  type LibraryTag,
+  SIDE_HUSTLE_CATALOG,
+} from "./lib/side-hustle-catalog";
+import { hasLaunchGuide } from "./lib/launch-guides";
 import {
   BETA_PHASE_NOTICE,
   BETA_TESTER_SIGNUP_NOTICE,
@@ -57,13 +54,18 @@ import {
 import {
   canAccessScheduleSuite,
   collectOverdueScheduleItems,
+  isScheduleSuiteDashboardHash,
   normalizeHustleScheduleStore,
   summarizeScheduleSuites,
   type OverdueScheduleItem,
   type ScheduleSuiteSummary,
 } from "./lib/hustle-schedule";
+import { isReferralDashboardHash } from "./lib/referral";
+import { isCreditsDashboardHash } from "./lib/member-credits";
+import { isBillingDashboardHash } from "./lib/member-purchases";
+import { isBlueprintDashboardHash } from "./lib/member-dashboard";
 import { fetchMemberProgress } from "./lib/gysh-member-progress";
-import { userHasAdminRole } from "./lib/gysh-assignment";
+import { userHasAdminRole, canSetGuideReviewedByDev } from "./lib/gysh-assignment";
 import {
   ADMIN_MENU_GROUPS,
   ADMIN_USER_GUIDE_LINKS,
@@ -71,21 +73,45 @@ import {
   type AdminTab,
   type UserGuideId,
 } from "./lib/admin-nav";
-import { DailyProgressReport } from "./components/admin/DailyProgressReport";
+import {
+  AboutPage,
+  AdminPortal,
+  BetaCreditsGuidePage,
+  BetaNdaPage,
+  BetaPhasePopup,
+  BetaPointsPage,
+  BetaTesterDashboard,
+  CalculatorSection,
+  CommunityHub,
+  ContactPage,
+  DailyProgressReport,
+  FindMineWizardSelector,
+  FreeGuidesPage,
+  HustleQuiz,
+  JoinPage,
+  KidDashboard,
+  KidsCorner,
+  LaunchChecklistPage,
+  MarketingManual,
+  MembershipSignupPage,
+  NewsletterPage,
+  ParentConsentPage,
+  PrivacyPolicyPage,
+  ScheduleDuePopup,
+  SeniorSideHustles,
+  ShopPage,
+  StepByStepGuides,
+  UserPortal,
+  WorkshopsHub,
+} from "./lazy-app-pages";
 import type { SiteMapHref } from "./lib/site-map";
 import { TrainingCircles } from "./components/TrainingCircles";
-import { WorkshopsHub } from "./components/WorkshopsHub";
 import { SiteFooter } from "./components/SiteFooter";
 import type { FooterNavView } from "./components/SiteFooter";
-import { AboutPage } from "./components/AboutPage";
-import { ContactPage } from "./components/ContactPage";
-import { PrivacyPolicyPage } from "./components/PrivacyPolicyPage";
-import { BetaNdaPage } from "./components/BetaNdaPage";
-import { BetaCreditsGuidePage } from "./components/BetaCreditsGuidePage";
-import { BetaPointsPage } from "./components/BetaPointsPage";
-import { JoinPage } from "./components/JoinPage";
-import { MembershipSignupPage } from "./components/MembershipSignupPage";
 import type { AudienceGroup, TierId } from "./lib/membership";
+import { dashboardNavTone } from "./lib/membership";
+import { myDashboardLocationTip } from "./lib/dashboard-nav-tip";
+import { COMMUNITY_NAV_CHILDREN, isCommunityNavView } from "./lib/primary-nav";
 import {
   audienceFromAgeGroup,
   isAudienceGroup,
@@ -97,27 +123,32 @@ import {
   readPendingMembershipCheckout,
 } from "./lib/pending-membership-checkout";
 import {
+  addAlaCarteToCart,
   alacarteCartItemCount,
   subscribeAlaCarteCart,
 } from "./lib/alacarte-cart";
-import { LaunchChecklistPage } from "./components/LaunchChecklistPage";
-import { ParentConsentPage } from "./components/ParentConsentPage";
 import { clearConsentTokenFromUrl, readConsentTokenFromUrl } from "./lib/junior-signup";
 import {
   FACEBOOK_URL,
   HOME_HEADLINE_OUTCOME,
   SITE_NAME,
   SITE_PURPOSE,
+  homeLibrarySpotlight,
 } from "./lib/site-config";
+import { fetchGuideCatalogStates } from "./lib/guide-catalog-client";
+import { countActiveGuideLibrary, countActiveFreeGuideLibrary, countFreeGuideLibrary, uniqueGuideLibraryCount } from "./lib/guide-library-pool";
 import { HomeForesightBlocks } from "./components/HomeForesightBlocks";
 import {
   parseAppRoute,
   syncUrlToView,
   titleForView,
+  viewRequiresMemberLogin,
 } from "./lib/app-routes";
 import { readAdminDeepLink } from "./lib/admin-deep-links";
 import {
   confirmPasswordReset,
+  hasActiveTabSession,
+  LOGIN_BUTTON_LABEL,
   restoreSession,
   login,
   logout,
@@ -137,27 +168,24 @@ import {
   type ActAsTarget,
 } from "./lib/admin-act-as";
 import { canAccessAdminPortal, canAccessTestingPortal, isQaOnlyPortalUser } from "./lib/gysh-roles";
-import { BetaTesterDashboard } from "./components/BetaTesterDashboard";
 import type { BetaNdaReceipt } from "./lib/beta-tester-dashboard";
 import { adminLandingTabAfterLogin } from "./lib/admin-login-landing";
 import {
   fetchPartnerAgenda,
   mustPickAgendaTimes,
 } from "./lib/gysh-partner-agenda";
-import { hasFreeMemberSession } from "./lib/free-member-session";
-import { readPendingBlueprint } from "./lib/pending-blueprint";
+import { attachPendingWizardToAccount, readPendingBlueprint } from "./lib/pending-blueprint";
 import type { BlueprintAgeGroup } from "./lib/gysh-analytics";
 import { isYouthDashboardUser, youthAgeBand } from "./lib/youth-dashboard";
+import { AUTH_READY_SAFETY_MS } from "./lib/first-load";
 import kevinaNavMark from "./assets/kevina-starr-logo.png";
 import gyshLogo from "./assets/gysh-logo-rocket.png";
 import "./App.css";
 
-/** Heavy admin/PDF-only bundles — keep off the public home path. */
-const AdminPortal = lazy(() =>
-  import("./components/AdminPortal").then((m) => ({ default: m.AdminPortal })),
-);
-const MarketingManual = lazy(() =>
-  import("./components/MarketingManual").then((m) => ({ default: m.MarketingManual })),
+const PAGE_FALLBACK = (
+  <div className="glass page-route-fallback" style={{ padding: 32, textAlign: "center" }}>
+    <WaitLabel>Loading…</WaitLabel>
+  </div>
 );
 
 const DUE_POPUP_LOGIN_FLAG = "gysh_due_popup_login";
@@ -185,303 +213,19 @@ export type AppView =
   | "beta_credits"
   | "beta_points"
   | "join"
-  | "membership_signup";
+  | "membership_signup"
+  | "shop";
 
-const HUSTLES_DATA: Hustle[] = [
-  {
-    id: "airbnb",
-    name: "Airbnb Hosting",
-    description: "Rent out spare rooms, guest houses, or entire properties on the world's largest homestay platform for short-term travellers.",
-    startupCost: "Over $1,000",
-    timeReq: "10 - 20 hrs/week",
-    difficulty: "Medium",
-    potentialIncome: "$1,500 - $8,000/mo",
-    type: "Active / Passive",
-    gradient: "pink",
-    category: "Real Estate",
-    iconName: "airbnb",
-    details: [
-      "No property ownership required if doing rental arbitrage",
-      "Dynamic pricing maximizes earnings based on weekends/seasonality",
-      "High startup costs (furniture, decor, locks)"
-    ]
-  },
-  {
-    id: "pod",
-    name: "Print-on-Demand (POD)",
-    description: "Design custom shirts, mugs, and merchandise, and sell them via Etsy or Shopify with zero warehousing or inventory costs.",
-    startupCost: "Less than $100",
-    timeReq: "5 - 10 hrs/week",
-    difficulty: "Easy",
-    potentialIncome: "$200 - $3,000/mo",
-    type: "Passive",
-    gradient: "purple",
-    category: "E-Commerce",
-    iconName: "pod",
-    details: [
-      "100% passive once designs are published",
-      "Zero upfront product cost - items printed only when sold",
-      "Competitive niche requiring good keyword SEO"
-    ]
-  },
-  {
-    id: "dropshipping",
-    name: "Dropshipping",
-    description: "Build an online storefront and source products directly from suppliers who package and ship orders straight to customers.",
-    startupCost: "$100 - $1,000",
-    timeReq: "15 - 25 hrs/week",
-    difficulty: "Hard",
-    potentialIncome: "$500 - $10,000/mo",
-    type: "Active",
-    gradient: "cyan",
-    category: "E-Commerce",
-    iconName: "dropshipping",
-    details: [
-      "High dependency on Facebook/TikTok advertising campaigns",
-      "Customer service & supplier relations require active attention",
-      "Enormous scaling capability"
-    ]
-  },
-  {
-    id: "digital-products",
-    name: "Digital Products",
-    description:
-      "Create and sell your own digital downloads — ebooks, printables, planners, templates, and mini-courses. Book publishing is a classic Digital path (kids can publish stories too).",
-    startupCost: "Less than $100",
-    timeReq: "8 - 20 hrs/week",
-    difficulty: "Medium",
-    potentialIncome: "$200 - $10,000/mo",
-    type: "Passive / Product",
-    gradient: "purple",
-    category: "Digital",
-    iconName: "digital-products",
-    details: [
-      "No inventory — deliver PDFs, files, or course access instantly",
-      "Book publishing (KDP / print + ebook) is a flagship Digital example",
-      "Kids and teens can start with short storybooks and simple printables",
-    ],
-  },
-  {
-    id: "affiliate",
-    name: "Affiliate Marketing",
-    description:
-      "Earn a commission when someone buys through your unique link — Amazon, TikTok Shop, brand programs, software partners, and more. You promote other companies’ products; you don’t have to invent your own.",
-    startupCost: "Less than $100",
-    timeReq: "5 - 15 hrs/week",
-    difficulty: "Medium",
-    potentialIncome: "$100 - $15,000/mo",
-    type: "Passive",
-    gradient: "emerald",
-    category: "Marketing",
-    iconName: "affiliate",
-    details: [
-      "Separate from Digital Products — you promote other brands, not your own downloads",
-      "Start with easy programs (Amazon, TikTok/Creator, brands you already use)",
-      "Honest reviews and demos beat bare link spam — always disclose affiliates",
-      "Recurring SaaS commissions are a later upgrade once you have traction",
-    ],
-  },
-  {
-    id: "amazon",
-    name: "Amazon FBA Seller",
-    description: "Launch your own physical product brand on Amazon. Amazon stores, packages, ships, and handles returns on your behalf.",
-    startupCost: "Over $1,000",
-    timeReq: "20 - 30 hrs/week",
-    difficulty: "Hard",
-    potentialIncome: "$1,000 - $25,000/mo",
-    type: "Active",
-    gradient: "amber",
-    category: "E-Commerce",
-    iconName: "amazon",
-    details: [
-      "Requires manufacturing partnerships (typically via Alibaba)",
-      "High earning potential in Amazon's massive organic buyer network",
-      "Complex supply chain and Amazon catalog SEO rules"
-    ]
-  },
-  {
-    id: "social",
-    name: "Social Influencer",
-    description: "Build a highly engaged audience around your interests, and monetize with brand sponsors, affiliate links, and creator funds.",
-    startupCost: "Less than $100",
-    timeReq: "15 - 30 hrs/week",
-    difficulty: "Medium",
-    potentialIncome: "$500 - $20,000/mo",
-    type: "Active",
-    gradient: "pink",
-    category: "Creative",
-    iconName: "social",
-    details: [
-      "Builds a personal brand that can launch secondary businesses",
-      "Requires consistent video publishing cadences to feed algorithm",
-      "High rates for sponsorship integrations with engaged audiences"
-    ]
-  },
-  {
-    id: "web-leads",
-    name: "Local Website Lead Finder",
-    description: "Find local businesses with weak or missing websites, then pitch audits, rebuilds, or done-for-you sites that convert walk-ins into online bookings.",
-    startupCost: "$100 - $500",
-    timeReq: "10 - 20 hrs/week",
-    difficulty: "Medium",
-    potentialIncome: "$800 - $6,000/mo",
-    type: "Active",
-    gradient: "cyan",
-    category: "Local Services",
-    iconName: "web-leads",
-    details: [
-      "Google Maps + website audits surface endless local prospects",
-      "Sell audits first ($150–$400), then build packages ($800–$3,500+)",
-      "Recurring hosting/maintenance retainers stack monthly income"
-    ]
-  },
-  {
-    id: "ai-assets",
-    name: "AI Asset Studio",
-    description: "Create brand logos, ad creatives, social kits, and packaging visuals with AI tools — then deliver polished asset packs to local and online clients.",
-    startupCost: "Less than $100",
-    timeReq: "8 - 15 hrs/week",
-    difficulty: "Easy",
-    potentialIncome: "$500 - $5,000/mo",
-    type: "Active",
-    gradient: "purple",
-    category: "AI / Creative",
-    iconName: "ai-assets",
-    details: [
-      "Low overhead: any AI image tool + a simple editor + a clean delivery folder",
-      "Productize kits (logo pack, launch creatives, 30-day social set)",
-      "Pairs perfectly with website lead-finder outreach",
-    ],
-  },
-  {
-    id: "property-mgmt",
-    name: "Property Management",
-    description: "Manage rentals or short-term stays for owners who want hands-off ops — leasing, guest turns, vendors, and owner reporting. Complements Airbnb/STR skills.",
-    startupCost: "$200 - $1,000",
-    timeReq: "15 - 25 hrs/week",
-    difficulty: "Medium",
-    potentialIncome: "$1,000 - $8,000/mo",
-    type: "Active",
-    gradient: "amber",
-    category: "Real Estate",
-    iconName: "property-mgmt",
-    details: [
-      "Earn 8–12% of rent (LTR) or 15–25% of booking revenue (STR)",
-      "Leverage cleaning/vendor networks you already trust",
-      "Scale by adding doors, not hours, once SOPs exist"
-    ]
-  },
-  {
-    id: "handyman",
-    name: "Handyman Services",
-    description: "Offer small repairs, installs, painting, and punch-list jobs to homeowners and landlords who need reliable local help without a full contractor.",
-    startupCost: "$200 - $800",
-    timeReq: "10 - 25 hrs/week",
-    difficulty: "Easy",
-    potentialIncome: "$800 - $5,000/mo",
-    type: "Active",
-    gradient: "emerald",
-    category: "Local Services",
-    iconName: "handyman",
-    details: [
-      "Start with Nextdoor, Facebook groups, and landlord referrals",
-      "Tool kit + truck/van access is the main barrier",
-      "Upsell recurring maintenance for Airbnb hosts & PMs"
-    ]
-  },
-  {
-    id: "rideshare",
-    name: "Rideshare (Uber / Lyft)",
-    description: "Drive passengers on Uber or Lyft during peak windows — airport runs, nightlife, events — for flexible cash flow with a vehicle you already own.",
-    startupCost: "$50 - $300",
-    timeReq: "10 - 30 hrs/week",
-    difficulty: "Easy",
-    potentialIncome: "$600 - $3,500/mo",
-    type: "Active / Gig",
-    gradient: "pink",
-    category: "Gig Economy",
-    iconName: "rideshare",
-    details: [
-      "Income hinges on hours + surge timing, not ads",
-      "Track mileage for tax deductions from day one",
-      "Pair with AI Timing Scout to chase higher $/hour windows"
-    ]
-  },
-  {
-    id: "food-delivery",
-    name: "DoorDash / Uber Eats",
-    description: "Deliver restaurant orders on DoorDash, Uber Eats, or similar apps — stack multi-app shifts and hotspot zones for fast, flexible side income.",
-    startupCost: "Less than $100",
-    timeReq: "8 - 25 hrs/week",
-    difficulty: "Easy",
-    potentialIncome: "$400 - $2,500/mo",
-    type: "Active / Gig",
-    gradient: "amber",
-    category: "Gig Economy",
-    iconName: "food-delivery",
-    details: [
-      "Lowest barrier: bike, scooter, or car + insulated bag",
-      "Peak dinner + weekend lunch windows pay best",
-      "Use AI Timing Scout to pick ZipCode/time blocks before you drive"
-    ]
-  },
-  {
-    id: "ai-timing",
-    name: "AI Timing Scout",
-    description: "Use AI plus local ZipCode data to map the best hours and areas for rideshare and delivery — then sell the playbooks (or use them yourself) for higher $/hour.",
-    startupCost: "Less than $100",
-    timeReq: "5 - 12 hrs/week",
-    difficulty: "Medium",
-    potentialIncome: "$300 - $3,000/mo",
-    type: "Guide / Hybrid",
-    gradient: "cyan",
-    category: "AI / Gig",
-    iconName: "ai-timing",
-    details: [
-      "Research-heavy: weather, events, airport schedules, tips forums",
-      "Sell weekly hotspot guides to local drivers ($15–$49)",
-      "Or keep the edge private and boost your own gig earnings"
-    ]
-  },
-  {
-    id: "ai-agents",
-    name: "AI Agents for Side Hustlers",
-    description: "Build and sell custom AI agents that handle lead finding, scheduling, research, and follow-ups — the Muntie Ev / GYSH agent playbook applied to other Side Hustlers' businesses.",
-    startupCost: "$50 - $400",
-    timeReq: "10 - 20 hrs/week",
-    difficulty: "Hard",
-    potentialIncome: "$1,000 - $10,000/mo",
-    type: "Active / Productized",
-    gradient: "purple",
-    category: "AI / Tech",
-    iconName: "ai-agents",
-    details: [
-      "Productize: lead scout, booking agent, research brief agent",
-      "Charge setup ($500–$2,500) + monthly agent care retainers",
-      "Ties directly to Evelyn/Muntie agent expertise & Training Circles"
-    ]
-  },
-  {
-    id: "book-publishing",
-    name: "Book Publishing",
-    description:
-      "Write, publish, and market books (print + ebook + audiobook) — a core Digital side hustle. Tina’s expertise lane from manuscript to KDP/IngramSpark; kids can publish storybooks too.",
-    startupCost: "$100 - $1,000",
-    timeReq: "10 - 20 hrs/week",
-    difficulty: "Medium",
-    potentialIncome: "$200 - $8,000/mo",
-    type: "Active / Royalty",
-    gradient: "amber",
-    category: "Digital",
-    iconName: "book-publishing",
-    details: [
-      "A Digital Products path — your own content, not affiliate links",
-      "KDP + wide distribution (IngramSpark) for print and ebook reach",
-      "Royalties stack while you write the next title",
-      "Kids & teens can start with short stories (see Kids / Teens Ideas)",
-    ],
-  }
-];
+/** Adult browse + quiz cards — derived from shared catalog (preserves existing ids). */
+
+function resolveLaunchGuideId(hustleId: string): string {
+  if (hasLaunchGuide(hustleId)) return hustleId;
+  // Catalog hustle with generated guide body — open it on Guides (do not remap).
+  if (SIDE_HUSTLE_CATALOG.some((h) => h.id === hustleId)) return hustleId;
+  const rec = SIDE_HUSTLE_CATALOG.find((h) => h.id === hustleId);
+  const related = rec?.relatedGuideIds?.find((id) => hasLaunchGuide(id));
+  return related ?? hustleId;
+}
 
 function App() {
   const bootRoute = parseAppRoute();
@@ -490,9 +234,14 @@ function App() {
   /** Skip pushState when the URL change came from back/forward. */
   const skipNextUrlSync = useRef(false);
   const urlSyncReady = useRef(false);
-  const [selectedHustleId, setSelectedHustleId] = useState<string>("airbnb");
+  /** Guest hit /my-dashboard — after session restore, put them back on the portal. */
+  const resumeDashboardAfterAuth = useRef(viewRequiresMemberLogin(bootRoute.view));
+  const [selectedHustleId, setSelectedHustleId] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
+  const [libraryTagFilter, setLibraryTagFilter] = useState<LibraryTag | "zero-start-collection" | "all">("all");
+  const [libraryAudienceFilter, setLibraryAudienceFilter] = useState<"all" | "kids" | "junior" | "adult" | "senior">("adult");
+  const [libraryLocationFilter, setLibraryLocationFilter] = useState<"all" | "online" | "local" | "both">("all");
 
   // Auth states
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -518,6 +267,8 @@ function App() {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [resetBusy, setResetBusy] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [communityMenuOpen, setCommunityMenuOpen] = useState(false);
+  const communityMenuRef = useRef<HTMLLIElement>(null);
   const [adminSessionKey, setAdminSessionKey] = useState(0);
   const [adminTab, setAdminTab] = useState<AdminTab>(() => readAdminDeepLink().tab ?? "schedule");
   /** Tina / Lyriq must submit ≥3 meeting dates before any other navigation. */
@@ -530,8 +281,15 @@ function App() {
   const [scheduleDueOverdue, setScheduleDueOverdue] = useState<OverdueScheduleItem[]>([]);
   const [focusScheduleId, setFocusScheduleId] = useState<string | null>(null);
   const [portalInitialTab, setPortalInitialTab] = useState<
-    "blueprint" | "schedule" | null
-  >(null);
+    "blueprint" | "schedule" | "referral" | "purchases" | "credits" | null
+  >(() => {
+    if (isScheduleSuiteDashboardHash(window.location.hash)) return "schedule";
+    if (isReferralDashboardHash(window.location.hash)) return "referral";
+    if (isCreditsDashboardHash(window.location.hash)) return "credits";
+    if (isBillingDashboardHash(window.location.hash)) return "purchases";
+    if (isBlueprintDashboardHash(window.location.hash)) return "blueprint";
+    return null;
+  });
   const [adminUserGuide, setAdminUserGuide] = useState<UserGuideId>("master");
   const [adminMenuOpen, setAdminMenuOpen] = useState(false);
   const adminMenuRef = useRef<HTMLDivElement>(null);
@@ -556,24 +314,37 @@ function App() {
   const [joinScrollToPlans, setJoinScrollToPlans] = useState(false);
   /** Optional: scroll Join to a-la-carte cart checkout (header Cart). */
   const [joinScrollToCart, setJoinScrollToCart] = useState(false);
-  const [headerCartCount, setHeaderCartCount] = useState(() => alacarteCartItemCount());
+  const [headerCartCount, setHeaderCartCount] = useState(0);
   const [signupTier, setSignupTier] = useState<TierId>("free");
   const [signupResumeCheckout, setSignupResumeCheckout] = useState(false);
   const [howOpen, setHowOpen] = useState(false);
-  const [homeHowOpen, setHomeHowOpen] = useState(false);
-  const [guidesDetailId, setGuidesDetailId] = useState<string | null>(null);
+  /** How It Works: open on desktop, collapsed on phones so CTAs stay above the fold. */
+  const [homeHowOpen, setHomeHowOpen] = useState(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return true;
+    return !window.matchMedia("(max-width: 640px)").matches;
+  });
+  /** Active Side Hustle Library count for Home — fetched once per session. */
+  const [homeActiveGuideCount, setHomeActiveGuideCount] = useState(() => uniqueGuideLibraryCount());
+  const [homeActiveFreeGuideCount, setHomeActiveFreeGuideCount] = useState(() => countFreeGuideLibrary());
+  const homeActiveGuideCountLoaded = useRef(false);
+  const [dashboardNavTipOpen, setDashboardNavTipOpen] = useState(false);
+  const [guidesDetailId, setGuidesDetailId] = useState<string | null>(() => {
+    if (bootRoute.view !== "guides" || bootRoute.guidesManualId) return null;
+    try {
+      return new URLSearchParams(window.location.search).get("hustle")?.trim() || null;
+    } catch {
+      return null;
+    }
+  });
   const [guidesManualId, setGuidesManualId] = useState<MarketingGuideId | null>(
     () => (bootRoute.guidesManualId as MarketingGuideId | null) ?? null,
   );
   const [findMineMode, setFindMineMode] = useState<"select" | "adult">("select");
-  /** Bump when free Blueprint signup succeeds so member access re-reads storage. */
+  /** Bump after Blueprint/account signup so member UI re-renders. */
   const [memberAccessTick, setMemberAccessTick] = useState(0);
   void memberAccessTick;
-  /** Portal login OR free Blueprint member session */
-  const hasMemberAccess = isLoggedIn || hasFreeMemberSession();
   const previewingAsGuest = actAsTarget.type === "guest";
-  /** Guest Profile Switcher pretends there is no member session. */
-  const effectiveMemberAccess = previewingAsGuest ? false : hasMemberAccess;
+  /** Real portal login only — localStorage “free session” and team join do not count. */
   const effectivePortalLogin = previewingAsGuest ? false : isLoggedIn;
   const [pageZoom, setPageZoom] = useState(() => {
     try {
@@ -604,6 +375,34 @@ function App() {
       }),
     [],
   );
+
+  /** Home Active guide count — load once when Home opens; do not refetch on revisit. */
+  useEffect(() => {
+    if (activeView !== "dashboard" || homeActiveGuideCountLoaded.current) return;
+    homeActiveGuideCountLoaded.current = true;
+    let cancelled = false;
+    fetchGuideCatalogStates()
+      .then((states) => {
+        if (!cancelled) {
+          setHomeActiveGuideCount(countActiveGuideLibrary(states));
+          setHomeActiveFreeGuideCount(countActiveFreeGuideLibrary(states));
+        }
+      })
+      .catch(() => {
+        /* keep optimistic inventory counts */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeView]);
+
+  useEffect(() => {
+    if (!effectivePortalLogin) {
+      setHeaderCartCount(0);
+      return;
+    }
+    setHeaderCartCount(alacarteCartItemCount());
+  }, [effectivePortalLogin]);
 
   useEffect(() => {
     // Never set zoom on <html> — Chromium CSS zoom breaks sticky-header hit-testing,
@@ -648,10 +447,11 @@ function App() {
     }
     syncUrlToView(activeView, {
       guidesManualId,
+      guidesHustleId: activeView === "guides" && !guidesManualId ? guidesDetailId : null,
       replace: !urlSyncReady.current,
     });
     urlSyncReady.current = true;
-  }, [activeView, guidesManualId, consentToken, resetToken]);
+  }, [activeView, guidesManualId, guidesDetailId, consentToken, resetToken]);
 
   useEffect(() => {
     const onPopState = () => {
@@ -659,12 +459,70 @@ function App() {
       skipNextUrlSync.current = true;
       setActiveView(parsed.view as AppView);
       setGuidesManualId((parsed.guidesManualId as MarketingGuideId | null) ?? null);
-      if (parsed.view !== "guides") {
+      if (parsed.view === "guides" && !parsed.guidesManualId) {
+        try {
+          const hustle = new URLSearchParams(window.location.search).get("hustle")?.trim() || null;
+          setGuidesDetailId(hustle);
+          if (hustle) setSelectedHustleId(hustle);
+        } catch {
+          setGuidesDetailId(null);
+        }
+      } else if (parsed.view !== "guides") {
         setGuidesDetailId(null);
+      }
+      if (parsed.view === "kids") {
+        try {
+          const q = new URLSearchParams(window.location.search);
+          const mode = q.get("mode") === "junior" ? "junior" : "kids";
+          const tabRaw = q.get("tab");
+          const tab =
+            tabRaw === "guides" ||
+            tabRaw === "wizard" ||
+            tabRaw === "jobs" ||
+            tabRaw === "piggy" ||
+            tabRaw === "stories" ||
+            tabRaw === "join"
+              ? tabRaw
+              : "guides";
+          setKidsEntryFocus({ mode, tab });
+          setActiveView("kids");
+        } catch {
+          /* ignore */
+        }
+      }
+      if (parsed.view === "seniors") {
+        try {
+          const tabRaw = new URLSearchParams(window.location.search).get("tab");
+          if (
+            tabRaw === "guides" ||
+            tabRaw === "match" ||
+            tabRaw === "opportunities" ||
+            tabRaw === "join"
+          ) {
+            setSeniorsEntryTab(tabRaw);
+          }
+        } catch {
+          /* ignore */
+        }
       }
       const adminDeepLink =
         parsed.view === "admin" &&
         Boolean((window.history.state as { adminDeepLink?: boolean } | null)?.adminDeepLink);
+      if (parsed.view === "user_portal" && isScheduleSuiteDashboardHash(window.location.hash)) {
+        setPortalInitialTab("schedule");
+      }
+      if (parsed.view === "user_portal" && isReferralDashboardHash(window.location.hash)) {
+        setPortalInitialTab("referral");
+      }
+      if (parsed.view === "user_portal" && isCreditsDashboardHash(window.location.hash)) {
+        setPortalInitialTab("credits");
+      }
+      if (parsed.view === "user_portal" && isBillingDashboardHash(window.location.hash)) {
+        setPortalInitialTab("purchases");
+      }
+      if (parsed.view === "user_portal" && isBlueprintDashboardHash(window.location.hash)) {
+        setPortalInitialTab("blueprint");
+      }
       if (parsed.view === "admin") {
         const link = readAdminDeepLink();
         if (link.tab) setAdminTab(link.tab);
@@ -697,34 +555,37 @@ function App() {
   const previewingAsMember = actAsTarget.type !== "self";
   const actAsAudienceNow = actAsAudience(actAsTarget);
   /**
-   * Kids/Teens member guides unlock for:
-   * - Profile Switcher → Kids/Teens Member
-   * - Real non-staff members (or free Blueprint session)
-   * - Lightweight team join (handled inside KidsCorner via localStorage)
-   * Staff (admin/QA) browsing as themselves stay gated.
+   * Kids/Teens member guides + wizard unlock for a real GYSH login (or act-as kids/teens).
+   * Lightweight team join and a localStorage free-session marker are not membership.
+   * Staff browsing as themselves stay gated.
    */
   const kidsCornerMemberAccess =
     !previewingAsGuest &&
     (actAsAudienceNow === "kids" ||
       actAsAudienceNow === "junior" ||
-      (hasMemberAccess && !canUseAdminPortal && !canUseTestingPortal));
+      (effectivePortalLogin && !canUseAdminPortal && !canUseTestingPortal));
 
-  // Restore session for this tab only — closing the page requires a fresh login.
+  // Restore session: localhost persists across tabs/restarts; production is tab-scoped.
+  // Don't wait the 45s API default: a hung /auth/me used to look like a stalled page.
+  // Hard safety timeout so authReady always flips even if AbortController stalls on mobile.
   useEffect(() => {
     let cancelled = false;
+    const applyUser = (user: AuthUser | null) => {
+      if (cancelled || !user) return;
+      setIsLoggedIn(true);
+      setAuthUser(user);
+    };
+    const safety = window.setTimeout(() => {
+      if (!cancelled) setAuthReady(true);
+    }, AUTH_READY_SAFETY_MS);
     void restoreSession()
-      .then((user) => {
-        if (cancelled) return;
-        if (user) {
-          setIsLoggedIn(true);
-          setAuthUser(user);
-        }
-      })
+      .then(applyUser)
       .finally(() => {
         if (!cancelled) setAuthReady(true);
       });
     return () => {
       cancelled = true;
+      window.clearTimeout(safety);
     };
   }, []);
 
@@ -746,6 +607,17 @@ function App() {
       root.style.overflow = prevHtml;
     };
   }, [mobileMenuOpen]);
+
+  // Expand Admin tabs in the hamburger drawer so staff can see them without an extra tap.
+  useEffect(() => {
+    if (mobileMenuOpen && canUseAdminPortal && !previewingAsMember) {
+      setAdminMenuOpen(true);
+      return;
+    }
+    if (!mobileMenuOpen) {
+      setAdminMenuOpen(false);
+    }
+  }, [mobileMenuOpen, canUseAdminPortal, previewingAsMember]);
 
   // After login: show Schedule Suite overview + past-due items (Pro & Above / admin).
   useEffect(() => {
@@ -785,8 +657,25 @@ function App() {
       if (adminTab !== "testing") setAdminTab("testing");
       return;
     }
+    // A slow or blipped /auth/me must not dump a still-marked tab onto Login.
+    if (hasActiveTabSession()) return;
     setActiveView("login");
   }, [authReady, activeView, canUseAdminPortal, canUseTestingPortal, adminTab]);
+
+  // Deep link /my-dashboard: members only. Guests see Sign in, never the portal.
+  useEffect(() => {
+    if (!viewRequiresMemberLogin(activeView)) return;
+    if (effectivePortalLogin) return;
+    resumeDashboardAfterAuth.current = true;
+    setActiveView("login");
+  }, [activeView, effectivePortalLogin]);
+
+  useEffect(() => {
+    if (!effectivePortalLogin) return;
+    if (!resumeDashboardAfterAuth.current) return;
+    resumeDashboardAfterAuth.current = false;
+    if (activeView === "login") setActiveView("user_portal");
+  }, [effectivePortalLogin, activeView]);
 
   // Tina / Lyriq admins: lock to Agenda until ≥3 meeting dates are saved.
   // Never run for member/parent accounts (even if name/email looks like "Tina").
@@ -838,27 +727,30 @@ function App() {
     },
   ) => {
     if (meetingGateLocked && view !== "admin") return;
-    setActiveView(view);
+    const dest: AppView =
+      viewRequiresMemberLogin(view) && !effectivePortalLogin ? "login" : view;
+    setActiveView(dest);
     // Kid dashboard is opened in-place (no goTo); any nav clears the parent coach preview.
     setParentKidDashboard(null);
     setMobileMenuOpen(false);
+    setCommunityMenuOpen(false);
     setAdminMenuOpen(false);
-    if (view === "guides" && opts && "launchGuideId" in opts) {
+    if (dest === "guides" && opts && "launchGuideId" in opts) {
       const id = opts.launchGuideId ? String(opts.launchGuideId) : null;
       setGuidesManualId(null);
       setGuidesDetailId(id);
       if (id) setSelectedHustleId(id);
-    } else if (view !== "guides") {
+    } else if (dest !== "guides") {
       setGuidesDetailId(null);
       setGuidesManualId(null);
     }
     // Keep lane when opening membership signup from a plan card (Choose Starter, etc.).
-    if (view !== "join" && view !== "membership_signup") {
+    if (dest !== "join" && dest !== "membership_signup") {
       setJoinAudience(null);
     }
     setHowOpen(false);
-    if (view !== "dashboard") setHomeHowOpen(false);
-    if (view === "quiz") setFindMineMode("select");
+    if (dest !== "dashboard") setHomeHowOpen(false);
+    if (dest === "quiz") setFindMineMode("select");
     if (opts?.scroll !== false) {
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
@@ -958,12 +850,13 @@ function App() {
         };
       case "guides":
         return {
-          title: "How GYSH Guides work",
+          title: "How the Side Hustle Library works",
           steps: [
-            "Browse free guides open to everyone.",
-            "Member guides stay locked until you join a GYSH plan or team.",
+            "Browse every guide without logging in — titles, peeks, and membership levels are public.",
+            "Register (Free or higher) to unlock guide content — including Free Guides.",
+            "Higher plans unlock Starter, Pro, and Elite guides and tools.",
             "Open Adult/Senior, Kids, or Teens guides that match your stage.",
-            "Follow the steps, then use calculators and the GYSH Match Wizard when you’re ready.",
+            "Follow the steps, then use the in-guide Revenue Calculator and the GYSH Match Wizard when you’re ready.",
           ],
         };
       case "workshops":
@@ -1050,7 +943,7 @@ function App() {
         return {
           title: "How the Beta Tester dashboard works",
           steps: [
-            "Accept GYSH-BETA-NDA-v1.0 to unlock testing.",
+            "Accept GYSH-BETA-NDA-v1.1 to unlock testing.",
             "Track completed tests and recorded testing time.",
             "Reward level grows as you complete eligible cases.",
             "Open the Credit Guide to see how Kid Credits are earned and spent.",
@@ -1198,6 +1091,9 @@ function App() {
       case "newsletter":
         goTo("newsletter");
         break;
+      case "shop":
+        goTo("shop");
+        break;
       case "join":
         openJoin();
         break;
@@ -1206,6 +1102,9 @@ function App() {
         break;
       case "login":
         goTo("login");
+        break;
+      case "user_portal":
+        goTo("user_portal");
         break;
       case "about":
         goTo("about");
@@ -1285,7 +1184,23 @@ function App() {
   };
 
   useEffect(() => {
-    if (!adminMenuOpen) return;
+    if (!communityMenuOpen) return;
+    const onPointerDown = (e: MouseEvent | TouchEvent) => {
+      const el = communityMenuRef.current;
+      if (el && !el.contains(e.target as Node)) {
+        setCommunityMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("touchstart", onPointerDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("touchstart", onPointerDown);
+    };
+  }, [communityMenuOpen]);
+
+  useEffect(() => {
+    if (!adminMenuOpen || mobileMenuOpen) return;
     const onPointerDown = (e: MouseEvent | TouchEvent) => {
       const el = adminMenuRef.current;
       if (el && !el.contains(e.target as Node)) {
@@ -1298,7 +1213,7 @@ function App() {
       document.removeEventListener("mousedown", onPointerDown);
       document.removeEventListener("touchstart", onPointerDown);
     };
-  }, [adminMenuOpen]);
+  }, [adminMenuOpen, mobileMenuOpen]);
 
   useEffect(() => {
     if (!actAsMenuOpen) return;
@@ -1334,14 +1249,15 @@ function App() {
     if (actionType === "calculator") {
       setActiveView("calculators");
     } else {
-      goTo("guides", { launchGuideId: hustleId });
+      goTo("guides", { launchGuideId: resolveLaunchGuideId(hustleId) });
     }
   };
 
-  const handleGoToCalculatorFromGuide = (hustleId: string) => {
-    setSelectedHustleId(hustleId);
-    setActiveView("calculators");
+  const handleGoToCalculatorFromGuide = (_hustleId: string) => {
+    void _hustleId;
+    // Kept for guide→calculator deep links; currently unused from this surface.
   };
+  void handleGoToCalculatorFromGuide;
 
   const handleGoToGuideFromCalculator = (hustleId: string) => {
     goTo("guides", { launchGuideId: hustleId });
@@ -1382,25 +1298,8 @@ function App() {
         setMemberAccessTick((n) => n + 1);
 
         const pending = readPendingBlueprint();
-        if (pending?.claimToken) {
-          // Kids/Teens pending claims land on the parent/family profile (childProfileId null).
-          // Parents can assign to a linked kid later from My Dashboard.
-          void import("./lib/blueprints-api").then(({ claimBlueprint, saveBlueprintToAccount }) =>
-            claimBlueprint(pending.claimToken!, null)
-              .catch(() =>
-                saveBlueprintToAccount({
-                  ageGroup: pending.ageGroup,
-                  answers: pending.answers,
-                  resultIds: pending.resultIds,
-                  resultPcts: pending.resultPcts,
-                  claimToken: pending.claimToken,
-                  childProfileId: null,
-                }),
-              )
-              .catch(() => {
-                /* portal still shows pending locally */
-              }),
-          );
+        if (pending?.resultIds?.length) {
+          void attachPendingWizardToAccount(null);
         }
 
         if (outcome === "admin") {
@@ -1566,16 +1465,17 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot deep link on load
   }, []);
 
-  const handleLogout = async () => {
-    await logout();
+  const handleLogout = () => {
     setIsLoggedIn(false);
     setAuthUser(null);
+    setHeaderCartCount(0);
     setBetaNoticeOpen(false);
     clearActAsTarget();
     setActAsTarget({ type: "self" });
     sessionStorage.removeItem(DUE_POPUP_LOGIN_FLAG);
     goTo("dashboard");
     setLoginMode("login");
+    void logout();
   };
 
   // Filter Categories
@@ -1593,15 +1493,39 @@ function App() {
     "AI / Tech",
   ];
 
-  // Filter & Search Hustles
-  const filteredHustles = HUSTLES_DATA.filter(h => {
-    const matchesSearch = h.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          h.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = filterCategory === "all" || h.category === filterCategory;
-    return matchesSearch && matchesCategory;
-  });
+  // Filter & Search Hustles (catalog-backed library filters)
+  const filteredHustles = filterSideHustles({
+    audience: libraryAudienceFilter === "all" ? undefined : libraryAudienceFilter,
+    search: searchQuery,
+    category: filterCategory === "all" ? undefined : filterCategory,
+    zeroStart: libraryTagFilter === "zero-start" || libraryTagFilter === "zero-start-collection" ? true : undefined,
+    libraryTags:
+      libraryTagFilter !== "all" &&
+      libraryTagFilter !== "zero-start-collection" &&
+      libraryTagFilter !== "zero-start"
+        ? [libraryTagFilter]
+        : undefined,
+    locationMode: libraryLocationFilter === "all" ? undefined : libraryLocationFilter,
+  })
+    .filter((h) => {
+      // Default dashboard still emphasizes adult+browse; when audience=adult keep adult cards.
+      if (libraryAudienceFilter === "adult" || libraryAudienceFilter === "all") {
+        return h.audiences.includes("adult") || libraryAudienceFilter === "all";
+      }
+      return true;
+    })
+    .map(toHustleCard);
+
+  const quizHustles = wizardPoolForMembership("adult", {
+    isLoggedIn: effectivePortalLogin,
+    membershipTier: authUser?.membershipTier ?? (effectivePortalLogin ? "free" : null),
+    previewAsGuest: previewingAsGuest,
+  }).map(toHustleCard);
 
   const getHeaderTitle = () => {
+    if (viewRequiresMemberLogin(activeView) && !effectivePortalLogin) {
+      return "GYSH Sign In";
+    }
     switch (activeView) {
       case "dashboard":
         return `Get Your Side Hustle — ${HOME_HEADLINE_OUTCOME}`;
@@ -1621,11 +1545,12 @@ function App() {
           };
           return labels[guidesManualId];
         }
-        return "GYSH Guides";
+        return "Side Hustle Library";
       case "checklist": return "GYSH Side Hustle Guide";
-      case "community": return "GYSH Community";
+      case "community": return "GYSH Blog";
       case "newsletter": return "GYSH Weekly Newsletter";
       case "workshops": return "GYSH Workshops & Speakers";
+      case "shop": return "GYSH Shop";
       case "kids": return "GYSH Kids & Teens Corner";
       case "seniors": return "GYSH Seniors Corner";
       case "about": return "About GYSH";
@@ -1650,6 +1575,9 @@ function App() {
   };
 
   const getHeaderDesc = () => {
+    if (viewRequiresMemberLogin(activeView) && !effectivePortalLogin) {
+      return "Sign in to save bookmarks, unlock badges, and track launch milestones.";
+    }
     switch (activeView) {
       case "dashboard": return SITE_PURPOSE;
       case "quiz": return "";
@@ -1662,6 +1590,7 @@ function App() {
       case "workshops": return "Live sessions and guest experts for adult Side Hustles, AI agents, and Kids Glow nights.";
       case "community": return "Ask questions, share updates, and exchange tips with other Side Hustlers.";
       case "newsletter": return "Friday dual-audience issue for members — kids glow story + adult hustle tip.";
+      case "shop": return "GYSH tees, caps, and Gang merch — Ideas. Action. Income. Freedom.";
       case "kids": return "Stories, GYSH Match Wizard, ideas, savings, and guides for Kids and Teens — parents coach the journey.";
       case "seniors": return "GYSH Match Wizard and flexible Side Hustles for 50+, retirees, and second careers.";
       case "about": return "Meet Tina Marie Barham and Evelyn Irving — the partnership behind Get Your Side Hustle.";
@@ -1684,13 +1613,15 @@ function App() {
 
   if (consentToken) {
     return (
-      <ParentConsentPage
-        token={consentToken}
-        onClose={() => {
-          clearConsentTokenFromUrl();
-          setConsentToken(null);
-        }}
-      />
+      <Suspense fallback={PAGE_FALLBACK}>
+        <ParentConsentPage
+          token={consentToken}
+          onClose={() => {
+            clearConsentTokenFromUrl();
+            setConsentToken(null);
+          }}
+        />
+      </Suspense>
     );
   }
 
@@ -1781,19 +1712,6 @@ function App() {
       aria-labelledby="home-match-family-title"
     >
       <div className="home-match-family__section-head">
-        <div className="home-match-family__cta-stack">
-          <button
-            type="button"
-            className="btn btn-primary home-match-family__side-cta"
-            onClick={() => openJoin()}
-            data-testid="home-join-cta"
-          >
-            <UserPlus size={16} aria-hidden /> Join GYSH free
-          </button>
-          <p className="home-match-family__cta-expect" data-testid="home-join-expectation">
-            Start free — explore tools and join in under 2 minutes.
-          </p>
-        </div>
         <div className="home-match-family__section-copy">
           <span className="glow-badge free home-match-family__eyebrow">
             <Sparkles size={13} /> Your age · Your wizard
@@ -1806,6 +1724,19 @@ function App() {
           <p className="home-match-family__section-sub">
             Four demographic lanes. One family adventure. Choose the wizard built for your stage of
             life — then validate with margin calculators before you spend.
+          </p>
+        </div>
+        <div className="home-match-family__cta-stack">
+          <button
+            type="button"
+            className="btn btn-primary home-match-family__side-cta"
+            onClick={() => openJoin()}
+            data-testid="home-join-cta"
+          >
+            <UserPlus size={16} aria-hidden /> Join GYSH free
+          </button>
+          <p className="home-match-family__cta-expect" data-testid="home-join-expectation">
+            Start free — explore tools and join in under 2 minutes.
           </p>
         </div>
       </div>
@@ -1937,183 +1868,436 @@ function App() {
           </button>
 
           <div className="top-header-menus">
-            <nav className="nav-primary" aria-label="Primary">
-              <ul className="nav-links nav-links--primary">
-                <li>
-                  <button
-                    type="button"
-                    onClick={() => goTo("dashboard")}
-                    className={`nav-link-btn ${activeView === "dashboard" ? "active" : ""}`}
-                    data-testid="nav-home"
-                  >
-                    <Home size={16} className="nav-icon nav-icon--home" aria-hidden />
-                    Home
-                  </button>
-                </li>
-                <li>
-                  <button
-                    type="button"
-                    onClick={() => goTo("quiz")}
-                    className={`nav-link-btn ${activeView === "quiz" ? "active" : ""}`}
-                    data-testid="nav-find-mine"
-                  >
-                    <Sparkles size={16} className="nav-icon nav-icon--quiz" aria-hidden />
-                    GYSH Match Wizard
-                  </button>
-                </li>
-                <li>
-                  <button
-                    type="button"
-                    onClick={() => openKidsCorner()}
-                    className={`nav-link-btn ${activeView === "kids" ? "active" : ""}`}
-                    data-testid="nav-kids"
-                  >
-                    <img
-                      src={kevinaNavMark}
-                      alt="Kevina Starr"
-                      aria-hidden="true"
-                      className="nav-kevina-mark"
-                      width={28}
-                      height={28}
-                    />
-                    Kids & Teens
-                  </button>
-                </li>
-                <li>
-                  <button
-                    type="button"
-                    onClick={() => openSeniors()}
-                    className={`nav-link-btn ${activeView === "seniors" ? "active" : ""}`}
-                    data-testid="nav-seniors"
-                  >
-                    <Heart size={16} className="nav-icon nav-icon--seniors" aria-hidden />
-                    Seniors
-                  </button>
-                </li>
-                <li>
-                  <button
-                    type="button"
-                    onClick={() => openGuidesLibrary()}
-                    className={`nav-link-btn ${activeView === "guides" ? "active" : ""}`}
-                    data-testid="nav-guides"
-                  >
-                    <BookOpen size={16} className="nav-icon nav-icon--guides" aria-hidden />
-                    Guides
-                  </button>
-                </li>
-                <li>
-                  <button
-                    type="button"
-                    onClick={() => goTo("workshops")}
-                    className={`nav-link-btn ${activeView === "workshops" ? "active" : ""}`}
-                    data-testid="nav-workshops"
-                  >
-                    <Mic2 size={16} className="nav-icon nav-icon--workshops" aria-hidden />
-                    Workshops
-                  </button>
-                </li>
-                <li>
-                  <button
-                    type="button"
-                    onClick={() => goTo("community")}
-                    className={`nav-link-btn ${activeView === "community" ? "active" : ""}`}
-                  >
-                    <MessageSquare size={16} className="nav-icon nav-icon--community" aria-hidden />
-                    Community
-                  </button>
-                </li>
-                <li>
-                  <button
-                    type="button"
-                    onClick={() => goTo("newsletter")}
-                    className={`nav-link-btn ${activeView === "newsletter" ? "active" : ""}`}
-                    data-testid="nav-newsletter"
-                  >
-                    <Newspaper size={16} className="nav-icon nav-icon--newsletter" aria-hidden />
-                    Newsletter
-                  </button>
-                </li>
-                <li>
-                  <button
-                    type="button"
-                    onClick={() => openJoin()}
-                    className={`nav-link-btn ${activeView === "join" ? "active" : ""}`}
-                    data-testid="nav-join"
-                  >
-                    <UserPlus size={16} className="nav-icon nav-icon--join" aria-hidden />
-                    Join
-                  </button>
-                </li>
-              </ul>
-            </nav>
+            <div className="top-header-row top-header-row--primary">
+              <nav className="nav-primary" aria-label="Primary">
+                <ul className="nav-links nav-links--primary">
+                  {canUseAdminPortal && !previewingAsMember ? (
+                    <li className="nav-item-admin">
+                      <div
+                        ref={adminMenuRef}
+                        className={`admin-nav-dropdown${adminMenuOpen ? " open" : ""}`}
+                        onMouseEnter={() => setAdminMenuOpen(true)}
+                        onMouseLeave={() => {
+                          if (!mobileMenuOpen) setAdminMenuOpen(false);
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setAdminMenuOpen((open) => !open)}
+                          className={`nav-link-btn admin-nav-trigger${activeView === "admin" ? " active" : ""}`}
+                          aria-expanded={adminMenuOpen}
+                          aria-haspopup="menu"
+                          data-testid="nav-admin"
+                        >
+                          <Shield size={16} className="nav-icon nav-icon--admin" aria-hidden />
+                          Admin
+                          <ChevronDown size={14} className="admin-nav-chevron" aria-hidden />
+                        </button>
+                        <ul className="admin-nav-menu admin-nav-menu--grouped" role="menu" hidden={!adminMenuOpen}>
+                          {ADMIN_MENU_GROUPS.map((group) => {
+                            const roles = authUser?.roles?.length
+                              ? authUser.roles
+                              : authUser?.role
+                                ? [authUser.role]
+                                : [];
+                            const tabs = group.tabs
+                              .map((id) => adminTabById(id))
+                              .filter((tab): tab is NonNullable<typeof tab> => Boolean(tab))
+                              .filter((tab) => !tab.adminOnly || roles.includes("admin"));
+                            if (tabs.length === 0) return null;
+                            return (
+                              <li key={group.id} className="admin-nav-group" role="none">
+                                <p className="admin-nav-group__label" aria-hidden>
+                                  {group.label}
+                                </p>
+                                <ul className="admin-nav-group__list" role="group" aria-label={group.label}>
+                                  {tabs.map((tab) =>
+                                    tab.id === "user-guides" ? (
+                                      <li key={tab.id} role="none">
+                                        <button
+                                          type="button"
+                                          role="menuitem"
+                                          className={`admin-nav-item${
+                                            activeView === "admin" && adminTab === "user-guides" ? " active" : ""
+                                          }`}
+                                          onClick={() => goToAdmin("user-guides")}
+                                        >
+                                          {tab.label}
+                                        </button>
+                                        <ul className="admin-nav-submenu" role="group" aria-label="User Guides">
+                                          {ADMIN_USER_GUIDE_LINKS.map((guide) => (
+                                            <li key={guide.id} role="none">
+                                              <button
+                                                type="button"
+                                                role="menuitem"
+                                                className={`admin-nav-item admin-nav-item--sub${
+                                                  activeView === "admin" &&
+                                                  adminTab === "user-guides" &&
+                                                  adminUserGuide === guide.id
+                                                    ? " active"
+                                                    : ""
+                                                }`}
+                                                onClick={() => goToAdmin("user-guides", guide.id)}
+                                              >
+                                                {guide.label}
+                                              </button>
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      </li>
+                                    ) : (
+                                      <li key={tab.id} role="none">
+                                        <button
+                                          type="button"
+                                          role="menuitem"
+                                          className={`admin-nav-item${
+                                            activeView === "admin" && adminTab === tab.id ? " active" : ""
+                                          }`}
+                                          onClick={() => goToAdmin(tab.id)}
+                                        >
+                                          {tab.label}
+                                        </button>
+                                      </li>
+                                    ),
+                                  )}
+                                </ul>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    </li>
+                  ) : null}
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => goTo("dashboard")}
+                      className={`nav-link-btn ${activeView === "dashboard" ? "active" : ""}`}
+                      data-testid="nav-home"
+                    >
+                      <Home size={16} className="nav-icon nav-icon--home" aria-hidden />
+                      Home
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => openJoin(null, { scrollToPlans: true })}
+                      className={`nav-link-btn ${activeView === "join" ? "active" : ""}`}
+                      data-testid="nav-memberships"
+                    >
+                      <Crown size={16} className="nav-icon nav-icon--memberships" aria-hidden />
+                      Memberships
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => goTo("shop")}
+                      className={`nav-link-btn ${activeView === "shop" ? "active" : ""}`}
+                      data-testid="nav-gear"
+                    >
+                      <ShoppingBag size={16} className="nav-icon nav-icon--shop" aria-hidden />
+                      Gear
+                    </button>
+                  </li>
+                  <li className="nav-item-signup">
+                    <button
+                      type="button"
+                      onClick={() => openMembershipSignup("free")}
+                      className={`nav-link-btn ${
+                        activeView === "membership_signup" ? "active" : ""
+                      }`}
+                      data-testid="nav-join"
+                    >
+                      <UserPlus size={16} className="nav-icon nav-icon--join" aria-hidden />
+                      Join Free
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => goTo("about")}
+                      className={`nav-link-btn ${activeView === "about" ? "active" : ""}`}
+                      data-testid="nav-about"
+                    >
+                      <Info size={16} className="nav-icon nav-icon--about" aria-hidden />
+                      About
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => goTo("contact")}
+                      className={`nav-link-btn ${activeView === "contact" ? "active" : ""}`}
+                      data-testid="nav-contact"
+                    >
+                      <Mail size={16} className="nav-icon nav-icon--contact" aria-hidden />
+                      Contact Us
+                    </button>
+                  </li>
+                  {isLoggedIn && canUseAdminPortal ? (
+                    <li className="nav-item-profile">
+                      <div
+                        ref={actAsMenuRef}
+                        className={`admin-nav-dropdown profile-switch-dropdown${actAsMenuOpen ? " open" : ""}`}
+                        data-testid="admin-profile-switcher"
+                      >
+                        <button
+                          type="button"
+                          className="nav-link-btn profile-switch-trigger"
+                          aria-expanded={actAsMenuOpen}
+                          aria-haspopup="menu"
+                          onClick={() => setActAsMenuOpen((o) => !o)}
+                          data-testid="admin-profile-switch-trigger"
+                        >
+                          <div className="avatar" style={{ background: "var(--grad-primary)", width: 28, height: 28 }} />
+                          <div className="user-info">
+                            <span className="user-name">{authUser?.name || "GYSH Admin"}</span>
+                            <span className="user-role">
+                              {actAsTarget.type === "self"
+                                ? "Admin · switch profile"
+                                : `Viewing as ${actAsLabel(actAsTarget)}`}
+                            </span>
+                          </div>
+                          <ChevronDown size={14} className="admin-nav-chevron" aria-hidden />
+                        </button>
+                        <ul className="admin-nav-menu profile-switch-menu" role="menu" hidden={!actAsMenuOpen}>
+                          <li role="none">
+                            <button
+                              type="button"
+                              role="menuitem"
+                              className={`admin-nav-item${actAsTarget.type === "self" ? " active" : ""}`}
+                              onClick={() => applyActAsTarget({ type: "self" })}
+                            >
+                              Admin (me)
+                            </button>
+                          </li>
+                          <li className="profile-switch-heading" role="presentation">
+                            Use app as
+                          </li>
+                          <li role="none">
+                            <button
+                              type="button"
+                              role="menuitem"
+                              className={`admin-nav-item${actAsTarget.type === "guest" ? " active" : ""}`}
+                              data-testid="admin-profile-switch-guest"
+                              onClick={() => applyActAsTarget({ type: "guest" })}
+                            >
+                              <span className="profile-switch-item-label">{ACT_AS_GUEST_OPTION.label}</span>
+                              <span className="profile-switch-item-desc">
+                                {ACT_AS_GUEST_OPTION.description}
+                              </span>
+                            </button>
+                          </li>
+                          {ACT_AS_AUDIENCE_OPTIONS.map((opt) => (
+                            <li key={opt.audience} role="none">
+                              <button
+                                type="button"
+                                role="menuitem"
+                                className={`admin-nav-item${
+                                  actAsTarget.type === "audience" && actAsTarget.audience === opt.audience
+                                    ? " active"
+                                    : ""
+                                }`}
+                                onClick={() =>
+                                  applyActAsTarget({ type: "audience", audience: opt.audience })
+                                }
+                              >
+                                <span className="profile-switch-item-label">{opt.label}</span>
+                                <span className="profile-switch-item-desc">{opt.description}</span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </li>
+                  ) : isLoggedIn ? (
+                    <li className="nav-item-profile">
+                      <div className="user-profile" data-testid="header-member-profile">
+                        <div className="avatar" style={{ background: "var(--grad-pink)" }} />
+                        <div className="user-info">
+                          <span className="user-name" data-testid="header-member-name">
+                            {(authUser?.name || "").trim() ||
+                              (authUser?.email || "").split("@")[0] ||
+                              "Member"}
+                          </span>
+                          <span className="user-role" data-testid="header-member-role">
+                            {(() => {
+                              const roles = authUser?.roles?.length
+                                ? authUser.roles
+                                : authUser?.role
+                                  ? [authUser.role]
+                                  : [];
+                              const audience = String(authUser?.audience || "").toLowerCase();
+                              if (roles.includes("junior") || audience === "junior") return "Teen member";
+                              if (roles.includes("kid") || audience === "kids") return "Kid member";
+                              if (audience === "parent") return "Parent coach";
+                              if (audience === "senior" || roles.includes("senior")) return "Senior member";
+                              return "Member";
+                            })()}
+                          </span>
+                        </div>
+                      </div>
+                    </li>
+                  ) : null}
+                </ul>
+              </nav>
 
-          <div className="top-header-row top-header-row--meta">
-            <nav className="nav-secondary" aria-label="Account and info">
-              <ul className="nav-links nav-links--secondary">
-                <li>
+              <div className="header-actions header-actions--primary">
+                {isLoggedIn ? (
+                  previewingAsGuest ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        goTo("login");
+                        setMobileMenuOpen(false);
+                        setAdminMenuOpen(false);
+                        setActAsMenuOpen(false);
+                      }}
+                      className="btn btn-primary"
+                      style={{ padding: "8px 14px", fontSize: "0.95rem", gap: "6px" }}
+                      data-testid="guest-preview-login"
+                    >
+                      <LogIn size={14} />
+                      {LOGIN_BUTTON_LABEL}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleLogout();
+                        setMobileMenuOpen(false);
+                        setAdminMenuOpen(false);
+                        setActAsMenuOpen(false);
+                      }}
+                      className="btn btn-outline"
+                      style={{ padding: "6px 12px", fontSize: "0.9375rem", gap: "6px" }}
+                      data-testid="header-logout"
+                    >
+                      <LogOut size={12} /> Log Out
+                    </button>
+                  )
+                ) : (
                   <button
                     type="button"
-                    onClick={() => goTo("about")}
-                    className={`nav-link-btn ${activeView === "about" ? "active" : ""}`}
-                    data-testid="nav-about"
+                    onClick={() => goTo("login")}
+                    className={`btn btn-primary ${activeView === "login" ? "" : ""}`}
+                    style={{ padding: "8px 14px", fontSize: "0.95rem", gap: "6px" }}
+                    data-testid="header-login"
                   >
-                    <Info size={16} className="nav-icon nav-icon--about" aria-hidden />
-                    About
+                    <LogIn size={14} />
+                    {LOGIN_BUTTON_LABEL}
                   </button>
-                </li>
-                <li>
-                  <button
-                    type="button"
-                    onClick={() => goTo("contact")}
-                    className={`nav-link-btn ${activeView === "contact" ? "active" : ""}`}
-                    data-testid="nav-contact"
-                  >
-                    <Mail size={16} className="nav-icon nav-icon--contact" aria-hidden />
-                    Contact Us
-                  </button>
-                </li>
-              </ul>
-              <a
-                href={FACEBOOK_URL}
-                className="header-social-link header-social-link--icon"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Facebook"
-                data-testid="header-facebook"
-                title="Follow Get Your Side Hustle on Facebook — facebook.com/getyoursidehustleofficial"
-              >
-                <FacebookIcon size={24} aria-hidden />
-                <span className="header-social-link__label">Facebook</span>
-              </a>
-            </nav>
+                )}
+              </div>
+            </div>
 
-            <div className="header-actions">
-            <button
-              type="button"
-              className={`header-cart-btn${headerCartCount > 0 ? " has-items" : ""}`}
-              data-testid="header-cart"
-              aria-label={
-                headerCartCount > 0
-                  ? `Shopping cart, ${headerCartCount} item${headerCartCount === 1 ? "" : "s"}`
-                  : "Shopping cart"
-              }
-              title="A-la-carte cart & checkout"
-              onClick={() => {
-                setMobileMenuOpen(false);
-                openJoin(null, { scrollToCart: true });
-              }}
-            >
-              <ShoppingCart size={18} aria-hidden />
-              <span className="header-cart-btn__label">Cart</span>
-              {headerCartCount > 0 ? (
-                <span className="header-cart-btn__badge" data-testid="header-cart-count">
-                  {headerCartCount > 99 ? "99+" : headerCartCount}
-                </span>
-              ) : null}
-            </button>
-            {isLoggedIn ? (
-              <>
-                {canUseTestingPortal && !previewingAsMember ? (
+            <div className="top-header-row top-header-row--meta">
+              <nav className="nav-secondary" aria-label="Audience and resources">
+                <ul className="nav-links nav-links--secondary">
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => openGuidesLibrary()}
+                      className={`nav-link-btn ${activeView === "guides" ? "active" : ""}`}
+                      data-testid="nav-guides"
+                    >
+                      <BookOpen size={16} className="nav-icon nav-icon--guides" aria-hidden />
+                      Side Hustle Guides
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => goTo("quiz")}
+                      className={`nav-link-btn ${
+                        activeView === "quiz" && findMineMode !== "adult" ? "active" : ""
+                      }`}
+                      data-testid="nav-find-mine"
+                    >
+                      <Sparkles size={16} className="nav-icon nav-icon--quiz" aria-hidden />
+                      Match Wizard
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      type="button"
+                      onClick={openAdultFindMine}
+                      className={`nav-link-btn ${
+                        activeView === "quiz" && findMineMode === "adult" ? "active" : ""
+                      }`}
+                      data-testid="nav-adults"
+                    >
+                      <Users size={16} className="nav-icon nav-icon--adults" aria-hidden />
+                      Adults
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => openSeniors()}
+                      className={`nav-link-btn ${activeView === "seniors" ? "active" : ""}`}
+                      data-testid="nav-seniors"
+                    >
+                      <Heart size={16} className="nav-icon nav-icon--seniors" aria-hidden />
+                      Seniors
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => openKidsCorner()}
+                      className={`nav-link-btn ${activeView === "kids" ? "active" : ""}`}
+                      data-testid="nav-kids"
+                    >
+                      <img
+                        src={kevinaNavMark}
+                        alt="Kevina Starr"
+                        aria-hidden="true"
+                        className="nav-kevina-mark"
+                        width={28}
+                        height={28}
+                      />
+                      Kids & Teens
+                    </button>
+                  </li>
+                  <li
+                    ref={communityMenuRef}
+                    className={`nav-dropdown${communityMenuOpen ? " open" : ""}`}
+                  >
+                    <button
+                      type="button"
+                      className={`nav-link-btn ${isCommunityNavView(activeView) ? "active" : ""}`}
+                      data-testid="nav-community"
+                      aria-expanded={communityMenuOpen}
+                      aria-haspopup="true"
+                      onClick={() => setCommunityMenuOpen((open) => !open)}
+                    >
+                      <MessageSquare size={16} className="nav-icon nav-icon--community" aria-hidden />
+                      Community
+                      <ChevronDown size={14} className="nav-dropdown-chevron" aria-hidden />
+                    </button>
+                    <ul className="nav-dropdown-menu" hidden={!communityMenuOpen}>
+                      {COMMUNITY_NAV_CHILDREN.map((child) => (
+                        <li key={child.id}>
+                          <button
+                            type="button"
+                            className={`nav-dropdown-item ${activeView === child.view ? "active" : ""}`}
+                            data-testid={child.testId}
+                            onClick={() => goTo(child.view)}
+                          >
+                            {child.label}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </li>
+                </ul>
+              </nav>
+
+              <div className="header-actions">
+                {isLoggedIn && qaOnlyPortal && !previewingAsMember ? (
                   <button
                     type="button"
                     className={`nav-link-btn${
@@ -2129,276 +2313,85 @@ function App() {
                     Testing Portal
                   </button>
                 ) : null}
-                {canUseAdminPortal && !previewingAsMember ? (
-                  <div
-                    ref={adminMenuRef}
-                    className={`admin-nav-dropdown${adminMenuOpen ? " open" : ""}`}
-                    onMouseEnter={() => setAdminMenuOpen(true)}
-                    onMouseLeave={() => setAdminMenuOpen(false)}
+                {effectivePortalLogin && authUser ? (
+                  <button
+                    type="button"
+                    className={`header-cart-btn header-cart-btn--end${headerCartCount > 0 ? " has-items" : ""}`}
+                    data-testid="header-cart"
+                    aria-label={
+                      headerCartCount > 0
+                        ? `Shopping cart, ${headerCartCount} item${headerCartCount === 1 ? "" : "s"}`
+                        : "Shopping cart"
+                    }
+                    title="A-la-carte cart & checkout"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      openJoin(null, { scrollToCart: true });
+                    }}
                   >
-                    <button
-                      type="button"
-                      onClick={() => setAdminMenuOpen((open) => !open)}
-                      className={`nav-link-btn admin-nav-trigger${activeView === "admin" ? " active" : ""}`}
-                      aria-expanded={adminMenuOpen}
-                      aria-haspopup="menu"
-                      data-testid="nav-admin"
-                    >
-                      <Shield size={16} className="nav-icon nav-icon--admin" aria-hidden />
-                      Admin
-                      <ChevronDown size={14} className="admin-nav-chevron" aria-hidden />
-                    </button>
-                    <ul className="admin-nav-menu admin-nav-menu--grouped" role="menu" hidden={!adminMenuOpen}>
-                      {ADMIN_MENU_GROUPS.map((group) => {
-                        const roles = authUser?.roles?.length
-                          ? authUser.roles
-                          : authUser?.role
-                            ? [authUser.role]
-                            : [];
-                        const tabs = group.tabs
-                          .map((id) => adminTabById(id))
-                          .filter((tab): tab is NonNullable<typeof tab> => Boolean(tab))
-                          .filter((tab) => !tab.adminOnly || roles.includes("admin"));
-                        if (tabs.length === 0) return null;
-                        return (
-                          <li key={group.id} className="admin-nav-group" role="none">
-                            <p className="admin-nav-group__label" aria-hidden>
-                              {group.label}
-                            </p>
-                            <ul className="admin-nav-group__list" role="group" aria-label={group.label}>
-                              {tabs.map((tab) =>
-                                tab.id === "user-guides" ? (
-                                  <li key={tab.id} role="none">
-                                    <button
-                                      type="button"
-                                      role="menuitem"
-                                      className={`admin-nav-item${
-                                        activeView === "admin" && adminTab === "user-guides" ? " active" : ""
-                                      }`}
-                                      onClick={() => goToAdmin("user-guides")}
-                                    >
-                                      {tab.label}
-                                    </button>
-                                    <ul className="admin-nav-submenu" role="group" aria-label="User Guides">
-                                      {ADMIN_USER_GUIDE_LINKS.map((guide) => (
-                                        <li key={guide.id} role="none">
-                                          <button
-                                            type="button"
-                                            role="menuitem"
-                                            className={`admin-nav-item admin-nav-item--sub${
-                                              activeView === "admin" &&
-                                              adminTab === "user-guides" &&
-                                              adminUserGuide === guide.id
-                                                ? " active"
-                                                : ""
-                                            }`}
-                                            onClick={() => goToAdmin("user-guides", guide.id)}
-                                          >
-                                            {guide.label}
-                                          </button>
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  </li>
-                                ) : (
-                                  <li key={tab.id} role="none">
-                                    <button
-                                      type="button"
-                                      role="menuitem"
-                                      className={`admin-nav-item${
-                                        activeView === "admin" && adminTab === tab.id ? " active" : ""
-                                      }`}
-                                      onClick={() => goToAdmin(tab.id)}
-                                    >
-                                      {tab.label}
-                                    </button>
-                                  </li>
-                                ),
-                              )}
-                            </ul>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
+                    <ShoppingCart size={18} aria-hidden />
+                    <span className="header-cart-btn__label">Cart</span>
+                    {headerCartCount > 0 ? (
+                      <span className="header-cart-btn__badge" data-testid="header-cart-count">
+                        {headerCartCount}
+                      </span>
+                    ) : null}
+                  </button>
                 ) : null}
-                {canUseAdminPortal ? (
-                  <div
-                    ref={actAsMenuRef}
-                    className={`admin-nav-dropdown profile-switch-dropdown${actAsMenuOpen ? " open" : ""}`}
-                    data-testid="admin-profile-switcher"
-                  >
-                    <button
-                      type="button"
-                      className="nav-link-btn profile-switch-trigger"
-                      aria-expanded={actAsMenuOpen}
-                      aria-haspopup="menu"
-                      onClick={() => setActAsMenuOpen((o) => !o)}
-                      data-testid="admin-profile-switch-trigger"
-                    >
-                      <div className="avatar" style={{ background: "var(--grad-primary)", width: 28, height: 28 }} />
-                      <div className="user-info">
-                        <span className="user-name">{authUser?.name || "GYSH Admin"}</span>
-                        <span className="user-role">
-                          {actAsTarget.type === "self" ? "Admin · switch profile" : `Viewing as ${actAsLabel(actAsTarget)}`}
-                        </span>
-                      </div>
-                      <ChevronDown size={14} className="admin-nav-chevron" aria-hidden />
-                    </button>
-                    <ul className="admin-nav-menu profile-switch-menu" role="menu" hidden={!actAsMenuOpen}>
-                      <li role="none">
-                        <button
-                          type="button"
-                          role="menuitem"
-                          className={`admin-nav-item${actAsTarget.type === "self" ? " active" : ""}`}
-                          onClick={() => applyActAsTarget({ type: "self" })}
-                        >
-                          Admin (me)
-                        </button>
-                      </li>
-                      <li className="profile-switch-heading" role="presentation">
-                        Use app as
-                      </li>
-                      <li role="none">
-                        <button
-                          type="button"
-                          role="menuitem"
-                          className={`admin-nav-item${actAsTarget.type === "guest" ? " active" : ""}`}
-                          data-testid="admin-profile-switch-guest"
-                          onClick={() => applyActAsTarget({ type: "guest" })}
-                        >
-                          <span className="profile-switch-item-label">{ACT_AS_GUEST_OPTION.label}</span>
-                          <span className="profile-switch-item-desc">
-                            {ACT_AS_GUEST_OPTION.description}
-                          </span>
-                        </button>
-                      </li>
-                      {ACT_AS_AUDIENCE_OPTIONS.map((opt) => (
-                        <li key={opt.audience} role="none">
-                          <button
-                            type="button"
-                            role="menuitem"
-                            className={`admin-nav-item${
-                              actAsTarget.type === "audience" && actAsTarget.audience === opt.audience
-                                ? " active"
-                                : ""
-                            }`}
-                            onClick={() =>
-                              applyActAsTarget({ type: "audience", audience: opt.audience })
-                            }
-                          >
-                            <span className="profile-switch-item-label">{opt.label}</span>
-                            <span className="profile-switch-item-desc">{opt.description}</span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : (
-                  <div className="user-profile" data-testid="header-member-profile">
-                    <div className="avatar" style={{ background: "var(--grad-pink)" }} />
-                    <div className="user-info">
-                      <span className="user-name" data-testid="header-member-name">
-                        {(authUser?.name || "").trim() ||
-                          (authUser?.email || "").split("@")[0] ||
-                          "Member"}
-                      </span>
-                      <span className="user-role" data-testid="header-member-role">
-                        {(() => {
-                          const roles = authUser?.roles?.length
-                            ? authUser.roles
-                            : authUser?.role
-                              ? [authUser.role]
-                              : [];
-                          const audience = String(authUser?.audience || "").toLowerCase();
-                          if (roles.includes("junior") || audience === "junior") return "Teen member";
-                          if (roles.includes("kid") || audience === "kids") return "Kid member";
-                          if (audience === "parent") return "Parent coach";
-                          if (audience === "senior" || roles.includes("senior")) return "Senior member";
-                          return "Member";
-                        })()}
-                      </span>
-                    </div>
-                  </div>
-                )}
-                {previewingAsGuest ? (
+                <div
+                  className="page-zoom-controls page-zoom-controls--icon"
+                  role="group"
+                  aria-label="Page zoom"
+                >
                   <button
                     type="button"
-                    onClick={() => {
-                      goTo("login");
-                      setMobileMenuOpen(false);
-                      setAdminMenuOpen(false);
-                      setActAsMenuOpen(false);
-                    }}
-                    className="btn btn-primary"
-                    style={{ padding: "8px 14px", fontSize: "0.95rem", gap: "6px" }}
-                    data-testid="guest-preview-login"
+                    className="page-zoom-btn"
+                    aria-label="Zoom out"
+                    data-testid="page-zoom-out"
+                    disabled={pageZoom <= 90}
+                    onClick={() => setPageZoom((z) => Math.max(90, z - 10))}
                   >
-                    <LogIn size={14} />
-                    Login
+                    <Minus size={16} aria-hidden />
                   </button>
-                ) : (
+                  <span
+                    className="page-zoom-value sr-only"
+                    data-testid="page-zoom-value"
+                    aria-live="polite"
+                  >
+                    {pageZoom}%
+                  </span>
                   <button
                     type="button"
-                    onClick={() => {
-                      handleLogout();
-                      setMobileMenuOpen(false);
-                      setAdminMenuOpen(false);
-                      setActAsMenuOpen(false);
-                    }}
-                    className="btn btn-outline"
-                    style={{ padding: "6px 12px", fontSize: "0.9375rem", gap: "6px" }}
-                    data-testid="header-logout"
+                    className="page-zoom-btn"
+                    aria-label="Zoom in"
+                    data-testid="page-zoom-in"
+                    disabled={pageZoom >= 150}
+                    onClick={() => setPageZoom((z) => Math.min(150, z + 10))}
                   >
-                    <LogOut size={12} /> Log Out
+                    <Plus size={16} aria-hidden />
                   </button>
-                )}
-              </>
-            ) : (
-              <button
-                type="button"
-                onClick={() => goTo("login")}
-                className={`btn btn-primary ${activeView === "login" ? "" : ""}`}
-                style={{ padding: "8px 14px", fontSize: "0.95rem", gap: "6px" }}
-                data-testid="header-login"
-              >
-                <LogIn size={14} />
-                Login
-              </button>
-            )}
-            <div className="page-zoom-controls" role="group" aria-label="Page zoom">
-              <button
-                type="button"
-                className="page-zoom-btn"
-                aria-label="Zoom out"
-                data-testid="page-zoom-out"
-                disabled={pageZoom <= 90}
-                onClick={() => setPageZoom((z) => Math.max(90, z - 10))}
-              >
-                <Minus size={16} aria-hidden />
-              </button>
-              <span className="page-zoom-value" aria-live="polite">
-                {pageZoom}%
-              </span>
-              <button
-                type="button"
-                className="page-zoom-btn"
-                aria-label="Zoom in"
-                data-testid="page-zoom-in"
-                disabled={pageZoom >= 150}
-                onClick={() => setPageZoom((z) => Math.min(150, z + 10))}
-              >
-                <Plus size={16} aria-hidden />
-              </button>
+                </div>
+              </div>
             </div>
-            </div>
-          </div>
           </div>
         </div>
       </header>
 
       <div className="app-zoom-content" style={contentZoomStyle}>
       <main className="main-content">
+        {dashboardNavTipOpen && effectivePortalLogin ? (
+          <div className="dashboard-nav-tip" data-testid="dashboard-nav-tip" role="status">
+            <p>{myDashboardLocationTip()}</p>
+            <button
+              type="button"
+              className="btn btn-outline dashboard-nav-tip__dismiss"
+              onClick={() => setDashboardNavTipOpen(false)}
+              data-testid="dashboard-nav-tip-dismiss"
+            >
+              Got it
+            </button>
+          </div>
+        ) : null}
         {activeView !== "dashboard" && (
           <>
             <div
@@ -2406,28 +2399,25 @@ function App() {
                 activeView === "guides" ? " header-row--guides" : ""
               }${activeView === "kids" ? " header-row--kids" : ""}${
                 activeView === "seniors" ? " header-row--seniors" : ""
-              }${activeView === "about" ? " header-row--about" : ""}`}
+              }${activeView === "quiz" ? " header-row--quiz" : ""}${activeView === "about" ? " header-row--about" : ""}`}
             >
-              <div className="header-title-block">
+              <div className="header-title-block header-title-block--compact">
                 <div className="header-title-top">
                   <h1 data-testid="page-title">
                     {getHeaderTitle()}
                     {(activeView === "join" || activeView === "membership_signup") && (
                       <span className="header-title-aside">(FREE PLANS AVAILABLE)</span>
                     )}
-                    {effectivePortalLogin ? (
+                    {activeView === "guides" && guidesDetailId ? (
                       <button
                         type="button"
-                        className={`header-title-dashboard-badge${
-                          activeView === "user_portal" ? " is-active" : ""
-                        }`}
-                        onClick={() => goTo("user_portal")}
-                        data-testid="header-dashboard"
-                        aria-current={activeView === "user_portal" ? "page" : undefined}
+                        className="btn btn-outline header-guides-back-btn header-guides-back-btn--icon"
+                        onClick={() => setGuidesDetailId(null)}
+                        data-testid="header-back-to-guides"
+                        aria-label="Back to all guides"
+                        title="Back to all guides"
                       >
-                        <span className="header-title-dashboard-badge__glow" aria-hidden />
-                        <LayoutDashboard size={16} aria-hidden />
-                        <span>My Dashboard</span>
+                        ←
                       </button>
                     ) : null}
                     {isLoggedIn &&
@@ -2435,7 +2425,7 @@ function App() {
                     (authUser.role === "beta" || (authUser.roles ?? []).includes("beta")) ? (
                       <button
                         type="button"
-                        className={`header-title-dashboard-badge${
+                        className={`header-title-dashboard-badge header-title-dashboard-badge--compact${
                           activeView === "beta_testing" ? " is-active" : ""
                         }`}
                         onClick={() => goTo("beta_testing")}
@@ -2447,7 +2437,9 @@ function App() {
                     ) : null}
                   </h1>
                   {activeView === "admin" && adminTab !== "daily-progress" && (
-                    <DailyProgressReport onOpen={() => goToAdmin("daily-progress")} />
+                    <Suspense fallback={null}>
+                      <DailyProgressReport onOpen={() => goToAdmin("daily-progress")} />
+                    </Suspense>
                   )}
                   {!(activeView === "admin" && adminTab === "daily-progress") && (
                     <button
@@ -2461,6 +2453,24 @@ function App() {
                       How it works
                     </button>
                   )}
+                  {effectivePortalLogin ? (
+                    <>
+                      <HeaderReferralBadge />
+                      <button
+                        type="button"
+                        className={`header-title-dashboard-badge header-title-dashboard-badge--compact nav-dashboard-btn${
+                          activeView === "user_portal" ? " is-active" : ""
+                        }`}
+                        data-tier={dashboardNavTone(authUser?.membershipTier)}
+                        onClick={() => goTo("user_portal")}
+                        data-testid="page-focus-dashboard"
+                        aria-current={activeView === "user_portal" ? "page" : undefined}
+                      >
+                        <LayoutDashboard size={14} aria-hidden />
+                        <span>My Dashboard</span>
+                      </button>
+                    </>
+                  ) : null}
                 </div>
                 {getHeaderDesc() ? (
                   <p className="header-title-desc">{getHeaderDesc()}</p>
@@ -2483,52 +2493,98 @@ function App() {
           </>
         )}
 
-        {/* View Switcher */}
+        {/* Home is eager — keep it out of Suspense so lazy routes can't flash Loading… */}
         {activeView === "dashboard" && (
           <div className="dashboard-home">
+            {(() => {
+              const libraryGuideCount = homeActiveGuideCount;
+              const libraryCopy = homeLibrarySpotlight(libraryGuideCount, homeActiveFreeGuideCount);
+              return (
             <header className="home-page-header" data-testid="home-page-header">
               <h1 className="home-page-header__title" data-testid="page-title">
                 <span className="home-page-header__brand-block">
                   <em className="home-page-header__brand">Get Your Side Hustle</em>
-                  {effectivePortalLogin ? (
+                  <button
+                    type="button"
+                    className="home-library-count home-library-count--blink"
+                    onClick={() => openGuidesLibrary()}
+                    data-testid="home-library-spotlight"
+                    aria-label={libraryCopy.cta}
+                    title={libraryCopy.body}
+                  >
+                    <BookOpen size={14} aria-hidden />
+                    <span data-testid="home-library-count-label">{libraryCopy.inlineLabel}</span>
+                  </button>
+                </span>
+                <span className="home-page-header__title-actions">
+                  <button
+                    type="button"
+                    className="btn btn-join-green home-library-spotlight__cta"
+                    onClick={() => goTo("quiz")}
+                    data-testid="home-match-wizard-cta"
+                  >
+                    <Sparkles size={16} aria-hidden />
+                    {libraryCopy.wizardCta}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-join-green home-library-spotlight__cta"
+                    onClick={() => openGuidesLibrary()}
+                    data-testid="home-library-spotlight-cta"
+                  >
+                    <BookOpen size={16} aria-hidden />
+                    {libraryCopy.cta}
+                  </button>
+                </span>
+              </h1>
+              <div className="home-page-header__actions">
+                <button
+                  type="button"
+                  className="home-how-intro-toggle"
+                  onClick={() => setHomeHowOpen((o) => !o)}
+                  aria-expanded={homeHowOpen}
+                  aria-controls="home-how-lead"
+                  data-testid="home-how-it-works"
+                >
+                  {homeHowOpen ? <ChevronDown size={16} aria-hidden /> : <ChevronRight size={16} aria-hidden />}
+                  How It Works
+                </button>
+                {effectivePortalLogin ? (
+                  <span className="header-title-badges">
+                    <HeaderReferralBadge />
                     <button
                       type="button"
-                      className="header-title-dashboard-badge"
+                      className="header-title-dashboard-badge header-title-dashboard-badge--compact nav-dashboard-btn"
+                      data-tier={dashboardNavTone(authUser?.membershipTier)}
                       onClick={() => goTo("user_portal")}
-                      data-testid="header-dashboard"
+                      data-testid="page-focus-dashboard"
                     >
-                      <span className="header-title-dashboard-badge__glow" aria-hidden />
-                      <LayoutDashboard size={16} aria-hidden />
+                      <LayoutDashboard size={14} aria-hidden />
                       <span>My Dashboard</span>
                     </button>
-                  ) : null}
-                </span>
-                <span className="home-page-header__headline">{HOME_HEADLINE_OUTCOME}</span>
-              </h1>
-              <p className="home-page-header__purpose" data-testid="home-site-purpose">
-                {SITE_PURPOSE}
-              </p>
-              <button
-                type="button"
-                className="home-how-intro-toggle"
-                onClick={() => setHomeHowOpen((o) => !o)}
-                aria-expanded={homeHowOpen}
-                aria-controls="home-how-lead"
-                data-testid="home-how-it-works"
-              >
-                {homeHowOpen ? <ChevronDown size={16} aria-hidden /> : <ChevronRight size={16} aria-hidden />}
-                How It Works
-              </button>
-              <p
+                  </span>
+                ) : null}
+              </div>
+              <div
                 id="home-how-lead"
                 className={`home-page-header__lead${homeHowOpen ? " is-open" : ""}`}
                 data-testid="home-how-panel"
               >
-                Each wizard asks age-appropriate questions so matches feel doable—not generic. Parents become{" "}
-                <strong>GYSH Coaches</strong> for kids and teens: cheer, set boundaries, and help turn ideas into
-                safe first wins. Parental consent required through age 12 — not required for ages 13+.
-              </p>
+                <p className="home-page-header__headline" data-testid="home-headline-outcome">
+                  {HOME_HEADLINE_OUTCOME}
+                </p>
+                <p className="home-page-header__purpose" data-testid="home-site-purpose">
+                  {SITE_PURPOSE}
+                </p>
+                <p className="home-page-header__lead-body">
+                  Each wizard asks age-appropriate questions so matches feel doable—not generic. Parents become{" "}
+                  <strong>GYSH Coaches</strong> for kids and teens: cheer, set boundaries, and help turn ideas into
+                  safe first wins. Parental consent required through age 12 — not required for ages 13+.
+                </p>
+              </div>
             </header>
+              );
+            })()}
 
             <section className="home-promo-hero" aria-label="Get Your Side Hustle family promotion">
               <div className="home-promo-hero__band">
@@ -2601,6 +2657,75 @@ function App() {
               </div>
             </div>
 
+            <div
+              className="hustle-filter-bar hustle-filter-bar--library"
+              aria-label="Library filters"
+              style={{ marginTop: 8 }}
+            >
+              <div className="hustle-filter-bar__filters">
+                {(
+                  [
+                    ["zero-start-collection", "No Money? Start Here"],
+                    ["zero-start", "$0 Start"],
+                    ["ai-powered", "AI-Powered"],
+                    ["fastest-dollar", "Fastest $"],
+                    ["no-experience", "No Experience"],
+                    ["weekend", "Weekend"],
+                    ["after-work", "After Work"],
+                  ] as const
+                ).map(([id, label]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() =>
+                      setLibraryTagFilter((prev) => (prev === id ? "all" : id))
+                    }
+                    className={`glow-badge hustle-filter-badge${libraryTagFilter === id ? " hustle-filter-badge--active purple" : ""}`}
+                    aria-pressed={libraryTagFilter === id}
+                  >
+                    {label}
+                  </button>
+                ))}
+                {(
+                  [
+                    ["adult", "Adults"],
+                    ["junior", "Teens"],
+                    ["kids", "Kids"],
+                    ["senior", "Seniors"],
+                    ["all", "All Ages"],
+                  ] as const
+                ).map(([id, label]) => (
+                  <button
+                    key={`aud-${id}`}
+                    type="button"
+                    onClick={() => setLibraryAudienceFilter(id)}
+                    className={`glow-badge hustle-filter-badge${libraryAudienceFilter === id ? " hustle-filter-badge--active purple" : ""}`}
+                    aria-pressed={libraryAudienceFilter === id}
+                  >
+                    {label}
+                  </button>
+                ))}
+                {(
+                  [
+                    ["all", "Any Place"],
+                    ["online", "Online"],
+                    ["local", "Local"],
+                    ["both", "Both"],
+                  ] as const
+                ).map(([id, label]) => (
+                  <button
+                    key={`loc-${id}`}
+                    type="button"
+                    onClick={() => setLibraryLocationFilter(id)}
+                    className={`glow-badge hustle-filter-badge${libraryLocationFilter === id ? " hustle-filter-badge--active purple" : ""}`}
+                    aria-pressed={libraryLocationFilter === id}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Grid List */}
             {filteredHustles.length > 0 ? (
               <div className="hustle-grid">
@@ -2615,7 +2740,7 @@ function App() {
             ) : (
               <div className="glass empty-state-panel" style={{ textAlign: "center", borderRadius: "16px" }}>
                 <p style={{ color: "var(--text-primary)", marginBottom: "16px" }}>No side hustles match your search criteria.</p>
-                <button onClick={() => { setSearchQuery(""); setFilterCategory("all"); }} className="btn btn-outline">
+                <button onClick={() => { setSearchQuery(""); setFilterCategory("all"); setLibraryTagFilter("all"); setLibraryAudienceFilter("adult"); setLibraryLocationFilter("all"); }} className="btn btn-outline">
                   Clear Filters
                 </button>
               </div>
@@ -2630,6 +2755,7 @@ function App() {
           </div>
         )}
 
+        <Suspense fallback={PAGE_FALLBACK}>
         {activeView === "quiz" && (
           <>
             {findMineMode === "select" ? (
@@ -2641,17 +2767,13 @@ function App() {
               />
             ) : (
               <HustleQuiz
-                hustles={HUSTLES_DATA}
+                hustles={quizHustles}
                 onSelectAction={handleSelectHustleAction}
-                isLoggedIn={effectiveMemberAccess}
+                isLoggedIn={effectivePortalLogin}
                 previewAsGuest={previewingAsGuest}
                 onUnlockBlueprint={() => openJoin("adult")}
               />
             )}
-            <TrainingCircles
-              onOpenGuides={() => setActiveView("guides")}
-              onOpenKids={() => openKidsCorner()}
-            />
           </>
         )}
 
@@ -2673,16 +2795,12 @@ function App() {
 
         {activeView === "guides" && (
           guidesManualId ? (
-            <Suspense
-              fallback={
-                <div className="glass" style={{ padding: 32, textAlign: "center" }}>
-                  <WaitLabel>Loading…</WaitLabel>
-                </div>
-              }
-            >
               <MarketingManual
                 guideId={guidesManualId}
                 onBack={openGuidesLibrary}
+                isLoggedIn={effectivePortalLogin}
+                onGoToLogin={() => goTo("login")}
+                onGoToDashboard={() => goTo("user_portal")}
                 onGoToJoin={() =>
                   openJoin(
                     guidesManualId === "kids"
@@ -2701,18 +2819,22 @@ function App() {
                   else goTo("quiz");
                 }}
               />
-            </Suspense>
           ) : guidesDetailId ? (
             <StepByStepGuides
               selectedHustleId={guidesDetailId}
-              onGoToCalculator={handleGoToCalculatorFromGuide}
               isLoggedIn={effectivePortalLogin}
               membershipTier={
                 authUser?.membershipTier ?? (effectivePortalLogin ? "free" : null)
               }
+              isAdmin={canUseAdminPortal && !previewingAsMember}
+              canReviewGuides={
+                canAccessTestingPortal(authUser) && !previewingAsMember
+              }
+              canSetReviewedByDev={
+                canSetGuideReviewedByDev(authUser) && !previewingAsMember
+              }
               onGoToJoin={() => openJoin("adult")}
               onGoToLogin={() => goTo("login")}
-              onBackToCatalog={() => setGuidesDetailId(null)}
             />
           ) : (
             <FreeGuidesPage
@@ -2720,9 +2842,13 @@ function App() {
               membershipTier={
                 authUser?.membershipTier ?? (effectivePortalLogin ? "free" : null)
               }
-              onGoToJoin={(audience) => openJoin(audience ?? "adult")}
+              isAdmin={canUseAdminPortal && !previewingAsMember}
+              canReviewGuides={
+                canAccessTestingPortal(authUser) && !previewingAsMember
+              }
+              onGoToJoin={(audience: AudienceGroup) => openJoin(audience ?? "adult")}
               onGoToLogin={() => goTo("login")}
-              onOpenAdultGuide={(id) => {
+              onOpenAdultGuide={(id: string) => {
                 setGuidesManualId(null);
                 setSelectedHustleId(id);
                 setGuidesDetailId(id);
@@ -2746,11 +2872,30 @@ function App() {
         )}
 
         {activeView === "workshops" && (
-          <WorkshopsHub />
+          <WorkshopsHub
+            onAddWorkshopSeat={() => {
+              addAlaCarteToCart("workshop-general");
+              if (!effectivePortalLogin) goTo("login");
+              else openJoin(null, { scrollToCart: true });
+            }}
+          />
         )}
 
         {activeView === "community" && (
-          <CommunityHub />
+          <CommunityHub
+            isLoggedIn={effectivePortalLogin}
+            isAdmin={canAccessAdminPortal(authUser)}
+            membershipTier={
+              authUser?.membershipTier === "starter" ||
+              authUser?.membershipTier === "pro" ||
+              authUser?.membershipTier === "elite" ||
+              authUser?.membershipTier === "free"
+                ? authUser.membershipTier
+                : null
+            }
+            onLogin={() => goTo("login")}
+            onJoin={() => openJoin(null, { scrollToPlans: true })}
+          />
         )}
 
         {activeView === "newsletter" && (
@@ -2770,15 +2915,17 @@ function App() {
           />
         )}
 
+        {activeView === "shop" && <ShopPage onContact={() => goTo("contact")} />}
+
         {activeView === "kids" && (
           <KidsCorner
             isLoggedIn={kidsCornerMemberAccess}
-            hasAccountLogin={effectivePortalLogin}
+            hasAccountLogin={kidsCornerMemberAccess}
             previewAsGuest={previewingAsGuest}
             membershipTier={
               authUser?.membershipTier ?? (kidsCornerMemberAccess ? "free" : null)
             }
-            onGoToJoin={(audience) => openJoin(audience)}
+            onGoToJoin={(audience: AudienceGroup) => openJoin(audience)}
             onOpenDashboard={
               isLoggedIn && !previewingAsGuest ? () => goTo("user_portal") : undefined
             }
@@ -2792,25 +2939,28 @@ function App() {
           <SeniorSideHustles
             isLoggedIn={
               !previewingAsGuest &&
-              (actAsAudienceNow === "senior" || (hasMemberAccess && !canUseAdminPortal))
+              (actAsAudienceNow === "senior" ||
+                (effectivePortalLogin && !canUseAdminPortal))
             }
             previewAsGuest={previewingAsGuest}
             membershipTier={
               authUser?.membershipTier ??
               (!previewingAsGuest &&
-              (actAsAudienceNow === "senior" || (hasMemberAccess && !canUseAdminPortal))
+              (actAsAudienceNow === "senior" ||
+                (effectivePortalLogin && !canUseAdminPortal))
                 ? "free"
                 : null)
             }
             onGoToJoin={() => openJoin("senior")}
             onOpenGuides={() => goTo("guides")}
-            onOpenLaunchGuide={(launchGuideId) => goTo("guides", { launchGuideId })}
+            onOpenLaunchGuide={(launchGuideId: string) => goTo("guides", { launchGuideId })}
             entryTab={seniorsEntryTab}
           />
         )}
 
         {/* View: User / Admin Login form */}
-        {activeView === "login" && (
+        {(activeView === "login" ||
+          (viewRequiresMemberLogin(activeView) && !effectivePortalLogin)) && (
           <div className="glass login-page-shell" data-testid="login-page">
             <div className="login-page-shell__inner">
               <div style={{ textAlign: "center", marginBottom: "28px" }}>
@@ -2889,7 +3039,7 @@ function App() {
                       style={{ width: "100%", marginTop: "10px" }}
                       disabled={loginBusy}
                     >
-                      {loginBusy ? <WaitLabel>Signing in…</WaitLabel> : "Log In"}
+                      {loginBusy ? <WaitLabel>Logging in…</WaitLabel> : LOGIN_BUTTON_LABEL}
                     </button>
                   </form>
 
@@ -3065,7 +3215,7 @@ function App() {
           <JoinPage
             key={joinAudience ? `join-${joinAudience}` : "join-saved"}
             onLogin={() => goTo("login")}
-            onSignup={(tier, audience) =>
+            onSignup={(tier: TierId, audience: AudienceGroup | null) =>
               openMembershipSignup(tier ?? "free", audience ?? joinAudience)
             }
             onCommunity={() => goTo("community")}
@@ -3079,7 +3229,7 @@ function App() {
             onScrolledToPlans={() => setJoinScrollToPlans(false)}
             scrollToCart={joinScrollToCart}
             onScrolledToCart={() => setJoinScrollToCart(false)}
-            isLoggedIn={isLoggedIn && Boolean(authUser)}
+            isLoggedIn={effectivePortalLogin && Boolean(authUser)}
             currentTier={
               authUser?.membershipTier === "starter" ||
               authUser?.membershipTier === "pro" ||
@@ -3089,16 +3239,40 @@ function App() {
                 : "free"
             }
             checkoutEmail={authUser?.email ?? null}
+            onOpenScheduleSuite={() => {
+              setPortalInitialTab("schedule");
+              goTo("user_portal");
+            }}
+            onOpenBilling={() => {
+              setPortalInitialTab("purchases");
+              goTo("user_portal");
+            }}
+            onOpenCredits={() => {
+              setPortalInitialTab("credits");
+              goTo("user_portal");
+            }}
+            onOpenDashboard={() => {
+              setPortalInitialTab("blueprint");
+              goTo("user_portal");
+            }}
+            onOpenBlueprints={() => {
+              setPortalInitialTab("blueprint");
+              goTo("user_portal");
+            }}
             onOpenBetaNda={() => goTo("beta_nda")}
             onBetaTesterRegistered={() => {
               setBetaNoticeCopy(BETA_TESTER_SIGNUP_NOTICE);
               setBetaNoticeOpen(true);
             }}
-            onBetaTestingUnlocked={(receipt) => {
+            onBetaTestingUnlocked={(receipt: BetaNdaReceipt) => {
               setBetaUnlockPreview(receipt);
               goTo("beta_testing");
             }}
-            onBlueprintUnlocked={(ageGroup) => {
+            onBlueprintUnlocked={(ageGroup: BlueprintAgeGroup, user: AuthUser | null) => {
+              if (user) {
+                setIsLoggedIn(true);
+                setAuthUser(user);
+              }
               setMemberAccessTick((n) => n + 1);
               restoreBlueprintAfterUnlock(ageGroup);
             }}
@@ -3113,6 +3287,7 @@ function App() {
             resumeCheckout={signupResumeCheckout}
             loggedInEmail={authUser?.email ?? null}
             isLoggedIn={isLoggedIn && Boolean(authUser)}
+            isAdmin={canUseAdminPortal && !previewingAsMember}
             currentTier={
               authUser?.membershipTier === "starter" ||
               authUser?.membershipTier === "pro" ||
@@ -3121,10 +3296,12 @@ function App() {
                 ? authUser.membershipTier
                 : null
             }
-            onProfileUpdated={(user) => {
+            onProfileUpdated={(user: AuthUser) => {
               setAuthUser(user);
+              setIsLoggedIn(true);
               setMemberAccessTick((n) => n + 1);
             }}
+            onShowDashboardTip={() => setDashboardNavTipOpen(true)}
             onBackToPlans={() => {
               setSignupResumeCheckout(false);
               openJoin(joinAudience);
@@ -3139,7 +3316,7 @@ function App() {
               setBetaNoticeCopy(BETA_TESTER_SIGNUP_NOTICE);
               setBetaNoticeOpen(true);
             }}
-            onBetaTestingUnlocked={(receipt) => {
+            onBetaTestingUnlocked={(receipt: BetaNdaReceipt) => {
               setBetaUnlockPreview(receipt);
               goTo("beta_testing");
             }}
@@ -3159,6 +3336,7 @@ function App() {
         )}
 
         {activeView === "user_portal" &&
+          effectivePortalLogin &&
           (isYouthDashboardUser(authUser) ? (
             <KidDashboard
               memberName={authUser?.name}
@@ -3169,13 +3347,13 @@ function App() {
                   tab: "wizard",
                 })
               }
-              onOpenCorner={(tab) =>
+              onOpenCorner={(tab?: "wizard" | "piggy" | "guides" | "jobs") =>
                 openKidsCorner({
                   mode: youthAgeBand(authUser),
                   tab: tab ?? "wizard",
                 })
               }
-              onOpenGuide={(ageGroup) => {
+              onOpenGuide={(ageGroup: "kids" | "junior") => {
                 openKidsCorner({
                   mode: ageGroup === "junior" ? "junior" : "kids",
                   tab: "guides",
@@ -3196,13 +3374,13 @@ function App() {
                   tab: "wizard",
                 })
               }
-              onOpenCorner={(tab) =>
+              onOpenCorner={(tab?: "wizard" | "piggy" | "guides" | "jobs") =>
                 openKidsCorner({
                   mode: parentKidDashboard.ageBand,
                   tab: tab ?? "wizard",
                 })
               }
-              onOpenGuide={(ageGroup) => {
+              onOpenGuide={(ageGroup: "kids" | "junior") => {
                 openKidsCorner({
                   mode: ageGroup === "junior" ? "junior" : "kids",
                   tab: "guides",
@@ -3225,10 +3403,23 @@ function App() {
                 goTo("quiz");
               }}
               onOpenJoin={() => openJoin("adult", { scrollToPlans: true })}
-              onOpenKidDashboard={(kid) => {
+              onMembershipChanged={(tier: string) => {
+                setAuthUser((prev) => (prev ? { ...prev, membershipTier: tier } : prev));
+              }}
+              onAccountDeactivated={() => {
+                handleLogout();
+              }}
+              onOpenKidDashboard={(kid: {
+                id: string;
+                displayName: string;
+                ageBand: "kids" | "junior";
+              }) => {
                 setParentKidDashboard(kid);
               }}
-              onOpenGuide={(ageGroup, hustleId) => {
+              onOpenGuide={(
+                ageGroup: "kids" | "junior" | "senior" | "adult",
+                hustleId: string,
+              ) => {
                 if (ageGroup === "kids") {
                   openKidsCorner({ mode: "kids", tab: "guides" });
                   return;
@@ -3247,33 +3438,39 @@ function App() {
             />
           ))}
 
-        <BetaPhasePopup
-          open={betaNoticeOpen}
-          notice={betaNoticeCopy}
-          onClose={() => setBetaNoticeOpen(false)}
-        />
+        </Suspense>
 
-        <ScheduleDuePopup
-          open={scheduleDueOpen}
-          summaries={scheduleDueSummaries}
-          overdue={scheduleDueOverdue}
-          onClose={() => setScheduleDueOpen(false)}
-          onOpenSchedule={(scheduleId) => {
-            setScheduleDueOpen(false);
-            setFocusScheduleId(scheduleId);
-            setPortalInitialTab("schedule");
-            goTo("user_portal");
-          }}
-        />
+        <Suspense fallback={null}>
+        {betaNoticeOpen ? (
+          <BetaPhasePopup
+            open={betaNoticeOpen}
+            notice={betaNoticeCopy}
+            onClose={() => setBetaNoticeOpen(false)}
+          />
+        ) : null}
+
+        {scheduleDueOpen ? (
+          <ScheduleDuePopup
+            open={scheduleDueOpen}
+            summaries={scheduleDueSummaries}
+            overdue={scheduleDueOverdue}
+            onClose={() => setScheduleDueOpen(false)}
+            onOpenSchedule={(scheduleId: string) => {
+              setScheduleDueOpen(false);
+              setFocusScheduleId(scheduleId);
+              setPortalInitialTab("schedule");
+              goTo("user_portal");
+            }}
+          />
+        ) : null}
+        </Suspense>
+
+        {activeView === "admin" &&
+          (!authReady || (hasActiveTabSession() && !canUseAdminPortal && !canUseTestingPortal)) &&
+          PAGE_FALLBACK}
 
         {activeView === "admin" && authReady && (canUseAdminPortal || canUseTestingPortal) && (
-          <Suspense
-            fallback={
-              <div className="glass" style={{ padding: 32, textAlign: "center" }}>
-                <WaitLabel>Loading…</WaitLabel>
-              </div>
-            }
-          >
+          <Suspense fallback={PAGE_FALLBACK}>
             <AdminPortal
               key={adminSessionKey}
               authUser={authUser}

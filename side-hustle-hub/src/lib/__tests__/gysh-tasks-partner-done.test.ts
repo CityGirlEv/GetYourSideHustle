@@ -106,4 +106,17 @@ describe("shouldAutoStartTaskOnFirstTouch / heal", () => {
     expect(healed.tasks.find((t) => t.id === "A")!.status).toBe("in_progress");
     expect(healed.tasks.find((t) => t.id === "C")!.status).toBe("not_started");
   });
+
+  it("does not auto-start Personal amplify from catalog notes", () => {
+    const healed = healNotStartedTouchedTasks([
+      base({
+        id: "T-SL-S3-PERSONAL-AMPLIFY-WRAP-TINA",
+        description: "Personal amplify — Soft launch week wrap",
+        category: "personal_amplify",
+        notes: "CF: sl-s3-personal-amplify-wrap-tina",
+      }),
+    ]);
+    expect(healed.changed).toBe(false);
+    expect(healed.tasks[0]!.status).toBe("not_started");
+  });
 });

@@ -15,8 +15,8 @@ const valid = {
 };
 
 describe("server beta NDA acceptance", () => {
-  it("stamps GYSH-BETA-NDA-v1.0 with user id, timestamp, and IP", () => {
-    expect(BETA_NDA_VERSION).toBe("GYSH-BETA-NDA-v1.0");
+  it("stamps GYSH-BETA-NDA-v1.1 with user id, timestamp, and IP", () => {
+    expect(BETA_NDA_VERSION).toBe("GYSH-BETA-NDA-v1.1");
     const row = buildBetaNdaRecord({
       userId: "u-tester-1",
       legalName: "Jordan Avery",
@@ -26,11 +26,11 @@ describe("server beta NDA acceptance", () => {
       ipAddress: "203.0.113.10",
       userAgent: "Playwright",
     });
-    expect(row.ndaVersion).toBe("GYSH-BETA-NDA-v1.0");
+    expect(row.ndaVersion).toBe("GYSH-BETA-NDA-v1.1");
     expect(row.userId).toBe("u-tester-1");
     expect(row.acceptedAt).toBe("2026-08-23T18:00:00.000Z");
     expect(row.ipAddress).toBe("203.0.113.10");
-    expect(row.id).toContain("GYSH-BETA-NDA-v1.0");
+    expect(row.id).toContain("GYSH-BETA-NDA-v1.1");
   });
 
   it("reads Cloudflare connecting IP", () => {

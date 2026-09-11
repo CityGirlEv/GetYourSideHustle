@@ -127,9 +127,11 @@ describe("email template review sprint / dues", () => {
     const ref = new Date(2026, 7, 22);
     const today = dueDatePlusDays(0, ref);
     const tomorrow = dueDatePlusDays(1, ref);
+    const n = EMAIL_TEMPLATE_REVIEW_CASES.length;
+    const firstHalf = Math.ceil(n / 2);
     const dues = EMAIL_TEMPLATE_REVIEW_CASES.map((c) => emailTemplateReviewDueDate(c.id, ref));
-    expect(dues.filter((d) => d === today)).toHaveLength(9);
-    expect(dues.filter((d) => d === tomorrow)).toHaveLength(9);
+    expect(dues.filter((d) => d === today)).toHaveLength(firstHalf);
+    expect(dues.filter((d) => d === tomorrow)).toHaveLength(n - firstHalf);
     expect(dues).not.toContain(dueDateForSprint(3));
   });
 });

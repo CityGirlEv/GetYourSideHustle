@@ -4,6 +4,7 @@ import {
   applyScheduleWeekGrade,
   createSchedulePlan,
   getWeekRoundup,
+  scheduleGradeMeButtonLabel,
   scheduleStatsBarShowsGradeMe,
   setScheduleBlockStatus,
   suiteViewAfterGradeMe,
@@ -14,10 +15,10 @@ import {
  * Grade Me → Weekly Roundup (single Grade me button) + Email Me scroll target.
  */
 test.describe("Schedule Suite Grade Me + Email Me", () => {
-  test("helpers: Grade me lands on roundup; stats-bar Grade me hidden there", () => {
-    expect(suiteViewAfterGradeMe()).toBe("roundup");
+  test("helpers: Grade me stays on the current tab; button shows Current Grade", () => {
+    expect(suiteViewAfterGradeMe("tracker")).toBe("tracker");
     expect(scheduleStatsBarShowsGradeMe("tracker")).toBe(true);
-    expect(scheduleStatsBarShowsGradeMe("roundup")).toBe(false);
+    expect(scheduleStatsBarShowsGradeMe("roundup")).toBe(true);
     expect(SCHEDULE_EMAIL_SECTION_ID).toBe("schedule-email-section");
   });
 
@@ -41,12 +42,18 @@ test.describe("Schedule Suite Grade Me + Email Me", () => {
     expect(["A", "B", "C", "D", "F"]).toContain(grade!.letter);
   });
 
-  test("DOM: Grade me switches to Roundup and shows only one Grade me", async ({ page }) => {
+  test("DOM: Grade me stays on the tab and shows Current Grade in the button", async ({ page }) => {
     await page.exposeFunction(
       "gyshStatsBarShowsGradeMe",
       (view: ScheduleSuiteView) => scheduleStatsBarShowsGradeMe(view),
     );
-    await page.exposeFunction("gyshSuiteViewAfterGradeMe", () => suiteViewAfterGradeMe());
+    await page.exposeFunction(
+      "gyshSuiteViewAfterGradeMe",
+      (view: ScheduleSuiteView) => suiteViewAfterGradeMe(view),
+    );
+    await page.exposeFunction("gyshGradeMeLabel", (grade: { letter: string; mark: string; score: number } | null) =>
+      scheduleGradeMeButtonLabel(grade),
+    );
 
     await page.setContent(`
       <div data-testid="schedule-suite-views">
@@ -57,37 +64,29 @@ test.describe("Schedule Suite Grade Me + Email Me", () => {
       <div data-testid="schedule-suite-stats">
         <button type="button" data-testid="schedule-grade-me-anytime">Grade me</button>
       </div>
-      <div data-testid="schedule-view-roundup-panel" hidden>
-        <button type="button" data-testid="schedule-grade-me">Grade me</button>
-        <div data-testid="schedule-week-grade" hidden>Grade A (100%)</div>
-      </div>
       <div id="${SCHEDULE_EMAIL_SECTION_ID}" data-testid="schedule-email-section" style="margin-top:1200px;padding:24px;">
         Email reminders
       </div>
       <script>
         let suiteView = "tracker";
         const anytime = document.querySelector('[data-testid="schedule-grade-me-anytime"]');
-        const roundupPanel = document.querySelector('[data-testid="schedule-view-roundup-panel"]');
-        const gradePanel = document.querySelector('[data-testid="schedule-week-grade"]');
         const tabTracker = document.querySelector('[data-testid="schedule-view-tracker"]');
         const tabRoundup = document.querySelector('[data-testid="schedule-view-roundup"]');
 
         async function render() {
           const showAnytime = await window.gyshStatsBarShowsGradeMe(suiteView);
           anytime.hidden = !showAnytime;
-          roundupPanel.hidden = suiteView !== "roundup";
           tabTracker.setAttribute("data-active", suiteView === "tracker" ? "1" : "0");
           tabRoundup.setAttribute("data-active", suiteView === "roundup" ? "1" : "0");
         }
 
         async function runGrade() {
-          suiteView = await window.gyshSuiteViewAfterGradeMe();
-          gradePanel.hidden = false;
+          suiteView = await window.gyshSuiteViewAfterGradeMe(suiteView);
+          anytime.textContent = await window.gyshGradeMeLabel({ letter: "A", mark: "A+", score: 100 });
           await render();
         }
 
         anytime.addEventListener("click", () => void runGrade());
-        document.querySelector('[data-testid="schedule-grade-me"]').addEventListener("click", () => void runGrade());
         document.querySelector('[data-testid="schedule-email-me-link"]').addEventListener("click", (e) => {
           e.preventDefault();
           document.getElementById("${SCHEDULE_EMAIL_SECTION_ID}")?.scrollIntoView({ behavior: "instant", block: "start" });
@@ -97,16 +96,16 @@ test.describe("Schedule Suite Grade Me + Email Me", () => {
     `);
 
     await expect(page.getByTestId("schedule-grade-me-anytime")).toBeVisible();
-    await expect(page.getByTestId("schedule-view-roundup-panel")).toBeHidden();
+    await expect(page.getByTestId("schedule-grade-me-anytime")).toHaveText("Grade me");
+    await expect(page.getByTestId("schedule-view-tracker")).toHaveAttribute("data-active", "1");
 
     await page.getByTestId("schedule-grade-me-anytime").click();
 
-    await expect(page.getByTestId("schedule-view-roundup")).toHaveAttribute("data-active", "1");
-    await expect(page.getByTestId("schedule-view-roundup-panel")).toBeVisible();
-    await expect(page.getByTestId("schedule-week-grade")).toBeVisible();
-    await expect(page.getByTestId("schedule-grade-me-anytime")).toBeHidden();
-    await expect(page.getByTestId("schedule-grade-me")).toBeVisible();
-    await expect(page.getByTestId("schedule-grade-me")).toHaveCount(1);
+    await expect(page.getByTestId("schedule-view-tracker")).toHaveAttribute("data-active", "1");
+    await expect(page.getByTestId("schedule-view-roundup")).toHaveAttribute("data-active", "0");
+    await expect(page.getByTestId("schedule-grade-me-anytime")).toBeVisible();
+    await expect(page.getByTestId("schedule-grade-me-anytime")).toHaveText("Current Grade: A+ (100%)");
+    await expect(page.getByTestId("schedule-grade-me-anytime")).toHaveCount(1);
   });
 
   test("DOM: Email Me scrolls to Email reminders section", async ({ page }) => {

@@ -136,6 +136,18 @@ export const EMAIL_TEMPLATE_CATALOG: Array<{
     sampleSubject: `${SITE_NAME} — you're upgraded to Pro!`,
   },
   {
+    slug: "alacarte_purchased",
+    name: "A la carte purchase",
+    description: "Sent after a-la-carte checkout (Stripe, GYSH credits, or mixed).",
+    sampleSubject: `${SITE_NAME} — your a-la-carte purchase is confirmed!`,
+  },
+  {
+    slug: "credit_pack_purchased",
+    name: "Kid Credit pack purchase",
+    description: "Sent after a parent-funded Kid Credit pack purchase (Stripe cash).",
+    sampleSubject: `${SITE_NAME} — your Kid Credit pack is confirmed!`,
+  },
+  {
     slug: "password_reset",
     name: "Password reset link",
     description: "Forgot-password email with one-time reset link.",
@@ -179,6 +191,12 @@ export const PREVIEW_SAMPLE_VARS: EmailTemplateVars = {
   cadence: "Daily",
   digestBodyHtml:
     "<p style=\"margin:0;\">Preview of your personal Admin/QA digest body (live digests are generated per person).</p>",
+  itemsHtml:
+    "<ul style=\"margin:0;padding-left:18px;\"><li><strong>30-minute consult</strong> × 1 — $45</li></ul>",
+  itemLabel: "30-minute consult",
+  amountUsd: "$45",
+  paymentHtml:
+    '<p style="margin:0 0 8px;"><strong>Payment method:</strong> Stripe Checkout</p><p style="margin:0 0 8px;"><strong>Cash charged:</strong> $45</p>',
 };
 
 export function applyTemplateVars(input: string, vars: EmailTemplateVars): string {
@@ -225,13 +243,23 @@ export function renderContent(
   return { subject: filled.subject, html: branded.html, text: branded.text };
 }
 
+/** Stored Admin copy from before the GYSH-family welcome headline. */
+export function isLegacyHustleFamilyHeadline(headline: string): boolean {
+  return String(headline || "").trim().toLowerCase() === "welcome to the hustle family!";
+}
+
+/** Stored registration headline with a lowercase “welcome”. */
+export function isLegacyLowercaseGyshWelcomeHeadline(headline: string): boolean {
+  return String(headline || "").trim() === "{{name}}, welcome to the GYSH family!";
+}
+
 function welcomeDefault(tierLabelText: string): EmailTemplateContent {
   const joinUrl = membershipDeepLink();
   return {
     subject: `${SITE_NAME} — you're activated! Welcome aboard`,
     preheader: `You're activated on ${tierLabelText} — see your perks!`,
     eyebrow: "You're in · Account activated",
-    headline: "Welcome to the hustle family!",
+    headline: "Welcome to the GYSH family!",
     subhead: `Your account is LIVE on the {{tier}} plan.`,
     bodyHtml: `<p style="margin:0 0 14px;">This is your official green light. Log in and use every perk that comes with <strong>{{tier}}</strong>.</p>
         <p style="margin:0 0 8px;font-size:13px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#947d64;">Your {{tier}} perks</p>
@@ -250,7 +278,7 @@ export function defaultContentForSlug(slug: string): EmailTemplateContent | null
         subject: `${SITE_NAME} — we got your signup!`,
         preheader: "Welcome to the GYSH family — your membership details inside!",
         eyebrow: "Membership · Pending activation",
-        headline: "{{name}}, welcome to the GYSH family!",
+        headline: "{{name}}, Welcome to the GYSH family!",
         subhead: "You're on the {{tier}} plan. An admin will activate your login soon.",
         bodyHtml: `<p style="margin:0 0 12px;">We've saved your membership request. Here's what you unlocked on <strong>{{tier}}</strong>:</p>
         {{perksHtml}}{{certHtml}}{{upgradesHtml}}
@@ -425,6 +453,44 @@ export function defaultContentForSlug(slug: string): EmailTemplateContent | null
         </p>`,
         ctaLabel: "See my plan & perks",
         ctaUrl: membershipDeepLink(),
+        footerNote: "Questions? Reply to this email or use Contact Us on getyoursidehustle.com.",
+      };
+    case "alacarte_purchased":
+      return {
+        subject: `${SITE_NAME} — your a-la-carte purchase is confirmed!`,
+        preheader: "We confirmed {{itemLabel}} · {{amountUsd}}",
+        eyebrow: "A la carte · Purchase confirmed",
+        headline: "{{name}}, your purchase is confirmed!",
+        subhead: "{{itemLabel}} · {{amountUsd}}",
+        bodyHtml: `<p style="margin:0 0 12px;">We've confirmed your GYSH a-la-carte checkout. Here's what you bought:</p>
+        <p style="margin:0 0 8px;font-size:13px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#947d64;">Your items</p>
+        {{itemsHtml}}
+        <p style="margin:16px 0 12px;"><strong>Total paid:</strong> {{amountUsd}}</p>
+        {{paymentHtml}}
+        <p style="margin:16px 0 0;padding:12px 14px;background:#fff4e8;border-radius:12px;border-left:4px solid #9B2F28;">
+          <strong>Next:</strong> Sign in to My Dashboard to review billing, or open Join anytime to add another session or Kid Credit pack.
+        </p>`,
+        ctaLabel: "Open Join",
+        ctaUrl: `${SITE_URL}/join`,
+        footerNote: "Questions? Reply to this email or use Contact Us on getyoursidehustle.com.",
+      };
+    case "credit_pack_purchased":
+      return {
+        subject: `${SITE_NAME} — your Kid Credit pack is confirmed!`,
+        preheader: "We confirmed {{itemLabel}} · {{amountUsd}}",
+        eyebrow: "Parent packs · Purchase confirmed",
+        headline: "{{name}}, your Kid Credit pack is confirmed!",
+        subhead: "{{itemLabel}} · {{amountUsd}}",
+        bodyHtml: `<p style="margin:0 0 12px;">We've confirmed your parent-funded Kid Credit pack. Here's what you bought:</p>
+        <p style="margin:0 0 8px;font-size:13px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#947d64;">Your packs</p>
+        {{itemsHtml}}
+        <p style="margin:16px 0 12px;"><strong>Total paid:</strong> {{amountUsd}}</p>
+        {{paymentHtml}}
+        <p style="margin:16px 0 0;padding:12px 14px;background:#fff4e8;border-radius:12px;border-left:4px solid #9B2F28;">
+          <strong>Next:</strong> Keep this email as your receipt. Sign in to My Dashboard to review billing, or open Join anytime to add another pack.
+        </p>`,
+        ctaLabel: "Open Join",
+        ctaUrl: `${SITE_URL}/join`,
         footerNote: "Questions? Reply to this email or use Contact Us on getyoursidehustle.com.",
       };
     case "password_reset":

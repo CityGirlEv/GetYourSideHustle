@@ -1,0 +1,338 @@
+/**
+ * Second set of eyes for every GYSH guide — structure, tiers, kits, links.
+ * Human review cases live in Testing Portal as GUIDE-REV-* (Sprint 6).
+ */
+
+import { describe, expect, it } from "vitest";
+import {
+  ADULT_GUIDE_MIN_TIER,
+  adultGuideMinTier,
+  kidsGuideMinTier,
+  seniorGuideMinTier,
+} from "../guide-access";
+import {
+  CREATE_GAMES_JUNIOR_STEPS,
+  CREATE_GAMES_KIDS_STEPS,
+  formatGuideToolLine,
+  guideKitForId,
+  guideToolsDisclaimer,
+  TOOL_CATALOG,
+} from "../guide-tools";
+import {
+  DETAILED_GUIDE_STEPS,
+  detailedStepsForGuide,
+  isGenericGuideSteps,
+} from "../guide-detailed-steps";
+import { KIDS_GUIDES, guidesForAudience } from "../kids-guides";
+import { LAUNCH_GUIDES } from "../launch-guides";
+import { SENIOR_GUIDE_TEASERS } from "../seniors-content";
+import {
+  AI_SIDE_HUSTLE_ELITE_IDS,
+  AI_SIDE_HUSTLE_PRO_IDS,
+  FREE_WIZARD_HUSTLE_IDS,
+  isAiSideHustle,
+  isFreeWizardHustle,
+  SIDE_HUSTLES,
+} from "../side-hustle-catalog";
+import { catalogToLaunchGuideData, hustleById } from "../side-hustle-catalog";
+import { resolveLaunchGuideData } from "../../components/StepByStepGuides";
+import {
+  GUIDE_REVIEW_CASES,
+  GUIDE_REVIEW_CATALOG,
+  GUIDE_REVIEW_SPRINT,
+  guideReviewCaseId,
+  isGuideReviewCaseId,
+  VT_GUIDES_REVIEW_CASE,
+} from "../gysh-guide-review-cases";
+import { uniqueGuideLibraryCount } from "../guide-library-pool";
+import { suggestedSprintForTest } from "../gysh-sprint-board";
+
+const HTTPS = /^https:\/\//i;
+
+function assertNonEmptySteps(
+  steps: { title: string; body?: string; desc?: string }[],
+  label: string,
+) {
+  expect(steps.length, `${label} needs steps`).toBeGreaterThanOrEqual(3);
+  for (const step of steps) {
+    expect(step.title.trim().length, `${label} step title`).toBeGreaterThan(2);
+    const body = (step.body ?? step.desc ?? "").trim();
+    expect(body.length, `${label} step “${step.title}” body`).toBeGreaterThan(12);
+    expect(body.toLowerCase()).not.toMatch(/^gather tools\.?$/);
+  }
+}
+
+describe("guides review — launch guides", () => {
+  it("has unique launch guide ids and free-first ordering", () => {
+    const ids = LAUNCH_GUIDES.map((g) => g.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(adultGuideMinTier(LAUNCH_GUIDES[0].id)).toBe("free");
+    const firstPaid = LAUNCH_GUIDES.findIndex((g) => adultGuideMinTier(g.id) !== "free");
+    expect(firstPaid).toBeGreaterThan(0);
+  });
+
+  it("covers every Free Wizard allowlist id", () => {
+    const launchIds = new Set(LAUNCH_GUIDES.map((g) => g.id));
+    for (const id of FREE_WIZARD_HUSTLE_IDS) {
+      expect(launchIds.has(id), `missing free wizard guide ${id}`).toBe(true);
+      expect(isFreeWizardHustle(id)).toBe(true);
+      expect(adultGuideMinTier(id)).toBe("free");
+    }
+  });
+
+  it("every launch guide has name, peek, resolvable body, and a kit", () => {
+    for (const g of LAUNCH_GUIDES) {
+      expect(g.name.trim().length).toBeGreaterThan(3);
+      expect(g.peek.trim().length).toBeGreaterThan(12);
+      const kit = guideKitForId(g.id);
+      expect(kit.prerequisites.length, `${g.id} prerequisites`).toBeGreaterThan(0);
+      expect(kit.tools.length, `${g.id} tools`).toBeGreaterThan(0);
+      for (const p of kit.prerequisites) {
+        expect(p.label.trim().length).toBeGreaterThan(2);
+        expect(p.detail.trim().length).toBeGreaterThan(8);
+      }
+      for (const tool of kit.tools) {
+        expect(tool.name.trim().length).toBeGreaterThan(1);
+        expect(tool.costNote.trim().length).toBeGreaterThan(4);
+        if (tool.url) expect(tool.url).toMatch(HTTPS);
+      }
+      for (const link of kit.externalLinks ?? []) {
+        expect(link.url).toMatch(HTTPS);
+        expect(link.label.trim().length).toBeGreaterThan(1);
+      }
+      const fromCatalog = hustleById(g.id);
+      const data = fromCatalog
+        ? catalogToLaunchGuideData(fromCatalog)
+        : resolveLaunchGuideData(g.id, []);
+      expect(data.id).toBe(g.id);
+      assertNonEmptySteps(kit.steps ?? data.steps, g.id);
+    }
+  });
+
+  it("Airbnb steps name AirDNA with the exact https://www.airdna.co/ link", () => {
+    const kit = guideKitForId("airbnb");
+    const blob = [
+      ...(kit.steps ?? []).map((s) => `${s.title} ${s.desc}`),
+      ...(kit.externalLinks ?? []).map((l) => l.url),
+      ...kit.tools.map((t) => t.url ?? ""),
+    ].join("\n");
+    expect(blob).toMatch(/https:\/\/www\.airdna\.co\//);
+  });
+
+  it("local free guides include supply lists with estimated costs", () => {
+    for (const id of [
+      "car-interior-cleanup",
+      "dog-walk",
+      "yard-help",
+      "gift-wrapping",
+      "lemonade-stand",
+      "leaf-raking",
+      "handyman-light",
+    ] as const) {
+      const kit = guideKitForId(id);
+      expect(kit.supplies?.items.length, `${id} supplies`).toBeGreaterThanOrEqual(3);
+      expect(kit.supplies!.starterKitTotal.trim().length).toBeGreaterThan(5);
+      for (const item of kit.supplies!.items) {
+        expect(item.estCost.trim().length, `${id} ${item.id} cost`).toBeGreaterThan(1);
+      }
+    }
+    expect(guideToolsDisclaimer().toLowerCase()).toMatch(/estimates/);
+    expect(guideToolsDisclaimer().toLowerCase()).toMatch(/free plan/);
+    expect(formatGuideToolLine(TOOL_CATALOG.phone_computer).toLowerCase()).not.toMatch(
+      /free plan available/,
+    );
+    expect(formatGuideToolLine(TOOL_CATALOG.canva).toLowerCase()).toMatch(/free plan/);
+  });
+
+  it("service guides start with marketing objectives, materials, then outreach", () => {
+    for (const id of [
+      "errand-runner",
+      "car-interior-cleanup",
+      "dog-walk",
+      "trash-can-service",
+      "basic-invitation-creator",
+      "tutoring",
+      "consulting",
+      "cleaning-service",
+      "neighborhood-helper",
+      "yard-help",
+    ] as const) {
+      const steps = detailedStepsForGuide(id) ?? [];
+      const blob = steps.map((s) => `${s.title} ${s.desc}`).join("\n");
+      const titles = steps.map((s) => s.title);
+      // Foundation order: Research → Name → Marketing Objectives (youth adds Parent Thumbs Up first).
+      expect(titles.some((t) => /decide on marketing objectives/i.test(t)), id).toBe(true);
+      const marketingIdx = titles.findIndex((t) => /decide on marketing objectives/i.test(t));
+      const researchIdx = titles.findIndex((t) => /research competitors/i.test(t));
+      expect(researchIdx, id).toBeGreaterThanOrEqual(0);
+      expect(marketingIdx, id).toBeGreaterThan(researchIdx);
+      expect(blob, id).toMatch(/make your marketing materials/i);
+      expect(blob, id).toMatch(/carry out the marketing plan/i);
+      expect(blob, id).toMatch(/phone|text|flyer/i);
+      expect(blob, id).toMatch(/facebook\.com\/pages\/create/i);
+      expect(blob, id).toMatch(/craigslist\.org/i);
+      expect(blob, id).toMatch(/nextdoor\.com/i);
+      expect(blob, id).toMatch(/parents|neighbors|colleagues|coworkers/i);
+    }
+  });
+
+  it("Babysitter's Helper lists tasks before offer and includes advertise channel choices", () => {
+    const steps = detailedStepsForGuide("mothers-helper") ?? [];
+    const titles = steps.map((s) => s.title).join(" | ");
+    expect(titles).toMatch(/list of potential Helper Tasks/i);
+    expect(titles).toMatch(/Price those helper jobs/i);
+    expect(titles).toMatch(/how you will advertise/i);
+    expect(titles).toMatch(/Deliver the first small job/i);
+    expect(steps.map((s) => s.desc).join("\n")).toMatch(/warm texts|Canva|Nextdoor/i);
+  });
+
+  it("Career & Industry Consulting has niche delivery steps after marketing", () => {
+    const steps = detailedStepsForGuide("consulting") ?? [];
+    const titles = steps.map((s) => s.title).join(" | ");
+    expect(titles).toMatch(/Decide on Marketing Objectives/i);
+    expect(titles).toMatch(/Make your marketing materials/i);
+    expect(titles).toMatch(/niche|rate card|discovery/i);
+  });
+
+  it("never resolves Free Wizard / launch guides to generic template steps", () => {
+    for (const id of FREE_WIZARD_HUSTLE_IDS) {
+      expect(DETAILED_GUIDE_STEPS[id]?.length, `${id} needs DETAILED_GUIDE_STEPS`).toBeGreaterThanOrEqual(5);
+      const data = resolveLaunchGuideData(id, []);
+      expect(isGenericGuideSteps(data.steps), `${id} still generic`).toBe(false);
+      expect(data.steps[0]?.title).not.toMatch(/define the offer|prep your kit|reach out/i);
+    }
+    // Invitation guide must stay Canva-specific (the user’s example of “not generic”).
+    const invite = resolveLaunchGuideData("basic-invitation-creator", []);
+    expect(invite.steps.map((s) => s.title).join(" ")).toMatch(/Canva/i);
+    expect(invite.steps.some((s) => /canva\.com/i.test(s.desc))).toBe(true);
+
+    for (const g of LAUNCH_GUIDES) {
+      const data = resolveLaunchGuideData(g.id, []);
+      const kit = guideKitForId(g.id);
+      const steps = kit.steps?.length ? kit.steps : data.steps;
+      expect(isGenericGuideSteps(steps), `${g.id} resolves generic`).toBe(false);
+    }
+  });
+});
+
+describe("guides review — kids & teens guides", () => {
+  it("has unique kids guide ids and non-empty steps", () => {
+    const ids = KIDS_GUIDES.map((g) => g.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const g of KIDS_GUIDES) {
+      expect(g.title.trim().length).toBeGreaterThan(4);
+      expect(g.summary.trim().length).toBeGreaterThan(12);
+      expect(g.parentTip.trim().length).toBeGreaterThan(8);
+      assertNonEmptySteps(g.steps, g.id);
+      const min = kidsGuideMinTier(g.id);
+      expect(["free", "starter", "pro", "elite"]).toContain(min);
+      if (g.free) expect(min).toBe("free");
+      const kit = guideKitForId(g.id);
+      expect(kit.prerequisites.length).toBeGreaterThan(0);
+      expect(kit.tools.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("AI game guides use realistic ChatGPT / Scratch / Antigravity steps", () => {
+    for (const id of ["kids-games-ai", "create-games-kids"] as const) {
+      const steps = guideKitForId(id).steps ?? CREATE_GAMES_KIDS_STEPS;
+      const blob = steps.map((s) => `${s.title} ${s.desc}`).join("\n");
+      expect(blob).toMatch(/https:\/\/chatgpt\.com\//);
+      expect(blob).toMatch(/https:\/\/gemini\.google\.com\//);
+      expect(blob).toMatch(/https:\/\/scratch\.mit\.edu\//);
+      expect(blob).toMatch(/https:\/\/antigravity\.google\//);
+      expect(blob).toMatch(/GAME\.md/);
+    }
+    for (const id of ["junior-games-ai", "create-games-junior"] as const) {
+      const steps = guideKitForId(id).steps ?? CREATE_GAMES_JUNIOR_STEPS;
+      const blob = steps.map((s) => `${s.title} ${s.desc}`).join("\n");
+      expect(blob).toMatch(/https:\/\/chatgpt\.com\//);
+      expect(blob).toMatch(/https:\/\/antigravity\.google\//);
+      expect(blob).toMatch(/GAME\.md/);
+    }
+    expect(kidsGuideMinTier("kids-games-ai")).toBe("elite");
+    expect(kidsGuideMinTier("junior-games-ai")).toBe("elite");
+  });
+
+  it("audience helpers return only that audience", () => {
+    expect(guidesForAudience("kids").every((g) => g.audience === "kids")).toBe(true);
+    expect(guidesForAudience("junior").every((g) => g.audience === "junior")).toBe(true);
+  });
+});
+
+describe("guides review — senior teasers", () => {
+  it("every senior teaser has title, blurb, and a min tier", () => {
+    const ids = SENIOR_GUIDE_TEASERS.map((g) => g.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const g of SENIOR_GUIDE_TEASERS) {
+      expect(g.title.trim().length).toBeGreaterThan(4);
+      expect(g.blurb.trim().length).toBeGreaterThan(12);
+      const min = seniorGuideMinTier(g.id, g.launchGuideId);
+      expect(["free", "starter", "pro", "elite"]).toContain(min);
+      if (g.launchGuideId) {
+        expect(adultGuideMinTier(g.launchGuideId)).toBe(min);
+      }
+    }
+  });
+});
+
+describe("guides review — AI never Free (coffee chat is Starter; rest Elite)", () => {
+  it("catalog AI hustles are Starter (coffee) or Elite", () => {
+    for (const h of SIDE_HUSTLES.filter(isAiSideHustle)) {
+      if (h.id === "ai-peers") {
+        expect(h.minTier).toBe("starter");
+        continue;
+      }
+      expect(h.minTier).toBe("elite");
+      expect(h.freeWizardEligible).toBe(false);
+      expect(FREE_WIZARD_HUSTLE_IDS).not.toContain(h.id);
+    }
+    expect(AI_SIDE_HUSTLE_PRO_IDS).toHaveLength(0);
+    for (const id of AI_SIDE_HUSTLE_ELITE_IDS) {
+      expect(adultGuideMinTier(id)).toBe("elite");
+    }
+  });
+
+  it("mapped adult AI / game guides stay Starter or Elite", () => {
+    for (const [id, tier] of Object.entries(ADULT_GUIDE_MIN_TIER)) {
+      if (!id.startsWith("ai-") && !id.includes("game")) continue;
+      expect(["starter", "elite"]).toContain(tier);
+    }
+  });
+});
+
+describe("guides review — tool catalog URLs", () => {
+  it("every TOOL_CATALOG url is https when present", () => {
+    for (const tool of Object.values(TOOL_CATALOG)) {
+      if (tool.url) expect(tool.url).toMatch(HTTPS);
+    }
+  });
+});
+
+describe("guides review — Sprint 6 Testing Portal cases", () => {
+  it("catalog covers every unique Side Hustle Library guide", () => {
+    expect(GUIDE_REVIEW_CATALOG.length).toBe(uniqueGuideLibraryCount());
+    expect(GUIDE_REVIEW_CASES.length).toBe(GUIDE_REVIEW_CATALOG.length + 1);
+    expect(VT_GUIDES_REVIEW_CASE.id).toBe("VT-GUIDES-REVIEW");
+    expect(GUIDE_REVIEW_SPRINT).toBe(6);
+  });
+
+  it("places every GUIDE-REV / VT-GUIDES-REVIEW case on Sprint 6", () => {
+    for (const c of GUIDE_REVIEW_CASES) {
+      expect(isGuideReviewCaseId(c.id)).toBe(true);
+      expect(suggestedSprintForTest(c)).toBe(6);
+    }
+    expect(guideReviewCaseId("launch", "handyman")).toBe("GUIDE-REV-launch-handyman");
+  });
+
+  it("assigns manual GUIDE-REV cases to Lyriq with Pass → Reviewed by QA steps", () => {
+    const manuals = GUIDE_REVIEW_CASES.filter((c) => c.id.startsWith("GUIDE-REV-"));
+    expect(manuals.length).toBeGreaterThan(0);
+    for (const c of manuals) {
+      expect(c.assignees).toEqual(["lyriq"]);
+      expect(c.area).toBe("Guides");
+      expect(c.steps.some((s) => /Mark this test Pass|Pass/i.test(s))).toBe(true);
+      expect(c.expected).toMatch(/Reviewed by QA/i);
+    }
+  });
+});

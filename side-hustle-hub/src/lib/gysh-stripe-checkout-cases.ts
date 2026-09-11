@@ -137,6 +137,7 @@ function alaCarteCases(): TestCase[] {
     assignees: [] as TestCase["assignees"],
     suite: "manual" as const,
     steps: [
+      "Log in as a member first (guests do not see an active cart)",
       "Open Join and scroll to A la carte (data-testid membership-alacarte)",
       `Switch audience tabs until “${item.name}” is listed (sku ${item.id}, $${item.priceUsd})`,
       `Click Add for ${item.id} (membership-alacarte-add-${item.id})`,
@@ -159,9 +160,10 @@ function creditPackCases(): TestCase[] {
     assignees: [] as TestCase["assignees"],
     suite: "manual" as const,
     steps: [
-      "Open Join → Kids or Teens → Parent-funded credit packs",
+      "Log in as a member first (guests do not see an active cart)",
+      "Open Join → Parent-funded Kid Credit packs (Kids, Teens, Adults, or Seniors)",
       `Confirm “${pack.name}” shows ${pack.credits} Kid Credits for $${pack.priceUsd} (membership-credit-pack-${pack.id})`,
-      `Start Stripe Checkout for credit pack “${pack.id}” with a parent email (Buy on Join/portal when shown; otherwise POST stripe/checkout kind=credit_pack packId=${pack.id})`,
+      `Click Add to cart (membership-credit-pack-add-${pack.id}) and check out the shared Join cart with Stripe (pack prices from the Stripe credit-pack catalog)`,
       ...STRIPE_TEST_CARD_STEPS,
       "Confirm success return and that the pack purchase is acknowledged (credits / receipt messaging)",
     ],

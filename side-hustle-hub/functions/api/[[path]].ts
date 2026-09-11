@@ -19,6 +19,7 @@ import {
 } from "../_lib/auth";
 import {
   deleteUser,
+  clearUserMembership,
   handleContact,
   health,
   listAudit,
@@ -51,7 +52,7 @@ import {
   upsertUser,
 } from "../_lib/data";
 import { closeSprint, listClosedSprints, reopenSprint } from "../_lib/closed-sprints";
-import { getMemberCredits } from "../_lib/member-credits";
+import { getMemberCredits, handleAdminGrantInternalCredits } from "../_lib/member-credits";
 import {
   listEmailLog,
   listEmailTemplates,
@@ -116,6 +117,7 @@ import {
   listDailyProgressReports,
 } from "../_lib/daily-progress-audit";
 import { error, json } from "../_lib/crypto";
+import { publicCaughtApiError } from "../_lib/d1-retry";
 
 function pathParts(params: { path?: string | string[] }): string[] {
   const p = params.path;
@@ -144,8 +146,9 @@ export async function onRequest(context: {
   request: Request;
   env: Env;
   params: { path?: string | string[] };
+  waitUntil?: (promise: Promise<unknown>) => void;
 }) {
-  const { request, env, params } = context;
+  const { request, env, params, waitUntil } = context;
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders(request) });
   }
@@ -166,7 +169,7 @@ export async function onRequest(context: {
       return withCors(request, await handleLogin(env, request));
     }
     if (route === "auth/register" && method === "POST") {
-      return withCors(request, await handleRegister(env, request));
+      return withCors(request, await handleRegister(env, request, waitUntil));
     }
     if (route === "auth/logout" && method === "POST") {
       return withCors(request, await handleLogout(env, request));
@@ -217,6 +220,10 @@ export async function onRequest(context: {
       const { currentBetaNdaVersionResponse } = await import("../_lib/beta-nda-store");
       return withCors(request, currentBetaNdaVersionResponse());
     }
+    if (route === "guide-catalog" && method === "GET") {
+      const { handleGuideCatalog } = await import("../_lib/guide-catalog");
+      return withCors(request, await handleGuideCatalog(env, request));
+    }
 
     // ——— Any logged-in member (free or admin) ———
     const memberAuth = await requireSession(env, request);
@@ -224,7 +231,20 @@ export async function onRequest(context: {
       // Fall through only if route doesn't need auth? No — remaining routes need auth.
       return withCors(request, memberAuth);
     }
-    const { user } = memberAuth;
+    const sessionUser = memberAuth.user;
+    let user = sessionUser;
+
+    // Admin viewing a member dashboard: swap actor for member data GETs only.
+    const { isMemberDashboardActAsRoute, resolveMemberUserForRequest } = await import(
+      "../_lib/admin-act-as-user"
+    );
+    if (isMemberDashboardActAsRoute(route, parts)) {
+      const resolved = await resolveMemberUserForRequest(env, request, sessionUser);
+      if (resolved instanceof Response) {
+        return withCors(request, resolved);
+      }
+      user = resolved.user;
+    }
 
     if (route === "auth/me" && method === "GET") {
       return withCors(request, await handleMe(env, request));
@@ -260,6 +280,10 @@ export async function onRequest(context: {
     if (route === "member-purchases" && method === "GET") {
       const { handleMyPurchases } = await import("../_lib/stripe-payments");
       return withCors(request, await handleMyPurchases(env, user));
+    }
+    if (route === "membership/cancel" && method === "POST") {
+      const { handleMembershipCancel } = await import("../_lib/membership-cancel");
+      return withCors(request, await handleMembershipCancel(env, request, user));
     }
     if (route === "family/children" && method === "GET") {
       return withCors(request, await listFamilyChildren(env, user));
@@ -301,6 +325,9 @@ export async function onRequest(context: {
       route === "test-attachments" ||
       (route === "closed-sprints" && method === "GET") ||
       route === "soft-launch-overrides" ||
+      /** QA (Lyriq) may set In Review / Pending on guides; Admin keeps full control. */
+      (route === "guide-catalog" && (method === "PUT" || method === "POST")) ||
+      (route === "guide-catalog/bulk" && (method === "PUT" || method === "POST")) ||
       route === "time-entries" ||
       route === "time-entries/start" ||
       route === "time-entries/pause" ||
@@ -370,11 +397,24 @@ export async function onRequest(context: {
       if (route === "email/log" && method === "GET") {
         return withCors(request, await listEmailLog(env, request));
       }
+      if (route === "guide-catalog" && (method === "PUT" || method === "POST")) {
+        const { handleGuideCatalog } = await import("../_lib/guide-catalog");
+        return withCors(request, await handleGuideCatalog(env, request, tester));
+      }
+      if (route === "guide-catalog/bulk" && (method === "PUT" || method === "POST")) {
+        const { handleGuideCatalogBulk } = await import("../_lib/guide-catalog");
+        return withCors(request, await handleGuideCatalogBulk(env, request, tester));
+      }
     }
 
     // ——— Admin only ———
     const adminAuth = await requireAdminSession(env, request);
     if (adminAuth instanceof Response) return withCors(request, adminAuth);
+    const adminUser = adminAuth.user;
+
+    if (route === "admin/internal-credits" && method === "POST") {
+      return withCors(request, await handleAdminGrantInternalCredits(env, request, adminUser));
+    }
 
     if (route === "audit" && method === "GET") {
       return withCors(request, await listAudit(env, request));
@@ -386,8 +426,11 @@ export async function onRequest(context: {
     if (route === "users" && (method === "POST" || method === "PUT")) {
       return withCors(request, await upsertUser(env, request, user));
     }
-    if (parts[0] === "users" && parts[1] && method === "DELETE") {
-      return withCors(request, await deleteUser(env, parts[1]));
+    if (parts[0] === "users" && parts[1] && parts[2] === "membership" && method === "DELETE") {
+      return withCors(request, await clearUserMembership(env, parts[1], user));
+    }
+    if (parts[0] === "users" && parts[1] && !parts[2] && method === "DELETE") {
+      return withCors(request, await deleteUser(env, parts[1], user));
     }
     if (route === "tasks" && method === "PUT") {
       return withCors(request, await saveTasks(env, request, user));
@@ -428,6 +471,10 @@ export async function onRequest(context: {
     if (route === "financials/payments" && method === "GET") {
       const { handleListPayments } = await import("../_lib/stripe-payments");
       return withCors(request, await handleListPayments(env, request));
+    }
+    if (parts[0] === "financials" && parts[1] === "payments" && parts[2] && method === "PUT") {
+      const { handleUpdatePayment } = await import("../_lib/stripe-payments");
+      return withCors(request, await handleUpdatePayment(env, request, user, parts[2]));
     }
     if (route === "agile-plan" && method === "GET") {
       return withCors(request, await listAgilePlan(env));
@@ -539,7 +586,7 @@ export async function onRequest(context: {
     if (dbFail) return withCors(request, dbFail);
     return withCors(request, error(`Not found: /api/${route}`, 404));
   } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
-    return withCors(request, json({ error: `Server error: ${message}` }, 500));
+    const { message, status } = publicCaughtApiError(e);
+    return withCors(request, json({ error: message }, status));
   }
 }

@@ -27,7 +27,8 @@ export type AppRouteView =
   | "beta_credits"
   | "beta_points"
   | "join"
-  | "membership_signup";
+  | "membership_signup"
+  | "shop";
 
 /** Canonical path for each main page (no trailing slash except home). */
 export const VIEW_PATH: Record<AppRouteView, string> = {
@@ -53,6 +54,7 @@ export const VIEW_PATH: Record<AppRouteView, string> = {
   beta_points: "/beta-points",
   join: "/join",
   membership_signup: "/membership",
+  shop: "/shop",
 };
 
 const PATH_ALIASES: Record<string, AppRouteView> = {
@@ -92,6 +94,7 @@ const PATH_ALIASES: Record<string, AppRouteView> = {
   "/join": "join",
   "/membership": "membership_signup",
   "/membership-signup": "membership_signup",
+  "/shop": "shop",
 };
 
 export type GuideManualSlug = "adult" | "kids" | "teens" | "seniors" | "master";
@@ -132,6 +135,15 @@ export function parseAppRoute(pathname: string = typeof window !== "undefined" ?
   return { view: "dashboard", guidesManualId: null };
 }
 
+/**
+ * Member-only chrome. Guests must never see these pages together with the Log in button.
+ * Guides library is public to browse; individual guides still require Free+ registration to unlock.
+ * Admin Studio has its own staff gate.
+ */
+export function viewRequiresMemberLogin(view: AppRouteView | string): boolean {
+  return view === "user_portal";
+}
+
 export function pathForView(
   view: AppRouteView,
   opts?: { guidesManualId?: GuideManualSlug | string | null },
@@ -162,7 +174,7 @@ export function titleForView(view: AppRouteView, pageTitle?: string): string {
     dashboard: "Get Your Side Hustle",
     quiz: "GYSH Match Wizard",
     calculators: "GYSH Profit Estimator",
-    guides: "GYSH Guides",
+    guides: "Side Hustle Library",
     checklist: "GYSH Side Hustle Guide",
     community: "GYSH Community",
     newsletter: "GYSH Newsletter",
@@ -181,6 +193,7 @@ export function titleForView(view: AppRouteView, pageTitle?: string): string {
     beta_points: "Beta Tester Points",
     join: "Join GYSH",
     membership_signup: "Membership Sign-up",
+    shop: "GYSH Shop",
   };
   const label = labels[view] ?? "Get Your Side Hustle";
   return view === "dashboard" ? `${label} — Learn, Calculate, and Connect` : `${label} | Get Your Side Hustle`;
@@ -192,7 +205,14 @@ export function titleForView(view: AppRouteView, pageTitle?: string): string {
  */
 export function syncUrlToView(
   view: AppRouteView,
-  opts?: { guidesManualId?: GuideManualSlug | string | null; replace?: boolean },
+  opts?: {
+    guidesManualId?: GuideManualSlug | string | null;
+    /** Open a specific Launch Guide on /guides via ?hustle= */
+    guidesHustleId?: string | null;
+    /** Filter Side Hustle Library by age via ?age= */
+    guidesAge?: "kids" | "junior" | "adult" | "senior" | null;
+    replace?: boolean;
+  },
 ): void {
   if (typeof window === "undefined") return;
   const desiredPath = pathForView(view, opts);
@@ -203,6 +223,17 @@ export function syncUrlToView(
     params.delete("from");
     params.delete("tier");
     // keep audience if present for join page consumers
+  }
+  if (view === "guides" && !opts?.guidesManualId) {
+    const hustle = String(opts?.guidesHustleId || "").trim();
+    if (hustle) params.set("hustle", hustle);
+    else params.delete("hustle");
+    const age = opts?.guidesAge;
+    if (age) params.set("age", age);
+    else params.delete("age");
+  } else {
+    params.delete("hustle");
+    params.delete("age");
   }
   const qs = params.toString();
   const hash = window.location.hash || "";

@@ -1,5 +1,7 @@
 /** Standalone project: GetYourSideHustle.com */
 
+import { countFreeGuideLibrary } from "./guide-library-pool";
+
 export const ROOT_DOMAIN = "getyoursidehustle.com";
 export const SITE_NAME = "Get Your Side Hustle";
 export const SITE_SLUG = "getyoursidehustle";
@@ -26,6 +28,32 @@ export const HOME_CTA_EXPECTATION =
 /** Contrast / differentiator line vs generic idea lists. */
 export const HOME_DIFFERENTIATOR =
   `Unlike generic idea lists, ${SITE_NAME} pairs every hustle with calculators and community guidance through ${GYSH_METHOD_NAME} — so you evaluate before you spend.`;
+
+/**
+ * Home spotlight for the Side Hustle Library.
+ * `count` = Active unique guides; `freeCount` = Free-tier guides available to test-drive.
+ */
+export function homeLibrarySpotlight(
+  count: number,
+  freeCount: number = countFreeGuideLibrary(),
+): {
+  /** Compact line beside the Home title — guide counts only. */
+  inlineLabel: string;
+  headline: string;
+  body: string;
+  cta: string;
+  wizardCta: string;
+} {
+  const n = Math.max(0, Math.floor(Number(count) || 0));
+  const freeN = Math.max(0, Math.floor(Number(freeCount) || 0));
+  return {
+    inlineLabel: `${n} Side Hustle Guides · ${freeN} free to test-drive`,
+    headline: `${n} Side Hustle Guides · ${freeN} free to test-drive`,
+    body: `${n} age-ready Side Hustle Guides in the library — ${freeN} free with Free Membership to test-drive. Match Wizard finds your fit; the Library has your playbook.`,
+    cta: "Browse Library",
+    wizardCta: "Take Match Wizard",
+  };
+}
 
 export const HOME_ICP = [
   {

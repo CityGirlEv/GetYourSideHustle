@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
+  canAccessPnl,
   canAccessScheduleSuite,
   collectOverdueScheduleItems,
   createSchedulePlan,
   familyMemberOptions,
   filterSchedulesByOwner,
+  scheduleEligibleFamilyChildren,
+  scheduleSaveEnabled,
+  activateSchedule,
+  activeScheduleAfterOwnerFilter,
   hustleOptionsForOwner,
   isScheduleBlockHoursValid,
   normalizeHustleScheduleStore,
@@ -12,11 +17,14 @@ import {
   planBlocksMissingHours,
   planHasRequiredHours,
   promoteBlocksFromDueDate,
+  promoteBlocksFromStartDate,
   schedulePlanId,
   schedulesForOwnerHustle,
   scheduleTabLabel,
   distinctSchedulePlanId,
   scheduleProgressPercent,
+  scheduleTaskCountLabel,
+  scheduleTaskCounts,
   setScheduleBlockHours,
   setScheduleBlockStatus,
   scheduleStatusFromCheckboxChecked,
@@ -24,6 +32,7 @@ import {
   toggleScheduleBlockDone,
   updateBlockDueDate,
   updatePlanDueDate,
+  updatePlanStartDate,
   upsertSchedule,
   applyScheduleWeekGrade,
   gradeScheduleWeek,
@@ -31,6 +40,7 @@ import {
   patchBlueprintGoals,
   upsertWeekRoundup,
   gradeMarkFromScore,
+  SCHEDULE_GRADE_D_MIN,
   celebrationFromMark,
   pepTalkForMark,
   blueprintProfitUsd,
@@ -39,13 +49,23 @@ import {
   ensureHoursFromEstimates,
   scheduleStatsBarShowsGradeMe,
   suiteViewAfterGradeMe,
+  scheduleGradeMeButtonLabel,
+  liveScheduleWeekGrade,
+  withRefreshedWeekGrade,
   SCHEDULE_EMAIL_SECTION_ID,
+  SCHEDULE_SUITE_DASHBOARD_HREF,
+  SCHEDULE_SUITE_DEFAULT_VIEW,
+  SCHEDULE_SUITE_VIEW_TABS,
+  scheduleSuiteTabsForAccess,
   addScheduleActionItem,
   removeScheduleActionItem,
   normalizeWeekRoundup,
   emptyWeekRoundup,
   formatScheduleActionItemStamp,
   roundupHasActionItems,
+  setBlockNotes,
+  scheduleCollapsePreview,
+  isScheduleSuiteDashboardHash,
 } from "../hustle-schedule";
 
 describe("hustle schedule suite", () => {
@@ -55,6 +75,16 @@ describe("hustle schedule suite", () => {
     expect(canAccessScheduleSuite("pro")).toBe(true);
     expect(canAccessScheduleSuite("elite")).toBe(true);
     expect(canAccessScheduleSuite("free", { isAdmin: true })).toBe(true);
+  });
+
+  it("keeps P&L Elite-only (off Free, Starter, and Pro)", () => {
+    expect(canAccessPnl("free")).toBe(false);
+    expect(canAccessPnl("starter")).toBe(false);
+    expect(canAccessPnl("pro")).toBe(false);
+    expect(canAccessPnl("elite")).toBe(true);
+    expect(canAccessPnl("starter", { isAdmin: true })).toBe(true);
+    expect(scheduleSuiteTabsForAccess({ pnlUnlocked: false }).map((t) => t.id)).not.toContain("pnl");
+    expect(scheduleSuiteTabsForAccess({ pnlUnlocked: true }).map((t) => t.id)).toContain("pnl");
   });
 
   it("builds reminder period keys and send windows", async () => {
@@ -113,6 +143,19 @@ describe("hustle schedule suite", () => {
     expect(blocks[0]!.done).toBe(false);
   });
 
+  it("promotes weekly plan from a start date", () => {
+    const { weekStart, blocks, dueDate } = promoteBlocksFromStartDate(
+      "Airbnb",
+      "2026-08-19",
+    );
+    expect(weekStart).toBe("2026-08-19");
+    expect(dueDate).toBe("2026-08-25");
+    expect(blocks[0]!.dueDate).toBe("2026-08-19");
+    expect(blocks[0]!.dayLabel).toBe("Wed");
+    expect(blocks[6]!.dueDate).toBe("2026-08-25");
+    expect(blocks[6]!.dayLabel).toBe("Tue");
+  });
+
   it("updating plan due date rebuilds week and keeps status", () => {
     const plan = createSchedulePlan({
       ownerId: "self",
@@ -130,6 +173,30 @@ describe("hustle schedule suite", () => {
     expect(next.blocks[0]!.status).toBe("done");
     expect(next.blocks[0]!.done).toBe(true);
     expect(next.blocks[0]!.dueDate).toBe("2026-08-24");
+  });
+
+  it("updating start date shifts every block due date", () => {
+    const plan = createSchedulePlan({
+      ownerId: "self",
+      ownerLabel: "Me",
+      hustleId: "airbnb",
+      hustleLabel: "Airbnb Hosting",
+      ageGroup: "adult",
+      blueprintId: "bp",
+      startDate: "2026-08-17",
+    });
+    const withCustom = updateBlockDueDate(
+      setScheduleBlockStatus(plan, "fri", "in_progress"),
+      "fri",
+      "2026-08-22",
+    );
+    const next = updatePlanStartDate(withCustom, "2026-08-24");
+    expect(next.weekStart).toBe("2026-08-24");
+    expect(next.blocks[0]!.dueDate).toBe("2026-08-24");
+    expect(next.blocks[0]!.dayLabel).toBe("Mon");
+    expect(next.blocks.find((b) => b.id === "fri")?.dueDate).toBe("2026-08-29");
+    expect(next.blocks.find((b) => b.id === "fri")?.status).toBe("in_progress");
+    expect(next.dueDate).toBe("2026-08-30");
   });
 
   it("block due edits promote plan due to the latest day", () => {
@@ -241,6 +308,61 @@ describe("hustle schedule suite", () => {
     expect(plan.blocks.find((b) => b.id === "wed")?.status).toBe("not_started");
     plan = toggleScheduleBlockDone(plan, "wed");
     expect(plan.blocks.find((b) => b.id === "wed")?.status).toBe("done");
+  });
+
+  it("stores notes on a plan tracker block", () => {
+    const plan = createSchedulePlan({
+      ownerId: "self",
+      ownerLabel: "Me",
+      hustleId: "pod",
+      hustleLabel: "POD",
+      ageGroup: "adult",
+      blueprintId: "bp",
+      dueDate: "2026-08-23",
+    });
+    const next = setBlockNotes(plan, "mon", "Called three listings");
+    expect(next.blocks.find((b) => b.id === "mon")?.notes).toBe("Called three listings");
+  });
+
+  it("previews collapsed roundup text", () => {
+    expect(scheduleCollapsePreview("")).toBe("Tap to add");
+    expect(scheduleCollapsePreview("  listed  ")).toBe("listed");
+    expect(scheduleCollapsePreview("a".repeat(90))).toBe(`${"a".repeat(79)}…`);
+  });
+
+  it("labels Blueprint plan tasks complete and remaining from day blocks", () => {
+    let plan = createSchedulePlan({
+      ownerId: "self",
+      ownerLabel: "Me",
+      hustleId: "pod",
+      hustleLabel: "POD",
+      ageGroup: "adult",
+      blueprintId: "bp",
+      dueDate: "2026-08-23",
+    });
+    expect(scheduleTaskCounts(plan.blocks)).toEqual({
+      complete: 0,
+      remaining: 7,
+      total: 7,
+    });
+    expect(scheduleTaskCountLabel(scheduleTaskCounts(plan.blocks))).toBe(
+      "0 tasks complete · 7 tasks remaining",
+    );
+    plan = setScheduleBlockStatus(plan, "mon", "done");
+    expect(scheduleTaskCountLabel(scheduleTaskCounts(plan.blocks))).toBe(
+      "1 task complete · 6 tasks remaining",
+    );
+    for (const id of ["tue", "wed", "thu"] as const) {
+      plan = setScheduleBlockStatus(plan, id, "done");
+    }
+    expect(scheduleTaskCounts(plan.blocks)).toEqual({
+      complete: 4,
+      remaining: 3,
+      total: 7,
+    });
+    expect(scheduleTaskCountLabel(scheduleTaskCounts(plan.blocks))).toBe(
+      "4 tasks complete · 3 tasks remaining",
+    );
   });
 
   it("stores multiple schedules and migrates legacy single plan", () => {
@@ -390,6 +512,78 @@ describe("hustle schedule suite", () => {
     expect(filterSchedulesByOwner(schedules, "c1").map((s) => s.id)).toEqual([b.id]);
   });
 
+  it("opens a saved schedule without treating it as an unsaved edit", () => {
+    const a = createSchedulePlan({
+      ownerId: "self",
+      ownerLabel: "Me",
+      hustleId: "airbnb",
+      hustleLabel: "Airbnb",
+      ageGroup: "adult",
+      blueprintId: "bp",
+      dueDate: "2026-08-23",
+    });
+    const b = createSchedulePlan({
+      ownerId: "c1",
+      ownerLabel: "Kai",
+      hustleId: "dog-walk",
+      hustleLabel: "Dog walking",
+      ageGroup: "kids",
+      blueprintId: "bp-k",
+      dueDate: "2026-08-23",
+    });
+    let store = upsertSchedule(normalizeHustleScheduleStore({}), a);
+    store = upsertSchedule(store, b);
+    const stamped = store.updatedAt;
+    const opened = activateSchedule(store, a.id);
+    expect(opened.activeScheduleId).toBe(a.id);
+    expect(opened.updatedAt).toBe(stamped);
+    expect(scheduleSaveEnabled(false)).toBe(false);
+    expect(scheduleSaveEnabled(true)).toBe(true);
+    expect(scheduleSaveEnabled(true, true)).toBe(false);
+  });
+
+  it("clicking a family member shows their schedules without auto-opening someone else", () => {
+    const a = createSchedulePlan({
+      ownerId: "self",
+      ownerLabel: "Me",
+      hustleId: "airbnb",
+      hustleLabel: "Airbnb",
+      ageGroup: "adult",
+      blueprintId: "bp",
+      dueDate: "2026-08-23",
+    });
+    const b = createSchedulePlan({
+      ownerId: "c1",
+      ownerLabel: "Kai",
+      hustleId: "dog-walk",
+      hustleLabel: "Dog walking",
+      ageGroup: "kids",
+      blueprintId: "bp-k",
+      dueDate: "2026-08-23",
+    });
+    const schedules = [a, b];
+    expect(activeScheduleAfterOwnerFilter(schedules, "c1", a.id)).toBeNull();
+    expect(activeScheduleAfterOwnerFilter(schedules, "c1", b.id)).toBe(b.id);
+    expect(activeScheduleAfterOwnerFilter(schedules, "all", a.id)).toBe(a.id);
+  });
+
+  it("hides unregistered Register-My-Kid rows from the schedule member list", () => {
+    const kids = [
+      { id: "c1", displayName: "Ruthie", ageBand: "kids" as const, source: "profile" as const },
+      {
+        id: "c2",
+        displayName: "Register",
+        ageBand: "kids" as const,
+        source: "signup" as const,
+        needsRegistration: true,
+      },
+    ];
+    expect(scheduleEligibleFamilyChildren(kids).map((c) => c.displayName)).toEqual(["Ruthie"]);
+    expect(
+      familyMemberOptions("Evelyn", scheduleEligibleFamilyChildren(kids)).map((m) => m.label),
+    ).toEqual(["Evelyn", "Ruthie"]);
+  });
+
   it("creates blueprint goals and migrates missing fields on normalize", () => {
     const plan = createSchedulePlan({
       ownerId: "self",
@@ -482,6 +676,42 @@ describe("hustle schedule suite", () => {
     expect(pepTalkForMark("B+", 87)).toMatch(/B\+/);
   });
 
+  it("SCHED-GRADE-001: 7-day Done counts include D (4/7 ≈ 57%)", () => {
+    expect(SCHEDULE_GRADE_D_MIN).toBe(50);
+    expect(gradeMarkFromScore(49)).toBe("F");
+    expect(gradeMarkFromScore(50)).toBe("D");
+    expect(gradeMarkFromScore(57)).toBe("D");
+    expect(gradeMarkFromScore(69)).toBe("D");
+    expect(gradeMarkFromScore(70)).toBe("C");
+
+    const marksForDone = (doneCount: number) => {
+      let plan = createSchedulePlan({
+        ownerId: "self",
+        ownerLabel: "Me",
+        hustleId: "pod",
+        hustleLabel: "POD",
+        ageGroup: "adult",
+        blueprintId: "bp",
+        dueDate: "2026-08-23",
+      });
+      for (const b of plan.blocks.slice(0, doneCount)) {
+        plan = setScheduleBlockStatus(plan, b.id, "done");
+      }
+      return gradeScheduleWeek(plan);
+    };
+
+    expect(marksForDone(0).mark).toBe("F");
+    expect(marksForDone(3).mark).toBe("F");
+    expect(marksForDone(3).score).toBe(43);
+    const dGrade = marksForDone(4);
+    expect(dGrade.letter).toBe("D");
+    expect(dGrade.mark).toBe("D");
+    expect(dGrade.score).toBe(57);
+    expect(marksForDone(5).mark).toBe("C");
+    expect(marksForDone(6).mark).toBe("B");
+    expect(marksForDone(7).mark).toBe("A+");
+  });
+
   it("computes blueprint P&L profit and formats estimates", () => {
     expect(blueprintProfitUsd({ marketingPlan: "", targetSalesUsd: 0, actualSalesUsd: 120, expensesUsd: 40 })).toBe(80);
     expect(blueprintProfitUsd({ marketingPlan: "", targetSalesUsd: 0, actualSalesUsd: 20, expensesUsd: 50 })).toBe(-30);
@@ -528,13 +758,77 @@ describe("hustle schedule suite", () => {
     expect(filled.blocks.every((b) => b.hoursLogged === 1)).toBe(true);
   });
 
-  it("Grade me navigates to Weekly Roundup and hides the stats-bar Grade me there", () => {
-    expect(suiteViewAfterGradeMe()).toBe("roundup");
+  it("Grade me stays on the current tab and shows the letter in the button", () => {
+    expect(suiteViewAfterGradeMe("tracker")).toBe("tracker");
+    expect(suiteViewAfterGradeMe("blueprint")).toBe("blueprint");
+    expect(suiteViewAfterGradeMe("roundup")).toBe("roundup");
     expect(scheduleStatsBarShowsGradeMe("tracker")).toBe(true);
     expect(scheduleStatsBarShowsGradeMe("blueprint")).toBe(true);
     expect(scheduleStatsBarShowsGradeMe("pnl")).toBe(true);
     expect(scheduleStatsBarShowsGradeMe("progress")).toBe(true);
-    expect(scheduleStatsBarShowsGradeMe("roundup")).toBe(false);
+    expect(scheduleStatsBarShowsGradeMe("roundup")).toBe(true);
+    expect(scheduleGradeMeButtonLabel(null)).toBe("Grade me");
+    expect(scheduleGradeMeButtonLabel({ letter: "D", mark: "D", score: 57 })).toBe(
+      "Current Grade: D (57%)",
+    );
+    expect(scheduleGradeMeButtonLabel({ letter: "A", mark: "A+", score: 100 })).toBe(
+      "Current Grade: A+ (100%)",
+    );
+  });
+
+  it("updates Current Grade live as Plan tracker Done counts change", () => {
+    let plan = createSchedulePlan({
+      ownerId: "self",
+      ownerLabel: "Me",
+      hustleId: "pod",
+      hustleLabel: "POD",
+      ageGroup: "adult",
+      blueprintId: "bp",
+      dueDate: "2026-08-23",
+    });
+    expect(liveScheduleWeekGrade(plan, getWeekRoundup(plan).grade)).toBeNull();
+    expect(withRefreshedWeekGrade(plan)).toBe(plan);
+
+    for (const id of ["mon", "tue", "wed", "thu"] as const) {
+      plan = setScheduleBlockStatus(plan, id, "done");
+    }
+    plan = applyScheduleWeekGrade(plan, plan.weekStart);
+    expect(liveScheduleWeekGrade(plan, getWeekRoundup(plan).grade)?.mark).toBe("D");
+
+    plan = setScheduleBlockStatus(plan, "fri", "done");
+    const live = liveScheduleWeekGrade(plan, getWeekRoundup(plan).grade);
+    expect(live?.mark).toBe("C");
+    expect(live?.score).toBe(71);
+    expect(getWeekRoundup(plan).grade?.mark).toBe("D");
+
+    plan = withRefreshedWeekGrade(plan);
+    expect(getWeekRoundup(plan).grade?.mark).toBe("C");
+    expect(scheduleGradeMeButtonLabel(getWeekRoundup(plan).grade)).toBe("Current Grade: C (71%)");
+  });
+
+  it("orders Schedule Suite views Blueprint, Plan tracker, Weekly roundup, then P&L", () => {
+    expect(SCHEDULE_SUITE_VIEW_TABS.map((t) => t.id)).toEqual([
+      "blueprint",
+      "tracker",
+      "roundup",
+      "pnl",
+      "progress",
+    ]);
+    expect(SCHEDULE_SUITE_VIEW_TABS.map((t) => t.label)).toEqual([
+      "Blueprint plan",
+      "Plan tracker",
+      "Weekly roundup",
+      "P&L calculator",
+      "Progress",
+    ]);
+    expect(SCHEDULE_SUITE_DEFAULT_VIEW).toBe("blueprint");
+  });
+
+  it("points Schedule Suite dashboard links at My Dashboard with a schedule hash", () => {
+    expect(SCHEDULE_SUITE_DASHBOARD_HREF).toBe("/my-dashboard#schedule");
+    expect(isScheduleSuiteDashboardHash("#schedule")).toBe(true);
+    expect(isScheduleSuiteDashboardHash("schedule")).toBe(true);
+    expect(isScheduleSuiteDashboardHash("#blueprint")).toBe(false);
   });
 
   it("Email Me targets the Email reminders section id", () => {
@@ -555,7 +849,8 @@ describe("hustle schedule suite", () => {
       plan = setScheduleBlockStatus(plan, b.id, "done");
     }
     const graded = applyScheduleWeekGrade(plan, plan.weekStart);
-    expect(suiteViewAfterGradeMe()).toBe("roundup");
+    expect(suiteViewAfterGradeMe("tracker")).toBe("tracker");
+    expect(scheduleGradeMeButtonLabel(getWeekRoundup(graded).grade)).toBe("Current Grade: A+ (100%)");
     expect(getWeekRoundup(graded).grade?.score).toBe(100);
     expect(getWeekRoundup(graded).grade?.letter).toBe("A");
   });

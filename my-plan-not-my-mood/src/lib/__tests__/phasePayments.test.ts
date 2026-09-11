@@ -21,14 +21,14 @@ import {
 } from '../phasePayments';
 
 describe('phasePayments', () => {
-  it('prices Phase 1 as the recommended $4,000 payment', () => {
+  it('prices Payment 2 as the recommended $3,500 Sprint 1 installment', () => {
     const options = phasePayOptions();
     expect(options).toHaveLength(3);
-    expect(options[0]).toMatchObject({ label: 'Phase 1', amount: 4_000, recommended: true });
-    expect(options[1]?.amount).toBe(3_000);
+    expect(options[0]).toMatchObject({ label: 'Payment 1', amount: 3_500, paid: true, recommended: false });
+    expect(options[1]).toMatchObject({ label: 'Payment 2', amount: 3_500, recommended: true });
     expect(options[2]?.amount).toBe(3_000);
-    expect(defaultPayAmount()).toBe(4_000);
-    expect(formatUsdAmount(defaultPayAmount())).toBe('$4,000');
+    expect(defaultPayAmount()).toBe(3_500);
+    expect(formatUsdAmount(defaultPayAmount())).toBe('$3,500');
   });
 
   it('lists Zelle and Cash App as preferred, then Venmo and Stripe', () => {
@@ -58,7 +58,7 @@ describe('phasePayments', () => {
     expect(methodCopyValue('zelle')).toBe('619-507-9568');
     expect(methodCopyValue('cashapp')).toBe('$ChingChicks');
     expect(methodCopyValue('venmo')).toBe('@Evelyn-Irving');
-    expect(paymentMemo(4_000, 'Phase 1')).toBe('Phase 1 — $4,000 — My Plan, Not My Mood');
+    expect(paymentMemo(3_500, 'Payment 2')).toBe('Payment 2 — $3,500 — My Plan, Not My Mood');
   });
 
   it('keeps the public pay path and Angela task ids stable', () => {

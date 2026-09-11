@@ -13,6 +13,11 @@ export const PHASE_3_LABEL = 'Phase 3: Open for Future Discussion';
 export const MEMBERSHIPS_COMING_SOON_NOTE =
   'Memberships are not configured in Phase 1. The Join page shows Coming Soon until Phase 2.';
 
+export const TEE_SALES_VIDEOS_PER_SPRINT = 3;
+
+export const TEE_SALES_VIDEOS_DELIVERABLE =
+  'Create 3 T-shirt sales videos this sprint — shop link in each';
+
 export interface GearLineItemSeed {
   id: string;
   name: string;
@@ -28,11 +33,79 @@ export interface GearLineItemSeed {
   visible?: boolean;
 }
 
-export const PHASE_PAYMENT_SCHEDULE = [
-  { phase: 'phase1_build' as const, label: 'Phase 1 payment', percent: 40, amount: 4_000 },
-  { phase: 'phase2_addons' as const, label: 'Phase 2 payment', percent: 30, amount: 3_000 },
-  { phase: 'phase3_future' as const, label: 'Phase 3 payment', percent: 30, amount: 3_000 },
-] as const;
+export type PaymentInstallmentStatus = 'paid' | 'due' | 'upcoming';
+
+export interface PhasePaymentInstallment {
+  id: string;
+  label: string;
+  dueLabel: string;
+  sprintLabel: 'Sprint 0' | 'Sprint 1' | 'Sprint 3';
+  sprintId: 'sprint0' | 'sprint1' | 'sprint3';
+  amount: number;
+  percent: number;
+  status: PaymentInstallmentStatus;
+}
+
+/** Angela already sent this first installment of the $10,000 Phase 1 fee. */
+export const PHASE_1_PAID_TO_DATE = 3_500;
+
+/** $10,000 Phase 1 fee in three payments — not Phase 2 / Phase 3 work. */
+export const PHASE_PAYMENT_SCHEDULE: readonly PhasePaymentInstallment[] = [
+  {
+    id: 'pay-1',
+    label: 'Payment 1',
+    dueLabel: 'Received',
+    sprintLabel: 'Sprint 0',
+    sprintId: 'sprint0',
+    amount: 3_500,
+    percent: 35,
+    status: 'paid',
+  },
+  {
+    id: 'pay-2',
+    label: 'Payment 2',
+    dueLabel: 'Due Sprint 1',
+    sprintLabel: 'Sprint 1',
+    sprintId: 'sprint1',
+    amount: 3_500,
+    percent: 35,
+    status: 'due',
+  },
+  {
+    id: 'pay-3',
+    label: 'Payment 3',
+    dueLabel: 'Due Sprint 3',
+    sprintLabel: 'Sprint 3',
+    sprintId: 'sprint3',
+    amount: 3_000,
+    percent: 30,
+    status: 'upcoming',
+  },
+];
+
+export const PAYMENT_STATUS_LABELS: Record<PaymentInstallmentStatus, string> = {
+  paid: 'Paid',
+  due: 'Due now',
+  upcoming: 'Upcoming',
+};
+
+export function paymentSchedulePaid(
+  schedule: readonly PhasePaymentInstallment[] = PHASE_PAYMENT_SCHEDULE,
+): number {
+  return schedule.filter((row) => row.status === 'paid').reduce((sum, row) => sum + row.amount, 0);
+}
+
+export function paymentScheduleRemaining(
+  schedule: readonly PhasePaymentInstallment[] = PHASE_PAYMENT_SCHEDULE,
+): number {
+  return paymentScheduleTotal(schedule) - paymentSchedulePaid(schedule);
+}
+
+export function duePaymentInstallment(
+  schedule: readonly PhasePaymentInstallment[] = PHASE_PAYMENT_SCHEDULE,
+): PhasePaymentInstallment | undefined {
+  return schedule.find((row) => row.status === 'due') ?? schedule.find((row) => row.status !== 'paid');
+}
 
 export const GEAR_SALES_LINE_ITEMS_SEED: GearLineItemSeed[] = [
   {
@@ -52,7 +125,8 @@ export const GEAR_SALES_LINE_ITEMS_SEED: GearLineItemSeed[] = [
       'Order Angela’s sample tees (hoodie/hat if ready) so she has product in hand',
       'Stand up TikTok / YouTube / Instagram in parallel — not a sales gate',
       'Canonical domain and SSL (nonnegotiation.com / localhost:3001)',
-      'Angela $10,000 budget paid across three phase payments',
+      'Angela $10,000 in three payments — $3,500 received; Payment 2 due Sprint 1',
+      TEE_SALES_VIDEOS_DELIVERABLE,
     ],
     description:
       'Phase 1 start is shirt sales. Socials grow beside the shop. Memberships stay Coming Soon.',
@@ -74,6 +148,9 @@ export const GEAR_SALES_LINE_ITEMS_SEED: GearLineItemSeed[] = [
       'First live wearing the tee (pin Shop Gear in comments)',
       'Finish 3 shirt styles / hoodie / hat picks on Gear Selections',
       'T-shirt design stays inside the $10,000 Phase 1 budget',
+      TEE_SALES_VIDEOS_DELIVERABLE,
+      'Collect Payment 2 ($3,500) — Sprint 1 installment',
+      'Mon/Wed/Fri: gather listed analytics screens on each posting platform (Angela) and Evelyn’s matching review that guides the next create',
     ],
     description:
       'Selling does not pause for design. Samples unlock the on-body live. Socials stay parallel.',
@@ -93,7 +170,9 @@ export const GEAR_SALES_LINE_ITEMS_SEED: GearLineItemSeed[] = [
       'Hoodie and hat listings on nonnegotiation.com/gear (then Shopify product links)',
       'Shop link in every organic post (Facebook plus any live TikTok / YouTube / Instagram)',
       'Keep checkout on Shopify — sizes, shipping, payment',
-      'Do not pause tee sales for page polish',
+      'Do not pause hoodie sales for page polish',
+      TEE_SALES_VIDEOS_DELIVERABLE,
+      'Mon/Wed/Fri: gather listed analytics screens on each posting platform (Angela) and Evelyn’s matching review that guides the next create',
     ],
     description: 'Sales stay on. Catalog and socials catch up around the live shop.',
     hours: 20,
@@ -102,22 +181,26 @@ export const GEAR_SALES_LINE_ITEMS_SEED: GearLineItemSeed[] = [
   },
   {
     id: 'sprint3',
-    name: 'Sprint 3: Website Pages & Phase 1 Email',
+    name: 'Sprint 3: Website, Mailing List & Orders',
     phase: 'phase1_build',
     duration: '1 Week',
     dates: sprintWindowById('sprint3')?.dates ?? 'Mon Sep 14 – Sun Sep 20, 2026',
     summary:
-      'Ship the pertinent launch pages — About, Contact, Privacy Policy, Terms, FAQ — and configure Phase 1 email for orders and contact.',
+      'Introduce the Phase 1 website — About, Contact, Privacy Policy, Terms, FAQ — add mailing list sign-up (not a membership), and confirm Orders on SnatchVault (hosting, 70/30 split, Non-Negotiable menu).',
     deliverables: [
       'About page',
       'Contact page',
       'Privacy Policy and Terms of Use',
       'FAQ',
       'Join / Memberships page marked Coming Soon (not configured)',
-      'Phase 1 email: orders, fulfillment, contact, and admin alerts',
+      'Orders on SnatchVault: https://snatchvault.com/collections/my-plan-gear — Non-Negotiable menu, Tees / Hoodies / Hats, 70/30 split',
+      TEE_SALES_VIDEOS_DELIVERABLE,
+      'Introduce the Phase 1 website — launch pages go live on nonnegotiation.com',
+      'Mailing list sign-up (email + optional first name — not a membership)',
+      'Mon/Wed/Fri: gather listed analytics screens on each posting platform (Angela) and Evelyn’s matching review that guides the next create',
     ],
     description:
-      'A real website needs About, Contact, Privacy, Terms, FAQ, and working email. Memberships stay Coming Soon.',
+      'A real website needs About, Contact, Privacy, Terms, and FAQ. The mailing list captures email without opening memberships. Orders are hosted on SnatchVault. Memberships stay Coming Soon.',
     hours: 22,
     rate: GEAR_SALES_HOURLY_RATE,
     baseAmount: 2_200,
@@ -134,6 +217,8 @@ export const GEAR_SALES_LINE_ITEMS_SEED: GearLineItemSeed[] = [
       'Launch-week lives wearing the sample tee — pin nonnegotiation.com/gear',
       'Cloudflare Pages stays production-live',
       'Phase 1 close-out against the $10,000 budget',
+      TEE_SALES_VIDEOS_DELIVERABLE,
+      'Mon/Wed/Fri: gather listed analytics screens on each posting platform (Angela) and Evelyn’s matching review that guides the next create',
     ],
     description: 'Launch week is on-body selling. Pages and email already ride beside the shop.',
     hours: 13,
@@ -165,12 +250,12 @@ export const GEAR_SALES_LINE_ITEMS_SEED: GearLineItemSeed[] = [
     duration: 'Phase 1 modeled · Phase 2 refresh',
     dates: 'Open for discussion',
     summary:
-      'Each Phase 1 sprint lists organic ROI, expected tee-shirt sales ($38, 70% of units), and suggestions to improve. Angela is fairly active on socials and has 6.2K personal Facebook followers — no paid ads. Refresh numbers when production costs and live sales are real.',
+      'Each Phase 1 sprint lists organic ROI, expected hoodie sales ($55, about $35 to make, 70% of units), and suggestions to improve. Angela is fairly active on socials and has 6.2K personal Facebook followers — no paid ads. Refresh numbers when production costs and live sales are real.',
     deliverables: [
-      'Per-sprint organic ROI and expected tee-shirt sales',
-      'Suggestions to lift tee sales without paid ads',
+      'Per-sprint organic ROI and expected hoodie sales',
+      'Suggestions to lift hoodie sales without paid ads',
       '6.2K Facebook / no paid ads assumptions',
-      'Refresh after shirt COGS and first live orders',
+      'Refresh after hoodie cost and first live orders',
     ],
     description:
       'Phase 1 ROI is modeled from organic Facebook. Memberships and paid amplification stay Phase 2 discussion.',
@@ -185,7 +270,7 @@ export const GEAR_SALES_LINE_ITEMS_SEED: GearLineItemSeed[] = [
     duration: 'Phase 3 — not scoped',
     dates: 'Open for discussion',
     summary:
-      'Mood tools, planners, Content Factory retainers, and extra pages or emails are not in the $10K Phase 1 gear launch. Organic socials for tee sales are already in Phase 1.',
+      'Mood tools, planners, Content Factory retainers, and extra pages or emails are not in the $10K Phase 1 gear launch. Organic socials for hoodie sales are already in Phase 1.',
     deliverables: [
       'Mood Tool, Daily Affirmations, Receipts, 7-Day Challenge',
       'Planners and additional products',

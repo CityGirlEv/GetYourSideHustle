@@ -6,6 +6,12 @@ export type BetaPhaseNoticeCopy = {
   confirmLabel: string;
 };
 
+/**
+ * GYSH is live. Keep the “We're in Beta” login popup off.
+ * Flip to true only if we need the notice again.
+ */
+export const BETA_PHASE_NOTICE_ENABLED = false;
+
 export const BETA_PHASE_NOTICE: BetaPhaseNoticeCopy = {
   title: "We're in Beta",
   body:
@@ -28,10 +34,12 @@ export const BETA_TESTER_SIGNUP_NOTICE: BetaPhaseNoticeCopy = {
 export const BETA_NOTICE_PREVIEW_PARAM = "betaNotice";
 
 export function shouldOpenBetaNoticeAfterLogin(outcome: string): boolean {
+  if (!BETA_PHASE_NOTICE_ENABLED) return false;
   return outcome === "admin" || outcome === "member";
 }
 
 export function betaNoticePreviewRequested(search: string): boolean {
+  if (!BETA_PHASE_NOTICE_ENABLED) return false;
   try {
     return new URLSearchParams(search.startsWith("?") ? search.slice(1) : search).get(
       BETA_NOTICE_PREVIEW_PARAM,

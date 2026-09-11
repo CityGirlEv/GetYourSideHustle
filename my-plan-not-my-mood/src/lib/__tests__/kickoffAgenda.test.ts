@@ -32,6 +32,7 @@ describe('kickoffAgenda', () => {
     expect(KICKOFF_TIME_LABEL).toBe('4:00–6:30 PM PST / 6:00–8:30 PM CST');
     expect(KICKOFF_WHEN_LABEL).toContain('Thursday, August 27, 2026');
     expect(KICKOFF_SEED_TOPICS.length).toBeGreaterThanOrEqual(6);
+    expect(KICKOFF_SEED_TOPICS.some((item) => /3 T-shirt sales videos/i.test(`${item.notes} ${item.actionItems}`))).toBe(true);
     expect(draft.some((item) => /Sprint 0/i.test(item.label))).toBe(true);
     expect(draft.some((item) => /Website pages|Page-by-page/i.test(item.label))).toBe(true);
     expect(DEFAULT_KICKOFF_ATTENDEES.map((person) => person.name).join(' ')).toMatch(/Angela/);

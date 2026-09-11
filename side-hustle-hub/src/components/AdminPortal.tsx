@@ -4,6 +4,7 @@ import {
   TrendingUp,
   DollarSign,
   Sparkles,
+  Clapperboard,
   FlaskConical,
   Users,
   ListChecks,
@@ -41,6 +42,7 @@ import { EmailTemplates } from "./admin/EmailTemplates";
 import { DailyProgressPage } from "./admin/DailyProgressPage";
 import { MembershipsPage } from "./admin/MembershipsPage";
 import { AdminHustleSchedulesPage } from "./admin/AdminHustleSchedulesPage";
+import { VideoSceneProductionWizardPage } from "./admin/VideoSceneProductionWizardPage";
 import type { AuthUser } from "../lib/auth";
 import { canAccessAdminPortal, canAccessTestingPortal, isQaOnlyPortalUser } from "../lib/gysh-roles";
 import {
@@ -74,7 +76,6 @@ import {
   fetchPartnerAgenda,
   mustPickAgendaTimes,
 } from "../lib/gysh-partner-agenda";
-
 export type { AdminTab, AdminTabDef, UserGuideId };
 export { ADMIN_MENU_GROUPS, ADMIN_TABS, ADMIN_USER_GUIDE_LINKS, adminTabById };
 
@@ -164,6 +165,7 @@ export const AdminPortal: React.FC<Props> = ({
           { id: "financials" as const, label: "Financials", icon: <DollarSign size={16} /> },
         ]
       : []),
+    { id: "vspw", label: "VSPW Wizard", icon: <Clapperboard size={16} /> },
     { id: "studio", label: "Growth Studio", icon: <Megaphone size={16} /> },
     { id: "sitemap", label: "Site Map", icon: <Map size={16} /> },
     { id: "user-guides", label: "User Guides", icon: <BookOpen size={16} /> },
@@ -574,8 +576,10 @@ export const AdminPortal: React.FC<Props> = ({
           }}
         />
       )}
-      {activeTab === "users" && <UsersArea />}
-      {activeTab === "memberships" && <MembershipsPage />}
+      {activeTab === "users" && <UsersArea currentUserId={authUser?.id ?? null} />}
+      {activeTab === "memberships" && (
+        <MembershipsPage currentUserId={authUser?.id ?? null} />
+      )}
       {activeTab === "hustle-schedules" && <AdminHustleSchedulesPage />}
       {activeTab === "certificates" && <CertificatesAdmin />}
       {activeTab === "email" && <EmailTemplates focusSlug={focusEmailTemplate} />}
@@ -585,6 +589,7 @@ export const AdminPortal: React.FC<Props> = ({
           onFocusConsumed={() => setFocusItemId(null)}
         />
       )}
+      {activeTab === "vspw" && <VideoSceneProductionWizardPage />}
       {activeTab === "tasks" && (
         <TaskList
           focusTaskId={focusTaskId}

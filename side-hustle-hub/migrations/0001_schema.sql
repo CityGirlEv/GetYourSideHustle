@@ -1,5 +1,5 @@
 -- GYSH production schema (Cloudflare D1)
--- Seed T/E + initial tasks via: npm run db:seed
+-- Seed Tina & Evelyn + initial tasks via: npm run db:seed
 
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,

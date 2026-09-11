@@ -25,7 +25,8 @@ describe('siteMap', () => {
     expect(publicLeaves.map((leaf) => leaf.label)).toContain('Privacy Policy');
     expect(publicLeaves.map((leaf) => leaf.label)).toContain('Logos');
     expect(publicLeaves.find((leaf) => leaf.id === 'gear')?.status).toBe('live');
-    expect(publicLeaves.find((leaf) => leaf.id === 'privacy')?.status).toBe('planned');
+    expect(publicLeaves.find((leaf) => leaf.id === 'privacy')?.status).toBe('live');
+    expect(publicLeaves.map((leaf) => leaf.label)).toContain('Mailing List');
     expect(publicLeaves.find((leaf) => leaf.id === 'budget')?.status).toBe('gated');
     const adminLeaves = flattenLeaves(filterSiteTree(APP_SITE_TREE, true));
     expect(adminLeaves.map((leaf) => leaf.label)).toContain('Join / Memberships (Coming Soon)');

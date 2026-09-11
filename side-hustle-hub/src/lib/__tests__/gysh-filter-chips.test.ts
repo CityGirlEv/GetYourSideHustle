@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   applyFilterChipClick,
+  allTestingPortalSprintFilters,
   boardSourceAllowedByStatusFacets,
   defaultTestingPortalSprintFilters,
   isAllSprintsFilter,
+  TESTING_PORTAL_FILTER_DEFAULTS,
   toggleFilterValue,
 } from "../gysh-filter-chips";
 
@@ -29,6 +31,11 @@ describe("applyFilterChipClick", () => {
     expect(next.size).toBe(0);
   });
 
+  it("keepSoleSelection leaves the only selected bubble on (does not jump to All)", () => {
+    const { next } = applyFilterChipClick(new Set([5]), 5, { keepSoleSelection: true });
+    expect([...next]).toEqual([5]);
+  });
+
   it("plain-clicks a selected bubble among many to filter to only that value", () => {
     const { next } = applyFilterChipClick(new Set(["tina", "evelyn"]), "evelyn");
     expect([...next]).toEqual(["evelyn"]);
@@ -39,6 +46,13 @@ describe("applyFilterChipClick", () => {
     expect([...added.next].sort()).toEqual(["evelyn", "tina"]);
     const removed = applyFilterChipClick(added.next, "tina", { metaKey: true });
     expect([...removed.next]).toEqual(["evelyn"]);
+  });
+
+  it("multiToggle plain-click adds and removes without replacing the set", () => {
+    const added = applyFilterChipClick(new Set(["in_progress"]), "fail", { multiToggle: true });
+    expect([...added.next].sort()).toEqual(["fail", "in_progress"]);
+    const removed = applyFilterChipClick(added.next, "in_progress", { multiToggle: true });
+    expect([...removed.next]).toEqual(["fail"]);
   });
 
   it("Shift-click adds the range from the last index", () => {
@@ -69,11 +83,22 @@ describe("boardSourceAllowedByStatusFacets", () => {
   });
 });
 
+describe("Testing Portal filter layout defaults", () => {
+  it("opens Assignees, then Sprint (expanded), then Other (collapsed) with Status inside Other", () => {
+    expect([...TESTING_PORTAL_FILTER_DEFAULTS.order]).toEqual(["assignees", "sprint", "status", "other"]);
+    expect(TESTING_PORTAL_FILTER_DEFAULTS.testersOpen).toBe(true);
+    expect(TESTING_PORTAL_FILTER_DEFAULTS.sprintOpen).toBe(true);
+    expect(TESTING_PORTAL_FILTER_DEFAULTS.otherOpen).toBe(false);
+    expect(TESTING_PORTAL_FILTER_DEFAULTS.statusOpen).toBe(true);
+  });
+});
+
 describe("Testing Portal sprint default", () => {
-  it("opens with All sprints (empty filter set)", () => {
-    const filters = defaultTestingPortalSprintFilters<number | "backlog">();
-    expect(filters.size).toBe(0);
-    expect(isAllSprintsFilter(filters)).toBe(true);
+  it("opens filtered to the current sprint; All sprints is an empty set", () => {
+    const filters = defaultTestingPortalSprintFilters<number | "backlog">(5);
+    expect([...filters]).toEqual([5]);
+    expect(isAllSprintsFilter(filters)).toBe(false);
+    expect(isAllSprintsFilter(allTestingPortalSprintFilters())).toBe(true);
     expect(isAllSprintsFilter(new Set([5]))).toBe(false);
   });
 });

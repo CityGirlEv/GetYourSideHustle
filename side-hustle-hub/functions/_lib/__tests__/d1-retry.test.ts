@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { isTransientD1Error, withD1Retry } from "../d1-retry";
+import {
+  isTransientD1Error,
+  publicCaughtApiError,
+  TRANSIENT_DB_USER_MESSAGE,
+  withD1Retry,
+} from "../d1-retry";
 
 describe("isTransientD1Error", () => {
   it("matches D1 timeout / reset / dropped remote", () => {
@@ -16,6 +21,22 @@ describe("isTransientD1Error", () => {
       true,
     );
     expect(isTransientD1Error(new Error("UNIQUE constraint failed"))).toBe(false);
+  });
+});
+
+describe("publicCaughtApiError", () => {
+  it("hides Cloudflare internal error references behind a 503", () => {
+    expect(publicCaughtApiError(new Error("internal error; reference = rd67dvsars25cpaqmu1845a5"))).toEqual({
+      message: TRANSIENT_DB_USER_MESSAGE,
+      status: 503,
+    });
+  });
+
+  it("keeps unknown failures as a 500 server error", () => {
+    expect(publicCaughtApiError(new Error("UNIQUE constraint failed"))).toEqual({
+      message: "Server error: UNIQUE constraint failed",
+      status: 500,
+    });
   });
 });
 
@@ -43,6 +64,15 @@ describe("withD1Retry", () => {
       .mockResolvedValueOnce("recovered");
     await expect(withD1Retry(fn)).resolves.toBe("recovered");
     expect(fn).toHaveBeenCalledTimes(3);
+  });
+
+  it("retries a login-style internal error then succeeds", async () => {
+    const fn = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("internal error; reference = a"))
+      .mockResolvedValueOnce("signed-in");
+    await expect(withD1Retry(fn, 2)).resolves.toBe("signed-in");
+    expect(fn).toHaveBeenCalledTimes(2);
   });
 
   it("does not retry a non-transient error", async () => {

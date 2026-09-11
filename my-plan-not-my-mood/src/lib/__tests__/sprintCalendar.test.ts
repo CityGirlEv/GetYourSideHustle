@@ -8,6 +8,8 @@ import {
   phase1DateRange,
   sprintDatesForId,
   sprintDatesForLabel,
+  sprintIdWithDates,
+  sprintLabelWithDates,
   sprintPlacementForIso,
   weekdayShortFromIso,
 } from '../sprintCalendar';
@@ -59,6 +61,11 @@ describe('sprintCalendar', () => {
     expect(sprintDatesForLabel('Sprint 1')).toBe(SPRINT_WINDOWS[1].dates);
     expect(sprintDatesForLabel('Sprint 4')).toBe(SPRINT_WINDOWS[4].dates);
     expect(sprintDatesForLabel('Not a sprint')).toBe('');
+    expect(sprintLabelWithDates('Sprint 0')).toBe(`Sprint 0 · ${SPRINT_WINDOWS[0].dates}`);
+    expect(sprintLabelWithDates('Sprint 2')).toBe(`Sprint 2 · ${SPRINT_WINDOWS[2].dates}`);
+    expect(sprintLabelWithDates('Not a sprint')).toBe('Not a sprint');
+    expect(sprintIdWithDates('sprint0')).toBe(`Sprint 0 · ${SPRINT_WINDOWS[0].dates}`);
+    expect(sprintIdWithDates('sprint4')).toBe(`Sprint 4 · ${SPRINT_WINDOWS[4].dates}`);
   });
 
   it('places ISO dates onto sprint windows and offsets days', () => {

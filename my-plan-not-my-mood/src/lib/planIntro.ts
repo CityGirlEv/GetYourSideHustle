@@ -12,10 +12,10 @@ export const FLAT_RATE_OFFER_HEADLINE =
   'Munties is prepared to offer Angela a flat-rate $10,000 project.';
 
 export const FLAT_RATE_OFFER_DETAIL =
-  'This proposal rewrite emphasizes Gear and Socials in Phase 1. Shirt sales start immediately. Socials are built in parallel — they do not gate the shop. Memberships wait for the next phase — Join stays Coming Soon until then.';
+  'This proposal rewrite emphasizes Gear and Socials in Phase 1. Hoodie sales start immediately. Socials are built in parallel — they do not gate the shop. Memberships wait for the next phase — Join stays Coming Soon until then.';
 
 export const HOW_WE_GOT_TO_THIS_AMOUNT =
-  'How we got to $10,000: after the August 27 meeting, Angela asked to lean into organic tee-shirt sales rather than a full platform, memberships, and retainers build. The earlier $24,000 plan with a pre-payment discount is archived as Previous Budget. The committed number is a flat $10,000 for the gear launch and organic socials, modeled from Angela’s 6.2K personal Facebook following — no paid ads.';
+  'How we got to $10,000: after the August 27 meeting, Angela asked to lean into organic hoodie sales rather than a full platform, memberships, and retainers build. The earlier $24,000 plan with a pre-payment discount is archived as Previous Budget. The committed number is a flat $10,000 for the gear launch and organic socials, modeled from Angela’s 6.2K personal Facebook following — no paid ads.';
 
 export const ANGELA_NIECE_ORIGIN = `The idea for MY PLAN, NOT MY MOOD came to Angela Harris through her niece. Watching someone she loves almost let a temporary feeling decide a lasting outcome, Angela named what she has been teaching for years as an empowerment speaker and author: the mood gets a vote, but the plan gets the final decision. That family moment became the brand — feel it, follow the plan anyway.`;
 
@@ -25,7 +25,7 @@ export const DEFAULT_PROPOSAL_TEXT = `MY PLAN, NOT MY MOOD is a premium lifestyl
 
 ${ANGELA_NIECE_ORIGIN}`;
 
-export const PROJECT_OVERVIEW_TEXT = `${FLAT_RATE_OFFER_HEADLINE} ${FLAT_RATE_OFFER_DETAIL} Phase 1 is the gear launch — T-shirt design and the first drop (3 shirt styles, 1 hoodie, and 1 hat, with Angela selecting the first 2–3 designs), Shop Gear, the pertinent launch pages, Phase 1 email, and organic socials. Each sprint has an organic-only ROI modeled from Angela’s 6.2K personal Facebook following — no paid ads. Memberships are the next phase; Join shows Coming Soon. Phase 3 (mood tools, planners, Content Factory retainers) stays open. ${HOW_WE_GOT_TO_THIS_AMOUNT} Prepared for ${CLIENT_DISPLAY_NAME} (${CLIENT_ROLE}) with technical execution by ${PLAN_TECH_PARTNER}.`;
+export const PROJECT_OVERVIEW_TEXT = `${FLAT_RATE_OFFER_HEADLINE} ${FLAT_RATE_OFFER_DETAIL} Phase 1 is the gear launch — T-shirt design and the first drop (3 shirt styles, 1 hoodie, and 1 hat, with Angela selecting the first 2–3 designs), Shop Gear, the pertinent launch pages, Orders on SnatchVault, and organic socials. Each Phase 1 sprint creates 3 T-shirt sales videos. Each sprint has an organic-only ROI modeled from Angela’s 6.2K personal Facebook following — no paid ads. Memberships are the next phase; Join shows Coming Soon. Phase 3 (mood tools, planners, Content Factory retainers) stays open. ${HOW_WE_GOT_TO_THIS_AMOUNT} Prepared for ${CLIENT_DISPLAY_NAME} (${CLIENT_ROLE}) with technical execution by ${PLAN_TECH_PARTNER}.`;
 
 export interface PlanRoadmapIntro {
   livingDocument: string;

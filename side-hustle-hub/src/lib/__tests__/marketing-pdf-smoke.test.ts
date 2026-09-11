@@ -19,4 +19,11 @@ describe("marketing PDF smoke", () => {
     const doc = vi.mocked(openPdfInBrowser).mock.calls[0]![0] as { getNumberOfPages: () => number };
     expect(doc.getNumberOfPages()).toBeGreaterThanOrEqual(3);
   });
+
+  it("builds teen marketing PDF without throwing", async () => {
+    await downloadMarketingGuidePdf("teens", {});
+    expect(openPdfInBrowser).toHaveBeenCalledTimes(1);
+    const doc = vi.mocked(openPdfInBrowser).mock.calls[0]![0] as { getNumberOfPages: () => number };
+    expect(doc.getNumberOfPages()).toBeGreaterThanOrEqual(3);
+  });
 });

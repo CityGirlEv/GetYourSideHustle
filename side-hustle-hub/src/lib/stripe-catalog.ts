@@ -28,6 +28,11 @@ export function creditPackStripePrice(packId: string): StripeCatalogPrice | null
   return STRIPE_CATALOG.creditPacks[packId] ?? null;
 }
 
+/** A-la-carte SKU or parent-funded credit pack — used by the Join cart. */
+export function joinCartStripePrice(itemId: string): StripeCatalogPrice | null {
+  return alaCarteStripePrice(itemId) ?? creditPackStripePrice(itemId);
+}
+
 export function stripeCatalogMode(): "test" | "live" {
   return STRIPE_CATALOG.mode;
 }

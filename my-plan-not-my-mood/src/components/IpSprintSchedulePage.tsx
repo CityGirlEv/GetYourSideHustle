@@ -15,6 +15,7 @@ import {
   IP_PHASE_2_ID,
   IP_PHASE_3_ID,
   IP_SAVED_MEETING_ID,
+  IP_PAYMENT_SCHEDULE_ID,
   IP_WEBSITE_PAGES_ID,
   planDownloadAudienceTabs,
   type IpTocSection,
@@ -22,7 +23,7 @@ import {
 } from '../lib/ipToc';
 import { savedKickoffPlanLink } from '../lib/savedMeetings';
 import { MEMBERSHIPS_COMING_SOON_NOTE, PHASE_1_LABEL, PHASE_2_LABEL, PHASE_3_LABEL } from '../lib/gearSalesPlan';
-import { phase1DateRange, sprintWindowById } from '../lib/sprintCalendar';
+import { phase1DateRange, sprintIdWithDates, sprintLabelWithDates, sprintWindowById } from '../lib/sprintCalendar';
 import { planRoadmapIntro } from '../lib/planIntro';
 import {
   ADDITIONAL_EMAIL_TEMPLATES_ADDON_NOTE,
@@ -30,17 +31,26 @@ import {
   EMAIL_TEMPLATES_TITLE,
   INCLUDED_EMAIL_TEMPLATES,
   INCLUDED_WEBSITE_PAGES,
+  ORDER_STORE_URL,
   WEBSITE_PAGES_TITLE,
 } from '../lib/websiteScope';
 import {
   ORGANIC_FACEBOOK_FOLLOWERS_LABEL,
   ORGANIC_ONLY_NOTE,
   ROI_IMPROVEMENT_SUGGESTIONS,
-  TEE_PRICE,
-  formatExpectedUnits,
+  ROI_LEVER_LABELS,
+  SPRINT_ROI_FUNNEL_TITLE,
+  SPRINT_ROI_GLOSSARY,
+  SPRINT_ROI_GLOSSARY_TITLE,
+  SPRINT_ROI_HEADING,
+  HOODIE_PRICE,
+  formatShirtCount,
+  formatUsd,
+  organicFunnelSteps,
   formatRoiPercent,
   phase1OrganicRoi,
   sprintRoiById,
+  sprintRoiPlainLines,
   sprintRoiRows,
 } from '../lib/sprintRoi';
 import {
@@ -50,6 +60,7 @@ import {
   rollupSprintScorecards,
 } from '../lib/sprintScorecard';
 import { Logo } from './Logo';
+import { PaymentScheduleCard } from './PaymentScheduleCard';
 
 export interface SprintScheduleItem {
   id: string;
@@ -86,7 +97,10 @@ function taskCountsForSprint(tasks: TaskItem[], sprintLabel: string) {
 }
 
 function itemLabel(item: SprintScheduleItem): string {
-  return SPRINT_ID_TO_LABEL[item.id] ?? item.name;
+  const sprint = SPRINT_ID_TO_LABEL[item.id];
+  if (sprint) return sprintLabelWithDates(sprint);
+  const dates = item.dates?.trim();
+  return dates ? `${item.name} · ${dates}` : item.name;
 }
 
 export interface AngelaPlanDocActions {
@@ -138,6 +152,7 @@ export const IpSprintSchedulePage: React.FC<{
     includeWebsitePages: true,
     includeEmailTemplates: true,
     includeSprintRoi: true,
+    includePaymentSchedule: true,
   });
   const tocSections: IpTocSection[] = extraTocItems.some((s) => s.id === 'ip-brand-assets')
     ? toc
@@ -195,68 +210,70 @@ export const IpSprintSchedulePage: React.FC<{
         className="bg-[#FFFCF7] border border-[#E8DFD2] rounded-[1.5rem] p-6 shadow-[0_10px_36px_rgba(31,25,23,0.06)] space-y-3 relative scroll-mt-28"
         data-testid={`sprint-schedule-${item.id}`}
       >
-        <div className="flex items-start justify-between gap-3">
-          <div className="space-y-1 min-w-0 flex-1">
-            <span className="text-[9px] font-mono font-black uppercase tracking-wider text-[#C2410C]">
-              {sprintLabel ?? `Phase item ${index + 1}`}
+        <div className="space-y-2">
+          <div className="flex items-start justify-between gap-2">
+            <span className="text-[9px] font-mono font-black uppercase tracking-wider text-[#C2410C] pt-1">
+              {sprintLabel ? sprintLabelWithDates(sprintLabel) : `Phase item ${index + 1}`}
             </span>
-            {canEdit && onUpdateItem ? (
-              <input
-                type="text"
-                value={item.name}
-                onChange={(e) => onUpdateItem(item.id, { name: e.target.value })}
-                className="w-full min-h-[44px] text-sm font-black text-[#1F1917] uppercase leading-snug bg-[#FAF8F5] border-2 border-[#E5DFD3] rounded-xl px-3 focus:border-[#C2410C] focus:outline-none"
-                aria-label="Item name"
-              />
-            ) : (
-              <h4 className="text-base font-serif font-semibold text-[#1F1917] leading-snug">{item.name}</h4>
-            )}
+            <div className="flex flex-wrap items-center justify-end gap-1.5">
+              {sprintLabel && counts.total > 0 && (
+                <span className="px-2.5 py-1 rounded-xl bg-[#FFEDD5] border border-[#C2410C]/40 text-[9px] font-mono font-black text-[#C2410C] tabular-nums">
+                  Tasks {counts.done}/{counts.total}
+                </span>
+              )}
+              {sprintRoi && (
+                <span className="px-2.5 py-1 rounded-xl bg-[#FAF8F5] border border-[#E5DFD3] text-[9px] font-mono font-black text-[#1F1917] tabular-nums">
+                  ROI {formatRoiPercent(sprintRoi.roiPercent)}
+                </span>
+              )}
+              {canEdit && onRemoveItem && (
+                <button
+                  type="button"
+                  onClick={() => handleRemoveCard(item)}
+                  className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-xl text-[#3F3832] hover:text-red-600 hover:bg-red-50 border-2 border-transparent hover:border-red-200 cursor-pointer"
+                  aria-label={`Remove ${item.name}`}
+                  data-testid={`ip-remove-item-${item.id}`}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-1.5 shrink-0">
-            {sprintLabel && counts.total > 0 && (
-              <span className="px-2.5 py-1 rounded-xl bg-[#FFEDD5] border border-[#C2410C]/40 text-[9px] font-mono font-black text-[#C2410C] tabular-nums">
-                Tasks {counts.done}/{counts.total}
-              </span>
-            )}
-            {sprintRoi && (
-              <span className="px-2.5 py-1 rounded-xl bg-[#FAF8F5] border border-[#E5DFD3] text-[9px] font-mono font-black text-[#1F1917] tabular-nums">
-                ROI {formatRoiPercent(sprintRoi.roiPercent)}
-              </span>
-            )}
-            {canEdit && onRemoveItem && (
-              <button
-                type="button"
-                onClick={() => handleRemoveCard(item)}
-                className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-xl text-[#3F3832] hover:text-red-600 hover:bg-red-50 border-2 border-transparent hover:border-red-200 cursor-pointer"
-                aria-label={`Remove ${item.name}`}
-                data-testid={`ip-remove-item-${item.id}`}
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            )}
-          </div>
+          {canEdit && onUpdateItem ? (
+            <textarea
+              value={item.name}
+              onChange={(e) => onUpdateItem(item.id, { name: e.target.value })}
+              rows={3}
+              className="w-full min-h-[44px] text-sm font-black text-[#1F1917] leading-snug bg-[#FAF8F5] border-2 border-[#E5DFD3] rounded-xl px-3 py-2 focus:border-[#C2410C] focus:outline-none resize-y break-words whitespace-pre-wrap"
+              aria-label="Item name"
+            />
+          ) : (
+            <h4 className="text-base font-serif font-semibold text-[#1F1917] leading-snug break-words">
+              {item.name}
+            </h4>
+          )}
         </div>
 
-        <div className="flex flex-wrap gap-2 text-[10px] font-mono font-bold text-[#3F3832]">
+        <div className="flex flex-col gap-2 text-[10px] font-mono font-bold text-[#3F3832]">
           {canEdit && onUpdateItem ? (
             <>
-              <label className="inline-flex items-center gap-1 min-h-[44px] px-2 rounded-lg bg-[#FAF8F5] border border-[#E5DFD3]">
-                <Clock className="w-3 h-3" />
+              <label className="inline-flex items-center gap-1 min-h-[44px] px-2 rounded-lg bg-[#FAF8F5] border border-[#E5DFD3] w-full">
+                <Clock className="w-3 h-3 shrink-0" />
                 <input
                   type="text"
                   value={item.duration ?? ''}
                   onChange={(e) => onUpdateItem(item.id, { duration: e.target.value })}
-                  className="bg-transparent focus:outline-none min-w-[6rem]"
+                  className="bg-transparent focus:outline-none min-w-0 flex-1"
                   aria-label="Duration"
                 />
               </label>
-              <label className="inline-flex items-center gap-1 min-h-[44px] px-2 rounded-lg bg-[#FAF8F5] border border-[#E5DFD3] flex-1 min-w-[10rem]">
-                <Calendar className="w-3 h-3" />
-                <input
-                  type="text"
+              <label className="inline-flex items-start gap-1 min-h-[44px] px-2 py-2 rounded-lg bg-[#FAF8F5] border border-[#E5DFD3] w-full">
+                <Calendar className="w-3 h-3 shrink-0 mt-0.5" />
+                <textarea
                   value={item.dates ?? ''}
                   onChange={(e) => onUpdateItem(item.id, { dates: e.target.value })}
-                  className="bg-transparent focus:outline-none w-full"
+                  rows={2}
+                  className="bg-transparent focus:outline-none w-full min-w-0 resize-y break-words whitespace-pre-wrap leading-snug"
                   aria-label="Dates"
                 />
               </label>
@@ -264,13 +281,13 @@ export const IpSprintSchedulePage: React.FC<{
           ) : (
             <>
               {item.duration && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#FAF8F5] border border-[#E5DFD3]">
-                  <Clock className="w-3 h-3" /> {item.duration}
+                <span className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg bg-[#FAF8F5] border border-[#E5DFD3] w-full break-words">
+                  <Clock className="w-3 h-3 shrink-0" /> {item.duration}
                 </span>
               )}
               {item.dates && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#FAF8F5] border border-[#E5DFD3]">
-                  <Calendar className="w-3 h-3" /> {item.dates}
+                <span className="inline-flex items-start gap-1 px-2 py-1.5 rounded-lg bg-[#FAF8F5] border border-[#E5DFD3] w-full break-words whitespace-normal">
+                  <Calendar className="w-3 h-3 shrink-0 mt-0.5" /> {item.dates}
                 </span>
               )}
             </>
@@ -547,7 +564,7 @@ export const IpSprintSchedulePage: React.FC<{
                             scrollToIpSection(ipItemDomId(itemId));
                           }
                         }}
-                        className="px-2 py-0.5 rounded-lg bg-white border border-[#E5DFD3] text-[9px] font-mono font-black uppercase text-[#1F1917] hover:border-[#C2410C] hover:text-[#C2410C] cursor-pointer"
+                        className="px-2 py-1 rounded-lg bg-white border border-[#E5DFD3] text-[9px] font-mono font-black text-[#1F1917] hover:border-[#C2410C] hover:text-[#C2410C] cursor-pointer whitespace-normal leading-snug max-w-[14rem]"
                       >
                         {item ? itemLabel(item) : itemId}
                       </span>
@@ -560,6 +577,8 @@ export const IpSprintSchedulePage: React.FC<{
           })}
         </div>
       </div>
+
+      <PaymentScheduleCard id={IP_PAYMENT_SCHEDULE_ID} />
 
       <div
         id={IP_WEBSITE_PAGES_ID}
@@ -582,6 +601,16 @@ export const IpSprintSchedulePage: React.FC<{
       >
         <h3 className="text-lg font-black uppercase font-serif text-[#1F1917]">{EMAIL_TEMPLATES_TITLE}</h3>
         <p className="text-sm text-[#3F3832] font-medium">{ADDITIONAL_EMAIL_TEMPLATES_ADDON_NOTE}</p>
+        <p className="text-sm font-semibold">
+          <a
+            href={ORDER_STORE_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="text-[#C2410C] underline decoration-[#C2410C]/40 break-all"
+          >
+            {ORDER_STORE_URL}
+          </a>
+        </p>
         <ol className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm font-medium text-[#1F1917] list-decimal pl-5">
           {INCLUDED_EMAIL_TEMPLATES.map((template) => (
             <li key={template.id}>{template.name}</li>
@@ -594,14 +623,35 @@ export const IpSprintSchedulePage: React.FC<{
         className="bg-[#FFFCF7] border border-[#E8DFD2] rounded-[2rem] p-6 sm:p-8 shadow-[0_12px_40px_rgba(31,25,23,0.06)] space-y-4 scroll-mt-28"
         data-testid="plan-sprint-roi"
       >
-        <h3 className="text-lg font-black uppercase font-serif text-[#1F1917]">Sprint ROI — organic only</h3>
+        <h3 className="text-lg font-black uppercase font-serif text-[#1F1917]">{SPRINT_ROI_HEADING}</h3>
         <p className="text-sm text-[#3F3832] font-medium">{ORGANIC_ONLY_NOTE}</p>
         <p className="text-sm text-[#3F3832] font-medium">
-          Model: {ORGANIC_FACEBOOK_FOLLOWERS_LABEL} personal Facebook · 5 posts/week · no paid ads.
-          Expected sales are mostly the ${TEE_PRICE} tee (70% of units), plus hoodie and hat.
-          Shop Gear is live now. Soft-sell Angela’s 6.2K Facebook immediately. The $10K is the build fee — organic
-          Facebook does not pay that back during Phase 1.
+          Shop Gear is live now. Hoodies at about ${HOODIE_PRICE} are what is selling. Shirts and hats are in the mix,
+          but they are the smaller share. Soft-sell Angela’s {ORGANIC_FACEBOOK_FOLLOWERS_LABEL} Facebook immediately. The
+          $10,000 is the build fee — Facebook hoodie sales will not pay that back during Phase 1.
         </p>
+        <div className="rounded-xl border border-[#E8DFD2] bg-white px-3 py-3 space-y-2" data-testid="sprint-roi-funnel">
+          <h4 className="text-sm font-black uppercase font-serif text-[#9A3412]">{SPRINT_ROI_FUNNEL_TITLE}</h4>
+          <ol className="space-y-1.5 list-decimal pl-5 text-sm text-[#3F3832]">
+            {organicFunnelSteps().map((step) => (
+              <li key={step.label}>
+                <span className="font-semibold text-[#1F1917]">{step.label}: </span>
+                {step.detail}
+              </li>
+            ))}
+          </ol>
+        </div>
+        <div className="rounded-xl border border-[#E8DFD2] bg-white px-3 py-3 space-y-2" data-testid="sprint-roi-glossary">
+          <h4 className="text-sm font-black uppercase font-serif text-[#9A3412]">{SPRINT_ROI_GLOSSARY_TITLE}</h4>
+          <dl className="space-y-2">
+            {SPRINT_ROI_GLOSSARY.map((row) => (
+              <div key={row.term}>
+                <dt className="text-sm font-semibold text-[#1F1917]">{row.term}</dt>
+                <dd className="text-sm text-[#3F3832]">{row.meaning}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
         <ol className="space-y-2" data-testid="sprint-roi-list">
           {roiRows.map((row) => (
             <li
@@ -610,21 +660,22 @@ export const IpSprintSchedulePage: React.FC<{
               data-testid={`sprint-roi-${row.id}`}
             >
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <span className="text-sm font-black uppercase text-[#1F1917]">{row.label}</span>
+                <span className="text-sm font-black uppercase text-[#1F1917]">
+                  {sprintIdWithDates(row.id, row.label)}
+                </span>
                 <span className="text-sm font-mono font-black text-[#C2410C] tabular-nums">
                   ROI {formatRoiPercent(row.roiPercent)}
                 </span>
               </div>
-              <p className="text-xs font-medium text-[#3F3832] mt-1">
-                Invest ${row.investment.toLocaleString()} · {formatExpectedUnits(row.expectedTeeUnits)} tees ($
-                {row.expectedTeeRevenue.toLocaleString()} tee sales) · {formatExpectedUnits(row.expectedUnits)} units
-                total · ${row.expectedRevenue.toLocaleString()} sales · ${row.expectedNet.toLocaleString()} net
-              </p>
-              <p className="text-[11px] text-[#6B5344] mt-0.5">
-                Mix: {formatExpectedUnits(row.expectedTeeUnits)} tee · {formatExpectedUnits(row.expectedHoodieUnits)}{' '}
-                hoodie · {formatExpectedUnits(row.expectedHatUnits)} hat
-              </p>
-              <p className="text-xs text-[#6B5344] mt-1">{row.note}</p>
+              <dl className="mt-2 space-y-1.5">
+                {sprintRoiPlainLines(row).map((line) => (
+                  <div key={line.label} className="text-sm">
+                    <dt className="font-semibold text-[#1F1917]">{line.label}</dt>
+                    <dd className="text-[#3F3832]">{line.value}</dd>
+                  </div>
+                ))}
+              </dl>
+              <p className="text-sm text-[#6B5344] mt-2">{row.note}</p>
             </li>
           ))}
         </ol>
@@ -635,21 +686,24 @@ export const IpSprintSchedulePage: React.FC<{
               ROI {formatRoiPercent(phaseRoi.roiPercent)}
             </span>
           </div>
-          <p className="text-xs font-medium text-[#3F3832] mt-1">
-            ${phaseRoi.investment.toLocaleString()} invested · {formatExpectedUnits(phaseRoi.expectedTeeUnits)} expected
-            tees (${phaseRoi.expectedTeeRevenue.toLocaleString()} tee sales) · {formatExpectedUnits(phaseRoi.expectedUnits)}{' '}
-            units during the five sprints · ${phaseRoi.expectedRevenue.toLocaleString()} sales. Trailing 90 days after
-            launch (same organic cadence): ~{formatExpectedUnits(phaseRoi.trailing90DayTeeUnits)} tees / $
-            {phaseRoi.trailing90DayTeeRevenue.toLocaleString()} tee sales (~{formatExpectedUnits(phaseRoi.trailing90DayUnits)}{' '}
-            units / ${phaseRoi.trailing90DayRevenue.toLocaleString()} sales) — still not a $10K payback without email
-            list growth, repeats, or later paid work.
+          <p className="text-sm font-medium text-[#3F3832] mt-2">
+            {formatUsd(phaseRoi.investment)} is the full Phase 1 build fee. Across the five sprints we expect{' '}
+            {formatShirtCount(phaseRoi.expectedHoodieUnits)} ({formatUsd(phaseRoi.expectedHoodieRevenue)} at about $
+            {HOODIE_PRICE} each) and {formatShirtCount(phaseRoi.expectedUnits, 'item')} overall (
+            {formatUsd(phaseRoi.expectedRevenue)} in product sales).
+          </p>
+          <p className="text-sm text-[#6B5344] mt-2">
+            If the same Facebook posting continues for 90 days after launch, the model is still only about{' '}
+            {formatShirtCount(phaseRoi.trailing90DayHoodieUnits)} (
+            {formatUsd(phaseRoi.trailing90DayHoodieRevenue)} from hoodies) — not a $10,000 payback unless more people
+            buy, someone orders a second color, or paid ads are added later.
           </p>
         </div>
         <div data-testid="sprint-roi-suggestions" className="space-y-2">
-          <h4 className="text-sm font-black uppercase font-serif text-[#9A3412]">Suggestions to improve</h4>
-          <p className="text-xs text-[#6B5344] font-medium">
-            Organic-only lifts. None of these add paid ads. They raise expected tee sales from the same 6.2K Facebook
-            base, or add TikTok and YouTube reach the model does not yet count.
+          <h4 className="text-sm font-black uppercase font-serif text-[#9A3412]">Suggestions to sell more hoodies</h4>
+          <p className="text-sm text-[#6B5344] font-medium">
+            None of these add paid ads. They either get more of the same 6,200 Facebook people to the shop, or they
+            add TikTok and YouTube viewers this forecast does not count yet.
           </p>
           <ol className="space-y-2">
             {ROI_IMPROVEMENT_SUGGESTIONS.map((row) => (
@@ -658,9 +712,11 @@ export const IpSprintSchedulePage: React.FC<{
                 className="rounded-xl border border-[#FED7AA] bg-white px-3 py-3"
                 data-testid={`sprint-roi-suggestion-${row.id}`}
               >
-                <p className="text-[10px] font-black uppercase tracking-wider text-[#EA580C]">{row.lever}</p>
+                <p className="text-[10px] font-black uppercase tracking-wider text-[#EA580C]">
+                  {ROI_LEVER_LABELS[row.lever]}
+                </p>
                 <p className="text-sm font-semibold text-[#9A3412]">{row.title}</p>
-                <p className="text-xs text-[#6B5344] mt-0.5">{row.suggestion}</p>
+                <p className="text-sm text-[#6B5344] mt-0.5">{row.suggestion}</p>
               </li>
             ))}
           </ol>
@@ -741,8 +797,8 @@ export const IpSprintSchedulePage: React.FC<{
           Agile Sprint Roadmap & Delivery Schedule
         </h3>
         <p className="text-sm text-[#3F3832] font-medium leading-relaxed max-w-3xl">
-          Phase 1 is the $10,000 gear launch — shirts first, plus About, Contact, Privacy, and Phase 1 email.
-          Memberships stay Coming Soon until Phase 2. Phase 3 is open for later discussion.
+          Phase 1 is the $10,000 gear launch — shirts first, plus About, Contact, Privacy, and Orders on SnatchVault.
+          Each sprint creates 3 T-shirt sales videos. Memberships stay Coming Soon until Phase 2. Phase 3 is open for later discussion.
           {canEdit ? ' Add or remove items in each phase. Changes save to this plan and the Word/PDF exports.' : ''}
         </p>
       </div>

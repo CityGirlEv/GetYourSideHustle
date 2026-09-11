@@ -1,14 +1,25 @@
 import { useEffect, useMemo, useState } from "react";
-import { BadgeCheck, RefreshCw, Users } from "lucide-react";
+import { BadgeCheck, RefreshCw, Trash2, Users } from "lucide-react";
 import { BusyOverlay } from "../WaitFeedback";
 import { ApiError } from "../../lib/api";
-import { fetchUsers, formatRoles, type GyshUser } from "../../lib/gysh-roles";
+import {
+  clearUserMembership,
+  deleteUser,
+  fetchUsers,
+  formatRoles,
+  type GyshUser,
+} from "../../lib/gysh-roles";
 import {
   MEMBERSHIP_TIERS,
   TIER_LADDER,
   type AudienceGroup,
   type TierId,
 } from "../../lib/membership";
+import {
+  gyshMembershipClearBlockReason,
+  gyshUserDeleteBlockReason,
+} from "../../lib/gysh-user-delete";
+import { ConfirmDeleteUserBanner } from "./ConfirmDeleteUserBanner";
 
 const AUDIENCE_LABELS: Record<string, string> = {
   kids: "Kids",
@@ -34,12 +45,16 @@ function tierName(id: TierId): string {
   return MEMBERSHIP_TIERS.find((t) => t.id === id)?.name ?? id;
 }
 
-export function MembershipsPage() {
+export function MembershipsPage({ currentUserId = null }: { currentUserId?: string | null }) {
   const [users, setUsers] = useState<GyshUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [busyKind, setBusyKind] = useState<"clear" | "delete">("clear");
   const [error, setError] = useState("");
+  const [saveMsg, setSaveMsg] = useState("");
   const [tierFilter, setTierFilter] = useState<"all" | TierId>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | GyshUser["status"]>("all");
+  const [pendingDelete, setPendingDelete] = useState<GyshUser | null>(null);
 
   const reload = async () => {
     setLoading(true);
@@ -57,6 +72,74 @@ export function MembershipsPage() {
   useEffect(() => {
     void reload();
   }, []);
+
+  const removePlan = async (u: GyshUser) => {
+    const blocked = gyshMembershipClearBlockReason({
+      targetId: u.id,
+      currentTier: u.membershipTier,
+    });
+    if (blocked) {
+      setError(blocked);
+      return;
+    }
+    const plan = tierName(normalizeTier(u.membershipTier));
+    if (
+      !window.confirm(
+        `Remove ${u.name}'s ${plan} membership and set them to Free? The account stays. Cancel any Stripe subscription separately if they pay monthly.`,
+      )
+    ) {
+      return;
+    }
+    setBusyKind("clear");
+    setBusy(true);
+    setError("");
+    setSaveMsg("");
+    try {
+      await clearUserMembership(u.id);
+      await reload();
+      setSaveMsg(`Removed ${plan} for ${u.name}. They are on Free now.`);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Failed to remove membership.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const requestRemoveMember = (u: GyshUser) => {
+    const blocked = gyshUserDeleteBlockReason({ targetId: u.id, actorId: currentUserId });
+    if (blocked) {
+      setError(blocked);
+      setPendingDelete(null);
+      return;
+    }
+    setError("");
+    setPendingDelete(u);
+  };
+
+  const confirmRemoveMember = async () => {
+    const u = pendingDelete;
+    if (!u) return;
+    const blocked = gyshUserDeleteBlockReason({ targetId: u.id, actorId: currentUserId });
+    if (blocked) {
+      setError(blocked);
+      setPendingDelete(null);
+      return;
+    }
+    setBusyKind("delete");
+    setBusy(true);
+    setError("");
+    setSaveMsg("");
+    try {
+      await deleteUser(u.id);
+      setPendingDelete(null);
+      await reload();
+      setSaveMsg(`Deleted ${u.name}.`);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Failed to delete member.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const byTier = useMemo(() => {
     const map = new Map<TierId, GyshUser[]>();
@@ -106,7 +189,16 @@ export function MembershipsPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <BusyOverlay active={loading} message="Loading memberships…" />
+      <BusyOverlay
+        active={loading || busy}
+        message={
+          loading
+            ? "Loading memberships…"
+            : busyKind === "delete"
+              ? "Deleting member…"
+              : "Removing membership…"
+        }
+      />
 
       <div className="glass" style={{ padding: 24, borderRadius: 16 }}>
         <div
@@ -133,8 +225,9 @@ export function MembershipsPage() {
               Memberships
             </h2>
             <p style={{ color: "var(--text-primary)", marginTop: 6, fontSize: "1rem" }}>
-              Members grouped by Free → Elite level from D1. Counts by status and audience lane;
-              drill into any tier below.
+              Members grouped by Free → Elite level from D1. Remove plan drops a paid member to Free
+              without deleting the account. Delete member asks “Are you sure?” on that member’s row
+              (Tina and Evelyn stay protected).
             </p>
           </div>
           <button
@@ -190,6 +283,21 @@ export function MembershipsPage() {
           ))}
         </div>
       </div>
+
+      {saveMsg && (
+        <div
+          style={{
+            padding: "12px 14px",
+            borderRadius: 8,
+            background: "rgba(74,107,82,0.12)",
+            border: "1px solid rgba(74,107,82,0.35)",
+            color: "#4A6B52",
+            fontSize: "0.95rem",
+          }}
+        >
+          {saveMsg}
+        </div>
+      )}
 
       {error && (
         <div
@@ -325,12 +433,31 @@ export function MembershipsPage() {
                 const audienceLabel =
                   audience === "other" ? u.audience || "—" : AUDIENCE_LABELS[audience] ?? audience;
                 return (
-                  <li key={u.id} className="memberships-page__row">
+                  <li
+                    key={u.id}
+                    className={`memberships-page__row${pendingDelete?.id === u.id ? " memberships-page__row--pending-delete" : ""}`}
+                    data-testid={`memberships-row-${u.id}`}
+                    ref={(node) => {
+                      if (node && pendingDelete?.id === u.id) {
+                        node.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                      }
+                    }}
+                  >
                     <div>
                       <strong style={{ color: "var(--charcoal)" }}>{u.name}</strong>
                       <div style={{ fontSize: "0.9rem", color: "var(--text-primary)" }}>
                         {u.email}
                       </div>
+                      {pendingDelete?.id === u.id ? (
+                        <ConfirmDeleteUserBanner
+                          name={pendingDelete.name}
+                          email={pendingDelete.email}
+                          userId={u.id}
+                          busy={busy}
+                          onCancel={() => setPendingDelete(null)}
+                          onConfirm={() => void confirmRemoveMember()}
+                        />
+                      ) : null}
                     </div>
                     <span className="glow-badge memberships-page__pill">{audienceLabel}</span>
                     <span
@@ -344,6 +471,42 @@ export function MembershipsPage() {
                     <span style={{ fontSize: "0.85rem", color: "var(--text-primary)" }}>
                       Joined {u.joinedAt}
                     </span>
+                    <div className="memberships-page__actions">
+                      {(() => {
+                        const clearBlocked = gyshMembershipClearBlockReason({
+                          targetId: u.id,
+                          currentTier: u.membershipTier,
+                        });
+                        const deleteBlocked = gyshUserDeleteBlockReason({
+                          targetId: u.id,
+                          actorId: currentUserId,
+                        });
+                        return (
+                          <>
+                            <button
+                              type="button"
+                              className="btn btn-outline"
+                              onClick={() => void removePlan(u)}
+                              disabled={busy || Boolean(clearBlocked)}
+                              title={clearBlocked ?? "Set this member to Free"}
+                              data-testid={`memberships-clear-${u.id}`}
+                            >
+                              Remove plan
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-danger"
+                              onClick={() => requestRemoveMember(u)}
+                              disabled={busy || Boolean(deleteBlocked)}
+                              title={deleteBlocked ?? "Permanently delete this member"}
+                              data-testid={`memberships-delete-${u.id}`}
+                            >
+                              <Trash2 size={14} /> Delete
+                            </button>
+                          </>
+                        );
+                      })()}
+                    </div>
                   </li>
                 );
               })}

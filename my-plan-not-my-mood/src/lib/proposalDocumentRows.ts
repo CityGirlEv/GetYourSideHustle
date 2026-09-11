@@ -170,7 +170,7 @@ export function buildClickableTocHtml(cards: DocumentSprintCard[]): string {
             <div class="toc-chips">${sprintChips(core)}</div>
             ${included.length ? `<div class="toc-sub" style="margin-top:10px;">${tocLink('doc-sub-included', 'Included Architecture &amp; Design')}</div><div class="toc-chips">${sprintChips(included)}</div>` : ''}
             <div class="toc-sub" style="margin-top:10px;">${tocLink('doc-website-pages', 'Phase 1 Website Pages')}</div>
-            <div class="toc-sub">${tocLink('doc-email-templates', 'Phase 1 Email')}</div>
+            <div class="toc-sub">${tocLink('doc-email-templates', 'Orders')}</div>
           </td>
           <td class="toc-box" width="50%" valign="top">
             ${tocLink('doc-phase-2', 'Phase 2', 'toc-label')}

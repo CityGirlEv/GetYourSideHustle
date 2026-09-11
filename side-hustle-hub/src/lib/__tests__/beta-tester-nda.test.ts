@@ -19,12 +19,13 @@ const valid = {
 };
 
 describe("beta tester NDA content", () => {
-  it("uses GYSH-BETA-NDA-v1.0 and 15 sections", () => {
-    expect(BETA_NDA_VERSION).toBe("GYSH-BETA-NDA-v1.0");
+  it("uses GYSH-BETA-NDA-v1.1 and 15 sections", () => {
+    expect(BETA_NDA_VERSION).toBe("GYSH-BETA-NDA-v1.1");
     expect(BETA_NDA_TITLE).toMatch(/Confidentiality and Non-Disclosure/);
     expect(BETA_NDA_SECTIONS).toHaveLength(15);
     const text = betaNdaPlainText();
-    expect(text).toContain("three (3) years following the end of participation");
+    expect(text).toContain("five (5) years following the end of participation");
+    expect(text).not.toContain("three (3) years following the end of participation");
     expect(text).toContain("I Agree");
     expect(text).toContain("getyoursidehustle.com");
   });

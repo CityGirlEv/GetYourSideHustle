@@ -22,6 +22,14 @@ import {
   type BlueprintMatchCard,
 } from "./SideHustleBlueprintResults";
 import { WizardStartHereBanner } from "./WizardStartHereBanner";
+import { getAdultWizardProfile } from "../lib/hustle-wizard-profiles";
+import { SIDE_HUSTLE_CATALOG } from "../lib/side-hustle-catalog-data";
+import {
+  relativeMatchPct,
+  sortWizardByMatchScore,
+  wizardMatchTierLabel,
+  wizardRankingDisclaimer,
+} from "../lib/wizard-result-order";
 
 interface HustleQuizProps {
   hustles: any[];
@@ -45,121 +53,11 @@ type Answers = {
   goal: string[];
 };
 
-type MatchTier = "Best match" | "Strong match" | "Good fit";
-
 type ScoredMatch = {
   hustle: any;
   score: number;
   pct: number;
-  tier: MatchTier;
-};
-
-/** How well each hustle aligns with strength / goal tags (higher = stronger fit). */
-const HUSTLE_PROFILES: Record<
-  string,
-  {
-    skills: Partial<Record<string, number>>;
-    goals: Partial<Record<string, number>>;
-    budgets: string[];
-    times: string[];
-  }
-> = {
-  airbnb: {
-    skills: { operations: 1, marketing: 0.35 },
-    goals: { physical: 1, passive: 0.55, scale: 0.3 },
-    budgets: ["high", "medium"],
-    times: ["medium", "high"],
-  },
-  pod: {
-    skills: { creative: 1, marketing: 0.45 },
-    goals: { passive: 1, brand: 0.4, scale: 0.55 },
-    budgets: ["low", "medium"],
-    times: ["very_low", "medium"],
-  },
-  dropshipping: {
-    skills: { marketing: 1, operations: 0.5, creative: 0.35 },
-    goals: { scale: 1, brand: 0.35, passive: 0.25 },
-    budgets: ["medium", "high"],
-    times: ["high", "medium"],
-  },
-  "digital-products": {
-    skills: { creative: 1, marketing: 0.55, tech: 0.35 },
-    goals: { passive: 1, brand: 0.7, scale: 0.4 },
-    budgets: ["low", "medium"],
-    times: ["very_low", "medium", "high"],
-  },
-  affiliate: {
-    skills: { marketing: 1, creative: 0.45 },
-    goals: { passive: 1, brand: 0.6, scale: 0.3 },
-    budgets: ["low", "medium"],
-    times: ["very_low", "medium", "high"],
-  },
-  amazon: {
-    skills: { operations: 1, marketing: 0.55 },
-    goals: { scale: 1, passive: 0.4, physical: 0.35 },
-    budgets: ["high"],
-    times: ["high"],
-  },
-  social: {
-    skills: { creative: 1, marketing: 0.7 },
-    goals: { brand: 1, passive: 0.35, scale: 0.4 },
-    budgets: ["low", "medium"],
-    times: ["medium", "high"],
-  },
-  "web-leads": {
-    skills: { marketing: 1, tech: 0.7, creative: 0.35 },
-    goals: { local: 1, scale: 0.4, brand: 0.25 },
-    budgets: ["low", "medium"],
-    times: ["medium", "high"],
-  },
-  "ai-assets": {
-    skills: { creative: 1, tech: 0.75, marketing: 0.4 },
-    goals: { brand: 0.7, local: 0.55, ai: 0.9, passive: 0.25 },
-    budgets: ["low", "medium"],
-    times: ["very_low", "medium"],
-  },
-  "property-mgmt": {
-    skills: { operations: 1, marketing: 0.4, hands_on: 0.35 },
-    goals: { physical: 1, passive: 0.5, scale: 0.35 },
-    budgets: ["medium", "high"],
-    times: ["medium", "high"],
-  },
-  handyman: {
-    skills: { hands_on: 1, operations: 0.45 },
-    goals: { local: 1, flexible: 0.7, physical: 0.4 },
-    budgets: ["medium", "low"],
-    times: ["medium", "high"],
-  },
-  rideshare: {
-    skills: { vehicle: 1, operations: 0.3 },
-    goals: { flexible: 1, local: 0.4 },
-    budgets: ["low", "medium"],
-    times: ["medium", "high"],
-  },
-  "food-delivery": {
-    skills: { vehicle: 1, hands_on: 0.35 },
-    goals: { flexible: 1, local: 0.45 },
-    budgets: ["low"],
-    times: ["very_low", "medium", "high"],
-  },
-  "ai-timing": {
-    skills: { tech: 1, vehicle: 0.55, marketing: 0.35 },
-    goals: { ai: 1, flexible: 0.75, local: 0.4 },
-    budgets: ["low"],
-    times: ["very_low", "medium"],
-  },
-  "ai-agents": {
-    skills: { tech: 1, marketing: 0.5, creative: 0.3 },
-    goals: { ai: 1, scale: 0.55, passive: 0.45, brand: 0.3 },
-    budgets: ["low", "medium"],
-    times: ["medium", "high"],
-  },
-  "book-publishing": {
-    skills: { creative: 1, marketing: 0.65, operations: 0.35 },
-    goals: { brand: 1, passive: 0.75, scale: 0.35 },
-    budgets: ["low", "medium", "high"],
-    times: ["medium", "high"],
-  },
+  tier: string;
 };
 
 const STRENGTH_WEIGHTS = [30, 15]; // rank 1, rank 2
@@ -192,8 +90,10 @@ const BUDGET_LABELS: Record<string, string> = {
   high: "Over $1,000",
 };
 
+/** How well each hustle aligns with strength / goal tags (higher = stronger fit). */
 function scoreHustle(hustleId: string, answers: Answers): number {
-  const profile = HUSTLE_PROFILES[hustleId];
+  const tags = SIDE_HUSTLE_CATALOG.find((h) => h.id === hustleId)?.matchTags ?? [];
+  const profile = getAdultWizardProfile(hustleId, tags);
   if (!profile) return 0;
 
   let score = 0;
@@ -212,12 +112,6 @@ function scoreHustle(hustleId: string, answers: Answers): number {
   if (profile.times.includes(answers.time)) score += TIME_WEIGHT;
 
   return Math.round(score * 10) / 10;
-}
-
-function tierForRank(index: number, pct: number): MatchTier {
-  if (index === 0) return "Best match";
-  if (pct >= 70 || index === 1) return "Strong match";
-  return "Good fit";
 }
 
 function toBlueprintCards(results: ScoredMatch[]): BlueprintMatchCard[] {
@@ -270,11 +164,18 @@ export const HustleQuiz: React.FC<HustleQuizProps> = ({
 
   const buildResults = (nextAnswers: Answers): ScoredMatch[] => {
     const scored = hustles.map((h) => ({ hustle: h, score: scoreHustle(h.id, nextAnswers) }));
-    scored.sort((a, b) => b.score - a.score);
-    const maxScore = Math.max(scored[0]?.score ?? 1, 1);
-    return scored.map((row, index) => {
-      const pct = Math.round((row.score / maxScore) * 100);
-      return { ...row, pct, tier: tierForRank(index, pct) };
+    const maxScore = Math.max(...scored.map((r) => r.score), 1);
+    const ordered = sortWizardByMatchScore(
+      scored.map((row) => ({ id: row.hustle.id, score: row.score, hustle: row.hustle })),
+    );
+    return ordered.map((row, index) => {
+      const pct = relativeMatchPct(row.score, maxScore);
+      return {
+        hustle: row.hustle,
+        score: row.score,
+        pct,
+        tier: wizardMatchTierLabel(index, pct, row.id),
+      };
     });
   };
 
@@ -684,6 +585,9 @@ export const HustleQuiz: React.FC<HustleQuizProps> = ({
               {unlocked && (
                 <div className="match-finder-adult-how">
                   <strong>How your ranking works</strong>
+                  <p style={{ margin: "8px 0 12px", fontSize: "0.95rem", lineHeight: 1.45 }}>
+                    {wizardRankingDisclaimer()}
+                  </p>
                   <ul>
                     <li>
                       <strong>Budget ({BUDGET_LABELS[answers.budget]})</strong> and time commitment

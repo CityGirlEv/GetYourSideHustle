@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   addAssigneeCopies,
+  buildSiblingCatalogIndex,
   expandCatalogCasesForSingleAssignees,
   siblingTestCases,
   splitSharedAssignees,
@@ -113,5 +114,16 @@ describe("gysh-test-case-dupes", () => {
     const sibs = siblingTestCases("DEMO-AAA", [a, b, c]);
     expect(sibs.map((s) => s.id)).toEqual(["DEMO-BBB"]);
     expect(sibs[0]?.via).toBe("title");
+  });
+
+  it("buildSiblingCatalogIndex matches siblingTestCases for the live catalog", () => {
+    const index = buildSiblingCatalogIndex(TEST_CASES);
+    for (const t of TEST_CASES.slice(0, 40)) {
+      expect(index.byId.get(t.id)?.map((s) => s.id).sort()).toEqual(
+        siblingTestCases(t.id, TEST_CASES).map((s) => s.id).sort(),
+      );
+    }
+    const proofIdx = index.byId.get("PROOF-001-TINA") ?? [];
+    expect(proofIdx.some((s) => s.id === "PROOF-001-LYRIQ")).toBe(true);
   });
 });

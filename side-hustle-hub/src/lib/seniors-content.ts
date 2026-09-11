@@ -1,6 +1,7 @@
 /** Senior Side Hustles — opportunities & guide teasers for 50+ / flexible schedules. */
 
 import { seniorGuideMinTier } from "./guide-access";
+import { hustleById, seniorBrowseOpportunities } from "./side-hustle-catalog";
 
 export type SeniorOpportunity = {
   id: string;
@@ -62,8 +63,8 @@ export const SENIOR_OPPORTUNITIES: SeniorOpportunity[] = [
   },
   {
     id: "crafts",
-    name: "Craft & Maker Sales",
-    desc: "Sell handmade goods at markets, church fairs, Etsy, or Facebook — quilts, woodwork, jewelry, baked goods with a local following.",
+    name: "Handmade Craft Sales",
+    desc: "Make and sell handmade goods at markets, church fairs, Etsy, or Facebook — quilts, woodwork, jewelry, or baked goods with a local following.",
     fit: "Hobby crafters ready to price and ship",
     schedule: "Batch-friendly weekends",
     startup: "Low — supplies + a simple booth or listing",
@@ -78,8 +79,8 @@ export const SENIOR_OPPORTUNITIES: SeniorOpportunity[] = [
   },
   {
     id: "str-cohost",
-    name: "Airbnb / STR Co-Hosting",
-    desc: "Help hosts with guest messaging, turnover checklists, or local hospitality — without owning the property yourself.",
+    name: "Airbnb Arbitrage",
+    desc: "Partner on short-term rentals without owning the property — co-host ops or lease-to-list style arbitrage where local rules allow.",
     fit: "Organized hosts or hospitality veterans",
     schedule: "Part-time blocks; can share duties",
     startup: "Low if partnering with an existing host",
@@ -124,6 +125,40 @@ export const SENIOR_OPPORTUNITIES: SeniorOpportunity[] = [
     schedule: "On when you want; off when you don’t",
     startup: "Medium — vehicle requirements + app approval",
   },
+  {
+    id: "notary",
+    name: "Part-Time Notary",
+    desc: "Get commissioned and offer mobile or by-appointment notarizations for neighbors and local professionals — precise work on your schedule.",
+    fit: "Detail-oriented adults and seniors",
+    schedule: "Evenings and weekends on demand",
+    startup: "Medium — state commission + stamp + bond",
+  },
+  {
+    id: "start-gardening-club",
+    name: "Start a Gardening Club",
+    desc: "Launch a neighborhood gardening club with plant swaps and optional paid workshops.",
+    fit: "Gardeners who enjoy hosting peers",
+    schedule: "Monthly or biweekly daytime meetups",
+    startup: "Low — venue + simple handouts",
+  },
+  {
+    id: "start-book-club",
+    name: "Start a Book Club",
+    desc: "Host a welcoming monthly book club with discussion prompts and optional reading kits.",
+    fit: "Readers who love warm conversation",
+    schedule: "One afternoon or evening per month",
+    startup: "Very low — library partnership",
+  },
+];
+
+/** Expanded senior browse from shared M2M catalog (preserves curated ids above). */
+const SENIOR_CATALOG_EXTRAS = seniorBrowseOpportunities().filter(
+  (o) => !SENIOR_OPPORTUNITIES.some((c) => c.id === o.id),
+);
+
+export const SENIOR_OPPORTUNITIES_EXPANDED: SeniorOpportunity[] = [
+  ...SENIOR_OPPORTUNITIES,
+  ...SENIOR_CATALOG_EXTRAS,
 ];
 
 export const SENIOR_GUIDE_TEASERS: SeniorGuideTeaser[] = [
@@ -132,11 +167,12 @@ export const SENIOR_GUIDE_TEASERS: SeniorGuideTeaser[] = [
     title: "Host an AI-for-peers coffee chat",
     blurb: "A friendly agenda for teaching neighbors ChatGPT basics — including scam red flags.",
     status: "preview",
+    launchGuideId: "ai-peers",
   },
   {
     id: "safe-cohost",
-    title: "Co-host a short-term rental without owning",
-    blurb: "Roles, guest messaging templates, and how to partner with a host you trust.",
+    title: "Airbnb Arbitrage",
+    blurb: "Partner on short-term rentals without owning — roles, guest messaging, and how to work with a host you trust.",
     status: "live",
     launchGuideId: "property-mgmt",
   },
@@ -179,14 +215,28 @@ export const SENIOR_GUIDE_TEASERS: SeniorGuideTeaser[] = [
     blurb: "Offer grocery runs, pharmacy pickups, and appointment rides with clear rates and neighbor trust.",
     status: "coming_soon",
   },
+  {
+    id: "start-gardening-club",
+    title: "Start a Gardening Club",
+    blurb: "Plant swaps, seasonal meetups, and optional workshops — community first, income optional.",
+    status: "live",
+    launchGuideId: "start-gardening-club",
+  },
+  {
+    id: "start-book-club",
+    title: "Start a Book Club",
+    blurb: "Monthly reads, gentle discussion prompts, and library-friendly hosting for peers.",
+    status: "live",
+    launchGuideId: "start-book-club",
+  },
+  {
+    id: "senior-notary",
+    title: "Part-time notary on your schedule",
+    blurb: "Get commissioned and offer mobile or by-appointment notarizations for neighbors and local pros.",
+    status: "live",
+    launchGuideId: "notary",
+  },
 ];
-
-/** Sort: Free-plan openers → live launch links → coming soon. */
-export function orderedSeniorGuides(guides: SeniorGuideTeaser[] = SENIOR_GUIDE_TEASERS): SeniorGuideTeaser[] {
-  const rank = (g: SeniorGuideTeaser) =>
-    g.status === "preview" ? 0 : g.status === "live" ? 1 : 2;
-  return [...guides].sort((a, b) => rank(a) - rank(b));
-}
 
 /** True when this senior teaser belongs in the Free Membership guides bundle. */
 export function isSeniorGuideFree(
@@ -196,6 +246,17 @@ export function isSeniorGuideFree(
   void _freeLaunchIds;
   if (guide.status === "coming_soon") return false;
   return seniorGuideMinTier(guide.id, guide.launchGuideId) === "free";
+}
+
+/** Sort: Free-plan openers first → live/preview → coming soon. */
+export function orderedSeniorGuides(guides: SeniorGuideTeaser[] = SENIOR_GUIDE_TEASERS): SeniorGuideTeaser[] {
+  const statusRank = (g: SeniorGuideTeaser) =>
+    g.status === "coming_soon" ? 2 : g.status === "live" ? 1 : 0;
+  return [...guides].sort((a, b) => {
+    const freeDelta = Number(isSeniorGuideFree(b)) - Number(isSeniorGuideFree(a));
+    if (freeDelta !== 0) return freeDelta;
+    return statusRank(a) - statusRank(b);
+  });
 }
 
 /** Senior Get Your Side Hustle answers — lifestyle, ranked skills/goals, availability. */
@@ -291,8 +352,48 @@ const GOAL_WEIGHTS = [28, 16, 8];
 const LIFESTYLE_WEIGHT = 14;
 const AVAILABILITY_WEIGHT = 12;
 
+/** Heuristic senior profile from catalog tags when no hand-tuned entry exists. */
+export function seniorProfileFromCatalog(opportunityId: string): {
+  skills: Partial<Record<string, number>>;
+  goals: Partial<Record<string, number>>;
+  lifestyles: string[];
+  availability: string[];
+} | null {
+  const h = hustleById(opportunityId);
+  if (!h) return null;
+  const skills: Partial<Record<string, number>> = {};
+  const goals: Partial<Record<string, number>> = {};
+  for (const t of h.matchTags ?? []) {
+    if (t === "creative") skills.creative = 1;
+    if (t === "tech" || t === "ai") skills.tech = Math.max(skills.tech ?? 0, 0.85);
+    if (t === "physical" || t === "outdoor") skills.hands_on = 1;
+    if (t === "animals") skills.hands_on = Math.max(skills.hands_on ?? 0, 0.7);
+    if (t === "people" || t === "helping") skills.teaching = Math.max(skills.teaching ?? 0, 0.65);
+    if (t === "operations" || t === "admin") skills.admin = Math.max(skills.admin ?? 0, 0.7);
+    if (t === "hosting" || t === "hospitality") skills.hospitality = 1;
+    if (t === "local") goals.flexible = Math.max(goals.flexible ?? 0, 0.75);
+    if (t === "indoor") goals.purpose = Math.max(goals.purpose ?? 0, 0.45);
+  }
+  if (h.zeroStart) goals.income = Math.max(goals.income ?? 0, 0.55);
+  if (!Object.keys(skills).length) skills.admin = 0.45;
+  if (!Object.keys(goals).length) {
+    goals.income = 0.55;
+    goals.flexible = 0.6;
+  }
+  return {
+    skills,
+    goals,
+    lifestyles: ["gentle", "balanced", "active"],
+    availability: ["light", "steady", "flexible"],
+  };
+}
+
+export function resolveSeniorMatchProfile(opportunityId: string) {
+  return SENIOR_MATCH_PROFILES[opportunityId] ?? seniorProfileFromCatalog(opportunityId);
+}
+
 export function scoreSeniorMatch(opportunityId: string, answers: SeniorMatchAnswers): number {
-  const profile = SENIOR_MATCH_PROFILES[opportunityId];
+  const profile = resolveSeniorMatchProfile(opportunityId);
   if (!profile) return 0;
 
   let score = 0;

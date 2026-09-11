@@ -258,6 +258,29 @@ export const Header: React.FC<HeaderProps> = ({
                 <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                 Home
               </button>
+              <button
+                type="button"
+                onClick={() => onNavigate('about')}
+                className={`px-2.5 py-1 rounded-xl transition-all cursor-pointer inline-flex items-center gap-1 shrink-0 whitespace-nowrap text-xs font-bold ${
+                  storeRoute === 'about'
+                    ? 'bg-[#C2410C] text-white shadow-sm font-black'
+                    : 'hover:bg-[#FFEDD5] text-[#1F1917] border-2 border-[#E5DFD3]'
+                }`}
+              >
+                About
+              </button>
+              <button
+                type="button"
+                onClick={() => onNavigate('list')}
+                className={`px-2.5 py-1 rounded-xl transition-all cursor-pointer inline-flex items-center gap-1 shrink-0 whitespace-nowrap text-xs font-bold ${
+                  storeRoute === 'list'
+                    ? 'bg-[#C2410C] text-white shadow-sm font-black'
+                    : 'hover:bg-[#FFEDD5] text-[#1F1917] border-2 border-[#E5DFD3]'
+                }`}
+              >
+                <Mail className="w-3.5 h-3.5 shrink-0" />
+                List
+              </button>
 
               {showMemberships && (
               <button
@@ -553,6 +576,26 @@ export const Header: React.FC<HeaderProps> = ({
                 className="min-h-[44px] px-3 py-2.5 rounded-2xl bg-[#C2410C] text-white text-xs font-black uppercase cursor-pointer flex items-center justify-center gap-1.5"
               >
                 <CheckCircle2 className="w-4 h-4" /> Home
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  closeMobileMenu();
+                  onNavigate('about');
+                }}
+                className="min-h-[44px] px-3 py-2.5 rounded-2xl bg-[#FAF8F5] border-2 border-[#1F1917] text-xs font-black uppercase cursor-pointer flex items-center justify-center"
+              >
+                About
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  closeMobileMenu();
+                  onNavigate('list');
+                }}
+                className="min-h-[44px] px-3 py-2.5 rounded-2xl bg-[#FAF8F5] border-2 border-[#1F1917] text-xs font-black uppercase cursor-pointer flex items-center justify-center gap-1.5 col-span-2"
+              >
+                <Mail className="w-4 h-4" /> Mailing List
               </button>
               {showMemberships && (
               <button

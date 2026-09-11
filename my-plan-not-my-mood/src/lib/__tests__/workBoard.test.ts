@@ -96,7 +96,7 @@ describe('workBoard seed merge', () => {
     expect(INITIAL_TASKS.some((t) => t.title === 'About page')).toBe(true);
     expect(INITIAL_TASKS.some((t) => t.title === 'Contact page')).toBe(true);
     expect(INITIAL_TASKS.some((t) => /Privacy Policy/i.test(t.title))).toBe(true);
-    expect(INITIAL_TASKS.some((t) => /Phase 1 email/i.test(t.title))).toBe(true);
+    expect(INITIAL_TASKS.some((t) => /Orders on SnatchVault/i.test(t.title))).toBe(true);
     expect(INITIAL_TASKS.some((t) => /Coming Soon on Memberships/i.test(t.title))).toBe(true);
     expect(INITIAL_TASKS.find((t) => t.id === 't-24')?.title).toMatch(/organic sprint ROI/i);
     expect(INITIAL_TASKS.find((t) => t.id === 't-30')?.assignee).toBe('evelyn');
@@ -142,7 +142,7 @@ describe('workBoard seed merge', () => {
     const pay = INITIAL_TASKS.find((t) => t.id === 't-43');
     expect(pay?.title).toMatch(/Make Payment/i);
     expect(pay?.assignee).toBe('angela');
-    expect(pay?.sprint).toBe('Sprint 0');
+    expect(pay?.sprint).toBe('Sprint 1');
     expect(pay?.priority).toBe('high');
     expect(INITIAL_QA_TESTS.find((t) => t.id === 'pay-qa1')?.desc).toMatch(/Zelle/);
     expect(mergeMissingSeedTasks(INITIAL_TASKS.filter((t) => t.id !== 't-43')).some((t) => t.id === 't-43')).toBe(true);
@@ -242,6 +242,28 @@ describe('workBoard seed merge', () => {
     expect(INITIAL_TASKS.find((t) => t.id === 't-73')?.dueDate).toBe('2026-09-06');
     expect(INITIAL_TASKS.find((t) => t.id === 't-74')?.title).toMatch(/house/i);
     expect(INITIAL_TASKS.find((t) => t.id === 't-74')?.dueDate).toBe('2026-09-04');
+    const videoIds = ['t-75', 't-76', 't-77', 't-78', 't-79'] as const;
+    const videoSprints = ['Sprint 0', 'Sprint 1', 'Sprint 2', 'Sprint 3', 'Sprint 4'] as const;
+    videoIds.forEach((id, index) => {
+      expect(INITIAL_TASKS.find((t) => t.id === id)).toMatchObject({
+        title: `Create 3 T-shirt sales videos for ${videoSprints[index]}`,
+        sprint: videoSprints[index],
+        assignee: 'angela',
+        category: 'Content',
+      });
+    });
+    const analytics = INITIAL_TASKS.filter((task) => String(task.groupId ?? '').startsWith('analytics-'));
+    expect(analytics).toHaveLength(120);
+    expect(analytics.every((task) => task.sprint !== 'Sprint 0')).toBe(true);
+    expect(analytics.filter((task) => task.assignee === 'angela')).toHaveLength(60);
+    expect(analytics.filter((task) => task.assignee === 'evelyn')).toHaveLength(60);
+    expect(INITIAL_TASKS.find((t) => t.id === 't-83')?.title).toMatch(/Gather Facebook analytics/i);
+    expect(INITIAL_TASKS.find((t) => t.id === 't-84')?.title).toMatch(/Review Facebook analytics/i);
+    expect(INITIAL_TASKS.find((t) => t.id === 't-83')?.groupId).toBe('analytics-2026-09-07-facebook');
+    expect(mergeMissingSeedTasks(INITIAL_TASKS.filter((t) => t.id !== 't-83')).some((t) => t.id === 't-83')).toBe(true);
+    expect(mergeMissingSeedTasks(INITIAL_TASKS.filter((t) => !videoIds.includes(t.id as (typeof videoIds)[number]))).some((t) => t.id === 't-75')).toBe(
+      true,
+    );
     const without = INITIAL_TASKS.filter((t) => !ids.includes(t.id));
     const merged = mergeMissingSeedTasks(without);
     expect(merged.some((t) => t.id === 't-68')).toBe(true);
@@ -623,11 +645,11 @@ describe('workBoard seed merge', () => {
     expect(chips.find((chip) => chip.id === 'unassigned')?.label).toBe('Unknown');
     expect(chips.find((chip) => chip.id === 'vitest')).toMatchObject({ label: 'Vitest', total: 9 });
     expect(chips.find((chip) => chip.id === 'playwright')).toMatchObject({ label: 'Playwright', total: 6 });
-    expect(chips.find((chip) => chip.id === 'angela')?.total).toBe(3);
-    expect(chips.find((chip) => chip.id === 'evelyn')?.total).toBe(3);
+    expect(chips.find((chip) => chip.id === 'angela')?.total).toBe(4);
+    expect(chips.find((chip) => chip.id === 'evelyn')?.total).toBe(4);
     const taskChips = buildAssigneeChipCounts(INITIAL_TASKS, taskIsDone);
-    expect(taskChips.find((chip) => chip.id === 'angela')?.total).toBe(35);
-    expect(taskChips.find((chip) => chip.id === 'evelyn')?.total).toBe(20);
+    expect(taskChips.find((chip) => chip.id === 'angela')?.total).toBe(101);
+    expect(taskChips.find((chip) => chip.id === 'evelyn')?.total).toBe(82);
     expect(taskChips.find((chip) => chip.id === 'qa')?.total).toBe(1);
     expect(taskChips.find((chip) => chip.id === 'vitest')).toMatchObject({ label: 'Vitest', total: 0 });
     expect(taskChips.find((chip) => chip.id === 'playwright')).toMatchObject({ label: 'Playwright', total: 0 });

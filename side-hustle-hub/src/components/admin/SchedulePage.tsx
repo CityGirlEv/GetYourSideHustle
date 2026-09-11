@@ -2086,7 +2086,7 @@ export function SchedulePage({
           const evelynDone = item.evelynDone;
           // Gate on the assignee being saved (draft), not the stale committed owner.
           if (status === "done" && !(tinaDone && evelynDone) && requiresPartnerDone(assignee)) {
-            setError("Both T + E must mark Done before this plan item can be Done.");
+            setError("Both Tina & Evelyn must mark Done before this plan item can be Done.");
             return false;
           }
         }
@@ -2136,7 +2136,7 @@ export function SchedulePage({
           status === "done" &&
           !(task.tinaDone && task.evelynDone)
         ) {
-          setError("Both T + E must mark Done before this task can be Done.");
+          setError("Both Tina & Evelyn must mark Done before this task can be Done.");
           return false;
         }
         const assigneeChanged = task.assignedTo !== resolvedAssignee;

@@ -11,6 +11,12 @@ export type FilterChipClickOpts<T> = {
   metaKey?: boolean;
   ordered?: readonly T[];
   lastIndex?: number | null;
+  /**
+   * When true, plain-clicking the only selected bubble keeps it selected.
+   * Use on Task List sprint chips so a second tap on the current sprint
+   * does not jump to All sprints.
+   */
+  keepSoleSelection?: boolean;
 };
 
 export function toggleFilterValue<T>(prev: Set<T>, value: T): Set<T> {
@@ -22,10 +28,17 @@ export function toggleFilterValue<T>(prev: Set<T>, value: T): Set<T> {
 
 /**
  * Testing Portal sprint chips: empty set = All sprints.
- * Open with this so Pass / Conditional Pass from prior sprints stay visible.
+ * Use when the tester clears to “All sprints”.
  */
-export function defaultTestingPortalSprintFilters<T = never>(): Set<T> {
+export function allTestingPortalSprintFilters<T = never>(): Set<T> {
   return new Set();
+}
+
+/**
+ * Testing Portal opens filtered to the current sprint (not All sprints).
+ */
+export function defaultTestingPortalSprintFilters<T>(currentSprint: T): Set<T> {
+  return new Set([currentSprint]);
 }
 
 export function isAllSprintsFilter(selected: Set<unknown>): boolean {
@@ -33,11 +46,30 @@ export function isAllSprintsFilter(selected: Set<unknown>): boolean {
 }
 
 /**
+ * Testing Portal filter sections on load.
+ * Assignees, Sprint, Status, then Other (Test Suites, All Test Cases, and related filters).
+ */
+export const TESTING_PORTAL_FILTER_DEFAULTS: {
+  order: readonly ["assignees", "sprint", "status", "other"];
+  testersOpen: boolean;
+  sprintOpen: boolean;
+  otherOpen: boolean;
+  statusOpen: boolean;
+} = {
+  order: ["assignees", "sprint", "status", "other"],
+  testersOpen: true,
+  /** Open so the current-sprint chip is visible on load. */
+  sprintOpen: true,
+  otherOpen: false,
+  statusOpen: true,
+};
+
+/**
  * Apply a filter-bubble click.
  * - Plain click: select only this value (or clear if it was the only selection).
  * - Ctrl/Cmd+click: add/remove this value (multi-select).
  * - Shift+click: add every value between the last click and this one.
- * - `multiToggle`: plain click also toggles (assignee / tester chips).
+ * - `multiToggle`: plain click also toggles (assignee / tester / Testing Portal status chips).
  */
 export function applyFilterChipClick<T>(
   prev: Set<T>,
@@ -61,6 +93,9 @@ export function applyFilterChipClick<T>(
   }
 
   if (prev.size === 1 && prev.has(value)) {
+    if (opts.keepSoleSelection) {
+      return { next: new Set<T>([value]), lastIndex };
+    }
     return { next: new Set<T>(), lastIndex };
   }
   return { next: new Set<T>([value]), lastIndex };

@@ -74,7 +74,14 @@ test.describe('PW-SITEMAP-001 sitemap', () => {
 test.describe('PW-ADMIN-001 admin gate', () => {
   test('anonymous testing portal asks for sign-in', async ({ page }) => {
     await page.goto('/admin/testing');
+    await expect(page).toHaveTitle(/MY PLAN, NOT MY MOOD/i);
     await expect(page.getByText(/sign in or register/i)).toBeVisible();
     await expect(page.getByText(/qa verification matrix/i)).toHaveCount(0);
+  });
+
+  test('anonymous posting schedule asks for sign-in', async ({ page }) => {
+    await page.goto('/admin/calendar');
+    await expect(page.getByText(/sign in or register/i)).toBeVisible();
+    await expect(page.getByTestId('posting-schedule-page')).toHaveCount(0);
   });
 });

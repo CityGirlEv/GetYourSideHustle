@@ -54,7 +54,7 @@ export const ADMIN_STUDIO_TABS: AdminStudioTabDef[] = [
   { id: 'certificates', label: 'Certificates', description: 'Beta and completion awards' },
   { id: 'emails', label: 'Emails', description: 'Templates, send settings, and test mail' },
   { id: 'factory', label: 'Content Factory', description: 'Phase 1 posts, Gear, Logo Concepts, and calendar' },
-  { id: 'calendar', label: 'Calendar', description: 'Phase 1 organic posts by sprint' },
+  { id: 'calendar', label: 'Posting Schedule', description: 'One document: date, platform, time, and what to post' },
   { id: 'gear-selections', label: 'Gear', description: 'Style cards that already include hat, hoodie, and tee' },
   { id: 'logo-concepts', label: 'Logos', description: 'Upload logos and highlight the Selected Logo' },
   { id: 'asset-library', label: 'Asset Library', description: 'Logos, Gear, and Phase 2 Accessories' },

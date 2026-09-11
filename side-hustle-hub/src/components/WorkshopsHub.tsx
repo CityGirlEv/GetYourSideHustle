@@ -1,10 +1,11 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { AlertCircle, ArrowLeft, Calendar, CheckCircle2, Clock, MapPin, Mic2, Users, Video } from "lucide-react";
+import { AlertCircle, ArrowLeft, Calendar, CheckCircle2, MapPin, Mic2, Users, Video } from "lucide-react";
 import {
   AUDIENCE_LABELS,
   STATUS_LABELS,
   fetchWorkshops,
   submitWorkshopRegistration,
+  workshopIsPreRegistration,
   type GuestSpeaker,
   type Workshop,
   type WorkshopStatus,
@@ -14,7 +15,27 @@ import workshopsHero from "../assets/workshops-hero.png";
 
 type Filter = "all" | WorkshopStatus;
 
-export function WorkshopsHub() {
+function workshopScheduleLabel(w: Pick<Workshop, "date" | "time">): string {
+  const date = (w.date || "TBD").trim() || "TBD";
+  const time = (w.time || "TBD").trim() || "TBD";
+  if (/^tbd$/i.test(date) && /^tbd$/i.test(time)) return "Date & time TBD";
+  if (/^tbd$/i.test(time)) return date;
+  if (/^tbd$/i.test(date)) return time;
+  return `${date} · ${time}`;
+}
+
+function workshopPrimaryCtaLabel(w: Workshop): string {
+  if (!w.registrationOpen) return "View Registration";
+  if (w.status === "waitlist") return "Join Waitlist";
+  if (workshopIsPreRegistration(w)) return "Pre-Register";
+  return "Reserve Spot";
+}
+
+export function WorkshopsHub({
+  onAddWorkshopSeat,
+}: {
+  onAddWorkshopSeat?: () => void;
+} = {}) {
   const [statusFilter, setStatusFilter] = useState<Filter>("all");
   const [audienceFilter, setAudienceFilter] = useState<"all" | WorkshopAudience>("all");
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
@@ -90,6 +111,7 @@ export function WorkshopsHub() {
 
   if (registeringFor) {
     const isOpen = registeringFor.registrationOpen && registeringFor.status !== "past";
+    const isPreReg = workshopIsPreRegistration(registeringFor);
     const eventSpeakers = registeringFor.speakerIds
       .map((id) => speakersById[id])
       .filter(Boolean);
@@ -108,16 +130,17 @@ export function WorkshopsHub() {
         <section className="workshops-registration-layout">
           <article className="workshops-registration-summary glass">
             <span className={`glow-badge ${isOpen ? "emerald" : "amber"}`}>
-              {isOpen ? "Registration Open" : "Registration Closed"}
+              {isOpen
+                ? isPreReg
+                  ? "Pre-Registration Open"
+                  : "Registration Open"
+                : "Registration Closed"}
             </span>
             <h2>{registeringFor.title}</h2>
             <p>{registeringFor.blurb}</p>
             <div className="workshops-card-meta">
               <span>
-                <Calendar size={14} /> {registeringFor.date || "TBD"}
-              </span>
-              <span>
-                <Clock size={14} /> {registeringFor.time || "TBD"}
+                <Calendar size={14} /> {workshopScheduleLabel(registeringFor)}
               </span>
               <span>
                 {registeringFor.format === "In-Person" || registeringFor.format === "Hybrid" ? (
@@ -156,10 +179,12 @@ export function WorkshopsHub() {
           </article>
 
           <form className="workshops-registration-form glass" onSubmit={(e) => void handleRegistrationSubmit(e)}>
-            <h3>Workshop Registration</h3>
+            <h3>{isPreReg ? "Pre-Register Interest" : "Workshop Registration"}</h3>
             <p>
               {isOpen
-                ? "Save your spot for this event."
+                ? isPreReg
+                  ? "Tell us you're interested — date and time are TBD. We'll email you when the schedule is confirmed."
+                  : "Save your spot for this event."
                 : "Registration fields are previewed here and will unlock when Admin opens registration."}
             </p>
             {registrationStatus && (
@@ -223,11 +248,20 @@ export function WorkshopsHub() {
               {isOpen
                 ? submittingRegistration
                   ? "Submitting…"
-                  : registeringFor.status === "waitlist"
-                    ? "Join Waitlist"
-                    : "Reserve Spot"
+                  : workshopPrimaryCtaLabel(registeringFor)
                 : "Registration Disabled"}
             </button>
+            {isOpen && onAddWorkshopSeat ? (
+              <button
+                type="button"
+                className="btn btn-outline"
+                data-testid="workshops-add-seat-to-cart"
+                style={{ width: "100%", marginTop: 10 }}
+                onClick={onAddWorkshopSeat}
+              >
+                Add workshop seat to cart
+              </button>
+            ) : null}
           </form>
         </section>
       </div>
@@ -260,8 +294,8 @@ export function WorkshopsHub() {
           <h2>GYSH Workshops & Guest Speakers</h2>
           <p>
             GYSH partnership sessions — Tina leads kids & family glow labs; Evelyn hosts adult build tracks
-            on Airbnb, AI agents, Shopify, and apps. Guest experts join throughout the season. Dates are TBD
-            until the schedule is confirmed.
+            on Airbnb, AI agents, Shopify, and apps. Guest experts join throughout the season. Dates and times
+            are TBD until the schedule is confirmed. Extra seats are $40 or 40 credits on Join.
           </p>
           <div className="workshops-hero-stats">
             <div className="workshops-stat">
@@ -334,10 +368,7 @@ export function WorkshopsHub() {
                 <p className="workshops-card-blurb">{w.blurb}</p>
                 <div className="workshops-card-meta">
                   <span>
-                    <Calendar size={14} /> {w.date || "TBD"}
-                  </span>
-                  <span>
-                    <Clock size={14} /> {w.time || "TBD"}
+                    <Calendar size={14} /> {workshopScheduleLabel(w)}
                   </span>
                   <span>
                     {w.format === "In-Person" || w.format === "Hybrid" ? (
@@ -368,32 +399,41 @@ export function WorkshopsHub() {
                   ))}
                 </div>
                 <div className={`workshops-registration-chip ${w.registrationOpen ? "is-open" : "is-closed"}`}>
-                  {w.registrationOpen && w.status !== "past" ? "Registration open" : "Registration closed"}
+                  {w.registrationOpen && w.status !== "past"
+                    ? workshopIsPreRegistration(w)
+                      ? "Pre-registration open"
+                      : "Registration open"
+                    : "Registration closed"}
                 </div>
-                {w.status !== "past" && (
-                  <button
-                    type="button"
-                    className={w.registrationOpen ? "btn btn-primary" : "btn btn-outline"}
-                    style={{ width: "100%", marginTop: 12 }}
-                    onClick={() => openRegistration(w)}
-                  >
-                    {w.registrationOpen
-                      ? w.status === "waitlist"
-                        ? "Join Waitlist"
-                        : "Reserve Spot"
-                      : "View Registration"}
-                  </button>
-                )}
-                {w.status === "past" && (
-                  <button
-                    type="button"
-                    className="btn btn-outline"
-                    style={{ width: "100%", marginTop: 12 }}
-                    onClick={() => openRegistration(w)}
-                  >
-                    View Event
-                  </button>
-                )}
+                <div className="workshops-card-actions">
+                  {w.status !== "past" ? (
+                    <button
+                      type="button"
+                      className={w.registrationOpen ? "btn btn-primary" : "btn btn-outline"}
+                      onClick={() => openRegistration(w)}
+                    >
+                      {workshopPrimaryCtaLabel(w)}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      onClick={() => openRegistration(w)}
+                    >
+                      View Event
+                    </button>
+                  )}
+                  {onAddWorkshopSeat && w.registrationOpen && w.status !== "past" ? (
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      data-testid="workshops-add-seat-to-cart"
+                      onClick={onAddWorkshopSeat}
+                    >
+                      Add workshop seat to cart
+                    </button>
+                  ) : null}
+                </div>
               </article>
             ))}
           </div>

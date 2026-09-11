@@ -136,6 +136,8 @@ type SprintStatusBarsProps = {
   selectedSprint?: number | "all" | "backlog" | null;
   /** Clicking a sprint / Overall label filters the parent board. */
   onSelectSprint?: (selection: SprintProgressSelection) => void;
+  /** Rollout schedule lives on Schedule; hide it on Testing Portal. */
+  showRolloutSchedule?: boolean;
 };
 
 export function SprintStatusBars({
@@ -144,6 +146,7 @@ export function SprintStatusBars({
   defaultOpen = false,
   selectedSprint = null,
   onSelectSprint,
+  showRolloutSchedule = true,
 }: SprintStatusBarsProps) {
   const [summary, setSummary] = useState<ProjectProgressSummary | null>(null);
   const [error, setError] = useState("");
@@ -205,7 +208,7 @@ export function SprintStatusBars({
   }, [boardCards, fromProps]);
 
   const data = boardCards ? fromProps : summary;
-  const hint = data ? collapsedSummary(data) : error ? "error" : "loading…";
+  const hint = data ? collapsedSummary(data) : error ? "couldn't load" : "loading…";
   const filterable = Boolean(onSelectSprint);
 
   return (
@@ -291,7 +294,7 @@ export function SprintStatusBars({
           </>
         )}
       </div>
-      <RolloutScheduleSummary />
+      {showRolloutSchedule ? <RolloutScheduleSummary /> : null}
     </div>
   );
 }

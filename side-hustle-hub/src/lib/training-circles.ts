@@ -59,7 +59,7 @@ export const TRAINING_CIRCLES: TrainingCircle[] = [
   {
     id: "websites",
     name: "Building Websites",
-    blurb: "Brand sites, landing pages, and Cloudflare Pages deploys that convert — GYSH-style.",
+    blurb: "Brand sites on Cloudflare Pages with Supabase + Resend for email — kick off builds in Antigravity. No WordPress.",
     audience: "adult",
     level: "Intermediate",
     icon: "🌐",

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Users, Plus, Pencil, Check, X, ChevronDown, ScrollText } from "lucide-react";
+import { Users, Plus, Pencil, Check, X, ChevronDown, ScrollText, Trash2 } from "lucide-react";
 import { BusyOverlay, WaitIndicator } from "../WaitFeedback";
 import { PasswordField } from "../PasswordField";
 import {
@@ -12,6 +12,7 @@ import {
   fetchAuditEvents,
   fetchUsers,
   saveUser,
+  deleteUser,
   userHasRole,
   userRoles,
   type GyshRole,
@@ -24,7 +25,9 @@ import {
   userAuditActionLabel,
   type UserAuditEvent,
 } from "../../lib/gysh-user-audit";
+import { gyshUserDeleteBlockReason } from "../../lib/gysh-user-delete";
 import { ApiError } from "../../lib/api";
+import { ConfirmDeleteUserBanner } from "./ConfirmDeleteUserBanner";
 
 type UsersAreaTab = "users" | "audit";
 
@@ -362,7 +365,7 @@ function UserAuditTrail({
   );
 }
 
-export function UsersArea() {
+export function UsersArea({ currentUserId = null }: { currentUserId?: string | null }) {
   const [users, setUsers] = useState<GyshUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -381,6 +384,8 @@ export function UsersArea() {
   const [draft, setDraft] = useState<EditDraft | null>(null);
   const [saveMsg, setSaveMsg] = useState("");
   const [busy, setBusy] = useState(false);
+  const [busyKind, setBusyKind] = useState<"save" | "delete">("save");
+  const [pendingDelete, setPendingDelete] = useState<GyshUser | null>(null);
   const [roleBusyId, setRoleBusyId] = useState<string | null>(null);
   const [roleMenuUserId, setRoleMenuUserId] = useState<string | null>(null);
 
@@ -446,6 +451,7 @@ export function UsersArea() {
     if (!name.trim() || !email.trim()) return;
     const rolesToSave: GyshRole[] =
       newRoles.length > 0 ? newRoles : roleFilter !== "all" ? [roleFilter] : ["adult"];
+    setBusyKind("save");
     setBusy(true);
     setSaveMsg("");
     setError("");
@@ -553,6 +559,7 @@ export function UsersArea() {
       return;
     }
 
+    setBusyKind("save");
     setBusy(true);
     setError("");
     try {
@@ -580,6 +587,47 @@ export function UsersArea() {
     }
   };
 
+  const requestRemoveUser = (u: GyshUser) => {
+    const blocked = gyshUserDeleteBlockReason({ targetId: u.id, actorId: currentUserId });
+    if (blocked) {
+      setError(blocked);
+      setPendingDelete(null);
+      return;
+    }
+    setError("");
+    setPendingDelete(u);
+  };
+
+  const confirmRemoveUser = async () => {
+    const u = pendingDelete;
+    if (!u) return;
+    const blocked = gyshUserDeleteBlockReason({ targetId: u.id, actorId: currentUserId });
+    if (blocked) {
+      setError(blocked);
+      setPendingDelete(null);
+      return;
+    }
+    setBusyKind("delete");
+    setBusy(true);
+    setError("");
+    setSaveMsg("");
+    try {
+      await deleteUser(u.id);
+      setPendingDelete(null);
+      if (editingId === u.id) {
+        setEditingId(null);
+        setDraft(null);
+      }
+      await reload();
+      void reloadAudit();
+      setSaveMsg(`Deleted ${u.name}.`);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Failed to delete user.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
       <BusyOverlay
@@ -589,6 +637,8 @@ export function UsersArea() {
             ? "Loading users…"
             : areaTab === "audit" && auditLoading
               ? "Loading audit log…"
+              : busyKind === "delete"
+              ? "Deleting user…"
               : "Saving user…"
         }
       />
@@ -602,6 +652,8 @@ export function UsersArea() {
           appears on Testing Portal and Schedule test assignee lists. Failed and Conditionally Passed
           tests assign to Evelyn (Lead Developer).
           Passwords are never shown — only set or reset from Edit. Last signed-in time comes from the login audit trail.
+          Edit a member, then Delete to remove them. Confirm stays on that member’s card. Tina
+          and Evelyn co-founder accounts stay protected.
         </p>
 
         <div
@@ -847,10 +899,26 @@ export function UsersArea() {
                       padding: "16px",
                       borderRadius: "12px",
                       position: "relative",
-                      zIndex: menuOpenHere || expandedAuditId === u.id ? 40 : "auto",
+                      zIndex: menuOpenHere || expandedAuditId === u.id || pendingDelete?.id === u.id ? 40 : "auto",
+                      outline: pendingDelete?.id === u.id ? "2px solid rgba(155, 47, 40, 0.45)" : undefined,
                     }}
                     data-testid={`users-card-${u.id}`}
+                    ref={(node) => {
+                      if (node && pendingDelete?.id === u.id) {
+                        node.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                      }
+                    }}
                   >
+                    {pendingDelete?.id === u.id ? (
+                      <ConfirmDeleteUserBanner
+                        name={pendingDelete.name}
+                        email={pendingDelete.email}
+                        userId={u.id}
+                        busy={busy}
+                        onCancel={() => setPendingDelete(null)}
+                        onConfirm={() => void confirmRemoveUser()}
+                      />
+                    ) : null}
                     {!isEditing ? (
                       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                         <div style={{ display: "grid", gridTemplateColumns: "1.4fr 0.9fr auto", gap: "12px", alignItems: "start" }}>
@@ -883,9 +951,30 @@ export function UsersArea() {
                           <div style={{ fontSize: "0.95rem", color: "var(--text-primary)" }}>
                             {u.status} · Joined {u.joinedAt}
                           </div>
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
                           <button type="button" className="btn btn-outline" onClick={() => startEdit(u)} style={{ padding: "8px 12px" }}>
                             <Pencil size={14} /> Edit
                           </button>
+                          {(() => {
+                            const blocked = gyshUserDeleteBlockReason({
+                              targetId: u.id,
+                              actorId: currentUserId,
+                            });
+                            return (
+                              <button
+                                type="button"
+                                className="btn btn-danger"
+                                onClick={() => requestRemoveUser(u)}
+                                disabled={busy || Boolean(blocked)}
+                                title={blocked ?? "Permanently delete this user"}
+                                data-testid={`users-delete-${u.id}`}
+                                style={{ padding: "8px 12px" }}
+                              >
+                                <Trash2 size={14} /> Delete
+                              </button>
+                            );
+                          })()}
+                          </div>
                         </div>
                         <div>
                           <div style={{ fontSize: "1rem", color: "var(--text-primary)", marginBottom: 6, fontWeight: 600 }}>
@@ -970,6 +1059,24 @@ export function UsersArea() {
                           <button type="button" className="btn btn-outline" onClick={cancelEdit}>
                             <X size={14} /> Cancel
                           </button>
+                          {(() => {
+                            const blocked = gyshUserDeleteBlockReason({
+                              targetId: u.id,
+                              actorId: currentUserId,
+                            });
+                            return (
+                              <button
+                                type="button"
+                                className="btn btn-danger"
+                                onClick={() => requestRemoveUser(u)}
+                                disabled={busy || Boolean(blocked)}
+                                title={blocked ?? "Permanently delete this user"}
+                                data-testid={`users-delete-edit-${u.id}`}
+                              >
+                                <Trash2 size={14} /> Delete
+                              </button>
+                            );
+                          })()}
                         </div>
                       </div>
                     )}

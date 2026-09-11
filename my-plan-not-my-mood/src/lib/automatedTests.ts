@@ -83,7 +83,7 @@ export const AUTOMATED_VITEST_SEEDS: AutomatedTestSeed[] = [
     suite: 'vitest',
     title: 'Storefront routes, brand UI, and Content Factory',
     description: 'SPA routes, sitemap, brand tokens, header clearance, and organic calendar.',
-    desc: 'bun run test — storeRoutes, siteMap, brandUi, headerClearance, contentFactory, clientIdentity, vercelConfig',
+    desc: 'bun run test — storeRoutes, siteMap, brandUi, headerClearance, contentFactory, clientIdentity, vercelConfig, mailingList, siteAnalyticsCadence',
     sprint: 'Sprint 0',
     category: 'Vitest',
     command: 'bun run test',

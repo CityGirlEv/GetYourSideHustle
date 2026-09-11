@@ -7,7 +7,8 @@ export type ProgressKind =
   | "kids_team"
   | "junior_team"
   | "senior_team"
-  | "hustle_schedule";
+  | "hustle_schedule"
+  | "wizard_comp_guides";
 
 export async function fetchMemberProgress<T = Record<string, unknown>>(
   kind: ProgressKind,

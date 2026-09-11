@@ -25,13 +25,14 @@ import {
   type PlanItem,
 } from "./gysh-sprints";
 import { appendActorNote } from "./gysh-note-entries";
-import type { GyshTask, TaskStatus } from "./gysh-tasks";
+import { isPersonalAmplifyTask, type GyshTask, type TaskStatus } from "./gysh-tasks";
 import type { TestCase, TestStatus } from "./gysh-test-plan";
 import { testOwnerLabel, type TestOwnerId } from "./gysh-roles";
 import {
   emailTemplateReviewDueDate,
   isEmailTemplateReviewCaseId,
 } from "./gysh-email-template-review-cases";
+import { isGuideReviewCaseId } from "./gysh-guide-review-cases";
 import { isPrivacyPolicyProofreadCase } from "./gysh-proofread-cases";
 
 /** Incomplete tasks get sprint due heals; Done keeps its stored due until sprint moves. */
@@ -134,28 +135,28 @@ export const TASK_SPRINT_MAP: Record<string, number> = {
   "T-SL-S5-NEWSLETTER-3": 5,
   "T-SL-S5-ADS-ITERATE": 5,
   "T-SL-S5-KEVINA-CADENCE": 5,
-  "T-SL-S3-PERSONAL-AMPLIFY-WHY-TINA": 5,
-  "T-SL-S3-PERSONAL-AMPLIFY-WHY-EVELYN": 5,
-  "T-SL-S3-PERSONAL-AMPLIFY-GUIDES-TINA": 5,
-  "T-SL-S3-PERSONAL-AMPLIFY-GUIDES-EVELYN": 5,
-  "T-SL-S3-PERSONAL-AMPLIFY-WRAP-TINA": 5,
-  "T-SL-S3-PERSONAL-AMPLIFY-WRAP-EVELYN": 5,
-  "T-SL-S4-PERSONAL-AMPLIFY-IG-TT-TINA": 5,
-  "T-SL-S4-PERSONAL-AMPLIFY-IG-TT-EVELYN": 5,
-  "T-SL-S4-PERSONAL-AMPLIFY-KEVINA-TINA": 5,
-  "T-SL-S4-PERSONAL-AMPLIFY-KEVINA-EVELYN": 5,
-  "T-SL-S4-PERSONAL-AMPLIFY-FB-TINA": 5,
-  "T-SL-S4-PERSONAL-AMPLIFY-FB-EVELYN": 5,
-  "T-SL-S4-PERSONAL-AMPLIFY-YT2-TINA": 5,
-  "T-SL-S4-PERSONAL-AMPLIFY-YT2-EVELYN": 5,
-  "T-SL-S5-PERSONAL-AMPLIFY-KEVINA-TINA": 5,
-  "T-SL-S5-PERSONAL-AMPLIFY-KEVINA-EVELYN": 5,
+  "T-SL-S3-PERSONAL-AMPLIFY-WHY-TINA": 6,
+  "T-SL-S3-PERSONAL-AMPLIFY-WHY-EVELYN": 6,
+  "T-SL-S3-PERSONAL-AMPLIFY-GUIDES-TINA": 6,
+  "T-SL-S3-PERSONAL-AMPLIFY-GUIDES-EVELYN": 6,
+  "T-SL-S3-PERSONAL-AMPLIFY-WRAP-TINA": 6,
+  "T-SL-S3-PERSONAL-AMPLIFY-WRAP-EVELYN": 6,
+  "T-SL-S4-PERSONAL-AMPLIFY-IG-TT-TINA": 6,
+  "T-SL-S4-PERSONAL-AMPLIFY-IG-TT-EVELYN": 6,
+  "T-SL-S4-PERSONAL-AMPLIFY-KEVINA-TINA": 6,
+  "T-SL-S4-PERSONAL-AMPLIFY-KEVINA-EVELYN": 6,
+  "T-SL-S4-PERSONAL-AMPLIFY-FB-TINA": 6,
+  "T-SL-S4-PERSONAL-AMPLIFY-FB-EVELYN": 6,
+  "T-SL-S4-PERSONAL-AMPLIFY-YT2-TINA": 6,
+  "T-SL-S4-PERSONAL-AMPLIFY-YT2-EVELYN": 6,
+  "T-SL-S5-PERSONAL-AMPLIFY-KEVINA-TINA": 6,
+  "T-SL-S5-PERSONAL-AMPLIFY-KEVINA-EVELYN": 6,
   "T-SL-S5-FB-UGC-ASK": 5,
-  "T-SL-S5-PERSONAL-AMPLIFY-UGC-TINA": 5,
-  "T-SL-S5-PERSONAL-AMPLIFY-UGC-EVELYN": 5,
+  "T-SL-S5-PERSONAL-AMPLIFY-UGC-TINA": 6,
+  "T-SL-S5-PERSONAL-AMPLIFY-UGC-EVELYN": 6,
   "T-SL-S5-MULTI-CHANNEL-REPOST": 5,
-  "T-SL-S5-PERSONAL-AMPLIFY-MONTAGE-TINA": 5,
-  "T-SL-S5-PERSONAL-AMPLIFY-MONTAGE-EVELYN": 5,
+  "T-SL-S5-PERSONAL-AMPLIFY-MONTAGE-TINA": 6,
+  "T-SL-S5-PERSONAL-AMPLIFY-MONTAGE-EVELYN": 6,
   "T-SL-S5-RETRO": 5,
   // Intentionally parked (not part of soft-launch path).
   // Use literal -1 (BACKLOG_SPRINT) — module init can run before gysh-sprints finishes
@@ -189,16 +190,14 @@ export function suggestedSprintForTask(
 ): number {
   const haystack = `${task.id} ${task.notes} ${task.description ?? ""}`;
   if (/PERSONAL-AMPLIFY|personal\s+ampl[iy]/i.test(haystack)) {
-    return 5;
+    return 6;
   }
   if (Object.prototype.hasOwnProperty.call(TASK_SPRINT_MAP, task.id)) {
     return TASK_SPRINT_MAP[task.id]!;
   }
-  if (task.id.startsWith("T-LG-")) return 3;
-  if (task.id.startsWith("T-SL-S2")) return 2;
-  if (task.id.startsWith("T-SL-S3")) return 3;
-  if (task.id.startsWith("T-SL-S4")) return 4;
-  if (task.id.startsWith("T-SL-S5")) return 5;
+  const slSprint = /^T-SL-S(\d+)/.exec(task.id);
+  if (slSprint) return Number(slSprint[1]);
+  if (task.id.startsWith("T-LG-")) return 6;
   if (task.notes.includes("Sprint 0")) return 0;
   if (task.notes.includes("Sprint 1")) return 1;
   if (task.notes.includes("Sprint 2")) return 2;
@@ -253,9 +252,9 @@ export function suggestedSprintForTest(
   const area = test.area.toLowerCase();
   const title = String(test.title ?? "");
 
-  // Personal amplify share QA — stacked on Sprint 5 / Sep 2 with the matching Tasks
+  // Personal amplify share QA — Sprint 6 / next week with the matching Tasks
   if (/personal\s+ampl[iy]/i.test(title) || id.includes("PERSONAL-AMPLIFY")) {
-    return 5;
+    return 6;
   }
 
   // Generated failure cases — Backlog until claimed (create path may override Kids/Youth)
@@ -312,6 +311,16 @@ export function suggestedSprintForTest(
   }
   if (area.includes("wizard") || id.startsWith("WIZ-") || id.includes("SCENARIO")) {
     return 4;
+  }
+
+  // All-guides content review + legacy GUIDE-001/002 → Sprint 6
+  if (
+    isGuideReviewCaseId(id) ||
+    id.startsWith("GUIDE-REV-") ||
+    id === "VT-GUIDES-REVIEW" ||
+    id.startsWith("GUIDE-")
+  ) {
+    return 6;
   }
 
   // Stripe Checkout matrix (membership / a-la-carte / credit packs) → Sprint 4
@@ -542,6 +551,24 @@ export function itemMatchesSprintFilterSet(
     if (noteRolledFromSprint(note, focus)) return true;
   }
   return false;
+}
+
+/**
+ * Task List sprint chips: assigned sprint only.
+ * Work that rolled out of a selected sprint (“Rolled over from Sprint N”) stays off
+ * that sprint’s list — including leftovers still numbered as N and items now on N+1.
+ */
+export function itemAssignedToSprintFilterSet(
+  currentSprint: number | undefined,
+  notes: string | null | undefined,
+  filters: ReadonlySet<number>,
+): boolean {
+  if (filters.size === 0) return true;
+  const sprint = Number(currentSprint);
+  for (const focus of filters) {
+    if (noteRolledFromSprint(notes, focus)) return false;
+  }
+  return filters.has(sprint);
 }
 
 export type SprintRolloverDirectionCounts = {
@@ -1004,8 +1031,14 @@ export function commitTaskSprintPlan(
     if (isBacklogSprint(nextSprint)) {
       nextDue = "";
     } else if (sprintChanged) {
-      nextDue = due || t.dueDate;
-    } else if (taskStatusNeedsSprintDue(t.status) && due && t.dueDate !== due) {
+      // Personal amplify keeps cadence-scattered dues (not sprint-end).
+      nextDue = isPersonalAmplifyTask(t) ? t.dueDate : due || t.dueDate;
+    } else if (
+      !isPersonalAmplifyTask(t) &&
+      taskStatusNeedsSprintDue(t.status) &&
+      due &&
+      t.dueDate !== due
+    ) {
       nextDue = due;
     }
     if (sprintChanged || t.dueDate !== nextDue) {
@@ -1033,6 +1066,7 @@ export function healIncompleteTaskDueDates(tasks: GyshTask[]): {
   let changed = false;
   let updatedCount = 0;
   const next = tasks.map((t) => {
+    if (isPersonalAmplifyTask(t)) return t;
     if (!taskStatusNeedsSprintDue(t.status)) return t;
     const sprint = typeof t.sprint === "number" ? t.sprint : 0;
     const due = isBacklogSprint(sprint) ? "" : dueDateForSprint(sprint);
@@ -1195,7 +1229,7 @@ export function commitTestSprintPlan(
 /**
  * Bump to re-run Schedule soft heal (S0 task matches + re-home Backlog parking).
  */
-export const ROLLOUT_SCHEDULE_VERSION = "2026-08-20-pause-s3-aug18";
+export const ROLLOUT_SCHEDULE_VERSION = "2026-09-06-sprints-through-10";
 
 export type RolloutScheduleApplyResult = {
   planItems: PlanItem[];

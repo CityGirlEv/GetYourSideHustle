@@ -9,6 +9,12 @@ import {
   type WorkChecklistStep,
 } from './workChecklist';
 import {
+  SITE_ANALYTICS_TASK_HREF,
+  buildSiteAnalyticsInstances,
+  siteAnalyticsContentSeed,
+  siteAnalyticsTaskById,
+} from './siteAnalyticsCadence';
+import {
   TEE_SALES_BIO_LINE,
   TEE_SALES_LIVE_NO_SAMPLE,
   TEE_SALES_LIVE_ON_BODY,
@@ -72,7 +78,9 @@ export function resolvePersistedSteps(
  */
 export function pageHrefForWorkItem(id: string): string | undefined {
   const root = String(id || '').split('::')[0].trim();
-  return WORK_ITEM_PAGE_HREFS[root];
+  if (WORK_ITEM_PAGE_HREFS[root]) return WORK_ITEM_PAGE_HREFS[root];
+  if (siteAnalyticsTaskById(root)) return SITE_ANALYTICS_TASK_HREF;
+  return undefined;
 }
 
 const WORK_ITEM_PAGE_HREFS: Record<string, string> = {
@@ -92,7 +100,7 @@ const WORK_ITEM_PAGE_HREFS: Record<string, string> = {
   't-14': '/privacy',
   't-15': '/terms',
   't-16': '/faq',
-  't-17': '/admin/emails',
+  't-17': 'https://snatchvault.com/collections/my-plan-gear',
   't-18': '/join',
   't-19': '/gear',
   't-20': '/admin/users',
@@ -140,6 +148,16 @@ const WORK_ITEM_PAGE_HREFS: Record<string, string> = {
   't-72': '/',
   't-73': '/admin/plan',
   't-74': '/admin/factory',
+  't-75': '/admin/factory',
+  't-76': '/admin/factory',
+  't-77': '/admin/factory',
+  't-78': '/admin/factory',
+  't-79': '/admin/factory',
+  't-80': '/about',
+  't-81': '/list',
+  't-82': '/',
+  't-83': '/admin/factory',
+  't-84': '/admin/factory',
   qa1: '/',
   qa2: '/',
   qa3: '/',
@@ -182,6 +200,10 @@ const WORK_ITEM_PAGE_HREFS: Record<string, string> = {
   'cf-s2-qa': '/admin/factory',
   'cf-s3-qa': '/admin/factory',
   'cf-s4-qa': '/admin/factory',
+  'website-qa1': '/',
+  'list-qa1': '/list',
+  'analytics-qa1': '/admin/factory',
+  'analytics-qa2': '/admin/factory',
   'VT-AUTH-001': '/admin',
   'VT-BOARD-001': '/admin/tasks',
   'VT-EMAIL-001': '/admin/emails',
@@ -199,22 +221,34 @@ const WORK_ITEM_PAGE_HREFS: Record<string, string> = {
   'PW-ADMIN-001': '/admin/testing',
 };
 
+function teeSalesVideosSeed(sprintLabel: string): WorkItemContentSeed {
+  return {
+    description: `Shoot and post 3 T-shirt sales videos in ${sprintLabel}. Each video sells the tee and includes https://nonnegotiation.com/gear.`,
+    steps: [
+      { label: `Open Content Factory ${sprintLabel}`, href: '/admin/factory' },
+      'Film 3 T-shirt sales videos (shop link in each caption)',
+      'Post all three this sprint — Facebook first, then any live TikTok / YouTube / Instagram',
+      'Mark the three videos done',
+    ],
+  };
+}
+
 export const TASK_CONTENT_SEEDS: Record<string, WorkItemContentSeed> = {
   't-1': {
-    description: 'Confirm Phase 1–3 budget commitment totaling $10,000 is funded and tracked.',
+    description: 'Confirm the $10,000 Phase 1 fee is three payments and that $3,500 is already received.',
     steps: [
-      { label: 'Review the three-phase payment schedule on the Plan / Budget', href: '/admin/budget' },
-      'Confirm Phase 1, 2, and 3 amounts add to $10,000',
-      'Note what is already paid vs still due',
+      { label: 'Review the three-payment schedule on the Plan / Budget', href: '/admin/budget' },
+      'Confirm $3,500 + $3,500 + $3,000 add to $10,000',
+      'Confirm Payment 1 is marked paid and Payment 2 is due Sprint 1',
       'Confirm with Evelyn that the ledger matches',
     ],
   },
   't-43': {
-    description: 'Pay Phase 1 ($4,000) using preferred methods (Zelle or Cash App).',
+    description: 'Pay Payment 2 ($3,500) due Sprint 1 using preferred methods (Zelle or Cash App).',
     steps: [
       { label: 'Open the Make Payment page', href: '/pay' },
       'Choose Zelle or Cash App (preferred)',
-      'Send $4,000 for Phase 1',
+      'Send $3,500 for Payment 2 / Sprint 1',
       'Save or screenshot the payment confirmation',
       'Tell Evelyn the payment is complete',
     ],
@@ -400,12 +434,13 @@ export const TASK_CONTENT_SEEDS: Record<string, WorkItemContentSeed> = {
     ],
   },
   't-17': {
-    description: 'Configure Phase 1 email (orders, fulfillment, contact, admin).',
+    description:
+      'Confirm Orders on SnatchVault: https://snatchvault.com/collections/my-plan-gear. Hosting is SnatchVault, not Angela’s domain. Home menu is Non-Negotiable, with Tees, Hoodies, and Hats. Split is 70/30.',
     steps: [
-      { label: 'Open Emails in Admin Studio', href: '/admin/emails' },
-      'Confirm templates exist for order / contact / admin notify',
-      'Confirm Resend domain and keys are set',
-      'Send one test email and confirm delivery',
+      { label: 'Open the My Plan Gear collection', href: 'https://snatchvault.com/collections/my-plan-gear' },
+      'From SnatchVault home, open Non-Negotiable, then Tees, Hoodies, and Hats',
+      'Confirm the 70/30 order split (Angela 70%, Evelyn 30% for hosting, processing, admin, application fees)',
+      'Confirm checkout stays on SnatchVault',
     ],
   },
   't-18': {
@@ -418,11 +453,12 @@ export const TASK_CONTENT_SEEDS: Record<string, WorkItemContentSeed> = {
     ],
   },
   't-19': {
-    description: 'QA Shop Gear, launch pages, and Phase 1 email before launch.',
+    description: 'QA Shop Gear, launch pages, and SnatchVault Orders before launch.',
     steps: [
       { label: 'Open Shop Gear', href: '/gear' },
       'Run smoke checks on launch pages (About, Contact, Privacy, Terms, FAQ)',
-      'Confirm a test email sends',
+      { label: 'Open SnatchVault Orders collection', href: 'https://snatchvault.com/collections/my-plan-gear' },
+      'Confirm Non-Negotiable → Tees / Hoodies / Hats and the 70/30 split notes on the Plan',
       'Log failures as QA tests assigned to Dev',
     ],
   },
@@ -464,7 +500,7 @@ export const TASK_CONTENT_SEEDS: Record<string, WorkItemContentSeed> = {
     description: 'Review organic sprint ROI with 6.2K Facebook and no paid ads.',
     steps: [
       { label: 'Open the Plan ROI section', href: '/admin/plan' },
-      'Review expected tee sales vs organic assumptions',
+      'Review expected hoodie sales vs organic assumptions',
       'Note improvement suggestions',
       'Confirm numbers still match current costs',
     ],
@@ -555,6 +591,7 @@ export const TASK_CONTENT_SEEDS: Record<string, WorkItemContentSeed> = {
       { label: 'Open Content Factory Sprint 0', href: '/admin/factory' },
       'Post week 1 brand + shop-link rows (use the lifestyle tee mockup)',
       'Complete week 2: pin, bios, live talk track, Evelyn support post, website walk',
+      'Create 3 T-shirt sales videos this sprint — shop link in each',
       'Mark the sprint cadence done',
     ],
   },
@@ -565,6 +602,7 @@ export const TASK_CONTENT_SEEDS: Record<string, WorkItemContentSeed> = {
       'Complete gear upload/pick rows',
       'Complete shop-link posts',
       'Run the on-body live and post the clip when the sample arrives',
+      'Create 3 T-shirt sales videos this sprint — shop link in each',
       'Mark the sprint cadence done',
     ],
   },
@@ -574,6 +612,7 @@ export const TASK_CONTENT_SEEDS: Record<string, WorkItemContentSeed> = {
       { label: 'Open Content Factory Sprint 2', href: '/admin/factory' },
       'Complete tee / hoodie / hat sell posts with the Shop Gear URL',
       'Confirm the SHOP LINK caption is nonnegotiation.com/gear',
+      'Create 3 T-shirt sales videos this sprint — shop link in each',
       'Mark the sprint cadence done',
     ],
   },
@@ -583,6 +622,7 @@ export const TASK_CONTENT_SEEDS: Record<string, WorkItemContentSeed> = {
       { label: 'Open Content Factory Sprint 3', href: '/admin/factory' },
       'Complete About/FAQ posts with the shop link',
       'Complete weekend prep rows',
+      'Create 3 T-shirt sales videos this sprint — shop link in each',
       'Mark the sprint cadence done',
     ],
   },
@@ -592,6 +632,7 @@ export const TASK_CONTENT_SEEDS: Record<string, WorkItemContentSeed> = {
       { label: 'Open Content Factory Sprint 4', href: '/admin/factory' },
       'Complete drop announcement and launch-week posts',
       'Keep https://nonnegotiation.com/gear in every post',
+      'Create 3 T-shirt sales videos this sprint — shop link in each',
       'Mark the sprint cadence done',
     ],
   },
@@ -783,6 +824,11 @@ export const TASK_CONTENT_SEEDS: Record<string, WorkItemContentSeed> = {
       'Website: Home intro is live before you send people there',
     ],
   },
+  't-75': teeSalesVideosSeed('Sprint 0'),
+  't-76': teeSalesVideosSeed('Sprint 1'),
+  't-77': teeSalesVideosSeed('Sprint 2'),
+  't-78': teeSalesVideosSeed('Sprint 3'),
+  't-79': teeSalesVideosSeed('Sprint 4'),
 };
 
 export const QA_CONTENT_SEEDS: Record<string, WorkItemContentSeed> = {
@@ -931,7 +977,7 @@ export const QA_CONTENT_SEEDS: Record<string, WorkItemContentSeed> = {
     ],
   },
   'sprint-roi-qa1': {
-    description: 'Plan shows organic ROI, the weekly scorecard, expected tee sales, and improvement suggestions.',
+    description: 'Plan shows organic ROI, the weekly scorecard, expected hoodie sales, and improvement suggestions.',
     steps: [
       { label: 'Open the Plan', href: '/admin/plan' },
       'Confirm each Phase 1 sprint lists ROI / sales notes',
@@ -940,9 +986,11 @@ export const QA_CONTENT_SEEDS: Record<string, WorkItemContentSeed> = {
     ],
   },
   'cf-qa1': {
-    description: 'Content Factory lists Phase 1 posts filterable by sprint, assignee, and channel.',
+    description: 'Content Factory lists Phase 1 posts filterable by sprint, assignee, and channel, plus one Posting Schedule document.',
     steps: [
       { label: 'Open Content Factory', href: '/admin/factory' },
+      { label: 'Open the Posting Schedule tab', href: '/admin/calendar' },
+      'Confirm the document lists date, platform, time, and what to post',
       'Filter by sprint',
       'Filter by assignee',
       'Filter by channel (Facebook, YouTube, TikTok, Personal)',
@@ -981,7 +1029,7 @@ export const QA_CONTENT_SEEDS: Record<string, WorkItemContentSeed> = {
     description: 'Make Payment page shows Zelle, Cash App, Venmo, and Stripe options for Phase 1.',
     steps: [
       { label: 'Open Make Payment', href: '/pay' },
-      'Confirm Phase 1 amount ($4,000)',
+      'Confirm Payment 2 amount ($3,500) is due Sprint 1',
       'Confirm Zelle and Cash App are preferred',
       'Confirm Venmo and Stripe are present',
     ],
@@ -1152,11 +1200,46 @@ export const QA_CONTENT_SEEDS: Record<string, WorkItemContentSeed> = {
       'Confirm launch-week cadence',
     ],
   },
+  'website-qa1': {
+    description: 'About, Contact, Privacy, Terms, and FAQ load from the footer. Home introduces the website.',
+    steps: [
+      { label: 'Open Home', href: '/' },
+      'Confirm the website intro is visible',
+      'Open each launch page from the footer',
+    ],
+  },
+  'list-qa1': {
+    description: 'Mailing list accepts a valid email, rejects bad input, and is not a membership.',
+    steps: [
+      { label: 'Open the mailing list', href: '/list' },
+      'Submit a valid email',
+      'Confirm empty, invalid, and duplicate emails are rejected',
+      'Confirm Join / memberships does not open',
+    ],
+  },
+  'analytics-qa1': {
+    description:
+      'Angela has a gather task for Facebook, Instagram, TikTok, YouTube, and Personal each Monday, Wednesday, and Friday from Sprint 1 on. Each task lists the screens to capture.',
+    steps: [
+      { label: 'Open the first Facebook gather task', href: '/admin/factory' },
+      'Confirm each platform task lists the screens to capture',
+      'Confirm screenshots upload on that day’s platform task',
+    ],
+  },
+  'analytics-qa2': {
+    description:
+      'Evelyn has an associated review task for each platform gather. Recommendations from that review guide the next create on that platform.',
+    steps: [
+      { label: 'Open the first Facebook review task', href: '/admin/factory' },
+      'Confirm every listed screen was uploaded',
+      'Confirm recommendations guide the next create on that platform',
+    ],
+  },
 };
 
 export function taskContentSeed(id: string): WorkItemContentSeed | undefined {
   const root = String(id || '').split('::')[0];
-  return TASK_CONTENT_SEEDS[root] || TASK_CONTENT_SEEDS[id];
+  return TASK_CONTENT_SEEDS[root] || TASK_CONTENT_SEEDS[id] || siteAnalyticsContentSeed(root);
 }
 
 export function qaContentSeed(id: string): WorkItemContentSeed | undefined {
@@ -1195,11 +1278,18 @@ export const TASK_TO_TEST_LINKS: Record<string, string[]> = {
     'cf-qa1',
   ],
   't-18': ['auth-qa1'],
+  't-80': ['website-qa1', 'about-qa1', 'contact-qa1', 'privacy-qa1', 'terms-qa1', 'faq-qa1'],
+  't-81': ['list-qa1'],
+  't-82': ['website-qa1', 'list-qa1'],
 };
 
 export function linkedTestsForTask(taskId: string): string[] {
   const root = String(taskId || '').split('::')[0];
-  return [...(TASK_TO_TEST_LINKS[root] ?? [])];
+  const linked = TASK_TO_TEST_LINKS[root];
+  if (linked) return [...linked];
+  const analytics = siteAnalyticsTaskById(root);
+  if (analytics) return analytics.role === 'angela' ? ['analytics-qa1'] : ['analytics-qa2'];
+  return [];
 }
 
 export function linkedTasksForTest(testId: string): string[] {
@@ -1207,6 +1297,12 @@ export function linkedTasksForTest(testId: string): string[] {
   const out: string[] = [];
   for (const [taskId, tests] of Object.entries(TASK_TO_TEST_LINKS)) {
     if (tests.includes(id)) out.push(taskId);
+  }
+  if (id === 'analytics-qa1' || id === 'analytics-qa2') {
+    const role = id === 'analytics-qa1' ? 'angela' : 'evelyn';
+    for (const instance of buildSiteAnalyticsInstances()) {
+      if (instance.role === role) out.push(instance.id);
+    }
   }
   return out;
 }

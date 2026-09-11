@@ -91,11 +91,15 @@ export const MakePaymentPage: React.FC<{ embedded?: boolean }> = ({ embedded = f
                     <span className="text-[10px] font-mono font-black uppercase tracking-wider text-[#C2410C]">
                       {option.label}
                     </span>
-                    {option.recommended && (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase text-[#EA580C]">
-                        <Star className="w-3 h-3 fill-current" /> Due now
+                    {option.paid ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase text-[#047857]">
+                        Paid
                       </span>
-                    )}
+                    ) : option.recommended ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase text-[#EA580C]">
+                        <Star className="w-3 h-3 fill-current" /> Due Sprint 1
+                      </span>
+                    ) : null}
                   </div>
                   <div className="text-2xl font-black font-mono text-[#9A3412] mt-1">
                     {formatUsdAmount(option.amount)}

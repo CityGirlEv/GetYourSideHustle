@@ -130,6 +130,10 @@ if (!existsSync(wrangler)) {
 }
 
 const children = [];
+let shuttingDown = false;
+let wranglerChild = null;
+let wranglerRestarting = false;
+let healthFailStreak = 0;
 
 function killTree(pid) {
   if (!pid) return;
@@ -149,6 +153,7 @@ function killTree(pid) {
 }
 
 function shutdown(code = 0) {
+  shuttingDown = true;
   for (const child of children) {
     killTree(child.pid);
   }
@@ -211,12 +216,109 @@ function spawnInherit(cmd, args, label, extraEnv = {}) {
     detached: !isWin,
   });
   child.on("exit", (code, signal) => {
+    if (shuttingDown) return;
     if (signal) return;
     console.error(`[${label}] exited with code ${code ?? 1}`);
     shutdown(code ?? 1);
   });
   children.push(child);
   return child;
+}
+
+function startWrangler() {
+  const proc = spawn(
+    "node",
+    [
+      "--use-system-ca",
+      wrangler,
+      "pages",
+      "dev",
+      "public",
+      "--port",
+      String(API_PORT),
+      "--ip",
+      "127.0.0.1",
+      "--persist-to",
+      ".wrangler/state",
+      "--show-interactive-dev-session",
+      "false",
+    ],
+    {
+      cwd: root,
+      stdio: "inherit",
+      shell: isWin,
+      env: { ...process.env, ...devVars },
+      detached: !isWin,
+    },
+  );
+  wranglerChild = proc;
+  children.push(proc);
+  proc.on("exit", (code, signal) => {
+    const idx = children.indexOf(proc);
+    if (idx >= 0) children.splice(idx, 1);
+    if (wranglerChild === proc) wranglerChild = null;
+    if (shuttingDown) return;
+    const delay = wranglerRestarting ? 400 : 1200;
+    wranglerRestarting = false;
+    console.warn(
+      `[wrangler] exited (${signal || code || 0}) — restarting Pages Functions in ${delay}ms`,
+    );
+    setTimeout(() => {
+      if (shuttingDown) return;
+      freePort(API_PORT, "Pages Functions");
+      startWrangler();
+    }, delay);
+  });
+  return proc;
+}
+
+function requestWranglerRestart(reason) {
+  if (shuttingDown || wranglerRestarting) return;
+  wranglerRestarting = true;
+  healthFailStreak = 0;
+  console.warn(`[d1-watch] ${reason} — restarting Pages Functions on :${API_PORT}`);
+  if (wranglerChild?.pid) {
+    killTree(wranglerChild.pid);
+    return;
+  }
+  wranglerRestarting = false;
+  startWrangler();
+}
+
+function watchRemoteD1Health() {
+  const intervalMs = useRemoteD1 ? 10_000 : 15_000;
+  const reqTimeoutMs = useRemoteD1 ? 20_000 : 5_000;
+  const timer = setInterval(() => {
+    if (shuttingDown || wranglerRestarting) return;
+    const req = http.get(`http://127.0.0.1:${API_PORT}/api/health`, (res) => {
+      res.resume();
+      if (res.statusCode && res.statusCode < 500) {
+        healthFailStreak = 0;
+        return;
+      }
+      healthFailStreak += 1;
+      if (healthFailStreak >= 2) {
+        requestWranglerRestart(`health HTTP ${res.statusCode}`);
+      }
+    });
+    req.on("error", () => {
+      if (shuttingDown || wranglerRestarting) return;
+      healthFailStreak += 1;
+      if (healthFailStreak >= 3) {
+        requestWranglerRestart("health unreachable");
+      }
+    });
+    req.setTimeout(reqTimeoutMs, () => {
+      req.destroy();
+      if (shuttingDown || wranglerRestarting) return;
+      healthFailStreak += 1;
+      if (healthFailStreak >= 2) {
+        requestWranglerRestart("health timeout");
+      }
+    });
+  }, intervalMs);
+  timer.unref?.();
+  console.log("✓ Watching /api/health — dead D1 proxy auto-restarts Pages Functions");
 }
 
 function waitForHealth(timeoutMs = useRemoteD1 ? 180_000 : 90_000) {
@@ -367,25 +469,7 @@ if (await portInUse(VITE_PORT)) {
 
 // Serve public/ as static assets so Pages Functions load; Vite owns the real UI on 5173.
 // (Pages does not support --config; D1 remote flag is set on wrangler.toml above.)
-spawnInherit(
-  "node",
-  [
-    "--use-system-ca",
-    wrangler,
-    "pages",
-    "dev",
-    "public",
-    "--port",
-    String(API_PORT),
-    "--ip",
-    "127.0.0.1",
-    "--persist-to",
-    ".wrangler/state",
-    "--show-interactive-dev-session",
-    "false",
-  ],
-  "wrangler",
-);
+startWrangler();
 
 try {
   await waitForHealth();
@@ -398,6 +482,7 @@ try {
 
 spawnInherit("npx", ["vite", "--port", String(VITE_PORT), "--strictPort", "--host"], "vite");
 console.log(`✓ Vite starting on :${VITE_PORT} — login uses proxied /api/auth/login`);
+watchRemoteD1Health();
 
 // Background prod→local re-sync only applies to sandbox (local D1) mode.
 if (!useRemoteD1 && process.env.GYSH_SKIP_D1_SYNC !== "1") {

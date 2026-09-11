@@ -11,7 +11,7 @@ export const QA_PAGE_LABELS: Record<AppRouteView, string> = {
   dashboard: "Home",
   quiz: "GYSH Match Wizard",
   calculators: "Calculators",
-  guides: "Guides",
+  guides: "Side Hustle Guides",
   checklist: "Side Hustle Checklist",
   community: "Community",
   newsletter: "Newsletter",
@@ -28,8 +28,9 @@ export const QA_PAGE_LABELS: Record<AppRouteView, string> = {
   beta_testing: "Beta Tester Dashboard",
   beta_credits: "Beta Tester Credit Guide",
   beta_points: "Beta Tester Points",
-  join: "Join",
+  join: "Join Free",
   membership_signup: "Membership Sign-up",
+  shop: "Shop",
 };
 
 /** Alternate phrases that appear in existing step text for a view. */
@@ -37,7 +38,7 @@ const VIEW_ALIASES: Partial<Record<AppRouteView, string[]>> = {
   dashboard: ["Home", "homepage", "Homepage", "the homepage"],
   quiz: ["GYSH Match Wizard", "Find Mine", "Match Wizard", "Find My Side Hustle"],
   calculators: ["Calculators", "GYSH Profit Estimator"],
-  guides: ["Guides", "Guides library", "Free Guides"],
+  guides: ["Side Hustle Guides", "Side Hustle Library", "Guides", "Guides library", "Free Guides"],
   checklist: ["Side Hustle Checklist", "Checklist"],
   community: ["Community", "GYSH Community"],
   newsletter: ["Newsletter", "Weekly Newsletter", "GYSH Newsletter"],
@@ -54,8 +55,9 @@ const VIEW_ALIASES: Partial<Record<AppRouteView, string[]>> = {
   beta_testing: ["Beta Tester Dashboard", "Beta Testing"],
   beta_credits: ["Beta Tester Credit Guide", "Beta Credits", "Credit Guide"],
   beta_points: ["Beta Tester Points", "Beta Points"],
-  join: ["Join", "Join GYSH", "Membership"],
-  membership_signup: ["Membership Sign-up", "Membership Signup", "Sign-up"],
+  join: ["Join Free", "Sign-Up", "Join", "Join GYSH", "Membership"],
+  shop: ["Shop", "GYSH Shop", "Merch", "GEAR"],
+  membership_signup: ["Membership Sign-up", "Membership Signup", "Sign-up", "Join Free"],
 };
 
 const VIEW_SET = new Set<string>(Object.keys(QA_PAGE_LABELS));
@@ -97,6 +99,19 @@ export function resolveQaPage(path: string | undefined | null): QaPageRef | null
         return { href: raw, label: tabLabel, view: "admin" };
       }
       return { href: pathForView("admin"), label: QA_PAGE_LABELS.admin, view: "admin" };
+    }
+    // Guide deep links: /guides?hustle=handyman
+    if (raw === "/guides" || raw.startsWith("/guides?")) {
+      const q = raw.includes("?") ? raw.slice(raw.indexOf("?")) : "";
+      const hustle = new URLSearchParams(q).get("hustle")?.trim();
+      if (hustle) {
+        return {
+          href: `/guides?hustle=${encodeURIComponent(hustle)}`,
+          label: `Guide · ${hustle}`,
+          view: "guides",
+        };
+      }
+      return { href: pathForView("guides"), label: QA_PAGE_LABELS.guides, view: "guides" };
     }
     for (const [key, label] of Object.entries(QA_PAGE_LABELS) as [AppRouteView, string][]) {
       if (pathForView(key) === raw) {
@@ -272,6 +287,16 @@ export function pageRefForTask(task: {
     return resolveQaPage("seniors");
   }
   if (id.startsWith("T-LG-") || notes.includes("guide-review:") || /^Review Launch Guide:/i.test(desc)) {
+    const fromId = id.startsWith("T-LG-") ? id.slice("T-LG-".length).trim() : "";
+    const fromNotes = notes.match(/guide-review:([^\s\n]+)/i)?.[1]?.trim() ?? "";
+    const guideId = fromId || fromNotes;
+    if (guideId) {
+      return {
+        href: `/guides?hustle=${encodeURIComponent(guideId)}`,
+        label: `Guide · ${guideId}`,
+        view: "guides",
+      };
+    }
     return resolveQaPage("guides");
   }
   if (

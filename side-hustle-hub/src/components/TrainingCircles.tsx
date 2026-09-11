@@ -21,7 +21,6 @@ export function TrainingCircles({ onOpenGuides, onOpenKids }: Props) {
             kids/junior glow.
           </p>
         </div>
-        <span className="glow-badge pink">T + E</span>
       </div>
 
       <div className="training-circles__grid">

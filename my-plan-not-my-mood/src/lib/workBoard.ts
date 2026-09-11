@@ -2,7 +2,7 @@
  * Task & QA test board — filter chips, search, and counts (GYSH-style).
  */
 
-import { currentSprintWindow, dueDateForSprintLabel } from './sprintCalendar';
+import { currentSprintWindow, dueDateForSprintLabel, sprintLabelWithDates } from './sprintCalendar';
 
 import { normalizeWorkAttachments, type WorkAttachmentMeta } from './workAttachments';
 import {
@@ -23,6 +23,7 @@ import {
   taskContentSeed,
 } from './workItemContentSeed';
 import { AUTOMATED_TEST_SEEDS } from './automatedTests';
+import { buildSiteAnalyticsSeedTasks } from './siteAnalyticsCadence';
 import {
   isAutomatedQaTest,
   isInflatedQaId,
@@ -1470,8 +1471,8 @@ export function workPriorityTextClass(priority?: WorkPriority | string): string 
 }
 
 export const INITIAL_TASKS: TaskItem[] = [
-  { id: 't-1', title: 'Confirm $10,000 budget paid across three phases', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Infrastructure', priority: 'high', status: 'not_started', assignee: 'angela' },
-  { id: 't-43', title: 'Make Payment — Phase 1 ($4,000) via Zelle or Cash App (preferred)', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Infrastructure', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
+  { id: 't-1', title: 'Confirm $10,000 in three payments — $3,500 received', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Infrastructure', priority: 'high', status: 'not_started', assignee: 'angela' },
+  { id: 't-43', title: 'Make Payment — Payment 2 ($3,500) due Sprint 1 via Zelle or Cash App', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Infrastructure', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
   { id: 't-2', title: 'Keep the brand line on every Phase 1 page and email', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Storefront', priority: 'high', status: 'not_started', assignee: 'angela' },
   { id: 't-3', title: 'Host the shirt drop on nonnegotiation.com', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Infrastructure', priority: 'high', status: 'not_started', assignee: 'evelyn' },
   { id: 't-4', title: 'Brand foundation and gear storefront shell', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Storefront', priority: 'high', status: 'not_started', assignee: 'evelyn' },
@@ -1492,9 +1493,9 @@ export const INITIAL_TASKS: TaskItem[] = [
   { id: 't-14', title: 'Privacy Policy page', sprint: 'Sprint 3', phase: 'Phase 1', category: 'Storefront', priority: 'high', status: 'not_started', assignee: 'dev' },
   { id: 't-15', title: 'Terms of Use page', sprint: 'Sprint 3', phase: 'Phase 1', category: 'Storefront', priority: 'high', status: 'not_started', assignee: 'dev' },
   { id: 't-16', title: 'FAQ page', sprint: 'Sprint 3', phase: 'Phase 1', category: 'Storefront', priority: 'medium', status: 'not_started', assignee: 'dev' },
-  { id: 't-17', title: 'Configure Phase 1 email (orders, fulfillment, contact, admin)', sprint: 'Sprint 3', phase: 'Phase 1', category: 'Features', priority: 'high', status: 'not_started', assignee: 'evelyn' },
+  { id: 't-17', title: 'Confirm Orders on SnatchVault — collection, Non-Negotiable menu, and 70/30 split', sprint: 'Sprint 3', phase: 'Phase 1', category: 'Features', priority: 'high', status: 'not_started', assignee: 'evelyn' },
   { id: 't-18', title: 'Put Coming Soon on Memberships / Join — do not configure members', sprint: 'Sprint 3', phase: 'Phase 1', category: 'Features', priority: 'high', status: 'not_started', assignee: 'dev' },
-  { id: 't-19', title: 'QA Shop Gear, launch pages, and Phase 1 email', sprint: 'Sprint 4', phase: 'Phase 1', category: 'QA & Testing', priority: 'high', status: 'not_started', assignee: 'qa' },
+  { id: 't-19', title: 'QA Shop Gear, launch pages, and SnatchVault Orders', sprint: 'Sprint 4', phase: 'Phase 1', category: 'QA & Testing', priority: 'high', status: 'not_started', assignee: 'qa' },
   { id: 't-20', title: 'Send Gmail account invite to Angela', sprint: 'Sprint 4', phase: 'Phase 1', category: 'Launch', priority: 'high', status: 'not_started', assignee: 'evelyn' },
   { id: 't-21', title: 'Determine Beta Tester rewards (Angela — brand, gift & recognition)', sprint: 'Sprint 4', phase: 'Phase 1', category: 'Launch', priority: 'high', status: 'not_started', assignee: 'angela' },
   { id: 't-22', title: 'Determine Beta Tester rewards (Evelyn — credits, fulfillment & tracking)', sprint: 'Sprint 4', phase: 'Phase 1', category: 'Launch', priority: 'high', status: 'not_started', assignee: 'evelyn' },
@@ -1534,6 +1535,15 @@ export const INITIAL_TASKS: TaskItem[] = [
   { id: 't-72', title: 'Walk Home and Shop Gear — this is what Angela sends people to from live', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
   { id: 't-73', title: 'At each sprint retro, score actuals vs the Plan scorecard', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn', dueDate: '2026-09-06' },
   { id: 't-74', title: 'Welcome/intro: NonNegotiation is the house, MY PLAN, NOT MY MOOD is the brand — every platform', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn', dueDate: '2026-09-04' },
+  { id: 't-75', title: 'Create 3 T-shirt sales videos for Sprint 0', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
+  { id: 't-76', title: 'Create 3 T-shirt sales videos for Sprint 1', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
+  { id: 't-77', title: 'Create 3 T-shirt sales videos for Sprint 2', sprint: 'Sprint 2', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
+  { id: 't-78', title: 'Create 3 T-shirt sales videos for Sprint 3', sprint: 'Sprint 3', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
+  { id: 't-79', title: 'Create 3 T-shirt sales videos for Sprint 4', sprint: 'Sprint 4', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
+  { id: 't-80', title: 'Introduce the Phase 1 website — About, Contact, Privacy, Terms, and FAQ go live', sprint: 'Sprint 3', phase: 'Phase 1', category: 'Storefront', priority: 'high', status: 'not_started', assignee: 'evelyn', assignor: 'angela' },
+  { id: 't-81', title: 'Add mailing list sign-up — email capture, not a membership', sprint: 'Sprint 3', phase: 'Phase 1', category: 'Features', priority: 'high', status: 'not_started', assignee: 'evelyn', assignor: 'angela' },
+  { id: 't-82', title: 'Review the live website and mailing list sign-up', sprint: 'Sprint 3', phase: 'Phase 1', category: 'QA & Testing', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
+  ...buildSiteAnalyticsSeedTasks(),
 ];
 
 export const WORK_BOARD_STATUS_RESET_KEY = 'myplan_work_board_status_reset_rev';
@@ -1574,6 +1584,16 @@ const SUPERSEDED_SEED_TITLES: Record<string, string[]> = {
   ],
   't-71': ['Present the tee drop on the NonNegotiation website (Home and Shop Gear)'],
   't-74': ['Post a welcome/intro on Facebook, TikTok, YouTube, personal pages, and the website'],
+  't-17': ['Configure Phase 1 email (orders, fulfillment, contact, admin)'],
+  't-19': ['QA Shop Gear, launch pages, and Phase 1 email'],
+  't-83': [
+    'Provide site analytics for the socials no less than every 2 days',
+    'Upload site analytics — Mon Sep 7 (Sprint 1)',
+  ],
+  't-84': [
+    'Review site analytics, make recommendations, and use them as the guide for the next create',
+    'Review analytics & guide next create — Mon Sep 7 (Sprint 1)',
+  ],
 };
 
 export function overlaySupersededSeedTasks(
@@ -1629,12 +1649,12 @@ const INITIAL_QA_TEST_SEEDS: QaTestItem[] = [
   { id: 'aff-qa8', title: 'Voice Trust Layer Architectural Specs', desc: 'Planned data model & coach effect fields prepared', sprint: 'Sprint 3', category: 'Affirmations QA', priority: 'low', status: 'untested', assignee: 'dev' },
   { id: 'auth-qa1', title: 'Admin Role Gates — Testing + Tasks Only', desc: 'Admin users see only Testing Portal and Task List tabs', sprint: 'Sprint 3', category: 'Auth & Admin', priority: 'high', status: 'untested', assignee: 'angela' },
   { id: 'gear-sel-qa1', title: 'Gear Selections — style-card upload and Angela picks', desc: 'Evelyn loads style cards named like E-ShirtLebberingBeige and TShirtTieDieRainbowSpiral. Cards already include hat, hoodie, and tee and group by style. Angela picks up to 3 tees, 1 hoodie, and 1 hat. PDF, SVG, and oversized files are rejected.', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: 'qa' },
-  { id: 'sprint-roi-qa1', title: 'Sprint ROI — tee sales, scorecard, and improvement suggestions on the Plan', desc: 'Each Phase 1 sprint lists organic ROI and a weekly scorecard (followers, engagement, clicks, sales). Shop is live from Sprint 0. 6.2K personal Facebook, organic-only, no paid ads.', sprint: 'Sprint 4', phase: 'Phase 1', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: 'qa' },
-  { id: 'cf-qa1', title: 'Content Factory — Phase 1 calendar by sprint, assignee, and channel', desc: 'Content Factory lists organic posts and prep work for Sprints 0–4. Filter by sprint, assignee, and channel (Facebook, YouTube, TikTok, Personal). Angela posts; Evelyn preps assets.', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Content QA', priority: 'high', status: 'untested', assignee: 'qa' },
+  { id: 'sprint-roi-qa1', title: 'Sprint ROI — hoodie sales, scorecard, and improvement suggestions on the Plan', desc: 'Each Phase 1 sprint lists organic ROI and a weekly scorecard (followers, engagement, clicks, sales). Shop is live from Sprint 0. 6.2K personal Facebook, organic-only, no paid ads.', sprint: 'Sprint 4', phase: 'Phase 1', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: 'qa' },
+  { id: 'cf-qa1', title: 'Content Factory — Phase 1 calendar by sprint, assignee, and channel', desc: 'Content Factory lists organic posts and prep work for Sprints 0–4. The Posting Schedule tab is one document by date, platform, time, and what to post. Filter by sprint, assignee, and channel (Facebook, YouTube, TikTok, Personal). Angela posts; Evelyn preps assets.', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Content QA', priority: 'high', status: 'untested', assignee: 'qa' },
   { id: 'cf-qa2', title: 'Content Factory — Asset Library grouped by style', desc: 'Asset Library groups cards by style name (E-ShirtLebberingBeige, TShirtTieDieRainbowSpiral). Each style can hold several cards; tee, hoodie, and hat live on the same card.', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content QA', priority: 'high', status: 'untested', assignee: 'qa' },
   { id: 'cf-qa3', title: 'Asset Library — image reject paths', desc: 'Non-image and oversized files are rejected. Caption assets save text without an image.', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Content QA', priority: 'high', status: 'untested', assignee: 'qa' },
   { id: 'logo-qa1', title: 'Logo Concepts — upload and Angela’s chosen mark', desc: 'Evelyn chooses a logo folder to load every file at once. Subfolders named seal, wordmark, lockup, or colorway sort automatically. Angela picks one chosen mark. PDF and oversized files are rejected. SVG is allowed.', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Content QA', priority: 'high', status: 'untested', assignee: 'qa' },
-  { id: 'pay-qa1', title: 'Make Payment page — Zelle, Cash App, Venmo, Stripe', desc: 'Angela’s Make Payment task opens /pay. Phase 1 is $4,000. Zelle (619-507-9568) and Cash App ($ChingChicks) are preferred. Venmo is @Evelyn-Irving. Stripe is card/Apple Pay.', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: 'qa' },
+  { id: 'pay-qa1', title: 'Make Payment page — Zelle, Cash App, Venmo, Stripe', desc: 'Angela’s Make Payment task opens /pay. Payment 1 ($3,500) is already paid. Payment 2 ($3,500) is due Sprint 1. Zelle (619-507-9568) and Cash App ($ChingChicks) are preferred. Venmo is @Evelyn-Irving. Stripe is card/Apple Pay.', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: 'qa' },
   { id: 'shop-gear-page-qa1', title: 'Shop Gear page — Evelyn test', desc: 'Walk the Shop Gear page: selected styles, hoodie/shirt brand, hat colors, and Shopify listings. Confirm the page loads, images are sharp, and checkout or store links work.', sprint: 'Sprint 2', phase: 'Phase 1', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: 'evelyn' },
   { id: 'shop-gear-page-qa2', title: 'Shop Gear page — Angela test', desc: 'Angela opens Shop Gear and confirms her selected styles, shirt/hoodie brand, and hat colors look right before the Shopify listings go live.', sprint: 'Sprint 2', phase: 'Phase 1', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: 'angela' },
   { id: 'gear-brand-qa1', title: 'Gear Selections — shirt/hoodie brand pick', desc: 'Angela chooses up to 2 blank brands (Gildan, Comfort Colors, Bella+Canvas, Next Level, Independent Trading, Lane Seven) for shirts and hoodies. The pick saves with her other gear selections.', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: 'qa' },
@@ -1649,7 +1669,7 @@ const INITIAL_QA_TEST_SEEDS: QaTestItem[] = [
   { id: 'terms-qa1', title: 'Terms of Use page', desc: 'Terms of Use is reachable from the footer and readable on mobile.', sprint: 'Sprint 3', phase: 'Phase 1', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: 'qa' },
   { id: 'faq-qa1', title: 'FAQ page — Phase 1 questions', desc: 'FAQ answers order/brand questions and works on mobile.', sprint: 'Sprint 3', phase: 'Phase 1', category: 'Storefront QA', priority: 'medium', status: 'untested', assignee: 'qa' },
   { id: 'join-qa1', title: 'Join / Memberships — Coming Soon only', desc: 'Join shows Coming Soon; no live member signup in Phase 1.', sprint: 'Sprint 3', phase: 'Phase 1', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: 'qa' },
-  { id: 'email-qa1', title: 'Phase 1 email — templates and test send', desc: 'Admin Emails area has Phase 1 templates; a test send delivers.', sprint: 'Sprint 3', phase: 'Phase 1', category: 'Auth & Admin', priority: 'high', status: 'untested', assignee: 'evelyn' },
+  { id: 'email-qa1', title: 'Orders — SnatchVault collection, Non-Negotiable menu, 70/30 split', desc: 'https://snatchvault.com/collections/my-plan-gear is live. Home menu is Non-Negotiable with Tees, Hoodies, and Hats. Split is 70/30.', sprint: 'Sprint 3', phase: 'Phase 1', category: 'Auth & Admin', priority: 'high', status: 'untested', assignee: 'evelyn' },
   { id: 'launch-qa1', title: 'Production launch smoke — Shop Gear + payments path', desc: 'After launch, Shop Gear and payment/store links work on production.', sprint: 'Sprint 4', phase: 'Phase 1', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: 'qa' },
   // Content Factory per sprint
   { id: 'cf-s0-qa', title: 'Content Factory Sprint 0 — sell-now posts, bios, and live talk track', desc: 'Sprint 0 CF spans two weeks: shop link in every post, bios/pinned post, no-sample live, lifestyle tee mockup.', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Content QA', priority: 'high', status: 'untested', assignee: 'qa' },
@@ -1657,6 +1677,10 @@ const INITIAL_QA_TEST_SEEDS: QaTestItem[] = [
   { id: 'cf-s2-qa', title: 'Content Factory Sprint 2 — keep-selling cadence', desc: 'Sprint 2 CF keeps selling tees, hoodie, and hat with the Shop Gear URL — shop is already live.', sprint: 'Sprint 2', phase: 'Phase 1', category: 'Content QA', priority: 'high', status: 'untested', assignee: 'qa' },
   { id: 'cf-s3-qa', title: 'Content Factory Sprint 3 — about/FAQ cadence', desc: 'Sprint 3 CF includes About/FAQ posts and weekend prep.', sprint: 'Sprint 3', phase: 'Phase 1', category: 'Content QA', priority: 'high', status: 'untested', assignee: 'qa' },
   { id: 'cf-s4-qa', title: 'Content Factory Sprint 4 — launch week cadence', desc: 'Sprint 4 CF includes drop announcement and launch-week organic posts.', sprint: 'Sprint 4', phase: 'Phase 1', category: 'Content QA', priority: 'high', status: 'untested', assignee: 'qa' },
+  { id: 'website-qa1', title: 'Phase 1 website — launch pages live', desc: 'About, Contact, Privacy, Terms, and FAQ load from the footer. Home introduces the website. Mobile has no horizontal scroll.', sprint: 'Sprint 3', phase: 'Phase 1', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: 'qa' },
+  { id: 'list-qa1', title: 'Mailing list sign-up — email only, not a membership', desc: 'Sign-up accepts a valid email (optional first name), rejects empty/invalid/duplicate, and does not open Join / memberships.', sprint: 'Sprint 3', phase: 'Phase 1', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: 'qa' },
+  { id: 'analytics-qa1', title: 'Site analytics — Mon/Wed/Fri gather screens per platform', desc: 'Angela has a gather task for Facebook, Instagram, TikTok, YouTube, and Personal each Monday, Wednesday, and Friday from Sprint 1 on. Each task lists the screens to capture and she uploads those screenshots on that task.', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content QA', priority: 'high', status: 'untested', assignee: 'angela' },
+  { id: 'analytics-qa2', title: 'Site analytics review — each platform upload guides the next create', desc: 'Evelyn has an associated review task for each platform gather. Recommendations from that review guide the next create on that platform.', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content QA', priority: 'high', status: 'untested', assignee: 'evelyn' },
 ];
 
 export const INITIAL_QA_TESTS: QaTestItem[] = INITIAL_QA_TEST_SEEDS.map((test) => ({
@@ -1835,7 +1859,7 @@ export function buildSprintChipCounts<T extends TaskItem | QaTestItem>(
     const matched = items.filter((i) => i.sprint === sprint);
     return {
       id: sprint,
-      label: sprint,
+      label: sprintLabelWithDates(sprint),
       total: matched.length,
       done: matched.filter(isDone).length,
       accent: SPRINT_SWATCH[sprint],

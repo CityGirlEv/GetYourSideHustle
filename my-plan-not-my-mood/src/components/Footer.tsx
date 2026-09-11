@@ -2,6 +2,7 @@ import React from 'react';
 import { CheckSquare } from 'lucide-react';
 import { getAppVersionLabel, getAppVersionStamp } from '../lib/appVersion';
 import { StoreRoute } from '../lib/storeRoutes';
+import { websiteLaunchPageIds, launchPageById } from '../lib/launchPages';
 import { GEAR_SHOP_LABEL } from '../lib/gearSelections';
 import { HOUSE_FOOTER_LINE } from '../lib/teeSalesPlaybook';
 import { ComingSoonBadge } from './ComingSoonBadge';
@@ -26,7 +27,7 @@ export const Footer: React.FC<FooterProps> = ({
   return (
     <footer className="bg-earth-sand border-t border-earth-taupe text-earth-muted py-12 text-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8 pb-8 border-b border-earth-taupe">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8 mb-8 pb-8 border-b border-earth-taupe">
           <div>
             <div className="flex items-center gap-2 mb-3">
               <div className="h-7 w-7 rounded bg-earth-terracotta text-white flex items-center justify-center font-black">
@@ -64,6 +65,36 @@ export const Footer: React.FC<FooterProps> = ({
               <li>
                 <button onClick={() => onNavigate('sitemap')} className="hover:text-earth-terracotta cursor-pointer min-h-[44px]">
                   Site Map
+                </button>
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="font-mono text-xs font-bold text-earth-espresso uppercase tracking-wider mb-3">
+              Website
+            </h4>
+            <ul className="space-y-2 font-medium">
+              {websiteLaunchPageIds().map((id) => (
+                <li key={id}>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate(id)}
+                    className="hover:text-earth-terracotta cursor-pointer min-h-[44px]"
+                    data-testid={`footer-${id}`}
+                  >
+                    {launchPageById(id).title}
+                  </button>
+                </li>
+              ))}
+              <li>
+                <button
+                  type="button"
+                  onClick={() => onNavigate('list')}
+                  className="hover:text-earth-terracotta cursor-pointer min-h-[44px] text-earth-terracotta font-bold"
+                  data-testid="footer-list"
+                >
+                  Mailing List
                 </button>
               </li>
             </ul>

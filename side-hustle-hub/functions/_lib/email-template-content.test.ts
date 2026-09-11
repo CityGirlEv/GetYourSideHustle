@@ -3,6 +3,8 @@ import {
   applyTemplateVars,
   defaultContentForSlug,
   EMAIL_TEMPLATE_CATALOG,
+  isLegacyHustleFamilyHeadline,
+  isLegacyLowercaseGyshWelcomeHeadline,
   renderContent,
 } from "./email-template-content";
 
@@ -36,6 +38,8 @@ describe("email-template-content", () => {
     expect(rendered.subject).toMatch(/password/i);
     expect(rendered.html).toContain("Reset your password");
     expect(rendered.html).toContain("https://example.com/reset");
+    expect(rendered.html).toMatch(/Your hustle, your results/i);
+    expect(rendered.text).toMatch(/licensed professionals/i);
     expect(rendered.text.length).toBeGreaterThan(20);
   });
 
@@ -45,5 +49,22 @@ describe("email-template-content", () => {
     expect(digest?.bodyHtml).toContain("{{digestBodyHtml}}");
     const progress = defaultContentForSlug("parent_kid_progress_daily");
     expect(progress?.dynamicBody).toBe(true);
+  });
+
+  it("welcomes Free, Starter, Pro, and Elite with GYSH family copy", () => {
+    for (const slug of ["welcome_free", "welcome_starter", "welcome_pro", "welcome_elite"] as const) {
+      const content = defaultContentForSlug(slug);
+      expect(content?.headline, slug).toBe("Welcome to the GYSH family!");
+      expect(content?.headline, slug).not.toMatch(/hustle family/i);
+    }
+    expect(isLegacyHustleFamilyHeadline("Welcome to the hustle family!")).toBe(true);
+    expect(isLegacyHustleFamilyHeadline("Welcome to the GYSH family!")).toBe(false);
+  });
+
+  it("capitalizes Welcome in the registration confirmation headline", () => {
+    const content = defaultContentForSlug("registration_confirmation");
+    expect(content?.headline).toBe("{{name}}, Welcome to the GYSH family!");
+    expect(isLegacyLowercaseGyshWelcomeHeadline("{{name}}, welcome to the GYSH family!")).toBe(true);
+    expect(isLegacyLowercaseGyshWelcomeHeadline(content!.headline)).toBe(false);
   });
 });

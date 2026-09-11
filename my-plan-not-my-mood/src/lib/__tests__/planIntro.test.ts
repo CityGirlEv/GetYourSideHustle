@@ -31,11 +31,13 @@ describe('planIntro', () => {
     expect(PROJECT_OVERVIEW_TEXT).toContain('flat-rate $10,000');
     expect(PROJECT_OVERVIEW_TEXT).toContain('Gear and Socials');
     expect(PROJECT_OVERVIEW_TEXT).toContain('Coming Soon');
-    expect(PROJECT_OVERVIEW_TEXT).toMatch(/organic tee-shirt sales/i);
+    expect(PROJECT_OVERVIEW_TEXT).toMatch(/Orders on SnatchVault/);
+    expect(PROJECT_OVERVIEW_TEXT).toMatch(/3 T-shirt sales videos/);
+    expect(PROJECT_OVERVIEW_TEXT).toMatch(/organic hoodie sales/i);
     expect(PROJECT_OVERVIEW_TEXT).toMatch(/6\.2K/);
     expect(PROJECT_OVERVIEW_TEXT).toContain(CLIENT_DISPLAY_NAME);
     expect(intro.amountTitle).toBe('How We Got to This Amount');
-    expect(intro.amountStory).toMatch(/lean into organic tee-shirt sales/i);
+    expect(intro.amountStory).toMatch(/lean into organic hoodie sales/i);
     expect(MUNTIE_EV_BIO).toContain('Technical Execution Partner');
     expect(MUNTIE_EV_BIO).toContain("Bachelor's in Computer Science");
     expect(MUNTIE_EV_BIO).toContain("Master's in Software Engineering");

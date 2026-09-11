@@ -21,6 +21,9 @@ import {
   type PerkAudience,
 } from "./email-brand";
 import { PARTNER_ADMINS } from "./partners";
+import { ensureEmailLegalDisclaimer } from "../../src/lib/legal-disclaimer";
+import { STRIPE_CATALOG } from "./stripe-catalog.generated";
+import { formatPurchasePaymentDetail } from "../../src/lib/purchase-payment";
 
 export { ROOT_DOMAIN, SITE_NAME, EMAIL_SENDER_DOMAIN, ADMIN_EMAIL } from "./email-brand";
 export { SITE_URL };
@@ -138,6 +141,11 @@ export async function sendResendEmail(
     .map((e) => String(e || "").trim().toLowerCase())
     .filter(Boolean);
 
+  const withLegal = ensureEmailLegalDisclaimer({
+    html: payload.html,
+    text: payload.text,
+  });
+
   if (!apiKey || !apiKey.startsWith("re_")) {
     await logEmailToAll(env, toList, {
       templateSlug: payload.templateSlug,
@@ -161,8 +169,8 @@ export async function sendResendEmail(
         from: payload.from || defaultFromAddress(env),
         to: toList,
         subject: payload.subject,
-        html: payload.html,
-        text: payload.text,
+        html: withLegal.html,
+        text: withLegal.text,
         ...(payload.replyTo ? { reply_to: payload.replyTo } : {}),
         ...(payload.attachments?.length
           ? {
@@ -347,7 +355,7 @@ async function certificateAttachment(
     const attachments: EmailAttachment[] = [];
     if (cert.pdfBase64) {
       attachments.push({
-        filename: `GYSH-Family-Certificate-${safe}.pdf`,
+        filename: `Get-Your-Side-Hustle-Certificate-${safe}.pdf`,
         content: cert.pdfBase64,
         contentType: "application/pdf",
       });
@@ -355,13 +363,13 @@ async function certificateAttachment(
     // SVG as second attachment for crisp viewing
     const svgB64 = btoa(unescape(encodeURIComponent(cert.svgMarkup)));
     attachments.push({
-      filename: `GYSH-Family-Certificate-${safe}.svg`,
+      filename: `Get-Your-Side-Hustle-Certificate-${safe}.svg`,
       content: svgB64,
       contentType: "image/svg+xml",
     });
     await markCertificateEmailed(env, user.id);
     const certHtml = `<div style="margin:18px 0;padding:16px;border-radius:14px;border:1px solid #e2d5bc;background:#fff8e8;">
-      <p style="margin:0 0 6px;font-size:12px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#9B2F28;">Your GYSH Family Certificate</p>
+      <p style="margin:0 0 6px;font-size:12px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#9B2F28;">Your Get Your Side Hustle Family Certificate</p>
       <p style="margin:0 0 8px;font-size:18px;font-weight:800;color:#2d2a26;">${escapeHtml(cert.title)}</p>
       <p style="margin:0;font-size:14px;line-height:1.5;color:#3a342e;">${escapeHtml(cert.bodyText)}</p>
       <p style="margin:10px 0 0;font-size:12px;color:#8a7a68;">Attached as PDF + SVG — open the attachment to print or share.</p>
@@ -417,18 +425,28 @@ export async function sendRegistrationConfirmation(
     audience?: string | null;
     membership_tier?: string | null;
   },
+  opts?: {
+    /**
+     * Pending signups skip the PDF/SVG cert (issued on activation).
+     * Keeps register + Resend fast.
+     */
+    includeCertificate?: boolean;
+  },
 ): Promise<boolean> {
   if (!emailConfigured(env)) return false;
   const tier = normalizeTier(user.membership_tier);
   const audience = normalizeAudience(user.audience) as PerkAudience;
   const joinUrl = membershipDeepLink();
-  const cert = await certificateAttachment(env, {
-    id: user.id,
-    email: user.email,
-    name: user.name,
-    membership_tier: tier,
-    audience,
-  });
+  const includeCertificate = opts?.includeCertificate === true;
+  const cert = includeCertificate
+    ? await certificateAttachment(env, {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        membership_tier: tier,
+        audience,
+      })
+    : null;
   const { renderCatalogEmail } = await import("./email-admin");
   const rendered = await renderCatalogEmail(env, "registration_confirmation", {
     name: user.name || "Side Hustler",
@@ -502,8 +520,11 @@ export async function sendMembershipSubscriptionEmails(
       membership_tier?: string | null;
     };
     previousTier?: string | null;
-    source: "stripe" | "profile";
+    source: "stripe" | "profile" | "credits";
     amountLabel?: string;
+    amountCents?: number;
+    creditsApplied?: number;
+    sessionId?: string | null;
   },
 ): Promise<boolean> {
   if (!emailConfigured(env)) return false;
@@ -553,13 +574,15 @@ export async function sendMembershipSubscriptionEmails(
   }
 
   const formName = kind === "upgrade" ? "Membership upgrade" : "Membership subscription";
+  const payment = formatPurchasePaymentDetail({
+    source: input.source,
+    amountCents: input.amountCents,
+    creditsApplied: input.creditsApplied,
+    sessionId: input.sessionId,
+  });
   const amountLine = input.amountLabel
     ? `<p style="margin:0 0 8px;"><strong>Amount:</strong> ${escapeHtml(input.amountLabel)}</p>`
-    : "";
-  const sourceLine =
-    input.source === "stripe"
-      ? `<p style="margin:0 0 8px;"><strong>Payment:</strong> Stripe Checkout confirmed</p>`
-      : `<p style="margin:0 0 8px;"><strong>Payment:</strong> Profile plan update (credits / non-Stripe lane)</p>`;
+    : `<p style="margin:0 0 8px;"><strong>Amount:</strong> ${escapeHtml(payment.amountLabel)}</p>`;
 
   try {
     await sendAdminFormNotify(env, {
@@ -569,7 +592,7 @@ export async function sendMembershipSubscriptionEmails(
         <p style="margin:0 0 8px;"><strong>Email:</strong> <a href="mailto:${escapeHtml(input.user.email)}" style="color:#9B2F28;">${escapeHtml(input.user.email)}</a></p>
         <p style="margin:0 0 8px;"><strong>Plan:</strong> ${escapeHtml(tierLabel(previousTier))} → <strong>${escapeHtml(tierLabel(tier))}</strong></p>
         <p style="margin:0 0 8px;"><strong>Lane:</strong> ${escapeHtml(audiencePretty(audience))}</p>
-        ${amountLine}${sourceLine}
+        ${amountLine}${payment.html}
         <p style="margin:12px 0 0;padding:12px;background:#fff4e8;border-radius:10px;">Open Admin → Users / Memberships if activation or follow-up is needed.</p>`,
       replyTo: input.user.email,
       meta: {
@@ -579,6 +602,152 @@ export async function sendMembershipSubscriptionEmails(
         audience,
         source: input.source,
         kind,
+      },
+    });
+  } catch {
+    /* non-fatal */
+  }
+  return Boolean(rendered);
+}
+
+function formatUsdFromCents(amountCents: number): string {
+  const n = Math.max(0, Number(amountCents) || 0) / 100;
+  if (Number.isInteger(n)) return `$${n.toLocaleString("en-US")}`;
+  return `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+/** Parse Stripe session `gysh_item` metadata (`consult-30x2,boostx1`) into receipt copy. */
+export function formatJoinCartReceipt(
+  itemMeta: string,
+  amountCents = 0,
+): { itemsHtml: string; itemLabel: string; amountUsd: string } {
+  const parts = String(itemMeta || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const lines: string[] = [];
+  const labels: string[] = [];
+  let packCount = 0;
+  let knownCount = 0;
+  for (const part of parts) {
+    const match = part.match(/^(.*?)(?:x(\d+))?$/i);
+    const itemId = String(match?.[1] || part).trim();
+    const quantity = Math.max(1, Math.min(99, Math.floor(Number(match?.[2] || 1))));
+    if (!itemId) continue;
+    const pack = STRIPE_CATALOG.creditPacks[itemId];
+    const row = STRIPE_CATALOG.alaCarte[itemId] ?? pack;
+    if (pack) packCount += 1;
+    if (row) knownCount += 1;
+    const name = row?.label || itemId;
+    const qtyBit = quantity > 1 ? ` × ${quantity}` : "";
+    const priceBit =
+      row?.amountUsd != null ? ` — ${formatUsdFromCents(Math.round(row.amountUsd * quantity * 100))}` : "";
+    lines.push(
+      `<li style="margin:0 0 6px;"><strong>${escapeHtml(name)}</strong>${qtyBit}${priceBit}</li>`,
+    );
+    labels.push(`${name}${qtyBit}`);
+  }
+  const itemsHtml = lines.length
+    ? `<ul style="margin:0;padding-left:18px;">${lines.join("")}</ul>`
+    : `<p style="margin:0;">Your purchase is confirmed.</p>`;
+  const itemLabel =
+    labels.length === 1
+      ? labels[0]!
+      : labels.length > 1
+        ? knownCount > 0 && packCount === knownCount
+          ? `Kid Credit packs (${labels.length})`
+          : `A-la-carte cart (${labels.length} items)`
+        : "A la carte";
+  return { itemsHtml, itemLabel, amountUsd: formatUsdFromCents(amountCents) };
+}
+
+export function joinCartPurchaseTemplateSlug(
+  kind: string,
+): "alacarte_purchased" | "credit_pack_purchased" {
+  return String(kind || "").toLowerCase() === "credit_pack"
+    ? "credit_pack_purchased"
+    : "alacarte_purchased";
+}
+
+/**
+ * Member confirmation + admin alert after a-la-carte / credit-pack checkout
+ * (Stripe, GYSH credits, or mixed).
+ */
+export async function sendAlaCartePurchaseEmails(
+  env: Env,
+  input: {
+    email: string;
+    name?: string | null;
+    userId?: string | null;
+    itemMeta: string;
+    amountCents: number;
+    sessionId?: string;
+    kind?: string;
+    source?: string | null;
+    creditsApplied?: number;
+  },
+): Promise<boolean> {
+  if (!emailConfigured(env)) return false;
+  const email = String(input.email || "").trim().toLowerCase();
+  if (!email.includes("@")) return false;
+  const name = String(input.name || "").trim() || "Side Hustler";
+  const slug = joinCartPurchaseTemplateSlug(input.kind || "");
+  const receipt = formatJoinCartReceipt(input.itemMeta, input.amountCents);
+  const payment = formatPurchasePaymentDetail({
+    source: input.source,
+    amountCents: input.amountCents,
+    creditsApplied: input.creditsApplied,
+    sessionId: input.sessionId,
+  });
+  const joinUrl = `${SITE_URL}/join`;
+  const { renderCatalogEmail } = await import("./email-admin");
+  const rendered = await renderCatalogEmail(env, slug, {
+    name,
+    itemsHtml: receipt.itemsHtml,
+    itemLabel: receipt.itemLabel,
+    amountUsd: payment.amountLabel,
+    paymentHtml: payment.html,
+    ctaUrl: joinUrl,
+  });
+  if (rendered) {
+    await sendResendEmail(env, {
+      to: email,
+      subject: rendered.subject,
+      html: rendered.html,
+      text: rendered.text,
+      templateSlug: slug,
+      userId: input.userId || undefined,
+      meta: {
+        itemMeta: input.itemMeta,
+        amountCents: input.amountCents,
+        sessionId: input.sessionId || "",
+        itemLabel: receipt.itemLabel,
+        kind: input.kind || "",
+        source: payment.source,
+        creditsApplied: Math.max(0, Math.floor(Number(input.creditsApplied) || 0)),
+      },
+    });
+  }
+
+  try {
+    await sendAdminFormNotify(env, {
+      formName: slug === "credit_pack_purchased" ? "Kid Credit pack purchase" : "A la carte purchase",
+      summary: `${name} · ${email} · ${receipt.itemLabel} · ${payment.amountLabel}`,
+      detailsHtml: `<p style="margin:0 0 8px;"><strong>Name:</strong> ${escapeHtml(name)}</p>
+        <p style="margin:0 0 8px;"><strong>Email:</strong> <a href="mailto:${escapeHtml(email)}" style="color:#9B2F28;">${escapeHtml(email)}</a></p>
+        <p style="margin:0 0 8px;"><strong>Items:</strong></p>
+        ${receipt.itemsHtml}
+        <p style="margin:12px 0 8px;"><strong>Total:</strong> ${escapeHtml(payment.amountLabel)}</p>
+        ${payment.html}
+        <p style="margin:12px 0 0;padding:12px;background:#fff4e8;border-radius:10px;">Open Admin → Financials if follow-up is needed.</p>`,
+      replyTo: email,
+      meta: {
+        userId: input.userId || "",
+        itemMeta: input.itemMeta,
+        amountCents: input.amountCents,
+        sessionId: input.sessionId || "",
+        source: payment.source,
+        creditsApplied: Math.max(0, Math.floor(Number(input.creditsApplied) || 0)),
       },
     });
   } catch {

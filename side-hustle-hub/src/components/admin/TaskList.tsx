@@ -116,7 +116,7 @@ import {
   formatRolloverFromToLabel,
   healClosedSprintTaskLeftovers,
   healIncompleteTaskDueDates,
-  itemMatchesSprintFilterSet,
+  itemAssignedToSprintFilterSet,
   noteIndicatesRollover,
 } from "../../lib/gysh-sprint-board";
 import { formatAuditTrail } from "../../lib/gysh-audit";
@@ -798,7 +798,11 @@ export function TaskList({
         try {
           const synced = await syncGuideReviewTasks(touchedHealed.tasks);
           const withSoft = await syncSoftLaunchTasks(synced.tasks);
-          if (synced.createdCount > 0 || withSoft.createdCount > 0) {
+          if (
+            synced.createdCount > 0 ||
+            withSoft.createdCount > 0 ||
+            withSoft.healedCount > 0
+          ) {
             applyHealedTasks(withSoft.tasks);
           }
         } catch {
@@ -1016,7 +1020,7 @@ export function TaskList({
     if (
       exclude !== "sprint" &&
       sprintFilters.size > 0 &&
-      !itemMatchesSprintFilterSet(t.sprint ?? 0, t.notes, sprintFilters)
+      !itemAssignedToSprintFilterSet(t.sprint ?? 0, t.notes, sprintFilters)
     ) {
       return false;
     }
@@ -1096,6 +1100,7 @@ export function TaskList({
       metaKey: e?.metaKey,
       ordered: sprintFilterOrder,
       lastIndex: lastSprintIdx.current,
+      keepSoleSelection: true,
     });
     lastSprintIdx.current = lastIndex;
     setSprintFilters(next);
@@ -1552,7 +1557,7 @@ export function TaskList({
               <ListChecks size={22} style={{ color: "var(--bronze)" }} /> Task List
             </h2>
             <p style={{ color: "var(--text-primary)", marginTop: 6, fontSize: "1rem", lineHeight: 1.5 }}>
-              T + E operational tracker — saved in production D1.
+              Tina & Evelyn operational tracker — saved in production D1.
             </p>
             <p style={{ color: "var(--text-primary)", marginTop: 6, fontSize: "1rem", lineHeight: 1.5 }}>
               Attachments are saved to the database and can be downloaded from any browser. Max ~8MB per file (videos up to ~20MB).
@@ -1735,7 +1740,7 @@ export function TaskList({
           <div className="task-list-toolbar__section-label">
             Filters
             <span className="task-list-toolbar__label-hint">
-              {filtered.length} shown · tap a bubble to filter · Ctrl/Shift+click for more
+              {filtered.length} shown · tap a bubble to filter · All sprints shows every sprint · Ctrl/Shift+click for more
             </span>
           </div>
 
@@ -2082,8 +2087,9 @@ export function TaskList({
 
           <div className="task-list-filters__footer">
             <p className="task-list-toolbar__hint">
-              Defaults to the current sprint. Each sprint bubble shows how many tasks rolled in.
-              Use Rolled Over to list only those. Checkboxes below for bulk edits.
+              Defaults to the current sprint. Each sprint bubble lists tasks assigned to that
+              sprint. Use Rolled Over to see work carried in from a prior sprint. Checkboxes
+              below for bulk edits.
             </p>
             <div className="task-legend task-legend--compact" aria-label="Due date colors">
               <span className="task-legend-item">
@@ -2827,7 +2833,7 @@ export function TaskList({
                           const status = e.target.value as TaskStatus;
                           if (t.assignedTo === "Both" && status === "done" && !(t.tinaDone && t.evelynDone)) {
                             setError(
-                              "Both T + E must mark their own Done before this task can be Done.",
+                              "Both Tina & Evelyn must mark their own Done before this task can be Done.",
                             );
                             return;
                           }

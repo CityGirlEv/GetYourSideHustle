@@ -41,9 +41,12 @@ export type SiblingTestRef = {
 export function siblingTestCases(
   caseId: string,
   catalog: ReadonlyArray<Pick<TestCase, "id" | "title" | "assignees" | "expected">>,
+  index?: SiblingCatalogIndex,
 ): SiblingTestRef[] {
   const id = String(caseId || "").trim();
   if (!id) return [];
+  if (index) return index.byId.get(id) ?? [];
+
   const self = catalog.find((c) => c.id === id);
   const logical = testCaseLogicalId(id);
   const byLogical = catalog
@@ -77,6 +80,64 @@ export function siblingTestCases(
       via: "title" as const,
     }))
     .sort((a, b) => a.id.localeCompare(b.id));
+}
+
+/** Precompute siblings once — avoids O(n²) work per Testing Portal row. */
+export type SiblingCatalogIndex = {
+  byId: Map<string, SiblingTestRef[]>;
+};
+
+export function buildSiblingCatalogIndex(
+  catalog: ReadonlyArray<Pick<TestCase, "id" | "title" | "assignees" | "expected">>,
+): SiblingCatalogIndex {
+  type CaseRef = Pick<TestCase, "id" | "title" | "assignees" | "expected">;
+  const byLogical = new Map<string, CaseRef[]>();
+  const byTitleExpected = new Map<string, CaseRef[]>();
+
+  for (const c of catalog) {
+    const logical = testCaseLogicalId(c.id);
+    const logicalBucket = byLogical.get(logical);
+    if (logicalBucket) logicalBucket.push(c);
+    else byLogical.set(logical, [c]);
+
+    const titleKey = normalizeTestTitleForMatch(c.title);
+    if (titleKey.length < 10) continue;
+    const expected = String(c.expected || "").trim();
+    const teKey = `${titleKey}\n${expected}`;
+    const teBucket = byTitleExpected.get(teKey);
+    if (teBucket) teBucket.push(c);
+    else byTitleExpected.set(teKey, [c]);
+  }
+
+  const byId = new Map<string, SiblingTestRef[]>();
+  for (const c of catalog) {
+    const logical = testCaseLogicalId(c.id);
+    const logicalPeers = (byLogical.get(logical) ?? []).filter((x) => x.id !== c.id);
+    let peers = logicalPeers;
+    let via: SiblingTestRef["via"] = "logical_id";
+    if (peers.length === 0) {
+      const titleKey = normalizeTestTitleForMatch(c.title);
+      if (titleKey.length >= 10) {
+        const expected = String(c.expected || "").trim();
+        peers = (byTitleExpected.get(`${titleKey}\n${expected}`) ?? []).filter(
+          (x) => x.id !== c.id,
+        );
+        via = "title";
+      }
+    }
+    byId.set(
+      c.id,
+      peers
+        .map((p) => ({
+          id: p.id,
+          title: p.title,
+          assignees: [...p.assignees],
+          via,
+        }))
+        .sort((a, b) => a.id.localeCompare(b.id)),
+    );
+  }
+  return { byId };
 }
 
 export function ownerSuffix(owner: QaTesterId): string {

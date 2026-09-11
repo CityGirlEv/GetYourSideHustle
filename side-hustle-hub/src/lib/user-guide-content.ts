@@ -107,15 +107,15 @@ export const MEMBER_GUIDE_SECTIONS: GuideDocSection[] = [
       },
       {
         id: "tier-starter",
-        text: "Starter — Member guides, community, workshop discounts, one 45-minute session (3-mo commit). Kids/Teens use credits.",
+        text: "Starter — Member guides, community, workshop discounts, one 60-minute or two 30-minute sessions (3-mo commit). Kids/Teens use credits.",
       },
       {
         id: "tier-pro",
-        text: "Pro — Schedule suite (plan, tracker, reports, email) + three 60-minute sessions + more credits.",
+        text: "Pro — Schedule suite (plan, tracker, reports, email) + two 60-minute sessions + more credits.",
       },
       {
         id: "tier-elite",
-        text: "Elite — Deepest support + three 90-minute sessions + highest credit pool.",
+        text: "Elite — Deepest support + three 60-minute sessions + highest credit pool.",
       },
     ],
   },
@@ -356,7 +356,7 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
     items: [
       {
         id: "sch-bars",
-        text: "Sprint status bars show progress for the selected sprint.",
+        text: "Sprint chips cover Sprint 0 through Sprint 10 (Tue–Mon windows, including the two-week pause after Sprint 2). Dates show on each bubble.",
       },
       {
         id: "sch-filter",
@@ -429,7 +429,7 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
       },
       {
         id: "qa-status",
-        text: "Set status: Not Started, In Progress, Rolled Over, Pass, Conditional Pass, Fail, Blocked, Fixed/Re-Test, Failed/Re-Test, Fixed/Cursor, Fixed/Lighthouse, Fixed/Foresight. Notes required for fail / blocked / conditional pass / Fixed/* writers. Untouched cases stay Not Started.",
+        text: "Each card shows the current status as text (not a dropdown). Expand the card and use the status buttons at the bottom to set Not Started, In Progress, Rolled Over, Pass, Conditional Pass, Fail, Blocked, Fixed/Re-Test, Failed/Re-Test, Fixed/Cursor, Fixed/Lighthouse, or Fixed/Foresight. Notes required for fail / blocked / conditional pass / Fixed/* writers. Untouched cases stay Not Started.",
       },
       {
         id: "qa-assign",
@@ -453,7 +453,7 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
       },
       {
         id: "qa-bars",
-        text: "QA Testors progress bars and sprint chips mirror completion across the filtered suite.",
+        text: "Filter row order on load: Assignees (expanded), Sprint, Other (collapsed). Other groups Status, Test Suites, All Test Cases, External vs Internal, and Categories. Sprint chips show each sprint’s date range. QA Testors progress bars and sprint chips mirror completion across the filtered suite.",
       },
     ],
   },
@@ -556,7 +556,7 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
       },
       {
         id: "fin-contract",
-        text: "Upload partnership contract file (T + E labeling).",
+        text: "Upload partnership contract file (Tina & Evelyn labeling).",
       },
       {
         id: "fin-save",
@@ -699,7 +699,7 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
     number: "12",
     title: "End-user site",
     intro:
-      "Public GYSH experience. Primary header: Home · GYSH Match Wizard · Kids/Teens Corner · Seniors · Guides · Workshops · Community · Newsletter · Join · About · Contact · Login (or Admin/Portal + Log Out). Calculators and Launch checklist are in-app views (not always in the primary header).",
+      "Public GYSH experience. Primary header: Home · GYSH Match Wizard · Kids/Teens Corner · Seniors · Guides · Workshops · Community · Newsletter · Sign-Up · About · Contact · Login (or Admin/Portal + Log Out). Calculators and Launch checklist are in-app views (not always in the primary header).",
     subsections: [
       {
         id: "eu-home",
@@ -844,11 +844,11 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
           },
           {
             id: "eu-j2",
-            text: "Free — open free guides. Starter — member guides, community, weekly newsletter, workshop discount, one 45-minute session (credits for Kids/Teens).",
+            text: "Free — open free guides. Starter — member guides, community, weekly newsletter, workshop discount, one 60-minute or two 30-minute sessions (credits for Kids/Teens).",
           },
           {
             id: "eu-j3",
-            text: "Pro — schedule suite + three 60-minute sessions + more credits. Elite — deepest support + three 90-minute sessions + highest credit pool.",
+            text: "Pro — schedule suite + two 60-minute sessions + more credits. Elite — deepest support + three 60-minute sessions + highest credit pool.",
           },
           {
             id: "eu-j4",

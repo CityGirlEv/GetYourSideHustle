@@ -4,18 +4,25 @@
 import { error, json, type DbUser, type Env } from "./auth";
 import { SITE_URL } from "./email-brand";
 import {
+  CERT_DEFAULT_BODY,
+  CERT_MOTTO,
+  CERT_ORG_NAME,
   buildCertificatePdfBase64,
   buildCertificateSvg,
   resolveCertificateHeadings,
 } from "./certificate-art";
 
 export {
+  CERT_DEFAULT_BODY,
   CERT_LOGO_SIZE,
+  CERT_MOTTO,
+  CERT_ORG_NAME,
   buildCertificatePdfBase64,
   buildCertificateSvg,
   certAudienceKey,
   certificateThemeFor,
   resolveCertificateHeadings,
+  spellOutGysh,
 } from "./certificate-art";
 
 export type CertificateTemplate = {
@@ -50,12 +57,11 @@ export type MemberCertificate = {
 
 const DEFAULT_TEMPLATE: Omit<CertificateTemplate, "updatedAt" | "updatedBy"> = {
   id: "welcome_family",
-  title: "Welcome to the GYSH Family",
+  title: `Welcome to the ${CERT_ORG_NAME} Family`,
   subtitle: "Certificate of Membership",
-  body:
-    "This certifies that {{name}} is a valued member of the Get Your Side Hustle family, welcomed on {{date}} as a {{tier}} member in the {{audience}} lane.",
-  signoff: "T + E · Get Your Side Hustle",
-  footerLine: `Four wizards. One family adventure. · ${SITE_URL}`,
+  body: CERT_DEFAULT_BODY,
+  signoff: CERT_MOTTO,
+  footerLine: `Ideas. Action. Income. Freedom. · ${SITE_URL}`,
 };
 
 /** Celebratory Glow Getter line for Kids / Teens (junior) certificates only. */
@@ -155,6 +161,22 @@ export async function ensureCertificateTables(env: Env): Promise<void> {
   )
     .bind(
       DEFAULT_TEMPLATE.id,
+      DEFAULT_TEMPLATE.title,
+      DEFAULT_TEMPLATE.subtitle,
+      DEFAULT_TEMPLATE.body,
+      DEFAULT_TEMPLATE.signoff,
+      DEFAULT_TEMPLATE.footerLine,
+      now,
+    )
+    .run();
+  await env.DB.prepare(
+    `UPDATE certificate_template
+     SET title = ?, subtitle = ?, body = ?, signoff = ?, footer_line = ?,
+         updated_at = ?, updated_by = 'system'
+     WHERE id = 'welcome_family'
+       AND body NOT LIKE '%dreamers, doers, and creators%'`,
+  )
+    .bind(
       DEFAULT_TEMPLATE.title,
       DEFAULT_TEMPLATE.subtitle,
       DEFAULT_TEMPLATE.body,
@@ -356,17 +378,65 @@ export async function listMemberCertificates(env: Env): Promise<Response> {
   });
 }
 
+type CertRowArt = {
+  member_name: string;
+  membership_tier: string | null;
+  audience: string | null;
+  issued_at: string;
+};
+
+/** Always draw with current art + template so Admin preview is never a stale stored SVG. */
+export function liveCertificateArtInput(
+  row: CertRowArt,
+  template: CertificateTemplate,
+): Parameters<typeof buildCertificateSvg>[0] {
+  const tier = tierLabel(row.membership_tier || "free");
+  const audienceRaw = row.audience || "adult";
+  const audience = audienceLabel(audienceRaw);
+  const headings = resolveCertificateHeadings(audienceRaw, template);
+  const issuedAt = row.issued_at || new Date().toISOString();
+  const bodyText = resolveCertificateBody(
+    template.body,
+    {
+      name: row.member_name || "Side Hustler",
+      date: formatIssuedDate(issuedAt),
+      tier,
+      audience,
+    },
+    audienceRaw,
+  );
+  return {
+    title: headings.title,
+    subtitle: headings.subtitle,
+    memberName: row.member_name || "Side Hustler",
+    bodyText,
+    signoff: template.signoff,
+    footerLine: template.footerLine,
+    tierLabel: tier,
+    audienceLabel: audience,
+    issuedAt,
+    audienceRaw,
+  };
+}
+
 export async function getCertificateSvg(env: Env, id: string): Promise<Response> {
   await ensureCertificateTables(env);
-  const row = await env.DB.prepare(`SELECT svg_markup FROM member_certificates WHERE id = ?`)
+  const row = await env.DB.prepare(
+    `SELECT member_name, membership_tier, audience, issued_at FROM member_certificates WHERE id = ?`,
+  )
     .bind(id)
-    .first<{ svg_markup: string }>();
+    .first<CertRowArt>();
   if (!row) return error("Certificate not found.", 404);
-  return new Response(row.svg_markup, {
+  const template = await getCertificateTemplate(env);
+  const svg = buildCertificateSvg(liveCertificateArtInput(row, template)).replace(
+    /^<\?xml[^>]*\?>\s*/i,
+    "",
+  );
+  return new Response(svg, {
     status: 200,
     headers: {
       "content-type": "image/svg+xml; charset=utf-8",
-      "cache-control": "private, max-age=60",
+      "cache-control": "no-store",
     },
   });
 }
@@ -374,19 +444,21 @@ export async function getCertificateSvg(env: Env, id: string): Promise<Response>
 export async function getCertificatePdf(env: Env, id: string): Promise<Response> {
   await ensureCertificateTables(env);
   const row = await env.DB.prepare(
-    `SELECT pdf_base64, member_name FROM member_certificates WHERE id = ?`,
+    `SELECT member_name, membership_tier, audience, issued_at FROM member_certificates WHERE id = ?`,
   )
     .bind(id)
-    .first<{ pdf_base64: string; member_name: string }>();
-  if (!row?.pdf_base64) return error("Certificate PDF not found.", 404);
-  const binary = Uint8Array.from(atob(row.pdf_base64), (c) => c.charCodeAt(0));
+    .first<CertRowArt>();
+  if (!row) return error("Certificate PDF not found.", 404);
+  const template = await getCertificateTemplate(env);
+  const pdfBase64 = buildCertificatePdfBase64(liveCertificateArtInput(row, template));
+  const binary = Uint8Array.from(atob(pdfBase64), (c) => c.charCodeAt(0));
   const safe = (row.member_name || "member").replace(/[^\w.-]+/g, "_");
   return new Response(binary, {
     status: 200,
     headers: {
       "content-type": "application/pdf",
-      "content-disposition": `attachment; filename="GYSH-Family-Certificate-${safe}.pdf"`,
-      "cache-control": "private, max-age=60",
+      "content-disposition": `attachment; filename="Get-Your-Side-Hustle-Certificate-${safe}.pdf"`,
+      "cache-control": "no-store",
     },
   });
 }

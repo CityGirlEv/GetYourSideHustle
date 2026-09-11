@@ -101,7 +101,7 @@ export function WorkshopsAdmin() {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(200px, 1fr) minmax(280px, 1.4fr)", gap: 14 }}>
+      <div className="workshops-admin__layout">
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {workshops.map((w) => (
             <button

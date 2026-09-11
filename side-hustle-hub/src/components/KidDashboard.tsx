@@ -8,9 +8,14 @@ import {
   PiggyBank,
 } from "lucide-react";
 import { WaitIndicator } from "./WaitFeedback";
+import { ChipScroller } from "./ChipScroller";
+import { InviteFriendCard } from "./InviteFriendCard";
 import {
+  creditsBalanceHeadline,
+  emptyMemberCreditsSummary,
   fetchMemberCredits,
   formatKidCreditBalance,
+  friendlyCreditsLoadError,
   summarizeMemberCredits,
   type MemberCreditsSummary,
 } from "../lib/member-credits";
@@ -105,8 +110,13 @@ export function KidDashboard({
       })
       .catch((err: unknown) => {
         if (cancelled) return;
-        setCredits(null);
-        setCreditsError(err instanceof Error ? err.message : "Could not load credits.");
+        setCredits(
+          emptyMemberCreditsSummary({
+            membershipTier: "free",
+            audience: ageBand === "junior" ? "junior" : "kids",
+          }),
+        );
+        setCreditsError(friendlyCreditsLoadError(err));
       })
       .finally(() => {
         if (!cancelled) setCreditsLoading(false);
@@ -133,25 +143,26 @@ export function KidDashboard({
                   ? `Parent coach view — Blueprints assigned to ${displayName}, credits, and shortcuts into ${cornerLabel}.`
                   : `This is your ${bandLabel} dashboard — see Blueprints your parent coach assigned, check credits, and jump into ${cornerLabel}.`}
               </p>
+              {parentCoachView && onBack ? (
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  data-testid="kid-dashboard-back-to-family"
+                  onClick={onBack}
+                  style={{ marginTop: 12 }}
+                >
+                  Back to Family Coach
+                </button>
+              ) : null}
             </div>
-            {parentCoachView && onBack ? (
-              <button
-                type="button"
-                className="btn btn-outline"
-                data-testid="kid-dashboard-back-to-family"
-                onClick={onBack}
-              >
-                Back to Family Coach
-              </button>
-            ) : null}
+            <InviteFriendCard isLoggedIn testId="kid-dashboard-invite" />
           </div>
         </div>
 
-        <div
-          className="user-portal-tabs"
-          role="tablist"
-          aria-label="Kid dashboard sections"
-          data-testid="kid-dashboard-tabs"
+        <ChipScroller
+          trackClassName="user-portal-tabs"
+          ariaLabel="Kid dashboard sections"
+          testId="kid-dashboard-tabs"
         >
           {TABS.map((t) => (
             <button
@@ -167,7 +178,7 @@ export function KidDashboard({
               {t.label}
             </button>
           ))}
-        </div>
+        </ChipScroller>
 
         <div className="glass user-portal-panel" data-testid="kid-dashboard-panel">
           {tab === "blueprint" && (
@@ -300,14 +311,19 @@ export function KidDashboard({
                 <WaitIndicator message="Loading credits…" style={{ marginTop: 0 }} />
               )}
               {creditsError && <p className="user-portal-credits-error">{creditsError}</p>}
-              {!creditsLoading && !creditsError && credits && (
+              {!creditsLoading && credits && (
                 <div className="user-portal-credit-card" data-testid="kid-dashboard-credit-balance">
-                  <strong>{formatKidCreditBalance(credits.balance)}</strong>
-                  <p>Kid credits for workshops, Story Time, and youth sessions</p>
+                  <strong>{creditsBalanceHeadline(credits.balance)}</strong>
+                  <p>
+                    {formatKidCreditBalance(credits.balance)} available for workshops, Story Time, and
+                    youth sessions
+                  </p>
                 </div>
               )}
-              {!creditsLoading && !creditsError && !credits && (
-                <p className="user-portal-credits-muted">Credits will show here after your first earn.</p>
+              {!creditsLoading && !credits && (
+                <p className="user-portal-credits-muted">
+                  {creditsBalanceHeadline(0)} — credits will grow as you earn.
+                </p>
               )}
             </section>
           )}

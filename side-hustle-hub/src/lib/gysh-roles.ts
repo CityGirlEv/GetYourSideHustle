@@ -445,7 +445,7 @@ export type GyshUser = {
   role: GyshRole;
   /** All assigned roles (admin + QA + Dev allowed together). */
   roles?: GyshRole[];
-  status: "active" | "pending" | "disabled";
+  status: "active" | "pending" | "disabled" | "deleted";
   joinedAt: string;
   notes: string;
   canLogin?: boolean;
@@ -488,6 +488,22 @@ export async function saveUser(
   const data = await api<{ user: GyshUser }>("users", {
     method: "PUT",
     body: { ...user, roles, role: roles[0], password: password || undefined },
+  });
+  return data.user;
+}
+
+export async function deleteUser(id: string): Promise<void> {
+  const userId = String(id || "").trim();
+  if (!userId) throw new Error("User id is required.");
+  await api(`users/${encodeURIComponent(userId)}`, { method: "DELETE" });
+}
+
+/** Admin: drop a paid plan back to Free. Does not delete the member account. */
+export async function clearUserMembership(id: string): Promise<GyshUser> {
+  const userId = String(id || "").trim();
+  if (!userId) throw new Error("User id is required.");
+  const data = await api<{ user: GyshUser }>(`users/${encodeURIComponent(userId)}/membership`, {
+    method: "DELETE",
   });
   return data.user;
 }

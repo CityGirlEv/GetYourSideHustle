@@ -4,6 +4,7 @@ import {
   countRolledIntoSprint,
   countTasksRolledIntoSprint,
   formatRolloverFromToLabel,
+  itemAssignedToSprintFilterSet,
   itemBelongsToSprintFilter,
   itemMatchesSprintFilterSet,
   itemRolledRelativeToSprint,
@@ -132,6 +133,17 @@ describe("sprintRolloverSummary", () => {
     expect(itemMatchesSprintFilterSet(5, note, new Set([3, 4]))).toBe(true);
     expect(itemMatchesSprintFilterSet(5, note, new Set([3]))).toBe(false);
     expect(itemMatchesSprintFilterSet(5, "", new Set([4]))).toBe(false);
+  });
+
+  it("itemAssignedToSprintFilterSet lists only the assigned sprint (no outbound carries)", () => {
+    const from5 = '[{"text":"Rolled over from Sprint 5"}]';
+    const from4 = '[{"text":"Rolled over from Sprint 4"}]';
+    expect(itemAssignedToSprintFilterSet(6, from5, new Set([5]))).toBe(false);
+    expect(itemAssignedToSprintFilterSet(5, from5, new Set([5]))).toBe(false);
+    expect(itemAssignedToSprintFilterSet(5, "", new Set([5]))).toBe(true);
+    expect(itemAssignedToSprintFilterSet(5, from4, new Set([5]))).toBe(true);
+    expect(itemAssignedToSprintFilterSet(6, from5, new Set([6]))).toBe(true);
+    expect(itemAssignedToSprintFilterSet(6, "", new Set())).toBe(true);
   });
 
   it("countItemRolloversForSprintFocus splits from-prev vs to-next", () => {

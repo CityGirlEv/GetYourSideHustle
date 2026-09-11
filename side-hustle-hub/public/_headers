@@ -1,10 +1,10 @@
-# HTML must revalidate every time. Prevents a stale index.html from pointing at
-# missing hashed bundles after a deploy.
+# HTML must not be stored. Safari/mobile otherwise keep a stale index.html that
+# points at hashed JS from the previous deploy — first load fails, refresh works.
 /
-  Cache-Control: public, max-age=0, must-revalidate
+  Cache-Control: no-store
 
 /index.html
-  Cache-Control: public, max-age=0, must-revalidate
+  Cache-Control: no-store
 
 # Fingerprinted Vite assets are immutable — only safe because missing hashes
 # must 404 (see public/_redirects), never return index.html as text/css.
@@ -14,4 +14,17 @@
 
 /assets/404.html
   Cache-Control: public, max-age=0, must-revalidate
+  X-Content-Type-Options: nosniff
+
+# Brand images are not content-hashed; cache a week and revalidate in the background.
+/brand/*
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+  X-Content-Type-Options: nosniff
+
+/favicon.png
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+  X-Content-Type-Options: nosniff
+
+/apple-touch-icon.png
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
   X-Content-Type-Options: nosniff

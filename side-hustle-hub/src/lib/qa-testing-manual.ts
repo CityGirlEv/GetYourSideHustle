@@ -58,8 +58,8 @@ export const QA_TESTING_MANUAL = {
   ],
   quickStart: [
     "Open Testing Portal (Admin menu → Testing Portal, or after login).",
-    "Sprint filter defaults to All sprints — click a sprint chip to narrow to one sprint.",
-    "Filter by your name chip under QA Testors so you only see your cases.",
+    "On load, Assignees is expanded; Sprint and Other start collapsed. Other holds Status, Test Suites, All Test Cases, External vs Internal, and Categories. Sprint defaults to All sprints — click a sprint chip (Sprint 0 through Sprint 10; dates show on each bubble) to narrow to one sprint.",
+    "Open Assignees and tap your QA Testors chip so you only see your cases.",
     "Use External vs Internal, suite (Manual / Vitest / Playwright), status, and search as needed.",
     "Open a case → follow the steps → check them off as you go.",
     "Set a final status (Pass / Conditional Pass / Fail) and add a note when required.",
@@ -174,11 +174,11 @@ export const QA_TESTING_MANUAL = {
           title: "Open a case assigned to you",
           detail: "Filter by your QA Testors chip (your first name). Assignees come from Users Area → QA role.",
         },
-        { title: "Set In Progress", detail: "Optional but helpful while you work." },
+        { title: "Set In Progress", detail: "Use the status buttons at the bottom of the card — optional but helpful while you work." },
         { title: "Work through steps", detail: "Check them off as you go. Use Open links in steps when provided." },
         {
           title: "Choose an outcome",
-          detail: "Pass · Conditional Pass (+ note) · Fail (step + note) · or ask Evelyn for Blocked.",
+          detail: "Use the status buttons at the bottom of the card: Pass · Conditional Pass (+ note) · Fail (step + note) · or ask Evelyn for Blocked. The card header shows the current status only — it is not a dropdown.",
         },
         {
           title: "If Fail → Evelyn (or Cursor) triage",

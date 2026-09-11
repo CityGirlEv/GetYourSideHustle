@@ -161,7 +161,6 @@ export function FindMineWizardSelector({
               width={1600}
               height={900}
               decoding="async"
-              fetchPriority="high"
             />
           </div>
 

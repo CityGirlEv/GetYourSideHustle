@@ -181,13 +181,14 @@ function statusBadge(
     textDecoration: "none" as const,
     cursor: link ? ("pointer" as const) : undefined,
   };
+  const badgeClass = "content-factory__status-badge";
   if (link) {
     const href = adminStudioPath(link);
     return (
       <a
         href={href}
         data-testid={testId}
-        className="admin-cross-link"
+        className={`admin-cross-link ${badgeClass}`}
         title="Open linked item"
         style={style}
         onClick={(e) => {
@@ -201,7 +202,7 @@ function statusBadge(
     );
   }
   return (
-    <span data-testid={testId} style={style}>
+    <span data-testid={testId} className={badgeClass} style={style}>
       {s.mark} {label}
     </span>
   );
@@ -932,7 +933,7 @@ export function ContentFactory({
               <div
                 className="qa-categories-panel"
                 data-testid="factory-due-filters"
-                style={{ margin: 0, flex: "1 1 220px", minWidth: 200 }}
+                style={{ margin: 0, flex: "1 1 220px", minWidth: 0 }}
               >
                 <div
                   className="qa-section-heading qa-categories-panel__header"
@@ -1189,7 +1190,7 @@ export function ContentFactory({
                   <FilterChip
                     active={sprintFilters.size === 0}
                     onToggle={() => setSprintFilters(new Set())}
-                    title="Show all soft-launch sprints"
+                    title="Show all marketing calendar sprints"
                     testId="factory-sprint-all"
                   >
                     All sprints
@@ -1318,7 +1319,7 @@ export function ContentFactory({
               {seededDrafts.length === 0 ? (
                 <p style={{ marginTop: 12, color: "var(--text-primary)" }}>None yet — use Seed visible sprint or Seed all S2–S5.</p>
               ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "minmax(220px, 1fr) minmax(280px, 1.2fr)", gap: 16, marginTop: 12 }}>
+                <div className="content-factory__seeded-grid">
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     {seededDrafts.map((d) => (
                       <button
@@ -1378,7 +1379,7 @@ export function ContentFactory({
               !p.opsItemId &&
               (sprintFilters.size === 0 || sprintFilters.has(p.sprint)),
           ).length > 0 && (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
+            <div className="content-factory__projection-grid">
               {SOFT_LAUNCH_PROJECTIONS.filter(
                 (p) =>
                   !p.opsItemId &&
@@ -1490,6 +1491,7 @@ export function ContentFactory({
                           }}
                         >
                           <span
+                            className="content-factory__item-name"
                             data-testid={`factory-item-name-${item.id}`}
                             style={{
                               textDecoration: completion.itemDone ? "line-through" : undefined,
@@ -1500,6 +1502,7 @@ export function ContentFactory({
                           >
                             {item.title}
                           </span>
+                          <span className="content-factory__item-meta">
                           {softLaunchItemShowsRollover(item) ? (
                             <span
                               className="flat-label"
@@ -1523,7 +1526,6 @@ export function ContentFactory({
                             style={{
                               color: "#9B2F28",
                               fontWeight: 800,
-                              whiteSpace: "nowrap",
                               textDecoration: completion.itemDone ? "line-through" : undefined,
                               textDecorationColor: completion.itemDone
                                 ? "rgba(155, 47, 40, 0.55)"
@@ -1539,7 +1541,6 @@ export function ContentFactory({
                                 fontSize: "0.8rem",
                                 fontWeight: 700,
                                 color: "var(--bronze)",
-                                whiteSpace: "nowrap",
                               }}
                             >
                               {attachmentsByItem[item.id]!.length} file
@@ -1558,10 +1559,10 @@ export function ContentFactory({
                                   : item.owner === "Evelyn"
                                     ? "var(--bronze)"
                                     : "var(--charcoal)",
-                              whiteSpace: "nowrap",
                             }}
                           >
                             {item.owner}
+                          </span>
                           </span>
                         </strong>
                         <span style={{ fontSize: "0.8rem", color: "var(--bronze)", fontWeight: 700 }}>

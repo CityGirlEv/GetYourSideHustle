@@ -65,6 +65,25 @@ export function GuideChecklist({
   );
 }
 
+/** Informational bullets (membership ladder) — not checkboxes. */
+export function GuideStaticList({
+  items,
+  testId,
+}: {
+  items: GuideCheckItem[];
+  testId?: string;
+}) {
+  return (
+    <ul className="user-guide-checklist user-guide-checklist--static" data-testid={testId}>
+      {items.map((item) => (
+        <li key={item.id} className="user-guide-checklist__item">
+          <span className="user-guide-checklist__text">{item.text}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function GuideToc({
   entries,
   onNavigate,

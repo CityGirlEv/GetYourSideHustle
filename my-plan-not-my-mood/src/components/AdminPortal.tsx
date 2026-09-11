@@ -117,6 +117,7 @@ import { ComingSoonBadge } from './ComingSoonBadge';
 import { BRAND_TAB_ROW_CLASS, brandTabClass } from '../lib/brandUi';
 import { GearSelectionsPage } from './GearSelectionsPage';
 import { ContentFactoryPage } from './ContentFactoryPage';
+import { PostingSchedulePage } from './PostingSchedulePage';
 import { AssetLibraryPage } from './AssetLibraryPage';
 import { LogoConceptsPage } from './LogoConceptsPage';
 import { SiteMapPage } from './SiteMapPage';
@@ -169,15 +170,15 @@ import { IP_BRAND_ASSETS_ID } from '../lib/ipToc';
 import { toggleExpandedPlan } from '../lib/paymentPlanAccordion';
 import { allowDocumentPricing } from '../lib/documentPricing';
 import { buildTechStackDocumentHtml } from '../lib/ipTechStack';
-import { applyOfficialSprintDates } from '../lib/sprintCalendar';
+import { applyOfficialSprintDates, sprintLabelWithDates } from '../lib/sprintCalendar';
 import {
   GEAR_SALES_LINE_ITEMS_SEED,
   LINE_ITEMS_STORAGE_KEY,
   PHASE_1_LABEL,
   PHASE_2_LABEL,
   PHASE_3_LABEL,
-  PHASE_PAYMENT_SCHEDULE,
 } from '../lib/gearSalesPlan';
+import { PaymentScheduleCard } from './PaymentScheduleCard';
 import {
   addIpLineItem,
   createBlankIpLineItem,
@@ -386,10 +387,11 @@ function getPaymentMilestones(
 ): { label: string; amount: number }[] {
   switch (discountTier) {
     case 0:
-      return PHASE_PAYMENT_SCHEDULE.map((row) => ({
-        label: `${row.label} (${row.percent}%)`,
-        amount: discountedTotal * (row.percent / 100),
-      }));
+      return [
+        { label: 'Phase 1 payment (40%)', amount: discountedTotal * 0.4 },
+        { label: 'Phase 2 payment (30%)', amount: discountedTotal * 0.3 },
+        { label: 'Phase 3 payment (30%)', amount: discountedTotal * 0.3 },
+      ];
     case 10:
       return [
         { label: '1/3 Down Payment', amount: discountedTotal / 3 },
@@ -2496,7 +2498,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                   <p className="text-xs text-[#3F3832] mt-0.5">
                     {viewingPrevious
                       ? `Archived ${formatBudgetTimestamp(previousBudget.capturedAt)}. This is the pre-payment discount version.`
-                      : `Flat rate $${CURRENT_BUDGET_FLAT_RATE.toLocaleString()} project. Phase 1 is the gear launch. Phase 2 is memberships (Coming Soon). Phase 3 stays open.`}
+                      : `Flat rate $${CURRENT_BUDGET_FLAT_RATE.toLocaleString()} in three payments. $3,500 is already paid. Payment 2 ($3,500) is due Sprint 1.`}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -2566,6 +2568,10 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                   </button>
                 </div>
               </div>
+
+              {showPricing && !viewingPrevious && (
+                <PaymentScheduleCard compact />
+              )}
 
               {/* Top Executive Pre-Payment Discount Schedule Bar — previous budget only */}
               {showPricing && viewingPrevious && (
@@ -2920,7 +2926,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                   {
                     id: 'sprint',
                     label: 'Sprint',
-                    options: SPRINT_OPTIONS.map((sprint) => ({ value: sprint, label: sprint })),
+                    options: SPRINT_OPTIONS.map((sprint) => ({ value: sprint, label: sprintLabelWithDates(sprint) })),
                     onApply: (value) => handleBulkUpdateQa([...selectedQaIds], { sprint: value as SprintCategory }),
                   },
                   {
@@ -3011,7 +3017,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                             testId={`work-row-sprint-${test.id}`}
                             value={test.sprint}
                             onChange={(value) => handleUpdateQa(test.id, { sprint: value as SprintCategory })}
-                            options={SPRINT_OPTIONS.map((sprint) => ({ value: sprint, label: sprint }))}
+                            options={SPRINT_OPTIONS.map((sprint) => ({ value: sprint, label: sprintLabelWithDates(sprint) }))}
                             className={`${sprintControlClass(test.sprint)} border-current`}
                           />
                           <WorkBoardHeaderSelect
@@ -3083,7 +3089,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                             className={workBoardFieldClassName}
                             aria-label="Sprint"
                           >
-                            {SPRINT_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+                            {SPRINT_OPTIONS.map((s) => <option key={s} value={s}>{sprintLabelWithDates(s)}</option>)}
                           </select>
                         </WorkBoardField>
                         <WorkBoardField label="Phase">
@@ -3321,7 +3327,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                   className="w-full md:w-auto min-h-[44px] bg-[#FAF8F5] border-2 border-[#1F1917] rounded-xl px-3 text-xs font-bold cursor-pointer"
                 >
                   {SPRINT_OPTIONS.map((s) => (
-                    <option key={s} value={s}>{s}</option>
+                    <option key={s} value={s}>{sprintLabelWithDates(s)}</option>
                   ))}
                 </select>
                 <select
@@ -3383,7 +3389,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                   {
                     id: 'sprint',
                     label: 'Sprint',
-                    options: SPRINT_OPTIONS.map((sprint) => ({ value: sprint, label: sprint })),
+                    options: SPRINT_OPTIONS.map((sprint) => ({ value: sprint, label: sprintLabelWithDates(sprint) })),
                     onApply: (value) => handleBulkUpdateTasks([...selectedTaskIds], { sprint: value as SprintCategory }),
                   },
                   {
@@ -3478,7 +3484,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                             testId={`work-row-sprint-${t.id}`}
                             value={t.sprint}
                             onChange={(value) => handleUpdateTask(t.id, { sprint: value as SprintCategory })}
-                            options={SPRINT_OPTIONS.map((sprint) => ({ value: sprint, label: sprint }))}
+                            options={SPRINT_OPTIONS.map((sprint) => ({ value: sprint, label: sprintLabelWithDates(sprint) }))}
                             className={`${sprintControlClass(t.sprint)} border-current`}
                           />
                           <WorkBoardHeaderSelect
@@ -3584,7 +3590,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                             className={workBoardFieldClassName}
                             aria-label="Sprint"
                           >
-                            {SPRINT_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+                            {SPRINT_OPTIONS.map((s) => <option key={s} value={s}>{sprintLabelWithDates(s)}</option>)}
                           </select>
                         </WorkBoardField>
                         <WorkBoardField label="Phase">
@@ -3730,8 +3736,12 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
           />
         )}
 
-        {(activeTab === 'factory' || activeTab === 'calendar') && getRolePermissions(currentUser).canManageContentFactory && (
+        {activeTab === 'factory' && getRolePermissions(currentUser).canManageContentFactory && (
           <ContentFactoryPage onOpenTab={(tab) => selectAdminTab(tab)} />
+        )}
+
+        {activeTab === 'calendar' && getRolePermissions(currentUser).canManageContentFactory && (
+          <PostingSchedulePage onOpenTab={(tab) => selectAdminTab(tab)} />
         )}
 
         {activeTab === 'asset-library' && getRolePermissions(currentUser).canManageContentFactory && (

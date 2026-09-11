@@ -72,8 +72,9 @@ export const KIDS_TEAM_JOIN: TeamJoinCopy = {
       detail: "Bonus story activities and kindness quests inspired by Kevina Starr.",
     },
     {
-      title: "Member-only full guides",
-      detail: "Preview free tips anytime — unlock the rest when you join the team.",
+      title: "Free Guides with a GYSH account",
+      detail:
+        "Team join is the Kids Corner crew — Free Guides unlock with a Free Membership login. Paid guides need Starter or higher.",
     },
   ],
   ctaLabel: "Join Kids Corner GYSH Team",
@@ -128,8 +129,9 @@ export const JUNIOR_TEAM_JOIN: TeamJoinCopy = {
       detail: "Access notes from family Glow labs and teen build nights when available.",
     },
     {
-      title: "Full member guides",
-      detail: "Free teasers for everyone — complete playbooks unlock for Teens Team members.",
+      title: "Free Guides with a GYSH account",
+      detail:
+        "Team join is the Teens crew — Free Guides unlock with a Free Membership login. Paid guides need Starter or higher.",
     },
   ],
   ctaLabel: "Join Teens Side Hustle Team",
@@ -159,9 +161,8 @@ export function writeTeamMembership(audience: KidsAudience, joined: boolean): vo
 }
 
 /**
- * Unlock Kids/Teens member guides when:
- * - Caller passes member access (real member / Profile Switcher kids|teens — not staff-as-self), or
- * - Lightweight team join is stored for this audience.
+ * Kids/Teens *team* badge (Join tab only). Does not unlock guides or wizard Blueprints.
+ * Guides require a real GYSH login; Free Membership opens Free Guides only.
  */
 export function isKidsCornerMember(audience: KidsAudience, isLoggedIn: boolean): boolean {
   return isLoggedIn || readTeamMembership(audience);

@@ -1,6 +1,7 @@
 /** Starter guides for Kids Corner (4–12) and Teens Side Hustle (13–17). */
 
 import type { KidsAudience } from "./kids-team";
+import { PARENT_THUMBS_UP_STEP } from "./guide-detailed-steps";
 
 export type KidsGuideStep = {
   title: string;
@@ -21,7 +22,7 @@ export type KidsGuide = {
   parentTip: string;
 };
 
-export const KIDS_GUIDES: KidsGuide[] = [
+export const KIDS_GUIDES_RAW: KidsGuide[] = [
   // —— Kids (4–12) free ——
   {
     id: "kids-piggy-first-goal",
@@ -35,20 +36,20 @@ export const KIDS_GUIDES: KidsGuide[] = [
     parentTip: "Keep goals small and celebrate progress, not perfection.",
     steps: [
       {
-        title: "Pick one goal",
-        body: "Choose something fun and reachable — a game, book, craft kit, or outing. Write the name on a sticky note.",
+        title: "Name what you are saving for",
+        body: "Write the thing you want — a game, book, craft kit, outing, or something else reachable. No business name needed; this is your savings goal.",
       },
       {
-        title: "Write the price",
-        body: "Ask a parent for a real price (or a close estimate). Put that number next to your goal.",
+        title: "Write the cost",
+        body: "Ask a parent for the real price (or a close estimate). Put that dollar amount next to your goal.",
       },
       {
-        title: "Choose your hustle rate",
-        body: "Decide what one job might earn (example: $5 for a craft, $10 for a walk with a parent nearby).",
+        title: "Plan how you will earn",
+        body: "Decide how you’ll earn toward the goal (chores, a small craft sale, a parent-approved job). Note what one job might earn.",
       },
       {
-        title: "Count the jobs",
-        body: "Use the Piggy Bank tab to see how many tasks you need. Mark a star each time you finish one!",
+        title: "Set your weekly savings goal",
+        body: "Pick how much you’ll save each week. Use the Piggy Bank tab to track progress and mark a star when you hit the weekly goal.",
       },
       {
         title: "Celebrate kindly",
@@ -203,28 +204,28 @@ export const KIDS_GUIDES: KidsGuide[] = [
     theme: "savings",
     previewCount: 2,
     summary:
-      "Treat savings like a mini business plan: clear target, timeline, and weekly job count — tracked in the Piggy Bank.",
+      "Name what you’re saving for, the cost, how you’ll earn, and your weekly savings goal — tracked in the Piggy Bank. No competitors or business name needed.",
     parentTip: "Agree on realistic rates and school-first schedules together.",
     steps: [
       {
-        title: "Define the goal + deadline",
-        body: "Example: $150 tablet fund in 3 months. Write it where you’ll see it.",
+        title: "Name what you are saving for",
+        body: "Write the thing you want — a tablet fund, class trip, gear, or another reachable goal. No business name needed; this is your savings goal.",
       },
       {
-        title: "Break into weekly targets",
-        body: "Divide total by weeks. That’s your minimum earn-per-week (adjust for exams).",
+        title: "Write the cost",
+        body: "Look up a real price (or get a close estimate with a parent). Put that dollar amount next to your goal.",
       },
       {
-        title: "Pick 1–2 teen hustles",
-        body: "Choose from Teens Ideas that fit your time — don’t overcommit.",
+        title: "Plan how you will earn",
+        body: "Pick 1–2 teen hustles that fit your time (school comes first). Note what one job might earn toward the goal.",
       },
       {
-        title: "Log every payout",
-        body: "Use the Piggy Bank math after each job. Screenshot or note progress weekly.",
+        title: "Set your weekly savings goal",
+        body: "Divide total cost by weeks until your deadline — that’s your weekly savings target (adjust for exams). Log every payout in the Piggy Bank.",
       },
       {
         title: "Review with a guardian",
-        body: "Monthly check-in: what’s working, what to pause, what to reinvest.",
+        body: "Monthly check-in: what’s working, what to pause, and whether to raise or lower the weekly goal.",
       },
     ],
   },
@@ -366,6 +367,52 @@ export const KIDS_GUIDES: KidsGuide[] = [
     ],
   },
 ];
+
+const PARENT_THUMBS_UP_TITLE_RE =
+  /get parent thumbs up on the side hustle|set safety rules with a parent|consult parent about (your )?idea/i;
+
+/** Every kids/teen guide starts with parent thumbs-up. */
+export function ensureKidsGuideParentThumbsUp(guide: KidsGuide): KidsGuide {
+  const rest = guide.steps.filter((s) => !PARENT_THUMBS_UP_TITLE_RE.test(s.title));
+  return {
+    ...guide,
+    steps: [
+      { title: PARENT_THUMBS_UP_STEP.title, body: PARENT_THUMBS_UP_STEP.desc },
+      ...rest,
+    ],
+  };
+}
+
+export const KIDS_GUIDES: KidsGuide[] = KIDS_GUIDES_RAW.map(ensureKidsGuideParentThumbsUp);
+
+export function kidsGuideById(guideId: string): KidsGuide | undefined {
+  const id = String(guideId || "").trim();
+  if (!id) return undefined;
+  return KIDS_GUIDES.find((g) => g.id === id);
+}
+
+/** Map a Kids/Teens library guide into the Launch Guides detail shape. */
+export function kidsGuideToLaunchGuideData(guide: KidsGuide): {
+  id: string;
+  name: string;
+  timeframe: string;
+  estEarnings: string;
+  bestFor: string;
+  steps: { title: string; desc: string }[];
+  proTip: string;
+  pitfall: string;
+} {
+  return {
+    id: guide.id,
+    name: guide.title,
+    timeframe: guide.audience === "junior" ? "1 - 2 weeks" : "A few days",
+    estEarnings: guide.free ? "Free guide" : "Member guide",
+    bestFor: guide.summary,
+    steps: guide.steps.map((s) => ({ title: s.title, desc: s.body })),
+    proTip: guide.parentTip,
+    pitfall: "Skip parent thumbs-up or rush into strangers / public posts without approval.",
+  };
+}
 
 export function guidesForAudience(audience: KidsAudience): KidsGuide[] {
   return KIDS_GUIDES.filter((g) => g.audience === audience);

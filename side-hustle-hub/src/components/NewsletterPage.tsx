@@ -83,7 +83,7 @@ export function NewsletterPage({
           <div className="newsletter-page__actions">
             {!isLoggedIn ? (
               <button type="button" className="btn btn-outline" onClick={onLogin} data-testid="newsletter-login">
-                <LogIn size={16} aria-hidden /> Sign in
+                <LogIn size={16} aria-hidden /> Log in
               </button>
             ) : null}
             <button type="button" className="btn btn-primary" onClick={onJoin} data-testid="newsletter-join">

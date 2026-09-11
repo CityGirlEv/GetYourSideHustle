@@ -95,7 +95,6 @@ export const CalculatorSection: React.FC<CalculatorSectionProps> = ({
   const [howOpen, setHowOpen] = useState(false);
 
   // Airbnb State
-  const [airbnbZip, setAirbnbZip] = useState("");
   const [airbnbNightlyRate, setAirbnbNightlyRate] = useState(150);
   const [airbnbOccupancy, setAirbnbOccupancy] = useState(70); // %
   const [airbnbCleaningFee, setAirbnbCleaningFee] = useState(100);
@@ -227,7 +226,7 @@ export const CalculatorSection: React.FC<CalculatorSectionProps> = ({
               <>
                 <p style={{ marginBottom: 8, color: "white", fontWeight: 600 }}>Airbnb Hosting</p>
                 <ul style={{ margin: "0 0 8px 18px", padding: 0 }}>
-                  <li><strong style={{ color: "white" }}>Inputs:</strong> ZIP code, nightly rate, occupancy %, cleaning fee per booking, and each monthly budget line (mortgage/rent, utilities, insurance, supplies, cleaning labor, internet, software, taxes/HOA, other).</li>
+                  <li><strong style={{ color: "white" }}>Inputs:</strong> nightly rate, occupancy %, cleaning fee per booking, and each monthly budget line (mortgage/rent, utilities, insurance, supplies, cleaning labor, internet, software, taxes/HOA, other).</li>
                   <li><strong style={{ color: "white" }}>Assumptions:</strong> 30-day month; average stay = 3 nights; Airbnb platform fee = 3% of gross revenue.</li>
                   <li><strong style={{ color: "white" }}>Formulas:</strong> bookings ≈ round((30 × occupancy) ÷ 3); revenue = (nightly × 30 × occupancy) + (cleaning × bookings); fees = revenue × 3%; expenses = sum of budget lines; net = revenue − fees − expenses.</li>
                   <li><strong style={{ color: "white" }}>Outputs:</strong> estimated net monthly profit, profit margin %, gross revenue, platform fees, and every budget line that feeds the total.</li>
@@ -307,27 +306,6 @@ export const CalculatorSection: React.FC<CalculatorSectionProps> = ({
         {/* Tab 1: Airbnb */}
         {activeTab === "airbnb" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-            <div className="form-group">
-              <label className="form-label" htmlFor="airbnb-zip">
-                <span>ZIP code</span>
-              </label>
-              <input
-                id="airbnb-zip"
-                type="text"
-                inputMode="numeric"
-                autoComplete="postal-code"
-                maxLength={10}
-                placeholder="e.g. 78701"
-                value={airbnbZip}
-                onChange={(e) => setAirbnbZip(e.target.value.replace(/[^\d-]/g, "").slice(0, 10))}
-                className="text-input"
-                style={{ maxWidth: 160 }}
-              />
-              <span style={{ fontSize: "0.875rem", color: "var(--text-primary)", marginTop: "4px", display: "block" }}>
-                Used for your market note — edit budget lines below to match local costs.
-              </span>
-            </div>
-
             <div className="form-group">
               <label className="form-label">
                 <span>Nightly Rate ($)</span>
@@ -435,7 +413,6 @@ export const CalculatorSection: React.FC<CalculatorSectionProps> = ({
                   <span style={{ color: "white", fontWeight: 700, display: "block" }}>Monthly budget</span>
                   <span style={{ fontSize: "0.85rem", color: "var(--text-primary)" }}>
                     Edit every line — totals roll into net profit
-                    {airbnbZip.trim() ? ` · ZIP ${airbnbZip.trim()}` : ""}
                   </span>
                 </div>
                 <strong style={{ color: "white", whiteSpace: "nowrap" }}>{formatCurrency(airbnbExpenses)}</strong>
@@ -720,7 +697,6 @@ export const CalculatorSection: React.FC<CalculatorSectionProps> = ({
                   />
                   <p style={{ margin: "8px 0 2px", fontSize: "0.85rem", fontWeight: 700, color: "white" }}>
                     Monthly budget
-                    {airbnbZip.trim() ? ` · ZIP ${airbnbZip.trim()}` : ""}
                   </p>
                   {airbnbBudget.map((line) => (
                     <CalcLine

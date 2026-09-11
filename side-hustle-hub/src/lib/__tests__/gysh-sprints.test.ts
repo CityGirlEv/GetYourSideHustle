@@ -18,6 +18,7 @@ import {
   sprintStartTuesday,
   themeForSprint,
   weeklySyncForSprint,
+  listUpcomingSprints,
   sanitizeBacklogPlanOwners,
   sanitizeBacklogTaskAssignees,
   sanitizeBacklogTestAssignees,
@@ -52,10 +53,10 @@ describe("gysh-sprints", () => {
     expect(isSprintEndDay(1, new Date(2026, 6, 20))).toBe(false);
   });
 
-  it("includes weekly T + E sync on sprint Tuesday", () => {
+  it("includes weekly Tina & Evelyn sync on sprint Tuesday", () => {
     const s0 = getSprintWindow(0, ref);
     const meet = weeklySyncForSprint(s0);
-    expect(meet.title).toMatch(/T \+ E/);
+    expect(meet.title).toMatch(/Tina & Evelyn/);
     expect(meet.owner).toBe("Both");
     expect(meet.kind).toBe("meeting");
     expect(meet.date).toBe("2026-07-14");
@@ -77,26 +78,33 @@ describe("gysh-sprints", () => {
     expect(items.every((i) => i.sprint !== BACKLOG_SPRINT)).toBe(true);
     expect(items.some((i) => i.id === "bl-newsletter" && i.sprint === 1)).toBe(true);
     expect(items.some((i) => i.id === "bl-ai-brainstorm" && i.sprint === 4)).toBe(true);
+    expect(items.some((i) => i.id === "s6-senior-gmsh" && i.sprint === 6)).toBe(true);
+    expect(items.some((i) => i.id === "s10-next-horizon" && i.sprint === 10)).toBe(true);
     expect(items.some((i) => i.sprint === 0)).toBe(true);
   });
 
   it("exposes Sprint Goals for the schedule UI", () => {
-    expect(SPRINT_THEMES.length).toBeGreaterThanOrEqual(8);
+    expect(SPRINT_THEMES.length).toBe(11);
     expect(themeForSprint(0)?.goal).toBe("Infrastructure");
     expect(themeForSprint(1)?.goal).toMatch(/Brand|Content/i);
     expect(themeForSprint(2)?.goal).toMatch(/Soft Launch|Launch/i);
     expect(themeForSprint(4)?.goal).toMatch(/Kids|Growth/i);
     expect(themeForSprint(5)?.goal).toMatch(/Teen|Adult|GMSH/i);
+    expect(themeForSprint(6)?.goal).toMatch(/Senior/i);
+    expect(themeForSprint(8)?.goal).toMatch(/Workshop|conversion/i);
+    expect(themeForSprint(10)?.goal).toMatch(/horizon|Q4|Holiday/i);
   });
 
   it("lists a compact rollout schedule summary with soft launch + GMSH bands", async () => {
     const { listRolloutScheduleSummary } = await import("../gysh-sprints");
     const rows = listRolloutScheduleSummary(new Date(2026, 6, 16));
-    expect(rows).toHaveLength(8);
+    expect(rows).toHaveLength(11);
     expect(rows[2]!.focus).toMatch(/Soft launch/i);
     expect(rows[4]!.focus).toMatch(/Kids/i);
     expect(rows[5]!.focus).toMatch(/Teen|Adult/i);
     expect(rows[6]!.focus).toMatch(/Senior/i);
+    expect(rows[8]!.focus).toMatch(/Workshop/i);
+    expect(rows[10]!.focus).toMatch(/horizon|Q4|Holiday/i);
   });
 
   it("schedules standup 3x, planning day-before-end, and retrospective", () => {
@@ -122,6 +130,8 @@ describe("gysh-sprints", () => {
     expect(dueDateForSprint(3)).toBe("08/20/26");
     expect(dueDateIsoForSprint(3)).toBe("2026-08-20");
     expect(dueDateForSprint(4)).toBe("08/27/26");
+    expect(dueDateForSprint(6)).toBe("09/10/26");
+    expect(dueDateForSprint(10)).toBe("10/08/26");
     expect(dueDateForSprint(BACKLOG_SPRINT)).toBe("");
   });
 
@@ -132,6 +142,14 @@ describe("gysh-sprints", () => {
     expect(s3.numericRangeLabel).toBe("8/18/26–8/24/26");
     const s4 = getSprintWindow(4);
     expect(s4.numericRangeLabel).toBe("8/25/26–8/31/26");
+    const sprints = listUpcomingSprints();
+    expect(sprints.map((s) => s.numericRangeLabel)).toContain("9/1/26–9/7/26");
+    expect(sprints.map((s) => s.numericRangeLabel)).toContain("9/8/26–9/14/26");
+    expect(sprints.map((s) => s.numericRangeLabel)).toContain("10/6/26–10/12/26");
+    expect(sprints).toHaveLength(11);
+    expect(formatNumericDateRange(sprints[0]!.start, sprints[sprints.length - 1]!.end)).toMatch(
+      /^7\/14\/26–/,
+    );
     // Pause weeks (Aug 4 / Aug 11) map to Sprint 3 as the resume focus
     expect(currentSprintIndex(new Date(2026, 7, 5))).toBe(3);
     expect(currentSprintIndex(new Date(2026, 7, 12))).toBe(3);

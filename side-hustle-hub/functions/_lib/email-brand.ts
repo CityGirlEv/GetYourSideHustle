@@ -2,6 +2,11 @@
  * Branded GYSH email shell + membership perk copy for transactional mail.
  */
 
+import {
+  legalDisclaimerEmailInnerHtml,
+  legalDisclaimerPlainText,
+} from "../../src/lib/legal-disclaimer";
+
 export const ROOT_DOMAIN = "getyoursidehustle.com";
 export const SITE_NAME = "Get Your Side Hustle";
 export const SITE_URL = `https://${ROOT_DOMAIN}`;
@@ -55,22 +60,22 @@ const PERKS: Record<TierId, Record<PerkAudience, string[]>> = {
     senior: ["Senior lane preview", "Flexible Match Wizard pacing", "Interest-list updates"],
   },
   starter: {
-    adult: ["Full member guides", "GYSH Community", "Weekly Newsletter", "One 45-minute session with Tina & Evelyn"],
+    adult: ["Full member guides", "GYSH Community", "Weekly Newsletter", "Priority workshop access", "One 60-minute or two 30-minute sessions with Tina & Evelyn"],
     kids: ["Kids Team member guides", "Weekly Newsletter", "Training videos", "Kevina Glow Getter extras", "Piggy Bank challenges"],
     junior: ["Teens Team guides", "Weekly Newsletter", "Training videos", "CEO starter checklists", "My Bank goals"],
-    senior: ["Senior Side Hustle team", "Weekly Newsletter", "Peer learning circle", "One 45-minute session"],
+    senior: ["Senior Side Hustle team", "Weekly Newsletter", "Peer learning circle", "Priority workshop access", "One 60-minute or two 30-minute sessions"],
   },
   pro: {
-    adult: ["Hustle schedule suite", "Group training", "Three 60-minute sessions", "Family kid-credit pool"],
+    adult: ["Hustle schedule suite", "Two 60-minute sessions", "Family kid-credit pool"],
     kids: ["Craft hustle playbooks", "Make games with AI (parent nearby)", "Kids schedule & tracker", "Workshop discounts"],
     junior: ["AI game + content starters", "Teens schedule suite", "Workshop invites", "Earn · save · reinvest tools"],
-    senior: ["Flexible hustle schedule", "Progress reports", "Three 60-minute sessions", "Workshop member seats"],
+    senior: ["Flexible hustle schedule", "Progress reports", "Two 60-minute sessions", "Workshop member seats"],
   },
   elite: {
-    adult: ["Three 90-minute sessions", "ZipCode timing scout", "Priority support", "Highest credit pool"],
+    adult: ["Three 60-minute sessions", "Entry to all workshops (2 seats)", "Priority support", "Highest credit pool"],
     kids: ["Max kid credits", "Priority family support", "All Pro kids perks"],
     junior: ["Max teen credits", "Priority support", "All Pro teens perks"],
-    senior: ["Three 90-minute sessions", "ZipCode timing scout", "Priority senior support"],
+    senior: ["Three 60-minute sessions", "Entry to all workshops (2 seats)", "Priority senior support"],
   },
 };
 
@@ -181,13 +186,9 @@ export function wrapBrandedEmail(parts: BrandedEmailParts): { html: string; text
                 &nbsp;·&nbsp;
                 <a href="mailto:${ADMIN_EMAIL}" style="color:#9B2F28;text-decoration:underline;">${ADMIN_EMAIL}</a>
               </p>
-              <p style="margin:10px 0 0;font-family:Helvetica,Arial,sans-serif;font-size:11px;line-height:1.5;color:#8a7a68;max-width:440px;">
-                <strong style="color:#6b5344;">Your hustle, your results.</strong>
-                Income examples and workshop takeaways are educational only — not guarantees.
-                ${escapeHtml(SITE_NAME)} does not provide financial, legal, tax, or investment advice.
-              </p>
+              ${legalDisclaimerEmailInnerHtml()}
               <p style="margin:12px 0 0;font-family:Helvetica,Arial,sans-serif;font-size:11px;color:#b09a7e;">
-                Â© ${year} ${escapeHtml(SITE_NAME)}. All rights reserved.
+                © ${year} ${escapeHtml(SITE_NAME)}. All rights reserved.
                 &nbsp;·&nbsp;
                 <a href="${MUNTIES_URL}" target="_blank" rel="noopener noreferrer" style="color:#947d64;text-decoration:underline;">Powered by Muntie&apos;s AI Agents</a>
               </p>
@@ -254,7 +255,8 @@ export function wrapBrandedEmail(parts: BrandedEmailParts): { html: string; text
     `Facebook: ${FACEBOOK_URL}`,
     `Email: ${ADMIN_EMAIL}`,
     `Powered by Muntie's AI Agents: ${MUNTIES_URL}`,
-    `Â© ${year} ${SITE_NAME}`,
+    legalDisclaimerPlainText(),
+    `© ${year} ${SITE_NAME}`,
   ]
     .filter((line) => line !== undefined && line !== null)
     .join("\n");

@@ -1,6 +1,7 @@
 import type { jsPDF } from "jspdf";
 /** Cream-panel logo — plate color must match header fill so the mark reads transparent. */
 import gyshLogoUrl from "../assets/gysh-logo-pdf.png";
+import { legalDisclaimerPdfParagraphs } from "./legal-disclaimer";
 import {
   ADMIN_EMAIL,
   FACEBOOK_HANDLE,
@@ -31,9 +32,12 @@ const HEADER_PAD_TOP = 14;
 const HEADER_PAD_BOTTOM = 12;
 export const PDF_HEADER_BAND = HEADER_PAD_TOP + PDF_LOGO_H + HEADER_PAD_BOTTOM; // 74
 
-/** Tall footer band — keeps page numbers off the page edge. */
-export const PDF_FOOTER_BAND = 36;
-export const PDF_FOOTER_BASELINE = PDF_PAGE_H - 16;
+/**
+ * Tall footer band — legal disclaimer + website/updated + page numbers.
+ * Keep page chrome off the printable edge.
+ */
+export const PDF_FOOTER_BAND = 78;
+export const PDF_FOOTER_BASELINE = PDF_PAGE_H - 14;
 /** Breathing room under the header separator before any body content. */
 export const PDF_CONTENT_TOP = PDF_HEADER_BAND + 28;
 export const PDF_CONTENT_BOTTOM = PDF_PAGE_H - PDF_FOOTER_BAND - 10;
@@ -326,6 +330,27 @@ function drawFooterChrome(doc: jsPDF) {
   doc.setDrawColor(...PDF_BRAND_COLORS.line);
   doc.setLineWidth(0.5);
   doc.line(PDF_MARGIN, PDF_PAGE_H - PDF_FOOTER_BAND, PDF_PAGE_W - PDF_MARGIN, PDF_PAGE_H - PDF_FOOTER_BAND);
+}
+
+/** Legal disclaimer block in the PDF footer (every printable page). */
+export function drawPdfLegalDisclaimer(doc: jsPDF): void {
+  const [para1, para2] = legalDisclaimerPdfParagraphs();
+  const top = PDF_PAGE_H - PDF_FOOTER_BAND + 9;
+  const maxW = PDF_CONTENT_W;
+  const lineH = 7.2;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(6.2);
+  doc.setTextColor(...PDF_BRAND_COLORS.muted);
+  let y = top;
+  for (const para of [para1, para2]) {
+    const lines = doc.splitTextToSize(para, maxW) as string[];
+    for (const line of lines) {
+      if (y > PDF_FOOTER_BASELINE - 10) break;
+      doc.text(line, PDF_MARGIN, y);
+      y += lineH;
+    }
+    y += 2;
+  }
 }
 
 export function drawPdfPageChrome(doc: jsPDF) {

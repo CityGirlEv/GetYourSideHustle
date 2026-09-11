@@ -1,6 +1,11 @@
 import type { BlueprintAgeGroup } from "./gysh-analytics";
 import { getLocalStore } from "./browser-storage";
-import { postPendingBlueprint } from "./blueprints-api";
+import {
+  claimBlueprint,
+  listSavedBlueprints,
+  postPendingBlueprint,
+  saveBlueprintToAccount,
+} from "./blueprints-api";
 
 export const PENDING_BLUEPRINT_KEY = "gysh_pending_blueprint_v1";
 export const PENDING_BLUEPRINT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -85,4 +90,74 @@ export function peekPendingBlueprintFor(ageGroup: BlueprintAgeGroup): PendingBlu
   const pending = readPendingBlueprint();
   if (!pending || pending.ageGroup !== ageGroup) return null;
   return pending;
+}
+
+/** Fields to send on /auth/register so the finished Match Wizard lands on the new profile. */
+export function pendingWizardRegisterPayload(pending: PendingBlueprint | null): {
+  claimToken?: string;
+  pendingBlueprint?: {
+    ageGroup: BlueprintAgeGroup;
+    answers: Record<string, unknown>;
+    resultIds: string[];
+    resultPcts: Record<string, number>;
+  };
+} {
+  if (!pending?.resultIds?.length) return {};
+  return {
+    ...(pending.claimToken ? { claimToken: pending.claimToken } : {}),
+    pendingBlueprint: {
+      ageGroup: pending.ageGroup,
+      answers: pending.answers,
+      resultIds: pending.resultIds,
+      resultPcts: pending.resultPcts ?? {},
+    },
+  };
+}
+
+/** After login (session token present): claim or POST the local pending wizard. */
+export async function attachPendingWizardToAccount(
+  childProfileId?: string | null,
+): Promise<boolean> {
+  const pending = readPendingBlueprint();
+  if (!pending?.resultIds?.length) return false;
+  try {
+    try {
+      const existing = await listSavedBlueprints();
+      const already = existing.some(
+        (bp) =>
+          bp.ageGroup === pending.ageGroup &&
+          JSON.stringify(bp.resultIds) === JSON.stringify(pending.resultIds),
+      );
+      if (already) {
+        clearPendingBlueprint();
+        return true;
+      }
+    } catch {
+      /* no session yet — try claim/save below */
+    }
+    if (pending.claimToken) {
+      try {
+        await claimBlueprint(pending.claimToken, childProfileId ?? null);
+        clearPendingBlueprint();
+        return true;
+      } catch {
+        /* fall through to a direct save */
+      }
+    }
+    const saved = await saveBlueprintToAccount({
+      ageGroup: pending.ageGroup,
+      answers: pending.answers,
+      resultIds: pending.resultIds,
+      resultPcts: pending.resultPcts,
+      childProfileId: childProfileId ?? null,
+      claimToken: pending.claimToken,
+    });
+    if (saved) {
+      clearPendingBlueprint();
+      return true;
+    }
+  } catch {
+    return false;
+  }
+  return false;
 }

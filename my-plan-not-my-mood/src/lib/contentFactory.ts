@@ -34,9 +34,25 @@ export const CONTENT_FACTORY_STATUS_KEY = 'myplan_cf_item_status_v1';
 export const CONTENT_FACTORY_EDITS_KEY = 'myplan_cf_item_edits_v1';
 export const CONTENT_FACTORY_EDIT_MAX_CHARS = 8000;
 
-export const CF_EDIT_FIELDS = ['copy', 'imagePrompt', 'videoPrompt'] as const;
+export const CF_EDIT_FIELDS = [
+  'title',
+  'copy',
+  'imagePrompt',
+  'videoPrompt',
+  'visualPrompt',
+  'assetHint',
+  'visualSrc',
+  'taskId',
+  'assignee',
+  'channel',
+  'kind',
+  'postTime',
+  'dateIso',
+] as const;
 export type ContentFactoryEditField = (typeof CF_EDIT_FIELDS)[number];
 export type ContentFactoryItemEdit = Partial<Record<ContentFactoryEditField, string>>;
+
+export const CF_ASSIGNEE_OPTIONS: WorkAssignee[] = ['angela', 'evelyn', 'dev', 'qa', 'unassigned'];
 
 export const CF_CHANNELS = ['facebook', 'youtube', 'tiktok', 'personal', 'website'] as const;
 export type CfChannel = (typeof CF_CHANNELS)[number];
@@ -85,9 +101,12 @@ export const CF_KIND_TONES: Record<CfKind, { bar: string; chip: string }> = {
   logo: { bar: 'border-l-[6px] border-l-[#BE185D]', chip: 'bg-[#FCE7F3] text-[#9D174D]' },
 };
 
-export const CF_ASSIGNEE_CHIPS: Record<'angela' | 'evelyn', string> = {
+export const CF_ASSIGNEE_CHIPS: Partial<Record<WorkAssignee, string>> = {
   angela: 'bg-[#FFEDD5] text-[#C2410C] border-[#FDBA74]',
   evelyn: 'bg-[#D1FAE5] text-[#047857] border-[#6EE7B7]',
+  dev: 'bg-[#DBEAFE] text-[#1D4ED8] border-[#93C5FD]',
+  qa: 'bg-[#F3E8FF] text-[#6B21A8] border-[#D8B4FE]',
+  unassigned: 'bg-[#F5F5F4] text-[#57534E] border-[#D6D3D1]',
 };
 
 export const CF_DEFAULT_POST_TIME = '7:00 PM CT';
@@ -1179,6 +1198,50 @@ function clipContentFactoryEdit(value: unknown): string | undefined {
   return value.slice(0, CONTENT_FACTORY_EDIT_MAX_CHARS);
 }
 
+export function isCfDateIso(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T12:00:00`);
+  return !Number.isNaN(date.getTime());
+}
+
+export function isCfAssignee(value: string): value is WorkAssignee {
+  return (CF_ASSIGNEE_OPTIONS as readonly string[]).includes(value);
+}
+
+export function isCfChannel(value: string): value is CfChannel {
+  return (CF_CHANNELS as readonly string[]).includes(value);
+}
+
+export function isCfKind(value: string): value is CfKind {
+  return (CF_KINDS as readonly string[]).includes(value);
+}
+
+export function scheduleContentFactoryFromDate(dateIso: string): Pick<
+  ContentFactoryItem,
+  'dateIso' | 'weekday' | 'sprint' | 'sprintId'
+> {
+  const placed = sprintPlacementForIso(dateIso);
+  return {
+    dateIso,
+    weekday: asCfWeekday(weekdayShortFromIso(dateIso)),
+    sprint: placed.label as SprintCategory,
+    sprintId: placed.id,
+  };
+}
+
+function parseContentFactoryEditField(
+  field: ContentFactoryEditField,
+  value: unknown,
+): string | undefined {
+  const clipped = clipContentFactoryEdit(value);
+  if (clipped === undefined) return undefined;
+  if (field === 'assignee') return isCfAssignee(clipped) ? clipped : undefined;
+  if (field === 'channel') return isCfChannel(clipped) ? clipped : undefined;
+  if (field === 'kind') return isCfKind(clipped) ? clipped : undefined;
+  if (field === 'dateIso') return isCfDateIso(clipped) ? clipped : undefined;
+  return clipped;
+}
+
 export function parseContentFactoryEdits(raw: unknown): Record<string, ContentFactoryItemEdit> {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
   const next: Record<string, ContentFactoryItemEdit> = {};
@@ -1186,8 +1249,8 @@ export function parseContentFactoryEdits(raw: unknown): Record<string, ContentFa
     if (!id.trim() || !row || typeof row !== 'object' || Array.isArray(row)) continue;
     const edit: ContentFactoryItemEdit = {};
     for (const field of CF_EDIT_FIELDS) {
-      const clipped = clipContentFactoryEdit((row as Record<string, unknown>)[field]);
-      if (clipped !== undefined) edit[field] = clipped;
+      const parsed = parseContentFactoryEditField(field, (row as Record<string, unknown>)[field]);
+      if (parsed !== undefined) edit[field] = parsed;
     }
     if (Object.keys(edit).length > 0) next[id] = edit;
   }
@@ -1195,20 +1258,25 @@ export function parseContentFactoryEdits(raw: unknown): Record<string, ContentFa
 }
 
 export function seedValueForContentFactoryEdit(
-  item: Pick<ContentFactoryItem, 'copy' | 'imagePrompt' | 'videoPrompt'>,
+  item: ContentFactoryItem,
   field: ContentFactoryEditField,
 ): string {
   if (field === 'videoPrompt') return item.videoPrompt ?? '';
-  return item[field];
+  if (field === 'visualSrc') return item.visualSrc ?? '';
+  if (field === 'taskId') return item.taskId ?? '';
+  return String(item[field] ?? '');
 }
 
 export function setContentFactoryItemField(
   edits: Record<string, ContentFactoryItemEdit>,
-  item: Pick<ContentFactoryItem, 'id' | 'copy' | 'imagePrompt' | 'videoPrompt'>,
+  item: ContentFactoryItem,
   field: ContentFactoryEditField,
   value: string,
 ): Record<string, ContentFactoryItemEdit> {
-  const clipped = value.slice(0, CONTENT_FACTORY_EDIT_MAX_CHARS);
+  const parsed = parseContentFactoryEditField(field, value.slice(0, CONTENT_FACTORY_EDIT_MAX_CHARS));
+  const clipped = parsed ?? (field === 'assignee' || field === 'channel' || field === 'kind' || field === 'dateIso'
+    ? seedValueForContentFactoryEdit(item, field)
+    : value.slice(0, CONTENT_FACTORY_EDIT_MAX_CHARS));
   const current = { ...(edits[item.id] ?? {}) };
   if (clipped === seedValueForContentFactoryEdit(item, field)) delete current[field];
   else current[field] = clipped;
@@ -1228,6 +1296,49 @@ export function clearContentFactoryItemEdit(
   return next;
 }
 
+export function clearContentFactoryStatus(
+  statusById: Record<string, TaskStatus>,
+  id: string,
+): Record<string, TaskStatus> {
+  if (!(id in statusById)) return statusById;
+  const next = { ...statusById };
+  delete next[id];
+  return next;
+}
+
+export function contentFactoryHasItemEdits(
+  edits: Record<string, ContentFactoryItemEdit>,
+  id: string,
+): boolean {
+  return Object.keys(edits[id] ?? {}).length > 0;
+}
+
+export function applyContentFactoryItemEdit(
+  item: ContentFactoryItem,
+  edit: ContentFactoryItemEdit,
+): ContentFactoryItem {
+  let next: ContentFactoryItem = { ...item };
+  if (edit.title !== undefined) next.title = edit.title;
+  if (edit.copy !== undefined) next.copy = edit.copy;
+  if (edit.imagePrompt !== undefined) next.imagePrompt = edit.imagePrompt;
+  if (edit.visualPrompt !== undefined) next.visualPrompt = edit.visualPrompt;
+  if (edit.assetHint !== undefined) next.assetHint = edit.assetHint;
+  if (edit.postTime !== undefined) next.postTime = edit.postTime;
+  if (edit.videoPrompt !== undefined) next.videoPrompt = edit.videoPrompt.trim() ? edit.videoPrompt : undefined;
+  if (edit.visualSrc !== undefined) next.visualSrc = edit.visualSrc.trim() ? edit.visualSrc : undefined;
+  if (edit.taskId !== undefined) next.taskId = edit.taskId.trim() ? edit.taskId : undefined;
+  if (edit.assignee !== undefined && isCfAssignee(edit.assignee)) next.assignee = edit.assignee;
+  if (edit.channel !== undefined && isCfChannel(edit.channel)) next.channel = edit.channel;
+  if (edit.kind !== undefined && isCfKind(edit.kind)) next.kind = edit.kind;
+  if (edit.dateIso !== undefined && isCfDateIso(edit.dateIso)) {
+    next = { ...next, ...scheduleContentFactoryFromDate(edit.dateIso) };
+  }
+  if (next.kind === 'post' && edit.copy !== undefined) {
+    next.copy = ensureShopLinkInCopy(next.copy);
+  }
+  return next;
+}
+
 export function overlayContentFactoryEdits(
   items: ContentFactoryItem[],
   edits: Record<string, ContentFactoryItemEdit> = {},
@@ -1235,16 +1346,7 @@ export function overlayContentFactoryEdits(
   return items.map((item) => {
     const edit = edits[item.id];
     if (!edit) return item;
-    const copy = edit.copy !== undefined ? edit.copy : item.copy;
-    const imagePrompt = edit.imagePrompt !== undefined ? edit.imagePrompt : item.imagePrompt;
-    const videoPrompt =
-      edit.videoPrompt !== undefined
-        ? edit.videoPrompt.trim()
-          ? edit.videoPrompt
-          : undefined
-        : item.videoPrompt;
-    if (copy === item.copy && imagePrompt === item.imagePrompt && videoPrompt === item.videoPrompt) return item;
-    return { ...item, copy, imagePrompt, videoPrompt };
+    return applyContentFactoryItemEdit(item, edit);
   });
 }
 

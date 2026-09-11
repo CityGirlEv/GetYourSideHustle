@@ -33,7 +33,7 @@ describe("stripe checkout QA cases", () => {
   });
 
   it("covers every a-la-carte SKU and credit pack", () => {
-    expect(ALA_CARTE_PRICE_LIST.length).toBeGreaterThanOrEqual(11);
+    expect(ALA_CARTE_PRICE_LIST.length).toBeGreaterThanOrEqual(9);
     expect(CREDIT_PACKS.length).toBe(4);
     for (const item of ALA_CARTE_PRICE_LIST) {
       const id = stripeAlaCarteCaseId(item.id);

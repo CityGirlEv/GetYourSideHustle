@@ -98,6 +98,16 @@ export const EMAIL_TEMPLATE_REVIEW_CATALOG = [
     description: "Notice when a member upgrades to a higher paid plan.",
   },
   {
+    slug: "alacarte_purchased",
+    name: "A la carte purchase",
+    description: "Confirmation after a-la-carte checkout (Stripe, GYSH credits, or mixed).",
+  },
+  {
+    slug: "credit_pack_purchased",
+    name: "Kid Credit pack purchase",
+    description: "Confirmation after a parent-funded Kid Credit pack purchase (Stripe cash).",
+  },
+  {
     slug: "password_reset",
     name: "Password reset link",
     description: "Forgot-password email with one-time reset link.",
@@ -186,6 +196,7 @@ export const EMAIL_TEMPLATE_REVIEW_CASES: TestCase[] = EMAIL_TEMPLATE_REVIEW_CAT
       `Confirm description matches intent: ${tpl.description}`,
       "Review subject, preheader, eyebrow, headline, subhead, body, CTA label/URL, and footer for brand voice, clarity, and typos",
       "Confirm live preview looks branded and readable on a phone-width window",
+      "Confirm the footer legal disclaimer (“Your hustle, your results.”) is present — all templates share this footer",
       "Optional: Send test to a mailbox you control and confirm inbox content matches the preview",
       "Note any copy or layout issues in the Testing Portal note, then set Pass / Conditional / Fail",
     ],

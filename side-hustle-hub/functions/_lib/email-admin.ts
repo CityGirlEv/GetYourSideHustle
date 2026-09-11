@@ -12,6 +12,8 @@ import {
   applyContentVars,
   defaultContentForSlug,
   EMAIL_TEMPLATE_CATALOG,
+  isLegacyHustleFamilyHeadline,
+  isLegacyLowercaseGyshWelcomeHeadline,
   PREVIEW_SAMPLE_VARS,
   renderContent,
   type EmailTemplateContent,
@@ -123,8 +125,8 @@ async function seedCatalogRows(env: Env): Promise<void> {
   // One read of existing rows — avoid per-slug INSERT+SELECT on every list (remote D1 is ~2–4s each).
   const existing = await withD1Retry(() =>
     env.DB.prepare(
-      `SELECT slug, content_seeded, body_html FROM email_templates`,
-    ).all<{ slug: string; content_seeded: number; body_html: string }>(),
+      `SELECT slug, content_seeded, body_html, headline FROM email_templates`,
+    ).all<{ slug: string; content_seeded: number; body_html: string; headline: string }>(),
   );
   const bySlug = new Map((existing.results ?? []).map((r) => [r.slug, r]));
 
@@ -195,6 +197,23 @@ async function seedCatalogRows(env: Env): Promise<void> {
       await withD1Retry(() =>
         env.DB.prepare(`UPDATE email_templates SET body_html = ? WHERE slug = ?`)
           .bind(defaults.bodyHtml, t.slug)
+          .run(),
+      );
+    }
+    if (isLegacyHustleFamilyHeadline(row.headline) && defaults.headline === "Welcome to the GYSH family!") {
+      await withD1Retry(() =>
+        env.DB.prepare(`UPDATE email_templates SET headline = ? WHERE slug = ?`)
+          .bind(defaults.headline, t.slug)
+          .run(),
+      );
+    }
+    if (
+      isLegacyLowercaseGyshWelcomeHeadline(row.headline) &&
+      defaults.headline === "{{name}}, Welcome to the GYSH family!"
+    ) {
+      await withD1Retry(() =>
+        env.DB.prepare(`UPDATE email_templates SET headline = ? WHERE slug = ?`)
+          .bind(defaults.headline, t.slug)
           .run(),
       );
     }

@@ -591,7 +591,7 @@ export function QaProgressBars({
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
         >
-          <span className="qa-progress-bars__toggle-title">{title}</span>
+          <span className="qa-progress-bars__toggle-title qa-heading-title-case">{title}</span>
           <span className="qa-progress-bars__toggle-summary">{summary}</span>
         </button>
         <ShowHideToggle open={open} onOpenChange={setOpen} label={title} />

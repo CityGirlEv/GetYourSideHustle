@@ -8,6 +8,7 @@ import {
   Unlock,
 } from "lucide-react";
 import type { BlueprintAgeGroup } from "../lib/gysh-analytics";
+import { visibleBlueprintMatches } from "../lib/free-member-session";
 
 export type BlueprintMatchCard = {
   id: string;
@@ -37,9 +38,6 @@ type SideHustleBlueprintResultsProps = {
   /** How-scoring / safety blocks already rendered by parent. */
   children?: React.ReactNode;
 };
-
-const LOCKED_COUNT_MIN = 3;
-const LOCKED_COUNT_MAX = 5;
 
 function blueprintTitle(ageGroup: BlueprintAgeGroup): string {
   if (ageGroup === "junior") return "Teens Side Hustle Blueprint";
@@ -74,23 +72,7 @@ export function SideHustleBlueprintResults({
   extraActions,
   children,
 }: SideHustleBlueprintResultsProps) {
-  const top = matches[0];
-  const lockedPool = matches.slice(1);
-  const lockedCount = Math.min(
-    LOCKED_COUNT_MAX,
-    Math.max(LOCKED_COUNT_MIN, lockedPool.length || LOCKED_COUNT_MIN),
-  );
-  const lockedMatches = unlocked
-    ? []
-    : lockedPool.slice(0, lockedCount).length > 0
-      ? lockedPool.slice(0, lockedCount)
-      : Array.from({ length: Math.min(3, lockedCount) }, (_, i) => ({
-          id: `locked-placeholder-${i}`,
-          title: "Personalized Side Hustle match",
-          description: "",
-        }));
-
-  const fullMatches = unlocked ? matches : top ? [top] : [];
+  const fullMatches = visibleBlueprintMatches(matches, unlocked);
 
   return (
     <div
@@ -108,10 +90,14 @@ export function SideHustleBlueprintResults({
         </h2>
         <p className="side-hustle-blueprint-lead" data-testid="blueprint-lead">
           {unlocked
-            ? `Here is your complete ${blueprintTitle(ageGroup)} — ranked Side Hustle ideas based on your answers.`
-            : "We found personalized Side Hustle ideas based on your answers. Here is your top match. Create a free account to unlock the complete Blueprint and save your progress."}
+            ? `Here is your complete ${blueprintTitle(ageGroup)} — Free Membership Side Hustles first, then higher match %.`
+            : "Your ranked Side Hustle matches are ready. Create a free GYSH account (or sign in) to unlock them — guests cannot see results."}
         </p>
-        {!unlocked && (
+        {unlocked ? (
+          <p className="side-hustle-blueprint-sublead" data-testid="blueprint-ranking-note">
+            Free first so you can start today. Match % is how well each idea fits your answers — the highest % may be Starter, Pro, or Elite, and that can still be your best long-term fit.
+          </p>
+        ) : (
           <p className="side-hustle-blueprint-sublead">
             We found Side Hustle ideas that match your interests, skills, schedule, and goals.
           </p>
@@ -230,10 +216,10 @@ export function SideHustleBlueprintResults({
               <p className="side-hustle-blueprint-unlock-banner-text">
                 <strong>
                   <Lock size={18} aria-hidden />
-                  More matches are locked below
+                  Your matches are locked
                 </strong>
                 <span className="side-hustle-blueprint-unlock-banner-sub">
-                  Unlock your full Side Hustle Blueprint to see them
+                  Sign up for a free plan (or higher) to see your ranked Side Hustle Blueprint
                 </span>
               </p>
               <button
@@ -293,28 +279,6 @@ export function SideHustleBlueprintResults({
             <p className="side-hustle-blueprint-reassure">Free account. No credit card required.</p>
           </section>
         )}
-
-        {!unlocked &&
-          lockedMatches.map((row, index) => (
-            <article
-              key={row.id}
-              className="quiz-result-card glass-card side-hustle-blueprint-card is-locked"
-              data-testid={`blueprint-locked-${index}`}
-              aria-label={`Locked Side Hustle match ${index + 2}`}
-            >
-              <div className="side-hustle-blueprint-lock-overlay" aria-hidden="true">
-                <Lock size={22} />
-              </div>
-              <div className="quiz-result-header side-hustle-blueprint-locked-head">
-                <h3>
-                  {index + 2}. {row.title}
-                </h3>
-              </div>
-              <p className="side-hustle-blueprint-locked-blur">
-                Unlock your free account to see why this Side Hustle fits and how to get started.
-              </p>
-            </article>
-          ))}
       </div>
 
       {unlocked && (

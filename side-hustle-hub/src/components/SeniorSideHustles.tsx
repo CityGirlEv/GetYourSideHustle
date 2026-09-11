@@ -17,7 +17,8 @@ import {
 import {
   SENIOR_AUDIENCE_LABEL,
   SENIOR_INTRO,
-  SENIOR_OPPORTUNITIES,
+  SENIOR_OPPORTUNITIES_EXPANDED as SENIOR_OPPORTUNITIES,
+  isSeniorGuideFree,
   orderedSeniorGuides,
   type SeniorGuideTeaser,
   type SeniorOpportunity,
@@ -28,13 +29,14 @@ import {
 } from "../lib/seniors-content";
 import {
   COMING_SOON_NOT_UNLOCKED_NOTE,
-  guideTierBadgeLabel,
   guideTierMembershipNote,
   resolveGuideAccess,
   seniorGuideMinTier,
 } from "../lib/guide-access";
+import { guideNumberParenthetical } from "../lib/guide-numbers";
 import { JoinToUnlockCta } from "./JoinToUnlockCta";
-import { MembershipLockBadge } from "./MembershipLockBadge";
+import { GuideMembershipBadges } from "./GuideMembershipBadges";
+import { OpenGuideButton } from "./OpenGuideButton";
 import { trackGyshEvent } from "../lib/gysh-analytics";
 import { hasBlueprintAccess } from "../lib/free-member-session";
 import {
@@ -45,6 +47,11 @@ import {
 import { saveBlueprintToAccount } from "../lib/blueprints-api";
 import { SideHustleBlueprintResults } from "./SideHustleBlueprintResults";
 import { WizardStartHereBanner } from "./WizardStartHereBanner";
+import {
+  relativeMatchPct,
+  sortWizardByMatchScore,
+  wizardMatchTierLabel,
+} from "../lib/wizard-result-order";
 import seniorSideHustleHero from "../assets/senior-side-hustle-hero.png";
 import seniorSideHustleIdeasHero from "../assets/senior-side-hustle-ideas-hero.png";
 import seniorGuidesHero from "../assets/senior-guides-hero.png";
@@ -82,25 +89,31 @@ function SeniorGuideCard({
     : minTier === "free"
       ? "preview"
       : "live";
+  const numberParen = guideNumberParenthetical(guide.id);
 
   return (
     <article className="glass seniors-guide-card" data-testid={`seniors-guide-card-${guide.id}`}>
       <div className="seniors-guide-card-top">
         <Sparkles size={20} style={{ color: "var(--bronze)" }} aria-hidden="true" />
-        <div className="free-guide-card-badges">
-          <span className={`seniors-guide-badge seniors-guide-badge--${badgeClass}`}>
-            {comingSoon ? "Coming soon" : guideTierBadgeLabel(minTier)}
-          </span>
-          {!comingSoon ? (
-            <MembershipLockBadge
-              minTier={minTier}
-              unlocked={access.unlocked}
-              data-testid={`guide-lock-badge-${guide.id}`}
-            />
-          ) : null}
+        <div className="free-guide-card-title-block">
+          <div className="free-guide-card-badges">
+            {comingSoon ? (
+              <span className={`seniors-guide-badge seniors-guide-badge--${badgeClass}`}>Coming soon</span>
+            ) : (
+              <GuideMembershipBadges minTier={minTier} data-testid={`guide-memberships-${guide.id}`} />
+            )}
+          </div>
         </div>
       </div>
-      <h3>{guide.title}</h3>
+      <h3 className="free-guide-card-title">
+        <span className="free-guide-card-title-text">{guide.title}</span>
+        {numberParen ? (
+          <span className="free-guide-number" data-testid={`guide-number-${guide.id}`}>
+            {" "}
+            {numberParen}
+          </span>
+        ) : null}
+      </h3>
       {comingSoon ? (
         <p className="seniors-guide-tier-note">{COMING_SOON_NOT_UNLOCKED_NOTE}</p>
       ) : (
@@ -108,13 +121,13 @@ function SeniorGuideCard({
       )}
       <p>{guide.blurb}</p>
       {comingSoon ? null : canOpen ? (
-        <button
-          type="button"
-          className="glow-chip-btn seniors-guide-open-btn"
+        <OpenGuideButton
+          minTier={minTier}
+          className="seniors-guide-open-btn"
           onClick={() => onOpenLaunchGuide!(guide.launchGuideId!)}
         >
-          Open guide <ArrowRight size={16} aria-hidden />
-        </button>
+          <ArrowRight size={16} aria-hidden />
+        </OpenGuideButton>
       ) : (
         <div className="seniors-guide-lock">
           <JoinToUnlockCta access={access} onJoin={onJoinCta} onUpgrade={onJoinCta} />
@@ -158,13 +171,11 @@ type SeniorSideHustlesProps = {
   entryTab?: SeniorTab | null;
 };
 
-type MatchTier = "Best match" | "Strong match" | "Good fit";
-
 type ScoredMatch = {
   hustle: SeniorOpportunity;
   score: number;
   pct: number;
-  tier: MatchTier;
+  tier: string;
 };
 
 type SingleKey = "lifestyle" | "availability";
@@ -188,12 +199,6 @@ const GOAL_LABELS: Record<string, string> = {
   social: "Stay social & active",
   learn: "Keep learning",
 };
-
-function tierForRank(index: number, pct: number): MatchTier {
-  if (index === 0) return "Best match";
-  if (pct >= 70 || index === 1) return "Strong match";
-  return "Good fit";
-}
 
 function SeniorMatchFinder({
   onBrowseOpportunities,
@@ -239,12 +244,18 @@ function SeniorMatchFinder({
     const scored = SENIOR_OPPORTUNITIES.map((hustle) => ({
       hustle,
       score: scoreSeniorMatch(hustle.id, restored),
+      id: hustle.id,
     }));
-    scored.sort((a, b) => b.score - a.score);
-    const maxScore = Math.max(scored[0]?.score ?? 1, 1);
-    const results: ScoredMatch[] = scored.slice(0, 5).map((row, index) => {
-      const pct = Math.round((row.score / maxScore) * 100);
-      return { ...row, pct, tier: tierForRank(index, pct) };
+    const maxScore = Math.max(...scored.map((r) => r.score), 1);
+    const ordered = sortWizardByMatchScore(scored);
+    const results: ScoredMatch[] = ordered.slice(0, 5).map((row, index) => {
+      const pct = relativeMatchPct(row.score, maxScore);
+      return {
+        hustle: row.hustle,
+        score: row.score,
+        pct,
+        tier: wizardMatchTierLabel(index, pct, row.id),
+      };
     });
     setRankedResults(results);
     trackGyshEvent("blueprint_unlocked", { age_group: "senior", match_count: results.length });
@@ -367,12 +378,18 @@ function SeniorMatchFinder({
     const scored = SENIOR_OPPORTUNITIES.map((hustle) => ({
       hustle,
       score: scoreSeniorMatch(hustle.id, answers),
+      id: hustle.id,
     }));
-    scored.sort((a, b) => b.score - a.score);
-    const maxScore = Math.max(scored[0]?.score ?? 1, 1);
-    const results: ScoredMatch[] = scored.slice(0, 5).map((row, index) => {
-      const pct = Math.round((row.score / maxScore) * 100);
-      return { ...row, pct, tier: tierForRank(index, pct) };
+    const maxScore = Math.max(...scored.map((r) => r.score), 1);
+    const ordered = sortWizardByMatchScore(scored);
+    const results: ScoredMatch[] = ordered.slice(0, 5).map((row, index) => {
+      const pct = relativeMatchPct(row.score, maxScore);
+      return {
+        hustle: row.hustle,
+        score: row.score,
+        pct,
+        tier: wizardMatchTierLabel(index, pct, row.id),
+      };
     });
     setRankedResults(results);
     void savePendingBlueprintAsync({
@@ -700,9 +717,11 @@ export function SeniorSideHustles({
   const sideIdeas = SENIOR_OPPORTUNITIES.slice(0, 3);
   const belowIdeas = SENIOR_OPPORTUNITIES.slice(3);
   const seniorGuides = orderedSeniorGuides();
-  const sideGuides = seniorGuides.slice(0, 3);
-  const belowGuides = seniorGuides.slice(3);
-  const isGuideMember = !previewAsGuest && (isLoggedIn || interested);
+  const freeGuides = seniorGuides.filter((g) => isSeniorGuideFree(g));
+  const memberGuides = seniorGuides.filter((g) => !isSeniorGuideFree(g));
+  const sideGuides = freeGuides;
+  const belowGuides = memberGuides;
+  const isGuideMember = !previewAsGuest && isLoggedIn;
   const effectiveGuideTier = membershipTier ?? (isGuideMember ? "free" : null);
 
   useEffect(() => {
@@ -715,7 +734,7 @@ export function SeniorSideHustles({
   };
 
   return (
-    <div className="seniors-stage" data-testid="seniors-page">
+    <div className={`seniors-stage${tab === "match" ? " seniors-stage--match" : ""}`} data-testid="seniors-page">
       <div className="seniors-lead">
         <div className="seniors-lead-top">
           <span className="flat-label flat-label--accent">{SENIOR_AUDIENCE_LABEL}</span>
@@ -811,7 +830,8 @@ export function SeniorSideHustles({
               src={seniorGuidesHero}
               alt="Get Your Side Hustle Senior Guides — smart, flexible side hustles for seniors who want extra income, purpose, and freedom on your terms."
             />
-            <div className="seniors-guides-side" aria-label="Senior guides beside banner">
+            <div className="seniors-guides-side" aria-label="Free with Free Membership">
+              <h3 className="seniors-guides-section-title">Free with Free Membership</h3>
               {sideGuides.map((g) => (
                 <SeniorGuideCard
                   key={g.id}
@@ -823,7 +843,10 @@ export function SeniorSideHustles({
                 />
               ))}
             </div>
-            <div className="seniors-guides-below" aria-label="More senior guides">
+            <div className="seniors-guides-below" aria-label="Starter, Pro and Elite guides">
+              <h3 className="seniors-guides-section-title seniors-guides-section-title--below">
+                Starter, Pro &amp; Elite guides
+              </h3>
               {belowGuides.map((g) => (
                 <SeniorGuideCard
                   key={g.id}

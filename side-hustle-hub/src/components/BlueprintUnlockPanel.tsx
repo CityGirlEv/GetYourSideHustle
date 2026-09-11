@@ -2,8 +2,8 @@ import { useState } from "react";
 import { Unlock } from "lucide-react";
 import { trackGyshEvent, type BlueprintAgeGroup } from "../lib/gysh-analytics";
 import { grantFreeMemberSession } from "../lib/free-member-session";
-import { clearPendingBlueprint, readPendingBlueprint } from "../lib/pending-blueprint";
-import { registerFreeMember } from "../lib/auth";
+import { pendingWizardRegisterPayload, readPendingBlueprint } from "../lib/pending-blueprint";
+import { registerFreeMember, type AuthUser } from "../lib/auth";
 import { claimBlueprint, saveBlueprintToAccount } from "../lib/blueprints-api";
 import { BETA_NDA_VERSION, betaNdaRegisterError, betaNdaTodayDate } from "../lib/beta-tester-nda";
 import type { BetaNdaReceipt } from "../lib/beta-tester-dashboard";
@@ -11,7 +11,7 @@ import { BetaNdaAcceptancePanel, type BetaNdaAcceptanceValue } from "./BetaNdaAc
 import { PasswordField } from "./PasswordField";
 
 type BlueprintUnlockPanelProps = {
-  onUnlocked: (ageGroup: BlueprintAgeGroup) => void;
+  onUnlocked: (ageGroup: BlueprintAgeGroup, user?: AuthUser | null) => void;
   onSignIn: () => void;
   onOpenBetaNda?: () => void;
   onBetaTesterRegistered?: () => void;
@@ -86,13 +86,15 @@ export function BlueprintUnlockPanel({
 
     setBusy(true);
     try {
+      const wizard = pendingWizardRegisterPayload(pending);
       const result = await registerFreeMember({
         email: trimmed,
         password,
         name: name.trim() || undefined,
         ageGroup,
         childDisplayName: isKids ? childDisplayName.trim() : undefined,
-        claimToken: pending.claimToken,
+        claimToken: wizard.claimToken ?? pending.claimToken,
+        pendingBlueprint: wizard.pendingBlueprint,
         applyBetaTester,
         betaNda: applyBetaTester ? ndaPayload : undefined,
       });
@@ -121,19 +123,17 @@ export function BlueprintUnlockPanel({
       if (!result.claimedBlueprintId) {
         try {
           await saveBlueprintToAccount({
-            ageGroup,
+            ageGroup: pending.ageGroup,
             answers: pending.answers,
             resultIds: pending.resultIds,
             resultPcts: pending.resultPcts,
-            childProfileId: result.childProfileId,
+            childProfileId: pending.ageGroup === "kids" ? result.childProfileId : null,
             claimToken: pending.claimToken,
           });
         } catch {
-          /* local restore still works */
+          /* keep local pending for My Dashboard until login can attach it */
         }
       }
-
-      clearPendingBlueprint();
       trackGyshEvent("blueprint_unlocked", { age_group: ageGroup, source: "free_signup" });
       trackGyshEvent("blueprint_saved", { age_group: ageGroup, source: "free_signup" });
       if (applyBetaTester) {
@@ -142,7 +142,7 @@ export function BlueprintUnlockPanel({
       if (applyBetaTester && result.testingUnlocked && result.betaNda && onBetaTestingUnlocked) {
         onBetaTestingUnlocked(result.betaNda);
       }
-      onUnlocked(ageGroup);
+      onUnlocked(ageGroup, result.user);
     } catch {
       setError("Registration unavailable. Check that the database migration has been applied.");
     } finally {
@@ -271,7 +271,7 @@ export function BlueprintUnlockPanel({
                 : "Create free account & unlock"}
           </button>
           <button type="button" className="btn btn-outline" onClick={onSignIn} disabled={busy}>
-            Already have an account? Sign in
+            Already have an account? Log in
           </button>
         </div>
       </form>

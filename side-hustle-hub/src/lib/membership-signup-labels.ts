@@ -1,5 +1,25 @@
 import { MEMBERSHIP_TIERS, TIER_LADDER, type TierId } from "./membership";
 
+/** Plan shown in the signup / upgrade dropdown. */
+export function membershipSignupDropdownTier(opts: {
+  initialTier: TierId | null | undefined;
+  currentTier: TierId | null | undefined;
+  isLoggedIn?: boolean;
+}): TierId {
+  const initial = opts.initialTier ?? "free";
+  const current = opts.currentTier;
+  if (
+    opts.isLoggedIn &&
+    current &&
+    TIER_LADDER.includes(current) &&
+    initial === "free" &&
+    current !== "free"
+  ) {
+    return current;
+  }
+  return initial;
+}
+
 /** Primary CTA label on register / upgrade steps (includes selected plan name). */
 export function membershipSignupSubmitLabel(
   tierName: string,

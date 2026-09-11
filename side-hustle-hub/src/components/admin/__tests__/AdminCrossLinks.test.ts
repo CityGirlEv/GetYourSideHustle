@@ -32,12 +32,10 @@ describe("AdminCrossLinks helpers", () => {
     expect(links.some((l) => l.opts.taskId === "T-SL-S3-YT-FIRST-SHORT")).toBe(true);
   });
 
-  it("links sibling owner copies of the same test", () => {
-    const links = crossLinksForTestId("PROOF-001-TINA");
-    expect(links.some((l) => l.opts.testId === "PROOF-001-LYRIQ")).toBe(true);
-    expect(links.some((l) => /^Same test · /i.test(l.label))).toBe(true);
-
-    const stripe = crossLinksForTestId("MEMBER-STRIPE-001-EVELYN");
-    expect(stripe.some((l) => l.opts.testId === "MEMBER-STRIPE-001-CANDACE")).toBe(true);
+  it("links GUIDE-REV tests to their Side Hustle Library guide", () => {
+    const links = crossLinksForTestId("GUIDE-REV-launch-handyman");
+    const guide = links.find((l) => l.href?.startsWith("/guides?hustle="));
+    expect(guide?.href).toBe("/guides?hustle=handyman");
+    expect(guide?.label).toMatch(/^Guide · /);
   });
 });

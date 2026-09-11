@@ -9,10 +9,10 @@ type RolloutScheduleSummaryProps = {
 };
 
 const LEDE =
-  "Soft launch S2 (~Aug 3) · pause 8/4–8/17 · Sprint 3 resumes 8/18 · Kids S4 · Jr/Adult S5 · Senior S6";
+  "Soft launch S2 (~Aug 3) · pause 8/4–8/17 · Sprint 3 resumes 8/18 · Kids S4 · Jr/Adult S5 · Senior S6 · Workshops S8 · through S10";
 
 /**
- * Compact phased rollout for Evelyn: soft launch (S2) then GMSH bands (S4–S6).
+ * Compact phased rollout for Evelyn: soft launch (S2) then GMSH bands (S4–S6) through Sprint 10.
  * Dense table/grid — no sparse card stacks. Collapsible like Task/Tests status.
  */
 export function RolloutScheduleSummary({
@@ -66,7 +66,12 @@ export function RolloutScheduleSummary({
             </div>
             {rows.map((row) => {
               const highlight =
-                row.sprint === 2 || row.sprint === 4 || row.sprint === 5 || row.sprint === 6;
+                row.sprint === 2 ||
+                row.sprint === 4 ||
+                row.sprint === 5 ||
+                row.sprint === 6 ||
+                row.sprint === 8 ||
+                row.sprint === 10;
               return (
                 <div
                   key={row.sprint}

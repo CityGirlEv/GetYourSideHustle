@@ -10,9 +10,16 @@ import {
   type MemberPerkAudience,
   type TierId,
 } from "./membership";
+import { membershipCreditPrice } from "./credit-checkout";
 import { LAUNCH_GUIDES } from "./launch-guides";
 import { guidesForAudience } from "./kids-guides";
 import { SENIOR_GUIDE_TEASERS, SENIOR_INTRO, SENIOR_OPPORTUNITIES } from "./seniors-content";
+import {
+  INVITE_FRIEND_TITLE,
+  inviteFriendBody,
+  inviteFriendHeadline,
+  inviteFriendSteps,
+} from "./invite-friend";
 
 export type MarketingGuideId = "adult" | "kids" | "teens" | "seniors" | "master";
 
@@ -40,7 +47,13 @@ export type MarketingSection = {
   journey?: MarketingJourneyStep[];
   perks?: MarketingPerkTier[];
   callout?: { title: string; body: string };
-  cta?: { headline: string; body: string; bullets: string[] };
+  cta?: {
+    headline: string;
+    body: string;
+    bullets: string[];
+    /** Invite-a-friend CTA swaps join/wizard buttons for copy-link steps when logged in. */
+    variant?: "join" | "invite";
+  };
   /** Optional chapter image key resolved by the viewer / PDF */
   imageKey?: "hero" | "secondary" | "membership" | "community" | "guides";
 };
@@ -63,7 +76,7 @@ function priceLineFor(audience: MemberPerkAudience, tierId: TierId): string {
   const tier = MEMBERSHIP_TIERS.find((t) => t.id === tierId)!;
   if (tierId === "free") return "Free forever";
   if (audience === "kids" || audience === "junior") {
-    return `${tier.creditsPerMonth ?? 0} kid credits / month`;
+    return `${membershipCreditPrice(tierId, audience)} credits / month`;
   }
   if (audience === "senior") {
     const m = tier.priceMonthlyUsdSenior ?? tier.priceMonthlyUsd ?? 0;
@@ -177,7 +190,7 @@ function buildAdultGuide(): MarketingGuideDoc {
           {
             id: "j5",
             label: "Level up",
-            detail: "Join Starter for member guides + one 45-minute session, or Pro for the schedule suite.",
+            detail: "Join Starter for member guides + one 60-minute or two 30-minute sessions, or Pro for the schedule suite.",
           },
         ],
       },
@@ -240,9 +253,9 @@ function buildAdultGuide(): MarketingGuideDoc {
           body: "Run the Match Wizard today. Unlock your Blueprint free. Upgrade when you want coaches, member guides, and a week-by-week plan.",
           bullets: [
             "Free account → full Blueprint",
-            "Starter → member guides + one 45-minute session",
-            "Pro → schedule suite + three 60-minute sessions",
-            "Elite → three 90-minute sessions + ZipCode timing scout",
+            "Starter → member guides + one 60-minute or two 30-minute sessions",
+            "Pro → schedule suite + two 60-minute sessions",
+            "Elite → three 60-minute sessions + entry to all workshops (2 seats)",
           ],
         },
       },
@@ -369,7 +382,7 @@ function buildKidsGuide(): MarketingGuideDoc {
           body: "Open Kids Corner tonight. Run the wizard. Set a Piggy Bank goal. Join free — upgrade when you want the full kids member library.",
           bullets: [
             "Free — stories preview + free guides",
-            "Starter — Kids Team + training videos + one 45-minute family session",
+            "Starter — Kids Team + training videos + one 60-minute or two 30-minute family sessions",
             "Pro — schedule/tracker + more credits + AI game playbooks",
             "Elite — deepest credit pool + priority support",
           ],
@@ -489,17 +502,13 @@ function buildTeensGuide(): MarketingGuideDoc {
       {
         id: "cta",
         number: "7",
-        title: "Invite a teen founder this week",
+        title: INVITE_FRIEND_TITLE,
         kind: "cta",
         cta: {
-          headline: "Turn screen time into skill time — with a plan.",
-          body: "Run the Teens Match Wizard, set one My Bank goal, and join free. Upgrade for AI build guides, training videos, and the schedule suite.",
-          bullets: [
-            "Free — Match Wizard + free CEO / give-back guides",
-            "Starter — Teens Team + training + one 45-minute session",
-            "Pro — AI game + content starters + schedule suite",
-            "Elite — max credits + priority support",
-          ],
+          variant: "invite",
+          headline: inviteFriendHeadline(),
+          body: inviteFriendBody(false),
+          bullets: inviteFriendSteps(false),
         },
       },
     ],
@@ -628,9 +637,9 @@ function buildSeniorsGuide(): MarketingGuideDoc {
           body: "Run the Seniors Match Wizard, preview opportunities, and join free. Upgrade when you want member seating, consulting, and a flexible plan.",
           bullets: [
             "Free — explore + interest list",
-            "Starter $34/mo senior — team + one 45-minute session",
-            "Pro $57/mo senior — schedule suite + three 60-minute sessions",
-            "Elite $94/mo senior — three 90-minute sessions + ZipCode scout",
+            "Starter $34/mo senior — team + one 60-minute or two 30-minute sessions",
+            "Pro $57/mo senior — schedule suite + two 60-minute sessions",
+            "Elite $94/mo senior — three 60-minute sessions + all workshops (2 seats)",
           ],
         },
       },
@@ -681,7 +690,7 @@ function buildMasterGuide(): MarketingGuideDoc {
         "Kids/Teens Corner — stories, ideas, banks, guides, join team.",
         "Seniors Corner — flexible opportunities and senior pricing.",
         "Guides — launch playbooks + these downloadable audience guides.",
-        "Workshops · Community · Join · About · Contact.",
+        "Workshops · Community · Sign-Up · About · Contact.",
         "Admin Studio (partners) — schedule, tasks, QA, users, content, financials.",
       ]),
     },

@@ -4,6 +4,36 @@ test.describe("GYSH smoke", () => {
   test("homepage loads with dashboard title", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByTestId("page-title")).toContainText("Get Your Side Hustle");
+    await expect(page.getByTestId("home-page-header")).toBeVisible();
+    await expect(page.getByTestId("free-guides-page")).toHaveCount(0);
+    const libraryChip = page.getByTestId("home-library-spotlight");
+    await expect(libraryChip).toBeVisible();
+    await expect(page.getByTestId("home-library-count-label")).toHaveText(
+      /\d+ Side Hustle Guides · \d+ free to test-drive/i,
+    );
+    await expect(page.getByTestId("home-match-wizard-cta")).toBeVisible();
+    await expect(page.getByTestId("home-library-spotlight-cta")).toBeVisible();
+    await expect(page.getByTestId("home-how-it-works")).toBeVisible();
+    const howToggle = page.getByTestId("home-how-it-works");
+    const isMobile = (page.viewportSize()?.width ?? 1280) <= 640;
+    if (isMobile) {
+      await expect(howToggle).toHaveAttribute("aria-expanded", "false");
+      await howToggle.click();
+    }
+    await expect(page.getByTestId("home-how-panel")).toBeVisible();
+    await expect(page.getByTestId("home-headline-outcome")).toBeVisible();
+    await expect(page.getByTestId("home-site-purpose")).toBeVisible();
+    const titleActionsBeforeHow = await page.evaluate(() => {
+      const title = document.querySelector('[data-testid="page-title"]');
+      const browse = document.querySelector('[data-testid="home-library-spotlight-cta"]');
+      const how = document.querySelector('[data-testid="home-how-it-works"]');
+      if (!title || !browse || !how) return false;
+      return Boolean(
+        title.contains(browse) &&
+          (title.compareDocumentPosition(how) & Node.DOCUMENT_POSITION_FOLLOWING),
+      );
+    });
+    expect(titleActionsBeforeHow).toBe(true);
     await expect(page.getByRole("contentinfo")).toBeVisible();
   });
 
@@ -95,6 +125,48 @@ test.describe("GYSH smoke", () => {
     expect(layout.extra).toBeLessThanOrEqual(2);
   });
 
+  test("mobile viewport: Guides and Join stack without covering the footer", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const cases = [
+      { path: "/guides", testId: "free-guides-page" },
+      { path: "/join", testId: "join-page" },
+    ] as const;
+    for (const { path, testId } of cases) {
+      await page.goto(path);
+      await expect(page.getByTestId(testId)).toBeVisible();
+      const layout = await page.evaluate(() => {
+        const main = document.querySelector(".main-content");
+        const footer = document.querySelector('[role="contentinfo"]');
+        const overlay = document.querySelector("vite-error-overlay");
+        if (!main || !footer) return { ok: false as const };
+        const mr = main.getBoundingClientRect();
+        const fr = footer.getBoundingClientRect();
+        const media =
+          document.querySelector(".membership-hero-media, .free-guides-hero-media")?.getBoundingClientRect() ??
+          null;
+        const copy =
+          document.querySelector(".membership-hero-copy, .free-guides-hero-copy")?.getBoundingClientRect() ??
+          null;
+        const yOverlap =
+          media && copy
+            ? Math.max(0, Math.min(media.bottom, copy.bottom) - Math.max(media.top, copy.top))
+            : 0;
+        return {
+          ok: true as const,
+          overlay: Boolean(overlay),
+          footerStartsAfterMain: fr.top + 1 >= mr.bottom,
+          heroYOverlap: Math.round(yOverlap),
+          extra: Math.ceil(document.documentElement.scrollWidth - document.documentElement.clientWidth),
+        };
+      });
+      expect(layout.ok, path).toBe(true);
+      expect(layout.overlay, path).toBe(false);
+      expect(layout.footerStartsAfterMain, path).toBe(true);
+      expect(layout.heroYOverlap, path).toBe(0);
+      expect(layout.extra, path).toBeLessThanOrEqual(2);
+    }
+  });
+
   test("mobile menu: Login stays visible and page scroll is locked", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/");
@@ -105,24 +177,50 @@ test.describe("GYSH smoke", () => {
     const locked = await page.evaluate(() => {
       const loginEl = document.querySelector('[data-testid="header-login"]') as HTMLElement | null;
       const header = document.querySelector(".top-header.open") as HTMLElement | null;
-      if (!loginEl || !header) return { ok: false };
+      const brand = document.querySelector(".top-header.open .brand-section") as HTMLElement | null;
+      const menus = document.querySelector(".top-header.open .top-header-menus") as HTMLElement | null;
+      const guides = document.querySelector('[data-testid="nav-guides"]') as HTMLElement | null;
+      const home = document.querySelector('[data-testid="nav-home"]') as HTMLElement | null;
+      if (!loginEl || !header || !brand || !menus || !guides || !home) return { ok: false };
       const lr = loginEl.getBoundingClientRect();
       const hr = header.getBoundingClientRect();
+      const br = brand.getBoundingClientRect();
+      const mr = menus.getBoundingClientRect();
+      const gr = guides.getBoundingClientRect();
+      const homeR = home.getBoundingClientRect();
       const inView =
         lr.top >= hr.top - 1 &&
         lr.bottom <= hr.bottom + 1 &&
         lr.height > 0;
+      /** Must sit below the logo row — not clipped under it or above the viewport. */
+      const belowBrand = lr.top >= br.bottom - 2;
+      const insideMenus = lr.top >= mr.top - 1;
+      /** Mobile order: Login → Guides set → Home / primary links. */
+      const guidesAfterLogin = gr.top >= lr.bottom - 2;
+      const homeAfterGuides = homeR.top >= gr.bottom - 2;
       return {
         ok: true,
         inView,
+        belowBrand,
+        insideMenus,
+        guidesAfterLogin,
+        homeAfterGuides,
         menuOpenClass: document.documentElement.classList.contains("gysh-mobile-menu-open"),
         bodyOverflow: getComputedStyle(document.body).overflow,
+        loginWidth: Math.round(lr.width),
+        menusWidth: Math.round(mr.width),
+        loginTop: Math.round(lr.top),
       };
     });
     expect(locked.ok).toBe(true);
     expect(locked.inView).toBe(true);
+    expect(locked.belowBrand).toBe(true);
+    expect(locked.insideMenus).toBe(true);
+    expect(locked.guidesAfterLogin).toBe(true);
+    expect(locked.homeAfterGuides).toBe(true);
     expect(locked.menuOpenClass).toBe(true);
     expect(locked.bodyOverflow).toMatch(/hidden/);
+    expect((locked.loginWidth ?? 0) / (locked.menusWidth || 1)).toBeGreaterThan(0.7);
     await login.click();
     await expect(page.getByTestId("login-page")).toBeVisible();
   });
@@ -146,6 +244,51 @@ test.describe("GYSH smoke", () => {
     await expect(page.getByTestId("home-audience")).toBeVisible();
   });
 
+  test("Guides library menus fit on mobile and iPad", async ({ page }) => {
+    test.setTimeout(90_000);
+    const viewports = [
+      { name: "mobile", width: 390, height: 844 },
+      { name: "ipad", width: 768, height: 1024 },
+    ] as const;
+
+    for (const vp of viewports) {
+      await page.setViewportSize({ width: vp.width, height: vp.height });
+      await page.goto("/guides");
+      await expect(page.getByTestId("free-guides-page")).toBeVisible();
+      await expect(page.getByTestId("free-guides-filters")).toBeVisible();
+      await expect(page.getByTestId("free-guides-filter-all")).toBeVisible();
+      await expect(page.getByTestId("free-guides-demo-tier-tabs")).toBeVisible();
+      await expect(page.getByTestId("free-guides-list-toolbar")).toBeVisible();
+      await expect(page.getByTestId("free-guides-blueprints")).toBeVisible();
+      await expect(page.getByTestId("hero-open-manual-adult")).toBeVisible();
+      await expect(page.getByTestId("hero-open-manual-kids")).toBeVisible();
+      await expect(page.getByTestId("guides-view-grid")).toBeVisible();
+      await expect(page.getByTestId("guides-view-list")).toBeVisible();
+      await expect(page.getByTestId("free-guides-expand-all")).toBeVisible();
+      await expect(page.getByTestId("free-guides-collapse-all")).toBeVisible();
+
+      const layout = await page.evaluate(() => {
+        const vw = document.documentElement.clientWidth;
+        const toolbar = document.querySelector('[data-testid="free-guides-list-toolbar"]');
+        const filters = document.querySelector('[data-testid="free-guides-filters"]');
+        const tr = toolbar?.getBoundingClientRect();
+        const fr = filters?.getBoundingClientRect();
+        return {
+          extra: Math.ceil(document.documentElement.scrollWidth - vw),
+          toolbarW: Math.round(tr?.width ?? 0),
+          filtersW: Math.round(fr?.width ?? 0),
+          toolbarOverflow: toolbar
+            ? Math.ceil((toolbar as HTMLElement).scrollWidth - (toolbar as HTMLElement).clientWidth)
+            : 0,
+        };
+      });
+      expect(layout.extra, `${vp.name} page overflow`).toBeLessThanOrEqual(2);
+      expect(layout.toolbarW, `${vp.name} toolbar width`).toBeLessThanOrEqual(vp.width);
+      expect(layout.filtersW, `${vp.name} filters width`).toBeLessThanOrEqual(vp.width);
+      expect(layout.toolbarOverflow, `${vp.name} toolbar inner overflow`).toBeLessThanOrEqual(2);
+    }
+  });
+
   test("Home nav returns to home headline", async ({ page }) => {
     await page.goto("/");
     await page.getByTestId("nav-find-mine").click();
@@ -156,6 +299,7 @@ test.describe("GYSH smoke", () => {
 
   test("Workshops nav opens workshops view", async ({ page }) => {
     await page.goto("/");
+    await page.getByTestId("nav-community").click();
     await page.getByTestId("nav-workshops").click();
     await expect(page.getByTestId("page-title")).toContainText("Workshops");
   });
@@ -164,8 +308,28 @@ test.describe("GYSH smoke", () => {
     await page.goto("/");
     await page.getByTestId("nav-kids").click();
     await expect(page.getByTestId("page-title")).toContainText("Kids & Teens Corner");
+    await expect(page.getByTestId("kids-mode-pick-hint")).toContainText(
+      "Pick the tab below based on your age group",
+    );
     await expect(page.getByTestId("kids-stories-tab")).toBeVisible();
     await expect(page.getByTestId("kids-stories-tab")).toHaveText(/Stories/i);
+  });
+
+  test("Adults nav opens Adult Match Wizard", async ({ page }) => {
+    await page.goto("/");
+    await page.getByTestId("nav-adults").click();
+    await expect(page.getByTestId("page-title")).toContainText("Match Wizard");
+    await expect(page.getByRole("heading", { name: "What is your startup budget?" })).toBeVisible();
+  });
+
+  test("Match Wizard next to About opens age selector", async ({ page }) => {
+    await page.goto("/");
+    const about = page.getByTestId("nav-about");
+    const match = page.getByTestId("nav-find-mine");
+    await expect(about).toBeVisible();
+    await expect(match).toBeVisible();
+    await match.click();
+    await expect(page.getByTestId("find-mine-selector")).toBeVisible();
   });
 
   test("Match Wizard shows age selector then routes Adult / Kids / Senior", async ({ page }) => {
@@ -201,43 +365,89 @@ test.describe("GYSH smoke", () => {
 
   test("Guides nav opens library", async ({ page }) => {
     await page.goto("/");
+    await page.getByTestId("nav-community").click();
     await page.getByTestId("nav-guides").click();
     await expect(page.getByTestId("page-title")).toContainText(/GYSH Guide/i);
     await expect(page.getByTestId("free-guides-page")).toBeVisible();
   });
 
-  test("Guests see membership lock badges naming required tiers", async ({ page }) => {
-    await page.goto("/");
-    await page.getByTestId("nav-guides").click();
+  test("Guide library wildcard search filters cards", async ({ page }) => {
+    await page.goto("/guides");
     await expect(page.getByTestId("free-guides-page")).toBeVisible();
-    await expect(page.getByTestId("guide-lock-badge-handyman").first()).toContainText(/Locked · Join Free/i);
-    await expect(page.getByTestId("guide-lock-badge-rideshare").first()).toContainText(/Locked · Needs Starter/i);
-    await expect(page.getByTestId("guide-lock-badge-affiliate").first()).toContainText(/Locked · Needs Pro/i);
-    await expect(page.getByTestId("guide-lock-badge-digital-products").first()).toContainText(
-      /Locked · Needs Elite/i,
-    );
+    const search = page.getByTestId("free-guides-library-search-input");
+    await expect(search).toBeVisible();
+    await search.fill("handy*");
+    await expect(page.getByTestId("guide-number-handyman").first()).toBeVisible();
+    await expect(page.getByTestId("guide-memberships-rideshare")).toHaveCount(0);
+    await search.fill("zzz-no-such-guide*");
+    await expect(page.getByText(/No guides match/i)).toBeVisible();
   });
 
-  test("Free Guides filters All / Free / Kids", async ({ page }) => {
+  test("Guests see membership badges and join CTAs on locked guides", async ({ page }) => {
     await page.goto("/");
+    await page.getByTestId("nav-community").click();
+    await page.getByTestId("nav-guides").click();
+    await expect(page.getByTestId("free-guides-page")).toBeVisible();
+    await expect(page.getByTestId("guide-memberships-handyman").first()).toContainText(/Free/i);
+    await expect(page.getByTestId("guide-memberships-rideshare").first()).toContainText(/Free/i);
+    await expect(page.getByTestId("guide-number-handyman").first()).toContainText(/\(#\d{3}\)/);
+    await page.getByTestId("free-guides-filter-adult").click();
+    await expect(page.getByTestId("guide-memberships-affiliate").first()).toContainText(/Pro/i);
+    await expect(page.getByTestId("guide-memberships-digital-products").first()).toContainText(/Elite/i);
+    await expect(page.locator(".join-to-unlock-cta").first()).toBeVisible();
+  });
+
+  test("Guides age filters Kids / Membership Free", async ({ page }) => {
+    await page.goto("/");
+    await page.getByTestId("nav-community").click();
     await page.getByTestId("nav-guides").click();
     await expect(page.getByTestId("free-guides-page")).toBeVisible();
     await expect(page.getByTestId("free-guides-filters")).toBeVisible();
+    await expect(page.getByTestId("free-guides-filter-all")).toBeVisible();
+    await expect(page.getByTestId("free-guides-filter-free")).toHaveCount(0);
+    await expect(page.getByTestId("free-guides-filter-adult")).toBeVisible();
+    await expect(page.getByTestId("free-guides-filter-senior")).toBeVisible();
 
-    await page.getByTestId("free-guides-filter-free").click();
-    await expect(page.getByRole("heading", { name: "GYSH Adult / Senior Guides" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "GYSH Kids Guides" })).toBeVisible();
-    await expect(page.locator(".free-guide-card.is-gated")).toHaveCount(0);
+    await expect(page.getByTestId("free-guides-expand-all")).toBeVisible();
+    await expect(page.getByTestId("free-guides-collapse-all")).toBeVisible();
+    await expect(page.getByTestId("free-guides-demo-tier-tabs")).toBeVisible();
+    await expect(page.getByTestId("free-guides-demo-tier-all")).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByTestId("free-guides-subtabs")).toHaveCount(0);
 
     await page.getByTestId("free-guides-filter-kids").click();
-    await expect(page.getByRole("heading", { name: "GYSH Kids Guides" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "GYSH Adult / Senior Guides" })).toHaveCount(0);
-    await expect(page.getByRole("heading", { name: "GYSH Teens Guides" })).toHaveCount(0);
+    await expect(page.getByTestId("free-guides-tab-panel-kids")).toBeVisible();
+    await expect(page.getByTestId("free-guides-demo-tier-tabs")).toBeVisible();
+    await expect(page.getByTestId("free-guides-tab-panel-adult")).toHaveCount(0);
+    await expect(page.getByTestId("free-guides-tab-panel-junior")).toHaveCount(0);
+    await expect(page.getByTestId("guides-view-grid")).toBeVisible();
+    await expect(page.getByTestId("guides-view-list")).toBeVisible();
+    await expect(page.getByTestId("guides-view-grid")).toHaveAttribute("aria-pressed", "true");
+
+    await page.getByTestId("guides-view-list").click();
+    await expect(page.getByTestId("free-guides-page")).toHaveAttribute("data-layout", "list");
+    await expect(page.getByTestId("guides-view-list")).toHaveAttribute("aria-pressed", "true");
+
+    await page.getByTestId("free-guides-demo-tier-all").click();
+    await expect(page.getByTestId("free-guides-demo-tier-all")).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByTestId("free-guides-demo-tier-free")).toBeVisible();
+    await page.getByTestId("free-guides-demo-tier-free").click();
+    await expect(page.getByTestId("free-guides-demo-tier-free")).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByTestId("free-guides-tab-panel-kids")).toBeVisible();
 
     await page.getByTestId("free-guides-filter-all").click();
-    await expect(page.getByRole("heading", { name: "GYSH Adult / Senior Guides" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "GYSH Kids Guides" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "GYSH Teens Guides" })).toBeVisible();
+    await expect(page.getByTestId("free-guides-tab-panel-all-ages")).toBeVisible();
+    await expect(page.getByTestId("all-ages-tier-groups")).toBeVisible();
+    await expect(page.getByTestId("adult-tier-groups")).toHaveCount(0);
+    await expect(page.getByTestId("kids-tier-groups")).toHaveCount(0);
+    await expect(page.getByTestId("junior-tier-groups")).toHaveCount(0);
+    await expect(page.getByTestId("senior-tier-groups")).toHaveCount(0);
+  });
+
+  test("Launch Guide peek buttons show a Free badge on free guides", async ({ page }) => {
+    await page.goto("/checklist");
+    await expect(page.getByTestId("launch-checklist-guides")).toBeVisible();
+    await expect(page.getByTestId("guide-peek-handyman").getByTestId("open-guide-free-badge")).toBeVisible();
+    await expect(page.getByTestId("guide-peek-rideshare").getByTestId("open-guide-free-badge")).toBeVisible();
   });
 
   test("Membership nav opens tiers and Kids credits", async ({ page }) => {
@@ -269,6 +479,9 @@ test.describe("GYSH smoke", () => {
     await expect(page.getByTestId("membership-schedule-suite")).toBeVisible();
     await expect(page.getByTestId("membership-schedule-suite")).toContainText(/Pro/i);
     await expect(page.getByTestId("membership-schedule-suite")).toHaveJSProperty("open", true);
+    await expect(
+      page.getByTestId("membership-alacarte").getByTestId("membership-schedule-suite"),
+    ).toBeVisible();
     await expect(page.getByTestId("membership-compare")).toHaveJSProperty("open", false);
     await expect(page.getByTestId("membership-tier-glossary")).toHaveJSProperty("open", false);
     await page.getByTestId("membership-tier-glossary").locator("summary").click();
@@ -279,38 +492,32 @@ test.describe("GYSH smoke", () => {
     // Military & Veterans callout deferred to Sprint 6 (T-MEM-MILITARY discount).
     await expect(page.getByTestId("membership-military-veteran")).toHaveCount(0);
 
-    // Membership plans section, then schedule suite (military callout hidden until S5).
+    // Membership plans come first; Schedule Suite lives under a-la-carte extras.
     const sectionOrder = await page.evaluate(() => {
-      const ids = ["membership-plans", "membership-schedule-suite"];
-      return ids.map((id) => {
-        const el = document.querySelector(`[data-testid="${id}"]`);
-        if (!el) return -1;
-        let pos = 0;
-        let n: Element | null = el;
-        while (n && n.previousElementSibling) {
-          pos += 1;
-          n = n.previousElementSibling;
-        }
-        return pos;
-      });
+      const plans = document.querySelector('[data-testid="membership-plans"]');
+      const suite = document.querySelector('[data-testid="membership-schedule-suite"]');
+      if (!plans || !suite) return 0;
+      return plans.compareDocumentPosition(suite) & Node.DOCUMENT_POSITION_FOLLOWING;
     });
-    expect(sectionOrder[0]).toBeGreaterThanOrEqual(0);
-    expect(sectionOrder[1]).toBeGreaterThan(sectionOrder[0]);
+    expect(sectionOrder).toBeTruthy();
 
     await page.getByTestId("membership-audience-kids").click();
     await expect(page.getByTestId("membership-see-plans")).toContainText("Kids");
     await expect(page.getByTestId("membership-military-veteran")).toHaveCount(0);
     await expect(page.getByTestId("membership-credit-packs")).toBeVisible();
-    await expect(page.getByTestId("membership-credit-pack-boost")).toContainText("25 credits");
-    await expect(page.getByTestId("membership-credit-pack-family")).toContainText("300 credits");
+    await expect(page.getByTestId("membership-credit-pack-boost")).toContainText("5 credits");
+    await expect(page.getByTestId("membership-credit-pack-family")).toContainText("40 credits");
     await expect(page.getByTestId("membership-credits")).toBeVisible();
     await expect(page.getByTestId("membership-alacarte")).toBeVisible();
+    await expect(page.getByTestId("membership-alacarte-cart-heading")).toContainText("Your Cart");
     await page.getByTestId("membership-audience-adult").click();
     await expect(page.getByTestId("membership-alacarte-add-consult-30")).toBeVisible();
+    await expect(page.getByTestId("membership-alacarte-add-consult-60")).toBeVisible();
+    await expect(page.getByTestId("membership-alacarte-add-consult-120")).toBeVisible();
     await page.getByTestId("membership-alacarte-add-consult-30").click();
-    await expect(page.getByTestId("membership-alacarte-cart-count")).toContainText("1");
-    await expect(page.getByTestId("membership-alacarte-cart-line-consult-30")).toBeVisible();
-    await expect(page.getByTestId("membership-alacarte-cart-checkout")).toBeVisible();
+    await expect(page.getByTestId("login-page")).toBeVisible();
+    await expect(page.getByTestId("header-cart")).toHaveCount(0);
+    await expect(page.getByTestId("header-cart-count")).toHaveCount(0);
   });
 
   test("Join parent-funded packs checkout before a la carte and link Schedule Suite", async ({ page }) => {
@@ -328,45 +535,61 @@ test.describe("GYSH smoke", () => {
     await expect(page.getByTestId("membership-alacarte")).toBeVisible();
     await expect(page.getByTestId("membership-schedule-suite")).toBeVisible();
     const priceOrder = await page.evaluate(() => {
-      const ids = ["membership-credit-packs", "membership-alacarte", "membership-schedule-suite"];
-      return ids.map((id) => {
-        const el = document.querySelector(`[data-testid="${id}"]`);
-        if (!el) return -1;
-        let pos = 0;
-        let n: Element | null = el;
-        while (n && n.previousElementSibling) {
-          pos += 1;
-          n = n.previousElementSibling;
-        }
-        return pos;
-      });
+      const packs = document.querySelector('[data-testid="membership-credit-packs"]');
+      const extras = document.querySelector('[data-testid="membership-alacarte"]');
+      const suite = extras?.querySelector('[data-testid="membership-schedule-suite"]');
+      if (!packs || !extras || !suite) return [0, 0];
+      return [
+        packs.compareDocumentPosition(extras) & Node.DOCUMENT_POSITION_FOLLOWING,
+        extras.contains(suite) ? 1 : 0,
+      ];
     });
-    expect(priceOrder[0]).toBeGreaterThanOrEqual(0);
-    expect(priceOrder[1]).toBeGreaterThan(priceOrder[0]!);
-    expect(priceOrder[2]).toBeGreaterThan(priceOrder[1]!);
+    expect(priceOrder[0]).toBeTruthy();
+    expect(priceOrder[1]).toBe(1);
 
-    await expect(page.getByTestId("membership-credit-pack-boost")).toContainText("25 credits");
-    await expect(page.getByTestId("membership-credit-pack-family")).toContainText("300 credits");
+    await expect(page.getByTestId("membership-credit-pack-boost")).toContainText("5 credits");
+    await expect(page.getByTestId("membership-credit-pack-family")).toContainText("40 credits");
     await page.getByTestId("membership-credit-pack-add-boost").click();
-    await expect(page.getByTestId("membership-alacarte-cart-line-boost")).toBeVisible();
-    await expect(page.getByTestId("membership-alacarte-cart-count")).toContainText("1");
-    await expect(page.getByTestId("membership-alacarte-cart-checkout")).toContainText("$5");
-    await page.getByTestId("membership-alacarte-cart-clear-top").click();
-    await expect(page.getByTestId("membership-alacarte-cart-empty")).toBeVisible();
+    await expect(page.getByTestId("login-page")).toBeVisible();
+    await expect(page.getByTestId("header-cart")).toHaveCount(0);
+    await expect(page.getByTestId("header-cart-count")).toHaveCount(0);
   });
 
-  test("header Cart opens a-la-carte checkout panel", async ({ page }) => {
+  test("logged-out visitors never see a leftover header cart", async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem(
+        "gysh_alacarte_cart_v1",
+        JSON.stringify({
+          lines: [
+            { itemId: "consult-30", quantity: 2 },
+            { itemId: "boost", quantity: 1 },
+          ],
+          updatedAt: new Date().toISOString(),
+        }),
+      );
+    });
+    await page.goto("/");
+    await expect(page.getByTestId("header-cart")).toHaveCount(0);
+    await expect(page.getByTestId("header-cart-count")).toHaveCount(0);
     await page.goto("/join");
-    await expect(page.getByTestId("membership-alacarte-add-consult-30")).toBeVisible();
-    await page.getByTestId("membership-alacarte-add-consult-30").click();
-    await expect(page.getByTestId("header-cart-count")).toContainText("1");
-    await page.getByTestId("nav-home").click();
-    await page.getByTestId("header-cart").click();
-    await expect(page.getByTestId("membership-alacarte-cart")).toBeVisible();
-    await expect(page.getByTestId("membership-alacarte-cart-checkout")).toBeVisible();
-    await expect(page.getByTestId("membership-alacarte-cart-clear-top")).toBeVisible();
-    await page.getByTestId("membership-alacarte-cart-clear-top").click();
+    await expect(page.getByTestId("membership-alacarte-cart-heading")).toContainText("Your Cart");
+    await expect(page.getByTestId("membership-alacarte-cart-billing-link")).toHaveAttribute(
+      "href",
+      "/my-dashboard#billing",
+    );
+    await expect(page.getByTestId("membership-alacarte-cart-credits-link")).toHaveAttribute(
+      "href",
+      "/my-dashboard#credits",
+    );
+    await expect(page.getByTestId("credit-paid-thank-you")).toHaveCount(0);
+    await expect(page.getByTestId("checkout-credit-apply")).toContainText("Pay with credits");
+    await expect(page.getByTestId("checkout-credit-apply-pay")).toHaveCount(0);
     await expect(page.getByTestId("membership-alacarte-cart-empty")).toBeVisible();
+    await expect(page.getByTestId("membership-alacarte-cart-quick")).toHaveCount(0);
+    await expect(page.getByTestId("membership-alacarte-add-workshop-general")).toBeVisible();
+    await expect(page.getByTestId("cart-line-credits-consult-30")).toHaveCount(0);
+    await expect(page.getByTestId("membership-alacarte-cart-count")).toHaveCount(0);
+    await expect(page.getByTestId("membership-alacarte-cart-line-consult-30")).toHaveCount(0);
   });
 
   test("Seniors nav opens GYSH Seniors Corner view", async ({ page }) => {
@@ -378,12 +601,22 @@ test.describe("GYSH smoke", () => {
 
   test("login page does not expose passwords in the DOM", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("button", { name: "Login" }).click();
+    await page.getByRole("button", { name: "Log in" }).click();
     await expect(page.getByTestId("login-page")).toBeVisible();
     const bodyText = await page.locator("body").innerText();
     expect(bodyText).not.toContain("gysh123");
     expect(bodyText).not.toContain("tina123");
     expect(bodyText).not.toMatch(/Testing Credentials/i);
+  });
+
+  test("logged-out visitors cannot open My Dashboard", async ({ page }) => {
+    await page.goto("/my-dashboard");
+    await expect(page.getByTestId("login-page")).toBeVisible();
+    await expect(page.getByTestId("header-login")).toBeVisible();
+    await expect(page.getByTestId("header-dashboard")).toHaveCount(0);
+    await expect(page.getByTestId("header-facebook")).toHaveCount(0);
+    await expect(page.getByTestId("user-portal")).toHaveCount(0);
+    await expect(page).toHaveURL(/\/login/);
   });
 
   test("footer links navigate About, Join, Contact, and Privacy Policy", async ({ page }) => {
@@ -420,6 +653,7 @@ test.describe("GYSH smoke", () => {
     await expect(page).toHaveURL(/\/newsletter$/);
     await expect(page.getByTestId("page-title")).toContainText("Newsletter");
     await expect(page.getByTestId("newsletter-page")).toBeVisible();
+    await page.getByTestId("nav-community").click();
     await expect(page.getByTestId("nav-newsletter")).toBeVisible();
     await expect(page.getByTestId("newsletter-lock")).toBeVisible();
     await expect(page.getByTestId("newsletter-join")).toBeVisible();
@@ -427,6 +661,15 @@ test.describe("GYSH smoke", () => {
     await expect(page.locator('[data-testid^="newsletter-body-"]')).toHaveCount(0);
     await page.getByRole("contentinfo").getByTestId("footer-newsletter").click();
     await expect(page.getByTestId("newsletter-page")).toBeVisible();
+  });
+
+  test("Community feed is Starter-or-higher from /community", async ({ page }) => {
+    await page.goto("/community");
+    await expect(page).toHaveURL(/\/community$/);
+    await expect(page.getByTestId("page-title")).toContainText("Blog");
+    await expect(page.getByTestId("community-lock")).toBeVisible();
+    await expect(page.getByTestId("community-join")).toBeVisible();
+    await expect(page.getByText("Share Your Side Hustle Update")).toHaveCount(0);
   });
 
   test("header nav opens About, Join, and Contact", async ({ page }) => {
@@ -437,6 +680,40 @@ test.describe("GYSH smoke", () => {
     await expect(page.getByTestId("page-title")).toContainText("Join GYSH");
     await page.getByTestId("nav-contact").click();
     await expect(page.getByTestId("page-title")).toContainText("Contact Us");
+  });
+
+  test("Gear nav opens the merch shop", async ({ page }) => {
+    await page.goto("/");
+    await page.getByTestId("nav-gear").click();
+    await expect(page.getByTestId("page-title")).toContainText("Shop");
+    await expect(page.getByTestId("shop-page")).toBeVisible();
+    await expect(page.getByTestId("gear-carousel")).toBeVisible();
+    await expect(page.getByTestId("gear-gallery-grid")).toBeVisible();
+  });
+
+  test("Memberships nav opens membership plans", async ({ page }) => {
+    await page.goto("/");
+    await page.getByTestId("nav-memberships").click();
+    await expect(page.getByTestId("join-page")).toBeVisible();
+    await expect(page.getByTestId("page-title")).toContainText("Join GYSH");
+    await expect(page.getByTestId("nav-memberships")).toHaveClass(/active/);
+    await expect(page.getByTestId("nav-gear")).not.toHaveClass(/active/);
+  });
+
+  test("Community GEAR opens the merch shop", async ({ page }) => {
+    await page.goto("/");
+    await page.getByTestId("nav-community").click();
+    await page.getByTestId("nav-community-gear").click();
+    await expect(page.getByTestId("page-title")).toContainText("Shop");
+    await expect(page.getByTestId("shop-page")).toBeVisible();
+  });
+
+  test("Community Blog is the first Community menu item", async ({ page }) => {
+    await page.goto("/");
+    await page.getByTestId("nav-community").click();
+    await page.getByTestId("nav-community-blog").click();
+    await expect(page).toHaveURL(/\/community$/);
+    await expect(page.getByTestId("page-title")).toContainText("Blog");
   });
 
   test("Join GYSH page shows Create account CTA", async ({ page }) => {
@@ -458,6 +735,9 @@ test.describe("GYSH smoke", () => {
     await expect(page.getByTestId("membership-signup-submit")).toContainText(/Starter/i);
     await expect(page.getByTestId("membership-signup-beta-role")).toBeVisible();
     await expect(page.getByLabel(/Apply as a Beta Tester/i)).toBeVisible();
+    await expect(page.getByTestId("membership-merch-choice")).toBeVisible();
+    await expect(page.getByTestId("membership-merch-item-0")).toContainText(/T-shirt|hat/i);
+    await expect(page.getByTestId("membership-merch-item-1")).toHaveCount(0);
   });
 
   test("Beta Tester NDA page shows GYSH-BETA-NDA-v1.1 from footer and /beta-nda", async ({ page }) => {
@@ -540,18 +820,18 @@ test.describe("GYSH smoke", () => {
     await expect(page.getByRole("button", { name: /Create free GYSH account/i })).toBeVisible();
   });
 
-  test("homepage does not show the beta notice until login or preview", async ({ page }) => {
+  test("homepage does not show the beta notice", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByTestId("beta-phase-popup")).toHaveCount(0);
   });
 
   test("Login form requires email and password", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("button", { name: "Login" }).click();
+    await page.getByRole("button", { name: "Log in" }).click();
     const login = page.getByTestId("login-page");
     await expect(login.locator('input[type="email"]')).toHaveAttribute("required", "");
     await expect(login.locator('input[type="password"]').first()).toHaveAttribute("required", "");
-    await expect(login.getByRole("button", { name: "Log In" })).toBeVisible();
+    await expect(login.getByRole("button", { name: "Log in" })).toBeVisible();
     await expect(login.getByRole("button", { name: "Join GYSH" })).toBeVisible();
   });
 });

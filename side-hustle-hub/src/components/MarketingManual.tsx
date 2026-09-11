@@ -15,7 +15,9 @@ import {
 } from "../lib/marketing-guides";
 import { reservePdfTab } from "../lib/open-pdf";
 import { downloadMarketingGuidePdf } from "../lib/user-guide-pdf";
-import { GuideChecklist, GuideToc } from "./admin/GuideChecklist";
+import { GuideChecklist, GuideStaticList, GuideToc } from "./admin/GuideChecklist";
+import { InviteFriendCard } from "./InviteFriendCard";
+import { inviteFriendBody } from "../lib/invite-friend";
 
 const HERO_BY_GUIDE: Record<MarketingGuideId, string> = {
   adult: adultHero,
@@ -56,7 +58,10 @@ type MarketingManualProps = {
   guideId: MarketingGuideId;
   onBack?: () => void;
   onGoToJoin?: () => void;
+  onGoToLogin?: () => void;
+  onGoToDashboard?: () => void;
   onOpenMatchWizard?: () => void;
+  isLoggedIn?: boolean;
 };
 
 function ManualFigure({
@@ -137,7 +142,10 @@ export function MarketingManual({
   guideId,
   onBack,
   onGoToJoin,
+  onGoToLogin,
+  onGoToDashboard,
   onOpenMatchWizard,
+  isLoggedIn = false,
 }: MarketingManualProps) {
   const doc = getMarketingGuide(guideId);
   const toc = marketingGuideToc(doc);
@@ -342,7 +350,7 @@ export function MarketingManual({
                   </ol>
                 )}
                 {section.kind === "perks" && section.perks && (
-                  <div className="manual-perks">
+                  <div className={`manual-perks${guideId === "teens" ? " manual-perks--stack" : ""}`}>
                     {section.perks.map((tier) => (
                       <article
                         key={tier.tierId}
@@ -352,8 +360,8 @@ export function MarketingManual({
                           <h4>{tier.name}</h4>
                           <span>{tier.priceLine}</span>
                         </header>
-                        <GuideChecklist
-                          guideId={`mkt-${guideId}-perk-${tier.tierId}`}
+                        <GuideStaticList
+                          testId={`manual-perk-list-${tier.tierId}`}
                           items={tier.bullets.map((text, i) => ({
                             id: `${tier.tierId}-${i}`,
                             text,
@@ -366,26 +374,42 @@ export function MarketingManual({
                 {section.kind === "cta" && section.cta && (
                   <div className="manual-cta">
                     <h4>{section.cta.headline}</h4>
-                    <p>{section.cta.body}</p>
-                    <GuideChecklist
-                      guideId={`mkt-${guideId}-cta`}
-                      items={section.cta.bullets.map((text, i) => ({
-                        id: `cta-${i}`,
-                        text,
-                      }))}
-                    />
-                    <div className="manual-actions">
-                      {onOpenMatchWizard && (
-                        <button type="button" className="btn btn-primary" onClick={onOpenMatchWizard}>
-                          Start Match Wizard
-                        </button>
-                      )}
-                      {onGoToJoin && (
-                        <button type="button" className="btn btn-outline" onClick={onGoToJoin}>
-                          View membership
-                        </button>
-                      )}
-                    </div>
+                    <p>
+                      {section.cta.variant === "invite"
+                        ? inviteFriendBody(isLoggedIn)
+                        : section.cta.body}
+                    </p>
+                    {section.cta.variant === "invite" ? (
+                      <InviteFriendCard
+                        isLoggedIn={isLoggedIn}
+                        testId={`marketing-invite-${guideId}`}
+                        onJoin={onGoToJoin}
+                        onLogin={onGoToLogin}
+                        onOpenDashboard={onGoToDashboard}
+                      />
+                    ) : (
+                      <>
+                        <GuideChecklist
+                          guideId={`mkt-${guideId}-cta`}
+                          items={section.cta.bullets.map((text, i) => ({
+                            id: `cta-${i}`,
+                            text,
+                          }))}
+                        />
+                        <div className="manual-actions">
+                          {onOpenMatchWizard && (
+                            <button type="button" className="btn btn-primary" onClick={onOpenMatchWizard}>
+                              Start Match Wizard
+                            </button>
+                          )}
+                          {onGoToJoin && (
+                            <button type="button" className="btn btn-outline" onClick={onGoToJoin}>
+                              View membership
+                            </button>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
               </div>

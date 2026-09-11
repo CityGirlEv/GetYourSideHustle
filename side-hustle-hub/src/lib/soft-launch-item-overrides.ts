@@ -12,7 +12,7 @@ import {
 } from "./gysh-soft-launch-rollout";
 
 export type SoftLaunchItemPatch = {
-  sprint?: 2 | 3 | 4 | 5;
+  sprint?: number;
   day?: string;
   channel?: RolloutChannel;
   title?: string;
@@ -79,8 +79,8 @@ export function applySoftLaunchItemPatch(
   if (!patch || Object.keys(patch).length === 0) return base;
   const next: SoftLaunchItem = { ...base };
 
-  if (patch.sprint === 2 || patch.sprint === 3 || patch.sprint === 4 || patch.sprint === 5) {
-    next.sprint = patch.sprint;
+  if (typeof patch.sprint === "number" && Number.isFinite(patch.sprint) && patch.sprint >= 0) {
+    next.sprint = Math.floor(patch.sprint);
   }
   if (typeof patch.day === "string" && patch.day) next.day = patch.day;
   if (patch.channel) next.channel = patch.channel;

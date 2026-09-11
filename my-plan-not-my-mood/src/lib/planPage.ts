@@ -142,7 +142,7 @@ const HEADER_ADMIN_LABELS: Partial<Record<AdminStudioTab, string>> = {
   users: 'Users',
   emails: 'Emails',
   factory: 'Content Factory',
-  calendar: 'Calendar',
+  calendar: 'Posting Schedule',
   budget: 'Admin Hub',
 };
 

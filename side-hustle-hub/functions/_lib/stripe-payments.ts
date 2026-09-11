@@ -1,7 +1,7 @@
 /**
  * GYSH payments ledger + Stripe Checkout session reports for Financials.
  */
-import { canonicalizeEmail, error, json, type DbUser, type Env } from "./auth";
+import { appendAudit, canonicalizeEmail, error, json, type DbUser, type Env } from "./auth";
 import {
   resolvePaymentPeriodRange,
   ymdRangeToUnixInclusive,
@@ -12,6 +12,13 @@ import {
   stripeRequest,
   type StripeCheckoutSession,
 } from "./stripe";
+import {
+  mergeListedPayment,
+  parsePaymentRowPatch,
+  summarizeGyshPayments,
+  type PaymentRowPatchInput,
+} from "../../src/lib/gysh-payments";
+import { formatAlaCartePurchaseLabel, formatCreditPackPurchaseLabel } from "../../src/lib/credit-pack-purchase";
 
 export type GyshPaymentRow = {
   id: string;
@@ -28,6 +35,12 @@ export type GyshPaymentRow = {
   currency: string;
   paidAt: string;
   source: string;
+  memberName: string;
+  refundCents: number;
+  refundedAt: string | null;
+  refundSource: string;
+  refundNote: string;
+  adminEdited: boolean;
 };
 
 /** True when a ledger row is owned by this member (user id or matching email). */
@@ -80,6 +93,128 @@ async function ensurePaymentsTable(env: Env): Promise<void> {
   } catch {
     /* ignore */
   }
+  try {
+    await env.DB.prepare(
+      `ALTER TABLE gysh_payments ADD COLUMN member_name TEXT NOT NULL DEFAULT ''`,
+    ).run();
+  } catch {
+    /* already present */
+  }
+  for (const sql of [
+    `ALTER TABLE gysh_payments ADD COLUMN refund_cents INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE gysh_payments ADD COLUMN refunded_at TEXT`,
+    `ALTER TABLE gysh_payments ADD COLUMN refund_source TEXT NOT NULL DEFAULT ''`,
+    `ALTER TABLE gysh_payments ADD COLUMN refund_note TEXT NOT NULL DEFAULT ''`,
+    `ALTER TABLE gysh_payments ADD COLUMN admin_edited INTEGER NOT NULL DEFAULT 0`,
+  ]) {
+    try {
+      await env.DB.prepare(sql).run();
+    } catch {
+      /* already present */
+    }
+  }
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS gysh_payment_exclusions (
+      session_id TEXT PRIMARY KEY,
+      payment_id TEXT NOT NULL DEFAULT '',
+      reason TEXT NOT NULL DEFAULT 'admin_deleted',
+      deleted_by TEXT NOT NULL DEFAULT '',
+      deleted_at TEXT NOT NULL
+    )`,
+  ).run();
+}
+
+export async function listGyshPaymentsForAudit(
+  env: Env,
+  opts?: { email?: string; userId?: string; limit?: number },
+): Promise<
+  Array<{
+    paidAt: string;
+    email: string;
+    kind: string;
+    label: string;
+    amountCents: number;
+    sessionId: string;
+    tier: string;
+    audience: string;
+  }>
+> {
+  await ensurePaymentsTable(env);
+  const limit = Math.min(Math.max(opts?.limit ?? 200, 1), 2000);
+  const email = canonicalizeEmail(opts?.email || "");
+  const userId = String(opts?.userId || "").trim();
+  const mapRows = (
+    results:
+      | Array<{
+          paid_at: string;
+          email: string;
+          kind: string;
+          label: string;
+          amount_cents: number;
+          session_id: string;
+          tier?: string | null;
+          audience?: string | null;
+        }>
+      | null
+      | undefined,
+  ) =>
+    (results || []).map((r) => ({
+      paidAt: r.paid_at,
+      email: r.email,
+      kind: r.kind,
+      label: r.label,
+      amountCents: r.amount_cents,
+      sessionId: r.session_id,
+      tier: r.tier || "",
+      audience: r.audience || "",
+    }));
+  const selectSql = `SELECT paid_at, email, kind, label, amount_cents, session_id, tier, audience
+         FROM gysh_payments`;
+  try {
+    if (userId && email.includes("@")) {
+      const { results } = await env.DB.prepare(
+        `${selectSql}
+         WHERE user_id = ? OR lower(email) = lower(?)
+         ORDER BY paid_at DESC
+         LIMIT ?`,
+      )
+        .bind(userId, email, limit)
+        .all();
+      return mapRows(results);
+    }
+    if (email.includes("@")) {
+      const { results } = await env.DB.prepare(
+        `${selectSql}
+         WHERE lower(email) = lower(?)
+         ORDER BY paid_at DESC
+         LIMIT ?`,
+      )
+        .bind(email, limit)
+        .all();
+      return mapRows(results);
+    }
+    if (userId) {
+      const { results } = await env.DB.prepare(
+        `${selectSql}
+         WHERE user_id = ?
+         ORDER BY paid_at DESC
+         LIMIT ?`,
+      )
+        .bind(userId, limit)
+        .all();
+      return mapRows(results);
+    }
+    const { results } = await env.DB.prepare(
+      `${selectSql}
+       ORDER BY paid_at DESC
+       LIMIT ?`,
+    )
+      .bind(limit)
+      .all();
+    return mapRows(results);
+  } catch {
+    return [];
+  }
 }
 
 function labelForPayment(input: {
@@ -95,9 +230,32 @@ function labelForPayment(input: {
     const every = input.interval === "year" ? "yearly" : "monthly";
     return `${tier} · ${lane} · ${every}`;
   }
-  if (input.kind === "alacarte") return input.item ? `A-la-carte · ${input.item}` : "A-la-carte";
-  if (input.kind === "credit_pack") return input.item ? `Credit pack · ${input.item}` : "Credit pack";
+  if (input.kind === "alacarte") {
+    return formatAlaCartePurchaseLabel({
+      itemMeta: input.item,
+      label: input.item ? `A-la-carte · ${input.item}` : "A-la-carte",
+    });
+  }
+  if (input.kind === "credit_pack") {
+    return formatCreditPackPurchaseLabel({
+      itemMeta: input.item,
+      label: input.item ? `Credit pack · ${input.item}` : "Credit pack",
+      kind: "credit_pack",
+    });
+  }
   return input.kind || "Payment";
+}
+
+export async function gyshPaymentExistsForSession(env: Env, sessionId: string): Promise<boolean> {
+  const id = String(sessionId || "").trim();
+  if (!id) return false;
+  await ensurePaymentsTable(env);
+  const row = await env.DB.prepare(
+    `SELECT session_id FROM gysh_payments WHERE session_id = ? LIMIT 1`,
+  )
+    .bind(id)
+    .first<{ session_id: string }>();
+  return Boolean(row?.session_id);
 }
 
 export async function upsertGyshPayment(
@@ -116,6 +274,7 @@ export async function upsertGyshPayment(
     currency?: string;
     paidAt?: string;
     source?: string;
+    memberName?: string | null;
   },
 ): Promise<void> {
   await ensurePaymentsTable(env);
@@ -128,25 +287,55 @@ export async function upsertGyshPayment(
     interval: input.interval || "",
     item: input.item || "",
   });
+  const memberName = String(input.memberName || "").trim();
   const id = `pay-${input.sessionId}`;
   await env.DB.prepare(
     `INSERT INTO gysh_payments (
        id, session_id, payment_intent_id, email, user_id, kind, tier, audience, interval,
-       label, amount_cents, currency, paid_at, source, meta_json, created_at, updated_at
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       label, amount_cents, currency, paid_at, source, meta_json, created_at, updated_at, member_name
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(session_id) DO UPDATE SET
        payment_intent_id = excluded.payment_intent_id,
-       email = excluded.email,
        user_id = COALESCE(excluded.user_id, gysh_payments.user_id),
-       kind = excluded.kind,
-       tier = excluded.tier,
-       audience = excluded.audience,
-       interval = excluded.interval,
-       label = excluded.label,
-       amount_cents = excluded.amount_cents,
+       tier = CASE
+         WHEN COALESCE(gysh_payments.admin_edited, 0) = 1 THEN gysh_payments.tier
+         ELSE excluded.tier
+       END,
+       audience = CASE
+         WHEN COALESCE(gysh_payments.admin_edited, 0) = 1 THEN gysh_payments.audience
+         ELSE excluded.audience
+       END,
+       interval = CASE
+         WHEN COALESCE(gysh_payments.admin_edited, 0) = 1 THEN gysh_payments.interval
+         ELSE excluded.interval
+       END,
        currency = excluded.currency,
-       paid_at = excluded.paid_at,
        source = excluded.source,
+       member_name = CASE
+         WHEN COALESCE(gysh_payments.admin_edited, 0) = 1 THEN gysh_payments.member_name
+         WHEN excluded.member_name != '' THEN excluded.member_name
+         ELSE gysh_payments.member_name
+       END,
+       email = CASE
+         WHEN COALESCE(gysh_payments.admin_edited, 0) = 1 THEN gysh_payments.email
+         ELSE excluded.email
+       END,
+       kind = CASE
+         WHEN COALESCE(gysh_payments.admin_edited, 0) = 1 THEN gysh_payments.kind
+         ELSE excluded.kind
+       END,
+       label = CASE
+         WHEN COALESCE(gysh_payments.admin_edited, 0) = 1 THEN gysh_payments.label
+         ELSE excluded.label
+       END,
+       amount_cents = CASE
+         WHEN COALESCE(gysh_payments.admin_edited, 0) = 1 THEN gysh_payments.amount_cents
+         ELSE excluded.amount_cents
+       END,
+       paid_at = CASE
+         WHEN COALESCE(gysh_payments.admin_edited, 0) = 1 THEN gysh_payments.paid_at
+         ELSE excluded.paid_at
+       END,
        updated_at = excluded.updated_at`,
   )
     .bind(
@@ -167,6 +356,7 @@ export async function upsertGyshPayment(
       "{}",
       now,
       now,
+      memberName,
     )
     .run();
 }
@@ -213,7 +403,8 @@ function sessionToPayment(session: StripeCheckoutSession): GyshPaymentRow | null
   const audience = String(meta.gysh_audience || "");
   const interval = String(meta.gysh_interval || "");
   const item = String(meta.gysh_item || "");
-  const email = String(meta.gysh_email || session.customer_email || "").toLowerCase();
+  const email = String(meta.gysh_email || session.customer_email || session.customer_details?.email || "").toLowerCase();
+  const memberName = String(meta.gysh_name || session.customer_details?.name || "").trim();
   const amountCents = Number(session.amount_total || 0);
   const paidAt = session.created
     ? new Date(session.created * 1000).toISOString()
@@ -223,6 +414,7 @@ function sessionToPayment(session: StripeCheckoutSession): GyshPaymentRow | null
     sessionId: session.id,
     paymentIntentId: typeof session.payment_intent === "string" ? session.payment_intent : "",
     email,
+    memberName,
     userId: null,
     kind,
     tier,
@@ -233,31 +425,65 @@ function sessionToPayment(session: StripeCheckoutSession): GyshPaymentRow | null
     currency: String(session.currency || "usd").toLowerCase(),
     paidAt,
     source: "stripe",
+    refundCents: 0,
+    refundedAt: null,
+    refundSource: "",
+    refundNote: "",
+    adminEdited: false,
   };
 }
 
-function summarize(payments: GyshPaymentRow[]) {
-  const byKind: Record<string, { count: number; amountCents: number }> = {};
-  let amountCents = 0;
-  for (const p of payments) {
-    amountCents += p.amountCents;
-    const bucket = byKind[p.kind] || { count: 0, amountCents: 0 };
-    bucket.count += 1;
-    bucket.amountCents += p.amountCents;
-    byKind[p.kind] = bucket;
-  }
+type GyshPaymentDbRow = {
+  id: string;
+  session_id: string;
+  payment_intent_id: string;
+  email: string;
+  user_id: string | null;
+  kind: string;
+  tier: string;
+  audience: string;
+  interval: string;
+  label: string;
+  amount_cents: number;
+  currency: string;
+  paid_at: string;
+  source: string;
+  member_name?: string | null;
+  refund_cents?: number | null;
+  refunded_at?: string | null;
+  refund_source?: string | null;
+  refund_note?: string | null;
+  admin_edited?: number | null;
+};
+
+function mapDbPayment(r: GyshPaymentDbRow): GyshPaymentRow {
   return {
-    count: payments.length,
-    amountCents,
-    amountUsd: Math.round(amountCents) / 100,
-    byKind: Object.fromEntries(
-      Object.entries(byKind).map(([k, v]) => [
-        k,
-        { count: v.count, amountCents: v.amountCents, amountUsd: Math.round(v.amountCents) / 100 },
-      ]),
-    ),
+    id: r.id,
+    sessionId: r.session_id,
+    paymentIntentId: r.payment_intent_id || "",
+    email: r.email,
+    userId: r.user_id,
+    kind: r.kind,
+    tier: r.tier,
+    audience: r.audience,
+    interval: r.interval,
+    label: r.label,
+    amountCents: r.amount_cents,
+    currency: r.currency,
+    paidAt: r.paid_at,
+    source: r.source,
+    memberName: r.member_name || "",
+    refundCents: Number(r.refund_cents) || 0,
+    refundedAt: r.refunded_at || null,
+    refundSource: r.refund_source || "",
+    refundNote: r.refund_note || "",
+    adminEdited: Number(r.admin_edited) === 1,
   };
 }
+
+const PAYMENT_SELECT = `id, session_id, payment_intent_id, email, user_id, kind, tier, audience, interval,
+              label, amount_cents, currency, paid_at, source, member_name,
+              refund_cents, refunded_at, refund_source, refund_note, admin_edited`;
 
 /** Admin: list / total Stripe + D1 payments for a period. */
 export async function handleListPayments(env: Env, request: Request): Promise<Response> {
@@ -296,6 +522,7 @@ export async function handleListPayments(env: Env, request: Request): Promise<Re
           currency: p.currency,
           paidAt: p.paidAt,
           source: "stripe",
+          memberName: p.memberName,
         });
       } catch {
         /* ignore single-row failures */
@@ -312,52 +539,24 @@ export async function handleListPayments(env: Env, request: Request): Promise<Re
     const fromIso = new Date(gte * 1000).toISOString();
     const toIso = new Date(lte * 1000).toISOString();
     const rows = await env.DB.prepare(
-      `SELECT id, session_id, payment_intent_id, email, user_id, kind, tier, audience, interval,
-              label, amount_cents, currency, paid_at, source
+      `SELECT ${PAYMENT_SELECT}
        FROM gysh_payments
        WHERE paid_at >= ? AND paid_at <= ?
        ORDER BY paid_at DESC`,
     )
       .bind(fromIso, toIso)
-      .all<{
-        id: string;
-        session_id: string;
-        payment_intent_id: string;
-        email: string;
-        user_id: string | null;
-        kind: string;
-        tier: string;
-        audience: string;
-        interval: string;
-        label: string;
-        amount_cents: number;
-        currency: string;
-        paid_at: string;
-        source: string;
-      }>();
-    d1Payments = (rows.results || []).map((r) => ({
-      id: r.id,
-      sessionId: r.session_id,
-      paymentIntentId: r.payment_intent_id || "",
-      email: r.email,
-      userId: r.user_id,
-      kind: r.kind,
-      tier: r.tier,
-      audience: r.audience,
-      interval: r.interval,
-      label: r.label,
-      amountCents: r.amount_cents,
-      currency: r.currency,
-      paidAt: r.paid_at,
-      source: r.source,
-    }));
+      .all<GyshPaymentDbRow>();
+    d1Payments = (rows.results || []).map(mapDbPayment);
   } catch {
     /* table may be missing until migrate */
   }
 
   const bySession = new Map<string, GyshPaymentRow>();
   for (const p of d1Payments) bySession.set(p.sessionId, p);
-  for (const p of stripePayments) bySession.set(p.sessionId, p);
+  for (const p of stripePayments) {
+    const merged = mergeListedPayment(bySession.get(p.sessionId), p);
+    if (merged) bySession.set(p.sessionId, merged);
+  }
   const payments = [...bySession.values()].sort((a, b) =>
     a.paidAt < b.paidAt ? 1 : a.paidAt > b.paidAt ? -1 : 0,
   );
@@ -369,60 +568,147 @@ export async function handleListPayments(env: Env, request: Request): Promise<Re
   return json({
     ok: true,
     period: range,
-    totals: summarize(payments),
+    totals: summarizeGyshPayments(payments),
     payments,
     stripeError,
     mode: secret.startsWith("sk_live_") ? "live" : "test",
   });
 }
 
+/** Admin: edit a ledger row (name, email, item, kind, amount, refund, date). Does not create a Stripe refund. */
+export async function handleUpdatePayment(
+  env: Env,
+  request: Request,
+  actor: DbUser,
+  paymentKey: string,
+): Promise<Response> {
+  const key = decodeURIComponent(String(paymentKey || "").trim());
+  if (!key) return error("Payment id is required.", 400);
+
+  let body: PaymentRowPatchInput;
+  try {
+    body = (await request.json()) as PaymentRowPatchInput;
+  } catch {
+    return error("Invalid JSON body.", 400);
+  }
+
+  await ensurePaymentsTable(env);
+  const existing = await env.DB.prepare(
+    `SELECT ${PAYMENT_SELECT} FROM gysh_payments WHERE id = ? OR session_id = ? LIMIT 1`,
+  )
+    .bind(key, key)
+    .first<GyshPaymentDbRow>();
+  if (!existing) return error("Payment not found. Refresh the list, then try again.", 404);
+
+  const current = mapDbPayment(existing);
+  const parsed = parsePaymentRowPatch(body, {
+    amountCents: current.amountCents,
+    refundCents: current.refundCents,
+    paidAt: current.paidAt,
+  });
+  if (!parsed.ok) return error(parsed.error, 400);
+
+  const now = new Date().toISOString();
+  const refundedAt = parsed.values.refundCents > 0 ? current.refundedAt || now : null;
+  const refundSource =
+    parsed.values.refundCents > 0 ? (current.refundSource === "stripe" ? "stripe" : "manual") : "";
+
+  await env.DB.prepare(
+    `UPDATE gysh_payments
+     SET member_name = ?,
+         email = ?,
+         label = ?,
+         kind = ?,
+         amount_cents = ?,
+         paid_at = ?,
+         refund_cents = ?,
+         refunded_at = ?,
+         refund_source = ?,
+         refund_note = ?,
+         admin_edited = 1,
+         updated_at = ?
+     WHERE id = ?`,
+  )
+    .bind(
+      parsed.values.memberName,
+      parsed.values.email,
+      parsed.values.label,
+      parsed.values.kind,
+      parsed.values.amountCents,
+      parsed.values.paidAt,
+      parsed.values.refundCents,
+      refundedAt,
+      refundSource,
+      parsed.values.refundNote,
+      now,
+      current.id,
+    )
+    .run();
+
+  try {
+    await appendAudit(
+      env.DB,
+      "payment_updated",
+      parsed.values.email || actor.email,
+      `${current.sessionId} ${parsed.values.kind} $${(parsed.values.amountCents / 100).toFixed(2)} refund $${(parsed.values.refundCents / 100).toFixed(2)} by ${actor.email}`,
+    );
+  } catch {
+    /* audit is best-effort */
+  }
+
+  const updated = await env.DB.prepare(
+    `SELECT ${PAYMENT_SELECT} FROM gysh_payments WHERE id = ? LIMIT 1`,
+  )
+    .bind(current.id)
+    .first<GyshPaymentDbRow>();
+
+  return json({
+    ok: true,
+    payment: mapDbPayment(
+      updated || {
+        ...existing,
+        member_name: parsed.values.memberName,
+        email: parsed.values.email,
+        label: parsed.values.label,
+        kind: parsed.values.kind,
+        amount_cents: parsed.values.amountCents,
+        paid_at: parsed.values.paidAt,
+        refund_cents: parsed.values.refundCents,
+        refunded_at: refundedAt,
+        refund_source: refundSource,
+        refund_note: parsed.values.refundNote,
+        admin_edited: 1,
+      },
+    ),
+  });
+}
+
 /** Logged-in member: their own Stripe / D1 purchase history (no admin totals). */
 export async function handleMyPurchases(env: Env, user: DbUser): Promise<Response> {
   await ensurePaymentsTable(env);
+  let membershipTier = String(user.membership_tier || "free").toLowerCase();
+  let audience = String(user.audience || "adult").toLowerCase();
+  try {
+    const { syncMemberEntitlementsFromPurchases } = await import("./member-credits");
+    const synced = await syncMemberEntitlementsFromPurchases(env, user);
+    membershipTier = synced.membershipTier;
+    audience = synced.audience;
+  } catch {
+    /* entitlements optional */
+  }
   const email = canonicalizeEmail(user.email || "");
   let rows: GyshPaymentRow[] = [];
   try {
     const result = await env.DB.prepare(
-      `SELECT id, session_id, payment_intent_id, email, user_id, kind, tier, audience, interval,
-              label, amount_cents, currency, paid_at, source
+      `SELECT ${PAYMENT_SELECT}
        FROM gysh_payments
        WHERE user_id = ? OR lower(email) = lower(?)
        ORDER BY paid_at DESC
        LIMIT 100`,
     )
       .bind(user.id, email)
-      .all<{
-        id: string;
-        session_id: string;
-        payment_intent_id: string;
-        email: string;
-        user_id: string | null;
-        kind: string;
-        tier: string;
-        audience: string;
-        interval: string;
-        label: string;
-        amount_cents: number;
-        currency: string;
-        paid_at: string;
-        source: string;
-      }>();
-    rows = (result.results || []).map((r) => ({
-      id: r.id,
-      sessionId: r.session_id,
-      paymentIntentId: r.payment_intent_id || "",
-      email: r.email,
-      userId: r.user_id,
-      kind: r.kind,
-      tier: r.tier,
-      audience: r.audience,
-      interval: r.interval,
-      label: r.label,
-      amountCents: r.amount_cents,
-      currency: r.currency,
-      paidAt: r.paid_at,
-      source: r.source,
-    }));
+      .all<GyshPaymentDbRow>();
+    rows = (result.results || []).map(mapDbPayment);
   } catch {
     rows = [];
   }
@@ -432,8 +718,8 @@ export async function handleMyPurchases(env: Env, user: DbUser): Promise<Respons
 
   return json({
     ok: true,
-    membershipTier: String(user.membership_tier || "free").toLowerCase(),
-    audience: String(user.audience || "adult").toLowerCase(),
+    membershipTier,
+    audience,
     purchases: rows.map((p) => ({
       id: p.id,
       sessionId: p.sessionId,

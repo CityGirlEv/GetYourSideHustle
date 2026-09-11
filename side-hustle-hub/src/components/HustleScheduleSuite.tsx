@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   CalendarDays,
   ChartColumnIncreasing,
@@ -19,6 +19,7 @@ import {
   SCHEDULE_REMINDER_CADENCE_OPTIONS,
   applyScheduleBlockCheckbox,
   applyScheduleWeekGrade,
+  canAccessPnl,
   canAccessScheduleSuite,
   collectScheduleValidationErrors,
   createSchedulePlan,
@@ -27,6 +28,10 @@ import {
   ensureStoreHoursFromEstimates,
   familyMemberOptions,
   filterSchedulesByOwner,
+  scheduleEligibleFamilyChildren,
+  scheduleSaveEnabled,
+  activateSchedule,
+  activeScheduleAfterOwnerFilter,
   formatEstimateMinutes,
   getWeekRoundup,
   gradeScheduleWeek,
@@ -42,17 +47,20 @@ import {
   scheduleBlockRequiresHours,
   scheduleBlockStatusLabel,
   scheduleProgressPercent,
+  scheduleTaskCountLabel,
+  scheduleTaskCounts,
   scheduleSuiteLockedReason,
   scheduleTabLabel,
   schedulesForOwnerHustle,
   setBlockEstimatedMinutes,
   setBlockFocus,
+  setBlockNotes,
   setScheduleBlockHours,
   setScheduleBlockStatus,
   softDeleteSchedule,
   totalHoursLogged,
   updateBlockDueDate,
-  updatePlanDueDate,
+  updatePlanStartDate,
   upsertSchedule,
   upsertWeekRoundup,
   addScheduleActionItem,
@@ -60,7 +68,13 @@ import {
   formatScheduleActionItemStamp,
   scheduleStatsBarShowsGradeMe,
   suiteViewAfterGradeMe,
+  scheduleGradeMeButtonLabel,
+  liveScheduleWeekGrade,
+  withRefreshedWeekGrade,
+  scheduleCollapsePreview,
   SCHEDULE_EMAIL_SECTION_ID,
+  SCHEDULE_SUITE_DEFAULT_VIEW,
+  scheduleSuiteTabsForAccess,
   type ScheduleGradeCelebration,
   type ScheduleGradeMark,
   type HustleSchedulePlan,
@@ -113,9 +127,36 @@ type FamilyChildInput = {
   id: string;
   displayName: string;
   ageBand: "kids" | "junior";
+  source?: "profile" | "signup";
+  needsRegistration?: boolean;
 };
 
 type SuiteView = ScheduleSuiteView;
+
+function CollapseField({
+  title,
+  testId,
+  preview,
+  children,
+}: {
+  title: string;
+  testId: string;
+  preview: string;
+  children: ReactNode;
+}) {
+  return (
+    <details className="hustle-schedule-suite__collapse-field" data-testid={testId}>
+      <summary className="hustle-schedule-suite__collapse-summary">
+        <span className="hustle-schedule-suite__collapse-title">
+          <strong>{title}</strong>
+          <em className="hustle-schedule-suite__collapse-preview">{preview}</em>
+        </span>
+        <span className="collapse-show-hide" aria-hidden="true" />
+      </summary>
+      <div className="hustle-schedule-suite__collapse-body">{children}</div>
+    </details>
+  );
+}
 
 type HustleScheduleSuiteProps = {
   membershipTier: string | null | undefined;
@@ -150,9 +191,11 @@ export function HustleScheduleSuite({
 }: HustleScheduleSuiteProps) {
   const tier: TierId = normalizeTierId(membershipTier);
   const unlocked = !tierLoading && canAccessScheduleSuite(tier, { isAdmin });
+  const pnlUnlocked = !tierLoading && canAccessPnl(tier, { isAdmin });
+  const viewTabs = useMemo(() => scheduleSuiteTabsForAccess({ pnlUnlocked }), [pnlUnlocked]);
 
   const members = useMemo(
-    () => familyMemberOptions(memberName, familyChildren),
+    () => familyMemberOptions(memberName, scheduleEligibleFamilyChildren(familyChildren)),
     [memberName, familyChildren],
   );
 
@@ -166,7 +209,7 @@ export function HustleScheduleSuite({
 
   const [pickOwner, setPickOwner] = useState<ScheduleOwnerId>("self");
   const [pickHustle, setPickHustle] = useState("");
-  const [suiteView, setSuiteView] = useState<SuiteView>("tracker");
+  const [suiteView, setSuiteView] = useState<SuiteView>(SCHEDULE_SUITE_DEFAULT_VIEW);
   const [ownerFilter, setOwnerFilter] = useState<ScheduleOwnerFilter>("all");
   const [errorDialog, setErrorDialog] = useState<{
     title: string;
@@ -177,6 +220,12 @@ export function HustleScheduleSuite({
     () => hustleOptionsForOwner(pickOwner, blueprints),
     [pickOwner, blueprints],
   );
+
+  useEffect(() => {
+    if (suiteView === "pnl" && !pnlUnlocked) {
+      setSuiteView(SCHEDULE_SUITE_DEFAULT_VIEW);
+    }
+  }, [suiteView, pnlUnlocked]);
 
   useEffect(() => {
     if (!hustleChoices.some((h) => h.hustleId === pickHustle)) {
@@ -225,7 +274,7 @@ export function HustleScheduleSuite({
         activeScheduleId: focusScheduleId,
       }));
     }
-    setSuiteView("tracker");
+    setSuiteView(SCHEDULE_SUITE_DEFAULT_VIEW);
     onFocusScheduleConsumed?.();
   }, [focusScheduleId, loading, unlocked, store.schedules, store.activeScheduleId, onFocusScheduleConsumed]);
 
@@ -235,13 +284,14 @@ export function HustleScheduleSuite({
   );
 
   useEffect(() => {
-    if (!store.activeScheduleId) return;
-    if (visibleSchedules.some((s) => s.id === store.activeScheduleId)) return;
-    const first = visibleSchedules[0]?.id ?? null;
-    if (first) {
-      setStore((prev) => ({ ...prev, activeScheduleId: first }));
-    }
-  }, [visibleSchedules, store.activeScheduleId]);
+    const nextId = activeScheduleAfterOwnerFilter(
+      store.schedules,
+      ownerFilter,
+      store.activeScheduleId,
+    );
+    if (nextId === store.activeScheduleId) return;
+    setStore((prev) => activateSchedule(prev, nextId));
+  }, [ownerFilter, store.schedules, store.activeScheduleId]);
 
   const applyLocal = useCallback((next: HustleScheduleStore) => {
     setStore(next);
@@ -287,35 +337,19 @@ export function HustleScheduleSuite({
     [store],
   );
 
-  const active =
-    visibleSchedules.find((s) => s.id === store.activeScheduleId) ??
-    visibleSchedules[0] ??
-    null;
+  const canSave = scheduleSaveEnabled(dirty, saving);
+  const active = visibleSchedules.find((s) => s.id === store.activeScheduleId) ?? null;
   const pendingDelete =
     pendingDeleteId != null
       ? store.schedules.find((s) => s.id === pendingDeleteId) ?? null
       : null;
 
-  const createOrOpenSchedule = (mode: "new" | "open") => {
+  const createNewSchedule = () => {
     if (!unlocked) return;
     const owner = members.find((m) => m.id === pickOwner);
     const hustle = hustleChoices.find((h) => h.hustleId === pickHustle);
     if (!owner || !hustle) return;
     const existing = schedulesForOwnerHustle(store, owner.id, hustle.hustleId);
-    if (mode === "open") {
-      const target =
-        existing.find((s) => s.id === store.activeScheduleId) ??
-        [...existing].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
-      if (!target) return;
-      applyLocal({
-        ...store,
-        activeScheduleId: target.id,
-        updatedAt: new Date().toISOString(),
-      });
-      setOwnerFilter(owner.id);
-      setSuiteView("tracker");
-      return;
-    }
     const plan = createSchedulePlan({
       ownerId: owner.id,
       ownerLabel: owner.label,
@@ -328,18 +362,12 @@ export function HustleScheduleSuite({
     });
     applyLocal(upsertSchedule(store, plan));
     setOwnerFilter(owner.id);
-    setSuiteView("tracker");
+    setSuiteView(SCHEDULE_SUITE_DEFAULT_VIEW);
   };
 
-  const existingForPick =
-    pickOwner && pickHustle ? schedulesForOwnerHustle(store, pickOwner, pickHustle) : [];
-
   const selectTab = (id: string) => {
-    applyLocal({
-      ...store,
-      activeScheduleId: id,
-      updatedAt: new Date().toISOString(),
-    });
+    setStore((prev) => activateSchedule(prev, id));
+    setSuiteView(SCHEDULE_SUITE_DEFAULT_VIEW);
   };
 
   const patchPlan = (fn: (p: HustleSchedulePlan) => HustleSchedulePlan) => {
@@ -375,7 +403,7 @@ export function HustleScheduleSuite({
     try {
       await saveMemberProgress("hustle_schedule", next);
       setSaveOk(true);
-      setSuiteView("tracker");
+      setSuiteView(SCHEDULE_SUITE_DEFAULT_VIEW);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not restore schedule.");
       setDirty(true);
@@ -402,22 +430,11 @@ export function HustleScheduleSuite({
           unlocked={unlocked}
           data-testid="schedule-suite-pro-badge"
         />
-        {unlocked && (
-          <button
-            type="button"
-            className="btn btn-primary hustle-schedule-suite__save"
-            disabled={!dirty || saving}
-            data-testid="schedule-suite-save"
-            onClick={() => void saveStore()}
-          >
-            <Save size={16} aria-hidden />
-            {saving ? "Saving…" : dirty ? "Save schedules" : "Saved"}
-          </button>
-        )}
       </div>
       <p className="user-portal-panel-lead">
-        Create schedules for any family member + hustle, edit them anytime, then{" "}
-        <strong>Save</strong>. Delete moves a suite to Deleted schedules so you can restore it.
+        Tap a family member to see their saved schedules, then tap a schedule to open it. Make a
+        new schedule at the top when you need one. <strong>Save</strong> sits beside the plan tab
+        you have open and turns on after you edit.
         {!unlocked ? (
           <>
             {" "}
@@ -457,13 +474,18 @@ export function HustleScheduleSuite({
             ) : (
               <>
                 <div className="hustle-schedule-suite__create" data-testid="schedule-suite-create">
+                  <p className="hustle-schedule-suite__create-heading">Make a new schedule</p>
                   <label>
                     <span>Family member</span>
                     <select
                       value={pickOwner}
                       disabled={!unlocked}
                       data-testid="schedule-suite-owner"
-                      onChange={(e) => setPickOwner(e.target.value as ScheduleOwnerId)}
+                      onChange={(e) => {
+                        const id = e.target.value as ScheduleOwnerId;
+                        setPickOwner(id);
+                        setOwnerFilter(id);
+                      }}
                     >
                       {members.map((m) => (
                         <option key={m.id} value={m.id}>
@@ -497,22 +519,10 @@ export function HustleScheduleSuite({
                       className="btn btn-primary"
                       disabled={!unlocked || !pickHustle}
                       data-testid="schedule-suite-add"
-                      onClick={() => createOrOpenSchedule("new")}
+                      onClick={createNewSchedule}
                     >
                       <Plus size={16} aria-hidden /> Make new schedule
                     </button>
-                    {existingForPick.length > 0 && (
-                      <button
-                        type="button"
-                        className="btn btn-outline"
-                        disabled={!unlocked || !pickHustle}
-                        data-testid="schedule-suite-open-existing"
-                        onClick={() => createOrOpenSchedule("open")}
-                      >
-                        Open existing
-                        {existingForPick.length > 1 ? ` (${existingForPick.length})` : ""}
-                      </button>
-                    )}
                   </div>
                 </div>
 
@@ -537,6 +547,103 @@ export function HustleScheduleSuite({
                   </p>
                 )}
 
+                <div className="hustle-schedule-suite__saved" data-testid="schedule-suite-saved-block">
+                  <h4 className="hustle-schedule-suite__saved-heading">Saved schedules</h4>
+                  <p className="hustle-schedule-suite__saved-lead">
+                    Tap a name to see that person&apos;s schedules. Tap a schedule to open it.
+                  </p>
+                  <div
+                    className="hustle-schedule-suite__member-bubbles"
+                    role="tablist"
+                    aria-label="Family members"
+                    data-testid="schedule-suite-member-bubbles"
+                  >
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={ownerFilter === "all"}
+                      className={`hustle-schedule-suite__member-bubble${
+                        ownerFilter === "all" ? " is-active" : ""
+                      }`}
+                      data-testid="schedule-member-filter-all"
+                      disabled={!unlocked}
+                      onClick={() => setOwnerFilter("all")}
+                    >
+                      All family members
+                    </button>
+                    {members.map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={ownerFilter === m.id}
+                        className={`hustle-schedule-suite__member-bubble${
+                          ownerFilter === m.id ? " is-active" : ""
+                        }`}
+                        data-testid={`schedule-member-filter-${m.id}`}
+                        disabled={!unlocked}
+                        onClick={() => {
+                          setOwnerFilter(m.id);
+                          setPickOwner(m.id);
+                        }}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div
+                    className="hustle-schedule-suite__tabs"
+                    role="tablist"
+                    aria-label="Saved hustle schedules"
+                    data-testid="schedule-suite-tabs"
+                  >
+                    {visibleSchedules.length === 0 ? (
+                      <p
+                        className="hustle-schedule-suite__hint"
+                        data-testid={
+                          store.schedules.length === 0
+                            ? "schedule-suite-empty"
+                            : "schedule-suite-filter-empty"
+                        }
+                      >
+                        {store.schedules.length === 0
+                          ? "No saved schedules yet. Make a new one above."
+                          : "No saved schedules for this family member yet."}
+                      </p>
+                    ) : (
+                      visibleSchedules.map((s) => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          role="tab"
+                          aria-selected={s.id === active?.id}
+                          className={`hustle-schedule-suite__tab${
+                            s.id === active?.id ? " is-active" : ""
+                          }`}
+                          data-testid={`schedule-tab-${s.id}`}
+                          disabled={!unlocked}
+                          onClick={() => selectTab(s.id)}
+                        >
+                          {scheduleTabLabel(s)}
+                          <span
+                            className="hustle-schedule-suite__tab-close"
+                            role="button"
+                            tabIndex={-1}
+                            aria-label={`Delete ${scheduleTabLabel(s)}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!unlocked) return;
+                              setPendingDeleteId(s.id);
+                            }}
+                          >
+                            <X size={12} aria-hidden />
+                          </span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+
                 {unlocked && loading && (
                   <WaitIndicator
                     data-testid="schedule-suite-loading"
@@ -552,13 +659,7 @@ export function HustleScheduleSuite({
 
                 {unlocked && saveOk && !dirty && (
                   <p className="hustle-schedule-suite__saved-ok" data-testid="schedule-suite-saved">
-                    Schedules saved.
-                  </p>
-                )}
-
-                {unlocked && dirty && (
-                  <p className="hustle-schedule-suite__dirty" data-testid="schedule-suite-dirty">
-                    Unsaved changes — tap <strong>Save schedules</strong> to keep them.
+                    Schedule saved.
                   </p>
                 )}
 
@@ -602,119 +703,22 @@ export function HustleScheduleSuite({
                   />
                 )}
 
-                {unlocked && store.schedules.length > 0 && (
-                  <div
-                    className="hustle-schedule-suite__member-bubbles"
-                    role="tablist"
-                    aria-label="Family members"
-                    data-testid="schedule-suite-member-bubbles"
-                  >
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={ownerFilter === "all"}
-                      className={`hustle-schedule-suite__member-bubble${
-                        ownerFilter === "all" ? " is-active" : ""
-                      }`}
-                      data-testid="schedule-member-filter-all"
-                      disabled={!unlocked}
-                      onClick={() => setOwnerFilter("all")}
-                    >
-                      All family members
-                    </button>
-                    {members.map((m) => (
-                      <button
-                        key={m.id}
-                        type="button"
-                        role="tab"
-                        aria-selected={ownerFilter === m.id}
-                        className={`hustle-schedule-suite__member-bubble${
-                          ownerFilter === m.id ? " is-active" : ""
-                        }`}
-                        data-testid={`schedule-member-filter-${m.id}`}
-                        disabled={!unlocked}
-                        onClick={() => {
-                          setOwnerFilter(m.id);
-                          setPickOwner(m.id);
-                        }}
-                      >
-                        {m.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {store.schedules.length > 0 && (
-                  <div className="hustle-schedule-suite__saved" data-testid="schedule-suite-saved-block">
-                    <h4 className="hustle-schedule-suite__saved-heading">Saved schedules</h4>
-                    <div
-                      className="hustle-schedule-suite__tabs"
-                      role="tablist"
-                      aria-label="Saved hustle schedules"
-                      data-testid="schedule-suite-tabs"
-                    >
-                      {visibleSchedules.length === 0 ? (
-                        <p
-                          className="hustle-schedule-suite__hint"
-                          data-testid="schedule-suite-filter-empty"
-                        >
-                          No saved schedules for this family member yet.
-                        </p>
-                      ) : (
-                        visibleSchedules.map((s) => (
-                          <button
-                            key={s.id}
-                            type="button"
-                            role="tab"
-                            aria-selected={s.id === active?.id}
-                            className={`hustle-schedule-suite__tab${
-                              s.id === active?.id ? " is-active" : ""
-                            }`}
-                            data-testid={`schedule-tab-${s.id}`}
-                            disabled={!unlocked}
-                            onClick={() => selectTab(s.id)}
-                          >
-                            {scheduleTabLabel(s)}
-                            <span
-                              className="hustle-schedule-suite__tab-close"
-                              role="button"
-                              tabIndex={-1}
-                              aria-label={`Delete ${scheduleTabLabel(s)}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (!unlocked) return;
-                                setPendingDeleteId(s.id);
-                              }}
-                            >
-                              <X size={12} aria-hidden />
-                            </span>
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                )}
-
                 {active && (
                   <ScheduleDetail
                     plan={active}
                     unlocked={unlocked}
+                    pnlUnlocked={pnlUnlocked}
+                    viewTabs={viewTabs}
                     suiteView={suiteView}
                     saving={saving}
                     dirty={dirty}
+                    canSave={canSave}
                     onViewChange={setSuiteView}
                     onPatch={patchPlan}
                     onSave={() => void saveStore()}
                     onOpenGuide={onOpenGuide}
                     onRequestDelete={() => setPendingDeleteId(active.id)}
                   />
-                )}
-
-                {!loading && unlocked && store.schedules.length === 0 && (
-                  <p className="hustle-schedule-suite__hint" data-testid="schedule-suite-empty">
-                    No active schedules. Choose a family member and hustle, then tap{" "}
-                    <strong>Make new schedule</strong>, edit, and <strong>Save</strong>.
-                  </p>
                 )}
 
                 {unlocked && store.deleted.length > 0 && (
@@ -730,7 +734,7 @@ export function HustleScheduleSuite({
                           <div>
                             <strong>{scheduleTabLabel(d)}</strong>
                             <span>
-                              Deleted {d.deletedAt.slice(0, 10)} · due {d.dueDate}
+                              Deleted {d.deletedAt.slice(0, 10)} · start {d.weekStart}
                             </span>
                           </div>
                           <button
@@ -759,9 +763,12 @@ export function HustleScheduleSuite({
 function ScheduleDetail({
   plan,
   unlocked,
+  pnlUnlocked,
+  viewTabs,
   suiteView,
   saving,
   dirty,
+  canSave,
   onViewChange,
   onPatch,
   onSave,
@@ -770,9 +777,12 @@ function ScheduleDetail({
 }: {
   plan: HustleSchedulePlan;
   unlocked: boolean;
+  pnlUnlocked: boolean;
+  viewTabs: { id: SuiteView; label: string }[];
   suiteView: SuiteView;
   saving: boolean;
   dirty: boolean;
+  canSave: boolean;
   onViewChange: (v: SuiteView) => void;
   onPatch: (fn: (p: HustleSchedulePlan) => HustleSchedulePlan) => void;
   onSave: () => void;
@@ -796,9 +806,12 @@ function ScheduleDetail({
   } | null>(null);
   const [actionDraft, setActionDraft] = useState("");
 
+  const liveGrade = liveScheduleWeekGrade(plan, roundup.grade);
+  const shownGrade = liveGrade ?? roundup.grade;
+
   const runGrade = () => {
     if (!unlocked) return;
-    onViewChange(suiteViewAfterGradeMe());
+    onViewChange(suiteViewAfterGradeMe(suiteView));
     onPatch((p) => {
       const withHours = ensureHoursFromEstimates(p);
       const next = applyScheduleWeekGrade(withHours, withHours.weekStart);
@@ -826,15 +839,77 @@ function ScheduleDetail({
           <h4>{plan.hustleLabel}</h4>
           <p>Week of {plan.weekStart}</p>
         </div>
-        <div className="hustle-schedule-suite__hustle-actions">
+      </div>
+
+      <label className="hustle-schedule-suite__due">
+        <span>Start date</span>
+        <input
+          type="date"
+          value={plan.weekStart}
+          disabled={!unlocked}
+          data-testid="schedule-suite-start"
+          aria-label="Schedule start date"
+          onChange={(e) => {
+            if (!unlocked || !e.target.value) return;
+            onPatch((p) => updatePlanStartDate(p, e.target.value));
+          }}
+        />
+        <em>Changing this shifts every day's due date — remember to Save</em>
+      </label>
+
+      <div className="hustle-schedule-suite__view-bar">
+        <div
+          className="hustle-schedule-suite__subtabs"
+          role="tablist"
+          aria-label="Schedule views"
+          data-testid="schedule-suite-views"
+        >
+          {viewTabs.map(({ id, label }) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={suiteView === id}
+              className={`hustle-schedule-suite__subtab${suiteView === id ? " is-active" : ""}`}
+              data-testid={`schedule-view-${id}`}
+              disabled={!unlocked}
+              onClick={() => onViewChange(id)}
+            >
+              {label}
+              {!unlocked && (id === "tracker" || id === "progress") ? (
+                <span className="hustle-schedule-suite__subtab-lock" aria-hidden>
+                  · Pro
+                </span>
+              ) : null}
+            </button>
+          ))}
+          <a
+            href={`#${SCHEDULE_EMAIL_SECTION_ID}`}
+            className="hustle-schedule-suite__email-me"
+            data-testid="schedule-email-me-link"
+            onClick={(e) => {
+              e.preventDefault();
+              document.getElementById(SCHEDULE_EMAIL_SECTION_ID)?.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+              });
+            }}
+          >
+            Email Me
+          </a>
+        </div>
+        <div className="hustle-schedule-suite__view-actions">
           <button
             type="button"
-            className="btn btn-primary"
-            disabled={!unlocked || !dirty || saving}
+            className={`btn btn-primary hustle-schedule-suite__save-detail${
+              canSave ? " is-ready" : ""
+            }`}
+            disabled={!unlocked || !canSave}
             data-testid="schedule-suite-save-detail"
             onClick={onSave}
           >
-            <Save size={14} aria-hidden /> Save
+            <Save size={16} aria-hidden />
+            {saving ? "Saving…" : "Save schedule"}
           </button>
           {onOpenGuide && (
             <button
@@ -857,71 +932,14 @@ function ScheduleDetail({
           >
             <Trash2 size={14} aria-hidden />
           </button>
+          {dirty ? (
+            <p className="hustle-schedule-suite__dirty" data-testid="schedule-suite-dirty">
+              You edited this schedule. Tap <strong>Save schedule</strong> to keep it.
+            </p>
+          ) : (
+            <p className="hustle-schedule-suite__save-hint">Save turns on after you make a change.</p>
+          )}
         </div>
-      </div>
-
-      <label className="hustle-schedule-suite__due">
-        <span>Schedule due date</span>
-        <input
-          type="date"
-          value={plan.dueDate}
-          disabled={!unlocked}
-          data-testid="schedule-suite-due"
-          onChange={(e) => {
-            if (!unlocked || !e.target.value) return;
-            onPatch((p) => updatePlanDueDate(p, e.target.value));
-          }}
-        />
-        <em>Changing this rebuilds the weekly plan around that date — remember to Save</em>
-      </label>
-
-      <div
-        className="hustle-schedule-suite__subtabs"
-        role="tablist"
-        aria-label="Schedule views"
-        data-testid="schedule-suite-views"
-      >
-        {(
-          [
-            ["tracker", "Plan tracker"],
-            ["blueprint", "Blueprint plan"],
-            ["pnl", "P&L calculator"],
-            ["roundup", "Weekly roundup"],
-            ["progress", "Progress"],
-          ] as const
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={suiteView === id}
-            className={`hustle-schedule-suite__subtab${suiteView === id ? " is-active" : ""}`}
-            data-testid={`schedule-view-${id}`}
-            disabled={!unlocked}
-            onClick={() => onViewChange(id)}
-          >
-            {label}
-            {!unlocked && (id === "pnl" || id === "tracker" || id === "progress") ? (
-              <span className="hustle-schedule-suite__subtab-lock" aria-hidden>
-                · Pro
-              </span>
-            ) : null}
-          </button>
-        ))}
-        <a
-          href={`#${SCHEDULE_EMAIL_SECTION_ID}`}
-          className="hustle-schedule-suite__email-me"
-          data-testid="schedule-email-me-link"
-          onClick={(e) => {
-            e.preventDefault();
-            document.getElementById(SCHEDULE_EMAIL_SECTION_ID)?.scrollIntoView({
-              behavior: "smooth",
-              block: "start",
-            });
-          }}
-        >
-          Email Me
-        </a>
       </div>
 
       {suiteView === "tracker" && (
@@ -972,26 +990,25 @@ function ScheduleDetail({
         </div>
         <div>
           <span>
-            Due <strong>{plan.dueDate}</strong>
+            Start <strong data-testid="schedule-stats-start">{plan.weekStart}</strong>
           </span>
         </div>
-        {roundup.grade ? (
-          <div data-testid="schedule-grade-chip">
-            <span>
-              Grade <strong>{roundup.grade.mark ?? roundup.grade.letter}</strong> (
-              {roundup.grade.score}%)
-            </span>
-          </div>
-        ) : null}
         {scheduleStatsBarShowsGradeMe(suiteView) ? (
           <button
             type="button"
-            className="btn btn-primary"
+            className={`btn btn-primary hustle-schedule-suite__grade-me${
+              shownGrade ? ` is-letter-${shownGrade.letter.toLowerCase()}` : ""
+            }`}
             disabled={!unlocked}
             data-testid="schedule-grade-me-anytime"
+            aria-label={
+              shownGrade
+                ? `Re-grade week. ${scheduleGradeMeButtonLabel(shownGrade)}`
+                : "Grade me"
+            }
             onClick={runGrade}
           >
-            Grade me
+            {scheduleGradeMeButtonLabel(shownGrade)}
           </button>
         ) : null}
         {saving && <span className="hustle-schedule-suite__saving">Saving…</span>}
@@ -1009,7 +1026,15 @@ function ScheduleDetail({
 
       {suiteView === "blueprint" && (
         <div className="hustle-schedule-suite__blueprint" data-testid="schedule-view-blueprint">
-          <h4>Blueprint plan</h4>
+          <div className="hustle-schedule-suite__blueprint-head">
+            <h4>Blueprint plan</h4>
+            <p
+              className="hustle-schedule-suite__task-count"
+              data-testid="schedule-blueprint-task-count"
+            >
+              {scheduleTaskCountLabel(scheduleTaskCounts(plan.blocks))}
+            </p>
+          </div>
           <p className="hustle-schedule-suite__hint">
             Marketing and sales target for <strong>{plan.hustleLabel}</strong>. Use the{" "}
             <strong>P&amp;L calculator</strong> tab to add sales/expense line items and see weekly
@@ -1069,16 +1094,19 @@ function ScheduleDetail({
           <button
             type="button"
             className="btn btn-primary"
-            disabled={!unlocked}
+            disabled={!unlocked || !pnlUnlocked}
             data-testid="schedule-open-pnl-tab"
-            onClick={() => onViewChange("pnl")}
+            onClick={() => {
+              if (!pnlUnlocked) return;
+              onViewChange("pnl");
+            }}
           >
             Open P&amp;L calculator
           </button>
         </div>
       )}
 
-      {suiteView === "pnl" && (
+      {suiteView === "pnl" && pnlUnlocked && (
         <SchedulePnLPanel plan={plan} unlocked={unlocked} onPatch={onPatch} />
       )}
 
@@ -1088,56 +1116,59 @@ function ScheduleDetail({
             <div>
               <h4>Weekly Roundup</h4>
               <p className="hustle-schedule-suite__hint">
-                Week of <strong>{plan.weekStart}</strong> — reflect, plan next actions, then grade
-                yourself anytime.
+                Week of <strong>{plan.weekStart}</strong> — tap a box to add notes, then Save
+                progress.
               </p>
             </div>
             <button
               type="button"
               className="btn btn-primary"
-              disabled={!unlocked}
-              data-testid="schedule-grade-me"
-              onClick={runGrade}
+              disabled={!unlocked || !canSave}
+              data-testid="schedule-roundup-save"
+              onClick={onSave}
             >
-              Grade me
+              <Save size={14} aria-hidden /> {saving ? "Saving…" : "Save progress"}
             </button>
           </div>
 
-          {roundup.grade ? (
+          {shownGrade ? (
             <div
-              className={`hustle-schedule-suite__grade is-letter-${roundup.grade.letter.toLowerCase()}${
-                roundup.grade.celebration === "a_pop" ? " is-a-pop" : ""
-              }${roundup.grade.celebration === "congrats" ? " is-congrats" : ""}`}
+              className={`hustle-schedule-suite__grade is-letter-${shownGrade.letter.toLowerCase()}${
+                shownGrade.celebration === "a_pop" ? " is-a-pop" : ""
+              }${shownGrade.celebration === "congrats" ? " is-congrats" : ""}`}
               data-testid="schedule-week-grade"
             >
               <strong className="hustle-schedule-suite__grade-letter">
-                {roundup.grade.mark ?? roundup.grade.letter}
+                {shownGrade.mark ?? shownGrade.letter}
               </strong>
               <div>
                 <p>
-                  Score <strong>{roundup.grade.score}%</strong> complete
+                  Score <strong>{shownGrade.score}%</strong> complete
                 </p>
                 <p
                   className="hustle-schedule-suite__pep"
                   data-testid="schedule-grade-pep"
                 >
-                  {roundup.grade.pepTalk}
+                  {shownGrade.pepTalk}
                 </p>
-                <p>{roundup.grade.summary}</p>
+                <p>{shownGrade.summary}</p>
                 <ul>
-                  <li>Blocks completed: {roundup.grade.breakdown.completionPct}%</li>
-                  <li>Hours vs estimate: {roundup.grade.breakdown.hoursPct}%</li>
-                  <li>Sales vs target: {roundup.grade.breakdown.salesPct}%</li>
-                  <li>Roundup filled: {roundup.grade.breakdown.roundupPct}%</li>
+                  <li>Blocks completed: {shownGrade.breakdown.completionPct}%</li>
+                  <li>Hours vs estimate: {shownGrade.breakdown.hoursPct}%</li>
+                  <li>Sales vs target: {shownGrade.breakdown.salesPct}%</li>
+                  <li>Roundup filled: {shownGrade.breakdown.roundupPct}%</li>
                 </ul>
               </div>
             </div>
           ) : null}
 
-          <label className="hustle-schedule-suite__field">
-            <span>I killed it here</span>
+          <CollapseField
+            title="I killed it here"
+            testId="schedule-roundup-killed-fold"
+            preview={scheduleCollapsePreview(roundup.killedIt)}
+          >
             <textarea
-              rows={3}
+              rows={5}
               value={roundup.killedIt}
               disabled={!unlocked}
               data-testid="schedule-roundup-killed"
@@ -1151,11 +1182,14 @@ function ScheduleDetail({
                 )
               }
             />
-          </label>
-          <label className="hustle-schedule-suite__field">
-            <span>I need improvement here</span>
+          </CollapseField>
+          <CollapseField
+            title="I need improvement here"
+            testId="schedule-roundup-improve-fold"
+            preview={scheduleCollapsePreview(roundup.needsImprovement)}
+          >
             <textarea
-              rows={3}
+              rows={5}
               value={roundup.needsImprovement}
               disabled={!unlocked}
               data-testid="schedule-roundup-improve"
@@ -1169,9 +1203,19 @@ function ScheduleDetail({
                 )
               }
             />
-          </label>
-          <div className="hustle-schedule-suite__field hustle-schedule-suite__action-items">
-            <span>Action items for upcoming week</span>
+          </CollapseField>
+          <CollapseField
+            title="Action items for upcoming week"
+            testId="schedule-roundup-actions-fold"
+            preview={
+              (roundup.actionItemEntries ?? []).length
+                ? `${(roundup.actionItemEntries ?? []).length} item${
+                    (roundup.actionItemEntries ?? []).length === 1 ? "" : "s"
+                  }`
+                : "Tap to add"
+            }
+          >
+          <div className="hustle-schedule-suite__action-items">
             {(roundup.actionItemEntries ?? []).length > 0 ? (
               <ul
                 className="hustle-schedule-suite__action-list"
@@ -1263,6 +1307,7 @@ function ScheduleDetail({
               </div>
             ) : null}
           </div>
+          </CollapseField>
         </div>
       )}
 
@@ -1319,10 +1364,12 @@ function ScheduleDetail({
                       onChange={(e) => {
                         if (!unlocked) return;
                         onPatch((p) =>
-                          applyScheduleBlockCheckbox(
-                            p,
-                            block.id as ScheduleBlockId,
-                            e.target.checked,
+                          withRefreshedWeekGrade(
+                            applyScheduleBlockCheckbox(
+                              p,
+                              block.id as ScheduleBlockId,
+                              e.target.checked,
+                            ),
                           ),
                         );
                       }}
@@ -1351,10 +1398,12 @@ function ScheduleDetail({
                       onChange={(e) => {
                         if (!unlocked) return;
                         onPatch((p) =>
-                          setScheduleBlockStatus(
-                            p,
-                            block.id as ScheduleBlockId,
-                            e.target.value as ScheduleBlockStatus,
+                          withRefreshedWeekGrade(
+                            setScheduleBlockStatus(
+                              p,
+                              block.id as ScheduleBlockId,
+                              e.target.value as ScheduleBlockStatus,
+                            ),
                           ),
                         );
                       }}
@@ -1451,6 +1500,37 @@ function ScheduleDetail({
                     />
                   </label>
                 </div>
+
+                <details
+                  className="hustle-schedule-suite__day-notes"
+                  data-testid={`schedule-block-notes-fold-${block.id}`}
+                >
+                  <summary className="hustle-schedule-suite__collapse-summary">
+                    <span className="hustle-schedule-suite__collapse-title">
+                      <strong>Notes</strong>
+                      <em className="hustle-schedule-suite__collapse-preview">
+                        {scheduleCollapsePreview(block.notes ?? "")}
+                      </em>
+                    </span>
+                    <span className="collapse-show-hide" aria-hidden="true" />
+                  </summary>
+                  <div className="hustle-schedule-suite__collapse-body">
+                    <textarea
+                      rows={3}
+                      value={block.notes ?? ""}
+                      disabled={!unlocked}
+                      placeholder={`Notes for ${block.dayLabel}…`}
+                      aria-label={`${block.dayLabel} notes`}
+                      data-testid={`schedule-block-notes-${block.id}`}
+                      onChange={(e) => {
+                        if (!unlocked) return;
+                        onPatch((p) =>
+                          setBlockNotes(p, block.id as ScheduleBlockId, e.target.value),
+                        );
+                      }}
+                    />
+                  </div>
+                </details>
               </li>
             );
           })}
@@ -1607,7 +1687,7 @@ function SchedulePnLPanel({
           </strong>
           <em>
             {window.start} → {window.end}
-            {window.withinTenDays ? "" : ` (over ${BLUEPRINT_MAX_DAYS}-day target — shorten due date)`}
+            {window.withinTenDays ? "" : ` (over ${BLUEPRINT_MAX_DAYS}-day target — pick a later start or fewer days)`}
           </em>
         </div>
         <div>

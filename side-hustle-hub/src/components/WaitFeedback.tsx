@@ -1,14 +1,14 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Hourglass } from "lucide-react";
+import { DEFAULT_WAIT_ESTIMATE_MS, waitProgress } from "../lib/wait-estimate";
 
 type Size = "sm" | "md" | "lg";
 
 const SIZE_PX: Record<Size, number> = { sm: 14, md: 18, lg: 28 };
 
-/** Soft estimate for indeterminate network waits (ms). Progress caps until the request finishes. */
+/** Soft estimate for indeterminate overlay waits (ms). Progress caps until the request finishes. */
 const ESTIMATE_MIN_MS = 8_000;
-const ESTIMATE_MAX_MS = 20_000;
-const PROGRESS_CAP = 95;
+const ESTIMATE_MAX_MS = DEFAULT_WAIT_ESTIMATE_MS;
 const TICK_MS = 200;
 const FACT_ROTATE_MS = 4_000;
 
@@ -41,13 +41,23 @@ function pickEstimateMs(): number {
   );
 }
 
-function formatApproxRemaining(remainingMs: number): string {
-  const secs = Math.max(1, Math.ceil(remainingMs / 1000));
-  if (secs >= 60) {
-    const mins = Math.ceil(secs / 60);
-    return `~${mins} min remaining`;
-  }
-  return `~${secs}s remaining`;
+function useWaitElapsed(active: boolean): number {
+  const [elapsedMs, setElapsedMs] = useState(0);
+
+  useEffect(() => {
+    if (!active) {
+      setElapsedMs(0);
+      return;
+    }
+    setElapsedMs(0);
+    const started = performance.now();
+    const tick = window.setInterval(() => {
+      setElapsedMs(performance.now() - started);
+    }, TICK_MS);
+    return () => window.clearInterval(tick);
+  }, [active]);
+
+  return elapsedMs;
 }
 
 /** Lucide hourglass with a gentle flip — shared wait affordance. */
@@ -67,23 +77,30 @@ export function WaitHourglass({
   );
 }
 
-/** Inline hourglass + message for page/data loads. */
+/** Inline hourglass + message for page/data loads. Pass `estimateMs` to show time remaining. */
 export function WaitIndicator({
   message,
   size = "md",
   className = "",
   style,
+  estimateMs,
   "data-testid": dataTestId,
 }: {
   message: string;
   size?: Size;
   className?: string;
   style?: CSSProperties;
+  /** Soft wait budget in ms. When set, shows % time remaining until the load finishes. */
+  estimateMs?: number;
   "data-testid"?: string;
 }) {
+  const timed = Number(estimateMs) > 0;
+  const elapsedMs = useWaitElapsed(timed);
+  const progress = timed ? waitProgress(elapsedMs, Number(estimateMs)) : null;
+
   return (
     <p
-      className={`wait-indicator${className ? ` ${className}` : ""}`}
+      className={`wait-indicator${progress ? " wait-indicator--timed" : ""}${className ? ` ${className}` : ""}`}
       style={style}
       role="status"
       aria-live="polite"
@@ -91,7 +108,25 @@ export function WaitIndicator({
       data-testid={dataTestId}
     >
       <WaitHourglass size={size} />
-      <span>{message}</span>
+      <span className="wait-indicator__copy">
+        <span>{message}</span>
+        {progress ? (
+          <>
+            <span
+              className="wait-indicator__remaining"
+              data-testid={dataTestId ? `${dataTestId}-remaining` : "wait-remaining"}
+            >
+              {progress.remainingLabel}
+            </span>
+            <span className="wait-indicator__track" aria-hidden>
+              <span
+                className="wait-indicator__fill"
+                style={{ width: `${progress.progressPct}%` }}
+              />
+            </span>
+          </>
+        ) : null}
+      </span>
     </p>
   );
 }
@@ -158,11 +193,7 @@ export function BusyOverlay({
 
   if (!active) return null;
 
-  const rawPct = (elapsedMs / estimateMs) * 100;
-  const progressPct = Math.min(PROGRESS_CAP, Math.max(0, rawPct));
-  const remainingPct = Math.max(100 - PROGRESS_CAP, Math.round(100 - progressPct));
-  const remainingMs = Math.max(0, estimateMs - elapsedMs);
-  const atCap = progressPct >= PROGRESS_CAP;
+  const progress = waitProgress(elapsedMs, estimateMs);
 
   return (
     <div className="busy-overlay" role="status" aria-live="polite" aria-busy="true">
@@ -173,14 +204,10 @@ export function BusyOverlay({
           <div className="busy-overlay__progress-track">
             <div
               className="busy-overlay__progress-fill"
-              style={{ width: `${progressPct}%` }}
+              style={{ width: `${progress.progressPct}%` }}
             />
           </div>
-          <span className="busy-overlay__progress-meta">
-            {atCap
-              ? "Almost there…"
-              : `${remainingPct}% time remaining · ${formatApproxRemaining(remainingMs)}`}
-          </span>
+          <span className="busy-overlay__progress-meta">{progress.remainingLabel}</span>
         </div>
         <p className="busy-overlay__fact" key={factIndex}>
           <span className="busy-overlay__fact-label">Fun fact</span>

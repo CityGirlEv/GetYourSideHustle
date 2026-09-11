@@ -82,24 +82,115 @@
         ]
       }
     </script>
-    <!-- Google Fonts: non-blocking load (font-display=swap already in URL) -->
+    <!-- Paint immediately — don't wait on the CSS bundle or Google Fonts. -->
+    <style>
+      html, body, #root { margin: 0; min-height: 100%; background: #F3EDE3; }
+    </style>
+    <!-- Google Fonts: async only. rel=preload as=style is render-blocking and stalls
+         first paint whenever fonts.googleapis.com is slow or Early Hints hang. -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-      rel="preload"
-      as="style"
-      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap"
-    >
-    <link
-      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Inter:wght@400;600;700&family=Playfair+Display:ital,wght@0,700;1,600&display=swap"
       rel="stylesheet"
       media="print"
       onload="this.media='all'"
     >
     <noscript>
-      <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+      <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Inter:wght@400;600;700&family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet">
     </noscript>
-    <link rel="preload" as="image" href="/brand/gysh-home-hero.webp" type="image/webp" fetchpriority="high" />
+    <script>
+      (function () {
+        var KEY = "gysh_stale_chunk_reload";
+        var BANNER_ID = "gysh-stale-shell-refresh";
+        function assetKey(u) {
+          var m = String(u || "").match(/\/assets\/([^/?#]+\.(?:js|css))/i);
+          return m ? m[1].toLowerCase() : String(u || "1").slice(0, 180) || "1";
+        }
+        function showBanner() {
+          if (document.getElementById(BANNER_ID)) return;
+          var el = document.createElement("div");
+          el.id = BANNER_ID;
+          el.className = "gysh-stale-shell-refresh";
+          el.setAttribute("data-testid", "stale-shell-refresh");
+          el.innerHTML =
+            '<div class="gysh-stale-shell-refresh__inner" role="alert">' +
+            "<p><strong>Update available.</strong> This page is out of date — tap Refresh to load the latest version.</p>" +
+            '<button type="button" class="gysh-stale-shell-refresh__btn" data-gysh-stale-refresh>Refresh</button>' +
+            "</div>";
+          el.addEventListener("click", function (ev) {
+            var t = ev.target;
+            if (t && t.closest && t.closest("[data-gysh-stale-refresh]")) {
+              try {
+                sessionStorage.removeItem(KEY);
+              } catch (x) {}
+              location.reload();
+            }
+          });
+          (document.body || document.documentElement).insertBefore(
+            el,
+            (document.body || document.documentElement).firstChild,
+          );
+        }
+        window.addEventListener(
+          "error",
+          function (e) {
+            var t = e.target;
+            if (!t) return;
+            var u = t.src || t.href || "";
+            if (!/\/assets\/[^/?#]+\.(js|css)$/i.test(u)) return;
+            var k = assetKey(u);
+            try {
+              if (sessionStorage.getItem(KEY) === k) {
+                showBanner();
+                return;
+              }
+              sessionStorage.setItem(KEY, k);
+              location.reload();
+            } catch (x) {}
+          },
+          true,
+        );
+      })();
+    </script>
+    <style>
+      .gysh-stale-shell-refresh {
+        position: sticky;
+        top: 0;
+        z-index: 10000;
+        padding: 12px 16px;
+        background: #fff8f0;
+        border-bottom: 1px solid rgba(155, 47, 40, 0.35);
+        color: #3d2c29;
+        font-family: system-ui, sans-serif;
+      }
+      .gysh-stale-shell-refresh__inner {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px 14px;
+        max-width: 960px;
+        margin: 0 auto;
+      }
+      .gysh-stale-shell-refresh__inner p {
+        margin: 0;
+        flex: 1 1 14rem;
+        font-size: 0.95rem;
+        line-height: 1.4;
+      }
+      .gysh-stale-shell-refresh__btn {
+        min-height: 44px;
+        padding: 8px 16px;
+        border-radius: 10px;
+        border: 1px solid rgba(155, 47, 40, 0.45);
+        background: #9b2f28;
+        color: #fff;
+        font-weight: 700;
+        cursor: pointer;
+      }
+    </style>
+    <link rel="preload" as="image" href="/brand/gysh-home-hero.webp" type="image/webp" fetchpriority="high" media="(min-width: 768px)" />
   </head>
   <body>
     <div id="root"></div>

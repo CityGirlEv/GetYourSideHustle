@@ -1,19 +1,24 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, CheckCircle2, CreditCard, UserPlus } from "lucide-react";
 import { BusyOverlay, WaitLabel } from "./WaitFeedback";
 import { PasswordField } from "./PasswordField";
 import { registerFreeMember, updateMembershipPlan, fetchMe, type AuthUser } from "../lib/auth";
 import { passwordPolicyError } from "../lib/password-policy";
 import { grantFreeMemberSession } from "../lib/free-member-session";
+import { pendingWizardRegisterPayload, readPendingBlueprint } from "../lib/pending-blueprint";
 import {
   AUDIENCE_LABELS,
   MEMBERSHIP_TIERS,
   formatUsd,
   isMembershipSubscriber,
+  merchChoicesError,
+  merchItemCount,
+  parseMerchChoices,
   tierPriceMonthlyUsd,
   tierPriceYearlyUsd,
   yearlySavingsUsd,
   type AudienceGroup,
+  type MerchItemId,
   type TierId,
 } from "../lib/membership";
 import { saveJoinAudience } from "../lib/join-audience";
@@ -25,20 +30,39 @@ import {
 import { clearAlaCarteCart } from "../lib/alacarte-cart";
 import type { MembershipBillingInterval } from "../lib/stripe-catalog";
 import { ApiError } from "../lib/api";
+import { fetchMemberCredits, spendableCreditBalance } from "../lib/member-credits";
+import {
+  membershipCreditPrice,
+  mixedCheckoutButtonLabel,
+  quoteMixedUsdPayment,
+} from "../lib/credit-checkout";
+import { CreditApplyControls } from "./CreditApplyControls";
 import {
   pendingShouldResumeCheckout,
+  readPendingMerchChoices,
   savePendingMembershipCheckout,
+  savePendingMerchChoices,
 } from "../lib/pending-membership-checkout";
 import {
   browseGuidesButtonLabel,
+  membershipSignupDropdownTier,
   membershipSignupSubmitLabel,
   membershipUpgradeActionBubbles,
 } from "../lib/membership-signup-labels";
+import {
+  adminSimulatePaymentHint,
+  adminSimulatePaymentLabel,
+} from "../lib/admin-simulate-payment";
+import { myDashboardLocationTip } from "../lib/dashboard-nav-tip";
 import { BETA_NDA_VERSION, betaNdaRegisterError, betaNdaTodayDate } from "../lib/beta-tester-nda";
 import { BetaNdaAcceptancePanel, type BetaNdaAcceptanceValue } from "./BetaNdaAcceptancePanel";
+import {
+  MembershipMerchChoice,
+  type MerchChoiceSlot,
+} from "./MembershipMerchChoice";
 import type { BetaNdaReceipt } from "../lib/beta-tester-dashboard";
 
-export { membershipSignupSubmitLabel, membershipPlanChooseLabel } from "../lib/membership-signup-labels";
+export { membershipSignupSubmitLabel, membershipPlanChooseLabel, membershipSignupDropdownTier } from "../lib/membership-signup-labels";
 
 type SignupStep = "register" | "profile" | "checkout" | "done" | "kids_consent_sent";
 
@@ -53,6 +77,8 @@ type MembershipSignupPageProps = {
   isLoggedIn?: boolean;
   /** Current plan on the logged-in profile (for upgrade copy). */
   currentTier?: TierId | null;
+  /** Admin accounts can apply paid tiers without Stripe. */
+  isAdmin?: boolean;
   /** Refresh app auth state after profile plan update. */
   onProfileUpdated?: (user: AuthUser) => void;
   onBackToPlans: () => void;
@@ -62,6 +88,8 @@ type MembershipSignupPageProps = {
   /** Fired after a successful signup that applied as a Beta Tester (pending activation). */
   onBetaTesterRegistered?: () => void;
   onBetaTestingUnlocked?: (receipt: BetaNdaReceipt) => void;
+  /** Point new members to My Dashboard next to How it works. */
+  onShowDashboardTip?: () => void;
 };
 
 const AUDIENCE_OPTIONS: AudienceGroup[] = ["kids", "junior", "adult", "senior"];
@@ -98,6 +126,7 @@ export function MembershipSignupPage({
   loggedInEmail = null,
   isLoggedIn = false,
   currentTier = null,
+  isAdmin = false,
   onProfileUpdated,
   onBackToPlans,
   onGoToLogin,
@@ -105,9 +134,14 @@ export function MembershipSignupPage({
   onOpenBetaNda,
   onBetaTesterRegistered,
   onBetaTestingUnlocked,
+  onShowDashboardTip,
 }: MembershipSignupPageProps) {
   const startingAudience = initialAudience ?? "adult";
-  const startingTier = initialTier ?? "free";
+  const startingTier = membershipSignupDropdownTier({
+    initialTier,
+    currentTier,
+    isLoggedIn,
+  });
   const stripeReadyStart = supportsMembershipStripeCheckout(startingTier, startingAudience);
   const startOnCheckout = Boolean(isLoggedIn && resumeCheckout && stripeReadyStart);
   const startOnProfile = Boolean(isLoggedIn && !startOnCheckout);
@@ -134,8 +168,20 @@ export function MembershipSignupPage({
   const [busy, setBusy] = useState(false);
   const [stripePaid, setStripePaid] = useState(false);
   const [profileApplied, setProfileApplied] = useState(false);
+  const [creditBalance, setCreditBalance] = useState(0);
+  const [creditsLoading, setCreditsLoading] = useState(() => Boolean(isLoggedIn));
+  const [creditsToApply, setCreditsToApply] = useState(0);
+  const creditsEdited = useRef(false);
+  const [merchChoices, setMerchChoices] = useState<MerchChoiceSlot[]>(() => {
+    const count = merchItemCount(startingTier);
+    const saved = readPendingMerchChoices();
+    if (saved && saved.length === count) return saved;
+    return Array.from({ length: count }, () => "");
+  });
 
   // Keep Plan / Audience in sync when opened from a membership bubble (Choose Starter, etc.).
+  // After an upgrade, currentTier updates on the profile — follow that so the dropdown
+  // is not stuck on the leftover Free default.
   useEffect(() => {
     setTierId(startingTier);
   }, [startingTier]);
@@ -154,6 +200,58 @@ export function MembershipSignupPage({
   const yearlySave = yearly != null ? yearlySavingsUsd(monthly, yearly) : 0;
   const isPaid = tier.id !== "free";
   const stripeReady = supportsMembershipStripeCheckout(tier.id, audience);
+  const includedMerchCount = merchItemCount(tier.id);
+
+  useEffect(() => {
+    setMerchChoices((prev) => {
+      if (includedMerchCount <= 0) return [];
+      const next = prev.slice(0, includedMerchCount);
+      while (next.length < includedMerchCount) next.push("");
+      return next;
+    });
+  }, [includedMerchCount]);
+
+  const resolvedMerch = parseMerchChoices(merchChoices, includedMerchCount);
+  const merchError = merchChoicesError(tier.id, merchChoices);
+
+  useEffect(() => {
+    if (resolvedMerch?.length) savePendingMerchChoices(resolvedMerch);
+  }, [resolvedMerch]);
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setCreditBalance(0);
+      setCreditsToApply(0);
+      setCreditsLoading(false);
+      creditsEdited.current = false;
+      return;
+    }
+    let cancelled = false;
+    let retryTimer: number | undefined;
+    setCreditsLoading(true);
+    const load = (attempt: number) => {
+      fetchMemberCredits()
+        .then((payload) => {
+          if (cancelled) return;
+          setCreditBalance(spendableCreditBalance(payload));
+          setCreditsLoading(false);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          if (attempt < 2) {
+            retryTimer = window.setTimeout(() => load(attempt + 1), 450);
+            return;
+          }
+          setCreditBalance(0);
+          setCreditsLoading(false);
+        });
+    };
+    load(0);
+    return () => {
+      cancelled = true;
+      if (retryTimer) window.clearTimeout(retryTimer);
+    };
+  }, [isLoggedIn]);
 
   useEffect(() => {
     const { status, sessionId } = readCheckoutQuery();
@@ -229,24 +327,46 @@ export function MembershipSignupPage({
     return `${formatUsd(mo)} / mo · ${formatUsd(yr)} / yr (save ${formatUsd(save)})`;
   };
 
+  const chargeUsd =
+    billingInterval === "year" && yearly != null ? yearly : monthly;
+  const mixedQuote = quoteMixedUsdPayment({
+    amountUsd: chargeUsd,
+    balance: isLoggedIn ? creditBalance : 0,
+    creditsToApply: isLoggedIn ? creditsToApply : 0,
+  });
   const chargeLabel =
     billingInterval === "year" && yearly != null
       ? `${formatUsd(yearly)} / yr`
       : `${formatUsd(monthly)} / mo`;
+
+  useEffect(() => {
+    const max = mixedQuote.creditsMax;
+    setCreditsToApply((prev) => {
+      if (!creditsEdited.current) return max;
+      return Math.min(prev, max);
+    });
+  }, [mixedQuote.creditsMax]);
 
   const rememberAndGoToLogin = () => {
     savePendingMembershipCheckout({
       tierId,
       audience,
       resumeCheckout: pendingShouldResumeCheckout(tierId, audience),
+      merchChoices: resolvedMerch ?? undefined,
     });
     onGoToLogin();
   };
 
-  const applyPlanToProfile = async (nextTier: TierId = tier.id): Promise<boolean> => {
+  const applyPlanToProfile = async (
+    nextTier: TierId = tier.id,
+    merch: MerchItemId[] | null = resolvedMerch,
+    opts?: { adminSimulatePayment?: boolean },
+  ): Promise<boolean> => {
     const result = await updateMembershipPlan({
       membershipTier: nextTier,
       audience,
+      merchChoices: merch ?? undefined,
+      adminSimulatePayment: opts?.adminSimulatePayment === true,
     });
     if (!result.ok) {
       setError(result.error || "Could not update your membership.");
@@ -259,11 +379,37 @@ export function MembershipSignupPage({
     return true;
   };
 
+  const handleAdminSimulatePayment = async () => {
+    if (!isAdmin || busy) return;
+    const merchErr = merchChoicesError(tier.id, merchChoices);
+    if (merchErr) {
+      setError(merchErr);
+      return;
+    }
+    setError("");
+    setBusy(true);
+    try {
+      const ok = await applyPlanToProfile(tier.id, resolvedMerch, { adminSimulatePayment: true });
+      if (!ok) return;
+      setStripePaid(true);
+      setStep("done");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const submitPlanChange = async (nextTier: TierId) => {
     if (busy) return;
+    setTierId(nextTier);
+    const nextCount = merchItemCount(nextTier);
+    const nextMerch = parseMerchChoices(merchChoices, nextCount);
+    const nextMerchError = merchChoicesError(nextTier, merchChoices);
+    if (nextMerchError) {
+      setError(nextMerchError);
+      return;
+    }
     const nextStripeReady = supportsMembershipStripeCheckout(nextTier, audience);
     if (currentTier != null && currentTier === nextTier && !nextStripeReady) return;
-    setTierId(nextTier);
     setError("");
     setBusy(true);
     try {
@@ -272,8 +418,11 @@ export function MembershipSignupPage({
         setStep("checkout");
         return;
       }
-      const ok = await applyPlanToProfile(nextTier);
+      const ok = await applyPlanToProfile(nextTier, nextMerch, {
+        adminSimulatePayment: isAdmin,
+      });
       if (!ok) return;
+      if (isAdmin && isMembershipSubscriber(nextTier)) setStripePaid(true);
       setStep("done");
     } finally {
       setBusy(false);
@@ -327,9 +476,14 @@ export function MembershipSignupPage({
         return;
       }
     }
+    if (merchError) {
+      setError(merchError);
+      return;
+    }
 
     setBusy(true);
     try {
+      const wizard = pendingWizardRegisterPayload(readPendingBlueprint());
       const result = await registerFreeMember({
         email: trimmed,
         password,
@@ -337,6 +491,9 @@ export function MembershipSignupPage({
         ageGroup: audience,
         childDisplayName: isKids ? childDisplayName.trim() : undefined,
         membershipTier: tier.id,
+        merchChoices: resolvedMerch ?? undefined,
+        claimToken: wizard.claimToken,
+        pendingBlueprint: wizard.pendingBlueprint,
         applyBetaTester,
         betaNda: applyBetaTester ? ndaPayload : undefined,
       });
@@ -348,6 +505,7 @@ export function MembershipSignupPage({
             tierId: tier.id,
             audience,
             resumeCheckout: pendingShouldResumeCheckout(tier.id, audience),
+            merchChoices: resolvedMerch ?? undefined,
           });
         }
         setBusy(false);
@@ -360,6 +518,7 @@ export function MembershipSignupPage({
         isParentAccount: isKids || undefined,
       });
       saveJoinAudience(audience);
+      if (result.user) onProfileUpdated?.(result.user);
 
       if (applyBetaTester) {
         onBetaTesterRegistered?.();
@@ -371,6 +530,7 @@ export function MembershipSignupPage({
       if (isPaid && stripeReady) {
         setStep("checkout");
       } else {
+        onShowDashboardTip?.();
         setStep("done");
       }
     } catch {
@@ -394,6 +554,10 @@ export function MembershipSignupPage({
       setError("A valid email is required for checkout.");
       return;
     }
+    if (merchError) {
+      setError(merchError);
+      return;
+    }
     setBusy(true);
     try {
       const session = await startMembershipCheckout({
@@ -402,7 +566,15 @@ export function MembershipSignupPage({
         tierId: tier.id,
         audience,
         interval: billingInterval,
+        creditsToApply: isLoggedIn ? mixedQuote.creditsApplied : 0,
+        merchChoices: resolvedMerch ?? undefined,
       });
+      if (session?.paid && !session.url) {
+        setStripePaid(true);
+        setProfileApplied(true);
+        setStep("done");
+        return;
+      }
       if (!session.url) {
         setError("Stripe did not return a checkout link.");
         return;
@@ -505,12 +677,18 @@ export function MembershipSignupPage({
                     {t.name}
                     {t.id === "free"
                       ? " — Free"
-                      : usesCredits && t.creditsPerMonth
-                        ? ` — ${t.creditsPerMonth} credits/mo`
+                      : usesCredits
+                        ? ` — ${membershipCreditPrice(t.id, audience)} credits/mo`
                         : ` — ${usdPriceLabel(t)}`}
                   </option>
                 ))}
               </select>
+
+              <MembershipMerchChoice
+                tierId={tier.id}
+                choices={merchChoices}
+                onChange={setMerchChoices}
+              />
 
               <label className="membership-signup-role-opt" htmlFor="membership-signup-beta">
                 <input
@@ -629,7 +807,7 @@ export function MembershipSignupPage({
                 )}
               </button>
               <button type="button" className="btn btn-outline" onClick={rememberAndGoToLogin}>
-                Already a member? Sign in
+                Already a member? Log in
               </button>
               {/already exists|sign in instead/i.test(error) && (
                 <button
@@ -638,7 +816,7 @@ export function MembershipSignupPage({
                   onClick={rememberAndGoToLogin}
                   data-testid="membership-signup-signin-existing"
                 >
-                  Sign in to continue checkout
+                  Log in to continue checkout
                 </button>
               )}
             </div>
@@ -679,14 +857,20 @@ export function MembershipSignupPage({
                     {t.name}
                     {t.id === "free"
                       ? " — Free"
-                      : usesCredits && t.creditsPerMonth
-                        ? ` — ${t.creditsPerMonth} credits/mo`
+                      : usesCredits
+                        ? ` — ${membershipCreditPrice(t.id, audience)} credits/mo`
                         : ` — ${usdPriceLabel(t)}`}
                     {currentTier === t.id ? " (current)" : ""}
                   </option>
                 ))}
               </select>
             </div>
+
+            <MembershipMerchChoice
+              tierId={tier.id}
+              choices={merchChoices}
+              onChange={setMerchChoices}
+            />
 
             <p className="membership-signup-plan-note">
               Signed in as <strong>{loggedInEmail || email || "member"}</strong>
@@ -749,6 +933,12 @@ export function MembershipSignupPage({
               Plan: <strong>{tier.name}</strong> · {AUDIENCE_LABELS[audience]}
             </p>
 
+            <MembershipMerchChoice
+              tierId={tier.id}
+              choices={merchChoices}
+              onChange={setMerchChoices}
+            />
+
             {yearly != null && (
               <fieldset className="membership-billing-interval" data-testid="membership-billing-interval">
                 <legend>Billing</legend>
@@ -774,6 +964,18 @@ export function MembershipSignupPage({
               </fieldset>
             )}
 
+            <CreditApplyControls
+              quote={mixedQuote}
+              signedIn={isLoggedIn}
+              loading={creditsLoading}
+              cartItemCount={1}
+              onSignIn={rememberAndGoToLogin}
+              onCreditsChange={(n) => {
+                creditsEdited.current = true;
+                setCreditsToApply(n);
+              }}
+            />
+
             {error && (
               <p className="membership-signup-error" role="alert">
                 {error}
@@ -784,19 +986,40 @@ export function MembershipSignupPage({
               <button
                 type="submit"
                 className="btn btn-primary"
-                disabled={busy}
+                disabled={busy || creditsLoading}
                 data-testid="membership-stripe-pay"
               >
                 {busy ? (
                   <WaitLabel>Opening Stripe…</WaitLabel>
+                ) : creditsLoading ? (
+                  <WaitLabel>Loading credits…</WaitLabel>
                 ) : (
                   <>
                     <CreditCard size={16} aria-hidden />
-                    {`Pay ${chargeLabel} with Stripe`}
+                    {mixedQuote.creditsApplied > 0
+                      ? mixedCheckoutButtonLabel(mixedQuote)
+                      : `Pay ${chargeLabel} with Stripe`}
                   </>
                 )}
               </button>
+              {isAdmin ? (
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  disabled={busy || creditsLoading}
+                  onClick={() => void handleAdminSimulatePayment()}
+                  data-testid="membership-admin-simulate-pay"
+                  title={adminSimulatePaymentHint()}
+                >
+                  {busy ? <WaitLabel>Updating plan…</WaitLabel> : adminSimulatePaymentLabel()}
+                </button>
+              ) : null}
             </div>
+            {isAdmin ? (
+              <p className="membership-signup-plan-note" data-testid="membership-admin-simulate-hint">
+                {adminSimulatePaymentHint()}
+              </p>
+            ) : null}
           </form>
         )}
 
@@ -823,6 +1046,11 @@ export function MembershipSignupPage({
                       ? `Your ${tier.name} credit plan request is saved for admin activation. Kid Credit packs can be purchased after you're approved.`
                       : "You can browse free guides while you wait for activation."}
             </p>
+            {!applyBetaTester ? (
+              <p className="membership-signup-dashboard-tip" data-testid="membership-dashboard-tip" role="note">
+                {myDashboardLocationTip()}
+              </p>
+            ) : null}
             <div className="membership-signup-actions">
               {onOpenFreeGuides && (
                 <button
@@ -838,7 +1066,7 @@ export function MembershipSignupPage({
               )}
               {!isLoggedIn && (
                 <button type="button" className="btn btn-outline" onClick={rememberAndGoToLogin}>
-                  Go to sign in
+                  Log in
                 </button>
               )}
               {isLoggedIn && (

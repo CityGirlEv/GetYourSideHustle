@@ -2,6 +2,7 @@ import { LogIn, MessageSquare, Smile, UserPlus } from "lucide-react";
 import { MembershipPage } from "./MembershipPage";
 import { BlueprintUnlockPanel } from "./BlueprintUnlockPanel";
 import type { BlueprintAgeGroup } from "../lib/gysh-analytics";
+import type { AuthUser } from "../lib/auth";
 import type { BetaNdaReceipt } from "../lib/beta-tester-dashboard";
 import {
   AUDIENCE_LABELS,
@@ -19,7 +20,7 @@ type JoinPageProps = {
   onKidsCorner?: () => void;
   onOpenFreeGuides?: () => void;
   /** After free Blueprint signup, restore the wizard results. */
-  onBlueprintUnlocked?: (ageGroup: BlueprintAgeGroup) => void;
+  onBlueprintUnlocked?: (ageGroup: BlueprintAgeGroup, user?: AuthUser | null) => void;
   onOpenBetaNda?: () => void;
   onBetaTesterRegistered?: () => void;
   onBetaTestingUnlocked?: (receipt: BetaNdaReceipt) => void;
@@ -36,6 +37,12 @@ type JoinPageProps = {
   currentTier?: TierId | null;
   /** Prefill a-la-carte Stripe checkout email. */
   checkoutEmail?: string | null;
+  /** Open My Dashboard → Schedule Suite. */
+  onOpenScheduleSuite?: () => void;
+  onOpenBilling?: () => void;
+  onOpenCredits?: () => void;
+  onOpenDashboard?: () => void;
+  onOpenBlueprints?: () => void;
 };
 
 export function JoinPage({
@@ -56,6 +63,11 @@ export function JoinPage({
   isLoggedIn = false,
   currentTier = null,
   checkoutEmail = null,
+  onOpenScheduleSuite,
+  onOpenBilling,
+  onOpenCredits,
+  onOpenDashboard,
+  onOpenBlueprints,
 }: JoinPageProps) {
   return (
     <div className="join-page-combined" data-testid="join-page">
@@ -92,6 +104,11 @@ export function JoinPage({
           isLoggedIn={isLoggedIn}
           currentTier={currentTier}
           checkoutEmail={checkoutEmail}
+          onOpenScheduleSuite={onOpenScheduleSuite}
+          onOpenBilling={onOpenBilling}
+          onOpenCredits={onOpenCredits}
+          onOpenDashboard={onOpenDashboard}
+          onOpenBlueprints={onOpenBlueprints}
         />
       </section>
 
@@ -111,7 +128,7 @@ export function JoinPage({
         </button>
         {!isLoggedIn && (
           <button type="button" className="btn btn-outline" onClick={onLogin}>
-            <LogIn size={16} /> Sign in
+            <LogIn size={16} /> Log in
           </button>
         )}
         <button type="button" className="btn btn-outline" onClick={onCommunity}>

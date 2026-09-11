@@ -59,12 +59,13 @@ export const LEGAL_REVIEW_CASES: TestCase[] = [
     steps: [
       "Open [Home](/) and scroll to the footer legal disclaimer (“Your hustle, your results.”)",
       "Confirm the same disclaimer appears on Join, Guides, and at least one other public page",
-      "Read the full text: income examples are educational only, not guarantees; GYSH does not provide financial, legal, tax, or investment advice; consult licensed professionals",
+      "Read the full text: income examples are educational only, not guarantees; GYSH does not provide financial, legal, tax, or investment advice; consult licensed professionals; GYSH is not responsible or liable for business losses, damages, or legal issues while building a side hustle",
+      "Confirm the same disclaimer appears in outbound email footers (Admin → Email templates → Preview any template)",
       "Flag missing, contradictory, or legally insufficient wording (promises of income, “guaranteed” results, missing advice disclaimer)",
       "Note recommended edits in the Testing Portal, then set Pass / Conditional / Fail",
     ],
     expected:
-      "Disclaimer is consistent, readable, and legally adequate — no income guarantees; advice disclaimer is present",
+      "Disclaimer is consistent on the site and in email footers, readable, and legally adequate — no income guarantees; advice disclaimer is present",
     path: "dashboard",
   },
   {
@@ -77,7 +78,7 @@ export const LEGAL_REVIEW_CASES: TestCase[] = [
     suite: "manual",
     steps: [
       "Open [Beta Tester NDA](/beta-nda)",
-      "Confirm the document title, GYSH-BETA-NDA-v1.0 version, and effective-date line are present",
+      "Confirm the document title, GYSH-BETA-NDA-v1.1 version, five (5) year confidentiality period, and effective-date line are present",
       "Read every numbered section (confidentiality, feedback, term, electronic acceptance)",
       "Flag unclear, missing, contradictory, or legally risky language",
       "On Join → Membership Sign-up, check Apply as a Beta Tester and confirm the NDA scroll, full legal name, matching signature, and I have read and agree controls match the published agreement",
@@ -101,11 +102,12 @@ export const LEGAL_REVIEW_CASES: TestCase[] = [
       "Confirm the on-site success / pending-activation message",
       "Check that mailbox for the Registration confirmation email from Get Your Side Hustle",
       "Open the email and confirm subject, greeting, and next-step copy (admin still activates the account)",
+      "Confirm the footer includes the legal disclaimer (“Your hustle, your results.”) — same wording as the site footer",
       "Optional: open [Users Area](/admin?tab=users) — confirm the new signup row is pending",
       "Note inbox result (received / missing / spam) in the Testing Portal, then set Pass / Conditional / Fail",
     ],
     expected:
-      "Signup succeeds and the registration confirmation email is received (or a clear Fail/Blocked note if it is not)",
+      "Signup succeeds and the registration confirmation email is received with the legal disclaimer in the footer (or a clear Fail/Blocked note if it is not)",
     path: "membership_signup",
   },
 ];

@@ -120,6 +120,7 @@ export type StripeCheckoutSession = {
   payment_status?: string;
   status?: string;
   customer_email?: string | null;
+  customer_details?: { email?: string | null; name?: string | null } | null;
   metadata?: Record<string, string>;
   client_reference_id?: string | null;
   mode?: string;
@@ -127,7 +128,18 @@ export type StripeCheckoutSession = {
   currency?: string | null;
   created?: number;
   payment_intent?: string | null;
+  /** Present for subscription-mode Checkout sessions. */
+  subscription?: string | { id?: string } | null;
 };
+
+export function stripeSubscriptionIdFromSession(
+  session: Pick<StripeCheckoutSession, "subscription">,
+): string {
+  const raw = session.subscription;
+  if (typeof raw === "string") return raw.trim();
+  if (raw && typeof raw === "object" && typeof raw.id === "string") return raw.id.trim();
+  return "";
+}
 
 export async function createStripeCheckoutSession(
   secret: string,
@@ -142,6 +154,22 @@ export async function createStripeCheckoutSession(
   if (!result.ok) return { ok: false, error: result.error };
   if (!result.data.url) return { ok: false, error: "Stripe did not return a checkout URL." };
   return { ok: true, session: result.data };
+}
+
+export async function createStripeOnceCoupon(
+  secret: string,
+  input: { amountOffCents: number; name: string },
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  const amountOff = Math.max(1, Math.round(Number(input.amountOffCents) || 0));
+  const result = await stripeRequest<{ id: string }>(secret, "POST", "coupons", {
+    amount_off: amountOff,
+    currency: "usd",
+    duration: "once",
+    name: String(input.name || "Kid Credits").slice(0, 40),
+  });
+  if (!result.ok) return { ok: false, error: result.error };
+  if (!result.data.id) return { ok: false, error: "Stripe did not return a coupon id." };
+  return { ok: true, id: result.data.id };
 }
 
 export async function retrieveStripeCheckoutSession(

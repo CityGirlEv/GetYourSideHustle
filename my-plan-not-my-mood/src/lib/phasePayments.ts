@@ -19,6 +19,7 @@ export interface PhasePayOption {
   label: string;
   amount: number;
   recommended?: boolean;
+  paid?: boolean;
 }
 
 export interface PaymentMethod {
@@ -30,13 +31,14 @@ export interface PaymentMethod {
 }
 
 export function phasePayOptions(
-  schedule: readonly { label: string; amount: number }[] = PHASE_PAYMENT_SCHEDULE,
+  schedule: readonly { id?: string; label: string; amount: number; status?: 'paid' | 'due' | 'upcoming' }[] = PHASE_PAYMENT_SCHEDULE,
 ): PhasePayOption[] {
   return schedule.map((row, index) => ({
-    id: `phase-${index + 1}`,
+    id: row.id ?? `phase-${index + 1}`,
     label: row.label.replace(/ payment$/i, ''),
     amount: row.amount,
-    recommended: index === 0,
+    recommended: row.status ? row.status === 'due' : index === 0,
+    paid: row.status === 'paid',
   }));
 }
 
@@ -127,5 +129,5 @@ export function methodCopyValue(methodId: PaymentMethodId): string {
   if (methodId === 'zelle') return ZELLE_PHONE;
   if (methodId === 'cashapp') return `$${CASH_APP_CASHTAG}`;
   if (methodId === 'venmo') return `@${VENMO_HANDLE}`;
-  return paymentMemo(defaultPayAmount(), 'Phase 1');
+  return paymentMemo(defaultPayAmount(), 'Payment 2');
 }

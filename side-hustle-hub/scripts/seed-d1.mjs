@@ -4,7 +4,7 @@
  *   npm run db:migrate && npm run db:seed           # production (remote)
  *   npm run db:setup:local                          # local Pages Functions + D1
  *
- * Seeds T + E + Lyriq + Candace portal login accounts and the initial ops task backlog.
+ * Seeds Tina & Evelyn + Lyriq + Candace portal login accounts and the initial ops task backlog.
  * Safe to re-run (ON CONFLICT upserts users; passwords preserved if already set; tasks insert-if-missing).
  */
 import { spawnSync } from "node:child_process";
@@ -67,7 +67,7 @@ const TASKS = [
   ["T-001", "Finalize GYSH brand kit (Antique Gold primary, Soft Ivory backgrounds)", "assets_brand", "P0", "done", "Evelyn", "Both", "07/10/26", "07/16/26", "07/16/26", "Live on getyoursidehustle.com"],
   ["T-002", "Integrate Kevina Starr Stories heavily into Kids Side Hustle Corner", "kids_corner", "P0", "done", "Tina", "Tina", "07/12/26", "07/16/26", "07/16/26", "Bio + embeds shipped"],
   ["T-003", "Create Facebook Page for Get Your Side Hustle", "facebook_social", "P0", "not_started", "Tina", "Tina", "07/16/26", "07/12/26", "", "Brand name + cover using GYSH color system"],
-  ["T-004", "Write About page copy — T + E partnership story", "website", "P1", "in_progress", "Evelyn", "Both", "07/15/26", "07/16/26", "", "Include photo placeholders"],
+  ["T-004", "Write About page copy — Tina & Evelyn partnership story", "website", "P1", "in_progress", "Evelyn", "Both", "07/15/26", "07/16/26", "", "Include photo placeholders"],
   ["T-005", "Ship Contact page + GYSH inbox routing", "website", "P1", "not_started", "Evelyn", "Evelyn", "07/16/26", "07/22/26", "", ""],
   ["T-006", "Build Testing Portal + role-based Users Area (Admin/QA/Kid/Junior/Adult)", "admin_ops", "P0", "in_progress", "Evelyn", "Evelyn", "07/16/26", "07/16/26", "", "QA tester bubbles + role filters"],
   ["T-007", "Stand up Content Factory for Kevina + adult hustle posts", "content", "P1", "in_progress", "Tina", "Both", "07/16/26", "07/25/26", "", "Weekly batch: YT shorts hooks, FB, newsletter"],
@@ -81,7 +81,7 @@ const TASKS = [
   ["T-015", "Wire task attachments to cloud storage (R2)", "admin_ops", "P1", "not_started", "Evelyn", "Evelyn", "07/16/26", "08/15/26", "", "Phase 2: replace browser IndexedDB blobs with R2"],
   [
     "T-016",
-    "Ask our AI sidekicks (ChatGPT and/or Gemini) what they know about T + E — list side hustles we can do or already have knowledge of. Capture results and add strong fits to GYSH hustle catalog + Get Your Side Hustle wizard.",
+    "Ask our AI sidekicks (ChatGPT and/or Gemini) what they know about Tina & Evelyn — list side hustles we can do or already have knowledge of. Capture results and add strong fits to GYSH hustle catalog + Get Your Side Hustle wizard.",
     "content",
     "P0",
     "not_started",
@@ -129,7 +129,7 @@ const TASKS = [
     "07/16/26",
     "07/20/26",
     "",
-    "Sprint 0 — weekly Tuesday sync on content calendar (T + E).",
+    "Sprint 0 — weekly Tuesday sync on content calendar (Tina & Evelyn).",
   ],
   [
     "T-SENIOR-PAGE",

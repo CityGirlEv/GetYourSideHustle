@@ -4,9 +4,49 @@ import {
   memberGuidesButtonLabel,
   membershipPlanBubbles,
   membershipPlanChooseLabel,
+  membershipSignupDropdownTier,
   membershipSignupSubmitLabel,
   membershipUpgradeActionBubbles,
 } from "../membership-signup-labels";
+
+describe("membershipSignupDropdownTier", () => {
+  it("keeps the chosen plan for guests", () => {
+    expect(
+      membershipSignupDropdownTier({
+        initialTier: "starter",
+        currentTier: null,
+        isLoggedIn: false,
+      }),
+    ).toBe("starter");
+  });
+
+  it("follows the profile after upgrade when the form was opened on Free", () => {
+    expect(
+      membershipSignupDropdownTier({
+        initialTier: "free",
+        currentTier: "starter",
+        isLoggedIn: true,
+      }),
+    ).toBe("starter");
+    expect(
+      membershipSignupDropdownTier({
+        initialTier: "free",
+        currentTier: "pro",
+        isLoggedIn: true,
+      }),
+    ).toBe("pro");
+  });
+
+  it("keeps an explicit upgrade target from Join when it is not Free", () => {
+    expect(
+      membershipSignupDropdownTier({
+        initialTier: "pro",
+        currentTier: "starter",
+        isLoggedIn: true,
+      }),
+    ).toBe("pro");
+  });
+});
 
 describe("membershipSignupSubmitLabel", () => {
   it("labels Free plans Create Free account", () => {

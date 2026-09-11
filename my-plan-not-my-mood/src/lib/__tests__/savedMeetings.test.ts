@@ -25,6 +25,7 @@ describe('savedMeetings', () => {
     });
     expect(SAVED_KICKOFF_DECISIONS).toMatch(/\$10,000/);
     expect(SAVED_KICKOFF_DECISIONS).toMatch(/Coming Soon/);
+    expect(SAVED_KICKOFF_DECISIONS).toMatch(/3 T-shirt sales videos/);
     expect(savedKickoffAgendaItems().some((item) => /gear sales/i.test(item.label))).toBe(true);
   });
 

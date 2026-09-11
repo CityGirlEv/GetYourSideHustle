@@ -5,6 +5,11 @@
 
 import type { TierId } from "./membership";
 import { TIER_LADDER } from "./membership";
+import {
+  aiSideHustleMinTier,
+  hustleById,
+  isFreeWizardHustle,
+} from "./side-hustle-catalog";
 
 export const JOIN_TO_UNLOCK_LABEL = "Join to Unlock";
 /** Small line under the Join button — Free Membership unlocks Free-plan guides. */
@@ -94,11 +99,11 @@ export const TIER_LADDER_GLOSSARY =
 
 /** How monthly credits, packs, and consulting fit together. */
 export const CREDITS_AND_CONSULTING_BLURB =
-  "Free starts with no credit card. Paid plans include monthly Kid Credits plus plan consulting (Starter: one 45-min; Pro: three 60-min; Elite: three 90-min). Spend those monthly credits on workshops and extra sessions. Buy a credit pack only when the monthly balance is not enough. Consulting on the plan is included; a-la-carte consulting is extra time if you want more. Adult redemptions use half value (2 Kid Credits = 1 adult credit).";
+  "Free starts with no credit card. Paid plans include monthly credits plus plan consulting (Starter: one 60-min or two 30-min; Pro: two 60-min; Elite: three 60-min). Spend those monthly credits on workshops and extra sessions. Buy a credit pack only when the monthly balance is not enough. Consulting on the plan is included; a-la-carte consulting is extra time if you want more.";
 
 /** Live vs not-built-yet — paywalls unlock live content only. */
 export const NOW_VS_COMING_SOON_BLURB =
-  "Available now: Free browse plus membership-gated guides and tools that already ship. Coming soon: items marked Coming soon are not live yet — upgrading does not unlock them.";
+  "Available now: Free-account members unlock Free Guides; higher plans unlock more live guides and tools. Coming soon: items marked Coming soon are not live yet — upgrading does not unlock them.";
 
 /** Explicit denial for reviewers who misread “or higher” as Starter+/Pro+. */
 export const NO_PLUS_PLAN_NOTE =
@@ -110,10 +115,11 @@ export const COMING_SOON_NOT_UNLOCKED_NOTE =
 
 /** Adult Launch Guide ids → minimum membership tier. */
 export const ADULT_GUIDE_MIN_TIER: Record<string, GuideMinTier> = {
-  rideshare: "starter",
-  "food-delivery": "starter",
+  rideshare: "free",
+  "food-delivery": "free",
   handyman: "free",
-  affiliate: "pro",
+  "cleaning-service": "free",
+  affiliate: "elite",
   social: "pro",
   "digital-products": "elite",
   "web-leads": "elite",
@@ -121,11 +127,38 @@ export const ADULT_GUIDE_MIN_TIER: Record<string, GuideMinTier> = {
   pod: "elite",
   dropshipping: "elite",
   airbnb: "starter",
-  amazon: "pro",
+  amazon: "elite",
   "property-mgmt": "starter",
   "ai-assets": "elite",
+  "greeting-card-creator": "pro",
+  proofreader: "pro",
+  "tech-helper": "elite",
   "ai-agents": "elite",
   "ai-timing": "elite",
+  "ai-promo-video": "elite",
+  "ai-social-helper": "elite",
+  "ai-prompt-helper": "elite",
+  "ai-peers": "starter",
+  "local-business-ai-setup": "elite",
+  "create-games-kids": "elite",
+  "create-games-junior": "elite",
+  "digital-cookbook-creator": "elite",
+  "book-publishing-kids": "elite",
+  "start-gardening-club": "elite",
+  "start-book-club": "elite",
+  "notary": "pro",
+  "babysitting": "free",
+  "family-photo-slideshow": "starter",
+  "flipping-properties": "elite",
+  "lien-tax-sales": "elite",
+  "foreclosure-properties": "elite",
+  "pet-sitting": "pro",
+  "bookkeeping": "pro",
+  "consulting": "pro",
+  "teaching": "pro",
+  "etsy-store": "pro",
+  "canva-flyer-creator": "pro",
+  "handyman-light": "pro",
 };
 
 /** Kids / Teens guide ids → minimum membership tier. */
@@ -139,27 +172,130 @@ export const KIDS_GUIDE_MIN_TIER: Record<string, GuideMinTier> = {
   "junior-give-back-teach": "free",
   "junior-reinvest-ceo": "starter",
   "junior-games-ai": "elite",
-  "junior-content-create": "pro",
+  "junior-content-create": "elite",
+};
+
+/**
+ * Teens library overrides — spread Free across Starter / Pro / Elite so Free isn’t ~half the lane.
+ * Does not change Adult Free Wizard eligibility (adultGuideMinTier stays as-is).
+ */
+export const JUNIOR_GUIDE_MIN_TIER: Record<string, GuideMinTier> = {
+  // Starter — still easy local / helper work
+  "errand-runner": "starter",
+  "gift-wrapping": "starter",
+  "basic-invitation-creator": "starter",
+  "family-photo-slideshow": "starter",
+  "birthday-party-helper": "starter",
+  "closet-cleanout-listing": "starter",
+  "closet-organizer": "starter",
+  "house-sitter": "starter",
+  "toy-organizer": "starter",
+  "youth-sports-helper": "starter",
+  "personal-shopper": "starter",
+  "digital-organizer": "starter",
+  "digital-photo-organizer": "starter",
+  "transcription-notes-helper": "starter",
+  "website-tester": "starter",
+  "group-setup-helper": "starter",
+  "online-research-assistant": "starter",
+  "fb-marketplace-helper": "starter",
+  // Pro — client / service / content work (includes former Starter chunk)
+  "community-newsletter-creator": "pro",
+  "local-content-photographer": "pro",
+  "local-event-content-creator": "pro",
+  "nonprofit-social-helper": "pro",
+  "resume-linkedin-helper": "pro",
+  "review-response-assistant": "pro",
+  "google-business-helper": "pro",
+  "local-resource-list-creator": "pro",
+  "social": "pro",
+  "short-form-video-editor": "pro",
+  "ugc-creator": "pro",
+  "pet-sitting": "pro",
+  "trash-can-service": "pro",
+  "car-interior-cleanup": "pro",
+  "recycling-helper": "pro",
+  "garage-sale-helper": "pro",
+  "vacation-mail-plant-helper": "pro",
+  "handyman-light": "pro",
+  "notary": "pro",
+  "etsy-store": "pro",
+  "bookkeeping": "pro",
+  "consulting": "pro",
+  "teaching": "pro",
+  "virtual-assistant": "pro",
+  "virtual-receptionist": "pro",
+  // Elite — premium teen creative / digital (on top of Digital/AI elite policy)
+  "canva-flyer-creator": "elite",
+  "digital-product-formatter": "elite",
 };
 
 /** Senior teaser ids → minimum membership tier (live guides use launchGuideId for adult map). */
 export const SENIOR_GUIDE_MIN_TIER: Record<string, GuideMinTier> = {
-  "ai-peer-class": "pro",
-  "senior-rideshare": "starter",
+  "ai-peer-class": "starter",
+  "senior-rideshare": "free",
   "safe-cohost": "pro",
   "senior-handyman": "free",
-  "senior-affiliate": "starter",
+  "senior-affiliate": "elite",
   "start-consulting": "starter",
   "pricing-crafts": "pro",
   "neighborhood-errands": "starter",
+  "start-gardening-club": "elite",
+  "start-book-club": "elite",
 };
 
-export function adultGuideMinTier(guideId: string): GuideMinTier {
-  return ADULT_GUIDE_MIN_TIER[guideId] ?? "starter";
+/** Kids/Teens Digital + AI hustles unlock at Elite (age-appropriate library). */
+export function kidsTeensDigitalOrAiIsElite(guideId: string): boolean {
+  if (
+    guideId === "digital-cookbook-creator" ||
+    guideId === "book-publishing-kids" ||
+    guideId === "create-games-kids" ||
+    guideId === "create-games-junior" ||
+    guideId === "kids-games-ai" ||
+    guideId === "junior-games-ai" ||
+    guideId === "junior-content-create"
+  ) {
+    return true;
+  }
+  const h = hustleById(guideId);
+  if (!h) return false;
+  if (aiSideHustleMinTier(guideId) != null) return true;
+  const cat = (h.category || "").trim();
+  if (cat === "Digital" || /^AI\b/i.test(cat)) return true;
+  return false;
 }
 
+export function adultGuideMinTier(guideId: string): GuideMinTier {
+  const aiTier = aiSideHustleMinTier(guideId);
+  if (aiTier) return aiTier;
+  if (isFreeWizardHustle(guideId)) return "free";
+  const fromMap = ADULT_GUIDE_MIN_TIER[guideId];
+  if (fromMap) return fromMap === "free" ? "starter" : fromMap;
+  const fromCatalog = hustleById(guideId)?.minTier;
+  if (fromCatalog && fromCatalog !== "free") return fromCatalog;
+  return "starter";
+}
+
+/**
+ * Kids Guides library tiers (prefer kidsLibraryMinTier from age-library-tiers for the Guides page).
+ * Digital & AI guides → Elite; kids money guides use the kids map; shared catalog follows adult ladder.
+ */
 export function kidsGuideMinTier(guideId: string): GuideMinTier {
-  return KIDS_GUIDE_MIN_TIER[guideId] ?? "starter";
+  if (kidsTeensDigitalOrAiIsElite(guideId)) return "elite";
+  const fromKidsMap = KIDS_GUIDE_MIN_TIER[guideId];
+  if (fromKidsMap) return fromKidsMap;
+  if (!guideId.startsWith("kids-") && !guideId.startsWith("junior-")) {
+    return adultGuideMinTier(guideId);
+  }
+  return "starter";
+}
+
+/** Teens Guides library tiers — JUNIOR_GUIDE_MIN_TIER overrides, then kids/adult ladder. */
+export function juniorGuideMinTier(guideId: string): GuideMinTier {
+  if (kidsTeensDigitalOrAiIsElite(guideId)) return "elite";
+  const fromJunior = JUNIOR_GUIDE_MIN_TIER[guideId];
+  if (fromJunior) return fromJunior;
+  return kidsGuideMinTier(guideId);
 }
 
 export function seniorGuideMinTier(guideId: string, launchGuideId?: string): GuideMinTier {
@@ -173,6 +309,12 @@ export type GuideAccessInput = {
   /** Plan on the account; free-session / team join → "free". */
   membershipTier?: string | null;
   minTier: GuideMinTier;
+  /** GYSH Admin (self profile) — all live guides unlocked for review. */
+  isAdmin?: boolean;
+  /** One complimentary Match Wizard unlock (and any others already claimed). */
+  complimentaryGuideIds?: string[];
+  /** Guide id being gated — required for complimentary check. */
+  guideId?: string;
 };
 
 export type GuideAccessResult = {
@@ -183,10 +325,32 @@ export type GuideAccessResult = {
   needsUpgrade: boolean;
   userTier: TierId;
   minTier: GuideMinTier;
+  /** Unlocked only because the viewer is Admin — show “Admin view only”. */
+  adminViewOnly: boolean;
 };
 
 export function resolveGuideAccess(input: GuideAccessInput): GuideAccessResult {
   const minTier = input.minTier;
+  const guideId = input.guideId?.trim();
+  const complimentary =
+    Boolean(guideId) &&
+    (input.complimentaryGuideIds ?? []).some((id) => id.trim() === guideId);
+
+  if (input.isAdmin) {
+    const userTier = input.isMember ? normalizeGuideTier(input.membershipTier) : "free";
+    const memberWouldUnlock =
+      input.isMember && (complimentary || tierMeetsMinimum(userTier, minTier));
+    return {
+      unlocked: true,
+      needsJoin: false,
+      needsUpgrade: false,
+      userTier,
+      minTier,
+      /** Only when Admin unlock is the reason — not for Free guides already on their plan. */
+      adminViewOnly: !memberWouldUnlock,
+    };
+  }
+
   const userTier = input.isMember ? normalizeGuideTier(input.membershipTier) : "free";
   if (!input.isMember) {
     return {
@@ -195,15 +359,17 @@ export function resolveGuideAccess(input: GuideAccessInput): GuideAccessResult {
       needsUpgrade: false,
       userTier: "free",
       minTier,
+      adminViewOnly: false,
     };
   }
-  const unlocked = tierMeetsMinimum(userTier, minTier);
+  const unlocked = complimentary || tierMeetsMinimum(userTier, minTier);
   return {
     unlocked,
     needsJoin: false,
     needsUpgrade: !unlocked,
     userTier,
     minTier,
+    adminViewOnly: false,
   };
 }
 
@@ -211,6 +377,19 @@ export function resolveGuideAccess(input: GuideAccessInput): GuideAccessResult {
 export function guideTierBadgeLabel(minTier: GuideMinTier): string {
   if (minTier === "free") return "Free Guide";
   return `${tierDisplayName(minTier)} Membership`;
+}
+
+/** CSS tone class for membership bubbles / matching filter tabs (`glow-badge` + this). */
+export function guideTierBadgeClass(minTier: GuideMinTier): "free" | "starter" | "pro" | "elite" {
+  return minTier;
+}
+
+/**
+ * Membership badge(s) for a guide card — the plan this guide belongs to.
+ * Free / Starter / Pro / Elite each show one bubble in that tier’s tab color.
+ */
+export function membershipsIncludedForMinTier(minTier: GuideMinTier): GuideMinTier[] {
+  return [minTier];
 }
 
 /**
@@ -223,13 +402,20 @@ export function membershipLockedBadgeLabel(minTier: GuideMinTier): string {
   return `Locked · Needs ${tierAndAboveLabel(minTier)}`;
 }
 
-/** Minimum tier for Schedule Suite features (tracker, P&L, progress, email). */
+/** Minimum tier for Schedule Suite features (tracker, progress, email). P&L is Elite. */
 export const SCHEDULE_SUITE_MIN_TIER: GuideMinTier = "pro";
+
+/** Minimum tier to download a launch-guide PDF (viewing Free guides still allowed on Free). */
+export const GUIDE_PDF_MIN_TIER: GuideMinTier = "starter";
+
+export function guidePdfAvailableLabel(): string {
+  return `Available on ${tierAndAboveLabel(GUIDE_PDF_MIN_TIER)}`;
+}
 
 export function membershipFeatureLockedBadgeLabel(
   feature: "schedule_suite" | "pnl" | "tracker" | "progress",
 ): string {
-  void feature;
+  if (feature === "pnl") return membershipLockedBadgeLabel("elite");
   return membershipLockedBadgeLabel(SCHEDULE_SUITE_MIN_TIER);
 }
 
@@ -239,13 +425,28 @@ export function guideTierShortLabel(minTier: GuideMinTier): string {
   return tierDisplayName(minTier);
 }
 
-/** Extra line under Free Guide badges / cards. */
-export const FREE_GUIDE_SIGNUP_NOTE = "Free (sign-up, no credit card required)";
+/** Free chip on Open-guide buttons. Paid guides omit the badge. */
+export function openGuideFreeBadgeLabel(minTier: GuideMinTier): "Free" | null {
+  return minTier === "free" ? "Free" : null;
+}
+
+/** Extra line under Free Guide badges / cards (standalone or in copy). */
+export const FREE_GUIDE_SIGNUP_NOTE = "Free Membership · sign-up, no credit card required";
+
+/** Unique Free-membership Side Hustle Guides in the library (locked by inventory tests). */
+export const FREE_MEMBERSHIP_SIDE_HUSTLE_GUIDE_COUNT = 20;
+
+/** Short chip / tag copy for Free membership guide allotment. */
+export const FREE_MEMBERSHIP_GUIDES_TAG =
+  `Free comes with ${FREE_MEMBERSHIP_SIDE_HUSTLE_GUIDE_COUNT} Side Hustle Guides to choose from`;
+
+/** Compact banner label (count-first). */
+export const FREE_MEMBERSHIP_GUIDES_BANNER = `${FREE_MEMBERSHIP_SIDE_HUSTLE_GUIDE_COUNT} Side Hustle Guides to choose from`;
 
 /** Membership requirement line for any guide. */
 export function guideTierMembershipNote(minTier: GuideMinTier): string {
   if (minTier === "free") {
-    return `Free with Free Membership — ${FREE_GUIDE_SIGNUP_NOTE}`;
+    return FREE_GUIDE_SIGNUP_NOTE;
   }
   return `Included with ${tierAndAboveLabel(minTier)}`;
 }
@@ -260,6 +461,8 @@ export type GuideCatalogAudience = "Adults" | "Kids" | "Teens" | "Seniors";
 export type GuideCatalogRow = {
   id: string;
   title: string;
+  /** Short “what it does” line shown next to the title in list views. */
+  summary: string;
   audience: GuideCatalogAudience;
   minTier: GuideMinTier;
   /** Adult launch id when senior card opens a launch guide. */
@@ -268,15 +471,22 @@ export type GuideCatalogRow = {
 
 /** Flat catalog for membership matrix / table views. */
 export function buildGuideCatalogRows(input: {
-  adult: { id: string; name: string }[];
-  kids: { id: string; title: string; audience: "kids" | "junior" }[];
-  seniors: { id: string; title: string; launchGuideId?: string; status?: string }[];
+  adult: { id: string; name: string; peek?: string }[];
+  kids: { id: string; title: string; audience: "kids" | "junior"; summary?: string }[];
+  seniors: {
+    id: string;
+    title: string;
+    blurb?: string;
+    launchGuideId?: string;
+    status?: string;
+  }[];
 }): GuideCatalogRow[] {
   const rows: GuideCatalogRow[] = [];
   for (const g of input.adult) {
     rows.push({
       id: g.id,
       title: g.name,
+      summary: (g.peek ?? "").trim(),
       audience: "Adults",
       minTier: adultGuideMinTier(g.id),
       openId: g.id,
@@ -286,6 +496,7 @@ export function buildGuideCatalogRows(input: {
     rows.push({
       id: g.id,
       title: g.title,
+      summary: (g.summary ?? "").trim(),
       audience: g.audience === "junior" ? "Teens" : "Kids",
       minTier: kidsGuideMinTier(g.id),
     });
@@ -295,6 +506,7 @@ export function buildGuideCatalogRows(input: {
     rows.push({
       id: g.id,
       title: g.title,
+      summary: (g.blurb ?? "").trim(),
       audience: "Seniors",
       minTier: seniorGuideMinTier(g.id, g.launchGuideId),
       openId: g.launchGuideId,

@@ -9,6 +9,7 @@ import {
   ChevronDown,
   ChevronRight,
   Play,
+  RefreshCw,
   Trash2,
 } from "lucide-react";
 import { BusyOverlay, WaitIndicator, WaitLabel } from "../WaitFeedback";
@@ -20,6 +21,7 @@ import {
   buildAdminLinkCandidates,
 } from "../../lib/admin-link-candidates";
 import { softLaunchRolloutItems } from "../../lib/gysh-soft-launch-rollout";
+import { buildSiblingCatalogIndex } from "../../lib/gysh-test-case-dupes";
 import {
   activateSoftLaunchOverrides,
   fetchSoftLaunchOverrides,
@@ -103,10 +105,12 @@ import {
   listUpcomingSprints,
   sprintLabel,
   BACKLOG_SPRINT,
+  LAST_SPRINT_INDEX,
   currentSprintIndex,
   dueDateForSprint,
   assigneeForBacklogSprint,
   isBacklogSprint,
+  formatNumericDateRange,
 } from "../../lib/gysh-sprints";
 import {
   fetchClosedSprints,
@@ -155,12 +159,15 @@ import {
   type AttachmentOpenMode,
 } from "../../lib/gysh-attachments";
 import { ApiError } from "../../lib/api";
+import { friendlyD1UserMessage } from "../../lib/d1-errors";
 import type { AuthUser } from "../../lib/auth";
 import { sprintForUnstoredTest } from "../../lib/gysh-sprint-board";
 import {
   applyFilterChipClick,
   defaultTestingPortalSprintFilters,
+  allTestingPortalSprintFilters,
   isAllSprintsFilter,
+  TESTING_PORTAL_FILTER_DEFAULTS,
 } from "../../lib/gysh-filter-chips";
 import {
   EMAIL_TEMPLATE_REVIEW_CASES,
@@ -432,8 +439,10 @@ export function TestingPortal({
   const [categoryFilters, setCategoryFilters] = useState<Set<TestCategory>>(() => new Set());
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [statusFilters, setStatusFilters] = useState<Set<TestStatus>>(() => new Set());
-  /** Status filter chips — expanded on load (with QA Testors). */
-  const [statusOpen, setStatusOpen] = useState(true);
+  /** Assignees — expanded on load (first of Assignees / Sprint / Status / Other). */
+  const [testersOpen, setTestersOpen] = useState(TESTING_PORTAL_FILTER_DEFAULTS.testersOpen);
+  /** Status filter chips — expanded on load as a top-level filter. */
+  const [statusOpen, setStatusOpen] = useState(TESTING_PORTAL_FILTER_DEFAULTS.statusOpen);
   /** QA Testor name/status bars — collapsed on load. */
   const [testerBarsOpen, setTesterBarsOpen] = useState(false);
   const [testerFilters, setTesterFilters] = useState<Set<TesterFilterKey>>(() => new Set());
@@ -441,11 +450,12 @@ export function TestingPortal({
   const [suiteFilters, setSuiteFilters] = useState<Set<TestSuite>>(() => new Set(["manual"]));
   /** Test Suites run controls — collapsed by default. */
   const [automatedOpen, setAutomatedOpen] = useState(false);
-  /** Empty = All sprints (Pass / CP from prior sprints stay visible). */
+  /** Default = current sprint; empty set = All sprints. */
   const [sprintFilters, setSprintFilters] = useState<Set<SprintFilterKey>>(
-    () => defaultTestingPortalSprintFilters<SprintFilterKey>(),
+    () => defaultTestingPortalSprintFilters<SprintFilterKey>(currentSprintIndex()),
   );
-  const [sprintOpen, setSprintOpen] = useState(false);
+  const [sprintOpen, setSprintOpen] = useState(TESTING_PORTAL_FILTER_DEFAULTS.sprintOpen);
+  const [otherOpen, setOtherOpen] = useState(TESTING_PORTAL_FILTER_DEFAULTS.otherOpen);
   const lastFacingIdx = useRef<number | null>(null);
   const lastCategoryIdx = useRef<number | null>(null);
   const lastStatusIdx = useRef<number | null>(null);
@@ -454,7 +464,7 @@ export function TestingPortal({
   const lastSprintIdx = useRef<number | null>(null);
   const [openIds, setOpenIds] = useState<Set<string>>(() => new Set());
   /** When true (default), visible cards stay expanded as filters change. */
-  const [preferExpanded, setPreferExpanded] = useState(true);
+  const [preferExpanded, setPreferExpanded] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
   const [highlightId, setHighlightId] = useState<string | null>(null);
@@ -471,6 +481,10 @@ export function TestingPortal({
   const [runLog, setRunLog] = useState<string>("");
   const [saveFlash, setSaveFlash] = useState("");
   const sprints = useMemo(() => listUpcomingSprints(), []);
+  const allSprintsNumericRange = useMemo(() => {
+    if (sprints.length === 0) return "—";
+    return formatNumericDateRange(sprints[0].start, sprints[sprints.length - 1]!.end);
+  }, [sprints]);
   const activeSprintIndex = useMemo(() => currentSprintIndex(), []);
 
   const sprintFilterSummary = useMemo(() => {
@@ -484,6 +498,13 @@ export function TestingPortal({
     if (statusFilters.size === 0) return "All statuses";
     return [...statusFilters].map((s) => testStatusAbbrev(s)).join(", ");
   }, [statusFilters]);
+
+  const testerFilterSummary = useMemo(() => {
+    if (testerFilters.size === 0) return "All testers";
+    return [...testerFilters]
+      .map((k) => (k === "unassigned" ? "Unassigned" : testOwnerLabel(k, qaTesters)))
+      .join(", ");
+  }, [testerFilters, qaTesters]);
 
   const categoryFilterSummary = useMemo(() => {
     if (categoryFilters.size === 0) return "All categories";
@@ -567,6 +588,25 @@ export function TestingPortal({
     () => ALL_CASES.filter((t) => !isWizardMatrixCaseId(t.id)),
     [ALL_CASES],
   );
+
+  const siblingIndex = useMemo(
+    () => buildSiblingCatalogIndex(COUNTABLE_CASES),
+    [COUNTABLE_CASES],
+  );
+
+  const crossLinksByTestId = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof crossLinksForTestId>>();
+    for (const t of COUNTABLE_CASES) {
+      map.set(
+        t.id,
+        crossLinksForTestId(t.id, t.relatedTaskIds, {
+          catalog: COUNTABLE_CASES,
+          siblingIndex,
+        }),
+      );
+    }
+    return map;
+  }, [COUNTABLE_CASES, siblingIndex]);
 
   /** Board/catalog IDs only — ignore orphan D1 rows from renamed case IDs. */
   const knownCaseIds = useMemo(
@@ -829,7 +869,7 @@ export function TestingPortal({
 
   const reloadGenRef = useRef(0);
 
-  const applyFetchedPayload = (data: TestStatusesPayload, fetchedTasks: GyshTask[]) => {
+  const applyFetchedPayload = (data: TestStatusesPayload, fetchedTasks?: GyshTask[]) => {
     const partial = data.partial === true;
     setStatuses((prev) => nextKeyedMap(prev, data.statuses, partial));
     setNotes((prev) => nextKeyedMap(prev, data.notes, partial));
@@ -847,7 +887,7 @@ export function TestingPortal({
     }
     if (!partial) setGeneratedCases(data.generatedCases ?? []);
     setOriginalAssigneesByCase((prev) => nextKeyedMap(prev, data.originalAssignees, partial));
-    setTasks(fetchedTasks);
+    if (fetchedTasks) setTasks(fetchedTasks);
   };
 
   const reload = async () => {
@@ -855,19 +895,34 @@ export function TestingPortal({
     setLoading(true);
     setError("");
     try {
-      const [closedList, fetched, users, fetchedTasks] = await Promise.all([
+      const [closedList, statusResult, users, taskResult] = await Promise.all([
         fetchClosedSprints().catch(() => [] as number[]),
-        fetchTestStatuses(),
+        fetchTestStatuses()
+          .then((data) => ({ ok: true as const, data }))
+          .catch((error: unknown) => ({ ok: false as const, error })),
         fetchUsers().catch(() => [] as Awaited<ReturnType<typeof fetchUsers>>),
-        fetchTasks(),
+        fetchTasks()
+          .then((data) => ({ ok: true as const, data }))
+          .catch((error: unknown) => ({ ok: false as const, error })),
       ]);
       if (gen !== reloadGenRef.current) return;
 
       setDevAssignees(devAssigneesFromUsers(users));
       setQaTesters(qaTestersFromUsers(users));
       setClosedSprints(new Set(closedList));
+      const fetchedTasks = taskResult.ok ? taskResult.data : undefined;
+      if (!statusResult.ok) {
+        const failed = statusResult.error;
+        setError(
+          failed instanceof ApiError
+            ? friendlyD1UserMessage(failed.message)
+            : "Failed to load test statuses from database.",
+        );
+        if (fetchedTasks) setTasks(fetchedTasks);
+        return;
+      }
       // Paint Pass/Task chip counts immediately — heals below must not leave zeros on screen.
-      let data = fetched;
+      let data = statusResult.data;
       applyFetchedPayload(data, fetchedTasks);
 
       void fetchSoftLaunchOverrides()
@@ -1113,7 +1168,11 @@ export function TestingPortal({
     } catch (e) {
       if (gen !== reloadGenRef.current) return;
       // Keep any previously painted data — only clear when we have nothing to show.
-      setError(e instanceof ApiError ? e.message : "Failed to load test statuses from database.");
+      setError(
+        e instanceof ApiError
+          ? friendlyD1UserMessage(e.message)
+          : "Failed to load test statuses from database.",
+      );
       setStatuses((prev) => {
         if (Object.keys(prev).length > 0) return prev;
         return {};
@@ -1761,7 +1820,7 @@ export function TestingPortal({
     return { bySprint, backlog };
   }, [tasks]);
 
-  const lastSprintIndex = sprints.length > 0 ? sprints[sprints.length - 1]!.index : 7;
+  const lastSprintIndex = sprints.length > 0 ? sprints[sprints.length - 1]!.index : LAST_SPRINT_INDEX;
 
   /** Global rollover counts (not narrowed by other filters) for sprint chips / banners. */
   const sprintRolloverByIndex = useMemo(() => {
@@ -2526,6 +2585,7 @@ export function TestingPortal({
       STATUSES,
       lastStatusIdx.current,
       e,
+      true,
     );
     lastStatusIdx.current = lastIndex;
     setStatusFilters(next);
@@ -3059,6 +3119,24 @@ export function TestingPortal({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
       <BusyOverlay active={portalBusy} message={portalBusyMessage} />
+      {error ? (
+        <div
+          className="qa-testing-portal__load-error"
+          data-testid="qa-load-error"
+          role="alert"
+        >
+          <span>{error} Pass/Fail counts stay at 0 until results load.</span>
+          <button
+            type="button"
+            className="btn btn-outline"
+            onClick={() => void reload()}
+            disabled={loading}
+          >
+            <RefreshCw size={16} aria-hidden />
+            Retry
+          </button>
+        </div>
+      ) : null}
       <div className="qa-status-tiles" data-testid="qa-status-tiles">
         {(["total", ...STATUSES] as const)
           .filter((k) => k === "total" || (counts[k] ?? 0) > 0)
@@ -3090,8 +3168,8 @@ export function TestingPortal({
                 isTotal
                   ? `${completedCases}/${counts.total} complete · ${rolledIn} rolled over`
                   : k === "rolled_over"
-                    ? `${testStatusTooltip(k, statusCount)} — Shift+click to select a range`
-                    : `${testStatusTooltip(k, statusCount)} · ${rolledIn} rolled over — Shift+click to select a range`
+                    ? `${testStatusTooltip(k, statusCount)} — tap to add or remove · Shift+click for a range`
+                    : `${testStatusTooltip(k, statusCount)} · ${rolledIn} rolled over — tap to add or remove · Shift+click for a range`
               }
             >
               <div className="qa-status-tile__label">
@@ -3114,24 +3192,6 @@ export function TestingPortal({
         })}
       </div>
 
-      <SprintStatusBars
-        selectedSprint={
-          isAllSprintsFilter(sprintFilters)
-            ? "all"
-            : sprintFilters.size === 1
-              ? ([...sprintFilters][0] ?? null)
-              : null
-        }
-        onSelectSprint={(selection) => {
-          if (selection === "all") {
-            setSprintFilters(defaultTestingPortalSprintFilters());
-            lastSprintIdx.current = null;
-            return;
-          }
-          setSprintFilters(new Set([selection]));
-          lastSprintIdx.current = selection;
-        }}
-      />
       <div className="glass qa-testing-portal" style={{ padding: "24px", borderRadius: "16px" }}>
         <div className="qa-testing-portal__header">
           <div className="qa-testing-portal__intro">
@@ -3167,14 +3227,50 @@ export function TestingPortal({
         </div>
 
         <div className="qa-testing-portal__categories" data-testid="qa-top-filters" style={{ marginTop: 16 }}>
-          <div className="schedule-board-filters__row qa-testing-portal__testers-row">
-            <div className="schedule-board-filters__label schedule-board-filters__label--bar qa-testing-portal__testers-bar">
-              <span className="qa-testing-portal__testers-title">QA Testors</span>
-              <TesterStatusAbbrevLegend />
-              <span className="schedule-board-filters__label-hint">
-                tap to multi-select · Shift+click for a range
-              </span>
-              <div className="qa-testing-portal__top-filters qa-testing-portal__tester-chips">
+          <div
+            className="schedule-board-filters__row qa-testing-portal__testers-row"
+            data-testid="qa-assignees-panel"
+            style={{ marginTop: 16 }}
+          >
+            <div
+              className="schedule-board-filters__label schedule-board-filters__label--bar qa-testing-portal__testers-bar"
+              aria-expanded={testersOpen}
+            >
+              <ShowHideChevron
+                open={testersOpen}
+                onOpenChange={setTestersOpen}
+                label="Assignees"
+                testId="qa-assignees-chevron"
+              />
+              <button
+                type="button"
+                className="schedule-board-filters__filter-title schedule-board-filters__filter-title--collapse"
+                onClick={() => setTestersOpen((v) => !v)}
+                aria-expanded={testersOpen}
+              >
+                <span className="qa-testing-portal__testers-title">Assignees</span>
+                {!testersOpen ? (
+                  <span className="schedule-board-filters__label-hint">
+                    — {testerFilterSummary}
+                  </span>
+                ) : (
+                  <>
+                    <TesterStatusAbbrevLegend />
+                    <span className="schedule-board-filters__label-hint">
+                      tap to multi-select · Shift+click for a range
+                    </span>
+                  </>
+                )}
+              </button>
+              <ShowHideToggle
+                open={testersOpen}
+                onOpenChange={setTestersOpen}
+                label="Assignees"
+                testId="qa-assignees-toggle"
+              />
+            </div>
+            {testersOpen ? (
+              <div className="qa-testing-portal__top-filters qa-testing-portal__tester-chips" style={{ marginTop: 10 }}>
                 <FilterChip
                   active={testerFilters.size === 0}
                   onToggle={() => {
@@ -3251,7 +3347,170 @@ export function TestingPortal({
                   );
                 })}
               </div>
+            ) : null}
+          </div>
+
+          <div className="qa-categories-panel" data-testid="qa-sprint-panel" style={{ marginTop: 16 }}>
+            <div
+              className="qa-section-heading qa-categories-panel__header"
+              aria-expanded={sprintOpen}
+            >
+              <ShowHideChevron
+                open={sprintOpen}
+                onOpenChange={setSprintOpen}
+                label="Sprint"
+                testId="qa-sprint-chevron"
+              />
+              <button
+                type="button"
+                className="qa-categories-panel__heading-btn"
+                onClick={() => setSprintOpen((v) => !v)}
+                aria-expanded={sprintOpen}
+              >
+                <span className="qa-categories-panel__title">Sprint</span>
+                <span className="qa-categories-panel__active">
+                  — {sprintFilterSummary}
+                  {sprintFilters.size === 1 && sprintFilters.has(activeSprintIndex)
+                    ? " · current"
+                    : ""}
+                </span>
+              </button>
+              <ShowHideToggle
+                open={sprintOpen}
+                onOpenChange={setSprintOpen}
+                label="Sprint"
+                testId="qa-sprint-toggle"
+              />
             </div>
+            {sprintOpen && (
+              <div className="qa-categories-panel__bubbles">
+                <FilterChip
+                  active={isAllSprintsFilter(sprintFilters)}
+                  onToggle={() => {
+                    setSprintFilters(allTestingPortalSprintFilters());
+                    lastSprintIdx.current = null;
+                  }}
+                  title={`Clear sprint filter · ${allSprintsNumericRange}`}
+                >
+                  <span className="task-list-sprint__label-block">
+                    <span className="task-list-sprint__name">All sprints</span>
+                    <span className="task-list-sprint__dates">{allSprintsNumericRange}</span>
+                  </span>
+                  <span className="qa-tester-meta">
+                    · Tests{" "}
+                    {countWithPct(
+                      sprintStats.backlog.done +
+                        [...sprintStats.bySprint.values()].reduce((n, s) => n + s.done, 0),
+                      sprintStats.backlog.total +
+                        [...sprintStats.bySprint.values()].reduce((n, s) => n + s.total, 0),
+                    )}
+                    {" · Tasks "}
+                    {countWithPct(
+                      taskSprintStats.backlog.done +
+                        [...taskSprintStats.bySprint.values()].reduce((n, s) => n + s.done, 0),
+                      taskSprintStats.backlog.total +
+                        [...taskSprintStats.bySprint.values()].reduce((n, s) => n + s.total, 0),
+                    )}
+                  </span>
+                </FilterChip>
+                <FilterChip
+                  active={sprintFilters.has("backlog")}
+                  title="Backlog — Shift+click to select a range"
+                  onToggle={(e) => toggleSprintFilter("backlog", e)}
+                >
+                  Backlog
+                  <span className="qa-tester-meta">
+                    · Tests {countWithPct(sprintStats.backlog.done, sprintStats.backlog.total)}
+                    {" · Tasks "}
+                    {countWithPct(taskSprintStats.backlog.done, taskSprintStats.backlog.total)}
+                  </span>
+                </FilterChip>
+                {sprints.map((s) => {
+                  const stats = sprintStats.bySprint.get(s.index) ?? { done: 0, total: 0 };
+                  const taskStats = taskSprintStats.bySprint.get(s.index) ?? {
+                    done: 0,
+                    total: 0,
+                  };
+                  const isCurrent = s.index === activeSprintIndex;
+                  const locked = isSprintLocked(closedSprints, s.index);
+                  const rollover = sprintRolloverByIndex.get(s.index);
+                  const rolloverHint = rollover?.chipHint ?? "";
+                  return (
+                    <FilterChip
+                      key={s.index}
+                      active={sprintFilters.has(s.index)}
+                      locked={locked}
+                      testId={`qa-sprint-chip-${s.index}`}
+                      title={
+                        locked
+                          ? `${s.label} · Closed & locked · ${s.numericRangeLabel} · Tests ${stats.done}/${stats.total} (Pass) · Tasks ${taskStats.done}/${taskStats.total} — full sprint totals`
+                          : `${s.numericRangeLabel}${isCurrent ? " · current sprint" : ""} · Tests ${stats.done}/${stats.total} (Pass) · Tasks ${taskStats.done}/${taskStats.total}${
+                              rollover?.banner ? ` · ${rollover.banner}` : ""
+                            } — full sprint totals (not suite-filtered) · Shift+click for range`
+                      }
+                      onToggle={(e) => toggleSprintFilter(s.index, e)}
+                      accent={isCurrent ? "#2e7d32" : undefined}
+                    >
+                      <span className="task-list-sprint__label-block">
+                        <span className="task-list-sprint__name">
+                          {s.label}
+                          {isCurrent ? " · current" : ""}
+                        </span>
+                        <span
+                          className="task-list-sprint__dates"
+                          data-testid={`qa-sprint-chip-dates-${s.index}`}
+                        >
+                          {s.numericRangeLabel}
+                        </span>
+                        {locked ? (
+                          <span className="task-list-sprint__locked-row">
+                            <SprintLockedBanner />
+                          </span>
+                        ) : null}
+                      </span>
+                      <span className="qa-tester-meta">
+                        · Tests {countWithPct(stats.done, stats.total)}
+                        {" · Tasks "}
+                        {countWithPct(taskStats.done, taskStats.total)}
+                        {rolloverHint ? (
+                          <span
+                            data-testid={`sprint-rollover-chip-${s.index}`}
+                            style={{ color: "#0e7490", fontWeight: 700 }}
+                          >
+                            {" "}
+                            · {rolloverHint}
+                          </span>
+                        ) : null}
+                      </span>
+                    </FilterChip>
+                  );
+                })}
+              </div>
+            )}
+            {selectedSprintRollover?.banner ? (
+              <p
+                className="qa-sprint-rollover-banner"
+                data-testid="sprint-rollover-banner"
+                style={{
+                  margin: "10px 0 0",
+                  padding: "8px 12px",
+                  borderRadius: 8,
+                  background: "rgba(14, 116, 144, 0.1)",
+                  border: "1px solid rgba(14, 116, 144, 0.35)",
+                  color: "#0e7490",
+                  fontSize: "0.95rem",
+                  fontWeight: 700,
+                }}
+              >
+                {selectedSprintRollover.banner}
+                {selectedSprintRollover.fromPrev > 0 ? (
+                  <span style={{ fontWeight: 600, opacity: 0.9 }}>
+                    {" "}
+                    — filter status “Rolled Over” to list them
+                  </span>
+                ) : null}
+              </p>
+            ) : null}
           </div>
 
           <div
@@ -3280,7 +3539,11 @@ export function TestingPortal({
                   <span className="schedule-board-filters__label-hint">
                     — {statusFilterSummary}
                   </span>
-                ) : null}
+                ) : (
+                  <span className="schedule-board-filters__label-hint">
+                    tap to multi-select · Shift+click for a range
+                  </span>
+                )}
               </button>
               <ShowHideToggle
                 open={statusOpen}
@@ -3321,8 +3584,8 @@ export function TestingPortal({
                       accent={STATUS_COLOR[s]}
                       title={
                         s === "rolled_over"
-                          ? `${testStatusTooltip(s, n)} — Shift+click to select a range`
-                          : `${testStatusTooltip(s, n)} · ${rolled} rolled over — Shift+click to select a range`
+                          ? `${testStatusTooltip(s, n)} — tap to add or remove · Shift+click for a range`
+                          : `${testStatusTooltip(s, n)} · ${rolled} rolled over — tap to add or remove · Shift+click for a range`
                       }
                       onToggle={(e) => toggleStatusFilter(s, e)}
                     >
@@ -3413,6 +3676,43 @@ export function TestingPortal({
           </div>
 
           <div
+            className="schedule-board-filters__row qa-testing-portal__testers-row"
+            data-testid="qa-other-panel"
+            style={{ marginTop: 16 }}
+          >
+            <div
+              className="schedule-board-filters__label schedule-board-filters__label--bar qa-testing-portal__testers-bar"
+              aria-expanded={otherOpen}
+            >
+              <ShowHideChevron
+                open={otherOpen}
+                onOpenChange={setOtherOpen}
+                label="Other"
+                testId="qa-other-chevron"
+              />
+              <button
+                type="button"
+                className="schedule-board-filters__filter-title schedule-board-filters__filter-title--collapse"
+                onClick={() => setOtherOpen((v) => !v)}
+                aria-expanded={otherOpen}
+              >
+                <span className="qa-testing-portal__testers-title">Other</span>
+                {!otherOpen ? (
+                  <span className="schedule-board-filters__label-hint">
+                    — Test Suites, All Test Cases, External vs Internal, Categories
+                  </span>
+                ) : null}
+              </button>
+              <ShowHideToggle
+                open={otherOpen}
+                onOpenChange={setOtherOpen}
+                label="Other"
+                testId="qa-other-toggle"
+              />
+            </div>
+            {otherOpen ? (
+              <div className="qa-testing-portal__other-body">
+          <div
             className="schedule-board-filters__row qa-testing-portal__category"
             data-testid="qa-test-suites"
           >
@@ -3429,7 +3729,7 @@ export function TestingPortal({
                 onClick={() => setAutomatedOpen((v) => !v)}
                 aria-expanded={automatedOpen}
               >
-                <span>Test Suites</span>
+                <span className="qa-heading-title-case">Test Suites</span>
                 {!automatedOpen ? (
                   <span className="schedule-board-filters__label-hint">
                     Manual{" "}
@@ -3630,153 +3930,6 @@ export function TestingPortal({
             ) : null}
           </div>
 
-          <div className="qa-categories-panel" data-testid="qa-sprint-panel" style={{ marginTop: 16 }}>
-            <div
-              className="qa-section-heading qa-categories-panel__header"
-              aria-expanded={sprintOpen}
-            >
-              <ShowHideChevron
-                open={sprintOpen}
-                onOpenChange={setSprintOpen}
-                label="Sprint"
-                testId="qa-sprint-chevron"
-              />
-              <button
-                type="button"
-                className="qa-categories-panel__heading-btn"
-                onClick={() => setSprintOpen((v) => !v)}
-                aria-expanded={sprintOpen}
-              >
-                <span className="qa-categories-panel__title">Sprint</span>
-                <span className="qa-categories-panel__active">
-                  — {sprintFilterSummary}
-                  {sprintFilters.size === 1 && sprintFilters.has(activeSprintIndex)
-                    ? " · current"
-                    : ""}
-                </span>
-              </button>
-              <ShowHideToggle
-                open={sprintOpen}
-                onOpenChange={setSprintOpen}
-                label="Sprint"
-                testId="qa-sprint-toggle"
-              />
-            </div>
-            {sprintOpen && (
-              <div className="qa-categories-panel__bubbles">
-                <FilterChip
-                  active={isAllSprintsFilter(sprintFilters)}
-                  onToggle={() => {
-                    setSprintFilters(defaultTestingPortalSprintFilters());
-                    lastSprintIdx.current = null;
-                  }}
-                  title="Clear sprint filter"
-                >
-                  All sprints
-                  <span className="qa-tester-meta">
-                    · Tests{" "}
-                    {countWithPct(
-                      sprintStats.backlog.done +
-                        [...sprintStats.bySprint.values()].reduce((n, s) => n + s.done, 0),
-                      sprintStats.backlog.total +
-                        [...sprintStats.bySprint.values()].reduce((n, s) => n + s.total, 0),
-                    )}
-                    {" · Tasks "}
-                    {countWithPct(
-                      taskSprintStats.backlog.done +
-                        [...taskSprintStats.bySprint.values()].reduce((n, s) => n + s.done, 0),
-                      taskSprintStats.backlog.total +
-                        [...taskSprintStats.bySprint.values()].reduce((n, s) => n + s.total, 0),
-                    )}
-                  </span>
-                </FilterChip>
-                <FilterChip
-                  active={sprintFilters.has("backlog")}
-                  title="Backlog — Shift+click to select a range"
-                  onToggle={(e) => toggleSprintFilter("backlog", e)}
-                >
-                  Backlog
-                  <span className="qa-tester-meta">
-                    · Tests {countWithPct(sprintStats.backlog.done, sprintStats.backlog.total)}
-                    {" · Tasks "}
-                    {countWithPct(taskSprintStats.backlog.done, taskSprintStats.backlog.total)}
-                  </span>
-                </FilterChip>
-                {sprints.map((s) => {
-                  const stats = sprintStats.bySprint.get(s.index) ?? { done: 0, total: 0 };
-                  const taskStats = taskSprintStats.bySprint.get(s.index) ?? {
-                    done: 0,
-                    total: 0,
-                  };
-                  const isCurrent = s.index === activeSprintIndex;
-                  const locked = isSprintLocked(closedSprints, s.index);
-                  const rollover = sprintRolloverByIndex.get(s.index);
-                  const rolloverHint = rollover?.chipHint ?? "";
-                  return (
-                    <FilterChip
-                      key={s.index}
-                      active={sprintFilters.has(s.index)}
-                      locked={locked}
-                      testId={`qa-sprint-chip-${s.index}`}
-                      title={
-                        locked
-                          ? `${s.label} · Closed & locked · ${s.rangeLabel} · Tests ${stats.done}/${stats.total} (Pass) · Tasks ${taskStats.done}/${taskStats.total} — full sprint totals`
-                          : `${s.rangeLabel}${isCurrent ? " · current sprint" : ""} · Tests ${stats.done}/${stats.total} (Pass) · Tasks ${taskStats.done}/${taskStats.total}${
-                              rollover?.banner ? ` · ${rollover.banner}` : ""
-                            } — full sprint totals (not suite-filtered) · Shift+click for range`
-                      }
-                      onToggle={(e) => toggleSprintFilter(s.index, e)}
-                      accent={isCurrent ? "#2e7d32" : undefined}
-                    >
-                      {s.label}
-                      {isCurrent ? " · current" : ""}
-                      {locked ? <SprintLockedBanner /> : null}
-                      <span className="qa-tester-meta">
-                        · Tests {countWithPct(stats.done, stats.total)}
-                        {" · Tasks "}
-                        {countWithPct(taskStats.done, taskStats.total)}
-                        {rolloverHint ? (
-                          <span
-                            data-testid={`sprint-rollover-chip-${s.index}`}
-                            style={{ color: "#0e7490", fontWeight: 700 }}
-                          >
-                            {" "}
-                            · {rolloverHint}
-                          </span>
-                        ) : null}
-                      </span>
-                    </FilterChip>
-                  );
-                })}
-              </div>
-            )}
-            {selectedSprintRollover?.banner ? (
-              <p
-                className="qa-sprint-rollover-banner"
-                data-testid="sprint-rollover-banner"
-                style={{
-                  margin: "10px 0 0",
-                  padding: "8px 12px",
-                  borderRadius: 8,
-                  background: "rgba(14, 116, 144, 0.1)",
-                  border: "1px solid rgba(14, 116, 144, 0.35)",
-                  color: "#0e7490",
-                  fontSize: "0.95rem",
-                  fontWeight: 700,
-                }}
-              >
-                {selectedSprintRollover.banner}
-                {selectedSprintRollover.fromPrev > 0 ? (
-                  <span style={{ fontWeight: 600, opacity: 0.9 }}>
-                    {" "}
-                    — filter status “Rolled Over” to list them
-                  </span>
-                ) : null}
-              </p>
-            ) : null}
-          </div>
-        </div>
-
         <QaProgressBars
           title="All Test Cases"
           embedded
@@ -3787,18 +3940,6 @@ export function TestingPortal({
           sprints={qaProgress.sprints}
           resources={qaProgress.resources}
         />
-
-        {error && (
-          <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 8, background: "rgba(155,47,40,0.1)", border: "1px solid rgba(155,47,40,0.35)", color: "#9B2F28", fontSize: "0.95rem" }}>
-            {error}
-          </div>
-        )}
-        {saveFlash && !error && (
-          <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 8, background: "rgba(46,125,50,0.1)", border: "1px solid rgba(46,125,50,0.35)", color: "#2e7d32", fontSize: "0.95rem" }}>
-            {saveFlash}
-          </div>
-        )}
-        {loading && <WaitIndicator message="Loading statuses from database…" />}
 
         <div className="qa-categories-panel" data-testid="qa-facing-panel">
           <div
@@ -3954,6 +4095,17 @@ export function TestingPortal({
             </div>
           )}
         </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        {saveFlash && !error && (
+          <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 8, background: "rgba(46,125,50,0.1)", border: "1px solid rgba(46,125,50,0.35)", color: "#2e7d32", fontSize: "0.95rem" }}>
+            {saveFlash}
+          </div>
+        )}
+        {loading && <WaitIndicator message="Loading statuses from database…" />}
 
       </div>
 
@@ -4434,7 +4586,13 @@ export function TestingPortal({
               </div>
               <AdminCrossLinks
                 entity={{ kind: "test", id: t.id }}
-                links={crossLinksForTestId(t.id, t.relatedTaskIds, { catalog: COUNTABLE_CASES })}
+                links={
+                  crossLinksByTestId.get(t.id) ??
+                  crossLinksForTestId(t.id, t.relatedTaskIds, {
+                    catalog: COUNTABLE_CASES,
+                    siblingIndex,
+                  })
+                }
                 edges={entityEdges}
                 titles={entityTitles}
                 editable
@@ -4531,43 +4689,18 @@ export function TestingPortal({
                 onClick={(e) => e.stopPropagation()}
               >
                 Status
-                <select
-                  className="text-input"
+                <span
                   aria-label={`Status for ${t.id}`}
-                  value={st}
-                  disabled={isSaving(t.id) || !canChangeStatus}
-                  onClick={(e) => e.stopPropagation()}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  onChange={(e) => void setStatus(t.id, e.target.value as TestStatus)}
+                  data-testid={`test-status-label-${t.id}`}
                   style={{
-                    width: "100%",
-                    minWidth: 0,
-                    padding: "8px 12px",
-                    fontSize: "1rem",
                     color: STATUS_COLOR[st],
-                    fontWeight: 600,
+                    fontWeight: 800,
+                    fontSize: "1rem",
+                    lineHeight: 1.3,
                   }}
                 >
-                  {STATUSES.filter((s) => {
-                    // Catalog Vitest/Playwright cases are suite-owned — never "In Progress".
-                    if (automated && s === "in_progress") return st === "in_progress";
-                    if (s === "blocked") return canBlock || st === "blocked";
-                    if (isDevFixStatus(s)) return canDevFix || st === s;
-                    return true;
-                  }).map((s) => (
-                    <option
-                      key={s}
-                      value={s}
-                      disabled={
-                        (s === "blocked" && !canBlock) || (isDevFixStatus(s) && !canDevFix)
-                      }
-                    >
-                      {STATUS_LABELS[s]}
-                      {s === "blocked" && !canBlock ? " (Evelyn only)" : ""}
-                      {isDevFixStatus(s) && !canDevFix ? " (Lead Dev only)" : ""}
-                    </option>
-                  ))}
-                </select>
+                  {STATUS_LABELS[st]}
+                </span>
                 {rowErrors[t.id] && (
                   <p
                     style={{
@@ -5112,6 +5245,26 @@ export function TestingPortal({
           </div>
         )}
       </div>
+
+      <SprintStatusBars
+        showRolloutSchedule={false}
+        selectedSprint={
+          isAllSprintsFilter(sprintFilters)
+            ? "all"
+            : sprintFilters.size === 1
+              ? ([...sprintFilters][0] ?? null)
+              : null
+        }
+        onSelectSprint={(selection) => {
+          if (selection === "all") {
+            setSprintFilters(allTestingPortalSprintFilters());
+            lastSprintIdx.current = null;
+            return;
+          }
+          setSprintFilters(new Set([selection]));
+          lastSprintIdx.current = selection;
+        }}
+      />
     </div>
   );
 }

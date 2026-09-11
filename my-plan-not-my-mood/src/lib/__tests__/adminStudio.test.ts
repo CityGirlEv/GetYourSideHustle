@@ -40,7 +40,7 @@ describe('adminStudio', () => {
       'asset-library',
     ]);
     expect(studioTabChildren('asset-library')).toEqual([]);
-    expect(studioTabDef('calendar')?.label).toBe('Calendar');
+    expect(studioTabDef('calendar')?.label).toBe('Posting Schedule');
     expect(studioTabDef('gear-selections')?.label).toBe('Gear');
     expect(studioTabDef('testing')?.label).toBe('Testing');
     expect(studioTabDef('emails')?.label).toBe('Emails');

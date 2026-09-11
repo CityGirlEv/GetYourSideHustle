@@ -12,7 +12,7 @@ export const SAVED_KICKOFF_PATH = `/admin/agenda?meeting=${SAVED_KICKOFF_MEETING
 export const SAVED_KICKOFF_LINK_LABEL = 'Open saved kickoff meeting';
 
 export const SAVED_KICKOFF_DECISIONS = [
-  'Angela has a $10,000 budget, paid across three phases.',
+  'Angela has a $10,000 budget in three payments. $3,500 is already received; Payment 2 is due Sprint 1.',
   'Phase 1 is the initial website rollout for T-shirt / gear sales — not the full 15-page platform.',
   'Developing Shirts is a Task List item. T-shirt design sits inside the $10K Phase 1 budget.',
   'First drop to scope: 3 shirt styles, 1 hoodie, and 1 hat. Angela selects which 2–3 designs go first.',
@@ -21,6 +21,7 @@ export const SAVED_KICKOFF_DECISIONS = [
   'Memberships are not configured in Phase 1. Show Coming Soon and discuss member setup in Phase 2.',
   'Anything beyond Phase 1 (mood tools, planners, Content Factory retainers) is open for future discussion as Phase 3.',
   'Sep 3 shift: sell tees from day one. Soft-sell Angela’s 6.2K Facebook now. Order her samples for the first on-body live. Socials (TikTok, YouTube, Instagram, personal pages) amplify — they do not gate sales. Every bio and live pin is https://nonnegotiation.com/gear.',
+  'Each Phase 1 sprint creates 3 T-shirt sales videos. Every video includes the Shop Gear link.',
 ].join('\n');
 
 export function savedKickoffAgendaItems(): AgendaItem[] {
@@ -53,7 +54,7 @@ export function savedKickoffAgendaItems(): AgendaItem[] {
       minutes: 15,
       notes: SAVED_KICKOFF_DECISIONS,
       actionItems:
-        'Add Task List items for Developing Shirts, Angela’s design pick, styles/pricing, Phase 1 email, and About / Contact / Privacy pages.',
+        'Add Task List items for Developing Shirts, Angela’s design pick, styles/pricing, Orders on SnatchVault, and About / Contact / Privacy pages.',
     }),
   ];
 }

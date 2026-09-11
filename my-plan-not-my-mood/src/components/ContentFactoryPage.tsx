@@ -4,17 +4,21 @@ import type { AdminStudioTab } from '../lib/adminStudio';
 import { BRAND_TAB_SUB_ROW_CLASS, brandTabClass } from '../lib/brandUi';
 import {
   CF_ASSIGNEE_CHIPS,
+  CF_ASSIGNEE_OPTIONS,
   CF_CHANNEL_LABELS,
   CF_CHANNEL_TONES,
   CF_CHANNELS,
   CF_KIND_LABELS,
   CF_KIND_TONES,
+  CF_KINDS,
   CF_POP_BTN,
   CONTENT_FACTORY_EDITS_KEY,
   CONTENT_FACTORY_STATUS_KEY,
   PHASE_1_CONTENT_FACTORY,
   cfPostIsImageOnly,
   clearContentFactoryItemEdit,
+  clearContentFactoryStatus,
+  contentFactoryHasItemEdits,
   contentFactoryLinkedTask,
   filterContentFactoryItems,
   formatCfDueChip,
@@ -46,10 +50,23 @@ import {
 import { sprintDatesForLabel } from '../lib/sprintCalendar';
 import { ContentFactoryShell } from './ContentFactoryShell';
 
+const CF_FIELD_CLASS =
+  'w-full min-h-[44px] rounded-xl border-2 border-[#FDBA74] bg-white px-3 py-2 text-sm text-[#1F1917] focus:border-[#EA580C] focus:outline-none';
+const CF_LABEL_CLASS = 'block text-[10px] font-black uppercase tracking-wider text-[#EA580C] mb-1';
+
 function loadStatuses(): Record<string, TaskStatus> {
   try {
     const raw = localStorage.getItem(CONTENT_FACTORY_STATUS_KEY);
     return raw ? parseContentFactoryStatuses(JSON.parse(raw)) : {};
+  } catch {
+    return {};
+  }
+}
+
+function loadEdits(): Record<string, ContentFactoryItemEdit> {
+  try {
+    const raw = localStorage.getItem(CONTENT_FACTORY_EDITS_KEY);
+    return raw ? parseContentFactoryEdits(JSON.parse(raw)) : {};
   } catch {
     return {};
   }
@@ -66,6 +83,7 @@ export const ContentFactoryPage: React.FC<{
   onOpenTab: (tab: AdminStudioTab) => void;
 }> = ({ onOpenTab }) => {
   const [statuses, setStatuses] = useState<Record<string, TaskStatus>>(() => loadStatuses());
+  const [edits, setEdits] = useState<Record<string, ContentFactoryItemEdit>>(() => loadEdits());
   const [search, setSearch] = useState('');
   const [sprintFilter, setSprintFilter] = useState<Set<string>>(new Set());
   const [assigneeFilter, setAssigneeFilter] = useState<Set<string>>(new Set());
@@ -83,10 +101,29 @@ export const ContentFactoryPage: React.FC<{
     localStorage.setItem(CONTENT_FACTORY_STATUS_KEY, JSON.stringify(statuses));
   }, [statuses]);
 
+  useEffect(() => {
+    localStorage.setItem(CONTENT_FACTORY_EDITS_KEY, JSON.stringify(edits));
+  }, [edits]);
+
   const items = useMemo(
-    () => overlayContentFactoryStatuses(PHASE_1_CONTENT_FACTORY, statuses),
-    [statuses],
+    () =>
+      overlayContentFactoryEdits(
+        overlayContentFactoryStatuses(PHASE_1_CONTENT_FACTORY, statuses),
+        edits,
+      ),
+    [statuses, edits],
   );
+
+  const updateField = (item: ContentFactoryItem, field: ContentFactoryEditField, value: string) => {
+    const seed = PHASE_1_CONTENT_FACTORY.find((row) => row.id === item.id);
+    if (!seed) return;
+    setEdits((prev) => setContentFactoryItemField(prev, seed, field, value));
+  };
+
+  const resetItem = (id: string) => {
+    setEdits((prev) => clearContentFactoryItemEdit(prev, id));
+    setStatuses((prev) => clearContentFactoryStatus(prev, id));
+  };
   const filtered = useMemo(
     () =>
       filterContentFactoryItems(items, {
@@ -153,7 +190,7 @@ export const ContentFactoryPage: React.FC<{
         <div>
           <p className="text-[10px] font-black uppercase tracking-wider text-[#EA580C] mb-2">Assignee</p>
           <div className={BRAND_TAB_SUB_ROW_CLASS} role="tablist" aria-label="Assignee">
-            {(['angela', 'evelyn'] as const).map((assignee) => {
+            {CF_ASSIGNEE_OPTIONS.map((assignee) => {
               const active = assigneeFilter.has(assignee);
               const total = items.filter((row) => row.assignee === assignee).length;
               return (
@@ -258,9 +295,8 @@ export const ContentFactoryPage: React.FC<{
                       const expanded = Boolean(openRows[row.id]);
                       const kindTone = CF_KIND_TONES[row.kind];
                       const assigneeChip =
-                        row.assignee === 'angela' || row.assignee === 'evelyn'
-                          ? CF_ASSIGNEE_CHIPS[row.assignee]
-                          : 'bg-[#FFEDD5] text-[#C2410C] border-[#FDBA74]';
+                        CF_ASSIGNEE_CHIPS[row.assignee] ?? 'bg-[#FFEDD5] text-[#C2410C] border-[#FDBA74]';
+                      const hasEdits = contentFactoryHasItemEdits(edits, row.id) || Boolean(statuses[row.id]);
                       const linkedTask = contentFactoryLinkedTask(row.taskId);
                       const duePast = isWorkDueDatePast(row.dateIso) && row.status !== 'done';
                       return (
@@ -349,8 +385,24 @@ export const ContentFactoryPage: React.FC<{
                               </button>
                             ) : null}
                             <select
+                              value={row.assignee}
+                              aria-label={`${row.title} assignee`}
+                              data-testid={`cf-item-assignee-${row.id}`}
+                              onClick={(event) => event.stopPropagation()}
+                              onChange={(event) => updateField(row, 'assignee', event.target.value)}
+                              className={`min-h-[44px] rounded-xl border-2 px-2 text-[10px] font-black uppercase cursor-pointer ${assigneeChip}`}
+                            >
+                              {CF_ASSIGNEE_OPTIONS.map((assignee) => (
+                                <option key={assignee} value={assignee}>
+                                  {ASSIGNEE_LABELS[assignee]}
+                                </option>
+                              ))}
+                            </select>
+                            <select
                               value={row.status}
                               aria-label={`${row.title} status`}
+                              data-testid={`cf-item-status-${row.id}`}
+                              onClick={(event) => event.stopPropagation()}
                               onChange={(event) =>
                                 setStatuses((prev) =>
                                   setContentFactoryStatus(prev, row.id, event.target.value as TaskStatus),
@@ -366,26 +418,144 @@ export const ContentFactoryPage: React.FC<{
                             </select>
                           </div>
                           {expanded && (
-                            <div className="border-t border-[#FED7AA] bg-[#FFF7ED] px-3 py-3 space-y-2 text-sm text-[#9A3412]">
-                              <p>
-                                <span className="font-black uppercase text-[10px] text-[#EA580C]">Copy · </span>
-                                {row.copy}
-                              </p>
-                              <p>
-                                <span className="font-black uppercase text-[10px] text-[#EA580C]">Image prompt · </span>
-                                {row.imagePrompt}
-                              </p>
-                              {row.videoPrompt ? (
-                                <p>
-                                  <span className="font-black uppercase text-[10px] text-[#EA580C]">Video prompt · </span>
-                                  {row.videoPrompt}
-                                </p>
-                              ) : (
-                                <p>
-                                  <span className="font-black uppercase text-[10px] text-[#EA580C]">Video · </span>
-                                  Image only — still post, no clip.
-                                </p>
-                              )}
+                            <div
+                              className="border-t border-[#FED7AA] bg-[#FFF7ED] px-3 py-3 space-y-3 text-sm text-[#9A3412]"
+                              data-testid={`cf-item-editor-${row.id}`}
+                            >
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <label className="sm:col-span-2">
+                                  <span className={CF_LABEL_CLASS}>Title</span>
+                                  <input
+                                    type="text"
+                                    value={row.title}
+                                    onChange={(event) => updateField(row, 'title', event.target.value)}
+                                    className={CF_FIELD_CLASS}
+                                    data-testid={`cf-item-title-${row.id}`}
+                                  />
+                                </label>
+                                <label>
+                                  <span className={CF_LABEL_CLASS}>Date</span>
+                                  <input
+                                    type="date"
+                                    value={row.dateIso}
+                                    onChange={(event) => updateField(row, 'dateIso', event.target.value)}
+                                    className={CF_FIELD_CLASS}
+                                    data-testid={`cf-item-date-${row.id}`}
+                                  />
+                                </label>
+                                <label>
+                                  <span className={CF_LABEL_CLASS}>Post time</span>
+                                  <input
+                                    type="text"
+                                    value={row.postTime}
+                                    onChange={(event) => updateField(row, 'postTime', event.target.value)}
+                                    className={CF_FIELD_CLASS}
+                                    data-testid={`cf-item-time-${row.id}`}
+                                  />
+                                </label>
+                                <label>
+                                  <span className={CF_LABEL_CLASS}>Channel</span>
+                                  <select
+                                    value={row.channel}
+                                    onChange={(event) => updateField(row, 'channel', event.target.value)}
+                                    className={CF_FIELD_CLASS}
+                                    data-testid={`cf-item-channel-${row.id}`}
+                                  >
+                                    {CF_CHANNELS.map((channel) => (
+                                      <option key={channel} value={channel}>
+                                        {CF_CHANNEL_LABELS[channel]}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                                <label>
+                                  <span className={CF_LABEL_CLASS}>Kind</span>
+                                  <select
+                                    value={row.kind}
+                                    onChange={(event) => updateField(row, 'kind', event.target.value)}
+                                    className={CF_FIELD_CLASS}
+                                    data-testid={`cf-item-kind-${row.id}`}
+                                  >
+                                    {CF_KINDS.map((kind) => (
+                                      <option key={kind} value={kind}>
+                                        {CF_KIND_LABELS[kind]}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                                <label>
+                                  <span className={CF_LABEL_CLASS}>Linked task</span>
+                                  <input
+                                    type="text"
+                                    value={row.taskId ?? ''}
+                                    onChange={(event) => updateField(row, 'taskId', event.target.value)}
+                                    placeholder="t-74"
+                                    className={CF_FIELD_CLASS}
+                                    data-testid={`cf-item-taskid-${row.id}`}
+                                  />
+                                </label>
+                                <label>
+                                  <span className={CF_LABEL_CLASS}>Image URL</span>
+                                  <input
+                                    type="text"
+                                    value={row.visualSrc ?? ''}
+                                    onChange={(event) => updateField(row, 'visualSrc', event.target.value)}
+                                    className={CF_FIELD_CLASS}
+                                    data-testid={`cf-item-visualsrc-${row.id}`}
+                                  />
+                                </label>
+                                <label className="sm:col-span-2">
+                                  <span className={CF_LABEL_CLASS}>Copy</span>
+                                  <textarea
+                                    value={row.copy}
+                                    onChange={(event) => updateField(row, 'copy', event.target.value)}
+                                    rows={4}
+                                    className={`${CF_FIELD_CLASS} min-h-[6rem]`}
+                                    data-testid={`cf-item-copy-${row.id}`}
+                                  />
+                                </label>
+                                <label className="sm:col-span-2">
+                                  <span className={CF_LABEL_CLASS}>Visual direction</span>
+                                  <textarea
+                                    value={row.visualPrompt}
+                                    onChange={(event) => updateField(row, 'visualPrompt', event.target.value)}
+                                    rows={3}
+                                    className={`${CF_FIELD_CLASS} min-h-[5rem]`}
+                                    data-testid={`cf-item-visual-${row.id}`}
+                                  />
+                                </label>
+                                <label className="sm:col-span-2">
+                                  <span className={CF_LABEL_CLASS}>Image prompt</span>
+                                  <textarea
+                                    value={row.imagePrompt}
+                                    onChange={(event) => updateField(row, 'imagePrompt', event.target.value)}
+                                    rows={3}
+                                    className={`${CF_FIELD_CLASS} min-h-[5rem]`}
+                                    data-testid={`cf-item-image-${row.id}`}
+                                  />
+                                </label>
+                                <label className="sm:col-span-2">
+                                  <span className={CF_LABEL_CLASS}>Video prompt</span>
+                                  <textarea
+                                    value={row.videoPrompt ?? ''}
+                                    onChange={(event) => updateField(row, 'videoPrompt', event.target.value)}
+                                    rows={3}
+                                    placeholder="Leave blank for image only"
+                                    className={`${CF_FIELD_CLASS} min-h-[5rem]`}
+                                    data-testid={`cf-item-video-${row.id}`}
+                                  />
+                                </label>
+                                <label className="sm:col-span-2">
+                                  <span className={CF_LABEL_CLASS}>Assets</span>
+                                  <input
+                                    type="text"
+                                    value={row.assetHint}
+                                    onChange={(event) => updateField(row, 'assetHint', event.target.value)}
+                                    className={CF_FIELD_CLASS}
+                                    data-testid={`cf-item-assets-${row.id}`}
+                                  />
+                                </label>
+                              </div>
                               {row.visualSrc ? (
                                 <img
                                   src={row.visualSrc}
@@ -393,37 +563,45 @@ export const ContentFactoryPage: React.FC<{
                                   className="w-full max-w-sm h-48 object-cover object-center rounded-xl border-2 border-[#1F1917]"
                                 />
                               ) : null}
-                              <p>
-                                <span className="font-black uppercase text-[10px] text-[#EA580C]">Assets · </span>
-                                {row.assetHint}
-                              </p>
-                              {row.kind === 'gear' && (
-                                <button
-                                  type="button"
-                                  onClick={() => onOpenTab('gear-selections')}
-                                  className={CF_POP_BTN}
-                                >
-                                  Open Gear
-                                </button>
-                              )}
-                              {row.kind === 'prep' && (
-                                <button
-                                  type="button"
-                                  onClick={() => onOpenTab('asset-library')}
-                                  className={CF_POP_BTN}
-                                >
-                                  Open Asset Library
-                                </button>
-                              )}
-                              {row.kind === 'logo' && (
-                                <button
-                                  type="button"
-                                  onClick={() => onOpenTab('logo-concepts')}
-                                  className={CF_POP_BTN}
-                                >
-                                  Open Logos
-                                </button>
-                              )}
+                              <div className="flex flex-wrap gap-2">
+                                {hasEdits ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => resetItem(row.id)}
+                                    className="min-h-[44px] px-3.5 rounded-xl border-2 border-[#FDBA74] bg-white text-[#9A3412] text-[11px] font-black uppercase tracking-wide cursor-pointer"
+                                    data-testid={`cf-item-reset-${row.id}`}
+                                  >
+                                    Reset to plan
+                                  </button>
+                                ) : null}
+                                {row.kind === 'gear' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => onOpenTab('gear-selections')}
+                                    className={CF_POP_BTN}
+                                  >
+                                    Open Gear
+                                  </button>
+                                )}
+                                {row.kind === 'prep' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => onOpenTab('asset-library')}
+                                    className={CF_POP_BTN}
+                                  >
+                                    Open Asset Library
+                                  </button>
+                                )}
+                                {row.kind === 'logo' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => onOpenTab('logo-concepts')}
+                                    className={CF_POP_BTN}
+                                  >
+                                    Open Logos
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           )}
                         </article>

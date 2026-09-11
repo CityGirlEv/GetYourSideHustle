@@ -138,6 +138,19 @@ export function sprintDatesForLabel(label: string): string {
   return sprintWindowByLabel(label)?.dates ?? '';
 }
 
+/** `Sprint 0 · Mon Aug 24 – Sun Sep 6, 2026` — used wherever sprints are listed. */
+export function sprintLabelWithDates(label: string): string {
+  const dates = sprintDatesForLabel(label);
+  return dates ? `${label} · ${dates}` : label;
+}
+
+/** Same as `sprintLabelWithDates` for ids like `sprint0`. */
+export function sprintIdWithDates(id: string, fallback = ''): string {
+  const window = sprintWindowById(id);
+  if (window) return `${window.label} · ${window.dates}`;
+  return fallback || id;
+}
+
 /** Mid-sprint due date for a board sprint label (`Sprint 0` … `Sprint 4`). */
 export function dueDateForSprintLabel(label: string): string {
   const window = sprintWindowByLabel(label);

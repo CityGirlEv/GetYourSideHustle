@@ -122,7 +122,7 @@ const WEEK_SPECS: WeekSpec[] = [
     liveKind: 'on-body',
     liveViewRate: 0.026,
     brandGain: 40,
-    note: 'First live wearing the tee. On-body clip to personal + NonNegotiation. Keep selling while picks finish.',
+    note: 'First live wearing the hoodie. On-body clip to personal + NonNegotiation. Keep selling while picks finish.',
   },
   {
     id: 's2',
@@ -134,7 +134,7 @@ const WEEK_SPECS: WeekSpec[] = [
     liveKind: 'none',
     liveViewRate: 0,
     brandGain: 50,
-    note: 'Tee, hoodie, and hat CTAs. Same Shop Gear URL. New channels amplify Facebook; they do not replace it.',
+    note: 'Hoodie, shirt, and hat CTAs. Same Shop Gear URL. New channels amplify Facebook; they do not replace it.',
   },
   {
     id: 's3',
@@ -353,23 +353,23 @@ export function buildWeekScorecards(
         ),
         metric(
           'orders',
-          'Orders (mostly $38 tees)',
+          'Orders (mostly $55 hoodies)',
           'count',
           'Shopify orders this week. 0 is possible; judge the sprint total.',
           band(orders, 0.4, 2),
         ),
         metric(
-          'tees',
-          'Tee units',
+          'hoodies',
+          'Hoodie units',
           'count',
-          'Shopify — tee SKUs only',
-          band(split.tee, 0.4, 2),
+          'Shopify — hoodie SKUs only',
+          band(split.hoodie, 0.4, 2),
         ),
         metric(
           'revenue',
           'Merchandise sales',
           'usd',
-          'Shopify net sales (tees, hoodie, hat)',
+          'Shopify net sales (hoodie, shirt, hat)',
           band(revenue, 0.4, 2),
         ),
         metric(

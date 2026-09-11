@@ -170,6 +170,89 @@ function isAgeGroup(v: unknown): v is BlueprintAgeGroup {
   return v === "kids" || v === "junior" || v === "adult" || v === "senior";
 }
 
+/** Parsed Match Wizard payload from a guest pending result or register body. */
+export function parseWizardBlueprintPayload(input: {
+  ageGroup?: unknown;
+  answers?: unknown;
+  resultIds?: unknown;
+  resultPcts?: unknown;
+}): {
+  ageGroup: BlueprintAgeGroup;
+  answers: Record<string, unknown>;
+  resultIds: string[];
+  resultPcts: Record<string, number>;
+} | null {
+  if (!isAgeGroup(input.ageGroup)) return null;
+  const resultIds = Array.isArray(input.resultIds)
+    ? input.resultIds.map(String).map((id) => id.trim()).filter(Boolean)
+    : [];
+  if (resultIds.length === 0) return null;
+  const answers =
+    input.answers && typeof input.answers === "object" && !Array.isArray(input.answers)
+      ? (input.answers as Record<string, unknown>)
+      : {};
+  const resultPcts: Record<string, number> = {};
+  if (input.resultPcts && typeof input.resultPcts === "object" && !Array.isArray(input.resultPcts)) {
+    for (const [id, value] of Object.entries(input.resultPcts as Record<string, unknown>)) {
+      const n = Number(value);
+      if (id && Number.isFinite(n)) resultPcts[id] = n;
+    }
+  }
+  return { ageGroup: input.ageGroup, answers, resultIds, resultPcts };
+}
+
+/** Persist a completed wizard onto a brand-new account (no login session yet). */
+export async function saveWizardBlueprintForNewUser(
+  env: Env,
+  userId: string,
+  input: {
+    ageGroup?: unknown;
+    answers?: unknown;
+    resultIds?: unknown;
+    resultPcts?: unknown;
+  },
+  opts?: { childProfileId?: string | null; claimToken?: string | null },
+): Promise<{ id: string } | null> {
+  await ensureBlueprintTables(env);
+  const parsed = parseWizardBlueprintPayload(input);
+  if (!parsed) return null;
+  const claimToken = opts?.claimToken ? String(opts.claimToken) : "";
+  if (claimToken) {
+    const existing = await env.DB.prepare(
+      `SELECT id FROM side_hustle_blueprints WHERE user_id = ? AND claim_token = ? LIMIT 1`,
+    )
+      .bind(userId, claimToken)
+      .first<{ id: string }>();
+    if (existing?.id) return { id: existing.id };
+  }
+  const now = new Date().toISOString();
+  const id = `bp-${crypto.randomUUID()}`;
+  const childId = parsed.ageGroup === "kids" ? opts?.childProfileId ?? null : null;
+  await env.DB.prepare(
+    `INSERT INTO side_hustle_blueprints
+      (id, user_id, child_profile_id, age_group, answers_json, result_ids_json, result_pcts_json,
+       top_result_id, unlocked, source, claim_token, completed_at, unlocked_at, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 'wizard', ?, ?, ?, ?, ?)`,
+  )
+    .bind(
+      id,
+      userId,
+      childId,
+      parsed.ageGroup,
+      JSON.stringify(parsed.answers),
+      JSON.stringify(parsed.resultIds),
+      JSON.stringify(parsed.resultPcts),
+      parsed.resultIds[0] ?? null,
+      claimToken || null,
+      now,
+      now,
+      now,
+      now,
+    )
+    .run();
+  return { id };
+}
+
 /** Public: store logged-out wizard completion; returns opaque claim token (no PII in URL). */
 export async function createPendingBlueprint(env: Env, request: Request): Promise<Response> {
   const dbFail = requireDb(env);
@@ -263,7 +346,16 @@ export async function claimPendingBlueprintForUser(
   const row = await env.DB.prepare(`SELECT * FROM pending_blueprints WHERE claim_token = ?`)
     .bind(claimToken)
     .first<PendingRow>();
-  if (!row || row.claimed_by_user_id) return null;
+  if (!row) return null;
+  if (row.claimed_by_user_id) {
+    if (row.claimed_by_user_id !== userId) return null;
+    const existing = await env.DB.prepare(
+      `SELECT id FROM side_hustle_blueprints WHERE user_id = ? AND claim_token = ? LIMIT 1`,
+    )
+      .bind(userId, claimToken)
+      .first<{ id: string }>();
+    return existing?.id ? { id: existing.id } : null;
+  }
   if (new Date(row.expires_at).getTime() < Date.now()) {
     await env.DB.prepare(`DELETE FROM pending_blueprints WHERE claim_token = ?`).bind(claimToken).run();
     return null;
@@ -272,7 +364,12 @@ export async function claimPendingBlueprintForUser(
   const now = new Date().toISOString();
   const id = `bp-${crypto.randomUUID()}`;
   const resultIds = parseJsonArray(row.result_ids_json);
-  const ageGroup = opts?.ageGroup || (row.age_group as BlueprintAgeGroup);
+  const ageGroup = isAgeGroup(row.age_group)
+    ? row.age_group
+    : opts?.ageGroup && isAgeGroup(opts.ageGroup)
+      ? opts.ageGroup
+      : "adult";
+  const childId = ageGroup === "kids" ? opts?.childProfileId ?? null : null;
 
   await env.DB.prepare(
     `INSERT INTO side_hustle_blueprints
@@ -283,7 +380,7 @@ export async function claimPendingBlueprintForUser(
     .bind(
       id,
       userId,
-      opts?.childProfileId ?? null,
+      childId,
       ageGroup,
       row.answers_json,
       row.result_ids_json,
@@ -367,13 +464,23 @@ export async function saveBlueprint(env: Env, request: Request, user: DbUser): P
   // Do not trust client scores as authoritative — store for display; IDs come from client ranking.
   const resultPcts = body.resultPcts && typeof body.resultPcts === "object" ? body.resultPcts : {};
   const now = new Date().toISOString();
-  const id = body.id && String(body.id).startsWith("bp-") ? String(body.id) : `bp-${crypto.randomUUID()}`;
+  let id = body.id && String(body.id).startsWith("bp-") ? String(body.id) : `bp-${crypto.randomUUID()}`;
 
-  const existing = await env.DB.prepare(
+  const claimToken = body.claimToken ? String(body.claimToken) : "";
+  let existing = await env.DB.prepare(
     `SELECT id, user_id, unlocked_at FROM side_hustle_blueprints WHERE id = ?`,
   )
     .bind(id)
     .first<{ id: string; user_id: string; unlocked_at: string | null }>();
+
+  if (!existing && claimToken) {
+    existing = await env.DB.prepare(
+      `SELECT id, user_id, unlocked_at FROM side_hustle_blueprints WHERE user_id = ? AND claim_token = ? LIMIT 1`,
+    )
+      .bind(user.id, claimToken)
+      .first<{ id: string; user_id: string; unlocked_at: string | null }>();
+    if (existing) id = existing.id;
+  }
 
   if (existing) {
     if (existing.user_id !== user.id) {
@@ -395,7 +502,7 @@ export async function saveBlueprint(env: Env, request: Request, user: DbUser): P
         JSON.stringify(resultPcts),
         resultIds[0] ?? null,
         now,
-        body.claimToken ? String(body.claimToken) : null,
+        claimToken || null,
         now,
         id,
         user.id,
@@ -417,7 +524,7 @@ export async function saveBlueprint(env: Env, request: Request, user: DbUser): P
         JSON.stringify(resultIds),
         JSON.stringify(resultPcts),
         resultIds[0] ?? null,
-        body.claimToken ? String(body.claimToken) : null,
+        claimToken || null,
         now,
         now,
         now,
@@ -426,11 +533,11 @@ export async function saveBlueprint(env: Env, request: Request, user: DbUser): P
       .run();
   }
 
-  if (body.claimToken) {
+  if (claimToken) {
     await env.DB.prepare(
       `UPDATE pending_blueprints SET claimed_by_user_id = ?, claimed_at = ? WHERE claim_token = ? AND claimed_by_user_id IS NULL`,
     )
-      .bind(user.id, now, String(body.claimToken))
+      .bind(user.id, now, claimToken)
       .run();
   }
 

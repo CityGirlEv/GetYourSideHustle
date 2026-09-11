@@ -5,7 +5,7 @@ import {
   type AgendaAttendee,
   type AgendaItem,
 } from './sprintAgenda';
-import { INCLUDED_EMAIL_TEMPLATES, INCLUDED_WEBSITE_PAGES } from './websiteScope';
+import { INCLUDED_WEBSITE_PAGES } from './websiteScope';
 import { SAVED_KICKOFF_DECISIONS } from './savedMeetings';
 
 export const KICKOFF_AGENDA_ID = 'kickoff-agenda';
@@ -45,14 +45,14 @@ export const KICKOFF_SEED_TOPICS: AgendaItem[] = [
     label: 'Three-phase gear plan',
     minutes: 20,
     notes: 'Phase 1 is website + T-shirt design. Phase 2 is memberships. Phase 3 is future discussion.',
-    actionItems: 'Price Phase 1 at $10,000. Angela pays $10K across three phase payments.',
+    actionItems: 'Price Phase 1 at $10,000. Angela pays $10K in three payments. $3,500 is already received; Payment 2 is due Sprint 1.',
   }),
   normalizeAgendaItem({
     id: 'kickoff-5',
     label: 'Developing Shirts',
     minutes: 15,
-    notes: 'Angela wants 3 shirt styles, 1 hoodie, and 1 hat. Suggested start is 2–3 designs. Host on this site.',
-    actionItems: 'Add Task List items. Angela selects the first designs. Review styles and pricing.',
+    notes: 'Angela wants 3 shirt styles, 1 hoodie, and 1 hat. Suggested start is 2–3 designs. Host on this site. Each sprint creates 3 T-shirt sales videos.',
+    actionItems: 'Add Task List items. Angela selects the first designs. Review styles and pricing. Plan 3 tee-sales videos per sprint.',
   }),
   normalizeAgendaItem({
     id: 'kickoff-6',
@@ -63,10 +63,10 @@ export const KICKOFF_SEED_TOPICS: AgendaItem[] = [
   }),
   normalizeAgendaItem({
     id: 'kickoff-7',
-    label: 'Phase 1 email',
+    label: 'Orders',
     minutes: 10,
-    notes: `${INCLUDED_EMAIL_TEMPLATES.length} Phase 1 templates: orders, fulfillment, contact, and account mail.`,
-    actionItems: 'Configure Phase 1 email. Extra templates wait for later discussion.',
+    notes: 'Orders are hosted on SnatchVault at https://snatchvault.com/collections/my-plan-gear. Home menu: Non-Negotiable. Submenus: Tees, Hoodies, Hats. Split is 70/30.',
+    actionItems: 'Confirm the collection, Non-Negotiable menu, and 70/30 order split. Hosting is SnatchVault, not Angela’s domain.',
   }),
   normalizeAgendaItem({
     id: 'kickoff-8',

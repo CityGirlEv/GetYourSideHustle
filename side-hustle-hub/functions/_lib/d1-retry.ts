@@ -3,6 +3,12 @@
  * Retry once after a short pause — do not retry unknown errors.
  */
 
+export const TRANSIENT_DB_USER_MESSAGE =
+  "The database is busy. Wait a few seconds and try again.";
+
+/** One extra attempt for sign-in — more retries stall a dead Wrangler D1 proxy (~2s each). */
+export const LOGIN_D1_ATTEMPTS = 2;
+
 export function isTransientD1Error(error: unknown): boolean {
   const msg = error instanceof Error ? error.message : String(error);
   return (
@@ -13,6 +19,15 @@ export function isTransientD1Error(error: unknown): boolean {
     /internal error while starting up D1/i.test(msg) ||
     /internal error;\s*reference\s*=/i.test(msg)
   );
+}
+
+/** Map thrown D1 failures to a status + message safe to show on the login form. */
+export function publicCaughtApiError(error: unknown): { message: string; status: number } {
+  if (isTransientD1Error(error)) {
+    return { message: TRANSIENT_DB_USER_MESSAGE, status: 503 };
+  }
+  const message = error instanceof Error ? error.message : String(error);
+  return { message: `Server error: ${message}`, status: 500 };
 }
 
 export async function withD1Retry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {

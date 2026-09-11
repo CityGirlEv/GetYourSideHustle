@@ -17,7 +17,9 @@ export function apiGetCoalesceKey(
   path: string,
   method: string,
   authToken: string | null,
+  actAsUserId?: string | null,
 ): string | null {
   if (method.toUpperCase() !== "GET") return null;
-  return `GET:${path}:${authToken ?? ""}`;
+  const act = actAsUserId ? `:as:${actAsUserId}` : "";
+  return `GET:${path}:${authToken ?? ""}${act}`;
 }

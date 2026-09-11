@@ -26,6 +26,7 @@ export const IP_WEBSITE_PAGES_ID = 'ip-website-pages';
 export const IP_EMAIL_TEMPLATES_ID = 'ip-email-templates';
 export const IP_SPRINT_ROI_ID = 'ip-sprint-roi';
 export const IP_SPRINT_SCORECARD_ID = 'ip-sprint-scorecard';
+export const IP_PAYMENT_SCHEDULE_ID = 'ip-payment-schedule';
 
 export const ANGELA_PLAN_DOC_ACTIONS = [
   { id: 'view-pdf', label: 'View PDF' },
@@ -87,6 +88,7 @@ export function buildIpToc(
     includeWebsitePages?: boolean;
     includeEmailTemplates?: boolean;
     includeSprintRoi?: boolean;
+    includePaymentSchedule?: boolean;
   } = {},
 ): IpTocSection[] {
   const visible = items.filter((item) => item.visible !== false);
@@ -106,8 +108,18 @@ export function buildIpToc(
     sections.push({
       id: IP_EMAIL_TEMPLATES_ID,
       phase: 'emails',
-      label: 'Email Templates',
-      subtitle: 'Phase 1 order & contact',
+      label: 'Orders',
+      subtitle: 'SnatchVault hosting, menu, and 70/30 split',
+      itemIds: [],
+    });
+  }
+
+  if (options.includePaymentSchedule) {
+    sections.push({
+      id: IP_PAYMENT_SCHEDULE_ID,
+      phase: 'docs',
+      label: 'Payments',
+      subtitle: 'Three payments · $3,500 received',
       itemIds: [],
     });
   }

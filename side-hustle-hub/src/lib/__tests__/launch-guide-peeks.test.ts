@@ -3,9 +3,9 @@ import {
   getLaunchGuidePeekSections,
   sneakPeekText,
 } from "../launch-guide-peeks";
-import { LAUNCH_GUIDES } from "../launch-guides";
+import { LAUNCH_GUIDES, sortGuidesFreeFirst } from "../launch-guides";
+import { adultGuideMinTier, kidsGuideMinTier } from "../guide-access";
 import { guidesForAudience } from "../kids-guides";
-import { SENIOR_GUIDE_TEASERS } from "../seniors-content";
 
 describe("launch guide peeks", () => {
   it("organizes Kids, Teens (junior id), Senior, and Adult sections from real data", () => {
@@ -17,10 +17,22 @@ describe("launch guide peeks", () => {
     const senior = sections.find((s) => s.id === "senior")!;
     const adult = sections.find((s) => s.id === "adult")!;
 
-    expect(kids.guides.map((g) => g.id)).toEqual(guidesForAudience("kids").map((g) => g.id));
-    expect(junior.guides.map((g) => g.id)).toEqual(guidesForAudience("junior").map((g) => g.id));
-    expect(senior.guides.map((g) => g.id)).toEqual(SENIOR_GUIDE_TEASERS.map((g) => g.id));
+    expect(kids.guides.map((g) => g.id)).toEqual(
+      sortGuidesFreeFirst(
+        guidesForAudience("kids").map((g) => ({ id: g.id, name: g.title })),
+        (id) => kidsGuideMinTier(id),
+      ).map((g) => g.id),
+    );
+    expect(junior.guides.map((g) => g.id)).toEqual(
+      sortGuidesFreeFirst(
+        guidesForAudience("junior").map((g) => ({ id: g.id, name: g.title })),
+        (id) => kidsGuideMinTier(id),
+      ).map((g) => g.id),
+    );
+    expect(senior.guides[0]?.minTier).toBeDefined();
     expect(adult.guides.map((g) => g.id)).toEqual(LAUNCH_GUIDES.map((g) => g.id));
+    expect(adult.guides[0]?.minTier).toBe("free");
+    expect(adultGuideMinTier(LAUNCH_GUIDES[0].id)).toBe("free");
 
     for (const section of sections) {
       for (const guide of section.guides) {
@@ -47,6 +59,23 @@ describe("launch guide peeks", () => {
     expect(sections.find((s) => s.id === "senior")!.guides[0].nav).toEqual({
       view: "seniors",
     });
+  });
+
+  it("marks free launch guides so peek buttons can show a Free badge", () => {
+    const sections = getLaunchGuidePeekSections();
+    const adult = sections.find((s) => s.id === "adult")!;
+    const plantWatering = adult.guides.find((g) => g.id === "plant-watering")!;
+    const handyman = adult.guides.find((g) => g.id === "handyman")!;
+    const rideshare = adult.guides.find((g) => g.id === "rideshare")!;
+    const airbnb = adult.guides.find((g) => g.id === "airbnb")!;
+    expect(plantWatering.minTier).toBe("free");
+    expect(handyman.minTier).toBe("free");
+    expect(rideshare.minTier).toBe("free");
+    expect(airbnb.minTier).toBe("starter");
+
+    const kids = sections.find((s) => s.id === "kids")!;
+    expect(kids.guides.some((g) => g.minTier === "free")).toBe(true);
+    expect(kids.guides.some((g) => g.minTier !== "free")).toBe(true);
   });
 
   it("shortens long blurbs to a sneak peek", () => {

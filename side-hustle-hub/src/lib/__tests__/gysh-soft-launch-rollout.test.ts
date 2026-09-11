@@ -55,6 +55,12 @@ describe("gysh-soft-launch-rollout", () => {
     expect(softLaunchFactoryDefaultSprints(new Date(2026, 7, 5))).toEqual([3]);
     expect(softLaunchFactoryDefaultSprints(new Date(2026, 7, 18))).toEqual([3]);
     expect(softLaunchFactoryDefaultSprints(new Date(2026, 8, 2))).toEqual([5]); // Sep 2 → Sprint 5
+    expect(softLaunchFactoryDefaultSprints(new Date(2026, 8, 8))).toEqual([6]); // Sep 8 → Sprint 6
+    expect(softLaunchFactoryDefaultSprints(new Date(2026, 9, 7))).toEqual([10]); // Oct 7 → Sprint 10
+    expect(SOFT_LAUNCH_FACTORY_SPRINTS).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    for (const sprint of [6, 7, 8, 9, 10]) {
+      expect(SOFT_LAUNCH_ROLLOUT.some((i) => i.sprint === sprint)).toBe(true);
+    }
     expect(softLaunchFactoryDefaultSprints(new Date(2026, 5, 1))).toEqual([2]);
   });
 
@@ -197,20 +203,20 @@ describe("gysh-soft-launch-rollout", () => {
     expect(ROLLOUT_CHANNELS).toContain("personal_amplify");
   });
 
-  it("schedules Personal amplify on Sprint 5 / Sep 2 (Tina + Evelyn each)", () => {
+  it("schedules Personal amplify across Sprint 6 next week (Tina + Evelyn each)", () => {
     const amplify = SOFT_LAUNCH_ROLLOUT.filter((i) => i.channel === "personal_amplify");
     expect(amplify).toHaveLength(PERSONAL_AMPLIFY_CADENCE.length * 2);
     expect(amplify.every((i) => i.owner === "Tina" || i.owner === "Evelyn")).toBe(true);
-    expect(amplify.every((i) => i.sprint === 5)).toBe(true);
-    expect(amplify.every((i) => i.day === "2026-09-02")).toBe(true);
-    expect(PERSONAL_AMPLIFY_CADENCE.every((r) => r.sprint === 5 && r.day === "2026-09-02")).toBe(
-      true,
-    );
+    expect(amplify.every((i) => i.sprint === 6)).toBe(true);
+    const days = PERSONAL_AMPLIFY_CADENCE.map((r) => r.day);
+    expect(days.every((d) => d >= "2026-09-08" && d <= "2026-09-14")).toBe(true);
+    expect(new Set(days).size).toBe(7);
+    expect(PERSONAL_AMPLIFY_CADENCE.every((r) => r.sprint === 6)).toBe(true);
 
     const wrapTina = softLaunchItemById("sl-s3-personal-amplify-wrap-tina");
     const wrapEvelyn = softLaunchItemById("sl-s3-personal-amplify-wrap-evelyn");
-    expect(wrapTina?.day).toBe("2026-09-02");
-    expect(wrapTina?.sprint).toBe(5);
+    expect(wrapTina?.day).toBe("2026-09-14");
+    expect(wrapTina?.sprint).toBe(6);
     expect(wrapTina?.owner).toBe("Tina");
     expect(wrapEvelyn?.owner).toBe("Evelyn");
     expect(softLaunchTaskId(wrapTina!.id)).toBe("T-SL-S3-PERSONAL-AMPLIFY-WRAP-TINA");
@@ -218,13 +224,22 @@ describe("gysh-soft-launch-rollout", () => {
     expect(wrapTina!.copy).toMatch(/week wrap/i);
     expect(PERSONAL_AMPLIFY_PLAYBOOK).toMatch(/prefer 6–9 PM CT/i);
     expect(PERSONAL_AMPLIFY_PLAYBOOK).toMatch(/3–4 personal shares/i);
-    expect(PERSONAL_AMPLIFY_CADENCE.map((r) => r.day)).toEqual(
-      Array(PERSONAL_AMPLIFY_CADENCE.length).fill("2026-09-02"),
-    );
+    expect(PERSONAL_AMPLIFY_CADENCE.map((r) => r.day)).toEqual([
+      "2026-09-08",
+      "2026-09-09",
+      "2026-09-14",
+      "2026-09-10",
+      "2026-09-08",
+      "2026-09-09",
+      "2026-09-12",
+      "2026-09-10",
+      "2026-09-11",
+      "2026-09-13",
+    ]);
 
     const igTt = softLaunchItemById("sl-s4-personal-amplify-ig-tt-tina");
-    expect(igTt?.sprint).toBe(5);
-    expect(igTt?.day).toBe("2026-09-02");
+    expect(igTt?.sprint).toBe(6);
+    expect(igTt?.day).toBe("2026-09-10");
     expect(igTt?.copy).toMatch(/Instagram/i);
     expect(igTt?.copy).toMatch(/TikTok/i);
 
@@ -232,9 +247,15 @@ describe("gysh-soft-launch-rollout", () => {
       onlyIds: ["T-SL-S3-PERSONAL-AMPLIFY-WRAP-TINA"],
     })[0];
     expect(wrapSeed?.assignedTo).toBe("Tina");
-    expect(wrapSeed?.dueDate).toBe("09/02/26");
-    expect(wrapSeed?.sprint).toBe(5);
+    expect(wrapSeed?.dueDate).toBe("09/14/26");
+    expect(wrapSeed?.sprint).toBe(6);
     expect(wrapSeed?.category).toBe("personal_amplify");
+
+    const whySeed = softLaunchTaskSeeds({
+      onlyIds: ["T-SL-S3-PERSONAL-AMPLIFY-WHY-EVELYN"],
+    })[0];
+    expect(whySeed?.dueDate).toBe("09/08/26");
+    expect(whySeed?.sprint).toBe(6);
 
     const fields = rolloutItemToDraftFields(wrapTina!);
     expect(fields.body).toMatch(/Share → your personal timeline/i);

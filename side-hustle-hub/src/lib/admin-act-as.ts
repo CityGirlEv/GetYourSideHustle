@@ -3,20 +3,27 @@ import { getSessionStore } from "./browser-storage";
 
 export const ADMIN_ACT_AS_KEY = "gysh_admin_act_as_v1";
 
+/** Sent on member API calls when an admin is viewing another user's dashboard. */
+export const ACT_AS_USER_HEADER = "x-gysh-act-as-user";
+
 /** Audience the admin is previewing the member app as. */
 export type ActAsAudience = "admin" | "guest" | "adult" | "kids" | "junior" | "senior";
+
+export type ActAsUserTarget = {
+  type: "user";
+  id: string;
+  name: string;
+  email: string;
+  roles: GyshRole[];
+  membershipTier?: string | null;
+  audience?: string | null;
+};
 
 export type ActAsTarget =
   | { type: "self" }
   | { type: "guest" }
   | { type: "audience"; audience: Exclude<ActAsAudience, "admin" | "guest"> }
-  | {
-      type: "user";
-      id: string;
-      name: string;
-      email: string;
-      roles: GyshRole[];
-    };
+  | ActAsUserTarget;
 
 export const ACT_AS_GUEST_OPTION = {
   label: "Unlogged in User",
@@ -42,11 +49,16 @@ export function readActAsTarget(): ActAsTarget {
     if (parsed?.type === "self") return { type: "self" };
     if (parsed?.type === "guest") return { type: "guest" };
     if (parsed?.type === "audience" && parsed.audience) return parsed;
-    // Legacy per-user act-as: map to role audience (no individual user profiles in switcher).
-    if (parsed?.type === "user" && Array.isArray(parsed.roles)) {
-      const audience = audienceFromRoles(parsed.roles);
-      if (audience === "admin" || audience === "guest") return { type: "self" };
-      return { type: "audience", audience };
+    if (parsed?.type === "user" && parsed.id && Array.isArray(parsed.roles)) {
+      return {
+        type: "user",
+        id: String(parsed.id),
+        name: String(parsed.name || "Member"),
+        email: String(parsed.email || ""),
+        roles: parsed.roles,
+        membershipTier: parsed.membershipTier ?? null,
+        audience: parsed.audience ?? null,
+      };
     }
     return { type: "self" };
   } catch {
@@ -102,12 +114,27 @@ export function actAsHomeView(target: ActAsTarget): string {
   return GYSH_ROLE_HOME.adult;
 }
 
-export function toActAsUserTarget(user: GyshUser): ActAsTarget {
+export function toActAsUserTarget(user: GyshUser): ActAsUserTarget {
   return {
     type: "user",
     id: user.id,
     name: user.name,
     email: user.email,
     roles: userRoles(user),
+    membershipTier: user.membershipTier ?? null,
+    audience: user.audience ?? null,
   };
+}
+
+/** Portal login accounts (password set) get a Dashboard link in Users Area. */
+export function userHasAdminDashboardLink(user: Pick<GyshUser, "canLogin">): boolean {
+  return Boolean(user.canLogin);
+}
+
+export function isActAsUserTarget(target: ActAsTarget): target is ActAsUserTarget {
+  return target.type === "user";
+}
+
+export function actAsUserId(target: ActAsTarget): string | null {
+  return target.type === "user" ? target.id : null;
 }

@@ -90,22 +90,21 @@ const MEMBERSHIP_TIERS = [
 const ALA_CARTE = [
   { id: "story-time", name: "Kevina Starr Story Time (1 session)", priceUsd: 15 },
   { id: "junior-lab", name: "Teens Glow Lab seat", priceUsd: 25 },
-  { id: "workshop-general", name: "Adult / Senior workshop ticket", priceUsd: 35 },
+  { id: "workshop-general", name: "Workshops (Starter & Above Workshops Free)", priceUsd: 40 },
   { id: "training-group", name: "Group training session", priceUsd: 45 },
-  { id: "consult-30", name: "1-on-1 consulting (30 min)", priceUsd: 75 },
-  { id: "consult-60", name: "1-on-1 consulting (60 min)", priceUsd: 120 },
-  { id: "consult-90", name: "1-on-1 consulting (90 min)", priceUsd: 165 },
-  { id: "custom-schedule", name: "Custom hustle schedule build", priceUsd: 45 },
+  { id: "consult-30", name: "1-on-1 consulting (30 min)", priceUsd: 45 },
+  { id: "consult-60", name: "1-on-1 consulting (60 min)", priceUsd: 65 },
+  { id: "consult-90", name: "1-on-1 consulting (90 min)", priceUsd: 75 },
+  { id: "consult-120", name: "1-on-1 consulting (2 hours)", priceUsd: 145 },
   { id: "progress-pdf", name: "Progress report PDF (one-off)", priceUsd: 12 },
   { id: "zip-timing", name: "Best-times ZipCode scout (month)", priceUsd: 29 },
-  { id: "parent-brief", name: "Parent safety brief", priceUsd: 10 },
 ];
 
 const CREDIT_PACKS = [
-  { id: "boost", name: "Boost Pack (25 credits)", priceUsd: 5 },
-  { id: "builder", name: "Builder Pack (60 credits)", priceUsd: 10 },
-  { id: "launcher", name: "Launcher Pack (140 credits)", priceUsd: 20 },
-  { id: "family", name: "Family Pack (300 credits)", priceUsd: 40 },
+  { id: "boost", name: "Boost Pack (5 credits)", priceUsd: 5 },
+  { id: "builder", name: "Builder Pack (10 credits)", priceUsd: 10 },
+  { id: "launcher", name: "Launcher Pack (20 credits)", priceUsd: 20 },
+  { id: "family", name: "Family Pack (40 credits)", priceUsd: 40 },
 ];
 
 function dollarsToCents(n) {

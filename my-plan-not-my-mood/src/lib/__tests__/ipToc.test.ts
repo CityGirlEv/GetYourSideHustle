@@ -40,6 +40,7 @@ describe('ipToc', () => {
     expect(toc[2].label).toBe('Phase 3');
     expect(buildIpToc(items, { includeSprintRoi: true }).some((section) => section.id === 'ip-sprint-roi')).toBe(true);
     expect(buildIpToc(items, { includeSprintRoi: true }).some((section) => section.id === 'ip-sprint-scorecard')).toBe(true);
+    expect(buildIpToc(items, { includePaymentSchedule: true }).some((section) => section.id === 'ip-payment-schedule')).toBe(true);
     expect(toc[0].itemIds).not.toContain('hidden');
   });
 
