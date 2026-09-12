@@ -3,7 +3,135 @@
  * Outside sources always include a full https link. Prices change — verify on the vendor site.
  */
 
-import { detailedStepsForGuide, isGenericGuideSteps, ensureGuideFoundationSteps, guideUsesSavingsFoundation } from "./guide-detailed-steps";
+import { detailedStepsForGuide, isGenericGuideSteps, finalizeGuidePlaybookSteps } from "./guide-detailed-steps";
+import { ensureMarketingPlanSteps } from "./guide-marketing-plan";
+import {
+  FOOD_DELIVERY_EXTERNAL_LINKS,
+  FOOD_DELIVERY_PREREQUISITE_EXTRAS,
+  FOOD_DELIVERY_PRICING,
+  FOOD_DELIVERY_SUPPLIES,
+  FOOD_DELIVERY_SURVIVAL_TOOLS,
+} from "./food-delivery-guide";
+import {
+  KIDS_PARTY_GAME_HOST_EXTERNAL_LINKS,
+  KIDS_PARTY_GAME_HOST_PREREQUISITE_EXTRAS,
+  KIDS_PARTY_GAME_HOST_PRICING,
+  KIDS_PARTY_GAME_HOST_SUPPLIES,
+  KIDS_PARTY_GAME_HOST_TOOLS,
+  kidsPartyGameHostToolsDisclaimer,
+} from "./kids-party-game-host-guide";
+import {
+  LEAD_FOLLOWUP_EXTERNAL_LINKS,
+  LEAD_FOLLOWUP_PREREQUISITE_EXTRAS,
+  LEAD_FOLLOWUP_PRICING,
+  LEAD_FOLLOWUP_SUPPLIES,
+  LEAD_FOLLOWUP_TOOLS,
+  leadFollowupToolsDisclaimer,
+} from "./lead-followup-assistant-guide";
+import {
+  APPOINTMENT_SETTER_EXTERNAL_LINKS,
+  APPOINTMENT_SETTER_PREREQUISITE_EXTRAS,
+  APPOINTMENT_SETTER_PRICING,
+  APPOINTMENT_SETTER_SUPPLIES,
+  APPOINTMENT_SETTER_TOOLS,
+  appointmentSetterToolsDisclaimer,
+} from "./appointment-setter-guide";
+import {
+  ONLINE_RESEARCH_ASSISTANT_EXTERNAL_LINKS,
+  ONLINE_RESEARCH_ASSISTANT_PREREQUISITE_EXTRAS,
+  ONLINE_RESEARCH_ASSISTANT_PRICING,
+  ONLINE_RESEARCH_ASSISTANT_SUPPLIES,
+  ONLINE_RESEARCH_ASSISTANT_TOOLS,
+  onlineResearchAssistantToolsDisclaimer,
+} from "./online-research-assistant-guide";
+import {
+  MOTHERS_HELPER_EXTERNAL_LINKS,
+  MOTHERS_HELPER_PREREQUISITE_EXTRAS,
+  MOTHERS_HELPER_PRICING,
+  MOTHERS_HELPER_SUPPLIES,
+  MOTHERS_HELPER_TOOLS,
+  mothersHelperToolsDisclaimer,
+} from "./mothers-helper-guide";
+import {
+  LOCAL_CONTENT_PHOTO_EXTERNAL_LINKS,
+  LOCAL_CONTENT_PHOTO_PREREQUISITE_EXTRAS,
+  LOCAL_CONTENT_PHOTO_PRICING,
+  LOCAL_CONTENT_PHOTO_SUPPLIES,
+  LOCAL_CONTENT_PHOTO_TOOLS,
+  localContentPhotoToolsDisclaimer,
+} from "./local-content-photographer-guide";
+import {
+  PERSONAL_SHOPPER_EXTERNAL_LINKS,
+  PERSONAL_SHOPPER_PREREQUISITE_EXTRAS,
+  PERSONAL_SHOPPER_PRICING,
+  PERSONAL_SHOPPER_SUPPLIES,
+  PERSONAL_SHOPPER_TOOLS,
+  personalShopperToolsDisclaimer,
+} from "./personal-shopper-guide";
+import {
+  BABYSITTING_EXTERNAL_LINKS,
+  BABYSITTING_PREREQUISITE_EXTRAS,
+  BABYSITTING_PRICING,
+  BABYSITTING_SUPPLIES,
+  BABYSITTING_TOOLS,
+  babysittingToolsDisclaimer,
+} from "./babysitting-guide";
+import {
+  DIGITAL_PRODUCTS_EXTERNAL_LINKS,
+  DIGITAL_PRODUCTS_PREREQUISITE_EXTRAS,
+  DIGITAL_PRODUCTS_PRICING,
+  DIGITAL_PRODUCTS_SUPPLIES,
+  DIGITAL_PRODUCTS_TOOLS,
+  digitalProductsToolsDisclaimer,
+} from "./digital-products-guide";
+import {
+  YOUTH_SPORTS_HELPER_EXTERNAL_LINKS,
+  YOUTH_SPORTS_HELPER_PREREQUISITE_EXTRAS,
+  YOUTH_SPORTS_HELPER_PRICING,
+  YOUTH_SPORTS_HELPER_SUPPLIES,
+  YOUTH_SPORTS_HELPER_TOOLS,
+  youthSportsHelperToolsDisclaimer,
+} from "./youth-sports-helper-guide";
+import {
+  JUNIOR_GIVE_BACK_TEACH_EXTERNAL_LINKS,
+  JUNIOR_GIVE_BACK_TEACH_PREREQUISITE_EXTRAS,
+  JUNIOR_GIVE_BACK_TEACH_PRICING,
+  JUNIOR_GIVE_BACK_TEACH_SUPPLIES,
+  JUNIOR_GIVE_BACK_TEACH_TOOLS,
+  juniorGiveBackTeachToolsDisclaimer,
+} from "./junior-give-back-teach-guide";
+import {
+  KIDS_KINDNESS_SHARE_EXTERNAL_LINKS,
+  KIDS_KINDNESS_SHARE_PREREQUISITE_EXTRAS,
+  KIDS_KINDNESS_SHARE_PRICING,
+  KIDS_KINDNESS_SHARE_SUPPLIES,
+  KIDS_KINDNESS_SHARE_TOOLS,
+  kidsKindnessShareToolsDisclaimer,
+} from "./kids-kindness-share-guide";
+import {
+  KIDS_PIGGY_FIRST_GOAL_EXTERNAL_LINKS,
+  KIDS_PIGGY_FIRST_GOAL_PREREQUISITE_EXTRAS,
+  KIDS_PIGGY_FIRST_GOAL_PRICING,
+  KIDS_PIGGY_FIRST_GOAL_SUPPLIES,
+  KIDS_PIGGY_FIRST_GOAL_TOOLS,
+  kidsPiggyFirstGoalToolsDisclaimer,
+} from "./kids-piggy-first-goal-guide";
+import {
+  ESTATE_SALE_EXTERNAL_LINKS,
+  ESTATE_SALE_PREREQUISITE_EXTRAS,
+  ESTATE_SALE_PRICING,
+  ESTATE_SALE_SUPPLIES,
+  ESTATE_SALE_TOOLS,
+  estateSaleToolsDisclaimer,
+} from "./estate-sale-antique-resales-guide";
+import {
+  GENEALOGY_EXTERNAL_LINKS,
+  GENEALOGY_PREREQUISITE_EXTRAS,
+  GENEALOGY_PRICING,
+  GENEALOGY_SUPPLIES,
+  GENEALOGY_TOOLS,
+  genealogyToolsDisclaimer,
+} from "./genealogy-family-history-guide";
 import {
   type GuideSupplyList,
   suppliesForGuide,
@@ -12,6 +140,10 @@ import {
   type GuideSuggestedPricing,
   suggestedPricingForGuide,
 } from "./guide-suggested-pricing";
+import {
+  defaultSuppliesForGuide,
+  defaultSuggestedPricingForGuide,
+} from "./guide-prep-defaults";
 import { hustleById } from "./side-hustle-catalog";
 import { kidsGuideById } from "./kids-guides";
 
@@ -185,7 +317,8 @@ export const TOOL_CATALOG: Record<string, GuideToolCost> = {
     id: "canva",
     name: "Canva",
     freePlanAvailable: true,
-    costNote: "Free plan available · Pro ~$15–18/mo or ~$120–144/yr (verify on Canva)",
+    costNote:
+      "Free plan available — sign in at the link, or continue with an account you already have · Pro ~$15–18/mo or ~$120–144/yr (verify on Canva)",
     url: "https://www.canva.com/",
   },
   capcut: {
@@ -204,10 +337,13 @@ export const TOOL_CATALOG: Record<string, GuideToolCost> = {
   },
   google_docs: {
     id: "google_docs",
-    name: "Google Docs / Drive",
+    name: "Google Docs",
     freePlanAvailable: true,
-    costNote: "Free with a Google account",
-    url: "https://docs.google.com/",
+    costNote:
+      "Free with a Google account — sign in at the link, or continue with an account you already have, then open Docs",
+    /** Sign-in first; Google continues into Docs (or Drive if already signed in). */
+    url: "https://accounts.google.com/ServiceLogin?continue=https%3A%2F%2Fdocs.google.com%2F",
+    alternatives: "Already signed in? Go straight to https://docs.google.com/",
   },
   airdna: {
     id: "airdna",
@@ -287,10 +423,39 @@ export const TOOL_CATALOG: Record<string, GuideToolCost> = {
   },
   doordash: {
     id: "doordash",
-    name: "DoorDash / Uber Eats",
+    name: "DoorDash Dasher App",
     freePlanAvailable: true,
-    costNote: "Free apps · bike/scooter/car + bag (~$0–$40)",
+    planLabelApplicable: false,
+    costNote: "Driver app for offers, navigation, and earnings · vehicle/bike + bag and gas are your costs",
     url: "https://www.doordash.com/dasher/signup/",
+    alternatives: "Receive offers, navigate pickups/deliveries, view earnings",
+  },
+  uber_eats: {
+    id: "uber_eats",
+    name: "Uber Driver / Uber Eats",
+    freePlanAvailable: true,
+    planLabelApplicable: false,
+    costNote: "Driver app for offers and upfront trip info · vehicle/bike + bag and gas are your costs",
+    url: "https://www.uber.com/us/en/deliver/",
+    alternatives: "Upfront earnings, pickup/dropoff, time and distance estimates",
+  },
+  maps_nav: {
+    id: "maps_nav",
+    name: "Google Maps / Apple Maps / Waze",
+    freePlanAvailable: true,
+    planLabelApplicable: false,
+    costNote: "Navigation for pickups and dropoffs",
+    url: "https://maps.google.com/",
+    alternatives: "Apple Maps, Waze",
+  },
+  mileage_tracker: {
+    id: "mileage_tracker",
+    name: "Mileage & expense tracker",
+    freePlanAvailable: true,
+    planLabelApplicable: false,
+    costNote: "Log miles and expenses from Day 1 · Stride, Everlance, MileIQ, Gridwise, or a spreadsheet",
+    url: "https://www.irs.gov/tax-professionals/standard-mileage-rates",
+    alternatives: "Stride, Everlance, MileIQ, Gridwise, or Google Sheets",
   },
   handyman_kit: {
     id: "handyman_kit",
@@ -306,6 +471,15 @@ export const TOOL_CATALOG: Record<string, GuideToolCost> = {
     costNote: "Google Meet free · Zoom Basic free (time limits on free meetings)",
     url: "https://meet.google.com/",
     alternatives: "Zoom (https://zoom.us/)",
+  },
+  meetup: {
+    id: "meetup",
+    name: "Meetup",
+    freePlanAvailable: true,
+    costNote:
+      "Meetup Starter free for eligible first-time organizers (limits apply) · paid organizer plans available (verify on Meetup)",
+    url: "https://www.meetup.com/",
+    alternatives: "Nextdoor events, Facebook Groups, or a library bulletin board",
   },
   itch: {
     id: "itch",
@@ -355,7 +529,7 @@ export const CREATE_GAMES_KIDS_STEPS: GuideAuthoredStep[] = [
   },
   {
     title: "Layout the idea in the chat (copy answers into Docs)",
-    desc: "Ask for: (1) game title, (2) hero name (made-up, no real names), (3) one goal, (4) three levels Easy→Hard, (5) how you win or lose. Parent pastes the answers into Google Docs (https://docs.google.com/) and saves as GAME-IDEA.",
+    desc: "Ask for: (1) game title, (2) hero name (made-up, no real names), (3) one goal, (4) three levels Easy→Hard, (5) how you win or lose. Parent pastes the answers into Google Docs (Tools tab — sign in with Google, or use an account you already have) and saves as GAME-IDEA.",
   },
   {
     title: "Choose the build path (Scratch is easiest)",
@@ -382,7 +556,7 @@ export const CREATE_GAMES_KIDS_STEPS: GuideAuthoredStep[] = [
 export const CREATE_GAMES_JUNIOR_STEPS: GuideAuthoredStep[] = [
   {
     title: "Scope one tiny game in ChatGPT or Gemini",
-    desc: "Open https://chatgpt.com/ or https://gemini.google.com/ (guardian-approved). Prompt: “Help me scope a one-level browser game. Ask me questions until we have title, win condition, art style, and a 60-minute build plan.” Save the Q&A in Google Docs.",
+    desc: "Open https://chatgpt.com/ or https://gemini.google.com/ (guardian-approved). Prompt: “Help me scope a one-level browser game. Ask me questions until we have title, win condition, art style, and a 60-minute build plan.” Save the Q&A in Google Docs (Tools tab — sign in with Google, or use an account you already have).",
   },
   {
     title: "Generate GAME.md for Antigravity (or Cursor)",
@@ -511,8 +685,18 @@ const GUIDE_KITS: Record<string, GuideKit> = {
     tools: t("shopify", "canva", "capcut", "meta_business", "chatgpt"),
   },
   "digital-products": {
-    prerequisites: [P.freeMembership, P.computer],
-    tools: t("canva", "chatgpt", "google_docs", "etsy", "shopify"),
+    prerequisites: [P.freeMembership, ...DIGITAL_PRODUCTS_PREREQUISITE_EXTRAS],
+    tools: [...DIGITAL_PRODUCTS_TOOLS, ...t("phone_computer")],
+    externalLinks: DIGITAL_PRODUCTS_EXTERNAL_LINKS,
+    supplies: DIGITAL_PRODUCTS_SUPPLIES,
+    suggestedPricing: DIGITAL_PRODUCTS_PRICING,
+  },
+  babysitting: {
+    prerequisites: [P.freeMembership, ...BABYSITTING_PREREQUISITE_EXTRAS],
+    tools: [...BABYSITTING_TOOLS, ...t("phone_computer")],
+    externalLinks: BABYSITTING_EXTERNAL_LINKS,
+    supplies: BABYSITTING_SUPPLIES,
+    suggestedPricing: BABYSITTING_PRICING,
   },
   affiliate: {
     prerequisites: [P.freeMembership, P.computer],
@@ -589,8 +773,105 @@ const GUIDE_KITS: Record<string, GuideKit> = {
     tools: t("uber_lyft", "phone_computer"),
   },
   "food-delivery": {
-    prerequisites: [P.freeMembership],
-    tools: t("doordash", "phone_computer"),
+    prerequisites: [P.freeMembership, ...FOOD_DELIVERY_PREREQUISITE_EXTRAS],
+    tools: [
+      ...t("doordash", "uber_eats", "maps_nav", "mileage_tracker", "phone_computer"),
+      ...FOOD_DELIVERY_SURVIVAL_TOOLS,
+    ],
+    externalLinks: FOOD_DELIVERY_EXTERNAL_LINKS,
+    supplies: FOOD_DELIVERY_SUPPLIES,
+    suggestedPricing: FOOD_DELIVERY_PRICING,
+  },
+  "estate-sale-listing-helper": {
+    prerequisites: [P.freeMembership, ...ESTATE_SALE_PREREQUISITE_EXTRAS],
+    tools: [...ESTATE_SALE_TOOLS, ...t("canva", "phone_computer")],
+    externalLinks: ESTATE_SALE_EXTERNAL_LINKS,
+    supplies: ESTATE_SALE_SUPPLIES,
+    suggestedPricing: ESTATE_SALE_PRICING,
+  },
+  "kids-party-game-host": {
+    prerequisites: [P.freeMembership, ...KIDS_PARTY_GAME_HOST_PREREQUISITE_EXTRAS],
+    tools: [...KIDS_PARTY_GAME_HOST_TOOLS, ...t("canva", "phone_computer")],
+    externalLinks: KIDS_PARTY_GAME_HOST_EXTERNAL_LINKS,
+    supplies: KIDS_PARTY_GAME_HOST_SUPPLIES,
+    suggestedPricing: KIDS_PARTY_GAME_HOST_PRICING,
+  },
+  "lead-followup-assistant": {
+    prerequisites: [P.freeMembership, ...LEAD_FOLLOWUP_PREREQUISITE_EXTRAS],
+    tools: [...LEAD_FOLLOWUP_TOOLS, ...t("phone_computer")],
+    externalLinks: LEAD_FOLLOWUP_EXTERNAL_LINKS,
+    supplies: LEAD_FOLLOWUP_SUPPLIES,
+    suggestedPricing: LEAD_FOLLOWUP_PRICING,
+  },
+  "appointment-setter": {
+    prerequisites: [P.freeMembership, ...APPOINTMENT_SETTER_PREREQUISITE_EXTRAS],
+    tools: [...APPOINTMENT_SETTER_TOOLS, ...t("phone_computer")],
+    externalLinks: APPOINTMENT_SETTER_EXTERNAL_LINKS,
+    supplies: APPOINTMENT_SETTER_SUPPLIES,
+    suggestedPricing: APPOINTMENT_SETTER_PRICING,
+  },
+  "online-research-assistant": {
+    prerequisites: [P.freeMembership, ...ONLINE_RESEARCH_ASSISTANT_PREREQUISITE_EXTRAS],
+    tools: [...ONLINE_RESEARCH_ASSISTANT_TOOLS, ...t("phone_computer")],
+    externalLinks: ONLINE_RESEARCH_ASSISTANT_EXTERNAL_LINKS,
+    supplies: ONLINE_RESEARCH_ASSISTANT_SUPPLIES,
+    suggestedPricing: ONLINE_RESEARCH_ASSISTANT_PRICING,
+  },
+  "mothers-helper": {
+    prerequisites: [P.freeMembership, ...MOTHERS_HELPER_PREREQUISITE_EXTRAS],
+    tools: [...MOTHERS_HELPER_TOOLS, ...t("phone_computer")],
+    externalLinks: MOTHERS_HELPER_EXTERNAL_LINKS,
+    supplies: MOTHERS_HELPER_SUPPLIES,
+    suggestedPricing: MOTHERS_HELPER_PRICING,
+  },
+  "local-content-photographer": {
+    prerequisites: [P.freeMembership, ...LOCAL_CONTENT_PHOTO_PREREQUISITE_EXTRAS],
+    tools: [...LOCAL_CONTENT_PHOTO_TOOLS, ...t("canva", "phone_computer")],
+    externalLinks: LOCAL_CONTENT_PHOTO_EXTERNAL_LINKS,
+    supplies: LOCAL_CONTENT_PHOTO_SUPPLIES,
+    suggestedPricing: LOCAL_CONTENT_PHOTO_PRICING,
+  },
+  "personal-shopper": {
+    prerequisites: [P.freeMembership, ...PERSONAL_SHOPPER_PREREQUISITE_EXTRAS],
+    tools: [...PERSONAL_SHOPPER_TOOLS, ...t("phone_computer")],
+    externalLinks: PERSONAL_SHOPPER_EXTERNAL_LINKS,
+    supplies: PERSONAL_SHOPPER_SUPPLIES,
+    suggestedPricing: PERSONAL_SHOPPER_PRICING,
+  },
+  "youth-sports-helper": {
+    prerequisites: [P.freeMembership, ...YOUTH_SPORTS_HELPER_PREREQUISITE_EXTRAS],
+    tools: [...YOUTH_SPORTS_HELPER_TOOLS, ...t("phone_computer")],
+    externalLinks: YOUTH_SPORTS_HELPER_EXTERNAL_LINKS,
+    supplies: YOUTH_SPORTS_HELPER_SUPPLIES,
+    suggestedPricing: YOUTH_SPORTS_HELPER_PRICING,
+  },
+  "junior-give-back-teach": {
+    prerequisites: [P.freeMembership, ...JUNIOR_GIVE_BACK_TEACH_PREREQUISITE_EXTRAS],
+    tools: [...JUNIOR_GIVE_BACK_TEACH_TOOLS, ...t("phone_computer")],
+    externalLinks: JUNIOR_GIVE_BACK_TEACH_EXTERNAL_LINKS,
+    supplies: JUNIOR_GIVE_BACK_TEACH_SUPPLIES,
+    suggestedPricing: JUNIOR_GIVE_BACK_TEACH_PRICING,
+  },
+  "kids-kindness-share": {
+    prerequisites: [P.freeMembership, ...KIDS_KINDNESS_SHARE_PREREQUISITE_EXTRAS],
+    tools: [...KIDS_KINDNESS_SHARE_TOOLS, ...t("phone_computer")],
+    externalLinks: KIDS_KINDNESS_SHARE_EXTERNAL_LINKS,
+    supplies: KIDS_KINDNESS_SHARE_SUPPLIES,
+    suggestedPricing: KIDS_KINDNESS_SHARE_PRICING,
+  },
+  "kids-piggy-first-goal": {
+    prerequisites: [P.freeMembership, ...KIDS_PIGGY_FIRST_GOAL_PREREQUISITE_EXTRAS],
+    tools: [...KIDS_PIGGY_FIRST_GOAL_TOOLS, ...t("phone_computer")],
+    externalLinks: KIDS_PIGGY_FIRST_GOAL_EXTERNAL_LINKS,
+    supplies: KIDS_PIGGY_FIRST_GOAL_SUPPLIES,
+    suggestedPricing: KIDS_PIGGY_FIRST_GOAL_PRICING,
+  },
+  "family-history-organizer": {
+    prerequisites: [P.freeMembership, ...GENEALOGY_PREREQUISITE_EXTRAS],
+    tools: [...GENEALOGY_TOOLS, ...t("phone_computer")],
+    externalLinks: GENEALOGY_EXTERNAL_LINKS,
+    supplies: GENEALOGY_SUPPLIES,
+    suggestedPricing: GENEALOGY_PRICING,
   },
   "book-publishing": {
     prerequisites: [P.freeMembership, P.computer],
@@ -634,6 +915,7 @@ for (const [id, keys] of Object.entries({
   "vacation-mail-plant-helper": ["phone_computer"],
   "plant-watering": ["phone_computer"],
   "garage-sale-helper": ["phone_computer"],
+  "start-gardening-club": ["meetup", "canva", "google_docs", "phone_computer"],
 } as Record<string, (keyof typeof TOOL_CATALOG)[]>)) {
   if (!GUIDE_KITS[id]) {
     GUIDE_KITS[id] = {
@@ -664,18 +946,68 @@ function toolsWithoutSupplyDupes(
   });
 }
 
+/** When steps mention Google Docs, always surface it on the Tools tab with the sign-in link. */
+export function ensureGoogleDocsTool(
+  tools: GuideToolCost[],
+  steps?: { title?: string; desc?: string; body?: string }[],
+): GuideToolCost[] {
+  const blob = (steps ?? [])
+    .map((s) => `${s.title ?? ""} ${s.desc ?? ""} ${s.body ?? ""}`)
+    .join("\n");
+  const mentionsDocs = /google\s*docs?/i.test(blob);
+  if (!mentionsDocs) return tools;
+  const fresh = TOOL_CATALOG.google_docs;
+  if (tools.some((t) => t.id === "google_docs")) {
+    return tools.map((t) => (t.id === "google_docs" ? { ...fresh } : t));
+  }
+  return [...tools, { ...fresh }];
+}
+
+/** When steps mention Canva, always surface it on the Tools tab. */
+export function ensureCanvaTool(
+  tools: GuideToolCost[],
+  steps?: { title?: string; desc?: string; body?: string }[],
+): GuideToolCost[] {
+  const blob = (steps ?? [])
+    .map((s) => `${s.title ?? ""} ${s.desc ?? ""} ${s.body ?? ""}`)
+    .join("\n");
+  if (!/\bcanva\b/i.test(blob)) return tools;
+  const fresh = TOOL_CATALOG.canva;
+  if (tools.some((t) => t.id === "canva")) {
+    return tools.map((t) => (t.id === "canva" ? { ...fresh } : t));
+  }
+  return [...tools, { ...fresh }];
+}
+
+function ensureMentionedAppTools(
+  tools: GuideToolCost[],
+  steps?: { title?: string; desc?: string; body?: string }[],
+): GuideToolCost[] {
+  return ensureCanvaTool(ensureGoogleDocsTool(tools, steps), steps);
+}
+
+/** Delivery-driver kits: no free-plan pitches; drop marketing app injects. */
+function finalizeDeliveryDriverTools(guideId: string, tools: GuideToolCost[]): GuideToolCost[] {
+  if (guideId !== "food-delivery") return tools;
+  const skip = new Set(["google_docs", "canva", "chatgpt"]);
+  return tools
+    .filter((t) => !skip.has(t.id))
+    .map((t) => ({ ...t, planLabelApplicable: false }));
+}
+
 /** Full kit for any guide / hustle / kids-guide id. */
 export function guideKitForId(guideId: string): GuideKit {
   const base = GUIDE_KITS[guideId] ?? {
     prerequisites: [...DEFAULT_PREREQS],
     tools: DEFAULT_TOOLS,
   };
-  const supplies = base.supplies ?? suppliesForGuide(guideId);
-  const suggestedPricing = base.suggestedPricing ?? suggestedPricingForGuide(guideId);
-  const tools = toolsWithoutSupplyDupes(base.tools, Boolean(supplies?.items.length));
+  const supplies = base.supplies ?? suppliesForGuide(guideId) ?? defaultSuppliesForGuide(guideId);
+  const suggestedPricing =
+    base.suggestedPricing ?? suggestedPricingForGuide(guideId) ?? defaultSuggestedPricingForGuide(guideId);
+  let tools = toolsWithoutSupplyDupes(base.tools, Boolean(supplies?.items.length));
   let kit: GuideKit = { ...base, tools };
-  if (supplies) kit = { ...kit, supplies };
-  if (suggestedPricing) kit = { ...kit, suggestedPricing };
+  if (supplies?.items?.length) kit = { ...kit, supplies };
+  if (suggestedPricing?.items?.length) kit = { ...kit, suggestedPricing };
   const hustle = hustleById(guideId);
   const kids = hustle ? undefined : kidsGuideById(guideId);
   const audiences =
@@ -685,38 +1017,48 @@ export function guideKitForId(guideId: string): GuideKit {
         ? (["junior"] as const)
         : (["kids"] as const)
       : undefined);
+
+  const withMarketing = (raw: { title: string; desc: string }[]) =>
+    finalizeGuidePlaybookSteps(
+      guideId,
+      ensureMarketingPlanSteps(raw, guideId),
+      { audiences },
+    );
+
+  const finish = (next: GuideKit): GuideKit => ({
+    ...next,
+    tools: finalizeDeliveryDriverTools(guideId, next.tools),
+  });
+
   const detailed = detailedStepsForGuide(guideId, { audiences });
   if (detailed?.length) {
-    return { ...kit, steps: detailed };
+    const steps = finalizeGuidePlaybookSteps(
+      guideId,
+      ensureMarketingPlanSteps(detailed, guideId),
+      { audiences },
+    );
+    tools = ensureMentionedAppTools(tools, steps);
+    return finish({ ...kit, tools, steps });
+  }
+  /** Prefer authored kit playbooks (e.g. AI games with ChatGPT/Scratch URLs) over short Kids Corner teasers. */
+  if (kit.steps?.length && !isGenericGuideSteps(kit.steps)) {
+    const steps = withMarketing(kit.steps.map((s) => ({ title: s.title, desc: s.desc })));
+    return finish({ ...kit, tools: ensureMentionedAppTools(tools, steps), steps });
   }
   if (kids?.steps?.length) {
-    return {
-      ...kit,
-      steps: ensureGuideFoundationSteps(
-        kids.steps.map((s) => ({ title: s.title, desc: s.body })),
-        {
-          audiences,
-          foundation: guideUsesSavingsFoundation(guideId) ? "savings" : "business",
-        },
-      ),
-    };
+    const steps = withMarketing(kids.steps.map((s) => ({ title: s.title, desc: s.body })));
+    return finish({ ...kit, tools: ensureMentionedAppTools(tools, steps), steps });
   }
   if (kit.steps?.length && isGenericGuideSteps(kit.steps)) {
-    return { ...kit, steps: undefined };
+    const steps = withMarketing([]);
+    return finish({ ...kit, tools: ensureMentionedAppTools(tools, steps), steps });
   }
   if (kit.steps?.length) {
-    return {
-      ...kit,
-      steps: ensureGuideFoundationSteps(
-        kit.steps.map((s) => ({ title: s.title, desc: s.desc })),
-        {
-          audiences,
-          foundation: guideUsesSavingsFoundation(guideId) ? "savings" : "business",
-        },
-      ),
-    };
+    const steps = withMarketing(kit.steps.map((s) => ({ title: s.title, desc: s.desc })));
+    return finish({ ...kit, tools: ensureMentionedAppTools(tools, steps), steps });
   }
-  return kit;
+  const steps = withMarketing([]);
+  return finish({ ...kit, tools: ensureMentionedAppTools(tools, steps), steps });
 }
 
 /** @deprecated Prefer guideKitForId — kept for existing imports. */
@@ -741,6 +1083,29 @@ export function formatGuideToolLine(tool: GuideToolCost): string {
 export function guideToolsDisclaimer(): string {
   return "Vendor prices are estimates. Check the vendor site for current pricing. Start on the free plan where available (Canva, Hedra, CapCut, ChatGPT, and similar) and upgrade only when/if you need it.";
 }
+
+/** Tools blurb for delivery-driver guides — apps are standard for drivers (no free-plan pitch). */
+export function deliveryDriverToolsDisclaimer(): string {
+  return "Driver apps and navigation are standard for this hustle. Your real costs are vehicle/bike use, fuel, and any gear you buy — check the Supply List for purchase items.";
+}
+
+export {
+  estateSaleToolsDisclaimer,
+  genealogyToolsDisclaimer,
+  kidsPartyGameHostToolsDisclaimer,
+  leadFollowupToolsDisclaimer,
+  localContentPhotoToolsDisclaimer,
+  personalShopperToolsDisclaimer,
+  youthSportsHelperToolsDisclaimer,
+  juniorGiveBackTeachToolsDisclaimer,
+  kidsKindnessShareToolsDisclaimer,
+  kidsPiggyFirstGoalToolsDisclaimer,
+  appointmentSetterToolsDisclaimer,
+  onlineResearchAssistantToolsDisclaimer,
+  mothersHelperToolsDisclaimer,
+  babysittingToolsDisclaimer,
+  digitalProductsToolsDisclaimer,
+};
 
 export function prerequisitesDisclaimer(): string {
   return "Complete every prerequisite before step 1. Tools are listed separately so you know what to install or open.";

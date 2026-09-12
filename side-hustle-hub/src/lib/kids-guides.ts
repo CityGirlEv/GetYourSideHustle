@@ -32,28 +32,28 @@ export const KIDS_GUIDES_RAW: KidsGuide[] = [
     theme: "savings",
     previewCount: 2,
     summary:
-      "Name something you want, pick a simple price, and count how many little jobs it might take — with a parent helping.",
-    parentTip: "Keep goals small and celebrate progress, not perfection.",
+      "Pick something you want, find out about how much it costs, and use simple math to see how many little jobs or sales it could take to reach your goal — with help from a parent/guardian.",
+    parentTip: "Keep goals small and celebrate progress, not perfection. Help with prices and safe earning ideas.",
     steps: [
       {
-        title: "Name what you are saving for",
-        body: "Write the thing you want — a game, book, craft kit, outing, or something else reachable. No business name needed; this is your savings goal.",
+        title: "Pick Your Goal",
+        body: "Write or draw what you want to save for — a toy, game, book, gift, or something for your hustle.",
       },
       {
-        title: "Write the cost",
-        body: "Ask a parent for the real price (or a close estimate). Put that dollar amount next to your goal.",
+        title: "Find the Price",
+        body: "With a parent/guardian, write an approximate price. Prices can change — close is okay.",
       },
       {
-        title: "Plan how you will earn",
-        body: "Decide how you’ll earn toward the goal (chores, a small craft sale, a parent-approved job). Note what one job might earn.",
+        title: "Count What You Already Have",
+        body: "Subtract money already saved from the goal price to find Still Needed.",
       },
       {
-        title: "Set your weekly savings goal",
-        body: "Pick how much you’ll save each week. Use the Piggy Bank tab to track progress and mark a star when you hit the weekly goal.",
+        title: "Make Your Savings Spot",
+        body: "Label a piggy bank, jar, envelope, or tracker: “I'm saving for ______!”",
       },
       {
-        title: "Celebrate kindly",
-        body: "When you hit halfway, do a kindness win too — share a craft or help someone for free.",
+        title: "Count How Many Jobs/Sales",
+        body: "Still Needed ÷ amount saved per job — always round UP. Celebrate each deposit!",
       },
     ],
   },
@@ -65,28 +65,28 @@ export const KIDS_GUIDES_RAW: KidsGuide[] = [
     theme: "give-back",
     previewCount: 2,
     summary:
-      "Earning is great — kindness is part of the GYSH team too. Practice giving back with a tiny free gift of help.",
-    parentTip: "Supervise introductions; keep it with people you already know.",
+      "Practice kindness with one small free help session — share a skill you already know. No selling, no pricing — just Give-Back Day with a parent nearby.",
+    parentTip: "Approve who they help and stay nearby. Keep the first activity small and with people you know.",
     steps: [
       {
-        title: "Name your kindness skill",
-        body: "What can you share? Reading together, drawing a card, watering a plant, or teaching a simple game.",
+        title: "What Are You Good At?",
+        body: "List 3 things you know how to do — drawing, reading, games, crafts, or helping with a phone. Small skills count.",
       },
       {
-        title: "Pick one person to help",
-        body: "Choose a sibling, neighbor your parents know, or a grandparent — never strangers alone.",
+        title: "Pick One Way to Help",
+        body: "Choose one skill and finish: “I can use this skill to help someone by __________.” Keep it tiny.",
       },
       {
-        title: "Offer a free mini-session",
-        body: "Say: “Can I help for 15 minutes for free?” Keep it short and cheerful.",
+        title: "Pick Someone to Help",
+        body: "Choose a parent-approved person you already know — family, friend, or known neighbor. Never strangers alone.",
       },
       {
-        title: "Notice how it feels",
-        body: "Talk with a parent about how helping made you feel. That’s Glow Getter energy!",
+        title: "Do Your Give-Back Activity!",
+        body: "Show up, be kind, finish what you promised, and clean up. Track it in My Kindness Counter.",
       },
       {
-        title: "Balance earn + give",
-        body: "Try one paid task and one kindness task in the same week when you can.",
+        title: "Plan Your Next Kindness",
+        body: "Write one next idea and try a monthly Give-Back Day. Kindness practice — not a paid hustle.",
       },
     ],
   },
@@ -136,28 +136,32 @@ export const KIDS_GUIDES_RAW: KidsGuide[] = [
     theme: "reinvest",
     previewCount: 2,
     summary:
-      "When you earn coins, spend a little on fun, save a little, and put a little back into your hustle supplies — kid-friendly “investing.”",
+      "When you earn coins, spend a little on fun, save a little, and put a little back into your hustle supplies — kid-friendly “investing.” No competitors or business name needed.",
     parentTip: "Use three jars or envelopes: Spend, Save, Hustle. Keep amounts tiny and visual.",
     steps: [
       {
         title: "Make three jars",
-        body: "Label them Spend, Save, and Hustle. Decorate them — crafts count!",
+        body: "Label them Spend (fun), Save (Piggy Bank goal), and Hustle (supplies that help you earn again). Decorate them — crafts count! No business name needed; this is your money-habit setup.",
+      },
+      {
+        title: "Pick your split rule",
+        body: "With a parent, choose a simple split (example: of every $9, put $3 in each jar — or whatever percentages feel fair). Write the rule on a sticky note on the jars.",
       },
       {
         title: "Split your next earnings",
-        body: "Example: of $9, put $3 in each jar (or whatever split your parent likes).",
+        body: "After your next chore, craft sale, or paid help, divide the coins into the three jars right away. Don’t wait — the habit is the win.",
       },
       {
         title: "Plan one Hustle jar buy",
-        body: "Use Hustle jar money for stickers, clay, lemonade cups, or printer paper — things that help you earn again.",
+        body: "Use Hustle jar money only for things that help you earn again — stickers, clay, lemonade cups, printer paper, or other parent-approved supplies. Write the buy on a wish list first.",
       },
       {
         title: "Keep Save jar for your big goal",
-        body: "Don’t dip into Save for toys. That’s your Piggy Bank mission.",
+        body: "Don’t dip into Save for toys or Spend treats. That’s your Piggy Bank mission — name the goal and track progress there.",
       },
       {
         title: "Tell your story",
-        body: "Share with family how putting money back helped your next craft or walk day.",
+        body: "Share with family how putting money back helped your next craft, walk day, or lemonade stand. Celebrate the habit, not just the coins.",
       },
     ],
   },
@@ -237,28 +241,29 @@ export const KIDS_GUIDES_RAW: KidsGuide[] = [
     theme: "give-back",
     previewCount: 2,
     summary:
-      "Turn a skill into community value — one free teaching session builds reputation and kindness muscle.",
-    parentTip: "Host in public or supervised spaces; no private home visits with strangers.",
+      "Turn something you already know into one simple FREE teaching session for someone else. Build confidence, communication skills, reputation, and the experience of helping others.",
+    parentTip:
+      "Approve the student, location, transportation, communications, and online arrangements. Host in public or supervised spaces; no private home visits with strangers.",
     steps: [
       {
-        title: "Choose a teachable skill",
-        body: "Reading help, basic tech, study flashcards, or a simple creative workshop.",
+        title: "Pick Something You Know",
+        body: "Write 3 things you're good at, then choose ONE that is easy and safe to teach a beginner.",
       },
       {
-        title: "Offer one free 20-minute session",
-        body: "Family, trusted neighbor, or school club — parent helps with intros.",
+        title: "Pick One Simple Lesson",
+        body: "Finish: “By the end, the person will know how to _____.” Keep it 30–60 minutes.",
       },
       {
-        title: "Prepare a tiny outline",
-        body: "3 bullets: warm-up, practice, win. Keep it structured like a CEO workshop.",
+        title: "Choose Who You Want to Help",
+        body: "Family, friend, neighbor, senior, or parent-approved group — get guardian approval first.",
       },
       {
-        title: "Ask for feedback",
-        body: "What helped? What was confusing? Use notes to improve paid sessions later.",
+        title: "Make Your Lesson Plan",
+        body: "Welcome → Show → Do it together → They try → Wrap-up. Use Google Docs.",
       },
       {
-        title: "Schedule a balance week",
-        body: "Aim for at least one paid job and one give-back action per month when you can.",
+        title: "Teach and ask for feedback",
+        body: "Let the learner TRY. Ask what was easy/confusing. Never post names/photos without permission.",
       },
     ],
   },
@@ -308,28 +313,28 @@ export const KIDS_GUIDES_RAW: KidsGuide[] = [
     theme: "reinvest",
     previewCount: 2,
     summary:
-      "Don’t spend every dollar you earn. Split income into save, enjoy, and grow-the-business buckets.",
+      "Don’t spend every dollar you earn. Split income into Save, Enjoy, and Grow buckets — teen-friendly reinvesting. No competitors or business name needed.",
     parentTip: "Agree on percentages together (example 50/30/20) and review monthly.",
     steps: [
       {
         title: "Open three buckets",
-        body: "Save (goal), Enjoy (fun), Grow (business). Bank account sub-pots or a simple spreadsheet work.",
+        body: "Save (goal), Enjoy (fun), Grow (supplies / skills that earn again). Bank account sub-pots, envelopes, or a simple spreadsheet work. No business name needed; this is your money-habit system.",
       },
       {
         title: "Pick a split rule",
-        body: "Start simple: 50% Save / 30% Enjoy / 20% Grow — adjust with a guardian.",
+        body: "Start simple: 50% Save / 30% Enjoy / 20% Grow — adjust with a guardian. Write the rule where you’ll see it every payout.",
       },
       {
         title: "List Grow spends that earn again",
-        body: "Supplies, printing, a domain for a school project, ads for a fair booth, or a skill workshop.",
+        body: "Supplies, printing, a domain for a school project, ads for a fair booth, or a skill workshop. Only Grow money buys these — and only after Save is funded.",
       },
       {
         title: "Cap Enjoy so Save stays sacred",
-        body: "Enjoy is allowed — guilt-free — because Save and Grow are already funded.",
+        body: "Enjoy is allowed — guilt-free — because Save and Grow are already funded first. Don’t raid Save for impulse buys.",
       },
       {
         title: "Track ROI in plain words",
-        body: "“I spent $12 on stickers and earned $40” is great CEO journaling.",
+        body: "“I spent $12 on stickers and earned $40” is great CEO journaling. Review with a guardian monthly and tweak the split if school comes first.",
       },
     ],
   },

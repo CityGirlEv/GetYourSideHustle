@@ -9,6 +9,8 @@ import {
 } from "lucide-react";
 import type { BlueprintAgeGroup } from "../lib/gysh-analytics";
 import { visibleBlueprintMatches } from "../lib/free-member-session";
+import type { GuideMinTier } from "../lib/guide-access";
+import { GuideMembershipBadges } from "./GuideMembershipBadges";
 
 export type BlueprintMatchCard = {
   id: string;
@@ -17,6 +19,8 @@ export type BlueprintMatchCard = {
   pct?: number;
   tier?: string;
   badge?: string;
+  /** Membership floor required to open this guide (Free / Starter / Pro / Elite). */
+  minTier?: GuideMinTier;
   whyFits?: string;
   benefits?: string[];
   safetyNote?: string;
@@ -128,6 +132,17 @@ export function SideHustleBlueprintResults({
                     {row.badge}
                   </span>
                 )}
+                {row.minTier ? (
+                  <span
+                    className="side-hustle-blueprint-membership"
+                    style={{ display: "inline-block", marginLeft: row.tier || row.badge ? 8 : 0 }}
+                  >
+                    <GuideMembershipBadges
+                      minTier={row.minTier}
+                      data-testid={`blueprint-membership-${row.id}`}
+                    />
+                  </span>
+                ) : null}
                 <h3 className="side-hustle-blueprint-card-title">
                   {row.icon && <span className="side-hustle-blueprint-card-icon">{row.icon}</span>}
                   {index + 1}. {row.title}

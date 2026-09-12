@@ -121,8 +121,8 @@ export async function reconcileWalletToLedger(
     )
       .bind(userId)
       .first<{ earned: number; spent: number }>();
-    earned = Math.max(0, Math.floor(Number(totals?.earned) || 0));
-    spent = Math.max(0, Math.floor(Number(totals?.spent) || 0));
+    earned = Math.max(0, roundCreditAmount(Number(totals?.earned) || 0));
+    spent = Math.max(0, roundCreditAmount(Number(totals?.spent) || 0));
   } catch {
     /* empty ledger */
   }
@@ -361,7 +361,7 @@ export async function spendCheckoutCredits(
   reason: string,
   occurredAt?: string | null,
 ): Promise<{ spent: number; balance: number }> {
-  const n = Math.max(0, Math.floor(Number(credits) || 0));
+  const n = Math.max(0, roundCreditAmount(Number(credits) || 0));
   const wallet = await reconcileWalletToLedger(env, userId);
   if (n <= 0) return { spent: 0, balance: wallet.balance };
   const token = checkoutIdempotencyToken(reason);
@@ -373,7 +373,7 @@ export async function spendCheckoutCredits(
       .first<{ id: string }>();
     if (already?.id) return { spent: 0, balance: wallet.balance };
   }
-  if (wallet.balance < n) {
+  if (wallet.balance + 1e-9 < n) {
     throw new Error(`Not enough Kid Credits (have ${wallet.balance}, need ${n}).`);
   }
   const result = await applyMemberCreditDelta(

@@ -6,8 +6,25 @@
 /** Session restore must not use the 45s API default — that feels like a stalled page. */
 export const SESSION_RESTORE_TIMEOUT_MS = 4_000;
 
+/**
+ * Localhost + remote D1 often needs 10–20s after Vite/wrangler remounts.
+ * A short timeout made Dev look logged out even when the bearer was still valid.
+ */
+export const LOCAL_SESSION_RESTORE_TIMEOUT_MS = 25_000;
+
 /** Hard cap so authReady always flips even if AbortController misbehaves on mobile. */
 export const AUTH_READY_SAFETY_MS = SESSION_RESTORE_TIMEOUT_MS + 500;
+
+/** Local Dev safety: cover one cold restore + one retry without freezing forever. */
+export const LOCAL_AUTH_READY_SAFETY_MS = LOCAL_SESSION_RESTORE_TIMEOUT_MS * 2 + 2_000;
+
+export function sessionRestoreTimeoutMs(localDev: boolean): number {
+  return localDev ? LOCAL_SESSION_RESTORE_TIMEOUT_MS : SESSION_RESTORE_TIMEOUT_MS;
+}
+
+export function authReadySafetyMs(localDev: boolean): number {
+  return localDev ? LOCAL_AUTH_READY_SAFETY_MS : AUTH_READY_SAFETY_MS;
+}
 
 /** sessionStorage: last failed asset key that already triggered a reload. */
 export const STALE_CHUNK_RELOAD_KEY = "gysh_stale_chunk_reload";

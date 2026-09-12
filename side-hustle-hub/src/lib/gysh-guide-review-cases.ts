@@ -5,7 +5,6 @@
  */
 
 import type { TestCase } from "./gysh-test-plan";
-import { guideReviewTaskId, hasLaunchGuide } from "./launch-guides";
 import {
   audiencesForLibraryGuideId,
   uniqueGuideLibraryEntries,
@@ -13,6 +12,11 @@ import {
 import { dayOffset, getSprintWindow } from "./gysh-sprints";
 import type { HustleAgeGroup } from "./side-hustle-catalog";
 import { primaryGuideReviewKind } from "./guide-review-link";
+import { formatGuideNumber, guideNumberLabel } from "./guide-numbers";
+import {
+  GUIDE_PREP_REVIEW_TAB_LABELS,
+  GUIDE_PREP_REVIEW_TABS_PHRASE,
+} from "./guide-prep-visibility";
 
 /** Fixed sprint for the all-guides human + automated review pass. */
 export const GUIDE_REVIEW_SPRINT = 6;
@@ -69,7 +73,11 @@ export function guideReviewMemberHref(
 export function buildGuideReviewCatalog(): GuideReviewCatalogEntry[] {
   return uniqueGuideLibraryEntries()
     .slice()
-    .sort((a, b) => a.id.localeCompare(b.id))
+    .sort((a, b) => {
+      const na = formatGuideNumber(a.id);
+      const nb = formatGuideNumber(b.id);
+      return na.localeCompare(nb) || a.id.localeCompare(b.id);
+    })
     .map((e) => {
       const kind = primaryGuideReviewKind(e.id);
       const audiences = audiencesForLibraryGuideId(e.id);
@@ -117,32 +125,54 @@ function entryToCase(entry: GuideReviewCatalogEntry): TestCase {
   const id = guideReviewCaseId(entry.kind, entry.guideId);
   const audience = audienceLabel(entry);
   const href = entry.path || guideReviewMemberHref(entry);
-  const openLink = `[${entry.title}](${href})`;
+  const numLabel = guideNumberLabel(entry.guideId);
+  const titled = numLabel ? `${numLabel} ${entry.title}` : entry.title;
+  const openLink = `[${titled}](${href})`;
   const testDeepLink = `/admin?tab=testing&test=${encodeURIComponent(id)}`;
   return {
     id,
     area: "Guides",
-    title: `Review ${audience}: ${entry.title}`,
+    title: `Review ${audience}: ${titled}`,
     priority: entry.minTier === "free" ? "P1" : "P2",
     roles: ["qa", "admin"],
     assignees: ["lyriq"],
     suite: "manual",
     path: href,
-    ...(hasLaunchGuide(entry.guideId)
-      ? { relatedTaskIds: [guideReviewTaskId(entry.guideId)] }
-      : {}),
-    steps: [
-      `Open ${openLink} in the Side Hustle Library (focused on this guide) — ${audience} (id: ${entry.guideId}, min tier: ${entry.minTier}). Cross-link: [Testing Portal](${testDeepLink})`,
-      "Confirm Prerequisites and Tools are separate, named sections",
-      "Confirm every named outside tool/source has an exact https link (e.g. AirDNA → https://www.airdna.co/)",
-      "Confirm steps are precise (no vague “gather tools” — list ChatGPT, Gemini, Antigravity, Scratch, etc. where relevant)",
-      "Confirm AI guides are Pro or Elite only — never Free or Starter",
-      "Mark this test Pass when the guide is review-ready (Fail with a note if steps/tools/links need edits) — Pass sets Reviewed by QA / No Changes (guide stays live); Fail / Pending / Needs Further Review fails this test and sets the guide Inactive",
-    ],
-    expected:
-      "Pass → Reviewed by QA / No Changes (public stays live). Fail or Pending / Needs Further Review → this test Failed and guide Inactive. Content accurate, linked, and tier-correct (Vitest guides-review.test.ts is the automated second set of eyes)",
+    steps: guideReviewManualSteps({
+      openLink,
+      audience,
+      guideId: entry.guideId,
+      numLabel,
+      minTier: entry.minTier,
+      testDeepLink,
+    }),
+    expected: GUIDE_REVIEW_MANUAL_EXPECTED,
   };
 }
+
+/** Shared GUIDE-REV manual steps — every library guide uses this order (no redundancy). */
+export function guideReviewManualSteps(opts: {
+  openLink: string;
+  audience: string;
+  guideId: string;
+  numLabel: string | null;
+  minTier: string;
+  testDeepLink: string;
+}): string[] {
+  const { openLink, audience, guideId, numLabel, minTier, testDeepLink } = opts;
+  return [
+    `Open ${openLink} in the Side Hustle Library (Guides Library Admin / focused guide) — ${audience} (id: ${guideId}${numLabel ? `, ${numLabel}` : ""}, min tier: ${minTier}). Cross-link: [Testing Portal](${testDeepLink})`,
+    `Review all ${GUIDE_PREP_REVIEW_TAB_LABELS.length} prep tabs in order: ${GUIDE_PREP_REVIEW_TABS_PHRASE} — open each dedicated tab (do not rely on Show All alone); Suggested Pricing and Supply List must appear on their own tabs; content complete, accurate, and usable (calculator loads and runs)`,
+    "Confirm Prerequisites and Tools are separate, named sections; every named outside tool/source has an exact https link (e.g. AirDNA → https://www.airdna.co/)",
+    "Confirm steps are precise (no vague “gather tools” — list ChatGPT, Gemini, Antigravity, Scratch, etc. where relevant); AI guides are Pro or Elite only — never Free or Starter",
+    "As QA (same powers as Admin on these tabs): add, edit, re-order, delete, and Save Prerequisites / Tools / Steps / Supply List / Suggested Pricing (and Notes if needed). After Save, re-check Show All plus each dedicated tab. Save all updates before leaving the guide",
+    "In Guides Library Admin for this guide: check Active (if needed) and Reviewed — Fixed/Re-Review is only for the Pending fix queue, not for pass. Confirm Active and Reviewed stay checked",
+    "Mark this test Pass when the guide is review-ready (Fail with a note if content still needs work). Pass auto-sets Active + Reviewed (Reviewed by QA / No Changes; guide stays live). Fail sets the guide Inactive. Save is already done — move to the next GUIDE-REV test",
+  ];
+}
+
+export const GUIDE_REVIEW_MANUAL_EXPECTED =
+  `Pass → Active + Reviewed (Reviewed by QA / No Changes; public stays live). Fail → this test Failed and guide Inactive. All ${GUIDE_PREP_REVIEW_TAB_LABELS.length} prep tabs (${GUIDE_PREP_REVIEW_TABS_PHRASE}) accurate on their dedicated tabs — not only under Show All; Vitest guides-review.test.ts is the automated second set of eyes`;
 
 /** Automated Vitest suite case — run `bun run test` / vitest guides-review. */
 export const VT_GUIDES_REVIEW_CASE: TestCase = {
@@ -157,11 +187,12 @@ export const VT_GUIDES_REVIEW_CASE: TestCase = {
   steps: [
     "Run Vitest file src/lib/__tests__/guides-review.test.ts (or bun run test -- guides-review)",
     "Confirm every unique Side Hustle Library guide has a GUIDE-REV case",
-    "Confirm every guide kit has Prerequisites + Tools; tool URLs are https",
+    `Confirm every guide kit exposes all ${GUIDE_PREP_REVIEW_TAB_LABELS.length} prep tabs: ${GUIDE_PREP_REVIEW_TABS_PHRASE}`,
+    "Confirm every guide kit has Prerequisites + Tools + Suggested Pricing + Supply List; tool URLs are https",
     "Confirm AI hustles/guides are never Free or Starter",
     "Confirm Free Membership guides list first in LAUNCH_GUIDES",
   ],
-  expected: "All guides-review Vitest assertions pass — second set of eyes for human Sprint 6 review",
+  expected: `All guides-review Vitest assertions pass — second set of eyes for human Sprint 6 review of all ${GUIDE_PREP_REVIEW_TAB_LABELS.length} prep tabs`,
 };
 
 /** Testing Portal catalog: Vitest umbrella + one manual review per unique library guide. */

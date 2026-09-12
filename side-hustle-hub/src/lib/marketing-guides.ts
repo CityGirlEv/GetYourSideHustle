@@ -201,7 +201,7 @@ function buildAdultGuide(): MarketingGuideDoc {
         kind: "checklist",
         items: checklist("adult-tools", [
           "GYSH Match Wizard (Adults) — the starting line for every serious Side Hustler.",
-          "Guides library — free openers (rideshare, delivery) plus member launch playbooks.",
+          "Guides library — free openers (handyman, cleaning) plus member launch playbooks.",
           "Profit Estimator & calculators — sanity-check income math before you commit.",
           "Workshops — live labs with Tina & Evelyn and guest coaches.",
           "Community — ask questions, share wins, stay accountable.",

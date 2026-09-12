@@ -9,7 +9,7 @@
  */
 
 import type { TierId } from "./membership";
-import { detailedStepsForGuide, isGenericGuideSteps, ensureGuideFoundationSteps, clientScoutSteps, stepsIncludeMarketingChoices, SERVICE_CLIENT_SCOUT, type ClientScoutConfig } from "./guide-detailed-steps";
+import { detailedStepsForGuide, isGenericGuideSteps, ensureGuideFoundationSteps, finalizeGuidePlaybookSteps, clientScoutSteps, stepsIncludeMarketingChoices, SERVICE_CLIENT_SCOUT, type ClientScoutConfig } from "./guide-detailed-steps";
 
 export type HustleAgeGroup = "kids" | "junior" | "adult" | "senior";
 
@@ -90,7 +90,6 @@ export const FREE_WIZARD_HUSTLE_IDS = [
   "neighborhood-helper",
   "plant-watering",
   "handyman",
-  "rideshare",
   "cleaning-service",
   "leaf-raking",
   "gift-wrapping",
@@ -114,6 +113,7 @@ export const PRO_SPREAD_HUSTLE_IDS = [
   "proofreader",
   "greeting-card-creator",
   "holiday-decorating-helper",
+  "rideshare",
   // Moved from Starter (22) to rebalance the ladder
   "pet-sitting",
   "trash-can-service",
@@ -275,10 +275,10 @@ export const SIDE_HUSTLES: SideHustleRecord[] = [
   {
     id: "digital-products",
     name: "Digital Products",
-    description: "Create and sell your own digital downloads — ebooks, printables, planners, templates, and mini-courses. Book publishing is a classic Digital path.",
-    fullDescription: "Create and sell your own digital downloads — ebooks, printables, planners, templates, and mini-courses. Book publishing is a classic Digital path.",
+    description: "Create and sell digital products people can download or access online, including ebooks, printables, planners, templates, guides, workbooks, digital art, and mini-courses. Book publishing is another classic digital-product path.",
+    fullDescription: "Create and sell digital products people can download or access online, including ebooks, printables, planners, templates, guides, workbooks, digital art, and mini-courses. Book publishing is another classic digital-product path. Tagline: Create It Once. Sell It Again and Again.",
     audiences: ["adult","junior","senior"],
-    category: "Digital",
+    category: "Digital / Online Business",
     minTier: "elite",
     freeWizardEligible: false,
     startupCost: "Less than $100",
@@ -616,8 +616,8 @@ export const SIDE_HUSTLES: SideHustleRecord[] = [
     fullDescription: "Drive passengers on Uber or Lyft during peak windows — airport runs, nightlife, events — for flexible cash flow. Platform age, vehicle, insurance, and background-check rules change — always verify current Uber/Lyft requirements for your city before you apply.",
     audiences: ["adult","senior"],
     category: "Gig Economy",
-    minTier: "free",
-    freeWizardEligible: true,
+    minTier: "pro",
+    freeWizardEligible: false,
     startupCost: "$50 - $300",
     zeroStart: false,
     locationMode: "local",
@@ -649,8 +649,8 @@ export const SIDE_HUSTLES: SideHustleRecord[] = [
   {
     id: "food-delivery",
     name: "DoorDash / Uber Eats",
-    description: "Deliver restaurant orders on DoorDash, Uber Eats, or similar apps — stack multi-app shifts and hotspot zones.",
-    fullDescription: "Deliver restaurant orders on DoorDash, Uber Eats, or similar apps — stack multi-app shifts and hotspot zones.",
+    description: "Deliver restaurant orders on DoorDash or Uber Eats — evaluate offers by pay, miles, and time, and track real cash profit (not just app gross).",
+    fullDescription: "Deliver restaurant orders on DoorDash or Uber Eats — evaluate offers by pay, miles, and time, and track real cash profit (not just app gross).",
     audiences: ["adult","senior"],
     category: "Gig Economy",
     minTier: "starter",
@@ -1528,16 +1528,28 @@ export const SIDE_HUSTLES: SideHustleRecord[] = [
         body: "Pick a clear focus (containers, veggies, or flowers) so people know what they’re joining.",
       },
       {
+        title: "Decide meetup objective, topic, and walk-aways",
+        body: "Write why people come, the one lesson/activity, and 2–3 things guests leave with — paste into Meetup.",
+      },
+      {
         title: "Secure a free or low-cost spot",
         body: "Library room, church hall, community garden shed, or a neighbor’s patio works for meetup #1.",
       },
       {
+        title: "Set up the club on Meetup.com",
+        body: "Create the group and first event at https://www.meetup.com/ — first-time organizers may use Meetup Starter.",
+      },
+      {
+        title: "Pack host supplies and light food",
+        body: "Name tags, tip sheets, demo seeds, water/snacks, and plant-swap extras before guests arrive.",
+      },
+      {
         title: "Invite a starter circle",
-        body: "Aim for 6–12 people via Nextdoor, church boards, and friends. First meetup free.",
+        body: "Aim for 6–12 people via Meetup, Nextdoor, church boards, and friends. First meetup free.",
       },
       {
         title: "Host meetup #1 with a simple agenda",
-        body: "Intros, one seasonal tip, plant swap, and a date for meetup #2. Collect emails or a group chat.",
+        body: "Intros, topic/demo, plant swap, walk-aways, and a date for meetup #2. Collect Meetup joins.",
       },
       {
         title: "Add light monetization (optional)",
@@ -2106,11 +2118,11 @@ export const SIDE_HUSTLES: SideHustleRecord[] = [
     id: "babysitting",
     name: "Babysitting Service",
     description:
-      "Offer trusted babysitting for families you know — evenings, date nights, and after-school care with clear rates and parent-approved house rules.",
+      "Offer trusted babysitting for families you know or receive through trusted referrals. Provide dependable care while following the parent's house rules, routines, and emergency instructions.",
     fullDescription:
-      "Offer trusted babysitting for families you know — evenings, date nights, and after-school care with clear rates and parent-approved house rules. For teens with parent/guardian involvement in setup and safety.",
-    audiences: ["junior"],
-    category: "Local / Care",
+      "Offer trusted babysitting for families you know or receive through trusted referrals. Provide dependable care while following the parent's house rules, routines, and emergency instructions. Tagline: Trusted Care. Clear Rules. Happy Parents.",
+    audiences: ["junior", "adult"],
+    category: "Kids / Family Services",
     minTier: "free",
     freeWizardEligible: false,
     startupCost: "$0",
@@ -2123,24 +2135,24 @@ export const SIDE_HUSTLES: SideHustleRecord[] = [
     gradient: "pink",
     iconName: "mothers-helper",
     details: [
-      "Start with families your parents/guardians know",
-      "Written house rules and emergency contacts",
+      "Start with families your parents/guardians know or trusted referrals",
+      "Written house rules, emergency contacts, and authorized pickup",
       "Never advertise to strangers online",
     ],
     libraryTags: ["zero-start", "weekend", "after-work", "no-experience"],
     matchTags: ["helping", "people", "local", "indoor"],
     whatYouDo: [
-      "Set your availability, rate, and age range with a parent/guardian",
-      "Meet the family before the first paid sit",
+      "Set your availability, rate, and age range with a parent/guardian when you are a junior/teen",
+      "Screen the job and get safety and house instructions before the parent leaves",
       "Follow house rules, check in, and leave a short update note",
     ],
-    whoItsGoodFor: "Responsible teens who enjoy kids and can follow clear safety rules",
+    whoItsGoodFor: "Responsible teens and adults who enjoy kids and can follow clear safety rules",
     skillsNeeded: ["Reliability", "Calm problem-solving", "Clear communication with parents"],
     toolsNeeded: ["Phone for parent check-ins", "First-aid basics (with parent approval)", "Written emergency contacts"],
     pricingApproach:
-      "Start with a simple hourly rate; add a bit for late nights or extra kids. Examples only — not income guarantees.",
+      "Start with a simple hourly rate; add agreed fees for extra kids or late nights. Examples only — not income guarantees.",
     earningsExample:
-      "Example only: two Saturday evenings at a starter hourly rate can cover personal savings goals — results vary.",
+      "Example only: $15/hour × 4 hours = $60 per job. Two jobs/week is planning math only — results vary; not a guarantee.",
     firstCustomerTips:
       "Ask parents/guardians to introduce you to neighbors, church families, and teammates’ parents. Lead with references and availability.",
     sampleOffer:
@@ -2361,13 +2373,15 @@ export const SIDE_HUSTLES: SideHustleRecord[] = [
   {
     id: "online-research-assistant",
     name: "Online Research Assistant",
-    description: "Run focused web research briefs — vendors, travel options, product comparisons — delivered as tidy notes.",
-    fullDescription: "Run focused web research briefs — vendors, travel options, product comparisons — delivered as tidy notes.",
-    audiences: ["junior","adult","senior"],
-    category: "Professional",
-    minTier: "free",
-    freeWizardEligible: true,
-    startupCost: "$0",
+    description:
+      "Research specific questions online and turn the results into clear, organized briefs for clients — vendors, travel options, product comparisons, local resources, pricing, and other fact-finding.",
+    fullDescription:
+      "Research specific questions online and turn the results into clear, organized briefs for clients. Projects may include vendor research, travel options, product comparisons, local resources, pricing research, or other fact-finding assignments. Find It. Compare It. Organize It. Deliver It.",
+    audiences: ["junior", "adult", "senior"],
+    category: "Virtual Services / Research",
+    minTier: "starter",
+    freeWizardEligible: false,
+    startupCost: "$0–Very Low",
     zeroStart: true,
     locationMode: "online",
     difficulty: "Easy",
@@ -2376,21 +2390,53 @@ export const SIDE_HUSTLES: SideHustleRecord[] = [
     type: "Active / Digital",
     gradient: "purple",
     iconName: "ai-assets",
-    details: ["Use free tools first","Deliver a sample","Ask for a testimonial"],
-    libraryTags: ["zero-start","ai-powered","after-work","no-experience"],
-    matchTags: ["tech","helping","indoor","online"],
-    whatYouDo: ["Deliver the core service or digital product described","Price a simple starter offer","Find first customers through people you already know"],
-    whoItsGoodFor: "People who match the skills and schedule notes below",
-    skillsNeeded: ["Reliability","Clear communication"],
-    toolsNeeded: ["Phone or computer","Basic supplies for the job"],
-    pricingApproach: "Start with a simple flat rate or hourly rate; raise prices after 3–5 happy customers. Examples only — not income guarantees.",
-    earningsExample: "Example only: 4 jobs/week at a starter rate can be a few hundred dollars per month before expenses — results vary; not a guarantee.",
-    firstCustomerTips: "Ask family, neighbors your parents/guardians know, church/community boards, or local Facebook groups. Lead with one clear offer.",
-    sampleOffer: "“I’ll complete [specific task] for [flat price] this week — satisfaction guaranteed or we make it right.”",
-    howToStartToday: ["Write a one-sentence offer","List tools you already have","Message 3 trusted people today"],
-    launchSteps: [{"title":"Define the offer","body":"One clear service, price, and turnaround."},{"title":"Prep your kit","body":"Gather tools, templates, or samples."},{"title":"Reach out","body":"Contact 5 warm leads with your sample offer."},{"title":"Deliver & ask for a review","body":"Do great work; request a short testimonial."},{"title":"Repeat weekly","body":"Batch outreach so you don’t wait for luck."}],
-    tips: ["Keep promises small and finishable","Track every dollar in a simple log"],
-    relatedGuideIds: ["ai-timing","digital-products"],
+    details: [
+      "Don't just send links — search, check, compare, organize, summarize",
+      "Deliver a sample research brief before pitching",
+      "Record sources and date checked on every finding",
+    ],
+    libraryTags: ["zero-start", "ai-powered", "after-work", "no-experience", "remote"],
+    matchTags: ["tech", "helping", "indoor", "online", "writing"],
+    whatYouDo: [
+      "Define a clear research question with the client",
+      "Verify sources, compare options, and deliver an organized brief",
+      "Price quick, standard, and detailed research packages",
+    ],
+    whoItsGoodFor: "Teens, adults, and seniors / retirees who can search, organize, and write clearly",
+    skillsNeeded: [
+      "Web search",
+      "Organizing information",
+      "Basic writing",
+      "Attention to detail",
+      "Following instructions",
+    ],
+    toolsNeeded: ["Computer or tablet", "Internet", "Google Docs / Sheets", "Email"],
+    pricingApproach:
+      "Quick research $15–$20 · Standard brief $25–$35 · Detailed comparison $40–$50+. Always define scope before starting. Examples only — not income guarantees.",
+    earningsExample:
+      "Example only: 3 briefs/week at $35 with light expenses can be about $100/week before taxes — results vary; not a guarantee.",
+    firstCustomerTips:
+      "Warm outreach to busy individuals and small businesses. Lead with a sample brief and a clear starter price.",
+    sampleOffer:
+      "“I’ll research one focused question and deliver 3–5 useful options with source links and a short comparison for $____.”",
+    howToStartToday: [
+      "Pick 2–4 research niches",
+      "Create one sample research brief",
+      "Message 3–5 warm contacts with your starter offer",
+    ],
+    launchSteps: [
+      { title: "Choose your research services", body: "Pick 2–4 niches you can deliver well." },
+      { title: "Create your starter offer", body: "One focused question, clear deliverables, price, and turnaround." },
+      { title: "Market with 2–3 channels", body: "Referrals, email, LinkedIn, or small-business groups." },
+      { title: "Define → research → brief", body: "Confirm criteria, verify sources, compare, and deliver." },
+      { title: "Ask to rebook", body: "Request a testimonial, referral, or next project." },
+    ],
+    tips: [
+      "Separate facts from opinions",
+      "Never invent missing information — write “Not found” or “Needs confirmation”",
+      "Verify AI output with reliable sources",
+    ],
+    relatedGuideIds: ["travel-research-assistant", "lead-followup-assistant"],
   },
   {
     id: "google-business-helper",
@@ -2769,38 +2815,77 @@ export const SIDE_HUSTLES: SideHustleRecord[] = [
   },
   {
     id: "family-history-organizer",
-    name: "Family History Organizer",
-    description: "Interview relatives, scan keepsakes, and build a simple family history binder or digital album.",
-    fullDescription: "Interview relatives, scan keepsakes, and build a simple family history binder or digital album.",
-    audiences: ["kids","junior","adult","senior"],
-    category: "Creative",
+    name: "Genealogy & Family History Researcher",
+    description:
+      "Help clients research family history, organize records, build family trees, locate historical documents, and create easy-to-understand family history reports.",
+    fullDescription:
+      "Genealogy Researcher — Turn Family Stories Into Organized History. Research family trees, historical records, and digital archives; organize evidence; deliver clear reports. Best for Adults and Seniors / Retirees. Beginner–Intermediate · Low startup · Flexible schedule · Home / remote / local research · Income type: service-based. Category: Research / Family History Services.",
+    audiences: ["adult", "senior"],
+    category: "Research / Family History Services",
     minTier: "free",
     freeWizardEligible: true,
-    startupCost: "$0",
+    startupCost: "Less than $100",
     zeroStart: true,
-    locationMode: "online",
-    difficulty: "Easy",
-    timeReq: "3 - 10 hrs/week",
-    potentialIncome: "$15 – $50 / project (examples)",
-    type: "Active / Digital",
+    locationMode: "both",
+    difficulty: "Medium",
+    timeReq: "Flexible",
+    potentialIncome: "Service packages / hourly (examples)",
+    type: "Active / Hybrid",
     gradient: "purple",
     iconName: "ai-assets",
-    details: ["Use free tools first","Deliver a sample","Ask for a testimonial"],
-    libraryTags: ["zero-start","ai-powered","after-work","no-experience"],
-    matchTags: ["creative","helping","indoor","people"],
-    whatYouDo: ["Deliver the core service or digital product described","Price a simple starter offer","Find first customers through people you already know"],
-    whoItsGoodFor: "People who match the skills and schedule notes below",
-    skillsNeeded: ["Reliability","Clear communication"],
-    toolsNeeded: ["Phone or computer","Basic supplies for the job"],
-    pricingApproach: "Start with a simple flat rate or hourly rate; raise prices after 3–5 happy customers. Examples only — not income guarantees.",
-    earningsExample: "Example only: 4 jobs/week at a starter rate can be a few hundred dollars per month before expenses — results vary; not a guarantee.",
-    firstCustomerTips: "Ask family, neighbors your parents/guardians know, church/community boards, or local Facebook groups. Lead with one clear offer.",
-    sampleOffer: "“I’ll complete [specific task] for [flat price] this week — satisfaction guaranteed or we make it right.”",
-    howToStartToday: ["Write a one-sentence offer","List tools you already have","Message 3 trusted people today"],
-    launchSteps: [{"title":"Define the offer","body":"One clear service, price, and turnaround."},{"title":"Prep your kit","body":"Gather tools, templates, or samples."},{"title":"Reach out","body":"Contact 5 warm leads with your sample offer."},{"title":"Deliver & ask for a review","body":"Do great work; request a short testimonial."},{"title":"Repeat weekly","body":"Batch outreach so you don’t wait for luck."}],
-    tips: ["Keep promises small and finishable","Track every dollar in a simple log"],
-    adultSupervisionRequired: true,
-    relatedGuideIds: ["digital-products"],
+    details: [
+      "Turn Family Stories Into Organized History.",
+      "Never guarantee a specific ancestor or record will be found",
+      "Separate confirmed facts, likely matches, and unverified stories",
+    ],
+    libraryTags: ["zero-start", "no-experience", "after-work", "weekend"],
+    matchTags: ["helping", "indoor", "creative", "people"],
+    whatYouDo: [
+      "Research family history and historical records",
+      "Organize evidence and build family trees",
+      "Deliver summaries, reports, and digital archives",
+    ],
+    whoItsGoodFor: "Adults and seniors / retirees who enjoy careful research and clear writing",
+    skillsNeeded: [
+      "Research",
+      "Organization",
+      "Attention to detail",
+      "Writing summaries",
+      "Client communication",
+    ],
+    toolsNeeded: [
+      "Computer or tablet",
+      "Reliable internet",
+      "Spreadsheet / research log",
+      "Secure file storage",
+    ],
+    pricingApproach:
+      "Hourly $20–$40 beginner examples, or scoped packages ($75–$500+). Cap hours; pass through paid database and record fees. Examples only — not income guarantees.",
+    earningsExample:
+      "Example only: a $150 starter package after ~$20 in record fees can leave about $130 before your time — results vary; not a guarantee.",
+    firstCustomerTips:
+      "Practice on your own family first, then offer a scoped starter search to relatives, church friends, or local history groups.",
+    sampleOffer:
+      "“I’ll research one family branch for up to X hours and deliver a findings summary with sources — no guarantees on what records exist.”",
+    howToStartToday: [
+      "Choose 1–2 services to offer",
+      "Draft a simple intake form",
+      "Practice one branch of your own family with a research log",
+    ],
+    launchSteps: [
+      { title: "Choose services", body: "Pick tree research, organization, or reports." },
+      { title: "Scope the project", body: "Hours, branch, deliverables, and budget in writing." },
+      { title: "Research & log", body: "Work backward from known facts; log every search." },
+      { title: "Verify & organize", body: "Compare sources; separate confirmed vs unverified." },
+      { title: "Deliver findings", body: "Explain confirmed, uncertain, and next steps." },
+    ],
+    tips: [
+      "Never guarantee findings",
+      "Cap research hours in every quote",
+      "Compare multiple sources before confirming",
+    ],
+    adultSupervisionRequired: false,
+    relatedGuideIds: ["digital-photo-organizer", "digital-organizer"],
   },
   {
     id: "digital-photo-organizer",
@@ -2839,72 +2924,159 @@ export const SIDE_HUSTLES: SideHustleRecord[] = [
   {
     id: "local-content-photographer",
     name: "Local Business Content Photographer",
-    description: "Shoot simple phone photos of storefronts, menus, and products for social and Google profiles.",
-    fullDescription: "Shoot simple phone photos of storefronts, menus, and products for social and Google profiles.",
-    audiences: ["junior","adult","senior"],
-    category: "Creative",
+    description:
+      "Use your smartphone to take clean, attractive photos of local businesses, products, menus, storefronts, food, displays, staff, and services for their social media and online business profiles.",
+    fullDescription:
+      "Your Phone + Their Business = Fresh Content. Affordable, simple smartphone content for local businesses — NOT professional commercial photography.",
+    audiences: ["junior", "adult", "senior"],
+    category: "Photography / Local Business Services",
     minTier: "free",
     freeWizardEligible: true,
-    startupCost: "$0",
+    startupCost: "Very Low",
+    zeroStart: true,
+    locationMode: "local",
+    difficulty: "Easy",
+    timeReq: "Flexible",
+    potentialIncome: "$40 – $200 / shoot (examples)",
+    type: "Active / Digital",
+    gradient: "purple",
+    iconName: "ai-assets",
+    details: [
+      "Smartphone content — not studio photography",
+      "Simple content packages",
+      "Monthly refresh retainers",
+    ],
+    libraryTags: ["zero-start", "after-work", "no-experience", "weekend"],
+    matchTags: ["creative", "local", "marketing", "physical"],
+    whatYouDo: [
+      "Shoot clean smartphone photos for local businesses",
+      "Deliver edited selects via shared folder",
+      "Offer monthly content refresh packages",
+    ],
+    whoItsGoodFor:
+      "Teens, adults, and seniors/retirees with a good phone camera and an eye for clean angles",
+    skillsNeeded: [
+      "Basic photo skills",
+      "Good eye for clean backgrounds/angles",
+      "Dependability",
+      "Friendly communication",
+      "Ability to transfer digital photos",
+    ],
+    toolsNeeded: [
+      "Smartphone",
+      "Reliable transportation",
+      "Cloud/file storage",
+      "Canva or Snapseed for light edits",
+    ],
+    pricingApproach:
+      "Quick Content Drop $40–60, Content Refresh $75–125, Content Bank $125–200, Monthly $100–200+. Formula: Shoot + Edit + Travel + Expenses + Profit. Examples only — not income guarantees.",
+    earningsExample:
+      "Example only: 4 monthly clients × $125 ≈ $500/month recurring — results vary; not a guarantee.",
+    firstCustomerTips:
+      "Scout businesses with outdated or few online photos, then pitch a specific gap you noticed.",
+    sampleOffer:
+      "“I’ll do a 45–60 minute smartphone content refresh (20–25 photos) for social and your Google profile for $100.”",
+    howToStartToday: [
+      "Practice storefront, food, and product phone photos",
+      "Build a small permission-cleared sample portfolio",
+      "Draft Quick / Refresh packages",
+    ],
+    launchSteps: [
+      { title: "Practice + portfolio", body: "Clean phone photos with permission." },
+      { title: "Package offers", body: "Quick, Refresh, Bank, or Monthly." },
+      { title: "Scout & pitch", body: "Find outdated online photos and introduce your service." },
+      { title: "Shoot the list", body: "Arrive with a shot list; use good light." },
+      { title: "Deliver & retain", body: "Shared folder delivery + monthly refresh ask." },
+    ],
+    tips: [
+      "You don't need a fancy camera",
+      "Do not over-edit",
+      "Always get permission for staff and customers",
+    ],
+    adultSupervisionRequired: true,
+    relatedGuideIds: ["ai-assets", "web-leads"],
+  },
+  {
+    id: "local-event-content-creator",
+    name: "Local Event Content Creator",
+    description:
+      "Use your smartphone to capture short video clips, photos, and simple event recap content for school events, markets, community gatherings, small businesses, nonprofits, clubs, and other local organizations.",
+    fullDescription:
+      "Use your smartphone to capture short video clips, photos, and simple event recap content for school events, markets, community gatherings, small businesses, nonprofits, clubs, and other local organizations. Quick social content — not wedding films or cinematic commercials.",
+    audiences: ["junior", "adult", "senior"],
+    category: "Content Creation / Local Business Services",
+    minTier: "elite",
+    freeWizardEligible: false,
+    startupCost: "Very Low",
     zeroStart: true,
     locationMode: "local",
     difficulty: "Easy",
     timeReq: "3 - 10 hrs/week",
     potentialIncome: "$15 – $50 / project (examples)",
-    type: "Active / Digital",
+    type: "Active / Local",
     gradient: "purple",
     iconName: "ai-assets",
-    details: ["Use free tools first","Deliver a sample","Ask for a testimonial"],
-    libraryTags: ["zero-start","ai-powered","after-work","no-experience"],
-    matchTags: ["creative","local","marketing","physical"],
-    whatYouDo: ["Deliver the core service or digital product described","Price a simple starter offer","Find first customers through people you already know"],
-    whoItsGoodFor: "People who match the skills and schedule notes below",
-    skillsNeeded: ["Reliability","Clear communication"],
-    toolsNeeded: ["Phone or computer","Basic supplies for the job"],
-    pricingApproach: "Start with a simple flat rate or hourly rate; raise prices after 3–5 happy customers. Examples only — not income guarantees.",
-    earningsExample: "Example only: 4 jobs/week at a starter rate can be a few hundred dollars per month before expenses — results vary; not a guarantee.",
-    firstCustomerTips: "Ask family, neighbors your parents/guardians know, church/community boards, or local Facebook groups. Lead with one clear offer.",
-    sampleOffer: "“I’ll complete [specific task] for [flat price] this week — satisfaction guaranteed or we make it right.”",
-    howToStartToday: ["Write a one-sentence offer","List tools you already have","Message 3 trusted people today"],
-    launchSteps: [{"title":"Define the offer","body":"One clear service, price, and turnaround."},{"title":"Prep your kit","body":"Gather tools, templates, or samples."},{"title":"Reach out","body":"Contact 5 warm leads with your sample offer."},{"title":"Deliver & ask for a review","body":"Do great work; request a short testimonial."},{"title":"Repeat weekly","body":"Batch outreach so you don’t wait for luck."}],
-    tips: ["Keep promises small and finishable","Track every dollar in a simple log"],
+    details: [
+      "Smartphone-first social content — not professional videography",
+      "Confirm photo/video permission (especially schools and youth events)",
+      "Sell usable recap content organizers can post tomorrow",
+    ],
+    libraryTags: ["zero-start", "weekend", "after-work", "no-experience"],
+    matchTags: ["creative", "marketing", "people", "local"],
+    whatYouDo: [
+      "Capture short clips, photos, and simple event recaps on your phone",
+      "Edit lightly in CapCut / Canva and deliver organized folders",
+      "Market to organizers, markets, nonprofits, and local businesses",
+    ],
+    whoItsGoodFor:
+      "Teens, adults, and seniors who enjoy events and can deliver quick social content",
+    skillsNeeded: ["Basic photo/video", "Light editing", "Clear communication", "Respect for privacy rules"],
+    toolsNeeded: ["Smartphone", "CapCut", "Canva", "Google Drive"],
+    pricingApproach:
+      "Starter packages $15–$50/project (examples). Agree time, deliverables, editing, delivery date, and price before the event.",
+    earningsExample:
+      "Example only: three Event Mini projects at $40 plus a small add-on can be a few hundred dollars per month before expenses — results vary.",
+    firstCustomerTips:
+      "Reach organizers, market vendors, nonprofits, and community groups. Lead with sample photos/clips and a clear starter package — not “professional videography.”",
+    sampleOffer:
+      "“I create affordable social content for local events — short clips, photos, and recap content. Starter packages from $__.”",
+    howToStartToday: [
+      "Build one simple starter package",
+      "Create a 5-photo / 5-clip sample recap at a permitted event",
+      "Message 5 organizers with your short pitch",
+    ],
+    launchSteps: [
+      {
+        title: "Choose your event services",
+        body: "Pick photos, short vertical clips, BTS, vendor clips, recap, and/or a simple Reel — keep the first offer simple.",
+      },
+      {
+        title: "Build a starter package",
+        body: "One clear offer (e.g. Local Event Mini: 30 minutes, 10–15 usable files, digital delivery) with optional Reel add-on.",
+      },
+      {
+        title: "Market to organizers",
+        body: "Choose 2–3 channels, make a Canva flyer + samples, and contact 8–12 organizers/businesses.",
+      },
+      {
+        title: "Book, shoot, edit, deliver",
+        body: "Confirm permission and deliverables, work a shot list, edit lightly, and deliver organized folders.",
+      },
+      {
+        title: "Ask for the next event",
+        body: "Request a testimonial, referral, portfolio permission, and the next booking.",
+      },
+    ],
+    tips: [
+      "Never assume permission to photograph minors",
+      "Deliver the best usable content — not hundreds of weak files",
+      "Track event hours AND editing hours in the Revenue Calculator",
+    ],
     adultSupervisionRequired: true,
-    relatedGuideIds: ["ai-assets","web-leads"],
-  },
-  {
-    id: "local-event-content-creator",
-    name: "Local Event Content Creator",
-    description: "Capture short clips and recap posts for school events, markets, and community gatherings.",
-    fullDescription: "Capture short clips and recap posts for school events, markets, and community gatherings.",
-    audiences: ["junior","adult"],
-    category: "Creative",
-    minTier: "free",
-    freeWizardEligible: true,
-    startupCost: "$0",
-    zeroStart: true,
-    locationMode: "both",
-    difficulty: "Easy",
-    timeReq: "3 - 10 hrs/week",
-    potentialIncome: "$15 – $50 / project (examples)",
-    type: "Active / Digital",
-    gradient: "purple",
-    iconName: "ai-assets",
-    details: ["Use free tools first","Deliver a sample","Ask for a testimonial"],
-    libraryTags: ["zero-start","ai-powered","after-work","no-experience"],
-    matchTags: ["creative","marketing","people","local"],
-    whatYouDo: ["Deliver the core service or digital product described","Price a simple starter offer","Find first customers through people you already know"],
-    whoItsGoodFor: "People who match the skills and schedule notes below",
-    skillsNeeded: ["Reliability","Clear communication"],
-    toolsNeeded: ["Phone or computer","Basic supplies for the job"],
-    pricingApproach: "Start with a simple flat rate or hourly rate; raise prices after 3–5 happy customers. Examples only — not income guarantees.",
-    earningsExample: "Example only: 4 jobs/week at a starter rate can be a few hundred dollars per month before expenses — results vary; not a guarantee.",
-    firstCustomerTips: "Ask family, neighbors your parents/guardians know, church/community boards, or local Facebook groups. Lead with one clear offer.",
-    sampleOffer: "“I’ll complete [specific task] for [flat price] this week — satisfaction guaranteed or we make it right.”",
-    howToStartToday: ["Write a one-sentence offer","List tools you already have","Message 3 trusted people today"],
-    launchSteps: [{"title":"Define the offer","body":"One clear service, price, and turnaround."},{"title":"Prep your kit","body":"Gather tools, templates, or samples."},{"title":"Reach out","body":"Contact 5 warm leads with your sample offer."},{"title":"Deliver & ask for a review","body":"Do great work; request a short testimonial."},{"title":"Repeat weekly","body":"Batch outreach so you don’t wait for luck."}],
-    tips: ["Keep promises small and finishable","Track every dollar in a simple log"],
-    adultSupervisionRequired: true,
-    relatedGuideIds: ["social"],
+    relatedGuideIds: ["local-content-photographer", "social", "ai-assets"],
+    fit: "People who like events and can ship quick social content",
+    schedule: "Flexible / events / weekends",
+    startup: "Very low — smartphone first",
   },
   {
     id: "nonprofit-social-helper",
@@ -3181,13 +3353,15 @@ export const SIDE_HUSTLES: SideHustleRecord[] = [
   {
     id: "appointment-setter",
     name: "Appointment Setter",
-    description: "Book calls and reminders for coaches, tutors, and local pros from a shared calendar.",
-    fullDescription: "Book calls and reminders for coaches, tutors, and local pros from a shared calendar.",
-    audiences: ["junior","adult","senior"],
-    category: "Professional",
-    minTier: "free",
-    freeWizardEligible: true,
-    startupCost: "$0",
+    description:
+      "Help coaches, tutors, consultants, beauty professionals, home-service providers, and other busy professionals turn inquiries into scheduled appointments using an approved script and shared calendar.",
+    fullDescription:
+      "Turn Interested Leads Into Booked Appointments. Help busy professionals with appointment booking, confirmations, reminders, rescheduling, cancellations, and basic follow-up — remote, script-based scheduling support (not hard selling).",
+    audiences: ["junior", "adult", "senior"],
+    category: "Virtual Assistance / Scheduling",
+    minTier: "starter",
+    freeWizardEligible: false,
+    startupCost: "$0–Very Low",
     zeroStart: true,
     locationMode: "online",
     difficulty: "Easy",
@@ -3196,55 +3370,146 @@ export const SIDE_HUSTLES: SideHustleRecord[] = [
     type: "Active / Digital",
     gradient: "purple",
     iconName: "ai-assets",
-    details: ["Use free tools first","Deliver a sample","Ask for a testimonial"],
-    libraryTags: ["zero-start","ai-powered","after-work","no-experience"],
-    matchTags: ["operations","people","helping","online"],
-    whatYouDo: ["Deliver the core service or digital product described","Price a simple starter offer","Find first customers through people you already know"],
-    whoItsGoodFor: "People who match the skills and schedule notes below",
-    skillsNeeded: ["Reliability","Clear communication"],
-    toolsNeeded: ["Phone or computer","Basic supplies for the job"],
-    pricingApproach: "Start with a simple flat rate or hourly rate; raise prices after 3–5 happy customers. Examples only — not income guarantees.",
-    earningsExample: "Example only: 4 jobs/week at a starter rate can be a few hundred dollars per month before expenses — results vary; not a guarantee.",
-    firstCustomerTips: "Ask family, neighbors your parents/guardians know, church/community boards, or local Facebook groups. Lead with one clear offer.",
-    sampleOffer: "“I’ll complete [specific task] for [flat price] this week — satisfaction guaranteed or we make it right.”",
-    howToStartToday: ["Write a one-sentence offer","List tools you already have","Message 3 trusted people today"],
-    launchSteps: [{"title":"Define the offer","body":"One clear service, price, and turnaround."},{"title":"Prep your kit","body":"Gather tools, templates, or samples."},{"title":"Reach out","body":"Contact 5 warm leads with your sample offer."},{"title":"Deliver & ask for a review","body":"Do great work; request a short testimonial."},{"title":"Repeat weekly","body":"Batch outreach so you don’t wait for luck."}],
-    tips: ["Keep promises small and finishable","Track every dollar in a simple log"],
-    relatedGuideIds: ["virtual-assistant"],
+    details: [
+      "Inquiry → respond → book → confirm → remind → update",
+      "Client-approved scripts only — never invent prices or policies",
+      "Recurring calendar coverage can become predictable monthly income",
+    ],
+    libraryTags: ["zero-start", "after-work", "no-experience"],
+    matchTags: ["operations", "people", "helping", "online"],
+    whatYouDo: [
+      "Respond to approved inquiries and offer available appointment times",
+      "Book, confirm, remind, and reschedule on a shared calendar",
+      "Track results and send a simple booking-rate report",
+    ],
+    whoItsGoodFor:
+      "Teens, adults, and seniors who communicate professionally, follow scripts, and stay accurate on calendars",
+    skillsNeeded: [
+      "Professional communication",
+      "Calendar skills",
+      "Attention to detail",
+      "Following scripts and processes",
+    ],
+    toolsNeeded: ["Shared calendar", "Email/text", "Google Sheets", "Client script"],
+    pricingApproach:
+      "Starter projects $15–$50 (examples). Define inquiry caps and inclusions. Recurring clients may prefer hourly, weekly, or monthly retainers.",
+    earningsExample:
+      "Example only: three $35 projects plus a small recurring client can be a few hundred dollars per month before expenses — results vary.",
+    firstCustomerTips:
+      "Reach appointment-based businesses (coaches, tutors, beauty, home services). Lead with calendar fullness and missed follow-ups — not “sales closing.”",
+    sampleOffer:
+      "“I provide appointment-setting support — respond to approved inquiries, book appointments, send reminders, and keep your calendar organized. Starter projects from $__.”",
+    howToStartToday: [
+      "Write one Appointment Setting Mini offer with a clear inquiry cap",
+      "Build a sample calendar + tracker + scripts pack",
+      "Message 5 appointment-based businesses",
+    ],
+    launchSteps: [
+      {
+        title: "Choose who you help",
+        body: "Pick appointment-based niches that are easy to understand — coaches, tutors, beauty, home services, and similar.",
+      },
+      {
+        title: "Create a starter offer",
+        body: "Define inclusions (respond, book, confirm, remind, track) and a clear inquiry/lead cap with price.",
+      },
+      {
+        title: "Market to busy pros",
+        body: "Choose 2–3 channels, make a simple service graphic + outreach message, and contact 8–12 businesses.",
+      },
+      {
+        title: "Learn rules, scripts, and book",
+        body: "Document booking rules, get scripts approved, then work inquiries without inventing prices or policies.",
+      },
+      {
+        title: "Report and rebook",
+        body: "Send booking-rate results and ask to continue next week/month.",
+      },
+    ],
+    tips: [
+      "Never invent prices, policies, availability, or discounts",
+      "Offer two approved times instead of open-ended scheduling questions",
+      "Protect customer privacy — only access what the job requires",
+    ],
+    relatedGuideIds: ["lead-followup-assistant", "virtual-assistant", "virtual-receptionist"],
+    fit: "Organized communicators who like calendars and clear scripts",
+    schedule: "Flexible / recurring",
+    startup: "$0–very low if you already have phone/computer",
   },
   {
     id: "lead-followup-assistant",
     name: "Lead Follow-Up Assistant",
-    description: "Send polite follow-up texts/emails to warm leads so local pros stop dropping the ball.",
-    fullDescription: "Send polite follow-up texts/emails to warm leads so local pros stop dropping the ball.",
-    audiences: ["junior","adult","senior"],
-    category: "Marketing",
+    description:
+      "Help busy local professionals stop losing warm leads by sending polite, timely follow-up texts and emails, tracking responses, and letting the business owner know when someone is ready for personal attention.",
+    fullDescription:
+      "They Find the Leads. You Make Sure Nobody Drops the Ball. Send approved follow-ups, track replies, flag interested leads, and send the owner a simple weekly/monthly summary — remote VA / sales support, not cold calling.",
+    audiences: ["adult", "senior"],
+    category: "Virtual Assistance / Sales Support",
     minTier: "free",
     freeWizardEligible: true,
-    startupCost: "$0",
+    startupCost: "Very Low",
     zeroStart: true,
     locationMode: "online",
     difficulty: "Easy",
-    timeReq: "3 - 10 hrs/week",
-    potentialIncome: "$15 – $50 / project (examples)",
+    timeReq: "Flexible / Recurring",
+    potentialIncome: "$75 – $500 / month per client (examples)",
     type: "Active / Digital",
     gradient: "purple",
     iconName: "ai-assets",
-    details: ["Use free tools first","Deliver a sample","Ask for a testimonial"],
-    libraryTags: ["zero-start","ai-powered","after-work","no-experience"],
-    matchTags: ["marketing","people","helping","online"],
-    whatYouDo: ["Deliver the core service or digital product described","Price a simple starter offer","Find first customers through people you already know"],
-    whoItsGoodFor: "People who match the skills and schedule notes below",
-    skillsNeeded: ["Reliability","Clear communication"],
-    toolsNeeded: ["Phone or computer","Basic supplies for the job"],
-    pricingApproach: "Start with a simple flat rate or hourly rate; raise prices after 3–5 happy customers. Examples only — not income guarantees.",
-    earningsExample: "Example only: 4 jobs/week at a starter rate can be a few hundred dollars per month before expenses — results vary; not a guarantee.",
-    firstCustomerTips: "Ask family, neighbors your parents/guardians know, church/community boards, or local Facebook groups. Lead with one clear offer.",
-    sampleOffer: "“I’ll complete [specific task] for [flat price] this week — satisfaction guaranteed or we make it right.”",
-    howToStartToday: ["Write a one-sentence offer","List tools you already have","Message 3 trusted people today"],
-    launchSteps: [{"title":"Define the offer","body":"One clear service, price, and turnaround."},{"title":"Prep your kit","body":"Gather tools, templates, or samples."},{"title":"Reach out","body":"Contact 5 warm leads with your sample offer."},{"title":"Deliver & ask for a review","body":"Do great work; request a short testimonial."},{"title":"Repeat weekly","body":"Batch outreach so you don’t wait for luck."}],
-    tips: ["Keep promises small and finishable","Track every dollar in a simple log"],
-    relatedGuideIds: ["web-leads","virtual-assistant"],
+    details: [
+      "Warm-lead follow-up — not cold calling",
+      "Monthly retainers or hourly",
+      "Client-approved messages only",
+    ],
+    libraryTags: ["zero-start", "after-work", "no-experience"],
+    matchTags: ["marketing", "people", "helping", "online", "writing"],
+    whatYouDo: [
+      "Send polite approved follow-up texts/emails to warm leads",
+      "Track contact attempts and replies in a spreadsheet or CRM",
+      "Flag interested leads and send the owner a simple summary",
+    ],
+    whoItsGoodFor:
+      "Adults and seniors/retirees who write professionally, stay organized, and can follow client instructions remotely",
+    skillsNeeded: [
+      "Professional writing",
+      "Organization and dependability",
+      "Email/texting comfort",
+      "Spreadsheet or basic CRM skills",
+      "Respect for customer privacy",
+    ],
+    toolsNeeded: [
+      "Computer or smartphone",
+      "Reliable internet",
+      "Google Sheets / Excel",
+      "Gmail / Outlook",
+      "Client CRM when provided",
+    ],
+    pricingApproach:
+      "Light $75–125, Standard $150–250, Active $300–500 per month (lead caps), or $20–35/hour. Formula: Estimated Monthly Hours × Hourly Rate + Software/Other Costs = Minimum Monthly Price. Examples only — not income guarantees.",
+    earningsExample:
+      "Example only: 4 clients × $200/month = $800 revenue − $50 expenses ≈ $750 profit; at 20 hours ≈ $37.50/hour effective — results vary; not a guarantee.",
+    firstCustomerTips:
+      "Pitch the forgotten-lead problem to local service owners who get website/Facebook/ad inquiries. Start with people you know, then Chamber/networking groups.",
+    sampleOffer:
+      "“I’ll follow up on up to 75 warm leads each month with your approved messages, track replies, and send you a weekly summary for $200/month.”",
+    howToStartToday: [
+      "Pick 2–3 local business niches to serve",
+      "Draft Light/Standard packages and a one-sentence value pitch",
+      "Build a blank Google Sheets lead tracker with the starter columns",
+    ],
+    launchSteps: [
+      { title: "Pick niches", body: "Choose business types that get steady inquiries." },
+      { title: "Package the offer", body: "Hourly or monthly Light/Standard/Active." },
+      { title: "Pitch the problem", body: "Warm leads forgotten when the owner is busy." },
+      { title: "Agree on process", body: "Approved messages, timing, and escalation rules." },
+      { title: "Track & report", body: "Log every attempt and send a short weekly summary." },
+    ],
+    tips: [
+      "You are not cold calling",
+      "Client approves messaging and contact procedures",
+      "Never paste confidential lead data into AI without approval",
+    ],
+    relatedGuideIds: ["web-leads", "virtual-assistant"],
   },
   {
     id: "virtual-receptionist",
@@ -3615,49 +3880,92 @@ export const SIDE_HUSTLES: SideHustleRecord[] = [
   },
   {
     id: "estate-sale-listing-helper",
-    name: "Estate Sale Listing Helper",
-    description: "Photograph and list estate or downsizing items online with clear titles and prices.",
-    fullDescription: "Photograph and list estate or downsizing items online with clear titles and prices.",
-    audiences: ["adult","senior"],
-    category: "",
+    name: "Estate Sale & Antique Resales",
+    description:
+      "Find vintage, antique, collectible, and desirable secondhand items at estate sales and other sources, buy them below likely resale value, then resell them online or locally for profit.",
+    fullDescription:
+      "Estate Sale Reseller — Buy Smart. Research First. Resell for Profit. Source vintage, antique, collectible, and desirable secondhand items at estate sales, thrift, auctions, and more; research sold comps before you buy; resell online or locally. Best for Adults and Seniors / Retirees. Beginner–Intermediate · Low–Moderate startup · Flexible schedule · Home + local sourcing · Income type: resale profit. Category: Reselling / Vintage & Collectibles.",
+    audiences: ["adult", "senior"],
+    category: "Reselling / Vintage & Collectibles",
     minTier: "free",
     freeWizardEligible: true,
-    startupCost: "$0",
+    startupCost: "$50 - $500",
     zeroStart: true,
     locationMode: "both",
-    difficulty: "Easy",
-    timeReq: "2 - 8 hrs/week",
-    potentialIncome: "$10 – $40 / job (examples)",
-    type: "Active / Local",
+    difficulty: "Medium",
+    timeReq: "Flexible",
+    potentialIncome: "Resale profit (examples vary by finds)",
+    type: "Active / Hybrid",
     gradient: "emerald",
     iconName: "handyman",
-    details: ["Start with people you know","Keep jobs small","Write a clear flat price"],
-    libraryTags: ["zero-start","no-experience","weekend","fastest-dollar"],
-    matchTags: ["marketing","helping","local","online"],
-    whatYouDo: ["Deliver the core service or digital product described","Price a simple starter offer","Find first customers through people you already know"],
-    whoItsGoodFor: "People who match the skills and schedule notes below",
-    skillsNeeded: ["Reliability","Clear communication"],
-    toolsNeeded: ["Phone or computer","Basic supplies for the job"],
-    pricingApproach: "Start with a simple flat rate or hourly rate; raise prices after 3–5 happy customers. Examples only — not income guarantees.",
-    earningsExample: "Example only: 4 jobs/week at a starter rate can be a few hundred dollars per month before expenses — results vary; not a guarantee.",
-    firstCustomerTips: "Ask family, neighbors your parents/guardians know, church/community boards, or local Facebook groups. Lead with one clear offer.",
-    sampleOffer: "“I’ll complete [specific task] for [flat price] this week — satisfaction guaranteed or we make it right.”",
-    howToStartToday: ["Write a one-sentence offer","List tools you already have","Message 3 trusted people today"],
-    launchSteps: [{"title":"Define the offer","body":"One clear service, price, and turnaround."},{"title":"Prep your kit","body":"Gather tools, templates, or samples."},{"title":"Reach out","body":"Contact 5 warm leads with your sample offer."},{"title":"Deliver & ask for a review","body":"Do great work; request a short testimonial."},{"title":"Repeat weekly","body":"Batch outreach so you don’t wait for luck."}],
-    tips: ["Keep promises small and finishable","Track every dollar in a simple log"],
-    adultSupervisionRequired: true,
-    relatedGuideIds: ["fb-marketplace-helper"],
+    details: [
+      "Buy Smart. Research First. Resell for Profit.",
+      "Use sold/completed comps — not list prices",
+      "Start with a $50–$150 test budget",
+    ],
+    libraryTags: ["no-experience", "weekend", "after-work"],
+    matchTags: ["local", "online", "helping", "creative"],
+    whatYouDo: [
+      "Source items at estate sales and other secondhand outlets",
+      "Research sold comps before buying",
+      "Photograph, list, and resell for profit after fees and shipping",
+    ],
+    whoItsGoodFor: "Adults and seniors / retirees who enjoy research, thrifting, and flexible local sourcing",
+    skillsNeeded: [
+      "Research",
+      "Negotiation",
+      "Photography",
+      "Listing descriptions",
+      "Packing / shipping",
+      "Patience",
+    ],
+    toolsNeeded: [
+      "Smartphone",
+      "Transportation",
+      "Small inventory budget",
+      "Storage space",
+      "Online selling account(s)",
+    ],
+    pricingApproach:
+      "Maximum buy price = expected sale − fees/expenses − desired profit. Use sold comps. Examples only — not income guarantees.",
+    earningsExample:
+      "Example only: a $35 buy that sells for $100 after ~$25 fees/expenses can leave about $40 profit — results vary; not a guarantee.",
+    firstCustomerTips:
+      "Start by listing researched finds on eBay, Facebook Marketplace, or Etsy. Optional challenge: shop five items from your own house first.",
+    sampleOffer:
+      "“Vintage [item] — researched comps, clear photos, honest condition — ships or local pickup.”",
+    howToStartToday: [
+      "Pick 1–3 categories to learn",
+      "Set a $50–$150 test budget",
+      "Find one estate sale and build a BOLO list from preview photos",
+    ],
+    launchSteps: [
+      { title: "Choose categories", body: "Pick 1–3 categories to research deeply." },
+      { title: "Set a budget", body: "Start with $50–$150 inventory cash." },
+      { title: "Find sales", body: "Estate sale sites, Facebook, thrift, auctions." },
+      { title: "Research then buy", body: "Sold comps + max buy price before you pay." },
+      { title: "List and track profit", body: "Photograph, list, and log net after fees." },
+    ],
+    tips: [
+      "Old ≠ valuable — sold comps decide",
+      "Do not confuse listed for with sold for",
+      "Don’t over-restore antiques",
+    ],
+    adultSupervisionRequired: false,
+    relatedGuideIds: ["fb-marketplace-helper", "etsy-store"],
   },
   {
     id: "personal-shopper",
     name: "Personal Shopper",
-    description: "Pick up groceries or specific items with a written list and receipt photo for busy clients.",
-    fullDescription: "Pick up groceries or specific items with a written list and receipt photo for busy clients.",
-    audiences: ["junior","adult","senior"],
-    category: "",
+    description:
+      "Shop for groceries, household supplies, gifts, or other requested items using a client's written list, communicate about substitutions, provide receipt photos, and deliver the purchases.",
+    fullDescription:
+      "Their List. Your Shopping Trip. One Less Errand for Them. Follow the written list carefully, confirm substitutions, stay within budget, photograph receipts, and deliver — service fee only (merchandise is separate).",
+    audiences: ["adult", "senior"],
+    category: "Errands / Personal Services",
     minTier: "free",
     freeWizardEligible: true,
-    startupCost: "$0",
+    startupCost: "Very Low",
     zeroStart: true,
     locationMode: "local",
     difficulty: "Easy",
@@ -3666,23 +3974,62 @@ export const SIDE_HUSTLES: SideHustleRecord[] = [
     type: "Active / Local",
     gradient: "emerald",
     iconName: "handyman",
-    details: ["Start with people you know","Keep jobs small","Write a clear flat price"],
-    libraryTags: ["zero-start","no-experience","weekend","fastest-dollar"],
-    matchTags: ["local","helping","vehicle","people"],
-    whatYouDo: ["Deliver the core service or digital product described","Price a simple starter offer","Find first customers through people you already know"],
-    whoItsGoodFor: "People who match the skills and schedule notes below",
-    skillsNeeded: ["Reliability","Clear communication"],
-    toolsNeeded: ["Phone or computer","Basic supplies for the job"],
-    pricingApproach: "Start with a simple flat rate or hourly rate; raise prices after 3–5 happy customers. Examples only — not income guarantees.",
-    earningsExample: "Example only: 4 jobs/week at a starter rate can be a few hundred dollars per month before expenses — results vary; not a guarantee.",
-    firstCustomerTips: "Ask family, neighbors your parents/guardians know, church/community boards, or local Facebook groups. Lead with one clear offer.",
-    sampleOffer: "“I’ll complete [specific task] for [flat price] this week — satisfaction guaranteed or we make it right.”",
-    howToStartToday: ["Write a one-sentence offer","List tools you already have","Message 3 trusted people today"],
-    launchSteps: [{"title":"Define the offer","body":"One clear service, price, and turnaround."},{"title":"Prep your kit","body":"Gather tools, templates, or samples."},{"title":"Reach out","body":"Contact 5 warm leads with your sample offer."},{"title":"Deliver & ask for a review","body":"Do great work; request a short testimonial."},{"title":"Repeat weekly","body":"Batch outreach so you don’t wait for luck."}],
-    tips: ["Keep promises small and finishable","Track every dollar in a simple log"],
-    safetyNotes: "Use prepaid lists or parent payment methods for teens.",
+    details: [
+      "The list is the job",
+      "Service fee separate from merchandise",
+      "Recurring weekly/biweekly clients",
+    ],
+    libraryTags: ["zero-start", "no-experience", "weekend", "fastest-dollar", "after-work"],
+    matchTags: ["local", "helping", "vehicle", "people"],
+    whatYouDo: [
+      "Shop from a client's written list with clear substitution rules",
+      "Photograph receipts and deliver purchases",
+      "Offer recurring weekly or biweekly shopping",
+    ],
+    whoItsGoodFor:
+      "Adults and seniors/retirees with reliable transportation who are dependable, detail-oriented communicators",
+    skillsNeeded: [
+      "Dependability",
+      "Good communication",
+      "Attention to detail",
+      "Ability to follow a shopping list",
+      "Comfortable handling receipts/payments",
+    ],
+    toolsNeeded: [
+      "Smartphone",
+      "Reliable transportation",
+      "Reusable and insulated shopping bags",
+      "Google Maps",
+      "Store apps",
+    ],
+    pricingApproach:
+      "Quick Errand $10–20, Standard Shop $20–35, Larger Shop $30–50+ plus add-ons. Entry-level jobs often fall in the $10–$40 range; larger/custom jobs cost more. Merchandise is separate. Examples only — not income guarantees.",
+    earningsExample:
+      "Example only: 5 jobs/week at $25 average service revenue − $25 expenses ≈ $100/week (~$433/month) — results vary; not a guarantee. Do not count grocery reimbursement as income.",
+    firstCustomerTips:
+      "Start with friends, neighbors, seniors, busy families, vacation rental hosts, and small offices. Pitch one less errand — their list, your shopping trip.",
+    sampleOffer:
+      "“I’ll shop your written grocery list at [store], text on substitutions, send a receipt photo, and deliver for a $25 service fee — you cover merchandise separately.”",
+    howToStartToday: [
+      "Set Quick / Standard / Larger fees and your service area",
+      "Prepare reusable bags + a receipt envelope",
+      "Offer one paid shop to someone you know with a written list",
+    ],
+    launchSteps: [
+      { title: "Define services + area", body: "What you’ll shop and where you’ll travel." },
+      { title: "Post simple fees", body: "Quick, Standard, Larger + add-ons." },
+      { title: "Require a written list", body: "Confirm brands, substitutions, budget, and payment." },
+      { title: "Shop, text, deliver", body: "Never guess expensive substitutions; photo the receipt." },
+      { title: "Invite recurring clients", body: "Weekly/biweekly shopping builds predictable income." },
+    ],
+    tips: [
+      "The list is the job",
+      "Do not use your own money without clear reimbursement terms",
+      "Merchandise reimbursement is not shopper income",
+    ],
+    safetyNotes: "Use prepaid lists or clear reimbursement terms. Do not purchase age-restricted or prohibited items unless legally permitted.",
     adultSupervisionRequired: true,
-    relatedGuideIds: ["handyman","neighborhood-errands"],
+    relatedGuideIds: ["handyman", "neighborhood-errands"],
   },
   {
     id: "airbnb-turnover-checker",
@@ -3722,37 +4069,76 @@ export const SIDE_HUSTLES: SideHustleRecord[] = [
   {
     id: "youth-sports-helper",
     name: "Youth Sports Practice Helper",
-    description: "Help coaches with cones, water, and kid check-ins at practices — not coaching credentials required.",
-    fullDescription: "Help coaches with cones, water, and kid check-ins at practices — not coaching credentials required.",
-    audiences: ["junior","adult","senior"],
-    category: "",
+    description:
+      "Help youth coaches keep practices organized by setting up cones and equipment, checking players in, organizing water breaks, retrieving balls, resetting drills, and cleaning up.",
+    fullDescription:
+      "You Don't Coach the Team. You Help Practice Run Smoothly. Practice support only — setup, check-in, equipment, water breaks, and cleanup — while the coach coaches.",
+    audiences: ["junior", "adult", "senior"],
+    category: "Sports / Youth Services",
     minTier: "free",
     freeWizardEligible: true,
-    startupCost: "$0",
+    startupCost: "Very Low",
     zeroStart: true,
     locationMode: "local",
     difficulty: "Easy",
     timeReq: "2 - 8 hrs/week",
-    potentialIncome: "$10 – $40 / job (examples)",
+    potentialIncome: "$20 – $50 / practice (examples)",
     type: "Active / Local",
     gradient: "emerald",
     iconName: "handyman",
-    details: ["Start with people you know","Keep jobs small","Write a clear flat price"],
-    libraryTags: ["zero-start","no-experience","weekend","fastest-dollar"],
-    matchTags: ["outdoors","people","helping","physical"],
-    whatYouDo: ["Deliver the core service or digital product described","Price a simple starter offer","Find first customers through people you already know"],
-    whoItsGoodFor: "People who match the skills and schedule notes below",
-    skillsNeeded: ["Reliability","Clear communication"],
-    toolsNeeded: ["Phone or computer","Basic supplies for the job"],
-    pricingApproach: "Start with a simple flat rate or hourly rate; raise prices after 3–5 happy customers. Examples only — not income guarantees.",
-    earningsExample: "Example only: 4 jobs/week at a starter rate can be a few hundred dollars per month before expenses — results vary; not a guarantee.",
-    firstCustomerTips: "Ask family, neighbors your parents/guardians know, church/community boards, or local Facebook groups. Lead with one clear offer.",
-    sampleOffer: "“I’ll complete [specific task] for [flat price] this week — satisfaction guaranteed or we make it right.”",
-    howToStartToday: ["Write a one-sentence offer","List tools you already have","Message 3 trusted people today"],
-    launchSteps: [{"title":"Define the offer","body":"One clear service, price, and turnaround."},{"title":"Prep your kit","body":"Gather tools, templates, or samples."},{"title":"Reach out","body":"Contact 5 warm leads with your sample offer."},{"title":"Deliver & ask for a review","body":"Do great work; request a short testimonial."},{"title":"Repeat weekly","body":"Batch outreach so you don’t wait for luck."}],
-    tips: ["Keep promises small and finishable","Track every dollar in a simple log"],
+    details: [
+      "Practice helper — not the coach",
+      "After school / evenings / weekends",
+      "Recurring teams for season income",
+    ],
+    libraryTags: ["zero-start", "no-experience", "weekend", "after-work", "fastest-dollar"],
+    matchTags: ["outdoors", "people", "helping", "physical", "kids"],
+    whatYouDo: [
+      "Set up cones/equipment and help with player check-in",
+      "Organize water breaks, retrieve balls, and reset drills",
+      "Clean up and offer recurring practice help",
+    ],
+    whoItsGoodFor:
+      "Teens, adults, and seniors/retirees who are dependable, organized, and comfortable around children",
+    skillsNeeded: [
+      "Dependability and organization",
+      "Comfort around children",
+      "Ability to follow coach instructions",
+      "Ability to stand/walk during practice",
+    ],
+    toolsNeeded: [
+      "Smartphone",
+      "Reliable transportation/ride plan",
+      "Athletic clothing and appropriate shoes",
+      "Google Docs/Sheets and Canva for marketing",
+    ],
+    pricingApproach:
+      "Per practice $20–$35 (60–90 min), longer $30–$50, hourly $15–$25, recurring packages $160–$280+/month. Examples only — not income guarantees.",
+    earningsExample:
+      "Example only: $30 × 3 practices/week − $15 expenses ≈ $75/week (~$325/month) — results vary; not a guarantee.",
+    firstCustomerTips:
+      "Contact coaches, parent-coaches, recreation leagues, sports clubs, camps, and community programs. Lead with helper tasks — not coaching.",
+    sampleOffer:
+      "“I help coaches with practice setup, player check-in, equipment, water breaks, and cleanup so they can focus on coaching — starting at $____ per practice.”",
+    howToStartToday: [
+      "Pick sports/ages you're comfortable around",
+      "Set a starter per-practice rate",
+      "Draft a 2–3 channel marketing plan in Google Docs",
+    ],
+    launchSteps: [
+      { title: "Choose your helper services", body: "Setup, check-in, equipment, water, cleanup — not coaching." },
+      { title: "Set your price", body: "Per practice, hourly, or recurring team package." },
+      { title: "Market to coaches", body: "2–3 channels: warm contacts, flyers, rec leagues." },
+      { title: "Support practice", body: "Arrive early; follow the coach's system." },
+      { title: "Get rebooked", body: "Ask for the next practice and a season slot." },
+    ],
+    tips: [
+      "You help — the coach coaches",
+      "Recurring teams beat one-off practices",
+      "Follow each organization's screening rules",
+    ],
     adultSupervisionRequired: true,
-    relatedGuideIds: ["handyman","neighborhood-errands"],
+    relatedGuideIds: ["birthday-party-helper", "kids-party-game-host", "neighborhood-helper"],
   },
   {
     id: "birthday-party-helper",
@@ -3792,35 +4178,75 @@ export const SIDE_HUSTLES: SideHustleRecord[] = [
   {
     id: "kids-party-game-host",
     name: "Kids Party Game Host",
-    description: "Lead simple party games and activities with a short prepared plan and supplies list.",
-    fullDescription: "Lead simple party games and activities with a short prepared plan and supplies list.",
-    audiences: ["junior","adult"],
-    category: "",
+    description:
+      "Get paid to lead fun, age-appropriate games and activities at children's birthday parties, family celebrations, reunions, and community events.",
+    fullDescription:
+      "You Bring the Fun. Parents Enjoy the Party. Lead age-appropriate games at birthday parties and family events with a reusable Party Game Kit — entertainment/game hosting, not childcare. A parent or responsible adult stays in charge of supervision.",
+    audiences: ["junior", "adult"],
+    category: "Events / Kids Services",
     minTier: "free",
     freeWizardEligible: true,
-    startupCost: "$0",
+    startupCost: "Low",
     zeroStart: true,
     locationMode: "local",
     difficulty: "Easy",
-    timeReq: "2 - 8 hrs/week",
-    potentialIncome: "$10 – $40 / job (examples)",
+    timeReq: "Weekends / Flexible",
+    potentialIncome: "$40 – $150 / party (examples)",
     type: "Active / Local",
     gradient: "emerald",
     iconName: "handyman",
-    details: ["Start with people you know","Keep jobs small","Write a clear flat price"],
-    libraryTags: ["zero-start","no-experience","weekend","fastest-dollar"],
-    matchTags: ["people","creative","helping","indoor"],
-    whatYouDo: ["Deliver the core service or digital product described","Price a simple starter offer","Find first customers through people you already know"],
-    whoItsGoodFor: "People who match the skills and schedule notes below",
-    skillsNeeded: ["Reliability","Clear communication"],
-    toolsNeeded: ["Phone or computer","Basic supplies for the job"],
-    pricingApproach: "Start with a simple flat rate or hourly rate; raise prices after 3–5 happy customers. Examples only — not income guarantees.",
-    earningsExample: "Example only: 4 jobs/week at a starter rate can be a few hundred dollars per month before expenses — results vary; not a guarantee.",
-    firstCustomerTips: "Ask family, neighbors your parents/guardians know, church/community boards, or local Facebook groups. Lead with one clear offer.",
-    sampleOffer: "“I’ll complete [specific task] for [flat price] this week — satisfaction guaranteed or we make it right.”",
-    howToStartToday: ["Write a one-sentence offer","List tools you already have","Message 3 trusted people today"],
-    launchSteps: [{"title":"Define the offer","body":"One clear service, price, and turnaround."},{"title":"Prep your kit","body":"Gather tools, templates, or samples."},{"title":"Reach out","body":"Contact 5 warm leads with your sample offer."},{"title":"Deliver & ask for a review","body":"Do great work; request a short testimonial."},{"title":"Repeat weekly","body":"Batch outreach so you don’t wait for luck."}],
-    tips: ["Keep promises small and finishable","Track every dollar in a simple log"],
+    details: [
+      "Beginner-friendly party packages",
+      "Reusable Party Game Kit",
+      "Entertainment hosting — not childcare",
+    ],
+    libraryTags: ["zero-start", "no-experience", "weekend", "fastest-dollar"],
+    matchTags: ["people", "creative", "helping", "indoor", "outdoors", "kids"],
+    whatYouDo: [
+      "Host age-appropriate party games with a timed schedule",
+      "Offer Mini / Classic / Party Plus packages",
+      "Bring a reusable kit and keep the fun moving",
+    ],
+    whoItsGoodFor: "Teens and adults who are friendly, energetic, and comfortable leading kids’ games",
+    skillsNeeded: [
+      "Friendly, energetic personality",
+      "Comfortable working with children",
+      "Ability to explain simple rules",
+      "Patience and dependability",
+      "Basic organization",
+    ],
+    toolsNeeded: [
+      "Smartphone",
+      "Transportation or reliable ride",
+      "Reusable Party Game Kit",
+      "Canva for flyers",
+      "Kid-friendly music playlist",
+    ],
+    pricingApproach:
+      "Quote Time + Supplies + Travel + Special Requests + Desired Profit. Start with Mini $40–60, Classic $60–100, Party Plus $90–150. Do not underprice large groups. Examples only — not income guarantees.",
+    earningsExample:
+      "Example only: 2 Classic parties at $85 with $30 expenses ≈ $140 net — results vary; not a guarantee.",
+    firstCustomerTips:
+      "Offer a practice party for family/friends first, then share your flyer with warm parent contacts, school/community boards (with approval), and parent-approved local groups.",
+    sampleOffer:
+      "“I’ll host 60 minutes of age-fit party games (5–6 activities) for $75 — parent stays on site; I bring the kit and keep the fun moving.”",
+    howToStartToday: [
+      "List 15–20 easy games you can lead",
+      "Pack a small reusable kit from supplies you already have",
+      "Draft Mini / Classic packages and a Canva flyer",
+    ],
+    launchSteps: [
+      { title: "Pick ages you can host", body: "Choose the age bands you’re comfortable leading." },
+      { title: "Build your game list + kit", body: "15–20 easy games and a reusable tote of basics." },
+      { title: "Price 2–3 packages", body: "Mini, Classic, and optionally Party Plus." },
+      { title: "Book & intake", body: "Ask age, headcount, space, theme, and length before you confirm." },
+      { title: "Host & follow up", body: "Arrive early, keep games moving, collect payment, ask for a review." },
+    ],
+    tips: [
+      "Always have 2 backup games",
+      "This is entertainment hosting — not childcare",
+      "Teen hosts: parent helps with safety, transport, payment, and client contact",
+    ],
     adultSupervisionRequired: true,
     relatedGuideIds: ["birthday-party-helper"],
   },
@@ -3863,9 +4289,9 @@ export const SIDE_HUSTLES: SideHustleRecord[] = [
     id: "leaf-raking",
     name: "Leaf Blowing Service",
     description:
-      "Clear driveways, walks, and lawns with a leaf-blowing package neighbors can book by the job. Qualifies for entry for a Free Mini Hand Held Blower — optional purchase available if you want a blower sooner.",
+      "Clear driveways, walks, and lawns with a leaf-blowing package neighbors can book by the job. Side-Hustlers who pick this Side-Hustle are eligible for entry in a drawing to win a Free Mini Hand-Held Blower. Conditions apply — inquire via the Contact Form.",
     fullDescription:
-      "Clear driveways, walks, and lawns with a focused Leaf Blowing Service — bag or curb leaves per neighborhood rules. This side hustle qualifies for entry for a Free Mini Hand Held Blower. You can also optionally purchase a Mini Hand Held Blower to start sooner. Pairs well with Yard & Garden Helper for bigger properties.",
+      "Clear driveways, walks, and lawns with a focused Leaf Blowing Service — bag or curb leaves per neighborhood rules. The Side-Hustler that picks this Side-Hustle is eligible for entry in a drawing to win a Free Mini Hand-Held Blower. Conditions apply. Inquire about details via the Contact Form. Pairs well with Yard & Garden Helper for bigger properties.",
     audiences: ["kids","junior","adult","senior"],
     category: "Local / Outdoor",
     minTier: "free",
@@ -3880,23 +4306,23 @@ export const SIDE_HUSTLES: SideHustleRecord[] = [
     gradient: "emerald",
     iconName: "handyman",
     details: [
-      "HIGHLIGHT: Qualifies for entry for a Free Mini Hand Held Blower",
-      "Optional: purchase a Mini Hand Held Blower if you want gear before the drawing",
+      "HIGHLIGHT: Eligible for a Free Mini Hand-Held Blower drawing (conditions apply)",
+      "Inquire about drawing details via the Contact Form",
       "Start with people you know; keep jobs small; write a clear flat price",
     ],
     libraryTags: ["zero-start","no-experience","weekend","fastest-dollar"],
     matchTags: ["outdoors","physical","local","helping"],
     whatYouDo: [
       "Offer driveway / walkway / lawn leaf-blowing packages with bagging options",
-      "Use a rake or Mini Hand Held Blower (free-entry qualified; purchase optional)",
+      "Use a rake or Mini Hand-Held Blower (drawing eligibility — conditions apply)",
       "Leave curb and sidewalks clean per city yard-waste rules",
     ],
     whoItsGoodFor:
-      "Neighbors who want curb-ready leaf cleanup — and hustlers who want Free Mini Hand Held Blower entry (optional purchase available)",
+      "Neighbors who want curb-ready leaf cleanup — and Side-Hustlers eligible for a Free Mini Hand-Held Blower drawing (conditions apply; inquire via Contact Form)",
     skillsNeeded: ["Reliability","Clear communication","Safe outdoor work"],
     toolsNeeded: [
       "Work gloves and yard bags",
-      "Rake and/or Mini Hand Held Blower (optional purchase; this hustle qualifies for free blower entry)",
+      "Rake and/or Mini Hand-Held Blower (optional purchase; drawing eligibility separate — inquire via Contact Form)",
     ],
     pricingApproach:
       "Flat price by area size (driveway, front lawn, full lot). Add-on for bagging to curb. Examples only — not income guarantees.",
@@ -3908,7 +4334,7 @@ export const SIDE_HUSTLES: SideHustleRecord[] = [
       "I'll blow and bag leaves on your driveway and front walk this weekend for [flat price] — curb-ready when I'm done.",
     howToStartToday: [
       "Write your leaf-blowing menu (driveway / front lawn / full lot)",
-      "Note Free Mini Hand Held Blower entry qualification — and whether you'll optionally buy one now",
+      "Note Free Mini Hand-Held Blower drawing eligibility — inquire via Contact Form for conditions",
       "Message 3 trusted neighbors with your flat price",
     ],
     launchSteps: [
@@ -3918,7 +4344,7 @@ export const SIDE_HUSTLES: SideHustleRecord[] = [
       },
       {
         title: "Prep your kit",
-        body: "Gloves, bags, rake. Optional: purchase a Mini Hand Held Blower — this hustle also qualifies for Free Mini Hand Held Blower entry.",
+        body: "Gloves, bags, rake. Optional Mini Hand-Held Blower purchase. Drawing eligibility: Side-Hustlers who pick this Side-Hustle may enter to win a Free Mini Hand-Held Blower — conditions apply; inquire via Contact Form.",
       },
       {
         title: "Reach out",
@@ -3934,16 +4360,15 @@ export const SIDE_HUSTLES: SideHustleRecord[] = [
       },
     ],
     tips: [
-      "Highlight Free Mini Hand Held Blower entry on your flyer — it’s a real perk of this hustle",
-      "Optional blower purchase is fine; free entry still applies",
+      "Highlight Free Mini Hand-Held Blower drawing eligibility on your flyer — conditions apply; inquire via Contact Form",
       "Wear eye/ear protection when using a blower",
       "Never leave piles on storm drains",
     ],
     adultSupervisionRequired: true,
     relatedGuideIds: ["yard-help"],
-    fit: "Outdoor helpers who want a simple seasonal hustle with Free Mini Hand Held Blower entry",
+    fit: "Outdoor helpers who want a simple seasonal hustle with Free Mini Hand-Held Blower drawing eligibility",
     schedule: "Weekends and after-school / after-work in leaf season",
-    startup: "Low — rake + bags; optional Mini Hand Held Blower purchase",
+    startup: "Low — rake + bags; optional Mini Hand-Held Blower purchase",
   },
   {
     id: "mailbox-cleaning",
@@ -4263,13 +4688,15 @@ export const SIDE_HUSTLES: SideHustleRecord[] = [
   {
     id: "mothers-helper",
     name: "Babysitter's Helper / Mother's Helper",
-    description: "Help a parent at home with toys, snacks, and play — always with the parent present (not solo babysitting).",
-    fullDescription: "Help a parent at home with toys, snacks, and play — always with the parent present (not solo babysitting).",
-    audiences: ["kids","junior"],
-    category: "",
+    description:
+      "Help a parent or guardian while THEY ARE STILL HOME (parent present) — play, toys, reading, crafts, or kid-related cleanup. An extra set of hands. This is NOT solo babysitting.",
+    fullDescription:
+      "Help a parent or guardian while THEY ARE STILL HOME by playing with children, organizing toys, preparing simple parent-approved snacks, reading, doing crafts, or helping with kid-related cleanup. Tagline: An Extra Set of Hands for Busy Parents. Parent/responsible adult remains present — you are NOT taking over full childcare. Distinct from Babysitting Service (#002).",
+    audiences: ["kids", "junior"],
+    category: "Kids / Family Services",
     minTier: "free",
     freeWizardEligible: true,
-    startupCost: "$0",
+    startupCost: "$0–Very Low",
     zeroStart: true,
     locationMode: "local",
     difficulty: "Easy",
@@ -4278,49 +4705,90 @@ export const SIDE_HUSTLES: SideHustleRecord[] = [
     type: "Active / Local",
     gradient: "emerald",
     iconName: "handyman",
-    details: ["Start with people you know","Keep jobs small","Write a clear flat price"],
-    libraryTags: ["zero-start","no-experience","weekend","fastest-dollar"],
-    matchTags: ["people","helping","indoor"],
-    whatYouDo: ["Deliver the core service or digital product described","Price a simple starter offer","Find first customers through people you already know"],
-    whoItsGoodFor: "People who match the skills and schedule notes below",
-    skillsNeeded: ["Reliability","Clear communication"],
-    toolsNeeded: ["Phone or computer","Basic supplies for the job"],
-    pricingApproach: "Start with a simple flat rate or hourly rate; raise prices after 3–5 happy customers. Examples only — not income guarantees.",
-    earningsExample: "Example only: 4 jobs/week at a starter rate can be a few hundred dollars per month before expenses — results vary; not a guarantee.",
-    firstCustomerTips: "Ask family, neighbors your parents/guardians know, church/community boards, or local Facebook groups. Lead with one clear offer.",
-    sampleOffer: "“I’ll complete [specific task] for [flat price] this week — satisfaction guaranteed or we make it right.”",
+    details: [
+      "Parent stays home",
+      "Trusted family / parent-approved contacts",
+      "Agree on job + time + tasks + price first",
+    ],
+    libraryTags: ["zero-start", "no-experience", "weekend", "fastest-dollar"],
+    matchTags: ["people", "helping", "indoor"],
+    whatYouDo: [
+      "Play, read, crafts, toys, and parent-approved kid help while a parent stays home",
+      "Price a simple starter helper session",
+      "Market only through trusted, parent-approved channels",
+    ],
+    whoItsGoodFor: "Juniors and teens with parent/guardian approval who like helping with kids",
+    skillsNeeded: ["Patience with children", "Follow directions", "Reliability"],
+    toolsNeeded: ["Parent/guardian support", "Calendar", "Notes", "Simple job tracker"],
+    pricingApproach:
+      "Starter examples: Quick Help $10–$15/job, Standard $15–$25/job, Longer $25–$40/job. Displayed range $10–$40/job (examples). Always agree on job + time + tasks + price BEFORE starting.",
+    earningsExample:
+      "Example only: 3 parent-present jobs × $20 = $60 weekly revenue; after $5 expenses ≈ $55 weekly profit (~$18.33/hr for 3 hours) — results vary; not a guarantee.",
+    firstCustomerTips:
+      "Start with family, family friends, trusted neighbors, and parent-approved community contacts. A parent/guardian should help with marketing and new contacts. Do not publicly post home address, school, daily schedule, or a private phone number without parent approval.",
+    sampleOffer:
+      "“Mother's Helper available while you are home — play, reading, crafts, toys, and kid-related cleanup. Parent/responsible adult must remain present. Starting at $__.”",
     howToStartToday: [
-      "Make a list of potential Helper Tasks (before any offer)",
-      "Price those jobs on a mini menu",
-      "Decide how you will advertise (warm texts + simple flyer)",
-      "Deliver the first small job with a parent present",
+      "Decide how you can help (parent-present tasks only)",
+      "Set a simple starter price",
+      "Pick 2–3 trusted marketing channels with a parent",
+      "Complete one 60–90 minute parent-present helper session",
     ],
     launchSteps: [
       {
-        title: "Make a list of potential Helper Tasks",
-        body: "Before you start an offer, list 8–12 small with-parent helper tasks you can actually do.",
+        title: "Decide How You Can Help",
+        body: "Choose parent-present tasks you are comfortable doing — play, reading, crafts, toys, snacks with approval. Do not advertise solo babysitting through this guide.",
       },
       {
-        title: "Price those helper jobs",
-        body: "Put a flat price next to 3–5 tasks on your list (examples only).",
+        title: "Set Your Starter Price",
+        body: "Pick a simple session or per-job price in the $10–$40/job example range and decide what tasks are included.",
       },
       {
-        title: "Decide how you will advertise",
-        body: "Pick warm texts plus one simple flyer or parent-posted neighborhood note.",
+        title: "Choose Your Marketing Channels",
+        body: "Pick only 2–3 trusted, parent-approved channels this month — family, friends, neighbors, parent-approved groups or flyer.",
       },
       {
-        title: "Deliver the first small job",
-        body: "Confirm tasks, price, and parent-stays-home — then finish one short session well.",
+        title: "Make Your Marketing Materials",
+        body: "Create a simple parent-approved flyer/message that says the parent stays present.",
       },
       {
-        title: "Ask for a short review and a next booking",
-        body: "Get a 1–2 sentence note and offer a standing weekly helper hour.",
+        title: "Carry Out Your Marketing Plan",
+        body: "Tell 8–12 trusted contacts, follow up, and involve a parent/guardian in new-client safety decisions.",
+      },
+      {
+        title: "Talk to the Parent Before the Job",
+        body: "Confirm children, tasks, allergies, rules, times, price, and that the parent will remain present.",
+      },
+      {
+        title: "Make a Simple Activity Plan",
+        body: "Choose 2–4 age-appropriate activities and get parent approval.",
+      },
+      {
+        title: "Arrive Ready to Help",
+        body: "Confirm end time, tasks, rules, supplies, snacks, and where the parent will be.",
+      },
+      {
+        title: "Be a Great Helper",
+        body: "Follow instructions, stay engaged, ask before food, and get the parent when adult help is needed.",
+      },
+      {
+        title: "Finish the Job Well",
+        body: "Clean up, report what you did, confirm hours, and receive agreed payment.",
+      },
+      {
+        title: "Get Rebooked",
+        body: "Ask for a next visit and a referral from happy trusted families.",
       },
     ],
-    tips: ["Keep promises small and finishable", "Track every dollar in a simple log", "Parent must stay home — helper work, not solo babysitting"],
-    safetyNotes: "Parent must remain home. This is helper work, not unsupervised childcare.",
+    tips: [
+      "Don't try to be the parent — be an extra set of hands",
+      "Parent/responsible adult remains present",
+      "Track repeat families — rebooking beats constant new outreach",
+    ],
+    safetyNotes:
+      "Parent/responsible adult must remain present. This is helper work, not unsupervised childcare or solo babysitting (see Guide #002). Parent/guardian involvement for marketing, transportation, and safety.",
     adultSupervisionRequired: true,
-    relatedGuideIds: ["kids-kindness-share"],
+    relatedGuideIds: ["kids-kindness-share", "babysitting"],
   },
   {
     id: "homework-organizer",
@@ -4682,6 +5150,7 @@ export const SENIOR_AUDIENCE_HUSTLE_IDS = [
   "porch-package-helper",
   "estate-sale-listing-helper",
   "personal-shopper",
+  "youth-sports-helper",
   "closet-organizer",
   // Knowledge / admin / gentle digital
   "proofreader",
@@ -4695,6 +5164,7 @@ export const SENIOR_AUDIENCE_HUSTLE_IDS = [
   "group-setup-helper",
   "website-tester",
   "digital-photo-organizer",
+  "local-content-photographer",
   "digital-organizer",
   "family-history-organizer",
   "digital-cookbook-creator",
@@ -4702,6 +5172,8 @@ export const SENIOR_AUDIENCE_HUSTLE_IDS = [
   "canva-flyer-creator",
   "virtual-assistant",
   "virtual-receptionist",
+  "lead-followup-assistant",
+  "appointment-setter",
   "google-business-helper",
   "review-response-assistant",
 ] as const;
@@ -4744,7 +5216,6 @@ export const JUNIOR_AUDIENCE_HUSTLE_IDS = [
   "birthday-party-helper",
   "kids-party-game-host",
   "youth-sports-helper",
-  "personal-shopper",
   "crafts",
   // School / creative / light digital
   "tutoring",
@@ -4775,6 +5246,7 @@ export const JUNIOR_AUDIENCE_HUSTLE_IDS = [
   "review-response-assistant",
   "google-business-helper",
   "proofreader",
+  "appointment-setter",
 ] as const;
 
 /** Apply curated senior + teen audiences (no blanket Adult mirroring). */
@@ -4805,6 +5277,22 @@ export function hustleCardPeek(h: SideHustleRecord): string {
   const desc = (h.description ?? "").trim();
   if (desc) return desc.length > 140 ? `${desc.slice(0, 137).trimEnd()}…` : desc;
   return (h.fit ?? "").trim() || h.name;
+}
+
+/**
+ * Full side-hustle description for guide title areas (detail header, locked gate).
+ * Prefers catalog `description`; falls back to peek / kids summary.
+ */
+export function guideSideHustleDescription(guideId: string): string {
+  const id = String(guideId || "").trim();
+  if (!id) return "";
+  const hustle = hustleById(id);
+  if (hustle) {
+    const desc = (hustle.description ?? "").trim();
+    if (desc) return desc;
+    return hustleCardPeek(hustle);
+  }
+  return "";
 }
 
 /** Free Wizard hustles for the Guides Free library (all demographics). */
@@ -4883,8 +5371,12 @@ export function catalogToLaunchGuideData(h: SideHustleRecord): {
     const cfg = SERVICE_CLIENT_SCOUT[h.id] ?? defaultScoutConfigForCatalog(h);
     if (cfg) rawSteps = [...clientScoutSteps(cfg), ...rawSteps];
   }
-  const steps = ensureGuideFoundationSteps(
-    rawSteps.map((s) => ({ title: s.title, desc: s.desc })),
+  const steps = finalizeGuidePlaybookSteps(
+    h.id,
+    ensureGuideFoundationSteps(
+      rawSteps.map((s) => ({ title: s.title, desc: s.desc })),
+      { audiences: h.audiences },
+    ),
     { audiences: h.audiences },
   );
   return {
@@ -4892,7 +5384,11 @@ export function catalogToLaunchGuideData(h: SideHustleRecord): {
     name: h.name,
     timeframe: h.timeReq,
     estEarnings: h.potentialIncome,
-    bestFor: h.whoItsGoodFor || h.description,
+    bestFor: (() => {
+      const who = (h.whoItsGoodFor || "").trim();
+      if (who && who !== GENERIC_WHO_ITS_FOR) return who;
+      return (h.description || "").trim() || who;
+    })(),
     steps,
     proTip: (h.tips && h.tips[0]) || "Keep promises small and finishable.",
     pitfall:
@@ -5036,6 +5532,7 @@ export function toHustleCard(h: SideHustleRecord) {
     category: h.category,
     iconName: h.iconName,
     details: h.details,
+    minTier: h.minTier,
   };
 }
 

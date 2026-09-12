@@ -4,6 +4,7 @@ import { api } from "./api";
 export type ProgressKind =
   | "launch_checklist"
   | "launch_guide_steps"
+  | "launch_guide_step_items"
   | "kids_team"
   | "junior_team"
   | "senior_team"

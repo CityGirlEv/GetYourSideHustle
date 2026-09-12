@@ -5,12 +5,19 @@
  */
 
 import { adminMarkdownLink } from "./admin-deep-links";
-import { currentSprintIndex, DEFAULT_SPRINT_COUNT } from "./gysh-sprints";
+import { currentSprintIndex } from "./gysh-sprints";
 
 /** Marketing calendar covers Sprints 2–10 in Content Factory. */
 export const SOFT_LAUNCH_FACTORY_MIN_SPRINT = 2;
+/**
+ * Last marketing-calendar sprint (Sprint 10).
+ * Keep this numeric literal — do not import DEFAULT_SPRINT_COUNT here.
+ * gysh-sprints → gysh-tasks → this file → gysh-sprints is a cycle; reading
+ * DEFAULT_SPRINT_COUNT at module init throws during Vite HMR reloads.
+ */
+export const SOFT_LAUNCH_FACTORY_MAX_SPRINT = 10;
 export const SOFT_LAUNCH_FACTORY_SPRINTS = Array.from(
-  { length: DEFAULT_SPRINT_COUNT - SOFT_LAUNCH_FACTORY_MIN_SPRINT },
+  { length: SOFT_LAUNCH_FACTORY_MAX_SPRINT - SOFT_LAUNCH_FACTORY_MIN_SPRINT + 1 },
   (_, i) => i + SOFT_LAUNCH_FACTORY_MIN_SPRINT,
 );
 
@@ -21,7 +28,7 @@ export const SOFT_LAUNCH_FACTORY_SPRINTS = Array.from(
 export function softLaunchFactoryDefaultSprint(ref: Date = new Date()): number {
   const cur = currentSprintIndex(ref);
   if (cur < SOFT_LAUNCH_FACTORY_MIN_SPRINT) return SOFT_LAUNCH_FACTORY_MIN_SPRINT;
-  return Math.min(cur, DEFAULT_SPRINT_COUNT - 1);
+  return Math.min(cur, SOFT_LAUNCH_FACTORY_MAX_SPRINT);
 }
 
 /**

@@ -56,7 +56,7 @@ export function getLaunchGuidePeekSections(): GuidePeekSection[] {
       name: g.title,
       peek: sneakPeekText(g.summary),
       section: "kids" as const,
-      nav: { view: "kids" as const, mode: "kids" as const },
+      nav: { view: "guides" as const, hustleId: g.id },
       minTier: kidsGuideMinTier(g.id),
     })),
     (id) => kidsGuideMinTier(id),
@@ -69,7 +69,7 @@ export function getLaunchGuidePeekSections(): GuidePeekSection[] {
       name: g.title,
       peek: sneakPeekText(g.summary),
       section: "junior" as const,
-      nav: { view: "kids" as const, mode: "junior" as const },
+      nav: { view: "guides" as const, hustleId: g.id },
       minTier: kidsGuideMinTier(g.id),
     })),
     (id) => kidsGuideMinTier(id),
@@ -82,7 +82,9 @@ export function getLaunchGuidePeekSections(): GuidePeekSection[] {
       name: g.title,
       peek: sneakPeekText(g.blurb),
       section: "senior" as const,
-      nav: { view: "seniors" as const },
+      nav: g.launchGuideId
+        ? ({ view: "guides" as const, hustleId: g.launchGuideId })
+        : ({ view: "seniors" as const }),
       minTier: seniorGuideMinTier(g.id, g.launchGuideId),
     })),
     (id) => {

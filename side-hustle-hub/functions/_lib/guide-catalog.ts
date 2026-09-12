@@ -4,11 +4,25 @@
  * Reviewed by QA / Dev also hold Active (published: true). Only Evelyn may set Reviewed by Dev.
  * Pending stays hidden (Reviewed + Inactive). Fixed/Re-Review stays hidden for QA re-review (Not Reviewed).
  * Every status / membership / soft-delete write appends to `guide_catalog_change_log`.
+ * Pending requires a note (≥8 chars) that is copied onto the associated GUIDE-REV test as Fail
+ * and onto the guide Notes tab.
  */
 import { error, json, type DbUser, type Env, userRoles } from "./auth";
+import { canAccessTestingPortal } from "./roles";
 import { canSetGuideReviewedByDev } from "./roles";
 import type { GuideChangeLogAction, GuideChangeLogEntry } from "../../src/lib/guide-change-log";
 import { isGuideChangeLogAction } from "../../src/lib/guide-change-log";
+import { sanitizeGuideCatalogPatch } from "../../src/lib/guide-catalog-state";
+import { mergeNoteEntries } from "./note-entries";
+import {
+  guideLibraryPendingFailNote,
+  guideReviewCaseIdsForGuide,
+} from "./guide-review-link";
+import { insertPendingStatusGuideNote } from "./guide-notes";
+import {
+  normalizeSyncedGuideAssignee,
+  syncGuideAssigneeToLinkedTests,
+} from "./guide-assignee-sync";
 
 type GuideVisibilityStatus =
   | "active"
@@ -17,6 +31,16 @@ type GuideVisibilityStatus =
   | "reviewed_by_qa"
   | "reviewed_by_dev"
   | "inactive";
+
+const GUIDE_STATUS_NOTE_MIN_LENGTH = 8;
+
+function guideStatusRequiresNote(status: GuideVisibilityStatus): boolean {
+  return status === "pending";
+}
+
+function guideStatusNoteMeetsRequirement(note: string | null | undefined): boolean {
+  return String(note ?? "").trim().length >= GUIDE_STATUS_NOTE_MIN_LENGTH;
+}
 
 type GuideRow = {
   guide_id: string;
@@ -34,8 +58,8 @@ export type GuideCatalogPublicState = {
   status: GuideVisibilityStatus;
   deleted: boolean;
   custom: boolean;
-  /** Field overrides (e.g. Admin-set membership floor). */
-  patch?: { minTier?: string; name?: string; description?: string; peek?: string };
+  /** Field overrides (name, kit body, membership floor, etc.). */
+  patch?: Record<string, unknown>;
   updatedAt?: string;
   updatedBy?: string;
 };
@@ -66,12 +90,34 @@ function parsePatchJson(raw: string | null | undefined): Record<string, unknown>
 
 function publicPatchFromJson(raw: string | null | undefined): GuideCatalogPublicState["patch"] {
   const parsed = parsePatchJson(raw);
-  const out: NonNullable<GuideCatalogPublicState["patch"]> = {};
+  const out: Record<string, unknown> = {};
   const minTier = normalizeMinTier(parsed.minTier);
   if (minTier) out.minTier = minTier;
   if (typeof parsed.name === "string" && parsed.name.trim()) out.name = parsed.name.trim();
   if (typeof parsed.description === "string") out.description = String(parsed.description);
   if (typeof parsed.peek === "string") out.peek = String(parsed.peek);
+  if (typeof parsed.category === "string" && parsed.category.trim()) {
+    out.category = String(parsed.category).trim();
+  }
+  if (Array.isArray(parsed.audiences)) out.audiences = parsed.audiences;
+  if (Array.isArray(parsed.membershipTiers)) out.membershipTiers = parsed.membershipTiers;
+  if (Array.isArray(parsed.prerequisites)) out.prerequisites = parsed.prerequisites;
+  if (Array.isArray(parsed.tools)) out.tools = parsed.tools;
+  if (Array.isArray(parsed.steps)) out.steps = parsed.steps;
+  if (parsed.supplies && typeof parsed.supplies === "object" && !Array.isArray(parsed.supplies)) {
+    out.supplies = parsed.supplies;
+  }
+  if (
+    parsed.suggestedPricing &&
+    typeof parsed.suggestedPricing === "object" &&
+    !Array.isArray(parsed.suggestedPricing)
+  ) {
+    out.suggestedPricing = parsed.suggestedPricing;
+  }
+  if ("assignee" in parsed) {
+    const assignee = normalizeSyncedGuideAssignee(parsed.assignee);
+    out.assignee = assignee;
+  }
   return Object.keys(out).length ? out : undefined;
 }
 
@@ -110,6 +156,11 @@ function normalizeIncomingStatus(value: unknown): GuideVisibilityStatus | null {
 
 function actorIsAdmin(actor: DbUser): boolean {
   return userRoles(actor).includes("admin");
+}
+
+/** Admin Studio or Testing Portal (QA) may edit guide catalog content / status. */
+function actorCanEditGuideCatalog(actor: DbUser): boolean {
+  return actorIsAdmin(actor) || canAccessTestingPortal(userRoles(actor));
 }
 
 export async function ensureGuideCatalogTable(env: Env): Promise<void> {
@@ -171,6 +222,108 @@ async function appendGuideChangeLog(
     .run();
 }
 
+/**
+ * Copy Pending reason onto the guide Notes tab and the primary GUIDE-REV test as Fail.
+ */
+async function syncPendingNoteToGuideReviewTest(
+  env: Env,
+  guideId: string,
+  reason: string,
+  actor: DbUser,
+  now: string,
+): Promise<void> {
+  await insertPendingStatusGuideNote(env, guideId, reason, actor, now);
+
+  const caseIds = guideReviewCaseIdsForGuide(guideId);
+  const caseId = caseIds[0];
+  if (!caseId) return;
+
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS test_case_status (
+       case_id TEXT PRIMARY KEY,
+       status TEXT NOT NULL DEFAULT 'not_run',
+       note TEXT NOT NULL DEFAULT '',
+       assignee TEXT NOT NULL DEFAULT '',
+       sprint INTEGER,
+       due_date TEXT,
+       checked_steps_json TEXT,
+       failed_step_index INTEGER,
+       assigned_by TEXT,
+       date_assigned TEXT,
+       original_assignee TEXT,
+       updated_at TEXT,
+       updated_by TEXT
+     )`,
+  ).run();
+
+  const by = String(actor.name || actor.email || actor.id || "").trim() || "Admin";
+  const noteBody = guideLibraryPendingFailNote({
+    guideId,
+    updatedBy: by,
+    updatedAt: now,
+    reason,
+  });
+
+  const prev = await env.DB.prepare(
+    `SELECT note, assignee, sprint, due_date, checked_steps_json, failed_step_index,
+            assigned_by, date_assigned, original_assignee
+     FROM test_case_status WHERE case_id = ?`,
+  )
+    .bind(caseId)
+    .first<{
+      note: string;
+      assignee: string | null;
+      sprint: number | string | null;
+      due_date: string | null;
+      checked_steps_json: string | null;
+      failed_step_index: number | null;
+      assigned_by: string | null;
+      date_assigned: string | null;
+      original_assignee: string | null;
+    }>();
+
+  const incomingEntry = JSON.stringify([
+    {
+      id: `n-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+      author: by,
+      createdAt: now,
+      updatedAt: now,
+      text: noteBody,
+    },
+  ]);
+  const merged = mergeNoteEntries(prev?.note ?? "", incomingEntry, by, now);
+  if (!merged.ok) return;
+  const sprintNum = Number(prev?.sprint);
+  const sprint = Number.isFinite(sprintNum) ? sprintNum : 6;
+
+  await env.DB.prepare(
+    `INSERT INTO test_case_status
+       (case_id, status, note, assignee, sprint, due_date, checked_steps_json, failed_step_index,
+        assigned_by, date_assigned, original_assignee, updated_at, updated_by)
+     VALUES (?, 'fail', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(case_id) DO UPDATE SET
+       status = 'fail',
+       note = excluded.note,
+       updated_at = excluded.updated_at,
+       updated_by = excluded.updated_by`,
+  )
+    .bind(
+      caseId,
+      merged.notes,
+      String(prev?.assignee ?? "lyriq").trim() || "lyriq",
+      sprint,
+      prev?.due_date ?? null,
+      prev?.checked_steps_json ?? null,
+      prev?.failed_step_index ?? null,
+      prev?.assigned_by ?? by,
+      prev?.date_assigned ?? null,
+      prev?.original_assignee ?? null,
+      now,
+      by,
+    )
+    .run();
+}
+
 function rowToPublic(row: GuideRow): GuideCatalogPublicState {
   const status = statusFromCode(Number(row.published) || 0);
   return {
@@ -185,8 +338,8 @@ function rowToPublic(row: GuideRow): GuideCatalogPublicState {
 }
 
 /**
- * When Lyriq (or QA) Passes a GUIDE-REV-* Testing Portal case, mark that guide
- * Reviewed by QA / No Changes (also holds Active — live for members).
+ * When QA Passes a GUIDE-REV-* Testing Portal case, mark that guide
+ * Reviewed by QA / No Changes (UI holds Active + Reviewed — not Fixed/Re-Review).
  */
 export async function markGuideReviewedByQa(
   env: Env,
@@ -233,6 +386,52 @@ export async function markGuideReviewedByQa(
   });
 }
 
+/**
+ * When a GUIDE-REV test is Failed, set the linked guide Inactive (hidden).
+ */
+export async function markGuideInactiveFromQaFail(
+  env: Env,
+  guideId: string,
+  updatedBy: string,
+): Promise<void> {
+  const id = String(guideId || "").trim();
+  if (!id) return;
+  await ensureGuideCatalogTable(env);
+  const now = new Date().toISOString();
+  const by = String(updatedBy || "QA").trim() || "QA";
+  const existing = await env.DB.prepare(
+    `SELECT guide_id, published, deleted, custom, patch_json FROM guide_catalog_state WHERE guide_id = ?`,
+  )
+    .bind(id)
+    .first<GuideRow>();
+  const prev = existing ? statusFromCode(Number(existing.published) || 0) : null;
+  if (prev === "inactive") return;
+  const custom = existing ? Number(existing.custom) !== 0 : false;
+  const patchJson = existing?.patch_json || "{}";
+  const nextStatus: GuideVisibilityStatus = "inactive";
+  await env.DB.prepare(
+    `INSERT INTO guide_catalog_state
+      (guide_id, published, deleted, custom, patch_json, updated_at, updated_by)
+     VALUES (?, ?, 0, ?, ?, ?, ?)
+     ON CONFLICT(guide_id) DO UPDATE SET
+       published = excluded.published,
+       deleted = 0,
+       updated_at = excluded.updated_at,
+       updated_by = excluded.updated_by`,
+  )
+    .bind(id, codeFromStatus(nextStatus), custom ? 1 : 0, patchJson, now, by)
+    .run();
+  await appendGuideChangeLog(env, {
+    guideId: id,
+    changedAt: now,
+    changedBy: by,
+    action: "status",
+    fromStatus: prev,
+    toStatus: nextStatus,
+    detail: { reason: "GUIDE-REV test Failed" },
+  });
+}
+
 export async function listGuideCatalogStates(env: Env): Promise<Response> {
   await ensureGuideCatalogTable(env);
   const { results } = await env.DB.prepare(
@@ -259,6 +458,17 @@ export async function upsertGuideCatalogState(
     published?: boolean;
     deleted?: boolean;
     minTier?: unknown;
+    note?: string;
+    patch?: unknown;
+    name?: unknown;
+    description?: unknown;
+    peek?: unknown;
+    prerequisites?: unknown;
+    tools?: unknown;
+    steps?: unknown;
+    supplies?: unknown;
+    suggestedPricing?: unknown;
+    assignee?: unknown;
   };
   try {
     body = await request.json();
@@ -275,16 +485,53 @@ export async function upsertGuideCatalogState(
   const hasDeleted = typeof body.deleted === "boolean";
   const minTier = normalizeMinTier(body.minTier);
   const hasMinTier = minTier !== null;
-  if (!hasStatus && !hasPublished && !hasDeleted && !hasMinTier) {
-    return error("status, published, deleted, or minTier is required.");
+
+  const contentBody: Record<string, unknown> = {};
+  if (body.patch && typeof body.patch === "object" && !Array.isArray(body.patch)) {
+    Object.assign(contentBody, body.patch as Record<string, unknown>);
+  }
+  if ("name" in body) contentBody.name = body.name;
+  if ("description" in body) contentBody.description = body.description;
+  if ("peek" in body) contentBody.peek = body.peek;
+  if ("prerequisites" in body) contentBody.prerequisites = body.prerequisites;
+  if ("tools" in body) contentBody.tools = body.tools;
+  if ("steps" in body) contentBody.steps = body.steps;
+  if ("supplies" in body) contentBody.supplies = body.supplies;
+  if ("suggestedPricing" in body) contentBody.suggestedPricing = body.suggestedPricing;
+  if ("assignee" in body) contentBody.assignee = body.assignee;
+  const hasContent =
+    "name" in contentBody ||
+    "description" in contentBody ||
+    "peek" in contentBody ||
+    "prerequisites" in contentBody ||
+    "tools" in contentBody ||
+    "steps" in contentBody ||
+    "supplies" in contentBody ||
+    "suggestedPricing" in contentBody ||
+    "category" in contentBody ||
+    "audiences" in contentBody ||
+    "membershipTiers" in contentBody ||
+    "minTier" in contentBody ||
+    "assignee" in contentBody;
+
+  if (!hasStatus && !hasPublished && !hasDeleted && !hasMinTier && !hasContent) {
+    return error("status, published, deleted, minTier, or content patch is required.");
   }
 
-  if (!actorIsAdmin(actor)) {
-    return error("Admin access required.", 403);
+  if (!actorCanEditGuideCatalog(actor)) {
+    return error("Admin or QA access required.", 403);
   }
 
   if (normalizedStatus === "reviewed_by_dev" && !canSetGuideReviewedByDev(actor)) {
     return error("Only Evelyn may set Reviewed by Dev.", 403);
+  }
+
+  const note = String(body.note ?? "").trim();
+  if (normalizedStatus && guideStatusRequiresNote(normalizedStatus) && !guideStatusNoteMeetsRequirement(note)) {
+    return error(
+      `A note is required for Pending / Needs Further Review (at least ${GUIDE_STATUS_NOTE_MIN_LENGTH} characters).`,
+      400,
+    );
   }
 
   const result = await writeGuideCatalogStatus(env, {
@@ -293,6 +540,8 @@ export async function upsertGuideCatalogState(
     published: hasPublished ? body.published : undefined,
     deleted: hasDeleted ? body.deleted === true : undefined,
     minTier: hasMinTier ? minTier! : undefined,
+    contentPatch: hasContent ? contentBody : undefined,
+    note: note || undefined,
     actor,
   });
 
@@ -311,6 +560,9 @@ async function writeGuideCatalogStatus(
     published?: boolean;
     deleted?: boolean;
     minTier?: string;
+    /** Merged into patch_json (name, steps, tools, prerequisites, …). */
+    contentPatch?: Record<string, unknown>;
+    note?: string;
     actor: DbUser;
   },
 ): Promise<GuideCatalogPublicState> {
@@ -332,7 +584,7 @@ async function writeGuideCatalogStatus(
   let status = prevStatus;
   let deleted = prevDeleted;
   const custom = existing ? Number(existing.custom) !== 0 : false;
-  const patch = { ...prevPatch };
+  let patch = { ...prevPatch };
 
   if (input.status) {
     status = input.status;
@@ -348,11 +600,16 @@ async function writeGuideCatalogStatus(
   if (input.minTier) {
     patch.minTier = input.minTier;
   }
+  if (input.contentPatch) {
+    const sanitized = sanitizeGuideCatalogPatch({ ...patch, ...input.contentPatch });
+    if (sanitized) patch = { ...patch, ...sanitized };
+  }
 
   const now = new Date().toISOString();
   const by = String(input.actor.name || input.actor.email || input.actor.id || "").trim();
   const publishedCode = codeFromStatus(status);
   const patchJson = JSON.stringify(patch);
+  const note = String(input.note || "").trim();
 
   await env.DB.prepare(
     `INSERT INTO guide_catalog_state
@@ -369,6 +626,7 @@ async function writeGuideCatalogStatus(
     .run();
 
   const nextMinTier = normalizeMinTier(patch.minTier);
+  const statusDetail = note ? { note } : undefined;
   if (!prevDeleted && deleted) {
     await appendGuideChangeLog(env, {
       guideId,
@@ -377,6 +635,7 @@ async function writeGuideCatalogStatus(
       action: "delete",
       fromStatus: prevStatus,
       toStatus: status,
+      detail: statusDetail,
     });
   } else if (prevDeleted && !deleted) {
     await appendGuideChangeLog(env, {
@@ -386,6 +645,7 @@ async function writeGuideCatalogStatus(
       action: "restore",
       fromStatus: prevStatus,
       toStatus: status,
+      detail: statusDetail,
     });
   } else if (prevStatus !== status) {
     await appendGuideChangeLog(env, {
@@ -395,6 +655,7 @@ async function writeGuideCatalogStatus(
       action: "status",
       fromStatus: prevStatus,
       toStatus: status,
+      detail: statusDetail,
     });
   }
   if (input.minTier && nextMinTier && nextMinTier !== prevMinTier) {
@@ -407,6 +668,34 @@ async function writeGuideCatalogStatus(
       toStatus: status,
       detail: { minTier: nextMinTier },
     });
+  }
+  if (input.contentPatch) {
+    const keys = Object.keys(input.contentPatch).filter((k) => k !== "minTier");
+    if (keys.length) {
+      await appendGuideChangeLog(env, {
+        guideId,
+        changedAt: now,
+        changedBy: by,
+        action: "content",
+        fromStatus: prevStatus,
+        toStatus: status,
+        detail: { fields: keys },
+      });
+    }
+  }
+
+  if (status === "pending" && note && prevStatus !== "pending") {
+    await syncPendingNoteToGuideReviewTest(env, guideId, note, input.actor, now);
+  }
+
+  if (input.contentPatch && "assignee" in input.contentPatch) {
+    await syncGuideAssigneeToLinkedTests(
+      env,
+      guideId,
+      normalizeSyncedGuideAssignee(patch.assignee),
+      by,
+      now,
+    );
   }
 
   return {
@@ -427,7 +716,7 @@ export async function bulkUpsertGuideCatalogStates(
   actor: DbUser,
 ): Promise<Response> {
   await ensureGuideCatalogTable(env);
-  let body: { guideIds?: unknown; status?: unknown };
+  let body: { guideIds?: unknown; status?: unknown; note?: string };
   try {
     body = await request.json();
   } catch {
@@ -447,6 +736,14 @@ export async function bulkUpsertGuideCatalogStates(
 
   if (status === "reviewed_by_dev" && !canSetGuideReviewedByDev(actor)) {
     return error("Only Evelyn may set Reviewed by Dev.", 403);
+  }
+
+  const note = String(body.note ?? "").trim();
+  if (guideStatusRequiresNote(status) && !guideStatusNoteMeetsRequirement(note)) {
+    return error(
+      `A note is required for Pending / Needs Further Review (at least ${GUIDE_STATUS_NOTE_MIN_LENGTH} characters).`,
+      400,
+    );
   }
 
   const guideIds = Array.isArray(body.guideIds)
@@ -473,6 +770,8 @@ export async function bulkUpsertGuideCatalogStates(
     existingRows.map((r) => [r.guide_id, statusFromCode(Number(r.published) || 0)] as const),
   );
 
+  const detailJson = note ? JSON.stringify({ note }) : "{}";
+
   const statements = guideIds.map((guideId) =>
     env.DB.prepare(
       `INSERT INTO guide_catalog_state
@@ -498,11 +797,18 @@ export async function bulkUpsertGuideCatalogStates(
       "bulk_status",
       prevById.get(guideId) ?? null,
       status,
-      "{}",
+      detailJson,
     ),
   );
 
   await env.DB.batch([...statements, ...logStatements]);
+
+  if (status === "pending" && note) {
+    for (const guideId of guideIds) {
+      if (prevById.get(guideId) === "pending") continue;
+      await syncPendingNoteToGuideReviewTest(env, guideId, note, actor, now);
+    }
+  }
 
   const states: Record<string, GuideCatalogPublicState> = {};
   for (const guideId of guideIds) {
@@ -557,6 +863,9 @@ export async function listGuideChangeLog(
         detail = {
           minTier: typeof parsed.minTier === "string" ? parsed.minTier : undefined,
           note: typeof parsed.note === "string" ? parsed.note : undefined,
+          fields: Array.isArray(parsed.fields)
+            ? parsed.fields.map((f) => String(f)).filter(Boolean)
+            : undefined,
         };
       }
     } catch {
@@ -589,6 +898,18 @@ export async function handleGuideCatalog(
     return upsertGuideCatalogState(env, request, actor);
   }
   return error("Method not allowed.", 405);
+}
+
+/** Admin / QA: per-guide change history. */
+export async function handleGuideCatalogHistory(
+  env: Env,
+  request: Request,
+  actor?: DbUser | null,
+): Promise<Response> {
+  if (!actor) return error("QA or Admin session required.", 401);
+  const method = request.method.toUpperCase();
+  if (method !== "GET") return error("Method not allowed.", 405);
+  return listGuideChangeLog(env, request);
 }
 
 export async function handleGuideCatalogBulk(

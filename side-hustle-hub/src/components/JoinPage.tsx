@@ -29,6 +29,8 @@ type JoinPageProps = {
   /** Scroll to Free–Elite plans (in-page See Memberships CTAs only — not header/footer Join). */
   scrollToPlans?: boolean;
   onScrolledToPlans?: () => void;
+  /** Highlight / focus Upgrade–Choose for this plan after scroll. */
+  focusTier?: TierId | null;
   /** Scroll to a-la-carte cart checkout (header Cart button). */
   scrollToCart?: boolean;
   onScrolledToCart?: () => void;
@@ -58,6 +60,7 @@ export function JoinPage({
   membershipAudience = null,
   scrollToPlans = false,
   onScrolledToPlans,
+  focusTier = null,
   scrollToCart = false,
   onScrolledToCart,
   isLoggedIn = false,
@@ -71,7 +74,7 @@ export function JoinPage({
 }: JoinPageProps) {
   return (
     <div className="join-page-combined" data-testid="join-page">
-      {onBlueprintUnlocked && (
+      {onBlueprintUnlocked && !isLoggedIn && (
         <BlueprintUnlockPanel
           onUnlocked={onBlueprintUnlocked}
           onSignIn={onLogin}
@@ -97,7 +100,8 @@ export function JoinPage({
           onGoToLogin={onLogin}
           onOpenFreeGuides={onOpenFreeGuides}
           initialAudience={membershipAudience}
-          autoScrollToPlans={scrollToPlans}
+          autoScrollToPlans={scrollToPlans || Boolean(focusTier)}
+          focusTier={focusTier}
           onAutoScrolledToPlans={onScrolledToPlans}
           autoScrollToCart={scrollToCart}
           onAutoScrolledToCart={onScrolledToCart}

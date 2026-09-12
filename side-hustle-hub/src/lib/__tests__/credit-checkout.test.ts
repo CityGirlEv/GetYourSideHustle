@@ -3,6 +3,7 @@ import {
   alacarteCreditPrice,
   audiencePaysMembershipWithCredits,
   cartCreditCost,
+  checkoutFullyPaidWithCredits,
   membershipPlanRequiresCreditCheckout,
   membershipUpgradeCreditCost,
   clampCreditsByItem,
@@ -21,6 +22,35 @@ import {
 } from "../credit-checkout";
 
 describe("credit checkout", () => {
+  it("lets credits cover Adult membership due-now (3-month commitment) and blocks packs", () => {
+    const starterDue = 117; // 39 × 3
+    const covered = quoteMixedUsdPayment({
+      amountUsd: starterDue,
+      balance: 1000,
+      creditsToApply: 117,
+    });
+    expect(covered.creditsApplied).toBe(117);
+    expect(covered.cashDueCents).toBe(0);
+    expect(checkoutFullyPaidWithCredits(covered)).toBe(true);
+
+    const packOnly: MixedCartLine = {
+      itemId: "boost",
+      name: "Boost Pack",
+      quantity: 1,
+      priceUsd: 5,
+      kind: "credit_pack",
+      credits: null,
+    };
+    const packQuote = quoteMixedCartPayment({
+      lines: [packOnly],
+      balance: 1000,
+      creditsToApply: 1000,
+    });
+    expect(packQuote.creditsApplied).toBe(0);
+    expect(packQuote.cashDueCents).toBe(500);
+    expect(checkoutFullyPaidWithCredits(packQuote)).toBe(false);
+  });
+
   it("bills Kids/Teens memberships in credits and Adults in Stripe", () => {
     expect(audiencePaysMembershipWithCredits("kids")).toBe(true);
     expect(audiencePaysMembershipWithCredits("junior")).toBe(true);

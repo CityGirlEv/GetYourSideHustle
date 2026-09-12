@@ -4,13 +4,14 @@ import {
   formatTesterResultMeta,
   testerPassedCount,
   testerStatusCountItems,
+  testerStatusCountsTitle,
   testerStatusLegendItems,
   testStatusAbbrev,
   testStatusTooltip,
 } from "../../components/admin/QaProgressBars";
 
 describe("testerPassedCount / formatTesterResultMeta", () => {
-  it("uses P/CP/F/B/FXR/FC/FD/R abbreviations with counts", () => {
+  it("includes Tot + every status abbrev (P…RO·IP·NS) with counts", () => {
     const tally = {
       ...emptyTally(),
       pass: 2,
@@ -20,14 +21,31 @@ describe("testerPassedCount / formatTesterResultMeta", () => {
       fixed_retest: 4,
       fixed_cursor: 5,
       failed_retest: 1,
-      not_run: 4,
-      total: 35,
+      rolled_over: 4,
+      in_progress: 2,
+      not_run: 54,
+      total: 91,
     };
     expect(testerPassedCount(tally)).toBe(5);
     const items = testerStatusCountItems(tally);
-    expect(items.map((i) => i.abbrev)).toEqual(["P", "CP", "F", "B", "FXR", "FC", "FD/R"]);
-    expect(formatTesterResultMeta(tally)).toBe("P=2 · CP=3 · F=15 · B=1 · FXR=4 · FC=5 · FD/R=1");
-    expect(formatTesterResultMeta(tally)).not.toContain("NS");
+    expect(items.map((i) => i.abbrev)).toEqual([
+      "P",
+      "CP",
+      "F",
+      "B",
+      "FXR",
+      "FC",
+      "FD/R",
+      "RO",
+      "IP",
+      "NS",
+    ]);
+    expect(formatTesterResultMeta(tally)).toBe(
+      "Tot=91 · P=2 · CP=3 · F=15 · B=1 · FXR=4 · FC=5 · FD/R=1 · RO=4 · IP=2 · NS=54",
+    );
+    expect(formatTesterResultMeta(tally)).toContain("NS=54");
+    expect(testerStatusCountsTitle()).toContain("NS=Not Started");
+    expect(testerStatusCountsTitle()).toContain("Tot=total assigned");
   });
 
   it("still lists zeros so all tester numbers stay visible", () => {
@@ -39,6 +57,8 @@ describe("testerPassedCount / formatTesterResultMeta", () => {
     expect(testerStatusCountItems(tally).find((i) => i.key === "fail")?.count).toBe(0);
     expect(formatTesterResultMeta(tally)).toContain("F=0");
     expect(formatTesterResultMeta(tally)).toContain("P=2");
+    expect(formatTesterResultMeta(tally)).toContain("Tot=2");
+    expect(formatTesterResultMeta(tally)).toContain("NS=0");
   });
 
   it("maps status ids to short labels and tooltips", () => {
@@ -54,8 +74,20 @@ describe("testerPassedCount / formatTesterResultMeta", () => {
 
   it("exposes a legend grid matching chip abbreviations", () => {
     const legend = testerStatusLegendItems();
-    expect(legend.map((i) => i.abbrev)).toEqual(["P", "CP", "F", "B", "FXR", "FC", "FD/R"]);
+    expect(legend.map((i) => i.abbrev)).toEqual([
+      "P",
+      "CP",
+      "F",
+      "B",
+      "FXR",
+      "FC",
+      "FD/R",
+      "RO",
+      "IP",
+      "NS",
+    ]);
     expect(legend.find((i) => i.abbrev === "CP")?.label).toBe("Conditional Pass");
     expect(legend.find((i) => i.abbrev === "FC")?.tip).toMatch(/Cursor/i);
+    expect(legend.find((i) => i.abbrev === "NS")?.label).toBe("Not Started");
   });
 });

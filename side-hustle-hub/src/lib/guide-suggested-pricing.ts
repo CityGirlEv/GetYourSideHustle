@@ -14,6 +14,10 @@ export type GuideSuggestedPricing = {
   items: GuidePricingItem[];
   /** How to raise rates later */
   raiseTip?: string;
+  /** Override prep-tab label (e.g. Earnings & Order Strategy for delivery). */
+  tabLabel?: string;
+  /** Extra strategy copy shown above the price list. */
+  intro?: string;
 };
 
 function p(id: string, label: string, price: string, notes?: string): GuidePricingItem {
@@ -157,7 +161,7 @@ export const GUIDE_SUGGESTED_PRICING: Record<string, GuideSuggestedPricing> = {
     items: [
       p("carry", "Grocery carry-in", "$10–15"),
       p("porch", "Porch tidy", "$15–20"),
-      p("bundle", "Multi-task bundle", "$20–35"),
+      p("bundle", "Carry-in + porch tidy same visit", "$20–35"),
     ],
   },
   "leaf-raking": {

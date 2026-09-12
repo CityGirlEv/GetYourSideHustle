@@ -2,15 +2,24 @@
 
 import { api, ApiError, setSessionToken } from "./api";
 import { clearAlaCarteCart } from "./alacarte-cart";
-import { isLocalDevHost, isRetryableD1ApiError, loginUnavailableMessage } from "./d1-errors";
 import {
-  SESSION_RESTORE_TIMEOUT_MS,
+  D1_QUOTA_USER_MESSAGE,
+  isD1QuotaExceededMessage,
+  isLocalDevHost,
+  isRetryableD1ApiError,
+  loginUnavailableMessage,
+} from "./d1-errors";
+import {
+  sessionRestoreTimeoutMs,
   shouldClearSessionOnMeFailure,
 } from "./first-load";
 import type { BlueprintAgeGroup } from "./gysh-analytics";
 import {
+  readCachedAuthUser,
+  readSessionToken,
   readTabAlive,
   shouldPersistSessionLocally,
+  writeCachedAuthUser,
   writeTabAlive,
 } from "./session-storage";
 
@@ -40,12 +49,21 @@ export function loginFailureFromApiError(
   e: ApiError,
   opts?: { localDev?: boolean },
 ): { outcome: LoginOutcome; error: string } {
+  if (isD1QuotaExceededMessage(e.message)) {
+    return { outcome: "unavailable", error: D1_QUOTA_USER_MESSAGE };
+  }
   if (
     e.status === 0 ||
     e.status === 503 ||
     (e.status >= 500 && isRetryableD1ApiError(e.message))
   ) {
-    return { outcome: "unavailable", error: loginUnavailableMessage(opts) };
+    return {
+      outcome: "unavailable",
+      error: loginUnavailableMessage({
+        localDev: opts?.localDev,
+        quota: isD1QuotaExceededMessage(e.message),
+      }),
+    };
   }
   return { outcome: "invalid", error: e.message || "Invalid email or password." };
 }
@@ -105,6 +123,7 @@ export async function login(email: string, password: string): Promise<{
     });
     setSessionToken(data.token ?? null);
     markTabAlive();
+    writeCachedAuthUser(data.user);
     const isAdmin =
       data.isAdmin === true ||
       data.user.role === "admin" ||
@@ -200,6 +219,7 @@ export async function registerFreeMember(input: {
     });
     setSessionToken(data.token ?? null);
     markTabAlive();
+    writeCachedAuthUser(data.user);
     return {
       ok: true,
       user: data.user,
@@ -232,12 +252,15 @@ export async function logout(): Promise<void> {
 /**
  * Restore auth after refresh / new tab.
  * Production: same-tab refresh only (sessionStorage). Closing the tab requires sign-in.
- * Localhost: localStorage + durable cookie so Dev stays signed in across tabs/restarts.
+ * Localhost: localStorage + durable cookie so Dev stays signed in across tabs/restarts/HMR.
  * We do NOT call logout() when the marker is missing — that would wipe other open tabs.
  */
 export async function restoreSession(): Promise<AuthUser | null> {
   const localPersist =
     typeof window !== "undefined" && shouldPersistSessionLocally(window.location.hostname);
+  const timeoutMs = sessionRestoreTimeoutMs(localPersist);
+  const cached = localPersist ? readCachedAuthUser() : null;
+  const hasToken = Boolean(readSessionToken());
 
   if (!tabIsAlive()) {
     if (!localPersist) {
@@ -245,35 +268,63 @@ export async function restoreSession(): Promise<AuthUser | null> {
       clearTabAlive();
       return null;
     }
-    // Localhost: try cookie / persisted bearer even after a cold start.
+    // Localhost: try cookie / persisted bearer / cached user even after a cold start.
   } else {
     markTabAlive();
   }
-  try {
-    const data = await api<{ user: AuthUser }>("auth/me", {
-      timeoutMs: SESSION_RESTORE_TIMEOUT_MS,
-    });
-    if (data.user) {
-      markTabAlive();
-      return data.user;
-    }
-    setSessionToken(null);
-    clearTabAlive();
-    return null;
-  } catch (e) {
-    if (e instanceof ApiError && shouldClearSessionOnMeFailure(e.status)) {
+
+  const attempts = localPersist ? 2 : 1;
+  let lastError: unknown = null;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const data = await api<{ user: AuthUser }>("auth/me", { timeoutMs });
+      if (data.user) {
+        markTabAlive();
+        writeCachedAuthUser(data.user);
+        return data.user;
+      }
       setSessionToken(null);
       clearTabAlive();
+      writeCachedAuthUser(null);
+      return null;
+    } catch (e) {
+      lastError = e;
+      if (e instanceof ApiError && shouldClearSessionOnMeFailure(e.status)) {
+        setSessionToken(null);
+        clearTabAlive();
+        writeCachedAuthUser(null);
+        return null;
+      }
+      // Timeout / 5xx / network — retry once on localhost, then keep cached user.
+      if (localPersist && i + 1 < attempts) {
+        await new Promise((r) => setTimeout(r, 1_200));
+        continue;
+      }
     }
-    return null;
   }
+
+  if (localPersist && (hasToken || tabIsAlive()) && cached) {
+    markTabAlive();
+    return cached as AuthUser;
+  }
+
+  if (lastError instanceof ApiError && shouldClearSessionOnMeFailure(lastError.status)) {
+    setSessionToken(null);
+    clearTabAlive();
+    writeCachedAuthUser(null);
+  }
+  return null;
 }
 
 export async function fetchMe(): Promise<AuthUser | null> {
   try {
     const data = await api<{ user: AuthUser }>("auth/me");
-    if (data.user) markTabAlive();
-    return data.user;
+    if (data.user) {
+      markTabAlive();
+      writeCachedAuthUser(data.user);
+      return data.user;
+    }
+    return null;
   } catch {
     return null;
   }

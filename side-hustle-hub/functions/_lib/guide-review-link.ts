@@ -43,6 +43,7 @@ export function guideLibraryPendingFailNote(opts: {
   guideId: string;
   updatedBy: string;
   updatedAt: string;
+  reason?: string;
 }): string {
   const guideId = String(opts.guideId || "").trim() || "(unknown)";
   const who = String(opts.updatedBy || "").trim() || "Admin";
@@ -52,5 +53,7 @@ export function guideLibraryPendingFailNote(opts: {
   if (!Number.isNaN(ms)) {
     displayAt = new Date(ms).toISOString();
   }
-  return `Pending / Needs Further Review in the Guide library — guide set Inactive. Guide id: ${guideId}. By ${who} at ${displayAt}.`;
+  const base = `Pending / Needs Further Review in the Guide library — guide set Inactive. Guide id: ${guideId}. By ${who} at ${displayAt}.`;
+  const reason = String(opts.reason || "").trim();
+  return reason ? `${base}\n\nReason: ${reason}` : base;
 }

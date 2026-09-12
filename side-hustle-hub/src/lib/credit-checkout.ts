@@ -1,5 +1,6 @@
 /**
- * Kid Credit checkout — Kids/Teens memberships and credit-priced a-la-carte items.
+ * Kid Credit checkout — memberships, workshops, consulting, a-la-carte.
+ * Credit packs are cash-only (credits cannot buy more credits).
  */
 import {
   ALA_CARTE_PRICE_LIST,
@@ -11,6 +12,7 @@ import {
   type CreditPack,
   type TierId,
 } from "./membership";
+import { roundCreditAmount } from "./member-credits";
 
 export type CreditQuote = {
   label: string;
@@ -245,8 +247,8 @@ export function centsToUsd(cents: number): number {
 }
 
 export function clampCreditsToApply(requested: unknown, max: number): number {
-  const maxN = Math.max(0, Math.floor(Number(max) || 0));
-  const n = Math.floor(Number(requested) || 0);
+  const maxN = Math.max(0, roundCreditAmount(Number(max) || 0));
+  const n = roundCreditAmount(Number(requested) || 0);
   if (!Number.isFinite(n) || n <= 0) return 0;
   return Math.min(n, maxN);
 }
@@ -277,14 +279,14 @@ export function clampCreditsByItem(
   balance: number,
   requested: Record<string, number> | null | undefined,
 ): Record<string, number> {
-  let left = Math.max(0, Math.floor(Number(balance) || 0));
+  let left = Math.max(0, roundCreditAmount(Number(balance) || 0));
   const next: Record<string, number> = {};
   for (const line of Array.isArray(lines) ? lines : []) {
     const need = lineCreditNeed(line);
     if (need <= 0 || !line.itemId) continue;
     const want = clampCreditsToApply(requested?.[line.itemId], Math.min(need, left));
     next[line.itemId] = want;
-    left -= want;
+    left = roundCreditAmount(left - want);
   }
   return next;
 }
@@ -302,7 +304,7 @@ export function maxCreditsForLine(
   const others = sumCreditsByItem(
     Object.fromEntries(Object.entries(requested || {}).filter(([key]) => key !== id)),
   );
-  const left = Math.max(0, Math.floor(Number(balance) || 0) - others);
+  const left = Math.max(0, roundCreditAmount(Number(balance) || 0) - others);
   return Math.min(need, left);
 }
 
@@ -313,7 +315,7 @@ export function creditsByItemFromTotal(
   total: unknown,
 ): Record<string, number> {
   const max = Math.min(
-    Math.max(0, Math.floor(Number(balance) || 0)),
+    Math.max(0, roundCreditAmount(Number(balance) || 0)),
     creditsNeededForMixedCart(lines),
   );
   let left = clampCreditsToApply(total, max);
@@ -323,7 +325,7 @@ export function creditsByItemFromTotal(
     if (need <= 0 || !line.itemId) continue;
     const use = Math.min(need, left);
     next[line.itemId] = use;
-    left -= use;
+    left = roundCreditAmount(left - use);
   }
   return next;
 }
@@ -343,7 +345,7 @@ export function quoteMixedCartPayment(input: {
     if (line.kind === "credit_pack") packCents += lineCents;
   }
   const eligibleCents = Math.max(0, subtotalCents - packCents);
-  const balance = Math.max(0, Math.floor(Number(input.balance) || 0));
+  const balance = Math.max(0, roundCreditAmount(Number(input.balance) || 0));
   const creditsMax = Math.min(balance, creditsNeededForMixedCart(lines));
   const creditsApplied = clampCreditsToApply(input.creditsToApply, creditsMax);
 
@@ -359,13 +361,13 @@ export function quoteMixedCartPayment(input: {
       const maxC = creditCost * qty;
       const use = Math.min(remainingCredits, maxC);
       discountCents += Math.round((use / maxC) * lineCents);
-      remainingCredits -= use;
+      remainingCredits = roundCreditAmount(remainingCredits - use);
       continue;
     }
-    const maxC = Math.floor(lineCents / KID_CREDIT_USD_CENTS);
+    const maxC = Math.ceil(lineCents / KID_CREDIT_USD_CENTS);
     const use = Math.min(remainingCredits, maxC);
-    discountCents += use * KID_CREDIT_USD_CENTS;
-    remainingCredits -= use;
+    discountCents += Math.round(use * KID_CREDIT_USD_CENTS);
+    remainingCredits = roundCreditAmount(remainingCredits - use);
   }
   discountCents = Math.min(discountCents, eligibleCents);
   const cashDueCents = Math.max(0, subtotalCents - discountCents);
@@ -390,10 +392,10 @@ export function quoteMixedUsdPayment(input: {
   creditsToApply?: unknown;
 }): MixedPayQuote {
   const amountCents = usdToCents(input.amountUsd);
-  const balance = Math.max(0, Math.floor(Number(input.balance) || 0));
+  const balance = Math.max(0, roundCreditAmount(Number(input.balance) || 0));
   const creditsMax = Math.min(balance, Math.ceil(amountCents / KID_CREDIT_USD_CENTS));
   const creditsApplied = clampCreditsToApply(input.creditsToApply, creditsMax);
-  const discountCents = Math.min(amountCents, creditsApplied * KID_CREDIT_USD_CENTS);
+  const discountCents = Math.min(amountCents, Math.round(creditsApplied * KID_CREDIT_USD_CENTS));
   const cashDueCents = Math.max(0, amountCents - discountCents);
   return {
     subtotalUsd: centsToUsd(amountCents),
@@ -418,6 +420,11 @@ export function mixedCheckoutButtonLabel(quote: MixedPayQuote): string {
   }
   if (quote.cashDueCents <= 0) return "Checkout";
   return `Checkout ${formatUsd(quote.cashDueUsd)}`;
+}
+
+/** True when credits cover the whole charge — no Stripe redirect (credit packs never qualify). */
+export function checkoutFullyPaidWithCredits(quote: Pick<MixedPayQuote, "cashDueCents" | "creditsApplied">): boolean {
+  return Number(quote.cashDueCents) <= 0 && Number(quote.creditsApplied) > 0;
 }
 
 export type CreditApplyView =

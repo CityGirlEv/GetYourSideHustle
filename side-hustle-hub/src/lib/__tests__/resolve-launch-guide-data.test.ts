@@ -1,8 +1,13 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { resolveLaunchGuideData } from "../../components/StepByStepGuides";
+import { resolveLaunchGuideData } from "../resolve-launch-guide-data";
 import { formatGuideNumber } from "../guide-numbers";
 import { guideKitForId } from "../guide-tools";
 import { KIDS_GUIDES } from "../kids-guides";
+
+const root = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 
 describe("resolveLaunchGuideData kids / library alignment", () => {
   it("resolves guide 008 Give Back kids guide without falling back to Airbnb", () => {
@@ -50,5 +55,11 @@ describe("resolveLaunchGuideData kids / library alignment", () => {
       expect(data.name, g.id).toBe(g.title);
       expect(data.steps.length, g.id).toBeGreaterThan(0);
     }
+  });
+
+  it("keeps extra helpers out of StepByStepGuides so Fast Refresh can update the lazy library page", () => {
+    const src = readFileSync(join(root, "src/components/StepByStepGuides.tsx"), "utf8");
+    expect(src).not.toMatch(/export function resolveLaunchGuideData/);
+    expect(src).toMatch(/from "\.\.\/lib\/resolve-launch-guide-data"/);
   });
 });

@@ -26,7 +26,9 @@ import { TEST_CASES, type TestCase } from "../../lib/gysh-test-plan";
 import {
   guideHrefFromGuideReviewCaseId,
   guideIdFromGuideReviewCaseId,
-  guideCrossLinkLabelFromCaseId,
+  formatGuideCrossLinkLabel,
+  formatTestCrossLinkLabel,
+  guideReviewCaseIdForGuide,
 } from "../../lib/guide-review-link";
 import { libraryGuideDisplayName } from "../../lib/guide-library-pool";
 
@@ -308,7 +310,7 @@ export function crossLinksForSoftLaunchItem(item: SoftLaunchItem): AdminCrossLin
   ];
   for (const testId of links.testIds) {
     out.push({
-      label: `Test ${testId}`,
+      label: formatTestCrossLinkLabel(testId),
       opts: { tab: "testing", testId },
     });
   }
@@ -316,18 +318,30 @@ export function crossLinksForSoftLaunchItem(item: SoftLaunchItem): AdminCrossLin
 }
 
 export function crossLinksForTaskId(taskId: string): AdminCrossLink[] {
-  const item = softLaunchItemFromTaskId(taskId);
-  if (!item) return [];
+  const out: AdminCrossLink[] = [];
+  const id = String(taskId || "").trim();
+  // Guide-review backlog tasks → associated GUIDE-REV test only (never the library guide page).
+  if (id.startsWith("T-LG-")) {
+    const guideId = id.slice("T-LG-".length).trim();
+    const caseId = guideId ? guideReviewCaseIdForGuide(guideId) : null;
+    if (caseId) {
+      out.push({
+        label: formatTestCrossLinkLabel(caseId),
+        opts: { tab: "testing", testId: caseId },
+      });
+    }
+  }
+  const item = softLaunchItemFromTaskId(id);
+  if (!item) return out;
   const links = softLaunchCrossLinks(item);
-  const out: AdminCrossLink[] = [
-    {
-      label: `${links.itemRef} · ${item.title}`,
-      opts: { tab: "factory", panel: "launch-plan", itemId: item.id },
-    },
-  ];
+  out.push({
+    label: `${links.itemRef} · ${item.title}`,
+    opts: { tab: "factory", panel: "launch-plan", itemId: item.id },
+  });
   for (const testId of links.testIds) {
+    if (out.some((l) => l.opts?.testId === testId)) continue;
     out.push({
-      label: `Test ${testId}`,
+      label: formatTestCrossLinkLabel(testId),
       opts: { tab: "testing", testId },
     });
   }
@@ -350,7 +364,7 @@ export function crossLinksForTestId(
   if (guideHref && guideId) {
     const name = libraryGuideDisplayName(guideId);
     out.push({
-      label: name && name !== guideId ? `Guide · ${name}` : guideCrossLinkLabelFromCaseId(testId)!,
+      label: formatGuideCrossLinkLabel(guideId, name),
       href: guideHref,
     });
   }
@@ -369,6 +383,8 @@ export function crossLinksForTestId(
   for (const taskId of relatedTaskIds ?? []) {
     const id = String(taskId || "").trim();
     if (!id) continue;
+    // Guide library reviews link only to the guide — never to T-LG-* task backlog rows.
+    if (id.startsWith("T-LG-") || guideIdFromGuideReviewCaseId(testId)) continue;
     if (out.some((l) => l.opts?.taskId === id)) continue;
     out.push({
       label: `Task ${id}`,

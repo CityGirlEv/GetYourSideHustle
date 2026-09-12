@@ -270,6 +270,14 @@ export async function onRequest(context: {
     if (route === "member-progress" && method === "PUT") {
       return withCors(request, await putMemberProgress(env, request, user));
     }
+    if (route === "guide-notes") {
+      const { handleGuideNotes } = await import("../_lib/guide-notes");
+      return withCors(request, await handleGuideNotes(env, request, user));
+    }
+    if (route === "guide-note-attachments") {
+      const { handleGuideNoteAttachments } = await import("../_lib/guide-notes");
+      return withCors(request, await handleGuideNoteAttachments(env, request, user));
+    }
     if (route === "member-credits" && method === "GET") {
       return withCors(request, await getMemberCredits(env, user));
     }
@@ -328,6 +336,7 @@ export async function onRequest(context: {
       /** QA (Lyriq) may set In Review / Pending on guides; Admin keeps full control. */
       (route === "guide-catalog" && (method === "PUT" || method === "POST")) ||
       (route === "guide-catalog/bulk" && (method === "PUT" || method === "POST")) ||
+      (route === "guide-catalog/history" && method === "GET") ||
       route === "time-entries" ||
       route === "time-entries/start" ||
       route === "time-entries/pause" ||
@@ -404,6 +413,10 @@ export async function onRequest(context: {
       if (route === "guide-catalog/bulk" && (method === "PUT" || method === "POST")) {
         const { handleGuideCatalogBulk } = await import("../_lib/guide-catalog");
         return withCors(request, await handleGuideCatalogBulk(env, request, tester));
+      }
+      if (route === "guide-catalog/history" && method === "GET") {
+        const { handleGuideCatalogHistory } = await import("../_lib/guide-catalog");
+        return withCors(request, await handleGuideCatalogHistory(env, request, tester));
       }
     }
 

@@ -32,10 +32,15 @@ import type { MembershipBillingInterval } from "../lib/stripe-catalog";
 import { ApiError } from "../lib/api";
 import { fetchMemberCredits, spendableCreditBalance } from "../lib/member-credits";
 import {
+  checkoutFullyPaidWithCredits,
   membershipCreditPrice,
   mixedCheckoutButtonLabel,
   quoteMixedUsdPayment,
 } from "../lib/credit-checkout";
+import {
+  membershipCheckoutDueLabel,
+  membershipDueNowUsd,
+} from "../lib/membership-commitment-billing";
 import { CreditApplyControls } from "./CreditApplyControls";
 import {
   pendingShouldResumeCheckout,
@@ -327,17 +332,24 @@ export function MembershipSignupPage({
     return `${formatUsd(mo)} / mo · ${formatUsd(yr)} / yr (save ${formatUsd(save)})`;
   };
 
-  const chargeUsd =
-    billingInterval === "year" && yearly != null ? yearly : monthly;
+  /** Must match server: monthly plans charge 3 months upfront; yearly is the year amount. */
+  const billingForDue: MembershipBillingInterval =
+    billingInterval === "year" && yearly != null ? "year" : "month";
+  const catalogUsdForDue =
+    billingForDue === "year" && yearly != null ? yearly : monthly;
+  const chargeUsd = membershipDueNowUsd(billingForDue, catalogUsdForDue);
   const mixedQuote = quoteMixedUsdPayment({
     amountUsd: chargeUsd,
     balance: isLoggedIn ? creditBalance : 0,
     creditsToApply: isLoggedIn ? creditsToApply : 0,
   });
-  const chargeLabel =
-    billingInterval === "year" && yearly != null
-      ? `${formatUsd(yearly)} / yr`
-      : `${formatUsd(monthly)} / mo`;
+  const paidFullyWithCredits = checkoutFullyPaidWithCredits(mixedQuote);
+  const chargeLabel = membershipCheckoutDueLabel({
+    interval: billingForDue,
+    monthlyUsd: monthly,
+    yearlyUsd: yearly ?? null,
+    formatUsd,
+  });
 
   useEffect(() => {
     const max = mixedQuote.creditsMax;
@@ -572,6 +584,7 @@ export function MembershipSignupPage({
       if (session?.paid && !session.url) {
         setStripePaid(true);
         setProfileApplied(true);
+        if (session.user) onProfileUpdated?.(session.user);
         setStep("done");
         return;
       }
@@ -593,7 +606,9 @@ export function MembershipSignupPage({
         active={busy}
         message={
           step === "checkout"
-            ? "Redirecting to secure Stripe checkout…"
+            ? paidFullyWithCredits
+              ? "Applying your credits…"
+              : "Redirecting to secure Stripe checkout…"
             : step === "done" && stripePaid
               ? "Confirming payment…"
               : step === "profile"
@@ -625,16 +640,18 @@ export function MembershipSignupPage({
           <p>
             {step === "register" &&
               (isPaid && stripeReady
-                ? "Enter your details to join. Paid Adult and Senior plans continue to Stripe Checkout (test cards work in Test mode)."
+                ? "Enter your details to join. Paid Adult and Senior plans continue to secure Stripe Checkout."
                 : "Enter your details to join. Free plans need no payment; Kids/Teens paid plans use credits and activate after admin review.")}
             {step === "profile" &&
               (isPaid && stripeReady
-                ? `You're signed in${loggedInEmail ? ` as ${loggedInEmail}` : ""}. Confirm the plan below — paid Adult and Senior upgrades continue to Stripe Checkout.`
+                ? `You're signed in${loggedInEmail ? ` as ${loggedInEmail}` : ""}. Confirm the plan below — apply credits toward the amount due (1 credit = $1), or finish any remainder on Stripe.`
                 : `You're signed in${loggedInEmail ? ` as ${loggedInEmail}` : ""}. Choose a plan to add or upgrade on your profile${
                     currentTier ? ` (currently ${MEMBERSHIP_TIERS.find((t) => t.id === currentTier)?.name ?? currentTier})` : ""
                   }.`)}
             {step === "checkout" &&
-              "You'll finish on Stripe's secure page. Use a test card like 4242 4242 4242 4242 while Stripe is in Test / Sandbox mode."}
+              (paidFullyWithCredits
+                ? "Your credits cover today’s charge — confirm below to upgrade without Stripe."
+                : "Apply credits toward the amount due (1 credit = $1). Any remainder goes to Stripe’s secure page. Credit packs cannot be bought with credits.")}
             {step === "done" &&
               (stripePaid
                 ? profileApplied || isLoggedIn
@@ -922,12 +939,9 @@ export function MembershipSignupPage({
             onSubmit={handleStripeCheckout}
             data-testid="membership-stripe-checkout"
           >
-            <div className="membership-fake-checkout-banner" role="status">
+            <div className="membership-checkout-secure-banner" role="status">
               <CreditCard size={18} aria-hidden />
-              <span>
-                Secure Stripe Checkout — in <strong>Test / Sandbox</strong> mode use card{" "}
-                <code>4242 4242 4242 4242</code>, any future expiry, any CVC.
-              </span>
+              <span>Secure Stripe Checkout — your card is processed on Stripe’s encrypted payment page.</span>
             </div>
             <p className="membership-signup-plan-note">
               Plan: <strong>{tier.name}</strong> · {AUDIENCE_LABELS[audience]}
@@ -990,7 +1004,9 @@ export function MembershipSignupPage({
                 data-testid="membership-stripe-pay"
               >
                 {busy ? (
-                  <WaitLabel>Opening Stripe…</WaitLabel>
+                  <WaitLabel>
+                    {paidFullyWithCredits ? "Applying credits…" : "Opening Stripe…"}
+                  </WaitLabel>
                 ) : creditsLoading ? (
                   <WaitLabel>Loading credits…</WaitLabel>
                 ) : (

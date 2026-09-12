@@ -5,6 +5,7 @@
 import { pathForView, type AppRouteView } from "./app-routes";
 import { adminTabById, type AdminTab } from "./admin-nav";
 import { readAdminDeepLink } from "./admin-deep-links";
+import { formatGuideCrossLinkLabel, formatTestCrossLinkLabel, guideReviewCaseIdForGuide } from "./guide-review-link";
 
 /** Short labels used in “Open [Label](href)” steps. */
 export const QA_PAGE_LABELS: Record<AppRouteView, string> = {
@@ -107,7 +108,7 @@ export function resolveQaPage(path: string | undefined | null): QaPageRef | null
       if (hustle) {
         return {
           href: `/guides?hustle=${encodeURIComponent(hustle)}`,
-          label: `Guide · ${hustle}`,
+          label: formatGuideCrossLinkLabel(hustle),
           view: "guides",
         };
       }
@@ -290,14 +291,16 @@ export function pageRefForTask(task: {
     const fromId = id.startsWith("T-LG-") ? id.slice("T-LG-".length).trim() : "";
     const fromNotes = notes.match(/guide-review:([^\s\n]+)/i)?.[1]?.trim() ?? "";
     const guideId = fromId || fromNotes;
-    if (guideId) {
+    const caseId = guideId ? guideReviewCaseIdForGuide(guideId) : null;
+    // Guide review tasks link to the associated GUIDE-REV test only — not the library guide.
+    if (caseId) {
       return {
-        href: `/guides?hustle=${encodeURIComponent(guideId)}`,
-        label: `Guide · ${guideId}`,
-        view: "guides",
+        href: `/admin?tab=testing&test=${encodeURIComponent(caseId)}`,
+        label: formatTestCrossLinkLabel(caseId),
+        view: "admin",
       };
     }
-    return resolveQaPage("guides");
+    return resolveQaPage("admin");
   }
   if (
     id.startsWith("T-MEM-") ||

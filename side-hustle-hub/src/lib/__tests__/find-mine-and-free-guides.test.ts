@@ -46,10 +46,13 @@ describe("Free Guides library data", () => {
     expect(free.map((g) => g.id)).not.toContain("food-delivery");
   });
 
-  it("marks rideshare and food-delivery free via guide-access", async () => {
+  it("marks rideshare Pro and food-delivery paid via guide-access", async () => {
     const { adultGuideMinTier } = await import("../guide-access");
-    expect(adultGuideMinTier("rideshare")).toBe("free");
-    expect(adultGuideMinTier("food-delivery")).toBe("free");
+    const { adultLibraryMinTier } = await import("../age-library-tiers");
+    expect(adultGuideMinTier("rideshare")).toBe("pro");
+    expect(adultLibraryMinTier("rideshare")).toBe("pro");
+    expect(adultGuideMinTier("food-delivery")).not.toBe("free");
+    expect(adultLibraryMinTier("food-delivery")).not.toBe("free");
   });
 
   it("has free kids and junior guides for the Free filter", () => {

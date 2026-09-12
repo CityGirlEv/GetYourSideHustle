@@ -9,7 +9,7 @@ describe("public first-load code split", () => {
   it("keeps Join, Kids, About, and Admin off the eager App import graph", () => {
     const app = readFileSync(join(root, "src/App.tsx"), "utf8");
     expect(app).toContain('from "./lazy-app-pages"');
-    expect(app).toContain("AUTH_READY_SAFETY_MS");
+    expect(app).toContain("authReadySafetyMs");
     expect(app).not.toMatch(/from "\.\/components\/JoinPage"/);
     expect(app).not.toMatch(/from "\.\/components\/KidsCorner"/);
     expect(app).not.toMatch(/from "\.\/components\/AboutPage"/);
@@ -55,7 +55,8 @@ describe("public first-load code split", () => {
   it("does not fetch session popups until they open", () => {
     const app = readFileSync(join(root, "src/App.tsx"), "utf8");
     expect(app).toMatch(/betaNoticeOpen \? \(/);
-    expect(app).toMatch(/scheduleDueOpen \? \(/);
+    // Schedule-due login popup is disabled — keep Beta gated until open.
+    expect(app).not.toMatch(/scheduleDueOpen \? \(/);
   });
 
   it("filters lazy chunks out of HTML modulepreload in the Vite build", () => {

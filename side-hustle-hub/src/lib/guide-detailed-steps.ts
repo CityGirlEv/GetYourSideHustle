@@ -3,7 +3,35 @@
  * Every step names real tools, clicks, and https links where relevant.
  */
 
+import { FOOD_DELIVERY_DETAILED_STEPS } from "./food-delivery-guide";
+import { ESTATE_SALE_DETAILED_STEPS } from "./estate-sale-antique-resales-guide";
+import { KIDS_PARTY_GAME_HOST_DETAILED_STEPS } from "./kids-party-game-host-guide";
+import { LEAD_FOLLOWUP_DETAILED_STEPS } from "./lead-followup-assistant-guide";
+import { LOCAL_CONTENT_PHOTO_DETAILED_STEPS } from "./local-content-photographer-guide";
+import { LOCAL_EVENT_CONTENT_DETAILED_STEPS } from "./local-event-content-creator-guide";
+import { APPOINTMENT_SETTER_DETAILED_STEPS } from "./appointment-setter-guide";
+import { ONLINE_RESEARCH_ASSISTANT_DETAILED_STEPS } from "./online-research-assistant-guide";
+import { MOTHERS_HELPER_DETAILED_STEPS } from "./mothers-helper-guide";
+import { PERSONAL_SHOPPER_DETAILED_STEPS } from "./personal-shopper-guide";
+import { YOUTH_SPORTS_HELPER_DETAILED_STEPS } from "./youth-sports-helper-guide";
+import { GENEALOGY_DETAILED_STEPS } from "./genealogy-family-history-guide";
+import { JUNIOR_GIVE_BACK_TEACH_DETAILED_STEPS } from "./junior-give-back-teach-guide";
+import { KIDS_KINDNESS_SHARE_DETAILED_STEPS } from "./kids-kindness-share-guide";
+import { KIDS_PIGGY_FIRST_GOAL_DETAILED_STEPS } from "./kids-piggy-first-goal-guide";
+import { BABYSITTING_DETAILED_STEPS } from "./babysitting-guide";
+import { DIGITAL_PRODUCTS_DETAILED_STEPS } from "./digital-products-guide";
+
 export type DetailedGuideStep = { title: string; desc: string };
+
+/**
+ * Prefer this wording when a step needs Google Docs — the sign-in / Docs link lives on the Tools tab.
+ */
+export const OPEN_GOOGLE_DOCS_FROM_TOOLS =
+  "Open Google Docs from the Tools tab (sign in with Google, or use an account you already have)";
+
+/** Shorter inline mention when “Open …” doesn’t fit the sentence. */
+export const GOOGLE_DOCS_FROM_TOOLS =
+  "Google Docs (Tools tab — sign in with Google, or use an account you already have)";
 
 export const GENERIC_STEP_TITLE_RE =
   /define the offer|prep your kit|reach out|deliver & ask|repeat weekly|define your offer|find first customers|gather tools|one-sentence offer/i;
@@ -20,35 +48,152 @@ export type ClientScoutConfig = {
   examplePrice: string;
   /** Kids/teens: parents help with outreach and ad accounts. Default true for local free hustles. */
   youthFriendly?: boolean;
+  /**
+   * When set, Make your marketing materials teaches opening Canva + finding this product template
+   * (invitation / flyer / card). Default is a marketing Flyer · US Letter template.
+   */
+  canvaTemplate?: {
+    /** What to type in Canva Templates search */
+    search: string;
+    /** How to choose among results */
+    pickHint: string;
+  };
 };
 
 /** How to get customers before you deliver — marketing plan first, then outreach. */
 export function clientScoutSteps(cfg: ClientScoutConfig): DetailedGuideStep[] {
   const youth = cfg.youthFriendly !== false;
-  const warm = youth
-    ? `Kids & teens: ask a parent or guardian to help you text, call, or walk the block with you. Contact 8–12 people you already know — parents’ friends, neighbors, relatives, coaches, church or youth-group leaders. Sample text: “${cfg.examplePitch} ${cfg.examplePrice} Want me to put you on the list?” Do not publish your home address; meet at their place or a public spot with a parent.`
-    : `Contact 8–12 warm leads first (neighbors, coworkers, friends, local group chats, former colleagues). Sample: “${cfg.examplePitch} ${cfg.examplePrice} Reply YES and I’ll book you.” Keep your full street address off public posts.`;
+  const canvaTpl = cfg.canvaTemplate ?? {
+    search: "Flyer (US Letter) or flyer",
+    pickHint: "a layout with room for your offer, price, and contact",
+  };
 
-  const social = youth
-    ? `With a parent: open https://www.facebook.com/pages/create and create a Page named like “${cfg.serviceLabel} by [First name].” Add your pitch, neighborhood or ZIP only (not your street), hours, and a parent email/phone for booking — never put a minor’s personal cell on a public page. Optional: Instagram at https://www.instagram.com/ and a Nextdoor post or Page at https://nextdoor.com/ (parent posts if under 18). After your first job, add one before/after photo (no license plates, no house numbers).`
-    : `Create a Facebook Page at https://www.facebook.com/pages/create for your ${cfg.serviceLabel}. Add services, sample prices, and a booking phone or email. Optional: Instagram https://www.instagram.com/, LinkedIn https://www.linkedin.com/, and Nextdoor https://nextdoor.com/ — same pitch, clear “Message to book.”`;
+  const channelChecklist = youth
+    ? [
+        "☐ Phone calls (parent nearby)",
+        "☐ Text messages",
+        "☐ Printed flyer",
+        "☐ Email",
+        "☐ Facebook Page",
+        "☐ Nextdoor",
+        "☐ School or church bulletin board",
+      ].join("\n")
+    : [
+        "☐ Phone calls",
+        "☐ Text messages",
+        "☐ Email",
+        "☐ Printed flyer",
+        "☐ LinkedIn",
+        "☐ Facebook Page",
+        "☐ Nextdoor",
+        "☐ Local bulletin boards",
+        "☐ Craigslist Services",
+      ].join("\n");
 
-  const channels = youth
-    ? "phone calls (parent nearby), text/DM, printed flyer, email, Facebook Page, Nextdoor, school/church boards"
-    : "phone calls, text/DM, email, printed flyer, LinkedIn, Facebook Page, Nextdoor, local boards, Craigslist Services";
+  const goalExamples = youth
+    ? [
+        "☐ Goal 1: _______________________________ (example: Hand out 25 flyers on my block)",
+        "☐ Goal 2: _______________________________ (example: Text 12 people we know by Friday)",
+        "☐ Goal 3 (optional): ____________________ (example: Put up 5 flyers at church with a parent)",
+      ].join("\n")
+    : [
+        "☐ Goal 1: _______________________________ (example: Book 3 discovery calls from LinkedIn)",
+        "☐ Goal 2: _______________________________ (example: Hand out 25 flyers on my block)",
+        "☐ Goal 3 (optional): ____________________ (example: Text 12 people I know by Friday)",
+      ].join("\n");
+
+  const carryOutDesc = youth
+    ? [
+        "This week, only use the 2 or 3 ways you already picked. Check each box as you go.",
+        "",
+        "Warm contacts (people you already know):",
+        "☐ Ask a parent or guardian to help you text, call, or walk the block with you.",
+        "☐ Contact 8–12 people you know — parents’ friends, neighbors, relatives, coaches, or church / youth-group leaders.",
+        `☐ Send a short message like: “${cfg.examplePitch} ${cfg.examplePrice} Want me to put you on the list?”`,
+        "☐ Do not post your home address. Meet at their place or a public spot with a parent.",
+        "",
+        "Social (with a parent):",
+        `☐ Open https://www.facebook.com/pages/create and make a Page named like “${cfg.serviceLabel} by [First name].”`,
+        "☐ Add your pitch, neighborhood or ZIP only (not your street), hours, and a parent email or phone for booking.",
+        "☐ Never put a minor’s personal cell number on a public page.",
+        "☐ Optional: Instagram at https://www.instagram.com/ (parent helps if under 18).",
+        "☐ Optional: Nextdoor at https://nextdoor.com/ (parent posts if under 18).",
+        "☐ After your first job, add one before/after photo (no license plates, no house numbers).",
+        "",
+        "More places (only if they fit):",
+        "☐ Craigslist Services at https://www.craigslist.org/ (parent helps if under 18) — neighborhood or landmark only, not your street.",
+        "☐ Facebook Marketplace or local groups at https://www.facebook.com/marketplace when it fits.",
+        "",
+        "Track and follow up:",
+        "☐ Write each contact in a Sheet (date, channel, result).",
+        "☐ Reply the same day when someone answers.",
+        "☐ Refresh your ads or posts once a week.",
+      ].join("\n")
+    : [
+        "This week, only use the 2 or 3 ways you already picked. Check each box as you go.",
+        "",
+        "Warm contacts (people you already know):",
+        "☐ Contact 8–12 warm leads — neighbors, coworkers, friends, local group chats, or former colleagues.",
+        `☐ Send a short message like: “${cfg.examplePitch} ${cfg.examplePrice} Reply YES and I’ll book you.”`,
+        "☐ Keep your full street address off public posts.",
+        "",
+        "Social:",
+        `☐ Create a Facebook Page at https://www.facebook.com/pages/create for your ${cfg.serviceLabel}.`,
+        "☐ Add services, sample prices, and a booking phone or email.",
+        "☐ Optional: Instagram at https://www.instagram.com/ — same pitch, clear “Message to book.”",
+        "☐ Optional: LinkedIn at https://www.linkedin.com/ — same pitch, clear “Message to book.”",
+        "☐ Optional: Nextdoor at https://nextdoor.com/ — same pitch, clear “Message to book.”",
+        "",
+        "More places (only if they fit):",
+        "☐ Craigslist Services at https://www.craigslist.org/ — neighborhood or landmark only, not your street.",
+        "☐ Facebook Marketplace or local groups at https://www.facebook.com/marketplace when it fits.",
+        "",
+        "Track and follow up:",
+        "☐ Write each contact in a Sheet (date, channel, result).",
+        "☐ Reply the same day when someone answers.",
+        "☐ Refresh your ads or posts once a week.",
+      ].join("\n");
 
   return [
     {
-      title: "Decide on Marketing Objectives",
-      desc: `Before you spend a dime, pick 2–3 channels for this month and write one measurable objective for each. Channel menu: ${channels}. Examples: “Book 3 discovery calls from LinkedIn,” “Hand out 25 flyers on my block,” “Text 12 warm contacts by Friday.” Save the plan in Google Docs (https://docs.google.com/) with your offer line: “${cfg.examplePitch}” / “${cfg.examplePrice}”`,
+      title: "Pick how you will tell people about your side hustle",
+      desc: [
+        "A “channel” is one way people hear about you — like the phone, a text, a flyer, or Facebook.",
+        "Do not try every way at once. Pick only 2 or 3 for this month.",
+        "",
+        "Checklist:",
+        `☐ ${OPEN_GOOGLE_DOCS_FROM_TOOLS} and start a new page for this month’s plan.`,
+        "☐ Write what you sell and your price at the top:",
+        `   “${cfg.examplePitch}”`,
+        `   “${cfg.examplePrice}”`,
+        "☐ Check exactly 2 or 3 boxes below (your ways to tell people):",
+        channelChecklist,
+        "☐ Write one simple goal for each checked way (use a number you can count):",
+        goalExamples,
+        "☐ Save the Doc so you can check it off as you go.",
+      ].join("\n"),
     },
     {
       title: "Make your marketing materials",
-      desc: `Build only the assets your objectives need — keep the same offer, price, and contact on every piece. Typical kit: (1) phone/text script (2–4 lines), (2) one-page flyer in Canva (https://www.canva.com/ — Flyer US Letter), (3) short bio/About blurb for your Page or LinkedIn, (4) optional email signature or QR to book. Export PDF + PNG; print a small batch only after the flyer proof looks good.`,
+      desc: [
+        "Build only what your plan needs. Keep the same offer, price, and contact on every piece.",
+        "",
+        "Checklist:",
+        "☐ Write a phone/text script (2–4 lines) with your offer, price, and how to book.",
+        "☐ Open Canva at https://www.canva.com/ — Free plan available — sign in at the link, or continue with an account you already have · Pro ~$15–18/mo or ~$120–144/yr (verify on Canva).",
+        "☐ Click Create a design.",
+        `☐ Search Templates for “${canvaTpl.search}.”`,
+        `☐ Pick a template that fits — ${canvaTpl.pickHint}.`,
+        "☐ Put your offer, price, and contact on the design (same words as your script).",
+        "☐ Write a short bio / About blurb for your Facebook Page or LinkedIn.",
+        "☐ Optional: add an email signature or QR code that points to how to book.",
+        "☐ Export PDF + PNG from Canva.",
+        "☐ Proof it once — then print a small batch only if it looks good.",
+      ].join("\n"),
     },
     {
       title: "Carry out the marketing plan",
-      desc: `Run the channels you chose this week. Warm contacts: ${warm} Social: ${social} If Craigslist fits your city and category: post under Services at https://www.craigslist.org/ (parent helps if under 18) — neighborhood or landmark only, not your street. Also use Facebook Marketplace / local groups (https://www.facebook.com/marketplace) when it fits. Track each touch in a Sheet (date, channel, result). Reply the same day. Refresh ads weekly.`,
+      desc: carryOutDesc,
     },
   ];
 }
@@ -139,7 +284,7 @@ export const SERVICE_CLIENT_SCOUT: Record<string, ClientScoutConfig> = {
   "leaf-raking": {
     serviceLabel: "Leaf Blowing Service",
     examplePitch:
-      "I’m booking leaf blowing — driveway, walks, and lawns, curb-ready. This hustle qualifies for Free Mini Hand Held Blower entry (optional purchase available).",
+      "I’m booking leaf blowing — driveway, walks, and lawns, curb-ready. Side-Hustlers who pick this Side-Hustle are eligible for a Free Mini Hand-Held Blower drawing — conditions apply; inquire via the Contact Form.",
     examplePrice: "Flat by area size.",
   },
   "beach-shell-jewelry": {
@@ -186,16 +331,28 @@ export const SERVICE_CLIENT_SCOUT: Record<string, ClientScoutConfig> = {
     serviceLabel: "Invitation Design",
     examplePitch: "I design party invitations in Canva — digital files + optional print.",
     examplePrice: "About $10–25 for a simple invite.",
+    canvaTemplate: {
+      search: "birthday invitation or party invite",
+      pickHint: "kids, elegant, or casual — match the party vibe",
+    },
   },
   "canva-flyer-creator": {
     serviceLabel: "Flyer Design",
     examplePitch: "I design flyers in Canva for yard sales, clubs, and local events.",
     examplePrice: "About $15–40 design.",
+    canvaTemplate: {
+      search: "Flyer (US Letter) or A4 flyer",
+      pickHint: "big headline space and a clear footer for contact info",
+    },
   },
   "greeting-card-creator": {
     serviceLabel: "Custom Greeting Cards",
     examplePitch: "I make custom greeting cards (Canva or handmade).",
     examplePrice: "About $3–15 per card.",
+    canvaTemplate: {
+      search: "Greeting card or folded 5×7",
+      pickHint: "bold front cover; leave room for inside text later",
+    },
   },
   "digital-cookbook-creator": {
     serviceLabel: "Family Cookbook Design",
@@ -267,6 +424,20 @@ export const SERVICE_CLIENT_SCOUT: Record<string, ClientScoutConfig> = {
     examplePrice: "App payouts + tips (track after each block).",
     youthFriendly: false,
   },
+  "estate-sale-listing-helper": {
+    serviceLabel: "Estate Sale Reseller",
+    examplePitch:
+      "I source and resell vintage and antique finds — researched comps, clear photos, honest condition notes.",
+    examplePrice: "Priced from sold comps after fees and shipping.",
+    youthFriendly: false,
+  },
+  "family-history-organizer": {
+    serviceLabel: "Genealogy Researcher",
+    examplePitch:
+      "I help families research and organize family history — scoped hours, source-backed findings, clear next steps.",
+    examplePrice: "Hourly or package pricing from the guide (examples only).",
+    youthFriendly: false,
+  },
 };
 
 /** Shared competitor-research step — injected into every launch guide. */
@@ -278,7 +449,19 @@ export const RESEARCH_COMPETITORS_STEP: DetailedGuideStep = {
 /** Every side hustle names the business after competitor research. */
 export const NAME_SIDE_HUSTLE_STEP: DetailedGuideStep = {
   title: "Pick a Name for Your Side Hustle Business",
-  desc: "Choose a clear, memorable name for your side hustle business — something you can say in one breath and put on a flyer, Facebook Page, invoice, or Canva graphics. Check that a matching handle is available enough for you (Google, Instagram, Facebook Pages search). Write the name at the top of your Google Doc plan (https://docs.google.com/) and use it the same way everywhere.",
+  desc: [
+    "Choose a clear, memorable name for your side hustle business — something you can say in one breath and put on a flyer, Facebook Page, invoice, or Canva graphics.",
+    "",
+    "Research the name before you lock it in. Make sure it is not already taken and that you are not violating copyright, trademark, or other regulatory rules. Rules and name availability can differ by state and industry.",
+    "",
+    "How to check:",
+    "☐ Search Google, Instagram, and Facebook Pages for the exact name and close look-alikes.",
+    "☐ Search the U.S. Patent and Trademark Office trademark database at https://www.uspto.gov/trademarks/search.",
+    "☐ Check your state’s business / DBA name search (usually your Secretary of State website).",
+    "☐ When you are ready for a tax ID, apply for an EIN at the IRS: https://www.irs.gov/businesses/small-businesses-self-employed/apply-for-an-employer-identification-number-ein-online — use the exact legal name you cleared, and do not file until the name checks above look clear.",
+    "",
+    `Write the name at the top of your ${GOOGLE_DOCS_FROM_TOOLS} plan and use it the same way everywhere.`,
+  ].join("\n"),
 };
 
 /**
@@ -294,6 +477,16 @@ export const SAVINGS_GOAL_PLAN_STEP: DetailedGuideStep = {
 export const SAVINGS_FOUNDATION_GUIDE_IDS = [
   "kids-piggy-first-goal",
   "junior-savings-ceo",
+  /** Spend / Save / Hustle jars — money habit, not a business playbook. */
+  "kids-reinvest-jar",
+  /** Teen Save / Enjoy / Grow buckets — same foundation as kids reinvest. */
+  "junior-reinvest-ceo",
+] as const;
+
+/** Free give-back / community skill guides — thumbs-up only; no sale closing or marketing inject. */
+export const GIVE_BACK_FOUNDATION_GUIDE_IDS = [
+  "kids-kindness-share",
+  "junior-give-back-teach",
 ] as const;
 
 export function guideUsesSavingsFoundation(guideId: string): boolean {
@@ -302,10 +495,25 @@ export function guideUsesSavingsFoundation(guideId: string): boolean {
   );
 }
 
+export function guideUsesGiveBackFoundation(guideId: string): boolean {
+  return (GIVE_BACK_FOUNDATION_GUIDE_IDS as readonly string[]).includes(
+    String(guideId || "").trim(),
+  );
+}
+
+/** Savings + give-back educational guides skip business playbook extras. */
+export function guideUsesNonLaunchPlaybook(guideId: string): boolean {
+  return guideUsesSavingsFoundation(guideId) || guideUsesGiveBackFoundation(guideId);
+}
+
 /** Every guide: always step 1 — get a thumbs-up from someone close before going further. */
 export const PARENT_THUMBS_UP_STEP: DetailedGuideStep = {
   title: "Run This by Your Parent, Partner, Friend, or Someone Close",
-  desc: "Run this by your Parent, Partner, Friend, or someone close to get feedback and advice. Shoot for a THUMBS UP!",
+  desc: [
+    "Run this by your Parent, Partner, Friend, or someone close to get feedback and advice. Shoot for a THUMBS UP!",
+    "",
+    "Be sure to check your local area for business license requirements and any other local regulations related to this side hustle. Rules can differ by city or county — abide by all of them.",
+  ].join("\n"),
 };
 
 /** @deprecated Use PARENT_THUMBS_UP_STEP — same step for kids and teens. */
@@ -316,7 +524,8 @@ export const TEEN_CONSULT_PARENT_STEP = PARENT_THUMBS_UP_STEP;
 const RESEARCH_COMPETITORS_TITLE_RE = /research\s+competitors/i;
 const NAME_SIDE_HUSTLE_TITLE_RE =
   /pick a name for your side hustle( business)?|name (your |the )?(side[- ]?)?hustle|name (your |the )?(club|business|brand|service)\b/i;
-const MARKETING_OBJECTIVES_TITLE_RE = /decide on marketing objectives/i;
+const MARKETING_OBJECTIVES_TITLE_RE =
+  /decide on marketing objectives|pick how you will tell people about your side hustle/i;
 /** Matches the canonical step plus older parent-approval / thumbs-up titles. */
 const PARENT_THUMBS_UP_TITLE_RE =
   /run this by your parent|get parent thumbs up on the side hustle|set safety rules with a parent|consult parent about (your )?idea/i;
@@ -335,8 +544,8 @@ export function youthFirstStepForAudiences(
  * 0) Run this by Parent / Partner / Friend / someone close — Shoot for a THUMBS UP!
  * Business guides:
  * 1) Research Competitors
- * 2) Pick a Name for Your Side Hustle Business (or an existing name-* step)
- * 3) Decide on Marketing Objectives when present
+ * 2) Pick a Name for Your Side Hustle Business (canonical EIN / USPTO copy)
+ * 3) Pick how you will tell people about your side hustle (marketing plan) when present
  * Savings guides (Piggy Bank goals):
  * 1) Plan What You’re Saving For (goal, cost, earn plan, weekly savings) — no competitors / business name
  * Then the rest of the guide in relative order.
@@ -345,17 +554,20 @@ export function ensureGuideFoundationSteps(
   steps: DetailedGuideStep[],
   opts?: {
     audiences?: readonly GuideFoundationAudience[];
-    /** Savings goals skip competitors + business naming. */
-    foundation?: "business" | "savings";
+    /** Savings goals skip competitors + business naming. Give-back skips those too. */
+    foundation?: "business" | "savings" | "giveback";
   },
 ): DetailedGuideStep[] {
   const thumbsWanted = youthFirstStepForAudiences(opts?.audiences);
   const isSavings = opts?.foundation === "savings";
+  const isGiveBack = opts?.foundation === "giveback";
 
   if (!steps.length) {
     return isSavings
       ? [thumbsWanted, { ...SAVINGS_GOAL_PLAN_STEP }]
-      : [thumbsWanted, { ...RESEARCH_COMPETITORS_STEP }, { ...NAME_SIDE_HUSTLE_STEP }];
+      : isGiveBack
+        ? [thumbsWanted]
+        : [thumbsWanted, { ...RESEARCH_COMPETITORS_STEP }, { ...NAME_SIDE_HUSTLE_STEP }];
   }
 
   let priorThumbs: DetailedGuideStep | null = null;
@@ -391,13 +603,18 @@ export function ensureGuideFoundationSteps(
   }
 
   void priorThumbs;
+  void nameStep;
 
   if (isSavings) {
-    // Authored savings steps (goal / cost / earn / weekly) follow thumbs-up.
-    // Inject the overview only when the guide has no savings body yet.
-    const hasSavingsBody = rest.some((s) =>
-      /saving for|weekly savings|write the cost|plan how you will earn/i.test(s.title),
-    );
+    // Authored savings / reinvest body follows thumbs-up.
+    // Inject the overview only when the guide has no authored body yet.
+    const hasSavingsBody =
+      rest.length > 0 &&
+      rest.some((s) =>
+        /saving for|weekly savings|write the cost|plan how you will earn|pick your goal|find the price|already have|savings spot|safe ways to earn|goes to your goal|how many jobs|goal tracker|earn & save|check your progress|reach it|three jars|hustle jar|three buckets|split (your|rule)|grow spends|name what you are saving for/i.test(
+          s.title,
+        ),
+      );
     return [
       thumbsWanted,
       ...(hasSavingsBody ? [] : [savingsPlan ?? { ...SAVINGS_GOAL_PLAN_STEP }]),
@@ -405,23 +622,34 @@ export function ensureGuideFoundationSteps(
     ];
   }
 
+  if (isGiveBack) {
+    return [thumbsWanted, ...rest];
+  }
+
   return [
     thumbsWanted,
     research ?? { ...RESEARCH_COMPETITORS_STEP },
-    nameStep
-      ? { ...nameStep, title: NAME_SIDE_HUSTLE_STEP.title }
-      : { ...NAME_SIDE_HUSTLE_STEP },
+    { ...NAME_SIDE_HUSTLE_STEP },
     ...(marketingObjectives ? [marketingObjectives] : []),
     ...rest,
   ];
 }
 
-/** @deprecated Prefer ensureGuideFoundationSteps — kept for existing imports. */
-export function ensureResearchCompetitorsStep(
-  steps: DetailedGuideStep[],
-  opts?: { audiences?: readonly GuideFoundationAudience[] },
-): DetailedGuideStep[] {
-  return ensureGuideFoundationSteps(steps, opts);
+/** Early block titles — before-photos and hustle body come after these. */
+const EARLY_PLAYBOOK_BLOCK_RE =
+  /run this by your parent|get parent thumbs up|set safety rules|consult parent|research competitors|pick a name for your side hustle|plan what you.?re saving for|pick how you will tell people|decide on marketing objectives|choose your marketing channels|make your marketing materials|create your marketing campaign|carry out (the|your) marketing plan|execute your marketing campaign|how you will advertise/i;
+
+/** Index right after consecutive foundation + marketing steps at the start of the list. */
+export function indexAfterEarlyPlaybookBlock(steps: DetailedGuideStep[]): number {
+  let insertAt = 0;
+  for (let i = 0; i < steps.length; i++) {
+    if (EARLY_PLAYBOOK_BLOCK_RE.test(steps[i]?.title ?? "")) {
+      insertAt = i + 1;
+      continue;
+    }
+    break;
+  }
+  return insertAt;
 }
 
 /** Guides where the finished job should show a clear before → after change. */
@@ -438,15 +666,7 @@ export const BEFORE_AFTER_PHOTO_GUIDE_IDS = [
 export type BeforeAfterPhotoGuideId = (typeof BEFORE_AFTER_PHOTO_GUIDE_IDS)[number];
 
 export function guideRequiresBeforeAfterPhotos(guideId: string): boolean {
-  return (BEFORE_AFTER_PHOTO_GUIDE_IDS as readonly string[]).includes(guideId);
-}
-
-export function stepsIncludeTakeBeforePhotos(steps: DetailedGuideStep[]): boolean {
-  return steps.some((s) => /^take before photos$/i.test(s.title.trim()));
-}
-
-export function stepsIncludeTakeAfterPhotos(steps: DetailedGuideStep[]): boolean {
-  return steps.some((s) => /take after photos|after photo/i.test(s.title));
+  return (BEFORE_AFTER_PHOTO_GUIDE_IDS as readonly string[]).includes(guideId as BeforeAfterPhotoGuideId);
 }
 
 /** Shared copy for transformation jobs — take before shots before you start work. */
@@ -457,8 +677,118 @@ export const TAKE_BEFORE_PHOTOS_STEP: DetailedGuideStep = {
 
 export const TAKE_AFTER_PHOTOS_STEP: DetailedGuideStep = {
   title: "Take After Photos",
-  desc: "Reshoot from the same angles as your before photos. Text the after set to the client before asking for payment, and save both for your portfolio (crop private details).",
+  desc: "Reshoot from the same angles as your before photos. Send the after set to the client before asking for payment, and save both for your portfolio (crop private details).",
 };
+
+/** Canonical second-to-last step — log the first paid job with the Revenue Calculator. */
+export const MAKE_YOUR_FIRST_SALE_STEP: DetailedGuideStep = {
+  title: "Make Your First Sale",
+  desc: [
+    "Complete your first paid job or sale.",
+    "",
+    "Document all sales (what you sold or did, who paid, date, and amount) and all expenses (supplies, fees, travel, tools, ads) in one place.",
+    "",
+    "Use the Revenue Calculator provided with this guide to enter income and costs so you can see real profit — not just cash in your pocket. Keep receipts or screenshots with your notes for taxes and future pricing.",
+  ].join("\n"),
+};
+
+/** Canonical last step — ask the customer for a short review (and optionally a rebook/referral). */
+export const ASK_FOR_REVIEW_STEP: DetailedGuideStep = {
+  title: "Ask for a Short Review",
+  desc: [
+    "After you deliver, ask the customer if they would leave a short 1–2 sentence review you can share (text, Google, Facebook, or a simple written note).",
+    "",
+    "A good ask: what went well, and whether they'd hire you again. Also ask if they want to rebook or know someone else who might need the same help — one warm referral beats cold outreach.",
+  ].join("\n"),
+};
+
+const MAKE_YOUR_FIRST_SALE_TITLE_RE =
+  /make your first sale|deliver the first (small )?job|complete your first (paid )?(sale|job)|document all sales|log (your )?(first )?(sale|income)/i;
+const ASK_FOR_REVIEW_TITLE_RE =
+  /ask for a (short )?review|ask .+ leave a review|leave a review|review and a next booking|ask for (a )?testimonial/i;
+
+/**
+ * Every business guide ends with:
+ * 1) Make Your First Sale (Revenue Calculator + document sales/expenses)
+ * 2) Ask for a Short Review
+ * Savings-goal and free give-back guides skip these (no sale/review loop).
+ */
+export function ensureGuideClosingSteps(
+  guideId: string,
+  steps: DetailedGuideStep[],
+): DetailedGuideStep[] {
+  const id = String(guideId || "").trim();
+  if (!id || guideUsesNonLaunchPlaybook(id)) return steps ?? [];
+
+  const rest: DetailedGuideStep[] = [];
+  for (const step of steps ?? []) {
+    const title = step.title ?? "";
+    if (MAKE_YOUR_FIRST_SALE_TITLE_RE.test(title) || ASK_FOR_REVIEW_TITLE_RE.test(title)) {
+      continue;
+    }
+    rest.push(step);
+  }
+
+  return [...rest, { ...MAKE_YOUR_FIRST_SALE_STEP }, { ...ASK_FOR_REVIEW_STEP }];
+}
+
+/**
+ * Re-apply foundation + before-photo ordering so Admin patches / authored
+ * kits cannot drop "Pick a Name…" or shove Take Before Photos above step 1–3.
+ */
+export function finalizeGuidePlaybookSteps(
+  guideId: string,
+  steps: DetailedGuideStep[],
+  opts?: { audiences?: readonly GuideFoundationAudience[] },
+): DetailedGuideStep[] {
+  const id = String(guideId || "").trim();
+  let next = ensureGuideFoundationSteps(steps ?? [], {
+    audiences: opts?.audiences,
+    foundation: guideUsesSavingsFoundation(id)
+      ? "savings"
+      : guideUsesGiveBackFoundation(id)
+        ? "giveback"
+        : "business",
+  });
+
+  // Pull any Take Before Photos out of the middle/front, then place after early block.
+  const beforePhotos: DetailedGuideStep[] = [];
+  const withoutBefore: DetailedGuideStep[] = [];
+  for (const step of next) {
+    if (/^take before photos$/i.test(step.title.trim())) {
+      if (!beforePhotos.length) beforePhotos.push({ ...TAKE_BEFORE_PHOTOS_STEP });
+      continue;
+    }
+    withoutBefore.push(step);
+  }
+  next = withoutBefore;
+
+  if (guideRequiresBeforeAfterPhotos(id)) {
+    const at = indexAfterEarlyPlaybookBlock(next);
+    next = [...next.slice(0, at), { ...TAKE_BEFORE_PHOTOS_STEP }, ...next.slice(at)];
+  } else if (beforePhotos.length) {
+    const at = indexAfterEarlyPlaybookBlock(next);
+    next = [...next.slice(0, at), ...beforePhotos, ...next.slice(at)];
+  }
+
+  return ensureGuideClosingSteps(id, next);
+}
+
+/** @deprecated Prefer ensureGuideFoundationSteps — kept for existing imports. */
+export function ensureResearchCompetitorsStep(
+  steps: DetailedGuideStep[],
+  opts?: { audiences?: readonly GuideFoundationAudience[] },
+): DetailedGuideStep[] {
+  return ensureGuideFoundationSteps(steps, opts);
+}
+
+export function stepsIncludeTakeBeforePhotos(steps: DetailedGuideStep[]): boolean {
+  return steps.some((s) => /^take before photos$/i.test(s.title.trim()));
+}
+
+export function stepsIncludeTakeAfterPhotos(steps: DetailedGuideStep[]): boolean {
+  return steps.some((s) => /take after photos|after photo/i.test(s.title));
+}
 
 export function detailedStepsForGuide(
   guideId: string,
@@ -475,50 +805,37 @@ export function detailedStepsForGuide(
       steps = [...clientScoutSteps(scoutCfg), ...base];
     }
   }
-  steps = ensureGuideFoundationSteps(steps, {
-    audiences: opts?.audiences,
-    foundation: guideUsesSavingsFoundation(guideId) ? "savings" : "business",
-  });
-  if (guideRequiresBeforeAfterPhotos(guideId) && !stepsIncludeTakeBeforePhotos(steps)) {
-    // After foundation / marketing / scout / youth-safety block when present.
-    const insertAt =
-      steps.length > 1 &&
-      /decide on marketing|make your marketing|carry out the marketing|pitch — get a customer|research competitors|pick a name|name the |get parent thumbs up|set safety rules|consult parent|how you will advertise/i.test(
-        steps.slice(0, 6).map((s) => s.title).join(" "),
-      )
-        ? Math.min(
-            6,
-            steps.findIndex(
-              (s) =>
-                !/marketing|competitors|pick a name|name the |get parent thumbs up|set safety rules|consult parent|pitch —|advertise/i.test(
-                  s.title,
-                ),
-            ) >= 0
-              ? steps.findIndex(
-                  (s) =>
-                    !/marketing|competitors|pick a name|name the |get parent thumbs up|set safety rules|consult parent|pitch —|advertise/i.test(
-                      s.title,
-                    ),
-                )
-              : 0,
-          )
-        : 0;
-    const at = insertAt < 0 ? 0 : insertAt;
-    steps = [...steps.slice(0, at), { ...TAKE_BEFORE_PHOTOS_STEP }, ...steps.slice(at)];
-  }
-  return steps;
+  return finalizeGuidePlaybookSteps(guideId, steps, opts);
 }
 
 /** True when the guide already teaches marketing channel choices. */
 export function stepsIncludeMarketingChoices(steps: DetailedGuideStep[]): boolean {
   return steps.some((s) =>
-    /decide on marketing objectives|make your marketing materials|carry out the marketing plan|how you will advertise|choose how you(?:'ll| will) market/i.test(
+    /decide on marketing objectives|pick how you will tell people about your side hustle|choose your marketing channels|make your marketing materials|create your marketing campaign|carry out (the|your) marketing plan|execute your marketing campaign|how you will advertise|choose how you(?:'ll| will) market/i.test(
       s.title,
     ),
   );
 }
 
 export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
+  babysitting: BABYSITTING_DETAILED_STEPS.map((s) => ({ ...s })),
+  "digital-products": DIGITAL_PRODUCTS_DETAILED_STEPS.map((s) => ({ ...s })),
+  "food-delivery": FOOD_DELIVERY_DETAILED_STEPS.map((s) => ({ ...s })),
+  "estate-sale-listing-helper": ESTATE_SALE_DETAILED_STEPS.map((s) => ({ ...s })),
+  "kids-party-game-host": KIDS_PARTY_GAME_HOST_DETAILED_STEPS.map((s) => ({ ...s })),
+  "lead-followup-assistant": LEAD_FOLLOWUP_DETAILED_STEPS.map((s) => ({ ...s })),
+  "local-content-photographer": LOCAL_CONTENT_PHOTO_DETAILED_STEPS.map((s) => ({ ...s })),
+  "local-event-content-creator": LOCAL_EVENT_CONTENT_DETAILED_STEPS.map((s) => ({ ...s })),
+  "appointment-setter": APPOINTMENT_SETTER_DETAILED_STEPS.map((s) => ({ ...s })),
+  "online-research-assistant": ONLINE_RESEARCH_ASSISTANT_DETAILED_STEPS.map((s) => ({ ...s })),
+  "mothers-helper": MOTHERS_HELPER_DETAILED_STEPS.map((s) => ({ ...s })),
+  "personal-shopper": PERSONAL_SHOPPER_DETAILED_STEPS.map((s) => ({ ...s })),
+  "youth-sports-helper": YOUTH_SPORTS_HELPER_DETAILED_STEPS.map((s) => ({ ...s })),
+  "junior-give-back-teach": JUNIOR_GIVE_BACK_TEACH_DETAILED_STEPS.map((s) => ({ ...s })),
+  "kids-kindness-share": KIDS_KINDNESS_SHARE_DETAILED_STEPS.map((s) => ({ ...s })),
+  "kids-piggy-first-goal": KIDS_PIGGY_FIRST_GOAL_DETAILED_STEPS.map((s) => ({ ...s })),
+  "family-history-organizer": GENEALOGY_DETAILED_STEPS.map((s) => ({ ...s })),
+
   rideshare: [
     {
       title: "Confirm you meet Uber / Lyft local requirements",
@@ -549,7 +866,7 @@ export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
   "web-leads": [
     {
       title: "Pick a ZipCode + niche lane",
-      desc: "Choose 1–2 niches (dentists, HVAC, salons, contractors) within ~20 miles. Write a one-line sample offer. Save prospects in Google Sheets or Docs (https://docs.google.com/).",
+      desc: "Choose 1–2 niches (dentists, HVAC, salons, contractors) within ~20 miles. Write a one-line sample offer. Save prospects in Google Sheets or Google Docs (Tools tab — sign in with Google, or use an account you already have).",
     },
     {
       title: "Build a lead list from Maps",
@@ -576,7 +893,7 @@ export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
   consulting: [
     {
       title: "Define your niche and who you help",
-      desc: "Write one sentence: industry + who you advise + outcome (e.g. “I help mid-career nurses move into healthcare admin roles with a 90-day plan”). List 3 problems you solve. Save in Google Docs (https://docs.google.com/). Skip “I advise anyone.”",
+      desc: "Write one sentence: industry + who you advise + outcome (e.g. “I help mid-career nurses move into healthcare admin roles with a 90-day plan”). List 3 problems you solve. Save in Google Docs (Tools tab — sign in with Google, or use an account you already have). Skip “I advise anyone.”",
     },
     {
       title: "Build a simple rate card",
@@ -584,7 +901,7 @@ export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
     },
     {
       title: "Prep a discovery-call agenda",
-      desc: "One-page outline: goals, current role/business, blockers, 90-day success, next step. Use Google Docs or Notion. Practice a 45-minute flow: 10 listen / 25 advise / 10 agree on homework.",
+      desc: "One-page outline: goals, current role/business, blockers, 90-day success, next step. Use Google Docs (Tools tab — sign in with Google, or use an account you already have) or Notion. Practice a 45-minute flow: 10 listen / 25 advise / 10 agree on homework.",
     },
     {
       title: "Deliver the first paid session and send notes",
@@ -603,15 +920,11 @@ export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
   "basic-invitation-creator": [
     {
       title: "Collect event details from the host",
-      desc: "Text or call the host and write down: event name, date, start/end time, street address or venue, dress code (optional), and RSVP name + phone or email. Save these in a Notes app or Google Doc (https://docs.google.com/) so you can paste them into Canva without guessing.",
+      desc: "Text or call the host and write down: event name, date, start/end time, street address or venue, dress code (optional), and RSVP name + phone or email. Save these in a Notes app or Google Docs (Tools tab — sign in with Google, or use an account you already have) so you can paste them into Canva without guessing.",
     },
     {
-      title: "Open Canva and pick an invitation template",
-      desc: "Go to https://www.canva.com/ → sign in (free account is fine) → click Create a design → search Templates for “birthday invitation” or “party invite.” Click a template that matches the vibe (kids, elegant, casual).",
-    },
-    {
-      title: "Customize text, colors, and photos",
-      desc: "Double-click headline text and replace with the event name and date. Use the Text tool for time, address, and RSVP line. Swap colors with the color picker; upload a photo via Uploads if the host sent one. Keep fonts readable at print size.",
+      title: "Customize text, colors, and photos in Canva",
+      desc: "Open the invitation template you picked in Make your marketing materials (or duplicate it for this client). Double-click headline text and replace with the event name and date. Use the Text tool for time, address, and RSVP line. Swap colors with the color picker; upload a photo via Uploads if the host sent one. Keep fonts readable at print size.",
     },
     {
       title: "Export PDF Print and PNG files",
@@ -634,15 +947,11 @@ export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
   "canva-flyer-creator": [
     {
       title: "Interview the client on flyer purpose",
-      desc: "Ask what the flyer is for (yard sale, babysitting, bake sale, lost pet, club signup). Get the must-have lines: headline, date/time, location, price or free, and one contact (phone or QR). Write them in Google Docs before opening Canva.",
-    },
-    {
-      title: "Start a flyer-sized design in Canva",
-      desc: "Open https://www.canva.com/ → Create a design → search “Flyer (US Letter)” or “A4 flyer.” Browse Templates and pick one with big headline space and a clear footer for contact info.",
+      desc: "Ask what the flyer is for (yard sale, babysitting, bake sale, lost pet, club signup). Get the must-have lines: headline, date/time, location, price or free, and one contact (phone or QR). Write them in Google Docs (Tools tab — sign in with Google, or use an account you already have) before you customize in Canva.",
     },
     {
       title: "Drop in copy and high-contrast colors",
-      desc: "Replace placeholder text with the client’s exact words. Use Canva’s Elements tab for simple icons (calendar, map pin). Avoid tiny fonts — flyers are read from 6 feet away. Check spelling twice.",
+      desc: "Open the flyer template you picked in Make your marketing materials (or duplicate it for this client). Replace placeholder text with the client’s exact words. Use Canva’s Elements tab for simple icons (calendar, map pin). Avoid tiny fonts — flyers are read from 6 feet away. Check spelling twice.",
     },
     {
       title: "Add a QR code if they have a link",
@@ -669,7 +978,7 @@ export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
     },
     {
       title: "Design the cover in Canva or by hand",
-      desc: "Digital path: https://www.canva.com/ → Create design → “Greeting card” or folded 5×7 template. Handmade path: cardstock, colored pencils, stickers from a craft drawer. Keep the front bold; save long messages for the inside.",
+      desc: "Digital path: use the greeting-card template you picked in Make your marketing materials — keep the front bold; save long messages for the inside. Handmade path: cardstock, colored pencils, stickers from a craft drawer.",
     },
     {
       title: "Set up inside text and envelope fit",
@@ -692,7 +1001,7 @@ export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
   "digital-cookbook-creator": [
     {
       title: "Gather recipes and stories from the family",
-      desc: "Interview a parent or grandparent over FaceTime. Collect 8–15 recipes with ingredients, steps, serving size, and one memory line each. Paste everything into Google Docs (https://docs.google.com/) in one shared doc.",
+      desc: "Interview a parent or grandparent over FaceTime. Collect 8–15 recipes with ingredients, steps, serving size, and one memory line each. Paste everything into Google Docs (Tools tab — sign in with Google, or use an account you already have) in one shared doc.",
     },
     {
       title: "Organize sections and standardize formatting",
@@ -700,7 +1009,7 @@ export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
     },
     {
       title: "Add photos in Canva or Docs",
-      desc: "Scan or phone-photo dish pictures. In Canva (https://www.canva.com/) start a “Photo book” or “Document” layout — one recipe per page with a photo strip. Or keep it simple in Google Docs with Insert → Image.",
+      desc: "Scan or phone-photo dish pictures. In Canva (https://www.canva.com/) start a “Photo book” or “Document” layout — one recipe per page with a photo strip. Or keep it simple in Google Docs (Tools tab — sign in with Google, or use an account you already have) with Insert → Image.",
     },
     {
       title: "Design a cover and title page",
@@ -708,7 +1017,7 @@ export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
     },
     {
       title: "Export a shareable PDF",
-      desc: "Google Docs: File → Download → PDF. Canva: Download PDF Print. Name it like Johnson-Family-Cookbook-2026.pdf. Email a proof PDF to the family for one round of edits.",
+      desc: "In Google Docs (Tools tab — sign in with Google, or use an account you already have): File → Download → PDF. Canva: Download PDF Print. Name it like Johnson-Family-Cookbook-2026.pdf. Email a proof PDF to the family for one round of edits.",
     },
     {
       title: "Optional print via Amazon KDP or local shop",
@@ -815,7 +1124,7 @@ export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
       desc: "Choose a single line: polymer clay charms, friendship bracelets, sticker sheets, crochet coasters, or painted rocks. One lane = faster mastery and clearer pricing. Browse Etsy (https://www.etsy.com/) for style ideas — do not copy trademarked characters.",
     },
     {
-      title: "Cost your materials per unit",
+      title: "Cost your materials per unit for to determine target selling price",
       desc: "List supply cost for 10 items (clay pack, cord, beads, bags). Divide by 10 for unit cost. Target selling price at 2–3× materials plus $5–10 for your time on simple pieces.",
     },
     {
@@ -851,7 +1160,7 @@ export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
     },
     {
       title: "Write cheat-sheet steps they can photograph",
-      desc: "Type 5-step instructions in large font in Google Docs, print or text a photo of the sheet. Title: “How to FaceTime Emma.” Number every tap (“1. Tap green Phone icon”).",
+      desc: "Type 5-step instructions in large font in Google Docs (Tools tab — sign in with Google, or use an account you already have), print or text a photo of the sheet. Title: “How to FaceTime Emma.” Number every tap (“1. Tap green Phone icon”).",
     },
     {
       title: "Security basics without fear",
@@ -913,7 +1222,7 @@ export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
     },
     {
       title: "Return keys and debrief in person",
-      desc: "Hand keys back the day they return; walk through any issues (chewed shoe, skipped walk). Leave a short written log in Google Docs. Ask for repeat booking on their next trip.",
+      desc: "Hand keys back the day they return; walk through any issues (chewed shoe, skipped walk). Leave a short written log in Google Docs (Tools tab — sign in with Google, or use an account you already have). Ask for repeat booking on their next trip.",
     },
   ],
 
@@ -967,7 +1276,7 @@ export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
     },
     {
       title: "Write a simple scope note and price",
-      desc: "Google Docs one-pager: tasks done, parts used, labor hours, total due. Example labor $45–85/hr depending on market and skill. Collect deposit on jobs over $200 if materials are special-order.",
+      desc: "Google Docs (Tools tab — sign in with Google, or use an account you already have) one-pager: tasks done, parts used, labor hours, total due. Example labor $45–85/hr depending on market and skill. Collect deposit on jobs over $200 if materials are special-order.",
     },
     {
       title: "Follow up in 48 hours",
@@ -981,7 +1290,7 @@ export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
       desc: "Write clear packages clients can buy: e.g. Standard 2-bed (kitchen, baths, floors, dusting), deep clean (+40–60%), and move-out after a walkthrough. Put the same package names and example prices on every flyer and Page — free re-clean on any missed spot is a strong differentiator.",
     },
     {
-      title: "Write a room-by-room checklist in Google Docs",
+      title: "Write a room-by-room checklist in Google Docs (Tools tab)",
       desc: "Bath: toilet, sink, shower, mirrors, floors. Kitchen: counters, sink, stove top, microwave inside, floors. Living areas: dust surfaces, vacuum/sweep, empty trash. Share the checklist with the client so expectations match.",
     },
     {
@@ -1137,41 +1446,18 @@ export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
     },
   ],
 
-  "mothers-helper": [
-    {
-      title: "Make a list of potential Helper Tasks",
-      desc: "Do this before you invent an “offer.” In Google Docs (https://docs.google.com/) or Notes, write 8–12 small tasks a parent might want help with while they stay home — examples: tidy toys into bins, set out a simple snack with parent OK, read aloud / play a board game, fold a small laundry pile, wipe highchair tray, set the table, pack a diaper bag for an outing, walk the dog with parent watching, entertain a toddler while parent cooks. Mark each: indoor / outdoor, with-parent-only, and “I can do this today.” Cross off anything that is solo babysitting, bathing, medicine, driving, or being alone with kids — this hustle is helper work with a parent present.",
-    },
-    {
-      title: "Price those helper jobs",
-      desc: "Pick 3–5 tasks from your list and write a flat price next to each (examples only, not guarantees): $10 toy tidy, $15 play-and-snack hour, $20 two-hour helper block, $8 fold laundry basket. Prefer flat fees over vague hourly. Put the mini price menu in the same Doc. Ask a parent/guardian to review prices before you share them.",
-    },
-    {
-      title: "Decide how you will advertise (pick your channels)",
-      desc: "Choose 2 channels only for week one from this menu: (1) warm texts — parent helps you message 5–8 trusted families (“I help with toys, snacks, and play while a parent is home — menu + prices attached”), (2) a simple Canva flyer (https://www.canva.com/) or Notes screenshot of your task menu, (3) optional with a parent: one post in a neighborhood Facebook group or Nextdoor (https://nextdoor.com/) — parent posts if you’re under 18; never put your street address or a minor’s personal cell on a public post. Save your pitch line: “Babysitter’s Helper — parent stays home.”",
-    },
-    {
-      title: "Deliver the first small job",
-      desc: "Book one short session (30–90 minutes) with a family you already know. Confirm in writing: which tasks from your menu, flat price, date/time, and that a parent will remain home. Arrive on time, do only the agreed tasks, leave the space tidier than you found it. Text when finished: “Done — thank you!” Collect payment as arranged with your parent/guardian.",
-    },
-    {
-      title: "Ask for a short review and a next booking",
-      desc: "Ask for a 1–2 sentence parent note (“Helpful, reliable, great with toys”) and whether they want a standing weekly helper hour. Offer the same menu prices for a return visit — don’t invent new tasks mid-job without asking.",
-    },
-  ],
-
   "leaf-raking": [
     {
-      title: "Highlight Free Mini Hand Held Blower entry",
-      desc: "This Leaf Blowing Service qualifies for entry for a Free Mini Hand Held Blower. Put that on your flyer. Optional: purchase a Mini Hand Held Blower now if you want gear before any drawing — free entry still applies.",
+      title: "Highlight Free Mini Hand-Held Blower drawing",
+      desc: "The Side-Hustler that picks this Side-Hustle is eligible for entry in a drawing to win a Free Mini Hand-Held Blower. Conditions apply. Inquire about details via the Contact Form. Put that on your flyer.",
     },
     {
       title: "Quote by area size",
       desc: "Walk the property: driveway only, front lawn, or full lot. Ask if they want bagging to curb. Price examples: $25 / $45 / $80 flat in peak leaf season.",
     },
     {
-      title: "Bring bags, gloves, rake — and optional Mini Hand Held Blower",
-      desc: "Yard bags per city rules, work gloves, and a rake. Optional purchase: Mini Hand Held Blower for faster walkways. Wear eye/ear protection with any blower.",
+      title: "Bring bags, gloves, rake — and optional Mini Hand-Held Blower",
+      desc: "Yard bags per city rules, work gloves, and a rake. Optional: buy a Mini Hand-Held Blower for faster walkways if you want gear before any drawing. Wear eye/ear protection with any blower.",
     },
     {
       title: "Blow toward one pile per zone",
@@ -1329,7 +1615,7 @@ export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
   "vacation-mail-plant-helper": [
     {
       title: "Scope plant care only (no mail)",
-      desc: "Agree in writing: which plants, how much water, which days. Never collect, open, or move mail or packages — leave porch deliveries alone. Write a daily checklist in Google Docs both sign.",
+      desc: "Agree in writing: which plants, how much water, which days. Never collect, open, or move mail or packages — leave porch deliveries alone. Write a daily checklist in Google Docs (Tools tab — sign in with Google, or use an account you already have) both sign.",
     },
     {
       title: "Collect keys or lockbox code with parent witness",
@@ -1391,7 +1677,7 @@ export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
     },
     {
       title: "Prep a mini-lesson before each session",
-      desc: "Google Docs agenda: warm-up 5 min, teach 20 min, practice 15 min, exit ticket 5 min. Pull free practice from Khan Academy (https://www.khanacademy.org/) aligned to topic.",
+      desc: "Google Docs (Tools tab — sign in with Google, or use an account you already have) agenda: warm-up 5 min, teach 20 min, practice 15 min, exit ticket 5 min. Pull free practice from Khan Academy (https://www.khanacademy.org/) aligned to topic.",
     },
     {
       title: "Teach one concept; assign targeted practice",
@@ -1410,11 +1696,11 @@ export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
   proofreader: [
     {
       title: "Confirm document format and deadline",
-      desc: "Ask for Word, Google Doc link, or PDF. Note style: AP, casual blog, or school essay. Get word count and due time — rush fees OK for <24 hr.",
+      desc: "Ask for Word, Google Docs link (Tools tab), or PDF. Note style: AP, casual blog, or school essay. Get word count and due time — rush fees OK for <24 hr.",
     },
     {
       title: "First pass: spelling and grammar",
-      desc: "Google Docs: suggest mode (https://docs.google.com/). Run Grammarly free browser check if client allows. Mark fixes; don’t rewrite voice without comment.",
+      desc: "In Google Docs (Tools tab — sign in with Google, or use an account you already have), turn on Suggesting mode. Run Grammarly free browser check if client allows. Mark fixes; don’t rewrite voice without comment.",
     },
     {
       title: "Second pass: clarity and flow",
@@ -1513,7 +1799,7 @@ export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
     },
     {
       title: "Report metrics weekly",
-      desc: "Screenshot Insights: reach, profile visits, top post. Google Doc one-pager for client every Friday. Suggest one experiment next week (Reel vs. static).",
+      desc: "Screenshot Insights: reach, profile visits, top post. Google Docs (Tools tab — sign in with Google, or use an account you already have) one-pager for client every Friday. Suggest one experiment next week (Reel vs. static).",
     },
   ],
 
@@ -1523,8 +1809,8 @@ export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
       desc: "Examples: weekly blog drafts, customer email replies, job descriptions, study guides. Pick one workflow first — don’t sell “AI everything day one.”",
     },
     {
-      title: "Build a prompt library in Google Docs",
-      desc: "Sections: Role, Context, Task, Format, Examples, Constraints. Store at https://docs.google.com/ shared folder “Client Prompts v1.” Never paste client secrets or passwords into ChatGPT.",
+      title: "Build a prompt library in Google Docs (Tools tab)",
+      desc: "Sections: Role, Context, Task, Format, Examples, Constraints. Store in a shared Google Docs folder named “Client Prompts v1” (Tools tab — sign in with Google, or use an account you already have). Never paste client secrets or passwords into ChatGPT.",
     },
     {
       title: "Test prompts in ChatGPT and Gemini side by side",
@@ -1551,7 +1837,7 @@ export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
     },
     {
       title: "Rotate show-and-tell demos",
-      desc: "Each week one member screenshares a workflow: “How I batch captions” or “My KDP cover prompt.” Others take notes in a shared Google Doc.",
+      desc: "Each week one member screenshares a workflow: “How I batch captions” or “My KDP cover prompt.” Others take notes in a shared Google Docs file (Tools tab — sign in with Google, or use an account you already have).",
     },
     {
       title: "Run prompt swap exercises",
@@ -1621,7 +1907,7 @@ export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
     },
     {
       title: "Charge setup + maintenance",
-      desc: "Example $500–1500 setup + $100/mo monitoring for local business lead digest agent. Include 2 revision rounds in SOW Google Doc.",
+      desc: "Example $500–1500 setup + $100/mo monitoring for local business lead digest agent. Include 2 revision rounds in the SOW Google Docs file (Tools tab — sign in with Google, or use an account you already have).",
     },
   ],
 
@@ -1686,7 +1972,7 @@ export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
     },
     {
       title: "Create a shared AI policy doc",
-      desc: "Google Doc: approved tools (ChatGPT Team, Gemini), banned uses (medical advice, auto refunds), human review rule. Owner signs digitally.",
+      desc: "Google Docs (Tools tab — sign in with Google, or use an account you already have): approved tools (ChatGPT Team, Gemini), banned uses (medical advice, auto refunds), human review rule. Owner signs digitally.",
     },
     {
       title: "Set up ChatGPT Team or shared workspace",
@@ -1712,8 +1998,8 @@ export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
       desc: "Parent account only at https://chatgpt.com/ or https://gemini.google.com/. Kid suggests hero, setting, and win condition — no real names or school in the chat.",
     },
     {
-      title: "Save GAME-IDEA in Google Docs",
-      desc: "Parent copies chat answers: title, 3 levels easy→hard, lose condition. Paste into https://docs.google.com/ named GAME-IDEA.",
+      title: "Save GAME-IDEA in Google Docs (Tools tab)",
+      desc: "Parent copies chat answers: title, 3 levels easy→hard, lose condition. Paste into Google Docs (Tools tab — sign in with Google, or use an account you already have) and name the file GAME-IDEA.",
     },
     {
       title: "Build in Scratch first",
@@ -1755,8 +2041,43 @@ export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
       desc: "Fix one blocking bug before share. Publish free demo at https://itch.io/ only with guardian approval — page has no personal contact info.",
     },
     {
-      title: "Write a short postmortem in Google Docs",
+      title: "Write a short postmortem in Google Docs (Tools tab)",
       desc: "Three bullets: what worked in Antigravity, what broke, next feature for v2. Share with your guardian or classmates as a portfolio piece — link the itch.io or GitHub demo, not your home address.",
+    },
+  ],
+
+  "start-gardening-club": [
+    {
+      title: "Name the club and pick a clear garden focus",
+      desc: `Write one sentence in ${GOOGLE_DOCS_FROM_TOOLS}: who the club is for + what you grow together (container veggies, pollinator flowers, raised beds, or patio herbs). Skip “gardening for everyone” — a narrow focus makes Meetup topics and flyers easier.`,
+    },
+    {
+      title: "Decide the meetup objective, topic, and guest takeaways",
+      desc: `Before you post anything, open ${GOOGLE_DOCS_FROM_TOOLS} and fill three lines for meetup #1: (1) Objective — why people show up (e.g. “Help new container gardeners plant their first tomato”). (2) Topic — the one lesson or activity (e.g. “Soil mix + potting demo” or “spring plant swap”). (3) Walk-aways — 2–3 things every guest should leave with (a tip sheet, a cutting or seed packet, a watering schedule, and the date of meetup #2). Paste those three lines into your Meetup event description so RSVPs know the promise.`,
+    },
+    {
+      title: "Book a free or low-cost meeting spot",
+      desc: "Ask a library meeting room, church hall, senior center, community garden shed, HOA clubhouse, or a neighbor’s patio for 60–90 minutes. Confirm restrooms, chairs/tables, outdoor shade or indoor backup for rain, and whether food/drinks are allowed. Write the address, parking tip, and “how to find us” notes for Meetup.",
+    },
+    {
+      title: "Set up your Gardening Club on Meetup.com",
+      desc: "Create a free Meetup account at https://www.meetup.com/ then choose Start a new group. Name the group after your club focus, set your city, pick gardening / outdoors topics, and write a short description that matches your Docs objective. First-time organizers may see Meetup Starter (free plan with limits — often 1 group, up to 2 in-person events/month, and a small attendee cap; verify current limits at https://help.meetup.com/). Submit the group for Meetup’s review (often within ~24 hours). While waiting, create Event #1: title = your topic, date/time under 90 minutes, venue = the spot you booked, description = objective + walk-aways + what to bring (gloves, one cutting for a swap, etc.). Publish once the form is complete. You (or a named co-host) must be present in person at every Meetup event.",
+    },
+    {
+      title: "Gather hosting supplies and simple food or drinks",
+      desc: "Pack a host kit before the RSVP count grows: name tags + markers, printed tip sheets (one page from Docs), a sign-in clipboard or phone Notes list, demo seeds/gloves if you promised a hands-on activity, hand sanitizer, trash bags, and a small first-aid bandaid pack. For hospitality: water or iced tea, disposable cups, napkins, and one tray of simple finger food (cookies, fruit, or crackers) — keep it light and label allergens. Ask the venue about food rules. Optional plant-swap extras: spare small pots, newspaper wrap, and a “bring one / take one” sign. Aim to stay near your Supply list budget (~$15–40 for the first meetup demos).",
+    },
+    {
+      title: "Invite a starter circle and track RSVPs",
+      desc: "Share the Meetup event link on Nextdoor, church/senior-center boards, community garden groups, and 5–10 neighbors by text. Lead with “first meetup is free” and the walk-away promise. Aim for 6–12 people; on Meetup Starter stay within the attendee cap. Check RSVPs 48 hours and 2 hours before — text “Still coming?” if the room looks empty. Bring a paper backup list in case Wi‑Fi fails.",
+    },
+    {
+      title: "Host meetup #1 with a simple timed agenda",
+      desc: "Arrive 20 minutes early to set chairs, food table, and demo station. Run ~75 minutes: 10 intros → 25 topic/demo tied to your objective → 20 plant swap or Q&A → 10 walk-aways handout + next date → 10 optional dues/workshop tease. End on time. Collect emails or invite guests to join the Meetup group before they leave. Take 2–3 photos of the activity (not close-ups of faces without permission) for your next event post.",
+    },
+    {
+      title: "Follow up and add light monetization (optional)",
+      desc: `Same day, post a thank-you on the Meetup event page with the tip sheet link or photo and the date for meetup #2. In ${GOOGLE_DOCS_FROM_TOOLS}, note what worked, what to buy next time, and any volunteer co-hosts. Once the group trusts you, offer gentle options: $5–$15/month dues examples, a seed starter kit, or a $15–$40 seasonal workshop — examples only, not income guarantees. Keep the next Meetup topic + walk-aways written before you publish the next event.`,
     },
   ],
 };

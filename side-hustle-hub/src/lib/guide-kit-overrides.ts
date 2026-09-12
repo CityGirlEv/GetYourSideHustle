@@ -7,9 +7,17 @@ import type {
   GuideAuthoredStep,
   GuideKit,
   GuidePrerequisite,
+  GuideSuggestedPricing,
+  GuideSupplyList,
   GuideToolCost,
 } from "./guide-tools";
 import { guideKitForId } from "./guide-tools";
+import { finalizeGuidePlaybookSteps } from "./guide-detailed-steps";
+import { ensureMarketingPlanSteps } from "./guide-marketing-plan";
+import { hustleById } from "./side-hustle-catalog";
+import { kidsGuideById } from "./kids-guides";
+import type { GuidePricingItem } from "./guide-suggested-pricing";
+import type { GuideSupplyItem } from "./guide-supplies";
 
 const MAX_ITEMS = 60;
 const MAX_LABEL = 200;
@@ -113,6 +121,83 @@ export function sanitizeGuideSteps(raw: unknown): GuideAuthoredStep[] | undefine
   return out;
 }
 
+export function sanitizeGuideSupplyItems(raw: unknown): GuideSupplyItem[] | undefined {
+  if (raw === undefined) return undefined;
+  if (!Array.isArray(raw)) return undefined;
+  const out: GuideSupplyItem[] = [];
+  for (let i = 0; i < raw.length && out.length < MAX_ITEMS; i++) {
+    const row = raw[i];
+    if (!row || typeof row !== "object" || Array.isArray(row)) continue;
+    const body = row as Record<string, unknown>;
+    const name = typeof body.name === "string" ? clip(body.name, MAX_LABEL) : "";
+    if (!name) continue;
+    const item: GuideSupplyItem = {
+      id: slugId(body.id, `supply-${out.length + 1}`),
+      name,
+      qty: typeof body.qty === "string" ? clip(body.qty, 80) : "1",
+      estCost: typeof body.estCost === "string" ? clip(body.estCost, 80) : "",
+    };
+    if (typeof body.notes === "string" && body.notes.trim()) {
+      item.notes = clip(body.notes, MAX_TEXT);
+    }
+    if (body.optional === true) item.optional = true;
+    out.push(item);
+  }
+  return out;
+}
+
+export function sanitizeGuideSupplies(raw: unknown): GuideSupplyList | undefined {
+  if (raw === undefined) return undefined;
+  if (raw === null) return undefined;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const body = raw as Record<string, unknown>;
+  const items = sanitizeGuideSupplyItems(body.items);
+  if (items === undefined) return undefined;
+  return {
+    items,
+    starterKitTotal:
+      typeof body.starterKitTotal === "string" ? clip(body.starterKitTotal, MAX_TEXT) : "",
+  };
+}
+
+export function sanitizeGuidePricingItems(raw: unknown): GuidePricingItem[] | undefined {
+  if (raw === undefined) return undefined;
+  if (!Array.isArray(raw)) return undefined;
+  const out: GuidePricingItem[] = [];
+  for (let i = 0; i < raw.length && out.length < MAX_ITEMS; i++) {
+    const row = raw[i];
+    if (!row || typeof row !== "object" || Array.isArray(row)) continue;
+    const body = row as Record<string, unknown>;
+    const label = typeof body.label === "string" ? clip(body.label, MAX_LABEL) : "";
+    const price = typeof body.price === "string" ? clip(body.price, MAX_LABEL) : "";
+    if (!label && !price) continue;
+    const item: GuidePricingItem = {
+      id: slugId(body.id, `price-${out.length + 1}`),
+      label: label || `Price ${out.length + 1}`,
+      price: price || "",
+    };
+    if (typeof body.notes === "string" && body.notes.trim()) {
+      item.notes = clip(body.notes, MAX_TEXT);
+    }
+    out.push(item);
+  }
+  return out;
+}
+
+export function sanitizeGuideSuggestedPricing(raw: unknown): GuideSuggestedPricing | undefined {
+  if (raw === undefined) return undefined;
+  if (raw === null) return undefined;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const body = raw as Record<string, unknown>;
+  const items = sanitizeGuidePricingItems(body.items);
+  if (items === undefined) return undefined;
+  const out: GuideSuggestedPricing = { items };
+  if (typeof body.raiseTip === "string" && body.raiseTip.trim()) {
+    out.raiseTip = clip(body.raiseTip, MAX_TEXT);
+  }
+  return out;
+}
+
 /** Merge kit-body fields from a raw patch object into a GuideCatalogPatch. */
 export function mergeKitFieldsIntoPatch(
   patch: GuideCatalogPatch,
@@ -140,6 +225,20 @@ export function mergeKitFieldsIntoPatch(
       if (list !== undefined) next.steps = list;
     }
   }
+  if ("supplies" in raw) {
+    if (raw.supplies === null) delete next.supplies;
+    else {
+      const list = sanitizeGuideSupplies(raw.supplies);
+      if (list !== undefined) next.supplies = list;
+    }
+  }
+  if ("suggestedPricing" in raw) {
+    if (raw.suggestedPricing === null) delete next.suggestedPricing;
+    else {
+      const list = sanitizeGuideSuggestedPricing(raw.suggestedPricing);
+      if (list !== undefined) next.suggestedPricing = list;
+    }
+  }
   return next;
 }
 
@@ -162,6 +261,20 @@ export function applyGuideKitPatch(
   if (patch.steps !== undefined) {
     next.steps = patch.steps.map((s) => ({ title: s.title, desc: s.desc }));
   }
+  if (patch.supplies !== undefined) {
+    next.supplies = {
+      starterKitTotal: patch.supplies.starterKitTotal,
+      items: patch.supplies.items.map((i) => ({ ...i })),
+    };
+  }
+  if (patch.suggestedPricing !== undefined) {
+    next.suggestedPricing = {
+      items: patch.suggestedPricing.items.map((i) => ({ ...i })),
+      ...(patch.suggestedPricing.raiseTip
+        ? { raiseTip: patch.suggestedPricing.raiseTip }
+        : {}),
+    };
+  }
   return next;
 }
 
@@ -170,7 +283,9 @@ export function guideKitHasContentOverride(patch?: GuideCatalogPatch | null): bo
   return (
     patch.prerequisites !== undefined ||
     patch.tools !== undefined ||
-    patch.steps !== undefined
+    patch.steps !== undefined ||
+    patch.supplies !== undefined ||
+    patch.suggestedPricing !== undefined
   );
 }
 
@@ -179,5 +294,27 @@ export function resolveGuideKit(
   guideId: string,
   patch?: GuideCatalogPatch | null,
 ): GuideKit {
-  return applyGuideKitPatch(guideKitForId(guideId), patch);
+  const kit = applyGuideKitPatch(guideKitForId(guideId), patch);
+  /** Admin/QA Steps tab saves are authoritative — do not re-inject deleted foundation/marketing steps. */
+  if (patch?.steps !== undefined) {
+    return {
+      ...kit,
+      steps: (kit.steps ?? []).map((s) => ({ title: s.title, desc: s.desc })),
+    };
+  }
+  const hustle = hustleById(guideId);
+  const kids = hustle ? undefined : kidsGuideById(guideId);
+  const audiences =
+    hustle?.audiences ??
+    (kids
+      ? kids.audience === "junior"
+        ? (["junior"] as const)
+        : (["kids"] as const)
+      : undefined);
+  const steps = finalizeGuidePlaybookSteps(
+    guideId,
+    ensureMarketingPlanSteps(kit.steps ?? [], guideId),
+    { audiences },
+  );
+  return { ...kit, steps };
 }

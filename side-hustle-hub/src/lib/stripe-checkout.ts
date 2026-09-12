@@ -22,6 +22,7 @@ export type StripeCheckoutResult = {
   amountUsd?: number;
   creditsApplied?: number;
   cashDueUsd?: number;
+  user?: AuthUser;
 };
 
 export async function startMembershipCheckout(input: {

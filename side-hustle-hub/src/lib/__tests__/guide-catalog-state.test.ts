@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   defaultStatusForGuide,
   filterGuidesForViewer,
+  filterGuidesForWizardResults,
   getGuideVisibilityStatus,
   guideHeldVisibilityStatuses,
   guideHoldsActive,
@@ -11,6 +12,7 @@ import {
   guideStatusToPublishedCode,
   guidesDefaultPublished,
   guideStatusAfterVisibilityPick,
+  isGuideEligibleForWizardResults,
   isGuidePublished,
   isGuideVisibleToPublic,
   toggleGuideReviewed,
@@ -27,9 +29,9 @@ describe("guidesDefaultPublished", () => {
 
 describe("guide catalog visibility", () => {
   it("shows guides with no state to the public (membership still gates access)", () => {
-    expect(isGuideVisibleToPublic("cleaning-service", {})).toBe(true);
-    expect(isGuidePublished("cleaning-service", {})).toBe(true);
-    expect(defaultStatusForGuide("cleaning-service")).toBe("active");
+    expect(isGuideVisibleToPublic("beach-shell-jewelry", {})).toBe(true);
+    expect(isGuidePublished("beach-shell-jewelry", {})).toBe(true);
+    expect(defaultStatusForGuide("beach-shell-jewelry")).toBe("active");
   });
 
   it("honors explicit Active / Inactive / Pending / In Review rows", () => {
@@ -153,6 +155,11 @@ describe("pending needs-further-review flags", () => {
     expect(guideStatusAfterVisibilityPick("pending", "fixed_rereview", false)).toBe("fixed_rereview");
     expect(guideStatusAfterVisibilityPick("fixed_rereview", "inactive", false)).toBe("inactive");
     expect(guideStatusAfterVisibilityPick("fixed_rereview", "active", false)).toBe("reviewed_by_qa");
+    // Active always flips to Reviewed (Not Reviewed unchecked).
+    expect(guideStatusAfterVisibilityPick("inactive", "active", false)).toBe("reviewed_by_qa");
+    expect(guideStatusAfterVisibilityPick("inactive", "active", true)).toBe("reviewed_by_dev");
+    expect(guideStatusAfterVisibilityPick("active", "active", false)).toBe("reviewed_by_qa");
+    expect(guideStatusAfterVisibilityPick("reviewed_by_qa", "active", false)).toBe("reviewed_by_qa");
   });
 
   it("leaves Pending in place when Reviewed is already implied", () => {
@@ -161,6 +168,13 @@ describe("pending needs-further-review flags", () => {
     expect(toggleGuideReviewed("fixed_rereview", true, true)).toBe("reviewed_by_dev");
     expect(toggleGuideReviewed("pending", false, false)).toBe("active");
     expect(toggleGuideReviewed("active", true, false)).toBe("reviewed_by_qa");
+  });
+
+  it("holds Active + Reviewed only — not Fixed/Re-Review — after pass", () => {
+    expect(guideHeldVisibilityStatuses("reviewed_by_qa")).toEqual(["active", "reviewed_by_qa"]);
+    expect(guideHeldVisibilityStatuses("reviewed_by_dev")).toEqual(["active", "reviewed_by_dev"]);
+    expect(guideHeldVisibilityStatuses("reviewed_by_qa")).not.toContain("fixed_rereview");
+    expect(guideHeldVisibilityStatuses("reviewed_by_dev")).not.toContain("fixed_rereview");
   });
 
   it("sends Fixed/Re-Review back to QA as Not Reviewed after a Pending fix", () => {

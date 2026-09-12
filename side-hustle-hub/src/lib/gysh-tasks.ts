@@ -12,6 +12,7 @@ import { noteEntriesPlainText } from "./gysh-note-entries";
 import { currentSprintIndex, dueDateForSprint } from "./gysh-sprints";
 import { ensureTaskNotesPageLink } from "./qa-page-links";
 import { suggestedSprintForTask } from "./gysh-sprint-board";
+import { ensureSocialAnalyticsReviewTasks } from "./social-analytics-review-tasks";
 
 export type TaskStatus =
   | "not_started"
@@ -1287,13 +1288,15 @@ export async function syncGuideReviewTasks(existing?: GyshTask[]): Promise<{
   const membership = ensureMembershipTierReviewTasks(senior.tasks);
   const military = ensureMilitaryVeteranCalloutTask(membership.tasks);
   const scheduleStatus = ensureScheduleBlockStatusQaTasks(military.tasks);
-  const linked = ensureTaskPageLinks(scheduleStatus.tasks);
+  const social = ensureSocialAnalyticsReviewTasks(scheduleStatus.tasks);
+  const linked = ensureTaskPageLinks(social.tasks);
   const created = [
     ...guide.created,
     ...senior.created,
     ...membership.created,
     ...military.created,
     ...scheduleStatus.created,
+    ...social.created,
   ];
   if (
     created.length === 0 &&

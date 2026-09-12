@@ -333,15 +333,15 @@ export const ADMIN_GUIDE_SECTIONS: GuideDocSection[] = [
         items: [
           {
             id: "due-login",
-            text: "On fresh Admin login, overdue / due-today tasks and overdue tests for your assignee can open a modal — with days left in the current sprint and a nudge to finish before Monday.",
+            text: "Login due-task / overdue-test popups are disabled — Admin opens straight to your landing tab. Use Task List and Testing Portal to review work.",
           },
           {
             id: "due-daily",
-            text: "Optional once-per-day reminder when opening Admin if overdue tasks or tests remain.",
+            text: "Daily overdue reminders on Admin open are also off.",
           },
           {
             id: "due-jump",
-            text: "Jump to Task List or Testing Portal from the modal to work the items.",
+            text: "Open Task List or Testing Portal anytime from Admin nav to work items.",
           },
         ],
       },

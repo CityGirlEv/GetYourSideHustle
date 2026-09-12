@@ -81,7 +81,6 @@ import {
   blueprintAgeGroupTitle,
   blueprintMatchLabel,
 } from "../lib/blueprint-match-labels";
-import { hasLaunchGuide } from "../lib/launch-guides";
 import type { BlueprintAgeGroup } from "../lib/gysh-analytics";
 import {
   fetchFamilyChildren,
@@ -213,9 +212,7 @@ function MatchRow({
   ageGroup: BlueprintAgeGroup;
   onOpenGuide?: (ageGroup: BlueprintAgeGroup, hustleId: string) => void;
 }) {
-  const canOpenGuide =
-    Boolean(onOpenGuide) &&
-    (ageGroup === "adult" ? hasLaunchGuide(match.id) : true);
+  const canOpenGuide = Boolean(onOpenGuide);
 
   return (
     <li>

@@ -49,4 +49,9 @@ describe("Testing Portal filter layout", () => {
     expect(src).toMatch(/chipClick\(\s*statusFilters[\s\S]*?e,\s*true,/);
     expect(src).toContain("tap to multi-select · Shift+click for a range");
   });
+
+  it("lays out Sprint filter bubbles in a column grid", () => {
+    expect(src).toContain('data-testid="qa-sprint-bubbles"');
+    expect(src).toContain("schedule-sprint-bubble-grid");
+  });
 });

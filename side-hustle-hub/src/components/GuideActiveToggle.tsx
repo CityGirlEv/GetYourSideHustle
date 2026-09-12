@@ -16,7 +16,8 @@ const VISIBILITY_OPTIONS: { value: GuideVisibilityStatus; label: string }[] = [
 /**
  * Admin status line under the guide header:
  * Active / Pending / Fixed/Re-Review / Inactive + Not Reviewed / Reviewed.
- * Pending also checks Reviewed + Inactive. Fixed/Re-Review is Not Reviewed (back to QA).
+ * Pending also checks Reviewed + Inactive. Fixed/Re-Review from Pending is Not Reviewed
+ * (back to QA). Checking Active always flips to Reviewed (Not Reviewed off).
  */
 export function GuideActiveToggle({
   guideId,
@@ -64,7 +65,9 @@ export function GuideActiveToggle({
               disabled={busy}
               data-testid={`guide-active-check-${opt.value}-${guideId}`}
               onChange={() => {
-                if (checked || busy) return;
+                if (busy) return;
+                // Active already checked but still Not Reviewed → promote to Reviewed.
+                if (checked && !(opt.value === "active" && status === "active")) return;
                 onChange(
                   guideStatusAfterVisibilityPick(
                     status,

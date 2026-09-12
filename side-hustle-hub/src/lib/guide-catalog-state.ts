@@ -15,8 +15,12 @@ import {
 } from "./age-library-tiers";
 import { mergeKitFieldsIntoPatch } from "./guide-kit-overrides";
 import type { GuideAuthoredStep, GuidePrerequisite, GuideToolCost } from "./guide-tools";
+import type { GuideSuggestedPricing } from "./guide-suggested-pricing";
+import type { GuideSupplyList } from "./guide-supplies";
+import { guideMarkedPendingAfterPrepBackfill } from "./guide-marketing-plan";
 import type { TierId } from "./membership";
 import { isFreeWizardHustle, SIDE_HUSTLES } from "./side-hustle-catalog";
+import { isHumanQaTesterId, normalizeQaAssigneeId } from "./gysh-roles";
 
 /** Public-facing when Active, Reviewed by QA, or Reviewed by Dev. */
 export type GuideVisibilityStatus =
@@ -44,6 +48,17 @@ export function guideHoldsActive(status: GuideVisibilityStatus): boolean {
 /** Hidden review-cycle statuses: Pending and Fixed/Re-Review. */
 export function guideIsHiddenReviewStatus(status: GuideVisibilityStatus): boolean {
   return status === "pending" || status === "fixed_rereview";
+}
+
+/** Pending / Needs Further Review requires a written reason (copied to the GUIDE-REV test). */
+export const GUIDE_STATUS_NOTE_MIN_LENGTH = 8;
+
+export function guideStatusRequiresNote(status: GuideVisibilityStatus): boolean {
+  return status === "pending";
+}
+
+export function guideStatusNoteMeetsRequirement(note: string | null | undefined): boolean {
+  return String(note ?? "").trim().length >= GUIDE_STATUS_NOTE_MIN_LENGTH;
 }
 
 /** Pills / toggle checks: review statuses also surface Active; Pending also shows Inactive. */
@@ -94,9 +109,11 @@ export type GuideVisibilityPick = "active" | "pending" | "fixed_rereview" | "ina
 /**
  * Status after picking a visibility checkbox.
  * Pending implies Reviewed + Inactive (hidden).
- * Fixed/Re-Review is a QA queue after a fix — Not Reviewed, hidden, not Inactive.
+ * Fixed/Re-Review from Pending = fix queue for QA (Not Reviewed, hidden).
+ * Checking Fixed/Re-Review from any other status still marks Reviewed (QA or Dev).
+ * Live Reviewed (QA / Dev) only holds Active + Reviewed — not Fixed/Re-Review.
  * Picking Inactive on Pending keeps Pending; on Fixed/Re-Review goes to Inactive.
- * Switching Pending or Fixed/Re-Review → Active goes live as Reviewed (QA or Dev).
+ * Picking Active always goes live as Reviewed (QA or Dev) — Not Reviewed stays unchecked.
  */
 export function guideStatusAfterVisibilityPick(
   status: GuideVisibilityStatus,
@@ -104,14 +121,17 @@ export function guideStatusAfterVisibilityPick(
   canSetReviewedByDev: boolean,
 ): GuideVisibilityStatus {
   if (picked === "pending") return "pending";
-  if (picked === "fixed_rereview") return "fixed_rereview";
+  if (picked === "fixed_rereview") {
+    if (status === "pending") return "fixed_rereview";
+    return guideReviewedStatusForActor(canSetReviewedByDev);
+  }
   if (picked === "inactive") {
     if (status === "pending") return "pending";
     return "inactive";
   }
-  if (guideIsHiddenReviewStatus(status)) return guideReviewedStatusForActor(canSetReviewedByDev);
+  // Active → always Active + Reviewed (uncheck Not Reviewed).
   if (guideIsReviewed(status) && guideHoldsActive(status)) return status;
-  return "active";
+  return guideReviewedStatusForActor(canSetReviewedByDev);
 }
 
 export function guideMatchesStatusFilter(
@@ -189,6 +209,11 @@ export type GuideCatalogPatch = {
   description?: string;
   peek?: string;
   minTier?: TierId;
+  /**
+   * Membership levels this guide is included in (Free / Starter / Pro / Elite).
+   * Elite included ⇒ all levels. Access floor is still `minTier` (lowest selected).
+   */
+  membershipTiers?: TierId[];
   category?: string;
   audiences?: Array<"kids" | "junior" | "adult" | "senior">;
   /** Full ordered list — replaces code kit prerequisites when set. */
@@ -197,6 +222,15 @@ export type GuideCatalogPatch = {
   tools?: GuideToolCost[];
   /** Full ordered list — replaces code / detailed steps when set. */
   steps?: GuideAuthoredStep[];
+  /** Full supply list override (Supply List tab). */
+  supplies?: GuideSupplyList;
+  /** Full suggested pricing override (Suggested Pricing tab). */
+  suggestedPricing?: GuideSuggestedPricing;
+  /**
+   * QA assignee for this guide (same person as the linked GUIDE-REV test).
+   * Human tester id (e.g. lyriq, tina); empty/omitted = unassigned / use linked test.
+   */
+  assignee?: string;
 };
 
 export type GuideCatalogState = {
@@ -245,9 +279,9 @@ export function guideIsFreePlanGuide(guideId: string): boolean {
   return false;
 }
 
-/** Missing catalog row = Active (live in the library). Admin can set Inactive / Pending to hide. */
+/** Missing catalog row = Active (live), except guides backfilled for marketing/tabs → Pending. */
 export function defaultStatusForGuide(guideId: string): GuideVisibilityStatus {
-  void guideId;
+  if (guideMarkedPendingAfterPrepBackfill(guideId)) return "pending";
   return "active";
 }
 
@@ -358,6 +392,16 @@ export function sanitizeGuideCatalogPatch(raw: unknown): GuideCatalogPatch | nul
   if (typeof body.minTier === "string" && TIERS.includes(body.minTier as TierId)) {
     patch.minTier = body.minTier as TierId;
   }
+  if (Array.isArray(body.membershipTiers)) {
+    const membershipTiers = body.membershipTiers
+      .map((t) => String(t))
+      .filter((t): t is TierId => TIERS.includes(t as TierId));
+    const ordered = TIERS.filter((t) => membershipTiers.includes(t)) as TierId[];
+    if (ordered.length) {
+      patch.membershipTiers = ordered;
+      if (!patch.minTier) patch.minTier = ordered[0];
+    }
+  }
   if (Array.isArray(body.audiences)) {
     const audiences = body.audiences
       .map((a) => String(a))
@@ -365,6 +409,22 @@ export function sanitizeGuideCatalogPatch(raw: unknown): GuideCatalogPatch | nul
         a === "kids" || a === "junior" || a === "adult" || a === "senior",
       );
     if (audiences.length) patch.audiences = audiences;
+  }
+  if ("assignee" in body) {
+    const text = String(body.assignee ?? "").trim();
+    if (!text || /^unassigned$/i.test(text)) {
+      patch.assignee = "";
+    } else {
+      // One assignee per guide — keep the first valid human QA id.
+      let primary = "";
+      for (const part of text.split(/[+,&|/]/)) {
+        const id = normalizeQaAssigneeId(part);
+        if (!id || id === "unassigned" || !isHumanQaTesterId(id)) continue;
+        primary = id;
+        break;
+      }
+      patch.assignee = primary;
+    }
   }
   return mergeKitFieldsIntoPatch(patch, body);
 }
@@ -424,7 +484,12 @@ export function getGuideVisibilityStatus(
   const row = states?.[guideId];
   if (!row) return defaultStatusForGuide(guideId);
   if (row.deleted) return "inactive";
-  return resolveGuideVisibilityStatus(row);
+  const resolved = resolveGuideVisibilityStatus(row);
+  // Backfilled guides that were still Active move to Pending until QA re-reviews.
+  if (guideMarkedPendingAfterPrepBackfill(guideId) && resolved === "active") {
+    return "pending";
+  }
+  return resolved;
 }
 
 /** True when Active or Reviewed by QA (both are live / published). */
@@ -445,6 +510,25 @@ export function isGuideVisibleToPublic(
 ): boolean {
   if (states?.[guideId]?.deleted === true) return false;
   return guideHoldsActive(getGuideVisibilityStatus(guideId, states));
+}
+
+/**
+ * Match Wizard results — Active-only for everyone, including admin/QA testing.
+ * Never use {@link filterGuidesForViewer} with isAdmin here: wizards must not surface
+ * Pending / Inactive / Fixed/Re-Review guides in ranked results.
+ */
+export function isGuideEligibleForWizardResults(
+  guideId: string,
+  states: GuideCatalogStateMap | null | undefined,
+): boolean {
+  return isGuideVisibleToPublic(guideId, states);
+}
+
+export function filterGuidesForWizardResults<T extends { id: string }>(
+  guides: T[],
+  states: GuideCatalogStateMap | null | undefined,
+): T[] {
+  return guides.filter((g) => isGuideEligibleForWizardResults(g.id, states));
 }
 
 /** Admins see unpublished + soft-deleted for review (unless permanently purged). */
@@ -478,6 +562,9 @@ export function applyGuideCatalogPatch<T extends Record<string, unknown>>(
   }
   if (patch.peek !== undefined) (next as Record<string, unknown>).peek = patch.peek;
   if (patch.minTier) (next as Record<string, unknown>).minTier = patch.minTier;
+  if (patch.membershipTiers?.length) {
+    (next as Record<string, unknown>).membershipTiers = patch.membershipTiers;
+  }
   if (patch.category) (next as Record<string, unknown>).category = patch.category;
   if (patch.audiences) (next as Record<string, unknown>).audiences = patch.audiences;
   return next;

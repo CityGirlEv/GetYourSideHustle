@@ -57,7 +57,7 @@ const CORE_LAUNCH_GUIDES: LaunchGuideRef[] = [
   {
     id: "digital-products",
     name: "Digital Products",
-    peek: "Creators who want to sell ebooks, printables, templates, and courses — separate from affiliate links.",
+    peek: "Creators who want to sell ebooks, printables, planners, templates, and mini-courses — separate from affiliate links.",
   },
   {
     id: "affiliate",

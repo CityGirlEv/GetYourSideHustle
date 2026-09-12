@@ -10,6 +10,7 @@ import {
   filterSideHustles,
   freeWizardPool,
   freeWizardPoolCounts,
+  guideSideHustleDescription,
   hustleById,
   hustlesForAudience,
   isAiSideHustle,
@@ -160,5 +161,15 @@ describe("side-hustle-catalog expansion", () => {
     const kit = buildLaunchKit("handyman");
     expect(kit.length).toBeGreaterThan(0);
     expect(kit.some((i) => i.kind === "schedule")).toBe(true);
+  });
+
+  it("guideSideHustleDescription prefers catalog description over generic whoItsGoodFor", () => {
+    const mothers = hustleById("mothers-helper");
+    expect(mothers?.description).toMatch(/parent present/i);
+    expect(guideSideHustleDescription("mothers-helper")).toBe(mothers!.description);
+    expect(guideSideHustleDescription("mothers-helper")).not.toBe(
+      "People who match the skills and schedule notes below",
+    );
+    expect(guideSideHustleDescription("pod")).toMatch(/shirts|mugs|merchandise/i);
   });
 });

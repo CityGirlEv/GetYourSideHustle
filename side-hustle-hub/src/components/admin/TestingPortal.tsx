@@ -27,6 +27,8 @@ import {
   fetchSoftLaunchOverrides,
 } from "../../lib/soft-launch-item-overrides";
 import { scrollAdminFocusIntoView } from "../../lib/admin-focus-scroll";
+import { testCaseIdWithNumber } from "../../lib/guide-numbers";
+import { testCardNumber } from "../../lib/admin-card-numbers";
 import {
   TEST_CASES,
   DEFAULT_TEST_STATUS,
@@ -3138,9 +3140,7 @@ export function TestingPortal({
         </div>
       ) : null}
       <div className="qa-status-tiles" data-testid="qa-status-tiles">
-        {(["total", ...STATUSES] as const)
-          .filter((k) => k === "total" || (counts[k] ?? 0) > 0)
-          .map((k) => {
+        {(["total", ...STATUSES] as const).map((k) => {
           const isTotal = k === "total";
           const active = isTotal ? statusFilters.size === 0 : statusFilters.has(k);
           const statusCount = isTotal ? completedCases : (counts[k] ?? 0);
@@ -3383,7 +3383,10 @@ export function TestingPortal({
               />
             </div>
             {sprintOpen && (
-              <div className="qa-categories-panel__bubbles">
+              <div
+                className="qa-categories-panel__bubbles schedule-sprint-bubble-grid"
+                data-testid="qa-sprint-bubbles"
+              >
                 <FilterChip
                   active={isAllSprintsFilter(sprintFilters)}
                   onToggle={() => {
@@ -3396,21 +3399,25 @@ export function TestingPortal({
                     <span className="task-list-sprint__name">All sprints</span>
                     <span className="task-list-sprint__dates">{allSprintsNumericRange}</span>
                   </span>
-                  <span className="qa-tester-meta">
-                    · Tests{" "}
-                    {countWithPct(
-                      sprintStats.backlog.done +
-                        [...sprintStats.bySprint.values()].reduce((n, s) => n + s.done, 0),
-                      sprintStats.backlog.total +
-                        [...sprintStats.bySprint.values()].reduce((n, s) => n + s.total, 0),
-                    )}
-                    {" · Tasks "}
-                    {countWithPct(
-                      taskSprintStats.backlog.done +
-                        [...taskSprintStats.bySprint.values()].reduce((n, s) => n + s.done, 0),
-                      taskSprintStats.backlog.total +
-                        [...taskSprintStats.bySprint.values()].reduce((n, s) => n + s.total, 0),
-                    )}
+                  <span className="qa-tester-meta schedule-sprint-tq">
+                    <span>
+                      Tests{" "}
+                      {countWithPct(
+                        sprintStats.backlog.done +
+                          [...sprintStats.bySprint.values()].reduce((n, s) => n + s.done, 0),
+                        sprintStats.backlog.total +
+                          [...sprintStats.bySprint.values()].reduce((n, s) => n + s.total, 0),
+                      )}
+                    </span>
+                    <span>
+                      Tasks{" "}
+                      {countWithPct(
+                        taskSprintStats.backlog.done +
+                          [...taskSprintStats.bySprint.values()].reduce((n, s) => n + s.done, 0),
+                        taskSprintStats.backlog.total +
+                          [...taskSprintStats.bySprint.values()].reduce((n, s) => n + s.total, 0),
+                      )}
+                    </span>
                   </span>
                 </FilterChip>
                 <FilterChip
@@ -3418,11 +3425,16 @@ export function TestingPortal({
                   title="Backlog — Shift+click to select a range"
                   onToggle={(e) => toggleSprintFilter("backlog", e)}
                 >
-                  Backlog
-                  <span className="qa-tester-meta">
-                    · Tests {countWithPct(sprintStats.backlog.done, sprintStats.backlog.total)}
-                    {" · Tasks "}
-                    {countWithPct(taskSprintStats.backlog.done, taskSprintStats.backlog.total)}
+                  <span className="task-list-sprint__label-block">
+                    <span className="task-list-sprint__name">Backlog</span>
+                  </span>
+                  <span className="qa-tester-meta schedule-sprint-tq">
+                    <span>
+                      Tests {countWithPct(sprintStats.backlog.done, sprintStats.backlog.total)}
+                    </span>
+                    <span>
+                      Tasks {countWithPct(taskSprintStats.backlog.done, taskSprintStats.backlog.total)}
+                    </span>
                   </span>
                 </FilterChip>
                 {sprints.map((s) => {
@@ -3468,17 +3480,15 @@ export function TestingPortal({
                           </span>
                         ) : null}
                       </span>
-                      <span className="qa-tester-meta">
-                        · Tests {countWithPct(stats.done, stats.total)}
-                        {" · Tasks "}
-                        {countWithPct(taskStats.done, taskStats.total)}
+                      <span className="qa-tester-meta schedule-sprint-tq">
+                        <span>Tests {countWithPct(stats.done, stats.total)}</span>
+                        <span>Tasks {countWithPct(taskStats.done, taskStats.total)}</span>
                         {rolloverHint ? (
                           <span
+                            className="schedule-sprint-tq__rolled"
                             data-testid={`sprint-rollover-chip-${s.index}`}
-                            style={{ color: "#0e7490", fontWeight: 700 }}
                           >
-                            {" "}
-                            · {rolloverHint}
+                            {rolloverHint}
                           </span>
                         ) : null}
                       </span>
@@ -4543,7 +4553,7 @@ export function TestingPortal({
                   style={{ flex: 1 }}
                 >
                   {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                  <span className="flat-label flat-label--id">{t.id}</span>
+                  <span className="flat-label flat-label--id">{testCaseIdWithNumber(t.id)}</span>
                   <span
                     className={`flat-label flat-label--facing flat-label--facing-${facing}`}
                     title={
@@ -4556,7 +4566,14 @@ export function TestingPortal({
                   </span>
                   <span className="flat-label flat-label--priority">{PRIORITY_LABELS[t.priority]}</span>
                   <span className="flat-label flat-label--suite">{SUITE_LABELS[t.suite ?? "manual"]}</span>
-                  <strong className="test-case-title">{t.title}</strong>
+                  <strong className="test-case-title">
+                    {testCardNumber(t.id) ? (
+                      <span className="admin-card-num" data-testid={`test-card-num-${t.id}`}>
+                        {testCardNumber(t.id)}
+                      </span>
+                    ) : null}
+                    {t.title}
+                  </strong>
                   <span className="flat-label flat-label--assignee">{testerLabel(effectiveAssignees(t))}</span>
                   <span className="flat-label flat-label--id">
                     {effectiveSprint(t) === BACKLOG_SPRINT ? "Backlog" : sprintLabel(effectiveSprint(t))}

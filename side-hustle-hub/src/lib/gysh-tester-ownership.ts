@@ -30,7 +30,8 @@ export function manualQaOwnerForStats(
   t: OwnerStatsCase,
   dbAssignee: string | null | undefined,
 ): QaTesterId | "" {
-  if (t.suite !== "manual" && !isFailureGeneratedId(t.id)) return "";
+  const suite = t.suite ?? "manual";
+  if (suite !== "manual" && !isFailureGeneratedId(t.id)) return "";
   const fromDb = normalizeQaAssigneeId(dbAssignee);
   if (isHumanQaTester(fromDb)) return fromDb;
   const fromProof = proofreadOwnerFromId(t.id);

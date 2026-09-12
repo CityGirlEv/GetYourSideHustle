@@ -69,6 +69,12 @@ import {
 import { sprintLabel } from "./sprints";
 import { resolveLeadDevAssignment, statusAssignsToLeadDev } from "../../src/lib/gysh-fail-assignee";
 import { withD1Retry } from "./d1-retry";
+import { syncLinkedTestAssigneeToGuide } from "./guide-assignee-sync";
+import { guideIdFromGuideReviewCaseId } from "./guide-review-link";
+import {
+  markGuideInactiveFromQaFail,
+  markGuideReviewedByQa,
+} from "./guide-catalog";
 
 /** Keep Worker free of gysh-test-plan / gysh-tasks (huge catalogs). Mirror client helpers. */
 function shouldAutoStartTestOnFirstTouch(input: {
@@ -2260,6 +2266,14 @@ export async function setTestStatus(env: Env, request: Request, actor: DbUser): 
   const historySql = `INSERT INTO test_case_status_history
     (case_id, status, note, assignee, sprint, due_date, checked_steps_json, failed_step_index, changed_at, changed_by, reason)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+  /** GUIDE-REV assignee changes → mirror onto guide patch_json after batch. */
+  const guideAssigneeSyncs: { caseId: string; assignee: string; who: string }[] = [];
+  /** GUIDE-REV Pass/Fail → catalog Active+Reviewed / Inactive after batch. */
+  const guideReviewStatusSyncs: {
+    caseId: string;
+    status: "pass" | "fail";
+    who: string;
+  }[] = [];
 
   for (const raw of items) {
     const caseId = String(raw.caseId || "");
@@ -2554,6 +2568,17 @@ export async function setTestStatus(env: Env, request: Request, actor: DbUser): 
         toAssignee: assignee,
         changedBy: who,
       });
+      if (guideIdFromGuideReviewCaseId(caseId)) {
+        guideAssigneeSyncs.push({ caseId, assignee, who });
+      }
+    }
+
+    if (
+      (status === "pass" || status === "fail") &&
+      status !== prevStatus &&
+      guideIdFromGuideReviewCaseId(caseId)
+    ) {
+      guideReviewStatusSyncs.push({ caseId, status, who });
     }
 
     statements.push(
@@ -2611,6 +2636,29 @@ export async function setTestStatus(env: Env, request: Request, actor: DbUser): 
       }
     }
   }
+
+  for (const sync of guideAssigneeSyncs) {
+    try {
+      await syncLinkedTestAssigneeToGuide(env, sync.caseId, sync.assignee, sync.who, now);
+    } catch {
+      // Guide mirror is best-effort — test status write already succeeded.
+    }
+  }
+
+  for (const sync of guideReviewStatusSyncs) {
+    const guideId = guideIdFromGuideReviewCaseId(sync.caseId);
+    if (!guideId) continue;
+    try {
+      if (sync.status === "pass") {
+        await markGuideReviewedByQa(env, guideId, sync.who);
+      } else {
+        await markGuideInactiveFromQaFail(env, guideId, sync.who);
+      }
+    } catch {
+      // Catalog status mirror is best-effort — test status write already succeeded.
+    }
+  }
+
   return listTestStatuses(env, { caseIds });
 }
 
@@ -4455,6 +4503,7 @@ export async function saveAgilePlan(
 const PROGRESS_KINDS = new Set([
   "launch_checklist",
   "launch_guide_steps",
+  "launch_guide_step_items",
   "kids_team",
   "junior_team",
   "senior_team",

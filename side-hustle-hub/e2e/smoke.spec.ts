@@ -447,7 +447,7 @@ test.describe("GYSH smoke", () => {
     await page.goto("/checklist");
     await expect(page.getByTestId("launch-checklist-guides")).toBeVisible();
     await expect(page.getByTestId("guide-peek-handyman").getByTestId("open-guide-free-badge")).toBeVisible();
-    await expect(page.getByTestId("guide-peek-rideshare").getByTestId("open-guide-free-badge")).toBeVisible();
+    await expect(page.getByTestId("guide-peek-rideshare").getByTestId("open-guide-free-badge")).toHaveCount(0);
   });
 
   test("Membership nav opens tiers and Kids credits", async ({ page }) => {

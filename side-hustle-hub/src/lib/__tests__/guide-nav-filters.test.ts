@@ -2,10 +2,14 @@ import { describe, expect, it } from "vitest";
 import type { GuideCatalogStateMap } from "../guide-catalog-state";
 import {
   countGuideNavByAge,
+  countGuideNavByAssignee,
   countGuideNavByMembership,
   countGuideNavByStatus,
+  defaultLibraryStatusFilters,
+  DEFAULT_STAFF_LIBRARY_STATUS_FILTERS,
   filterGuideNavItems,
   guideMatchesAnyAgeFilter,
+  guideMatchesAnyAssigneeFilter,
   guideMatchesAnyMembershipFilter,
   guideMatchesAnyStatusFilter,
 } from "../guide-nav-filters";
@@ -18,7 +22,7 @@ const states: GuideCatalogStateMap = {
     published: true,
     deleted: false,
     custom: false,
-    patch: {},
+    patch: { assignee: "tina" },
   },
   b: {
     guideId: "b",
@@ -26,7 +30,7 @@ const states: GuideCatalogStateMap = {
     published: false,
     deleted: false,
     custom: false,
-    patch: {},
+    patch: { assignee: "evelyn" },
   },
   c: {
     guideId: "c",
@@ -42,7 +46,7 @@ const states: GuideCatalogStateMap = {
     published: true,
     deleted: false,
     custom: false,
-    patch: {},
+    patch: { assignee: "tina+lyriq" },
   },
   e: {
     guideId: "e",
@@ -221,5 +225,53 @@ describe("guide nav counts", () => {
     });
     /** Non-admin viewer pool is Active + Reviewed by QA; Active filter keeps the live set. */
     expect(next.map((g) => g.id).sort()).toEqual(["a", "d", "e"]);
+  });
+
+  it("filters by assignee and only counts QAs with assignments", () => {
+    const counts = countGuideNavByAssignee(guides, states);
+    expect(counts.unassigned).toBe(2);
+    expect(counts.byId.tina).toBe(2);
+    expect(counts.byId.evelyn).toBe(1);
+    expect(counts.byId.lyriq).toBe(1);
+    expect(counts.byId.candace).toBeUndefined();
+
+    expect(guideMatchesAnyAssigneeFilter([], ["unassigned"])).toBe(true);
+    expect(guideMatchesAnyAssigneeFilter(["tina"], ["unassigned"])).toBe(false);
+    expect(guideMatchesAnyAssigneeFilter(["tina"], ["tina", "evelyn"])).toBe(true);
+
+    const tinaOnly = filterGuideNavItems(guides, {
+      catalogStates: states,
+      audiencesOf: (id) => audiences[id] ?? [],
+      minTierOf: (id) => tiers[id as keyof typeof tiers] ?? "free",
+      ageFilters: ["all"],
+      statusFilters: ["all"],
+      membershipFilters: ["all"],
+      assigneeFilters: ["tina"],
+      isAdmin: true,
+    });
+    expect(tinaOnly.map((g) => g.id).sort()).toEqual(["a", "d"]);
+
+    const unassigned = filterGuideNavItems(guides, {
+      catalogStates: states,
+      audiencesOf: (id) => audiences[id] ?? [],
+      minTierOf: (id) => tiers[id as keyof typeof tiers] ?? "free",
+      ageFilters: ["all"],
+      statusFilters: ["all"],
+      membershipFilters: ["all"],
+      assigneeFilters: ["unassigned"],
+      isAdmin: true,
+    });
+    expect(unassigned.map((g) => g.id).sort()).toEqual(["c", "e"]);
+  });
+});
+
+describe("defaultLibraryStatusFilters", () => {
+  it("defaults staff library admin/listing to Pending / Needs Further Review", () => {
+    expect(DEFAULT_STAFF_LIBRARY_STATUS_FILTERS).toEqual(["pending"]);
+    expect(defaultLibraryStatusFilters(true)).toEqual(["pending"]);
+  });
+
+  it("defaults members to Show All", () => {
+    expect(defaultLibraryStatusFilters(false)).toEqual(["all"]);
   });
 });

@@ -1,5 +1,6 @@
 /** Client-side match for Cloudflare D1 timeouts that are safe to retry. */
 export function isRetryableD1ApiError(message: string): boolean {
+  if (isD1QuotaExceededMessage(message)) return false;
   return (
     /D1_ERROR/i.test(message) ||
     /storage operation exceeded timeout/i.test(message) ||
@@ -16,18 +17,31 @@ export const TRANSIENT_DB_USER_MESSAGE =
 export const TRANSIENT_DB_LOGIN_MESSAGE =
   "The database is busy. Wait a few seconds and try signing in again.";
 
+export const D1_QUOTA_USER_MESSAGE =
+  "GYSH hit Cloudflare D1’s free-tier daily limit. Upgrade Workers to Paid ($5/mo) in the Cloudflare dashboard to restore login now, or wait until midnight UTC.";
+
 export const LOCAL_DEV_LOGIN_MESSAGE =
   "The local D1 proxy reset. Wait a few seconds and sign in again — npm run dev restarts the API automatically.";
+
+export function isD1QuotaExceededMessage(message: string): boolean {
+  return (
+    /free-tier daily limit|free tier daily row (read|write) limit|exceeded D1'?s? free tier|Upgrade Workers to Paid/i.test(
+      message,
+    )
+  );
+}
 
 export function isLocalDevHost(hostname: string | undefined): boolean {
   return /^(localhost|127\.0\.0\.1)$/i.test(hostname ?? "");
 }
 
-export function loginUnavailableMessage(opts?: { localDev?: boolean }): string {
+export function loginUnavailableMessage(opts?: { localDev?: boolean; quota?: boolean }): string {
+  if (opts?.quota) return D1_QUOTA_USER_MESSAGE;
   return opts?.localDev ? LOCAL_DEV_LOGIN_MESSAGE : TRANSIENT_DB_LOGIN_MESSAGE;
 }
 
 export function friendlyD1UserMessage(message: string, opts?: { localDev?: boolean }): string {
+  if (isD1QuotaExceededMessage(message)) return D1_QUOTA_USER_MESSAGE;
   if (isRetryableD1ApiError(message) || /database (is )?busy|database unavailable/i.test(message)) {
     return opts?.localDev ? LOCAL_DEV_LOGIN_MESSAGE : TRANSIENT_DB_USER_MESSAGE;
   }

@@ -14,10 +14,47 @@ describe("guide-revenue-calc", () => {
     expect(guideCalcModeForId("pod")).toBe("product");
     expect(guideCalcModeForId("social")).toBe("social");
     expect(guideCalcModeForId("cleaning-service")).toBe("service");
+    expect(guideCalcModeForId("food-delivery")).toBe("delivery");
+    expect(guideCalcModeForId("estate-sale-listing-helper")).toBe("resale");
+  });
+
+  it("computes delivery cash profit without IRS mileage deduction", () => {
+    const profile = guideCalcProfileForId("food-delivery", "DoorDash / Uber Eats");
+    expect(profile.mode).toBe("delivery");
+    expect(profile.disclaimerExtra).toMatch(/does NOT subtract the IRS/i);
+    const budget = profile.budget.map((l) =>
+      l.id === "fuel" ? { ...l, amount: 35 } : l.id === "tolls" ? { ...l, amount: 8 } : l.id === "other" ? { ...l, amount: 4 } : l,
+    );
+    const result = computeGuideCalc(
+      "delivery",
+      {
+        hoursWorked: 8,
+        deliveries: 20,
+        baseEarnings: 145,
+        tips: 62,
+        promotions: 15,
+        totalMiles: 100,
+      },
+      budget,
+    );
+    expect(result.revenue).toBe(222);
+    expect(result.expenses).toBe(47);
+    expect(result.net).toBe(175);
+    expect(result.metrics?.grossPerMile).toBeCloseTo(2.22, 2);
+    expect(result.metrics?.grossPerHour).toBeCloseTo(27.75, 2);
+    expect(result.metrics?.netPerHour).toBeCloseTo(21.875, 2);
+    expect(result.metrics?.netPerDelivery).toBeCloseTo(8.75, 2);
   });
 
   it("starts every profile at zero so the user enters values", () => {
-    for (const id of ["cleaning-service", "airbnb", "pod", "social"] as const) {
+    for (const id of [
+      "cleaning-service",
+      "airbnb",
+      "pod",
+      "social",
+      "food-delivery",
+      "estate-sale-listing-helper",
+    ] as const) {
       const profile = guideCalcProfileForId(id);
       expect(Object.values(profile.defaults).every((n) => n === 0), id).toBe(true);
       expect(profile.budget.every((l) => l.amount === 0), id).toBe(true);

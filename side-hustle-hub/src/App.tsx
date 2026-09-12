@@ -43,6 +43,8 @@ import {
   type LibraryTag,
   SIDE_HUSTLE_CATALOG,
 } from "./lib/side-hustle-catalog";
+import { filterGuidesForWizardResults } from "./lib/guide-catalog-state";
+import { joinUnlockNavOpts } from "./lib/join-unlock-nav";
 import { hasLaunchGuide } from "./lib/launch-guides";
 import {
   BETA_PHASE_NOTICE,
@@ -52,19 +54,12 @@ import {
   type BetaPhaseNoticeCopy,
 } from "./lib/beta-phase-notice";
 import {
-  canAccessScheduleSuite,
-  collectOverdueScheduleItems,
   isScheduleSuiteDashboardHash,
-  normalizeHustleScheduleStore,
-  summarizeScheduleSuites,
-  type OverdueScheduleItem,
-  type ScheduleSuiteSummary,
 } from "./lib/hustle-schedule";
 import { isReferralDashboardHash } from "./lib/referral";
 import { isCreditsDashboardHash } from "./lib/member-credits";
 import { isBillingDashboardHash } from "./lib/member-purchases";
 import { isBlueprintDashboardHash } from "./lib/member-dashboard";
-import { fetchMemberProgress } from "./lib/gysh-member-progress";
 import { userHasAdminRole, canSetGuideReviewedByDev } from "./lib/gysh-assignment";
 import {
   ADMIN_MENU_GROUPS,
@@ -97,7 +92,6 @@ import {
   NewsletterPage,
   ParentConsentPage,
   PrivacyPolicyPage,
-  ScheduleDuePopup,
   SeniorSideHustles,
   ShopPage,
   StepByStepGuides,
@@ -106,7 +100,9 @@ import {
 } from "./lazy-app-pages";
 import type { SiteMapHref } from "./lib/site-map";
 import { TrainingCircles } from "./components/TrainingCircles";
+import GuidesUpdatingPage from "./components/GuidesUpdatingPage";
 import { SiteFooter } from "./components/SiteFooter";
+import { showGuidesUpdatingScreen, showHomeGuidesLibraryTag } from "./lib/guides-online";
 import type { FooterNavView } from "./components/SiteFooter";
 import type { AudienceGroup, TierId } from "./lib/membership";
 import { dashboardNavTone } from "./lib/membership";
@@ -135,8 +131,10 @@ import {
   SITE_PURPOSE,
   homeLibrarySpotlight,
 } from "./lib/site-config";
-import { fetchGuideCatalogStates } from "./lib/guide-catalog-client";
-import { countActiveGuideLibrary, countActiveFreeGuideLibrary, countFreeGuideLibrary, uniqueGuideLibraryCount } from "./lib/guide-library-pool";
+import {
+  refreshLiveGuideLibraryCounts,
+  useLiveGuideLibraryCounts,
+} from "./lib/guide-library-live-counts";
 import { HomeForesightBlocks } from "./components/HomeForesightBlocks";
 import {
   parseAppRoute,
@@ -177,7 +175,9 @@ import {
 import { attachPendingWizardToAccount, readPendingBlueprint } from "./lib/pending-blueprint";
 import type { BlueprintAgeGroup } from "./lib/gysh-analytics";
 import { isYouthDashboardUser, youthAgeBand } from "./lib/youth-dashboard";
-import { AUTH_READY_SAFETY_MS } from "./lib/first-load";
+import { authReadySafetyMs } from "./lib/first-load";
+import { isLocalDevHost } from "./lib/d1-errors";
+import { readCachedAuthUser, readSessionToken } from "./lib/session-storage";
 import kevinaNavMark from "./assets/kevina-starr-logo.png";
 import gyshLogo from "./assets/gysh-logo-rocket.png";
 import "./App.css";
@@ -273,12 +273,9 @@ function App() {
   const [adminTab, setAdminTab] = useState<AdminTab>(() => readAdminDeepLink().tab ?? "schedule");
   /** Tina / Lyriq must submit ≥3 meeting dates before any other navigation. */
   const [meetingGateLocked, setMeetingGateLocked] = useState(false);
-  const [scheduleDueOpen, setScheduleDueOpen] = useState(false);
   const [betaNoticeOpen, setBetaNoticeOpen] = useState(false);
   const [betaNoticeCopy, setBetaNoticeCopy] =
     useState<BetaPhaseNoticeCopy>(BETA_PHASE_NOTICE);
-  const [scheduleDueSummaries, setScheduleDueSummaries] = useState<ScheduleSuiteSummary[]>([]);
-  const [scheduleDueOverdue, setScheduleDueOverdue] = useState<OverdueScheduleItem[]>([]);
   const [focusScheduleId, setFocusScheduleId] = useState<string | null>(null);
   const [portalInitialTab, setPortalInitialTab] = useState<
     "blueprint" | "schedule" | "referral" | "purchases" | "credits" | null
@@ -312,6 +309,8 @@ function App() {
   const [joinAudience, setJoinAudience] = useState<AudienceGroup | null>(null);
   /** Optional: scroll Join to Free–Elite plans (in-page See Memberships CTAs only). */
   const [joinScrollToPlans, setJoinScrollToPlans] = useState(false);
+  /** Optional: highlight/focus Upgrade–Choose for this plan on Membership. */
+  const [joinFocusTier, setJoinFocusTier] = useState<TierId | null>(null);
   /** Optional: scroll Join to a-la-carte cart checkout (header Cart). */
   const [joinScrollToCart, setJoinScrollToCart] = useState(false);
   const [headerCartCount, setHeaderCartCount] = useState(0);
@@ -324,9 +323,7 @@ function App() {
     return !window.matchMedia("(max-width: 640px)").matches;
   });
   /** Active Side Hustle Library count for Home — fetched once per session. */
-  const [homeActiveGuideCount, setHomeActiveGuideCount] = useState(() => uniqueGuideLibraryCount());
-  const [homeActiveFreeGuideCount, setHomeActiveFreeGuideCount] = useState(() => countFreeGuideLibrary());
-  const homeActiveGuideCountLoaded = useRef(false);
+  const liveGuideCounts = useLiveGuideLibraryCounts();
   const [dashboardNavTipOpen, setDashboardNavTipOpen] = useState(false);
   const [guidesDetailId, setGuidesDetailId] = useState<string | null>(() => {
     if (bootRoute.view !== "guides" || bootRoute.guidesManualId) return null;
@@ -376,25 +373,15 @@ function App() {
     [],
   );
 
-  /** Home Active guide count — load once when Home opens; do not refetch on revisit. */
+  /** Live Active / Free Active guide counts from D1 — boot + refresh on login. */
   useEffect(() => {
-    if (activeView !== "dashboard" || homeActiveGuideCountLoaded.current) return;
-    homeActiveGuideCountLoaded.current = true;
-    let cancelled = false;
-    fetchGuideCatalogStates()
-      .then((states) => {
-        if (!cancelled) {
-          setHomeActiveGuideCount(countActiveGuideLibrary(states));
-          setHomeActiveFreeGuideCount(countActiveFreeGuideLibrary(states));
-        }
-      })
-      .catch(() => {
-        /* keep optimistic inventory counts */
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [activeView]);
+    void refreshLiveGuideLibraryCounts();
+  }, []);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    void refreshLiveGuideLibraryCounts({ force: true });
+  }, [isLoggedIn]);
 
   useEffect(() => {
     if (!effectivePortalLogin) {
@@ -565,21 +552,36 @@ function App() {
       actAsAudienceNow === "junior" ||
       (effectivePortalLogin && !canUseAdminPortal && !canUseTestingPortal));
 
-  // Restore session: localhost persists across tabs/restarts; production is tab-scoped.
-  // Don't wait the 45s API default: a hung /auth/me used to look like a stalled page.
-  // Hard safety timeout so authReady always flips even if AbortController stalls on mobile.
+  // Restore session: localhost persists across tabs/restarts/HMR; production is tab-scoped.
+  // Local Dev: hydrate from cached user immediately so Vite remounts don't bounce to Login
+  // while remote D1 /auth/me is still warming up.
   useEffect(() => {
     let cancelled = false;
+    const localDev = isLocalDevHost(window.location.hostname);
     const applyUser = (user: AuthUser | null) => {
       if (cancelled || !user) return;
       setIsLoggedIn(true);
       setAuthUser(user);
     };
+    if (localDev && readSessionToken()) {
+      const cached = readCachedAuthUser();
+      if (cached) applyUser(cached);
+    }
     const safety = window.setTimeout(() => {
       if (!cancelled) setAuthReady(true);
-    }, AUTH_READY_SAFETY_MS);
+    }, authReadySafetyMs(localDev));
     void restoreSession()
-      .then(applyUser)
+      .then((user) => {
+        if (cancelled) return;
+        if (user) applyUser(user);
+        else if (!localDev) {
+          setIsLoggedIn(false);
+          setAuthUser(null);
+        } else if (!readSessionToken()) {
+          setIsLoggedIn(false);
+          setAuthUser(null);
+        }
+      })
       .finally(() => {
         if (!cancelled) setAuthReady(true);
       });
@@ -619,33 +621,13 @@ function App() {
     }
   }, [mobileMenuOpen, canUseAdminPortal, previewingAsMember]);
 
-  // After login: show Schedule Suite overview + past-due items (Pro & Above / admin).
+  // Schedule Suite overdue popup on login — disabled (go straight into the app).
   useEffect(() => {
-    if (!authReady || !isLoggedIn || !authUser) return;
-    if (sessionStorage.getItem(SCHEDULE_DUE_POPUP_LOGIN_FLAG) !== "1") return;
-    const isAdmin = userHasAdminRole(authUser);
-    if (!canAccessScheduleSuite(authUser.membershipTier, { isAdmin })) {
+    try {
       sessionStorage.removeItem(SCHEDULE_DUE_POPUP_LOGIN_FLAG);
-      return;
+    } catch {
+      /* ignore */
     }
-    let cancelled = false;
-    (async () => {
-      try {
-        const raw = await fetchMemberProgress("hustle_schedule");
-        if (cancelled) return;
-        const store = normalizeHustleScheduleStore(raw);
-        sessionStorage.removeItem(SCHEDULE_DUE_POPUP_LOGIN_FLAG);
-        if (store.schedules.length === 0) return;
-        setScheduleDueSummaries(summarizeScheduleSuites(store));
-        setScheduleDueOverdue(collectOverdueScheduleItems(store));
-        setScheduleDueOpen(true);
-      } catch {
-        if (!cancelled) sessionStorage.removeItem(SCHEDULE_DUE_POPUP_LOGIN_FLAG);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
   }, [authReady, isLoggedIn, authUser]);
 
   // Deep link /admin: Admin Studio for admins; Testing Portal for QA-only.
@@ -735,12 +717,18 @@ function App() {
     setMobileMenuOpen(false);
     setCommunityMenuOpen(false);
     setAdminMenuOpen(false);
-    if (dest === "guides" && opts && "launchGuideId" in opts) {
-      const id = opts.launchGuideId ? String(opts.launchGuideId) : null;
-      setGuidesManualId(null);
-      setGuidesDetailId(id);
-      if (id) setSelectedHustleId(id);
-    } else if (dest !== "guides") {
+    if (dest === "guides") {
+      if (opts && "launchGuideId" in opts) {
+        const id = opts.launchGuideId ? String(opts.launchGuideId) : null;
+        setGuidesManualId(null);
+        setGuidesDetailId(id);
+        if (id) setSelectedHustleId(id);
+      } else {
+        // Library list (home count bubble, nav, Browse Library) — never keep a stale detail open.
+        setGuidesDetailId(null);
+        setGuidesManualId(null);
+      }
+    } else {
       setGuidesDetailId(null);
       setGuidesManualId(null);
     }
@@ -758,7 +746,7 @@ function App() {
 
   const openJoin = (
     audience?: AudienceGroup | null,
-    opts?: { scrollToPlans?: boolean; scrollToCart?: boolean },
+    opts?: { scrollToPlans?: boolean; scrollToCart?: boolean; focusTier?: TierId | null },
   ) => {
     if (audience) {
       const next = audienceFromAgeGroup(audience);
@@ -767,8 +755,11 @@ function App() {
     } else {
       setJoinAudience(null);
     }
-    const scrollToPlans = opts?.scrollToPlans === true;
+    const focusTier = opts?.focusTier ?? null;
     const scrollToCart = opts?.scrollToCart === true;
+    const scrollToPlans =
+      opts?.scrollToPlans === true || (Boolean(focusTier) && !scrollToCart);
+    setJoinFocusTier(focusTier && focusTier !== "free" ? focusTier : null);
     setJoinScrollToPlans(scrollToPlans && !scrollToCart);
     setJoinScrollToCart(scrollToCart);
     goTo("join", { scroll: !scrollToPlans && !scrollToCart });
@@ -792,8 +783,6 @@ function App() {
   };
 
   const openGuidesLibrary = () => {
-    setGuidesDetailId(null);
-    setGuidesManualId(null);
     goTo("guides");
   };
 
@@ -1269,6 +1258,7 @@ function App() {
       return;
     }
     if (nav.view === "kids") {
+      // Hub-only fallback (legacy peeks). Prefer guide-detail nav above.
       openKidsCorner({ mode: nav.mode, tab: "guides" });
       return;
     }
@@ -1310,8 +1300,6 @@ function App() {
               resumeCheckout: pendingMembership.resumeCheckout,
             });
           } else {
-            sessionStorage.setItem(DUE_POPUP_LOGIN_FLAG, "1");
-            sessionStorage.setItem(SCHEDULE_DUE_POPUP_LOGIN_FLAG, "1");
             setAdminSessionKey((k) => k + 1);
             setAdminTab(adminLandingTabAfterLogin(user));
             setActiveView("admin");
@@ -1338,7 +1326,6 @@ function App() {
               resumeCheckout: pendingMembership.resumeCheckout,
             });
           } else {
-            sessionStorage.setItem(SCHEDULE_DUE_POPUP_LOGIN_FLAG, "1");
             restoreBlueprintAfterUnlock(pending?.ageGroup ?? "adult");
           }
         }
@@ -1516,11 +1503,14 @@ function App() {
     })
     .map(toHustleCard);
 
-  const quizHustles = wizardPoolForMembership("adult", {
-    isLoggedIn: effectivePortalLogin,
-    membershipTier: authUser?.membershipTier ?? (effectivePortalLogin ? "free" : null),
-    previewAsGuest: previewingAsGuest,
-  }).map(toHustleCard);
+  const quizHustles = filterGuidesForWizardResults(
+    wizardPoolForMembership("adult", {
+      isLoggedIn: effectivePortalLogin,
+      membershipTier: authUser?.membershipTier ?? (effectivePortalLogin ? "free" : null),
+      previewAsGuest: previewingAsGuest,
+    }),
+    liveGuideCounts.states,
+  ).map(toHustleCard);
 
   const getHeaderTitle = () => {
     if (viewRequiresMemberLogin(activeView) && !effectivePortalLogin) {
@@ -2497,73 +2487,79 @@ function App() {
         {activeView === "dashboard" && (
           <div className="dashboard-home">
             {(() => {
-              const libraryGuideCount = homeActiveGuideCount;
-              const libraryCopy = homeLibrarySpotlight(libraryGuideCount, homeActiveFreeGuideCount);
+              const libraryCopy = homeLibrarySpotlight(
+                liveGuideCounts.totalActive,
+                liveGuideCounts.freeActive,
+              );
               return (
             <header className="home-page-header" data-testid="home-page-header">
-              <h1 className="home-page-header__title" data-testid="page-title">
-                <span className="home-page-header__brand-block">
-                  <em className="home-page-header__brand">Get Your Side Hustle</em>
-                  <button
-                    type="button"
-                    className="home-library-count home-library-count--blink"
-                    onClick={() => openGuidesLibrary()}
-                    data-testid="home-library-spotlight"
-                    aria-label={libraryCopy.cta}
-                    title={libraryCopy.body}
-                  >
-                    <BookOpen size={14} aria-hidden />
-                    <span data-testid="home-library-count-label">{libraryCopy.inlineLabel}</span>
-                  </button>
-                </span>
-                <span className="home-page-header__title-actions">
-                  <button
-                    type="button"
-                    className="btn btn-join-green home-library-spotlight__cta"
-                    onClick={() => goTo("quiz")}
-                    data-testid="home-match-wizard-cta"
-                  >
-                    <Sparkles size={16} aria-hidden />
-                    {libraryCopy.wizardCta}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-join-green home-library-spotlight__cta"
-                    onClick={() => openGuidesLibrary()}
-                    data-testid="home-library-spotlight-cta"
-                  >
-                    <BookOpen size={16} aria-hidden />
-                    {libraryCopy.cta}
-                  </button>
-                </span>
-              </h1>
-              <div className="home-page-header__actions">
-                <button
-                  type="button"
-                  className="home-how-intro-toggle"
-                  onClick={() => setHomeHowOpen((o) => !o)}
-                  aria-expanded={homeHowOpen}
-                  aria-controls="home-how-lead"
-                  data-testid="home-how-it-works"
-                >
-                  {homeHowOpen ? <ChevronDown size={16} aria-hidden /> : <ChevronRight size={16} aria-hidden />}
-                  How It Works
-                </button>
-                {effectivePortalLogin ? (
-                  <span className="header-title-badges">
-                    <HeaderReferralBadge />
+              <div className="home-page-header__top">
+                <h1 className="home-page-header__title" data-testid="page-title">
+                  <span className="home-page-header__brand-block">
+                    <em className="home-page-header__brand">Get Your Side Hustle</em>
+                    {showHomeGuidesLibraryTag() ? (
+                      <button
+                        type="button"
+                        className="home-library-count home-library-count--blink"
+                        onClick={() => openGuidesLibrary()}
+                        data-testid="home-library-spotlight"
+                        aria-label={libraryCopy.cta}
+                        title={libraryCopy.body}
+                      >
+                        <BookOpen size={14} aria-hidden />
+                        <span data-testid="home-library-count-label">{libraryCopy.inlineLabel}</span>
+                      </button>
+                    ) : null}
+                  </span>
+                  <span className="home-page-header__title-actions">
                     <button
                       type="button"
-                      className="header-title-dashboard-badge header-title-dashboard-badge--compact nav-dashboard-btn"
-                      data-tier={dashboardNavTone(authUser?.membershipTier)}
-                      onClick={() => goTo("user_portal")}
-                      data-testid="page-focus-dashboard"
+                      className="btn btn-join-green home-library-spotlight__cta"
+                      onClick={() => goTo("quiz")}
+                      data-testid="home-match-wizard-cta"
                     >
-                      <LayoutDashboard size={14} aria-hidden />
-                      <span>My Dashboard</span>
+                      <Sparkles size={16} aria-hidden />
+                      {libraryCopy.wizardCta}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-join-green home-library-spotlight__cta"
+                      onClick={() => openGuidesLibrary()}
+                      data-testid="home-library-spotlight-cta"
+                    >
+                      <BookOpen size={16} aria-hidden />
+                      {libraryCopy.cta}
                     </button>
                   </span>
-                ) : null}
+                </h1>
+                <div className="home-page-header__actions">
+                  <button
+                    type="button"
+                    className="home-how-intro-toggle"
+                    onClick={() => setHomeHowOpen((o) => !o)}
+                    aria-expanded={homeHowOpen}
+                    aria-controls="home-how-lead"
+                    data-testid="home-how-it-works"
+                  >
+                    {homeHowOpen ? <ChevronDown size={16} aria-hidden /> : <ChevronRight size={16} aria-hidden />}
+                    How It Works
+                  </button>
+                  {effectivePortalLogin ? (
+                    <span className="header-title-badges">
+                      <HeaderReferralBadge />
+                      <button
+                        type="button"
+                        className="header-title-dashboard-badge header-title-dashboard-badge--compact nav-dashboard-btn"
+                        data-tier={dashboardNavTone(authUser?.membershipTier)}
+                        onClick={() => goTo("user_portal")}
+                        data-testid="page-focus-dashboard"
+                      >
+                        <LayoutDashboard size={14} aria-hidden />
+                        <span>My Dashboard</span>
+                      </button>
+                    </span>
+                  ) : null}
+                </div>
               </div>
               <div
                 id="home-how-lead"
@@ -2768,6 +2764,7 @@ function App() {
             ) : (
               <HustleQuiz
                 hustles={quizHustles}
+                catalogStates={liveGuideCounts.states}
                 onSelectAction={handleSelectHustleAction}
                 isLoggedIn={effectivePortalLogin}
                 previewAsGuest={previewingAsGuest}
@@ -2793,8 +2790,16 @@ function App() {
           />
         )}
 
-        {activeView === "guides" && (
-          guidesManualId ? (
+        {activeView === "guides" &&
+          (showGuidesUpdatingScreen({
+            isAdmin: canUseAdminPortal,
+            isQa: canUseTestingPortal,
+            previewingAsMember,
+          }) ? (
+            <GuidesUpdatingPage
+              onBrowseMemberships={() => openJoin(null, { scrollToPlans: true })}
+            />
+          ) : guidesManualId ? (
               <MarketingManual
                 guideId={guidesManualId}
                 onBack={openGuidesLibrary}
@@ -2827,13 +2832,17 @@ function App() {
                 authUser?.membershipTier ?? (effectivePortalLogin ? "free" : null)
               }
               isAdmin={canUseAdminPortal && !previewingAsMember}
+              memberName={authUser?.name ?? ""}
+              memberUserId={authUser?.id ?? ""}
               canReviewGuides={
                 canAccessTestingPortal(authUser) && !previewingAsMember
               }
               canSetReviewedByDev={
                 canSetGuideReviewedByDev(authUser) && !previewingAsMember
               }
-              onGoToJoin={() => openJoin("adult")}
+              onGoToJoin={(focusTier?: TierId) =>
+                openJoin("adult", joinUnlockNavOpts(focusTier))
+              }
               onGoToLogin={() => goTo("login")}
             />
           ) : (
@@ -2846,7 +2855,9 @@ function App() {
               canReviewGuides={
                 canAccessTestingPortal(authUser) && !previewingAsMember
               }
-              onGoToJoin={(audience: AudienceGroup) => openJoin(audience ?? "adult")}
+              onGoToJoin={(audience: AudienceGroup, focusTier?: TierId) =>
+                openJoin(audience ?? "adult", joinUnlockNavOpts(focusTier))
+              }
               onGoToLogin={() => goTo("login")}
               onOpenAdultGuide={(id: string) => {
                 setGuidesManualId(null);
@@ -2859,13 +2870,12 @@ function App() {
               onOpenSeniorsGuides={() => openSeniors("guides")}
               onOpenManual={openGuidesManual}
             />
-          )
-        )}
+          ))}
 
         {activeView === "checklist" && (
           <LaunchChecklistPage
             isLoggedIn={effectivePortalLogin}
-            onGoToJoin={() => openJoin("adult")}
+            onGoToJoin={() => openJoin("adult", { scrollToPlans: true })}
             onGoToLogin={() => goTo("login")}
             onOpenGuide={handleOpenGuidePeek}
           />
@@ -2925,11 +2935,13 @@ function App() {
             membershipTier={
               authUser?.membershipTier ?? (kidsCornerMemberAccess ? "free" : null)
             }
-            onGoToJoin={(audience: AudienceGroup) => openJoin(audience)}
+            onGoToJoin={(audience: AudienceGroup, focusTier?: TierId) =>
+              openJoin(audience, joinUnlockNavOpts(focusTier))
+            }
             onOpenDashboard={
               isLoggedIn && !previewingAsGuest ? () => goTo("user_portal") : undefined
             }
-            onOpenGuidesLibrary={() => goTo("guides")}
+            onOpenGuidesLibrary={openGuidesLibrary}
             onOpenSeniors={() => openSeniors("guides")}
             entryFocus={kidsEntryFocus}
           />
@@ -2951,8 +2963,10 @@ function App() {
                 ? "free"
                 : null)
             }
-            onGoToJoin={() => openJoin("senior")}
-            onOpenGuides={() => goTo("guides")}
+            onGoToJoin={(focusTier?: TierId) =>
+              openJoin("senior", joinUnlockNavOpts(focusTier))
+            }
+            onOpenGuides={openGuidesLibrary}
             onOpenLaunchGuide={(launchGuideId: string) => goTo("guides", { launchGuideId })}
             entryTab={seniorsEntryTab}
           />
@@ -3226,7 +3240,11 @@ function App() {
             }}
             membershipAudience={joinAudience}
             scrollToPlans={joinScrollToPlans}
-            onScrolledToPlans={() => setJoinScrollToPlans(false)}
+            focusTier={joinFocusTier}
+            onScrolledToPlans={() => {
+              setJoinScrollToPlans(false);
+              setJoinFocusTier(null);
+            }}
             scrollToCart={joinScrollToCart}
             onScrolledToCart={() => setJoinScrollToCart(false)}
             isLoggedIn={effectivePortalLogin && Boolean(authUser)}
@@ -3353,7 +3371,11 @@ function App() {
                   tab: tab ?? "wizard",
                 })
               }
-              onOpenGuide={(ageGroup: "kids" | "junior") => {
+              onOpenGuide={(ageGroup: "kids" | "junior", hustleId?: string) => {
+                if (hustleId) {
+                  goTo("guides", { launchGuideId: hustleId });
+                  return;
+                }
                 openKidsCorner({
                   mode: ageGroup === "junior" ? "junior" : "kids",
                   tab: "guides",
@@ -3380,7 +3402,11 @@ function App() {
                   tab: tab ?? "wizard",
                 })
               }
-              onOpenGuide={(ageGroup: "kids" | "junior") => {
+              onOpenGuide={(ageGroup: "kids" | "junior", hustleId?: string) => {
+                if (hustleId) {
+                  goTo("guides", { launchGuideId: hustleId });
+                  return;
+                }
                 openKidsCorner({
                   mode: ageGroup === "junior" ? "junior" : "kids",
                   tab: "guides",
@@ -3417,22 +3443,10 @@ function App() {
                 setParentKidDashboard(kid);
               }}
               onOpenGuide={(
-                ageGroup: "kids" | "junior" | "senior" | "adult",
+                _ageGroup: "kids" | "junior" | "senior" | "adult",
                 hustleId: string,
               ) => {
-                if (ageGroup === "kids") {
-                  openKidsCorner({ mode: "kids", tab: "guides" });
-                  return;
-                }
-                if (ageGroup === "junior") {
-                  openKidsCorner({ mode: "junior", tab: "guides" });
-                  return;
-                }
-                if (ageGroup === "senior") {
-                  openSeniors("guides");
-                  return;
-                }
-                // Adult Blueprint matches share Launch Guide ids — open that guide detail.
+                // Blueprint "Guide" always opens the actual guide detail (membership-gated there).
                 goTo("guides", { launchGuideId: hustleId });
               }}
             />
@@ -3446,21 +3460,6 @@ function App() {
             open={betaNoticeOpen}
             notice={betaNoticeCopy}
             onClose={() => setBetaNoticeOpen(false)}
-          />
-        ) : null}
-
-        {scheduleDueOpen ? (
-          <ScheduleDuePopup
-            open={scheduleDueOpen}
-            summaries={scheduleDueSummaries}
-            overdue={scheduleDueOverdue}
-            onClose={() => setScheduleDueOpen(false)}
-            onOpenSchedule={(scheduleId: string) => {
-              setScheduleDueOpen(false);
-              setFocusScheduleId(scheduleId);
-              setPortalInitialTab("schedule");
-              goTo("user_portal");
-            }}
           />
         ) : null}
         </Suspense>

@@ -4,7 +4,8 @@
  * Keep this module free of gysh-test-plan / GUIDE_REVIEW_CASES to avoid circular imports.
  */
 
-import { audiencesForLibraryGuideId } from "./guide-library-pool";
+import { audiencesForLibraryGuideId, libraryGuideDisplayName } from "./guide-library-pool";
+import { guideNumberLabel } from "./guide-numbers";
 
 const GUIDE_REVIEW_KINDS = ["launch", "kids", "junior", "senior"] as const;
 
@@ -81,6 +82,7 @@ export function guideLibraryPendingFailNote(opts: {
   guideId: string;
   updatedBy: string;
   updatedAt: string;
+  reason?: string;
 }): string {
   const guideId = String(opts.guideId || "").trim() || "(unknown)";
   const who = String(opts.updatedBy || "").trim() || "Admin";
@@ -90,7 +92,9 @@ export function guideLibraryPendingFailNote(opts: {
   if (!Number.isNaN(ms)) {
     displayAt = new Date(ms).toISOString();
   }
-  return `Pending / Needs Further Review in the Guide library — guide set Inactive. Guide id: ${guideId}. By ${who} at ${displayAt}.`;
+  const base = `Pending / Needs Further Review in the Guide library — guide set Inactive. Guide id: ${guideId}. By ${who} at ${displayAt}.`;
+  const reason = String(opts.reason || "").trim();
+  return reason ? `${base}\n\nReason: ${reason}` : base;
 }
 
 /** Library deep link for a GUIDE-REV case (or null if not a guide-review case). */
@@ -107,9 +111,34 @@ export function testingPortalHrefForGuide(guideId: string): string | null {
   return `/admin?tab=testing&test=${encodeURIComponent(caseId)}`;
 }
 
+/** Chip label for library guide deep links — includes stable catalog # when known. */
+export function formatGuideCrossLinkLabel(guideId: string, displayName?: string): string {
+  const id = String(guideId || "").trim();
+  if (!id) return "Guide";
+  const num = guideNumberLabel(id);
+  const name =
+    String(displayName || libraryGuideDisplayName(id) || id).trim() || id;
+  return num ? `Guide · ${num} ${name}` : `Guide · ${name}`;
+}
+
+/**
+ * Chip label for Testing Portal deep links.
+ * GUIDE-REV cases include the matching library guide #.
+ */
+export function formatTestCrossLinkLabel(testId: string): string {
+  const id = String(testId || "").trim();
+  if (!id) return "Test";
+  const guideId = guideIdFromGuideReviewCaseId(id);
+  if (guideId) {
+    const num = guideNumberLabel(guideId);
+    return num ? `Test · ${num} ${id}` : `Test · ${id}`;
+  }
+  return `Test · ${id}`;
+}
+
 /** Chip label for GUIDE-REV test → library guide deep link. */
 export function guideCrossLinkLabelFromCaseId(caseId: string): string | null {
   const guideId = guideIdFromGuideReviewCaseId(caseId);
   if (!guideId) return null;
-  return `Guide · ${guideId}`;
+  return formatGuideCrossLinkLabel(guideId);
 }

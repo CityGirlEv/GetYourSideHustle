@@ -46,6 +46,6 @@ describe("Membership Free unique count", () => {
     const freeIds = [...byId.entries()].filter(([, t]) => t === "free").map(([id]) => id).sort();
     expect(FREE_WIZARD_HUSTLE_IDS).toContain("leaf-raking");
     expect(freeIds).toContain("leaf-raking");
-    expect(freeIds.length, `free ids: ${freeIds.join(", ")}`).toBe(20);
+    expect(freeIds.length, `free ids: ${freeIds.join(", ")}`).toBe(19);
   });
 });

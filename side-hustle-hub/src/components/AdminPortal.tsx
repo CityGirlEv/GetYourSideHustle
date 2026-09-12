@@ -31,8 +31,6 @@ import { TaskList } from "./admin/TaskList";
 import { Financials } from "./admin/Financials";
 import { SchedulePage } from "./admin/SchedulePage";
 import { AgendaPage } from "./admin/AgendaPage";
-import { DueTasksModal } from "./admin/DueTasksModal";
-import { SprintCelebration } from "./admin/SprintCelebration";
 import { SiteMapPage } from "./admin/SiteMapPage";
 import type { SiteMapHref } from "../lib/site-map";
 import { TimesheetPage } from "./admin/TimesheetPage";
@@ -45,19 +43,6 @@ import { AdminHustleSchedulesPage } from "./admin/AdminHustleSchedulesPage";
 import { VideoSceneProductionWizardPage } from "./admin/VideoSceneProductionWizardPage";
 import type { AuthUser } from "../lib/auth";
 import { canAccessAdminPortal, canAccessTestingPortal, isQaOnlyPortalUser } from "../lib/gysh-roles";
-import {
-  assigneeForAuthUser,
-  dueAttentionTasks,
-  fetchTasks,
-  type GyshTask,
-} from "../lib/gysh-tasks";
-import { dueAttentionTests, type AttentionTest } from "../lib/gysh-due-attention";
-import {
-  attentionClearForPartner,
-  sprintWorkClearForPartner,
-  type SprintClearResult,
-} from "../lib/gysh-sprint-complete";
-import { fetchTestStatuses } from "../lib/gysh-test-plan";
 import {
   ADMIN_MENU_GROUPS,
   ADMIN_TABS,
@@ -85,15 +70,8 @@ function userIsAdmin(user: AuthUser | null | undefined): boolean {
   return roles.includes("admin");
 }
 
+/** Cleared on Admin mount so leftover login flags never re-open due modals. */
 const LOGIN_POPUP_FLAG = "gysh_due_popup_login";
-const DAILY_POPUP_PREFIX = "gysh_due_popup_day_";
-const CELEB_DAY_PREFIX = "gysh_sprint_celeb_day_";
-const CELEB_DONE_PREFIX = "gysh_sprint_celeb_done_";
-
-function todayKey(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 type Props = {
   authUser?: AuthUser | null;
@@ -117,12 +95,6 @@ export const AdminPortal: React.FC<Props> = ({
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<"calendar" | "monetize" | "growth">("calendar");
   const [localGuide, setLocalGuide] = useState<UserGuideId>(userGuide);
-  const [dueModalOpen, setDueModalOpen] = useState(false);
-  const [celebOpen, setCelebOpen] = useState(false);
-  const [celebClear, setCelebClear] = useState<SprintClearResult | null>(null);
-  const [overdue, setOverdue] = useState<GyshTask[]>([]);
-  const [dueToday, setDueToday] = useState<GyshTask[]>([]);
-  const [overdueTests, setOverdueTests] = useState<AttentionTest[]>([]);
   const [focusTaskId, setFocusTaskId] = useState<string | null>(null);
   const [focusTestId, setFocusTestId] = useState<string | null>(null);
   const [focusItemId, setFocusItemId] = useState<string | null>(null);
@@ -267,101 +239,14 @@ export const AdminPortal: React.FC<Props> = ({
   }, [authUser]);
 
   useEffect(() => {
-    let cancelled = false;
-    const me = assigneeForAuthUser(authUser);
-    if (!me) return;
-
-    const forceFromLogin = sessionStorage.getItem(LOGIN_POPUP_FLAG) === "1";
-    const dayKey = `${DAILY_POPUP_PREFIX}${authUser?.id || me}`;
-    const alreadyToday = localStorage.getItem(dayKey) === todayKey();
-
-    (async () => {
-      try {
-        // Due popup only needs current tasks/tests — avoid heavy CF seed sync here.
-        const [tasks, testStatuses] = await Promise.all([
-          fetchTasks(),
-          fetchTestStatuses(),
-        ]);
-        if (cancelled) return;
-        const attention = dueAttentionTasks(tasks, me);
-        const testAttention = dueAttentionTests(testStatuses, me);
-        const hasTaskItems = attention.overdue.length > 0 || attention.dueToday.length > 0;
-        const hasOverdueTests = testAttention.overdue.length > 0;
-        const hasItems = hasTaskItems || hasOverdueTests;
-        const sprintClear = sprintWorkClearForPartner(tasks, testStatuses, me);
-        const noAttention = attentionClearForPartner(tasks, testStatuses, me);
-
-        const openModal = () => {
-          setOverdue(attention.overdue);
-          setDueToday(attention.dueToday);
-          setOverdueTests(testAttention.overdue);
-          setDueModalOpen(true);
-          localStorage.setItem(dayKey, todayKey());
-        };
-
-        const celebDayKey = `${CELEB_DAY_PREFIX}${authUser?.id || me}_${sprintClear.sprintIndex}`;
-        const celebDoneKey = `${CELEB_DONE_PREFIX}${authUser?.id || me}_${sprintClear.sprintIndex}`;
-        const celebShownToday = localStorage.getItem(celebDayKey) === todayKey();
-        const wasAlreadyComplete = localStorage.getItem(celebDoneKey) === "1";
-        const newlyCompleted = sprintClear.allClear && !wasAlreadyComplete;
-
-        const openCelebration = () => {
-          setCelebClear(sprintClear);
-          setCelebOpen(true);
-          localStorage.setItem(celebDayKey, todayKey());
-          localStorage.setItem(celebDoneKey, "1");
-        };
-
-        if (!sprintClear.allClear) {
-          localStorage.removeItem(celebDoneKey);
-        }
-
-        // Meeting-date gate first — no other modals until Tina/Lyriq submit times.
-        if (mustPickAgendaTimes(authUser)) {
-          try {
-            const agenda = await fetchPartnerAgenda();
-            if (cancelled) return;
-            if (agenda.needsTimePicks) {
-              if (forceFromLogin) sessionStorage.removeItem(LOGIN_POPUP_FLAG);
-              return;
-            }
-          } catch {
-            if (forceFromLogin) sessionStorage.removeItem(LOGIN_POPUP_FLAG);
-            return;
-          }
-        }
-
-        // Fresh login: due/overdue first; else celebrate a clear sprint board.
-        if (forceFromLogin) {
-          sessionStorage.removeItem(LOGIN_POPUP_FLAG);
-          if (hasItems) openModal();
-          else if (sprintClear.allClear && noAttention && (newlyCompleted || !celebShownToday)) {
-            openCelebration();
-          }
-          return;
-        }
-
-        // Once per day when opening Admin if overdue tasks or tests remain
-        if (!alreadyToday && (attention.overdue.length > 0 || hasOverdueTests)) {
-          openModal();
-          return;
-        }
-
-        // Once per day (or when newly completed) when Admin opens and sprint work is clear
-        if (sprintClear.allClear && noAttention && (newlyCompleted || !celebShownToday)) {
-          openCelebration();
-        }
-      } catch {
-        if (forceFromLogin) sessionStorage.removeItem(LOGIN_POPUP_FLAG);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
+    // Login / daily due-attention and sprint celebration popups are disabled —
+    // open Admin straight to the landing tab without blocking modals.
+    try {
+      sessionStorage.removeItem(LOGIN_POPUP_FLAG);
+    } catch {
+      /* ignore */
+    }
   }, [authUser]);
-
-  const assigneeLabel = assigneeForAuthUser(authUser) ?? "you";
 
   // Defense in depth: Admin Studio for admins; Testing Portal for Admin or QA.
   if (!canAccessAdminPortal(authUser) && !canAccessTestingPortal(authUser)) {
@@ -380,25 +265,6 @@ export const AdminPortal: React.FC<Props> = ({
 
   return (
     <div>
-      <DueTasksModal
-        open={dueModalOpen}
-        assigneeLabel={assigneeLabel}
-        overdue={overdue}
-        dueToday={dueToday}
-        overdueTests={overdueTests}
-        onClose={() => setDueModalOpen(false)}
-        onOpenTaskList={() => requestTabChange("tasks")}
-        onOpenTesting={() => requestTabChange("testing")}
-      />
-      {celebClear ? (
-        <SprintCelebration
-          open={celebOpen}
-          assigneeLabel={assigneeLabel}
-          clear={celebClear}
-          onClose={() => setCelebOpen(false)}
-        />
-      ) : null}
-
       <div
         className="admin-portal-nav"
         aria-label="Admin sections"

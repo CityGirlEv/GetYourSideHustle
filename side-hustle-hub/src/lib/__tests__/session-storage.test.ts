@@ -1,9 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { clearMemoryStore } from "../browser-storage";
 import {
+  clearCachedAuthUser,
+  readCachedAuthUser,
   readSessionToken,
   readTabAlive,
   shouldPersistSessionLocally,
+  writeCachedAuthUser,
   writeSessionToken,
   writeTabAlive,
 } from "../session-storage";
@@ -37,5 +40,39 @@ describe("session token storage", () => {
     expect(readTabAlive()).toBe(true);
     writeTabAlive(false);
     expect(readTabAlive()).toBe(false);
+  });
+
+  it("caches auth user on localhost and clears it when the token is wiped", () => {
+    vi.stubGlobal("window", { location: { hostname: "localhost" } });
+    writeCachedAuthUser({
+      id: "u1",
+      name: "Evelyn",
+      email: "evelyn3@cox.net",
+      role: "admin",
+      status: "active",
+      joinedAt: "2026-01-01",
+      notes: "",
+      canLogin: true,
+    });
+    expect(readCachedAuthUser()?.email).toBe("evelyn3@cox.net");
+    writeSessionToken("tok");
+    writeSessionToken(null);
+    expect(readCachedAuthUser()).toBeNull();
+    clearCachedAuthUser();
+  });
+
+  it("does not cache auth user off localhost", () => {
+    vi.stubGlobal("window", { location: { hostname: "getyoursidehustle.com" } });
+    writeCachedAuthUser({
+      id: "u1",
+      name: "Evelyn",
+      email: "evelyn3@cox.net",
+      role: "admin",
+      status: "active",
+      joinedAt: "2026-01-01",
+      notes: "",
+      canLogin: true,
+    });
+    expect(readCachedAuthUser()).toBeNull();
   });
 });

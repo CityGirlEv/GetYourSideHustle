@@ -14,7 +14,8 @@ export type GuideChangeLogAction =
   | "delete"
   | "restore"
   | "bulk_status"
-  | "qa_pass";
+  | "qa_pass"
+  | "content";
 
 export type GuideChangeLogEntry = {
   id: number | string;
@@ -27,6 +28,7 @@ export type GuideChangeLogEntry = {
   detail?: {
     minTier?: string;
     note?: string;
+    fields?: string[];
   };
 };
 
@@ -37,7 +39,8 @@ export function isGuideChangeLogAction(value: unknown): value is GuideChangeLogA
     value === "delete" ||
     value === "restore" ||
     value === "bulk_status" ||
-    value === "qa_pass"
+    value === "qa_pass" ||
+    value === "content"
   );
 }
 
@@ -49,6 +52,11 @@ export function formatGuideChangeLogSummary(entry: GuideChangeLogEntry): string 
   if (entry.action === "min_tier") {
     const tier = entry.detail?.minTier?.trim();
     return tier ? `Membership floor → ${tier}` : "Membership floor updated";
+  }
+  if (entry.action === "content") {
+    const fields = entry.detail?.fields?.filter(Boolean) ?? [];
+    if (fields.length) return `Content updated (${fields.join(", ")})`;
+    return "Content updated";
   }
   if (entry.action === "delete") {
     return from && to ? `Soft-deleted (${from} → ${to})` : "Soft-deleted";

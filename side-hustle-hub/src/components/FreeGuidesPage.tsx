@@ -15,7 +15,7 @@ import { LAUNCH_GUIDES } from "../lib/launch-guides";
 import {
   hustleById,
   hustleCardPeek,
-  SIDE_HUSTLES,
+  guideSideHustleDescription,
   type HustleAgeGroup,
 } from "../lib/side-hustle-catalog";
 import {
@@ -26,11 +26,10 @@ import {
   MARKETING_GUIDES,
   type MarketingGuideId,
 } from "../lib/marketing-guides";
-import type { AudienceGroup } from "../lib/membership";
+import type { AudienceGroup, TierId } from "../lib/membership";
 import {
   COMING_SOON_NOT_UNLOCKED_NOTE,
   FREE_GUIDE_SIGNUP_NOTE,
-  FREE_MEMBERSHIP_GUIDES_TAG,
   guideTierMembershipNote,
   guideTierSortRank,
   resolveGuideAccess,
@@ -44,12 +43,16 @@ import {
 } from "../lib/guide-library-search";
 import { defaultGuideLibraryLayout, readNarrowViewport } from "../lib/narrow-viewport";
 import {
-  adultLibraryMinTier,
-  juniorLibraryMinTier,
-  kidsLibraryMinTier,
-  seniorLibraryMinTier,
-} from "../lib/age-library-tiers";
-import { uniqueGuideLibraryCount } from "../lib/guide-library-pool";
+  guideIdsForLibraryAudience,
+  libraryGuideDisplayName,
+  libraryMinTierForAge,
+  uniqueGuideLibraryCount,
+} from "../lib/guide-library-pool";
+import {
+  applyLiveGuideLibraryCountsFromStates,
+  freeMembershipGuidesTag,
+  useLiveGuideLibraryCounts,
+} from "../lib/guide-library-live-counts";
 import { countGuideLibraryByStatus } from "../lib/guide-status-counts";
 import guidesLibraryHero from "../assets/guides-library-hero.png";
 import { ShowHideChevron } from "./ShowHideToggle";
@@ -72,11 +75,11 @@ import {
 import {
   filterGuidesForViewer,
   getGuideVisibilityStatus,
-  type GuideCatalogStateMap,
   type GuideVisibilityStatus,
 } from "../lib/guide-catalog-state";
 import { fetchGuideCatalogStates } from "../lib/guide-catalog-client";
 import {
+  defaultLibraryStatusFilters,
   guideMatchesAnyStatusFilter,
   guideNavFilterIsAll,
   type GuideNavStatusFilter,
@@ -94,7 +97,7 @@ type FreeGuidesPageProps = {
   isAdmin?: boolean;
   /** Admin or QA — see unpublished guides + status filters (Active / Pending / In Review / Inactive). */
   canReviewGuides?: boolean;
-  onGoToJoin?: (audience?: AudienceGroup) => void;
+  onGoToJoin?: (audience?: AudienceGroup, focusTier?: TierId) => void;
   onGoToLogin?: () => void;
   onOpenAdultGuide: (hustleId: string) => void;
   onOpenKidsGuides: () => void;
@@ -195,8 +198,11 @@ function TierGroupedGuideList<T>({
   testIdPrefix: string;
   renderGuides: (guides: T[]) => ReactNode;
   expandSignal?: ListExpandSignal;
-  /** Tier nav: compact one-row tabs (default) or stacked accordion. */
-  navStyle?: "tabs" | "accordion";
+  /**
+   * Tier nav: compact one-row tabs, stacked accordion, or panel-only
+   * (no second membership row — hero filters already control the tier).
+   */
+  navStyle?: "tabs" | "accordion" | "panel";
   /** Controlled membership filter (keeps Free/Starter/Pro/Elite tabs mounted). */
   membershipTab?: DemoTierTab;
   onMembershipTabChange?: (tab: DemoTierTab) => void;
@@ -259,7 +265,7 @@ function TierGroupedGuideList<T>({
     </div>
   );
 
-  if (navStyle === "tabs") {
+  if (navStyle === "tabs" || navStyle === "panel") {
     if (!guides.length && !allTier.length) return null;
     const showAll = activeTab === "all";
     const filteredPanel = showAll
@@ -275,6 +281,44 @@ function TierGroupedGuideList<T>({
     const tabId = showAll
       ? `${testIdPrefix}-tier-tab-all`
       : `${testIdPrefix}-tier-tab-${activeTab}`;
+    const panelBody =
+      showAll ? (
+        groups.length > 0 ? (
+          renderAccordionGroups()
+        ) : (
+          <div className="free-guides-tier-group__body">
+            <p className="free-guides-empty-tier">No guides in this view yet.</p>
+          </div>
+        )
+      ) : (
+        <div
+          id={panelId}
+          role="tabpanel"
+          aria-labelledby={navStyle === "panel" ? "free-guides-membership-levels-label" : tabId}
+          className="free-guides-tier-group__body"
+          data-testid={`${testIdPrefix}-tier-group-${activeTab}`}
+        >
+          {sortedPanel.length > 0 ? (
+            renderGuides(sortedPanel)
+          ) : (
+            <p className="free-guides-empty-tier">
+              No {activeTab === "free" ? "Free" : activeTab} guides in this view yet.
+            </p>
+          )}
+        </div>
+      );
+
+    if (navStyle === "panel") {
+      return (
+        <div
+          className="free-guides-tier-groups free-guides-tier-groups--panel"
+          data-testid={`${testIdPrefix}-tier-groups`}
+        >
+          {panelBody}
+        </div>
+      );
+    }
+
     return (
       <div className="free-guides-tier-groups free-guides-tier-groups--tabs" data-testid={`${testIdPrefix}-tier-groups`}>
         <div
@@ -320,29 +364,7 @@ function TierGroupedGuideList<T>({
             );
           })}
         </div>
-        {showAll ? (
-          groups.length > 0 ? (
-            renderAccordionGroups()
-          ) : (
-            <div className="free-guides-tier-group__body">
-              <p className="free-guides-empty-tier">No guides in this view yet.</p>
-            </div>
-          )
-        ) : (
-          <div
-            id={panelId}
-            role="tabpanel"
-            aria-labelledby={tabId}
-            className="free-guides-tier-group__body"
-            data-testid={`${testIdPrefix}-tier-group-${activeTab}`}
-          >
-            {sortedPanel.length > 0 ? (
-              renderGuides(sortedPanel)
-            ) : (
-              <p className="free-guides-empty-tier">No {activeTab === "free" ? "Free" : activeTab} guides in this view yet.</p>
-            )}
-          </div>
-        )}
+        {panelBody}
       </div>
     );
   }
@@ -419,7 +441,9 @@ function FreeKidsGuideCard({
   isMember,
   membershipTier,
   isAdmin = false,
+  staffCatalog = false,
   guideStatus = "inactive",
+  minTier: minTierProp,
   onJoinCta,
   onOpenGuide,
 }: {
@@ -427,25 +451,33 @@ function FreeKidsGuideCard({
   isMember: boolean;
   membershipTier?: string | null;
   isAdmin?: boolean;
+  /** Admin or QA — status chip styling in the library list. */
+  staffCatalog?: boolean;
   guideStatus?: GuideVisibilityStatus;
-  /** Join membership for this guide’s audience (kids / teens). */
-  onJoinCta?: () => void;
-  /** Open the full guide (detail / Kids Corner) — no inline steps on the library card. */
+  /** Catalog-aware membership floor (falls back to code defaults when omitted). */
+  minTier?: GuideMinTier;
+  /** Join membership for this guide’s audience (kids / teens) — optional required tier for Upgrade focus. */
+  onJoinCta?: (focusTier?: TierId) => void;
+  /** Open the full guide (detail view) — no inline steps on the library card. */
   onOpenGuide: () => void;
 }) {
   const minTier: GuideMinTier =
-    guide.audience === "junior" ? juniorLibraryMinTier(guide.id) : kidsLibraryMinTier(guide.id);
+    minTierProp ??
+    (guide.audience === "junior"
+      ? libraryMinTierForAge(guide.id, "junior")
+      : libraryMinTierForAge(guide.id, "kids"));
   const access = resolveGuideAccess({ isMember, membershipTier, minTier, isAdmin });
   const isFreePlan = minTier === "free";
+  const showStatus = staffCatalog || isAdmin;
 
   return (
     <article
       className={`glass free-guide-card ${isFreePlan ? "is-free" : "is-gated"}${
-        isAdmin && guideStatus !== "active" ? " is-guide-inactive" : ""
-      }${isAdmin && guideStatus === "pending" ? " is-guide-pending" : ""}${
-        isAdmin && guideStatus === "fixed_rereview" ? " is-guide-fixed-rereview" : ""
-      }${isAdmin && guideStatus === "reviewed_by_qa" ? " is-guide-reviewed-by-qa" : ""
-      }${isAdmin && guideStatus === "reviewed_by_dev" ? " is-guide-reviewed-by-dev" : ""}`}
+        showStatus && guideStatus !== "active" ? " is-guide-inactive" : ""
+      }${showStatus && guideStatus === "pending" ? " is-guide-pending" : ""}${
+        showStatus && guideStatus === "fixed_rereview" ? " is-guide-fixed-rereview" : ""
+      }${showStatus && guideStatus === "reviewed_by_qa" ? " is-guide-reviewed-by-qa" : ""
+      }${showStatus && guideStatus === "reviewed_by_dev" ? " is-guide-reviewed-by-dev" : ""}`}
     >
       <div className="free-guide-card-head">
         <div>
@@ -471,7 +503,11 @@ function FreeKidsGuideCard({
       ) : (
         <div className="free-guide-lock-cta">
           <Lock size={16} />
-          <JoinToUnlockCta access={access} onJoin={onJoinCta} onUpgrade={onJoinCta} />
+          <JoinToUnlockCta
+            access={access}
+            onJoin={onJoinCta ? () => onJoinCta(minTier) : undefined}
+            onUpgrade={onJoinCta ? () => onJoinCta(minTier) : undefined}
+          />
         </div>
       )}
     </article>
@@ -492,14 +528,18 @@ export function FreeGuidesPage({
   onOpenManual,
 }: FreeGuidesPageProps) {
   void _onGoToLogin;
+  const liveGuideCounts = useLiveGuideLibraryCounts();
+  /** Live D1 catalog (membership + age patches) — same cache Admin Update writes. */
+  const catalogStates = liveGuideCounts.states;
   const [ageFilters, setAgeFilters] = useState<GuideFilter[]>(["all"]);
   const [membershipFilters, setMembershipFilters] = useState<DemoTierTab[]>(["free"]);
-  const [statusFilters, setStatusFilters] = useState<StatusFilterTab[]>(["all"]);
+  const [statusFilters, setStatusFilters] = useState<StatusFilterTab[]>(() =>
+    defaultLibraryStatusFilters(isAdmin || canReviewGuides),
+  );
   const [libraryLayout, setLibraryLayout] = useState<LibraryLayout>(() =>
     defaultGuideLibraryLayout(readNarrowViewport()),
   );
   const [listExpand, setListExpand] = useState<ListExpandSignal>({ open: false, nonce: 0 });
-  const [catalogStates, setCatalogStates] = useState<GuideCatalogStateMap>({});
   const [librarySearch, setLibrarySearch] = useState("");
   /** Admin or QA — status filters + unpublished guides in the library. */
   const staffCatalog = isAdmin || canReviewGuides;
@@ -517,7 +557,8 @@ export function FreeGuidesPage({
     let cancelled = false;
     fetchGuideCatalogStates()
       .then((states) => {
-        if (!cancelled) setCatalogStates(states);
+        if (cancelled) return;
+        applyLiveGuideLibraryCountsFromStates(states);
       })
       .catch(() => {
         /* keep env defaults */
@@ -542,12 +583,9 @@ export function FreeGuidesPage({
   const effectiveTier = membershipTier ?? (isLoggedIn ? "free" : null);
 
   const openKidsLibraryGuide = (guide: KidsGuide) => {
-    if (hustleById(guide.id) || LAUNCH_GUIDES.some((g) => g.id === guide.id)) {
-      onOpenAdultGuide(guide.id);
-      return;
-    }
-    if (guide.audience === "junior") onOpenJuniorGuides();
-    else onOpenKidsGuides();
+    // Always open the real launch/library guide detail (membership-gated there).
+    // Do not bounce to Kids Corner / Teens hub — those are browse surfaces, not the guide.
+    onOpenAdultGuide(guide.id);
   };
 
   const toggleAgeFilter = (next: GuideFilter) => {
@@ -586,17 +624,44 @@ export function FreeGuidesPage({
   const juniorAll = guidesForAudience("junior");
   const seniorAll = orderedSeniorGuides(SENIOR_GUIDE_TEASERS);
 
-  const launchAsKidsGuide = (g: (typeof LAUNCH_GUIDES)[number], audience: "kids" | "junior"): KidsGuide => ({
-    id: g.id,
-    audience,
-    title: g.name,
-    theme: "savings",
-    free: adultLibraryMinTier(g.id) === "free",
-    summary: g.peek,
-    previewCount: 0,
-    steps: [],
-    parentTip: "",
-  });
+  const guideDisplayName = (id: string) =>
+    catalogStates[id]?.patch?.name?.trim() ||
+    libraryGuideDisplayName(id) ||
+    hustleById(id)?.name ||
+    LAUNCH_GUIDES.find((g) => g.id === id)?.name ||
+    id;
+
+  const guidePeek = (id: string) =>
+    guideSideHustleDescription(id) ||
+    LAUNCH_GUIDES.find((g) => g.id === id)?.peek ||
+    (hustleById(id) ? hustleCardPeek(hustleById(id)!) : "") ||
+    "";
+
+  /** Kids/Teens card row from catalog id (respects Admin age patches). */
+  const toKidsGuide = (id: string, audience: "kids" | "junior"): KidsGuide => {
+    const existing =
+      audience === "junior"
+        ? juniorAll.find((g) => g.id === id)
+        : kidsAll.find((g) => g.id === id);
+    if (existing) {
+      return {
+        ...existing,
+        title: guideDisplayName(id) || existing.title,
+        free: libraryMinTierForAge(id, audience, catalogStates) === "free",
+      };
+    }
+    return {
+      id,
+      audience,
+      title: guideDisplayName(id),
+      theme: "savings",
+      free: libraryMinTierForAge(id, audience, catalogStates) === "free",
+      summary: guidePeek(id),
+      previewCount: 0,
+      steps: [],
+      parentTip: "",
+    };
+  };
 
   const showAllAges = guideNavFilterIsAll(ageFilters);
   /** Single-age lanes only — Age Show All uses one unique combined list (no repeated Free/Starter/Pro/Elite). */
@@ -605,46 +670,34 @@ export function FreeGuidesPage({
   const showKids = showAllAges ? false : ageFilters.includes("kids");
   const showJunior = showAllAges ? false : ageFilters.includes("junior");
 
-  /** Every catalog + launch guide for an age (unique by id). */
-  const launchForAge = (age: HustleAgeGroup) => {
-    const fromLaunch = LAUNCH_GUIDES.filter((g) => hustleById(g.id)?.audiences.includes(age));
-    const seen = new Set(fromLaunch.map((g) => g.id));
-    const extras = SIDE_HUSTLES.filter(
-      (h) => h.audiences.includes(age) && !seen.has(h.id),
-    ).map((h) => ({
-      id: h.id,
-      name: h.name,
-      peek: hustleCardPeek(h),
+  /** Library rows for one age — Admin `patch.audiences` overrides code catalog. */
+  const launchForAge = (age: HustleAgeGroup) =>
+    guideIdsForLibraryAudience(age, catalogStates).map((id) => ({
+      id,
+      name: guideDisplayName(id),
+      peek: guidePeek(id),
     }));
-    return [...fromLaunch, ...extras];
-  };
 
   const kidsGuidesAll = forViewer(
     sortByMembershipTier(
-      (() => {
-        const launch = launchForAge("kids").map((g) => launchAsKidsGuide(g, "kids"));
-        const seen = new Set(launch.map((g) => g.id));
-        return [...launch, ...kidsAll.filter((g) => !seen.has(g.id))];
-      })(),
-      (g) => kidsLibraryMinTier(g.id),
+      guideIdsForLibraryAudience("kids", catalogStates).map((id) => toKidsGuide(id, "kids")),
+      (g) => libraryMinTierForAge(g.id, "kids", catalogStates),
       (g) => g.title,
     ),
   );
   const juniorGuidesAll = forViewer(
     sortByMembershipTier(
-      (() => {
-        const launch = launchForAge("junior").map((g) => launchAsKidsGuide(g, "junior"));
-        const seen = new Set(launch.map((g) => g.id));
-        return [...launch, ...juniorAll.filter((g) => !seen.has(g.id))];
-      })(),
-      (g) => juniorLibraryMinTier(g.id),
+      guideIdsForLibraryAudience("junior", catalogStates).map((id) =>
+        toKidsGuide(id, "junior"),
+      ),
+      (g) => libraryMinTierForAge(g.id, "junior", catalogStates),
       (g) => g.title,
     ),
   );
   const adultGuidesAll = forViewer(
     sortByMembershipTier(
       launchForAge("adult"),
-      (g) => adultLibraryMinTier(g.id),
+      (g) => libraryMinTierForAge(g.id, "adult", catalogStates),
       (g) => g.name,
     ),
   );
@@ -659,21 +712,43 @@ export function FreeGuidesPage({
           launchGuideId: g.id,
         }));
         const seen = new Set(launchRows.map((g) => g.id));
-        const teasers = seniorAll.filter(
-          (g) => g.status !== "coming_soon" && !(g.launchGuideId && seen.has(g.launchGuideId)),
-        );
+        // Keep coming-soon teasers only when still in the senior audience after Admin patches.
+        const teasers = seniorAll.filter((g) => {
+          if (g.launchGuideId && seen.has(g.launchGuideId)) return false;
+          if (seen.has(g.id)) return false;
+          // Respect Admin age patches for live teasers; always keep coming-soon rows visible to staff.
+          if (g.status === "coming_soon") return true;
+          return guideIdsForLibraryAudience("senior", catalogStates).includes(g.id) ||
+            (g.launchGuideId
+              ? guideIdsForLibraryAudience("senior", catalogStates).includes(g.launchGuideId)
+              : false);
+        });
         return [...launchRows, ...teasers];
       })(),
-      (g) => seniorLibraryMinTier(g.id, "launchGuideId" in g ? g.launchGuideId : undefined),
+      (g) =>
+        libraryMinTierForAge(
+          g.id,
+          "senior",
+          catalogStates,
+          "launchGuideId" in g ? g.launchGuideId : undefined,
+        ),
       (g) => g.title,
     ),
   );
 
-  const kidsEffectiveTier = (g: KidsGuide): GuideMinTier => kidsLibraryMinTier(g.id);
-  const juniorEffectiveTier = (g: KidsGuide): GuideMinTier => juniorLibraryMinTier(g.id);
-
+  const kidsEffectiveTier = (g: KidsGuide): GuideMinTier =>
+    libraryMinTierForAge(g.id, "kids", catalogStates);
+  const juniorEffectiveTier = (g: KidsGuide): GuideMinTier =>
+    libraryMinTierForAge(g.id, "junior", catalogStates);
+  const adultEffectiveTier = (g: { id: string }): GuideMinTier =>
+    libraryMinTierForAge(g.id, "adult", catalogStates);
   const seniorEffectiveTier = (g: (typeof seniorGuidesAll)[number]): GuideMinTier =>
-    seniorLibraryMinTier(g.id, "launchGuideId" in g ? g.launchGuideId : undefined);
+    libraryMinTierForAge(
+      g.id,
+      "senior",
+      catalogStates,
+      "launchGuideId" in g ? g.launchGuideId : undefined,
+    );
 
   const filterByDemoTier = <T,>(
     guides: T[],
@@ -691,7 +766,7 @@ export function FreeGuidesPage({
   const juniorGuides = sortByMembershipTier(juniorGuidesAll, juniorEffectiveTier, (g) => g.title);
   const adultGuides = sortByMembershipTier(
     adultGuidesAll,
-    (g) => adultLibraryMinTier(g.id),
+    (g) => adultEffectiveTier(g),
     (g) => g.name,
   );
   const seniorGuides = sortByMembershipTier(seniorGuidesAll, seniorEffectiveTier, (g) => g.title);
@@ -705,7 +780,7 @@ export function FreeGuidesPage({
   const adultGuidesFiltered = byStatus(
     filterByDemoTier(
       adultGuidesAll,
-      (g) => adultLibraryMinTier(g.id),
+      (g) => adultEffectiveTier(g),
       (g) => g.name,
     ),
   ).filter((g) => matchesLibrarySearch(g.id, g.name, "peek" in g ? String(g.peek ?? "") : ""));
@@ -739,7 +814,7 @@ export function FreeGuidesPage({
         uniqueGuidesByLowestTier<AllAgesCard>([
           adultGuides.map((g) => ({
             id: g.id,
-            tier: adultLibraryMinTier(g.id),
+            tier: adultEffectiveTier(g),
             item: { kind: "adult" as const, guide: g },
           })),
           seniorGuides.map((g) => ({
@@ -776,7 +851,7 @@ export function FreeGuidesPage({
     const onlySenior = !showAllAges && ageFilters.length === 1 && ageFilters[0] === "senior";
     if (onlyKids) return countByTier(kidsGuidesAll, kidsEffectiveTier);
     if (onlyJunior) return countByTier(juniorGuidesAll, juniorEffectiveTier);
-    if (onlyAdult) return countByTier(adultGuidesAll, (g) => adultLibraryMinTier(g.id));
+    if (onlyAdult) return countByTier(adultGuidesAll, (g) => adultEffectiveTier(g));
     if (onlySenior) return countByTier(seniorGuidesAll, seniorEffectiveTier);
 
     // Age Show All or multi-age — unique guide ids across selected ages.
@@ -789,7 +864,7 @@ export function FreeGuidesPage({
     const includeJunior = showAllAges || ageFilters.includes("junior");
     const includeAdult = showAllAges || ageFilters.includes("adult");
     const includeSenior = showAllAges || ageFilters.includes("senior");
-    if (includeAdult) for (const g of adultGuidesAll) take(g.id, adultLibraryMinTier(g.id));
+    if (includeAdult) for (const g of adultGuidesAll) take(g.id, adultEffectiveTier(g));
     if (includeKids) for (const g of kidsGuidesAll) take(g.id, kidsEffectiveTier(g));
     if (includeJunior) for (const g of juniorGuidesAll) take(g.id, juniorEffectiveTier(g));
     if (includeSenior) for (const g of seniorGuidesAll) take(g.id, seniorEffectiveTier(g));
@@ -797,8 +872,12 @@ export function FreeGuidesPage({
   })();
 
   const uniqueGuideCount = (() => {
-    /** Staff see full unique inventory; guests match the same catalog Show All total. */
-    if (!staffCatalog) return uniqueGuideLibraryCount();
+    /** Guests/members: live Active unique count from D1. Staff: visible inventory size. */
+    if (!staffCatalog) {
+      return liveGuideCounts.loaded
+        ? liveGuideCounts.totalActive
+        : uniqueGuideLibraryCount();
+    }
     const ids = new Set<string>();
     for (const g of adultGuidesAll) ids.add(g.id);
     for (const g of kidsGuidesAll) ids.add(g.id);
@@ -842,7 +921,7 @@ export function FreeGuidesPage({
         for (const g of adultGuidesAll) {
           rows.push({
             id: g.id,
-            tier: adultLibraryMinTier(g.id),
+            tier: adultEffectiveTier(g),
             name: g.name,
             peek: "peek" in g ? String(g.peek ?? "") : "",
           });
@@ -870,7 +949,7 @@ export function FreeGuidesPage({
       for (const g of adultGuidesAll) {
         take({
           id: g.id,
-          tier: adultLibraryMinTier(g.id),
+          tier: adultEffectiveTier(g),
           name: g.name,
           peek: "peek" in g ? String(g.peek ?? "") : "",
         });
@@ -1120,7 +1199,7 @@ export function FreeGuidesPage({
                   className="glow-badge free free-guides-free-guides-tag"
                   data-testid="guides-free-membership-guides-tag"
                 >
-                  {FREE_MEMBERSHIP_GUIDES_TAG}
+                  {freeMembershipGuidesTag(liveGuideCounts.freeActive)}
                 </span>
                 <div className="free-guides-perk-banner__copy">
                   <strong>Browse freely — register to unlock (including Free Guides)</strong>
@@ -1279,10 +1358,16 @@ export function FreeGuidesPage({
                             isMember={isLoggedIn}
                             membershipTier={effectiveTier}
                             isAdmin={isAdmin}
+                            staffCatalog={staffCatalog}
                             guideStatus={guideStatusOf(card.guide.id)}
+                            minTier={entry.tier}
                             onJoinCta={
                               onGoToJoin
-                                ? () => onGoToJoin(card.kind === "junior" ? "junior" : "kids")
+                                ? (focusTier) =>
+                                    onGoToJoin(
+                                      card.kind === "junior" ? "junior" : "kids",
+                                      focusTier,
+                                    )
                                 : undefined
                             }
                             onOpenGuide={() => openKidsLibraryGuide(card.guide)}
@@ -1305,7 +1390,7 @@ export function FreeGuidesPage({
                             key={`senior-${g.id}`}
                             className={`glass free-guide-card ${
                                 comingSoon ? "is-gated" : isFreePlan ? "is-free" : "is-gated"
-                              }${isAdmin && guideStatusOf(g.id) !== "active" ? " is-guide-inactive" : ""}`}
+                              }${staffCatalog && guideStatusOf(g.id) !== "active" ? " is-guide-inactive" : ""}`}
                           >
                             <div className="free-guide-card-head">
                               <div>
@@ -1331,7 +1416,9 @@ export function FreeGuidesPage({
                                 <Lock size={18} style={{ color: "var(--crimson)", flexShrink: 0 }} />
                               )}
                             </div>
-                            <p className="free-guide-summary">{g.blurb}</p>
+                            <p className="free-guide-summary">
+                              {guideSideHustleDescription(g.id) || g.blurb}
+                            </p>
                             {comingSoon ? (
                               <p className="free-guide-tier-note">{COMING_SOON_NOT_UNLOCKED_NOTE}</p>
                             ) : null}
@@ -1354,8 +1441,16 @@ export function FreeGuidesPage({
                                 <Lock size={16} />
                                 <JoinToUnlockCta
                                   access={access}
-                                  onJoin={onGoToJoin ? () => onGoToJoin("senior") : undefined}
-                                  onUpgrade={onGoToJoin ? () => onGoToJoin("senior") : undefined}
+                                  onJoin={
+                                    onGoToJoin
+                                      ? () => onGoToJoin("senior", minTier)
+                                      : undefined
+                                  }
+                                  onUpgrade={
+                                    onGoToJoin
+                                      ? () => onGoToJoin("senior", minTier)
+                                      : undefined
+                                  }
                                 />
                               </div>
                             )}
@@ -1375,7 +1470,7 @@ export function FreeGuidesPage({
                         <article
                           key={`adult-${g.id}`}
                           className={`glass free-guide-card ${isFreePlan ? "is-free" : "is-gated"}${
-                              isAdmin && guideStatusOf(g.id) !== "active" ? " is-guide-inactive" : ""
+                              staffCatalog && guideStatusOf(g.id) !== "active" ? " is-guide-inactive" : ""
                             }`}
                         >
                           <div className="free-guide-card-head">
@@ -1389,7 +1484,9 @@ export function FreeGuidesPage({
                               <Lock size={18} style={{ color: "var(--crimson)", flexShrink: 0 }} />
                             )}
                           </div>
-                          <p className="free-guide-summary">{g.peek}</p>
+                          <p className="free-guide-summary">
+                            {guideSideHustleDescription(g.id) || g.peek}
+                          </p>
                           {access.unlocked ? (
                             <OpenGuideButton minTier={minTier} onClick={() => onOpenAdultGuide(g.id)} />
                           ) : (
@@ -1397,8 +1494,8 @@ export function FreeGuidesPage({
                               <Lock size={16} />
                               <JoinToUnlockCta
                                 access={access}
-                                onJoin={onGoToJoin ? () => onGoToJoin("adult") : undefined}
-                                onUpgrade={onGoToJoin ? () => onGoToJoin("adult") : undefined}
+                                onJoin={onGoToJoin ? () => onGoToJoin("adult", minTier) : undefined}
+                                onUpgrade={onGoToJoin ? () => onGoToJoin("adult", minTier) : undefined}
                               />
                             </div>
                           )}
@@ -1415,7 +1512,7 @@ export function FreeGuidesPage({
                     testIdPrefix="all-ages"
                     renderGuides={renderAllAgesGrid}
                     expandSignal={listExpand}
-                    navStyle="tabs"
+                    navStyle="panel"
                     membershipTab={membershipTab}
                     onMembershipTabChange={setMembershipTab}
                   />
@@ -1430,7 +1527,7 @@ export function FreeGuidesPage({
                 const renderAdultGrid = (guides: typeof adultGuides) => (
                   <div className="free-guides-grid">
                     {guides.map((g) => {
-                      const minTier = adultLibraryMinTier(g.id);
+                      const minTier = adultEffectiveTier(g);
                       const access = resolveGuideAccess({
                         isMember: isLoggedIn,
                         membershipTier: effectiveTier,
@@ -1442,7 +1539,7 @@ export function FreeGuidesPage({
                         <article
                           key={g.id}
                           className={`glass free-guide-card ${isFreePlan ? "is-free" : "is-gated"}${
-                              isAdmin && guideStatusOf(g.id) !== "active" ? " is-guide-inactive" : ""
+                              staffCatalog && guideStatusOf(g.id) !== "active" ? " is-guide-inactive" : ""
                             }`}
                         >
                           <div className="free-guide-card-head">
@@ -1456,7 +1553,9 @@ export function FreeGuidesPage({
                               <Lock size={18} style={{ color: "var(--crimson)", flexShrink: 0 }} />
                             )}
                           </div>
-                          <p className="free-guide-summary">{g.peek}</p>
+                          <p className="free-guide-summary">
+                            {guideSideHustleDescription(g.id) || g.peek}
+                          </p>
                           {access.unlocked ? (
                             <OpenGuideButton minTier={minTier} onClick={() => onOpenAdultGuide(g.id)} />
                           ) : (
@@ -1464,8 +1563,8 @@ export function FreeGuidesPage({
                               <Lock size={16} />
                               <JoinToUnlockCta
                                 access={access}
-                                onJoin={onGoToJoin ? () => onGoToJoin("adult") : undefined}
-                                onUpgrade={onGoToJoin ? () => onGoToJoin("adult") : undefined}
+                                onJoin={onGoToJoin ? () => onGoToJoin("adult", minTier) : undefined}
+                                onUpgrade={onGoToJoin ? () => onGoToJoin("adult", minTier) : undefined}
                               />
                             </div>
                           )}
@@ -1477,12 +1576,12 @@ export function FreeGuidesPage({
                 return (
                   <TierGroupedGuideList
                     guides={adultGuidesForView}
-                    minTierOf={(g) => adultLibraryMinTier(g.id)}
+                    minTierOf={(g) => adultEffectiveTier(g)}
                     nameOf={(g) => g.name}
                     testIdPrefix="adult"
                     renderGuides={renderAdultGrid}
                     expandSignal={listExpand}
-                    navStyle="tabs"
+                    navStyle="panel"
                     membershipTab={membershipTab}
                     onMembershipTabChange={setMembershipTab}
                   />
@@ -1511,7 +1610,7 @@ export function FreeGuidesPage({
                           key={g.id}
                           className={`glass free-guide-card ${
                               comingSoon ? "is-gated" : isFreePlan ? "is-free" : "is-gated"
-                            }${isAdmin && guideStatusOf(g.id) !== "active" ? " is-guide-inactive" : ""}`}
+                            }${staffCatalog && guideStatusOf(g.id) !== "active" ? " is-guide-inactive" : ""}`}
                         >
                           <div className="free-guide-card-head">
                             <div>
@@ -1537,7 +1636,9 @@ export function FreeGuidesPage({
                               <Lock size={18} style={{ color: "var(--crimson)", flexShrink: 0 }} />
                             )}
                           </div>
-                          <p className="free-guide-summary">{g.blurb}</p>
+                          <p className="free-guide-summary">
+                            {guideSideHustleDescription(g.id) || g.blurb}
+                          </p>
                           {comingSoon ? (
                             <p className="free-guide-tier-note">{COMING_SOON_NOT_UNLOCKED_NOTE}</p>
                           ) : null}
@@ -1560,8 +1661,12 @@ export function FreeGuidesPage({
                               <Lock size={16} />
                               <JoinToUnlockCta
                                 access={access}
-                                onJoin={onGoToJoin ? () => onGoToJoin("senior") : undefined}
-                                onUpgrade={onGoToJoin ? () => onGoToJoin("senior") : undefined}
+                                onJoin={
+                                  onGoToJoin ? () => onGoToJoin("senior", minTier) : undefined
+                                }
+                                onUpgrade={
+                                  onGoToJoin ? () => onGoToJoin("senior", minTier) : undefined
+                                }
                               />
                             </div>
                           )}
@@ -1578,7 +1683,7 @@ export function FreeGuidesPage({
                     testIdPrefix="senior"
                     renderGuides={renderSeniorGrid}
                     expandSignal={listExpand}
-                    navStyle="tabs"
+                    navStyle="panel"
                     membershipTab={membershipTab}
                     onMembershipTabChange={setMembershipTab}
                   />
@@ -1595,7 +1700,7 @@ export function FreeGuidesPage({
                   nameOf={(g) => g.title}
                   testIdPrefix="junior"
                   expandSignal={listExpand}
-                  navStyle="tabs"
+                  navStyle="panel"
                   membershipTab={membershipTab}
                   onMembershipTabChange={setMembershipTab}
                   renderGuides={(guides) => (
@@ -1607,8 +1712,10 @@ export function FreeGuidesPage({
                           isMember={isLoggedIn}
                           membershipTier={effectiveTier}
                           isAdmin={isAdmin}
+                          staffCatalog={staffCatalog}
                           guideStatus={guideStatusOf(g.id)}
-                          onJoinCta={onGoToJoin ? () => onGoToJoin("junior") : undefined}
+                          minTier={juniorEffectiveTier(g)}
+                          onJoinCta={onGoToJoin ? (focusTier) => onGoToJoin("junior", focusTier) : undefined}
                           onOpenGuide={() => openKidsLibraryGuide(g)}
                         />
                       ))}
@@ -1633,7 +1740,7 @@ export function FreeGuidesPage({
                   nameOf={(g) => g.title}
                   testIdPrefix="kids"
                   expandSignal={listExpand}
-                  navStyle="tabs"
+                  navStyle="panel"
                   membershipTab={membershipTab}
                   onMembershipTabChange={setMembershipTab}
                   renderGuides={(guides) => (
@@ -1645,8 +1752,10 @@ export function FreeGuidesPage({
                           isMember={isLoggedIn}
                           membershipTier={effectiveTier}
                           isAdmin={isAdmin}
+                          staffCatalog={staffCatalog}
                           guideStatus={guideStatusOf(g.id)}
-                          onJoinCta={onGoToJoin ? () => onGoToJoin("kids") : undefined}
+                          minTier={kidsEffectiveTier(g)}
+                          onJoinCta={onGoToJoin ? (focusTier) => onGoToJoin("kids", focusTier) : undefined}
                           onOpenGuide={() => openKidsLibraryGuide(g)}
                         />
                       ))}

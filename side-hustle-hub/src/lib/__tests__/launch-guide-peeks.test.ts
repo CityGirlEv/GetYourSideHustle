@@ -42,23 +42,48 @@ describe("launch guide peeks", () => {
     }
   });
 
-  it("routes adult peeks to Launch Guides and audience peeks to their hubs", () => {
+  it("routes every peek Open Guide to the actual guide when an id exists", () => {
     const sections = getLaunchGuidePeekSections();
     expect(sections.find((s) => s.id === "adult")!.guides[0].nav).toEqual({
       view: "guides",
       hustleId: LAUNCH_GUIDES[0].id,
     });
-    expect(sections.find((s) => s.id === "kids")!.guides[0].nav).toEqual({
-      view: "kids",
-      mode: "kids",
+
+    const kidsGuide = sections.find((s) => s.id === "kids")!.guides[0]!;
+    expect(kidsGuide.nav).toEqual({ view: "guides", hustleId: kidsGuide.id });
+
+    const juniorGuide = sections.find((s) => s.id === "junior")!.guides[0]!;
+    expect(juniorGuide.nav).toEqual({ view: "guides", hustleId: juniorGuide.id });
+
+    const kindness = sections
+      .find((s) => s.id === "kids")!
+      .guides.find((g) => g.id === "kids-kindness-share");
+    expect(kindness?.nav).toEqual({
+      view: "guides",
+      hustleId: "kids-kindness-share",
     });
-    expect(sections.find((s) => s.id === "junior")!.guides[0].nav).toEqual({
-      view: "kids",
-      mode: "junior",
+
+    const giveBack = sections
+      .find((s) => s.id === "junior")!
+      .guides.find((g) => g.id === "junior-give-back-teach");
+    expect(giveBack?.nav).toEqual({
+      view: "guides",
+      hustleId: "junior-give-back-teach",
     });
-    expect(sections.find((s) => s.id === "senior")!.guides[0].nav).toEqual({
-      view: "seniors",
+
+    const seniorRideshare = sections
+      .find((s) => s.id === "senior")!
+      .guides.find((g) => g.id === "senior-rideshare");
+    expect(seniorRideshare?.nav).toEqual({
+      view: "guides",
+      hustleId: "rideshare",
     });
+
+    // Coming-soon teasers without a launch guide still open the Seniors hub.
+    const comingSoon = sections
+      .find((s) => s.id === "senior")!
+      .guides.find((g) => g.id === "start-consulting");
+    expect(comingSoon?.nav).toEqual({ view: "seniors" });
   });
 
   it("marks free launch guides so peek buttons can show a Free badge", () => {
@@ -70,7 +95,7 @@ describe("launch guide peeks", () => {
     const airbnb = adult.guides.find((g) => g.id === "airbnb")!;
     expect(plantWatering.minTier).toBe("free");
     expect(handyman.minTier).toBe("free");
-    expect(rideshare.minTier).toBe("free");
+    expect(rideshare.minTier).toBe("pro");
     expect(airbnb.minTier).toBe("starter");
 
     const kids = sections.find((s) => s.id === "kids")!;

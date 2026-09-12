@@ -20,10 +20,13 @@ import { LAUNCH_GUIDES } from "./launch-guides";
 import {
   formatGuideToolLine,
   formatPricingLine,
-  guideKitForId,
   type GuideToolCost,
 } from "./guide-tools";
 import { hustleById } from "./side-hustle-catalog";
+import { kidsGuideById } from "./kids-guides";
+import { applyGuideCatalogPatch, type GuideCatalogPatch } from "./guide-catalog-state";
+import { resolveGuideKit } from "./guide-kit-overrides";
+import { fetchGuideCatalogStates } from "./guide-catalog-client";
 
 const COLORS = {
   ...PDF_BRAND_COLORS,
@@ -89,14 +92,22 @@ function guideTitleForId(guideId: string): string {
   return (
     hustleById(guideId)?.name ??
     LAUNCH_GUIDES.find((g) => g.id === guideId)?.name ??
+    kidsGuideById(guideId)?.title ??
     guideId
   );
 }
 
-/** Canvas-free model for tests + PDF rendering. */
-export function buildLaunchGuidePdfModel(guideId: string): LaunchGuidePdfModel {
-  const kit = guideKitForId(guideId);
-  const title = guideTitleForId(guideId);
+/** Canvas-free model for tests + PDF rendering.
+ * Pass catalog `patch` so admin edits (name / steps / tools / prerequisites) match the library. */
+export function buildLaunchGuidePdfModel(
+  guideId: string,
+  patch?: GuideCatalogPatch | null,
+): LaunchGuidePdfModel {
+  const kit = resolveGuideKit(guideId, patch);
+  const baseTitle = guideTitleForId(guideId);
+  const title = String(
+    applyGuideCatalogPatch({ name: baseTitle }, patch).name || baseTitle,
+  );
 
   const prerequisites = kit.prerequisites.map((p) => `${p.label}: ${p.detail}`);
 
@@ -121,6 +132,17 @@ export function buildLaunchGuidePdfModel(guideId: string): LaunchGuidePdfModel {
   const steps = (kit.steps ?? []).map((s) => ({ title: s.title, desc: s.desc }));
 
   return { title, prerequisites, pricing, supplies, tools, steps };
+}
+
+async function catalogPatchForGuide(
+  guideId: string,
+): Promise<GuideCatalogPatch | null | undefined> {
+  try {
+    const states = await fetchGuideCatalogStates();
+    return states[guideId]?.patch ?? null;
+  } catch {
+    return undefined;
+  }
 }
 
 function launchGuideFilename(guideId: string): string {
@@ -324,12 +346,14 @@ function orderedGuideIds(guideIds?: string[]): string[] {
   return ordered;
 }
 
-/** One hustle Launch Guide PDF. */
+/** One hustle Launch Guide PDF. Uses live catalog patch when `patch` omitted. */
 export async function downloadLaunchGuidePdf(
   guideId: string,
   reservedTab?: Window | null,
+  patch?: GuideCatalogPatch | null,
 ): Promise<void> {
-  const model = buildLaunchGuidePdfModel(guideId);
+  const resolvedPatch = patch !== undefined ? patch : await catalogPatchForGuide(guideId);
+  const model = buildLaunchGuidePdfModel(guideId, resolvedPatch);
   const logoDataUrl = await loadPdfLogoDataUrl();
   const updatedAt = new Date();
   const doc = new jsPDF({ unit: "pt", format: "letter" });
@@ -342,13 +366,25 @@ export async function downloadLaunchGuidePdf(
 
 /**
  * All Launch Guides (or a subset) in free-first `LAUNCH_GUIDES` order.
- * Each guide starts on a fresh page.
+ * Each guide starts on a fresh page. Loads catalog patches once when not provided.
  */
 export async function downloadAllLaunchGuidesPdf(
   guideIds?: string[],
   reservedTab?: Window | null,
+  patchesByGuideId?: Record<string, GuideCatalogPatch | null | undefined>,
 ): Promise<void> {
   const ids = orderedGuideIds(guideIds);
+  let patches = patchesByGuideId;
+  if (!patches) {
+    try {
+      const states = await fetchGuideCatalogStates();
+      patches = Object.fromEntries(
+        Object.entries(states).map(([id, state]) => [id, state.patch ?? null]),
+      );
+    } catch {
+      patches = {};
+    }
+  }
   const logoDataUrl = await loadPdfLogoDataUrl();
   const updatedAt = new Date();
   const doc = new jsPDF({ unit: "pt", format: "letter" });
@@ -362,7 +398,7 @@ export async function downloadAllLaunchGuidesPdf(
       drawPdfPageChrome(doc);
     }
     const ctx: PdfCtx = { doc, y: CONTENT_FLOW_TOP };
-    renderGuideContent(ctx, buildLaunchGuidePdfModel(id));
+    renderGuideContent(ctx, buildLaunchGuidePdfModel(id, patches?.[id]));
   });
 
   if (ids.length === 0) {

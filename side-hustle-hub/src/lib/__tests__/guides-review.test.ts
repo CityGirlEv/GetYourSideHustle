@@ -35,7 +35,6 @@ import {
   SIDE_HUSTLES,
 } from "../side-hustle-catalog";
 import { catalogToLaunchGuideData, hustleById } from "../side-hustle-catalog";
-import { resolveLaunchGuideData } from "../../components/StepByStepGuides";
 import {
   GUIDE_REVIEW_CASES,
   GUIDE_REVIEW_CATALOG,
@@ -44,8 +43,14 @@ import {
   isGuideReviewCaseId,
   VT_GUIDES_REVIEW_CASE,
 } from "../gysh-guide-review-cases";
+import { resolveLaunchGuideData } from "../resolve-launch-guide-data";
 import { uniqueGuideLibraryCount } from "../guide-library-pool";
 import { suggestedSprintForTest } from "../gysh-sprint-board";
+import {
+  GUIDE_PREP_REVIEW_TAB_LABELS,
+  GUIDE_PREP_REVIEW_TABS_PHRASE,
+  guidePrepSectionIds,
+} from "../guide-prep-visibility";
 
 const HTTPS = /^https:\/\//i;
 
@@ -160,9 +165,11 @@ describe("guides review — launch guides", () => {
       const steps = detailedStepsForGuide(id) ?? [];
       const blob = steps.map((s) => `${s.title} ${s.desc}`).join("\n");
       const titles = steps.map((s) => s.title);
-      // Foundation order: Research → Name → Marketing Objectives (youth adds Parent Thumbs Up first).
-      expect(titles.some((t) => /decide on marketing objectives/i.test(t)), id).toBe(true);
-      const marketingIdx = titles.findIndex((t) => /decide on marketing objectives/i.test(t));
+      // Foundation order: Research → Name → marketing plan (youth adds Parent Thumbs Up first).
+      expect(titles.some((t) => /pick how you will tell people about your side hustle|decide on marketing objectives/i.test(t)), id).toBe(true);
+      const marketingIdx = titles.findIndex((t) =>
+        /pick how you will tell people about your side hustle|decide on marketing objectives/i.test(t),
+      );
       const researchIdx = titles.findIndex((t) => /research competitors/i.test(t));
       expect(researchIdx, id).toBeGreaterThanOrEqual(0);
       expect(marketingIdx, id).toBeGreaterThan(researchIdx);
@@ -173,25 +180,69 @@ describe("guides review — launch guides", () => {
       expect(blob, id).toMatch(/craigslist\.org/i);
       expect(blob, id).toMatch(/nextdoor\.com/i);
       expect(blob, id).toMatch(/parents|neighbors|colleagues|coworkers/i);
+      const carry = steps.find((s) => /carry out the marketing plan/i.test(s.title));
+      expect(carry?.desc, id).toMatch(/☐/);
+      expect(carry?.desc, id).toMatch(/Warm contacts/i);
+      expect(carry?.desc, id).toMatch(/Track and follow up/i);
     }
   });
 
-  it("Babysitter's Helper lists tasks before offer and includes advertise channel choices", () => {
+  it("Babysitter's Helper / Mother's Helper keeps parent-present 11-step flow", () => {
+    expect(DETAILED_GUIDE_STEPS["mothers-helper"]).toHaveLength(11);
     const steps = detailedStepsForGuide("mothers-helper") ?? [];
     const titles = steps.map((s) => s.title).join(" | ");
-    expect(titles).toMatch(/list of potential Helper Tasks/i);
-    expect(titles).toMatch(/Price those helper jobs/i);
-    expect(titles).toMatch(/how you will advertise/i);
-    expect(titles).toMatch(/Deliver the first small job/i);
-    expect(steps.map((s) => s.desc).join("\n")).toMatch(/warm texts|Canva|Nextdoor/i);
+    expect(titles).toMatch(/Decide How You Can Help/i);
+    expect(titles).toMatch(/Set Your Starter Price/i);
+    expect(titles).toMatch(/Choose Your Marketing Channels/i);
+    expect(titles).toMatch(/Make Your Marketing Materials/i);
+    expect(titles).toMatch(/Carry Out Your Marketing Plan/i);
+    expect(titles).toMatch(/Get Rebooked/i);
+    const blob = steps.map((s) => s.desc).join("\n");
+    expect(blob).toMatch(/parent.*remain|remain.*present|parent stays/i);
+    expect(blob).toMatch(/trusted|parent-approved|family friends/i);
+    expect(blob).toMatch(/Do NOT advertise yourself as providing solo babysitting/i);
   });
 
   it("Career & Industry Consulting has niche delivery steps after marketing", () => {
     const steps = detailedStepsForGuide("consulting") ?? [];
     const titles = steps.map((s) => s.title).join(" | ");
-    expect(titles).toMatch(/Decide on Marketing Objectives/i);
+    expect(titles).toMatch(/Pick how you will tell people about your side hustle|Decide on Marketing Objectives/i);
     expect(titles).toMatch(/Make your marketing materials/i);
     expect(titles).toMatch(/niche|rate card|discovery/i);
+  });
+
+  it("folds Canva template pick into Make your marketing materials (no separate open-Canva step)", () => {
+    for (const id of [
+      "basic-invitation-creator",
+      "canva-flyer-creator",
+      "greeting-card-creator",
+      "dog-walk",
+    ] as const) {
+      const kit = guideKitForId(id);
+      expect(kit.tools.some((t) => t.id === "canva"), `${id} Canva tool`).toBe(true);
+      const canvaTool = kit.tools.find((t) => t.id === "canva");
+      expect(canvaTool?.url, id).toMatch(/canva\.com/i);
+
+      const titles = (kit.steps ?? []).map((s) => s.title);
+      expect(titles.some((t) => /open canva and pick|start a flyer-sized design in canva/i.test(t)), id).toBe(
+        false,
+      );
+
+      const materials = (kit.steps ?? []).find((s) => /make your marketing materials/i.test(s.title));
+      expect(materials?.desc, id).toMatch(/Open Canva at https:\/\/www\.canva\.com\//i);
+      expect(materials?.desc, id).toMatch(/Free plan available/i);
+      expect(materials?.desc, id).toMatch(/sign in at the link|account you already have/i);
+      expect(materials?.desc, id).toMatch(/Search Templates/i);
+      expect(materials?.desc, id).toMatch(/☐/);
+    }
+
+    const invite = guideKitForId("basic-invitation-creator");
+    const inviteMaterials = invite.steps?.find((s) => /make your marketing materials/i.test(s.title));
+    expect(inviteMaterials?.desc).toMatch(/birthday invitation|party invite/i);
+
+    const flyer = guideKitForId("canva-flyer-creator");
+    const flyerMaterials = flyer.steps?.find((s) => /make your marketing materials/i.test(s.title));
+    expect(flyerMaterials?.desc).toMatch(/Flyer \(US Letter\)|A4 flyer/i);
   });
 
   it("never resolves Free Wizard / launch guides to generic template steps", () => {
@@ -201,10 +252,11 @@ describe("guides review — launch guides", () => {
       expect(isGenericGuideSteps(data.steps), `${id} still generic`).toBe(false);
       expect(data.steps[0]?.title).not.toMatch(/define the offer|prep your kit|reach out/i);
     }
-    // Invitation guide must stay Canva-specific (the user’s example of “not generic”).
+    // Invitation guide must stay Canva-specific (template pick lives in Make your marketing materials).
     const invite = resolveLaunchGuideData("basic-invitation-creator", []);
     expect(invite.steps.map((s) => s.title).join(" ")).toMatch(/Canva/i);
-    expect(invite.steps.some((s) => /canva\.com/i.test(s.desc))).toBe(true);
+    expect(invite.steps.some((s) => /canva|Tools tab/i.test(s.desc))).toBe(true);
+    expect(guideKitForId("basic-invitation-creator").tools.some((t) => t.id === "canva")).toBe(true);
 
     for (const g of LAUNCH_GUIDES) {
       const data = resolveLaunchGuideData(g.id, []);
@@ -325,14 +377,75 @@ describe("guides review — Sprint 6 Testing Portal cases", () => {
     expect(guideReviewCaseId("launch", "handyman")).toBe("GUIDE-REV-launch-handyman");
   });
 
-  it("assigns manual GUIDE-REV cases to Lyriq with Pass → Reviewed by QA steps", () => {
+  it("assigns manual GUIDE-REV cases to Lyriq with full 7-tab + Active/Reviewed Pass sync steps", () => {
     const manuals = GUIDE_REVIEW_CASES.filter((c) => c.id.startsWith("GUIDE-REV-"));
     expect(manuals.length).toBeGreaterThan(0);
+    expect(GUIDE_PREP_REVIEW_TAB_LABELS).toHaveLength(7);
     for (const c of manuals) {
       expect(c.assignees).toEqual(["lyriq"]);
       expect(c.area).toBe("Guides");
-      expect(c.steps.some((s) => /Mark this test Pass|Pass/i.test(s))).toBe(true);
+      expect(c.relatedTaskIds ?? []).toEqual([]);
+      expect(c.title).toMatch(/#\d{3}/);
+      expect(c.steps).toHaveLength(7);
+      expect(c.steps[1]).toMatch(/all 7 prep tabs/i);
+      expect(c.steps[1]).toContain(GUIDE_PREP_REVIEW_TABS_PHRASE);
+      expect(c.steps[1]).toMatch(/Show All/);
+      expect(c.steps[1]).toMatch(/Prerequisites/);
+      expect(c.steps[1]).toMatch(/Suggested Pricing/);
+      expect(c.steps[1]).toMatch(/Supply List/);
+      expect(c.steps[1]).toMatch(/Tools/);
+      expect(c.steps[1]).toMatch(/Steps/);
+      expect(c.steps[1]).toMatch(/Revenue Calculator/);
+      expect(c.steps[1]).toMatch(/dedicated tab/i);
+      expect(c.steps[4]).toMatch(/As QA/i);
+      expect(c.steps[4]).toMatch(/Supply List/);
+      expect(c.steps[4]).toMatch(/Suggested Pricing/);
+      expect(c.steps[4]).toMatch(/Show All/);
+      expect(c.steps[4]).toMatch(/dedicated tab/i);
+      expect(c.steps[4]).toMatch(/re-order|Save/i);
+      expect(c.steps[5]).toMatch(/Active/);
+      expect(c.steps[5]).toMatch(/Reviewed/);
+      expect(c.steps[5]).not.toMatch(/Confirm both Fixed\/Re-Review and Reviewed stay checked/);
+      expect(c.steps[6]).toMatch(/Mark this test Pass/i);
+      expect(c.steps[6]).toMatch(/auto-sets Active \+ Reviewed/i);
+      expect(c.steps[6]).toMatch(/next GUIDE-REV/i);
       expect(c.expected).toMatch(/Reviewed by QA/i);
+      expect(c.expected).toContain(GUIDE_PREP_REVIEW_TABS_PHRASE);
+      expect(c.expected).toMatch(/dedicated tabs/i);
+    }
+  });
+
+  it("VT-GUIDES-REVIEW requires all seven prep tabs in automated coverage", () => {
+    expect(VT_GUIDES_REVIEW_CASE.steps.some((s) => s.includes(GUIDE_PREP_REVIEW_TABS_PHRASE))).toBe(
+      true,
+    );
+    expect(VT_GUIDES_REVIEW_CASE.steps.some((s) => /Suggested Pricing/i.test(s))).toBe(true);
+    expect(VT_GUIDES_REVIEW_CASE.steps.some((s) => /Supply List/i.test(s))).toBe(true);
+    expect(VT_GUIDES_REVIEW_CASE.expected).toMatch(/7 prep tabs/);
+  });
+
+  it("every library guide kit resolves all seven prep tab sections", () => {
+    const required = [
+      "all",
+      "prereqs",
+      "pricing",
+      "supplies",
+      "tools",
+      "steps",
+      "calculator",
+    ] as const;
+    for (const e of GUIDE_REVIEW_CATALOG) {
+      const kit = guideKitForId(e.guideId);
+      const tabs = guidePrepSectionIds({
+        kit,
+        includeSteps: true,
+        includeCalculator: true,
+      });
+      for (const id of required) {
+        expect(tabs, `${e.guideId} missing ${id}`).toContain(id);
+      }
+      expect(kit.suggestedPricing?.items.length, `${e.guideId} pricing`).toBeGreaterThan(0);
+      expect(kit.supplies?.items.length, `${e.guideId} supplies`).toBeGreaterThan(0);
     }
   });
 });

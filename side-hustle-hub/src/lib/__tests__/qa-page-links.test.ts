@@ -72,8 +72,9 @@ describe("qa-page-links", () => {
 
   it("infers page refs for guide/senior review tasks", () => {
     expect(pageRefForTask({ id: "T-LG-airbnb", notes: "guide-review:airbnb" })?.href).toBe(
-      "/guides",
+      "/admin?tab=testing&test=GUIDE-REV-launch-airbnb",
     );
+    expect(pageRefForTask({ id: "T-LG-airbnb" })?.label).toMatch(/^Test · /);
     expect(pageRefForTask({ id: "T-SENIOR-PAGE", notes: "page-review:senior-side-hustles" })?.href).toBe(
       "/seniors",
     );
@@ -85,7 +86,8 @@ describe("qa-page-links", () => {
       notes: "guide-review:x",
       description: "Review Launch Guide: X",
     });
-    expect(notes.startsWith("Open [Guides](/guides)")).toBe(true);
+    expect(notes).toMatch(/Open \[Test · GUIDE-REV-/);
+    expect(notes).toContain("/admin?tab=testing&test=");
     expect(notes).toContain("guide-review:x");
   });
 

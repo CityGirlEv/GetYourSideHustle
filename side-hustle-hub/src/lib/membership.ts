@@ -91,7 +91,7 @@ export const MEMBERSHIP_TIERS: MembershipTier[] = [
     id: "free",
     name: "Free",
     tagline:
-      "Free for every age — Kids, Teens, Adults & Seniors. Includes 20 Side Hustle Guides to choose from, ideas, and your Corner at $0.",
+      "Free for every age — Kids, Teens, Adults & Seniors. Includes Side Hustle Guides to choose from, ideas, and your Corner at $0.",
     priceMonthlyUsd: 0,
     priceMonthlyUsdSenior: 0,
     creditsPerMonth: 0,
@@ -366,7 +366,7 @@ export function mergeMerchNote(
 }
 
 export const ALL_AGES_GUIDES_FREE_PERK: TierMemberPerk = {
-  title: "Free comes with 20 Side Hustle Guides to choose from",
+  title: "Free comes with Side Hustle Guides to choose from",
   detail:
     "Kids, Teens, Adults & Seniors — pick the ones that fit, plus ideas, Corners, and next steps at $0.",
 };
@@ -576,7 +576,7 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
       },
       {
         title: "2.5 credits / mo",
-        detail: "Spend on workshops, extra sessions, and Kids/Teens memberships — 1 credit = $1. Adult and Senior memberships stay cash.",
+        detail: "Spend on memberships, workshops, consulting, and a-la-carte — 1 credit = $1. Credit packs are cash only (credits can’t buy more credits).",
       },
     ],
     kids: [
@@ -615,7 +615,7 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
       },
       {
         title: "2.5 credits / mo",
-        detail: "Included each month. Pay Kids/Teens memberships, workshops, and extra sessions with credits (1 credit = $1).",
+        detail: "Included each month. Pay memberships, workshops, and extra sessions with credits (1 credit = $1). Credit packs stay cash.",
       },
     ],
     junior: [
@@ -654,7 +654,7 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
       },
       {
         title: "2.5 credits / mo",
-        detail: "Included each month. Pay Teens memberships, workshops, and extra sessions with credits (1 credit = $1).",
+        detail: "Included each month. Pay memberships, workshops, and extra sessions with credits (1 credit = $1). Credit packs stay cash.",
       },
     ],
     senior: [
@@ -685,7 +685,7 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
       },
       {
         title: "2.5 credits / mo",
-        detail: "Spend on workshops and extra sessions — 1 credit = $1. Senior memberships stay cash.",
+        detail: "Spend on memberships, workshops, and extra sessions — 1 credit = $1. Credit packs stay cash.",
       },
     ],
   },
@@ -711,7 +711,7 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
       },
       {
         title: "5 credits / mo",
-        detail: "Double Starter’s included credits — workshops, extra sessions, and Kids/Teens memberships at 1 credit = $1.",
+        detail: "Double Starter’s included credits — memberships, workshops, and extra sessions at 1 credit = $1 (not credit packs).",
       },
     ],
     kids: [
@@ -808,7 +808,7 @@ export const MEMBER_PERKS_BY_TIER: Record<TierId, TierMemberPerks> = {
       },
       {
         title: "10 credits / mo",
-        detail: "Double Pro’s included credits — workshops, extra sessions, and Kids/Teens memberships at 1 credit = $1.",
+        detail: "Double Pro’s included credits — memberships, workshops, and extra sessions at 1 credit = $1 (not credit packs).",
       },
     ],
     kids: [

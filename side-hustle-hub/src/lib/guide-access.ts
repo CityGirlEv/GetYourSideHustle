@@ -115,7 +115,7 @@ export const COMING_SOON_NOT_UNLOCKED_NOTE =
 
 /** Adult Launch Guide ids → minimum membership tier. */
 export const ADULT_GUIDE_MIN_TIER: Record<string, GuideMinTier> = {
-  rideshare: "free",
+  rideshare: "pro",
   "food-delivery": "free",
   handyman: "free",
   "cleaning-service": "free",
@@ -129,6 +129,7 @@ export const ADULT_GUIDE_MIN_TIER: Record<string, GuideMinTier> = {
   airbnb: "starter",
   amazon: "elite",
   "property-mgmt": "starter",
+  "appointment-setter": "starter",
   "ai-assets": "elite",
   "greeting-card-creator": "pro",
   proofreader: "pro",
@@ -202,7 +203,7 @@ export const JUNIOR_GUIDE_MIN_TIER: Record<string, GuideMinTier> = {
   // Pro — client / service / content work (includes former Starter chunk)
   "community-newsletter-creator": "pro",
   "local-content-photographer": "pro",
-  "local-event-content-creator": "pro",
+  "local-event-content-creator": "elite",
   "nonprofit-social-helper": "pro",
   "resume-linkedin-helper": "pro",
   "review-response-assistant": "pro",
@@ -233,7 +234,7 @@ export const JUNIOR_GUIDE_MIN_TIER: Record<string, GuideMinTier> = {
 /** Senior teaser ids → minimum membership tier (live guides use launchGuideId for adult map). */
 export const SENIOR_GUIDE_MIN_TIER: Record<string, GuideMinTier> = {
   "ai-peer-class": "starter",
-  "senior-rideshare": "free",
+  "senior-rideshare": "pro",
   "safe-cohost": "pro",
   "senior-handyman": "free",
   "senior-affiliate": "elite",
@@ -433,14 +434,16 @@ export function openGuideFreeBadgeLabel(minTier: GuideMinTier): "Free" | null {
 /** Extra line under Free Guide badges / cards (standalone or in copy). */
 export const FREE_GUIDE_SIGNUP_NOTE = "Free Membership · sign-up, no credit card required";
 
-/** Unique Free-membership Side Hustle Guides in the library (locked by inventory tests). */
+/**
+ * @deprecated Prefer {@link freeMembershipGuidesTag} with live Active Free count from
+ * `guide-library-live-counts`. Static fallback only — not for UI after catalog load.
+ */
 export const FREE_MEMBERSHIP_SIDE_HUSTLE_GUIDE_COUNT = 20;
 
-/** Short chip / tag copy for Free membership guide allotment. */
-export const FREE_MEMBERSHIP_GUIDES_TAG =
-  `Free comes with ${FREE_MEMBERSHIP_SIDE_HUSTLE_GUIDE_COUNT} Side Hustle Guides to choose from`;
+/** @deprecated Prefer freeMembershipGuidesTag(liveFreeCount). */
+export const FREE_MEMBERSHIP_GUIDES_TAG = `Free comes with ${FREE_MEMBERSHIP_SIDE_HUSTLE_GUIDE_COUNT} Side Hustle Guides to choose from`;
 
-/** Compact banner label (count-first). */
+/** @deprecated Prefer freeMembershipGuidesBanner(liveFreeCount). */
 export const FREE_MEMBERSHIP_GUIDES_BANNER = `${FREE_MEMBERSHIP_SIDE_HUSTLE_GUIDE_COUNT} Side Hustle Guides to choose from`;
 
 /** Membership requirement line for any guide. */

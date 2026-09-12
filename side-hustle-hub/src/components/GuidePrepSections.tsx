@@ -1,13 +1,93 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { GuideKit } from "../lib/guide-tools";
 import {
+  YOUTH_SPORTS_HELPER_NOTES_WORKSHEET,
+  YOUTH_SPORTS_HELPER_REALITY_CHECK,
+} from "../lib/youth-sports-helper-guide";
+import {
+  JUNIOR_GIVE_BACK_TEACH_NOTES_WORKSHEET,
+  JUNIOR_GIVE_BACK_TEACH_REALITY_CHECK,
+} from "../lib/junior-give-back-teach-guide";
+import {
+  KIDS_KINDNESS_SHARE_NOTES_WORKSHEET,
+  KIDS_KINDNESS_SHARE_REALITY_CHECK,
+} from "../lib/kids-kindness-share-guide";
+import {
+  KIDS_PIGGY_FIRST_GOAL_NOTES_WORKSHEET,
+  KIDS_PIGGY_FIRST_GOAL_REALITY_CHECK,
+} from "../lib/kids-piggy-first-goal-guide";
+import {
   formatGuideToolLine,
   formatPricingLine,
+  deliveryDriverToolsDisclaimer,
+  estateSaleToolsDisclaimer,
+  genealogyToolsDisclaimer,
+  kidsPartyGameHostToolsDisclaimer,
+  leadFollowupToolsDisclaimer,
+  localContentPhotoToolsDisclaimer,
+  personalShopperToolsDisclaimer,
+  youthSportsHelperToolsDisclaimer,
+  juniorGiveBackTeachToolsDisclaimer,
+  kidsKindnessShareToolsDisclaimer,
+  kidsPiggyFirstGoalToolsDisclaimer,
+  appointmentSetterToolsDisclaimer,
+  mothersHelperToolsDisclaimer,
+  babysittingToolsDisclaimer,
+  digitalProductsToolsDisclaimer,
   guideToolsDisclaimer,
   prerequisitesDisclaimer,
   pricingDisclaimer,
   suppliesDisclaimer,
 } from "../lib/guide-tools";
+import {
+  MOTHERS_HELPER_NOTES_WORKSHEET,
+  MOTHERS_HELPER_REALITY_CHECK,
+} from "../lib/mothers-helper-guide";
+import {
+  FOOD_DELIVERY_NOTES_WORKSHEET,
+  FOOD_DELIVERY_REALITY_CHECK,
+} from "../lib/food-delivery-guide";
+import {
+  ESTATE_SALE_NOTES_WORKSHEET,
+  ESTATE_SALE_REALITY_CHECK,
+} from "../lib/estate-sale-antique-resales-guide";
+import {
+  GENEALOGY_NOTES_WORKSHEET,
+  GENEALOGY_REALITY_CHECK,
+} from "../lib/genealogy-family-history-guide";
+import {
+  KIDS_PARTY_GAME_HOST_NOTES_WORKSHEET,
+  KIDS_PARTY_GAME_HOST_REALITY_CHECK,
+} from "../lib/kids-party-game-host-guide";
+import {
+  LEAD_FOLLOWUP_NOTES_WORKSHEET,
+  LEAD_FOLLOWUP_REALITY_CHECK,
+} from "../lib/lead-followup-assistant-guide";
+import {
+  APPOINTMENT_SETTER_NOTES_WORKSHEET,
+  APPOINTMENT_SETTER_REALITY_CHECK,
+} from "../lib/appointment-setter-guide";
+import {
+  ONLINE_RESEARCH_ASSISTANT_NOTES_WORKSHEET,
+  ONLINE_RESEARCH_ASSISTANT_REALITY_CHECK,
+  onlineResearchAssistantToolsDisclaimer,
+} from "../lib/online-research-assistant-guide";
+import {
+  LOCAL_CONTENT_PHOTO_NOTES_WORKSHEET,
+  LOCAL_CONTENT_PHOTO_REALITY_CHECK,
+} from "../lib/local-content-photographer-guide";
+import {
+  PERSONAL_SHOPPER_NOTES_WORKSHEET,
+  PERSONAL_SHOPPER_REALITY_CHECK,
+} from "../lib/personal-shopper-guide";
+import {
+  BABYSITTING_NOTES_WORKSHEET,
+  BABYSITTING_REALITY_CHECK,
+} from "../lib/babysitting-guide";
+import {
+  DIGITAL_PRODUCTS_NOTES_WORKSHEET,
+  DIGITAL_PRODUCTS_REALITY_CHECK,
+} from "../lib/digital-products-guide";
 
 export type PrepTabId =
   | "all"
@@ -16,7 +96,20 @@ export type PrepTabId =
   | "supplies"
   | "tools"
   | "steps"
-  | "calculator";
+  | "calculator"
+  | "notes";
+
+/**
+ * Tabs whose dedicated-tab body is rendered only by staff afterTabs editors.
+ * Show All still lists every section (including these) so staff can preview the
+ * full guide layout; the Notes tab alone stays editor-owned to avoid a blank panel.
+ *
+ * Prerequisites, Tools, Steps, Suggested Pricing, and Supply List always use the
+ * normal member-facing panels; staff still get inline editors via afterTabs.
+ */
+export function guidePrepAfterTabsOwnsPanel(canEditGuideContent: boolean): PrepTabId[] | undefined {
+  return canEditGuideContent ? ["notes"] : undefined;
+}
 
 type PrepTab = {
   id: PrepTabId;
@@ -31,13 +124,18 @@ export type GuidePrepFocusSignal = {
   nonce: number;
 };
 
-/** Prerequisites, pricing, supplies, tools — and optional Steps / Calculator — as tabs. */
+/** Prerequisites, pricing, supplies, tools — and optional Steps / Calculator / Notes — as tabs. */
 export function GuidePrepSections({
   kit,
   testIdPrefix = "guide",
   stepsTab,
   calculatorTab,
+  notesTab,
   focusSignal,
+  afterTabs,
+  expandAllSections = false,
+  afterTabsOwnsPanel,
+  guideId,
 }: {
   kit: GuideKit;
   testIdPrefix?: string;
@@ -50,8 +148,20 @@ export function GuidePrepSections({
   calculatorTab?: {
     content: ReactNode;
   };
+  /** Per-guide member notes + attachments. */
+  notesTab?: {
+    content: ReactNode;
+  };
   /** Parent can jump to a tab (e.g. Launch Revenue Calculator). */
   focusSignal?: GuidePrepFocusSignal | null;
+  /** Rendered between the tab menu and the panels (e.g. admin editor keyed to the active tab). */
+  afterTabs?: ReactNode | ((activeTab: PrepTabId) => ReactNode);
+  /** Keep Show All sections expanded (still collapsible). */
+  expandAllSections?: boolean;
+  /** Tabs whose body is already rendered in afterTabs (avoid duplicate panel content). */
+  afterTabsOwnsPanel?: PrepTabId[];
+  /** Stable id — resets Show All expansion when the open guide changes (not on every kit object recreate). */
+  guideId?: string;
 }) {
   const supplies = kit.supplies;
   const pricing = kit.suggestedPricing;
@@ -59,6 +169,7 @@ export function GuidePrepSections({
   const [activeTab, setActiveTab] = useState<PrepTabId>("all");
   /** Show All: missing key = expanded. Explicit `false` collapses a section. */
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+  const ownedByAfterTabs = new Set(afterTabsOwnsPanel ?? []);
 
   useEffect(() => {
     if (!focusSignal?.tab) return;
@@ -66,11 +177,175 @@ export function GuidePrepSections({
   }, [focusSignal?.nonce, focusSignal?.tab]);
 
   useEffect(() => {
-    // Reset so Show All opens fully expanded for the next guide.
+    // Reset only when switching guides — not when parent recreates the kit object each render.
     setOpenSections({});
-  }, [kit, stepsTab?.count, calculatorTab]);
+    if (expandAllSections) setActiveTab("all");
+  }, [guideId, expandAllSections]);
 
   const tabs = useMemo((): PrepTab[] => {
+    const realityCheck =
+      guideId === "food-delivery" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {FOOD_DELIVERY_REALITY_CHECK.title}
+          </strong>
+          <p>{FOOD_DELIVERY_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "estate-sale-listing-helper" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {ESTATE_SALE_REALITY_CHECK.title}
+          </strong>
+          <p>{ESTATE_SALE_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "family-history-organizer" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {GENEALOGY_REALITY_CHECK.title}
+          </strong>
+          <p>{GENEALOGY_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "kids-party-game-host" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {KIDS_PARTY_GAME_HOST_REALITY_CHECK.title}
+          </strong>
+          <p>{KIDS_PARTY_GAME_HOST_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "lead-followup-assistant" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {LEAD_FOLLOWUP_REALITY_CHECK.title}
+          </strong>
+          <p>{LEAD_FOLLOWUP_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "appointment-setter" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {APPOINTMENT_SETTER_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{APPOINTMENT_SETTER_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "online-research-assistant" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {ONLINE_RESEARCH_ASSISTANT_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{ONLINE_RESEARCH_ASSISTANT_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "mothers-helper" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {MOTHERS_HELPER_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{MOTHERS_HELPER_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "babysitting" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {BABYSITTING_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{BABYSITTING_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "digital-products" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {DIGITAL_PRODUCTS_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{DIGITAL_PRODUCTS_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "local-content-photographer" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {LOCAL_CONTENT_PHOTO_REALITY_CHECK.title}
+          </strong>
+          <p>{LOCAL_CONTENT_PHOTO_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "personal-shopper" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {PERSONAL_SHOPPER_REALITY_CHECK.title}
+          </strong>
+          <p>{PERSONAL_SHOPPER_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "youth-sports-helper" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {YOUTH_SPORTS_HELPER_REALITY_CHECK.title}
+          </strong>
+          <p>{YOUTH_SPORTS_HELPER_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "junior-give-back-teach" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {JUNIOR_GIVE_BACK_TEACH_REALITY_CHECK.title}
+          </strong>
+          <p>{JUNIOR_GIVE_BACK_TEACH_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "kids-kindness-share" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {KIDS_KINDNESS_SHARE_REALITY_CHECK.title}
+          </strong>
+          <p>{KIDS_KINDNESS_SHARE_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "kids-piggy-first-goal" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {KIDS_PIGGY_FIRST_GOAL_REALITY_CHECK.title}
+          </strong>
+          <p>{KIDS_PIGGY_FIRST_GOAL_REALITY_CHECK.body}</p>
+        </aside>
+      ) : null;
+
     const list: PrepTab[] = [
       {
         id: "prereqs",
@@ -79,6 +354,7 @@ export function GuidePrepSections({
         testId: `${testIdPrefix}-prerequisites`,
         content: (
           <>
+            {realityCheck}
             <p className="gysh-section-panel__lede">{prerequisitesDisclaimer()}</p>
             <ul className="gysh-section-panel__list">
               {kit.prerequisites.map((p) => (
@@ -95,12 +371,22 @@ export function GuidePrepSections({
     if (pricing && pricing.items.length > 0) {
       list.push({
         id: "pricing",
-        label: "Suggested Pricing",
+        label: pricing.tabLabel?.trim() || "Suggested Pricing",
         panelClass: "gysh-section-panel--pricing",
         testId: `${testIdPrefix}-pricing`,
         content: (
           <>
             <p className="gysh-section-panel__lede">{pricingDisclaimer()}</p>
+            {pricing.intro ? (
+              <div
+                className="gysh-section-panel__intro"
+                data-testid={`${testIdPrefix}-pricing-intro`}
+              >
+                {pricing.intro.split(/\n\n+/).map((para, i) => (
+                  <p key={i}>{para}</p>
+                ))}
+              </div>
+            ) : null}
             <ul className="gysh-section-panel__list">
               {pricing.items.map((item) => (
                 <li key={item.id}>{formatPricingLine(item)}</li>
@@ -177,7 +463,163 @@ export function GuidePrepSections({
       testId: `${testIdPrefix}-tools`,
       content: (
         <>
-          <p className="gysh-section-panel__lede">{guideToolsDisclaimer()}</p>
+          {guideId === "estate-sale-listing-helper" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {estateSaleToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "family-history-organizer" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {genealogyToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "kids-party-game-host" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {kidsPartyGameHostToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "lead-followup-assistant" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {leadFollowupToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "appointment-setter" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {appointmentSetterToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "online-research-assistant" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {onlineResearchAssistantToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "mothers-helper" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {mothersHelperToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "babysitting" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {babysittingToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "digital-products" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {digitalProductsToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "local-content-photographer" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {localContentPhotoToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "personal-shopper" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {personalShopperToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "youth-sports-helper" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {youthSportsHelperToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "junior-give-back-teach" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {juniorGiveBackTeachToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "kids-kindness-share" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {kidsKindnessShareToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "kids-piggy-first-goal" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {kidsPiggyFirstGoalToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : (
+            <p className="gysh-section-panel__lede">
+              {guideId === "food-delivery"
+                ? deliveryDriverToolsDisclaimer()
+                : guideToolsDisclaimer()}
+            </p>
+          )}
           <ul className="gysh-section-panel__list">
             {kit.tools.map((tool) => (
               <li key={tool.id}>
@@ -232,6 +674,231 @@ export function GuidePrepSections({
       });
     }
 
+    if (notesTab) {
+      list.push({
+        id: "notes",
+        label: "Notes",
+        panelClass: "gysh-section-panel--notes",
+        testId: `${testIdPrefix}-notes`,
+        content: (
+          <>
+            {guideId === "food-delivery" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-delivery-worksheet`}
+              >
+                <summary>My Delivery Strategy worksheet</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {FOOD_DELIVERY_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you log weekly
+                  results.
+                </p>
+              </details>
+            ) : guideId === "estate-sale-listing-helper" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-estate-sale-worksheet`}
+              >
+                <summary>Reseller Field Notebook</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {ESTATE_SALE_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you log finds and
+                  lessons.
+                </p>
+              </details>
+            ) : guideId === "family-history-organizer" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-genealogy-worksheet`}
+              >
+                <summary>Family History Research Notebook</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {GENEALOGY_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you log research.
+                </p>
+              </details>
+            ) : guideId === "kids-party-game-host" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-party-host-worksheet`}
+              >
+                <summary>My Party Host Planner</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {KIDS_PARTY_GAME_HOST_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you plan parties.
+                </p>
+              </details>
+            ) : guideId === "lead-followup-assistant" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-lead-followup-worksheet`}
+              >
+                <summary>Lead Follow-Up Client Planner</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {LEAD_FOLLOWUP_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you manage clients.
+                </p>
+              </details>
+            ) : guideId === "appointment-setter" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-appointment-setter-worksheet`}
+              >
+                <summary>My Appointment Setting Business</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {APPOINTMENT_SETTER_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you manage bookings.
+                </p>
+              </details>
+            ) : guideId === "online-research-assistant" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-online-research-worksheet`}
+              >
+                <summary>My Online Research Business</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {ONLINE_RESEARCH_ASSISTANT_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you run projects.
+                </p>
+              </details>
+            ) : guideId === "mothers-helper" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-mothers-helper-worksheet`}
+              >
+                <summary>My Mother's Helper Plan</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {MOTHERS_HELPER_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you plan jobs.
+                </p>
+              </details>
+            ) : guideId === "babysitting" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-babysitting-worksheet`}
+              >
+                <summary>My Babysitting Planner</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {BABYSITTING_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you plan sits.
+                </p>
+              </details>
+            ) : guideId === "digital-products" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-digital-products-worksheet`}
+              >
+                <summary>My Digital Product Plan</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {DIGITAL_PRODUCTS_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you launch.
+                </p>
+              </details>
+            ) : guideId === "local-content-photographer" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-content-photo-worksheet`}
+              >
+                <summary>Content Shoot Planner</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {LOCAL_CONTENT_PHOTO_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you plan shoots.
+                </p>
+              </details>
+            ) : guideId === "personal-shopper" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-personal-shopper-worksheet`}
+              >
+                <summary>Personal Shopper Client Planner</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {PERSONAL_SHOPPER_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you shop.
+                </p>
+              </details>
+            ) : guideId === "youth-sports-helper" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-youth-sports-helper-worksheet`}
+              >
+                <summary>Practice Helper Planner</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {YOUTH_SPORTS_HELPER_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you help at practice.
+                </p>
+              </details>
+            ) : guideId === "junior-give-back-teach" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-junior-give-back-worksheet`}
+              >
+                <summary>My Give-Back Teaching Plan</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {JUNIOR_GIVE_BACK_TEACH_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you plan your session.
+                </p>
+              </details>
+            ) : guideId === "kids-kindness-share" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-kids-kindness-worksheet`}
+              >
+                <summary>My Give-Back Plan</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {KIDS_KINDNESS_SHARE_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you help.
+                </p>
+              </details>
+            ) : guideId === "kids-piggy-first-goal" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-kids-piggy-worksheet`}
+              >
+                <summary>My First Savings Goal</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {KIDS_PIGGY_FIRST_GOAL_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you save.
+                </p>
+              </details>
+            ) : null}
+            {notesTab.content}
+          </>
+        ),
+      });
+    }
+
     return [
       {
         id: "all" as const,
@@ -242,16 +909,26 @@ export function GuidePrepSections({
       },
       ...list,
     ];
-  }, [kit, pricing, supplies, checkedSupplies, testIdPrefix, stepsTab, calculatorTab]);
+  }, [kit, pricing, supplies, checkedSupplies, testIdPrefix, stepsTab, calculatorTab, notesTab, guideId]);
 
   const sectionTabs = tabs.filter((t) => t.id !== "all");
   const active = tabs.find((t) => t.id === activeTab) ?? tabs[0];
   const showAll = activeTab === "all";
+  const afterTabsNode =
+    typeof afterTabs === "function" ? afterTabs(activeTab) : afterTabs;
+
+  const selectTab = (id: PrepTabId) => {
+    setActiveTab(id);
+    // When jumping to a section from Show All, keep that section expanded if we return later.
+    if (id !== "all") {
+      setOpenSections((prev) => ({ ...prev, [id]: true }));
+    }
+  };
 
   const toggleSection = (id: string) => {
     setOpenSections((prev) => ({
-      ...prev,
       // Default is open; first click collapses.
+      ...prev,
       [id]: prev[id] === false,
     }));
   };
@@ -282,7 +959,7 @@ export function GuidePrepSections({
                   : `${testIdPrefix}-tab-${tab.id}`
             }
             className={`guide-prep-tab${active.id === tab.id ? " is-active" : ""}`}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => selectTab(tab.id)}
           >
             {tab.label}
           </button>
@@ -298,7 +975,7 @@ export function GuidePrepSections({
           data-testid={`${testIdPrefix}-show-all`}
         >
           {sectionTabs.map((tab) => {
-            const open = openSections[tab.id] !== false;
+            const open = expandAllSections ? openSections[tab.id] !== false : openSections[tab.id] !== false;
             const panelId = `${testIdPrefix}-collapse-${tab.id}`;
             return (
               <section
@@ -329,7 +1006,7 @@ export function GuidePrepSections({
             );
           })}
         </div>
-      ) : (
+      ) : ownedByAfterTabs.has(active.id) ? null : (
         <section
           className={`gysh-section-panel ${active.panelClass} guide-prep-${active.id === "prereqs" ? "prereqs" : active.id}`}
           role="tabpanel"
@@ -342,6 +1019,8 @@ export function GuidePrepSections({
           <div className="gysh-section-panel__body">{active.content}</div>
         </section>
       )}
+
+      {afterTabsNode}
     </div>
   );
 }

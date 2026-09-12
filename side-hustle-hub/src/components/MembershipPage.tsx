@@ -19,14 +19,11 @@ import {
   AUDIENCE_LABELS,
   CREDIT_EARN_ACTIONS,
   CREDIT_PACKS,
-  MEMBERSHIP_COMPARE_ROWS,
   MEMBERSHIP_FEATURES,
-  MEMBERSHIP_TIERS,
   MILITARY_VETERAN_CALLOUT,
   SHOW_MILITARY_VETERAN_CALLOUT,
   SCHEDULE_SUITE_FEATURE_IDS,
   SCHEDULE_SUITE_TIER,
-  numberedTierPerks,
   oneOnOneFeatureLabel,
   formatUsd,
   isMembershipSubscriber,
@@ -44,6 +41,14 @@ import {
   type NumberedTierPerk,
   type TierId,
 } from "../lib/membership";
+import {
+  membershipCompareRowsWithAudienceGuideCounts,
+  membershipGuideCountLine,
+  membershipTiersWithAudienceGuideCounts,
+  numberedTierPerksWithAudienceGuideCount,
+  useLiveGuideLibraryCounts,
+} from "../lib/guide-library-live-counts";
+import { membershipGuideCountsByTier } from "../lib/guide-library-pool";
 import { SCHEDULE_SUITE_DASHBOARD_HREF } from "../lib/hustle-schedule";
 import { BILLING_DASHBOARD_HREF } from "../lib/member-purchases";
 import { MembershipModelExplainer } from "./MembershipModelExplainer";
@@ -163,6 +168,8 @@ type MembershipPageProps = {
   /** Scroll to Free–Elite plans once mounted (main-nav See Memberships). */
   autoScrollToPlans?: boolean;
   onAutoScrolledToPlans?: () => void;
+  /** Highlight / focus the Upgrade or Choose button for this plan. */
+  focusTier?: TierId | null;
   /** Scroll to a-la-carte cart / checkout once mounted (header Cart). */
   autoScrollToCart?: boolean;
   onAutoScrolledToCart?: () => void;
@@ -222,6 +229,7 @@ export function MembershipPage({
   initialAudience = null,
   autoScrollToPlans = false,
   onAutoScrolledToPlans,
+  focusTier = null,
   autoScrollToCart = false,
   onAutoScrolledToCart,
   isLoggedIn = false,
@@ -233,8 +241,24 @@ export function MembershipPage({
   onOpenDashboard,
   onOpenBlueprints,
 }: MembershipPageProps) {
+  const liveGuideCounts = useLiveGuideLibraryCounts();
   const [audience, setAudience] = useState<AudienceGroup>(() =>
     normalizeAudienceGroup(initialAudience, readSavedJoinAudience("adult")),
+  );
+  const [upgradeFocusTier, setUpgradeFocusTier] = useState<TierId | null>(null);
+  const guideCountsByTier = membershipGuideCountsByTier(
+    audience,
+    liveGuideCounts.states,
+  );
+  const membershipTiers = membershipTiersWithAudienceGuideCounts(
+    audience,
+    guideCountsByTier,
+    liveGuideCounts.states,
+  );
+  const membershipCompareRows = membershipCompareRowsWithAudienceGuideCounts(
+    audience,
+    guideCountsByTier,
+    liveGuideCounts.states,
   );
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
   const [highlightAudience, setHighlightAudience] = useState(Boolean(initialAudience));
@@ -313,14 +337,29 @@ export function MembershipPage({
   };
 
   useEffect(() => {
-    if (!autoScrollToPlans) return;
+    if (!autoScrollToPlans && !focusTier) return;
+    const tier = focusTier && focusTier !== "free" ? focusTier : null;
     const t = window.setTimeout(() => {
+      if (tier) setUpgradeFocusTier(tier);
       scrollToMemberships();
+      if (tier) {
+        const btn = document.querySelector(
+          `[data-testid="membership-choose-${tier}"]`,
+        ) as HTMLButtonElement | null;
+        if (btn) {
+          try {
+            btn.focus({ preventScroll: true });
+          } catch {
+            /* ignore */
+          }
+          btn.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }
       onAutoScrolledToPlans?.();
     }, 80);
     return () => window.clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once when nav asks to focus plans
-  }, [autoScrollToPlans]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once when nav asks to focus plans / tier
+  }, [autoScrollToPlans, focusTier]);
 
   useEffect(() => {
     if (!autoScrollToCart) return;
@@ -522,8 +561,8 @@ export function MembershipPage({
               <li>
                 <strong>Paid plans include monthly credits</strong>
                 <span>
-                  Starter 5 · Pro 10 · Elite 20. 1 credit = $1. Spend on workshops, extra
-                  sessions, and Kids/Teens memberships. Adult and Senior memberships stay cash.
+                  Starter 5 · Pro 10 · Elite 20. 1 credit = $1. Spend on memberships,
+                  workshops, consulting, and a-la-carte — not on buying more credit packs.
                 </span>
               </li>
               <li>
@@ -788,7 +827,7 @@ export function MembershipPage({
               </tr>
             </thead>
             <tbody>
-              {MEMBERSHIP_COMPARE_ROWS.map((row) => (
+              {membershipCompareRows.map((row) => (
                 <tr key={row.id}>
                   <th scope="row" className="membership-compare-table__feature">
                     <span className="membership-compare-table__feature-label">
@@ -807,10 +846,18 @@ export function MembershipPage({
                       <span className="membership-compare__why">{row.whyUpgrade}</span>
                     ) : null}
                   </th>
-                  <td>{row.cells.free}</td>
-                  <td>{row.cells.starter}</td>
-                  <td>{row.cells.pro}</td>
-                  <td>{row.cells.elite}</td>
+                  <td data-testid={row.id === "browse" ? `membership-compare-guides-free` : undefined}>
+                    {row.cells.free}
+                  </td>
+                  <td data-testid={row.id === "browse" ? `membership-compare-guides-starter` : undefined}>
+                    {row.cells.starter}
+                  </td>
+                  <td data-testid={row.id === "browse" ? `membership-compare-guides-pro` : undefined}>
+                    {row.cells.pro}
+                  </td>
+                  <td data-testid={row.id === "browse" ? `membership-compare-guides-elite` : undefined}>
+                    {row.cells.elite}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -819,10 +866,15 @@ export function MembershipPage({
       </PageCollapse>
 
       <div className="membership-tier-grid" data-testid="membership-tier-grid">
-        {MEMBERSHIP_TIERS.map((tier) => {
+        {membershipTiers.map((tier) => {
           const monthly = tierPriceMonthlyUsd(tier, audience);
           const yearly = tierPriceYearlyUsd(tier, audience);
-          const benefits = numberedTierPerks(tier.id, audience);
+          const guideCount = guideCountsByTier[tier.id];
+          const benefits = numberedTierPerksWithAudienceGuideCount(
+            tier.id,
+            audience,
+            guideCount,
+          );
           const listYearly = yearlyListPriceUsd(monthly);
           const saveUsd = yearly != null ? yearlySavingsUsd(monthly, yearly) : 0;
           const equivMonthly = yearly != null ? equivalentMonthlyUsd(yearly) : 0;
@@ -831,7 +883,7 @@ export function MembershipPage({
           return (
           <article
             key={tier.id}
-            className={`glass membership-tier-card${tier.highlight ? " is-featured" : ""}${tier.id === "free" ? " is-free-start" : ""}${tier.id === SCHEDULE_SUITE_TIER ? " unlocks-schedule" : ""}${yearlyOn ? " is-yearly-billing" : ""}`}
+            className={`glass membership-tier-card${tier.highlight ? " is-featured" : ""}${tier.id === "free" ? " is-free-start" : ""}${tier.id === SCHEDULE_SUITE_TIER ? " unlocks-schedule" : ""}${yearlyOn ? " is-yearly-billing" : ""}${upgradeFocusTier === tier.id ? " is-upgrade-focus" : ""}`}
             data-testid={`membership-tier-${tier.id}`}
           >
             <div className="membership-tier-card__top">
@@ -947,6 +999,12 @@ export function MembershipPage({
                   </span>
                 ) : null}
               </div>
+              <p
+                className="membership-tier-guide-count"
+                data-testid={`membership-guide-count-${tier.id}`}
+              >
+                {membershipGuideCountLine(guideCount, audience)}
+              </p>
               <p className="membership-tier-tagline">{tier.tagline}</p>
               {showYearlyOption &&
               audience === "senior" &&
@@ -959,7 +1017,7 @@ export function MembershipPage({
             <TierBenefitsList tierId={tier.id} benefits={benefits} />
             <button
               type="button"
-              className={`btn btn-primary${tier.id === "free" ? " membership-choose-free" : ""}`}
+              className={`btn btn-primary${tier.id === "free" ? " membership-choose-free" : ""}${upgradeFocusTier === tier.id ? " is-upgrade-focus-btn" : ""}`}
               onClick={() => {
                 saveJoinAudience(audience);
                 onGoToJoin?.(tier.id === "free" ? "free" : tier.id, audience);
@@ -1344,8 +1402,7 @@ export function MembershipPage({
                   : mixedQuote.cashDueCents <= 0 && mixedQuote.creditsApplied > 0
                     ? "This cart is covered by credits — no card charge today. "
                     : "Pay the dollar total with Stripe, or sign in to pay with credits. "}
-                We’ll email a GYSH confirmation after checkout. In test mode use card{" "}
-                <code>4242 4242 4242 4242</code>.
+                We’ll email a GYSH confirmation after checkout.
               </p>
             </form>
           )}

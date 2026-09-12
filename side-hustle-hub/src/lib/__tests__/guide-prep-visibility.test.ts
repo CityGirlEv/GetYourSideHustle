@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { guideKitForId } from "../guide-tools";
-import { guidePrepSectionIds } from "../guide-prep-visibility";
+import {
+  GUIDE_PREP_REVIEW_TAB_LABELS,
+  GUIDE_PREP_REVIEW_TABS_PHRASE,
+  guidePrepSectionIds,
+} from "../guide-prep-visibility";
 
 describe("guidePrepSectionIds", () => {
   const kit = guideKitForId("handyman");
@@ -16,17 +20,23 @@ describe("guidePrepSectionIds", () => {
     ).toEqual(["prereqs"]);
   });
 
-  it("unlocked includes Show All + prereqs + tools (+ optional sections)", () => {
+  it("unlocked includes all seven review tabs when kit is complete", () => {
     const ids = guidePrepSectionIds({
       kit,
       includeSteps: true,
       includeCalculator: true,
     });
-    expect(ids[0]).toBe("all");
-    expect(ids).toContain("prereqs");
-    expect(ids).toContain("tools");
-    expect(ids).toContain("steps");
-    expect(ids).toContain("calculator");
-    expect(ids).not.toEqual(["prereqs"]);
+    expect(GUIDE_PREP_REVIEW_TAB_LABELS).toHaveLength(7);
+    expect(GUIDE_PREP_REVIEW_TABS_PHRASE).toMatch(/Show All/);
+    expect(ids).toEqual([
+      "all",
+      "prereqs",
+      "pricing",
+      "supplies",
+      "tools",
+      "steps",
+      "calculator",
+    ]);
+    expect(ids).not.toContain("notes");
   });
 });

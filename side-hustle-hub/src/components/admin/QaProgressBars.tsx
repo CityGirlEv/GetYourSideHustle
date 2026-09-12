@@ -110,21 +110,8 @@ export function testStatusTooltip(status: TestStatus | string, count?: number): 
   return count === undefined ? base : `${base} (${count})`;
 }
 
-/** Tester bubble counts: P · CP · F · B · FXR · FC · FD/R (always show all with numbers). */
-const TESTER_CHIP_KEYS = [
-  "pass",
-  "conditional_approval",
-  "fail",
-  "blocked",
-  "fixed_retest",
-  "fixed_cursor",
-  "failed_retest",
-] as const;
-
-const TESTER_CHIP_SEGMENTS = TESTER_CHIP_KEYS.map((key) => {
-  const seg = SEGMENTS.find((s) => s.key === key)!;
-  return seg;
-});
+/** Tester / Schedule / progress chip counts — every work status (incl. RO · IP · NS). */
+const TESTER_CHIP_SEGMENTS = SEGMENTS;
 
 export function testerStatusCountItems(tally: StatusTally) {
   return TESTER_CHIP_SEGMENTS.map((seg) => ({ ...seg, count: tally[seg.key] }));
@@ -141,7 +128,7 @@ export function testerStatusLegendItems() {
   }));
 }
 
-/** Inline definition grid for P / CP / F / B / FR / FC / FF under QA Testors. */
+/** Inline definition grid for Tot / P / CP / … / NS under Assignees. */
 export function TesterStatusAbbrevLegend({
   testId = "qa-tester-status-legend",
 }: {
@@ -157,6 +144,16 @@ export function TesterStatusAbbrevLegend({
     >
       <span className="qa-tester-status-legend__heading">Legend</span>
       <ul className="qa-tester-status-legend__grid">
+        <li
+          className="qa-tester-status-legend__item"
+          title="Tot = total assigned"
+          data-status="total"
+        >
+          <span className="qa-tester-status-legend__abbrev" style={{ color: "var(--charcoal)" }}>
+            Tot
+          </span>
+          <span className="qa-tester-status-legend__label">Total</span>
+        </li>
         {items.map((item) => (
           <li
             key={item.key}
@@ -232,14 +229,23 @@ export function testerPassedCount(tally: Pick<StatusTally, "pass" | "conditional
   return tally.pass + tally.conditional_approval;
 }
 
-/** Chip subtitle — P · CP · F · B · FR · FC · FF with counts. */
+/** Chip subtitle — total + every status abbrev with counts. */
 export function formatTesterResultMeta(tally: StatusTally): string {
   const items = testerStatusCountItems(tally);
-  if (tally.total === 0 && items.every((i) => i.count === 0)) return "0";
-  return items.map((item) => `${item.abbrev}=${item.count}`).join(" · ");
+  if (tally.total === 0 && items.every((i) => i.count === 0)) return "Tot=0";
+  const breakdown = items.map((item) => `${item.abbrev}=${item.count}`).join(" · ");
+  return `Tot=${tally.total} · ${breakdown}`;
 }
 
-/** Tester bubble status counts — P/CP/F/B/FR/FC/FF with hover definitions. */
+/** Shared hover glossary for assignee / schedule status count chips. */
+export function testerStatusCountsTitle(): string {
+  return [
+    "Tot=total assigned",
+    ...TESTER_CHIP_SEGMENTS.map((seg) => `${seg.abbrev}=${seg.label}`),
+  ].join(" · ");
+}
+
+/** Tester bubble status counts — full status set + total (Testing Portal + Schedule). */
 export function TesterChipStatusCounts({
   tally,
   rolled,
@@ -272,8 +278,16 @@ export function TesterChipStatusCounts({
       <span
         className="qa-tester-status-counts"
         data-testid="qa-tester-status-counts"
-        title="P=Pass · CP=Conditional Pass · F=Failed · B=Blocked · FXR=Fixed/Re-Test · FC=Fixed/Cursor · FD/R=Failed/Re-Test"
+        title={testerStatusCountsTitle()}
       >
+        <span
+          className="qa-tester-status-count qa-tester-status-count--total"
+          data-status="total"
+          data-zero={tally.total === 0 ? "true" : "false"}
+          title={`Tot = total assigned: ${tally.total}`}
+        >
+          Tot={tally.total}
+        </span>
         {items.map((item) => (
           <span
             key={item.key}

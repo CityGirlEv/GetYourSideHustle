@@ -53,7 +53,6 @@ export const SENIOR_FREE_GUIDE_IDS = [
   "leaf-raking",
   "errand-runner",
   "cleaning-service",
-  "rideshare",
   "handyman",
 ] as const;
 
@@ -77,6 +76,7 @@ export const SENIOR_LIBRARY_MIN_TIER: Record<string, GuideMinTier> = {
   "travel-research-assistant": "starter",
   "estate-sale-listing-helper": "starter",
   // Former Free / light digital → Pro
+  "rideshare": "pro",
   "google-business-helper": "pro",
   "review-response-assistant": "pro",
   "resume-linkedin-helper": "pro",

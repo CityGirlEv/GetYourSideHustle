@@ -67,10 +67,16 @@ describe("first-load", () => {
     expect(shouldClearSessionOnMeFailure(500)).toBe(false);
   });
 
-  it("uses a short session-restore timeout so a hung D1 cannot freeze the tab for 45s", () => {
+  it("uses a short session-restore timeout in production and a longer one on localhost", async () => {
     expect(SESSION_RESTORE_TIMEOUT_MS).toBe(4_000);
     expect(SESSION_RESTORE_TIMEOUT_MS).toBeLessThan(45_000);
     expect(AUTH_READY_SAFETY_MS).toBe(SESSION_RESTORE_TIMEOUT_MS + 500);
+    const { LOCAL_SESSION_RESTORE_TIMEOUT_MS, sessionRestoreTimeoutMs, authReadySafetyMs } =
+      await import("../first-load");
+    expect(LOCAL_SESSION_RESTORE_TIMEOUT_MS).toBe(25_000);
+    expect(sessionRestoreTimeoutMs(false)).toBe(4_000);
+    expect(sessionRestoreTimeoutMs(true)).toBe(25_000);
+    expect(authReadySafetyMs(true)).toBeGreaterThan(authReadySafetyMs(false));
   });
 
   it("reloads once per missing asset key, then stops for that same key", () => {

@@ -314,7 +314,7 @@ describe("membership catalog", () => {
     const elite = numberedTierPerks("elite", "adult");
     expect(free.map((p) => p.numberedTitle)).toEqual([
       "1) Free for every age group",
-      "2) Kids, Teens, Adults & Seniors Guides, ideas, etc.",
+      "2) Free comes with Side Hustle Guides to choose from",
       "3) Kids, Teens, Adults & Seniors Side Hustle Match Wizards",
       "4) Browse Adults Corner (and every Corner)",
       "5) Free account + Member Dashboard",

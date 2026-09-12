@@ -13,6 +13,7 @@ import {
   type ContentDraft,
   type ContentDraftStatus,
 } from "../../lib/gysh-content-factory";
+import { cfCardNumber } from "../../lib/admin-card-numbers";
 import {
   CONTENT_FACTORY_HOWTO,
   MARKETING_PLAN_DEFINITIONS,
@@ -1416,7 +1417,7 @@ export function ContentFactory({
                   const open = openItemIds.has(item.id);
                   const projection = softLaunchProjectionForItem(item.id);
                   const dueLabel = isoToMmddyy(item.day) || item.day;
-                  const ref = softLaunchItemRef(item.id);
+                  const ref = cfCardNumber(item.id) || softLaunchItemRef(item.id);
                   return (
                   <div
                     key={item.id}
@@ -1468,7 +1469,7 @@ export function ContentFactory({
                       >
                         <ShowHideChevron open={open} />
                         <span
-                          className="flat-label flat-label--id"
+                          className="flat-label flat-label--id admin-card-num"
                           data-testid={`factory-item-ref-${item.id}`}
                           title={`Content Factory ${ref}`}
                           style={{ fontWeight: 800 }}

@@ -222,6 +222,12 @@ export const QA_TESTERS: QaTester[] = [
     shortName: "Candace",
     accent: "#3d6b8c",
   },
+  {
+    id: "teejay",
+    name: "Tee Jay",
+    shortName: "Tee Jay",
+    accent: "#6b5b95",
+  },
 ];
 
 function firstNameLabel(name: string): string {
@@ -274,6 +280,14 @@ export function qaTesterIdForUser(u: {
     return "lyriq";
   }
   if (email.includes("candace")) return "candace";
+  if (
+    email.includes("teejay") ||
+    email.includes("tee-jay") ||
+    email.includes("tee.jay") ||
+    /\btee\s*jay\b/.test(name)
+  ) {
+    return "teejay";
+  }
   const slug = slugifyQaTesterId(u.name, u.email);
   return slug || null;
 }
@@ -420,9 +434,20 @@ export function isHumanQaTester(id: string): id is QaTesterId {
 
 /** Normalize a stored Testing Portal assignee to a canonical lowercase id (or ""). */
 export function normalizeQaAssigneeId(raw: string | null | undefined): string {
-  return String(raw || "")
+  const n = String(raw || "")
     .trim()
-    .toLowerCase();
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+  if (!n) return "";
+  if (n === "tee jay" || n === "tee-jay" || n === "tee.jay" || n === "teej") {
+    return "teejay";
+  }
+  for (const t of QA_TESTERS) {
+    const short = t.shortName.toLowerCase();
+    if (n === t.id || n === short || n === t.name.toLowerCase()) return t.id;
+    if (n.startsWith(`${short} `)) return t.id;
+  }
+  return n;
 }
 
 export function testOwnerLabel(

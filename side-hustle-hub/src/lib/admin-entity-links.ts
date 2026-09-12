@@ -7,6 +7,7 @@ import {
   softLaunchItemById,
   softLaunchItemRef,
 } from "./gysh-soft-launch-rollout";
+import { formatTestCrossLinkLabel } from "./guide-review-link";
 
 export type AdminEntityKind = "task" | "test" | "cf";
 
@@ -94,8 +95,9 @@ export function labelAndOptsForEntity(
   }
   if (target.kind === "test") {
     const title = titleFromMap(titles, "test", target.id);
+    const base = formatTestCrossLinkLabel(target.id);
     return {
-      label: title ? `Test ${target.id} · ${title}` : `Test ${target.id}`,
+      label: title ? `${base} · ${title}` : base,
       opts: { tab: "testing", testId: target.id },
     };
   }

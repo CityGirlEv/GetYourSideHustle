@@ -43,15 +43,12 @@ describe("manualQaOwnerForStats", () => {
     ).toBe("evelyn");
   });
 
-  it("defaults VT/PW-FAIL cases to evelyn when no D1 or catalog owner", () => {
+  it("treats missing suite as manual so Guide Review cases still count", () => {
     expect(
       manualQaOwnerForStats(
-        { id: "PW-FAIL-0e6b8f69", suite: "playwright", assignees: [] },
-        "",
+        { id: "GUIDE-REV-launch-handyman", assignees: ["lyriq"] },
+        "tina",
       ),
-    ).toBe("evelyn");
-    expect(
-      manualQaOwnerForStats({ id: "VT-FAIL-abc", suite: "vitest", assignees: [] }, null),
-    ).toBe("evelyn");
+    ).toBe("tina");
   });
 });

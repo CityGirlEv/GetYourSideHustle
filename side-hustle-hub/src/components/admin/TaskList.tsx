@@ -34,6 +34,7 @@ import {
 import { TEST_CASES } from "../../lib/gysh-test-plan";
 import { taskOpenPageStep } from "../../lib/qa-page-links";
 import { scrollAdminFocusIntoView } from "../../lib/admin-focus-scroll";
+import { taskCardNumber } from "../../lib/admin-card-numbers";
 import {
   TASK_STATUS_LABELS,
   TASK_CATEGORIES,
@@ -2480,11 +2481,14 @@ export function TaskList({
                   {open ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                 </button>
                 <span
-                  className="flat-label flat-label--id task-row__id"
+                  className="flat-label flat-label--id task-row__id admin-card-num"
                   style={{ marginTop: 6 }}
-                  title={normalizeParentId(t.parentId) ? `Subtask of ${t.parentId}` : t.id}
+                  data-testid={`task-card-num-${t.id}`}
+                  title={normalizeParentId(t.parentId) ? `Subtask of ${t.parentId} · ${t.id}` : t.id}
                 >
-                  {normalizeParentId(t.parentId) ? `↳ ${t.id}` : t.id}
+                  {normalizeParentId(t.parentId)
+                    ? `↳ ${taskCardNumber(t.id) || t.id}`
+                    : taskCardNumber(t.id) || t.id}
                 </span>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>

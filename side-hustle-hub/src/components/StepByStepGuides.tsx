@@ -11,6 +11,8 @@ import {
   Search,
 } from "lucide-react";
 import { fetchMemberProgress, saveMemberProgress } from "../lib/gysh-member-progress";
+import { guideStepChecklistItemKey } from "../lib/guide-step-checklist";
+import { GuideStepDesc } from "./GuideStepDesc";
 import {
   guideTierBadgeLabel,
   guideTierMembershipNote,
@@ -18,53 +20,80 @@ import {
   resolveGuideAccess,
   type GuideMinTier,
 } from "../lib/guide-access";
+import type { TierId } from "../lib/membership";
 import { LAUNCH_GUIDES, sortGuidesFreeFirst } from "../lib/launch-guides";
-import { catalogToLaunchGuideData, hustleById } from "../lib/side-hustle-catalog";
-import { guideKitForId } from "../lib/guide-tools";
-import { detailedStepsForGuide } from "../lib/guide-detailed-steps";
+import { guideSideHustleDescription } from "../lib/side-hustle-catalog";
+import { resolveGuideKit } from "../lib/guide-kit-overrides";
+import { kidsGuideById } from "../lib/kids-guides";
 import {
-  kidsGuideById,
-  kidsGuideToLaunchGuideData,
-} from "../lib/kids-guides";
+  resolveLaunchGuideData,
+  type LaunchGuideData,
+} from "../lib/resolve-launch-guide-data";
 import {
   fetchGuideCatalogStates,
   setGuideCatalogStatus,
   setGuideCatalogStatusBulk,
 } from "../lib/guide-catalog-client";
 import {
+  applyGuideCatalogPatch,
+  effectiveGuideMinTier,
   guideHoldsActive,
   getGuideVisibilityStatus,
   GUIDE_BULK_STATUS_OPTIONS,
+  GUIDE_STATUS_NOTE_MIN_LENGTH,
   guideHeldVisibilityStatuses,
+  guideStatusNoteMeetsRequirement,
+  guideStatusRequiresNote,
   guideVisibilityStatusLabel,
   type GuideCatalogStateMap,
   type GuideVisibilityStatus,
 } from "../lib/guide-catalog-state";
 import {
+  effectiveGuideAudiences,
+  effectiveGuideMembershipSelection,
+} from "../lib/guide-library-update";
+import {
   countGuideNavByAge,
+  countGuideNavByAssignee,
   countGuideNavByMembership,
   countGuideNavByStatus,
+  defaultLibraryStatusFilters,
   filterGuideNavItems,
   guideNavFilterIsAll,
   type GuideNavAgeFilter,
+  type GuideNavAssigneeFilter,
   type GuideNavMembershipFilter,
   type GuideNavStatusFilter,
 } from "../lib/guide-nav-filters";
+import {
+  guideAssigneeFilterRoster,
+} from "../lib/guide-assignee";
+import { testOwnerLabel } from "../lib/gysh-roles";
 import { toggleLibraryFilterSelection } from "../lib/guide-list-expand";
 import {
   audiencesForLibraryGuideId,
   libraryMinTierForGuideId,
   uniqueGuideLibraryEntries,
 } from "../lib/guide-library-pool";
+import {
+  applyLiveGuideLibraryCountsFromStates,
+  patchLiveGuideLibraryCatalogState,
+} from "../lib/guide-library-live-counts";
 import { guideMatchesLibrarySearch, sideHustleLibraryPageTitle } from "../lib/guide-library-search";
 import { formatGuideNumber, guideNumberLabel, guideNumberParenthetical, orderedGuideIdsForNumbering } from "../lib/guide-numbers";
 import { JoinToUnlockCta } from "./JoinToUnlockCta";
 import { MembershipLockBadge } from "./MembershipLockBadge";
-import { GuidePrepSections } from "./GuidePrepSections";
+import { GuidePrepSections, guidePrepAfterTabsOwnsPanel } from "./GuidePrepSections";
 import { GuideRevenueCalculator } from "./GuideRevenueCalculator";
+import { GuideNotesTab } from "./GuideNotesTab";
 import { GuideActiveToggle } from "./GuideActiveToggle";
+import { GuideAdminContentEditor } from "./GuideAdminContentEditor";
+import { GuideAssigneeField } from "./GuideAssigneeField";
+import { GuideMembershipAgeFields } from "./GuideMembershipAgeFields";
+import { GuideChangeLogPanel } from "./GuideChangeLogPanel";
 import { navigateAdminDeepLink } from "../lib/admin-deep-links";
 import { guideReviewCaseIdForGuide, testingPortalHrefForGuide } from "../lib/guide-review-link";
+import { formatAuditTrail } from "../lib/gysh-audit";
 
 /** First Free-sorted library guide — used when no hustle was explicitly opened. */
 const FIRST_LIBRARY_GUIDE_ID = orderedGuideIdsForNumbering()[0] ?? "";
@@ -98,79 +127,7 @@ const STATUS_FILTERS: { id: GuideNavStatusFilter; label: string }[] = [
 ];
 
 
-interface GuideStep {
-  title: string;
-  desc: string;
-}
-
-interface GuideData {
-  id: string;
-  name: string;
-  timeframe: string;
-  estEarnings: string;
-  bestFor: string;
-  steps: GuideStep[];
-  proTip: string;
-  pitfall: string;
-}
-
-/** Resolve a guide by id — hustle-specific detailed steps always win over generics. */
-export function resolveLaunchGuideData(
-  guideId: string,
-  authored: GuideData[],
-): GuideData {
-  const id = String(guideId || "").trim();
-  const fromAuthored = authored.find((g) => g.id === id);
-  const hustle = hustleById(id);
-  const fromCatalog = hustle ? catalogToLaunchGuideData(hustle) : null;
-  const kids = !fromAuthored && !fromCatalog ? kidsGuideById(id) : undefined;
-  const fromKids = kids ? kidsGuideToLaunchGuideData(kids) : null;
-  const base =
-    fromAuthored ??
-    fromCatalog ??
-    fromKids ??
-    ({
-      id,
-      name: id || "Guide",
-      timeframe: "—",
-      estEarnings: "—",
-      bestFor: "Guide content is not available for this id yet.",
-      steps: [],
-      proTip: "",
-      pitfall: "",
-    } satisfies GuideData);
-  const audiences =
-    hustle?.audiences ??
-    (kids
-      ? kids.audience === "junior"
-        ? (["junior"] as const)
-        : (["kids"] as const)
-      : undefined);
-  const forced = detailedStepsForGuide(id, { audiences });
-  const name =
-    fromAuthored?.name ??
-    hustle?.name ??
-    fromKids?.name ??
-    base.name;
-  if (forced?.length) {
-    return { ...base, id, name, steps: forced };
-  }
-  const steps =
-    fromKids?.steps?.length
-      ? fromKids.steps
-      : fromAuthored?.steps?.length
-        ? fromAuthored.steps
-        : base.steps;
-  return {
-    ...base,
-    id,
-    name,
-    bestFor: fromKids?.bestFor ?? base.bestFor,
-    proTip: fromKids?.proTip ?? base.proTip,
-    pitfall: fromKids?.pitfall ?? base.pitfall,
-    steps,
-  };
-}
+type GuideData = LaunchGuideData;
 
 interface StepByStepGuidesProps {
   selectedHustleId?: string;
@@ -178,11 +135,15 @@ interface StepByStepGuidesProps {
   membershipTier?: string | null;
   /** Admin self-profile: unlock every live guide. */
   isAdmin?: boolean;
+  /** Display name for note authorship stamps. */
+  memberName?: string;
+  /** User id for own-note edit/delete checks. */
+  memberUserId?: string;
   /** Admin or QA — see unpublished guides + Lyriq Review / Pass controls. */
   canReviewGuides?: boolean;
   /** Evelyn-only: set Reviewed by Dev when marking Reviewed. */
   canSetReviewedByDev?: boolean;
-  onGoToJoin?: () => void;
+  onGoToJoin?: (focusTier?: TierId) => void;
   onGoToLogin?: () => void;
 }
 
@@ -191,6 +152,8 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
   isLoggedIn = false,
   membershipTier = null,
   isAdmin = false,
+  memberName = "",
+  memberUserId = "",
   canReviewGuides = false,
   canSetReviewedByDev = false,
   onGoToJoin,
@@ -200,6 +163,8 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
     () => selectedHustleId || FIRST_LIBRARY_GUIDE_ID,
   );
   const [completedSteps, setCompletedSteps] = useState<Record<string, boolean>>({});
+  /** ☐ lines inside a step — independent of marking the whole step done. */
+  const [stepChecklistItems, setStepChecklistItems] = useState<Record<string, boolean>>({});
   const [catalogStates, setCatalogStates] = useState<GuideCatalogStateMap>({});
   const [statusBusyId, setStatusBusyId] = useState<string | null>(null);
   const [bulkSelected, setBulkSelected] = useState<Set<string>>(() => new Set());
@@ -209,25 +174,32 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
   const [librarySearch, setLibrarySearch] = useState("");
   const [ageFilters, setAgeFilters] = useState<GuideNavAgeFilter[]>(["all"]);
   const [membershipFilters, setMembershipFilters] = useState<GuideNavMembershipFilter[]>(["all"]);
-  const [statusFilters, setStatusFilters] = useState<GuideNavStatusFilter[]>(["all"]);
+  const [statusFilters, setStatusFilters] = useState<GuideNavStatusFilter[]>(() =>
+    defaultLibraryStatusFilters(isAdmin || canReviewGuides),
+  );
+  const [assigneeFilters, setAssigneeFilters] = useState<GuideNavAssigneeFilter[]>(["all"]);
   const [tipsOpen, setTipsOpen] = useState(false);
+  const [statusError, setStatusError] = useState<string | null>(null);
+  const [pendingNotePrompt, setPendingNotePrompt] = useState<{
+    guideIds: string[];
+    status: GuideVisibilityStatus;
+  } | null>(null);
+  const [pendingNoteDraft, setPendingNoteDraft] = useState("");
+  /** Bump after Pending note saves so the Notes tab reloads without remounting. */
+  const [guideNotesRefreshKey, setGuideNotesRefreshKey] = useState(0);
+  /** Bump after catalog writes so Audit trail reloads. */
+  const [guideAuditRefreshKey, setGuideAuditRefreshKey] = useState(0);
   /** Staff (Admin or QA) see Pending / Reviewed by QA / Inactive guides. */
   const staffCatalog = isAdmin || canReviewGuides;
+  /** Admin or QA may edit kit tabs + status checkboxes in the library detail. */
+  const canEditGuideContent = staffCatalog;
   const effectiveTier = membershipTier ?? (isLoggedIn ? "free" : null);
-  const activeMinTier = libraryMinTierForGuideId(activeGuideId);
-  const activeAccess = resolveGuideAccess({
-    isMember: isLoggedIn,
-    membershipTier: effectiveTier,
-    minTier: activeMinTier,
-    isAdmin,
-  });
-  const guideIsFree = activeMinTier === "free";
-  const unlocked = activeAccess.unlocked;
 
   const ageFilterKey = ageFilters.join(",");
   const membershipFilterKey = membershipFilters.join(",");
   const statusFilterKey = statusFilters.join(",");
-  const filterSelectionKey = `${ageFilterKey}|${membershipFilterKey}|${statusFilterKey}|${librarySearch}`;
+  const assigneeFilterKey = assigneeFilters.join(",");
+  const filterSelectionKey = `${ageFilterKey}|${membershipFilterKey}|${statusFilterKey}|${assigneeFilterKey}|${librarySearch}`;
   /** Pin the open guide only after a status *save* refilters — not when the user picks filter chips. */
   const allowPinOutsideFilter = useRef(true);
   const filterKeyForPinRef = useRef(filterSelectionKey);
@@ -245,6 +217,9 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
   const toggleStatusFilter = (id: GuideNavStatusFilter) => {
     setStatusFilters((prev) => toggleLibraryFilterSelection(prev, id, "all"));
   };
+  const toggleAssigneeFilter = (id: GuideNavAssigneeFilter) => {
+    setAssigneeFilters((prev) => toggleLibraryFilterSelection(prev, id, "all"));
+  };
 
   useEffect(() => {
     if (selectedHustleId) setActiveGuideId(selectedHustleId);
@@ -257,13 +232,15 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
 
   useEffect(() => {
     setBulkSelected(new Set());
-  }, [ageFilterKey, membershipFilterKey, statusFilterKey, librarySearch]);
+  }, [ageFilterKey, membershipFilterKey, statusFilterKey, assigneeFilterKey, librarySearch]);
 
   useEffect(() => {
     let cancelled = false;
     fetchGuideCatalogStates()
       .then((states) => {
-        if (!cancelled) setCatalogStates(states);
+        if (cancelled) return;
+        applyLiveGuideLibraryCountsFromStates(states);
+        setCatalogStates(states);
       })
       .catch(() => {
         /* keep defaults */
@@ -273,17 +250,97 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
     };
   }, []);
 
-  const setGuideStatus = async (guideId: string, status: GuideVisibilityStatus) => {
-    setStatusBusyId(guideId);
-    allowPinOutsideFilter.current = true;
-    try {
-      const next = await setGuideCatalogStatus(guideId, status);
-      setCatalogStates((prev) => ({ ...prev, [guideId]: next }));
-    } catch {
-      /* leave prior */
-    } finally {
-      setStatusBusyId(null);
+  const commitGuideStatus = async (
+    guideIds: string[],
+    status: GuideVisibilityStatus,
+    note?: string,
+  ) => {
+    const ids = [...new Set(guideIds.map((id) => String(id || "").trim()).filter(Boolean))];
+    if (!ids.length) return;
+    setStatusError(null);
+    if (guideStatusRequiresNote(status) && !guideStatusNoteMeetsRequirement(note)) {
+      setStatusError(
+        `A note is required for Pending / Needs Further Review (at least ${GUIDE_STATUS_NOTE_MIN_LENGTH} characters).`,
+      );
+      return;
     }
+    const single = ids.length === 1;
+    if (single) setStatusBusyId(ids[0]!);
+    else {
+      setBulkBusy(true);
+      setBulkError(null);
+    }
+    allowPinOutsideFilter.current = true;
+    if (!single) {
+      setCatalogStates((prev) => {
+        const next = { ...prev };
+        for (const id of ids) {
+          next[id] = {
+            ...(next[id] ?? {
+              guideId: id,
+              status: "inactive",
+              published: false,
+              deleted: false,
+              custom: false,
+              patch: {},
+            }),
+            guideId: id,
+            status,
+            published: guideHoldsActive(status),
+            deleted: false,
+          };
+        }
+        return next;
+      });
+    }
+    try {
+      if (single) {
+        const next = await setGuideCatalogStatus(ids[0]!, status, note);
+        setCatalogStates((prev) => ({ ...prev, [ids[0]!]: next }));
+        patchLiveGuideLibraryCatalogState(ids[0]!, next);
+      } else {
+        const saved = await setGuideCatalogStatusBulk(ids, status, note);
+        setCatalogStates((prev) => {
+          const merged = { ...prev, ...saved };
+          applyLiveGuideLibraryCountsFromStates(merged);
+          return merged;
+        });
+        setBulkSelected(effectiveGuideId ? new Set([effectiveGuideId]) : new Set());
+      }
+      setGuideAuditRefreshKey((k) => k + 1);
+      if (status === "pending" && guideStatusNoteMeetsRequirement(note)) {
+        setGuideNotesRefreshKey((k) => k + 1);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Guide status update failed.";
+      if (single) setStatusError(msg);
+      else {
+        setBulkError(msg);
+        try {
+          const fresh = await fetchGuideCatalogStates();
+          setCatalogStates(fresh);
+        } catch {
+          /* keep optimistic until refresh */
+        }
+      }
+    } finally {
+      if (single) setStatusBusyId(null);
+      else setBulkBusy(false);
+    }
+  };
+
+  const requestGuideStatus = (guideIds: string[], status: GuideVisibilityStatus) => {
+    if (guideStatusRequiresNote(status)) {
+      setPendingNoteDraft("");
+      setPendingNotePrompt({ guideIds, status });
+      setStatusError(null);
+      return;
+    }
+    void commitGuideStatus(guideIds, status);
+  };
+
+  const setGuideStatus = async (guideId: string, status: GuideVisibilityStatus) => {
+    requestGuideStatus([guideId], status);
   };
 
   const applyBulkStatus = async (status: GuideVisibilityStatus) => {
@@ -293,66 +350,8 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
       return;
     }
     if (bulkBusy) return;
-    setBulkBusy(true);
-    setBulkError(null);
-    allowPinOutsideFilter.current = true;
-    /** Optimistic local update so the Active filter list updates immediately. */
-    setCatalogStates((prev) => {
-      const next = { ...prev };
-      for (const id of ids) {
-        next[id] = {
-          ...(next[id] ?? {
-            guideId: id,
-            status: "inactive",
-            published: false,
-            deleted: false,
-            custom: false,
-            patch: {},
-          }),
-          guideId: id,
-          status,
-          published: guideHoldsActive(status),
-          deleted: false,
-        };
-      }
-      return next;
-    });
-    try {
-      const saved = await setGuideCatalogStatusBulk(ids, status);
-      setCatalogStates((prev) => ({ ...prev, ...saved }));
-      setBulkSelected(effectiveGuideId ? new Set([effectiveGuideId]) : new Set());
-    } catch (err) {
-      setBulkError(err instanceof Error ? err.message : "Bulk status update failed.");
-      /** Re-sync from server so optimistic state does not stick if the write failed. */
-      try {
-        const fresh = await fetchGuideCatalogStates();
-        setCatalogStates(fresh);
-      } catch {
-        /* keep optimistic until refresh */
-      }
-    } finally {
-      setBulkBusy(false);
-    }
+    requestGuideStatus(ids, status);
   };
-
-  useEffect(() => {
-    if (!unlocked) {
-      setCompletedSteps({});
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      try {
-        const payload = await fetchMemberProgress<Record<string, boolean>>("launch_guide_steps");
-        if (!cancelled) setCompletedSteps(payload ?? {});
-      } catch {
-        /* keep empty; member can still check boxes and retry save */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [unlocked]);
 
   // Keep IDs/names aligned with src/lib/launch-guides.ts (LAUNCH_GUIDES) so
   // Admin Task List auto-creates "Review Launch Guide: …" items for new hustles.
@@ -413,19 +412,21 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
       name: "Digital Products",
       timeframe: "2 - 6 weeks",
       estEarnings: "$200 - $10,000 / month",
-      bestFor: "Creators who want to sell their own downloads — ebooks, printables, templates, and courses (not affiliate links).",
-      proTip: "Ship one small product fast (a 10-page printable or short ebook) before building a big course. Book publishing is a flagship Digital example — kids can start with storybooks with a parent.",
-      pitfall: "Mixing Digital Products with Affiliate Marketing. Your own downloads are Digital; promoting other brands’ products for commissions is Affiliate — keep the lanes separate.",
+      bestFor: "Teens, adults, and seniors / retirees who want to create one useful digital product — ebooks, printables, planners, templates, and mini-courses (not affiliate links).",
+      proTip: "Don't build the store before you prove the product. One useful $10 product that people actually buy beats a beautiful store of 50 products nobody wants.",
+      pitfall: "Mixing Digital Products with Affiliate Marketing. Your own downloads are Digital; promoting other brands’ products for commissions is Affiliate — keep the lanes separate. Do not copy another creator's product.",
       steps: [
-        {
-          title: "Pick One Digital Offer",
-          desc: "Ebook, printable pack, planner, template kit, or mini-course. Write a one-sentence promise for the buyer — one clear line naming who it’s for and the result they get (e.g. “A 10-page budget planner that helps busy parents track spending in 10 minutes a week”).",
-        },
-        { title: "Create the Asset", desc: "Draft in Canva/Google Docs/Notion. For books, follow the Book Publishing guide (KDP / print + ebook)." },
-        { title: "Package & Price", desc: "Export clean PDFs or file packs. Price a starter offer ($7–$27) so buyers can say yes quickly." },
-        { title: "Set Up Delivery", desc: "Use Gumroad, Payhip, Stan, or Shopify digital downloads so purchase → instant delivery works without you emailing files." },
-        { title: "Landing Page & Proof", desc: "One clear page: who it’s for, what’s inside, a sample preview, and a buy button. Add 2–3 testimonials when you have them." },
-        { title: "Launch & Iterate", desc: "Share with your list/community, note what questions buyers ask, then improve the product or add a sequel pack." },
+        { title: "Pick One Product", desc: "Solve one problem for one customer with one useful product." },
+        { title: "Research the Customer", desc: "Research for ideas and positioning. Do not copy another creator's product." },
+        { title: "Create the Product", desc: "Build the simplest useful version and save a master copy." },
+        { title: "Test & Price It", desc: "Test files, then set price using Suggested Pricing." },
+        { title: "Choose Your Marketing Channels", desc: "Pick only 2 or 3 channels this month." },
+        { title: "Make Your Marketing Materials", desc: "Cover, images, description, benefits, price, and CTA." },
+        { title: "Set Up Your Sales Page", desc: "Choose one selling platform first and test delivery." },
+        { title: "Carry Out Your Marketing Plan", desc: "Use only the selected channels. Track views, clicks, and sales." },
+        { title: "Make Sales & Learn", desc: "Learn from Product #1 before creating many more." },
+        { title: "Improve the Product", desc: "Use feedback to improve instructions, cover, description, or price." },
+        { title: "Grow", desc: "Related product, bundle, upsell, then repeat customers." },
       ],
     },
     {
@@ -609,15 +610,16 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
       timeframe: "1 - 5 days",
       estEarnings: "$400 - $2,500 / month",
       bestFor: "Anyone needing low-barrier income with a bike, scooter, or car.",
-      proTip: "Multi-app during dinner rush (Dash + Eats) and decline long deadhead trips. Hotspot parking near restaurant clusters beats chasing pins across town.",
-      pitfall: "Accepting every order. Long miles for low tips destroy hourly rate — learn your market's decline discipline early.",
+      proTip: "Think profit, not just payout — use Offer ÷ Miles as your gross $/mile floor, multi-app only when the path aligns, and track miles from Day 1.",
+      pitfall: "Accepting every order. Long deadhead miles and slow restaurants destroy hourly rate — learn decline discipline early.",
       steps: [
-        { title: "Pick Your Apps", desc: "Sign up for DoorDash and Uber Eats (add Grubhub if strong locally). Complete background checks." },
-        { title: "Gear Up", desc: "Insulated bag, phone mount, portable charger, and a simple mileage tracker." },
-        { title: "Zone Recon", desc: "Scout 2–3 restaurant-dense zones near you. Note parking rules and peak kitchen hours." },
-        { title: "Shift Schedule", desc: "Commit to dinner (5–9pm) + weekend lunch for 2 weeks before judging income." },
-        { title: "Acceptance Discipline", desc: "Set rules (e.g. $1.50+/mile, under 6 miles, stacked only if path aligns)." },
-        { title: "Pair with Timing Scout", desc: "Use AI Timing Scout notes for weather, events, and payday weekends to lift average hourly." }
+        { title: "Choose Your Platform", desc: "Start with DoorDash, Uber Eats, or both." },
+        { title: "Check Eligibility", desc: "Age, vehicle, license, insurance, and local rules." },
+        { title: "Apply & Complete Screening", desc: "Submit docs and finish background checks." },
+        { title: "Set Up Payment & Mileage Tracking", desc: "Bank payouts plus a mileage app from Day 1." },
+        { title: "Learn Your Zone", desc: "Restaurant clusters, parking, apartments, Hotspots." },
+        { title: "Short Sessions + Offer Discipline", desc: "2–3 hour blocks; evaluate pay, miles, time, return trip." },
+        { title: "Review Your Profit", desc: "Earnings − cash expenses = net; net ÷ hours = real hourly." },
       ]
     },
     {
@@ -677,7 +679,10 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
   ];
 
   const authoredById = new Map(guides.map((g) => [g.id, g]));
-  const libraryEntries = useMemo(() => uniqueGuideLibraryEntries(), []);
+  const libraryEntries = useMemo(
+    () => uniqueGuideLibraryEntries(catalogStates),
+    [catalogStates],
+  );
   const libraryTierById = useMemo(() => {
     const m = new Map<string, GuideMinTier>();
     for (const e of libraryEntries) m.set(e.id, e.minTier);
@@ -690,31 +695,47 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
           const authored = authoredById.get(e.id);
           const data = resolveLaunchGuideData(e.id, guides);
           const launch = LAUNCH_GUIDES.find((g) => g.id === e.id);
+          const patchedName = catalogStates[e.id]?.patch?.name?.trim();
           return {
             id: e.id,
-            name: e.name || authored?.name || data.name,
-            peek: authored?.bestFor || launch?.peek || data.bestFor || "",
+            name: patchedName || e.name || authored?.name || data.name,
+            peek:
+              guideSideHustleDescription(e.id) ||
+              authored?.bestFor ||
+              launch?.peek ||
+              data.bestFor ||
+              "",
             timeframe: authored?.timeframe || data.timeframe || "—",
             estEarnings: authored?.estEarnings || data.estEarnings || "—",
           };
         }),
-        (id) => libraryTierById.get(id) ?? libraryMinTierForGuideId(id),
+        (id) =>
+          effectiveGuideMinTier(
+            id,
+            catalogStates,
+            libraryTierById.get(id) ?? libraryMinTierForGuideId(id, catalogStates),
+          ),
       ),
-    [libraryEntries, libraryTierById, guides],
+    [libraryEntries, libraryTierById, guides, catalogStates],
   );
 
-  const audiencesOf = (id: string) => audiencesForLibraryGuideId(id);
+  const audiencesOf = (id: string) =>
+    effectiveGuideAudiences(id, catalogStates, audiencesForLibraryGuideId(id, catalogStates));
   const minTierOf = (id: string): GuideMinTier =>
-    libraryTierById.get(id) ?? libraryMinTierForGuideId(id);
+    effectiveGuideMinTier(
+      id,
+      catalogStates,
+      libraryTierById.get(id) ?? libraryMinTierForGuideId(id, catalogStates),
+    );
 
   const ageCounts = useMemo(
     () => countGuideNavByAge(navGuidesAll, audiencesOf),
-    [navGuidesAll],
+    [navGuidesAll, catalogStates],
   );
 
   const membershipCounts = useMemo(
     () => countGuideNavByMembership(navGuidesAll, minTierOf),
-    [navGuidesAll],
+    [navGuidesAll, catalogStates],
   );
 
   const statusCounts = useMemo(
@@ -722,11 +743,27 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
     [navGuidesAll, catalogStates],
   );
 
+  const guidePatchAssignees = useMemo(
+    () => Object.values(catalogStates).map((s) => s.patch?.assignee),
+    [catalogStates],
+  );
+
+  const assigneeCounts = useMemo(
+    () => countGuideNavByAssignee(navGuidesAll, catalogStates),
+    [navGuidesAll, catalogStates],
+  );
+
+  const assigneeFilterPeople = useMemo(
+    () => guideAssigneeFilterRoster({ guidePatchAssignees }),
+    [guidePatchAssignees],
+  );
+
   const navGuides = useMemo(() => {
     const filtered = filterGuideNavItems(navGuidesAll, {
       ageFilters,
       membershipFilters,
       statusFilters,
+      assigneeFilters,
       catalogStates,
       isAdmin: staffCatalog,
       audiencesOf,
@@ -769,6 +806,7 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
     ageFilters,
     membershipFilters,
     statusFilters,
+    assigneeFilters,
     catalogStates,
     staffCatalog,
     isAdmin,
@@ -782,6 +820,56 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
     (activeGuideId && navGuides.some((g) => g.id === activeGuideId) && activeGuideId) ||
     (selectedHustleId && navGuides.some((g) => g.id === selectedHustleId) && selectedHustleId) ||
     firstNavId;
+
+  const activeMinTier = effectiveGuideMinTier(
+    effectiveGuideId,
+    catalogStates,
+    libraryMinTierForGuideId(effectiveGuideId, catalogStates),
+  );
+  const activeMembershipSelection = effectiveGuideMembershipSelection(
+    effectiveGuideId,
+    catalogStates,
+    libraryMinTierForGuideId(effectiveGuideId, catalogStates),
+  );
+  const activeAgeSelection = effectiveGuideAudiences(
+    effectiveGuideId,
+    catalogStates,
+    audiencesForLibraryGuideId(effectiveGuideId, catalogStates),
+  );
+  const activeAccess = resolveGuideAccess({
+    isMember: isLoggedIn,
+    membershipTier: effectiveTier,
+    minTier: activeMinTier,
+    isAdmin,
+  });
+  const guideIsFree = activeMinTier === "free";
+  const unlocked = activeAccess.unlocked;
+
+  useEffect(() => {
+    if (!unlocked) {
+      setCompletedSteps({});
+      setStepChecklistItems({});
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const [stepsPayload, itemsPayload] = await Promise.all([
+          fetchMemberProgress<Record<string, boolean>>("launch_guide_steps"),
+          fetchMemberProgress<Record<string, boolean>>("launch_guide_step_items"),
+        ]);
+        if (!cancelled) {
+          setCompletedSteps(stepsPayload ?? {});
+          setStepChecklistItems(itemsPayload ?? {});
+        }
+      } catch {
+        /* keep empty; member can still check boxes and retry save */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [unlocked]);
 
   const prevFilterSelectionKey = useRef(filterSelectionKey);
 
@@ -806,13 +894,37 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
   }, [isAdmin, effectiveGuideId, ageFilterKey, membershipFilterKey, statusFilterKey, librarySearch]);
 
   const activeGuideBase = resolveLaunchGuideData(effectiveGuideId, guides);
-  const guideKit = guideKitForId(effectiveGuideId);
+  const catalogPatch = catalogStates[effectiveGuideId]?.patch;
+  const guideKit = resolveGuideKit(effectiveGuideId, catalogPatch);
+  const patchedBase = applyGuideCatalogPatch(
+    {
+      id: activeGuideBase.id,
+      name: activeGuideBase.name,
+      timeframe: activeGuideBase.timeframe,
+      estEarnings: activeGuideBase.estEarnings,
+      bestFor: activeGuideBase.bestFor,
+      steps: activeGuideBase.steps,
+      proTip: activeGuideBase.proTip,
+      pitfall: activeGuideBase.pitfall,
+    },
+    catalogPatch,
+  );
   const activeGuide = {
     ...activeGuideBase,
-    steps: guideKit.steps?.length
-      ? guideKit.steps.map((s) => ({ title: s.title, desc: s.desc }))
-      : activeGuideBase.steps,
+    name: String(patchedBase.name || activeGuideBase.name),
+    timeframe: String(patchedBase.timeframe || activeGuideBase.timeframe),
+    estEarnings: String(patchedBase.estEarnings || activeGuideBase.estEarnings),
+    steps:
+      catalogPatch?.steps !== undefined
+        ? (guideKit.steps ?? []).map((s) => ({ title: s.title, desc: s.desc }))
+        : guideKit.steps?.length
+          ? guideKit.steps.map((s) => ({ title: s.title, desc: s.desc }))
+          : activeGuideBase.steps,
   };
+  const activeGuideDescription =
+    guideSideHustleDescription(activeGuide.id) ||
+    kidsGuideById(activeGuide.id)?.summary?.trim() ||
+    activeGuide.bestFor;
   const activeGuideStatus = getGuideVisibilityStatus(activeGuide.id, catalogStates);
 
   // Calculate completion percentage for the active guide
@@ -837,40 +949,75 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
     });
   };
 
-  if (!unlocked) {
-    return (
-      <div className="launch-guides-catalog" data-testid="launch-guides-locked">
-        <section className="glass launch-guides-catalog-banner">
-          <div>
-            <div className="free-guide-card-badges" style={{ marginBottom: 8 }}>
-              <span className={`glow-badge ${guideIsFree ? "free" : "pink"}`}>
-                {guideTierBadgeLabel(activeMinTier)}
-              </span>
-            </div>
-            <h2 style={{ fontSize: "1.35rem", color: "var(--charcoal)", margin: "0 0 6px" }}>
-              {activeGuide.name}
-              {(() => {
-                const n = guideNumberParenthetical(activeGuide.id);
-                return n ? ` ${n}` : "";
-              })()}{" "}
-              guide
-            </h2>
-            <p style={{ margin: 0, color: "var(--text-primary)", fontSize: "1rem", maxWidth: 560 }}>
-              {activeGuide.bestFor} {guideTierMembershipNote(activeMinTier)}.
-            </p>
-          </div>
-          <div className="launch-guides-catalog-actions">
-            {onGoToLogin && (
-              <button type="button" className="btn btn-outline" onClick={onGoToLogin}>
-                <LogIn size={16} /> Log in
-              </button>
-            )}
-            <JoinToUnlockCta access={activeAccess} onJoin={onGoToJoin} onUpgrade={onGoToJoin} />
-          </div>
-        </section>
+  const toggleStepChecklistItem = (stepIdx: number, itemIdx: number) => {
+    if (!unlocked) return;
+    const key = guideStepChecklistItemKey(activeGuide.id, stepIdx, itemIdx);
+    setStepChecklistItems((prev) => {
+      const next = {
+        ...prev,
+        [key]: !prev[key],
+      };
+      void saveMemberProgress("launch_guide_step_items", next).catch(() => {
+        /* surface via next reload; avoid blocking UI */
+      });
+      return next;
+    });
+  };
+
+  const lockedMainPanel = (
+    <section
+      className="glass launch-guides-catalog-banner launch-guide-detail__gated"
+      data-testid="launch-guides-locked"
+    >
+      <div>
+        <div className="free-guide-card-badges" style={{ marginBottom: 8 }}>
+          <span className={`glow-badge ${guideIsFree ? "free" : "pink"}`}>
+            {guideTierBadgeLabel(activeMinTier)}
+          </span>
+          <MembershipLockBadge
+            minTier={activeMinTier}
+            unlocked={false}
+            data-testid={`guide-lock-badge-main-${activeGuide.id}`}
+          />
+        </div>
+        <h2 style={{ fontSize: "1.35rem", color: "var(--charcoal)", margin: "0 0 6px" }}>
+          {activeGuide.name}
+          {(() => {
+            const n = guideNumberParenthetical(activeGuide.id);
+            return n ? ` ${n}` : "";
+          })()}{" "}
+          guide
+        </h2>
+        <p style={{ margin: "0 0 8px", color: "var(--text-primary)", fontSize: "1rem", maxWidth: 560 }}>
+          {activeGuideDescription} {guideTierMembershipNote(activeMinTier)}.
+        </p>
+        <div
+          className="launch-guide-detail__main-stats"
+          data-testid="launch-guide-hours-prices-locked"
+          style={{ marginBottom: 8 }}
+        >
+          <span>
+            <Clock size={14} aria-hidden /> {activeGuide.timeframe}
+          </span>
+          <span>
+            <TrendingUp size={14} aria-hidden /> {activeGuide.estEarnings}
+          </span>
+        </div>
       </div>
-    );
-  }
+      <div className="launch-guides-catalog-actions">
+        {onGoToLogin && !isLoggedIn ? (
+          <button type="button" className="btn btn-outline" onClick={onGoToLogin}>
+            <LogIn size={16} /> Log in
+          </button>
+        ) : null}
+        <JoinToUnlockCta
+          access={activeAccess}
+          onJoin={onGoToJoin ? () => onGoToJoin(activeMinTier) : undefined}
+          onUpgrade={onGoToJoin ? () => onGoToJoin(activeMinTier) : undefined}
+        />
+      </div>
+    </section>
+  );
 
   const guideFiltersBar = (
     <div className="launch-guide-detail__filters-bar" data-testid="launch-guide-filters-bar">
@@ -989,6 +1136,87 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
           </div>
         </div>
       ) : null}
+      {staffCatalog ? (
+        <div
+          className="launch-guide-detail__filters launch-guide-detail__filters--assignee"
+          data-testid="launch-guide-sidebar-assignee-filters"
+        >
+          <span className="launch-guide-detail__filters-label">
+            Filter Guides by Assignee
+            <span className="launch-guide-detail__filters-hint">
+              {" "}
+              (only Unassigned + QAs with guides assigned)
+            </span>
+          </span>
+          <div
+            className="launch-guide-detail__filter-row"
+            role="group"
+            aria-label="Filter guides by assignee (multi-select)"
+          >
+            <button
+              type="button"
+              role="checkbox"
+              aria-checked={guideNavFilterIsAll(assigneeFilters)}
+              className={`launch-guide-detail__filter-btn${
+                guideNavFilterIsAll(assigneeFilters) ? " is-active" : ""
+              }`}
+              data-testid="launch-guide-assignee-filter-all"
+              onClick={() => toggleAssigneeFilter("all")}
+            >
+              <span className="launch-guide-detail__filter-check" aria-hidden>
+                {guideNavFilterIsAll(assigneeFilters) ? "✓" : ""}
+              </span>
+              <span>All</span>
+              <span className="launch-guide-detail__filter-count">{assigneeCounts.all}</span>
+            </button>
+            <button
+              type="button"
+              role="checkbox"
+              aria-checked={
+                !guideNavFilterIsAll(assigneeFilters) && assigneeFilters.includes("unassigned")
+              }
+              className={`launch-guide-detail__filter-btn${
+                !guideNavFilterIsAll(assigneeFilters) && assigneeFilters.includes("unassigned")
+                  ? " is-active"
+                  : ""
+              }`}
+              data-testid="launch-guide-assignee-filter-unassigned"
+              onClick={() => toggleAssigneeFilter("unassigned")}
+            >
+              <span className="launch-guide-detail__filter-check" aria-hidden>
+                {!guideNavFilterIsAll(assigneeFilters) && assigneeFilters.includes("unassigned")
+                  ? "✓"
+                  : ""}
+              </span>
+              <span>Unassigned</span>
+              <span className="launch-guide-detail__filter-count">{assigneeCounts.unassigned}</span>
+            </button>
+            {assigneeFilterPeople.map((t) => {
+              const count = assigneeCounts.byId[t.id] ?? 0;
+              if (count <= 0) return null;
+              const active =
+                !guideNavFilterIsAll(assigneeFilters) && assigneeFilters.includes(t.id);
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  role="checkbox"
+                  aria-checked={active}
+                  className={`launch-guide-detail__filter-btn${active ? " is-active" : ""}`}
+                  data-testid={`launch-guide-assignee-filter-${t.id}`}
+                  onClick={() => toggleAssigneeFilter(t.id)}
+                >
+                  <span className="launch-guide-detail__filter-check" aria-hidden>
+                    {active ? "✓" : ""}
+                  </span>
+                  <span>{testOwnerLabel(t.id, assigneeFilterPeople)}</span>
+                  <span className="launch-guide-detail__filter-count">{count}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
       {isAdmin ? (
         <div
           className="launch-guide-detail__bulk"
@@ -1039,6 +1267,12 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
               {bulkError}
             </p>
           ) : null}
+          <p
+            className="launch-guide-detail__bulk-details-hint"
+            data-testid="launch-guide-bulk-details-hint"
+          >
+            See your Guide Details below.
+          </p>
         </div>
       ) : null}
     </div>
@@ -1095,6 +1329,94 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
           </div>
         </div>
       ) : null}
+
+      {pendingNotePrompt ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="launch-guide-pending-note-title"
+          className="launch-guide-bulk-need-selection"
+          data-testid="launch-guide-pending-note-dialog"
+          onClick={() => setPendingNotePrompt(null)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setPendingNotePrompt(null);
+          }}
+        >
+          <div
+            className="launch-guide-bulk-need-selection__card"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="launch-guide-bulk-need-selection__head">
+              <span className="launch-guide-bulk-need-selection__icon" aria-hidden>
+                <CircleAlert size={22} />
+              </span>
+              <h3 id="launch-guide-pending-note-title">Note required</h3>
+              <button
+                type="button"
+                className="launch-guide-bulk-need-selection__close"
+                onClick={() => setPendingNotePrompt(null)}
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <p className="launch-guide-bulk-need-selection__lead">
+              Pending / Needs Further Review requires a note (at least {GUIDE_STATUS_NOTE_MIN_LENGTH}{" "}
+              characters). It is saved to this guide&apos;s Notes tab and copied to the associated
+              GUIDE-REV test as Failed.
+              {pendingNotePrompt.guideIds.length > 1
+                ? ` Applying to ${pendingNotePrompt.guideIds.length} guides.`
+                : ""}
+            </p>
+            <label className="launch-guide-pending-note-label">
+              <span className="sr-only">Pending reason</span>
+              <textarea
+                className="text-input"
+                rows={4}
+                value={pendingNoteDraft}
+                onChange={(e) => setPendingNoteDraft(e.target.value)}
+                placeholder="Describe what needs further review…"
+                data-testid="launch-guide-pending-note-input"
+                autoFocus
+              />
+            </label>
+            {statusError ? (
+              <p className="launch-guide-status-error" role="alert">
+                {statusError}
+              </p>
+            ) : null}
+            <div className="launch-guide-pending-note-actions">
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={() => setPendingNotePrompt(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={!guideStatusNoteMeetsRequirement(pendingNoteDraft)}
+                data-testid="launch-guide-pending-note-save"
+                onClick={() => {
+                  const prompt = pendingNotePrompt;
+                  const draft = pendingNoteDraft.trim();
+                  if (!prompt || !guideStatusNoteMeetsRequirement(draft)) {
+                    setStatusError(
+                      `A note is required (at least ${GUIDE_STATUS_NOTE_MIN_LENGTH} characters).`,
+                    );
+                    return;
+                  }
+                  setPendingNotePrompt(null);
+                  void commitGuideStatus(prompt.guideIds, prompt.status, draft);
+                }}
+              >
+                Save & set Pending
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       {isAdmin ? (
         <p className="launch-guide-detail__admin-banner" data-testid="side-hustle-library-admin-title">
           {sideHustleLibraryPageTitle({ isAdmin: true, isDetail: true })}
@@ -1129,7 +1451,7 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
         </div>
         <div className="launch-guide-detail__sidebar-scroll" data-testid="launch-guide-sidebar-scroll">
           {navGuides.map((g) => {
-            const gMin = libraryMinTierForGuideId(g.id);
+            const gMin = libraryMinTierForGuideId(g.id, catalogStates);
             const gAccess = resolveGuideAccess({
               isMember: isLoggedIn,
               membershipTier: effectiveTier,
@@ -1198,17 +1520,22 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
                       </span>{" "}
                       {g.name}
                     </span>
-                    {g.peek ? (
-                      <span className="launch-guide-detail__nav-peek">{g.peek}</span>
-                    ) : null}
-                    <span className="launch-guide-detail__nav-stats">
-                      <span>
-                        <Clock size={12} aria-hidden /> {g.timeframe}
-                      </span>
-                      <span>
-                        <TrendingUp size={12} aria-hidden /> {g.estEarnings}
-                      </span>
-                    </span>
+                    {staffCatalog
+                      ? (() => {
+                          const trail = formatAuditTrail(
+                            catalogStates[g.id]?.updatedAt,
+                            catalogStates[g.id]?.updatedBy,
+                          );
+                          return trail ? (
+                            <span
+                              className="launch-guide-detail__nav-audit"
+                              data-testid={`launch-guide-nav-audit-${g.id}`}
+                            >
+                              {trail}
+                            </span>
+                          ) : null;
+                        })()
+                      : null}
                   </span>
                   <span className="launch-guide-detail__nav-meta">
                     <span className={`glow-badge ${gFree ? "free" : "pink"} launch-guide-detail__tier`}>
@@ -1246,6 +1573,9 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
       </nav>
 
       {/* Main Guide Content */}
+      {!unlocked ? (
+        lockedMainPanel
+      ) : (
       <div className="glass launch-guide-detail__main">
         {/* Header summary */}
         <div className="launch-guide-detail__main-head">
@@ -1276,48 +1606,195 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
                           navigateAdminDeepLink({ tab: "testing", testId: reviewCaseId });
                         }}
                       >
-                        {reviewCaseId}
+                        {guideNumberLabel(activeGuide.id)
+                          ? `${guideNumberLabel(activeGuide.id)} · ${reviewCaseId}`
+                          : reviewCaseId}
                       </a>
                     );
                   })()
                 : null}
             </h2>
+            {activeGuideDescription ? (
+              <p className="launch-guide-detail__main-lede" data-testid="launch-guide-description">
+                {activeGuideDescription}
+              </p>
+            ) : null}
+            <div
+              className="launch-guide-detail__main-stats"
+              data-testid="launch-guide-hours-prices"
+            >
+              <span>
+                <Clock size={14} aria-hidden /> {activeGuide.timeframe}
+              </span>
+              <span>
+                <TrendingUp size={14} aria-hidden /> {activeGuide.estEarnings}
+              </span>
+            </div>
             {staffCatalog ? (
               <div
-                className="launch-guide-detail__main-status"
+                className="launch-guide-detail__update-panel"
                 data-testid={`launch-guide-main-status-${activeGuide.id}`}
               >
-                <span
-                  className="launch-guide-detail__status-pills"
-                  data-testid={`launch-guide-main-status-pills-${activeGuide.id}`}
+                <p
+                  className="launch-guide-detail__update-panel-heading"
+                  data-testid="launch-guide-status-heading"
                 >
-                  {guideHeldVisibilityStatuses(activeGuideStatus).map((s) => (
-                    <span key={s} className={`launch-guide-detail__status-pill is-${s}`}>
-                      {guideVisibilityStatusLabel(s)}
-                    </span>
-                  ))}
-                </span>
-                {isAdmin ? (
-                  <GuideActiveToggle
-                    guideId={activeGuide.id}
-                    status={activeGuideStatus}
-                    busy={statusBusyId === activeGuide.id}
-                    canSetReviewedByDev={canSetReviewedByDev}
-                    onChange={(next) => void setGuideStatus(activeGuide.id, next)}
-                  />
+                  Update your Guide Status Here
+                </p>
+                <div className="launch-guide-detail__update-row">
+                  <span className="launch-guide-detail__update-row-label">Status</span>
+                  <span
+                    className="launch-guide-detail__status-pills"
+                    data-testid={`launch-guide-main-status-pills-${activeGuide.id}`}
+                  >
+                    {guideHeldVisibilityStatuses(activeGuideStatus).map((s) => (
+                      <span key={s} className={`launch-guide-detail__status-pill is-${s}`}>
+                        {guideVisibilityStatusLabel(s)}
+                      </span>
+                    ))}
+                  </span>
+                  {canEditGuideContent ? (
+                    <GuideActiveToggle
+                      guideId={activeGuide.id}
+                      status={activeGuideStatus}
+                      busy={statusBusyId === activeGuide.id}
+                      canSetReviewedByDev={canSetReviewedByDev}
+                      onChange={(next) => void setGuideStatus(activeGuide.id, next)}
+                    />
+                  ) : null}
+                </div>
+                {canEditGuideContent ? (
+                  <>
+                    <div className="launch-guide-detail__update-row launch-guide-detail__update-row--assignee">
+                      <GuideAssigneeField
+                        guideId={activeGuide.id}
+                        patchAssignee={catalogPatch?.assignee}
+                        guidePatchAssignees={guidePatchAssignees}
+                        onSaved={(state) => {
+                          setCatalogStates((prev) => ({
+                            ...prev,
+                            [activeGuide.id]: state,
+                          }));
+                          setGuideAuditRefreshKey((k) => k + 1);
+                        }}
+                      />
+                    </div>
+                    <GuideMembershipAgeFields
+                      guideId={activeGuide.id}
+                      membershipSelected={activeMembershipSelection}
+                      ageSelected={activeAgeSelection}
+                      busy={statusBusyId === activeGuide.id}
+                      onError={setStatusError}
+                      onSaved={(state) => {
+                        setCatalogStates((prev) => ({
+                          ...prev,
+                          [activeGuide.id]: state,
+                        }));
+                        patchLiveGuideLibraryCatalogState(activeGuide.id, state);
+                        setGuideAuditRefreshKey((k) => k + 1);
+                      }}
+                    />
+                    {statusError ? (
+                      <p
+                        className="launch-guide-status-error"
+                        role="alert"
+                        data-testid="launch-guide-status-error"
+                      >
+                        {statusError}
+                      </p>
+                    ) : null}
+                  </>
                 ) : null}
               </div>
             ) : null}
           </div>
-          <p className="launch-guide-detail__main-lede">{activeGuide.bestFor}</p>
         </div>
 
         {guideFiltersBar}
 
         <GuidePrepSections
           key={activeGuide.id}
+          guideId={activeGuide.id}
           kit={guideKit}
           testIdPrefix="launch-guide"
+          expandAllSections
+          afterTabsOwnsPanel={guidePrepAfterTabsOwnsPanel(canEditGuideContent)}
+          afterTabs={(tab) => {
+            if (!canEditGuideContent) return null;
+            if (tab === "notes") {
+              return (
+                <section
+                  className="guide-admin-content-editor"
+                  data-testid={`guide-notes-editor-${activeGuide.id}`}
+                >
+                  <div className="guide-admin-content-editor__bar">
+                    <div>
+                      <h3 className="guide-admin-content-editor__heading">Edit Notes</h3>
+                      <p className="guide-admin-content-editor__lede">
+                        Add, edit, and attach files to notes for this Side Hustle.
+                      </p>
+                    </div>
+                  </div>
+                  <GuideNotesTab
+                    guideId={activeGuide.id}
+                    isLoggedIn={isLoggedIn}
+                    isAdmin={canEditGuideContent}
+                    actorName={memberName}
+                    actorUserId={memberUserId}
+                    onGoToLogin={onGoToLogin}
+                    refreshKey={guideNotesRefreshKey}
+                  />
+                </section>
+              );
+            }
+            const focusSection =
+              tab === "prereqs"
+                ? "prereqs"
+                : tab === "tools"
+                  ? "tools"
+                  : tab === "steps"
+                    ? "steps"
+                    : tab === "all"
+                      ? "all"
+                      : null;
+            // Suggested Pricing + Supply List use the member-facing panels only
+            // (no empty “Edit Suggested Pricing / Supply List” chrome).
+            if (!focusSection) return null;
+            return (
+              <GuideAdminContentEditor
+                key={`editor-${activeGuide.id}`}
+                guideId={activeGuide.id}
+                name={activeGuide.name}
+                kit={guideKit}
+                focusSection={focusSection}
+                onStepsLocalChange={(steps) => {
+                  setCatalogStates((prev) => {
+                    const prior = prev[activeGuide.id];
+                    return {
+                      ...prev,
+                      [activeGuide.id]: {
+                        guideId: activeGuide.id,
+                        status: prior?.status ?? getGuideVisibilityStatus(activeGuide.id, prev),
+                        published: prior?.published ?? true,
+                        deleted: prior?.deleted === true,
+                        custom: prior?.custom === true,
+                        patch: { ...(prior?.patch ?? {}), steps },
+                        updatedAt: prior?.updatedAt,
+                        updatedBy: prior?.updatedBy,
+                      },
+                    };
+                  });
+                }}
+                onSaved={(state) => {
+                  setCatalogStates((prev) => ({
+                    ...prev,
+                    [activeGuide.id]: state,
+                  }));
+                  setGuideAuditRefreshKey((k) => k + 1);
+                }}
+              />
+            );
+          }}
           stepsTab={{
             count: activeStepsCount,
             content: (
@@ -1353,18 +1830,23 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
                     return (
                       <div
                         key={idx}
-                        onClick={() => toggleStep(idx)}
                         className={`checklist-item ${isDone ? "completed" : ""}`}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            toggleStep(idx);
-                          }
-                        }}
+                        data-testid={`launch-guide-step-${idx}`}
                       >
-                        <div className="checklist-checkbox">{isDone && <Check size={12} />}</div>
+                        <button
+                          type="button"
+                          className="checklist-checkbox"
+                          aria-pressed={isDone}
+                          aria-label={
+                            isDone
+                              ? `Mark step ${idx + 1} not done`
+                              : `Mark step ${idx + 1} done`
+                          }
+                          data-testid={`launch-guide-step-done-${idx}`}
+                          onClick={() => toggleStep(idx)}
+                        >
+                          {isDone && <Check size={12} />}
+                        </button>
                         <div className="checklist-text">
                           <strong
                             style={{
@@ -1376,14 +1858,14 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
                           >
                             {idx + 1}. {step.title}
                           </strong>
-                          <span
-                            style={{
-                              color: isDone ? "var(--text-muted)" : "var(--text-secondary)",
-                              fontSize: "0.95rem",
-                            }}
-                          >
-                            {step.desc}
-                          </span>
+                          <GuideStepDesc
+                            guideId={activeGuide.id}
+                            stepIdx={idx}
+                            desc={step.desc}
+                            muted={isDone}
+                            checkedItems={stepChecklistItems}
+                            onToggleItem={(itemIdx) => toggleStepChecklistItem(idx, itemIdx)}
+                          />
                         </div>
                       </div>
                     );
@@ -1397,6 +1879,19 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
               <GuideRevenueCalculator
                 guideId={activeGuide.id}
                 guideName={activeGuide.name}
+              />
+            ),
+          }}
+          notesTab={{
+            content: (
+              <GuideNotesTab
+                guideId={activeGuide.id}
+                isLoggedIn={isLoggedIn}
+                isAdmin={isAdmin}
+                actorName={memberName}
+                actorUserId={memberUserId}
+                onGoToLogin={onGoToLogin}
+                refreshKey={guideNotesRefreshKey}
               />
             ),
           }}
@@ -1429,7 +1924,34 @@ export const StepByStepGuides: React.FC<StepByStepGuidesProps> = ({
             </div>
           ) : null}
         </div>
+
+        {staffCatalog ? (
+          <div
+            className="launch-guide-detail__audit-area"
+            data-testid={`launch-guide-audit-area-${activeGuide.id}`}
+          >
+            {(() => {
+              const trail = formatAuditTrail(
+                catalogStates[activeGuide.id]?.updatedAt,
+                catalogStates[activeGuide.id]?.updatedBy,
+              );
+              return trail ? (
+                <p
+                  className="launch-guide-detail__main-audit"
+                  data-testid={`launch-guide-main-audit-${activeGuide.id}`}
+                >
+                  {trail}
+                </p>
+              ) : null;
+            })()}
+            <GuideChangeLogPanel
+              guideId={activeGuide.id}
+              refreshKey={guideAuditRefreshKey}
+            />
+          </div>
+        ) : null}
       </div>
+      )}
     </div>
   );
 };

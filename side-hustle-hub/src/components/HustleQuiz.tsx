@@ -30,6 +30,10 @@ import {
   wizardMatchTierLabel,
   wizardRankingDisclaimer,
 } from "../lib/wizard-result-order";
+import type { GuideCatalogStateMap } from "../lib/guide-catalog-state";
+import { filterGuidesForWizardResults } from "../lib/guide-catalog-state";
+import { libraryMinTierForAge } from "../lib/guide-library-pool";
+import type { GuideMinTier } from "../lib/guide-access";
 
 interface HustleQuizProps {
   hustles: any[];
@@ -39,6 +43,8 @@ interface HustleQuizProps {
   previewAsGuest?: boolean;
   /** Unlock → Join / free account handoff */
   onUnlockBlueprint?: () => void;
+  /** Live catalog statuses — wizard results stay Active-only even for admin. */
+  catalogStates?: GuideCatalogStateMap | null;
 }
 
 type SingleKey = "budget" | "time";
@@ -114,27 +120,37 @@ function scoreHustle(hustleId: string, answers: Answers): number {
   return Math.round(score * 10) / 10;
 }
 
-function toBlueprintCards(results: ScoredMatch[]): BlueprintMatchCard[] {
-  return results.map((row) => ({
-    id: row.hustle.id,
-    title: row.hustle.name,
-    description: row.hustle.description,
-    pct: row.pct,
-    tier: row.tier,
-    badge: row.hustle.category,
-    gradient: row.hustle.gradient,
-    whyFits: `${row.tier} for your budget, time, strengths, and goals — a Side Hustle that fits how you want to earn.`,
-    benefits: [
-      `Difficulty: ${row.hustle.difficulty}`,
-      `Income potential: ${row.hustle.potentialIncome}`,
-      `Startup cost: ${row.hustle.startupCost}`,
-    ],
-    meta: [
-      { label: "Difficulty", value: row.hustle.difficulty },
-      { label: "Income", value: row.hustle.potentialIncome },
-      { label: "Startup", value: row.hustle.startupCost },
-    ],
-  }));
+function toBlueprintCards(
+  results: ScoredMatch[],
+  catalogStates?: GuideCatalogStateMap | null,
+): BlueprintMatchCard[] {
+  return results.map((row) => {
+    const minTier: GuideMinTier =
+      libraryMinTierForAge(row.hustle.id, "adult", catalogStates) ||
+      (row.hustle.minTier as GuideMinTier) ||
+      "free";
+    return {
+      id: row.hustle.id,
+      title: row.hustle.name,
+      description: row.hustle.description,
+      pct: row.pct,
+      tier: row.tier,
+      badge: row.hustle.category,
+      gradient: row.hustle.gradient,
+      minTier,
+      whyFits: `${row.tier} for your budget, time, strengths, and goals — a Side Hustle that fits how you want to earn.`,
+      benefits: [
+        `Difficulty: ${row.hustle.difficulty}`,
+        `Income potential: ${row.hustle.potentialIncome}`,
+        `Startup cost: ${row.hustle.startupCost}`,
+      ],
+      meta: [
+        { label: "Difficulty", value: row.hustle.difficulty },
+        { label: "Income", value: row.hustle.potentialIncome },
+        { label: "Startup", value: row.hustle.startupCost },
+      ],
+    };
+  });
 }
 
 export const HustleQuiz: React.FC<HustleQuizProps> = ({
@@ -143,6 +159,7 @@ export const HustleQuiz: React.FC<HustleQuizProps> = ({
   isLoggedIn = false,
   previewAsGuest = false,
   onUnlockBlueprint,
+  catalogStates = null,
 }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Answers>({
@@ -163,7 +180,8 @@ export const HustleQuiz: React.FC<HustleQuizProps> = ({
   });
 
   const buildResults = (nextAnswers: Answers): ScoredMatch[] => {
-    const scored = hustles.map((h) => ({ hustle: h, score: scoreHustle(h.id, nextAnswers) }));
+    const pool = filterGuidesForWizardResults(hustles, catalogStates);
+    const scored = pool.map((h) => ({ hustle: h, score: scoreHustle(h.id, nextAnswers) }));
     const maxScore = Math.max(...scored.map((r) => r.score), 1);
     const ordered = sortWizardByMatchScore(
       scored.map((row) => ({ id: row.hustle.id, score: row.score, hustle: row.hustle })),
@@ -573,7 +591,7 @@ export const HustleQuiz: React.FC<HustleQuizProps> = ({
           ) : (
             <SideHustleBlueprintResults
               ageGroup="adult"
-              matches={toBlueprintCards(rankedResults)}
+              matches={toBlueprintCards(rankedResults, catalogStates)}
               unlocked={unlocked}
               onUnlock={handleUnlock}
               onRetake={resetQuiz}

@@ -378,8 +378,22 @@ export async function handleStripeCheckoutCreate(
     return error("Sign in with this email to apply Kid Credits.", 401);
   }
 
-  if (mode === "payment" && quote.cashDueCents === 0 && quote.creditsApplied > 0) {
+  // Credits can pay anything except credit packs (packs stay cash-only in the quote).
+  // Membership + a-la-carte: when cash due is $0, finish here — never send the member to Stripe.
+  if (quote.cashDueCents === 0 && quote.creditsApplied > 0) {
     if (!user) return error("Sign in to pay with Kid Credits.", 401);
+    if (kind === "credit_pack") {
+      return error("Credit packs must be purchased with a card — credits cannot buy more credits.", 400);
+    }
+
+    let merchChoicesPaid: string[] = [];
+    if (kind === "membership") {
+      const merchTier = String(body.tierId || "").toLowerCase() as TierId;
+      const merchErr = merchChoicesError(merchTier, body.merchChoices);
+      if (merchErr) return error(merchErr, 400);
+      merchChoicesPaid = parseMerchChoices(body.merchChoices, merchItemCount(merchTier)) ?? [];
+    }
+
     const creditSessionId = `cred-${user.id}-${Date.now().toString(36)}`;
     try {
       const { spendCheckoutCredits } = await import("./member-credits");
@@ -393,45 +407,128 @@ export async function handleStripeCheckoutCreate(
       const msg = e instanceof Error ? e.message : "Could not apply Kid Credits.";
       return error(msg, 402);
     }
+
+    const { publicUser: toPublic, getUserById } = await import("./auth");
+    let paidUser = user;
+    const now = new Date().toISOString();
+
+    if (kind === "membership") {
+      const tier = String(body.tierId || "").toLowerCase();
+      const audience = String(body.audience || "").toLowerCase();
+      const nextTier = ["starter", "pro", "elite"].includes(tier) ? tier : undefined;
+      const nextAudience = ["kids", "junior", "adult", "senior"].includes(audience)
+        ? audience
+        : undefined;
+      const prevNotes = String(user.notes || "");
+      const stamp = `Credit checkout ${tier || "plan"} (${audience || "audience"}) ${now}`;
+      let notes = `${prevNotes}${prevNotes ? " · " : ""}${stamp}`.slice(0, 1900);
+      if (merchChoicesPaid.length) {
+        notes = mergeMerchNote(notes, merchChoicesPaid as ("tshirt" | "hat")[]);
+      }
+      if (nextTier && nextAudience) {
+        await env.DB.prepare(
+          `UPDATE users SET membership_tier = ?, audience = ?, notes = ?, updated_at = ? WHERE id = ?`,
+        )
+          .bind(nextTier, nextAudience, notes, now, user.id)
+          .run();
+      } else if (nextTier) {
+        await env.DB.prepare(
+          `UPDATE users SET membership_tier = ?, notes = ?, updated_at = ? WHERE id = ?`,
+        )
+          .bind(nextTier, notes, now, user.id)
+          .run();
+      } else {
+        await env.DB.prepare(`UPDATE users SET notes = ?, updated_at = ? WHERE id = ?`)
+          .bind(notes, now, user.id)
+          .run();
+      }
+      const refreshed = await getUserById(env.DB, user.id);
+      if (refreshed) paidUser = refreshed;
+      await appendAudit(
+        env.DB,
+        "membership_plan_update",
+        paidUser.email,
+        `${nextTier || tier}:${nextAudience || audience} paid with ${quote.creditsApplied} Kid Credits · ${creditSessionId}`,
+      );
+      try {
+        const { sendMembershipSubscriptionEmails } = await import("./email");
+        await sendMembershipSubscriptionEmails(env, {
+          user: {
+            id: paidUser.id,
+            email: paidUser.email,
+            name: paidUser.name,
+            membership_tier: nextTier || String(paidUser.membership_tier || ""),
+            audience: nextAudience || String(paidUser.audience || ""),
+          },
+          previousTier: String(user.membership_tier || "free"),
+          source: "credits",
+          amountLabel: `${quote.creditsApplied} Kid Credits`,
+          creditsApplied: quote.creditsApplied,
+          amountCents: 0,
+        });
+      } catch {
+        /* email optional */
+      }
+    } else {
+      try {
+        const { upsertGyshPayment } = await import("./stripe-payments");
+        await upsertGyshPayment(env, {
+          sessionId: creditSessionId,
+          email: user.email,
+          userId: user.id,
+          kind,
+          item: cartMeta,
+          amountCents: 0,
+          paidAt: now,
+          source: "credits",
+          memberName: user.name,
+        });
+      } catch {
+        /* ledger optional */
+      }
+      await appendAudit(
+        env.DB,
+        "purchase_alacarte",
+        user.email,
+        `${label} · ${quote.creditsApplied} Kid Credits · ${creditSessionId}`,
+      );
+      try {
+        const { sendAlaCartePurchaseEmails } = await import("./email");
+        await sendAlaCartePurchaseEmails(env, {
+          email: user.email,
+          name: user.name,
+          userId: user.id,
+          itemMeta: cartMeta,
+          amountCents: 0,
+          sessionId: creditSessionId,
+          kind,
+          source: "credits",
+          creditsApplied: quote.creditsApplied,
+        });
+      } catch {
+        /* email optional */
+      }
+    }
+
     try {
       const { upsertGyshPayment } = await import("./stripe-payments");
-      await upsertGyshPayment(env, {
-        sessionId: creditSessionId,
-        email: user.email,
-        userId: user.id,
-        kind,
-        item: cartMeta,
-        amountCents: 0,
-        paidAt: new Date().toISOString(),
-        source: "credits",
-        memberName: user.name,
-      });
+      if (kind === "membership") {
+        await upsertGyshPayment(env, {
+          sessionId: creditSessionId,
+          email: paidUser.email,
+          userId: paidUser.id,
+          kind: "membership",
+          item: String(body.tierId || ""),
+          amountCents: 0,
+          paidAt: now,
+          source: "credits",
+          memberName: paidUser.name,
+        });
+      }
     } catch {
       /* ledger optional */
     }
-    await appendAudit(
-      env.DB,
-      "purchase_alacarte",
-      user.email,
-      `${label} · ${quote.creditsApplied} Kid Credits · ${creditSessionId}`,
-    );
-    try {
-      const { sendAlaCartePurchaseEmails } = await import("./email");
-      await sendAlaCartePurchaseEmails(env, {
-        email: user.email,
-        name: user.name,
-        userId: user.id,
-        itemMeta: cartMeta,
-        amountCents: 0,
-        sessionId: creditSessionId,
-        kind,
-        source: "credits",
-        creditsApplied: quote.creditsApplied,
-      });
-    } catch {
-      /* email optional */
-    }
-    const { publicUser: toPublic } = await import("./auth");
+
     return json({
       ok: true,
       paid: true,
@@ -443,7 +540,7 @@ export async function handleStripeCheckoutCreate(
       creditsApplied: quote.creditsApplied,
       cashDueUsd: 0,
       catalogMode: STRIPE_CATALOG.mode,
-      user: toPublic(user),
+      user: toPublic(paidUser),
     });
   }
 

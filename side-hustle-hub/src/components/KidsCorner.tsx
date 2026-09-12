@@ -42,12 +42,16 @@ import {
 import { guidesForAudience, themeLabel, type KidsGuide } from "../lib/kids-guides";
 import { kidsWizardPoolForMode } from "../lib/kids-wizard-pool";
 import { hustleById } from "../lib/side-hustle-catalog";
+import { filterGuidesForWizardResults, type GuideCatalogStateMap } from "../lib/guide-catalog-state";
+import { libraryMinTierForAge } from "../lib/guide-library-pool";
+import { useLiveGuideLibraryCounts } from "../lib/guide-library-live-counts";
 import {
   FREE_GUIDE_SIGNUP_NOTE,
   guideTierMembershipNote,
   kidsGuideMinTier,
   resolveGuideAccess,
 } from "../lib/guide-access";
+import type { TierId } from "../lib/membership";
 import { guideNumberParenthetical } from "../lib/guide-numbers";
 import { JoinToUnlockCta } from "./JoinToUnlockCta";
 import { GuideMembershipBadges } from "./GuideMembershipBadges";
@@ -119,7 +123,7 @@ type KidsCornerProps = {
   /** Account plan (free / starter / pro / elite). No account → locked guides. */
   membershipTier?: string | null;
   /** Navigate to Join with Kids or Teens membership lane selected. */
-  onGoToJoin?: (audience: "kids" | "junior") => void;
+  onGoToJoin?: (audience: "kids" | "junior", focusTier?: TierId) => void;
   /** Open the dedicated Kids/Teens Dashboard (youth login). */
   onOpenDashboard?: () => void;
   /** Open the full Guides library. */
@@ -344,6 +348,14 @@ function hustlesForMode(mode: AudienceMode): JrHustle[] {
   });
 }
 
+/** Wizard ranking pool — Active catalog guides only (including when staff is testing). */
+function wizardHustlesForMode(
+  mode: AudienceMode,
+  catalogStates: GuideCatalogStateMap | null | undefined,
+): JrHustle[] {
+  return filterGuidesForWizardResults(hustlesForMode(mode), catalogStates);
+}
+
 function SafetyCallout() {
   return (
     <div className="kids-safety-callout">
@@ -521,7 +533,7 @@ function JoinTeamTab({
   isMember: boolean;
   isLoggedIn: boolean;
   onJoined: () => void;
-  onGoToJoin?: (audience: "kids" | "junior") => void;
+  onGoToJoin?: (audience: "kids" | "junior", focusTier?: TierId) => void;
   onOpenGuides: () => void;
 }) {
   const copy = getTeamJoinCopy(mode);
@@ -800,7 +812,7 @@ function GuideCard({
   guide: KidsGuide;
   isMember: boolean;
   membershipTier?: string | null;
-  onJoinCta: () => void;
+  onJoinCta: (focusTier?: TierId) => void;
   /** Start with steps collapsed (default). Use false only if a deep-link should expand. */
   collapseSteps?: boolean;
 }) {
@@ -870,7 +882,11 @@ function GuideCard({
       ) : (
         <div className="kids-guide-lock kids-guide-lock--desc-only">
           <Lock size={18} aria-hidden />
-          <JoinToUnlockCta access={access} onJoin={onJoinCta} onUpgrade={onJoinCta} />
+          <JoinToUnlockCta
+            access={access}
+            onJoin={() => onJoinCta(minTier)}
+            onUpgrade={() => onJoinCta(minTier)}
+          />
         </div>
       )}
     </article>
@@ -889,7 +905,7 @@ function GuidesTab({
   mode: AudienceMode;
   isMember: boolean;
   membershipTier?: string | null;
-  onJoinCta: () => void;
+  onJoinCta: (focusTier?: TierId) => void;
   onOpenGuidesLibrary?: () => void;
   onSwitchAudience?: (next: AudienceMode) => void;
   onOpenSeniors?: () => void;
@@ -1105,6 +1121,8 @@ function KidsHustleWizard({
   onOpenDashboard?: () => void;
 }) {
   const ageGroup = mode === "junior" ? "junior" : "kids";
+  const liveGuideCounts = useLiveGuideLibraryCounts();
+  const catalogStates = liveGuideCounts.states;
   /** Parent sitting with their kid: portal login unlocks + owns the Blueprint. */
   const parentOwnsSave = hasAccountLogin && !previewAsGuest;
   const unlocked = hasBlueprintAccess({
@@ -1161,7 +1179,7 @@ function KidsHustleWizard({
         : {};
     // Older pending kids runs had no % — rebuild from answers when possible.
     if (!Object.keys(restoredPcts).length && pending.resultIds.length) {
-      const pool = hustlesForMode(mode);
+      const pool = wizardHustlesForMode(mode, catalogStates);
       const scored = pool
         .map((h) => {
           let score = 0;
@@ -1272,7 +1290,7 @@ function KidsHustleWizard({
 
   /** Free Membership first, then relative match % (top overall score = 100%). */
   const buildRankedMatches = (ans: Record<string, string>) => {
-    const pool = hustlesForMode(mode);
+    const pool = wizardHustlesForMode(mode, catalogStates);
     const scored = pool.map((h) => ({ hustle: h, id: h.id, score: scoreHustle(h, ans) }));
     const maxScore = Math.max(...scored.map((r) => r.score), 1);
     const ordered = sortWizardByMatchScore(scored);
@@ -1369,7 +1387,7 @@ function KidsHustleWizard({
   const progressPercent = (currentStep / steps.length) * 100;
   const selected = answers[step?.key];
   const rankedHustles = (rankedIds ?? [])
-    .map((id) => hustlesForMode(mode).find((h) => h.id === id))
+    .map((id) => wizardHustlesForMode(mode, catalogStates).find((h) => h.id === id))
     .filter((h): h is JrHustle => Boolean(h));
 
   return (
@@ -1493,6 +1511,11 @@ function KidsHustleWizard({
                     tier,
                     badge: h.difficulty,
                     icon: h.icon,
+                    minTier: libraryMinTierForAge(
+                      h.id,
+                      mode === "junior" ? "junior" : "kids",
+                      catalogStates,
+                    ),
                     whyFits: `${tier} for your age, interests, place, and time — a safe Side Hustle to start earning and learning.`,
                     benefits: h.nextSteps.slice(0, 3),
                     safetyNote: h.safety,
@@ -2180,8 +2203,8 @@ export const KidsCorner: React.FC<KidsCornerProps> = ({
               mode="kids"
               isMember={isGuideMember}
               membershipTier={effectiveGuideTier}
-              onJoinCta={() =>
-                onGoToJoin ? onGoToJoin("kids") : setKidsTab("join")
+              onJoinCta={(focusTier) =>
+                onGoToJoin ? onGoToJoin("kids", focusTier) : setKidsTab("join")
               }
               onOpenGuidesLibrary={onOpenGuidesLibrary}
               onSwitchAudience={handleModeChange}
@@ -2243,8 +2266,8 @@ export const KidsCorner: React.FC<KidsCornerProps> = ({
               mode="junior"
               isMember={isGuideMember}
               membershipTier={effectiveGuideTier}
-              onJoinCta={() =>
-                onGoToJoin ? onGoToJoin("junior") : setJuniorTab("join")
+              onJoinCta={(focusTier) =>
+                onGoToJoin ? onGoToJoin("junior", focusTier) : setJuniorTab("join")
               }
               onOpenGuidesLibrary={onOpenGuidesLibrary}
               onSwitchAudience={handleModeChange}

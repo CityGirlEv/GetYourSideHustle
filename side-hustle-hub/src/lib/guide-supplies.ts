@@ -92,7 +92,7 @@ export const GUIDE_SUPPLIES: Record<string, GuideSupplyList> = {
         "Mini Hand Held Blower",
         "1",
         "$40–80",
-        "Optional purchase — this hustle qualifies for Free Mini Hand Held Blower entry",
+        "Optional purchase — Side-Hustlers who pick this Side-Hustle are eligible for a Free Mini Hand-Held Blower drawing (conditions apply; inquire via Contact Form)",
         true,
       ),
     ],

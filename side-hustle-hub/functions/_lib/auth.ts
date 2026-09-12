@@ -26,7 +26,7 @@ import {
 import { BETA_NDA_VERSION, betaNdaRegisterError, formatBetaNdaAcceptanceNote } from "./beta-tester-nda";
 import { acceptBetaNdaForUser } from "./beta-nda-store";
 import { ensureUsersRoleCheckAllowsAllRoles } from "./ensure-users-role-check";
-import { LOGIN_D1_ATTEMPTS, TRANSIENT_DB_USER_MESSAGE, isTransientD1Error, withD1Retry } from "./d1-retry";
+import { LOGIN_D1_ATTEMPTS, TRANSIENT_DB_USER_MESSAGE, D1_QUOTA_USER_MESSAGE, isD1QuotaExceededError, isTransientD1Error, withD1Retry } from "./d1-retry";
 import {
   merchChoicesError,
   merchItemCount,
@@ -442,6 +442,9 @@ export async function handleLogin(env: Env, request: Request): Promise<Response>
       { "set-cookie": cookie },
     );
   } catch (e) {
+    if (isD1QuotaExceededError(e)) {
+      return error(D1_QUOTA_USER_MESSAGE, 503);
+    }
     if (isTransientD1Error(e)) {
       return error(TRANSIENT_DB_USER_MESSAGE, 503);
     }
