@@ -20,6 +20,11 @@ import { KIDS_KINDNESS_SHARE_DETAILED_STEPS } from "./kids-kindness-share-guide"
 import { KIDS_PIGGY_FIRST_GOAL_DETAILED_STEPS } from "./kids-piggy-first-goal-guide";
 import { BABYSITTING_DETAILED_STEPS } from "./babysitting-guide";
 import { DIGITAL_PRODUCTS_DETAILED_STEPS } from "./digital-products-guide";
+import { RIDESHARE_DETAILED_STEPS } from "./rideshare-guide";
+import { JUNIOR_REINVEST_CEO_DETAILED_STEPS } from "./junior-reinvest-ceo-guide";
+import { KIDS_REINVEST_JAR_DETAILED_STEPS } from "./kids-reinvest-jar-guide";
+import { PROPERTY_MGMT_DETAILED_STEPS } from "./property-mgmt-guide";
+import { AIRBNB_TURNOVER_CHECKER_DETAILED_STEPS } from "./airbnb-turnover-checker-guide";
 
 export type DetailedGuideStep = { title: string; desc: string };
 
@@ -477,7 +482,7 @@ export const SAVINGS_GOAL_PLAN_STEP: DetailedGuideStep = {
 export const SAVINGS_FOUNDATION_GUIDE_IDS = [
   "kids-piggy-first-goal",
   "junior-savings-ceo",
-  /** Spend / Save / Hustle jars — money habit, not a business playbook. */
+  /** Fun / Save / Grow jars — money habit, not a business playbook. */
   "kids-reinvest-jar",
   /** Teen Save / Enjoy / Grow buckets — same foundation as kids reinvest. */
   "junior-reinvest-ceo",
@@ -497,6 +502,15 @@ export function guideUsesSavingsFoundation(guideId: string): boolean {
 
 export function guideUsesGiveBackFoundation(guideId: string): boolean {
   return (GIVE_BACK_FOUNDATION_GUIDE_IDS as readonly string[]).includes(
+    String(guideId || "").trim(),
+  );
+}
+
+/** Uber/Lyft-style marketplace — no customer-acquisition marketing sequence. */
+export const PLATFORM_MARKETPLACE_GUIDE_IDS = ["rideshare"] as const;
+
+export function guideUsesPlatformMarketplacePlaybook(guideId: string): boolean {
+  return (PLATFORM_MARKETPLACE_GUIDE_IDS as readonly string[]).includes(
     String(guideId || "").trim(),
   );
 }
@@ -611,7 +625,7 @@ export function ensureGuideFoundationSteps(
     const hasSavingsBody =
       rest.length > 0 &&
       rest.some((s) =>
-        /saving for|weekly savings|write the cost|plan how you will earn|pick your goal|find the price|already have|savings spot|safe ways to earn|goes to your goal|how many jobs|goal tracker|earn & save|check your progress|reach it|three jars|hustle jar|three buckets|split (your|rule)|grow spends|name what you are saving for/i.test(
+        /saving for|weekly savings|write the cost|plan how you will earn|pick your goal|find the price|already have|savings spot|safe ways to earn|goes to your goal|how many jobs|goal tracker|earn & save|check your progress|reach it|three jars|hustle jar|three buckets|split (your|rule)|grow (wish|spends)|put some earnings|name what you are saving for/i.test(
           s.title,
         ),
       );
@@ -718,7 +732,9 @@ export function ensureGuideClosingSteps(
   steps: DetailedGuideStep[],
 ): DetailedGuideStep[] {
   const id = String(guideId || "").trim();
-  if (!id || guideUsesNonLaunchPlaybook(id)) return steps ?? [];
+  if (!id || guideUsesNonLaunchPlaybook(id) || guideUsesPlatformMarketplacePlaybook(id)) {
+    return steps ?? [];
+  }
 
   const rest: DetailedGuideStep[] = [];
   for (const step of steps ?? []) {
@@ -746,7 +762,7 @@ export function finalizeGuidePlaybookSteps(
     audiences: opts?.audiences,
     foundation: guideUsesSavingsFoundation(id)
       ? "savings"
-      : guideUsesGiveBackFoundation(id)
+      : guideUsesGiveBackFoundation(id) || guideUsesPlatformMarketplacePlaybook(id)
         ? "giveback"
         : "business",
   });
@@ -834,34 +850,13 @@ export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
   "junior-give-back-teach": JUNIOR_GIVE_BACK_TEACH_DETAILED_STEPS.map((s) => ({ ...s })),
   "kids-kindness-share": KIDS_KINDNESS_SHARE_DETAILED_STEPS.map((s) => ({ ...s })),
   "kids-piggy-first-goal": KIDS_PIGGY_FIRST_GOAL_DETAILED_STEPS.map((s) => ({ ...s })),
+  "kids-reinvest-jar": KIDS_REINVEST_JAR_DETAILED_STEPS.map((s) => ({ ...s })),
   "family-history-organizer": GENEALOGY_DETAILED_STEPS.map((s) => ({ ...s })),
 
-  rideshare: [
-    {
-      title: "Confirm you meet Uber / Lyft local requirements",
-      desc: "Check current age, vehicle year, insurance, and background-check rules for your city on Uber (https://www.uber.com/us/en/drive/) and Lyft (https://www.lyft.com/driver). Do not apply until your car and license qualify — rules change by market.",
-    },
-    {
-      title: "Apply and complete onboarding docs",
-      desc: "Submit license, registration, proof of insurance, and profile photo in both apps (or start with one). Complete any vehicle inspection they require. Save approval emails in a Drive folder named “Rideshare docs.”",
-    },
-    {
-      title: "Stage the car for passengers",
-      desc: "Clean interior (vac + wipe), remove personal clutter, keep a phone mount and charger cable ready. Stock water or tissues only if your market allows and you can restock cheaply.",
-    },
-    {
-      title: "Map your first peak windows",
-      desc: "Note airport departures, downtown nightlife, and event nights on a one-week calendar. Pair later with AI Timing Scout for ZipCode hotspots — start with 2–3 fixed blocks you can actually drive.",
-    },
-    {
-      title: "Go online for short practice blocks",
-      desc: "Drive 2-hour blocks first. Track every trip: platform, miles, time online, tips. Screenshot end-of-shift earnings. Goal is learning pickup flow, not max hours day one.",
-    },
-    {
-      title: "Log mileage and weekly P&L",
-      desc: "Use a mileage app or Sheet from day one (IRS standard mileage). Once a week: total fares − gas − car washes − phone mount costs. Raise hours only on blocks that beat your $/hour target.",
-    },
-  ],
+  rideshare: RIDESHARE_DETAILED_STEPS.map((s) => ({ ...s })),
+  "junior-reinvest-ceo": JUNIOR_REINVEST_CEO_DETAILED_STEPS.map((s) => ({ ...s })),
+  "property-mgmt": PROPERTY_MGMT_DETAILED_STEPS.map((s) => ({ ...s })),
+  "airbnb-turnover-checker": AIRBNB_TURNOVER_CHECKER_DETAILED_STEPS.map((s) => ({ ...s })),
 
   "web-leads": [
     {

@@ -34,6 +34,12 @@ import {
   mothersHelperToolsDisclaimer,
   babysittingToolsDisclaimer,
   digitalProductsToolsDisclaimer,
+  rideshareToolsDisclaimer,
+  localEventContentToolsDisclaimer,
+  propertyMgmtToolsDisclaimer,
+  juniorReinvestCeoToolsDisclaimer,
+  kidsReinvestJarToolsDisclaimer,
+  airbnbTurnoverCheckerToolsDisclaimer,
   guideToolsDisclaimer,
   prerequisitesDisclaimer,
   pricingDisclaimer,
@@ -88,6 +94,30 @@ import {
   DIGITAL_PRODUCTS_NOTES_WORKSHEET,
   DIGITAL_PRODUCTS_REALITY_CHECK,
 } from "../lib/digital-products-guide";
+import {
+  RIDESHARE_NOTES_WORKSHEET,
+  RIDESHARE_REALITY_CHECK,
+} from "../lib/rideshare-guide";
+import {
+  LOCAL_EVENT_CONTENT_NOTES_WORKSHEET,
+  LOCAL_EVENT_CONTENT_REALITY_CHECK,
+} from "../lib/local-event-content-creator-guide";
+import {
+  PROPERTY_MGMT_NOTES_WORKSHEET,
+  PROPERTY_MGMT_REALITY_CHECK,
+} from "../lib/property-mgmt-guide";
+import {
+  AIRBNB_TURNOVER_CHECKER_NOTES_WORKSHEET,
+  AIRBNB_TURNOVER_CHECKER_REALITY_CHECK,
+} from "../lib/airbnb-turnover-checker-guide";
+import {
+  JUNIOR_REINVEST_CEO_NOTES_WORKSHEET,
+  JUNIOR_REINVEST_CEO_REALITY_CHECK,
+} from "../lib/junior-reinvest-ceo-guide";
+import {
+  KIDS_REINVEST_JAR_NOTES_WORKSHEET,
+  KIDS_REINVEST_JAR_REALITY_CHECK,
+} from "../lib/kids-reinvest-jar-guide";
 
 export type PrepTabId =
   | "all"
@@ -283,6 +313,66 @@ export function GuidePrepSections({
             {DIGITAL_PRODUCTS_REALITY_CHECK.title}
           </strong>
           <p style={{ whiteSpace: "pre-line" }}>{DIGITAL_PRODUCTS_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "rideshare" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {RIDESHARE_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{RIDESHARE_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "local-event-content-creator" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {LOCAL_EVENT_CONTENT_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{LOCAL_EVENT_CONTENT_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "property-mgmt" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {PROPERTY_MGMT_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{PROPERTY_MGMT_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "airbnb-turnover-checker" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {AIRBNB_TURNOVER_CHECKER_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{AIRBNB_TURNOVER_CHECKER_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "junior-reinvest-ceo" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {JUNIOR_REINVEST_CEO_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{JUNIOR_REINVEST_CEO_REALITY_CHECK.body}</p>
+        </aside>
+      ) : guideId === "kids-reinvest-jar" ? (
+        <aside
+          className="gysh-section-panel__reality-check"
+          data-testid={`${testIdPrefix}-reality-check`}
+        >
+          <strong className="gysh-section-panel__reality-check-title">
+            {KIDS_REINVEST_JAR_REALITY_CHECK.title}
+          </strong>
+          <p style={{ whiteSpace: "pre-line" }}>{KIDS_REINVEST_JAR_REALITY_CHECK.body}</p>
         </aside>
       ) : guideId === "local-content-photographer" ? (
         <aside
@@ -553,6 +643,66 @@ export function GuidePrepSections({
                   </p>
                 ))}
             </div>
+          ) : guideId === "rideshare" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {rideshareToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "local-event-content-creator" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {localEventContentToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "property-mgmt" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {propertyMgmtToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "airbnb-turnover-checker" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {airbnbTurnoverCheckerToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "junior-reinvest-ceo" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {juniorReinvestCeoToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
+          ) : guideId === "kids-reinvest-jar" ? (
+            <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
+              {kidsReinvestJarToolsDisclaimer()
+                .split(/\n\n+/)
+                .map((para, i) => (
+                  <p key={i} style={{ whiteSpace: "pre-line" }}>
+                    {para}
+                  </p>
+                ))}
+            </div>
           ) : guideId === "local-content-photographer" ? (
             <div className="gysh-section-panel__intro" data-testid={`${testIdPrefix}-tools-intro`}>
               {localContentPhotoToolsDisclaimer()
@@ -812,6 +962,84 @@ export function GuidePrepSections({
                 </pre>
                 <p className="gysh-section-panel__foot">
                   Copy what you need into your notes below, or keep this open while you launch.
+                </p>
+              </details>
+            ) : guideId === "rideshare" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-rideshare-worksheet`}
+              >
+                <summary>My Rideshare Plan</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {RIDESHARE_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you log shifts.
+                </p>
+              </details>
+            ) : guideId === "local-event-content-creator" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-local-event-worksheet`}
+              >
+                <summary>My Local Event Content Plan</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {LOCAL_EVENT_CONTENT_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you plan events.
+                </p>
+              </details>
+            ) : guideId === "property-mgmt" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-property-mgmt-worksheet`}
+              >
+                <summary>My Property Management Plan</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {PROPERTY_MGMT_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you manage properties.
+                </p>
+              </details>
+            ) : guideId === "airbnb-turnover-checker" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-turnover-checker-worksheet`}
+              >
+                <summary>My Airbnb Turnover Checker Plan</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {AIRBNB_TURNOVER_CHECKER_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below. Never store access codes in public notes.
+                </p>
+              </details>
+            ) : guideId === "junior-reinvest-ceo" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-junior-reinvest-worksheet`}
+              >
+                <summary>My CEO Money Plan</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {JUNIOR_REINVEST_CEO_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you split earnings.
+                </p>
+              </details>
+            ) : guideId === "kids-reinvest-jar" ? (
+              <details
+                className="gysh-section-panel__worksheet"
+                data-testid={`${testIdPrefix}-kids-reinvest-worksheet`}
+              >
+                <summary>My Grow-Your-Hustle Plan</summary>
+                <pre className="gysh-section-panel__worksheet-body">
+                  {KIDS_REINVEST_JAR_NOTES_WORKSHEET}
+                </pre>
+                <p className="gysh-section-panel__foot">
+                  Copy what you need into your notes below, or keep this open while you split coins.
                 </p>
               </details>
             ) : guideId === "local-content-photographer" ? (

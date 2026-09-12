@@ -16,6 +16,8 @@ describe("guide-revenue-calc", () => {
     expect(guideCalcModeForId("cleaning-service")).toBe("service");
     expect(guideCalcModeForId("food-delivery")).toBe("delivery");
     expect(guideCalcModeForId("estate-sale-listing-helper")).toBe("resale");
+    expect(guideCalcModeForId("kids-reinvest-jar")).toBe("split");
+    expect(guideCalcModeForId("junior-reinvest-ceo")).toBe("split");
   });
 
   it("computes delivery cash profit without IRS mileage deduction", () => {
@@ -108,5 +110,27 @@ describe("guide-revenue-calc", () => {
     expect(guideCalcFieldDisplay(25)).toBe("25");
     expect(guideCalcFieldDisplay(0, "")).toBe("");
     expect(guideCalcFieldDisplay(0, "0")).toBe("0");
+  });
+
+  it("splits leftover money only after expenses when percentages total 100", () => {
+    const profile = guideCalcProfileForId("junior-reinvest-ceo", "Reinvest Like a CEO");
+    expect(profile.mode).toBe("split");
+    expect(profile.title).toMatch(/ceo money splitter/i);
+    const result = computeGuideCalc(
+      "split",
+      {
+        moneyCollected: 100,
+        hustleExpenses: 20,
+        savePercent: 40,
+        enjoyPercent: 30,
+        growPercent: 30,
+      },
+      [],
+    );
+    expect(result.net).toBe(80);
+    expect(result.metrics?.saveAmount).toBe(32);
+    expect(result.metrics?.enjoyAmount).toBe(24);
+    expect(result.metrics?.growAmount).toBe(24);
+    expect(result.metrics?.percentagesValid).toBe(true);
   });
 });

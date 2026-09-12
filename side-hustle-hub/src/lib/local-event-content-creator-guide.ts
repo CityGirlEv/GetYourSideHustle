@@ -4,74 +4,119 @@
  */
 
 export const LOCAL_EVENT_CONTENT_REALITY_CHECK = {
-  title: "YOU DON'T NEED TO BE A PROFESSIONAL VIDEOGRAPHER",
+  title: "YOU DO NOT NEED TO BE A PROFESSIONAL VIDEOGRAPHER",
   body: [
-    "This hustle is about quick, useful SOCIAL CONTENT — not producing a wedding film or cinematic commercial.",
+    "This hustle is about useful, fast smartphone content — not producing a wedding film or cinematic commercial.",
     "",
-    "Clients may need: short vertical clips, event photos, behind-the-scenes moments, vendor/activity clips, crowd/atmosphere shots, a short recap Reel, or a simple recap post.",
+    "Clients may need: short vertical clips, event photos, behind-the-scenes footage, vendor or booth clips, crowd/atmosphere shots, simple recap reels, or social-media-ready content.",
+    "",
+    "Start with the phone you already own and learn to capture clean, steady, useful content.",
     "",
     "Tagline: Capture the Moment. Create the Recap. Get Paid.",
   ].join("\n"),
 };
 
 /** Event Content Creator Planner shown above freeform Notes for this guide. */
-export const LOCAL_EVENT_CONTENT_NOTES_WORKSHEET = `MY EVENT CONTENT CREATOR PLAN
+export const LOCAL_EVENT_CONTENT_NOTES_WORKSHEET = `MY LOCAL EVENT CONTENT PLAN
 
-Starter Package: __________
-Price: $____
-Service Area: __________
+Starter Package:
+__________
+Starting Price:
+$____
+Travel Area:
+__________
 
-MARKETING CHANNELS:
+Marketing Channels:
 1. __________
 2. __________
 3. __________
 
-EVENT:
-Client/Organization: __________
-Event: __________
-Date: __________
-Location: __________
-Contact: __________
+CLIENT / EVENT
+Client:
+__________
+Event:
+__________
+Date:
+__________
+Location:
+__________
+Start/End:
+__________
+Contact Person:
+__________
+Agreed Price:
+$____
+Deliverables:
+__________
+Editing Included:
+__________
+Delivery Deadline:
+__________
 
-DELIVERABLES:
-Photos: ______
-Clips: ______
-Reels: ______
-Other: __________
-
-MUST CAPTURE:
+Important Moments:
 1. __________
 2. __________
 3. __________
+4. __________
+5. __________
 
-DO NOT CAPTURE:
-____________________
+Do Not Capture:
+__________
+Permission/Privacy Notes:
+__________
 
-Price: $____
-Expenses: $____
-Profit: $____
-Hours: ______
+RESULTS
+Hours:
+____
+Revenue:
+$____
+Expenses:
+$____
+Profit:
+$____
+Delivered:
+☐ Yes
+☐ No
+Client Happy:
+☐ Yes
+☐ Needs Revision
+Testimonial Requested:
+☐ Yes
+☐ No
+Portfolio Permission:
+☐ Yes
+☐ No
+Rebook:
+☐ Yes
+☐ Maybe
+☐ No
+What Worked:
+__________
+What I Will Improve:
+__________
 
-Delivery Date: __________
-Delivered: ☐
+GYSH PRO TIP
+DON'T TRY TO FILM EVERYTHING.
+Clients usually value USEFUL moments more than hundreds of random clips.
+Before the event, find out what matters most.
+Then capture:
+THE PEOPLE
++ THE ENERGY
++ THE DETAILS
++ THE IMPORTANT MOMENTS
++ THE STORY
+A phone full of footage is not the goal.
+Content the client can actually USE is the goal.
 
-Testimonial Requested: ☐
-Referral Requested: ☐
-Portfolio Permission: ☐
-Next Event Opportunity: __________
-
-GYSH PRO TIP — DON'T SELL “PHOTOS.” SELL CONTENT THEY CAN USE.
-The organizer doesn't just need 20 random pictures.
-They need content that helps them show what happened, thank attendees,
-highlight vendors, promote the next event, and keep social pages active.
-
-Think: “What will they want to POST tomorrow?”
-
-BEGINNER CHALLENGE:
-Attend one parent-approved/local event where photography is allowed
-and create a SAMPLE EVENT RECAP:
-5 strong photos + 5 short vertical clips + 1 simple recap.
-Now you have something to show your first potential client.`;
+ELITE CHALLENGE
+Create ONE sample event-content package.
+Use a safe event or practice setup where you have permission.
+Create:
+10 strong photos
+8 short vertical clips
+1 simple 15–30 second recap
+Then organize everything into a clean delivery folder.
+That becomes the beginning of your portfolio.`;
 
 export const LOCAL_EVENT_CONTENT_PREREQUISITE_EXTRAS: {
   id: string;
@@ -82,31 +127,25 @@ export const LOCAL_EVENT_CONTENT_PREREQUISITE_EXTRAS: {
     id: "overview",
     label: "What this hustle is",
     detail:
-      "Use your smartphone to capture short video clips, photos, and simple event recap content for school events, markets, community gatherings, small businesses, nonprofits, clubs, and other local organizations. Category: Content Creation / Local Business Services. Best for teens, adults, seniors / retirees. Beginner · Very low startup · Flexible / events / weekends · Local events · Per project / recurring · 3–10 hrs/week · Elite Membership.",
+      "Use your smartphone to capture short video clips, photos, and simple event recap content for school events, markets, community gatherings, small businesses, nonprofits, clubs, and other local organizations. Tagline: Capture the Moment. Create the Recap. Get Paid. Category: Content Creation / Local Services. Best for teens, adults, seniors / retirees. Beginner · Very low startup · Flexible / events / weekends · Local / on-site · Per project / recurring · 3–10 hrs/week · Elite Membership · $15–$50 / project (examples).",
   },
   {
     id: "need",
     label: "What you need",
     detail:
-      "Smartphone with a good camera · Enough phone storage · Charged battery · Reliable transportation · Basic photo/video skills · Basic editing ability · Ability to transfer files · Permission to capture the event.",
+      "Smartphone with a good working camera · Enough phone storage · Reliable transportation to local events · Basic photo/video skills · Ability to follow a shot list · Basic editing skills or willingness to learn · Reliable communication · File-delivery method.",
   },
   {
     id: "helpful",
     label: "Helpful",
     detail:
-      "Portable charger · Small tripod/gimbal · Canva · CapCut or similar editor · Google Drive / Dropbox.",
+      "CapCut · Canva · Google Drive or Dropbox · Small tripod or stabilizer · Portable charger · Clip-on microphone when needed · Basic lighting knowledge.",
   },
   {
-    id: "permission",
-    label: "IMPORTANT — permission & privacy",
+    id: "before",
+    label: "Before every event",
     detail:
-      "Confirm what may and may not be photographed. Be especially careful at schools, youth events, private events, and medical/community-service events. Never assume you have permission to photograph/post identifiable people, especially minors. Follow organizer rules and applicable consent/release requirements.",
-  },
-  {
-    id: "pro-tip",
-    label: "GYSH Pro Tip — sell usable content",
-    detail:
-      "Don't sell “photos.” Sell content they can use — show what happened, thank attendees, highlight vendors, promote the next event, and keep social pages active. Ask: what will they want to POST tomorrow?",
+      "Get clear permission from the client/organizer to capture content. Ask about restrictions on photographing or recording attendees. Be especially careful with children/minors, schools, private events, and sensitive locations. Follow venue rules and applicable privacy/recording laws. Never promise professional photography/videography services you are not qualified to provide.",
   },
 ];
 
@@ -136,9 +175,14 @@ export const LOCAL_EVENT_CONTENT_EXTERNAL_LINKS: {
     note: "Alternate file delivery",
   },
   {
-    label: "Google Photos",
-    url: "https://photos.google.com/",
-    note: "Organize and select shots",
+    label: "Google Docs",
+    url: "https://docs.google.com/",
+    note: "Marketing plan / shot list",
+  },
+  {
+    label: "Google Sheets",
+    url: "https://sheets.google.com/",
+    note: "Leads / jobs / income",
   },
   {
     label: "Google Calendar",
@@ -148,18 +192,13 @@ export const LOCAL_EVENT_CONTENT_EXTERNAL_LINKS: {
   {
     label: "Google Maps",
     url: "https://maps.google.com/",
-    note: "Event locations",
-  },
-  {
-    label: "Google Sheets",
-    url: "https://sheets.google.com/",
-    note: "Leads / jobs / income",
+    note: "Local businesses / venues",
   },
 ];
 
 export const LOCAL_EVENT_CONTENT_SUPPLIES = {
   starterKitTotal:
-    "About $0–40 — use the phone you already own; optional power bank / small tripod later. Do NOT buy expensive camera equipment to start.",
+    "About $0–40 — use the phone you already own. Do not buy expensive camera gear before proving people will pay for your service.",
   items: [
     {
       id: "phone",
@@ -176,6 +215,13 @@ export const LOCAL_EVENT_CONTENT_SUPPLIES = {
       notes: "Essential",
     },
     {
+      id: "powerbank",
+      name: "Portable battery pack",
+      qty: "1",
+      estCost: "$15–30",
+      notes: "Essential",
+    },
+    {
       id: "storage",
       name: "Available phone storage",
       qty: "enough for event",
@@ -183,57 +229,64 @@ export const LOCAL_EVENT_CONTENT_SUPPLIES = {
       notes: "Essential — free space before you arrive",
     },
     {
-      id: "data",
-      name: "Internet / data access",
-      qty: "1",
-      estCost: "$0",
-      notes: "Essential for delivery when needed",
-    },
-    {
       id: "transport",
-      name: "Transportation to the event",
+      name: "Reliable transportation",
       qty: "1",
       estCost: "$0+",
       notes: "Essential",
     },
     {
-      id: "powerbank",
-      name: "Portable battery",
+      id: "shotlist",
+      name: "Notes / shot list",
       qty: "1",
-      estCost: "$15–30",
-      notes: "Helpful",
-      optional: true,
+      estCost: "$0–3",
+      notes: "Essential",
+    },
+    {
+      id: "delivery",
+      name: "File-delivery method",
+      qty: "1",
+      estCost: "$0",
+      notes: "Essential — Drive / Dropbox",
     },
     {
       id: "tripod",
       name: "Small tripod",
       qty: "1",
       estCost: "$10–25",
-      notes: "Helpful",
+      notes: "Useful",
       optional: true,
     },
     {
       id: "gimbal",
-      name: "Gimbal",
+      name: "Phone stabilizer / gimbal",
       qty: "1",
       estCost: "$30–80",
-      notes: "Helpful — buy later if needed",
-      optional: true,
-    },
-    {
-      id: "light",
-      name: "Phone light",
-      qty: "1",
-      estCost: "$10–25",
-      notes: "Helpful",
+      notes: "Useful — buy later if needed",
       optional: true,
     },
     {
       id: "cloth",
-      name: "Cleaning cloth",
+      name: "Microfiber lens cloth",
       qty: "1",
       estCost: "$0–5",
-      notes: "Helpful — clean lens before shooting",
+      notes: "Useful — clean lens before shooting",
+      optional: true,
+    },
+    {
+      id: "earbuds",
+      name: "Earbuds / headphones",
+      qty: "1",
+      estCost: "$0–15",
+      notes: "Useful",
+      optional: true,
+    },
+    {
+      id: "light",
+      name: "Simple phone light",
+      qty: "1",
+      estCost: "$10–25",
+      notes: "Useful",
       optional: true,
     },
     {
@@ -241,15 +294,47 @@ export const LOCAL_EVENT_CONTENT_SUPPLIES = {
       name: "Small bag",
       qty: "1",
       estCost: "$0–15",
-      notes: "Helpful",
+      notes: "Useful",
       optional: true,
     },
     {
-      id: "shotlist",
-      name: "Shot checklist (printed)",
+      id: "water",
+      name: "Water",
       qty: "1",
       estCost: "$0–3",
-      notes: "Helpful",
+      notes: "Useful",
+      optional: true,
+    },
+    {
+      id: "mic",
+      name: "Clip-on microphone",
+      qty: "1",
+      estCost: "$10–40",
+      notes: "Optional",
+      optional: true,
+    },
+    {
+      id: "cloud",
+      name: "Extra phone storage / cloud plan",
+      qty: "1",
+      estCost: "$0+",
+      notes: "Optional",
+      optional: true,
+    },
+    {
+      id: "backdrop",
+      name: "Basic backdrop for vendor/product shots",
+      qty: "1",
+      estCost: "$0–20",
+      notes: "Optional",
+      optional: true,
+    },
+    {
+      id: "second-device",
+      name: "Second phone / device",
+      qty: "1",
+      estCost: "$0+",
+      notes: "Optional",
       optional: true,
     },
   ],
@@ -266,10 +351,17 @@ export const LOCAL_EVENT_CONTENT_TOOLS: {
 }[] = [
   {
     id: "lec_camera",
-    name: "Phone Camera",
+    name: "Smartphone Camera",
     freePlanAvailable: false,
     planLabelApplicable: false,
     costNote: "Capture photos and short vertical clips",
+  },
+  {
+    id: "lec_gallery",
+    name: "Photos / Gallery app",
+    freePlanAvailable: true,
+    planLabelApplicable: false,
+    costNote: "Review and select shots",
   },
   {
     id: "lec_capcut",
@@ -286,32 +378,47 @@ export const LOCAL_EVENT_CONTENT_TOOLS: {
     url: "https://www.canva.com/",
   },
   {
+    id: "lec_native",
+    name: "Native phone editing tools",
+    freePlanAvailable: true,
+    planLabelApplicable: false,
+    costNote: "Light photo/clip edits",
+  },
+  {
     id: "lec_drive",
-    name: "Google Drive / Dropbox",
+    name: "Google Drive",
     freePlanAvailable: true,
     costNote: "Client delivery",
     url: "https://drive.google.com/",
   },
   {
-    id: "lec_photos",
-    name: "Google Photos / Photos",
+    id: "lec_dropbox",
+    name: "Dropbox",
     freePlanAvailable: true,
-    costNote: "Organization and selection",
-    url: "https://photos.google.com/",
+    costNote: "Alternate file delivery",
+    url: "https://www.dropbox.com/",
+    optional: true,
+  },
+  {
+    id: "lec_docs",
+    name: "Google Docs",
+    freePlanAvailable: true,
+    costNote: "Marketing plan / shot list",
+    url: "https://docs.google.com/",
+  },
+  {
+    id: "lec_notes",
+    name: "Notes",
+    freePlanAvailable: true,
+    planLabelApplicable: false,
+    costNote: "Shot list and event notes",
   },
   {
     id: "lec_calendar",
-    name: "Google Calendar",
+    name: "Calendar",
     freePlanAvailable: true,
     costNote: "Bookings",
     url: "https://calendar.google.com/",
-  },
-  {
-    id: "lec_maps",
-    name: "Google Maps",
-    freePlanAvailable: true,
-    costNote: "Event locations",
-    url: "https://maps.google.com/",
   },
   {
     id: "lec_sheets",
@@ -321,51 +428,74 @@ export const LOCAL_EVENT_CONTENT_TOOLS: {
     url: "https://sheets.google.com/",
   },
   {
-    id: "lec_social",
-    name: "Instagram / Facebook",
+    id: "lec_ig",
+    name: "Instagram",
     freePlanAvailable: true,
     costNote: "Portfolio when appropriate",
     optional: true,
+  },
+  {
+    id: "lec_fb",
+    name: "Facebook",
+    freePlanAvailable: true,
+    costNote: "Local outreach",
+    optional: true,
+  },
+  {
+    id: "lec_tiktok",
+    name: "TikTok",
+    freePlanAvailable: true,
+    costNote: "Sample vertical content when appropriate",
+    optional: true,
+  },
+  {
+    id: "lec_maps",
+    name: "Google Maps",
+    freePlanAvailable: true,
+    costNote: "Finding local businesses / venues",
+    url: "https://maps.google.com/",
   },
   {
     id: "lec_stack",
     name: "Beginner Tool Stack",
     freePlanAvailable: false,
     planLabelApplicable: false,
-    costNote: "Smartphone + CapCut + Canva + Google Drive",
+    costNote: "Smartphone + CapCut + Canva + Google Drive + Google Sheets",
   },
 ];
 
 export const LOCAL_EVENT_CONTENT_PRICING = {
   tabLabel: "Suggested Pricing",
   intro: [
-    "STARTER EXAMPLES — displayed range: $15–$50/project (examples).",
+    "STARTER PRICING EXAMPLES — displayed range: $15–$50/project (examples).",
     "",
-    "Always agree BEFORE the event: Time + Deliverables + Editing + Delivery Date + Price.",
+    "Always define what is included BEFORE the event: time + deliverables + editing + delivery date + price.",
     "",
-    "As experience, portfolio quality, editing, event length, and deliverables increase, larger custom packages may exceed the starter $15–$50 examples.",
+    "Pricing can vary by event length, travel, number of photos/clips, editing, turnaround time, number of finished videos, special requests, and usage expectations.",
     "",
-    "Examples only — not income guarantees. Pricing varies by market, experience, deliverables, and travel.",
+    "Example: 60 minutes on-site + 15 edited photos + 10 short vertical clips + 1 simple recap reel = agreed project price.",
+    "",
+    "Examples only — not income guarantees.",
   ].join("\n"),
   raiseTip:
     "After a few strong events, raise rates or add Reel / same-day / caption packages. Examples only — not income guarantees.",
   items: [
     {
-      id: "mini",
-      label: "MINI CONTENT CAPTURE — 15–20 minutes · 5–10 usable photos/clips",
-      price: "$15–$25",
+      id: "quick",
+      label: "QUICK CONTENT CAPTURE — short event visit · small set of usable clips/photos",
+      price: "$15–$25 / project",
       notes: "Starter package",
     },
     {
-      id: "event-mini",
-      label: "EVENT MINI — 30–45 minutes · 10–20 usable photos/clips",
-      price: "$25–$40",
+      id: "mini",
+      label: "EVENT MINI — more coverage plus organized clips/photos",
+      price: "$25–$40 / project",
       notes: "Common beginner booking",
     },
     {
       id: "recap",
-      label: "EVENT RECAP — 45–60 minutes · content collection + simple recap",
-      price: "$40–$50+",
+      label: "SIMPLE EVENT RECAP — capture plus a simple edited recap or social-ready deliverable",
+      price: "$40–$50+ / project",
       notes: "Content + simple recap",
     },
     {
@@ -374,316 +504,278 @@ export const LOCAL_EVENT_CONTENT_PRICING = {
       price: "$15–$50 / project",
       notes: "Examples only — not income guarantees",
     },
-    {
-      id: "reel",
-      label: "Add-on: Edited Reel",
-      price: "Additional fee",
-    },
-    {
-      id: "hour",
-      label: "Add-on: Additional hour",
-      price: "Additional fee",
-    },
-    {
-      id: "same-day",
-      label: "Add-on: Same-day delivery",
-      price: "Additional fee",
-    },
-    {
-      id: "clips",
-      label: "Add-on: Additional edited clips",
-      price: "Additional fee",
-    },
-    {
-      id: "canva",
-      label: "Add-on: Canva recap graphic",
-      price: "Additional fee",
-    },
-    {
-      id: "caption",
-      label: "Add-on: Caption writing",
-      price: "Additional fee",
-    },
-    {
-      id: "location",
-      label: "Add-on: Additional location",
-      price: "Additional fee",
-    },
   ],
 };
 
 /**
  * Core launch steps (exactly 11). Steps 3–5 are the required marketing block
  * (Choose channels / Make materials / Carry out), tailored to local events.
- * Foundation + closing are applied by finalize.
  */
 export const LOCAL_EVENT_CONTENT_DETAILED_STEPS: { title: string; desc: string }[] = [
   {
-    title: "Choose Your Event Services",
+    title: "Choose Your Event Content Services",
     desc: [
-      "Start simple.",
+      "Pick a simple starter service.",
       "",
-      "I Offer:",
-      "☐ Photos",
+      "Examples:",
+      "☐ Event photos",
       "☐ Short vertical video clips",
-      "☐ Behind-the-scenes content",
-      "☐ Vendor/activity clips",
-      "☐ Event recap",
-      "☐ Simple edited Reel",
-      "☐ Recap caption/post",
+      "☐ Behind-the-scenes clips",
+      "☐ Vendor booth content",
+      "☐ Speaker/activity clips",
+      "☐ Crowd/atmosphere content",
+      "☐ Simple recap reel",
+      "☐ Social-media content bundle",
       "",
-      "Events I Want:",
-      "☐ Markets",
-      "☐ Community events",
-      "☐ School events where permitted",
-      "☐ Sports/community programs",
-      "☐ Fundraisers",
-      "☐ Church/community gatherings",
-      "☐ Small business events",
-      "☐ Pop-ups",
-      "☐ Other: __________",
+      "Start with what you can confidently create using your current phone.",
+      "",
+      "Write:",
+      "My Starter Service: __________",
     ].join("\n"),
   },
   {
-    title: "Build Your Starter Package",
+    title: "Build One Starter Package",
     desc: [
-      "Choose ONE easy offer.",
+      "Create one easy-to-understand offer.",
       "",
       "Example:",
       "",
-      "LOCAL EVENT MINI",
-      "30 minutes",
-      "10–15 usable photos/clips",
-      "Digital delivery",
-      "$____",
+      "LOCAL EVENT CONTENT MINI",
+      "Includes:",
+      "Up to 60 minutes on-site",
+      "10–15 edited photos",
+      "8–12 short vertical clips",
+      "Files delivered digitally",
+      "Starting Price: $____",
       "",
-      "Optional Add-On:",
-      "Simple recap Reel + $____",
+      "Clearly state:",
+      "Event time included · Number/type of deliverables · Whether editing is included · Delivery timeframe · Travel area",
       "",
-      "Keep your first offer easy to explain and deliver.",
+      "Do not promise unlimited content.",
     ].join("\n"),
   },
   {
     title: "Choose Your Marketing Channels",
     desc: [
-      "A channel is one way potential clients hear about you.",
+      "A “channel” is one way people hear about your service.",
       "",
-      "Pick ONLY 2 or 3 this month.",
+      "Do not try everything at once. Pick only 2 or 3 this month.",
       "",
-      "Good channels:",
-      "☐ Direct outreach to event organizers",
-      "☐ Local businesses",
-      "☐ Vendor/market organizers",
-      "☐ Facebook community/business groups",
+      "Good channels for this hustle:",
+      "☐ Facebook",
       "☐ Instagram",
+      "☐ TikTok",
       "☐ Email",
       "☐ Text/referrals",
+      "☐ Local business outreach",
       "☐ Community organizations",
       "☐ Schools/clubs where appropriate",
-      "☐ Local nonprofits",
-      "☐ Networking at events",
+      "☐ Event organizers",
+      "☐ Local markets/vendors",
       "",
-      "Write at top of your marketing plan:",
-      "Service: __________",
-      "Starter Price: $____",
-      "Area Served: __________",
+      "Open Google Docs from the Tools tab.",
+      "At the top write:",
+      "What I Sell: __________",
+      "Starting Price: $____",
+      "See Suggested Pricing for starter examples.",
       "",
-      "Set measurable goals:",
-      "☐ Contact _____ organizers",
-      "☐ Contact _____ local businesses",
-      "☐ Post _____ portfolio examples",
-      "☐ Ask _____ people for referrals",
+      "Choose exactly 2 or 3 channels. Then write ONE measurable goal for each.",
+      "",
+      "Examples:",
+      "Contact 10 local event organizers",
+      "Post 3 sample videos this week",
+      "Introduce myself to 5 market vendors",
     ].join("\n"),
   },
   {
     title: "Make Your Marketing Materials",
     desc: [
-      "Create:",
-      "1. Simple Canva flyer/service graphic",
+      "Create a small marketing kit.",
+      "",
+      "Make:",
+      "1. One simple service flyer",
       "2. 3–6 sample photos/clips",
-      "3. Short portfolio/reel if possible",
-      "4. Short outreach message",
+      "3. One short portfolio/sample reel",
+      "4. One message you can send to prospects",
+      "5. Clear starting price or “packages start at…”",
       "",
-      "Sample:",
+      "Sample copy:",
       "",
-      "LOCAL EVENT CONTENT CREATOR",
+      "NEED FRESH CONTENT FROM YOUR NEXT EVENT?",
       "",
-      "Hosting an event?",
+      "I capture smartphone photos, vertical clips, behind-the-scenes moments, and simple recap content for local events, businesses, clubs, nonprofits, and community organizations.",
       "",
-      "I capture quick photos and short vertical video clips you can use for your social media and event recap.",
+      "Packages start at $____.",
+      "Message me for availability.",
       "",
-      "☐ Photos",
-      "☐ Short Video Clips",
-      "☐ Behind-the-Scenes",
-      "☐ Event Recap Content",
-      "",
-      "Packages starting at $____",
-      "Serving: __________",
-      "Contact: __________",
-      "",
-      "OUTREACH MESSAGE:",
-      "",
-      "“Hi! I saw you're hosting __________. I create affordable social content for local events — short clips, photos and recap content that organizers can use after the event. My starter package is $____. I'd love to send you a few examples.”",
+      "Use your own work or properly licensed material in your portfolio.",
+      "Never present someone else’s content as yours.",
     ].join("\n"),
   },
   {
     title: "Carry Out Your Marketing Plan",
     desc: [
-      "Use ONLY the 2–3 channels you selected.",
+      "This week, use ONLY the 2 or 3 channels you selected.",
       "",
-      "This week:",
-      "☐ Contact 8–12 relevant organizers/businesses",
-      "☐ Send your short pitch",
-      "☐ Share portfolio examples",
-      "☐ Post in selected local channels",
-      "☐ Ask for referrals",
+      "Possible actions:",
+      "☐ Contact 8–12 relevant local prospects",
+      "☐ Message event organizers",
+      "☐ Introduce yourself to market vendors",
+      "☐ Contact small businesses hosting events",
+      "☐ Share sample content on your selected social channel",
+      "☐ Ask trusted contacts for referrals",
       "",
-      "Look for upcoming: markets, festivals, fundraisers, pop-ups, community events, business openings, sports events, workshops, school/community activities where permitted.",
+      "Sample outreach:",
+      "“Hi! I create quick smartphone photo and video content for local events. I can capture vertical clips, photos, behind-the-scenes moments, and a simple recap that you can use on social media. My starter packages begin at $____. Do you have an upcoming event where you could use fresh content?”",
       "",
       "Track:",
-      "Date | Organization | Event | Channel | Response | Follow-Up",
+      "Date | Prospect | Channel | Response | Follow-Up",
       "",
-      "Follow up politely if there is no response.",
+      "Do not spam. Personalize outreach when possible. Reply promptly.",
     ].join("\n"),
   },
   {
     title: "Book & Define the Job",
     desc: [
-      "Before accepting, confirm:",
+      "Before accepting the event, confirm:",
       "",
-      "Event: __________",
+      "Client/organization: __________",
+      "Event type: __________",
       "Date: __________",
       "Location: __________",
-      "Arrival: __________",
-      "End Time: __________",
+      "Start/end time: __________",
+      "Contact person: __________",
+      "What they want captured: __________",
+      "What NOT to capture: __________",
+      "Number/type of deliverables: __________",
+      "Editing included?: __________",
+      "Delivery deadline: __________",
       "Price: $____",
+      "Payment method: __________",
+      "Permission/release requirements: __________",
+      "Rules involving attendees/minors: __________",
+      "Venue restrictions: __________",
       "",
-      "Deliverables:",
-      "_____ Photos",
-      "_____ Raw Clips",
-      "_____ Edited Clips",
-      "_____ Reel(s)",
-      "_____ Recap Post/Caption",
-      "",
-      "Delivery Deadline: __________",
-      "",
-      "Also confirm:",
-      "What should be captured? · What should NOT be captured? · Who can be photographed? · Where can you go? · Who is your event contact?",
-      "",
-      "Get agreement in writing when practical.",
+      "Get important expectations in writing.",
     ].join("\n"),
   },
   {
     title: "Create Your Shot List",
     desc: [
-      "Don't arrive and randomly record everything.",
+      "Before the event, create a short shot list.",
       "",
-      "Create:",
-      "☐ Venue/sign",
+      "Possible shots:",
+      "☐ Venue exterior/sign",
       "☐ Setup",
-      "☐ Organizer",
+      "☐ Decorations/details",
+      "☐ Hosts",
       "☐ Vendors",
-      "☐ Products/displays",
+      "☐ Products",
+      "☐ Speakers",
       "☐ Activities",
-      "☐ Crowd atmosphere where permitted",
-      "☐ Close-up details",
+      "☐ Crowd atmosphere",
+      "☐ Hands/details",
       "☐ Wide shots",
+      "☐ Medium shots",
+      "☐ Close-ups",
       "☐ Vertical clips",
-      "☐ Key event moment",
-      "☐ Closing shot",
+      "☐ Closing moment",
       "",
-      "Ask organizer:",
-      "“What are the 3 things you MOST want captured?”",
+      "Ask:",
+      "“What are the 5 things you absolutely want captured?”",
+      "",
+      "Put those at the top of the list.",
     ].join("\n"),
   },
   {
     title: "Capture the Event",
     desc: [
-      "Arrive 10–15 minutes early when appropriate.",
+      "Arrive early enough to get oriented.",
       "",
-      "Before:",
-      "☐ Clean camera lens",
-      "☐ Charge phone",
+      "Before shooting:",
+      "☐ Clean phone lens",
+      "☐ Check battery",
       "☐ Check storage",
-      "☐ Review shot list",
+      "☐ Confirm contact person",
+      "☐ Review restrictions",
+      "☐ Confirm important moments",
       "",
-      "Capture a MIX:",
-      "WIDE — show the event",
-      "MEDIUM — people/activity",
-      "CLOSE — details/products/signage",
+      "During the event:",
+      "Capture short steady clips · Mix wide, medium, and close shots · Shoot vertical content when intended for Reels/TikTok/Shorts · Get multiple angles · Avoid excessive zoom · Watch lighting · Capture natural movement",
       "",
-      "For video: record several short, steady vertical clips.",
-      "",
-      "Avoid recording everything from one spot.",
-      "",
-      "Respect privacy and organizer restrictions.",
+      "Do not block guests or disrupt the event.",
+      "Respect anyone the client says should not be photographed/recorded.",
     ].join("\n"),
   },
   {
-    title: "Organize & Edit",
+    title: "Organize & Edit the Content",
     desc: [
-      "After event:",
-      "☐ Remove unusable shots",
-      "☐ Choose strongest content",
-      "☐ Lightly correct photos if needed",
-      "☐ Trim clips",
-      "☐ Create agreed Reel/recap",
-      "☐ Check spelling",
-      "☐ Confirm correct event/business names",
-      "☐ Keep within agreed deliverables",
+      "After the event:",
+      "1. Back up the files",
+      "2. Remove obvious unusable clips",
+      "3. Organize the best content",
+      "4. Edit only what the package includes",
+      "5. Check orientation",
+      "6. Check sound where relevant",
+      "7. Correct obvious exposure/cropping issues",
+      "8. Export in the agreed format",
       "",
-      "Don't bury the client in hundreds of bad files.",
+      "For a simple recap:",
+      "Start with a strong opening clip · Use short clips · Keep pacing moving · Add captions/text if included · Use properly licensed/platform-appropriate music · End with a useful closing shot or client CTA if requested",
       "",
-      "Deliver the BEST usable content.",
+      "Do not over-edit simple content packages.",
     ].join("\n"),
   },
   {
     title: "Deliver & Get Approval",
     desc: [
-      "Create organized delivery folders:",
+      "Deliver using the agreed method.",
       "",
+      "Examples: Google Drive folder · Dropbox folder · Approved direct delivery",
+      "",
+      "Organize files clearly.",
+      "",
+      "Example:",
       "EVENT NAME",
-      "├── Photos",
-      "├── Video Clips",
-      "└── Edited Content",
+      "/ Photos",
+      "/ Vertical Clips",
+      "/ Finished Recap",
       "",
-      "Send through agreed delivery method.",
+      "Send:",
+      "“Your event content is ready! Here is the delivery link: ________. Please review it and let me know if anything included in our agreed package needs attention.”",
       "",
-      "Message:",
-      "“Your event content is ready! I've included the photos/clips and the agreed recap content here: __________. Thank you for having me capture your event.”",
-      "",
-      "Ask:",
-      "“Is everything you expected included?”",
+      "If revisions are included, clearly limit them to the agreed scope.",
     ].join("\n"),
   },
   {
-    title: "Turn One Event into More Events",
+    title: "Turn One Event into More Work",
     desc: [
-      "After successful delivery:",
+      "After successful delivery, ask:",
+      "“Would you like me to help with your next event?”",
       "",
-      "Ask for:",
+      "Also ask for:",
       "☐ Testimonial",
       "☐ Referral",
-      "☐ Permission to use selected work in portfolio",
-      "☐ Next event booking",
+      "☐ Permission to show selected work in portfolio",
+      "☐ Upcoming event dates",
+      "☐ Monthly/recurring content needs",
       "",
-      "Message:",
-      "“I'm glad you enjoyed the content! If you have another event coming up, I'd love to help again. And if you know another organizer who needs event content, referrals are always appreciated.”",
+      "Possible recurring clients:",
+      "Markets · Restaurants · Boutiques · Churches · Nonprofits · Clubs · Community organizations · Sports organizations · Event planners · Local venues",
       "",
-      "Then contact appropriate vendors/businesses you met at the event ONLY when appropriate and permitted.",
-      "",
-      "One event can lead to:",
-      "Organizer → Vendor → Business → Another Event → Recurring Client",
+      "Build:",
+      "ONE EVENT → GOOD CONTENT → HAPPY CLIENT → TESTIMONIAL → REFERRAL → NEXT EVENT",
     ].join("\n"),
   },
 ];
 
 export function localEventContentToolsDisclaimer(): string {
   return [
-    "Beginner stack: Smartphone + CapCut + Canva + Google Drive.",
+    "Beginner stack: Smartphone + CapCut + Canva + Google Drive + Google Sheets.",
     "",
     "This is smartphone social content for local events — not professional videography or cinematic commercials.",
     "",
     "Always confirm photo/video permission, especially at schools and youth events.",
+    "Never promise professional photography/videography services you are not qualified to provide.",
   ].join("\n");
 }

@@ -12,7 +12,8 @@ export type GuideCalcMode =
   | "resale"
   | "research"
   | "impact"
-  | "kindness";
+  | "kindness"
+  | "split";
 
 export type GuideCalcBudgetLine = { id: string; label: string; amount: number };
 
@@ -41,6 +42,15 @@ const DELIVERY_BUDGET: GuideCalcBudgetLine[] = [
   { id: "other", label: "Other expenses ($)", amount: 0 },
 ];
 
+const RIDESHARE_BUDGET: GuideCalcBudgetLine[] = [
+  { id: "fuel", label: "Fuel / charging ($)", amount: 0 },
+  { id: "tolls", label: "Tolls / parking paid by driver ($)", amount: 0 },
+  { id: "cleaning", label: "Cleaning ($)", amount: 0 },
+  { id: "maintenance", label: "Maintenance reserve ($)", amount: 0 },
+  { id: "insurance", label: "Insurance / rideshare coverage allocation ($)", amount: 0 },
+  { id: "other", label: "Other expenses ($)", amount: 0 },
+];
+
 const LODGING_BUDGET: GuideCalcBudgetLine[] = [
   { id: "mortgage", label: "Mortgage / rent", amount: 0 },
   { id: "utilities", label: "Utilities", amount: 0 },
@@ -66,7 +76,7 @@ const SOCIAL_BUDGET: GuideCalcBudgetLine[] = [
 ];
 
 /** Guide IDs that use lodging (STR) math. */
-const LODGING_IDS = new Set(["airbnb", "str-cohost", "airbnb-cohost", "property-mgmt"]);
+const LODGING_IDS = new Set(["airbnb", "str-cohost", "airbnb-cohost"]);
 
 /** Guide IDs that use product / ecom math. */
 const PRODUCT_IDS = new Set([
@@ -82,7 +92,7 @@ const PRODUCT_IDS = new Set([
 const SOCIAL_IDS = new Set(["social", "affiliate"]);
 
 /** DoorDash / Uber Eats–style delivery driver session math (cash expenses, not IRS mileage). */
-const DELIVERY_IDS = new Set(["food-delivery"]);
+const DELIVERY_IDS = new Set(["food-delivery", "rideshare"]);
 
 /** Per-item resale profit math (estate / antique reseller). */
 const RESALE_IDS = new Set(["estate-sale-listing-helper"]);
@@ -96,10 +106,14 @@ const IMPACT_IDS = new Set(["junior-give-back-teach"]);
 /** Kids kindness counter (not revenue) — Guide #008. */
 const KINDNESS_IDS = new Set(["kids-kindness-share"]);
 
+/** Fun/Save/Grow or Save/Enjoy/Grow money splitter — Guides #074 / #099. */
+const SPLIT_IDS = new Set(["kids-reinvest-jar", "junior-reinvest-ceo"]);
+
 export function guideCalcModeForId(guideId: string): GuideCalcMode {
   const id = String(guideId || "").trim();
   if (KINDNESS_IDS.has(id)) return "kindness";
   if (IMPACT_IDS.has(id)) return "impact";
+  if (SPLIT_IDS.has(id)) return "split";
   if (DELIVERY_IDS.has(id)) return "delivery";
   if (RESALE_IDS.has(id)) return "resale";
   if (RESEARCH_IDS.has(id)) return "research";
@@ -132,6 +146,28 @@ export function guideCalcProfileForId(guideId: string, guideName?: string): Guid
     };
   }
 
+  if (mode === "split") {
+    const kids = id === "kids-reinvest-jar";
+    return {
+      mode,
+      title: kids ? `${name} — Money Splitter` : `${name} — CEO Money Splitter`,
+      blurb: kids
+        ? "Enter money earned, costs, and Fun / Save / Grow percentages (must total 100%). Split only the money left after costs."
+        : "Enter money collected, hustle expenses, and Save / Enjoy / Grow percentages (must total 100%). Split only Money Available after expenses.",
+      disclaimerExtra: kids
+        ? "Do not call all the money you collected “profit.” Fun / Save / Grow percentages MUST add to 100%."
+        : "Do not call gross money collected “profit.” Expenses must be deducted BEFORE the split. Percentages MUST total 100%.",
+      defaults: {
+        moneyCollected: 0,
+        hustleExpenses: 0,
+        savePercent: 0,
+        enjoyPercent: 0,
+        growPercent: 0,
+      },
+      budget: [],
+    };
+  }
+
   if (mode === "impact") {
     return {
       mode,
@@ -153,11 +189,13 @@ export function guideCalcProfileForId(guideId: string, guideName?: string): Guid
   }
 
   if (mode === "delivery") {
+    const rideshare = id === "rideshare";
     return {
       mode,
-      title: `${name} — Delivery Driver mode`,
-      blurb:
-        "Enter session hours, deliveries, base pay, tips, promotions, miles, and cash expenses (fuel, tolls, other). Estimates are for planning only.",
+      title: rideshare ? `${name} — Rideshare Profit Calculator` : `${name} — Delivery Driver mode`,
+      blurb: rideshare
+        ? "Enter app earnings, tips, bonuses, online hours, miles, and cash vehicle expenses. Gross in the app is not profit."
+        : "Enter session hours, deliveries, base pay, tips, promotions, miles, and cash expenses (fuel, tolls, other). Estimates are for planning only.",
       disclaimerExtra:
         "Estimates are for planning purposes only. Actual earnings, expenses and tax treatment vary. This calculator uses cash vehicle costs you enter — it does NOT subtract the IRS standard mileage deduction (a tax deduction is not the same as cash spent).",
       defaults: {
@@ -168,7 +206,7 @@ export function guideCalcProfileForId(guideId: string, guideName?: string): Guid
         promotions: 0,
         totalMiles: 0,
       },
-      budget: DELIVERY_BUDGET.map((l) => ({ ...l })),
+      budget: (rideshare ? RIDESHARE_BUDGET : DELIVERY_BUDGET).map((l) => ({ ...l })),
     };
   }
 
@@ -302,6 +340,10 @@ export function guideCalcProfileForId(guideId: string, guideName?: string): Guid
                       ? `${name} — Mother's Helper Earnings Calculator`
                       : id === "babysitting"
                         ? `${name} — Babysitting Earnings Calculator`
+                        : id === "local-event-content-creator"
+                          ? `${name} — Local Event Content Profit Calculator`
+                          : id === "property-mgmt"
+                            ? `${name} — Property Management Profit Calculator`
                 : `${name} — monthly profit`,
     blurb:
       id === "kids-party-game-host"
@@ -322,6 +364,10 @@ export function guideCalcProfileForId(guideId: string, guideName?: string): Guid
                       ? "Enter average job price, jobs per week, tips/extra approved pay, weekly expenses, and hours worked per week. See weekly revenue, weekly profit, monthly estimate, and effective hourly rate. Parent must remain present."
                       : id === "babysitting"
                         ? "Enter hourly rate, hours per job, jobs per week, add-on income, and weekly expenses. Job pay = rate × hours. Weekly revenue = job pay × jobs + add-ons. Monthly estimate = weekly profit × 4.33."
+                        : id === "local-event-content-creator"
+                          ? "Enter project price, projects per week, tips/extra approved pay, hours per project, and expenses. Weekly profit × 4.33 = monthly estimate. Effective profit per hour = weekly profit ÷ total weekly hours."
+                          : id === "property-mgmt"
+                            ? "Enter number of properties, average management/service fee per property, one-time/other earned fees, and business expenses. Recurring revenue = properties × fee. Do not count owner/client funds as your revenue."
                 : "Enter jobs (or clients) per month, average sale, and your operating costs.",
     disclaimerExtra:
       id === "kids-party-game-host"
@@ -342,6 +388,10 @@ export function guideCalcProfileForId(guideId: string, guideName?: string): Guid
                       ? "Planning estimates only. Actual job volume, tips, expenses, and earnings vary. This calculator is for parent-present Mother's Helper work — not solo babysitting."
                       : id === "babysitting"
                         ? "Planning estimates only. Actual rates, hours, add-ons, expenses, and earnings vary. Examples are not income guarantees."
+                        : id === "local-event-content-creator"
+                          ? "Planning estimates only. Revenue is money received. Profit is money remaining after business expenses. Examples are not income guarantees."
+                          : id === "property-mgmt"
+                            ? "Owner rent, tenant security deposits, taxes, guest payments, repair funds, or other client money should NOT be counted as earned revenue. Only count fees your business actually earns."
                 : undefined,
     defaults: {
       jobsPerMonth: 0,
@@ -349,6 +399,8 @@ export function guideCalcProfileForId(guideId: string, guideName?: string): Guid
       ...(id === "lead-followup-assistant" ? { hoursPerClient: 0 } : {}),
       ...(id === "personal-shopper" ? { addOnFees: 0 } : {}),
       ...(id === "youth-sports-helper" ? { extraEventPay: 0, hoursPerPractice: 0 } : {}),
+      ...(id === "local-event-content-creator" ? { extraEventPay: 0, hoursPerShoot: 0 } : {}),
+      ...(id === "property-mgmt" ? { addOnFees: 0 } : {}),
       ...(id === "local-content-photographer"
         ? { hoursPerShoot: 0, editingHoursPerShoot: 0 }
         : {}),
@@ -394,11 +446,28 @@ export function guideCalcProfileForId(guideId: string, guideName?: string): Guid
                       { id: "software", label: "Software / phone expense ($)", amount: 0 },
                       { id: "other", label: "Other expenses ($)", amount: 0 },
                     ]
-                  : id === "online-research-assistant"
+                      : id === "online-research-assistant"
                     ? [
                         { id: "software", label: "Software costs ($ / week)", amount: 0 },
                         { id: "other", label: "Other expenses ($ / week)", amount: 0 },
                       ]
+                    : id === "local-event-content-creator"
+                      ? [
+                          { id: "transport", label: "Travel/mileage cost ($ / week)", amount: 0 },
+                          { id: "tolls", label: "Parking/tolls ($ / week)", amount: 0 },
+                          { id: "software", label: "Editing/app costs ($ / week)", amount: 0 },
+                          { id: "other", label: "Other expenses ($ / week)", amount: 0 },
+                        ]
+                      : id === "property-mgmt"
+                        ? [
+                            { id: "software", label: "Software ($)", amount: 0 },
+                            { id: "internet", label: "Phone/internet business allocation ($)", amount: 0 },
+                            { id: "transport", label: "Travel ($)", amount: 0 },
+                            { id: "insurance", label: "Insurance ($)", amount: 0 },
+                            { id: "admin", label: "Contractor/admin help ($)", amount: 0 },
+                            { id: "ads", label: "Marketing ($)", amount: 0 },
+                            { id: "other", label: "Other business expenses ($)", amount: 0 },
+                          ]
                     : id === "mothers-helper"
                       ? [{ id: "other", label: "Weekly expenses ($)", amount: 0 }]
                       : id === "babysitting"
@@ -437,6 +506,12 @@ export type GuideCalcResult = {
     totalHelpingHours?: number;
     kindnessMonthlyGoal?: number;
     kindnessStillToGo?: number;
+    moneyAvailable?: number;
+    saveAmount?: number;
+    enjoyAmount?: number;
+    growAmount?: number;
+    percentTotal?: number;
+    percentagesValid?: boolean;
     salesNeeded?: number;
     profitPerSale?: number;
   };
@@ -484,6 +559,45 @@ export function computeGuideCalc(
         totalHelpingHours,
         kindnessMonthlyGoal: monthlyGoal,
         kindnessStillToGo: stillToGo,
+      },
+    };
+  }
+
+  if (mode === "split") {
+    const collected = Math.max(0, inputs.moneyCollected || 0);
+    const expensesIn = Math.max(0, inputs.hustleExpenses || 0);
+    const savePercent = Math.max(0, inputs.savePercent || 0);
+    const enjoyPercent = Math.max(0, inputs.enjoyPercent || 0);
+    const growPercent = Math.max(0, inputs.growPercent || 0);
+    const moneyAvailable = Math.max(0, collected - expensesIn);
+    const percentTotal = savePercent + enjoyPercent + growPercent;
+    const percentagesValid = Math.abs(percentTotal - 100) < 0.01;
+    const saveAmount = percentagesValid ? (moneyAvailable * savePercent) / 100 : 0;
+    const enjoyAmount = percentagesValid ? (moneyAvailable * enjoyPercent) / 100 : 0;
+    const growAmount = percentagesValid ? (moneyAvailable * growPercent) / 100 : 0;
+    notes.push("Money collected is not automatically profit. Split only money left after costs.");
+    if (!percentagesValid) {
+      notes.push(
+        `Percentages currently total ${percentTotal}% — they MUST equal 100% before the split.`,
+      );
+    } else {
+      notes.push(
+        `Split of $${moneyAvailable.toFixed(2)}: Save $${saveAmount.toFixed(2)} · Enjoy/Fun $${enjoyAmount.toFixed(2)} · Grow $${growAmount.toFixed(2)}`,
+      );
+    }
+    return {
+      revenue: collected,
+      expenses: expensesIn,
+      net: moneyAvailable,
+      marginPercent: percentagesValid ? growPercent : 0,
+      notes,
+      metrics: {
+        moneyAvailable,
+        saveAmount,
+        enjoyAmount,
+        growAmount,
+        percentTotal,
+        percentagesValid,
       },
     };
   }

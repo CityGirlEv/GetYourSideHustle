@@ -75,6 +75,7 @@ export const GUIDE_HUSTLE_IDS: Record<string, string[]> = {
   "junior-games-ai": ["create-games-junior"],
   "junior-content-create": ["social", "canva-flyer-creator", "ai-social-helper"],
   "kids-piggy-first-goal": ["lemonade-stand", "dog-walk", "yard-help"],
+  "kids-reinvest-jar": ["kids-piggy-first-goal", "lemonade-stand", "crafts"],
   "junior-savings-ceo": ["dog-walk", "tech-helper", "errand-runner"],
   "senior-handyman": ["handyman", "handyman-light"],
   "senior-rideshare": ["rideshare"],

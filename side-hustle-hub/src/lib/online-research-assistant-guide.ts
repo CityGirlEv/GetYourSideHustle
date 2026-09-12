@@ -262,78 +262,82 @@ export const ONLINE_RESEARCH_ASSISTANT_SUPPLIES = {
 export const ONLINE_RESEARCH_ASSISTANT_TOOLS: {
   id: string;
   name: string;
-  cost: string;
+  freePlanAvailable: boolean;
+  planLabelApplicable?: boolean;
+  costNote: string;
   url?: string;
-  note?: string;
+  optional?: boolean;
 }[] = [
   {
     id: "google-search",
     name: "Google Search",
-    cost: "Free",
+    freePlanAvailable: true,
+    costNote: "General research",
     url: "https://www.google.com/",
-    note: "General research",
   },
   {
     id: "google-maps",
     name: "Google Maps",
-    cost: "Free",
+    freePlanAvailable: true,
+    costNote: "Local / vendor research",
     url: "https://maps.google.com/",
-    note: "Local / vendor research",
   },
   {
     id: "google-docs",
     name: "Google Docs",
-    cost: "Free",
+    freePlanAvailable: true,
+    costNote: "Research briefs",
     url: "https://docs.google.com/",
-    note: "Research briefs",
   },
   {
     id: "google-sheets",
     name: "Google Sheets",
-    cost: "Free",
+    freePlanAvailable: true,
+    costNote: "Comparisons",
     url: "https://sheets.google.com/",
-    note: "Comparisons",
   },
   {
     id: "google-drive",
     name: "Google Drive",
-    cost: "Free",
+    freePlanAvailable: true,
+    costNote: "File delivery",
     url: "https://drive.google.com/",
-    note: "File delivery",
   },
   {
     id: "canva",
     name: "Canva",
-    cost: "Free plan available",
+    freePlanAvailable: true,
+    costNote: "Polished reports",
     url: "https://www.canva.com/",
-    note: "Polished reports",
   },
   {
     id: "google-calendar",
     name: "Google Calendar",
-    cost: "Free",
+    freePlanAvailable: true,
+    costNote: "Deadlines",
     url: "https://calendar.google.com/",
-    note: "Deadlines",
   },
   {
     id: "email",
     name: "Email",
-    cost: "Free",
+    freePlanAvailable: true,
+    costNote: "Client communication",
     url: "https://mail.google.com/",
-    note: "Client communication",
   },
   {
     id: "chatgpt",
     name: "ChatGPT (optional AI)",
-    cost: "Free plan available",
+    freePlanAvailable: true,
+    costNote: "Organize / summarize only — verify every important fact",
     url: "https://chatgpt.com/",
-    note: "Organize / summarize only — verify every important fact",
+    optional: true,
   },
   {
     id: "beginner-stack",
     name: "Beginner tool stack",
-    cost: "$0",
-    note: "Browser + Google + Docs + Sheets + Drive",
+    freePlanAvailable: false,
+    planLabelApplicable: false,
+    costNote: "Browser + Google + Docs + Sheets + Drive",
   },
 ];
 
@@ -346,38 +350,38 @@ export const ONLINE_RESEARCH_ASSISTANT_PRICING = {
   items: [
     {
       id: "quick",
-      name: "Quick Research",
+      label: "Quick Research",
       price: "$15–$20",
       notes: "One focused question · approx. 3–5 useful findings",
     },
     {
       id: "standard",
-      name: "Standard Research Brief",
+      label: "Standard Research Brief",
       price: "$25–$35",
       notes: "Several options · basic comparison · source links · short summary",
     },
     {
       id: "detailed",
-      name: "Detailed Comparison",
+      label: "Detailed Comparison",
       price: "$40–$50+",
       notes:
         "Multiple options · comparison table · source links · recommendation summary based on client's stated criteria",
     },
     {
       id: "addon-rush",
-      name: "Add-on: Rush turnaround",
+      label: "Add-on: Rush turnaround",
       price: "Agree in advance",
       notes: "Faster deadline",
     },
     {
       id: "addon-category",
-      name: "Add-on: Extra research category",
+      label: "Add-on: Extra research category",
       price: "Agree in advance",
       notes: "Additional vendors / options / larger table",
     },
     {
       id: "addon-followup",
-      name: "Add-on: Follow-up research",
+      label: "Add-on: Follow-up research",
       price: "Agree in advance",
       notes: "Or presentation-ready formatting",
     },

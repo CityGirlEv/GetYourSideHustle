@@ -326,6 +326,44 @@ export function GuideRevenueCalculator({ guideId, guideName }: GuideRevenueCalcu
             </>
           ) : null}
 
+          {profile.mode === "split" ? (
+            <>
+              <FieldNumber
+                label={guideId === "kids-reinvest-jar" ? "Money I earned ($)" : "Money collected ($)"}
+                value={inputs.moneyCollected ?? 0}
+                resetKey={fieldKey}
+                onChange={(v) => setInput("moneyCollected", v)}
+              />
+              <FieldNumber
+                label={guideId === "kids-reinvest-jar" ? "What it cost ($)" : "Hustle expenses ($)"}
+                value={inputs.hustleExpenses ?? 0}
+                resetKey={fieldKey}
+                onChange={(v) => setInput("hustleExpenses", v)}
+              />
+              <FieldNumber
+                label="Save %"
+                value={inputs.savePercent ?? 0}
+                resetKey={fieldKey}
+                max={100}
+                onChange={(v) => setInput("savePercent", Math.min(100, v))}
+              />
+              <FieldNumber
+                label={guideId === "kids-reinvest-jar" ? "Fun %" : "Enjoy %"}
+                value={inputs.enjoyPercent ?? 0}
+                resetKey={fieldKey}
+                max={100}
+                onChange={(v) => setInput("enjoyPercent", Math.min(100, v))}
+              />
+              <FieldNumber
+                label="Grow %"
+                value={inputs.growPercent ?? 0}
+                resetKey={fieldKey}
+                max={100}
+                onChange={(v) => setInput("growPercent", Math.min(100, v))}
+              />
+            </>
+          ) : null}
+
           {profile.mode === "social" ? (
             <>
               <FieldNumber
@@ -527,7 +565,8 @@ export function GuideRevenueCalculator({ guideId, guideName }: GuideRevenueCalcu
 
           {profile.mode === "resale" ||
           profile.mode === "impact" ||
-          profile.mode === "kindness" ? null : profile.mode !== "product" ? (
+          profile.mode === "kindness" ||
+          profile.mode === "split" ? null : profile.mode !== "product" ? (
             <div className="guide-revenue-calc__budget">
               <h4>
                 {profile.mode === "delivery"
@@ -599,7 +638,9 @@ export function GuideRevenueCalculator({ guideId, guideName }: GuideRevenueCalcu
                   ? "Total give-back hours"
                   : profile.mode === "kindness"
                     ? "Total helping hours"
-                    : guideId === "personal-shopper" ||
+                    : profile.mode === "split"
+                      ? "Money left to split"
+                      : guideId === "personal-shopper" ||
                         guideId === "youth-sports-helper" ||
                         guideId === "appointment-setter" ||
                         guideId === "online-research-assistant" ||
@@ -616,11 +657,11 @@ export function GuideRevenueCalculator({ guideId, guideName }: GuideRevenueCalcu
               ? `${(result.metrics?.totalGiveBackHours ?? result.net).toFixed(1)} hrs`
               : profile.mode === "kindness"
                 ? `${(result.metrics?.totalHelpingHours ?? result.net).toFixed(1)} hrs`
-                : profile.mode === "delivery" || profile.mode === "resale"
+                : profile.mode === "delivery" || profile.mode === "resale" || profile.mode === "split"
                   ? formatGuideCalcMoneyPrecise(result.net)
                   : formatGuideCalcMoney(result.net)}
           </p>
-          {profile.mode === "impact" || profile.mode === "kindness" ? null : (
+          {profile.mode === "impact" || profile.mode === "kindness" || profile.mode === "split" ? null : (
           <p className="guide-revenue-calc__margin">
             {profile.mode === "resale" ? "Profit margin" : "Margin"}{" "}
             {result.marginPercent.toFixed(0)}%
@@ -657,6 +698,40 @@ export function GuideRevenueCalculator({ guideId, guideName }: GuideRevenueCalcu
                 <div>
                   <dt>Still to go</dt>
                   <dd>{result.metrics?.kindnessStillToGo ?? 0}</dd>
+                </div>
+              </>
+            ) : profile.mode === "split" ? (
+              <>
+                <div>
+                  <dt>{guideId === "kids-reinvest-jar" ? "Money earned" : "Money collected"}</dt>
+                  <dd>{formatGuideCalcMoneyPrecise(result.revenue)}</dd>
+                </div>
+                <div>
+                  <dt>{guideId === "kids-reinvest-jar" ? "What it cost" : "Hustle expenses"}</dt>
+                  <dd>{formatGuideCalcMoneyPrecise(result.expenses)}</dd>
+                </div>
+                <div>
+                  <dt>Money left to split</dt>
+                  <dd>{formatGuideCalcMoneyPrecise(result.metrics?.moneyAvailable ?? result.net)}</dd>
+                </div>
+                <div>
+                  <dt>Save</dt>
+                  <dd>{formatGuideCalcMoneyPrecise(result.metrics?.saveAmount ?? 0)}</dd>
+                </div>
+                <div>
+                  <dt>{guideId === "kids-reinvest-jar" ? "Fun" : "Enjoy"}</dt>
+                  <dd>{formatGuideCalcMoneyPrecise(result.metrics?.enjoyAmount ?? 0)}</dd>
+                </div>
+                <div>
+                  <dt>Grow</dt>
+                  <dd>{formatGuideCalcMoneyPrecise(result.metrics?.growAmount ?? 0)}</dd>
+                </div>
+                <div>
+                  <dt>Percentages total</dt>
+                  <dd>
+                    {(result.metrics?.percentTotal ?? 0).toFixed(0)}%
+                    {result.metrics?.percentagesValid ? "" : " — must equal 100%"}
+                  </dd>
                 </div>
               </>
             ) : profile.mode === "impact" ? (

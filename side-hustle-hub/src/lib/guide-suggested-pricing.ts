@@ -278,8 +278,11 @@ export function suggestedPricingForGuide(guideId: string): GuideSuggestedPricing
 }
 
 export function formatPricingLine(item: GuidePricingItem): string {
+  const label =
+    item.label?.trim() ||
+    String((item as { name?: string }).name ?? "").trim();
   const notes = item.notes ? ` — ${item.notes}` : "";
-  return `${item.label}: ${item.price}${notes}`;
+  return `${label}: ${item.price}${notes}`;
 }
 
 export function pricingDisclaimer(): string {

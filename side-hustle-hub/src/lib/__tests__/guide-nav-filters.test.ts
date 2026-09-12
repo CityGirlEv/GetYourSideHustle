@@ -266,9 +266,9 @@ describe("guide nav counts", () => {
 });
 
 describe("defaultLibraryStatusFilters", () => {
-  it("defaults staff library admin/listing to Pending / Needs Further Review", () => {
-    expect(DEFAULT_STAFF_LIBRARY_STATUS_FILTERS).toEqual(["pending"]);
-    expect(defaultLibraryStatusFilters(true)).toEqual(["pending"]);
+  it("defaults staff library admin/listing to Show All", () => {
+    expect(DEFAULT_STAFF_LIBRARY_STATUS_FILTERS).toEqual(["all"]);
+    expect(defaultLibraryStatusFilters(true)).toEqual(["all"]);
   });
 
   it("defaults members to Show All", () => {

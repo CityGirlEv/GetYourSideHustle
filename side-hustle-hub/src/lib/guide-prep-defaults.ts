@@ -59,6 +59,24 @@ import {
   DIGITAL_PRODUCTS_PRICING,
   DIGITAL_PRODUCTS_SUPPLIES,
 } from "./digital-products-guide";
+import { RIDESHARE_PRICING, RIDESHARE_SUPPLIES } from "./rideshare-guide";
+import {
+  LOCAL_EVENT_CONTENT_PRICING,
+  LOCAL_EVENT_CONTENT_SUPPLIES,
+} from "./local-event-content-creator-guide";
+import { PROPERTY_MGMT_PRICING, PROPERTY_MGMT_SUPPLIES } from "./property-mgmt-guide";
+import {
+  JUNIOR_REINVEST_CEO_PRICING,
+  JUNIOR_REINVEST_CEO_SUPPLIES,
+} from "./junior-reinvest-ceo-guide";
+import {
+  KIDS_REINVEST_JAR_PRICING,
+  KIDS_REINVEST_JAR_SUPPLIES,
+} from "./kids-reinvest-jar-guide";
+import {
+  AIRBNB_TURNOVER_CHECKER_PRICING,
+  AIRBNB_TURNOVER_CHECKER_SUPPLIES,
+} from "./airbnb-turnover-checker-guide";
 
 const RAISE =
   "After 3–5 happy customers, raise 10–20% or add a rush fee. Examples only — not income guarantees.";
@@ -182,13 +200,8 @@ const SUPPLY_OVERRIDES: Record<string, GuideSupplyList> = {
     ],
   },
   rideshare: {
-    starterKitTotal: "About $15–40 for car comfort extras (phone mount often already owned)",
-    items: [
-      s("mount", "Phone mount", "1", "$10–20"),
-      s("charger", "Car USB charger / cable", "1", "$8–15"),
-      s("wipes", "Interior wipe pack", "1", "$4–8", undefined, true),
-      s("water", "Bottled water for guests (optional)", "1 case", "$4–8", "Only if you want the tip boost", true),
-    ],
+    starterKitTotal: RIDESHARE_SUPPLIES.starterKitTotal,
+    items: RIDESHARE_SUPPLIES.items.map((item) => ({ ...item })),
   },
   "food-delivery": {
     starterKitTotal: FOOD_DELIVERY_SUPPLIES.starterKitTotal,
@@ -216,13 +229,8 @@ const SUPPLY_OVERRIDES: Record<string, GuideSupplyList> = {
     ],
   },
   "property-mgmt": {
-    starterKitTotal: "About $20–50 for inspection / vendor visit kit",
-    items: [
-      s("checklist", "Unit inspection checklist pad", "1", "$3–8"),
-      s("flashlight", "Flashlight / headlamp", "1", "$8–15"),
-      s("tape", "Painter’s tape + measuring tape", "1 each", "$8–15"),
-      s("keys", "Labeled key tags / pouch", "1 set", "$5–10"),
-    ],
+    starterKitTotal: PROPERTY_MGMT_SUPPLIES.starterKitTotal,
+    items: PROPERTY_MGMT_SUPPLIES.items.map((item) => ({ ...item })),
   },
   "book-publishing": {
     starterKitTotal: "About $15–60 for proofs and samples (software is Tools)",
@@ -417,12 +425,8 @@ const SUPPLY_OVERRIDES: Record<string, GuideSupplyList> = {
     ],
   },
   "airbnb-turnover-checker": {
-    starterKitTotal: "About $10–30 for inspection kit",
-    items: [
-      s("checklist", "Room-by-room turnover checklist", "1", "$3–8"),
-      s("gloves", "Disposable gloves", "1 box", "$5–10"),
-      s("wipes", "Disinfecting wipes", "1 pack", "$3–8"),
-    ],
+    starterKitTotal: AIRBNB_TURNOVER_CHECKER_SUPPLIES.starterKitTotal,
+    items: AIRBNB_TURNOVER_CHECKER_SUPPLIES.items.map((item) => ({ ...item })),
   },
   "house-sitter": {
     starterKitTotal: "About $5–20 for care-log basics (keys from owner)",
@@ -731,13 +735,8 @@ const SUPPLY_OVERRIDES: Record<string, GuideSupplyList> = {
     items: LOCAL_CONTENT_PHOTO_SUPPLIES.items.map((item) => ({ ...item })),
   },
   "local-event-content-creator": {
-    starterKitTotal: "About $15–50 for event coverage kit",
-    items: [
-      s("badge", "Event credential / lanyard holder", "1", "$3–8"),
-      s("batteries", "Spare batteries / power bank", "1", "$15–30"),
-      s("shotlist", "Printed shot list + run-of-show", "1 set", "$3–8"),
-      s("usb", "Same-night delivery USB", "1", "$8–15"),
-    ],
+    starterKitTotal: LOCAL_EVENT_CONTENT_SUPPLIES.starterKitTotal,
+    items: LOCAL_EVENT_CONTENT_SUPPLIES.items.map((item) => ({ ...item })),
   },
   "online-community-moderator": {
     starterKitTotal: "About $5–20 for rules and escalation sheets",
@@ -786,12 +785,8 @@ const SUPPLY_OVERRIDES: Record<string, GuideSupplyList> = {
     ],
   },
   "junior-reinvest-ceo": {
-    starterKitTotal: "About $5–15 for reinvest planning printables",
-    items: [
-      s("plan", "Printed reinvest % planner", "1 set", "$3–8"),
-      s("jar", "Reinvest jar or labeled envelope", "1", "$0–5"),
-      s("receipt", "Receipt envelope for supply buys", "1", "$1–3"),
-    ],
+    starterKitTotal: JUNIOR_REINVEST_CEO_SUPPLIES.starterKitTotal,
+    items: JUNIOR_REINVEST_CEO_SUPPLIES.items.map((item) => ({ ...item })),
   },
   "junior-content-create": {
     starterKitTotal: "About $10–35 for parent-friendly content kit",
@@ -818,15 +813,8 @@ const SUPPLY_OVERRIDES: Record<string, GuideSupplyList> = {
     ],
   },
   "kids-reinvest-jar": {
-    starterKitTotal: "About $0–10 for three labeled jars or envelopes (parent helps)",
-    items: [
-      s("spend", "Spend jar / envelope", "1", "$0–3"),
-      s("save", "Save jar / envelope (Piggy Bank goal)", "1", "$0–3"),
-      s("hustle", "Hustle jar / envelope (next supplies)", "1", "$0–3"),
-      s("labels", "Printed Spend / Save / Hustle labels", "1 set", "$0–2"),
-      s("list", "Wish-list of next hustle supplies", "1", "$0–2"),
-      s("stickers", "Decorate stickers (optional)", "1 pack", "$1–5", undefined, true),
-    ],
+    starterKitTotal: KIDS_REINVEST_JAR_SUPPLIES.starterKitTotal,
+    items: KIDS_REINVEST_JAR_SUPPLIES.items.map((item) => ({ ...item })),
   },
 };
 
@@ -842,12 +830,8 @@ const PRICING_OVERRIDES: Record<string, GuideSuggestedPricing> = {
     ],
   },
   rideshare: {
-    raiseTip: "Chase peak hours and airport queues; track $/hour not just gross. Examples only — not income guarantees.",
-    items: [
-      p("hour", "Target net after gas (peak windows)", "$18–30 / hr equivalent"),
-      p("airport", "Airport run (typical gross)", "$25–60 depending on distance/surge"),
-      p("bonus", "Quest / streak bonuses", "Platform-dependent — read the offer terms"),
-    ],
+    ...RIDESHARE_PRICING,
+    items: RIDESHARE_PRICING.items.map((item) => ({ ...item })),
   },
   "food-delivery": {
     ...FOOD_DELIVERY_PRICING,
@@ -966,12 +950,8 @@ const PRICING_OVERRIDES: Record<string, GuideSuggestedPricing> = {
     ],
   },
   "property-mgmt": {
-    raiseTip: RAISE,
-    items: [
-      p("pct", "Management fee", "8–12% of collected rent"),
-      p("lease", "New lease / placement fee", "50–100% of one month’s rent"),
-      p("visit", "Extra inspection visit", "$35–75"),
-    ],
+    ...PROPERTY_MGMT_PRICING,
+    items: PROPERTY_MGMT_PRICING.items.map((item) => ({ ...item })),
   },
   "virtual-receptionist": {
     raiseTip: RAISE,
@@ -1070,12 +1050,8 @@ const PRICING_OVERRIDES: Record<string, GuideSuggestedPricing> = {
     ],
   },
   "airbnb-turnover-checker": {
-    raiseTip: RAISE,
-    items: [
-      p("check", "Per turnover inspection", "$25–50"),
-      p("bundle", "Weekend block (3 checks)", "$65–120"),
-      p("photo", "Photo report add-on", "+$5–15"),
-    ],
+    ...AIRBNB_TURNOVER_CHECKER_PRICING,
+    items: AIRBNB_TURNOVER_CHECKER_PRICING.items.map((item) => ({ ...item })),
   },
   "house-sitter": {
     raiseTip: RAISE,
@@ -1322,12 +1298,8 @@ const PRICING_OVERRIDES: Record<string, GuideSuggestedPricing> = {
     items: LOCAL_CONTENT_PHOTO_PRICING.items.map((item) => ({ ...item })),
   },
   "local-event-content-creator": {
-    raiseTip: RAISE,
-    items: [
-      p("event", "Event coverage (2 hrs)", "$100–250"),
-      p("reel", "Same-day Reel add-on", "+$40–100"),
-      p("hour", "Extra hour", "+$40–75"),
-    ],
+    ...LOCAL_EVENT_CONTENT_PRICING,
+    items: LOCAL_EVENT_CONTENT_PRICING.items.map((item) => ({ ...item })),
   },
   "travel-research-assistant": {
     raiseTip: RAISE,
@@ -1429,24 +1401,12 @@ const PRICING_OVERRIDES: Record<string, GuideSuggestedPricing> = {
     ],
   },
   "kids-reinvest-jar": {
-    raiseTip: "Parent-approved. Examples only — not income guarantees.",
-    intro:
-      "This guide is about splitting earnings — not selling a product. Example splits only; parents set the real amounts.",
-    items: [
-      p("even", "Even split example ($9 earned)", "$3 Spend / $3 Save / $3 Hustle"),
-      p("save-first", "Save-first example", "50% Save / 25% Spend / 25% Hustle"),
-      p("supply", "Hustle jar buy (next supplies)", "Track receipts — only when the jar has enough"),
-    ],
+    ...KIDS_REINVEST_JAR_PRICING,
+    items: KIDS_REINVEST_JAR_PRICING.items.map((item) => ({ ...item })),
   },
   "junior-reinvest-ceo": {
-    raiseTip: "Guardian-approved. Examples only — not income guarantees.",
-    intro:
-      "This guide is about splitting income into Save / Enjoy / Grow — not pricing a product. Agree percentages with a guardian.",
-    items: [
-      p("plan", "Starter split rule", "50% Save / 30% Enjoy / 20% Grow"),
-      p("grow", "Grow spend that earns again", "Track: spent $X → earned $Y"),
-      p("review", "Monthly guardian check-in", "Adjust split for exams / busy months"),
-    ],
+    ...JUNIOR_REINVEST_CEO_PRICING,
+    items: JUNIOR_REINVEST_CEO_PRICING.items.map((item) => ({ ...item })),
   },
   "junior-give-back-teach": {
     ...JUNIOR_GIVE_BACK_TEACH_PRICING,

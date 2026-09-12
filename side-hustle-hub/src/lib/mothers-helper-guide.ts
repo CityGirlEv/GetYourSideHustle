@@ -266,95 +266,103 @@ export const MOTHERS_HELPER_SUPPLIES = {
 export const MOTHERS_HELPER_TOOLS: {
   id: string;
   name: string;
-  cost: string;
+  freePlanAvailable: boolean;
+  planLabelApplicable?: boolean;
+  costNote: string;
   url?: string;
-  note?: string;
 }[] = [
   {
     id: "calendar",
     name: "Calendar",
-    cost: "Free",
+    freePlanAvailable: true,
+    costNote: "Schedule jobs",
     url: "https://calendar.google.com/",
-    note: "Schedule jobs",
   },
   {
     id: "timer",
     name: "Timer",
-    cost: "Free",
-    note: "Track job time — phone timer is fine",
+    freePlanAvailable: false,
+    planLabelApplicable: false,
+    costNote: "Track job time — phone timer is fine",
   },
   {
     id: "notes",
     name: "Notes",
-    cost: "Free",
+    freePlanAvailable: true,
+    costNote: "Save parent instructions",
     url: "https://docs.google.com/",
-    note: "Save parent instructions",
   },
   {
     id: "sheets",
     name: "Google Sheets",
-    cost: "Free",
+    freePlanAvailable: true,
+    costNote: "Track jobs and earnings",
     url: "https://sheets.google.com/",
-    note: "Track jobs and earnings",
   },
   {
     id: "canva",
     name: "Canva",
-    cost: "Free plan available",
+    freePlanAvailable: true,
+    costNote: "Parent-approved flyer",
     url: "https://www.canva.com/",
-    note: "Parent-approved flyer",
   },
   {
     id: "maps",
     name: "Maps",
-    cost: "Free",
+    freePlanAvailable: true,
+    costNote: "Parent/guardian can verify location",
     url: "https://maps.google.com/",
-    note: "Parent/guardian can verify location",
   },
   {
     id: "phone",
     name: "Phone / Text",
-    cost: "Free",
-    note: "Parent-approved communication only",
+    freePlanAvailable: false,
+    planLabelApplicable: false,
+    costNote: "Parent-approved communication only",
   },
   {
     id: "parent",
     name: "Parent / Guardian",
-    cost: "$0",
-    note: "Safety, transportation, and job approval",
+    freePlanAvailable: false,
+    planLabelApplicable: false,
+    costNote: "Safety, transportation, and job approval",
   },
   {
     id: "beginner-stack",
     name: "Beginner tool stack",
-    cost: "$0",
-    note: "Parent/Guardian + Calendar + Notes + Simple Job Tracker",
+    freePlanAvailable: false,
+    planLabelApplicable: false,
+    costNote: "Parent/Guardian + Calendar + Notes + Simple Job Tracker",
   },
 ];
 
 export const MOTHERS_HELPER_PRICING = {
   tabLabel: "Suggested Pricing",
-  intro:
-    "Mother's Helper starter examples — parent must remain present. Displayed range: $10–$40/job (examples). Always agree on job + time + tasks + price BEFORE starting.",
+  intro: [
+    "MOTHER'S HELPER STARTER EXAMPLES",
+    "",
+    "Keep displayed range: $10–$40/job (examples)",
+  ].join("\n"),
   raiseTip:
-    "Rates vary by time, number of children, tasks, experience, location, and local rates. Examples only — not income guarantees.",
+    "Rates can vary by time, number of children, tasks, experience, location, and local rates. Always agree on Job + Time + Tasks + Price BEFORE starting.",
   items: [
     {
       id: "quick",
-      name: "Quick Help",
+      label: "Quick Help",
       price: "$10–$15/job",
       notes: "30–60 minutes of simple parent-present help",
     },
     {
       id: "standard",
-      name: "Standard Help",
+      label: "Standard Help",
       price: "$15–$25/job",
       notes: "1–2 hours of play, toys, activities, or simple kid-related help",
     },
     {
       id: "longer",
-      name: "Longer Helper Session",
+      label: "Longer Helper Session",
       price: "$25–$40/job",
-      notes: "Longer parent-present session with multiple approved tasks",
+      notes: "longer parent-present session with multiple approved tasks",
     },
   ],
 };

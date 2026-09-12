@@ -136,32 +136,52 @@ export const KIDS_GUIDES_RAW: KidsGuide[] = [
     theme: "reinvest",
     previewCount: 2,
     summary:
-      "When you earn coins, spend a little on fun, save a little, and put a little back into your hustle supplies — kid-friendly “investing.” No competitors or business name needed.",
-    parentTip: "Use three jars or envelopes: Spend, Save, Hustle. Keep amounts tiny and visual.",
+      "When you earn, split what's left into Fun, Save, and Grow jars — enjoy some now, save some, and put some back into hustle supplies. No competitors or business name needed.",
+    parentTip: "Use three jars or envelopes: Fun, Save, Grow. Keep amounts tiny and visual. Split the same day they earn.",
     steps: [
       {
-        title: "Make three jars",
-        body: "Label them Spend (fun), Save (Piggy Bank goal), and Hustle (supplies that help you earn again). Decorate them — crafts count! No business name needed; this is your money-habit setup.",
+        title: "Track What You Earn",
+        body: "Write down every amount. Date, what you did, money earned. Don't guess.",
       },
       {
-        title: "Pick your split rule",
-        body: "With a parent, choose a simple split (example: of every $9, put $3 in each jar — or whatever percentages feel fair). Write the rule on a sticky note on the jars.",
+        title: "Track What It Cost",
+        body: "Did you buy anything to do the job? Money collected is not automatically money you can split.",
       },
       {
-        title: "Split your next earnings",
-        body: "After your next chore, craft sale, or paid help, divide the coins into the three jars right away. Don’t wait — the habit is the win.",
+        title: "Find Money Left to Split",
+        body: "Money earned minus costs. That leftover is what goes into Fun, Save, and Grow.",
       },
       {
-        title: "Plan one Hustle jar buy",
-        body: "Use Hustle jar money only for things that help you earn again — stickers, clay, lemonade cups, printer paper, or other parent-approved supplies. Write the buy on a wish list first.",
+        title: "Make Three Jars: Fun, Save, Grow",
+        body: "Fun = enjoy now. Save = Piggy Bank goal. Grow = hustle supplies. Decorate them — crafts count!",
       },
       {
-        title: "Keep Save jar for your big goal",
-        body: "Don’t dip into Save for toys or Spend treats. That’s your Piggy Bank mission — name the goal and track progress there.",
+        title: "Pick Your Split",
+        body: "With a parent, choose percentages that add to 100%. Starter: 40% Save / 30% Fun / 30% Grow.",
       },
       {
-        title: "Tell your story",
-        body: "Share with family how putting money back helped your next craft, walk day, or lemonade stand. Celebrate the habit, not just the coins.",
+        title: "Split Your Money",
+        body: "Divide the leftover into the three jars the same day. Don't wait until the coins mix together.",
+      },
+      {
+        title: "Make a Grow Wish List",
+        body: "Grow money is only for things that help you earn again — cups, stickers, clay, paper (parent-approved).",
+      },
+      {
+        title: "Think Before You Buy",
+        body: "Ask: Do I need it? Will I use it? Could it help me earn again? If it's just for fun, that's the Fun jar.",
+      },
+      {
+        title: "Put Some Earnings Back",
+        body: "When the Grow jar has enough, buy one wish-list item with a parent. Write why it helps.",
+      },
+      {
+        title: "Check If It Helped",
+        body: "Did the buy help you make more or make the next job easier? Celebrate the habit.",
+      },
+      {
+        title: "Do It Again Next Time You Earn",
+        body: "Next payday or sale, split again. Change the percentages only if a parent agrees they still add to 100%.",
       },
     ],
   },

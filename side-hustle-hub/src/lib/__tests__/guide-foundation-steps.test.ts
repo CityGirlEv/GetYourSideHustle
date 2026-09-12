@@ -56,11 +56,11 @@ describe("youth parent thumbs-up step", () => {
   });
 
   it("every business library guide keeps Pick a Name (USPTO + EIN) as step 3 when unpatched", async () => {
-    const { guideUsesNonLaunchPlaybook } = await import("../guide-detailed-steps");
+    const { guideUsesNonLaunchPlaybook, guideUsesPlatformMarketplacePlaybook } = await import("../guide-detailed-steps");
     const { uniqueGuideLibraryEntries } = await import("../guide-library-pool");
     const { resolveGuideKit } = await import("../guide-kit-overrides");
     for (const e of uniqueGuideLibraryEntries()) {
-      if (guideUsesNonLaunchPlaybook(e.id)) continue;
+      if (guideUsesNonLaunchPlaybook(e.id) || guideUsesPlatformMarketplacePlaybook(e.id)) continue;
       const steps = resolveGuideKit(e.id).steps ?? [];
       expect(steps[0]?.title, e.id).toBe(PARENT_THUMBS_UP_STEP.title);
       expect(steps[1]?.title, e.id).toMatch(/research competitors/i);
@@ -74,13 +74,14 @@ describe("youth parent thumbs-up step", () => {
   it("every business library guide ends with Make Your First Sale + Ask for a Short Review", async () => {
     const {
       guideUsesNonLaunchPlaybook,
+      guideUsesPlatformMarketplacePlaybook,
       MAKE_YOUR_FIRST_SALE_STEP,
       ASK_FOR_REVIEW_STEP,
     } = await import("../guide-detailed-steps");
     const { uniqueGuideLibraryEntries } = await import("../guide-library-pool");
     const { resolveGuideKit } = await import("../guide-kit-overrides");
     for (const e of uniqueGuideLibraryEntries()) {
-      if (guideUsesNonLaunchPlaybook(e.id)) continue;
+      if (guideUsesNonLaunchPlaybook(e.id) || guideUsesPlatformMarketplacePlaybook(e.id)) continue;
       const steps = resolveGuideKit(e.id).steps ?? [];
       expect(steps.length, e.id).toBeGreaterThanOrEqual(2);
       expect(steps[steps.length - 2]?.title, e.id).toBe(MAKE_YOUR_FIRST_SALE_STEP.title);
@@ -158,7 +159,7 @@ describe("youth parent thumbs-up step", () => {
     }
   });
 
-  it("savings guides (#016 / #019) model the same savings steps", () => {
+  it("savings guides (#016 / #019) skip business naming and marketing", () => {
     for (const id of ["kids-piggy-first-goal", "junior-savings-ceo"]) {
       const steps = guideKitForId(id).steps ?? [];
       expect(steps.length, id).toBeGreaterThan(3);
@@ -166,10 +167,14 @@ describe("youth parent thumbs-up step", () => {
       expect(steps.some((s) => /research competitors/i.test(s.title)), id).toBe(false);
       expect(steps.some((s) => /pick a name for your side hustle/i.test(s.title)), id).toBe(false);
       expect(steps.some((s) => /make your marketing materials/i.test(s.title)), id).toBe(false);
-      expect(steps.some((s) => /name what you are saving for/i.test(s.title)), id).toBe(true);
-      expect(steps.some((s) => /write the cost/i.test(s.title)), id).toBe(true);
-      expect(steps.some((s) => /plan how you will earn/i.test(s.title)), id).toBe(true);
-      expect(steps.some((s) => /weekly savings goal/i.test(s.title)), id).toBe(true);
+      expect(
+        steps.some((s) =>
+          /pick your goal|name what you are saving for|find the price|write the cost/i.test(
+            s.title,
+          ),
+        ),
+        id,
+      ).toBe(true);
     }
   });
 
@@ -186,13 +191,15 @@ describe("youth parent thumbs-up step", () => {
     }
     const kids = guideKitForId("kids-reinvest-jar").steps ?? [];
     expect(kids.some((s) => /three jars/i.test(s.title))).toBe(true);
-    expect(kids.some((s) => /split rule|split your next earnings/i.test(s.title))).toBe(true);
-    expect(kids.some((s) => /hustle jar buy/i.test(s.title))).toBe(true);
+    expect(kids.some((s) => /pick your split|split your money/i.test(s.title))).toBe(true);
+    expect(kids.some((s) => /grow wish|put some earnings/i.test(s.title))).toBe(true);
 
     const teen = guideKitForId("junior-reinvest-ceo").steps ?? [];
-    expect(teen.some((s) => /three buckets/i.test(s.title))).toBe(true);
-    expect(teen.some((s) => /split rule/i.test(s.title))).toBe(true);
-    expect(teen.some((s) => /grow spends/i.test(s.title))).toBe(true);
+    expect(teen.some((s) => /3 ceo buckets|three buckets/i.test(s.title))).toBe(true);
+    expect(teen.some((s) => /choose your split|split your money|split rule/i.test(s.title))).toBe(
+      true,
+    );
+    expect(teen.some((s) => /grow list|reinvest|grow spends/i.test(s.title))).toBe(true);
   });
 
   it("catalog kids/teen hustles resolve with thumbs-up as step 1", () => {

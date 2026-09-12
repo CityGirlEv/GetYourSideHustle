@@ -94,10 +94,10 @@ describe("Testing Portal filter layout defaults", () => {
 });
 
 describe("Testing Portal sprint default", () => {
-  it("opens filtered to the current sprint; All sprints is an empty set", () => {
-    const filters = defaultTestingPortalSprintFilters<number | "backlog">(5);
-    expect([...filters]).toEqual([5]);
-    expect(isAllSprintsFilter(filters)).toBe(false);
+  it("opens on All sprints (empty set)", () => {
+    const filters = defaultTestingPortalSprintFilters<number | "backlog">();
+    expect([...filters]).toEqual([]);
+    expect(isAllSprintsFilter(filters)).toBe(true);
     expect(isAllSprintsFilter(allTestingPortalSprintFilters())).toBe(true);
     expect(isAllSprintsFilter(new Set([5]))).toBe(false);
   });

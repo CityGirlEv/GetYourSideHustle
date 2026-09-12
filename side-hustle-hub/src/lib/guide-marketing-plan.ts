@@ -6,6 +6,7 @@
 import {
   clientScoutSteps,
   guideUsesNonLaunchPlaybook,
+  guideUsesPlatformMarketplacePlaybook,
   SERVICE_CLIENT_SCOUT,
   type ClientScoutConfig,
   type DetailedGuideStep,
@@ -112,8 +113,8 @@ export function ensureMarketingPlanSteps(
   steps: DetailedGuideStep[],
   guideId: string,
 ): DetailedGuideStep[] {
-  // Savings / reinvest / free give-back guides skip client-scout marketing injection.
-  if (guideUsesNonLaunchPlaybook(guideId)) {
+  // Savings / reinvest / free give-back / platform-marketplace guides skip client-scout marketing.
+  if (guideUsesNonLaunchPlaybook(guideId) || guideUsesPlatformMarketplacePlaybook(guideId)) {
     return steps ?? [];
   }
 

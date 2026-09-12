@@ -42,7 +42,11 @@ describe("Beach Shell Jewelry template — all guides", () => {
     const { stepsIncludeMarketingMaterials, stepsIncludeCarryOutMarketing } = await import(
       "../guide-marketing-plan"
     );
+    const { guideUsesNonLaunchPlaybook, guideUsesPlatformMarketplacePlaybook } = await import(
+      "../guide-detailed-steps"
+    );
     for (const e of uniqueGuideLibraryEntries()) {
+      if (guideUsesNonLaunchPlaybook(e.id) || guideUsesPlatformMarketplacePlaybook(e.id)) continue;
       const kit = guideKitForId(e.id);
       const steps = (kit.steps ?? []).map((s) => ({ title: s.title, desc: s.desc }));
       expect(stepsIncludeMarketingMaterials(steps), e.id).toBe(true);
@@ -72,9 +76,9 @@ describe("Beach Shell Jewelry template — all guides", () => {
   it("ensureMarketingPlanSteps is idempotent", () => {
     const once = ensureMarketingPlanSteps(
       [{ title: "Do the work", desc: "Deliver." }],
-      "rideshare",
+      "handyman",
     );
-    const twice = ensureMarketingPlanSteps(once, "rideshare");
+    const twice = ensureMarketingPlanSteps(once, "handyman");
     expect(twice.filter((s) => /make your marketing materials/i.test(s.title))).toHaveLength(1);
     expect(twice.filter((s) => /carry out the marketing plan/i.test(s.title))).toHaveLength(1);
   });

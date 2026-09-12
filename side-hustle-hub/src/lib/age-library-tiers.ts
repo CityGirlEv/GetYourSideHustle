@@ -101,7 +101,6 @@ export const SENIOR_LIBRARY_MIN_TIER: Record<string, GuideMinTier> = {
   "etsy-store": "pro",
   // Former Starter → Elite
   "airbnb": "elite",
-  "property-mgmt": "elite",
   "str-cohost": "elite",
   "ai-peers": "elite",
   "virtual-call-assistant": "elite",

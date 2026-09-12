@@ -128,7 +128,7 @@ export const ADULT_GUIDE_MIN_TIER: Record<string, GuideMinTier> = {
   dropshipping: "elite",
   airbnb: "starter",
   amazon: "elite",
-  "property-mgmt": "starter",
+  "property-mgmt": "free",
   "appointment-setter": "starter",
   "ai-assets": "elite",
   "greeting-card-creator": "pro",

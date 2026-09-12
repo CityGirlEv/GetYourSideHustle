@@ -133,6 +133,54 @@ import {
   genealogyToolsDisclaimer,
 } from "./genealogy-family-history-guide";
 import {
+  RIDESHARE_EXTERNAL_LINKS,
+  RIDESHARE_PREREQUISITE_EXTRAS,
+  RIDESHARE_PRICING,
+  RIDESHARE_SUPPLIES,
+  RIDESHARE_TOOLS,
+  rideshareToolsDisclaimer,
+} from "./rideshare-guide";
+import {
+  LOCAL_EVENT_CONTENT_EXTERNAL_LINKS,
+  LOCAL_EVENT_CONTENT_PREREQUISITE_EXTRAS,
+  LOCAL_EVENT_CONTENT_PRICING,
+  LOCAL_EVENT_CONTENT_SUPPLIES,
+  LOCAL_EVENT_CONTENT_TOOLS,
+  localEventContentToolsDisclaimer,
+} from "./local-event-content-creator-guide";
+import {
+  PROPERTY_MGMT_EXTERNAL_LINKS,
+  PROPERTY_MGMT_PREREQUISITE_EXTRAS,
+  PROPERTY_MGMT_PRICING,
+  PROPERTY_MGMT_SUPPLIES,
+  PROPERTY_MGMT_TOOLS,
+  propertyMgmtToolsDisclaimer,
+} from "./property-mgmt-guide";
+import {
+  JUNIOR_REINVEST_CEO_EXTERNAL_LINKS,
+  JUNIOR_REINVEST_CEO_PREREQUISITE_EXTRAS,
+  JUNIOR_REINVEST_CEO_PRICING,
+  JUNIOR_REINVEST_CEO_SUPPLIES,
+  JUNIOR_REINVEST_CEO_TOOLS,
+  juniorReinvestCeoToolsDisclaimer,
+} from "./junior-reinvest-ceo-guide";
+import {
+  KIDS_REINVEST_JAR_EXTERNAL_LINKS,
+  KIDS_REINVEST_JAR_PREREQUISITE_EXTRAS,
+  KIDS_REINVEST_JAR_PRICING,
+  KIDS_REINVEST_JAR_SUPPLIES,
+  KIDS_REINVEST_JAR_TOOLS,
+  kidsReinvestJarToolsDisclaimer,
+} from "./kids-reinvest-jar-guide";
+import {
+  AIRBNB_TURNOVER_CHECKER_EXTERNAL_LINKS,
+  AIRBNB_TURNOVER_CHECKER_PREREQUISITE_EXTRAS,
+  AIRBNB_TURNOVER_CHECKER_PRICING,
+  AIRBNB_TURNOVER_CHECKER_SUPPLIES,
+  AIRBNB_TURNOVER_CHECKER_TOOLS,
+  airbnbTurnoverCheckerToolsDisclaimer,
+} from "./airbnb-turnover-checker-guide";
+import {
   type GuideSupplyList,
   suppliesForGuide,
 } from "./guide-supplies";
@@ -747,8 +795,11 @@ const GUIDE_KITS: Record<string, GuideKit> = {
     tools: t("chatgpt", "gemini", "google_docs", "canva"),
   },
   "property-mgmt": {
-    prerequisites: [P.freeMembership, P.computer],
-    tools: t("airbnb_host", "google_docs", "canva", "airdna"),
+    prerequisites: [P.freeMembership, ...PROPERTY_MGMT_PREREQUISITE_EXTRAS],
+    tools: [...PROPERTY_MGMT_TOOLS, ...t("phone_computer")],
+    externalLinks: PROPERTY_MGMT_EXTERNAL_LINKS,
+    supplies: PROPERTY_MGMT_SUPPLIES,
+    suggestedPricing: PROPERTY_MGMT_PRICING,
   },
   handyman: {
     prerequisites: [P.freeMembership, { id: "transport", label: "Way to reach local jobs", detail: "Walk, bike, or parent-driven for youth." }],
@@ -766,11 +817,11 @@ const GUIDE_KITS: Record<string, GuideKit> = {
     tools: t("phone_computer"),
   },
   rideshare: {
-    prerequisites: [
-      P.freeMembership,
-      { id: "license", label: "Valid driver’s license & eligible vehicle", detail: "Meet Uber/Lyft local requirements." },
-    ],
-    tools: t("uber_lyft", "phone_computer"),
+    prerequisites: [P.freeMembership, ...RIDESHARE_PREREQUISITE_EXTRAS],
+    tools: [...RIDESHARE_TOOLS, ...t("phone_computer")],
+    externalLinks: RIDESHARE_EXTERNAL_LINKS,
+    supplies: RIDESHARE_SUPPLIES,
+    suggestedPricing: RIDESHARE_PRICING,
   },
   "food-delivery": {
     prerequisites: [P.freeMembership, ...FOOD_DELIVERY_PREREQUISITE_EXTRAS],
@@ -872,6 +923,34 @@ const GUIDE_KITS: Record<string, GuideKit> = {
     externalLinks: GENEALOGY_EXTERNAL_LINKS,
     supplies: GENEALOGY_SUPPLIES,
     suggestedPricing: GENEALOGY_PRICING,
+  },
+  "local-event-content-creator": {
+    prerequisites: [P.freeMembership, ...LOCAL_EVENT_CONTENT_PREREQUISITE_EXTRAS],
+    tools: [...LOCAL_EVENT_CONTENT_TOOLS, ...t("phone_computer")],
+    externalLinks: LOCAL_EVENT_CONTENT_EXTERNAL_LINKS,
+    supplies: LOCAL_EVENT_CONTENT_SUPPLIES,
+    suggestedPricing: LOCAL_EVENT_CONTENT_PRICING,
+  },
+  "junior-reinvest-ceo": {
+    prerequisites: [P.freeMembership, ...JUNIOR_REINVEST_CEO_PREREQUISITE_EXTRAS],
+    tools: [...JUNIOR_REINVEST_CEO_TOOLS, ...t("phone_computer")],
+    externalLinks: JUNIOR_REINVEST_CEO_EXTERNAL_LINKS,
+    supplies: JUNIOR_REINVEST_CEO_SUPPLIES,
+    suggestedPricing: JUNIOR_REINVEST_CEO_PRICING,
+  },
+  "kids-reinvest-jar": {
+    prerequisites: [P.freeMembership, ...KIDS_REINVEST_JAR_PREREQUISITE_EXTRAS],
+    tools: [...KIDS_REINVEST_JAR_TOOLS, ...t("phone_computer")],
+    externalLinks: KIDS_REINVEST_JAR_EXTERNAL_LINKS,
+    supplies: KIDS_REINVEST_JAR_SUPPLIES,
+    suggestedPricing: KIDS_REINVEST_JAR_PRICING,
+  },
+  "airbnb-turnover-checker": {
+    prerequisites: [P.freeMembership, ...AIRBNB_TURNOVER_CHECKER_PREREQUISITE_EXTRAS],
+    tools: [...AIRBNB_TURNOVER_CHECKER_TOOLS, ...t("phone_computer")],
+    externalLinks: AIRBNB_TURNOVER_CHECKER_EXTERNAL_LINKS,
+    supplies: AIRBNB_TURNOVER_CHECKER_SUPPLIES,
+    suggestedPricing: AIRBNB_TURNOVER_CHECKER_PRICING,
   },
   "book-publishing": {
     prerequisites: [P.freeMembership, P.computer],
@@ -988,8 +1067,8 @@ function ensureMentionedAppTools(
 
 /** Delivery-driver kits: no free-plan pitches; drop marketing app injects. */
 function finalizeDeliveryDriverTools(guideId: string, tools: GuideToolCost[]): GuideToolCost[] {
-  if (guideId !== "food-delivery") return tools;
-  const skip = new Set(["google_docs", "canva", "chatgpt"]);
+  if (guideId !== "food-delivery" && guideId !== "rideshare") return tools;
+  const skip = new Set(["google_docs", "canva", "chatgpt", "phone_computer"]);
   return tools
     .filter((t) => !skip.has(t.id))
     .map((t) => ({ ...t, planLabelApplicable: false }));
@@ -1105,6 +1184,12 @@ export {
   mothersHelperToolsDisclaimer,
   babysittingToolsDisclaimer,
   digitalProductsToolsDisclaimer,
+  rideshareToolsDisclaimer,
+  localEventContentToolsDisclaimer,
+  propertyMgmtToolsDisclaimer,
+  juniorReinvestCeoToolsDisclaimer,
+  kidsReinvestJarToolsDisclaimer,
+  airbnbTurnoverCheckerToolsDisclaimer,
 };
 
 export function prerequisitesDisclaimer(): string {

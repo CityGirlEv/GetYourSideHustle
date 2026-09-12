@@ -8,9 +8,11 @@ import { kidsLibraryMinTier } from "../age-library-tiers";
 import { guideCalcProfileForId, computeGuideCalc } from "../guide-revenue-calc";
 import { parseGuideStepDesc } from "../guide-step-checklist";
 import { buildLaunchGuidePdfModel } from "../launch-guide-pdf";
+import { formatPricingLine } from "../guide-suggested-pricing";
 import {
   MOTHERS_HELPER_DETAILED_STEPS,
   MOTHERS_HELPER_NOTES_WORKSHEET,
+  MOTHERS_HELPER_PRICING,
   MOTHERS_HELPER_REALITY_CHECK,
   computeMothersHelperProfit,
 } from "../mothers-helper-guide";
@@ -48,10 +50,17 @@ describe("Guide #001 Babysitter's Helper / Mother's Helper", () => {
     expect(
       kit.prerequisites.some((p) => /parent|present|need|overview/i.test(p.label)),
     ).toBe(true);
-    expect(kit.suggestedPricing?.items.some((i) => /\$10|\$15|\$25|\$40/i.test(i.price))).toBe(
-      true,
+    expect(kit.suggestedPricing?.intro).toMatch(/MOTHER'S HELPER STARTER EXAMPLES/i);
+    expect(kit.suggestedPricing?.intro).toMatch(/\$10–\$40\/job \(examples\)/i);
+    expect(kit.suggestedPricing?.raiseTip).toMatch(
+      /Always agree on Job \+ Time \+ Tasks \+ Price BEFORE starting/i,
     );
-    expect(kit.suggestedPricing?.intro).toMatch(/\$10–\$40\/job/i);
+    expect(kit.suggestedPricing?.items.map(formatPricingLine)).toEqual([
+      "Quick Help: $10–$15/job — 30–60 minutes of simple parent-present help",
+      "Standard Help: $15–$25/job — 1–2 hours of play, toys, activities, or simple kid-related help",
+      "Longer Helper Session: $25–$40/job — longer parent-present session with multiple approved tasks",
+    ]);
+    expect(MOTHERS_HELPER_PRICING.items.every((i) => i.label)).toBe(true);
     expect(kit.supplies?.items.some((i) => /book|toy|craft|notebook|snack/i.test(i.name))).toBe(
       true,
     );

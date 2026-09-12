@@ -56,10 +56,13 @@ describe("guide-step-checklist", () => {
       "../lead-followup-assistant-guide",
       "../personal-shopper-guide",
       "../kids-piggy-first-goal-guide",
+      "../kids-reinvest-jar-guide",
+      "../junior-reinvest-ceo-guide",
       "../online-research-assistant-guide",
       "../mothers-helper-guide",
       "../babysitting-guide",
       "../digital-products-guide",
+      "../airbnb-turnover-checker-guide",
     ] as const;
     for (const mod of modules) {
       const exported = (await import(mod)) as Record<string, unknown>;

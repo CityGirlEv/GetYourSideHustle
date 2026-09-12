@@ -452,9 +452,9 @@ export function TestingPortal({
   const [suiteFilters, setSuiteFilters] = useState<Set<TestSuite>>(() => new Set(["manual"]));
   /** Test Suites run controls — collapsed by default. */
   const [automatedOpen, setAutomatedOpen] = useState(false);
-  /** Default = current sprint; empty set = All sprints. */
+  /** Empty set = All sprints (login / first open). */
   const [sprintFilters, setSprintFilters] = useState<Set<SprintFilterKey>>(
-    () => defaultTestingPortalSprintFilters<SprintFilterKey>(currentSprintIndex()),
+    () => defaultTestingPortalSprintFilters<SprintFilterKey>(),
   );
   const [sprintOpen, setSprintOpen] = useState(TESTING_PORTAL_FILTER_DEFAULTS.sprintOpen);
   const [otherOpen, setOtherOpen] = useState(TESTING_PORTAL_FILTER_DEFAULTS.otherOpen);

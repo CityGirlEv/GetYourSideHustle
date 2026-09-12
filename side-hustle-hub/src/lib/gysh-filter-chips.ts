@@ -35,10 +35,11 @@ export function allTestingPortalSprintFilters<T = never>(): Set<T> {
 }
 
 /**
- * Testing Portal opens filtered to the current sprint (not All sprints).
+ * Testing Portal opens on All sprints (empty set). Task List / Content Factory
+ * still default to the current sprint.
  */
-export function defaultTestingPortalSprintFilters<T>(currentSprint: T): Set<T> {
-  return new Set([currentSprint]);
+export function defaultTestingPortalSprintFilters<T = never>(): Set<T> {
+  return allTestingPortalSprintFilters<T>();
 }
 
 export function isAllSprintsFilter(selected: Set<unknown>): boolean {
@@ -58,7 +59,7 @@ export const TESTING_PORTAL_FILTER_DEFAULTS: {
 } = {
   order: ["assignees", "sprint", "status", "other"],
   testersOpen: true,
-  /** Open so the current-sprint chip is visible on load. */
+  /** Open so All sprints vs individual sprint chips are visible on load. */
   sprintOpen: true,
   otherOpen: false,
   statusOpen: true,

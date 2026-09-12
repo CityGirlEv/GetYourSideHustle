@@ -22594,6 +22594,7 @@ button.launch-checklist-item {
   transform: scale(1.02);
 }
 
+.membership-choose-free {
   box-shadow: 0 4px 14px rgba(46, 125, 90, 0.28);
 }
 

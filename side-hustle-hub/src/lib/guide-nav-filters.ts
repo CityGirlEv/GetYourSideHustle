@@ -30,11 +30,11 @@ export function guideNavFilterIsAll(selected: readonly string[]): boolean {
 }
 
 /**
- * Staff (Admin / QA) Library Admin + listing: open on Pending / Needs Further Review
- * so the review queue is front and center. Members keep Show All.
+ * Staff (Admin / QA) Library Admin + listing: Show All on load (same as members).
+ * Pending is still one click on the status chips when you want the review queue.
  */
 export const DEFAULT_STAFF_LIBRARY_STATUS_FILTERS: readonly GuideNavStatusFilter[] = [
-  "pending",
+  "all",
 ];
 
 export function defaultLibraryStatusFilters(staffCatalog: boolean): GuideNavStatusFilter[] {
