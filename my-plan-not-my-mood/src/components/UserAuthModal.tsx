@@ -28,6 +28,7 @@ interface UserAuthModalProps {
   initialMemberSignup?: boolean;
   initialLoginEmail?: string;
   initialResetToken?: string;
+  notice?: string;
   onClose: () => void;
   onUserChange: (user: AppUser | null) => void;
 }
@@ -38,6 +39,7 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
   initialMemberSignup = false,
   initialLoginEmail = '',
   initialResetToken = '',
+  notice = '',
   onClose,
   onUserChange,
 }) => {
@@ -106,8 +108,9 @@ export const UserAuthModal: React.FC<UserAuthModalProps> = ({
       setWantsBeta(false);
       setIsMemberSignup(false);
       setBlockAutofill(true);
+      setAuthError(notice || '');
     }
-  }, [currentUser, isOpen, initialMemberSignup, initialLoginEmail, initialResetToken]);
+  }, [currentUser, isOpen, initialMemberSignup, initialLoginEmail, initialResetToken, notice]);
 
   const unlockLoginFields = () => setBlockAutofill(false);
 

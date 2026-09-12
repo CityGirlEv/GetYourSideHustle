@@ -85,6 +85,7 @@ import {
   hasLocalUsersToImport,
 } from '../lib/userAuth';
 import { formatPhoneDisplay, phoneSignupError, phoneTelHref } from '../lib/phoneNumber';
+import { rolloverSprint, sprintSelectOptions } from '../lib/sprintRollover';
 import {
   FULL_AUDIT_LOG_HEADING,
   USER_AUDIT_EMPTY,
@@ -133,6 +134,7 @@ import {
   canOpenBudgetTab,
   canOpenPlanTab,
   planPageCardOrder,
+  postLoginAdminTab,
   resolveAdminPortalTab,
 } from '../lib/planPage';
 import {
@@ -152,6 +154,7 @@ import {
   WorkBoardField,
   WorkBoardFieldGrid,
   WorkBoardHeaderSelect,
+  RolledOverStatusBadge,
   workBoardFieldClassName,
   workBoardHeaderBubbleClass,
 } from './WorkBoardExpandableRow';
@@ -224,6 +227,8 @@ import {
   type QaTestItem,
   type TaskStatus,
   type QaStatus,
+  type TaskStatusFilter,
+  type QaStatusFilter,
   type SprintCategory,
   type WorkPriority,
   type WorkAssignee,
@@ -243,6 +248,11 @@ import {
   taskIsDone,
   qaIsDone,
   TASK_STATUSES,
+  TASK_STATUS_FILTER_LABELS,
+  TASK_STATUS_FILTER_OPTIONS,
+  QA_STATUS_FILTER_LABELS,
+  QA_STATUS_FILTER_OPTIONS,
+  appendRolledOverStatusChip,
   QA_STATUSES,
   PRIORITY_OPTIONS,
   ASSIGNEE_OPTIONS,
@@ -1207,15 +1217,15 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
   // Task Page State
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [newTaskSprint, setNewTaskSprint] = useState<SprintCategory>(() => currentSprintLabel());
+  const [newTaskSprint, setNewTaskSprint] = useState<SprintCategory>(() => rolloverSprint(currentSprintLabel()));
   const [newTaskCategory, setNewTaskCategory] = useState<TaskCategory>('Launch');
   const [newTaskPriority, setNewTaskPriority] = useState<WorkPriority>('medium');
   const [newTaskAssignee, setNewTaskAssignee] = useState<WorkAssignee>('unassigned');
   const [taskSearch, setTaskSearch] = useState('');
-  const [taskFilters, setTaskFilters] = useState(() => defaultWorkBoardFilters<TaskStatus>());
+  const [taskFilters, setTaskFilters] = useState(() => defaultWorkBoardFilters<TaskStatusFilter>());
   const [taskSort, setTaskSort] = useState<WorkBoardSort>(DEFAULT_WORK_BOARD_SORT);
   const [qaSearch, setQaSearch] = useState('');
-  const [qaFilters, setQaFilters] = useState(() => defaultWorkBoardFilters<QaStatus>());
+  const [qaFilters, setQaFilters] = useState(() => defaultWorkBoardFilters<QaStatusFilter>());
   const [qaSort, setQaSort] = useState<WorkBoardSort>(DEFAULT_WORK_BOARD_SORT);
   const [qaSuiteFilter, setQaSuiteFilter] = useState<Set<TestSuite>>(() => defaultQaSuiteFilter());
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(() => new Set());
@@ -1547,6 +1557,10 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
         setEmailInput('');
         setPassInput('');
         setBlockAutofill(true);
+        const landing = postLoginAdminTab(res.user);
+        if (landing === 'tasks' && resolveAdminPortalTab(activeTab) === 'plan') {
+          selectAdminTab('tasks');
+        }
         return;
       }
       setAuthError('This account cannot access Admin Hub.');
@@ -1831,7 +1845,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
     const newTask: TaskItem = {
       id: nextTaskId(tasksRef.current),
       title: newTaskTitle.trim(),
-      sprint: newTaskSprint,
+      sprint: rolloverSprint(newTaskSprint),
       category: newTaskCategory,
       priority: newTaskPriority,
       status: 'not_started',
@@ -1884,13 +1898,21 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
   const qaSuiteChips = buildSuiteChipCounts(qaTests, qaIsDone);
 
   const taskSprintChips = buildSprintChipCounts(tasks, taskIsDone);
-  const taskStatusChips = buildStatusChipCounts(tasks, TASK_STATUSES, TASK_STATUS_LABELS, (s) => s === 'done', TASK_STATUS_SWATCH);
+  const taskStatusChips = appendRolledOverStatusChip(
+    buildStatusChipCounts(tasks, TASK_STATUSES, TASK_STATUS_LABELS, (s) => s === 'done', TASK_STATUS_SWATCH),
+    tasks,
+    taskIsDone,
+  );
   const taskPriorityChips = buildPriorityChipCounts(tasks, taskIsDone);
   const taskAssigneeChips = buildAssigneeChipCounts(tasks, taskIsDone);
   const taskCategoryChips = buildCategoryChipCounts(tasks, TASK_CATEGORIES, taskIsDone);
 
   const qaSprintChips = buildSprintChipCounts(suiteScopedQaTests, qaIsDone);
-  const qaStatusChips = buildStatusChipCounts(suiteScopedQaTests, QA_STATUSES, QA_STATUS_LABELS, (s) => s === 'passed', QA_STATUS_SWATCH);
+  const qaStatusChips = appendRolledOverStatusChip(
+    buildStatusChipCounts(suiteScopedQaTests, QA_STATUSES, QA_STATUS_LABELS, (s) => s === 'passed', QA_STATUS_SWATCH),
+    suiteScopedQaTests,
+    qaIsDone,
+  );
   const qaPriorityChips = buildPriorityChipCounts(suiteScopedQaTests, qaIsDone);
   const qaAssigneeChips = buildAssigneeChipCounts(qaTests, qaIsDone, TEST_ASSIGNEE_OPTIONS);
   const qaCategoryChips = buildCategoryChipCounts(suiteScopedQaTests, QA_CATEGORIES, qaIsDone);
@@ -2843,7 +2865,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
             />
             <WorkBoardStatusLegend items={qaStatusLegend()} testId="qa-status-legend" />
 
-            <WorkBoardFilterPanel<QaStatus>
+            <WorkBoardFilterPanel<QaStatusFilter>
               search={qaSearch}
               onSearchChange={setQaSearch}
               searchPlaceholder="Search QA tests, category, sprint, assigneeâ€¦"
@@ -2858,7 +2880,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
               assigneeFilter={qaFilters.assignee}
               categoryFilter={qaFilters.category}
               sprintOrdered={SPRINT_OPTIONS}
-              statusOrdered={QA_STATUSES}
+              statusOrdered={QA_STATUS_FILTER_OPTIONS}
               priorityOrdered={PRIORITY_OPTIONS}
               assigneeOrdered={TEST_ASSIGNEE_OPTIONS}
               categoryOrdered={QA_CATEGORIES}
@@ -2980,8 +3002,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                       sprintOrdered={SPRINT_OPTIONS}
                       onSprintChange={(next) => setQaFilters((prev) => ({ ...prev, sprint: next as Set<SprintCategory> }))}
                       statusFilter={qaFilters.status}
-                      statusOrdered={QA_STATUSES}
-                      statusLabels={QA_STATUS_LABELS}
+                      statusOrdered={QA_STATUS_FILTER_OPTIONS}
+                      statusLabels={QA_STATUS_FILTER_LABELS}
                       onStatusChange={(next) => setQaFilters((prev) => ({ ...prev, status: next }))}
                       assigneeFilter={qaFilters.assignee}
                       assigneeOrdered={TEST_ASSIGNEE_OPTIONS}
@@ -3017,7 +3039,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                             testId={`work-row-sprint-${test.id}`}
                             value={test.sprint}
                             onChange={(value) => handleUpdateQa(test.id, { sprint: value as SprintCategory })}
-                            options={SPRINT_OPTIONS.map((sprint) => ({ value: sprint, label: sprintLabelWithDates(sprint) }))}
+                            options={sprintSelectOptions(SPRINT_OPTIONS, test.sprint).map((sprint) => ({ value: sprint, label: sprintLabelWithDates(sprint) }))}
                             className={`${sprintControlClass(test.sprint)} border-current`}
                           />
                           <WorkBoardHeaderSelect
@@ -3033,6 +3055,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                             }))}
                             className={qaStatusBadgeClass(test.status)}
                           />
+                          {test.rolledOver ? <RolledOverStatusBadge testId={`rolled-over-${test.id}`} /> : null}
                           <span
                             className="text-[9px] font-mono font-bold px-1.5 h-7 inline-flex items-center rounded border"
                             style={{
@@ -3089,7 +3112,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                             className={workBoardFieldClassName}
                             aria-label="Sprint"
                           >
-                            {SPRINT_OPTIONS.map((s) => <option key={s} value={s}>{sprintLabelWithDates(s)}</option>)}
+                            {sprintSelectOptions(SPRINT_OPTIONS, test.sprint).map((s) => <option key={s} value={s}>{sprintLabelWithDates(s)}</option>)}
                           </select>
                         </WorkBoardField>
                         <WorkBoardField label="Phase">
@@ -3266,7 +3289,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
               </div>
             </WorkBoardCollapsibleSummary>
 
-            <WorkBoardFilterPanel<TaskStatus>
+            <WorkBoardFilterPanel<TaskStatusFilter>
               search={taskSearch}
               onSearchChange={setTaskSearch}
               searchPlaceholder="Search tasks, category, sprint, assigneeâ€¦"
@@ -3281,7 +3304,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
               assigneeFilter={taskFilters.assignee}
               categoryFilter={taskFilters.category}
               sprintOrdered={SPRINT_OPTIONS}
-              statusOrdered={TASK_STATUSES}
+              statusOrdered={TASK_STATUS_FILTER_OPTIONS}
               priorityOrdered={PRIORITY_OPTIONS}
               assigneeOrdered={ASSIGNEE_OPTIONS}
               categoryOrdered={TASK_CATEGORIES}
@@ -3326,7 +3349,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                   onChange={(e) => setNewTaskSprint(e.target.value as SprintCategory)}
                   className="w-full md:w-auto min-h-[44px] bg-[#FAF8F5] border-2 border-[#1F1917] rounded-xl px-3 text-xs font-bold cursor-pointer"
                 >
-                  {SPRINT_OPTIONS.map((s) => (
+                  {sprintSelectOptions(SPRINT_OPTIONS).map((s) => (
                     <option key={s} value={s}>{sprintLabelWithDates(s)}</option>
                   ))}
                 </select>
@@ -3443,8 +3466,8 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                       sprintOrdered={SPRINT_OPTIONS}
                       onSprintChange={(next) => setTaskFilters((prev) => ({ ...prev, sprint: next as Set<SprintCategory> }))}
                       statusFilter={taskFilters.status}
-                      statusOrdered={TASK_STATUSES}
-                      statusLabels={TASK_STATUS_LABELS}
+                      statusOrdered={TASK_STATUS_FILTER_OPTIONS}
+                      statusLabels={TASK_STATUS_FILTER_LABELS}
                       onStatusChange={(next) => setTaskFilters((prev) => ({ ...prev, status: next }))}
                       assigneeFilter={taskFilters.assignee}
                       assigneeOrdered={ASSIGNEE_OPTIONS}
@@ -3484,7 +3507,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                             testId={`work-row-sprint-${t.id}`}
                             value={t.sprint}
                             onChange={(value) => handleUpdateTask(t.id, { sprint: value as SprintCategory })}
-                            options={SPRINT_OPTIONS.map((sprint) => ({ value: sprint, label: sprintLabelWithDates(sprint) }))}
+                            options={sprintSelectOptions(SPRINT_OPTIONS, t.sprint).map((sprint) => ({ value: sprint, label: sprintLabelWithDates(sprint) }))}
                             className={`${sprintControlClass(t.sprint)} border-current`}
                           />
                           <WorkBoardHeaderSelect
@@ -3495,6 +3518,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                             options={TASK_STATUSES.map((status) => ({ value: status, label: TASK_STATUS_LABELS[status] }))}
                             className={taskStatusBadgeClass(t.status)}
                           />
+                          {t.rolledOver ? <RolledOverStatusBadge testId={`rolled-over-${t.id}`} /> : null}
                           <WorkBoardHeaderSelect
                             ariaLabel="Assignee"
                             value={t.assignee}
@@ -3590,7 +3614,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ onBackToStore, initial
                             className={workBoardFieldClassName}
                             aria-label="Sprint"
                           >
-                            {SPRINT_OPTIONS.map((s) => <option key={s} value={s}>{sprintLabelWithDates(s)}</option>)}
+                            {sprintSelectOptions(SPRINT_OPTIONS, t.sprint).map((s) => <option key={s} value={s}>{sprintLabelWithDates(s)}</option>)}
                           </select>
                         </WorkBoardField>
                         <WorkBoardField label="Phase">

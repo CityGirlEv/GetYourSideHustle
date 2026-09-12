@@ -30,6 +30,7 @@ import {
   MOTHERS_HELPER_PRICING,
   MOTHERS_HELPER_SUPPLIES,
 } from "./mothers-helper-guide";
+import { CRAFTS_PRICING, CRAFTS_SUPPLIES } from "./crafts-guide";
 import {
   LOCAL_CONTENT_PHOTO_PRICING,
   LOCAL_CONTENT_PHOTO_SUPPLIES,
@@ -487,6 +488,10 @@ const SUPPLY_OVERRIDES: Record<string, GuideSupplyList> = {
   "mothers-helper": {
     starterKitTotal: MOTHERS_HELPER_SUPPLIES.starterKitTotal,
     items: MOTHERS_HELPER_SUPPLIES.items.map((item) => ({ ...item })),
+  },
+  crafts: {
+    starterKitTotal: CRAFTS_SUPPLIES.starterKitTotal,
+    items: CRAFTS_SUPPLIES.items.map((item) => ({ ...item })),
   },
   "homework-organizer": {
     starterKitTotal: "About $5–20 for student organization kit",
@@ -1112,6 +1117,10 @@ const PRICING_OVERRIDES: Record<string, GuideSuggestedPricing> = {
   "mothers-helper": {
     ...MOTHERS_HELPER_PRICING,
     items: MOTHERS_HELPER_PRICING.items.map((item) => ({ ...item })),
+  },
+  crafts: {
+    ...CRAFTS_PRICING,
+    items: CRAFTS_PRICING.items.map((item) => ({ ...item })),
   },
   "homework-organizer": {
     raiseTip: RAISE,

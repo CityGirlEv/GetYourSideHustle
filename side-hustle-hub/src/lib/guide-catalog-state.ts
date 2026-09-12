@@ -484,12 +484,7 @@ export function getGuideVisibilityStatus(
   const row = states?.[guideId];
   if (!row) return defaultStatusForGuide(guideId);
   if (row.deleted) return "inactive";
-  const resolved = resolveGuideVisibilityStatus(row);
-  // Backfilled guides that were still Active move to Pending until QA re-reviews.
-  if (guideMarkedPendingAfterPrepBackfill(guideId) && resolved === "active") {
-    return "pending";
-  }
-  return resolved;
+  return resolveGuideVisibilityStatus(row);
 }
 
 /** True when Active or Reviewed by QA (both are live / published). */

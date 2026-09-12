@@ -48,6 +48,8 @@ import {
   type TaskStatus,
 } from '../lib/workBoard';
 import { sprintDatesForLabel } from '../lib/sprintCalendar';
+import { isSprintLocked, ROLLOVER_NOTE_TEXT, ROLLOVER_STATUS_ID, ROLLOVER_STATUS_LABEL, sprintSectionTitle } from '../lib/sprintRollover';
+import { RolledOverStatusBadge } from './WorkBoardExpandableRow';
 import { ContentFactoryShell } from './ContentFactoryShell';
 
 const CF_FIELD_CLASS =
@@ -88,8 +90,9 @@ export const ContentFactoryPage: React.FC<{
   const [sprintFilter, setSprintFilter] = useState<Set<string>>(new Set());
   const [assigneeFilter, setAssigneeFilter] = useState<Set<string>>(new Set());
   const [channelFilter, setChannelFilter] = useState<Set<string>>(new Set());
+  const [statusFilter, setStatusFilter] = useState<Set<string>>(new Set());
   const [openSprints, setOpenSprints] = useState<Record<string, boolean>>({
-    'Sprint 0': true,
+    'Sprint 0': false,
     'Sprint 1': true,
     'Sprint 2': false,
     'Sprint 3': false,
@@ -131,8 +134,9 @@ export const ContentFactoryPage: React.FC<{
         sprints: sprintFilter,
         assignees: assigneeFilter,
         channels: channelFilter,
+        statuses: statusFilter,
       }),
-    [items, search, sprintFilter, assigneeFilter, channelFilter],
+    [items, search, sprintFilter, assigneeFilter, channelFilter, statusFilter],
   );
   const grouped = useMemo(() => groupContentFactoryBySprint(filtered), [filtered]);
 
@@ -231,6 +235,31 @@ export const ContentFactoryPage: React.FC<{
             })}
           </div>
         </div>
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-wider text-[#EA580C] mb-2">Status</p>
+          <div className={BRAND_TAB_SUB_ROW_CLASS} role="tablist" aria-label="Status" data-testid="cf-status-filters">
+            {[...TASK_STATUSES, ROLLOVER_STATUS_ID].map((status) => {
+              const active = statusFilter.has(status);
+              const total =
+                status === ROLLOVER_STATUS_ID
+                  ? items.filter((row) => row.rolledOver).length
+                  : items.filter((row) => row.status === status).length;
+              return (
+                <button
+                  key={status}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setStatusFilter((prev) => toggleSet(prev, status))}
+                  className={brandTabClass(active)}
+                  data-testid={`cf-status-${status}`}
+                >
+                  {status === ROLLOVER_STATUS_ID ? ROLLOVER_STATUS_LABEL : TASK_STATUS_LABELS[status]} {total}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       <div className="space-y-3" data-testid="content-factory-sprints">
@@ -257,7 +286,10 @@ export const ContentFactoryPage: React.FC<{
                 <span className={`inline-flex items-center gap-2 text-sm font-black uppercase tracking-wide min-w-0 ${tone.ink}`}>
                   {isOpen ? <ChevronDown className="w-5 h-5 shrink-0" /> : <ChevronRight className="w-5 h-5 shrink-0" />}
                   <span className="min-w-0">
-                    {sprint}
+                    {sprintSectionTitle(sprint)}
+                    {isSprintLocked(sprint) ? (
+                      <span className="ml-2 font-mono font-bold normal-case tracking-normal opacity-80">Closed</span>
+                    ) : null}
                     {dates ? (
                       <span className={`ml-2 font-mono font-bold normal-case tracking-normal ${tone.ink}`}>
                         {dates}
@@ -363,6 +395,7 @@ export const ContentFactoryPage: React.FC<{
                                 <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-lg border ${assigneeChip}`}>
                                   {ASSIGNEE_LABELS[row.assignee]}
                                 </span>
+                                {row.rolledOver ? <RolledOverStatusBadge testId={`cf-rolled-over-${row.id}`} /> : null}
                               </div>
                               </span>
                             </button>
@@ -422,6 +455,14 @@ export const ContentFactoryPage: React.FC<{
                               className="border-t border-[#FED7AA] bg-[#FFF7ED] px-3 py-3 space-y-3 text-sm text-[#9A3412]"
                               data-testid={`cf-item-editor-${row.id}`}
                             >
+                              {row.note ? (
+                                <p
+                                  className="rounded-xl border-2 border-[#FDBA74] bg-[#FFEDD5] px-3 py-2 text-xs font-black uppercase tracking-wide text-[#C2410C]"
+                                  data-testid={`cf-item-note-${row.id}`}
+                                >
+                                  {row.note || ROLLOVER_NOTE_TEXT}
+                                </p>
+                              ) : null}
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <label className="sm:col-span-2">
                                   <span className={CF_LABEL_CLASS}>Title</span>

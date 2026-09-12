@@ -18,6 +18,8 @@ import {
   openPlanFromHeader,
   parseAdminPortalTab,
   planPageCardOrder,
+  postLoginAdminPath,
+  postLoginAdminTab,
   resolveAdminPortalTab,
   togglePlanDownloadSection,
 } from '../planPage';
@@ -168,6 +170,19 @@ describe('planPage', () => {
     expect(parseAdminPortalTab('/admin/logo-concepts')).toBe('logo-concepts');
     expect(adminPortalPath('logo-concepts')).toBe('/admin/logo-concepts');
     expect(adminPortalPath('agenda')).toBe('/admin/agenda');
+  });
+
+  it('sends Admin and QA to the Task List after login, and keeps Super Admin on Plan', () => {
+    const admin = { role: 'admin' as const, roles: ['admin' as const] };
+    const qa = { role: 'qa' as const, roles: ['qa' as const] };
+    const superAdmin = { role: 'super_admin' as const, roles: ['super_admin' as const] };
+    expect(postLoginAdminTab(admin)).toBe('tasks');
+    expect(postLoginAdminTab(qa)).toBe('tasks');
+    expect(postLoginAdminTab(superAdmin)).toBe('plan');
+    expect(postLoginAdminPath(admin)).toBe('/admin/tasks');
+    expect(postLoginAdminPath(qa, '/admin/plan')).toBe('/admin/tasks');
+    expect(postLoginAdminPath(qa, '/admin/testing')).toBe('/admin/testing');
+    expect(postLoginAdminPath(superAdmin, '/admin/plan')).toBe('/admin/plan');
   });
 
   it('holds /admin/plan until login, then returns the visitor to that same path', () => {

@@ -22,6 +22,7 @@ import {
 } from '../userAuth';
 import { ANGELA_HARRIS_SEED_EMAIL, EVELYN_SEED_EMAIL, STAFF_SEED_PASSWORD } from '../seedAccounts';
 import { PHONE_REQUIRED_ERROR } from '../phoneNumber';
+import { SESSION_IDLE_TIMEOUT_MS, writeLastActivityAt } from '../sessionIdle';
 
 const SIGNUP_PHONE = '6195550100';
 
@@ -124,6 +125,17 @@ describe('MyPlan App User Auth & RBAC Permissions', () => {
 
     const session = getCurrentUserSession();
     expect(session?.email).toBe(EVELYN_SEED_EMAIL);
+  });
+
+  it('signs the user out after an hour of idle time so they must log back in', () => {
+    expect(loginUser(EVELYN_SEED_EMAIL, STAFF_SEED_PASSWORD).success).toBe(true);
+    expect(getCurrentUserSession()?.email).toBe(EVELYN_SEED_EMAIL);
+    writeLastActivityAt(Date.now() - SESSION_IDLE_TIMEOUT_MS + 5_000);
+    expect(getCurrentUserSession()?.email).toBe(EVELYN_SEED_EMAIL);
+    writeLastActivityAt(Date.now() - SESSION_IDLE_TIMEOUT_MS);
+    expect(getCurrentUserSession()).toBeNull();
+    expect(loginUser(EVELYN_SEED_EMAIL, STAFF_SEED_PASSWORD).success).toBe(true);
+    expect(getCurrentUserSession()?.email).toBe(EVELYN_SEED_EMAIL);
   });
 
   it('allows logging in as Admin angela@angelasharris.com / Admin123', () => {

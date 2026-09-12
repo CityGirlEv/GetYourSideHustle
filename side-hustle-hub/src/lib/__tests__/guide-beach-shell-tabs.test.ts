@@ -84,9 +84,11 @@ describe("Beach Shell Jewelry template — all guides", () => {
   });
 
   it("backfilled guides default to Pending / Needs Further Review", () => {
-    expect(guideMarkedPendingAfterPrepBackfill("rideshare")).toBe(true);
-    expect(defaultStatusForGuide("rideshare")).toBe("pending");
+    expect(guideMarkedPendingAfterPrepBackfill("airbnb")).toBe(true);
+    expect(defaultStatusForGuide("airbnb")).toBe("pending");
     expect(guideMarkedPendingAfterPrepBackfill("beach-shell-jewelry")).toBe(false);
     expect(defaultStatusForGuide("beach-shell-jewelry")).toBe("active");
+    expect(guideMarkedPendingAfterPrepBackfill("babysitting")).toBe(false);
+    expect(defaultStatusForGuide("babysitting")).toBe("active");
   });
 });

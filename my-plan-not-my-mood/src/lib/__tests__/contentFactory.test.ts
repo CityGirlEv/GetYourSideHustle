@@ -34,8 +34,9 @@ describe('contentFactory', () => {
   it('lays out Phase 1 content across every sprint with Angela and Evelyn owners', () => {
     expect(contentFactoryHasSprintAndAssigneeCoverage()).toBe(true);
     expect(PHASE_1_CONTENT_FACTORY.every((item) => item.phase === 'Phase 1')).toBe(true);
-    const grouped = groupContentFactoryBySprint(PHASE_1_CONTENT_FACTORY);
-    expect(grouped['Sprint 0'].length).toBeGreaterThanOrEqual(5);
+    const grouped = groupContentFactoryBySprint(overlayContentFactoryStatuses(PHASE_1_CONTENT_FACTORY));
+    expect(grouped['Sprint 0'].length).toBe(0);
+    expect(grouped['Sprint 1'].filter((item) => item.rolledOver).length).toBeGreaterThanOrEqual(5);
     expect(grouped['Sprint 1'].some((item) => item.assignee === 'angela')).toBe(true);
     expect(grouped['Sprint 1'].some((item) => item.assignee === 'evelyn')).toBe(true);
     expect(PHASE_1_CONTENT_FACTORY.filter((item) => item.assignee === 'angela' && item.kind === 'post').length).toBeGreaterThanOrEqual(20);
@@ -66,9 +67,9 @@ describe('contentFactory', () => {
   });
 
   it('puts Logo Concepts work in Sprint 0/1 for Evelyn upload and Angela pick', () => {
-    const logos = contentFactoryLogoItems();
+    const logos = overlayContentFactoryStatuses(contentFactoryLogoItems());
     expect(logos.length).toBeGreaterThanOrEqual(2);
-    expect(logos.some((item) => item.taskId === 't-41' && item.assignee === 'evelyn')).toBe(true);
+    expect(logos.some((item) => item.taskId === 't-41' && item.assignee === 'evelyn' && item.sprint === 'Sprint 1')).toBe(true);
     expect(logos.some((item) => item.taskId === 't-42' && item.assignee === 'angela')).toBe(true);
     expect(
       filterContentFactoryItems(PHASE_1_CONTENT_FACTORY, { search: 'Logo Concepts' }).some((item) => item.kind === 'logo'),
@@ -80,6 +81,8 @@ describe('contentFactory', () => {
       'cf-s0-mon-angela': 'done',
     });
     expect(overlay.find((item) => item.id === 'cf-s0-mon-angela')?.status).toBe('done');
+    expect(overlay.find((item) => item.id === 'cf-s0-mon-angela')?.sprint).toBe('Sprint 0');
+    expect(overlay.find((item) => item.id === 'cf-s0-mon-angela')?.rolledOver).toBeFalsy();
     expect(overlay.find((item) => item.id === 'cf-s0-mon-angela')?.copy).toMatch(/Follow the Plan/i);
     expect(parseContentFactoryStatuses({ 'cf-s0-mon-angela': 'blocked', junk: 'nope' })).toEqual({
       'cf-s0-mon-angela': 'blocked',

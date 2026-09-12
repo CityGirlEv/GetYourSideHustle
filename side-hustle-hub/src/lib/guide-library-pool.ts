@@ -17,7 +17,7 @@ import {
   type GuideCatalogStateMap,
 } from "./guide-catalog-state";
 import { effectiveGuideAudiences } from "./guide-library-update";
-import { guidesForAudience } from "./kids-guides";
+import { guidesForAudience, kidsGuideById } from "./kids-guides";
 import { LAUNCH_GUIDES } from "./launch-guides";
 import type { AudienceGroup, TierId } from "./membership";
 import { orderedSeniorGuides, SENIOR_GUIDE_TEASERS } from "./seniors-content";
@@ -172,7 +172,13 @@ export function libraryMinTierForGuideId(
 function guideDisplayNameFallback(guideId: string): string {
   const id = String(guideId || "").trim();
   if (!id) return "";
-  return hustleById(id)?.name || LAUNCH_GUIDES.find((g) => g.id === id)?.name || id;
+  const catalogName = hustleById(id)?.name?.trim();
+  if (catalogName) return catalogName;
+  const launchName = LAUNCH_GUIDES.find((g) => g.id === id)?.name?.trim();
+  if (launchName) return launchName;
+  const kidsTitle = kidsGuideById(id)?.title?.trim();
+  if (kidsTitle) return kidsTitle;
+  return id;
 }
 
 /**
@@ -349,11 +355,11 @@ export function countActiveGuidesForMembershipAudience(
   return n;
 }
 
-/** Display name for a library guide id (catalog / pool), or the id itself. */
+/** Display name for a library guide id (catalog / kids-teen title / pool), or the id itself. */
 export function libraryGuideDisplayName(guideId: string): string {
   const id = String(guideId || "").trim();
   if (!id) return "";
   const hit = uniqueGuideLibraryEntries().find((e) => e.id === id);
-  if (hit?.name) return hit.name;
-  return hustleById(id)?.name || id;
+  if (hit?.name && hit.name !== id) return hit.name;
+  return guideDisplayNameFallback(id);
 }

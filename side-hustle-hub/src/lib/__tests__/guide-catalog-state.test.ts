@@ -34,6 +34,45 @@ describe("guide catalog visibility", () => {
     expect(defaultStatusForGuide("beach-shell-jewelry")).toBe("active");
   });
 
+  it("keeps explicit Active on upgraded guides instead of forcing Pending", () => {
+    const states = {
+      babysitting: {
+        guideId: "babysitting",
+        status: "active" as const,
+        published: true,
+        deleted: false,
+        custom: false,
+        patch: {},
+      },
+      "mothers-helper": {
+        guideId: "mothers-helper",
+        status: "reviewed_by_dev" as const,
+        published: true,
+        deleted: false,
+        custom: false,
+        patch: {},
+      },
+    };
+    expect(defaultStatusForGuide("babysitting")).toBe("active");
+    expect(getGuideVisibilityStatus("babysitting", states)).toBe("active");
+    expect(isGuideVisibleToPublic("babysitting", states)).toBe(true);
+    expect(getGuideVisibilityStatus("mothers-helper", states)).toBe("reviewed_by_dev");
+    expect(isGuideVisibleToPublic("mothers-helper", states)).toBe(true);
+  });
+
+  it("does not coerce a saved Active row back to Pending for leftover backfill ids", () => {
+    expect(getGuideVisibilityStatus("airbnb", {
+      airbnb: {
+        guideId: "airbnb",
+        status: "active",
+        published: true,
+        deleted: false,
+        custom: false,
+        patch: {},
+      },
+    })).toBe("active");
+  });
+
   it("honors explicit Active / Inactive / Pending / In Review rows", () => {
     const states = {
       a: {

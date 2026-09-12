@@ -26,6 +26,7 @@ import {
   type WorkAssignee,
   type WorkPriority,
 } from './workBoard';
+import { matchesRolledOverStatusFilter, rolloverOutstandingContentFactoryItems } from './sprintRollover';
 
 export const CONTENT_FACTORY_PATH = '/admin/factory';
 export const ASSET_LIBRARY_PATH = '/admin/asset-library';
@@ -151,6 +152,8 @@ export interface ContentFactoryItem {
   visualSrc?: string;
   taskId?: string;
   status: TaskStatus;
+  rolledOver?: boolean;
+  note?: string;
 }
 
 function weekdayDate(sprintId: ContentFactoryItem['sprintId'], offset: number): { dateIso: string; weekday: CfWeekday } {
@@ -1169,10 +1172,12 @@ export function overlayContentFactoryStatuses(
   items: ContentFactoryItem[] = PHASE_1_CONTENT_FACTORY,
   statusById: Record<string, TaskStatus> = {},
 ): ContentFactoryItem[] {
-  return items.map((row) => {
-    const next = statusById[row.id];
-    return next && next !== row.status ? { ...row, status: next } : row;
-  });
+  return rolloverOutstandingContentFactoryItems(
+    items.map((row) => {
+      const next = statusById[row.id];
+      return next && next !== row.status ? { ...row, status: next } : row;
+    }),
+  );
 }
 
 export function parseContentFactoryStatuses(raw: unknown): Record<string, TaskStatus> {
@@ -1343,11 +1348,13 @@ export function overlayContentFactoryEdits(
   items: ContentFactoryItem[],
   edits: Record<string, ContentFactoryItemEdit> = {},
 ): ContentFactoryItem[] {
-  return items.map((item) => {
-    const edit = edits[item.id];
-    if (!edit) return item;
-    return applyContentFactoryItemEdit(item, edit);
-  });
+  return rolloverOutstandingContentFactoryItems(
+    items.map((item) => {
+      const edit = edits[item.id];
+      if (!edit) return item;
+      return applyContentFactoryItemEdit(item, edit);
+    }),
+  );
 }
 
 export function contentFactorySearchBlob(item: ContentFactoryItem): string {
@@ -1366,6 +1373,7 @@ export function contentFactorySearchBlob(item: ContentFactoryItem): string {
     CF_CHANNEL_LABELS[item.channel],
     item.kind,
     CF_KIND_LABELS[item.kind],
+    item.note ?? '',
     item.taskId ?? '',
     item.dateIso,
   ]
@@ -1389,7 +1397,9 @@ export function filterContentFactoryItems(
     if (filters.sprints && filters.sprints.size > 0 && !filters.sprints.has(item.sprint)) return false;
     if (filters.assignees && filters.assignees.size > 0 && !filters.assignees.has(item.assignee)) return false;
     if (filters.channels && filters.channels.size > 0 && !filters.channels.has(item.channel)) return false;
-    if (filters.statuses && filters.statuses.size > 0 && !filters.statuses.has(item.status)) return false;
+    if (filters.statuses && filters.statuses.size > 0 && !matchesRolledOverStatusFilter(item, filters.statuses)) {
+      return false;
+    }
     if (filters.kinds && filters.kinds.size > 0 && !filters.kinds.has(item.kind)) return false;
     if (search && !contentFactorySearchBlob(item).includes(search)) return false;
     return true;
@@ -1452,7 +1462,11 @@ export function contentFactoryHasSprintAndAssigneeCoverage(
 ): boolean {
   const sprints = new Set(items.map((item) => item.sprint));
   const assignees = new Set(items.map((item) => item.assignee));
-  return SPRINT_OPTIONS.every((sprint) => sprints.has(sprint)) && assignees.has('angela') && assignees.has('evelyn');
+  return (
+    SPRINT_OPTIONS.filter((sprint) => sprint !== 'Sprint 0').every((sprint) => sprints.has(sprint)) &&
+    assignees.has('angela') &&
+    assignees.has('evelyn')
+  );
 }
 
 export function formatCfWhen(item: ContentFactoryItem): string {

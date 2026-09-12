@@ -3,6 +3,17 @@ import { ChevronDown, ChevronRight, Trash2 } from 'lucide-react';
 import { SAVE_ALL_LABEL, workBoardSaveButtonTone, workPriorityTextClass, type SprintCategory, type WorkPriority } from '../lib/workBoard';
 import { AreYouSureDialog } from './AreYouSureDialog';
 
+export function RolledOverStatusBadge({ testId }: { testId?: string }) {
+  return (
+    <span
+      className="text-[9px] font-mono font-black uppercase px-1.5 min-h-[44px] inline-flex items-center rounded border bg-[#FFEDD5] text-[#C2410C] border-[#FDBA74]"
+      data-testid={testId ?? 'rolled-over-status'}
+    >
+      Rolled Over
+    </span>
+  );
+}
+
 export const workBoardHeaderBubbleClass =
   'text-[9px] font-mono font-bold leading-none px-1.5 py-0.5 min-h-[44px] rounded border cursor-pointer';
 

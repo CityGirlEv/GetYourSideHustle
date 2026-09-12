@@ -256,8 +256,96 @@ describe('workBoardStore', () => {
     );
     expect(hydrated.tasks.find((task) => task.id === 't-58')?.dueDate).toBe('2026-09-03');
     expect(hydrated.tasks.find((task) => task.id === 't-59')?.assignee).toBe('angela');
-    expect(hydrated.tasks.find((task) => task.id === 't-60')?.sprint).toBe('Sprint 0');
+    expect(hydrated.tasks.find((task) => task.id === 't-60')?.sprint).toBe('Sprint 1');
     expect(hydrated.tasks.find((task) => task.id === 't-61')?.title).toMatch(/My Plan, Not My Mood/i);
+  });
+
+  it('rolls saved Sprint 0 tasks and tests onto Sprint 1 without changing assignee', () => {
+    const parsed = parseWorkBoardStorePayload({
+      tasks: [
+        {
+          id: 't-49',
+          title: 'Set up Resend so tester emails can send',
+          sprint: 'Sprint 0',
+          category: 'Infrastructure',
+          priority: 'high',
+          status: 'in_progress',
+          assignee: 'evelyn',
+          assignor: 'angela',
+          dueDate: '2026-09-03',
+        },
+      ],
+      tests: [
+        {
+          id: 'home-qa1',
+          title: 'Home / storefront — brand line and mood entry',
+          desc: 'Home loads with brand line and mood tool entry.',
+          sprint: 'Sprint 0',
+          category: 'Storefront QA',
+          priority: 'high',
+          status: 'untested',
+          assignee: 'unassigned',
+        },
+      ],
+    });
+    expect(parsed?.tasks.find((task) => task.id === 't-49')).toMatchObject({
+      sprint: 'Sprint 1',
+      assignee: 'evelyn',
+      assignor: 'angela',
+      status: 'in_progress',
+      dueDate: '2026-09-03',
+    });
+    expect(parsed?.tests.find((test) => test.id === 'home-qa1')).toMatchObject({
+      sprint: 'Sprint 1',
+      assignee: 'unassigned',
+      rolledOver: true,
+    });
+    expect(parsed?.tasks.find((task) => task.id === 't-49')?.rolledOver).toBe(true);
+    expect(parsed?.tasks.find((task) => task.id === 't-49')?.notes).toMatch(/Rolled Over to Sprint 1/);
+  });
+
+  it('keeps finished Sprint 0 work on Sprint 0 instead of rolling it forward', () => {
+    const parsed = parseWorkBoardStorePayload({
+      tasks: [
+        {
+          id: 't-1',
+          title: 'Confirm $10,000 budget paid across three phases',
+          sprint: 'Sprint 1',
+          category: 'Infrastructure',
+          priority: 'high',
+          status: 'done',
+          assignee: 'angela',
+          assignor: 'evelyn',
+          rolledOver: true,
+          notes: '[{"id":"n-rollover-sprint-1","author":"System","createdAt":"2026-09-11T00:00:00.000Z","updatedAt":"2026-09-11T00:00:00.000Z","text":"Rolled Over to Sprint 1"}]',
+        },
+      ],
+      tests: [
+        {
+          id: 'home-qa1',
+          title: 'Home / storefront — brand line and mood entry',
+          sprint: 'Sprint 1',
+          category: 'Storefront QA',
+          priority: 'high',
+          status: 'passed',
+          assignee: 'qa',
+          rolledOver: true,
+        },
+      ],
+    });
+    expect(parsed?.tasks.find((task) => task.id === 't-1')).toMatchObject({
+      sprint: 'Sprint 0',
+      status: 'done',
+      assignee: 'angela',
+      assignor: 'evelyn',
+      rolledOver: false,
+    });
+    expect(parsed?.tasks.find((task) => task.id === 't-1')?.notes).not.toMatch(/Rolled Over to Sprint 1/);
+    expect(parsed?.tests.find((test) => test.id === 'home-qa1')).toMatchObject({
+      sprint: 'Sprint 0',
+      status: 'passed',
+      rolledOver: false,
+    });
   });
 
   it('keeps a deleted seed task gone across hydrate, parse, and save merge', () => {

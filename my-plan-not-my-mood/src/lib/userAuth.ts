@@ -9,6 +9,13 @@ import {
 } from './seedAccounts';
 import { auditActorFromUser, recordUserAudit } from './userAuditLog';
 import { phoneSignupError, storePhoneNumber } from './phoneNumber';
+import {
+  clearLastActivityAt,
+  readLastActivityAt,
+  resolveSessionIdle,
+  touchSessionActivity,
+  writeLastActivityAt,
+} from './sessionIdle';
 
 export type UserRole = 'super_admin' | 'admin' | 'dev' | 'qa' | 'member';
 export type UserStatus = 'active' | 'pending' | 'inactive';
@@ -66,8 +73,13 @@ let remoteUsersCache: AppUser[] = [];
 export function setRemoteSession(user: AppUser | null): void {
   remoteSession = user;
   if (typeof window === 'undefined') return;
-  if (user) localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(user));
-  else localStorage.removeItem(STORAGE_SESSION_KEY);
+  if (user) {
+    localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(user));
+    touchSessionActivity();
+  } else {
+    localStorage.removeItem(STORAGE_SESSION_KEY);
+    clearLastActivityAt();
+  }
 }
 
 export function setRemoteUsersCache(users: AppUser[]): void {
@@ -494,9 +506,23 @@ function readRawUserSession(): AppUser | null {
   }
 }
 
+function enforceIdleSession(user: AppUser | null): AppUser | null {
+  if (!user) return null;
+  const check = resolveSessionIdle({
+    hasSession: true,
+    lastActivityAt: readLastActivityAt(),
+  });
+  if (!check.ok) {
+    logoutUser();
+    return null;
+  }
+  if (check.seeded) writeLastActivityAt(check.lastActivityAt);
+  return user;
+}
+
 export const getCurrentUserSession = (): AppUser | null => {
   if (!useLocalUserStore()) {
-    if (remoteSession && remoteSession.status === 'active') return remoteSession;
+    if (remoteSession && remoteSession.status === 'active') return enforceIdleSession(remoteSession);
     // Soft fallback only while hydrate is in flight — and only if a D1 session token exists.
     if (typeof window === 'undefined') return null;
     let hasToken = false;
@@ -512,7 +538,7 @@ export const getCurrentUserSession = (): AppUser | null => {
     if (!data) return null;
     try {
       const parsed = JSON.parse(data) as AppUser;
-      return parsed?.status === 'active' ? parsed : null;
+      return parsed?.status === 'active' ? enforceIdleSession(parsed) : null;
     } catch {
       return null;
     }
@@ -526,10 +552,11 @@ export const getCurrentUserSession = (): AppUser | null => {
   );
   if (!live || live.status !== 'active') {
     localStorage.removeItem(STORAGE_SESSION_KEY);
+    clearLastActivityAt();
     return null;
   }
   const { passwordHash: _, ...user } = live;
-  return user;
+  return enforceIdleSession(user);
 };
 
 export const loginUser = (
@@ -604,6 +631,7 @@ export const loginUser = (
 
   const { passwordHash: _, ...userWithoutPass } = found;
   localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify(userWithoutPass));
+  touchSessionActivity();
   recordUserAudit({
     action: 'login',
     userId: found.id,
@@ -989,6 +1017,7 @@ export const logoutUser = (): void => {
   if (typeof window === 'undefined') return;
   const session = readRawUserSession();
   localStorage.removeItem(STORAGE_SESSION_KEY);
+  clearLastActivityAt();
   if (!session) return;
   recordUserAudit({
     action: 'logout',

@@ -11,6 +11,7 @@ import {
   type WorkBoardSort,
 } from '../lib/workBoard';
 import { sprintDatesForLabel } from '../lib/sprintCalendar';
+import { isSprintLocked, sprintSectionTitle } from '../lib/sprintRollover';
 import { WorkBoardSaveAllButton } from './WorkBoardExpandableRow';
 
 export function WorkBoardSprintSections<T extends { id: string; title: string; sprint: SprintCategory; status: string; assignee: string; dueDate?: string; priority?: string }>({
@@ -90,11 +91,14 @@ export function WorkBoardSprintSections<T extends { id: string; title: string; s
               <span className={`inline-flex items-center gap-1.5 text-xs sm:text-sm font-sans font-black uppercase tracking-wide min-w-0 ${tone.ink}`}>
                 {isOpen ? <ChevronDown className="w-5 h-5 shrink-0" /> : <ChevronRight className="w-5 h-5 shrink-0" />}
                 <span className="min-w-0">
-                  {sprint}
+                  {sprintSectionTitle(sprint)}
                   {dates ? (
                     <span className={`ml-2 font-mono font-bold normal-case tracking-normal ${tone.ink}`}>
                       {dates}
                     </span>
+                  ) : null}
+                  {isSprintLocked(sprint) ? (
+                    <span className="ml-2 font-mono font-bold normal-case tracking-normal opacity-80">Closed</span>
                   ) : null}
                 </span>
               </span>

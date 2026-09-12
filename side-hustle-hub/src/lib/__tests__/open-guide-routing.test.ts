@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { formatGuideNumber } from "../guide-numbers";
 import { getLaunchGuidePeekSections } from "../launch-guide-peeks";
-import { uniqueGuideLibraryEntries } from "../guide-library-pool";
+import { libraryGuideDisplayName, uniqueGuideLibraryEntries } from "../guide-library-pool";
 import { kidsGuideById } from "../kids-guides";
 import { hustleById } from "../side-hustle-catalog";
 
@@ -19,6 +19,23 @@ describe("Open Guide routing", () => {
     expect(libraryIds.has("kids-kindness-share")).toBe(true);
     expect(libraryIds.has("junior-give-back-teach")).toBe(true);
     expect(libraryIds.has("rideshare")).toBe(true);
+  });
+
+  it("shows #008 / #009 / #099 user-facing titles on library cards, not the slug", () => {
+    const byId = Object.fromEntries(uniqueGuideLibraryEntries().map((e) => [e.id, e.name]));
+    expect(byId["kids-kindness-share"]).toBe("Give Back: Share a Skill for Free");
+    expect(byId["junior-give-back-teach"]).toBe("Give Back: Teach What You Know");
+    expect(byId["junior-reinvest-ceo"]).toBe("Reinvest Like a CEO (Age-Appropriate)");
+    expect(libraryGuideDisplayName("kids-kindness-share")).toBe(
+      "Give Back: Share a Skill for Free",
+    );
+    expect(libraryGuideDisplayName("junior-give-back-teach")).toBe(
+      "Give Back: Teach What You Know",
+    );
+    expect(libraryGuideDisplayName("junior-reinvest-ceo")).toBe(
+      "Reinvest Like a CEO (Age-Appropriate)",
+    );
+    expect(libraryGuideDisplayName("kids-kindness-share")).not.toBe("kids-kindness-share");
   });
 
   it("checklist peeks for #008 / #009 / #018 open guide detail, not age hubs", () => {

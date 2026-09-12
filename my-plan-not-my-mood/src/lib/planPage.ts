@@ -1,4 +1,5 @@
 import type { AdminPortalTab } from './adminPortalTabs';
+import { hasRole, isAdminRole, type UserOrRoleInput } from './userAuth';
 import {
   ADMIN_STUDIO_TABS,
   canOpenStudioTab,
@@ -109,6 +110,21 @@ export function isAdminPortalPath(pathname: string): boolean {
 export function adminReturnPath(pathname: string): string {
   if (!isAdminPortalPath(pathname)) return '/admin/plan';
   return adminPortalPath(parseAdminPortalTab(pathname));
+}
+
+/** Admin and QA land on the Task List. Super Admin stays on Plan. */
+export function postLoginAdminTab(user?: UserOrRoleInput): AdminPortalTab {
+  if (isAdminRole(user) || hasRole(user, 'qa')) return 'tasks';
+  return PLAN_TAB_ID;
+}
+
+/** Keep a specific deep link. Replace a default Plan hold with the role landing. */
+export function postLoginAdminPath(user?: UserOrRoleInput, pendingPath?: string | null): string {
+  const landing = adminPortalPath(postLoginAdminTab(user));
+  if (!pendingPath) return landing;
+  const pendingTab = parseAdminPortalTab(pendingPath);
+  if (pendingTab === PLAN_TAB_ID && landing === adminPortalPath('tasks')) return landing;
+  return pendingPath;
 }
 
 /** Deep links only open Admin after storefront login. */

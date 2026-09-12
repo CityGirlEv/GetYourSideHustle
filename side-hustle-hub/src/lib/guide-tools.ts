@@ -53,6 +53,14 @@ import {
   mothersHelperToolsDisclaimer,
 } from "./mothers-helper-guide";
 import {
+  CRAFTS_EXTERNAL_LINKS,
+  CRAFTS_PREREQUISITE_EXTRAS,
+  CRAFTS_PRICING,
+  CRAFTS_SUPPLIES,
+  CRAFTS_TOOLS,
+  craftsToolsDisclaimer,
+} from "./crafts-guide";
+import {
   LOCAL_CONTENT_PHOTO_EXTERNAL_LINKS,
   LOCAL_CONTENT_PHOTO_PREREQUISITE_EXTRAS,
   LOCAL_CONTENT_PHOTO_PRICING,
@@ -875,6 +883,13 @@ const GUIDE_KITS: Record<string, GuideKit> = {
     supplies: MOTHERS_HELPER_SUPPLIES,
     suggestedPricing: MOTHERS_HELPER_PRICING,
   },
+  crafts: {
+    prerequisites: [P.freeMembership, ...CRAFTS_PREREQUISITE_EXTRAS],
+    tools: [...CRAFTS_TOOLS, ...t("phone_computer")],
+    externalLinks: CRAFTS_EXTERNAL_LINKS,
+    supplies: CRAFTS_SUPPLIES,
+    suggestedPricing: CRAFTS_PRICING,
+  },
   "local-content-photographer": {
     prerequisites: [P.freeMembership, ...LOCAL_CONTENT_PHOTO_PREREQUISITE_EXTRAS],
     tools: [...LOCAL_CONTENT_PHOTO_TOOLS, ...t("canva", "phone_computer")],
@@ -1182,6 +1197,7 @@ export {
   appointmentSetterToolsDisclaimer,
   onlineResearchAssistantToolsDisclaimer,
   mothersHelperToolsDisclaimer,
+  craftsToolsDisclaimer,
   babysittingToolsDisclaimer,
   digitalProductsToolsDisclaimer,
   rideshareToolsDisclaimer,

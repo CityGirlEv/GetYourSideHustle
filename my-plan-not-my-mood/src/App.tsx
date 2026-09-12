@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
 import { ReceiptBuilder } from './components/ReceiptBuilder';
@@ -19,6 +19,11 @@ import { LaunchPage } from './components/LaunchPage';
 import { WebsiteIntroSection } from './components/WebsiteIntroSection';
 import { SessionType } from './data/affirmations';
 import { AppUser, getCurrentUserSession, logoutUserAsync, canAccessAdminPortal, hasRole, hydrateAuthFromServer } from './lib/userAuth';
+import {
+  SESSION_IDLE_ACTIVITY_EVENTS,
+  SESSION_IDLE_RELOGIN_MESSAGE,
+  touchSessionActivity,
+} from './lib/sessionIdle';
 import { shouldShowBetaWelcome } from './lib/betaWelcome';
 import type { AdminPortalTab } from './lib/adminPortalTabs';
 import {
@@ -27,6 +32,7 @@ import {
   isAdminPortalPath,
   openPlanFromHeader,
   parseAdminPortalTab,
+  postLoginAdminPath,
   shouldOpenAdminPortal,
 } from './lib/planPage';
 import { isLaunchStoreRoute, parseStoreRoute, routePath, StoreRoute } from './lib/storeRoutes';
@@ -82,6 +88,9 @@ export default function App() {
     typeof window !== 'undefined' ? parseGearProductHandle(window.location.hash) : ''
   );
   const [membershipUnlocked, setMembershipUnlocked] = useState(() => hasMembershipAccess(getCurrentUserSession()));
+  const [idleReloginNotice, setIdleReloginNotice] = useState('');
+  const signedInRef = useRef(Boolean(currentUser));
+  signedInRef.current = Boolean(currentUser);
 
   useEffect(() => {
     let cancelled = false;
@@ -96,6 +105,43 @@ export default function App() {
     });
     return () => {
       cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const signOutIdleUser = () => {
+      setCurrentUser(null);
+      setMembershipUnlocked(hasMembershipAccess(null));
+      setIsProposalOpen(false);
+      setAuthStartOnMemberSignup(false);
+      setIdleReloginNotice(SESSION_IDLE_RELOGIN_MESSAGE);
+      setIsUserAuthOpen(true);
+    };
+
+    const syncIdleSession = (fromActivity: boolean) => {
+      const stillSignedIn = getCurrentUserSession();
+      if (stillSignedIn) {
+        signedInRef.current = true;
+        if (fromActivity) touchSessionActivity();
+        return;
+      }
+      if (!signedInRef.current) return;
+      signedInRef.current = false;
+      signOutIdleUser();
+    };
+
+    const onActivity = () => syncIdleSession(true);
+    SESSION_IDLE_ACTIVITY_EVENTS.forEach((event) => {
+      window.addEventListener(event, onActivity, { passive: true });
+    });
+    document.addEventListener('visibilitychange', onActivity);
+    const timer = window.setInterval(() => syncIdleSession(false), 30_000);
+    return () => {
+      SESSION_IDLE_ACTIVITY_EVENTS.forEach((event) => {
+        window.removeEventListener(event, onActivity);
+      });
+      document.removeEventListener('visibilitychange', onActivity);
+      window.clearInterval(timer);
     };
   }, []);
 
@@ -192,7 +238,7 @@ export default function App() {
       setPendingAdminPath(null);
       return;
     }
-    const dest = pendingAdminPath ?? adminPortalPath('plan');
+    const dest = postLoginAdminPath(user, pendingAdminPath);
     const nextTab = parseAdminPortalTab(dest);
     setPendingAdminPath(null);
     setAdminTab(nextTab);
@@ -429,13 +475,16 @@ export default function App() {
         initialMemberSignup={authStartOnMemberSignup}
         initialLoginEmail={authLoginEmail}
         initialResetToken={authResetToken}
+        notice={idleReloginNotice}
         onClose={() => {
           setIsUserAuthOpen(false);
           setAuthStartOnMemberSignup(false);
           setAuthLoginEmail('');
           setAuthResetToken('');
+          setIdleReloginNotice('');
         }}
         onUserChange={(user) => {
+          setIdleReloginNotice('');
           setCurrentUser(user);
           if (user) {
             if (authStartOnMemberSignup || hasRole(user, 'member')) {

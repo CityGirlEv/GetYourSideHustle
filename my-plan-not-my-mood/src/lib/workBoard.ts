@@ -25,6 +25,15 @@ import {
 import { AUTOMATED_TEST_SEEDS } from './automatedTests';
 import { buildSiteAnalyticsSeedTasks } from './siteAnalyticsCadence';
 import {
+  canAssignSprint,
+  isSprintLocked,
+  matchesRolledOverStatusFilter,
+  rolloverLockedSprintItems,
+  rolloverWorkItemSprint,
+  ROLLOVER_STATUS_ID,
+  ROLLOVER_STATUS_LABEL,
+} from './sprintRollover';
+import {
   isAutomatedQaTest,
   isInflatedQaId,
   pruneInflatedQaTests,
@@ -192,6 +201,17 @@ export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
   blocked: 'Blocked',
 };
 
+export type RolloverStatusFilter = typeof ROLLOVER_STATUS_ID;
+export type TaskStatusFilter = TaskStatus | RolloverStatusFilter;
+export type QaStatusFilter = QaStatus | RolloverStatusFilter;
+
+export const TASK_STATUS_FILTER_OPTIONS: TaskStatusFilter[] = [...TASK_STATUSES, ROLLOVER_STATUS_ID];
+export const QA_STATUS_FILTER_OPTIONS: QaStatusFilter[] = [...QA_STATUSES, ROLLOVER_STATUS_ID];
+export const TASK_STATUS_FILTER_LABELS: Record<TaskStatusFilter, string> = {
+  ...TASK_STATUS_LABELS,
+  [ROLLOVER_STATUS_ID]: ROLLOVER_STATUS_LABEL,
+};
+
 export const QA_STATUS_LABELS: Record<QaStatus, string> = {
   untested: 'Not Started',
   in_progress: 'In Progress',
@@ -200,6 +220,11 @@ export const QA_STATUS_LABELS: Record<QaStatus, string> = {
   blocked: 'Blocked',
   fixed_retest: 'Fixed / Retest',
   failed_retest: 'Failed / Retest',
+};
+
+export const QA_STATUS_FILTER_LABELS: Record<QaStatusFilter, string> = {
+  ...QA_STATUS_LABELS,
+  [ROLLOVER_STATUS_ID]: ROLLOVER_STATUS_LABEL,
 };
 
 /** Compact chip labels (FXR / FD/R) for Fixed/Retest and Failed/Retest. */
@@ -243,6 +268,8 @@ export interface TaskItem {
   attachments?: WorkAttachmentMeta[];
   /** When true, this task is on the upcoming agenda. */
   onAgenda?: boolean;
+  /** Closed-sprint carryover. Work status stays Not Started / In Progress / Done. */
+  rolledOver?: boolean;
 }
 
 export interface QaTestItem {
@@ -270,6 +297,8 @@ export interface QaTestItem {
   attachments?: WorkAttachmentMeta[];
   /** manual = Angela/Evelyn walkthrough; vitest/playwright = automated suites. */
   suite?: TestSuite;
+  /** Closed-sprint carryover. Work status stays Not Started / Passed / Failed. */
+  rolledOver?: boolean;
 }
 
 /** Display code for a task id (`t-12` → `T-12`). Never uses Date.now()-style ids. */
@@ -911,9 +940,10 @@ function inferTaskCategory(title: string, sprint?: string): TaskCategory {
 
 export function normalizeTask(raw: Record<string, unknown>): TaskItem {
   const legacySprint = raw.sprint ?? raw.category;
-  const sprint = SPRINT_OPTIONS.includes(legacySprint as SprintCategory)
+  const parsedSprint = SPRINT_OPTIONS.includes(legacySprint as SprintCategory)
     ? (legacySprint as SprintCategory)
     : 'Sprint 4';
+  const sprint = parsedSprint;
 
   let status: TaskStatus = 'not_started';
   if (raw.status && TASK_STATUSES.includes(raw.status as TaskStatus)) {
@@ -946,7 +976,7 @@ export function normalizeTask(raw: Record<string, unknown>): TaskItem {
   const seed = taskContentSeed(id);
   const seededSteps = seed ? buildSeededSteps(id, seed.steps) : [];
 
-  return {
+  return rolloverWorkItemSprint({
     id,
     title: String(raw.title ?? ''),
     description:
@@ -963,10 +993,11 @@ export function normalizeTask(raw: Record<string, unknown>): TaskItem {
     status,
     assignee,
     assignor,
-    dueDate: parseWorkDueDate(raw.dueDate) || dueDateForSprintLabel(sprint),
+    dueDate: parseWorkDueDate(raw.dueDate) || dueDateForSprintLabel(parsedSprint),
     attachments: normalizeWorkAttachments(raw.attachments),
     onAgenda: raw.onAgenda === true,
-  };
+    rolledOver: raw.rolledOver === true,
+  });
 }
 
 export function normalizeTasks(rawList: unknown[]): TaskItem[] {
@@ -1003,7 +1034,7 @@ export function applyTaskInlinePatch(task: TaskItem, patch: TaskInlinePatch, act
   if (patch.description !== undefined) next.description = patch.description;
   if (patch.notes !== undefined) next.notes = patch.notes;
   if (patch.steps !== undefined) next.steps = normalizeWorkChecklist(patch.steps);
-  if (patch.sprint !== undefined && SPRINT_OPTIONS.includes(patch.sprint)) {
+  if (patch.sprint !== undefined && SPRINT_OPTIONS.includes(patch.sprint) && canAssignSprint(patch.sprint)) {
     next.sprint = patch.sprint;
     if (patch.dueDate === undefined) next.dueDate = dueDateForSprintLabel(patch.sprint);
   }
@@ -1030,7 +1061,7 @@ export function applyTaskInlinePatch(task: TaskItem, patch: TaskInlinePatch, act
   }
   if (patch.attachments !== undefined) next.attachments = normalizeWorkAttachments(patch.attachments);
   if (patch.onAgenda !== undefined) next.onAgenda = Boolean(patch.onAgenda);
-  return next;
+  return patch.status !== undefined ? rolloverWorkItemSprint(next) : next;
 }
 
 export function applyTaskInlinePatchToList(
@@ -1118,7 +1149,7 @@ export function applyQaInlinePatch(test: QaTestItem, patch: QaInlinePatch, actor
   if (patch.description !== undefined) next.description = patch.description;
   if (patch.desc !== undefined) next.desc = patch.desc;
   if (patch.steps !== undefined) next.steps = normalizeWorkChecklist(patch.steps);
-  if (patch.sprint !== undefined && SPRINT_OPTIONS.includes(patch.sprint)) {
+  if (patch.sprint !== undefined && SPRINT_OPTIONS.includes(patch.sprint) && canAssignSprint(patch.sprint)) {
     next.sprint = patch.sprint;
     if (patch.dueDate === undefined) next.dueDate = dueDateForSprintLabel(patch.sprint);
   }
@@ -1150,7 +1181,7 @@ export function applyQaInlinePatch(test: QaTestItem, patch: QaInlinePatch, actor
     next.assignor = normalizeAssignor(actor);
   }
   next.assignor = normalizeAssignor(next.assignor);
-  return next;
+  return patch.status !== undefined ? rolloverWorkItemSprint(next) : next;
 }
 
 export function applyQaInlinePatchToList(
@@ -1225,7 +1256,7 @@ export function groupAndSortItemsBySprint<T extends WorkBoardSortRow & { sprint:
 
 export function defaultOpenSprintSections(_current = currentSprintLabel()): Record<SprintCategory, boolean> {
   return SPRINT_OPTIONS.reduce((acc, sprint) => {
-    acc[sprint] = true;
+    acc[sprint] = !isSprintLocked(sprint);
     return acc;
   }, {} as Record<SprintCategory, boolean>);
 }
@@ -1470,22 +1501,22 @@ export function workPriorityTextClass(priority?: WorkPriority | string): string 
   return priority === 'high' ? 'text-[#DC2626]' : 'text-[#1F1917]';
 }
 
-export const INITIAL_TASKS: TaskItem[] = [
-  { id: 't-1', title: 'Confirm $10,000 in three payments — $3,500 received', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Infrastructure', priority: 'high', status: 'not_started', assignee: 'angela' },
+export const INITIAL_TASKS: TaskItem[] = rolloverLockedSprintItems([
+  { id: 't-1', title: 'Confirm $10,000 in three payments — $3,500 received', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Infrastructure', priority: 'high', status: 'not_started', assignee: 'angela' },
   { id: 't-43', title: 'Make Payment — Payment 2 ($3,500) due Sprint 1 via Zelle or Cash App', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Infrastructure', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
-  { id: 't-2', title: 'Keep the brand line on every Phase 1 page and email', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Storefront', priority: 'high', status: 'not_started', assignee: 'angela' },
-  { id: 't-3', title: 'Host the shirt drop on nonnegotiation.com', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Infrastructure', priority: 'high', status: 'not_started', assignee: 'evelyn' },
-  { id: 't-4', title: 'Brand foundation and gear storefront shell', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Storefront', priority: 'high', status: 'not_started', assignee: 'evelyn' },
+  { id: 't-2', title: 'Keep the brand line on every Phase 1 page and email', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Storefront', priority: 'high', status: 'not_started', assignee: 'angela' },
+  { id: 't-3', title: 'Host the shirt drop on nonnegotiation.com', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Infrastructure', priority: 'high', status: 'not_started', assignee: 'evelyn' },
+  { id: 't-4', title: 'Brand foundation and gear storefront shell', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Storefront', priority: 'high', status: 'not_started', assignee: 'evelyn' },
   { id: 't-5', title: 'Developing Shirts — first drop brief', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Apparel', priority: 'high', status: 'not_started', assignee: 'angela' },
   { id: 't-6', title: 'Scope 3 shirt styles, 1 hoodie, and 1 hat', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Apparel', priority: 'high', status: 'not_started', assignee: 'angela' },
   { id: 't-7', title: 'Angela selects the first 2–3 shirt designs', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Apparel', priority: 'high', status: 'not_started', assignee: 'angela' },
   { id: 't-8', title: 'Go over styles and pricing so production costs are known', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Apparel', priority: 'high', status: 'not_started', assignee: 'angela' },
   { id: 't-9', title: 'Include T-Shirt Design in the $10K Phase 1 budget', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Apparel', priority: 'high', status: 'not_started', assignee: 'evelyn' },
   { id: 't-27', title: 'Create Gear Selections page with style-card uploads (tee, hoodie, and hat on each card)', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Apparel', priority: 'high', status: 'not_started', assignee: 'evelyn', assignor: 'angela' },
-  { id: 't-31', title: 'Post the Phase 1 sales cadence — shop link in every Facebook post (socials in parallel)', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela' },
-  { id: 't-32', title: 'Stock Asset Library and prep Content Factory copy for each sprint', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'evelyn' },
-  { id: 't-41', title: 'Upload logo concepts Evelyn created for Angela', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'evelyn', assignor: 'angela' },
-  { id: 't-42', title: 'Pick the chosen logo mark from Logo Concepts', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
+  { id: 't-31', title: 'Post the Phase 1 sales cadence — shop link in every Facebook post (socials in parallel)', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela' },
+  { id: 't-32', title: 'Stock Asset Library and prep Content Factory copy for each sprint', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'evelyn' },
+  { id: 't-41', title: 'Upload logo concepts Evelyn created for Angela', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'evelyn', assignor: 'angela' },
+  { id: 't-42', title: 'Pick the chosen logo mark from Logo Concepts', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
   { id: 't-10', title: 'Build Shop Gear catalog for the selected designs', sprint: 'Sprint 2', phase: 'Phase 1', category: 'Storefront', priority: 'high', status: 'not_started', assignee: 'dev' },
   { id: 't-11', title: 'Product variants, mockups, and checkout', sprint: 'Sprint 2', phase: 'Phase 1', category: 'Storefront', priority: 'high', status: 'not_started', assignee: 'dev' },
   { id: 't-12', title: 'About page', sprint: 'Sprint 3', phase: 'Phase 1', category: 'Storefront', priority: 'high', status: 'not_started', assignee: 'dev' },
@@ -1509,33 +1540,33 @@ export const INITIAL_TASKS: TaskItem[] = [
   { id: 't-46', title: 'Test the Shop Gear page', sprint: 'Sprint 2', phase: 'Phase 1', category: 'QA & Testing', priority: 'high', status: 'not_started', assignee: 'evelyn', assignor: 'angela' },
   { id: 't-47', title: 'Test the Shop Gear page', sprint: 'Sprint 2', phase: 'Phase 1', category: 'QA & Testing', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
   { id: 't-48', title: 'Pick the shirt and hoodie blank brand on Gear Selections', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Apparel', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
-  { id: 't-49', title: 'Set up Resend so tester emails can send (account, nonnegotiation.com domain, API key, Cloudflare RESEND_API_KEY / FROM_EMAIL / ADMIN_NOTIFY_EMAIL)', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Infrastructure', priority: 'high', status: 'not_started', assignee: 'evelyn', assignor: 'angela' },
-  { id: 't-50', title: 'Content Factory Sprint 0 — sell now: bios, pinned post, shop link, live talk track', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
+  { id: 't-49', title: 'Set up Resend so tester emails can send (account, nonnegotiation.com domain, API key, Cloudflare RESEND_API_KEY / FROM_EMAIL / ADMIN_NOTIFY_EMAIL)', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Infrastructure', priority: 'high', status: 'not_started', assignee: 'evelyn', assignor: 'angela' },
+  { id: 't-50', title: 'Content Factory Sprint 0 — sell now: bios, pinned post, shop link, live talk track', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
   { id: 't-51', title: 'Content Factory Sprint 1 — keep selling + first on-body live', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
   { id: 't-52', title: 'Content Factory Sprint 2 — keep selling tees, hoodie, and hat', sprint: 'Sprint 2', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
   { id: 't-53', title: 'Content Factory Sprint 3 — About/FAQ cadence with shop link in every post', sprint: 'Sprint 3', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
   { id: 't-54', title: 'Content Factory Sprint 4 — launch-week cadence (shop already live)', sprint: 'Sprint 4', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
-  { id: 't-55', title: 'Create or re-purpose the NonNegotiation TikTok page', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
-  { id: 't-56', title: 'Create or re-purpose the NonNegotiation YouTube channel', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
-  { id: 't-57', title: 'Create or re-purpose the NonNegotiation Instagram page', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
-  { id: 't-58', title: 'Add Evelyn as an authorized user on the NonNegotiation TikTok page', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn', dueDate: '2026-09-03' },
-  { id: 't-59', title: 'Add Evelyn as an authorized user on the NonNegotiation YouTube channel', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn', dueDate: '2026-09-03' },
-  { id: 't-60', title: 'Add Evelyn as an authorized user on the NonNegotiation Instagram page', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn', dueDate: '2026-09-03' },
-  { id: 't-61', title: 'Keep NonNegotiation as the house — introduce MY PLAN, NOT MY MOOD as a brand under it', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn', dueDate: '2026-09-03' },
-  { id: 't-62', title: 'Order Angela’s sample tees from Shopify so she has product in hand for live', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Apparel', priority: 'high', status: 'not_started', assignee: 'evelyn', assignor: 'angela' },
-  { id: 't-63', title: 'Soft-sell tees NOW on Angela’s 6.2K Facebook — shop link in every post', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
+  { id: 't-55', title: 'Create or re-purpose the NonNegotiation TikTok page', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
+  { id: 't-56', title: 'Create or re-purpose the NonNegotiation YouTube channel', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
+  { id: 't-57', title: 'Create or re-purpose the NonNegotiation Instagram page', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
+  { id: 't-58', title: 'Add Evelyn as an authorized user on the NonNegotiation TikTok page', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn', dueDate: '2026-09-03' },
+  { id: 't-59', title: 'Add Evelyn as an authorized user on the NonNegotiation YouTube channel', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn', dueDate: '2026-09-03' },
+  { id: 't-60', title: 'Add Evelyn as an authorized user on the NonNegotiation Instagram page', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn', dueDate: '2026-09-03' },
+  { id: 't-61', title: 'Keep NonNegotiation as the house — introduce MY PLAN, NOT MY MOOD as a brand under it', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn', dueDate: '2026-09-03' },
+  { id: 't-62', title: 'Order Angela’s sample tees from Shopify so she has product in hand for live', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Apparel', priority: 'high', status: 'not_started', assignee: 'evelyn', assignor: 'angela' },
+  { id: 't-63', title: 'Soft-sell tees NOW on Angela’s 6.2K Facebook — shop link in every post', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
   { id: 't-64', title: 'Run the first live wearing the tee and pin Shop Gear in comments', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Launch', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
-  { id: 't-65', title: 'Put Shop Gear on NonNegotiation Facebook, Instagram, TikTok, and YouTube bios', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
-  { id: 't-66', title: 'Angela personal Facebook and Instagram: bio, pinned post, and live pin selling tees', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
-  { id: 't-67', title: 'Evelyn personal Facebook and Instagram: bio and one support post selling tees', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'evelyn', assignor: 'angela' },
-  { id: 't-68', title: 'Use the live talk track on every live (no-sample now, on-body when the box arrives)', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
-  { id: 't-69', title: 'Confirm nonnegotiation.com/gear is the only shop URL we send people to', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Storefront', priority: 'high', status: 'not_started', assignee: 'evelyn', assignor: 'angela' },
+  { id: 't-65', title: 'Put Shop Gear on NonNegotiation Facebook, Instagram, TikTok, and YouTube bios', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
+  { id: 't-66', title: 'Angela personal Facebook and Instagram: bio, pinned post, and live pin selling tees', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
+  { id: 't-67', title: 'Evelyn personal Facebook and Instagram: bio and one support post selling tees', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'evelyn', assignor: 'angela' },
+  { id: 't-68', title: 'Use the live talk track on every live (no-sample now, on-body when the box arrives)', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
+  { id: 't-69', title: 'Confirm nonnegotiation.com/gear is the only shop URL we send people to', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Storefront', priority: 'high', status: 'not_started', assignee: 'evelyn', assignor: 'angela' },
   { id: 't-70', title: 'After samples arrive, post the on-body clip to personal pages and NonNegotiation', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
-  { id: 't-71', title: 'Present MY PLAN, NOT MY MOOD as a brand under NonNegotiation (Home and Shop Gear)', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Storefront', priority: 'high', status: 'not_started', assignee: 'evelyn', assignor: 'angela' },
-  { id: 't-72', title: 'Walk Home and Shop Gear — this is what Angela sends people to from live', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
-  { id: 't-73', title: 'At each sprint retro, score actuals vs the Plan scorecard', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn', dueDate: '2026-09-06' },
-  { id: 't-74', title: 'Welcome/intro: NonNegotiation is the house, MY PLAN, NOT MY MOOD is the brand — every platform', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn', dueDate: '2026-09-04' },
-  { id: 't-75', title: 'Create 3 T-shirt sales videos for Sprint 0', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
+  { id: 't-71', title: 'Present MY PLAN, NOT MY MOOD as a brand under NonNegotiation (Home and Shop Gear)', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Storefront', priority: 'high', status: 'not_started', assignee: 'evelyn', assignor: 'angela' },
+  { id: 't-72', title: 'Walk Home and Shop Gear — this is what Angela sends people to from live', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
+  { id: 't-73', title: 'At each sprint retro, score actuals vs the Plan scorecard', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn', dueDate: '2026-09-06' },
+  { id: 't-74', title: 'Welcome/intro: NonNegotiation is the house, MY PLAN, NOT MY MOOD is the brand — every platform', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn', dueDate: '2026-09-04' },
+  { id: 't-75', title: 'Create 3 T-shirt sales videos for Sprint 0', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
   { id: 't-76', title: 'Create 3 T-shirt sales videos for Sprint 1', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
   { id: 't-77', title: 'Create 3 T-shirt sales videos for Sprint 2', sprint: 'Sprint 2', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
   { id: 't-78', title: 'Create 3 T-shirt sales videos for Sprint 3', sprint: 'Sprint 3', phase: 'Phase 1', category: 'Content', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
@@ -1544,7 +1575,7 @@ export const INITIAL_TASKS: TaskItem[] = [
   { id: 't-81', title: 'Add mailing list sign-up — email capture, not a membership', sprint: 'Sprint 3', phase: 'Phase 1', category: 'Features', priority: 'high', status: 'not_started', assignee: 'evelyn', assignor: 'angela' },
   { id: 't-82', title: 'Review the live website and mailing list sign-up', sprint: 'Sprint 3', phase: 'Phase 1', category: 'QA & Testing', priority: 'high', status: 'not_started', assignee: 'angela', assignor: 'evelyn' },
   ...buildSiteAnalyticsSeedTasks(),
-];
+]);
 
 export const WORK_BOARD_STATUS_RESET_KEY = 'myplan_work_board_status_reset_rev';
 export const WORK_BOARD_STATUS_RESET_REV = 1;
@@ -1650,17 +1681,17 @@ const INITIAL_QA_TEST_SEEDS: QaTestItem[] = [
   { id: 'auth-qa1', title: 'Admin Role Gates — Testing + Tasks Only', desc: 'Admin users see only Testing Portal and Task List tabs', sprint: 'Sprint 3', category: 'Auth & Admin', priority: 'high', status: 'untested', assignee: 'angela' },
   { id: 'gear-sel-qa1', title: 'Gear Selections — style-card upload and Angela picks', desc: 'Evelyn loads style cards named like E-ShirtLebberingBeige and TShirtTieDieRainbowSpiral. Cards already include hat, hoodie, and tee and group by style. Angela picks up to 3 tees, 1 hoodie, and 1 hat. PDF, SVG, and oversized files are rejected.', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: 'qa' },
   { id: 'sprint-roi-qa1', title: 'Sprint ROI — hoodie sales, scorecard, and improvement suggestions on the Plan', desc: 'Each Phase 1 sprint lists organic ROI and a weekly scorecard (followers, engagement, clicks, sales). Shop is live from Sprint 0. 6.2K personal Facebook, organic-only, no paid ads.', sprint: 'Sprint 4', phase: 'Phase 1', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: 'qa' },
-  { id: 'cf-qa1', title: 'Content Factory — Phase 1 calendar by sprint, assignee, and channel', desc: 'Content Factory lists organic posts and prep work for Sprints 0–4. The Posting Schedule tab is one document by date, platform, time, and what to post. Filter by sprint, assignee, and channel (Facebook, YouTube, TikTok, Personal). Angela posts; Evelyn preps assets.', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Content QA', priority: 'high', status: 'untested', assignee: 'qa' },
+  { id: 'cf-qa1', title: 'Content Factory — Phase 1 calendar by sprint, assignee, and channel', desc: 'Content Factory lists organic posts and prep work for Sprints 0–4. The Posting Schedule tab is one document by date, platform, time, and what to post. Filter by sprint, assignee, and channel (Facebook, YouTube, TikTok, Personal). Angela posts; Evelyn preps assets.', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content QA', priority: 'high', status: 'untested', assignee: 'qa' },
   { id: 'cf-qa2', title: 'Content Factory — Asset Library grouped by style', desc: 'Asset Library groups cards by style name (E-ShirtLebberingBeige, TShirtTieDieRainbowSpiral). Each style can hold several cards; tee, hoodie, and hat live on the same card.', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content QA', priority: 'high', status: 'untested', assignee: 'qa' },
-  { id: 'cf-qa3', title: 'Asset Library — image reject paths', desc: 'Non-image and oversized files are rejected. Caption assets save text without an image.', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Content QA', priority: 'high', status: 'untested', assignee: 'qa' },
-  { id: 'logo-qa1', title: 'Logo Concepts — upload and Angela’s chosen mark', desc: 'Evelyn chooses a logo folder to load every file at once. Subfolders named seal, wordmark, lockup, or colorway sort automatically. Angela picks one chosen mark. PDF and oversized files are rejected. SVG is allowed.', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Content QA', priority: 'high', status: 'untested', assignee: 'qa' },
+  { id: 'cf-qa3', title: 'Asset Library — image reject paths', desc: 'Non-image and oversized files are rejected. Caption assets save text without an image.', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content QA', priority: 'high', status: 'untested', assignee: 'qa' },
+  { id: 'logo-qa1', title: 'Logo Concepts — upload and Angela’s chosen mark', desc: 'Evelyn chooses a logo folder to load every file at once. Subfolders named seal, wordmark, lockup, or colorway sort automatically. Angela picks one chosen mark. PDF and oversized files are rejected. SVG is allowed.', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content QA', priority: 'high', status: 'untested', assignee: 'qa' },
   { id: 'pay-qa1', title: 'Make Payment page — Zelle, Cash App, Venmo, Stripe', desc: 'Angela’s Make Payment task opens /pay. Payment 1 ($3,500) is already paid. Payment 2 ($3,500) is due Sprint 1. Zelle (619-507-9568) and Cash App ($ChingChicks) are preferred. Venmo is @Evelyn-Irving. Stripe is card/Apple Pay.', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: 'qa' },
   { id: 'shop-gear-page-qa1', title: 'Shop Gear page — Evelyn test', desc: 'Walk the Shop Gear page: selected styles, hoodie/shirt brand, hat colors, and Shopify listings. Confirm the page loads, images are sharp, and checkout or store links work.', sprint: 'Sprint 2', phase: 'Phase 1', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: 'evelyn' },
   { id: 'shop-gear-page-qa2', title: 'Shop Gear page — Angela test', desc: 'Angela opens Shop Gear and confirms her selected styles, shirt/hoodie brand, and hat colors look right before the Shopify listings go live.', sprint: 'Sprint 2', phase: 'Phase 1', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: 'angela' },
   { id: 'gear-brand-qa1', title: 'Gear Selections — shirt/hoodie brand pick', desc: 'Angela chooses up to 2 blank brands (Gildan, Comfort Colors, Bella+Canvas, Next Level, Independent Trading, Lane Seven) for shirts and hoodies. The pick saves with her other gear selections.', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: 'qa' },
   // Site pages
-  { id: 'home-qa1', title: 'Home / storefront — brand line and mood entry', desc: 'Home loads with brand line and mood tool entry; no horizontal scroll on mobile.', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: 'qa' },
-  { id: 'domain-qa1', title: 'Production domain — nonnegotiation.com loads storefront', desc: 'https://nonnegotiation.com serves the Phase 1 storefront over HTTPS.', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: 'evelyn' },
+  { id: 'home-qa1', title: 'Home / storefront — brand line and mood entry', desc: 'Home loads with brand line and mood tool entry; no horizontal scroll on mobile.', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: 'qa' },
+  { id: 'domain-qa1', title: 'Production domain — nonnegotiation.com loads storefront', desc: 'https://nonnegotiation.com serves the Phase 1 storefront over HTTPS.', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: 'evelyn' },
   { id: 'mood-qa1', title: 'What’s Your Mood tool — select and scroll', desc: 'Mood bubbles select a mood and scroll to the action area.', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: 'qa' },
   { id: 'receipt-qa1', title: 'What Won Today receipt — generate, share, download', desc: 'Receipt generator creates a shareable/downloadable card.', sprint: 'Sprint 2', phase: 'Phase 1', category: 'E2E Flows', priority: 'medium', status: 'untested', assignee: 'qa' },
   { id: 'about-qa1', title: 'About page — brand story and mobile layout', desc: 'About page loads with brand story; mobile has no horizontal scroll.', sprint: 'Sprint 3', phase: 'Phase 1', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: 'qa' },
@@ -1672,7 +1703,7 @@ const INITIAL_QA_TEST_SEEDS: QaTestItem[] = [
   { id: 'email-qa1', title: 'Orders — SnatchVault collection, Non-Negotiable menu, 70/30 split', desc: 'https://snatchvault.com/collections/my-plan-gear is live. Home menu is Non-Negotiable with Tees, Hoodies, and Hats. Split is 70/30.', sprint: 'Sprint 3', phase: 'Phase 1', category: 'Auth & Admin', priority: 'high', status: 'untested', assignee: 'evelyn' },
   { id: 'launch-qa1', title: 'Production launch smoke — Shop Gear + payments path', desc: 'After launch, Shop Gear and payment/store links work on production.', sprint: 'Sprint 4', phase: 'Phase 1', category: 'Storefront QA', priority: 'high', status: 'untested', assignee: 'qa' },
   // Content Factory per sprint
-  { id: 'cf-s0-qa', title: 'Content Factory Sprint 0 — sell-now posts, bios, and live talk track', desc: 'Sprint 0 CF spans two weeks: shop link in every post, bios/pinned post, no-sample live, lifestyle tee mockup.', sprint: 'Sprint 0', phase: 'Phase 1', category: 'Content QA', priority: 'high', status: 'untested', assignee: 'qa' },
+  { id: 'cf-s0-qa', title: 'Content Factory Sprint 0 — sell-now posts, bios, and live talk track', desc: 'Sprint 0 CF spans two weeks: shop link in every post, bios/pinned post, no-sample live, lifestyle tee mockup.', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content QA', priority: 'high', status: 'untested', assignee: 'qa' },
   { id: 'cf-s1-qa', title: 'Content Factory Sprint 1 — gear picks and posts', desc: 'Sprint 1 CF includes gear uploads/picks and organic posts; filters work.', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content QA', priority: 'high', status: 'untested', assignee: 'qa' },
   { id: 'cf-s2-qa', title: 'Content Factory Sprint 2 — keep-selling cadence', desc: 'Sprint 2 CF keeps selling tees, hoodie, and hat with the Shop Gear URL — shop is already live.', sprint: 'Sprint 2', phase: 'Phase 1', category: 'Content QA', priority: 'high', status: 'untested', assignee: 'qa' },
   { id: 'cf-s3-qa', title: 'Content Factory Sprint 3 — about/FAQ cadence', desc: 'Sprint 3 CF includes About/FAQ posts and weekend prep.', sprint: 'Sprint 3', phase: 'Phase 1', category: 'Content QA', priority: 'high', status: 'untested', assignee: 'qa' },
@@ -1683,13 +1714,15 @@ const INITIAL_QA_TEST_SEEDS: QaTestItem[] = [
   { id: 'analytics-qa2', title: 'Site analytics review — each platform upload guides the next create', desc: 'Evelyn has an associated review task for each platform gather. Recommendations from that review guide the next create on that platform.', sprint: 'Sprint 1', phase: 'Phase 1', category: 'Content QA', priority: 'high', status: 'untested', assignee: 'evelyn' },
 ];
 
-export const INITIAL_QA_TESTS: QaTestItem[] = INITIAL_QA_TEST_SEEDS.map((test) => ({
-  ...test,
-  assignee: normalizeTestAssignee(test.assignee),
-}));
+export const INITIAL_QA_TESTS: QaTestItem[] = rolloverLockedSprintItems(
+  INITIAL_QA_TEST_SEEDS.map((test) => ({
+    ...test,
+    assignee: normalizeTestAssignee(test.assignee),
+  })),
+);
 
 function automatedQaItems(): QaTestItem[] {
-  return AUTOMATED_TEST_SEEDS.map((seed) => ({
+  return rolloverLockedSprintItems(AUTOMATED_TEST_SEEDS.map((seed) => ({
     id: seed.id,
     title: seed.title,
     description: seed.description,
@@ -1701,7 +1734,7 @@ function automatedQaItems(): QaTestItem[] {
     assignee: seed.suite,
     suite: seed.suite,
     steps: [{ id: `s-${seed.id}-1`, label: `Run: ${seed.command}`, href: pageHrefForWorkItem(seed.id), checked: false }],
-  }));
+  })));
 }
 
 /** Manual walkthroughs + Vitest catalog + Playwright catalog. */
@@ -1729,7 +1762,10 @@ export function normalizeQaTests(rawList: unknown[], legacyChecks?: Record<strin
           ? 'passed'
           : 'untested';
 
-    const sprint = SPRINT_OPTIONS.includes(item.sprint as SprintCategory) ? (item.sprint as SprintCategory) : 'Sprint 2';
+    const parsedSprint = SPRINT_OPTIONS.includes(item.sprint as SprintCategory)
+      ? (item.sprint as SprintCategory)
+      : 'Sprint 2';
+    const sprint = parsedSprint;
     const seed = qaContentSeed(id);
     const rawDesc = String(item.desc ?? '');
     const rawDescription = String(item.description ?? '').trim();
@@ -1740,7 +1776,7 @@ export function normalizeQaTests(rawList: unknown[], legacyChecks?: Record<strin
     const suite = suiteForQaTest({ id, suite: item.suite, category: item.category });
 
     return [
-      {
+      rolloverWorkItemSprint({
         id,
         title: String(item.title ?? ''),
         description: rawDescription || seed?.description || legacyPlainDesc || String(item.title ?? '').trim(),
@@ -1760,10 +1796,11 @@ export function normalizeQaTests(rawList: unknown[], legacyChecks?: Record<strin
         status,
         assignee: normalizeTestAssignee(item.assignee, suite),
         assignor: normalizeAssignor(item.assignor),
-        dueDate: parseWorkDueDate(item.dueDate) || dueDateForSprintLabel(sprint),
+        dueDate: parseWorkDueDate(item.dueDate) || dueDateForSprintLabel(parsedSprint),
         attachments: normalizeWorkAttachments(item.attachments),
         suite,
-      } satisfies QaTestItem,
+        rolledOver: item.rolledOver === true,
+      } satisfies QaTestItem),
     ];
   });
 
@@ -1809,13 +1846,13 @@ export function qaMatchesSearch(test: QaTestItem, query: string): boolean {
 
 export function filterTasks(
   tasks: TaskItem[],
-  filters: WorkBoardFilters<TaskStatus>,
+  filters: WorkBoardFilters<TaskStatusFilter>,
   search: string,
 ): TaskItem[] {
   return tasks.filter(
     (t) =>
       matchesSet(t.sprint, filters.sprint) &&
-      matchesSet(t.status, filters.status) &&
+      matchesRolledOverStatusFilter(t, filters.status) &&
       matchesSet(t.priority, filters.priority) &&
       matchesSet(t.assignee, filters.assignee) &&
       matchesSet(t.category, filters.category) &&
@@ -1826,13 +1863,13 @@ export function filterTasks(
 
 export function filterQaTests(
   tests: QaTestItem[],
-  filters: WorkBoardFilters<QaStatus>,
+  filters: WorkBoardFilters<QaStatusFilter>,
   search: string,
 ): QaTestItem[] {
   return tests.filter(
     (t) =>
       matchesSet(t.sprint, filters.sprint) &&
-      matchesSet(t.status, filters.status) &&
+      matchesRolledOverStatusFilter(t, filters.status) &&
       matchesSet(t.priority, filters.priority) &&
       matchesSet(t.assignee, filters.assignee) &&
       matchesSet(t.category, filters.category) &&
@@ -1884,6 +1921,24 @@ export function buildStatusChipCounts<T extends string>(
       accent: accents?.[status],
     };
   });
+}
+
+export function appendRolledOverStatusChip<T extends { rolledOver?: boolean; status: string }>(
+  chips: FilterChipCount[],
+  items: T[],
+  isDone: (item: T) => boolean,
+): FilterChipCount[] {
+  const matched = items.filter((item) => item.rolledOver);
+  return [
+    ...chips,
+    {
+      id: ROLLOVER_STATUS_ID,
+      label: ROLLOVER_STATUS_LABEL,
+      total: matched.length,
+      done: matched.filter(isDone).length,
+      accent: '#C2410C',
+    },
+  ];
 }
 
 export function buildPriorityChipCounts<T extends { priority: WorkPriority; status: string }>(

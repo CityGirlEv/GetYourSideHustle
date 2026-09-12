@@ -12,6 +12,7 @@ import { LOCAL_EVENT_CONTENT_DETAILED_STEPS } from "./local-event-content-creato
 import { APPOINTMENT_SETTER_DETAILED_STEPS } from "./appointment-setter-guide";
 import { ONLINE_RESEARCH_ASSISTANT_DETAILED_STEPS } from "./online-research-assistant-guide";
 import { MOTHERS_HELPER_DETAILED_STEPS } from "./mothers-helper-guide";
+import { CRAFTS_DETAILED_STEPS } from "./crafts-guide";
 import { PERSONAL_SHOPPER_DETAILED_STEPS } from "./personal-shopper-guide";
 import { YOUTH_SPORTS_HELPER_DETAILED_STEPS } from "./youth-sports-helper-guide";
 import { GENEALOGY_DETAILED_STEPS } from "./genealogy-family-history-guide";
@@ -845,6 +846,7 @@ export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
   "appointment-setter": APPOINTMENT_SETTER_DETAILED_STEPS.map((s) => ({ ...s })),
   "online-research-assistant": ONLINE_RESEARCH_ASSISTANT_DETAILED_STEPS.map((s) => ({ ...s })),
   "mothers-helper": MOTHERS_HELPER_DETAILED_STEPS.map((s) => ({ ...s })),
+  crafts: CRAFTS_DETAILED_STEPS.map((s) => ({ ...s })),
   "personal-shopper": PERSONAL_SHOPPER_DETAILED_STEPS.map((s) => ({ ...s })),
   "youth-sports-helper": YOUTH_SPORTS_HELPER_DETAILED_STEPS.map((s) => ({ ...s })),
   "junior-give-back-teach": JUNIOR_GIVE_BACK_TEACH_DETAILED_STEPS.map((s) => ({ ...s })),
@@ -1113,32 +1115,6 @@ export const DETAILED_GUIDE_STEPS: Record<string, DetailedGuideStep[]> = {
     },
   ],
 
-  crafts: [
-    {
-      title: "Pick one craft lane to sell first",
-      desc: "Choose a single line: polymer clay charms, friendship bracelets, sticker sheets, crochet coasters, or painted rocks. One lane = faster mastery and clearer pricing. Browse Etsy (https://www.etsy.com/) for style ideas — do not copy trademarked characters.",
-    },
-    {
-      title: "Cost your materials per unit for to determine target selling price",
-      desc: "List supply cost for 10 items (clay pack, cord, beads, bags). Divide by 10 for unit cost. Target selling price at 2–3× materials plus $5–10 for your time on simple pieces.",
-    },
-    {
-      title: "Photograph makes on a clean background",
-      desc: "Use daylight near a window, white poster board, and your phone. Take 3 angles and one “in hand” shot for scale. Edit brightness in Canva (https://www.canva.com/) — no filters that change colors.",
-    },
-    {
-      title: "Set up a simple sales table or Etsy draft",
-      desc: "Local: school fair, farmers market with parent permission, or neighborhood Instagram story. Online: parent helps create Etsy shop at https://www.etsy.com/sell — draft listings with your photos and clear titles (“Handmade Clay Cat Charm — Nickel Free”).",
-    },
-    {
-      title: "Pack orders with a thank-you card",
-      desc: "Use cello bags, tape, and a handwritten thank-you. For shipping, weigh on a kitchen scale and buy labels via Etsy or Pirate Ship. Never put your full address on public listings — use city only.",
-    },
-    {
-      title: "Track inventory in a notebook or Sheet",
-      desc: "Google Sheets: item, qty made, qty sold, revenue. Restock only what sold in 2 weeks. Reinvest 50% of profit into materials after the first successful fair.",
-    },
-  ],
 
   "tech-helper": [
     {

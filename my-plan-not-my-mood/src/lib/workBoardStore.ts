@@ -1,5 +1,6 @@
 import { isLogoApiUnavailable } from './logoStore';
 import { pruneInflatedQaTests, inflatedQaIdsFromRaw, suiteForQaTest } from './testSuites';
+import { rolloverLockedSprintItems } from './sprintRollover';
 import {
   INITIAL_TASKS,
   allSeedQaTests,
@@ -149,8 +150,8 @@ export function hydrateWorkBoardFromRemote(
   const localTestsKept = withoutRemoved(localTests, removedTestIds);
   if (remoteIsEmpty && localTasksKept.length === 0 && localTestsKept.length === 0) {
     return {
-      tasks: withoutRemoved(INITIAL_TASKS, removedTaskIds),
-      tests: withoutRemoved(allSeedQaTests(), removedTestIds),
+      tasks: rolloverLockedSprintItems(withoutRemoved(INITIAL_TASKS, removedTaskIds)),
+      tests: rolloverLockedSprintItems(withoutRemoved(allSeedQaTests(), removedTestIds)),
     };
   }
   const progressed = mergeWorkItemsByProgress(remoteTasks, localTasksKept, TASK_STATUS_RANK, preferLocal);
@@ -162,10 +163,12 @@ export function hydrateWorkBoardFromRemote(
     ),
   );
   return {
-    tasks: withoutRemoved(mergedTasks.tasks, removedTaskIds),
-    tests: withoutRemoved(
-      pruneInflatedQaTests(mergeWorkItemsByProgress(remoteTests, localTestsKept, QA_STATUS_RANK, preferLocal)).tests,
-      removedTestIds,
+    tasks: rolloverLockedSprintItems(withoutRemoved(mergedTasks.tasks, removedTaskIds)),
+    tests: rolloverLockedSprintItems(
+      withoutRemoved(
+        pruneInflatedQaTests(mergeWorkItemsByProgress(remoteTests, localTestsKept, QA_STATUS_RANK, preferLocal)).tests,
+        removedTestIds,
+      ),
     ),
   };
 }
@@ -196,8 +199,8 @@ export function mergeWorkBoardPayloads(
   );
   return {
     ...incoming,
-    tasks: withoutRemoved(mergedTasks.tasks, removedTaskIds),
-    tests: withoutRemoved(mergedTests.tests, removedTestIds),
+    tasks: rolloverLockedSprintItems(withoutRemoved(mergedTasks.tasks, removedTaskIds)),
+    tests: rolloverLockedSprintItems(withoutRemoved(mergedTests.tests, removedTestIds)),
     removedTaskIds: uniqueIds([...removedTaskIds, ...mergedTasks.removedIds]),
     removedTestIds: uniqueIds([...removedTestIds, ...mergedTests.removedIds]),
   };
@@ -274,6 +277,7 @@ export function taskRowFingerprint(task: TaskItem): string {
     task.linkedTestIds ?? [],
     task.attachments ?? [],
     Boolean(task.onAgenda),
+    Boolean(task.rolledOver),
   ]);
 }
 
@@ -294,6 +298,7 @@ export function qaRowFingerprint(test: QaTestItem): string {
     test.linkedTaskIds ?? [],
     test.attachments ?? [],
     test.suite ?? suiteForQaTest(test),
+    Boolean(test.rolledOver),
   ]);
 }
 

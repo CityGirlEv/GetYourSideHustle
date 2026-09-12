@@ -152,7 +152,7 @@ describe('workBoard seed merge', () => {
     const resend = INITIAL_TASKS.find((t) => t.id === 't-49');
     expect(resend?.title).toMatch(/Resend/i);
     expect(resend?.assignee).toBe('evelyn');
-    expect(resend?.sprint).toBe('Sprint 0');
+    expect(resend?.sprint).toBe('Sprint 1');
     expect(resend?.priority).toBe('high');
     expect(mergeMissingSeedTasks(INITIAL_TASKS.filter((t) => t.id !== 't-49')).some((t) => t.id === 't-49')).toBe(true);
   });
@@ -163,19 +163,19 @@ describe('workBoard seed merge', () => {
     const instagram = INITIAL_TASKS.find((t) => t.id === 't-57');
     expect(tiktok).toMatchObject({
       title: 'Create or re-purpose the NonNegotiation TikTok page',
-      sprint: 'Sprint 0',
+      sprint: 'Sprint 1',
       assignee: 'angela',
       category: 'Content',
       status: 'not_started',
     });
     expect(youtube).toMatchObject({
       title: 'Create or re-purpose the NonNegotiation YouTube channel',
-      sprint: 'Sprint 0',
+      sprint: 'Sprint 1',
       assignee: 'angela',
     });
     expect(instagram).toMatchObject({
       title: 'Create or re-purpose the NonNegotiation Instagram page',
-      sprint: 'Sprint 0',
+      sprint: 'Sprint 1',
       assignee: 'angela',
     });
     const without = INITIAL_TASKS.filter((t) => t.id !== 't-55' && t.id !== 't-56' && t.id !== 't-57');
@@ -192,25 +192,25 @@ describe('workBoard seed merge', () => {
     const brandDecision = INITIAL_TASKS.find((t) => t.id === 't-61');
     expect(tiktokAccess).toMatchObject({
       title: 'Add Evelyn as an authorized user on the NonNegotiation TikTok page',
-      sprint: 'Sprint 0',
+      sprint: 'Sprint 1',
       assignee: 'angela',
       dueDate: '2026-09-03',
     });
     expect(youtubeAccess).toMatchObject({
       title: 'Add Evelyn as an authorized user on the NonNegotiation YouTube channel',
-      sprint: 'Sprint 0',
+      sprint: 'Sprint 1',
       assignee: 'angela',
       dueDate: '2026-09-03',
     });
     expect(instagramAccess).toMatchObject({
       title: 'Add Evelyn as an authorized user on the NonNegotiation Instagram page',
-      sprint: 'Sprint 0',
+      sprint: 'Sprint 1',
       assignee: 'angela',
       dueDate: '2026-09-03',
     });
     expect(brandDecision).toMatchObject({
       title: 'Keep NonNegotiation as the house — introduce MY PLAN, NOT MY MOOD as a brand under it',
-      sprint: 'Sprint 0',
+      sprint: 'Sprint 1',
       assignee: 'angela',
       dueDate: '2026-09-03',
     });
@@ -243,10 +243,11 @@ describe('workBoard seed merge', () => {
     expect(INITIAL_TASKS.find((t) => t.id === 't-74')?.title).toMatch(/house/i);
     expect(INITIAL_TASKS.find((t) => t.id === 't-74')?.dueDate).toBe('2026-09-04');
     const videoIds = ['t-75', 't-76', 't-77', 't-78', 't-79'] as const;
-    const videoSprints = ['Sprint 0', 'Sprint 1', 'Sprint 2', 'Sprint 3', 'Sprint 4'] as const;
+    const videoTitles = ['Sprint 0', 'Sprint 1', 'Sprint 2', 'Sprint 3', 'Sprint 4'] as const;
+    const videoSprints = ['Sprint 1', 'Sprint 1', 'Sprint 2', 'Sprint 3', 'Sprint 4'] as const;
     videoIds.forEach((id, index) => {
       expect(INITIAL_TASKS.find((t) => t.id === id)).toMatchObject({
-        title: `Create 3 T-shirt sales videos for ${videoSprints[index]}`,
+        title: `Create 3 T-shirt sales videos for ${videoTitles[index]}`,
         sprint: videoSprints[index],
         assignee: 'angela',
         category: 'Content',
@@ -255,6 +256,16 @@ describe('workBoard seed merge', () => {
     const analytics = INITIAL_TASKS.filter((task) => String(task.groupId ?? '').startsWith('analytics-'));
     expect(analytics).toHaveLength(120);
     expect(analytics.every((task) => task.sprint !== 'Sprint 0')).toBe(true);
+    expect(INITIAL_TASKS.every((task) => task.sprint !== 'Sprint 0')).toBe(true);
+    expect(INITIAL_QA_TESTS.every((test) => test.sprint !== 'Sprint 0')).toBe(true);
+    expect(allSeedQaTests().every((test) => test.sprint !== 'Sprint 0')).toBe(true);
+    expect(INITIAL_TASKS.find((task) => task.id === 't-49')).toMatchObject({
+      rolledOver: true,
+      assignee: 'evelyn',
+    });
+    expect(INITIAL_TASKS.find((task) => task.id === 't-49')?.notes).toMatch(/Rolled Over to Sprint 1/);
+    expect(INITIAL_QA_TESTS.find((test) => test.id === 'home-qa1')?.rolledOver).toBe(true);
+    expect(INITIAL_QA_TESTS.find((test) => test.id === 'home-qa1')?.desc).toMatch(/Rolled Over to Sprint 1/);
     expect(analytics.filter((task) => task.assignee === 'angela')).toHaveLength(60);
     expect(analytics.filter((task) => task.assignee === 'evelyn')).toHaveLength(60);
     expect(INITIAL_TASKS.find((t) => t.id === 't-83')?.title).toMatch(/Gather Facebook analytics/i);
@@ -348,6 +359,16 @@ describe('workBoard seed merge', () => {
     });
     expect(applyTaskInlinePatch(task, { title: 'Draft title' }).title).toBe('Draft title');
     expect(applyTaskInlinePatch(task, { sprint: 'Sprint 99' as SprintCategory }).sprint).toBe(task.sprint);
+    expect(applyTaskInlinePatch(task, { sprint: 'Sprint 0' }).sprint).toBe(task.sprint);
+    expect(applyQaInlinePatch(INITIAL_QA_TESTS[0], { sprint: 'Sprint 0' }).sprint).toBe(INITIAL_QA_TESTS[0].sprint);
+    const finishedCarryover = applyTaskInlinePatch(INITIAL_TASKS.find((row) => row.id === 't-1')!, { status: 'done' });
+    expect(finishedCarryover).toMatchObject({
+      id: 't-1',
+      sprint: 'Sprint 0',
+      status: 'done',
+      rolledOver: false,
+    });
+    expect(finishedCarryover.notes).not.toMatch(/Rolled Over to Sprint 1/);
     const list = applyTaskInlinePatchToList([task], task.id, { status: 'in_progress' });
     expect(list[0].status).toBe('in_progress');
   });
@@ -398,14 +419,16 @@ describe('workBoard seed merge', () => {
     const stats = sprintSectionStats(INITIAL_TASKS, (t) => t.status === 'done');
     expect(stats).toHaveLength(5);
     expect(stats[0].sprint).toBe('Sprint 0');
-    expect(stats[0].total).toBeGreaterThan(0);
+    expect(stats[0].total).toBe(0);
+    expect(stats.find((row) => row.sprint === 'Sprint 1')?.total).toBeGreaterThan(0);
   });
 
   it('defaults every sprint section open on the task and test boards', () => {
     const current = currentSprintLabel(new Date('2026-08-26T12:00:00'));
     expect(current).toBe('Sprint 0');
     const open = defaultOpenSprintSections(current);
-    expect(SPRINT_OPTIONS.every((sprint) => open[sprint])).toBe(true);
+    expect(open['Sprint 0']).toBe(false);
+    expect(SPRINT_OPTIONS.filter((sprint) => sprint !== 'Sprint 0').every((sprint) => open[sprint])).toBe(true);
     expect(toggleSprintSection(open, 'Sprint 1')['Sprint 1']).toBe(false);
   });
 
@@ -679,6 +702,8 @@ describe('workBoard seed merge', () => {
       },
     ]);
     expect(task.assignor).toBe('system');
+    expect(task.sprint).toBe('Sprint 1');
+    expect(task.assignee).toBe('angela');
     const reassigned = applyTaskInlinePatch(task, { assignee: 'evelyn' }, 'angela');
     expect(reassigned.assignee).toBe('evelyn');
     expect(reassigned.assignor).toBe('angela');
